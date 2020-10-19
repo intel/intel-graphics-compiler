@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Instruction.h"
 #include "common/LLVMWarningsPop.hpp"
 
+#include "Probe/Assertion.h"
+
 #include <string>
 #include <vector>
 
@@ -186,6 +188,17 @@ namespace IGC
                 return false;
             }
 
+            bool isSpillOnStack()
+            {
+                if (!isSpill())
+                    return false;
+
+                if(var.mapping.m.isBaseOffBEFP == 0)
+                    return true;
+
+                return false;
+            }
+
             Mapping::Register getGRF()
             {
                 return var.mapping.r;
@@ -247,6 +260,22 @@ namespace IGC
             std::vector<PhyRegSaveInfoPerIP> calleeSaveEntry;
             uint16_t numCallerSaveEntries = 0;
             std::vector<PhyRegSaveInfoPerIP> callerSaveEntry;
+
+            bool getBEFPRegNum(uint32_t& regNum, uint32_t& subRegNum)
+            {
+                if (befp.size() == 0)
+                    return false;
+
+                // Assume that be_fp is available throughout the function
+                // and at the same location.
+                IGC_ASSERT(befp.front().var.physicalType == VarAlloc::PhyTypeGRF &&
+                    "BE_FP not in register");
+
+                regNum = befp.front().var.mapping.r.regNum;
+                subRegNum = befp.front().var.mapping.r.subRegNum;
+
+                return true;
+            }
         };
         class DbgInfoFormat
         {

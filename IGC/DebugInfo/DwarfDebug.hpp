@@ -85,13 +85,7 @@ namespace IGC
     /// section.
     class DotDebugLocEntry
     {
-        // Begin and end symbols for the address range that this location is valid.
-        const llvm::MCSymbol* Begin = nullptr;
-        const llvm::MCSymbol* End = nullptr;
-
         // start/end %ip
-        const uint64_t start = 0;
-        const uint64_t end = 0;
         uint32_t offset = 0;
 
         // The location in the machine frame.
@@ -101,9 +95,12 @@ namespace IGC
         const llvm::MDNode* Variable;
 
     public:
-        DotDebugLocEntry() : Begin(0), End(0), m_pDbgInst(nullptr), Variable(nullptr) { }
+        uint64_t start = 0;
+        uint64_t end = 0;
+
+        DotDebugLocEntry() : m_pDbgInst(nullptr), Variable(nullptr) { }
         DotDebugLocEntry(const llvm::MCSymbol* B, const llvm::MCSymbol* E, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
-            : Begin(B), End(E), m_pDbgInst(pDbgInst), Variable(V) { }
+            : m_pDbgInst(pDbgInst), Variable(V) { }
         DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
             : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
 
@@ -111,8 +108,6 @@ namespace IGC
         /// labels are referenced is used to find debug_loc offset for a given DIE.
         bool isEmpty() { return start == 0 && end == 0; }
         const llvm::MDNode* getVariable() const { return Variable; }
-        const llvm::MCSymbol* getBeginSym() const { return Begin; }
-        const llvm::MCSymbol* getEndSym() const { return End; }
         const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
         uint64_t getStart() const { return start; }
         uint64_t getEnd() const { return end; }
@@ -645,6 +640,7 @@ namespace IGC
 
             return m_pModule->isDirectElfInput;
         }
+
     private:
         // Store all DISubprogram nodes from LLVM IR as they are no longer available
         // in DICompileUnit
@@ -706,6 +702,7 @@ namespace IGC
         }
         unsigned int CopyDebugLoc(unsigned int offset);
 
+        const VISAModule* GetVISAModule() { return m_pModule; }
 
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);

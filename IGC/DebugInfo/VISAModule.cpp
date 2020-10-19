@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "LexicalScopes.hpp"
 
 #include <vector>
+#include <algorithm>
 
 #include "Probe/Assertion.h"
 
@@ -384,6 +385,88 @@ void VISAModule::buildDirectElfMaps()
         GenISAInstSizeBytes.insert(std::make_pair(GenISAToVISAIndex[i].first, size));
     }
     GenISAInstSizeBytes.insert(std::make_pair(GenISAToVISAIndex[GenISAToVISAIndex.size() - 1].first, 16));
+}
+
+// This function returns a vector of tuples. Each tuple corresponds to a call site where physical register startRegNum is saved. Tuple format:
+// <start IP, end IP, stack offset>
+//
+// startIP - %ip where startRegNum is available on BE stack,
+// endIP - %ip where startRegNum is available in original location (GRF),
+// stack offset - location on BE stack between [startIP - endIP)
+//
+// This function is called to compute caller save of 1 sub-interval genIsaRange.
+// The sub-interval genIsaRange could pass over 0 or more stack call functions.
+// A tuple is created for every stack call site that requires save/restore of startRegNum.
+//
+// It is assumed that if startRegNum is within caller save area then entire variable is
+// in caller save area.
+std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> VISAModule::getAllCallerSave(uint64_t startRange, uint64_t endRange,
+    DbgDecoder::LiveIntervalsVISA& genIsaRange)
+{
+    std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
+    auto CO = getCompileUnit();
+
+    if(!CO)
+        return std::move(callerSaveIPs);
+
+    if (CO->cfi.callerSaveEntry.size() == 0)
+        return std::move(callerSaveIPs);
+
+    if (!genIsaRange.isGRF())
+        return std::move(callerSaveIPs);
+
+    auto startRegNum = genIsaRange.getGRF().regNum;
+
+    // There are valid entries in caller save data structure
+    unsigned int prevSize = 0;
+    bool inCallerSaveSection = false;
+    std::vector<DbgDecoder::PhyRegSaveInfoPerIP> saves;
+    auto callerSaveStartIt = CO->cfi.callerSaveEntry.end();
+
+    for (auto callerSaveIt = CO->cfi.callerSaveEntry.begin();
+        callerSaveIt != CO->cfi.callerSaveEntry.end();
+        ++callerSaveIt)
+    {
+        auto& callerSave = (*callerSaveIt);
+        if (prevSize > 0 &&
+            prevSize > callerSave.numEntries &&
+            !inCallerSaveSection)
+        {
+            // It means previous there was a call instruction
+            // between prev and current instruction.
+            callerSaveStartIt = callerSaveIt;
+            --callerSaveStartIt;
+            inCallerSaveSection = true;
+        }
+
+        if ((*callerSaveIt).numEntries == 0 && inCallerSaveSection)
+        {
+            uint64_t callerSaveIp = (*callerSaveStartIt).genIPOffset + CO->relocOffset;
+            uint64_t callerRestoreIp = (*callerSaveIt).genIPOffset + CO->relocOffset;
+            // End of current caller save section
+            if (startRange < callerSaveIp)
+            {
+                callerRestoreIp = std::min<uint64_t>(endRange, callerRestoreIp);
+                // Variable is live over stack call function.
+                for (auto callerSaveReg : (*callerSaveStartIt).data)
+                {
+                    // startRegNum is saved to caller save area around the stack call.
+                    if ((callerSaveReg.srcRegOff / getGRFSize()) == startRegNum)
+                    {
+                        // Emit caller save/restore only if %ip is within range
+                        callerSaveIPs.emplace_back(std::make_tuple(callerSaveIp, callerRestoreIp,
+                            (unsigned int)callerSaveReg.dst.m.memoryOffset));
+                        inCallerSaveSection = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        prevSize = callerSave.numEntries;
+    }
+
+    return std::move(callerSaveIPs);
 }
 
 std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(const InsnRange& Range)

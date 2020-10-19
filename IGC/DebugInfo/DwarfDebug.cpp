@@ -1333,6 +1333,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
     std::vector<std::tuple<MDNode*, DILocation*, DbgVariable*>> addedEntries;
     std::map<llvm::DIScope*, std::vector<llvm::Instruction*>> instsInScope;
 
+    TempDotDebugLocEntries.clear();
+
     auto isAdded = [&addedEntries](MDNode* md, DILocation* iat)
     {
         for (auto item : addedEntries)
@@ -1386,9 +1388,13 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         return startEnd;
     };
 
-    auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint64_t rangeStart, uint64_t rangeEnd,
+    auto encodeImm = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t offset,
+        llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries,
+        uint64_t rangeStart, uint64_t rangeEnd,
         uint32_t pointerSize, DbgVariable* RegVar, const ConstantInt* pConstInt)
     {
+        auto oldSize = dotLoc.loc.size();
+
         auto op = llvm::dwarf::DW_OP_implicit_value;
         const unsigned int lebSize = 8;
         write(dotLoc.loc, (unsigned char*)&rangeStart, pointerSize);
@@ -1406,23 +1412,81 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             int64_t constValue = pConstInt->getSExtValue();
             write(dotLoc.loc, (unsigned char*)&constValue, lebSize);
         }
+        offset += dotLoc.loc.size() - oldSize;
+
+        TempDotDebugLocEntries.push_back(dotLoc);
     };
 
-    auto encodeReg = [&](IGC::DotDebugLocEntry& dotLoc, uint64_t startRange, uint64_t endRange,
+    auto encodeReg = [&](IGC::DotDebugLocEntry& dotLoc, uint32_t offset,
+        llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries,
+        uint64_t startRange, uint64_t endRange,
         uint32_t pointerSize, DbgVariable* RegVar, std::vector<VISAVariableLocation>& Locs,
         DbgDecoder::LiveIntervalsVISA& genIsaRange)
     {
-        write(dotLoc.loc, (unsigned char*)&startRange, pointerSize);
-        write(dotLoc.loc, (unsigned char*)&endRange, pointerSize);
-
+        auto allCallerSave = m_pModule->getAllCallerSave(startRange, endRange, genIsaRange);
         std::vector<DbgDecoder::LiveIntervalsVISA> vars = { genIsaRange };
+
+        auto oldSize = dotLoc.loc.size();
+        dotLoc.start = startRange;
+        TempDotDebugLocEntries.push_back(dotLoc);
+        write(TempDotDebugLocEntries.back().loc, (unsigned char*)&startRange, pointerSize);
+
+        for (auto it : allCallerSave)
+        {
+            TempDotDebugLocEntries.back().end = std::get<0>(it);
+            write(TempDotDebugLocEntries.back().loc, (unsigned char*)&std::get<0>(it), pointerSize);
+            auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars);
+            std::vector<unsigned char> buffer;
+            if (block)
+                block->EmitToRawBuffer(buffer);
+            write(TempDotDebugLocEntries.back().loc, (uint16_t)buffer.size());
+            write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
+
+            offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
+
+            DotDebugLocEntry another(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
+            another.start = std::get<0>(it);
+            another.end = std::get<1>(it);
+            TempDotDebugLocEntries.push_back(another);
+            oldSize = TempDotDebugLocEntries.back().loc.size();
+            // write actual caller save location
+            write(TempDotDebugLocEntries.back().loc, (unsigned char*)&std::get<0>(it), pointerSize);
+            write(TempDotDebugLocEntries.back().loc, (unsigned char*)&std::get<1>(it), pointerSize);
+            auto callerSaveVars = vars;
+            callerSaveVars.front().var.physicalType = DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory;
+            callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
+            callerSaveVars.front().var.mapping.m.memoryOffset = std::get<2>(it);
+            block = FirstCU->buildGeneral(*RegVar, &Locs, &callerSaveVars);
+            buffer.clear();
+            if (block)
+                block->EmitToRawBuffer(buffer);
+            write(TempDotDebugLocEntries.back().loc, (uint16_t)buffer.size());
+            write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
+
+            offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
+
+            if (std::get<1>(it) >= endRange)
+                return;
+
+            // start new interval with original location
+            DotDebugLocEntry yetAnother(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
+            yetAnother.start = std::get<1>(it);
+            TempDotDebugLocEntries.push_back(yetAnother);
+            oldSize = TempDotDebugLocEntries.back().loc.size();
+            write(TempDotDebugLocEntries.back().loc, (unsigned char*)&std::get<1>(it), pointerSize);
+        }
+
+        TempDotDebugLocEntries.back().end = endRange;
+        write(TempDotDebugLocEntries.back().loc, (unsigned char*)&endRange, pointerSize);
+
         auto block = FirstCU->buildGeneral(*RegVar, &Locs, &vars);
         std::vector<unsigned char> buffer;
         if (block)
             block->EmitToRawBuffer(buffer);
-        write(dotLoc.loc, (uint16_t)buffer.size());
-        write(dotLoc.loc, buffer.data(), buffer.size());
+        write(TempDotDebugLocEntries.back().loc, (uint16_t)buffer.size());
+        write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
 
+        offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
     };
 
     unsigned int offset = 0;
@@ -1508,7 +1572,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 AbsVar->setDbgInst(pInst);
             }
 
-            if (!m_pModule->isDirectElfInput || !EmitSettings.EmitDebugLoc)
+            bool needsCallerSave = m_pModule->getCompileUnit()->cfi.numCallerSaveEntries > 0;
+            if ((!m_pModule->isDirectElfInput || !EmitSettings.EmitDebugLoc) && !needsCallerSave)
                 continue;
 
             // assume that VISA preserves location thoughout its lifetime
@@ -1540,7 +1605,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             auto GenISARange = m_pModule->getGenISARange(InsnRange);
 
             // Emit location within the DIE for dbg.declare
-            if (History.size() == 1 && isa<DbgDeclareInst>(pInst))
+            if (History.size() == 1 && isa<DbgDeclareInst>(pInst) && !needsCallerSave)
                 continue;
 
             for (auto range : GenISARange)
@@ -1578,22 +1643,20 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             };
 
             PrevLoc p;
-            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, unsigned int& offset)
+            auto encodePrevLoc = [&](DotDebugLocEntry& dotLoc, llvm::SmallVector<DotDebugLocEntry, 4>& TempDotDebugLocEntries, unsigned int& offset)
             {
                 if (p.dbgVar->getDotDebugLocOffset() == ~0U)
                 {
                     p.dbgVar->setDotDebugLocOffset(offset);
                 }
-                auto oldSize = dotLoc.loc.size();
                 if (p.t == PrevLoc::Type::Imm)
                 {
-                    encodeImm(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.imm);
+                    encodeImm(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.imm);
                 }
                 else
                 {
-                    encodeReg(dotLoc, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.genIsaRange);
+                    encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Locs, p.genIsaRange);
                 }
-                offset += dotLoc.loc.size() - oldSize;
                 p.t = PrevLoc::Type::Empty;
             };
             for (auto& range : d.second)
@@ -1640,8 +1703,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                         if (p.t != PrevLoc::Type::Empty)
                         {
                             // Emit previous location to debug_loc
-                            encodePrevLoc(dotLoc, offset);
-                            TempDotDebugLocEntries.push_back(dotLoc);
+                            encodePrevLoc(dotLoc, TempDotDebugLocEntries, offset);
                         }
 
                         p.t = PrevLoc::Type::Imm;
@@ -1697,8 +1759,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
 
                         if (p.t != PrevLoc::Type::Empty)
                         {
-                            encodePrevLoc(dotLoc, offset);
-                            TempDotDebugLocEntries.push_back(dotLoc);
+                            encodePrevLoc(dotLoc, TempDotDebugLocEntries, offset);
                         }
 
                         p.t = PrevLoc::Type::Reg;
@@ -1716,8 +1777,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             {
                 DotDebugLocEntry dotLoc(p.start, p.end, p.pInst, DV);
                 dotLoc.setOffset(offset);
-                encodePrevLoc(dotLoc, offset);
-                TempDotDebugLocEntries.push_back(dotLoc);
+                encodePrevLoc(dotLoc, TempDotDebugLocEntries, offset);
             }
 
             if (TempDotDebugLocEntries.size() > origLocSize)
@@ -1786,7 +1846,6 @@ unsigned int DwarfDebug::CopyDebugLoc(unsigned int o)
         {
             // Append data to DotLocEntries
             DotDebugLocEntries.push_back(TempDotDebugLocEntries[index]);
-
             if (TempDotDebugLocEntries[index].isEmpty())
             {
                 done = true;

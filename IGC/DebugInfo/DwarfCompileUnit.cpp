@@ -1009,11 +1009,39 @@ void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock* Block, VISAVariableL
     }
 }
 
+void CompileUnit::addBE_FP(IGC::DIEBlock* Block)
+{
+    // Add BE_FP value to spill offset if BE_FP is non-null. This is required when generating
+    // debug info for stack call functions.
+    // DW_OP_constu <regNum>
+    // DW_OP_INTEL_regs
+    // DW_OP_const2u <subRegNum * 8>
+    // DW_OP_const2u <32>
+    // DW_OP_plus
+    uint32_t BE_FP_RegNum = 0, BE_FP_SubRegNum = 0;
+    bool hasValidBEFP = DD->GetVISAModule()->getCompileUnit()->cfi.getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
+    if (!hasValidBEFP)
+        return;
+
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
+        BE_FP_RegNum, EmitSettings.UseNewRegisterEncoding);
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);
+    addUInt(Block, dwarf::DW_FORM_udata, DWRegEncoded);  // Register ID is shifted by offset
+    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
+    addUInt(Block, dwarf::DW_FORM_data2, BE_FP_SubRegNum * 8u); // sub-reg offset in bits
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+    addUInt(Block, dwarf::DW_FORM_data1, 32); // size of BE_FP ptr
+    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
+}
+
 // addScratchLocation - add a sequence of attributes to emit scratch space location
 // of variable
-void CompileUnit::addScratchLocation(IGC::DIEBlock* Block, DbgDecoder::LiveIntervalsVISA* lr, int32_t vectorOffset)
+void CompileUnit::addScratchLocation(IGC::DIEBlock* Block, uint32_t memoryOffset, int32_t vectorOffset)
 {
-    uint32_t offset = lr->getSpillOffset().memoryOffset + vectorOffset;
+    uint32_t offset = memoryOffset + vectorOffset;
 
     IGC_ASSERT_MESSAGE(EmitSettings.EnableSIMDLaneDebugging, "SIMD lane expressions support only");
 
@@ -2525,13 +2553,15 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
                     addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
+                    addBE_FP(Block);
                     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
                 }
                 else
                 {
                     if (loc->IsVectorized() == false)
                     {
-                        addScratchLocation(Block, &lrToUse, 0);
+                        addScratchLocation(Block, lrToUse.getSpillOffset().memoryOffset, 0);
+                        addBE_FP(Block);
                     }
                     else
                     {
@@ -2543,7 +2573,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
                         for (unsigned int vectorElem = 0; vectorElem < loc->GetVectorNumElements(); ++vectorElem)
                         {
-                            addScratchLocation(Block, &lrToUse, vectorElem * numOfRegs * grfSize);
+                            addScratchLocation(Block, lrToUse.getSpillOffset().memoryOffset, vectorElem * numOfRegs * grfSize);
+                            addBE_FP(Block);
                             addSimdLane(Block, var, loc, &lrToUse, 0, false, !firstHalf); // Emit SIMD lane for spill (unpacked)
                         }
                     }

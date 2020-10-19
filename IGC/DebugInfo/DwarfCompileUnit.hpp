@@ -281,9 +281,12 @@ namespace IGC
         void addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocation* Loc);
 
 
+        // addBE_FP - emits operations to add contents of BE_FP to current top of dwarf stack
+        void addBE_FP(IGC::DIEBlock* Block);
+
         // addScratchLocation - add a sequence of attributes to emit scratch space location
         // of variable
-        void addScratchLocation(DIEBlock* Block, DbgDecoder::LiveIntervalsVISA* lr, int32_t vectorOffset);
+        void addScratchLocation(DIEBlock* Block, uint32_t memoryOffset, int32_t vectorOffset);
 
 
         // addSLMLocation - add a sequence of attributes to emit SLM location of variable

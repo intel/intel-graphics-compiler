@@ -481,6 +481,14 @@ namespace IGC
 
         std::vector<std::pair<unsigned int, unsigned int>> getGenISARange(const InsnRange& Range);
 
+        // Given %ip range and variable location, returns vector of locations where variable is
+        // available in memory due to caller save sequence.
+        // Return format is:
+        // <start %ip of caller save, end %ip of caller save, stack slot offset for caller save>
+        std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> getAllCallerSave(
+            uint64_t startRange, uint64_t endRange,
+            DbgDecoder::LiveIntervalsVISA& Locs);
+
         virtual unsigned getUnpaddedProgramSize() const = 0;
         virtual bool isLineTableOnly() const = 0;
         virtual unsigned getPrivateBaseReg() const = 0;
