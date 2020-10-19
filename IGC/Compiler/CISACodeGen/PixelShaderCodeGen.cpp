@@ -262,6 +262,7 @@ void CPixelShader::AllocatePSPayload()
     AllocateConstants3DShader(offset);
 
 
+
     // Allocate size for attributes coming from VS
     IGC_ASSERT(offset % getGRFSize() == 0);
     unsigned int payloadEnd = offset;
