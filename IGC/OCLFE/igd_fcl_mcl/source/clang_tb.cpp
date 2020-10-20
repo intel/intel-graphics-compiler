@@ -1519,6 +1519,7 @@ namespace TC
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
         optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
 
+#if defined(_WIN32)
         if (oclStd >= 300) {
           auto featureMacrosFromInternalOptions = GetSubstring(pInternalOptions, "-cl-feature=");
 
@@ -1535,6 +1536,7 @@ namespace TC
           optionsEx += " " + GetCDefinesForEnableList(featureMacrosFromInternalOptions, oclStd, "-cl-feature=");
           optionsEx += " " + featureMacrosFromInternalOptions;
         }
+#endif
 
         optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
 
