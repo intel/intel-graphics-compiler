@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/Constant.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -218,7 +219,7 @@ static TrivialUniformity checkValue(const Value *Val, UniformityCache *Cache) {
         Cache->insert(std::make_pair(Val, result));
     } else {
         const User *U = dyn_cast<User>(Val);
-        assert(U && "Expected instruction or operator.");
+        IGC_ASSERT_MESSAGE(U, "Expected instruction or operator.");
 
         const size_t count = U->getNumOperands();
         for (size_t i = 0; i < count; i++) {
