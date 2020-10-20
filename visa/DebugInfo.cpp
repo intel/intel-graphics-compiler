@@ -1053,21 +1053,58 @@ void emitDataVarLiveInterval(VISAKernelImpl* visaKernel, LiveIntervalInfo* lrInf
     }
 }
 
+template<class T>
+void emitFrameDescriptorOffsetLiveInterval(LiveIntervalInfo* lrInfo, StackCall::FrameDescriptorOfsets memOffset, T& t)
+{
+    // Used to emit fields of Frame Descriptor
+    // location = [start, end) @ BE_FP+offset
+    std::vector<std::pair<uint32_t, uint32_t>> lrs;
+    if (lrInfo)
+        lrInfo->getLiveIntervals(lrs);
+    else
+        return;
+
+    uint32_t start = 0, end = 0;
+    if (lrs.size() > 0)
+    {
+        start = lrs.front().first;
+        end = lrs.back().second;
+    }
+
+    std::sort(lrs.begin(), lrs.end(), [](std::pair<uint32_t, uint32_t>& a, std::pair<uint32_t, uint32_t>& b) { return a.first < b.first; });
+
+    emitDataUInt16(1, t);
+
+    emitDataUInt32(start, t);
+    emitDataUInt32(end, t);
+
+    emitDataUInt8((uint8_t)VARMAP_PREG_FILE_GRF, t);
+
+    emitDataUInt8((uint8_t)VARMAP_PREG_FILE_MEMORY, t);
+
+    emitDataUInt32((uint32_t)memOffset, t);
+}
+
 void populateUniqueSubs(G4_Kernel* kernel, std::unordered_map<G4_BB*, bool>& uniqueSubs)
 {
     // Traverse kernel and populate all unique subs.
     // Iterating over all BBs of kernel visits all
     // subroutine call sites.
+    auto isStackObj = kernel->fg.getHasStackCalls() || kernel->fg.getIsStackCallFunc();
     for (auto bb : kernel->fg)
     {
         if (&bb->getParent() != &kernel->fg)
             continue;
 
-        if (bb->isEndWithCall() &&
-            !kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bb))
+        if (bb->isEndWithCall())
         {
-            // This is a subroutine call
-            uniqueSubs[bb->Succs.front()] = false;
+            if (!isStackObj || // definitely a subroutine since kernel has no stack calls
+                (isStackObj && // a subroutine iff call dst != pre-defined reg as per ABI
+                    bb->back()->getDst()->getTopDcl()->getRegVar()->getPhyReg()->asGreg()->getRegNum() != kernel->getFPSPGRF()))
+            {
+                // This is a subroutine call
+                uniqueSubs[bb->Succs.front()] = false;
+            }
         }
     }
 }
@@ -1205,8 +1242,8 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c)
                 // Remove temp movs emitted for send header
                 // creation since they are not technically
                 // caller save
-                if (entry.first < CALLEE_SAVE_START &&
-                    entry.first >= CALLER_SAVE_START &&
+                if (entry.first < visaKernel->getKernel()->calleeSaveStart() &&
+                    entry.first >= 0 &&
                     entry.second.first == SaveRestoreInfo::RegOrMem::MemOffBEFP)
                 {
                     removeEntry = false;
@@ -1214,7 +1251,7 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c)
             }
             else if (c == CallerOrCallee::Callee)
             {
-                if (entry.first >= CALLEE_SAVE_START &&
+                if (entry.first >= visaKernel->getKernel()->calleeSaveStart() &&
                     entry.second.first == SaveRestoreInfo::RegOrMem::MemOffBEFP)
                 {
                     removeEntry = false;
@@ -1408,7 +1445,7 @@ void emitDataCallFrameInfo(VISAKernelImpl* visaKernel, T& t)
         if (befpLIInfo)
         {
             emitDataUInt8((uint8_t)1, t);
-            uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(befpDcl);
+            uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(kernel->fg.framePtrDcl);
             emitDataVarLiveInterval(visaKernel, befpLIInfo, idx, sizeof(uint32_t), t);
         }
         else
@@ -1428,8 +1465,8 @@ void emitDataCallFrameInfo(VISAKernelImpl* visaKernel, T& t)
         if (callerfpLIInfo)
         {
             emitDataUInt8((uint8_t)1, t);
-            uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(callerfpdcl);
-            emitDataVarLiveInterval(visaKernel, callerfpLIInfo, idx, sizeof(uint32_t), t);
+            // Caller's be_fp is stored in frame descriptor
+            emitFrameDescriptorOffsetLiveInterval(callerfpLIInfo, StackCall::FrameDescriptorOfsets::BE_FP, t);
         }
         else
         {
@@ -1448,8 +1485,7 @@ void emitDataCallFrameInfo(VISAKernelImpl* visaKernel, T& t)
         if (fretVarLIInfo)
         {
             emitDataUInt8((uint8_t)1, t);
-            uint32_t idx = kernel->getKernelDebugInfo()->getVarIndex(fretVar);
-            emitDataVarLiveInterval(visaKernel, fretVarLIInfo, idx, sizeof(uint32_t), t);
+            emitFrameDescriptorOffsetLiveInterval(fretVarLIInfo, StackCall::FrameDescriptorOfsets::Ret_IP, t);
         }
         else
         {
@@ -1934,6 +1970,29 @@ void KernelDebugInfo::computeDebugInfo(std::list<G4_BB*>& stackCallEntryBBs)
     {
         updateCallStackLiveIntervals();
     }
+    else
+    {
+        updateCallStackMain();
+    }
+}
+
+void KernelDebugInfo::updateCallStackMain()
+{
+    if (!getKernel().fg.getHasStackCalls())
+        return;
+
+    // Set live-interval for BE_FP
+    auto befp = getBEFP();
+    if (befp)
+    {
+        uint32_t start = 0;
+        if (getBEFPSetupInst())
+        {
+            start = (uint32_t)getBEFPSetupInst()->getGenOffset() +
+                (uint32_t)getBinInstSize(getBEFPSetupInst());
+        }
+        updateDebugInfo(getKernel(), befp, start, mapCISAIndexGenOffset.back().second);
+    }
 }
 
 void KernelDebugInfo::updateCallStackLiveIntervals()
@@ -1964,24 +2023,30 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
                 {
                     reloc_offset = (reloc_offset == 0) ?
                         (uint32_t)insts->getGenOffset() : reloc_offset;
-                }
-
-                if ((insts->isReturn() || insts->opcode() == G4_jmpi) &&
-                    insts->getSrc(0)->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare()
-                    == fretVar)
-                {
-                    end = (uint32_t)insts->getGenOffset();
                     break;
                 }
             }
-            if (end > 0)
-            {
+            if (reloc_offset > 0)
                 break;
-            }
+        }
+
+        uint32_t start = 0;
+        if (getBEFPSetupInst())
+        {
+            // Frame descriptor can be addressed once once BE_FP is defined
+            start = (uint32_t)getBEFPSetupInst()->getGenOffset() +
+                getBinInstSize(getBEFPSetupInst());
+        }
+
+        if (getCallerBEFPRestoreInst())
+        {
+            end = (uint32_t)getCallerBEFPRestoreInst()->getGenOffset();
         }
 
         MUST_BE_TRUE(end >= reloc_offset, "Failed to update live-interval for retval");
-        for (uint32_t i = 0; i <= end - reloc_offset; i++)
+        MUST_BE_TRUE(start >= reloc_offset, "Failed to update start for retval");
+        MUST_BE_TRUE(end >= start, "end less then start for retval");
+        for (uint32_t i = start - reloc_offset; i <= end - reloc_offset; i++)
         {
             updateDebugInfo(*kernel, fretVar, i);
         }

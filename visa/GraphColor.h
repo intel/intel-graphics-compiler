@@ -627,16 +627,16 @@ namespace vISA
         void addCalleeStackSetupCode();
         void saveRegs(
             unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
         void saveActiveRegs(
             std::vector<bool>& saveRegs, unsigned startReg,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
         void restoreRegs(
             unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
         void restoreActiveRegs(
             std::vector<bool>& restoreRegs, unsigned startReg,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs);
         void dumpRegisterPressure();
@@ -805,6 +805,12 @@ namespace vISA
 
     public:
         static unsigned sendBlockSizeCode(unsigned owordSize);
+
+        // For current program, store caller/callee save/restore instructions
+        std::unordered_set<G4_INST*> calleeSaveInsts;
+        std::unordered_set<G4_INST*> calleeRestoreInsts;
+        std::unordered_map<G4_INST*, std::unordered_set<G4_INST*>> callerSaveInsts;
+        std::unordered_map<G4_INST*, std::unordered_set<G4_INST*>> callerRestoreInsts;
 
     public:
         G4_Kernel& kernel;
@@ -1347,7 +1353,7 @@ namespace vISA
         int coloringRegAlloc();
         void addCallerSavePseudoCode();
         void addCalleeSavePseudoCode();
-        void addStoreRestoreForFP();
+        void addStoreRestoreToReturn();
         void markGraphBlockLocalVars();
         void verifyRA(LivenessAnalysis & liveAnalysis);
         void resetGlobalRAStates();
@@ -1549,5 +1555,24 @@ namespace vISA
 
     };
 }
+
+// TODO: Refactor code so that stack call related enums,
+// methods, etc. should be part of this class. Right now
+// code is scattered across FlowGraph and GraphColor.
+class StackCall
+{
+public:
+    // Following enum holds offsets of various fields in
+    // frame descriptor as per VISA ABI.
+    enum class FrameDescriptorOfsets
+    {
+        FE_FP = IR_Builder::SubRegs_Stackcall::FE_FP * 8,
+        FE_SP = IR_Builder::SubRegs_Stackcall::FE_SP * 8,
+        Ret_IP = IR_Builder::SubRegs_Stackcall::Ret_IP * 4,
+        Ret_EM = IR_Builder::SubRegs_Stackcall::Ret_EM * 4,
+        BE_FP = IR_Builder::SubRegs_Stackcall::BE_FP * 4,
+        BE_SP = IR_Builder::SubRegs_Stackcall::BE_SP * 4
+    };
+};
 
 #endif // __GRAPHCOLOR_H__

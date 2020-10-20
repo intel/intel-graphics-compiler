@@ -4642,7 +4642,6 @@ SpillManagerGRF::spillLiveRanges (G4_Kernel * kernel)
 }
 
 
-
 uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits)
 {
     // Compute msg descriptor given payload size and offset.
