@@ -3731,6 +3731,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
     const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
+    (void) failed;
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_floor_f64");
@@ -3822,6 +3823,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
     const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
+    (void) failed;
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_ceil_f64");
@@ -3903,6 +3905,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDTrunc(llvm::Value
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
     const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
+    (void) failed;
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_trunc_f64");
@@ -4006,6 +4009,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDRoundNE(llvm::Val
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
     const bool failed = llvm::parseAssemblyInto(codeBuf, mod, nullptr, diagnostic);
+    (void) failed;
     IGC_ASSERT_MESSAGE(false == failed, "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_roundne_f64");
