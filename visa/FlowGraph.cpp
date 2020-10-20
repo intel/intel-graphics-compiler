@@ -3373,16 +3373,44 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
 void FlowGraph::processGoto(bool HasSIMDCF)
 {
     // For all BBs in [StartBB, EndBB) (including StartBB, but not including EndBB) that
-    // jump after EndBB (forward jump), return the earlist (closed to EndBB). If no such
+    // jump after EndBB (forward jump), return the earliest (closest to EndBB). If no such
     // BB, return nullptr.
     // Assumption:  1. BB's id is in the increasing order; and 2) physical succ has been set.
-    auto getEarliestJmpOutBB = [](const G4_BB* StartBB, const G4_BB* EndBB) -> G4_BB*
+    auto getEarliestJmpOutBB = [](
+        const std::list<BlockSizePair> &activeJoins,
+        const G4_BB* StartBB,
+        const G4_BB* EndBB) -> G4_BB*
     {
-        G4_BB* earliestBB = nullptr;
+        // Existing active joins must be considered. For example,
+        //    goto L0  (non-uniform)
+        //    ...
+        //  Loop:
+        //     ...
+        //     goto L1 (uniform goto)
+        //     ...
+        //  L0:
+        //     ...
+        //     goto Loop
+        //     ...
+        //  L1:
+        // Since 'goto L0' is non-uniform, 'goto L1' must be tranlated into goto and a join must
+        // be inserted at L1.  If goto L0 is not considered (no active join at L0) and 'goto L1' can
+        // be converted into jmpi (thus no join will be inserted at L1, which is wrong.
+        std::list<BlockSizePair> tmpActiveJoins(activeJoins);
+
         const G4_BB* bb = StartBB;
         while (bb != EndBB)
         {
             const G4_BB* currBB = bb;
+            if (!tmpActiveJoins.empty())
+            {
+                // adjust active join lists if a join is reached.
+                if (bb == tmpActiveJoins.front().first)
+                {
+                    tmpActiveJoins.pop_front();
+                }
+            }
+
             bb = bb->getPhysicalSucc();
             if (currBB->empty())
             {
@@ -3390,25 +3418,46 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             }
 
             G4_INST* lastInst = currBB->back();
-            if (lastInst->opcode() != G4_goto ||
-                lastInst->asCFInst()->isBackward() ||
-                lastInst->asCFInst()->isUniform())
+            if (lastInst->opcode() != G4_goto || lastInst->asCFInst()->isBackward())
             {
                 continue;
             }
-
-            for (auto SuccBB : currBB->Succs)
+            G4_BB* targetBB = currBB->Succs.back();
+            assert(lastInst->asCFInst()->getUip() == targetBB->getLabel());
+            if (lastInst->asCFInst()->isUniform() &&
+                (tmpActiveJoins.empty() || tmpActiveJoins.front().first->getId() >= targetBB->getId()))
             {
-                G4_BB* tb = SuccBB;
-                uint32_t tb_id = tb->getId();
-                if (tb_id > EndBB->getId() &&
-                    (earliestBB == nullptr || earliestBB->getId() > tb_id))
-                {
-                    earliestBB = tb;
-                }
+                // Non-crossing uniform goto will be jmpi, and thus no join needed.
+                //
+                // For the crossing gotos, a uniform goto cannot be translated to jmpi.
+                // For example:
+                //     goto L0:        // non-uniform goto (need a join)
+                //      ....
+                //     uniform-goto L1:
+                //      ...
+                //    L0:
+                //      ...
+                //    L1:
+                //  Here, uniform-goto L1 is uniform. Since it crosses the non-uniform joins at L0,
+                //  it must be translated to goto, not jmpi.  Thus, join is needed at L1.
+                continue;
             }
+            // Here, use SIMD1 as execsize does not matter here.
+            addBBToActiveJoinList(tmpActiveJoins, targetBB, g4::SIMD1);
         }
-        return earliestBB;
+
+        // Need to remove join at EndBB if present (looking for joins after EndBB)
+        if (!tmpActiveJoins.empty() && tmpActiveJoins.front().first == EndBB)
+        {
+            tmpActiveJoins.pop_front();
+        }
+
+        if (tmpActiveJoins.empty())
+        {
+            // no new join
+            return nullptr;
+        }
+        return tmpActiveJoins.front().first;
     };
 
     // list of active blocks where a join needs to be inserted, sorted in lexical order
@@ -3463,7 +3512,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // can always convert a uniform backward goto into a jmp
                     convertGotoToJmpi(lastInst);
 
-                    // we still have to add a join point at the BB immediately after the back edge,
+                    // we still have to add a join at the BB immediately after the back edge,
                     // since there may be subsequent loop breaks that are waiting there.
                     // example:
                     // L1:
@@ -3479,7 +3528,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     //
                     // Here, we will add the 1st after-loop join so that any out-loop JIP (either goto or
                     // join) within the loop body will has its JIP set to this join.
-                    if (G4_BB* afterLoopJoinBB = getEarliestJmpOutBB(bb, predBB))
+                    if (G4_BB* afterLoopJoinBB = getEarliestJmpOutBB(activeJoinBlocks, bb, predBB))
                     {
                         addBBToActiveJoinList(activeJoinBlocks, afterLoopJoinBB, eSize);
                     }
