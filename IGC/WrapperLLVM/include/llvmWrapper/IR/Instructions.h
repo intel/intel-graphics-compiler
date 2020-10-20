@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/User.h"
 #if LLVM_VERSION_MAJOR <= 7
 #include "llvm/Support/Casting.h"
 #endif
@@ -74,6 +75,24 @@ namespace IGCLLVM
         return true;
 #else
         return CI.isIndirectCall();
+#endif
+    }
+
+    inline unsigned arg_size(const llvm::CallInst& CI)
+    {
+#if LLVM_VERSION_MAJOR < 8
+        return CI.arg_end() - CI.arg_begin();
+#else
+        return CI.arg_size();
+#endif
+    }
+
+    inline llvm::iterator_range<llvm::User::op_iterator> args(llvm::CallInst& CI)
+    {
+#if LLVM_VERSION_MAJOR < 8
+        return CI.arg_operands();
+#else
+        return CI.args();
 #endif
     }
 

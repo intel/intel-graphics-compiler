@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/GenXSTLExtras.h"
@@ -95,7 +96,6 @@ static cl::opt<LocalizationLimitT>
                    cl::init(LocalizeAll));
 
 STATISTIC(NumArgumentsTransformed, "Number of pointer arguments transformed");
-STATISTIC(NumArgumentsDead       , "Number of dead pointer args eliminated");
 
 namespace llvm {
 void initializeCMABIPass(PassRegistry &);
@@ -212,15 +212,6 @@ public:
     Globals.insert(LI.getGlobals().begin(), LI.getGlobals().end());
   }
 
-  void setArgIndex(GlobalVariable *GV, unsigned ArgIndex) {
-    IGC_ASSERT(!IndexMap.count(GV));
-    IndexMap[GV] = ArgIndex;
-  }
-  unsigned getArgIndex(GlobalVariable *GV) const {
-    IGC_ASSERT(IndexMap.count(GV));
-    return IndexMap.lookup(GV);
-  }
-
 private:
   // \brief The function being analyzed.
   Function *Fn;
@@ -283,7 +274,7 @@ private:
   CallGraphNode *TransformKernel(Function *F);
 
   // Major work is done in this method.
-  CallGraphNode *TransformNode(Function *F,
+  CallGraphNode *TransformNode(Function &F,
                                SmallPtrSet<Argument *, 8> &ArgsToTransform,
                                LocalizationInfo &LI);
 
@@ -313,11 +304,6 @@ private:
     getLocalizationInfo(F).addGlobals(getLocalizationInfo(Callee));
   }
 
-  // Return true if pointer type argument appears in a
-  // store instruction. This helps decide whether it is safe
-  // to convert ptr arg to byvalue arg without adding
-  // a return value
-  bool IsPtrArgModified(Value * Arg);
   // Return true if pointer type arugment is only used to
   // load or store a simple value. This helps decide whehter
   // it is safe to convert ptr arg to by-value arg or
@@ -883,9 +869,9 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
     return 0;
 
   SmallVector<Argument*, 16> PointerArgs;
-  for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E; ++I)
-    if (I->getType()->isPointerTy())
-      PointerArgs.push_back(I);
+  for (auto &Arg: F->args())
+    if (Arg.getType()->isPointerTy())
+      PointerArgs.push_back(&Arg);
 
   // Check if there is any pointer arguments or globals to localize.
   if (PointerArgs.empty() && LI.empty())
@@ -893,8 +879,7 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
 
   // Check transformable arguments.
   SmallPtrSet<Argument*, 8> ArgsToTransform;
-  for (unsigned i = 0, e = PointerArgs.size(); i != e; ++i) {
-    Argument *PtrArg = PointerArgs[i];
+  for (Argument *PtrArg: PointerArgs) {
     Type *ArgTy = cast<PointerType>(PtrArg->getType())->getElementType();
     // Only transform to simple types.
     if ((ArgTy->isVectorTy() || OnlyUsedBySimpleValueLoadStore(PtrArg)) &&
@@ -905,12 +890,12 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   if (ArgsToTransform.empty() && LI.empty())
     return 0;
 
-  return TransformNode(F, ArgsToTransform, LI);
+  return TransformNode(*F, ArgsToTransform, LI);
 }
 
 // check for typical inst sequences passing arg as a base
 // of store-like intrinsics
-static bool checkSinkToMemIntrinsic(Instruction *Inst) {
+static bool checkSinkToMemIntrinsic(const Instruction *Inst) {
   auto *CI = dyn_cast<CallInst>(Inst);
   if (CI && (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
                  GenXIntrinsic::genx_svm_scatter ||
@@ -925,24 +910,25 @@ static bool checkSinkToMemIntrinsic(Instruction *Inst) {
   return false;
 }
 
-bool CMABI::IsPtrArgModified(Value *Arg) {
-  // Arg is a ptr to a vector type. If data is written using a
-  // store, then return true. This means copy-in/copy-out are
-  // needed as caller may use the updated value. If no data is
-  // ever stored in Arg then return false. It is safe to
-  // convert the parameter to pass-by-value in GRF.
-  // This is a recursive function.
-  for (const auto &U : Arg->users()) {
-    if (auto *I = dyn_cast<Instruction>(U)) {
-      if (isa<StoreInst>(U))
-        return true;
-      else if (isa<AddrSpaceCastInst>(U) || isa<GetElementPtrInst>(U))
-        return IsPtrArgModified(U);
-      else if (isa<PtrToIntInst>(U))
-        return checkSinkToMemIntrinsic(I);
-    }
-  }
-  return false;
+// Arg is a ptr to a vector type. If data is written using a
+// store, then return true. This means copy-in/copy-out are
+// needed as caller may use the updated value. If no data is
+// ever stored in Arg then return false. It is safe to
+// convert the parameter to pass-by-value in GRF.
+// This is a recursive function.
+static bool IsPtrArgModified(const Value &Arg) {
+  // user iterator returns pointer both for star and arrow operators, because...
+  return std::any_of(Arg.user_begin(), Arg.user_end(), [](const User *U) {
+    if (!isa<Instruction>(U))
+      return false;
+    if (isa<StoreInst>(U))
+      return true;
+    if (isa<AddrSpaceCastInst>(U) || isa<GetElementPtrInst>(U))
+      return IsPtrArgModified(*U);
+    if (isa<PtrToIntInst>(U))
+      return checkSinkToMemIntrinsic(cast<Instruction>(U));
+    return false;
+  });
 }
 
 bool CMABI::OnlyUsedBySimpleValueLoadStore(Value *Arg) {
@@ -1093,6 +1079,523 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
   return NF_CGN;
 }
 
+namespace {
+struct TransformedFuncType {
+  SmallVector<Type *, 8> Ret;
+  SmallVector<Type *, 8> Args;
+};
+
+enum class ArgKind { General, CopyIn, CopyInOut };
+
+struct GlobalArgsInfo {
+  static constexpr int UndefIdx = -1;
+  std::vector<GlobalVariable *> Globals;
+  int FirstGlobalArgIdx = UndefIdx;
+
+  GlobalVariable *getGlobalForArgNo(int ArgIdx) const {
+    IGC_ASSERT_MESSAGE(FirstGlobalArgIdx != UndefIdx,
+                       "first global arg index isn't set");
+    auto Idx = ArgIdx - FirstGlobalArgIdx;
+    IGC_ASSERT_MESSAGE(Idx >= 0 && Idx < static_cast<int>(Globals.size()),
+                       "out of bound access");
+    return Globals[ArgIdx - FirstGlobalArgIdx];
+  }
+};
+
+struct RetToArgInfo {
+  static constexpr int OrigRetNoArg = -1;
+  std::vector<int> Map;
+};
+
+// Computing a new prototype for the function. E.g.
+//
+// i32 @foo(i32, <8 x i32>*) becomes {i32, <8 x i32>} @bar(i32, <8 x i32>)
+//
+class TransformedFuncInfo {
+  TransformedFuncType NewFuncType;
+  AttributeList Attrs;
+  using ArgIdxSet = std::unordered_set<int>;
+  std::vector<ArgKind> ArgKinds;
+  RetToArgInfo RetToArg;
+  GlobalArgsInfo GlobalArgs;
+
+public:
+  TransformedFuncInfo(Function &OrigFunc,
+                      SmallPtrSetImpl<Argument *> &ArgsToTransform) {
+    FillCopyInOutInfo(OrigFunc, ArgsToTransform);
+    std::transform(OrigFunc.arg_begin(), OrigFunc.arg_end(), std::back_inserter(NewFuncType.Args),
+        [&ArgsToTransform](Argument &Arg) {
+          if (ArgsToTransform.count(&Arg))
+            return Arg.getType()->getPointerElementType();
+          return Arg.getType();
+        });
+    InheritAttributes(OrigFunc);
+
+    auto *OrigRetTy = OrigFunc.getFunctionType()->getReturnType();
+    if (!OrigRetTy->isVoidTy()) {
+      NewFuncType.Ret.push_back(OrigRetTy);
+      RetToArg.Map.push_back(RetToArgInfo::OrigRetNoArg);
+    }
+    AppendRetCopyOutInfo();
+  }
+
+  void AppendGlobals(LocalizationInfo &LI) {
+    IGC_ASSERT_MESSAGE(GlobalArgs.FirstGlobalArgIdx == GlobalArgsInfo::UndefIdx,
+                       "can only be initialized once");
+    GlobalArgs.FirstGlobalArgIdx = NewFuncType.Args.size();
+    for (auto *GV : LI.getGlobals()) {
+      int ArgIdx = NewFuncType.Args.size();
+      RetToArg.Map.push_back(ArgIdx);
+      Type *PointeeTy = GV->getType()->getPointerElementType();
+      NewFuncType.Args.push_back(PointeeTy);
+      NewFuncType.Ret.push_back(PointeeTy);
+      GlobalArgs.Globals.push_back(GV);
+    }
+  }
+
+  const TransformedFuncType &getType() const { return NewFuncType; }
+  AttributeList getAttributes() const { return Attrs; }
+  const std::vector<ArgKind> &getArgKinds() const { return ArgKinds; }
+  const GlobalArgsInfo &getGlobalArgsInfo() const { return GlobalArgs; }
+  const RetToArgInfo &getRetToArgInfo() const { return RetToArg; }
+
+private:
+  void FillCopyInOutInfo(Function &OrigFunc,
+                         SmallPtrSetImpl<Argument *> &ArgsToTransform) {
+    IGC_ASSERT_MESSAGE(ArgKinds.empty(),
+                       "shouldn't be filled before this method");
+    llvm::transform(OrigFunc.args(), std::back_inserter(ArgKinds),
+                    [&ArgsToTransform](Argument &Arg) {
+                      if (!ArgsToTransform.count(&Arg))
+                        return ArgKind::General;
+                      if (IsPtrArgModified(Arg))
+                        return ArgKind::CopyInOut;
+                      return ArgKind::CopyIn;
+                    });
+  }
+
+  void InheritAttributes(Function &OrigFunc) {
+    LLVMContext &Context = OrigFunc.getContext();
+    const AttributeList &OrigAttrs = OrigFunc.getAttributes();
+
+    // Inherit argument attributes
+    for (auto ArgInfo : enumerate(ArgKinds)) {
+      if (ArgInfo.value() == ArgKind::General) {
+        AttributeSet ArgAttrs = OrigAttrs.getParamAttributes(ArgInfo.index());
+        if (ArgAttrs.hasAttributes())
+          Attrs = Attrs.addParamAttributes(Context, ArgInfo.index(),
+                                           AttrBuilder{ArgAttrs});
+      }
+    }
+
+    // Inherit function attributes.
+    AttributeSet FnAttrs = OrigAttrs.getFnAttributes();
+    if (FnAttrs.hasAttributes()) {
+      AttrBuilder B(FnAttrs);
+      Attrs = Attrs.addAttributes(Context, AttributeList::FunctionIndex, B);
+    }
+  }
+
+  void AppendRetCopyOutInfo() {
+    for (auto ArgInfo : enumerate(ArgKinds)) {
+      if (ArgInfo.value() == ArgKind::CopyInOut) {
+        NewFuncType.Ret.push_back(NewFuncType.Args[ArgInfo.index()]);
+        RetToArg.Map.push_back(ArgInfo.index());
+      }
+    }
+  }
+};
+} // namespace
+
+static Type *getRetType(LLVMContext &Context,
+                        const TransformedFuncType &TFType) {
+  if (TFType.Ret.empty())
+    return Type::getVoidTy(Context);
+  return StructType::get(Context, TFType.Ret);
+}
+
+Function *createTransformedFuncDecl(Function &OrigFunc,
+                                    const TransformedFuncInfo &TFuncInfo) {
+  LLVMContext &Context = OrigFunc.getContext();
+  // Construct the new function type using the new arguments.
+  FunctionType *NewFuncTy = FunctionType::get(
+      getRetType(Context, TFuncInfo.getType()), TFuncInfo.getType().Args,
+      OrigFunc.getFunctionType()->isVarArg());
+
+  // Create the new function body and insert it into the module.
+  Function *NewFunc =
+      Function::Create(NewFuncTy, OrigFunc.getLinkage(), OrigFunc.getName());
+  NewFunc->setAttributes(TFuncInfo.getAttributes());
+  LLVM_DEBUG(dbgs() << "CMABI:  Transforming to:" << *NewFunc << "\n"
+                    << "From: " << OrigFunc);
+  OrigFunc.getParent()->getFunctionList().insert(OrigFunc.getIterator(),
+                                                 NewFunc);
+  NewFunc->takeName(&OrigFunc);
+  NewFunc->setCallingConv(OrigFunc.getCallingConv());
+  return NewFunc;
+}
+
+static std::vector<Value *>
+getTransformedFuncCallArgs(CallInst &OrigCall,
+                           const TransformedFuncInfo &NewFuncInfo) {
+  std::vector<Value *> NewCallOps;
+
+  // Loop over the operands, inserting loads in the caller.
+  for (auto &&[OrigArg, Kind] :
+       zip(IGCLLVM::args(OrigCall), NewFuncInfo.getArgKinds())) {
+    switch (Kind) {
+    case ArgKind::General:
+      NewCallOps.push_back(OrigArg.get());
+      break;
+    default: {
+      IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyIn || Kind == ArgKind::CopyInOut,
+                         "unexpected arg kind");
+      LoadInst *Load =
+          new LoadInst(OrigArg.get()->getType()->getPointerElementType(),
+                       OrigArg.get(), OrigArg.get()->getName() + ".val",
+                       /* isVolatile */ false, &OrigCall);
+      NewCallOps.push_back(Load);
+      break;
+    }
+    }
+  }
+
+  IGC_ASSERT_MESSAGE(NewCallOps.size() == IGCLLVM::arg_size(OrigCall),
+                     "varargs are unexpected");
+  return std::move(NewCallOps);
+}
+
+static AttributeList
+inheritCallAttributes(CallInst &OrigCall, int NumOrigFuncArgs,
+                      const TransformedFuncInfo &NewFuncInfo) {
+  IGC_ASSERT_MESSAGE(OrigCall.getNumArgOperands() == NumOrigFuncArgs,
+                     "varargs aren't supported");
+  AttributeList NewCallAttrs;
+
+  const AttributeList &CallPAL = OrigCall.getAttributes();
+  auto &Context = OrigCall.getContext();
+  for (auto ArgInfo : enumerate(NewFuncInfo.getArgKinds())) {
+    if (ArgInfo.value() == ArgKind::General) {
+      AttributeSet attrs =
+          OrigCall.getAttributes().getParamAttributes(ArgInfo.index());
+      if (attrs.hasAttributes()) {
+        AttrBuilder B(attrs);
+        NewCallAttrs =
+            NewCallAttrs.addParamAttributes(Context, ArgInfo.index(), B);
+      }
+    }
+  }
+
+  // Add any function attributes.
+  if (CallPAL.hasAttributes(AttributeList::FunctionIndex)) {
+    AttrBuilder B(CallPAL.getFnAttributes());
+    NewCallAttrs =
+        NewCallAttrs.addAttributes(Context, AttributeList::FunctionIndex, B);
+  }
+
+  return std::move(NewCallAttrs);
+}
+
+static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
+                                  CallInst &NewCall, IRBuilder<> &Builder,
+                                  const TransformedFuncInfo &NewFuncInfo) {
+  // Original return value.
+  if (ArgIdx == RetToArgInfo::OrigRetNoArg) {
+    IGC_ASSERT_MESSAGE(RetIdx == 0, "only zero element of returned value can "
+                                    "be original function argument");
+    OrigCall.replaceAllUsesWith(
+        Builder.CreateExtractValue(&NewCall, RetIdx, "ret"));
+    return;
+  }
+  Value *OutVal = Builder.CreateExtractValue(&NewCall, RetIdx);
+  if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx)
+    Builder.CreateStore(
+        OutVal, NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(ArgIdx));
+  else {
+    IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
+                       "only copy in-out args are expected");
+    Builder.CreateStore(OutVal, OrigCall.getArgOperand(ArgIdx));
+  }
+}
+
+static std::vector<AllocaInst *>
+handleGlobalArgs(Function &NewFunc, const GlobalArgsInfo &GlobalArgs) {
+  // Collect all globals and their corresponding allocas.
+  std::vector<AllocaInst *> LocalizedGloabls;
+  Instruction *InsertPt = &*(NewFunc.begin()->getFirstInsertionPt());
+
+  llvm::transform(
+      drop_begin(NewFunc.args(), GlobalArgs.FirstGlobalArgIdx),
+      std::back_inserter(LocalizedGloabls), [InsertPt](Argument &GVArg) {
+        AllocaInst *Alloca = new AllocaInst(GVArg.getType(), 0, "", InsertPt);
+        new StoreInst(&GVArg, Alloca, InsertPt);
+        return Alloca;
+      });
+  // Fancy naming.
+  for (auto &&[GV, GVArg, Alloca] :
+       zip(GlobalArgs.Globals,
+           drop_begin(NewFunc.args(), GlobalArgs.FirstGlobalArgIdx),
+           LocalizedGloabls)) {
+    GVArg.setName(GV->getName() + ".in");
+    Alloca->setName(GV->getName() + ".local");
+  }
+
+  SmallDenseMap<Value *, Value *> GlobalsToReplace;
+  for (auto &&[GV, Alloca] : zip(GlobalArgs.Globals, LocalizedGloabls))
+    GlobalsToReplace.insert(std::make_pair(GV, Alloca));
+  // Replaces all globals uses within this new function.
+  replaceUsesWithinFunction(GlobalsToReplace, &NewFunc);
+  return LocalizedGloabls;
+}
+
+static Value *
+appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
+                                ReturnInst &OrigRet, IRBuilder<> &Builder,
+                                const TransformedFuncInfo &NewFuncInfo,
+                                const std::vector<Value *> &OrigArgReplacements,
+                                std::vector<AllocaInst *> &LocalizedGlobals) {
+  if (ArgIdx == RetToArgInfo::OrigRetNoArg) {
+    IGC_ASSERT_MESSAGE(RetIdx == 0,
+                       "original return value must be at zero index");
+    Value *OrigRetVal = OrigRet.getReturnValue();
+    IGC_ASSERT(OrigRetVal && OrigRetVal->getType()->isSingleValueType() &&
+               "type unexpected");
+    return Builder.CreateInsertValue(&NewRetVal, OrigRetVal, RetIdx);
+  }
+  if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
+    AllocaInst *LocalizedGlobal =
+        LocalizedGlobals[ArgIdx -
+                         NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx];
+    Value *LocalizedGlobalVal = Builder.CreateLoad(LocalizedGlobal);
+    return Builder.CreateInsertValue(&NewRetVal, LocalizedGlobalVal, RetIdx);
+  }
+  IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
+                     "Only copy in-out values are expected");
+  Value *CurRetByPtr = OrigArgReplacements[ArgIdx];
+  IGC_ASSERT_MESSAGE(isa<PointerType>(CurRetByPtr->getType()),
+                     "a pointer is expected");
+  if (isa<AddrSpaceCastInst>(CurRetByPtr))
+    CurRetByPtr = cast<AddrSpaceCastInst>(CurRetByPtr)->getOperand(0);
+  IGC_ASSERT_MESSAGE(isa<AllocaInst>(CurRetByPtr),
+                     "corresponding alloca is expected");
+  Value *CurRetByVal = Builder.CreateLoad(CurRetByPtr);
+  return Builder.CreateInsertValue(&NewRetVal, CurRetByVal, RetIdx);
+}
+
+namespace {
+class FuncUsersUpdater {
+  Function &OrigFunc;
+  Function &NewFunc;
+  const TransformedFuncInfo &NewFuncInfo;
+  CallGraphNode &NewFuncCGN;
+  CallGraph &CG;
+
+public:
+  FuncUsersUpdater(Function &OrigFuncIn, Function &NewFuncIn,
+                   const TransformedFuncInfo &NewFuncInfoIn,
+                   CallGraphNode &NewFuncCGNIn, CallGraph &CGIn)
+      : OrigFunc{OrigFuncIn}, NewFunc{NewFuncIn}, NewFuncInfo{NewFuncInfoIn},
+        NewFuncCGN{NewFuncCGNIn}, CG{CGIn} {}
+
+  void run() {
+    std::vector<CallInst *> DirectUsers;
+    std::vector<User *> IndirectUsers;
+
+    for (auto *U : OrigFunc.users()) {
+      if (isa<CallInst>(U))
+        DirectUsers.push_back(cast<CallInst>(U));
+      else
+        IndirectUsers.push_back(U);
+    }
+
+    for (auto *U : IndirectUsers) {
+      // ignore old constexprs as
+      // they may still be hanging around
+      // but are irrelevant as we called breakConstantExprs earlier
+      // in this pass
+      if (!isa<ConstantExpr>(U))
+        U->replaceUsesOfWith(&OrigFunc, &NewFunc);
+    }
+
+    std::vector<CallInst *> NewDirectUsers;
+    // Loop over all of the callers of the function, transforming the call sites
+    // to pass in the loaded pointers.
+    for (auto *OrigCall : DirectUsers) {
+      IGC_ASSERT(OrigCall->getCalledFunction() == &OrigFunc);
+      auto *NewCall = UpdateFuncDirectUser(*OrigCall);
+      NewDirectUsers.push_back(NewCall);
+    }
+
+    for (auto *OrigCall : DirectUsers)
+      OrigCall->eraseFromParent();
+  }
+
+private:
+  CallInst *UpdateFuncDirectUser(CallInst &OrigCall) {
+    std::vector<Value *> NewCallOps =
+        getTransformedFuncCallArgs(OrigCall, NewFuncInfo);
+
+    AttributeList NewCallAttrs = inheritCallAttributes(
+        OrigCall, OrigFunc.getFunctionType()->getNumParams(), NewFuncInfo);
+
+    // Push any localized globals.
+    IGC_ASSERT_MESSAGE(
+        NewCallOps.size() == NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
+        "call operands and called function info are inconsistent");
+    llvm::transform(
+        NewFuncInfo.getGlobalArgsInfo().Globals, std::back_inserter(NewCallOps),
+        [&OrigCall](GlobalVariable *GV) {
+          return new LoadInst(GV->getType()->getPointerElementType(), GV,
+                              GV->getName() + ".val",
+                              /* isVolatile */ false, &OrigCall);
+        });
+
+    IGC_ASSERT_EXIT_MESSAGE(!isa<InvokeInst>(OrigCall),
+                            "InvokeInst not supported");
+
+    CallInst *NewCall = CallInst::Create(&NewFunc, NewCallOps, "", &OrigCall);
+    IGC_ASSERT(nullptr != NewCall);
+    NewCall->setCallingConv(OrigCall.getCallingConv());
+    NewCall->setAttributes(NewCallAttrs);
+    if (cast<CallInst>(OrigCall).isTailCall())
+      NewCall->setTailCall();
+    NewCall->setDebugLoc(OrigCall.getDebugLoc());
+    NewCall->takeName(&OrigCall);
+
+    // Update the callgraph to know that the callsite has been transformed.
+    auto CalleeNode = static_cast<IGCLLVM::CallGraphNode *>(
+        CG[OrigCall.getParent()->getParent()]);
+    CalleeNode->replaceCallEdge(
+#if LLVM_VERSION_MAJOR <= 10
+        CallSite(&OrigCall), NewCall,
+#else
+        *OrigCall, *NewCall,
+#endif
+        &NewFuncCGN);
+
+    IRBuilder<> Builder(&OrigCall);
+    for (auto RetToArg : enumerate(NewFuncInfo.getRetToArgInfo().Map))
+      handleRetValuePortion(RetToArg.index(), RetToArg.value(), OrigCall,
+                            *NewCall, Builder, NewFuncInfo);
+    return NewCall;
+  }
+};
+
+class FuncBodyTransfer {
+  Function &OrigFunc;
+  Function &NewFunc;
+  const TransformedFuncInfo &NewFuncInfo;
+
+public:
+  FuncBodyTransfer(Function &OrigFuncIn, Function &NewFuncIn,
+                   const TransformedFuncInfo &NewFuncInfoIn)
+      : OrigFunc{OrigFuncIn}, NewFunc{NewFuncIn}, NewFuncInfo{NewFuncInfoIn} {}
+
+  void run() {
+    // Since we have now created the new function, splice the body of the old
+    // function right into the new function.
+    NewFunc.getBasicBlockList().splice(NewFunc.begin(),
+                                       OrigFunc.getBasicBlockList());
+
+    std::vector<Value *> OrigArgReplacements = handleTransformedFuncArgs();
+    std::vector<AllocaInst *> LocalizedGlobals =
+        handleGlobalArgs(NewFunc, NewFuncInfo.getGlobalArgsInfo());
+
+    handleTransformedFuncRets(OrigArgReplacements, LocalizedGlobals);
+  }
+
+private:
+  std::vector<Value *> handleTransformedFuncArgs() {
+    std::vector<Value *> OrigArgReplacements;
+    Instruction *InsertPt = &*(NewFunc.begin()->getFirstInsertionPt());
+
+    std::transform(
+        NewFuncInfo.getArgKinds().begin(), NewFuncInfo.getArgKinds().end(),
+        NewFunc.arg_begin(), std::back_inserter(OrigArgReplacements),
+        [InsertPt](ArgKind Kind, Argument &NewArg) -> Value * {
+          switch (Kind) {
+          case ArgKind::CopyIn:
+          case ArgKind::CopyInOut: {
+            auto *Alloca = new AllocaInst(NewArg.getType(), 0, "", InsertPt);
+            new StoreInst{&NewArg, Alloca, InsertPt};
+            return Alloca;
+          }
+          default:
+            IGC_ASSERT_MESSAGE(Kind == ArgKind::General,
+                               "unexpected argument kind");
+            return &NewArg;
+          }
+        });
+
+    std::transform(
+        OrigArgReplacements.begin(), OrigArgReplacements.end(),
+        OrigFunc.arg_begin(), OrigArgReplacements.begin(),
+        [InsertPt](Value *Replacement, Argument &OrigArg) -> Value * {
+          if (Replacement->getType() == OrigArg.getType())
+            return Replacement;
+          IGC_ASSERT_MESSAGE(isa<PointerType>(Replacement->getType()) &&
+                                 isa<PointerType>(OrigArg.getType()),
+                             "only pointers can posibly mismatch");
+          IGC_ASSERT_MESSAGE(
+              Replacement->getType()->getPointerAddressSpace() !=
+                  OrigArg.getType()->getPointerAddressSpace(),
+              "pointers should have different addr spaces when they mismatch");
+          IGC_ASSERT_MESSAGE(
+              Replacement->getType()->getPointerElementType() !=
+                  OrigArg.getType()->getPointerElementType(),
+              "pointers must have same element type when they mismatch");
+          return new AddrSpaceCastInst(Replacement, OrigArg.getType(), "",
+                                       InsertPt);
+        });
+    for (auto &&[OrigArg, OrigArgReplacement] :
+         zip(OrigFunc.args(), OrigArgReplacements)) {
+      OrigArgReplacement->takeName(&OrigArg);
+      OrigArg.replaceAllUsesWith(OrigArgReplacement);
+    }
+
+    return std::move(OrigArgReplacements);
+  }
+
+  void handleTransformedFuncRet(ReturnInst &OrigRet,
+                                const std::vector<Value *> &OrigArgReplacements,
+                                std::vector<AllocaInst *> &LocalizedGlobals) {
+    Type *NewRetTy = NewFunc.getReturnType();
+    IRBuilder<> Builder(&OrigRet);
+    auto &&RetToArg = enumerate(NewFuncInfo.getRetToArgInfo().Map);
+    Value *NewRetVal = std::accumulate(
+        RetToArg.begin(), RetToArg.end(),
+        cast<Value>(UndefValue::get(NewRetTy)),
+        [&OrigRet, &Builder, &OrigArgReplacements, &LocalizedGlobals,
+         this](Value *NewRet, auto NewRetPortionInfo) {
+          return appendTransformedFuncRetPortion(
+              *NewRet, NewRetPortionInfo.index(), NewRetPortionInfo.value(),
+              OrigRet, Builder, NewFuncInfo, OrigArgReplacements,
+              LocalizedGlobals);
+        });
+    Builder.CreateRet(NewRetVal);
+    OrigRet.eraseFromParent();
+  }
+
+  void
+  handleTransformedFuncRets(const std::vector<Value *> &OrigArgReplacements,
+                            std::vector<AllocaInst *> &LocalizedGlobals) {
+    Type *NewRetTy = NewFunc.getReturnType();
+    if (NewRetTy->isVoidTy())
+      return;
+    std::vector<ReturnInst *> OrigRets;
+    llvm::transform(make_filter_range(instructions(NewFunc),
+                                      [](Instruction &Inst) {
+                                        return isa<ReturnInst>(Inst);
+                                      }),
+                    std::back_inserter(OrigRets),
+                    [](Instruction &RI) { return &cast<ReturnInst>(RI); });
+
+    for (ReturnInst *OrigRet : OrigRets)
+      handleTransformedFuncRet(*OrigRet, OrigArgReplacements, LocalizedGlobals);
+  }
+};
+} // namespace
+
 // \brief Actually performs the transformation of the specified arguments, and
 // returns the new function.
 //
@@ -1118,337 +1621,40 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
 // argument that is referenced may overlap with a global variable that is
 // written to in the subprogram.
 //
-CallGraphNode *CMABI::TransformNode(Function *F,
+CallGraphNode *CMABI::TransformNode(Function &OrigFunc,
                                     SmallPtrSet<Argument *, 8> &ArgsToTransform,
                                     LocalizationInfo &LI) {
-  // Computing a new prototype for the function. E.g.
-  //
-  // i32 @foo(i32, <8 x i32>*) becomes {i32, <8 x i32>} @bar(i32, <8 x i32>)
-  //
-  FunctionType *FTy = F->getFunctionType();
-  SmallVector<Type *, 8> RetTys;
-  if (!FTy->getReturnType()->isVoidTy())
-    RetTys.push_back(FTy->getReturnType());
+  NumArgumentsTransformed += ArgsToTransform.size();
+  TransformedFuncInfo NewFuncInfo{OrigFunc, ArgsToTransform};
+  NewFuncInfo.AppendGlobals(LI);
 
-  // Keep track of parameter attributes for the arguments that we are *not*
-  // transforming. For the ones we do transform, parameter attributes are lost.
-  AttributeList AttrVec;
-  const AttributeList &PAL = F->getAttributes();
-  LLVMContext &Context = F->getContext();
-
-  // First, determine the new argument list
-  SmallVector<Type *, 8> Params;
-  SmallPtrSet<Argument*, 8> CopyInOutNeeded;
-  unsigned ArgIndex = 0;
-  for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
-       ++I, ++ArgIndex) {
-    if (!ArgsToTransform.count(I)) {
-      // Unchanged argument
-      AttributeSet attrs = PAL.getParamAttributes(ArgIndex);
-      if (attrs.hasAttributes()) {
-        AttrBuilder B(attrs);
-        AttrVec = AttrVec.addParamAttributes(Context, Params.size(), B);
-      }
-      Params.push_back(I->getType());
-    } else if (I->use_empty()) {
-      // Delete unused arguments
-      ++NumArgumentsDead;
-    } else {
-      // Use the element type as the new argument type.
-      Params.push_back(I->getType()->getPointerElementType());
-
-      if (IsPtrArgModified(I)) {
-        CopyInOutNeeded.insert(I);
-        RetTys.push_back(I->getType()->getPointerElementType());
-      }
-
-      ++NumArgumentsTransformed;
-    }
-  }
-
-  typedef LocalizationInfo::GlobalSetTy::iterator IteratorTy;
-  for (IteratorTy I = LI.getGlobals().begin(), E = LI.getGlobals().end();
-       I != E; ++I) {
-    GlobalVariable *GV = *I;
-    // Store the index information of this global variable.
-    LI.setArgIndex(GV, Params.size());
-
-    Type *PointeeTy = GV->getType()->getPointerElementType();
-    Params.push_back(PointeeTy);
-    RetTys.push_back(PointeeTy);
-  }
-
-  // Add any function attributes.
-  AttributeSet FnAttrs = PAL.getFnAttributes();
-  if (FnAttrs.hasAttributes()) {
-    AttrBuilder B(FnAttrs);
-    AttrVec = AttrVec.addAttributes(Context, AttributeList::FunctionIndex, B);
-  }
-
-  // Construct the new function type using the new arguments.
-  llvm::Type *RetTy = StructType::get(Context, RetTys);
-  FunctionType *NFTy = FunctionType::get(RetTy, Params, FTy->isVarArg());
-
-  // Create the new function body and insert it into the module.
-  Function *NF = Function::Create(NFTy, F->getLinkage(), F->getName());
-  NF->setAttributes(AttrVec);
-  LLVM_DEBUG(dbgs() << "CMABI:  Transforming to:" << *NF << "\n" << "From: " << *F);
-  F->getParent()->getFunctionList().insert(F->getIterator(), NF);
-  NF->takeName(F);
-  NF->setCallingConv(F->getCallingConv());
+  // Create the new function declaration and insert it into the module.
+  Function *NewFunc = createTransformedFuncDecl(OrigFunc, NewFuncInfo);
 
   // Get a new callgraph node for NF.
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-  CallGraphNode *NF_CGN = CG.getOrInsertFunction(NF);
+  CallGraphNode *NewFuncCGN = CG.getOrInsertFunction(NewFunc);
 
-  std::vector<llvm::User*> DirectUsers;
-  std::vector<llvm::User*> IndirectUsers;
-
-  for (auto *U : F->users())
-    (isa<CallInst>(U) ? DirectUsers : IndirectUsers).push_back(U);
-
-  for (auto *U: IndirectUsers) {
-    // ignore old constexprs as
-    // they may still be hanging around
-    // but are irrelevant as we called breakConstantExprs earlier
-    // in this pass
-    if (!isa<ConstantExpr>(U))
-      U->replaceUsesOfWith(F, NF);
-  }
-
-  // Loop over all of the callers of the function, transforming the call sites
-  // to pass in the loaded pointers.
-  for (auto U: DirectUsers) {
-    auto &CS = *cast<CallInst>(U);
-    IGC_ASSERT(CS.getCalledFunction() == F);
-    auto *Call = &CS;
-    const AttributeList &CallPAL = CS.getAttributes();
-
-    SmallVector<Value*, 16> Args;
-    AttributeList NewAttrVec;
-
-    // Loop over the operands, inserting loads in the caller.
-    auto AI = CS.arg_begin();
-    ArgIndex = 0;
-    for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
-         ++I, ++AI, ++ArgIndex) {
-      if (!ArgsToTransform.count(I)) {
-        // Unchanged argument
-        AttributeSet attrs = CallPAL.getParamAttributes(ArgIndex);
-        if (attrs.hasAttributes()) {
-          AttrBuilder B(attrs);
-          NewAttrVec = NewAttrVec.addParamAttributes(Context, Args.size(), B);
-        }
-        Args.push_back(*AI);
-      } else if (!I->use_empty()) {
-        LoadInst *Load = new LoadInst((*AI)->getType()->getPointerElementType(),
-                                      *AI, (*AI)->getName() + ".val",
-                                      /* isVolatile */ false, Call);
-        Args.push_back(Load);
-      }
-    }
-
-    // Push any varargs arguments on the list.
-    auto AE = CS.arg_end();
-    for (; AI != AE; ++AI, ++ArgIndex) {
-      AttributeSet attrs = CallPAL.getParamAttributes(ArgIndex);
-      if (attrs.hasAttributes()) {
-        AttrBuilder B(attrs);
-        NewAttrVec = NewAttrVec.addParamAttributes(Context, Args.size(), B);
-      }
-      Args.push_back(*AI);
-    }
-
-    // Push any localized globals.
-    for (IteratorTy I = LI.getGlobals().begin(), E = LI.getGlobals().end();
-         I != E; ++I) {
-      GlobalVariable *GV = *I;
-      LoadInst *Load =
-          new LoadInst(GV->getType()->getPointerElementType(), GV,
-                       GV->getName() + ".val", /* isVolatile */ false, Call);
-      Args.push_back(Load);
-    }
-
-    // Add any function attributes.
-    if (CallPAL.hasAttributes(AttributeList::FunctionIndex)) {
-      AttrBuilder B(CallPAL.getFnAttributes());
-      NewAttrVec = NewAttrVec.addAttributes(Context, AttributeList::FunctionIndex, B);
-    }
-
-    IGC_ASSERT_EXIT_MESSAGE(false == isa<InvokeInst>(Call), "InvokeInst not supported");
-
-    CallInst* const New = CallInst::Create(NF, Args, "", Call);
-    IGC_ASSERT(nullptr != New);
-    New->setCallingConv(CS.getCallingConv());
-    New->setAttributes(NewAttrVec);
-    if (cast<CallInst>(Call)->isTailCall())
-      New->setTailCall();
-    New->setDebugLoc(Call->getDebugLoc());
-
-    // Update the callgraph to know that the callsite has been transformed.
-    auto CalleeNode = static_cast<IGCLLVM::CallGraphNode *>(
-        CG[Call->getParent()->getParent()]);
-    CalleeNode->replaceCallEdge(
-#if LLVM_VERSION_MAJOR <= 10
-        CallSite(Call), New,
-#else
-        *Call, *New,
-#endif
-        NF_CGN);
-
-    unsigned Index = 0;
-    IRBuilder<> Builder(Call);
-
-    New->takeName(Call);
-    if (!F->getReturnType()->isVoidTy())
-      Call->replaceAllUsesWith(Builder.CreateExtractValue(New, Index++, "ret"));
-
-    // Loop over the operands, and copy out all pass by reference values.
-    AI = CS.arg_begin();
-    for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
-         ++I, ++AI) {
-      // Unused arguments are already eliminated from the call sites.
-      if (ArgsToTransform.count(I) && !I->use_empty() &&
-          CopyInOutNeeded.count(I)) {
-        Value *OutVal = Builder.CreateExtractValue(New, Index++);
-        Builder.CreateStore(OutVal, *AI);
-      }
-    }
-    // Loop over localized globals, and copy out all globals.
-    for (IteratorTy I = LI.getGlobals().begin(), E = LI.getGlobals().end();
-      I != E; ++I) {
-      GlobalVariable *GV = *I;
-      Value *OutVal = Builder.CreateExtractValue(New, Index++);
-      Builder.CreateStore(OutVal, GV);
-    }
-    IGC_ASSERT(Index == New->getType()->getStructNumElements() && "type out of sync");
-
-    // Remove the old call from the function, reducing the use-count of F.
-    Call->eraseFromParent();
-  }
-
-  // Since we have now created the new function, splice the body of the old
-  // function right into the new function.
-  NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
-
-  // Allocas used for transformed arguments.
-  SmallVector<AllocaInst *, 8> Allocas;
-
-  // Loop over the argument list, transferring uses of the old arguments over to
-  // the new arguments, also transferring over the names as well.
-  for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(),
-                              I2 = NF->arg_begin();
-       I != E; ++I) {
-    // For an unmodified argument, move the name and users over.
-    if (!ArgsToTransform.count(I)) {
-      I->replaceAllUsesWith(I2);
-      I2->takeName(I);
-      ++I2;
-      continue;
-    }
-
-    if (I->use_empty())
-      continue;
-
-    // Otherwise, we transformed this argument.
-    //
-    // In the callee, we create an alloca, and store each of the new incoming
-    // arguments into the alloca.
-    Instruction *InsertPt = &*(NF->begin()->begin());
-    Type *AgTy = I->getType()->getPointerElementType();
-    AllocaInst *TheAlloca = new AllocaInst(AgTy, 0, "", InsertPt);
-    Instruction * NewInst = TheAlloca;
-    if (I->getType()->getPointerAddressSpace() != 0) {
-      // Insert addrspace cast
-      auto AddrSpaceCast = new AddrSpaceCastInst(
-          TheAlloca, AgTy->getPointerTo(I->getType()->getPointerAddressSpace()),
-          "");
-      AddrSpaceCast->insertAfter(TheAlloca);
-      NewInst = AddrSpaceCast;
-    }
-    if (CopyInOutNeeded.count(I))
-      Allocas.push_back(TheAlloca);
-
-    I2->setName(I->getName());
-    new StoreInst(I2++, NewInst, InsertPt);
-
-    // Anything that used the arg should now use the alloca.
-    I->replaceAllUsesWith(NewInst);
-    NewInst->takeName(I);
-  }
-
-  // Collect all globals and their corresponding allocas.
-  SmallDenseMap<Value *, Value *> GlobalsToReplace;
-
-  // Loop over globals and transfer uses of globals over to new arguments.
-  for (IteratorTy I = LI.getGlobals().begin(), E = LI.getGlobals().end();
-       I != E; ++I) {
-    GlobalVariable *GV = *I;
-
-    Instruction *InsertPt = &*(NF->begin()->begin());
-    Type *AgTy = GV->getType()->getPointerElementType();
-    AllocaInst *TheAlloca = new AllocaInst(AgTy, 0, "", InsertPt);
-    Allocas.push_back(TheAlloca);
-
-    auto ArgIter = NF->arg_begin();
-    std::advance(ArgIter, LI.getArgIndex(GV));
-    ArgIter->setName(GV->getName() + ".in");
-    new StoreInst(ArgIter, TheAlloca, InsertPt);
-
-    TheAlloca->setName(GV->getName() + ".local");
-    GlobalsToReplace.insert(std::make_pair(GV, TheAlloca));
-  }
-  // Replaces all globals uses within this new function.
-  replaceUsesWithinFunction(GlobalsToReplace, NF);
-
-  // Fix all return instructions since we have changed the return type.
-  Type *NFRetTy = NF->getReturnType();
-  for (inst_iterator I = inst_begin(NF), E = inst_end(NF); I != E; /* empty */) {
-    Instruction *Inst = &*I++;
-    if (ReturnInst *RI = dyn_cast<ReturnInst>(Inst)) {
-      IRBuilder<> Builder(RI);
-
-      // Create new return value, which is a struct type.
-      Value *RetVal = UndefValue::get(NFRetTy);
-      unsigned Index = 0;
-
-      if (!F->getReturnType()->isVoidTy()) {
-        Value *RV = RI->getReturnValue();
-        IGC_ASSERT(RV && RV->getType()->isSingleValueType() && "type unexpected");
-        RetVal = Builder.CreateInsertValue(RetVal, RV, Index++);
-      }
-      for (unsigned i = 0, e = Allocas.size(); i < e; ++i) {
-        Value *V = Builder.CreateLoad(Allocas[i]);
-        RetVal = Builder.CreateInsertValue(RetVal, V, Index++);
-      }
-
-      StructType *ST = cast<StructType>(NFRetTy);
-      IGC_ASSERT(ST->getNumElements() == Index && "type out of sync");
-      (void)ST;
-
-      // Return the final struct by value.
-      Builder.CreateRet(RetVal);
-      RI->eraseFromParent();
-    }
-  }
+  FuncUsersUpdater{OrigFunc, *NewFunc, NewFuncInfo, *NewFuncCGN, CG}.run();
+  FuncBodyTransfer{OrigFunc, *NewFunc, NewFuncInfo}.run();
 
   // It turns out sometimes llvm will recycle function pointers which confuses
   // this pass. We delete its localization info and mark this function as
   // already visited.
-  GlobalInfo.erase(F);
-  AlreadyVisited.insert(F);
+  GlobalInfo.erase(&OrigFunc);
+  AlreadyVisited.insert(&OrigFunc);
 
-  NF_CGN->stealCalledFunctionsFrom(CG[F]);
+  NewFuncCGN->stealCalledFunctionsFrom(CG[&OrigFunc]);
 
   // Now that the old function is dead, delete it. If there is a dangling
   // reference to the CallgraphNode, just leave the dead function around.
-  CallGraphNode *CGN = CG[F];
+  CallGraphNode *CGN = CG[&OrigFunc];
   if (CGN->getNumReferences() == 0)
     delete CG.removeFunctionFromModule(CGN);
   else
-    F->setLinkage(Function::ExternalLinkage);
+    OrigFunc.setLinkage(Function::ExternalLinkage);
 
-  return NF_CGN;
+  return NewFuncCGN;
 }
 
 static void breakConstantVector(unsigned i, Instruction *CurInst,
