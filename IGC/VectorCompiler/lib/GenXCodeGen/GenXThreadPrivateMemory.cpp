@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+#include "vc/GenXOpts/Utils/KernelInfo.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -44,7 +45,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Intrinsics.h"
@@ -85,6 +85,7 @@ public:
   bool runOnFunction(Function &F);
 
   void visitAllocaInst(AllocaInst &I);
+  void visitFunction(Function &F);
 
 private:
   bool replacePhi(PHINode *Phi);
@@ -104,11 +105,13 @@ private:
   std::pair<Value *, unsigned> NormalizeVector(Value *From, Type *To,
                                                Instruction *InsertBefore);
   Instruction *RestoreVectorAfterNormalization(Instruction *From, Type *To);
+  void switchStack();
 
 public:
   static char ID;
 
 private:
+  Module *m_M = nullptr;
   LLVMContext *m_ctx;
   const GenXSubtarget *m_ST;
   const DataLayout *m_DL;
@@ -161,6 +164,19 @@ static Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
   else if (FromTySz > ToTySz)
     Res = CastInst::CreateTruncOrBitCast(Res, To, "", InsertBefore);
   return Res;
+}
+
+// 32u is max exec_size allowed (see GenXCisaBuilder.cpp:buildIntrinsic
+// GetExecSize lambda) For svm.gather/scatter:
+//    BlockSize is inferred from vec elem type
+//    BlockNum should be TotalMemSize / (ExecSize * BlockSize)
+//      where TotalMemSize is a total amount of mem read/written for
+//      gather/scatter
+// TODO: revise this for non-svm case
+static int getNumBlocksForType(Type *Ty, const DataLayout &DL) {
+  return DL.getTypeSizeInBits(Ty) /
+         (std::min<unsigned>(32u, cast<VectorType>(Ty)->getNumElements()) *
+          DL.getTypeSizeInBits(Ty->getScalarType()));
 }
 
 // Wipe all internal ConstantExprs out of V if it's a ConstantVector of function pointers
@@ -655,23 +671,9 @@ bool GenXThreadPrivateMemory::replaceGatherPrivate(CallInst *CI) {
       {NewDstTy, Pred->getType(),
        (m_useGlobalMem ? Offset : EltsOffset)->getType()});
 
-  // 32u is max exec_size allowed (see GenXCisaBuilder.cpp:buildIntrinsic
-  // GetExecSize lambda) For svm.gather/scatter:
-  //    BlockSize is inferred from vec elem type
-  //    BlockNum should be TotalMemSize / (ExecSize * BlockSize)
-  //      where TotalMemSize is a total amount of mem read/written for
-  //      gather/scatter
-  // TODO: revise NumBlocks for non-svm case
   unsigned NumBlocks =
-      (m_useGlobalMem)
-          ? genx::log2(m_DL->getTypeSizeInBits(NewDstTy) /
-                       (genx::ByteBits *
-                        std::min<unsigned>(
-                            32u, cast<VectorType>(NewDstTy)->getNumElements()) *
-                        (m_DL->getTypeSizeInBits(NewDstTy->getScalarType()) /
-                         genx::ByteBits)))
-          : genx::log2(ValueEltSz);
-  Value *logNumBlocks = ConstantInt::get(I32Ty, NumBlocks);
+      (m_useGlobalMem) ? getNumBlocksForType(NewDstTy, *m_DL) : ValueEltSz;
+  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface =
       ConstantInt::get(I32Ty, visa::getReservedSurfaceIndex(m_stack));
@@ -706,6 +708,7 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
   IGC_ASSERT(isa<VectorType>(OrigValueTy));
   unsigned EltSz = 0;
   std::tie(ValueOp, EltSz) = NormalizeVector(ValueOp, ValueOp->getType(), CI);
+  auto *NewDstTy = ValueOp->getType();
 
   Value *Pred = CI->getArgOperand(0);
   Value *EltsOffset = CI->getArgOperand(2);
@@ -725,26 +728,33 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
   Value *Offset = lookForPtrReplacement(ScatterPtr);
   Offset = ZExtOrTruncIfNeeded(Offset, m_useGlobalMem ? I64Ty : I32Ty, CI);
 
-  if (m_useGlobalMem)
-    EltsOffset = FormEltsOffsetVectorForSVM(Offset, EltsOffset, CI);
+  if (m_useGlobalMem) {
+    Offset =
+        FormEltsOffsetVectorForSVM(lookForTruncOffset(Offset), EltsOffset, CI);
+    if (!Offset->getType()->getScalarType()->isIntegerTy(64))
+      Offset = CastInst::CreateZExtOrBitCast(
+          Offset,
+          IGCLLVM::FixedVectorType::get(
+              I64Ty, cast<VectorType>(EltsOffset->getType())->getNumElements()),
+          "", CI);
+  }
 
   Function *F = GenXIntrinsic::getGenXDeclaration(
       CI->getModule(), IID,
-      {Pred->getType(), EltsOffset->getType(),
+      {Pred->getType(), Offset->getType(),
        ValueOp->getType()});
 
-  unsigned logNumBlocks = genx::log2(EltSz);
-  unsigned Scale = 0; // scale is always 0
-  Value *Surface = ConstantInt::get(I32Ty,
-                                    visa::getReservedSurfaceIndex(m_stack));
+  unsigned NumBlocks =
+      (m_useGlobalMem) ? getNumBlocksForType(NewDstTy, *m_DL) : EltSz;
+  Value *logNumBlocks = ConstantInt::get(I32Ty, NumBlocks);
+  Value *Surface =
+      ConstantInt::get(I32Ty, visa::getReservedSurfaceIndex(m_stack));
   CallInst *ScatterStScaled =
       m_useGlobalMem
-          ? IntrinsicInst::Create(
-                F,
-                {Pred, ConstantInt::get(I32Ty, logNumBlocks), EltsOffset, ValueOp})
+          ? IntrinsicInst::Create(F, {Pred, logNumBlocks, Offset, ValueOp})
           : IntrinsicInst::Create(
-                F, {Pred, ConstantInt::get(I32Ty, logNumBlocks),
-                    ConstantInt::get(Type::getInt16Ty(*m_ctx), Scale), Surface,
+                F, {Pred, logNumBlocks,
+                    ConstantInt::get(Type::getInt16Ty(*m_ctx), 0), Surface,
                     Offset, EltsOffset, ValueOp});
   ScatterStScaled->insertAfter(CI);
   m_scatter.push_back(ScatterStScaled);
@@ -1095,7 +1105,7 @@ public:
         return LoadsThreshold + 1;
       }
     } else if (isa<PHINode>(V) || isa<ICmpInst>(V)) {
-      // do not go thru phi as loops may appear and
+      // do not go thru phi as cycles may appear and
       // it doesn't seem necessary for the analysis now
       return 0;
     }
@@ -1108,6 +1118,17 @@ public:
 
   bool operator()(Value *V) { return checkSVMNecessary(V) > LoadsThreshold; }
 };
+
+void GenXThreadPrivateMemory::switchStack() {
+  LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
+  // TODO: relax hasLongLong condition once stack is redesigned to support
+  // emulation
+  IGC_ASSERT(m_M);
+  IGC_ASSERT(m_ST->hasLongLong() && m_ST->isOCLRuntime());
+  // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
+  m_M->addModuleFlag(Module::ModFlagBehavior::Error, "genx.useGlobalMem", 1);
+  m_useGlobalMem = true;
+}
 
 void GenXThreadPrivateMemory::addUsers(Value *V) {
   IGC_ASSERT(isa<Instruction>(V) || isa<Argument>(V));
@@ -1161,19 +1182,15 @@ void GenXThreadPrivateMemory::addUsersIfNeeded(Value *V) {
 }
 
 bool GenXThreadPrivateMemory::runOnModule(Module &M) {
+  m_M = &M;
   m_ST = &getAnalysis<TargetPassConfig>()
               .getTM<GenXTargetMachine>()
               .getGenXSubtarget();
   for (auto &F : M)
     visit(F);
   if (!m_useGlobalMem &&
-      std::find_if(m_alloca.begin(), m_alloca.end(), SVMChecker()) !=
-          m_alloca.end()) {
-    LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
-    // TODO: move the name string to vc-intrinsics *MD::useGlobalMem
-    M.addModuleFlag(Module::ModFlagBehavior::Error, "genx.useGlobalMem", 1);
-    m_useGlobalMem = true;
-  }
+      std::any_of(m_alloca.begin(), m_alloca.end(), SVMChecker()))
+    switchStack();
   bool Result = false;
   for (auto &F : M)
     Result |= runOnFunction(F);
@@ -1242,16 +1259,20 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
     m_AIUsers.pop();
 
     addUsersIfNeeded(I);
-
-    if (auto *LdI = dyn_cast<LoadInst>(I))
+    bool ChangeRequired = false;
+    if (auto *LdI = dyn_cast<LoadInst>(I)) {
       Changed |= replaceLoad(LdI);
-    else if (auto *StI = dyn_cast<StoreInst>(I))
+      ChangeRequired = true;
+    } else if (auto *StI = dyn_cast<StoreInst>(I)) {
       Changed |= replaceStore(StI);
-    else if (auto *PTI = dyn_cast<PtrToIntInst>(I))
+      ChangeRequired = true;
+    } else if (auto *PTI = dyn_cast<PtrToIntInst>(I)) {
       Changed |= replacePTI(PTI);
-    else if (auto* AddrCast = dyn_cast<AddrSpaceCastInst>(I))
+      ChangeRequired = true;
+    } else if (auto *AddrCast = dyn_cast<AddrSpaceCastInst>(I)) {
       Changed |= replaceAddrSpaceCast(AddrCast);
-    else if (isa<IntToPtrInst>(I) || isa<BitCastInst>(I)) {
+      ChangeRequired = true;
+    } else if (isa<IntToPtrInst>(I) || isa<BitCastInst>(I)) {
       // resolve all IntToPtr users and remove it.
       if (I->use_empty()) {
         I->eraseFromParent();
@@ -1259,25 +1280,31 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
       }
     } else if (IntrinsicInst *CI = dyn_cast<IntrinsicInst>(I)) {
       unsigned ID = GenXIntrinsic::getAnyIntrinsicID(CI);
-      if (ID == GenXIntrinsic::genx_gather_private)
+      if (ID == GenXIntrinsic::genx_gather_private) {
         Changed |= replaceGatherPrivate(CI);
-      else if (ID == GenXIntrinsic::genx_scatter_private)
+        ChangeRequired = true;
+      } else if (ID == GenXIntrinsic::genx_scatter_private) {
         Changed |= replaceScatterPrivate(CI);
-      else if (ID == Intrinsic::lifetime_start ||
-               ID == Intrinsic::lifetime_end) {
+        ChangeRequired = true;
+      } else if (ID == Intrinsic::lifetime_start ||
+                 ID == Intrinsic::lifetime_end) {
         CI->eraseFromParent();
         Changed = true;
       }
     } else if (PHINode *Phi = dyn_cast<PHINode>(I)) {
-      if (isa<PointerType>(Phi->getType()))
+      if (isa<PointerType>(Phi->getType())) {
         Changed |= replacePhi(Phi);
+        ChangeRequired = true;
+      }
     } else if (SelectInst *Sel = dyn_cast<SelectInst>(I)) {
-      if (isa<PointerType>(Sel->getType()))
+      if (isa<PointerType>(Sel->getType())) {
         Changed |= replaceSelect(Sel);
+        ChangeRequired = true;
+      }
     }
 
     if (m_AIUsers.empty()) {
-      if (!Changed)
+      if (!Changed && ChangeRequired)
         report_fatal_error("Thread private memory: cannot resolve all alloca uses");
       Changed = false;
       collectEachPossibleTPMUsers();
@@ -1321,4 +1348,38 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
 
 void GenXThreadPrivateMemory::visitAllocaInst(AllocaInst &I) {
   m_alloca.push_back(&I);
+}
+
+void GenXThreadPrivateMemory::visitFunction(Function &F) {
+  if (GenXIntrinsic::getAnyIntrinsicID(&F) != GenXIntrinsic::not_any_intrinsic)
+    return;
+  // here we don't use genx::KernelMetadata as it's only able to
+  // deal with kernels while we want to look at functions as well
+  NamedMDNode *Named =
+      F.getParent()->getNamedMetadata(genx::FunctionMD::GenXKernels);
+  if (!Named)
+    return;
+
+  auto NodeIt =
+      std::find_if(Named->op_begin(), Named->op_end(), [&F](MDNode *N) {
+        return N->getNumOperands() > KernelMDOp::ArgTypeDescs &&
+               getValueAsMetadata(N->getOperand(KernelMDOp::FunctionRef)) == &F;
+      });
+  if (NodeIt == Named->op_end())
+    return;
+  auto *Node = *NodeIt;
+  if (Node->getNumOperands() <= KernelMDOp::ArgTypeDescs)
+    return;
+
+  MDNode *ArgDescNode =
+      cast<MDNode>(Node->getOperand(KernelMDOp::ArgTypeDescs));
+
+  for (auto &Arg : F.args())
+    if (ArgDescNode->getNumOperands() > Arg.getArgNo() &&
+        cast<MDString>(ArgDescNode->getOperand(Arg.getArgNo()))
+                ->getString()
+                .find_lower("svmptr_t") != StringRef::npos) {
+      switchStack();
+      m_args.push_back(&Arg);
+    }
 }
