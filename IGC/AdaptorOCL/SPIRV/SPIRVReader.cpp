@@ -492,8 +492,14 @@ public:
       OpDebugPtrType ptrType(inst);
 
       auto pointeeType = createType(BM->get<SPIRVExtInst>(ptrType.getBaseType()));
+      auto flags = ptrType.getFlags();
 
-      return addMDNode(inst, Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits()));
+      if (flags == SPIRVDebug::Flag::FlagIsLValueReference)
+          return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
+      else if (flags == SPIRVDebug::Flag::FlagIsRValueReference)
+          return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_rvalue_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
+      else
+          return addMDNode(inst, Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits()));
   }
 
   DIType* createTypeQualifier(SPIRVExtInst* inst)
@@ -3152,7 +3158,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 #endif
         func,
         transValue(BC->getArgumentValues(), F, BB),
-        BC->getName(), 
+        BC->getName(),
         BB);
     // Assuming we are calling a regular device function
     Call->setCallingConv(CallingConv::SPIR_FUNC);
@@ -3175,7 +3181,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpFNegate: {
     SPIRVUnary *BC = static_cast<SPIRVUnary*>(BV);
-    return mapValue(BV, 
+    return mapValue(BV,
 #if LLVM_VERSION_MAJOR <= 10
         BinaryOperator
 #else

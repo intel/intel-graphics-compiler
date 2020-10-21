@@ -85,8 +85,8 @@ namespace spv {
         };
 
         enum Flag {
-            FlagIsPrivate = 1 << 0,
-            FlagIsProtected = 1 << 1,
+            FlagIsProtected = 1 << 0,
+            FlagIsPrivate = 1 << 1,
             FlagIsPublic = FlagIsPrivate | FlagIsProtected,
             FlagAccess = FlagIsPublic,
             FlagIsLocal = 1 << 2,
