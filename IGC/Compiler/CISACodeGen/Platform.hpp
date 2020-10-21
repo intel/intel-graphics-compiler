@@ -395,6 +395,11 @@ bool hasEarlyGRFRead() const
     return m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP && m_platformInfo.usRevId == REVISION_A0;
 }
 
+bool disableStaticVertexCount() const
+{
+    return m_WaTable.Wa_14012504847 != 0 || IGC_IS_FLAG_ENABLED(ForceStaticToDynamic);
+}
+
 bool hasSamplerSupport() const
 {
     return true;

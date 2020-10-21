@@ -695,7 +695,8 @@ void GeometryShaderLowering::LowerControlHeader(llvm::Instruction* inst)
     // Add write to vertex count field for non-static number of output vertices
     IRBuilder<> irb(inst);
     Value* undef = llvm::UndefValue::get(Type::getFloatTy(m_pModule->getContext()));
-    if (pConstVertexIndex == nullptr || IGC_IS_FLAG_ENABLED(ForceStaticToDynamic))
+    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (pConstVertexIndex == nullptr || pCtx->platform.disableStaticVertexCount())
     {
         IGC_ASSERT(m_gsProps->GetProperties().Output().HasNonstaticVertexCount());
         // bitcast since data arguments of urbWrite are floats - ugly
