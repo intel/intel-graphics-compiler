@@ -50,6 +50,7 @@ class GlobalRA;
 }
 
 #define MAXIMAL_ITERATIONS 10
+#define SCRATCH_MSG_LIMIT (128 * 1024)
 vISA::G4_Declare* GetTopDclFromRegRegion(vISA::G4_Operand* opnd);
 
 // Each declaration will have a LSLiveRange object allocated for it
@@ -111,6 +112,8 @@ namespace vISA
         bool highInternalConflict = false;
         bool hasSplitInsts = false;
         int regionID = -1;
+        LSLiveRange* stackCallArgLR;
+        LSLiveRange* stackCallRetLR;
         std::vector<G4_Declare *> globalDeclares;
         unsigned int funcCnt = 0;
         std::vector<unsigned int> funcLastLexID;
@@ -158,8 +161,8 @@ namespace vISA
 
         // scratch fields used for parameter passing
         G4_BB* curBB_ = nullptr;
-        int globalIndex = 0;
         uint32_t nextSpillOffset = 0;
+        uint32_t scratchOffset = 0;
 
     public:
         static void getRowInfo(int size, int& nrows, int& lastRowSize);
@@ -361,14 +364,12 @@ namespace vISA
         std::list<LSInputLiveRange*, std_arena_based_allocator<LSInputLiveRange*>>& inputIntervals;
         std::list<LSLiveRange*> active;
         std::vector<ACTIVE_GRFS> activeGRF;
-        //CALL_DECL_MAP& callDclMap;
+        LSLiveRange* calleeSaveLR = nullptr;
         LivenessAnalysis* liveAnalysis = nullptr;
 
-        void expireRanges(unsigned int);
         void printActives();
         void expireGlobalRanges(unsigned int idx);
         void expireInputRanges(unsigned int global_idx);
-        unsigned short getOccupiedBundle(G4_Declare* dcl);
         BankAlign getBankAlign(LSLiveRange* lr);
         bool allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& builder);
         void allocRetRegsVector(LSLiveRange* lr);
@@ -400,7 +401,7 @@ namespace vISA
 
         void getCallerSaveGRF(vector<unsigned int>& regNum, vector<unsigned int>& regRegNum, G4_Kernel* kernel);
 
-        void updateCallSiateLiveIntervals(LSLiveRange* callSiteLR);
+        void updateCallSiteLiveIntervals(LSLiveRange* callSiteLR);
 
         bool runLinearScan(IR_Builder& builder, std::vector<LSLiveRange*>& liveIntervals, std::list<LSLiveRange*>& spillLRs);
         void expireAllActive();

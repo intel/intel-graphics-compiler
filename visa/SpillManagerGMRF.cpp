@@ -825,14 +825,25 @@ SpillManagerGRF::isUnalignedRegion (
     }
     else
     {
-        if (owordAligned (regionDisp) && owordAligned (regionByteSize))
+        if (owordAligned(regionDisp) && owordAligned(regionByteSize))
+        {
+            //  Current intrinsic spill/fill cannot handle partial region spill.
+            //  If it's the partial region of a large size variable, such as V91 in following instructions, the preload is needed.
+            //  mov (16) V91(6,0)<1>:ub  %retval_ub(0,0)<1;1,0>:ub {H1, Align1}
+            //  mov (16) V91(6,16)<1>:ub %retval_ub(0,16)<1;1,0>:ub {H1, Align1}
+            G4_RegVar* var = getRegVar(region);
+            if ((var->getDeclare()->getByteSize() > numEltPerGRF(Type_UB)) &&
+                (regionByteSize < numEltPerGRF(Type_UB) || regionDisp % numEltPerGRF(Type_UB)))
+            {
+                return true;
+            }
             return
                 regionByteSize / OWORD_BYTE_SIZE != 1 &&
                 regionByteSize / OWORD_BYTE_SIZE != 2 &&
                 regionByteSize / OWORD_BYTE_SIZE != 4;
+        }
         else
             return true;
-
     }
 }
 

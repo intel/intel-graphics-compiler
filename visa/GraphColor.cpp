@@ -5167,6 +5167,8 @@ void Interference::interferenceVerificationForSplit() const
 
 bool Interference::linearScanVerify()
 {
+     std::cout << "--------------- " << kernel.getName() << " ----------------" << "\n";
+
     for (unsigned i = 0; i < maxId; i++)
     {
         G4_VarBase* phyReg_i = lrs[i]->getVar()->getPhyReg();
@@ -5199,12 +5201,19 @@ bool Interference::linearScanVerify()
                     LSLiveRange* j_LSLR = gra.getLSLR(lrs[j]->getDcl());
                     unsigned i_start = 0;
                     unsigned i_end = 0;
-                    i_LSLR->getFirstRef(i_start);
-                    i_LSLR->getLastRef(i_end);
+                    if (i_LSLR)  //For the stack call or some other function which will add extra declares after allocation
+                    {
+                        i_LSLR->getFirstRef(i_start);
+                        i_LSLR->getLastRef(i_end);
+                    }
+
                     unsigned j_start = 0;
                     unsigned j_end = 0;
-                    j_LSLR->getFirstRef(j_start);
-                    j_LSLR->getLastRef(j_end);
+                    if (j_LSLR)
+                    {
+                        j_LSLR->getFirstRef(j_start);
+                        j_LSLR->getLastRef(j_end);
+                    }
 
                     std::cout << "(" << i << "," << j << ")" << lrs[i]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_i << ")[" << i_start << "," << i_end << "] vs "
                         << lrs[j]->getDcl()->getName() << "(" << GRFStart_i << ":" << GRFEnd_j << ")[" << j_start << "," << j_end << "]" << "\n";
@@ -9371,11 +9380,11 @@ int GlobalRA::coloringRegAlloc()
             int  success = lra.doLinearScanRA();
             if (success == VISA_SUCCESS)
             {
-                assignRegForAliasDcl();
-                computePhyReg();
                 // TODO: Get correct spillSize from LinearScanRA
                 unsigned int spillSize = 0;
                 expandSpillFillIntrinsics(spillSize);
+                assignRegForAliasDcl();
+                computePhyReg();
                 if (builder.getOption(vISA_verifyLinearScan))
                 {
                     resetGlobalRAStates();
@@ -9739,7 +9748,6 @@ int GlobalRA::coloringRegAlloc()
 
                 stopTimer(TimerID::SPILL);
             }
-
             // RA successfully allocates regs
             if (isColoringGood == true || reserveSpillReg)
             {
@@ -9763,7 +9771,6 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 expandSpillFillIntrinsics(nextSpillOffset);
-
                 if (builder.getOption(vISA_OptReport))
                 {
                     detectUndefinedUses(liveAnalysis, kernel);
