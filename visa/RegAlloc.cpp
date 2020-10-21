@@ -972,413 +972,79 @@ void LivenessAnalysis::computeLiveness()
     // in the actual program.
     //
 
-    if (performIPA() && fg.builder->getOption(vISA_hierarchicaIPA))
+    if (performIPA())
     {
         hierarchicalIPA(inputDefs, outputUses);
         stopTimer(TimerID::LIVENESS);
         return;
     }
 
-    // IPA is currently very slow for large number of call sites, so disable it to save compile time
-    if (performIPA() && fg.getNumCalls() < 1024)
+
+
+    if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+        (selectedRF & G4_GRF || selectedRF & G4_FLAG) &&
+        (numFnId > 0))
     {
+        // compute the maydef for each subroutine
+        maydefAnalysis();
 
         //
-        // Bitsets used to calcuate function summaries for inter-procedural liveness analysis.
+        // dump vectors for debugging
         //
-        std::vector<BitSet> bypass_in(numBBId);
-        std::vector<BitSet> bypass_out(numBBId);
-        std::vector<BitSet> bypass(numFnId);
-        std::vector<BitSet>& mayuse_in(use_in);
-        std::vector<BitSet>& mayuse_out(use_out);
-        std::vector<BitSet> mayuse(numFnId);
-
-        std::vector<BitSet> maydef_in(numBBId);
-        std::vector<BitSet> maydef_out(numBBId);
-
-        for (unsigned i = 0; i < numBBId; i++)
-        {
-            bypass_in[i]  = use_gen[i];
-            bypass_out[i] = BitSet(numVarId, false);
-            maydef_in[i]  = BitSet(numVarId, false);
-            maydef_out[i] = def_out[i];
-        }
-
-        for (unsigned i = 0; i < numFnId; i++)
-        {
-            unsigned fid = fg.funcInfoTable[i]->getId();
-            unsigned iid = fg.funcInfoTable[i]->getInitBB()->getId();
-            unsigned eid = fg.funcInfoTable[i]->getExitBB()->getId();
-            bypass[fid] = bypass_in[iid];
-            mayuse[fid] = mayuse_in[iid];
-            maydef[fid] = maydef_out[eid];
-        }
-
-        //
-        // Determine use sets.
-        //
-        // Initialize set used for calculating function summaries for functions with multiple
-        // callers.
-        //
-        std::list<G4_BB*>::iterator it = fg.begin();
-
-        for (; it != fg.end(); ++it) {
-            FuncInfo* funcInfoBB = (*it)->getCalleeInfo();
-
-            if ((*it)->getBBType() & G4_BB_CALL_TYPE)
-            {
-                MUST_BE_TRUE(funcInfoBB != NULL, ERROR_REGALLOC);
-                MUST_BE_TRUE((*it)->Succs.front()->getBBType() & G4_BB_INIT_TYPE, ERROR_REGALLOC);
-                MUST_BE_TRUE((*it)->Succs.size() == 1, ERROR_REGALLOC);
-            }
-            else if ((*it)->getBBType() & G4_BB_RETURN_TYPE)
-            {
-                MUST_BE_TRUE((*it)->Preds.front()->getBBType() & G4_BB_EXIT_TYPE, ERROR_REGALLOC);
-                MUST_BE_TRUE((*it)->Preds.size() == 1, ERROR_REGALLOC);
-            }
-            else if ((*it)->getBBType() & G4_BB_INIT_TYPE)
-            {
-                std::list<G4_BB*>::iterator jt = (*it)->Preds.begin();
-                for (; jt != (*it)->Preds.end(); ++jt)
-                {
-                    MUST_BE_TRUE((*jt)->getBBType() & G4_BB_CALL_TYPE, ERROR_REGALLOC);
-                }
-                if ((*it)->Preds.size() > 1)
-                {
-                    MUST_BE_TRUE(
-                        (*it)->Preds.front()->getCalleeInfo()->doIPA() == true,
-                         ERROR_REGALLOC);
-                }
-                else if ((*it)->Preds.size() > 0)
-                {
-                    MUST_BE_TRUE(
-                        (*it)->Preds.front()->getCalleeInfo()->doIPA() == false,
-                         ERROR_REGALLOC);
-                }
-            }
-            else if ((*it)->getBBType() & G4_BB_EXIT_TYPE)
-            {
-                std::list<G4_BB*>::iterator jt = (*it)->Succs.begin();
-                for (; jt != (*it)->Succs.end(); ++jt)
-                {
-                    MUST_BE_TRUE((*jt)->getBBType() & G4_BB_RETURN_TYPE, ERROR_REGALLOC);
-                }
-
-                unsigned int bbid = (*it)->getId();
-                //
-                // Required pessimistic initialization for bypass out set.
-                //
-                bypass_out[bbid].setAll();
-            }
-        }
-        //
-        // Backward flow analysis to calculate use(live) sets.
-        //    We perform three fixed point iterations.
-        //    The first two are required to calculate function summaries.
-        //    The function summaries are represented by two sets - the bypass set and the
-        //    mayuse sets.
-        //    The third one performs the actual liveness analysis considering each function
-        //    call and its related subgraph as a blackbox, using just the calculated function
-        //    summaries for it.
-        //
-        bool change = true;
-        //
-        // Phase (1) - determine bypass sets for each function
-        //    The set of registers which if live at the RETURN NODE will be live at the
-        //    CALL node. Typically these are the variables that are not used at all by
-        //    the called function.
-        //
-        while (change)
-        {
-            change = false;
-            BB_LIST::iterator rit = fg.end();
-            do
-            {
-                //
-                //    bypass_out[n] =
-                //       (if type(n) == cgf_exit_block)
-                //          output_uses[n]
-                //       (if type(n) == call and f == callee[n])
-                //            (bypass[f] and bypass_in[return_node(n)]
-                //       (if type(n) != CALL and  type(n) != EXIT)
-                //            bypass_in[s1] + bypass_in[s2] + ...
-                //             where s1 s2 ... are the successors of n
-                //    bypass_in[n]  = use[n] + (bypass_out - use_kill[n])
-                //
-                --rit;
-                if (contextSensitiveBackwardDataAnalyze(
-                        (*rit), bypass_in, bypass_out, mayuse, bypass, outputUses, &bypass, G4_BB_EXIT_TYPE))
-                {
-                    change = true;
-                }
-            }
-            while (rit != fg.begin());
-        }
-
-        change = true;
-        //
-        // Phase (2) - determine mayuse sets for each function
-        //    The set of registers that may be used by the called function. This describes
-        //    the set of registers which are always live at INIT node independent of the
-        //    calling context. Typically these are the registers that are used to pass
-        //    arguments to the called function.
-        //
-        while (change)
-        {
-            change = false;
-            BB_LIST::iterator rit = fg.end();
-            do
-            {
-                //
-                //    mayuse_out[n] =
-                //       (if type(n) == cgf_exit_block)
-                //          output_uses[n]
-                //       (if type(n) == call and f == callee[n])
-                //            mayuse[f] + (bypass[f] and mayuse_in[return_node(n)]
-                //       (if type(n) != CALL and  type(n) != EXIT)
-                //            mayuse_in[s1] + mayuse_in[s2] + ...
-                //             where s1 s2 ... are the successors of n
-                //    mayuse_in[n]  = use[n] + (mayuse_out - use_kill[n])
-                //
-                --rit;
-                if (contextSensitiveBackwardDataAnalyze(
-                        (*rit), mayuse_in, mayuse_out, mayuse, bypass, outputUses, &mayuse, G4_BB_EXIT_TYPE))
-                {
-                    change = true;
-                }
-
-            }
-            while (rit != fg.begin());
-        }
-
-        if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
-        {
-            for (unsigned i = 0; i < numFnId; i++)
-            {
-                unsigned funcScopeID = fg.funcInfoTable[i]->getScopeID();
-                for (unsigned j = 0; j < numVarId; j++)
-                {
-                    G4_Declare *decl = vars[j]->getDeclare();
-                    unsigned declScopeID = decl->getScopeID();
-                    if (declScopeID != 0 &&
-                        funcScopeID >= declScopeID)
-                    {
-                        mayuse[i].set(j, false);
-                    }
-                }
-            }
-        }
-
-        //
-        // The use_in/use_out sets will be initialized with the values of mayuse_in/mayuse_out
-        // because the mayuse_in/mayuse_out sets are aliases to the use_in/use_out. This should
-        // speed up the fixed-point iterations for use_in/use_out.
-        //
-        change = true;
-        //
-        // Phase (3) - determine use sets for each block
-        //    Performs the actual liveness analysis considering each function call and its
-        //    related subgraph as a blackbox, by using just the calculated function summaries
-        //    for it.
-        //
-        while (change)
-        {
-            change = false;
-            BB_LIST::iterator rit = fg.end();
-            do
-            {
-                //
-                //    live_out[n] =
-                //       (if type(n) == cgf_exit_block)
-                //          output_uses[n]
-                //       (if type(n) == call and f == callee[n])
-                //            mayuse[f] + (bypass[f] and live_in[return_node(n)]
-                //       (if type(n) != CALL)
-                //            use_in[s1] + use_in[s2] + ...
-                //             where s1 s2 ... are the successors of n
-                //    live_in[n]  = use[n] + (live_out - use_kill[n])
-                //
-                --rit;
-                if (contextSensitiveBackwardDataAnalyze((*rit), use_in, use_out, mayuse, bypass, outputUses, NULL, 0))
-                {
-                    change = true;
-                }
-
-            }
-            while (rit != fg.begin());
-        }
-
-        //
-        // Determine def sets.
-        //
-
-        //
-        // Forward flow analysis to propagate defs.
-        //    We perform two fixed iterations. The first is used to calculate the function
-        //    summary required to propagate def. The function summary is represented by the
-        //    maydef set.
-        //    The second fixed point iteration performs the actual propagation of defs for the
-        //    complete flow graph, considering each function call and its related subgraph as
-        //    a blackbox, using just the calculated function summary for it.
-        //
-        change = true;
-        //
-        // Phase (1) - determine maydef sets for each function
-        //    The maydef set represents the set of def that may be defined and thus propagated
-        //    in the function along some path.
-        //
-        while (change)
-        {
-            change = false;
-            for (BB_LIST::iterator it = fg.begin(); it != fg.end(); it++)
-            {
-                //
-                // maydef_in[n] =
-                //    (if type(n) == cgf_entry_block)
-                //        input_defs[n]
-                //    (if type(n) == return and f == callee[n])
-                //        maydef[f] + maydef_out[call_node(n)]
-                //           where type(n) == return and f == callee[n]
-                //    (if type(n) != RETURN and  type(n) != INIT)
-                //          maydef_out[p1] + maydef_out[p2] + ...
-                //           where p1 p2 ... are the predecessors of n
-                //
-                if (contextSensitiveForwardDataAnalyze(
-                        (*it), maydef_in, maydef_out, maydef, inputDefs, &maydef, G4_BB_INIT_TYPE))
-                {
-                    change = true;
-                }
-
-            }
-        }
-    //
-    // dump vectors for debugging
-    //
 #ifdef DEBUG_VERBOSE_ON
-    dump_bb_vector("MAYDEF IN", maydef_in);
-    dump_bb_vector("MAYDEF OUT", maydef_out);
-    dump_fn_vector("MAYDEF", fns, maydef);
+        dump_bb_vector("MAYDEF IN", maydef_in);
+        dump_bb_vector("MAYDEF OUT", maydef_out);
+        dump_fn_vector("MAYDEF", fns, maydef);
 #endif
-
-        if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
-        {
-            for (unsigned i = 0; i < numFnId; i++)
-            {
-                unsigned funcScopeID = fg.funcInfoTable[i]->getScopeID();
-                for (unsigned j = 0; j < numVarId; j++)
-                {
-                    G4_Declare *decl = vars[j]->getDeclare();
-                    unsigned declScopeID = decl->getScopeID();
-                    if (declScopeID != 0 &&
-                        funcScopeID >= declScopeID)
-                    {
-                        maydef[i].set(j, false);
-                    }
-                }
-            }
-        }
-
-        change = true;
-        //
-        // Phase (2) - determine def sets for each block
-        //    Performs the actual propagation of defs for the complete flow graph,
-        //    considering each function call and its related subgraph as a blackbox,
-        //    using just the calculated function summary for it.
-        //
-        while (change)
-        {
-            change = false;
-            for (BB_LIST::iterator it = fg.begin(); it != fg.end(); it++)
-            {
-                //
-                // def_in[n] =
-                //    (if type(n) == cgf_entry_block)
-                //        input_defs[n]
-                //    (if type(n) == return and f == callee[n])
-                //        def[f] + def_out[call_node(n)]
-                //           where type(n) == return and f == callee[n]
-                //    (if type(n) != RETURN)
-                //          def_out[p1] + def_out[p2] + ...
-                //           where p1 p2 ... are the predecessors of n
-                //
-                if (contextSensitiveForwardDataAnalyze((*it), def_in, def_out, maydef, inputDefs, NULL, 0))
-                {
-                    change = true;
-                }
-            }
-        }
     }
+
     //
-    // Peform intra-procedural context-insensitive flow analysis.
+    // backward flow analysis to propagate uses (locate last uses)
     //
-    else {
 
-        if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-            (selectedRF & G4_GRF || selectedRF & G4_FLAG) &&
-            (numFnId > 0))
+    bool change = true;
+
+    while (change)
+    {
+        change = false;
+        BB_LIST::iterator rit = fg.end();
+        do
         {
-            // compute the maydef for each subroutine
-            maydefAnalysis();
-
             //
-            // dump vectors for debugging
+            // use_out = use_in(s1) + use_in(s2) + ...
+            // where s1 s2 ... are the successors of bb
+            // use_in  = use_gen + (use_out - use_kill)
             //
-#ifdef DEBUG_VERBOSE_ON
-            dump_bb_vector("MAYDEF IN", maydef_in);
-            dump_bb_vector("MAYDEF OUT", maydef_out);
-            dump_fn_vector("MAYDEF", fns, maydef);
-#endif
-        }
-
-        //
-        // backward flow analysis to propagate uses (locate last uses)
-        //
-
-        bool change = true;
-
-        while (change)
-        {
-            change = false;
-            BB_LIST::iterator rit = fg.end();
-            do
+            --rit;
+            if (contextFreeUseAnalyze((*rit), change))
             {
-                //
-                // use_out = use_in(s1) + use_in(s2) + ...
-                // where s1 s2 ... are the successors of bb
-                // use_in  = use_gen + (use_out - use_kill)
-                //
-                --rit;
-                if (contextFreeUseAnalyze((*rit), change))
-                {
-                    change = true;
-                }
-
+                change = true;
             }
-            while (rit != fg.begin());
-        }
 
-        //
-        // forward flow analysis to propagate defs (locate first defs)
-        //
+        } while (rit != fg.begin());
+    }
 
-        //
-        // initialize entry block with payload input
-        //
-        def_in[fg.getEntryBB()->getId()] = inputDefs;
-        change = true;
-        while (change)
+    //
+    // forward flow analysis to propagate defs (locate first defs)
+    //
+
+    //
+    // initialize entry block with payload input
+    //
+    def_in[fg.getEntryBB()->getId()] = inputDefs;
+    change = true;
+    while (change)
+    {
+        change = false;
+        for (auto bb : fg)
         {
-            change = false;
-            for (auto bb : fg)
+            //
+            // def_in   = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
+            // def_out |= def_in
+            //
+            if (contextFreeDefAnalyze(bb, change))
             {
-                //
-                // def_in   = def_out(p1) + def_out(p2) + ... where p1 p2 ... are the predecessors of bb
-                // def_out |= def_in
-                //
-                if (contextFreeDefAnalyze(bb, change))
-                {
-                    change = true;
-                }
+                change = true;
             }
         }
     }
@@ -2514,169 +2180,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         toDelete.top()->~BitSet();
         toDelete.pop();
     }
-}
-
-//
-// Context sensitive backward flow analysis used for IPA.
-//
-bool LivenessAnalysis::contextSensitiveBackwardDataAnalyze(
-         G4_BB* bb,
-         std::vector<BitSet>& data_in,
-         std::vector<BitSet>& data_out,
-         std::vector<BitSet>& mayuse,
-         std::vector<BitSet>& bypass,
-         BitSet&               output_uses,
-         std::vector<BitSet>* summary,
-         int no_prop_types)
-{
-    bool changed  = false;
-    unsigned bbid = bb->getId();
-
-    //
-    // Handle the exit block
-    // data_out[n] = output_uses[n]
-    //
-    if (bb->Succs.empty())
-    {
-        data_out[bbid]  = output_uses;
-        changed = false;
-    }
-    //
-    // Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
-    // data_out[n] = mayuse[f] + (bypass[f] & data_in[return_node(n)]
-    // where type(n) == call and f == callee[n]
-    //
-    else if (bb->getBBType() & G4_BB_CALL_TYPE)
-    {
-        BitSet old(std::move(data_out[bbid]));
-
-        FuncInfo* callee = bb->getCalleeInfo();
-        data_out[bbid] = mayuse[callee->getId()];
-
-        BitSet prop_data(bypass[callee->getId()]);
-        prop_data &= data_in[bb->BBAfterCall()->getId()];
-        data_out[bbid] |= prop_data;
-
-        changed = (old != data_out[bbid]);
-    }
-    //
-    // Handle all other blocks acroos which we need to propagate flow information
-    // data_out = data_in(s1) + data_in(s2) + ...
-    // where s1 s2 ... are the successors of bb
-    //
-    else if (!(bb->getBBType() & no_prop_types))
-    {
-        BitSet old(std::move(data_out[bbid]));
-
-        data_out[bbid].clear();
-
-        for (BB_LIST_ITER it = bb->Succs.begin(), end = bb->Succs.end(); it != end; it++)
-        {
-            data_out[bbid] |= data_in[(*it)->getId()];
-        }
-
-        changed = (old != data_out[bbid]);
-    }
-
-    //
-    // data_in = use_gen + (data_out - use_kill)
-    //
-    data_in[bbid] = data_out[bbid];
-    data_in[bbid] -= use_kill[bbid];
-    data_in[bbid] |= use_gen[bbid];
-
-    //
-    // summary = data_in[init_node(f)]
-    //
-    if (summary)
-    {
-        if (bb->getBBType() == G4_BB_INIT_TYPE)
-        {
-            FuncInfo* itsFuncInfo = bb->getFuncInfo();
-            MUST_BE_TRUE(itsFuncInfo->getInitBB() == bb, ERROR_REGALLOC);
-            (*summary)[itsFuncInfo->getId()] = data_in[bbid];
-        }
-    }
-
-    return changed;
-}
-
-//
-// Context sensitive forward flow analysis
-//
-bool LivenessAnalysis::contextSensitiveForwardDataAnalyze(
-         G4_BB* bb,
-         std::vector<BitSet>& data_in,
-         std::vector<BitSet>& data_out,
-         std::vector<BitSet>& maydef,
-         BitSet&               input_defs,
-         std::vector<BitSet>* summary,
-         int no_prop_types)
-{
-    bool changed  = false;
-    unsigned bbid = bb->getId();
-
-    //
-    // Handle the entry block
-    // data_in[n] = input_defs
-    //
-    if (bb->Preds.empty())
-    {
-        data_in[bbid] = input_defs;
-        changed = false;
-    }
-    //
-    // Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
-    // data_in[n] = maydef[f] + data_out[call_node(n)]
-    // where type(n) == return and f == callee[n]
-    //
-    else if (bb->getBBType() & G4_BB_RETURN_TYPE)
-    {
-        BitSet old(std::move(data_in[bbid]));
-
-        FuncInfo* callee = bb->BBBeforeCall()->getCalleeInfo();
-
-        data_in[bbid] = maydef[callee->getId()];
-        data_in[bbid] |= data_out[bb->BBBeforeCall()->getId()];
-
-        changed = (old != data_in[bbid]);
-    }
-    //
-    // Handle all other blocks across which we need to propagate flow information
-    // data_in = data_out(p1) + data_out(p2) + ...
-    // where p1 p2 ... are the predecessors of bb
-    //
-    else if (!(bb->getBBType() & no_prop_types))
-    {
-        BitSet old(std::move(data_in[bbid]));
-
-        for (BB_LIST_ITER it = bb->Preds.begin(), end = bb->Preds.end(); it != end; it++)
-        {
-            data_in[bbid] |= data_out[(*it)->getId()];
-        }
-
-        changed = (old != data_in[bbid]);
-    }
-
-    //
-    // data_out += data_in
-    //
-    data_out[bbid] |= data_in[bbid];
-
-    //
-    // summary = data_out[exit_node(f)]
-    //
-    if (summary)
-    {
-        if (bb->getBBType() == G4_BB_EXIT_TYPE)
-        {
-            FuncInfo* itsFuncInfo = bb->getFuncInfo();
-            MUST_BE_TRUE(itsFuncInfo->getExitBB() == bb, ERROR_REGALLOC);
-            (*summary)[itsFuncInfo->getId()] = data_out[bbid];
-        }
-    }
-
-    return changed;
 }
 
 //

@@ -413,22 +413,6 @@ class LivenessAnalysis
         BitSet& use_gen,
         BitSet& use_kill);
 
-    bool contextSensitiveBackwardDataAnalyze(G4_BB* bb,
-                                             std::vector<BitSet>& data_in,
-                                             std::vector<BitSet>& data_out,
-                                             std::vector<BitSet>& mayuse,
-                                             std::vector<BitSet>& bypass,
-                                             BitSet&               output_uses,
-                                             std::vector<BitSet>* summary,
-                                             int no_prop_types);
-    bool contextSensitiveForwardDataAnalyze(G4_BB* bb,
-                                            std::vector<BitSet>& data_in,
-                                            std::vector<BitSet>& data_out,
-                                            std::vector<BitSet>& maydef,
-                                            BitSet&               input_defs,
-                                            std::vector<BitSet>* summary,
-                                            int no_prop_types);
-
     bool contextFreeUseAnalyze(G4_BB* bb, bool isChanged);
     bool contextFreeDefAnalyze(G4_BB* bb, bool isChanged);
 

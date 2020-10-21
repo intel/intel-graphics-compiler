@@ -123,7 +123,6 @@ DEF_VISA_OPTION(vISA_RATrace,               ET_BOOL, "-ratrace", UNUSED, false)
 DEF_VISA_OPTION(vISA_FastSpill,             ET_BOOL, "-fasterRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, NULLSTR, UNUSED, 0)
 DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR",   UNUSED, false)
-DEF_VISA_OPTION(vISA_hierarchicaIPA, ET_BOOL, "-oldIPA", UNUSED, true)
 DEF_VISA_OPTION(vISA_IntrinsicSplit,       ET_BOOL, "-doSplit", UNUSED, false)
 DEF_VISA_OPTION(vISA_LraFFWindowSize,       ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 
