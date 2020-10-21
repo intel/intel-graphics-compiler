@@ -204,7 +204,7 @@ static VISA_Oword_Num getCisaOwordNumFromNumber(unsigned num) {
   case 16:
     return OWORD_NUM_16;
   default:
-    MUST_BE_TRUE(false, "illegal Oword number.");
+    IGC_ASSERT_MESSAGE(0, "illegal Oword number.");
     return OWORD_NUM_ILLEGAL;
   }
 }
@@ -258,19 +258,8 @@ std::string cutString(std::string Str) {
   return Str;
 }
 
-void handleCisaCallError(int CallResult, const Twine &Call, LLVMContext &Ctx) {
-  StringRef ErrorType;
-  switch (CallResult) {
-  case VISA_SPILL:
-    ErrorType = "register allocation for a kernel failed, even with spill code";
-    break;
-  case VISA_FAILURE:
-    ErrorType = "general failure";
-    break;
-  default:
-    ErrorType = "unknown error";
-    break;
-  }
+void handleCisaCallError(const Twine &Call, LLVMContext &Ctx) {
+  StringRef ErrorType = "general failure";
 #ifndef NDEBUG
   DiagnosticInfoCisaBuild Err(
       "VISA builder API call failed (" + Call + "): " + ErrorType, DS_Error);
@@ -286,8 +275,8 @@ void handleCisaCallError(int CallResult, const Twine &Call, LLVMContext &Ctx) {
 #define CISA_CALL_CTX(c, ctx)                                                  \
   do {                                                                         \
     auto result = c;                                                           \
-    if (result != VISA_SUCCESS) {                                              \
-      handleCisaCallError(result, #c, (ctx));                                  \
+    if (result != 0) {                                                         \
+      handleCisaCallError(#c, (ctx));                                          \
     }                                                                          \
   } while (0);
 
