@@ -195,6 +195,7 @@ private:
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
   bool widenByteOp(Instruction *Inst);
   bool lowerLoadStore(Instruction *Inst);
+  bool lowerMulSat(CallInst *CI, unsigned IntrinsicID);
   bool lowerMul64(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
@@ -1075,6 +1076,11 @@ bool GenXLowering::processInst(Instruction *Inst) {
       ToErase.push_back(Inst);
       return true;
     }
+    case GenXIntrinsic::genx_ssmul_sat:
+    case GenXIntrinsic::genx_sumul_sat:
+    case GenXIntrinsic::genx_usmul_sat:
+    case GenXIntrinsic::genx_uumul_sat:
+      return lowerMulSat(CI, IntrinsicID);
     case Intrinsic::trap:
       return lowerTrap(CI);
     case Intrinsic::ctpop:
@@ -2545,6 +2551,64 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
   Inst->replaceAllUsesWith(Result);
   ToErase.push_back(Inst);
 
+  return true;
+}
+
+// Lower integer mul with saturation since VISA support mul.sat only for float.
+bool GenXLowering::lowerMulSat(CallInst *CI, unsigned IntrinsicID) {
+  auto IsSignedMulSat = [](unsigned ID) -> std::pair<bool, bool> {
+    switch (ID) {
+    case GenXIntrinsic::genx_uumul_sat:
+      return {false, false};
+    case GenXIntrinsic::genx_usmul_sat:
+      return {false, true};
+    case GenXIntrinsic::genx_sumul_sat:
+      return {true, false};
+    case GenXIntrinsic::genx_ssmul_sat:
+      return {true, true};
+    default:
+      llvm_unreachable("Inst should be *mul.sat intrinsic");
+    }
+  };
+
+  auto GetTruncSatIntrinsicId = [](bool ResSigned, bool OpSigned) {
+    return ResSigned ? (OpSigned ? GenXIntrinsic::genx_sstrunc_sat
+                                 : GenXIntrinsic::genx_sutrunc_sat)
+                     : (OpSigned ? GenXIntrinsic::genx_ustrunc_sat
+                                 : GenXIntrinsic::genx_uutrunc_sat);
+  };
+
+  auto [IsSignedRes, IsSignedOps] = IsSignedMulSat(IntrinsicID);
+
+  Type *ResType = CI->getType();
+  IGC_ASSERT(ResType->isIntOrIntVectorTy());
+
+  IGC_ASSERT(CI->getOperand(0)->getType() == CI->getOperand(1)->getType());
+  Type *OpType = CI->getOperand(0)->getType();
+  IGC_ASSERT(OpType->isIntOrIntVectorTy());
+
+  // Create type that doesn't overflow in multiplication.
+  unsigned OpTypeWidth =
+      cast<IntegerType>(OpType->getScalarType())->getBitWidth();
+  IGC_ASSERT_MESSAGE(OpTypeWidth != 64, "i64 types are not supported");
+  Type *MulType = IntegerType::get(OpType->getContext(), 2 * OpTypeWidth);
+  if (OpType->isVectorTy())
+    MulType =
+        VectorType::get(MulType, cast<VectorType>(OpType)->getNumElements());
+
+  IRBuilder<> B(CI);
+  auto ExtendMulOperand = [&](Value *Val) {
+    return IsSignedOps ? B.CreateSExt(Val, MulType, Val->getName() + ".sext")
+                       : B.CreateZExt(Val, MulType, Val->getName() + ".zext");
+  };
+  Value *Mul = B.CreateMul(ExtendMulOperand(CI->getOperand(0)),
+                           ExtendMulOperand(CI->getOperand(1)), CI->getName());
+  Function *TruncSatFunc = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GetTruncSatIntrinsicId(IsSignedRes, IsSignedOps),
+      {ResType, MulType});
+  Value *Result = B.CreateCall(TruncSatFunc, {Mul}, CI->getName() + ".sat");
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
   return true;
 }
 
