@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Triple.h"
@@ -87,18 +88,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 
-static Expected<std::vector<char>>
-translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
-                   ArrayRef<uint64_t> SpecConstValues) {
-  IGC_ASSERT(SpecConstIds.size() == SpecConstValues.size());
+static std::string findSpirvDLL() {
 #if defined(_WIN64)
- //TODO: rename to SPIRVDLL64.dll when binary components are fixed
+  // TODO: rename to SPIRVDLL64.dll when binary components are fixed.
   constexpr char *SpirvLibName = "SPIRVDLL.dll";
 #elif defined(_WIN32)
   constexpr char *SpirvLibName = "SPIRVDLL32.dll";
 #else
   constexpr char *SpirvLibName = "libSPIRVDLL.so";
 #endif
+
+  auto EnvSpirv = llvm::sys::Process::GetEnv("VC_SPIRVDLL_DIR");
+  if (!EnvSpirv)
+    return SpirvLibName;
+
+  SmallString<32> Path;
+  llvm::sys::path::append(Path, EnvSpirv.getValue(), SpirvLibName);
+  return std::string{Path.str()};
+}
+
+static Expected<std::vector<char>>
+translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
+                   ArrayRef<uint64_t> SpecConstValues) {
+  IGC_ASSERT(SpecConstIds.size() == SpecConstValues.size());
   constexpr char *SpirvReadVerifyName = "spirv_read_verify_module";
   using SpirvReadVerifyType =
       int(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
@@ -108,21 +120,23 @@ translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
           void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
           void *ErrUserData);
 
+  const std::string SpirvLibPath = findSpirvDLL();
 #if defined(__linux__)
   // Hack to workaround cmoc crashes during loading of SPIRV library
-  static auto DeepBindHack = dlopen(SpirvLibName, RTLD_NOW | RTLD_DEEPBIND);
+  static auto DeepBindHack =
+      dlopen(SpirvLibPath.c_str(), RTLD_NOW | RTLD_DEEPBIND);
 #endif // __linux__
 
   using DL = sys::DynamicLibrary;
   std::string ErrMsg;
-  DL DyLib = DL::getPermanentLibrary(SpirvLibName, &ErrMsg);
+  DL DyLib = DL::getPermanentLibrary(SpirvLibPath.c_str(), &ErrMsg);
   if (!DyLib.isValid())
     return make_error<vc::DynLoadError>(ErrMsg);
 
   auto *SpirvReadVerifyFunc = reinterpret_cast<SpirvReadVerifyType *>(
       DyLib.getAddressOfSymbol(SpirvReadVerifyName));
   if (!SpirvReadVerifyFunc)
-    return make_error<vc::SymbolLookupError>(SpirvLibName, SpirvReadVerifyName);
+    return make_error<vc::SymbolLookupError>(SpirvLibPath, SpirvReadVerifyName);
 
   auto OutSaver = [](const char *pOut, size_t OutSize, void *OutData) {
     auto *Vec = reinterpret_cast<std::vector<char> *>(OutData);
