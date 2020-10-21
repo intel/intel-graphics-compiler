@@ -171,9 +171,10 @@ bool GenXFunctionPointersLowering::runOnModule(Module &M) {
           UI->replaceAllUsesWith(IntrCall);
           ToErase.push_back(UI);
         } else if (auto *UCE = dyn_cast<ConstantExpr>(U);
-                   !(UCE && UCE->getOpcode() == Instruction::PtrToInt))
-          IGC_ASSERT_MESSAGE(isa<CallInst>(U),
-            "Unsupported first-level user of a function");
+                   !(UCE && UCE->getOpcode() == Instruction::PtrToInt)) {
+          IGC_ASSERT_MESSAGE(isa<CallInst>(U) || U->use_empty(),
+                             "Unsupported first-level user of a function");
+        }
       }
   for (auto *I : ToErase)
     I->eraseFromParent();
@@ -282,6 +283,7 @@ void GenXFunctionPointersLowering::reconstructGenXIntrinsic(CallInst *CI) {
     OpIdx = 6;
     break;
   case GenXIntrinsic::genx_scatter_private:
+  case GenXIntrinsic::genx_svm_scatter:
     OpIdx = 3;
     break;
   default:

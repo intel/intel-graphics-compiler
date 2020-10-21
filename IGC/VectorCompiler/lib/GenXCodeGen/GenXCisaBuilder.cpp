@@ -124,7 +124,7 @@ static cl::opt<bool> SkipNoWiden("skip-widen", cl::init(false), cl::Hidden,
 
 enum {
   BYTES_PER_OWORD = 16,
-  BYTES_PER_FADDR = 8,
+  BYTES_PER_POINTER = 8,
   // stackcall ABI related constants
   ARG_SIZE_IN_GRFS = 32,
   RET_SIZE_IN_GRFS = 12,
@@ -330,28 +330,15 @@ static VISA_Type llvmToVisaType(Type *Type,
   IGC_ASSERT(!T->isAggregateType());
   VISA_Type Result = ISA_TYPE_NUM;
   if (T->isVectorTy() &&
-      cast<VectorType>(T)->getElementType()->isIntegerTy(1)) {
-    switch (cast<VectorType>(Type)->getNumElements()) {
-    case 8:
-      Result = (Sign == SIGNED) ? ISA_TYPE_B : ISA_TYPE_UB;
-      break;
-    case 16:
-      Result = (Sign == SIGNED) ? ISA_TYPE_W : ISA_TYPE_UW;
-      break;
-    case 32:
-      Result = (Sign == SIGNED) ? ISA_TYPE_D : ISA_TYPE_UD;
-      break;
-    default:
-      report_fatal_error("only 8xi1 and 32xi1 are currently supported");
-      break;
-    }
-  } else {
+      cast<VectorType>(T)->getElementType()->isIntegerTy(1))
+      Result = getVisaTypeFromBytesNumber(cast<VectorType>(Type)->getNumElements(), false, Sign);
+  else {
     if (T->isVectorTy())
       T = cast<VectorType>(T)->getElementType();
-    if (T->isPointerTy() && T->getPointerElementType()->isFunctionTy()) {
+    if (T->isPointerTy()) {
       // we might have used DL to get the type size but that'd
       // overcomplicate this function's type unnecessarily
-      Result = getVisaTypeFromBytesNumber(BYTES_PER_FADDR, false, DONTCARESIGNED);
+      Result = getVisaTypeFromBytesNumber(BYTES_PER_POINTER, false, DONTCARESIGNED);
     } else {
       IGC_ASSERT(T->isFloatingPointTy() || T->isIntegerTy());
       Result = getVisaTypeFromBytesNumber(T->getScalarSizeInBits() / CHAR_BIT,
@@ -2503,8 +2490,7 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
     for (Type *Ty : STy->elements())
       TySz += getResultedTypeSize(Ty, DL);
   } else if (Ty->isPointerTy())
-    TySz = Ty->getPointerElementType()->isFunctionTy() ?
-      BYTES_PER_FADDR : DL.getPointerSize();
+    TySz = DL.getPointerSize();
   else {
     TySz = Ty->getPrimitiveSizeInBits() / CHAR_BIT;
     IGC_ASSERT(TySz && "Ty is not primitive?");
@@ -4429,7 +4415,7 @@ bool GenXKernelBuilder::isInLoop(BasicBlock *BB) {
   for (auto ui = BB->getParent()->use_begin(), ue = BB->getParent()->use_end();
        ui != ue; ++ui) {
     auto CI = dyn_cast<CallInst>(ui->getUser());
-    if (!CI)
+    if (!CI || !checkFunctionCall(CI, BB->getParent()))
       continue;
     IGC_ASSERT(ui->getOperandNo() == CI->getNumArgOperands());
     if (CI->getFunction() == BB->getParent())
