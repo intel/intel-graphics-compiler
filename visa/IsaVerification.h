@@ -63,6 +63,12 @@ public:
 
  private:
 
+     bool hasFusedEU() const
+     {
+         bool hasFusedEU = getGenxPlatform() == GENX_TGLLP;
+         return hasFusedEU;
+     }
+
      void verifyKernelHeader();
      void verifyInstruction(const CISA_INST* inst);
 

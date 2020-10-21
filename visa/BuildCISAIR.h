@@ -704,8 +704,7 @@ public:
         ISA_Opcode opcode,
         unsigned exec_size,
         VISA_opnd *indexOpnd,
-        int numLabels,
-        char ** labels,
+        const std::deque<const char*>& labels,
         int lineNum);
 
     bool CISA_create_fcall_instruction(

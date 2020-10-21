@@ -3644,28 +3644,20 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
         {
             assert(0);
             status = VISA_FAILURE;
-        }else
+        }
+        else
         {
-            for (int i = 0; i< labelCount; i++)
+            for (int i = 0; i < labelCount; i++)
             {
-#if START_ASSERT_CHECK
-                if (labels[i] == NULL || labels[i]->g4opnd == NULL)
-                {
-                    assert(0);
-                    status = VISA_FAILURE;
-                    break;
-                }
-#endif
                 labelsArray[i] = (G4_Label*)labels[i]->g4opnd;
             }
-
             status = m_builder->translateVISACFSwitchInst(index->g4opnd, labelCount, labelsArray);
         }
     }
     if (IS_VISA_BOTH_PATH)
     {
-        VISA_INST_Desc *inst_desc_temp = NULL;
-        VISA_INST_Desc *inst_desc = (VISA_INST_Desc *)m_mem.alloc(sizeof(VISA_INST_Desc));
+        VISA_INST_Desc* inst_desc_temp = NULL;
+        VISA_INST_Desc* inst_desc = (VISA_INST_Desc*)m_mem.alloc(sizeof(VISA_INST_Desc));
         int num_pred_desc_operands = 1;
         unsigned int num_operands = 0;
         ISA_Opcode opcode = ISA_SWITCHJMP;
@@ -3673,7 +3665,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
         *inst_desc = CISA_INST_table[opcode];
         GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc_temp);
 
-        CISA_opnd *opnd[35];
+        CISA_opnd* opnd[35];
 
         if (index == NULL || labelCount == 0 || labels == NULL)
         {
@@ -3686,18 +3678,18 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
         opnd[num_operands] = index;
         ++num_operands;
 
-        memcpy_s(&opnd[num_operands], sizeof(VISA_LabelOpnd*)* labelCount, labels, sizeof(VISA_LabelOpnd*)* labelCount);
+        memcpy_s(&opnd[num_operands], sizeof(VISA_LabelOpnd*) * labelCount, labels, sizeof(VISA_LabelOpnd*) * labelCount);
         /*
         Making a copy of descriptor adn setting correct number of operands.
         This is used later to calculate total size of the buffer.
         */
-        inst_desc->opnd_num = num_pred_desc_operands + labelCount+ num_operands;
+        inst_desc->opnd_num = num_pred_desc_operands + labelCount + num_operands;
 
-        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+        CisaFramework::CisaInst* inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
         unsigned char size = EXEC_SIZE_1;
         size += vISA_EMASK_M1 << 4;
-        inst->createCisaInstruction(opcode, size, 0 , 0, opnd, labelCount+num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, 0, opnd, labelCount + num_operands, inst_desc);
 
         addInstructionToEnd(inst);
     }
@@ -7578,22 +7570,6 @@ void VISAKernelImpl::patchLabels()
         }
     }
 
-    //For switch statements
-    //Fixing labelIDs
-
-    std::list<VISA_opnd *>::iterator it_operand = m_pending_labels.begin();
-    std::list<std::string>::iterator it_lbl_name = m_pending_label_names.begin();
-
-    while (it_operand != m_pending_labels.end())
-    {
-        MUST_BE_TRUE(it_lbl_name != m_pending_label_names.end(),  "Number of label objects doesn't match number of label names in switch");
-        VISA_opnd * temp_opnd = * it_operand;
-        temp_opnd->_opnd.other_opnd = getIndexFromLabelName(* it_lbl_name);
-        MUST_BE_TRUE(temp_opnd->_opnd.other_opnd != (unsigned int)INVALID_LABEL_ID,  "Invalid jump label detected.");
-        it_operand++;
-        it_lbl_name++;
-    }
-
     return;
 }
 
@@ -7919,7 +7895,7 @@ unsigned int VISAKernelImpl::getIndexFromLabelName(const std::string &name)
     }
 }
 
-VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(const std::string &name)
+VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(std::string name)
 {
     auto it = m_label_name_to_index_map.find(name);
     if (m_label_name_to_index_map.end() == it) {

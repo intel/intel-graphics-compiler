@@ -1055,7 +1055,8 @@ void vISAVerifier::verifyInstructionControlFlow(
         }
         case ISA_SWITCHJMP:
         {
-             break;
+            REPORT_INSTRUCTION(options, !hasFusedEU(), "switchjmp is not supported on this platform");
+            break;
         }
         default: REPORT_INSTRUCTION(options,false, "Illegal Scalar Control Flow Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);
     }

@@ -215,8 +215,6 @@ public:
     unsigned int getNumPredVars() { return m_num_pred_vars; }
 
     unsigned long getKernelDataSize() { return m_kernel_data_size; }
-    void addPendingLabels(VISA_opnd * opnd) { m_pending_labels.push_back(opnd); }
-    void addPendingLabelNames(std::string name) { m_pending_label_names.push_back(name); }
     void setIsKernel(bool isKernel) { m_isKernel = isKernel; };
     bool getIsKernel() const { return m_isKernel; }
     unsigned long getCodeOffset() { return m_cisa_kernel.entry; }
@@ -227,7 +225,7 @@ public:
     void popIndexMapScopeLevel();
 
     unsigned int getIndexFromLabelName(const std::string &label_name);
-    VISA_LabelOpnd * getLabelOpndFromLabelName(const std::string &label_name);
+    VISA_LabelOpnd * getLabelOpndFromLabelName(std::string label_name);
     bool setLabelNameIndexMap(const std::string &label_name, VISA_LabelOpnd * lbl);
     int patchLastInst(VISA_LabelOpnd *label);
     vISA::G4_Kernel* getKernel() { return m_kernel; }
@@ -995,10 +993,6 @@ private:
 
     unsigned int m_label_count;
     std::vector<label_info_t *> m_label_info_list;
-
-    // list of cisa operands representing labels that need to be resolved
-    std::list<VISA_opnd *> m_pending_labels;
-    std::list<std::string> m_pending_label_names;
 
     // maps a variable name to the var pointer
     // unique vars are unique to the entire program

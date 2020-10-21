@@ -75,6 +75,7 @@ static bool ParseEMask(CISA_IR_Builder* pBuilder, const char* sym, VISA_EMask_Ct
 #define TRACE(str)
 #endif
 
+std::deque<const char*> switchLabels;
 char * switch_label_array[32];
 std::vector<VISA_opnd*> RTRWOperands;
 int num_parameters;
@@ -1323,16 +1324,14 @@ AtomicBitwidthOpt:
 SwitchLabels:
     %empty
     {
-        $$ = 0;
     }
     | COMMA SwitchLabels
     {
-        $$ = $2;
     }
     | IDENT SwitchLabels
     {
-        switch_label_array[$2++] = $1;
-        $$ = $2;
+        // parse rule means we see last label first
+        switchLabels.push_front($1);
     }
 
                    // 1        2         3          4
@@ -1346,7 +1345,8 @@ BranchInstruction: Predicate BRANCH_OP ExecSize IdentOrStringLit
     }
     | SWITCHJMP_OP ExecSize VecSrcOperand_G_I_IMM LPAREN SwitchLabels RPAREN
     {
-        pBuilder->CISA_create_switch_instruction($1, $2.exec_size, $3.cisa_gen_opnd, (int)$5, switch_label_array, CISAlineno);
+        pBuilder->CISA_create_switch_instruction($1, $2.exec_size, $3.cisa_gen_opnd, switchLabels, CISAlineno);
+        switchLabels.clear();
     }
     //  1          2         3     4       5       6
     | Predicate  FCALL   ExecSize IDENT  DEC_LIT DEC_LIT

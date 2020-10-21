@@ -2677,53 +2677,27 @@ bool CISA_IR_Builder::CISA_create_switch_instruction(
     ISA_Opcode opcode,
     unsigned exec_size,
     VISA_opnd *indexOpnd,
-    int numLabels,
-    char ** labels,
+    const std::deque<const char*>& labels,
     int lineNum)
 {
-    VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
-    VISA_opnd *opnd[35];
-    int num_pred_desc_operands = 1;
-    int num_operands = 0;
-
-    opnd[num_operands] = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
-    opnd[num_operands]->_opnd.other_opnd = numLabels; //real ID will be set during kernel finalization
-    opnd[num_operands]->opnd_type = CISA_OPND_OTHER;
-    opnd[num_operands]->size = (unsigned short)Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[num_pred_desc_operands].data_type);
-    opnd[num_operands]->tag = (unsigned char)inst_desc->opnd_desc[num_pred_desc_operands].opnd_type;
-    num_operands++;
-
-    //global offset
-    if (indexOpnd != NULL)
+    int numLabels = (int) labels.size();
+    std::vector<VISA_LabelOpnd*> jmpTargets(numLabels);
+    for (int i = 0; i < numLabels; ++i)
     {
-        opnd[num_operands] = indexOpnd;
-        num_operands ++;
-    }
+        auto labelOpnd = m_kernel->getLabelOpndFromLabelName(labels[i]);
 
-    for (int i = numLabels - 1; i >= 0; i--)
-    {
-        //TODO: FIX (fix what??)
-        //m_kernel->string_pool_lookup_and_insert_branch_targets(labels[i], LABEL_VAR, ISA_TYPE_UW); //Will be checked after whole analysis of the text
-        opnd[num_operands] = m_kernel->CreateOtherOpndHelper(
-            num_pred_desc_operands, 2, inst_desc,
-            m_kernel->getIndexFromLabelName(std::string(labels[i])));
-        num_operands++;
+        //forward jump label: create the label optimistically
+        if (!labelOpnd)
+        {
+            VISA_CALL_TO_BOOL(CreateVISALabelVar, labelOpnd, labels[i], LABEL_BLOCK);
+        }
+        jmpTargets[i] = labelOpnd;
     }
 
     VISA_CALL_TO_BOOL(AppendVISACFSwitchJMPInst,
         (VISA_VectorOpnd *)indexOpnd,
-        (unsigned char)numLabels,
-        (VISA_LabelOpnd **)opnd);
-
-    for (int i = 0; i< numLabels; i++)
-    {
-        VISA_opnd * temp_opnd = opnd[i];
-        m_kernel->addPendingLabels(temp_opnd);
-    }
-    for (int i = numLabels - 1; i >= 0; i--)
-    {
-        m_kernel->addPendingLabelNames(std::string(labels[i]));
-    }
+        (uint8_t) numLabels,
+        jmpTargets.data());
 
     return true;
 }
