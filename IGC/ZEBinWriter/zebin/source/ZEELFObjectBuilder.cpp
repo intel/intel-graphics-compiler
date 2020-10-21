@@ -885,11 +885,28 @@ zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerThreadMemoryBuffer(
     PreDefinedAttrGetter::MemBufferUsage usage,
     int32_t size)
 {
+    // use addScratchPerThreadMemoryBuffer API to add scratch buffer
+    IGC_ASSERT(type != PreDefinedAttrGetter::MemBufferType::scratch);
     mem_buff_list.emplace_back();
     zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
     info.type = PreDefinedAttrGetter::get(type);
     info.usage = PreDefinedAttrGetter::get(usage);
     info.size = size;
+    return info;
+}
+
+zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addScratchPerThreadMemoryBuffer(
+    PerThreadMemoryBuffersTy& mem_buff_list,
+    PreDefinedAttrGetter::MemBufferUsage usage,
+    int32_t slot_id,
+    int32_t size)
+{
+    mem_buff_list.emplace_back();
+    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
+    info.type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::MemBufferType::scratch);
+    info.usage = PreDefinedAttrGetter::get(usage);
+    info.size = size;
+    info.slot = slot_id;
     return info;
 }
 

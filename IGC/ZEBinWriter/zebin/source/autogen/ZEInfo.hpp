@@ -92,6 +92,7 @@ struct zeInfoPerThreadMemoryBuffer
     zeinfo_str_t type;
     zeinfo_str_t usage;
     zeinfo_int32_t size = 0;
+    zeinfo_int32_t slot = 0;
     zeinfo_bool_t is_simt_thread = false;
 };
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
@@ -110,9 +111,12 @@ struct zeInfoKernel
 typedef std::vector<zeInfoKernel> KernelsTy;
 struct zeInfoContainer
 {
+    zeinfo_str_t version;
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
+    static zeinfo_str_t getVersionNumber() { return "1.0"; }
+
     enum class ArgType {
         packed_local_ids,
         local_id,
@@ -129,7 +133,7 @@ struct PreDefinedAttrGetter{
         stateless,
         stateful,
         bindless,
-        shared_local_memory
+        slm
     };
     enum class ArgAddrSpace {
         global,
@@ -188,8 +192,8 @@ struct PreDefinedAttrGetter{
             return "stateful";
         case ArgAddrMode::bindless:
             return "bindless";
-        case ArgAddrMode::shared_local_memory:
-            return "shared_local_memory";
+        case ArgAddrMode::slm:
+            return "slm";
         default:
             break;
         }

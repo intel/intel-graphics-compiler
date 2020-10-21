@@ -1,4 +1,5 @@
 # ZE Info
+Version 1.0
 
 ## Grammar
 
@@ -24,6 +25,7 @@ All **literals** have one of the following types:
 # Container
 | Attribute | Type | Description |
 | ----- | ----- | ----- |
+| version | str | ZE Info version number. See Version above. |
 | kernels | KernelsTy | vector |
 <!--- Container --->
 
@@ -117,7 +119,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:
-Supported <argument_type> of payload_arguments.
+Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 
 | Argument Type | Size | Description |
 | ----- | ------ | ------ |
@@ -143,7 +145,7 @@ Supported <memory_addressing_mode> of payload_arguments.
 | stateless | |
 | stateful | If an argument has stateful memory addressing mode, its binding table index will be specified in a **binding_table_indexes** with the same arg_index |
 | bindless | |
-| shared_local_memory | |
+| slm | |
 <!--- <memory_addressing_mode> ArgAddrMode -->
 
 ### Supported address spaces:
@@ -199,6 +201,7 @@ which indicate the memory buffer required by the Compiler.
 | type           | <allocation_type> | Required | | |
 | usage          | <memory_usage>    | Required | | |
 | size           | int32             | Required | | the buffer size in byte |
+| slot           | int32             | Optional | 0     | Present when type is "scratch". Indicate the slot id of this scratch buffer. |
 | is_simt_thread | bool              | Optional | false | Present when type is "global". Indicate if the global buffer is allocated per-SIMT-thread. If set to false, the buffer is allocated per-hardware-thread |
 <!--- PerThreadMemoryBuffer PerThreadMemoryBuffers -->
 
@@ -222,3 +225,10 @@ Supported <memory_usage> of Per Thread Memory Buffer.
 | single_space | All compiler required memory space (privates, arguments passing, spill/fill, call/callee saved) are allocated in one single buffer |
 <!--- <memory_usage> MemBufferUsage -->
 
+## Versioning
+Format: \<_Major number_\>.\<_Minor number_\>
+- Major number: Increase when non-backward-compatible features are added. For example, rename attributes or remove attribute.
+- Minor number: Increase when backward-compatible features are added. For example, add new attributes.
+
+## Change Note
+- **Version 1.0**: Add version number. Add slot to per_thread_memory_buffers. Rename shared_local_memory to slm in memory_addressing_mode.

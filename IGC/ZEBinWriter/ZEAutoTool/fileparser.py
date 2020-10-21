@@ -299,6 +299,15 @@ def create_zeinfo_hpp_yaml_cpp(src_lines, folder):
     yaml_cpp = open(cpp_path, "a")
     yaml_cpp.write(YAML_CPP_HEADER)
 
+    # get version number
+    version_block, index, pounds = get_text_block(src_lines, "# ZE Info", "\n", "Version")
+    src_lines = src_lines[index:]
+    ver_str = ''
+    for item in version_block:
+        ver_str = item.replace("Version ", "").replace("\n", "")
+
+    if ver_str == '':
+        sys.exit("Incorrect Version Format")
 
     type_block, index, pounds = get_text_block(src_lines, "## Type", "\n", "-")
     valid_types = []
@@ -307,12 +316,10 @@ def create_zeinfo_hpp_yaml_cpp(src_lines, folder):
     for item in type_block:
         colon = item.find(":")
         if colon == -1:
-            sys.exit("Incorrect format") #line number
-
+            sys.exit("Incorrect Type Format") #line number
         type_str = item[(colon + 1): len(item) - 1].strip() + ";\n"
         zeinfo_hpp.write(type_str)
         valid_types.append(item[:colon].strip()[2:])
-
 
     kernel_lines = []
     check_vectors = {} # maps plural struct form to singular struct form
@@ -359,6 +366,7 @@ def create_zeinfo_hpp_yaml_cpp(src_lines, folder):
 
 
     zeinfo_hpp.write("struct PreDefinedAttrGetter{\n")
+    zeinfo_hpp.write("    static zeinfo_str_t getVersionNumber() { return \"" + ver_str + "\"; }\n\n");
     for item in enum_lines + static_lines:
         zeinfo_hpp.write(item)
 

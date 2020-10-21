@@ -713,7 +713,7 @@ namespace IGC
             zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
                 payloadPosition, kernelArg->getAllocateSize(),
                 kernelArg->getAssociatedArgNo(),
-                zebin::PreDefinedAttrGetter::ArgAddrMode::shared_local_memory,
+                zebin::PreDefinedAttrGetter::ArgAddrMode::slm,
                 zebin::PreDefinedAttrGetter::ArgAddrSpace::local,
                 zebin::PreDefinedAttrGetter::ArgAccessType::readwrite);
             break;

@@ -372,6 +372,11 @@ private:
 /// ZEInfoBuilder - Build a zeInfoContainer for .ze_info section
 class ZEInfoBuilder {
 public:
+    ZEInfoBuilder()
+    {
+        mContainer.version = PreDefinedAttrGetter::getVersionNumber();
+    }
+
     zeInfoContainer& getZEInfoContainer()             { return mContainer; }
     const zeInfoContainer& getZEInfoContainer() const { return mContainer; }
 
@@ -423,13 +428,21 @@ public:
         int32_t bti_value,
         int32_t arg_index);
 
-    // addPerThreadMemoryBuffer - add a memory buffer info
+    // addPerThreadMemoryBuffer - add a memory buffer info with global or slm type
     // If adding buffer with "global" type, this API assume it is allocated per-hardware-thread
     // Use below addPerSIMTThreadGlobalMemoryBuffer API if attempting to add per-simt-thread global buffer
     static zeInfoPerThreadMemoryBuffer& addPerThreadMemoryBuffer(
         PerThreadMemoryBuffersTy& mem_buff_list,
         PreDefinedAttrGetter::MemBufferType type,
         PreDefinedAttrGetter::MemBufferUsage usage,
+        int32_t size);
+
+    // addScratchPerThreadMemoryBuffer - add a memory buffer info for scratch buffer
+    // per_thread_memory_buffers::type set to scratch
+    static zeInfoPerThreadMemoryBuffer& addScratchPerThreadMemoryBuffer(
+        PerThreadMemoryBuffersTy& mem_buff_list,
+        PreDefinedAttrGetter::MemBufferUsage usage,
+        int32_t slot_id,
         int32_t size);
 
     // addPerSIMTThreadGlobalMemoryBuffer - add a memory buffer info

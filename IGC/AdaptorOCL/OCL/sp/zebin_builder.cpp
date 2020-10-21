@@ -254,14 +254,14 @@ void ZEBinaryBuilder::addMemoryBuffer(
     }
 
     if (scratch0)
-        ZEInfoBuilder::addPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
-            PreDefinedAttrGetter::MemBufferType::scratch,
+        ZEInfoBuilder::addScratchPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
             PreDefinedAttrGetter::MemBufferUsage::spill_fill_space,
+            0,
             scratch0);
     if (scratch1)
-        ZEInfoBuilder::addPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
-            PreDefinedAttrGetter::MemBufferType::scratch,
+        ZEInfoBuilder::addScratchPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
             PreDefinedAttrGetter::MemBufferUsage::private_space,
+            1,
             scratch1);
     if (private_on_global) {
         ZEInfoBuilder::addPerSIMTThreadGlobalMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,

@@ -38,6 +38,7 @@ using namespace llvm::yaml;
 
 void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
 {
+    io.mapRequired("version", info.version);
     io.mapRequired("kernels", info.kernels);
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
@@ -96,5 +97,6 @@ void MappingTraits<zeInfoPerThreadMemoryBuffer>::mapping(IO& io, zeInfoPerThread
     io.mapRequired("type", info.type);
     io.mapRequired("usage", info.usage);
     io.mapRequired("size", info.size);
+    io.mapOptional("slot", info.slot, 0);
     io.mapOptional("is_simt_thread", info.is_simt_thread, false);
 }
