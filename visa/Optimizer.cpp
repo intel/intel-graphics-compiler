@@ -3397,15 +3397,13 @@ static void expandPseudoLogic(IR_Builder& builder,
             return true;
         }
 
-        // Dst operand has a single flag element.
-        if (inst->isWriteEnableInst() && inst->getMaskOffset() == 0 && inst->getExecSize() == g4::SIMD1)
+        // inst writes the whole flag.
+        if (inst->isWriteEnableInst() && inst->getMaskOffset() == 0)
         {
-            G4_Operand *Dst = inst->getDst();
-            if (Dst && Dst->getTopDcl() != nullptr)
+            auto Dcl = inst->getDst()->getTopDcl();
+            if (Dcl && Dcl->getNumberFlagElements() <= inst->getExecSize())
             {
-                G4_Declare *Dcl = Dst->getTopDcl();
-                if (Dcl->getNumberFlagElements() == 1)
-                    return true;
+                return true;
             }
         }
 
