@@ -2064,25 +2064,6 @@ SPIRVToLLVM::transConvertInst(SPIRVValue* BV, Function* F, BasicBlock* BB) {
   return ConstantExpr::getCast(CO, dyn_cast<Constant>(Src), Dst);
 }
 
-static void applyFPFastMathModeDecorations(const SPIRVValue* BV,
-    Instruction* Inst) {
-    SPIRVWord V;
-    FastMathFlags FMF;
-    if (BV->hasDecorate(DecorationFPFastMathMode, 0, &V)) {
-        if (V & FPFastMathModeNotNaNMask)
-            FMF.setNoNaNs();
-        if (V & FPFastMathModeNotInfMask)
-            FMF.setNoInfs();
-        if (V & FPFastMathModeNSZMask)
-            FMF.setNoSignedZeros();
-        if (V & FPFastMathModeAllowRecipMask)
-            FMF.setAllowReciprocal();
-        if (V & FPFastMathModeFastMask)
-            FMF.setFast();
-        Inst->setFastMathFlags(FMF);
-    }
-}
-
 BinaryOperator *SPIRVToLLVM::transShiftLogicalBitwiseInst(SPIRVValue* BV,
     BasicBlock* BB,Function* F) {
   SPIRVBinary* BBN = static_cast<SPIRVBinary*>(BV);
@@ -2104,7 +2085,6 @@ BinaryOperator *SPIRVToLLVM::transShiftLogicalBitwiseInst(SPIRVValue* BV,
     Inst->setHasNoUnsignedWrap(true);
   }
 
-  applyFPFastMathModeDecorations(BV, Inst);
   return Inst;
 }
 
@@ -3201,7 +3181,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpFNegate: {
     SPIRVUnary *BC = static_cast<SPIRVUnary*>(BV);
-    auto Neg =
+    return mapValue(BV,
 #if LLVM_VERSION_MAJOR <= 10
         BinaryOperator
 #else
@@ -3209,9 +3189,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 #endif
         ::CreateFNeg(
       transValue(BC->getOperand(0), F, BB),
-      BV->getName(), BB);
-    applyFPFastMathModeDecorations(BV, Neg);
-    return mapValue(BV, Neg);
+      BV->getName(), BB));
     }
     break;
 
