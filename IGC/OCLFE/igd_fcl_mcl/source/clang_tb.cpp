@@ -1519,25 +1519,6 @@ namespace TC
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
         optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
 
-#if defined(_WIN32)
-        if (oclStd >= 300) {
-          auto featureMacrosFromInternalOptions = GetSubstring(pInternalOptions, "-cl-feature=");
-
-          // Workaround for Clang issue.
-          // For write_imagef with image3d_t OpenCL 3.0 spec says:
-          // "Requires support for OpenCL C 2.0, the __opencl_c_3d_image_writes feature macro, or the cl_khr_3d_image_writes extension".
-          // In case only cl_khr_3d_image_writes is enabled, Clang triggers error for write_imagef declaration.
-          // TODO: remove when Clang is fixed.
-          if (extensions.find("+cl_khr_3d_image_writes") != std::string::npos &&
-              featureMacrosFromInternalOptions.find("+__opencl_c_3d_image_writes") == std::string::npos) {
-              featureMacrosFromInternalOptions += ",+__opencl_c_3d_image_writes";
-          }
-
-          optionsEx += " " + GetCDefinesForEnableList(featureMacrosFromInternalOptions, oclStd, "-cl-feature=");
-          optionsEx += " " + featureMacrosFromInternalOptions;
-        }
-#endif
-
         optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
 
         IOCLFEBinaryResult *pResultPtr = NULL;
