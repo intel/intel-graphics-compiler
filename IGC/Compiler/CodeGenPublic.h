@@ -261,14 +261,15 @@ namespace IGC
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
         bool hasUniformAssumptions;
         bool hasWaveIntrinsics;
+        bool hasPullBary;
+        bool sampleCmpToDiscardOptimizationPossible;
+        unsigned int sampleCmpToDiscardOptimizationSlot;
         unsigned int numSample;
         unsigned int numBB;
         unsigned int numLoopInsts;
         unsigned int numOfLoop;
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
         unsigned int numPsInputs;
-        bool sampleCmpToDiscardOptimizationPossible;
-        unsigned int sampleCmpToDiscardOptimizationSlot;
     };
 
     struct SSimplePushInfo

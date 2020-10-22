@@ -97,6 +97,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->numInsts = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
+    instrList->hasPullBary = false;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)
@@ -253,6 +254,11 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_DCL_inputVec:
         case GenISAIntrinsic::GenISA_DCL_ShaderInputVec:
             g_InstrTypes->numPsInputs++;
+            break;
+        case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
+        case GenISAIntrinsic::GenISA_PullSnappedBarys:
+        case GenISAIntrinsic::GenISA_PullCentroidBarys:
+            g_InstrTypes->hasPullBary = true;
             break;
         default:
             break;

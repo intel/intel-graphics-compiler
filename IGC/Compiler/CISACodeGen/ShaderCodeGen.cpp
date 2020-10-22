@@ -812,6 +812,7 @@ static void PSCodeGen(
     CShaderProgram::KernelShaderMap& shaders,
     PSSignature* pSignature = nullptr)
 {
+
     COMPILER_TIME_START(ctx, TIME_CodeGen);
 
     IGCPassManager PassMgr(ctx, "CG");
