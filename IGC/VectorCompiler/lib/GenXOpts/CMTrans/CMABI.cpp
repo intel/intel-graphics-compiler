@@ -97,6 +97,9 @@ static cl::opt<LocalizationLimitT>
 
 STATISTIC(NumArgumentsTransformed, "Number of pointer arguments transformed");
 
+// FIXME: find a propper place for addrspace enum, agree on addrspace politics
+static constexpr int PrivateAddrSpace = 0;
+
 namespace llvm {
 void initializeCMABIPass(PassRegistry &);
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
@@ -576,6 +579,12 @@ static std::vector<Value *> createNewOperands(const InstToRebuild &OrigInst) {
   return std::move(NewOperands);
 }
 
+// Returns potentially new pointer type with the provided \p AddrSpace
+// and the original pointee type.
+static PointerType *changeAddrSpace(PointerType *OrigTy, int AddrSpace) {
+  return PointerType::get(OrigTy->getElementType(), AddrSpace);
+}
+
 class cloneInstWithNewOpsImpl
     : public InstVisitor<cloneInstWithNewOpsImpl, Instruction *> {
   ArrayRef<Value *> NewOperands;
@@ -590,19 +599,16 @@ public:
   }
 
   Instruction *visitGetElementPtrInst(GetElementPtrInst &OrigGEP) const {
-    auto *NewInst = GetElementPtrInst::Create(OrigGEP.getSourceElementType(),
-                                              NewOperands.front(),
-                                              NewOperands.drop_front());
-    return NewInst;
+    return GetElementPtrInst::Create(OrigGEP.getSourceElementType(),
+                                     NewOperands.front(),
+                                     NewOperands.drop_front());
   }
 
-  Instruction *visitLoadInst(LoadInst &OrigLoad) const {
-    IGC_ASSERT_MESSAGE(NewOperands.size() == 1,
-                       "load instruction has only 1 operand");
-    auto *Ptr = NewOperands.front();
+  Instruction *visitLoadInst(LoadInst &OrigLoad) {
+    Value &Ptr = getSingleNewOperand();
     auto *NewLoad =
-        new LoadInst{cast<PointerType>(Ptr->getType())->getElementType(),
-                     Ptr,
+        new LoadInst{cast<PointerType>(Ptr.getType())->getElementType(),
+                     &Ptr,
                      "",
                      OrigLoad.isVolatile(),
                      IGCLLVM::getAlign(OrigLoad),
@@ -611,37 +617,77 @@ public:
     return NewLoad;
   }
 
+  StoreInst *visitStoreInst(StoreInst &OrigStore) {
+    IGC_ASSERT_MESSAGE(NewOperands.size() == 2, "store has 2 operands");
+    return new StoreInst{NewOperands[0],          NewOperands[1],
+                         OrigStore.isVolatile(),  IGCLLVM::getAlign(OrigStore),
+                         OrigStore.getOrdering(), OrigStore.getSyncScopeID()};
+  }
+
   // Rebuilds bitcast \p OrigInst so it now has \p NewOp as operand and result
   // type addrspace corresponds with this operand.
   CastInst *visitBitCastInst(BitCastInst &OrigCast) {
-    IGC_ASSERT_MESSAGE(NewOperands.size() == 1,
-                       "cast instruction has only 1 operand");
-    Value &NewOp = *NewOperands.front();
+    Value &NewOp = getSingleNewOperand();
     if (isa<PointerType>(OrigCast.getType()))
       return visitPointerBitCastInst(OrigCast);
     return new BitCastInst{&NewOp, OrigCast.getType()};
   }
 
   CastInst *visitPointerBitCastInst(BitCastInst &OrigCast) {
-    IGC_ASSERT_MESSAGE(NewOperands.size() == 1,
-                       "cast instruction has only 1 operand");
-    Value &NewOp = *NewOperands.front();
+    Value &NewOp = getSingleNewOperand();
     auto NewOpAS = cast<PointerType>(NewOp.getType())->getAddressSpace();
-    auto *OrigInstTy = cast<PointerType>(OrigCast.getType());
     // If the operand changed addrspace the bitcast type should change it too.
-    auto *NewInstTy = PointerType::get(OrigInstTy->getElementType(), NewOpAS);
-    return new BitCastInst{&NewOp, NewInstTy};
+    return new BitCastInst{
+        &NewOp,
+        changeAddrSpace(cast<PointerType>(OrigCast.getType()), NewOpAS)};
+  }
+
+  CastInst *visitAddrSpaceCastInst(AddrSpaceCastInst &OrigCast) {
+    Value &NewOp = getSingleNewOperand();
+    auto *NewOpTy = cast<PointerType>(NewOp.getType());
+    auto *CastTy = cast<PointerType>(OrigCast.getType());
+    if (NewOpTy->getAddressSpace() == CastTy->getAddressSpace())
+      return nullptr;
+    return new AddrSpaceCastInst{&NewOp, CastTy};
+  }
+
+private:
+  Value &getSingleNewOperand() {
+    IGC_ASSERT_MESSAGE(
+        NewOperands.size() == 1,
+        "it should've been called only for instructions with a single operand");
+    return *NewOperands.front();
   }
 };
 
 // Creates new instruction with all the properties taken from the \p OrigInst
 // except for operands that are taken from \p NewOps.
+// nullptr is returned when clonning is imposible.
 static Instruction *cloneInstWithNewOps(Instruction &OrigInst,
                                         ArrayRef<Value *> NewOps) {
   Instruction *NewInst = cloneInstWithNewOpsImpl{NewOps}.visit(OrigInst);
-  NewInst->copyIRFlags(&OrigInst);
-  NewInst->copyMetadata(OrigInst);
+  if (NewInst) {
+    NewInst->copyIRFlags(&OrigInst);
+    NewInst->copyMetadata(OrigInst);
+  }
   return NewInst;
+}
+
+// covers cases when \p OrigInst cannot be cloned by cloneInstWithNewOps
+// with the provided \p NewOps.
+// Peplacement for the \p OrigInst is returned.
+static Value *coverNonCloneCase(Instruction &OrigInst,
+                                ArrayRef<Value *> NewOps) {
+  IGC_ASSERT_MESSAGE(isa<AddrSpaceCastInst>(OrigInst),
+                     "only addr space cast case is yet considered");
+  IGC_ASSERT_MESSAGE(NewOps.size() == 1, "cast has only one operand");
+  Value *NewOp = NewOps.front();
+  auto *NewOpTy = cast<PointerType>(NewOp->getType());
+  auto *CastTy = cast<PointerType>(OrigInst.getType());
+  IGC_ASSERT_MESSAGE(NewOpTy->getAddressSpace() == CastTy->getAddressSpace(),
+                     "when addrspaces different clonnig helps and it should've "
+                     "been covered before");
+  return NewOp;
 }
 
 // Rebuilds instructions according to info provided in RebuildInfo.
@@ -658,7 +704,7 @@ class InstructionRebuilder {
   IsSpecialInstFunc IsSpecialInst;
   CreateSpecialInstFunc CreateSpecialInst;
   // Map between original inst and its replacement.
-  std::unordered_map<Instruction *, Instruction *> Replacement;
+  std::unordered_map<Instruction *, Value *> Replacement;
   std::vector<Instruction *> ToErase;
 
 public:
@@ -738,24 +784,26 @@ private:
   }
 
   void rebuildNonPhiInst(InstToRebuild &OrigInst) {
-    auto *NewInst = createNonPhiInst(OrigInst);
-    Replacement[OrigInst.User] = NewInst;
+    auto *Replace = createNonPhiInst(OrigInst);
+    Replacement[OrigInst.User] = Replace;
     ToErase.push_back(OrigInst.User);
   }
 
   // Unlike rebuildNonPhiInst method just creates instruction, doesn't
   // update the class state.
-  Instruction *createNonPhiInst(InstToRebuild &OrigInst) const {
-    Instruction *NewInst;
+  Value *createNonPhiInst(InstToRebuild &OrigInst) const {
+    Instruction *Replace;
     if (IsSpecialInst(OrigInst))
-      NewInst = CreateSpecialInst(OrigInst);
+      Replace = CreateSpecialInst(OrigInst);
     else
-      NewInst =
+      Replace =
           cloneInstWithNewOps(*OrigInst.User, createNewOperands(OrigInst));
-    NewInst->insertBefore(OrigInst.User);
-    NewInst->takeName(OrigInst.User);
-    NewInst->setDebugLoc(OrigInst.User->getDebugLoc());
-    return NewInst;
+    if (!Replace)
+      return coverNonCloneCase(*OrigInst.User, createNewOperands(OrigInst));
+    Replace->takeName(OrigInst.User);
+    Replace->insertBefore(OrigInst.User);
+    Replace->setDebugLoc(OrigInst.User->getDebugLoc());
+    return Replace;
   }
 };
 
@@ -777,7 +825,8 @@ auto MakeInstructionRebuilder(RebuildInfo Info) {
 // change will stop.
 static bool isRebuildTerminal(const Instruction &Inst) {
   // Result of a load inst is no longer a pointer so here propogation will stop.
-  return isa<LoadInst>(Inst);
+  return isa<LoadInst>(Inst) || isa<AddrSpaceCastInst>(Inst) ||
+         isa<StoreInst>(Inst);
 }
 
 // Replaces uses of global variables with the corresponding allocas inside a
@@ -1086,13 +1135,19 @@ struct TransformedFuncType {
 };
 
 enum class ArgKind { General, CopyIn, CopyInOut };
+enum class GlobalArgKind { ByValueIn, ByValueInOut, ByPointer };
+
+struct GlobalArgInfo {
+  GlobalVariable *GV;
+  GlobalArgKind Kind;
+};
 
 struct GlobalArgsInfo {
   static constexpr int UndefIdx = -1;
-  std::vector<GlobalVariable *> Globals;
+  std::vector<GlobalArgInfo> Globals;
   int FirstGlobalArgIdx = UndefIdx;
 
-  GlobalVariable *getGlobalForArgNo(int ArgIdx) const {
+  GlobalArgInfo getGlobalInfoForArgNo(int ArgIdx) const {
     IGC_ASSERT_MESSAGE(FirstGlobalArgIdx != UndefIdx,
                        "first global arg index isn't set");
     auto Idx = ArgIdx - FirstGlobalArgIdx;
@@ -1100,12 +1155,22 @@ struct GlobalArgsInfo {
                        "out of bound access");
     return Globals[ArgIdx - FirstGlobalArgIdx];
   }
+
+  GlobalVariable *getGlobalForArgNo(int ArgIdx) const {
+    return getGlobalInfoForArgNo(ArgIdx).GV;
+  }
 };
 
 struct RetToArgInfo {
   static constexpr int OrigRetNoArg = -1;
   std::vector<int> Map;
 };
+
+// Whether provided \p GV should be passed by pointer.
+static bool passLocalizedGlobalByPointer(const GlobalValue &GV) {
+  auto *Type = GV.getType()->getPointerElementType();
+  return Type->isAggregateType();
+}
 
 // Computing a new prototype for the function. E.g.
 //
@@ -1144,12 +1209,22 @@ public:
                        "can only be initialized once");
     GlobalArgs.FirstGlobalArgIdx = NewFuncType.Args.size();
     for (auto *GV : LI.getGlobals()) {
-      int ArgIdx = NewFuncType.Args.size();
-      RetToArg.Map.push_back(ArgIdx);
-      Type *PointeeTy = GV->getType()->getPointerElementType();
-      NewFuncType.Args.push_back(PointeeTy);
-      NewFuncType.Ret.push_back(PointeeTy);
-      GlobalArgs.Globals.push_back(GV);
+      if (passLocalizedGlobalByPointer(*GV)) {
+        NewFuncType.Args.push_back(changeAddrSpace(
+            cast<PointerType>(GV->getType()), PrivateAddrSpace));
+        GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByPointer});
+      } else {
+        int ArgIdx = NewFuncType.Args.size();
+        Type *PointeeTy = GV->getType()->getPointerElementType();
+        NewFuncType.Args.push_back(PointeeTy);
+        if (GV->isConstant())
+          GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByValueIn});
+        else {
+          GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByValueInOut});
+          NewFuncType.Ret.push_back(PointeeTy);
+          RetToArg.Map.push_back(ArgIdx);
+        }
+      }
     }
   }
 
@@ -1308,41 +1383,55 @@ static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
     return;
   }
   Value *OutVal = Builder.CreateExtractValue(&NewCall, RetIdx);
-  if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx)
+  if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
+    auto Kind =
+        NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
+    IGC_ASSERT_MESSAGE(
+        Kind == GlobalArgKind::ByValueInOut,
+        "only passed by value localized global should be copied-out");
     Builder.CreateStore(
         OutVal, NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(ArgIdx));
-  else {
+  } else {
     IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
                        "only copy in-out args are expected");
     Builder.CreateStore(OutVal, OrigCall.getArgOperand(ArgIdx));
   }
 }
 
-static std::vector<AllocaInst *>
-handleGlobalArgs(Function &NewFunc, const GlobalArgsInfo &GlobalArgs) {
+static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
+                                             const GlobalArgsInfo &GlobalArgs) {
   // Collect all globals and their corresponding allocas.
-  std::vector<AllocaInst *> LocalizedGloabls;
+  std::vector<Value *> LocalizedGloabls;
   Instruction *InsertPt = &*(NewFunc.begin()->getFirstInsertionPt());
 
-  llvm::transform(
-      drop_begin(NewFunc.args(), GlobalArgs.FirstGlobalArgIdx),
-      std::back_inserter(LocalizedGloabls), [InsertPt](Argument &GVArg) {
-        AllocaInst *Alloca = new AllocaInst(GVArg.getType(), 0, "", InsertPt);
-        new StoreInst(&GVArg, Alloca, InsertPt);
-        return Alloca;
-      });
+  llvm::transform(drop_begin(NewFunc.args(), GlobalArgs.FirstGlobalArgIdx),
+                  std::back_inserter(LocalizedGloabls),
+                  [InsertPt](Argument &GVArg) -> Value * {
+                    if (GVArg.getType()->isPointerTy())
+                      return &GVArg;
+                    AllocaInst *Alloca = new AllocaInst(
+                        GVArg.getType(), PrivateAddrSpace, "", InsertPt);
+                    new StoreInst(&GVArg, Alloca, InsertPt);
+                    return Alloca;
+                  });
   // Fancy naming.
-  for (auto &&[GV, GVArg, Alloca] :
+  for (auto &&[GAI, GVArg, MaybeAlloca] :
        zip(GlobalArgs.Globals,
            drop_begin(NewFunc.args(), GlobalArgs.FirstGlobalArgIdx),
            LocalizedGloabls)) {
-    GVArg.setName(GV->getName() + ".in");
-    Alloca->setName(GV->getName() + ".local");
+    GVArg.setName(GAI.GV->getName() + ".in");
+    if (!GVArg.getType()->isPointerTy()) {
+      IGC_ASSERT_MESSAGE(
+          isa<AllocaInst>(MaybeAlloca),
+          "an alloca is expected when pass localized global by value");
+      MaybeAlloca->setName(GAI.GV->getName() + ".local");
+    }
   }
 
   SmallDenseMap<Value *, Value *> GlobalsToReplace;
-  for (auto &&[GV, Alloca] : zip(GlobalArgs.Globals, LocalizedGloabls))
-    GlobalsToReplace.insert(std::make_pair(GV, Alloca));
+  for (auto &&[GAI, LocalizedGlobal] :
+       zip(GlobalArgs.Globals, LocalizedGloabls))
+    GlobalsToReplace.insert(std::make_pair(GAI.GV, LocalizedGlobal));
   // Replaces all globals uses within this new function.
   replaceUsesWithinFunction(GlobalsToReplace, &NewFunc);
   return LocalizedGloabls;
@@ -1353,7 +1442,7 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
                                 ReturnInst &OrigRet, IRBuilder<> &Builder,
                                 const TransformedFuncInfo &NewFuncInfo,
                                 const std::vector<Value *> &OrigArgReplacements,
-                                std::vector<AllocaInst *> &LocalizedGlobals) {
+                                std::vector<Value *> &LocalizedGlobals) {
   if (ArgIdx == RetToArgInfo::OrigRetNoArg) {
     IGC_ASSERT_MESSAGE(RetIdx == 0,
                        "original return value must be at zero index");
@@ -1363,9 +1452,17 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
     return Builder.CreateInsertValue(&NewRetVal, OrigRetVal, RetIdx);
   }
   if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
-    AllocaInst *LocalizedGlobal =
+    auto Kind =
+        NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
+    IGC_ASSERT_MESSAGE(
+        Kind == GlobalArgKind::ByValueInOut,
+        "only passed by value localized global should be copied-out");
+    Value *LocalizedGlobal =
         LocalizedGlobals[ArgIdx -
                          NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx];
+    IGC_ASSERT_MESSAGE(
+        isa<AllocaInst>(LocalizedGlobal),
+        "an alloca is expected when pass localized global by value");
     Value *LocalizedGlobalVal = Builder.CreateLoad(LocalizedGlobal);
     return Builder.CreateInsertValue(&NewRetVal, LocalizedGlobalVal, RetIdx);
   }
@@ -1380,6 +1477,29 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
                      "corresponding alloca is expected");
   Value *CurRetByVal = Builder.CreateLoad(CurRetByPtr);
   return Builder.CreateInsertValue(&NewRetVal, CurRetByVal, RetIdx);
+}
+
+// Add some additional code before \p OrigCall to pass localized global value
+// \p GAI to the transformed function.
+// An argument corresponding to \p GAI is returned.
+static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
+  // We should should load the global first to pass it by value.
+  if (GAI.Kind == GlobalArgKind::ByValueIn ||
+      GAI.Kind == GlobalArgKind::ByValueInOut)
+    return new LoadInst(GAI.GV->getType()->getPointerElementType(), GAI.GV,
+                        GAI.GV->getName() + ".val",
+                        /* isVolatile */ false, &OrigCall);
+  IGC_ASSERT_MESSAGE(
+      GAI.Kind == GlobalArgKind::ByPointer,
+      "localized global can be passed only by value or by pointer");
+  auto *GVTy = cast<PointerType>(GAI.GV->getType());
+  // No additional work when addrspaces match
+  if (GVTy->getAddressSpace() == PrivateAddrSpace)
+    return GAI.GV;
+  // Need to add a temprorary cast inst to match types.
+  // When this switch to the caller, it'll remove this cast.
+  return new AddrSpaceCastInst{GAI.GV, changeAddrSpace(GVTy, PrivateAddrSpace),
+                               GAI.GV->getName() + ".tmp", &OrigCall};
 }
 
 namespace {
@@ -1442,13 +1562,11 @@ private:
     IGC_ASSERT_MESSAGE(
         NewCallOps.size() == NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
         "call operands and called function info are inconsistent");
-    llvm::transform(
-        NewFuncInfo.getGlobalArgsInfo().Globals, std::back_inserter(NewCallOps),
-        [&OrigCall](GlobalVariable *GV) {
-          return new LoadInst(GV->getType()->getPointerElementType(), GV,
-                              GV->getName() + ".val",
-                              /* isVolatile */ false, &OrigCall);
-        });
+    llvm::transform(NewFuncInfo.getGlobalArgsInfo().Globals,
+                    std::back_inserter(NewCallOps),
+                    [&OrigCall](GlobalArgInfo GAI) {
+                      return passGlobalAsCallArg(GAI, OrigCall);
+                    });
 
     IGC_ASSERT_EXIT_MESSAGE(!isa<InvokeInst>(OrigCall),
                             "InvokeInst not supported");
@@ -1498,7 +1616,7 @@ public:
                                        OrigFunc.getBasicBlockList());
 
     std::vector<Value *> OrigArgReplacements = handleTransformedFuncArgs();
-    std::vector<AllocaInst *> LocalizedGlobals =
+    std::vector<Value *> LocalizedGlobals =
         handleGlobalArgs(NewFunc, NewFuncInfo.getGlobalArgsInfo());
 
     handleTransformedFuncRets(OrigArgReplacements, LocalizedGlobals);
@@ -1516,7 +1634,8 @@ private:
           switch (Kind) {
           case ArgKind::CopyIn:
           case ArgKind::CopyInOut: {
-            auto *Alloca = new AllocaInst(NewArg.getType(), 0, "", InsertPt);
+            auto *Alloca = new AllocaInst(NewArg.getType(), PrivateAddrSpace,
+                                          "", InsertPt);
             new StoreInst{&NewArg, Alloca, InsertPt};
             return Alloca;
           }
@@ -1558,7 +1677,7 @@ private:
 
   void handleTransformedFuncRet(ReturnInst &OrigRet,
                                 const std::vector<Value *> &OrigArgReplacements,
-                                std::vector<AllocaInst *> &LocalizedGlobals) {
+                                std::vector<Value *> &LocalizedGlobals) {
     Type *NewRetTy = NewFunc.getReturnType();
     IRBuilder<> Builder(&OrigRet);
     auto &&RetToArg = enumerate(NewFuncInfo.getRetToArgInfo().Map);
@@ -1578,7 +1697,7 @@ private:
 
   void
   handleTransformedFuncRets(const std::vector<Value *> &OrigArgReplacements,
-                            std::vector<AllocaInst *> &LocalizedGlobals) {
+                            std::vector<Value *> &LocalizedGlobals) {
     Type *NewRetTy = NewFunc.getReturnType();
     if (NewRetTy->isVoidTy())
       return;
