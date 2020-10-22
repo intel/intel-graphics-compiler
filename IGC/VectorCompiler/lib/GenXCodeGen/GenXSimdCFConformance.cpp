@@ -3090,6 +3090,8 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
     LoweredEM = lowerPHIUse(PN, ToRemove);
   } else if (auto *Arg = dyn_cast<Argument>(EM)) {
     LoweredEM = lowerArgumentUse(Arg);
+  } else if (isa<Constant>(EM) && EM->getType()->getScalarType()->isIntegerTy(1)) {
+    LoweredEM = EM;
   } else
     // All other instructions should not be EM producers with correct DF
     IGC_ASSERT_EXIT_MESSAGE(0, "Failed to lower EM!");
