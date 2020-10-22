@@ -431,11 +431,18 @@ namespace IGC
 
         /// @brief Updates VISA instruction id to current instruction number.
         virtual void UpdateVisaId() = 0;
+
         /// @brief Validate that VISA instruction id is updated to current instruction number.
         virtual void ValidateVisaId() = 0;
+
         /// @brief Return SIMD size of kernel
         virtual uint16_t GetSIMDSize() const = 0;
 
+        /// @brief Return whether llvm instruction is the catch all intrinsic
+        virtual bool IsCatchAllIntrinsic(const llvm::Instruction* pInst) const
+        {
+            return false;
+        }
 
         void SetEntryFunction(llvm::Function* F, bool c)
         {
@@ -523,6 +530,9 @@ namespace IGC
         ObjectType GetType() const { return m_objectType; }
         void SetType(ObjectType t) { m_objectType = t; }
 
+        // This function coalesces GenISARange which is a vector of <start ip, end ip>
+        static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
+
     private:
         std::string m_triple = "vISA_64";
         const llvm::Module* m_pModule = nullptr;
@@ -536,6 +546,7 @@ namespace IGC
         DwarfDebug* dd = nullptr;
 
         unsigned int m_currentVisaId = 0;
+        unsigned int m_catchAllVisaId = 0;
 
         bool isCloned = false;
 

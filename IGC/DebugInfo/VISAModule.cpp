@@ -45,6 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 
 #include "Probe/Assertion.h"
 
@@ -80,6 +81,11 @@ void VISAModule::BeginInstruction(Instruction* pInst)
     unsigned int nextVISAInstId = m_currentVisaId + 1;
     m_instInfoMap[pInst] = InstructionInfo(INVALID_SIZE, nextVISAInstId);
     m_instList.push_back(pInst);
+
+    if(IsCatchAllIntrinsic(pInst))
+    {
+        m_catchAllVisaId = nextVISAInstId;
+    }
 }
 
 void VISAModule::EndInstruction(Instruction* pInst)
@@ -469,6 +475,54 @@ std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> VISAModule::getAllCall
     return std::move(callerSaveIPs);
 }
 
+void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange)
+{
+    class Comp
+    {
+    public:
+        bool operator()(const std::pair<unsigned int, unsigned int>& a,
+            const std::pair<unsigned int, unsigned int>& b)
+        {
+            return a.first < b.first;
+        }
+    } Comp;
+
+    if (GenISARange.size() == 0)
+        return;
+
+    std::sort(GenISARange.begin(), GenISARange.end(), Comp);
+
+    for (unsigned int i = 0; i != GenISARange.size() - 1; i++)
+    {
+        if (GenISARange[i].first == (unsigned int)-1 && GenISARange[i].second == (unsigned int)-1)
+            continue;
+
+        for (unsigned int j = i + 1; j != GenISARange.size(); j++)
+        {
+            if (GenISARange[j].first == (unsigned int)-1 && GenISARange[j].second == (unsigned int)-1)
+                continue;
+
+            if (GenISARange[j].first == GenISARange[i].second)
+            {
+                GenISARange[i].second = GenISARange[j].second;
+                GenISARange[j].first = (unsigned int)-1;
+                GenISARange[j].second = (unsigned int)-1;
+            }
+        }
+    }
+
+
+    for (auto it = GenISARange.begin(); it != GenISARange.end();)
+    {
+        if ((*it).first == (unsigned int)-1 && (*it).second == (unsigned int)-1)
+        {
+            it = GenISARange.erase(it);
+            continue;
+        }
+        it++;
+    }
+}
+
 std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(const InsnRange& Range)
 {
     // Given a range, return vector of start-end range for corresponding Gen ISA instructions
@@ -507,6 +561,7 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
             start = getNextInst(start);
             continue;
         }
+
         auto startVISAOffset = itr->second.m_offset;
         // VISASize indicated # of VISA insts emitted for this
         // LLVM IR inst
@@ -542,52 +597,37 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
         start = getNextInst(start);
     }
 
-    class Comp
-    {
-    public:
-        bool operator()(const std::pair<unsigned int, unsigned int>& a,
-            const std::pair<unsigned int, unsigned int>& b)
-        {
-            return a.first < b.first;
-        }
-    } Comp;
-
     if (GenISARange.size() == 0)
         return GenISARange;
 
-    std::sort(GenISARange.begin(), GenISARange.end(), Comp);
-
-    for (unsigned int i = 0; i != GenISARange.size() - 1; i++)
+    std::unordered_map<unsigned int, unsigned int> unassignedGenOffset;
+    if (m_catchAllVisaId != 0)
     {
-        if (GenISARange[i].first == (unsigned int)-1 && GenISARange[i].second == (unsigned int)-1)
-            continue;
-
-        for (unsigned int j = i + 1; j != GenISARange.size(); j++)
+        auto it = VISAIndexToAllGenISAOff.find(m_catchAllVisaId);
+        if (it != VISAIndexToAllGenISAOff.end())
         {
-            if (GenISARange[j].first == (unsigned int)-1 && GenISARange[j].second == (unsigned int)-1)
-                continue;
-
-            if (GenISARange[j].first == GenISARange[i].second)
+            for (auto& genInst : it->second)
             {
-                GenISARange[i].second = GenISARange[j].second;
-                GenISARange[j].first = (unsigned int)-1;
-                GenISARange[j].second = (unsigned int)-1;
+                unsigned int sizeGenInst = GenISAInstSizeBytes[genInst];
+                unassignedGenOffset[genInst] = sizeGenInst;
+            }
+        }
+
+        // Check whether holes can be filled up using catch all attributed Gen instructions
+        for (unsigned int i = 0; i != GenISARange.size(); i++)
+        {
+            auto rangeEnd = GenISARange[i].second;
+            auto it = unassignedGenOffset.find(rangeEnd);
+            if (it != unassignedGenOffset.end())
+            {
+                GenISARange[i].second += (*it).second;
             }
         }
     }
 
+    coalesceRanges(GenISARange);
 
-    for (auto it = GenISARange.begin(); it != GenISARange.end();)
-    {
-        if ((*it).first == (unsigned int)-1 && (*it).second == (unsigned int)-1)
-        {
-            it = GenISARange.erase(it);
-            continue;
-        }
-        it++;
-    }
-
-    return GenISARange;
+    return std::move(GenISARange);
 }
 
 bool VISAVariableLocation::IsSampler() const

@@ -1,6 +1,7 @@
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/CodeGenPublic.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
 
 #include "DebugInfo/DebugInfoUtils.hpp"
@@ -546,6 +547,12 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     IGC_ASSERT_MESSAGE(0, "Empty variable location");
     ret.push_back(VISAVariableLocation(this));
     return ret;
+}
+
+bool ScalarVisaModule::IsCatchAllIntrinsic(const llvm::Instruction* pInst) const
+{
+    return ((isa<GenIntrinsicInst>(pInst) &&
+        cast<GenIntrinsicInst>(pInst)->getIntrinsicID() == GenISAIntrinsic::GenISA_CatchAllDebugLine));
 }
 
 // OpenCL keyword constant is used as qualifier to variables whose values remain the
