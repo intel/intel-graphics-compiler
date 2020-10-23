@@ -4890,8 +4890,11 @@ namespace IGC
                     else
                     {
                         visaAsmOverride = false;
-                        std::string message = "Cannot open overridden file! Put all .visaasm files in ShaderOverride dir.";
-                        appendToShaderOverrideLogFile(message, "WARNING: ");
+                        if (functionCount > 0)
+                        {
+                            std::string message = "Cannot open overridden file! Put all .visaasm files in ShaderOverride dir.";
+                            appendToShaderOverrideLogFile(message, "WARNING: ");
+                        }
                         break;
 
                     }
