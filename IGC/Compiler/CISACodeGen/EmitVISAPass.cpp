@@ -554,7 +554,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (hasStackCall) {
+    if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && hasStackCall) {
         // conservative set the hasNonKernelArgLoad/Store to true
         m_pCtx->m_hasNonKernelArgLoad = true;
         m_pCtx->m_hasNonKernelArgStore = true;

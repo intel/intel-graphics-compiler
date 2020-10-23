@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/Optimizer/CodeAssumption.hpp"
@@ -604,6 +603,51 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 m_changed = true;
             }
         }
+
+        // check if there's non-kernel-arg load/store
+        if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
+            // FIXME: should use the helper functions defined in Compiler/CISACodeGen/helper.h
+            auto isLoadIntrinsic = [](const GenISAIntrinsic::ID id)
+            {
+                switch (id)
+                {
+                case GenISAIntrinsic::GenISA_simdBlockRead:
+                    return true;
+                default:
+                    break;
+                }
+                return false;
+            };
+            auto isStoreIntrinsic = [](const GenISAIntrinsic::ID id)
+            {
+                switch (id) {
+                case GenISAIntrinsic::GenISA_simdBlockWrite:
+                    return true;
+                default:
+                    break;
+                }
+                return false;
+            };
+            auto isAtomicsIntrinsic = [&isUntypedAtomics](const GenISAIntrinsic::ID id)
+            {
+                return isUntypedAtomics(id);
+            };
+            if (isLoadIntrinsic(intrinID) ||
+                isStoreIntrinsic(intrinID)  ||
+                isAtomicsIntrinsic(intrinID)) {
+
+                Value* ptr = Inst->getOperand(0);
+                if (!pointerIsFromKernelArgument(*ptr)) {
+                    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                    if (isStoreIntrinsic(intrinID))
+                        ctx->m_hasNonKernelArgStore = true;
+                    else if (isLoadIntrinsic(intrinID))
+                        ctx->m_hasNonKernelArgLoad = true;
+                    else
+                        ctx->m_hasNonKernelArgAtomic = true;
+                }
+            }
+        }
     }
 }
 
@@ -652,6 +696,13 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
 
         m_changed = true;
     }
+
+    // check if there's non-kernel-arg load/store
+    if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
+        ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        ctx->m_hasNonKernelArgLoad = true;
+    }
 }
 
 void StatelessToStatefull::visitStoreInst(StoreInst& I)
@@ -692,6 +743,12 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
 
             m_changed = true;
         }
+    }
+
+    if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
+        ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        ctx->m_hasNonKernelArgStore = true;
     }
 }
 
