@@ -965,21 +965,27 @@ void CFGStructurizer::preProcess()
         bool isLastBB = ((std::next(BI) == BE)
             || (B->Succs.empty() && phySucc && (phySucc->getBBType() & G4_BB_INIT_TYPE))
             || (B->getBBType() & G4_BB_EXIT_TYPE));
-        BB_LIST_ITER IT, IE;
         if (isLastBB)
         {
-            // case 3
-            if (B->Preds.size() >= 2)
+            for (auto IT = B->Preds.begin(), IE = B->Preds.end(); IT != IE; IT++)
             {
-                // Maybe don't set if B's physical pred is its pred.
-                // But doing so shouldn't cause any perf regression!
+                G4_BB* P = *IT;
+                if (P == B->getPhysicalPred())
+                {
+                    // If pred is B's physicalPred, skip. Even if pred actually
+                    // gotos/jmpi to B, the goto/jmpi shall be removed later.
+                    continue;
+                }
+                G4_INST* gotoInstP = getGotoInst(P);
+                G4_INST* jmpiInstP = getJmpiInst(P);
+                if (!gotoInstP && !jmpiInstP)
+                {
+                    continue;
+                }
+                // case 3
+                // P must have a forward-goto/jmpi to B (B is the last BB).
                 insertEmptyBBBefore = true;
-            }
-            else if (B->Preds.size() == 1)
-            {
-                G4_BB* phyPred = B->getPhysicalPred();
-                G4_BB* pred = B->Preds.back();
-                insertEmptyBBBefore = (phyPred != pred);
+                break;
             }
         }
 
@@ -990,7 +996,7 @@ void CFGStructurizer::preProcess()
             bool isForwardTarget = false;
             bool isBackwardTarget = false;
             bool isFallThruOfBackwardGotoBB = false;
-            for (IT = B->Preds.begin(), IE = B->Preds.end(); IT != IE; IT++)
+            for (auto IT = B->Preds.begin(), IE = B->Preds.end(); IT != IE; IT++)
             {
                 G4_BB* P = *IT;
                 G4_INST* gotoInstP = getGotoInst(P);
@@ -1034,8 +1040,8 @@ void CFGStructurizer::preProcess()
 
         // Adjust BB's pred/succs
         BB_LIST_ITER NextIT;
-        IT = B->Preds.begin();
-        IE = B->Preds.end();
+        BB_LIST_ITER IT = B->Preds.begin();
+        BB_LIST_ITER IE = B->Preds.end();
         for (NextIT = IT; IT != IE; IT = NextIT)
         {
             ++NextIT;
@@ -1050,8 +1056,8 @@ void CFGStructurizer::preProcess()
             if (   !gotoInst && !jmpiInst       // not jump to B
                 && P->getPhysicalSucc() != B)   // not fall-thru to B
             {
-                // Shouldn't happen.
-                assert(false && "unknown control-flow instruction!");
+                // Possible mixed goto/if-endif. Skip non-goto/non-jmpi edges.
+                continue;
             }
 
             // forward branching/fall-thru "P->B" is changed to "P->newBB"
