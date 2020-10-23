@@ -597,8 +597,6 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF)
         )
     {
-        CheckSIMDSize(CI, "Shuffle not supported in SIMD32");
-
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle function
         IRBuilder<> IRB(&CI);
         Value* args[3];
@@ -617,8 +615,6 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US) ||
         funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC))
     {
-        CheckSIMDSize(CI, "Shuffle Down not supported in SIMD32");
-
         // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_shuffle_down function
         Value* args[3];
         args[0] = CI.getArgOperand(0);
