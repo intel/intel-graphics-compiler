@@ -2026,8 +2026,10 @@ int IR_Builder::translateVISALoad3DInst(
     G4_SrcRegRegion *header = nullptr;
     if (useHeader)
     {
-        G4_Declare *dcl = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
-        (void) createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, nullptr);
+        G4_Declare* dcl = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
+        {
+            (void)createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, nullptr);
+        }
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
@@ -2127,6 +2129,7 @@ int IR_Builder::translateVISAGather3dInst(
         ++numRows;
     }
 
+
     if (execSize > getNativeExecSize() && numRows > 11)
     {
         // decrementing since we will produce SIMD8 code.
@@ -2151,7 +2154,9 @@ int IR_Builder::translateVISAGather3dInst(
     {
         const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
         G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
-        samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, sampler);
+        {
+            samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, sampler);
+        }
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
