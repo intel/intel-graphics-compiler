@@ -1975,17 +1975,6 @@ public:
 
     void applySideBandOffset(G4_Operand* sideBand, G4_SendMsgDescriptor* sendMsgDesc);
 
-    int translateVISASLMUntypedScaledInst(
-        bool                   isRead,
-        G4_Predicate          *pred,
-        VISA_Exec_Size         execSize,
-        VISA_EMask_Ctrl        eMask,
-        ChannelMask            chMask,
-        uint16_t               scale,
-        G4_Operand             *globalOffset,
-        G4_SrcRegRegion        *offsets,
-        G4_Operand             *srcOrDst);
-
     int translateVISAGather4ScaledInst(
         G4_Predicate *pred,
         VISA_Exec_Size execSize,
@@ -2045,18 +2034,6 @@ public:
         G4_Operand *globalOffset,
         G4_SrcRegRegion *offsets,
         G4_SrcRegRegion *src);
-
-    int translateVISASLMByteScaledInst(
-        bool isRead,
-        G4_Predicate *pred,
-        VISA_Exec_Size execSize,
-        VISA_EMask_Ctrl eMask,
-        VISA_SVM_Block_Type blockSize,
-        VISA_SVM_Block_Num numBlocks,
-        uint8_t scale,
-        G4_Operand *sideBand,
-        G4_SrcRegRegion *offsets,
-        G4_Operand *srcOrDst);
 
     int translateByteGatherInst(
         G4_Predicate *pred,

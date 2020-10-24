@@ -563,7 +563,7 @@ int IR_Builder::translateVISAGatherInst(
         if (eltSize == GATHER_SCATTER_WORD || IsSLMSurface(surface))
         {
             // For non-SLM surface, WORD gather/scatter has no hardware
-            // supportr and must be translated into BYTE gather/scatter.
+            // support and must be translated into BYTE gather/scatter.
             //
             // SLM surface supports only BYTE gather/scatter
             // support and also needs translating into BYTE gather/scatter.
@@ -1906,81 +1906,6 @@ static void BuildMH2_A32(IR_Builder *IRB, G4_Declare *header,
     }
 }
 
-
-int IR_Builder::translateVISASLMUntypedScaledInst(
-    bool isRead,
-    G4_Predicate *pred,
-    VISA_Exec_Size execSize,
-    VISA_EMask_Ctrl eMask,
-    ChannelMask chMask,
-    uint16_t scale,
-    G4_Operand *sideBand,
-    G4_SrcRegRegion *offsets,
-    G4_Operand *srcOrDst)
-{
-    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-    G4_ExecSize exSize {Get_VISA_Exec_Size(execSize)};
-    G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize);
-
-    PayloadSource sources[2]; // Maximal 2 sources, offset + source
-    unsigned len = 0;
-
-    sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
-    sources[len].instOpt = instOpt;
-    ++len;
-    if (!isRead)
-    {
-        sources[len].opnd = srcOrDst->asSrcRegRegion();
-        sources[len].execSize = G4_ExecSize(exSize * chMask.getNumEnabledChannels());
-        sources[len].instOpt = instOpt;
-        ++len;
-    }
-
-    G4_SrcRegRegion *msgs[2] = { 0, 0 };
-    unsigned sizes[2] = { 0, 0 };
-    preparePayload(msgs, sizes, exSize, true, sources, len);
-
-    SFID sfid = SFID::DP_DC2;
-
-    unsigned MD = 0;
-    // Leave sidebind scale offset 0 as it is not used now.
-    MD |= (isRead ? DC2_UNTYPED_SURFACE_READ : DC2_UNTYPED_SURFACE_WRITE) << 14;
-    MD |= (execSize == EXEC_SIZE_8 ? MDC_SM3_SIMD8 : MDC_SM3_SIMD16) << 12;
-    MD |= chMask.getHWEncoding() << 8;
-    // SLM encodes scale pitch in MD.
-    MD |= 1 << 7;
-    MD |= scale & 0x7F;
-
-    G4_DstRegRegion *dst = isRead ? srcOrDst->asDstRegRegion() : createNullDst(Type_UD);
-    unsigned resLen = isRead ? (exSize / GENX_DATAPORT_IO_SZ) *
-        chMask.getNumEnabledChannels() : 0;
-
-    uint32_t exFuncCtrl = 0;
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], sfid,
-        sizes[1], (uint16_t)exFuncCtrl, isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY);
-
-    applySideBandOffset(sideBand, sendMsgDesc);
-
-    createSplitSendInst(
-        pred,
-        G4_sends,
-        exSize,
-        dst,
-        msgs[0],
-        msgs[1],
-        createImm(sendMsgDesc->getDesc(), Type_UD),
-        instOpt,
-        sendMsgDesc,
-        Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()),
-        true);
-
-    return VISA_SUCCESS;
-}
-
-
-
 int IR_Builder::translateVISAGather4ScaledInst(
     G4_Predicate     *pred,
     VISA_Exec_Size    execSize,
@@ -2270,83 +2195,6 @@ int IR_Builder::translateVISAScatterScaledInst(
     surface = lowerSurface255To253(surface, *this);
     return translateByteScatterInst(pred, execSize, eMask, numBlocks,
         surface, globalOffset, offsets, src);
-}
-
-//
-// For a SLM byte scaled inst with non-zero sideband, we must generate a split send
-// and store the sideband into the extended message descriptor.  ExDesc must be indirect
-// in this case
-//
-int IR_Builder::translateVISASLMByteScaledInst(
-    bool isRead,
-    G4_Predicate *pred,
-    VISA_Exec_Size execSize,
-    VISA_EMask_Ctrl eMask,
-    VISA_SVM_Block_Type blockSize,
-    VISA_SVM_Block_Num numBlocks,
-    uint8_t scale,
-    G4_Operand *sideBand,
-    G4_SrcRegRegion *offsets,
-    G4_Operand *srcOrDst)
-{
-    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
-    G4_ExecSize exSize {Get_VISA_Exec_Size(execSize)};
-    G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize);
-    unsigned numBatch = GetNumBatch(blockSize, numBlocks);
-
-    uint16_t exFuncCtrl = 0;
-    PayloadSource sources[3];
-    unsigned len = 0;
-
-    sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
-    sources[len].instOpt = instOpt;
-    ++len;
-    if (!isRead)
-    {
-        sources[len].opnd = srcOrDst->asSrcRegRegion();
-        sources[len].execSize = G4_ExecSize(exSize * numBatch);
-        sources[len].instOpt = instOpt;
-        ++len;
-    }
-
-    G4_SrcRegRegion *msgs[2] = { 0, 0 };
-    unsigned sizes[2] = { 0, 0 };
-    preparePayload(msgs, sizes, exSize, true, sources, len);
-
-    SFID sfid = SFID::DP_DC2;
-
-    unsigned MD = 0;
-    // Leave sidebind scale offset 0 as it is not used now.
-    MD |= (isRead ? DC2_BYTE_SCATTERED_READ : DC2_BYTE_SCATTERED_WRITE) << 14;
-    MD |= numBlocks << 10;
-    MD |= (execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16) << 8;
-    MD |= 1 << 7;
-    MD |= scale & 0x7F;
-
-    G4_DstRegRegion *dst = isRead ? srcOrDst->asDstRegRegion() : createNullDst(Type_UD);
-    unsigned resLen = isRead ? (exSize / GENX_DATAPORT_IO_SZ) * numBatch : 0;
-
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], sfid,
-        sizes[1], exFuncCtrl, isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY);
-
-    applySideBandOffset(sideBand, sendMsgDesc);
-
-    createSplitSendInst(
-        pred,
-        G4_sends,
-        exSize,
-        dst,
-        msgs[0],
-        msgs[1],
-        createImm(sendMsgDesc->getDesc(), Type_UD),
-        instOpt,
-        sendMsgDesc,
-        Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar()),
-        true);
-
-    return VISA_SUCCESS;
 }
 
 static void BuildMH_A32_GO(
