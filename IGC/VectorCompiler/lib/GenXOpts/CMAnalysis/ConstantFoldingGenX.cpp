@@ -135,7 +135,6 @@ static Constant *constantFoldWrRegion(Type *RetTy,
                                       const CMRegion &R, const DataLayout &DL) {
   Constant *OldValue = Operands[GenXIntrinsic::GenXRegion::OldValueOperandNum];
   Constant *NewValue = Operands[GenXIntrinsic::GenXRegion::NewValueOperandNum];
-  Constant *Mask = Operands[GenXIntrinsic::GenXRegion::PredicateOperandNum];
   // The inputs can be ConstantExpr if we are being called from
   // CallAnalyzer.
   if (isa<ConstantExpr>(OldValue) || isa<ConstantExpr>(NewValue))
@@ -148,8 +147,7 @@ static Constant *constantFoldWrRegion(Type *RetTy,
 
   const int RetElemSize = DL.getTypeSizeInBits(RetTy->getScalarType()) / 8;
   unsigned Offset = OffsetC->getSExtValue() / RetElemSize;
-  if (isa<UndefValue>(OldValue) && R.isContiguous() && Offset == 0 &&
-      Mask->isAllOnesValue()) {
+  if (isa<UndefValue>(OldValue) && R.isContiguous() && (Offset == 0)) {
     // If old value is undef and new value is splat, and the result vector
     // is no bigger than 2 GRFs, then just return a splat of the right type.
     Constant *Splat = NewValue;
@@ -174,7 +172,7 @@ static Constant *constantFoldWrRegion(Type *RetTy,
     return UndefValue::get(RetTy); // out of range index
   if (!isa<VectorType>(NewValue->getType()))
     Values[Offset] = NewValue;
-  else if (!Mask->isZeroValue()) {
+  else {
     unsigned RowIdx = Offset;
     unsigned Idx = RowIdx;
     unsigned NextRow = R.Width;
@@ -187,10 +185,7 @@ static Constant *constantFoldWrRegion(Type *RetTy,
       if (Idx >= WholeNumElements)
         // return collected values even if idx is out of bounds
         return ConstantVector::get(Values);
-      if (Mask->isAllOnesValue() ||
-          (Mask->getType()->isVectorTy() &&
-           !cast<ConstantVector>(Mask)->getAggregateElement(i)->isZeroValue()))
-        Values[Idx] = NewValue->getAggregateElement(i);
+      Values[Idx] = NewValue->getAggregateElement(i);
       Idx += R.Stride;
     }
   }
