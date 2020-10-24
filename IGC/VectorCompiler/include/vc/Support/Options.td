@@ -68,6 +68,11 @@ def optimize_eq : Joined<["-"], "optimize=">,
 def no_optimize : Flag<["-"], "no-optimize">,
   Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
 
+def cl_opt_disable : Flag<["-"], "cl-opt-disable">,
+  Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
+def ze_opt_disable : Flag<["-"], "ze-opt-disable">,
+  Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
+
 def no_vector_decomposition : Flag<["-"], "no-vector-decomposition">,
   HelpText<"Disable vector decomposition pass">;
 // Old igcmc alias.
