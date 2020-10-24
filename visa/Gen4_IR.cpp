@@ -88,11 +88,11 @@ G4_InstOptInfo InstOptInfo[] =
 };
 
 #define HANDLE_INST(op, nsrc, ndst, type, plat, attr) \
-    { G4_##op, #op, nsrc, ndst, type, plat, \
-      attr },
+    { G4_##op, #op, nsrc, ndst, type, plat, attr },
+
+
 #define HANDLE_NAME_INST(op, name, nsrc, ndst, type, plat, attr) \
-    { G4_##op, name, nsrc, ndst, type, plat, \
-      attr },
+    { G4_##op, name, nsrc, ndst, type, plat, attr },
 
 const G4_Inst_Info G4_Inst_Table[] = {
 #include "G4Instruction.def"

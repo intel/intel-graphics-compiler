@@ -322,6 +322,7 @@ extern G4_InstOptInfo InstOptInfo[];
 #define INST_FLOAT_SRC_ONLY(inst)   (G4_Inst_Table[inst].attributes & ATTR_FLOAT_SRC_ONLY)
 
 #define HANDLE_INST(op, nsrc, ndst, type, plat, attr) G4_ ## op,
+
 enum G4_opcode
 {
 #include "G4Instruction.def"

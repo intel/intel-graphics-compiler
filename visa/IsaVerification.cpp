@@ -1571,7 +1571,10 @@ void vISAVerifier::verifyInstructionArith(
             break;
         }
         case ISA_DP4A:
-            REPORT_INSTRUCTION(options, srcType == ISA_TYPE_D || srcType == ISA_TYPE_UD, "%s src0 and src1 only supports single UD type", ISA_Inst_Table[opcode].str);
+            REPORT_INSTRUCTION(options,
+                srcType == ISA_TYPE_D || srcType == ISA_TYPE_UD,
+                "%s src0 and src1 only supports single UD type",
+                ISA_Inst_Table[opcode].str);
             break;
         default:
             break; // Prevent gcc warning
@@ -1585,8 +1588,11 @@ void vISAVerifier::verifyInstructionArith(
     {
         bool fOpcodeIEEE = (opcode == ISA_DIVM) || (opcode == ISA_SQRTM);
         bool dfOpcodeIEEE = fOpcodeIEEE || (opcode == ISA_INV) || (opcode == ISA_DIV) || (opcode == ISA_SQRT);
-        REPORT_INSTRUCTION(options, !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) && !(dstType == ISA_TYPE_F && fOpcodeIEEE),
-            "IEEE instruction %s is not supported on %s platform", ISA_Inst_Table[opcode].str, platformString[platform]);
+        REPORT_INSTRUCTION(options,
+            !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) &&
+                !(dstType == ISA_TYPE_F && fOpcodeIEEE),
+            "IEEE instruction %s is not supported on %s platform",
+            ISA_Inst_Table[opcode].str, platformString[platform]);
     }
 }
 
@@ -1602,12 +1608,14 @@ void vISAVerifier::verifyInstructionLogic(
         const vector_opnd& opnd = getVectorOperand(inst, i);
         VISA_Type opnd_type = getVectorOperandType(header, opnd);
 
-        REPORT_INSTRUCTION(options,opnd.getOperandClass() != OPERAND_ADDRESS,
-                          "Common ISA Logic instrutions are not allowed to have address operands.");
+        REPORT_INSTRUCTION(
+            options, opnd.getOperandClass() != OPERAND_ADDRESS,
+            "Common ISA Logic instrutions are not allowed to have address operands.");
 
-        REPORT_INSTRUCTION(options,!pred_logic || opnd_type == ISA_TYPE_BOOL,
-                         "Operand type of logic operantion for predicate operands should all be BOOL "
-                         "(ie if one operand is BOOL they all have to be BOOL).");
+        REPORT_INSTRUCTION(options,
+            !pred_logic || opnd_type == ISA_TYPE_BOOL,
+            "Operand type of logic operantion for predicate operands should all be BOOL "
+            "(ie if one operand is BOOL they all have to be BOOL).");
 
         if (opcode == ISA_ROR || opcode == ISA_ROL)
         {
@@ -1638,13 +1646,13 @@ void vISAVerifier::verifyInstructionLogic(
             case ISA_TYPE_UQ:
             case ISA_TYPE_Q:
                  REPORT_INSTRUCTION(options,opcode != ISA_FBL && opcode != ISA_FBH && opcode != ISA_CBIT,
-                         "fbl/fbh/cbit does not support Q/UQ type.");
+                    "fbl/fbh/cbit does not support Q/UQ type.");
                  break;
             case ISA_TYPE_BOOL:
             {
                  pred_logic = true;
-                 REPORT_INSTRUCTION(options,inst->pred == 0,
-                                   "Predicate can not be used in logic operantion for predicate operands.");
+                 REPORT_INSTRUCTION(options, inst->pred == 0,
+                    "Predicate can not be used in logic operantion for predicate operands.");
                  break;
             }
             case ISA_TYPE_DF:
