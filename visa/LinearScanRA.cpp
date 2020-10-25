@@ -42,6 +42,7 @@ LinearScanRA::LinearScanRA(BankConflictPass& b, GlobalRA& g, LivenessAnalysis& l
     kernel(g.kernel), builder(g.builder), l(liveAnalysis), mem(g.builder.mem), bc(b), gra(g)
 {
     stackCallArgLR = nullptr;
+    stackCallRetLR = nullptr;
 }
 
 void LinearScanRA::allocForbiddenVector(LSLiveRange* lr)
@@ -801,276 +802,45 @@ void LinearScanRA::preRAAnalysis()
     return;
 }
 
-void LinearScanRA::saveRegs(
-    unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
+void LinearScanRA::getCalleeSaveRegisters()
 {
+    unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+    unsigned int numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
 
-    assert(builder.getPlatform() >= GENX_SKL && "stack call only supported on SKL+");
+    gra.calleeSaveRegs.resize(numCalleeSaveRegs, false);
+    gra.calleeSaveRegCount = 0;
 
-    if (owordSize == 8 || owordSize == 4 || owordSize == 2)
+    G4_Declare* dcl = builder.kernel.fg.pseudoVCEDcl;
+    LSLiveRange* lr = gra.getLSLR(dcl);
+    const bool* forbidden = lr->getForbidden();
+    unsigned int startCalleeSave = builder.kernel.getCallerSaveLastGRF() + 1;
+    unsigned int endCalleeSave = startCalleeSave + builder.kernel.getNumCalleeSaveRegs() - 1;
+    for (unsigned i = 0; i < builder.kernel.getNumRegTotal(); i++)
     {
-        // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
-        // sends (8) null<1>:ud    r126.0    r1.0 ...
-        G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
-        unsigned messageLength = ROUND(owordSize, 2) / 2;
-        G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, GRFALIGN, "StackCall");
-        msgDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(startReg), 0);
-        auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
-            builder.getRegionStride1(), Type_UD);
-        G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
-        G4_INST* spillIntrinsic = nullptr;
-            spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
-        bb->insertBefore(insertIt, spillIntrinsic);
-    }
-    else if (owordSize > 8)
-    {
-        saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        saveRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
-    }
-    //
-    // Split into chunks of sizes 4 and remaining owords.
-    //
-    else if (owordSize > 4)
-    {
-        saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        saveRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
-    }
-    //
-    // Split into chunks of sizes 2 and remaining owords.
-    //
-    else if (owordSize > 2)
-    {
-        saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        saveRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
-    }
-    else
-    {
-        MUST_BE_TRUE(false, ERROR_REGALLOC);
-    }
-}
-
-//
-// Generate the save code for the i/p saveRegs.
-//
-void LinearScanRA::saveActiveRegs(
-    std::vector<bool>& saveRegs, unsigned startReg, unsigned frameOffset,
-    G4_BB* bb, INST_LIST_ITER insertIt)
-{
-    G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
-    G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
-
-    unsigned frameOwordPos = frameOffset;
-    unsigned startPos = 0;
-
-    while (startPos < saveRegs.size())
-    {
-        for (; startPos < saveRegs.size() && saveRegs[startPos] == false; startPos++);
-        if (startPos < saveRegs.size() && saveRegs[startPos]) {
-            unsigned endPos = startPos + 1;
-            for (; endPos < saveRegs.size() && saveRegs[endPos] == true; endPos++);
-            unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
-            owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
-            this->saveRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
-            frameOwordPos += owordSize;
-            startPos = endPos;
-        }
-    }
-}
-
-//
-// Generate the restore code for the i/p restoreRegs.
-//
-void LinearScanRA::restoreActiveRegs(
-    std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset,
-    G4_BB* bb, INST_LIST_ITER insertIt)
-{
-    G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
-    G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
-
-    unsigned frameOwordPos = frameOffset;
-    unsigned startPos = 0;
-
-    while (startPos < restoreRegs.size())
-    {
-        for (; startPos < restoreRegs.size() && restoreRegs[startPos] == false; startPos++);
-        if (startPos < restoreRegs.size() && restoreRegs[startPos]) {
-            unsigned endPos = startPos + 1;
-            for (; endPos < restoreRegs.size() && restoreRegs[endPos] == true; endPos++);
-            unsigned owordSize = (endPos - startPos) * GlobalRA::GRFSizeToOwords(1);
-            owordSize = std::max(owordSize, GlobalRA::GRFSizeToOwords(1));
-            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
-            frameOwordPos += owordSize;
-            startPos = endPos;
-        }
-    }
-}
-
-//
-// Generate the restore code for startReg to startReg+owordSize/2.
-//
-void LinearScanRA::restoreRegs(
-    unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
-{
-    //
-    // Process chunks of size 8, 4, 2 and 1.
-    //
-    if (owordSize == 8 || owordSize == 4 || owordSize == 2)
-    {
-        G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
-        unsigned responseLength = ROUND(owordSize, 2) / 2;
-        G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, GRFALIGN, "StackCall");
-        dstDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(startReg), 0);
-        G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
-        G4_INST* fillIntrinsic = nullptr;
-            fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
-        bb->insertBefore(insertIt, fillIntrinsic);
-    }
-    //
-    // Split into chunks of sizes 8 and remaining owords.
-    //
-    else if (owordSize > 8)
-    {
-        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(8), owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
-    }
-    //
-    // Split into chunks of sizes 4 and remaining owords.
-    //
-    else if (owordSize > 4)
-    {
-        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(4), owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
-    }
-    //
-    // Split into chunks of sizes 2 and remaining owords.
-    //
-    else if (owordSize > 2)
-    {
-        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-        restoreRegs(startReg + GlobalRA::owordToGRFSize(2), owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
-    }
-    else
-    {
-        MUST_BE_TRUE(false, ERROR_REGALLOC);
-    }
-}
-
-void LinearScanRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs)
-{
-    unsigned startPos = 0;
-    while (startPos < saveRegs.size())
-    {
-        for (; startPos < saveRegs.size() && !saveRegs[startPos]; ++startPos);
-        if (startPos == saveRegs.size())
+        if (forbidden[i])
         {
-            break;
-        }
-        if (startPos + 4 <= saveRegs.size())
-        {
-            if (saveRegs[startPos] & saveRegs[startPos + 2] & !saveRegs[startPos + 3])
+            if (i >= startCalleeSave && i < endCalleeSave)
             {
-                saveRegs[startPos + 1] = saveRegs[startPos + 3] = true;
-            }
-            else if (saveRegs[startPos] & saveRegs[startPos + 3])
-            {
-                if (startPos + 4 < saveRegs.size())
-                {
-                    if (!saveRegs[startPos + 4])
-                    {
-                        saveRegs[startPos + 1] = saveRegs[startPos + 2] = true;
-                    }
-                }
-                else
-                {
-                    saveRegs[startPos + 1] = saveRegs[startPos + 2] = true;
-                }
+                gra.calleeSaveRegs[i - callerSaveNumGRF] = true;
+                gra.calleeSaveRegCount++;
             }
         }
-        unsigned winBound = (unsigned)((saveRegs.size() < startPos + 4) ? saveRegs.size() : startPos + 4);
-        for (; startPos < winBound && saveRegs[startPos]; ++startPos);
     }
 }
 
-void LinearScanRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs)
+void LinearScanRA::getCallerSaveRegisters()
 {
-    unsigned startPos = 0;
-    while (startPos < saveRegs.size())
-    {
-        for (; startPos < saveRegs.size() && !saveRegs[startPos]; ++startPos);
-        if (startPos == saveRegs.size())
-        {
-            break;
-        }
-        if (startPos + 4 <= saveRegs.size())
-        {
-            if (saveRegs[startPos] & saveRegs[startPos + 2])
-            {
-                if (!saveRegs[startPos + 1] & !retRegs[startPos + 1])
-                {
-                    saveRegs[startPos + 1] = true;
-                }
-                if (!saveRegs[startPos + 3] & !retRegs[startPos + 3])
-                {
-                    saveRegs[startPos + 3] = true;
-                }
-            }
-            else if (saveRegs[startPos] & saveRegs[startPos + 3])
-            {
-                if (startPos + 4 < saveRegs.size())
-                {
-                    if (!saveRegs[startPos + 4])
-                    {
-                        if (!saveRegs[startPos + 1] & !retRegs[startPos + 1])
-                        {
-                            saveRegs[startPos + 1] = true;
-                        }
-                        if (!saveRegs[startPos + 2] & !retRegs[startPos + 2])
-                        {
-                            saveRegs[startPos + 2] = true;
-                        }
-                    }
-                }
-                else
-                {
-                    if (!saveRegs[startPos + 1] & !retRegs[startPos + 1])
-                    {
-                        saveRegs[startPos + 1] = true;
-                    }
-                    if (!saveRegs[startPos + 2] & !retRegs[startPos + 2])
-                    {
-                        saveRegs[startPos + 2] = true;
-                    }
-                }
-            }
-        }
-        unsigned winBound = (unsigned)((saveRegs.size() < startPos + 4) ? saveRegs.size() : startPos + 4);
-        for (; startPos < winBound && saveRegs[startPos]; ++startPos);
-    }
-}
-
-void LinearScanRA::addCallerSaveRestoreCode()
-{
-
-    uint32_t maxCallerSaveSize = 0;
     unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
     for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
     {
         if ((*it)->isEndWithFCall())
         {
-            //
-            // Determine the caller-save registers per call site.
-            //
-            std::vector<bool> callerSaveRegs(callerSaveNumGRF, false);
-            std::vector<bool> retRegs(callerSaveNumGRF, false);
+            gra.callerSaveRegsMap[(*it)].resize(callerSaveNumGRF, false);
+            gra.retRegsMap[(*it)].resize(callerSaveNumGRF, false);
             unsigned callerSaveRegCount = 0;
             G4_INST* callInst = (*it)->back();
             ASSERT_USER((*it)->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
-            G4_BB* afterFCallBB = (*it)->Succs.front();
             G4_Declare* dcl = builder.kernel.fg.fcallToPseudoDclMap[callInst->asCFInst()].VCA->getRegVar()->getDeclare();
             LSLiveRange* lr = gra.getLSLR(dcl);
 
@@ -1083,7 +853,7 @@ void LinearScanRA::addCallerSaveRestoreCode()
                 {
                     if (i >= startCalleeSave && i < endCalleeSave)
                     {
-                        callerSaveRegs[i] = true;
+                        gra.callerSaveRegsMap[(*it)][i] = true;
                         callerSaveRegCount++;
                     }
                 }
@@ -1099,389 +869,24 @@ void LinearScanRA::addCallerSaveRestoreCode()
                     {
                         if (i >= startCalleeSave && i < endCalleeSave)
                         {
-                            retRegs[i] = true;
+                            gra.retRegsMap[(*it)][i] = true;
                         }
                     }
                 }
             }
 
-            OptimizeActiveRegsFootprint(callerSaveRegs, retRegs);
-
-            unsigned callerSaveRegsWritten = 0;
-            for (std::vector<bool>::iterator vit = callerSaveRegs.begin(), vitend = callerSaveRegs.end();
-                vit != vitend;
-                vit++)
-                callerSaveRegsWritten += ((*vit) ? 1 : 0);
-
-            INST_LIST_ITER insertSaveIt = (*it)->end();
-            --insertSaveIt, --insertSaveIt;
-            while ((*insertSaveIt)->isPseudoKill())
-            {
-                --insertSaveIt;
-            }
-            MUST_BE_TRUE((*insertSaveIt)->isCallerSave(), ERROR_REGALLOC);
-            INST_LIST_ITER rmIt = insertSaveIt;
-            if (insertSaveIt == (*it)->begin())
-            {
-                insertSaveIt = (*it)->end();
-            }
-
-            if (insertSaveIt != (*it)->end())
-            {
-                ++insertSaveIt;
-            }
-            else
-            {
-                insertSaveIt = (*it)->begin();
-            }
-            if (callerSaveRegCount > 0)
-            {
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    builder.kernel.getKernelDebugInfo()->clearOldInstList();
-                    builder.kernel.getKernelDebugInfo()->setOldInstList
-                    ((*it));
-                }
-
-                saveActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    (*it), insertSaveIt);
-
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    ((*it));
-                    for (auto jt : deltaInstList)
-                    {
-                        builder.kernel.getKernelDebugInfo()->addCallerSaveInst(*it, jt);
-                    }
-                }
-            }
-            (*it)->erase(rmIt);
-            INST_LIST_ITER insertRestIt = afterFCallBB->begin();
-            for (; !(*insertRestIt)->isCallerRestore(); ++insertRestIt);
-            if (callerSaveRegCount > 0)
-            {
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    builder.kernel.getKernelDebugInfo()->clearOldInstList();
-                    builder.kernel.getKernelDebugInfo()->setOldInstList
-                    (afterFCallBB);
-                }
-
-                restoreActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    afterFCallBB, insertRestIt);
-
-                if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-                {
-                    auto deltaInsts = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    (afterFCallBB);
-                    for (auto jt : deltaInsts)
-                    {
-                        builder.kernel.getKernelDebugInfo()->addCallerRestoreInst
-                        (*it, jt);
-                    }
-                }
-            }
-            afterFCallBB->erase(insertRestIt);
-
-            maxCallerSaveSize = std::max(maxCallerSaveSize, callerSaveRegsWritten * getGRFSize());
-
-            if (builder.kernel.getOption(vISA_OptReport))
-            {
-                std::ofstream optreport;
-                getOptReportStream(optreport, builder.kernel.getOptions());
-                optreport << "Caller save size: " << callerSaveRegCount * getGRFSize() <<
-                    " bytes for fcall at cisa id " <<
-                    (*it)->back()->getCISAOff() << std::endl;
-                closeOptReportStream(optreport);
-            }
+            gra.callerSaveRegCountMap[(*it)] = callerSaveRegCount;
         }
-    }
-
-    auto byteOffset = builder.kernel.fg.callerSaveAreaOffset * 16 + maxCallerSaveSize;
-    builder.kernel.fg.frameSizeInOWord = ROUND(byteOffset, 64) / 16;
-
-    builder.instList.clear();
-}
-
-void LinearScanRA::addGenxMainStackSetupCode()
-{
-    uint32_t fpInitVal = (uint32_t)kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
-    // FIXME: a potential failure here is that frameSizeInOword is already the offset based on
-    // GlobalSratchOffset, which is the value of fpInitVal. So below we generate code to do
-    // SP = fpInitVal + frameSize, which does not make sense. It is correct now since when there's stack call,
-    // IGC will not use scratch, so fpInitVal will be 0.
-    unsigned frameSize = builder.kernel.fg.frameSizeInOWord;
-    G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
-    G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
-
-    auto entryBB = builder.kernel.fg.getEntryBB();
-    auto insertIt = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-    //
-    // FP = spillMemOffset
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDst(framePtr->getRegVar(), 0, 0, 1, Type_UD);
-        G4_Imm * src = builder.createImm(fpInitVal, Type_UD);
-        G4_INST* fpInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
-        insertIt = entryBB->insertBefore(insertIt, fpInst);
-
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(fpInst);
-            builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
-        }
-    }
-    //
-    // SP = FP + FrameSize (overflow-area offset + overflow-area size)
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
-        G4_Imm * src = builder.createImm(fpInitVal + frameSize, Type_UD);
-        G4_INST* spIncInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
-        entryBB->insertBefore(++insertIt, spIncInst);
-    }
-
-    if (builder.kernel.getOption(vISA_OptReport))
-    {
-        std::ofstream optreport;
-        getOptReportStream(optreport, builder.kernel.getOptions());
-        optreport << "Total frame size: " << frameSize * 16 << " bytes" << std::endl;
-        closeOptReportStream(optreport);
     }
 }
 
-//
-// Add code to setup the stack frame in callee.
-//
-void LinearScanRA::addCalleeStackSetupCode()
+void LinearScanRA::getSaveRestoreRegister()
 {
-    int frameSize = (int)builder.kernel.fg.frameSizeInOWord;
-    G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
-    G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
-
-    if (frameSize == 0)
+    if (!builder.getIsKernel())
     {
-        // Remove store/restore_be_fp because a new frame is not needed
-        G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-        auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
-        builder.kernel.fg.getEntryBB()->erase(insertIt);
-
-        insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-        for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt)
-        {   /* void */
-        };
-        builder.kernel.fg.getUniqueReturnBlock()->erase(insertIt);
-
-        return;
+        getCalleeSaveRegisters();
     }
-    //
-    // BE_FP = BE_SP
-    // BE_SP += FrameSize
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
-        G4_DstRegRegion* fp_dst = builder.createDst(framePtr->getRegVar(), 0, 0, 1, Type_UD);
-        const RegionDesc* rDesc = builder.getRegionScalar();
-        G4_Operand* src0 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_Operand* sp_src = builder.createSrcRegRegion(Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_Imm * src1 = builder.createImm(frameSize, Type_UD);
-        auto createBEFP = builder.createMov(g4::SIMD1, fp_dst, sp_src, InstOpt_WriteEnable, false);
-        auto addInst = builder.createBinOp(G4_add, g4::SIMD1,
-            dst, src0, src1, InstOpt_WriteEnable, false);
-        G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-        auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
-        MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
-
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            G4_INST* callerFPSave = (*insertIt);
-            builder.kernel.getKernelDebugInfo()->setBEFPSetupInst(createBEFP);
-            builder.kernel.getKernelDebugInfo()->setCallerBEFPSaveInst(callerFPSave);
-            builder.kernel.getKernelDebugInfo()->setFrameSize(frameSize * 16);
-        }
-
-        insertIt++;
-        entryBB->insertBefore(insertIt, createBEFP);
-        entryBB->insertBefore(insertIt, addInst);
-    }
-    //
-    // BE_SP = BE_FP
-    // BE_FP = oldFP (dst of pseudo_restore_be_fp)
-    //
-    {
-        G4_DstRegRegion* sp_dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
-        const RegionDesc* rDesc = builder.getRegionScalar();
-        G4_Operand* fp_src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_INST* spRestore = builder.createMov(g4::SIMD1, sp_dst, fp_src, InstOpt_WriteEnable, false);
-        INST_LIST_ITER insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-        for (--insertIt; (*insertIt) != gra.getRestoreBE_FPInst(); --insertIt);
-
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            G4_INST* callerFPRestore = (*insertIt);
-            builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(spRestore);
-            builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(callerFPRestore);
-        }
-        builder.kernel.fg.getUniqueReturnBlock()->insertBefore(insertIt, spRestore);
-    }
-    builder.instList.clear();
-
-    if (builder.kernel.getOption(vISA_OptReport))
-    {
-        std::ofstream optreport;
-        getOptReportStream(optreport, builder.kernel.getOptions());
-        optreport << std::endl << "Total frame size: "
-            << frameSize * 16 << " bytes" << std::endl;
-        closeOptReportStream(optreport);
-    }
-}
-
-void LinearScanRA::stackCallProlog()
-{
-    // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
-    // This sets up the header for oword block r/w used for caller/callee-save
-    // ToDo: check if this move is actually necessary
-    if (kernel.fg.getIsStackCallFunc())
-        return;
-
-    auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
-    auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
-
-    G4_INST* mov = builder.createMov(G4_ExecSize(numEltPerGRF(Type_UD)), dstRgn, srcRgn, InstOpt_WriteEnable, false);
-
-    G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-    auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-    entryBB->insertBefore(iter, mov);
-}
-
-//
-// Add callee save/restore code at stack call function entry/exit.
-//
-void LinearScanRA::addCalleeSaveRestoreCode()
-{
-    unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
-    // Determine the callee-save registers.
-    unsigned int numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
-    std::vector<bool> calleeSaveRegs(numCalleeSaveRegs, false);
-    unsigned calleeSaveRegCount = 0;
-
-    G4_Declare *dcl = builder.kernel.fg.pseudoVCEDcl;
-    LSLiveRange* lr = gra.getLSLR(dcl);
-
-    const bool* forbidden = lr->getForbidden();
-    unsigned int startCalleeSave = builder.kernel.getCallerSaveLastGRF() + 1;
-    unsigned int endCalleeSave = startCalleeSave + builder.kernel.getNumCalleeSaveRegs() - 1;
-    for (unsigned i = 0; i < builder.kernel.getNumRegTotal(); i++)
-    {
-        if (forbidden[i])
-        {
-            if (i >= startCalleeSave && i < endCalleeSave)
-            {
-                calleeSaveRegs[i - callerSaveNumGRF] = true;
-                calleeSaveRegCount++;
-            }
-        }
-    }
-
-    OptimizeActiveRegsFootprint(calleeSaveRegs);
-    unsigned calleeSaveRegsWritten = 0;
-    for (std::vector<bool>::iterator vit = calleeSaveRegs.begin(), vitend = calleeSaveRegs.end();
-        vit != vitend;
-        vit++)
-        calleeSaveRegsWritten += ((*vit) ? 1 : 0);
-
-    INST_LIST_ITER insertSaveIt = builder.kernel.fg.getEntryBB()->end();
-    for (--insertSaveIt; !(*insertSaveIt)->isCalleeSave(); --insertSaveIt);
-    if (calleeSaveRegCount > 0)
-    {
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            // Store old inst list so we can separate callee save
-            // instructions that get inserted.
-            builder.kernel.getKernelDebugInfo()->clearOldInstList();
-            builder.kernel.getKernelDebugInfo()->setOldInstList
-            (builder.kernel.fg.getEntryBB());
-        }
-        saveActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getEntryBB(), insertSaveIt);
-
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            // Delta of oldInstList and current instList are all
-            // callee save instructions.
-            auto instList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-            (builder.kernel.fg.getEntryBB());
-            for (auto inst : instList)
-            {
-                builder.kernel.getKernelDebugInfo()->addCalleeSaveInst(inst);
-            }
-        }
-    }
-    builder.kernel.fg.getEntryBB()->erase(insertSaveIt);
-    INST_LIST_ITER insertRestIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-    for (--insertRestIt; !(*insertRestIt)->isCalleeRestore(); --insertRestIt);
-    INST_LIST_ITER eraseIt = insertRestIt++;
-    if (calleeSaveRegCount > 0)
-    {
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            // Store old inst list so we can separate callee save
-            // instructions that get inserted.
-            builder.kernel.getKernelDebugInfo()->clearOldInstList();
-            builder.kernel.getKernelDebugInfo()->setOldInstList
-            (builder.kernel.fg.getUniqueReturnBlock());
-        }
-
-        restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt);
-
-        if (builder.kernel.getOption(vISA_GenerateDebugInfo))
-        {
-            auto instList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-            (builder.kernel.fg.getUniqueReturnBlock());
-            for (auto inst : instList)
-            {
-                builder.kernel.getKernelDebugInfo()->addCalleeRestoreInst(inst);
-            }
-        }
-    }
-    builder.kernel.fg.getUniqueReturnBlock()->erase(eraseIt);
-
-    builder.instList.clear();
-
-    // caller-save starts after callee-save and is 64-byte aligned
-    auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 + calleeSaveRegsWritten * getGRFSize();
-    builder.kernel.fg.callerSaveAreaOffset = ROUND(byteOffset, 64) / 16;
-}
-
-
-void LinearScanRA::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
-{
-    if (builder.getIsKernel())
-    {
-        builder.kernel.fg.callerSaveAreaOffset = localSpillAreaOwordSize;
-    }
-    else
-    {
-        builder.kernel.fg.calleeSaveAreaOffset = localSpillAreaOwordSize;
-        addCalleeSaveRestoreCode();
-    }
-    addCallerSaveRestoreCode();
-
-    if (builder.getIsKernel())
-    {
-        addGenxMainStackSetupCode();
-    }
-    else
-    {
-        addCalleeStackSetupCode();
-    }
-    stackCallProlog();
-
-    builder.instList.clear();
+    getCallerSaveRegisters();
 }
 
 /*
@@ -1525,6 +930,13 @@ int LinearScanRA::linearScanRA()
     for (auto bb : kernel.fg)
     {
         regions[entryBB->getId()].push_back(bb);
+    }
+
+    if (kernel.fg.getIsStackCallFunc())
+    {
+        // Allocate space to store Frame Descriptor
+        nextSpillOffset += 32;
+        scratchOffset += 32;
     }
 
     std::list<LSLiveRange*> spillLRs;
@@ -1739,8 +1151,9 @@ int LinearScanRA::linearScanRA()
 
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
     {
+        getSaveRestoreRegister();
         unsigned localSpillAreaOwordSize = ROUND(scratchOffset, 64) / 16;
-        addSaveRestoreCode(localSpillAreaOwordSize);
+        gra.addSaveRestoreCode(localSpillAreaOwordSize);
     }
     return VISA_SUCCESS;
 }
@@ -1851,6 +1264,20 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
         else
         {
             lr = stackCallArgLR;
+        }
+    }
+    else if (dcl == kernel.fg.builder->getStackCallRet())
+    {
+        if (stackCallRetLR == nullptr)
+        {
+            lr = new (mem)LSLiveRange();
+            stackCallRetLR = lr;
+            lr->setTopDcl(dcl);
+            allocForbiddenVector(lr);
+        }
+        else
+        {
+            lr = stackCallRetLR;
         }
     }
     // Check whether local LR is a candidate
@@ -2224,6 +1651,16 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
             }
         }
 
+        if (curInst->isFReturn())
+        {
+            uint16_t retSize = kernel.fg.builder->getRetVarSize();
+            if (retSize)
+            {
+                assert(stackCallRetLR);
+                stackCallRetLR->setLastRef(curInst, curInst->getLexicalId() * 2);
+                stackCallRetLR = nullptr;
+            }
+        }
 
         // Scan srcs
         for (int i = 0, nSrcs = curInst->getNumSrc(); i < nSrcs; i++)

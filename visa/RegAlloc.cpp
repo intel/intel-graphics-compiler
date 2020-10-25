@@ -2847,7 +2847,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 const BitSet& indr_use = liveAnalysis.indr_use[bb->getId()];
 
-                                if (strstr(dcl->getName(), GraphColor::StackCallStr) != NULL)
+                                if (strstr(dcl->getName(), GlobalRA::StackCallStr) != NULL)
                                 {
                                     DEBUG_MSG("RA verification warning: Found conflicting stackCall variable: " << dcl->getName()
                                         << " and " << (*liveOutRegMapIt).second->getName() << " assigned to r" <<
@@ -2918,7 +2918,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                 {
                                     const BitSet& indr_use = liveAnalysis.indr_use[bb->getId()];
 
-                                    if (strstr(dcl->getName(), GraphColor::StackCallStr) != NULL)
+                                    if (strstr(dcl->getName(), GlobalRA::StackCallStr) != NULL)
                                     {
                                         DEBUG_MSG("RA verification warning: Found conflicting stackCall variables: " << dcl->getName()
                                             << " and " << (*liveOutRegMapIt).second->getName() << " assigned to r" <<
@@ -3014,7 +3014,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     liveOutRegVec[idx] = varID;
                                     (*liveOutRegMapIt).second = dcl;
                                 }
-                                else if (strstr(dcl->getName(), GraphColor::StackCallStr) != NULL)
+                                else if (strstr(dcl->getName(), GlobalRA::StackCallStr) != NULL)
                                 {
                                     DEBUG_MSG("RA verification warning: Found conflicting stackCall variables: " << dcl->getName()
                                         << " and " << (*liveOutRegMapIt).second->getName() << " assigned to r" <<
@@ -3092,7 +3092,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                         liveOutRegVec[idx] = varID;
                                         (*liveOutRegMapIt).second = dcl;
                                     }
-                                    else if (strstr(dcl->getName(), GraphColor::StackCallStr) != NULL)
+                                    else if (strstr(dcl->getName(), GlobalRA::StackCallStr) != NULL)
                                     {
                                         DEBUG_MSG("RA verification warning: Found conflicting stackCall variables: " << dcl->getName()
                                             << " and " << (*liveOutRegMapIt).second->getName() << " assigned to r" <<

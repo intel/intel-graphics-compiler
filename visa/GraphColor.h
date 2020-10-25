@@ -602,8 +602,6 @@ namespace vISA
     public:
         GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_);
 
-        static const char* StackCallStr;
-
         const Options * getOptions() { return m_options; }
 
         bool regAlloc(
@@ -618,31 +616,14 @@ namespace vISA
         void confirmRegisterAssignments();
         void resetTemporaryRegisterAssignments();
         void cleanupRedundantARFFillCode();
+        void getCalleeSaveRegisters();
         void addA0SaveRestoreCode();
         void addFlagSaveRestoreCode();
-        void addSaveRestoreCode(unsigned);
-        void addCallerSaveRestoreCode();
-        void addCalleeSaveRestoreCode();
-        void addGenxMainStackSetupCode();
-        void addCalleeStackSetupCode();
-        void saveRegs(
-            unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
-        void saveActiveRegs(
-            std::vector<bool>& saveRegs, unsigned startReg,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
-        void restoreRegs(
-            unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
-        void restoreActiveRegs(
-            std::vector<bool>& restoreRegs, unsigned startReg,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
-        void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs);
-        void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs);
+        void getSaveRestoreRegister();
+        void getCallerSaveRegisters();
         void dumpRegisterPressure();
         GlobalRA & getGRA() { return gra; }
         G4_SrcRegRegion* getScratchSurface() const;
-        void stackCallProlog();
         LiveRange** getLRs() {
             return lrs;
         }
@@ -737,6 +718,7 @@ namespace vISA
                 return false;
             return true;
         }
+        static const char* StackCallStr;
 
     private:
         template <class REGION_TYPE> static unsigned getRegionDisp(REGION_TYPE * region);
@@ -811,6 +793,11 @@ namespace vISA
         std::unordered_set<G4_INST*> calleeRestoreInsts;
         std::unordered_map<G4_INST*, std::unordered_set<G4_INST*>> callerSaveInsts;
         std::unordered_map<G4_INST*, std::unordered_set<G4_INST*>> callerRestoreInsts;
+        std::unordered_map<G4_BB*, std::vector<bool>> callerSaveRegsMap;
+        std::unordered_map<G4_BB*, unsigned> callerSaveRegCountMap;
+        std::unordered_map<G4_BB*, std::vector<bool>> retRegsMap;
+        std::vector<bool> calleeSaveRegs;
+        unsigned calleeSaveRegCount;
 
     public:
         G4_Kernel& kernel;
@@ -1345,12 +1332,24 @@ namespace vISA
 
         void determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpillRegSize);
         G4_Imm* createMsgDesc(unsigned owordSize, bool writeType, bool isSplitSend);
+        void stackCallProlog();
+        void saveRegs(unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr, unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
+        void saveActiveRegs(std::vector<bool>& saveRegs, unsigned startReg, unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
         void addrRegAlloc();
         void flagRegAlloc();
         bool hybridRA(bool doBankConflictReduction, bool highInternalConflict, LocalRA& lra);
         void assignRegForAliasDcl();
         void removeSplitDecl();
         int coloringRegAlloc();
+        void restoreRegs(unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr, unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
+        void restoreActiveRegs(std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group);
+        void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs);
+        void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs);
+        void addCallerSaveRestoreCode();
+        void addCalleeSaveRestoreCode();
+        void addGenxMainStackSetupCode();
+        void addCalleeStackSetupCode();
+        void addSaveRestoreCode(unsigned localSpillAreaOwordSize);
         void addCallerSavePseudoCode();
         void addCalleeSavePseudoCode();
         void addStoreRestoreToReturn();

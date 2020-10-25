@@ -87,7 +87,7 @@ unsigned int BitMask[BITS_DWORD] =
     0x80000000
 };
 
-const char* GraphColor::StackCallStr = "StackCall";
+const char* GlobalRA::StackCallStr = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
@@ -6898,7 +6898,7 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
     return builder.createImm(message, Type_UD);
 }
 
-void GraphColor::stackCallProlog()
+void GlobalRA::stackCallProlog()
 {
     // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
     // This sets up the header for oword block r/w used for caller/callee-save
@@ -6937,7 +6937,7 @@ void GraphColor::stackCallProlog()
 //
 // Generate the save code for startReg to startReg+owordSize/2.
 //
-void GraphColor::saveRegs(
+void GlobalRA::saveRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
     unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
 {
@@ -6991,7 +6991,7 @@ void GraphColor::saveRegs(
 //
 // Generate the save code for the i/p saveRegs.
 //
-void GraphColor::saveActiveRegs(
+void GlobalRA::saveActiveRegs(
     std::vector<bool>& saveRegs, unsigned startReg, unsigned frameOffset,
     G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
 {
@@ -7024,7 +7024,7 @@ G4_SrcRegRegion* GraphColor::getScratchSurface() const
 //
 // Generate the restore code for startReg to startReg+owordSize/2.
 //
-void GraphColor::restoreRegs(
+void GlobalRA::restoreRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
     unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
 {
@@ -7036,7 +7036,7 @@ void GraphColor::restoreRegs(
         G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
         unsigned responseLength = GlobalRA::owordToGRFSize(owordSize);
         G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, GRFALIGN, GraphColor::StackCallStr);
+            Type_UD, GRFALIGN, StackCallStr);
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
         G4_INST* fillIntrinsic = nullptr;
@@ -7077,7 +7077,7 @@ void GraphColor::restoreRegs(
 //
 // Generate the restore code for the i/p restoreRegs.
 //
-void GraphColor::restoreActiveRegs(
+void GlobalRA::restoreActiveRegs(
     std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset,
     G4_BB* bb, INST_LIST_ITER insertIt, std::unordered_set<G4_INST*>& group)
 {
@@ -7108,7 +7108,7 @@ void GraphColor::restoreActiveRegs(
 // are using oword read/write for save/restore, we can only read/write only in units of 1, 2
 // or 4 regs per "send" instruction.
 //
-void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs)
+void GlobalRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs)
 {
     unsigned startPos = 0;
     while (startPos < saveRegs.size())
@@ -7144,7 +7144,7 @@ void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs)
     }
 }
 
-void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs)
+void GlobalRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs)
 {
     unsigned startPos = 0;
     while (startPos < saveRegs.size())
@@ -7201,13 +7201,8 @@ void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::v
     }
 }
 
-//
-// Add caller save/restore code before/after each stack call.
-//
-void GraphColor::addCallerSaveRestoreCode()
+void GraphColor::getCallerSaveRegisters()
 {
-
-    uint32_t maxCallerSaveSize = 0;
     unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
     for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
@@ -7217,13 +7212,12 @@ void GraphColor::addCallerSaveRestoreCode()
             //
             // Determine the caller-save registers per call site.
             //
-            std::vector<bool> callerSaveRegs(callerSaveNumGRF, false);
-            std::vector<bool> retRegs(callerSaveNumGRF, false);
+            gra.callerSaveRegsMap[(*it)].resize(callerSaveNumGRF, false);
+            gra.retRegsMap[(*it)].resize(callerSaveNumGRF, false);
             unsigned callerSaveRegCount = 0;
             G4_INST* callInst = (*it)->back();
             unsigned pseudoVCAId = builder.kernel.fg.fcallToPseudoDclMap[callInst->asCFInst()].VCA->getRegVar()->getId();
             ASSERT_USER((*it)->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
-            G4_BB* afterFCallBB = (*it)->Succs.front();
 
             for (unsigned i = 0; i < numVar; i++)
             {
@@ -7245,16 +7239,16 @@ void GraphColor::addCallerSaveRestoreCode()
                         {
                             if (builder.isPreDefRet(lrs[i]->getDcl()))
                             {
-                                if (retRegs[j] == false)
+                                if (gra.retRegsMap[(*it)][j] == false)
                                 {
-                                    retRegs[j] = true;
+                                    gra.retRegsMap[(*it)][j] = true;
                                 }
                             }
                             else
                             {
-                                if (callerSaveRegs[j] == false)
+                                if (gra.callerSaveRegsMap[(*it)][j] == false)
                                 {
-                                    callerSaveRegs[j] = true;
+                                    gra.callerSaveRegsMap[(*it)][j] = true;
                                     callerSaveRegCount++;
                                 }
                             }
@@ -7262,10 +7256,43 @@ void GraphColor::addCallerSaveRestoreCode()
                     }
                 }
             }
-            OptimizeActiveRegsFootprint(callerSaveRegs, retRegs);
+
+            gra.callerSaveRegCountMap[(*it)] = callerSaveRegCount;
+
+            if (builder.kernel.getOption(vISA_OptReport))
+            {
+                std::ofstream optreport;
+                getOptReportStream(optreport, builder.kernel.getOptions());
+                optreport << "Caller save size: " << callerSaveRegCount * getGRFSize() <<
+                    " bytes for fcall at cisa id " <<
+                    (*it)->back()->getCISAOff() << std::endl;
+                closeOptReportStream(optreport);
+            }
+        }
+    }
+}
+
+//
+// Add caller save/restore code before/after each stack call.
+//
+void GlobalRA::addCallerSaveRestoreCode()
+{
+    uint32_t maxCallerSaveSize = 0;
+
+    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
+    {
+        if ((*it)->isEndWithFCall())
+        {
+            //
+            // Determine the caller-save registers per call site.
+            //
+            G4_INST* callInst = (*it)->back();
+            G4_BB* afterFCallBB = (*it)->Succs.front();
+
+            OptimizeActiveRegsFootprint(callerSaveRegsMap[(*it)], retRegsMap[(*it)]);
 
             unsigned callerSaveRegsWritten = 0;
-            for (std::vector<bool>::iterator vit = callerSaveRegs.begin(), vitend = callerSaveRegs.end();
+            for (std::vector<bool>::iterator vit = callerSaveRegsMap[(*it)].begin(), vitend = callerSaveRegsMap[(*it)].end();
                 vit != vitend;
                 vit++)
                 callerSaveRegsWritten += ((*vit) ? 1 : 0);
@@ -7291,7 +7318,7 @@ void GraphColor::addCallerSaveRestoreCode()
             {
                 insertSaveIt = (*it)->begin();
             }
-            if (callerSaveRegCount > 0)
+            if (callerSaveRegCountMap[(*it)] > 0)
             {
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7300,8 +7327,8 @@ void GraphColor::addCallerSaveRestoreCode()
                     ((*it));
                 }
 
-                saveActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    (*it), insertSaveIt, gra.callerSaveInsts[callInst]);
+                saveActiveRegs(callerSaveRegsMap[(*it)], 0, builder.kernel.fg.callerSaveAreaOffset,
+                    (*it), insertSaveIt, callerSaveInsts[callInst]);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7316,7 +7343,7 @@ void GraphColor::addCallerSaveRestoreCode()
             (*it)->erase(rmIt);
             INST_LIST_ITER insertRestIt = afterFCallBB->begin();
             for (; !(*insertRestIt)->isCallerRestore(); ++insertRestIt);
-            if (callerSaveRegCount > 0)
+            if (callerSaveRegCountMap[(*it)] > 0)
             {
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7325,8 +7352,8 @@ void GraphColor::addCallerSaveRestoreCode()
                     (afterFCallBB);
                 }
 
-                restoreActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    afterFCallBB, insertRestIt, gra.callerRestoreInsts[callInst]);
+                restoreActiveRegs(callerSaveRegsMap[(*it)], 0, builder.kernel.fg.callerSaveAreaOffset,
+                    afterFCallBB, insertRestIt, callerRestoreInsts[callInst]);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
@@ -7342,16 +7369,6 @@ void GraphColor::addCallerSaveRestoreCode()
             afterFCallBB->erase(insertRestIt);
 
             maxCallerSaveSize = std::max(maxCallerSaveSize, callerSaveRegsWritten * getGRFSize());
-
-            if (m_options->getOption(vISA_OptReport))
-            {
-                std::ofstream optreport;
-                getOptReportStream(optreport, m_options);
-                optreport << "Caller save size: " << callerSaveRegCount * getGRFSize() <<
-                    " bytes for fcall at cisa id " <<
-                    (*it)->back()->getCISAOff() << std::endl;
-                closeOptReportStream(optreport);
-            }
         }
     }
 
@@ -7361,19 +7378,15 @@ void GraphColor::addCallerSaveRestoreCode()
     builder.instList.clear();
 }
 
-//
-// Add callee save/restore code at stack call function entry/exit.
-//
-void GraphColor::addCalleeSaveRestoreCode()
+void GraphColor::getCalleeSaveRegisters()
 {
-
     unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
     unsigned int numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
 
     // Determine the callee-save registers.
 
-    std::vector<bool> calleeSaveRegs(numCalleeSaveRegs, false);
-    unsigned calleeSaveRegCount = 0;
+    gra.calleeSaveRegs.resize(numCalleeSaveRegs, false);
+    gra.calleeSaveRegCount = 0;
 
     unsigned pseudoVCEId = builder.kernel.fg.pseudoVCEDcl->getRegVar()->getId();
     unsigned int stackCallStartReg = builder.kernel.getStackCallStartReg();
@@ -7392,15 +7405,23 @@ void GraphColor::addCalleeSaveRestoreCode()
                 endReg = (endReg < stackCallStartReg) ? endReg : stackCallStartReg;
                 for (unsigned j = startReg; j < endReg; j++)
                 {
-                    if (calleeSaveRegs[j - callerSaveNumGRF] == false)
+                    if (gra.calleeSaveRegs[j - callerSaveNumGRF] == false)
                     {
-                        calleeSaveRegs[j - callerSaveNumGRF] = true;
-                        calleeSaveRegCount++;
+                        gra.calleeSaveRegs[j - callerSaveNumGRF] = true;
+                        gra.calleeSaveRegCount++;
                     }
                 }
             }
         }
     }
+}
+
+//
+// Add callee save/restore code at stack call function entry/exit.
+//
+void GlobalRA::addCalleeSaveRestoreCode()
+{
+    unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
     OptimizeActiveRegsFootprint(calleeSaveRegs);
     unsigned calleeSaveRegsWritten = 0;
@@ -7422,7 +7443,7 @@ void GraphColor::addCalleeSaveRestoreCode()
             (builder.kernel.fg.getEntryBB());
         }
         saveActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getEntryBB(), insertSaveIt, gra.calleeSaveInsts);
+            builder.kernel.fg.getEntryBB(), insertSaveIt, calleeSaveInsts);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7452,7 +7473,7 @@ void GraphColor::addCalleeSaveRestoreCode()
         }
 
         restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt, gra.calleeRestoreInsts);
+            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt, calleeRestoreInsts);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7471,10 +7492,10 @@ void GraphColor::addCalleeSaveRestoreCode()
     // caller-save starts after callee-save and is 64-byte aligned
     auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 + calleeSaveRegsWritten * getGRFSize();
     builder.kernel.fg.callerSaveAreaOffset = ROUND(byteOffset, 64) / 16;
-    if (m_options->getOption(vISA_OptReport))
+    if (builder.kernel.getOption(vISA_OptReport))
     {
         std::ofstream optreport;
-        getOptReportStream(optreport, m_options);
+        getOptReportStream(optreport, builder.kernel.getOptions());
         optreport << "Callee save size: " << calleeSaveRegCount * getGRFSize() <<
             " bytes" << std::endl;
         closeOptReportStream(optreport);
@@ -7484,7 +7505,7 @@ void GraphColor::addCalleeSaveRestoreCode()
 //
 // Add code to setup the stack frame in callee.
 //
-void GraphColor::addGenxMainStackSetupCode()
+void GlobalRA::addGenxMainStackSetupCode()
 {
     uint32_t fpInitVal = (uint32_t)kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     // FIXME: a potential failure here is that frameSizeInOword is already the offset based on
@@ -7523,10 +7544,10 @@ void GraphColor::addGenxMainStackSetupCode()
         entryBB->insertBefore(++insertIt, spIncInst);
     }
 
-    if (m_options->getOption(vISA_OptReport))
+    if (builder.kernel.getOption(vISA_OptReport))
     {
         std::ofstream optreport;
-        getOptReportStream(optreport, m_options);
+        getOptReportStream(optreport, builder.kernel.getOptions());
         optreport << "Total frame size: " << frameSize * 16 << " bytes" << std::endl;
         closeOptReportStream(optreport);
     }
@@ -7535,7 +7556,7 @@ void GraphColor::addGenxMainStackSetupCode()
 //
 // Add code to setup the stack frame in callee.
 //
-void GraphColor::addCalleeStackSetupCode()
+void GlobalRA::addCalleeStackSetupCode()
 {
     int frameSize = (int)builder.kernel.fg.frameSizeInOWord;
     uint16_t factor = 1;
@@ -7560,7 +7581,7 @@ void GraphColor::addCalleeStackSetupCode()
         auto addInst = builder.createBinOp(G4_add, g4::SIMD1,
             dst, src0, src1, InstOpt_WriteEnable, false);
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-        auto insertIt = std::find(entryBB->begin(), entryBB->end(), gra.getSaveBE_FPInst());
+        auto insertIt = std::find(entryBB->begin(), entryBB->end(), getSaveBE_FPInst());
         MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
@@ -7579,10 +7600,10 @@ void GraphColor::addCalleeStackSetupCode()
 
     builder.instList.clear();
 
-    if (m_options->getOption(vISA_OptReport))
+    if (builder.kernel.getOption(vISA_OptReport))
     {
         std::ofstream optreport;
-        getOptReportStream(optreport, m_options);
+        getOptReportStream(optreport, builder.kernel.getOptions());
         optreport << std::endl << "Total frame size: "
             << frameSize * 16 << " bytes" << std::endl;
         closeOptReportStream(optreport);
@@ -7726,12 +7747,20 @@ void GraphColor::addFlagSaveRestoreCode()
     builder.instList.clear();
 }
 
+void GraphColor::getSaveRestoreRegister()
+{
+    if (!builder.getIsKernel())
+    {
+        getCalleeSaveRegisters();
+    }
+    getCallerSaveRegisters();
+}
 //
 // Add GRF caller/callee save/restore code for stack calls.
 // localSpillAreaOwordsize specifices the starting offset of the caller/callee-save area in this frame.
 // It is 64-byte aligned.
 //
-void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
+void GlobalRA::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
 {
     auto gtpin = builder.kernel.getGTPinData();
     if (gtpin &&
@@ -9267,7 +9296,8 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
 
         if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
         {
-            coloring.addSaveRestoreCode(0);
+            coloring.getSaveRestoreRegister();
+            addSaveRestoreCode(0);
         }
 
         if (verifyAugmentation)
@@ -9758,7 +9788,8 @@ int GlobalRA::coloringRegAlloc()
                     // spill/fill intrinsics expect offset in HWord, so round up to 64 byte but maintain it in OWord unit
                     // ToDo: we really need to change everything to byte for everyone's sanity..
                     unsigned localSpillAreaOwordSize = ROUND(scratchOffset, 64) / 16;
-                    coloring.addSaveRestoreCode(localSpillAreaOwordSize);
+                    coloring.getSaveRestoreRegister();
+                    addSaveRestoreCode(localSpillAreaOwordSize);
                 }
 
                 if (kernel.getOption(vISA_DumpRegChart))
