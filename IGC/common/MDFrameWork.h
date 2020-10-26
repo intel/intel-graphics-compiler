@@ -237,6 +237,8 @@ namespace IGC
         std::vector<ComputeShaderSecondCompileInputInfoMD> ComputeShaderSecondCompile;
         unsigned char forcedSIMDSize = 0;  // 0 means not forced
         bool forcedVISAPreRAScheduler = false;
+        // disables dispatch along y and tiled order optimizations
+        bool disableLocalIdOrderOptimizations = false;
     };
 
 

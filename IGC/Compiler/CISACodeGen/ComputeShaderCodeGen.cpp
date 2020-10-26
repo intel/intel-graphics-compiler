@@ -122,8 +122,12 @@ namespace IGC
 
     void CComputeShader::selectWalkOrder()
     {
+        const ComputeShaderContext* pCtx =
+            static_cast<const ComputeShaderContext*>(GetContext());
+
         if ((m_numberOfTypedAccess >= m_numberOfUntypedAccess) &&
             m_threadGroupSize_Y % 4 == 0 &&
+            !pCtx->getModuleMetaData()->csInfo.disableLocalIdOrderOptimizations &&
             IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder)) {
             m_tileY = true;
             m_walkOrder = WO_YXZ;
@@ -386,8 +390,12 @@ namespace IGC
     {
         CreateImplicitArgs();
 
+        const ComputeShaderContext* pCtx =
+            static_cast<const ComputeShaderContext*>(GetContext());
+
         if (IGC_IS_FLAG_ENABLED(DispatchGPGPUWalkerAlongYFirst) &&
             (m_num2DAccesses > m_num1DAccesses) &&
+            !pCtx->getModuleMetaData()->csInfo.disableLocalIdOrderOptimizations &&
             GetContext()->m_DriverInfo.SupportsDispatchGPGPUWalkerAlongYFirst())
         {
             m_dispatchAlongY = true;
