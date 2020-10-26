@@ -547,8 +547,9 @@ private:
     // and it won't be covered.
     IGC_ASSERT_MESSAGE(
         !isa<PHINode>(Inst) &&
-            std::all_of(Inst.user_begin(), Inst.user_end(),
-                        [](const User *U) { return !isa<PHINode>(U); }),
+            (IsTerminal(Inst) ||
+             std::all_of(Inst.user_begin(), Inst.user_end(),
+                         [](const User *U) { return !isa<PHINode>(U); })),
         "phi-nodes aren't yet supported");
     auto InstIsTerminal = IsTerminal(Inst);
     Info.push_back({&Inst, OperandNo, NewOperand, InstIsTerminal});
