@@ -199,5 +199,6 @@ INITIALIZE_PASS_END(GenXLowerAggrCopies, "genx-lower-aggr-copies",
                 false, false)
 
 FunctionPass *llvm::createGenXLowerAggrCopiesPass() {
+  initializeGenXLowerAggrCopiesPass(*PassRegistry::getPassRegistry());
   return new GenXLowerAggrCopies();
 }
