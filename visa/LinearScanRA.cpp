@@ -1445,7 +1445,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
                     continue;
 
                 if (dcl->getRegFile() == G4_INPUT &&
-                    dcl->getRegVar()->getPhyReg()->isGreg() && //Filter out the architecture registers
+                    dcl->getRegVar()->isGreg() && //Filter out the architecture registers
                     dcl->isOutput() == false &&  //Input and out should be marked as unavailable
                     !builder.isPreDefArg(dcl) &&  //Not stack call associated variables
                     l.isLiveAtExit(bb, dcl->getRegVar()->getId()))
@@ -1478,7 +1478,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
                 topdcl = GetTopDclFromRegRegion(dst);
                 if (topdcl &&
                     topdcl->getRegFile() == G4_INPUT &&
-                    dst->isGreg() &&
+                    topdcl->getRegVar()->isGreg() &&
                     topdcl->isOutput() == false &&
                     !builder.isPreDefArg(topdcl))
                 {
@@ -1501,7 +1501,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
                     topdcl = GetTopDclFromRegRegion(src);
 
                     if (topdcl && topdcl->getRegFile() == G4_INPUT &&
-                        src->isGreg() &&
+                        (topdcl->getRegVar()->isGreg()) &&
                         topdcl->isOutput() == false &&
                         !builder.isPreDefArg(topdcl))
                     {
@@ -1529,7 +1529,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
                     MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
 
                     if (topdcl->getRegFile() == G4_INPUT &&
-                        src->isGreg() &&
+                        topdcl->getRegVar()->isGreg() &&
                         topdcl->isOutput() == false &&
                         !builder.isPreDefArg(topdcl))
                     {
