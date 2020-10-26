@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InlineAsm.h>
 #include "llvm/IR/GetElementPtrTypeIterator.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -73,6 +74,7 @@ public:
         AU.addRequired<Simd32ProfitabilityAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<VariableReuseAnalysis>();
+        AU.addRequired<llvm::CallGraphWrapperPass>();
         AU.setPreservesAll();
     }
 

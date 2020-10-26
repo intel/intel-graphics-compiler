@@ -10302,6 +10302,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
+    bool isLeafFunc = getAnalysis<CallGraphWrapperPass>().getCallGraph()[F]->empty();
     std::vector<CVariable*> argsOnStack;
     for (auto& Arg : F->args())
     {
@@ -10335,11 +10336,20 @@ void EmitPass::emitStackFuncEntry(Function* F)
                     Src = m_currShader->GetNewAlias(ArgBlkVar, ISA_TYPE_W, (uint16_t)offsetA, numLanes(m_currShader->m_dispatchSize), false);
                     m_encoder->Cmp(EPREDICATE_NE, Dst, Src, m_currShader->ImmToVariable(0, ISA_TYPE_W));
                 }
-                else
+                else if (isLeafFunc)
                 {
                     // Directly map the dst register to an alias of ArgBlkVar, and update symbol mapping for future uses
                     Dst = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
                     m_currShader->UpdateSymbolMap(&Arg, Dst);
+                }
+                else
+                {
+                    // For calls not guaranteed to preserve the ARG register, we copy it first to a temp
+                    if (Src->GetType() != Dst->GetType() || offsetA != 0 || Src->IsUniform() != Dst->IsUniform())
+                    {
+                        Src = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
+                    }
+                    emitCopyAll(Dst, Src, Arg.getType());
                 }
             }
             offsetA += argSize;
