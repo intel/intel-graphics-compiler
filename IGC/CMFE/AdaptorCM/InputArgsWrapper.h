@@ -28,11 +28,12 @@ private:
   SeqT<StrT> CompOpts;
   SeqT<FileT<StrT>> ExtraFiles;
 
-  void processSupportDirectories(const FEIInput &In, ErrorType &Err);
-
 public:
-
-  InputArgsWrapper(const FEIInput &In, ErrorType &Err);
+  InputArgsWrapper(const FEIInput &In, ErrorType &Err) : Src(In.getSrc()) {
+    Err.clear();
+    const auto &Opts = In.getCompOpts();
+    CompOpts.insert(CompOpts.end(), Opts.begin(), Opts.end());
+  }
 
   const StrT &getSrc() const override { return Src; }
   const SeqT<StrT> &getCompOpts() const override { return CompOpts; }

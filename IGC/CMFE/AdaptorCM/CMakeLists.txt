@@ -19,7 +19,6 @@ endif()
 
 add_library(AdaptorCM STATIC
   Frontend.cpp
-  InputArgsWrapper.cpp
 )
 
 vc_get_llvm_targets(LLVM_LIBS
