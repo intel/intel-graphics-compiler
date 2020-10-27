@@ -154,7 +154,8 @@ elseif(${CCLANG_BUILD_INTREE_LLVM})
 
   add_library(opencl-clang-lib ALIAS ${COMMON_CLANG_LIBRARY_NAME})
   add_executable(clang-tool ALIAS clang)
-  set(opencl-header "${LLVM_SOURCE_DIR}/tools/clang/lib/Headers/opencl-c.h")
+  get_target_property(CLANG_SOURCE_DIR clang SOURCE_DIR)
+  set(opencl-header "${CLANG_SOURCE_DIR}/../../lib/Headers/opencl-c.h")
 endif()
 ###
 

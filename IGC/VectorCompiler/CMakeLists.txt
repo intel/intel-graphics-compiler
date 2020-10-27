@@ -71,7 +71,7 @@ else()
   # In last scenario we are building with llvm so every target is defined
   # and LLVMConfig will only set needed variables.
   message(STATUS "[VC] Using llvm source build")
-  set(LLVM_BUILD_DIR "${LLVM_SOURCE_DIR}/../build/src")
+  set(LLVM_BUILD_DIR "${LLVM_SOURCE_DIR}/../../build/src")
   set(LLVM_CMAKE_DIR "${LLVM_BUILD_DIR}/lib/cmake/llvm")
   message(STATUS "[VC] LLVMConfig.cmake location: ${LLVM_CMAKE_DIR}")
   find_package(LLVM REQUIRED

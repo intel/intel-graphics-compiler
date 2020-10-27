@@ -50,7 +50,6 @@ Download all dependencies and create workspace folder as below:
       |- llvm-project                      https://github.com/llvm/llvm-project
             |- llvm/projects/opencl-clang  https://github.com/intel/opencl-clang
             |- llvm/projects/llvm-spirv    https://github.com/KhronosGroup/SPIRV-LLVM-Translator
-            |- llvm/tools/clang            
 ```
 
 You can use following commands:
@@ -61,7 +60,6 @@ $ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
 $ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
 $ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
-$ mv llvm-project/clang llvm-project/llvm/tools/
 ```
 
 Make sure to specify correct branch for desired version. In this example we use LLVM10/Clang10.
@@ -70,7 +68,7 @@ All dependencies will be build in the next step.
 If you have problems with LLVM patching during IGC build, you can try listed steps:
 ```shell
 $ cd llvm-project
-$ git checkout -b llvmorg-10.0.0
+$ git checkout -b tag llvmorg-10.0.0
 ```
 
 ### 3. Build and install IGC
@@ -145,7 +143,6 @@ $ git clone -b ocl-open-110 https://github.com/intel/opencl-clang llvm-project/l
 $ git clone -b llvm_release_110 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ git clone https://github.com/intel/intel-graphics-compiler igc
-$ mv llvm-project/clang llvm-project/llvm/tools/
 ```
 
 Keep in mind that this configuration is experimental and problems with compilation and functionality are to be expected.
@@ -160,5 +157,4 @@ Latest known configuration that compiles successfully:
       |- llvm-project                      (release/11.x 0b56e5490dc33e4e7a4fdd837e642f72a2659189)
             |- llvm/projects/opencl-clang  (ocl-open-110 05133d9fb4e08b8d3251d6484a3bf2da4c4f62ed)
             |- llvm/projects/llvm-spirv    (llvm_release_110 73dfc6d450ad0438558bee20505c426319f7624b)
-            |- llvm/tools/clang            (release/11.x 0b56e5490dc33e4e7a4fdd837e642f72a2659189)
 ```
