@@ -900,9 +900,19 @@ SplitVec(Value *Vec, unsigned NumElts, Instruction *InsertBefore,
 static void EraseUsers(Instruction *Inst) {
   std::forward_list<User *> Users(Inst->user_begin(), Inst->user_end());
   for (auto U : Users) {
+    IGC_ASSERT_MESSAGE(
+        !isa<StoreInst>(U) &&
+            !(isa<CallInst>(U) &&
+              (GenXIntrinsic::getGenXIntrinsicID(cast<CallInst>(U)) ==
+                   GenXIntrinsic::genx_svm_scatter ||
+               GenXIntrinsic::getGenXIntrinsicID(cast<CallInst>(U)) ==
+                   GenXIntrinsic::genx_scatter_scaled ||
+               GenXIntrinsic::getGenXIntrinsicID(cast<CallInst>(U)) ==
+                   GenXIntrinsic::genx_svm_block_st)),
+        "Should not erase stores");
     Instruction *PotentiallyDeadInst = cast<Instruction>(U);
     EraseUsers(PotentiallyDeadInst);
-    IGC_ASSERT_MESSAGE(U->getNumUses() == 0,
+    IGC_ASSERT_MESSAGE(U->use_empty(),
                        "Cannot recursively remove users of a replaced alloca");
     PotentiallyDeadInst->eraseFromParent();
   }
@@ -1257,7 +1267,7 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
         I->eraseFromParent();
         Changed = true;
       }
-    } else if (IntrinsicInst *CI = dyn_cast<IntrinsicInst>(I)) {
+    } else if (auto *CI = dyn_cast<CallInst>(I)) {
       unsigned ID = GenXIntrinsic::getAnyIntrinsicID(CI);
       if (ID == GenXIntrinsic::genx_gather_private)
         Changed |= replaceGatherPrivate(CI);
@@ -1266,6 +1276,18 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
       else if (ID == Intrinsic::lifetime_start ||
                ID == Intrinsic::lifetime_end) {
         CI->eraseFromParent();
+        Changed = true;
+      } else if (ID == GenXIntrinsic::not_any_intrinsic) {
+        bool ArgChanged = false;
+        std::for_each(CI->arg_begin(), CI->arg_end(),
+                      [this, &CI, &ArgChanged](Value *Op) {
+                        if (auto *AI = dyn_cast<AllocaInst>(Op)) {
+                          CI->replaceUsesOfWith(AI, m_allocaToIntrinsic.at(AI));
+                          ArgChanged = true;
+                        }
+                      });
+        IGC_ASSERT_MESSAGE(
+            ArgChanged, "Cannot analyze modified alloca passed to other func");
         Changed = true;
       }
     } else if (PHINode *Phi = dyn_cast<PHINode>(I)) {
