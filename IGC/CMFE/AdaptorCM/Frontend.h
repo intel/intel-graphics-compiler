@@ -7,19 +7,14 @@ namespace IGC {
 namespace AdaptorCM {
 namespace Frontend {
 
-struct IInputArgs {
-  using StrT = Intel::CM::ClangFE::IInputArgs::StrT;
-  template <typename T> using SeqT = Intel::CM::ClangFE::IInputArgs::SeqT<T>;
-  // output formats
-  enum class FormatT { LLVM_IR, LLVM_IR_BC, SPIR_V_BC, PREPROC };
+struct InputArgs final : public Intel::CM::ClangFE::IInputArgs {
+  StrT InputText;
+  SeqT<StrT> CompilationOpts;
+  SeqT<FileT<StrT>> ExtraFiles;
 
-  virtual const StrT &getSrc() const = 0;
-  virtual const SeqT<StrT> &getCompOpts() const = 0;
-  virtual const SeqT<StrT> &getExtraFiles() const = 0;
-  virtual const SeqT<StrT> &getSupportDirs() const = 0;
-
-  virtual FormatT getOutputFormat() const = 0;
-  virtual ~IInputArgs() {}
+  const StrT &getSrc() const override { return InputText; }
+  const SeqT<StrT> &getCompOpts() const override { return CompilationOpts; }
+  const SeqT<FileT<StrT>> &getExtraFiles() const override { return ExtraFiles; }
 };
 
 using StringVect_t = std::vector<std::string>;
@@ -34,7 +29,7 @@ struct AbiCompatibilityInfo {
 };
 bool validateABICompatibility(AbiCompatibilityInfo *AbiInfo = nullptr);
 
-IOutputArgs *translate(const IInputArgs *);
+IOutputArgs *translate(const InputArgs &);
 
 IDriverInvocation *getDriverInvocation(int argc, const char * argv[]);
 

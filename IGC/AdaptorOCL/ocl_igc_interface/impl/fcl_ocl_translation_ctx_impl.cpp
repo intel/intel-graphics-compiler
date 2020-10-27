@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
-#include "CMFE/AdaptorCM/cm_args.h"
+#include "CMFE/AdaptorCM/Frontend.h"
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 #include "cif/macros/enable.h"
@@ -146,17 +146,14 @@ void runFeInvocation(const InvocationInfo& Invocation,
         return;
     }
 
-    IGC::CM::FeInputArgsImpl InputArgs;
+    IGC::AdaptorCM::Frontend::InputArgs InputArgs;
     InputArgs.InputText = InputText;
     InputArgs.CompilationOpts = Invocation.getFEArgs();
-    (void)InputArgs.ExtraFiles; // !!! extra files are not used at the moment
-    // InputArgs.SupportDirs = SupportDirs;
-    InputArgs.OutputFormat = IGC::AdaptorCM::Frontend::IInputArgs::FormatT::SPIR_V_BC;
 
     using FEOutput = IGC::AdaptorCM::Frontend::IOutputArgs;
     auto FeDeleter = [](FEOutput* out) { out->discard(); };
     std::unique_ptr<FEOutput, decltype(FeDeleter)> Res(
-            IGC::AdaptorCM::Frontend::translate(&InputArgs),
+            IGC::AdaptorCM::Frontend::translate(InputArgs),
             FeDeleter);
 
     if (!Res) {

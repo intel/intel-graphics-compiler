@@ -9,7 +9,6 @@
 #include <sstream>
 
 #include "Frontend.h"
-#include "InputArgsWrapper.h"
 
 #if defined(__linux__)
 #include <dlfcn.h>
@@ -91,12 +90,7 @@ IGC::AdaptorCM::Frontend::getDriverInvocation(int argc, const char * argv[]) {
   return BuildCommandLine(argc, argv);
 }
 
-IOutputArgs *IGC::AdaptorCM::Frontend::translate(const IInputArgs *Input) {
-
-  if (!Input) {
-    llvm::report_fatal_error("empty input passed to AdaptorCM::Translate", false);
-  }
-
+IOutputArgs *IGC::AdaptorCM::Frontend::translate(const InputArgs &Input) {
   auto DL = getFELibrary();
 
   auto Compile = reinterpret_cast<decltype(&IntelCMClangFECompile)>(
@@ -106,13 +100,7 @@ IOutputArgs *IGC::AdaptorCM::Frontend::translate(const IInputArgs *Input) {
       "haven't found IntelCMClangFECompile function in the dynamic library", false);
   }
 
-  InputArgsWrapper::ErrorType Error;
-  InputArgsWrapper WrappedInput(*Input, Error);
-  if (!Error.empty()) {
-    llvm::report_fatal_error(Error, false);
-  }
-
-  return Compile(&WrappedInput);
+  return Compile(&Input);
 }
 
 using StringVect_t = IGC::AdaptorCM::Frontend::StringVect_t;
