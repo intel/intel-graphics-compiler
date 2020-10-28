@@ -251,7 +251,7 @@ namespace IGC
         bool hasReadOnlyArray;
         bool hasBuiltin;
         bool hasFRem;
-        bool hasSideEffect;     //<! shader writes to memory, does not include writing to shader outputs
+        bool psHasSideEffect;     //<! only relevant to pixel shader, has other memory writes besides RTWrite
         bool hasGenericAddressSpacePointers;
         bool hasDebugInfo;        //<! true only if module contains debug info !llvm.dbg.cu
         bool hasAtomics;

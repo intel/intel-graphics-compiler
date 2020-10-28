@@ -130,7 +130,7 @@ STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
 bool CustomSafeOptPass::runOnFunction(Function& F)
 {
-    psHasSideEffect = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.hasSideEffect;
+    psHasSideEffect = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.psHasSideEffect;
     visit(F);
     return true;
 }

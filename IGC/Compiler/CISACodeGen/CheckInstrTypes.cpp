@@ -80,7 +80,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasReadOnlyArray = false;
     instrList->hasBuiltin = false;
     instrList->hasFRem = false;
-    instrList->hasSideEffect = false;
+    instrList->psHasSideEffect = false;
     instrList->hasDebugInfo = false;
     instrList->hasAtomics = false;
     instrList->hasBarrier = false;
@@ -193,7 +193,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             GenISAIntrinsic::ID IID = CI->getIntrinsicID();
             if (IID != GenISA_OUTPUT && IID != GenISA_discard)
             {
-                g_InstrTypes->hasSideEffect = true;
+                g_InstrTypes->psHasSideEffect = true;
             }
         }
     }
@@ -343,7 +343,7 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
     uint as = I.getPointerAddressSpace();
     if (as != ADDRESS_SPACE_PRIVATE)
     {
-        g_InstrTypes->hasSideEffect = true;
+        g_InstrTypes->psHasSideEffect = true;
     }
     if (as == ADDRESS_SPACE_LOCAL)
     {
