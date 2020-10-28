@@ -8326,11 +8326,17 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
         // do nothing
         break;
     case Intrinsic::stacksave:
-        emitLLVMStackSave(inst);
+        // If stack is not initialized (no SP), we can assume there's no VLA.
+        // We can ignore llvm.stacksave and llvm.stackrestore intrinsics
+        if (m_currShader->hasSP())
+            emitLLVMStackSave(inst);
         break;
 
     case Intrinsic::stackrestore:
-        emitLLVMStackRestore(inst);
+        // If stack is not initialized (no SP), we can assume there's no VLA.
+        // We can ignore llvm.stacksave and llvm.stackrestore intrinsics
+        if (m_currShader->hasSP())
+            emitLLVMStackRestore(inst);
         break;
 
     case Intrinsic::bswap:

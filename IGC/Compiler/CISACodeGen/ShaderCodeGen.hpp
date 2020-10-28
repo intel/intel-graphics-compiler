@@ -193,6 +193,10 @@ public:
     CVariable* GetARGV();
     CVariable* GetRETV();
     CVariable* GetPrivateBase();
+
+    bool hasSP() const { return m_SP != nullptr; }
+    bool hasFP() const { return m_FP != nullptr; }
+
     void InitializeStackVariables();
     void SaveStackState();
     void RestoreStackState();
