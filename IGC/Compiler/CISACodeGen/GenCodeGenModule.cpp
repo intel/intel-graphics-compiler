@@ -194,20 +194,6 @@ inline Function* getCallerFunc(Value* user)
 
 void GenXCodeGenModule::processFunction(Function& F)
 {
-    // force stack-call for self-recursion
-    for (auto U : F.users())
-    {
-        if (CallInst * CI = dyn_cast<CallInst>(U))
-        {
-            Function* Caller = CI->getParent()->getParent();
-            if (Caller == &F)
-            {
-                F.addFnAttr("visaStackCall");
-                break;
-            }
-        }
-    }
-
     // See what FunctionGroups this Function is called from.
     SetVector<std::pair<FunctionGroup*, Function*>> CallerFGs;
     for (auto U : F.users())

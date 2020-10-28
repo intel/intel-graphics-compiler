@@ -517,33 +517,6 @@ BuiltinCallGraphAnalysis::BuiltinCallGraphAnalysis() : ModulePass(ID)
     initializeBuiltinCallGraphAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-/// Check whether there are recursions.
-static bool hasRecursion(CallGraph &CG)
-{
-    // Use Tarjan's algorithm to detect recursions.
-    for (auto I = scc_begin(&CG), E = scc_end(&CG); I != E; ++I)
-    {
-        const std::vector<CallGraphNode *> &SCCNodes = *I;
-        if (SCCNodes.size() >= 2)
-        {
-            return true;
-        }
-
-        // Check self-recursion.
-        auto Node = SCCNodes.back();
-        for (auto Callee : *Node)
-        {
-            if (Callee.second == Node)
-            {
-                return true;
-            }
-        }
-    }
-
-    // No recursion.
-    return false;
-}
-
 bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
 {
     if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
@@ -551,24 +524,8 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
         return false;
     }
 
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
-    if (IGC_IS_FLAG_DISABLED(EnableRecursionOpenCL) &&
-        !ctx->m_DriverInfo.AllowRecursion() &&
-        hasRecursion(CG))
-    {
-        IGC_ASSERT_MESSAGE(0, "Recursion detected!");
-        ctx->EmitError(" undefined reference to `jmp()' ");
-        return false;
-    }
-
-    //Return if any error
-    if (!(ctx->oclErrorMessage.empty()))
-    {
-        return false;
-    }
 
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
     {
@@ -614,7 +571,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
             if (argMapIter != argMap.end())
             {
                 IGC_ASSERT(nullptr != argMapIter->second);
-                combineTwoArgDetail(*argData, *(argMapIter->second), 
+                combineTwoArgDetail(*argData, *(argMapIter->second),
 #if LLVM_VERSION_MAJOR <= 10
                     N.first
 #else

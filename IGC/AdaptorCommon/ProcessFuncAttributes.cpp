@@ -45,6 +45,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Analysis/CallGraph.h>
+#include "llvm/ADT/SCCIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "common/igc_regkeys.hpp"
 #include <string>
@@ -66,6 +68,7 @@ public:
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<EstimateFunctionSize>();
+        AU.addRequired<llvm::CallGraphWrapperPass>();
     }
 
     ProcessFuncAttributes();
@@ -96,6 +99,7 @@ IGC_INITIALIZE_PASS_BEGIN(ProcessFuncAttributes, PASS_FLAG, PASS_DESCRIPTION, PA
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(EstimateFunctionSize)
+IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 IGC_INITIALIZE_PASS_END(ProcessFuncAttributes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ProcessFuncAttributes::ID = 0;
@@ -164,6 +168,37 @@ static bool containsOpaque(llvm::Type *T)
     }
 
     return false;
+}
+
+// Convert functions with recursion to stackcall
+static bool convertRecursionToStackCall(CallGraph& CG, CodeGenContext* pCtx, IGCMD::MetaDataUtils* pM)
+{
+    bool hasRecursion = false;
+    // Use Tarjan's algorithm to detect recursions.
+    for (auto I = scc_begin(&CG), E = scc_end(&CG); I != E; ++I)
+    {
+        const std::vector<CallGraphNode*>& SCCNodes = *I;
+        if (SCCNodes.size() >= 2)
+        {
+            hasRecursion = true;
+            // Convert all functions in the recursion call graph to stackcall
+            for (auto Node : SCCNodes)
+            {
+                Node->getFunction()->addFnAttr("visaStackCall");
+            }
+        }
+        // Check self-recursion.
+        auto Node = SCCNodes.back();
+        for (auto Callee : *Node)
+        {
+            if (Callee.second == Node)
+            {
+                hasRecursion = true;
+                Node->getFunction()->addFnAttr("visaStackCall");
+            }
+        }
+    }
+    return hasRecursion;
 }
 
 // __builtin_spirv related OpGroup call implementations contain both
@@ -517,6 +552,18 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
     }
+
+    // Detect recursive calls, and convert them to stack calls, since subroutines does not support recursion
+    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+    if (convertRecursionToStackCall(CG, pCtx, pMdUtils))
+    {
+        if (IGC_IS_FLAG_DISABLED(EnableRecursionOpenCL) && !pCtx->m_DriverInfo.AllowRecursion())
+        {
+            IGC_ASSERT_MESSAGE(0, "Recursion detected!");
+        }
+        pCtx->m_enableStackCall = true;
+    }
+
     return Changed;
 }
 
