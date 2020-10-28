@@ -458,8 +458,9 @@ public:
 
   static bool isHighCostBaling(uint16_t Type, Instruction *Inst);
   // Debug dump/print
-  void dump();
-  void print(raw_ostream &OS);
+  void dump() const;
+  void print(raw_ostream &OS) const;
+
 private:
   // methods to build the info when running the analysis
   void processWrPredRegion(Instruction *Inst);
@@ -520,6 +521,9 @@ public:
   virtual Pass *createPrinterPass(raw_ostream &O,
                                   const std::string &Banner) const {
     return createGenXPrinterPass(O, Banner);
+  }
+  void print(raw_ostream &OS, const Module *M) const override {
+    GenXBaling::print(OS);
   }
 };
 void initializeGenXFuncBalingPass(PassRegistry &);

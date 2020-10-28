@@ -317,7 +317,14 @@ static int checkModifier(Instruction *Inst)
           if (auto splat = Lhs->getSplatValue())
             Lhs = splat;
 
-        if (Lhs->isZeroValue())
+        // Usage of negative modifier on unsigned value can lead
+        // to unexpected behaviour if baled into another instruction.
+        if (Lhs->isZeroValue() &&
+            std::none_of(
+                Inst->use_begin(), Inst->use_end(),
+                [](Use &UseOp) { return isa<UIToFPInst>(UseOp.getUser()); }) &&
+            std::none_of(Inst->op_begin(), Inst->op_end(),
+                         [](Value *Val) { return isa<FPToUIInst>(Val); }))
           return BaleInfo::NEGMOD;
       }
       break;
@@ -1672,28 +1679,17 @@ Instruction *GenXBaling::getOrUnbaleExtend(Instruction *Inst, BaleInfo *BI,
  * dump, print : dump the result of the GenXBaling analysis
  */
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void GenXBaling::dump()
-{
-  print(errs());
-}
+void GenXBaling::dump() const { print(errs()); }
 #endif
 
-void GenXBaling::print(raw_ostream &OS)
-{
-  for (InstMap_t::iterator i = InstMap.begin(), e = InstMap.end(); i != e; ++i) {
+void GenXBaling::print(raw_ostream &OS) const {
+  for (InstMap_t::const_iterator i = InstMap.begin(), e = InstMap.end(); i != e;
+       ++i) {
     const Instruction *Inst = cast<const Instruction>(i->first);
-    BaleInfo *BI = &i->second;
-    OS << Inst->getName() << ": ";
-    switch (BI->Type) {
-      case BaleInfo::WRREGION: OS << "WRREGION"; break;
-      case BaleInfo::SATURATE: OS << "SATURATE"; break;
-      case BaleInfo::MAININST: OS << "MAININST"; break;
-      case BaleInfo::ABSMOD: OS << "ABSMOD"; break;
-      case BaleInfo::NEGMOD: OS << "NEGMOD"; break;
-      case BaleInfo::NOTMOD: OS << "NOTMOD"; break;
-      case BaleInfo::RDREGION: OS << "RDREGION"; break;
-      default: OS << "??"; break;
-    }
+    const BaleInfo *BI = &i->second;
+    OS << *Inst << ": ";
+    OS << BI->getTypeString();
+
     for (unsigned OperandNum = 0, e = Inst->getNumOperands();
         OperandNum != e; ++OperandNum)
       if (BI->isOperandBaled(OperandNum))
