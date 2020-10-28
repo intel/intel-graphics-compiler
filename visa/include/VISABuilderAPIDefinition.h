@@ -242,6 +242,7 @@ public:
 
 
 
+
     /// FIXME: we should probably have separate API for logic and shift instructions, as the arguments they expect are quite different
     /// AppendVISALogicOrShiftInst -- append a two-dst, two-source vISA arithmetic instruction to this kernel
     /// [pred] op[.sat] (emask, execSize) dst src0 src1 [src2 src3]

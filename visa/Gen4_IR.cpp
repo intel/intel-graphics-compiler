@@ -824,6 +824,57 @@ G4_INST::G4_INST(
     associateOpndWithInst(mod, this);
 }
 
+G4_INST::G4_INST(
+    const IR_Builder& irb,
+    G4_Predicate* prd,
+    G4_opcode o,
+    G4_CondMod* m,
+    G4_Sat s,
+    G4_ExecSize size,
+    G4_DstRegRegion* d,
+    G4_Operand* s0,
+    G4_Operand* s1,
+    G4_Operand* s2,
+    G4_Operand* s3,
+    unsigned int opt) :
+    op(o), dst(d), predicate(prd), mod(m), option(opt),
+    useInstList(irb.getAllocator()),
+    defInstList(irb.getAllocator()),
+    local_id(0),
+    srcCISAoff(UndefinedCisaOffset),
+    sat(s ? 1 : 0),
+    evenlySplitInst(false),
+    execSize(size),
+    bin(nullptr),
+    builder(irb),
+    llvmInst(irb.GetCurrentInst())
+{
+    srcs[0] = s0;
+    srcs[1] = s1;
+    srcs[2] = s2;
+    srcs[3] = s3;
+
+    dead = false;
+    implAccSrc = nullptr;
+    implAccDst = nullptr;
+
+    resetRightBound(dst);
+    resetRightBound(s0);
+    resetRightBound(s1);
+    resetRightBound(s2);
+    resetRightBound(s3);
+    computeRightBound(predicate);
+    computeRightBound(mod);
+
+    associateOpndWithInst(dst, this);
+    associateOpndWithInst(s0, this);
+    associateOpndWithInst(s1, this);
+    associateOpndWithInst(s2, this);
+    associateOpndWithInst(s3, this);
+    associateOpndWithInst(predicate, this);
+    associateOpndWithInst(mod, this);
+}
+
 G4_InstSend::G4_InstSend(
     const IR_Builder& builder,
     G4_Predicate* prd,

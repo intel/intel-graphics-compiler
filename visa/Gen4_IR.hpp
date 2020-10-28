@@ -682,6 +682,20 @@ public:
         G4_Operand* s2,
         unsigned int opt);
 
+    G4_INST(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        G4_opcode o,
+        G4_CondMod* m,
+        G4_Sat s,
+        G4_ExecSize size,
+        G4_DstRegRegion* d,
+        G4_Operand* s0,
+        G4_Operand* s1,
+        G4_Operand* s2,
+        G4_Operand* s3,
+        unsigned int opt);
+
     virtual ~G4_INST()
     {
     }
