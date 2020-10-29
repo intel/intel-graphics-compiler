@@ -2320,7 +2320,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
                 }
 
                 llvm::IRBuilder<> builder(&I);
-                VectorType* vec4 = VectorType::get(builder.getInt8Ty(), 4);
+                VectorType* vec4 = IGCLLVM::FixedVectorType::get(builder.getInt8Ty(), 4);
                 Value* BC = builder.CreateBitCast(AndSrc, vec4);
                 Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
                 Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
@@ -2372,7 +2372,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
             }
 
             llvm::IRBuilder<> builder(&I);
-            VectorType* vec2 = VectorType::get(builder.getInt16Ty(), 2);
+            VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt16Ty(), 2);
             Value* BC = builder.CreateBitCast(AShrSrc, vec2);
             Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
             Value* Sext = builder.CreateSExt(EE, builder.getInt32Ty());

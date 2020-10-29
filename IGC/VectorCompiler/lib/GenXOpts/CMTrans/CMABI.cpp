@@ -1588,7 +1588,7 @@ private:
 #if LLVM_VERSION_MAJOR <= 10
         CallSite(&OrigCall), NewCall,
 #else
-        *OrigCall, *NewCall,
+        OrigCall, *NewCall,
 #endif
         &NewFuncCGN);
 

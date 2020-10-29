@@ -2594,7 +2594,7 @@ bool GenXLowering::lowerMulSat(CallInst *CI, unsigned IntrinsicID) {
   Type *MulType = IntegerType::get(OpType->getContext(), 2 * OpTypeWidth);
   if (OpType->isVectorTy())
     MulType =
-        VectorType::get(MulType, cast<VectorType>(OpType)->getNumElements());
+        IGCLLVM::FixedVectorType::get(MulType, cast<VectorType>(OpType)->getNumElements());
 
   IRBuilder<> B(CI);
   auto ExtendMulOperand = [&](Value *Val) {
