@@ -126,60 +126,29 @@ std::vector<char> makeVcOptPayload(uint64_t IR_size,
     return VcPayload;
 }
 
-void runFeInvocation(const InvocationInfo& Invocation,
-                     OclTranslationOutputBase& output) {
-
-    auto& outputInterface = *output.GetImpl();
-    std::ifstream InputFile(Invocation.getInputFilename());
-    if (!InputFile.is_open()) {
-        outputInterface.SetError(TranslationErrorType::Internal,
-                                 "CM frontend: could not read input file");
-        return;
-    }
-
-    std::string InputText{std::istreambuf_iterator<char>(InputFile),
-                          std::istreambuf_iterator<char>()};
-
-    if (Invocation.getOutputType() != InvocationInfo::OutputTypeT::SPIRV) {
-        outputInterface.SetError(TranslationErrorType::Internal,
-                                 "CM frontend: unsupported output request");
-        return;
-    }
-
-    IGC::AdaptorCM::Frontend::InputArgs InputArgs;
-    InputArgs.InputText = InputText;
-    InputArgs.CompilationOpts = Invocation.getFEArgs();
-
-    using FEOutput = IGC::AdaptorCM::Frontend::IOutputArgs;
-    auto FeDeleter = [](FEOutput* out) { out->discard(); };
-    std::unique_ptr<FEOutput, decltype(FeDeleter)> Res(
-            IGC::AdaptorCM::Frontend::translate(InputArgs),
-            FeDeleter);
-
-    if (!Res) {
-        outputInterface.SetError(TranslationErrorType::Internal,
-                                 "CM frontend null result errror");
-        return;
-    }
-
-    const auto& ErrLog = Res->getLog();
-
-    if (Res->getStatus() ==
-        Intel::CM::ClangFE::IOutputArgs::ErrT::COMPILE_PROGRAM_FAILURE) {
-
+void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
+                      const InvocationInfo& Invocation,
+                      OclTranslationOutputBase& Output)
+{
+    auto& OutputInterface = *Output.GetImpl();
+    const auto& ErrLog = FEOutput.getLog();
+    if (FEOutput.getStatus() ==
+        Intel::CM::ClangFE::IOutputArgs::ErrT::COMPILE_PROGRAM_FAILURE)
+    {
         if (ErrLog.empty())
-            outputInterface.SetError(TranslationErrorType::Internal,
-                                     "unknown error during cm source compilation");
+            OutputInterface.SetError(
+                TranslationErrorType::Internal,
+                "unknown error during cm source compilation");
         else
-            outputInterface.SetError(TranslationErrorType::UnhandledInput,
+            OutputInterface.SetError(TranslationErrorType::UnhandledInput,
                                      ErrLog.c_str());
         return;
     }
 
     if (!ErrLog.empty())
-        outputInterface.AddWarning(ErrLog);
+        OutputInterface.AddWarning(ErrLog);
 
-    const auto& IR = Res->getIR();
+    const auto& IR = FEOutput.getIR();
     // This is where the tricky part starts
     // Right now we have no way to pass auxiliary options to vc-codegen backend
     // So we introduce a temporary hack to incorporate the options
@@ -195,9 +164,10 @@ void runFeInvocation(const InvocationInfo& Invocation,
     FinalOutput.insert(FinalOutput.end(), IR.begin(), IR.end());
     FinalOutput.insert(FinalOutput.end(), Payload.begin(), Payload.end());
 
-    if (!outputInterface.SetSuccessfulAndCloneOutput(FinalOutput.data(),
-                                                     FinalOutput.size())) {
-        outputInterface.SetError(TranslationErrorType::Internal, "OOM (cm FE)");
+    if (!OutputInterface.SetSuccessfulAndCloneOutput(FinalOutput.data(),
+                                                     FinalOutput.size()))
+    {
+        OutputInterface.SetError(TranslationErrorType::Internal, "OOM (cm FE)");
         return;
     }
 }
@@ -326,9 +296,9 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     uint32_t tracingOptionsCount) {
 
     // Output
-    auto outputInterface = CIF::RAII::UPtr(
-        CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion,
-                                                                        outType));
+    auto* outputInterface =
+        CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(
+            outVersion, outType);
     if (outputInterface == nullptr)
         return nullptr;
 
@@ -343,44 +313,54 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     (void)product;
     (void)stepping;
 
-    OclTranslationOutputBase& Out = *outputInterface.get();
+    OclTranslationOutputBase& Out = *outputInterface;
 
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
-    IGC::AdaptorCM::Frontend::AbiCompatibilityInfo AbiInfo;
-    if (!IGC::AdaptorCM::Frontend::validateABICompatibility(&AbiInfo)) {
-        const auto &ErrMsg =
-            llvm::StringRef("AdaptorCM: incompatible clangFEWrapper interface: ") +
-            "expected = " + llvm::Twine(AbiInfo.RequestedVersion) +
-            ", loaded = " + llvm::Twine(AbiInfo.AvailableVersion);
-        Out.GetImpl()->SetError(TranslationErrorType::Internal,
-                                ErrMsg.str().c_str());
-        return outputInterface.release();
-    }
+    auto ErrFn = [&Out](const std::string& Err) {
+        Out.GetImpl()->SetError(TranslationErrorType::Internal, Err.c_str());
+    };
+    auto MaybeFE = IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn);
+    if (!MaybeFE)
+        return outputInterface;
 
     auto OptSrc = MakeTemporaryCMSource(src, Out);
     if (!OptSrc)
-        return outputInterface.release(); // proper error message is already set
+        return outputInterface; // proper error message is already set
 
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
     auto FeArgs = processFeOptions(OptSrc.getValue(), options, Saver);
 
-    using IGC::AdaptorCM::Frontend::getDriverInvocation;
+    auto& FE = MaybeFE.getValue();
+    auto Drv = FE.buildDriverInvocation(FeArgs);
+    if (!Drv)
+    {
+        ErrFn("Null driver invocation in CMFE");
+        return outputInterface;
+    }
+    if (Drv->getOutputType() != InvocationInfo::OutputTypeT::SPIRV)
+    {
+        ErrFn("CM frontend: unsupported output request");
+        return outputInterface;
+    }
 
-    auto Deleter = [](InvocationInfo* p) { delete p; };
-    using InvokeInfo = std::unique_ptr<InvocationInfo, decltype(Deleter)>;
-    InvokeInfo invoker(getDriverInvocation(FeArgs.size(), FeArgs.data()), Deleter);
-    if (invoker)
-        runFeInvocation(*invoker, Out);
-    else
-        Out.GetImpl()->SetError(TranslationErrorType::Internal,
-                                "could not create CM fronend invocation");
+    IGC::AdaptorCM::Frontend::InputArgs InputArgs;
+    InputArgs.CompilationOpts = Drv->getFEArgs();
+    auto FEOutput = FE.translate(InputArgs);
+    if (!FEOutput)
+    {
+        ErrFn("Null output in CMFE");
+        return outputInterface;
+    }
+
+    finalizeFEOutput(*FEOutput, *Drv, Out);
+
 #else
     Out.GetImpl()->SetError(TranslationErrorType::Internal,
                             "CM compilation is not supported in this configuration");
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
-    return outputInterface.release();
+    return outputInterface;
 }
 
 }

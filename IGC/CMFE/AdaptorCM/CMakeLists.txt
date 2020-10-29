@@ -17,9 +17,7 @@ if(LLVM_ON_WIN32)
   add_compile_options(/wd4624)
 endif()
 
-add_library(AdaptorCM STATIC
-  Frontend.cpp
-)
+add_library(AdaptorCM INTERFACE)
 
 vc_get_llvm_targets(LLVM_LIBS
   LLVMSupport
@@ -28,11 +26,12 @@ vc_get_llvm_targets(LLVM_LIBS
 message(STATUS "Linking CMFE with ${LLVM_LIBS}")
 
 target_link_libraries(AdaptorCM
+  INTERFACE
   ${LLVM_LIBS}
 )
 
-target_compile_definitions(AdaptorCM PRIVATE
+target_compile_definitions(AdaptorCM INTERFACE
                            -DCMFE_WRAPPER_NAME=\"${INSTALL_CMFE_NAME}\")
 
 
-target_include_directories(AdaptorCM PUBLIC "$<BUILD_INTERFACE:${ADAPTOR_CM_INCLUDE_DIRS}>")
+target_include_directories(AdaptorCM INTERFACE "$<BUILD_INTERFACE:${ADAPTOR_CM_INCLUDE_DIRS}>")
