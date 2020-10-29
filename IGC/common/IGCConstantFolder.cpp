@@ -207,6 +207,32 @@ llvm::Constant* IGCConstantFolder::CreateUbfe(llvm::Constant* C0, llvm::Constant
     return llvm::ConstantInt::get(C0->getContext(), result);
 }
 
+llvm::Constant* IGCConstantFolder::CreateIbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1) || llvm::isa<llvm::UndefValue>(C2) || C2->getType()->getIntegerBitWidth() != 32)
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0); // width
+    llvm::ConstantInt* CI1 = llvm::cast<llvm::ConstantInt>(C1); // offset
+    llvm::ConstantInt* CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number to shift
+    uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
+    uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
+    uint32_t bitwidth = CI2->getType()->getBitWidth();
+  
+    llvm::APInt result = CI2->getValue();
+    if ((width + offset) < bitwidth)
+    {
+        result = result.shl(bitwidth - (width + offset));
+        result = result.ashr(bitwidth - width);
+    }
+    else
+    {
+        result = result.ashr(offset);
+    }
+    return llvm::ConstantInt::get(C0->getContext(), result);
+}
+
 llvm::Constant* IGCConstantFolder::CreateCanonicalize(llvm::Constant* C0, bool flushDenorms /*= true*/) const
 {
     if (llvm::isa<llvm::UndefValue>(C0))

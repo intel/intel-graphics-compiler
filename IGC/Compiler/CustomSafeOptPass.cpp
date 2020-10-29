@@ -3125,6 +3125,20 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             }
         }
         break;
+        case llvm_ibfe:
+        {
+            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
+            Constant* C2 = dyn_cast<Constant>(inst->getOperand(2));
+            if (C0 && C0->isZeroValue())
+            {
+                C = llvm::ConstantInt::get(inst->getType(), 0);
+            }
+            else if (C0 && C1 && C2)
+            {
+                C = constantFolder.CreateIbfe(C0, C1, C2);
+            }
+        }
+        break;
         case llvm_canonicalize:
         {
             // If the instruction should be emitted anyway, then remove the condition.
