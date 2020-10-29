@@ -203,6 +203,29 @@ getModuleFromLLVMText(ArrayRef<char> Input, LLVMContext &C) {
 }
 
 static Expected<std::unique_ptr<llvm::Module>>
+getModuleFromLLVMBinary(ArrayRef<char> Input, LLVMContext& C) {
+
+  llvm::MemoryBufferRef BufferRef(llvm::StringRef(Input.data(), Input.size()),
+    "Deserialized LLVM Module");
+  auto ExpModule = llvm::parseBitcodeFile(BufferRef, C);
+
+  if (!ExpModule)
+    return llvm::handleExpected(
+        std::move(ExpModule),
+        []() -> llvm::Error {
+          IGC_ASSERT_EXIT_MESSAGE(0, "Should create new error");
+        },
+        [](const llvm::ErrorInfoBase& E) {
+          return make_error<vc::BadBitcodeError>(E.message());
+        });
+
+  if (verifyModule(*ExpModule.get()))
+    return make_error<vc::InvalidModuleError>();
+
+  return ExpModule;
+}
+
+static Expected<std::unique_ptr<llvm::Module>>
 getModule(ArrayRef<char> Input, vc::FileType FType,
           ArrayRef<uint32_t> SpecConstIds, ArrayRef<uint64_t> SpecConstValues,
           LLVMContext &Ctx) {
@@ -211,6 +234,8 @@ getModule(ArrayRef<char> Input, vc::FileType FType,
     return getModuleFromSPIRV(Input, SpecConstIds, SpecConstValues, Ctx);
   case vc::FileType::LLVM_TEXT:
     return getModuleFromLLVMText(Input, Ctx);
+  case vc::FileType::LLVM_BINARY:
+    return getModuleFromLLVMBinary(Input, Ctx);
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown input kind");
 }
