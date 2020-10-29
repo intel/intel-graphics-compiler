@@ -58,7 +58,9 @@ def vc_codegen : Flag<["-"], "vc-codegen">,
 
 // Generate debug info
 def vc_emit_debug : Flag<["-"], "g">,
-  HelpText<"Enable generation of debug information">;
+  HelpText<"Enable generation of debug information and enables kernel debug">;
+def ze_kernel_debug_enable : Flag<["-"], "ze-kernel-debug-enable">,
+  Alias<vc_emit_debug>, HelpText<"Alias for -g">;
 
 def optimize : Separate<["-"], "optimize">,
   HelpText<"Set optimization level to either 'none' or 'full'">,
