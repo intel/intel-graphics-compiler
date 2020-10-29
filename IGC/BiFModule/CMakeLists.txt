@@ -131,7 +131,7 @@ elseif(${CCLANG_BUILD_PREBUILDS})
   execute_process(
     COMMAND ${CLANG_TOOL_PATH} -v
     ERROR_VARIABLE CLANG_TOOL_V_CALL)
-  string(REGEX MATCH "clang version ([0-9]*\\.[0-9]*\\.[0-9]*[a-zA-Z0-9]*) " CLANG_TOOL_VERSION "${CLANG_TOOL_V_CALL}")
+  string(REGEX MATCH "clang version ([0-9]*\\.[0-9]*\\.[0-9]*[a-zA-Z0-9]*)" CLANG_TOOL_VERSION "${CLANG_TOOL_V_CALL}")
   set(CLANG_TOOL_VERSION "${CMAKE_MATCH_1}")
 
   # Check if llvm version for IGC is newer or equal with the clang-tool version
