@@ -63,48 +63,36 @@ namespace IGCLLVM {
     inline llvm::Align getAlignmentValueIfNeeded(llvm::Align A) { return A; }
 #endif
 
-    template<typename T =
+    using Align =
 #if LLVM_VERSION_MAJOR < 10
-        uint32_t
+        unsigned;
 #elif LLVM_VERSION_MAJOR == 10
-        llvm::MaybeAlign
+        llvm::MaybeAlign;
 #elif LLVM_VERSION_MAJOR >= 11
-        llvm::Align
+        llvm::Align;
 #endif
-    >
-    inline T getCorrectAlign(uint32_t Val)
+
+    inline Align getCorrectAlign(uint32_t Val)
     {
-        return T{ Val };
+        return Align{ Val };
     }
 
     // It is meant for copying alignement.
     // getAlign returns different type for different LLVM versions but
     // it can be overcome by using auto or direct usage in another LLVM
     // interface.
+    template <typename TValue,
+              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
+    Align getAlign(const TValue &Val)
+    {
 #if LLVM_VERSION_MAJOR <= 9
-    template <typename TValue,
-              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
-    unsigned getAlign(const TValue &Val)
-    {
         return Val.getAlignment();
-    }
 #elif LLVM_VERSION_MAJOR <= 10
-    template <typename TValue,
-              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
-    llvm::MaybeAlign getAlign(const TValue &Val)
-    {
-        // LLVM 10 instructions accept MaybeAlign but do not provide
-        // getMaybeAlignMethod
         return llvm::MaybeAlign(Val.getAlignment());
-    }
 #else
-    template <typename TValue,
-              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
-    llvm::Align getAlign(const TValue &Val)
-    {
         return Val.getAlign();
-    }
 #endif
+    }
 
 } // namespace IGCLLVM
 

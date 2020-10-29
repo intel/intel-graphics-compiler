@@ -573,24 +573,24 @@ StoreInst* STORE(Value *Val, Value *Ptr, bool isVolatile = false)
     return IRB()->CreateStore(Val, Ptr, isVolatile);
 }
 
-LoadInst* ALIGNED_LOAD(Value *Ptr, unsigned Align, const char *Name)
+inline LoadInst* ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align, const char *Name)
 {
-    return IRB()->CreateAlignedLoad(Ptr, IGCLLVM::getAlign(Align), Name);
+    return IRB()->CreateAlignedLoad(Ptr, Align, Name);
 }
 
-LoadInst* ALIGNED_LOAD(Value *Ptr, unsigned Align, const Twine &Name = "")
+inline LoadInst* ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align, const Twine &Name = "")
 {
-    return IRB()->CreateAlignedLoad(Ptr, IGCLLVM::getAlign(Align), Name);
+    return IRB()->CreateAlignedLoad(Ptr, Align, Name);
 }
 
-LoadInst* ALIGNED_LOAD(Value *Ptr, unsigned Align, bool isVolatile, const Twine &Name = "")
+inline LoadInst* ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align, bool isVolatile, const Twine &Name = "")
 {
-    return IRB()->CreateAlignedLoad(Ptr, IGCLLVM::getAlign(Align), isVolatile, Name);
+    return IRB()->CreateAlignedLoad(Ptr, Align, isVolatile, Name);
 }
 
-StoreInst* ALIGNED_STORE(Value *Val, Value *Ptr, unsigned Align, bool isVolatile = false)
+inline StoreInst* ALIGNED_STORE(Value *Val, Value *Ptr, IGCLLVM::Align Align, bool isVolatile = false)
 {
-    return IRB()->CreateAlignedStore(Val, Ptr, IGCLLVM::getAlign(Align), isVolatile);
+    return IRB()->CreateAlignedStore(Val, Ptr, Align, isVolatile);
 }
 
 FenceInst* FENCE(AtomicOrdering Ordering, SyncScope::ID SSID = SyncScope::System, const Twine &Name = "")

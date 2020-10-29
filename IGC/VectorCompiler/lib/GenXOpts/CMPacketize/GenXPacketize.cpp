@@ -276,7 +276,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
                        VecFName + Suffix[Width / 8], F->getParent());
   ClonedFunc->setCallingConv(F->getCallingConv());
   ClonedFunc->setAttributes(F->getAttributes());
-  ClonedFunc->setAlignment(IGCLLVM::getAlign(F->getAlignment()));
+  ClonedFunc->setAlignment(IGCLLVM::getAlign(*F));
 
   // then use CloneFunctionInto
   ValueToValueMapTy ArgMap;
@@ -888,10 +888,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
                      ->isPointerTy());
       auto Align = LI->getAlignment();
       pReplacedInst = B->MASKED_GATHER(pVecSrc, Align);
-    } else {
-      auto Align = LI->getAlignment();
-      pReplacedInst = B->ALIGNED_LOAD(pVecSrc, Align);
-    }
+    } else
+      pReplacedInst = B->ALIGNED_LOAD(pVecSrc, IGCLLVM::getAlign(*LI));
     break;
   }
 
