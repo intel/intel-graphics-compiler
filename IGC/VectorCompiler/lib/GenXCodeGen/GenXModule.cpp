@@ -110,6 +110,7 @@ bool GenXModule::runOnModule(Module &M) {
   // after runOnModule looks dangerous.
   const auto &BC = getAnalysis<GenXBackendConfig>();
   AsmDumpsEnabled = BC.asmDumpsEnabled();
+  EnableKernelDebug = BC.kernelDebugEnabled();
 
   InlineAsm = CheckForInlineAsm(M);
 

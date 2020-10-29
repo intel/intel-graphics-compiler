@@ -49,10 +49,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 
-static cl::opt<bool> GenerateDebugInfo(
-    "emit-debug-info", cl::init(false), cl::Hidden,
-    cl::desc("Generate DWARF debug info for each compiled kernel"));
-
 namespace {
 
 static void debugDump(const Twine &Name, const char *Content, size_t Size) {
@@ -282,7 +278,8 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 bool GenXDebugInfo::runOnModule(Module &M) {
 
-  if (!GenerateDebugInfo)
+  const auto &BC = getAnalysis<GenXBackendConfig>();
+  if (!BC.kernelDebugEnabled())
     return false;
 
   const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();

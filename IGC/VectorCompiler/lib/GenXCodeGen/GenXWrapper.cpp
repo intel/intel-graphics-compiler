@@ -426,6 +426,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
   if (Opts.StackMemSize)
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
+  BackendOpts.EnableKernelDebug = Opts.EmitDebugInfo;
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
@@ -598,6 +599,10 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);
 
+  // Temporary measure till KernelArgOffset is moved to the backend
+  if (Opts.EmitDebugInfo)
+    M.getOrInsertNamedMetadata(llvm::genx::DebugMD::DebuggableKernels);
+
   Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
   M.setTargetTriple(TheTriple.getTriple());
 
@@ -702,6 +707,9 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             vc::CompileOptions &Opts) {
   if (ApiOptions.hasArg(vc::options::OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
+
+  if (ApiOptions.hasArg(vc::options::OPT_vc_emit_debug))
+    Opts.EmitDebugInfo = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(vc::options::OPT_optimize)) {
     StringRef Val = A->getValue();
@@ -830,14 +838,6 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
     StringRef WrappedOpts =
         Saver.save(Twine{"-finalizer-opts='"} + FinalizerOpts + "'");
     UpdatedArgs.AddSeparateArg(ApiArgs.getLastArg(OptID), LLVMOpt, WrappedOpts);
-  }
-
-
-  if (opt::Arg *DbgArg = ApiArgs.getLastArg(vc::options::OPT_vc_emit_debug)) {
-
-    UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt,
-        "-finalizer-opts='-generateDebugInfo -addKernelID -setstartbp'");
-    UpdatedArgs.AddSeparateArg(DbgArg, LLVMOpt, "-emit-debug-info");
   }
 
   if (opt::Arg *GTPinReRa = ApiArgs.getLastArg(vc::options::OPT_gtpin_rera)) {

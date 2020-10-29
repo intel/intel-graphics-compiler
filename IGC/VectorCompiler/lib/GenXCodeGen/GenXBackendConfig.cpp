@@ -39,6 +39,11 @@ using namespace llvm;
 // All options that can control backend behavior should be here.
 //
 //===----------------------------------------------------------------------===//
+
+static cl::opt<bool> GenerateDebugInfoOpt(
+    "emit-debug-info", cl::init(false), cl::Hidden,
+    cl::desc("Generate DWARF debug info for each compiled kernel"));
+
 static cl::opt<bool> DumpRegAllocOpt(
     "genx-dump-regalloc", cl::init(false), cl::Hidden,
     cl::desc(
@@ -68,8 +73,8 @@ static cl::opt<std::string> DebugInfoDumpNameOverride(
 char GenXBackendConfig::ID = 0;
 
 GenXBackendOptions::GenXBackendOptions()
-    : DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
-      EnableAsmDumps(EnableAsmDumpsOpt),
+    : EnableKernelDebug(GenerateDebugInfoOpt), DumpRegAlloc(DumpRegAllocOpt),
+      StackSurfaceMaxSize(StackMemSizeOpt), EnableAsmDumps(EnableAsmDumpsOpt),
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride) {}
 

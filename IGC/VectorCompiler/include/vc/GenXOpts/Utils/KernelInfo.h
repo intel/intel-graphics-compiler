@@ -39,6 +39,10 @@ namespace genx {
 
 enum { VISA_MAJOR_VERSION = 3, VISA_MINOR_VERSION = 6 };
 
+namespace DebugMD {
+static constexpr const char DebuggableKernels[] = "VC.Debug.Enable";
+}
+
 // Utility function to tell whether a Function is a vISA kernel.
 inline bool isKernel(const Function *F) {
   // We use DLLExport to represent a kernel in LLVM IR.
@@ -205,6 +209,13 @@ public:
   void computeBTIs() {
     unsigned SurfaceID = 0;
     unsigned SamplerID = 0;
+
+    IGC_ASSERT_MESSAGE(F, "BTI assignment requires a function to process");
+    const Module* M = F->getParent();
+    // If module does have Debuggable Kernels, then BTI=0 is reserved
+    if (M->getNamedMetadata(DebugMD::DebuggableKernels))
+      SurfaceID = SamplerID = 1;
+
     auto Desc = ArgTypeDescs.begin();
     // Assign SRV and samplers.
     for (auto Kind = ArgKinds.begin(); Kind != ArgKinds.end(); ++Kind) {

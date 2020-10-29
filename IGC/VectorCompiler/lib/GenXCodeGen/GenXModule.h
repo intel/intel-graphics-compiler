@@ -90,6 +90,7 @@ namespace llvm {
     // pointers without copying. Store all strings here.
     BumpPtrAllocator ArgStorage;
     bool AsmDumpsEnabled = false;
+    bool EnableKernelDebug = false;
 
     VISABuilder *CisaBuilder = nullptr;
     void InitCISABuilder();
