@@ -64,6 +64,10 @@ namespace {
 static cl::opt<bool> OptIcmpEnable("genx-i64emu-icmp-enable", cl::init(true),
                                    cl::Hidden,
                                    cl::desc("enable icmp emulation"));
+static cl::opt<bool> OptConvertPartialPredicates(
+    "genx-i64emu-icmp-ppred-lowering", cl::init(true), cl::Hidden,
+    cl::desc("if \"partial predicates\" shall be converted to icmp"));
+
 using IRBuilder = IRBuilder<TargetFolder>;
 
 class GenXEmulate : public ModulePass {
@@ -205,10 +209,8 @@ class GenXEmulate : public ModulePass {
     static AddSubExtResult buildSubb(Module *M, IRBuilder &B, Value &L,
                                      Value &R, const Twine &Prefix);
     static Value *buildGeneralICmp(IRBuilder &B, CmpInst::Predicate P,
-                                   const LHSplit &L, const LHSplit &R);
-    static Value *buildICmpEQ(IRBuilder &B, const LHSplit &L, const LHSplit &R);
-    static Value *buildICmpNE(IRBuilder &B, const LHSplit &L, const LHSplit &R);
-
+                                   bool IsPartialPredicate, const LHSplit &L,
+                                   const LHSplit &R);
     static Value *tryOptimizedShr(IRBuilder &B, IVSplitter &SplitBuilder,
                                   BinaryOperator &Op, ArrayRef<uint32_t> Sa);
     static Value *tryOptimizedShl(IRBuilder &B, IVSplitter &SplitBuilder,
@@ -462,7 +464,14 @@ Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
   auto Src0 = Splitter.splitOperandLoHi(0);
   auto Src1 = Splitter.splitOperandLoHi(1);
 
-  Value *Result = buildGeneralICmp(Builder, Cmp.getPredicate(), Src0, Src1);
+  bool PartialPredicate =
+      std::any_of(Cmp.user_begin(), Cmp.user_end(), [](const User *U) {
+        auto IID = GenXIntrinsic::getAnyIntrinsicID(U);
+        return IID == GenXIntrinsic::genx_wrpredregion ||
+               IID == GenXIntrinsic::genx_wrpredpredregion;
+      });
+  Value *Result = buildGeneralICmp(Builder, Cmp.getPredicate(),
+                                   PartialPredicate, Src0, Src1);
 
   if (Cmp.getType()->isIntegerTy() && !Result->getType()->isIntegerTy()) {
     // we expect this cast to be possible
@@ -965,20 +974,6 @@ Value *GenXEmulate::Emu64Expander::buildTernaryAddition(
   auto *SubH = Builder.CreateAdd(&A, &B, Name + ".part");
   return Builder.CreateAdd(SubH, &C, Name);
 }
-Value *GenXEmulate::Emu64Expander::buildICmpEQ(IRBuilder &Builder,
-                                               const LHSplit &Src0,
-                                               const LHSplit &Src1) {
-  auto *T0 = Builder.CreateICmpEQ(Src0.Lo, Src1.Lo);
-  auto *T1 = Builder.CreateICmpEQ(Src0.Hi, Src1.Hi);
-  return Builder.CreateAnd(T0, T1, "emulated_icmp_eq");
-}
-Value *GenXEmulate::Emu64Expander::buildICmpNE(IRBuilder &Builder,
-                                               const LHSplit &Src0,
-                                               const LHSplit &Src1) {
-  auto *T0 = Builder.CreateICmpNE(Src0.Lo, Src1.Lo);
-  auto *T1 = Builder.CreateICmpNE(Src0.Hi, Src1.Hi);
-  return Builder.CreateOr(T1, T0, "emulated_icmp_ne");
-}
 GenXEmulate::Emu64Expander::AddSubExtResult
 GenXEmulate::Emu64Expander::buildAddc(Module *M, IRBuilder &Builder, Value &L,
                                       Value &R, const Twine &Prefix) {
@@ -1016,6 +1011,7 @@ GenXEmulate::Emu64Expander::buildSubb(Module *M, IRBuilder &Builder, Value &L,
 }
 Value *GenXEmulate::Emu64Expander::buildGeneralICmp(IRBuilder &Builder,
                                                     CmpInst::Predicate P,
+                                                    bool IsPartialPredicate,
                                                     const LHSplit &Src0,
                                                     const LHSplit &Src1) {
 
@@ -1057,11 +1053,20 @@ Value *GenXEmulate::Emu64Expander::buildGeneralICmp(IRBuilder &Builder,
     }
   };
 
+  std::pair<Value *, Value *> ResultParts = {};
   switch (P) {
-  case CmpInst::ICMP_EQ:
-    return buildICmpEQ(Builder, Src0, Src1);
-  case CmpInst::ICMP_NE:
-    return buildICmpNE(Builder, Src0, Src1);
+  case CmpInst::ICMP_EQ: {
+    auto *T0 = Builder.CreateICmpEQ(Src0.Lo, Src1.Lo);
+    auto *T1 = Builder.CreateICmpEQ(Src0.Hi, Src1.Hi);
+    ResultParts = {T0, T1};
+    break;
+  }
+  case CmpInst::ICMP_NE: {
+    auto *T0 = Builder.CreateICmpNE(Src0.Lo, Src1.Lo);
+    auto *T1 = Builder.CreateICmpNE(Src0.Hi, Src1.Hi);
+    ResultParts = {T0, T1};
+    break;
+  }
   default: {
     CmpInst::Predicate EmuP1 = getEmulateCond1(P);
     CmpInst::Predicate EmuP2 = getEmulateCond2(P);
@@ -1069,9 +1074,40 @@ Value *GenXEmulate::Emu64Expander::buildGeneralICmp(IRBuilder &Builder,
     auto *T1 = Builder.CreateICmpEQ(Src0.Hi, Src1.Hi);
     auto *T2 = Builder.CreateAnd(T1, T0);
     auto *T3 = Builder.CreateICmp(EmuP2, Src0.Hi, Src1.Hi);
-    return Builder.CreateOr(T2, T3, "int_emu." + CmpInst::getPredicateName(P));
+    ResultParts = {T2, T3};
+    break;
   }
   }
+  auto ResultCond = (P == CmpInst::ICMP_EQ) ? Instruction::BinaryOps::And
+                                            : Instruction::BinaryOps::Or;
+  if (!IsPartialPredicate || !OptConvertPartialPredicates) {
+    return Builder.CreateBinOp(
+        ResultCond, ResultParts.first, ResultParts.second,
+        "int_emu.cmp." + CmpInst::getPredicateName(P) + ".");
+  }
+  // Note:
+  // The reason for doing this conversion is that our backend has no
+  // convinient way to represent partial updates of predicates with anything
+  // except for icmp instructions. In the current codebase we have -
+  // we are unable to create a proper visa for the following case ("pseudo" IR):
+  // bale {
+  //   %ne1 = or <8 x i1> %a, %b
+  //   %j = call <16 x i1> wrpredregion(<16 x i1> undef, <8 x i1> %ne1, i32 0)
+  // }
+  // bale {
+  //   %ne2 = or <8 x i1> %c, %d
+  //   %joined = call <16 x i1> wrpredregion(<16 x i1> %j, <8 x i1> %ne1, i32 8)
+  // }
+  // As such we convert such cases to the following sequence: 2xsel->or->cmp
+  ConstantEmitter K(Src0.Lo);
+  auto *L = Builder.CreateSelect(ResultParts.first, K.getOnes(), K.getZero());
+  auto *R = Builder.CreateSelect(ResultParts.second, K.getOnes(), K.getZero());
+  auto *IPred = Builder.CreateBinOp(ResultCond, L, R,
+                                    "int_emu.cmp.part.int." +
+                                        CmpInst::getPredicateName(P) + ".");
+  return Builder.CreateICmpEQ(IPred, K.getOnes(),
+                              "int_emu.cmp.part.i1" +
+                                  CmpInst::getPredicateName(P) + ".");
 }
 Value *GenXEmulate::Emu64Expander::buildRightShift(IVSplitter &SplitBuilder,
                                                    BinaryOperator &Op) {
