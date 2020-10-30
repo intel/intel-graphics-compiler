@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(cl_khr_fp64)
-    #include "../SVMLReleaseOnly/svml/MathDouble/rf_cos_d_1_g.cl"
+    #include "../IMF/FP64/cos_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 static INLINE float __intel_cos_f32( float x, bool doFast )
@@ -65,7 +65,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, float, float, f
 
 INLINE double __builtin_spirv_OpenCL_cos_f64( double x )
 {
-    return __ocl_svml_rf_cos1(x);
+    return __ocl_svml_cos(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cos, double, double, f64 )
