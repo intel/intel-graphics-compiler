@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/atan2_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 // TODO: I think we should be able to use M_PI_F here instead of FLOAT_PI,
@@ -116,7 +114,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, float, fl
 
 INLINE double __builtin_spirv_OpenCL_atan2_f64_f64( double y, double x )
 {
-        return libclc_atan2_f64_f64(y, x);
+    return __ocl_svml_atan2(y, x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, double, double, double, f64, f64 )
