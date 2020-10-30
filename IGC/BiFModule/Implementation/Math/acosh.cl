@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/acosh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 float __builtin_spirv_OpenCL_acosh_f32( float x )
@@ -112,7 +110,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_acosh, float, float,
 
 INLINE double __builtin_spirv_OpenCL_acosh_f64( double x )
 {
-        return libclc_acosh_f64(x);
+    return __ocl_svml_acosh(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_acosh, double, double, f64 )
