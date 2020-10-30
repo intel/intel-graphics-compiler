@@ -29,9 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/ln_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 /*
@@ -118,7 +116,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log, float, float, f
 
 INLINE double __builtin_spirv_OpenCL_log_f64( double x )
 {
-        return libclc_log_f64(x);
+    return __ocl_svml_log(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log, double, double, f64 )
