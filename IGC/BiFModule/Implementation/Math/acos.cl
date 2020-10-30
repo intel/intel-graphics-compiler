@@ -30,9 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_acos, float, float, f32 )
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/acos_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 
@@ -40,7 +38,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_acos, float, float, f32 )
 
 INLINE double __builtin_spirv_OpenCL_acos_f64( double x )
 {
-        return libclc_acos_f64(x);
+    return __ocl_svml_acos(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_acos, double, double, f64 )
