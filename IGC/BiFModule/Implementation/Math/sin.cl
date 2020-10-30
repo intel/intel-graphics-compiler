@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(cl_khr_fp64)
-    #include "../IMF/FP64/sin_d_la.cl"
+    #include "../SVMLReleaseOnly/svml/MathDouble/rf_sin_d_1_g.cl"
 #endif // defined(cl_khr_fp64)
 
 
@@ -66,7 +66,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sin, float, float, f
 
 INLINE double __builtin_spirv_OpenCL_sin_f64( double x )
 {
-    return __ocl_svml_sin(x);
+   return __ocl_svml_rf_sin1(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sin, double, double, f64 )
