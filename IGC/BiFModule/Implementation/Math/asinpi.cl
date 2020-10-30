@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/asinpi_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 INLINE float __builtin_spirv_OpenCL_asinpi_f32( float x )
@@ -44,7 +42,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_asinpi, float, float, f32
 
 INLINE double __builtin_spirv_OpenCL_asinpi_f64( double x )
 {
-        return libclc_asinpi_f64(x);
+    return __ocl_svml_asinpi(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_asinpi, double, double, f64 )
