@@ -962,7 +962,7 @@ int LinearScanRA::linearScanRA()
         PhyRegsLocalRA initPregs = (*pregs);
         calculateInputIntervalsGlobal(initPregs, (*regions.begin()).second);
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "===== printInputLiveIntervalsGlobal============" << std::endl;
+        COUT_ERROR << "===== printInputLiveIntervalsGlobal============" << kernel.getName() << std::endl;
         printInputLiveIntervalsGlobal();
 #endif
 
@@ -1246,7 +1246,7 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
     }
 
     if (lr == nullptr ||
-        (dcl->getRegFile() == G4_INPUT && dcl != kernel.fg.builder->getStackCallArg())||
+        (dcl->getRegFile() == G4_INPUT && dcl != kernel.fg.builder->getStackCallArg() && dcl != kernel.fg.builder->getStackCallRet())||
         (lr->isGRFRegAssigned() && (!dcl->getRegVar()->isGreg())))  //ARF
     {
         return;
@@ -1337,7 +1337,7 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
     }
 
     if (lr == nullptr ||
-        (dcl->getRegFile() == G4_INPUT && dcl != kernel.fg.builder->getStackCallRet()) ||
+        (dcl->getRegFile() == G4_INPUT && dcl != kernel.fg.builder->getStackCallRet() && dcl != kernel.fg.builder->getStackCallArg()) ||
         (lr->isGRFRegAssigned() && (!dcl->getRegVar()->isGreg())))  //ARF
     {
         return;
@@ -1654,9 +1654,8 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
         if (curInst->isFReturn())
         {
             uint16_t retSize = kernel.fg.builder->getRetVarSize();
-            if (retSize)
+            if (retSize && stackCallRetLR)
             {
-                assert(stackCallRetLR);
                 stackCallRetLR->setLastRef(curInst, curInst->getLexicalId() * 2);
                 stackCallRetLR = nullptr;
             }
