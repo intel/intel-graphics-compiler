@@ -838,5 +838,4 @@ float __builtin_IB_add_rtz_f32(float x, float y) __attribute__((const));
 
 
 
-
 #endif // IGCBIF_INTRINSICS_CL
