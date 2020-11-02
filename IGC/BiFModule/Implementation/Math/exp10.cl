@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/exp10_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 float __builtin_spirv_OpenCL_exp10_f32( float x )
@@ -80,57 +78,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_exp10, float, float, f32 
 
 INLINE double __builtin_spirv_OpenCL_exp10_f64( double x )
 {
-        // 10^x = 2^(log2(10^x)) = 2^(x * log2(10))
-        // We'll compute 2^(x * log2(10)) by splitting x * log2(10)
-        //   into a whole part and fractional part.
-        const double log2_10 = as_double( 0x400A934F0979A371UL ); // Closest value to log2(10)
-        const double log2_10_diff = as_double( 0x3CA7F2495FB7FA75UL ); // infinite precise log2(10) - log2_10
-
-        double2 x2 = (double2)(log2_10, log2_10_diff);
-        double2 y2 = (double2)(x, 0.0);
-
-        volatile double res2 = x2.x * y2.x;
-        double err = __builtin_spirv_OpenCL_fma_f64_f64_f64(x2.x, y2.x, -res2);
-        double2 prod = (double2)(res2, err);
-
-        prod.y = __builtin_spirv_OpenCL_fma_f64_f64_f64(x2.x, y2.y, prod.y);
-        prod.y = __builtin_spirv_OpenCL_fma_f64_f64_f64(x2.y, y2.x, prod.y);
-
-        double sum  = prod.x + prod.y;
-        double err2 = prod.y - (sum - prod.x);
-
-        double w = __builtin_spirv_OpenCL_trunc_f64(sum);
-
-        // Now to emulate the subtraction....
-
-        double2 x3 = (double2)(sum, err2);
-        double2 y3 = (double2)(-w, 0.0);
-
-        double sum1   = x3.x + y3.x;
-        double ydiff = sum1 - x3.x;
-        double err1   = (x3.x - (sum1 - ydiff)) + (y3.x - ydiff);
-
-        double sum2   = x3.y + y3.y;
-        double ydiff2 = sum2 - x3.y;
-        double err2_1   = (x3.y - (sum2 - ydiff2)) + (y3.y - ydiff2);
-
-        err1 += sum2;
-
-        double sum3 = sum1 + err1;
-        err1 -= (sum3 - sum1);
-        err1 += err2_1;
-
-        double f = sum3 + err1;
-
-        double w2 = __builtin_spirv_OpenCL_exp2_f64( w );   // calculation with the whole part
-        double f2 = __builtin_spirv_OpenCL_exp2_f64( f );   // calculation with the fractional part
-
-        double res = w2 * f2;
-
-        res = ( x < as_double( 0xC0912C0000000000UL ) )  ? as_double( 0x0000000000000000UL ) : res;
-        res = ( x >= as_double( 0x4090040000000000UL ) ) ? as_double( 0x7FF0000000000000UL ) : res;
-
-        return res;
+    return __ocl_svml_exp10(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_exp10, double, double, f64 )
