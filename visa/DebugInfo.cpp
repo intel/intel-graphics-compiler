@@ -962,7 +962,7 @@ uint32_t KernelDebugInfo::getVarIndex(G4_Declare* dcl)
 template<class T>
 void emitDataName(const char* name, T& t)
 {
-    auto length = strlen(name);
+    auto length = (uint8_t)strlen(name);
     // Length
     insertData(&length, sizeof(uint8_t), t);
     // Actual name
