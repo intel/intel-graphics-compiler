@@ -29,11 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #include "../ExternalLibraries/libclc/expm1.cl"
 
-    #if defined(cl_khr_fp64)
-        #include "../ExternalLibraries/libclc/doubles.cl"
-    #endif // defined(cl_khr_fp64)
-
-
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/expm1_d_la.cl"
+#endif // defined(cl_khr_fp64)
 
 INLINE float __builtin_spirv_OpenCL_expm1_f32( float x )
 {
@@ -53,7 +51,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_expm1, float, float,
 
 INLINE double __builtin_spirv_OpenCL_expm1_f64( double x )
 {
-        return libclc_expm1_f64(x);
+    return __ocl_svml_expm1(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_expm1, double, double, f64 )
