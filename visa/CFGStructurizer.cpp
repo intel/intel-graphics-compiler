@@ -3275,7 +3275,11 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
 
         G4_INST* endifInst = CFG->builder->createInternalCFInst(
             NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
-
+        // Set CISA index link here explicitly since not doing so causes
+        // endif to merge with immediately following line. This prevents
+        // debugger from setting bp on src line immediately following
+        // the endif.
+        endifInst->inheritDIFrom(gotoInst);
         insertAtBegin(exit, endifInst);
 
         // jip = uip = endif
@@ -3284,6 +3288,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         pred->setState(pred->getState() == PredState_Plus ? PredState_Minus : PredState_Plus);
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
             pred, G4_if, execSize, endifLabel, endifLabel, InstOpt_NoOpt);
+        ifInst->inheritDIFrom(endifInst);
         begin->pop_back();
         begin->push_back(ifInst);
         if (isUniform)
@@ -3380,7 +3385,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         // instruction.
         auto endifInst = CFG->builder->createInternalCFInst(
             NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
-
+        endifInst->inheritDIFrom(gotoInst);
         insertAtBegin(exit, endifInst);
 
         G4_BB *elseFirstBB = elseNode->getBeginBB();
@@ -3392,6 +3397,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         // if instruction : jip = else_label, uip = endif
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
             pred, G4_if, execSize, elseLabel, endifLabel, InstOpt_NoOpt);
+        ifInst->inheritDIFrom(endifInst);
         begin->pop_back();
         begin->push_back(ifInst);
 
@@ -3411,6 +3417,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         G4_INST *thenGoto = newThenLastBB->back();
         G4_INST* elseInst = CFG->builder->createInternalCFInst(
             NULL, G4_else, execSize, endifLabel, endifLabel, InstOpt_NoOpt);
+        elseInst->inheritDIFrom(endifInst);
         if (thenGoto->opcode() == G4_goto)
         {
             newThenLastBB->pop_back();
@@ -3498,6 +3505,7 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
         // jip = uip = do
         G4_INST *whileInst = CFG->builder->createInternalCFInst(
             gotoInst->getPredicate(), G4_while, execSize, doLabel, doLabel, InstOpt_NoOpt);
+        whileInst->inheritDIFrom(end->back());
         end->pop_back();
         end->push_back(whileInst);
         if (isUniform)
@@ -3649,6 +3657,7 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
         G4_INST* breakInst = CFG->builder->createInternalCFInst(
             gotoInst->getPredicate(), G4_break, execSize,
             innerBlock->getLabel(), whilebb->getLabel(), InstOpt_NoOpt);
+        breakInst->inheritDIFrom(gotoInst);
         beginbb->pop_back();
         beginbb->push_back(breakInst);
         if (isUniform)
