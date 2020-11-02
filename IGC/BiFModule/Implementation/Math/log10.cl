@@ -29,6 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #include "../ExternalLibraries/libclc/log10.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/log10_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 #define _M_LOG10_E_DBL  (as_double(0x3fdbcb7b1526e50e)) // 0.4342944819032518276511289
 
 INLINE float __builtin_spirv_OpenCL_log10_f32( float x )
@@ -53,7 +57,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log10, float, float,
 
 INLINE double __builtin_spirv_OpenCL_log10_f64( double x )
 {
-    return __builtin_spirv_OpenCL_log_f64(x) * _M_LOG10_E_DBL;
+    return __ocl_svml_log10_v2(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log10, double, double, f64 )
