@@ -3479,12 +3479,12 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
     if (builder.noSrc2Regioning())
     {
         // src2 is required to have the same subreg as dst if src2 is not a scalar
-        // If we can't guarantee this we have to align both of them to 32 byte
+        // If we can't guarantee this we have to align both of them to GRF
         unsigned src2Pos = inst->opcode() == G4_pseudo_mad ? 0 : 2;
         auto src2 = inst->getSrc(src2Pos);
         if (src2->isSrcRegRegion() && !src2->asSrcRegRegion()->isScalar())
         {
-            alignInBytes = 32;
+            alignInBytes = getGRFSize();
         }
     }
 
