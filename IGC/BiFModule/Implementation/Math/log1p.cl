@@ -28,10 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 
     #include "../ExternalLibraries/libclc/log1p.cl"
-    #if defined(cl_khr_fp64)
-        #include "../ExternalLibraries/libclc/doubles.cl"
-    #endif // defined(cl_khr_fp64)
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/log1p_d_la.cl"
+#endif // defined(cl_khr_fp64)
 
 INLINE float __builtin_spirv_OpenCL_log1p_f32( float x )
 {
@@ -51,7 +51,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log1p, float, float,
 
 INLINE double __builtin_spirv_OpenCL_log1p_f64( double x )
 {
-        return libclc_log1p_f64( x );
+    return __ocl_svml_log1p(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log1p, double, double, f64 )
