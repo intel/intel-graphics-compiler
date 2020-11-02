@@ -31,9 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #include "../ExternalLibraries/libclc/trig.cl"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/cospi_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 INLINE float __builtin_spirv_OpenCL_cospi_f32( float x )
@@ -56,7 +54,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cospi, float, float,
 
 INLINE double __builtin_spirv_OpenCL_cospi_f64( double x )
 {
-        return libclc_cospi_f64(x);
+    return __ocl_svml_cospi(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cospi, double, double, f64 )
