@@ -27,6 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/erfc_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 float __builtin_spirv_OpenCL_erfc_f32( float x )
 {
     // this algorithm is taken from book "Numerical recipes for C" page.221
@@ -56,7 +60,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erfc, float, float, f32 )
 
 INLINE double __builtin_spirv_OpenCL_erfc_f64( double x )
 {
-    return libclc_erfc_f64(x);
+    return __ocl_svml_erfc(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erfc, double, double, f64 )
