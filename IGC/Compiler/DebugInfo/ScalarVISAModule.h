@@ -43,6 +43,10 @@ public:
       return m_pShader->getGRFSize();
     }
 
+    unsigned getNumGRFs() const override {
+        return m_pShader->ProgramOutput()->m_numGRFTotal;
+    }
+
     unsigned getPointerSize() const override;
 
     llvm::ArrayRef<char> getGenDebug() const override {

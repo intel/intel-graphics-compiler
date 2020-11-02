@@ -680,15 +680,30 @@ namespace IGC
 
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);
-        void writeCIE();
+        uint32_t writeSubroutineCIE();
+        uint32_t writeStackcallCIE();
         void writeFDESubroutine(VISAModule* m);
         void writeFDEStackCall(VISAModule* m);
         bool DwarfFrameSectionNeeded()
         {
             return (m_pModule->hasOrIsStackCall() || (m_pModule->getSubroutines()->size() > 0));
         }
-        const uint16_t returnReg = 256;
-        const uint16_t fpReg = 257;
+
+        // Store offset of 2 CIEs, one for stack call and other for subroutines.
+        uint32_t offsetCIEStackCall = 0;
+        uint32_t offsetCIESubroutine = 0;
+
+        // r[MAX-GRF - 3]
+        static const unsigned int SpecialGRFOff = 3;
+        static const unsigned int RetIpSubReg = 0;
+        static const unsigned int RetEMSubReg = 1;
+        static const unsigned int BESPSubReg = 2;
+        static const unsigned int BEFPSubReg = 3;
+
+        uint32_t GetSpecialGRF()
+        {
+            return GetVISAModule()->getNumGRFs() - SpecialGRFOff;
+        }
     };
 } // namespace IGC
 

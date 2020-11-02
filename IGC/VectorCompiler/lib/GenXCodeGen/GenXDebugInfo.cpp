@@ -170,7 +170,10 @@ public:
     IGC_ASSERT_MESSAGE(0, "getGRFSize() - not implemented");
     return 0;
   }
-
+  unsigned getNumGRFs() const override {
+    IGC_ASSERT_MESSAGE(0, "getGRFSize() - not implemented");
+    return 0;
+  }
   unsigned getPointerSize() const override {
     return F.getParent()->getDataLayout().getPointerSize();
   }

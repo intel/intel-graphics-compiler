@@ -500,6 +500,7 @@ namespace IGC
         virtual bool isLineTableOnly() const = 0;
         virtual unsigned getPrivateBaseReg() const = 0;
         virtual unsigned getGRFSize() const = 0;
+        virtual unsigned getNumGRFs() const = 0;
         virtual unsigned getPointerSize() const = 0;
         virtual VISAModule* makeNew() const = 0;
 
