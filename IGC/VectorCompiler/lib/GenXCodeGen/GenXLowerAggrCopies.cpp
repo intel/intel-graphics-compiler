@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "GenXLowerAggrCopies.h"
+#include "GenX.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/StackProtector.h"
 #include "llvm/IR/Constants.h"
@@ -47,9 +48,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/LowerMemIntrinsics.h"
-#include "Probe/Assertion.h"
 
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#include <tuple>
+#include <vector>
 
 #define DEBUG_TYPE "GENX_LOWERAGGRCOPIES"
 
@@ -90,6 +94,98 @@ struct GenXLowerAggrCopies : public FunctionPass {
 };
 
 char GenXLowerAggrCopies::ID = 0;
+
+namespace {
+struct SliceInfo {
+  int Offset;
+  int Width;
+};
+} // namespace
+
+static std::vector<SliceInfo> getLegalLengths(int TotalLength) {
+  std::vector<SliceInfo> Slices;
+  for (int Offset = 0; TotalLength;) {
+    int Width = PowerOf2Floor(TotalLength);
+    Slices.push_back({Offset, Width});
+    Offset += Width;
+    TotalLength -= Width;
+  }
+  return std::move(Slices);
+}
+
+// Original memset intrinsic fills memory with 8-bit values.
+// This function checks whether bigger type can be used (e.g. storing by 32-bit
+// values).
+// Desired type size is provided with \p CoalescedTySize parametr and given in
+// bytes.
+static bool memSetCanBeCoalesced(MemSetInst &MemSet, int CoalescedTySize) {
+  auto OrigLength = cast<ConstantInt>(MemSet.getLength())->getSExtValue();
+  IGC_ASSERT_MESSAGE(MemSet.getValue()->getType()->getScalarSizeInBits() ==
+                         genx::ByteBits,
+                     "memset is expected to store by bytes");
+  IGC_ASSERT_MESSAGE(CoalescedTySize >= 1 && isPowerOf2_32(CoalescedTySize),
+                     "wrong argument: invalid CoalescedTySize");
+  return OrigLength % CoalescedTySize == 0 &&
+         static_cast<int>(MemSet.getDestAlignment()) >= CoalescedTySize;
+}
+
+// Original memset intrinsic fills memory with 8-bit values.
+// This function checks whether bigger type can be used (e.g. storing by 32-bit
+// values).
+// New coalesced value and corresponding base address and length are returned
+// respectively.
+// New instructions may be inserted before the \p MemSet to produce these new
+// values.
+static std::tuple<Value &, Value &, int>
+defineOptimalValueAndLength(MemSetInst &MemSet) {
+  auto OrigLength = cast<ConstantInt>(MemSet.getLength())->getSExtValue();
+  Value &OrigSetVal = *MemSet.getValue();
+  Value &OrigBaseAddr = *MemSet.getRawDest();
+
+  // Because DWord is better than Byte and causes minimal problems.
+  // OWord can be better but but it requires more code.
+  constexpr int CoalescedTySize = genx::DWordBytes;
+  if (!memSetCanBeCoalesced(MemSet, CoalescedTySize))
+    return {OrigSetVal, OrigBaseAddr, OrigLength};
+
+  IRBuilder<> IRB{&MemSet};
+  auto *PreNewSetVal = IRB.CreateVectorSplat(
+      CoalescedTySize, &OrigSetVal, OrigSetVal.getName() + ".pre.coalesce");
+  auto *NewSetVal = IRB.CreateBitCast(PreNewSetVal, IRB.getInt32Ty(),
+                                      OrigSetVal.getName() + ".coalesce");
+  auto DstAS = cast<PointerType>(OrigBaseAddr.getType())->getAddressSpace();
+  auto *NewBaseAddr =
+      IRB.CreateBitCast(&OrigBaseAddr, IRB.getInt32Ty()->getPointerTo(DstAS),
+                        OrigBaseAddr.getName() + ".align");
+  return {*NewSetVal, *NewBaseAddr, OrigLength / CoalescedTySize};
+}
+
+// Fills memory section/slice defined by \p Slice and \p BaseAddr parameters
+// with \p SetVal values. Memory is filled by a vector store instruction.
+static void setMemorySliceWithVecStore(SliceInfo Slice, Value &SetVal,
+                                       Value &BaseAddr,
+                                       Instruction *InsertionPt) {
+  IGC_ASSERT_MESSAGE(
+      InsertionPt,
+      "wrong argument: insertion point must be a valid instruction");
+  IGC_ASSERT_MESSAGE(Slice.Offset >= 0 && isPowerOf2_32(Slice.Width),
+                     "illegal slice is provided");
+  IGC_ASSERT_MESSAGE(SetVal.getType() ==
+                         BaseAddr.getType()->getPointerElementType(),
+                     "value and pointer types must correspond");
+
+  auto *VecTy = IGCLLVM::FixedVectorType::get(SetVal.getType(), Slice.Width);
+  IRBuilder<> IRB(InsertionPt);
+  Value *WriteOut = IRB.CreateVectorSplat(Slice.Width, &SetVal);
+  auto *DstAddr = &BaseAddr;
+  if (Slice.Offset != 0)
+    DstAddr = IRB.CreateGEP(BaseAddr.getType()->getPointerElementType(),
+                            &BaseAddr, IRB.getInt32(Slice.Offset),
+                            BaseAddr.getName() + ".addr.offset");
+  auto DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
+  auto *StoreVecPtr = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAS));
+  IRB.CreateStore(WriteOut, StoreVecPtr);
+}
 
 bool GenXLowerAggrCopies::runOnFunction(Function &F) {
   SmallVector<MemIntrinsic *, 4> MemCalls;
@@ -135,26 +231,14 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
       } else {
         expandMemMoveAsLoop(Memmove);
       }
-    } else if (MemSetInst *Memset = dyn_cast<MemSetInst>(MemCall)) {
+    } else if (MemSetInst *MemSet = dyn_cast<MemSetInst>(MemCall)) {
       if (doLinearExpand) {
-        llvm::Value *SetVal = Memset->getValue();
-        llvm::Value *LenVal = Memset->getLength();
-        IGC_ASSERT(isa<Constant>(LenVal));
-        IGC_ASSERT(SetVal->getType()->getScalarSizeInBits() == 8);
-        auto Len = (unsigned)cast<ConstantInt>(LenVal)->getZExtValue();
-        auto VecTy = IGCLLVM::FixedVectorType::get(SetVal->getType(), Len);
-        Value *WriteOut = UndefValue::get(VecTy);
-        IRBuilder<> IRB(Memset);
-        for (unsigned i = 0; i < Len; ++i) {
-          WriteOut = IRB.CreateInsertElement(WriteOut, SetVal, IRB.getInt32(i));
-        }
-        auto DstAddr = Memset->getRawDest();
-        unsigned dstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
-        auto StorePtrV =
-            IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(dstAS));
-        IRB.CreateStore(WriteOut, StorePtrV);
+        auto &&[SetVal, BaseAddr, Len] = defineOptimalValueAndLength(*MemSet);
+        std::vector<SliceInfo> LegalLengths = getLegalLengths(Len);
+        for (SliceInfo Slice : LegalLengths)
+          setMemorySliceWithVecStore(Slice, SetVal, BaseAddr, MemSet);
       } else {
-        expandMemSetAsLoop(Memset);
+        expandMemSetAsLoop(MemSet);
       }
     }
     MemCall->eraseFromParent();
