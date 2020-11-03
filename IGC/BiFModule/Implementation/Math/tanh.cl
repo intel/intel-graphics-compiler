@@ -29,9 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/exp_for_hyper.cl"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/tanh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 float __builtin_spirv_OpenCL_tanh_f32( float x )
@@ -81,7 +79,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanh, float, float, 
 
 INLINE double __builtin_spirv_OpenCL_tanh_f64( double x )
 {
-        return libclc_tanh_f64(x);
+    return __ocl_svml_tanh(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanh, double, double, f64 )
