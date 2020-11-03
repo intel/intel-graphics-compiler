@@ -396,9 +396,9 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
             it++)
         {
             G4_RegVar* cur = (*it);
-            indirectVarSize += cur->getDeclare()->getByteSize();
+            indirectVarSize = cur->getDeclare()->getByteSize();
+            assert((indirectVarSize <= (unsigned)getGRFSize()* fg.getKernel()->getNumRegTotal()) && "indirected variables' size is larger than GRF file size");
         }
-        assert((indirectVarSize < (unsigned)getGRFSize()* fg.getKernel()->getNumRegTotal()) && "indirected variables' size is larger than GRF file size");
     }
 #endif
 
