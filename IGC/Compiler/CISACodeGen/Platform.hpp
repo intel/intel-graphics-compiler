@@ -410,16 +410,6 @@ bool supportsSIMD16TypedRW() const
     return false;
 }
 
-bool hasNoFullI64Support() const
-{
-    return hasNoInt64Inst();
-}
-
-bool hasNoInt64AddInst() const
-{
-    return hasNoFullI64Support();
-}
-
 //all the platforms which DONOT support 64 bit int operations
 bool hasNoInt64Inst() const {
     return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
