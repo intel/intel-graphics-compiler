@@ -29,6 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../SVMLReleaseOnly/svml/Math/svml_rootn.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/rootn_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 float __builtin_spirv_OpenCL_rootn_f32_i32( float x, int n )
 {
     float result;
@@ -344,7 +348,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_rootn, float, fl
 
 INLINE double __builtin_spirv_OpenCL_rootn_f64_i32( double y, int x )
 {
-    return __ocl_svml_rf_rootn1(y, x);
+    return __ocl_svml_rootn_v2(y, x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_rootn, double, double, int, f64, i32 )
