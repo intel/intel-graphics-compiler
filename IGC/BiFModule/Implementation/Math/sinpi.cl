@@ -32,9 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/sinpi_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 INLINE float __builtin_spirv_OpenCL_sinpi_f32( float x )
@@ -57,7 +55,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinpi, float, float,
 
 INLINE double __builtin_spirv_OpenCL_sinpi_f64( double x )
 {
-        return libclc_sinpi_f64(x);
+    return __ocl_svml_sinpi(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinpi, double, double, f64 )
