@@ -1,3 +1,5 @@
+
+
 if(LLVM_ON_WIN32)
   if (MSVC_IDE)
     add_compile_options(/experimental:external)
@@ -30,8 +32,9 @@ target_link_libraries(AdaptorCM
   ${LLVM_LIBS}
 )
 
-target_compile_definitions(AdaptorCM INTERFACE
-                           -DCMFE_WRAPPER_NAME=\"${INSTALL_CMFE_NAME}\")
+target_compile_definitions(AdaptorCM
+  INTERFACE
+  "-DCMFE_WRAPPER_NAME=\"${INSTALL_CMFE_NAME}\""
+  )
 
-
-target_include_directories(AdaptorCM INTERFACE "$<BUILD_INTERFACE:${ADAPTOR_CM_INCLUDE_DIRS}>")
+target_include_directories(AdaptorCM INTERFACE "${CMFE_INCLUDE_DIRS}")

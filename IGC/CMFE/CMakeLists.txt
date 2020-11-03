@@ -1,33 +1,12 @@
 
-# TODO: now we have (historically) two name definitions:
-# CMFE_WRAPPER_NAME is used to get a name of a pre-built library (if any)
-# INSTALL_CMFE_NAME denotes the final name, which is used as a destination name
-# Looks like we can have only one (CMFE_WRAPPER_NAME to denote the name of an existing library)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(ADAPTOR_CM_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}")
-if (WIN32 OR CYGWIN)
-  set(CMFE_WRAPPER_NAME "clangFEWrapper.dll")
-else()
-  set(CMFE_WRAPPER_NAME "libclangFEWrapper.so")
-endif()
+include(cmfe_deps)
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(_cpuSuffix "64")
-else()
-  set(_cpuSuffix "32")
-endif()
-
-if(WIN32)
-  set(INSTALL_CMFE_NAME "clangFEWrapper.dll")
-  if("${_cpuSuffix}" STREQUAL "32")
-    set(INSTALL_CMFE_NAME "clangFEWrapper32.dll")
-  endif()
-else(WIN32)
-  set(INSTALL_CMFE_NAME "${CMFE_WRAPPER_NAME}")
-endif(WIN32)
-
+message(STATUS
+  "[CMFE] CM Frontend headers are taken from: ${CMFE_INCLUDE_DIRS}")
+message(STATUS
+  "[CMFE] Using CMFE library name: ${INSTALL_CMFE_NAME}")
 
 include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
-
 add_subdirectory(AdaptorCM)
-
