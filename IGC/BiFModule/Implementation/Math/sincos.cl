@@ -30,6 +30,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #include "../ExternalLibraries/libclc/trig.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/sincos_d_la.cl"
+#endif
+
 static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, bool doFast )
 {
     float   sin_x, cos_x;
@@ -156,8 +160,7 @@ INLINE double __builtin_spirv_OpenCL_sincos_f64_p0f64( double            x,
 {
     double sin_x, cos_x;
 
-        sin_x = __builtin_spirv_OpenCL_sin_f64(x);
-        cos_x = __builtin_spirv_OpenCL_cos_f64(x);
+    __ocl_svml_sincos(x, &sin_x, &cos_x);
 
     *cosval = cos_x;
     return sin_x;
