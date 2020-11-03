@@ -28,6 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../SVMLReleaseOnly/svml/Math/svml_tanpi.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/tanpi_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 INLINE float __builtin_spirv_OpenCL_tanpi_f32( float x )
 {
     bool useNative = __FastRelaxedMath && (!__APIRS);
@@ -55,7 +59,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanpi, float, float,
 
 INLINE double __builtin_spirv_OpenCL_tanpi_f64( double x )
 {
-     return __ocl_svml_rf_tanpi1(x);
+    return __ocl_svml_tanpi(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tanpi, double, double, f64 )
