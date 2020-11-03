@@ -1723,7 +1723,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_uitofp64_rtp"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_uitof_rtp, true);
     m_CommandMap["__builtin_IB_uitofp64_rtz"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_uitof_rtz, true);
 
-#if defined(_DEBUG) || defined(_INTERNAL)
     //Internal Debug Built-Ins
     m_CommandMap["__builtin_IB_read_cycle_counter"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_cycleCounter, false);
     m_CommandMap["__builtin_IB_source_value"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_source_value, false);
@@ -1737,7 +1736,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_get_sr0"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_getSR0, false);
     m_CommandMap["__builtin_IB_eu_thread_id"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_thread_id, false);
     m_CommandMap["__builtin_IB_eu_thread_pause"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_thread_pause, false);
-#endif
+
     //math Built-ins
     m_CommandMap["__builtin_IB_frnd_pi"] = CSimpleIntrinMapping::create(Intrinsic::ceil);
     m_CommandMap["__builtin_IB_frnd_ni"] = CSimpleIntrinMapping::create(Intrinsic::floor);
