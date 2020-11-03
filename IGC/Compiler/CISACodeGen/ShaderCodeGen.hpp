@@ -465,7 +465,9 @@ public:
     void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
+    void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
     uint32_t GetStatelessWritesCount() { return m_StatelessWritesCount; }
+    uint32_t GetIndirectStatelessCount() { return m_IndirectStatelessCount; }
     calignmentSize as;
 
     // In bytes
@@ -579,6 +581,7 @@ protected:
     bool m_HasGlobalAtomics = false;
 
     uint32_t m_StatelessWritesCount = 0;
+    uint32_t m_IndirectStatelessCount = 0;
 
 };
 

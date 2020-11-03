@@ -213,12 +213,13 @@ struct SPatchExecutionEnvironment :
     uint32_t    reserved2;
     uint32_t    reserved3;
     uint32_t    StatelessWritesCount;
+    uint32_t    IndirectStatelessCount;
     uint32_t    UseBindlessMode;
     uint64_t    SIMDInfo;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (120 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert(sizeof(SPatchExecutionEnvironment) == (124 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString
