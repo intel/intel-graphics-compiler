@@ -111,8 +111,8 @@ union LARGE_INTEGER {
 #endif
 
 #define VISA_SUCCESS                0
-#define VISA_FAILURE               -1
-#define VISA_SPILL                 -3
+#define VISA_FAILURE               (-1)
+#define VISA_SPILL                 (-3)
 
 // stream for error messages
 extern std::stringstream errorMsgs;
@@ -150,43 +150,54 @@ extern std::stringstream errorMsgs;
 
 // disable asserts only for release DLL
 #if defined(_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
-#define ASSERT_USER(x, errormsg) {  if (!(x))   \
-{           \
-    errorMsgs << "Error in Common ISA file:" << errormsg << std::endl; \
-    assert(false); \
-}    \
-}
+#define ASSERT_USER(x, errormsg)\
+    do {\
+        if (!(x))   \
+        {           \
+            errorMsgs << "Error in Common ISA file:" << errormsg << std::endl; \
+            assert(false); \
+        } \
+    } while (0)
 
-#define ASSERT_USER_LOC(x, errormsg, line, file ) { if (!(x))   \
-{           \
-    errorMsgs << "Error in Common ISA file(" << file << ":" << line << "): " << errormsg << std::endl; \
-    assert(false); \
-}    \
-}
+#define ASSERT_USER_LOC(x, errormsg, line, file ) \
+    do { \
+        if (!(x))   \
+        { \
+            errorMsgs << "Error in Common ISA file(" << file << ":" << line << "): " << errormsg << std::endl; \
+            assert(false); \
+        }    \
+    } while(0)
 
 
-#define MUST_BE_TRUE2(x, errormsg, inst)  { if (!(x))   \
-                                    {           \
-                                        std::cerr <<errormsg << std::endl;  \
-                                        inst->emit(errorMsgs, true); \
-                                        std::cerr << std::endl; \
-                                        assert(false); \
-                                    }    \
-                                  }
+#define MUST_BE_TRUE2(x, errormsg, inst) \
+    do {\
+        if (!(x))   \
+        { \
+            std::cerr <<errormsg << std::endl;  \
+            inst->emit(errorMsgs, true); \
+            std::cerr << std::endl; \
+            assert(false); \
+        } \
+    } while (0)
 
-#define MUST_BE_TRUE(x,errormsg)  { if (!(x))   \
-                                    {           \
-                                    std::cerr << __FILE__ << ":" << __LINE__ << " " << errormsg << std::endl; \
-                                    assert(false); \
-                                    }    \
-                                  }
+#define MUST_BE_TRUE(x,errormsg) \
+    do { \
+        if (!(x)) \
+        { \
+            std::cerr << __FILE__ << ":" << __LINE__ << " " << errormsg << std::endl; \
+            assert(false); \
+        } \
+    } while (0)
 
-#define MUST_BE_TRUE1(x, lineno, errormsg)  {   if (!(x))   \
-                                    {           \
-                                        std::cerr << "(Source Line "<<lineno<<") " << errormsg << std::endl;  \
-                                        assert(false);  \
-                                    }    \
-                                  }
+#define MUST_BE_TRUE1(x, lineno, errormsg) \
+    do { \
+        if (!(x)) \
+        { \
+            std::cerr << "(Source Line " << lineno << ") " << errormsg << std::endl;  \
+            assert(false); \
+        } \
+    } while (0)
+
 #else
 #define ASSERT_USER(x, errormsg)
 #define ASSERT_USER_LOC(x, errormsg, line, file )
@@ -239,21 +250,21 @@ extern "C" Stepping GetStepping(void);
 extern "C" const char * GetSteppingString(void);
 
 // Error types
-#define ERROR_UNKNOWN                       "ERROR: Unkown fatal internal error!"
-#define ERROR_INTERNAL_ARGUMENT "ERROR: Invalid argument in an internal function!"
+#define ERROR_UNKNOWN               "ERROR: Unknown fatal internal error"
+#define ERROR_INTERNAL_ARGUMENT     "ERROR: Invalid argument in an internal function"
 
-#define ERROR_MEM_ALLOC                 "ERROR: Fail to allocate memory or create object!"
-#define ERROR_FLOWGRAPH                 "ERROR: Unknown error in Flow Graph!"       // for all unknown errors related to flow graph
-#define ERROR_SPILLCODE                     "ERROR: Unknown error related to spill code!"
-#define ERROR_SCHEDULER                 "ERROR: Unknown error in local scheduler!"
-#define ERROR_GRAPHCOLOR                "ERROR: Unknown error in Graph Coloring!"
-#define ERROR_REGALLOC                      "ERROR: Unknown error in Register Allocation!"
+#define ERROR_MEM_ALLOC             "ERROR: Fail to allocate memory or create object"
+#define ERROR_FLOWGRAPH             "ERROR: Unknown error in Flow Graph"  // for all unknown errors related to flow graph
+#define ERROR_SPILLCODE             "ERROR: Unknown error related to spill code"
+#define ERROR_SCHEDULER             "ERROR: Unknown error in local scheduler"
+#define ERROR_GRAPHCOLOR            "ERROR: Unknown error in Graph Coloring"
+#define ERROR_REGALLOC              "ERROR: Unknown error in Register Allocation"
 
-#define ERROR_FILE_READ( x )                "ERROR: Invalid or non-existent file " << x << "!"
-#define ERROR_OPTION                            "ERROR: Invalid input option or option combination!"
-#define ERROR_INVALID_VISA_NAME( x )     "ERROR: Invalid name " << x << "!"
-#define ERROR_SYNTAX( x )                       "ERROR: Syntax error -- " << x << "!"
-#define ERROR_DATA_RANGE( x )           "ERROR: Out of boundary or invalid data value in " << x << "!"
+#define ERROR_FILE_READ(x)          "ERROR: Invalid or non-existent file " << (x)
+#define ERROR_OPTION                "ERROR: Invalid input option or option combination"
+#define ERROR_INVALID_VISA_NAME(x)  "ERROR: Invalid name " << (x)
+#define ERROR_SYNTAX(x)             "ERROR: Syntax error -- " << (x)
+#define ERROR_DATA_RANGE(x)         "ERROR: Out of boundary or invalid data value in " << (x)
 // end of Error Message
 
 // Target should be specified as follows

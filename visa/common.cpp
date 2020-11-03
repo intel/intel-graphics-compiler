@@ -51,14 +51,12 @@ const char* platformString[ALL] =
     "TGLLP",
 };
 
-#define VISA_SUCCESS                                  0
-#define VISA_FAILURE                                  -1
 
-int SetPlatform(const char * str) {
-
+int SetPlatform(const char * str)
+{
     std::string platform(str);
-
     int retVal = VISA_FAILURE;
+
     if (platform == "BDW" || platform == "gen8")
     {
         visaPlatform = GENX_BDW;

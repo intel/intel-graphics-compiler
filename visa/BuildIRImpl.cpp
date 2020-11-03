@@ -1446,7 +1446,7 @@ G4_INST* IR_Builder::createInst(
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
         // TODO: remove this path
-        MUST_BE_TRUE(!sat, "saturation not defined on branching")
+        MUST_BE_TRUE(!sat, "saturation not defined on branching ops");
         i = new (mem)G4_InstCF(*this, prd, op, mod, execSize, dst, src0, options);
     }
     else
