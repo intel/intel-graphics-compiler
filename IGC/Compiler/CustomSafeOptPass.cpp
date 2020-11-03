@@ -3153,6 +3153,14 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             }
         }
         break;
+        case llvm_fbh:
+        {
+            if (C0)
+            {
+                C = constantFolder.CreateFirstBitHi(C0);
+            }
+        }
+        break;
         default:
             break;
         }

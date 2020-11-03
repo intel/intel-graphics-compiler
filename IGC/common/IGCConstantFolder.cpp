@@ -219,7 +219,7 @@ llvm::Constant* IGCConstantFolder::CreateIbfe(llvm::Constant* C0, llvm::Constant
     uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
     uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
     uint32_t bitwidth = CI2->getType()->getBitWidth();
-  
+
     llvm::APInt result = CI2->getValue();
     if ((width + offset) < bitwidth)
     {
@@ -266,6 +266,21 @@ llvm::Constant* IGCConstantFolder::CreateGradient(llvm::Constant* C0) const
         // Preserve nan or infinite value
         return C0;
     }
+}
+
+llvm::Constant* IGCConstantFolder::CreateFirstBitHi(llvm::Constant* C0) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0);
+    const unsigned fbh = CI0->getValue().countLeadingZeros();
+    if (fbh == CI0->getType()->getBitWidth())
+    {
+        return llvm::ConstantInt::get(C0->getType(), -1);
+    }
+    return llvm::ConstantInt::get(C0->getType(), fbh);
 }
 
 } // namespace IGC
