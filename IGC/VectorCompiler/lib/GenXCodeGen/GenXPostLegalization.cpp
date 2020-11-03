@@ -75,6 +75,7 @@ namespace {
 // GenXPostLegalization : post-legalization pass
 class GenXPostLegalization : public FunctionPass {
   DominatorTree *DT = nullptr;
+  VectorDecomposer VD;
   const DataLayout *DL = nullptr;
   const GenXSubtarget *ST = nullptr;
 public:
@@ -121,9 +122,6 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   bool Modified = false;
   Modified |= breakConstantExprs(&F);
 
-  // Create vector decomposer helper
-  auto VD = std::make_unique<VectorDecomposer>(ST, DT);
-
   for (Function::iterator fi = F.begin(), fe = F.end(); fi != fe; ++fi) {
     BasicBlock *BB = &*fi;
     for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
@@ -144,15 +142,15 @@ bool GenXPostLegalization::runOnFunction(Function &F)
       if (!ST->disableVectorDecomposition()) {
         if (GenXIntrinsic::isWrRegion(Inst)) {
           if (isa<Constant>(Inst->getOperand(0)))
-            VD->addStartWrRegion(Inst);
+            VD.addStartWrRegion(Inst);
           else if (isa<PHINode>(Inst->getOperand(0)))
-            VD->addStartWrRegion(Inst);
+            VD.addStartWrRegion(Inst);
         }
       }
     }
   }
   // Run the vector decomposer for this function.
-  Modified |= VD->run();
+  Modified |= VD.run(DT);
   // Cleanup region reads and writes.
   Modified |= simplifyRegionInsts(&F, DL);
   // Cleanup redundant global loads.

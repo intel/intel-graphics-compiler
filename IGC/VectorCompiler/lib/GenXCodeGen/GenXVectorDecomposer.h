@@ -68,7 +68,6 @@ class Region;
 
 // VectorDecomposer : decomposes vectors in a function
 class VectorDecomposer {
-  const GenXSubtarget *ST;
   DominatorTree *DT;
   const DataLayout *DL = nullptr;
   SmallVector<Instruction *, 16> StartWrRegions;
@@ -82,9 +81,6 @@ class VectorDecomposer {
   std::map<PHINode *, SmallVector<Value *, 8>> PhiParts;
   SmallVector<Instruction *, 8> NewInsts;
 public:
-  VectorDecomposer(const GenXSubtarget *Subtarget, DominatorTree *DTree)
-      : ST(Subtarget), DT(DTree) {}
-
   // clear : clear anything stored
   void clear() {
     clearOne();
@@ -95,8 +91,7 @@ public:
   // addStartWrRegion : add a wrregion with undef input to the list
   void addStartWrRegion(Instruction *Inst) { StartWrRegions.push_back(Inst); }
   // run : run the vector decomposer on the stored StartWrRegions
-  bool run();
-
+  bool run(DominatorTree *DT);
 private:
   // clearOne : clear from processing one web
   void clearOne() {

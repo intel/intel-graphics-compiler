@@ -120,7 +120,9 @@ int DiagnosticVectorDecomposition::KindID = 0;
  *
  * Return:  true if code modified
  */
-bool VectorDecomposer::run() {
+bool VectorDecomposer::run(DominatorTree *ArgDT)
+{
+  DT = ArgDT;
   DL = &DT->
         getRoot()
             ->getModule()
@@ -188,10 +190,7 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
   NotDecomposingReportInst = Inst;
   Web.clear();
   Decomposition.clear();
-  unsigned GRFWidth = ST ? ST->getGRFWidth() : defaultGRFWidth;
-  unsigned NumGrfs = alignTo(DL->getTypeSizeInBits(Inst->getType()),
-                             GRFWidth * genx::ByteBits) /
-                     (GRFWidth * genx::ByteBits);
+  unsigned NumGrfs = alignTo<256>(DL->getTypeSizeInBits(Inst->getType())) / 256;
   if (NumGrfs == 1)
     return false; // Ignore single GRF vector.
   LLVM_DEBUG(dbgs() << "VectorDecomposer::determineDecomposition(" << Inst->getName() << ")\n");
