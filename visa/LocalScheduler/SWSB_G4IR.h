@@ -810,7 +810,7 @@ namespace vISA
             {
                 //Current node is assigned with the last one
                 //For caller, same iterator postion need be handled again,
-                //Beause a new node is copied here
+                //Because a new node is copied here
                 *node_it = vec.back();
                 vec.pop_back();
             }
@@ -847,7 +847,10 @@ namespace vISA
         {
             assert(nodeBucketsArray[bucket] != nullptr);
             SBBUCKET_VECTOR& nodeVec = *(nodeBucketsArray[bucket]);
-            nodeVec.push_back(bucketNode);
+            if (std::find(nodeVec.begin(), nodeVec.end(), bucketNode) == nodeVec.end())
+            {
+                nodeVec.push_back(bucketNode);
+            }
         }
 
         void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
