@@ -60,7 +60,8 @@ public:
 
     llvm::Function* CloneFunctionSignature(llvm::Type* ReturnType,
         std::vector<llvm::Type*>& argTypes,
-        llvm::Function* pOldFunc);
+        llvm::Function* pOldFunc,
+        bool changedRetVal);
 
     virtual llvm::StringRef getPassName() const
     {

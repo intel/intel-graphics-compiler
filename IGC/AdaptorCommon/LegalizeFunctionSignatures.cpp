@@ -218,7 +218,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures()
 
         // Clone function with new signature
         Type* returnType = fixReturnType ? m_pBuilder->getVoidTy() : pFunc->getReturnType();
-        Function* pNewFunc = CloneFunctionSignature(returnType, argTypes, pFunc);
+        Function* pNewFunc = CloneFunctionSignature(returnType, argTypes, pFunc, fixReturnType);
 
         // Splice the old function directly into the new function body
         pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
@@ -279,9 +279,6 @@ void LegalizeFunctionSignatures::FixFunctionSignatures()
                         IGC_ASSERT(argINew->getType()->getPointerElementType() == argI->getType());
                         Value* load = m_pBuilder->CreateLoad(&*argINew);
                         argI->replaceAllUsesWith(load);
-
-                        // Add byval attribute for struct/array value passing
-                        argINew->addAttr(llvm::Attribute::ByVal);
                     }
                     else if (!isLegalIntVectorType(*m_pModule, argI->getType()))
                     {
@@ -425,6 +422,29 @@ void LegalizeFunctionSignatures::FixCallInstruction(CallInst* callInst)
         CallInst* newCallInst = m_pBuilder->CreateCall(newCalledValue, callArgs);
         newCallInst->setCallingConv(callInst->getCallingConv());
 
+        // Set call attributes
+        SmallVector<AttributeSet, 4> NewArgAttrs(newCallInst->getNumArgOperands());
+        AttributeList OldAttrs = callInst->getAttributes();
+        unsigned opIdx = 0;
+        if (returnPtr)
+        {
+            // Add "noalias" to return argument at callsite
+            NewArgAttrs[opIdx] = AttributeSet().addAttribute(callInst->getContext(), llvm::Attribute::AttrKind::NoAlias);
+            opIdx++;
+        }
+        for (unsigned i = 0; i < callInst->getNumArgOperands(); i++, opIdx++)
+        {
+            // Copy over original arg attributes
+            NewArgAttrs[opIdx] = OldAttrs.getParamAttributes(i);
+            if (!isLegalSignatureType(callInst->getArgOperand(i)->getType()))
+            {
+                // Add "byval" to changed argument at callsite
+                NewArgAttrs[opIdx] = AttributeSet().addAttribute(callInst->getContext(), llvm::Attribute::AttrKind::ByVal);
+            }
+        }
+        AttributeList NewCallerPAL = AttributeList::get(newCallInst->getContext(), OldAttrs.getFnAttributes(), OldAttrs.getRetAttributes(), NewArgAttrs);
+        newCallInst->setAttributes(NewCallerPAL);
+
         if (returnPtr)
         {
             // Load the return value from the arg pointer before using it
@@ -442,7 +462,8 @@ void LegalizeFunctionSignatures::FixCallInstruction(CallInst* callInst)
 
 Function* LegalizeFunctionSignatures::CloneFunctionSignature(Type* ReturnType,
     std::vector<llvm::Type*>& argTypes,
-    llvm::Function* pOldFunc)
+    llvm::Function* pOldFunc,
+    bool changedRetVal)
 {
     // Create function with the new signature
     FunctionType* signature = FunctionType::get(ReturnType, argTypes, false);
@@ -451,12 +472,30 @@ Function* LegalizeFunctionSignatures::CloneFunctionSignature(Type* ReturnType,
     pNewFunc->setSubprogram(pOldFunc->getSubprogram());
     pOldFunc->setSubprogram(nullptr);
 
-    // Copy the name of the old arguments
+    SmallVector<AttributeSet, 4> NewArgAttrs(pNewFunc->arg_size());
+    AttributeList OldAttrs = pOldFunc->getAttributes();
+
+    // Copy the name and attributes of the old arguments
     auto newIter = pNewFunc->arg_begin();
+    if (changedRetVal)
+    {
+        newIter->setName("retval");
+        // Add "noalias" to the return argument
+        NewArgAttrs[newIter->getArgNo()] = AttributeSet().addAttribute(pNewFunc->getContext(), llvm::Attribute::AttrKind::NoAlias);
+        newIter++;
+    }
     for (auto ai = pOldFunc->arg_begin(), ae = pOldFunc->arg_end(); ai != ae; ai++, newIter++)
     {
+        // Copy original arg name and attributes
         newIter->setName(ai->getName());
+        NewArgAttrs[newIter->getArgNo()] = OldAttrs.getParamAttributes(ai->getArgNo());
+        if (!isLegalSignatureType(ai->getType()))
+        {
+            // Args converted from value to pointer, add the "byval" attribute
+            NewArgAttrs[newIter->getArgNo()] = AttributeSet().addAttribute(pNewFunc->getContext(), llvm::Attribute::AttrKind::ByVal);
+        }
     }
+    pNewFunc->setAttributes(AttributeList::get(pNewFunc->getContext(), OldAttrs.getFnAttributes(), OldAttrs.getRetAttributes(), NewArgAttrs));
 
     // Clone the function metadata and remove the old one
     auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(pOldFunc);
