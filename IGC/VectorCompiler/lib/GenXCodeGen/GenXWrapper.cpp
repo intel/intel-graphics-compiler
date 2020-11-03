@@ -24,10 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#if defined(__linux__)
-#include <dlfcn.h>
-#endif
-
 #include "GenXBackendConfig.h"
 #include "GenXOCLRuntimeInfo.h"
 #include "GenXWATable.h"
@@ -86,21 +82,45 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "Probe/Assertion.h"
 
-using namespace llvm;
-
-static std::string findSpirvDLL() {
-#if defined(_WIN64)
-  // TODO: rename to SPIRVDLL64.dll when binary components are fixed.
-  constexpr char *SpirvLibName = "SPIRVDLL.dll";
-#elif defined(_WIN32)
-  constexpr char *SpirvLibName = "SPIRVDLL32.dll";
-#else
-  constexpr char *SpirvLibName = "libSPIRVDLL.so";
+#if defined(__linux__)
+#include <dlfcn.h>
+#endif
+#if defined(_WIN32)
+#include <Windows.h>
+#include "inc/common/DriverStore.h"
 #endif
 
+using namespace llvm;
+
+#if defined(_WIN64)
+// TODO: rename to SPIRVDLL64.dll when binary components are fixed.
+static constexpr char *SpirvLibName = "SPIRVDLL.dll";
+#elif defined(_WIN32)
+static constexpr char *SpirvLibName = "SPIRVDLL32.dll";
+#else
+static constexpr char *SpirvLibName = "libSPIRVDLL.so";
+#endif
+
+// Return standard path for SPIRVDLL for current build.
+// Linux: plain library name.
+// Windows: library name prefixed with current module
+// location (installed driver location).
+static std::string getSpirvDLLStandardPath() {
+#if defined(_WIN32)
+  // Expand libname to full driver path on windows.
+  char TmpPath[MAX_PATH] = {};
+  GetDependencyPath(TmpPath, SpirvLibName);
+  return TmpPath;
+#else
+  return SpirvLibName;
+#endif
+}
+
+// Get appropriate path to SPIRV DLL library for subsequent loading.
+static std::string findSpirvDLL() {
   auto EnvSpirv = llvm::sys::Process::GetEnv("VC_SPIRVDLL_DIR");
   if (!EnvSpirv)
-    return SpirvLibName;
+    return getSpirvDLLStandardPath();
 
   SmallString<32> Path;
   llvm::sys::path::append(Path, EnvSpirv.getValue(), SpirvLibName);
