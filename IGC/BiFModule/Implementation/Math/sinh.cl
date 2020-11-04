@@ -29,9 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/exp_for_hyper.cl"
 
 #if defined(cl_khr_fp64)
-
-    #include "../ExternalLibraries/libclc/doubles.cl"
-
+    #include "../IMF/FP64/sinh_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
 float __builtin_spirv_OpenCL_sinh_f32( float x )
@@ -101,8 +99,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinh, float, float, 
 
 INLINE double __builtin_spirv_OpenCL_sinh_f64( double x )
 {
-        return libclc_sinh_f64(x);
-
+    return __ocl_svml_sinh(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sinh, double, double, f64 )
