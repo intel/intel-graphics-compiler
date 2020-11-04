@@ -405,6 +405,16 @@ bool hasSamplerSupport() const
     return true;
 }
 
+bool hasNoFullI64Support() const
+{
+    return hasNoInt64Inst();
+}
+
+bool hasNoInt64AddInst() const
+{
+    return hasNoFullI64Support();
+}
+
 bool supportsSIMD16TypedRW() const
 {
     return false;

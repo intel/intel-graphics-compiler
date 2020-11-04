@@ -667,7 +667,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         (ctx.m_DriverInfo.Enable64BitEmu() &&
             (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
             (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
-            ctx.platform.need64BitEmulation()))))
+            ctx.platform.need64BitEmulation())))
+        )
     {
         mpm.add(new BreakConstantExpr());
 

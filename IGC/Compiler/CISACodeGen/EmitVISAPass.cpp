@@ -2647,7 +2647,7 @@ void EmitPass::emitCmpSADs(llvm::GenIntrinsicInst* inst)
     m_encoder->Push();
 
     // Collect the MVs
-    if (m_currShader->m_Platform->hasNoInt64Inst()) {
+    if (m_currShader->m_Platform->hasNoFullI64Support()) {
         CVariable* pMVMinAlias = m_currShader->GetNewAlias(pMVMin, ISA_TYPE_UD, 0, 32);
         CVariable* pMVCurrAlias = m_currShader->GetNewAlias(pMVCurr, ISA_TYPE_UD, 0, 32);
 
@@ -5267,7 +5267,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
                 activelanes, eOffset->GetType(), eOffset->GetAlign(), true, "ScatterOff");
 
             CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
-            if (useA64 && m_currShader->m_Platform->hasNoInt64Inst()) {
+            if (useA64 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                 emitAddPair(ScatterOff, eOffset, immVar);
             }
             else {
@@ -5329,7 +5329,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
 
             if (bytesRemaining)
             {
-                if (m_currShader->m_Platform->hasNoInt64Inst()) {
+                if (m_currShader->m_Platform->hasNoInt64AddInst()) {
                     CVariable* ImmVar = m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UD);
                     emitAddPair(pTempVar, pTempVar, ImmVar);
                 }
@@ -5463,7 +5463,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
                 activelanes, eOffset->GetType(), eOffset->GetAlign(), true, "GatherOff");
 
             CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
-            if (useA64 && m_currShader->m_Platform->hasNoInt64Inst()) {
+            if (useA64 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                 emitAddPair(gatherOff, eOffset, immVar);
             }
             else {
@@ -5524,7 +5524,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
 
             if (bytesRemaining)
             {
-                if (m_currShader->m_Platform->hasNoInt64Inst()) {
+                if (m_currShader->m_Platform->hasNoInt64AddInst()) {
                     CVariable* ImmVar = m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UD);
                     emitAddPair(pTempVar, pTempVar, ImmVar);
                 }
@@ -8842,7 +8842,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 
         if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE)
         {
-            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoInt64Inst())
+            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
             {
                 if (m_currShader->GetContext()->getRegisterPointerSizeInBits(sourceAddrSpace) == 32)
                 {
@@ -8913,7 +8913,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         }
         else if (sourceAddrSpace == ADDRESS_SPACE_LOCAL)
         {
-            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoInt64Inst())
+            if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
             {
                 if (m_currShader->GetContext()->getRegisterPointerSizeInBits(sourceAddrSpace) == 32)
                 {
@@ -8995,7 +8995,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         // Address space cast is in the form of generic -> {private, local, global}
         // Tag is removed according to the address space of the destination
 
-        if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoInt64Inst())
+        if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
         {
             if (m_currShader->GetContext()->getRegisterPointerSizeInBits(destAddrSpace) == 32)
             {
@@ -9081,7 +9081,7 @@ CVariable* EmitPass::createAddressSpaceTag(CVariable* src, unsigned int addrSpac
     CVariable* taggedSrc = nullptr;
     if (addrSpace == ADDRESS_SPACE_PRIVATE)
     {
-        if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoInt64Inst())
+        if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
         {
             if (m_currShader->GetContext()->getRegisterPointerSizeInBits(addrSpace) == 32)
             {
@@ -9151,7 +9151,7 @@ CVariable* EmitPass::createAddressSpaceTag(CVariable* src, unsigned int addrSpac
     }
     else if (addrSpace == ADDRESS_SPACE_LOCAL)
     {
-        if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoInt64Inst())
+        if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
         {
             if (m_currShader->GetContext()->getRegisterPointerSizeInBits(addrSpace) == 32)
             {
@@ -11031,7 +11031,7 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
 {
     IGC_ASSERT_MESSAGE(nullptr != pVar, "pVar is null");
     VISA_Type VarT = pVar->GetType();
-    bool Need64BitEmu = m_currShader->m_Platform->hasNoInt64Inst() &&
+    bool Need64BitEmu = m_currShader->m_Platform->hasNoFullI64Support() &&
         (VarT == ISA_TYPE_Q || VarT == ISA_TYPE_UQ);
     bool IsImm = pVar->IsImmediate();
     if (pVar->IsUniform())
@@ -11898,7 +11898,7 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     IGC_ASSERT_MESSAGE(iSTD::BitCount(clusterSize) == 1, "Cluster size must be a power of two.");
     IGC_ASSERT_MESSAGE(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8, "Unsupported 64-bit type.");
 
-    IGC_ASSERT_MESSAGE(!isInt64Type || !m_currShader->m_Platform->hasNoInt64Inst(), "Int64 emulation is not supported.");
+    IGC_ASSERT_MESSAGE(!isInt64Type || !m_currShader->m_Platform->hasNoFullI64Support(), "Int64 emulation is not supported.");
     IGC_ASSERT_MESSAGE(!isFP64Type || !m_currShader->m_Platform->hasNoFP64Inst(), "FP64 emulation is not supported.");
     // Src might be uniform, as its value will be broadcasted during src preparation.
     // Dst uniformness depends on actual support in WIAnalysis, so far implemented for 32-clusters only.
@@ -15224,7 +15224,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     // on platform that does not support 64bit integer add.
     //Note: it doesn't seem to be necessary to check hasNoFP64Inst() here.
     if (srcUniform && (totalBytes == 4 || totalBytes == 8 || totalBytes == 12 || totalBytes == 16 ||
-        (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNoInt64Inst()))))
+        (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNoFullI64Support()))))
     {
         bool needTemp = !destUniform ||
             !IsGRFAligned(m_destination, EALIGN_GRF) ||
@@ -15310,7 +15310,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             }
 
             CVariable* immVar = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
-            if (!useA32 && m_currShader->m_Platform->hasNoInt64Inst()) {
+            if (!useA32 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                 emitAddPair(gatherOff, eOffset, immVar);
             }
             else {
@@ -15391,7 +15391,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
                 // Calculate the new element offset
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
                 CVariable* ImmVar = m_currShader->ImmToVariable(eltOffBytes, ISA_TYPE_UD);
-                if (!useA32 && m_currShader->m_Platform->hasNoInt64Inst()) {
+                if (!useA32 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                     emitAddPair(rawAddrVar, eOffset, ImmVar);
                 }
                 else {
@@ -15464,7 +15464,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             // Calculate the new element offset
             rawAddrVar = m_currShader->GetNewVariable(eOffset);
             CVariable* ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
-            if (!useA32 && m_currShader->m_Platform->hasNoInt64Inst()) {
+            if (!useA32 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                 emitAddPair(rawAddrVar, eOffset, ImmVar);
             }
             else {
@@ -15624,7 +15624,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 // When work-around of A64 SKL Si limitation of SIMD4, we use SIMD8 (nbelts > nbeltsWanted)
                 // in which all upper four channels are zero, meaning eOffset[0], Later, stored value
                 // must use storvedVar[0] for those extra lanes.
-                if (!useA32 && m_currShader->m_Platform->hasNoInt64Inst()) {
+                if (!useA32 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                     emitAddPair(NewOff, eOffset, immVar);
                 }
                 else {
@@ -15783,7 +15783,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
                 // Calculate the new element offset
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
                 CVariable* ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
-                if (!useA32 && m_currShader->m_Platform->hasNoInt64Inst()) {
+                if (!useA32 && m_currShader->m_Platform->hasNoInt64AddInst()) {
                     emitAddPair(rawAddrVar, eOffset, ImmVar);
                 }
                 else {
@@ -15929,7 +15929,7 @@ CVariable* EmitPass::prepareAddressForUniform(
         CVariable* offHi = m_currShader->GetNewAlias(off, off->GetType(), 0, halfNElts);
         CVariable* offLo = m_currShader->GetNewAlias(off, off->GetType(), bytes2, halfNElts);
 
-        if (isA64 && m_currShader->m_Platform->hasNoInt64Inst())
+        if (isA64 && m_currShader->m_Platform->hasNoInt64AddInst())
         {
             emitAddPair(newVarHi, AddrVar, offHi);
             emitAddPair(newVarLo, AddrVar, offLo);
@@ -15952,7 +15952,7 @@ CVariable* EmitPass::prepareAddressForUniform(
             m_encoder->Push();
         }
     }
-    else if (isA64 && m_currShader->m_Platform->hasNoInt64Inst() && pow2NElts > 1)
+    else if (isA64 && m_currShader->m_Platform->hasNoInt64AddInst() && pow2NElts > 1)
     {
         emitAddPair(newVar, AddrVar, off);
     }
@@ -16213,7 +16213,7 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
 
 void EmitPass::emitAddPointer(CVariable* Dst, CVariable* Src, CVariable* offset)
 {
-    if (m_currShader->m_Platform->hasNoInt64Inst() &&
+    if (m_currShader->m_Platform->hasNoInt64AddInst() &&
         (Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ) &&
         (Src->GetType() == ISA_TYPE_Q || Src->GetType() == ISA_TYPE_UQ))
     {

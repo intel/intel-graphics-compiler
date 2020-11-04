@@ -805,7 +805,7 @@ void BIImport::InitializeBIFlags(Module& M)
     //initializeVarWithValue("__UseNative64BitSubgroupBuiltin",
     //    pCtx->platform.hasNo64BitInst() ? 0 : 1);
     initializeVarWithValue("__UseNative64BitSubgroupBuiltin",
-        (pCtx->platform.hasNoInt64Inst() || pCtx->platform.hasNoFP64Inst()) ? 0 : 1);
+        (pCtx->platform.hasNoFullI64Support() || pCtx->platform.hasNoFP64Inst()) ? 0 : 1);
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
 
