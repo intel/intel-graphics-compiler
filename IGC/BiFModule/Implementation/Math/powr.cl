@@ -29,6 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #include "../ExternalLibraries/sun/sun_pow.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/powr_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 INLINE float __builtin_spirv_OpenCL_powr_f32_f32( float x, float y )
 {
     if(__FastRelaxedMath)
@@ -85,17 +89,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_powr, float, flo
 
 INLINE double __builtin_spirv_OpenCL_powr_f64_f64( double x, double y )
 {
-            if ( (__builtin_spirv_OpSignBitSet_f64(x) && x != 0) ||
-                 (x == 0 && y == 0) ||
-                 (x == 1 && __builtin_spirv_OpIsInf_f64(y)) ||
-                 (__builtin_spirv_OpIsInf_f64(x) && y == 0) ||
-                 __builtin_spirv_OpIsNan_f64(x) ||
-                 __builtin_spirv_OpIsNan_f64(y) )
-                return __builtin_spirv_OpenCL_nan_i64(0);
-            else if (x == 0 && y < 0)
-                return as_double(0x7ff0000000000000); //+infinity
-            else
-                return sun_pow( x, y );
+    return __ocl_svml_powr(x, y);
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_powr, double, double, double, f64, f64 )
