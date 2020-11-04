@@ -58,6 +58,7 @@ public:
     llvm::Constant* CreateCanonicalize(llvm::Constant* C0, bool flushDenorms = true) const;
     llvm::Constant* CreateFirstBitHi(llvm::Constant* C0) const;
     llvm::Constant* CreateFirstBitShi(llvm::Constant* C0) const;
+    llvm::Constant* CreateFirstBitLo(llvm::Constant* C0) const;
 
 
     //===-------------
