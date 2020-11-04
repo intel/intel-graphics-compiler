@@ -283,4 +283,20 @@ llvm::Constant* IGCConstantFolder::CreateFirstBitHi(llvm::Constant* C0) const
     return llvm::ConstantInt::get(C0->getType(), fbh);
 }
 
+llvm::Constant* IGCConstantFolder::CreateFirstBitShi(llvm::Constant* C0) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0))
+    {
+        return nullptr;
+    }
+    IGC_ASSERT(llvm::isa<llvm::ConstantInt>(C0));
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0);
+    const uint32_t fbs = CI0->isNegative() ? CI0->getValue().countLeadingOnes() : CI0->getValue().countLeadingZeros();
+    if (fbs == CI0->getType()->getBitWidth())
+    {
+        return llvm::ConstantInt::get(C0->getType(), -1);
+    }
+    return llvm::ConstantInt::get(C0->getType(), fbs);
+}
+
 } // namespace IGC

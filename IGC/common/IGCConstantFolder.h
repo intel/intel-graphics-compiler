@@ -57,6 +57,7 @@ public:
     llvm::Constant* CreateIbfe(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2) const;
     llvm::Constant* CreateCanonicalize(llvm::Constant* C0, bool flushDenorms = true) const;
     llvm::Constant* CreateFirstBitHi(llvm::Constant* C0) const;
+    llvm::Constant* CreateFirstBitShi(llvm::Constant* C0) const;
 
 
     //===-------------

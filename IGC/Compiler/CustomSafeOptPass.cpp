@@ -616,6 +616,11 @@ void CustomSafeOptPass::visitBfi(llvm::CallInst* inst)
             inst->eraseFromParent();
         }
     }
+    else if (widthV && widthV->isZeroValue())
+    {
+        inst->replaceAllUsesWith(inst->getOperand(3));
+        inst->eraseFromParent();
+    }
 }
 
 void CustomSafeOptPass::visitMulH(CallInst* inst, bool isSigned)
@@ -3161,6 +3166,13 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             }
         }
         break;
+        case llvm_fbh_shi:
+        {
+            if (C0)
+            {
+                C = constantFolder.CreateFirstBitShi(C0);
+            }
+        }
         default:
             break;
         }
