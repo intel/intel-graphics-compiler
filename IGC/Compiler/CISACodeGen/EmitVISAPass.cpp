@@ -5733,17 +5733,19 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         BlockCopy(pDst, pData, pSecondHalf, pData, 1, 2);
     }
 
-    m_encoder->MediaBlockMessage(
-        isRead ? ISA_Opcode::ISA_MEDIA_LD : ISA_Opcode::ISA_MEDIA_ST,
-        pDst,
-        ESURFACE_NORMAL,
-        pImgBTI,
-        pXOffset,
-        pYOffset,
-        0,
-        (unsigned char)widthInBytes,
-        (unsigned char)blockHeight,
-        0);
+    {
+        m_encoder->MediaBlockMessage(
+            isRead ? ISA_Opcode::ISA_MEDIA_LD : ISA_Opcode::ISA_MEDIA_ST,
+            pDst,
+            ESURFACE_NORMAL,
+            pImgBTI,
+            pXOffset,
+            pYOffset,
+            0,
+            (unsigned char)widthInBytes,
+            (unsigned char)blockHeight,
+            0);
+    }
 
     if (isRead && mergeBlock)
     {
@@ -5776,17 +5778,19 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
 
     IGC_ASSERT(blockWidth * blockHeight == pDst->GetSize());
 
-    m_encoder->MediaBlockMessage(
-        ISA_Opcode::ISA_MEDIA_LD,
-        pDst,
-        ESURFACE_NORMAL,
-        srcbti,
-        xOffset,
-        yOffset,
-        0,
-        (unsigned char)blockWidth,
-        (unsigned char)blockHeight,
-        0);
+    {
+        m_encoder->MediaBlockMessage(
+            ISA_Opcode::ISA_MEDIA_LD,
+            pDst,
+            ESURFACE_NORMAL,
+            srcbti,
+            xOffset,
+            yOffset,
+            0,
+            (unsigned char)blockWidth,
+            (unsigned char)blockHeight,
+            0);
+    }
 
     m_encoder->Push();
 }
@@ -5931,18 +5935,19 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
         CVariable* dstVar = numPasses == 1 ? m_destination : pTempDest;
 
-        m_encoder->MediaBlockMessage(
-            ISA_Opcode::ISA_MEDIA_LD,
-            dstVar,
-            ESURFACE_NORMAL,
-            srcbti,
-            pTempVar0,
-            pTempVar,
-            0,
-            (unsigned char)blockWidth,
-            (unsigned char)blockHeight,
-            0);
-
+        {
+            m_encoder->MediaBlockMessage(
+                ISA_Opcode::ISA_MEDIA_LD,
+                dstVar,
+                ESURFACE_NORMAL,
+                srcbti,
+                pTempVar0,
+                pTempVar,
+                0,
+                (unsigned char)blockWidth,
+                (unsigned char)blockHeight,
+                0);
+        }
         m_encoder->Push();
     }
 
@@ -6216,16 +6221,18 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 
         m_encoder->SetDstSubVar(dstSubReg);
 
-        m_encoder->MediaBlockMessage(
-            ISA_Opcode::ISA_MEDIA_ST,
-            tempdst, ESURFACE_NORMAL,
-            srcbti,
-            pTempVar0,
-            pTempVar,
-            0,
-            (unsigned char)blockWidth,
-            (unsigned char)blockHeight,
-            0);
+        {
+            m_encoder->MediaBlockMessage(
+                ISA_Opcode::ISA_MEDIA_ST,
+                tempdst, ESURFACE_NORMAL,
+                srcbti,
+                pTempVar0,
+                pTempVar,
+                0,
+                (unsigned char)blockWidth,
+                (unsigned char)blockHeight,
+                0);
+        }
         m_encoder->Push();
     }
 }
