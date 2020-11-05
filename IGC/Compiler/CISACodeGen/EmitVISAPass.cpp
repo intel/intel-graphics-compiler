@@ -10096,6 +10096,14 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         CVariable* Src = GetSymbol(operand);
         Type* argType = operand->getType();
 
+        if (!isIndirectFCall)
+        {
+            // Skip unused arguments if any for direct call
+            auto argIter = F->arg_begin();
+            std::advance(argIter, i);
+            if (argIter->use_empty()) continue;
+        }
+
         if (Src->GetType() == ISA_TYPE_BOOL)
         {
             // bool args are treated as a vector of WORDs
@@ -10308,11 +10316,8 @@ void EmitPass::emitStackFuncEntry(Function* F)
     {
         if (!F->hasFnAttribute("IndirectlyCalled"))
         {
-            // Skip unused arguments if any.
-            if (Arg.use_empty())
-            {
-                continue;
-            }
+            // Skip unused arguments if any for direct call
+            if (Arg.use_empty()) continue;
         }
 
         CVariable* Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, false, true);
