@@ -43,8 +43,8 @@ int IR_Builder::translateVISACFSwitchInst(
     {
         G4_Declare *tmpVar = createTempVar(1, Type_D, Any);
         G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
-        createBinOp(G4_shl, g4::SIMD1, dstOpnd, indexOpnd,
-            createImm(4, Type_UW), InstOpt_NoOpt, true);
+        (void)createBinOp(G4_shl, g4::SIMD1, dstOpnd, indexOpnd,
+            createImm(4, Type_UW), InstOpt_WriteEnable, true);
         indexOpnd = Create_Src_Opnd_From_Dcl(tmpVar, getRegionScalar());
     }
     G4_INST* indirectJmp = createJmp(nullptr, indexOpnd, InstOpt_NoOpt, true);
