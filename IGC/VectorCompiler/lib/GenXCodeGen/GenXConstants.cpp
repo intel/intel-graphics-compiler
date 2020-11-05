@@ -1510,6 +1510,10 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
     return;
   }
   if (Elements.size() == 1) {
+    // if we don't have an immediate user - do not create new constant
+    // (constant materilization expects that NewC is cleared)
+    if (!User)
+      return;
     // All but one element undef. Turn into a splat constant.
     NewC = ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
                                     SomeDefinedElement);
