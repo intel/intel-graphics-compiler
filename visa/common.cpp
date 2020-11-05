@@ -52,76 +52,127 @@ const char* platformString[ALL] =
 };
 
 
-int SetPlatform(const char * str)
+struct PlatformInfo {
+    TARGET_PLATFORM  platform;
+    PlatformGen      family;
+    int              encoding;
+    const char      *symbols[8];
+
+    constexpr PlatformInfo(
+        TARGET_PLATFORM p,
+        PlatformGen f,
+        int e,
+        const char *str0,
+        const char *str1 = nullptr,
+        const char *str2 = nullptr,
+        const char *str3 = nullptr)
+        : platform(p), family(f), encoding(e), symbols{str0, str1, str2, str3, nullptr}
+    {
+    }
+}; // PlatformInfo
+
+static const PlatformInfo ALL_PLATFORMS[] {
+    PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, "BDW", "GEN8"),
+    PlatformInfo(GENX_CHV, PlatformGen::GEN8, 4, "CHV", "GEN8LP"),
+    PlatformInfo(GENX_SKL, PlatformGen::GEN9, 5, "SKL", "GEN9", "KBL", "CFL"),
+    PlatformInfo(GENX_BXT, PlatformGen::GEN9, 6, "BXT", "GEN9LP"),
+    PlatformInfo(GENX_ICLLP, PlatformGen::GEN11, 10,
+        "ICLLP", "ICL", "GEN11", "GEN11LP"),
+    PlatformInfo(GENX_TGLLP, PlatformGen::GEN12, 12,
+        "TGLLP", "DG1", "GEN12LP"
+    ),
+}; // ALL_PLATFORMS
+
+static const PlatformInfo *LookupPlatformInfo(TARGET_PLATFORM p)
 {
-    std::string platform(str);
-    int retVal = VISA_FAILURE;
-
-    if (platform == "BDW" || platform == "gen8")
-    {
-        visaPlatform = GENX_BDW;
-        retVal = VISA_SUCCESS;
+    for (const auto &pi : ALL_PLATFORMS) {
+        if (pi.platform == p)
+            return &pi;
     }
-    else if (platform == "CHV" || platform == "gen8lp")
-    {
-        visaPlatform = GENX_CHV;
-        retVal = VISA_SUCCESS;
-    }
-    else if (platform == "SKL" || platform == "gen9")
-    {
-        visaPlatform = GENX_SKL;
-        retVal = VISA_SUCCESS;
-    }
-    else if (platform == "BXT" || platform == "gen9lp")
-    {
-        visaPlatform = GENX_BXT;
-        retVal = VISA_SUCCESS;
-    }
-    else if (platform == "ICL" || platform == "gen11" || platform == "ICLLP" || platform == "gen11lp")
-    {
-        visaPlatform = GENX_ICLLP;
-        retVal = VISA_SUCCESS;
-    }
-    else if (platform == "TGLLP" || platform == "DG1" || platform == "gen12lp")
-    {
-        visaPlatform = GENX_TGLLP;
-        retVal = VISA_SUCCESS;
-    }
-
-    return retVal;
+    return nullptr;
 }
 
-// same as previous version, except that we already have the enum value
-int SetVisaPlatform(TARGET_PLATFORM vPlatform) {
-
+int SetVisaPlatform(TARGET_PLATFORM vPlatform)
+{
     assert(vPlatform >= GENX_BDW && "unsupported platform");
     visaPlatform = vPlatform;
 
     return VISA_SUCCESS;
 }
 
-TARGET_PLATFORM getGenxPlatform(void)
+int SetVisaPlatform(const char * str)
+{
+    auto toUpperStr = [](const char *str) {
+        std::string upper;
+        while (*str)
+            upper += (char)toupper(*str++);
+        return upper;
+    };
+
+    std::string upperStr = toUpperStr(str);
+    auto platform = GENX_NONE;
+    for (const auto &pi : ALL_PLATFORMS) {
+        const char * const* syms = &pi.symbols[0];
+        while (*syms) {
+            if (upperStr == toUpperStr(*syms)) {
+                platform = pi.platform;
+                break;
+            }
+            syms++;
+        }
+        if (platform != GENX_NONE)
+            break;
+    }
+    visaPlatform = platform;
+    return platform != GENX_NONE ? VISA_SUCCESS : VISA_FAILURE;
+}
+
+TARGET_PLATFORM getGenxPlatform()
 {
     return visaPlatform;
 }
 
 PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
 {
-    switch (platform)
-    {
-    case GENX_BDW:
-    case GENX_CHV:
-        return PlatformGen::GEN8;
-    case GENX_SKL:
-    case GENX_BXT:
-        return PlatformGen::GEN9;
-    case GENX_ICLLP:
-        return PlatformGen::GEN11;
-    case GENX_TGLLP:
-        return PlatformGen::GEN12;
-    default:
-        assert(false && "unsupported platform");
+    if (const auto *pi = LookupPlatformInfo(platform)) {
+        return pi->family;
+    } else {
+        assert(false && "invalid platform");
         return PlatformGen::GEN_UNKNOWN;
+    }
+}
+
+const char *getGenxPlatformString(TARGET_PLATFORM platform)
+{
+    if (const auto *pi = LookupPlatformInfo(platform)) {
+        return pi->symbols[0] ? pi->symbols[0] : "???";
+    } else {
+        return "???";
+    }
+}
+
+// returns an array of all supported platforms
+const TARGET_PLATFORM *getGenxAllPlatforms(int *num)
+{
+    const static int N_PLATFORMS =
+        sizeof(ALL_PLATFORMS)/sizeof(ALL_PLATFORMS[0]);
+    static TARGET_PLATFORM s_platforms[N_PLATFORMS];
+    int i = 0;
+    for (const auto &pi : ALL_PLATFORMS) {
+        s_platforms[i++] = pi.platform;
+    }
+    *num = N_PLATFORMS;
+    return s_platforms;
+}
+
+// returns nullptr terminated string for a platform
+const char * const*getGenxPlatformStrings(TARGET_PLATFORM p)
+{
+    if (const auto *pi = LookupPlatformInfo(p)) {
+        return pi->symbols;
+    } else {
+        assert(false && "invalid platform");
+        return nullptr;
     }
 }
 
@@ -145,22 +196,10 @@ unsigned char getGRFSize()
 // Note that encoding is not linearized.
 int getGenxPlatformEncoding()
 {
-    switch (getGenxPlatform())
-    {
-    case GENX_BDW:
-        return 3;
-    case GENX_CHV:
-        return 4;
-    case GENX_SKL:
-        return 5;
-    case GENX_BXT:
-        return 6;
-    case GENX_ICLLP:
-        return 10;
-    case GENX_TGLLP:
-        return 12;
-    default:
-        assert(false && "unsupported platform");
+    if (const auto *pi = LookupPlatformInfo(getGenxPlatform())) {
+        return pi->encoding;
+    } else {
+        assert(false && "invalid platform");
         return -1;
     }
 }
@@ -202,15 +241,14 @@ int SetStepping(const char * str) {
     return retVal;
 }
 
-Stepping GetStepping(void)
+Stepping GetStepping()
 {
     return stepping;
 }
 
-const char * GetSteppingString(void)
+const char *GetSteppingString()
 {
-    static const char* steppingName[Step_none + 1] =
-    {
+    static const char* steppingName[Step_none + 1] {
         "A",
         "B",
         "C",
@@ -222,23 +260,24 @@ const char * GetSteppingString(void)
 
     return steppingName[stepping];
 }
-G4_Type_Info G4_Type_Table[Type_UNDEF+1] = {
-    {Type_UD, 32, 4, 0xF, "ud"},
-    {Type_D, 32, 4, 0xF, "d"},
-    {Type_UW, 16, 2, 0x3, "uw"},
-    {Type_W, 16, 2, 0x3, "w"},
-    {Type_UB, 8, 1, 0x1, "ub"},
-    {Type_B, 8, 1, 0x1, "b"},
-    {Type_F, 32, 4, 0xF, "f"},
-    {Type_VF, 32, 4, 0xF, "vf"}, //handle as F?
-    {Type_V, 32, 4, 0xF, "v"},  //handle as D?
-    {Type_DF, 64, 8, 0xFF, "df"},
-    {Type_BOOL, 1, 2, 0x1, "bool"}, // TODO: how to decide 1 bit here?
-    {Type_UV, 32, 4, 0xF, "uv"},
-    {Type_Q, 64, 8, 0xFF, "q"},
-    {Type_UQ, 64, 8, 0xFF, "uq"},
-    {Type_HF, 16, 2, 0x3, "hf"},
-    {Type_NF, 64, 8, 0xFF, "nf"},
+
+G4_Type_Info G4_Type_Table[Type_UNDEF + 1] {
+    {Type_UD,  32, 4, 0x0F, "ud"},
+    {Type_D,   32, 4, 0x0F, "d"},
+    {Type_UW,  16, 2, 0x03, "uw"},
+    {Type_W,   16, 2, 0x03, "w"},
+    {Type_UB,   8, 1, 0x01, "ub"},
+    {Type_B,    8, 1, 0x01, "b"},
+    {Type_F,   32, 4, 0x0F, "f"},
+    {Type_VF,  32, 4, 0x0F, "vf"}, // handle as F?
+    {Type_V,   32, 4, 0x0F, "v"},  // handle as D?
+    {Type_DF,  64, 8, 0xFF, "df"},
+    {Type_BOOL, 1, 2, 0x01, "bool"}, // TODO: how to decide 1 bit here?
+    {Type_UV,  32, 4, 0x0F, "uv"},
+    {Type_Q,   64, 8, 0xFF, "q"},
+    {Type_UQ,  64, 8, 0xFF, "uq"},
+    {Type_HF,  16, 2, 0x03, "hf"},
+    {Type_NF,  64, 8, 0xFF, "nf"},
     {Type_UNDEF, 0, 0, 0x0, "none"}
 };
 

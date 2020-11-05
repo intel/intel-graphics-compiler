@@ -1592,7 +1592,7 @@ void vISAVerifier::verifyInstructionArith(
             !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) &&
                 !(dstType == ISA_TYPE_F && fOpcodeIEEE),
             "IEEE instruction %s is not supported on %s platform",
-            ISA_Inst_Table[opcode].str, platformString[platform]);
+            ISA_Inst_Table[opcode].str, getGenxPlatformString(platform));
     }
 }
 

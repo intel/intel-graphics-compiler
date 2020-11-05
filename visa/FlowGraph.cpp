@@ -4465,7 +4465,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             output << name;
         }
 
-        output << "\n" << "//.platform " << platformString[getGenxPlatform()];
+        output << "\n" << "//.platform " << getGenxPlatformString(getGenxPlatform());
         output << "\n" << "//.stepping " << GetSteppingString();
         output << "\n" << "//.vISA version " << (unsigned int)major_version
             << "." << (unsigned int)minor_version;

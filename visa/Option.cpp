@@ -24,18 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <string.h>
-#include <stdlib.h>
-#include <iostream>
-#include <fstream>
-#include <stdio.h>
-#include <iomanip>
-
 #include "Option.h"
 #include "Timer.h"
 #include "G4_Opcode.h"          // temporarily add to support G4_MAX_SRCS == 3
 #include "DebugInfo.h"
 #include "IGC/common/StringMacros.hpp"
+
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
 
 #ifdef _MSC_VER
 // MAX : Disable security enhancements warning (VC2005)
@@ -52,6 +53,20 @@ bool Options::get_isaasm(int argc, const char *argv[])
     return true;
 }
 
+static std::string makePlatformsString()
+{
+    int n = 0;
+    auto platforms = getGenxAllPlatforms(&n);
+    std::stringstream ss;
+    for (int i = 0; i < n; i++) {
+        const char * const*names = getGenxPlatformStrings(platforms[i]);
+        if (i > 0) {
+            ss << ", ";
+        }
+        ss << (names[0] ? names[0] : "???");
+    }
+    return ss.str();
+}
 
 /*
     All arguments should be valid BE options.
@@ -236,10 +251,10 @@ bool Options::parseOptions(int argc, const char* argv[])
             return false;
         }
 
-        int status = SetPlatform(platformStr);
-        if (status != 0) {
-            std::cout << "unrecognized platform string: "
-                      << platformStr << std::endl;
+        int status = SetVisaPlatform(platformStr);
+        if (status != VISA_SUCCESS) {
+            std::cerr << platformStr << ": unrecognized platform string\n" <<
+                "supported platforms are: " << makePlatformsString() << "\n";
             return false;
         }
         m_vISAOptions.setBool(vISA_PlatformIsSet, true);   //platformIsSet = true;
@@ -292,8 +307,10 @@ void Options::showUsage(std::ostream& output)
     output << "Converts a CISA file into Gen binary or assembly" << std::endl;
     output << "Options :" << std::endl;
 #ifndef DLL_MODE
-    output << std::setw(50) << std::left << "    -platform <BDW/SKL/BXT>"
+    output << std::setw(50) << std::left << "    -platform PLT"
            << std::setw(60) << "- Gen platform to use (required)" << std::endl;
+    output << std::setw(64) << "supported platforms are: " << makePlatformsString() << std::endl;
+
     output << std::setw(50) << "    -binary"
            << std::setw(60) << "- Emit the binary code." << std::endl;
 #endif

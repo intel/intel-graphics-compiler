@@ -206,25 +206,31 @@ extern std::stringstream errorMsgs;
 #define MUST_BE_TRUE2(x, errormsg, inst)
 #endif
 
-extern const char* platformString[];
 
 #define MAX_OPTION_STR_LENGTH 256
 
-extern const char* steppingNames[];
+// sets the platform by enum value
+int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 
-// currently the supported arguments are
-// -- "BDW" --> GENX_BDW
-// -- "CHV" --> GENX_CHV
-// -- "SKL" --> GENX_SKL
-// -- "BXT" --> GENX_BXT
-// -- "ICLLP" --> GENX_ICLLP
-// -- "TGLLP" --> GENX_TGLLP
-extern "C" int SetPlatform(const char* s);
-extern "C" int SetVisaPlatform(TARGET_PLATFORM vPlatform);
+// currently the supported arguments are listed in the common.cpp table
+// generally the symbol suffix is the preferred name:
+//   e.g. GENX_SKL  means "SKL"
+//             ^^^
+int SetVisaPlatform(const char *platformName);
 
 /*************** internal jitter functions ********************/
 // returns the HW platform for this jitter invocation
-extern "C" TARGET_PLATFORM getGenxPlatform( void );
+TARGET_PLATFORM getGenxPlatform();
+
+// returns an array of all supported platforms
+const TARGET_PLATFORM *getGenxAllPlatforms(int *num);
+
+// replaces: extern const char* platformString[];
+const char *getGenxPlatformString(TARGET_PLATFORM);
+
+// returns nullptr terminated array of strings that can be parsed
+// for the platform name; these will be accepted by SetPlatform()
+const char * const* getGenxPlatformStrings(TARGET_PLATFORM);
 
 enum class PlatformGen
 {
@@ -241,13 +247,14 @@ unsigned char getGRFSize();
 // return the platform generation that can be used for comparison
 PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
 
-// Not linearized for backward compatibility.
-extern "C" int getGenxPlatformEncoding();
+// returns the vISA encoding bits for encoding
+// NOTE: encoding values are not necessarily in order
+int getGenxPlatformEncoding();
 
-extern "C" void InitStepping();
-extern "C" int SetStepping(const char* s);
-extern "C" Stepping GetStepping(void);
-extern "C" const char * GetSteppingString(void);
+void        InitStepping();
+int         SetStepping(const char* s);
+Stepping    GetStepping();
+const char *GetSteppingString();
 
 // Error types
 #define ERROR_UNKNOWN               "ERROR: Unknown fatal internal error"

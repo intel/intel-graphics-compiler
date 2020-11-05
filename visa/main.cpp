@@ -171,7 +171,7 @@ int JITCompileAllOptions(const char* kernelName,
     }
     // This must be done before processing the options,
     // as some options depend on the platform
-    if (SetPlatform(platform) != 0)
+    if (SetVisaPlatform(platform) != 0)
     {
         return JIT_INVALID_PLATFORM;
     }
