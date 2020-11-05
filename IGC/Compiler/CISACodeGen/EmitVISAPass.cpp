@@ -3498,7 +3498,7 @@ void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
     if (psProgram->LowerPSInput())
     {
         tmpDeltaDst = psProgram->GetInputDeltaLowered(setupIndex);
-        baryVar = psProgram->GetBaryRegLowered(mode);
+        baryVar = psProgram->GetBaryRegLoweredHalf(mode);
     }
     else
     {

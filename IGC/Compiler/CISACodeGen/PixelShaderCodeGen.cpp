@@ -149,7 +149,9 @@ void CPixelShader::AllocatePSPayload()
         }
     }
 
-    for (uint i = 0; i < m_numberInstance; i++)
+    uint numInstances = m_numberInstance;
+
+    for (uint i = 0; i < numInstances; i++)
     {
         // allocate size for bary
         if (m_PerspectivePixel)
@@ -341,13 +343,17 @@ PSSignature::DispatchSignature& CPixelShader::GetDispatchSignature()
 
 CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
 {
+    uint numInstances = m_numberInstance;
+    uint numElements = 2 * numLanes(m_SIMDSize);
+
+
     CVariable* baryReg = 0;
     switch (mode)
     {
     case EINTERPOLATION_LINEAR:
         if (!m_PerspectivePixel) {
             m_PerspectivePixel =
-                GetNewVariable(2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PerspectivePixel");
+                GetNewVariable(numElements, ISA_TYPE_F, EALIGN_GRF, false, numInstances, "PerspectivePixel");
         }
         baryReg = m_PerspectivePixel;
         break;
@@ -355,8 +361,8 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
         if (!m_PerspectiveCentroid) {
             m_PerspectiveCentroid =
                 GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
-                    false, m_numberInstance, "LinearCentroid");
+                    numElements, ISA_TYPE_F, EALIGN_GRF,
+                    false, numInstances, "LinearCentroid");
         }
         baryReg = m_PerspectiveCentroid;
         break;
@@ -364,8 +370,8 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
         if (!m_PerspectiveSample) {
             m_PerspectiveSample =
                 GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
-                    false, m_numberInstance, "LinearSample");
+                    numElements, ISA_TYPE_F, EALIGN_GRF,
+                    false, numInstances, "LinearSample");
         }
         baryReg = m_PerspectiveSample;
         break;
@@ -373,8 +379,8 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
         if (!m_NoPerspectivePixel) {
             m_NoPerspectivePixel =
                 GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
-                    false, m_numberInstance, "LinearNoPerspective");
+                    numElements, ISA_TYPE_F, EALIGN_GRF,
+                    false, numInstances, "LinearNoPerspective");
         }
         baryReg = m_NoPerspectivePixel;
         break;
@@ -382,8 +388,8 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
         if (!m_NoPerspectiveCentroid) {
             m_NoPerspectiveCentroid =
                 GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
-                    false, m_numberInstance, "NoPerspectiveCentroid");
+                    numElements, ISA_TYPE_F, EALIGN_GRF,
+                    false, numInstances, "NoPerspectiveCentroid");
         }
         baryReg = m_NoPerspectiveCentroid;
         break;
@@ -391,8 +397,8 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
         if (!m_NoPerspectiveSample) {
             m_NoPerspectiveSample =
                 GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
-                    false, m_numberInstance, "NoPerspectiveSample");
+                    numElements, ISA_TYPE_F, EALIGN_GRF,
+                    false, numInstances, "NoPerspectiveSample");
         }
         baryReg = m_NoPerspectiveSample;
         break;
@@ -402,70 +408,60 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
     return baryReg;
 }
 
-CVariable* CPixelShader::GetBaryRegLowered(e_interpolation mode)
+CVariable* CPixelShader::GetBaryRegLoweredHalf(e_interpolation mode)
 {
-    CVariable* baryReg = 0;
-    switch (mode)
+    IGC_ASSERT(mode == EINTERPOLATION_LINEAR ||
+        mode == EINTERPOLATION_LINEARCENTROID ||
+        mode == EINTERPOLATION_LINEARSAMPLE ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE);
+
+    const char* const name =
+        mode == EINTERPOLATION_LINEAR ? "PerspectivePixelLoweredHalf" :
+        mode == EINTERPOLATION_LINEARCENTROID ? "PerspectiveCentroidLoweredHalf" :
+        mode == EINTERPOLATION_LINEARSAMPLE ? "PerspectiveSampleLoweredHalf" :
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ? "NoPerspectivePixelLoweredHalf" :
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ? "NoPerspectiveCentroidLoweredHalf" :
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE ? "NoPerspectiveSampleLoweredHalf" : "";
+
+    if (!m_BaryRegLoweredHalf[mode])
     {
-    case EINTERPOLATION_LINEAR:
-        if (!m_PerspectivePixelLowered) {
-            m_PerspectivePixelLowered =
-                GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
-                    false, m_numberInstance, "PerspectivePixel");
-        }
-        baryReg = m_PerspectivePixelLowered;
-        break;
-    case EINTERPOLATION_LINEARCENTROID:
-        if (!m_PerspectiveCentroidLowered) {
-            m_PerspectiveCentroidLowered =
-                GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
-                    false, m_numberInstance, "PerspectiveCentroid");
-        }
-        baryReg = m_PerspectiveCentroidLowered;
-        break;
-    case EINTERPOLATION_LINEARSAMPLE:
-        if (!m_PerspectiveSampleLowered) {
-            m_PerspectiveSampleLowered =
-                GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
-                    false, m_numberInstance, "PerspectiveSample");
-        }
-        baryReg = m_PerspectiveSampleLowered;
-        break;
-    case EINTERPOLATION_LINEARNOPERSPECTIVE:
-        if (!m_NoPerspectivePixelLowered) {
-            m_NoPerspectivePixelLowered =
-                GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
-                    false, m_numberInstance, "NoPerspectivePixel");
-        }
-        baryReg = m_NoPerspectivePixelLowered;
-        break;
-    case EINTERPOLATION_LINEARNOPERSPECTIVECENTROID:
-        if (!m_NoPerspectiveCentroidLowered) {
-            m_NoPerspectiveCentroidLowered =
-                GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
-                    false, m_numberInstance, "NoPerspectiveCentroid");
-        }
-        baryReg = m_NoPerspectiveCentroidLowered;
-        break;
-    case EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE:
-        if (!m_NoPerspectiveSampleLowered) {
-            m_NoPerspectiveSampleLowered =
-                GetNewVariable(
-                    2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
-                    false, m_numberInstance, "NoPerspectiveSample");
-        }
-        baryReg = m_NoPerspectiveSampleLowered;
-        break;
-    default:
-        IGC_ASSERT(0);
+        m_BaryRegLoweredHalf[mode] =
+            GetNewVariable(
+                2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
+                false, m_numberInstance, name);
     }
-    return baryReg;
+    return m_BaryRegLoweredHalf[mode];
 }
+
+CVariable* CPixelShader::GetBaryRegLoweredFloat(e_interpolation mode)
+{
+    IGC_ASSERT(mode == EINTERPOLATION_LINEAR ||
+        mode == EINTERPOLATION_LINEARCENTROID ||
+        mode == EINTERPOLATION_LINEARSAMPLE ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE);
+
+    const char* const name =
+        mode == EINTERPOLATION_LINEAR ? "PerspectivePixelLoweredFloat" :
+        mode == EINTERPOLATION_LINEARCENTROID ? "PerspectiveCentroidLoweredFloat" :
+        mode == EINTERPOLATION_LINEARSAMPLE ? "PerspectiveSampleLoweredFloat" :
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ? "NoPerspectivePixelLoweredFloat" :
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ? "NoPerspectiveCentroidLoweredFloat" :
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE ? "NoPerspectiveSampleLoweredFloat" : "";
+
+    if (!m_BaryRegLoweredFloat[mode])
+    {
+        m_BaryRegLoweredFloat[mode] =
+            GetNewVariable(
+                2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
+                false, m_numberInstance, name);
+    }
+    return m_BaryRegLoweredFloat[mode];
+}
+
 
 
 CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
@@ -636,10 +632,13 @@ CPixelShader::CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram)
     m_phase = PSPHASE_LEGACY;
     m_Signature = nullptr;
     m_samplerCount = 0;
-    memset(modesUsed, 0, sizeof(modesUsed));
+    m_ModeUsedHalf.reset();
+    m_ModeUsedFloat.reset();
     setupLowered.clear();
     loweredSetupIndexes.clear();
 
+    m_BaryRegLoweredHalf.fill(nullptr);
+    m_BaryRegLoweredFloat.fill(nullptr);
 
     Function* coarsePhase = nullptr;
     Function* pixelPhase = nullptr;
@@ -684,12 +683,8 @@ void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDi
     m_NoPerspectivePixel = NULL;
     m_NoPerspectiveCentroid = NULL;
     m_NoPerspectiveSample = NULL;
-    m_PerspectivePixelLowered = NULL;
-    m_PerspectiveCentroidLowered = NULL;
-    m_PerspectiveSampleLowered = NULL;
-    m_NoPerspectivePixelLowered = NULL;
-    m_NoPerspectiveCentroidLowered = NULL;
-    m_NoPerspectiveSampleLowered = NULL;
+    m_BaryRegLoweredHalf.fill(nullptr);
+    m_BaryRegLoweredFloat.fill(nullptr);
     m_KillPixelMask = NULL;
     m_HasDiscard = false;
     m_pPositionZPixel = NULL;
@@ -714,7 +709,8 @@ void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDi
     rtWriteList.clear();
     setupLowered.clear();
     loweredSetupIndexes.clear();
-    memset(modesUsed, 0, sizeof(modesUsed));
+    m_ModeUsedHalf.reset();
+    m_ModeUsedFloat.reset();
     CShader::InitEncoder(simdMode, canAbortOnSpill, shaderMode);
 }
 
@@ -922,15 +918,22 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
         case GenISAIntrinsic::GenISA_DCL_ShaderInputVec:
         case GenISAIntrinsic::GenISA_DCL_inputVec:
         {
-            uint setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+            IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(0)));
+            IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(1)));
+            uint setupIndex = int_cast<uint>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
             m_MaxSetupIndex = std::max(setupIndex, m_MaxSetupIndex);
-            if (inst->getType()->isHalfTy())
+
+            e_interpolation mode = static_cast<e_interpolation>(llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
+            if (mode != EINTERPOLATION_CONSTANT)
             {
-                e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-                if (mode != EINTERPOLATION_CONSTANT)
+                if (inst->getType()->isHalfTy())
                 {
                     loweredSetupIndexes.insert(setupIndex);
-                    modesUsed[mode] = true;
+                    m_ModeUsedHalf.set(mode);
+                }
+                else
+                {
+                    m_ModeUsedFloat.set(mode);
                 }
             }
             break;
@@ -1580,6 +1583,7 @@ void CPixelShader::emitPSInputLowering()
     auto iterSetupIndex = loweredSetupIndexes.begin();
     auto iterSetupIndexEnd = loweredSetupIndexes.end();
 
+
     if (LowerPSInput())
     {
         for (; iterSetupIndex != iterSetupIndexEnd; ++iterSetupIndex)
@@ -1608,10 +1612,10 @@ void CPixelShader::emitPSInputLowering()
 
         for (uint i = EINTERPOLATION_LINEAR; i < NUMBER_EINTERPOLATION; ++i)
         {
-            if (modesUsed[i])
+            if (m_ModeUsedHalf.test(i))
             {
                 CVariable* baryVar = GetBaryReg((e_interpolation)i);
-                CVariable* baryVarLowered = GetBaryRegLowered((e_interpolation)i);
+                CVariable* baryVarLowered = GetBaryRegLoweredHalf((e_interpolation)i);
 
                 for (uint8_t i = 0; i < m_numberInstance; ++i)
                 {

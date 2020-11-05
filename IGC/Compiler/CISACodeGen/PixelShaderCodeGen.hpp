@@ -55,7 +55,8 @@ public:
     CVariable* GetR1();
     CVariable* GetCoarseR1();
     CVariable* GetBaryReg(e_interpolation mode);
-    CVariable* GetBaryRegLowered(e_interpolation mode);
+    CVariable* GetBaryRegLoweredHalf(e_interpolation mode);
+    CVariable* GetBaryRegLoweredFloat(e_interpolation mode);
     CVariable* GetInputDelta(uint index, bool loweredInput = false);
     CVariable* GetInputDeltaLowered(uint index);
     CVariable* GetZWDelta();
@@ -122,7 +123,8 @@ public:
 
     std::vector<CVariable*> setupLowered;
     std::set<uint> loweredSetupIndexes;
-    bool modesUsed[NUMBER_EINTERPOLATION];
+    std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedHalf;
+    std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedFloat;
     bool LowerPSInput();
 protected:
     void CreatePassThroughVar();
@@ -140,12 +142,8 @@ private:
     CVariable* m_NoPerspectivePixel;
     CVariable* m_NoPerspectiveCentroid;
     CVariable* m_NoPerspectiveSample;
-    CVariable* m_PerspectivePixelLowered;
-    CVariable* m_PerspectiveCentroidLowered;
-    CVariable* m_PerspectiveSampleLowered;
-    CVariable* m_NoPerspectivePixelLowered;
-    CVariable* m_NoPerspectiveCentroidLowered;
-    CVariable* m_NoPerspectiveSampleLowered;
+    std::array<CVariable*, NUMBER_EINTERPOLATION> m_BaryRegLoweredHalf;
+    std::array<CVariable*, NUMBER_EINTERPOLATION> m_BaryRegLoweredFloat;
     CVariable* m_KillPixelMask;
     CVariable* m_pPositionZPixel;
     CVariable* m_pPositionWPixel;
