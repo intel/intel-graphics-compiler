@@ -237,6 +237,28 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   llvm::StringRef ApiOptions{InputArgs->pOptions, InputArgs->OptionsSize};
   llvm::StringRef InternalOptions{InputArgs->pInternalOptions,
                                   InputArgs->InternalOptionsSize};
+
+  auto getAuxiliaryOptions = [](llvm::StringRef AuxOpt,
+                                llvm::StringRef InOpt,
+                                std::string &Storage) {
+    if (AuxOpt.empty())
+      return false;
+    Storage.clear();
+    Storage.append(InOpt.data(), InOpt.size()).append(" ").append(AuxOpt.data(), AuxOpt.size());
+    return true;
+  };
+
+  std::string AuxApiOptions;
+  std::string AuxInternalOptions;
+  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCApiOptions),
+                          ApiOptions, AuxApiOptions)) {
+     ApiOptions = { AuxApiOptions.data(), AuxApiOptions.size() };
+  }
+  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCInternalOptions),
+                          InternalOptions, AuxInternalOptions)) {
+     InternalOptions = { AuxInternalOptions.data(), AuxInternalOptions.size() };
+  }
+
   llvm::ArrayRef<char> Input{InputArgs->pInput, InputArgs->InputSize};
 
   std::unique_ptr<vc::ShaderDumper> Dumper;
