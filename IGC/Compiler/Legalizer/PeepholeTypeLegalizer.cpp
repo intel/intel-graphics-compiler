@@ -56,6 +56,7 @@ IGC_INITIALIZE_PASS_END(PeepholeTypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ON
 
 PeepholeTypeLegalizer::PeepholeTypeLegalizer() : FunctionPass(ID),
 TheModule(nullptr), TheFunction(nullptr), NonBitcastInstructionsLegalized(false), CastInst_ZExtWithIntermediateIllegalsEliminated(false),
+CastInst_TruncWithIntermediateIllegalsEliminated(false),
 Bitcast_BitcastWithIntermediateIllegalsEliminated(false), Changed(false), DL(nullptr) {
     initializePeepholeTypeLegalizerPass(*PassRegistry::getPassRegistry());
 }
@@ -81,6 +82,8 @@ bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
         NonBitcastInstructionsLegalized = true;
         visit(F);
         CastInst_ZExtWithIntermediateIllegalsEliminated = true;
+        visit(F);
+        CastInst_TruncWithIntermediateIllegalsEliminated = true;
         visit(F);
         Bitcast_BitcastWithIntermediateIllegalsEliminated = true;
     }
@@ -135,6 +138,10 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
     else if (!CastInst_ZExtWithIntermediateIllegalsEliminated) { // Eliminate intermediate ILLEGAL operands in bitcast-zext or trunc-zext pairs
         if (dyn_cast<ZExtInst>(&I))
             cleanupZExtInst(I);
+    }
+    else if (!CastInst_TruncWithIntermediateIllegalsEliminated) { // Eliminate intermediate ILLEGAL operands in bitcast-zext or trunc-zext pairs
+        if (dyn_cast<TruncInst>(&I))
+            cleanupTruncInst(I);
     }
     else if (!Bitcast_BitcastWithIntermediateIllegalsEliminated) { // Eliminate redundant bitcast-bitcast pairs and eliminate intermediate ILLEGAL operands in bitcast-bitcast pairs with src == dest OR src != dest
         if (dyn_cast<BitCastInst>(&I))
@@ -448,6 +455,12 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
         }
         case Instruction::LShr:
             NewLargeRes = m_builder->CreateLShr(NewLargeSrc1, NewLargeSrc2);
+            break;
+        case Instruction::AShr:
+        {
+            NewLargeRes = m_builder->CreateAShr(NewLargeSrc1, NewLargeSrc2);
+            break;
+        }
         default:
             printf("Binary Instruction seen with illegal int type. Legalization support missing. Inst opcode:%d", I.getOpcode());
             IGC_ASSERT_MESSAGE(0, "Binary Instruction seen with illegal int type. Legalization support missing.");
@@ -872,6 +885,46 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         IGC_ASSERT_MESSAGE(0, "Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing.");
         break;
     }
+}
+
+void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
+    //Only cleanup if the type is illegal and it is not a dead instruction and that
+    //the src is a legal type
+    if (!isLegalInteger(I.getType()->getScalarSizeInBits()) &&
+        I.hasOneUse() &&
+        isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()))
+    {
+        //Need to see if it is safe to wipe it out. It is safe only if the user is a
+        //SExt or ZExt and the trunc starting bitwidth is less than the
+        //users bitwidth.
+        Value* new_inst = NULL;
+        Instruction* castInst = I.user_back();
+        auto Src = I.getOperand(0);
+        auto Src_bitsize = Src->getType()->getScalarSizeInBits();
+        auto castInst_bitsize = castInst->getType()->getScalarSizeInBits();
+        if (Src_bitsize < castInst_bitsize)
+        {
+            if (isa<SExtInst>(castInst))
+                new_inst = m_builder->CreateSExt(Src, castInst->getType());
+            if (isa<ZExtInst>(castInst))
+                new_inst = m_builder->CreateZExt(Src, castInst->getType());
+        }
+
+        if (new_inst != NULL)
+        {
+            castInst->replaceAllUsesWith(new_inst);
+            castInst->eraseFromParent();
+            Changed = true;
+        }
+    }
+
+    if (I.use_empty())
+    {
+        I.eraseFromParent();
+        Changed = true;
+    }
+
+    return;
 }
 
 void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {

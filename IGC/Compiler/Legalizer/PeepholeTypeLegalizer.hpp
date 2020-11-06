@@ -66,11 +66,13 @@ namespace IGC {
             void legalizeBinaryOperator(Instruction& I);
             void legalizeExtractElement(Instruction& I);
             void cleanupZExtInst(Instruction& I);
+            void cleanupTruncInst(Instruction& I);
             void cleanupBitCastInst(Instruction& I);
 
         private:
             bool NonBitcastInstructionsLegalized;
             bool CastInst_ZExtWithIntermediateIllegalsEliminated;
+            bool CastInst_TruncWithIntermediateIllegalsEliminated;
             bool Bitcast_BitcastWithIntermediateIllegalsEliminated;
             bool Changed;
 
