@@ -40,7 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenX.h"
 #include "GenXBackendConfig.h"
 
-#include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/IR/Attributes.h>
@@ -352,15 +351,41 @@ void BIConvert::runOnModule(Module &M) {
 typedef std::vector<llvm::Function *> TFunctionsVec;
 
 static Function *GetBuiltinFunction(llvm::StringRef funcName,
-                                    llvm::Module &BiFModule) {
-  Function *pFunc = BiFModule.getFunction(funcName);
-  if (pFunc && !pFunc->isDeclaration())
+                                    llvm::Module *BiFModule) {
+  Function *pFunc = nullptr;
+  if ((pFunc = BiFModule->getFunction(funcName)) && !pFunc->isDeclaration())
     return pFunc;
   return nullptr;
 }
 
 static bool materialized_use_empty(const Value *v) {
   return v->materialized_use_begin() == v->use_end();
+}
+
+static void GetCalledFunctions(const Function *pFunc,
+                               TFunctionsVec &calledFuncs) {
+  SmallPtrSet<Function *, 8> visitedSet;
+  // Iterate over function instructions and look for call instructions
+  for (const_inst_iterator it = inst_begin(pFunc), e = inst_end(pFunc); it != e;
+       ++it) {
+    const CallInst *pInstCall = dyn_cast<CallInst>(&*it);
+    if (!pInstCall)
+      continue;
+    CallingConv::ID CCID = pFunc->getCallingConv();
+    if (CCID != CallingConv::SPIR_KERNEL)
+      ((CallInst *)pInstCall)->setCallingConv(CCID);
+    Function *pCalledFunc = pInstCall->getCalledFunction();
+    if (!pCalledFunc) {
+      // This case can occur only if CallInst is calling something other than
+      // LLVM function. Thus, no need to handle this case - function casting is
+      // not allowed (and not expected!)
+      continue;
+    }
+    if (visitedSet.count(pCalledFunc))
+      continue;
+    visitedSet.insert(pCalledFunc);
+    calledFuncs.push_back(pCalledFunc);
+  }
 }
 
 static void removeFunctionBitcasts(llvm::Module &M) {
@@ -480,119 +505,43 @@ static void InitializeBIFlags(llvm::Module &M) {
                          *reinterpret_cast<int *>(&profilingTimerResolution));
 }
 
-namespace {
-// Note: FuncDecl is a declaration of a function in the main module.
-//       FuncImpl is a definition of this function in the BiF module.
-struct FuncAndItsImpl {
-  Function *FuncDecl;
-  Function *FuncImpl;
-};
-} // namespace
-
-static bool isOCLBuiltinDecl(const Function &F) {
-  if (!F.isDeclaration())
-    return false;
-  if (F.isIntrinsic() || GenXIntrinsic::isGenXIntrinsic(&F))
-    return false;
-  // presuming that the only declarations left are from OCL header
-  return true;
-}
-
-static void fixCallingConv(Function &FuncDecl, CallingConv::ID Conv) {
-  FuncDecl.setCallingConv(Conv);
-  for (User *U : FuncDecl.users())
-    cast<CallInst>(U)->setCallingConv(Conv);
-}
-
-static void fixCallingConv(const std::vector<FuncAndItsImpl> &UsedBiFFuncs) {
-  for (const auto &FuncLinkInfo : UsedBiFFuncs) {
-    if (FuncLinkInfo.FuncDecl->getCallingConv() !=
-        FuncLinkInfo.FuncImpl->getCallingConv())
-      fixCallingConv(*FuncLinkInfo.FuncDecl,
-                     FuncLinkInfo.FuncImpl->getCallingConv());
-  }
-}
-
-static std::vector<FuncAndItsImpl> collectBiFFuncUses(Module &MainModule,
-                                                      Module &BiFModule) {
-  std::vector<FuncAndItsImpl> FuncsFromBiF;
-  for (auto &Func : MainModule)
-    if (isOCLBuiltinDecl(Func)) {
-      StringRef FuncName = Func.getName();
-      Function *FuncBiFImpl = GetBuiltinFunction(FuncName, BiFModule);
-      if (FuncBiFImpl)
-        FuncsFromBiF.push_back({&Func, FuncBiFImpl});
-    }
-  return std::move(FuncsFromBiF);
-}
-
-static void materializeFuncIfRequired(Function &Func) {
-  if (Func.isMaterializable()) {
-    if (Error Err = Func.materialize()) {
-      handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
-        errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
-      });
-      IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
-    }
-  }
-}
-
-// Collects functions that are directly called from \p Parent function
-// (goes only one step in depth in the call graph).
-static std::vector<Function *> collectDirectSubroutines(Function &Parent) {
-  std::vector<Function *> Subroutines;
-  llvm::transform(
-      make_filter_range(
-          instructions(Parent),
-          [](Instruction &Inst) {
-            if (!isa<CallInst>(Inst))
-              return false;
-            auto *Subroutine = cast<CallInst>(Inst).getCalledFunction();
-            IGC_ASSERT_MESSAGE(Subroutine,
-                               "indirect calls are unexpected in BiF module");
-            IGC_ASSERT_MESSAGE(!GenXIntrinsic::isGenXIntrinsic(Subroutine),
-                               "genx intrinsics are unexpected in BiF module");
-            return !Subroutine->isIntrinsic();
-          }),
-      std::back_inserter(Subroutines), [](Instruction &Inst) {
-        auto *Subroutine = cast<CallInst>(Inst).getCalledFunction();
-        IGC_ASSERT_MESSAGE(Subroutine,
-                           "indirect calls are unexpected in BiF module");
-        IGC_ASSERT_MESSAGE(!Subroutine->isIntrinsic() &&
-                               !GenXIntrinsic::isGenXIntrinsic(Subroutine),
-                           "it should've been already checked");
-        return Subroutine;
-      });
-  std::sort(Subroutines.begin(), Subroutines.end());
-  Subroutines.erase(std::unique(Subroutines.begin(), Subroutines.end()),
-                    Subroutines.end());
-  return std::move(Subroutines);
-}
-
-// Recursively materialize \p Parent's subroutines and its subroutines too.
-static void materializeSubroutines(Function &Parent) {
-  std::vector<Function *> Subroutines = collectDirectSubroutines(Parent);
-  for (Function *Subroutine : Subroutines) {
-    materializeFuncIfRequired(*Subroutine);
-    materializeSubroutines(*Subroutine);
-  }
-}
-
-static void
-materializeUsedBiFFuncs(const std::vector<FuncAndItsImpl> &FuncsFromBiF) {
-  for (auto &&[FuncDecl, FuncImpl] : FuncsFromBiF) {
-    (void)FuncDecl;
-    materializeFuncIfRequired(*FuncImpl);
-    materializeSubroutines(*FuncImpl);
-  }
-}
-
 bool CMImportBiF(llvm::Module *MainModule,
                  std::unique_ptr<llvm::Module> BiFModule) {
-  std::vector<FuncAndItsImpl> FuncsFromBiF =
-      collectBiFFuncUses(*MainModule, *BiFModule);
-  materializeUsedBiFFuncs(FuncsFromBiF);
-  fixCallingConv(FuncsFromBiF);
+  std::function<void(Function *)> Explore = [&](Function *pRoot) -> void {
+    TFunctionsVec calledFuncs;
+    GetCalledFunctions(pRoot, calledFuncs);
+
+    for (auto *pCallee : calledFuncs) {
+      Function *pFunc = nullptr;
+      if (pCallee->isDeclaration()) {
+        auto funcName = pCallee->getName();
+        Function *pSrcFunc = GetBuiltinFunction(funcName, BiFModule.get());
+        if (!pSrcFunc)
+          continue;
+        pFunc = pSrcFunc;
+      } else {
+        pFunc = pCallee;
+      }
+
+      if (pFunc->isMaterializable()) {
+        if (Error Err = pFunc->materialize()) {
+          std::string Msg;
+          handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
+            errs() << "===> Materialize Failure: " << EIB.message().c_str()
+                   << '\n';
+          });
+          IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
+        } else {
+          pFunc->setCallingConv(pRoot->getCallingConv());
+          Explore(pFunc);
+        }
+      }
+    }
+  };
+
+  for (auto &func : *MainModule) {
+    Explore(&func);
+  }
 
   // nuke the unused functions so we can materializeAll() quickly
   auto CleanUnused = [](llvm::Module *Module) {
@@ -609,11 +558,7 @@ bool CMImportBiF(llvm::Module *MainModule,
   CleanUnused(BiFModule.get());
   Linker ld(*MainModule);
 
-  if (Error Err = BiFModule->materializeAll()) {
-    handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
-      errs() << "===> Materialize All Failure: " << EIB.message().c_str()
-             << '\n';
-    });
+  if (Error err = BiFModule->materializeAll()) {
     IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
   }
 
@@ -667,6 +612,15 @@ ModulePass *llvm::createGenXImportBiFPass() {
 
 void GenXImportBiF::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();
+}
+
+static bool isOCLBuiltinDecl(const Function &F) {
+  if (!F.isDeclaration())
+    return false;
+  if (F.isIntrinsic() || GenXIntrinsic::isGenXIntrinsic(&F))
+    return false;
+  // presuming that the only declarations left are from OCL header
+  return true;
 }
 
 // Whether module has uresolved calls to OpenCL builtins.
