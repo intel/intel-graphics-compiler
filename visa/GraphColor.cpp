@@ -9606,14 +9606,14 @@ int GlobalRA::coloringRegAlloc()
                 bool runRemat = kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM
                     ? true :  kernel.getSimdSize() < numEltPerGRF(Type_UB);
                 // -noremat takes precedence over -forceremat
-                bool rematOff = !kernel.getOption(vISA_Debug) &&
-                    (!kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill)) &&
+                bool rematOn = !kernel.getOption(vISA_Debug) &&
+                    (!kernel.getOption(vISA_NoRemat) && !kernel.getOption(vISA_FastSpill)) &&
                     (kernel.getOption(vISA_ForceRemat) || runRemat);
                 bool rematChange = false;
                 bool globalSplitChange = false;
 
                 if (!rematDone &&
-                    rematOff)
+                    rematOn)
                 {
                     if (builder.getOption(vISA_RATrace))
                     {
