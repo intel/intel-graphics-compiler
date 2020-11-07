@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gen4_IR.hpp"
 
  const char* Common_ISA_Get_Align_Name( VISA_Align );
+ uint32_t getAlignInBytes(VISA_Align A);
+ VISA_Align getCISAAlign(uint32_t AlignInBytes);
  const char* Common_ISA_Get_Modifier_Name( VISA_Modifier );
  G4_opcode GetGenOpcodeFromVISAOpcode( ISA_Opcode );
  VISA_Type Get_Common_ISA_Type_From_G4_Type( G4_Type );

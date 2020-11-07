@@ -123,17 +123,19 @@ typedef enum {
 extern CISATypeInfo CISATypeTable[ISA_TYPE_NUM];
 
 typedef enum {
-    ALIGN_UNDEF = 0x0,
-    ALIGN_WORD = 0x1,
-    ALIGN_DWORD = 0x2,
-    ALIGN_QWORD = 0x3,
-    ALIGN_OWORD = 0x4,
-    ALIGN_GRF = 0x5,
-    ALIGN_2_GRF = 0x6,
-    ALIGN_HWORD = 0x7,
-    ALIGN_32WORD = 0x8,
-    ALIGN_64WORD = 0x9,
-    ALIGN_BYTE = 0x0
+    ALIGN_UNDEF   = 0x0,
+    ALIGN_BYTE    = 0x0,
+    ALIGN_WORD    = 0x1,
+    ALIGN_DWORD   = 0x2,
+    ALIGN_QWORD   = 0x3,
+    ALIGN_OWORD   = 0x4,
+    ALIGN_GRF     = 0x5,
+    ALIGN_2_GRF   = 0x6,
+    ALIGN_HWORD   = 0x7,
+    ALIGN_32WORD  = 0x8,
+    ALIGN_64WORD  = 0x9,
+
+    ALIGN_TOTAL_NUM = 0xA
 } VISA_Align;
 
 typedef enum {

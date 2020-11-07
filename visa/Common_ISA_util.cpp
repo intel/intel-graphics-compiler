@@ -42,24 +42,60 @@ vISAPreDefinedSurface vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1] =
     { 5, PREDEF_SURF_255, "%scratch" },
 };
 
+typedef struct {
+    VISA_Align  CISAAlign;
+    const char* AlignName;
+    uint16_t    AlignBytes;
+} CISAAlignInfo;
+
+static CISAAlignInfo CISAAlignTable[ALIGN_TOTAL_NUM] =
+{
+    { ALIGN_BYTE,    "byte",      1 },
+    { ALIGN_WORD,    "word",      2 },
+    { ALIGN_DWORD,   "dword",     4 },
+    { ALIGN_QWORD,   "qword",     8 },
+    { ALIGN_OWORD,   "oword",    16 },
+    { ALIGN_GRF,     "GRF",       0 },  // dynamic
+    { ALIGN_2_GRF,   "GRFx2",     0 },  // dynamic
+    { ALIGN_HWORD,   "hword",    32 },
+    { ALIGN_32WORD,  "wordx32",  64 },
+    { ALIGN_64WORD,  "wordx64", 128 }
+};
 
 const char* Common_ISA_Get_Align_Name(VISA_Align align)
 {
-    static const char* common_ISA_align_name[] = {
-        " ",
-        "word",
-        "dword",
-        "qword",
-        "oword",
-        "GRF",
-        "GRFx2", // "2GRF"
-        "hword",
-        "wordx32",
-        "wordx64",
-        "byte",
-    };
+    return CISAAlignTable[align].AlignName;
+}
 
-    return common_ISA_align_name[align];
+uint32_t getAlignInBytes(VISA_Align A)
+{
+    switch (A)
+    {
+    case ALIGN_GRF:   return getGRFSize();
+    case ALIGN_2_GRF: return 2 * getGRFSize();
+    default:
+        break;
+    }
+    return CISAAlignTable[A].AlignBytes;
+}
+
+VISA_Align getCISAAlign(uint32_t AlignInBytes)
+{
+    if (AlignInBytes >= 128)
+        return ALIGN_64WORD;
+    if (AlignInBytes >= 64)
+        return ALIGN_32WORD;
+    if (AlignInBytes >= 32)
+        return ALIGN_HWORD;
+    if (AlignInBytes >= 16)
+        return ALIGN_OWORD;
+    if (AlignInBytes >= 8)
+        return ALIGN_QWORD;
+    if (AlignInBytes >= 4)
+        return ALIGN_DWORD;
+    if (AlignInBytes >= 2)
+        return ALIGN_WORD;
+    return ALIGN_BYTE;
 }
 
 
