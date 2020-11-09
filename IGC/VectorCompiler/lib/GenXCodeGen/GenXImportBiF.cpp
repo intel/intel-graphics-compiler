@@ -56,7 +56,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvmWrapper/IR/Instructions.h>
 
 #include <algorithm>
+#include <iterator>
 #include <sstream>
+#include <unordered_set>
 #include <vector>
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
@@ -179,9 +181,6 @@ BIConvert::BIConvert() {
 void BIConvert::runOnModule(Module &M) {
   std::vector<Instruction *> ListDelete;
   for (Function &func : M) {
-    // a hack to avoid extractvalue in backend
-    if (func.getName() == "__clc_exp_helper")
-      func.addFnAttr(Attribute::AlwaysInline);
     for (auto &BB : func) {
       for (auto I = BB.begin(), E = BB.end(); I != E; I++) {
         CallInst *InstCall = dyn_cast<CallInst>(I);
@@ -569,30 +568,59 @@ static std::vector<Function *> collectDirectSubroutines(Function &Parent) {
   return std::move(Subroutines);
 }
 
+class BiFImporter {
+  Module &MainModule;
+  std::unique_ptr<Module> BiFModule;
+  std::unordered_set<Function *> ImportedFuncs;
+
+public:
+  BiFImporter(Module &MainModuleIn, std::unique_ptr<llvm::Module> BiFModuleIn)
+      : MainModule{MainModuleIn}, BiFModule{std::move(BiFModuleIn)} {}
+
+  void run();
+
+private:
+  void materializeSubroutines(Function &Parent);
+  void materializeUsedBiFFuncs(const std::vector<FuncAndItsImpl> &FuncsFromBiF);
+  void forceInlining();
+};
+
 // Recursively materialize \p Parent's subroutines and its subroutines too.
-static void materializeSubroutines(Function &Parent) {
-  std::vector<Function *> Subroutines = collectDirectSubroutines(Parent);
-  for (Function *Subroutine : Subroutines) {
-    materializeFuncIfRequired(*Subroutine);
-    materializeSubroutines(*Subroutine);
+void BiFImporter::materializeSubroutines(Function &Parent) {
+  std::vector<Function *> DirectSubroutines = collectDirectSubroutines(Parent);
+  for (Function *Subroutine : DirectSubroutines) {
+    if (ImportedFuncs.count(Subroutine) == 0) {
+      ImportedFuncs.insert(Subroutine);
+      materializeFuncIfRequired(*Subroutine);
+      materializeSubroutines(*Subroutine);
+    }
   }
 }
 
-static void
-materializeUsedBiFFuncs(const std::vector<FuncAndItsImpl> &FuncsFromBiF) {
+void BiFImporter::materializeUsedBiFFuncs(
+    const std::vector<FuncAndItsImpl> &FuncsFromBiF) {
+  std::vector<Function *> BiFFuncs;
   for (auto &&[FuncDecl, FuncImpl] : FuncsFromBiF) {
     (void)FuncDecl;
+    ImportedFuncs.insert(FuncImpl);
     materializeFuncIfRequired(*FuncImpl);
     materializeSubroutines(*FuncImpl);
   }
 }
 
-bool CMImportBiF(llvm::Module *MainModule,
-                 std::unique_ptr<llvm::Module> BiFModule) {
+void BiFImporter::forceInlining() {
+  for (auto *Func : ImportedFuncs)
+    if (!Func->hasFnAttribute(Attribute::AlwaysInline))
+      Func->addFnAttr(Attribute::AlwaysInline);
+}
+
+void BiFImporter::run() {
   std::vector<FuncAndItsImpl> FuncsFromBiF =
-      collectBiFFuncUses(*MainModule, *BiFModule);
+      collectBiFFuncUses(MainModule, *BiFModule);
   materializeUsedBiFFuncs(FuncsFromBiF);
   fixCallingConv(FuncsFromBiF);
+  // FIXME: workaround to solve several issues in the backend, remove it
+  forceInlining();
 
   // nuke the unused functions so we can materializeAll() quickly
   auto CleanUnused = [](llvm::Module *Module) {
@@ -607,7 +635,7 @@ bool CMImportBiF(llvm::Module *MainModule,
   };
 
   CleanUnused(BiFModule.get());
-  Linker ld(*MainModule);
+  Linker ld(MainModule);
 
   if (Error Err = BiFModule->materializeAll()) {
     handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
@@ -621,19 +649,14 @@ bool CMImportBiF(llvm::Module *MainModule,
     IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
   }
 
-  InitializeBIFlags(*MainModule);
-  removeFunctionBitcasts(*MainModule);
+  InitializeBIFlags(MainModule);
+  removeFunctionBitcasts(MainModule);
 
   std::vector<Instruction *> InstToRemove;
 
   for (auto I : InstToRemove) {
     I->eraseFromParent();
   }
-
-  // create converter
-  BIConvert CVT;
-  CVT.runOnModule(*MainModule);
-  return true;
 }
 
 class GenXImportBiF final : public ModulePass {
@@ -682,7 +705,8 @@ bool GenXImportBiF::runOnModule(Module &M) {
   std::unique_ptr<Module> GenericBiFModule = getBiFModule(M.getContext());
   GenericBiFModule->setDataLayout(M.getDataLayout());
   GenericBiFModule->setTargetTriple(M.getTargetTriple());
-  CMImportBiF(&M, std::move(GenericBiFModule));
+  BiFImporter{M, std::move(GenericBiFModule)}.run();
+  BIConvert{}.runOnModule(M);
   return true;
 }
 
