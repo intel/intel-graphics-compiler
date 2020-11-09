@@ -9473,7 +9473,7 @@ int GlobalRA::coloringRegAlloc()
     }
 
     startTimer(TimerID::GRF_GLOBAL_RA);
-    unsigned maxRAIterations = 10;
+    const unsigned maxRAIterations = 10;
     unsigned iterationNo = 0;
 
     int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
@@ -9740,7 +9740,17 @@ int GlobalRA::coloringRegAlloc()
 
                 if (builder.getOption(vISA_RATrace))
                 {
-                    std::cout << "\t--# variables spilled: " << coloring.getSpilledLiveRanges().size() << "\n";
+                    auto&& spills = coloring.getSpilledLiveRanges();
+                    std::cout << "\t--# variables spilled: " << spills.size() << "\n";
+                    if (spills.size() < 100)
+                    {
+                        std::cout << "\t--spilled variables: ";
+                        for (auto&& lr : spills)
+                        {
+                            std::cout << lr->getDcl()->getName() << "  ";
+                        }
+                        std::cout << "\n";
+                    }
                     std::cout << "\t--current spill size: " << nextSpillOffset << "\n";
                 }
 
@@ -9768,10 +9778,11 @@ int GlobalRA::coloringRegAlloc()
                     c.run();
                 }
 
-                if (iterationNo >= FAIL_SAFE_RA_LIMIT)
+                if (iterationNo == FAIL_SAFE_RA_LIMIT)
                 {
                     if (coloring.getSpilledLiveRanges().size() < 2)
                     {
+                        // give regular RA one more try as we are close to success
                         failSafeRAIteration++;
                     }
                 }
