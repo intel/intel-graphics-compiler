@@ -33,11 +33,18 @@ int IR_Builder::translateVISACFSwitchInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
+    // TGL+ uses pre-increment IP for jmp offset, i.e., offset 0 is infinite loop
+    bool preIncIP = getPlatform() >= GENX_TGLLP;
     // offsets are in bytes so we have to multiply everything by 16
-    // FIXME: this assumes the jmpi instructions will never be compacted.
+    // This requires that the jmpi instructions are never compacted.
     if (indexOpnd->isImm())
     {
-        indexOpnd = createImm(indexOpnd->asImm()->getInt() * 16, Type_W);
+        auto val = indexOpnd->asImm()->getInt();
+        if (preIncIP)
+        {
+            val += 1;
+        }
+        indexOpnd = createImm(val * 16, Type_W);
     }
     else
     {
@@ -45,6 +52,13 @@ int IR_Builder::translateVISACFSwitchInst(
         G4_DstRegRegion* dstOpnd = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
         (void)createBinOp(G4_shl, g4::SIMD1, dstOpnd, indexOpnd,
             createImm(4, Type_UW), InstOpt_WriteEnable, true);
+        if (preIncIP)
+        {
+            auto src0 = Create_Src_Opnd_From_Dcl(tmpVar, getRegionScalar());
+            auto src1 = createImm(16, Type_UW);
+            (void) createBinOp(G4_add, g4::SIMD1, Create_Dst_Opnd_From_Dcl(tmpVar, 1), src0, src1, InstOpt_WriteEnable, true);
+        }
+
         indexOpnd = Create_Src_Opnd_From_Dcl(tmpVar, getRegionScalar());
     }
     G4_INST* indirectJmp = createJmp(nullptr, indexOpnd, InstOpt_NoOpt, true);
