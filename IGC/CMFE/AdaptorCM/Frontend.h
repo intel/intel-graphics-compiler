@@ -138,22 +138,25 @@ template <typename Fn> class FEWrapper {
     return IsCompatible;
   }
 
-  DyLibTy loadLibrary() {
+  DyLibTy loadLibrary(const std::string &DefaultDir) {
     constexpr auto CustomPathEnv = "CM_FE_DIR";
 
-    std::string FELibName = CMFE_WRAPPER_NAME;
-    auto EnvFE = llvm::sys::Process::GetEnv(CustomPathEnv);
-    if (EnvFE)
-      FELibName =
-          llvm::sys::path::convert_to_slash(EnvFE.getValue() + "/" + FELibName);
+    std::string LibDir;
+    if (auto EnvDir = llvm::sys::Process::GetEnv(CustomPathEnv))
+      LibDir = EnvDir.getValue();
+    else
+      LibDir = DefaultDir;
+
+    llvm::SmallString<32> LibPath;
+    llvm::sys::path::append(LibPath, LibDir, CMFE_WRAPPER_NAME);
 
     std::string FError;
-    auto DL = llvm::sys::DynamicLibrary::getPermanentLibrary(FELibName.c_str(),
+    auto DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LibPath.c_str(),
                                                              &FError);
 
     if (!DL.isValid()) {
       std::ostringstream os;
-      os << "AdaptorCM: could not load FEWrapper: <" << FELibName
+      os << "AdaptorCM: could not load FEWrapper: <" << LibPath.c_str()
          << ">: " << FError;
       ErrHandler(os.str());
     }
@@ -163,11 +166,12 @@ template <typename Fn> class FEWrapper {
   // Provide extra argument to guarantee correct overload resolution
   // for public copy/move ctors.
   template <typename ErrFn>
-  FEWrapper(ErrFn &&ErrH, bool)
-      : ErrHandler(std::forward<ErrFn>(ErrH)), Lib(loadLibrary()) {}
+  FEWrapper(ErrFn &&ErrH, const std::string &DefaultPath)
+      : ErrHandler(std::forward<ErrFn>(ErrH)), Lib(loadLibrary(DefaultPath)) {}
 
   template <typename ErrFn, typename ErrFnTy>
-  friend llvm::Optional<FEWrapper<ErrFnTy>> makeFEWrapper(ErrFn &&ErrH);
+  friend llvm::Optional<FEWrapper<ErrFnTy>>
+  makeFEWrapper(ErrFn &&ErrH, const std::string &DefaultDir);
 
 public:
   FEWrapper(FEWrapper &&) = default;
@@ -208,11 +212,15 @@ template <typename Ty> struct CleanFunctor {
 } // namespace detail
 
 // Create FEWrapper with given error handler ErrH.
+// DefaultDir parameter allows to override search order by providing
+// absolute path to directory with FE wrapper. Defaults to empty string
+// that is expanded to plain FE wrapper name.
 // Return Optional as it can fail during loading.
 template <typename ErrFn,
           typename ErrFnTy = typename detail::CleanFunctor<ErrFn>::type>
-inline llvm::Optional<FEWrapper<ErrFnTy>> makeFEWrapper(ErrFn &&ErrH) {
-  FEWrapper<ErrFnTy> IFace{std::forward<ErrFn>(ErrH), false};
+inline llvm::Optional<FEWrapper<ErrFnTy>>
+makeFEWrapper(ErrFn &&ErrH, const std::string &DefaultDir = std::string{}) {
+  FEWrapper<ErrFnTy> IFace{std::forward<ErrFn>(ErrH), DefaultDir};
 
   if (!IFace.Lib.isValid())
     return llvm::None;
