@@ -29,11 +29,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef unsigned char _iml_uint8_t;
 typedef unsigned short _iml_uint16_t;
 typedef unsigned int _iml_uint32_t;
-typedef unsigned long long _iml_v2_uint64_t;
+typedef unsigned long _iml_v2_uint64_t;
 typedef char _iml_int8_t;
 typedef short _iml_int16_t;
 typedef int _iml_int32_t;
-typedef long long _iml_int64_t;
+typedef long _iml_int64_t;
 
 typedef union
 {
