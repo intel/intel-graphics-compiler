@@ -889,11 +889,27 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
     {
-        Function* waveBarrier = GenISAIntrinsic::getDeclaration(
-            CI.getCalledFunction()->getParent(),
-            GenISAIntrinsic::GenISA_wavebarrier);
-        CallInst::Create(waveBarrier, "", &CI);
-        CI.eraseFromParent();
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+        // Subgroup barrier is a no-op in HW.
+        // For -O0 a dummy instruction is generated in order to preserve debug info.
+        if (modMD->compOpt.OptDisable)
+        {
+            Function* dummyInst = GenISAIntrinsic::getDeclaration(
+                CI.getCalledFunction()->getParent(),
+                GenISAIntrinsic::GenISA_dummyInst);
+            auto* dummyIntrinsic = cast<GenIntrinsicInst>(CallInst::Create(dummyInst, "", &CI));
+            dummyIntrinsic->setDebugLoc(CI.getDebugLoc());
+            CI.eraseFromParent();
+        }
+        else
+        {
+            Function* waveBarrier = GenISAIntrinsic::getDeclaration(
+                CI.getCalledFunction()->getParent(),
+                GenISAIntrinsic::GenISA_wavebarrier);
+            CallInst::Create(waveBarrier, "", &CI);
+            CI.eraseFromParent();
+        }
     }
     else
     {

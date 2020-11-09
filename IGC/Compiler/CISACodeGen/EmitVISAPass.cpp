@@ -8311,6 +8311,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_CatchAllDebugLine:
         emitDebugPlaceholder(inst);
         break;
+    case GenISAIntrinsic::GenISA_dummyInst:
+        emitDummyInst(inst);
+        break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission, cases include:
@@ -17360,6 +17363,15 @@ void EmitPass::emitDebugPlaceholder(llvm::GenIntrinsicInst* I)
 {
     m_encoder->Loc(I->getDebugLoc().getLine());
     m_encoder->DebugLinePlaceholder();
+}
+
+// Dummy instruction that won't be optimized away.
+void EmitPass::emitDummyInst(llvm::GenIntrinsicInst* GII)
+{
+    CVariable* dst = m_currShader->GetNULL();
+    CVariable* src = m_currShader->GetR0();
+    m_encoder->Copy(dst, src);
+    m_encoder->Push();
 }
 
 

@@ -450,6 +450,7 @@ public:
     void InitConstant(llvm::BasicBlock* BB);
     void emitLifetimeStartAtEndOfBB(llvm::BasicBlock* BB);
     void emitDebugPlaceholder(llvm::GenIntrinsicInst* I);
+    void emitDummyInst(llvm::GenIntrinsicInst* GII);
 
     std::pair<llvm::Value*, llvm::Value*> getPairOutput(llvm::Value*) const;
 

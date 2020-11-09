@@ -801,6 +801,13 @@ Imported_Intrinsics = \
      ("int",                           "b of uchar4")],
     "NoMem"]],
 ####################################################################################################
+# This is for generating a dummy instruction that won't be optimized away and can be used in cases
+# where no-op calls need to preserve their debug info.
+"GenISA_dummyInst": ["",
+    [("void",                          ""),
+    [],
+    "None"]],
+####################################################################################################
 "GenISA_dwordatomicstructured": ["",
     [("int",                           ""),
     [("anyptr",                        "Dst Buffer"),
