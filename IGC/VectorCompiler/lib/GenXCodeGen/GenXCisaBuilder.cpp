@@ -3313,6 +3313,41 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return getExecSizeFromValue(ExecSize);
   };
 
+  auto GetBitWidth = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "GetBitWidth\n");
+#ifndef NDEBUG
+    // Only SVM atomics have this field
+    auto ID = GenXIntrinsic::getGenXIntrinsicID(CI);
+    switch (ID)
+    {
+    case llvm::GenXIntrinsic::genx_svm_atomic_add:
+    case llvm::GenXIntrinsic::genx_svm_atomic_and:
+    case llvm::GenXIntrinsic::genx_svm_atomic_cmpxchg:
+    case llvm::GenXIntrinsic::genx_svm_atomic_dec:
+    case llvm::GenXIntrinsic::genx_svm_atomic_fcmpwr:
+    case llvm::GenXIntrinsic::genx_svm_atomic_fmax:
+    case llvm::GenXIntrinsic::genx_svm_atomic_fmin:
+    case llvm::GenXIntrinsic::genx_svm_atomic_imax:
+    case llvm::GenXIntrinsic::genx_svm_atomic_imin:
+    case llvm::GenXIntrinsic::genx_svm_atomic_inc:
+    case llvm::GenXIntrinsic::genx_svm_atomic_max:
+    case llvm::GenXIntrinsic::genx_svm_atomic_min:
+    case llvm::GenXIntrinsic::genx_svm_atomic_or:
+    case llvm::GenXIntrinsic::genx_svm_atomic_sub:
+    case llvm::GenXIntrinsic::genx_svm_atomic_xchg:
+    case llvm::GenXIntrinsic::genx_svm_atomic_xor:
+        break;
+    default:
+        IGC_ASSERT(false &&
+            "Trying to get bit width for non-svm atomic inst");
+        break;
+    }
+#endif // !NDEBUG
+    auto* T = AI.isRet() ? CI->getType() : CI->getArgOperand(AI.getArgIdx())->getType();
+    unsigned short Width = T->getScalarType()->getPrimitiveSizeInBits();
+    return Width;
+  };
+
   auto GetExecSizeFromArg = [&](II::ArgInfo AI,
                                 VISA_EMask_Ctrl *ExecMask) {
     LLVM_DEBUG(dbgs() << "GetExecSizeFromArg\n");

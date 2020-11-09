@@ -73,7 +73,7 @@ public:
     // Similarly, there are 8 bits allocated to the operand bitfield, and
     // currently the maximum needed is 5.
     //
-    // At the moment, the GENERAL category has 5 unused flag bits available
+    // At the moment, the GENERAL category has 4 unused flag bits available
     // to it, the RAW category has 13 unused bits, and the ARGCOUNT category
     // has 13 unused bits. No other categories make use of the flags yet,
     // so it should be a good while yet before it's necessary to resize
@@ -118,6 +118,7 @@ public:
     EXECSIZE_FROM_BYTE =    GENX_ITR_CATVAL(0x19), // exec_size specified in byte
       ARGCOUNTMASK =        GENX_ITR_FLAGMASK(0, 3), // Space for minumum argument count
       ARGCOUNTMIN1 =        GENX_ITR_FLAGENUM(0, 1), // Must have at least one argument
+    BITWIDTH =              GENX_ITR_CATVAL(0x1a), // bit width of svm atomic instructions
 
     // A field that contains an operand number, other than general, and it
     // is the "real" use of the operand, rather than an auxiliary use
