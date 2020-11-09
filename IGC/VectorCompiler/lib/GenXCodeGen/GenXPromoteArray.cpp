@@ -341,7 +341,7 @@ static Type *GetBaseType(Type *pType, Type *pBaseType) {
         // can support only homogeneous structures
         if (pBaseType != nullptr &&
             (structElemBaseType == nullptr ||
-             structElemBaseType->getTypeID() != pBaseType->getTypeID()))
+             structElemBaseType != pBaseType))
           return nullptr;
         pBaseType = structElemBaseType;
       }
