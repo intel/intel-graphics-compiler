@@ -3813,8 +3813,8 @@ namespace IGC
         // This pattern only happens if the WaveShuffleIndex uses 0,0 for the arguments.
         if (llvm::BitCastInst* bcInst = llvm::dyn_cast<BitCastInst> (I.getOperand(1)))
         {
-            llvm::CallInst* waveInst[4];
-            llvm::InsertElementInst* insertInst[4];
+            llvm::CallInst* waveInst[4] = { nullptr };
+            llvm::InsertElementInst* insertInst[4] = { nullptr };
 
             // Find the 4 x insertelement
             insertInst[3] = llvm::dyn_cast<InsertElementInst>(bcInst->getOperand(0));
@@ -3841,7 +3841,7 @@ namespace IGC
             }
 
             // Check to see if the WaveShuffleIndex uses 0,0
-            llvm::Constant* wavesrc1, * wavesrc2;
+            llvm::Constant * wavesrc1 = nullptr, * wavesrc2 = nullptr;
             if (waveInst[0]) {
                 wavesrc1 = llvm::dyn_cast<llvm::Constant>(waveInst[0]->getOperand(1));
                 wavesrc2 = llvm::dyn_cast<llvm::Constant>(waveInst[0]->getOperand(2));
