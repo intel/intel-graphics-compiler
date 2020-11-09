@@ -816,7 +816,7 @@ double __ocl_svml_log1p (double a)
 
         SMant = ((float) (Mantissa));
         SglRcp = (1.0f / (SMant));
-        SglRcp = rint (SglRcp);
+        SglRcp = __builtin_spirv_OpenCL_rint_f32 (SglRcp);
         DblRcp = ((double) (SglRcp));
 
         Expon = as_ulong (X);

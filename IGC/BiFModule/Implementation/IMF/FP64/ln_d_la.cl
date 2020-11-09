@@ -783,7 +783,7 @@ double __ocl_svml_log (double a)
         BrMask1 = as_double ((unsigned long) ((va1 < MinNorm) ? 0xffffffffffffffff : 0x0));
         BrMask2 = as_double ((unsigned long) (((!(va1 <= MaxNorm)) ? 0xffffffffffffffff : 0x0)));
 
-        SglRcp = rint (SglRcp);
+        SglRcp = __builtin_spirv_OpenCL_rint_f32 (SglRcp);
         DblRcp = ((double) (SglRcp));
 
         FpExpon = ((double) ((int) (IExpon)));
