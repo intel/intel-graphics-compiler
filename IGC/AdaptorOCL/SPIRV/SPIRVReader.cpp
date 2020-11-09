@@ -1638,6 +1638,7 @@ bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
   for (auto &I : Users) {
     auto Call = CallInst::Create(Func, "", I);
     Call->takeName(I);
+    Call->setDebugLoc(I->getDebugLoc());
     setAttrByCalledFunc(Call);
     I->replaceAllUsesWith(Call);
   }
