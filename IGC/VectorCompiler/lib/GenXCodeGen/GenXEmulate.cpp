@@ -33,11 +33,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_TYPE "GENX_EMULATION"
 
-#include "IGC/common/StringMacros.hpp"
 #include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "IGC/common/StringMacros.hpp"
+#include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -61,6 +62,11 @@ using namespace genx;
 
 namespace {
 
+// TODO: we expect this to be turned on by default
+static cl::opt<bool> OptStrictEmulationRequests(
+    "genx-i64emu-strict-requests", cl::init(false),
+    cl::Hidden,
+    cl::desc("Explicit emulation requests are subject to stricter checks"));
 static cl::opt<bool> OptIcmpEnable("genx-i64emu-icmp-enable", cl::init(true),
                                    cl::Hidden,
                                    cl::desc("enable icmp emulation"));
@@ -72,6 +78,9 @@ using IRBuilder = IRBuilder<TargetFolder>;
 
 class GenXEmulate : public ModulePass {
 
+  friend Instruction *llvm::genx::emulateI64Operation(const GenXSubtarget *ST,
+                                                      Instruction *In,
+                                                      EmulationFlag AuxAction);
   std::vector<Instruction *> DiscracedList;
   // Maps <opcode, type> to its corresponding emulation function.
   using OpType = std::pair<unsigned, Type *>;
@@ -1512,4 +1521,45 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
     return NewInst;
   }
   return nullptr;
+}
+
+Instruction *llvm::genx::emulateI64Operation(const GenXSubtarget *ST,
+                                             Instruction *Inst,
+                                             EmulationFlag AuxAction) {
+  LLVM_DEBUG(dbgs() << "i64-emu::WARNING: direct emulation routine was "
+                    << "called for " << *Inst << "\n");
+  Instruction *NewInst = nullptr;
+  if (!ST->hasLongLong()) {
+    Value *EmulatedResult = GenXEmulate::Emu64Expander(*ST, *Inst).tryExpand();
+    NewInst = cast_or_null<Instruction>(EmulatedResult);
+    // If there is no explicit request to enable i64 emulation - report
+    // an error
+    if (NewInst && !ST->emulateLongLong() && OptStrictEmulationRequests) {
+      report_fatal_error("int_emu: target does not suport i64 types", false);
+    }
+  }
+
+  // NewInst can be nullptr if the instruction does not need emulation,
+  // (like various casts)
+  if (!NewInst) {
+    // if EmulationFlag::RAUWE was requested, then caller expects that
+    // that the returned instruction can be safely used.
+    if (AuxAction == EmulationFlag::RAUWE)
+      return Inst; // return the original instruction
+    return nullptr;
+  }
+
+  switch (AuxAction) {
+  case EmulationFlag::RAUW:
+    Inst->replaceAllUsesWith(NewInst);
+    break;
+  case EmulationFlag::RAUWE:
+    Inst->replaceAllUsesWith(NewInst);
+    Inst->eraseFromParent();
+    break;
+  case EmulationFlag::None:
+    // do nothing
+    break;
+  }
+  return NewInst;
 }

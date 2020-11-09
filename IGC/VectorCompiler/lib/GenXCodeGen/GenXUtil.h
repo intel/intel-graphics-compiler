@@ -527,7 +527,23 @@ bool breakConstantExprs(Function *F);
 // Get possible number of GRFs for indirect region
 unsigned getNumGRFsPerIndirectForRegion(const genx::Region &R,
                                         const GenXSubtarget *ST, bool Allow2D);
-
+// to control behavior of emulateI64Operation function
+enum class EmulationFlag {
+  RAUW,
+  // RAUW and EraseFromParent, always returns a valid instruction
+  // either the original one or the last one from the result emulation sequence
+  RAUWE,
+  None,
+};
+// transforms operation on i64 type to an equivalent sequence that do not
+// operate on i64 (but rather on i32)
+// The implementation is contained in GenXEmulate pass sources
+// Note: ideally, i64 emulation should be handled by GenXEmulate pass,
+// however, some of our late passes like GetXPostLegalization or GenXCategory
+// may introduce additional instructions which violate Subtarget restrictions -
+// this function is intended to cope with such cases
+Instruction *emulateI64Operation(const GenXSubtarget *ST, Instruction *In,
+                                 EmulationFlag AuxAction);
 // BinaryDataAccumulator: it's a helper class to accumulate binary data
 // in one buffer.
 // Information about each stored section can be accessed via the key with

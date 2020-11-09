@@ -891,8 +891,17 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
           "constantadjust", Inst);
     if (DL.getTypeSizeInBits(PackTy) <
         DL.getTypeSizeInBits(C->getType()->getScalarType())) {
-      LoadPacked = CastInst::CreateSExtOrBitCast(
-		  LoadPacked, C->getType(), "constantzext", Inst);
+      LoadPacked = CastInst::CreateSExtOrBitCast(LoadPacked, C->getType(),
+                                                 "constantsext", Inst);
+
+      bool IsI64 =
+          C->getType()->getScalarType() == Type::getInt64Ty(Inst->getContext());
+      if (IsI64 && !allowI64Ops()) {
+        if (LoadPacked->getOpcode() == Instruction::CastOps::SExt) {
+          LoadPacked = genx::emulateI64Operation(&Subtarget, LoadPacked,
+                                                 EmulationFlag::RAUWE);
+        }
+      }
     }
     return LoadPacked;
   }
@@ -1363,6 +1372,11 @@ bool ConstantLoader::isSimple()
   return false;
 }
 
+bool ConstantLoader::allowI64Ops() const {
+  if (!Subtarget.hasLongLong())
+    return false;
+  return true;
+}
 /***********************************************************************
  * ConstantLoader::isPackedIntVector : check for a packed int vector
  *    (having already done the analysis in the ConstantLoader constructor)

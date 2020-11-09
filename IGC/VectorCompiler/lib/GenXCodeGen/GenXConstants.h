@@ -85,6 +85,7 @@ public:
   bool isLegalSize();
 
 private:
+  bool allowI64Ops() const;
   bool isPackedIntVector();
   bool isPackedFloatVector();
   void analyze();
