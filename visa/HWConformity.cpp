@@ -2676,6 +2676,9 @@ void HWConformity::copyRegs(G4_Declare* dst,
     }
 }
 
+//
+// Note that this function may invalidate <iter>
+//
 bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
 {
     auto inst = (*iter);
@@ -5157,7 +5160,6 @@ void HWConformity::conformBB(G4_BB* bb)
             fixVxHFloat64b(i, bb);
         }
 
-        // CHV/BXT specific checks for 64b datatypes
         if (fix64bInst(i, bb))
         {
             continue;
@@ -5172,6 +5174,23 @@ void HWConformity::conformBB(G4_BB* bb)
         if (builder.getPlatform() == GENX_BDW)
         {
             fixPackedHFConversions(i, bb);
+        }
+    }
+
+    // previous legalization passes may introduce int64 moves on platforms that don't support int64
+    // we do another catch-all pass here to legalize any such moves
+    // ToDo: see if we can remove other calls to emulate64Mov()
+    if (builder.noInt64())
+    {
+        for (auto I = bb->begin(), E = bb->end(); I != E;)
+        {
+            auto inst = *I;
+            auto next = std::next(I);
+            if (inst->opcode() == G4_mov && (IS_QTYPE(inst->getDst()->getType()) || IS_QTYPE(inst->getSrc(0)->getType())))
+            {
+                emulate64bMov(I, bb);
+            }
+            I = next;
         }
     }
 
