@@ -156,6 +156,8 @@ public:
 
     // A general operand
     GENERAL =               GENX_ITR_CATVAL(0x30),
+    // A general operand with compile-time signedness choosing
+    GENERAL_CTSIGN =        GENERAL,
     // Modifiers for destination or source, 7 bits used
     UNSIGNED =              GENX_ITR_FLAGVAL(0), // int type forced to unsigned
     SIGNED =                GENX_ITR_FLAGVAL(1), // int type forced to signed

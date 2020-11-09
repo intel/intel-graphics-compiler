@@ -533,6 +533,10 @@ class GenXKernelBuilder {
   genx::AlignmentInfo AI;
   const Instruction *CurrentInst = nullptr;
 
+  // Map from LLVM Value to pointer to the last used register alias for this
+  // Value.
+  std::map<Value *, Register *> LastUsedAliasMap;
+
 public:
   FunctionGroup *FG = nullptr;
   GenXLiveness *Liveness = nullptr;
@@ -744,6 +748,16 @@ private:
   void popStackArg(Value *Dst, VISA_StateOpndHandle *Src, int TotalSz,
                    unsigned &RowOff, unsigned &ColOff, unsigned &SrcRowOff,
                    unsigned &SrcColOff, int &PrevStackOff);
+  Signedness getCommonSignedness(ArrayRef<Value *> Vs) const;
+
+  Register *getLastUsedAlias(Value *V) const;
+
+  template <typename... Args>
+  Register *getRegForValueUntypedAndSaveAlias(Args &&... args);
+  template <typename... Args>
+  Register *getRegForValueOrNullAndSaveAlias(Args &&... args);
+  template <typename... Args>
+  Register *getRegForValueAndSaveAlias(Args &&... args);
 
 public:
   GenXKernelBuilder(FunctionGroup &FG)
@@ -901,6 +915,23 @@ static Signedness getISatDstSign(Value *V) {
   return getISatDstSign(GenXIntrinsic::getGenXIntrinsicID(V));
 }
 
+// isExtOperandBaled : check whether a sext/zext operand is baled.
+static bool isExtOperandBaled(Instruction *Inst, unsigned OpIdx,
+                              const GenXBaling *Baling) {
+  BaleInfo InstBI = Baling->getBaleInfo(Inst);
+  if (!InstBI.isOperandBaled(OpIdx))
+    return false;
+
+  auto OpInst = cast<Instruction>(Inst->getOperand(OpIdx));
+  BaleInfo OpBI = Baling->getBaleInfo(OpInst);
+  return OpBI.Type == BaleInfo::ZEXT || OpBI.Type == BaleInfo::SEXT;
+}
+
+static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
+  return isExtOperandBaled(cast<Instruction>(U.get()), U.getOperandNo(),
+                           Baling);
+}
+
 void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
                                 const GenXSubtarget* Subtarget) {
   unsigned Val = KM.getSLMSize();
@@ -1015,7 +1046,7 @@ bool GenXKernelBuilder::run() {
         break;
       }
       if (Kind != nullptr) {
-        auto R = RegAlloc->getRegForValueUntyped(FG->getHead(), &Arg);
+        auto R = getRegForValueUntypedAndSaveAlias(FG->getHead(), &Arg);
         IGC_ASSERT(R && R->Category == RegCategory::GENERAL);
         R->addAttribute(addStringToPool(Kind), "");
         IsComposable = true;
@@ -1136,7 +1167,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     if (TheKernelMetadata.shouldSkipArg(Idx))
       continue;
     Argument *Arg = &*i;
-    Register *Reg = RegAlloc->getRegForValueUntyped(F, Arg);
+    Register *Reg = getRegForValueUntypedAndSaveAlias(F, Arg);
     IGC_ASSERT(Reg);
     uint8_t Kind = TheKernelMetadata.getArgKind(Idx);
     uint16_t Offset;
@@ -1176,7 +1207,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     IGC_ASSERT(Offset > 0);
     uint16_t NumBytes = (GV->getValueType()->getPrimitiveSizeInBits() / 8U);
     uint8_t Kind = KernelMetadata::IMP_PSEUDO_INPUT;
-    Register *Reg = RegAlloc->getRegForValueUntyped(F, GV);
+    Register *Reg = getRegForValueUntypedAndSaveAlias(F, GV);
     CISA_CALL(Kernel->CreateVISAImplicitInputVar(Reg->GetVar<VISA_GenVar>(Kernel),
                                                  Offset, NumBytes, Kind >> 3));
   }
@@ -1209,6 +1240,8 @@ void GenXKernelBuilder::buildInstructions() {
     LLVM_DEBUG(dbgs() << "Building IR for func " << Func->getName().data()
                       << "\n");
     NoMask = setNoMaskByDefault(Func);
+
+    LastUsedAliasMap.clear();
 
     if (Func->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
         Func->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
@@ -1428,7 +1461,7 @@ VISA_PredVar *GenXKernelBuilder::createPredicateDeclFromSelect(
   IGC_ASSERT(!isa<Constant>(Mask));
   // Variable predicate. Derive the predication field from any baled in
   // all/any/not and the predicate register number.
-  Register *Reg = RegAlloc->getRegForValue(KernFunc, Mask);
+  Register *Reg = getRegForValueAndSaveAlias(KernFunc, Mask);
   IGC_ASSERT(Reg && Reg->Category == RegCategory::PREDICATE);
   if (NoMask)
     *MaskCtrl |= vISA_EMASK_M1_NM;
@@ -1457,7 +1490,7 @@ GenXKernelBuilder::createPredFromWrRegion(const DstOpndDesc &DstDesc) {
       // Variable predicate. Derive the predication field from any baled in
       // all/any/not and the predicate register number. If the predicate has
       // not has a register allocated, it must be EM.
-      Register *Reg = RegAlloc->getRegForValueOrNull(KernFunc, Mask);
+      Register *Reg = getRegForValueOrNullAndSaveAlias(KernFunc, Mask);
       if (Reg) {
         IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
         result = createPredOperand(getPredicateVar(Reg), State, Control);
@@ -1493,7 +1526,7 @@ VISA_PredOpnd *GenXKernelBuilder::createPred(Instruction *Inst, BaleInfo BI,
     // Variable predicate. Derive the predication field from any baled in
     // all/any/not and the predicate register number. If the predicate has not
     // has a register allocated, it must be EM.
-    Register *Reg = RegAlloc->getRegForValueOrNull(KernFunc, Mask);
+    Register *Reg = getRegForValueOrNullAndSaveAlias(KernFunc, Mask);
     VISA_PredVar *PredVar = nullptr;
     if (Reg) {
       IGC_ASSERT(Reg->Category == RegCategory::PREDICATE);
@@ -1588,7 +1621,8 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
           !GenXIntrinsic::isIntegerSat(Dest) && GenXIntrinsic::isIntegerSat(Dest->user_back()))
         Dest = cast<Instruction>(Dest->user_back());
     }
-    Register *Reg = RegAlloc->getRegForValue(KernFunc, Dest, Signed, OverrideType);
+    Register *Reg =
+        getRegForValueAndSaveAlias(KernFunc, Dest, Signed, OverrideType);
     if (SignedRes)
       *SignedRes = RegAlloc->getSigned(Reg);
     // Write the vISA general operand:
@@ -1617,11 +1651,11 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     IGC_ASSERT(GV && "out of sync");
     if (OverrideType == nullptr)
       OverrideType = DstDesc.GStore->getOperand(0)->getType();
-    Reg = RegAlloc->getRegForValue(KernFunc, GV, Signed, OverrideType);
+    Reg = getRegForValueAndSaveAlias(KernFunc, GV, Signed, OverrideType);
     V = GV;
   } else {
     V = DstDesc.WrRegion;
-    Reg = RegAlloc->getRegForValueOrNull(KernFunc, V, Signed, OverrideType);
+    Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, OverrideType);
   }
 
   IGC_ASSERT(!Reg || Reg->Category == RegCategory::GENERAL ||
@@ -1688,7 +1722,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createCisaDstOperand(VISA_GenVar *Decl,
  */
 VISA_VectorOpnd *GenXKernelBuilder::createAddressOperand(Value *V, bool IsDst) {
   VISA_VectorOpnd *ResultOperand = nullptr;
-  Register *Reg = RegAlloc->getRegForValue(KernFunc, V, DONTCARESIGNED);
+  Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
   IGC_ASSERT(Reg->Category == RegCategory::ADDRESS);
   unsigned Width = 1;
   if (VectorType *VT = dyn_cast<VectorType>(V->getType()))
@@ -1852,10 +1886,11 @@ GenXKernelBuilder::getOriginalInstructionForSource(Instruction *Inst,
 
 void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
                                      const DstOpndDesc &DstDesc) {
-  Register *DstReg = RegAlloc->getRegForValue(KernFunc, CI, UNSIGNED);
+  Register *DstReg = getRegForValueAndSaveAlias(KernFunc, CI, UNSIGNED);
   if (!isa<Constant>(CI->getOperand(0))) {
     Instruction *OrigInst = getOriginalInstructionForSource(CI, BI);
-    Register *SrcReg = RegAlloc->getRegForValue(KernFunc, OrigInst->getOperand(0));
+    Register *SrcReg =
+        getRegForValueAndSaveAlias(KernFunc, OrigInst->getOperand(0));
     (void)SrcReg;
     IGC_ASSERT((SrcReg->Category != RegCategory::GENERAL ||
             DstReg->Category != RegCategory::GENERAL) &&
@@ -1886,7 +1921,7 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   }
 
   auto ISAExecSize = static_cast<VISA_Exec_Size>(genx::log2(ExecSize));
-  Register *SrcReg = RegAlloc->getRegForValue(KernFunc, CI->getOperand(0));
+  Register *SrcReg = getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0));
   IGC_ASSERT(SrcReg->Category == RegCategory::ADDRESS);
 
   (void)SrcReg;
@@ -1899,8 +1934,9 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   if (VectorType *VT = dyn_cast<VectorType>(SrcOp0->getType()))
     Src0Width = VT->getNumElements();
 
-  Register *RegDst = RegAlloc->getRegForValue(KernFunc, CI, DONTCARESIGNED);
-  Register *RegSrc0 = RegAlloc->getRegForValue(KernFunc, SrcOp0, DONTCARESIGNED);
+  Register *RegDst = getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED);
+  Register *RegSrc0 =
+      getRegForValueAndSaveAlias(KernFunc, SrcOp0, DONTCARESIGNED);
 
   VISA_VectorOpnd *Dst = nullptr, *Src0 = nullptr, *Src1 = nullptr;
 
@@ -1957,7 +1993,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     return createImmediateOperand(C, Signed);
   }
   if (!Baled) {
-    Register *Reg = RegAlloc->getRegForValue(KernFunc, V, Signed);
+    Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
     IGC_ASSERT(Reg->Category == RegCategory::GENERAL ||
            Reg->Category == RegCategory::SURFACE ||
            Reg->Category == RegCategory::SAMPLER ||
@@ -1988,7 +2024,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     // and that is OK because the region is indirect so the vISA does not
     // contain the base register.
     Value *V = Inst->getOperand(0);
-    Register *Reg = RegAlloc->getRegForValueOrNull(KernFunc, V, Signed);
+    Register *Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed);
 
     // Ensure we pick a non-DONTCARESIGNED signedness here, as, for an
     // indirect region and DONTCARESIGNED, writeRegion arbitrarily picks a
@@ -2086,7 +2122,8 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
   }
 
   if (!DstDesc.WrRegion) {
-    Register *Reg = RegAlloc->getRegForValue(KernFunc, Dest, Signed, OverrideType);
+    Register *Reg =
+        getRegForValueAndSaveAlias(KernFunc, Dest, Signed, OverrideType);
 
     Region DestR(Dest);
     return createInlineAsmOperand(Reg, &DestR, true /*IsDst*/, DONTCARESIGNED,
@@ -2103,11 +2140,11 @@ std::string GenXKernelBuilder::createInlineAsmDestinationOperand(
     IGC_ASSERT(GV && "out of sync");
     if (OverrideType == nullptr)
       OverrideType = DstDesc.GStore->getOperand(0)->getType();
-    Reg = RegAlloc->getRegForValue(KernFunc, GV, Signed, OverrideType);
+    Reg = getRegForValueAndSaveAlias(KernFunc, GV, Signed, OverrideType);
     V = GV;
   } else {
     V = DstDesc.WrRegion;
-    Reg = RegAlloc->getRegForValueOrNull(KernFunc, V, Signed, OverrideType);
+    Reg = getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, OverrideType);
   }
 
   IGC_ASSERT(!Reg || Reg->Category == RegCategory::GENERAL);
@@ -2141,7 +2178,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
   }
 
   if (!Baled) {
-    Register *Reg = RegAlloc->getRegForValue(KernFunc, V, Signed);
+    Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
     Region R(V);
     if (R.NumElements == 1)
       R.VStride = R.Stride = 0;
@@ -2157,7 +2194,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
   // and that is OK because the region is indirect so the vISA does not
   // contain the base register.
   V = Inst->getOperand(0);
-  Register *Reg = RegAlloc->getRegForValue(KernFunc, V, Signed);
+  Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
 
   // Ensure we pick a non-DONTCARESIGNED signedness here, as, for an
   // indirect region and DONTCARESIGNED, writeRegion arbitrarily picks a
@@ -2181,7 +2218,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
  * getPredicateVar : get predicate var from value
  */
 VISA_PredVar *GenXKernelBuilder::getPredicateVar(Value *V) {
-  auto Reg = RegAlloc->getRegForValue(KernFunc, V, DONTCARESIGNED);
+  auto Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
   IGC_ASSERT(Reg && Reg->Category == RegCategory::PREDICATE);
   return getPredicateVar(Reg);
 }
@@ -2190,7 +2227,7 @@ VISA_PredVar *GenXKernelBuilder::getPredicateVar(Value *V) {
  * getZeroedPredicateVar : get predicate var from value with zeroing it
  */
 VISA_PredVar *GenXKernelBuilder::getZeroedPredicateVar(Value *V) {
-  auto Reg = RegAlloc->getRegForValue(KernFunc, V, DONTCARESIGNED);
+  auto Reg = getRegForValueAndSaveAlias(KernFunc, V, DONTCARESIGNED);
   IGC_ASSERT(Reg && Reg->Category == RegCategory::PREDICATE);
   auto PredVar = getPredicateVar(Reg);
   unsigned Size = V->getType()->getPrimitiveSizeInBits();
@@ -2254,7 +2291,8 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
   if (CI->getType()->getScalarType()->isIntegerTy(1)) {
     if (CI->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
       if (auto C = dyn_cast<Constant>(CI->getOperand(0))) {
-        auto Reg = RegAlloc->getRegForValueOrNull(KernFunc, CI, DONTCARESIGNED);
+        auto Reg =
+            getRegForValueOrNullAndSaveAlias(KernFunc, CI, DONTCARESIGNED);
         if (!Reg)
           return; // write to EM/RM value, ignore
         // We can move a constant predicate to a predicate register
@@ -2275,9 +2313,10 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
       // via a general register. So the only pred->pred bitcast that arrives
       // here should be one from GenXLowering, and it should have been copy
       // coalesced in GenXCoalescing.
-      IGC_ASSERT(RegAlloc->getRegForValue(KernFunc, CI, DONTCARESIGNED) ==
-                 RegAlloc->getRegForValue(KernFunc, CI->getOperand(0), DONTCARESIGNED) &&
-             "uncoalesced phi move of predicate");
+      IGC_ASSERT(getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED) ==
+                     getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0),
+                                                DONTCARESIGNED) &&
+                 "uncoalesced phi move of predicate");
       return;
     }
 
@@ -2311,7 +2350,7 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
   if (CI->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
     // Bitcast from predicate to scalar int
     Register *PredReg =
-        RegAlloc->getRegForValue(KernFunc, CI->getOperand(0), DONTCARESIGNED);
+        getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0), DONTCARESIGNED);
     IGC_ASSERT(PredReg->Category == RegCategory::PREDICATE);
     addDebugInfo();
     CISA_CALL(Kernel->AppendVISAPredicateMove(
@@ -2330,10 +2369,12 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
     Ty = CI->getType();
   if (Liveness->isBitCastCoalesced(cast<BitCastInst>(CI)))
     return; // bitcast was coalesced away
-  Register *DstReg = RegAlloc->getRegForValue(KernFunc, CI, DONTCARESIGNED, Ty);
+  Register *DstReg =
+      getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED, Ty);
   // Give dest and source the same signedness for byte mov.
   auto Signed = RegAlloc->getSigned(DstReg);
-  Register *SrcReg = RegAlloc->getRegForValue(KernFunc, CI->getOperand(0), Signed, Ty);
+  Register *SrcReg =
+      getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0), Signed, Ty);
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   if (VectorType *VT = dyn_cast<VectorType>(Ty))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
@@ -2458,9 +2499,10 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
   } else if (BI.Type == BaleInfo::RDREGION && !Mod) {
     Register *DstReg;
     if (WrRegion) {
-      DstReg = RegAlloc->getRegForValueOrNull(KernFunc, WrRegion, DONTCARESIGNED);
+      DstReg =
+          getRegForValueOrNullAndSaveAlias(KernFunc, WrRegion, DONTCARESIGNED);
     } else {
-      DstReg = RegAlloc->getRegForValue(KernFunc, Inst, DONTCARESIGNED);
+      DstReg = getRegForValueAndSaveAlias(KernFunc, Inst, DONTCARESIGNED);
     }
     if (DstReg && (DstReg->Category == RegCategory::SURFACE ||
                    DstReg->Category == RegCategory::SAMPLER ||
@@ -2631,7 +2673,8 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_constantpred:
         if (isa<UndefValue>(CI->getOperand(0)))
           return false; // Omit llvm.genx.constant with undef operand.
-        if (!DstDesc.WrRegion && !RegAlloc->getRegForValueOrNull(KernFunc, CI))
+        if (!DstDesc.WrRegion &&
+            !getRegForValueOrNullAndSaveAlias(KernFunc, CI))
           return false; // Omit llvm.genx.constantpred that is EM or RM and so
                         // does not have a register allocated.
                         // fall through...
@@ -2749,7 +2792,7 @@ void GenXKernelBuilder::buildGoto(CallInst *Goto, BranchInst *Branch) {
              "predication operand must be constant 1 or not constant");
   } else {
     State ^= StateInvert;
-    PredReg = RegAlloc->getRegForValueOrNull(KernFunc, Pred);
+    PredReg = getRegForValueOrNullAndSaveAlias(KernFunc, Pred);
     IGC_ASSERT(PredReg && PredReg->Category == RegCategory::PREDICATE);
   }
 
@@ -3131,7 +3174,9 @@ GenXKernelBuilder::getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
     Value *Mask =
         getPredicateOperand(DstDesc.WrRegion, 7 /*mask operand in wrregion*/,
                             DstDesc.WrRegionBI, Control, State, &MaskCtrl);
-    if ((isa<Constant>(Mask) || RegAlloc->getRegForValueOrNull(KernFunc, Mask)) && NoMask)
+    if ((isa<Constant>(Mask) ||
+         getRegForValueOrNullAndSaveAlias(KernFunc, Mask)) &&
+        NoMask)
       MaskCtrl |= vISA_EMASK_M1_NM;
   }
   return MaskCtrl;
@@ -3176,7 +3221,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (visa::isReservedSurfaceIndex(Index)) {
       Kernel->GetPredefinedSurface(SurfDecl, visa::getReservedSurface(Index));
     } else {
-      Register *Reg = RegAlloc->getRegForValue(KernFunc, Arg);
+      Register *Reg = getRegForValueAndSaveAlias(KernFunc, Arg);
       IGC_ASSERT(Reg->Category == RegCategory::SURFACE &&
              "Expected surface register");
       SurfDecl = Reg->GetVar<VISA_SurfaceVar>(Kernel);
@@ -3188,7 +3233,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   auto CreateSamplerOperand = [&](II::ArgInfo AI) {
     LLVM_DEBUG(dbgs() << "CreateSamplerOperand\n");
-    Register *Reg = RegAlloc->getRegForValue(KernFunc, CI->getArgOperand(AI.getArgIdx()));
+    Register *Reg =
+        getRegForValueAndSaveAlias(KernFunc, CI->getArgOperand(AI.getArgIdx()));
     IGC_ASSERT(Reg->Category == RegCategory::SAMPLER &&
            "Expected sampler register");
     VISA_StateOpndHandle *ResultOperand = nullptr;
@@ -3229,10 +3275,32 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return static_cast<uint8_t>(DataSize / RoundedWidth);
   };
 
-  auto CreateOperand = [&](II::ArgInfo AI) {
+  auto ChooseSign = [&](ArrayRef<unsigned> SrcIdxs) {
+    IGC_ASSERT_MESSAGE(!SrcIdxs.empty(), "Expected at least one source index");
+
+    bool hasExt = std::any_of(SrcIdxs.begin(), SrcIdxs.end(),
+                              [CI, B = Baling](unsigned Idx) {
+                                return isExtOperandBaled(CI, Idx, B);
+                              });
+
+    // Keep the old behavior.
+    if (hasExt)
+      return DONTCARESIGNED;
+
+    SmallVector<Value *, 4> SrcValues;
+    std::transform(SrcIdxs.begin(), SrcIdxs.end(),
+                   std::back_inserter(SrcValues),
+                   [CI](unsigned Idx) { return CI->getOperand(Idx); });
+
+    return getCommonSignedness(SrcValues);
+  };
+
+  auto CreateOperand = [&](II::ArgInfo AI, Signedness Signed = DONTCARESIGNED) {
     LLVM_DEBUG(dbgs() << "CreateOperand from arg #" << AI.getArgIdx() << "\n");
     VISA_VectorOpnd *ResultOperand = nullptr;
-    Signedness Signed = DONTCARESIGNED;
+    IGC_ASSERT_MESSAGE(Signed == DONTCARESIGNED ||
+                           !(AI.needsSigned() || AI.needsUnsigned()),
+                       "Signedness was set in two different ways.");
     if (AI.needsSigned())
       Signed = SIGNED;
     else if (AI.needsUnsigned())
@@ -3364,7 +3432,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     VISA_PREDICATE_STATE State;
     Value *Mask =
         getPredicateOperand(CI, AI.getArgIdx(), BI, Control, State, ExecMask);
-    if (isa<Constant>(Mask) || RegAlloc->getRegForValueOrNull(KernFunc, Mask))
+    if (isa<Constant>(Mask) || getRegForValueOrNullAndSaveAlias(KernFunc, Mask))
       *ExecMask |= NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
     if (auto VT =
             dyn_cast<VectorType>(CI->getOperand(AI.getArgIdx())->getType()))
@@ -3425,7 +3493,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     LLVM_DEBUG(dbgs() << "ProcessTwoAddr\n");
     if (AI.getCategory() != II::TWOADDR)
       return;
-    auto Reg = RegAlloc->getRegForValueOrNull(KernFunc, CI, DONTCARESIGNED);
+    auto Reg = getRegForValueOrNullAndSaveAlias(KernFunc, CI, DONTCARESIGNED);
     if (isa<UndefValue>(CI->getArgOperand(AI.getArgIdx())) && Reg &&
         isInLoop(CI->getParent()))
       addLifetimeStartInst(CI);
@@ -3576,7 +3644,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
         IGC_ASSERT(DstType->getScalarType()->isIntegerTy(genx::DWordBits));
 
-        auto *Reg = RegAlloc->getRegForValue(KernFunc, SV, UNSIGNED);
+        auto *Reg = getRegForValueAndSaveAlias(KernFunc, SV, UNSIGNED);
 
         const auto TypeSize = CISATypeTable[ISA_TYPE_UD].typeSize;
         auto Elements = 1;
@@ -3762,6 +3830,100 @@ void GenXKernelBuilder::buildUnaryOperator(UnaryOperator *UO, BaleInfo BI,
 #endif
 
 /***********************************************************************
+ * getCommonSignedness : predict the most suitable sign of a instruction based
+ *                       on incoming values.
+ *
+ * Enter:   Vs = incoming values to use for signedness prediction
+ */
+Signedness GenXKernelBuilder::getCommonSignedness(ArrayRef<Value *> Vs) const {
+  // Expect the first value is always set.
+  IGC_ASSERT(!Vs.empty());
+  std::vector<Register *> Regs;
+  std::transform(
+      Vs.begin(), Vs.end(), std::back_inserter(Regs), [this](Value *V) { return getLastUsedAlias(V); });
+  // If there is no register allocated for Value, getLastUsedAlias returns
+  // nullptr. Remove such nodes.
+  Regs.erase(std::remove(Regs.begin(), Regs.end(), nullptr), Regs.end());
+
+  if (Regs.empty())
+    // Use SIGNED by default if there are no registers for the values.
+    return SIGNED;
+
+  bool hasSigned = std::any_of(Regs.begin(), Regs.end(),
+                               [](Register *R) { return R->Signed == SIGNED; });
+  bool hasUnsigned = std::any_of(Regs.begin(), Regs.end(), [](Register *R) {
+    return R->Signed == UNSIGNED;
+  });
+  // If there is at least one UNSIGNED and others are UNSIGNED or DONTCARESIGNED
+  // (absence of a register also means DONTCARESIGNED), UNSIGNED must be used.
+  // Otherwise, SIGNED.
+  if (hasUnsigned && !hasSigned)
+    return UNSIGNED;
+  return SIGNED;
+}
+
+/***********************************************************************
+ * getLastUsedAlias : get the last used alias of a vISA virtual register
+ *                    for a value. Nullptr if none.
+ */
+GenXKernelBuilder::Register *GenXKernelBuilder::getLastUsedAlias(Value *V) const {
+  auto Res = LastUsedAliasMap.find(V);
+  if (Res == LastUsedAliasMap.end())
+    return nullptr;
+  return Res->second;
+}
+
+/***********************************************************************
+ * getRegForValueUntypedAndSaveAlias : a wrapper for
+ * GenXVisaRegAlloc::getRegForValueUntyped which also saves the register alias
+ * in a special map.
+ *
+ * Enter:   args = the wrapped function parameters.
+ */
+template <typename... Args>
+GenXKernelBuilder::Register *
+GenXKernelBuilder::getRegForValueUntypedAndSaveAlias(Args &&... args) {
+  Register *R = RegAlloc->getRegForValueUntyped(std::forward<Args>(args)...);
+  SimpleValue SV = std::get<1>(std::make_tuple(args...));
+  if (R)
+    LastUsedAliasMap[SV.getValue()] = R;
+  return R;
+}
+
+/***********************************************************************
+ * getRegForValueOrNullAndSaveAlias : a wrapper for
+ * GenXVisaRegAlloc::getRegForValueOrNull which also saves the register alias in
+ * a special map.
+ *
+ * Enter:   args = the wrapped function parameters.
+ */
+template <typename... Args>
+GenXKernelBuilder::Register *
+GenXKernelBuilder::getRegForValueOrNullAndSaveAlias(Args &&... args) {
+  Register *R = RegAlloc->getRegForValueOrNull(std::forward<Args>(args)...);
+  SimpleValue SV = std::get<1>(std::make_tuple(args...));
+  if (R)
+    LastUsedAliasMap[SV.getValue()] = R;
+  return R;
+}
+
+/***********************************************************************
+ * getRegForValueAndSaveAlias : a wrapper for GenXVisaRegAlloc::getRegForValue
+ * which also saves the register alias in a special map.
+ *
+ * Enter:   args = the wrapped function parameters.
+ */
+template <typename... Args>
+GenXKernelBuilder::Register *
+GenXKernelBuilder::getRegForValueAndSaveAlias(Args &&... args) {
+  Register *R = RegAlloc->getRegForValue(std::forward<Args>(args)...);
+  SimpleValue SV = std::get<1>(std::make_tuple(args...));
+  IGC_ASSERT_MESSAGE(R, "getRegForValue must return non-nullptr register");
+  LastUsedAliasMap[SV.getValue()] = R;
+  return R;
+}
+
+/***********************************************************************
  * buildBinaryOperator : build code for a binary operator
  *
  * Enter:   BO = the BinaryOperator
@@ -3775,10 +3937,19 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
                                             const DstOpndDesc &DstDesc) {
   bool IsLogic = false;
   ISA_Opcode Opcode = ISA_RESERVED_0;
-  Signedness DstSigned = SIGNED;
-  Signedness SrcSigned = SIGNED;
+
+  Signedness SrcSigned = DONTCARESIGNED;
+  Signedness DstSigned = DONTCARESIGNED;
   unsigned Mod1 = 0;
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
+  auto hasConstantIntFitsInWord = [BO]() {
+    return std::any_of(BO->op_begin(), BO->op_end(), [](Value *V) {
+      auto C = dyn_cast<ConstantInt>(V);
+      if (!C)
+        return false;
+      return C->getValue().getMinSignedBits() <= genx::WordBits;
+    });
+  };
   if (VectorType *VT = dyn_cast<VectorType>(BO->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
   switch (BO->getOpcode()) {
@@ -3794,6 +3965,11 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
   case Instruction::Mul:
   case Instruction::FMul:
     Opcode = ISA_MUL;
+    // Check if there is a possibility to truncate the integer constant further
+    // that will help to generate better code. In this case SIGNED type must be
+    // used.
+    if (hasConstantIntFitsInWord())
+      DstSigned = SrcSigned = SIGNED;
     break;
   case Instruction::Shl:
     Opcode = ISA_SHL;
@@ -3801,6 +3977,7 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     break;
   case Instruction::AShr:
     Opcode = ISA_ASR;
+    DstSigned = SrcSigned = SIGNED;
     IsLogic = true;
     break;
   case Instruction::LShr:
@@ -3814,6 +3991,7 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     break;
   case Instruction::SDiv:
     Opcode = ISA_DIV;
+    DstSigned = SrcSigned = SIGNED;
     break;
   case Instruction::FDiv: {
     Opcode = ISA_DIV;
@@ -3830,6 +4008,9 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     DstSigned = SrcSigned = UNSIGNED;
     break;
   case Instruction::SRem:
+    DstSigned = SrcSigned = SIGNED;
+    Opcode = ISA_MOD;
+    break;
   case Instruction::FRem:
     Opcode = ISA_MOD;
     break;
@@ -3849,6 +4030,27 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     report_fatal_error("buildBinaryOperator: unimplemented binary operator");
     break;
   }
+
+  // If signedness wasn't set explicitly earlier and destination modifier isn't
+  // set.
+  if (SrcSigned == DONTCARESIGNED && DstSigned == DONTCARESIGNED) {
+
+    bool hasExt =
+        std::any_of(BO->use_begin(), BO->use_end(),
+                    [B = Baling](Use &U) { return isExtOperandBaled(U, B); });
+
+    if (Mod == MODIFIER_NONE && !hasExt) {
+      Value *Op0 = BO->getOperand(0);
+      Value *Op1 = BO->getOperand(1);
+      if (Opcode == ISA_INV)
+        SrcSigned = DstSigned = getCommonSignedness({Op1});
+      else
+        SrcSigned = DstSigned = getCommonSignedness({Op0, Op1});
+    } else
+      // If the modifier is set or SEXT, ZEXT is baled, use old behavior.
+      SrcSigned = DstSigned = SIGNED;
+  }
+
   VISA_VectorOpnd *Dst = createDestination(BO, DstSigned, Mod, DstDesc);
 
   VISA_VectorOpnd *Src0 = nullptr;
@@ -4161,7 +4363,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
     ElementBytes = 1;
   }
   Register *BaseReg =
-      RegAlloc->getRegForValue(KernFunc, Base, DONTCARESIGNED, OverrideTy);
+      getRegForValueAndSaveAlias(KernFunc, Base, DONTCARESIGNED, OverrideTy);
 
   VISA_VectorOpnd *Dst = createAddressOperand(CI, true);
   VISA_VectorOpnd *Src1 = nullptr;
@@ -4365,7 +4567,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createIndirectOperand(Region *R,
     Indirect = AddrRdR->getOperand(0);
   }
   // Write the vISA indirect operand.
-  Register *IdxReg = RegAlloc->getRegForValue(KernFunc, Indirect, DONTCARESIGNED);
+  Register *IdxReg =
+      getRegForValueAndSaveAlias(KernFunc, Indirect, DONTCARESIGNED);
   IGC_ASSERT(IdxReg->Category == RegCategory::ADDRESS);
 
   bool NotCrossGrf = !(R->Offset & (GrfByteSize - 1));
@@ -4514,7 +4717,7 @@ void GenXKernelBuilder::addWriteRegionLifetimeStartInst(Instruction *WrRegion) {
  */
 void GenXKernelBuilder::addLifetimeStartInst(Instruction *Inst) {
   VISA_VectorOpnd *opnd = nullptr;
-  auto Reg = RegAlloc->getRegForValueOrNull(KernFunc, Inst);
+  auto Reg = getRegForValueOrNullAndSaveAlias(KernFunc, Inst);
   if (!Reg)
     return; // no register allocated such as being indirected.
 
@@ -4584,7 +4787,7 @@ void GenXKernelBuilder::emitOptimizationHints() {
   if (!SkipNoWiden) {
     for (auto LR : WidenLRs) {
       SimpleValue SV = *LR->value_begin();
-      auto *R = RegAlloc->getRegForValueOrNull(FG->getHead(), SV);
+      auto *R = getRegForValueOrNullAndSaveAlias(FG->getHead(), SV);
       // This variable is being used in or crossing a high register pressure
       // region. Set an optimization hint not to widen it.
       if (R && RP.intersectWithRedRegion(LR)) {
@@ -4740,7 +4943,8 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
         // but we have register allocated. If region is needed we can use
         // default one based one type.
         SimpleValue SV(CI, ArgNo);
-        Register *Reg = RegAlloc->getRegForValue(KernFunc, SV, DONTCARESIGNED);
+        Register *Reg =
+            getRegForValueAndSaveAlias(KernFunc, SV, DONTCARESIGNED);
         Region R(SV.getType());
         InlasmOpAsString =
             createInlineAsmOperand(Reg, &R, true /*IsDst*/, DONTCARESIGNED,
@@ -4869,7 +5073,7 @@ VISA_RawOpnd *GenXKernelBuilder::createRawSourceOperand(const Instruction *Inst,
                       << (Baled ? "baled" : "non-baled") << " value: ");
     LLVM_DEBUG(V->dump());
     LLVM_DEBUG(dbgs() << "\n");
-    Register *Reg = RegAlloc->getRegForValue(KernFunc, V, Signed);
+    Register *Reg = getRegForValueAndSaveAlias(KernFunc, V, Signed);
     IGC_ASSERT(Reg->Category == RegCategory::GENERAL);
     LLVM_DEBUG(dbgs() << "CreateVISARawOperand: "; Reg->print(dbgs()); dbgs() << "\n");
     CISA_CALL(Kernel->CreateVISARawOperand(
@@ -4907,7 +5111,8 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
                     << (DstDesc.GStore ? "global" : "non-global") << " value: ");
   LLVM_DEBUG(V->dump());
   LLVM_DEBUG(dbgs() << "\n");
-  Register *Reg = RegAlloc->getRegForValueOrNull(KernFunc, V, Signed, OverrideType);
+  Register *Reg =
+      getRegForValueOrNullAndSaveAlias(KernFunc, V, Signed, OverrideType);
   if (!Reg) {
     // No register assigned. This happens to an unused raw result where the
     // result is marked as RAW_NULLALLOWED in GenXIntrinsics.
@@ -5361,7 +5566,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
                 ->getGenVar(),
             MODIFIER_NONE, 0, 1, 0, SrcRowOff, SrcColOff);
         auto *PReg =
-            RegAlloc->getRegForValueOrNull(KernFunc, SimpleValue(&FArg));
+            getRegForValueOrNullAndSaveAlias(KernFunc, SimpleValue(&FArg));
         IGC_ASSERT(PReg);
         Kernel->AppendVISASetP(vISA_EMASK_M1_NM, EXEC_SIZE_32,
                                PReg->GetVar<VISA_PredVar>(Kernel), argSrc);
@@ -5622,7 +5827,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
                 ->getGenVar(),
             1, RowOff, ColOff);
         auto PReg =
-            RegAlloc->getRegForValueOrNull(KernFunc, SimpleValue(CallArg));
+            getRegForValueOrNullAndSaveAlias(KernFunc, SimpleValue(CallArg));
         IGC_ASSERT(PReg);
         Kernel->AppendVISAPredicateMove(PredDst,
                                         PReg->GetVar<VISA_PredVar>(Kernel));

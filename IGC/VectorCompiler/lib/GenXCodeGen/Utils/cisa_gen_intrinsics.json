@@ -3849,6 +3849,7 @@
     "MEDIAHEIGHT":  "GetMediaHeght(II::ArgInfo({args}))",
     "IMPLICITPRED": "CreateImplicitPredication(II::ArgInfo({args}))",
     "GENERAL":      "CreateOperand(II::ArgInfo({args}))",
+    "GENERAL_CTSIGN": "CreateOperand(II::ArgInfo({args}), ctsign)",
     "ADDRESS":      "CreateAddressOperand(II::ArgInfo({args}))",
     "RAW":          "CreateRawOperand(II::ArgInfo({args}))",
     "URAW":         "CreateRawOperand(II::ArgInfo({args} | II::RAW_UNSIGNED))",
