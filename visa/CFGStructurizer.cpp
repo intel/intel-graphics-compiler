@@ -387,6 +387,7 @@ namespace {
         // return goto inst if any; null otherwise
         G4_INST *getGotoInst(G4_BB *bb);
         G4_INST *getJmpiInst(G4_BB *bb);
+        void updateInstDI(G4_INST* I, G4_BB* DIFromBB);
 
     private:
         // Don't implement
@@ -2063,6 +2064,9 @@ ANodeBB* CFGStructurizer::addLandingBB(
         G4_INST *gotoInst = CFG->builder->createInternalCFInst(
                 NULL, G4_goto, g4::SIMD1, NULL, targetLabel, InstOpt_NoOpt);
         newBB->push_back(gotoInst);
+
+        // Consider newBB is part of exitBB, thus use exitBB's DI
+        updateInstDI(gotoInst, exitBB);
     }
     newBB->Succs.push_back(exitBB);
     exitBB->Preds.push_back(newBB);
@@ -3722,6 +3726,31 @@ bool CFGStructurizer::convertPST(ANode *node, G4_BB *nextJoinBB)
     }
 
     return change;
+}
+
+// Get the debug info from DIFromBB and use it as I's debug info
+void CFGStructurizer::updateInstDI(G4_INST* I, G4_BB* DIFromBB)
+{
+    // sanity check
+    if (DIFromBB == nullptr) return;
+
+    // If DIFromBB is empty, skip setting.
+    G4_INST* DIFromInst = nullptr;
+    for (auto II = DIFromBB->begin(), IE = DIFromBB->end(); II != IE; ++II)
+    {
+        G4_INST* Inst = (*II);
+        if (Inst->isLabel() || Inst->isLifeTimeEnd() || Inst->isPseudoKill() ||
+            Inst->isPseudoUse() || Inst->isSpillIntrinsic() || Inst->isFillIntrinsic())
+        {
+            continue;
+        }
+        DIFromInst = Inst;
+        break;
+    }
+    if (DIFromInst)
+    {
+        I->inheritDIFrom(DIFromInst);
+    }
 }
 
 void CFGStructurizer::run()
