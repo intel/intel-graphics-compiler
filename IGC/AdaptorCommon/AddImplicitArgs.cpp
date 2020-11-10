@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
+#include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
@@ -59,6 +60,7 @@ using namespace IGC::IGCMD;
 IGC_INITIALIZE_PASS_BEGIN(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 IGC_INITIALIZE_PASS_END(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char AddImplicitArgs::ID = 0;
@@ -74,6 +76,9 @@ bool AddImplicitArgs::runOnModule(Module &M)
     MapList<Function*, Function*> funcsMappingForReplacement;
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    // Stack call does not support implicit args, so inline all stack call funcs
+    pruneCallGraphForStackCalls();
 
     // Update function signatures
     // Create new functions with implicit args
@@ -176,6 +181,42 @@ bool AddImplicitArgs::runOnModule(Module &M)
     }
 
     return true;
+}
+
+bool AddImplicitArgs::pruneCallGraphForStackCalls()
+{
+    // Do a DFS in the call graph, and for any stack-call func that has implicit args, force inline on it and all
+    // callers along the DFS path.
+    bool changed = false;
+    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+    for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++)
+    {
+        Function* F = IT->getFunction();
+        if (F && F->hasFnAttribute("visaStackCall"))
+        {
+            FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(F);
+            if (!funcInfo->empty_ImplicitArgInfoList())
+            {
+                for (unsigned i = 0; i < IT.getPathLength(); i++)
+                {
+                    Function* pFuncOnPath = IT.getPath(i)->getFunction();
+                    if (pFuncOnPath && pFuncOnPath->hasFnAttribute("visaStackCall"))
+                    {
+                        if (pFuncOnPath->hasFnAttribute("forceStackCallRecurse"))
+                        {
+                            IGC_ASSERT_MESSAGE(0, "Cannot force inline for recursion!");
+                            return false;
+                        }
+                        pFuncOnPath->removeFnAttr("visaStackCall");
+                        pFuncOnPath->removeFnAttr(llvm::Attribute::NoInline);
+                        pFuncOnPath->addFnAttr(llvm::Attribute::AlwaysInline);
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+    return changed;
 }
 
 bool AddImplicitArgs::hasIndirectlyCalledParent(Function* F)
