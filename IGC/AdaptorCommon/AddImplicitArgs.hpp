@@ -93,7 +93,6 @@ namespace IGC
         {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<llvm::CallGraphWrapperPass>();
         }
 
         /// @brief  Main entry point.
@@ -108,10 +107,6 @@ namespace IGC
         ///         decide whether implicit args should be added
         /// @param  pFunc           Source function
         bool hasIndirectlyCalledParent(llvm::Function* pFunc);
-
-        /// @brief  Temp solution to prune the call graph for all stack call functions and
-        ///         force inline if they use implicit arguments
-        bool pruneCallGraphForStackCalls();
 
         /// @brief  Create the type of the new function,
         ///         including all explicit and needed impliict parameters
