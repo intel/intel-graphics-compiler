@@ -1825,6 +1825,10 @@ static G4_INST::MovType getMovType(
 
             return G4_INST::SExt;
         }
+        else if (srcMod == Mod_Minus || srcMod == Mod_Minus_Abs)
+        {   // SrcMod=negate means that number is signed
+            return G4_INST::SExt;
+        }
         return G4_INST::ZExt;
     }
 
