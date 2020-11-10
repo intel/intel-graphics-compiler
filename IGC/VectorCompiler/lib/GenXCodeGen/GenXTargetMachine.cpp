@@ -130,6 +130,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXRegionCollapsingPass(registry);
   initializeGenXRematerializationPass(registry);
   initializeGenXThreadPrivateMemoryPass(registry);
+  initializeGenXTidyControlFlowPass(registry);
   initializeGenXUnbalingPass(registry);
   initializeGenXVisaRegAllocPass(registry);
   initializeTransformPrivMemPass(registry);
@@ -470,7 +471,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXArgIndirection.cpp
   PM.add(createGenXArgIndirectionPass());
   /// .. include:: GenXTidyControlFlow.cpp
-  //initializeLoopInfoPass(*PassRegistry::getPassRegistry());
   PM.add(createGenXTidyControlFlowPass());
   /// .. include:: GenXVisaRegAlloc.h
   auto RegAlloc = createGenXVisaRegAllocPass();

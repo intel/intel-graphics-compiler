@@ -2665,6 +2665,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
  */
 void GenXKernelBuilder::buildPhiNode(PHINode *Phi) {
 #ifndef NDEBUG
+  auto *PhiLR = Liveness->getLiveRangeOrNull(Phi);
   for (unsigned i = 0, e = Phi->getNumIncomingValues(); i != e; ++i) {
     Value *Incoming = Phi->getIncomingValue(i);
     // This assertion statement has to cope with the case that the phi node has no live
@@ -2673,8 +2674,7 @@ void GenXKernelBuilder::buildPhiNode(PHINode *Phi) {
     if (!isa<UndefValue>(Incoming))
       if (auto LR = Liveness->getLiveRangeOrNull(Incoming))
         if (LR->getCategory() < RegCategory::NUMREALCATEGORIES)
-          IGC_ASSERT(LR == Liveness->getLiveRangeOrNull(Phi) &&
-                 "mismatched registers in phi node");
+          IGC_ASSERT(LR == PhiLR && "mismatched registers in phi node");
   }
 #endif
 }

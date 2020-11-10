@@ -87,6 +87,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/Support/CommandLine.h"
@@ -133,7 +134,20 @@ namespace {
 
 char GenXTidyControlFlow::ID = 0;
 
+namespace llvm {
+void initializeGenXTidyControlFlowPass(PassRegistry &);
+}
+
+INITIALIZE_PASS_BEGIN(GenXTidyControlFlow,
+                      "GenXTidyControlFlow",
+                      "GenXTidyControlFlow", false, false)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+INITIALIZE_PASS_END(GenXTidyControlFlow, "GenXTidyControlFlow",
+                    "GenXTidyControlFlow", false, false)
+
 FunctionPass *llvm::createGenXTidyControlFlowPass() {
+  initializeGenXTidyControlFlowPass(*PassRegistry::getPassRegistry());
   return new GenXTidyControlFlow;
 }
 

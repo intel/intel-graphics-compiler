@@ -187,6 +187,7 @@ void initializeGenXReduceIntSizePass(PassRegistry &);
 void initializeGenXRegionCollapsingPass(PassRegistry &);
 void initializeGenXRematerializationPass(PassRegistry &);
 void initializeGenXThreadPrivateMemoryPass(PassRegistry &);
+void initializeGenXTidyControlFlowPass(PassRegistry &);
 void initializeGenXUnbalingPass(PassRegistry &);
 void initializeGenXVisaRegAllocPass(PassRegistry &);
 void initializeTransformPrivMemPass(PassRegistry &);
