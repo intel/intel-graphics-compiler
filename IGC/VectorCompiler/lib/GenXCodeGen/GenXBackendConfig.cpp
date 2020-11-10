@@ -65,6 +65,12 @@ static cl::opt<std::string> DebugInfoDumpNameOverride(
     "genx-dbginfo-dumps-name-override",
     cl::desc("Override for 'suffix' part of debug info dump name"));
 
+static cl::opt<std::string>
+    OCLGenericBiFPath("vc-ocl-generic-bif-path",
+                      cl::desc("full name (with path) of a BiF file with "
+                               "precompiled OpenCL generic builtins"),
+                      cl::init(""));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -77,6 +83,19 @@ GenXBackendOptions::GenXBackendOptions()
       StackSurfaceMaxSize(StackMemSizeOpt), EnableAsmDumps(EnableAsmDumpsOpt),
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride) {}
+
+GenXBackendData::GenXBackendData() {
+  if (OCLGenericBiFPath.empty())
+    report_fatal_error("-vc-ocl-generic-bif-path option wasn't provided");
+  if (!sys::fs::exists(OCLGenericBiFPath))
+    report_fatal_error("cannot find the provided OpenCL generic BiF file");
+  ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
+      MemoryBuffer::getFileOrSTDIN(OCLGenericBiFPath);
+  if (!FileOrErr)
+    report_fatal_error("cannot open the provided OpenCL generic BiF file");
+  OCLGenericBiFModuleOwner = std::move(FileOrErr.get());
+  OCLGenericBiFModule = IGCLLVM::makeMemoryBufferRef(*OCLGenericBiFModuleOwner);
+}
 
 GenXBackendConfig::GenXBackendConfig() : ImmutablePass(ID) {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());
