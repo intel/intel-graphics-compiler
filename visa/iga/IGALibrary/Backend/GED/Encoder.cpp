@@ -191,7 +191,8 @@ void Encoder::encodeBlock(Block *blk)
         int32_t iLen = 16;
         if (mustCompact || (!mustNotCompact && m_opts.autoCompact)) {
             // try compact first
-            status = GED_EncodeIns(&m_gedInst, GED_INS_TYPE_COMPACT, m_instBuf + currentPc());
+            status = GED_EncodeIns(
+              &m_gedInst, GED_INS_TYPE_COMPACT, m_instBuf + currentPc());
             if (status == GED_RETURN_VALUE_SUCCESS) {
                 //If auto compation is turned on, in case we need to patch later.
                 inst->addInstOpt(InstOpt::COMPACTED);
@@ -210,7 +211,8 @@ void Encoder::encodeBlock(Block *blk)
         // try native encoding if compaction failed
         if (status != GED_RETURN_VALUE_SUCCESS) {
             inst->removeInstOpt(InstOpt::COMPACTED);
-            status = GED_EncodeIns(&m_gedInst, GED_INS_TYPE_NATIVE, m_instBuf + currentPc());
+            status = GED_EncodeIns(
+              &m_gedInst, GED_INS_TYPE_NATIVE,  m_instBuf + currentPc());
             if (status != GED_RETURN_VALUE_SUCCESS) {
                 errorAt(inst->getLoc(), "GED unable to encode instruction: %s",
                     gedReturnValueToString(status));
@@ -403,6 +405,11 @@ void Encoder::encodeInstruction(Instruction& inst)
             bool src1IsLabel = inst.getSourceCount() > 1 && inst.getSource(1).isImm();
             if (src0IsLabel || src1IsLabel) {
                 m_needToPatch.emplace_back(&inst, m_gedInst, m_instBuf + currentPc());
+                // Force not to compact label instructions to avoid the compaction error
+                // when auto-compaction is enabled. We could set this inst to compactable during
+                // Encoder::encodeBlock when the value is unknown (and assume to be 0). But we can
+                // only compact imm values use up to 12 bits.
+                inst.addInstOpt(InstOpt::NOCOMPACT);
             }
         }
     }

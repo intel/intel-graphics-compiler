@@ -43,65 +43,36 @@ namespace iga
     // DEBUGGING
     //
     void Parser::ShowCurrentLexicalContext(
-        std::ostream &os, const Loc &loc) const
+        const Loc &loc, std::ostream &os) const
     {
         WriteTokenContext(m_lexer.GetSource(), loc, os);
     }
 
     //////////////////////////////////////////////////////////////////////
-    // ERRORS and WARNINGS
+    // WARNINGS and ERRORS
     //
-    void Parser::Fail(const Loc &loc, const std::string &msg) {
-        Fail(loc, msg.c_str());
+    void Parser::WarningS(const Loc &loc, const std::string &msg) {
+        m_errorHandler.reportWarning(loc, msg);
     }
-    void Parser::Fail(const Loc &loc, const char *msg) {
+    void Parser::ErrorAtS(const Loc &loc, const std::string &msg) {
+        m_errorHandler.reportError(loc, msg);
+    }
+
+    void Parser::FailS(const Loc &loc, const std::string &msg) {
         // DumpLookahead();
         throw SyntaxError(loc, msg);
     }
-    void Parser::FailF(const char *pat, ...) {
-        va_list ap;
-        va_start(ap, pat);
-        std::string str = formatv(pat, ap);
-        va_end(ap);
-        Fail(0, str.c_str());
-    }
-    void Parser::FailF(const Loc &loc, const char *pat, ...) {
-        va_list ap;
-        va_start(ap, pat);
-        std::string str = formatv(pat, ap);
-        va_end(ap);
-        Fail(loc, str.c_str());
-    }
+
     void Parser::FailAfterPrev(const char *msg) {
         Token pv = Next(-1);
         if (pv.loc.extent == 0) {
             // previous location is not valid => use the other path
-            Fail(msg);
+            FailS(NextLoc(), msg);
         } else {
             // step over the token contents manually
             Loc loc = pv.loc.endOfToken();
-            Fail(loc, msg);
+            FailS(loc, msg);
         }
-    }
-    void Parser::Warning(const Loc &loc, const char *msg) {
-        m_errorHandler.reportWarning(loc, msg);
-    }
-    void Parser::Warning(const char *msg) {
-        m_errorHandler.reportWarning(NextLoc(), msg);
-    }
-    void Parser::WarningF(const char *pat, ...) {
-        va_list ap;
-        va_start(ap, pat);
-        std::string str = formatv(pat, ap);
-        va_end(ap);
-        m_errorHandler.reportWarning(NextLoc(), str);
-    }
-    void Parser::WarningF(const Loc &loc, const char *pat, ...) {
-        va_list ap;
-        va_start(ap, pat);
-        std::string str = formatv(pat, ap);
-        va_end(ap);
-        m_errorHandler.reportWarning(loc, str);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -157,7 +128,7 @@ namespace iga
     // CONSUMPTION (destructive lookahead)
     void Parser::ConsumeOrFail(Lexeme lxm, const char *msg) {
         if (!Consume(lxm)) {
-            Fail(msg);
+            FailS(NextLoc(), msg);
         }
     }
 
@@ -202,11 +173,9 @@ namespace iga
         const Token &t = Next(0);
         if (t.lexeme != Lexeme::IDENT) {
             if (what == nullptr) {
-                Fail("expected identifier");
+                FailT("expected identifier");
             } else {
-                std::stringstream ss;
-                ss << "expected " << what;
-                Fail(ss.str().c_str());
+                FailT("expected ", what);
             }
         }
         std::string id = GetTokenAsString(t);
@@ -243,7 +212,7 @@ namespace iga
         if ((uint32_t)(val_end - val_start) != loc.extent) {
             // TODO: this is an internal error since it indicates an
             // inconsistency between the lexical specification and the parser
-            Fail(loc,"INTERNAL ERROR: parsing float literal");
+            FailS(loc,"INTERNAL ERROR: parsing float literal");
         }
     }
 

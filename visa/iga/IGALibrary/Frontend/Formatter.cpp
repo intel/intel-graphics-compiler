@@ -1004,13 +1004,13 @@ void Formatter::formatInstOpts(
     // extra options germane to such ld/st syntax
     for (size_t opIx = 0; opIx < extraInstOpts.size(); opIx++) {
         if (opIx > 0) {
-            emit(", ");
+            emit(",");
         }
         emit(extraInstOpts[opIx]);
     }
     if (!iopts.empty() && (hasDepInfo || !extraInstOpts.empty())) {
         // something was output, prepend a , for the depinfo
-        emit(", ");
+        emit(",");
     }
 
     if (hasDepInfo) {
@@ -1024,7 +1024,7 @@ void Formatter::formatInstOpts(
         }
 
         if (di.hasBothDistAndToken())
-            emit(", ");
+            emit(",");
 
         switch (di.tokenType) {
         case SWSB::TokenType::DST:

@@ -94,46 +94,38 @@ namespace iga
         // DEBUGGING
         // void DumpLookaheads(int n = 1) const {m_lexer.DumpLookaheads(n); }
         void ShowCurrentLexicalContext(std::ostream &os) const {
-            ShowCurrentLexicalContext(os, NextLoc());
+            ShowCurrentLexicalContext(NextLoc(), os);
         }
-        void ShowCurrentLexicalContext(std::ostream &os, const Loc &loc) const;
+        void ShowCurrentLexicalContext(const Loc &loc, std::ostream &os) const;
 
         //////////////////////////////////////////////////////////////////////
-        // ERRORS and WARNINGS
-        void Fail(const char *msg) {Fail(0, msg);}
-        void Fail(int i, const char *msg) {Fail(NextLoc(i), msg);}
-        void Fail(const Loc &loc, const std::string &msg);
-        void Fail(const Loc &loc, const char *msg);
-        void FailF(const char *pat, ...);
-        void FailF(const Loc &loc, const char *pat, ...);
+        // WARNINGS and ERRORS
+        template <typename...Ts>
+        void WarningT(Ts...ts) {WarningS(NextLoc(), iga::format(ts...));}
+        template <typename...Ts>
+        void WarningAtT(const Loc &loc, Ts...ts) {
+            WarningS(loc, iga::format(ts...));
+        }
+        void WarningS(const Loc &loc, const std::string &msg);
+
+
+        template <typename...Ts>
+        void ErrorT(Ts...ts) {ErrorAtS(NextLoc(), iga::format(ts...));}
+        template <typename...Ts>
+        void ErrorAtT(const Loc &loc, Ts...ts) {
+            ErrorAtS(loc, iga::format(ts...));
+        }
+        void ErrorAtS(const Loc &loc, const std::string &smsg);
+
+        template <typename...Ts>
+        void FailT(Ts...ts) {FailS(NextLoc(), iga::format(ts...));}
+        template <typename...Ts>
+        void FailAtT(const Loc &loc, Ts...ts) {
+            FailS(loc, iga::format(ts...));
+        }
+        void FailS(const Loc &loc, const std::string &msg);
         void FailAfterPrev(const char *msg);
 
-        void Warning(const Loc &loc, const char *msg);
-        void Warning(const char *msg);
-        void WarningF(const char *pat, ...);
-        void WarningF(const Loc &loc, const char *pat, ...);
-
-        template <typename S>
-        void Error(const Loc &loc, const S &m1) {
-            std::stringstream ss;
-            ss << m1;
-            Fail(loc, ss.str());
-        }
-        template <typename S, typename T>
-        void Error(const Loc &loc, const S &m1, const T &m2) {
-            std::stringstream ss;
-            ss << m1;
-            ss << m2;
-            Fail(loc, ss.str());
-        }
-        template <typename S, typename T, typename U>
-        void Error(const Loc &loc, const S &m1, const T &m2, const U &m3) {
-            std::stringstream ss;
-            ss << m1;
-            ss << m2;
-            ss << m3;
-            Fail(loc, ss.str());
-        }
 
         //////////////////////////////////////////////////////////////////////
         // BASIC and GENERAL FUNCTIONS
@@ -219,10 +211,10 @@ namespace iga
             const char *errInvalid)
         {
             if (!LookingAt(IDENT)) {
-                Fail(errExpecting);
+                FailT(errExpecting);
             }
             if (!IdentLookupFrom(0, map, value)) {
-                Fail(errInvalid);
+                FailT(errInvalid);
             }
             Skip();
         }
@@ -253,7 +245,7 @@ namespace iga
         template <typename T>
         void ConsumeIntLitOrFail(T &value, const char *err) {
             if (!ConsumeIntLit(value)) {
-                Fail(err);
+                FailT(err);
             }
         }
 
@@ -282,7 +274,7 @@ namespace iga
                     char chr = src[off + i];
                     T next_value = 2 * value + chr - '0';
                     if (next_value < value) {
-                        Fail(-1, "integer literal too large");
+                        FailS(-1, "integer literal too large");
                     }
                     value = next_value;
                 }
@@ -301,7 +293,7 @@ namespace iga
                         dig = chr - 'a' + 10;
                     T next_value = 16 * value + dig;
                     if (next_value < value) {
-                        Fail(-1, "integer literal too large");
+                        FailS(-1, "integer literal too large");
                     }
                     value = next_value;
                 }
@@ -310,7 +302,7 @@ namespace iga
                     char chr = src[off + i];
                     T next_value = 10 * value + chr - '0';
                     if (next_value < value) {
-                        Fail(-1, "integer literal too large");
+                        FailS(-1, "integer literal too large");
                     }
                     value = next_value;
                 }

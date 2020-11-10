@@ -59,29 +59,15 @@ namespace iga
 #define STOP_ENCODER_TIMER()
 #endif
 
-#ifdef GED_PRINT_BIT_LOCATION
-#undef GED_PRINT_BIT_LOCATION
-#endif
-#if GED_VALIDATION_API
-#define GED_PRINT_BIT_LOCATION(FIELD, VAL) \
-    do { \
-        std::cout << "FIELD: " << #FIELD << " <= " \
-            "0x" << std::hex << std::uppercase << (uint64_t)(VAL) << "\n"; \
-            GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
-    } while(0)
-#else
-#define GED_PRINT_BIT_LOCATION(FIELD, VAL)
-#endif
 
-#define GED_ENCODE_TO(FUNC, ARG, GED) \
+#define GED_ENCODE_TO(FIELD, ARG, GED) \
     do { \
         GED_RETURN_VALUE _status; \
-        GED_PRINT_BIT_LOCATION(FIELD, ARG); \
         START_GED_TIMER() \
-        _status = GED_Set ## FUNC (GED, ARG); \
+        _status = GED_Set ## FIELD (GED, ARG); \
         STOP_GED_TIMER() \
         if (_status != GED_RETURN_VALUE_SUCCESS) { \
-            handleGedError(__LINE__, #FUNC, _status); \
+            handleGedError(__LINE__, #FIELD, _status); \
         } \
     } while (0)
 

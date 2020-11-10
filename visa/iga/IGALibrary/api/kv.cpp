@@ -125,7 +125,7 @@ kv_t *kv_create(
         if (status)
             *status = IGA_UNSUPPORTED_PLATFORM;
         if (errbuf) {
-            formatTo(errbuf, errbuf_cap, "%s", "iga api: unsupported platform");
+            formatToF(errbuf, errbuf_cap, "%s", "iga api: unsupported platform");
         }
         return nullptr;
     }
@@ -135,7 +135,7 @@ kv_t *kv_create(
         kvImpl = new (std::nothrow)KernelViewImpl(p, bytes, bytes_len, swsb_enc_mode);
         if (!kvImpl) {
             if (errbuf)
-                formatTo(errbuf, errbuf_cap, "%s", "failed to allocate");
+                formatToF(errbuf, errbuf_cap, "%s", "failed to allocate");
             if (status)
                 *status = IGA_OUT_OF_MEM;
             return nullptr;
@@ -143,7 +143,7 @@ kv_t *kv_create(
     } catch (const iga::FatalError &fe) {
         if (errbuf) {
             const char *msg = fe.what();
-            formatTo(errbuf, errbuf_cap, "decoding error: %s", msg);
+            formatToF(errbuf, errbuf_cap, "decoding error: %s", msg);
         }
         if (status)
             *status = IGA_DECODE_ERROR;

@@ -41,17 +41,17 @@ using namespace iga;
 #include <alloca.h> /* for alloca */
 #endif
 
-std::string iga::format(const char *pat, ...)
+std::string iga::formatF(const char *pat, ...)
 {
     va_list va;
     va_start(va, pat);
-    std::string s = formatv(pat, va);
+    std::string s = vformatF(pat, va);
     va_end(va);
     return s;
 }
 
 
-std::string iga::formatv(const char *pat, va_list &va)
+std::string iga::vformatF(const char *pat, va_list &va)
 {
     va_list copy;
     va_copy(copy, va);
@@ -66,17 +66,17 @@ std::string iga::formatv(const char *pat, va_list &va)
 }
 
 
-size_t iga::formatTo(std::ostream &out, const char *pat, ...)
+size_t iga::formatToF(std::ostream &out, const char *pat, ...)
 {
     va_list va;
     va_start(va, pat);
-    size_t s = formatvTo(out, pat, va);
+    size_t s = vformatToF(out, pat, va);
     va_end(va);
     return s;
 }
 
 
-size_t iga::formatvTo(std::ostream &out, const char *pat, va_list &va)
+size_t iga::vformatToF(std::ostream &out, const char *pat, va_list &va)
 {
     va_list copy;
     va_copy(copy, va);
@@ -93,18 +93,18 @@ size_t iga::formatvTo(std::ostream &out, const char *pat, va_list &va)
 }
 
 
-size_t iga::formatTo(char *buf, size_t bufLen, const char *pat, ...)
+size_t iga::formatToF(char *buf, size_t bufLen, const char *pat, ...)
 {
     std::stringstream ss;
     va_list va;
     va_start(va, pat);
-    formatvTo(ss, pat, va);
+    vformatToF(ss, pat, va);
     va_end(va);
     return copyOut(buf, bufLen, ss);
 }
 
 
-size_t iga::formatvTo(char *buf, size_t bufLen, const char *pat, va_list &va)
+size_t iga::vformatToF(char *buf, size_t bufLen, const char *pat, va_list &va)
 {
     return VSPRINTF(buf, bufLen, pat, va);
 }

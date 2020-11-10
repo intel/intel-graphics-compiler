@@ -47,7 +47,7 @@ void BitProcessor::warningAt(const Loc& loc, const char *patt, ...)
 }
 void BitProcessor::warningAt(const Loc& loc, const char *patt, va_list &ap)
 {
-    m_errorHandler.reportWarning(loc, formatv(patt, ap));
+    m_errorHandler.reportWarning(loc, vformatF(patt, ap));
 }
 
 
@@ -67,7 +67,7 @@ void BitProcessor::errorAt(const Loc& loc, const char *patt, ...)
 }
 void BitProcessor::errorAt(const Loc& loc, const char *patt, va_list &ap)
 {
-    m_errorHandler.reportError(loc, formatv(patt, ap));
+    m_errorHandler.reportError(loc, vformatF(patt, ap));
 }
 
 
@@ -87,5 +87,5 @@ void BitProcessor::fatalAt(const Loc& loc, const char *patt, ...)
 }
 void BitProcessor::fatalAt(const Loc& loc, const char *patt, va_list &ap)
 {
-    m_errorHandler.throwFatal(loc, formatv(patt, ap));
+    m_errorHandler.throwFatal(loc, vformatF(patt, ap));
 }

@@ -83,18 +83,38 @@ namespace iga {
         inline operator std::string() const {return str();}
     };
 
+
+    ///////////////////////////////////////////////////////////////////////////
+    // template-based string formatting
+    // format("foo: ", n, " ...");
+    template <typename...Ts>
+    static inline void iga_format_to_helper(std::ostream &) { }
+    template <typename T, typename...Ts>
+    static inline void iga_format_to_helper(std::ostream &os, T t, Ts...ts) {
+        os << t;
+        iga_format_to_helper(os, ts...);
+    }
+    template <typename...Ts>
+    static inline std::string format(Ts...ts) {
+        std::stringstream ss; iga_format_to_helper(ss, ts...); return ss.str();
+    }
+    template <typename...Ts>
+    static inline void formatTo(std::ostream &os, Ts...ts) {
+        iga_format_to_helper(os, ts...);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // takes a printf-style pattern and converts it to a string
-    std::string format(const char *pat, ...);
-    std::string formatv(const char *pat, va_list &va);
+    std::string formatF(const char *pat, ...);
+    std::string vformatF(const char *pat, va_list &va);
     // emits a printf-style string to the given output stream
     // returns the nubmer of characters written
-    size_t formatTo(std::ostream &os, const char *patt, ...);
-    size_t formatvTo(std::ostream &os, const char *patt, va_list &va);
+    size_t formatToF(std::ostream &os, const char *patt, ...);
+    size_t vformatToF(std::ostream &os, const char *patt, va_list &va);
     // emits to a buffer of a given size
     // returns the result of vsnprintf (or the equivalent) ... num chars needed
-    size_t formatTo(char *buf, size_t bufLen, const char *patt, ...);
-    size_t formatvTo(char *buf, size_t bufLen, const char *patt, va_list &va);
+    size_t formatToF(char *buf, size_t bufLen, const char *patt, ...);
+    size_t vformatToF(char *buf, size_t bufLen, const char *patt, va_list &va);
 
     // copies the contents of 'os' into buf (safely)
     // returns the required string size

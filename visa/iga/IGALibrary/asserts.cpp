@@ -40,7 +40,7 @@ using namespace iga;
 static void OutputDebugConsoleImplVA(const char *pat, va_list &ap)
 {
 #ifdef _WIN32
-    OutputDebugStringA(iga::format(pat, ap).c_str());
+    OutputDebugStringA(formatF(pat, ap).c_str());
 #else
 //    TODO: gcc hooks or MAC semantics?
 //    fprintf(stderr, "%s", msg);

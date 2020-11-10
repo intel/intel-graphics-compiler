@@ -30,23 +30,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GEDToIGATranslation.hpp"
 #include "ged.h"
 
-#ifdef GED_PRINT_BIT_LOCATION
-#undef GED_PRINT_BIT_LOCATION
-#endif
-#if GED_VALIDATION_API
-#define GED_PRINT_BIT_LOCATION(FIELD) \
-    do { \
-        std::cout << "FIELD: " << #FIELD << "\n"; \
-        GED_PrintFieldBitLocation(&m_currGedInst, GED_INS_FIELD_ ## FIELD); \
-    } while(0)
-#else
-#define GED_PRINT_BIT_LOCATION(FIELD)
-#endif
 
 #define GED_DECODE_TO(FIELD, TRANS, DST) \
     do { \
         GED_RETURN_VALUE _status; \
-        GED_PRINT_BIT_LOCATION(FIELD); \
         DST = TRANS(GED_Get ## FIELD(&m_currGedInst, &_status)); \
         if (_status != GED_RETURN_VALUE_SUCCESS) { \
             handleGedDecoderError(__LINE__, #FIELD, _status); \
@@ -56,7 +43,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GED_DECODE_RAW_TO(FIELD, DST) \
     do { \
         GED_RETURN_VALUE _status; \
-        GED_PRINT_BIT_LOCATION(FIELD); \
         DST = GED_Get ## FIELD(&m_currGedInst, &_status); \
         if (_status != GED_RETURN_VALUE_SUCCESS) { \
             handleGedDecoderError(__LINE__, #FIELD, _status); \
@@ -74,7 +60,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GED_DECODE_RAW_TO_SRC(DST, TYPE, FIELD) \
     do { \
         GED_RETURN_VALUE _STATUS; \
-        GED_PRINT_BIT_LOCATION(FIELD); \
         DST = GED_Get ## FIELD(&m_currGedInst, &_STATUS); \
         if (_STATUS != GED_RETURN_VALUE_SUCCESS) { \
             handleGedDecoderError(__LINE__, #FIELD, _STATUS); \
