@@ -5899,7 +5899,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
 
         if (opnd->isDstRegRegion() &&
             // check if the opnd has pre-assigned physical regsiter
-            !(opnd->asDstRegRegion()->getBase()->asRegVar()->isPhyRegAssigned()) &&
+            !(topdcl->getRegVar()->isPhyRegAssigned()) &&
             // check if the opnd is global
             !(kernel.fg.globalOpndHT.isOpndGlobal(opnd)) &&
             // check if the opnd is used as packed byte

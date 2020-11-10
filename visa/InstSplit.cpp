@@ -63,6 +63,28 @@ void InstSplitPass::run()
     }
 }
 
+void InstSplitPass::runOnBB(G4_BB* bb)
+{
+    for (INST_LIST_ITER it = bb->begin(), instlistEnd = bb->end(); it != instlistEnd; ++it)
+    {
+        G4_INST* inst = *it;
+
+        if (inst->getExecSize() == g4::SIMD1)
+        {
+            continue;
+        }
+
+        if (inst->isSend() || inst->opcode() == G4_label ||
+            inst->opcode() == G4_pln || inst->opcode() == G4_return ||
+            inst->isFlowControl() || inst->isPseudoLogic())
+        {
+            continue;
+        }
+
+        it = splitInstruction(it, bb->getInstList());
+    }
+}
+
 // Recursive function to split instructions that touch more than 2 GRF
 // For example, with 32-byte GRF:
 //    1 SIMD32 inst with 64-bit operand(s)

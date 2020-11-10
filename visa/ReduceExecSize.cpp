@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "HWConformity.h"
 #include "Optimizer.h"
 #include "G4Verifier.h"
+#include "InstSplit.h"
 
 using namespace vISA;
 
@@ -52,6 +53,7 @@ void HWConformity::fixOpndTypeAlign(G4_BB* bb)
 {
     INST_LIST_ITER i = bb->begin();
     INST_LIST_ITER next_iter = i;
+    bool needSplit = false;
 
     for (auto iEnd = bb->end(); i != iEnd; i = next_iter)
     {
@@ -60,6 +62,7 @@ void HWConformity::fixOpndTypeAlign(G4_BB* bb)
         if (opcode == G4_nop || opcode == G4_label || inst->mayExceedTwoGRF()) {
             next_iter++;
         } else if (fixInstOpndTypeAlign(i, bb)) {
+            needSplit = true;
             next_iter = i;
             next_iter++;
         } else {
@@ -68,6 +71,13 @@ void HWConformity::fixOpndTypeAlign(G4_BB* bb)
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
+    }
+
+    if (needSplit)
+    {
+        // make sure updated insts and new moves don't cross 2 GRF
+        InstSplitPass instSplitter(&builder);
+        instSplitter.runOnBB(bb);
     }
 }
 

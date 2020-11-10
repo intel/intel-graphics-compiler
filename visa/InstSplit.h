@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _INSTSPLIT_H_
 
 #include "BuildIR.h"
+#include "FlowGraph.h"
 
 namespace vISA
 {
@@ -36,6 +37,7 @@ namespace vISA
     public:
         InstSplitPass(IR_Builder* builder);
         void run();
+        void runOnBB(G4_BB* bb);
         INST_LIST_ITER splitInstruction(INST_LIST_ITER it, INST_LIST& instList);
 
     private:
