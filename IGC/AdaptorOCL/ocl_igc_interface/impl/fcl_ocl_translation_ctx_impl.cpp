@@ -51,6 +51,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 #include "Frontend.h"
+
+#if defined(_WIN32)
+#include <Windows.h>
+#include "inc/common/DriverStore.h"
+#endif
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 #include "cif/macros/enable.h"
@@ -285,6 +290,19 @@ static llvm::Optional<std::string> MakeTemporaryCMSource(
     return strPath;
 }
 
+// Retrieve directory where FEWrapper is located.
+// Return driver store path on windows and empty path on linux.
+static std::string getCMFEWrapperDir() {
+#if defined(_WIN32)
+    // Expand libname to full driver path on windows.
+    char DriverPath[MAX_PATH] = {};
+    GetDependencyPath(DriverPath, "");
+    return DriverPath;
+#else
+    return "";
+#endif
+}
+
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
@@ -319,7 +337,8 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     auto ErrFn = [&Out](const std::string& Err) {
         Out.GetImpl()->SetError(TranslationErrorType::Internal, Err.c_str());
     };
-    auto MaybeFE = IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn);
+    auto MaybeFE =
+        IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn, getCMFEWrapperDir());
     if (!MaybeFE)
         return outputInterface;
 
