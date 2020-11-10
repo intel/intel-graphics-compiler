@@ -468,10 +468,46 @@ matchOneElemRegion(const ShuffleVectorInst &SI, int MaskVal) {
   return Init;
 }
 
+class MaskIndex {
+  int Idx;
+  static constexpr const int Undef = -1;
+  static constexpr const int AnotherOp = -2;
+
+public:
+  explicit MaskIndex(int InitIdx = 0) : Idx(InitIdx) {
+    IGC_ASSERT(Idx >= 0 && "Defined index must not be negative");
+  }
+
+  static MaskIndex getUndef() {
+    MaskIndex Ret;
+    Ret.Idx = Undef;
+    return Ret;
+  }
+
+  static MaskIndex getAnotherOp() {
+    MaskIndex Ret;
+    Ret.Idx = AnotherOp;
+    return Ret;
+  }
+  bool isUndef() const { return Idx == Undef; }
+  bool isAnotherOp() const { return Idx == AnotherOp; }
+  bool isDefined() const { return Idx >= 0; }
+
+  int get() const {
+    IGC_ASSERT(Idx >= 0 && "Can't call get() on invalid index");
+    return Idx;
+  }
+
+  int operator-(MaskIndex const &rhs) const {
+    IGC_ASSERT(isDefined() && rhs.isDefined() &&
+               "All operand indices must be valid");
+    return Idx - rhs.Idx;
+  }
+};
+
 // Takes shufflevector mask indexes from [\p FirstIt, \p LastIt),
-// converts them to the indexes of \p Operand of \p SI instruction
-// and writes them to \p OutIt.
-// Invalid indexes become negative numbers.
+// converts them to the indices of \p Operand of \p SI instruction
+// and writes them to \p OutIt. Value type of OutIt is MaskIndex.
 template <typename ForwardIter, typename OutputIter>
 void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
                                   const Value &Operand, ForwardIter FirstIt,
@@ -481,15 +517,56 @@ void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
   if (&Operand == SI.getOperand(0)) {
     std::transform(FirstIt, LastIt, OutIt, [FirstOpSize](int MaskVal) {
       if (MaskVal >= FirstOpSize)
-        return -1;
-      return MaskVal;
+        return MaskIndex::getAnotherOp();
+      return MaskVal < 0 ? MaskIndex::getUndef() : MaskIndex{MaskVal};
     });
     return;
   }
   IGC_ASSERT(&Operand == SI.getOperand(1) &&
          "wrong argument: a shufflevector operand was expected");
-  std::transform(FirstIt, LastIt, OutIt,
-                 [FirstOpSize](int MaskVal) { return MaskVal - FirstOpSize; });
+  std::transform(FirstIt, LastIt, OutIt, [FirstOpSize](int MaskVal) {
+    if (MaskVal < 0)
+      return MaskIndex::getUndef();
+    return MaskVal >= FirstOpSize ? MaskIndex{MaskVal - FirstOpSize}
+                                  : MaskIndex::getAnotherOp();
+  });
+}
+
+// Calculates horisontal stride for region by scanning mask indices in
+// range [\p FirstIt, \p LastIt).
+//
+// Arguments:
+//    [\p FirstIt, \p LastIt) is the range of MaskIndex. There must not be
+//    any AnotherOp indices in the range.
+//    \P FirstIt must point to a defined index.
+// Return value:
+//    std::pair with first element to be Iterator to next defined element
+//    or std::next(FirstIt) if there is no such one and second element to
+//    be estimated stride if positive and integer, empty value otherwise.
+template <typename ForwardIter>
+std::pair<ForwardIter, llvm::Optional<int>>
+estimateHorizontalStride(ForwardIter FirstIt, ForwardIter LastIt) {
+
+  IGC_ASSERT(FirstIt != LastIt && "the range must contain at least 1 element");
+  IGC_ASSERT(std::none_of(FirstIt, LastIt,
+                          [](MaskIndex Idx) { return Idx.isAnotherOp(); }) &&
+             "There must not be any AnotherOp indices in the range");
+  IGC_ASSERT(FirstIt->isDefined() &&
+             "first element in range must be a valid index");
+  auto NextDefined =
+      std::find_if(std::next(FirstIt), LastIt,
+                   [](MaskIndex Elem) { return Elem.isDefined(); });
+
+  if (NextDefined == LastIt)
+    return {std::next(FirstIt), llvm::Optional<int>{}};
+
+  int TotalStride = *NextDefined - *FirstIt;
+  int TotalWidth = std::distance(FirstIt, NextDefined);
+
+  if (TotalStride < 0 || (TotalStride % TotalWidth != 0 && TotalStride != 0))
+    return {NextDefined, llvm::Optional<int>{}};
+
+  return {NextDefined, TotalStride / TotalWidth};
 }
 
 // Matches "vector" region (with vstride == 0) pattern in
@@ -498,37 +575,91 @@ void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
 // new NumElements to \p FirstElemRegion and returns resulting region.
 //
 // Arguments:
-//    [\p FirstIt, \p LastIt) is the range of indexes into some vector.
-//    Negative index means invalid index.
+//    [\p FirstIt, \p LastIt) is the range of MaskIndex. There must not be
+//    any AnotherOp indices in the range.
+//    FirstIt and std::prev(LastIt) must point to a defined indices.
 //    \p FirstElemRegion describes one element region with only one index
 //    *FirstIt.
+//    \p BoundIndex is maximum possible index of the input vector + 1
+//    (BoundIndex == InputVector.length)
 template <typename ForwardIter>
 Region matchVectorRegionByIndexes(Region FirstElemRegion, ForwardIter FirstIt,
-                                  ForwardIter LastIt) {
+                                  ForwardIter LastIt, int BoundIndex) {
   IGC_ASSERT(FirstIt != LastIt && "the range must contain at least 1 element");
+  IGC_ASSERT(std::none_of(FirstIt, LastIt,
+                          [](MaskIndex Idx) { return Idx.isAnotherOp(); }) &&
+             "There must not be any AnotherOp indices in the range.");
+  IGC_ASSERT(FirstIt->isDefined() && std::prev(LastIt)->isDefined() &&
+             "expected FirstIt and --LastIt point to valid indices");
 
   if (std::distance(FirstIt, LastIt) == 1)
     return FirstElemRegion;
-  int Stride = *std::next(FirstIt) - *FirstIt;
-  if (Stride < 0)
+
+  llvm::Optional<int> RefStride;
+  ForwardIter NewRowIt;
+  std::tie(NewRowIt, RefStride) = estimateHorizontalStride(FirstIt, LastIt);
+
+  if (!RefStride)
     return FirstElemRegion;
-  auto NewRowIt =
-      std::adjacent_find(FirstIt, LastIt, [Stride](int First, int Second) {
-        return Second < 0 || Second - First != Stride;
-      });
-  if (NewRowIt != LastIt) {
-    ++NewRowIt;
-  }
+
+  llvm::Optional<int> Stride = RefStride;
+  while (Stride == RefStride)
+    std::tie(NewRowIt, Stride) = estimateHorizontalStride(NewRowIt, LastIt);
+
+  auto TotalStride = std::distance(FirstIt, std::prev(NewRowIt)) * *RefStride;
+  auto Overstep = TotalStride + FirstIt->get() - BoundIndex + 1;
+  if (Overstep > 0)
+    NewRowIt = std::prev(NewRowIt, llvm::divideCeil(Overstep, *RefStride));
+
   int Width = std::distance(FirstIt, NewRowIt);
   IGC_ASSERT(Width > 0 && "should be at least 1 according to algorithm");
   if (Width == 1)
     // Stride doesn't play role when the Width is 1.
     // Also it prevents from writing to big value in the region.
-    Stride = 0;
-  FirstElemRegion.Stride = Stride;
+    RefStride = 0;
+  FirstElemRegion.Stride = *RefStride;
   FirstElemRegion.Width = Width;
   FirstElemRegion.NumElements = Width;
   return FirstElemRegion;
+}
+
+// Calculates vertical stride for region by scanning mask indices in
+// range [\p FirstIt, \p LastIt).
+//
+// Arguments:
+//    [\p FirstRowRegion]  describes "vector" region (with vstride == 0),
+//      which is formed by first 'FirstRowRegion.NumElements' elements
+//      of the range.
+//    [\p FirstIt] Points to first element of vector of indices.
+//    [\p ReferenceIt] Points to some valid reference element in that vector.
+//    Must be out of range of first 'FirstRowRegion.NumElements' elements.
+//    First 'FirstRowRegion.NumElements' in range must be defined indices.
+// Return value:
+//    Value of estimated vertical stride if it is positive and integer,
+//    empty value otherwise
+template <typename ForwardIter>
+llvm::Optional<int> estimateVerticalStride(Region FirstRowRegion,
+                                           ForwardIter FirstIt,
+                                           ForwardIter ReferenceIt) {
+
+  IGC_ASSERT(std::distance(FirstIt, ReferenceIt) >=
+                 static_cast<int>(FirstRowRegion.Width) &&
+             "Reference element must not be part of first row");
+  IGC_ASSERT(std::all_of(FirstIt, std::next(FirstIt, FirstRowRegion.Width),
+                         [](MaskIndex Elem) { return Elem.isDefined(); }) &&
+             "First row must contain only valid indices");
+  IGC_ASSERT(ReferenceIt->isDefined() && "Reference index must be valid");
+
+  int Width = FirstRowRegion.Width;
+
+  int TotalDistance = std::distance(FirstIt, ReferenceIt);
+  int VStridesToDef = TotalDistance / Width;
+  int HStridesToDef = TotalDistance % Width;
+  int TotalVerticalStride = *ReferenceIt - *std::next(FirstIt, HStridesToDef);
+  if (TotalVerticalStride < 0 || TotalVerticalStride % VStridesToDef != 0)
+    return llvm::Optional<int>{};
+
+  return llvm::Optional<int>{TotalVerticalStride / VStridesToDef};
 }
 
 // Matches "matrix" region (vstride may not equal to 0) pattern in
@@ -537,47 +668,73 @@ Region matchVectorRegionByIndexes(Region FirstElemRegion, ForwardIter FirstIt,
 // \p FirstRowRegion and returns resulting region.
 //
 // Arguments:
-//    [\p FirstIt, \p LastIt) is the range of indexes into some vector.
-//    Negative index means invalid index.
+//    [\p FirstIt, \p LastIt) is the range of MaskIndex. Note that this
+//    pass may change the contents of this vector (replace undef indices
+//    with defined ones), so it can affect further usage.
+//    \p LastDefinedIt points to last element in a vector with a defined
+//    index
 //    \p FirstRowRegion describes "vector" region (with vstride == 0),
 //      which is formed by first 'FirstRowRegion.NumElements' elements
 //      of the range.
+//    \p BoundIndex is maximum possible index of the input vector + 1
+//    (BoundIndex == InputVector.length)
 template <typename ForwardIter>
 Region matchMatrixRegionByIndexes(Region FirstRowRegion, ForwardIter FirstIt,
-                                  ForwardIter LastIt) {
+                                  ForwardIter LastIt, ForwardIter LastDefinedIt,
+                                  int BoundIndex) {
   IGC_ASSERT(FirstRowRegion.NumElements == FirstRowRegion.Width &&
          FirstRowRegion.VStride == 0 &&
          "wrong argunent: vector region (with no vstride) was expected");
-
-//  TODO: rewrite this assertion statement to remove VS build error
-//  IGC_ASSERT(std::distance(FirstIt, LastIt) >= FirstRowRegion.Width &&
-//         "wrong argument: number of indexes must be at least equal to region "
-//         "width");
+  IGC_ASSERT(FirstIt->isDefined() && LastDefinedIt->isDefined() &&
+             "expected FirstIt and LastDefinedIt point to valid indices");
+  //  TODO: rewrite this assertion statement to remove VS build error
+  //  IGC_ASSERT(std::distance(FirstIt, LastIt) >= FirstRowRegion.Width &&
+  //         "wrong argument: number of indexes must be at least equal to region
+  //         " "width");
 
   auto FirstRowEndIt = std::next(FirstIt, FirstRowRegion.Width);
   if (FirstRowEndIt == LastIt)
     return FirstRowRegion;
-  int VStride = *FirstRowEndIt - *FirstIt;
-  if (VStride < 0)
+
+  auto FirstDefined = std::find_if(FirstRowEndIt, LastIt, [](MaskIndex Idx) {
+    return Idx.isDefined() || Idx.isAnotherOp();
+  });
+  if (FirstDefined == LastIt || FirstDefined->isAnotherOp())
     return FirstRowRegion;
 
+  int Stride = FirstRowRegion.Stride;
+  int Idx = FirstIt->get();
+  std::generate(std::next(FirstIt), FirstRowEndIt,
+                [Idx, Stride]() mutable { return MaskIndex{Idx += Stride}; });
+
+  llvm::Optional<int> VStride =
+      estimateVerticalStride(FirstRowRegion, FirstIt, FirstDefined);
+  if (!VStride)
+    return FirstRowRegion;
+
+  int VDistance = *VStride;
   int Width = FirstRowRegion.Width;
-  int VDistance = VStride;
-  int NumElements = Width;
+  int NumElements = FirstRowRegion.Width;
+  int HighestFirstRowElement = std::prev(FirstRowEndIt)->get();
+
   for (auto It = FirstRowEndIt; It != LastIt; advanceSafe(It, LastIt, Width),
-            NumElements += Width, VDistance += VStride) {
-    if (std::distance(It, LastIt) < Width ||
+            NumElements += Width, VDistance += *VStride) {
+    if (It > LastDefinedIt || std::distance(It, LastIt) < Width ||
+        HighestFirstRowElement + VDistance >= BoundIndex ||
         !std::equal(FirstIt, FirstRowEndIt, It,
-                    [VDistance](int Reference, int Current) {
-                      return Current - Reference == VDistance && Current >= 0;
+                    [VDistance](MaskIndex Reference, MaskIndex Current) {
+                      return !Current.isAnotherOp() &&
+                             (Current.isUndef() ||
+                              Current.get() - Reference.get() == VDistance);
                     }))
       break;
   }
+
   if (NumElements == Width)
     // VStride doesn't play role when the Width is equal to NumElements.
     // Also it prevents from writing to big value in the region.
     VStride = 0;
-  FirstRowRegion.VStride = VStride;
+  FirstRowRegion.VStride = *VStride;
   FirstRowRegion.NumElements = NumElements;
   return FirstRowRegion;
 }
@@ -603,15 +760,26 @@ ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
   if (StartIdx == MaskVals.size() - 1)
     return Res;
 
-  std::vector<int>
-      SubMask;
+  std::vector<MaskIndex> SubMask;
   makeSVIIndexesOperandIndexes(*SI, *Res.Op, StartIt, MaskVals.end(),
                                std::back_inserter(SubMask));
 
-  Res.R = matchVectorRegionByIndexes(std::move(Res.R), SubMask.begin(),
-                                     SubMask.end());
-  Res.R = matchMatrixRegionByIndexes(std::move(Res.R), SubMask.begin(),
-                                     SubMask.end());
+  auto FirstAnotherOpElement =
+      std::find_if(SubMask.begin(), SubMask.end(),
+                   [](MaskIndex Elem) { return Elem.isAnotherOp(); });
+  auto PastLastDefinedElement =
+      std::find_if(std::reverse_iterator(FirstAnotherOpElement),
+                   std::reverse_iterator(SubMask.begin()),
+                   [](MaskIndex Elem) { return Elem.isDefined(); })
+          .base();
+
+  Res.R = matchVectorRegionByIndexes(
+      std::move(Res.R), SubMask.begin(), PastLastDefinedElement,
+      cast<VectorType>(Res.Op->getType())->getNumElements());
+  Res.R = matchMatrixRegionByIndexes(
+      std::move(Res.R), SubMask.begin(), SubMask.end(),
+      std::prev(PastLastDefinedElement),
+      cast<VectorType>(Res.Op->getType())->getNumElements());
   return Res;
 }
 
