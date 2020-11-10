@@ -708,7 +708,8 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
 
 
 void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
-    if (isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()))  // objective is to clean up any intermediate ILLEGAL ints
+    unsigned srcSize = I.getOperand(0)->getType()->getScalarSizeInBits();
+    if (isLegalInteger(srcSize) || srcSize == 1)  // objective is to clean up any intermediate ILLEGAL ints
         return;
 
     Instruction* prevInst = dyn_cast<Instruction>(I.getOperand(0));
