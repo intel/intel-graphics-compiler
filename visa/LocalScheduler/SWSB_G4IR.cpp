@@ -531,7 +531,7 @@ void SWSB::SWSBBuildSIMDCFG()
                     }
                 }
             }
-            else if (lastInst->isReturn() || lastInst->isCall())
+            else if (lastInst->isReturn() || lastInst->isCall() || lastInst->isFCall() || lastInst->isFReturn())
             {
                 BB_LIST_ITER iter = currBB->getBB()->Succs.begin();
                 while (iter != currBB->getBB()->Succs.end())
@@ -671,7 +671,8 @@ void SWSB::handleIndirectCall()
         SBNode* node = SBNodes[BBVector[i]->last_node];
 
         if ((node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()) ||
-            node->GetInstruction()->isReturn())
+            node->GetInstruction()->isReturn() ||
+            node->GetInstruction()->isFReturn())
         {
             LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
             for (size_t j = 0; j < globalSendOpndList.size(); j++)
@@ -692,7 +693,7 @@ void SWSB::handleIndirectCall()
                 }
             }
         }
-        if (node->GetInstruction()->isReturn())
+        if (node->GetInstruction()->isReturn() || node->GetInstruction()->isFReturn())
         {
             node->GetInstruction()->setDistance(1);
         }
@@ -999,6 +1000,7 @@ static bool isBranch(SBNode* N) {
         return false;
     // Skip function call/ret.
     if (Inst->isCall() || Inst->isReturn() ||
+        Inst->isFCall() || Inst->isFReturn() ||
         Inst->opcode() == G4_pseudo_fc_call ||
         Inst->opcode() == G4_pseudo_fc_ret)
         return false;

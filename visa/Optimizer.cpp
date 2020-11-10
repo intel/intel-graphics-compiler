@@ -7578,7 +7578,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // check every fcall
         for (auto bb : kernel.fg)
         {
-            if (bb->back()->isFCall())
+            if (bb->isEndWithFCall())
             {
                 G4_INST* fcall = bb->back();
                 if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0()) {
