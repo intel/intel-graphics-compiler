@@ -224,8 +224,8 @@ private:
     public:
         StandardSection(std::string name, std::string sectName, const uint8_t* data, uint64_t size,
             unsigned type, uint32_t padding, uint32_t id)
-            : m_name(name), m_sectName(sectName), m_data(data), m_size(size), m_type(type),
-              m_padding(padding), Section(id)
+            : Section(id), m_name(name), m_sectName(sectName), m_data(data), m_size(size), m_type(type),
+              m_padding(padding)
         {}
 
         Kind getKind() const { return STANDARD; }
@@ -250,7 +250,7 @@ private:
     class ZEInfoSection : public Section {
     public:
         ZEInfoSection(zeInfoContainer& zeinfo, uint32_t id)
-            : m_zeinfo(zeinfo), Section(id)
+            : Section(id), m_zeinfo(zeinfo)
         {}
 
         Kind getKind() const { return ZEINFO; }
