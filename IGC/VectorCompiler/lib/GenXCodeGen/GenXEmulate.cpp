@@ -70,6 +70,9 @@ static cl::opt<bool> OptStrictEmulationRequests(
 static cl::opt<bool> OptIcmpEnable("genx-i64emu-icmp-enable", cl::init(true),
                                    cl::Hidden,
                                    cl::desc("enable icmp emulation"));
+static cl::opt<bool> OptProcessPtrs("genx-i64emu-ptrs-enable", cl::init(true),
+                                    cl::Hidden,
+                                    cl::desc("enable icmp emulation"));
 static cl::opt<bool> OptConvertPartialPredicates(
     "genx-i64emu-icmp-ppred-lowering", cl::init(true), cl::Hidden,
     cl::desc("if \"partial predicates\" shall be converted to icmp"));
@@ -119,6 +122,9 @@ class GenXEmulate : public ModulePass {
     Value *visitZExtInst(ZExtInst &I);
     Value *visitSExtInst(SExtInst &I);
 
+    Value *visitPtrToInt(PtrToIntInst &I);
+    Value *visitIntToPtr(IntToPtrInst &I);
+
     Value *visitGenxTrunc(CallInst &CI);
     Value *visitGenxMinMax(CallInst &CI);
     // genx_absi
@@ -137,6 +143,7 @@ class GenXEmulate : public ModulePass {
     // value. Return the emulated sequence otherwise
     Value *ensureEmulated(Value *Val);
 
+    static bool isI64PointerOp(const Instruction &I);
     static bool isConvertOfI64(const Instruction &I);
     static bool isI64ToFP(const Instruction &I);
     static bool isI64Cmp(const Instruction &I);
@@ -163,7 +170,7 @@ class GenXEmulate : public ModulePass {
 
     bool needsEmulation() const {
       return (SplitBuilder.IsI64Operation() || isI64Cmp(Inst) ||
-              isConvertOfI64(Inst));
+              isConvertOfI64(Inst) || isI64PointerOp(Inst));
     }
 
     IRBuilder getIRBuilder() {
@@ -278,6 +285,29 @@ private:
 
 } // end namespace
 
+bool GenXEmulate::Emu64Expander::isI64PointerOp(const Instruction &I) {
+  auto Opcode = I.getOpcode();
+  const DataLayout &DL = I.getModule()->getDataLayout();
+  if (Opcode == Instruction::ICmp) {
+    auto *OpSTy = I.getOperand(0)->getType()->getScalarType();
+    if (!OpSTy->isPointerTy())
+      return false;
+    if (DL.getTypeSizeInBits(OpSTy) < 64)
+      return false;
+    return true;
+  }
+  if (Opcode == Instruction::PtrToInt || Opcode == Instruction::IntToPtr) {
+    auto *PtrType = I.getType()->getScalarType();
+    auto *IntType = I.getOperand(0)->getType()->getScalarType();
+    if (Opcode == Instruction::PtrToInt)
+      std::swap(PtrType, IntType);
+    if (cast<CastInst>(&I)->isNoopCast(DL))
+      return false;
+    return (DL.getTypeSizeInBits(PtrType) == 64 ||
+            DL.getTypeSizeInBits(IntType) == 64);
+  }
+  return false;
+}
 bool GenXEmulate::Emu64Expander::isConvertOfI64(const Instruction &I) {
 
   if (GenXEmulate::Emu64Expander::isI64ToFP(I))
@@ -467,6 +497,25 @@ Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
     return nullptr;
 
   auto Builder = getIRBuilder();
+
+  if (isI64PointerOp(Cmp)) {
+
+    if (!OptProcessPtrs) {
+      LLVM_DEBUG(dbgs() << "i64-emu::WARNING: " << Cmp << " won't be emulated\n");
+      return nullptr;
+    }
+
+    Type *Ty64 = Builder.getInt64Ty();
+    if (Cmp.getType()->isVectorTy()) {
+      auto NumElements = cast<VectorType>(Cmp.getType())->getNumElements();
+      Ty64 = IGCLLVM::FixedVectorType::get(Ty64, NumElements);
+    }
+    auto *IL = Builder.CreatePtrToInt(Cmp.getOperand(0), Ty64);
+    auto *IR = Builder.CreatePtrToInt(Cmp.getOperand(1), Ty64);
+    // Create new 64-bit compare
+    auto *NewICMP = Builder.CreateICmp(Cmp.getPredicate(), IL, IR);
+    return ensureEmulated(NewICMP);
+  }
 
   unsigned BaseOperand = 0;
   IVSplitter Splitter(Cmp, &BaseOperand);
@@ -717,6 +766,96 @@ Value *GenXEmulate::Emu64Expander::visitSExtInst(SExtInst &I) {
   auto *HiPart = Builder.CreateAShr(LoPart, 31u, ".sign_hi");
   return SplitBuilder.combineLoHiSplit({LoPart, HiPart}, "int_emu.sext64.",
                                        Inst.getType()->isIntegerTy());
+}
+Value *GenXEmulate::Emu64Expander::visitPtrToInt(PtrToIntInst &I) {
+
+  const DataLayout &DL = I.getModule()->getDataLayout();
+  // do not emulate noop
+  if (cast<CastInst>(&I)->isNoopCast(DL))
+    return nullptr;
+
+  if (!OptProcessPtrs) {
+    LLVM_DEBUG(dbgs() << "i64-emu::WARNING: " << I << " won't be emulated\n");
+    return nullptr;
+  }
+  // ptr32 -> i64 conversions are not supported
+  if (DL.getTypeSizeInBits(I.getOperand(0)->getType()->getScalarType()) <
+      DL.getTypeSizeInBits(I.getType()->getScalarType())) {
+    LLVM_DEBUG(dbgs() << "i64-emu::ERROR: " << I << " can't be emulated\n");
+    report_fatal_error("int_emu: ptr32->i64 extensions are not supported");
+  }
+
+  auto Builder = getIRBuilder();
+  auto VOp = toVector(Builder, I.getOperand(0));
+
+  auto *VTy64 = IGCLLVM::FixedVectorType::get(Builder.getInt64Ty(),
+                                              VOp.VTy->getNumElements());
+  auto *Cast = Builder.CreatePtrToInt(VOp.V, VTy64);
+
+  auto *ResTy = I.getType();
+  unsigned Stride =
+      VTy64->getPrimitiveSizeInBits() / ResTy->getPrimitiveSizeInBits();
+  unsigned NumElements = VOp.VTy->getNumElements();
+
+  auto *VElTy = IGCLLVM::FixedVectorType::get(ResTy->getScalarType(),
+                                              Stride * NumElements);
+  auto *ElCast = Builder.CreateBitCast(Cast, VElTy, "int_emu.ptr2int.elcast.");
+  genx::Region R(ElCast);
+  R.NumElements = NumElements;
+  R.Stride = Stride;
+  R.Width = NumElements;
+  R.VStride = R.Stride * R.Width;
+  auto *Result = (Value *)R.createRdRegion(
+      ElCast, "int_emu.trunc." + I.getName() + ".", &I, I.getDebugLoc());
+  if (Result->getType() != ResTy) {
+    Result = Builder.CreateBitCast(
+        Result, ResTy, Twine("int_emu.trunc.") + I.getName() + ".to_s.");
+  }
+  return Result;
+}
+Value *GenXEmulate::Emu64Expander::visitIntToPtr(IntToPtrInst &I) {
+
+  const DataLayout &DL = I.getModule()->getDataLayout();
+  // do not emulate noop
+  if (cast<CastInst>(&I)->isNoopCast(DL))
+    return nullptr;
+
+  if (!OptProcessPtrs) {
+    LLVM_DEBUG(dbgs() << "i64-emu::WARNING: " << I << " won't be emulated\n");
+    return nullptr;
+  }
+  // i64 -> ptr32 truncations are not supported
+  if (DL.getTypeSizeInBits(I.getOperand(0)->getType()->getScalarType()) >
+      DL.getTypeSizeInBits(I.getType()->getScalarType())) {
+    LLVM_DEBUG(dbgs() << "i64-emu::ERROR: " << I << " can't be emulated\n");
+    report_fatal_error("int_emu: i64->ptr32 truncations are not supported");
+  }
+
+  auto Builder = getIRBuilder();
+  auto VOp = toVector(Builder, I.getOperand(0));
+
+  auto *VTy32 = IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(),
+                                              VOp.VTy->getNumElements());
+  auto *VTy64 = IGCLLVM::FixedVectorType::get(Builder.getInt64Ty(),
+                                              VOp.VTy->getNumElements());
+  Value *VI32 = VOp.V;
+  if (VOp.VTy != VTy32)
+    VI32 = Builder.CreateZExt(VOp.V, VTy32);
+
+  auto *Zext64 = Builder.CreateZExt(VI32, VTy64);
+  auto *Zext = ensureEmulated(Zext64);
+
+  Type *ResType = I.getType();
+  Type *CnvType = ResType;
+  if (!ResType->isVectorTy()) {
+    CnvType = IGCLLVM::FixedVectorType::get(ResType, 1);
+  }
+  auto *Result = Builder.CreateIntToPtr(Zext, CnvType);
+  if (ResType != CnvType) {
+    Result = Builder.CreateBitCast(Result, ResType,
+                                   Twine("int_emu.") + I.getOpcodeName() + ".");
+  }
+  return Result;
 }
 Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
 
