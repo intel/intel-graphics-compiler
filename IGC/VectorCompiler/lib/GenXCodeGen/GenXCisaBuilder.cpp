@@ -330,9 +330,13 @@ static VISA_Type llvmToVisaType(Type *Type,
   IGC_ASSERT(!T->isAggregateType());
   VISA_Type Result = ISA_TYPE_NUM;
   if (T->isVectorTy() &&
-      cast<VectorType>(T)->getElementType()->isIntegerTy(1))
-      Result = getVisaTypeFromBytesNumber(cast<VectorType>(Type)->getNumElements(), false, Sign);
-  else {
+      cast<VectorType>(T)->getElementType()->isIntegerTy(1)) {
+    IGC_ASSERT(cast<VectorType>(T)->getVectorNumElements() == 8 ||
+               cast<VectorType>(T)->getVectorNumElements() == 16 ||
+               cast<VectorType>(T)->getVectorNumElements() == 32);
+    Result = getVisaTypeFromBytesNumber(
+        cast<VectorType>(Type)->getNumElements() / genx::ByteBits, false, Sign);
+  } else {
     if (T->isVectorTy())
       T = cast<VectorType>(T)->getElementType();
     if (T->isPointerTy()) {
@@ -5761,7 +5765,7 @@ void GenXKernelBuilder::buildInsertRetv(InsertValueInst *Inst) {
 
 void GenXKernelBuilder::buildStackCall(CallInst *CI,
                                        const DstOpndDesc &DstDesc) {
-  LLVM_DEBUG(dbgs() << "Build stack call\n"; CI->print(dbgs()); dbgs() << "\n");
+  LLVM_DEBUG(dbgs() << "Build stack call " << *CI << "\n");
   Function *Callee = CI->getCalledFunction();
   auto *FuncTy = CI->getFunctionType();
   auto *StackCallee = Func2Kern[Callee];
