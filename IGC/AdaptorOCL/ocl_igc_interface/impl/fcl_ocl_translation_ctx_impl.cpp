@@ -232,6 +232,14 @@ static std::vector<const char*>
         result.push_back(stringSaver.save(auxIncludes.getValue()).data());
     }
     result.insert(result.end(), userArgs.begin(), userArgs.end());
+
+    auto ExtraCMOpts = llvm::sys::Process::GetEnv("IGC_ExtraCMOptions");
+    if (ExtraCMOpts) {
+        llvm::SmallVector<const char *, 8> Argv;
+        llvm::cl::TokenizeGNUCommandLine(ExtraCMOpts.getValue(), stringSaver, Argv);
+        result.insert(result.end(), Argv.begin(), Argv.end());
+    }
+
     return result;
 }
 
