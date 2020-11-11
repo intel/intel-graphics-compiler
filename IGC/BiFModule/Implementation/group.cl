@@ -1799,27 +1799,28 @@ DEFN_ARITH_OPERATIONS(half)
 #endif // defined(cl_khr_fp16)
 
 #define DEFN_WORK_GROUP_REDUCE(type, op, identity, X)                                       \
-{                                                                                           \
-    GET_MEMPOOL_PTR(data, type, true, 0)                                                    \
-    uint lid = __spirv_BuiltInLocalInvocationIndex();                                       \
-    uint lsize = __spirv_WorkgroupSize();                                                   \
-    data[lid] = X;                                                                          \
-                                                                                            \
-    uint i = lsize / 2;                                                                     \
-    while(i > 0)                                                                                          \
-    {                                                                                                     \
+{                                                                                          \
+    GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
+    uint lid = __spirv_BuiltInLocalInvocationIndex();                                        \
+    uint lsize = __spirv_WorkgroupSize();                                                 \
+    data[lid] = X;                                                                       \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);         \
+    uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(lsize - 1)) - 1) ;  \
+    while( mask > 0 )                                                                    \
+    {                                                                                    \
+        uint c = lid ^ mask;                                                             \
+        type other = ( c < lsize ) ? data[ c ] : identity;                                  \
+        X = op( other, X );                                                                 \
         __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-        if ((lid < i) && (lid + i < lsize))                                                               \
-        {                                                                                                 \
-            X = op(X, data[lid + i]);                                                                     \
-            data[lid] = X;                                                                                \
-        }                                                                                                 \
-        i >>= 1;                                                                                          \
-    }                                                                                                     \
-    lid >>= 15;\
+        data[lid] = X;                                                              \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
+        mask >>= 1;                                                                      \
+    }                                                                                    \
+    type ret = data[0];                                                                  \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-    return data[0+lid];                                                                                       \
+    return ret;                                                                           \
 }
+
 
 #define DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)                                   \
 {                                                                                          \
@@ -1842,6 +1843,7 @@ DEFN_ARITH_OPERATIONS(half)
     }                                                                                    \
     return X;                                                                            \
 }
+
 
 #define DEFN_WORK_GROUP_SCAN_EXCL(type, op, identity, X)                                   \
 {                                                                                         \
