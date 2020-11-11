@@ -85,14 +85,13 @@ GenXBackendOptions::GenXBackendOptions()
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride) {}
 
 GenXBackendData::GenXBackendData() {
-  if (OCLGenericBiFPath.empty())
-    report_fatal_error("-vc-ocl-generic-bif-path option wasn't provided");
-  if (!sys::fs::exists(OCLGenericBiFPath))
-    report_fatal_error("cannot find the provided OpenCL generic BiF file");
+  if (OCLGenericBiFPath.getNumOccurrences() == 0)
+    return;
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(OCLGenericBiFPath);
   if (!FileOrErr)
-    report_fatal_error("cannot open the provided OpenCL generic BiF file");
+    report_fatal_error("opening OpenCL generic BiF file failed: " +
+                       FileOrErr.getError().message());
   OCLGenericBiFModuleOwner = std::move(FileOrErr.get());
   OCLGenericBiFModule = IGCLLVM::makeMemoryBufferRef(*OCLGenericBiFModuleOwner);
 }

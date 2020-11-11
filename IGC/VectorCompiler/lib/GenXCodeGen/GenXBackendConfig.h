@@ -82,13 +82,12 @@ struct GenXBackendData {
   // The owner of OpenCL generic BiF module.
   // For now it is only required for llvm-lit/debugging,
   // in libigc mode this field always holds nullptr.
-  std::unique_ptr<MemoryBuffer> OCLGenericBiFModuleOwner;
+  std::unique_ptr<MemoryBuffer> OCLGenericBiFModuleOwner = nullptr;
 
   GenXBackendData();
   GenXBackendData(const MemoryBuffer &OCLGenericBiFModuleBuffer)
       : OCLGenericBiFModule{IGCLLVM::makeMemoryBufferRef(
-            OCLGenericBiFModuleBuffer)},
-        OCLGenericBiFModuleOwner{nullptr} {}
+            OCLGenericBiFModuleBuffer)} {}
 };
 
 class GenXBackendConfig : public ImmutablePass {
