@@ -3259,12 +3259,12 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
               PendingBBStack.push_back(PhiPred);
             PhiPred = nullptr;
           } else {
-            for (auto bui = Inst->getParent()->use_begin(),
-                bue = Inst->getParent()->use_end(); bui != bue; ++bui) {
-              auto Pred = cast<Instruction>(bui->getUser())->getParent();
-              if (LiveOut.insert(Pred).second)
-                PendingBBStack.push_back(Pred);
-            }
+            BasicBlock *InstBB = Inst->getParent();
+            std::copy_if(pred_begin(InstBB), pred_end(InstBB),
+                         std::back_inserter(PendingBBStack),
+                         [&LiveOut](BasicBlock *BB) {
+                           return LiveOut.insert(BB).second;
+                         });
           }
           Inst = nullptr;
           continue;

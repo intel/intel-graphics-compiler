@@ -565,6 +565,7 @@ private:
   void buildControlRegUpdate(unsigned Mask, bool Clear);
   void buildJoin(CallInst *Join, BranchInst *Branch);
   bool buildBranch(BranchInst *Branch);
+  void buildIndirectBr(IndirectBrInst *Br);
   void buildIntrinsic(CallInst *CI, unsigned IntrinID, genx::BaleInfo BI,
                       unsigned Mod, const DstOpndDesc &DstDesc);
   void buildInputs(Function *F, bool NeedRetIP);
@@ -2581,6 +2582,8 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     buildRet(RI);
   } else if (BranchInst *BR = dyn_cast<BranchInst>(Inst)) {
     return buildBranch(BR);
+  } else if (IndirectBrInst *IBR = dyn_cast<IndirectBrInst>(Inst)) {
+    buildIndirectBr(IBR);
   } else if (CmpInst *Cmp = dyn_cast<CmpInst>(Inst)) {
     buildCmp(Cmp, BI, DstDesc);
   } else if (BinaryOperator *BO = dyn_cast<BinaryOperator>(Inst)) {
@@ -2650,6 +2653,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_predefined_surface:
       case GenXIntrinsic::genx_output:
       case GenXIntrinsic::genx_output_1:
+      case GenXIntrinsic::genx_jump_table:
         // ignore
         break;
       case GenXIntrinsic::genx_simdcf_goto:
@@ -3762,6 +3766,32 @@ bool GenXKernelBuilder::buildBranch(BranchInst *Branch) {
   CISA_CALL(Kernel->AppendVISACFJmpInst(
       nullptr, Labels[getOrCreateLabel(False, LABEL_BLOCK)]));
   return false;
+}
+
+/***********************************************************************
+ * buildIndirectBr : build an indirect branch
+ *
+ * Indirectbr instructions are used only for jump tables.
+ *
+ * Enter:   Br = indirect branch inst
+ */
+void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
+  IGC_ASSERT(Subtarget->hasSwitchjmp());
+  Value *Addr = Br->getAddress();
+  auto JumpTable = cast<IntrinsicInst>(Addr);
+  unsigned IID = GenXIntrinsic::getAnyIntrinsicID(JumpTable);
+  IGC_ASSERT(IID == GenXIntrinsic::genx_jump_table);
+  Value *Idx = JumpTable->getArgOperand(0);
+
+  VISA_VectorOpnd *JMPIdx = createSource(Idx, UNSIGNED);
+  unsigned NumDest = Br->getNumDestinations();
+  std::vector<VISA_LabelOpnd *> JMPLabels(NumDest, nullptr);
+  for (unsigned I = 0; I < NumDest; ++I)
+    JMPLabels[I] = Labels[getOrCreateLabel(Br->getDestination(I), LABEL_BLOCK)];
+
+  addDebugInfo();
+  CISA_CALL(
+      Kernel->AppendVISACFSwitchJMPInst(JMPIdx, NumDest, JMPLabels.data()));
 }
 
 /***********************************************************************

@@ -139,6 +139,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXImportBiFPass(registry);
   initializeGenXSimplifyPass(registry);
   initializeCMABIPass(registry);
+  initializeGenXLowerJmpTableSwitchPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -303,6 +304,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// .. include:: GenXSwitchFixup.cpp
   PM.add(createGenXInstCombineCleanup());
 
+  PM.add(createGenXLowerJmpTableSwitchPass());
   /// LowerSwitch
   /// -----------
   /// This is a standard LLVM pass to lower a switch instruction to a chain of

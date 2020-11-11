@@ -83,6 +83,9 @@ def no_vector_decomposition_old : Flag<["-"], "no_vector_decomposition">,
   let Flags = [ApiOption, IgcmcApiOption];
 }
 
+def fno_jump_tables : Flag<["-"], "fno-jump-tables">,
+  HelpText<"Disable the use of jump tables for lowering switches">;
+
 def Xfinalizer : Separate<["-"], "Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
 

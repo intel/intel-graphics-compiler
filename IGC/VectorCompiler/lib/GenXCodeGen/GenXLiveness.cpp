@@ -433,15 +433,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     // all of them at the end).
     *BBRange = Segment(Numbering->getNumber(BB), Num);
     // Push this block's predecessors onto the stack.
-    // (A basic block's predecessors are those blocks containing a
-    // TerminatorInst that uses the basic block.)
-	for (Value::use_iterator i = BB->use_begin(), e = BB->use_end();
-	  i != e; ++i) {
-	  Instruction *TI = dyn_cast<Instruction>(i->getUser());
-      IGC_ASSERT(TI);
-	  if (TI->isTerminator())
-	    Stack.push_back(TI->getParent());
-	}
+    std::copy(pred_begin(BB), pred_end(BB), std::back_inserter(Stack));
     // Process stack until empty.
     while (Stack.size()) {
       BB = Stack.back();
@@ -459,15 +451,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
       // all of them at the end).
       BBRange->setStartEnd(Numbering->getNumber(BB), BBNum->EndNumber);
       // Push this block's predecessors onto the stack.
-      // (A basic block's predecessors are those blocks containing a
-      // TerminatorInst that uses the basic block.)
-	  for (Value::use_iterator i = BB->use_begin(), e = BB->use_end();
- 	    i != e; ++i) {
-		Instruction *TI = dyn_cast<Instruction>(i->getUser());
-        IGC_ASSERT(TI);
-		if (TI->isTerminator())
-		  Stack.push_back(TI->getParent());
-	  }
+      std::copy(pred_begin(BB), pred_end(BB), std::back_inserter(Stack));
     }
   }
   // Now we can build the live range.

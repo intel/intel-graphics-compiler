@@ -1016,8 +1016,7 @@ int GenXUnbaling::getReachability(Instruction *Inst, Instruction *Def)
     if (Block == DefBlock)
       continue; // reached def, terminate this branch of the scan
     // Add the predecessors of this block to the stack.
-    for (auto ui = Block->use_begin(), ue = Block->use_end(); ui != ue; ++ui)
-      Stack.push_back(cast<Instruction>(ui->getUser())->getParent());
+    std::copy(pred_begin(Block), pred_end(Block), std::back_inserter(Stack));
   }
   return It->second = NOTREACHES;
 }

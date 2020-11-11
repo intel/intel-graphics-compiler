@@ -154,6 +154,7 @@ struct CompileOptions {
   bool NoVecDecomp = false;
   bool EmitDebugInfo = false;
 
+  bool NoJumpTables = false;
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;
 

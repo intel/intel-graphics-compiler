@@ -26,9 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 /// GenXSubtarget : subtarget information
 /// -------------------------------------
-/// 
+///
 /// GenXSubtarget is the GenX-specific subclass of TargetSubtargetInfo. It takes
-/// features detected by the front end (what the Gen architecture is), 
+/// features detected by the front end (what the Gen architecture is),
 /// and exposes flags to the rest of the GenX backend for
 /// various features (e.g. whether 64 bit operations are supported).
 ///
@@ -100,6 +100,9 @@ private:
   // DisableVectorDecomposition - True if vector decomposition is disabled.
   bool DisableVectorDecomposition;
 
+  // DisableJumpTables - True if switch to jump tables lowering is disabled.
+  bool DisableJumpTables;
+
   // Only generate warning when callable is used in the middle of the kernel
   bool WarnCallable;
   // Some targets do not support i64 ops natively, we have an option to emulate
@@ -107,6 +110,9 @@ private:
 
   // True if codegenerating for OCL runtime.
   bool OCLRuntime;
+
+  // True if subtarget supports switchjmp visa instruction
+  bool HasSwitchjmp;
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -190,7 +196,13 @@ public:
   /// * disableVectorDecomposition - true if vector decomposition is disabled.
   bool disableVectorDecomposition() const { return DisableVectorDecomposition; }
 
-  /// * warnCallable() - true if compiler only generate warning for 
+  /// * disableJumpTables - true if switch to jump tables lowering is disabled.
+  bool disableJumpTables() const { return DisableJumpTables; }
+
+  /// * has switchjmp instruction
+  bool hasSwitchjmp() const { return HasSwitchjmp; }
+
+  /// * warnCallable() - true if compiler only generate warning for
   ///   callable in the middle
   bool warnCallable() const { return WarnCallable; }
 
