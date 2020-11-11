@@ -3803,6 +3803,11 @@ namespace IGC
             SaveOption(vISA_cloneSampleInst, true);
         }
 
+        if (m_program->m_Platform->getWATable().Wa_22011142311 && IGC_IS_FLAG_ENABLED(EnableEvaluateSamplerSplit))
+        {
+            SaveOption(vISA_cloneEvaluateSampleInst, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(ForceFFIDOverwrite)/*|| m_program->m_Platform->WaOverwriteFFID()*/)
         {
             unsigned int ffid[unsigned(ShaderType::END)] = {

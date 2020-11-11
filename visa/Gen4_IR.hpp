@@ -469,6 +469,7 @@ public:
     // for sampler mesasges only
     bool isSampler() const { return getFuncId() == SFID::SAMPLER; }
     bool isCPSEnabled() const { return extDesc.layout.cps != 0; }
+    uint32_t getSamplerMessageType() const;
     bool is16BitInput() const;
     bool is16BitReturn() const;
 

@@ -426,8 +426,9 @@ void Optimizer::insertHashMovs()
 //
 void Optimizer::cloneSampleInst()
 {
-
-    if (!builder.getOption(vISA_cloneSampleInst))
+    bool cloneSample = builder.getOption(vISA_cloneSampleInst);
+    bool cloneEvaluateSample = builder.getOption(vISA_cloneEvaluateSampleInst);
+    if (!cloneSample && !cloneEvaluateSample)
     {
         return;
     }
@@ -443,18 +444,46 @@ void Optimizer::cloneSampleInst()
             auto inst = *I;
             if (inst->isSend() && inst->asSendInst()->getMsgDesc()->isSampler() && inst->getExecSize() >= builder.getNativeExecSize())
             {
-                if (!hasSample)
-                {
-                    hasSample = true;
-                    auto flagInit = builder.createMov(g4::SIMD1, builder.createDst(tmpFlag->getRegVar(), isSIMD32 ? Type_UD : Type_UW),
-                        builder.createImm(isSIMD32 ? 0x0F0F0F0F : 0x0F0F, isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
-                    bb->insertBefore(I, flagInit);
-                }
+                G4_InstSend* sendInst = inst->asSendInst();
+                bool isEval = sendInst->getMsgDesc()->ResponseLength() == 0;
+                uint32_t messageType = sendInst->getMsgDesc()->getSamplerMessageType();
                 assert(!inst->getPredicate() && "do not handle predicated sampler inst for now");
-                auto newInst = inst->cloneInst();
-                inst->setPredicate(builder.createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0));
-                newInst->setPredicate(builder.createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0));
-                bb->insertAfter(I, newInst);
+                if (!isEval && cloneSample)
+                {
+                    if (!hasSample)
+                    {
+                        hasSample = true;
+                        auto flagInit = builder.createMov(g4::SIMD1, builder.createDst(tmpFlag->getRegVar(), isSIMD32 ? Type_UD : Type_UW),
+                            builder.createImm(isSIMD32 ? 0x0F0F0F0F : 0x0F0F, isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
+                        bb->insertBefore(I, flagInit);
+                    }
+                    auto newInst = inst->cloneInst();
+                    inst->setPredicate(builder.createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0));
+                    newInst->setPredicate(builder.createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0));
+                    bb->insertAfter(I, newInst);
+                }
+                else if(isEval && cloneEvaluateSample && messageType != 0x1F)
+                {
+                    // 0x1F is the opcode for sampler cache flush
+                    uint32_t newExecSize = (messageType == VISA_3D_SAMPLE_L || messageType == VISA_3D_LD) ? 8 : 1;
+                    uint32_t mask = (1 << newExecSize) - 1;
+                    auto evalTmpFlag = builder.createTempFlag(isSIMD32 ? 2 : 1);
+                    auto flagInit = builder.createMov(g4::SIMD1, builder.createDst(evalTmpFlag->getRegVar(), isSIMD32 ? Type_UD : Type_UW),
+                        builder.createImm(mask, isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
+                    bb->insertBefore(I, flagInit);
+                    inst->setPredicate(builder.createPredicate(PredState_Plus, evalTmpFlag->getRegVar(), 0));
+                    unsigned numInsts = kernel.getSimdSize() / newExecSize;
+                    for (unsigned int i = 1; i < numInsts; i++)
+                    {
+                        auto newInst = inst->cloneInst();
+                        bb->insertAfter(I, newInst);
+                        evalTmpFlag = builder.createTempFlag(isSIMD32 ? 2 : 1);
+                        flagInit = builder.createMov(g4::SIMD1, builder.createDst(evalTmpFlag->getRegVar(), isSIMD32 ? Type_UD : Type_UW),
+                            builder.createImm(mask << (i * newExecSize), isSIMD32 ? Type_UD : Type_UW), InstOpt_WriteEnable, false);
+                        newInst->setPredicate(builder.createPredicate(PredState_Plus, evalTmpFlag->getRegVar(), 0));
+                        bb->insertAfter(I, flagInit);
+                    }
+                }
             }
             I = Next;
         }

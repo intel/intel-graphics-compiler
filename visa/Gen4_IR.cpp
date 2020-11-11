@@ -468,6 +468,12 @@ void G4_SendMsgDescriptor::setBindingTableIdx(unsigned idx)
     desc.value |= idx;
 }
 
+uint32_t G4_SendMsgDescriptor::getSamplerMessageType() const
+{
+    MUST_BE_TRUE(isSampler(), "wrong descriptor type for method");
+    return (getFuncCtrl() >> 12) & 0x1f;
+}
+
 bool G4_SendMsgDescriptor::is16BitInput() const
 {
     return desc.layout.simdMode2 == 1;
