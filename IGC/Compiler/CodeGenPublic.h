@@ -244,7 +244,10 @@ namespace IGC
         bool hasSel;
         bool hasPointer;
         bool hasLocalLoadStore;
-        bool hasBufferStore;
+        bool hasGlobalLoad; // has (stateless) loads from global addresspace
+        bool hasGlobalStore; // has (stateless) stores to global addresspace
+        bool hasStorageBufferLoad; // has (stateful) loads from storage buffers (UAV/SSBO)
+        bool hasStorageBufferStore; // has (stateful) stores to storage buffers (UAV/SSBO)
         bool hasSubroutines;
         bool hasPrimitiveAlloca;
         bool hasNonPrimitiveAlloca;
@@ -257,6 +260,7 @@ namespace IGC
         bool hasAtomics;
         bool hasBarrier;        //<! true if module has thread group barrier
         bool hasDiscard;
+        bool hasTypedRead;
         bool hasTypedwrite;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
         bool hasUniformAssumptions;

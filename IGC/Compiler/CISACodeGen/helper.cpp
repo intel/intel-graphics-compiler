@@ -188,6 +188,34 @@ namespace IGC
         }
         return BUFFER_TYPE_UNKNOWN;
     }
+
+    ///
+    /// returns buffer type from addressspace
+    ///
+    BufferType DecodeBufferType(unsigned addrSpace)
+    {
+        switch (addrSpace)
+        {
+        case ADDRESS_SPACE_CONSTANT:
+            return STATELESS_READONLY;
+        case ADDRESS_SPACE_LOCAL:
+            return SLM;
+        case ADDRESS_SPACE_GLOBAL:
+            return STATELESS;
+        default:
+            break;
+        }
+        GFXResourceAddrSpace temp;
+        temp.u32Val = addrSpace;
+        BufferType type = BUFFER_TYPE_UNKNOWN;
+        if (addrSpace > ADDRESS_SPACE_NUM_ADDRESSES &&
+            (temp.bits.bufType - 1) < BUFFER_TYPE_UNKNOWN)
+        {
+            type = static_cast<BufferType>(temp.bits.bufType - 1);
+        }
+        return type;
+    }
+
     ///
     /// returns constant buffer load offset
     ///

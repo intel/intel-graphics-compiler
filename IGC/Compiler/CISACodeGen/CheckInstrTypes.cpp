@@ -73,7 +73,10 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasPointer = false;
     instrList->hasGenericAddressSpacePointers = false;
     instrList->hasLocalLoadStore = false;
-    instrList->hasBufferStore = false;
+    instrList->hasGlobalLoad = false;
+    instrList->hasGlobalStore = false;
+    instrList->hasStorageBufferLoad = false;
+    instrList->hasStorageBufferStore = false;
     instrList->hasSubroutines = false;
     instrList->hasPrimitiveAlloca = false;
     instrList->hasNonPrimitiveAlloca = false;
@@ -85,6 +88,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasAtomics = false;
     instrList->hasBarrier = false;
     instrList->hasDiscard = false;
+    instrList->hasTypedRead = false;
     instrList->hasTypedwrite = false;
     instrList->mayHaveIndirectOperands = false;
     instrList->hasUniformAssumptions = false;
@@ -238,6 +242,9 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_is_uniform:
             g_InstrTypes->hasUniformAssumptions = true;
             break;
+        case GenISAIntrinsic::GenISA_typedread:
+            g_InstrTypes->hasTypedRead = true;
+            break;
         case GenISAIntrinsic::GenISA_typedwrite:
             g_InstrTypes->hasTypedwrite = true;
             break;
@@ -260,6 +267,28 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_PullCentroidBarys:
             g_InstrTypes->hasPullBary = true;
             break;
+        case GenISAIntrinsic::GenISA_ldraw_indexed:
+        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        {
+            BufferType bufferType = DecodeBufferType(
+                CI->getArgOperand(0)->getType()->getPointerAddressSpace());
+            if (bufferType == UAV || bufferType == BINDLESS)
+            {
+                g_InstrTypes->hasStorageBufferLoad = true;
+            }
+            break;
+        }
+        case GenISAIntrinsic::GenISA_storeraw_indexed:
+        case GenISAIntrinsic::GenISA_storerawvector_indexed:
+        {
+            BufferType bufferType = DecodeBufferType(
+                CI->getArgOperand(0)->getType()->getPointerAddressSpace());
+            if (bufferType == UAV || bufferType == BINDLESS)
+            {
+                g_InstrTypes->hasStorageBufferStore = true;
+            }
+            break;
+        }
         default:
             break;
         }
@@ -326,13 +355,27 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasLoadStore = true;
-    if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+    uint as = I.getPointerAddressSpace();
+    switch (as)
     {
+    case ADDRESS_SPACE_LOCAL:
         g_InstrTypes->hasLocalLoadStore = true;
-    }
-    if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
-    {
+        break;
+    case ADDRESS_SPACE_GENERIC:
         g_InstrTypes->hasGenericAddressSpacePointers = true;
+        break;
+    case ADDRESS_SPACE_GLOBAL:
+        g_InstrTypes->hasGlobalLoad = true;
+        break;
+    default:
+    {
+        BufferType bufferType = DecodeBufferType(as);
+        if (bufferType == UAV || bufferType == BINDLESS)
+        {
+            g_InstrTypes->hasStorageBufferLoad = true;
+        }
+        break;
+    }
     }
 }
 
@@ -345,17 +388,26 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
     {
         g_InstrTypes->psHasSideEffect = true;
     }
-    if (as == ADDRESS_SPACE_LOCAL)
+    switch (as)
     {
+    case ADDRESS_SPACE_LOCAL:
         g_InstrTypes->hasLocalLoadStore = true;
-    }
-    if (as == ADDRESS_SPACE_GENERIC)
-    {
+        break;
+    case ADDRESS_SPACE_GENERIC:
         g_InstrTypes->hasGenericAddressSpacePointers = true;
-    }
-    if (as == ADDRESS_SPACE_GLOBAL)
+        break;
+    case ADDRESS_SPACE_GLOBAL:
+        g_InstrTypes->hasGlobalStore = true;
+        break;
+    default:
     {
-        g_InstrTypes->hasBufferStore = true;
+        BufferType bufferType = DecodeBufferType(as);
+        if (bufferType == UAV || bufferType == BINDLESS)
+        {
+            g_InstrTypes->hasStorageBufferStore = true;
+        }
+        break;
+    }
     }
 }
 

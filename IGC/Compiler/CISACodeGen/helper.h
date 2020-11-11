@@ -192,6 +192,7 @@ namespace IGC
     bool isStatefulAddrSpace(unsigned AS);
 
     BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
+    BufferType DecodeBufferType(unsigned addrSpace);
     int getConstantBufferLoadOffset(llvm::LoadInst* ld);
 
     bool isDummyBasicBlock(llvm::BasicBlock* BB);
