@@ -846,6 +846,7 @@ namespace IGC
         else if (I.getOpcode() == Instruction::Trunc)
         {
             match =
+                MatchRotate(I) ||
                 MatchModifier(I);
         }
         else
@@ -1023,6 +1024,7 @@ namespace IGC
         case Instruction::Or:
             match =
                 MatchBoolOp(I) ||
+                MatchRotate(I) ||
                 MatchLogicAlu(I);
             break;
         case Instruction::Xor:
