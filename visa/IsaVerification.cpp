@@ -554,10 +554,11 @@ void vISAVerifier::verifyRegion(
 
             // Check if the operand may touch more than 2 GRFs due to bad alignment
             // So far vISA is able to handle the splitting of:
-            // moves, logic and cmp instructions
+            // moves, logic, cmp and arithmetic instructions
             if (ISA_Inst_Table[opcode].type != ISA_Inst_Mov &&
                 ISA_Inst_Table[opcode].type != ISA_Inst_Logic &&
-                ISA_Inst_Table[opcode].type != ISA_Inst_Compare)
+                ISA_Inst_Table[opcode].type != ISA_Inst_Compare &&
+                ISA_Inst_Table[opcode].type != ISA_Inst_Arith)
             {
                 REPORT_INSTRUCTION(options, (COMMON_ISA_GRF_REG_SIZE * 2u) > last_region_elt_byte,
                     "CISA operand region access out of 2 GRF boundary (within %d bytes): %d",

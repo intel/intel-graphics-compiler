@@ -952,6 +952,7 @@ void FlowGraph::normalizeRegionDescriptors()
 // materialize the values in global Imm at entry BB
 void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
 {
+    InstSplitPass instSplitter(this);
     for (int i = 0, numImm = immPool.size(); i < numImm; ++i)
     {
         auto&& immVal = immPool.getImmVal(i);
@@ -961,7 +962,8 @@ void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
             Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, InstOpt_WriteEnable, false);
         auto iter = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return !inst->isLabel(); });
-        entryBB->insertBefore(iter, inst);
+        INST_LIST_ITER newMov = entryBB->insertBefore(iter, inst);
+        instSplitter.splitInstruction(newMov, entryBB->getInstList());
     }
 }
 
