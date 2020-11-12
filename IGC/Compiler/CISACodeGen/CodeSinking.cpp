@@ -1341,16 +1341,29 @@ namespace IGC {
 
             if (auto* DVI = dyn_cast<DbgValueInst>(inst))
             {
-                if (auto* def = dyn_cast<Instruction>(DVI->getValue()))
-                {
-                    if (!DT->dominates(def, inst))
+                // As debug intrinsics are not specified as users of an llvm instructions,
+                // it may happen during transformation/optimization the first argument is
+                // malformed (actually is dead). Not to chase each possible optimzation
+                // let's do a general check here.
+                if (DVI->getValue() != nullptr) {
+                    if (auto* def = dyn_cast<Instruction>(DVI->getValue()))
                     {
-                        auto* instClone = inst->clone();
-                        instClone->insertAfter(def);
-                        Value* undef = UndefValue::get(def->getType());
-                        MetadataAsValue* MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
-                        cast<CallInst>(inst)->setArgOperand(0, MAV);
+                        if (!DT->dominates(def, inst))
+                        {
+                            auto* instClone = inst->clone();
+                            instClone->insertAfter(def);
+                            Value* undef = UndefValue::get(def->getType());
+                            MetadataAsValue* MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
+                            cast<CallInst>(inst)->setArgOperand(0, MAV);
+                        }
                     }
+                }
+                else {
+                    // The intrinsic is actually unneeded and will be removed later. Thus the type of the
+                    // first argument is not important now.
+                    Value* undef = UndefValue::get(llvm::Type::getInt32Ty(inst->getContext()));
+                    MetadataAsValue* MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
+                    cast<CallInst>(inst)->setArgOperand(0, MAV);
                 }
             }
         } while (!processedBegin);
