@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace vISA {
 
-static const uint32_t MAX_SYMBOL_NAME_LENGTH = 256;
+static const uint32_t MAX_SYMBOL_NAME_LENGTH = 1024;
 
 /// GenSymType - Specify the symbol's type
 enum GenSymType {
