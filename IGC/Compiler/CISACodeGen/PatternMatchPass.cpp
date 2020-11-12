@@ -2972,16 +2972,22 @@ namespace IGC
         pattern->instruction = &I;
         uint nbSources = GetNbSources(I);
 
-        bool supportModifer = SupportsModifier(&I);
+        bool supportModiferSrc0 = SupportsModifier(&I);
         bool supportRegioning = SupportsRegioning(&I);
-        pattern->sources[0] = GetSource(I.getOperand(0), supportModifer && SupportSrc0Mod, supportRegioning);
-        if (nbSources > 1)
-        {
-            pattern->sources[1] = GetSource(I.getOperand(1), supportModifer, supportRegioning);
+        llvm::Instruction* src0Inst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
+        if (I.getOpcode() == llvm::Instruction::UDiv && src0Inst && src0Inst->getOpcode() == llvm::Instruction::Sub) {
+            supportModiferSrc0 = false;
         }
-
+        pattern->sources[0] = GetSource(I.getOperand(0), supportModiferSrc0 && SupportSrc0Mod, supportRegioning);
         if (nbSources > 1)
         {
+            bool supportModiferSrc1 = SupportsModifier(&I);
+            llvm::Instruction* src1Inst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1));
+            if (I.getOpcode() == llvm::Instruction::UDiv && src1Inst && src1Inst->getOpcode() == llvm::Instruction::Sub) {
+                supportModiferSrc1 = false;
+            }
+            pattern->sources[1] = GetSource(I.getOperand(1), supportModiferSrc1, supportRegioning);
+
             // add df imm to constant pool for binary/ternary inst
             // we do 64-bit int imm bigger than 32 bits, since smaller may fit in D/W
             for (int i = 0, numSrc = (int)nbSources; i < numSrc; ++i)
