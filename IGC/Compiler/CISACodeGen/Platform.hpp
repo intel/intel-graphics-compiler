@@ -450,7 +450,6 @@ bool hasCorrectlyRoundedMacros() const {
 }
 
 bool hasFusedEU() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE; }
-bool supports256GRFPerThread() const { return false; }
 bool supportMixMode() const {
     return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
         (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
