@@ -404,13 +404,20 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
 void restoreFCallState(
     G4_Kernel* kernel, const std::map<G4_BB*, G4_INST*>& savedFCallState)
 {
-    // Iterate over all BBs in kernel and clean up the edges.
-    // FIXME: do we need to do this still?
+    // Iterate over all BBs in kernel and fix all fcalls converted
+    // to calls by reconverting them to fcall. This is required
+    // because we want to reuse IR of function for next kernel.
+
     for (auto&& iter : savedFCallState)
     {
         auto curBB = iter.first;
+        auto genOffset = curBB->back()->getGenOffset();
+        curBB->pop_back();
         auto origInst = iter.second;
         assert(origInst->isFCall() || origInst->isFReturn());
+        curBB->push_back(origInst);
+        // set the genOffset in case of GenOffset being used when creating symbol table
+        origInst->setGenOffset(genOffset);
 
         if (origInst->isFCall() && !origInst->asCFInst()->isIndirectCall())
         {
@@ -440,6 +447,7 @@ void restoreFCallState(
 
 // Stitch the FG of subFunctions to mainFunc
 // mainFunc could be a kernel or a non-kernel function.
+// It also modifies pseudo_fcall/fret in to call/ret opcodes.
 // ToDo: may consider stitching only functions that may be called by this kernel/function
 static void Stitch_Compiled_Units(
     G4_Kernel* mainFunc, std::map<std::string, G4_Kernel*>& subFuncs,
@@ -463,7 +471,8 @@ static void Stitch_Compiled_Units(
     mainFunc->fg.reassignBlockIDs();
     mainFunc->fg.setPhysicalPredSucc(); // this is to locate the next BB after an fcall
 
-    // setup caller/callee edges
+    auto builder = mainFunc->fg.builder;
+    // Change fcall/fret to call/ret and setup caller/callee edges
     for (G4_BB* cur : mainFunc->fg)
     {
         if (cur->isEndWithFCall())
@@ -491,8 +500,44 @@ static void Stitch_Compiled_Units(
                 // Connect new fg
                 mainFunc->fg.addPredSuccEdges(cur, callee->fg.getEntryBB());
                 mainFunc->fg.addPredSuccEdges(callee->fg.getUniqueReturnBlock(), retBlock);
+
+                G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
+                ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
+
+                auto callInst = builder->createInternalInst(
+                    fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
+                    fcall->getDst(), calleeLabel->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                callInst->inheritDIFrom(fcall);
+                cur->pop_back();
+                cur->push_back(callInst);
+            }
+            else
+            {
+                // src0 is dont care for indirect call as long it's not a label
+                auto callInst = builder->createInternalInst(
+                    fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
+                    fcall->getDst(), fcall->getSrc(0), fcall->getSrc(0), fcall->getOption());
+                callInst->inheritDIFrom(fcall);
+                cur->pop_back();
+                cur->push_back(callInst);
             }
             FCallRetMap[cur] = fcall;
+        }
+    }
+
+    // Change fret to ret
+    for (G4_BB* cur : mainFunc->fg)
+    {
+        if (cur->isEndWithFRet())
+        {
+            G4_INST* fret = cur->back();
+            auto retInst = builder->createInternalInst(
+                fret->getPredicate(), G4_return, nullptr, g4::NOSAT, fret->getExecSize(),
+                builder->createNullDst(Type_UD), fret->getSrc(0), fret->getSrc(1), fret->getOption());
+            retInst->inheritDIFrom(fret);
+            cur->pop_back();
+            cur->push_back(retInst);
+            FCallRetMap[cur] = fret;
         }
     }
 

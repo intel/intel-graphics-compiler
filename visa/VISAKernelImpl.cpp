@@ -273,7 +273,7 @@ void VISAKernelImpl::adjustIndirectCallOffset()
             continue;
 
         // At this point G4_pseudo_fcall may be converted to G4_call
-        if (bb->isEndWithCall() || bb->isEndWithFCall())
+        if (bb->back()->isCall() || bb->back()->isFCall())
         {
             G4_INST* fcall = bb->back();
             if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0())

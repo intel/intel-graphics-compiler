@@ -1557,9 +1557,8 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST* inst)
 inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
 {
     Status myStatus = SUCCESS;
-    if (inst->isLabel() ||
-         inst->isCall() ||
-         inst->isFCall())
+    if (inst->isLabel()  ||
+         inst->isCall())
         return myStatus;
 
     if (inst->isSplitSend())
@@ -3169,7 +3168,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if ((op == G4_call || op == G4_pseudo_fcall) && inst->getSrc(0))
+    if (op == G4_call && inst->getSrc(0))
     {
 
         if (inst->getSrc(0)->isLabel())
