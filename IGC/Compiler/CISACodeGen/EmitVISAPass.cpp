@@ -15094,11 +15094,14 @@ void EmitPass::emitScatter4A64(CVariable* src, CVariable* offset, bool addrUnifo
     }
 }
 
+
+
 void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
 {
     int immOffsetInt = 0;
     if (immOffset)
         immOffsetInt = static_cast<int>(immOffset->getSExtValue());
+
 
     Value* Ptr = inst->getPointerOperand();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
