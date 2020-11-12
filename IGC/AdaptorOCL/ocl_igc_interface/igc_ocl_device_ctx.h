@@ -105,7 +105,7 @@ CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclDeviceCtx, I
                                                                                IGC::IgcOclTranslationCtx
                                                              );
 CIF_MARK_LATEST_VERSION(IgcOclDeviceCtxLatest, IgcOclDeviceCtx);
-using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtx<1>; // Note : can tag with different version for
+using IgcOclDeviceCtxTagOCL = IgcOclDeviceCtxLatest; // Note : can tag with different version for
                                                              //        transition periods
 
 }
