@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../ExternalLibraries/libclc/cbrt.cl"
+#include "../IMF/FP32/cbrt_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/cbrt_d_la.cl"
@@ -44,7 +43,7 @@ INLINE float __builtin_spirv_OpenCL_cbrt_f32( float x )
     }
     else
     {
-            result = libclc_cbrt_f32(x);
+        result = __ocl_svml_cbrtf(x);
     }
 
     return result;
