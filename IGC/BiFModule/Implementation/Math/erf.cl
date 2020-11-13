@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../ExternalLibraries/libclc/erf.cl"
+#include "../IMF/FP32/erf_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/erf_d_la.cl"
@@ -35,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 INLINE float __builtin_spirv_OpenCL_erf_f32( float x )
 {
-        return libclc_erf_f32(x);
+    return __ocl_svml_erff(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erf, float, float, f32 )
