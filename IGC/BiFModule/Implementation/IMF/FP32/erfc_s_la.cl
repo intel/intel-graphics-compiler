@@ -1,0 +1,842 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+
+#include "../imf.h"
+#pragma OPENCL FP_CONTRACT OFF
+typedef struct
+{
+
+    unsigned int _erfc_tbl[645 * 2];
+
+    unsigned int _AbsMask;
+    unsigned int _MaxThreshold;
+    unsigned int _SgnMask;
+    unsigned int _One;
+    unsigned int _SRound;
+    unsigned int _TwoM48;
+
+    unsigned int _poly1_0;
+    unsigned int _poly1_1;
+    unsigned int _poly3_0;
+    unsigned int _poly3_1;
+    unsigned int _poly1_2;
+    unsigned int _poly1_3;
+
+    unsigned int _UF_Threshold;
+    unsigned int _TwoP48;
+
+} __internal_serfc_la_data_t;
+static __constant __internal_serfc_la_data_t __internal_serfc_la_data = {
+
+    {
+     0x57800000u, 0x57906ebbu,
+     0x577b7ca2u, 0x579065b4u,
+     0x5776f9d5u, 0x57904aa3u,
+     0x57727828u, 0x57901d93u,
+     0x576df82bu, 0x578fde94u,
+     0x57697a6eu, 0x578f8dbdu,
+     0x5764ff7fu, 0x578f2b2eu,
+     0x576087eau, 0x578eb70au,
+     0x575c143du, 0x578e317du,
+     0x5757a500u, 0x578d9ab9u,
+     0x57533abfu, 0x578cf2f5u,
+     0x574ed5feu, 0x578c3a6fu,
+     0x574a7744u, 0x578b716cu,
+     0x57461f12u, 0x578a9834u,
+     0x5741cdebu, 0x5789af18u,
+     0x573d844au, 0x5788b66cu,
+     0x573942acu, 0x5787ae8bu,
+     0x57350989u, 0x578697d3u,
+     0x5730d956u, 0x578572a8u,
+     0x572cb284u, 0x57843f72u,
+     0x57289583u, 0x5782fe9fu,
+     0x572482bdu, 0x5781b0a0u,
+     0x57207a9bu, 0x578055e8u,
+     0x571c7d80u, 0x577ddddfu,
+     0x57188bcbu, 0x577af867u,
+     0x5714a5dau, 0x5777fc62u,
+     0x5710cc05u, 0x5774ead4u,
+     0x570cfe9fu, 0x5771c4c4u,
+     0x57093df9u, 0x576e8b3eu,
+     0x57058a5eu, 0x576b3f51u,
+     0x5701e415u, 0x5767e20fu,
+     0x56fc96c6u, 0x5764748eu,
+     0x56f5810au, 0x5760f7e5u,
+     0x56ee876du, 0x575d6d2du,
+     0x56e7aa5au, 0x5759d57eu,
+     0x56e0ea35u, 0x575631f4u,
+     0x56da4757u, 0x575283a7u,
+     0x56d3c214u, 0x574ecbb1u,
+     0x56cd5ab3u, 0x574b0b28u,
+     0x56c71175u, 0x57474323u,
+     0x56c0e692u, 0x574374b5u,
+     0x56bada38u, 0x573fa0eeu,
+     0x56b4ec8fu, 0x573bc8dcu,
+     0x56af1db3u, 0x5737ed89u,
+     0x56a96dbcu, 0x57340ff9u,
+     0x56a3dcb7u, 0x5730312eu,
+     0x569e6aaau, 0x572c5223u,
+     0x56991793u, 0x572873cfu,
+     0x5693e369u, 0x57249721u,
+     0x568ece1au, 0x5720bd06u,
+     0x5689d78fu, 0x571ce661u,
+     0x5684ffa8u, 0x5719140fu,
+     0x56804640u, 0x571546e7u,
+     0x56775654u, 0x57117fb9u,
+     0x566e5c65u, 0x570dbf4cu,
+     0x56659e43u, 0x570a0662u,
+     0x565d1b6du, 0x570655b1u,
+     0x5654d35du, 0x5702adebu,
+     0x564cc57du, 0x56fe1f73u,
+     0x5644f12fu, 0x56f6f777u,
+     0x563d55ccu, 0x56efe513u,
+     0x5635f2a1u, 0x56e8e968u,
+     0x562ec6f6u, 0x56e20584u,
+     0x5627d207u, 0x56db3a64u,
+     0x5621130bu, 0x56d488f8u,
+     0x561a8931u, 0x56cdf21cu,
+     0x561433a0u, 0x56c7769bu,
+     0x560e117cu, 0x56c11733u,
+     0x560821e1u, 0x56bad48du,
+     0x560263e5u, 0x56b4af46u,
+     0x55f9ad39u, 0x56aea7eau,
+     0x55eef22bu, 0x56a8bef3u,
+     0x55e494b6u, 0x56a2f4ceu,
+     0x55da92ebu, 0x569d49d9u,
+     0x55d0ead3u, 0x5697be62u,
+     0x55c79a75u, 0x569252aau,
+     0x55be9fd3u, 0x568d06e3u,
+     0x55b5f8eeu, 0x5687db31u,
+     0x55ada3c2u, 0x5682cfadu,
+     0x55a59e4cu, 0x567bc8c2u,
+     0x559de68au, 0x56723298u,
+     0x55967a77u, 0x5668dcc1u,
+     0x558f5812u, 0x565fc70eu,
+     0x55887d5cu, 0x5656f136u,
+     0x5581e856u, 0x564e5adfu,
+     0x55772e0cu, 0x56460399u,
+     0x556b0eebu, 0x563deae4u,
+     0x555f6f64u, 0x5636102bu,
+     0x55544b9eu, 0x562e72cbu,
+     0x55499fc8u, 0x5627120fu,
+     0x553f681du, 0x561fed36u,
+     0x5535a0e6u, 0x5619036eu,
+     0x552c4679u, 0x561253dcu,
+     0x55235539u, 0x560bdd96u,
+     0x551ac999u, 0x56059fa9u,
+     0x5512a01cu, 0x55ff3230u,
+     0x550ad554u, 0x55f391b9u,
+     0x550365e5u, 0x55e85bd0u,
+     0x54f89d02u, 0x55dd8e4cu,
+     0x54eb17dfu, 0x55d326f3u,
+     0x54de360fu, 0x55c92385u,
+     0x54d1f166u, 0x55bf81b6u,
+     0x54c643dcu, 0x55b63f32u,
+     0x54bb2790u, 0x55ad59a1u,
+     0x54b096c5u, 0x55a4cea4u,
+     0x54a68be5u, 0x559c9bd9u,
+     0x549d0180u, 0x5594beddu,
+     0x5493f24cu, 0x558d354bu,
+     0x548b5926u, 0x5585fcbfu,
+     0x54833111u, 0x557e25afu,
+     0x5476ea69u, 0x5570ea68u,
+     0x546841c1u, 0x556442f0u,
+     0x545a5f10u, 0x55582a98u,
+     0x544d398bu, 0x554c9cbdu,
+     0x5440c8aeu, 0x554194c7u,
+     0x54350440u, 0x55370e2cu,
+     0x5429e44fu, 0x552d0474u,
+     0x541f612fu, 0x55237336u,
+     0x5415737du, 0x551a561bu,
+     0x540c1417u, 0x5511a8e1u,
+     0x54033c22u, 0x5509675au,
+     0x53f5ca07u, 0x55018d6bu,
+     0x53e610c3u, 0x54f42e22u,
+     0x53d74046u, 0x54e600c0u,
+     0x53c94cd8u, 0x54d88b05u,
+     0x53bc2b3au, 0x54cbc574u,
+     0x53afd0a5u, 0x54bfa8c4u,
+     0x53a432c3u, 0x54b42ddbu,
+     0x539947afu, 0x54a94dcfu,
+     0x538f05f3u, 0x549f01ecu,
+     0x5385647eu, 0x549543aeu,
+     0x5378b557u, 0x548c0cc2u,
+     0x5367c06au, 0x5483570au,
+     0x5357da71u, 0x54763931u,
+     0x5348f45fu, 0x5466af65u,
+     0x533affdau, 0x5458059cu,
+     0x532def39u, 0x544a3127u,
+     0x5321b57au, 0x543d27b5u,
+     0x5316463du, 0x5430df57u,
+     0x530b95bdu, 0x54254e7bu,
+     0x530198ccu, 0x541a6beeu,
+     0x52f08999u, 0x54102ed6u,
+     0x52df1f58u, 0x54068eb5u,
+     0x52cedfb9u, 0x53fb06c5u,
+     0x52bfb8a0u, 0x53ea0a1du,
+     0x52b198e5u, 0x53da1876u,
+     0x52a4704eu, 0x53cb237au,
+     0x52982f7cu, 0x53bd1d6fu,
+     0x528cc7ebu, 0x53aff93bu,
+     0x52822be3u, 0x53a3aa56u,
+     0x52709cdeu, 0x539824ceu,
+     0x525e46a9u, 0x538d5d3cu,
+     0x524d3e18u, 0x538348c6u,
+     0x523d6d6fu, 0x5373ba24u,
+     0x522ec035u, 0x53622096u,
+     0x52212321u, 0x5351b22au,
+     0x52148413u, 0x53425d18u,
+     0x5208d1fcu, 0x53341080u,
+     0x51fbf9acu, 0x5326bc5eu,
+     0x51e7eb29u, 0x531a5183u,
+     0x51d55c2du, 0x530ec18cu,
+     0x51c43238u, 0x5303fedau,
+     0x51b45472u, 0x52f3f919u,
+     0x51a5ab93u, 0x52e15ce8u,
+     0x519821ceu, 0x52d0121bu,
+     0x518ba2bcu, 0x52c002f8u,
+     0x51801b49u, 0x52b11afeu,
+     0x516af33cu, 0x52a346d7u,
+     0x51575a21u, 0x5296744cu,
+     0x51454c24u, 0x528a9237u,
+     0x5134ac3bu, 0x527f20e7u,
+     0x51255f51u, 0x526abfa9u,
+     0x51174c27u, 0x5257e42fu,
+     0x510a5b3bu, 0x524673afu,
+     0x50fced50u, 0x52365507u,
+     0x50e7141du, 0x522770a1u,
+     0x50d304fcu, 0x5219b066u,
+     0x50c09cb5u, 0x520cffa3u,
+     0x50afba92u, 0x52014af8u,
+     0x50a04037u, 0x51ed0088u,
+     0x50921177u, 0x51d91d2du,
+     0x50851430u, 0x51c6cc35u,
+     0x50726058u, 0x51b5f011u,
+     0x505c9dfau, 0x51a66d2au,
+     0x5048b7beu, 0x519829c8u,
+     0x50368738u, 0x518b0df2u,
+     0x5025e8e0u, 0x517e06abu,
+     0x5016bbdfu, 0x5167ea53u,
+     0x5008e1dfu, 0x5153a034u,
+     0x4ff87dc3u, 0x5141045eu,
+     0x4fe1721fu, 0x512ff56du,
+     0x4fcc712au, 0x51205461u,
+     0x4fb94efbu, 0x51120475u,
+     0x4fa7e31eu, 0x5104eafcu,
+     0x4f980855u, 0x50f1de7au,
+     0x4f899c5cu, 0x50dbf4a3u,
+     0x4f78ff60u, 0x50c7ee0eu,
+     0x4f612ab5u, 0x50b5a381u,
+     0x4f4b8583u, 0x50a4f0bcu,
+     0x4f37deefu, 0x5095b43bu,
+     0x4f260a27u, 0x5087cf0eu,
+     0x4f15de0fu, 0x5076494du,
+     0x4f0734f9u, 0x505f355eu,
+     0x4ef3d8c4u, 0x504a31bfu,
+     0x4edbc95eu, 0x503711b4u,
+     0x4ec601e9u, 0x5025ac0eu,
+     0x4eb24d81u, 0x5015dae6u,
+     0x4ea07bcau, 0x50077b62u,
+     0x4e906098u, 0x4ff4daf4u,
+     0x4e81d395u, 0x4fdd2782u,
+     0x4e695fe3u, 0x4fc7a666u,
+     0x4e51a834u, 0x4fb42611u,
+     0x4e3c42e7u, 0x4fa2790fu,
+     0x4e28f835u, 0x4f9275b9u,
+     0x4e179555u, 0x4f83f5e9u,
+     0x4e07ec0bu, 0x4f6dad68u,
+     0x4df3a498u, 0x4f55f04fu,
+     0x4dda43bau, 0x4f407a1du,
+     0x4dc37003u, 0x4f2d1570u,
+     0x4daeea58u, 0x4f1b9188u,
+     0x4d9c7974u, 0x4f0bc1e7u,
+     0x4d8be963u, 0x4efafbecu,
+     0x4d7a160cu, 0x4ee14167u,
+     0x4d5f6759u, 0x4eca10ceu,
+     0x4d477955u, 0x4eb52cb9u,
+     0x4d3205fbu, 0x4ea25d43u,
+     0x4d1ecdf3u, 0x4e916f95u,
+     0x4d0d97f2u, 0x4e823575u,
+     0x4cfc6061u, 0x4e6909ccu,
+     0x4ce0cfd4u, 0x4e506f88u,
+     0x4cc829c6u, 0x4e3a56e4u,
+     0x4cb221ffu, 0x4e268119u,
+     0x4c9e73c2u, 0x4e14b538u,
+     0x4c8ce119u, 0x4e04bfb1u,
+     0x4c7a6462u, 0x4dece39bu,
+     0x4c5e6987u, 0x4dd34296u,
+     0x4c457726u, 0x4dbc4fdcu,
+     0x4c2f3bdbu, 0x4da7c64bu,
+     0x4c1b6e79u, 0x4d956771u,
+     0x4c09cd3eu, 0x4d84fae8u,
+     0x4bf43a38u, 0x4d6c9b8fu,
+     0x4bd85225u, 0x4d52644fu,
+     0x4bbf8325u, 0x4d3afd47u,
+     0x4ba977f0u, 0x4d261be0u,
+     0x4b95e415u, 0x4d137cf0u,
+     0x4b848320u, 0x4d02e402u,
+     0x4b6a2f8bu, 0x4ce8356bu,
+     0x4b4ed659u, 0x4ccde050u,
+     0x4b369893u, 0x4cb670d5u,
+     0x4b211e8au, 0x4ca19816u,
+     0x4b0e19e7u, 0x4c8f0f43u,
+     0x4afa896fu, 0x4c7d2da8u,
+     0x4adcc11eu, 0x4c5febabu,
+     0x4ac26b7fu, 0x4c45f27cu,
+     0x4aab2549u, 0x4c2ee6b3u,
+     0x4a969605u, 0x4c1a767cu,
+     0x4a846ee9u, 0x4c0858a4u,
+     0x4a68d3a8u, 0x4bf09770u,
+     0x4a4c90c6u, 0x4bd42a75u,
+     0x4a33a635u, 0x4bbb01ddu,
+     0x4a1db15bu, 0x4ba4c066u,
+     0x4a0a5aa0u, 0x4b9112d9u,
+     0x49f2a881u, 0x4b7f5e08u,
+     0x49d4b277u, 0x4b60a591u,
+     0x49ba58bdu, 0x4b45867eu,
+     0x49a32ed5u, 0x4b2d97f3u,
+     0x498ed4a2u, 0x4b187c9eu,
+     0x4979ea08u, 0x4b05e186u,
+     0x495a8951u, 0x4aeaf9d4u,
+     0x493f01d9u, 0x4ace1a8cu,
+     0x4926ddccu, 0x4ab4b0dcu,
+     0x4911b50du, 0x4a9e558au,
+     0x48fe574au, 0x4a8aad05u,
+     0x48dde0d0u, 0x4a72cc48u,
+     0x48c1776eu, 0x4a547203u,
+     0x48a89cd3u, 0x4a39cbe3u,
+     0x4892e1aau, 0x4a226937u,
+     0x487fc7c2u, 0x4a0de652u,
+     0x485e9a3au, 0x49f7d629u,
+     0x4841a2c3u, 0x49d85345u,
+     0x48285baeu, 0x49bcba74u,
+     0x48124f79u, 0x49a49254u,
+     0x47fe2dc4u, 0x498f6fd2u,
+     0x47dcae77u, 0x4979e90cu,
+     0x47bf81ddu, 0x49599a7du,
+     0x47a61c4eu, 0x493d616cu,
+     0x47900357u, 0x4924bcd6u,
+     0x47799750u, 0x490f3b3eu,
+     0x47582e7fu, 0x48f8f1a9u,
+     0x473b27a3u, 0x48d83bc6u,
+     0x4721f2b6u, 0x48bbbab7u,
+     0x470c11c0u, 0x48a2e733u,
+     0x46f22d4cu, 0x488d4a80u,
+     0x46d14266u, 0x4874f900u,
+     0x46b4bacbu, 0x485443dfu,
+     0x469c03d6u, 0x4837d5b2u,
+     0x46869d9bu, 0x481f2272u,
+     0x46683120u, 0x4809af94u,
+     0x46482706u, 0x47ee23cfu,
+     0x462c7395u, 0x47cdd76au,
+     0x46148366u, 0x47b1d636u,
+     0x45ffac6du, 0x4799912du,
+     0x45dbf8fau, 0x47848b78u,
+     0x45bd2a88u, 0x4764b060u,
+     0x45a298a1u, 0x474530bau,
+     0x458bb0fcu, 0x4729f27cu,
+     0x456fe94bu, 0x47126579u,
+     0x454deaf8u, 0x46fc1860u,
+     0x4530a808u, 0x46d8f2d6u,
+     0x45177b00u, 0x46ba9c63u,
+     0x4501d48cu, 0x46a06fecu,
+     0x44de7135u, 0x4689de04u,
+     0x44be77a1u, 0x466cd440u,
+     0x44a302b0u, 0x464b505au,
+     0x448b71e5u, 0x462e74d6u,
+     0x446e7534u, 0x46159f2au,
+     0x444bca2du, 0x46004280u,
+     0x442e1414u, 0x45dbc9bfu,
+     0x4414a0a8u, 0x45bc396du,
+     0x43fdac7du, 0x45a11d60u,
+     0x43d860d4u, 0x4589d7a8u,
+     0x43b87a3au, 0x456bbf86u,
+     0x439d3454u, 0x45497f9au,
+     0x4385e630u, 0x452c23f7u,
+     0x4363fd06u, 0x4512fcf7u,
+     0x434200dbu, 0x44fae63cu,
+     0x4325014du, 0x44d607b0u,
+     0x430c4623u, 0x44b67d4eu,
+     0x42ee627du, 0x449b855cu,
+     0x42ca7603u, 0x44847920u,
+     0x42abde4bu, 0x44619261u,
+     0x4291d40du, 0x443ff482u,
+     0x4277593cu, 0x442344bfu,
+     0x4251abcau, 0x440acd1cu,
+     0x4231a5c0u, 0x43ebe2cau,
+     0x42167152u, 0x43c85727u,
+     0x41feaf84u, 0x43aa1178u,
+     0x41d779e7u, 0x43904cc0u,
+     0x41b63731u, 0x4374c081u,
+     0x419a03dbu, 0x434f7703u,
+     0x41821dd0u, 0x432fc5c4u,
+     0x415bbf2eu, 0x4314d94au,
+     0x41397862u, 0x42fbf99cu,
+     0x411c770cu, 0x42d52bb9u,
+     0x4103eeb4u, 0x42b4411fu,
+     0x40de62c7u, 0x429858a7u,
+     0x40bb5652u, 0x4280b23eu,
+     0x409dbc89u, 0x4259543fu,
+     0x4084bfc1u, 0x42376979u,
+     0x405f551fu, 0x421ab66bu,
+     0x403bc5f1u, 0x420270afu,
+     0x401dccc2u, 0x41dbd820u,
+     0x40048c16u, 0x41b92c31u,
+     0x3fde907eu, 0x419be496u,
+     0x3fbac490u, 0x41832dcbu,
+     0x3f9ca73du, 0x415ca86au,
+     0x3f8354cbu, 0x41397ecau,
+     0x3f5c1947u, 0x411bdc1eu,
+     0x3f3857fau, 0x4102e528u,
+     0x3f1a529eu, 0x40dbc03fu,
+     0x3f0120efu, 0x40b85f58u,
+     0x3ed7fdc8u, 0x409a9d36u,
+     0x3eb48e3eu, 0x40819878u,
+     0x3e96dc65u, 0x4059250bu,
+     0x3e7bfa7cu, 0x4035d48du,
+     0x3e5255b2u, 0x40182f4cu,
+     0x3e2f7d27u, 0x3ffe9ef1u,
+     0x3e12586cu, 0x3fd4e64au,
+     0x3df3f750u, 0x3fb1ed7cu,
+     0x3dcb4137u, 0x3f94a0bbu,
+     0x3da94169u, 0x3f782f41u,
+     0x3d8ce028u, 0x3f4f1ceeu,
+     0x3d6a654eu, 0x3f2cc100u,
+     0x3d42e7d6u, 0x3f100645u,
+     0x3d21fd99u, 0x3ef00749u,
+     0x3d0691c1u, 0x3ec7ea70u,
+     0x3cdf78d9u, 0x3ea66ce0u,
+     0x3cb976f2u, 0x3e8a7a45u,
+     0x3c99d8e5u, 0x3e665575u,
+     0x3c7f1de8u, 0x3e3f778au,
+     0x3c536be9u, 0x3e1f14b2u,
+     0x3c2f2031u, 0x3e041bb4u,
+     0x3c10fdbdu, 0x3ddb4f88u,
+     0x3beff7dfu, 0x3db5f2bau,
+     0x3bc67c0bu, 0x3d96e08du,
+     0x3ba417d4u, 0x3d7a1a1eu,
+     0x3b879862u, 0x3d4f30a7u,
+     0x3b5ffc37u, 0x3d2b8e9au,
+     0x3b38e85bu, 0x3d0dfba1u,
+     0x3b1892fbu, 0x3ceae636u,
+     0x3afbaaf5u, 0x3cc2374fu,
+     0x3acf75d5u, 0x3ca08024u,
+     0x3aaaef8cu, 0x3c8492c0u,
+     0x3a8cc60cu, 0x3c5ae75bu,
+     0x3a67c170u, 0x3c34a340u,
+     0x3a3ead7bu, 0x3c14fcf4u,
+     0x3a1cce14u, 0x3bf5a5cfu,
+     0x3a00e32du, 0x3bca68efu,
+     0x39d3c741u, 0x3ba6b383u,
+     0x39ade7c9u, 0x3b8939a3u,
+     0x398ebc8eu, 0x3b61cfd0u,
+     0x396a31eeu, 0x3b39b3ceu,
+     0x394008feu, 0x3b18a48bu,
+     0x391d638eu, 0x3afad08du,
+     0x3900ee61u, 0x3acdf654u,
+     0x38d322ceu, 0x3aa90c4du,
+     0x38accb15u, 0x3a8aaea4u,
+     0x388d5872u, 0x3a636e45u,
+     0x3867216fu, 0x3a3a6544u,
+     0x383ce218u, 0x3a18b095u,
+     0x381a4894u, 0x39fa092du,
+     0x37fbec07u, 0x39cc9f41u,
+     0x37cd9386u, 0x39a76003u,
+     0x37a7acfdu, 0x3988d758u,
+     0x3788b256u, 0x395fa559u,
+     0x375ec64bu, 0x3936ab0fu,
+     0x373570b9u, 0x39152037u,
+     0x3713b43au, 0x38f35dd3u,
+     0x36f05d69u, 0x38c67c0au,
+     0x36c37bc4u, 0x38a1ccfcu,
+     0x369ee7d7u, 0x3883d518u,
+     0x36811c14u, 0x3856b981u,
+     0x3651b337u, 0x382ec87au,
+     0x362a371cu, 0x380e33a7u,
+     0x360a1932u, 0x37e74660u,
+     0x35dff98bu, 0x37bbfab1u,
+     0x35b589f6u, 0x3798b6d4u,
+     0x3593127au, 0x37780230u,
+     0x356e2ef2u, 0x37494905u,
+     0x3540c69du, 0x372348d9u,
+     0x351bf310u, 0x370464b5u,
+     0x34fc31bfu, 0x36d69685u,
+     0x34cbd1eeu, 0x36add231u,
+     0x34a4a520u, 0x368cbaf0u,
+     0x3484ef72u, 0x3663c449u,
+     0x34568fd0u, 0x363839e2u,
+     0x342d122fu, 0x3614efa4u,
+     0x340b893cu, 0x35f0b1dfu,
+     0x33e0e3a6u, 0x35c265d8u,
+     0x33b5237au, 0x359cede7u,
+     0x3391d42cu, 0x357d3dc9u,
+     0x336ab0cbu, 0x354c3b50u,
+     0x333cc25bu, 0x3524a05eu,
+     0x3317be62u, 0x3504a304u,
+     0x32f3db16u, 0x34d59f46u,
+     0x32c3d8afu, 0x34abf19fu,
+     0x329d3680u, 0x348a545bu,
+     0x327c475du, 0x345e76f3u,
+     0x324a5141u, 0x3432cc8cu,
+     0x32222c05u, 0x340fa24cu,
+     0x3201edfcu, 0x33e6a843u,
+     0x31d01833u, 0x33b91cbau,
+     0x31a68f97u, 0x33947ce5u,
+     0x318540a5u, 0x336e1a5bu,
+     0x31551b65u, 0x333eced8u,
+     0x312a535bu, 0x3318d52bu,
+     0x31081119u, 0x32f4b613u,
+     0x30d94acfu, 0x32c3d10cu,
+     0x30ad6b36u, 0x329c9d69u,
+     0x308a563fu, 0x327a666du,
+     0x305c98dcu, 0x32481354u,
+     0x302fcd12u, 0x321fc975u,
+     0x300c08aau, 0x31ff1904u,
+     0x2fdefaafu, 0x31cb87d8u,
+     0x2fb17113u, 0x31a24ef3u,
+     0x2f8d22bbu, 0x31815f38u,
+     0x2f60685fu, 0x314e2339u,
+     0x2f3251c3u, 0x3124258fu,
+     0x2f0da0c6u, 0x3102a54du,
+     0x2ee0dd25u, 0x30cfdccau,
+     0x2eb26c30u, 0x30a54727u,
+     0x2e8d8121u, 0x30835a7fu,
+     0x2e605773u, 0x3050aec3u,
+     0x2e31bffdu, 0x3025afefu,
+     0x2e0cc431u, 0x30037c6du,
+     0x2dded902u, 0x2fd09664u,
+     0x2db04f61u, 0x2fa55e85u,
+     0x2d8b6c69u, 0x2f830aa5u,
+     0x2d5c66c4u, 0x2f4f93fdu,
+     0x2d2e1f21u, 0x2f2453feu,
+     0x2d097e36u, 0x2f0206a5u,
+     0x2cd908c8u, 0x2ecdaaf4u,
+     0x2cab3670u, 0x2ea293d6u,
+     0x2c86fff0u, 0x2e8073d6u,
+     0x2c54ca13u, 0x2e4ae1acu,
+     0x2c279ec9u, 0x2e2023e7u,
+     0x2c03f9afu, 0x2dfcaee7u,
+     0x2bcfb860u, 0x2dc74167u,
+     0x2ba363bdu, 0x2d9d0c41u,
+     0x2b807524u, 0x2d7770eau,
+     0x2b49e3d6u, 0x2d42d60cu,
+     0x2b1e92b5u, 0x2d195702u,
+     0x2af8fac8u, 0x2cf13ec4u,
+     0x2ac35eb5u, 0x2cbdadedu,
+     0x2a993aaau, 0x2c95101bu,
+     0x2a703d5au, 0x2c6a2c50u,
+     0x2a3c3cf6u, 0x2c37d975u,
+     0x2a136bd8u, 0x2c104516u,
+     0x29e6cc51u, 0x2be24fc5u,
+     0x29b493e1u, 0x2bb16ad5u,
+     0x298d376bu, 0x2b8b04c7u,
+     0x295cc356u, 0x2b59c147u,
+     0x292c79adu, 0x2b2a759fu,
+     0x2906af30u, 0x2b055f07u,
+     0x28d23edbu, 0x2ad09a6au,
+     0x28a4050cu, 0x2aa30e6du,
+     0x287fca72u, 0x2a7ec8c1u,
+     0x28475b9cu, 0x2a46f5b1u,
+     0x281b4ccau, 0x2a1b4a74u,
+     0x27f1d725u, 0x29f24b83u,
+     0x27bc361fu, 0x29bcee14u,
+     0x27926764u, 0x29933f23u,
+     0x2763a7e2u, 0x29656858u,
+     0x2730ea36u, 0x29329e84u,
+     0x27096aaeu, 0x290b01c6u,
+     0x26d55ed6u, 0x28d840d5u,
+     0x26a59297u, 0x28a82171u,
+     0x26806b7cu, 0x2882a722u,
+     0x26471c70u, 0x284af596u,
+     0x261a4874u, 0x281d9063u,
+     0x25eefab5u, 0x27f4865bu,
+     0x25b8fef0u, 0x27bda5bbu,
+     0x258f232du, 0x27930395u,
+     0x255d6497u, 0x2763d176u,
+     0x252b220eu, 0x27306e78u,
+     0x25043806u, 0x270891a3u,
+     0x24cc3533u, 0x26d35285u,
+     0x249d9eabu, 0x26a36ab9u,
+     0x247333edu, 0x267c9e87u,
+     0x243b895cu, 0x2643294fu,
+     0x24108aa2u, 0x2616b2d7u,
+     0x23deb305u, 0x25e89e19u,
+     0x23ab79f7u, 0x25b3722du,
+     0x2383f8a5u, 0x258a5c5bu,
+     0x234b094eu, 0x255542a6u,
+     0x231c1be0u, 0x252445cau,
+     0x22eff061u, 0x24fcf3b9u,
+     0x22b84dadu, 0x24c2a818u,
+     0x228d7fe9u, 0x2495b90cu,
+     0x22592b20u, 0x246635dbu,
+     0x222691fdu, 0x2430e58du,
+     0x21ff65e8u, 0x2407dd07u,
+     0x21c3b3ecu, 0x23d09839u,
+     0x2195e33fu, 0x23a00d5eu,
+     0x21657c23u, 0x23757e16u,
+     0x212f973du, 0x233c2e00u,
+     0x210649d6u, 0x23102d3fu,
+     0x20cd4d83u, 0x22dcd18du,
+     0x209cdbfeu, 0x22a904b4u,
+     0x206f93bdu, 0x22814e73u,
+     0x2036de68u, 0x2245c0ebu,
+     0x200b8405u, 0x22172479u,
+     0x1fd4c713u, 0x21e6ec36u,
+     0x1fa22d35u, 0x21b0523du,
+     0x1f771927u, 0x21869086u,
+     0x1f3c2718u, 0x214d4b0fu,
+     0x1f0f32ffu, 0x211c85bau,
+     0x1ed9ddc3u, 0x20ee8f29u,
+     0x1ea5a71bu, 0x20b5b53du,
+     0x1e7bc87bu, 0x208a5661u,
+     0x1e3f4167u, 0x205288d5u,
+     0x1e11353du, 0x2020208au,
+     0x1ddc631au, 0x1ff3754bu,
+     0x1da729d6u, 0x1fb8fcbdu,
+     0x1d7d76aeu, 0x1f8c7d97u,
+     0x1d4010bfu, 0x1f554a3fu,
+     0x1d117833u, 0x1f21d3cbu,
+     0x1cdc3fc3u, 0x1ef57178u,
+     0x1ca6a764u, 0x1eba0a73u,
+     0x1c7c141fu, 0x1e8cf23au,
+     0x1c3e8d91u, 0x1e5575bfu,
+     0x1c0ff968u, 0x1e218fb3u,
+     0x1bd974f4u, 0x1df47139u,
+     0x1ba4246fu, 0x1db8d48fu,
+     0x1b77ad8bu, 0x1d8bb00au,
+     0x1b3ac5c9u, 0x1d5309beu,
+     0x1b0cc6a1u, 0x1d1f56bau,
+     0x1ad41c58u, 0x1cf07de1u,
+     0x1a9fb806u, 0x1cb56657u,
+     0x1a706b47u, 0x1c88c2bcu,
+     0x1a34dbfau, 0x1c4e1cbau,
+     0x1a07fd09u, 0x1c1b3d7du,
+     0x19cc668eu, 0x1be9bbfdu,
+     0x19998a40u, 0x1bafdf73u,
+     0x19668eddu, 0x1b844540u,
+     0x192d054eu, 0x1b46dbe6u,
+     0x1901c77au, 0x1b156976u,
+     0x18c29845u, 0x1ae0691fu,
+     0x1891d1e0u, 0x1aa8720du,
+     0x185a6f34u, 0x1a7cc054u,
+     0x18238672u, 0x1a3d887fu,
+     0x17f4b806u, 0x1a0e0eccu,
+     0x17b70648u, 0x19d4d840u,
+     0x1788d12du, 0x199f5fdau,
+     0x174c739du, 0x196e8e9bu,
+     0x1718afacu, 0x193273f8u,
+     0x16e3f1aeu, 0x19056d4au,
+     0x16aa10bbu, 0x18c76cf4u,
+     0x167da48fu, 0x1894f659u,
+     0x163d0e1au, 0x185e6d9au,
+     0x160cd879u, 0x1825fb65u,
+     0x15d1c1e5u, 0x17f7998cu,
+     0x159c1df9u, 0x17b895e1u,
+     0x1568466du, 0x17898a88u,
+     0x152cb568u, 0x174cdf9bu,
+     0x15005b01u, 0x1718826bu,
+     0x14beb151u, 0x16e2f29au,
+     0x148d955eu, 0x16a8c6d9u,
+     0x14522407u, 0x167ae8e3u,
+     0x141bdf21u, 0x163a6a2du,
+     0x13e71f72u, 0x160a6e25u,
+     0x13ab44c3u, 0x15cd7e87u,
+     0x137db4e3u, 0x15987319u,
+     0x133bd23fu, 0x156215a4u,
+     0x130afa70u, 0x15278fa9u,
+     0x12cd92eeu, 0x14f840abu,
+     0x1297f777u, 0x14b7cfb1u,
+     0x1260915eu, 0x148807fdu,
+     0x1225d8aau, 0x14493e73u,
+     0x11f4d72bu, 0x1414c97au,
+     0x11b4a474u, 0x13dbe665u,
+     0x11853669u, 0x13a26be2u,
+     0x11446065u, 0x136fd110u,
+     0x1110acc4u, 0x1330f593u,
+     0x10d51115u, 0x13028371u,
+     0x109cd187u, 0x12c06c14u,
+     0x1066ba07u, 0x128dc782u,
+     0x1029a6c1u, 0x1250d3f6u,
+     0x0ff95d83u, 0x1219b798u,
+     0x0fb72d9au, 0x11e230b9u,
+     0x0f867e41u, 0x11a655c1u,
+     0x0f456641u, 0x117484a6u,
+     0x0f10cb43u, 0x1133a328u,
+     0x0ed44fd3u, 0x1103e85cu,
+     0x0e9b94c1u, 0x10c19ffdu,
+     0x0e63e84au, 0x108e0a3du,
+     0x0e26d8e4u, 0x10504b66u,
+     0x0df42c6cu, 0x1018a6f6u,
+     0x0db294f0u, 0x0fdfa367u,
+     0x0d828bddu, 0x0fa3bcb5u,
+     0x0d3ec540u, 0x0f6fa4d1u,
+     0x0d0b5230u, 0x0f2f48ccu,
+     0x0ccb653bu, 0x0f00259au,
+     0x0c946596u, 0x0ebb479fu,
+     0x0u, 0x0u,
+     },
+    0x7fffffffu,
+    0x41210000u,
+    0x80000000u,
+    0x3f800000u,
+    0x48000000u,
+    0x27800000u,
+
+    0x3e08a7cau,
+    0xbeaacf22u,
+    0x3f005b36u,
+    0xbeab4edbu,
+    0x3f2aaaa6u,
+    0xbf7ffffcu,
+
+    0x4120DDFBu,
+    0x57800000u,
+
+};
+
+float __ocl_svml_erfcf (float a)
+{
+
+    float va1;
+    float vr1;
+    unsigned int vm;
+
+    float r;
+
+    va1 = a;;
+
+    {
+
+        float _AbsMask;
+        float _MaxThreshold;
+        float _SRound;
+        float _poly1_0;
+        float _poly1_1;
+        float _poly3_0;
+        float _poly3_1;
+        float _poly1_2;
+        float _poly1_3;
+        float _TwoM32;
+        float _One;
+        float _UF_Threshold;
+
+        float X;
+        float X0;
+        float T;
+        float Diff;
+        unsigned int Index;
+
+        float P1;
+        float P3;
+        float D2;
+        float T2;
+        float THL[2];
+        float EXP_X0HD;
+        float HighRes;
+
+        float LowRes;
+
+        float Sgn;
+        float _SgnMask;
+        float NegConst;
+        float MOne;
+
+        float RangeMask;
+
+        unsigned int iRangeMask;
+
+        float NanMask;
+        _AbsMask = as_float (__internal_serfc_la_data._AbsMask);
+        X = as_float ((as_uint (va1) & as_uint (_AbsMask)));
+
+        _MaxThreshold = as_float (__internal_serfc_la_data._MaxThreshold);
+        X = ((X < _MaxThreshold) ? X : _MaxThreshold);
+
+        _SgnMask = as_float (__internal_serfc_la_data._SgnMask);
+
+        _One = as_float (__internal_serfc_la_data._TwoP48);
+
+        Sgn = as_float ((as_uint (va1) & as_uint (_SgnMask)));
+        MOne = as_float ((as_uint (_One) | as_uint (Sgn)));
+
+        NegConst = (MOne - _One);
+
+        _SRound = as_float (__internal_serfc_la_data._SRound);
+        _TwoM32 = as_float (__internal_serfc_la_data._TwoM48);
+        {
+            float dIndex;
+            dIndex = (X + _SRound);
+            X = ((X > _TwoM32) ? X : _TwoM32);
+            X0 = (dIndex - _SRound);
+            Diff = (X - X0);
+            T = (X0 * Diff);
+            Index = as_uint (dIndex);
+            Index = ((unsigned int) (Index) << (3));
+        };
+
+        _TwoM32 = as_float ((as_uint (_TwoM32) | as_uint (Sgn)));
+
+        _poly1_0 = as_float (__internal_serfc_la_data._poly1_0);
+        _poly1_1 = as_float (__internal_serfc_la_data._poly1_1);
+        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (_poly1_0, T, _poly1_1);
+        _poly3_0 = as_float (__internal_serfc_la_data._poly3_0);
+        _poly3_1 = as_float (__internal_serfc_la_data._poly3_1);
+        P3 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (_poly3_0, T, _poly3_1);
+
+        THL[0] = as_float (((__constant unsigned int *) ((__constant char *) (&__internal_serfc_la_data._erfc_tbl[0]) - 0x40000000))[Index >> 2]);
+        THL[1] =
+            as_float (((__constant unsigned int *) ((__constant char *) (&__internal_serfc_la_data._erfc_tbl[0]) - 0x40000000))[(Index >> 2) + 1]);
+
+        _poly1_2 = as_float (__internal_serfc_la_data._poly1_2);
+        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, T, _poly1_2);
+
+        D2 = (Diff * Diff);
+
+        _poly1_3 = as_float (__internal_serfc_la_data._poly1_3);
+        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, T, _poly1_3);
+
+        P3 = (P3 * D2);
+
+        P1 = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, T, P3);
+
+        LowRes = __builtin_spirv_OpenCL_fma_f32_f32_f32 (P1, THL[1], THL[1]);
+        HighRes = __builtin_spirv_OpenCL_fma_f32_f32_f32 (-(Diff), LowRes, THL[0]);
+        vm = 0;
+
+        HighRes = (HighRes + NegConst);
+        vr1 = (HighRes * _TwoM32);
+
+        NanMask = as_float (((unsigned int) (-(signed int) ((va1 != va1) | (va1 != va1)))));
+        NanMask = as_float ((as_uint (NanMask) & as_uint (va1)));
+        vr1 = (vr1 + NanMask);
+    }
+
+    ;
+    r = vr1;;
+
+    return r;
+
+}

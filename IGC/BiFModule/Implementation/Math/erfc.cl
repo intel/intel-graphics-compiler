@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../IMF/FP32/erfc_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/erfc_d_la.cl"
@@ -33,25 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float __builtin_spirv_OpenCL_erfc_f32( float x )
 {
-    // this algorithm is taken from book "Numerical recipes for C" page.221
-    float ret;
-    float abs_x;
-    float f;
-    // equation params
-    float p1 = -1.26551223f;
-    float p2 = 1.00002368f;
-    float p3 = 0.37409196f;
-    float p4 = 0.09678418f;
-    float p5 = -0.18628806f;
-    float p6 = 0.27886807f;
-    float p7 = -1.13520398f;
-    float p8 = 1.48851587f;
-    float p9 = -0.82215223f;
-    float p10 = 0.17087277f;
-    abs_x = __builtin_spirv_OpenCL_fabs_f32(x);
-    f = 1.0f / (1.0f + abs_x / 2.0f);
-    ret = f * __builtin_spirv_OpenCL_exp_f32(-abs_x * abs_x + p1 + f * (p2 + f * (p3 + f * (p4 + f * (p5 + f * (p6 + f * (p7 + f * (p8 + f * (p9 + f * p10)))))))));
-    return x >= 0.0f ? ret : 2.0f - ret;
+    return __ocl_svml_erfcf(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_erfc, float, float, f32 )
