@@ -96,6 +96,8 @@ private:
   bool replaceLoad(LoadInst *LdI);
   bool replaceSelect(SelectInst *Sel);
   bool replaceAddrSpaceCast(AddrSpaceCastInst * AddrCast);
+  bool replaceInsertElement(InsertElementInst *Insert);
+  bool replaceShuffleVector(ShuffleVectorInst *ShuffleVec);
   Value *lookForPtrReplacement(Value *Ptr) const;
   void addUsers(Value *V);
   void collectEachPossibleTPMUsers();
@@ -146,14 +148,16 @@ GenXThreadPrivateMemory::GenXThreadPrivateMemory() : ModulePass(ID) {
 
 static Value *ZExtOrTruncIfNeeded(Value *From, Type *To,
                                   Instruction *InsertBefore) {
-  unsigned FromTySz = From->getType()->getPrimitiveSizeInBits();
+  Type *FromTy = From->getType();
+  if (FromTy == To)
+    return From;
+
+  unsigned FromTySz = FromTy->getPrimitiveSizeInBits();
   unsigned ToTySz = To->getPrimitiveSizeInBits();
   Value *Res = From;
-  if (From->getType()->isVectorTy() &&
-      cast<VectorType>(From->getType())->getNumElements() == 1) {
+  if (FromTy->isVectorTy() && cast<VectorType>(FromTy)->getNumElements() == 1) {
     auto *TmpRes = CastInst::CreateBitOrPointerCast(
-        Res, cast<VectorType>(From->getType())->getElementType(), "",
-        InsertBefore);
+        Res, cast<VectorType>(FromTy)->getElementType(), "", InsertBefore);
     Res = TmpRes;
   }
   if (FromTySz < ToTySz)
@@ -348,9 +352,16 @@ static Value *FormEltsOffsetVectorForSVM(Value *BaseOffset,
 }
 
 Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
-  IGC_ASSERT(Ptr->getType()->isPtrOrPtrVectorTy());
+  Type *PtrTy = Ptr->getType();
+  IGC_ASSERT(PtrTy->isPtrOrPtrVectorTy());
 
-  if (auto BC = dyn_cast<BitCastInst>(Ptr))
+  Type *MemTy = IntegerType::get(*m_ctx, (m_useGlobalMem ? 64 : 32));
+  if (isa<UndefValue>(Ptr)) {
+    if (auto PtrVecTy = dyn_cast<VectorType>(PtrTy))
+      return UndefValue::get(
+          VectorType::get(MemTy, PtrVecTy->getNumElements()));
+    return UndefValue::get(MemTy);
+  } else if (auto BC = dyn_cast<BitCastInst>(Ptr))
     return lookForPtrReplacement(BC->getOperand(0));
   else if (auto ITP = dyn_cast<IntToPtrInst>(Ptr))
     return ITP->getOperand(0);
@@ -360,9 +371,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       "Each alloca must be here");
     return AllocaIntr->second;
   } else if (isa<Argument>(Ptr)) {
-    if (Ptr->getType()->isPointerTy()) {
-      auto *PTI =
-          CastInst::Create(CastInst::PtrToInt, Ptr, Type::getInt64Ty(*m_ctx));
+    if (PtrTy->isPointerTy()) {
+      auto *PTI = CastInst::Create(CastInst::PtrToInt, Ptr, MemTy);
       PTI->insertBefore(&cast<Argument>(Ptr)->getParent()->front().front());
       return PTI;
     } else
@@ -370,9 +380,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   } else if (isa<ExtractElementInst>(Ptr) &&
              lookForPtrReplacement(
                  cast<ExtractElementInst>(Ptr)->getVectorOperand())) {
-    if (Ptr->getType()->isPointerTy()) {
-      auto *PTI = CastInst::Create(Instruction::PtrToInt, Ptr,
-                              IntegerType::get(*m_ctx, (m_useGlobalMem ? 64 : 32)));
+    if (PtrTy->isPointerTy()) {
+      auto *PTI = CastInst::Create(Instruction::PtrToInt, Ptr, MemTy);
       PTI->insertAfter(cast<Instruction>(Ptr));
       return PTI;
     } else
@@ -388,7 +397,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return nullptr;
     }
   } else if (isa<ConstantPointerNull>(Ptr))
-    return ConstantInt::get(Type::getInt32Ty(*m_ctx), 0);
+    return ConstantInt::get(MemTy, 0);
   else {
     IGC_ASSERT_MESSAGE(0, "Cannot find pointer replacement");
     return nullptr;
@@ -409,6 +418,62 @@ bool GenXThreadPrivateMemory::replaceAddrSpaceCast(
   AddrCast->replaceAllUsesWith(NewAddrCast);
   AddrCast->eraseFromParent();
 
+  return true;
+}
+
+bool GenXThreadPrivateMemory::replaceInsertElement(InsertElementInst *Insert) {
+  LLVM_DEBUG(dbgs() << "Replacing insert element inst " << *Insert
+                    << " ===>\n");
+  auto InsertTy = cast<VectorType>(Insert->getType());
+  if (!InsertTy->isPtrOrPtrVectorTy())
+    return false;
+
+  Value *Vec = Insert->getOperand(0);
+  Value *Elt = Insert->getOperand(1);
+  Value *Idx = Insert->getOperand(2);
+
+  Value *NewVec = lookForPtrReplacement(Vec);
+  auto NewElt = lookForPtrReplacement(Elt);
+  auto NewInsert = InsertElementInst::Create(NewVec, NewElt, Idx,
+                                             Insert->getName() + ".tpm");
+  NewInsert->insertAfter(Insert);
+
+  auto CastToOldTy =
+      CastInst::Create(Instruction::IntToPtr, NewInsert, InsertTy,
+                       NewInsert->getName() + ".temp.itp");
+  CastToOldTy->insertAfter(NewInsert);
+  Insert->replaceAllUsesWith(CastToOldTy);
+  Insert->eraseFromParent();
+
+  LLVM_DEBUG(dbgs() << *CastToOldTy << "\n");
+  return true;
+}
+
+bool GenXThreadPrivateMemory::replaceShuffleVector(
+    ShuffleVectorInst *ShuffleVec) {
+  LLVM_DEBUG(dbgs() << "Replacing insert element inst " << *ShuffleVec
+                    << " ===>\n");
+  auto ShuffleTy = cast<VectorType>(ShuffleVec->getType());
+  if (!ShuffleTy->isPtrOrPtrVectorTy())
+    return false;
+
+  Value *Vec1 = ShuffleVec->getOperand(0);
+  Value *Vec2 = ShuffleVec->getOperand(1);
+
+  Value *NewVec1 = lookForPtrReplacement(Vec1);
+  Value *NewVec2 = lookForPtrReplacement(Vec2);
+  auto NewShuffleVec = new ShuffleVectorInst(
+      NewVec1, NewVec2, ShuffleVec->getMask(), ShuffleVec->getName() + ".tpm");
+  NewShuffleVec->insertAfter(ShuffleVec);
+
+  auto CastToOldTy =
+      CastInst::Create(Instruction::IntToPtr, NewShuffleVec, ShuffleTy,
+                       NewShuffleVec->getName() + ".temp.itp");
+  CastToOldTy->insertAfter(NewShuffleVec);
+  ShuffleVec->replaceAllUsesWith(CastToOldTy);
+  ShuffleVec->eraseFromParent();
+
+  LLVM_DEBUG(dbgs() << *CastToOldTy << "\n");
   return true;
 }
 
