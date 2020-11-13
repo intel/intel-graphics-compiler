@@ -93,7 +93,6 @@ namespace IGC
         {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<llvm::CallGraphWrapperPass>();
         }
 
         /// @brief  Main entry point.
@@ -108,10 +107,6 @@ namespace IGC
         ///         decide whether implicit args should be added
         /// @param  pFunc           Source function
         bool hasIndirectlyCalledParent(llvm::Function* pFunc);
-
-        /// @brief  Temp solution to prune the call graph for all stack call functions and
-        ///         force inline if they use implicit arguments
-        bool pruneCallGraphForStackCalls();
 
         /// @brief  Create the type of the new function,
         ///         including all explicit and needed impliict parameters
@@ -173,6 +168,8 @@ namespace IGC
         void traveseCallGraphSCC(const std::vector<llvm::CallGraphNode *> &SCCNodes);
         void combineTwoArgDetail(ImplicitArgmentDetail&, ImplicitArgmentDetail&, llvm::Value*);
         void writeBackAllIntoMetaData(ImplicitArgmentDetail&, llvm::Function*);
+
+        bool pruneCallGraphForStackCalls(llvm::CallGraph& CG);
 
     private:
         IGC::IGCMD::MetaDataUtils *m_pMdUtils;

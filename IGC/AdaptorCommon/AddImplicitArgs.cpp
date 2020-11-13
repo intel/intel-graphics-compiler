@@ -77,9 +77,6 @@ bool AddImplicitArgs::runOnModule(Module &M)
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    // Stack call does not support implicit args, so inline all stack call funcs
-    pruneCallGraphForStackCalls();
-
     // Update function signatures
     // Create new functions with implicit args
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
@@ -181,42 +178,6 @@ bool AddImplicitArgs::runOnModule(Module &M)
     }
 
     return true;
-}
-
-bool AddImplicitArgs::pruneCallGraphForStackCalls()
-{
-    // Do a DFS in the call graph, and for any stack-call func that has implicit args, force inline on it and all
-    // callers along the DFS path.
-    bool changed = false;
-    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++)
-    {
-        Function* F = IT->getFunction();
-        if (F && F->hasFnAttribute("visaStackCall"))
-        {
-            FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(F);
-            if (!funcInfo->empty_ImplicitArgInfoList())
-            {
-                for (unsigned i = 0; i < IT.getPathLength(); i++)
-                {
-                    Function* pFuncOnPath = IT.getPath(i)->getFunction();
-                    if (pFuncOnPath && pFuncOnPath->hasFnAttribute("visaStackCall"))
-                    {
-                        if (pFuncOnPath->hasFnAttribute("forceStackCallRecurse"))
-                        {
-                            IGC_ASSERT_MESSAGE(0, "Cannot force inline for recursion!");
-                            return false;
-                        }
-                        pFuncOnPath->removeFnAttr("visaStackCall");
-                        pFuncOnPath->removeFnAttr(llvm::Attribute::NoInline);
-                        pFuncOnPath->addFnAttr(llvm::Attribute::AlwaysInline);
-                        changed = true;
-                    }
-                }
-            }
-        }
-    }
-    return changed;
 }
 
 bool AddImplicitArgs::hasIndirectlyCalledParent(Function* F)
@@ -548,7 +509,9 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
 IGC_INITIALIZE_PASS_BEGIN(BuiltinCallGraphAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 IGC_INITIALIZE_PASS_END(BuiltinCallGraphAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
 char BuiltinCallGraphAnalysis::ID = 0;
@@ -560,20 +523,63 @@ BuiltinCallGraphAnalysis::BuiltinCallGraphAnalysis() : ModulePass(ID)
 
 bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
 {
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+
+    // Detect stack calls that use implicit args, and force inline them, since they are not supported
+    if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
+    {
+        pruneCallGraphForStackCalls(CG);
+    }
+
     if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
     {
         return false;
     }
 
-    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
+    // Traverse each SCC
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
     {
-        const std::vector<CallGraphNode *> &SCCNodes = *I;
+        const std::vector<CallGraphNode*>& SCCNodes = *I;
         traveseCallGraphSCC(SCCNodes);
     }
+
     return false;
+}
+
+// Do a DFS in the call graph, and for any stack-call func that has implicit args,
+// force inline on it and all callers along the DFS path.
+bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
+{
+    bool changed = false;
+    for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++)
+    {
+        Function* F = IT->getFunction();
+        if (F && F->hasFnAttribute("visaStackCall"))
+        {
+            FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(F);
+            if (!funcInfo->empty_ImplicitArgInfoList())
+            {
+                for (unsigned i = 0; i < IT.getPathLength(); i++)
+                {
+                    Function* pFuncOnPath = IT.getPath(i)->getFunction();
+                    if (pFuncOnPath && pFuncOnPath->hasFnAttribute("visaStackCall"))
+                    {
+                        if (pFuncOnPath->hasFnAttribute("forceStackCallRecurse"))
+                        {
+                            IGC_ASSERT_MESSAGE(0, "Cannot inline for recursion!");
+                            return false;
+                        }
+                        pFuncOnPath->removeFnAttr("visaStackCall");
+                        pFuncOnPath->removeFnAttr(llvm::Attribute::NoInline);
+                        pFuncOnPath->addFnAttr(llvm::Attribute::AlwaysInline);
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+    return changed;
 }
 
 void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNode *> &SCCNodes)
