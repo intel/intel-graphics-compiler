@@ -534,13 +534,21 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
     // If some constant values are not in use, set it to undef so ConstantLoader
     // can benefit from it.
     else if (auto OldInConst = dyn_cast<Constant>(OldInVal)) {
-      SmallVector<Constant *, 8> NewElems;
-      for (unsigned i = 0; i < OldInLB.getNumElements(); ++i)
-        NewElems.push_back(OldInLB.get(i) ?
-            OldInConst->getAggregateElement(i) :
-            UndefValue::get(OldInConst->getType()->getScalarType()));
-      Inst->setOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum,
-          ConstantVector::get(NewElems));
+      Constant *NewInConst = nullptr;
+      if (isa<UndefValue>(OldInConst))
+        NewInConst = UndefValue::get(OldInConst->getType());
+      else if(isa<ConstantAggregateZero>(OldInConst))
+        NewInConst = ConstantAggregateZero::get(OldInConst->getType());
+      else {
+        SmallVector<Constant *, 8> NewElems;
+        for (unsigned i = 0; i < OldInLB.getNumElements(); ++i)
+          NewElems.push_back(OldInLB.get(i) ?
+              OldInConst->getAggregateElement(i) :
+              UndefValue::get(OldInConst->getType()->getScalarType()));
+        NewInConst = ConstantVector::get(NewElems);
+      }
+      IGC_ASSERT(NewInConst);
+      Inst->setOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum, NewInConst);
     }
   }
   if (UsedOldInput) {
