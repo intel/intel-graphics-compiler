@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../IMF/FP32/asinpi_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/asinpi_d_la.cl"
@@ -33,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 INLINE float __builtin_spirv_OpenCL_asinpi_f32( float x )
 {
-    return M_1_PI_F * __builtin_spirv_OpenCL_asin_f32(x);
+    return __ocl_svml_asinpif(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_asinpi, float, float, f32 )
