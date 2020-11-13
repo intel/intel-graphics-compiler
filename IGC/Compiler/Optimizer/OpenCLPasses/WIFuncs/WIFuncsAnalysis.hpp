@@ -96,10 +96,7 @@ namespace IGC
         /// @param  F The destination function.
         bool runOnFunction(llvm::Function& F);
 
-        /// @brief  Marks whether group id is needed by the current function
-        bool m_hasGroupID;
-        /// @brief  Marks whether global offset is needed by the current function
-        bool m_hasGlobalOffset;
+
         /// @brief  Marks whether local id is needed by the current function
         bool m_hasLocalID;
         /// @brief  Marks whether global size is needed by the current function

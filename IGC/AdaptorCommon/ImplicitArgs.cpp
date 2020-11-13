@@ -410,6 +410,11 @@ unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int
 }
 
 void ImplicitArgs::addImplicitArgs(llvm::Function& F, SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, MetaDataUtils* pMdUtils) {
+    // Stack calls does not support implicit arguments!
+    // Just return for now. TODO: Each pass should check if it's inserting implicit arg to stackcall function
+    if (F.hasFnAttribute("visaStackCall"))
+        return;
+
     // Add implicit args metadata for the given function
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
     for (auto arg : implicitArgs)

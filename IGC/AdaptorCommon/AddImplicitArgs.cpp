@@ -40,7 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
-#include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
@@ -60,7 +59,6 @@ using namespace IGC::IGCMD;
 IGC_INITIALIZE_PASS_BEGIN(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 IGC_INITIALIZE_PASS_END(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char AddImplicitArgs::ID = 0;
