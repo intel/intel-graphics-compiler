@@ -293,7 +293,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             bufferId = builder.CreateAdd(bufferId, arrayIndex);
         }
 
-        addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy, 0);
+        addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy);
         PointerType* newptrType = PointerType::get(resourcePtr->getType()->getPointerElementType(), addrSpace);
 
         Value* mutePtr = nullptr;
@@ -565,7 +565,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     }
 
     // Get the new direct address space
-    unsigned directAS = IGC::EncodeAS4GFXResource(*builder.getInt32(bufferID), bufType, 0);
+    unsigned directAS = IGC::EncodeAS4GFXResource(*builder.getInt32(bufferID), bufType);
 
     Value* pBuffer = nullptr;
     Type* pBufferType = GetBufferAccessType(inst);

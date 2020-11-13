@@ -997,6 +997,23 @@ namespace IGC
         }
 
         uint64_t GetSIMDInfo() { return m_SIMDInfo; }
+
+        // This can be paired with `EncodeAS4GFXResource()` to get a unique
+        // index.
+        uint32_t getUniqueIndirectIdx()
+        {
+            return getModuleMetaData()->CurUniqueIndirectIdx++;
+        }
+
+        // Frontends may elect to compute indices in their own way. If so,
+        // they should call this at the end to mark the max index they have
+        // reserved so that later passes can ensure that `getUniqueIndirectIdx()`
+        // won't collide with any indices from the frontend.
+        void setUniqueIndirectIdx(uint32_t NewVal)
+        {
+            uint32_t &CurVal = getModuleMetaData()->CurUniqueIndirectIdx;
+            CurVal = std::max(CurVal, NewVal);
+        }
     };
 
     class VertexShaderContext : public CodeGenContext
