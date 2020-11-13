@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../IMF/FP32/atanh_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/atanh_d_la.cl"
@@ -33,41 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float __builtin_spirv_OpenCL_atanh_f32( float x )
 {
-    /*
-    Cephes Math Library Release 2.2:  June, 1992
-    Copyright 1984, 1987, 1989 by Stephen L. Moshier
-    Direct inquiries to 30 Frost Street, Cambridge, MA 02140
-    What you see here may be used freely but it comes with no support or
-    guarantee.
-    */
-    float z = __builtin_spirv_OpenCL_fabs_f32(x);
-    float result;
-    if( z < 1.0e-4f )
-    {
-        result = x;
-    }
-    else if( z < 0.5f )
-    {
-        z = x * x;
-        result = (((( 1.81740078349E-1f  * z +
-                      8.24370301058E-2f) * z +
-                      1.46691431730E-1f) * z +
-                      1.99782164500E-1f) * z +
-                      3.33337300303E-1f) * z * x +
-                      x;
-    }
-    else if( z < 1.0f )
-    {
-        result = 0.5f * __builtin_spirv_OpenCL_log_f32( (1.0f + x) / (1.0f - x) );
-    }
-    else
-    {
-        result = __builtin_spirv_OpenCL_nan_i32((uint)0);
-        result = ( x ==  1.0f ) ?  INFINITY : result;
-        result = ( x == -1.0f ) ? -INFINITY : result;
-    }
-
-    return result;
+    return __ocl_svml_atanhf(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_atanh, float, float, f32 )
