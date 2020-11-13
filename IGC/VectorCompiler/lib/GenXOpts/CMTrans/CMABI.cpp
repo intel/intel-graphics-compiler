@@ -1661,7 +1661,7 @@ private:
                   OrigArg.getType()->getPointerAddressSpace(),
               "pointers should have different addr spaces when they mismatch");
           IGC_ASSERT_MESSAGE(
-              Replacement->getType()->getPointerElementType() !=
+              Replacement->getType()->getPointerElementType() ==
                   OrigArg.getType()->getPointerElementType(),
               "pointers must have same element type when they mismatch");
           return new AddrSpaceCastInst(Replacement, OrigArg.getType(), "",
