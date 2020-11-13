@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "spirv.h"
 #include "IMF/FP32/acos_s_la.cl"
+#include "IMF/FP32/asin_s_la.cl"
 
 INLINE float __builtin_spirv_OpenCL_fclamp_f32_f32_f32(float x, float minval, float maxval ){
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
@@ -338,64 +339,7 @@ float __builtin_spirv_OpenCL_acos_f32(float x ){
 
 INLINE
 float __builtin_spirv_OpenCL_asin_f32(float value ){
-    float temp1 = 0.0f;
-    float temp2 = 0.0f;
-    float temp4 = 0.04;
-
-    float destTemp = 0.0f;
-
-    bool flag = false;
-
-    temp1 = -__builtin_spirv_OpenCL_fabs_f32(value) + 1.0f;
-
-    temp1 = temp1  * 0.5f;
-
-    flag = __builtin_spirv_OpenCL_fabs_f32(value) > 0.575f;
-
-    if( flag )
-    {
-        temp1 = __builtin_spirv_OpenCL_sqrt_f32(temp1);
-    }
-    else
-    {
-        temp1 = __builtin_spirv_OpenCL_fabs_f32(value);
-    }
-
-    temp2 = temp1 * temp1;
-
-    destTemp = temp2 * -0.5011622905731201f;
-
-    temp4 = temp2 + -5.478654384613037f;
-
-    destTemp = destTemp + 0.9152014851570129f;
-
-    temp4 = temp2 * temp4;
-
-    destTemp = temp2 * destTemp;
-
-    temp4 = temp4 + 5.491230487823486f;
-
-    destTemp = temp1 * destTemp;
-
-    temp4 = __builtin_spirv_OpenCL_native_recip_f32(temp4);
-
-    destTemp = temp4 * destTemp;
-
-    destTemp = temp1 + destTemp;
-
-
-    if( flag )
-    {
-        destTemp = destTemp * -2.0f;
-       destTemp = destTemp + 1.5707963705062866f;
-    }
-
-    if( value < 0.0 )
-    {
-        destTemp = -__builtin_spirv_OpenCL_fabs_f32(destTemp);
-    }
-
-    return destTemp;
+    return __ocl_svml_asinf(value);
 }
 
 INLINE
