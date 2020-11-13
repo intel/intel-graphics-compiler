@@ -36,10 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "include/svml_power_data.cl"
 #include "include/svml_test_int.cl"
 
-#if defined(cl_khr_fp64)
-# include "../MathDouble/rf_rootn_d_1_g.cl"
-#endif
-
 __attribute__((always_inline))
 int __ocl_svml_srootn_cout_rare (private const float *a, private const int *b, private float *r)
 {

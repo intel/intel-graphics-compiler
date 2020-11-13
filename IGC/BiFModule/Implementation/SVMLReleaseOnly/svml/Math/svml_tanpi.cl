@@ -36,10 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "include/svml_tanpi_data.cl"
 #include "include/svml_gen_rcp.cl"
 
-#if defined(cl_khr_fp64)
-# include "../MathDouble/rf_tanpi_d_1_g.cl"
-#endif
-
 float1_gen __ocl_svml_px_tanpif1 (float1_gen a);
 float1_gen __ocl_svml_px_tanpif1 (float1_gen a)
 {
