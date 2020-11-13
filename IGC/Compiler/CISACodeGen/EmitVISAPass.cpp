@@ -7386,6 +7386,8 @@ void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component)
 
     CPixelShader* const psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* r1 = psProgram->GetPhase() == PSPHASE_PIXEL ? psProgram->GetCoarseR1() : psProgram->GetR1();
+    // Coarse pixel sizes are in R1 for both simd32 halves.
+    r1 = m_currShader->GetVarHalf(r1, 0);
     CVariable* const coarsePixelSize = m_currShader->BitCast(r1, ISA_TYPE_UB);
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     m_encoder->SetSrcSubReg(0, (component == 0) ? 0 : 1);
@@ -7740,7 +7742,9 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component)
     CVariable* pixelSize = nullptr;
     if (psProgram->GetPhase() == PSPHASE_COARSE)
     {
-        CVariable* CPSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
+        // Coarse pixel sizes are in R1 for both simd32 halves.
+        CVariable* r1 = m_currShader->GetVarHalf(psProgram->GetR1(), 0);
+        CVariable* CPSize = m_currShader->BitCast(r1, ISA_TYPE_UB);
         pixelSize =
             m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
