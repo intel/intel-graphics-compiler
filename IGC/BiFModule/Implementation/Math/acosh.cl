@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../IMF/FP32/acosh_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/acosh_d_la.cl"
@@ -63,42 +64,7 @@ float __builtin_spirv_OpenCL_acosh_f32( float x )
     }
     else
     {
-        /*
-        Cephes Math Library Release 2.2:  June, 1992
-        Copyright 1984, 1987, 1989 by Stephen L. Moshier
-        Direct inquiries to 30 Frost Street, Cambridge, MA 02140
-        What you see here may be used freely but it comes with no support or
-        guarantee.
-        */
-        if (__intel_relaxed_isnan(x))
-        {
-            result = __builtin_spirv_OpenCL_nan_i32((uint)0);
-        }
-        else if( x < 1.0f )
-        {
-            result = __builtin_spirv_OpenCL_nan_i32((uint)0);
-        }
-        else if( x > 1500.0f )
-        {
-            result = __builtin_spirv_OpenCL_log_f32(x) + M_LN2_F;
-        }
-        else
-        {
-            result = x - 1.0f;
-            if( result < 0.5f )
-            {
-                result = (((( 1.7596881071E-3f  * result -
-                        7.5272886713E-3f) * result +
-                        2.6454905019E-2f) * result -
-                        1.1784741703E-1f) * result +
-                        1.4142135263E0f)  * __builtin_spirv_OpenCL_native_sqrt_f32( result );
-            }
-            else
-            {
-                result = __builtin_spirv_OpenCL_native_sqrt_f32( result*(x+1.0f) );
-                result = __builtin_spirv_OpenCL_log_f32(x + result);
-            }
-        }
+        result = __ocl_svml_acoshf(x);
     }
 
     return result;
