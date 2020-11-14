@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -55,9 +56,11 @@ namespace IGC
 
         virtual bool runOnFunction(llvm::Function& F) override;
         void visitAllocaInst(llvm::AllocaInst& I);
+        void visitCallInst(llvm::CallInst& I);
 
     private:
         WIAnalysis* WI;
         bool m_changed = false;
+        llvm::SmallVector<llvm::Instruction*, 4> AssumeToErase;
     };
 } // namespace IGC

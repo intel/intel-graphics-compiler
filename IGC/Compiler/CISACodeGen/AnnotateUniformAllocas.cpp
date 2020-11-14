@@ -25,10 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "AnnotateUniformAllocas.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -60,6 +62,18 @@ namespace IGC
         WI = &getAnalysis<WIAnalysis>();
         IGC_ASSERT(WI != nullptr);
         visit(F);
+
+        while (!AssumeToErase.empty()) {
+            auto Inst = AssumeToErase.pop_back_val();
+            if (isInstructionTriviallyDead(Inst)) {
+                for (Use& OpU : Inst->operands()) {
+                    Value* OpV = OpU.get();
+                    if (Instruction* OpI = dyn_cast<Instruction>(OpV))
+                        AssumeToErase.push_back(OpI);
+                }
+                Inst->eraseFromParent();
+            }
+        }
         return m_changed;
     }
 
@@ -72,6 +86,17 @@ namespace IGC
             MDNode* node = MDNode::get(I.getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
             I.setMetadata("uniform", node);
             m_changed = true;
+        }
+    }
+
+    void AnnotateUniformAllocas::visitCallInst(CallInst& I)
+    {
+        if (llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(&I))
+        {
+            if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_assume_uniform)
+            {
+                AssumeToErase.push_back(pIntr);
+            }
         }
     }
 }

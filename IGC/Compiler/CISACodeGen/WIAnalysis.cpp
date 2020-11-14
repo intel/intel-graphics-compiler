@@ -1385,7 +1385,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const SelectInst* inst)
 bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
 {
     bool trackable = true;
-    SmallVector<Instruction*, 4> AssumeToErase;
     for (Value::const_user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if (const GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*use_it))
@@ -1417,8 +1416,6 @@ bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
             if (IID == GenISAIntrinsic::GenISA_assume_uniform)
             {
                 dep.assume_uniform = true;
-                // remove this assume-uniform so it will not affect later pass
-                AssumeToErase.push_back((GenIntrinsicInst*)intr);
             }
             else
                 trackable = false;
@@ -1438,10 +1435,6 @@ bool WIAnalysisRunner::TrackAllocaDep(const Value* I, AllocaDep& dep)
             trackable = false;
         }
     }
-    for (auto* inst : AssumeToErase)
-    {
-        inst->eraseFromParent();
-    }
     return trackable;
 }
 
@@ -1457,7 +1450,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     {
         AllocaDep dep;
         dep.assume_uniform = false;
-        if (TrackAllocaDep(inst, dep))
+        bool trackable = TrackAllocaDep(inst, dep);
+
+        if ( trackable || dep.assume_uniform)
         {
             m_allocaDepMap.insert(std::make_pair(inst, dep));
             for (auto it : dep.stores)
