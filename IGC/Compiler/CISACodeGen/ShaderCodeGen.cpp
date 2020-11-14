@@ -165,6 +165,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
+
 #include <iostream>
 
 /***********************************************************************************
@@ -685,9 +686,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         // as legalization passes do not always clear unused (operating
         // on illegal types) instructions.
         mpm.add(llvm::createDeadCodeEliminationPass());
-        {
-            mpm.add(createEmu64OpsPass());
-        }
+        mpm.add(createEmu64OpsPass());
         ctx.m_hasEmu64BitInsts = true;
     }
 
