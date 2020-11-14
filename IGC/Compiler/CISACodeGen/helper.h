@@ -186,7 +186,7 @@ namespace IGC
     unsigned EncodeAS4GFXResource(
         const llvm::Value& bufIdx,
         BufferType bufType,
-        unsigned uniqueIndAS = IGC::DefaultIndirectIdx);
+        unsigned uniqueIndAS);
 
     unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType);
     bool isStatefulAddrSpace(unsigned AS);

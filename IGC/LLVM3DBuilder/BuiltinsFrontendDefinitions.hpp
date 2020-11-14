@@ -34,8 +34,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/Casting.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/CISACodeGen/helper.h"
 #include "Probe/Assertion.h"
+
+typedef union _gfxResourceAddressSpace
+{
+    struct _bits
+    {
+        unsigned int  bufId    : 16;
+        unsigned int  bufType  : 4;
+        unsigned int  indirect : 1;     // bool
+        unsigned int  reserved : 11;
+    } bits;
+    unsigned int   u32Val;
+} GFXResourceAddressSpace;
+
+enum class ADDRESS_SPACE_TYPE : unsigned int
+{
+    ADDRESS_SPACE_PRIVATE = 0,
+    ADDRESS_SPACE_GLOBAL = 1,
+    ADDRESS_SPACE_CONSTANT = 2,
+    ADDRESS_SPACE_LOCAL = 3,
+    ADDRESS_SPACE_GENERIC = 4,
+    ADDRESS_SPACE_LOCAL_32 = 13,
+};
 
 template<bool preserveNames, typename T, typename Inserter>
 unsigned LLVM3DBuilder<preserveNames, T, Inserter>::EncodeASForGFXResource(
@@ -43,8 +64,31 @@ unsigned LLVM3DBuilder<preserveNames, T, Inserter>::EncodeASForGFXResource(
     IGC::BufferType bufType,
     unsigned uniqueIndAS)
 {
-    return IGC::EncodeAS4GFXResource(bufIdx, bufType, uniqueIndAS);
+    GFXResourceAddressSpace temp = {};
+
+    static_assert(sizeof(temp) == 4, "Code below may need and update.");
+
+    temp.u32Val = 0;
+    IGC_ASSERT((bufType + 1) < 16);
+    temp.bits.bufType = bufType + 1;
+    if (bufType == IGC::BufferType::SLM)
+    {
+        return static_cast<unsigned int>(ADDRESS_SPACE_TYPE::ADDRESS_SPACE_LOCAL); // OCL uses addrspace 3 for SLM. We should use the same thing.
+    }
+    else if (llvm::isa<llvm::ConstantInt>(&bufIdx))
+    {
+        const unsigned bufId = (unsigned)(llvm::cast<llvm::ConstantInt>(&bufIdx)->getZExtValue());
+        IGC_ASSERT(bufId < (1 << 16));
+        temp.bits.bufId = bufId;
+        return temp.u32Val;
+    }
+
+    // if it is indirect-buf, it is front-end's job to give a proper(unique) address-space per access
+    temp.bits.bufId = uniqueIndAS;
+    temp.bits.indirect = 1;
+    return temp.u32Val;
 }
+
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Function* LLVM3DBuilder<preserveNames, T, Inserter>::llvm_GenISA_ubfe() const

@@ -193,7 +193,7 @@ void LinkMultiRateShader::Link(Function* pixelPhase, Function* samplePhase, Modu
 
     // Initialize the loop counter in the loop header
     builder.SetInsertPoint(loopHeader);
-    unsigned int addrSpaceRsc = IGC::EncodeAS4GFXResource(*builder.getInt32(0), RENDER_TARGET);
+    unsigned int addrSpaceRsc = IGC::EncodeAS4GFXResource(*builder.getInt32(0), RENDER_TARGET, 0);
     PointerType* ptrTy = llvm::PointerType::get(builder.getInt32Ty(), addrSpaceRsc);
     Value* pRsrc = ConstantPointerNull::get(ptrTy);
     Function* sampleInfoptr = GenISAIntrinsic::getDeclaration(&M, GenISAIntrinsic::GenISA_sampleinfoptr, pRsrc->getType());

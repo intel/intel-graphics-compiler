@@ -36,13 +36,6 @@ namespace IGC
         NumberOfFunctionType,
     };
 
-    enum UniqueIndirectAS
-    {
-        // The convention is to use a '0' index for indirect accesses if
-        // you don't need to distinguish between accesses.
-        DefaultIndirectIdx = 0,
-    };
-
 
     enum ResourceTypeEnum
     {
@@ -381,7 +374,6 @@ namespace IGC
         PushInfo pushInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
-        uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
         std::map<ConstantAddress, uint32_t>   inlineDynConstants;
         std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
         ImmConstantInfo immConstant;

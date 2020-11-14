@@ -67,22 +67,18 @@ namespace IGC
         uint32_t u32Val;
     } GFXResourceAddrSpace;
 
-    // If 'bufIdx' is a ConstantInt, 'uniqueIndAS' is irrelevant.
-    // Otherwise, you should set 'uniqueIndAS' if you want to identify
-    // this address space later on.  If not, the default can be used.
     unsigned EncodeAS4GFXResource(
         const llvm::Value& bufIdx,
         BufferType bufType,
         unsigned uniqueIndAS)
     {
         GFXResourceAddrSpace temp;
-        static_assert(sizeof(temp) == 4, "Code below may need and update.");
         temp.u32Val = 0;
         IGC_ASSERT((bufType + 1) < 16);
         temp.bits.bufType = bufType + 1;
         if (bufType == SLM)
         {
-            return ADDRESS_SPACE_LOCAL;
+            return ADDRESS_SPACE_LOCAL; // We use addrspace 3 for SLM
         }
         else if (bufType == STATELESS_READONLY)
         {
@@ -92,10 +88,10 @@ namespace IGC
         {
             return ADDRESS_SPACE_GLOBAL;
         }
-        else if (auto *CI = dyn_cast<ConstantInt>(&bufIdx))
+        else if (llvm::isa<llvm::ConstantInt>(&bufIdx))
         {
-            unsigned int bufId = static_cast<unsigned>(CI->getZExtValue());
-            IGC_ASSERT(bufId < (1 << 16));
+            unsigned int bufId = (unsigned int)(llvm::cast<llvm::ConstantInt>(&bufIdx)->getZExtValue());
+            IGC_ASSERT(bufId < (1 << 31));
             temp.bits.bufId = bufId;
             return temp.u32Val;
         }
@@ -104,29 +100,6 @@ namespace IGC
         temp.bits.bufId = uniqueIndAS;
         temp.bits.indirect = 1;
         return temp.u32Val;
-    }
-
-    ///
-    /// if you want resource-dimension, use GetBufferDimension()
-    ///
-    BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIndexing, unsigned& bufId)
-    {
-        GFXResourceAddrSpace temp;
-        temp.u32Val = addrSpace;
-
-        directIndexing = (temp.bits.indirect == 0);
-        bufId = temp.bits.bufId;
-
-        if (addrSpace == ADDRESS_SPACE_LOCAL)
-        {
-            return SLM;
-        }
-        unsigned bufType = temp.bits.bufType - 1;
-        if (bufType < BUFFER_TYPE_UNKNOWN)
-        {
-            return (BufferType)bufType;
-        }
-        return BUFFER_TYPE_UNKNOWN;
     }
 
     // Return true if AS is for a stateful surface.
@@ -191,6 +164,29 @@ namespace IGC
             return true;
         }
         return false;
+    }
+
+    ///
+    /// if you want resource-dimension, use GetBufferDimension()
+    ///
+    BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIndexing, unsigned& bufId)
+    {
+        GFXResourceAddrSpace temp;
+        temp.u32Val = addrSpace;
+
+        directIndexing = (temp.bits.indirect == 0);
+        bufId = temp.bits.bufId;
+
+        if (addrSpace == ADDRESS_SPACE_LOCAL)
+        {
+            return SLM;
+        }
+        unsigned bufType = temp.bits.bufType - 1;
+        if (bufType < BUFFER_TYPE_UNKNOWN)
+        {
+            return (BufferType)bufType;
+        }
+        return BUFFER_TYPE_UNKNOWN;
     }
 
     ///

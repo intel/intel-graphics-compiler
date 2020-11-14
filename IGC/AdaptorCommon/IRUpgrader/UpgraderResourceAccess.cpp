@@ -65,7 +65,7 @@ bool UpgradeResourceAccess::runOnFunction(llvm::Function &F)
 
 static Value* GetResource(Module* m, IRBuilder<>& builder, Value* i)
 {
-    unsigned int addrSpace = IGC::EncodeAS4GFXResource(*i, IGC::RESOURCE);
+    unsigned int addrSpace = IGC::EncodeAS4GFXResource(*i, IGC::RESOURCE, 0);
     PointerType* ptrT = PointerType::get(i->getType(), addrSpace);
     Value* img = nullptr;
 
@@ -88,7 +88,7 @@ static Value* GetResource(Module* m, IRBuilder<>& builder, Value* i)
 
 static Value* GetSampler(Module* m, IRBuilder<>& builder, Value* i)
 {
-    unsigned int addrSpace = IGC::EncodeAS4GFXResource(*i, IGC::SAMPLER);
+    unsigned int addrSpace = IGC::EncodeAS4GFXResource(*i, IGC::SAMPLER, 0);
     PointerType* ptrT = PointerType::get(i->getType(), addrSpace);
     Value* s = nullptr;
     if(isa<ConstantInt>(i))

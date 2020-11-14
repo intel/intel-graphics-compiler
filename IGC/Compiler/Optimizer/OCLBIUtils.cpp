@@ -179,7 +179,7 @@ void CImagesBI::prepareImageBTI()
 {
     Argument* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
-    unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE);
+    unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE, 0);
     Value* img = ConstantPointerNull::get(PointerType::get(pImg->getType(), addrSpace));
     m_args.push_back(img); // BTI
 
@@ -358,7 +358,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             IGC_ASSERT(isa<ConstantInt>(bufIdV));
             IGC_ASSERT(isa<ConstantInt>(bufTyV));
             IGC::BufferType bufType = (IGC::BufferType)(cast<ConstantInt>(bufTyV)->getZExtValue());
-            unsigned as = IGC::EncodeAS4GFXResource(*bufIdV, bufType);
+            unsigned as = IGC::EncodeAS4GFXResource(*bufIdV, bufType, 0);
 
             Function* mainFunc = pCallInst->getParent()->getParent();
             for (auto& arg : mainFunc->args())
@@ -669,7 +669,7 @@ Value* CImagesBI::createGetBufferPtr()
     Argument* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
     BufferType bufType = CImagesUtils::getImageType(m_pParamMap, m_pCallInst, 0);
-    unsigned int addressSpace = IGC::EncodeAS4GFXResource(*imageIndex, bufType);
+    unsigned int addressSpace = IGC::EncodeAS4GFXResource(*imageIndex, bufType, 1);
     Type* ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
 
     Function* pFuncGetBufferPtr = getFunctionDeclaration(GenISAIntrinsic::GenISA_GetBufferPtr, ptrTy);
@@ -995,7 +995,7 @@ public:
     {
         ConstantInt* samplerIndex = getSamplerIndex();
         if (!samplerIndex) return false;
-        unsigned int addrSpace = EncodeAS4GFXResource(*samplerIndex, SAMPLER);
+        unsigned int addrSpace = EncodeAS4GFXResource(*samplerIndex, SAMPLER, 0);
         Value* sampler = ConstantPointerNull::get(PointerType::get(samplerIndex->getType(), addrSpace));
         m_args.push_back(sampler);
         return true;
