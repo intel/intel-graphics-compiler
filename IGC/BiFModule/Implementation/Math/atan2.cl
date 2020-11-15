@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-#include "../IMF/FP32/atan2_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/atan2_d_la.cl"
@@ -68,7 +67,42 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
     }
     else
     {
-        result = __ocl_svml_atan2f(y, x);
+        if( __intel_relaxed_isnan(x) |
+            __intel_relaxed_isnan(y) )
+        {
+            result = __builtin_spirv_OpenCL_nan_i32(0U);
+        }
+        else
+        {
+            float signy = __builtin_spirv_OpenCL_copysign_f32_f32(1.0f, y);
+            if( y == 0.0f )
+            {
+                float signx = __builtin_spirv_OpenCL_copysign_f32_f32(1.0f, x);
+                float px = signy * 0.0f;
+                float nx = signy * FLOAT_PI;
+                // In this case, we need to compare signx against
+                // 1.0f, not x > 0.0f, since we need to distinguish
+                // between x == +0.0f and x == -0.0f.
+                result = ( signx == 1.0f ) ? px : nx;
+            }
+            else if( x == 0.0f )
+            {
+                result = signy * ( FLOAT_PI * 0.5f );
+            }
+            else if( __intel_relaxed_isinf( y ) &
+                     __intel_relaxed_isinf( x ) )
+            {
+                float px = signy * ( FLOAT_PI * 0.25f );
+                float nx = signy * ( FLOAT_PI * 0.75f );
+                result = ( x > 0.0f ) ? px : nx;
+            }
+            else
+            {
+                float px = __builtin_spirv_OpenCL_atan_f32( y / x );
+                float nx = __builtin_spirv_OpenCL_mad_f32_f32_f32( signy, FLOAT_PI, px );
+                result = ( x > 0.0f ) ? px : nx;
+            }
+        }
     }
 
     return result;
