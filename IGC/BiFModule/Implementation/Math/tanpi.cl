@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-#include "../SVMLReleaseOnly/svml/Math/svml_tanpi.cl"
+#include "../IMF/FP32/tanpi_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/tanpi_d_la.cl"
@@ -42,14 +42,7 @@ INLINE float __builtin_spirv_OpenCL_tanpi_f32( float x )
     }
     else
     {
-        if(__intel_relaxed_isinf(x))
-        {
-            return __builtin_spirv_OpenCL_nan_i32((uint)0);
-        }
-        else
-        {
-            return __ocl_svml_px_tanpif1(x);
-        }
+        return __ocl_svml_tanpif(x);
     }
 }
 
