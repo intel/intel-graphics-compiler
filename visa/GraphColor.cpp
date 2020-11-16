@@ -9685,7 +9685,16 @@ int GlobalRA::coloringRegAlloc()
                     return (numSpill * 200) < (threshold * asmCount);
                 };
 
-                if (builder.getOption(vISA_AbortOnSpill) && !underSpillThreshold(GRFSpillFillCount, instNum))
+                bool isUnderThreshold = underSpillThreshold(GRFSpillFillCount, instNum);
+                if (isUnderThreshold)
+                {
+                    if (auto jitInfo = builder.getJitInfo())
+                    {
+                        jitInfo->avoidRetry = true;
+                    }
+                }
+
+                if (builder.getOption(vISA_AbortOnSpill) && !isUnderThreshold)
                 {
                     // update jit metadata information
                     if (auto jitInfo = builder.getJitInfo())

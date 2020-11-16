@@ -1269,6 +1269,15 @@ namespace IGC
                 {
                     EnableZEBinary = true;
                 }
+                if (strstr(options, "-intel-no-spill"))
+                {
+                    // This is an option to avoid spill/fill instructions in scheduler kernel.
+                    // OpenCL Runtime triggers scheduler kernel offline compilation while driver building,
+                    // since scratch space is not supported in this specific case, we cannot end up with
+                    // spilling kernel. If this option is set, then IGC will recompile the kernel with
+                    // some some optimizations disabled to avoid spill/fill instructions.
+                    NoSpill = true;
+                }
             }
 
 
@@ -1291,6 +1300,7 @@ namespace IGC
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
             bool EnableZEBinary = false;
+            bool NoSpill = false;
 
             // -1 : initial value that means it is not set from cmdline
             // 0-5: valid values set from the cmdline

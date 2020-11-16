@@ -65,6 +65,8 @@ typedef struct {
 
     // number of spill/fill, weighted by loop
     unsigned int numGRFSpillFill;
+    // whether kernel recompilation should be avoided
+    bool avoidRetry = false;
 
     void* freeGRFInfo;
     unsigned int freeGRFInfoSize;

@@ -3748,11 +3748,13 @@ namespace IGC
         CodeGenContext* context = m_program->GetContext();
         bool KernelDebugEnable = false;
         bool ForceNonCoherentStatelessBti = false;
+        bool AllowSpill = true;
         if (context->type == ShaderType::OPENCL_SHADER)
         {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
             KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
             ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
+            AllowSpill = !ClContext->m_InternalOptions.NoSpill;
 
             if (ClContext->m_InternalOptions.DoReRA &&
                 !ClContext->gtpin_init)
@@ -3940,6 +3942,16 @@ namespace IGC
 
                 else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+            }
+        }
+
+        if (context->type == ShaderType::OPENCL_SHADER && m_program->m_dispatchSize == SIMDMode::SIMD8)
+        {
+            // AllowSpill is set to false if -cl-intel-no-spill internal option was passed from OpenCL Runtime.
+            // It has been implemented to avoid scratch space usage for scheduler kernel.
+            if (AllowSpill)
+            {
+                SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
             }
         }
 
@@ -5145,7 +5157,7 @@ namespace IGC
             m_program->m_staticCycle = staticCycle;
         }
 
-        if (jitInfo->isSpill && AvoidRetryOnSmallSpill())
+        if (jitInfo->isSpill && (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry))
         {
             context->m_retryManager.Disable();
         }
