@@ -187,20 +187,26 @@ static bool convertRecursionToStackCall(CallGraph& CG, CodeGenContext* pCtx, IGC
         if (SCCNodes.size() >= 2)
         {
             hasRecursion = true;
-            // Convert all functions in the recursion call graph to stackcall
+            // Convert all functions in the SCC to stackcall
             for (auto Node : SCCNodes)
             {
                 Node->getFunction()->addFnAttr("visaStackCall");
+                Node->getFunction()->addFnAttr("forceStackCallRecurse");
             }
         }
-        // Check self-recursion.
-        auto Node = SCCNodes.back();
-        for (auto Callee : *Node)
+        else
         {
-            if (Callee.second == Node)
+            // Check self-recursion.
+            auto Node = SCCNodes.back();
+            for (auto Callee : *Node)
             {
-                hasRecursion = true;
-                Node->getFunction()->addFnAttr("visaStackCall");
+                if (Callee.second == Node)
+                {
+                    hasRecursion = true;
+                    Node->getFunction()->addFnAttr("visaStackCall");
+                    Node->getFunction()->addFnAttr("forceStackCallRecurse");
+                    break;
+                }
             }
         }
     }
@@ -455,7 +461,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
         // Enable inlining for -O0 in order to preserve debug info. This may be removed when debug stack call support is enabled.
         else if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable &&
-            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
+            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
+            IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
         {
             mustAlwaysInline = true;
         }
@@ -478,10 +485,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         auto FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
         if (FCtrl == FLAG_FCALL_DEFAULT)
         {
+            // If this flag is enabled, default function call mode will be stackcall. Otherwise subroutines are used.
+            // Default call mode in -O0 is stackcall.
+            const bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall) ||
+                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
+            // FE option to selectively enable stack call per function.
             const bool forceStackCall = F->hasFnAttribute("igc-force-stackcall");
-            // If this flag is enabled, default function call mode will be stackcall.
-            // Otherwise subroutines are used.
-            if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall) || forceStackCall)
+            if (defaultStackCall || forceStackCall)
             {
                 pCtx->m_enableStackCall = true;
                 F->addFnAttr("visaStackCall");

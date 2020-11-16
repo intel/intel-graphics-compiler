@@ -87,6 +87,8 @@ bool WIFuncsAnalysis::runOnModule(Module& M)
 bool WIFuncsAnalysis::runOnFunction(Function& F)
 {
     // Processing new function
+    m_hasGroupID = false;
+    m_hasGlobalOffset = false;
     m_hasLocalID = false;
     m_hasGlobalSize = false;
     m_hasLocalSize = false;
@@ -104,10 +106,22 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
     // All OpenCL kernels receive R0 and Payload Header implicitly
-    implicitArgs.push_back(ImplicitArg::R0);
-    implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
-
-    // Check if additional implicit information is needed based on the function analysis
+    if (isEntryFunc(m_pMDUtils, &F))
+    {
+        implicitArgs.push_back(ImplicitArg::R0);
+        implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+    }
+    else
+    {
+        if (m_hasGroupID)
+        {
+            implicitArgs.push_back(ImplicitArg::R0);
+        }
+        if (m_hasGlobalOffset)
+        {
+            implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+        }
+    }
     if (m_hasWorkDim)
     {
         implicitArgs.push_back(ImplicitArg::WORK_DIM);
@@ -167,6 +181,14 @@ void WIFuncsAnalysis::visitCallInst(CallInst& CI)
         funcName.equals(GET_LOCAL_ID_Z))
     {
         m_hasLocalID = true;
+    }
+    else if (funcName.equals(GET_GROUP_ID))
+    {
+        m_hasGroupID = true;
+    }
+    else if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET))
+    {
+        m_hasGlobalOffset = true;
     }
     else if (funcName.equals(GET_GLOBAL_SIZE))
     {

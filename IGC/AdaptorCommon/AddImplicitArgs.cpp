@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
+#include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
