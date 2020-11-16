@@ -65,7 +65,11 @@ namespace IGC
 
         while (!AssumeToErase.empty()) {
             auto Inst = AssumeToErase.pop_back_val();
-            if (isInstructionTriviallyDead(Inst)) {
+            bool IsAssume = false;
+            if (llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(Inst)) {
+                IsAssume = (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_assume_uniform);
+            }
+            if (IsAssume || isInstructionTriviallyDead(Inst)) {
                 for (Use& OpU : Inst->operands()) {
                     Value* OpV = OpU.get();
                     if (Instruction* OpI = dyn_cast<Instruction>(OpV))
