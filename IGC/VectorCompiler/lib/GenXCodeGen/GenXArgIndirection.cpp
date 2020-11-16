@@ -403,13 +403,11 @@ public:
     AU.addRequired<GenXLiveness>();
     AU.addRequired<GenXGroupBaling>();
     AU.addRequired<GenXModule>();
-    AU.addPreserved<DominatorTreeGroupWrapperPass>();
     AU.addPreserved<GenXGroupBaling>();
     AU.addPreserved<GenXLiveness>();
     AU.addPreserved<GenXNumbering>();
     AU.addPreserved<GenXModule>();
     AU.addPreserved<FunctionGroupAnalysis>();
-    AU.setPreservesCFG();
   }
   bool runOnFunctionGroup(FunctionGroup &FG);
   // createPrinterPass : get a pass to print the IR, together with the GenX
