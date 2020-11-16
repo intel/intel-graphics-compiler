@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../SVMLReleaseOnly/svml/Math/svml_pown.cl"
+#include "../IMF/FP32/pown_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/pown_d_la.cl"
@@ -74,7 +73,7 @@ INLINE float __builtin_spirv_OpenCL_pown_f32_i32( float x, int y )
     }
     else
     {
-        return __ocl_svml_px_pownf1(x, y);
+        return __ocl_svml_pownf(x, y);
     }
 }
 
