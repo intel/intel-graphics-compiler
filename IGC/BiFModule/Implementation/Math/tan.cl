@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../ExternalLibraries/libclc/trig.cl"
+#include "../IMF/FP32/tan_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/tan_d_la.cl"
@@ -52,7 +51,7 @@ static INLINE float __intel_tan_f32( float x, bool doFast )
         }
         else
         {
-                result = libclc_tan_f32(x);
+            result = __ocl_svml_tanf(x);
         }
     }
     return result;
