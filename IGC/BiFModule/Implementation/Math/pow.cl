@@ -27,8 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-#include "../SVMLReleaseOnly/svml/Math/svml_pow.cl"
+#include "../IMF/FP32/pow_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/pow_d_la.cl"
@@ -84,7 +83,7 @@ INLINE float __builtin_spirv_OpenCL_pow_f32_f32( float x, float y )
         {
             return as_float(0x3F7FFFFF);
         }
-        return __ocl_svml_px_powf1(x, y);
+        return __ocl_svml_powf(x, y);
     }
 }
 
