@@ -403,7 +403,10 @@ public:
 
     /* Info methods */
     // common for all sends
-    uint16_t ResponseLength() const { return desc.layout.rspLength; }
+    uint16_t ResponseLength() const
+    {
+        return desc.layout.rspLength;
+    }
     uint16_t MessageLength() const { return desc.layout.msgLength; }
     uint16_t extMessageLength() const { return (uint16_t)src1Len; }
     bool isDataPortRead() const { return accessType != SendAccess::WRITE_ONLY; }
