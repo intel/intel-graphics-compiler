@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../ExternalLibraries/libclc/log10.cl"
+#include "../IMF/FP32/log10_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/log10_d_la.cl"
@@ -45,7 +44,7 @@ INLINE float __builtin_spirv_OpenCL_log10_f32( float x )
     }
     else
     {
-            result = libclc_log10_f32(x);
+        result = __ocl_svml_log10f(x);
     }
 
     return result;
