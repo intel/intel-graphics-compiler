@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../ExternalLibraries/libclc/log1p.cl"
+#include "../IMF/FP32/log1p_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/log1p_d_la.cl"
@@ -41,7 +40,7 @@ INLINE float __builtin_spirv_OpenCL_log1p_f32( float x )
     }
     else
     {
-            return libclc_log1p_f32( x );
+        return __ocl_svml_log1pf(x);
     }
 }
 
