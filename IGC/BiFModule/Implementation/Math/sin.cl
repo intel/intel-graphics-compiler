@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #if defined(cl_khr_fp64)
-    #include "../SVMLReleaseOnly/svml/MathDouble/rf_sin_d_1_g.cl"
     #include "../IMF/FP64/sin_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
