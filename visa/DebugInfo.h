@@ -467,7 +467,7 @@ struct DebugFormatHeader
 
 struct DebugInfoFormat
 {
-    uint8_t kernelNameLen;
+    uint16_t kernelNameLen;
     char kernelName[kernelNameLen];
     uint32_t reloc_offset; // 0 for kernel, non-zero for stack call functions
 
@@ -540,7 +540,7 @@ struct CallFrameInfo
 
 struct VarName
 {
-    uint8_t varNameLen;
+    uint16_t varNameLen;
     char varName[varNameLen];
 }
 
