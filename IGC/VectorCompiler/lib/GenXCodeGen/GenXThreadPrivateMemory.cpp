@@ -388,8 +388,10 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return Ptr;
   } else if (auto *CI = dyn_cast<CallInst>(Ptr)) {
     if (!IGCLLVM::isIndirectCall(*CI) &&
-        GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
-            GenXIntrinsic::genx_svm_block_ld) {
+        (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
+             GenXIntrinsic::genx_svm_block_ld ||
+         GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
+             GenXIntrinsic::genx_svm_gather)) {
       return Ptr;
     } else {
       // FIXME: unify the return paths for failure cases
@@ -507,9 +509,16 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
     RealTyToLoad = I32Ty;
   unsigned RealTyToLoadSz =
       m_DL->getTypeSizeInBits(RealTyToLoad) / genx::ByteBits;
+  // we don't want to use improper block sizes for loads of i8/i16
+  // to make sure we comply with alignment rules for gathers
+  bool NoExtToDword =
+      m_useGlobalMem &&
+      !(LdI->getType()->isAggregateType() || LdI->getType()->isVectorTy()) &&
+      m_DL->getTypeSizeInBits(LdI->getType()) < genx::DWordBits;
+  if (NoExtToDword)
+    TyToLoad = LdI->getType();
   Value *OldValOfTheDataRead =
       Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(TyToLoad));
-
 
   Value *PointerOp = LdI->getPointerOperand();
   Value *Offset = lookForPtrReplacement(PointerOp);

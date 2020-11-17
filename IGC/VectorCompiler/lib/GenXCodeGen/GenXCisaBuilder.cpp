@@ -540,6 +540,7 @@ class GenXKernelBuilder {
   // Map from LLVM Value to pointer to the last used register alias for this
   // Value.
   std::map<Value *, Register *> LastUsedAliasMap;
+  CallInst *LastAlloca = nullptr;
 
 public:
   FunctionGroup *FG = nullptr;
@@ -1263,6 +1264,7 @@ void GenXKernelBuilder::buildInstructions() {
     CISA_CALL(Kernel->AppendVISACFLabelInst(Labels[LabelID]));
 
     beginFunction(Func);
+    LastAlloca = nullptr;
 
     // If a float control is specified, emit code to make that happen.
     // Float control contains rounding mode, denorm behaviour and single
@@ -4449,12 +4451,37 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
   if (!Subtarget->hasLongLong())
     CISA_CALL(Kernel->CreateVISAGenVar(Sp, "Sp", 1, ISA_TYPE_UD, ALIGN_DWORD, Sp));
 
+  Value *AllocaOff = CI->getOperand(0);
+  Type *AllocaOffTy = AllocaOff->getType();
+
+  if (LastAlloca) {
+    // padd the current alloca the comply with gather/scatter alignment rules
+    unsigned LastOff = getResultedTypeSize(LastAlloca->getOperand(0)->getType(), DL);
+    auto *AllocaEltTy = AllocaOffTy->getScalarType();
+    if (AllocaOffTy->isArrayTy())
+      AllocaEltTy = AllocaOffTy->getArrayElementType();
+    unsigned Padding = DL.getTypeSizeInBits(AllocaEltTy) / genx::ByteBits;
+    Padding = (Padding - LastOff) % Padding;
+    if (Padding) {
+      VISA_VectorOpnd *SpSrc = nullptr;
+      CISA_CALL(Kernel->CreateVISASrcOperand(SpSrc, Sp, MODIFIER_NONE, 0, 1, 0,
+                                             0, 0));
+      VISA_VectorOpnd *PaddImm = nullptr;
+      CISA_CALL(Kernel->CreateVISAImmediate(PaddImm, &Padding, ISA_TYPE_D));
+      VISA_VectorOpnd *DstSp = nullptr;
+      CISA_CALL(Kernel->CreateVISADstOperand(
+          DstSp, static_cast<VISA_GenVar *>(Sp), 1, 0, 0));
+
+      CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
+                                                 vISA_EMASK_M1, EXEC_SIZE_1,
+                                                 DstSp, SpSrc, PaddImm));
+    }
+  }
+
   VISA_VectorOpnd *SpSrc = nullptr;
   CISA_CALL(
       Kernel->CreateVISASrcOperand(SpSrc, Sp, MODIFIER_NONE, 0, 1, 0, 0, 0));
 
-  Value *AllocaOff = CI->getOperand(0);
-  Type *AllocaOffTy = AllocaOff->getType();
   unsigned OffVal = getResultedTypeSize(AllocaOffTy, DL);
 
   VISA_VectorOpnd *Imm = nullptr;
@@ -4475,6 +4502,8 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
 
   CISA_CALL(Kernel->AppendVISAArithmeticInst(
       ISA_ADD, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1, DstSp, SpSrc, Imm));
+
+  LastAlloca = CI;
 }
 
 // extracts underlying c-string from provided constant
