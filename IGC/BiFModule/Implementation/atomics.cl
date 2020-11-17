@@ -38,7 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
   __local uint* __builtin_IB_get_local_lock();
   void __builtin_IB_eu_thread_pause(uint value);
-  void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1);
 
 #define SPINLOCK_START \
   { \
@@ -52,18 +51,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             atomic_store(__builtin_IB_get_local_lock(), 0); \
   }}}
 
-#define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                      \
-  if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                         \
-  {                                                                                   \
-      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, false);                             \
+#define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                     \
+  if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                        \
+  {                                                                                  \
+      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);    \
+      if(flushL3)                                                                    \
+          __builtin_IB_memfence(true, true, false, false, false, isGlobal, false);   \
+      else                                                                           \
+          __builtin_IB_memfence(true, false, false, false, false, isGlobal, false);  \
   }
 
-#define FENCE_POST_OP(Scope, Semantics, isGlobal)                                     \
-  if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                       \
-  {                                                                                   \
-      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, false);                             \
+#define FENCE_POST_OP(Scope, Semantics, isGlobal)                                    \
+  if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                      \
+  {                                                                                  \
+      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);    \
+      if(flushL3)                                                                    \
+          __builtin_IB_memfence(true, true, false, false, false, isGlobal, false);   \
+      else                                                                           \
+          __builtin_IB_memfence(true, false, false, false, false, isGlobal, false);  \
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
