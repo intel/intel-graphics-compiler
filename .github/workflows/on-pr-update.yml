@@ -36,10 +36,10 @@ jobs:
       - name: Get branch name if status changed
         if: github.event_name == 'status'
         run: >
-          echo "::set-env name=os_branch::${{ github.event.branches[0].name }}"
+          echo "os_branch=${{ github.event.branches[0].name }}" >> $GITHUB_ENV
       - name: Get branch name if pr review state changed
         if: github.event_name == 'pull_request_review'
         run: >
-          echo "::set-env name=os_branch::${{ github.event.pull_request.head.ref }}"
+          echo "os_branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
       - name: Notify
         run: ${{ secrets.NOTIFY }}
