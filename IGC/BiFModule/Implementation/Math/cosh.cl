@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-#include "../include/exp_for_hyper.cl"
+#include "../IMF/FP32/cosh_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/cosh_d_la.cl"
@@ -45,21 +45,7 @@ float __builtin_spirv_OpenCL_cosh_f32( float x )
     }
     else
     {
-        if( __intel_relaxed_isnan(x) )
-        {
-            result = __builtin_spirv_OpenCL_nan_i32((uint)0);
-        }
-        else if( __intel_relaxed_isinf(x) )
-        {
-            result = as_float(INFINITY);
-        }
-        else
-        {
-            float pexp = __intel_exp_for_hyper( x, -2.0f);
-            float nexp = __intel_exp_for_hyper(-x, -2.0f);
-
-            result = 2.0f * ( pexp + nexp );
-        }
+        result = __ocl_svml_coshf(x);
     }
 
     return result;
