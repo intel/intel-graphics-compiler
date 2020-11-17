@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-#include "../include/exp_for_hyper.cl"
+#include "../IMF/FP32/sinh_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/sinh_d_la.cl"
@@ -52,42 +52,7 @@ float __builtin_spirv_OpenCL_sinh_f32( float x )
     }
     else
     {
-        if( __intel_relaxed_isnan(x) )
-        {
-            result = __builtin_spirv_OpenCL_nan_i32((uint)0);
-        }
-        else if( __intel_relaxed_isinf(x) )
-        {
-            result = x;
-        }
-        else if( __builtin_spirv_OpenCL_fabs_f32(x) < as_float(0x3EACB527) )   // 0.33731958270072937
-        {
-            float x2 = x * x;
-            float x3 = x * x2;
-            float x5 = x3 * x2;
-            result = (as_float(0x3C088889) * x5) + (as_float(0x3E2AAAAB) * x3) + x;
-        }
-        else
-        {
-#if 0
-            // sinh(x) = 0.5f * (e^x - e^-x)
-            //         = 0.5f * e^x - 0.5f * e^-x
-            //         = (e^x / 2) - 1 / (2 * e^x)
-            // to avoid overflow compute as:
-            //         = 2 * (e^x / 4) - 1 / ( 2 * 4 * (e^x / 4) )
-            //         = 2 * (e^x / 4) - 1/8 / (e^x / 4)
-            //
-            // This doesn't quite work.  :-(
-
-            float ex = __intel_exp_for_hyper( x, -2.0f );
-            result = 2 * ex - (1.0f/8.0f) / ex;
-#else
-            float pexp = __intel_exp_for_hyper( x, -2.0f);
-            float nexp = __intel_exp_for_hyper(-x, -2.0f);
-
-            result = 2.0f * ( pexp - nexp );
-#endif
-        }
+        result = __ocl_svml_sinhf(x);
     }
 
     return result;
