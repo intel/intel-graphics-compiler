@@ -25,55 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
-#include "Compiler/CodeGenContextWrapper.hpp"
-
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/Pass.h>
-#include <llvm/IR/InstVisitor.h>
-#include "common/LLVMWarningsPop.hpp"
-
 namespace llvm
 {
-    class LLVMContext;
-    class Instruction;
-    class Value;
-    class MemCpyInst;
-    class MemSetInst;
-    class MemMoveInst;
-    class IntrinsicInst;
-    class Type;
+    class FunctionPass;
 }
 
 namespace IGC
 {
-    /// ReplaceIntrinsics pass lowers calls to unsupported intrinsics functions.
-    // Two llvm instrinsics are replaced llvm.memcpy and llvm.memset. Both appear in SPIR spec.
-    class ReplaceUnsupportedIntrinsics : public llvm::FunctionPass, public llvm::InstVisitor<ReplaceUnsupportedIntrinsics>
-    {
-    public:
-        static char ID;
-
-        ReplaceUnsupportedIntrinsics();
-
-        ~ReplaceUnsupportedIntrinsics() {}
-
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ReplaceUnsupportedIntrinsics";
-        }
-
-        virtual bool runOnFunction(llvm::Function& F) override;
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-        }
-
-        void visitIntrinsicInst(llvm::IntrinsicInst& I);
-
-    private:
-
-        std::vector<llvm::IntrinsicInst*> m_instsToReplace;
-
-    };
-
+    llvm::FunctionPass* createReplaceUnsupportedIntrinsicsPass();
 } // namespace IGC

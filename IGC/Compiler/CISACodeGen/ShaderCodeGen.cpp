@@ -433,7 +433,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
     }
 
-    mpm.add(new ReplaceUnsupportedIntrinsics());
+    mpm.add(createReplaceUnsupportedIntrinsicsPass());
 
     if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS) &&
         !ctx.getModuleMetaData()->compOpt.IsLibraryCompilation)
