@@ -197,6 +197,11 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
   case GenXIntrinsic::genx_raw_send_noresult:
   case GenXIntrinsic::genx_raw_sends_noresult:
     return 16;
+  case GenXIntrinsic::genx_subb:
+  case GenXIntrinsic::genx_addc:
+    if (auto *VT = dyn_cast<VectorType>(CI->getOperand(0)->getType()))
+      return VT->getNumElements();
+    return 1;
   }
 
   return 0;
