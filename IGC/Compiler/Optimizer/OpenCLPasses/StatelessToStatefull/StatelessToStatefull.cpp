@@ -539,7 +539,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
 
                 Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
-                unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
+                unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
                 setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
                 if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead)
@@ -671,7 +671,7 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
 
         Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
-        unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
+        unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
         setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
         PointerType* pTy = PointerType::get(I.getType(), addrSpace);
@@ -728,7 +728,7 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
             ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
             Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
-            unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
+            unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
             setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
             PointerType* pTy = PointerType::get(dataVal->getType(), addrSpace);
