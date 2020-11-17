@@ -867,6 +867,8 @@ namespace IGC
         std::string m_savedBitcodeString;
         SInstrTypes m_savedInstrTypes;
 
+        bool m_hasVendorExtension = false;
+
         std::vector<int> m_hsIdxMap;
         std::vector<int> m_dsIdxMap;
         std::vector<int> m_gsIdxMap;
