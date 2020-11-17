@@ -1343,6 +1343,20 @@
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ]
     },
+    "genx_addc": {
+      "opc": "ISA_ADDC",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "genx_subb": {
+      "opc": "ISA_SUBB",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED",  "MODIFIER_ARITH", 2 ]
+    },
     "genx_raw_send": {
       "opc": "ISA_RAW_SEND",
       "modifier_sendc": [ "BYTE", 1 ],
