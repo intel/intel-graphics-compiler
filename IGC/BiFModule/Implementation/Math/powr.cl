@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
-    #include "../ExternalLibraries/sun/sun_pow.cl"
+#include "../IMF/FP32/powr_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/powr_d_la.cl"
@@ -69,17 +68,7 @@ INLINE float __builtin_spirv_OpenCL_powr_f32_f32( float x, float y )
     }
     else
     {
-            if ( (__builtin_spirv_OpSignBitSet_f32(x) && x != 0) ||
-                 (x == 0 && y == 0) ||
-                 (x == 1 && __builtin_spirv_OpIsInf_f32(y)) ||
-                 (__builtin_spirv_OpIsInf_f32(x) && y == 0) ||
-                 __builtin_spirv_OpIsNan_f32(x) ||
-                 __builtin_spirv_OpIsNan_f32(y) )
-                return __builtin_spirv_OpenCL_nan_i32(0);
-            else if (x == 0 && y < 0)
-                return as_float(0x7f800000); //+infinity
-            else
-                return __builtin_spirv_OpenCL_pow_f32_f32( x, y );
+        return __ocl_svml_powrf(x, y);
     }
 }
 
