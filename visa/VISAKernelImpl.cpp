@@ -622,27 +622,12 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
     int status = VISA_SUCCESS;
     m_num_pred_vars = Get_CISA_PreDefined_Var_Count();
     setName(kernel_name);
-    if (IS_GEN_BOTH_PATH && m_isKernel)
+    if (IS_GEN_BOTH_PATH)
     {
-        // only doing it for kernel, since function will need physical register
-        // pool created by the kernel so will need to be passed in when kernel
-        // is compiled.
         status = InitializeFastPath();
     }
-    if (IS_VISA_BOTH_PATH)
-    {
-        m_branch_targets = new_string_pool();
-    }
 
-    {
-        TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
-        CISABuildPreDefinedDecls();
-    }
-
-    if (m_isKernel)
-    {
-        m_kernelID++;
-    }
+    CISABuildPreDefinedDecls();
 
     return status;
 }
@@ -1782,7 +1767,8 @@ int VISAKernelImpl::CreateVISAInputVar(
         if ((input->kind & 0x3) == INPUT_UNKNOWN) {
             fprintf(stderr, "Wrong input variable is used");
             status = VISA_FAILURE;
-        }else
+        }
+        else
         {
             m_input_info_list.push_back(input);
             m_input_count++;
@@ -7528,14 +7514,6 @@ int VISAKernelImpl::addLabel(label_info_t * lbl, char * label_name)
 
 int VISAKernelImpl::addFunctionDirective(char * func_name)
 {
-    /*
-    label_info_t *lbl = (label_info_t *)m_mem.alloc(sizeof(label_info_t));
-    //memset(lbl,0,sizeof(label_info_t));
-    int labelID = addLabel(lbl, func_name);
-    lbl->kind = LABEL_SUBROUTINE;
-    m_funcName_to_labelID_map[std::string(func_name)] = labelID;
-    return labelID;
-    */
     return 0;
 }
 
@@ -7625,14 +7603,15 @@ void VISAKernelImpl::finalizeKernel()
     m_cisa_kernel.variable_count = adjVarInfoCount;
     m_cisa_kernel.variables = (var_info_t *) m_mem.alloc(sizeof(var_info_t) * adjVarInfoCount);
 
+    uint32_t varInfoSize = 0;
     for (unsigned int i = 0; i < adjVarInfoCount; i++)
     {
         var_info_t * temp = &m_var_info_list.at(i + m_num_pred_vars)->genVar;
         m_cisa_kernel.variables[i] = *temp;
-        m_var_info_size += temp->getSizeInBinary();
+        varInfoSize += temp->getSizeInBinary();
     }
     m_kernel_data_size += sizeof(m_cisa_kernel.variable_count);
-    m_kernel_data_size += m_var_info_size;
+    m_kernel_data_size += varInfoSize;
 
     DEBUG_PRINT_SIZE("size after variables: ", SIZE_VALUE);
 
@@ -7702,7 +7681,6 @@ void VISAKernelImpl::finalizeKernel()
     m_kernel_data_size += sizeof(m_cisa_kernel.sampler_count);
     m_kernel_data_size += m_sampler_info_size;
 
-
     DEBUG_PRINT_SIZE("size after samplers: ", SIZE_VALUE);
 
     /*****SURFACES******/
@@ -7710,15 +7688,16 @@ void VISAKernelImpl::finalizeKernel()
     m_cisa_kernel.surface_count = (uint8_t) adjSurfaceCount;
     m_cisa_kernel.surfaces = (state_info_t *) m_mem.alloc(sizeof(state_info_t) * adjSurfaceCount);
 
+    uint32_t surfaceInfoSize = 0;
     for (unsigned int i = 0, j = Get_CISA_PreDefined_Surf_Count(); i < adjSurfaceCount; i++, j++)
     {
         state_info_t * temp = &m_surface_info_list.at(j)->stateVar;
         m_cisa_kernel.surfaces[i] = *temp;
-        m_surface_info_size += temp->getSizeInBinary();
+        surfaceInfoSize += temp->getSizeInBinary();
     }
 
     m_kernel_data_size += sizeof(m_cisa_kernel.surface_count);
-    m_kernel_data_size += m_surface_info_size;
+    m_kernel_data_size += surfaceInfoSize;
 
     DEBUG_PRINT_SIZE("size after surfaces: ", SIZE_VALUE);
 
@@ -7792,7 +7771,6 @@ void VISAKernelImpl::finalizeKernel()
 
     m_cisa_binary_size = m_instruction_size + m_kernel_data_size;
     m_cisa_binary_buffer = (char *) m_mem.alloc(m_cisa_binary_size);
-    //memset(m_cisa_binary_buffer, 0, m_cisa_binary_size);
 
 }
 
@@ -7934,53 +7912,6 @@ string_pool_entry** VISAKernelImpl::new_string_pool()
     return sp;
 }
 
-bool VISAKernelImpl::string_pool_lookup_and_insert_branch_targets(char *str,
-                                                                  Common_ISA_Var_Class type,
-                                                                  VISA_Type data_type)
-{
-    unsigned short key = 0;
-    string_pool_entry* entry;
-    char *s;
-    int len = (int) strlen(str);
-
-    key = get_hash_key(str);
-
-    for (entry = m_branch_targets[key]; entry != NULL; entry = entry->next) {
-        s = (char *)entry->value;
-        if (!strcmp(s, str))
-            return false;
-    }
-
-    s = (char*)m_mem.alloc(len + 1);
-    memcpy_s(s, len+1, str, len+1);
-    s[len] = '\0';
-
-    entry = (string_pool_entry*)m_mem.alloc(sizeof(string_pool_entry));
-    //memset(entry, 0, sizeof(entry));
-    entry->value = s;
-    entry->type = type;
-    entry->data_type = data_type;
-
-    //entry->next = m_string_pool_name[key];
-    m_branch_targets[key] = entry;
-
-    return true;
-}
-
-void VISAKernelImpl::CISAPostFileParse()
-{
-    //Checking if target labels have been declared
-    for (int i = 0; i < HASH_TABLE_SIZE; i++) {
-        if (m_branch_targets[i]) {
-            string_pool_entry * l = m_branch_targets[i];
-            while (l != NULL) {
-                l = l->next;
-            }
-        }
-    }
-    return;
-}
-
 VISAKernelImpl::~VISAKernelImpl()
 {
     std::list<CisaFramework::CisaInst *>::iterator iter =  m_instruction_list.begin();
@@ -8094,7 +8025,7 @@ int VISAKernelImpl::GetCompilerStats(CompilerStats &compilerStats)
 
 int VISAKernelImpl::GetErrorMessage(const char *&errorMsg) const
 {
-    errorMsg = errorMessage;
+    // do nothing, doesn't seem like this is actually implemented
     return VISA_SUCCESS;
 }
 
@@ -8282,7 +8213,7 @@ void VISAKernelImpl::setName(const char* n)
     if (!strcmp("", n)) return;
     m_cisa_kernel.name_index = addStringPool(n);
     m_name = m_string_pool[m_cisa_kernel.name_index];
-    if (m_kernel != NULL)
+    if (m_kernel)
     {
         m_kernel->setName(m_name.c_str());
     }

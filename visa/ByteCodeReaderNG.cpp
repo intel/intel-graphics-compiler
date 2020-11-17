@@ -2562,9 +2562,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
         container.minorVersion = isaHeader.minor_version;
 
         builder->AddKernel(container.kernelBuilder, isaHeader.kernels[kernelIndex].name);
-
-        VISAKernelImpl* kernelImpl = (VISAKernelImpl*)container.kernelBuilder;
-        kernelImpl->setIsKernel(true);
         kernels.push_back(container.kernelBuilder);
 
         readRoutineNG(bytePos, buf, mem, container);
@@ -2577,8 +2574,6 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
             builder->AddFunction(funcPtr, isaHeader.functions[i].name);
 
             container.kernelBuilder = (VISAKernel*)funcPtr;
-
-            ((VISAKernelImpl*)container.kernelBuilder)->setIsKernel(false);
             kernels.push_back(container.kernelBuilder);
 
             readRoutineNG(bytePos, buf, mem, container);
@@ -2597,33 +2592,29 @@ extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VI
             container.minorVersion = isaHeader.minor_version;
 
             builder->AddKernel(container.kernelBuilder, isaHeader.kernels[k].name);
-
-            ((VISAKernelImpl*)container.kernelBuilder)->setIsKernel(true);
             kernels.push_back(container.kernelBuilder);
 
             readRoutineNG(bytePos, buf, mem, container);
         }
 
         for (unsigned int i = 0; i < isaHeader.num_functions; i++)
-            {
-                RoutineContainer container;
+        {
+            RoutineContainer container;
 
-                container.builder = builder;
-                container.majorVersion = isaHeader.major_version;
-                container.minorVersion = isaHeader.minor_version;
+            container.builder = builder;
+            container.majorVersion = isaHeader.major_version;
+            container.minorVersion = isaHeader.minor_version;
 
-                bytePos = isaHeader.functions[i].offset;
+            bytePos = isaHeader.functions[i].offset;
 
-                VISAFunction* funcPtr = NULL;
-                builder->AddFunction(funcPtr, isaHeader.functions[i].name);
+            VISAFunction* funcPtr = NULL;
+            builder->AddFunction(funcPtr, isaHeader.functions[i].name);
 
-                container.kernelBuilder = (VISAKernel*)funcPtr;
+            container.kernelBuilder = (VISAKernel*)funcPtr;
+            kernels.push_back(container.kernelBuilder);
 
-                ((VISAKernelImpl*)container.kernelBuilder)->setIsKernel(false);
-                kernels.push_back(container.kernelBuilder);
-
-                readRoutineNG(bytePos, buf, mem, container);
-            }
+            readRoutineNG(bytePos, buf, mem, container);
+        }
     }
 
     return true;

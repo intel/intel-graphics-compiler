@@ -103,6 +103,7 @@ public:
     string_pool_entry** branch_targets;
     common_isa_header m_header;
 
+    // the current vISA kernel/function being processed
     VISAKernelImpl *m_kernel;
     CisaFramework::CisaBinary *m_cisaBinary;
     VISAKernelImpl * get_kernel() { return m_kernel; }
@@ -167,6 +168,9 @@ public:
 
     const PWA_TABLE getWATable() { return m_pWaTable; }
 
+    uint8_t getMajorVersion() const { return m_header.major_version; }
+    uint8_t getMinorVersion() const { return m_header.minor_version; }
+
     void CISA_IR_setVersion(unsigned char major_ver, unsigned char minor_ver)
     {
         m_header.major_version = major_ver;
@@ -174,9 +178,6 @@ public:
     }
 
     Common_ISA_Input_Class get_input_class(Common_ISA_Var_Class var_class);
-
-    // CISA Build Functions
-    bool CISA_IR_initialization(const char *kernel_name, int lineNum);
 
     bool CISA_lookup_builtin_constant(int lineNum, const char *symbol, int64_t &val);
     bool CISA_eval_sizeof_decl(int lineNum, const char *arg, int64_t &val);
@@ -829,6 +830,7 @@ public:
     void* getGtpinInit() { return gtpin_init; }
 
     Options* getOptions() { return &m_options; }
+    VISA_BUILDER_OPTION getBuilderOption() const { return mBuildOption; }
 
 
 

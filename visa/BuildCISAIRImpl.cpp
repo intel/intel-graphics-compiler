@@ -321,13 +321,6 @@ int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder)
     return VISA_SUCCESS;
 }
 
-bool CISA_IR_Builder::CISA_IR_initialization(
-    const char *kernel_name, int lineNum)
-{
-    m_kernel->InitializeKernel(kernel_name);
-    return true;
-}
-
 VISAKernel* CISA_IR_Builder::GetVISAKernel(const std::string& kernelName)
 {
     if (kernelName.empty())
@@ -354,21 +347,16 @@ int CISA_IR_Builder::ClearAsmTextStreams()
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 {
 
-    if (kernel != NULL)
+    if (kernel)
     {
         assert(0);
         return VISA_FAILURE;
     }
 
-    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(this, mBuildOption, &m_options);
-    kernel = static_cast<VISAKernel *>(kerneltemp);
+    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(true, this, kernelName);
+    kernel = static_cast<VISAKernel*>(kerneltemp);
     m_kernel = kerneltemp;
-    //m_kernel->setName(kernelName);
-    m_kernel->setIsKernel(true);
     m_kernelsAndFunctions.push_back(kerneltemp);
-    m_kernel->setVersion((unsigned char)this->m_header.major_version, (unsigned char)this->m_header.minor_version);
-    m_kernel->InitializeKernel(kernelName);
-    m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;
     this->m_nameToKernel[kernelName] = m_kernel;
 
@@ -382,19 +370,24 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 
 int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionName)
 {
-    if (function != NULL)
+    if (function)
     {
         assert(0);
         return VISA_FAILURE;
     }
 
-    this->AddKernel((VISAKernel *&)function, functionName);
+    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(false, this, functionName);
+    function = static_cast<VISAFunction*>(kerneltemp);
+    m_kernel = kerneltemp;
+    m_kernelsAndFunctions.push_back(kerneltemp);
+    m_kernel->m_functionId = this->m_function_count++;
+    this->m_nameToKernel[functionName] = m_kernel;
 
-    ((VISAKernelImpl*)function)->m_functionId = this->m_function_count;
+    if (m_options.getOption(vISA_IsaAssembly))
+    {
+        ClearAsmTextStreams();
+    }
 
-    this->m_kernel_count--;
-    this->m_function_count++;
-    ((VISAKernelImpl *)function)->setIsKernel(false);
     return VISA_SUCCESS;
 }
 

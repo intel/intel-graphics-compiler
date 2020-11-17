@@ -62,13 +62,13 @@ class VISAKernelImpl : public VISAFunction
     friend class VISAKernel_format_provider;
 
 public:
-    VISAKernelImpl(CISA_IR_Builder* cisaBuilder, VISA_BUILDER_OPTION buildOption, Options *option)
-        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(option)
+    VISAKernelImpl(bool isKernel, CISA_IR_Builder* cisaBuilder, const char* name)
+        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(cisaBuilder->getOptions()), m_isKernel(isKernel)
     {
-        mBuildOption = buildOption;
+        mBuildOption = m_CISABuilder->getBuilderOption();
         m_magic_number = COMMON_ISA_MAGIC_NUM;
-        m_major_version = 0;
-        m_minor_version = 0;
+        m_major_version = m_CISABuilder->getMajorVersion();
+        m_minor_version = m_CISABuilder->getMinorVersion();
         m_var_info_count = 0;
         m_addr_info_count = 0;
         m_pred_info_count = 0;
@@ -79,7 +79,6 @@ public:
         m_label_count = 0;
 
         m_string_pool_size = 0;
-        m_var_info_size = 0;
         m_address_info_size = 0;
         m_predicate_info_size = 0;
         m_label_info_size = 0;
@@ -94,25 +93,16 @@ public:
         m_bytes_written_cisa_buffer = 0;
         m_input_offset = 0;
         m_num_pred_vars = 0;
-        m_surface_info_size = 0;
         m_sampler_info_size = 0;
-        m_isKernel = false;
 
         memset(&m_cisa_kernel, 0, sizeof(kernel_format_t));
         m_forward_label_count = 0;
         m_jitInfo = NULL;
-        errorMessage[0] = '\0';
         m_kernel = NULL;
         m_builder = NULL;
-        m_globalMem = NULL;
 
-        m_kernelID = 0;
         m_inputSize = 0;
         m_opndCounter = 0;
-        m_var_info_list.reserve(200);
-        m_input_info_list.reserve(20);
-        m_label_info_list.reserve(50);
-        m_addr_info_list.reserve(20);
         // give it some default name in case AsmName is not set
         m_asmName = "test";
 
@@ -130,11 +120,14 @@ public:
         mIsFCComposableKernel = false;
 
         // Initialize first level scope of the map
-        // m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
         m_GenNamedVarMap.emplace_back();
 
         createKernelAttributes();
         createReservedKeywordSet();
+
+        InitializeKernel(name);
+        SetGTPinInit(m_CISABuilder->getGtpinInit());
+
     }
 
     void* alloc(size_t sz) { return m_mem.alloc(sz); }
@@ -142,12 +135,6 @@ public:
     virtual ~VISAKernelImpl();
 
     void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); };
-    int InitializeKernel(const char *kernel_name);
-    int CISABuildPreDefinedDecls();
-    void setVersion(unsigned char major_ver, unsigned char minor_ver) {
-        m_major_version = major_ver;
-        m_minor_version = minor_ver;
-    }
 
     vISA::Attributes* getKernelAttributes() { return m_kernelAttrs; }
     // Temporary function to move options to attributes!
@@ -160,10 +147,7 @@ public:
     const char* getName() const { return m_name.c_str(); }
     string_pool_entry** new_string_pool();
     unsigned short get_hash_key(const char* str);
-    bool string_pool_lookup_and_insert_branch_targets(char *str,
-        Common_ISA_Var_Class type,
-        VISA_Type data_type);
-    void CISAPostFileParse();
+
     const kernel_format_t* getKernelFormat() const { return &m_cisa_kernel; }
     /***************** START HELPER FUNCTIONS ********************/
     int CreateStateInstUse(VISA_StateOpndHandle *&cisa_opnd, unsigned int index);
@@ -211,7 +195,6 @@ public:
     char * getCisaBinaryBuffer() { return m_cisa_binary_buffer; }
 
     unsigned long getInputOffset() { return m_input_offset; }
-    void setNumPredVars(unsigned int val) { m_num_pred_vars = val; }
     unsigned int getNumPredVars() { return m_num_pred_vars; }
 
     unsigned long getKernelDataSize() { return m_kernel_data_size; }
@@ -770,7 +753,6 @@ public:
 
     void setGenxBinaryBuffer(void *buffer, int size) { m_genx_binary_buffer = (char *)buffer; m_genx_binary_size = size; }
     void setJitInfo(FINALIZER_INFO* jitInfo) { m_jitInfo = jitInfo; }
-    // char * getErrorMsgPtr() { return errorMessage; }
 
     std::string getOutputAsmPath() const { return m_asmName; }
 
@@ -880,6 +862,9 @@ public:
     void computeAndEmitDebugInfo(VISAKernelImplListTy& functions);
 
 private:
+
+    int InitializeKernel(const char* kernel_name);
+    int CISABuildPreDefinedDecls();
     void createReservedKeywordSet();
     bool isReservedName(const std::string &nm) const;
     void ensureVariableNameUnique(const char *&varName);
@@ -923,14 +908,12 @@ private:
     //size of various arrays in kernel header.
     //used for buffer size allocation.
     unsigned int m_string_pool_size;
-    unsigned int m_var_info_size;
     unsigned int m_address_info_size;
     unsigned int m_predicate_info_size;
     unsigned int m_label_info_size;
     unsigned int m_input_info_size;
     unsigned int m_attribute_info_size;
     unsigned int m_instruction_size;
-    unsigned int m_surface_info_size;
     unsigned int m_sampler_info_size;
 
     unsigned long m_genx_binary_size;
@@ -949,7 +932,6 @@ private:
 
     unsigned long m_input_offset;
 
-    string_pool_entry** m_branch_targets;
     std::vector<std::string> m_string_pool;
     CisaFramework::CisaInst * m_lastInst;
     bool m_isKernel;
@@ -1008,19 +990,15 @@ private:
     std::unordered_map<std::string, VISA_LabelOpnd *> m_label_name_to_index_map;
     std::unordered_map<std::string, VISA_LabelOpnd *> m_funcName_to_labelID_map;
 
-    char errorMessage[MAX_ERROR_MSG_LEN];
-
     VISA_BUILDER_OPTION mBuildOption;
     vISA::G4_Kernel* m_kernel;
     CISA_IR_Builder* m_CISABuilder;
     vISA::IR_Builder* m_builder;
-    vISA::Mem_Manager *m_globalMem;
     vISA::Mem_Manager *m_kernelMem;
     //customized allocator for allocating
     //It is very important that the same allocator is used by all instruction lists
     //that might be joined/spliced.
     INST_LIST_NODE_ALLOCATOR m_instListNodeAllocator;
-    unsigned int m_kernelID;
     unsigned int m_inputSize;
     VISA_opnd m_fastPathOpndPool[vISA_NUMBER_OF_OPNDS_IN_POOL];
     unsigned int m_opndCounter;
@@ -1171,6 +1149,8 @@ public:
     {
         return m_kernel->m_input_count;
     }
+
+    std::string printKernelHeader(const common_isa_header& isaHeader);
 };
 
 #endif //VISA_KERNEL_H
