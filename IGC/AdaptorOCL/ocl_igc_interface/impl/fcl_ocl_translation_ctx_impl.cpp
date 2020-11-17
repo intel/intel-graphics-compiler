@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/Path.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Program.h>
+#include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/StringSaver.h>
 #include <llvm/Support/Host.h>
 #pragma warning(default:4242)
@@ -54,11 +55,46 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(_WIN32)
 #include <Windows.h>
+#include <llvm/Support/ConvertUTF.h>
 #include "inc/common/DriverStore.h"
 #endif
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
 #include "cif/macros/enable.h"
+
+#include <memory>
+
+#if defined(__linux__)
+#include <dlfcn.h>
+#else
+#include <Windows.h>
+
+static std::string encode_asA(const std::wstring& wstr) {
+    if (wstr.empty())
+        return {};
+    int inputSize = static_cast<int>(wstr.size());
+    int sizeNeeded = WideCharToMultiByte(CP_ACP, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+    if (sizeNeeded == 0)
+        return {};
+    std::string strTo(sizeNeeded, 0);
+    if (WideCharToMultiByte(CP_ACP, 0, &wstr[0], inputSize, &strTo[0], sizeNeeded, NULL, NULL) == 0)
+        return {};
+    return strTo;
+}
+static std::wstring encode_asW(const std::string& str) {
+    if (str.empty())
+        return {};
+    int inputSize = static_cast<int>(str.size());
+    int sizeNeeded = MultiByteToWideChar(CP_ACP, 0, &str[0], inputSize, NULL, 0);
+    if (sizeNeeded == 0)
+        return {};
+    std::wstring wstrTo(sizeNeeded, 0);
+    if (MultiByteToWideChar(CP_ACP, 0, &str[0], inputSize, &wstrTo[0], sizeNeeded) == 0)
+        return {};
+    return wstrTo;
+}
+
+#endif
 
 namespace IGC {
 
@@ -94,6 +130,58 @@ llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
 }
 
 #if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+
+static std::string detectCmIncludes(llvm::sys::DynamicLibrary &LibInfo) {
+#if defined(__linux__)
+#define GetFunctionNameAsStr(s) ((void)s, #s);
+  const char *SymName = GetFunctionNameAsStr(IntelCMClangFECompile);
+  void *FAddr = LibInfo.getAddressOfSymbol(SymName);
+#undef GetFunctionNameAsStr
+  // currently Linux does not require header detection facilities
+
+  Dl_info DlInfo;
+  if (!dladdr(FAddr, &DlInfo))
+    return {};
+
+  auto IncludeRoot = llvm::sys::path::parent_path(
+          llvm::sys::path::parent_path(
+                  llvm::sys::path::parent_path(DlInfo.dli_fname)));
+  llvm::SmallVector<char, 1024> PathData(IncludeRoot.begin(),
+                                         IncludeRoot.end());
+#else
+  (void)LibInfo;
+  // Strictly speaking, FE name may not in the correct encoding.
+  // But here we assume that it is ;).
+  std::wstring FeName = encode_asW(CMFE_WRAPPER_NAME);
+  HMODULE FE_LIB_HANDLER = GetModuleHandleW(FeName.c_str());
+  if (FE_LIB_HANDLER == NULL)
+    return {};
+
+  // this means that functions succeeded, but the path may be incomplete
+  // won't bother figuring this out programmatically
+  const size_t MAX_WINDOWS_PATH_LENGTH = 32767;
+  std::vector<wchar_t> buffer(MAX_WINDOWS_PATH_LENGTH);
+  // so portable... so usefull
+  auto Res = GetModuleFileNameW(FE_LIB_HANDLER, buffer.data(), buffer.size());
+  if (Res == buffer.size()) // don't want to mess with that - bail out
+    return {};
+  if (Res == 0) // if function indicates an error - bail out
+    return {};
+  buffer.push_back(0); // zero-terminate the data
+  auto LibPath = encode_asA(std::wstring(buffer.data()));
+  auto ParentPath = llvm::sys::path::parent_path(LibPath).str();
+  llvm::SmallVector<char, MAX_PATH> PathData(ParentPath.begin(),
+                                             ParentPath.end());
+#endif
+  llvm::sys::path::append(PathData, "include", "cm", "cm.h");
+  llvm::StringRef CMHeaderPath(PathData.begin(), PathData.size());
+  if (llvm::sys::fs::exists(CMHeaderPath)) {
+    return llvm::sys::path::parent_path(
+               llvm::sys::path::parent_path(CMHeaderPath))
+        .str();
+  }
+  return {};
+}
 
 using InvocationInfo = IGC::AdaptorCM::Frontend::IDriverInvocation;
 using PathT = llvm::SmallVector<char, 1024>;
@@ -178,7 +266,8 @@ void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutput,
 }
 
 static std::vector<const char*>
-    processFeOptions(const std::string& inputFile,
+    processFeOptions(llvm::sys::DynamicLibrary &LibInfo,
+                     const std::string& inputFile,
                      CIF::Builtins::BufferSimple* options,
                      llvm::StringSaver& stringSaver) {
 
@@ -226,10 +315,18 @@ static std::vector<const char*>
       result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
     }
 
+    llvm::StringRef FeIncludesPath;
     auto auxIncludes = llvm::sys::Process::GetEnv("CM_INCLUDE_DIR");
     if (auxIncludes) {
+        FeIncludesPath = stringSaver.save(auxIncludes.getValue());
+    } else {
+        auto IncludePath = detectCmIncludes(LibInfo);
+        if (!IncludePath.empty())
+            FeIncludesPath = stringSaver.save(IncludePath);
+    }
+    if (!FeIncludesPath.empty()) {
         result.push_back(stringSaver.save("-isystem").data());
-        result.push_back(stringSaver.save(auxIncludes.getValue()).data());
+        result.push_back(FeIncludesPath.data());
     }
     result.insert(result.end(), userArgs.begin(), userArgs.end());
 
@@ -356,9 +453,9 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
-    auto FeArgs = processFeOptions(OptSrc.getValue(), options, Saver);
-
     auto& FE = MaybeFE.getValue();
+    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(), options, Saver);
+
     auto Drv = FE.buildDriverInvocation(FeArgs);
     if (!Drv)
     {
