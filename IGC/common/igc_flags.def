@@ -80,6 +80,7 @@ DECLARE_IGC_REGKEY(bool, EnableSWSBStitch,                 false,  "Insert depen
 DECLARE_IGC_REGKEY(bool, EnableQuickTokenAlloc,                 false,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, SetA0toTdrForSendc,            false,  "Set A0 to tdr0 before each sendc/sendsc", true)
 DECLARE_IGC_REGKEY(bool, ReplaceIndirectCallWithJmpi,   false,  "Replace indirect call with jmpi instruction (HW WA)", true)
+DECLARE_IGC_REGKEY(bool, UseMathWithLUT,                false,  "Use the implementations of cos, cospi, log, sin, sincos, and sinpi with Look-Up Tables (LUT).", false)
 DECLARE_IGC_REGKEY(bool, GlobalSendVarSplit, false, "Enable global send variable splitting when we are about to spill", false)
 DECLARE_IGC_REGKEY(DWORD,EnableSendFusion,              1,     "Enable(!=0)/disable(0)/force(2) send fusion. Valid for simd8 shader/kernel only.", false)
 DECLARE_IGC_REGKEY(bool, EnableAtomicFusion,            false, "To enable/disable atomic send fusion (simd8 shaders). Valid if EnableSendFusion is on.", false)

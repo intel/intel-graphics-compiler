@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 */
 
-static float precise_sincosf(float a, __private float* c)
+static float __ocl_svml_sincosf_noLUT(float a, __private float* c)
 {
     float result = 0.0f;
     float resultC = 0.0f;

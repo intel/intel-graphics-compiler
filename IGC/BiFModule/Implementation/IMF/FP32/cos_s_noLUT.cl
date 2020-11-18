@@ -1,3 +1,4 @@
+
 /*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation
@@ -32,29 +33,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //    Copyright (C) 1996-2010 Intel Corporation. All Rights Reserved.
 //
 */
-
-static float precise_cospif( float a )
+static float __ocl_svml_cosf_noLUT( float a )
 {
-    float result;
-
-    float sAbsX = __builtin_spirv_OpenCL_fabs_f32( a );
-    if( sAbsX > as_float( 0x4A800000 ) )            // 2^22
-    {
-        float   sShifter =
-            ( sAbsX < as_float( 0x4F000000 ) ) ?    // 2^31
-            as_float( 0x4FC00000 ) :
-            0.0f;
-
-        a = a - (sShifter + a - sShifter);
-    }
-
-    float   sN = a + 0.5f + as_float( 0x4B400000 );
+    float result = 0.0f;
+    float   sN = __builtin_spirv_OpenCL_fma_f32_f32_f32( a + M_PI_2_F, M_1_PI_F, as_float( 0x4B400000 ) );
 
     uint    usN = as_uint( sN ) << 31;
     sN = sN - as_float( 0x4B400000 );
     sN = sN - 0.5f;
 
-    float   sR = M_PI_F * (a - sN);
+    float   sR = __builtin_spirv_OpenCL_fma_f32_f32_f32( sN, as_float( 0xC0490000 ), a );
+    sR = __builtin_spirv_OpenCL_fma_f32_f32_f32( sN, as_float( 0xBA7DA000 ), sR );
+    sR = __builtin_spirv_OpenCL_fma_f32_f32_f32( sN, as_float( 0xB4222000 ), sR );
+    sR = __builtin_spirv_OpenCL_fma_f32_f32_f32( sN, as_float( 0xACB4611A ), sR );
 
     float   sR2 = sR * sR;
     sR = as_float( as_uint( sR ) ^ usN );
@@ -66,9 +57,6 @@ static float precise_cospif( float a )
 
     sP = sP * sR2;
     result = __builtin_spirv_OpenCL_fma_f32_f32_f32( sP, sR, sR );
-
-    float n = __builtin_spirv_OpenCL_nan_i32(0U);
-    result = __intel_relaxed_isinf( sAbsX ) ? n : result;
 
     return result;
 }

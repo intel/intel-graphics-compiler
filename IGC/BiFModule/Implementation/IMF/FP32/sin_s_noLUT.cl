@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 */
 
-static float precise_sinf( float a )
+static float __ocl_svml_sinf_noLUT( float a )
 {
     float result = 0.0f;
     float   sN = __builtin_spirv_OpenCL_fma_f32_f32_f32( a, M_1_PI_F, as_float( 0x4B400000 ) );

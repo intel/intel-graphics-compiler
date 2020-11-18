@@ -26,10 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-#include "../SVMLReleaseOnly/svml/Math/svml_sinpi.cl"
-
-    #include "../ExternalLibraries/libclc/trig.cl"
-
+#include "../IMF/FP32/sinpi_s_la.cl"
+#include "../IMF/FP32/sinpi_s_noLUT.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/sinpi_d_la.cl"
@@ -45,7 +43,14 @@ INLINE float __builtin_spirv_OpenCL_sinpi_f32( float x )
     }
     else
     {
-            return precise_sinpif(x);
+        if(__UseMathWithLUT)
+        {
+            return __ocl_svml_sinpif(x);
+        }
+        else
+        {
+            return __ocl_svml_sinpif_noLUT(x);
+        }
     }
 }
 

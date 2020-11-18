@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-
+#include "../IMF/FP32/ln_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/ln_d_la.cl"
@@ -63,6 +63,12 @@ float __builtin_spirv_OpenCL_log_f32( float x )
               ( __FlushDenormals & (as_int(x) > 0x7FFFFF))) )
     //else if( __intel_relaxed_isfinite(x) & ( x > 0.0f ) )
     {
+        if(__UseMathWithLUT)
+        {
+            result = __ocl_svml_logf(x);
+        }
+        else
+        {
         // We already know that we're positive and finite, so
         // we can use this very cheap check for normal vs.
         // subnormal inputs:
@@ -95,6 +101,7 @@ float __builtin_spirv_OpenCL_log_f32( float x )
         sP = __builtin_spirv_OpenCL_fma_f32_f32_f32( e, as_float(0x3f317200), sP);
 
         result = sP;
+        }
     }
     else
     {

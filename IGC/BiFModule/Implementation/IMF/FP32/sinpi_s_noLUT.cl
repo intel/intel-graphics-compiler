@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-static float precise_sinpif( float a )
+static float __ocl_svml_sinpif_noLUT( float a )
 {
     float result;
 

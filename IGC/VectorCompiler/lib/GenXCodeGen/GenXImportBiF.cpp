@@ -477,6 +477,7 @@ static void InitializeBIFlags(llvm::Module &M) {
   float profilingTimerResolution = 0.0;
   initializeVarWithValue("__ProfilingTimerResolution",
                          *reinterpret_cast<int *>(&profilingTimerResolution));
+  initializeVarWithValue("__UseMathWithLUT", 0);
 }
 
 namespace {

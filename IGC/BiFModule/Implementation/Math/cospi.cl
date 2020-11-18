@@ -26,9 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
-#include "../SVMLReleaseOnly/svml/Math/svml_cospi.cl"
-
-    #include "../ExternalLibraries/libclc/trig.cl"
+#include "../IMF/FP32/cospi_s_la.cl"
+#include "../IMF/FP32/cospi_s_noLUT.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/cospi_d_la.cl"
@@ -44,7 +43,14 @@ INLINE float __builtin_spirv_OpenCL_cospi_f32( float x )
     }
     else
     {
-            return precise_cospif(x);
+        if(__UseMathWithLUT)
+        {
+            return __ocl_svml_cospif(x);
+        }
+        else
+        {
+            return __ocl_svml_cospif_noLUT(x);
+        }
     }
 }
 

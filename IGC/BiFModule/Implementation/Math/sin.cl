@@ -27,8 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 #include "../ExternalLibraries/libclc/trig.cl"
-#include "../SVMLReleaseOnly/svml/Math/svml_sin.cl"
-
+#include "../IMF/FP32/sin_s_la.cl"
+#include "../IMF/FP32/sin_s_noLUT.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/sin_d_la.cl"
@@ -43,6 +43,12 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
     }
     else
     {
+        if(__UseMathWithLUT)
+        {
+            return __ocl_svml_sinf(x);
+        }
+        else
+        {
             float abs_float = __builtin_spirv_OpenCL_fabs_f32(x);
             if( abs_float > 10000.0f )
             {
@@ -50,8 +56,9 @@ static INLINE float __intel_sin_f32( float x, bool doFast )
             }
             else
             {
-                return precise_sinf(x);
+                return __ocl_svml_sinf_noLUT(x);
             }
+        }
     }
 }
 
