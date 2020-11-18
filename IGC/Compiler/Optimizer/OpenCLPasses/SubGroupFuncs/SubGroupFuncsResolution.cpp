@@ -769,20 +769,30 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         pushMediaBlockArgs(args, CI);
 
         // The spec requires that the width and height are compile-time constants.
-        if (!isa<ConstantInt>(CI.getOperand(2)))
+        Value* blockWidth = CI.getOperand(2);
+        if (!isa<ConstantInt>(blockWidth))
         {
-            m_pCtx->EmitError("width argument supplied to intel_media_block_read*() must be constant.");
-            return;
+            blockWidth = ValueTracker::track(&CI, 2);
+            if (!blockWidth)
+            {
+                m_pCtx->EmitError("width argument supplied to intel_media_block_read*() must be constant.");
+                return;
+            }
         }
 
-        if (!isa<ConstantInt>(CI.getOperand(3)))
+        Value* blockHeight = CI.getOperand(3);
+        if (!isa<ConstantInt>(blockHeight))
         {
-            m_pCtx->EmitError("height argument supplied to intel_media_block_read*() must be constant.");
-            return;
+            blockHeight = ValueTracker::track(&CI, 3);
+            if (!blockHeight)
+            {
+                m_pCtx->EmitError("height argument supplied to intel_media_block_read*() must be constant.");
+                return;
+            }
         }
 
-        args.push_back(CI.getArgOperand(2)); // blockWidth
-        args.push_back(CI.getArgOperand(3)); // blockHeight
+        args.push_back(blockWidth);
+        args.push_back(blockHeight);
 
         Function* MediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
@@ -811,20 +821,30 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         pushMediaBlockArgs(args, CI);
 
         // The spec requires that the width and height are compile-time constants.
-        if (!isa<ConstantInt>(CI.getOperand(2)))
+        Value* blockWidth = CI.getOperand(2);
+        if (!isa<ConstantInt>(blockWidth))
         {
-            m_pCtx->EmitError("width argument supplied to intel_media_block_write*() must be constant.");
-            return;
+            blockWidth = ValueTracker::track(&CI, 2);
+            if (!blockWidth)
+            {
+                m_pCtx->EmitError("width argument supplied to intel_media_block_write*() must be constant.");
+                return;
+            }
         }
 
-        if (!isa<ConstantInt>(CI.getOperand(3)))
+        Value* blockHeight = CI.getOperand(3);
+        if (!isa<ConstantInt>(blockHeight))
         {
-            m_pCtx->EmitError("height argument supplied to intel_media_block_write*() must be constant.");
-            return;
+            blockHeight = ValueTracker::track(&CI, 3);
+            if (!blockHeight)
+            {
+                m_pCtx->EmitError("height argument supplied to intel_media_block_write*() must be constant.");
+                return;
+            }
         }
 
-        args.push_back(CI.getArgOperand(2)); // blockWidth
-        args.push_back(CI.getArgOperand(3)); // blockHeight
+        args.push_back(blockWidth);
+        args.push_back(blockHeight);
         args.push_back(CI.getArgOperand(4)); // pixels
 
         Function* MediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
