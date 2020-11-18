@@ -859,6 +859,16 @@ void ReplaceUnsupportedIntrinsics::replaceFunnelShift(IntrinsicInst* I) {
         I->getIntrinsicID() == Intrinsic::fshr);
     IRBuilder<> Builder(I);
     unsigned sizeInBits = I->getArgOperand(0)->getType()->getScalarSizeInBits();
+
+    // Don't replace rotate
+    if (I->getArgOperand(0) == I->getArgOperand(1) && !I->getType()->isVectorTy() &&
+        m_Ctx->platform.supportRotateInstruction())
+    {
+        if (sizeInBits == 16 || sizeInBits == 32) {
+            return;
+        }
+    }
+
     Value* numBits = Builder.getIntN(sizeInBits, sizeInBits);
     if (auto IVT = dyn_cast<VectorType>(I->getType())) {
         numBits = ConstantVector::getSplat(IGCLLVM::getElementCount((uint32_t)IVT->getNumElements()), cast<Constant>(numBits));

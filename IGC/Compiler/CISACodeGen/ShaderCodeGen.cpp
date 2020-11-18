@@ -117,6 +117,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/SampleMultiversioning.hpp"
 #include "Compiler/ThreadCombining.hpp"
 #include "Compiler/InitializePasses.h"
+#include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -158,6 +159,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/GenTTI.h"
+#include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/SetMathPrecisionForPositionOutput.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
@@ -431,6 +433,12 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         {
             mpm.add(new PurgeMetaDataUtils());
         }
+    }
+
+    // Find rotate pattern.
+    //   Invoked after DP emulation so that it'd handle emulation functions.
+    if (ctx.platform.supportRotateInstruction()) {
+        mpm.add(createGenRotatePass());
     }
 
     mpm.add(createReplaceUnsupportedIntrinsicsPass());
@@ -1639,7 +1647,6 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
-
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());

@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/PatternMatch.h>
 #include <llvmWrapper/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
@@ -1054,9 +1055,9 @@ namespace IGC
     {
         bool match = false;
         using namespace GenISAIntrinsic;
-        if (GenIntrinsicInst * CI = llvm::dyn_cast<GenIntrinsicInst>(&I))
+        if (GenIntrinsicInst * GII = llvm::dyn_cast<GenIntrinsicInst>(&I))
         {
-            switch (CI->getIntrinsicID())
+            switch (GII->getIntrinsicID())
             {
             case GenISAIntrinsic::GenISA_ROUNDNE:
             case GenISAIntrinsic::GenISA_imulH:
@@ -1103,7 +1104,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_GradientY:
             case GenISAIntrinsic::GenISA_GradientXfine:
             case GenISAIntrinsic::GenISA_GradientYfine:
-                match = MatchGradient(*CI);
+                match = MatchGradient(*GII);
                 break;
             case GenISAIntrinsic::GenISA_sampleptr:
             case GenISAIntrinsic::GenISA_sampleBptr:
@@ -1111,7 +1112,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_sampleCptr:
             case GenISAIntrinsic::GenISA_lodptr:
             case GenISAIntrinsic::GenISA_sampleKillPix:
-                match = MatchSampleDerivative(*CI);
+                match = MatchSampleDerivative(*GII);
                 break;
             case GenISAIntrinsic::GenISA_fsat:
                 match = MatchFloatingPointSatModifier(I);
@@ -1121,19 +1122,19 @@ namespace IGC
                 match = MatchIntegerSatModifier(I);
                 break;
             case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-                match = MatchRegisterRegion(*CI) ||
-                    MatchShuffleBroadCast(*CI) ||
-                    MatchWaveShuffleIndex(*CI);
+                match = MatchRegisterRegion(*GII) ||
+                    MatchShuffleBroadCast(*GII) ||
+                    MatchWaveShuffleIndex(*GII);
                 break;
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
-                match = MatchBlockReadWritePointer(*CI) ||
-                    MatchSingleInstruction(*CI);
+                match = MatchBlockReadWritePointer(*GII) ||
+                    MatchSingleInstruction(*GII);
                 break;
             case GenISAIntrinsic::GenISA_URBRead:
             case GenISAIntrinsic::GenISA_URBReadOutput:
-                match = MatchURBRead(*CI) ||
-                    MatchSingleInstruction(*CI);
+                match = MatchURBRead(*GII) ||
+                    MatchSingleInstruction(*GII);
                 break;
             case GenISAIntrinsic::GenISA_UnmaskedRegionBegin:
                 match = MatchUnmaskedRegionBoundary(I, true);
@@ -1145,7 +1146,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_dp4a_su:
             case GenISAIntrinsic::GenISA_dp4a_us:
             case GenISAIntrinsic::GenISA_dp4a_uu:
-                match = MatchDp4a(*CI);
+                match = MatchDp4a(*GII);
                 break;
             default:
                 match = MatchSingleInstruction(I);
@@ -1226,6 +1227,10 @@ namespace IGC
         case Intrinsic::minnum:
             match = MatchFloatingPointSatModifier(I) ||
                 MatchModifier(I);
+            break;
+        case Intrinsic::fshl:
+        case Intrinsic::fshr:
+            match = MatchFunnelShiftRotate(I);
             break;
         default:
             match = MatchSingleInstruction(I);
@@ -3757,6 +3762,45 @@ namespace IGC
         pattern->sources[0] = GetSource(V, true, false);
         pattern->sources[1] = GetSource(Amt, true, false);
         pattern->rotateOPCode = isROL ? EOPCODE_ROL : EOPCODE_ROR;
+
+        AddPattern(pattern);
+        return true;
+    }
+
+    bool CodeGenPatternMatch::MatchFunnelShiftRotate(llvm::IntrinsicInst& I)
+    {
+        // Hanlde only funnel shift that can be turned into rotate.
+        struct funnelShiftRotatePattern : public Pattern
+        {
+            SSource sources[2];
+            llvm::IntrinsicInst* instruction;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                bool isShl = instruction->getIntrinsicID() == Intrinsic::fshl;
+                pass->Binary(isShl ? EOPCODE_ROL : EOPCODE_ROR, sources, modifier);
+            }
+        };
+
+        if (!m_Platform.supportRotateInstruction() || I.getType()->isVectorTy())
+        {
+            return false;
+        }
+
+        Value* A = I.getOperand(0);
+        Value* B = I.getOperand(1);
+        Value* Amt = I.getOperand(2);
+        uint32_t typebits = I.getType()->getScalarSizeInBits();
+        if (A != B ||
+            (typebits != 16 && typebits != 32 && typebits != 64))
+        {
+            return false;
+        }
+
+        // Found the pattern.
+        funnelShiftRotatePattern* pattern = new (m_allocator) funnelShiftRotatePattern();
+        pattern->instruction = &I;
+        pattern->sources[0] = GetSource(A, true, false);
+        pattern->sources[1] = GetSource(Amt, true, false);
 
         AddPattern(pattern);
         return true;
