@@ -79,6 +79,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
@@ -180,6 +181,8 @@ private:
   bool simplifyNullDst(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
+
+  bool decomposeSdiv(Function *F);
 };
 
 } // namespace
@@ -223,6 +226,8 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
   Changed |= simplifySelect(&F);
   // Break big predicate variables and run after min/max pattern match.
   Changed |= decomposeSelect(&F);
+
+  Changed |= decomposeSdiv(&F);
 
   return Changed;
 }
@@ -2142,6 +2147,115 @@ bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
     }
   }
   return Changed;
+}
+
+// a helper routine for decomposeSdivPow2
+// return a new ConstantVector with the same type as input vector, that consists
+// of log2 of original vector;
+// input vector consists of only positive integer
+static Constant *getFloorLog2Vector(const ConstantDataVector &C) {
+  VectorType *Ty = C.getType();
+  IGC_ASSERT(Ty->getScalarType()->isIntegerTy() &&
+             "Error: getLog2Vector not int vector type");
+  SmallVector<Constant *, 4> Elts;
+  for (int V = 0; V != C.getNumElements(); ++V) {
+    APInt Elt = C.getElementAsAPInt(V);
+    Constant *Log2 = ConstantInt::get(Ty->getScalarType(), Elt.logBase2());
+    Elts.push_back(Log2);
+  }
+  return ConstantVector::get(Elts);
+}
+
+// a helper routine for decomposeSdivInstruction and decomposeSdivPow2
+// return true if instruction can be optimized
+// input checked instruction
+bool isSuitableSdivPow2DecomposeInst(const Instruction &Inst) {
+  if (!isa<SDivOperator>(Inst))
+    return false; // not interesting
+  // from this point operands are signed
+  Value *Op1 = Inst.getOperand(1);
+  if (!isa<ConstantDataVector>(Op1))
+    return false;
+  if (PatternMatch::match(Op1, PatternMatch::m_Negative()))
+    return false;                    // the second operand is negative
+  if (!Inst.getType()->isVectorTy()) // not vector
+    return false;
+  Type *InstElementTy = cast<VectorType>(Inst.getType())->getElementType();
+  if (!InstElementTy->isIntegerTy()) // not vector of int
+    return false;
+  // wrong BitWidth, no ability to optimize
+  if (InstElementTy->getIntegerBitWidth() != genx::DWordBits)
+    return false;
+  return PatternMatch::match(Op1, PatternMatch::m_Power2());
+}
+
+// optimization path if second operand of sdiv is power of 2
+// input:
+// Sdiv - only sdiv binary operator, second operand of which is ConstantVector
+// Optimization for positive y:
+// intWidth = 32
+// x / y = ashr( x + lshr( ashr(x, intWidth - 1), intWidth - log2(y)), log2(y))
+static void decomposeSdivPow2(Instruction &Sdiv,
+                              SmallVectorImpl<Instruction *> &ToErase) {
+  IGC_ASSERT(isSuitableSdivPow2DecomposeInst(Sdiv) &&
+             "Error: try to decompose sdiv for not suitable instruction");
+
+  const Twine Name = "genxSdivOpt";
+  Value *Op0 = Sdiv.getOperand(0);
+  ConstantDataVector *Op1 = cast<ConstantDataVector>(Sdiv.getOperand(1));
+  Type *SdivTy = Sdiv.getType();
+  Type *ElementTy = cast<VectorType>(SdivTy)->getElementType();
+  unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
+  unsigned OperandWidth = cast<VectorType>(SdivTy)->getNumElements();
+
+  IRBuilder<> Builder(&Sdiv);
+  Builder.SetCurrentDebugLocation(Sdiv.getDebugLoc());
+
+  auto createConstantVector = [](unsigned int OperandWidth, Type *Ty,
+                                 int Value) {
+    return ConstantDataVector::getSplat(IGCLLVM::getElementCount(OperandWidth),
+                                        ConstantInt::get(Ty, Value));
+  };
+
+  Constant *VecSignBit =
+      createConstantVector(OperandWidth, ElementTy, ElementBitWidth - 1);
+  Constant *VecBitWidth =
+      createConstantVector(OperandWidth, ElementTy, ElementBitWidth);
+
+  Constant *Log2Op1 = getFloorLog2Vector(*Op1);
+  IGC_ASSERT(Log2Op1 != nullptr && "getLog2Vector return null");
+
+  Value *ShiftSize = Builder.CreateSub(VecBitWidth, Log2Op1, Name);
+  // if op0 is negative, Signdetect all ones, else all zeros
+  Value *SignDetect = Builder.CreateAShr(Op0, VecSignBit, Name);
+  Value *Addition = Builder.CreateLShr(SignDetect, ShiftSize, Name);
+  Value *NewRhs = Builder.CreateAdd(Op0, Addition, Name);
+  Value *Answer = Builder.CreateAShr(NewRhs, Log2Op1, Name);
+  Sdiv.replaceAllUsesWith(Answer);
+  ToErase.push_back(&Sdiv);
+}
+
+static bool decomposeSdivInstruction(Instruction &Inst,
+                                     SmallVectorImpl<Instruction *> &ToErase) {
+  if (isSuitableSdivPow2DecomposeInst(Inst)) {
+    decomposeSdivPow2(Inst, ToErase);
+    return true;
+  }
+  return false;
+}
+
+bool GenXPatternMatch::decomposeSdiv(Function *F) {
+  IGC_ASSERT(F && "Error: decomposeSdiv nullptr function");
+  bool changed = false;
+  SmallVector<Instruction *, 8> ToErase;
+  for (auto &I : instructions(F)) {
+    changed |= decomposeSdivInstruction(I, ToErase);
+  }
+  // remove all ToErase inst
+  for (auto &Deleted : ToErase) {
+    Deleted->eraseFromParent();
+  }
+  return changed;
 }
 
 // Decompose predicate operand for large vector selects.
