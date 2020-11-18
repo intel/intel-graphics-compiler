@@ -4316,6 +4316,9 @@ namespace IGC
             SaveOption(vISA_FastSpill, true);
             SaveOption(vISA_LocalScheduling, false);
             SaveOption(vISA_preRA_Schedule, false);
+            SaveOption(vISA_NoRemat, true);
+            SaveOption(vISA_SpillSpaceCompression, false);
+            SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
         }
     }
 
