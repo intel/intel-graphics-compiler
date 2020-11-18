@@ -1867,14 +1867,20 @@ bool InstExpander::visitCall(CallInst& Call) {
         }
     }
     IGC_ASSERT(nullptr != Emu);
-    if (!Emu->isInt64(&Call)) {
+    bool doInt64BitCall = Emu->isInt64(&Call);
+    if (!doInt64BitCall) {
         for (auto& Op : Call.operands()) {
-            if (Emu->isInt64(Op.get()))
-                goto Emu64BitCall;
+            if (Emu->isInt64(Op.get())) {
+                doInt64BitCall = true;
+                break;
+            }
         }
+    }
+    if (!doInt64BitCall) {
         return false;
     }
-Emu64BitCall:
+
+    // Recreate Call with its operands/result emulated
     if (auto * GI = dyn_cast<GenIntrinsicInst>(&Call))
     {
         switch (GI->getIntrinsicID())
@@ -1985,12 +1991,17 @@ Emu64BitCall:
     }
     // Support for stack/indirect/subroutine calls
     // Note: should use enableFunctionCall() without using attr checking.
-    else if (   !F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine")
-             || Emu->CGC->enableFunctionCall())
+    // else if (   !F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine")
+    //         || Emu->CGC->enableFunctionCall())
+    //
+    // 11/2020: No need to have condition check. It should work for all cases ("if branch" is redundant)
+    else
     {
         auto* CallCopy = Call.clone();
         IGC_ASSERT(nullptr != CallCopy);
         CallCopy->insertBefore(&Call);
+
+        // All int64 operands shall be recreated right before CallCopy
         IRB->SetInsertPoint(CallCopy);
         unsigned argNo = 0;
         for (auto& Op : Call.operands())
@@ -2002,6 +2013,8 @@ Emu64BitCall:
             }
             argNo++;
         }
+
+        // For int64 return value, split it right after CallCopy
         if (Emu->isInt64(&Call))
         {
             IRB->SetInsertPoint(&Call);
