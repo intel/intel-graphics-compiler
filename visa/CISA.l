@@ -481,11 +481,23 @@ vme_fbr {
         return VME_FBR_OP;
     }
 
-jmp|call|ret|fret|fcall|goto {
+jmp|call|goto {
         TRACE("\n** branch INST ");
         CISAlval.opcode = str2opcode(yytext);
         return BRANCH_OP;
     }
+
+ret|fret {
+        TRACE("\n** return INST ");
+        CISAlval.opcode = str2opcode(yytext);
+        return RET_OP;
+}
+
+fcall {
+   TRACE("\n** function call INST ");
+        CISAlval.opcode = ISA_FCALL;
+        return FCALL;
+}
 
 ifcall {
         TRACE("\n** indirect call INST ");

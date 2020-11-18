@@ -362,6 +362,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <opcode> VME_SIC_OP
 %token <opcode> VME_FBR_OP
 %token <opcode> BRANCH_OP
+%token <opcode> RET_OP
 %token <opcode> IFCALL
 %token <opcode> FCALL
 %token <opcode> FADDR
@@ -1340,7 +1341,7 @@ BranchInstruction: Predicate BRANCH_OP ExecSize IdentOrStringLit
     {
         pBuilder->CISA_create_branch_instruction($1, $2, $3.emask, $3.exec_size, $4, CISAlineno);
     }
-    | Predicate BRANCH_OP ExecSize
+    | Predicate RET_OP ExecSize
     {
         pBuilder->CISA_Create_Ret($1, $2, $3.emask, $3.exec_size, CISAlineno);
     }
