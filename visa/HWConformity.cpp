@@ -4006,21 +4006,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
             }
             else
             {
-                // Promote src2 from :b to :w to allow mad, for example:
-                //     pseudo_mad (16) V211(0,0)<1>:d V210(0,0)<1;0>:d V106(0,0)<0;0>:b V81(0,0)<1;0>:d
-                //
-                //  => mov (1) TV74(0,0)<1>:w V106(0,0)<0;1,0>:b {Q1, Align1, NoMask}
-                //     mad (16) V211(0,0)<1>:d V81(0,0)<1;0>:d V210(0,0)<1;0>:d TV74(0,0)<0;0>:w {H1, Align1}
-
-                bool isSrc2 = (k == 0);
-                if (builder.noSrc2Regioning() && isSrc2 && IS_BTYPE(src->getType()))
-                {
-                    inst->setSrc(insertMovBefore(iter, k, Type_W, bb), k);
-                }
-                else
-                {
-                    return false;
-                }
+                return false;
             }
         }
         else
