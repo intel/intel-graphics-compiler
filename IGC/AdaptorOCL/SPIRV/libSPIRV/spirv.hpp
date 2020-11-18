@@ -613,6 +613,7 @@ enum Capability {
     CapabilitySubgroupAvcMotionEstimationIntraINTEL = 5697,
     CapabilitySubgroupAvcMotionEstimationChromaINTEL = 5698,
     CapabilityVariableLengthArrayINTEL = 5817,
+    CapabilityUnstructuredLoopControlsINTEL = 5886,
 };
 
 enum Op {

@@ -215,13 +215,12 @@ public:
   virtual SPIRVValue *addConstant(SPIRVValue *) override;
   virtual SPIRVValue *addConstant(SPIRVType *, uint64_t) override;
 
+  // Instruction creation functions
   virtual SPIRVInstruction *addLoopMergeInst(
       SPIRVId MergeBlock, SPIRVId ContinueTarget,
       SPIRVWord LoopControl,
       std::vector<SPIRVWord> LoopControlParameters,
       SPIRVBasicBlock *BB) override;
-
-  // Instruction creation functions
   virtual SPIRVInstruction *
   addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB,
                  SPIRVInstruction *InsertBefore = nullptr);

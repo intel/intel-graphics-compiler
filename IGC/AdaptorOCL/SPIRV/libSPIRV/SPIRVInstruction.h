@@ -1080,6 +1080,52 @@ typedef SPIRVAccessChainGeneric<OpPtrAccessChain, 5> SPIRVPtrAccessChain;
 typedef SPIRVAccessChainGeneric<OpInBoundsPtrAccessChain, 5>
   SPIRVInBoundsPtrAccessChain;
 
+class SPIRVLoopControlINTEL : public SPIRVInstruction {
+public:
+    static const Op OC = OpLoopControlINTEL;
+    static const SPIRVWord FixedWordCount = 2;
+
+    SPIRVLoopControlINTEL(SPIRVWord TheLoopControl,
+        std::vector<SPIRVWord> TheLoopControlParameters,
+        SPIRVBasicBlock* BB)
+        : SPIRVInstruction(FixedWordCount + TheLoopControlParameters.size(), OC,
+            BB),
+        LoopControl(TheLoopControl),
+        LoopControlParameters(TheLoopControlParameters) {
+        validate();
+        IGC_ASSERT_MESSAGE(BB, "Invalid BB");
+    }
+
+    SPIRVLoopControlINTEL() : SPIRVInstruction(OC), LoopControl(SPIRVWORD_MAX) {
+        setHasNoId();
+        setHasNoType();
+    }
+
+    SPIRVWord getLoopControl() { return LoopControl; }
+
+    std::vector<SPIRVWord> getLoopControlParameters() {
+        return LoopControlParameters;
+    }
+
+    CapVec getRequiredCapability() const override {
+        return getVec(CapabilityUnstructuredLoopControlsINTEL);
+    }
+
+//    SPIRVExtSet getRequiredExtensions() const override {        // getRequiredExtensions() is not supported yet
+//        return getSet(SPV_INTEL_unstructured_loop_controls);
+//    }
+
+    void setWordCount(SPIRVWord TheWordCount) override {
+        SPIRVEntry::setWordCount(TheWordCount);
+        LoopControlParameters.resize(TheWordCount - FixedWordCount);
+    }
+    _SPIRV_DEF_DEC2(LoopControl, LoopControlParameters)
+
+protected:
+    SPIRVWord LoopControl;
+    std::vector<SPIRVWord> LoopControlParameters;
+};
+
 template<Op OC, SPIRVWord FixedWordCount>
 class SPIRVFunctionCallGeneric: public SPIRVInstruction {
 public:

@@ -1478,7 +1478,8 @@ private:
   template<class Source, class Func>
   bool foreachFuncCtlMask(Source, Func);
 
-  void setLLVMLoopMetadata(SPIRVLoopMerge* LM, BranchInst* BI);
+  template <typename LoopInstType>
+  void setLLVMLoopMetadata(LoopInstType* LM, BranchInst* BI);
   inline llvm::Metadata *getMetadataFromName(std::string Name);
   inline std::vector<llvm::Metadata *>
     getMetadataFromNameAndParameter(std::string Name, SPIRVWord Parameter);
@@ -1707,7 +1708,8 @@ SPIRVToLLVM::getMetadataFromNameAndParameter(std::string Name,
 }
 
 
-void SPIRVToLLVM::setLLVMLoopMetadata(SPIRVLoopMerge *LM, BranchInst *BI) {
+template <typename LoopInstType>
+void SPIRVToLLVM::setLLVMLoopMetadata(LoopInstType* LM, BranchInst* BI) {
   if (!LM)
     return;
   auto Temp = MDNode::getTemporary(*Context, None);
@@ -2817,9 +2819,14 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       dyn_cast<BasicBlock>(transValue(BR->getTargetLabel(), F, BB)), BB);
 
     SPIRVInstruction *Prev = BR->getPrevious();
-    if(Prev && Prev->getOpCode() == OpLoopMerge)
-      if (auto LM = static_cast<SPIRVLoopMerge *>(Prev))
-        setLLVMLoopMetadata(LM, BI);
+    if(Prev && Prev->getOpCode() == OpLoopMerge) {
+      auto LM = static_cast<SPIRVLoopMerge*>(Prev);
+      setLLVMLoopMetadata<SPIRVLoopMerge>(LM, BI);
+    }
+    else if (Prev && Prev->getOpCode() == OpLoopControlINTEL) {
+      auto LCI = static_cast<SPIRVLoopControlINTEL*>(Prev);
+      setLLVMLoopMetadata<SPIRVLoopControlINTEL>(LCI, BI);
+    }
 
     return mapValue(BV, BI);
     }
@@ -2836,9 +2843,14 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       BB);
 
     SPIRVInstruction *Prev = BR->getPrevious();
-    if (Prev && Prev->getOpCode() == OpLoopMerge)
+    if (Prev && Prev->getOpCode() == OpLoopMerge) {
       if (auto LM = static_cast<SPIRVLoopMerge *>(Prev))
-        setLLVMLoopMetadata(LM, BC);
+        setLLVMLoopMetadata<SPIRVLoopMerge>(LM, BC);
+    }
+    else if (Prev && Prev->getOpCode() == OpLoopControlINTEL) {
+      if (auto LCI = static_cast<SPIRVLoopControlINTEL *>(Prev))
+        setLLVMLoopMetadata<SPIRVLoopControlINTEL>(LCI, BC);
+    }
 
     return mapValue(BV, BC);
     }
@@ -3014,7 +3026,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     break;
   // OpenCL Compiler does not use this instruction
   // Should be translated at OpBranch or OpBranchConditional cases
-  case OpLoopMerge: {
+  case OpLoopMerge:
+  case OpLoopControlINTEL:
+    {
     return nullptr;
     }
     break;
