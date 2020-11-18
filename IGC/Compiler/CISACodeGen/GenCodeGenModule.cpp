@@ -873,7 +873,7 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
         if (FCtrl == FLAG_FCALL_FORCE_INLINE)
             return IGCLLVM::InlineCost::getAlways();
 
-        // If m_enableSubroutine is disabled by EstimateFunctionCost pass, always inline
+        // If m_enableSubroutine is disabled, always inline
         if (pCtx->m_enableSubroutine == false)
             return IGCLLVM::InlineCost::getAlways();
 
@@ -884,15 +884,10 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
         if (Callee->hasFnAttribute("KMPLOCK"))
             return IGCLLVM::InlineCost::getNever();
 
-        if (Callee->hasFnAttribute("UserSubroutine") &&
-            Callee->hasFnAttribute(llvm::Attribute::NoInline))
-            return IGCLLVM::InlineCost::getNever();
-
         if (Callee->hasFnAttribute("igc-force-stackcall"))
             return IGCLLVM::InlineCost::getNever();
 
-        if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&
-            FCtrl != FLAG_FCALL_FORCE_STACKCALL)
+        if (FCtrl == FLAG_FCALL_DEFAULT)
         {
             std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold);
 
@@ -904,7 +899,8 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
             };
 
             if (FSA->getExpandedSize(Caller) <= Threshold ||
-                FSA->onlyCalledOnce(Callee) || isTrivialCall(Callee))
+                FSA->onlyCalledOnce(Callee) ||
+                isTrivialCall(Callee))
                 return IGCLLVM::InlineCost::getAlways();
         }
     }

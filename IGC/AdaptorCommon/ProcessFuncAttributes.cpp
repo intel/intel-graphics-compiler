@@ -84,8 +84,6 @@ public:
 
 private:
     bool isGASPointer(Value* arg);
-
-    bool shouldForceToInline(const Function* F);
 };
 
 } // namespace
@@ -176,8 +174,8 @@ static bool isOptNoneBuiltin(StringRef name)
            name == "__intel_memfence_optnone";
 }
 
-// Convert functions with recursion to stackcall
-static bool convertRecursionToStackCall(CallGraph& CG, CodeGenContext* pCtx, IGCMD::MetaDataUtils* pM)
+// Convert functions with recursion to stackcall, since subroutines do not support recursion
+static bool convertRecursionToStackCall(CallGraph& CG)
 {
     bool hasRecursion = false;
     // Use Tarjan's algorithm to detect recursions.
@@ -191,7 +189,7 @@ static bool convertRecursionToStackCall(CallGraph& CG, CodeGenContext* pCtx, IGC
             for (auto Node : SCCNodes)
             {
                 Node->getFunction()->addFnAttr("visaStackCall");
-                Node->getFunction()->addFnAttr("forceStackCallRecurse");
+                Node->getFunction()->addFnAttr("forceRecurse");
             }
         }
         else
@@ -204,7 +202,7 @@ static bool convertRecursionToStackCall(CallGraph& CG, CodeGenContext* pCtx, IGC
                 {
                     hasRecursion = true;
                     Node->getFunction()->addFnAttr("visaStackCall");
-                    Node->getFunction()->addFnAttr("forceStackCallRecurse");
+                    Node->getFunction()->addFnAttr("forceRecurse");
                     break;
                 }
             }
@@ -240,27 +238,6 @@ static DenseSet<Function*> collectMemPoolUsage(const Module &M)
     return FuncsToInline;
 }
 
-bool ProcessFuncAttributes::shouldForceToInline(const Function* F)
-{
-    for (auto& arg : F->args())
-    {
-        if (containsOpaque(arg.getType()))
-        {
-            return true;
-        }
-    }
-
-    // SPIR-V image functions don't contain opaque types for images,
-    // they use i64 values instead.
-    // We need to detect them based on function name.
-    if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
-        F->getName().contains("Image")) {
-        return true;
-    }
-
-    return false;
-}
-
 bool ProcessFuncAttributes::runOnModule(Module& M)
 {
     MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
@@ -269,6 +246,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     auto MemPoolFuncs = collectMemPoolUsage(M);
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     EstimateFunctionSize& efs = getAnalysis<EstimateFunctionSize>();
+    bool isOptDisable = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
+    auto FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
 
     std::set<llvm::Function *> fastMathFunct;
     GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
@@ -279,24 +258,24 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // Find the functions which __FastRelaxedMath belongs to....
             for (Value::user_iterator U = gv_fastMath->user_begin(), UE = gv_fastMath->user_end(); U != UE; ++U)
             {
-                Instruction* user = dyn_cast<Instruction>(*U);
-                if (!user)
-                {
-                    continue;
-                }
-
-                fastMathFunct.insert(user->getParent()->getParent());
+                if (Instruction* user = dyn_cast<Instruction>(*U))
+                    fastMathFunct.insert(user->getParent()->getParent());
             }
         }
     }
 
-    // 1. Set function's linkage type to InternalLinkage (C's static) so that
-    //    LLVM can remove the dead functions asap, which saves compiling time.
-    //    Only non-kernel function with function bodies are set.
-    //
-    // 2. For correctness, add AlwaysInline to all functions' attributes so
-    //    that AlwaysInliner will inline all of them.
-    bool Changed = false;
+    auto SetNoInline = [](Function* F)->void
+    {
+        F->addFnAttr(llvm::Attribute::NoInline);
+        F->removeFnAttr(llvm::Attribute::AlwaysInline);
+    };
+    auto SetAlwaysInline = [](Function* F)->void
+    {
+        F->addFnAttr(llvm::Attribute::AlwaysInline);
+        F->removeFnAttr(llvm::Attribute::NoInline);
+    };
+
+    // Process through all functions and add the appropriate function attributes
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* F = &(*I);
@@ -327,14 +306,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             continue;
         }
 
-        // Go through call sites and remove NoInline atrributes.
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
+                // Go through call sites and remove NoInline atrributes.
                 if (callInst->hasFnAttr(llvm::Attribute::NoInline)) {
                     callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::NoInline);
                 }
-                if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable &&
-                    callInst->hasFnAttr(llvm::Attribute::AlwaysInline)) {
+                // Remove AlwaysInline at callsites
+                if (isOptDisable && callInst->hasFnAttr(llvm::Attribute::AlwaysInline)) {
                     callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::AlwaysInline);
                 }
             }
@@ -344,7 +323,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // inliner doesn't conservatively turn off unsafe optimizations
         // when inlining BIFs (see mergeAttributesForInlining() in inliner).
         const auto& opts = modMD->compOpt;
-
         if (opts.MadEnable)
             F->addFnAttr("less-precise-fpmad", "true");
 
@@ -359,7 +337,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         // Add Optnone to user functions but not on builtins. This allows to run
         // optimizations on builtins.
-        if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable)
+        if (isOptDisable)
         {
             if (!F->hasFnAttribute(llvm::Attribute::Builtin))
             {
@@ -370,19 +348,21 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         bool istrue = false;
 
         // set hasVLA function attribute
-        bool isSet = false;
-        for (auto& BB : F->getBasicBlockList()) {
-            for (auto& Inst : BB.getInstList()) {
-                if (AllocaInst * AI = dyn_cast<AllocaInst>(&Inst)) {
-                    if (!isa<ConstantInt>(AI->getArraySize())) {
-                        F->addFnAttr("hasVLA");
-                        isSet = true;
-                        break;
+        {
+            bool isSet = false;
+            for (auto& BB : F->getBasicBlockList()) {
+                for (auto& Inst : BB.getInstList()) {
+                    if (AllocaInst* AI = dyn_cast<AllocaInst>(&Inst)) {
+                        if (!isa<ConstantInt>(AI->getArraySize())) {
+                            F->addFnAttr("hasVLA");
+                            isSet = true;
+                            break;
+                        }
                     }
                 }
+                if (isSet)
+                    break;
             }
-            if (isSet)
-                break;
         }
 
         const bool isKernel = isEntryFunc(pMdUtils, F);
@@ -394,7 +374,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         else if (!isKernel)
         {
             F->setLinkage(GlobalValue::InternalLinkage);
-            Changed = true;
         }
 
         // Add function attribute for indirectly called functions
@@ -428,7 +407,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 {
                     F->setLinkage(GlobalValue::ExternalLinkage);
                 }
-                Changed = true;
             }
         }
 
@@ -438,16 +416,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // Flag for function calls where alwaysinline must be true
         bool mustAlwaysInline = false;
 
-        // Add always attribute if function has an argument with opaque type
-        for (auto& arg : F->args())
-        {
-            if (containsOpaque(arg.getType()))
-            {
-                mustAlwaysInline = true;
-                break;
-            }
-        }
-        // Add always attribute if function is a builtin
+        // Add always attribtue if function is a builtin
         if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
             F->getName().startswith(spv::kLLVMName::builtinPrefix))
         {
@@ -465,18 +434,27 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             mustAlwaysInline = true;
         }
         // Enable inlining for -O0 in order to preserve debug info. This may be removed when debug stack call support is enabled.
-        else if (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable &&
-            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT &&
+        else if (isOptDisable &&
+            FCtrl == FLAG_FCALL_DEFAULT &&
             IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
         {
             mustAlwaysInline = true;
         }
+        else
+        {
+            // Add always attribute if function has an argument with opaque type
+            for (auto& arg : F->args())
+            {
+                if (containsOpaque(arg.getType()))
+                {
+                    mustAlwaysInline = true;
+                    break;
+                }
+            }
+        }
         if (mustAlwaysInline)
         {
-            F->removeFnAttr(llvm::Attribute::NoInline);
-            F->addFnAttr(llvm::Attribute::AlwaysInline);
-
-            Changed = true;
+            SetAlwaysInline(F);
             continue;
         }
 
@@ -487,23 +465,20 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
 
         // Set default inline mode
-        auto FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
         if (FCtrl == FLAG_FCALL_DEFAULT)
         {
-            // If this flag is enabled, default function call mode will be stackcall. Otherwise subroutines are used.
-            // Default call mode in -O0 is stackcall.
-            const bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall) ||
-                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
-            // FE option to selectively enable stack call per function.
-            const bool forceStackCall = F->hasFnAttribute("igc-force-stackcall");
-            if (defaultStackCall || forceStackCall)
+            // Set default function call mode to stack call
+            if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall))
             {
                 pCtx->m_enableStackCall = true;
                 F->addFnAttr("visaStackCall");
-                if (forceStackCall) {
-                    F->removeFnAttr(llvm::Attribute::AlwaysInline);
-                    F->addFnAttr(llvm::Attribute::NoInline);
-                }
+            }
+            // default stackcall for -O0, or when FE force stackcall using attribute
+            if (isOptDisable || F->hasFnAttribute("igc-force-stackcall"))
+            {
+                pCtx->m_enableStackCall = true;
+                F->addFnAttr("visaStackCall");
+                SetNoInline(F);
             }
 
             if (!F->hasFnAttribute(llvm::Attribute::NoInline) &&
@@ -536,12 +511,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
                         if (IGC_IS_FLAG_ENABLED(AddNoInlineToTrimmedFunctions))
                         {
-                            F->addFnAttr(llvm::Attribute::NoInline);
+                            SetNoInline(F);
                         }
                     }
                     else
                     {
-                        F->addFnAttr(llvm::Attribute::AlwaysInline);
+                        SetAlwaysInline(F);
                     }
                 }
             }
@@ -549,13 +524,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         else if (FCtrl == FLAG_FCALL_FORCE_INLINE)
         {
             // Forced inlining all functions
-            F->removeFnAttr(llvm::Attribute::NoInline);
-            F->addFnAttr(llvm::Attribute::AlwaysInline);
+            SetAlwaysInline(F);
         }
         else
         {
             // Forcing subroutines/stack-call/indirect-call
-            // Do not add alwaysinline
             bool forceSubroutine = FCtrl == FLAG_FCALL_FORCE_SUBROUTINE;
             bool forceStackCall = FCtrl == FLAG_FCALL_FORCE_STACKCALL;
             bool forceIndirectCall = F->hasFnAttribute("IndirectlyCalled") &&
@@ -563,30 +536,33 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
             if (forceSubroutine || forceStackCall || forceIndirectCall)
             {
-                F->removeFnAttr(llvm::Attribute::AlwaysInline);
-                F->addFnAttr(llvm::Attribute::NoInline);
+                SetNoInline(F);
                 if (forceStackCall)
                 {
                     pCtx->m_enableStackCall = true;
                     F->addFnAttr("visaStackCall");
                 }
-                Changed = true;
             }
         }
     }
 
     // Detect recursive calls, and convert them to stack calls, since subroutines does not support recursion
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    if (convertRecursionToStackCall(CG, pCtx, pMdUtils))
+    if (convertRecursionToStackCall(CG))
     {
-        if (IGC_IS_FLAG_DISABLED(EnableRecursionOpenCL) && !pCtx->m_DriverInfo.AllowRecursion())
+        if (IGC_IS_FLAG_DISABLED(EnableRecursionOpenCL) &&
+            !pCtx->m_DriverInfo.AllowRecursion())
         {
-            IGC_ASSERT_MESSAGE(0, "Recursion detected!");
+            IGC_ASSERT_MESSAGE(0, "Recursion detected but not enabled!");
+        }
+        if (FCtrl == FLAG_FCALL_FORCE_INLINE)
+        {
+            IGC_ASSERT_MESSAGE(0, "Cannot have recursion when forcing inline!");
         }
         pCtx->m_enableStackCall = true;
     }
 
-    return Changed;
+    return true;
 }
 
 //

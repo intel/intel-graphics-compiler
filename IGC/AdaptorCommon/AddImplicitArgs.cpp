@@ -564,7 +564,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
                     Function* pFuncOnPath = IT.getPath(i)->getFunction();
                     if (pFuncOnPath && pFuncOnPath->hasFnAttribute("visaStackCall"))
                     {
-                        if (pFuncOnPath->hasFnAttribute("forceStackCallRecurse"))
+                        if (pFuncOnPath->hasFnAttribute("forceRecurse"))
                         {
                             IGC_ASSERT_MESSAGE(0, "Cannot inline for recursion!");
                             return false;
