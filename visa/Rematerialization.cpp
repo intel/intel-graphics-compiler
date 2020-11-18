@@ -795,7 +795,7 @@ namespace vISA
                     G4_SrcRegRegion* srcRgn = uniqueDefInst->getSrc(i)->asSrcRegRegion();
 
                     if (srcRgn->getTopDcl()->getNumElems() > 1 &&
-                        getNumUses(srcRgn->getTopDcl()) < 15)
+                        getNumUses(srcRgn->getTopDcl()) < 20)
                     {
                         // Extending non-scalar operands can be expensive
                         return false;
