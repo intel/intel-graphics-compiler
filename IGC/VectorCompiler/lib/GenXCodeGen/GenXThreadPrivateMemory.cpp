@@ -393,17 +393,11 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
          GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
              GenXIntrinsic::genx_svm_gather)) {
       return Ptr;
-    } else {
-      // FIXME: unify the return paths for failure cases
-      IGC_ASSERT_MESSAGE(0, "Cannot find pointer replacement");
-      return nullptr;
     }
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(MemTy, 0);
-  else {
-    IGC_ASSERT_MESSAGE(0, "Cannot find pointer replacement");
-    return nullptr;
-  }
+
+  report_fatal_error("Cannot find pointer replacement");
 }
 
 bool GenXThreadPrivateMemory::replaceAddrSpaceCast(
