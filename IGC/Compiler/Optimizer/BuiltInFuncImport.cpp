@@ -799,6 +799,7 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__FlushDenormals", isFlushDenormToZero ? 1 : 0);
     initializeVarWithValue("__DashGSpecified", MD.compOpt.DashGSpecified ? 1 : 0);
     initializeVarWithValue("__FastRelaxedMath", MD.compOpt.RelaxedBuiltins ? 1 : 0);
+    initializeVarWithValue("__OptDisable", MD.compOpt.OptDisable ? 1 : 0);
     //my understanding of legacy code is that we didn't distinguish if one platform supports int64 or FP64?
     // if so, what if this platform only supports one of them?
     //todo: see if we can distinguish int64 or fp64 support here.

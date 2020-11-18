@@ -170,6 +170,12 @@ static bool containsOpaque(llvm::Type *T)
     return false;
 }
 
+static bool isOptNoneBuiltin(StringRef name)
+{
+    return name == "__intel_typedmemfence_optnone" ||
+           name == "__intel_memfence_optnone";
+}
+
 // Convert functions with recursion to stackcall
 static bool convertRecursionToStackCall(CallGraph& CG, CodeGenContext* pCtx, IGCMD::MetaDataUtils* pM)
 {
@@ -441,11 +447,17 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 break;
             }
         }
-        // Add always attribtue if function is a builtin
+        // Add always attribute if function is a builtin
         if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
             F->getName().startswith(spv::kLLVMName::builtinPrefix))
         {
-            mustAlwaysInline = true;
+            if(isOptNoneBuiltin(F->getName()))
+            {
+                pCtx->m_enableStackCall = true;
+                F->addFnAttr("visaStackCall");
+            }
+            else
+                mustAlwaysInline = true;
         }
         // inline all OCL math functions if __FastRelaxedMath is set
         else if (fastMathFunct.find(F) != fastMathFunct.end())
