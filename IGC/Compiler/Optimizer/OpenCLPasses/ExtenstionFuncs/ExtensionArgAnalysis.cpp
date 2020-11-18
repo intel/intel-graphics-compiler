@@ -155,7 +155,7 @@ namespace IGC
 
         auto SetExtension = [&](int argIndex, ResourceExtensionTypeEnum expected, SmallPtrSet<Argument*, 3> & Args)
         {
-            if (auto * pArg = dyn_cast<Argument>(CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, argIndex))) {
+            if (auto * pArg = dyn_cast<Argument>(ValueTracker::track(&CI, argIndex))) {
                 if (m_ExtensionMap.count(pArg) != 0)
                 {
                     if (m_ExtensionMap[pArg] != expected)

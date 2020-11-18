@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "Compiler/Optimizer/ValueTracker.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include <llvmWrapper/IR/Intrinsics.h>
@@ -183,11 +184,6 @@ namespace IGC
         class CImagesUtils
         {
         public:
-            /// @brief  trace back the base value that belongs to a given image or sampler
-            /// @param  paramIndex  the index of the image or sampler parameter in the call instruction
-            /// @returns  the image or sampler base value (Argument for image, Argument or ConstInt for sampler)
-            static llvm::Value* traceImageOrSamplerArgument(llvm::CallInst* pCallInst, unsigned int paramIndex, const IGC::IGCMD::MetaDataUtils* pMdUtils = nullptr, const IGC::ModuleMetaData* modMD = nullptr);
-
             /// @brief  find the BTI of the image argumant
             /// @param  paramIndex  the index of the image paramtere in the call isntruciton
             /// @returns  the image index
@@ -276,7 +272,6 @@ namespace IGC
         //              false - when CallInst wasn't __builtin_IB*
         bool resolveBI(llvm::CallInst* Inst);
     };
-
 
     union InlineSamplerState
     {

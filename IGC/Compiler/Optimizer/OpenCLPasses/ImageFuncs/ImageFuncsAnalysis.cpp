@@ -186,7 +186,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
 
     // We only care about image and sampler arguments here, inline samplers
     // don't require extra kernel parameters.
-    Value* callArg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+    Value* callArg = ValueTracker::track(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
     // TODO: For now assume that we may not trace a sampler/texture for indirect access.
     // In this case we provide no WA support for indirect case and all WAs will return 0.

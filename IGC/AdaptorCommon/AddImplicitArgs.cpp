@@ -459,7 +459,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
                 IGC_ASSERT_MESSAGE(argImpToExpNum.find(&(*new_arg_iter)) != argImpToExpNum.end(), "Can't find explicit argument number");
 
                 // tracing it on parent function argument list
-                Value* callArg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(cInst, argImpToExpNum[&(*new_arg_iter)]);
+                Value* callArg = ValueTracker::track(cInst, argImpToExpNum[&(*new_arg_iter)]);
                 Argument* arg = dyn_cast<Argument>(callArg);
 
                 IGC_ASSERT_MESSAGE(arg, "Not supported");
@@ -732,7 +732,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
             for (const auto& argI : argSet)
             {
                 // find it from calling instruction, and trace it back to parent function argument
-                Value* callArg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(cInst, argI);
+                Value* callArg = ValueTracker::track(cInst, argI);
                 Argument* const arg = dyn_cast<Argument>(callArg);
                 IGC_ASSERT_MESSAGE(nullptr != arg, "Not supported");
                 setx->insert(arg->getArgNo());

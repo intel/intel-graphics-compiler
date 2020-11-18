@@ -204,7 +204,7 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
+    Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
     IGC_ASSERT_MESSAGE(sampler != nullptr, "Sampler untraceable for ImplicitArg::SAMPLER_ADDRESS");
     if (isa<Argument>(sampler))
     {
@@ -241,7 +241,7 @@ Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
+    Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
     if (sampler == nullptr)
     {
         // TODO: For now disable WA if unable to trace sampler argument.
@@ -283,7 +283,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    Value* sampler = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0, pMdUtils, modMD);
+    Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
     if (sampler == nullptr)
     {
         // TODO: For now disable WA if unable to trace sampler argument.
@@ -333,7 +333,7 @@ Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
 
 Argument* ImageFuncResolution::getImplicitImageArg(CallInst& CI, ImplicitArg::ArgType argType) {
     // Only images that are arguments are supported!
-    Argument* image = cast<Argument>(CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, 0));
+    Argument* image = cast<Argument>(ValueTracker::track(&CI, 0));
 
     unsigned int numImplicitArgs = m_implicitArgs.size();
     unsigned int implicitArgIndex = m_implicitArgs.getImageArgIndex(argType, image);

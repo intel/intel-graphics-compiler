@@ -69,7 +69,7 @@ bool Image3dToImage2darray::createImageAnnotations(
     // Find the arg number of the image so we can look up its ArgInfoList metadata.
     if (pImgOp->getType()->isPointerTy())
     {
-        auto* pImg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(pCall, imageIdx, pMdUtils, modMD);
+        auto* pImg = ValueTracker::track(pCall, imageIdx, pMdUtils, modMD);
         if (pImg == nullptr)
             return false;
 
