@@ -193,6 +193,8 @@ public:
     CVariable* GetARGV();
     CVariable* GetRETV();
     CVariable* GetPrivateBase();
+    CVariable* GetGlobalStateBufferPtr();
+    CVariable* GetGlobalStateBufferInput();
 
     bool hasSP() const { return m_SP != nullptr; }
     bool hasFP() const { return m_FP != nullptr; }
@@ -543,6 +545,7 @@ protected:
     CVariable* m_SavedFP;
     CVariable* m_ARGV;
     CVariable* m_RETV;
+    CVariable* m_GlobalStateBufPtr;
 
     std::vector<USC::SConstantGatherEntry> gatherMap;
     uint     m_ConstantBufferLength;

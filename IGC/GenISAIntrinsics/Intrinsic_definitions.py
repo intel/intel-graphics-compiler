@@ -1078,6 +1078,11 @@ Imported_Intrinsics = \
      ("int",                           "id of DW of the message phase")],
     "None"]],
 ####################################################################################################
+"GenISA_getR0": ["",
+    [("anyvector",                        "result"),
+    [],
+    "NoMem"]],
+####################################################################################################
 "GenISA_getSR0": ["sr0.# the state register",
     [("int",                           "result"),
     [("int",                           "index/offset of the subregister within sr0")],
@@ -1088,6 +1093,11 @@ Imported_Intrinsics = \
 # CSE optimization on the calls.
 "GenISA_getSR0_0": ["sr0.0 the first dword state register",
     [("int",                           "result"),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_getGlobalStateBufferPtr": ["",
+    [("anyptr",                        "result"),
     [],
     "NoMem"]],
 ####################################################################################################

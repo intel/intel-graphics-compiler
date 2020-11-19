@@ -310,6 +310,8 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, false));
 
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::GLOBAL_STATE_BUFFER_PTR, "gblStateBufferPtr", ImplicitArg::PRIVATEPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, true));
+
         IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS), "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
 
         {

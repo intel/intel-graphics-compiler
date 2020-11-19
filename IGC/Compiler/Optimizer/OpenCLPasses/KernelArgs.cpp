@@ -238,6 +238,8 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
     {
     case ImplicitArg::R0:
         return KernelArg::ArgType::IMPLICIT_R0;
+    case ImplicitArg::GLOBAL_STATE_BUFFER_PTR:
+        return KernelArg::ArgType::IMPLICIT_GLOBAL_STATE_BUFFER_PTR;
     case ImplicitArg::PAYLOAD_HEADER:
         return KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER;
     case ImplicitArg::PRIVATE_BASE:
@@ -787,6 +789,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
 
+            KernelArg::ArgType::IMPLICIT_GLOBAL_STATE_BUFFER_PTR,
+
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
             KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH,
             KernelArg::ArgType::IMPLICIT_IMAGE_DEPTH,
@@ -882,6 +886,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::RUNTIME_VALUE,
 
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
+
             KernelArg::ArgType::PTR_LOCAL,
             KernelArg::ArgType::PTR_GLOBAL,
             KernelArg::ArgType::PTR_CONSTANT,
@@ -901,6 +906,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
+
+            KernelArg::ArgType::IMPLICIT_GLOBAL_STATE_BUFFER_PTR,
 
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
             KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH,
