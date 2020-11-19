@@ -1824,7 +1824,7 @@ bool InstExpander::visitPHI(PHINode& PN) {
 bool InstExpander::visitCall(CallInst& Call) {
 
     // lambdas for splitting and combining i64 to <2 x i32>
-    auto Combine2xi32Toi64 = [this](Value* val)->Value *
+    auto Combine2xi32Toi64 = [this](Value* val)->Value*
     {
         IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(val));
@@ -1881,155 +1881,35 @@ bool InstExpander::visitCall(CallInst& Call) {
     }
 
     // Recreate Call with its operands/result emulated
-    if (auto * GI = dyn_cast<GenIntrinsicInst>(&Call))
+    auto* CallCopy = Call.clone();
+    IGC_ASSERT(nullptr != CallCopy);
+    CallCopy->insertBefore(&Call);
+
+    // All int64 operands shall be recreated right before CallCopy
+    IRB->SetInsertPoint(CallCopy);
+    unsigned argNo = 0;
+    for (auto& Op : Call.operands())
     {
-        switch (GI->getIntrinsicID())
+        if (Emu->isInt64(Op.get()))
         {
-        case GenISAIntrinsic::GenISA_getMessagePhaseV:
-        case GenISAIntrinsic::GenISA_simdGetMessagePhaseV:
-        case GenISAIntrinsic::GenISA_getMessagePhaseX:
-        case GenISAIntrinsic::GenISA_getMessagePhaseXV:
-        case GenISAIntrinsic::GenISA_getMessagePhase:
-        case GenISAIntrinsic::GenISA_broadcastMessagePhase:
-        case GenISAIntrinsic::GenISA_broadcastMessagePhaseV:
-        case GenISAIntrinsic::GenISA_simdGetMessagePhase:
-        case GenISAIntrinsic::GenISA_RuntimeValue:
-        case GenISAIntrinsic::GenISA_simdBlockRead:
-        case GenISAIntrinsic::GenISA_simdMediaBlockRead:
-        {
-            auto* GenCopy = Call.clone();
-            GenCopy->insertBefore(&Call);
-            IRB->SetInsertPoint(&Call);
-            Value* Lo = nullptr, * Hi = nullptr;
-            Spliti64To2xi32(GenCopy, Lo, Hi);
-            Call.replaceAllUsesWith(GenCopy);
-            Emu->setExpandedValues(GenCopy, Lo, Hi);
-            return true;
+            Value* NewVal = Combine2xi32Toi64(Op.get());
+            CallCopy->setOperand(argNo, NewVal);
         }
-        case GenISAIntrinsic::GenISA_intatomicraw:
-        case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-        case GenISAIntrinsic::GenISA_intatomicrawA64:
-        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
-        {
-            auto* GenCopy = Call.clone();
-            GenCopy->insertBefore(&Call);
-            IRB->SetInsertPoint(GenCopy);
-
-            uint opNum = 0;
-            for (auto& Op : Call.operands())
-            {
-              if (Emu->isInt64(Op.get()))
-              {
-                Value* NewVal = Combine2xi32Toi64(Op.get());
-                GenCopy->setOperand(opNum, NewVal);
-              }
-              opNum++;
-            }
-            IRB->SetInsertPoint(&Call);
-            Value* Lo = nullptr, * Hi = nullptr;
-            Spliti64To2xi32(GenCopy, Lo, Hi);
-            Call.replaceAllUsesWith(GenCopy);
-            Emu->setExpandedValues(GenCopy, Lo, Hi);
-            return true;
-        }
-        case GenISAIntrinsic::GenISA_simdSetMessagePhaseV:
-        case GenISAIntrinsic::GenISA_setMessagePhaseX:
-        case GenISAIntrinsic::GenISA_setMessagePhaseXV:
-        case GenISAIntrinsic::GenISA_setMessagePhase:
-        case GenISAIntrinsic::GenISA_setMessagePhaseV:
-        case GenISAIntrinsic::GenISA_simdSetMessagePhase:
-        case GenISAIntrinsic::GenISA_setMessagePhaseX_legacy:
-        case GenISAIntrinsic::GenISA_itof_rtn:
-        case GenISAIntrinsic::GenISA_itof_rtp:
-        case GenISAIntrinsic::GenISA_itof_rtz:
-        case GenISAIntrinsic::GenISA_uitof_rtn:
-        case GenISAIntrinsic::GenISA_uitof_rtp:
-        case GenISAIntrinsic::GenISA_uitof_rtz:
-        case GenISAIntrinsic::GenISA_simdBlockWrite:
-        case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
-        {
-            auto* GenCopy = Call.clone();
-            IGC_ASSERT(nullptr != GenCopy);
-            GenCopy->insertBefore(&Call);
-            IRB->SetInsertPoint(GenCopy);
-            uint opNum = 0;
-            for (auto& Op : Call.operands())
-            {
-                if (Emu->isInt64(Op.get()))
-                {
-                    Value* NewVal = Combine2xi32Toi64(Op.get());
-                    GenCopy->setOperand(opNum, NewVal);
-                }
-                opNum++;
-            }
-            Call.replaceAllUsesWith(GenCopy);
-            return true;
-        }
-        case GenISAIntrinsic::GenISA_WaveAll:
-        case GenISAIntrinsic::GenISA_WavePrefix:
-        {
-            auto* GenCopy = Call.clone();
-            IGC_ASSERT(nullptr != GenCopy);
-            GenCopy->insertBefore(&Call);
-            IRB->SetInsertPoint(GenCopy);
-
-            // bitcast arg from 2xi32 to i64
-            Value* NewVal = Combine2xi32Toi64(Call.getArgOperand(0));
-            GenCopy->setOperand(0, NewVal);
-
-            // bitcast output from i64 to 2xi32
-            IRB->SetInsertPoint(&Call);
-            Value* OutputLo = nullptr, * OutputHi = nullptr;
-            Spliti64To2xi32(GenCopy, OutputLo, OutputHi);
-            Call.replaceAllUsesWith(GenCopy);
-            Emu->setExpandedValues(GenCopy, OutputLo, OutputHi);
-            return true;
-        }
-        default:
-            break;
-        }
-    }
-    // Support for stack/indirect/subroutine calls
-    // Note: should use enableFunctionCall() without using attr checking.
-    // else if (   !F || F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("UserSubroutine")
-    //         || Emu->CGC->enableFunctionCall())
-    //
-    // 11/2020: No need to have condition check. It should work for all cases ("if branch" is redundant)
-    else
-    {
-        auto* CallCopy = Call.clone();
-        IGC_ASSERT(nullptr != CallCopy);
-        CallCopy->insertBefore(&Call);
-
-        // All int64 operands shall be recreated right before CallCopy
-        IRB->SetInsertPoint(CallCopy);
-        unsigned argNo = 0;
-        for (auto& Op : Call.operands())
-        {
-            if (Emu->isInt64(Op.get()))
-            {
-                Value* NewVal = Combine2xi32Toi64(Op.get());
-                CallCopy->setOperand(argNo, NewVal);
-            }
-            argNo++;
-        }
-
-        // For int64 return value, split it right after CallCopy
-        if (Emu->isInt64(&Call))
-        {
-            IRB->SetInsertPoint(&Call);
-            Value* OutputLo = nullptr, * OutputHi = nullptr;
-            Spliti64To2xi32(CallCopy, OutputLo, OutputHi);
-            Emu->setExpandedValues(CallCopy, OutputLo, OutputHi);
-        }
-        Call.replaceAllUsesWith(CallCopy);
-        return true;
+        argNo++;
     }
 
-    // TODO: Add i64 emulation support.
-    llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
-    return false;
+    // For int64 return value, split it right after CallCopy
+    if (Emu->isInt64(&Call))
+    {
+        IRB->SetInsertPoint(&Call);
+        Value* OutputLo = nullptr, * OutputHi = nullptr;
+        Spliti64To2xi32(CallCopy, OutputLo, OutputHi);
+        Emu->setExpandedValues(CallCopy, OutputLo, OutputHi);
+    }
+    Call.replaceAllUsesWith(CallCopy);
+    return true;
 }
+
 
 bool InstExpander::visitSelect(SelectInst& SI) {
     IGC_ASSERT(nullptr != Emu);
