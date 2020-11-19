@@ -231,6 +231,35 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
             CI->setOperand(0, Src);
             Changed = true;
         }
+
+        llvm::Module* ModuleMeta = BB->getModule();
+
+        if (CI->isUsedByMetadata()) {
+            auto* L = LocalAsMetadata::getIfExists(CI);
+            if (L) {
+                auto* MDV = MetadataAsValue::getIfExists(ModuleMeta->getContext(), L);
+                if (MDV) {
+                    SmallPtrSet<User*, 4> Users(MDV->users().begin(), MDV->users().end());
+                    for (auto U : Users) {
+                        if (isa<DbgDeclareInst>(cast<Value>(U)) || isa<DbgValueInst>(cast<Value>(U))) {
+                            CallInst* CallI = dyn_cast_or_null<CallInst>(cast<Value>(U));
+                            if (CallI) {
+                                MetadataAsValue* MAV = MetadataAsValue::get(CI->getContext(), ValueAsMetadata::get(Src));
+                                CallI->setArgOperand(0, MAV);
+                                Changed = true;
+                            }
+                            else {
+                                IGC_ASSERT_MESSAGE(false, "Unexpected instruction");
+                            }
+                        }
+                        else {
+                            IGC_ASSERT_MESSAGE(false, "Unexpected user");
+                        }
+                    }
+                }
+            }
+        }
+
         // Since %49 is used twice in a phi instruction like the one below:
         // %56 = phi %"class.someclass" addrspace(4)* [ %49, %53 ], [ %49, %742 ]
         // the use iterator was handling such phi instructions twice.
