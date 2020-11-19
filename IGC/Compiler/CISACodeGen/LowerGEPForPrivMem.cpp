@@ -300,7 +300,7 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     {
         // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
         // as they will be allocated as uniform array
-        allocaSize = iSTD::Round(allocaSize, 8) / 8;
+        allocaSize = iSTD::Round(allocaSize, SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
     }
 
     if (allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))

@@ -49,12 +49,14 @@ namespace IGC
     {
         AU.setPreservesAll();
         AU.addRequired<LoopInfoWrapperPass>();
+        AU.addRequired<WIAnalysis>();
     }
 
     bool RegisterPressureEstimate::runOnFunction(Function& F)
     {
         m_pFunc = &F;
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+        WI = &getAnalysis<WIAnalysis>();
         m_available = buildLiveIntervals(true);
 
         return false;
@@ -466,7 +468,7 @@ namespace IGC
         auto Iter = m_pRegisterPressureByInstruction.find(number);
         if (Iter != m_pRegisterPressureByInstruction.end())
         {
-            return Iter->second;
+            return iSTD::Round(Iter->second, SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
         }
         else
         {
@@ -490,7 +492,8 @@ namespace IGC
                 for (unsigned number = Seg.Begin; number < Seg.End; number++)
                 {
                     Value* V = I->first;
-                    m_pRegisterPressureByInstruction[number] = m_pRegisterPressureByInstruction[number] + (unsigned int)V->getType()->getPrimitiveSizeInBits() / 8;
+                    unsigned int simdness = (WI && WI->isUniform(V)) ? 1 : SIMD_PRESSURE_MULTIPLIER;
+                    m_pRegisterPressureByInstruction[number] += ((unsigned int)V->getType()->getPrimitiveSizeInBits() / 8) * simdness;
                 }
             }
         }
@@ -505,7 +508,7 @@ namespace IGC
             unsigned N = Iter->second;
 
             // Now sum all intervals that contain this location.
-            unsigned Presssure = 0;
+            unsigned Pressure = 0;
 
             // Segments are sorted.
             for (auto I = m_pLiveRanges.begin(), E = m_pLiveRanges.end(); I != E; ++I)
@@ -513,11 +516,12 @@ namespace IGC
                 if (I->second->contains(N))
                 {
                     Value* V = I->first;
-                    Presssure += (unsigned int)V->getType()->getPrimitiveSizeInBits() / 8;
+                    unsigned int simdness = (WI && WI->isUniform(V)) ? 1 : SIMD_PRESSURE_MULTIPLIER;
+                    Pressure += simdness * ((unsigned int)V->getType()->getPrimitiveSizeInBits() / 8);
                 }
             }
 
-            return Presssure;
+            return iSTD::Round(Pressure, SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
         }
 
         // ignore this instruction.
@@ -556,7 +560,6 @@ namespace IGC
         const char* msg) const
     {
         unsigned MaxRP = getRegisterPressure();
-
         if (Detailed)
         {
             for (inst_iterator I = inst_begin(m_pFunc), E = inst_end(m_pFunc); I != E; ++I)

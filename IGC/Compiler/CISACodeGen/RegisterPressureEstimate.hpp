@@ -28,16 +28,19 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Probe/Assertion.h"
 
 namespace IGC
 {
+    constexpr unsigned int SIMD_PRESSURE_MULTIPLIER = 8;
+
     class RegisterPressureEstimate : public llvm::FunctionPass
     {
     public:
         static char ID;
         RegisterPressureEstimate()
-            : FunctionPass(ID), m_pFunc(nullptr), LI(nullptr), m_available(false)
+            : FunctionPass(ID), m_pFunc(nullptr), LI(nullptr), WI(nullptr), m_available(false)
         {
             initializeRegisterPressureEstimatePass(*llvm::PassRegistry::getPassRegistry());
         }
@@ -230,6 +233,9 @@ namespace IGC
 
         /// The loop info object.
         llvm::LoopInfo* LI;
+
+        /// uniform analysis object
+        WIAnalysis* WI;
 
         /// Each instruction gets an ID.
         llvm::DenseMap<llvm::Value*, unsigned> m_pNumbers;
