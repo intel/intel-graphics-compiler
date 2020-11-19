@@ -8315,12 +8315,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_CatchAllDebugLine:
         emitDebugPlaceholder(inst);
         break;
-    case GenISAIntrinsic::GenISA_getR0:
-        emitR0(inst);
-        break;
-    case GenISAIntrinsic::GenISA_getGlobalStateBufferPtr:
-        emitGlobalStateBufferPtr(inst);
-        break;
     case GenISAIntrinsic::GenISA_dummyInst:
         emitDummyInst(inst);
         break;
@@ -9962,11 +9956,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
         // hard-code per-workitem private-memory size to max size
         pSize = m_currShader->ImmToVariable(MaxPrivateSize * numLanes(m_currShader->m_dispatchSize), ISA_TYPE_UD);
     }
-
-    auto pSideBufferPtr = m_currShader->GetGlobalStateBufferPtr();
-    auto pSideBufferInputPtr = m_currShader->GetGlobalStateBufferInput();
-    m_encoder->Cast(pSideBufferPtr, pSideBufferInputPtr);
-    m_encoder->Push();
 
     CVariable* pThreadOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
     m_encoder->Mul(pThreadOffset, pHWTID, pSize);
@@ -17390,23 +17379,6 @@ void EmitPass::emitDummyInst(llvm::GenIntrinsicInst* GII)
     CVariable* src = m_currShader->GetR0();
     m_encoder->Copy(dst, src);
     m_encoder->Push();
-}
-
-void EmitPass::emitR0(llvm::GenIntrinsicInst* I)
-{
-    if (I->getNumUses() == 0)
-        return;
-    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(m_currShader->getGRFSize() / SIZE_DWORD));
-    m_encoder->SetNoMask();
-    m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetR0());
-}
-
-void EmitPass::emitGlobalStateBufferPtr(llvm::GenIntrinsicInst* I)
-{
-    if (I->getNumUses() == 0)
-        return;
-    m_encoder->SetNoMask();
-    m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetGlobalStateBufferPtr());
 }
 
 

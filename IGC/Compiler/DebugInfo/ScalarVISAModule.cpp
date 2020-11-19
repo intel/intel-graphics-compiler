@@ -377,8 +377,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
             && modMD->FuncMD.find(const_cast<Function*>(curFunc)) != modMD->FuncMD.end())
         {
             unsigned int explicitArgsNum = curFunc->arg_size() - itr->second->size_ImplicitArgInfoList();
-            if (pArgument->getArgNo() < explicitArgsNum &&
-                modMD->FuncMD[const_cast<Function*>(curFunc)].m_OpenCLArgBaseTypes.size() > pArgument->getArgNo())
+            if (pArgument->getArgNo() < explicitArgsNum)
             {
                 const std::string typeStr = modMD->FuncMD[const_cast<Function*>(curFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
