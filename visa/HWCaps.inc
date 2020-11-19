@@ -654,4 +654,8 @@
         return 8;
     }
 
+    bool hasFusedEU() const
+    {
+        return (getPlatform() == GENX_TGLLP);
+    }
     // end HW capabilities

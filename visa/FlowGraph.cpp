@@ -557,6 +557,11 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 {
     MUST_BE_TRUE(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
 
+    if (builder->hasFusedEU() &&
+        getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+    {
+        getKernel()->getOptions()->setOptionInternally(vISA_EnableScalarJmp, false);
+    }
 
     pKernel->renameAliasDeclares();
     //
