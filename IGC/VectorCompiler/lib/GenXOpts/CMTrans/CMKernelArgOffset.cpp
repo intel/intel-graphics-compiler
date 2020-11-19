@@ -503,23 +503,25 @@ void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
 
         Type *ArgTy = Arg.getType();
         if (ArgTy->isPointerTy()) {
-          for (Use &U : Arg.uses()) {
-            SmallVector<Instruction *, 8> ToErase;
-            auto ArgUse = U.getUser();
-            IGC_ASSERT_MESSAGE(isa<PtrToIntInst>(ArgUse),
-                               "invalid surface input usage");
+          SmallVector<Instruction *, 8> ToErase;
 
-            std::transform(ArgUse->user_begin(), ArgUse->user_end(),
-                           std::back_inserter(ToErase), [BTI](User *U) {
-                             U->replaceAllUsesWith(
-                                 ConstantInt::get(U->getType(), BTI));
-                             return cast<Instruction>(U);
-                           });
-            ToErase.push_back(cast<Instruction>(ArgUse));
+          IGC_ASSERT_MESSAGE(Arg.hasOneUse(), "invalid surface input");
+          auto ArgUse = Arg.use_begin()->getUser();
+          IGC_ASSERT_MESSAGE(isa<PtrToIntInst>(ArgUse),
+            "invalid surface input usage");
+          ToErase.push_back(cast<Instruction>(ArgUse));
 
-            std::for_each(ToErase.begin(), ToErase.end(),
-                          [](Instruction *I) { I->eraseFromParent(); });
+          for (auto ui = ArgUse->use_begin(), ue = ArgUse->use_end(); ui != ue;
+               ++ui) {
+            auto User = cast<Instruction>(ui->getUser());
+            User->replaceAllUsesWith(
+                ConstantInt::get(User->getType(), BTI));
+            ToErase.push_back(User);
           }
+
+          for (auto i = ToErase.rbegin(), e = ToErase.rend(); i != e; ++i)
+            (*i)->eraseFromParent();
+          ToErase.clear();
         } else {
           auto BTIConstant = ConstantInt::get(ArgTy, BTI);
           // If the number of uses for this arg more than 1 it's better to
