@@ -1770,7 +1770,7 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         {
             CVariable* minusone = m_currShader->ImmToVariable(-1, dst->GetType());
             CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
-            m_encoder->Select(src0, dst, minusone, zero);
+                m_encoder->Select(src0, dst, minusone, zero);
         }
         else
         {
@@ -1784,7 +1784,7 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         {
             CVariable* one = m_currShader->ImmToVariable(1, dst->GetType());
             CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
-            m_encoder->Select(src0, dst, one, zero);
+                m_encoder->Select(src0, dst, one, zero);
         }
         else
         {
@@ -1817,7 +1817,7 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         {
             CVariable* one = m_currShader->ImmToVariable(getFPOne(dst->GetType()), dst->GetType());
             CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
-            m_encoder->Select(src0, dst, one, zero);
+                m_encoder->Select(src0, dst, one, zero);
         }
         else
         {
