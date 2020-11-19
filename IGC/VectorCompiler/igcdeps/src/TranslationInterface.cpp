@@ -46,10 +46,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <common/igc_regkeys.hpp>
 #include <iStdLib/utility.h>
 #include <inc/common/secure_mem.h>
-#include <inc/common/secure_string.h>
 
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <system_error>
 
 #include <cstring>
@@ -115,11 +115,10 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
 }
 
 static std::unique_ptr<llvm::MemoryBuffer> getGenericModuleBuffer() {
-  // FIXME: ostringstream.
-  char Resource[5] = {'-'};
-  _snprintf_s(Resource, sizeof(Resource), sizeof(Resource), "#%d", OCL_BC);
+  std::ostringstream SS;
+  SS << '#' << static_cast<int>(OCL_BC);
   return std::unique_ptr<llvm::MemoryBuffer>{
-      llvm::LoadBufferFromResource(Resource, "BC")};
+      llvm::LoadBufferFromResource(SS.str().c_str(), "BC")};
 }
 
 static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
