@@ -657,6 +657,13 @@ void IR_Builder::createPreDefinedVars()
                 dcl = getBuiltinHWTID();
                 break;
             }
+            case PreDefinedVarsInternal::GLOBAL_STATE_BUFFER_PTR:
+            {
+                unsigned int startReg = kernel.getSpillHeaderGRF();
+                dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
+                dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), 2);
+                break;
+            }
             case PreDefinedVarsInternal::X:
             case PreDefinedVarsInternal::Y:
             case PreDefinedVarsInternal::COLOR:
