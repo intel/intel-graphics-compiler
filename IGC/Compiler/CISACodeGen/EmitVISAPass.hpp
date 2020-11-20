@@ -706,6 +706,9 @@ private:
 
     void emitFeedbackEnable();
 
+    // Helper function to create address space tag on generic pointers
+    CVariable* createAddressSpaceTag(CVariable* src, unsigned int addrSpace);
+
     // used for loading/storing uniform value using scatter/gather messages.
     CVariable* prepareAddressForUniform(
         CVariable* AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz, e_alignment Align);
