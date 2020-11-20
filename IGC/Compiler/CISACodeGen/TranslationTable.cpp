@@ -55,7 +55,8 @@ namespace IGC
 
     bool TranslationTable::runOnFunction(Function& F)
     {
-        return run(F);
+        (void)run(F);
+        return false;
     }
 
     bool TranslationTable::run(Function& F)

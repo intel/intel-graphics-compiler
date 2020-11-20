@@ -115,6 +115,6 @@ bool TimeStatsCounter::runOnModule(Module& F) {
             COMPILER_TIME_PASS_END(ctx, igcPass);
         }
     }
-    return true;
+    return false;
 }
 
