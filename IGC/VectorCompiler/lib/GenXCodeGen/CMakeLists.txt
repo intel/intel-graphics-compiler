@@ -82,6 +82,7 @@ target_link_libraries(VCCodeGen
   LLVMGenXIntrinsics
 
   VCHeaders
+  VCOptions
   VCTransforms
   VCTargetInfo
   VCSupport

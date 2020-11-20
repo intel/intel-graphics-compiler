@@ -34,11 +34,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vc/GenXCodeGen/GenXWrapper.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/Support/Options.h"
+#include "vc/Options/Options.h"
 #include "vc/Support/Status.h"
+#include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
-#include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"

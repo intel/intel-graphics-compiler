@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "vc/Support/Options.h"
+#include "vc/Options/Options.h"
 
 #include <llvm/Option/Option.h>
 
@@ -32,7 +32,7 @@ using namespace vc::options;
 using namespace llvm::opt;
 
 #define PREFIX(NAME, VALUE) static const char *const NAME[] = VALUE;
-#include "vc/Support/Options.inc"
+#include "vc/Options/Options.inc"
 #undef PREFIX
 
 static const OptTable::Info InfoTable[] = {
@@ -40,7 +40,7 @@ static const OptTable::Info InfoTable[] = {
                HELPTEXT, METAVAR, VALUES)                                      \
   {PREFIX, NAME,  HELPTEXT,    METAVAR,     OPT_##ID,  Option::KIND##Class,    \
    PARAM,  FLAGS, OPT_##GROUP, OPT_##ALIAS, ALIASARGS, VALUES},
-#include "vc/Support/Options.inc"
+#include "vc/Options/Options.inc"
 #undef OPTION
 };
 
@@ -51,7 +51,7 @@ public:
     OptTable &Opt = *this;
     (void)Opt;
 #define OPTTABLE_ARG_INIT
-#include "vc/Support/Options.inc"
+#include "vc/Options/Options.inc"
 #undef OPTTABLE_ARG_INIT
   }
 };
