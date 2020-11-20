@@ -442,6 +442,32 @@ public:
       return addMDNode(inst, Builder.createExpression(Exprs));
   }
 
+  DINode::DIFlags static decodeFlag(SPIRVWord spirvFlags)
+  {
+      DINode::DIFlags flags = DINode::FlagZero;
+
+      if (spirvFlags & SPIRVDebug::FlagIsArtificial)
+          flags |= llvm::DINode::FlagArtificial;
+      if (spirvFlags & SPIRVDebug::FlagIsExplicit)
+          flags |= llvm::DINode::FlagExplicit;
+      if (spirvFlags & SPIRVDebug::FlagIsPrototyped)
+          flags |= llvm::DINode::FlagPrototyped;
+      if (spirvFlags & SPIRVDebug::FlagIsLValueReference)
+          flags |= llvm::DINode::FlagLValueReference;
+      if (spirvFlags & SPIRVDebug::FlagIsRValueReference)
+          flags |= llvm::DINode::FlagRValueReference;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPublic)
+          flags |= llvm::DINode::FlagPublic;
+      if (spirvFlags & SPIRVDebug::FlagIsProtected)
+          flags |= llvm::DINode::FlagProtected;
+      if (spirvFlags & SPIRVDebug::FlagIsPrivate)
+          flags |= llvm::DINode::FlagPrivate;
+      if (spirvFlags & SPIRVDebug::FlagIsObjectPointer)
+          flags |= llvm::DINode::FlagObjectPointer;
+
+      return flags;
+  }
+
   DIType* createTypeBasic(SPIRVExtInst* inst)
   {
       if (auto n = getExistingNode<DIType*>(inst))
@@ -498,6 +524,8 @@ public:
           return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
       else if (flags == SPIRVDebug::Flag::FlagIsRValueReference)
           return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_rvalue_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
+      else if (flags & SPIRVDebug::Flag::FlagIsObjectPointer)
+          return addMDNode(inst, Builder.createObjectPointerType(pointeeType));
       else
           return addMDNode(inst, Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits()));
   }
@@ -643,13 +671,7 @@ public:
       auto spirvFlags = compositeType.getFlags();
       auto scope = createScope(BM->get<SPIRVExtInst>(compositeType.getParent()));
 
-      DINode::DIFlags flags = DINode::FlagZero;
-      if (spirvFlags & SPIRVDebug::FlagIsFwdDecl)
-          flags |= DINode::FlagFwdDecl;
-      if (spirvFlags & SPIRVDebug::FlagTypePassByValue)
-          flags |= DINode::FlagTypePassByValue;
-      if (spirvFlags & SPIRVDebug::FlagTypePassByReference)
-          flags |= DINode::FlagTypePassByReference;
+      DINode::DIFlags flags = decodeFlag(spirvFlags);
 
       if (!scope)
           scope = cu;
@@ -911,12 +933,20 @@ public:
       auto line = funcDcl.getLine();
       auto type = createSubroutineType(BM->get<SPIRVExtInst>(funcDcl.getType()));
 
+      auto spirvFlags = funcDcl.getFlags();
+
+      DINode::DIFlags flags = decodeFlag(spirvFlags);
+
+      bool isDefinition = spirvFlags & SPIRVDebug::FlagIsDefinition;
+      bool isOptimized = spirvFlags & SPIRVDebug::FlagIsOptimized;
+      bool isLocal = spirvFlags & SPIRVDebug::FlagIsLocal;
+
       if (isa<DICompositeType>(scope) || isa<DINamespace>(scope))
           return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
-              true, true));
+              isLocal, isDefinition, 0, 0, 0, nullptr, flags, isOptimized));
       else
         return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type,
-          true, true, (unsigned int)line));
+          isLocal, isDefinition, (unsigned int)line, flags, isOptimized));
   }
 
   bool isTemplateType(SPIRVExtInst* inst)
@@ -975,23 +1005,7 @@ public:
       auto spType = createSubroutineType(BM->get<SPIRVExtInst>(sp.getType()));
       auto spirvFlags = sp.getFlags();
 
-      DINode::DIFlags flags = DINode::FlagZero;
-      if (spirvFlags & SPIRVDebug::FlagIsArtificial)
-          flags |= llvm::DINode::FlagArtificial;
-      if (spirvFlags & SPIRVDebug::FlagIsExplicit)
-          flags |= llvm::DINode::FlagExplicit;
-      if (spirvFlags & SPIRVDebug::FlagIsPrototyped)
-          flags |= llvm::DINode::FlagPrototyped;
-      if (spirvFlags & SPIRVDebug::FlagIsLValueReference)
-          flags |= llvm::DINode::FlagLValueReference;
-      if (spirvFlags & SPIRVDebug::FlagIsRValueReference)
-          flags |= llvm::DINode::FlagRValueReference;
-      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPublic)
-          flags |= llvm::DINode::FlagPublic;
-      if (spirvFlags & SPIRVDebug::FlagIsProtected)
-          flags |= llvm::DINode::FlagProtected;
-      if (spirvFlags & SPIRVDebug::FlagIsPrivate)
-          flags |= llvm::DINode::FlagPrivate;
+      DINode::DIFlags flags = decodeFlag(spirvFlags);
 
       bool isDefinition = spirvFlags & SPIRVDebug::FlagIsDefinition;
       bool isOptimized = spirvFlags & SPIRVDebug::FlagIsOptimized;
@@ -1155,15 +1169,18 @@ public:
       auto& name = BM->get<SPIRVString>(var.getName())->getStr();
       auto file = getDIFile(BM->get<SPIRVExtInst>(var.getSource()));
       auto type = createType(BM->get<SPIRVExtInst>(var.getType()));
+      auto spirvFlags = var.getFlags();
       auto line = var.getLine();
+
+      auto flags = decodeFlag(spirvFlags);
 
       if (var.isParamVar())
       {
-          return addMDNode(inst, Builder.createParameterVariable(scope, name, var.getArgNo(), file, line, type));
+          return addMDNode(inst, Builder.createParameterVariable(scope, name, var.getArgNo(), file, line, type, false, flags));
       }
       else
       {
-          return addMDNode(inst, Builder.createAutoVariable(scope, name, file, line, type));
+          return addMDNode(inst, Builder.createAutoVariable(scope, name, file, line, type, false, flags));
       }
   }
 
