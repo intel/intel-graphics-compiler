@@ -410,6 +410,7 @@ CGen8CMProgram::~CGen8CMProgram()
 
 void CGen8CMProgram::CreateKernelBinaries()
 {
+    CreateProgramScopePatchStream(*m_programInfo);
     for (auto *kernel : m_kernels)
     {
         // Create the kernel binary streams.

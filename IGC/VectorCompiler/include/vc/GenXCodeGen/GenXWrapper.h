@@ -84,6 +84,8 @@ struct ZEBinaryInfo {
   struct SymbolsInfo {
     using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
     ZESymEntrySeq Functions;
+    ZESymEntrySeq Globals;
+    ZESymEntrySeq Constants;
     ZESymEntrySeq Local;
     // for now only function and local symbols are used
   };
@@ -122,7 +124,23 @@ struct CompileInfo {
   std::vector<char> DebugInfo;
 };
 
+struct DataInfoT {
+  std::vector<char> Buffer;
+  int Alignment = 0;
+  // Runtime can allocate bigger zeroed out buffer, and fill only
+  // the first part of it with the data from Buffer field. So there's no
+  // need to fill Buffer with zero, one can just set AdditionalZeroedSpace,
+  // and it will be additionally allocated. The size is in bytes.
+  std::size_t AdditionalZeroedSpace = 0;
+};
+
+struct ModuleInfoT {
+  DataInfoT ConstantData;
+  DataInfoT GlobalData;
+};
+
 struct CompileOutput {
+  ModuleInfoT ModuleInfo;
   std::vector<CompileInfo> Kernels;
   unsigned PointerSizeInBytes;
 };

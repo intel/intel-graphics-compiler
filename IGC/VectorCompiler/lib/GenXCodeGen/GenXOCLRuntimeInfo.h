@@ -112,6 +112,8 @@ public:
     struct SymbolsInfo {
       using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
       ZESymEntrySeq Functions;
+      ZESymEntrySeq Globals;
+      ZESymEntrySeq Constants;
       ZESymEntrySeq Local;
       // for now only function and local symbols are used
     };
@@ -241,15 +243,52 @@ public:
     const std::vector<char> &getDebugInfo() const { return DebugInfo; }
   };
 
+  struct DataInfoT {
+    std::vector<char> Buffer;
+    int Alignment = 0;
+    // Runtime can allocate bigger zeroed out buffer, and fill only
+    // the first part of it with the data from Buffer field. So there's no
+    // need to fill Buffer with zero, one can just set AdditionalZeroedSpace,
+    // and it will be additionally allocated. The size is in bytes.
+    std::size_t AdditionalZeroedSpace = 0;
+
+    void clear() {
+      Buffer.clear();
+      Alignment = 0;
+      AdditionalZeroedSpace = 0;
+    }
+  };
+
+  struct ModuleInfoT {
+    DataInfoT ConstantData;
+    DataInfoT GlobalData;
+
+    void clear() {
+      ConstantData.clear();
+      GlobalData.clear();
+    }
+  };
+
+  struct CompiledModuleT {
+    using KernelStorageTy = std::vector<CompiledKernel>;
+    ModuleInfoT ModuleInfo;
+    KernelStorageTy Kernels;
+
+    void clear() {
+      ModuleInfo.clear();
+      Kernels.clear();
+    }
+  };
+
 public:
-  using KernelStorageTy = std::vector<CompiledKernel>;
+  using KernelStorageTy = CompiledModuleT::KernelStorageTy;
 
   using kernel_iterator = KernelStorageTy::iterator;
   using kernel_const_iterator = KernelStorageTy::const_iterator;
   using kernel_size_type = KernelStorageTy::size_type;
 
 private:
-  KernelStorageTy Kernels;
+  CompiledModuleT CompiledModule;
 
 public:
   static char ID;
@@ -263,28 +302,32 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
 
-  void releaseMemory() override { Kernels.clear(); }
+  void releaseMemory() override { CompiledModule.clear(); }
 
   // Move compiled kernels out of this pass.
-  KernelStorageTy stealCompiledKernels() { return std::move(Kernels); }
+  CompiledModuleT stealCompiledModule() { return std::move(CompiledModule); }
 
   // Kernel descriptor accessors.
-  kernel_iterator kernel_begin() { return Kernels.begin(); }
-  kernel_iterator kernel_end() { return Kernels.end(); }
-  kernel_const_iterator kernel_begin() const { return Kernels.begin(); }
-  kernel_const_iterator kernel_end() const { return Kernels.end(); }
+  kernel_iterator kernel_begin() { return CompiledModule.Kernels.begin(); }
+  kernel_iterator kernel_end() { return CompiledModule.Kernels.end(); }
+  kernel_const_iterator kernel_begin() const {
+    return CompiledModule.Kernels.begin();
+  }
+  kernel_const_iterator kernel_end() const {
+    return CompiledModule.Kernels.end();
+  }
   iterator_range<kernel_iterator> kernels() {
     return {kernel_begin(), kernel_end()};
   }
   iterator_range<kernel_const_iterator> kernels() const {
     return {kernel_begin(), kernel_end()};
   }
-  kernel_size_type kernel_size() const { return Kernels.size(); }
-  bool kernel_empty() const { return Kernels.empty(); }
+  kernel_size_type kernel_size() const { return CompiledModule.Kernels.size(); }
+  bool kernel_empty() const { return CompiledModule.Kernels.empty(); }
 };
 
-ModulePass *createGenXOCLInfoExtractorPass(
-    std::vector<GenXOCLRuntimeInfo::CompiledKernel> &Dest);
+ModulePass *
+createGenXOCLInfoExtractorPass(GenXOCLRuntimeInfo::CompiledModuleT &Dest);
 } // namespace llvm
 
 #endif

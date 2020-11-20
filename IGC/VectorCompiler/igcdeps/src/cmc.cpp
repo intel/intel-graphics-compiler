@@ -490,6 +490,8 @@ static void generateSymbols(const vc::ocl::KernelInfo& info,
         kernelProgram.m_funcSymbolTableEntries = info.SymbolTable.NumEntries;
         // EnableZEBinary: ZEBinary related code
         kernelProgram.m_symbols.function = info.ZEBinInfo.Symbols.Functions;
+        kernelProgram.m_symbols.global = info.ZEBinInfo.Symbols.Globals;
+        kernelProgram.m_symbols.globalConst = info.ZEBinInfo.Symbols.Constants;
     }
     // EnableZEBinary: ZEBinary related code
     kernelProgram.m_symbols.local = info.ZEBinInfo.Symbols.Local;
@@ -783,12 +785,42 @@ static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
     generatePatchTokens_v2(info, GtpinInfo, kernel);
 }
 
+template <typename AnnotationT>
+std::unique_ptr<AnnotationT>
+getDataAnnotation(const vc::ocl::DataInfoT &DataInfo) {
+  auto allocSize = DataInfo.Buffer.size() + DataInfo.AdditionalZeroedSpace;
+  IGC_ASSERT_MESSAGE(allocSize >= 0, "illegal allocation size");
+  if (allocSize == 0)
+    return nullptr;
+  auto initConstant = std::make_unique<AnnotationT>();
+  initConstant->Alignment = DataInfo.Alignment;
+  initConstant->AllocSize = allocSize;
+
+  auto bufferSize = DataInfo.Buffer.size();
+  initConstant->InlineData.resize(bufferSize);
+  memcpy_s(initConstant->InlineData.data(), bufferSize, DataInfo.Buffer.data(),
+           bufferSize);
+
+  return std::move(initConstant);
+}
+
+void fillOCLProgramInfo(IGC::SOpenCLProgramInfo &programInfo, const vc::ocl::ModuleInfoT &ModuleInfo)
+{
+    auto constantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(ModuleInfo.ConstantData);
+    if (constantAnnotation)
+        programInfo.m_initConstantAnnotation.push_back(std::move(constantAnnotation));
+    auto globalAnnotation = getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.GlobalData);
+    if (globalAnnotation)
+        programInfo.m_initGlobalAnnotation.push_back(std::move(globalAnnotation));
+};
+
 void vc::createBinary(
     iOpenCL::CGen8CMProgram& CMProgram,
-    const std::vector<vc::ocl::CompileInfo>& CompileInfos)
+    const vc::ocl::CompileOutput& CompileInfos)
 {
     bool ProgramIsDebuggable = false;
-    for (const vc::ocl::CompileInfo& Info : CompileInfos)
+    fillOCLProgramInfo(*CMProgram.m_programInfo, CompileInfos.ModuleInfo);
+    for (const vc::ocl::CompileInfo& Info : CompileInfos.Kernels)
     {
         CMKernel* K = new CMKernel(CMProgram.getPlatform());
         CMProgram.m_kernels.push_back(K);

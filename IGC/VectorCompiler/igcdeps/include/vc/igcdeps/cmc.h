@@ -103,5 +103,5 @@ extern const char* getPlatformStr(PLATFORM platform);
 
 namespace vc {
 void createBinary(iOpenCL::CGen8CMProgram &CMProgram,
-                  const std::vector<vc::ocl::CompileInfo> &CompileInfos);
+                  const vc::ocl::CompileOutput &CompileInfos);
 } // namespace vc

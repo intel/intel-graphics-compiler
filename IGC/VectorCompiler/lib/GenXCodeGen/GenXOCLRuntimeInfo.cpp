@@ -38,7 +38,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/IR/Argument.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Type.h>
 
 #include <cctype>
 #include <functional>
@@ -325,6 +327,11 @@ GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
 //===----------------------------------------------------------------------===//
 namespace {
 
+struct ModuleDataT {
+  genx::BinaryDataAccumulator<const GlobalVariable *> Constants;
+  genx::BinaryDataAccumulator<const GlobalVariable *> Globals;
+};
+
 // SymbolTableBuilder: it's a helper class to generate symbol table.
 // Collecting/constructing symbols and emitting structures
 // with collected symbols are separated. Emitter part supports 2 formats:
@@ -336,25 +343,24 @@ class SymbolTableBuilder final {
   using SymbolSeq = SymbolsInfo::ZESymEntrySeq;
   using SymbolT = vISA::ZESymEntry;
   using GenBinaryT = genx::BinaryDataAccumulator<const Function *>;
+  using ModuleInfoT = GenXOCLRuntimeInfo::ModuleInfoT;
 
   const GenBinaryT &GenBinary;
+  const ModuleDataT &ModuleData;
   SymbolsInfo Symbols;
 
 public:
-  SymbolTableBuilder(const GenBinaryT &GenBinaryIn) : GenBinary{GenBinaryIn} {
+  SymbolTableBuilder(const GenBinaryT &GenBinaryIn,
+                     const ModuleDataT &ModuleDataIn)
+      : GenBinary{GenBinaryIn}, ModuleData{ModuleDataIn} {
     validateInitialData();
   }
 
   void constructFunctionSymbols() {
     // Skipping first section with the kernel.
-    std::transform(std::next(GenBinary.begin()), GenBinary.end(),
-                   std::back_inserter(Symbols.Functions),
-                   [](const auto &Section) -> SymbolT {
-                     return {vISA::GenSymType::S_FUNC,
-                             static_cast<uint32_t>(Section.Info.Offset),
-                             static_cast<uint32_t>(Section.Info.getSize()),
-                             Section.Key->getName().str()};
-                   });
+    constructSymbols<vISA::GenSymType::S_FUNC>(
+        std::next(GenBinary.begin()), GenBinary.end(),
+        std::back_inserter(Symbols.Functions));
   }
 
   // EnableZEBinary: this is requred by ZEBinary
@@ -366,21 +372,42 @@ public:
     // for now only kernel symbol is required
   }
 
+  void constructConstantSymbols() {
+    constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST>(
+        ModuleData.Constants.begin(), ModuleData.Constants.end(),
+        std::back_inserter(Symbols.Constants));
+  }
+
+  void constructGlobalSymbols() {
+    constructSymbols<vISA::GenSymType::S_GLOBAL_VAR>(
+        ModuleData.Globals.begin(), ModuleData.Globals.end(),
+        std::back_inserter(Symbols.Globals));
+  }
+
   void constructAllSymbols() {
     constructFunctionSymbols();
     constructLocalSymbols();
+    constructConstantSymbols();
+    constructGlobalSymbols();
   }
 
   GenXOCLRuntimeInfo::TableInfo emitLegacySymbolTable() const {
     GenXOCLRuntimeInfo::TableInfo TI;
     // Local symbols are ZE binary only, thus it is not part of the sum.
-    TI.Entries = Symbols.Functions.size();
+    TI.Entries = Symbols.Functions.size() + Symbols.Constants.size() +
+                 Symbols.Globals.size();
     TI.Size = TI.Entries * sizeof(vISA::GenSymEntry);
     // this will be eventually freed in AdaptorOCL
     auto *SymbolStorage = new vISA::GenSymEntry[TI.Entries];
     TI.Buffer = SymbolStorage;
     auto *Inserter = SymbolStorage;
     appendLegacySymbolTable(Symbols.Functions.begin(), Symbols.Functions.end(),
+                            Inserter);
+    Inserter += Symbols.Functions.size() * sizeof(vISA::GenSymEntry);
+    appendLegacySymbolTable(Symbols.Constants.begin(), Symbols.Constants.end(),
+                            Inserter);
+    Inserter += Symbols.Constants.size() * sizeof(vISA::GenSymEntry);
+    appendLegacySymbolTable(Symbols.Globals.begin(), Symbols.Globals.end(),
                             Inserter);
     return std::move(TI);
   }
@@ -413,6 +440,16 @@ private:
           Entry.s_name[SI.s_name.size()] = '\0';
           return std::move(Entry);
         });
+  }
+
+  template <vISA::GenSymType SymbolClass, typename InputIter,
+            typename OutputIter>
+  void constructSymbols(InputIter First, InputIter Last, OutputIter Out) {
+    std::transform(First, Last, Out, [](const auto &Section) -> SymbolT {
+      return {SymbolClass, static_cast<uint32_t>(Section.Info.Offset),
+              static_cast<uint32_t>(Section.Info.getSize()),
+              Section.Key->getName().str()};
+    });
   }
 
   GenBinaryT::const_reference getKernelSection() const {
@@ -463,6 +500,68 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB) {
   return std::move(GenBinary);
 }
 
+static std::vector<char> encodeConstantInt(const ConstantInt &ConstInt) {
+  std::vector<char> Data;
+  IGC_ASSERT_MESSAGE(ConstInt.getType()->getPrimitiveSizeInBits() ==
+                         genx::ByteBits,
+                     "only i8 type is yet supported");
+  Data.push_back(ConstInt.getZExtValue());
+  return std::move(Data);
+}
+
+static std::vector<char>
+encodeConstantDataArray(const ConstantDataArray &ConstArray) {
+  StringRef Data = ConstArray.getRawDataValues();
+  return {Data.begin(), Data.end()};
+}
+
+static std::vector<char> encodeConstant(const Constant &Initializer) {
+  if (isa<ConstantInt>(Initializer))
+    return encodeConstantInt(cast<ConstantInt>(Initializer));
+  IGC_ASSERT_MESSAGE(isa<ConstantDataArray>(Initializer),
+                     "only constant ints and arrays are yet supported");
+  return encodeConstantDataArray(cast<ConstantDataArray>(Initializer));
+}
+
+static void appendGlobalVariableData(
+    genx::BinaryDataAccumulator<const GlobalVariable *> &Accumulator,
+    const GlobalVariable &GV) {
+  auto Data = encodeConstant(*GV.getInitializer());
+  // FIXME: alignment
+  Accumulator.append(&GV, Data.begin(), Data.end());
+}
+
+ModuleDataT getModuleData(const Module &M) {
+  genx::BinaryDataAccumulator<const GlobalVariable *> ConstantData;
+  genx::BinaryDataAccumulator<const GlobalVariable *> GlobalData;
+  for (auto &GV : M.globals()) {
+    if (GV.hasAttribute("genx_volatile"))
+      continue;
+    if (GV.isConstant())
+      appendGlobalVariableData(ConstantData, GV);
+    else
+      appendGlobalVariableData(GlobalData, GV);
+  }
+  return {std::move(ConstantData), std::move(GlobalData)};
+}
+
+static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(ModuleDataT ModuleData) {
+  GenXOCLRuntimeInfo::ModuleInfoT ModuleInfo;
+
+  ModuleInfo.ConstantData.Buffer =
+      std::move(ModuleData.Constants).emitConsolidatedData();
+  // IGC always sets 0
+  ModuleInfo.ConstantData.Alignment = 0;
+  ModuleInfo.ConstantData.AdditionalZeroedSpace = 0;
+
+  ModuleInfo.GlobalData.Buffer =
+      std::move(ModuleData.Globals).emitConsolidatedData();
+  ModuleInfo.GlobalData.Alignment = 0;
+  ModuleInfo.GlobalData.AdditionalZeroedSpace = 0;
+
+  return std::move(ModuleInfo);
+}
+
 namespace {
 
 class RuntimeInfoCollector final {
@@ -476,6 +575,7 @@ class RuntimeInfoCollector final {
 public:
   using KernelStorageTy = GenXOCLRuntimeInfo::KernelStorageTy;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
+  using CompiledModuleT = GenXOCLRuntimeInfo::CompiledModuleT;
 
 public:
   RuntimeInfoCollector(const FunctionGroupAnalysis &InFGA,
@@ -484,25 +584,28 @@ public:
                        const GenXDebugInfo &InDbg)
       : FGA{InFGA}, BC{InBC}, VB{InVB}, ST{InST}, M{InM}, DBG{InDbg} {}
 
-  KernelStorageTy run() &&;
+  CompiledModuleT run();
 
 private:
-  CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG) const;
+  CompiledKernel collectFunctionGroupInfo(const FunctionGroup &FG,
+                                          const ModuleDataT &ModuleData) const;
 };
 
 } // namespace
 
-RuntimeInfoCollector::KernelStorageTy RuntimeInfoCollector::run() && {
+RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
+  auto ModuleData = getModuleData(M);
   KernelStorageTy Kernels;
   std::transform(FGA.begin(), FGA.end(), std::back_inserter(Kernels),
-                 [this](const FunctionGroup *FG) {
-                   return collectFunctionGroupInfo(*FG);
+                 [this, &ModuleData](const FunctionGroup *FG) {
+                   return collectFunctionGroupInfo(*FG, ModuleData);
                  });
-  return std::move(Kernels);
+  return {getModuleInfo(std::move(ModuleData)), std::move(Kernels)};
 }
 
 RuntimeInfoCollector::CompiledKernel
-RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
+RuntimeInfoCollector::collectFunctionGroupInfo(
+    const FunctionGroup &FG, const ModuleDataT &ModuleData) const {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
   using GTPinInfo = GenXOCLRuntimeInfo::GTPinInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
@@ -533,7 +636,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
       VK->GetGenRelocEntryBuffer(RTable.Buffer, RTable.Size, RTable.Entries));
   // EnableZEBinary: this is requred by ZEBinary
   CISA_CALL(VK->GetRelocations(Info.ZEBinInfo.Relocations));
-  SymbolTableBuilder STBuilder{GenBinary};
+  SymbolTableBuilder STBuilder{GenBinary, ModuleData};
   STBuilder.constructAllSymbols();
   Info.getSymbolTable() = STBuilder.emitLegacySymbolTable();
   Info.ZEBinInfo.Symbols = std::move(STBuilder).emitZESymbolTable();
@@ -572,7 +675,7 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
   VISABuilder &VB =
       *(GM.HasInlineAsm() ? GM.GetVISAAsmReader() : GM.GetCisaBuilder());
 
-  Kernels = RuntimeInfoCollector{FGA, BC, VB, ST, M, DBG}.run();
+  CompiledModule = RuntimeInfoCollector{FGA, BC, VB, ST, M, DBG}.run();
   return false;
 }
 

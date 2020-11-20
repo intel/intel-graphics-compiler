@@ -40,7 +40,7 @@ public:
   static char ID;
 
 private:
-  std::vector<GenXOCLRuntimeInfo::CompiledKernel> *Dest = nullptr;
+  GenXOCLRuntimeInfo::CompiledModuleT *Dest = nullptr;
 
 public:
   StringRef getPassName() const override { return "GenX OCL Info Extractor"; }
@@ -51,7 +51,7 @@ public:
 
   GenXOCLInfoExtractor() : ModulePass(ID) {}
 
-  GenXOCLInfoExtractor(std::vector<GenXOCLRuntimeInfo::CompiledKernel> &Dst)
+  GenXOCLInfoExtractor(GenXOCLRuntimeInfo::CompiledModuleT &Dst)
       : ModulePass(ID), Dest(&Dst) {
     initializeGenXOCLInfoExtractorPass(*PassRegistry::getPassRegistry());
   }
@@ -59,7 +59,7 @@ public:
   bool runOnModule(Module &M) override {
     IGC_ASSERT(Dest && "Expected dest to be initialized");
     auto &Info = getAnalysis<GenXOCLRuntimeInfo>();
-    *Dest = Info.stealCompiledKernels();
+    *Dest = Info.stealCompiledModule();
     return false;
   }
 };
@@ -73,6 +73,6 @@ INITIALIZE_PASS_END(GenXOCLInfoExtractor, "GenXOCLInfoExtractor",
                     "GenXOCLInfoExtractor", false, false)
 
 ModulePass *llvm::createGenXOCLInfoExtractorPass(
-    std::vector<GenXOCLRuntimeInfo::CompiledKernel> &Dest) {
+    GenXOCLRuntimeInfo::CompiledModuleT &Dest) {
   return new GenXOCLInfoExtractor(Dest);
 }

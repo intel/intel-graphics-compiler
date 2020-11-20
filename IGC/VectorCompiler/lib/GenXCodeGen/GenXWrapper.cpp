@@ -354,6 +354,8 @@ static void convertOCLKernelInfo(vc::ocl::KernelInfo &Converted,
   }
   Converted.ZEBinInfo.Relocations = Info.ZEBinInfo.Relocations;
   Converted.ZEBinInfo.Symbols.Functions = Info.ZEBinInfo.Symbols.Functions;
+  Converted.ZEBinInfo.Symbols.Globals = Info.ZEBinInfo.Symbols.Globals;
+  Converted.ZEBinInfo.Symbols.Constants = Info.ZEBinInfo.Symbols.Constants;
   Converted.ZEBinInfo.Symbols.Local = Info.ZEBinInfo.Symbols.Local;
 }
 
@@ -533,6 +535,20 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   IGC_ASSERT(!AddPasses && "Bad filetype for vc-codegen");
 }
 
+vc::ocl::ModuleInfoT convertInternalOCLModuleInfo(
+    const GenXOCLRuntimeInfo::ModuleInfoT &OCLModuleInfo) {
+  vc::ocl::ModuleInfoT Converted;
+  Converted.ConstantData.Buffer = OCLModuleInfo.ConstantData.Buffer;
+  Converted.ConstantData.Alignment = OCLModuleInfo.ConstantData.Alignment;
+  Converted.ConstantData.AdditionalZeroedSpace =
+      OCLModuleInfo.ConstantData.AdditionalZeroedSpace;
+  Converted.GlobalData.Buffer = OCLModuleInfo.GlobalData.Buffer;
+  Converted.GlobalData.Alignment = OCLModuleInfo.GlobalData.Alignment;
+  Converted.GlobalData.AdditionalZeroedSpace =
+      OCLModuleInfo.GlobalData.AdditionalZeroedSpace;
+  return std::move(Converted);
+}
+
 static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
                                             const vc::ExternalData &ExtData,
                                             TargetMachine &TM, Module &M) {
@@ -546,14 +562,15 @@ static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
   else
     populateCodeGenPassManager(Opts, ExtData, TM, NullOS, PM);
 
-  std::vector<GenXOCLRuntimeInfo::CompiledKernel> CompiledKernels;
+  GenXOCLRuntimeInfo::CompiledModuleT CompiledKernels;
   PM.add(createGenXOCLInfoExtractorPass(CompiledKernels));
 
   PM.run(M);
   dumpFinalOutput(Opts, M, IsaBinary);
 
   vc::ocl::CompileOutput Output;
-  Output.Kernels = convertInternalOCLInfo(CompiledKernels);
+  Output.Kernels = convertInternalOCLInfo(CompiledKernels.Kernels);
+  Output.ModuleInfo = convertInternalOCLModuleInfo(CompiledKernels.ModuleInfo);
   Output.PointerSizeInBytes = M.getDataLayout().getPointerSize();
   return Output;
 }
