@@ -291,13 +291,6 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
     Instruction *InsertBefore, const DebugLoc &DL, bool AllowScalar)
 {
   IGC_ASSERT(ElementBytes && "not expecting i1 element type");
-  auto OffsetInElem = Offset / ElementBytes;
-  (void)OffsetInElem;
-  IGC_ASSERT_MESSAGE(
-      Indirect ||
-          (OffsetInElem >= 0 &&
-           OffsetInElem < cast<VectorType>(Input->getType())->getNumElements()),
-      "initial offset is out of range of input vector");
 
   Value *StartIdx = getStartIdx(Name, InsertBefore, DL);
   IntegerType *I32Ty = Type::getInt32Ty(Input->getContext());
