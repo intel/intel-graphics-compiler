@@ -175,8 +175,10 @@ public:
   bool isICLLP() const { return GenXVariant == GENX_ICLLP; }
   /// * isTGLLP - true if target is TGL LP
   bool isTGLLP() const { return GenXVariant == GENX_TGLLP; }
+
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }
+
   /// * emulateIDivRem - true if emulates integer division and reminder.
   bool emulateIDivRem() const { return GenXVariant >= GENX_TGLLP; }
 
@@ -209,6 +211,30 @@ public:
   /// * hasIndirectGRFCrossing - true if target supports an indirect region
   ///   crossing one GRF boundary
   bool hasIndirectGRFCrossing() const { return isSKLplus(); }
+
+  /// * getMaxSlmSize - returns maximum allowed SLM size (in KB)
+  unsigned getMaxSlmSize() const {
+    return 64;
+  }
+
+  bool hasThreadPayloadInMemory() const {
+    return false;
+  }
+
+  /// * hasSad2Support - returns true if sad2/sada2 are supported by target
+  bool hasSad2Support() const {
+    if (isICLLP() || isTGLLP())
+      return false;
+    return true;
+  }
+
+  /// * hneedsArgPatching - some subtarget require special treatment of
+  // certain argument types, returns *true* if this is the case.
+  bool needsArgPatching() const {
+    if (isOCLRuntime())
+      return false;
+    return false;
+  }
 
   /// * getEmulateFunction - return the corresponding emulation function name,
   ///   empty string if no emulation is needed.
@@ -256,9 +282,6 @@ public:
       return TARGET_PLATFORM::GENX_ICLLP;
     case GENX_TGLLP:
       return TARGET_PLATFORM::GENX_TGLLP;
-    // TODO: Unfortunately, the finalizer doesn't support all platforms, so we
-    // map any unsupported platforms to the most appropriate supported one.
-    // See also getFinalizerPlatform function in GenX.cpp
     case GENX_KBL:
       return TARGET_PLATFORM::GENX_SKL;
     case GENX_GLK:

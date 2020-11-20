@@ -613,7 +613,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     if (!ST->emulateLongLong() && checkIfLongLongSupportNeeded(Inst))
       report_fatal_error("'long long' type is not supported by this target");
   }
-  if (ST->isICLLP() || ST->isTGLLP()) {
+  if (!ST->hasSad2Support()) {
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_ssad2:
     case GenXIntrinsic::genx_sssad2add:

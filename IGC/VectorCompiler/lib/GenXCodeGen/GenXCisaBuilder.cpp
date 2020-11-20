@@ -940,13 +940,14 @@ static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
 
 void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
                                 const GenXSubtarget* Subtarget) {
+  IGC_ASSERT(Subtarget);
   unsigned Val = KM.getSLMSize();
   if (Val) {
     // Compute the slm size in KB and roundup to power of 2.
     Val = alignTo(Val, 1024) / 1024;
     if (!isPowerOf2_64(Val))
       Val = NextPowerOf2(Val);
-    unsigned MaxSLMSize = 64;
+    unsigned MaxSLMSize = Subtarget->getMaxSlmSize();
     if (Val > MaxSLMSize)
       report_fatal_error("slm size must not exceed 64KB");
     else {
@@ -959,6 +960,35 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
     }
   }
 
+  // Load thread payload from memory.
+  if (Subtarget->hasThreadPayloadInMemory()) {
+    // The number of GRFs for per thread inputs (thread local IDs)
+    unsigned NumGRFs = 0;
+    bool HasImplicit = false;
+    for (auto Kind : KM.getArgKinds()) {
+      if (Kind & 0x8)
+        HasImplicit = true;
+      genx::KernelArgInfo KAI(Kind);
+      NumGRFs += KAI.isLocalIDX() || KAI.isLocalIDY() || KAI.isLocalIDZ();
+    }
+    if (Subtarget->isOCLRuntime()) {
+      // When CM kernel is run with OCL runtime, it is dispatched in a
+      // special "SIMD1" mode (aka "Programmable Media Kernels").
+      // This mode implies that we always have a "full" thread payload,
+      // even when CM kernel does *not* have implicit arguments.
+      // Payload format:
+      // | 0-15     | 16 - 31  | 32 - 47  | 46 - 256 |
+      // | localIDX | localIDY | localIDZ | unused   |
+      IGC_ASSERT(NumGRFs == 0); // we do not expect local_id_[x/y/z] calls
+      NumGRFs = 1;
+    } else {
+      // One GRF for per thread input size for CM
+      NumGRFs = std::max(HasImplicit ? 1U : 0U, NumGRFs);
+    }
+
+    uint16_t Bytes = NumGRFs * Subtarget->getGRFWidth();
+    Kernel.AddKernelAttribute("PerThreadInputSize", sizeof(Bytes), &Bytes);
+  }
 
 }
 
@@ -1124,6 +1154,19 @@ bool GenXKernelBuilder::run() {
 
 static bool PatchImpArgOffset(Function *F, const GenXSubtarget *ST,
                               const KernelMetadata &KM) {
+  IGC_ASSERT(ST);
+  if (!ST->needsArgPatching())
+    return false;
+  if (F->hasFnAttribute(genx::FunctionMD::OCLRuntime))
+    return false;
+
+  unsigned Idx = 0;
+  for (auto i = F->arg_begin(), e = F->arg_end(); i != e; ++i, ++Idx) {
+    uint8_t Kind = (KM.getArgKind(Idx));
+    if (Kind & 0xf8)
+      return true;
+  }
+
   return false;
 }
 
