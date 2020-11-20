@@ -62,6 +62,21 @@ using namespace genx;
 
 namespace {
 
+// The class preserves index into a vector and the size of an element
+// of this vector.
+// The idea is that vector can change throughout bitcasts and its index
+// and element size should change correspondingly.
+// A product of Index and ElementSizeInBits gives an offset in bits of
+// a considered element in a considered vector.
+struct GenericVectorIndex {
+  Value *Index;
+  int ElementSizeInBits;
+
+  int getElementSizeInBytes() const {
+    return ElementSizeInBits / genx::ByteBits;
+  }
+};
+
 // Diagnostic information for error/warning relating array promotion.
 class DiagnosticInfoPromoteArray : public DiagnosticInfo {
 private:
@@ -81,18 +96,17 @@ public:
 
 class TransposeHelper {
 public:
-  TransposeHelper(bool vectorIndex, const llvm::DataLayout *DL,
-                  uint64_t baseTypeAllocSize)
-      : m_vectorIndex(vectorIndex), m_pDL(DL),
-        m_baseTypeAllocSize(baseTypeAllocSize) {}
-  void HandleAllocaSources(llvm::Instruction *v, llvm::Value *idx);
-  void handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *idx);
-  void handlePHINode(llvm::PHINode *pPhi, llvm::Value *pScalarizedIdx,
-                     llvm::BasicBlock *pIncomingBB);
+  TransposeHelper(bool vectorIndex, const llvm::DataLayout *DL)
+      : m_vectorIndex(vectorIndex), m_pDL(DL) {}
+  void handleAllocaSources(Instruction &Inst, GenericVectorIndex Idx);
+  void handleGEPInst(GetElementPtrInst *pGEP, GenericVectorIndex Idx);
+  void handleBCInst(BitCastInst &BC, GenericVectorIndex Idx);
+  void handlePHINode(PHINode *pPhi, GenericVectorIndex pScalarizedIdx,
+                     BasicBlock *pIncomingBB);
   virtual void handleLoadInst(llvm::LoadInst *pLoad,
                      llvm::Value *pScalarizedIdx) = 0;
   virtual void handleStoreInst(llvm::StoreInst *pStore,
-                     llvm::Value *pScalarizedIdx) = 0;
+                               GenericVectorIndex pScalarizedIdx) = 0;
   virtual void handlePrivateGather(llvm::IntrinsicInst *pInst,
                      llvm::Value *pScalarizedIdx) = 0;
   virtual void handlePrivateScatter(llvm::IntrinsicInst *pInst,
@@ -110,7 +124,6 @@ private:
 
 protected:
   const llvm::DataLayout *m_pDL = nullptr;
-  uint64_t m_baseTypeAllocSize = 0;
 };
 
 /// @brief  TransformPrivMem pass is used for lowering the allocas identified
@@ -189,7 +202,7 @@ namespace {
 class TransposeHelperPromote : public TransposeHelper {
 public:
   void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx);
-  void handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx);
+  void handleStoreInst(StoreInst *pStore, GenericVectorIndex pScalarizedIdx);
   void handlePrivateGather(IntrinsicInst *pInst, Value *pScalarizedIdx);
   void handlePrivateScatter(IntrinsicInst *pInst, Value *pScalarizedIdx);
   void handleLLVMGather(IntrinsicInst *pInst, Value *pScalarizedIdx);
@@ -197,9 +210,8 @@ public:
 
   AllocaInst *pVecAlloca;
 
-  TransposeHelperPromote(AllocaInst *pAI, const llvm::DataLayout *DL,
-                         uint64_t baseTypeAllocSize)
-      : TransposeHelper(false, DL, baseTypeAllocSize) {
+  TransposeHelperPromote(AllocaInst *pAI, const llvm::DataLayout *DL)
+      : TransposeHelper(false, DL) {
     pVecAlloca = pAI;
   }
 };
@@ -305,8 +317,8 @@ bool TransformPrivMem::runOnFunction(llvm::Function &F) {
 
   std::vector<llvm::AllocaInst *> &allocaToHandle = m_allocasToPrivMem;
 
-  for (auto pAlloca : allocaToHandle) {
-    handleAllocaInst(pAlloca);
+  for (auto *Alloca : allocaToHandle) {
+    handleAllocaInst(Alloca);
   }
 
   // Last remove alloca instructions
@@ -506,10 +518,10 @@ void TransformPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {
     return;
 
   IRBuilder<> IRB(pVecAlloca);
-  Value *idx = IRB.getInt32(0);
-  TransposeHelperPromote helper(pVecAlloca, m_pDL,
-                                m_pDL->getTypeAllocSize(pBaseType));
-  helper.HandleAllocaSources(pAlloca, idx);
+  GenericVectorIndex StartIdx{
+      IRB.getInt32(0), static_cast<int>(m_pDL->getTypeSizeInBits(pBaseType))};
+  TransposeHelperPromote helper(pVecAlloca, m_pDL);
+  helper.handleAllocaSources(*pAlloca, StartIdx);
   helper.EraseDeadCode();
 }
 
@@ -520,81 +532,81 @@ void TransposeHelper::EraseDeadCode() {
     I->eraseFromParent();
 }
 
-void TransposeHelper::HandleAllocaSources(Instruction *v, Value *idx) {
-  SmallVector<Value *, 10> instructions;
-  for (Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e;
-       ++it) {
-    Value *inst = cast<Value>(*it);
-    instructions.push_back(inst);
+void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
+  m_toBeRemoved.push_back(&BC);
+  Type *DstDerefTy =
+      GetBaseType(BC.getType()->getPointerElementType(), nullptr);
+  Type *SrcDerefTy = GetBaseType(
+      BC.getOperand(0)->getType()->getPointerElementType(), nullptr);
+  IGC_ASSERT(DstDerefTy && SrcDerefTy);
+  // either the point-to-element-type is the same or
+  // the point-to-element-type is the byte
+  if (DstDerefTy->getScalarSizeInBits() == SrcDerefTy->getScalarSizeInBits() ||
+      (DstDerefTy->isPointerTy() &&
+       DstDerefTy->getPointerElementType()->isFunctionTy())) {
+    handleAllocaSources(BC, Idx);
+    return;
   }
 
-  for (auto instruction : instructions) {
-    if (GetElementPtrInst *pGEP = dyn_cast<GetElementPtrInst>(instruction)) {
-      handleGEPInst(pGEP, idx);
-    } else if (BitCastInst *bitcast = dyn_cast<BitCastInst>(instruction)) {
-      m_toBeRemoved.push_back(bitcast);
-      Type *baseT =
-          GetBaseType(bitcast->getType()->getPointerElementType(), nullptr);
-      Type *sourceType = GetBaseType(
-          bitcast->getOperand(0)->getType()->getPointerElementType(), nullptr);
-      IGC_ASSERT(baseT && sourceType);
-      // either the point-to-element-type is the same or
-      // the point-to-element-type is the byte
-      if (baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
-        HandleAllocaSources(bitcast, idx);
-      else if (baseT->isPointerTy() && baseT->getPointerElementType()->isFunctionTy())
-        HandleAllocaSources(bitcast, idx);
-      else {
-        IGC_ASSERT(baseT->getScalarSizeInBits() == 8);
-        IRBuilder<> IRB(bitcast);
-        auto ElementSize =
-            sourceType->getScalarSizeInBits() / baseT->getScalarSizeInBits();
-        Value * Scale = nullptr;
-        if (idx->getType()->isVectorTy()) {
-          auto Width = cast<VectorType>(idx->getType())->getNumElements();
-          Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
-                                           IRB.getInt32(ElementSize));
-        }
-        else
-          Scale = IRB.getInt32(ElementSize);
-        auto NewIdx = IRB.CreateMul(idx, Scale);
-        HandleAllocaSources(bitcast, NewIdx);
-      }
-    } else if (StoreInst *pStore = llvm::dyn_cast<StoreInst>(instruction)) {
-      handleStoreInst(pStore, idx);
-    } else if (LoadInst *pLoad = llvm::dyn_cast<LoadInst>(instruction)) {
-      handleLoadInst(pLoad, idx);
-    } else if (PHINode *pPhi = llvm::dyn_cast<PHINode>(instruction)) {
-      handlePHINode(pPhi, idx, v->getParent());
-    } else if (IntrinsicInst *inst = dyn_cast<IntrinsicInst>(instruction)) {
-      auto IID = GenXIntrinsic::getAnyIntrinsicID(inst);
+  IGC_ASSERT(DstDerefTy->getScalarSizeInBits() == 8);
+  IRBuilder<> IRB(&BC);
+  auto ElementSize =
+      SrcDerefTy->getScalarSizeInBits() / DstDerefTy->getScalarSizeInBits();
+  Value *Scale = nullptr;
+  if (Idx.Index->getType()->isVectorTy()) {
+    auto Width = cast<VectorType>(Idx.Index->getType())->getNumElements();
+    Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
+                                     IRB.getInt32(ElementSize));
+  } else
+    Scale = IRB.getInt32(ElementSize);
+  auto NewIdx = IRB.CreateMul(Idx.Index, Scale);
+  handleAllocaSources(
+      BC, {NewIdx, static_cast<int>(DstDerefTy->getScalarSizeInBits())});
+}
+
+void TransposeHelper::handleAllocaSources(Instruction &Inst,
+                                          GenericVectorIndex Idx) {
+  SmallVector<Value *, 10> Users{Inst.user_begin(), Inst.user_end()};
+
+  for (auto *User : Users) {
+    if (GetElementPtrInst *pGEP = dyn_cast<GetElementPtrInst>(User)) {
+      handleGEPInst(pGEP, Idx);
+    } else if (BitCastInst *BC = dyn_cast<BitCastInst>(User)) {
+      handleBCInst(*BC, Idx);
+    } else if (StoreInst *pStore = llvm::dyn_cast<StoreInst>(User)) {
+      handleStoreInst(pStore, Idx);
+    } else if (LoadInst *pLoad = llvm::dyn_cast<LoadInst>(User)) {
+      handleLoadInst(pLoad, Idx.Index);
+    } else if (PHINode *pPhi = llvm::dyn_cast<PHINode>(User)) {
+      handlePHINode(pPhi, Idx, Inst.getParent());
+    } else if (IntrinsicInst *IntrInst = dyn_cast<IntrinsicInst>(User)) {
+      auto IID = GenXIntrinsic::getAnyIntrinsicID(IntrInst);
       if (IID == llvm::Intrinsic::lifetime_start ||
           IID == llvm::Intrinsic::lifetime_end)
-        inst->eraseFromParent();
+        IntrInst->eraseFromParent();
       else if (IID == GenXIntrinsic::genx_gather_private)
-        handlePrivateGather(inst, idx);
+        handlePrivateGather(IntrInst, Idx.Index);
       else if (IID == GenXIntrinsic::genx_scatter_private)
-        handlePrivateScatter(inst, idx);
-      else if (inst->getIntrinsicID() == llvm::Intrinsic::masked_gather)
-        handleLLVMGather(inst, idx);
-      else if (inst->getIntrinsicID() == llvm::Intrinsic::masked_scatter)
-        handleLLVMScatter(inst, idx);
+        handlePrivateScatter(IntrInst, Idx.Index);
+      else if (IntrInst->getIntrinsicID() == llvm::Intrinsic::masked_gather)
+        handleLLVMGather(IntrInst, Idx.Index);
+      else if (IntrInst->getIntrinsicID() == llvm::Intrinsic::masked_scatter)
+        handleLLVMScatter(IntrInst, Idx.Index);
     }
   }
 }
 
-
-void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
-                                    llvm::Value *idx) {
+void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
+                                    GenericVectorIndex Idx) {
   m_toBeRemoved.push_back(GEP);
   Value *PtrOp = GEP->getPointerOperand();
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
   IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
   int IdxWidth = 1;
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI) {
-    Value * Idx = *OI;
-    if (Idx->getType()->isVectorTy()) {
-      auto Width = cast<VectorType>(Idx->getType())->getNumElements();
+    Value *GEPIdx = *OI;
+    if (GEPIdx->getType()->isVectorTy()) {
+      auto Width = cast<VectorType>(GEPIdx->getType())->getNumElements();
       if (Width > 1) {
         if (IdxWidth <= 1)
           IdxWidth = Width;
@@ -612,13 +624,16 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
           : ConstantVector::getSplat(IGCLLVM::getElementCount(IdxWidth),
                                      IRB.getInt32(0));
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI) {
-    Value *Idx = *OI;
+    Value *GEPIdx = *OI;
     if (StructType *StTy = GTI.getStructTypeOrNull()) {
-      unsigned Field = unsigned(cast<ConstantInt>(Idx)->getZExtValue());
+      auto Field = cast<ConstantInt>(GEPIdx)->getZExtValue();
       if (Field) {
+        int Offset = m_pDL->getStructLayout(StTy)->getElementOffset(Field);
+        IGC_ASSERT_MESSAGE(
+            Offset % Idx.getElementSizeInBytes() == 0,
+            "the offset must be a multiple of the current vector granulation");
         Constant *OffsetVal =
-            IRB.getInt32(m_pDL->getStructLayout(StTy)->getElementOffset(Field) /
-                         m_baseTypeAllocSize);
+            IRB.getInt32(Offset / Idx.getElementSizeInBytes());
         if (IdxWidth > 1)
           OffsetVal = ConstantVector::getSplat(
               IGCLLVM::getElementCount(IdxWidth), OffsetVal);
@@ -627,72 +642,79 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *GEP,
       Ty = StTy->getElementType(Field);
     } else {
       Ty = GTI.getIndexedType();
-      if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
+      if (const ConstantInt *CI = dyn_cast<ConstantInt>(GEPIdx)) {
         if (!CI->isZero()) {
           Constant *OffsetVal =
               IRB.getInt32(m_pDL->getTypeAllocSize(Ty) * CI->getZExtValue() /
-                           m_baseTypeAllocSize);
+                           Idx.getElementSizeInBytes());
           if (IdxWidth > 1)
             OffsetVal = ConstantVector::getSplat(
                 IGCLLVM::getElementCount(IdxWidth), OffsetVal);
           pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, OffsetVal);
         }
-      }
-      else if (!Idx->getType()->isVectorTy() && IdxWidth <= 1) {
-        Value *NewIdx = IRB.CreateZExtOrTrunc(Idx, IRB.getInt32Ty());
-        auto ElementSize = m_pDL->getTypeAllocSize(Ty) / m_baseTypeAllocSize;
+      } else if (!GEPIdx->getType()->isVectorTy() && IdxWidth <= 1) {
+        Value *NewIdx = IRB.CreateZExtOrTrunc(GEPIdx, IRB.getInt32Ty());
+        IGC_ASSERT_MESSAGE(
+            m_pDL->getTypeAllocSize(Ty) % Idx.getElementSizeInBytes() == 0,
+            "current type size must be multiple of current offset granulation "
+            "to be represented in this offset");
+        auto ElementSize =
+            m_pDL->getTypeAllocSize(Ty) / Idx.getElementSizeInBytes();
         NewIdx = IRB.CreateMul(NewIdx, IRB.getInt32(ElementSize));
         pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, NewIdx);
       } else {
         // the input idx is a vector or the one of the GEP index is vector
         Value * NewIdx = nullptr;
-        auto ElementSize = m_pDL->getTypeAllocSize(Ty) / m_baseTypeAllocSize;
-        if (Idx->getType()->isVectorTy()) {
-          IGC_ASSERT(cast<VectorType>(Idx->getType())->getNumElements() ==
+        IGC_ASSERT_MESSAGE(
+            m_pDL->getTypeAllocSize(Ty) % Idx.getElementSizeInBytes() == 0,
+            "current type size must be multiple of current offset granulation "
+            "to be represented in this offset");
+        auto ElementSize =
+            m_pDL->getTypeAllocSize(Ty) / Idx.getElementSizeInBytes();
+        if (GEPIdx->getType()->isVectorTy()) {
+          IGC_ASSERT(cast<VectorType>(GEPIdx->getType())->getNumElements() ==
                      IdxWidth);
-          NewIdx = IRB.CreateZExtOrTrunc(Idx, pScalarizedIdx->getType());
+          NewIdx = IRB.CreateZExtOrTrunc(GEPIdx, pScalarizedIdx->getType());
           NewIdx = IRB.CreateMul(NewIdx, ConstantVector::getSplat(
                                              IGCLLVM::getElementCount(IdxWidth),
                                              IRB.getInt32(ElementSize)));
-        }
-        else {
-          Value * NewIdx = IRB.CreateZExtOrTrunc(Idx, IRB.getInt32Ty());
-          NewIdx = IRB.CreateMul(NewIdx, IRB.getInt32(ElementSize));
+        } else {
+          NewIdx = IRB.CreateZExtOrTrunc(GEPIdx, IRB.getInt32Ty());
           // splat the new-idx into a vector
-          NewIdx = IRB.CreateVectorSplat(IdxWidth, NewIdx);
+          NewIdx = IRB.CreateMul(NewIdx, IRB.getInt32(ElementSize));
         }
         pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, NewIdx);
       }
     }
   }
-  if (!idx->getType()->isVectorTy() && IdxWidth <= 1) {
-    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
-  }
-  else if (idx->getType()->isVectorTy()) {
-    IGC_ASSERT(cast<VectorType>(idx->getType())->getNumElements() == IdxWidth);
-    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
-  }
-  else {
-    auto SplatIdx = IRB.CreateVectorSplat(IdxWidth, idx);
+  if (!Idx.Index->getType()->isVectorTy() && IdxWidth <= 1) {
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, Idx.Index);
+  } else if (Idx.Index->getType()->isVectorTy()) {
+    IGC_ASSERT(cast<VectorType>(Idx.Index->getType())->getNumElements() ==
+               IdxWidth);
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, Idx.Index);
+  } else {
+    auto SplatIdx = IRB.CreateVectorSplat(IdxWidth, Idx.Index);
     pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, SplatIdx);
   }
-  HandleAllocaSources(GEP, pScalarizedIdx);
+  handleAllocaSources(*GEP, {pScalarizedIdx, Idx.ElementSizeInBits});
 }
 
 // Pass acummulated idx through new phi
-void TransposeHelper::handlePHINode(PHINode *pPhi, Value *idx,
+void TransposeHelper::handlePHINode(PHINode *pPhi, GenericVectorIndex Idx,
                                     BasicBlock *pIncomingBB) {
   PHINode *NewPhi = nullptr;
   // If phi is not yet visited
   if (!m_phiReplacement.count(pPhi)) {
     IRBuilder<> IRB(pPhi);
-    NewPhi = IRB.CreatePHI(idx->getType(), pPhi->getNumIncomingValues(), "idx");
+    NewPhi = IRB.CreatePHI(Idx.Index->getType(), pPhi->getNumIncomingValues(),
+                           "idx");
     m_phiReplacement.insert(std::make_pair(pPhi, NewPhi));
     m_toBeRemoved.push_back(pPhi);
   } else
     NewPhi = m_phiReplacement[pPhi];
-  NewPhi->addIncoming(idx, pIncomingBB);
-  HandleAllocaSources(pPhi, NewPhi);
+  NewPhi->addIncoming(Idx.Index, pIncomingBB);
+  handleAllocaSources(*pPhi, {NewPhi, Idx.ElementSizeInBits});
 }
 
 void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
@@ -764,16 +786,16 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
   pLoad->eraseFromParent();
 }
 
-void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
-                                             llvm::Value *pScalarizedIdx) {
+void TransposeHelperPromote::handleStoreInst(StoreInst *pStore,
+                                             GenericVectorIndex ScalarizedIdx) {
   // Add Store instruction to remove list
   IGC_ASSERT(pStore->isSimple());
   IRBuilder<> IRB(pStore);
   llvm::Value *pStoreVal = pStore->getValueOperand();
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
   llvm::Value *WriteOut = pLoadVecAlloca;
-  auto StTy = pStoreVal->getType()->getScalarType();
-  auto VETy = pLoadVecAlloca->getType()->getScalarType();
+  auto *StTy = pStoreVal->getType()->getScalarType();
+  auto *VETy = pLoadVecAlloca->getType()->getScalarType();
   // do the type-casting if necessary
 
   bool IsFuncPointerStore =
@@ -799,18 +821,18 @@ void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
           NewStoreVal, IntegerType::getInt64Ty(pStore->getContext()));
     }
     Region R(NewStoreVal, m_pDL);
-    if (!pScalarizedIdx->getType()->isIntegerTy(16)) {
-      pScalarizedIdx = IRB.CreateZExtOrTrunc(
-          pScalarizedIdx, Type::getInt16Ty(pStore->getContext()));
+    if (!ScalarizedIdx.Index->getType()->isIntegerTy(16)) {
+      ScalarizedIdx.Index = IRB.CreateZExtOrTrunc(
+          ScalarizedIdx.Index, Type::getInt16Ty(pStore->getContext()));
     }
-    if (auto *ConstIdx = dyn_cast<llvm::Constant>(pScalarizedIdx))
+    if (auto *ConstIdx = dyn_cast<llvm::Constant>(ScalarizedIdx.Index))
       R.Indirect = ConstantExpr::getMul(
           ConstIdx,
           ConstantInt::get(IRB.getInt16Ty(),
                            m_pDL->getTypeSizeInBits(NewStoreVal->getType()) /
                                genx::ByteBits));
     else
-      R.Indirect = pScalarizedIdx;
+      R.Indirect = ScalarizedIdx.Index;
     WriteOut =
         R.createWrRegion(WriteOut, NewStoreVal, pStore->getName() + ".promoted",
                          pStore, pStore->getDebugLoc());
@@ -826,13 +848,22 @@ void TransposeHelperPromote::handleStoreInst(llvm::StoreInst *pStore,
     // store <32 x float> %w1, <32 x float>* %ptr1
     auto Len = cast<VectorType>(pStoreVal->getType())->getNumElements();
     for (unsigned i = 0; i < Len; ++i) {
-      Value *VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
-      auto Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);
-      auto Idx = IRB.CreateAdd(pScalarizedIdx, VectorIdx);
+      Value *VectorIdx = ConstantInt::get(ScalarizedIdx.Index->getType(), i);
+      auto *Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);
+      auto *Idx = IRB.CreateAdd(ScalarizedIdx.Index, VectorIdx);
+      IGC_ASSERT_MESSAGE(
+          m_pDL->getTypeSizeInBits(Val->getType()) ==
+              ScalarizedIdx.ElementSizeInBits,
+          "stored type considered vector element size must correspond");
       WriteOut = IRB.CreateInsertElement(WriteOut, Val, Idx);
     }
   } else {
-    WriteOut = IRB.CreateInsertElement(WriteOut, pStoreVal, pScalarizedIdx);
+    IGC_ASSERT_MESSAGE(
+        m_pDL->getTypeSizeInBits(pStoreVal->getType()) ==
+            ScalarizedIdx.ElementSizeInBits,
+        "stored type considered vector element size must correspond");
+    WriteOut =
+        IRB.CreateInsertElement(WriteOut, pStoreVal, ScalarizedIdx.Index);
   }
   // cast the vector type back if necessary
   if (VETy != StTy)
