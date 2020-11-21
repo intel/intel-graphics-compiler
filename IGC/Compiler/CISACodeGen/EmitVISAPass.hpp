@@ -61,6 +61,9 @@ public:
 
     virtual ~EmitPass();
 
+    // Note:  all analysis passes should be function passes. If a module analysis pass
+    //        is used, it would invalidate function analysis passes and therefore cause
+    //        those analysis passes to be invoked twice, which increases compiling time.
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.addRequired<llvm::DominatorTreeWrapperPass>();
@@ -74,7 +77,6 @@ public:
         AU.addRequired<Simd32ProfitabilityAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<VariableReuseAnalysis>();
-        AU.addRequired<llvm::CallGraphWrapperPass>();
         AU.setPreservesAll();
     }
 

@@ -219,6 +219,10 @@ void GenXCodeGenModule::processFunction(Function& F)
         {
             // clone the function, add to this function group
             auto FCloned = cloneFunc(&F);
+
+            // Copy F's property over
+            copyFuncProperties(FCloned, &F);
+
             Function* SubGrpH = FGA->useStackCall(&F) ? FCloned : FGPair.second;
             FGA->addToFunctionGroup(FCloned, FGPair.first, SubGrpH);
             Modified = true;
@@ -283,6 +287,10 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
             {
                 Function* F = Node->getFunction();
                 auto FCloned = cloneFunc(F);
+
+                // Copy properties
+                copyFuncProperties(FCloned, F);
+
                 FGA->addToFunctionGroup(FCloned, FG, FCloned);
                 CloneMap.insert(std::make_pair(F, FCloned));
             }
@@ -306,6 +314,29 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
             }
         }
     }
+}
+
+void GenXCodeGenModule::setFuncProperties(CallGraph& CG)
+{
+    for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
+    {
+        const std::vector<CallGraphNode*>& SCCNodes = (*I);
+        for (CallGraphNode* Node : SCCNodes)
+        {
+            Function* F = Node->getFunction();
+            if (F != nullptr && !F->isDeclaration())
+            {
+                if (Node->empty()) {
+                    FGA->setLeafFunc(F);
+                }
+            }
+        }
+    }
+}
+
+void GenXCodeGenModule::copyFuncProperties(llvm::Function* To, llvm::Function* From)
+{
+    FGA->copyFuncProperties(To, From);
 }
 
 /// Deduce non-null argument attributes for subroutines.
@@ -371,6 +402,8 @@ bool GenXCodeGenModule::runOnModule(Module& M)
 
     pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+
+    setFuncProperties(CG);
 
     std::vector<std::vector<CallGraphNode*>*> SCCVec;
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)

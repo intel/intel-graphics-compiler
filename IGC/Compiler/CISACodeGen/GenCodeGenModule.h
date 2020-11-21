@@ -62,6 +62,8 @@ namespace IGC {
     private:
         void processFunction(llvm::Function& F);
         void processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes);
+        void setFuncProperties(llvm::CallGraph& CG);
+        void copyFuncProperties(llvm::Function* To, llvm::Function* From);
         llvm::Function* cloneFunc(llvm::Function* F);
         GenXFunctionGroupAnalysis* FGA;
         IGC::IGCMD::MetaDataUtils* pMdUtils;
@@ -116,6 +118,10 @@ namespace IGC {
     };
 
     class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
+        enum class FuncPropertyInfo : uint32_t {
+            FPI_LEAF = 0x1        // bit 0:  1 (leaf function)
+        };
+
         /// \brief The module being analyzed.
         llvm::Module* M;
 
@@ -127,6 +133,9 @@ namespace IGC {
 
         /// \brief Each function also belongs to a uniquely defined sub-group of a stack-call entry
         llvm::DenseMap<llvm::Function*, llvm::Function*> SubGroupMap;
+
+        /// \brief Properties for each function
+        llvm::DenseMap<llvm::Function*, uint32_t> FuncProperties;
 
     public:
         static char ID;
@@ -203,6 +212,23 @@ namespace IGC {
             FunctionGroup* FG = getGroup(F);
             IGC_ASSERT_MESSAGE(nullptr != FG, "not in function group");
             return F == FG->back();
+        }
+
+        bool isLeafFunc(llvm::Function* F) {
+            auto FI = FuncProperties.find(F);
+            if (FI != FuncProperties.end()) {
+                return (FI->second & (uint32_t)FuncPropertyInfo::FPI_LEAF);
+            }
+            return false;
+        }
+        void setLeafFunc(llvm::Function* F) {
+            uint32_t P = FuncProperties[F];
+            FuncProperties[F] = (P | (uint32_t)FuncPropertyInfo::FPI_LEAF);
+        }
+        void copyFuncProperties(llvm::Function* To, llvm::Function* From) {
+            auto II = FuncProperties.find(From);
+            assert(II != FuncProperties.end());
+            FuncProperties[To] = II->second;
         }
 
         /// this is the knob to enable vISA stack-call for OpenCL
