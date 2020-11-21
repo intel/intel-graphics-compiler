@@ -357,7 +357,6 @@ void VISAModule::buildDirectElfMaps()
             VISAIndexToSize.insert(std::make_pair(index,
                 std::make_pair(currOffset, currSize)));
     }
-
     GenISAToVISAIndex.clear();
     for (auto i = 0;
         i != co->CISAIndexMap.size();
@@ -521,6 +520,18 @@ void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int
         }
         it++;
     }
+}
+void VISAModule::print (raw_ostream &OS) const {
+
+  OS << "[DBG] VisaModule\n";
+  OS << "  Module VISAIndexToInst Dump\n  ---\n";
+  for (const auto &Item: VISAIndexToInst)
+      OS << "    visa_index: " << Item.first << " ->  inst: " <<
+          *(Item.second) << "\n";
+  OS << "  Module VISAIndexToSize Dump\n  ---\n";
+  for (const auto &Item: VISAIndexToSize)
+      OS << "    visa_index: " << Item.first << " -> {offset: " <<
+          Item.second.first << ", size: " << Item.second.second << "}\n";
 }
 
 std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(const InsnRange& Range)

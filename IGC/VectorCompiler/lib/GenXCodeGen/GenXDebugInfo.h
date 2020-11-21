@@ -44,14 +44,15 @@ class Function;
 class Instruction;
 
 namespace genx {
+namespace di {
 
-struct VisaDebugInfo {
+struct VisaMapping {
   unsigned visaCounter = 0;
-  typedef std::map<unsigned, const Instruction *> VisaLocations;
+  typedef std::map<unsigned, const Instruction *> VisaMap;
 
-  VisaLocations Locations;
+  VisaMap V2I;
 };
-
+} // namespace di
 } // namespace genx
 
 //--------------------------------------------------------------------
@@ -64,7 +65,7 @@ class GenXDebugInfo : public ModulePass {
 
   void cleanup();
   void processKernel(const Function &KernelFunction, const VISAKernel &VK,
-                     const genx::VisaDebugInfo &DbgInfo);
+                     const genx::di::VisaMapping &V2I);
 
 public:
   static char ID;

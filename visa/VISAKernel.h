@@ -644,7 +644,7 @@ public:
 
     /********** MISC APIs START *************************/
     VISA_BUILDER_API int GetGenxBinary(void *&buffer, int &size) const;
-    VISA_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo);
+    VISA_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo) const;
     VISA_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
     VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const;
     VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&) const;

@@ -8019,7 +8019,7 @@ int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& m
     return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::GetJitInfo(FINALIZER_INFO *&jitInfo)
+int VISAKernelImpl::GetJitInfo(FINALIZER_INFO *&jitInfo) const
 {
     jitInfo = m_jitInfo;
     return VISA_SUCCESS;

@@ -53,6 +53,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Probe/Assertion.h"
 #include "secure_mem.h"
 
+#define DEBUG_TYPE "GENX_DEBUG_INFO"
+
 using namespace llvm;
 using namespace IGC;
 
@@ -157,8 +159,8 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
         // Emit src line mapping directly instead of
         // relying on dbgmerge. elf generated will have
         // text section and debug_line sections populated.
-        auto& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
-        auto& VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
+        const auto& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
+        const auto& VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
         std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
         unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
         unsigned int prevLastGenOff = lastGenOff;
@@ -328,6 +330,8 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
         if (m_pVISAModule->isDirectElfInput)
             setElfType(is64Bit, Result.data());
 
+        LLVM_DEBUG(dbgs() << "Finalized Visa Module:\n");
+        LLVM_DEBUG(m_pVISAModule->dump());
         // Reset all members and prepare for next beginModule() call.
         Reset();
 

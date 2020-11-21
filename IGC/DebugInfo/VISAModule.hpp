@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/DataTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "VISAIDebugEmitter.hpp"
@@ -533,6 +534,9 @@ namespace IGC
 
         // This function coalesces GenISARange which is a vector of <start ip, end ip>
         static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
+
+        void dump() const { print(llvm::dbgs()); }
+        void print (llvm::raw_ostream &OS) const;
 
     private:
         std::string m_triple = "vISA_64";

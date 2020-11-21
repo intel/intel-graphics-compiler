@@ -101,7 +101,7 @@ namespace llvm {
     bool InlineAsm = false;
     bool CheckForInlineAsm(Module &M) const;
 
-    std::map<const Function *, genx::VisaDebugInfo> VisaDebugMap;
+    std::map<const Function *, genx::di::VisaMapping> VisaMapping;
 
   private:
     void cleanup() {
@@ -129,8 +129,9 @@ namespace llvm {
     void DestroyVISAAsmReader();
     LLVMContext &getContext();
 
-    void updateVisaDebugInfo(const Function *F, const Instruction *Inst);
-    const genx::VisaDebugInfo *getVisaDebugInfo(const Function *F) const;
+    void updateVisaMapping(const Function *F, const Instruction *Inst,
+                           unsigned VisaIndex, StringRef Reason);
+    const genx::di::VisaMapping *getVisaMapping(const Function *F) const;
   };
 
   void initializeGenXModulePass(PassRegistry &);

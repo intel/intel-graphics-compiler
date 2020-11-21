@@ -156,32 +156,40 @@ bool GenXModule::runOnModule(Module &M) {
 
   return ModuleModified;
 }
-void GenXModule::updateVisaDebugInfo(const Function *F,
-                                     const Instruction *Inst) {
-  auto &DebugInfo = VisaDebugMap[F];
-  if (Inst) {
-    // Unfortunately, our CISA builder routines are not very consistent with
-    // respect to the interfaces used to emit vISA.
-    // There may be situations when the debug information for instruction is
-    // updated several times (like when we emit an additional VISALifeTime
-    // instruction)
-    // This check is a workaround for a problem when we may emit an auxiliary
-    // visa instruction using the interface which requires us to update the
-    // "current instruction" without actually doing so.
-    const Instruction *LastInst = DebugInfo.Locations.empty()
-                                      ? nullptr
-                                      : DebugInfo.Locations.rbegin()->second;
-    if (LastInst != Inst)
-      DebugInfo.Locations.insert(std::make_pair(DebugInfo.visaCounter, Inst));
-    else
-      LLVM_DEBUG(dbgs() << "WARNING: multiple insn locations updates detected! "
-                        << "visaCounter: " << DebugInfo.visaCounter
-                        << ", insn : " << *Inst << "\n");
-  }
-  // Always advance visa counter
-  ++DebugInfo.visaCounter;
+void GenXModule::updateVisaMapping(const Function *F, const Instruction *Inst,
+                                   unsigned VisaIndex, StringRef Reason) {
+  auto &Mapping = VisaMapping[F];
+  LLVM_DEBUG(dbgs() << "visaCounter update: {" << Mapping.visaCounter << "->"
+                    << VisaIndex << "}, src: ");
+  if (Inst)
+    LLVM_DEBUG(dbgs() << *Inst << "\n");
+  else
+    LLVM_DEBUG(dbgs() << Reason << "\n");
+
+  Mapping.visaCounter = VisaIndex;
+
+  if (!Inst)
+    return;
+  // Unfortunately, our CISA builder routines are not very consistent with
+  // respect to the interfaces used to emit vISA.
+  // There may be situations when the debug information for instruction is
+  // updated several times (like when we emit an additional VISALifeTime
+  // instruction)
+  // This check is a workaround for a problem when we may emit an auxiliary
+  // visa instruction using the interface which requires us to update the
+  // "current instruction" without actually doing so.
+  const Instruction *LastInst =
+      Mapping.V2I.empty() ? nullptr : Mapping.V2I.rbegin()->second;
+  if (LastInst != Inst)
+    Mapping.V2I.insert(std::make_pair(Mapping.visaCounter, Inst));
+  else
+    LLVM_DEBUG(dbgs() << "WARNING: multiple insn locations updates detected! "
+                      << "visaCounter: " << Mapping.visaCounter
+                      << ", insn : " << *Inst << "\n");
 }
-const genx::VisaDebugInfo *
-GenXModule::getVisaDebugInfo(const Function *F) const {
-  return &VisaDebugMap.at(F);
+
+const genx::di::VisaMapping *
+GenXModule::getVisaMapping(const Function *F) const {
+  IGC_ASSERT(VisaMapping.count(F));
+  return &VisaMapping.at(F);
 }

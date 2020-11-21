@@ -742,7 +742,7 @@ public:
     /// This function may only be called after Compile() is called
     /// vISA Builder is responsible for managing this memory.
     /// it will be freed when vISA builder is destroyed.
-    VISA_BUILDER_API virtual int GetJitInfo(FINALIZER_INFO *&jitInfo) = 0;
+    VISA_BUILDER_API virtual int GetJitInfo(FINALIZER_INFO *&jitInfo) const = 0;
     VISA_BUILDER_API virtual int GetCompilerStats(CompilerStats &compilerStats) = 0;
 
     /// GetErrorMessage -- returns the error message during finalization

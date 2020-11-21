@@ -1305,6 +1305,8 @@ void GenXKernelBuilder::buildInstructions() {
 
     unsigned LabelID = getOrCreateLabel(Func, LABEL_SUBROUTINE);
     CISA_CALL(Kernel->AppendVISACFLabelInst(Labels[LabelID]));
+    GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(),
+                          "SubRoutine");
 
     beginFunction(Func);
     LastAlloca = nullptr;
@@ -4863,17 +4865,23 @@ void GenXKernelBuilder::addDebugInfo() {
         sys::path::append(Filename, PendingFilename);
       }
       CISA_CALL(Kernel->AppendVISAMiscFileInst(Filename.c_str()));
+      GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(),
+                            "FILE");
       LastDirectory = PendingDirectory;
       LastFilename = PendingFilename;
     }
     if (PendingLine != LastLine) {
       LLVM_DEBUG(dbgs() << "LOC instruction appended:" << PendingLine << "\n");
       CISA_CALL(Kernel->AppendVISAMiscLOC(PendingLine));
+      GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(),
+                            "LOC");
       LastLine = PendingLine;
       PendingLine = 0;
     }
   }
-  GM->updateVisaDebugInfo(KernFunc, CurrentInst);
+  // +1 since we update debug info BEFORE appending the instruction
+  GM->updateVisaMapping(KernFunc, CurrentInst, Kernel->getvIsaInstCount() + 1,
+                        CurrentInst ? CurrentInst->getName() : "Init_Special");
 }
 
 void GenXKernelBuilder::emitOptimizationHints() {
@@ -4902,7 +4910,7 @@ void GenXKernelBuilder::emitOptimizationHints() {
  * addLabelInst : add a label instruction for a basic block or join
  */
 void GenXKernelBuilder::addLabelInst(Value *BB) {
-  GM->updateVisaDebugInfo(KernFunc, nullptr);
+  GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(), "LBL");
   // Skip this for now, because we don't know how to patch labels of branches.
   if (0) { // LastLabel >= 0) {
     // There has been no code since the last label, so use the same label

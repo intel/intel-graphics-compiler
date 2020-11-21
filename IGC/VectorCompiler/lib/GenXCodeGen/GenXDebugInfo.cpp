@@ -30,19 +30,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 
 #include "visa/include/visaBuilder_interface.h"
-#include "visa/common.h"
 
 #include "DebugInfo/StreamEmitter.hpp"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/VISAModule.hpp"
 
-#include <llvm/IR/DebugInfoMetadata.h>
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/Function.h>
 #include <llvm/CodeGen/TargetPassConfig.h>
+#include <llvm/IR/DebugInfoMetadata.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/InitializePasses.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Errc.h>
 #include <llvm/Support/Error.h>
-#include <llvm/Support/CommandLine.h>
+
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "GENX_DEBUG_INFO"
@@ -58,48 +59,95 @@ static void debugDump(const Twine &Name, const char *Content, size_t Size) {
   OS << StringRef(Content, Size);
 }
 
-struct FinalizerDbgInfo {
+class VisaKernelInfo {
+
+  using FinalizedDI = IGC::DbgDecoder::DbgInfoFormat;
+
+  std::vector<char> GenBinary;
+  std::vector<char> DbgInfoBlob;
+  std::unique_ptr<IGC::DbgDecoder> DecodedDebugInfo;
+
+  FINALIZER_INFO *JitInfo = nullptr;
+  // underlying data is owned by DecodedDebugInfo
+  const FinalizedDI *VisaKernelDI = nullptr;
+
+  std::string ErrMsg;
+
+public:
+  const FINALIZER_INFO &getJitInfo() const {
+    IGC_ASSERT(ErrMsg.empty() && JitInfo);
+    return *JitInfo;
+  };
+  const FinalizedDI &getFinalizerDI() const {
+    IGC_ASSERT(ErrMsg.empty() && VisaKernelDI);
+    return *VisaKernelDI;
+  }
+  IGC::DbgDecoder *getDIDecoder() const { return DecodedDebugInfo.get(); }
+  const std::vector<char> &getGenBinary() const { return GenBinary; }
+  const std::vector<char> &getDbgInfoBlob() const { return DbgInfoBlob; }
+  const std::string &getError() const { return ErrMsg; }
+  bool hasErrors() const { return !getError().empty(); }
 
   struct Gen2VisaIdx {
     unsigned GenOffset;
     unsigned VisaIdx;
   };
 
-  FinalizerDbgInfo(const Function &F, const VISAKernel &VK) {
+  VisaKernelInfo(const Function &F, const VISAKernel &VK) {
     void *GenXdbgInfo = nullptr;
     void *VISAMap = nullptr;
     unsigned int DbgSize = 0;
     unsigned int NumElems = 0;
-    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) !=
-        VISA_SUCCESS) {
+    if (VK.GetJitInfo(JitInfo) != 0) {
+      ErrMsg = "could not extract jitter info";
+      return;
+    }
+    IGC_ASSERT(JitInfo);
+
+    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) != 0) {
       ErrMsg = "visa info decode error";
       return;
     }
+    if (VISAMap)
+      freeBlock(VISAMap);
     IGC_ASSERT(GenXdbgInfo);
 
     const char *DbgBlobBytes = static_cast<const char *>(GenXdbgInfo);
-    BinaryDump = std::vector<char>(DbgBlobBytes, DbgBlobBytes + DbgSize);
+    DbgInfoBlob = std::vector<char>(DbgBlobBytes, DbgBlobBytes + DbgSize);
+    freeBlock(GenXdbgInfo);
 
-    DecodedInfo = std::make_unique<IGC::DbgDecoder>(GenXdbgInfo);
-
-    std::vector<Gen2VisaIdx> Gen2Visa;
-    if (NumElems > 0 && VISAMap) {
-      LLVM_DEBUG(dbgs() << "---\n");
-
-      unsigned int *VisaMapUI = reinterpret_cast<unsigned int *>(VISAMap);
-      for (unsigned int i = 0; i < NumElems * 2; i += 2) {
-        auto GenISAOffset = VisaMapUI[i];
-        auto VISAIndex = VisaMapUI[i + 1];
-        Gen2Visa.push_back({GenISAOffset, VISAIndex});
-        LLVM_DEBUG(dbgs() << "GenOffset: " << GenISAOffset
-                          << " -> VisaIdx: " << VISAIndex << "\n");
-      }
-      LLVM_DEBUG(dbgs() << "---\n");
+    DecodedDebugInfo = std::make_unique<IGC::DbgDecoder>(DbgInfoBlob.data());
+    auto GetDebugInfoForKernel = [this](StringRef KernelName) {
+      const auto &CO = DecodedDebugInfo->compiledObjs;
+      auto FoundIt =
+          std::find_if(CO.begin(), CO.end(), [&KernelName](const auto &DI) {
+            return KernelName == StringRef(DI.kernelName);
+          });
+      const IGC::DbgDecoder::DbgInfoFormat *Result = nullptr;
+      if (FoundIt != CO.end())
+        Result = &*FoundIt;
+      return Result;
+    };
+    VisaKernelDI = GetDebugInfoForKernel(F.getName());
+    if (!VisaKernelDI) {
+      ErrMsg = "could not find debug information for <" +
+               std::string(F.getName()) + ">";
+      return;
+    }
+    if (VisaKernelDI->CISAIndexMap.empty()) {
+      ErrMsg = "empty CisaIndexMap for <" + std::string(F.getName()) + ">";
+      return;
     }
 
-    if (VISAMap)
-      freeBlock(VISAMap);
-    freeBlock(GenXdbgInfo);
+    std::vector<Gen2VisaIdx> Gen2Visa;
+    LLVM_DEBUG(dbgs() << "\nCISA Index Map:\n---\n");
+    for (const auto &Item : VisaKernelDI->CISAIndexMap) {
+      auto VisaIndex = Item.first;
+      auto GenOff = Item.second;
+      Gen2Visa.push_back({GenOff, VisaIndex});
+      LLVM_DEBUG(dbgs() << "GI: " << GenOff << " -> VI:" << VisaIndex << "\n");
+    }
+    LLVM_DEBUG(dbgs() << "---\n");
 
     // Extract Gen Binary (will need it for line table generation)
     void *GenBin = nullptr;
@@ -112,7 +160,8 @@ struct FinalizerDbgInfo {
     // Make Sure that gen isa indeces are inside GenBinary
     const bool InBounds =
         std::all_of(Gen2Visa.begin(), Gen2Visa.end(), [&](const auto &Idx) {
-          return Idx.GenOffset < GenBinary.size();
+          // <= Is because last index can be equal to the binary size
+          return Idx.GenOffset <= GenBinary.size();
         });
     if (!InBounds) {
       ErrMsg = "fatal error (debug info). inconsistent gen->visa mapping: "
@@ -136,27 +185,21 @@ struct FinalizerDbgInfo {
       return;
     }
   }
-
-  std::unique_ptr<IGC::DbgDecoder> DecodedInfo;
-  std::vector<char> GenBinary;
-  std::string ErrMsg;
-
-  std::vector<char> BinaryDump;
 };
 
 class GenXVisaModule final : public IGC::VISAModule {
 
 public:
-  GenXVisaModule(const Function &F, const genx::VisaDebugInfo &VisaDebugIn,
-                 const FinalizerDbgInfo &GenDbgIn)
-      : F{F}, VisaDebug{VisaDebugIn}, GenDbg{GenDbgIn},
+  GenXVisaModule(const Function &F, const GenXSubtarget &STIn,
+                 const genx::di::VisaMapping &V2I, const VisaKernelInfo &VKI)
+      : F{F}, ST{STIn}, VisaMapping{V2I}, VisaKernelInfo{VKI},
         VISAModule(const_cast<Function *>(&F)) {
 
     isDirectElfInput = true;
   }
 
   unsigned int getUnpaddedProgramSize() const override {
-    return GenDbg.GenBinary.size();
+    return VisaKernelInfo.getGenBinary().size();
   }
   bool isLineTableOnly() const override {
     IGC_ASSERT_MESSAGE(0, "isLineTableOnly()");
@@ -167,42 +210,41 @@ public:
     return 0;
   }
   unsigned getGRFSize() const override {
-    IGC_ASSERT_MESSAGE(0, "getGRFSize() - not implemented");
-    return 0;
+    return ST.getGRFWidth();
   }
   unsigned getNumGRFs() const override {
-    IGC_ASSERT_MESSAGE(0, "getGRFSize() - not implemented");
-    return 0;
+    return VisaKernelInfo.getJitInfo().numGRFTotal;
   }
   unsigned getPointerSize() const override {
     return F.getParent()->getDataLayout().getPointerSize();
   }
-
-  ArrayRef<char> getGenDebug() const override { return GenDbg.BinaryDump; }
-  ArrayRef<char> getGenBinary() const override { return GenDbg.GenBinary; }
+  ArrayRef<char> getGenDebug() const override {
+    return VisaKernelInfo.getDbgInfoBlob();
+  }
+  ArrayRef<char> getGenBinary() const override {
+    return VisaKernelInfo.getGenBinary();
+  }
   std::vector<IGC::VISAVariableLocation>
   GetVariableLocation(const Instruction *pInst) const override {
     return {};
   }
 
   VISAModule *makeNew() const override {
-    return new GenXVisaModule(F, VisaDebug, GenDbg);
+    return new GenXVisaModule(F, ST, VisaMapping, VisaKernelInfo);
   }
   void UpdateVisaId() override {
-    SetVISAId(GetCurrentVISAId() + 1);
-    LLVM_DEBUG(dbgs() << "updateVisaId() called, CurrentID = "
-                      << GetCurrentVISAId() << "\n");
+    // do nothing (the moment we need to advance index is controlled explicitly)
   }
   void ValidateVisaId() override {
-    LLVM_DEBUG(dbgs() << "validateIsID() called, CurrentID = "
-                      << GetCurrentVISAId() << "\n");
+    // do nothing (we don't need validation since VISA is built already)
   }
   uint16_t GetSIMDSize() const override { return 1; }
 
 private:
   const Function &F;
-  const genx::VisaDebugInfo &VisaDebug;
-  const FinalizerDbgInfo &GenDbg;
+  const GenXSubtarget &ST;
+  const genx::di::VisaMapping &VisaMapping;
+  const VisaKernelInfo &VisaKernelInfo;
 };
 
 } // namespace
@@ -210,11 +252,11 @@ private:
 namespace llvm {
 
 void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
-                                  const genx::VisaDebugInfo &DbgInfo) {
+                                  const genx::di::VisaMapping &VisaMapping) {
 
-  FinalizerDbgInfo GenDbg(KF, VK);
-  if (!GenDbg.ErrMsg.empty())
-    report_fatal_error(GenDbg.ErrMsg);
+  VisaKernelInfo GenInfo(KF, VK);
+  if (GenInfo.hasErrors())
+    report_fatal_error(GenInfo.getError(), false);
 
   IGC_ASSERT(DebugInfo.count(&KF) == 0);
   raw_svector_ostream OS(DebugInfo[&KF]);
@@ -227,21 +269,47 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
   };
   using EmitterHolder = std::unique_ptr<IGC::IDebugEmitter, decltype(Deleter)>;
   EmitterHolder Emitter(IGC::IDebugEmitter::Create(), Deleter);
+
+  const auto &ST = getAnalysis<TargetPassConfig>()
+      .getTM<GenXTargetMachine>()
+      .getGenXSubtarget();
   // Onwership of GenXVisaModule object is transfered to IDebugEmitter
-  auto *VM = new GenXVisaModule(KF, DbgInfo, GenDbg);
+  auto *VM = new GenXVisaModule(KF, ST, VisaMapping, GenInfo);
   Emitter->Initialize(VM, DebugOpts, true);
 
   Emitter->AddVISAModFunc(VM, const_cast<Function *>(&KF));
   Emitter->SetVISAModule(VM);
   Emitter->setFunction(const_cast<Function *>(&KF), false /*cloned*/);
 
-  for (const auto &Item : DbgInfo.Locations) {
-    VM->SetVISAId(Item.first);
-    Emitter->BeginInstruction((Instruction *)Item.second);
-    Emitter->EndInstruction((Instruction *)Item.second);
-  }
+  IGC_ASSERT(!GenInfo.getFinalizerDI().CISAIndexMap.empty());
+  LLVM_DEBUG(dbgs() << "\nV2I Dump\n----\n");
+  const auto &V2I = VisaMapping.V2I;
+  for (auto MappingIt = V2I.cbegin(); MappingIt != V2I.cend(); ++MappingIt) {
 
-  const auto &ElfBin = Emitter->Finalize(true /* really finalize :)*/, GenDbg.DecodedInfo.get());
+    auto NextMapping = std::next(MappingIt);
+    auto VisaIndexCurr = MappingIt->first;
+    auto VisaIndexNext =
+        (NextMapping != V2I.cend())
+            ? NextMapping->first
+            : GenInfo.getFinalizerDI().CISAIndexMap.back().first;
+
+    // Note: "index - 1" is becuse we mimic index values as if they were
+    // before corresponding instructions were inserted
+    VM->SetVISAId(VisaIndexCurr - 1);
+    // we need this const_cast because of the flawed VISA Emitter flawed API
+    auto *Inst = const_cast<Instruction *>(MappingIt->second);
+    Emitter->BeginInstruction(Inst);
+    VM->SetVISAId(VisaIndexNext - 1);
+    Emitter->EndInstruction(Inst);
+
+    LLVM_DEBUG(dbgs() << "VisaMap: [" << VisaIndexCurr << ";" << VisaIndexNext
+                      << "):" << *Inst << "\n");
+  }
+  LLVM_DEBUG(dbgs() << "\n");
+
+  const bool FinalizeDebugInfo = true;
+  const auto &ElfBin =
+      Emitter->Finalize(FinalizeDebugInfo, GenInfo.getDIDecoder());
   if (ElfBin.empty())
     report_fatal_error("could not emit .elf image");
 
@@ -261,11 +329,11 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
     auto GendbgDumpName = ("dbginfo_" + NameSuffix + "_gen.dump").str();
     if (BC.hasShaderDumper()) {
       BC.getShaderDumper().dumpBinary(ElfBin, DwarfDumpName);
-      BC.getShaderDumper().dumpBinary(GenDbg.BinaryDump, GendbgDumpName);
+      BC.getShaderDumper().dumpBinary(GenInfo.getDbgInfoBlob(), GendbgDumpName);
     } else {
       debugDump(DwarfDumpName, ElfBin.data(), ElfBin.size());
-      debugDump(GendbgDumpName, GenDbg.BinaryDump.data(),
-                GenDbg.BinaryDump.size());
+      debugDump(GendbgDumpName, GenInfo.getDbgInfoBlob().data(),
+                GenInfo.getDbgInfoBlob().size());
     }
   }
   return;
@@ -277,6 +345,7 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();
   AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXModule>();
+  AU.addRequired<TargetPassConfig>();
   AU.setPreservesAll();
 }
 bool GenXDebugInfo::runOnModule(Module &M) {
@@ -295,7 +364,7 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   for (const auto *FG : FGA) {
     const auto *KF = FG->getHead();
 
-    const genx::VisaDebugInfo &VisaDbgInfo = *GM.getVisaDebugInfo(KF);
+    const genx::di::VisaMapping &VisaDbgInfo = *GM.getVisaMapping(KF);
     VISAKernel *VK = VB->GetVISAKernel(KF->getName().str());
     IGC_ASSERT_MESSAGE(VK, "Kernel is null");
 
@@ -318,6 +387,7 @@ INITIALIZE_PASS_BEGIN(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXModule)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_END(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
                     true /*analysis*/)
 
