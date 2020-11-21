@@ -831,6 +831,8 @@ bool GASResolving::isLoadGlobalCandidate(LoadInst* LI) const {
     // next check that it is a load from function argument + offset
     // which is necessary to prove that this address has global addrspace
     Value* LoadBase = LI->getPointerOperand()->stripInBoundsOffsets();
+    // WA for gep not_inbounds base, 0, 0 that is not handled in stripoffsets
+    LoadBase = LoadBase->stripPointerCasts();
     if (!isa<Argument>(LoadBase))
         return false;
 
