@@ -831,14 +831,22 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName)
 
 void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty, const char *&varName)
 {
-    if (!m_options->getOption(vISA_GenerateISAASM) &&
-        !m_options->getOption(vISA_IsaAssembly))
+    if (!m_options->getOption(vISA_GenerateISAASM) && !m_options->getOption(vISA_IsaAssembly))
+    {
+        // variable name is a don't care if we are not outputting vISA assembly
         return;
+    }
 
-    if (varName && *varName) {
+    bool asmInput = m_options->getOption(vISA_isParseMode);
+    if (varName && *varName)
+    {
         // if a custom name is given, then ensure it's unique;
         // if it's not, we will suffix it
-        ensureVariableNameUnique(varName);
+        // Note that it's not legal for asm input since we allow duplicate variable names if they are in different scope {...}
+        if (!asmInput)
+        {
+            ensureVariableNameUnique(varName);
+        }
         return;
     }
 
