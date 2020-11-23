@@ -438,10 +438,6 @@ public:
 
     static unsigned GetIMEReturnPayloadSize(llvm::GenIntrinsicInst* I);
 
-    // When debug info is enabled, this vector stores mapping of
-    // VISA index->Gen ISA offset. Currently, some APIs uses this
-    // to dump out elf.
-    std::vector<std::pair<unsigned int, unsigned int>> m_VISAIndexToGenISAOff;
     void addCVarsForVectorBC(llvm::BitCastInst* BCI, llvm::SmallVector<CVariable*, 8> CVars)
     {
         IGC_ASSERT_MESSAGE(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars), "a variable already exists for this vector bitcast");

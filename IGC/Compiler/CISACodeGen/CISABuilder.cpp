@@ -5252,18 +5252,7 @@ namespace IGC
             memcpy_s(dbgInfo, dbgSize, genxdbgInfo, dbgSize);
 
             freeBlock(genxdbgInfo);
-
-            if (numElems > 0 && VISAMap)
-            {
-                for (unsigned int i = 0; i < numElems * 2; i += 2)
-                {
-                    auto GenISAOffset = ((unsigned int*)VISAMap)[i];
-                    auto VISAIndex = ((unsigned int*)VISAMap)[i + 1];
-                    m_program->m_VISAIndexToGenISAOff.push_back(std::make_pair(VISAIndex, GenISAOffset));
-                }
-
-                freeBlock(VISAMap);
-            }
+            freeBlock(VISAMap);
         }
 
         pOutput->m_programBin = kernel;
