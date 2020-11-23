@@ -140,7 +140,7 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
 
     // create a data section for global constant variables
     // Two constant data sections: general constants and string literals
-    IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 2);
+    IGC_ASSERT(annotations.m_initConstantAnnotation.size() >= 1);
 
     // General constants
     // create a data section for global constant variables
@@ -178,6 +178,9 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
                 dataSize, bssSize, alignment);
         }
     }
+
+    if (annotations.m_initConstantAnnotation.size() != 2)
+      return;
 
     // String literals
     auto& caString = annotations.m_initConstantAnnotation[1];
