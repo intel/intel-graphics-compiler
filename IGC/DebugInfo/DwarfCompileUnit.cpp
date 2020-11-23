@@ -1194,8 +1194,24 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, VISAVariabl
 
             EmitPushSimdLane(Block, isSecondHalf);
             // *8 if 64-bit ptr or *4 if 32-bit ptr.
-            dwarf::LocationAtom litOP = (varSizeInBits == 64) ? dwarf::DW_OP_lit3 : dwarf::DW_OP_lit2;
-            IGC_ASSERT_MESSAGE((varSizeInBits == 32) || (varSizeInBits == 64), "Unexpected ptr size");
+            dwarf::LocationAtom litOP = dwarf::DW_OP_lit3; // Assumed for varSizeInBits == 64
+
+            if (varSizeInBits == 32)
+            {
+                litOP = dwarf::DW_OP_lit2;
+            }
+            else if (varSizeInBits == 16)
+            {
+                litOP = dwarf::DW_OP_lit1;
+            }
+            else if (varSizeInBits == 8)
+            {
+                litOP = dwarf::DW_OP_lit0;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE((varSizeInBits == 64), "Unexpected spilled ptr or variable size");
+            }
 
             addUInt(Block, dwarf::DW_FORM_data1, litOP);
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shl);
