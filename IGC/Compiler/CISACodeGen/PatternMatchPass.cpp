@@ -4278,10 +4278,9 @@ namespace IGC
                         {
                             if (cmpSource == select->getOperand(1 + sourceIndex))
                             {
-                                llvm::BinaryOperator* negate =
-                                    llvm::dyn_cast<llvm::BinaryOperator>(select->getOperand(1 + (1 - sourceIndex)));
+                                llvm::Instruction* opnd = llvm::dyn_cast<llvm::Instruction>(select->getOperand(1 + (1 - sourceIndex)));
                                 llvm::Value* negateSource = NULL;
-                                if (negate && IsNegate(*negate, negateSource) && negateSource == cmpSource)
+                                if (opnd && IsNegate(opnd, negateSource) && negateSource == cmpSource)
                                 {
                                     found = true;
                                     source = cmpSource;
@@ -4350,8 +4349,7 @@ namespace IGC
     {
         llvm::Value* modifierSource = NULL;
         mod = EMOD_NONE;
-        BinaryOperator* bin = dyn_cast<BinaryOperator>(&modifier);
-        if (bin && IsNegate(*bin, modifierSource))
+        if (IsNegate(&modifier, modifierSource))
         {
             e_modifier absModifier = EMOD_NONE;
             llvm::Value* absSource = NULL;
@@ -4375,16 +4373,26 @@ namespace IGC
         return false;
     }
 
-    bool IsNegate(llvm::BinaryOperator& sub, llvm::Value*& negateSource)
+    bool IsNegate(llvm::Instruction* inst, llvm::Value*& negateSource)
     {
-        if (sub.getOpcode() == Instruction::FSub || sub.getOpcode() == Instruction::Sub)
+        BinaryOperator* binop = dyn_cast<BinaryOperator>(inst);
+        if (binop &&
+            (inst->getOpcode() == Instruction::FSub || inst->getOpcode() == Instruction::Sub))
         {
-            if (IsZero(sub.getOperand(0)))
+            if (IsZero(inst->getOperand(0)))
             {
-                negateSource = sub.getOperand(1);
+                negateSource = inst->getOperand(1);
                 return true;
             }
         }
+#if LLVM_VERSION_MAJOR >= 10
+        UnaryOperator* unop = dyn_cast<UnaryOperator>(inst);
+        if (unop && inst->getOpcode() == Instruction::FNeg)
+        {
+            negateSource = inst->getOperand(0);
+            return true;
+        }
+#endif
         return false;
     }
 

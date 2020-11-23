@@ -324,7 +324,7 @@ namespace IGC
     //helper
     bool GetModifier(llvm::Instruction& modifier, e_modifier& mod, llvm::Value*& source);
     bool GetModifier(llvm::Value& modifier, e_modifier& mod, llvm::Value*& source);
-    bool IsNegate(llvm::BinaryOperator& modifier, llvm::Value*& negateSource);
+    bool IsNegate(llvm::Instruction* modifier, llvm::Value*& negateSource);
     bool IsZero(llvm::Value* v);
     bool isAbs(llvm::Value* abs, e_modifier& mod, llvm::Value*& source);
     bool isSat(llvm::Instruction* sat, llvm::Value*& source, bool& isUnsigned);
