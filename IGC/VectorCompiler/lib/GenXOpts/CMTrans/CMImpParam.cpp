@@ -588,6 +588,10 @@ CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
   F->getParent()->getFunctionList().insert(F->getIterator(), NF);
   NF->takeName(F);
   NF->setSubprogram(F->getSubprogram()); // tranfer debug-info
+  // DISubprogram must be unique to the module.
+  // Since F can be left as a "hanging" entity in the module - we preserve
+  // IR correctness by detaching DISubprogram node from it
+  F->setSubprogram(nullptr);
   
   // Now to splice the body of the old function into the new function
   NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
