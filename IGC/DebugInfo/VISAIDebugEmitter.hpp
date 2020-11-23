@@ -107,9 +107,14 @@ namespace IGC
 
     template<typename T> T read(const void*& dbg)
     {
-        T* dbgT = (T*)dbg;
-        T data = *dbgT;
-        dbg = ++dbgT;
+        static_assert(std::is_standard_layout<T>::value);
+
+        T data = 0;
+        const char* SrcP = (const char*)dbg;
+        const char* EndP = SrcP + sizeof(T);
+        char *DstP = (char*)&data;
+        std::copy(SrcP, EndP, DstP);
+        dbg = EndP;
         return data;
     }
 
