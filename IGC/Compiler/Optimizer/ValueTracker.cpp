@@ -409,15 +409,18 @@ Value* ValueTracker::trackValue(CallInst* CI, const uint index)
             {
                 baseValue = cast<CallInst>(baseValue)->getOperand(0);
             }
-            baseValue = nullptr;
+            else if (auto* I = dyn_cast<GenIntrinsicInst>(baseValue))
+            {
+                baseValue = handleGenIntrinsic(I);
+            }
+            else
+            {
+                baseValue = nullptr;
+            }
         }
         else if (auto* I = dyn_cast<CastInst>(baseValue))
         {
             baseValue = I->getOperand(0);
-        }
-        else if (auto* I = dyn_cast<GenIntrinsicInst>(baseValue))
-        {
-            baseValue = handleGenIntrinsic(I);
         }
         else if (auto* I = dyn_cast<ExtractElementInst>(baseValue))
         {
