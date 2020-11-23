@@ -247,17 +247,6 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     return true;
   };
 
-  std::string AuxApiOptions;
-  std::string AuxInternalOptions;
-  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCApiOptions),
-                          ApiOptions, AuxApiOptions)) {
-     ApiOptions = { AuxApiOptions.data(), AuxApiOptions.size() };
-  }
-  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCInternalOptions),
-                          InternalOptions, AuxInternalOptions)) {
-     InternalOptions = { AuxInternalOptions.data(), AuxInternalOptions.size() };
-  }
-
   llvm::ArrayRef<char> Input{InputArgs->pInput, InputArgs->InputSize};
 
   std::unique_ptr<vc::ShaderDumper> Dumper;
@@ -280,6 +269,17 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     InternalOptions = InputArgs->pInput + NewPathPayload.VcOptsOffset;
     Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
   }
+  std::string AuxApiOptions;
+  std::string AuxInternalOptions;
+  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCApiOptions),
+                          ApiOptions, AuxApiOptions)) {
+     ApiOptions = { AuxApiOptions.data(), AuxApiOptions.size() };
+  }
+  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCInternalOptions),
+                          InternalOptions, AuxInternalOptions)) {
+     InternalOptions = { AuxInternalOptions.data(), AuxInternalOptions.size() };
+  }
+
 
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
     Dumper->dumpText(ApiOptions, "options.txt");
