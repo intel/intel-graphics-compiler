@@ -3114,10 +3114,9 @@ SpillManagerGRF::replaceSpilledRange (
     G4_INST *         spilledInst
 )
 {
-    // the spilled dst's reg offset is already adjusted by the spill intrinsic so it's always 0
-    // we have to keep the dst's subreg offset, however, as our spill intrinsic uses GRF-aligned offset
-    auto tmpRangeDstRegion = builder_->createDst(
-        spillRangeDcl->getRegVar (), 0, spilledRegion->getSubRegOff(),
+    // we need to preserve accRegSel if it's set
+    G4_DstRegRegion * tmpRangeDstRegion = builder_->createDst(
+        spillRangeDcl->getRegVar (), REG_ORIGIN, SUBREG_ORIGIN,
         spilledRegion->getHorzStride (), spilledRegion->getType(), spilledRegion->getAccRegSel());
     spilledInst->setDest (tmpRangeDstRegion);
 }
@@ -3385,9 +3384,11 @@ SpillManagerGRF::insertSpillRangeCode(
     // Replace the spilled range with the spill range and insert spill
     // instructions.
 
-    INST_LIST::iterator insertPos = std::next(spilledInstIter);
+    INST_LIST::iterator insertPos = spilledInstIter;
+    insertPos++;
     replaceSpilledRange (replacementRangeDcl, spilledRegion, *spilledInstIter);
-    INST_LIST::iterator nextIter = std::next(spilledInstIter);
+    INST_LIST::iterator nextIter = spilledInstIter;
+    ++nextIter;
 
     splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
 
