@@ -892,6 +892,8 @@ namespace spv {
         SPIRVWord getFlags() { return arg<SPIRVWord>(SPIRVDebug::Operand::Function::FlagsIdx); }
         SPIRVWord getScopeLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::Function::ScopeLineIdx); }
         SPIRVId getSPIRVFunction() { return arg<SPIRVId>(SPIRVDebug::Operand::Function::FunctionIdIdx); }
+        bool hasDeclaration() { return getNumArgs() > SPIRVDebug::Operand::Function::DeclarationIdx; }
+        SPIRVId getDecl() { return arg<SPIRVId>(SPIRVDebug::Operand::Function::DeclarationIdx); }
     };
 
     class OpDebugSubroutineType : OpDebugInfoBase

@@ -458,6 +458,10 @@ public:
           flags |= llvm::DINode::FlagRValueReference;
       if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPublic)
           flags |= llvm::DINode::FlagPublic;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsProtected)
+          flags |= llvm::DINode::FlagProtected;
+      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPrivate)
+          flags |= llvm::DINode::FlagPrivate;
       if (spirvFlags & SPIRVDebug::FlagIsProtected)
           flags |= llvm::DINode::FlagProtected;
       if (spirvFlags & SPIRVDebug::FlagIsPrivate)
@@ -520,12 +524,15 @@ public:
       auto pointeeType = createType(BM->get<SPIRVExtInst>(ptrType.getBaseType()));
       auto flags = ptrType.getFlags();
 
-      if (flags == SPIRVDebug::Flag::FlagIsLValueReference)
+      if (flags & SPIRVDebug::Flag::FlagIsLValueReference)
           return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
-      else if (flags == SPIRVDebug::Flag::FlagIsRValueReference)
+      else if (flags & SPIRVDebug::Flag::FlagIsRValueReference)
           return addMDNode(inst, Builder.createReferenceType(dwarf::DW_TAG_rvalue_reference_type, pointeeType, M->getDataLayout().getPointerSizeInBits()));
       else if (flags & SPIRVDebug::Flag::FlagIsObjectPointer)
-          return addMDNode(inst, Builder.createObjectPointerType(pointeeType));
+      {
+          auto objType = Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits());
+          return addMDNode(inst, Builder.createObjectPointerType(objType));
+      }
       else
           return addMDNode(inst, Builder.createPointerType(pointeeType, M->getDataLayout().getPointerSizeInBits()));
   }
@@ -653,7 +660,9 @@ public:
       auto flagRaw = typeMember.getFlags();
       auto type = createType(BM->get<SPIRVExtInst>(typeMember.getType()));
 
-      return addMDNode(inst, Builder.createMemberType(scope, name, file, line, size, 0, offset, (llvm::DINode::DIFlags) flagRaw, type));
+      auto flags = decodeFlag(flagRaw);
+
+      return addMDNode(inst, Builder.createMemberType(scope, name, file, line, size, 0, offset, flags, type));
   }
 
   DIType* createCompositeType(SPIRVExtInst* inst)
@@ -715,19 +724,7 @@ public:
       for (unsigned int i = 0; i != compositeType.getNumItems(); i++)
       {
           auto member = static_cast<SPIRVExtInst*>(BM->getEntry(compositeType.getItem(i)));
-          if (member->getExtOp() == OCLExtOpDbgKind::TypeMember)
-          {
-              auto md = createMember(member);
-              elements.push_back(md);
-          }
-          else if (member->getExtOp() == OCLExtOpDbgKind::TypeInheritance)
-          {
-              elements.push_back(createTypeInherit(member));
-          }
-          else if (member->getExtOp() == OCLExtOpDbgKind::FuncDecl)
-          {
-              elements.push_back(createFunctionDecl(member));
-          }
+          elements.push_back(createType(member));
       }
 
       DINodeArray Elements = Builder.getOrCreateArray(elements);
@@ -748,13 +745,7 @@ public:
       auto offset = typeInherit.getOffset();
       auto spirvFlags = typeInherit.getFlags();
 
-      DINode::DIFlags flags = DINode::FlagZero;
-      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPublic)
-          flags |= llvm::DINode::FlagPublic;
-      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsProtected)
-          flags |= llvm::DINode::FlagProtected;
-      if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPrivate)
-          flags |= llvm::DINode::FlagPrivate;
+      auto flags = decodeFlag(spirvFlags);
 
       return addMDNode(inst, Builder.createInheritance(type, base, offset, flags));
   }
@@ -895,6 +886,12 @@ public:
           return (DIType*)createTypeTemplate(type);
       case OCLExtOpDbgKind::Function:
           return (DIType*)createFunction(type);
+      case OCLExtOpDbgKind::TypeMember:
+          return createMember(type);
+      case OCLExtOpDbgKind::FuncDecl:
+          return (DIType*)createFunctionDecl(type);
+      case OCLExtOpDbgKind::DebugInfoNone:
+          return nullptr;
       default:
           break;
       }
@@ -941,12 +938,16 @@ public:
       bool isOptimized = spirvFlags & SPIRVDebug::FlagIsOptimized;
       bool isLocal = spirvFlags & SPIRVDebug::FlagIsLocal;
 
+      SmallVector<llvm::Metadata*, 8> Elts;
+      DINodeArray TParams = Builder.getOrCreateArray(Elts);
+      llvm::DITemplateParameterArray TParamsArray = TParams.get();
+
       if (isa<DICompositeType>(scope) || isa<DINamespace>(scope))
           return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
-              isLocal, isDefinition, 0, 0, 0, nullptr, flags, isOptimized));
+              isLocal, isDefinition, 0, 0, 0, nullptr, flags, isOptimized, TParamsArray));
       else
         return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type,
-          isLocal, isDefinition, (unsigned int)line, flags, isOptimized));
+          isLocal, isDefinition, (unsigned int)line, flags, isOptimized, TParamsArray));
   }
 
   bool isTemplateType(SPIRVExtInst* inst)
@@ -961,19 +962,12 @@ public:
 
       OpDebugSubroutineType spType(inst);
       std::vector<Metadata*> Args;
-      auto returnType = BM->getEntry(spType.getReturnType());
-      if(returnType->getOpCode() == Op::OpTypeVoid)
-          Args.push_back(nullptr);
-      else
-        Args.push_back(createType(BM->get<SPIRVExtInst>(spType.getReturnType())));
+      Args.push_back(createType(BM->get<SPIRVExtInst>(spType.getReturnType())));
 
       for (unsigned int i = 0; i != spType.getNumParms(); i++)
       {
           auto parmType = spType.getParmType(i);
-          if (!isTemplateType(static_cast<SPIRVExtInst*>(BM->getValue(parmType))))
-              Args.push_back(createType(static_cast<SPIRVExtInst*>(BM->getValue(parmType))));
-          else
-              Args.push_back(createTypeTemplate(static_cast<SPIRVExtInst*>(BM->getValue(parmType))));
+          Args.push_back(createType(static_cast<SPIRVExtInst*>(BM->getValue(parmType))));
       }
 
       return addMDNode(inst, Builder.createSubroutineType(Builder.getOrCreateTypeArray(Args)));
@@ -1012,6 +1006,10 @@ public:
       bool isLocal = spirvFlags & SPIRVDebug::FlagIsLocal;
       auto funcSPIRVId = sp.getSPIRVFunction();
 
+      DISubprogram* decl = nullptr;
+      if(sp.hasDeclaration())
+        decl = (DISubprogram*)createType(BM->get<SPIRVExtInst>(sp.getDecl()));
+
       SmallVector<llvm::Metadata *, 8> Elts;
       DINodeArray TParams = Builder.getOrCreateArray(Elts);
       llvm::DITemplateParameterArray TParamsArray = TParams.get();
@@ -1024,7 +1022,7 @@ public:
       else
       {
           diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
-              sp.getScopeLine(), flags, isOptimized, TParamsArray);
+              sp.getScopeLine(), flags, isOptimized, TParamsArray, decl);
       }
       FuncIDToDISP[funcSPIRVId] = diSP;
       return addMDNode(inst, diSP);
@@ -1116,13 +1114,10 @@ public:
       {
           return createCompileUnit();
       }
-      else if (inst->getExtOp() == OCLExtOpDbgKind::TypeComposite)
+      else if (inst->getExtOp() == OCLExtOpDbgKind::TypeComposite ||
+          inst->getExtOp() == OCLExtOpDbgKind::TypeTemplate)
       {
-          return createCompositeType(inst);
-      }
-      else if (inst->getExtOp() == OCLExtOpDbgKind::TypeTemplate)
-      {
-          return (DIScope*)createTypeTemplate(inst);
+          return createType(inst);
       }
       else
       {
