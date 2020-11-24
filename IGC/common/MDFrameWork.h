@@ -170,6 +170,7 @@ namespace IGC
         int privateMemoryPerWI = 0;
         bool globalIDPresent = false;
         bool isUniqueEntry = false;
+        bool openCLNoLocalAddresses = false;
 
         std::vector<std::string> UserAnnotations;
 
