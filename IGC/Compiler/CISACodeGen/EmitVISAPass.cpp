@@ -7665,10 +7665,14 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     {
         dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
         m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, 1);
+        CVariable* r;
+        {
+            m_encoder->SetSrcSubReg(0, 1);
+            r = psProgram->GetR1();
+        }
         m_encoder->And(
             dst,
-            m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW),
+            m_currShader->BitCast(r, ISA_TYPE_UW),
             m_currShader->ImmToVariable(BITMASK(4), ISA_TYPE_UW));
         m_encoder->Push();
     }
