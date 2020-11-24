@@ -2668,16 +2668,10 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
   } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
     (void)LI; // no code generated
   } else if (auto GEPI = dyn_cast<GetElementPtrInst>(Inst)) {
-    // check if gepi def is used in intrinsic, otherwise report error
-    auto GepiChecker = [](Use &ui) {
-      auto ci = cast<CallInst>(ui.getUser());
-      Function *Callee = ci->getCalledFunction();
-      unsigned IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
-      return (IntrinID == GenXIntrinsic::genx_print_format_index);
-    };
-    if (!std::all_of(GEPI->use_begin(), GEPI->use_end(), GepiChecker)) {
-      report_fatal_error("gep is supported only for printf");
-    }
+    // Skip genx.print.format.index GEP here.
+    IGC_ASSERT_MESSAGE(isPrintFormatIndexGEP(*GEPI),
+                       "only genx.print.format.index src GEP can still be "
+                       "present at this stage");
 #if (LLVM_VERSION_MAJOR > 8)
   } else if (UnaryOperator *UO = dyn_cast<UnaryOperator>(Inst)) {
     buildUnaryOperator(UO, BI, Mod, DstDesc);

@@ -1988,3 +1988,22 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
   }
   return 1;
 }
+
+bool genx::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
+  return std::all_of(GEP.user_begin(), GEP.user_end(), [](const User *Usr) {
+    if (!isa<CallInst>(Usr))
+      return false;
+    const Function *Callee = cast<CallInst>(Usr)->getCalledFunction();
+    if (!Callee)
+      return false;
+    auto IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
+    return (IntrinID == GenXIntrinsic::genx_print_format_index);
+  });
+}
+
+// Just for convenience.
+bool genx::isPrintFormatIndexGEP(const Value &V) {
+  if (!isa<GetElementPtrInst>(V))
+    return false;
+  return isPrintFormatIndexGEP(cast<GetElementPtrInst>(V));
+}

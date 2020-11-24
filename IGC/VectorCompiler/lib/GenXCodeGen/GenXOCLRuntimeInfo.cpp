@@ -531,11 +531,22 @@ static void appendGlobalVariableData(
   Accumulator.append(&GV, Data.begin(), Data.end());
 }
 
-ModuleDataT getModuleData(const Module &M) {
+// Not every global variable is a real global variable and should be encoded
+// as a global variable.
+// GenX volatile and printf strings are exclusion for now.
+static bool isRealGlobalVariable(const GlobalVariable &GV) {
+  if (GV.hasAttribute("genx_volatile"))
+    return false;
+  return std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
+    return !genx::isPrintFormatIndexGEP(*Usr);
+  });
+}
+
+static ModuleDataT getModuleData(const Module &M) {
   genx::BinaryDataAccumulator<const GlobalVariable *> ConstantData;
   genx::BinaryDataAccumulator<const GlobalVariable *> GlobalData;
   for (auto &GV : M.globals()) {
-    if (GV.hasAttribute("genx_volatile"))
+    if (!isRealGlobalVariable(GV))
       continue;
     if (GV.isConstant())
       appendGlobalVariableData(ConstantData, GV);
