@@ -464,7 +464,7 @@ public:
     unsigned getNumSplitStartID() const {return numSplitStartID;}
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}
     void dump() const;
-
+    void dumpGlobalVarNum() const;
     bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
 
     static bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_VarBase* flagReg, const Options *opt);

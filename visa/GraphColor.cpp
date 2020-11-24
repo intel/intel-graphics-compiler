@@ -3177,48 +3177,6 @@ bool Augmentation::isDefaultMaskSubDeclare(unsigned char* mask, unsigned int lb,
 }
 
 
-void Augmentation::markNonDefaultMaskForSubDcl(G4_Declare *dcl, unsigned lb, unsigned rb, unsigned int simdSize)
-{
-    unsigned char* parentMask = gra.getMask(dcl);
-
-    if (parentMask == NULL)
-    {
-        return;
-    }
-
-    auto dclSubDclSize = gra.getSubDclSize(dcl);
-    for (unsigned i = 0; i < dclSubDclSize; i++)
-    {
-        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-        unsigned leftBound = gra.getSubOffset(subDcl);
-        unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
-
-        if (!(rb < leftBound || rightBound < lb))  //There is overlap
-        {
-            unsigned char* mask = gra.getMask(subDcl);
-            if (mask == NULL)
-            {
-                mask = parentMask + leftBound;
-                gra.setMask(subDcl, mask);
-            }
-
-            if (lb <= leftBound && rightBound <= rb)
-            {
-                if (gra.getHasNonDefaultMaskDef(subDcl) == false &&
-                    isDefaultMaskSubDeclare(parentMask, lb, rb, subDcl, simdSize) == false)
-                {
-                    gra.setAugmentationMask(subDcl, AugmentationMasks::NonDefault);
-                }
-            }
-            else  //With local varaible splitting, it should not go here.
-            {
-                ASSERT_USER(false, "Wrong local varible splitting happened!");
-                gra.setAugmentationMask(subDcl, AugmentationMasks::NonDefault);
-            }
-        }
-    }
-}
-
 bool Augmentation::verifyMaskIfInit(G4_Declare* dcl, AugmentationMasks mask)
 {
     // Return true if dcl mask is either undetermined or same as mask
@@ -4633,6 +4591,40 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask, Augmentation
 //
 // Mark interference between newDcl and other incompatible dcls in current active lists.
 //
+void Augmentation::addSIMDIntfDclForCallSite(MASK_Declares* maskDeclares)
+{
+    for (auto defaultDcl : defaultMask)
+    {
+        maskDeclares->defaultMask->set(defaultDcl->getRegVar()->getId(), true);
+    }
+
+    for (auto nonDefaultDcl : nonDefaultMask)
+    {
+        maskDeclares->noneDefaultMask->set(nonDefaultDcl->getRegVar()->getId(), true);
+    }
+}
+
+void Augmentation::addSIMDIntfForRetDclares(G4_Declare* newDcl)
+{
+    auto dclIt = retDeclares.find(newDcl);
+    MASK_Declares* mask = nullptr;
+    if (dclIt == retDeclares.end())
+    {
+        mask = (MASK_Declares*)m.alloc(sizeof(MASK_Declares));
+        mask->defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
+        mask->noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
+        retDeclares[newDcl] = mask;
+    }
+    else
+    {
+        mask = dclIt->second;
+    }
+    addSIMDIntfDclForCallSite(mask);
+}
+
+//
+// Mark interference between newDcl and other incompatible dcls in current active lists.
+//
 void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
 {
     auto newDclAugMask = gra.getAugmentationMask(newDcl);
@@ -4710,27 +4702,21 @@ void Augmentation::buildSIMDIntfAll(G4_Declare* newDcl)
 
         G4_Declare* varDcl = NULL;
 
-        if (liveAnalysis.livenessClass(G4_GRF))
+        if (liveAnalysis.livenessClass(G4_GRF)) //For return value
         {
             G4_INST* callInst = (*callDclMapIt).second.first;
             varDcl = callInst->getDst()->getBase()->asRegVar()->getDeclare();
-            buildSIMDIntfDcl(varDcl, false);
+            addSIMDIntfForRetDclares(varDcl);
         }
 
         unsigned int funcId = (*callDclMapIt).second.second;
-        for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
-        {
-            if (liveAnalysis.maydef[funcId].isSet(i))
-            {
-                varDcl = lrs[i]->getDcl();
-                buildSIMDIntfDcl(varDcl, true);
-            }
-        }
+        addSIMDIntfDclForCallSite(&callsiteDeclares[funcId]);
+
+        return;
     }
-    else
-    {
-        buildSIMDIntfDcl(newDcl, false);
-    }
+
+    buildSIMDIntfDcl(newDcl, false);
+    return;
 }
 
 //
@@ -4812,6 +4798,104 @@ void Augmentation::buildInterferenceIncompatibleMask()
 #endif
         }
     }
+
+    unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
+    for (unsigned int i = 0; i < numFnId; i++)
+    {
+        buildInteferenceForCallsite(i);
+    }
+    buildInteferenceForRetDeclares();
+}
+
+void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask)
+{
+
+    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+    {
+        auto newDclAugMask = gra.getAugmentationMask(newDcl);
+
+        if (mask->defaultMask->isSet(i))
+        {
+            G4_Declare* defaultDcl = lrs[i]->getDcl();
+            if (gra.getAugmentationMask(defaultDcl) != newDclAugMask)
+            {
+                handleSIMDIntf(defaultDcl, newDcl, true);
+            }
+            else
+            {
+                if (liveAnalysis.livenessClass(G4_GRF) &&
+                    // Populate compatible sparse intf data structure
+                    // only for weak edges.
+                    weakEdgeNeeded(gra.getAugmentationMask(defaultDcl), newDclAugMask))
+                {
+                    if (defaultDcl->getRegVar()->isPhyRegAssigned() &&
+                        newDcl->getRegVar()->isPhyRegAssigned())
+                    {
+                        continue;
+                    }
+
+                    if (intf.isStrongEdgeBetween(defaultDcl, newDcl))
+                    {
+                        // No need to add weak edge
+                        continue;
+                    }
+
+                    // defaultDcl and newDcl are compatible live-ranges and can have weak edge in intf graph
+                    auto it = intf.compatibleSparseIntf.find(defaultDcl);
+                    if (it != intf.compatibleSparseIntf.end())
+                    {
+                        it->second.push_back(newDcl);
+                    }
+                    else
+                    {
+                        std::vector<G4_Declare*> v(1, newDcl);
+                        intf.compatibleSparseIntf.insert(
+                            std::make_pair(defaultDcl, v));
+                    }
+
+                    it = intf.compatibleSparseIntf.find(newDcl);
+                    if (it != intf.compatibleSparseIntf.end())
+                    {
+                        it->second.push_back(defaultDcl);
+                    }
+                    else
+                    {
+                        std::vector<G4_Declare*> v(1, defaultDcl);
+                        intf.compatibleSparseIntf.insert(
+                            std::make_pair(newDcl, v));
+                    }
+                }
+            }
+        }
+
+        // Mark interference among non-default mask variables
+        if (mask->noneDefaultMask->isSet(i))
+        {
+            G4_Declare* nonDefaultDcl = lrs[i]->getDcl();
+            // Non-default masks are different so mark interference
+            handleSIMDIntf(nonDefaultDcl, newDcl, true);
+        }
+    }
+}
+
+void Augmentation::buildInteferenceForCallsite(int fnId)
+{
+    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+    {
+        if (liveAnalysis.maydef[fnId].isSet(i))
+        {
+            G4_Declare* varDcl = lrs[i]->getDcl();
+            buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[fnId]);
+        }
+    }
+}
+
+void Augmentation::buildInteferenceForRetDeclares()
+{
+    for (auto retDclIt : retDeclares)
+    {
+        buildInteferenceForCallSiteOrRetDeclare(retDclIt.first, retDclIt.second);
+    }
 }
 
 void Augmentation::augmentIntfGraph()
@@ -4823,6 +4907,18 @@ void Augmentation::augmentIntfGraph()
         if (!kernel.getOption(vISA_DumpRegChart))
         {
             return;
+        }
+    }
+
+    unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
+    if (numFnId)
+    {
+        callsiteDeclares = (MASK_Declares*)m.alloc(sizeof(MASK_Declares) * numFnId);
+
+        for (unsigned i = 0; i < numFnId; i++)
+        {
+            callsiteDeclares[i].defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
+            callsiteDeclares[i].noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
         }
     }
 
@@ -9501,7 +9597,7 @@ int GlobalRA::coloringRegAlloc()
     {
         if (builder.getOption(vISA_RATrace))
         {
-            std::cout << "--GRF RA iteration " << iterationNo << "--\n";
+            std::cout << "--GRF RA iteration " << iterationNo << "--" << kernel.getName() << "\n";
         }
         setIterNo(iterationNo);
 
@@ -9566,6 +9662,7 @@ int GlobalRA::coloringRegAlloc()
         startTimer(TimerID::GLOBAL_RA_LIVENESS);
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
         liveAnalysis.computeLiveness();
+        //liveAnalysis.dumpGlobalVarNum();
         if (builder.getOption(vISA_dumpLiveness))
         {
             liveAnalysis.dump();

@@ -275,6 +275,12 @@ typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned int>>::it
 //
 namespace vISA
 {
+    typedef struct _MASK_Declares
+    {
+        BitSet* defaultMask;
+        BitSet* noneDefaultMask;
+    } MASK_Declares;
+
     class Augmentation
     {
     private:
@@ -288,6 +294,8 @@ namespace vISA
         std::vector<G4_Declare*> sortedIntervals;
         std::list<G4_Declare*> defaultMask;
         std::list<G4_Declare*> nonDefaultMask;
+        MASK_Declares* callsiteDeclares;
+        std::map <G4_Declare*, MASK_Declares*> retDeclares;
         Mem_Manager& m;
 
         bool updateDstMaskForScatter(G4_INST* inst, unsigned char* mask);
@@ -295,7 +303,6 @@ namespace vISA
         static unsigned int getByteSizeFromMask(AugmentationMasks type);
         bool isDefaultMaskDcl(G4_Declare* dcl, unsigned int simdSize, AugmentationMasks type);
         bool isDefaultMaskSubDeclare(unsigned char* mask, unsigned int lb, unsigned int rb, G4_Declare* dcl, unsigned int simdSize);
-        void markNonDefaultMaskForSubDcl(G4_Declare *dcl, unsigned lb, unsigned rb, unsigned int simdSize);
         bool verifyMaskIfInit(G4_Declare* dcl, AugmentationMasks mask);
         bool checkGRFPattern3(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
             unsigned int lb, unsigned int rb, unsigned int execSize);
@@ -320,11 +327,17 @@ namespace vISA
         bool isConsecutiveBits(G4_Declare* dcl, unsigned int size);
         bool isCompatible(G4_Declare* testDcl, G4_Declare* biggerDcl);
         void buildInterferenceIncompatibleMask();
+        void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask);
+        void buildInteferenceForCallsite(int fnId);
+        void buildInteferenceForRetDeclares();
         void expireIntervals(unsigned int startIdx);
         void buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall);
         void buildSIMDIntfAll(G4_Declare* newDcl);
         void handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, bool isCall);
         bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
+
+        void addSIMDIntfDclForCallSite(MASK_Declares* maskDeclares);
+        void addSIMDIntfForRetDclares(G4_Declare* newDcl);
 
     public:
         Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* ranges[], GlobalRA& g);

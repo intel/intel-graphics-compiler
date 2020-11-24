@@ -2354,6 +2354,38 @@ void LivenessAnalysis::dump() const
 }
 
 //
+// dump which vars are live at the entry of BB
+//
+void LivenessAnalysis::dumpGlobalVarNum() const
+{
+    BitSet global_def_out = BitSet(numVarId, false);
+    BitSet global_use_in = BitSet(numVarId, false);
+
+    for (auto bb : fg)
+    {
+        BitSet global_in = use_in[bb->getId()];
+        BitSet global_out = def_out[bb->getId()];
+        global_in &= def_in[bb->getId()];
+        global_use_in |= global_in;
+        global_out &= use_out[bb->getId()];
+        global_def_out |= global_out;
+    }
+
+    int global_var_num = 0;
+    for (auto var : vars)
+    {
+        if (var->isRegAllocPartaker())
+        {
+            if (global_use_in.isSet(var->getId()) || global_def_out.isSet(var->getId()))
+            {
+                global_var_num ++;
+            }
+        }
+    }
+    std::cerr << "total var num: " << numVarId << " global var num: " << global_var_num << "\n";
+}
+
+//
 // return true if var is live at the entry of bb
 // check both use_in and def_in, if one condition fails then var is not in the live range
 //
