@@ -89,8 +89,7 @@ namespace IGC
             // and ElementComponentEnableMask is not full == packing occurs
             // right now only OGL is affected, so there is special disableVertexComponentPacking flag set by GLSL FE
             // if there is double on input to vertex shader
-            && !m_ModuleMetadata->compOpt.disableVertexComponentPacking
-            ;
+            && !m_ModuleMetadata->compOpt.disableVertexComponentPacking;
 
         m_ElementComponentPackingEnabled = packedInput;
 
@@ -212,8 +211,8 @@ namespace IGC
 
         // Implement workaround code. We cannot have all component enable masks equal to zero
         // so we need to enable one dummy component.
-        //WaVFComponentPackingRequiresEnabledComponent is made default behavior
-        //3DSTATE_VF_COMPONENT_PACKING: At least one component of a "valid"
+        // WaVFComponentPackingRequiresEnabledComponent is made default behavior
+        // 3DSTATE_VF_COMPONENT_PACKING: At least one component of a "valid"
         //Vertex Element must be enabled.
         bool anyComponentEnabled = false;
         for (int i = 0; i < MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE; ++i)
@@ -252,8 +251,11 @@ namespace IGC
     /// This is the size of VS URB entry consisting of the header data and attribute data.
     OctEltUnit CVertexShader::GetURBAllocationSize() const
     {
+        const size_t payloadSize = m_Platform->getWATable().Wa_16011983264 ?
+            std::max(setup.size(), size_t(1)) :
+            setup.size();
         // max index of the variables in the payload
-        const EltUnit maxSetupVarNum(isInputsPulled ? 132 : setup.size());
+        const EltUnit maxSetupVarNum(isInputsPulled ? size_t(132) : payloadSize);
         const OctEltUnit maxSetupOct = round_up<OctElement>(maxSetupVarNum);
         // URB allocation size is the maximum of the input and ouput entry size.
         return std::max(round_up<OctElement>(m_properties.m_URBOutputLength), maxSetupOct);
@@ -262,7 +264,10 @@ namespace IGC
     OctEltUnit CVertexShader::GetVertexURBEntryReadLength() const
     {
         // max index of the variables in the payload
-        const EltUnit maxSetupVarNum(setup.size());
+        const EltUnit maxSetupVarNum(
+            m_Platform->getWATable().Wa_16011983264 ?
+             std::max(setup.size(), size_t(1)) :
+             setup.size());
 
         // rounded up to 8-element size
         return round_up<OctElement>(maxSetupVarNum);
