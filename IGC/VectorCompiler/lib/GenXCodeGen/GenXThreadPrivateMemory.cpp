@@ -394,6 +394,14 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
              GenXIntrinsic::genx_svm_gather)) {
       return Ptr;
     }
+  } else if (auto *LI = dyn_cast<LoadInst>(Ptr)) {
+    // meeting load means we're processing load's user earlier
+    // than the load itself, which is possible because we could
+    // reach load's user earlier in the du chains thru some other value
+    // generate cast for now
+    auto *Cast = CastInst::Create(Instruction::PtrToInt, LI, MemTy, "");
+    Cast->insertAfter(LI);
+    return Cast;
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(MemTy, 0);
 
