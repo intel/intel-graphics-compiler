@@ -135,10 +135,10 @@ namespace {
             // Check how that vector is used.
             unsigned UseCount = 0;
             for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
-                Instruction* I = dyn_cast<Instruction>(*UI);
-                if (!I || isInstructionTriviallyDead(I))
+                Instruction* UseI = dyn_cast<Instruction>(*UI);
+                if (!UseI || isInstructionTriviallyDead(UseI))
                     continue;
-                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(I);
+                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(UseI);
                 if (!EEI)
                     return int_cast<unsigned>(VecTy->getNumElements());
                 Value* Idx = EEI->getIndexOperand();
@@ -164,10 +164,10 @@ namespace {
             // Check how that vector is used.
             unsigned UseCount = 0;
             for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI) {
-                Instruction* I = dyn_cast<Instruction>(*UI);
-                if (!I || isInstructionTriviallyDead(I))
+                Instruction* UseI = dyn_cast<Instruction>(*UI);
+                if (!UseI || isInstructionTriviallyDead(UseI))
                     continue;
-                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(I);
+                ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(UseI);
                 if (!EEI)
                     return unsigned(VecTy->getNumElements()) * EltByte;
                 Value* Idx = EEI->getIndexOperand();

@@ -34,13 +34,15 @@
 namespace IGC
 {
     constexpr unsigned int SIMD_PRESSURE_MULTIPLIER = 8;
+    constexpr unsigned int OVERALL_PRESSURE_UPBOUND = 512;
 
     class RegisterPressureEstimate : public llvm::FunctionPass
     {
     public:
         static char ID;
         RegisterPressureEstimate()
-            : FunctionPass(ID), m_pFunc(nullptr), LI(nullptr), WI(nullptr), m_available(false)
+            : FunctionPass(ID), m_DL(nullptr), m_pFunc(nullptr), LI(nullptr),
+            WI(nullptr), m_available(false), MaxAssignedNumber(0)
         {
             initializeRegisterPressureEstimatePass(*llvm::PassRegistry::getPassRegistry());
         }
@@ -171,7 +173,7 @@ namespace IGC
 
         /// \brief Used to fetch number on instructions and BB
         unsigned getAssignedNumberForInst(llvm::Instruction*);
-        unsigned getMaxAssignedNumberForFunction();
+        unsigned getMaxAssignedNumberForFunction() { return MaxAssignedNumber; }
         unsigned getMaxAssignedNumberForBB(llvm::BasicBlock*);
         unsigned getMinAssignedNumberForBB(llvm::BasicBlock* pBB);
 
@@ -187,14 +189,11 @@ namespace IGC
         /// The return value of true indicates that live ranges are available for use.
         bool buildLiveIntervals(bool RemoveLR = false);
 
-        /// \brief Perform a function-wide liveness analysis.
-        void analyzeLifetime();
-
         /// \brief Return the register pressure for the whole function.
-        unsigned getRegisterPressure() const;
+        unsigned getMaxRegisterPressure() const;
 
         /// \brief Return the register pressure for a basic block.
-        unsigned getRegisterPressure(llvm::BasicBlock* BB) const;
+        unsigned getMaxRegisterPressure(llvm::BasicBlock* BB) const;
 
         void printRegisterPressureInfo(bool Detailed = false,
             const char* msg = "") const;
@@ -220,6 +219,21 @@ namespace IGC
         /// \brief Return the register pressure at location specified by Inst.
         unsigned getRegisterPressure(llvm::Instruction* Inst) const;
 
+        unsigned getValueBytes(llvm::Value* V) const
+        {
+            auto Ty = V->getType();
+            if (Ty->isVoidTy())
+                return 0;
+            auto VTy = llvm::dyn_cast<llvm::VectorType>(Ty);
+            auto eltTy = VTy ? VTy->getElementType() : Ty;
+            uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+            uint32_t eltBits = (uint32_t)m_DL->getTypeSizeInBits(eltTy);
+            uint32_t nBytes = nelts * ((eltBits + 7) / 8);
+            unsigned int simdness =
+                (WI && WI->isUniform(V)) ? 1 : SIMD_PRESSURE_MULTIPLIER;
+            return simdness * nBytes;
+        }
+
         LiveRange* createLiveRange()
         {
             LiveRange* LR = new LiveRange();
@@ -228,6 +242,7 @@ namespace IGC
         }
 
     private:
+        const llvm::DataLayout* m_DL;
         /// The function being analyzed.
         llvm::Function* m_pFunc;
 
@@ -247,6 +262,9 @@ namespace IGC
         bool m_available;
 
         std::vector<LiveRange*> m_pLiveRangePool;
+
+        /// the max assigned number for live-range
+        unsigned int MaxAssignedNumber;
 
         llvm::DenseMap<unsigned, unsigned> m_pRegisterPressureByInstruction;
     };

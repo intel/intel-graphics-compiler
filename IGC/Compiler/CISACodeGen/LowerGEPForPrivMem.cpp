@@ -180,9 +180,14 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
     m_pDL = &F.getParent()->getDataLayout();
     m_pRegisterPressureEstimate = &getAnalysis<RegisterPressureEstimate>();
     IGC_ASSERT(nullptr != m_pRegisterPressureEstimate);
+    // if no live range info
+    if (!m_pRegisterPressureEstimate->isAvailable())
+    {
+        return false;
+    }
     m_pRegisterPressureEstimate->buildRPMapPerInstruction();
-    m_allocasToPrivMem.clear();
 
+    m_allocasToPrivMem.clear();
     visit(F);
 
     std::vector<llvm::AllocaInst*>& allocaToHande = m_allocasToPrivMem;
@@ -312,11 +317,6 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     if (allocaSize > allowedAllocaSizeInBytes)
     {
         return false;
-    }
-    // if no live range info
-    if (!m_pRegisterPressureEstimate->isAvailable())
-    {
-        return true;
     }
 
     // get all the basic blocks that contain the uses of the alloca

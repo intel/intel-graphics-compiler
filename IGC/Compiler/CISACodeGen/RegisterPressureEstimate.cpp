@@ -27,6 +27,7 @@
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -54,11 +55,11 @@ namespace IGC
 
     bool RegisterPressureEstimate::runOnFunction(Function& F)
     {
+        m_DL = &F.getParent()->getDataLayout();
         m_pFunc = &F;
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         WI = &getAnalysis<WIAnalysis>();
         m_available = buildLiveIntervals(true);
-
         return false;
     }
 
@@ -78,6 +79,10 @@ namespace IGC
         {
             Argument* Arg = &(*AI);
             m_pNumbers[Arg] = Num;
+            if (!Arg->use_empty())
+            {
+                getOrCreateLiveRange(Arg);
+            }
         }
 
         // Assign a number to basic blocks and instructions.
@@ -93,7 +98,7 @@ namespace IGC
                 {
                     continue;
                 }
-                else if (isa<PHINode>(Inst))
+                if (isa<PHINode>(Inst))
                 {
                     m_pNumbers[Inst] = BlockNum;
                 }
@@ -101,8 +106,14 @@ namespace IGC
                 {
                     m_pNumbers[Inst] = Num++;
                 }
+                if (!Inst->use_empty())
+                {
+                    getOrCreateLiveRange(Inst);
+                }
             }
         }
+
+        MaxAssignedNumber = Num;
     }
 
     /// Construct a string from a unsigned integer with the intended width.
@@ -114,7 +125,6 @@ namespace IGC
         {
             Str.insert(Str.begin(), Width - Str.size(), ' ');
         }
-
         return Str;
     }
 
@@ -158,18 +168,6 @@ namespace IGC
     unsigned RegisterPressureEstimate::getAssignedNumberForInst(Instruction* pInst)
     {
         return m_pNumbers[pInst];
-    }
-
-    unsigned RegisterPressureEstimate::getMaxAssignedNumberForFunction()
-    {
-        auto& BBs = m_pFunc->getBasicBlockList();
-        unsigned maxInstructionNumber = 0;
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
-        {
-            BasicBlock* pBB = &*BI;
-            maxInstructionNumber = (m_pNumbers[&pBB->back()] > maxInstructionNumber) ? m_pNumbers[&pBB->back()] : maxInstructionNumber;
-        }
-        return maxInstructionNumber;
     }
 
     unsigned RegisterPressureEstimate::getMaxAssignedNumberForBB(BasicBlock* pBB)
@@ -282,29 +280,52 @@ namespace IGC
         clear(RemoveLR);
 
         // Assign a number to arguments, basic blocks and instructions.
+        // build the live-range pool.
         assignNumbers();
 
-        // A side data structure to build live intervals.
+        unsigned OverallEstimate = 0;
+        // quick estimate
+        for (auto VI = m_pLiveRanges.begin(), VE = m_pLiveRanges.end();
+            VI != VE; ++VI)
+        {
+            auto V = VI->first;
+            unsigned RangeStart = m_pNumbers[V];
+            unsigned MaxRange = 0;
+            // need to find the last use
+            for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI)
+            {
+                Instruction* UseI = dyn_cast<Instruction>(*UI);
+                if (!UseI || isInstructionTriviallyDead(UseI))
+                    continue;
+                unsigned RangeEnd = RangeStart;
+                if (PHINode* PN = dyn_cast<PHINode>(UseI))
+                {
+                    // PHI nodes use the operand in the predecessor block,
+                    // not the block with the PHI.
+                    Use& U = UI.getUse();
+                    unsigned num = PHINode::getIncomingValueNumForOperand(U.getOperandNo());
+                    auto UseBB = PN->getIncomingBlock(num);
+                    RangeEnd = m_pNumbers[&UseBB->back()] + 1;
+                }
+                else
+                {
+                    RangeEnd = m_pNumbers[UseI];
+                }
+                if (RangeEnd > RangeStart && RangeEnd - RangeStart > MaxRange)
+                    MaxRange = RangeEnd - RangeStart;
+                else if (RangeStart > RangeEnd && RangeStart - RangeEnd > MaxRange)
+                    MaxRange = RangeStart - RangeEnd;
+            }
+            OverallEstimate += MaxRange * getValueBytes(V);
+        }
+        OverallEstimate = iSTD::Round(OverallEstimate, SIMD_PRESSURE_MULTIPLIER) /
+            SIMD_PRESSURE_MULTIPLIER;
+        OverallEstimate = OverallEstimate / getMaxAssignedNumberForFunction();
+        if (OverallEstimate > OVERALL_PRESSURE_UPBOUND)
+            return false;
+
         DenseMap<BasicBlock*, std::set<Value*>> BlockLiveMap;
         auto& BBs = m_pFunc->getBasicBlockList();
-
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
-        {
-            for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II)
-            {
-                Instruction* Inst = &*II;
-                if (isa<DbgInfoIntrinsic>(Inst))
-                {
-                    continue;
-                }
-                if (Inst->use_empty())
-                {
-                    continue;
-                }
-                getOrCreateLiveRange(Inst);
-            }
-        }
-
         // Top level loop to visit each block once in reverse order.
         for (auto BI = BBs.rbegin(), BE = BBs.rend(); BI != BE; ++BI)
         {
@@ -358,7 +379,6 @@ namespace IGC
                     LR->addSegment(BlockNum, End);
                 }
             }
-
             // for each operation op of b in reverse order do
             //     for each output operand opnd of op do
             //         intervals[opnd].setFrom(op.id)
@@ -487,16 +507,17 @@ namespace IGC
         // Segments are sorted.
         for (auto I = m_pLiveRanges.begin(), E = m_pLiveRanges.end(); I != E; ++I)
         {
+            Value* V = I->first;
+            unsigned int pressure = getValueBytes(V);
             for (auto& Seg : I->second->Segments)
             {
                 for (unsigned number = Seg.Begin; number < Seg.End; number++)
                 {
-                    Value* V = I->first;
-                    unsigned int simdness = (WI && WI->isUniform(V)) ? 1 : SIMD_PRESSURE_MULTIPLIER;
-                    m_pRegisterPressureByInstruction[number] += ((unsigned int)V->getType()->getPrimitiveSizeInBits() / 8) * simdness;
+                    m_pRegisterPressureByInstruction[number] += pressure;
                 }
             }
         }
+        return;
     }
 
     unsigned RegisterPressureEstimate::getRegisterPressure(Instruction* Inst) const
@@ -516,8 +537,7 @@ namespace IGC
                 if (I->second->contains(N))
                 {
                     Value* V = I->first;
-                    unsigned int simdness = (WI && WI->isUniform(V)) ? 1 : SIMD_PRESSURE_MULTIPLIER;
-                    Pressure += simdness * ((unsigned int)V->getType()->getPrimitiveSizeInBits() / 8);
+                    Pressure += getValueBytes(V);
                 }
             }
 
@@ -528,9 +548,8 @@ namespace IGC
         return 0;
     }
 
-    unsigned RegisterPressureEstimate::getRegisterPressure() const
+    unsigned RegisterPressureEstimate::getMaxRegisterPressure() const
     {
-        // TODO: Make this more efficient.
         unsigned MaxPressure = 0;
         for (auto BI = m_pFunc->begin(), BE = m_pFunc->end(); BI != BE; ++BI)
         {
@@ -544,7 +563,7 @@ namespace IGC
         return MaxPressure;
     }
 
-    unsigned RegisterPressureEstimate::getRegisterPressure(BasicBlock* BB) const
+    unsigned RegisterPressureEstimate::getMaxRegisterPressure(BasicBlock* BB) const
     {
         unsigned RP = 0;
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
@@ -559,7 +578,7 @@ namespace IGC
     (bool Detailed,
         const char* msg) const
     {
-        unsigned MaxRP = getRegisterPressure();
+        unsigned MaxRP = getMaxRegisterPressure();
         if (Detailed)
         {
             for (inst_iterator I = inst_begin(m_pFunc), E = inst_end(m_pFunc); I != E; ++I)
