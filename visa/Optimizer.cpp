@@ -451,7 +451,52 @@ void Optimizer::cloneSampleInst()
                     auto newInst = inst->cloneInst();
                     inst->setPredicate(builder.createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0));
                     newInst->setPredicate(builder.createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0));
-                    bb->insertAfter(I, newInst);
+                    auto newInstIt = bb->insertAfter(I, newInst);
+
+                    uint16_t rspLen = inst->asSendInst()->getMsgDesc()->ResponseLength();
+                    // If Pixel Null Mask feedback is requested sampler message
+                    // has header, all data channels enabled and an additional
+                    // GRF of writeback payload with Pixel Null Mask.
+                    // Possible message response lengths are:
+                    // - 5 GRFs for all simd8 messages and for simd16 messages
+                    //   with 16-bit return format
+                    // - 9 GRFs for simd16 message with 32-bit return format
+                    // It is enough to check send's response length to determine
+                    // if Pixel Null Mask feedback is enabled.
+                    assert(inst->getExecSize() == g4::SIMD8 || inst->getExecSize() == g4::SIMD16);
+                    uint16_t pixelNullMaskRspLen =
+                        (inst->getExecSize() == g4::SIMD16 && !sendInst->getMsgDesc()->is16BitReturn()) ? 9 : 5;
+
+                    if (sendInst->getMsgDesc()->isHeaderPresent() &&
+                        rspLen == pixelNullMaskRspLen)
+                    {
+                        // Pixel Null Mask is in the first word of the last GRF
+                        // of send's writeback message. This mask has bits set
+                        // to 0 for pixels in which a null page was source for
+                        // at least one texel. Otherwise bits are set to 1.
+
+                        // Create a copy of Pixel Null Mask from the first send
+                        // writeback message and AND it with the mask from the
+                        // second send.
+                        G4_Declare* maskCopy = builder.createTempVar(1, Type_UW, Any);
+                        G4_Declare* maskAlias = builder.createTempVar(1, Type_UW, Any);
+                        maskAlias->setAliasDeclare(
+                            inst->getDst()->getBase()->asRegVar()->getDeclare(),
+                            (inst->getDst()->getRegOff() + rspLen - 1) * numEltPerGRF(Type_UB));
+                        G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(
+                            maskAlias, builder.getRegionScalar());
+                        G4_DstRegRegion* dst = builder.createDst(maskCopy->getRegVar(), Type_UW);
+                        G4_INST* movInst = builder.createMov(
+                            g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+                        bb->insertAfter(I, movInst);
+                        G4_SrcRegRegion* src0 = builder.createSrcRegRegion(*src);
+                        G4_SrcRegRegion* src1 = builder.Create_Src_Opnd_From_Dcl(
+                            maskCopy, builder.getRegionScalar());
+                        dst = builder.createDst(maskAlias->getRegVar(), Type_UW);
+                        G4_INST* andInst = builder.createBinOp(G4_and, g4::SIMD1,
+                            dst, src0, src1, InstOpt_WriteEnable, false);
+                        bb->insertAfter(newInstIt, andInst);
+                    }
                 }
                 else if(isEval && cloneEvaluateSample && messageType != 0x1F)
                 {
