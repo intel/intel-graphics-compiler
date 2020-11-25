@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenXOCLRuntimeInfo.h"
 
+#include "ConstantEncoder.h"
 #include "GenX.h"
 #include "GenXModule.h"
 #include "GenXSubtarget.h"
@@ -500,33 +501,11 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB) {
   return std::move(GenBinary);
 }
 
-static std::vector<char> encodeConstantInt(const ConstantInt &ConstInt) {
-  std::vector<char> Data;
-  IGC_ASSERT_MESSAGE(ConstInt.getType()->getPrimitiveSizeInBits() ==
-                         genx::ByteBits,
-                     "only i8 type is yet supported");
-  Data.push_back(ConstInt.getZExtValue());
-  return std::move(Data);
-}
-
-static std::vector<char>
-encodeConstantDataArray(const ConstantDataArray &ConstArray) {
-  StringRef Data = ConstArray.getRawDataValues();
-  return {Data.begin(), Data.end()};
-}
-
-static std::vector<char> encodeConstant(const Constant &Initializer) {
-  if (isa<ConstantInt>(Initializer))
-    return encodeConstantInt(cast<ConstantInt>(Initializer));
-  IGC_ASSERT_MESSAGE(isa<ConstantDataArray>(Initializer),
-                     "only constant ints and arrays are yet supported");
-  return encodeConstantDataArray(cast<ConstantDataArray>(Initializer));
-}
-
 static void appendGlobalVariableData(
     genx::BinaryDataAccumulator<const GlobalVariable *> &Accumulator,
-    const GlobalVariable &GV) {
-  auto Data = encodeConstant(*GV.getInitializer());
+    const GlobalVariable &GV, const DataLayout &DL) {
+  std::vector<char> Data;
+  vc::encodeConstant(*GV.getInitializer(), DL, std::back_inserter(Data));
   // FIXME: alignment
   Accumulator.append(&GV, Data.begin(), Data.end());
 }
@@ -549,9 +528,9 @@ static ModuleDataT getModuleData(const Module &M) {
     if (!isRealGlobalVariable(GV))
       continue;
     if (GV.isConstant())
-      appendGlobalVariableData(ConstantData, GV);
+      appendGlobalVariableData(ConstantData, GV, M.getDataLayout());
     else
-      appendGlobalVariableData(GlobalData, GV);
+      appendGlobalVariableData(GlobalData, GV, M.getDataLayout());
   }
   return {std::move(ConstantData), std::move(GlobalData)};
 }

@@ -2007,3 +2007,14 @@ bool genx::isPrintFormatIndexGEP(const Value &V) {
     return false;
   return isPrintFormatIndexGEP(cast<GetElementPtrInst>(V));
 }
+
+std::size_t genx::getStructElementPaddedSize(unsigned ElemIdx,
+                                             unsigned NumOperands,
+                                             const StructLayout &Layout) {
+  IGC_ASSERT_MESSAGE(ElemIdx < NumOperands,
+                     "wrong argument: invalid index into a struct");
+  if (ElemIdx == NumOperands - 1)
+    return Layout.getSizeInBytes() - Layout.getElementOffset(ElemIdx);
+  return Layout.getElementOffset(ElemIdx + 1) -
+         Layout.getElementOffset(ElemIdx);
+}

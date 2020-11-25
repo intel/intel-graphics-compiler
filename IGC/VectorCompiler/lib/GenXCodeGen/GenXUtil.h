@@ -644,6 +644,21 @@ public:
 bool isPrintFormatIndexGEP(const GetElementPtrInst &GEP);
 bool isPrintFormatIndexGEP(const Value &V);
 
+// Get size of an struct field including the size of padding for the next field,
+// or the tailing padding.
+// For example for the 1st element of { i8, i32 } 4 bytes will be returned
+// (likely in the most of layouts).
+//
+// Arguments:
+//    \p ElemIdx - index of a struct field
+//    \p NumOperands - the number of fields in struct
+//                     (StructLayout doesn't expose it)
+//    \p StructLayout - struct layout
+//
+// Returns the size in bytes.
+std::size_t getStructElementPaddedSize(unsigned ElemIdx, unsigned NumOperands,
+                                       const StructLayout &Layout);
+
 } // namespace genx
 } // namespace llvm
 
