@@ -71,86 +71,124 @@ endif()
 if(INSTALL_SPIRVDLL)
 if(NOT DEFINED SPIRV_PREBUILD_DIR AND NOT WIN32)
 include(ExternalProject)
-set(SPIRV_COPY "${CMAKE_CURRENT_BINARY_DIR}/llvm-spirv-vc")
-if(DEFINED SPIRV_SRC)
-  if(NOT EXISTS ${SPIRV_SRC})
-    message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRV_SRC}")
-  endif()
-  set(SPIRV_SOURCES ${SPIRV_SRC})
-else()
-  set(SPIRV_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project/llvm/projects/llvm-spirv")
-  if(NOT EXISTS ${SPIRV_SOURCES})
-    message(STATUS "[VC] Cannot find SPIRVDLL sources in ${SPIRV_SOURCES}")
-    set(SPIRV_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-spirv")
-  endif()
-  if(NOT EXISTS ${SPIRV_SOURCES})
-    message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRV_SOURCES}")
-  endif()
-endif()
-
-if(NOT DEFINED LLVM_VERSION_MAJOR)
-  message(FATAL_ERROR "[VC] Cannot find LLVM version (LLVM_VERSION_MAJOR)")
-elseif(${LLVM_VERSION_MAJOR} EQUAL 9)
-  message(STATUS "[VC] Found LLVM version 9")
-  set(SPIRV_REV_PATCH 4aafd4768e4fea7b6e7481d07bc31aefc1c7bacc)
-  set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-9/)
-  set(SPRIV_BRANCH_PATCH spirvdll_90)
-elseif(${LLVM_VERSION_MAJOR} EQUAL 10)
-  message(STATUS "[VC] Found LLVM version 10")
-  set(SPIRV_REV_PATCH 4f1a3270f2431aa98f1bff30d1a32c9d8f4729bf)
-  set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-10/)
-  set(SPRIV_BRANCH_PATCH spirvdll_100)
- elseif(${LLVM_VERSION_MAJOR} EQUAL 11)
-   message(STATUS "[VC] Found LLVM version 11")
-   set(SPIRV_REV_PATCH 73dfc6d450ad0438558bee20505c426319f7624b)
-   set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-11/)
-   set(SPRIV_BRANCH_PATCH spirvdll_110)
-else()
-  message(FATAL_ERROR "[VC] Found unsupported version of LLVM (LLVM_VERSION_MAJOR is set to ${LLVM_VERSION_MAJOR})")
-endif()
-
 set(MAKE_EXEC ${CMAKE_MAKE_PROGRAM})
+message(STATUS "[VC] SPIRVDLL_SRC = ${SPIRVDLL_SRC}")
+message(STATUS "[VC] SPIRV_SRC = ${SPIRV_SRC}")
 
-if(NOT EXISTS ${SPIRV_COPY})
-  message(STATUS "[VC] : Copying stock SPIRV-Translator sources to ${SPIRV_COPY}")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${SPIRV_SOURCES} ${SPIRV_COPY})
-endif()
+if(DEFINED SPIRVDLL_SRC)
+  if(NOT EXISTS ${SPIRVDLL_SRC})
+    message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRVDLL_SRC}")
+  endif()
+  set(SPIRV_SOURCES ${SPIRVDLL_SRC})
+  if(IGC_OPTION__FORCE_SYSTEM_LLVM)
 
-apply_patches(${SPIRV_COPY}
-${SPRIV_PATCHES}
-${SPIRV_REV_PATCH}
-${SPRIV_BRANCH_PATCH}
-)
+    ExternalProject_Add(SPIRVDLL_EX
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
+        SOURCE_DIR ${SPIRV_SOURCES}
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/spirv-install
+        BUILD_COMMAND ${MAKE_EXEC} SPIRVDLL
+        INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
+      )
 
-if(IGC_OPTION__FORCE_SYSTEM_LLVM)
+  else()
 
-  ExternalProject_Add(SPIRVDLL_EX
-      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
-      SOURCE_DIR ${SPIRV_COPY}
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/spirv-install
-      BUILD_COMMAND ${MAKE_EXEC} SPIRVDLL
-      INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
-    )
+    ExternalProject_Add(SPIRVDLL_EX
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
+        SOURCE_DIR ${SPIRV_SOURCES}
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/spirv-install -DLLVM_DIR=${LLVM_DIR}
+        BUILD_COMMAND ${MAKE_EXEC} SPIRVDLL
+        INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
+      )
 
+  endif(IGC_OPTION__FORCE_SYSTEM_LLVM)
+
+  add_dependencies(SPIRVDLL_EX VCCodeGen)
+  install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/spirv-install/lib/libSPIRVDLL.so
+    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+    COMPONENT igc-core
+  )
 else()
+  if(DEFINED SPIRV_SRC)
+    set(SPIRV_COPY "${CMAKE_CURRENT_BINARY_DIR}/llvm-spirv-vc")
+    if(NOT EXISTS ${SPIRV_SRC})
+      message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRV_SRC}")
+    endif()
+    set(SPIRV_SOURCES ${SPIRV_SRC})
+  else()
+    set(SPIRV_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project/llvm/projects/llvm-spirv")
+    if(NOT EXISTS ${SPIRV_SOURCES})
+      message(STATUS "[VC] Cannot find SPIRVDLL sources in ${SPIRV_SOURCES}")
+      set(SPIRV_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-spirv")
+    endif()
+    if(NOT EXISTS ${SPIRV_SOURCES})
+      message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRV_SOURCES}")
+    endif()
+  endif()
 
-   ExternalProject_Add(SPIRVDLL_EX
-      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
-      SOURCE_DIR ${SPIRV_COPY}
-      CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/spirv-install -DLLVM_DIR=${LLVM_DIR}
-      BUILD_COMMAND ${MAKE_EXEC} SPIRVDLL
-      INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
-    )
+  if(NOT DEFINED LLVM_VERSION_MAJOR)
+    message(FATAL_ERROR "[VC] Cannot find LLVM version (LLVM_VERSION_MAJOR)")
+  elseif(${LLVM_VERSION_MAJOR} EQUAL 9)
+    message(STATUS "[VC] Found LLVM version 9")
+    set(SPIRV_REV_PATCH 4aafd4768e4fea7b6e7481d07bc31aefc1c7bacc)
+    set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-9/)
+    set(SPRIV_BRANCH_PATCH spirvdll_90)
+  elseif(${LLVM_VERSION_MAJOR} EQUAL 10)
+    message(STATUS "[VC] Found LLVM version 10")
+    set(SPIRV_REV_PATCH 4f1a3270f2431aa98f1bff30d1a32c9d8f4729bf)
+    set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-10/)
+    set(SPRIV_BRANCH_PATCH spirvdll_100)
+  elseif(${LLVM_VERSION_MAJOR} EQUAL 11)
+    message(STATUS "[VC] Found LLVM version 11")
+    set(SPIRV_REV_PATCH 73dfc6d450ad0438558bee20505c426319f7624b)
+    set(SPRIV_PATCHES ${CMAKE_CURRENT_SOURCE_DIR}/spirv-patches-11/)
+    set(SPRIV_BRANCH_PATCH spirvdll_110)
+  else()
+    message(FATAL_ERROR "[VC] Found unsupported version of LLVM (LLVM_VERSION_MAJOR is set to ${LLVM_VERSION_MAJOR})")
+  endif()
 
-    add_dependencies(SPIRVDLL_EX VCCodeGen)
+  if(NOT EXISTS ${SPIRV_COPY})
+    message(STATUS "[VC] : Copying stock SPIRV-Translator sources to ${SPIRV_COPY}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${SPIRV_SOURCES} ${SPIRV_COPY})
+  endif()
 
-endif(IGC_OPTION__FORCE_SYSTEM_LLVM)
+  apply_patches(${SPIRV_COPY}
+  ${SPRIV_PATCHES}
+  ${SPIRV_REV_PATCH}
+  ${SPRIV_BRANCH_PATCH}
+  )
 
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/spirv-install/lib/libSPIRVDLL.so
-  DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-  COMPONENT igc-core
-)
+  if(IGC_OPTION__FORCE_SYSTEM_LLVM)
+
+    ExternalProject_Add(SPIRVDLL_EX
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
+        SOURCE_DIR ${SPIRV_COPY}
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/spirv-install
+        BUILD_COMMAND ${MAKE_EXEC} SPIRVDLL
+        INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
+      )
+
+  else()
+
+    ExternalProject_Add(SPIRVDLL_EX
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
+        SOURCE_DIR ${SPIRV_COPY}
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/spirv-install -DLLVM_DIR=${LLVM_DIR}
+        BUILD_COMMAND ${MAKE_EXEC} SPIRVDLL
+        INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
+      )
+
+  endif(IGC_OPTION__FORCE_SYSTEM_LLVM)
+
+  add_dependencies(SPIRVDLL_EX VCCodeGen)
+
+  install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/spirv-install/lib/libSPIRVDLL.so
+    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+    COMPONENT igc-core
+  )
+
+endif(DEFINED SPIRVDLL_SRC)
 
 elseif(NOT TARGET SPIRVDLL)
   if(DEFINED SPIRV_PREBUILD_DIR)
