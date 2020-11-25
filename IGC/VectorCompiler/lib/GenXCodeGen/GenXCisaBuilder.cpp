@@ -614,7 +614,7 @@ private:
                           const DstOpndDesc &DstDesc);
 #endif
   void buildBoolBinaryOperator(BinaryOperator *BO);
-  void buildSymbolInst(PtrToIntInst *ptr2Int, unsigned Mod,
+  void buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
                        const DstOpndDesc &DstDesc);
   void buildCastInst(CastInst *CI, genx::BaleInfo BI, unsigned Mod,
                      const DstOpndDesc &DstDesc);
@@ -2659,12 +2659,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
   } else if (BitCastInst *BCI = dyn_cast<BitCastInst>(Inst)) {
     buildBitCast(BCI, BI, Mod, DstDesc);
   } else if (CastInst *CI = dyn_cast<CastInst>(Inst)) {
-    auto ptr2Int = dyn_cast<PtrToIntInst>(CI);
-    if (ptr2Int && isa<GlobalVariable>(CI->getOperand(0))) {
-      buildSymbolInst(ptr2Int, Mod, DstDesc);
-    } else {
-      buildCastInst(CI, BI, Mod, DstDesc);
-    }
+    buildCastInst(CI, BI, Mod, DstDesc);
   } else if (auto SI = dyn_cast<SelectInst>(Inst)) {
     buildSelectInst(SI, BI, Mod, DstDesc);
   } else if (auto LI = dyn_cast<LoadInst>(Inst)) {
@@ -2716,6 +2711,9 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
         break;
       case GenXIntrinsic::genx_alloca:
         buildAlloca(CI, IntrinID, Mod, DstDesc);
+        break;
+      case GenXIntrinsic::genx_gaddr:
+        buildSymbolInst(CI, Mod, DstDesc);
         break;
       case GenXIntrinsic::genx_constanti:
       case GenXIntrinsic::genx_constantf:
@@ -4208,10 +4206,14 @@ void GenXKernelBuilder::buildBoolBinaryOperator(BinaryOperator *BO) {
       Src1));
 }
 
-void GenXKernelBuilder::buildSymbolInst(PtrToIntInst *ptr2Int, unsigned Mod,
+void GenXKernelBuilder::buildSymbolInst(CallInst *GAddrInst, unsigned Mod,
                                         const DstOpndDesc &DstDesc) {
-  auto GV = cast<GlobalValue>(ptr2Int->getOperand(0));
-  VISA_VectorOpnd *Dst = createDestination(ptr2Int, UNSIGNED, Mod, DstDesc);
+  IGC_ASSERT_MESSAGE(GAddrInst, "wrong argument: nullptr is unallowed");
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(GAddrInst) ==
+                         GenXIntrinsic::genx_gaddr,
+                     "wrong argument: genx.addr intrinsic is expected");
+  auto *GV = cast<GlobalValue>(GAddrInst->getOperand(0));
+  VISA_VectorOpnd *Dst = createDestination(GAddrInst, UNSIGNED, Mod, DstDesc);
   CISA_CALL(Kernel->AppendVISACFSymbolInst(GV->getName().str(), Dst));
 }
 

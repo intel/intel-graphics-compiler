@@ -53,6 +53,7 @@ class GenXGEPLowering : public FunctionPass {
   const DataLayout *DL = nullptr;
   LoopInfo *LI = nullptr;
   IRBuilder<> *Builder = nullptr;
+  Module *M = nullptr;
 
 public:
   static char ID;
@@ -76,6 +77,7 @@ private:
                               BasicBlock::iterator &BBI) const;
   Value *truncExpr(Value *Val, Type *NewTy) const;
   Value *getSExtOrTrunc(Value *, Type *) const;
+  Value *getInitialPointerValue(Value &Ptr) const;
 };
 
 } // namespace
@@ -93,7 +95,8 @@ FunctionPass *llvm::createGenXGEPLoweringPass() {
 
 bool GenXGEPLowering::runOnFunction(Function &F) {
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-  DL = &F.getParent()->getDataLayout();
+  M = F.getParent();
+  DL = &M->getDataLayout();
 
   const TargetTransformInfo &TTI =
     getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
@@ -147,6 +150,28 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
   return Changed;
 }
 
+Value *GenXGEPLowering::getInitialPointerValue(Value &Ptr) const {
+  auto *PtrTy = cast<PointerType>(Ptr.getType());
+  auto *IntPtrTy =
+      DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
+
+  // Check if the pointer itself is created from IntToPtr. If it is, and if
+  // the int is the same size, we can use the int directly. Otherwise, we
+  // need to add PtrToInt.
+  if (auto *I2PI = dyn_cast<IntToPtrInst>(&Ptr)) {
+    Value *IntOp = I2PI->getOperand(0);
+    if (IntOp->getType() == IntPtrTy)
+      return IntOp;
+  }
+  if (isa<GlobalVariable>(Ptr)) {
+    Function *GAddrDecl = GenXIntrinsic::getGenXDeclaration(
+        M, llvm::GenXIntrinsic::genx_gaddr, {IntPtrTy, Ptr.getType()});
+    return Builder->CreateCall(GAddrDecl->getFunctionType(), GAddrDecl, &Ptr,
+                               Ptr.getName() + ".gaddr");
+  }
+  return Builder->CreatePtrToInt(&Ptr, IntPtrTy);
+}
+
 bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
                                              BasicBlock::iterator &BBI) const {
   IGC_ASSERT(Builder);
@@ -154,25 +179,12 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
   IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
 
-  unsigned PtrSizeInBits = DL->getPointerSizeInBits(PtrTy->getAddressSpace());
-  unsigned PtrMathSizeInBits = PtrSizeInBits;
-  auto IntPtrTy = IntegerType::get(Builder->getContext(), PtrSizeInBits);
-  auto PtrMathTy = IntegerType::get(Builder->getContext(), PtrMathSizeInBits);
-
-  // Check if the pointer itself is created from IntToPtr. If it is, and if
-  // the int is the same size, we can use the int directly. Otherwise, we
-  // need to add PtrToInt.
-  Value *BasePointer = nullptr;
-  if (IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(PtrOp)) {
-    Value *IntOp = I2PI->getOperand(0);
-    if (IntOp->getType() == IntPtrTy)
-      BasePointer = IntOp;
-  }
-  if (!BasePointer)
-    BasePointer = Builder->CreatePtrToInt(PtrOp, IntPtrTy);
-
   // This is the value of the pointer, which will ultimately replace gep.
-  Value *PointerValue = BasePointer;
+  Value *PointerValue = getInitialPointerValue(*PtrOp);
+
+  unsigned PtrMathSizeInBits =
+      DL->getPointerSizeInBits(PtrTy->getAddressSpace());
+  auto *PtrMathTy = IntegerType::get(Builder->getContext(), PtrMathSizeInBits);
 
   Type *Ty = PtrTy;
   gep_type_iterator GTI = gep_type_begin(GEP);
@@ -203,7 +215,7 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
           // invariant (but not b), so we could rearrange the lowered code into
           // (base + (a << shftAmt)) + (b << shftAmt).
           Loop *L = LI ? LI->getLoopFor(BO->getParent()) : nullptr;
-          if (L && L->isLoopInvariant(PtrOp) &&
+          if (L && L->isLoopInvariant(GEP->getPointerOperand()) &&
               BO->getOpcode() == Instruction::Add) {
 
             auto reassociate = [&](Value *A, Value *B) {
