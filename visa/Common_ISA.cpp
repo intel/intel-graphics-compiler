@@ -374,17 +374,9 @@ int processCommonISAHeader(
     }
 
     for (int i = 0; i < cisaHdr.num_kernels; i++) {
-        if (cisaHdr.major_version == 3 && cisaHdr.minor_version < 7)
-        {
-            READ_FIELD_FROM_BUF(cisaHdr.kernels[i].name_len, uint8_t);
-        }
-        else
-        {
-            READ_FIELD_FROM_BUF(cisaHdr.kernels[i].name_len, uint16_t);
-        }
-        cisaHdr.kernels[i].name = (char*)mem->alloc(cisaHdr.kernels[i].name_len + 1);
+        READ_FIELD_FROM_BUF(cisaHdr.kernels[i].name_len, uint8_t);
         memcpy_s(
-            cisaHdr.kernels[i].name, cisaHdr.kernels[i].name_len * sizeof(uint8_t), &buf[byte_pos],
+            cisaHdr.kernels[i].name, COMMON_ISA_MAX_FILENAME_LENGTH, &buf[byte_pos],
                 cisaHdr.kernels[i].name_len * sizeof(uint8_t));
         cisaHdr.kernels[i].name[cisaHdr.kernels[i].name_len] = '\0';
         byte_pos += cisaHdr.kernels[i].name_len;
@@ -436,17 +428,9 @@ int processCommonISAHeader(
         // field is deprecated
         READ_FIELD_FROM_BUF(cisaHdr.functions[i].linkage, uint8_t);
 
-        if (cisaHdr.major_version == 3 && cisaHdr.minor_version < 7)
-        {
-            READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint8_t);
-        }
-        else
-        {
-            READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint16_t);
-        }
-        cisaHdr.functions[i].name = (char*)mem->alloc(cisaHdr.functions[i].name_len + 1);
+        READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint8_t);
         memcpy_s(
-            cisaHdr.functions[i].name, cisaHdr.functions[i].name_len * sizeof(uint8_t), &buf[byte_pos],
+            cisaHdr.functions[i].name, COMMON_ISA_MAX_FILENAME_LENGTH, &buf[byte_pos],
             cisaHdr.functions[i].name_len * sizeof(uint8_t));
         cisaHdr.functions[i].name[
             cisaHdr.functions[i].name_len] = '\0';

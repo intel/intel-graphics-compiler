@@ -381,7 +381,7 @@ namespace IGC
             for (unsigned int i = 0; i != numCompiledObj; i++)
             {
                 DbgInfoFormat f;
-                uint16_t nameLen = read<uint16_t>(dbg);
+                uint8_t nameLen = read<uint8_t>(dbg);
                 for (unsigned int j = 0; j != nameLen; j++)
                     f.kernelName += read<char>(dbg);
                 f.relocOffset = read<uint32_t>(dbg);
@@ -410,7 +410,7 @@ namespace IGC
                 {
                     VarInfo v;
 
-                    nameLen = read<uint16_t>(dbg);
+                    nameLen = read<uint8_t>(dbg);
                     for (unsigned int k = 0; k != nameLen; k++)
                         v.name += read<char>(dbg);
 
@@ -429,7 +429,7 @@ namespace IGC
                 for (unsigned int j = 0; j != count; j++)
                 {
                     SubroutineInfo sub;
-                    nameLen = read<uint16_t>(dbg);
+                    nameLen = read<uint8_t>(dbg);
                     for (unsigned int k = 0; k != nameLen; k++)
                         sub.name += read<char>(dbg);
 
