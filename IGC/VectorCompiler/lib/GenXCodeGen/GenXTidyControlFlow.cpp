@@ -103,6 +103,7 @@ using namespace genx;
 namespace {
   class GenXTidyControlFlow : public FunctionPass {
     const GenXSubtarget *ST = nullptr;
+    GenXLiveness *Liveness;
     bool Modified;
   public:
     static char ID;
@@ -115,6 +116,7 @@ namespace {
       AU.addPreserved<GenXLiveness>();
       AU.addPreserved<GenXNumbering>();
       AU.addPreserved<FunctionGroupAnalysis>();
+      AU.addRequired<GenXLiveness>();
       AU.addRequired<LoopInfoWrapperPass>();
       AU.addRequired<TargetPassConfig>();
     }
@@ -143,6 +145,7 @@ INITIALIZE_PASS_BEGIN(GenXTidyControlFlow,
                       "GenXTidyControlFlow", false, false)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_END(GenXTidyControlFlow, "GenXTidyControlFlow",
                     "GenXTidyControlFlow", false, false)
 
@@ -159,6 +162,7 @@ bool GenXTidyControlFlow::runOnFunction(Function &F)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
+  Liveness = &getAnalysis<GenXLiveness>();
   Modified = false;
   removeEmptyBlocks(&F);
   reorderBlocks(&F);
@@ -304,6 +308,10 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
       ReturnInst::Create(F->getContext(), PN, NewRetBlock);
     }
 
+    Liveness->setLiveRange(
+        SimpleValue(PN),
+        Liveness->getLiveRangeOrNull(
+            ReturningBlocks.front()->getTerminator()->getOperand(0)));
     // Loop over all of the blocks, replacing the return instruction with an
     // unconditional branch.
     for (auto BB : ReturningBlocks) {

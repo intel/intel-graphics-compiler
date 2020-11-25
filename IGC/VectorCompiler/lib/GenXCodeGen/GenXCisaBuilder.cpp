@@ -5678,7 +5678,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
         auto *PReg =
             getRegForValueOrNullAndSaveAlias(KernFunc, SimpleValue(&FArg));
         IGC_ASSERT(PReg);
-        Kernel->AppendVISASetP(vISA_EMASK_M1_NM, EXEC_SIZE_32,
+        Kernel->AppendVISASetP(vISA_EMASK_M1_NM, EXEC_SIZE_1,
                                PReg->GetVar<VISA_PredVar>(Kernel), argSrc);
       } else {
         if ((int)ArgVar->getByteSize() - SrcRowOff * GrfByteSize >= ArgSize &&
