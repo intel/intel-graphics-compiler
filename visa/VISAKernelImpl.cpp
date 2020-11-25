@@ -8195,7 +8195,6 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
     case PreDefinedVarsInternal::HW_TID:
     case PreDefinedVarsInternal::DBG:
     case PreDefinedVarsInternal::COLOR:
-    case PreDefinedVarsInternal::GLOBAL_STATE_BUFFER_PTR:
         {
             G4_Type type = GetGenTypeFromVISAType(getPredefinedVarType(internalIndex));
             G4_Declare *preVarDcl = getGenVar(index)->genVar.dcl;

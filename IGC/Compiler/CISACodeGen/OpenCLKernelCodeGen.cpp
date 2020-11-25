@@ -1026,7 +1026,6 @@ namespace IGC
         }
         break;
 
-        //case KernelArg::ArgType::GLOBAL_STATE_BUFFER_PTR:
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
         {
             int argNo = kernelArg->getAssociatedArgNo();

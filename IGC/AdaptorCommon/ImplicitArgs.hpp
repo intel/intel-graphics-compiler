@@ -128,9 +128,6 @@ namespace IGC
 
             SYNC_BUFFER,
 
-            // Side buffer ptr
-            GLOBAL_STATE_BUFFER_PTR,
-
             NUM_IMPLICIT_ARGS
         };
 

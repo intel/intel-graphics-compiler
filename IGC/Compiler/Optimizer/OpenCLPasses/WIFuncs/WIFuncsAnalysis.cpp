@@ -98,7 +98,6 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     m_hasStageInGridOrigin = false;
     m_hasStageInGridSize = false;
     m_hasSyncBuffer = false;
-    m_hasStackCalls = false;
 
     // Visit the function
     visit(F);
@@ -111,20 +110,9 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     {
         implicitArgs.push_back(ImplicitArg::R0);
         implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
-        if (m_hasStackCalls)
-            implicitArgs.push_back(ImplicitArg::GLOBAL_STATE_BUFFER_PTR);
     }
     else
     {
-        if (F.hasFnAttribute("IndirectlyCalled") ||
-            (F.hasFnAttribute("visaStackCall") &&
-            (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL ||
-            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL) &&
-            IGC_GET_FLAG_VALUE(ForceInlineStackCallWithImplArg) == 0))
-        {
-            return false;
-        }
-
         if (m_hasGroupID)
         {
             implicitArgs.push_back(ImplicitArg::R0);
@@ -134,7 +122,6 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
         }
     }
-
     if (m_hasWorkDim)
     {
         implicitArgs.push_back(ImplicitArg::WORK_DIM);
@@ -230,10 +217,5 @@ void WIFuncsAnalysis::visitCallInst(CallInst& CI)
     }
     else if (funcName.equals(GET_SYNC_BUFFER)) {
         m_hasSyncBuffer = true;
-    }
-
-    if (CI.getCalledFunction()->hasFnAttribute("visaStackCall"))
-    {
-        m_hasStackCalls = true;
     }
 }

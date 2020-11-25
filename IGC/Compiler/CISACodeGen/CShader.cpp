@@ -104,7 +104,6 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_SavedFP = nullptr;
     m_ARGV = nullptr;
     m_RETV = nullptr;
-    m_GlobalStateBufPtr = nullptr;
 
     // SIMD32 is a SIMD16 shader with 2 instance of each instruction
     m_SIMDSize = (simdSize == SIMDMode::SIMD8 ? SIMDMode::SIMD8 : SIMDMode::SIMD16);
@@ -243,10 +242,6 @@ void CShader::InitializeStackVariables()
     // create frame-pointer register
     m_FP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "FP");
     encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
-    // create side buffer ptr
-    m_GlobalStateBufPtr = GetNewVariable(1, GetContext()->getRegisterPointerSizeInBits(ADDRESS_SPACE_GLOBAL) ? ISA_TYPE_UQ : ISA_TYPE_UD,
-        EALIGN_QWORD, true, 1, "SideBufferPtr");
-    encoder.GetVISAPredefinedVar(m_GlobalStateBufPtr, PREDEFINED_GLOBALBUFFERPTR);
 }
 
 /// save FP of previous frame when entering a stack-call function
@@ -803,36 +798,6 @@ CVariable* CShader::GetRETV()
 {
     IGC_ASSERT(m_RETV);
     return m_RETV;
-}
-
-CVariable* CShader::GetGlobalStateBufferPtr()
-{
-    return m_GlobalStateBufPtr;
-}
-
-CVariable* CShader::GetGlobalStateBufferInput()
-{
-    // Return CVariable* corresponding to kernel argument
-    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
-    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numImplicitArgs = implicitArgs.size();
-    unsigned numFuncArgs = entry->arg_size() - numImplicitArgs - numPushArgs;
-
-    Argument* kerArg = nullptr;
-    llvm::Function::arg_iterator arg = entry->arg_begin();
-    for (unsigned i = 0; i < numFuncArgs; ++i, ++arg);
-    for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
-        ImplicitArg implicitArg = implicitArgs[i];
-        if (implicitArg.getArgType() == ImplicitArg::ArgType::GLOBAL_STATE_BUFFER_PTR)
-        {
-            kerArg = (&*arg);
-            break;
-        }
-    }
-    if (!kerArg)
-        return nullptr;
-    IGC_ASSERT(kerArg);
-    return GetSymbol(kerArg);
 }
 
 CEncoder& CShader::GetEncoder()
@@ -2099,11 +2064,9 @@ void CShader::BeginFunction(llvm::Function* F)
     bool useStackCall = m_FGA && m_FGA->useStackCall(F);
     if (useStackCall)
     {
+        m_R0 = nullptr;
         globalSymbolMapping.clear();
         encoder.BeginStackFunction(F);
-        // create pre-defined r0
-        m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
-        encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
     }
     else
     {

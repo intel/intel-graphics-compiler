@@ -552,10 +552,6 @@ public:
         return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::FE_FP);
     }
 
-    G4_Declare* GetGlobalStateBufferPtr() const {
-        return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::GLOBAL_STATE_BUFFER_PTR);
-    }
-
     bool isPreDefArg(G4_Declare* dcl) const {
         return dcl == getStackCallArg();
     }

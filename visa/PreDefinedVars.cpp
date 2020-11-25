@@ -29,7 +29,6 @@ PreDefinedVarInfo preDefinedVarTable[static_cast<int>(PreDefinedVarsInternal::VA
     { PreDefinedVarsInternal::CE0,           ISA_TYPE_UD, 3, false, false,  0,  1,   "%ce0" },
     { PreDefinedVarsInternal::DBG,           ISA_TYPE_UD, 3, false, false,  0,  2,   "%dbg0" },
     { PreDefinedVarsInternal::COLOR,         ISA_TYPE_UW, 3, true,  false,  0,  1,   "%color" },
-    { PreDefinedVarsInternal::GLOBAL_STATE_BUFFER_PTR,ISA_TYPE_UQ,3, false, false,  0,  1,   "%side_buf_ptr" }
 };
 
 enum class PreDefinedVarsInternal_3_4
@@ -52,8 +51,7 @@ enum class PreDefinedVarsInternal_3_4
     CE0 = 15,
     DBG = 16,
     COLOR = 17,
-    GLOBAL_STATE_BUFFER_PTR = 18,
-    VAR_LAST = GLOBAL_STATE_BUFFER_PTR
+    VAR_LAST = COLOR
 };
 
 PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id)
@@ -118,9 +116,6 @@ PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id)
                 break;
             case PreDefinedVarsInternal_3_4::COLOR:
                 newIndex = PreDefinedVarsInternal::COLOR;
-                break;
-            case PreDefinedVarsInternal_3_4::GLOBAL_STATE_BUFFER_PTR:
-                newIndex = PreDefinedVarsInternal::GLOBAL_STATE_BUFFER_PTR;
                 break;
             default:
                 break;
