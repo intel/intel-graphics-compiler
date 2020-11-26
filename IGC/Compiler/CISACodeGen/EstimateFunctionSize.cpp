@@ -120,7 +120,7 @@ namespace {
     struct FunctionNode {
         FunctionNode(Function* F, std::size_t Size)
             : F(F), Size(Size), InitialSize(Size), Processed(0), KernelNum(0),
-              CallingSubroutine(false) {}
+              CallingSubroutine(false), HasImplicitArg(false) {}
 
         Function* F;
 
@@ -143,6 +143,8 @@ namespace {
 
         /// \brief A flag to indicate whether this node should be always inlined.
         bool ToBeInlined;
+
+        bool HasImplicitArg;
 
         /// \brief All functions directly called in this function.
         std::vector<Function*> CalleeList;
@@ -168,6 +170,14 @@ namespace {
         /// \brief A single step to expand F: accumulate the size and remove it
         /// from the callee list.
         void expand(FunctionNode* Node) {
+            if( IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs) && HasImplicitArg == false && Node->HasImplicitArg == true )
+            {
+                HasImplicitArg = true;
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x40 ) != 0 )
+                {
+                    std::cout << "Func " << this->F->getName().str() << " expands to hasimplicitarg due to " << Node->F->getName().str() << std::endl;
+                }
+            }
             // Multiple calls to a function is allowed as in the example above.
             for (auto I = CalleeList.begin(); I != CalleeList.end(); /* empty */) {
                 if (*I == Node->F) {
@@ -213,6 +223,75 @@ void EstimateFunctionSize::clear() {
     ECG.clear();
 }
 
+bool EstimateFunctionSize::matchImplicitArg( CallInst& CI )
+{
+    bool matched = false;
+    StringRef funcName = CI.getCalledFunction()->getName();
+    if( funcName.equals( GET_LOCAL_ID_X ) ||
+        funcName.equals( GET_LOCAL_ID_Y ) ||
+        funcName.equals( GET_LOCAL_ID_Z ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_GROUP_ID ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_GLOBAL_OFFSET ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_GLOBAL_SIZE ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_LOCAL_SIZE ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_WORK_DIM ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_NUM_GROUPS ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_ENQUEUED_LOCAL_SIZE ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_STAGE_IN_GRID_ORIGIN ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_STAGE_IN_GRID_SIZE ) )
+    {
+        matched = true;
+    }
+    else if( funcName.equals( GET_SYNC_BUFFER ) )
+    {
+        matched = true;
+    }
+    if( matched && ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x40 ) != 0 )
+    {
+        std::cout << "Matched implicit arg " << funcName.str() << std::endl;
+    }
+    return matched;
+}
+
+// visit Call inst to determine if implicit args are used by the caller
+void EstimateFunctionSize::visitCallInst( CallInst& CI )
+{
+    if( !CI.getCalledFunction() )
+    {
+        return;
+    }
+    // Check for implicit arg function calls
+    bool matched = matchImplicitArg( CI );
+    tmpHasImplicitArg = matched;
+}
+
 void EstimateFunctionSize::analyze() {
     auto getSize = [](llvm::Function& F) -> std::size_t {
         std::size_t Size = 0;
@@ -239,8 +318,36 @@ void EstimateFunctionSize::analyze() {
             if (auto * CI = dyn_cast<CallInst>(U)) {
                 // G calls F, or G --> F
                 Function* G = CI->getParent()->getParent();
-                get<FunctionNode>(G)->addCallee(&F);
+                FunctionNode* GN = get<FunctionNode>( G ); 
+                GN->addCallee(&F);
                 Node->addCaller(G);
+            }
+        }
+    }
+    // check functions and mark those that use implicit args.
+    if( IGC_IS_FLAG_ENABLED( ControlInlineImplicitArgs ) )
+    {
+        for( auto I = ECG.begin(), E = ECG.end(); I != E; ++I )
+        {
+            auto Node = (FunctionNode*)I->second;
+            if( Node /* && Node->isLeaf() a non-leaf function may also call implicit args */ )
+            {
+                tmpHasImplicitArg = false;
+                visit( Node->F );
+                if( tmpHasImplicitArg )
+                {
+                    Node->HasImplicitArg = true;
+                    if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x40 ) != 0 )
+                    {
+                        static int cnt = 0;
+                        const char* Name;
+                        if( Node->isLeaf() )
+                            Name = "Leaf";
+                        else
+                            Name = "nonLeaf";
+                        std::cout << Name << " Func " << ++cnt << " " << Node->F->getName().str() << " calls implicit args so HasImplicitArg" << std::endl;
+                    }
+                }
             }
         }
     }
@@ -377,6 +484,14 @@ bool EstimateFunctionSize::funcIsGoodtoTrim( llvm::Function* F)
         return false; /* user specified alwaysInline */
     if ( isTrimmedFunction( F ) ) /* already trimmed by other kernels */
         return false;
+    if( IGC_IS_FLAG_ENABLED( ControlInlineImplicitArgs ) && func->HasImplicitArg )
+    {
+        if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x20 ) != 0 )
+        {
+            std::cout << "Func not inlined: " << func->F->getName().str() << " has implicit args " << std::endl;
+        }
+        return false;
+    }
     for( auto C : func->CallerList )
     {
         FunctionNode* caller = get<FunctionNode>( C );
@@ -402,7 +517,6 @@ For each kernel K
     ENDWHILE
      Inline functions with ToBeInlined = True
      Inline functions with single caller // done
-
 */
 void EstimateFunctionSize::reduceKernelSize() {
     auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();

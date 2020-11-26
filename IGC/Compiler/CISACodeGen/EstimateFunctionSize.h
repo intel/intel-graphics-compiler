@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Pass.h"
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <cstddef>
 #include "Probe/Assertion.h"
@@ -38,7 +40,8 @@ namespace IGC {
     ///
     /// This pass visits the call graph and estimates the number of llvm IR
     /// instructions after complete inlining.
-    class EstimateFunctionSize : public llvm::ModulePass {
+    class EstimateFunctionSize : public llvm::ModulePass, public llvm::InstVisitor<EstimateFunctionSize>
+    {
     public:
         static char ID;
 
@@ -67,6 +70,8 @@ namespace IGC {
 
         bool isTrimmedFunction( llvm::Function* F);
 
+        void visitCallInst( llvm::CallInst& CI );
+
     private:
         void analyze();
         void checkSubroutine();
@@ -87,6 +92,23 @@ namespace IGC {
 
         /// \brief The analysis level to be performed.
         AnalysisLevel AL;
+
+        bool tmpHasImplicitArg;
+        bool matchImplicitArg( llvm::CallInst& CI );
+
+        const llvm::StringRef GET_LOCAL_ID_X = "__builtin_IB_get_local_id_x";
+        const llvm::StringRef GET_LOCAL_ID_Y = "__builtin_IB_get_local_id_y";
+        const llvm::StringRef GET_LOCAL_ID_Z = "__builtin_IB_get_local_id_z";
+        const llvm::StringRef GET_GROUP_ID = "__builtin_IB_get_group_id";
+        const llvm::StringRef GET_GLOBAL_SIZE = "__builtin_IB_get_global_size";
+        const llvm::StringRef GET_LOCAL_SIZE = "__builtin_IB_get_local_size";
+        const llvm::StringRef GET_GLOBAL_OFFSET = "__builtin_IB_get_global_offset";
+        const llvm::StringRef GET_WORK_DIM = "__builtin_IB_get_work_dim";
+        const llvm::StringRef GET_NUM_GROUPS = "__builtin_IB_get_num_groups";
+        const llvm::StringRef GET_ENQUEUED_LOCAL_SIZE = "__builtin_IB_get_enqueued_local_size";
+        const llvm::StringRef GET_STAGE_IN_GRID_ORIGIN = "__builtin_IB_get_stage_in_grid_origin";
+        const llvm::StringRef GET_STAGE_IN_GRID_SIZE = "__builtin_IB_get_stage_in_grid_size";
+        const llvm::StringRef GET_SYNC_BUFFER = "__builtin_IB_get_sync_buffer";
 
         bool HasRecursion;
         bool EnableSubroutine;
