@@ -128,7 +128,8 @@ enum {
   // stackcall ABI related constants
   ARG_SIZE_IN_GRFS = 32,
   RET_SIZE_IN_GRFS = 12,
-  STACK_PER_THREAD = 256
+  STACK_PER_THREAD_SCRATCH = 256,
+  STACK_PER_THREAD_SVM = 4096
 };
 
 /// For VISA_PREDICATE_CONTROL & VISA_PREDICATE_STATE
@@ -540,7 +541,7 @@ class GenXKernelBuilder {
   // Map from LLVM Value to pointer to the last used register alias for this
   // Value.
   std::map<Value *, Register *> LastUsedAliasMap;
-  CallInst *LastAlloca = nullptr;
+  unsigned CurrentPadding = 0;
 
 public:
   FunctionGroup *FG = nullptr;
@@ -1309,7 +1310,7 @@ void GenXKernelBuilder::buildInstructions() {
                           "SubRoutine");
 
     beginFunction(Func);
-    LastAlloca = nullptr;
+    CurrentPadding = 0;
 
     // If a float control is specified, emit code to make that happen.
     // Float control contains rounding mode, denorm behaviour and single
@@ -4487,6 +4488,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
  */
 void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
                                     unsigned Mod, const DstOpndDesc &DstDesc) {
+  LLVM_DEBUG(dbgs() << "Building alloca " << *CI << "\n");
   VISA_GenVar *Sp = nullptr;
   CISA_CALL(Kernel->GetPredefinedVar(Sp, PreDefined_Vars::PREDEFINED_FE_SP));
   if (!Subtarget->hasLongLong())
@@ -4495,14 +4497,14 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
   Value *AllocaOff = CI->getOperand(0);
   Type *AllocaOffTy = AllocaOff->getType();
 
-  if (LastAlloca) {
+  if (CurrentPadding) {
     // padd the current alloca the comply with gather/scatter alignment rules
-    unsigned LastOff = getResultedTypeSize(LastAlloca->getOperand(0)->getType(), DL);
+    // unsigned LastOff = getResultedTypeSize(LastAlloca->getOperand(0)->getType(), DL);
     auto *AllocaEltTy = AllocaOffTy->getScalarType();
     if (AllocaOffTy->isArrayTy())
       AllocaEltTy = AllocaOffTy->getArrayElementType();
     unsigned Padding = DL.getTypeSizeInBits(AllocaEltTy) / genx::ByteBits;
-    Padding = (Padding - LastOff) % Padding;
+    Padding = (Padding - CurrentPadding) % Padding;
     if (Padding) {
       VISA_VectorOpnd *SpSrc = nullptr;
       CISA_CALL(Kernel->CreateVISASrcOperand(SpSrc, Sp, MODIFIER_NONE, 0, 1, 0,
@@ -4516,6 +4518,7 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
       CISA_CALL(Kernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false,
                                                  vISA_EMASK_M1, EXEC_SIZE_1,
                                                  DstSp, SpSrc, PaddImm));
+      CurrentPadding += Padding;
     }
   }
 
@@ -4524,6 +4527,8 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
       Kernel->CreateVISASrcOperand(SpSrc, Sp, MODIFIER_NONE, 0, 1, 0, 0, 0));
 
   unsigned OffVal = getResultedTypeSize(AllocaOffTy, DL);
+  CurrentPadding = (CurrentPadding + OffVal) %
+                   (DL.getLargestLegalIntTypeSizeInBits() / genx::ByteBits);
 
   VISA_VectorOpnd *Imm = nullptr;
   CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_D));
@@ -4543,8 +4548,6 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
 
   CISA_CALL(Kernel->AppendVISAArithmeticInst(
       ISA_ADD, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1, DstSp, SpSrc, Imm));
-
-  LastAlloca = CI;
 }
 
 // extracts underlying c-string from provided constant
@@ -5566,7 +5569,11 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
     CISA_CALL(Kernel->GetPredefinedVar(Hwtid, PREDEFINED_HW_TID));
 
     VISA_VectorOpnd *HwtidOp = nullptr;
-    uint32_t Val = STACK_PER_THREAD;
+
+    // TODO:
+    // 1) switch to SVM
+    // 2) calculate exact stack size required by the kernel
+    uint32_t Val = UseGlobalMem ? STACK_PER_THREAD_SVM : STACK_PER_THREAD_SCRATCH;
 
     CISA_CALL(Kernel->CreateVISAImmediate(Imm, &Val, ISA_TYPE_UD));
     CISA_CALL(Kernel->CreateVISASrcOperand(HwtidOp, Hwtid, MODIFIER_NONE, 0, 1,
