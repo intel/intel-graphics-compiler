@@ -308,10 +308,11 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
       ReturnInst::Create(F->getContext(), PN, NewRetBlock);
     }
 
-    Liveness->setLiveRange(
-        SimpleValue(PN),
-        Liveness->getLiveRangeOrNull(
-            ReturningBlocks.front()->getTerminator()->getOperand(0)));
+    if (PN)
+      Liveness->setLiveRange(
+          SimpleValue(PN),
+          Liveness->getLiveRange(
+              ReturningBlocks.front()->getTerminator()->getOperand(0)));
     // Loop over all of the blocks, replacing the return instruction with an
     // unconditional branch.
     for (auto BB : ReturningBlocks) {
