@@ -30,6 +30,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IMF/FP32/sin_s_la.cl"
 #include "../IMF/FP32/sin_s_noLUT.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/sin_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
+
 static INLINE float __intel_sin_f32( float x, bool doFast )
 {
     if(__FastRelaxedMath && (!__APIRS) && doFast)
@@ -63,6 +68,17 @@ INLINE float __builtin_spirv_OpenCL_sin_f32( float x )
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sin, float, float, f32 )
+
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_sin_f64( double x )
+{
+    return __ocl_svml_sin(x);
+}
+
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_sin, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 

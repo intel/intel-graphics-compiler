@@ -29,6 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../IMF/FP32/asinh_s_la.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/asinh_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 INLINE float __intel_asinh_f32( float x, bool doFast )
 {
     float result;
@@ -64,6 +68,17 @@ INLINE float __builtin_spirv_OpenCL_asinh_f32( float x )
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_asinh, float, float, f32 )
+
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_asinh_f64( double x )
+{
+    return __ocl_svml_asinh(x);
+}
+
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_asinh, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 

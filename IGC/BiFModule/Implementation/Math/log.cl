@@ -28,6 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/ln_s_la.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/ln_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 /*
 //               INTEL CORPORATION PROPRIETARY INFORMATION
 //  This software is supplied under the terms of a license agreement or
@@ -114,6 +118,17 @@ float __builtin_spirv_OpenCL_log_f32( float x )
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log, float, float, f32 )
+
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_log_f64( double x )
+{
+    return __ocl_svml_log(x);
+}
+
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_log, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
