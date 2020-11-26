@@ -7416,7 +7416,6 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             // source depth:
             //      src_z = (x - xstart)*z_cx + (y - ystart)*z_cy + z_c0
             CVariable* delta = psProgram->GetZWDelta();
-
             CVariable* floatR1 = psProgram->BitCast(psProgram->GetR1(), ISA_TYPE_F);
 
             // Returns (x - xstart) or (y - ystart) in float.
@@ -7458,9 +7457,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 if (psProgram->m_Platform->hasStartCoordinatesDeliveredWithDeltas())
                 {
                     startCoordinate = delta;
-                    topLeftVertexStartSubReg = (component == 0 ? 2 : 6);
+                    {
+                        topLeftVertexStartSubReg = (component == 0 ? 2 : 6);
+                    }
                 }
-
                 m_encoder->SetSrcSubReg(1, topLeftVertexStartSubReg);
                 m_encoder->SetSrcModifier(1, EMOD_NEG);
                 m_encoder->Add(floatPixelPositionDelta, floatPixelPosition, startCoordinate);
@@ -7480,8 +7480,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 m_encoder->SetSrcRegion(1, 0, 1, 0);
                 m_encoder->SetSrcRegion(2, 0, 1, 0);
             }
-            m_encoder->SetSrcSubReg(1, 0);
-            m_encoder->SetSrcSubReg(2, 3);
+            {
+                m_encoder->SetSrcSubReg(1, 0);
+                m_encoder->SetSrcSubReg(2, 3);
+            }
             m_encoder->Mad(floatPixelPositionDeltaY, floatPixelPositionDeltaY, delta, delta);
             m_encoder->Push();
 
@@ -7489,7 +7491,9 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             {
                 m_encoder->SetSrcRegion(1, 0, 1, 0);
             }
-            m_encoder->SetSrcSubReg(1, 1);
+            {
+                m_encoder->SetSrcSubReg(1, 1);
+            }
             m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
             m_encoder->Push();
         }
