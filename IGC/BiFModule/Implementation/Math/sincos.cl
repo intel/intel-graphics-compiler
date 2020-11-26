@@ -30,10 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../IMF/FP32/sincos_s_noLUT.cl"
 #include "../ExternalLibraries/libclc/trig.cl"
 
-#if defined(cl_khr_fp64)
-    #include "../IMF/FP64/sincos_d_la.cl"
-#endif
-
 static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, bool doFast )
 {
     float   sin_x, cos_x;
@@ -159,56 +155,3 @@ GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __builtin_spirv_OpenCL_sincos, half, 
 #endif //#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #endif // defined(cl_khr_fp16)
-
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_sincos_f64_p0f64( double            x,
-                                         __private double* cosval )
-{
-    double sin_x, cos_x;
-
-    __ocl_svml_sincos(x, &sin_x, &cos_x);
-
-    *cosval = cos_x;
-    return sin_x;
-}
-
-GENERATE_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP( __builtin_spirv_OpenCL_sincos, double, double, double, f64, f64 )
-
-double __builtin_spirv_OpenCL_sincos_f64_p3f64( double          x,
-                                         __local double* cosval )
-{
-    double   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f64_p0f64( x, &cos_x );
-    cosval[0] = cos_x;
-    return sin_x;
-}
-
-INLINE double __builtin_spirv_OpenCL_sincos_f64_p1f64( double           x,
-                                         __global double* cosval )
-{
-    double   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f64_p0f64( x, &cos_x );
-    cosval[0] = cos_x;
-    return sin_x;
-}
-
-GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __builtin_spirv_OpenCL_sincos, double, __global, double, f64, p1 )
-GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __builtin_spirv_OpenCL_sincos, double, __local, double, f64, p3 )
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-INLINE double __builtin_spirv_OpenCL_sincos_f64_p4f64( double          x,
-                                         __generic double* cosval )
-{
-    double   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f64_p0f64( x, &cos_x );
-    cosval[0] = cos_x;
-    return sin_x;
-}
-
-GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __builtin_spirv_OpenCL_sincos, double, __generic, double, f64, p4 )
-
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-#endif // defined(cl_khr_fp64)

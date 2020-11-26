@@ -28,10 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/cbrt_s_la.cl"
 
-#if defined(cl_khr_fp64)
-    #include "../IMF/FP64/cbrt_d_la.cl"
-#endif
-
 INLINE float __builtin_spirv_OpenCL_cbrt_f32( float x )
 {
     float result;
@@ -50,17 +46,6 @@ INLINE float __builtin_spirv_OpenCL_cbrt_f32( float x )
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_cbrt, float, float, f32 )
-
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_cbrt_f64( double x )
-{
-    return __ocl_svml_cbrt(x);
-}
-
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_cbrt, double, double, f64 )
-
-#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 

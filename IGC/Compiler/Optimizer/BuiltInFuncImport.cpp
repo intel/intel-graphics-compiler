@@ -66,9 +66,10 @@ IGC_INITIALIZE_PASS_END(BIImport, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PA
 
 char BIImport::ID = 0;
 
-BIImport::BIImport(std::unique_ptr<Module> pGenericModule, std::unique_ptr<Module> pSizeModule) :
+BIImport::BIImport(std::unique_ptr<Module> pGenericModule, std::unique_ptr<Module> pFP64MathModule, std::unique_ptr<Module> pSizeModule) :
     ModulePass(ID),
     m_GenericModule(std::move(pGenericModule)),
+    m_FP64MathModule(std::move(pFP64MathModule)),
     m_SizeModule(std::move(pSizeModule))
 {
     initializeBIImportPass(*PassRegistry::getPassRegistry());
@@ -606,6 +607,18 @@ bool BIImport::runOnModule(Module& M)
         IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
     }
 
+    if (m_FP64MathModule)
+    {
+        if (Error err = m_FP64MathModule->materializeAll()) {
+            IGC_ASSERT_MESSAGE(0, "materializeAll failed for fp64 math builtin module");
+        }
+
+        if (ld.linkInModule(std::move(m_FP64MathModule)))
+        {
+            IGC_ASSERT_MESSAGE(0, "Error linking fp64 math builtin module");
+        }
+    }
+
     if (m_SizeModule)
     {
         CleanUnused(m_SizeModule.get());
@@ -838,9 +851,10 @@ void BIImport::InitializeBIFlags(Module& M)
 
 extern "C" llvm::ModulePass* createBuiltInImportPass(
     std::unique_ptr<Module> pGenericModule,
+    std::unique_ptr<Module> pFP64MathModule,
     std::unique_ptr<Module> pSizeModule)
 {
-    return new BIImport(std::move(pGenericModule), std::move(pSizeModule));
+    return new BIImport(std::move(pGenericModule), std::move(pFP64MathModule), std::move(pSizeModule));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////

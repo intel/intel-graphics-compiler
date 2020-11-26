@@ -28,10 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/pown_s_la.cl"
 
-#if defined(cl_khr_fp64)
-    #include "../IMF/FP64/pown_d_la.cl"
-#endif // defined(cl_khr_fp64)
-
 INLINE float __builtin_spirv_OpenCL_pown_f32_i32( float x, int y )
 {
     if(__FastRelaxedMath && (!__APIRS))
@@ -78,17 +74,6 @@ INLINE float __builtin_spirv_OpenCL_pown_f32_i32( float x, int y )
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_pown, float, float, int, f32, i32 )
-
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_pown_f64_i32( double x, int y )
-{
-    return __ocl_svml_pown(x, y);
-}
-
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_pown, double, double, int, f64, i32 )
-
-#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
