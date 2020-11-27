@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FunctionGroup.h"
 #include "GenXBackendConfig.h"
 #include "GenXTargetMachine.h"
+#include "GenXVisaRegAlloc.h"
 
 #include "visa/include/visaBuilder_interface.h"
 
@@ -39,8 +40,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/Casting.h>
 #include <llvm/Support/Errc.h>
 #include <llvm/Support/Error.h>
 
@@ -134,20 +137,18 @@ public:
                std::string(F.getName()) + ">";
       return;
     }
+
     if (VisaKernelDI->CISAIndexMap.empty()) {
       ErrMsg = "empty CisaIndexMap for <" + std::string(F.getName()) + ">";
       return;
     }
 
     std::vector<Gen2VisaIdx> Gen2Visa;
-    LLVM_DEBUG(dbgs() << "\nCISA Index Map:\n---\n");
-    for (const auto &Item : VisaKernelDI->CISAIndexMap) {
-      auto VisaIndex = Item.first;
-      auto GenOff = Item.second;
-      Gen2Visa.push_back({GenOff, VisaIndex});
-      LLVM_DEBUG(dbgs() << "GI: " << GenOff << " -> VI:" << VisaIndex << "\n");
-    }
-    LLVM_DEBUG(dbgs() << "---\n");
+    std::transform(VisaKernelDI->CISAIndexMap.begin(),
+                   VisaKernelDI->CISAIndexMap.end(),
+                   std::back_inserter(Gen2Visa), [](const auto &V2G) {
+                     return Gen2VisaIdx{V2G.second, V2G.first};
+                   });
 
     // Extract Gen Binary (will need it for line table generation)
     void *GenBin = nullptr;
@@ -191,8 +192,9 @@ class GenXVisaModule final : public IGC::VISAModule {
 
 public:
   GenXVisaModule(const Function &F, const GenXSubtarget &STIn,
-                 const genx::di::VisaMapping &V2I, const VisaKernelInfo &VKI)
-      : F{F}, ST{STIn}, VisaMapping{V2I}, VisaKernelInfo{VKI},
+                 const genx::di::VisaMapping &V2I, const VisaKernelInfo &VKI,
+                 const GenXVisaRegAlloc &RAIn)
+      : F{F}, ST{STIn}, VisaMapping{V2I}, VisaKernelInfo{VKI}, RA{RAIn},
         VISAModule(const_cast<Function *>(&F)) {
 
     isDirectElfInput = true;
@@ -225,12 +227,70 @@ public:
     return VisaKernelInfo.getGenBinary();
   }
   std::vector<IGC::VISAVariableLocation>
-  GetVariableLocation(const Instruction *pInst) const override {
-    return {};
+  GetVariableLocation(const Instruction *DbgInst) const override {
+
+    using Location = IGC::VISAVariableLocation;
+    auto EmptyLoc = [this](StringRef Reason) {
+      LLVM_DEBUG(dbgs() << "  Empty Location Returned (" << Reason
+                        << ")\n <<<\n");
+      std::vector<Location> Res;
+      Res.emplace_back(this);
+      return Res;
+    };
+    auto ConstantLoc = [this](const Constant *C) {
+      LLVM_DEBUG(dbgs() << "  ConstantLoc\n <<<\n");
+      std::vector<Location> Res;
+      Res.emplace_back(C, this);
+      return Res;
+    };
+
+    IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
+
+    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst
+                      << "\n");
+    const Value *DbgValue = nullptr;
+    DIVariable *VarDescr = nullptr;
+    if (auto *pDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
+      DbgValue = pDbgAddrInst->getAddress();
+      VarDescr = pDbgAddrInst->getVariable();
+      return EmptyLoc("llvm.dbg.declare is not supported");
+    } else if (auto *pDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
+      DbgValue = pDbgValInst->getValue();
+      VarDescr = pDbgValInst->getVariable();
+    } else {
+      return EmptyLoc("Unsupported Debug Intrinsic");
+    }
+    IGC_ASSERT(DbgValue);
+    IGC_ASSERT(VarDescr);
+    LLVM_DEBUG(dbgs() << "   Value:" << *DbgValue << "\n");
+    LLVM_DEBUG(dbgs() << "   Var: " << VarDescr->getName()
+                      << "/Type:" << *VarDescr->getType() << "\n");
+    if (isa<UndefValue>(DbgValue)) {
+      return EmptyLoc("UndefValue");
+    }
+    if (auto *ConstVal = dyn_cast<Constant>(DbgValue)) {
+      return ConstantLoc(ConstVal);
+    }
+    auto *Reg = RA.getRegForValueUntyped(&F, const_cast<Value *>(DbgValue));
+    if (!Reg) {
+      return EmptyLoc("   could not find virtual register");
+    }
+    const bool IsRegister = true;
+    const bool IsMemory = false;
+    const bool IsGlobalASI = false;
+    auto *VTy = dyn_cast<VectorType>(DbgValue->getType());
+    unsigned NumElements = VTy ? VTy->getNumElements() : 1;
+    const bool IsVectorized = false;
+
+    std::vector<Location> Res;
+    // Source/IGC/DebugInfo/VISAModule.hpp:128
+    Res.emplace_back(GENERAL_REGISTER_BEGIN + Reg->Num, IsRegister,
+                     IsMemory, NumElements, IsVectorized, IsGlobalASI, this);
+    return Res;
   }
 
   VISAModule *makeNew() const override {
-    return new GenXVisaModule(F, ST, VisaMapping, VisaKernelInfo);
+    return new GenXVisaModule(F, ST, VisaMapping, VisaKernelInfo, RA);
   }
   void UpdateVisaId() override {
     // do nothing (the moment we need to advance index is controlled explicitly)
@@ -245,6 +305,7 @@ private:
   const GenXSubtarget &ST;
   const genx::di::VisaMapping &VisaMapping;
   const VisaKernelInfo &VisaKernelInfo;
+  const GenXVisaRegAlloc &RA;
 };
 
 } // namespace
@@ -263,6 +324,7 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
 
   IGC::DebugEmitterOpts DebugOpts;
   DebugOpts.isDirectElf = true;
+  DebugOpts.UseNewRegisterEncoding = true;
 
   auto Deleter = [](IGC::IDebugEmitter *Emitter) {
     IGC::IDebugEmitter::Release(Emitter);
@@ -273,46 +335,58 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
   const auto &ST = getAnalysis<TargetPassConfig>()
       .getTM<GenXTargetMachine>()
       .getGenXSubtarget();
+  auto &RA = getAnalysis<GenXVisaRegAlloc>();
   // Onwership of GenXVisaModule object is transfered to IDebugEmitter
-  auto *VM = new GenXVisaModule(KF, ST, VisaMapping, GenInfo);
+  auto *VM = new GenXVisaModule(KF, ST, VisaMapping, GenInfo, RA);
   Emitter->Initialize(VM, DebugOpts, true);
 
   Emitter->AddVISAModFunc(VM, const_cast<Function *>(&KF));
   Emitter->SetVISAModule(VM);
   Emitter->setFunction(const_cast<Function *>(&KF), false /*cloned*/);
 
-  IGC_ASSERT(!GenInfo.getFinalizerDI().CISAIndexMap.empty());
-  LLVM_DEBUG(dbgs() << "\nV2I Dump\n----\n");
   const auto &V2I = VisaMapping.V2I;
   for (auto MappingIt = V2I.cbegin(); MappingIt != V2I.cend(); ++MappingIt) {
 
-    auto NextMapping = std::next(MappingIt);
-    auto VisaIndexCurr = MappingIt->first;
-    auto VisaIndexNext =
-        (NextMapping != V2I.cend())
-            ? NextMapping->first
-            : GenInfo.getFinalizerDI().CISAIndexMap.back().first;
+    // "NextIndex" is an index in vISA stream which points to an end
+    // of instructions sequence generated by a particular llvm instruction
+    // For istructions which do not produce any visa instructions
+    // (like llvm.dbg.*) "NextIndex" should point to the "CurrentIndex"
+    auto FindNextIndex = [&GenInfo, &V2I](decltype(MappingIt) ItCur) {
+      auto *Inst = ItCur->Inst;
+      if (isa<DbgInfoIntrinsic>(Inst)) {
+        return ItCur->VisaIdx;
+      }
+      auto NextIt = std::next(ItCur);
+      if (NextIt == V2I.end()) {
+        IGC_ASSERT(!GenInfo.getFinalizerDI().CISAIndexMap.empty());
+        return GenInfo.getFinalizerDI().CISAIndexMap.back().first;
+      }
+      return NextIt->VisaIdx;
+    };
+    auto VisaIndexCurr = MappingIt->VisaIdx;
+    auto VisaIndexNext = FindNextIndex(MappingIt);
 
-    // Note: "index - 1" is becuse we mimic index values as if they were
+    // Note: "index - 1" is because we mimic index values as if they were
     // before corresponding instructions were inserted
     VM->SetVISAId(VisaIndexCurr - 1);
-    // we need this const_cast because of the flawed VISA Emitter flawed API
-    auto *Inst = const_cast<Instruction *>(MappingIt->second);
+    // we need this const_cast because of the flawed VISA Emitter API
+    auto *Inst = const_cast<Instruction *>(MappingIt->Inst);
     Emitter->BeginInstruction(Inst);
     VM->SetVISAId(VisaIndexNext - 1);
     Emitter->EndInstruction(Inst);
 
-    LLVM_DEBUG(dbgs() << "VisaMap: [" << VisaIndexCurr << ";" << VisaIndexNext
-                      << "):" << *Inst << "\n");
+    LLVM_DEBUG(dbgs() << "  VisaMapping: [" << VisaIndexCurr << ";"
+                      << VisaIndexNext << "):" << *Inst << "\n");
   }
   LLVM_DEBUG(dbgs() << "\n");
 
+  LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization ---\n");
   const bool FinalizeDebugInfo = true;
   const auto &ElfBin =
       Emitter->Finalize(FinalizeDebugInfo, GenInfo.getDIDecoder());
+  LLVM_DEBUG(dbgs() << "---     \\ Debug Info Finalized /     ---\n");
   if (ElfBin.empty())
     report_fatal_error("could not emit .elf image");
-
   OS.write(ElfBin.data(), ElfBin.size());
 
   const auto &KernelName = KF.getName();
@@ -346,6 +420,7 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXModule>();
   AU.addRequired<TargetPassConfig>();
+  AU.addRequired<GenXVisaRegAlloc>();
   AU.setPreservesAll();
 }
 bool GenXDebugInfo::runOnModule(Module &M) {
@@ -388,7 +463,6 @@ INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXModule)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAlloc)
 INITIALIZE_PASS_END(GenXDebugInfo, "GenXDebugInfo", "GenXDebugInfo", false,
                     true /*analysis*/)
-
-

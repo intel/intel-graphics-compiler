@@ -86,4 +86,5 @@ target_link_libraries(VCCodeGen
   VCTransforms
   VCTargetInfo
   VCSupport
+  GenXDebugInfo
   )

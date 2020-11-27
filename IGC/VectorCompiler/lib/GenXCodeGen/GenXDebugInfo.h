@@ -48,9 +48,12 @@ namespace di {
 
 struct VisaMapping {
   unsigned visaCounter = 0;
-  typedef std::map<unsigned, const Instruction *> VisaMap;
 
-  VisaMap V2I;
+  struct Mapping {
+    unsigned VisaIdx = 0;
+    const Instruction *Inst = nullptr;
+  };
+  std::vector<Mapping> V2I;
 };
 } // namespace di
 } // namespace genx

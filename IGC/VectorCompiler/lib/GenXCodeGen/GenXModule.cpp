@@ -170,6 +170,7 @@ void GenXModule::updateVisaMapping(const Function *F, const Instruction *Inst,
 
   if (!Inst)
     return;
+
   // Unfortunately, our CISA builder routines are not very consistent with
   // respect to the interfaces used to emit vISA.
   // There may be situations when the debug information for instruction is
@@ -179,13 +180,10 @@ void GenXModule::updateVisaMapping(const Function *F, const Instruction *Inst,
   // visa instruction using the interface which requires us to update the
   // "current instruction" without actually doing so.
   const Instruction *LastInst =
-      Mapping.V2I.empty() ? nullptr : Mapping.V2I.rbegin()->second;
+      Mapping.V2I.empty() ? nullptr : Mapping.V2I.rbegin()->Inst;
+  using MappingT = genx::di::VisaMapping::Mapping;
   if (LastInst != Inst)
-    Mapping.V2I.insert(std::make_pair(Mapping.visaCounter, Inst));
-  else
-    LLVM_DEBUG(dbgs() << "WARNING: multiple insn locations updates detected! "
-                      << "visaCounter: " << Mapping.visaCounter
-                      << ", insn : " << *Inst << "\n");
+    Mapping.V2I.emplace_back(MappingT{Mapping.visaCounter, Inst});
 }
 
 const genx::di::VisaMapping *

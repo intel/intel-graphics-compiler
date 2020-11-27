@@ -3749,7 +3749,7 @@ list(APPEND _targetLinkLineCommon zebinlib)
       "${IGC_BUILD__PROJ__Compiler}"
       "${IGC_BUILD__PROJ__GenISAIntrinsics}"
       GenX_IR
-      LibDebugInfo
+      GenXDebugInfo
     )
 
   if(LLVM_ON_UNIX AND IGC_OPTION__BIF_LINK_BC)

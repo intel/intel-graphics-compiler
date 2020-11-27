@@ -8,5 +8,5 @@ set(DEBUG_INFO_LIBRARY_SOURCES
   VISAModule.cpp
 )
 
-add_library(LibDebugInfo STATIC ${DEBUG_INFO_LIBRARY_SOURCES})
-add_dependencies(LibDebugInfo intrinsics_gen ${IGC_BUILD__PROJ__GenISAIntrinsics})
+add_library(GenXDebugInfo STATIC ${DEBUG_INFO_LIBRARY_SOURCES})
+add_dependencies(GenXDebugInfo intrinsics_gen ${IGC_BUILD__PROJ__GenISAIntrinsics})

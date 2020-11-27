@@ -2687,6 +2687,8 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       switch (IntrinID) {
       case Intrinsic::dbg_value:
       case Intrinsic::dbg_declare:
+        addDebugInfo();
+        break;
       case GenXIntrinsic::genx_predefined_surface:
       case GenXIntrinsic::genx_output:
       case GenXIntrinsic::genx_output_1:
