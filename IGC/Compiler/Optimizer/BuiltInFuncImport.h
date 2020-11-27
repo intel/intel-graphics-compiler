@@ -53,6 +53,7 @@ namespace IGC
 
         /// @brief Constructor
         BIImport(std::unique_ptr<llvm::Module> pGenericModule = nullptr,
+            std::unique_ptr<llvm::Module> pFP64MathModule = nullptr,
             std::unique_ptr<llvm::Module> pSizeModule = nullptr);
 
         /// @brief analyses used
@@ -100,13 +101,16 @@ namespace IGC
     protected:
         /// Builtin module - contains the source function definition to import
         std::unique_ptr<llvm::Module> m_GenericModule;
+        std::unique_ptr<llvm::Module> m_FP64MathModule;
         std::unique_ptr<llvm::Module> m_SizeModule;
     };
 
 } // namespace IGC
 
 extern "C" llvm::ModulePass* createBuiltInImportPass(
-    std::unique_ptr<llvm::Module> pGenericModule, std::unique_ptr<llvm::Module> pSizeModule);
+    std::unique_ptr<llvm::Module> pGenericModule,
+    std::unique_ptr<llvm::Module> pFP64MathModule,
+    std::unique_ptr<llvm::Module> pSizeModule);
 
 namespace IGC
 {

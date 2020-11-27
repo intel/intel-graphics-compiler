@@ -28,10 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/atan2_s_la.cl"
 
-#if defined(cl_khr_fp64)
-    #include "../IMF/FP64/atan2_d_la.cl"
-#endif // defined(cl_khr_fp64)
-
 // TODO: I think we should be able to use M_PI_F here instead of FLOAT_PI,
 // but this does cause very small differences in the results of atan2(),
 // since M_PI_F is rounded (and therefore slightly larger than FLOAT_PI).
@@ -75,17 +71,6 @@ float __builtin_spirv_OpenCL_atan2_f32_f32( float y, float x )
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, float, float, float, f32, f32 )
-
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_atan2_f64_f64( double y, double x )
-{
-    return __ocl_svml_atan2(y, x);
-}
-
-GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_atan2, double, double, double, f64, f64 )
-
-#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
