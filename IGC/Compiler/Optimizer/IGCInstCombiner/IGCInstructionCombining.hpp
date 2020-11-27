@@ -62,10 +62,15 @@ namespace IGC
 
 
     llvm::FunctionPass* createIGCInstructionCombiningPass();
-#elif LLVM_VERSION_MAJOR >= 8
+#elif LLVM_VERSION_MAJOR <= 10
     inline llvm::FunctionPass* createIGCInstructionCombiningPass()
     {
         return llvm::createInstructionCombiningPass(false);
+    }
+#else
+    inline llvm::FunctionPass* createIGCInstructionCombiningPass()
+    {
+        return llvm::createInstructionCombiningPass();
     }
 #endif
 } // namespace IGC
