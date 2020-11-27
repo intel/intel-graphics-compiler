@@ -74,6 +74,12 @@ namespace IGCLLVM {
 
     inline Align getCorrectAlign(uint32_t Val)
     {
+        if (Val == 0)
+        {
+            // LLVM Does not accept 0 alignment.
+            // Instead assume byte-align.
+            Val = 1;
+        }
         return Align{ Val };
     }
 
