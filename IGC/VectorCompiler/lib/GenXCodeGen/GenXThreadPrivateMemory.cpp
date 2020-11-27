@@ -809,18 +809,18 @@ bool GenXThreadPrivateMemory::replaceScatterPrivate(CallInst *CI) {
       {Pred->getType(), EltsOffset->getType(),
        ValueOp->getType()});
 
-  unsigned logNumBlocks = genx::log2(EltSz);
-  unsigned Scale = 0; // scale is always 0
+  Value *logNumBlocks = ConstantInt::get(I32Ty, m_useGlobalMem ? 0 : genx::log2(EltSz));
+  Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0); // scale is always 0
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
   CallInst *ScatterStScaled =
       m_useGlobalMem
           ? IntrinsicInst::Create(
                 F,
-                {Pred, ConstantInt::get(I32Ty, logNumBlocks), EltsOffset, ValueOp})
+                {Pred, logNumBlocks, EltsOffset, ValueOp})
           : IntrinsicInst::Create(
-                F, {Pred, ConstantInt::get(I32Ty, logNumBlocks),
-                    ConstantInt::get(Type::getInt16Ty(*m_ctx), Scale), Surface,
+                F, {Pred, logNumBlocks,
+                    Scale, Surface,
                     Offset, EltsOffset, ValueOp});
   ScatterStScaled->insertAfter(CI);
   m_scatter.push_back(ScatterStScaled);
