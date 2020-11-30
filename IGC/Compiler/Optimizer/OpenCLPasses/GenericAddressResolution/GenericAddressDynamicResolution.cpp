@@ -525,22 +525,55 @@ bool GenericAddressDynamicResolution::allowArithmeticOnGenericAddressSpace(Funct
     // iterate for all addrspacecast to generic pointers
     for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i)
     {
-        AddrSpaceCastInst* addrSpaceCastInst = llvm::dyn_cast<AddrSpaceCastInst>(&*i);
-        IntToPtrInst* intToPtrInst = llvm::dyn_cast<IntToPtrInst>(&*i);
+        AddrSpaceCastInst* addrSpaceCastInst = dyn_cast<AddrSpaceCastInst>(&*i);
+        IntToPtrInst* intToPtrInst = dyn_cast<IntToPtrInst>(&*i);
+        unsigned totalNumUses = 0;
+        unsigned numUsesArith = 0;
+
         if (addrSpaceCastInst && addrSpaceCastInst->getDestAddressSpace() == ADDRESS_SPACE_GENERIC)
         {
+            totalNumUses = addrSpaceCastInst->getNumUses();
             for (auto ui : addrSpaceCastInst->users())
             {
                 Instruction* useInst = dyn_cast<Instruction>(ui);
-                PtrToIntInst* ptiInst = llvm::dyn_cast<PtrToIntInst>(&*useInst);
+                PHINode* phi = dyn_cast<PHINode>(useInst);
+                GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(useInst);
+
+                if (phi)
+                {
+                    useInst = useInst->user_back();
+                    gepInst = dyn_cast<GetElementPtrInst>(useInst);
+                    if (gepInst)
+                        useInst = useInst->user_back();
+                }
+                else if (gepInst)
+                {
+                    useInst = useInst->user_back();
+                    phi = dyn_cast<PHINode>(useInst);
+                    if (phi)
+                        useInst = useInst->user_back();
+                }
+
+                PtrToIntInst* ptiInst = dyn_cast<PtrToIntInst>(useInst);
                 if (ptiInst && ptiInst->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
                 {
-                    // add metadata to avoid tagging when emitting
-                    MDNode* N = MDNode::get(C, MDString::get(C, "generic.arith"));
-                    addrSpaceCastInst->setMetadata("generic.arith", N);
-                    ASCInsts.push_back(addrSpaceCastInst);
-                    modified = true;
+                    Instruction* ptiUser = ptiInst->user_back();
+                    // We only skip tags on generic pointers if there is an arithmetic operation
+                    // after the addrspacecast->ptrtoint.
+                    if (ptiUser->isBinaryOp() || ptiUser->isShift() || ptiUser->isBitwiseLogicOp())
+                    {
+                        numUsesArith++;
+                    }
                 }
+            }
+
+            if (numUsesArith > 0 && numUsesArith == totalNumUses)
+            {
+                // Add metadata to avoid tagging when emitting addrspacecast
+                MDNode* N = MDNode::get(C, MDString::get(C, "generic.arith"));
+                addrSpaceCastInst->setMetadata("generic.arith", N);
+                ASCInsts.push_back(addrSpaceCastInst);
+                modified = true;
             }
         }
         else if (intToPtrInst && intToPtrInst->getAddressSpace() == ADDRESS_SPACE_GENERIC)
