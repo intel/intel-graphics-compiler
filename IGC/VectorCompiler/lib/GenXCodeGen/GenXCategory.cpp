@@ -143,25 +143,28 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXRegion.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "llvmWrapper/IR/InstrTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
+
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
-#include "llvm/ADT/PostOrderIterator.h"
-#include "llvm/Analysis/CFG.h"
-#include "llvm/Analysis/ValueTracking.h"
-#include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Dominators.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Intrinsics.h"
-#include "llvm/IR/Metadata.h"
-#include "llvm/Support/Debug.h"
+
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+
+#include <llvm/ADT/PostOrderIterator.h>
+#include <llvm/Analysis/CFG.h>
+#include <llvm/Analysis/ValueTracking.h>
+#include <llvm/CodeGen/TargetPassConfig.h>
+#include <llvm/GenXIntrinsics/GenXIntrinsics.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/InlineAsm.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/Support/Debug.h>
 
 using namespace llvm;
 using namespace genx;
@@ -214,6 +217,7 @@ namespace {
     bool processFunction(Function *F);
     bool fixCircularPhis(Function *F);
     bool processValue(Value *V);
+    bool handleLeftover();
     Instruction *createConversion(Value *V, unsigned Cat);
     ConvListT buildConversions(Value *Def, CategoryAndAlignment DefInfo, const UsesCatInfo &UsesInfo);
   };
@@ -428,26 +432,23 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
     Modified |= processFunction(*i);
     InFGHead = false;
   }
-  // Now iteratively process values that did not get a category. A valid
-  // category will eventually propagate through a web of phi nodes
-  // and/or subroutine args.
-  while (NoCategory.size()) {
-    SmallVector<Value *, 8> NoCategory2;
-    for (unsigned i = 0, e = NoCategory.size(); i != e; ++i) {
-      if (!processValue(NoCategory[i]))
-        NoCategory2.push_back(NoCategory[i]);
-    }
-    IGC_ASSERT(NoCategory2.size() < NoCategory.size() && "not making any progess");
-    NoCategory.clear();
-    if (!NoCategory2.size())
-      break;
-    for (unsigned i = 0, e = NoCategory2.size(); i != e; ++i) {
-      if (!processValue(NoCategory2[i]))
-        NoCategory.push_back(NoCategory2[i]);
-    }
-    Modified |= true;
-  }
+  Modified |= handleLeftover();
   return Modified;
+}
+
+// Now iteratively process values that did not get a category. A valid
+// category will eventually propagate through a web of phi nodes
+// and/or subroutine args.
+bool GenXCategory::handleLeftover() {
+  if (NoCategory.empty())
+    return false;
+  while (!NoCategory.empty()) {
+    auto NewEnd = std::remove_if(NoCategory.begin(), NoCategory.end(),
+                                 [this](Value *V) { return processValue(V); });
+    IGC_ASSERT(NewEnd != NoCategory.end() && "not making any progess");
+    NoCategory.erase(NewEnd, NoCategory.end());
+  }
+  return true;
 }
 
 // Common up constpred calls within a block.
@@ -1002,26 +1003,31 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
  * We will not have disagreement among the incomings, since whichever one gets
  * a category first forces the category of all the others.
  */
-unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const
-{
-  bool AllConst = true;
-  for (unsigned i = 0, e = Phi->getNumIncomingValues(); i != e; ++i) {
-    Value *Incoming = Phi->getIncomingValue(i);
-    if (!isa<Constant>(Incoming)) {
-      AllConst = false;
-      if (auto LR = Liveness->getLiveRangeOrNull(Incoming)) {
-        unsigned Cat = LR->getCategory();
-        if (Cat != RegCategory::NONE)
-          return Cat;
-      }
-    }
-  }
-  if (AllConst) {
+unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
+  if (llvm::all_of(Phi->incoming_values(),
+                   [](const Use &Op) { return isa<Constant>(Op.get()); }))
     // All incomings are constant. Arbitrarily make the phi node value
     // general category.
     return RegCategory::GENERAL;
+
+  auto IncomingWithCategory =
+      llvm::find_if(Phi->incoming_values(), [this](const Use &Op) {
+        auto *LR = Liveness->getLiveRangeOrNull(Op.get());
+        return LR && LR->getCategory() != RegCategory::NONE;
+      });
+  if (IncomingWithCategory != Phi->incoming_values().end()) {
+    auto PhiCategory =
+        Liveness->getLiveRange(IncomingWithCategory->get())->getCategory();
+    IGC_ASSERT_MESSAGE(
+        llvm::all_of(Phi->incoming_values(),
+                     [this, PhiCategory](const Use &Op) {
+                       auto *LR = Liveness->getLiveRangeOrNull(Op.get());
+                       return !LR || LR->getCategory() == RegCategory::NONE ||
+                              LR->getCategory() == PhiCategory;
+                     }),
+        "Phi incoming values categories don't correspond");
+    return PhiCategory;
   }
-  // No incoming has a category yet.
   return RegCategory::NONE;
 }
 
