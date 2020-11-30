@@ -246,8 +246,7 @@ void LivenessAnalysis::calculate(Function* F)
             defBB = defInst->getParent();
         }
 
-        for (SmallPtrSet<BasicBlock*, 8>::iterator II = lvi->AliveBlocks.begin(),
-            IE = lvi->AliveBlocks.end();
+        for (auto II = lvi->AliveBlocks.begin(), IE = lvi->AliveBlocks.end();
             II != IE; ++II)
         {
             BasicBlock* BB = *II;

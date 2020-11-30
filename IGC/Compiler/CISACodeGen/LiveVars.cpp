@@ -75,8 +75,7 @@ LiveVars::LVInfo::findKill(const BasicBlock* MBB) const {
 
 void LiveVars::LVInfo::print(raw_ostream& OS) const {
     OS << "  Alive in blocks: ";
-    for (SmallPtrSet<BasicBlock*, 8>::iterator I = AliveBlocks.begin(),
-        E = AliveBlocks.end(); I != E; ++I) {
+    for (auto I = AliveBlocks.begin(), E = AliveBlocks.end(); I != E; ++I) {
         (*I)->print(OS);
         OS << ", ";
     }
@@ -162,8 +161,8 @@ void LiveVars::dump(Function* F)
         OS << "\n{";
         V->print(OS);
         OS << "\n  Alive in blocks: ";
-        for (SmallPtrSet<BasicBlock*, 8>::iterator I = LVI->AliveBlocks.begin(),
-            E = LVI->AliveBlocks.end(); I != E; ++I) {
+        for (auto I = LVI->AliveBlocks.begin(), E = LVI->AliveBlocks.end();
+            I != E; ++I) {
             BasicBlock* BB = *I;
             if (BBIds.count(BB) > 0)
             {
@@ -236,6 +235,9 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
     BasicBlock* MBB,
     std::vector<BasicBlock*>& WorkList) {
 
+    if (VRInfo.AliveBlocks.count(MBB))
+        return;  // We already know the block is live
+
     // Check to see if this basic block is one of the killing blocks.  If so,
     // remove it.
     for (unsigned i = 0, e = VRInfo.Kills.size(); i != e; ++i)
@@ -248,9 +250,6 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
         return;  // Only Arguments can be live-through entry block
     if (MBB == DefBlock)
         return;  // Terminate recursion
-
-    if (VRInfo.AliveBlocks.count(MBB))
-        return;  // We already know the block is live
 
       // Mark the variable known alive in this bb
     VRInfo.AliveBlocks.insert(MBB);
@@ -293,7 +292,6 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
     BasicBlock* MBB) {
     std::vector<BasicBlock*> WorkList;
     MarkVirtRegAliveInBlock(VRInfo, DefBlock, MBB, WorkList);
-
     while (!WorkList.empty()) {
         BasicBlock* Pred = WorkList.back();
         WorkList.pop_back();
