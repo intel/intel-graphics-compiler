@@ -2018,3 +2018,60 @@ std::size_t genx::getStructElementPaddedSize(unsigned ElemIdx,
   return Layout.getElementOffset(ElemIdx + 1) -
          Layout.getElementOffset(ElemIdx);
 }
+
+// splitStructPhi : split a phi node with struct type by splitting into
+//                  struct elements
+bool genx::splitStructPhi(PHINode *Phi) {
+  StructType *Ty = cast<StructType>(Phi->getType());
+  // Find where we need to insert the combine instructions.
+  Instruction *CombineInsertBefore = Phi->getParent()->getFirstNonPHI();
+  // Now split the phi.
+  Value *Combined = UndefValue::get(Ty);
+  // For each struct element...
+  for (unsigned Idx = 0, e = Ty->getNumElements(); Idx != e; ++Idx) {
+    Type *ElTy = Ty->getTypeAtIndex(Idx);
+    // Create the new phi node.
+    PHINode *NewPhi =
+        PHINode::Create(ElTy, Phi->getNumIncomingValues(),
+                        Phi->getName() + ".element" + Twine(Idx), Phi);
+    NewPhi->setDebugLoc(Phi->getDebugLoc());
+    // Combine the new phi.
+    Instruction *Combine = InsertValueInst::Create(
+        Combined, NewPhi, Idx, NewPhi->getName(), CombineInsertBefore);
+    Combine->setDebugLoc(Phi->getDebugLoc());
+    Combined = Combine;
+    // For each incoming...
+    for (unsigned In = 0, InEnd = Phi->getNumIncomingValues(); In != InEnd;
+         ++In) {
+      // Create an extractelement to get the individual element value.
+      // This needs to go before the terminator of the incoming block.
+      BasicBlock *IncomingBB = Phi->getIncomingBlock(In);
+      Value *Incoming = Phi->getIncomingValue(In);
+      Instruction *Extract = ExtractValueInst::Create(
+          Incoming, Idx, Phi->getName() + ".element" + Twine(Idx),
+          IncomingBB->getTerminator());
+      Extract->setDebugLoc(Phi->getDebugLoc());
+      // Add as an incoming of the new phi node.
+      NewPhi->addIncoming(Extract, IncomingBB);
+    }
+  }
+  Phi->replaceAllUsesWith(Combined);
+  Phi->eraseFromParent();
+  return true;
+}
+
+bool genx::splitStructPhis(Function *F) {
+  bool Modified = false;
+  for (Function::iterator fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
+    BasicBlock *BB = &*fi;
+    for (BasicBlock::iterator bi = BB->begin();;) {
+      PHINode *Phi = dyn_cast<PHINode>(&*bi);
+      if (!Phi)
+        break;
+      ++bi; // increment here as splitStructPhi removes old phi node
+      if (isa<StructType>(Phi->getType()))
+        Modified |= splitStructPhi(Phi);
+    }
+  }
+  return Modified;
+}

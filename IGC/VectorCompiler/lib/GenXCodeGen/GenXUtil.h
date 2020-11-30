@@ -105,8 +105,24 @@ Instruction *findClosestCommonDominator(DominatorTree *DT,
 // trunc+sext/zext
 Instruction *convertShlShr(Instruction *Inst);
 
-// splitStructPhis : split all struct phis in a function
+// splitStructPhis : find struct phi nodes and split them
+//
+// Return:  whether code modified
+//
+// Each struct phi node is split into a separate phi node for each struct
+// element. This is needed because the GenX backend's liveness and coalescing
+// code cannot cope with a struct phi.
+//
+// This is run in two places: firstly in GenXLowering, so that pass can then
+// simplify any InsertElement and ExtractElement instructions added by the
+// struct phi splitting. But then it needs to be run again in GenXLiveness,
+// because other passes can re-insert a struct phi. The case I saw in
+// hevc_speed was something commoning up the struct return from two calls in an
+// if..else..endif.
+//
+// BTW There's also GenXAggregatePseudoLowering pass that does the same.
 bool splitStructPhis(Function *F);
+bool splitStructPhi(PHINode *Phi);
 
 // normalize g_load with bitcasts.
 //

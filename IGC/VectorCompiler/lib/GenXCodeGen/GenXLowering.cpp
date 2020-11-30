@@ -160,7 +160,6 @@ public:
   virtual StringRef getPassName() const { return "GenX lowering"; }
   void getAnalysisUsage(AnalysisUsage &AU) const;
   bool runOnFunction(Function &F);
-  static bool splitStructPhi(PHINode *Phi);
 
 private:
   bool splitGatherScatter(CallInst *CI, unsigned IID);
@@ -2194,81 +2193,6 @@ Instruction *llvm::genx::convertShlShr(Instruction *Inst) {
   Ext->setDebugLoc(Inst->getDebugLoc());
   Inst->replaceAllUsesWith(Ext);
   return Ext;
-}
-
-/***********************************************************************
- * splitStructPhis : find struct phi nodes and split them
- *
- * Return:  whether code modified
- *
- * Each struct phi node is split into a separate phi node for each struct
- * element. This is needed because the GenX backend's liveness and coalescing
- * code cannot cope with a struct phi.
- *
- * This is run in two places: firstly in GenXLowering, so that pass can then
- * simplify any InsertElement and ExtractElement instructions added by the
- * struct phi splitting. But then it needs to be run again in GenXLiveness,
- * because other passes can re-insert a struct phi. The case I saw in
- * hevc_speed was something commoning up the struct return from two calls in an
- * if..else..endif.
- */
-bool genx::splitStructPhis(Function *F) {
-  bool Modified = false;
-  for (Function::iterator fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
-    BasicBlock *BB = &*fi;
-    for (BasicBlock::iterator bi = BB->begin();;) {
-      PHINode *Phi = dyn_cast<PHINode>(&*bi);
-      if (!Phi)
-        break;
-      ++bi; // increment here as splitStructPhi removes old phi node
-      if (isa<StructType>(Phi->getType()))
-        Modified |= GenXLowering::splitStructPhi(Phi);
-    }
-  }
-  return Modified;
-}
-
-/***********************************************************************
- * splitStructPhi : split a phi node with struct type by splitting into
- *                  struct elements
- */
-bool GenXLowering::splitStructPhi(PHINode *Phi) {
-  StructType *Ty = cast<StructType>(Phi->getType());
-  // Find where we need to insert the combine instructions.
-  Instruction *CombineInsertBefore = Phi->getParent()->getFirstNonPHI();
-  // Now split the phi.
-  Value *Combined = UndefValue::get(Ty);
-  // For each struct element...
-  for (unsigned Idx = 0, e = Ty->getNumElements(); Idx != e; ++Idx) {
-    Type *ElTy = Ty->getTypeAtIndex(Idx);
-    // Create the new phi node.
-    PHINode *NewPhi =
-        PHINode::Create(ElTy, Phi->getNumIncomingValues(),
-                        Phi->getName() + ".element" + Twine(Idx), Phi);
-    NewPhi->setDebugLoc(Phi->getDebugLoc());
-    // Combine the new phi.
-    Instruction *Combine = InsertValueInst::Create(
-        Combined, NewPhi, Idx, NewPhi->getName(), CombineInsertBefore);
-    Combine->setDebugLoc(Phi->getDebugLoc());
-    Combined = Combine;
-    // For each incoming...
-    for (unsigned In = 0, InEnd = Phi->getNumIncomingValues(); In != InEnd;
-         ++In) {
-      // Create an extractelement to get the individual element value.
-      // This needs to go before the terminator of the incoming block.
-      BasicBlock *IncomingBB = Phi->getIncomingBlock(In);
-      Value *Incoming = Phi->getIncomingValue(In);
-      Instruction *Extract = ExtractValueInst::Create(
-          Incoming, Idx, Phi->getName() + ".element" + Twine(Idx),
-          IncomingBB->getTerminator());
-      Extract->setDebugLoc(Phi->getDebugLoc());
-      // Add as an incoming of the new phi node.
-      NewPhi->addIncoming(Extract, IncomingBB);
-    }
-  }
-  Phi->replaceAllUsesWith(Combined);
-  Phi->eraseFromParent();
-  return true;
 }
 
 /***********************************************************************
