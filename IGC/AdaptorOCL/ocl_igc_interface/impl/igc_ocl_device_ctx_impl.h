@@ -99,8 +99,8 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
             return false;
         }
 
-        USC::SSystemThreadKernelOutput *systemKernel;
-        if (false == SIP::CSystemThread::CreateSystemThreadKernel(*this->igcPlatform, mode, systemKernel, bindless)) {
+        USC::SSystemThreadKernelOutput *systemKernel = nullptr;
+        if (false == SIP::CSystemThread::CreateSystemThreadKernel(this->GetIgcCPlatform(), mode, systemKernel, bindless)) {
             return false;
         }
 
