@@ -557,6 +557,7 @@ public:
   VISABuilder *CisaBuilder = nullptr;
 
 private:
+  bool allowI64Ops() const;
   void collectKernelInfo();
   void buildVariables();
   void buildInstructions();
@@ -3038,6 +3039,13 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
         (void *)(Attr.second.c_str())));
   }
 }
+
+bool GenXKernelBuilder::allowI64Ops() const {
+  IGC_ASSERT(Subtarget);
+  if (!Subtarget->hasLongLong())
+    return false;
+  return true;
+}
 /**************************************************************************************************
  * Scan ir to collect information about whether kernel has callable function or
  * barrier.
@@ -4493,7 +4501,7 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
   LLVM_DEBUG(dbgs() << "Building alloca " << *CI << "\n");
   VISA_GenVar *Sp = nullptr;
   CISA_CALL(Kernel->GetPredefinedVar(Sp, PreDefined_Vars::PREDEFINED_FE_SP));
-  if (!Subtarget->hasLongLong())
+  if (!allowI64Ops())
     CISA_CALL(Kernel->CreateVISAGenVar(Sp, "Sp", 1, ISA_TYPE_UD, ALIGN_DWORD, Sp));
 
   Value *AllocaOff = CI->getOperand(0);
@@ -5539,7 +5547,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
   CISA_CALL(Kernel->GetPredefinedVar(Sp, PREDEFINED_FE_SP));
   CISA_CALL(Kernel->GetPredefinedVar(Fp, PREDEFINED_FE_FP));
   // TODO: consider removing the if for local stack
-  if (!Subtarget->hasLongLong()) {
+  if (!allowI64Ops()) {
     CISA_CALL(Kernel->CreateVISAGenVar(Sp, "Sp", 1, ISA_TYPE_UD, ALIGN_DWORD, Sp));
     CISA_CALL(Kernel->CreateVISAGenVar(Fp, "Fp", 1, ISA_TYPE_UD, ALIGN_DWORD, Fp));
   }
@@ -5587,9 +5595,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
           EXEC_SIZE_1, SpOpDst, HwtidOp, Imm));
     } else {
       VISA_GenVar *Tmp = nullptr;
+
       CISA_CALL(Kernel->CreateVISAGenVar(
-          Tmp, "SpOff", 1, Subtarget->hasLongLong() ? ISA_TYPE_UQ : ISA_TYPE_UD,
-          ALIGN_DWORD));
+        Tmp, "SpOff", 1, allowI64Ops() ? ISA_TYPE_UQ : ISA_TYPE_UD, ALIGN_DWORD));
 
       VISA_VectorOpnd *OffOpDst = nullptr;
       VISA_VectorOpnd *OffOpSrc = nullptr;
@@ -6055,10 +6063,14 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
       Kernel->CreateVISASrcOperand(SpOpSrc, Sp, MODIFIER_NONE, 0, 1, 0, 0, 0));
   CISA_CALL(Kernel->CreateVISADstOperand(SpOpDst, Sp, 1, 0, 0));
   uint64_t OffVal = -StackRetSz;
-  CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UQ));
-  CISA_CALL(Kernel->AppendVISAArithmeticInst(
+  IGC_ASSERT(OffVal <= std::numeric_limits<uint32_t>::max());
+
+  if (OffVal) {
+    CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UD));
+    CISA_CALL(Kernel->AppendVISAArithmeticInst(
       ISA_ADD, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
       EXEC_SIZE_1, SpOpDst, SpOpSrc, Imm));
+  }
 }
 
 namespace {
