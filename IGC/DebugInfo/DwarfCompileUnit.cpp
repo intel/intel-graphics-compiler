@@ -49,6 +49,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MachineLocation.h"
+#include "llvm/MC/MCSymbol.h"
+#include "llvm/MC/MCSymbolELF.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -294,6 +296,16 @@ void CompileUnit::addLabelAddress(DIE* Die, dwarf::Attribute Attribute, MCSymbol
     {
         DIEValue* Value = new (DIEValueAllocator)DIEInteger(0);
         Die->addValue(Attribute, dwarf::DW_FORM_addr, Value);
+    }
+}
+
+void CompileUnit::addLabelLoc(DIE* Die, dwarf::Attribute Attribute, MCSymbol* Label)
+{
+    if (Label != NULL)
+    {
+        DD->addArangeLabel(SymbolCU(this, Label));
+        DIEValue* Value = new (DIEValueAllocator)DIELabel(Label);
+        Die->addValue(Attribute, dwarf::DW_FORM_sec_offset, Value);
     }
 }
 
@@ -2129,8 +2141,19 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
         if (DD->IsDirectElfInput())
         {
             // Copy over references ranges to DotLocDebugEntries
-            Offset = DD->CopyDebugLoc(Offset);
-            addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
+            if (EmitSettings.EnableRelocation)
+            {
+                // Retrieve correct location value based on Offset.
+                // Then attach label corresponding to this offset
+                // to DW_AT_location attribute.
+                auto LocLabel = DD->CopyDebugLoc(Offset);
+                addLabelLoc(VariableDie, dwarf::DW_AT_location, LocLabel);
+            }
+            else
+            {
+                Offset = DD->CopyDebugLocNoReloc(Offset);
+                addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
+            }
             if (DV.getDecorations().size() > 0)
             {
                 addString(VariableDie, dwarf::DW_AT_description, DV.getDecorations());
@@ -2760,7 +2783,11 @@ void CompileUnit::emitHeader(const MCSection* ASection, const MCSymbol* ASection
     // Emit ("DWARF version number");
     Asm->EmitInt16(DD->getDwarfVersion());
     // Emit ("Offset Into Abbrev. Section");
-    Asm->EmitSectionOffset(Asm->GetTempSymbol(/*ASection->getLabelBeginName()*/".debug_abbrev_begin"), ASectionSym);
+    if (EmitSettings.EnableRelocation)
+        // Emit 4-byte offset since we're using DWARF4 32-bit format
+        Asm->EmitLabelReference(Asm->GetTempSymbol(/*ASection->getLabelBeginName()*/".debug_abbrev_begin"), 4);
+    else
+        Asm->EmitSectionOffset(Asm->GetTempSymbol(/*ASection->getLabelBeginName()*/".debug_abbrev_begin"), ASectionSym);
     // Emit ("Address Size (in bytes)");
     Asm->EmitInt8(Asm->GetPointerSize());
 }

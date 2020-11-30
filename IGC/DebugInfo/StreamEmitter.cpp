@@ -94,45 +94,14 @@ namespace IGC
 
         unsigned getRelocType(MCContext& Ctx, const MCValue& Target,
             const MCFixup& Fixup, bool IsPCRel) const {
-            // This is required for resolution of strings
-            // referenced in string pool table.
-            // Added during LLVM 3.3 -> 3.5 upgrade
-            if (is64Bit())
-            {
-                return ELF::R_X86_64_32;
-            }
-
-            return ELF::R_386_32;
-        }
-
-
-        virtual unsigned int GetRelocType(const MCValue& target, const MCFixup& fixup,
-            bool v) const
-        {
-            // This is required for resolution of strings
-            // referenced in string pool table.
-            // Added during LLVM 3.3 -> 3.5 upgrade
-            if (is64Bit())
-            {
-                return ELF::R_X86_64_32;
-            }
-
-            return ELF::R_386_32;
-        }
-
-        virtual unsigned GetRelocType(const MCValue& target, const MCFixup& fixup,
-            bool isPCRel, bool /*isRelocWithSymbol*/, int64_t /*addend*/) const
-        {
-            // determine the type of the relocation
-
-            MCSymbolRefExpr::VariantKind modifier = target.isAbsolute() ?
-                MCSymbolRefExpr::VK_None : target.getSymA()->getKind();
+            MCSymbolRefExpr::VariantKind modifier = Target.isAbsolute() ?
+                MCSymbolRefExpr::VK_None : Target.getSymA()->getKind();
             unsigned type = ELF::R_X86_64_NONE;
-            if (getEMachine() == ELF::EM_X86_64)
+            if (is64Bit())
             {
-                if (isPCRel)
+                if (IsPCRel)
                 {
-                    switch ((unsigned)fixup.getKind())
+                    switch ((unsigned)Fixup.getKind())
                     {
                     default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
@@ -181,7 +150,7 @@ namespace IGC
                 }
                 else
                 {
-                    switch ((unsigned)fixup.getKind())
+                    switch ((unsigned)Fixup.getKind())
                     {
                     default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
                     case FK_Data_8:
@@ -215,11 +184,11 @@ namespace IGC
                     }
                 }
             }
-            else if (getEMachine() == ELF::EM_386)
+            else
             {
-                if (isPCRel)
+                if (IsPCRel)
                 {
-                    switch ((unsigned)fixup.getKind())
+                    switch ((unsigned)Fixup.getKind())
                     {
                     default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
@@ -241,7 +210,7 @@ namespace IGC
                 }
                 else
                 {
-                    switch ((unsigned)fixup.getKind())
+                    switch ((unsigned)Fixup.getKind())
                     {
                     default: IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
@@ -292,8 +261,6 @@ namespace IGC
                     }
                 }
             }
-            else
-                IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported ELF machine type.");
 
             return type;
         }

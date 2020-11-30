@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/MC/MCDwarf.h"
+#include "llvm/MC/MCSymbol.h"
 #if LLVM_VERSION_MAJOR == 4
 #include "llvm/Support/ELF.h"
 #elif LLVM_VERSION_MAJOR >= 7
@@ -151,6 +152,16 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
     m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
 
+    auto EmitIpLabel = [&](unsigned int ip)
+    {
+        // Emit label before %ip
+        if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation)
+        {
+            auto instLabel = m_pDwarfDebug->GetLabelBeforeIp(ip);
+            m_pStreamEmitter->EmitLabel(instLabel);
+        }
+    };
+
     if (m_pVISAModule->isDirectElfInput)
     {
         m_pVISAModule->buildDirectElfMaps();
@@ -206,6 +217,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
         {
             for (unsigned int i = pc; i != item.first; i++)
             {
+                EmitIpLabel(i);
                 m_pStreamEmitter->EmitInt8(genxISA[i]);
             }
 
@@ -271,6 +283,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
             // for subroutines
             for (unsigned int i = pc; i != lastGenOff; i++)
             {
+                EmitIpLabel(i);
                 m_pStreamEmitter->EmitInt8(genxISA[i]);
             }
         }
@@ -349,12 +362,26 @@ void DebugEmitter::setElfType(bool is64Bit, void* pBuffer)
     if (is64Bit)
     {
         void* etypeOff = ((char*)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_type));
-        *((llvm::ELF::Elf64_Half*)etypeOff) = llvm::ELF::ET_EXEC;
+        if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation)
+        {
+            *((llvm::ELF::Elf64_Half*)etypeOff) = llvm::ELF::ET_REL;
+        }
+        else
+        {
+            *((llvm::ELF::Elf64_Half*)etypeOff) = llvm::ELF::ET_EXEC;
+        }
     }
     else
     {
         void* etypeOff = ((char*)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_type));
-        *((llvm::ELF::Elf32_Half*)etypeOff) = llvm::ELF::ET_EXEC;
+        if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation)
+        {
+            *((llvm::ELF::Elf32_Half*)etypeOff) = llvm::ELF::ET_REL;
+        }
+        else
+        {
+            *((llvm::ELF::Elf32_Half*)etypeOff) = llvm::ELF::ET_EXEC;
+        }
     }
 }
 

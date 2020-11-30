@@ -11,6 +11,7 @@ namespace IGC
     bool EmitDebugRanges = false;
     bool EmitDebugLoc = false;
     bool EmitOffsetInDbgLoc = false;
+    bool EnableRelocation = false;
   };
 }
 

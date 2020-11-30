@@ -420,10 +420,18 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
 #if 1
     if (m_pModule->isDirectElfInput)
     {
-        SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
-        SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
-
-
+        if (EmitSettings.EnableRelocation)
+        {
+            SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
+                Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
+            SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
+                Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+        }
+        else
+        {
+            SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
+            SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
+        }
     }
     else
     {
@@ -528,8 +536,18 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
             if (GenISARanges.size() > 0)
             {
                 // Emit loc/high_pc
-                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
-                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+                if (EmitSettings.EnableRelocation)
+                {
+                    auto StartLabel = GetLabelBeforeIp(GenISARanges.front().first);
+                    auto EndLabel = GetLabelBeforeIp(GenISARanges.back().second);
+                    TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
+                    TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
+                }
+                else
+                {
+                    TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
+                    TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+                }
             }
         }
         return ScopeDIE;
@@ -557,10 +575,10 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
 void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges)
 {
     // This makes sense only for full debug info.
-    // Resolve VISA index to Gen IP here.
     if (Ranges->size() == 0)
         return;
 
+    // Resolve VISA index to Gen IP here.
     std::vector<std::pair<unsigned int, unsigned int>> AllGenISARanges;
     for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges->begin(),
         RE = Ranges->end(); RI != RE; ++RI)
@@ -577,24 +595,57 @@ void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::Smal
     if (AllGenISARanges.size() == 1)
     {
         // Emit low_pc/high_pc inlined in DIE
-        TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, AllGenISARanges.front().first);
-        TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, AllGenISARanges.front().second);
+        if (EmitSettings.EnableRelocation)
+        {
+            auto StartLabel = GetLabelBeforeIp(AllGenISARanges.front().first);
+            auto EndLabel = GetLabelBeforeIp(AllGenISARanges.front().second);
+            TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
+            TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
+        }
+        else
+        {
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, AllGenISARanges.front().first);
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, AllGenISARanges.front().second);
+        }
     }
-    else if(AllGenISARanges.size() > 1)
+    else if (AllGenISARanges.size() > 1)
     {
         // Emit to debug_ranges
-        TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
-            GenISADebugRangeSymbols.size() * Asm->GetPointerSize());
+        llvm::MCSymbol* NewLabel = nullptr;
+        if (EmitSettings.EnableRelocation)
+        {
+            NewLabel = Asm->CreateTempSymbol();
+            TheCU->addLabelLoc(ScopeDIE, dwarf::DW_AT_ranges, NewLabel);
+        }
+        else
+        {
+            auto GetDebugRangeSize = [&]()
+            {
+                size_t TotalSize = 0;
+                for (auto& Entry : GenISADebugRangeSymbols)
+                {
+                    TotalSize += Entry.second.size();
+                }
+                return TotalSize;
+            };
+
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
+                GetDebugRangeSize() * Asm->GetPointerSize());
+        }
+
+        llvm::SmallVector<unsigned int, 8> Data;
 
         for (auto& item : AllGenISARanges)
         {
-            GenISADebugRangeSymbols.push_back(item.first);
-            GenISADebugRangeSymbols.push_back(item.second);
+            Data.push_back(item.first);
+            Data.push_back(item.second);
         }
 
         // Terminate the range list
-        GenISADebugRangeSymbols.push_back(0);
-        GenISADebugRangeSymbols.push_back(0);
+        Data.push_back(0);
+        Data.push_back(0);
+
+        GenISADebugRangeSymbols.emplace_back(std::make_pair(NewLabel, Data));
     }
 }
 
@@ -652,28 +703,7 @@ DIE* DwarfDebug::constructInlinedScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
         // .debug_range section has not been laid out yet. Emit offset in
         // .debug_range as a uint, size 4, for now. emitDIE will handle
         // DW_AT_ranges appropriately.
-        if (EmitSettings.EmitDebugRanges)
-        {
-            encodeRange(TheCU, ScopeDIE, &Ranges);
-        }
-        else
-        {
-            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
-                GenISADebugRangeSymbols.size() * Asm->GetPointerSize());
-            for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin(),
-                RE = Ranges.end(); RI != RE; ++RI)
-            {
-                auto&& GenISARanges = m_pModule->getGenISARange(*RI);
-                for (auto& item : GenISARanges)
-                {
-                    GenISADebugRangeSymbols.push_back(item.first);
-                    GenISADebugRangeSymbols.push_back(item.second);
-                }
-            }
-            // Terminate the range list.
-            GenISADebugRangeSymbols.push_back(0);
-            GenISADebugRangeSymbols.push_back(0);
-        }
+        encodeRange(TheCU, ScopeDIE, &Ranges);
 
         return ScopeDIE;
     }
@@ -880,16 +910,26 @@ CompileUnit* DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
 
     if (m_pModule->isDirectElfInput)
     {
-        auto highPC = m_pModule->getUnpaddedProgramSize();
-        NewCU->addUInt(Die, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, 0);
-        NewCU->addUInt(Die, dwarf::DW_AT_high_pc, Optional<dwarf::Form>(), highPC);
+        if (EmitSettings.EnableRelocation)
+        {
+            NewCU->addLabelAddress(Die, dwarf::DW_AT_low_pc, ModuleBeginSym);
+            NewCU->addLabelAddress(Die, dwarf::DW_AT_high_pc, ModuleEndSym);
 
-        // DW_AT_stmt_list is a offset of line number information for this
-        // compile unit in debug_line section. For split dwarf this is
-        // left in the skeleton CU and so not included.
-        // The line table entries are not always emitted in assembly, so it
-        // is not okay to use line_table_start here.
-        NewCU->addUInt(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset, 0);
+            NewCU->addLabelLoc(Die, dwarf::DW_AT_stmt_list, DwarfLineSectionSym);
+        }
+        else
+        {
+            auto highPC = m_pModule->getUnpaddedProgramSize();
+            NewCU->addUInt(Die, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, 0);
+            NewCU->addUInt(Die, dwarf::DW_AT_high_pc, Optional<dwarf::Form>(), highPC);
+
+            // DW_AT_stmt_list is a offset of line number information for this
+            // compile unit in debug_line section. For split dwarf this is
+            // left in the skeleton CU and so not included.
+            // The line table entries are not always emitted in assembly, so it
+            // is not okay to use line_table_start here.
+            NewCU->addUInt(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset, 0);
+        }
     }
     else
     {
@@ -1219,6 +1259,7 @@ void DwarfDebug::endModule()
     if (!FirstCU) return;
 
     // Assumes in correct section after the entry point.
+    Asm->SwitchSection(Asm->GetTextSection());
     Asm->EmitLabel(ModuleEndSym);
 
     // End any existing sections.
@@ -1810,7 +1851,62 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
     }
 }
 
-unsigned int DwarfDebug::CopyDebugLoc(unsigned int o)
+llvm::MCSymbol* DwarfDebug::CopyDebugLoc(unsigned int o)
+{
+    // TempDotLocEntries has all entries discovered in collectVariableInfo.
+    // But some of those entries may not get emitted. This function
+    // is invoked when writing out DIE. At this time, it can be decided
+    // whether debug_range for a variable will be emitted to debug_ranges.
+    // If yes, it is copied over to DotDebugLocEntries and new offset is
+    // returned.
+    unsigned int offset = 0, index = 0;
+    bool found = false, done = false;
+    unsigned int pointerSize = m_pModule->getPointerSize();
+
+    // Compute offset in DotDebugLocEntries
+    for (auto& item : DotDebugLocEntries)
+    {
+        if (item.isEmpty())
+            offset += pointerSize * 2;
+        else
+            offset += item.loc.size();
+    }
+
+    auto Label = Asm->GetTempSymbol("debug_loc", offset);
+    auto RetLabel = Label;
+
+    while (!done)
+    {
+        if (!found &&
+            TempDotDebugLocEntries[index].getOffset() == o)
+        {
+            found = true;
+        }
+        else if (!found)
+        {
+            index++;
+            continue;
+        }
+
+        if (found)
+        {
+            // Append data to DotLocEntries
+            auto& Entry = TempDotDebugLocEntries[index];
+            Entry.setSymbol(Label);
+            Label = nullptr;
+            DotDebugLocEntries.push_back(Entry);
+            if (TempDotDebugLocEntries[index].isEmpty())
+            {
+                done = true;
+            }
+        }
+        index++;
+    }
+
+    return RetLabel;
+}
+
+unsigned int DwarfDebug::CopyDebugLocNoReloc(unsigned int o)
 {
     // TempDotLocEntries has all entries discovered in collectVariableInfo.
     // But some of those entries may not get emitted. This function
@@ -2430,9 +2526,9 @@ void DwarfDebug::emitSectionLabels()
 
     DwarfDebugLocSectionSym = emitSectionSym(Asm, Asm->GetDwarfLocSection(), "section_debug_loc");
 
-    TextSectionSym = emitSectionSym(Asm, Asm->GetTextSection(), "text_begin");
-
     emitSectionSym(Asm, Asm->GetDataSection());
+
+    TextSectionSym = emitSectionSym(Asm, Asm->GetTextSection(), "text_begin");
 }
 
 // Emit visible names into a debug str section.
@@ -2519,22 +2615,13 @@ void DwarfDebug::emitDIE(DIE* Die)
             break;
         }
         case dwarf::DW_AT_ranges:
-            // DW_AT_range Value encodes offset in debug_range section.
-            Values[i]->EmitValue(Asm, Form);
-            break;
+            // DW_AT_range encodes offset in debug_range section.
         case dwarf::DW_AT_location:
-            if (DIELabel * L = dyn_cast<DIELabel>(Values[i]))
-            {
-                Asm->EmitSectionOffset(L->getValue(), DwarfDebugLocSectionSym);
-            }
-            else
-            {
-                Values[i]->EmitValue(Asm, Form);
-            }
-            break;
+            // DW_AT_location encodes offset in debug_loc section
         case dwarf::DW_AT_accessibility:
             Values[i]->EmitValue(Asm, Form);
             break;
+
         default:
             // Emit an attribute using the defined form.
             Values[i]->EmitValue(Asm, Form);
@@ -2641,6 +2728,9 @@ void DwarfDebug::emitDebugLoc()
         }
         else
         {
+            auto Symbol = Entry.getSymbol();
+            if(Symbol)
+                Asm->EmitLabel(Symbol);
             for (unsigned int byte = 0; byte != Entry.loc.size(); byte++)
             {
                 Asm->EmitIntValue(Entry.loc[byte], 1);
@@ -2739,10 +2829,15 @@ void DwarfDebug::emitDebugRanges()
 
     if (m_pModule->isDirectElfInput)
     {
-        // Range is already in Gen ISA units so emit it as integer
-        for (auto& data : GenISADebugRangeSymbols)
+        for (auto& Entry : GenISADebugRangeSymbols)
         {
-            Asm->EmitIntValue(data, size);
+            auto Label = Entry.first;
+            if (Label)
+                Asm->EmitLabel(Label);
+            for (auto Data : Entry.second)
+            {
+                Asm->EmitIntValue(Data, size);
+            }
         }
     }
     else
@@ -3071,6 +3166,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
 {
     std::vector<uint8_t> data;
     uint64_t loc = 0;
+    uint64_t LabelOffset = std::numeric_limits<uint64_t>::max();
     // <ip, <instructions to write> >
     auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
     std::map <uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
@@ -3168,7 +3264,17 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
     auto genOffStart = dbgInfo.relocOffset;
     auto genOffEnd = highPc;
 
-    write(data, ptrSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
+    // LabelOffset holds offset where start %ip is written to buffer.
+    // Code later uses this to insert label for relocation.
+    LabelOffset = data.size();
+    if (EmitSettings.EnableRelocation)
+    {
+        write(data, ptrSize == 4 ? (uint32_t)0xfefefefe : (uint64_t)0xfefefefefefefefe);
+    }
+    else
+    {
+        write(data, ptrSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
+    }
 
     // address range
     write(data, ptrSize == 4 ? (uint32_t)(genOffEnd - genOffStart) :
@@ -3283,8 +3389,29 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
         Asm->EmitInt32(0xffffffff);
     Asm->EmitIntValue(data.size(), ptrSize);
 
-    for (auto& byte : data)
-        Asm->EmitInt8(byte);
+    if (EmitSettings.EnableRelocation)
+    {
+        uint32_t ByteOffset = 0;
+
+        for (auto it = data.begin(); it != data.end(); ++it)
+        {
+            auto byte = *it;
+            if (ByteOffset++ == (uint32_t)LabelOffset)
+            {
+                auto Label = GetLabelBeforeIp(genOffStart);
+                Asm->EmitLabelReference(Label, ptrSize, false);
+                // Now skip ptrSize number of bytes from data
+                std::advance(it, ptrSize);
+                byte = *it;
+            }
+            Asm->EmitInt8(byte);
+        }
+    }
+    else
+    {
+        for (auto& byte : data)
+            Asm->EmitInt8(byte);
+    }
 }
 
 void DwarfDebug::gatherDISubprogramNodes()
@@ -3397,4 +3524,14 @@ DbgDecoder::DbgInfoFormat* VISAModule::getCompileUnit() const
     }
 
     return nullptr;
+}
+
+llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)
+{
+    auto it = LabelsBeforeIp.find(ip);
+    if (it != LabelsBeforeIp.end())
+        return (*it).second;
+    auto NewLabel = Asm->CreateTempSymbol();
+    LabelsBeforeIp[ip] = NewLabel;
+    return NewLabel;
 }

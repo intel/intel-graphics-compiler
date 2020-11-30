@@ -195,6 +195,9 @@ namespace IGC
         ///
         void addLabelAddress(DIE* Die, llvm::dwarf::Attribute Attribute, llvm::MCSymbol* Label);
 
+        // addLabelLoc - Add dwarf label attribute data and value using DW_FORM_sec_offset.
+        void addLabelLoc(DIE* Die, llvm::dwarf::Attribute Attribute, llvm::MCSymbol* Label);
+
         /// addOpAddress - Add a dwarf op address data and value using the
         /// form given and an op of either DW_FORM_addr or DW_FORM_GNU_addr_index.
         ///

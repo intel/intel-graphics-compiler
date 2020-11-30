@@ -577,6 +577,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EmitDebugRanges = IGC_IS_FLAG_ENABLED(EmitDebugRanges);
         DebugOpts.EmitDebugLoc = IGC_IS_FLAG_ENABLED(EmitDebugLoc);
         DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
+        DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations);
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
         IF_DEBUG_INFO(m_pDebugEmitter->Initialize(
             vMod, DebugOpts, DebugInfoData::hasDebugInfo(m_currShader));)

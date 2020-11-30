@@ -89,11 +89,12 @@ namespace IGC
         uint32_t offset = 0;
 
         // The location in the machine frame.
-        const llvm::Instruction* m_pDbgInst;
+        const llvm::Instruction* m_pDbgInst = nullptr;
 
         // The variable to which this location entry corresponds.
-        const llvm::MDNode* Variable;
+        const llvm::MDNode* Variable = nullptr;
 
+        llvm::MCSymbol* Symbol = nullptr;
     public:
         uint64_t start = 0;
         uint64_t end = 0;
@@ -117,6 +118,8 @@ namespace IGC
         uint32_t getOffset() { return offset; }
         void setOffset(uint32_t o) { offset = o; }
 
+        llvm::MCSymbol* getSymbol() { return Symbol; }
+        void setSymbol(llvm::MCSymbol* S) { Symbol = S; }
     };
 
     //===----------------------------------------------------------------------===//
@@ -329,8 +332,9 @@ namespace IGC
 
         llvm::SmallVector<const llvm::MCSymbol*, 8> DebugRangeSymbols;
 
-        // Used when emitting Gen ISA offsets directly
-        llvm::SmallVector<unsigned int, 8> GenISADebugRangeSymbols;
+        // Store vector of MCSymbol->Raw .debug_ranges data.
+        // MCSymbol* is nullptr when not using relocatable elf.
+        std::vector<std::pair<llvm::MCSymbol*, llvm::SmallVector<unsigned int, 8>>> GenISADebugRangeSymbols;
 
         // Previous instruction's location information. This is used to determine
         // label location to indicate scope boundries in llvm::dwarf debug info.
@@ -633,6 +637,9 @@ namespace IGC
         DbgDecoder* decodedDbg = nullptr;
 
         std::map<llvm::MDNode*, std::vector<const llvm::Instruction*>> SameIATInsts;
+
+        // Store label for each %ip
+        llvm::DenseMap<unsigned int, llvm::MCSymbol*> LabelsBeforeIp;
     public:
         std::map<llvm::DISubprogram*, const llvm::Function*>* getDISPToFunction()
         {
@@ -674,9 +681,12 @@ namespace IGC
         {
             decodedDbg = d;
         }
-        unsigned int CopyDebugLoc(unsigned int offset);
+        llvm::MCSymbol* CopyDebugLoc(unsigned int offset);
+        unsigned int CopyDebugLocNoReloc(unsigned int o);
 
         const VISAModule* GetVISAModule() { return m_pModule; }
+
+        llvm::MCSymbol* GetLabelBeforeIp(unsigned int ip);
 
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);
