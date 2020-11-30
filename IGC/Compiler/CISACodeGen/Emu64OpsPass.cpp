@@ -1884,18 +1884,30 @@ bool InstExpander::visitCall(CallInst& Call) {
     auto* CallCopy = Call.clone();
     IGC_ASSERT(nullptr != CallCopy);
     CallCopy->insertBefore(&Call);
-
-    // All int64 operands shall be recreated right before CallCopy
     IRB->SetInsertPoint(CallCopy);
-    unsigned argNo = 0;
-    for (auto& Op : Call.operands())
+    for (int argNo=0, sz = (int)Call.getNumArgOperands(); argNo < sz; ++argNo)
     {
-        if (Emu->isInt64(Op.get()))
+        Value* OldVal = Call.getArgOperand(argNo);
+        if (Emu->isInt64(OldVal))
         {
-            Value* NewVal = Combine2xi32Toi64(Op.get());
+            Value* NewVal = nullptr;
+
+            // If this operand has been combined (same value is used more than
+            // once. for example,  mul %12  %12), do not recombine them.
+            for (int i = 0; i < argNo; ++i)
+            {
+                if (Call.getArgOperand(i) == OldVal)
+                {
+                    NewVal = CallCopy->getOperand(i);
+                    break;
+                }
+            }
+            if (NewVal == nullptr)
+            {
+                NewVal = Combine2xi32Toi64(OldVal);
+            }
             CallCopy->setOperand(argNo, NewVal);
         }
-        argNo++;
     }
 
     // For int64 return value, split it right after CallCopy
