@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "spirv.h"
 #include "IMF/FP32/asin_s_la.cl"
-#include "IMF/FP32/atan_s_la.cl"
 
 INLINE float __builtin_spirv_OpenCL_fclamp_f32_f32_f32(float x, float minval, float maxval ){
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
@@ -405,7 +404,65 @@ float __builtin_spirv_OpenCL_asin_f32(float value ){
 
 INLINE
 float __builtin_spirv_OpenCL_atan_f32(float value ){
-    return __ocl_svml_atanf(value);
+    // The LA atan implementation (IMF/FP32/atan_s_la.cl)
+    // seems to be slower on Mandelbulb algorithm..
+    float temp1 = 0.0f;
+    float temp2 = 0.0f;
+    float temp3 = 0.0f;
+    float temp4 = 0.0f;
+
+    float destTemp = 0.0f;
+
+    bool flag = __builtin_spirv_OpenCL_fabs_f32(value) > 1.0f;
+
+    temp1 = __builtin_spirv_OpenCL_fabs_f32(value);
+
+    if(flag)
+    {
+        temp1 = __builtin_spirv_OpenCL_native_recip_f32(temp1);
+    }
+
+    temp2 = temp1 * temp1;
+
+    destTemp = temp2 * -0.8233629465103149f;
+
+    temp4 = temp2 + 11.33538818359375f;
+
+    destTemp = destTemp + -5.674867153167725f;
+
+    temp4 = temp4 * temp2;
+
+    destTemp = temp2 * destTemp;
+
+    temp4 = temp4 + 28.84246826171875f;
+
+    destTemp = destTemp + -6.565555095672607f;
+
+    temp4 = temp4 * temp2;
+
+    destTemp = temp2 * destTemp;
+
+    temp4 = temp4 + 19.696670532226562f;
+
+    destTemp = temp1 * destTemp;
+
+    temp4 = __builtin_spirv_OpenCL_native_recip_f32(temp4);
+
+    destTemp = temp4 * destTemp;
+
+    destTemp = destTemp + temp1;
+
+    if(flag)
+    {
+        destTemp = -destTemp + 1.5707963705062866f;
+    }
+
+    if(value < 0.0f)
+    {
+        destTemp = -__builtin_spirv_OpenCL_fabs_f32(destTemp);
+    }
+
+    return destTemp;
 }
 
 INLINE
