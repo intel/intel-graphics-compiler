@@ -5,6 +5,7 @@ set(DEBUG_INFO_LIBRARY_SOURCES
   LexicalScopes.cpp
   DwarfDebug.cpp
   VISADebugEmitter.cpp
+  VISADebugDecoder.cpp
   VISAModule.cpp
 )
 

@@ -138,6 +138,8 @@ public:
       return;
     }
 
+    LLVM_DEBUG(VisaKernelDI->dump(); dbgs() << "\n";);
+
     if (VisaKernelDI->CISAIndexMap.empty()) {
       ErrMsg = "empty CisaIndexMap for <" + std::string(F.getName()) + ">";
       return;
