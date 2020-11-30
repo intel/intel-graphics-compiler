@@ -4103,6 +4103,23 @@ void __builtin_spirv_OpAtomicFlagClear_p3i32_i32_i32(volatile local uint *Pointe
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+// SPV_EXT_shader_atomic_float_add
+float  __builtin_spirv_OpAtomicFAddEXT_p0f32_i32_i32_f32(volatile private float *Pointer, uint Scope, uint Semantics, float Value);
+float  __builtin_spirv_OpAtomicFAddEXT_p1f32_i32_i32_f32(volatile global float *Pointer, uint Scope, uint Semantics, float Value);
+float  __builtin_spirv_OpAtomicFAddEXT_p3f32_i32_i32_f32(volatile local float *Pointer, uint Scope, uint Semantics, float Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float  __builtin_spirv_OpAtomicFAddEXT_p4f32_i32_i32_f32(volatile generic float *Pointer, uint Scope, uint Semantics, float Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if defined(cl_khr_fp64)
+double __builtin_spirv_OpAtomicFAddEXT_p0f64_i32_i32_f64(volatile private double *Pointer, uint Scope, uint Semantics, double Value);
+double __builtin_spirv_OpAtomicFAddEXT_p1f64_i32_i32_f64(volatile global double *Pointer, uint Scope, uint Semantics, double Value);
+double __builtin_spirv_OpAtomicFAddEXT_p3f64_i32_i32_f64(volatile local double *Pointer, uint Scope, uint Semantics, double Value);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double __builtin_spirv_OpAtomicFAddEXT_p4f64_i32_i32_f64(volatile generic double *Pointer, uint Scope, uint Semantics, double Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#endif // defined(cl_khr_fp64)
+
+
 // Barrier Instructions
 
 void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics);

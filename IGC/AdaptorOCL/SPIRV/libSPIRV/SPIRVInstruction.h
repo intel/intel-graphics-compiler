@@ -1849,6 +1849,12 @@ _SPIRV_OP(AtomicOr, true, 7)
 _SPIRV_OP(AtomicXor, true, 7)
 #undef _SPIRV_OP
 
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVInstTemplateBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// SPV_EXT_shader_atomic_float_add
+_SPIRV_OP(AtomicFAddEXT, true, 7)
+#undef _SPIRV_OP
 
 class SPIRVNamedBarrierInstBase :public SPIRVInstTemplateBase {
 public:

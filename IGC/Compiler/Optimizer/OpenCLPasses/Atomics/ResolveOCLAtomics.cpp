@@ -48,7 +48,8 @@ IGC_INITIALIZE_PASS_END(ResolveOCLAtomics, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 
 char ResolveOCLAtomics::ID = 0;
 
-const llvm::StringRef BUILTIN_GET_LOCAL_LOCK = "__builtin_IB_get_local_lock";
+const llvm::StringRef BUILTIN_GET_LOCAL_LOCK =  "__builtin_IB_get_local_lock";
+const llvm::StringRef BUILTIN_GET_GLOBAL_LOCK = "__builtin_IB_get_global_lock";
 
 ResolveOCLAtomics::ResolveOCLAtomics() : ModulePass(ID)
 {
@@ -134,6 +135,9 @@ void ResolveOCLAtomics::visitCallInst(CallInst& callInst)
 
     if (funcName == BUILTIN_GET_LOCAL_LOCK) {
         processGetLocalLock(callInst);
+    }
+    else if (funcName == BUILTIN_GET_GLOBAL_LOCK) {
+        processGetGlobalLock(callInst);
     }
 
     if (funcName.startswith("__builtin_IB_atomic"))
@@ -300,6 +304,29 @@ void ResolveOCLAtomics::processGetLocalLock(CallInst& callInst)
     }
 
     callInst.replaceAllUsesWith(m_localLock);
+    callInst.eraseFromParent();
+    m_changed = true;
+}
+
+void ResolveOCLAtomics::processGetGlobalLock(CallInst& callInst)
+{
+    IGC_ASSERT(callInst.getCalledFunction()->getName() == BUILTIN_GET_GLOBAL_LOCK);
+    if (m_globalLock == nullptr) {
+        auto& C = m_pModule->getContext();
+
+        m_globalLock = new GlobalVariable(
+            *m_pModule,
+            Type::getInt32Ty(C),
+            false,
+            GlobalVariable::ExternalLinkage,
+            ConstantInt::get(Type::getInt32Ty(C), 0),
+            "spinlock",
+            nullptr,
+            GlobalValue::NotThreadLocal,
+            ADDRESS_SPACE_GLOBAL);
+    }
+
+    callInst.replaceAllUsesWith(m_globalLock);
     callInst.eraseFromParent();
     m_changed = true;
 }

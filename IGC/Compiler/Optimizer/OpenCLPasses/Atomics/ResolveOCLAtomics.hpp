@@ -123,6 +123,10 @@ namespace IGC
         /// @param    callInst  call to "__builtin_IB_get_local_lock*" function.
         void           processGetLocalLock(llvm::CallInst& callInst);
 
+        /// @brief  Replace the "__builtin_IB_get_global_lock" call with a pointer to a global memory variable.
+        /// @param    callInst  call to "__builtin_IB_get_global_lock*" function.
+        void           processGetGlobalLock(llvm::CallInst& callInst);
+
         /// @brief  Recursively search for kernel functions using local lock variable
         /// @param    value   currently analyzed function
         void findLockUsers(llvm::Value* V);
@@ -134,8 +138,14 @@ namespace IGC
         /// @brief  Initializes local lock variable in all related kernel functions
         void initilizeLocalLock();
 
+        /// @brief  Initializes global lock variable in all related kernel functions
+        void initializeGlobalLock();
+
         /// @brief  Stores the value of local value used for spinlock for i64 local atomics emulation.
         llvm::GlobalVariable* m_localLock = nullptr;
+
+        /// @brief  Stores the value of global value used for spinlock for f64 global atomics emulation.
+        llvm::GlobalVariable* m_globalLock = nullptr;
 
         /// @brief  Stores all the kernel functions using local lock variable
         std::unordered_set<llvm::Function*> m_localLockUsers;

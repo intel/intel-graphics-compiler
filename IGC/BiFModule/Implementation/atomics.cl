@@ -36,20 +36,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent)
 
 
+
   __local uint* __builtin_IB_get_local_lock();
+  __global uint* __builtin_IB_get_global_lock();
   void __builtin_IB_eu_thread_pause(uint value);
   void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1);
 
-#define SPINLOCK_START \
+#define SPINLOCK_START(addr_space) \
   { \
   volatile bool done = false; \
   while(!done) { \
        __builtin_IB_eu_thread_pause(32); \
-       if(atomic_cmpxchg(__builtin_IB_get_local_lock(), 0, 1) == 0) {
+       if(atomic_cmpxchg(__builtin_IB_get_##addr_space##_lock(), 0, 1) == 0) {
 
-#define SPINLOCK_END \
+#define SPINLOCK_END(addr_space) \
             done = true; \
-            atomic_store(__builtin_IB_get_local_lock(), 0); \
+            atomic_store(__builtin_IB_get_##addr_space##_lock(), 0); \
   }}}
 
 #define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                      \
@@ -88,6 +90,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 {                                                                                             \
     FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
     TYPE result = as_float(INTRINSIC( (Pointer), (Value) ));                                  \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_operation_1op_as_double( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = as_double(INTRINSIC( (Pointer), (Value) ));                                  \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_operation_1op_as_half( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = as_half(INTRINSIC( (Pointer), (Value) ));                                  \
     FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
     return result;                                                                            \
 }
@@ -428,7 +446,7 @@ ulong __builtin_spirv_OpAtomicUlongBinary_p3( enum IntAtomicOp atomicOp, volatil
 
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START
+    SPINLOCK_START(local);
     orig = *Pointer;
     switch (atomicOp)
     {
@@ -442,7 +460,7 @@ ulong __builtin_spirv_OpAtomicUlongBinary_p3( enum IntAtomicOp atomicOp, volatil
         case ATOMIC_UMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
         default: break; // What should we do here? OCL doesn't have assert
     }
-    SPINLOCK_END
+    SPINLOCK_END(local);
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -454,7 +472,7 @@ long __builtin_spirv_OpAtomicSlongBinary_p3( enum IntAtomicOp atomicOp, volatile
 
     long orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START
+    SPINLOCK_START(local)
     orig = *Pointer;
     switch (atomicOp)
     {
@@ -462,7 +480,7 @@ long __builtin_spirv_OpAtomicSlongBinary_p3( enum IntAtomicOp atomicOp, volatile
         case ATOMIC_IMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
         default: break; // What should we do here? OCL doesn't have assert
     }
-    SPINLOCK_END
+    SPINLOCK_END(local)
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -473,10 +491,10 @@ ulong __builtin_spirv_OpAtomicUlongUnary_p3( bool isInc, volatile __local long *
 
     ulong orig;
     FENCE_PRE_OP(Scope, Semantics, false)
-    SPINLOCK_START
+    SPINLOCK_START(local)
     orig = *Pointer;
     *Pointer = isInc ? orig + 1 : orig - 1;
-    SPINLOCK_END
+    SPINLOCK_END(local)
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
 }
@@ -644,13 +662,13 @@ ulong __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64( volatil
 {
     ulong orig;
     FENCE_PRE_OP(Scope, Equal, false)
-    SPINLOCK_START
+    SPINLOCK_START(local)
     orig = *Pointer;
     if( orig == Comparator )
     {
         *Pointer = Value;
     }
-    SPINLOCK_END
+    SPINLOCK_END(local)
     FENCE_POST_OP(Scope, Equal, false)
     return orig;
 }
@@ -1634,6 +1652,97 @@ void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32( volatile __generic uint *P
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+float __builtin_spirv_OpAtomicFAddEXT_p0f32_i32_i32_f32( volatile __private float *Pointer, uint Scope, uint Semantics, float Value)
+{
+    float orig = *Pointer;
+    *Pointer += Value;
+    return orig;
+}
+
+float __builtin_spirv_OpAtomicFAddEXT_p1f32_i32_i32_f32( volatile __global float *Pointer, uint Scope, uint Semantics, float Value)
+{
+    float orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = orig + Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+float __builtin_spirv_OpAtomicFAddEXT_p3f32_i32_i32_f32( volatile __local float *Pointer, uint Scope, uint Semantics, float Value)
+{
+    float orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = orig + Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float __builtin_spirv_OpAtomicFAddEXT_p4f32_i32_i32_f32( volatile __generic float *Pointer, uint Scope, uint Semantics, float Value)
+{
+    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFAddEXT_p3f32_i32_i32_f32((local float*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFAddEXT_p1f32_i32_i32_f32((global float*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+double __builtin_spirv_OpAtomicFAddEXT_p0f64_i32_i32_f64( volatile __private double *Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig = *Pointer;
+    *Pointer += Value;
+    return orig;
+}
+
+double __builtin_spirv_OpAtomicFAddEXT_p1f64_i32_i32_f64( volatile __global double *Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = orig + Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+double __builtin_spirv_OpAtomicFAddEXT_p3f64_i32_i32_f64( volatile __local double *Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = orig + Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double __builtin_spirv_OpAtomicFAddEXT_p4f64_i32_i32_f64( volatile __generic double *Pointer, uint Scope, uint Semantics, double Value)
+{
+    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFAddEXT_p3f64_i32_i32_f64((local double*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFAddEXT_p1f64_i32_i32_f64((global double*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
 
 #undef ATOMIC_FLAG_FALSE
 #undef ATOMIC_FLAG_TRUE

@@ -508,3 +508,5 @@ _SPIRV_OP(VariableLengthArrayINTEL, 5818)
 _SPIRV_OP(SaveMemoryINTEL, 5819)
 _SPIRV_OP(RestoreMemoryINTEL, 5820)
 _SPIRV_OP(LoopControlINTEL, 5887)
+// SPV_EXT_shader_atomic_float_add
+_SPIRV_OP(AtomicFAddEXT, 6035)
