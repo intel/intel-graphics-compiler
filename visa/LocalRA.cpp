@@ -2452,7 +2452,7 @@ LinearScan::LinearScan(GlobalRA& g, std::vector<LocalLiveRange*>& localLiveInter
     , liveIntervals(localLiveIntervals)
     , inputIntervals(inputLivelIntervals)
     , summary(s)
-    , pregs(g.kernel.getNumRegTotal() * numEltPerGRF(Type_UW), false)
+    , pregs(g.kernel.getNumRegTotal()* numEltPerGRF(Type_UW), false)
     , simdSize(simdS)
     , globalLRSize(glrs)
     , numRegLRA(numReg)
@@ -2461,6 +2461,18 @@ LinearScan::LinearScan(GlobalRA& g, std::vector<LocalLiveRange*>& localLiveInter
     , highInternalConflict(internalConflict)
     , doSplitLLR(splitLLR)
 {
+
+    // FIXME: this entire class is a mess, whole thing needs a rewrite
+    if (g.kernel.getNumRegTotal() < 128)
+    {
+        // code below can segfault if user specifies #GRF < 128. We just hack it so bank1 == bank2
+        bank1StartGRFReg = bank1_start = 0;
+        bank2StartGRFReg = bank2_start = 0;
+        bank1_end = bank2_end = numRegLRA - 1;
+        startGRFReg = &bank1StartGRFReg;
+        return;
+    }
+
     //register number boundaries
     bank1_start = 0;
     bank1_end = SECOND_HALF_BANK_START_GRF - globalLRSize / 2 - 1;

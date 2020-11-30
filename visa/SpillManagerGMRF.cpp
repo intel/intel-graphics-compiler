@@ -813,7 +813,9 @@ SpillManagerGRF::isUnalignedRegion (
     unsigned regionDisp = getRegionDisp (region);
     unsigned regionByteSize = getRegionByteSize (region, execSize);
 
-    if (useScratchMsg_)
+    bool needs32ByteAlign = useScratchMsg_;
+
+    if (needs32ByteAlign)
     {
         if (regionDisp%numEltPerGRF(Type_UB) == 0 && regionByteSize%numEltPerGRF(Type_UB) == 0)
             return
@@ -1595,7 +1597,7 @@ SpillManagerGRF::createSpillRangeDstRegion(
     G4_ExecSize       execSize,
     unsigned          regOff)
 {
-    if (isUnalignedRegion (spilledRegion, execSize)) {
+    if (isUnalignedRegion  (spilledRegion, execSize)) {
         unsigned segmentDisp =
             getEncAlignedSegmentDisp (spilledRegion, execSize);
         unsigned regionDisp = getRegionDisp (spilledRegion);
@@ -3087,15 +3089,16 @@ SpillManagerGRF::createFillSendInstr(
 // equivalent reference to the spill range region.
 
 void
-SpillManagerGRF::replaceSpilledRange (
-    G4_Declare *      spillRangeDcl,
-    G4_DstRegRegion * spilledRegion,
-    G4_INST *         spilledInst
+SpillManagerGRF::replaceSpilledRange(
+    G4_Declare* spillRangeDcl,
+    G4_DstRegRegion* spilledRegion,
+    G4_INST* spilledInst,
+    uint32_t subRegOff
 )
 {
     // we need to preserve accRegSel if it's set
     G4_DstRegRegion * tmpRangeDstRegion = builder_->createDst(
-        spillRangeDcl->getRegVar (), REG_ORIGIN, SUBREG_ORIGIN,
+        spillRangeDcl->getRegVar (), REG_ORIGIN, subRegOff,
         spilledRegion->getHorzStride (), spilledRegion->getType(), spilledRegion->getAccRegSel());
     spilledInst->setDest (tmpRangeDstRegion);
 }
@@ -3211,6 +3214,9 @@ SpillManagerGRF::insertSpillRangeCode(
     // offset to the spill range and create the instructions to load the
     // save the spill range to spill memory.
 
+    //subreg offset for new dst that replaces the spilled dst
+    auto newSubregOff = 0;
+
     if (inst->mayExceedTwoGRF())
     {
         INST_LIST::iterator sendOutIter = spilledInstIter;
@@ -3262,36 +3268,36 @@ SpillManagerGRF::insertSpillRangeCode(
         // Unaligned region specific handling.
 
         unsigned int spillSendOption = InstOpt_WriteEnable;
-        if (shouldPreloadSpillRange (*spilledInstIter, bb)) {
+        if (shouldPreloadSpillRange(*spilledInstIter, bb)) {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
 
-            preloadSpillRange (
+            preloadSpillRange(
                 spillRangeDcl, mRangeDcl, spilledRegion, execSize);
 
             // Create the temporary range to use as a replacement range.
 
-            G4_Declare * tmpRangeDcl =
-                createTemporaryRangeDeclare (spilledRegion, execSize);
+            G4_Declare* tmpRangeDcl =
+                createTemporaryRangeDeclare(spilledRegion, execSize);
 
             // Copy out the value in the temporary range into its
             // location in the spill range.
 
-            G4_DstRegRegion * spillRangeDstRegion =
-                createSpillRangeDstRegion (
-                    spillRangeDcl->getRegVar (), spilledRegion, execSize);
+            G4_DstRegRegion* spillRangeDstRegion =
+                createSpillRangeDstRegion(
+                    spillRangeDcl->getRegVar(), spilledRegion, execSize);
 
-            G4_SrcRegRegion * tmpRangeSrcRegion =
-                createTemporaryRangeSrcRegion (
-                    tmpRangeDcl->getRegVar (), spilledRegion, execSize);
+            G4_SrcRegRegion* tmpRangeSrcRegion =
+                createTemporaryRangeSrcRegion(
+                    tmpRangeDcl->getRegVar(), spilledRegion, execSize);
 
             // NOTE: Never use a predicate for the final mov if the spilled
             //       instruction was a sel (even in a SIMD CF context).
 
             G4_Predicate* predicate =
-                ((*spilledInstIter)->opcode() != G4_sel)?
-                (*spilledInstIter)->getPredicate () : nullptr;
+                ((*spilledInstIter)->opcode() != G4_sel) ?
+                (*spilledInstIter)->getPredicate() : nullptr;
 
             if (tmpRangeSrcRegion->getType() == spillRangeDstRegion->getType() && IS_TYPE_FLOAT_ALL(tmpRangeSrcRegion->getType()))
             {
@@ -3301,13 +3307,14 @@ SpillManagerGRF::insertSpillRangeCode(
                 spillRangeDstRegion->setType(equivIntTy);
             }
 
-            createMovInst (
+            createMovInst(
                 execSize, spillRangeDstRegion, tmpRangeSrcRegion,
                 builder_->duplicateOperand(predicate),
                 (*spilledInstIter)->getMaskOption());
-            numGRFMove ++;
+            numGRFMove++;
 
             replacementRangeDcl = tmpRangeDcl;
+            // newSubRegOff is 0 here since the move above already takes the spilled dst's subreg into account.
         }
 
         // Aligned regions do not need a temporary range.
@@ -3342,6 +3349,8 @@ SpillManagerGRF::insertSpillRangeCode(
             }
 
             replacementRangeDcl = spillRangeDcl;
+            // maintain the spilled dst's subreg since the spill is done on a per-GRF basis
+            newSubregOff = spilledRegion->getSubRegOff();
             if (!bb->isAllLaneActive())
             {
                 spillSendOption = (*spilledInstIter)->getMaskOption();
@@ -3367,11 +3376,9 @@ SpillManagerGRF::insertSpillRangeCode(
     // Replace the spilled range with the spill range and insert spill
     // instructions.
 
-    INST_LIST::iterator insertPos = spilledInstIter;
-    insertPos++;
-    replaceSpilledRange (replacementRangeDcl, spilledRegion, *spilledInstIter);
-    INST_LIST::iterator nextIter = spilledInstIter;
-    ++nextIter;
+    INST_LIST::iterator insertPos = std::next(spilledInstIter);
+    replaceSpilledRange (replacementRangeDcl, spilledRegion, *spilledInstIter, newSubregOff);
+    INST_LIST::iterator nextIter = std::next(spilledInstIter);
 
     splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
 

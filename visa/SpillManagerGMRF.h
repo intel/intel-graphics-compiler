@@ -570,7 +570,8 @@ private:
     void replaceSpilledRange(
         G4_Declare *      spillRangeDcl,
         G4_DstRegRegion * spilledRegion,
-        G4_INST *         spilledInst);
+        G4_INST *         spilledInst,
+        uint32_t subregOff);
 
     void replaceFilledRange(
         G4_Declare *      fillRangeDcl,
