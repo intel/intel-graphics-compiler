@@ -362,6 +362,7 @@ namespace vISA
         LiveRange**& lrs;
         IR_Builder& builder;
         unsigned maxId;
+        unsigned rowSize;
         unsigned splitStartId;
         unsigned splitNum;
         unsigned int* matrix = nullptr;
@@ -413,7 +414,7 @@ namespace vISA
         {
             if (useDenseMatrix())
             {
-                unsigned N = getRowSize() * maxId;
+                unsigned N = rowSize * maxId;
                 matrix = new uint32_t[N];
                 memset(matrix, 0, N * sizeof(int));
             }
@@ -434,7 +435,7 @@ namespace vISA
             sparseIntf.clear();
             if (useDenseMatrix())
             {
-                unsigned N = getRowSize() * maxId;
+                unsigned N = rowSize * maxId;
                 std::memset(matrix, 0, N * sizeof(int));
             }
             else
@@ -453,10 +454,6 @@ namespace vISA
             assert(useDenseMatrix() && "matrix is not initialized");
             return matrix != nullptr ? matrix[idx] : 0;
         }
-        inline unsigned int getRowSize() const
-        {
-            return maxId / BITS_DWORD + 1;
-        }
 
         std::vector<unsigned int>& getSparseIntfForVar(unsigned int id) { return sparseIntf[id]; }
 
@@ -467,7 +464,7 @@ namespace vISA
             if (useDenseMatrix())
             {
                 unsigned col = v2 / BITS_DWORD;
-                matrix[v1 * getRowSize() + col] |= BitMask[v2 - col * BITS_DWORD];
+                matrix[v1 * rowSize + col] |= BitMask[v2 - col * BITS_DWORD];
             }
             else
             {
@@ -483,7 +480,7 @@ namespace vISA
                 MUST_BE_TRUE(sparseIntf.size() == 0, "Updating intf graph matrix after populating sparse intf graph");
 #endif
 
-                matrix[v1 * getRowSize() + col] |= block;
+                matrix[v1 * rowSize + col] |= block;
             }
             else
             {

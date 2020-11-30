@@ -107,6 +107,7 @@ Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, uns
     builder(*g.kernel.fg.builder), maxId(n), splitStartId(ns), splitNum(nm),
     liveAnalysis(l)
 {
+    rowSize = maxId / BITS_DWORD + 1;
 }
 
 inline bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2)
@@ -1578,7 +1579,7 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const
     if (useDenseMatrix())
     {
         unsigned col = v2 / BITS_DWORD;
-        return (matrix[v1 * getRowSize() + col] & BitMask[v2 - col * BITS_DWORD]) ? true : false;
+        return (matrix[v1 * rowSize + col] & BitMask[v2 - col * BITS_DWORD]) ? true : false;
     }
     else
     {
@@ -2538,9 +2539,9 @@ void Interference::generateSparseIntfGraph()
         // Iterate over intf graph matrix
         for (unsigned int row = 0; row < numVars; row++)
         {
-            unsigned int rowOffset = row*getRowSize();
+            unsigned int rowOffset = row*rowSize;
             unsigned int colStart = (row + 1) / BITS_DWORD;
-            for (unsigned int j = colStart; j < getRowSize(); j++)
+            for (unsigned int j = colStart; j < rowSize; j++)
             {
                 unsigned int intfBlk = getInterferenceBlk(rowOffset + j);
                 if (intfBlk != 0)
