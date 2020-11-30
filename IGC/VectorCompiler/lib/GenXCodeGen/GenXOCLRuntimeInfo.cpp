@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
 
 #include <cctype>
 #include <functional>
@@ -467,6 +468,13 @@ private:
   }
 };
 
+struct GVEncodingInfo {
+  const GlobalVariable *GV;
+  // Alignment requirments of a global variable that will be encoded after
+  // the considered GV variable.
+  unsigned NextGVAlignment;
+};
+
 } // namespace
 
 // Appends the binary of function/kernel represented by \p Func and \p BuiltFunc
@@ -503,11 +511,18 @@ getGenBinary(const FunctionGroup &FG, VISABuilder &VB) {
 
 static void appendGlobalVariableData(
     genx::BinaryDataAccumulator<const GlobalVariable *> &Accumulator,
-    const GlobalVariable &GV, const DataLayout &DL) {
+    GVEncodingInfo GVInfo, const DataLayout &DL) {
   std::vector<char> Data;
-  vc::encodeConstant(*GV.getInitializer(), DL, std::back_inserter(Data));
-  // FIXME: alignment
-  Accumulator.append(&GV, Data.begin(), Data.end());
+  vc::encodeConstant(*GVInfo.GV->getInitializer(), DL, std::back_inserter(Data));
+
+  // Pad before the next global.
+  auto UnalignedNextGVAddress = Accumulator.getFullSize() + Data.size();
+  auto AlignedNextGVAddress =
+      alignTo(UnalignedNextGVAddress, GVInfo.NextGVAlignment);
+  std::fill_n(std::back_inserter(Data),
+              AlignedNextGVAddress - UnalignedNextGVAddress, 0);
+
+  Accumulator.append(GVInfo.GV, Data.begin(), Data.end());
 }
 
 // Not every global variable is a real global variable and should be encoded
@@ -521,16 +536,34 @@ static bool isRealGlobalVariable(const GlobalVariable &GV) {
   });
 }
 
+template <typename GlobalsRangeT>
+std::vector<GVEncodingInfo>
+prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
+  auto RealGlobals = make_filter_range(Globals, [](const GlobalVariable &GV) {
+    return isRealGlobalVariable(GV);
+  });
+  if (RealGlobals.begin() == RealGlobals.end())
+    return {};
+  std::vector<GVEncodingInfo> Infos;
+  std::transform(RealGlobals.begin(), std::prev(RealGlobals.end()),
+                 std::next(RealGlobals.begin()), std::back_inserter(Infos),
+                 [](const GlobalVariable &GV, const GlobalVariable &NextGV) {
+                   return GVEncodingInfo{&GV, NextGV.getAlignment()};
+                 });
+  Infos.push_back({&*std::prev(RealGlobals.end()), 1u});
+  return std::move(Infos);
+}
+
 static ModuleDataT getModuleData(const Module &M) {
   genx::BinaryDataAccumulator<const GlobalVariable *> ConstantData;
   genx::BinaryDataAccumulator<const GlobalVariable *> GlobalData;
-  for (auto &GV : M.globals()) {
-    if (!isRealGlobalVariable(GV))
-      continue;
-    if (GV.isConstant())
-      appendGlobalVariableData(ConstantData, GV, M.getDataLayout());
+  std::vector<GVEncodingInfo> GVInfos =
+      prepareGlobalInfosForEncoding(M.globals());
+  for (auto GVInfo : GVInfos) {
+    if (GVInfo.GV->isConstant())
+      appendGlobalVariableData(ConstantData, GVInfo, M.getDataLayout());
     else
-      appendGlobalVariableData(GlobalData, GV, M.getDataLayout());
+      appendGlobalVariableData(GlobalData, GVInfo, M.getDataLayout());
   }
   return {std::move(ConstantData), std::move(GlobalData)};
 }
