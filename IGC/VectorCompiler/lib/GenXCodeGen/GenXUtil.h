@@ -194,6 +194,10 @@ bool isPredNot(Instruction *Inst);
 //    with constant all ones) with non-predicate type
 bool isIntNot(Instruction *Inst);
 
+// invertCondition : Invert the given predicate value, possibly reusing
+//    an existing copy.
+Value *invertCondition(Value *Condition);
+
 // if V is a function pointer return function it points to,
 //    nullptr otherwise
 Function *getFunctionPointerFunc(Value *V);
