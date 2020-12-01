@@ -2553,8 +2553,8 @@ void Interference::generateSparseIntfGraph()
                             unsigned int v2 = (j*BITS_DWORD) + k;
                             if (v2 != row)
                             {
-                                sparseIntf[v2].push_back(row);
-                                sparseIntf[row].push_back(v2);
+                                sparseIntf[v2].emplace_back(row);
+                                sparseIntf[row].emplace_back(v2);
                             }
                         }
                     }
@@ -2569,8 +2569,8 @@ void Interference::generateSparseIntfGraph()
             auto&& intfSet = sparseMatrix[v1];
             for (uint32_t v2 : intfSet)
             {
-                sparseIntf[v1].push_back(v2);
-                sparseIntf[v2].push_back(v1);
+                sparseIntf[v1].emplace_back(v2);
+                sparseIntf[v2].emplace_back(v1);
             }
         }
     }
