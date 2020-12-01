@@ -566,12 +566,6 @@ private:
         G4_SrcRegRegion *  filledRangeRegion,
         G4_ExecSize        execSize);
 
-    G4_INST* createFillInstr(
-        G4_Declare* fillRangeDcl,
-        G4_Declare* mRangeDcl,
-        unsigned regOff,
-        unsigned height,
-        unsigned srcRegOff);
 
     void replaceSpilledRange(
         G4_Declare *      spillRangeDcl,
