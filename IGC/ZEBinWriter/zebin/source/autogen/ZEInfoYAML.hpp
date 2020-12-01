@@ -81,6 +81,10 @@ namespace llvm {
         struct MappingTraits<zebin::zeInfoPerThreadMemoryBuffer> {
             static void mapping(IO& io, zebin::zeInfoPerThreadMemoryBuffer& info);
         };
+        template<>
+        struct MappingTraits<zebin::zeInfoExperimentalProperties> {
+            static void mapping(IO& io, zebin::zeInfoExperimentalProperties& info);
+        };
     }
 }
 #endif

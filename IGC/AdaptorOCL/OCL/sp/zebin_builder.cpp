@@ -83,6 +83,7 @@ void ZEBinaryBuilder::createKernel(
 
     zeInfoKernel& zeKernel = mZEInfoBuilder.createKernel(annotations.m_kernelName);
     addKernelExecEnv(annotations, zeKernel);
+    addKernelExperimentalProperties(annotations, zeKernel);
     if (annotations.m_threadPayload.HasLocalIDx ||
         annotations.m_threadPayload.HasLocalIDy ||
         annotations.m_threadPayload.HasLocalIDz) {
@@ -388,6 +389,15 @@ void ZEBinaryBuilder::addKernelRelocations(
     if (!relocs.empty())
         for (auto reloc : relocs)
             mBuilder.addRelocation(reloc.r_offset, reloc.r_symbol, (zebin::R_TYPE_ZEBIN)reloc.r_type, targetId);
+}
+
+void ZEBinaryBuilder::addKernelExperimentalProperties(const SOpenCLKernelInfo& annotations,
+    zeInfoKernel& zeinfoKernel)
+{
+    zeInfoExperimentalProperties& properties = zeinfoKernel.experimental_properties;
+    properties.has_non_kernel_arg_load = annotations.m_hasNonKernelArgLoad;
+    properties.has_non_kernel_arg_store = annotations.m_hasNonKernelArgStore;
+    properties.has_non_kernel_arg_atomic = annotations.m_hasNonKernelArgAtomic;
 }
 
 void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,

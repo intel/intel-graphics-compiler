@@ -1,5 +1,5 @@
 # ZE Info
-Version 1.0
+Version 1.1
 
 ## Grammar
 
@@ -38,6 +38,7 @@ All **literals** have one of the following types:
 | per_thread_payload_arguments | PerThreadPayloadArgumentsTy | Optional | vector |
 | binding_table_indices | BindingTableIndicesTy | Optional | vector |
 | per_thread_memory_buffers | PerThreadMemoryBuffersTy | Optional | vector |
+| experimental_properties | ExperimentalProperties | Optional | A set of experimental attributes. |
 <!--- Kernel Kernels --->
 
 A ze_info section may contain more than one kernel's attributes, each is
@@ -225,10 +226,23 @@ Supported <memory_usage> of Per Thread Memory Buffer.
 | single_space | All compiler required memory space (privates, arguments passing, spill/fill, call/callee saved) are allocated in one single buffer |
 <!--- <memory_usage> MemBufferUsage -->
 
+## Experimental Properties
+This section defines experimental_properties of a kernel/function.
+The experimental attributes are experimental information for early evaluation or experiment.
+They must not affect the kernel execution correctness and are subject to be chagned or removed.
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ------ | ------ | ------ | ------ | ------ |
+| has_non_kernel_arg_load   | int32 | Optional | -1 | If this kernel/function contains load that cannot be traced back to kernel arguments. 0 if false, 1 if true, -1 if not applicable.   |
+| has_non_kernel_arg_store  | int32 | Optional | -1 | If this kernel/function contains store that cannot be traced back to kernel arguments. 0 if false, 1 if true, -1 if not applicable.  |
+| has_non_kernel_arg_atomic | int32 | Optional | -1 | If this kernel/function contains atomic that cannot be traced back to kernel arguments. 0 if false, 1 if true, -1 if not applicable. |
+<!--- ExperimentalProperties -->
+
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
 - Major number: Increase when non-backward-compatible features are added. For example, rename attributes or remove attribute.
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.1**: Add experimental_info to kernel.
 - **Version 1.0**: Add version number. Add slot to per_thread_memory_buffers. Rename shared_local_memory to slm in memory_addressing_mode.
