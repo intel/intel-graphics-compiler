@@ -305,6 +305,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             continue;
         }
+        // Always inline for non-compute
+        if (pCtx->type != ShaderType::OPENCL_SHADER ||
+            pCtx->type != ShaderType::COMPUTE_SHADER)
+        {
+            SetAlwaysInline(F);
+            continue;
+        }
 
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
@@ -421,7 +428,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // We can remove it now to unblock IGC optimizations.
             F->removeFnAttr(llvm::Attribute::OptimizeNone);
             // Treat optnone builtins as stackcalls to avoid kernel bloat.
-            pCtx->m_enableStackCall = true;
             F->addFnAttr("visaStackCall");
             continue;
         }
@@ -477,13 +483,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // Set default function call mode to stack call
             if (IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall))
             {
-                pCtx->m_enableStackCall = true;
                 F->addFnAttr("visaStackCall");
             }
             // default stackcall for -O0, or when FE force stackcall using attribute
             if (isOptDisable || F->hasFnAttribute("igc-force-stackcall"))
             {
-                pCtx->m_enableStackCall = true;
                 F->addFnAttr("visaStackCall");
                 SetNoInline(F);
             }
@@ -508,7 +512,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 if (shouldAlwaysInline)
                 {
                     if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) &&
-                        pCtx->m_enableSubroutine &&
+                        efs.shouldEnableSubroutine() &&
                         efs.isTrimmedFunction(F))
                     {
                         if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x4 ) != 0 )
@@ -546,7 +550,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 SetNoInline(F);
                 if (forceStackCall)
                 {
-                    pCtx->m_enableStackCall = true;
                     F->addFnAttr("visaStackCall");
                 }
             }
@@ -566,7 +569,27 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             IGC_ASSERT_MESSAGE(0, "Cannot have recursion when forcing inline!");
         }
-        pCtx->m_enableStackCall = true;
+    }
+
+    // Check if we need to enable subroutines/stackcalls based on the func attributes added
+    for (auto& F : M)
+    {
+        if (F.isDeclaration() || isEntryFunc(pMdUtils, &F))
+            continue;
+
+        if (F.hasFnAttribute("KMPLOCK"))
+        {
+            // Enable subroutine for critical section builtins
+            pCtx->m_enableSubroutine = true;
+        }
+        else if (F.hasFnAttribute(llvm::Attribute::NoInline) ||
+            !F.hasFnAttribute(llvm::Attribute::AlwaysInline))
+        {
+            if (F.hasFnAttribute("visaStackCall"))
+                pCtx->m_enableStackCall = true;
+            else
+                pCtx->m_enableSubroutine = true;
+        }
     }
 
     return true;

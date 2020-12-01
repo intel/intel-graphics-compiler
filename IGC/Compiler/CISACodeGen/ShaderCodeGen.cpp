@@ -545,7 +545,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     // propogation order is reversed, compared to the opt sequence in
     // OptimizeIR. There is a substantial gain with CFG simplification after
     // interprocedural constant propagation.
-    if (ctx.m_enableSubroutine && !isOptDisabled)
+    if (ctx.enableFunctionCall() && !isOptDisabled)
     {
         mpm.add(createPruneUnusedArgumentsPass());
 
@@ -1344,38 +1344,18 @@ static bool extensiveShader(CodeGenContext* pContext)
         pContext->m_instrTypes.hasSubroutines);
 }
 
-// All functions are marked with AlwaysInline attribute. Remove them for
-// non-kernels, but keep for kernels when subroutine is enabled.
-//
 // When we do not run optimizations, we still need to run always inline
 // pass, otherwise codegen will fail.
-static void purgeInlineAttribute(CodeGenContext* pContext, bool NoOpt)
+static void alwaysInlineForNoOpt(CodeGenContext* pContext, bool NoOpt)
 {
-    if (pContext->m_enableSubroutine)
-    {
-        MetaDataUtils* pMdUtils = pContext->getMetaDataUtils();
-        for (auto& F : pContext->getModule()->getFunctionList())
-        {
-            if (!isEntryFunc(pMdUtils, &F))
-            {
-                F.removeFnAttr(llvm::Attribute::AlwaysInline);
-            }
-        }
-    }
-
-    // We still inline all functions if there is no optimization phase
     if (NoOpt)
     {
-            MetaDataUtils* pMdUtils = pContext->getMetaDataUtils();
+        MetaDataUtils* pMdUtils = pContext->getMetaDataUtils();
         IGCPassManager mpm(pContext, "OPTPost");
         mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
         mpm.add(new CodeGenContextWrapper(pContext));
-
         mpm.add(createAlwaysInlinerLegacyPass());
-        if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
-        {
-            mpm.add(new PurgeMetaDataUtils());
-        }
+        mpm.add(new PurgeMetaDataUtils());
         mpm.run(*pContext->getModule());
     }
 }
@@ -1388,8 +1368,7 @@ void OptimizeIR(CodeGenContext* const pContext)
     IGC_ASSERT(nullptr != pContext->getModuleMetaData());
     bool NoOpt = pContext->getModuleMetaData()->compOpt.OptDisable;
 
-    // Remove inline attribute if subroutine is enabled.
-    purgeInlineAttribute(pContext, NoOpt);
+    alwaysInlineForNoOpt(pContext, NoOpt);
 
     if (pContext->type == ShaderType::OPENCL_SHADER)
     {
@@ -1443,7 +1422,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
 
         // Do inter-procedural constant propagation early.
-        if (pContext->m_enableSubroutine)
+        if (pContext->enableFunctionCall())
         {
             // Here, we propagate function attributes across calls.  Remaining
             // function calls that were conservatively marked as 'convergent'
@@ -1733,24 +1712,21 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createGenOptLegalizer());
         }
 
-        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
+        if (pContext->enableFunctionCall() &&
+            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
         {
-            if (pContext->m_enableSubroutine)
-            {
-                mpm.add(createEstimateFunctionSizePass(EstimateFunctionSize::AL_Kernel));
-                mpm.add(createSubroutineInlinerPass());
-            }
-            else
-            {
-                // Inline all remaining functions with always inline attribute.
-                mpm.add(createAlwaysInlinerLegacyPass());
-            }
-
-            if ((pContext->m_DriverInfo.NeedExtraPassesAfterAlwaysInlinerPass() || pContext->m_enableSubroutine)
-                && pContext->m_instrTypes.hasNonPrimitiveAlloca)
-            {
-                mpm.add(createSROAPass());
-            }
+            mpm.add(createEstimateFunctionSizePass(EstimateFunctionSize::AL_Kernel));
+            mpm.add(createSubroutineInlinerPass());
+        }
+        else
+        {
+            // Inline all remaining functions with always inline attribute.
+            mpm.add(createAlwaysInlinerLegacyPass());
+        }
+        if ((pContext->m_DriverInfo.NeedExtraPassesAfterAlwaysInlinerPass() || pContext->enableFunctionCall())
+            && pContext->m_instrTypes.hasNonPrimitiveAlloca)
+        {
+            mpm.add(createSROAPass());
         }
 #if LLVM_VERSION_MAJOR >= 7
         mpm.add(new TrivialLocalMemoryOpsElimination());

@@ -811,10 +811,11 @@ namespace IGC
         /////  used for instruction statistic before/after pass
         int instrStat[TOTAL_TYPES][TOTAL_STAGE];
 
-        /// Module level flag. This flag is false either there is an indirect call
-        /// in the module or the kernel sizes are small even with complete inlining.
+        // Module flag for subroutines enabled
         bool m_enableSubroutine = false;
+        // Module flag for stackcalls enabled
         bool m_enableStackCall = false;
+        // Module flag for function pointers enabled
         bool m_enableFunctionPointer = false;
 
         /// Adding multiversioning to partially redundant samples, if AIL is on.
