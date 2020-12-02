@@ -1253,6 +1253,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         default:
           break;
         case GenXIntrinsic::genx_gather4_scaled2:
+        case GenXIntrinsic::genx_gather4_masked_scaled2:
           continue;
         }
       }

@@ -491,7 +491,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
   return Modified;
 }
 
-bool genx::areConstantsEqual(Constant *C1, Constant *C2) {
+bool genx::areConstantsEqual(const Constant *C1, const Constant *C2) {
+  IGC_ASSERT(C1 && C2);
   // If these are same constants then it's obviously true
   if (C1 == C2)
     return true;
@@ -801,6 +802,37 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
     }
   }
   return Modified;
+}
+
+bool genx::isReplicatedConstantVector(
+    const ConstantVector *Orig, const ConstantVector *ReplicateCandidate) {
+  IGC_ASSERT(Orig && ReplicateCandidate);
+  // First compare for same element type
+  if (Orig->getType()->getElementType() !=
+      ReplicateCandidate->getType()->getElementType())
+    return false;
+
+  unsigned OrigNumElements = Orig->getType()->getNumElements();
+  unsigned CandidateNumElements =
+      ReplicateCandidate->getType()->getNumElements();
+
+  // Check replicate possibility by size: candidate should be
+  // at least larger and it's size is divisible by the size of
+  // original vector
+  if ((OrigNumElements >= CandidateNumElements) ||
+      ((CandidateNumElements % OrigNumElements) != 0))
+    return false;
+
+  // Get slices
+  unsigned NumReplicates = CandidateNumElements / OrigNumElements;
+  SmallVector<Constant *, 4> Slices;
+  for (unsigned i = 0; i < NumReplicates; i++)
+    Slices.push_back(genx::getConstantSubvector(
+        ReplicateCandidate, i * OrigNumElements, OrigNumElements));
+
+  // Compare all slices
+  return llvm::all_of(Slices,
+                      [Orig](Constant *Slice) { return Slice == Orig; });
 }
 
 void ConstantLoader::fixSimple(int OperandIdx) {

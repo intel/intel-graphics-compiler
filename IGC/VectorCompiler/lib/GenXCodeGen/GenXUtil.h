@@ -90,7 +90,8 @@ CallInst *createUnifiedRet(Type *Ty, const Twine &Name, Module *M);
 unsigned getPredicateConstantAsInt(const Constant *C);
 
 // getConstantSubvector : get a contiguous region from a vector constant
-Constant *getConstantSubvector(Constant *V, unsigned StartIdx, unsigned Size);
+Constant *getConstantSubvector(const Constant *V, unsigned StartIdx,
+                               unsigned Size);
 
 // concatConstants : concatenate two possibly vector constants, giving a vector
 // constant
@@ -193,6 +194,12 @@ bool isPredNot(Instruction *Inst);
 // isIntNot : test whether an instruction is a "not" instruction (an xor
 //    with constant all ones) with non-predicate type
 bool isIntNot(Instruction *Inst);
+
+// getMaskOperand : get i1 vector type of genx intrinsic, return null
+//    if there is no operand of such type or for non genx intrinsic.
+//    If there are multiple operands of i1 vector type then return first
+//    oparand.
+Value *getMaskOperand(const Instruction *Inst);
 
 // if V is a function pointer return function it points to,
 //    nullptr otherwise

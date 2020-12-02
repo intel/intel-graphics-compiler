@@ -317,6 +317,8 @@ static bool isNewLoadInst(CallInst *Inst) {
   switch (IID) {
   case GenXIntrinsic::genx_gather4_scaled2:
   case GenXIntrinsic::genx_gather_scaled2:
+  case GenXIntrinsic::genx_gather4_masked_scaled2:
+  case GenXIntrinsic::genx_gather_masked_scaled2:
     return true;
   default:
     return false;
@@ -359,8 +361,14 @@ static SelectInst *getLoadSelect(CallInst *Inst) {
 static Value *generatePredicateForLoadWrregion(
     Value *OldPred, unsigned Offset, unsigned Width, unsigned NumChannels,
     Instruction *InsertBefore, const DebugLoc &DL, const Twine &Name) {
-  if (isa<ConstantInt>(OldPred))
-    return OldPred;
+
+  if (Constant *C = dyn_cast<Constant>(OldPred)) {
+    if (isa<ConstantInt>(OldPred))
+      return OldPred;
+
+    if (C->isAllOnesValue())
+      return ConstantInt::get(Type::getInt1Ty(OldPred->getContext()), 1);
+  }
 
   Value *Pred = OldPred;
   // If old predicate is result of rdpredregion or shufflevector then
@@ -530,6 +538,41 @@ static Value *generateNChannelWrregion(Value *Target, unsigned InitialOffset,
   return Target;
 }
 
+// Try to infere predicate for load inst which will be used
+// in splitting:
+// - Check for mask operand first
+// - Check wrr or select user
+//
+// If wrr or select user was found then return it's predicate
+// because exactly this predicate must be used
+// during splittig.
+Value *getPredicateForLoadSplitting(CallInst *Load) {
+  IGC_ASSERT(Load);
+  Value *LoadPred = getMaskOperand(Load);
+  CallInst *LoadWrr = getLoadWrregion(Load);
+  SelectInst *SI = getLoadSelect(Load);
+
+  if (!LoadWrr && !SI) {
+    // No suitable user for mask inference and no predicate in load, so
+    // it's not preidcated
+    if (!LoadPred ||
+        (isa<Constant>(LoadPred) && cast<Constant>(LoadPred)->isAllOnesValue()))
+      return ConstantInt::get(IntegerType::getInt1Ty(Load->getContext()), 1);
+
+    return LoadPred;
+  }
+
+  // Try to infer the mask from users.
+  if (LoadWrr) {
+    // If we found wrregion user, then use its predicate for splitted
+    // instructions.
+    return LoadWrr->getArgOperand(
+        GenXIntrinsic::GenXRegion::PredicateOperandNum);
+  }
+  // Else it's select, get it's predicate
+  return SI->getCondition();
+}
+
 // Get target for wrregions of splitted load.
 // Returns tuple consisted of:
 //  1. Target for wrregions
@@ -538,12 +581,11 @@ static Value *generateNChannelWrregion(Value *Target, unsigned InitialOffset,
 //  4. Instruction to replace later
 static std::tuple<Value *, Value *, unsigned, Instruction *>
 getLoadTarget(CallInst *Load, const GenXSubtarget *ST) {
-  Value *LoadPred;
-  if (CallInst *LoadWrr = getLoadWrregion(Load)) {
-    // If we found wrregion user, then use its predicate for splitted instructions.
-    LoadPred =
-        LoadWrr->getArgOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+  Value *LoadPred = getPredicateForLoadSplitting(Load);
+  CallInst *LoadWrr = getLoadWrregion(Load);
+  SelectInst *SI = getLoadSelect(Load);
 
+  if (LoadWrr) {
     // If wrregion can be represented as raw operand, we can reuse its target and offset.
     if (genx::isValueRegionOKForRaw(LoadWrr, true /* IsWrite */, ST)) {
       // TODO: mark wrregion to be erased once issue with ToErase and
@@ -555,13 +597,9 @@ getLoadTarget(CallInst *Load, const GenXSubtarget *ST) {
       unsigned InitialOffset = cast<ConstantInt>(Offset)->getZExtValue();
       return {Target, LoadPred, InitialOffset, LoadWrr};
     }
-  } else if (SelectInst *SI = getLoadSelect(Load)) {
-    LoadPred = SI->getCondition();
+  } else if (SI) {
     Value *Target = SI->getFalseValue();
     return {Target, LoadPred, 0, SI};
-  } else {
-    // No wrregion user, load is not predicated.
-    LoadPred = ConstantInt::get(IntegerType::getInt1Ty(Load->getContext()), 1);
   }
 
   // Create new target for load.
@@ -654,6 +692,11 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     MaskIdx = 0;
     AddrIdx = 4;
     break;
+  case GenXIntrinsic::genx_gather4_masked_scaled2:
+    PredIdx = 5;
+    MaskIdx = 0;
+    AddrIdx = 4;
+    break;
   case GenXIntrinsic::genx_svm_scatter4_scaled:
   case GenXIntrinsic::genx_svm_gather4_scaled:
     DataIdx = 5;
@@ -668,6 +711,10 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     AddrIdx = 5;
     break;
   case GenXIntrinsic::genx_gather_scaled2:
+    AddrIdx = 4;
+    break;
+  case GenXIntrinsic::genx_gather_masked_scaled2:
+    PredIdx = 5;
     AddrIdx = 4;
     break;
   case GenXIntrinsic::genx_svm_scatter:
@@ -890,10 +937,16 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
                                           TargetWidth * NumBlks * NumChannels);
       }
       SmallVector<Type *, 4> Tys = {DstTy};
-      if (PredIdx != NONEED)
-        Tys.push_back(Args[PredIdx]->getType());
-      if (AddrIdx != NONEED)
-        Tys.push_back(Args[AddrIdx]->getType());
+
+      // These two overloaded args can go in
+      // arbitrary order in operand list
+      unsigned IdxMin = std::min(AddrIdx, PredIdx);
+      unsigned IdxMax = std::max(AddrIdx, PredIdx);
+      if (IdxMin != NONEED)
+        Tys.push_back(Args[IdxMin]->getType());
+      if (IdxMax != NONEED)
+        Tys.push_back(Args[IdxMax]->getType());
+
       auto Decl = GenXIntrinsic::getAnyDeclaration(
           CI->getParent()->getParent()->getParent(), IID, Tys);
       auto *Gather = CallInst::Create(Decl, Args, CI->getName() + ".split", CI);

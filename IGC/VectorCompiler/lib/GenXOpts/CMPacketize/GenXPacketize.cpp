@@ -1374,18 +1374,27 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         cast<CallInst>(replacement)->setDebugLoc(CI->getDebugLoc());
         return replacement;
       } break;
+      case GenXIntrinsic::genx_gather4_masked_scaled2:
+      case GenXIntrinsic::genx_gather_masked_scaled2:
       case GenXIntrinsic::genx_gather4_scaled2:
       case GenXIntrinsic::genx_gather_scaled2: {
-        Value *NBlk = CI->getOperand(0);
-        IGC_ASSERT(isa<Constant>(NBlk));
-        Value *Scale = CI->getOperand(1);
-        IGC_ASSERT(isa<Constant>(Scale));
-        Value *BTI = getUniformValue(CI->getOperand(2));
-        Value *GOff = getUniformValue(CI->getOperand(3));
+        SmallVector<Value *, 6> Args;
+        SmallVector<Type *, 3> Tys;
+        Args.push_back(CI->getOperand(0)); // Nblk
+        IGC_ASSERT(isa<Constant>(Args.back()));
+        Args.push_back(CI->getOperand(1)); // Scale
+        IGC_ASSERT(isa<Constant>(Args.back()));
+        Args.push_back(getUniformValue(CI->getOperand(2))); // BTI
+        Args.push_back(getUniformValue(CI->getOperand(3))); // GOff
         Value *ElemOffsets = getPacketizeValue(CI->getOperand(4));
-        Value *Args[] = {NBlk, Scale, BTI, GOff, ElemOffsets};
-        Type *RetTy = B->GetVectorType(CI->getType());
-        Type *Tys[] = {RetTy, ElemOffsets->getType()};
+        Args.push_back(ElemOffsets);
+        Tys.push_back(B->GetVectorType(CI->getType()));
+        Tys.push_back(ElemOffsets->getType());
+        if (IID == GenXIntrinsic::genx_gather4_masked_scaled2 ||
+            IID == GenXIntrinsic::genx_gather_masked_scaled2) {
+          Args.push_back(getPacketizeValue(CI->getOperand(5))); // Predicate
+          Tys.push_back(Args.back()->getType());
+        }
         Function *Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
         replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
         cast<CallInst>(replacement)->setDebugLoc(CI->getDebugLoc());

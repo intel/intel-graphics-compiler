@@ -841,6 +841,18 @@
       "element_offset": [ "URAW", 5 ],
       "dst": [ "RAW", 0 ]
     },
+    "genx_gather_masked_scaled2": {
+      "opc": "ISA_GATHER_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 6 ],
+      "pred": [ "PREDICATION", 6 ],
+      "block_size_MBZ": [ "LITERAL", 0 ],
+      "log2_num_blocks": [ "BYTE", 1 ],
+      "scale": [ "SHORT", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
+      "element_offset": [ "URAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
     "genx_gather4_scaled": {
       "opc": "ISA_GATHER4_SCALED",
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
@@ -857,6 +869,17 @@
       "opc": "ISA_GATHER4_SCALED",
       "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
+      "channel_mask": [ "BYTE", 1 ],
+      "scale": [ "SHORT", 2 ],
+      "surface": [ "SURFACE", 3 ],
+      "global_offset": [ "GENERAL", "UNSIGNED", 4 ],
+      "element_offset": [ "URAW", 5 ],
+      "dst": [ "RAW", 0 ]
+    },
+    "genx_gather4_masked_scaled2": {
+      "opc": "ISA_GATHER4_SCALED",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 6 ],
+      "pred": [ "PREDICATION", 6 ],
       "channel_mask": [ "BYTE", 1 ],
       "scale": [ "SHORT", 2 ],
       "surface": [ "SURFACE", 3 ],

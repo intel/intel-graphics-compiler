@@ -162,22 +162,22 @@ unsigned genx::getPredicateConstantAsInt(const Constant *C) {
 /***********************************************************************
  * getConstantSubvector : get a contiguous region from a vector constant
  */
-Constant *genx::getConstantSubvector(Constant *V,
-    unsigned StartIdx, unsigned Size)
-{
+Constant *genx::getConstantSubvector(const Constant *V, unsigned StartIdx,
+                                     unsigned Size) {
   Type *ElTy = cast<VectorType>(V->getType())->getElementType();
   Type *RegionTy = IGCLLVM::FixedVectorType::get(ElTy, Size);
+  Constant *SubVec = nullptr;
   if (isa<UndefValue>(V))
-    V = UndefValue::get(RegionTy);
+    SubVec = UndefValue::get(RegionTy);
   else if (isa<ConstantAggregateZero>(V))
-    V = ConstantAggregateZero::get(RegionTy);
+    SubVec = ConstantAggregateZero::get(RegionTy);
   else {
     SmallVector<Constant *, 32> Val;
     for (unsigned i = 0; i != Size; ++i)
       Val.push_back(V->getAggregateElement(i + StartIdx));
-    V = ConstantVector::get(Val);
+    SubVec = ConstantVector::get(Val);
   }
-  return V;
+  return SubVec;
 }
 
 /***********************************************************************
@@ -421,6 +421,29 @@ bool ShuffleVectorAnalyzer::isReplicatedSlice() const {
       return false;
 
   return true;
+}
+
+Value *genx::getMaskOperand(const Instruction *Inst) {
+  IGC_ASSERT(Inst);
+
+  // return null for any other intrusction except
+  // genx intrinsics
+  auto *CI = dyn_cast<CallInst>(Inst);
+  if (!CI || !GenXIntrinsic::isGenXIntrinsic(CI))
+    return nullptr;
+
+  auto MaskOpIt = llvm::find_if(CI->operands(), [](const Use &U) {
+    Value *Operand = U.get();
+    if (auto *VT = dyn_cast<VectorType>(Operand->getType()))
+      return VT->getElementType()->isIntegerTy(1);
+    return false;
+  });
+
+  // No mask among opernads
+  if (MaskOpIt == CI->op_end())
+    return nullptr;
+
+  return *MaskOpIt;
 }
 
 // Based on the value of a shufflevector mask element defines in which of

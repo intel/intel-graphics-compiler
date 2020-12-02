@@ -949,21 +949,45 @@ static bool usesSameMaskAsOperand(Instruction *Inst, Value *Mask) {
   if (!CI)
     return false;
 
-  auto MaskOpIt = llvm::find_if(CI->operands(), [](Use &U) {
-    Value *Operand = U.get();
-    if (auto *VT = dyn_cast<VectorType>(Operand->getType()))
-      return VT->getElementType()->isIntegerTy(1);
+  Value *MaskOperand = genx::getMaskOperand(Inst);
+  // No mask at all
+  if (!MaskOperand)
     return false;
-  });
-  // No mask. Nothing to check.
-  if (MaskOpIt == CI->op_end())
-    return false;
-
-  Value *MaskOperand = *MaskOpIt;
 
   // Easy case, same mask as operand
   if (MaskOperand == Mask)
     return true;
+
+  // Allow constant predicates only for gather4_masked_scaled2,
+  // at least for now
+  if (auto *CV1 = dyn_cast<ConstantVector>(Mask))
+    if (auto *CV2 = dyn_cast<ConstantVector>(MaskOperand))
+      return GenXIntrinsic::getGenXIntrinsicID(Inst) ==
+                 GenXIntrinsic::genx_gather4_masked_scaled2 &&
+             genx::isReplicatedConstantVector(CV2, CV1);
+
+  auto MaskOperandInrtID = GenXIntrinsic::getGenXIntrinsicID(MaskOperand);
+  auto MaskIntrID = GenXIntrinsic::getGenXIntrinsicID(Mask);
+
+  if (MaskOperandInrtID == GenXIntrinsic::genx_constantpred &&
+      MaskIntrID == GenXIntrinsic::genx_constantpred) {
+    auto *CV1 =
+        dyn_cast<ConstantVector>(cast<CallInst>(MaskOperand)->getOperand(0));
+    auto *CV2 = dyn_cast<ConstantVector>(cast<CallInst>(Mask)->getOperand(0));
+    return GenXIntrinsic::getGenXIntrinsicID(Inst) ==
+               GenXIntrinsic::genx_gather4_masked_scaled2 &&
+           CV1 && CV2 && genx::isReplicatedConstantVector(CV1, CV2);
+  }
+
+  // If both are rdpredregions then compare for equvalency (same operand and
+  // offset)
+  if (MaskOperandInrtID == GenXIntrinsic::genx_rdpredregion &&
+      MaskIntrID == GenXIntrinsic::genx_rdpredregion) {
+    auto *RdPred1 = cast<CallInst>(MaskOperand);
+    auto *RdPred2 = cast<CallInst>(Mask);
+    return RdPred1->getOperand(0) == RdPred2->getOperand(0) &&
+           RdPred1->getArgOperand(1) == RdPred2->getArgOperand(1);
+  }
 
   auto *SI = dyn_cast<ShuffleVectorInst>(Mask);
   if (!SI)
@@ -1004,6 +1028,7 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR,
   Instruction *Inst = dyn_cast<Instruction>(V);
   if (!Inst)
     return false;
+
   // It is an instruction. We can bale it in, if it is a suitable
   // instruction.
   unsigned ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(Inst);

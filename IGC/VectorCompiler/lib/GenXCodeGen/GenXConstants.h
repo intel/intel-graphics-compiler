@@ -109,7 +109,7 @@ inline bool opMustBeConstant(Instruction *I, unsigned OpNum) {
 // Check whether types of two contsants are bitcastable and
 // then check constants' contents. Most part of implementation is taken
 // from FunctionComparator::cmpConstants
-bool areConstantsEqual(Constant *C1, Constant *C2);
+bool areConstantsEqual(const Constant *C1, const Constant *C2);
 
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *
@@ -137,6 +137,12 @@ bool loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
 bool loadPhiConstants(Function &F, DominatorTree *DT,
                       const GenXSubtarget &Subtarget, const DataLayout &DL,
                       bool ExcludePredicate = false);
+
+// Check if constant vector is replicated, e.g.
+// Original vector:  1, 1, 1, 1, 0, 0, 0, 0
+// Replicate vector: 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0
+bool isReplicatedConstantVector(const ConstantVector *Orig,
+                                const ConstantVector *ReplicateCandidate);
 
 } // namespace genx
 } // namespace llvm
