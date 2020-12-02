@@ -869,7 +869,8 @@ static void PSCodeGen(
         useRegKeySimd = true;
     }
     else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
-             IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx))
+             IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
+             IGC_GET_FLAG_VALUE(ForceFastestSIMD))
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
