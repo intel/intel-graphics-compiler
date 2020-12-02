@@ -458,7 +458,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 }
 
 static GenXBackendData createBackendData(const vc::ExternalData &Data) {
-  GenXBackendData BackendData{Data.getOCLGenericBIFModule()};
+  GenXBackendData BackendData{Data.getOCLGenericBIFModule(),
+                              Data.getOCLFP64BIFModule()};
   return BackendData;
 }
 

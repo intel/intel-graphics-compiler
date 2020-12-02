@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "vc/Support/ShaderDump.h"
 
+#include "Probe/Assertion.h"
+
 #include <JitterDataStruct.h>
 #include <RelocationInfo.h>
 
@@ -188,16 +190,23 @@ struct CompileOptions {
 
 class ExternalData {
   std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule;
+  std::unique_ptr<llvm::MemoryBuffer> OCLFP64BIFModule;
 
 public:
-  explicit ExternalData(std::unique_ptr<llvm::MemoryBuffer> GenericModule)
-      : OCLGenericBIFModule{std::move(GenericModule)} {
-    IGC_ASSERT_MESSAGE(OCLGenericBIFModule,
+  explicit ExternalData(std::unique_ptr<llvm::MemoryBuffer> GenericModule,
+                        std::unique_ptr<llvm::MemoryBuffer> FP64Module)
+      : OCLGenericBIFModule{std::move(GenericModule)},
+        OCLFP64BIFModule{std::move(FP64Module)} {
+    IGC_ASSERT_MESSAGE(OCLGenericBIFModule && OCLFP64BIFModule,
                        "wrong argument: no memory buffer was provided");
   }
 
   const llvm::MemoryBuffer &getOCLGenericBIFModule() const {
     return *OCLGenericBIFModule;
+  }
+
+  const llvm::MemoryBuffer &getOCLFP64BIFModule() const {
+    return *OCLFP64BIFModule;
   }
 };
 

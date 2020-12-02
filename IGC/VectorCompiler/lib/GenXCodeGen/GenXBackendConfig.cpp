@@ -71,6 +71,12 @@ static cl::opt<std::string>
                                "precompiled OpenCL generic builtins"),
                       cl::init(""));
 
+static cl::opt<std::string>
+    OCLFP64BiFPath("vc-ocl-fp64-bif-path",
+                   cl::desc("full name (with path) of a BiF file with "
+                            "precompiled OpenCL fp64 builtins"),
+                   cl::init(""));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -85,15 +91,21 @@ GenXBackendOptions::GenXBackendOptions()
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride) {}
 
 GenXBackendData::GenXBackendData() {
-  if (OCLGenericBiFPath.getNumOccurrences() == 0)
+  readBiFModuleFromFile(BiFModuleKind::Generic, OCLGenericBiFPath);
+  readBiFModuleFromFile(BiFModuleKind::FP64, OCLFP64BiFPath);
+}
+
+void GenXBackendData::readBiFModuleFromFile(BiFModuleKind Kind,
+                                            const cl::opt<std::string> &File) {
+  if (File.getNumOccurrences() == 0)
     return;
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
-      MemoryBuffer::getFileOrSTDIN(OCLGenericBiFPath);
+      MemoryBuffer::getFileOrSTDIN(File);
   if (!FileOrErr)
     report_fatal_error("opening OpenCL generic BiF file failed: " +
                        FileOrErr.getError().message());
-  OCLGenericBiFModuleOwner = std::move(FileOrErr.get());
-  OCLGenericBiFModule = IGCLLVM::makeMemoryBufferRef(*OCLGenericBiFModuleOwner);
+  OCLBiFModuleOwner[Kind] = std::move(FileOrErr.get());
+  OCLBiFModule[Kind] = IGCLLVM::makeMemoryBufferRef(*OCLBiFModuleOwner[Kind]);
 }
 
 GenXBackendConfig::GenXBackendConfig() : ImmutablePass(ID) {

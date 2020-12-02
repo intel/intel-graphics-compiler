@@ -50,6 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
+#include <llvm/Support/CommandLine.h>
 
 namespace llvm {
 
@@ -78,21 +79,38 @@ struct GenXBackendOptions {
 };
 
 struct GenXBackendData {
-  MemoryBufferRef OCLGenericBiFModule;
+  enum BiFModuleKind { Generic = 0, FP64, NumKinds };
+
+  MemoryBufferRef OCLBiFModule[BiFModuleKind::NumKinds];
   // The owner of OpenCL generic BiF module.
   // For now it is only required for llvm-lit/debugging,
   // in libigc mode this field always holds nullptr.
-  std::unique_ptr<MemoryBuffer> OCLGenericBiFModuleOwner = nullptr;
+  std::unique_ptr<MemoryBuffer> OCLBiFModuleOwner[BiFModuleKind::NumKinds] = {
+      nullptr, nullptr};
 
   GenXBackendData();
-  GenXBackendData(const MemoryBuffer &OCLGenericBiFModuleBuffer)
-      : OCLGenericBiFModule{IGCLLVM::makeMemoryBufferRef(
-            OCLGenericBiFModuleBuffer)} {}
+  GenXBackendData(const MemoryBuffer &OCLGenericBiFModuleBuffer,
+                  const MemoryBuffer &OCLFP64BiFModuleBuffer)
+      : OCLBiFModule{IGCLLVM::makeMemoryBufferRef(OCLGenericBiFModuleBuffer),
+                     IGCLLVM::makeMemoryBufferRef(OCLFP64BiFModuleBuffer)} {}
+
+  MemoryBufferRef getOCLGenericBiFModule() const {
+    return OCLBiFModule[BiFModuleKind::Generic];
+  }
+
+  MemoryBufferRef getOCLFP64BiFModule() const {
+    return OCLBiFModule[BiFModuleKind::FP64];
+  }
+
+private:
+  void readBiFModuleFromFile(BiFModuleKind Kind,
+                             const cl::opt<std::string> &File);
 };
 
 class GenXBackendConfig : public ImmutablePass {
 public:
   static char ID;
+  using BiFModuleKind = GenXBackendData::BiFModuleKind;
 
 private:
   GenXBackendOptions Options;
@@ -111,8 +129,8 @@ public:
     return Options.StackSurfaceMaxSize;
   }
 
-  MemoryBufferRef getOCLGenericBiFModule() const {
-    return Data.OCLGenericBiFModule;
+  MemoryBufferRef getOCLBiFModule(BiFModuleKind Kind) const {
+    return Data.OCLBiFModule[Kind];
   }
 
   bool kernelDebugEnabled() const { return Options.EnableKernelDebug; }

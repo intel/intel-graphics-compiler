@@ -65,8 +65,8 @@ std::string vc_error_category::message(int condition) const {
     return std::string(ErrorTraits<errc::invalid_api_option>::getMessage());
   case errc::invalid_internal_option:
     return std::string(ErrorTraits<errc::invalid_internal_option>::getMessage());
-  case errc::generic_bif_load_fail:
-    return std::string(ErrorTraits<errc::generic_bif_load_fail>::getMessage());
+  case errc::bif_load_fail:
+    return std::string(ErrorTraits<errc::bif_load_fail>::getMessage());
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown error code");
 }
