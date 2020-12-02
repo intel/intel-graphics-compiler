@@ -95,10 +95,17 @@ struct zeInfoPerThreadMemoryBuffer
     zeinfo_int32_t slot = 0;
     zeinfo_bool_t is_simt_thread = false;
 };
+struct zeInfoExperimentalProperties
+{
+    zeinfo_int32_t has_non_kernel_arg_load = -1;
+    zeinfo_int32_t has_non_kernel_arg_store = -1;
+    zeinfo_int32_t has_non_kernel_arg_atomic = -1;
+};
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
 typedef std::vector<zeInfoPerThreadMemoryBuffer> PerThreadMemoryBuffersTy;
+typedef std::vector<zeInfoExperimentalProperties> ExperimentalPropertiesTy;
 struct zeInfoKernel
 {
     zeinfo_str_t name;
@@ -107,6 +114,7 @@ struct zeInfoKernel
     PerThreadPayloadArgumentsTy per_thread_payload_arguments;
     BindingTableIndicesTy binding_table_indices;
     PerThreadMemoryBuffersTy per_thread_memory_buffers;
+    ExperimentalPropertiesTy experimental_properties;
 };
 typedef std::vector<zeInfoKernel> KernelsTy;
 struct zeInfoContainer
@@ -115,7 +123,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.0"; }
+    static zeinfo_str_t getVersionNumber() { return "1.1"; }
 
     enum class ArgType {
         packed_local_ids,

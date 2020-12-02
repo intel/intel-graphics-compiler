@@ -455,6 +455,15 @@ public:
         PreDefinedAttrGetter::MemBufferUsage usage,
         int32_t size);
 
+    // addExpPropertiesHasNonKernelArgLdSt - add experimental_properties for has-non-kernel-arg-load-store analysis
+    // add experimental_properties::has_non_kernel_arg_load, experimental_properties::has_non_kernel_arg_store
+    // and experimental_properties::has_non_kernel_arg_atomic
+    // Note that zeInfoExperimentalProperties is made as a vector under kernel in the spec, becuase we want it only
+    // present when needed. If it's not a vector, the attribute name will always present in final output even if
+    // all of its sub-attributes are defualt and are not shown.
+    static void addExpPropertiesHasNonKernelArgLdSt(zeInfoKernel& zekernel,
+        bool hasNonKernelArgLoad, bool hasNonKernelArgStore, bool hasNonKernelArgAtomic);
+
 private:
     zeInfoContainer mContainer;
 };

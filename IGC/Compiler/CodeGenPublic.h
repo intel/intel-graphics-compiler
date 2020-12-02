@@ -635,6 +635,12 @@ namespace IGC
         zebin::PayloadArgumentsTy m_zePayloadArgs;
         // BTI information for payload arguments
         zebin::BindingTableIndicesTy m_zeBTIArgs;
+
+        // Analysis result of if there are non-kernel-argument ld/st in the kernel
+        // If all false, we can avoid expensive memory setting of each kernel during runtime
+        int m_hasNonKernelArgLoad = -1;
+        int m_hasNonKernelArgStore = -1;
+        int m_hasNonKernelArgAtomic = -1;
     };
 
 
@@ -832,10 +838,6 @@ namespace IGC
         uint32_t     m_numGradientSinked = 0;
         std::vector<unsigned> m_indexableTempSize;
         bool         m_highPsRegisterPressure = 0;
-
-        bool m_hasNonKernelArgLoad = false;
-        bool m_hasNonKernelArgStore = false;
-        bool m_hasNonKernelArgAtomic = false;
 
         // For IR dump after pass
         unsigned     m_numPasses = 0;

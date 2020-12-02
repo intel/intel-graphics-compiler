@@ -638,13 +638,14 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
 
                 Value* ptr = Inst->getOperand(0);
                 if (!pointerIsFromKernelArgument(*ptr)) {
-                    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                    FunctionMetaData* funcMD = &modMD->FuncMD[Inst->getParent()->getParent()];
                     if (isStoreIntrinsic(intrinID))
-                        ctx->m_hasNonKernelArgStore = true;
+                        funcMD->hasNonKernelArgStore = true;
                     else if (isLoadIntrinsic(intrinID))
-                        ctx->m_hasNonKernelArgLoad = true;
+                        funcMD->hasNonKernelArgLoad = true;
                     else
-                        ctx->m_hasNonKernelArgAtomic = true;
+                        funcMD->hasNonKernelArgAtomic = true;
                 }
             }
         }
@@ -700,8 +701,9 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
     // check if there's non-kernel-arg load/store
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
         ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
-        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        ctx->m_hasNonKernelArgLoad = true;
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        FunctionMetaData* funcMD = &modMD->FuncMD[F];
+        funcMD->hasNonKernelArgLoad = true;
     }
 }
 
@@ -747,8 +749,9 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
 
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
         ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
-        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        ctx->m_hasNonKernelArgStore = true;
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        FunctionMetaData* funcMD = &modMD->FuncMD[F];
+        funcMD->hasNonKernelArgStore = true;
     }
 }
 
