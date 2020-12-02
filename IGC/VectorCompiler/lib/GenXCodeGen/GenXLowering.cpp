@@ -2523,7 +2523,7 @@ bool GenXLowering::lowerMulSat(CallInst *CI, unsigned IntrinsicID) {
         IGCLLVM::FixedVectorType::get(MulType, cast<VectorType>(OpType)->getNumElements());
 
   IRBuilder<> B(CI);
-  auto ExtendMulOperand = [&](Value *Val) {
+  auto ExtendMulOperand = [&, IsSignedOps=IsSignedOps](Value *Val) {
     return IsSignedOps ? B.CreateSExt(Val, MulType, Val->getName() + ".sext")
                        : B.CreateZExt(Val, MulType, Val->getName() + ".zext");
   };
