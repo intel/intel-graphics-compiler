@@ -194,6 +194,10 @@ namespace {
     // Vector of arguments and phi nodes that did not get a category.
     SmallVector<Value *, 8> NoCategory;
     bool InFGHead = false;
+    // Sometimes the pass may stuck on strongly connected components.
+    // This field indentifies such case and notifies that there's no need
+    // to wait till some other value's category is defined.
+    bool EnforceCategoryPromotion = false;
 
   public:
     static char ID;
@@ -414,6 +418,7 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
                    .getTM<GenXTargetMachine>()
                    .getGenXSubtarget();
   DL = &FG.getModule()->getDataLayout();
+  EnforceCategoryPromotion = false;
   bool Modified = false;
   if (KM.isKernel()) {
     // Get the offset of each kernel arg.
@@ -445,7 +450,15 @@ bool GenXCategory::handleLeftover() {
   while (!NoCategory.empty()) {
     auto NewEnd = std::remove_if(NoCategory.begin(), NoCategory.end(),
                                  [this](Value *V) { return processValue(V); });
-    IGC_ASSERT(NewEnd != NoCategory.end() && "not making any progess");
+    if (NewEnd == NoCategory.end()) {
+      IGC_ASSERT_MESSAGE(!EnforceCategoryPromotion,
+                         "category promotion was enforced, still no progress");
+      EnforceCategoryPromotion = true;
+      continue;
+    }
+    // No need to enforce category promotion when there is progress. Even if
+    // it was enforced before.
+    EnforceCategoryPromotion = false;
     NoCategory.erase(NewEnd, NoCategory.end());
   }
   return true;
@@ -1005,6 +1018,8 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
  * a category first forces the category of all the others.
  */
 unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
+  IGC_ASSERT_MESSAGE(!Phi->getType()->isIntOrIntVectorTy(1),
+                     "pregicate phis should've been already considered");
   if (llvm::all_of(Phi->incoming_values(),
                    [](const Use &Op) { return isa<Constant>(Op.get()); }))
     // All incomings are constant. Arbitrarily make the phi node value
@@ -1029,6 +1044,14 @@ unsigned GenXCategory::getCategoryForPhiIncomings(PHINode *Phi) const {
         "Phi incoming values categories don't correspond");
     return PhiCategory;
   }
+
+  // If promotion is enforced, only one constant is enough to claim the phi
+  // to have general category.
+  if (EnforceCategoryPromotion &&
+      llvm::any_of(Phi->incoming_values(),
+                   [](const Use &Op) { return isa<Constant>(Op.get()); }))
+    return RegCategory::GENERAL;
+
   return RegCategory::NONE;
 }
 
