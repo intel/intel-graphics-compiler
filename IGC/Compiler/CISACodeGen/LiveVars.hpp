@@ -113,7 +113,8 @@ namespace IGC
         struct LVInfo {
             /// AliveBlocks - Set of blocks in which this value is alive completely
             /// through.
-            std::set<llvm::BasicBlock*> AliveBlocks;
+            llvm::SmallPtrSet<llvm::BasicBlock*, 16> AliveBlocks;
+            ///std::set<llvm::BasicBlock*> AliveBlocks;
 
             /// NumUses - Number of uses of this register across the entire function.
             ///
