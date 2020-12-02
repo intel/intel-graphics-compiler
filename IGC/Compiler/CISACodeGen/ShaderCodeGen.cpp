@@ -1533,7 +1533,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) || pContext->m_enableSampleMultiversioning)
         {
-            mpm.add(new SampleMultiversioning(pContext));
+            if (!pContext->m_instrTypes.hasLoop)
+                mpm.add(new SampleMultiversioning(pContext));
         }
 
         if (pContext->m_instrTypes.hasMultipleBB)

@@ -211,7 +211,7 @@ bool SampleMultiversioning::runOnFunction(Function& F)
         }
     }
 
-    if (SampleInsts.size())
+    if (SampleInsts.size() < 4)
     {
         // @TODO
         // bitcast after sample
@@ -271,6 +271,7 @@ bool SampleMultiversioning::runOnFunction(Function& F)
                 SI.MulVals.erase(remInsn);
             }
 
+            bool skipOpt = false;
             // Consider instructions after sample blocking optimization for hoisting
             SmallVector<Instruction*, 4> toCheckUses;
             SmallSet<Instruction*, 4> toHoist;
@@ -278,13 +279,14 @@ bool SampleMultiversioning::runOnFunction(Function& F)
             {
                 if (DT->dominates(SI.Sample, val))
                 {
+                    if (IGC_IS_FLAG_DISABLED(EnableSMRescheduling))
+                        skipOpt = true;
                     toHoist.insert(val);
                     toCheckUses.push_back(val);
                 }
             }
 
            // Consider hoisting some instruction after the sample if they block opt.
-            bool skipOpt = false;
             while (toCheckUses.size() > 0)
             {
                 Instruction* checkVal = toCheckUses.pop_back_val();
