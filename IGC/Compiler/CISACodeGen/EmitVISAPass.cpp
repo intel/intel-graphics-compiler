@@ -436,8 +436,6 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
 
 bool EmitPass::runOnFunction(llvm::Function& F)
 {
-    m_currFuncHasSubroutine = false;
-
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
@@ -556,22 +554,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
-        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[&F];
-        if (hasStackCall || m_currFuncHasSubroutine) {
-            // conservative set the hasNonKernelArgLoad/Store to true
-            funcMD->hasNonKernelArgLoad = true;
-            funcMD->hasNonKernelArgStore = true;
-            funcMD->hasNonKernelArgAtomic = true;
-        }
-        // then write the result to the shader
-        if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
-            COpenCLKernel* kernel = static_cast<COpenCLKernel*>(m_currShader);
-            kernel->m_kernelInfo.m_hasNonKernelArgLoad = funcMD->hasNonKernelArgLoad? 1 : 0;
-            kernel->m_kernelInfo.m_hasNonKernelArgStore = funcMD->hasNonKernelArgStore? 1 : 0;
-            kernel->m_kernelInfo.m_hasNonKernelArgAtomic = funcMD->hasNonKernelArgAtomic? 1 : 0;
-        }
+    if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && hasStackCall) {
+        // conservative set the hasNonKernelArgLoad/Store to true
+        m_pCtx->m_hasNonKernelArgLoad = true;
+        m_pCtx->m_hasNonKernelArgStore = true;
+        m_pCtx->m_hasNonKernelArgAtomic = true;
     }
 
     // Create a symbol relocation entry for each symbol used by F
@@ -9854,7 +9841,6 @@ void EmitPass::emitCall(llvm::CallInst* inst)
             emitCopyAll(Dst, Src, Arg.getType());
         }
     }
-    m_currFuncHasSubroutine = true;
     m_encoder->SubroutineCall(nullptr, F);
     m_encoder->Push();
 

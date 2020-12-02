@@ -110,10 +110,6 @@ private:
     void addKernelExecEnv(const IGC::SOpenCLKernelInfo& annotations,
                           zebin::zeInfoKernel& zeinfoKernel);
 
-    /// add experimental properties
-    void addKernelExperimentalProperties(const IGC::SOpenCLKernelInfo& annotations,
-        zebin::zeInfoKernel& zeinfoKernel);
-
     /// add symbols of this kernel corresponding to kernek binary
     /// added by addKernelBinary
     void addSymbols(

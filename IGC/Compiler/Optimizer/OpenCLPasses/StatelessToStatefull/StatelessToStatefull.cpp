@@ -638,14 +638,13 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
 
                 Value* ptr = Inst->getOperand(0);
                 if (!pointerIsFromKernelArgument(*ptr)) {
-                    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                    FunctionMetaData* funcMD = &modMD->FuncMD[Inst->getParent()->getParent()];
+                    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
                     if (isStoreIntrinsic(intrinID))
-                        funcMD->hasNonKernelArgStore = true;
+                        ctx->m_hasNonKernelArgStore = true;
                     else if (isLoadIntrinsic(intrinID))
-                        funcMD->hasNonKernelArgLoad = true;
+                        ctx->m_hasNonKernelArgLoad = true;
                     else
-                        funcMD->hasNonKernelArgAtomic = true;
+                        ctx->m_hasNonKernelArgAtomic = true;
                 }
             }
         }
@@ -701,9 +700,8 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
     // check if there's non-kernel-arg load/store
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
         ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
-        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[F];
-        funcMD->hasNonKernelArgLoad = true;
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        ctx->m_hasNonKernelArgLoad = true;
     }
 }
 
@@ -749,9 +747,8 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
 
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
         ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
-        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[F];
-        funcMD->hasNonKernelArgStore = true;
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        ctx->m_hasNonKernelArgStore = true;
     }
 }
 

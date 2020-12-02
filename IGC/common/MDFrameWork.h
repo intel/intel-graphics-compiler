@@ -171,11 +171,6 @@ namespace IGC
         bool globalIDPresent = false;
         bool isUniqueEntry = false;
 
-        // Analysis result of if there are non-kernel-argument ld/st in the kernel
-        bool hasNonKernelArgLoad = false;
-        bool hasNonKernelArgStore = false;
-        bool hasNonKernelArgAtomic = false;
-
         std::vector<std::string> UserAnnotations;
 
         std::vector<int32_t> m_OpenCLArgAddressSpaces;

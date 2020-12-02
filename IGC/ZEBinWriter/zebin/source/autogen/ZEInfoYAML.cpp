@@ -49,7 +49,6 @@ void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
     io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments);
     io.mapOptional("binding_table_indices", info.binding_table_indices);
     io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers);
-    io.mapOptional("experimental_properties", info.experimental_properties);
 }
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {
@@ -100,10 +99,4 @@ void MappingTraits<zeInfoPerThreadMemoryBuffer>::mapping(IO& io, zeInfoPerThread
     io.mapRequired("size", info.size);
     io.mapOptional("slot", info.slot, 0);
     io.mapOptional("is_simt_thread", info.is_simt_thread, false);
-}
-void MappingTraits<zeInfoExperimentalProperties>::mapping(IO& io, zeInfoExperimentalProperties& info)
-{
-    io.mapOptional("has_non_kernel_arg_load", info.has_non_kernel_arg_load, -1);
-    io.mapOptional("has_non_kernel_arg_store", info.has_non_kernel_arg_store, -1);
-    io.mapOptional("has_non_kernel_arg_atomic", info.has_non_kernel_arg_atomic, -1);
 }

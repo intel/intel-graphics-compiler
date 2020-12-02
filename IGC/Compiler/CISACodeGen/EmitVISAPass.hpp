@@ -618,8 +618,6 @@ private:
 
     uint m_currentBlock = (uint) -1;
 
-    bool m_currFuncHasSubroutine = false;
-
     // Used to relocate phi-mov to different BB. phiMovToBB is the map from "fromBB"
     // to "toBB" (meaning to move phi-mov from "fromBB" to "toBB"). See MovPhiSources.
     llvm::DenseMap<llvm::BasicBlock*, llvm::BasicBlock*>  phiMovToBB;
