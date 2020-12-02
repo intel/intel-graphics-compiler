@@ -339,6 +339,9 @@ static void CommonOCLBasedPasses(
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
     mpm.add(new UndefinedReferencesPass());
 
+    // Estimate maximal function size in the module and disable subroutine if not profitable.
+    mpm.add(createEstimateFunctionSizePass());
+
     if (IGC_GET_FLAG_VALUE(AllowMem2Reg))
     {
         mpm.add(createPromoteMemoryToRegisterPass());
@@ -349,10 +352,7 @@ static void CommonOCLBasedPasses(
 
     // OCL has built-ins so it always need to run inlining
     {
-        // Estimate maximal function size in the module and disable subroutine if not profitable.
-        mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
-
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
             int Threshold = IGC_GET_FLAG_VALUE(OCLInlineThreshold);

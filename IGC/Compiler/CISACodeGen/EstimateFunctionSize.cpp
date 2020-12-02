@@ -60,7 +60,7 @@ IGC::createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel AL) {
 }
 
 EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL)
-    : ModulePass(ID), M(nullptr), AL(AL), HasRecursion(false), EnableSubroutine(false) {}
+    : ModulePass(ID), M(nullptr), AL(AL), HasRecursion(false) {}
 
 EstimateFunctionSize::~EstimateFunctionSize() { clear(); }
 
@@ -295,26 +295,31 @@ void EstimateFunctionSize::checkSubroutine() {
     if (!CGW || AL != AL_Module)
         return;
 
-    EnableSubroutine = true;
     CodeGenContext* pContext = CGW->getCodeGenContext();
+    bool EnableSubroutine = true;
     if (pContext->type != ShaderType::OPENCL_SHADER &&
         pContext->type != ShaderType::COMPUTE_SHADER)
         EnableSubroutine = false;
+    else if (pContext->m_instrTypes.hasIndirectCall &&
+        (IGC_IS_FLAG_DISABLED( AllowSubroutineAndInirectdCalls ) ||  // NOT allow subroutine with indirect call
+         IGC_GET_FLAG_VALUE( FunctionControl ) == FLAG_FCALL_FORCE_INDIRECTCALL ) ) // or NOT allow converting icall to direct call
+        EnableSubroutine = false;
+
 
     if (EnableSubroutine)
     {
         std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
         std::size_t MaxSize = getMaxExpandedSize();
-        if (MaxSize <= Threshold && !HasRecursion)
+        if( MaxSize <= Threshold && !HasRecursion )
         {
             EnableSubroutine = false;
         }
-        else if (MaxSize > Threshold)
+        else if ( MaxSize > Threshold)
         {
-            if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) &&
-                IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
+            if( IGC_IS_FLAG_ENABLED( ControlKernelTotalSize ) &&
+                IGC_IS_FLAG_DISABLED( DisableAddingAlwaysAttribute ) )
             {
-                if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x1) != 0)
+                if( ( IGC_GET_FLAG_VALUE( PrintControlKernelTotalSize ) & 0x1 ) != 0 )
                 {
                     std::cout << "Max size " << MaxSize << " is larger than the threshold (to trim) " << Threshold << std::endl;
                 }
@@ -323,7 +328,35 @@ void EstimateFunctionSize::checkSubroutine() {
         }
     }
 
+    if (pContext->type == ShaderType::OPENCL_SHADER)
+    {
+        for (Function& F : *M)
+        {
+            if (F.hasFnAttribute(llvm::Attribute::NoInline) &&
+                !F.hasFnAttribute(llvm::Attribute::Builtin)) {
+                EnableSubroutine = true;
+                break;
+            }
+        }
+    }
+
+    for (Function& F : *M)
+    {
+        if (F.hasFnAttribute("KMPLOCK"))
+        {
+            EnableSubroutine = true;
+            break;
+        }
+    }
+
+    if (EnableSubroutine) {
+        // Disable retry manager when subroutine is enabled.
+        pContext->m_retryManager.Disable();
+    }
+
     IGC_ASSERT(!HasRecursion || EnableSubroutine);
+    // Store result into the context (this decision should be immutable).
+    pContext->m_enableSubroutine = EnableSubroutine;
 }
 
 std::size_t EstimateFunctionSize::getExpandedSize(const Function* F) const {

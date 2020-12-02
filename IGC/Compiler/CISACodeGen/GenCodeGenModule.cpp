@@ -906,7 +906,8 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
         if (FCtrl == FLAG_FCALL_FORCE_INLINE)
             return IGCLLVM::InlineCost::getAlways();
 
-        if (!pCtx->enableFunctionCall())
+        // If m_enableSubroutine is disabled, always inline
+        if (pCtx->m_enableSubroutine == false)
             return IGCLLVM::InlineCost::getAlways();
 
         if (pCtx->type == ShaderType::OPENCL_SHADER &&
