@@ -353,40 +353,6 @@ bool genx::isIntNot(Instruction *Inst)
 }
 
 /***********************************************************************
- * invertCondition : Invert the given predicate value, possibly reusing
- * an existing copy.
- */
-Value *genx::invertCondition(Value *Condition)
-{
-  IGC_ASSERT(Condition->getType()->getScalarType()->isIntegerTy(1) &&
-      "Condition is not of predicate type");
-  // First: Check if it's a constant.
-  if (Constant *C = dyn_cast<Constant>(Condition))
-    return ConstantExpr::getNot(C);
-
-  // Second: If the condition is already inverted, return the original value.
-  Instruction *Inst = dyn_cast<Instruction>(Condition);
-  if (Inst && isPredNot(Inst))
-    return Inst->getOperand(0);
-
-  // Last option: Create a new instruction.
-  auto *Inverted =
-      BinaryOperator::CreateNot(Condition, Condition->getName() + ".inv");
-  if (Inst && !isa<PHINode>(Inst))
-    Inverted->insertAfter(Inst);
-  else {
-    BasicBlock *Parent = nullptr;
-    if (Inst)
-      Parent = Inst->getParent();
-    else if (Argument *Arg = dyn_cast<Argument>(Condition))
-      Parent = &Arg->getParent()->getEntryBlock();
-    IGC_ASSERT_MESSAGE(Parent, "Unsupported condition to invert");
-    Inverted->insertBefore(&*Parent->getFirstInsertionPt());
-  }
-  return Inverted;
-}
-
-/***********************************************************************
  * ShuffleVectorAnalyzer::getAsSlice : see if the shufflevector is a slice on
  *    operand 0, and if so return the start index, or -1 if it is not a slice
  */

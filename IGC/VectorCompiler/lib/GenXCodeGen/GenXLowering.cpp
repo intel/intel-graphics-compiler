@@ -179,6 +179,7 @@ private:
   bool lowerBoolVectorSelect(SelectInst *SI);
   bool lowerBoolShuffle(ShuffleVectorInst *Inst);
   bool lowerBoolSplat(ShuffleVectorInst *SI, Value *In, unsigned Idx);
+  bool lowerSelect(SelectInst* SI);
   bool lowerShuffle(ShuffleVectorInst *Inst);
   void lowerShuffleSplat(ShuffleVectorInst *SI,
                          ShuffleVectorAnalyzer::SplatInfo Splat);
@@ -994,8 +995,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
         return lowerBoolVectorSelect(SI);
       return lowerBoolScalarSelect(SI);
     }
-    // Widen byte op if it necessary.
-    return widenByteOp(SI);
+    // Try lowering a non-bool select to wrregion. If lowerSelect decides
+    // not to, and it is a byte operation, widen it if necessary.
+    return lowerSelect(SI) || widenByteOp(SI);
   }
   if (auto SI = dyn_cast<ShuffleVectorInst>(Inst)) {
     if (SI->getType()->getScalarType()->isIntegerTy(1))
@@ -1547,6 +1549,99 @@ bool GenXLowering::lowerCast(Instruction *Inst) {
     return true;
   }
   return false;
+}
+
+/***********************************************************************
+ * lowerSelect : lower a non-i1 select
+ *
+ * Return:  whether any change was made, and thus the current instruction
+ *          is now marked for erasing
+ *
+ *          Lower select into predicated  wrr. This transform is profitable
+ *          if we can bale into resulting wrr later
+ */
+bool GenXLowering::lowerSelect(SelectInst *SI) {
+  IGC_ASSERT(SI);
+
+  if (!isa<VectorType>(SI->getOperand(0)->getType()))
+    return false; // scalar selector
+
+  // Do not lower byte select, because byte wrr then will be widened
+  if (SI->getTrueValue()->getType()->getScalarType()->isIntegerTy(8))
+    return false;
+
+  Value *Cond = SI->getCondition();
+  Value *TrueVal = SI->getTrueValue();
+  Value *FalseVal = SI->getFalseValue();
+
+  // Do not transform if one of the sources is constant.
+  // Now post-legalization generarates redundant moves for constants.
+  // It's also required for correct baling of function pointers' PtrToInts
+  // into select.
+  // This check can be relaxed.
+  if (isa<Constant>(TrueVal) || isa<Constant>(FalseVal))
+    return false;
+
+  // If select is used by unmasked wrr than we do not apply transformation too
+  // because wrr+wrr is not optimal. In this case select itself will bale into
+  // wrr. There might be some cases where wrr user of
+  // select can be eliminated too.
+  if (SI->hasOneUse() && GenXIntrinsic::isWrRegion(SI->user_back())) {
+    auto *I = cast<Instruction>(SI->user_back());
+    if ((I->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum) == SI) &&
+        !Region(I, BaleInfo()).Mask)
+      return false;
+  }
+
+  // GenXPatternMatch tries to convert cmp + select
+  // into min/max instructions. So do not transform in this case
+  // This check can be relaxed too.
+  if (isa<CmpInst>(Cond))
+    return false;
+
+  bool TrueValUsedOnce = TrueVal->hasOneUse();
+  bool FalseValUsedOnce = FalseVal->hasOneUse();
+
+  // Baling produces better code if balable
+  // value has single use
+  if (!FalseValUsedOnce && !TrueValUsedOnce)
+    return false;
+
+  // So select this value
+  bool InvertPred = false;
+  Value *OldWrrVal = FalseVal;
+  Value *NewWrrVal = TrueVal;
+  if (GotoJoin::isEMValue(Cond) && !TrueValUsedOnce) {
+    // Conversion only for true val if EM since
+    // EM is implicit, inverting it will require extra instructions
+    return false;
+  }
+
+  if (FalseValUsedOnce && !TrueValUsedOnce) {
+    std::swap(OldWrrVal, NewWrrVal);
+    InvertPred = true;
+  }
+
+  // Main check: profitable only if we can bale later
+  Region R(SI);
+  R.Mask = Cond;
+  if (!GenXBaling::isBalableNewValueIntoWrr(NewWrrVal, R, ST))
+    return false;
+
+  // Inverting predicate if false value of select was choosen
+  // as new value for wrr
+  if (InvertPred) {
+    R.Mask = BinaryOperator::Create(
+        Instruction::Xor, R.Mask, Constant::getAllOnesValue(R.Mask->getType()),
+        SI->getName() + ".invertpred", SI);
+    cast<Instruction>(R.Mask)->setDebugLoc(SI->getDebugLoc());
+  }
+
+  auto NewWrRegion = cast<Instruction>(R.createWrRegion(
+      OldWrrVal, NewWrrVal, SI->getName() + ".lower", SI, SI->getDebugLoc()));
+  SI->replaceAllUsesWith(NewWrRegion);
+  ToErase.push_back(SI);
+  return true;
 }
 
 /***********************************************************************
