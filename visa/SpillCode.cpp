@@ -188,9 +188,7 @@ void SpillManager::genRegMov(G4_BB* bb,
                 srcRgn = (i== 1) ? builder.getRegionScalar() : builder.getRegionStride1();
             }
 
-            G4_SrcRegRegion* s = builder.createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
+            G4_SrcRegRegion* s = builder.createSrc(
                 src,
                 0,
                 sSubRegOff,
@@ -350,9 +348,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                 G4_INST* movInst = builder.createMov(g4::SIMD1, movDst, movSrc, InstOpt_WriteEnable, false);
                 bb->insertBefore(it, movInst);
 
-                s = builder.createSrcRegRegion(
-                    Mod_src_undef,
-                    Direct,
+                s = builder.createSrc(
                     tmpDcl->getRegVar(),
                     0,
                     0,

@@ -927,7 +927,7 @@ namespace vISA
                 auto rd = kernel.fg.builder->createRegionDesc(src0Rgn->getRegion()->vertStride,
                     src0Rgn->getRegion()->width, src0Rgn->getRegion()->horzStride);
 
-                src0 = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
+                src0 = kernel.fg.builder->createSrc(
                     newSrc0Dcl->getRegVar(), src0Rgn->getRegOff(), src0Rgn->getSubRegOff(),
                     rd, src0Rgn->getType());
             }

@@ -126,7 +126,7 @@ int IR_Builder::translateVISASampleInfoInst(
         G4_Imm* src0Imm = createImm(0, Type_UD);
         auto temp = createMov(g4::SIMD8, dst, src0Imm, InstOpt_NoOpt, true);
         temp->setOptionOn(InstOpt_WriteEnable);
-        m0 = createSrcRegRegion(Mod_src_undef, Direct, msg->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+        m0 = createSrc(msg->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
     }
     // Now create message descriptor
     // 7:0 - BTI
@@ -432,7 +432,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
             G4_DstRegRegion payloadTypedRegRowi(Direct, payloadF->getRegVar(), regOff++, 0, 1, Type_F);
             G4_DstRegRegion* payloadTypedRegRowRgni = createDstRegRegion(payloadTypedRegRowi);
 
-            G4_SrcRegRegion* vertexSrcRegRgnRowi = createSrcRegRegion(Mod_src_undef, Direct, vertexDataDcl->getRegVar(), startSrcRow++, 0, getRegionStride1(), Type_F);
+            G4_SrcRegRegion* vertexSrcRegRgnRowi = createSrc(vertexDataDcl->getRegVar(), startSrcRow++, 0, getRegionStride1(), Type_F);
 
             createMov(g4::SIMD8, payloadTypedRegRowRgni, vertexSrcRegRgnRowi, instOpt, true);
         }
@@ -473,9 +473,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
             ASSERT_USER(payloadUD == vertexDataDcl,
                 "If there is no need for data move then payloadUD == vertexDataDcl must hold!");
 
-            m1 = createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
+            m1 = createSrc(
                 payloadUD->getRegVar(),
                 vertexData->getRegOff(),
                 vertexData->getSubRegOff(),
@@ -680,7 +678,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         G4_DstRegRegion* payloadRegRgn = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
 
         G4_Declare* r0 = getBuiltinR0();
-        G4_SrcRegRegion* r0RegRgn = createSrcRegRegion(Mod_src_undef, Direct, r0->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+        G4_SrcRegRegion* r0RegRgn = createSrc(r0->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
         //moves data from r0 to header portion of the message
         G4_INST* movInst = createMov(g4::SIMD8, payloadRegRgn, r0RegRgn, InstOpt_NoOpt, true);
@@ -700,8 +698,8 @@ int IR_Builder::translateVISARTWrite3DInst(
             createBinOp(G4_shl, g4::SIMD1, tmpDst, sampleIndexOpnd, createImm(SAMPLE_INDEX_OFFSET, Type_UD), InstOpt_WriteEnable, true);
 
             G4_DstRegRegion* payloadUDRegRgn = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
-            G4_SrcRegRegion* tmpSrc = createSrcRegRegion(Mod_src_undef, Direct, tmpDcl->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
-            G4_SrcRegRegion* payloadSrc = createSrcRegRegion(Mod_src_undef, Direct, msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+            G4_SrcRegRegion* tmpSrc = createSrc(tmpDcl->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+            G4_SrcRegRegion* payloadSrc = createSrc(msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
             createBinOp(G4_or, g4::SIMD1, payloadUDRegRgn, payloadSrc, tmpSrc, InstOpt_WriteEnable, true);
         }
 
@@ -738,12 +736,10 @@ int IR_Builder::translateVISARTWrite3DInst(
                 //         M0 : WAce0.0; M16 : WAce0.1
                 createMov(g4::SIMD1, flag, createImm(0, Type_UW), InstOpt_WriteEnable, true);
 
-                G4_SrcRegRegion* r0_0 = createSrcRegRegion(
-                    Mod_src_undef, Direct,
+                G4_SrcRegRegion* r0_0 = createSrc(
                     getRealR0()->getRegVar(), 0, 0,
                     getRegionStride1(), Type_UW);
-                G4_SrcRegRegion* r0_1 = createSrcRegRegion(
-                    Mod_src_undef, Direct,
+                G4_SrcRegRegion* r0_1 = createSrc(
                     getRealR0()->getRegVar(), 0, 0,
                     getRegionStride1(), Type_UW);
                 G4_DstRegRegion* nullDst = createNullDst(Type_UW);
@@ -751,8 +747,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 createInst(NULL, G4_cmp, flagCM, g4::NOSAT, g4::SIMD16, nullDst,
                     r0_0, r0_1, Option, true);
 
-                G4_SrcRegRegion* flagSrc = createSrcRegRegion(
-                    Mod_src_undef, Direct,
+                G4_SrcRegRegion* flagSrc = createSrc(
                     flagVar, 0,
                     Option == InstOpt_M16 ? 1 : 0,
                     getRegionScalar(), Type_UW);
@@ -769,15 +764,14 @@ int IR_Builder::translateVISARTWrite3DInst(
                     //this is a Second half of a SIMD32 RT write. We need to get second half of flag register.
                     //mov whole register in to GRF, move second word of it in to payload.
 
-                    G4_SrcRegRegion* pixelMaskTmp = createSrcRegRegion(
-                        Mod_src_undef, Direct,
+                    G4_SrcRegRegion* pixelMaskTmp = createSrc(
                         pred->getBase()->asRegVar(), 0, 0,
                         getRegionScalar(), Type_UD);
                     G4_Declare* tmpDcl = createTempVar(1, Type_UD, Any);
                     G4_DstRegRegion* tmpDst = createDst(tmpDcl->getRegVar(), 0, 0, 1, Type_UD);
                     createMov(g4::SIMD1, tmpDst, pixelMaskTmp, InstOpt_WriteEnable, true);
 
-                    pixelMask = createSrcRegRegion(Mod_src_undef, Direct,
+                    pixelMask = createSrc(
                         tmpDcl->getRegVar(), 0, 1, getRegionScalar(), Type_UW);
 
                     // move from temp register to header
@@ -791,8 +785,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                     }
                     else
                     {
-                        G4_SrcRegRegion* ce0 = createSrcRegRegion(
-                            Mod_src_undef, Direct,
+                        G4_SrcRegRegion* ce0 = createSrc(
                             phyregpool.getMask0Reg(), 0, 0,
                             getRegionScalar(), Type_UD);
 
@@ -806,7 +799,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             {
                 if (pred)
                 {
-                    pixelMask = createSrcRegRegion(Mod_src_undef, Direct,
+                    pixelMask = createSrc(
                         pred->getBase()->asRegVar(), 0, 0,
                         getRegionScalar(), Type_UW);
 
@@ -821,8 +814,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                     }
                     else
                     {
-                        G4_SrcRegRegion* ce0 = createSrcRegRegion(
-                            Mod_src_undef, Direct,
+                        G4_SrcRegRegion* ce0 = createSrc(
                             phyregpool.getMask0Reg(), 0, 0,
                             getRegionScalar(), Type_UD);
 
@@ -861,7 +853,7 @@ int IR_Builder::translateVISARTWrite3DInst(
 
         if (orImmVal != 0)
         {
-            G4_SrcRegRegion* immSrcRegRgn = createSrcRegRegion(Mod_src_undef, Direct, msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+            G4_SrcRegRegion* immSrcRegRgn = createSrc(msg->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
 
             G4_DstRegRegion* immDstRegRgn = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
 
@@ -1017,7 +1009,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     {
         // Coalesce and directly use original raw operand
         G4_Declare *dcl = R->getBase()->asRegVar()->getDeclare();
-        srcToUse = createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), offset / 32, 0, getRegionStride1(), R->getType());
+        srcToUse = createSrc(dcl->getRegVar(), offset / 32, 0, getRegionStride1(), R->getType());
     }
 
     // Now create message message descriptor
@@ -1390,7 +1382,7 @@ int IR_Builder::splitSampleInst(
     G4_Declare* payloadF = createSendPayloadDcl(numElts, Type_F);
     G4_Declare* payloadUD = createTempVar(numElts, Type_UD, GRFALIGN);
     payloadUD->setAliasDeclare(payloadF, 0);
-    G4_SrcRegRegion* srcToUse = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+    G4_SrcRegRegion* srcToUse = createSrc(payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
     // even though we only use lower half of the GRF, we have to allocate full GRF
     G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Any);
@@ -1575,7 +1567,7 @@ int IR_Builder::splitSampleInst(
         G4_Declare* payloadHF = createTempVar(numElts * 2, Type_HF, Any);
         payloadHF->setAliasDeclare(payloadF, 0);
 
-        G4_SrcRegRegion *srcToUse2 = createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+        G4_SrcRegRegion *srcToUse2 = createSrc(payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
         if (useHeader)
         {
@@ -1654,7 +1646,7 @@ int IR_Builder::splitSampleInst(
             if (pixelNullMaskEnable && i == tmpDstRows - 1)
             {
                 G4_DstRegRegion *origDstPtr = createDst(origDstUD->getRegVar(), short(regOff), 0, 1, Type_UD);
-                G4_SrcRegRegion *src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDstUD->getRegVar(),
+                G4_SrcRegRegion *src0Ptr = createSrc(tempDstUD->getRegVar(),
                     short(i), 0, getRegionScalar(), Type_UD);
 
                 G4_Predicate* pred2 = dupPredicate(pred);
@@ -1667,8 +1659,7 @@ int IR_Builder::splitSampleInst(
                 break;
             }
 
-            G4_SrcRegRegion *tmpSrcPnt = createSrcRegRegion(
-                Mod_src_undef, Direct, tempDstDcl->getRegVar(), (short)i, 0, getRegionStride1(), tempDstDcl->getElemType());
+            G4_SrcRegRegion *tmpSrcPnt = createSrc(tempDstDcl->getRegVar(), (short)i, 0, getRegionStride1(), tempDstDcl->getElemType());
 
             uint32_t MovInstOpt = instOpt;
             if (isHalfReturn)
@@ -1694,7 +1685,7 @@ int IR_Builder::splitSampleInst(
             if (pixelNullMaskEnable && i == tmpDstRows - 1) {
                 G4_Type secondHalfType = execSize == g4::SIMD8 ? Type_UB : Type_UW;
                 G4_DstRegRegion* origDstPtr = createDst(origDstUD->getRegVar(), regOff - 1, 1, 1, secondHalfType);
-                G4_SrcRegRegion* src0Ptr = createSrcRegRegion(Mod_src_undef, Direct, tempDst2UD->getRegVar(),
+                G4_SrcRegRegion* src0Ptr = createSrc(tempDst2UD->getRegVar(),
                     short(i), 0, getRegionScalar(), secondHalfType);
 
                 G4_Predicate* pred2 = dupPredicate(pred);
@@ -1706,8 +1697,7 @@ int IR_Builder::splitSampleInst(
                 break;
             }
 
-            G4_SrcRegRegion *tmpSrcPnt = createSrcRegRegion(
-                Mod_src_undef, Direct, tempDstDcl2->getRegVar(), (short)i, 0, getRegionStride1(), tempDstDcl->getElemType());
+            G4_SrcRegRegion *tmpSrcPnt = createSrc(tempDstDcl2->getRegVar(), (short)i, 0, getRegionStride1(), tempDstDcl->getElemType());
 
             uint32_t MovInstOpt = instOpt2;
             if (isHalfReturn)
@@ -1756,7 +1746,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
                 // make sure we set bit 0 of M0.3:ud to be 0
                 // and (1) M0.6<1>:uw M0.6<1>:uw 0xFFFE
                 G4_DstRegRegion* dst = createDst(dcl->getRegVar(), 0, 6, 1, Type_UW);
-                G4_SrcRegRegion* src0 = createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 6, getRegionScalar(), Type_UW);
+                G4_SrcRegRegion* src0 = createSrc(dcl->getRegVar(), 0, 6, getRegionScalar(), Type_UW);
                 G4_INST* SSPMove = createBinOp(G4_and, g4::SIMD1, dst, src0, createImm(0xFFFE, Type_UW), InstOpt_WriteEnable, false);
                 instList.push_front(SSPMove);
             }
@@ -1774,7 +1764,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
             // case.
             dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
             dcl->setCapableOfReuse();
-            G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, builtinSamplerHeader->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+            G4_SrcRegRegion* src = createSrc(builtinSamplerHeader->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
             Create_MOV_Inst(dcl, 0, 0, g4::SIMD8, NULL, NULL, src);
         }
     }
@@ -1788,7 +1778,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
             // make sure we set bit 0 of M0.3:ud to be 0
             // and (1) M0.6<1>:uw M0.6<1>:uw 0xFFFE
             G4_DstRegRegion* dst = createDst(dcl->getRegVar(), 0, 6, 1, Type_UW);
-            G4_SrcRegRegion* src0 = createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 6, getRegionScalar(), Type_UW);
+            G4_SrcRegRegion* src0 = createSrc(dcl->getRegVar(), 0, 6, getRegionScalar(), Type_UW);
             createBinOp(G4_and, g4::SIMD1, dst, src0, createImm(0xFFFE, Type_UW), InstOpt_WriteEnable, true);
         }
     }

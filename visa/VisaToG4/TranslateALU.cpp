@@ -158,8 +158,7 @@ int IR_Builder::translateVISAArithmeticInst(
             inst->setOptionOn(InstOpt_AccWrCtrl);
 
             //mov dst acc
-            G4_SrcRegRegion *accSrcOpnd = createSrcRegRegion(Mod_src_undef,
-                Direct,
+            G4_SrcRegRegion *accSrcOpnd = createSrc(
                 phyregpool.getAcc0Reg(),
                 0,
                 0,

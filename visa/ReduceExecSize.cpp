@@ -1534,9 +1534,7 @@ void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t num
         //inst->defInstList.push_back(std::pair<G4_INST*, Gen4_Operand_Number>(def_inst, Gen4_Operand_Number(srcNum + 1)));
 
         G4_DstRegRegion* existing_def = def_inst->getDst();
-        G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(
-                        Mod_src_undef,
-                        Direct,
+        G4_SrcRegRegion* newSrc = builder.createSrc(
                         existing_def->getBase(),
                         existing_def->getRegOff(),
                         existing_def->getSubRegOff(),
@@ -1560,9 +1558,7 @@ void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t num
     inst->transferDef(newInst, Gen4_Operand_Number(srcNum + 1), Opnd_src0);
     newInst->addDefUse(inst, Gen4_Operand_Number(srcNum + 1));
 
-    G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(
-                        Mod_src_undef,
-                        Direct,
+    G4_SrcRegRegion* newSrc = builder.createSrc(
                         dcl->getRegVar(),
                         0,
                         0,
@@ -1593,7 +1589,7 @@ void HWConformity::saveDst(INST_LIST_ITER& it, uint8_t stride, G4_BB *bb)
 
     uint16_t hs = dst->getHorzStride();
     const RegionDesc *region = builder.createRegionDesc(hs * execSize, execSize, hs);
-    G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(),
+    G4_SrcRegRegion *srcRegion = builder.createSrc(dst->getBase(), dst->getRegOff(),
         dst->getSubRegOff(), region, dstType);
 
     G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl(dcl, stride);
@@ -1615,7 +1611,7 @@ void HWConformity::restoreDst(INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_B
 
     uint16_t hs = dst->getHorzStride();
     const RegionDesc *region = builder.createRegionDesc(hs * execSize, execSize, hs);
-    G4_SrcRegRegion *srcRegion = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(),
+    G4_SrcRegRegion *srcRegion = builder.createSrc(dst->getBase(), dst->getRegOff(),
         dst->getSubRegOff(), region, dst->getType());
 
     unsigned int new_option = inst->getOption();

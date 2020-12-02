@@ -910,7 +910,7 @@ public:
     }
 
     // Create a new srcregregion allocated in mem
-    G4_SrcRegRegion* createSrcRegRegion(
+    G4_SrcRegRegion* createSrc(
         G4_VarBase* b,
         short roff,
         short sroff,
@@ -918,10 +918,10 @@ public:
         G4_Type ty,
         G4_AccRegSel regSel = ACC_UNDEFINED)
     {
-        return createSrcRegRegion(Mod_src_undef, Direct, b, roff, sroff, rd, ty, regSel);
+        return createSrcRegRegion(G4_SrcModifier::Mod_src_undef, G4_RegAccess::Direct, b, roff, sroff, rd, ty, regSel);
     }
 
-    // Create a new srcregregion allocated in mem
+    // deprecated, either use createSrc or createIndirectSrc
     G4_SrcRegRegion* createSrcRegRegion(
         G4_SrcModifier m,
         G4_RegAccess   a,

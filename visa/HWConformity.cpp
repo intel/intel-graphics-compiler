@@ -1383,9 +1383,7 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
         builder.createRegionDesc((uint16_t)inst->getExecSize(), (uint16_t)inst->getExecSize() * typeSizeRatio,
             inst->getExecSize(),
             (uint16_t)typeSizeRatio);
-    G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(
-        Mod_src_undef,
-        Direct,
+    G4_SrcRegRegion* newSrc = builder.createSrc(
         newDcl->getRegVar(),
         src0->getRegOff(),
         src0->getSubRegOff() * typeSizeRatio,
@@ -2253,7 +2251,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 
     // create an explciit acc source for later use
     const RegionDesc* rd = execSize > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
-    G4_SrcRegRegion* acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct,
+    G4_SrcRegRegion* acc_src_opnd = builder.createSrc(
         builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
 
     insertedInst = true;
@@ -2365,7 +2363,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
         last_iter = iter;
         last_iter--;
 
-        G4_SrcRegRegion* tmp_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0, rd, tmp_type);
+        G4_SrcRegRegion* tmp_src_opnd = builder.createSrc(dcl->getRegVar(), 0, 0, rd, tmp_type);
 
         G4_INST* newInst2 = builder.createInternalInst(
             pred, G4_mov, condmod, satMod, execSize, dst, tmp_src_opnd, NULL, inst_opt);
@@ -2452,9 +2450,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         inst->setDest(tmpDst);
 
         //need move to cast back to D/UD type
-        G4_SrcRegRegion* tmpSrc = builder.createSrcRegRegion(
-            Mod_src_undef,
-            Direct,
+        G4_SrcRegRegion* tmpSrc = builder.createSrc(
             tmpDcl->getRegVar(),
             0,
             1,
@@ -2598,7 +2594,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
         newSrc->setAliasDeclare(src, 0);
     }
 
-    G4_SrcRegRegion* srcOpnd = builder.createSrcRegRegion(Mod_src_undef, Direct,
+    G4_SrcRegRegion* srcOpnd = builder.createSrc(
         newSrc->getRegVar(), srcOffset / numEltPerGRF(Type_UB),
         (srcOffset % numEltPerGRF(Type_UB)) / G4_Type_Table[Type_UD].byteSize,
         builder.getRegionStride1(), Type_UD);
@@ -2705,7 +2701,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
     auto incrementVar = [&](G4_Operand* var, unsigned int width, unsigned int regOff, unsigned int sregOff, G4_INST* inst, short increment)
     {
         auto addrDst = builder.createDst(var->getBase(), regOff, sregOff, 1, Type_UW);
-        auto addrSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, var->getBase(), regOff, sregOff,
+        auto addrSrc = builder.createSrc(var->getBase(), regOff, sregOff,
             builder.getRegionStride1(), Type_UW);
         auto incrementImm = builder.createImm(increment, Type_W);
         auto addrAddInst = builder.createInternalInst(
@@ -2854,7 +2850,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
                         newSrc->setImmAddrOff(newDst->getAddrImm());
                     }
                     else
-                        newSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
+                        newSrc = builder.createSrc(dst->getBase(), dst->getRegOff(), dst->getSubRegOff() * 2,
                             builder.getRegionStride2(), Type_D);
                     auto imm31 = builder.createImm(31, Type_W);
                     newInst = builder.createBinOp(G4_asr, inst->getExecSize(), newDst, newSrc, imm31, inst->getOption(), false);
@@ -4586,9 +4582,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             // create an implicit acc parameter for sada2
             inst->setOpcode(G4_sada2);
             inst->setSrc(nullptr, 2);
-            G4_SrcRegRegion* accSrcOpnd = builder.createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
+            G4_SrcRegRegion* accSrcOpnd = builder.createSrc(
                 builder.phyregpool.getAcc0Reg(),
                 0,
                 0,
@@ -4650,7 +4644,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
 
             // opnd 0 for add is the new temp we've just created
             const RegionDesc* rd = builder.createRegionDesc(srcVertStride, srcWidth, srcHorzStride);
-            G4_Operand* addSrc0Opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, sad2Dst->getBase(),
+            G4_Operand* addSrc0Opnd = builder.createSrc(sad2Dst->getBase(),
                 0, 0, rd, sad2Dst->getType());
 
             // opnd 1 is src2 of the pseudo_sada2
@@ -4776,7 +4770,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             short baseOff = sendSrc->getRegOff();
             short baseSubOff = sendSrc->getSubRegOff();
             for (uint16_t idx = 0; idx != rows; ++idx) {
-                G4_SrcRegRegion* src = builder.createSrcRegRegion(Mod_src_undef, Direct, base, baseOff + idx, baseSubOff + 0, region, type);
+                G4_SrcRegRegion* src = builder.createSrc(base, baseOff + idx, baseSubOff + 0, region, type);
                 G4_DstRegRegion* dst = builder.createDst(dcl->getRegVar(), idx, 0, 1, type);
                 G4_INST* newInst = builder.createMov(builder.getNativeExecSize(), dst, src, InstOpt_WriteEnable, false);
                 bb->insertBefore(i, newInst);
@@ -6221,7 +6215,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
     G4_Predicate* pred = inst->getPredicate() ? builder.duplicateOperand(inst->getPredicate()) : nullptr;
     G4_CondMod* condMod = inst->getCondMod() ? builder.duplicateOperand(inst->getCondMod()) : nullptr;
     G4_SrcRegRegion* accSrc = builder.hasNFType() ?
-        builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), Type_NF) :
+        builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), Type_NF) :
         builder.Create_Src_Opnd_From_Dcl(tmpVal, builder.getRegionStride1());
     G4_DstRegRegion* newDst = builder.createDst(dst->getBase(),
         dst->getRegOff() + (secondHalf ? 1 : 0), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
@@ -6333,9 +6327,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             bb->insertBefore(it, newInst);
 
             rd = builder.getRegionScalar();
-            G4_SrcRegRegion* newSrcRgn = builder.createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
+            G4_SrcRegRegion* newSrcRgn = builder.createSrc(
                 tmpDcl->getRegVar(),
                 0,
                 0,
@@ -6390,9 +6382,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
 
                 if (i == 0)
                 {
-                    G4_SrcRegRegion* newSrcRgn = builder.createSrcRegRegion(
-                        Mod_src_undef,
-                        Direct,
+                    G4_SrcRegRegion* newSrcRgn = builder.createSrc(
                         tmpDcl->getRegVar(),
                         0,
                         0,
@@ -6961,7 +6951,7 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
             auto cmpInst = builder.createInternalInst(
                 nullptr, G4_cmp, condMod, g4::NOSAT, inst->getExecSize(),
                 builder.createNullDst(flagType),
-                builder.createSrcRegRegion(Mod_src_undef, Direct, cmpSrc0Flag->getRegVar(), 0, 0, builder.getRegionScalar(), flagType),
+                builder.createSrc(cmpSrc0Flag->getRegVar(), 0, 0, builder.getRegionScalar(), flagType),
                 immVal,
                 InstOpt_WriteEnable);
             bb->insertBefore(it, cmpInst);

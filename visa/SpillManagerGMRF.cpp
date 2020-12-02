@@ -1654,8 +1654,7 @@ SpillManagerGRF::createTemporaryRangeSrcRegion (
     // A scalar region is returned when execsize is 1.
     const RegionDesc *rDesc = builder_->createRegionDesc(execSize, horzStride, 1, 0);
 
-    return builder_->createSrcRegRegion(
-        Mod_src_undef, Direct, tmpRangeRegVar, (short) regOff, SUBREG_ORIGIN,
+    return builder_->createSrc(tmpRangeRegVar, (short) regOff, SUBREG_ORIGIN,
         rDesc, spilledRegion->getType ());
 }
 
@@ -1716,8 +1715,7 @@ SpillManagerGRF::createBlockSpillRangeSrcRegion (
     assert (getByteSize (spillRangeRegVar) % DWORD_BYTE_SIZE == 0);
     const RegionDesc * rDesc =
         builder_->rgnpool.createRegion (DWORD_BYTE_SIZE, DWORD_BYTE_SIZE, 1);
-    return builder_->createSrcRegRegion(
-        Mod_src_undef, Direct, spillRangeRegVar, (short) regOff, (short) subregOff,
+    return builder_->createSrc(spillRangeRegVar, (short) regOff, (short) subregOff,
         rDesc, Type_UD);
 }
 
@@ -1934,8 +1932,7 @@ SpillManagerGRF::createInputPayloadSrcRegion ()
     const RegionDesc * rDesc =
         builder_->rgnpool.createRegion (
             REG_DWORD_SIZE, REG_DWORD_SIZE, DEF_HORIZ_STRIDE);
-    return builder_->createSrcRegRegion(
-        Mod_src_undef, Direct, inputPayloadDirectReg,
+    return builder_->createSrc(inputPayloadDirectReg,
         PAYLOAD_INPUT_REG_OFFSET, PAYLOAD_INPUT_SUBREG_OFFSET,
         rDesc, Type_UD);
 }
@@ -2410,8 +2407,7 @@ inline G4_INST * SpillManagerGRF::createAddFPInst(
     G4_Operand *      src)
 {
     const RegionDesc* rDesc = builder_->getRegionScalar();
-    G4_Operand* fp = builder_->createSrcRegRegion(
-        Mod_src_undef, Direct, builder_->kernel.fg.framePtrDcl->getRegVar(),
+    G4_Operand* fp = builder_->createSrc(builder_->kernel.fg.framePtrDcl->getRegVar(),
         0, 0, rDesc, Type_UD);
     auto newInst = builder_->createBinOp(G4_add, execSize, dst, fp, src, InstOpt_WriteEnable, true);
     newInst->setCISAOff(curInst->getCISAOff());
@@ -2606,8 +2602,7 @@ void SpillManagerGRF::preloadSpillRange (
     uint16_t hstride = spilledRangeRegion->getHorzStride();
     const RegionDesc *rDesc = builder_->createRegionDesc(execSize, hstride, 1, 0);
 
-    G4_SrcRegRegion* preloadRegion = builder_->createSrcRegRegion(
-        Mod_src_undef, Direct, spillRangeDcl->getRegVar(),
+    G4_SrcRegRegion* preloadRegion = builder_->createSrc(spillRangeDcl->getRegVar(),
         REG_ORIGIN, spilledRangeRegion->getSubRegOff(),
         rDesc, spilledRangeRegion->getType());
 
@@ -2714,7 +2709,7 @@ SpillManagerGRF::createSpillSendInstr (
     }
     else
     {
-        G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
+        G4_SrcRegRegion * payload = builder_->createSrc(
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
         sendInst = createSendInst(execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, InstOpt_WriteEnable);
     }
@@ -2789,7 +2784,7 @@ SpillManagerGRF::createSpillSendInstr (
     {
         G4_Imm* messageDescImm =
             createSpillSendMsgDesc(spilledRangeRegion, execSize);
-        G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
+        G4_SrcRegRegion * payload = builder_->createSrc(
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
         sendInst = createSendInst(execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, static_cast<G4_InstOption>(option));
     }
@@ -3701,7 +3696,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
                         if ((i + 1) < numrows)
                             curExSize = G4_ExecSize(numEltPerGRF(Type_UD)*2);
 
-                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getVar(), (short)i, 0, rd, Type_F);
+                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(lr->getVar(), (short)i, 0, rd, Type_F);
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), (short)i, 0, 1, Type_F);
 
@@ -3712,7 +3707,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
                         if (spill)
                         {
                             // Also insert spill code
-                            G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(), (short)i, 0, rd, Type_F);
+                            G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(temp->getRegVar(), (short)i, 0, rd, Type_F);
 
                             G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), (short)i, 0, 1, Type_F);
 
@@ -3771,7 +3766,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
 
                     const RegionDesc* rd = kernel->fg.builder->getRegionStride1();
 
-                    G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getVar(), 0, off, rd, type);
+                    G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(lr->getVar(), 0, off, rd, type);
 
                     G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), 0, off, 1, type);
 
@@ -3782,7 +3777,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
                     if (spill)
                     {
                         // Also insert spill code
-                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(), 0, off, rd, type);
+                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(temp->getRegVar(), 0, off, rd, type);
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getVar(), 0, off, 1, type);
 
@@ -3808,8 +3803,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
                 const RegionDesc* rd = kernel->fg.builder->getRegionScalar();
 
                 G4_SrcRegRegion* pseudoUseSrc =
-                    kernel->fg.builder->createSrcRegRegion(
-                        Mod_src_undef, Direct, temp->getRegVar(), 0, 0, rd, Type_F);
+                    kernel->fg.builder->createSrc(temp->getRegVar(), 0, 0, rd, Type_F);
 
                 G4_INST* pseudoUseInst = kernel->fg.builder->createInternalIntrinsicInst(
                     nullptr, Intrinsic::Use, g4::SIMD1,
@@ -3902,7 +3896,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                         if ((i + 1) < numrows)
                             curExSize = G4_ExecSize(numEltPerGRF(Type_UD) * 2);
 
-                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getTopDcl()->getRegVar(), (short)i, 0, rd, Type_F);
+                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(lr->getTopDcl()->getRegVar(), (short)i, 0, rd, Type_F);
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), (short)i, 0, 1, Type_F);
 
@@ -3913,7 +3907,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                         if (spill)
                         {
                             // Also insert spill code
-                            G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(), (short)i, 0, rd, Type_F);
+                            G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(temp->getRegVar(), (short)i, 0, rd, Type_F);
 
                             G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getTopDcl()->getRegVar(), (short)i, 0, 1, Type_F);
 
@@ -3972,7 +3966,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
 
                     const RegionDesc* rd = kernel->fg.builder->getRegionStride1();
 
-                    G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, lr->getTopDcl()->getRegVar(), 0, off, rd, type);
+                    G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(lr->getTopDcl()->getRegVar(), 0, off, rd, type);
 
                     G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(temp->getRegVar(), 0, off, 1, type);
 
@@ -3983,7 +3977,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                     if (spill)
                     {
                         // Also insert spill code
-                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrcRegRegion(Mod_src_undef, Direct, temp->getRegVar(), 0, off, rd, type);
+                        G4_SrcRegRegion* srcRex = kernel->fg.builder->createSrc(temp->getRegVar(), 0, off, rd, type);
 
                         G4_DstRegRegion* dstRex = kernel->fg.builder->createDst(lr->getTopDcl()->getRegVar(), 0, off, 1, type);
 
@@ -4009,8 +4003,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                 const RegionDesc* rd = kernel->fg.builder->getRegionScalar();
 
                 G4_SrcRegRegion* pseudoUseSrc =
-                    kernel->fg.builder->createSrcRegRegion(
-                        Mod_src_undef, Direct, temp->getRegVar(), 0, 0, rd, Type_F);
+                    kernel->fg.builder->createSrc(temp->getRegVar(), 0, 0, rd, Type_F);
 
                 G4_INST* pseudoUseInst = kernel->fg.builder->createInternalIntrinsicInst(
                     nullptr, Intrinsic::Use, g4::SIMD1,
@@ -4836,7 +4829,7 @@ void GlobalRA::expandSpillStackcall(
         {
             G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
             G4_DstRegRegion* dst = builder->createNullDst((execSize > g4::SIMD8) ? Type_UW : Type_UD);
-            auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
+            auto sendSrc0 = builder->createSrc(scratchRegDcl->getRegVar(),
                 0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
             unsigned messageLength = owordToGRFSize(owordSize);
             G4_Imm* descImm = createMsgDesc(owordSize, true, true);
@@ -4863,8 +4856,7 @@ void GlobalRA::expandSpillStackcall(
             // Skip header if spill module emits its own header
             if (framePtr)
             {
-                src0 = builder->createSrcRegRegion(
-                    Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder->getRegionScalar(), Type_UD);
+                src0 = builder->createSrc(framePtr->getRegVar(), 0, 0, builder->getRegionScalar(), Type_UD);
                 src1 = builder->createImm(offsetOword, Type_UD);
                 hdrSetInst = builder->createBinOp(G4_add, g4::SIMD1, dst, src0, src1, InstOpt_WriteEnable, false);
             }
@@ -4951,7 +4943,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
          auto numRowsOword = GRFSizeToOwords(numRows);
          auto fillDst = builder->createDst(resultRgn->getBase(), rowOffset,
              0, resultRgn->getHorzStride(), resultRgn->getType());
-         auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, header->getBase(),
+         auto sendSrc0 = builder->createSrc(header->getBase(),
              0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
          G4_Imm* desc = createMsgDesc(numRowsOword, false, false);
          G4_INST* sendInst = nullptr;
@@ -5020,7 +5012,7 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
         auto createOwordFill = [&](unsigned int owordSize, G4_DstRegRegion* fillVar)
         {
             G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
-            auto sendSrc0 = builder->createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
+            auto sendSrc0 = builder->createSrc(scratchRegDcl->getRegVar(),
                 0, 0, builder->rgnpool.createRegion(8, 8, 1), Type_UD);
             G4_Imm* desc = createMsgDesc(owordSize, false, false);
             G4_INST* sendInst = nullptr;
@@ -5047,8 +5039,7 @@ void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& r
             // Skip header if spill module emits its own header
             if (framePtr)
             {
-                src0 = builder->createSrcRegRegion(
-                    Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder->getRegionScalar(), Type_UD);
+                src0 = builder->createSrc(framePtr->getRegVar(), 0, 0, builder->getRegionScalar(), Type_UD);
                 src1 = builder->createImm(offsetOword, Type_UD);
                 hdrSetInst = builder->createBinOp(G4_add, g4::SIMD1, dst, src0, src1, InstOpt_WriteEnable, false);
             }

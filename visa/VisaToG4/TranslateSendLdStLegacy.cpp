@@ -95,7 +95,7 @@ static void BuildStatelessSurfaceMessageHeader(IR_Builder *IRB, G4_Declare *Head
     // Rx.5[31:0] = 0 | R0.5[9:0]
     G4_DstRegRegion *DstOpnd = IRB->createDst(Header->getRegVar(), 0, 5, 1, ElemTy);
     // R0.5
-    G4_SrcRegRegion *SrcOpnd = IRB->createSrcRegRegion(Mod_src_undef, Direct,
+    G4_SrcRegRegion *SrcOpnd = IRB->createSrc(
         IRB->getBuiltinR0()->getRegVar(), 0, 5,
         IRB->getRegionScalar(), ElemTy);
     // Mask
@@ -986,7 +986,7 @@ int IR_Builder::translateVISAGather4Inst(
 
     createBinOp(G4_shl, G4_ExecSize(numElt), dst3_opnd, eltOffOpnd, createImm(2, Type_UW), instOpt, true);
 
-    G4_SrcRegRegion* src2_opnd = createSrcRegRegion(Mod_src_undef, Direct, tmp_dcl->getRegVar(), 0, 0,
+    G4_SrcRegRegion* src2_opnd = createSrc(tmp_dcl->getRegVar(), 0, 0,
         getRegionStride1(), tmp_dcl->getElemType());
 
     // As untyped surface message use MH_IGNORE based header, if global offset
@@ -1012,7 +1012,7 @@ int IR_Builder::translateVISAGather4Inst(
 
         createBinOp(G4_shl, g4::SIMD1, dst2_opnd, gOffOpnd, createImm(2, Type_UW), InstOpt_WriteEnable, true);
 
-        G4_SrcRegRegion* src1Opnd = createSrcRegRegion(Mod_src_undef, Direct, tmp_dcl1->getRegVar(), 0, 0,
+        G4_SrcRegRegion* src1Opnd = createSrc(tmp_dcl1->getRegVar(), 0, 0,
             getRegionScalar(), tmp_dcl1->getElemType());
 
         createBinOp(G4_add, G4_ExecSize(numElt), dst1_opnd, src2_opnd, src1Opnd, instOpt, true);
@@ -1186,9 +1186,9 @@ int IR_Builder::translateVISAScatter4Inst(
         // Copy data from src operand.
         for (unsigned i = 0; i != num_channel; ++i)
         {
-            G4_SrcRegRegion *s2_opnd =
-                createSrcRegRegion(
-                    Mod_src_undef, Direct, src_dcl->getRegVar(), (i * numElt) / 8, 0, getRegionStride1(), src_dcl->getElemType());
+            G4_SrcRegRegion* s2_opnd =
+                createSrc(
+                    src_dcl->getRegVar(), (i * numElt) / 8, 0, getRegionStride1(), src_dcl->getElemType());
             Create_MOV_Send_Src_Inst(data, (i * numElt) / 8, 0, numElt, s2_opnd, instOpt);
         }
     }
@@ -1204,8 +1204,8 @@ int IR_Builder::translateVISAScatter4Inst(
     createBinOp(G4_shl, G4_ExecSize(numElt), dst3_opnd, eltOffOpnd, createImm(2, Type_UW), instOpt, true);
 
     G4_SrcRegRegion* src2_opnd =
-        createSrcRegRegion(
-            Mod_src_undef, Direct, tmp_dcl->getRegVar(), 0, 0, getRegionStride1(), tmp_dcl->getElemType());
+        createSrc(
+            tmp_dcl->getRegVar(), 0, 0, getRegionStride1(), tmp_dcl->getElemType());
 
     if (gOffOpnd->isImm())
     {
@@ -1228,7 +1228,7 @@ int IR_Builder::translateVISAScatter4Inst(
 
         createBinOp(G4_shl, g4::SIMD1, dst2_opnd, gOffOpnd, createImm(2, Type_UW), InstOpt_WriteEnable, true);
 
-        G4_SrcRegRegion* src1Opnd = createSrcRegRegion(Mod_src_undef, Direct, tmp_dcl1->getRegVar(), 0, 0,
+        G4_SrcRegRegion* src1Opnd = createSrc(tmp_dcl1->getRegVar(), 0, 0,
             getRegionScalar(), tmp_dcl1->getElemType());
 
         createBinOp(G4_add, G4_ExecSize(numElt), dst1_opnd, src2_opnd, src1Opnd, instOpt, true);
@@ -2947,7 +2947,7 @@ G4_SrcRegRegion* IR_Builder::getSVMOffset(
         // do second half of the 64-bit add
         int offset = (8 * sizeof(uint64_t)) / getGRFSize();
         auto dst = createDst(dcl->getRegVar(), offset, 0, 1, offsets->getType());
-        auto src = createSrcRegRegion(Mod_src_undef, Direct, offsets->getBase(),
+        auto src = createSrc(offsets->getBase(),
             offsets->getRegOff() + offset, offsets->getSubRegOff(), getRegionStride1(), offsets->getType());
         createInst(duplicateOperand(pred), G4_add, 0, g4::NOSAT, g4::SIMD8, dst, src,
             duplicateOperand(globalOffset), getSplitHiEMask(16, mask), true);

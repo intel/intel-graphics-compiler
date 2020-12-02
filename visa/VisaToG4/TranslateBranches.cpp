@@ -314,8 +314,7 @@ int IR_Builder::translateVISACFRetInst(
             tmpFCRet = createTempVar(2, Type_UD, Four_Word);
             tmpFCRet->setAliasDeclare(RetIP->dcl, 0);
         }
-        G4_SrcRegRegion* srcOpndToUse = createSrcRegRegion(Mod_src_undef,
-            Direct, tmpFCRet->getRegVar(), 0, 0, getRegionStride1(),
+        G4_SrcRegRegion* srcOpndToUse = createSrc(tmpFCRet->getRegVar(), 0, 0, getRegionStride1(),
             Type_UD);
 
         createInst(predOpnd,

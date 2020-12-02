@@ -2675,7 +2675,7 @@ void FlowGraph::setABIForStackCallFunctionCalls()
             const RegionDesc* rd = builder->createRegionDesc(2, 2, 1);
             G4_Declare* r1_src = builder->createDeclareNoLookup(n, G4_INPUT, numEltPerGRF(Type_UD), 1, Type_UD);
             r1_src->getRegVar()->setPhyReg(builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()), IR_Builder::SubRegs_Stackcall::Ret_IP);
-            G4_Operand* srcRgn = builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
+            G4_Operand* srcRgn = builder->createSrc(r1_src->getRegVar(), 0, 0, rd, Type_UD);
             fret->setSrc(srcRgn, 0);
             if (fret->getExecSize() == g4::SIMD1)
             {

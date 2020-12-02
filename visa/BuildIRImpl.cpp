@@ -425,8 +425,7 @@ void IR_Builder::expandPredefinedVars()
     if (preDefVars.isHasPredefined(PreDefinedVarsInternal::HW_TID))
     {
         const unsigned fftid_mask = getPlatform() >= GENX_CNL ? 0x3FF : 0x1FF;
-        G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
-            0, 5, getRegionScalar(), Type_UD);
+        G4_SrcRegRegion* src = createSrc(realR0->getRegVar(), 0, 5, getRegionScalar(), Type_UD);
         G4_Imm* mask1 = createImm(fftid_mask, Type_UD);
         G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinHWTID, 1);
         G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, src, mask1, InstOpt_WriteEnable, false);
@@ -438,7 +437,7 @@ void IR_Builder::expandPredefinedVars()
         if (useNewR0Format())
         {
             // x -> and (1) thread_x<1>:uw r0.1:ud 0xFFF
-            G4_SrcRegRegion* r0Dot1UD = createSrcRegRegion(Mod_src_undef, Direct,
+            G4_SrcRegRegion* r0Dot1UD = createSrc(
                 realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::X), 1);
             G4_INST* inst = createBinOp(G4_and, g4::SIMD1, dst, r0Dot1UD,
@@ -449,7 +448,7 @@ void IR_Builder::expandPredefinedVars()
         {
             //  We insert the new instruction
             //  and (1) thread_x<1>:uw, r0.2:uw, 0x01FF
-            G4_SrcRegRegion* r0Dot2UW = createSrcRegRegion(Mod_src_undef, Direct,
+            G4_SrcRegRegion* r0Dot2UW = createSrc(
                 realR0->getRegVar(), 0, 2, getRegionScalar(), Type_UW);
             int64_t mask = getThreadIDMask();
             G4_Imm* src1 = createImm(mask, Type_UW);
@@ -465,7 +464,7 @@ void IR_Builder::expandPredefinedVars()
         {
             // y -> shr (1) thread_y<1>:uw r0.1:ud 12
             //      and (1) thread_y<1>:uw thread_y:uw 0xFFF
-            G4_SrcRegRegion* r0Dot1UD = createSrcRegRegion(Mod_src_undef, Direct,
+            G4_SrcRegRegion* r0Dot1UD = createSrc(
                 realR0->getRegVar(), 0, 1, getRegionScalar(), Type_UD);
 
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::Y), 1);
@@ -482,7 +481,7 @@ void IR_Builder::expandPredefinedVars()
         {
             //  We insert the new instruction
             //  and (1) thread_y<1>:uw, r0.3:uw, 0x01FF
-            G4_SrcRegRegion* r0Dot3UW = createSrcRegRegion(Mod_src_undef, Direct,
+            G4_SrcRegRegion* r0Dot3UW = createSrc(
                 realR0->getRegVar(), 0, 3, getRegionScalar(), Type_UW);
             int64_t mask = getThreadIDMask();
             G4_Imm* src1 = createImmWithLowerType(mask, Type_UW);
@@ -499,7 +498,7 @@ void IR_Builder::expandPredefinedVars()
         {
             // r0.1[31:24]
             // shr (1) color<2>:uw r0.1<0;1,0>:ud 24
-            G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
+            G4_SrcRegRegion* src = createSrc(realR0->getRegVar(),
                 0, 1, getRegionScalar(), Type_UD);
             G4_Imm* shift = createImm(24, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
@@ -511,7 +510,7 @@ void IR_Builder::expandPredefinedVars()
         {
             // else: r0.2[3:0]
             // and (1) color<2>:uw r0.2<0;1,0>:ud 0xF
-            G4_SrcRegRegion* src = createSrcRegRegion(Mod_src_undef, Direct, realR0->getRegVar(),
+            G4_SrcRegRegion* src = createSrc(realR0->getRegVar(),
                 0, 2, getRegionScalar(), Type_UD);
             G4_Imm* mask = createImm(0xF, Type_UW);
             G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(preDefVars.getPreDefinedVar(PreDefinedVarsInternal::COLOR), 2);
@@ -971,7 +970,7 @@ G4_INST* IR_Builder::createSpill(
 {
     auto builtInR0 = getBuiltinR0();
     auto rd = getRegionStride1();
-    auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+    auto srcRgnr0 = createSrc(builtInR0->getRegVar(), 0, 0, rd, Type_UD);
     G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
         srcRgnr0, payload, nullptr, option, true);
     spill->asSpillIntrinsic()->setFP(fp);
@@ -1002,7 +1001,7 @@ G4_INST* IR_Builder::createFill(
 {
     auto builtInR0 = getBuiltinR0();
     auto rd = getRegionStride1();
-    auto srcRgnr0 = createSrcRegRegion(Mod_src_undef, Direct, builtInR0->getRegVar(), 0, 0, rd, Type_UD);
+    auto srcRgnr0 = createSrc(builtInR0->getRegVar(), 0, 0, rd, Type_UD);
     G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
         srcRgnr0, nullptr, nullptr, option, true);
 
@@ -1407,7 +1406,7 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
 
     // get low 4 bits of sample index for putting into msg descriptor
     G4_SrcRegRegion* sampler2Src
-        = createSrcRegRegion(Mod_src_undef, Direct,
+        = createSrc(
         sampler->getTopDcl()->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
     createBinOp(G4_and, g4::SIMD1,
         idxLowDst, sampler2Src, createImm(0xf, Type_UD),
@@ -1419,7 +1418,7 @@ G4_Operand* IR_Builder::emitSampleIndexGE16(
         = createDst(headerDecl->getRegVar(),
             0, 3, 1, Type_UD);
     G4_SrcRegRegion* src0
-        = createSrcRegRegion(Mod_src_undef, Direct,
+        = createSrc(
             builtinR0->getRegVar(), 0, 3, getRegionScalar(), Type_UD);
     createBinOp(G4_add, g4::SIMD1, stateBaseRgn,
         src0, baseAdjSrc, InstOpt_WriteEnable, true);
@@ -1559,7 +1558,7 @@ G4_INST* IR_Builder::createMach(
         nullptr, G4_mach, nullptr, g4::NOSAT, execSize,
         dst, src0, src1, options);
     const RegionDesc* rd = execSize > g4::SIMD1 ? getRegionStride1() : getRegionScalar();
-    auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
+    auto accSrc = createSrc(phyregpool.getAcc0Reg(), 0, 0, rd, accType);
     machInst->setImplAccSrc(accSrc);
     auto accDSt = createDst(phyregpool.getAcc0Reg(), 0, 0, 1, accType);
     machInst->setImplAccDst(accDSt);
@@ -1577,7 +1576,7 @@ G4_INST* IR_Builder::createMacl(
     auto maclInst = createInternalInst(
         nullptr, G4_mach, nullptr, g4::NOSAT, execSize, dst, src0, src1, options);
     const RegionDesc* rd = execSize > g4::SIMD1 ? getRegionStride1() : getRegionScalar();
-    auto accSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getAcc0Reg(), 0, 0, rd, accType);
+    auto accSrc = createSrc(phyregpool.getAcc0Reg(), 0, 0, rd, accType);
     maclInst->setImplAccSrc(accSrc);
     return maclInst;
 }
@@ -2616,9 +2615,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
         }
         else
         {
-            src = createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
+            src = createSrc(
                 src_opnd->asSrcRegRegion()->getBase(),
                 src_regoff,
                 src_subregoff,

@@ -92,7 +92,7 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     // clear TDR if mask is not null and not zero
-    if (mask != NULL && !(mask->isImm() && mask->asImm()->getInt() == 0))
+    if (mask && !(mask->isImm() && mask->asImm()->getInt() == 0))
     {
         // mov (1) f0.0<1>:uw <TDR_bits>:ub {NoMask}
         G4_Declare* tmpFlagDcl = createTempFlag(1);
@@ -102,8 +102,7 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
         // (f0.0) and (8) tdr0.0<1>:uw tdr0.0<8;8,1>:uw 0x7FFF:uw {NoMask}
         G4_Predicate* predOpnd = createPredicate(PredState_Plus, tmpFlagDcl->getRegVar(), 0, PRED_DEFAULT);
         G4_DstRegRegion* TDROpnd = createDst(phyregpool.getTDRReg(), 0, 0, 1, Type_UW);
-        G4_SrcRegRegion* TDRSrc = createSrcRegRegion(
-            Mod_src_undef, Direct, phyregpool.getTDRReg(), 0, 0, getRegionStride1(), Type_UW);
+        G4_SrcRegRegion* TDRSrc = createSrc(phyregpool.getTDRReg(), 0, 0, getRegionStride1(), Type_UW);
         createInst(predOpnd, G4_and, NULL, g4::NOSAT, g4::SIMD8,
             TDROpnd, TDRSrc, createImm(0x7FFF, Type_UW), InstOpt_WriteEnable, true);
     }
@@ -125,9 +124,7 @@ void IR_Builder::generateBarrierSend()
     //get barrier id
     G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
 
-    G4_SrcRegRegion* r0_src_opnd = createSrcRegRegion(
-        Mod_src_undef,
-        Direct,
+    G4_SrcRegRegion* r0_src_opnd = createSrc(
         builtinR0->getRegVar(),
         0,
         2,
@@ -171,7 +168,7 @@ void IR_Builder::generateBarrierWait()
 
         if (getPlatform() < GENX_TGLLP) {
             // before gen12: wait n0.0<0;1,0>:ud
-            waitSrc = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
+            waitSrc = createSrc(phyregpool.getN0Reg(),
                 0, 0, getRegionScalar(), Type_UD);
         } else {
             // gen12: sync.bar null
@@ -210,7 +207,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         createSendInst(nullptr, G4_send, g4::SIMD8, sendDstOpnd, sendMsgOpnd,
             createImm(desc, Type_UD), 0, msgDesc, true);
 
-        G4_SrcRegRegion* moveSrcOpnd = createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+        G4_SrcRegRegion* moveSrcOpnd = createSrc(dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
         Create_MOV_Inst(dstDcl, 0, 0, g4::SIMD8, NULL, NULL, moveSrcOpnd);
     }
     break;
@@ -230,7 +227,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         else
         {
             // dummy move to apply the {switch}
-            G4_SrcRegRegion* srcOpnd = createSrcRegRegion(Mod_src_undef, Direct, getBuiltinR0()->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+            G4_SrcRegRegion* srcOpnd = createSrc(getBuiltinR0()->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
             G4_DstRegRegion* dstOpnd = createDst(getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
 
             G4_INST* nop = createMov(g4::SIMD1, dstOpnd, srcOpnd, InstOpt_NoOpt, true);

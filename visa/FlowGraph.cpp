@@ -7116,8 +7116,7 @@ bool FlowGraph::convertJmpiToGoto()
                     // Common dst and src0 operand for flag.
                     G4_Declare *newDcl = builder->createTempFlag(predSize > 16 ? 2 : 1);
                     auto pDst = builder->createDst(newDcl->getRegVar(), 0, 0, 1, DstTy);
-                    auto pSrc0 = builder->createSrcRegRegion(
-                        G4_SrcModifier::Mod_src_undef, G4_RegAccess::Direct,
+                    auto pSrc0 = builder->createSrc(
                         pred->getBase(), 0, 0, builder->getRegionScalar(), SrcTy);
 
                     auto truncMask = [](uint32_t mask, G4_Type Ty) -> uint64_t

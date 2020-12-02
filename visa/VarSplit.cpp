@@ -518,7 +518,7 @@ void VarSplitPass::split()
             }
 
             auto dstRgn = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(splitDcl, 1);
-            auto srcRgn = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(),
+            auto srcRgn = kernel.fg.builder->createSrc(dstDcl->getRegVar(),
                 item.second.def.first->getRegOff() + (i * numRows), item.second.def.first->getSubRegOff(),
                 kernel.fg.builder->getRegionStride1(), Type_UD);
             G4_ExecSize execSize {(getGRFSize() / G4_Type_Table[Type_UD].byteSize) * numRows};

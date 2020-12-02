@@ -38,7 +38,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(G4_SrcRegRegion* hea
     bool useNoMask, G4_InstOption mask, int srcCISAOff, G4_Declare* spillDcl, unsigned int row)
 {
     // Generate split send instruction with specified payload size and offset
-    auto spillSrcPayload = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, spillDcl->getRegVar(),
+    auto spillSrcPayload = kernel.fg.builder->createSrc(spillDcl->getRegVar(),
         row, 0, kernel.fg.builder->getRegionStride1(), Type_UD);
 
     // Create send instruction with payloadSize starting at scratch offset min
@@ -124,7 +124,7 @@ void CoalesceSpillFills::copyToOldFills(
             G4_DstRegRegion* movDst = kernel.fg.builder->createDst(
                 oldFill.first->getBase(), rowOff, 0, 1, Type_UD);
 
-            G4_SrcRegRegion* src = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
+            G4_SrcRegRegion* src = kernel.fg.builder->createSrc(
                 coalescedFillDst->getBase(), offToUse, 0, kernel.fg.builder->getRegionStride1(), Type_UD);
 
             G4_INST* copy = kernel.fg.builder->createMov(
@@ -1336,8 +1336,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                     short row = 0;
                     while (elems > 0)
                     {
-                        G4_SrcRegRegion* srcRgn = kernel.fg.builder->createSrcRegRegion(
-                            Mod_src_undef, Direct, src1->getTopDcl()->getRegVar(), row, 0,
+                        G4_SrcRegRegion* srcRgn = kernel.fg.builder->createSrc(src1->getTopDcl()->getRegVar(), row, 0,
                             kernel.fg.builder->getRegionStride1(), Type_UD);
                         G4_DstRegRegion* dstRgn = kernel.fg.builder->createDst(
                             copyDcl->getRegVar(), row, 0, 1, Type_UD);
@@ -1349,8 +1348,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                         row++;
                     }
 
-                    G4_SrcRegRegion* sendSrc1 = kernel.fg.builder->createSrcRegRegion(
-                        Mod_src_undef, Direct, copyDcl->getRegVar(), 0, 0,
+                    G4_SrcRegRegion* sendSrc1 = kernel.fg.builder->createSrc(copyDcl->getRegVar(), 0, 0,
                         kernel.fg.builder->getRegionStride1(), Type_UD);
                     inst->setSrc(sendSrc1, 1);
                 }
@@ -1541,7 +1539,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                         if (success && srcDcl)
                         {
                             // Replace src1 of send with srcDcl
-                            G4_SrcRegRegion* sendSrc1 = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, srcDcl->getRegVar(),
+                            G4_SrcRegRegion* sendSrc1 = kernel.fg.builder->createSrc(srcDcl->getRegVar(),
                                 base, 0, kernel.fg.builder->getRegionStride1(), inst->getSrc(1)->getType());
                             inst->setSrc(sendSrc1, 1);
 
@@ -1758,7 +1756,7 @@ void CoalesceSpillFills::spillFillCleanup()
                     G4_SrcRegRegion* src1Write = write->getSrc(1)->asSrcRegRegion();
                     unsigned int writeRowStart = write->asSpillIntrinsic()->getOffset();
                     unsigned int diff = row - writeRowStart;
-                    G4_SrcRegRegion* nSrc = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct,
+                    G4_SrcRegRegion* nSrc = kernel.fg.builder->createSrc(
                         src1Write->getBase(), diff + src1Write->getRegOff(), 0,
                         kernel.fg.builder->getRegionStride1(), type);
 

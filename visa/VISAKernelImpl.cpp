@@ -1847,9 +1847,7 @@ int VISAKernelImpl::CreateVISAAddressOperand(
             // N is < exec size
             const RegionDesc* rd = width > 1 ?
                 m_builder->getRegionStride1() : m_builder->getRegionScalar();
-            cisa_opnd->g4opnd = m_builder->createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
+            cisa_opnd->g4opnd = m_builder->createSrc(
                 dcl->getRegVar(),
                 0,
                 (uint16_t)offset,
@@ -2111,9 +2109,7 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(
         if (size == 32)
             type = Type_UD;
 
-        opnd->g4opnd = m_builder->createSrcRegRegion(
-            Mod_src_undef,
-            Direct,
+        opnd->g4opnd = m_builder->createSrc(
             dcl->getRegVar(),
             0,
             0,
@@ -2400,9 +2396,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
             else
             {
 
-                cisa_opnd->g4opnd = m_builder->createSrcRegRegion(
-                    Mod_src_undef,
-                    Direct,
+                cisa_opnd->g4opnd = m_builder->createSrc(
                     dcl->getRegVar(),
                     0,
                     offset,
@@ -2497,9 +2491,7 @@ int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd)
     short row_offset = offset / numEltPerGRF(Type_UB);
     short col_offset = (offset%numEltPerGRF(Type_UB)) / G4_Type_Table[type].byteSize;
 
-    cisa_opnd->g4opnd = m_builder->createSrcRegRegion(
-        Mod_src_undef,
-        Direct,
+    cisa_opnd->g4opnd = m_builder->createSrc(
         dcl->getRegVar(),
         row_offset,
         col_offset,
@@ -2563,7 +2555,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
     {
     case SAMPLER_VAR:
     {
-        cisa_opnd->g4opnd = m_builder->createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0, m_builder->getRegionScalar(), Type_UD);
+        cisa_opnd->g4opnd = m_builder->createSrc(dcl->getRegVar(), 0, 0, m_builder->getRegionScalar(), Type_UD);
         break;
     }
     case SURFACE_VAR:
@@ -2571,7 +2563,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
         uint16_t surf_id = (uint16_t)decl->index;
         if (surf_id >= Get_CISA_PreDefined_Surf_Count())
         {
-            cisa_opnd->g4opnd = m_builder->createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0,
+            cisa_opnd->g4opnd = m_builder->createSrc(dcl->getRegVar(), 0, 0,
                 m_builder->getRegionScalar(), Type_UD);
         }
         else // predefined

@@ -400,8 +400,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
                             row + rowOffset, 0,
                             1, type);
                     G4_SrcRegRegion* srcRegion =
-                        createSrcRegRegion(
-                            Mod_src_undef, Direct,
+                        createSrc(
                             src->getTopDcl()->getRegVar(), src->getRegOff() + rowOffset, 0,
                             getRegionStride1(),
                             type);
@@ -528,8 +527,7 @@ int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand* var)
     }
     else
     {
-        G4_SrcRegRegion* varSrcRgn = createSrcRegRegion(
-            Mod_src_undef, Direct, var->getBase(), 0, 0, getRegionScalar(), Type_UD);
+        G4_SrcRegRegion* varSrcRgn = createSrc(var->getBase(), 0, 0, getRegionScalar(), Type_UD);
         createIntrinsicInst(nullptr, Intrinsic::PseudoUse, g4::SIMD1, nullptr, varSrcRgn,
             nullptr, nullptr, InstOpt_WriteEnable, true);
     }

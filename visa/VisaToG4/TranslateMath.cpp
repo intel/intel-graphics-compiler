@@ -53,7 +53,7 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
                     // ToDo: i think this is needed for all regions
                     auto tmpDst = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
                     builder.createMov(oldSize, tmpDst, src, InstOpt_WriteEnable, true);
-                    auto tmpSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0,
+                    auto tmpSrc = builder.createSrc(dcl->getRegVar(), 0, 0,
                         builder.createRegionDesc(0, oldSize, 1), src->getType());
                     builder.createMov(newSize, builder.Create_Dst_Opnd_From_Dcl(dcl, 1), tmpSrc,
                         InstOpt_WriteEnable, true);
@@ -1323,7 +1323,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         if (IsSrc0Moved)
         {
             // use t6, but need to adjust the offset since unlike the orig source t6 is zero-based.
-            src0 = createSrcRegRegion(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
+            src0 = createSrc(t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
         }
         else
         {

@@ -7055,7 +7055,7 @@ void GlobalRA::saveRegs(
         G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
             Type_UD, GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
-        auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
+        auto sendSrc2 = builder.createSrc(msgDcl->getRegVar(), 0, 0,
             builder.getRegionStride1(), Type_UD);
         G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
         G4_INST* spillIntrinsic = nullptr;
@@ -7675,9 +7675,8 @@ void GlobalRA::addCalleeStackSetupCode()
         G4_DstRegRegion* dst = builder.createDst(stackPtr->getRegVar(), 0, 0, 1, Type_UD);
         G4_DstRegRegion* fp_dst = builder.createDst(framePtr->getRegVar(), 0, 0, 1, Type_UD);
         const RegionDesc* rDesc = builder.getRegionScalar();
-        G4_Operand* src0 = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_Operand* sp_src = builder.createSrcRegRegion(Mod_src_undef, Direct, stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
+        G4_Operand* src0 = builder.createSrc(stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
+        G4_Operand* sp_src = builder.createSrc(stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Imm * src1 = builder.createImm(frameSize*factor, Type_UD);
         auto createBEFP = builder.createMov(g4::SIMD1, fp_dst, sp_src, InstOpt_WriteEnable, false);
         auto addInst = builder.createBinOp(G4_add, g4::SIMD1,
@@ -7740,8 +7739,7 @@ void GraphColor::addA0SaveRestoreCode()
                     //
                     G4_DstRegRegion* dst = builder.createDst(savedDcl->getRegVar(), 0, 0, 1, Type_UW);
                     const RegionDesc* rDesc = builder.getRegionStride1();
-                    G4_Operand* src = builder.createSrcRegRegion(
-                        Mod_src_undef, Direct, regPool.getAddrReg(), 0, 0, rDesc, Type_UW);
+                    G4_Operand* src = builder.createSrc(regPool.getAddrReg(), 0, 0, rDesc, Type_UW);
                     G4_INST* saveInst = builder.createMov(
                         G4_ExecSize(numA0Elements), dst, src, InstOpt_WriteEnable, false);
                     INST_LIST_ITER insertIt = std::prev(bb->end());
@@ -7754,8 +7752,7 @@ void GraphColor::addA0SaveRestoreCode()
                     //
                     G4_DstRegRegion* dst = builder.createDst(regPool.getAddrReg(), 0, 0, 1, Type_UW);
                     const RegionDesc* rDesc = builder.getRegionStride1();
-                    G4_Operand* src = builder.createSrcRegRegion(
-                        Mod_src_undef, Direct, savedDcl->getRegVar(), 0, 0, rDesc, Type_UW);
+                    G4_Operand* src = builder.createSrc(savedDcl->getRegVar(), 0, 0, rDesc, Type_UW);
                     G4_INST* restoreInst = builder.createMov(
                         G4_ExecSize(numA0Elements), dst, src, InstOpt_WriteEnable, false);
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
@@ -7808,7 +7805,7 @@ void GraphColor::addFlagSaveRestoreCode()
                     {
                         auto flagDcl = tmpFlags[index];
                         G4_DstRegRegion* dst = builder.createDst(savedDcl1->getRegVar(), 0, index, 1, Type_UD);
-                        G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, flagDcl->getRegVar(), 0, 0,
+                        G4_Operand* src = builder.createSrc(flagDcl->getRegVar(), 0, 0,
                             builder.getRegionScalar(), Type_UD);
                         return builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
                     };
@@ -7831,8 +7828,7 @@ void GraphColor::addFlagSaveRestoreCode()
                         auto flagDcl = tmpFlags[index];
                         G4_DstRegRegion* dst = builder.createDst(flagDcl->getRegVar(), 0, 0, 1, Type_UD);
                         const RegionDesc* rDesc = builder.getRegionScalar();
-                        G4_Operand* src = builder.createSrcRegRegion(
-                            Mod_src_undef, Direct, savedDcl1->getRegVar(), 0, index, rDesc, Type_UD);
+                        G4_Operand* src = builder.createSrc(savedDcl1->getRegVar(), 0, index, rDesc, Type_UD);
                         return builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
                     };
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
@@ -7932,7 +7928,7 @@ void GlobalRA::addCallerSavePseudoCode()
 
             G4_BB* retBB = bb->Succs.front();
             const RegionDesc* rd = builder.getRegionScalar();
-            G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, pseudoVCADcl->getRegVar(), 0, 0, rd, Type_UD);
+            G4_Operand* src = builder.createSrc(pseudoVCADcl->getRegVar(), 0, 0, rd, Type_UD);
             INST_LIST_ITER retBBIt = retBB->begin();
             for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
@@ -7965,8 +7961,7 @@ void GlobalRA::addCalleeSavePseudoCode()
 
     G4_BB* exitBB = builder.kernel.fg.getUniqueReturnBlock();
     const RegionDesc* rDesc = builder.getRegionScalar();
-    G4_Operand* src = builder.createSrcRegRegion(
-        Mod_src_undef, Direct, pseudoVCEDcl->getRegVar(), 0, 0, rDesc, Type_UD);
+    G4_Operand* src = builder.createSrc(pseudoVCEDcl->getRegVar(), 0, 0, rDesc, Type_UD);
     G4_INST* restoreInst =
         builder.createInternalIntrinsicInst(
             nullptr, Intrinsic::CalleeRestore, g4::SIMD1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
@@ -7992,14 +7987,13 @@ void GlobalRA::addStoreRestoreToReturn()
 
     G4_DstRegRegion* oldFPDst = builder.createDst(oldFPDcl->getRegVar(), 0, 0, 1, Type_UD);
     const RegionDesc* rd = builder.getRegionStride1();
-    G4_Operand* oldFPSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, oldFPDcl->getRegVar(), 0, 0, rd, Type_UD);
+    G4_Operand* oldFPSrc = builder.createSrc(oldFPDcl->getRegVar(), 0, 0, rd, Type_UD);
 
     auto SRDecl = builder.createHardwiredDeclare(4, Type_UD, builder.kernel.getFPSPGRF(), IR_Builder::SubRegs_Stackcall::Ret_IP);
     SRDecl->setName(builder.getNameString(builder.kernel.fg.mem, 24, "SR_BEStack"));
     G4_DstRegRegion* FPdst = builder.createDst(SRDecl->getRegVar(), 0, 0, 1, Type_UD);
     rd = builder.getRegionStride1();
-    G4_Operand* FPsrc = builder.createSrcRegRegion(
-        Mod_src_undef, Direct, SRDecl->getRegVar(), 0, 0, rd, Type_UD);
+    G4_Operand* FPsrc = builder.createSrc(SRDecl->getRegVar(), 0, 0, rd, Type_UD);
 
     saveBE_FPInst = builder.createMov(g4::SIMD4, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
     builder.setPartFDSaveInst(saveBE_FPInst);
@@ -8549,7 +8543,7 @@ void VarSplit::insertMovesToTemp(
         {
             unsigned maskFlag = (inst->getOption() & 0xFFF010C);
             G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(subDcl, 1);
-            auto src = builder.createSrcRegRegion(Mod_src_undef, Direct, oldDcl->getRegVar(),
+            auto src = builder.createSrc(oldDcl->getRegVar(),
                 (gra.getSubOffset(subDcl)) / numEltPerGRF(Type_UB), 0, builder.getRegionStride1(), oldDcl->getElemType());
             G4_INST* splitInst = builder.createMov(G4_ExecSize(subDcl->getTotalElems()), dst, src, maskFlag, false);
             bb->insertBefore(iter, splitInst);
@@ -8596,9 +8590,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                     1,
                     oldSrc->getType());
                 newLeftBound += subDcl->getByteSize();
-                G4_SrcRegRegion* src = kernel.fg.builder->createSrcRegRegion(
-                    Mod_src_undef,
-                    Direct,
+                G4_SrcRegRegion* src = kernel.fg.builder->createSrc(
                     subDcl->getRegVar(),
                     0,
                     0,
@@ -12499,8 +12491,7 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
         unsigned loc = getSubRetLoc(bb);
         G4_Declare* dcl = getRetDecl(loc);
 
-        G4_SrcRegRegion* new_src = builder.createSrcRegRegion(Mod_src_undef,   // RET__loc12<0;2,1>:ud
-            Direct,
+        G4_SrcRegRegion* new_src = builder.createSrc(
             dcl->getRegVar(),
             0,
             0,
