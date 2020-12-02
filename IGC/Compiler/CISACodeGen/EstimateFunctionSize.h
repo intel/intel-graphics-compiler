@@ -63,6 +63,8 @@ namespace IGC {
 
         bool hasRecursion() const { return HasRecursion; }
 
+        bool shouldEnableSubroutine() const { return EnableSubroutine; }
+
         bool isTrimmedFunction( llvm::Function* F);
 
     private:
@@ -87,6 +89,8 @@ namespace IGC {
         AnalysisLevel AL;
 
         bool HasRecursion;
+        bool EnableSubroutine;
+
         /// Internal data structure for the analysis which is approximately an
         /// extended call graph.
         llvm::SmallDenseMap<llvm::Function*, void*> ECG;

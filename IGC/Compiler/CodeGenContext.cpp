@@ -649,7 +649,31 @@ namespace IGC
 
     bool CodeGenContext::enableFunctionCall() const
     {
-        return (m_enableSubroutine || m_enableStackCall || m_enableFunctionPointer);
+        return (m_enableSubroutine || m_enableFunctionPointer);
+    }
+
+    /// Check for user functions in the module and enable the m_enableSubroutine flag if exists
+    void CodeGenContext::CheckEnableSubroutine(llvm::Module& M)
+    {
+        bool EnableSubroutine = false;
+        for (auto& F : M)
+        {
+            if (F.isDeclaration() ||
+                F.use_empty() ||
+                isEntryFunc(getMetaDataUtils(), &F))
+            {
+                continue;
+            }
+
+            if (F.hasFnAttribute("KMPLOCK") ||
+                F.hasFnAttribute(llvm::Attribute::NoInline) ||
+                !F.hasFnAttribute(llvm::Attribute::AlwaysInline))
+            {
+                EnableSubroutine = true;
+                break;
+            }
+        }
+        m_enableSubroutine = EnableSubroutine;
     }
 
     void CodeGenContext::InitVarMetaData() {}
@@ -663,7 +687,6 @@ namespace IGC
     void CodeGenContext::clear()
     {
         m_enableSubroutine = false;
-        m_enableStackCall = false;
         m_enableFunctionPointer = false;
 
         delete modMD;
