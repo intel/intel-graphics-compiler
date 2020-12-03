@@ -1925,10 +1925,6 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
             {
                 addFlag(Arg, dwarf::DW_AT_artificial);
             }
-            if (ATy->isObjectPointer())
-            {
-                addDIEEntry(SPDie, dwarf::DW_AT_object_pointer, Arg);
-            }
         }
     }
 
