@@ -1010,6 +1010,7 @@ void vISAVerifier::verifyInstructionControlFlow(
         case ISA_JMP:
         case ISA_CALL:
         {
+            bool isFC = static_cast<G4_Label*>(inst->opnd_array[0]->g4opnd)->isFCLabel();
             auto labelId = getPrimitiveOperand<uint16_t>(inst, 0);
             if (labelId >= header->getLabelCount())
             {
@@ -1018,7 +1019,7 @@ void vISAVerifier::verifyInstructionControlFlow(
             else
             {
                 auto iter = labelDefs.find(labelId);
-                if (iter == labelDefs.end())
+                if (iter == labelDefs.end() && !isFC)
                 {
                     labelDefs[labelId] = false;
                 }

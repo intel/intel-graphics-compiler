@@ -1376,7 +1376,6 @@ void GenXKernelBuilder::buildInstructions() {
             }
           }
         }
-
         // Build the instruction.
         if (!Baling->isBaled(Inst)) {
 #if DUMP_VISA_INTSTRUCTIONS
@@ -4981,7 +4980,8 @@ unsigned GenXKernelBuilder::getOrCreateLabel(Value *V, int Kind) {
   } else if (Kind == LABEL_FC) {
     IGC_ASSERT(isa<Function>(V));
     auto F = cast<Function>(V);
-    StringRef N = F->getFnAttribute("CMCallable").getValueAsString();
+    IGC_ASSERT(F->hasFnAttribute("CMCallable"));
+    StringRef N(F->getName());
     CISA_CALL(Kernel->CreateVISALabelVar(
         Decl, cutString(Twine(N).str()).c_str(), VISA_Label_Kind(Kind)));
     Labels.push_back(Decl);

@@ -1482,7 +1482,7 @@ void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
   if (!isKernel(F))
     return;
 
-  std::string Name = GenXIntrinsic::getGenXName(GenXIntrinsic::genx_output);
+  std::string Name = GenXIntrinsic::getGenXName(GenXIntrinsic::genx_output_1);
   Function *OutputFn = F->getParent()->getFunction(Name);
   if (!OutputFn)
     return;
@@ -1541,11 +1541,16 @@ void GenXCoalescing::coalesceCallables() {
     // if the next instruction is a CM-output intrinsic,
     // we don't really need that cm-output because CMCallable can serve as
     // the anchor for preventing DCE
-    if (NI && isa<CallInst>(NI)) {
-      CallInst *OC = cast<CallInst>(NI);
-      if (GenXIntrinsic::getGenXIntrinsicID(OC) == GenXIntrinsic::genx_output) {
-        OC->eraseFromParent();
+    while (true) {
+      if (NI && isa<CallInst>(NI)) {
+        CallInst *OC = cast<CallInst>(NI);
+        if (GenXIntrinsic::getGenXIntrinsicID(OC) == GenXIntrinsic::genx_output_1) {
+          OC->eraseFromParent();
+          NI = NI->getNextNode();
+          continue;
+        }
       }
+      break;
     }
 
     auto Nxt = CI->getNextNode();
@@ -1556,8 +1561,8 @@ void GenXCoalescing::coalesceCallables() {
     if (Br && Br->isUnconditional())
       Ret = &Br->getSuccessor(0)->front();
 
-    // 2. Possible next node is GenXIntrinsic::genx_output
-    if (GenXIntrinsic::getGenXIntrinsicID(Ret) == GenXIntrinsic::genx_output)
+    // 2. Possible several next nodes are GenXIntrinsic::genx_output_1
+    while (GenXIntrinsic::getGenXIntrinsicID(Ret) == GenXIntrinsic::genx_output_1)
       Ret = Ret->getNextNode();
 
     // Check if next node is correct return insn

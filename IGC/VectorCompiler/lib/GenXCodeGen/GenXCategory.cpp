@@ -975,6 +975,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
         case GenXIntrinsic::genx_absf:
         case GenXIntrinsic::genx_absi:
         case GenXIntrinsic::genx_output:
+        case GenXIntrinsic::genx_output_1:
           break;
         default: {
             // For any other intrinsic, look up the argument class.
