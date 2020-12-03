@@ -484,11 +484,9 @@ private:
         G4_ExecSize &   execSize,
         G4_RegVar*      base = NULL);
 
-    G4_Imm * createSpillSendMsgDesc(
+    std::tuple<G4_Imm*, G4_ExecSize> createSpillSendMsgDesc(
         G4_DstRegRegion * spilledRangeRegion,
-        G4_ExecSize &     execSize);
-
-    G4_Imm * createSpillSendMsgDesc(int size, int offset);
+        G4_ExecSize     execSize);
 
     G4_INST * createAddFPInst(
         G4_ExecSize       execSize,
@@ -544,14 +542,10 @@ private:
         G4_RegVar* base = NULL);
 
     template <class REGION_TYPE>
-    G4_Imm * createFillSendMsgDesc (
-        REGION_TYPE *     filledRangeRegion,
-        G4_ExecSize &     execSize
+    G4_Imm* createFillSendMsgDesc(
+        REGION_TYPE* filledRangeRegion,
+        G4_ExecSize     execSize
     );
-
-    G4_Imm * createFillSendMsgDesc(
-        int size,
-        int memOffset);
 
     G4_INST * createFillSendInstr (
         G4_Declare *      fillRangeDcl,
