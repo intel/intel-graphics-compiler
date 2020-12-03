@@ -598,11 +598,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
-        if (!m_currShader->diData)
-            m_currShader->diData = new ::DebugInfoData;
+        if (!m_currShader->GetDebugInfoData())
+            m_currShader->SetDebugInfoData(new ::DebugInfoData);
 
-        m_currShader->diData->m_pShader = m_currShader;
-        m_currShader->diData->m_pDebugEmitter = m_pDebugEmitter;
+        m_currShader->GetDebugInfoData()->m_pShader = m_currShader;
+        m_currShader->GetDebugInfoData()->m_pDebugEmitter = m_pDebugEmitter;
 
         IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
@@ -792,8 +792,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->AllocatePayload();
     }
 
-    IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
-        IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
+    if (m_currShader->GetDebugInfoData())
+    {
+        m_currShader->GetDebugInfoData()->markOutput(F, m_currShader);
+        m_currShader->GetDebugInfoData()->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());
+        m_currShader->GetDebugInfoData()->transferMappings(F);
+    }
+
 
     // Compile only when this is the last function for this kernel.
     bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));
@@ -826,7 +831,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (destroyVISABuilder)
     {
-        if (!m_currShader->diData)
+        if (!m_currShader->GetDebugInfoData())
         {
             IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
 

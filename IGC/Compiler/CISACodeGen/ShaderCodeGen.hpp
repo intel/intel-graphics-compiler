@@ -452,8 +452,6 @@ public:
         return (*iter).second[index];
     }
 
-    DebugInfoData* diData = nullptr;
-
     void SetHasGlobalStatelessAccess() { m_HasGlobalStatelessMemoryAccess = true; }
     bool GetHasGlobalStatelessAccess() const { return m_HasGlobalStatelessMemoryAccess; }
     void SetHasConstantStatelessAccess() { m_HasConstantStatelessMemoryAccess = true; }
@@ -471,6 +469,18 @@ public:
 
 
     e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }
+
+    llvm::DenseMap<llvm::Value*, CVariable*>& GetSymbolMapping()
+    {
+        return symbolMapping;
+    }
+
+    void SetDebugInfoData(DebugInfoData* DI)
+    {
+        diData = DI;
+    }
+
+    DebugInfoData* GetDebugInfoData() { return diData; }
 
 protected:
     void GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings);
@@ -579,6 +589,7 @@ protected:
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;
 
+    DebugInfoData* diData = nullptr;
 };
 
 /// This class contains the information for the different SIMD version

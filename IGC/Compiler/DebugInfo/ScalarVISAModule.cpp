@@ -1,6 +1,7 @@
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
 
@@ -496,7 +497,8 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     if (globalSubCVar)
         pVar = globalSubCVar;
     else
-        pVar = m_pShader->GetSymbol(pValue);
+        pVar = m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
+
     IGC_ASSERT_MESSAGE(false == pVar->IsImmediate(), "Do not expect an immediate value at this level");
 
     std::string varName = cast<DIVariable>(pNode)->getName().str();
@@ -615,6 +617,11 @@ void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
             }
         }
     }
+}
+
+bool ScalarVisaModule::IsIntelSymbolTableVoidProgram() const
+{
+    return IGC::isIntelSymbolTableVoidProgram(const_cast<llvm::Function*>(GetEntryFunction()));
 }
 
 } // namespace IGC

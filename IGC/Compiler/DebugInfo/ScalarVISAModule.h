@@ -76,6 +76,8 @@ public:
 
     bool IsCatchAllIntrinsic(const llvm::Instruction* pInst) const override;
 
+    bool IsIntelSymbolTableVoidProgram() const override;
+
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.

@@ -3499,7 +3499,7 @@ bool VISAModule::hasOrIsStackCall() const
     if (cfi.befpValid || cfi.frameSize > 0 || cfi.retAddr.size() > 0)
         return true;
 
-    return false;
+    return IsIntelSymbolTableVoidProgram();
 }
 
 std::vector<DbgDecoder::SubroutineInfo>* VISAModule::getSubroutines() const

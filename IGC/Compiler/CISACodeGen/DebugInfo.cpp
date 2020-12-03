@@ -66,7 +66,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
     {
         auto currShader = shaderProgram->GetShader(m, mode);
-        if (!currShader || !currShader->diData)
+        if (!currShader || !currShader->GetDebugInfoData())
             return (CShader*)nullptr;
 
         if (currShader->ProgramOutput()->m_programSize == 0)
@@ -108,8 +108,8 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         }
 
         bool finalize = false;
-        unsigned int size = m_currShader->diData->m_VISAModules.size();
-        m_pDebugEmitter = m_currShader->diData->m_pDebugEmitter;
+        unsigned int size = m_currShader->GetDebugInfoData()->m_VISAModules.size();
+        m_pDebugEmitter = m_currShader->GetDebugInfoData()->m_pDebugEmitter;
         std::vector<std::pair<unsigned int, std::pair<llvm::Function*, IGC::VISAModule*>>> sortedVISAModules;
 
         // Sort modules in order of their placement in binary
@@ -208,7 +208,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             }
         };
 
-        for (auto& m : m_currShader->diData->m_VISAModules)
+        for (auto& m : m_currShader->GetDebugInfoData()->m_VISAModules)
         {
             setType(m.second);
             auto lastVISAId = getLastGenOff(m.second);
@@ -366,6 +366,26 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
             }
         }
     }
+}
+
+void DebugInfoData::transferMappings(const llvm::Function& F)
+{
+    // Store llvm::Value->CVariable mappings from CShader.
+    // CShader clears these mappings before compiling a new function.
+    // Debug info is computed after all functions are compiled.
+    // This instance stores mappings per llvm::Function so debug
+    // info generation can emit variable locations correctly.
+    auto& SymbolMapping = m_pShader->GetSymbolMapping();
+    m_FunctionSymbols[&F] = SymbolMapping;
+}
+
+CVariable* DebugInfoData::getMapping(const llvm::Function& F, const llvm::Value* V)
+{
+    auto& Data = m_FunctionSymbols[&F];
+    auto Iter = Data.find(V);
+    if (Iter != Data.end())
+        return (*Iter).second;
+    return nullptr;
 }
 
 CatchAllLineNumber::CatchAllLineNumber() :

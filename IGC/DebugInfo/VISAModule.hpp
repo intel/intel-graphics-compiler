@@ -508,11 +508,11 @@ namespace IGC
         virtual llvm::ArrayRef<char> getGenDebug() const = 0;
         virtual llvm::ArrayRef<char> getGenBinary() const = 0;
 
+        virtual bool IsIntelSymbolTableVoidProgram() const { return false; }
+
         const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
 
-
         VISAModule& operator=(VISAModule& other) = default;
-
 
         unsigned int GetCurrentVISAId() { return m_currentVisaId; }
         void SetVISAId(unsigned ID) { m_currentVisaId = ID; }

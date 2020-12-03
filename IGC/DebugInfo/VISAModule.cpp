@@ -290,6 +290,10 @@ void VISAModule::GetConstantData(const Constant* pConstVal, DataVector& rawData)
         {
             intVal = cfp->getValueAPF().bitcastToAPInt();
         }
+        else if (const UndefValue* undefVal = dyn_cast<UndefValue>(pConstVal))
+        {
+            // use zero instead of undef value
+        }
         else
         {
             IGC_ASSERT_MESSAGE(0, "Unsupported constant type");

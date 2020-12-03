@@ -58,7 +58,10 @@ namespace IGC
     class DebugInfoData
     {
     public:
-        std::map<llvm::Function*, VISAModule*> m_VISAModules;
+        llvm::DenseMap<llvm::Function*, VISAModule*> m_VISAModules;
+        // Store mapping of llvm::Value->CVariable per llvm::Function.
+        // The mapping is obtained from CShader at end of EmitVISAPass for F.
+        llvm::DenseMap<const llvm::Function*, llvm::DenseMap<llvm::Value*, CVariable*>> m_FunctionSymbols;
         CShader* m_pShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;
 
@@ -76,6 +79,9 @@ namespace IGC
         {
             return pShader->GetContext()->m_instrTypes.hasDebugInfo;
         }
+
+        void transferMappings(const llvm::Function& F);
+        CVariable* getMapping(const llvm::Function& F, const llvm::Value* V);
 
     private:
         std::unordered_set<const CVariable*> m_outputVals;

@@ -2053,11 +2053,7 @@ void CShader::BeginFunction(llvm::Function* F)
 {
     // TODO: merge InitEncoder with this function.
 
-    // Dont clear symolMapping when debug info is enabled
-    // since this map is used to query location information
-    // after VISA compilation.
-    if (!DebugInfoData::hasDebugInfo(this))
-        symbolMapping.clear();
+    symbolMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();
 
