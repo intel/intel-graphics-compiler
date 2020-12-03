@@ -222,13 +222,15 @@ namespace IGC {
             return false;
         }
         void setLeafFunc(llvm::Function* F) {
-            uint32_t P = FuncProperties[F];
+            auto II = FuncProperties.find(F);
+            uint32_t P = (II != FuncProperties.end()) ? II->second : 0;
             FuncProperties[F] = (P | (uint32_t)FuncPropertyInfo::FPI_LEAF);
         }
         void copyFuncProperties(llvm::Function* To, llvm::Function* From) {
             auto II = FuncProperties.find(From);
-            assert(II != FuncProperties.end());
-            FuncProperties[To] = II->second;
+            if (II != FuncProperties.end()) {
+                FuncProperties[To] = II->second;
+            }
         }
 
         /// this is the knob to enable vISA stack-call for OpenCL
