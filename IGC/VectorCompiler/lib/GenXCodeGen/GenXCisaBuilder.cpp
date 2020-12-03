@@ -4479,10 +4479,17 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
   } else {
     uint8_t rowOffset = Offset >> genx::log2(GrfByteSize);
     uint8_t colOffset = (Offset & (GrfByteSize - 1)) >> Log2_32(ElementBytes);
-    VISA_GenVar *Decl = BaseReg->GetVar<VISA_GenVar>(Kernel);
     auto TypeSize = BaseReg->Ty->getScalarType()->getPrimitiveSizeInBits() >> 3;
     unsigned int offset = colOffset * TypeSize + rowOffset * GrfByteSize;
-    CISA_CALL(Kernel->CreateVISAAddressOfOperand(Src1, Decl, offset));
+
+    if (BaseReg->Category == RegCategory::ADDRESS) {
+      VISA_AddrVar *Decl = BaseReg->GetVar<VISA_AddrVar>(Kernel);
+      unsigned Width = 1;
+      CISA_CALL(Kernel->CreateVISAAddressSrcOperand(Src1, Decl, offset, Width));
+    } else {
+      VISA_GenVar *Decl = BaseReg->GetVar<VISA_GenVar>(Kernel);
+      CISA_CALL(Kernel->CreateVISAAddressOfOperand(Src1, Decl, offset));
+    }
   }
   VISA_VectorOpnd *Src2 = createSourceOperand(CI, UNSIGNED, 0, BI);
   addDebugInfo();

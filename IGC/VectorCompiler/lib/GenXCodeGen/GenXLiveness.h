@@ -509,6 +509,10 @@ class GenXLiveness : public FunctionGroupPass {
   std::map<Function *, Value *> UnifiedRets;
   std::map<Value *, Function *> UnifiedRetToFunc;
   std::map<AssertingVH<Value>, Value *> ArgAddressBaseMap;
+  // Flipped ArgAddressBaseMap. Mulpimap is chosen because the same base may be
+  // used for different convert.addr instructions.
+  std::multimap<Value *, Value *> BaseToArgAddrMap;
+
 public:
   static char ID;
   explicit GenXLiveness()
@@ -614,9 +618,11 @@ public:
   // eraseUnusedTree : erase unused tree of instructions, and remove from GenXLiveness
   void eraseUnusedTree(Instruction *Inst);
   // setArgAddressBase : set the base value of an argument indirect address
-  void setArgAddressBase(Value *Addr, Value *Base) { ArgAddressBaseMap[Addr] = Base; }
+  void setArgAddressBase(Value *Addr, Value *Base);
   // getAddressBase : get the base register of an address
   Value *getAddressBase(Value *Addr);
+  // getAddressWithBase : get addresses that base register is a Base
+  std::vector<Value *> getAddressWithBase(Value *Base);
   // isBitCastCoalesced : see if the bitcast has been coalesced away
   bool isBitCastCoalesced(BitCastInst *BCI);
   // createPrinterPass : get a pass to print the IR, together with the GenX

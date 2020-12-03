@@ -116,6 +116,7 @@ void GenXLiveness::clear()
   UnifiedRets.clear();
   UnifiedRetToFunc.clear();
   ArgAddressBaseMap.clear();
+  BaseToArgAddrMap.clear();
 }
 
 /***********************************************************************
@@ -1398,6 +1399,33 @@ void GenXLiveness::eraseUnusedTree(Instruction *TopInst)
 }
 
 /***********************************************************************
+ * setArgAddressBase : set the base value of an argument indirect address
+ *
+ * Enter:    Addr = genx.convert.addr instruction
+ *           Base = a base register for the Addr
+ */
+void GenXLiveness::setArgAddressBase(Value *Addr, Value *Base) {
+  // There might be several addresses for the one base. So, find and erase an
+  // old address for the input base.
+  auto Res = ArgAddressBaseMap.find(Addr);
+  if (Res != ArgAddressBaseMap.end()) {
+    Value *PreviousBase = Res->second;
+    auto AddrsRange = BaseToArgAddrMap.equal_range(PreviousBase);
+    auto ToRemove = std::find_if(AddrsRange.first, AddrsRange.second,
+                                 [Addr](auto It) { return It.second == Addr; });
+    IGC_ASSERT_MESSAGE(
+        ToRemove != AddrsRange.second,
+        "Addr -> PreviousBase exists in ArgAddressBaseMap. It must "
+        "exist in BaseToArgAddrMap too.");
+    BaseToArgAddrMap.erase(ToRemove);
+  }
+
+  // Set the new connection between address and base.
+  ArgAddressBaseMap[Addr] = Base;
+  BaseToArgAddrMap.insert({Base, Addr});
+}
+
+/***********************************************************************
  * getAddressBase : get the base register of an address
  *
  * Enter:   Addr = address conversion (genx.convert.addr instruction)
@@ -1441,6 +1469,22 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
       return V;
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "non-struct value not found");
+}
+
+/***********************************************************************
+ * getAddressWithBase : get addresses that base register is a Base
+ *
+ * Enter:   Base = assumed base
+ *
+ * Return:  If the input value is a base, return the vector of the corresponding
+ *          arguments indirect addresses, empty vector otherwise.
+ */
+std::vector<Value *> GenXLiveness::getAddressWithBase(Value *Base) {
+  auto Res = BaseToArgAddrMap.equal_range(Base);
+  std::vector<Value *> Bases;
+  std::transform(Res.first, Res.second, std::back_inserter(Bases),
+                 [](auto It) { return It.second; });
+  return Bases;
 }
 
 /***********************************************************************

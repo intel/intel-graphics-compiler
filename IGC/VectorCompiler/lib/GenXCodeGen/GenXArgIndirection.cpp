@@ -356,7 +356,7 @@ public:
   CallSite *createCallSite(CallInst *CI);
   Alignment getIndirectAlignment() const;
   void gatherBalesToModify(Alignment Align);
-  void addAddressArg();
+  std::pair<Value *, Value *> addAddressArg();
   void fixCallSites();
   void coalesceAddressArgs();
   void replaceFunction();
@@ -423,6 +423,12 @@ private:
   void indirectRegion(Use *U, Value *AddressArg, Instruction *InsertBefore);
   static Argument *getArgForFunction(LiveRange *LR, Function *F);
   void replaceAndEraseSequence(Instruction *RetEndWr, Value *V);
+
+  struct ArgToConvertAddr {
+    Value *Arg;
+    Value *ConvertAddr;
+  };
+  std::vector<ArgToConvertAddr> collectAlreadyIndirected(LiveRange *ArgLR);
 };
 
 } // end anonymous namespace
@@ -504,6 +510,65 @@ void GenXArgIndirection::gatherArgLRs()
         ArgLRs.push_back(LR);
     }
   }
+}
+
+// A simple helper function for
+// GenXArgIndirection::collectAlreadyIndirected. It tries to find the original
+// argument in wrr and rdr sequence.
+static Value *searchForArg(Value *V) {
+  IGC_ASSERT(V);
+  while (!isa<Argument>(V)) {
+    auto *I = dyn_cast<Instruction>(V);
+    if (I && (GenXIntrinsic::isRdRegion(I) || GenXIntrinsic::isWrRegion(I)))
+      V = I->getOperand(0);
+    else
+      return nullptr;
+  }
+  return V;
+}
+
+/***********************************************************************
+ * collectAlreadyIndirected : Some values in the ArgLR may be already
+ * indirected. It collects genx.convert.addr (indirection) and an argument that
+ * was the base.
+ *
+ * Return:  A vector with collected values.
+ */
+std::vector<GenXArgIndirection::ArgToConvertAddr>
+GenXArgIndirection::collectAlreadyIndirected(LiveRange *ArgLR) {
+  std::vector<GenXArgIndirection::ArgToConvertAddr> IndirectedArgInfo;
+  for (auto VI : ArgLR->getValues()) {
+    Value *Base = VI.getValue();
+    std::vector<Value *> Addrs = Liveness->getAddressWithBase(Base);
+    // Not a base
+    if (Addrs.empty())
+      continue;
+    // A chain of
+    // @bar (%arg) {
+    //   ...
+    //   %1 = genx.convert.addr
+    //   %2 = call foo(..., %1)
+    //   %dummy_use_for_indirection = bitcast ...
+    // }
+    // ArgLR: ..., %arg, %dummy_use_for_indirection, ...
+    // is expected. The bitcast is a dummy instruction that holds a base for the
+    // genx.convert.addr. If the bitcast is in ArgLR which will be set to NONE
+    // category, we must find another base for the genx.convert.addr. The idea
+    // is that the bitcast operand originates from the %arg (because both of
+    // them are in ArgLR) and the base for genx.convert.addr may be taken as
+    // indirected %arg. This indirected arg will have ADDRESS category and
+    // genx.convert.addr will be just an offset in this address.
+    auto *DummyBC = dyn_cast<BitCastInst>(Base);
+    IGC_ASSERT_MESSAGE(DummyBC, "Unexpected base: not a dummy bitcast.");
+    Value *Arg = searchForArg(DummyBC->getOperand(0));
+    IGC_ASSERT_MESSAGE(Arg, "Cannot find original argument");
+
+    std::transform(Addrs.begin(), Addrs.end(),
+                   std::back_inserter(IndirectedArgInfo), [Arg](Value *Addr) {
+                     return ArgToConvertAddr{Arg, Addr};
+                   });
+  }
+  return IndirectedArgInfo;
 }
 
 /***********************************************************************
@@ -596,6 +661,9 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
       LRsToCalculate.push_back(OutsideLR);
     }
   }
+
+  auto IndirectedArgInfo = collectAlreadyIndirected(ArgLR);
+
   // ArgLR now contains only these values:
   //  - args that we are indirecting
   //  - other values inside the subroutines that we are indirecting
@@ -603,11 +671,20 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
   // indirected. We achieve that by setting ArgLR's category to NONE.
   ArgLR->setCategory(RegCategory::NONE);
   LLVM_DEBUG(dbgs() << " Not allocating register for arg's LR\n");
+  // Arg to indirected arg map.
+  std::map<Value *, Value *> ArgToAddressArg;
   // For each subroutine, replace the func with a new one that has an extra
   // address arg.
   for (auto SubrArg = SubrArgs.begin(), e = SubrArgs.end();
       SubrArg != e; ++SubrArg)
-    SubrArg->addAddressArg();
+    ArgToAddressArg.insert(SubrArg->addAddressArg());
+  // Since the ArgLR has been set to NONE category, it cannot be used as a base
+  // register and the indirected argument address should be used instead.
+  for (auto Info : IndirectedArgInfo) {
+    IGC_ASSERT_MESSAGE(ArgToAddressArg.count(Info.Arg),
+                       "Cannot find indirected arg");
+    Liveness->setArgAddressBase(Info.ConvertAddr, ArgToAddressArg[Info.Arg]);
+  }
   // For each subroutine, fix up its call sites.
   for (auto SubrArg = SubrArgs.begin(), e = SubrArgs.end();
       SubrArg != e; ++SubrArg)
@@ -691,7 +768,6 @@ Indirectability SubroutineArg::checkIndirectability()
         return Indirectability::CANNOT_INDIRECT;
       }
       CoalescedRetIdx = ri;
-      break;
     }
   }
   // If there is no return value, check whether it is OK to indirect a call arg
@@ -1152,9 +1228,10 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
  *
  * This sets this->NewFunc, and modifies this->Arg to the argument in the
  * new function.
+ *
+ * Return: a pair containing pointer to the old Arg and created AddressArg.
  */
-void SubroutineArg::addAddressArg()
-{
+std::pair<Value *, Value *> SubroutineArg::addAddressArg() {
   // Create the new function type.
   auto FTy = F->getFunctionType();
   SmallVector<Type *, 4> ArgTys;
@@ -1191,6 +1268,7 @@ void SubroutineArg::addAddressArg()
     Pass->Liveness->replaceValue(OldArgs[ArgNum], NewArgs[ArgNum]);
   }
   // Change the Arg in the current SubroutineArg, and save the address arg.
+  Value *OldArg = Arg;
   Arg = NewArgs[Arg->getArgNo()];
   AddressArgument = NewArgs.back();
   // Give the address arg a live range, and mark that it needs calculating.
@@ -1201,6 +1279,8 @@ void SubroutineArg::addAddressArg()
   NewArgs[OldArgs.size()]->setName(Arg->getName() + ".addr");
   // Move the function code across.
   NewFunc->getBasicBlockList().splice(NewFunc->begin(), F->getBasicBlockList());
+
+  return std::make_pair(OldArg, AddressArgument);
 }
 
 /***********************************************************************
