@@ -543,7 +543,7 @@ static void Stitch_Compiled_Units(
             mainFunc->Declares.push_back(curDcl);
         }
     }
-    mainFunc->dumpDotFile("stitched");
+    mainFunc->dumpDotFile("after.stitched");
 }
 
 

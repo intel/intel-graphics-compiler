@@ -355,10 +355,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         {
             forceDebugSWSB(m_kernel);
         }
-        if (getOptions()->getOption(vISA_DumpDotAll))
-        {
-            m_kernel->dumpDotFile("SWSB");
-        }
+        m_kernel->dumpDotFile("after.SWSB");
     }
 
     if (getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
@@ -679,12 +676,11 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
             if (IS_VISA_BOTH_PATH)
             {
                 std::string varName(getPredefinedVarString(predefId));
-                char* name = (char*)m_mem.alloc(16);
-                SNPRINTF(name, 16, "V%u", i);
+                std::string alias = "V" + std::to_string(i);
                 decl->genVar.name_index = addStringPool(varName);
                 if (m_options->getOption(vISA_isParseMode))
                 {
-                    setNameIndexMap(std::string(name), decl, true);
+                    setNameIndexMap(alias, decl, true);
                     setNameIndexMap(varName, decl, true);
                 }
             }

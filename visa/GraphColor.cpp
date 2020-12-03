@@ -9144,13 +9144,11 @@ void GlobalRA::addrRegAlloc()
         else {
             break; // no ARF allocation needed
         }
-
+        std::string passName = std::string("after.Address_RA.") + std::to_string(iterationNo);
+        kernel.dumpDotFile(passName.c_str());
         iterationNo++;
 
-        if (builder.getOption(vISA_DumpDotAll))
-        {
-            kernel.dumpDotFile("Address_RA");
-        }
+
     }
 
     MUST_BE_TRUE(iterationNo < maxRAIterations, "Address RA has failed.");
@@ -9247,13 +9245,9 @@ void GlobalRA::flagRegAlloc()
         else {
             break; // no FLAG allocation needed
         }
-
+        std::string passName = std::string("after.Flag_RA.") + std::to_string(iterationNo);
+        kernel.dumpDotFile(passName.c_str());
         iterationNo++;
-
-        if (builder.getOption(vISA_DumpDotAll))
-        {
-            kernel.dumpDotFile("Flag_RA");
-        }
     }
 
     MUST_BE_TRUE(iterationNo < maxRAIterations, "Flag RA has failed.");
@@ -9864,11 +9858,8 @@ int GlobalRA::coloringRegAlloc()
                     break;
                 }
 
-                if (builder.getOption(vISA_DumpDotAll))
-                {
-                    kernel.dumpDotFile("Spill_GRF");
-                }
-
+                std::string passName = std::string("after.Spill_GRF.") + std::to_string(iterationNo);
+                kernel.dumpDotFile(passName.c_str());
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||

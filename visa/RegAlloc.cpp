@@ -3309,10 +3309,7 @@ static void recordRAStats(IR_Builder& builder,
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
 
-    if (builder.getOption(vISA_DumpDotAll))
-    {
-        kernel.dumpDotFile("PreRegAlloc");
-    }
+    kernel.dumpDotFile("before.RegAlloc");
 
     kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.frameSizeInOWord = 0;
 

@@ -808,17 +808,11 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         hasGoto |= convertJmpiToGoto();
     }
 
-    if (builder->getOption(vISA_DumpDotAll))
-    {
-        pKernel->dumpDotFile("afterCFGConstruction");
-    }
+    pKernel->dumpDotFile("after.CFGConstruction");
 
     removeRedundantLabels();
 
-    if (builder->getOption(vISA_DumpDotAll))
-    {
-        pKernel->dumpDotFile("afterRemoveRedundantLabels");
-    }
+    pKernel->dumpDotFile("after.RemoveRedundantLabels");
 
     // Ensure each block starts with a label.
     for (auto bb : BBs)
@@ -852,10 +846,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     setPhysicalPredSucc();
     removeUnreachableBlocks(funcInfoHashTable);
 
-    if (builder->getOption(vISA_DumpDotAll))
-    {
-        pKernel->dumpDotFile("afterRemoveUnreachableBlocks");
-    }
+    pKernel->dumpDotFile("after.RemoveUnreachableBlocks");
 
     //
     // build the table of function info nodes
@@ -877,19 +868,12 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
             !endWithGotoInLastBB())
         {
             doCFGStructurize(this);
-
-            if (builder->getOption(vISA_DumpDotAll))
-            {
-                pKernel->dumpDotFile("after_doCFGStructurizer");
-            }
+            pKernel->dumpDotFile("after.CFGStructurizer");
         }
         else
         {
             processGoto(hasSIMDCF);
-            if (builder->getOption(vISA_DumpDotAll))
-            {
-                pKernel->dumpDotFile("afterProcessGoto");
-            }
+            pKernel->dumpDotFile("after.ProcessGoto");
         }
     }
 
@@ -4146,34 +4130,21 @@ void FlowGraph::addSIMDEdges()
 void G4_Kernel::dumpPassInternal(const char* appendix)
 {
     MUST_BE_TRUE(appendix != NULL, ERROR_INTERNAL_ARGUMENT);
-    if (!m_options->getOption(vISA_DumpPasses))  // skip dumping dot files
+    if (!m_options->getOption(vISA_DumpPasses))
         return;
 
+    std::stringstream ss;
+    ss << (name ? name : "UnknownKernel") << "." << std::setfill('0') << std::setw(3) << dotDumpCount++ << "." << appendix << ".dump";
 
-    char fileName[256];
-    MUST_BE_TRUE(strlen(appendix) < 40, ERROR_INVALID_VISA_NAME(appendix));
-    if (name != NULL)
-    {
-        MUST_BE_TRUE(strlen(name) < 206, ERROR_INVALID_VISA_NAME(name));
-        SNPRINTF(fileName, sizeof(fileName), "%s.%03d.%s.dump", name, dotDumpCount++, appendix);
-    }
-    else
-    {
-        SNPRINTF(fileName, sizeof(fileName), "%s.%03d.%s.dump", "UnknownKernel", dotDumpCount++, appendix);
-    }
-
-    std::string fname(fileName);
+    std::string fname = ss.str();
     fname = sanitizePathString(fname);
 
     fstream ofile(fname, ios::out);
-    if (!ofile)
-    {
-        MUST_BE_TRUE(false, ERROR_FILE_READ(fileName));
-    }
+    assert(ofile);
 
-    const char* asmFileName = NULL;
+    const char* asmFileName = nullptr;
     m_options->getOption(VISA_AsmFileName, asmFileName);
-    if (asmFileName == NULL)
+    if (!asmFileName)
         ofile << "UnknownKernel" << std::endl << std::endl;
     else
         ofile << asmFileName << std::endl << std::endl;
@@ -4231,22 +4202,10 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
     if (!m_options->getOption(vISA_DumpDot))  // skip dumping dot files
         return;
 
-    //
-    // open the dot file
-    //
-    char fileName[256];
-    MUST_BE_TRUE(strlen(appendix) < 40, ERROR_INVALID_VISA_NAME(appendix));
-    if (name != NULL)
-    {
-        MUST_BE_TRUE(strlen(name) < 206, ERROR_INVALID_VISA_NAME(name));
-        SNPRINTF(fileName, sizeof(fileName), "%s.%03d.%s.dot", name, dotDumpCount++, appendix);
-    }
-    else
-    {
-        SNPRINTF(fileName, sizeof(fileName), "%s.%03d.%s.dot", "UnknownKernel", dotDumpCount++, appendix);
-    }
+    std::stringstream ss;
+    ss << (name ? name : "UnknownKernel") << "." << std::setfill('0') << std::setw(3) << dotDumpCount++ << "." << appendix << ".dot";
 
-    std::string fname(fileName);
+    std::string fname(ss.str());
     fname = sanitizePathString(fname);
 
     fstream ofile(fname, ios::out);
@@ -4734,7 +4693,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
             pArg->m_pkView->getDefaultLabelName(pc, tmpString, 64);
             const char *retString;
-            if (pArg->m_labelPrefix != nullptr)
+            if (pArg->m_labelPrefix)
             {
                 SNPRINTF(labelString, 128, "%s_%s", (const char*)pArg->m_labelPrefix, tmpString);
                 retString = labelString;

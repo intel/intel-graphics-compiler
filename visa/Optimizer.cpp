@@ -163,17 +163,8 @@ void Optimizer::insertFallThroughJump()
 
 void Optimizer::regAlloc()
 {
-    if (builder.getOption(vISA_DumpDotAll))
-    {
-        kernel.dumpDotFile("insertCallReturnVar");
-    }
 
     fg.prepareTraversal();
-
-    if (builder.getOption(vISA_DumpDotAll))
-    {
-        kernel.dumpDotFile("callReturn");
-    }
 
     //
     // assign registers
@@ -6088,10 +6079,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     void getOptReportStream(std::ofstream& reportStream, const Options *opt)
     {
-        char optReportFileName[MAX_OPTION_STR_LENGTH+20];
         const char *asmFileName;
         opt->getOption(VISA_AsmFileName, asmFileName);
-        SNPRINTF(optReportFileName, MAX_OPTION_STR_LENGTH, "%s_optreport.txt", asmFileName);
+        std::string optReportFileName = std::string(asmFileName) + "_optreport.txt";
         reportStream.open(optReportFileName, ios::out | ios::app );
         MUST_BE_TRUE(reportStream, "Fail to open " << optReportFileName);
     }

@@ -122,9 +122,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 {
     const char *asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
-    char dumpFileName[MAX_OPTION_STR_LENGTH];
-    SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.bb%d.schedule",
-        asmName, bb->getId());
+    std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".schedule";
     fstream ofile(dumpFileName, ios::out);
     auto nodeIT = scheduledNodes.begin();
     Node *finalNode = scheduledNodes.back();
@@ -1775,9 +1773,7 @@ void DDD::dumpDagDot(G4_BB *bb)
 {
     const char *asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
-    char dumpFileName[MAX_OPTION_STR_LENGTH];
-    SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.bb%d.dag.dot",
-        asmName, bb->getId());
+    std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".dag.dot";
     fstream ofile(dumpFileName, ios::out);
     ofile << "digraph DAG {" << std::endl;
 
@@ -1866,9 +1862,7 @@ void DDD::dumpNodes(G4_BB *bb)
 {
     const char *asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
-    char dumpFileName[MAX_OPTION_STR_LENGTH];
-    SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.bb%d.nodes",
-        asmName, bb->getId());
+    std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".nodes";
     fstream ofile(dumpFileName, ios::out);
 
     // 2. Generate the .dot file for the DAG
@@ -2505,9 +2499,7 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
 
     MUST_BE_TRUE(name && strlen(name) < 220 && strlen(appendix) < 30,
         ERROR_SCHEDULER);
-    char fileName[256];
-    SNPRINTF(fileName, 256, "%s.%s.dot", name, appendix);
-
+    std::string fileName = std::string(name) + "." + std::string(appendix) + ".dot";
     fstream ofile(fileName, ios::out);
     if (!ofile)
     {

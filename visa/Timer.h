@@ -59,7 +59,6 @@ int createNewTimer(const char *timerName);
 void initTimer();
 void startTimer(TimerID timer);
 void stopTimer(TimerID timer);
-void setKernelName(const char *name);
 void dumpAllTimers(const char *asmFileName, bool outputTime = false);
 void dumpEncoderStats(Options *opt, std::string &asmName);
 void resetPerKernel();

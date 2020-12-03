@@ -1170,11 +1170,6 @@ namespace vISA
 
         cleanRedundantSamplerHeaders();
 
-        if (kernel.fg.builder->getOption(vISA_DumpDotAll))
-        {
-            kernel.dumpDotFile("after.remat");
-        }
-
-        //unsigned int after = getNumSamplers(kernel);
+        kernel.dumpDotFile("after.remat");
     }
 }

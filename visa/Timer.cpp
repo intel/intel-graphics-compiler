@@ -105,7 +105,6 @@ struct Timer {
 };
 
 static _THREAD Timer timers[static_cast<int>(TimerID::NUM_TIMERS)];
-static _THREAD char kernelAsmName[256] = "";
 static _THREAD LARGE_INTEGER proc_freq;
 static _THREAD int numTimers = static_cast<int>(TimerID::NUM_TIMERS);
 
@@ -147,11 +146,6 @@ void resetPerKernel()
         timers[i].started = false;
         timers[i].hits = 0;
     }
-}
-
-void setKernelName(const char *name)
-{
-    SNPRINTF(kernelAsmName, sizeof(kernelAsmName), "%s", name);
 }
 
 int createNewTimer(const char* name)
@@ -249,7 +243,6 @@ void dumpAllTimers(const char *asmFileName, bool outputTime)
     // num1 num2 num3 ...
     std::ofstream krnlOutput;
     krnlOutput.open("jit_time.txt", ios_base::app);
-    krnlOutput << kernelAsmName << "\n";
 
     double totalTime = timers[static_cast<int>(TimerID::TOTAL)].time;
     for (unsigned int i = 0; i < getTotalTimers(); i++)

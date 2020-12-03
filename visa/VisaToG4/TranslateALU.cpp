@@ -205,13 +205,7 @@ int IR_Builder::translateVISACompareInst(
     G4_CondMod* condMod = NULL;
     G4_ExecSize exsize = toExecSize(execsize);
     G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
-    const char *varName = "";
-
-#ifdef _DEBUG
-    char buf[256];
-    SNPRINTF(buf, 256, "PTemp%d", 0);
-    varName = buf;
-#endif
+    const char *varName = "PTemp";
 
     uint8_t numWords = (exsize + 15)/16;
     if (needs32BitFlag(inst_opt))
