@@ -74,12 +74,12 @@ namespace IGCLLVM
         }
 
         inline llvm::DISubprogram* createFunction(
-            llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
-            unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
+            llvm::DIScope* Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile* File,
+            unsigned LineNo, llvm::DISubroutineType* Ty, bool isLocalToUnit,
             bool isDefinition, unsigned ScopeLine,
             llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero, bool isOptimized = false,
             llvm::DITemplateParameterArray TParams = nullptr,
-            llvm::DISubprogram *Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
+            llvm::DISubprogram* Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
         {
             return llvm::DIBuilder::createFunction(
 #if LLVM_VERSION_MAJOR == 7
@@ -87,15 +87,16 @@ namespace IGCLLVM
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
 #else
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, Flags,
-                llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
+                llvm::DISubprogram::toSPFlags(isLocalToUnit, isDefinition, isOptimized),
+                TParams, Decl, ThrownTypes);
 #endif
         }
 
-        inline llvm::DISubprogram *createMethod(
-            llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
-            unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
+        inline llvm::DISubprogram* createMethod(
+            llvm::DIScope* Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile* File,
+            unsigned LineNo, llvm::DISubroutineType* Ty, bool isLocalToUnit,
             bool isDefinition, unsigned Virtuality = 0, unsigned VTableIndex = 0,
-            int ThisAdjustment = 0, llvm::DIType *VTableHolder = nullptr,
+            int ThisAdjustment = 0, llvm::DIType * VTableHolder = nullptr,
             llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero, bool isOptimized = false,
             llvm::DITemplateParameterArray TParams = nullptr,
             llvm::DITypeArray ThrownTypes = nullptr)
@@ -105,27 +106,28 @@ namespace IGCLLVM
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 Virtuality, VTableIndex, ThisAdjustment, VTableHolder, Flags, isOptimized, TParams, ThrownTypes);
 #else
-                Scope, Name, LinkageName, File, LineNo, Ty, Virtuality, ThisAdjustment,
-                VTableHolder, Flags, llvm::DISubprogram::SPFlagDefinition, TParams, ThrownTypes);
+                Scope, Name, LinkageName, File, LineNo, Ty, Virtuality, ThisAdjustment, VTableHolder, Flags,
+                llvm::DISubprogram::toSPFlags(isLocalToUnit, isDefinition, isOptimized),
+                TParams, ThrownTypes);
 #endif
         }
 
-
-        inline llvm::DISubprogram *createTempFunctionFwdDecl(
-            llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
-            unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
+        inline llvm::DISubprogram* createTempFunctionFwdDecl(
+            llvm::DIScope* Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile* File,
+            unsigned LineNo, llvm::DISubroutineType* Ty, bool isLocalToUnit,
             bool isDefinition, unsigned ScopeLine,
             llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero, bool isOptimized = false,
             llvm::DITemplateParameterArray TParams = nullptr,
-            llvm::DISubprogram *Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
+            llvm::DISubprogram* Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
         {
             return llvm::DIBuilder::createTempFunctionFwdDecl(
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
 #else
-                Scope, Name, LinkageName, File, LineNo, Ty, ScopeLine,
-                Flags, llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
+                Scope, Name, LinkageName, File, LineNo, Ty, ScopeLine, Flags,
+                llvm::DISubprogram::toSPFlags(isLocalToUnit, isDefinition, isOptimized),
+                TParams, Decl, ThrownTypes);
 #endif
         }
 
