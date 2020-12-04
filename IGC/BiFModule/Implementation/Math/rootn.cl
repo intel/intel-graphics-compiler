@@ -28,6 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/rootn_s_la.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/rootn_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 float __builtin_spirv_OpenCL_rootn_f32_i32( float x, int n )
 {
     float result;
@@ -70,6 +74,17 @@ float __builtin_spirv_OpenCL_rootn_f32_i32( float x, int n )
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_rootn, float, float, int, f32, i32 )
+
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_rootn_f64_i32( double y, int x )
+{
+    return __ocl_svml_rootn_v2(y, x);
+}
+
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpenCL_rootn, double, double, int, f64, i32 )
+
+#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 

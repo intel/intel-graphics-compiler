@@ -81,6 +81,17 @@ float __builtin_spirv_OpenCL_tgamma_f32( float x )
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, float, float, f32 )
 
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_tgamma_f64( double x )
+{
+    return libclc_tgamma_f64(x);
+}
+
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
+
 #if defined(cl_khr_fp16)
 
 INLINE half __builtin_spirv_OpenCL_tgamma_f16( half x )

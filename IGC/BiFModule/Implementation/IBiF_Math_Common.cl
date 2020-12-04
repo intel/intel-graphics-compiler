@@ -83,6 +83,8 @@ OVERLOADABLE int __intel_relaxed_isnormal(half x );
 #include "Geometric/fast_normalize.cl"
 #include "ExternalLibraries/libclc/normalize.cl"
 #include "ExternalLibraries/libclc/length.cl"
+#include "ExternalLibraries/libclc/doubles.cl"
+
 
 // Half
 #include "Half/half_cos.cl"

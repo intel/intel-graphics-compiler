@@ -28,6 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/tan_s_la.cl"
 
+#if defined(cl_khr_fp64)
+    #include "../IMF/FP64/tan_d_la.cl"
+#endif // defined(cl_khr_fp64)
+
 static INLINE float __intel_tan_f32( float x, bool doFast )
 {
     float result;
@@ -59,6 +63,17 @@ INLINE float __builtin_spirv_OpenCL_tan_f32( float x )
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tan, float, float, f32 )
+
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_tan_f64( double x )
+{
+    return __ocl_svml_tan(x);
+}
+
+GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tan, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 

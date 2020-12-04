@@ -670,8 +670,7 @@ public:
   bool runOnModule(Module &M) override;
 
 private:
-  std::unique_ptr<Module> getBiFModule(GenXBackendConfig::BiFModuleKind Kind,
-                                       LLVMContext &Ctx);
+  std::unique_ptr<Module> getBiFModule(LLVMContext &Ctx);
 };
 
 char GenXImportBiF::ID = 0;
@@ -704,33 +703,23 @@ bool GenXImportBiF::runOnModule(Module &M) {
   if (!OCLBuiltinsRequired(M))
     return false;
 
-  std::unique_ptr<Module> GenericBiFModule =
-      getBiFModule(GenXBackendConfig::BiFModuleKind::Generic, M.getContext());
-  std::unique_ptr<Module> FP64BiFModule =
-      getBiFModule(GenXBackendConfig::BiFModuleKind::FP64, M.getContext());
-
+  std::unique_ptr<Module> GenericBiFModule = getBiFModule(M.getContext());
   GenericBiFModule->setDataLayout(M.getDataLayout());
   GenericBiFModule->setTargetTriple(M.getTargetTriple());
-  FP64BiFModule->setDataLayout(M.getDataLayout());
-  FP64BiFModule->setTargetTriple(M.getTargetTriple());
-
   BiFImporter{M, std::move(GenericBiFModule)}.run();
-  BiFImporter{M, std::move(FP64BiFModule)}.run();
   BIConvert{}.runOnModule(M);
   return true;
 }
 
-std::unique_ptr<Module>
-GenXImportBiF::getBiFModule(GenXBackendConfig::BiFModuleKind Kind,
-                            LLVMContext &Ctx) {
-  MemoryBufferRef BiFModuleBuffer =
-      getAnalysis<GenXBackendConfig>().getOCLBiFModule(Kind);
-  llvm::Expected<std::unique_ptr<llvm::Module>> BiFModule =
-      getLazyBitcodeModule(BiFModuleBuffer, Ctx);
-  if (!BiFModule) {
-    auto Err = BiFModule.takeError();
+std::unique_ptr<Module> GenXImportBiF::getBiFModule(LLVMContext &Ctx) {
+  MemoryBufferRef GenericBiFModuleBuffer =
+      getAnalysis<GenXBackendConfig>().getOCLGenericBiFModule();
+  llvm::Expected<std::unique_ptr<llvm::Module>> GenericBiFModule =
+      getLazyBitcodeModule(GenericBiFModuleBuffer, Ctx);
+  if (!GenericBiFModule) {
+    auto Err = GenericBiFModule.takeError();
     std::stringstream ErrStream;
-    ErrStream << "GenXImportBiF failed to decode OCL BiF module "
+    ErrStream << "GenXImportBiF failed to decode OCL generic BiF module "
                  "because of following errors:\n";
     handleAllErrors(std::move(Err),
                     [&ErrStream](const llvm::ErrorInfoBase &EI) {
@@ -738,5 +727,5 @@ GenXImportBiF::getBiFModule(GenXBackendConfig::BiFModuleKind Kind,
                     });
     report_fatal_error(ErrStream.str());
   }
-  return std::move(BiFModule.get());
+  return std::move(GenericBiFModule.get());
 }

@@ -80,9 +80,9 @@ template <> struct ErrorTraits<errc::invalid_internal_option> {
   static llvm::StringRef getMessage() { return "invalid internal option"; }
 };
 
-template <> struct ErrorTraits<errc::bif_load_fail> {
+template <> struct ErrorTraits<errc::generic_bif_load_fail> {
   static llvm::StringRef getMessage() {
-    return "failed to load OCL BiF module";
+    return "failed to load OCL generic BiF module";
   }
 };
 
