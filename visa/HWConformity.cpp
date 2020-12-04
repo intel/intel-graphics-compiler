@@ -1591,8 +1591,8 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
     bool dstHFMixModeInst = inst->getDst()->getType() == builder.getMixModeType() && extype == Type_F;
     bool dstNotAlignedToExecType = exec_size > 1 && (dst_elsize * h_stride) < extypesize &&
         !(builder.hasMixMode() && dstHFMixModeInst);
-    unsigned short dst_byte_offset;
-    builder.isOpndAligned(dst, dst_byte_offset, extypesize);
+
+    auto [isAligned, dst_byte_offset] = builder.isOpndAlignedTo(dst, extypesize);
     if (!((dst_byte_offset % extypesize == 0) ||
         (byteDst &&
         (dst_byte_offset % extypesize == 1))
@@ -4736,8 +4736,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             }
         }
 
-        uint16_t offset = 0;
-        if (!builder.isOpndAligned(inst->getDst(), offset, numEltPerGRF(Type_UB)))
+        if (!builder.isOpndAligned(inst->getDst(), numEltPerGRF(Type_UB)))
         {
             replaceDst(i, inst->getDst()->getType(), GRFALIGN);
         }
