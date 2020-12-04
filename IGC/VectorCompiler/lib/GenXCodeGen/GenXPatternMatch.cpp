@@ -90,6 +90,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -2056,78 +2057,133 @@ bool GenXPatternMatch::simplifyTruncSat(CallInst *Inst) {
   return true;
 }
 
-// Merge select into a write region if possible.
+// Try to canonize select as masked operation:
+// sel_val = select cond, val, identity_vec
+// masked_val = binary_operation old_val, sel_val
+// ===>
+// new_val = binary_operation oldval, val
+// masked_val = select cond, new_val, old_val
 //
-// a = rrd(x, R);               a = rrd(x, R)
-// c = a op b               ==> c = a op b
-// d = select p, c, a
-// wrr(x, d, R)                 wrr(x, c, R, p)
+static bool canonizeSelect(SelectInst *SI) {
+  // Multiple uses can increase number of instructions.
+  if (!SI->hasOneUse())
+    return false;
+  const Use &U = *SI->use_begin();
+  BinaryOperator *BI = dyn_cast<BinaryOperator>(U.getUser());
+  if (!BI)
+    return false;
+  // Get identity value for this binary instruction, allowing non-commutative ones
+  // if select value placed on second operand.
+  auto BinOpIdentity = ConstantExpr::getBinOpIdentity(BI->getOpcode(), BI->getType(),
+      /*AllowRHSConstant*/ U.getOperandNo() == 1);
+  for (unsigned i = 1; i <= 2; ++i) {
+    if (SI->getOperand(i) != BinOpIdentity)
+      continue;
+    BI->setOperand(U.getOperandNo(), SI->getOperand(3 - i));
+    Value *OldVal = BI->getOperand(1 - U.getOperandNo());
+    UndefValue *UndefVal = UndefValue::get(SI->getType());
+    SelectInst *NewSI =
+        SelectInst::Create(SI->getCondition(), UndefVal, UndefVal,
+                           SI->getName(), BI->getNextNode(), SI);
+    BI->replaceAllUsesWith(NewSI);
+    NewSI->setTrueValue(i == 1 ? OldVal : BI);
+    NewSI->setFalseValue(i == 1 ? BI : OldVal);
+    return true;
+  }
+  return false;
+}
+
+// Try to merge select condition to wrregion mask:
+// old_val = rdregion(x, R)
+// masked_val = select cond, new_val, old_val
+// wrregion(x, masked_val, R)
+// ===>
+// old_val = rdregion(x, R)
+// wrregion(x, new_val, R, cond)
+// Also generate cond inversion if select operands are swapped)
 //
-bool GenXPatternMatch::simplifySelect(Function *F) {
+static bool mergeToWrRegion(SelectInst *SI) {
   using namespace GenXIntrinsic::GenXRegion;
 
+  CallInst *Rd = nullptr;
+  bool Inverted = false;
+
+  for (Value *Val : {SI->getTrueValue(), SI->getFalseValue()}) {
+    if (!GenXIntrinsic::isRdRegion(Val))
+      continue;
+
+    Rd = cast<CallInst>(Val);
+    Inverted = Val == SI->getTrueValue();
+    Region RdReg(Rd, BaleInfo());
+
+    auto CanMergeToWrRegion = [&](const Use &U) -> bool {
+      if (!GenXIntrinsic::isWrRegion(U.getUser()))
+        return false;
+      if (U.getOperandNo() != NewValueOperandNum)
+        return false;
+      CallInst *Wr = cast<CallInst>(U.getUser());
+      Region WrReg(Wr, BaleInfo());
+      if (WrReg.Mask) {
+        // If wrregion already has mask, it should be all ones constant.
+        auto *C = dyn_cast<Constant>(WrReg.Mask);
+        if (!C)
+          return false;
+        if (!C->isAllOnesValue())
+          return false;
+      }
+      WrReg.Mask = nullptr;
+      if (WrReg != RdReg)
+        return false;
+      return isa<UndefValue>(Wr->getOperand(OldValueOperandNum)) ||
+             (Wr->getOperand(OldValueOperandNum) ==
+              Rd->getOperand(OldValueOperandNum));
+    };
+
+    auto DoMergeToWrRegion = [&](User *U) {
+      IGC_ASSERT(isa<CallInst>(U));
+      CallInst *Wr = cast<CallInst>(U);
+      Value *Mask = SI->getCondition();
+      // Invert mask if needed.
+      if (Inverted)
+        Mask = invertCondition(Mask);
+      // Create new wrregion.
+      Region WrReg(Wr, BaleInfo());
+      WrReg.Mask = Mask;
+      Value *NewWr = WrReg.createWrRegion(Wr->getOperand(OldValueOperandNum),
+                                          Inverted ? SI->getFalseValue()
+                                                   : SI->getTrueValue(),
+                                          Wr->getName(), Wr, Wr->getDebugLoc());
+      BasicBlock::iterator WrIt(Wr);
+      ReplaceInstWithValue(Wr->getParent()->getInstList(), WrIt, NewWr);
+    };
+
+    if (std::all_of(SI->use_begin(), SI->use_end(), CanMergeToWrRegion)) {
+      for (auto I = SI->user_begin(), E = SI->user_end(); I != E;)
+        DoMergeToWrRegion(*I++);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Process peephole transformations on select.
+bool GenXPatternMatch::simplifySelect(Function *F) {
   bool Changed = false;
   for (auto &BB : *F) {
     for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*empty*/) {
-      SelectInst *Inst = dyn_cast<SelectInst>(&*BI++);
-      if (!Inst || !Inst->hasOneUse() || !Inst->getType()->isVectorTy() ||
-          !Inst->getCondition()->getType()->isVectorTy())
+      SelectInst *SI = dyn_cast<SelectInst>(&*BI++);
+      if (!SI || !SI->getType()->isVectorTy() ||
+          !SI->getCondition()->getType()->isVectorTy())
         continue;
-      if (!GenXIntrinsic::isWrRegion(Inst->user_back()))
-        continue;
-      CallInst *Wr = cast<CallInst>(Inst->user_back());
-      if (Wr->getOperand(NewValueOperandNum) != Inst)
-        continue;
-
-      auto match = [](Instruction *Wr, Value *V) -> bool {
-        if (!GenXIntrinsic::isRdRegion(V))
-          return false;
-        CallInst *Rd = cast<CallInst>(V);
-        if (Wr->getOperand(OldValueOperandNum) !=
-            Rd->getOperand(OldValueOperandNum))
-          return false;
-
-        Region WrReg(Wr, BaleInfo());
-        Region RdReg(Rd, BaleInfo());
-        if (WrReg != RdReg || WrReg.Indirect)
-          return false;
-
-        if (WrReg.Mask == nullptr)
-          return true;
-        if (auto C = dyn_cast<Constant>(WrReg.Mask))
-          if (C->isAllOnesValue())
-            return true;
-
-        return false;
-      };
-
-      for (int i = 1; i <= 2; ++i) {
-        Value *Op = Inst->getOperand(i);
-        if (match(Wr, Op)) {
-          Value *Mask = Inst->getCondition();
-          if (i == 1) {
-            IRBuilder<> B(Inst);
-            Mask = B.CreateNot(Mask, "not");
-          }
-
-          Region WrReg(Wr, BaleInfo());
-          WrReg.Mask = Mask;
-          Value *NewWr = WrReg.createWrRegion(
-              Wr->getOperand(OldValueOperandNum), Inst->getOperand(3 - i),
-              Wr->getName(), Wr, Wr->getDebugLoc());
-          Wr->replaceAllUsesWith(NewWr);
-          Changed = true;
-
-          if (Wr == &*BI)
-            ++BI;
-          Wr->eraseFromParent();
-          Inst->eraseFromParent();
-          break;
-        }
+      if (canonizeSelect(SI) || mergeToWrRegion(SI)) {
+        IGC_ASSERT_MESSAGE(SI->use_empty(),
+                           "uses of transformed select aren't empty");
+        Changed = true;
+        BI = BasicBlock::iterator(SI->getNextNode());
+        SI->eraseFromParent();
       }
     }
   }
-
   return Changed;
 }
 

@@ -450,11 +450,7 @@ public:
   static bool isBalableIndexOr(Value *V);
   // isBalableNewValueIntoWrr: check whether the new val operand can
   // be baled into wrr instruction
-  static bool
-  isBalableNewValueIntoWrr(Value *V, const genx::Region &WrrR,
-                           const GenXSubtarget *ST,
-                           genx::AlignmentInfo *AlignInfo = nullptr,
-                           BalingKind BKind = BalingKind::BK_Legalization);
+  bool isBalableNewValueIntoWrr(Value *V, const genx::Region &WrrR);
 
   static bool isHighCostBaling(uint16_t Type, Instruction *Inst);
   // Debug dump/print
@@ -476,6 +472,7 @@ private:
   void processExtractValue(ExtractValueInst *EV);
   void processFuncPointer(Instruction *Inst);
   void processMainInst(Instruction *Inst, int IntrinID);
+  bool processSelectToPredicate(SelectInst *SI);
   // helper func for buildBale
   void buildBaleSub(Instruction *Inst, genx::Bale *B, bool IncludeAddr) const;
   void processBranch(BranchInst *Branch);
@@ -490,14 +487,11 @@ private:
              unsigned OperandNum, int ModType,
              unsigned ArgInfoBits);
 
-  static bool
-  isRegionOKForIntrinsic(unsigned ArgInfoBits, const genx::Region &R,
-                         bool CanSplitBale, const GenXSubtarget *ST,
-                         genx::AlignmentInfo *AlignInfo = nullptr,
-                         BalingKind BKind = BalingKind::BK_Legalization);
+  bool  isRegionOKForIntrinsic(unsigned ArgInfoBits, const genx::Region &R,
+                         bool CanSplitBale);
 
   // Cleanup and optimization before do baling on a function.
-  bool prologue(llvm::Function *F);
+  bool prologue(Function *F);
 };
 
 //----------------------------------------------------------------------
