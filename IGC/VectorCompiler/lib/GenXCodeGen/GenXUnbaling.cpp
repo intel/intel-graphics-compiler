@@ -295,6 +295,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <numeric>
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 using namespace llvm;
 using namespace genx;
 
@@ -488,7 +490,11 @@ void GenXUnbaling::shortenLiveRanges(Function *F) {
         // elements to copy in both cases.
         unsigned NumEltsToCopy = std::accumulate(
             ToHoist.begin(), ToHoist.end(), 0u, [](unsigned Init, User *U) {
-              return Init + cast<VectorType>(U->getType())->getNumElements();
+              unsigned NumElts = 1;
+              auto *VU = dyn_cast<IGCLLVM::FixedVectorType>(U->getType());
+              if (VU)
+                NumElts = VU->getNumElements();
+              return Init + NumElts;
             });
         if (NumEltsToCopy >=
             cast<VectorType>(SrcRegion->getType())->getNumElements())
