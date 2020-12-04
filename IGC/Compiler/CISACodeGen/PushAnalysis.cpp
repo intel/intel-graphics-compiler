@@ -829,8 +829,8 @@ namespace IGC
         }
         if (regionFound)
         {
-            unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getGRFSize());
-            unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getGRFSize());
+            unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getMinPushConstantBufferAlignmentInBytes());
+            unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getMinPushConstantBufferAlignmentInBytes());
             unsigned int newSize = newEndOffset - newStartOffset;
 
             if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
@@ -850,8 +850,8 @@ namespace IGC
             maxSizeAllowed > 0 &&
             pushInfo.simplePushBufferUsed < maxNumberOfPushedBuffers)
         {
-            unsigned int newStartOffset = iSTD::RoundDown(offset, getGRFSize());
-            unsigned int newEndOffset = iSTD::Round(offset + size, getGRFSize());
+            unsigned int newStartOffset = iSTD::RoundDown(offset, getMinPushConstantBufferAlignmentInBytes());
+            unsigned int newEndOffset = iSTD::Round(offset + size, getMinPushConstantBufferAlignmentInBytes());
             unsigned int newSize = newEndOffset - newStartOffset;
 
             if (newSize <= maxSizeAllowed)
@@ -1048,7 +1048,7 @@ namespace IGC
                     pushConstantMode = (PushConstantMode)IGC_GET_FLAG_VALUE(forcePushConstantMode);
                 }
             }
-            
+
             // 2.) Check compiler input
             if (pushConstantMode == PushConstantMode::DEFAULT)
             {
@@ -1442,7 +1442,7 @@ namespace IGC
         }
 
         PushConstantMode pushConstantMode = GetPushConstantMode();
-        
+
         if (m_context->type == ShaderType::DOMAIN_SHADER)
         {
             auto valueU = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_U"), WIAnalysis::RANDOM);

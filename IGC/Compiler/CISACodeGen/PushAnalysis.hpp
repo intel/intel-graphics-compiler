@@ -153,6 +153,7 @@ namespace IGC
         void processRuntimeValue(llvm::GenIntrinsicInst* intrinsic);
 
         int getGRFSize() const { return m_context->platform.getGRFSize(); }
+        int getMinPushConstantBufferAlignmentInBytes() const { return m_context->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD); }
         unsigned int GetSizeInBits(llvm::Type* type) const;
 
     public:
