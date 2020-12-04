@@ -1015,7 +1015,7 @@ bool GenXLowering::generatePredicatedWrrForNewLoad(CallInst *CI) {
   IGC_ASSERT(isNewLoadInst(CI) && "New load expected");
   // Generate predicated wrr if result of a load is predicated with a select
   if (auto *SI = getLoadSelect(CI)) {
-    Value *NewResult = UndefValue::get(CI->getType());
+    Value *NewResult = SI->getFalseValue();
     Value *LoadPred = SI->getCondition();
     NewResult =
         generatePredicatedWrregion(NewResult, CI, LoadPred, 0 /* Offset */,
