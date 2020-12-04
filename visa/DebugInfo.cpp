@@ -59,19 +59,24 @@ int32_t get32BitSignedIntFrom31BitSignedInt(uint32_t data)
 
 void DbgDecoder::ddName()
 {
-    uint8_t nameLen;
-    auto retval = fread(&nameLen, sizeof(uint8_t), 1, dbgFile);
+    uint16_t nameLen;
+    auto retval = fread(&nameLen, sizeof(uint16_t), 1, dbgFile);
     if (!retval)
         return;
 
-    char name[COMMON_ISA_MAX_KERNEL_NAME_LEN + 1];
+    auto name = (char*)malloc(nameLen + 1);
     retval = fread(name, sizeof(uint8_t), nameLen, dbgFile);
     if (!retval)
+    {
+        free(name);
         return;
+    }
 
     name[nameLen] = 0;
 
     std::cout << name;
+
+    free(name);
 }
 
 template<class T>
@@ -962,9 +967,9 @@ uint32_t KernelDebugInfo::getVarIndex(G4_Declare* dcl)
 template<class T>
 void emitDataName(const char* name, T& t)
 {
-    auto length = (uint8_t)strlen(name);
+    auto length = (uint16_t)strlen(name);
     // Length
-    insertData(&length, sizeof(uint8_t), t);
+    insertData(&length, sizeof(uint16_t), t);
     // Actual name
     insertData(name, (uint32_t) (sizeof(uint8_t) * length), t);
 }
