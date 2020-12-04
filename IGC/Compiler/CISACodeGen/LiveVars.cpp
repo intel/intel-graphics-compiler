@@ -270,11 +270,15 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
             continue;  // We already know the block is live
 
         WorkList.push_back(PredBlk);
-        Instruction* cbr = PredBlk->getTerminator();
-        if (cbr && WIA->whichDepend(cbr) != WIAnalysis::UNIFORM)
-            hasNonUniformBranch = true;
+        // Check if we need to update liveness for uniform variable
+        // inside divergent control-flow
         if (PredBlk == MBB->getPrevNode())
             hasLayoutPred = false;
+        if (hasLayoutPred && VRInfo.uniform) {
+            Instruction* cbr = PredBlk->getTerminator();
+            if (cbr && WIA->whichDepend(cbr) != WIAnalysis::UNIFORM)
+                hasNonUniformBranch = true;
+        }
     }
     if (hasLayoutPred && hasNonUniformBranch && VRInfo.uniform) {
         BasicBlock* simdPred = MBB->getPrevNode();
