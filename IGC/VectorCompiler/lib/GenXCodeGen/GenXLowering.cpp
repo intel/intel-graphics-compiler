@@ -191,6 +191,8 @@ private:
   bool lowerCtpop(CallInst *CI);
   bool lowerFCmpInst(FCmpInst *Inst);
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
+  bool lowerMinMax(CallInst *CI, unsigned IntrinsicID);
+  bool lowerSqrt(CallInst *CI);
   bool widenByteOp(Instruction *Inst);
   bool lowerLoadStore(Instruction *Inst);
   bool lowerMulSat(CallInst *CI, unsigned IntrinsicID);
@@ -1135,6 +1137,11 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerTrap(CI);
     case Intrinsic::ctpop:
       return lowerCtpop(CI);
+    case Intrinsic::minnum:
+    case Intrinsic::maxnum:
+      return lowerMinMax(CI, IntrinsicID);
+    case Intrinsic::sqrt:
+      return lowerSqrt(CI);
     case Intrinsic::uadd_with_overflow:
       return lowerUAddWithOverflow(CI);
     case Intrinsic::sadd_with_overflow:
@@ -2433,6 +2440,43 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
   Inst->replaceAllUsesWith(Result);
   ToErase.push_back(Inst);
 
+  return true;
+}
+
+static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
+  switch (ID) {
+  case Intrinsic::minnum:
+    return GenXIntrinsic::genx_fmin;
+  case Intrinsic::maxnum:
+    return GenXIntrinsic::genx_fmax;
+  };
+  IGC_ASSERT("unknown min/max intrinsic");
+  return GenXIntrinsic::not_any_intrinsic;
+}
+
+// Lower llvm minnum/maxnum to genx fmin/fmax.
+bool GenXLowering::lowerMinMax(CallInst *CI, unsigned IntrinsicID) {
+  auto *ResTy = CI->getType();
+  auto *MinMaxDecl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), convertMinMaxIntrinsic(IntrinsicID), {ResTy, ResTy});
+  Value *Result = IRBuilder<>(CI).CreateCall(
+      MinMaxDecl, {CI->getArgOperand(0), CI->getArgOperand(1)}, CI->getName());
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
+  return true;
+}
+
+// Lower llvm.sqrt to genx.ieee.sqrt equivalent.
+bool GenXLowering::lowerSqrt(CallInst *CI) {
+  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) == Intrinsic::sqrt &&
+      "llvm.sqrt expected");
+  auto *ResTy = CI->getType();
+  auto *SqrtDecl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_ieee_sqrt, {ResTy, ResTy});
+  Value *Result = IRBuilder<>(CI).CreateCall(SqrtDecl, {CI->getArgOperand(0)},
+                                             CI->getName());
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
   return true;
 }
 
