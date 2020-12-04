@@ -1779,7 +1779,7 @@ namespace IGC
                     // arguments
                     bool success = CreateZEPayloadArguments(&arg, offset - constantBufferStart);
                     if (!success) {
-                        // assert if we force to EnableZEBinary but encounter unsupported features
+                        // assertion tests if we force to EnableZEBinary but encounter unsupported features
                         IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary),
                             "ZEBin: unsupported KernelArg Type");
 

@@ -167,7 +167,7 @@ Function* GenXCodeGenModule::cloneFunc(Function* F)
                         }
                         else
                         {
-                            // If this assert is triggered, it probably means that ProcessBuiltinMetaData pass
+                            // If this assertion is failing, it probably means that ProcessBuiltinMetaData pass
                             // needs to be changed to recognize duplicate functions and run before DebugInfo pass.
                             IGC_ASSERT_MESSAGE(false, "Couldn't find metadata for cloned function!");
                         }

@@ -744,7 +744,7 @@ namespace TC
             const char* pszOpt = strstr(pInternalOptions, OCL_VERSION_OPT);
             if (NULL != pszOpt)
             {
-                // we are in control of internal option - assert the validity
+                // we are in control of internal option - assertion test the validity
                 assert(strlen(pszOpt + OCL_VERSION_OPT_SIZE) >= 3);
                 return std::string(pszOpt + OCL_VERSION_OPT_SIZE, 3);
             }

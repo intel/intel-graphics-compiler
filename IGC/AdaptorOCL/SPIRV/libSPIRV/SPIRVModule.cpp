@@ -431,7 +431,7 @@ SPIRVModuleImpl::layoutEntry(SPIRVEntry* E) {
 }
 
 // Add an entry to the id to entry map.
-// Assert if the id is mapped to a different entry.
+// Assertion tests if the id is mapped to a different entry.
 // Certain entries need to be add to specific collectors to maintain
 // logic layout of SPIRV.
 SPIRVEntry *

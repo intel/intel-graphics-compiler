@@ -2470,7 +2470,7 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
         Value *Part = Entry->Parts[PP.PartNum];
         if (RdSize != PP.Size) {
           // Only reading a subregion of a part.
-          // Assert that the rdpredregion is legal. In fact we will probably
+          // Assertion tests if the rdpredregion is legal. In fact we will probably
           // have to cope with an illegal one, by generating code to bitcast
           // the predicate to a scalar int (or finding code where it is already
           // bitcast from a scalar int), using bit twiddling to get the

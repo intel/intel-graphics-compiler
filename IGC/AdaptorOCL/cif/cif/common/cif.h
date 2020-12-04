@@ -151,7 +151,7 @@ template <template <Version_t> class BaseClass, Version_t VersionP,
           Version_t InheritFromVersion =
               (VersionP == BackwardsCompatibilityVersionP)
                   ? 0
-                  : BackwardsCompatibilityVersionP /* TODO : assert - backwards compatibility chain*/>
+                  : BackwardsCompatibilityVersionP /* TODO : assertion - backwards compatibility chain*/>
 struct VersionedCIF : public BaseClass<InheritFromVersion> {
   template <typename... Args>
   VersionedCIF(Args &&... args)
