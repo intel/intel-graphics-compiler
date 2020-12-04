@@ -312,10 +312,10 @@ bool decodeSendDescriptor(const Opts &opts)
     };
     if (dr) {
         os << "  Op:                         ";
-        emitYellowText(os, format(dr.info.op));
+        emitYellowText(os, ToSyntax(dr.info.op));
         os << "\n";
         os << "  Address Type:               ";
-        emitYellowText(os, format(dr.info.addrType));
+        emitYellowText(os, ToSymbol(dr.info.addrType));
         os << "\n";
         if (dr.info.addrType == iga::AddrType::FLAT) {
             if (dr.info.hasAttr(iga::MessageInfo::SLM)) {
@@ -374,7 +374,7 @@ bool decodeSendDescriptor(const Opts &opts)
             auto emitCaching =
                 [&] (const char *name, iga::CacheOpt co) {
                     os << "  " << name << " Caching:                 ";
-                    emitYellowText(os, format(co));
+                    emitYellowText(os, ToSymbol(co));
                     if (opts.verbosity > 0) {
                         if (co == iga::CacheOpt::DEFAULT)
                             os << " (uses state \"MOCS\" settings)";

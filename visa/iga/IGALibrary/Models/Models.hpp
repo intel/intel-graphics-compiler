@@ -83,8 +83,15 @@ namespace iga
         bool isSubRegByteOffsetValid(
             int regNum, int subregByte, int grfSize) const
         {
-            int regBytes = regName == RegName::GRF_R ? grfSize :
-                numBytesPerReg[regNum];
+            int regBytes = 0;
+            // special handling null register that we may use sub-register number for other
+            // purposes. At those cases the sub register number of null should not excceed GRF bound.
+            if (regName == RegName::ARF_NULL) {
+                regBytes = grfSize;
+            } else {
+                regBytes = regName == RegName::GRF_R ? grfSize :
+                    numBytesPerReg[regNum];
+            }
             return subregByte < regBytes;
         }
 

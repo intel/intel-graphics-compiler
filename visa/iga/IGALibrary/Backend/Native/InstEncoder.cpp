@@ -47,13 +47,13 @@ void InstEncoder::reportFieldOverlap(const Fragment &fr)
             auto str = ss.str();
             // std::cerr << "checkFieldOverlaps: " << str << "\n";
             // IGA_ASSERT_FALSE(str.c_str());
-            error("%s", str.c_str());
+            errorT(str);
             return;
         }
     }
     ss << "another field (?)";
     auto str = ss.str();
-    error("%s", str.c_str());
+    errorT(str);
     // IGA_ASSERT_FALSE(str.c_str());
 }
 #endif
@@ -90,9 +90,8 @@ void InstEncoder::encodeFieldBits(const Field &f, uint64_t val0)
         case Fragment::Kind::ZERO_WIRES:
         case Fragment::Kind::ZERO_FILL:
             if (fragValue != 0) {
-                errorAt(state.inst->getLoc(),
-                    "%s: 0x%X: field fragment must be zero",
-                    fr.name, val0);
+                errorAtT(state.inst->getLoc(),
+                    fr.name, ": ", fmtHex(val0), ": field fragment must be zero");
             }
             break;
         default:
@@ -103,7 +102,7 @@ void InstEncoder::encodeFieldBits(const Field &f, uint64_t val0)
 
     if (val != 0) {
         // value overflows the virtual encoding
-        errorAt(state.inst->getLoc(),
-            "%s: 0x%X: value is too large for field", f.name, val0);
+        errorAtT(state.inst->getLoc(),
+            f.name, ": ", fmtHex(val0), ": value is too large for field");
     }
 }

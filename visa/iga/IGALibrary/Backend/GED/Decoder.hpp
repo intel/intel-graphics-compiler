@@ -227,6 +227,7 @@ namespace iga
         template <SourceIndex S>
         void decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcIx);
 
+
         ///////////////////////////////////////////////////////////////////////
         // TERNARY INSTRUCTIONS
         ///////////////////////////////////////////////////////////////////////
@@ -235,7 +236,7 @@ namespace iga
         // Align16
         void decodeTernaryDestinationAlign16(Instruction *inst);
         template <SourceIndex S> void decodeTernarySourceAlign16(Instruction *inst);
-        // Align11
+        // Align1
         void decodeTernaryDestinationAlign1(Instruction *inst);
         template <SourceIndex S> void decodeTernarySourceAlign1(Instruction *inst);
 

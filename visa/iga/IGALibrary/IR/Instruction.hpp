@@ -164,9 +164,8 @@ namespace iga
             SourceIndex srcIx,
             int32_t pc,
             Type type = Type::INVALID);
-        void setSource(
-            SourceIndex srcIx,
-            const Operand &op); // e.g. pass Operand::NULL_UD_SRC
+        // e.g. pass Operand::NULL_UD_SRC
+        void setSource(SourceIndex srcIx, const Operand &op);
 
         void setMsgDesc(const SendDesc &msg) {m_desc = msg;}
         void setExtMsgDesc(const SendDesc &msg) {m_exDesc = msg;}

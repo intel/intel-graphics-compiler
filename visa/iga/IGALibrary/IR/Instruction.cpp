@@ -34,9 +34,9 @@ using namespace iga;
 
 void Instruction::setSubfunction(Subfunction sf) {
     IGA_ASSERT(!getOpSpec().supportsSubfunction() || sf.isValid(),
-        "Instruction requires subfunction (and none set)");
+        "instruction given invalid subfunction");
     IGA_ASSERT(getOpSpec().supportsSubfunction() || !sf.isValid(),
-        "Instruction given subfunction (and forbids one)");
+        "instruction forbids subfunction");
     m_sf = sf;
 }
 
@@ -105,27 +105,6 @@ void Instruction::setDirectSource(
 }
 
 
-void Instruction::setSource(
-    SourceIndex srcIx,
-    const Operand &op)
-{
-    unsigned ix = static_cast<unsigned>(srcIx);
-    if (getOpSpec().isSendOrSendsFamily() &&
-        op.getKind() == Operand::Kind::DIRECT &&
-        op.getDirRegName() == RegName::ARF_NULL)
-    {
-        // send with a null operand must have a 0 length
-        // we only check this if we didn't get the length via the
-        // descriptor
-        if (ix == 0 && m_sendSrc0Len < 0)
-            m_sendSrc0Len = 0;
-        else if (ix == 1 && m_sendSrc1Length < 0)
-            m_sendSrc1Length = 0;
-    }
-    m_srcs[ix] = op;
-}
-
-
 void Instruction::setMacroSource(
     SourceIndex srcIx,
     SrcModifier srcMod,
@@ -169,6 +148,25 @@ void Instruction::setLabelSource(SourceIndex srcIx, Block *block, Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
     m_srcs[ix].setLabelSource(block, type);
+}
+
+
+void Instruction::setSource(SourceIndex srcIx, const Operand &op)
+{
+    unsigned ix = static_cast<unsigned>(srcIx);
+    if (getOpSpec().isSendOrSendsFamily() &&
+        op.getKind() == Operand::Kind::DIRECT &&
+        op.getDirRegName() == RegName::ARF_NULL)
+    {
+        // send with a null operand must have a 0 length
+        // we only check this if we didn't get the length via the
+        // descriptor
+        if (ix == 0 && m_sendSrc0Len < 0)
+            m_sendSrc0Len = 0;
+        else if (ix == 1 && m_sendSrc1Length < 0)
+            m_sendSrc1Length = 0;
+    }
+    m_srcs[ix] = op;
 }
 
 

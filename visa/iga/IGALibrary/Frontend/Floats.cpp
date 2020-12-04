@@ -26,13 +26,36 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Floats.hpp"
 #include "../strings.hpp"
 
-#include <cmath> // needed for android build!
+#if defined(_MSC_VER)
+// This only affects defined(_DEBUG) and we could scope this to debug builds
+// only, but we prefer to keep Debug and Release configs as close as possible,
+// and formatting/disassembly isn't considered a performance critical path.
+//
+// There's a defect in Windows Debug runtime libraries in emitting denorms
+// when denorm mode is FTZ by the calling library and with the Debug runtime
+// https://developercommunity.visualstudio.com/content/problem/1187587/printf-assert-failure-unexpected-input-value-log10.html
+//
+// To test this place _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+// in before calling into this module (and compiled for Debug on MSVC++).
+#define IGA_NEEDS_DENORM_WORKAROUND
+#endif
+
+// For non-NaN cases this flag enables use of a native AVX instruction
+// for half float conversion _cvtss_sh.
+//
+// #define IGA_USE_FP16C
+
+#include <cmath>
 #include <cstdlib>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>
+#if defined(IGA_NEEDS_DENORM_WORKAROUND) || defined(IGA_USE_FP16C)
+#include <immintrin.h>
+#endif
+
 
 using namespace iga;
 
@@ -55,7 +78,7 @@ using namespace iga;
 // Without loss of generality (this generalizes to all IEEE sizes),
 // the 32-bit IEEE 754 (C.f. section 6.2.1 of the spec) we have
 //   s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
-// (where the s and the m's can be anything such that at least one 'm' is
+// (where the s and the m's can be anything such that at least one m is
 // non-zero; all 0's would imply infinity)
 //
 // SNAN: "snan" (signaling NaN) is:
@@ -63,10 +86,12 @@ using namespace iga;
 //              ^ leading bit of mantissa is 0; at least one bit
 //                of the rest of the payload (x's must be non-zero)
 //
-// QNAN: IEEE754 says that qnan (quiet NaN) is
+// QNAN: "qnan" (quiet NaN) is:
 //   s 11111111 1xx`xxxx`xxxx`xxxx`xxxx`xxxx
-//              ^ leading bit of mantiss is 1; the rest of the payload
-//                can be zeros since the top mantissa bit is set
+//              ^ leading bit of mantiss is 1 and the rest can be anything
+//                including all zeros since the top mantissa bit is set
+//                (NaN only needs one mantissa bit set and the quiet bit
+//                counts)
 //
 // IGA supports the following syntax (from examples)
 //     NaNLit ::= '-'? ('snan'|'qnan') '(' HEXLIT ')'
@@ -123,6 +148,9 @@ template <typename F> static int FloatBias() {
 template <typename FBIG,typename FSML> static int FloatBiasDiff() {
     return FloatBias<FBIG>() - FloatBias<FSML>();
 }
+template <typename FBIG,typename FSML> static int FloatMantissaBitsDiff() {
+    return FloatMantissaBits<FBIG>() - FloatMantissaBits<FSML>();
+}
 
 template <typename F, typename I> static
 void FormatFloatImplNaN(std::ostream &os, I bits)
@@ -159,6 +187,21 @@ static bool willReparseExactly(T x, std::string str)
     return ((T)y == x);
 }
 
+#ifdef IGA_NEEDS_DENORM_WORKAROUND
+// C.f. with the #define for this above for notes on this
+struct ScopedDenormWorkaround {
+    unsigned int oldDenormMode;
+    ScopedDenormWorkaround()
+        : oldDenormMode(_MM_GET_DENORMALS_ZERO_MODE())
+    {
+        _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_OFF);
+    }
+    ~ScopedDenormWorkaround() {
+        _MM_SET_DENORMALS_ZERO_MODE(oldDenormMode);
+    }
+};
+#endif
+
 // Formats a float in decimal or scientific format if it will not lose
 // precision during reparse
 //
@@ -166,74 +209,85 @@ static bool willReparseExactly(T x, std::string str)
 template <typename F, typename I>
 static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
 {
-    // first check special values (+-inf or nan)
-    if (IS_INF(x)) {
+#ifdef IGA_NEEDS_DENORM_WORKAROUND
+    ScopedDenormWorkaround sdw;
+#endif
+    auto fpc = std::fpclassify(x);
+    switch (fpc)
+    {
+    case FP_INFINITE:
         if (x < 0) {
             os << '-';
         }
         os << "inf";
         return true;
-    } else if (IS_NAN(x)) {
+    case FP_NAN:
         FormatFloatImplNaN<F,I>(os, iga::FloatToBits(x));
         return true;
-    } else {
-        // else it's not a special value (could be denorm)
-        // we try and render it several different ways until we find something
-        // that we can parse back bit-exact.
-        // We try:
-        //    - decimal
-        //    - exponential
-        //    - and then fall back on hex
-        // static_assert(sizeof(F) == sizeof(I));
+    ///////////////////////////////////////////////////////////////////////////
+    // case FP_ZERO:
+    // case FP_NORMAL:
+    // case FP_SUBNORMAL:
+    default:
+        // Fall through and go through the pretty-print algorithm
+        break;
+    }
 
-        // try as default, this lets STL pick the format.
-        // it sometimes gives nice terse output
-        // e.g. "3" for "3.0" instead of "3.0000000000..." (when possible)
-        std::stringstream ss;
-        ss.unsetf(std::ios_base::floatfield);
-        ss << x;
-        if (willReparseExactly(x, ss.str())) {
-            auto str = ss.str();
-            os << str;
-            if (str.find('.') == std::string::npos &&
-                str.find('e') == std::string::npos &&
-                str.find('E') == std::string::npos)
-            {
-                // floats need a ".0" suffixing them if not in scientific form
-                // STL default float sometimes drops the .
-                //
-                //  e.g. given "-0.0f", if we were to format that
-                // as "-0:f" (which MSVCRT does), then it parses as
-                // "0" since this is the negation the S64 value 0 (during parse)
-                //
-                // NOTE: we also have to ensure that we aren't using an
-                // exponential (scientific) form already.
-                //
-                // e.g. 1e-007 should not convert to 1e-007.0
-                os << ".0";
-            }
-            return true;
+    // we try and render it several different ways until we find something
+    // that we can parse back bit-exact.
+    // We try:
+    //    - decimal
+    //    - exponential
+    //    - and then fall back on hex
+    // static_assert(sizeof(F) == sizeof(I));
+
+    // try as default, this lets STL pick the format.
+    // it sometimes gives nice terse output
+    // e.g. "3" for "3.0" instead of "3.0000000000..." (when possible)
+    std::stringstream ss;
+    ss.unsetf(std::ios_base::floatfield);
+    ss << x;
+    if (willReparseExactly(x, ss.str())) {
+        auto str = ss.str();
+        os << str;
+        if (str.find('.') == std::string::npos &&
+            str.find('e') == std::string::npos &&
+            str.find('E') == std::string::npos)
+        {
+            // floats need a ".0" suffixing them if not in scientific form
+            // STL default float sometimes drops the .
+            //
+            //  e.g. given "-0.0f", if we were to format that
+            // as "-0:f" (which MSVCRT does), then it parses as
+            // "0" since this is the negation the S64 value 0 (during parse)
+            //
+            // NOTE: we also have to ensure that we aren't using an
+            // exponential (scientific) form already.
+            //
+            // e.g. 1e-007 should not convert to 1e-007.0
+            os << ".0";
         }
+        return true;
+    }
 
-        // try as scientific
-        ss.str(std::string()); // reset
-        ss << std::scientific << x;
-        if (willReparseExactly(x, ss.str())) {
-            os << ss.str();
-            return true;
-        }
+    // try as scientific
+    ss.str(std::string()); // reset
+    ss << std::scientific << x;
+    if (willReparseExactly(x, ss.str())) {
+        os << ss.str();
+        return true;
+    }
 
-        // TODO: IFDEF this given a new enough compiler
-        // (must parse too)
-        // e.g. 0x1.47ae147ae147bp-7 (need to parse first)
-        //   NOTE: parsing should use >>
-        //   float f;
-        //   e.g. std::istringstream(""0x1P-1022") >> std::hexfloat >> f;
+    // TODO: IFDEF this given a new enough compiler
+    // (must parse too)
+    // e.g. 0x1.47ae147ae147bp-7 (need to parse first)
+    //   NOTE: parsing should use >>
+    //   float f;
+    //   e.g. std::istringstream(""0x1P-1022") >> std::hexfloat >> f;
 
-        // fallback to hex integral
-        // FormatFloatImplHex<F,I>(os, x);
-        return false;
-    } // else
+    // fallback to hex integral
+    // FormatFloatImplHex<F,I>(os, x);
+    return false;
 }
 
 template <typename F>
@@ -259,8 +313,11 @@ void iga::FormatFloat(std::ostream &os, double x)
 void iga::FormatFloat(std::ostream &os, uint16_t w16)
 {
 #if 0
+    // this would turn off all non-hex floats
     fmtHex(os, (uint64_t)w16);
 #else
+    // trys to format a half float in a friendly format
+    // falling back to hex if all else fails
     float f32 = ConvertHalfToFloat(w16);
     if (IS_NAN(f32)) {
         // So we get the correct payload size for NaNs
@@ -283,20 +340,20 @@ uint32_t iga::ConvertDoubleToFloatBits(double f)
 {
     uint64_t f64 = FloatToBits(f);
 
-    uint64_t m64 = f64 & IGA_F64_MANT_MASK;
-    uint64_t e64 = (f64 & IGA_F64_EXP_MASK) >> FloatMantissaBits<double>();
-    if (e64 == (IGA_F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
+    uint64_t m64 = f64 & F64_MANT_MASK;
+    uint64_t e64 = (f64 & F64_EXP_MASK) >> FloatMantissaBits<double>();
+    if (e64 == (F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
         // f64 NaN
-        uint32_t m32 = (uint32_t)m64 & IGA_F32_MANT_MASK;
-        m32 |= (uint32_t)((m64 & IGA_F64_QNAN_BIT) >>
+        uint32_t m32 = (uint32_t)m64 & F32_MANT_MASK;
+        m32 |= (uint32_t)((m64 & F64_QNAN_BIT) >>
             (FloatMantissaBits<double>() - FloatMantissaBits<float>())); // preserve snan
         if (m32 == 0) {
             // The payload was only in the high bits which we dropped;
             // make it non-zero so we retain NaN'ness
             m32 = 1;
         }
-        uint32_t s32 = (uint32_t)(f64 >> 32) & IGA_F32_SIGN_BIT;
-        return (s32 | IGA_F32_EXP_MASK | m32);
+        uint32_t s32 = (uint32_t)(f64 >> 32) & F32_SIGN_BIT;
+        return (s32 | F32_EXP_MASK | m32);
     } else {
         // regular conversion can deal with all the other special cases
         return FloatToBits((float)f);
@@ -308,79 +365,86 @@ float iga::ConvertDoubleToFloat(double f)
     return FloatFromBits(ConvertDoubleToFloatBits(f));
 }
 
-// TODO: generalize this to all IEEE sizes once we're confident it works and
-// the rounding behavior is good
-uint16_t  iga::ConvertFloatToHalf(float f)
+
+uint16_t iga::ConvertFloatToHalf(float f)
 {
-    uint32_t f32 = FloatToBits(f);
+    static const uint32_t F32_EXP_MASK =
+        ((1 << FloatExponentBits<float>()) - 1) << FloatMantissaBits<float>();
 
-    uint32_t m32 = IGA_F32_MANT_MASK & f32;
-    uint32_t e32 = (IGA_F32_EXP_MASK & f32) >> FloatMantissaBits<float>();
-    const int MANTISSA_DIFFERENCE =
-      FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>();
-    const int BIAS_DIFFERENCE = FloatBiasDiff<float,uint16_t>();
+    const uint32_t w32 = FloatToBits(f);
+    const uint32_t w32_u = w32 & 0x7FFFFFFF;
+    const uint32_t sign = w32 & 0x80000000;
+    const uint16_t sign16 = (uint16_t)(sign >> 16);
 
-    uint32_t m16;
-    uint32_t e16;
-
-    if (e32 == (IGA_F32_EXP_MASK >> FloatMantissaBits<float>())) {
-        // NaN or Infinity
-        e16 = IGA_F16_EXP_MASK;
-        m16 = (IGA_F16_MANT_MASK >> 1) & f32;
-        if (m32 != 0) {
-            // preserve the bottom 9 bits of the NaN payload and
-            // shift the signaling bit (high bit) down as bit 10
-            m16 |= (IGA_F32_QNAN_BIT & f32) >> MANTISSA_DIFFERENCE;
-            // s eeeeeeee mmmmmmmmmmmmmmmmmmmmmm
-            //            |            |||||||||
-            //            |            vvvvvvvvv
-            //            +---------->mmmmmmmmmm
-            if (m16 == 0) {
-                // if the nonzero payload is in the high bits and and gets
-                // dropped and the signal bit is non-zero, then m16 is 0,
-                // to maintain it as a qnan, we must set at least one bit
-                m16 = 0x1;
-            }
+    if (w32_u > F32_EXP_MASK) { // NaN
+        uint16_t m16 = 0;
+        m16 |= (F32_QNAN_BIT & w32_u) >> // preserve qnan bit
+            (FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>());
+        m16 |= (F16_MANT_MASK >> 1) & w32_u; // and bottom 9b
+        //
+        // s eeeeeeee qmmmmmmmmmmmmmmmmmmmmm
+        //            |            |||||||||
+        //            |            vvvvvvvvv
+        //            +---------->qmmmmmmmmm
+        if (m16 == 0x0) {
+            // if the nonzero payload is in the high bits and and gets
+            // dropped and the signal bit is non-zero, then m16 is 0;
+            // to maintain it as a qnan we must set at least one bit
+            m16 = 0x1;
         }
-    } else if (e32 > (uint32_t)BIAS_DIFFERENCE + 0x1E) { // e16 overflows 5 bits after bias fix
-        // Too large for f16 => infinity
-        e16 = IGA_F16_EXP_MASK;
-        m16 = 0;
-    } else if (e32 < 0x66) { // 102
-        // Too small: rounds to +/-0.0
-        e16 = 0;
-        m16 = 0;
-    } else if (e32 <= (uint32_t)BIAS_DIFFERENCE && e32 >= 0x66) {
-        // Denorm/subnorm float
-        //
-        // Normal floats are:
-        //   (1 + sum{m[i]^(23-i)*2^(-i)}) * 2^(e - bias)
-        //   (each mantissa bit is a fractional power of 2)
-        // Denorms are:
-        //   (0 + ...)
-        // This is a zero exponent, but non-zero mantissa
-        //
-        // set leading bit past leading mantissa bit (low exponent bit)
-        // (hidden one)
-        m32 |= (IGA_F32_QNAN_BIT << 1);
-        // repeatedly increment the f32 exponent and divide the denorm
-        // mantissa until the exponent reachs a non-zero value
-        for (; e32 <= 127 - 15; m32 >>= 1, e32++)
-            ;
-        e16 = 0;
-        m16 = m32 >> MANTISSA_DIFFERENCE;
-
+        return sign16 | F16_EXP_MASK | m16;
+    } else if (w32_u == F32_EXP_MASK) { // +/-Infinity
+        return sign16 | F16_EXP_MASK;
     } else {
-        // Normalized float
-        e16 = (e32 - (127 - 15)) << FloatMantissaBits<uint16_t>();
-        m16 = m32 >> MANTISSA_DIFFERENCE;
-        // TODO: rounding voodoo?
+        // norm/denorm
+#ifdef IGA_USE_FP16C
+        // should be on all 3rd generation or newer CPUs (HSW/SNB)
+        // _MM_FROUND_NO_EXC
+        const auto oldCsr = _mm_getcsr();
+        _mm_setcsr(oldCsr | _MM_FROUND_NO_EXC);
+        uint16_t w16 = (uint16_t)_mm_cvtsi128_si32(
+           _mm_cvtps_ph(_mm_set_ss(f), _MM_FROUND_TO_NEAREST_INT));
+        _mm_setcsr(oldCsr);
+        return w16;
+#else // !IGA_USE_FP16C
+        static const uint32_t F32_BIAS = FloatBias<float>();
+        static const uint32_t F16_BIAS = FloatBias<uint16_t>();
+        static const int F32_MNT_BITS = FloatMantissaBits<float>();
+        static const int F16_MNT_BITS = FloatMantissaBits<uint16_t>();
+
+        static const uint32_t LOWEST_OVERFLOW = // 0x47800000
+            (F32_BIAS + F16_BIAS + 1) << FloatMantissaBits<float>();
+        static const uint32_t LOWEST_NORM = // 0x38800000
+            (F32_BIAS - F16_BIAS + 1) << FloatMantissaBits<float>();
+        static const uint32_t LOWEST_DENORM = // 0x33000000
+            (F32_BIAS - F16_BIAS - (uint16_t)F16_MNT_BITS) << FloatMantissaBits<float>();
+        auto round = [](uint32_t v, uint32_t g, uint32_t s) {
+            return v + (g & (s | v));
+        };
+        if (w32_u >= LOWEST_OVERFLOW) { // overflows to infinity
+            return sign16 | F16_EXP_MASK;
+        } else if (w32_u >= LOWEST_NORM) { // fits as normalized half
+            uint32_t v =
+                (((w32_u >> F32_MNT_BITS) - (F32_BIAS - F16_BIAS)) << F16_MNT_BITS) |
+                    ((w32_u >> (F32_MNT_BITS - F16_MNT_BITS)) & F16_MANT_MASK);
+            uint32_t g = (w32_u >> (F32_MNT_BITS - F16_MNT_BITS - 1)) & 0x1;
+            uint32_t s = (w32_u & 0x0FFF) ? 1 : 0;
+            return (uint16_t)round(sign16 | v, g, s);
+        } else if (w32_u >= LOWEST_DENORM) { // fits as normalized half
+            uint32_t i = (F32_BIAS - 1 - 1) - (w32_u >> F32_MNT_BITS);
+            uint32_t w32_u2 = (w32_u & F32_MANT_MASK) | (F32_MANT_MASK + 1);
+            uint32_t v = sign16 | (w32_u2 >> (i + 1));
+            uint32_t g = (w32_u2 >> i) & 1;
+            uint32_t s = (w32_u2 & ((1 << i) - 1)) ? 1 : 0;
+            return (uint16_t)round(v, g, s);
+        } else {
+            // underflow to +-0
+            return sign16;
+        }
+#endif // !IGA_USE_FP16C
     }
-
-    uint32_t s16 = (f32 >> 16) & IGA_F16_SIGN_BIT;
-
-    return (uint16_t)(s16 | e16 | m16);
 }
+
 
 
 // GEN's 8-bit restricted float ("quarter float")
@@ -427,56 +491,61 @@ float iga::ConvertQuarterToFloatGEN(uint8_t u8)
 bool iga::IsNaN(uint16_t u16)
 {
     return
-        (IGA_F16_EXP_MASK & u16) == IGA_F16_EXP_MASK &&
-        (IGA_F16_MANT_MASK & u16) != 0;
+        (F16_EXP_MASK & u16) == F16_EXP_MASK &&
+        (F16_MANT_MASK & u16) != 0;
 }
 
 bool iga::IsInf(uint16_t u16)
 {
     return
-        (IGA_F16_EXP_MASK & u16) == IGA_F16_EXP_MASK &&
-        (IGA_F16_MANT_MASK & u16) == 0;
+        (F16_EXP_MASK & u16) == F16_EXP_MASK &&
+        (F16_MANT_MASK & u16) == 0;
 }
+
 
 float iga::ConvertHalfToFloat(uint16_t u16)
 {
-    static const int MANTISSA_DIFFERENCE = // 23 - 10
-        FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>();
-
-    uint32_t s32 = ((uint32_t)u16 & IGA_F16_SIGN_BIT) << 16;
-    uint32_t e16 = (u16 & IGA_F16_EXP_MASK) >> FloatMantissaBits<uint16_t>();
-    uint32_t m16 = u16 & IGA_F16_MANT_MASK;
-
-    uint32_t m32, e32;
-    if (e16 != 0 && e16 < 0x1F) {
+    uint16_t u16_u = u16 & 0x7FFF;
+    uint32_t s32 = ((uint32_t)u16 & F16_SIGN_BIT) << 16;
+    uint32_t m16 = u16 & F16_MANT_MASK;
+    if (u16_u > F16_EXP_MASK) {
+        // NaN
+        uint32_t m32 = (u16 & F16_QNAN_BIT) <<
+            FloatMantissaBitsDiff<float,uint16_t>(); // preserve sNaN bit
+        m32 |= (F16_MANT_MASK >> 1) & m16;
+        if (m32 == 0) {
+            m32 = 1; // ensure still NaN
+        }
+        return FloatFromBits(s32 | F32_EXP_MASK | m32);
+    }
+#ifdef IGA_USE_FP16C
+    float f = _mm_cvtss_f32(_mm_cvtph_ps(_mm_cvtsi32_si128(u16)));
+    return f;
+#else // !IGA_USE_FP16C
+    uint32_t e16 = (u16 & F16_EXP_MASK) >> FloatMantissaBits<uint16_t>();
+    uint32_t e32, m32;
+    if (u16_u == F16_EXP_MASK) {
+        // +-infinity
+        e32 = F32_EXP_MASK >> FloatMantissaBits<float>();
+        m32 = 0;
+    } else if (e16 != 0 && e16 < 0x1F) {
         //  normal number
         e32 = e16 + FloatBiasDiff<float,uint16_t>(); // (127 - 15); // 0x70
-        m32 = m16 << (23 - 10);
+        m32 = m16 << FloatMantissaBitsDiff<float,uint16_t>(); // (23 - 10);
     } else if (e16 == 0 && m16 != 0) {
         // denorm/subnorm number (e16 == 0) => renormalize it
         // shift the mantissa left until the hidden one gets set
-        for (e32 = (FloatBiasDiff<float,uint16_t>() + 1);
-            (m16 & (IGA_F16_MANT_MASK + 1)) == 0;
+        for (e32 = FloatBiasDiff<float,uint16_t>() + 1;
+            (m16 & (F16_MANT_MASK + 1)) == 0;
             m16 <<= 1, e32--)
             ;
-        m32 = (m16 << MANTISSA_DIFFERENCE) & IGA_F32_MANT_MASK;
-    } else if (e16 == 0) { // +/- 0.0
+        m32 = (m16 << FloatMantissaBitsDiff<float,uint16_t>()) & F32_MANT_MASK;
+    } else { // if (e16 == 0) // +/- 0.0
         e32 = 0;
         m32 = 0;
-    } else { // infinity or NaN
-        e32 = IGA_F32_EXP_MASK >> FloatMantissaBits<float>();
-        if (m16 == 0) { // Infinity
-            m32 = 0;
-        } else { // NaN:  m16!=0 && e16==0x1F
-            m32 = (u16 & IGA_F16_QNAN_BIT) << MANTISSA_DIFFERENCE; // preserve sNaN bit
-            m32 |= (IGA_F16_MANT_MASK >> 1) & m16;
-            if (m32 == 0) {
-                m32 = 1; // ensure still NaN
-            }
-        }
     }
-
     return FloatFromBits(s32 | (e32 << FloatMantissaBits<float>()) | m32);
+#endif // !IGA_USE_FP16C
 }
 
 double iga::ConvertFloatToDouble(float f)
@@ -485,13 +554,13 @@ double iga::ConvertFloatToDouble(float f)
         uint32_t f32 = FloatToBits(f);
 
         uint64_t m64;
-        m64 = (uint64_t)(f32 & IGA_F32_QNAN_BIT) <<
+        m64 = (uint64_t)(f32 & F32_QNAN_BIT) <<
             (FloatMantissaBits<double>() - FloatMantissaBits<float>()); // keep the sNaN bit
-        m64 |= (IGA_F32_MANT_MASK >> 1) & f32; // keep the non sNaN part
+        m64 |= (F32_MANT_MASK >> 1) & f32; // keep the non sNaN part
                                                // lower part of the payload
         uint64_t bits =
-            (((uint64_t)f32 & IGA_F32_SIGN_BIT) << 32) | // sign
-            IGA_F64_EXP_MASK |                           // exp
+            (((uint64_t)f32 & F32_SIGN_BIT) << 32) | // sign
+            F64_EXP_MASK |                           // exp
             m64;                                         // new mantissa
         return FloatFromBits(bits);
     } else {
@@ -501,3 +570,13 @@ double iga::ConvertFloatToDouble(float f)
 }
 
 
+
+bool iga::ParseFLTLIT(const std::string &syntax, double &value)
+{
+    char *end = nullptr;
+    value = std::strtod(syntax.c_str(), &end);
+    if (*end) {
+        return false;
+    }
+    return true;
+}

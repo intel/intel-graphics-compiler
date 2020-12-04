@@ -82,7 +82,7 @@ protected:
         RegName rnm,
         RegRef reg,
         bool emitSubReg = true,
-        bool fadeSubreg = false);
+        bool isSIMT = false);
     void formatDstType(const OpSpec &os, Type type);
 
 public:
@@ -853,6 +853,7 @@ void Formatter::formatDstOp(const Instruction &i)
     finishColumn();
 }
 
+
 void Formatter::formatSrcOp(
     SourceIndex srcIx,
     const Instruction &i)
@@ -1169,8 +1170,10 @@ bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
     if (exDesc.isImm()) {
         ss << "ex_desc:" << fmtHex(exDesc.imm);
     } else { // exDesc.isReg()
-        ss << "ex_desc:" << (int)exDesc.reg.subRegNum;
+        ss << "ex_desc:a0." << (int)exDesc.reg.subRegNum;
     }
+    // desc has to be imm or we wouldn't be decoding the message in
+    // ld/st syntax
     ss << "; desc:" << fmtHex(desc.imm);
     // provide the rlen=... (Dst.Length)
 

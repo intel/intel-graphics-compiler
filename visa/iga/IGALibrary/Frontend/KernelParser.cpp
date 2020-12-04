@@ -431,11 +431,11 @@ void GenParser::checkNumTypes(
     const ImmVal &v1, const Token &op, const ImmVal &v2)
 {
     if (isFloating(v1) && !isFloating(v2)) {
-        FailS(op.lexeme, "right operand to operator must be floating point"
-            " (append a .0 to force floating point)");
+        FailAtT(op.loc, "right operand to ", GetTokenAsString(op),
+            " must be floating point");
     } else if (isFloating(v2) && !isFloating(v1)) {
-        FailS(op.lexeme, "left operand to operator must be floating point"
-            " (append a .0 to force floating point)");
+        FailAtT(op.loc, "left operand to ", GetTokenAsString(op),
+            " must be floating point");
     }
 }
 // target must be float
@@ -443,9 +443,11 @@ void GenParser::checkIntTypes(
     const ImmVal &v1, const Token &op, const ImmVal &v2)
 {
     if (isFloating(v1)) {
-        FailS(op.lexeme, "left operand to operator must be integral");
+        FailAtT(op.loc, "left operand to ", GetTokenAsString(op),
+            " must be integral");
     } else if (isFloating(v2)) {
-        FailS(op.lexeme, "right operand to operator must be integral");
+        FailAtT(op.loc, "right operand to ", GetTokenAsString(op),
+            " must be integral");
     }
 }
 
@@ -655,7 +657,7 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
     bool isQuietNaN = false;
     if (LookingAtIdentEq(t, "nan")) {
         WarningT("nan is deprecated, us snan(...) or qnan(...)");
-        v.kind = ImmVal::F64;
+        v.kind = ImmVal::Kind::F64;
         v.f64 = std::numeric_limits<double>::signaling_NaN();
         Skip();
     } else if ((isQuietNaN = LookingAtIdentEq(t, "qnan")) ||
@@ -668,7 +670,7 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
             ImmVal payload;
             payload.u64 = 0;
             parseBitwiseExpr(true, payload);
-            if (payload.u64 >= IGA_F64_QNAN_BIT) {
+            if (payload.u64 >= F64_QNAN_BIT) {
                 FailS(payloadLoc, "NaN payload overflows");
             } else if (payload.u64 == 0 && !isQuietNaN) {
                 // signaling NaN has a 0 in the high mantissa, so we must
@@ -678,26 +680,26 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
                 FailS(payloadLoc, "NaN payload must be nonzero for snan");
             }
             ConsumeOrFail(RPAREN, "expected )");
-            v.u64 = payload.u64 | IGA_F64_EXP_MASK;
+            v.u64 = payload.u64 | F64_EXP_MASK;
             if (isQuietNaN) {
-                v.u64 |= IGA_F64_QNAN_BIT;
+                v.u64 |= F64_QNAN_BIT;
             }
         } else {
             WarningS(nanSymLoc,
                 "bare qnan and snan tokens deprecated"
                 " (pass in a valid payload)");
-            v.u64 = IGA_F64_EXP_MASK;
+            v.u64 = F64_EXP_MASK;
             if (isQuietNaN) {
-                v.u64 |= IGA_F64_QNAN_BIT; // the quiet bit suffices
+                v.u64 |= F64_QNAN_BIT; // the quiet bit suffices
             } else {
                 v.u64 |= 1; // set something other than the quiet bit
                             // non-zero in the payload
             }
         }
-        v.kind = ImmVal::F64;
+        v.kind = ImmVal::Kind::F64;
     } else if (LookingAtIdentEq(t, "inf")) {
         v.f64 = std::numeric_limits<double>::infinity();
-        v.kind = ImmVal::F64;
+        v.kind = ImmVal::Kind::F64;
         Skip();
     } else if (LookingAt(FLTLIT)) {
         ParseFltFrom(t.loc, v.f64);
@@ -1717,8 +1719,7 @@ public:
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
             if (!ri.isSubRegByteOffsetValid(
-                regNum, subregNum * typeSize, m_model.getGRFByteSize()))
-            {
+                regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
                 if (ri.regName == RegName::GRF_R) {
                     ErrorAtT(subregLoc,
                         "subregister out of bounds for data type ",
@@ -2379,13 +2380,13 @@ public:
         case Type::V:
         case Type::UV:
         case Type::VF:
-            if (val.kind != ImmVal::S64) {
+            if (!val.isS64()) {
                 ErrorAtT(opStart,
                     "literal must be integral for type ", ToSyntax(sty));
             }
             break;
         case Type::HF:
-            if (val.kind == ImmVal::S64) { // The value was parsed as integral
+            if (val.isS64()) { // The value was parsed as integral
                 if (valToken.lexeme == INTLIT10 && val.u64 != 0) {
                     // base10
                     // examples: 2:f or (1+2):f
@@ -2402,14 +2403,14 @@ public:
             } else { // ==ImmVal::F64
                      // it's an fp64 literal, we need to narrow to fp16
                      //   e.g. "(1.0/10.0):hf"
-                uint64_t DROPPED_PAYLOAD = ~((uint64_t)IGA_F16_MANT_MASK) &
-                    (IGA_F64_MANT_MASK >> 1);
+                uint64_t DROPPED_PAYLOAD = ~((uint64_t)F16_MANT_MASK) &
+                    (F64_MANT_MASK >> 1);
                 if (IS_NAN(val.f64) && (val.u64 & DROPPED_PAYLOAD)) {
                     FailAtT(opStart, "NaN payload value overflows");
                 }
                 // uint64_t orginalValue = val.u64;
                 val.u64 = ConvertDoubleToHalf(val.f64); // copy over u64 to clobber all
-                val.kind = ImmVal::F16;
+                val.kind = ImmVal::Kind::F16;
                 // uint64_t newValue = FloatToBits(
                 //    ConvertFloatToDouble(ConvertHalfToFloat(val.u16)));
                 // if (orginalValue != newValue) {
@@ -2420,7 +2421,7 @@ public:
             break;
         case Type::F:
         case Type::DF:
-            if (val.kind == ImmVal::S64) {
+            if (val.isS64()) {
                 if (valToken.lexeme == INTLIT10 && val.u64 != 0) {
                     // base10
                     // examples: 2:f or (1+2):f
@@ -2438,10 +2439,10 @@ public:
                 if (sty == Type::F) {
                     // preserve the bits
                     val.u32 = (uint32_t)val.s64;
-                    val.kind = ImmVal::F32;
+                    val.kind = ImmVal::Kind::F32;
                 } else {
                     // leave :df alone, bits are already set
-                    val.kind = ImmVal::F64;
+                    val.kind = ImmVal::Kind::F64;
                 }
             } else { // ==ImmVal::F64
                 if (sty == Type::F) {
@@ -2449,11 +2450,11 @@ public:
                     // need to narrow to fp32
                     // any NaN payload must fit in the smaller mantissa
                     // The bits we will remove
-                    //   ~((uint64_t)IGA_F32_MANT_MASK) &
-                    //      (IGA_F64_MANT_MASK >> 1)
+                    //   ~((uint64_t)F32_MANT_MASK) &
+                    //      (F64_MANT_MASK >> 1)
                     // the mantissa bits that will get truncated
-                    uint64_t DROPPED_PAYLOAD = ~((uint64_t)IGA_F32_MANT_MASK) &
-                        (IGA_F64_MANT_MASK >> 1);
+                    uint64_t DROPPED_PAYLOAD = ~((uint64_t)F32_MANT_MASK) &
+                        (F64_MANT_MASK >> 1);
                     if (IS_NAN(val.f64) && (val.u64 & DROPPED_PAYLOAD)) {
                         FailS(opStart, "NaN payload value overflows");
                     }
@@ -2461,7 +2462,7 @@ public:
                     // Use a raw bitwise assignment; some compilers will clear
                     // the NaN bit by making an assignment
                     val.u64 = ConvertDoubleToFloatBits(val.f64);
-                    val.kind = ImmVal::F32;
+                    val.kind = ImmVal::Kind::F32;
                     // the below would be wrong
                     //   val = ConvertDoubleToFloat(val.f64);
                     } // else: sty == Type::DF (nothing needed)
@@ -2482,12 +2483,12 @@ public:
             //     val.u64 &= 0xFFull;
             // }
             CheckLiteralBounds(opStart, sty, val, -128, 127);
-            val.kind = ImmVal::S8;
+            val.kind = ImmVal::Kind::S8;
             val.s64 = val.s8; // sign extend to a 64-bit value
             break;
         case Type::UB:
             // CheckLiteralBounds(opStart, sty, val, 0, 0xFF);
-            val.kind = ImmVal::U8;
+            val.kind = ImmVal::Kind::U8;
             val.u64 = val.u8; // could &= by 0xFF
             break;
         case Type::W:
@@ -2499,18 +2500,18 @@ public:
             // }
             val.s64 = val.s16; // sign extend to a 64-bit value
             CheckLiteralBounds(opStart, sty, val, -32768, 32767);
-            val.kind = ImmVal::S16;
+            val.kind = ImmVal::Kind::S16;
             break;
         case Type::UW:
             // fails ~1:ub
             // CheckLiteralBounds(opStart, sty, val, 0, 0xFFFF);
-            val.kind = ImmVal::U16;
+            val.kind = ImmVal::Kind::U16;
             val.u64 = val.u16; // truncate to 16-bit: // could &= by 0xFFFF
             break;
         case Type::D:
             val.s64 = val.s32; // sign extend to a 64-bit value
             CheckLiteralBounds(opStart, sty, val, -2147483648ll, 2147483647ll);
-            val.kind = ImmVal::S32;
+            val.kind = ImmVal::Kind::S32;
             break;
         case Type::UD:
             // CheckLiteralBounds(opStart, sty, val, 0, 0xFFFFFFFF);
@@ -2522,31 +2523,31 @@ public:
             // }
             // val.u64 &= 0xFFFFFFFF;
             val.u64 = val.u32; // truncate top bits
-            val.kind = ImmVal::U32;
+            val.kind = ImmVal::Kind::U32;
             break;
         case Type::Q:
             // no conversion needed
-            val.kind = ImmVal::S64;
+            val.kind = ImmVal::Kind::S64;
             CheckLiteralBounds(opStart, sty, val,
                 0x8000000000000000ll, 0x7FFFFFFFFFFFFFFFll);
             break;
         case Type::UQ:
             // no conversion needed
-            val.kind = ImmVal::U64;
+            val.kind = ImmVal::Kind::U64;
             break;
         case Type::HF:
-            val.kind = ImmVal::F16;
+            val.kind = ImmVal::Kind::F16;
             break;
         case Type::F:
-            val.kind = ImmVal::F32;
+            val.kind = ImmVal::Kind::F32;
             break;
         case Type::DF:
-            val.kind = ImmVal::F64;
+            val.kind = ImmVal::Kind::F64;
             break;
         case Type::UV:
         case Type::V:
         case Type::VF:
-            val.kind = ImmVal::U32;
+            val.kind = ImmVal::Kind::U32;
             break;
         default:
             break;
@@ -2775,7 +2776,7 @@ public:
             if (!TryParseConstExpr(v)) {
                 FailT("expected extended send descriptor");
             }
-            if (v.kind != ImmVal::S64 && v.kind != ImmVal::U64) {
+            if (!v.isI64()) {
                 FailAtT(exDescLoc,
                     "immediate descriptor expression must be integral");
             }
@@ -2806,7 +2807,7 @@ public:
             if (!TryParseConstExpr(v)) {
                 FailT("expected extended send descriptor");
             }
-            if (v.kind != ImmVal::S64 && v.kind != ImmVal::U64) {
+            if (!v.isI64()) {
                 FailAtT(descLoc,
                     "immediate descriptor expression must be integral");
             }
@@ -3106,6 +3107,7 @@ public:
         }
         return false;
     }
+
 
 }; // class KernelParser
 

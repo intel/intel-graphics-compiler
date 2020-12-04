@@ -216,7 +216,6 @@ static inline std::string ToSymbol(Type x)
     MAKE_CASE(Type, V);
     MAKE_CASE(Type, VF);
 
-
     MAKE_DEFAULT_CASE(Type);
     }
 }

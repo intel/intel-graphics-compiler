@@ -92,7 +92,7 @@ struct OperandInfo
         regOpReg = REGREF_ZERO_ZERO;
         regOpIndOff = 0;
         immValue.u64 = 0;
-        immValue.kind = ImmVal::UNDEF;
+        immValue.kind = ImmVal::Kind::UNDEF;
         immLabel.clear();
         type = Type::INVALID;
     }
@@ -107,7 +107,7 @@ struct OperandInfo
         regOpReg = REGREF_ZERO_ZERO;
         regOpIndOff = 0;
         immValue.u64 = 0;
-        immValue.kind = ImmVal::UNDEF;
+        immValue.kind = ImmVal::Kind::UNDEF;
         immLabel.clear();
         type = Type::INVALID;
     }
@@ -150,8 +150,8 @@ class InstBuilder {
     SendDesc                    m_exDesc;
     SendDesc                    m_desc;
     // int                         m_sendDst;  // (extracted later)
-    int                         m_sendSrc0Len;
-    int                         m_sendSrc1Len;
+    int                         m_sendSrc0Len = -1;
+    int                         m_sendSrc1Len = -1;
 
     InstOptSet                  m_instOpts;
 
@@ -500,7 +500,8 @@ public:
             } else {
                 IGA_ASSERT_FALSE("unexpected src kind");
             }
-        } // for
+        } // for: sources
+
         inst->addInstOpts(m_instOpts);
         inst->setID(m_nextId++);
         inst->setPC(m_pc);
@@ -994,7 +995,7 @@ public:
     }
 
 
-    // sets Instruction::setComment()
+    // sets Instruction::setComment(...)
     void InstComment(std::string comment)
     {
         m_comment = comment;

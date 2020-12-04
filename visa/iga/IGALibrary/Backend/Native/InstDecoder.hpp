@@ -507,7 +507,7 @@ namespace iga
                 break;
             case Type::HF:
                 immVal = (uint16_t)val;
-                immVal.kind = ImmVal::F16;
+                immVal.kind = ImmVal::Kind::F16;
                 FormatFloat(ss, FloatFromBits((uint16_t)val));
                 break;
             case Type::F:
@@ -560,15 +560,15 @@ namespace iga
             ss << "(";
             switch (type) {
             case Type::DF:
-                immVal.kind = ImmVal::F64;
+                immVal.kind = ImmVal::Kind::F64;
                 FormatFloat(ss, FloatFromBits(immVal.u64));
                 break;
             case Type::UQ:
-                immVal.kind = ImmVal::U64;
+                immVal.kind = ImmVal::Kind::U64;
                 ss << immVal.u64;
                 break;
             case Type::Q:
-                immVal.kind = ImmVal::S64;
+                immVal.kind = ImmVal::Kind::S64;
                 ss << immVal.s64;
                 break;
             default:

@@ -713,7 +713,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         case 0xE:
             op = SendOp::ATOMIC_ICAS;
             mOpName = "atomic_icas";
-            opDesc = "integer compare and swap (non-64b)";
+            opDesc = "integer compare and swap";
             break;
             //
         default:
@@ -1324,8 +1324,6 @@ static constexpr Format DC0_OPS[] {
 }
 #endif
 
-
-// DC1 https://gfxspecs.intel.com/Predator/Home/Index/44783
 void MessageDecoderHDC::tryDecodeDC1() {
     const int msgType = getDescBits(14, 5);
     switch (msgType)
@@ -1582,9 +1580,9 @@ void MessageDecoderHDC::tryDecodeDC1() {
         // message and thus the SIMD size is always fixed
         int simd = 8;
         auto is64b =
-            decodeDescBitField("DataWidth", 12, "64b", "32b");
+            decodeDescBitField("DataWidth", 12, "32b", "64b");
         const char *msgName = is64b ?
-            "a64 untyped atomic int32" : "a64 untyped atomic int64";
+            "a64 atomic int64" : "a64 atomic int32";
         const char *docNoRet = is64b ? "7161" : "7155";
         const char *docNoRet12 = is64b ? "44688" : "44685";
         const char *docWiRet = is64b ? "7143" : "7137";
@@ -1608,7 +1606,7 @@ void MessageDecoderHDC::tryDecodeDC1() {
         //
         setHdcIntAtomicMessage(
             "untyped",
-            "untyped atomic int32",
+            "atomic int32",
             32,
             32,
             decodeMDC_SM2R(12),

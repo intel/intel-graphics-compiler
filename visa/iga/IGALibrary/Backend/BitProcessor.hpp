@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../ErrorHandler.hpp"
 #include "../IR/Instruction.hpp"
+#include "../strings.hpp"
 
 #include <cstdint>
 #include <cstdarg>
@@ -88,18 +89,44 @@ namespace iga {
         void setPc(int32_t pc) {
             m_currentPc = pc;
         }
+        Loc defaultLoc() const {
+            return m_currInst ? m_currInst->getLoc() : m_currentPc;
+        }
 
-        void warning(const char *patt, ...);
-        void warningAt(const Loc& loc, const char *patt, ...);
-        void warningAt(const Loc& loc, const char *patt, va_list& va);
+        ///////////////////////////////////////////////////////////////////////
+        // warnings
+        template <typename...Ts>
+        void warningT(Ts...ts) {warningAtT(defaultLoc(), iga::format(ts...));}
+        template <typename...Ts>
+        void warningAtT(const Loc &loc, Ts...ts) {
+            warningAt(loc, iga::format(ts...));
+        }
+        void warningAt(const Loc &loc, std::string msg);
 
-        void error(const char *patt, ...);
-        void errorAt(const Loc& loc, const char *patt, ...);
-        void errorAt(const Loc& loc, const char *patt, va_list& va);
 
-        void fatal(const char *patt, ...);
-        void fatalAt(const Loc& loc, const char *patt, ...);
-        void fatalAt(const Loc& loc, const char *patt, va_list& va);
+        ///////////////////////////////////////////////////////////////////////
+        // errors
+        template <typename...Ts>
+        void errorT(Ts...ts) {errorAtT(defaultLoc(), iga::format(ts...));}
+        template <typename...Ts>
+        void errorAtT(const Loc &loc, Ts...ts) {
+            errorAt(loc, iga::format(ts...));
+        }
+        void errorAt(const Loc &loc, std::string msg);
+
+
+        ///////////////////////////////////////////////////////////////////////
+        // fatals stop processing (unless exceptions are disabled)
+        template <typename...Ts>
+        void fatalT(Ts...ts) {fatalAt(defaultLoc(), iga::format(ts...));}
+        template <typename...Ts>
+        void fatalAtT(const Loc &loc, Ts...ts) {
+            fatalAt(loc, iga::format(ts...));
+        }
+        void fatalAt(const Loc &loc, std::string msg);
+
+
+        ///////////////////////////////////////////////////////////////////////
         bool hasFatalError() const {return m_errorHandler.hasFatalError();}
     };
 

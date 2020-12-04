@@ -133,21 +133,21 @@ private:
     {
         switch (type)
         {
-        case Type_UW:       return iga::ImmVal::U16;
-        case Type_W:        return iga::ImmVal::S16;
-        case Type_UD:       return iga::ImmVal::U32;
-        case Type_D:        return iga::ImmVal::S32;
-        case Type_UQ:       return iga::ImmVal::U64;
-        case Type_Q:        return iga::ImmVal::S64;
-        case Type_HF:       return iga::ImmVal::F16;
-        case Type_F:        return iga::ImmVal::F32;
-        case Type_DF:       return iga::ImmVal::F64;
+        case Type_UW:       return iga::ImmVal::Kind::U16;
+        case Type_W:        return iga::ImmVal::Kind::S16;
+        case Type_UD:       return iga::ImmVal::Kind::U32;
+        case Type_D:        return iga::ImmVal::Kind::S32;
+        case Type_UQ:       return iga::ImmVal::Kind::U64;
+        case Type_Q:        return iga::ImmVal::Kind::S64;
+        case Type_HF:       return iga::ImmVal::Kind::F16;
+        case Type_F:        return iga::ImmVal::Kind::F32;
+        case Type_DF:       return iga::ImmVal::Kind::F64;
         case Type_UV:
         case Type_V:
-        case Type_VF:       return iga::ImmVal::U32;
+        case Type_VF:       return iga::ImmVal::Kind::U32;
         default:
             assert(false && "invalid immediate type");
-            return iga::ImmVal::UNDEF;
+            return iga::ImmVal::Kind::UNDEF;
         }
     }
     iga::InstOptSet getIGAInstOptSet(G4_INST* inst) const;

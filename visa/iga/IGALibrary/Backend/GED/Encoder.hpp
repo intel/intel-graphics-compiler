@@ -412,7 +412,7 @@ namespace iga
         } else { // ARF slower path
             const RegInfo *ri = m_model.lookupRegInfoByRegName(regName);
             if (!ri) {
-                error("src%d: unexpected register on this platform", (int)S);
+                errorT("src", (int)S, ": unexpected register on this platform");
             } else {
                 uint8_t reg8;
                 ri->encode((int)regNum, reg8);
@@ -451,14 +451,14 @@ namespace iga
         } else if (rgn.getVt() != Region::Vert::VT_INVALID) {
             v = static_cast<uint32_t>(rgn.v);
         } else {
-            error(S == SourceIndex::SRC0 ?
+            errorT(S == SourceIndex::SRC0 ?
                 "invalid region vertical stride on src0" :
                 "invalid region vertical stride on src1");
         }
 
         uint32_t w = static_cast<uint32_t>(rgn.getWi());
         if (rgn.getWi() == Region::Width::WI_INVALID) {
-            error(S == SourceIndex::SRC0 ?
+            errorT(S == SourceIndex::SRC0 ?
                 "invalid region width on src0" :
                 "invalid region width on src1");
         }
@@ -466,7 +466,7 @@ namespace iga
         uint32_t h = static_cast<uint32_t>(rgn.getHz());
         if (rgn.getHz() == Region::Horz::HZ_INVALID) {
             h = 1;
-            error(S == SourceIndex::SRC0 ?
+            errorT(S == SourceIndex::SRC0 ?
                 "invalid region horizontal stride on src0" :
                 "invalid region horizontal stride on src1");
         }
@@ -489,7 +489,8 @@ namespace iga
             GED_ENCODE(Src1Width, w);
             GED_ENCODE(Src1HorzStride, h);
         } else {
-            IGA_ASSERT_FALSE("Encoder::encodeSrcRegion: only works on src0 and src1");
+            IGA_ASSERT_FALSE(
+                "Encoder::encodeSrcRegion: only works on src0 and src1");
         }
     }
 
@@ -509,7 +510,7 @@ namespace iga
         } else if (S == SourceIndex::SRC2) {
             GED_ENCODE(Src2TernaryImm, typeConvesionHelper(val, type));
         } else {
-            error("Immediate is not supported in src1 of Ternary instruction.");
+            errorT("immediate operands not supported in src1 of ternary formats");
         }
     }
 

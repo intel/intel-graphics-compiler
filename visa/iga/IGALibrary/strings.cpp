@@ -41,6 +41,14 @@ using namespace iga;
 #include <alloca.h> /* for alloca */
 #endif
 
+
+std::ostream &operator <<(std::ostream &os, hex h)
+{
+    os << fmtHexDigits(h.value, h.cols);
+    return os;
+}
+
+
 std::string iga::formatF(const char *pat, ...)
 {
     va_list va;
@@ -154,6 +162,13 @@ void iga::fmtHexDigits(std::ostream &os, uint64_t val, int w)
     }
     os << ss.str();
 }
+std::string iga::fmtHexDigits(uint64_t val, int w)
+{
+    std::stringstream ss;
+    fmtHexDigits(ss, val, w);
+    return ss.str();
+}
+
 void iga::fmtHex(std::ostream &os, uint64_t val, int w)
 {
     os << "0x";

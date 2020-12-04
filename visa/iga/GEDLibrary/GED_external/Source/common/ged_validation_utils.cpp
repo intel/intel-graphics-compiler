@@ -5,7 +5,7 @@
 using std::memcmp;
 
 
-#if GED_VALIDATION_API
+// trb: workaround: #if GED_VALIDATION_API
 
 bool ged_ins_field_mapping_fragment_t::operator<(const ged_ins_field_mapping_fragment_t& rhs) const
 {
@@ -18,4 +18,4 @@ bool ged_ins_field_mapping_fragment_t::operator==(const ged_ins_field_mapping_fr
     return (0 == memcmp(this, &rhs, sizeof(ged_ins_field_mapping_fragment_t)));
 }
 
-#endif
+// trb: workaround: #endif

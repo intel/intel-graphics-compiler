@@ -32,8 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <limits>
 #include <list>
-#include "Parser.hpp"
 
+#include "Floats.hpp"
+#include "Parser.hpp"
 #include "../asserts.hpp"
 #include "../strings.hpp"
 
@@ -204,17 +205,14 @@ namespace iga
     //   3e9
     //   3e9.5
     void Parser::ParseFltFrom(const Loc loc, double &value) {
-        // swap this out with something more platform implementation
-        // independent (strtod may be slightly different on MS and non-MS
-        const char *val_start = m_lexer.GetSource().c_str() + loc.offset;
-        char *val_end;
-        value = strtod(val_start,&val_end);
-        if ((uint32_t)(val_end - val_start) != loc.extent) {
-            // TODO: this is an internal error since it indicates an
+        auto str = GetTokenAsString();
+        double x = 0.0;
+        if (!ParseFLTLIT(str, x)) {
+            // NOTE: this is an internal error since it indicates an
             // inconsistency between the lexical specification and the parser
-            FailS(loc,"INTERNAL ERROR: parsing float literal");
+            FailS(loc, "INTERNAL ERROR: parsing float literal (busted lexer?)");
         }
+        value = x;
     }
-
 } // namespace iga
 

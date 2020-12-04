@@ -2,22 +2,22 @@
 #define GED_INS_H
 
 #include <set>
-# if GED_VALIDATION_API
+// trb: workaround: # if GED_VALIDATION_API
 #include <vector>
-# endif // GED_VALIDATION_API
+// trb: workaround: # endif // GED_VALIDATION_API
 #include "common/ged_base.h"
 #include "common/ged_ins_decoding_table.h"
 #include "common/ged_compact_mapping_table.h"
-# if GED_VALIDATION_API
+// trb: workaround: # if GED_VALIDATION_API
 #include "common/ged_validation_utils.h"
-# endif // GED_VALIDATION_API
+// trb: workaround: # endif // GED_VALIDATION_API
 #include "xcoder/ged_internal_api.h"
 #include "xcoder/ged_restrictions_handler.h"
 
 using std::set;
-# if GED_VALIDATION_API
+// trb: workaround: # if GED_VALIDATION_API
 using std::vector;
-# endif // GED_VALIDATION_API
+// trb: workaround: # endif // GED_VALIDATION_API
 
 
 enum GED_INS_STATUS
@@ -125,6 +125,19 @@ public:
 
 # endif // GED_VALIDATION_API
 
+    /*!
+    * Return description of how a field is encoded within instructions. Top 16bits of
+    * each fragment specifies the length, whereas bottom 16bits specifies LSB of field.
+    * Pass NULL as fragments to have a function return the number of elements in 'length'.
+    *
+    * @param[in]   field   Id of the requested field.
+    * @param[in]   fragments Array of fragments (*length in size)
+    * @param[in]   length  Number of entries in fragments
+    *
+    * @return      GED_RETURN_VALUE indicating success or encoding error.
+    *
+    */
+    GED_RETURN_VALUE QueryFieldBitLocation(const /* GED_INS_FIELD */ uint32_t field, uint32_t *fragments, uint32_t *length) const;
 
     /*!
      * Get the GED_MODEL Id for the GEN version by which this instruction is decoded.
@@ -589,11 +602,11 @@ private:
     string GetInstructionBytes(const unsigned char* instructionBytes, int dwords) const;
 # if GED_VALIDATION_API
     bool RecordPadding(vector<ged_ins_field_mapping_fragment_t> &mappingFragments, const ged_ins_field_entry_t* dataEntry) const;
+# endif // GED_VALIDATION_API
     bool RecordPosition(vector<ged_ins_field_mapping_fragment_t> &mappingFragments, const ged_ins_field_entry_t* dataEntry) const;
     void RecordSingleFragment(vector<ged_ins_field_mapping_fragment_t> &mappingFragments,
                               const ged_ins_field_position_fragment_t &position) const;
     void MergeFragments(vector<ged_ins_field_mapping_fragment_t> &mappingFragments) const;
-# endif // GED_VALIDATION_API
 
 private:
     // PRIVATE STATIC DATA MEMBERS

@@ -29,9 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../BitProcessor.hpp"
 #include "../../strings.hpp"
 
-
-
 #include <vector>
+
 
 using namespace iga;
 
@@ -139,9 +138,9 @@ static size_t encodeInst(
                 // (see -Xdcmp for that logic)
             }
             if (opts.explicitCompactMissIsWarning) {
-                enc.warningAt(inst->getLoc(), ss.str().c_str());
+                enc.warningAtT(inst->getLoc(), ss.str());
             } else {
-                enc.errorAt(inst->getLoc(), ss.str().c_str());
+                enc.errorAtT(inst->getLoc(), ss.str());
             }
             break;
         }
@@ -198,7 +197,7 @@ struct SerialEncoder : BitProcessor
                 allocLen = sizeof(MInst);
             instBufBase = (uint8_t *)k.getMemManager().alloc(allocLen);
             if (!instBufBase) {
-                fatalAt(0, "failed to allocate memory for kernel binary");
+                fatalAtT(0, "failed to allocate memory for kernel binary");
                 return;
             }
 

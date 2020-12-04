@@ -241,12 +241,6 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
 }
 
 
-
-std::string iga::format(SFID sfid)
-{
-    return ToSyntax(sfid);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 std::string MessageSyntax::str(
     std::string execInfo,
@@ -318,64 +312,64 @@ std::string MessageSyntax::sym() const
     return ss.str();
 }
 
-std::string iga::format(SendOp op)
+std::string iga::ToSyntax(SendOp op)
 {
-#define MK_CASE(X) case SendOp::X: return #X
+#define MK_CASE(X,S) case SendOp::X: return S
     switch (op) {
-        MK_CASE(LOAD);
-        MK_CASE(LOAD_STRIDED);
-        MK_CASE(LOAD_QUAD);
-        MK_CASE(LOAD_STATUS);
-        //
-        MK_CASE(STORE);
-        MK_CASE(STORE_STRIDED);
-        MK_CASE(STORE_QUAD);
-        //
-        MK_CASE(ATOMIC_LOAD);
-        MK_CASE(ATOMIC_STORE);
-        //
-        MK_CASE(ATOMIC_AND);
-        MK_CASE(ATOMIC_XOR);
-        MK_CASE(ATOMIC_OR);
-        //
-        MK_CASE(ATOMIC_IINC);
-        MK_CASE(ATOMIC_IDEC);
-        MK_CASE(ATOMIC_IPDEC);
-        MK_CASE(ATOMIC_IADD);
-        MK_CASE(ATOMIC_ISUB);
-        MK_CASE(ATOMIC_IRSUB);
-        MK_CASE(ATOMIC_ICAS);
-        //
-        MK_CASE(ATOMIC_SMIN);
-        MK_CASE(ATOMIC_SMAX);
-        //
-        MK_CASE(ATOMIC_UMIN);
-        MK_CASE(ATOMIC_UMAX);
-        //
-        MK_CASE(ATOMIC_FADD);
-        MK_CASE(ATOMIC_FSUB);
-        MK_CASE(ATOMIC_FMIN);
-        MK_CASE(ATOMIC_FMAX);
-        MK_CASE(ATOMIC_FCAS);
-        //
-        MK_CASE(READ_STATE);
-        //
-        MK_CASE(FENCE);
-        //
-        MK_CASE(BARRIER);
-        MK_CASE(MONITOR);
-        MK_CASE(UNMONITOR);
-        MK_CASE(WAIT);
-        MK_CASE(SIGNAL_EVENT);
-        MK_CASE(EOT);
-        //
-        //
-        MK_CASE(SAMPLER_LOAD);
-        MK_CASE(SAMPLER_FLUSH);
-        //
-        MK_CASE(RENDER_WRITE);
-        MK_CASE(RENDER_READ);
-        //
+    MK_CASE(LOAD,         "load");
+    MK_CASE(LOAD_STRIDED, "load_strided");
+    MK_CASE(LOAD_QUAD,    "load_quad");
+    MK_CASE(LOAD_STATUS,   "load_status");
+    //
+    MK_CASE(STORE,         "store");
+    MK_CASE(STORE_STRIDED, "store_strided");
+    MK_CASE(STORE_QUAD,    "store_quad");
+    //
+    MK_CASE(ATOMIC_LOAD,  "atomic_load");
+    MK_CASE(ATOMIC_STORE, "atomic_store");
+    //
+    MK_CASE(ATOMIC_AND, "atomic_and");
+    MK_CASE(ATOMIC_XOR, "atomic_xor");
+    MK_CASE(ATOMIC_OR,  "atomic_or");
+    //
+    MK_CASE(ATOMIC_IINC,  "atomic_iinc");
+    MK_CASE(ATOMIC_IDEC,  "atomic_idec");
+    MK_CASE(ATOMIC_IPDEC, "atomic_ipdec");
+    MK_CASE(ATOMIC_IADD,  "atomic_iadd");
+    MK_CASE(ATOMIC_ISUB,  "atomic_isub");
+    MK_CASE(ATOMIC_IRSUB, "atomic_irsub");
+    MK_CASE(ATOMIC_ICAS,  "atomic_icas");
+    //
+    MK_CASE(ATOMIC_SMIN,  "atomic_smin");
+    MK_CASE(ATOMIC_SMAX,  "atomic_smax");
+    //
+    MK_CASE(ATOMIC_UMIN,  "atomic_umin");
+    MK_CASE(ATOMIC_UMAX,  "atomic_umax");
+    //
+    MK_CASE(ATOMIC_FADD,  "atomic_fadd");
+    MK_CASE(ATOMIC_FSUB,  "atomic_fsub");
+    MK_CASE(ATOMIC_FMIN,  "atomic_fmin");
+    MK_CASE(ATOMIC_FMAX,  "atomic_fmax");
+    MK_CASE(ATOMIC_FCAS,  "atomic_fcas");
+    //
+    MK_CASE(READ_STATE,  "read_state");
+    //
+    MK_CASE(FENCE,     "fence");
+    //
+    MK_CASE(BARRIER,   "barrier");
+    MK_CASE(MONITOR,   "monitor");
+    MK_CASE(UNMONITOR, "unmonitor");
+    MK_CASE(WAIT, "wait");
+    MK_CASE(SIGNAL_EVENT, "signal_event");
+    MK_CASE(EOT, "eot");
+    //
+    //
+    MK_CASE(SAMPLER_LOAD,  "sampler_load");
+    MK_CASE(SAMPLER_FLUSH, "sampler_flush");
+    //
+    MK_CASE(RENDER_WRITE, "render_write");
+    MK_CASE(RENDER_READ,  "render_read");
+    //
     default:
         std::stringstream ss;
         ss << "0x" << std::hex << (int)op << "?";
@@ -384,14 +378,14 @@ std::string iga::format(SendOp op)
 #undef MK_CASE
 }
 
-std::string iga::format(CacheOpt op)
+std::string iga::ToSymbol(CacheOpt op)
 {
 #define MK_CASE(X) case CacheOpt::X: return #X
     switch (op) {
-        MK_CASE(DEFAULT);
-        MK_CASE(READINVALIDATE);
-        MK_CASE(CACHED);
-        MK_CASE(UNCACHED);
+    MK_CASE(DEFAULT);
+    MK_CASE(READINVALIDATE);
+    MK_CASE(CACHED);
+    MK_CASE(UNCACHED);
     default:
         std::stringstream ss;
         ss << "0x" << std::hex << (int)op << "?";
@@ -400,12 +394,12 @@ std::string iga::format(CacheOpt op)
 #undef MK_CASE
 }
 
-std::string iga::format(AddrType op)
+std::string iga::ToSymbol(AddrType op)
 {
 #define MK_CASE(X) case AddrType::X: return #X
     switch (op) {
-        MK_CASE(FLAT);
-        MK_CASE(BTI);
+    MK_CASE(FLAT);
+    MK_CASE(BTI);
     default:
         std::stringstream ss;
         ss << "0x" << std::hex << (int)op << "?";

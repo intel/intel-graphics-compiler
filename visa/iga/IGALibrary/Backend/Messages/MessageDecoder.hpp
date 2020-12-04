@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "../../IR/Messages.hpp"
+#include "../../Frontend/IRToString.hpp"
 #include "../../asserts.hpp"
 #include "../Native/Field.hpp"
 
@@ -82,7 +83,7 @@ namespace iga {
             result.info.docs = nullptr;
             //
             // syntax.sfid = _sfid;
-            result.syntax.controls = "." + format(_sfid);
+            result.syntax.controls = "." + ToSyntax(_sfid);
             //
             decodePayloadSizes();
         }

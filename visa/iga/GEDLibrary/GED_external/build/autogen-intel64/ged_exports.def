@@ -17,6 +17,7 @@ EXPORTS
   GED_CountCompactEncodings
   GED_GetCompactEncodings
   GED_PrintFieldBitLocation
+  GED_QueryFieldBitLocation
   GED_FieldSize
   GED_GetOpcode
   GED_GetMnemonic

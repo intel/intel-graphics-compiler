@@ -65,8 +65,8 @@ static const char *gedReturnValueToString(GED_RETURN_VALUE rv)
 void Encoder::handleGedError(
     int line, const char *setter, GED_RETURN_VALUE status)
 {
-    error("IGALibrary/GED/Encoder.cpp:%d: GED_Set%s: %s",
-        line, setter, gedReturnValueToString(status));
+    errorT("IGALibrary/GED/Encoder.cpp:", line, ": GED_Set", setter, ": ",
+        gedReturnValueToString(status));
 }
 
 
@@ -143,7 +143,7 @@ void Encoder::encodeKernel(
             allocLen = 4;
         m_instBuf = (uint8_t *)mem.alloc(allocLen);
         if (!m_instBuf) {
-            fatalAt(0, "failed to allocate memory for kernel binary");
+            fatalAtT(0, "failed to allocate memory for kernel binary");
             return;
         }
 
@@ -200,9 +200,9 @@ void Encoder::encodeBlock(Block *blk)
             } else if (status == GED_RETURN_VALUE_NO_COMPACT_FORM) {
                 if (mustCompact) {
                     if (m_opts.explicitCompactMissIsWarning) {
-                        warningAt(inst->getLoc(), "GED unable to compact instruction");
+                        warningAtT(inst->getLoc(), "GED unable to compact instruction");
                     } else {
-                        errorAt(inst->getLoc(), "GED unable to compact instruction");
+                        errorAtT(inst->getLoc(), "GED unable to compact instruction");
                     }
                 }
             } // else: some other error (unreachable?)
@@ -214,7 +214,7 @@ void Encoder::encodeBlock(Block *blk)
             status = GED_EncodeIns(
               &m_gedInst, GED_INS_TYPE_NATIVE,  m_instBuf + currentPc());
             if (status != GED_RETURN_VALUE_SUCCESS) {
-                errorAt(inst->getLoc(), "GED unable to encode instruction: %s",
+                errorAtT(inst->getLoc(), "GED unable to encode instruction: ",
                     gedReturnValueToString(status));
             }
         }
@@ -294,7 +294,7 @@ void Encoder::encodeInstruction(Instruction& inst)
         &m_gedInst,
         gedOp);
     if (status != GED_RETURN_VALUE_SUCCESS) {
-        fatalAt(inst.getLoc(), "GED failed to create instruction template");
+        fatalAtT(inst.getLoc(), "GED failed to create instruction template");
         return;
     }
 
@@ -469,7 +469,8 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
 {
     // CNL+ align1 ternary
     if (platform() < Platform::GEN10) {
-        fatal("src%d: align1 ternary is not supported on this platform.", (int)S);
+        fatalT("src", (int)S, ": align1 ternary is not supported on this "
+            "platform");
         return;
     }
 
@@ -515,7 +516,7 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
         encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
         if (inst.isMacro()) {
             if (platform() < Platform::GEN11) {
-                fatal("src%d: math macro operands require Align16", (int)S);
+                fatalT("src", (int)S, ": math macro operands require Align16");
                 return;
             }
             encodeSrcMathMacroReg<S>(src.getMathMacroExt());
@@ -533,7 +534,8 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
     }
     case Operand::Kind::IMMEDIATE:
         if (S == SourceIndex::SRC1) {
-            fatal("src1: immediate operand in ternary align1 must be src0 or src2");
+            fatalT("src1: immediate operand in ternary align1 must be "
+                "src0 or src2");
             return;
         }
         encodeSrcRegFile<S>(GED_REG_FILE_IMM);
@@ -544,7 +546,7 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
         }
         break;
     default:
-        fatal("src%d: invalid operand kind", (int)S);
+        fatalT("src", (int)S, ": invalid operand kind");
         return;
     }
 }
@@ -580,7 +582,7 @@ void Encoder::encodeTernaryAlign1Instruction(const Instruction& inst)
     } else if (isTernaryAlign1Integral(src0Type)) {
         execDataType = GED_EXECUTION_DATA_TYPE_Integer;
     } else {
-        fatal("src0: unsupported type for ternary align1 encoding");
+        fatalT("src0: unsupported type for ternary align1 encoding");
         return;
     }
     GED_ENCODE(ExecutionDataType, execDataType);
@@ -757,7 +759,7 @@ void Encoder::encodeBranchingInstructionSimplified(const Instruction& inst)
     } else {
         // jmpi, call, brc, ...
         if (src0.getKind() == Operand::Kind::INDIRECT)
-            error("Branch instructions do not support indirect register mode");
+            errorT("branch instructions forbid indirect register mode");
         encodeBranchSource(src0);
     }
 
@@ -803,7 +805,7 @@ void Encoder::encodeSendInstruction(const Instruction& inst)
 
     } else {  // ExDesc.IsReg == true
         if (!supportsExDescReg) {
-            error("ex_desc register not supported on this platform for "
+            errorT("ex_desc register not supported on this platform for "
                 "this instruction");
         }
 
@@ -931,7 +933,7 @@ void Encoder::encodeBasicDestination(
     case Operand::Kind::DIRECT:
         if (accessMode == GED_ACCESS_MODE_Align16) {
             if (dst.getRegion() != Region::DST1) {
-                fatal("dst has inconvertible region for Align16 encoding");
+                fatalT("dst has inconvertible region for Align16 encoding");
                 return;
             }
             if (isAlign16MathMacroRegisterCsrOperand(dst)) {
@@ -980,7 +982,7 @@ void Encoder::encodeBasicDestination(
         if (accessMode == GED_ACCESS_MODE_Align1 &&
             m_model.supportsAlign16ImplicitAcc())
         {
-            fatal("Align1 dst math macro unsupported on this platform.");
+            fatalT("Align1 dst math macro unsupported on this platform.");
             return;
         }
         break;
@@ -1005,7 +1007,7 @@ void Encoder::encodeBasicDestination(
         if (inst.getOpSpec().hasImplicitDstRegion(inst.isMacro())) {
             auto dstRgnImpl = inst.getOpSpec().implicitDstRegion(inst.isMacro());
             if (dstRgn != dstRgnImpl) {
-                warning("dst region should be %s", ToSyntax(dstRgnImpl).c_str());
+                warningT("dst region should be ", ToSyntax(dstRgnImpl));
             }
         }
         GED_ENCODE(DstHorzStride, lowerRegionHorz(dstRgn.getHz()));
@@ -1050,7 +1052,7 @@ void Encoder::encodeBasicSource(
             encodeSrcModifier<S>(src.getSrcModifier());
         } else if (src.getSrcModifier() != SrcModifier::NONE) {
             // better be invalid in the IR if unsupported
-            error("src%d source modifier not supported (invalid IR)",  (int)S);
+            errorT("src", (int)S, " source modifier not supported (invalid IR)");
         }
         break;
     case Operand::Kind::IMMEDIATE:
@@ -1108,7 +1110,8 @@ void Encoder::encodeBasicSource(
         if (static_cast<int>(S) == 0 && inst.isMovWithLabel()) {
             GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
         } else {
-            fatal("src%d: unsupported source operand kind (malformed IR)", (int)S);
+            fatalT("src", (int)S, ": unsupported source operand kind "
+                "(malformed IR)");
             return;
         }
         break;
@@ -1160,7 +1163,8 @@ void Encoder::encodeBasicSource(
                     src.getRegion() != Region::SRC881 &&
                     src.getRegion() != Region::SRCFF1)
                 {
-                    fatal("src%d: unsupported region for translation to align16 encoding", (int)S);
+                    fatalT("src", (int)S, ": unsupported region for "
+                        "translation to align16 encoding");
                     return;
                 }
                 // TODO: we could permit SIMD4 with .x to mean broadcast read
@@ -1235,7 +1239,8 @@ void Encoder::encodeSendDestination(const Operand& dst)
             GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Indirect);
             break;
         default:
-            fatal("dst: unsupported destination operand kind/addrMode (malformed IR)");
+            fatalT("dst: unsupported destination operand kind/addrMode "
+                "(malformed IR)");
             return;
         }
     }
@@ -1267,7 +1272,8 @@ void Encoder::encodeSendSource0(const Operand& src)
             GED_ENCODE(Src0AddrMode, GED_ADDR_MODE_Indirect);
             break;
         default:
-            fatal("src%d: unsupported source operand kind/addrMode (malformed IR)", (int)0);
+            fatalT("src0: unsupported source operand kind/addrMode "
+                "(malformed IR)");
             return;
             break;
         }
@@ -1314,7 +1320,7 @@ void Encoder::encodeSendsSource0(const Operand& src)
         GED_ENCODE(Src0AddrMode, GED_ADDR_MODE_Indirect);
         break;
     default:
-        fatal("src%d: unsupported source operand kind/addrMode (malformed IR)", (int)0);
+        fatalT("src0: unsupported source operand kind/addrMode (malformed IR)");
         return;
         break;
     }
@@ -1384,7 +1390,8 @@ void Encoder::encodeTernarySourceAlign16(const Instruction& inst)
             if (src0IsFloating && srcNIsFloating) {
                 encodeSrcType<S>(src.getType());
             } else {
-                fatal("src%d: mixed types require :f and :hf (or vice versa)", (int)S);
+                fatalT("src", (int)S, ": mixed types require :f and :hf "
+                    "(or vice versa)");
                 return;
             }
         }
@@ -1393,11 +1400,12 @@ void Encoder::encodeTernarySourceAlign16(const Instruction& inst)
     if (!inst.isMacro()) {
         const Region& rgn = src.getRegion();
         const RegRef& reg = src.getDirRegRef();
-        //Adjusting sub register when going from align1 to align 16 representation.
-        //in align 16 subregister is always 16 byte alligned, but we can play with swizzle to access none aligned sub register
+        // Adjusting sub register when going from align1 to align16 representation.
+        // in align 16 subregister is always 16 byte alligned, but we can play
+        // with swizzle to access none aligned sub register
         uint16_t subRegNumber = reg.subRegNum;
-        //mad (8) r46.0.xyzw:df r46.0.xyzw:df r50.0.xyzw:df r48.0.xyzw:df {Align16, Q1} // #??:$66:%66 {0=EL, 1=EL, 2=EL, BC=BAD}
-        //mad (2) r5.0.xy:df r5.0.xyxy:df r92.2.xyxy:df r93.0.xyxy:df {Align16, Q1, NoMask} // #??:$988:%988 {0=OL, 1=EH, 2=OH, BC=GOOD} BDW,SKL
+        // mad (8) r46.0.xyzw:df r46.0.xyzw:df r50.0.xyzw:df r48.0.xyzw:df {Align16, Q1}
+        // mad (2) r5.0.xy:df r5.0.xyxy:df r92.2.xyxy:df r93.0.xyxy:df {Align16, Q1, NoMask} // BDW,SKL
         if (S != SourceIndex::SRC2) {
             if (rgn == Region::SRC8X1 ||
                 rgn == Region::SRC4X1 ||
@@ -1416,7 +1424,7 @@ void Encoder::encodeTernarySourceAlign16(const Instruction& inst)
                     encodeSrcRepCtrl<S>(GED_REP_CTRL_Rep);
                 }
             } else {
-                fatal("src%d: unsupported region for Align16 encoding", (int)S);
+                fatalT("src", (int)S, ": unsupported region for Align16 encoding");
                 return;
             }
         } else {
@@ -1439,7 +1447,7 @@ void Encoder::encodeTernarySourceAlign16(const Instruction& inst)
                 encodeSrcChanSel<S>(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y);
             }
             else {
-                fatal("src%d: unsupported region for Align16 encoding", (int)S);
+                fatalT("src", (int)S, ": unsupported region for Align16 encoding");
                 return;
             }
         }
@@ -1465,7 +1473,7 @@ void Encoder::encodeTernaryDestinationAlign16(const Instruction& inst)
     }
     GED_ENCODE(DstDataType, lowerDataType(dst.getType()));
     if (dst.getDirRegName() != RegName::GRF_R) {
-        fatal("align16 ternary dst must be to GRF");
+        fatalT("align16 ternary dst must be to GRF");
         return;
     }
 
@@ -1584,9 +1592,9 @@ uint32_t Encoder::translateRegNum(
 
     const RegInfo *ri = m_model.lookupRegInfoByRegName(regName);
     if (ri == nullptr) {
-        error("%s: invalid register name for this platform", whichOp);
+        errorT(whichOp, ": invalid register name for this platform");
     } else if (!ri->isRegNumberValid((int)regNum)) {
-        error("%s: %s%d number out of range", whichOp, ri->syntax, regNum);
+        errorT(whichOp, ": ", ri->syntax, regNum, " number out of range");
     } else {
         ri->encode((int)regNum, regNumBits);
     }
@@ -1609,9 +1617,9 @@ uint32_t Encoder::mathMacroRegToBits(int src, MathMacroExt implAcc) {
     case MathMacroExt::NOMME: bits = 8; break; // 1000b
     default:
         if (src < 0) {
-            fatal("dst operand has invalid math macro register");
+            fatalT("dst operand has invalid math macro register");
         } else {
-            fatal("src%d operand has invalid math macro register", src);
+            fatalT("src", src, " operand has invalid math macro register");
         }
         return bits;
     }
@@ -1629,7 +1637,7 @@ GED_DST_CHAN_EN Encoder::mathMacroRegToChEn(MathMacroExt implAcc) {
     case MathMacroExt::MME6:   bits = GED_DST_CHAN_EN_yz;   break;
     case MathMacroExt::MME7:   bits = GED_DST_CHAN_EN_xyz;  break;
     case MathMacroExt::NOMME:  bits = GED_DST_CHAN_EN_w;    break; // 1000b
-    default: fatal("operand has invalid math macro register");
+    default: fatalT("operand has invalid math macro register");
     }
     return bits;
 }
@@ -1641,7 +1649,7 @@ void Encoder::encodeOptionsThreadControl(const Instruction& inst)
             GED_ENCODE(ThreadCtrl, GED_THREAD_CTRL_NoPreempt);
         }
         else {
-            warning("NoPreempt not supported on this platform (dropping)");
+            warningT("NoPreempt not supported on this platform (dropping)");
         }
     }
 }
@@ -1701,7 +1709,7 @@ void Encoder::encodeOptions(const Instruction& inst)
     if (inst.hasInstOpt(InstOpt::SWITCH) && m_model.supportsHwDeps())
     {
         if (inst.getOp() == Op::NOP) {
-            warning("nop doesn't support Switch option (dropping)");
+            warningT("nop doesn't support Switch option (dropping)");
         } else {
             GED_ENCODE(ThreadCtrl, GED_THREAD_CTRL_Switch);
         }
@@ -1734,11 +1742,11 @@ void Encoder::encodeOptions(const Instruction& inst)
             inst_type = SWSB::InstType::SEND;
         else if (inst.is(Op::MATH))
             inst_type = SWSB::InstType::MATH;
-        uint32_t swsb_binary = inst.getSWSB().encode(
-                                    m_opts.swsbEncodeMode, inst_type);
+        uint32_t swsbBinary =
+            inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);
 
         assert(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type));
-        GED_ENCODE(SWSB, swsb_binary);
+        GED_ENCODE(SWSB, swsbBinary);
     }
 
 }
@@ -1781,7 +1789,7 @@ void Encoder::patchJumpOffsets()
             // For call, its target symbol may not be resolvable until in the
             // link stage when other kernels are available.
             if (inst->getOp() != Op::CALL && inst->getOp() != Op::CALLA) {
-                fatalAt(inst->getLoc(), "jip label invalid");
+                fatalAtT(inst->getLoc(), "jip label invalid");
             }
         }
 
@@ -1808,7 +1816,7 @@ void Encoder::patchJumpOffsets()
             if (uipBlk == nullptr) {
                 jumpPC = inst->getSource(1).getImmediateValue().s32 + encodePC;
             } else if (!getBlockOffset(uipBlk, jumpPC)) {
-                fatalAt(inst->getLoc(), "uip label invalid");
+                fatalAtT(inst->getLoc(), "uip label invalid");
             }
             encodePC = getEncodedPC(inst);
             int32_t uip = jumpPC - encodePC;
@@ -1823,9 +1831,8 @@ void Encoder::patchJumpOffsets()
             jp.bits);
         STOP_GED_TIMER()
         if (status != GED_RETURN_VALUE_SUCCESS) {
-            fatalAt(inst->getLoc(),
-                "GED_EncodeIns failed: %s",
-                gedReturnValueToString(status));
+            fatalAtT(inst->getLoc(),
+                "GED_EncodeIns failed: ", gedReturnValueToString(status));
         }
     }
 }

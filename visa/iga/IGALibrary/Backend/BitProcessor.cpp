@@ -31,61 +31,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-void BitProcessor::warning(const char *patt, ...)
+void BitProcessor::warningAt(const Loc &loc, std::string msg)
 {
-    va_list va;
-    va_start(va, patt);
-    warningAt(m_currInst ? m_currInst->getLoc() : m_currentPc, patt, va);
-    va_end(va);
+    m_errorHandler.reportWarning(loc, msg);
 }
-void BitProcessor::warningAt(const Loc& loc, const char *patt, ...)
+void BitProcessor::errorAt(const Loc &loc, std::string msg)
 {
-    va_list va;
-    va_start(va, patt);
-    warningAt(loc, patt, va);
-    va_end(va);
+    m_errorHandler.reportError(loc, msg);
 }
-void BitProcessor::warningAt(const Loc& loc, const char *patt, va_list &ap)
+void BitProcessor::fatalAt(const Loc &loc, std::string msg)
 {
-    m_errorHandler.reportWarning(loc, vformatF(patt, ap));
-}
-
-
-void BitProcessor::error(const char *patt, ...)
-{
-    va_list va;
-    va_start(va, patt);
-    errorAt(m_currInst ? m_currInst->getLoc() : m_currentPc, patt, va);
-    va_end(va);
-}
-void BitProcessor::errorAt(const Loc& loc, const char *patt, ...)
-{
-    va_list va;
-    va_start(va, patt);
-    errorAt(loc, patt, va);
-    va_end(va);
-}
-void BitProcessor::errorAt(const Loc& loc, const char *patt, va_list &ap)
-{
-    m_errorHandler.reportError(loc, vformatF(patt, ap));
-}
-
-
-void BitProcessor::fatal(const char *patt, ...)
-{
-    va_list va;
-    va_start(va, patt);
-    fatalAt(m_currInst ? m_currInst->getLoc() : m_currentPc, patt, va);
-    va_end(va);
-}
-void BitProcessor::fatalAt(const Loc& loc, const char *patt, ...)
-{
-    va_list va;
-    va_start(va, patt);
-    fatalAt(loc, patt, va);
-    va_end(va);
-}
-void BitProcessor::fatalAt(const Loc& loc, const char *patt, va_list &ap)
-{
-    m_errorHandler.throwFatal(loc, vformatF(patt, ap));
+    m_errorHandler.throwFatal(loc, msg);
 }

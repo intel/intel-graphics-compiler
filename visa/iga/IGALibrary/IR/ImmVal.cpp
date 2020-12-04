@@ -32,59 +32,59 @@ using namespace iga;
 
 
 ImmVal& ImmVal::operator=(uint8_t x) {
-    kind = U8;
+    kind = Kind::U8;
     u64 = 0;
     u8 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(int8_t x) {
-    kind = S8;
+    kind = Kind::S8;
     u64 = 0;
     s8 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(uint16_t x) {
-    kind = U16;
+    kind = Kind::U16;
     u64 = 0;
     u16 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(int16_t x) {
-    kind = S16;
+    kind = Kind::S16;
     u64 = 0;
     s16 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(uint32_t x) {
-    kind = U32;
+    kind = Kind::U32;
     u64 = 0;
     u32 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(int32_t x) {
-    kind = S32;
+    kind = Kind::S32;
     u64 = 0;
     s32 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(uint64_t x) {
-    kind = U64;
+    kind = Kind::U64;
     u64 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(int64_t x) {
-    kind = S64;
+    kind = Kind::S64;
     s64 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(float x) {
-    kind = F32;
+    kind = Kind::F32;
     u64 = 0;
     f32 = x;
     return *this;
 }
 ImmVal& ImmVal::operator=(double x) {
-    kind = F64;
+    kind = Kind::F64;
     f64 = x;
     return *this;
 }
@@ -94,15 +94,15 @@ void ImmVal::Abs() {
     switch (kind) {
     case Kind::F16:
         // the sign bit manually so that we can "negate" NaN values
-        u16 &= ~IGA_F16_SIGN_BIT;
+        u16 &= ~F16_SIGN_BIT;
         break;
     case Kind::F32:
         // see F16
-        u32 &= ~IGA_F32_SIGN_BIT;
+        u32 &= ~F32_SIGN_BIT;
         break;
     case Kind::F64:
         // see F64
-        u64 &= ~IGA_F64_SIGN_BIT;
+        u64 &= ~F64_SIGN_BIT;
         break;
 
     case Kind::S8:
@@ -127,15 +127,15 @@ void ImmVal::Negate() {
     case Kind::F16:
         // N.B. we manually flip the sign bit
         // so that -{s,q}nan gives the right bit pattern on all HW
-        u16 = IGA_F16_SIGN_BIT ^ u16;
+        u16 = F16_SIGN_BIT ^ u16;
         break;
     case Kind::F32:
         // see above
-        u32 = IGA_F32_SIGN_BIT ^ u32;
+        u32 = F32_SIGN_BIT ^ u32;
         break;
     case Kind::F64:
         // see above
-        u64 = IGA_F64_SIGN_BIT ^ u64;
+        u64 = F64_SIGN_BIT ^ u64;
         break;
 
     case Kind::S8:

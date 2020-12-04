@@ -60,6 +60,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 %x SLASH_STAR
 %x STRING_DBL
 %x STRING_SNG
+
+DEC_DIGIT    [0-9]
+DEC_DIGITS   {DEC_DIGIT}+
+/* DEC_FRAC     ({DEC_DIGITS}\.{DEC_DIGITS}?)|({DEC_DIGITS}?\.{DEC_DIGITS}) */
+HEX_DIGIT    [0-9A-Fa-f]
+HEX_DIGITS   {HEX_DIGIT}+
+HEX_FRAC     ({HEX_DIGITS}\.{HEX_DIGITS}?)|({HEX_DIGITS}?\.{HEX_DIGITS})
+
+EXP_SUFFIX   [-+]?{DEC_DIGITS}
+
 %%
 
 <SLASH_STAR>"*/"      { inp_off += 2; BEGIN(INITIAL); }
@@ -115,14 +125,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 \^                    return iga::Lexeme::CIRC;
 \|                    return iga::Lexeme::PIPE;
 
-0[bB][01]+             return iga::Lexeme::INTLIT02; /* 0b1101 */
-[0-9]+                 return iga::Lexeme::INTLIT10; /* 13 */
-0[xX][0-9A-Fa-f]+      return iga::Lexeme::INTLIT16; /* 0x13 */
+{DEC_DIGITS}          return iga::Lexeme::INTLIT10; /* 13 */
+0[xX]{HEX_DIGITS}     return iga::Lexeme::INTLIT16; /* 0x13 */
+0[bB][01]+            return iga::Lexeme::INTLIT02; /* 0b1101 */
 
-[0-9]+\.[0-9]+([eE][-+]?[0-9]+)?  return iga::Lexeme::FLTLIT; /* 3.14 */
-[0-9]+[eE][-+]?[0-9]+  return iga::Lexeme::FLTLIT; /* 3e-9 */
-
-[_a-zA-Z][_a-zA-Z0-9]*  return iga::Lexeme::IDENT;
+{DEC_DIGITS}\.{DEC_DIGITS}                      return iga::Lexeme::FLTLIT; /* 3.14 (cannot have .3 because that screws up (f0.0)) */
+{DEC_DIGITS}(\.{DEC_DIGITS})?[eE]{EXP_SUFFIX}   return iga::Lexeme::FLTLIT; /* 3e-9/3.14e9*/
+0[xX]({HEX_FRAC}|{HEX_DIGITS})[pP]{EXP_SUFFIX}  return iga::Lexeme::FLTLIT; /* 0x1.2p3/0x.2p3/0x1.p3/ */
+[_a-zA-Z][_a-zA-Z0-9]*                          return iga::Lexeme::IDENT;
 
 %{
 /*
@@ -134,8 +144,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 \n                     return iga::Lexeme::NEWLINE; /* newlines are explicitly represented */
-[ \t\r]+               { inp_off += (unsigned int)yyget_leng(yyscanner); } /* whitespace */;
-"//"[^\n]*             { inp_off += (unsigned int)yyget_leng(yyscanner); } /* EOL comment ?*/
+[ \t\r]+               {inp_off += (unsigned int)yyget_leng(yyscanner);} /* whitespace */;
+"//"[^\n]*             {inp_off += (unsigned int)yyget_leng(yyscanner);} /* EOL comment ?*/
 
 .                    return iga::Lexeme::LEXICAL_ERROR;
 <<EOF>>              return iga::Lexeme::END_OF_FILE;

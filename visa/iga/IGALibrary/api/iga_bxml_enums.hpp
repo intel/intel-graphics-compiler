@@ -98,7 +98,6 @@ namespace iga
         CRE,  // check and refinement engine
         A0REG  = 0x100, // for <GEN12 SFID can be indirect
     };
-    // static const SFID ALL_SFIDS[]
     static const std::array<SFID,
         13
     > ALL_SFIDS {
@@ -107,7 +106,6 @@ namespace iga
         SFID::TS, SFID::VME, SFID::DCRO, SFID::DC0, SFID::PIXI,
         SFID::DC1, SFID::CRE,
     };
-
 
 
     // The sync instruction's subfunction

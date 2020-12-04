@@ -1,8 +1,8 @@
 #include <cstring>
 #include <iomanip>
-# if GED_VALIDATION_API
+// trb: workaround: # if GED_VALIDATION_API
 # include <algorithm>
-# endif
+// trb: workaround: # endif
 #include "common/ged_string_utils.h"
 #include "xcoder/ged_ins.h"
 
@@ -387,6 +387,48 @@ GED_RETURN_VALUE GEDIns::PrintFieldBitLocation(const /* GED_INS_FIELD */ uint32_
 }
 #endif //GED_VALIDATION_API
 
+GED_RETURN_VALUE GEDIns::QueryFieldBitLocation(const /* GED_INS_FIELD */ uint32_t field, uint32_t *fragments, uint32_t *length) const
+{
+    GEDASSERT(field < GetCurrentModelData().numberOfInstructionFields);
+    GEDASSERT((fragments != NULL) || (length != NULL));
+    GED_RETURN_VALUE status = GED_RETURN_VALUE_INVALID_FIELD;
+    ged_ins_decoding_table_t table = _decodingTable;
+
+    if (length != NULL)
+    {
+        *length = 0;
+    }
+    const ged_ins_field_entry_t* dataEntry = GetInstructionDataEntry(table, field);
+    if (NULL == dataEntry)
+    {
+        return status;
+    }
+
+    vector<ged_ins_field_mapping_fragment_t> mappingFragments;
+    RecordPosition(mappingFragments, dataEntry);
+    sort(mappingFragments.begin(), mappingFragments.end());
+    MergeFragments(mappingFragments);
+
+    uint32_t index = 0;
+    for (const auto& it : mappingFragments)
+    {
+        if (it._fixed)
+            ;
+        else
+        {
+            if (fragments != NULL)
+            {
+                uint32_t len = it._from._highBit - it._from._lowBit + 1;
+                fragments[index++] = (len << 16) | it._to._lowBit;
+            }
+            if (length != NULL)
+            {
+                (*length)++;
+            }
+        }
+    }
+    return GED_RETURN_VALUE_SUCCESS;
+}
 
 uint32_t GEDIns::GetFieldSize(const /* GED_INS_FIELD */ uint32_t field) const
 {
@@ -1625,7 +1667,7 @@ bool GEDIns::RecordPadding(vector<ged_ins_field_mapping_fragment_t> &mappingFrag
     }
     return false;
 }
-
+#endif // GED_VALIDATION_API
 
 bool GEDIns::RecordPosition(vector<ged_ins_field_mapping_fragment_t> &mappingFragments, const ged_ins_field_entry_t* dataEntry) const
 {
@@ -1707,4 +1749,3 @@ void GEDIns::MergeFragments(vector<ged_ins_field_mapping_fragment_t> &mappingFra
     }
 }
 
-#endif // GED_VALIDATION_API

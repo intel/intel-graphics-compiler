@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga
 {
     struct ImmVal {
-        enum Kind {
+        enum class Kind {
             UNDEF,
             F16,
             F32,
@@ -64,7 +64,11 @@ namespace iga
             uint32_t    u32;
             uint64_t    u64 = 0;
         };
-        Kind            kind = Kind::UNDEF;
+        Kind kind = Kind::UNDEF;
+
+        bool isS64() const {return kind == Kind::S64;}
+        bool isU64() const {return kind == Kind::U64;}
+        bool isI64() const {return isS64() || isU64();}
 
         ImmVal& operator=(uint8_t x);
         ImmVal& operator=(int8_t x);

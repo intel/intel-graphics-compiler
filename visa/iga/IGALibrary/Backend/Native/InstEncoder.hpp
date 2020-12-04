@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IR/Kernel.hpp"
 #include "../../asserts.hpp"
 #include "../../bits.hpp"
+#include "../../strings.hpp"
 //
 #include <cstdint>
 #include <functional>
@@ -262,21 +263,17 @@ namespace iga
         }
         void encodingError(const std::string &ctx, const std::string &msg) {
             if (ctx.empty()) {
-                error(msg.c_str());
+                errorT(msg);
             } else {
-                std::stringstream ss;
-                ss << ctx << ": " << msg;
-                error(ss.str().c_str());
+                errorT(ctx, ": ", msg);
             }
         }
-        void internalErrorBadIR(const char *what) {
-            error("INTERNAL ERROR: malformed IR: %s", what);
+        void internalErrorBadIR(const std::string &what) {
+            errorT("INTERNAL ERROR: malformed IR: ", what);
         }
         void internalErrorBadIR(const Field &f, const char *msg = nullptr) {
             if (msg) {
-                std::stringstream ss;
-                ss << f.name << ": " << msg;
-                internalErrorBadIR(ss.str().c_str());
+                internalErrorBadIR(iga::format(f.name, ": ", msg));
             } else {
                 internalErrorBadIR(f.name);
             }

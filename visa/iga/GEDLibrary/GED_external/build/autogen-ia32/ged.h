@@ -229,6 +229,19 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_PrintFieldBitLocation(const ged_ins_t* 
 #endif // GED_VALIDATION_API
 
 /*!
+ * Return encoding of field within instruction bytes
+ *
+ * @param[in]       ins        Pointer to the instruction object containing the field in question.
+ * @param[in]       field      The requested field.
+ * @param[in]       fragments  Array of fragments.
+ * @param[in]       length     Length of fragments array.
+ *
+ * @return      GED_RETURN_VALUE indicating success or decoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_QueryFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field, uint32_t * fragments,
+                                                               uint32_t * length);
+
+/*!
  * Get the size (in bits) of the given field within the given instruction. If the field is invalid for the given instruction, the
  * function returns 0.
  *

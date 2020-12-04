@@ -147,7 +147,7 @@ namespace iga
             ;
     }
 
-    std::string format(SendOp op);
+    std::string ToSyntax(SendOp op);
 
     enum class CacheOpt {
         // the default caching state from MOCS or wherever
@@ -168,7 +168,7 @@ namespace iga
         // e.g. in the BTI system 0xFF is used for this (coherent)
         UNCACHED,
     };
-    std::string format(CacheOpt op);
+    std::string ToSymbol(CacheOpt op);
 
     enum class AddrType {
         // stateless
@@ -176,6 +176,7 @@ namespace iga
         // stateful: binding table interface
         BTI,
     };
+    std::string ToSymbol(AddrType op);
 
     ///////////////////////////////////////////////////////////////////////////
     // Generic processing of basic buffer messages.   This includes data port
@@ -444,8 +445,6 @@ namespace iga
         std::string sym() const;
     }; // MessageSyntax
 
-    std::string format(AddrType op);
-    std::string format(SFID sfid);
 
     //
     // Returns the resulting information of a message decode

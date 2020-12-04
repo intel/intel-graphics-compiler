@@ -103,6 +103,19 @@ namespace iga {
         iga_format_to_helper(os, ts...);
     }
 
+    // enables one to write:
+    //
+    // iga::format("the hex value is 0x", hex(value, 4), " ...");
+    //                                    ^^^
+    // omits the leading "0x"
+    struct hex {
+        uint64_t value;
+        short cols;
+        template <typename T>
+        hex(T _value, int _cols = 0)
+            : value(_value), cols((short)_cols) { }
+    };
+
     ///////////////////////////////////////////////////////////////////////////
     // takes a printf-style pattern and converts it to a string
     std::string formatF(const char *pat, ...);
@@ -135,6 +148,8 @@ namespace iga {
     // formats to uppercase hex for a given width
     // without affecting os's stream state
     void fmtHexDigits(std::ostream &os, uint64_t val, int w = 0);
+    std::string fmtHexDigits(uint64_t val, int w = 0);
+
     // same as fmtHexDigits, but prefixes an 0x
     // does not change os's stream state
     void fmtHex(std::ostream &os, uint64_t val, int w = 0);
@@ -274,5 +289,6 @@ namespace iga {
     }
 } // namespace iga
 
+std::ostream &operator <<(std::ostream &os, iga::hex);
 
 #endif // IGA_STRINGS_HPP

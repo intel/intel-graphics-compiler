@@ -125,6 +125,10 @@ GED_RETURN_VALUE GED_PrintFieldBitLocation(const ged_ins_t* ins, const GED_INS_F
     return reinterpret_cast<const GEDIns*>(ins)->PrintFieldBitLocation(field);
 }
 #endif // GED_VALIDATION_API
+GED_RETURN_VALUE GED_QueryFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field, uint32_t * fragments, uint32_t * length)
+{
+    return reinterpret_cast<const GEDIns*>(ins)->QueryFieldBitLocation(field, fragments, length);
+}
 uint32_t GED_FieldSize(const ged_ins_t* ins, const GED_INS_FIELD field)
 {
     return reinterpret_cast<const GEDIns*>(ins)->GetFieldSize(field);
