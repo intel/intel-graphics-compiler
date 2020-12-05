@@ -391,7 +391,6 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
     for (Function& F : M)
     {
         m_currFunction = &F;
-
         if (m_currFunction->isDeclaration())
         {
             continue;
@@ -506,6 +505,69 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
                 }
             }
             AI->moveBefore(InsertPt);
+        }
+    }
+}
+
+static void sinkAllocaSingleUse(SmallVectorImpl<AllocaInst*>& Allocas) {
+    IGC_ASSERT(false == Allocas.empty());
+    DominatorTree DT;
+    bool Calcuated = false;
+
+    // For each alloca's use, sink it if it has a use that dominates all other uses.
+    // This use is called the dominating use.
+    for (auto AI : Allocas) {
+        if (AI->user_empty())
+            continue;
+
+        for (auto A : AI->users())
+        {
+            bool Skip = false;
+            SmallVector<Instruction*, 8> UInsts;
+            auto UI = dyn_cast<Instruction>(A);
+            for (auto U : UI->users()) {
+                auto UUI = dyn_cast<Instruction>(U);
+                //can't sink the use in the same BB where a PHI node exists
+                //As it will violate the basic block structure, since phi nodes
+                //will always be at the beginging of a BB
+                if (!UUI || isa<PHINode>(UUI)) {
+                    Skip = true;
+                    break;
+                }
+                UInsts.push_back(UUI);
+            }
+            if (Skip || UInsts.size() == 0)
+                continue;
+            // Compute dominator tree lazily.
+            if (!Calcuated) {
+                Function* F = AI->getParent()->getParent();
+                DT.recalculate(*F);
+                Calcuated = true;
+            }
+
+            // Find the Nearest Common Denominator for all the uses
+            Instruction* DomUse = UInsts[0];
+            BasicBlock* DomBB = DomUse->getParent();
+            for (unsigned i = 1; i < UInsts.size(); ++i) {
+                Instruction* Use = UInsts[i];
+                BasicBlock* UseBB = Use->getParent();
+                DomBB = DT.findNearestCommonDominator(DomBB, UseBB);
+                if (!DomBB) {
+                    break;
+                }
+            }
+
+            if (DomBB) {
+                // If DomBB has a use in it, insert it just before the first use.
+                // Otherwise, append it to the end of the block, to reduce register pressure.
+                Instruction* InsertPt = DomBB->getTerminator();
+                for (Instruction* Use : UInsts) {
+                    if (DomBB == Use->getParent() && DT.dominates(Use, InsertPt)) {
+                        InsertPt = Use;
+                    }
+                }
+                UI->moveBefore(InsertPt);
+            }
         }
     }
 }
@@ -702,8 +764,15 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // appear in entry block of entry function. All such allocas get treated as being in prolog of
     // entry function. This results in live-range extension, but with -O0 this is not a problem as debugging
     // experience is more important than extra spills.
-    if(!modMD->compOpt.OptDisable)
+    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (!modMD->compOpt.OptDisable)
+    {
+        if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold))
+        {
+            sinkAllocaSingleUse(allocaInsts);
+        }
         sinkAllocas(allocaInsts);
+    }
     // If there are N+1 private buffers, and M+1 threads,
     // the layout representing the private memory will look like this:
 
@@ -735,7 +804,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // and resolved in the code gen
 
     LLVMContext& C = m_currFunction->getContext();
-    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     IntegerType* typeInt32 = Type::getInt32Ty(C);
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd lane id

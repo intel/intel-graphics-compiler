@@ -99,6 +99,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->numLoopInsts = 0;
     instrList->numOfLoop = 0;
     instrList->numInsts = 0;
+    instrList->numAllocaInsts = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
     instrList->hasPullBary = false;
@@ -327,6 +328,7 @@ void CheckInstrTypes::visitFCmpInst(FCmpInst& I)
 void CheckInstrTypes::visitAllocaInst(AllocaInst& I)
 {
     g_InstrTypes->numInsts++;
+    g_InstrTypes->numAllocaInsts++;
     if (I.isArrayAllocation() ||
         I.getAllocatedType()->isArrayTy() ||
         I.getAllocatedType()->isStructTy() ||

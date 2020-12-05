@@ -273,6 +273,7 @@ namespace IGC
         unsigned int numLoopInsts;
         unsigned int numOfLoop;
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
+        unsigned int numAllocaInsts;
         unsigned int numPsInputs;
     };
 

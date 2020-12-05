@@ -335,6 +335,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     MetaDataUtils* pMdUtils = ctx.getMetaDataUtils();
     bool isOptDisabled = ctx.getModuleMetaData()->compOpt.OptDisable;
     bool fastCompile = ctx.getModuleMetaData()->compOpt.FastCompilation;
+    bool highAllocaPressure = ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold);
+
 
     // Disable all target library functions.
     // right now we don't support any standard function in the code gen
@@ -596,16 +598,16 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (!isOptDisabled)
     {
         // Optimize lower-level IR
-        if (!fastCompile)
+        if (!fastCompile && !highAllocaPressure)
         {
             mpm.add(createIGCInstructionCombiningPass());
         }
         mpm.add(new GenSpecificPattern());
-        if (!fastCompile)
+        if (!fastCompile && !highAllocaPressure)
         {
             mpm.add(createEarlyCSEPass());
         }
-        if (!fastCompile && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
+        if (!fastCompile && !highAllocaPressure && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(createLICMPass());
         }
