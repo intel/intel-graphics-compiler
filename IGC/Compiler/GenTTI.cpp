@@ -119,6 +119,10 @@ namespace llvm {
         return EstimatedInstCnt;
     }
 
+    unsigned GenIntrinsicsTTIImpl::getFlatAddressSpace() {
+        return ADDRESS_SPACE_PRIVATE;
+    }
+
     void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop* L,
 #if LLVM_VERSION_MAJOR >= 7
         ScalarEvolution & SE,

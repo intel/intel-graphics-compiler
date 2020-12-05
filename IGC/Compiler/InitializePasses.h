@@ -94,6 +94,7 @@ void initializeOpenCLPrintfAnalysisPass(llvm::PassRegistry&);
 void initializeOpenCLPrintfResolutionPass(llvm::PassRegistry&);
 void initializePositionDepAnalysisPass(llvm::PassRegistry&);
 void initializePrivateMemoryResolutionPass(llvm::PassRegistry&);
+void initializePrivateMemoryToSLMPass(llvm::PassRegistry&);
 void initializePrivateMemoryUsageAnalysisPass(llvm::PassRegistry&);
 void initializeProcessFuncAttributesPass(llvm::PassRegistry&);
 void initializeProcessBuiltinMetaDataPass(llvm::PassRegistry&);

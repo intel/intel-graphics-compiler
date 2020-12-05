@@ -436,6 +436,10 @@ DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin pat
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if value==0 no override happens.", true)
 
+DECLARE_IGC_REGKEY(bool, EnableOptReportPrivateMemoryToSLM, false, "[POC] Generate opt report file for moving private memory allocations to SLM.", false)
+DECLARE_IGC_REGKEY(bool, ForceAllPrivateMemoryToSLM, false, "[POC] Force moving all private memory allocations to SLM.", false)
+DECLARE_IGC_REGKEY(debugString, ForcePrivateMemoryToSLMOnBuffers, 0, "[POC] Force moving private memory allocations to SLM, semicolon-separated list of buffers.", false)
+
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservativeRasterization for the platforms enabled", false)
 

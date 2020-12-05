@@ -80,6 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakConstantExpr/BreakConstantExpr.hpp"
@@ -338,6 +339,17 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     bool highAllocaPressure = ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold);
 
 
+    if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
+        IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
+    {
+        DummyPass* dummypass = new DummyPass();
+        TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function& F) {
+            GenIntrinsicsTTIImpl GTTI(&ctx, dummypass);
+            return TargetTransformInfo(GTTI);
+            });
+        mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
+    }
+
     // Disable all target library functions.
     // right now we don't support any standard function in the code gen
     // maybe we want to support some at some point to take advantage of LLVM optimizations
@@ -494,6 +506,26 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     {
             if (IGC_IS_FLAG_ENABLED(AllowMem2Reg))
             mpm.add(createPromoteMemoryToRegisterPass());
+    }
+
+    if (ctx.type == ShaderType::OPENCL_SHADER ||
+        ctx.type == ShaderType::COMPUTE_SHADER)
+    {
+        if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM))
+        {
+            mpm.add(new PrivateMemoryToSLM(
+                IGC_IS_FLAG_ENABLED(EnableOptReportPrivateMemoryToSLM)));
+        }
+        else if (IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
+        {
+            std::string forcedBuffers(
+                IGC_GET_REGKEYSTRING(ForcePrivateMemoryToSLMOnBuffers));
+
+            mpm.add(new PrivateMemoryToSLM(
+                forcedBuffers,
+                IGC_IS_FLAG_ENABLED(EnableOptReportPrivateMemoryToSLM)));
+        }
+        mpm.add(createInferAddressSpacesPass());
     }
 
     if (ctx.m_instrTypes.hasLoop)

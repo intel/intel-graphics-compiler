@@ -64,6 +64,11 @@ namespace llvm
 
         void* getAdjustedAnalysisPointer(const void* ID);
 
+        // [POC] Implemented to use InferAddressSpaces pass after
+        // PrivateMemoryToSLM pass to propagate ADDRESS_SPACE_PRIVATE
+        // from variables to memory operations.
+        unsigned getFlatAddressSpace();
+
         void getUnrollingPreferences(Loop* L,
 #if LLVM_VERSION_MAJOR >= 7
             ScalarEvolution & SE,
