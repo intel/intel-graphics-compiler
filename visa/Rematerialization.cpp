@@ -856,12 +856,9 @@ namespace vISA
             G4_DstRegRegion* newDst = kernel.fg.builder->createDst(newTemp->getRegVar(), 0,
                 (dst->getLeftBound() % numEltPerGRF(Type_UB)) / G4_Type_Table[dst->getType()].byteSize,
                 dst->getHorzStride(), dst->getType());
-            G4_INST* dupOp = nullptr;
-
-            dupOp = dstInst->cloneInst();
+            G4_INST* dupOp = dstInst->cloneInst();
             dupOp->setDest(newDst);
-            dupOp->setLocation(dstInst->getLocation());
-            dupOp->setCISAOff(dstInst->getCISAOff());
+            dupOp->inheritDIFrom(dstInst);
 
             rematSrc = createSrcRgn(src, dst, newTemp);
 
@@ -948,8 +945,7 @@ namespace vISA
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
                 newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), true);
-            dupOp->setLocation(dstInst->getLocation());
-            dupOp->setCISAOff(dstInst->getCISAOff());
+            dupOp->inheritDIFrom(dstInst);
 
             newInst.push_back(dupOp);
 

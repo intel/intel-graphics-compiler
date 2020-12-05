@@ -1208,11 +1208,6 @@ public:
         return (location && location->isMDLocation()) ? location->asMDLocation() : nullptr;
     }
 
-    void setLocation(MDLocation* loc)
-    {
-        setMetadata(Metadata::InstLoc, loc);
-    }
-
     int getLineNo() const
     {
         auto location = getLocation();
@@ -1228,6 +1223,12 @@ public:
     void inheritDIFrom(const G4_INST* inst);
 
 private:
+
+    // use inheritDIFrom() instead
+    void setLocation(MDLocation* loc)
+    {
+        setMetadata(Metadata::InstLoc, loc);
+    }
     bool detectComprInst() const;
     bool isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const;
     bool isFloatOnly() const;

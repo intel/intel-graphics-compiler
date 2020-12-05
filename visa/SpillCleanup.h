@@ -81,17 +81,16 @@ namespace vISA
         INST_LIST_ITER analyzeSpillCoalescing(std::list<INST_LIST_ITER>&, INST_LIST_ITER, INST_LIST_ITER, G4_BB*);
         void removeWARFills(std::list<INST_LIST_ITER>&, std::list<INST_LIST_ITER>&);
         void coalesceFills(std::list<INST_LIST_ITER>&, unsigned int, unsigned int, G4_BB*, int);
-        G4_DstRegRegion* generateCoalescedFill(G4_SrcRegRegion*, unsigned int, unsigned int, unsigned int, int, bool);
+        G4_INST* generateCoalescedFill(G4_SrcRegRegion*, unsigned int, unsigned int, unsigned int, bool);
         G4_SrcRegRegion* generateCoalescedSpill(G4_SrcRegRegion*, unsigned int, unsigned int, bool,
-            G4_InstOption, int, G4_Declare*, unsigned int);
+            G4_InstOption, G4_Declare*, unsigned int);
         void copyToOldFills(G4_DstRegRegion*, std::list<std::pair<G4_DstRegRegion*, std::pair<unsigned int, unsigned int>>>,
             INST_LIST_ITER, G4_BB*, int);
         bool fillHeuristic(std::list<INST_LIST_ITER>&,
             std::list<INST_LIST_ITER>&, const std::list<INST_LIST_ITER>&, unsigned int&, unsigned int&);
         bool overlap(G4_INST*, std::list<INST_LIST_ITER>&);
         bool overlap(G4_INST*, G4_INST*, bool&);
-        void coalesceSpills(std::list<INST_LIST_ITER>&, unsigned int,
-            unsigned int, bool, G4_InstOption, G4_BB*, int);
+        void coalesceSpills(std::list<INST_LIST_ITER>&, unsigned int, unsigned int, bool, G4_InstOption, G4_BB*);
         bool allSpillsSameVar(std::list<INST_LIST_ITER>&);
         void fixSendsSrcOverlap();
         void removeRedundantSplitMovs();

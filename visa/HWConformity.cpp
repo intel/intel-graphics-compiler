@@ -5723,8 +5723,7 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
             }
         }
     }
-    expand_sec_half_op->setLocation(expand_op->getLocation());
-    expand_sec_half_op->setCISAOff(expand_op->getCISAOff());
+    expand_sec_half_op->inheritDIFrom(expand_op);
 
     if (expand_op->getPredicate() || expand_op->getCondMod())
     {

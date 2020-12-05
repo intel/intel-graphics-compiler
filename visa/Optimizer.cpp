@@ -7674,7 +7674,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     INST_LIST_ITER insert_point = bb->end();
                     --insert_point;
                     for (auto inst_to_add : expanded_insts) {
-                        inst_to_add->setCISAOff(fcall->getCISAOff());
                         bb->insertBefore(insert_point, inst_to_add);
                     }
 

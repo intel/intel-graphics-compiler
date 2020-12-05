@@ -4855,8 +4855,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
         G4_ExecSize(numEltPerGRF(Type_UD)), movDst, r0Src, InstOpt_WriteEnable, false);
     if (lastInst)
     {
-        movInst->setCISAOff(lastInst->getCISAOff());
-        movInst->setLocation(lastInst->getLocation());
+        movInst->inheritDIFrom(lastInst);
     }
     instList.push_back(movInst);
 
@@ -4885,8 +4884,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // need to make sure builder list is empty since later phases do a splice on the entire list
     builder->instList.pop_back();
     // createSendInst incorrectly sets its cisa offset to the last value of the counter.
-    sendInst->setCISAOff(movInst->getCISAOff());
-    sendInst->setLocation(movInst->getLocation());
+    sendInst->inheritDIFrom(movInst);
     instList.push_back(sendInst);
 
     if (builder->getHasNullReturnSampler() && VISA_WA_CHECK(builder->getPWaTable(), Wa_1607871015))

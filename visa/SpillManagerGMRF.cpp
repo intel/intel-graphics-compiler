@@ -2354,7 +2354,7 @@ inline G4_INST * SpillManagerGRF::createAddFPInst(
     G4_Operand* fp = builder_->createSrc(builder_->kernel.fg.framePtrDcl->getRegVar(),
         0, 0, rDesc, Type_UD);
     auto newInst = builder_->createBinOp(G4_add, execSize, dst, fp, src, InstOpt_WriteEnable, true);
-    newInst->setCISAOff(curInst->getCISAOff());
+    newInst->inheritDIFrom(curInst);
 
     return newInst;
 
@@ -2401,7 +2401,7 @@ inline G4_INST * SpillManagerGRF::createSendInst(
     auto sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
         payload, desc, option, msgDesc, true);
-    sendInst->setCISAOff(curInst->getCISAOff());
+    sendInst->inheritDIFrom(curInst);
 
     return sendInst;
 }
@@ -2648,8 +2648,7 @@ SpillManagerGRF::createSpillSendInstr (
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp, InstOpt_WriteEnable);
-        sendInst->setLocation(curInst->getLocation());
-        sendInst->setCISAOff(curInst->getCISAOff());
+        sendInst->inheritDIFrom(curInst);
     }
     else
     {
@@ -2714,8 +2713,7 @@ SpillManagerGRF::createSpillSendInstr (
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, spillExecSize, (uint16_t)extMsgLength,
             off, fp, static_cast<G4_InstOption>(option));
-        sendInst->setLocation(curInst->getLocation());
-        sendInst->setCISAOff(curInst->getCISAOff());
+        sendInst->inheritDIFrom(curInst);
     }
     else
     {
@@ -2906,8 +2904,7 @@ SpillManagerGRF::createFillSendInstr (
         }
     }
     auto fillInst = builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable);
-    fillInst->setLocation(curInst->getLocation());
-    fillInst->setCISAOff(curInst->getCISAOff());
+    fillInst->inheritDIFrom(curInst);
     return fillInst;
 
 }
@@ -2967,8 +2964,7 @@ SpillManagerGRF::createFillSendInstr(
 
     unsigned responseLength = cdiv(segmentByteSize, REG_BYTE_SIZE);
     auto fillInst = builder_->createFill(payload, postDst, execSize, responseLength, off, fp, InstOpt_WriteEnable);
-    fillInst->setLocation(curInst->getLocation());
-    fillInst->setCISAOff(curInst->getCISAOff());
+    fillInst->inheritDIFrom(curInst);
     return fillInst;
 }
 
@@ -4869,8 +4865,6 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
              auto sendInst = builder->createInternalSendInst(nullptr,
                  G4_send, g4::SIMD16, fillDst, headerOpnd, msgDescImm, inst->getOption(),
                  msgDesc);
-
-             sendInst->setCISAOff(inst->getCISAOff());
 
              instIt = bb->insertBefore(instIt, sendInst);
 
