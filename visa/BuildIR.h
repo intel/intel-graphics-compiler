@@ -588,11 +588,11 @@ public:
 
     //
     // Check if opnd is or can be made "alignByte"-byte aligned.
-    // It will change the underlying variable's alignment
-    // (e.g., make a scalar variable GRF-aligned) when possible to satisfy the alignment
+    // These functions will change the underlying variable's alignment
+    // (e.g., make a scalar variable GRF-aligned) when possible to satisfy
+    // the alignment
     bool isOpndAligned(G4_Operand* opnd, int alignByte) const;
-    // Use this version if you want to know the fixed subreg offset for the operand even if it's not aligned.
-    std::tuple<bool, uint16_t> isOpndAlignedTo(G4_Operand *opnd, int align_byte) const;
+    bool isOpndAligned(G4_Operand *opnd, unsigned short &offset, int align_byte) const;
 
     void setIsKernel(bool value) { isKernel = value; }
     bool getIsKernel() const { return isKernel; }

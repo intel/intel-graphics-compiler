@@ -164,10 +164,10 @@ void IR_Builder::bindInputDecl(G4_Declare* dcl, int offset)
 }
 
 // check if an operand is aligned to <align_byte>
-std::tuple<bool, uint16_t> IR_Builder::isOpndAlignedTo(
-    G4_Operand *opnd, int align_byte) const
+bool IR_Builder::isOpndAligned(
+    G4_Operand *opnd, unsigned short &offset, int align_byte) const
 {
-    uint16_t offset = 0;
+    offset = 0;
     bool isAligned = true;
 
     switch (opnd->getKind())
@@ -209,7 +209,7 @@ std::tuple<bool, uint16_t> IR_Builder::isOpndAlignedTo(
         }
         if (!isAligned)
         {
-            return std::make_tuple(isAligned, offset);
+            return isAligned;
         }
 
         if (opnd->isDstRegRegion())
@@ -230,7 +230,7 @@ std::tuple<bool, uint16_t> IR_Builder::isOpndAlignedTo(
         }
         if (offset % align_byte != 0)
         {
-            return std::make_tuple(false, offset);
+            return false;
         }
         // Only alignment of the top dcl can be changed.
         if (dcl && dcl->getRegFile() == G4_GRF)
@@ -355,14 +355,14 @@ std::tuple<bool, uint16_t> IR_Builder::isOpndAlignedTo(
     default:
         break;
     }
-    return std::make_tuple(isAligned, offset);
+    return isAligned;
 }
 
 
 bool IR_Builder::isOpndAligned(G4_Operand* opnd, int alignByte) const
 {
-    auto [isAligned, offset] = isOpndAlignedTo(opnd, alignByte);
-    return isAligned;
+    uint16_t offset = 0; // ignored
+    return isOpndAligned(opnd, offset, alignByte);
 }
 
 

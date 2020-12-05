@@ -452,8 +452,10 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                             if (dstRegionSize <= 16)
                             {
                                 // see if we can make the dst fit in one oword
+                                unsigned short dstOffset = 0;
+                                bool dstOwordAligned = false;
                                 int dstAlign = Round_Up_Pow2(dstRegionSize);
-                                auto [dstOwordAligned, dstOffset] = builder.isOpndAlignedTo(dst, dstAlign);
+                                dstOwordAligned = builder.isOpndAligned(dst, dstOffset, dstAlign);
                                 if (!dstOwordAligned)
                                 {
                                     // If we can align dst to its size, it must fit in one OWord
@@ -465,7 +467,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                                         // technically if dst and src are both evenly split the instruction is
                                         // still ok, but this case should be rare so we ignore it
                                         G4_DstRegRegion* newDst = insertMovAfter(iter, dst, dst->getType(), bb);
-                                        bool alignTmpDst = builder.isOpndAligned(newDst, 16);
+                                        bool alignTmpDst = builder.isOpndAligned(newDst, dstOffset, 16);
                                         MUST_BE_TRUE(alignTmpDst, "must be able to oword align tmp dst");
                                         inst->setDest(newDst);
                                         return true;
