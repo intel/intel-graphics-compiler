@@ -279,11 +279,6 @@ bool HSUsesHWBarriers() const
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
 }
 
-bool NeedResetA0forVxHA0() const
-{
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
-}
-
 bool enableVertexReorderingPhase2() const
 {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);

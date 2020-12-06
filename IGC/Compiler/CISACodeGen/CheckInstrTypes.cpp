@@ -91,7 +91,6 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasTypedRead = false;
     instrList->hasTypedwrite = false;
     instrList->mayHaveIndirectOperands = false;
-    instrList->mayHaveIndirectResources = false;
     instrList->hasUniformAssumptions = false;
     instrList->hasWaveIntrinsics = false;
     instrList->numPsInputs = 0;
@@ -293,20 +292,6 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         default:
             break;
         }
-
-        Value* resourcePtr = GetBufferOperand(CI);
-        if (resourcePtr == nullptr)
-        {
-            Value* samplerPtr = nullptr;
-            getTextureAndSamplerOperands(CI, resourcePtr, samplerPtr);
-        }
-        if (resourcePtr &&
-            resourcePtr->getType()->isPointerTy() &&
-            isStatefulAddrSpace(resourcePtr->getType()->getPointerAddressSpace()) &&
-            !IsDirectIdx(resourcePtr->getType()->getPointerAddressSpace()))
-        {
-            g_InstrTypes->mayHaveIndirectResources = true;
-        }
     }
 }
 
@@ -389,10 +374,6 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
         {
             g_InstrTypes->hasStorageBufferLoad = true;
         }
-        if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
-        {
-            g_InstrTypes->mayHaveIndirectResources = true;
-        }
         break;
     }
     }
@@ -424,10 +405,6 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
         if (bufferType == UAV || bufferType == BINDLESS)
         {
             g_InstrTypes->hasStorageBufferStore = true;
-        }
-        if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
-        {
-            g_InstrTypes->mayHaveIndirectResources = true;
         }
         break;
     }

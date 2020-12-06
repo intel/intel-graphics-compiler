@@ -2594,21 +2594,7 @@ namespace IGC
 
     void CEncoder::AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1)
     {
-        // On ICL+ platforms address register must be initialized if it is used
-        // in VxH indirect addressing to avoid out-of-bounds access on inactive
-        // lanes. VISA initializes address register at the beginning of the
-        // shader which is sufficient for shaders that use address register only
-        // for indirect addressing but is not sufficient if shader also uses
-        // address register in send descriptors. The latter case is handled by
-        // the initialization below.
-        // see VISA Optimizer::resetA0()
-        const bool mayUseA0InSendDesc =
-            m_program->GetContext()->m_instrTypes.mayHaveIndirectResources;
-        const bool needsA0Reset =
-            m_program->m_Platform->NeedResetA0forVxHA0();
-
-        if (((mayUseA0InSendDesc && needsA0Reset) ||
-            IGC_IS_FLAG_ENABLED(InitializeAddressRegistersBeforeUse)) &&
+        if (IGC_IS_FLAG_ENABLED(InitializeAddressRegistersBeforeUse) &&
             !dst->IsUniform() &&
             !m_encoderState.m_noMask)
         {

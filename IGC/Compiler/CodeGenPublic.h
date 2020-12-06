@@ -263,9 +263,6 @@ namespace IGC
         bool hasTypedRead;
         bool hasTypedwrite;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
-        // true if shader may have indirect texture or buffer.
-        // Note: does not check for indirect sampler
-        bool mayHaveIndirectResources;
         bool hasUniformAssumptions;
         bool hasWaveIntrinsics;
         bool hasPullBary;
