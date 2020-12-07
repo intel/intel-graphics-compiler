@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "FunctionGroup.h"
 #include "GenX.h"
-#include "GenXBackendConfig.h"
+#include "vc/Support/BackendConfig.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXWATable.h"

@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_TYPE "cmimportbif"
 
 #include "GenX.h"
-#include "GenXBackendConfig.h"
+#include "vc/Support/BackendConfig.h"
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallPtrSet.h>

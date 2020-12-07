@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define VCOPT_LIB_GENXCODEGEN_GENXOCLRUNTIMEINFO_H
 
 #include "FunctionGroup.h"
-#include "GenXBackendConfig.h"
+#include "vc/Support/BackendConfig.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 

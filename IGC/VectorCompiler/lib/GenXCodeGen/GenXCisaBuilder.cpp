@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "GenX.h"
-#include "GenXBackendConfig.h"
+#include "vc/Support/BackendConfig.h"
 #include "GenXDebugInfo.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"

@@ -54,7 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "FunctionGroup.h"
 #include "GenX.h"
-#include "GenXBackendConfig.h"
+#include "vc/Support/BackendConfig.h"
 #include "GenXDebugInfo.h"
 #include "GenXModule.h"
 #include "GenXOCLRuntimeInfo.h"

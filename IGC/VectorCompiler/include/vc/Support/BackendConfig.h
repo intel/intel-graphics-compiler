@@ -39,8 +39,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LIB_GENXCODEGEN_GENXBACKENDCONFIG_H
-#define LIB_GENXCODEGEN_GENXBACKENDCONFIG_H
+#ifndef VC_SUPPORT_BACKEND_CONFIG_H
+#define VC_SUPPORT_BACKEND_CONFIG_H
 
 #include "vc/Support/ShaderDump.h"
 

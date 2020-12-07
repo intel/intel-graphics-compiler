@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenXDebugInfo.h"
 #include "FunctionGroup.h"
-#include "GenXBackendConfig.h"
+#include "vc/Support/BackendConfig.h"
 #include "GenXTargetMachine.h"
 #include "GenXVisaRegAlloc.h"
 
