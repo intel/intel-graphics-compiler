@@ -3708,7 +3708,7 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* next_inst)
         return false;
     }
 
-    if (builder.getOptions()->getTarget() == VISA_3D || !bb->isAllLaneActive())
+    if (kernel.getKernelType() == VISA_3D || !bb->isAllLaneActive())
     {
         if (!flagMove->isWriteEnableInst())
         {
@@ -3796,7 +3796,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         return false;
     }
 
-    if (builder.getOptions()->getTarget() == VISA_3D || !bb->isAllLaneActive())
+    if (kernel.getKernelType() == VISA_3D || !bb->isAllLaneActive())
     {
         // Make sure masks of both instructions are same
         if (inst->getMaskOption() != cmpInst->getMaskOption())

@@ -2423,7 +2423,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                     lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount); // update reference count
                     buildInterferenceWithLive(live, id);
 
-                    if (LivenessAnalysis::writeWholeRegion(bb, inst, flagReg, builder.getOptions()))
+                    if (liveAnalysis->writeWholeRegion(bb, inst, flagReg))
                     {
                         updateLiveness(live, id, false);
                     }

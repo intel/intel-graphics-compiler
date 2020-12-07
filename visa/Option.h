@@ -139,10 +139,6 @@ public:
     uint64_t getuInt64Option(vISAOptions option) const;
     void setTarget(VISATarget tTarget) { target = tTarget;}
     VISATarget getTarget() const { return target; }
-    bool isTargetCM() const
-    {
-        return getTarget() == VISA_CM;
-    }
 
     // APIs used by vISA clients (explicitly setting options)
     void setOption(vISAOptions option, bool val);

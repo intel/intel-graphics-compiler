@@ -396,7 +396,7 @@ G4_Operand* HWConformity::insertMovBefore(
     uint32_t newInstEMask = newExecSize == 1 ? InstOpt_WriteEnable : inst->getMaskOption();
 
     // due to old BDW regioning rule we need NoMask inst here so they can be split
-    if (builder.getOptions()->isTargetCM() && builder.getPlatform() == GENX_BDW)
+    if (kernel.getKernelType() == VISA_CM && builder.getPlatform() == GENX_BDW)
     {
         if (!bb->isAllLaneActive())
         {

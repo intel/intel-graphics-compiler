@@ -32,8 +32,7 @@ using namespace vISA;
 enum retDepType { RET_RAW = 1, RET_WAW, RET_WAR };
 
 // Checks for memory interferences created with the "send" instruction for data port.
-static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, retDepType depT, const Options *m_options,
-                                     bool BTIIsRestrict)
+static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, retDepType depT, bool BTIIsRestrict)
 {
     // If either instruction is not a send then there cannot be a memory interference.
     if (!send1 || !send2 || !send1->isSend() || !send2->isSend())
@@ -49,47 +48,42 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
     bool isSend1HDC = send1->getMsgDesc()->isHDC();
     bool isSend2HDC = send2->getMsgDesc()->isHDC();
 
-    VISATarget target = m_options->getTarget();
-    if (target == VISA_3D || target == VISA_CS)
-    {
-        // for 3D and compute we can do more precise dependency checks due to API restrictions
-        SFID funcId1 = send1->getMsgDesc()->getFuncId();
-        SFID funcId2 = send2->getMsgDesc()->getFuncId();
+    SFID funcId1 = send1->getMsgDesc()->getFuncId();
+    SFID funcId2 = send2->getMsgDesc()->getFuncId();
 
-        if (funcId1 == SFID::SAMPLER || funcId2 == SFID::SAMPLER)
-        {
-            // sampler acess will never have memory conflict
-            return NODEP;
-        }
+    if (funcId1 == SFID::SAMPLER || funcId2 == SFID::SAMPLER)
+    {
+        // sampler acess will never have memory conflict
+        return NODEP;
+    }
 
 #define MSG_DESC_BTI_MASK 0xFF
 #define RESERVED_BTI_START 240
-        if (isSend1HDC ^ isSend2HDC)
+    if (isSend1HDC ^ isSend2HDC)
+    {
+        // HDC messages will not conflict with other HDC messages (e.g., SAMPLER, URB, RT_WRITE)
+        return NODEP;
+    }
+    else if (isSend1HDC && isSend2HDC)
+    {
+        if (send1->getMsgDesc()->isSLMMessage() ^ send2->getMsgDesc()->isSLMMessage())
         {
-            // HDC messages will not conflict with other HDC messages (e.g., SAMPLER, URB, RT_WRITE)
+            // SLM may not conflict with other non-SLM messages
             return NODEP;
         }
-        else if (isSend1HDC && isSend2HDC)
+        else if (send1->getMsgDesc()->getBti() && send2->getMsgDesc()->getBti())
         {
-            if (send1->getMsgDesc()->isSLMMessage() ^ send2->getMsgDesc()->isSLMMessage())
+            G4_Operand* msgDesc1 = send1->getMsgDescOperand();
+            G4_Operand* msgDesc2 = send2->getMsgDescOperand();
+            if (msgDesc1->isImm() && msgDesc2->isImm())
             {
-                // SLM may not conflict with other non-SLM messages
-                return NODEP;
-            }
-            else if (send1->getMsgDesc()->getBti() && send2->getMsgDesc()->getBti())
-            {
-                G4_Operand* msgDesc1 = send1->getMsgDescOperand();
-                G4_Operand* msgDesc2 = send2->getMsgDescOperand();
-                if (msgDesc1->isImm() && msgDesc2->isImm())
+                unsigned int bti1 = (unsigned int)msgDesc1->asImm()->getInt() & MSG_DESC_BTI_MASK;
+                unsigned int bti2 = (unsigned int)msgDesc2->asImm()->getInt() & MSG_DESC_BTI_MASK;
+                auto isBTS = [](uint32_t bti) { return bti < RESERVED_BTI_START; };
+                if (BTIIsRestrict && isBTS(bti1) && isBTS(bti2) && bti1 != bti2)
                 {
-                    unsigned int bti1 = (unsigned int)msgDesc1->asImm()->getInt() & MSG_DESC_BTI_MASK;
-                    unsigned int bti2 = (unsigned int)msgDesc2->asImm()->getInt() & MSG_DESC_BTI_MASK;
-                    auto isBTS = [](uint32_t bti) { return bti < RESERVED_BTI_START; };
-                    if (BTIIsRestrict && isBTS(bti1) && isBTS(bti2) && bti1 != bti2)
-                    {
-                        // different BTI means no conflict for DP messages
-                        return NODEP;
-                    }
+                    // different BTI means no conflict for DP messages
+                    return NODEP;
                 }
             }
         }
@@ -197,12 +191,11 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
     }
 }
 
-DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options,
-    bool BTIIsRestrict)
+DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, bool BTIIsRestrict)
 {
     for (auto RDEP : { RET_RAW, RET_WAR, RET_WAW })
     {
-        DepType dep = DoMemoryInterfereSend(curInst->asSendInst(), liveInst->asSendInst(), RDEP, m_options, BTIIsRestrict);
+        DepType dep = DoMemoryInterfereSend(curInst->asSendInst(), liveInst->asSendInst(), RDEP, BTIIsRestrict);
         if (dep != NODEP)
             return dep;
     }

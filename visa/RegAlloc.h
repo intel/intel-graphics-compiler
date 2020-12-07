@@ -467,7 +467,7 @@ public:
     void dumpGlobalVarNum() const;
     bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
 
-    static bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_VarBase* flagReg, const Options *opt);
+    bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_VarBase* flagReg);
 
     void performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB);
 

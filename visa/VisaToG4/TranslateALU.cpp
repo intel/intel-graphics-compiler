@@ -470,7 +470,7 @@ int IR_Builder::translateVISADataMovementInst(
         // vISA spec does not allow 1 as the execution size anymore.
         // This is a hack to allow execution size 1
         // and we make sure it is a scalar region in this case.
-        if (getOptions()->isTargetCM())
+        if (kernel.getKernelType() == VISA_CM)
         {
             if (exsize == 1 && src0Opnd->isSrcRegRegion())
             {

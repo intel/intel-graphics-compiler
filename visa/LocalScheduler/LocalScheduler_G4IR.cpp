@@ -1359,7 +1359,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
                         dep = getDepForOpnd(curOpnd, liveOpnd);
                         curKillsBucket = false;
                     } else if (curBucket == SEND_BUCKET) {
-                        dep = getDepSend(curInst, liveInst, getOptions(), BTIIsRestrict);
+                        dep = getDepSend(curInst, liveInst, BTIIsRestrict);
                         hasOverlap = (dep != NODEP);
                         curKillsBucket = false;
                         curKillsLive = (dep == WAW_MEMORY || dep == RAW_MEMORY);

@@ -275,12 +275,10 @@ const char *GetSteppingString();
 // end of Error Message
 
 // Target should be specified as follows
-// - VISA builder mode in CreateBuilder API through fast-path
 // - Kernel target attribute in VISA binarary or ISAASM
 typedef enum {
     VISA_CM = 0,
-    VISA_3D = 1,
-    VISA_CS = 2,
+    VISA_3D = 1
 } VISATarget;
 
 #endif //_COMMON_H_

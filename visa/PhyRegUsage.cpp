@@ -1249,7 +1249,7 @@ void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel &kernel, unsigned 
     // rMax, rMax-1, rMax-2 - Forbidden in presence of stack call sites
     unsigned totalGRFNum = kernel.getNumRegTotal();
 
-    if (kernel.getOptions()->getTarget() != VISA_3D ||
+    if (kernel.getKernelType() != VISA_3D ||
         kernel.getOption(vISA_enablePreemption) ||
         reserveSpillSize > 0 ||
         stackCallRegSize > 0 ||

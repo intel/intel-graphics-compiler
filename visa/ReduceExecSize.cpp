@@ -285,7 +285,7 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
                     return true;
                 }
             }
-            else if (builder.getOptions()->isTargetCM() && builder.no64bitRegioning() &&
+            else if (kernel.getKernelType() == VISA_CM && builder.no64bitRegioning() &&
                 getTypeSize(src->getType()) == 8)
             {
                 // for CM, split non-scalar, non-contiguous source that cross GRF as HW conformity
@@ -399,7 +399,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
 
     // separate the checks for BDW to make it more maintainable
     // For CM use pre-BDW region rules due to HW bugs.
-    if (!builder.getOptions()->isTargetCM() && (genX == GENX_BDW || genX == GENX_CHV))
+    if (kernel.getKernelType() != VISA_CM && (genX == GENX_BDW || genX == GENX_CHV))
     {
         // for BDW we check the following rules:
         // Rule 3D

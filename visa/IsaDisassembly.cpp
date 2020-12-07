@@ -437,7 +437,6 @@ std::string printOneAttribute(
             switch (attr->value.intVal) {
             case VISA_CM: sstr << "\"cm\""; break;
             case VISA_3D: sstr << "\"3d\""; break;
-            case VISA_CS: sstr << "\"cs\""; break;
             default:
               sstr << attr->value.intVal;
             }
@@ -2579,7 +2578,6 @@ std::string printKernelHeader(
         switch (options->getTarget()) {
         case VISA_CM: sstr << "\"cm\""; break;
         case VISA_3D: sstr << "\"3d\""; break;
-        case VISA_CS: sstr << "\"cs\""; break;
         default:
             MUST_BE_TRUE(false, "Invalid kernel target attribute.");
             break;

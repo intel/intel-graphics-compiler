@@ -1414,15 +1414,14 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     {
         if (attr->value.intVal == 0)
         {
+            // ToDo: remove setTarget() call, internal code should use getKernelType() instead
             m_options->setTarget(VISA_CM);
+            m_kernel->setKernelType(VISA_CM);
         }
         else if (attr->value.intVal == 1)
         {
             m_options->setTarget(VISA_3D);
-        }
-        else if (attr->value.intVal == 2)
-        {
-            m_options->setTarget(VISA_CS);
+            m_kernel->setKernelType(VISA_3D);
         }
         else
         {

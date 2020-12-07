@@ -1633,10 +1633,9 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
 //
 bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
                                         G4_INST* inst,
-                                        G4_VarBase* flagReg,
-                                        const Options *opt)
+                                        G4_VarBase* flagReg)
 {
-    if (!bb->isAllLaneActive() && !inst->isWriteEnableInst() && opt->getTarget() != VISA_3D)
+    if (!bb->isAllLaneActive() && !inst->isWriteEnableInst() && gra.kernel.getKernelType() != VISA_3D)
     {
         // conservatively assume non-nomask instructions in simd control flow
         // may not write the whole region
@@ -1973,7 +1972,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 
                     def_out.set(id, true);
 
-                    if (writeWholeRegion(bb, i, flagReg, fg.builder->getOptions()))
+                    if (writeWholeRegion(bb, i, flagReg))
                     {
                         use_kill.set(id, true);
                         use_gen.set(id, false);
@@ -2129,7 +2128,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         topdclLR->isLiveRangeLocal() &&
                         topdclLR->getFirstRef(first) == i)) &&
                         // If single inst writes whole region then dont insert pseudo_kill
-                        ((wholeRegionWritten = LivenessAnalysis::writeWholeRegion(bb, i, flagReg, fg.builder->getOptions())) == false))
+                        ((wholeRegionWritten = writeWholeRegion(bb, i, flagReg)) == false))
                 {
                     // All bytes of dst written at this point, so this is a good place to insert
                     // pseudo kill inst

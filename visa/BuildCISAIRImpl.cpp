@@ -1321,10 +1321,6 @@ bool CISA_IR_Builder::CISA_attr_directive(
         {
             visa_target = VISA_3D;
         }
-        else if (strcmp(input_var, "cs") == 0)
-        {
-            visa_target = VISA_CS;
-        }
         else
         {
             RecordParseError(lineNum, "invalid kernel target attribute");

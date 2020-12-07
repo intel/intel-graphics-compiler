@@ -1962,7 +1962,7 @@ void preDDD::processSend(preNode* curNode)
     assert(!Inst->getMsgDesc()->isScratchRW() && "not expected");
     for (auto Iter = LiveSends.begin(); Iter != LiveSends.end(); /*empty*/) {
         preNode* liveN = *Iter;
-        DepType Dep = getDepSend(Inst, liveN->getInst(), getOptions(), BTIIsRestrict);
+        DepType Dep = getDepSend(Inst, liveN->getInst(), BTIIsRestrict);
         if (Dep != DepType::NODEP) {
             addEdge(curNode, liveN, Dep);
             // Check if this kills current live send. If yes, remove it.

@@ -1458,6 +1458,9 @@ class G4_Kernel
     // store the actual sourfce line stream for each source file referenced by this kernel.
     std::map<std::string, std::vector<std::string> > debugSrcLineMap;
 
+    // This must be explicitly set by kernel attributes later
+    VISATarget kernelType = VISA_3D;
+
 public:
     typedef std::vector<RelocationEntry> RelocationTableTy;
 
@@ -1679,6 +1682,9 @@ public:
     std::string getDebugSrcLine(const std::string& filename, int lineNo);
 
     VarSplitPass* getVarSplitPass();
+
+    VISATarget getKernelType() const { return kernelType; }
+    void setKernelType(VISATarget t) { kernelType = t; }
 
 };
 
