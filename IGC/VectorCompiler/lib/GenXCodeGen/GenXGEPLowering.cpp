@@ -163,12 +163,6 @@ Value *GenXGEPLowering::getInitialPointerValue(Value &Ptr) const {
     if (IntOp->getType() == IntPtrTy)
       return IntOp;
   }
-  if (isa<GlobalVariable>(Ptr)) {
-    Function *GAddrDecl = GenXIntrinsic::getGenXDeclaration(
-        M, llvm::GenXIntrinsic::genx_gaddr, {IntPtrTy, Ptr.getType()});
-    return Builder->CreateCall(GAddrDecl->getFunctionType(), GAddrDecl, &Ptr,
-                               Ptr.getName() + ".gaddr");
-  }
   return Builder->CreatePtrToInt(&Ptr, IntPtrTy);
 }
 

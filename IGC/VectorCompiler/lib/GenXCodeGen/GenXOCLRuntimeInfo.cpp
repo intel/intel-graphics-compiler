@@ -525,22 +525,11 @@ static void appendGlobalVariableData(
   Accumulator.append(GVInfo.GV, Data.begin(), Data.end());
 }
 
-// Not every global variable is a real global variable and should be encoded
-// as a global variable.
-// GenX volatile and printf strings are exclusion for now.
-static bool isRealGlobalVariable(const GlobalVariable &GV) {
-  if (GV.hasAttribute("genx_volatile"))
-    return false;
-  return std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
-    return !genx::isPrintFormatIndexGEP(*Usr);
-  });
-}
-
 template <typename GlobalsRangeT>
 std::vector<GVEncodingInfo>
 prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
   auto RealGlobals = make_filter_range(Globals, [](const GlobalVariable &GV) {
-    return isRealGlobalVariable(GV);
+    return genx::isRealGlobalVariable(GV);
   });
   if (RealGlobals.begin() == RealGlobals.end())
     return {};

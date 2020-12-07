@@ -118,6 +118,7 @@ FunctionGroupPass *createGenXCisaBuilderPass();
 ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXImportBiFPass();
+ModulePass *createGenXGlobalVariableLoweringPass();
 
 namespace genx {
 

@@ -140,6 +140,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXSimplifyPass(registry);
   initializeCMABIPass(registry);
   initializeGenXLowerJmpTableSwitchPass(registry);
+  initializeGenXGlobalVariableLoweringPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -325,6 +326,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createGenXInlineAsmLoweringPass());
   /// .. include:: GenXReduceIntSize.cpp
   PM.add(createGenXReduceIntSizePass());
+  /// .. include:: GenXGlobalVariableLowering.cpp
+  PM.add(createGenXGlobalVariableLoweringPass());
   /// .. include:: GenXAggregatePseudoLowering.cpp
   PM.add(createGenXAggregatePseudoLoweringPass());
   /// InstructionCombining

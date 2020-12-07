@@ -2046,7 +2046,12 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
   return 1;
 }
 
-bool genx::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
+static bool isPrintFormatIndexGEPImpl(const User &GEP) {
+  IGC_ASSERT_MESSAGE(
+      isa<GetElementPtrInst>(GEP) ||
+          (isa<ConstantExpr>(GEP) &&
+           cast<ConstantExpr>(GEP).getOpcode() == Instruction::GetElementPtr),
+      "wrong argument: gep instruction or gep constexpr are expected");
   return std::all_of(GEP.user_begin(), GEP.user_end(), [](const User *Usr) {
     if (!isa<CallInst>(Usr))
       return false;
@@ -2058,11 +2063,25 @@ bool genx::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
   });
 }
 
-// Just for convenience.
+bool genx::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
+  return isPrintFormatIndexGEPImpl(GEP);
+}
+
 bool genx::isPrintFormatIndexGEP(const Value &V) {
-  if (!isa<GetElementPtrInst>(V))
+  if (isa<GetElementPtrInst>(V))
+    return isPrintFormatIndexGEPImpl(cast<User>(V));
+  if (isa<ConstantExpr>(V) &&
+      cast<ConstantExpr>(V).getOpcode() == Instruction::GetElementPtr)
+    return isPrintFormatIndexGEPImpl(cast<User>(V));
+  return false;
+}
+
+bool genx::isRealGlobalVariable(const GlobalVariable &GV) {
+  if (GV.hasAttribute("genx_volatile"))
     return false;
-  return isPrintFormatIndexGEP(cast<GetElementPtrInst>(V));
+  return std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
+    return !genx::isPrintFormatIndexGEP(*Usr);
+  });
 }
 
 std::size_t genx::getStructElementPaddedSize(unsigned ElemIdx,

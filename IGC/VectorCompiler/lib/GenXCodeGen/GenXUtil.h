@@ -671,6 +671,11 @@ public:
 bool isPrintFormatIndexGEP(const GetElementPtrInst &GEP);
 bool isPrintFormatIndexGEP(const Value &V);
 
+// Not every global variable is a real global variable and should be eventually
+// encoded as a global variable.
+// GenX volatile and printf strings are exclusion for now.
+bool isRealGlobalVariable(const GlobalVariable &GV);
+
 // Get size of an struct field including the size of padding for the next field,
 // or the tailing padding.
 // For example for the 1st element of { i8, i32 } 4 bytes will be returned
