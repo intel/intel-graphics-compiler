@@ -183,6 +183,9 @@ private:
 
     std::vector<std::pair<unsigned int, unsigned int>> genISAOffsetToVISAIndex;
 
+    // Store all dcls that are from stack call function
+    std::unordered_set<G4_Declare*> stackCallDcls;
+
 public:
     LiveIntervalInfo* getLiveIntervalInfo(G4_Declare* dcl, bool createIfNULL = true);
     void *operator new(size_t sz, Mem_Manager& m);
@@ -308,6 +311,8 @@ public:
 
     void computeMissingVISAIds();
     bool isMissingVISAId(unsigned int);
+
+    void markStackCallFuncDcls(G4_Kernel& function);
 };
 
 class SaveRestoreInfo

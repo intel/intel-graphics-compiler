@@ -8484,6 +8484,7 @@ void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy& functions)
         VISAKernelImpl* cunit = (*cunitsIt);
         if (cunit->getIsKernel() == false)
         {
+            getKernel()->getKernelDebugInfo()->markStackCallFuncDcls(*cunit->m_kernel);
             stackCallEntryBBs.push_back(cunit->getKernel()->fg.getEntryBB());
         }
     }

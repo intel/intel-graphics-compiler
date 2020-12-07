@@ -326,10 +326,14 @@ namespace IGC
             data.physicalType = (DbgDecoder::VarAlloc::PhysicalVarType)read<uint8_t>(dbg);
 
             enum class PhyType: unsigned {
+                Address = 0,
+                Flag = 1,
                 GRF = 2,
                 Mem = 3
             };
-            if (data.physicalType == (unsigned)PhyType::GRF)
+            if (data.physicalType == (unsigned)PhyType::Address ||
+                data.physicalType == (unsigned)PhyType::Flag ||
+                data.physicalType == (unsigned)PhyType::GRF)
             {
                 readMappingReg(data.mapping);
             }

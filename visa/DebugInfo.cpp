@@ -517,6 +517,18 @@ bool KernelDebugInfo::isMissingVISAId(unsigned int id)
     return (missingVISAIds.find(id) != missingVISAIds.end());
 }
 
+void vISA::KernelDebugInfo::markStackCallFuncDcls(G4_Kernel& function)
+{
+    // Store all dcls that appear in stack call functions. This is to allow
+    // debug info module to differentiate between dcls from kernel and stack call
+    // function. Stitching operation transfers all callee dcls to kernel, so
+    // kernel.Declares is a superset of kernel, stack call dcls.
+    for (auto dcl : function.Declares)
+    {
+        stackCallDcls.insert(dcl);
+    }
+}
+
 void KernelDebugInfo::computeMissingVISAIds()
 {
     unsigned int maxCISAId = 0;
@@ -709,7 +721,9 @@ void KernelDebugInfo::emitRegisterMapping()
         G4_Declare* dcl = (*dcl_it);
         if (getKernel().fg.isPseudoDcl(dcl) ||
             (dcl->getRegVar()->getPhyReg() &&
-            dcl->getRegVar()->getPhyReg()->isAreg()))
+                dcl->getRegVar()->getPhyReg()->isAreg() &&
+                !dcl->getRegVar()->getPhyReg()->isFlag() &&
+                !dcl->getRegVar()->getPhyReg()->isA0()))
         {
             // These pseudo nodes may or may not get
             // an allocation depending on register
@@ -717,6 +731,14 @@ void KernelDebugInfo::emitRegisterMapping()
             // need to look at allocation results
             // for these as far as debug info goes.
             continue;
+        }
+
+        if (!getKernel().fg.getIsStackCallFunc())
+        {
+            // Skip iterating over dcls of callee stack call function.
+            auto it = stackCallDcls.find(dcl);
+            if (it != stackCallDcls.end())
+                continue;
         }
 
         VarnameMap* varMap = (VarnameMap*)getKernel().fg.builder->mem.alloc(sizeof(struct VarnameMap));
