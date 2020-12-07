@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/pow_s_la.cl"
+#include "../IMF/FP32/pow_s_prev.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/pow_d_la.cl"
@@ -83,7 +84,9 @@ INLINE float __builtin_spirv_OpenCL_pow_f32_f32( float x, float y )
         {
             return as_float(0x3F7FFFFF);
         }
-        return __ocl_svml_powf(x, y);
+        // Previous version of pow builtin is called here, because new one introduced some critical functional regressions.
+        // TODO: The target is to call '__ocl_svml_powf' here.
+        return __ocl_svml_px_powf1(x, y);
     }
 }
 
