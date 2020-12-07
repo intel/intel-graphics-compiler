@@ -1181,11 +1181,8 @@ void SWSB::SWSBGenerator()
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
 
-    //For VISA_3D, the naturalLoop finding is handled in register allocation already
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D)
-    {
-        kernel.fg.findNaturalLoops();
-    }
+    kernel.fg.findBackEdges();
+    kernel.fg.findNaturalLoops();
 
     //Note that getNumFlagRegisters() treat each 16 bits as a flag register
     LiveGRFBuckets LB(mem, kernel.getNumRegTotal() + kernel.getNumAcc() + fg.builder->getNumFlagRegisters(), kernel);
