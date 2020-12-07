@@ -137,7 +137,6 @@ namespace {
         void resolveGAS(Instruction& I, Value* pointerOperand);
         void resolveGASWithoutBranches(Instruction& I, Value* pointerOperand);
         bool allowArithmeticOnGenericAddressSpace(Function& F);
-        AddrSpaceCastInst* findAddressSpaceCastDef(Instruction* instruction, unsigned step);
     };
 } // namespace
 
@@ -490,17 +489,12 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
 bool GenericAddressDynamicResolution::allowArithmeticOnGenericAddressSpace(Function& F)
 {
     LLVMContext& C = F.getContext();
-
     bool modified = false;
-
-    SmallVector<AddrSpaceCastInst*, 8> ASCInsts;
-    SmallVector<IntToPtrInst*, 8> ITPInsts;
 
     // iterate for all addrspacecast to generic pointers
     for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i)
     {
         AddrSpaceCastInst* addrSpaceCastInst = dyn_cast<AddrSpaceCastInst>(&*i);
-        IntToPtrInst* intToPtrInst = dyn_cast<IntToPtrInst>(&*i);
         unsigned totalNumUses = 0;
         unsigned numUsesArith = 0;
 
@@ -546,57 +540,12 @@ bool GenericAddressDynamicResolution::allowArithmeticOnGenericAddressSpace(Funct
                 // Add metadata to avoid tagging when emitting addrspacecast
                 MDNode* N = MDNode::get(C, MDString::get(C, "generic.arith"));
                 addrSpaceCastInst->setMetadata("generic.arith", N);
-                ASCInsts.push_back(addrSpaceCastInst);
                 modified = true;
-            }
-        }
-        else if (intToPtrInst && intToPtrInst->getAddressSpace() == ADDRESS_SPACE_GENERIC)
-        {
-            ITPInsts.push_back(intToPtrInst);
-        }
-    }
-
-    // for every IntToPtr find its origin Addrspacecast and source AS if it exists.
-    // Assumption: the first Addrspacecast found is used to determine the original
-    // source AS as arithmetic of pointers with different AS is not allowed.
-    for (auto I2P : ITPInsts)
-    {
-        AddrSpaceCastInst* ASCDef = findAddressSpaceCastDef(I2P, 8);
-        if (ASCDef)
-        {
-            for (auto ASC : ASCInsts)
-            {
-                if (ASC == ASCDef)
-                {
-                    MDNode* N = MDNode::get(C, ConstantAsMetadata::get(
-                        ConstantInt::get(Type::getInt32Ty(C), ASC->getSrcAddressSpace())));
-                    I2P->setMetadata("generic.arith", N);
-                    break;
-                }
             }
         }
     }
 
     return modified;
-}
-
-AddrSpaceCastInst* GenericAddressDynamicResolution::findAddressSpaceCastDef(Instruction* inst, unsigned step)
-{
-    if (AddrSpaceCastInst* addrSpaceCastInst = llvm::dyn_cast<AddrSpaceCastInst>(inst))
-        return addrSpaceCastInst;
-    if (step == 0)
-        return nullptr;
-
-    for (auto operand = inst->operands().begin();
-        operand != inst->operands().end(); ++operand)
-    {
-        auto* instOp = dyn_cast<llvm::Instruction>(operand->get());
-        if (instOp != nullptr)
-        {
-            return findAddressSpaceCastDef(instOp, step - 1);
-        }
-    }
-    return nullptr;
 }
 
 namespace IGC {
