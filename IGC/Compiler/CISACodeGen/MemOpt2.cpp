@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsics.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
@@ -53,8 +52,6 @@ namespace {
         const DataLayout* DL;
         AliasAnalysis* AA;
 
-        RegisterPressureEstimate* RPE;
-
         unsigned MaxLiveOutThreshold = 16;
 
         DenseSet<Instruction*> Scheduled;
@@ -62,7 +59,7 @@ namespace {
     public:
         static char ID;
 
-        MemOpt2(int MLT = -1) : FunctionPass(ID), DL(nullptr), AA(nullptr), RPE(nullptr) {
+        MemOpt2(int MLT = -1) : FunctionPass(ID), DL(nullptr), AA(nullptr) {
             initializeMemOpt2Pass(*PassRegistry::getPassRegistry());
             if (unsigned T = IGC_GET_FLAG_VALUE(MaxLiveOutThreshold)) {
                 MaxLiveOutThreshold = T;
@@ -86,7 +83,6 @@ namespace {
             AU.addRequired<AAResultsWrapperPass>();
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<RegisterPressureEstimate>();
         }
 
         bool clusterSampler(BasicBlock* BB);
@@ -217,13 +213,6 @@ bool MemOpt2::runOnFunction(Function& F) {
     IGC::CodeGenContext* cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     DL = &F.getParent()->getDataLayout();
     AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-
-    RPE = &getAnalysis<RegisterPressureEstimate>();
-    // simply return if no register pressure estimate is available. Do not do any transformation
-    if (!RPE->isAvailable())
-        return false;
-
-    RPE->buildRPMapPerInstruction();
 
     bool Changed = false;
     for (auto& BB : F) {
