@@ -1057,6 +1057,10 @@ bool GenXKernelBuilder::run() {
   IGC_ASSERT(Subtarget);
   addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget);
 
+  // Set CM target for all functions produced by VC
+  auto VISA_CM_Target = static_cast<uint8_t>(VISA_CM);
+  CISA_CALL(Kernel->AddKernelAttribute("Target", 1, &VISA_CM_Target));
+
   bool NeedRetIP = false; // Need special return IP variable for FC.
   if (TheKernelMetadata.isKernel()) {
     // For a kernel, add an attribute for asm filename for the jitter.
@@ -1064,7 +1068,6 @@ bool GenXKernelBuilder::run() {
     StringRef AsmNameRef = AsmName;
     CISA_CALL(Kernel->AddKernelAttribute("OutputAsmPath", AsmNameRef.size(),
                                          AsmNameRef.begin()));
-
     // Populate variable attributes if any.
     unsigned Idx = 0;
     bool IsComposable = false;
