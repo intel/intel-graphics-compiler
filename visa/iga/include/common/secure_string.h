@@ -24,6 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
+
+#ifndef SECURE_STRING_H
+#define SECURE_STRING_H
+
 #if ((!defined _WIN32) && ( !defined __STDC_LIB_EXT1__ ))
 
 #include <stdlib.h>
@@ -130,5 +134,7 @@ _snprintf_s(char *buffer, size_t sizeOfBuffer, size_t count, const char *format,
     va_end(ap);
     return result;
 }
+
+#endif
 
 #endif

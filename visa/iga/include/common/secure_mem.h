@@ -25,6 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
+#ifndef SECURE_MEM_H
+#define SECURE_MEM_H
+
 #if ((!defined _WIN32) && ( !defined __STDC_LIB_EXT1__ ))
 
 #include <errno.h>
@@ -59,5 +62,7 @@ inline errno_t fopen_s( FILE** pFile, const char* filename, const char *mode )
     }
     return 0;
 }
+
+#endif
 
 #endif

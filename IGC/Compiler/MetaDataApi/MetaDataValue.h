@@ -79,7 +79,7 @@ namespace IGC
 
         llvm::MDNode* getMDNode()
         {
-            return m_pNode;
+            return (llvm::MDNode*)m_pNode;
         }
 
         void set(const value_type& val)
@@ -257,7 +257,7 @@ namespace IGC
 
         NamedMetaDataValue& operator=(llvm::Value* pNode)
         {
-            m_pNode = pNode;
+            m_pNode = (llvm::Metadata*)pNode;
             m_id = getIdNode(pNode);
             m_value = getValueNode(pNode);
 
@@ -267,7 +267,7 @@ namespace IGC
         NamedMetaDataValue& operator=(const char* name)
         {
             m_pNode = NULL;
-            m_id = name;
+            m_id = std::string(name);
 
             return *this;
         }
@@ -275,7 +275,7 @@ namespace IGC
         NamedMetaDataValue& operator=(std::string name)
         {
             m_pNode = NULL;
-            m_id = name.c_str();
+            m_id = name;
 
             return *this;
         }
