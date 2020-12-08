@@ -4145,6 +4145,10 @@ namespace IGC
         {
             SaveOption(vISA_UseOldSubRoutineAugIntf, true);
         }
+        if (IGC_IS_FLAG_ENABLED(FastCompileRA))
+        {
+            SaveOption(vISA_FastCompileRA, true);
+        }
         if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
         {
             SaveOption(vISA_dumpPayload, true);

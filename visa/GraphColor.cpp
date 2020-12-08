@@ -9623,7 +9623,12 @@ int GlobalRA::coloringRegAlloc()
 
     uint32_t GRFSpillFillCount = 0;
     uint32_t sendAssociatedGRFSpillFillCount = 0;
-    unsigned failSafeRAIteration = builder.getOption(vISA_FastSpill) ? 1 : FAIL_SAFE_RA_LIMIT;
+    unsigned fastCompileIter = 1;
+    if (builder.getOption(vISA_FastCompileRA) && !hasStackCall)
+    {
+        fastCompileIter = 0;
+    }
+    unsigned failSafeRAIteration = builder.getOption(vISA_FastSpill) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
 
     bool rematDone = false;
     VarSplit splitPass(*this);
