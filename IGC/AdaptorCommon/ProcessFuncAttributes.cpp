@@ -466,6 +466,15 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 }
             }
         }
+        // WA for scheduler kernel, must inline all calls otherwise we cannot prevent spilling
+        if (pCtx->type == ShaderType::OPENCL_SHADER)
+        {
+            auto ClContext = static_cast<OpenCLProgramContext*>(pCtx);
+            if (ClContext->m_InternalOptions.NoSpill)
+            {
+                mustAlwaysInline = true;
+            }
+        }
         if (mustAlwaysInline)
         {
             SetAlwaysInline(F);
@@ -649,10 +658,6 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
     {
         Function* F = &(*I);
         if (!F || F->isDeclaration()) continue;
-
-        // add AlwaysInline for functions. It will be handle in optimization phase
-        if (!F->hasFnAttribute(llvm::Attribute::NoInline))
-            F->addFnAttr(llvm::Attribute::AlwaysInline);
 
         // disable JumpThread optimization on the block that contains this function
         F->setConvergent();
