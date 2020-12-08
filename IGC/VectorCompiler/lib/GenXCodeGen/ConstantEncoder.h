@@ -209,7 +209,7 @@ ConstantEncoder(const llvm::DataLayout &, OutputIter)
 template <typename OutputIterT>
 std::size_t encodeConstant(const llvm::Constant &Const,
                            const llvm::DataLayout &DL, OutputIterT OutIter) {
-  return ConstantEncoder{DL, OutIter}.encode(Const);
+  return ConstantEncoder<OutputIterT>{DL, OutIter}.encode(Const);
 }
 
 } // namespace vc
