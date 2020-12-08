@@ -178,6 +178,7 @@ DEF_VISA_OPTION(vISA_QuickTokenAllocation,      ET_BOOL,  "-quickTokenAllocation
 DEF_VISA_OPTION(vISA_DistPropTokenAllocation,      ET_BOOL,  "-distPropTokenAllocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_SWSBStitch,      ET_BOOL,  "-SWSBStitch",    UNUSED, false)
 
+DEF_VISA_OPTION(vISA_UseOldSubRoutineAugIntf,    ET_BOOL, (IGC_MANGLE("-useOldSubRoutineAugIntf")),     UNUSED, false)
 
 //=== binary emission options ===
 DEF_VISA_OPTION(vISA_Compaction,          ET_BOOL,  "-nocompaction",    UNUSED, true)

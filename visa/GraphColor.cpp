@@ -4720,6 +4720,38 @@ void Augmentation::buildSIMDIntfAll(G4_Declare* newDcl)
     return;
 }
 
+void Augmentation::buildSIMDIntfAllOld(G4_Declare* newDcl)
+{
+    auto callDclMapIt = callDclMap.find(newDcl);
+    if (callDclMapIt != callDclMap.end())
+    {
+
+        G4_Declare* varDcl = NULL;
+
+        if (liveAnalysis.livenessClass(G4_GRF)) //For return value
+        {
+            G4_INST* callInst = (*callDclMapIt).second.first;
+            varDcl = callInst->getDst()->getBase()->asRegVar()->getDeclare();
+            buildSIMDIntfDcl(varDcl, false);
+        }
+
+        unsigned int funcId = (*callDclMapIt).second.second;
+        for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+        {
+            if (liveAnalysis.maydef[funcId].isSet(i))
+            {
+                varDcl = lrs[i]->getDcl();
+                buildSIMDIntfDcl(varDcl, true);
+            }
+        }
+    }
+    else
+    {
+        buildSIMDIntfDcl(newDcl, false);
+    }
+}
+
+
 //
 // Perform linear scan and mark interference between conflicting dcls with incompatible masks.
 //
@@ -4739,7 +4771,14 @@ void Augmentation::buildInterferenceIncompatibleMask()
 #endif
 
         expireIntervals(startIdx);
-        buildSIMDIntfAll(newDcl);
+        if (!kernel.fg.builder->getOption(vISA_UseOldSubRoutineAugIntf))
+        {
+            buildSIMDIntfAll(newDcl);
+        }
+        else
+        {
+            buildSIMDIntfAllOld(newDcl);
+        }
 
         // Add newDcl to correct list
         if (gra.getHasNonDefaultMaskDef(newDcl) || newDcl->getAddressed() == true)
@@ -4800,12 +4839,15 @@ void Augmentation::buildInterferenceIncompatibleMask()
         }
     }
 
-    unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
-    for (unsigned int i = 0; i < numFnId; i++)
+    if (!kernel.fg.builder->getOption(vISA_UseOldSubRoutineAugIntf))
     {
-        buildInteferenceForCallsite(i);
+        unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
+        for (unsigned int i = 0; i < numFnId; i++)
+        {
+            buildInteferenceForCallsite(i);
+        }
+        buildInteferenceForRetDeclares();
     }
-    buildInteferenceForRetDeclares();
 }
 
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask)

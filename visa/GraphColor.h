@@ -339,6 +339,7 @@ namespace vISA
         void expireIntervals(unsigned int startIdx);
         void buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall);
         void buildSIMDIntfAll(G4_Declare* newDcl);
+        void buildSIMDIntfAllOld(G4_Declare* newDcl);
         void handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, bool isCall);
         bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
 

@@ -430,6 +430,7 @@ DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi 
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, true, "Split SIMD8 Sampler message to 2 subspans and SIMD16 to odd and even", false)
 DECLARE_IGC_REGKEY(bool, EnableEvaluateSamplerSplit, false, "Split evaluate messages to sampler into either SIMD8 or SIMD1 messages", false)
 DECLARE_IGC_REGKEY(DWORD, AllocaRAPressureThreshold, 500, "The threshold for the register pressure potential", false)
+DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Guarantee A64 load/store addres-hi is uniform", false)
 
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if value==0 no override happens.", true)

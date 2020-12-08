@@ -4141,6 +4141,10 @@ namespace IGC
         {
             SaveOption(vISA_InitPayload, true);
         }
+        if (IGC_IS_FLAG_ENABLED(UseOldSubRoutineAugIntf))
+        {
+            SaveOption(vISA_UseOldSubRoutineAugIntf, true);
+        }
         if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
         {
             SaveOption(vISA_dumpPayload, true);
