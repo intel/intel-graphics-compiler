@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Probe/Assertion.h"
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM      48
-#define MAX_PRESSURE_GRF_NUM            64
+#define MAX_PRESSURE_GRF_NUM            90
 
 using namespace llvm;
 using namespace IGC;
