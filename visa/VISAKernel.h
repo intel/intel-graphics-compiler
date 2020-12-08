@@ -856,7 +856,7 @@ public:
 
     Options * getOptions() { return m_options; }
 
-    bool IsAsmWriterMode() const { return m_options->getOption(vISA_IsaAssembly); }
+    bool IsAsmWriterMode() const { return m_CISABuilder->getBuilderMode() == vISA_ASM_WRITER; }
 
     typedef std::list<VISAKernelImpl*> VISAKernelImplListTy;
     void computeAndEmitDebugInfo(VISAKernelImplListTy& functions);

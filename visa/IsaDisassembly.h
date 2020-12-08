@@ -54,27 +54,6 @@ std::string printInstruction(
     const CISA_INST* instruction,
     const Options *opt);
 
-///
-/// - Takes a isa header, a kernel header, and a instruction lists and
-///   returns a string contraining the kernel's entire isaasm.
-///
-std::string printKernel(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    const std::list<CISA_INST*>& instructions,
-    const Options *opt);
-
-///
-/// - Similar to printKernel() but for CISA 3.0+ functions. It requires the
-///   function ID to be passed in as an argument as well.
-///
-std::string printFunction(
-    const common_isa_header& isaHeader,
-    const function_format_t* header,
-    const std::list<CISA_INST*>& instructions,
-    int funcionId,
-    const Options *opt);
-
 /// Exposing these declare print functions for use by verifier diagnostics code
 /// or for disassembly output.
 std::string printPredicateDecl(

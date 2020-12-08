@@ -52,8 +52,8 @@ class CISA_IR_Builder : public VISABuilder
 {
 public:
 
-    CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, int majorVersion, int minorVersion,
-        const PWA_TABLE pWaTable) : m_mem(4096), m_pWaTable(pWaTable)
+    CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, vISABuilderMode mode, int majorVersion, int minorVersion,
+        const PWA_TABLE pWaTable) : m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
     {
         memset(&m_header, 0, sizeof(m_header));
 
@@ -831,6 +831,7 @@ public:
 
     Options* getOptions() { return &m_options; }
     VISA_BUILDER_OPTION getBuilderOption() const { return mBuildOption; }
+    vISABuilderMode getBuilderMode() const { return m_builderMode; }
 
 
 
@@ -841,6 +842,8 @@ private:
 
     vISA::Mem_Manager m_mem;
     VISA_BUILDER_OPTION mBuildOption;
+    // FIXME: we need to make 3D/media per kernel instead of per builder
+    const vISABuilderMode m_builderMode;
 
     unsigned int m_kernel_count;
     unsigned int m_function_count;

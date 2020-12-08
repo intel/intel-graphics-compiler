@@ -515,7 +515,7 @@ int CisaBinary::isaDump(
         std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = kTemp->getInstructionListEnd();
 
         unsigned funcId = 0;
-        if (!(m_options->getOption(vISA_GeneratevISABInary) && m_options->getOption(vISA_IsaasmNamesFileUsed)))
+        if (!(m_options->getOption(vISA_DumpvISA) && m_options->getOption(vISA_IsaasmNamesFileUsed)))
         {
             stringstream sstr;
             stringstream asmName;
@@ -537,7 +537,7 @@ int CisaBinary::isaDump(
                 fputs(string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
 
             VISAKernel_format_provider fmt(kTemp);
-            sstr << printKernelHeader(m_header, &fmt, kTemp->getIsKernel(), funcId, options);
+            sstr << fmt.printKernelHeader(m_header);
             for (; inst_iter != inst_iter_end; inst_iter++)
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;

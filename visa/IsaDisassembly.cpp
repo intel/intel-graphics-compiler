@@ -65,6 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 #include "VISABuilderAPIDefinition.h"
 #include "PreDefinedVars.h"
+#include "VISAKernel.h"
 
 using namespace vISA;
 
@@ -2467,12 +2468,8 @@ static std::string printInstructionDataport(
 }
 
 
-std::string printKernelHeader(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    bool isKernel,
-    int funcionId,
-    const Options *options)
+std::string VISAKernel_format_provider::printKernelHeader(
+    const common_isa_header& isaHeader)
 {
     std::stringstream sstr;
 
@@ -2481,9 +2478,10 @@ std::string printKernelHeader(
 
     sstr << ".version " << (unsigned)(major_version) << "." << (unsigned)(minor_version) << "\n";
 
-    std::string name = header->getString(header->getNameIndex());
-    std::replace_if (name.begin(), name.end(), [] (char c) { return c == '.'; } , ' ');
+    std::string name = this->getString(this->getNameIndex());
+    std::replace_if(name.begin(), name.end(), [](char c) { return c == '.'; }, ' ');
 
+    bool isKernel = m_kernel->getIsKernel();
     sstr << (!isKernel ? ".global_function " : ".kernel ");
     encodeStringLiteral(sstr, name.c_str());
     sstr << "\n";
@@ -2498,74 +2496,76 @@ std::string printKernelHeader(
         }
     }
 
+    auto options = const_cast<VISAKernelImpl*>(m_kernel)->getOptions();
+
     // In asm text mode, declarations are printed at variable creation time, we dont need to print them here
-    if (!options->getOption(vISA_IsaAssembly))
+    if (!m_kernel->IsAsmWriterMode())
     {
         // For debug purposes only
         // Print the predefined variables as comments
         sstr << "\n" << "/// VISA Predefined Variables";
         for (unsigned i = 0; i < Get_CISA_PreDefined_Var_Count(); i++)
         {
-            const var_info_t* predefVar = header->getPredefVar(i);
+            const var_info_t* predefVar = this->getPredefVar(i);
             if (predefVar->name_index != -1)
             {
                 sstr << "\n" << "// .decl V" << i
                     << " v_type=G"
-                    << " v_name=" << header->getString(predefVar->name_index);
+                    << " v_name=" << this->getString(predefVar->name_index);
             }
         }
         for (unsigned i = 0; i < Get_CISA_PreDefined_Surf_Count(); i++)
         {
-            const state_info_t* predefSurface = header->getPredefSurface(i);
+            const state_info_t* predefSurface = this->getPredefSurface(i);
             if (predefSurface->name_index != -1)
             {
                 sstr << "\n" << "// .decl T" << i
                     << " v_type=T"
-                    << " v_name=" << header->getString(predefSurface->name_index);
+                    << " v_name=" << this->getString(predefSurface->name_index);
             }
         }
         sstr << "\n";
 
         // emit var decls
         //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>] [alias=(<alias_index>,<alias_offset>)]
-        for (unsigned i = 0; i < header->getVarCount(); i++)
+        for (unsigned i = 0; i < this->getVarCount(); i++)
         {
-            sstr << "\n" << printVariableDecl(header, i, options);
+            sstr << "\n" << printVariableDecl(this, i, options);
         }
         // address decls
-        for (unsigned i = 0; i < header->getAddrCount(); i++)
+        for (unsigned i = 0; i < this->getAddrCount(); i++)
         {
-            sstr << "\n" << printAddressDecl(isaHeader, header, i);
+            sstr << "\n" << printAddressDecl(isaHeader, this, i);
         }
         // pred decls
-        for (unsigned i = 0; i < header->getPredCount(); i++)
+        for (unsigned i = 0; i < this->getPredCount(); i++)
         {
             // P0 is reserved; starting from P1 if there is predicate decl
-            sstr << "\n" << printPredicateDecl(header, i);
+            sstr << "\n" << printPredicateDecl(this, i);
         }
         // sampler
-        for (unsigned i = 0; i < header->getSamplerCount(); i++)
+        for (unsigned i = 0; i < this->getSamplerCount(); i++)
         {
-            sstr << "\n" << printSamplerDecl(header, i);
+            sstr << "\n" << printSamplerDecl(this, i);
         }
         // surface
         unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-        for (unsigned i = 0; i < header->getSurfaceCount(); i++)
+        for (unsigned i = 0; i < this->getSurfaceCount(); i++)
         {
-            sstr << "\n" << printSurfaceDecl(header, i, numPreDefinedSurfs);
+            sstr << "\n" << printSurfaceDecl(this, i, numPreDefinedSurfs);
         }
         // inputs to kernel
-        for (unsigned i = 0; i < header->getInputCount(); i++)
+        for (unsigned i = 0; i < this->getInputCount(); i++)
         {
-            sstr << "\n" << printFuncInput(header, i, isKernel, options);
+            sstr << "\n" << printFuncInput(this, i, isKernel, options);
         }
     }
 
     bool isTargetSet = false;
-    for (unsigned i = 0; i < header->getAttrCount(); i++)
+    for (unsigned i = 0; i < this->getAttrCount(); i++)
     {
-        sstr << "\n.kernel_attr " << printOneAttribute(header, header->getAttr(i));
-        const char* attrName = header->getString(header->getAttr(i)->nameIndex);
+        sstr << "\n.kernel_attr " << printOneAttribute(this, this->getAttr(i));
+        const char* attrName = this->getString(this->getAttr(i)->nameIndex);
         if (Attributes::isAttribute(Attributes::ATTR_Target, attrName))
         {
             isTargetSet = true;
@@ -2647,48 +2647,4 @@ std::string printInstruction(
     }
 
     return sstr.str();
-}
-
-static std::string printRoutine(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    const std::list<CISA_INST*>& instructions,
-    bool isKernel,
-    int funcionId,
-    const Options *options)
-{
-    std::stringstream sstr;
-    sstr << printKernelHeader(isaHeader, header, isKernel, funcionId, options);
-
-    for (auto I = instructions.begin(), E = instructions.end(); I != E; I++)
-    {
-        CISA_INST* inst = *I;
-        if (((ISA_Opcode)inst->opcode) != ISA_LOC || !g_ignorelocs)
-        {
-            if (((ISA_Opcode)inst->opcode) != ISA_LABEL)
-                sstr << "    ";
-            sstr << printInstruction(header, inst, options) << "\n";
-        }
-    }
-
-    return sstr.str();
-}
-
-std::string printKernel(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    const std::list<CISA_INST*>& instructions,
-    const Options *opt)
-{
-    return printRoutine(isaHeader, header, instructions, true, 0, opt);
-}
-
-std::string printFunction(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    const std::list<CISA_INST*>& instructions,
-    int funcionId,
-    const Options *opt)
-{
-    return printRoutine(isaHeader, header, instructions, false, funcionId, opt);
 }

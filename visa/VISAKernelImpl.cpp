@@ -827,7 +827,7 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName)
 
 void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty, const char *&varName)
 {
-    if (!m_options->getOption(vISA_GenerateISAASM) && !m_options->getOption(vISA_IsaAssembly))
+    if (!m_options->getOption(vISA_GenerateISAASM) && !IsAsmWriterMode())
     {
         // variable name is a don't care if we are not outputting vISA assembly
         return;

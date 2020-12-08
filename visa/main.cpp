@@ -480,7 +480,7 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 
     CISA_IR_Builder *cisa_builder = nullptr;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_PARSER, builderOption, getGenxPlatform(), argc, argv);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_ASM_READER, builderOption, getGenxPlatform(), argc, argv);
 
     for (int i = 0; i < num_kernels; i++)
     {

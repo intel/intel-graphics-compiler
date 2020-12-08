@@ -189,8 +189,6 @@ DEF_VISA_OPTION(vISA_outputToFile,        ET_BOOL,  "-output",          UNUSED, 
 DEF_VISA_OPTION(vISA_SymbolReg,           ET_BOOL,  "-symbolreg",       UNUSED, false)
 DEF_VISA_OPTION(vISA_PrintASMCount,       ET_BOOL,  "-printasmcount",   UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateBinary,      ET_BOOL,  "-binary",          UNUSED, false)
-DEF_VISA_OPTION(vISA_GeneratevISABInary,  ET_BOOL,  NULLSTR,            UNUSED, false)
-DEF_VISA_OPTION(vISA_IsaAssembly,         ET_BOOL,  NULLSTR,            UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateISAASM,      ET_BOOL,  "-dumpcommonisa",   UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpIsaVarNames,     ET_BOOL,  "-dumpisavarnames", UNUSED, true)
 DEF_VISA_OPTION(vISA_GenIsaAsmList,       ET_BOOL,  "-genIsaasmList",   UNUSED, false)

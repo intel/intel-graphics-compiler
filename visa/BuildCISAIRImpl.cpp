@@ -243,7 +243,7 @@ int CISA_IR_Builder::CreateBuilder(
 
     initTimer();
 
-    if (builder != NULL)
+    if (builder)
     {
         assert(0);
         return VISA_FAILURE;
@@ -257,7 +257,7 @@ int CISA_IR_Builder::CreateBuilder(
     // initialize stepping to none in case it's not passed in
     InitStepping();
 
-    builder = new CISA_IR_Builder(buildOption, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
+    builder = new CISA_IR_Builder(buildOption, mode, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
 
     if (!builder->m_options.parseOptions(numArgs, flags))
     {
@@ -268,28 +268,15 @@ int CISA_IR_Builder::CreateBuilder(
 
     auto targetMode = (mode == vISA_3D || mode == vISA_ASM_WRITER || mode == vISA_ASM_READER) ? VISA_3D : VISA_CM;
     builder->m_options.setTarget(targetMode);
-    builder->m_options.setOptionInternally(vISA_isParseMode, (mode == vISA_PARSER || mode == vISA_ASM_READER));
-    builder->m_options.setOptionInternally(vISA_IsaAssembly, (mode == vISA_ASM_WRITER));
+    builder->m_options.setOptionInternally(vISA_isParseMode, mode == vISA_ASM_READER);
 
-    if (mode == vISA_PARSER)
+#ifndef DLL_MODE
+    if (mode == vISA_ASM_READER)
     {
-        builder->m_options.setOptionInternally(vISA_GeneratevISABInary, true);
-        /*
-            In parser mode we always want to dump out vISA
-            I don't feel like modifying FE, and dealing with FE/BE missmatch issues.
-        */
+        // For vISA text input we always want to dump out vISA
         builder->m_options.setOptionInternally(vISA_DumpvISA, true);
-        /*
-            Dumping out .asm and .dat files for BOTH mod. Since they are used in
-            simulation mode. Again can be pased by FE, but don't want to deal
-            with FE/BE miss match issues.
-        */
-        if (buildOption != VISA_BUILDER_VISA)
-        {
-            builder->m_options.setOptionInternally(vISA_outputToFile, true);
-            builder->m_options.setOptionInternally(vISA_GenerateBinary, true);
-        }
     }
+#endif
 
     // emit location info always for these cases
     if (mode == vISABuilderMode::vISA_MEDIA && builder->m_options.getOption(vISA_outputToFile))
@@ -330,7 +317,7 @@ VISAKernel* CISA_IR_Builder::GetVISAKernel(const std::string& kernelName)
 
 int CISA_IR_Builder::ClearAsmTextStreams()
 {
-    if (m_options.getOption(vISA_IsaAssembly))
+    if (m_builderMode == vISA_ASM_WRITER)
     {
         m_ssIsaAsmHeader.str(std::string());
         m_ssIsaAsmHeader.clear();
@@ -360,7 +347,7 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     this->m_kernel_count++;
     this->m_nameToKernel[kernelName] = m_kernel;
 
-    if (m_options.getOption(vISA_IsaAssembly))
+    if (m_builderMode == vISA_ASM_WRITER)
     {
         ClearAsmTextStreams();
     }
@@ -383,7 +370,7 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
     m_kernel->m_functionId = this->m_function_count++;
     this->m_nameToKernel[functionName] = m_kernel;
 
-    if (m_options.getOption(vISA_IsaAssembly))
+    if (m_builderMode == vISA_ASM_WRITER)
     {
         ClearAsmTextStreams();
     }
@@ -550,16 +537,10 @@ static void Stitch_Compiled_Units(
 
 int CISA_IR_Builder::WriteVISAHeader()
 {
-    if (m_options.getOption(vISA_IsaAssembly))
+    if (m_builderMode == vISA_ASM_WRITER)
     {
-        unsigned funcId = 0;
-        if (!m_kernel->getIsKernel())
-        {
-            m_kernel->GetFunctionId(funcId);
-        }
-
         VISAKernel_format_provider fmt(m_kernel);
-        m_ssIsaAsmHeader << printKernelHeader(this->m_header, &fmt, m_kernel->getIsKernel(), funcId, &this->m_options) << endl;
+        m_ssIsaAsmHeader << fmt.printKernelHeader(this->m_header) << endl;
         return VISA_SUCCESS;
     }
     return VISA_FAILURE;
@@ -675,9 +656,9 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
     if (IS_VISA_BOTH_PATH)
     {
-        if (m_options.getOption(vISA_IsaAssembly))
+        if (m_builderMode == vISA_ASM_WRITER)
         {
-            assert(0 && "Should not be calling Compile() in asm text writter mode!");
+            assert(0 && "Should not be calling Compile() in asm text writer mode!");
             return VISA_FAILURE;
         }
         if (IS_BOTH_PATH)
