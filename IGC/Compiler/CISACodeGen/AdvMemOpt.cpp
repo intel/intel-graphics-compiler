@@ -45,6 +45,8 @@ namespace {
 
     private:
         void getAnalysisUsage(AnalysisUsage& AU) const override {
+            AU.setPreservesCFG();
+            AU.addPreservedID(WIAnalysis::ID);
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<WIAnalysis>();
