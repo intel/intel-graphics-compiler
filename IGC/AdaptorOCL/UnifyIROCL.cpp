@@ -363,21 +363,21 @@ static void CommonOCLBasedPasses(
         // Check after GlobalDCE in case of doubles in dead functions
         mpm.add(new ErrorCheck());
 
+        // Fix illegal argument/return types in function calls not already inlined.
+        // Structs/arrays are not allowed to be passed by value.
+        // Return types are not allowed to be more than 64-bits.
+        // This pass changes all illegal function signatures to be passed by pointer instead.
+        // NOTE: SPIR-V adaptor already handles this for struct types
+        if (pContext->m_instrTypes.hasSubroutines)
+        {
+            mpm.add(new LegalizeFunctionSignatures());
+        }
+
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
             mpm.add(createProcessBuiltinMetaDataPass());
         }
         mpm.add(new PurgeMetaDataUtils());
-    }
-
-    // Fix illegal argument/return types in function calls not already inlined.
-    // Structs/arrays are not allowed to be passed by value.
-    // Return types are not allowed to be more than 64-bits.
-    // This pass changes all illegal function signatures to be passed by pointer instead.
-    // NOTE: SPIR-V adaptor already handles this for struct types
-    if (pContext->m_instrTypes.hasSubroutines)
-    {
-        mpm.add(new LegalizeFunctionSignatures());
     }
 
     // OpenCL WI + image function resolution
