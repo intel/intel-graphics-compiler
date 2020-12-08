@@ -890,7 +890,16 @@ void BinaryEncodingIGA::translateInstructionSrcs(
     }
     for (int i = 0; i < numSrcToEncode; i++)
     {
-        SourceIndex opIx = (SourceIndex)((int)SourceIndex::SRC0 + i);
+        SourceIndex opIx = SourceIndex::SRC0;
+        switch (i) {
+        case 0: opIx = SourceIndex::SRC0; break;
+        case 1: opIx = SourceIndex::SRC1; break;
+        case 2: opIx = SourceIndex::SRC2; break;
+        default:
+            assert(0 && "invalid source index number");
+            break;
+        }
+
         G4_Operand* src = inst->getSrc(i);
 
         if (src->isSrcRegRegion())
