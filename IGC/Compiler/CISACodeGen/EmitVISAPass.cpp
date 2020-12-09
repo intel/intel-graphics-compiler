@@ -8930,6 +8930,13 @@ void EmitPass::emitPtrToInt(llvm::PtrToIntInst* P2I)
 
 void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast, CVariable* srcV, unsigned tag)
 {
+    CVariable* pFlag = m_currShader->GetNewVariable(
+        numLanes(m_currShader->m_SIMDSize),
+        ISA_TYPE_BOOL, EALIGN_BYTE,
+        CName(srcV->getName(), "NotNull"));
+    m_encoder->Cmp(EPREDICATE_NE, pFlag, srcV, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+    m_encoder->Push();
+
     if (m_pCtx->m_hasEmu64BitInsts && m_currShader->m_Platform->hasNoFullI64Support())
     {
         if (m_currShader->GetContext()->getRegisterPointerSizeInBits(addrSpaceCast->getSrcAddressSpace()) == 32)
@@ -8943,7 +8950,7 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
             // High:
             m_encoder->SetDstSubReg(1);
             m_encoder->SetDstRegion(2);
-            m_encoder->Copy(dstAlias, m_currShader->ImmToVariable(tag << 29, ISA_TYPE_UD));
+            m_encoder->Select(pFlag, dstAlias, m_currShader->ImmToVariable(tag << 29, ISA_TYPE_UD), m_currShader->ImmToVariable(0, ISA_TYPE_UD));
             m_encoder->Push();
         }
         else
@@ -8972,6 +8979,7 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
             m_encoder->Push();
 
             // Add tag to high part
+            m_encoder->SetPredicate(pFlag);
             m_encoder->Or(srcHigh, srcHigh, m_currShader->ImmToVariable(tag << 29, ISA_TYPE_UD));
             m_encoder->Push();
 
@@ -8990,12 +8998,11 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
     }
     else
     {
-        CVariable* pTempVar = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize),
-            ISA_TYPE_UQ, m_currShader->getGRFAlignment(),
-            m_destination->IsUniform(), CName::NONE);
-        m_encoder->Or(pTempVar, srcV, m_currShader->ImmToVariable(static_cast<uint64_t>(tag) << 61, ISA_TYPE_UQ));
-        m_encoder->Cast(m_destination, pTempVar);
+        m_encoder->Cast(m_destination, srcV);
+        m_encoder->Push();
+
+        m_encoder->SetPredicate(pFlag);
+        m_encoder->Or(m_destination, srcV, m_currShader->ImmToVariable(static_cast<uint64_t>(tag) << 61, ISA_TYPE_UQ));
         m_encoder->Push();
     }
 }
