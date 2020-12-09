@@ -4145,7 +4145,7 @@ namespace IGC
         {
             SaveOption(vISA_UseOldSubRoutineAugIntf, true);
         }
-        if (IGC_IS_FLAG_ENABLED(FastCompileRA))
+        if (IGC_IS_FLAG_ENABLED(FastCompileRA) && !hasStackCall)
         {
             SaveOption(vISA_FastCompileRA, true);
         }

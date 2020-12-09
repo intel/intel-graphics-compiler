@@ -5905,7 +5905,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
             markBusyGRF(((G4_Greg*)pr)->getRegNum(),
                 PhyRegUsage::offsetAllocUnit(lr->getPhyRegOff(), dcl->getElemType()),
                 dcl->getWordSize(),
-                dcl->getNumRows());
+                lr->getNumRegNeeded());
         }
     }
     else if (pr->isFlag())
@@ -6737,8 +6737,9 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
-        bool willSpill = kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-            rpe->getMaxRP() >= kernel.getNumRegTotal() + 24;
+        bool willSpill = (builder.getOption(vISA_FastCompileRA) && !hasStackCall) ||
+            (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+            rpe->getMaxRP() >= kernel.getNumRegTotal() + 24);
         if (willSpill)
         {
             // go straight to first_fit to save compile time since we are definitely spilling
@@ -9624,11 +9625,12 @@ int GlobalRA::coloringRegAlloc()
     uint32_t GRFSpillFillCount = 0;
     uint32_t sendAssociatedGRFSpillFillCount = 0;
     unsigned fastCompileIter = 1;
-    if (builder.getOption(vISA_FastCompileRA) && !hasStackCall)
+    bool fastCompile = builder.getOption(vISA_FastCompileRA) && !hasStackCall;
+    if (fastCompile)
     {
         fastCompileIter = 0;
     }
-    unsigned failSafeRAIteration = builder.getOption(vISA_FastSpill) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
+    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
 
     bool rematDone = false;
     VarSplit splitPass(*this);
@@ -9682,7 +9684,7 @@ int GlobalRA::coloringRegAlloc()
             doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
         }
 
-        bool allowAddrTaken = builder.getOption(vISA_FastSpill) ||
+        bool allowAddrTaken = builder.getOption(vISA_FastSpill) || fastCompile ||
             !kernel.getHasAddrTaken();
         bool reserveSpillReg = false;
         if (builder.getOption(vISA_FailSafeRA) &&
@@ -9719,7 +9721,10 @@ int GlobalRA::coloringRegAlloc()
             // force spill should be done only for the 1st iteration
             bool forceSpill = iterationNo > 0 ? false : builder.getOption(vISA_ForceSpills);
             RPE rpe(*this, &liveAnalysis);
-            rpe.run();
+            if (!fastCompile)
+            {
+                rpe.run();
+            }
             GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, forceSpill);
 
             if (builder.getOption(vISA_dumpRPE) && iterationNo == 0 && !rematDone)
@@ -9743,7 +9748,9 @@ int GlobalRA::coloringRegAlloc()
                     ? true :  kernel.getSimdSize() < numEltPerGRF<Type_UB>();
                 // -noremat takes precedence over -forceremat
                 bool rematOn = !kernel.getOption(vISA_Debug) &&
-                    (!kernel.getOption(vISA_NoRemat) && !kernel.getOption(vISA_FastSpill)) &&
+                    !kernel.getOption(vISA_NoRemat) &&
+                    !kernel.getOption(vISA_FastSpill) &&
+                    !fastCompile &&
                     (kernel.getOption(vISA_ForceRemat) || runRemat);
                 bool rematChange = false;
                 bool globalSplitChange = false;
@@ -9910,7 +9917,7 @@ int GlobalRA::coloringRegAlloc()
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
-                    builder.getOption(vISA_FastSpill) || builder.getOption(vISA_Debug) ||
+                    builder.getOption(vISA_FastSpill) || fastCompile || builder.getOption(vISA_Debug) ||
                     (!useScratchMsgForSpill
                         );
 
