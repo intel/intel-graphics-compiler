@@ -4903,66 +4903,82 @@ void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* inst = *it;
 
-    if (inst->isSend() ||
+    if (inst->mayExceedTwoGRF() ||
         inst->opcode() == G4_nop ||
         inst->isLabel())
     {
         return;
     }
 
-    G4_DstRegRegion* dst = inst->getDst();
+    auto dst = inst->getDst();
 
-    if (dst && dst->getBase()->isRegVar())
+    if (!dst || !dst->getBase()->isRegVar())
     {
-        G4_Declare* dstDcl = dst->getTopDcl();
+        return;
+    }
 
-        if (dstDcl != nullptr)
+    auto dstSize = inst->getExecSize() * getTypeSize(dst->getType()) * dst->getHorzStride();
+    if (dstSize > getGRFSize())
+    {
+        // special check for 2-GRF instruction with VxH operands
+        // strictly speaking dst and VxH src may overlap only if src's address may point to dst variable,
+        // but we skip such check as VxH access is rare and already expensive, so adding an extra move won't cause much extra overhead
+        auto SI = std::find_if(inst->src_begin(), inst->src_end(),
+            [](G4_Operand* src) { return src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegion()->isRegionWH(); });
+        bool hasVxH = (SI != inst->src_end());
+        if (hasVxH)
         {
-            G4_DstRegRegion* dstRgn = dst;
-            int dstOpndNumRows = ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
-            int dstLeft = dstRgn->getLinearizedStart();
-            int dstRight = dstOpndNumRows > 1 ? ((dstLeft / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB) - 1) :
-                dstRgn->getLinearizedEnd();
+            replaceDst(it, dst->getType());
+            return;
+        }
+    }
 
-            for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++)
+    G4_Declare* dstDcl = dst->getTopDcl();
+
+    if (dstDcl)
+    {
+        G4_DstRegRegion* dstRgn = dst;
+        int dstOpndNumRows = ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
+        int dstLeft = dstRgn->getLinearizedStart();
+        int dstRight = dstOpndNumRows > 1 ? ((dstLeft / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB) - 1) :
+            dstRgn->getLinearizedEnd();
+
+        for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++)
+        {
+            G4_Operand* src = inst->getSrc(i);
+
+            if (!src || !src->getTopDcl())
             {
-                G4_Operand* src = inst->getSrc(i);
+                continue;
+            }
 
-                if (!src || !src->getTopDcl())
+            G4_Declare* srcDcl = src->getTopDcl();
+            G4_CmpRelation rel = dst->compareOperand(src);
+            if ((rel != Rel_disjoint && rel != Rel_undef) &&
+                src->isSrcRegRegion() &&
+                src->asSrcRegRegion()->getBase()->isRegVar() &&
+                srcDcl == dstDcl)
+            {
+                G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+                int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
+                int srcLeft = srcRgn->getLinearizedStart();
+                int srcRight = srcRgn->getLinearizedEnd();
+
+                if (!srcRgn->isScalar() && srcOpndNumRows > 1)
                 {
-                    continue;
+                    srcLeft = (srcRgn->getLinearizedStart() / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB);
                 }
 
-                G4_Declare* srcDcl = src->getTopDcl();
-                G4_CmpRelation rel = dst->compareOperand(src);
-                if ((rel != Rel_disjoint && rel != Rel_undef) &&
-                    src->isSrcRegRegion() &&
-                    src->asSrcRegRegion()->getBase()->isRegVar() &&
-                    srcDcl == dstDcl)
+                if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
                 {
-                    G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-                    int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
-                    int srcLeft = srcRgn->getLinearizedStart();
-                    int srcRight = srcRgn->getLinearizedEnd();
-
-                    if (!srcRgn->isScalar() && srcOpndNumRows > 1)
+                    if (!(srcLeft > dstRight || dstLeft > srcRight))
                     {
-                        srcLeft = (srcRgn->getLinearizedStart() / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB);
-                    }
-
-                    if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
-                    {
-                        if (!(srcLeft > dstRight || dstLeft > srcRight))
-                        {
-                            inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
-                        }
+                        inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
                     }
                 }
             }
         }
     }
-
-    return;
 }
 
 void HWConformity::conformBB(G4_BB* bb)
@@ -4985,8 +5001,7 @@ void HWConformity::conformBB(G4_BB* bb)
             continue;
         }
 
-        if (builder.avoidDstSrcOverlap() &&
-            inst->getDst() != NULL)
+        if (builder.avoidDstSrcOverlap() && inst->getDst())
         {
             avoidDstSrcOverlap(i, bb);
         }
