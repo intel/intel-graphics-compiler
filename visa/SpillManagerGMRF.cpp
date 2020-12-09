@@ -2193,9 +2193,8 @@ static uint32_t getScratchBlocksizeEncoding(int numGRF)
     return blocksize_encoding;
 }
 
-unsigned int SpillManagerGRF::createSpillSendMsgDescOWord(
-    unsigned int height,
-    G4_ExecSize& execSize)
+std::tuple<uint32_t, G4_ExecSize> SpillManagerGRF::createSpillSendMsgDescOWord(
+    unsigned int height)
 {
     unsigned segmentByteSize = height * REG_BYTE_SIZE;
     unsigned writePayloadCount = cdiv(segmentByteSize, REG_BYTE_SIZE);
@@ -2212,9 +2211,9 @@ unsigned int SpillManagerGRF::createSpillSendMsgDescOWord(
     message |= messageLength << getSendMsgLengthBitOffset();
     unsigned segmentOwordSize = cdiv(segmentByteSize, OWORD_BYTE_SIZE);
     message |= blockSendBlockSizeCode(segmentOwordSize);
-    execSize = G4_ExecSize(LIMIT_SEND_EXEC_SIZE(segmentOwordSize * DWORD_BYTE_SIZE));
+    auto execSize = G4_ExecSize(LIMIT_SEND_EXEC_SIZE(segmentOwordSize * DWORD_BYTE_SIZE));
 
-    return message;
+    return std::make_tuple(message, execSize);
 }
 
 // Create the message descriptor for a spill send instruction for spilled
@@ -2248,7 +2247,8 @@ SpillManagerGRF::createSpillSendMsgDesc(
     }
     else
     {
-        message = createSpillSendMsgDescOWord(height, execSize);
+        auto [message, retSize] = createSpillSendMsgDescOWord(height);
+        execSize = retSize;
     }
     return builder_->createImm (message, Type_UD);
 }
@@ -4632,7 +4632,7 @@ static G4_INST* createSpillFillAddr(
 
 
 void GlobalRA::expandSpillNonStackcall(
-    uint32_t& numRows, uint32_t& offset, short& rowOffset,
+    uint32_t numRows, uint32_t offset, short rowOffset,
     G4_SrcRegRegion* header, G4_SrcRegRegion* payload, G4_BB* bb,
     INST_LIST_ITER& instIt)
 {
@@ -4643,8 +4643,7 @@ void GlobalRA::expandSpillNonStackcall(
     {
         // oword msg
         auto payloadToUse = builder->createSrcRegRegion(*payload);
-        G4_ExecSize execSize = inst->getExecSize(); // (numRows > 1) ? 16 : 8;
-        uint32_t spillMsgDesc = SpillManagerGRF::createSpillSendMsgDescOWord(numRows, execSize);
+        auto [spillMsgDesc, execSize] = SpillManagerGRF::createSpillSendMsgDescOWord(numRows);
         G4_INST* sendInst = nullptr;
         {
             G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
@@ -4671,11 +4670,7 @@ void GlobalRA::expandSpillNonStackcall(
 
             G4_SrcRegRegion* headerOpnd = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinR0(), region);
             G4_Imm* extDesc = builder->createImm(msgDesc->getExtendedDesc(), Type_UD);
-            G4_ExecSize execSize = inst->getExecSize(); // numRows > 1 ? 16 : 8;
-            if (execSize < g4::SIMD8)
-                execSize = g4::SIMD8;
-            else if (execSize < g4::SIMD16 && numRows > 1)
-                execSize = g4::SIMD16;
+            G4_ExecSize execSize = numRows > 1 ? g4::SIMD16 : g4::SIMD8;
 
             auto sendInst = builder->createInternalSplitSendInst(execSize,
                 inst->getDst(), headerOpnd, payloadToUse, msgDescImm,
@@ -4691,7 +4686,7 @@ void GlobalRA::expandSpillNonStackcall(
 }
 
 void GlobalRA::expandSpillStackcall(
-    uint32_t& numRows, uint32_t& offset, short& rowOffset,
+    uint32_t numRows, uint32_t offset, short rowOffset,
     G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt)
 {
     auto& builder = kernel.fg.builder;
@@ -4820,7 +4815,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
     }
 }
 
- void GlobalRA::expandFillNonStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt)
+ void GlobalRA::expandFillNonStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt)
  {
      auto& builder = kernel.fg.builder;
      auto inst = (*instIt);
@@ -4828,7 +4823,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
      if (offset == G4_FillIntrinsic::InvalidOffset)
      {
          // oword msg
-         G4_ExecSize execSize = inst->getExecSize();
+         G4_ExecSize execSize = g4::SIMD16;
          auto numRowsOword = GRFSizeToOwords(numRows);
          auto fillDst = builder->createDst(resultRgn->getBase(), rowOffset,
              0, resultRgn->getHorzStride(), resultRgn->getType());
@@ -4875,7 +4870,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
      }
  }
 
-void GlobalRA::expandFillStackcall(uint32_t& numRows, uint32_t& offset, short& rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt)
+void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt)
 {
     auto& builder = kernel.fg.builder;
     auto inst = (*instIt);

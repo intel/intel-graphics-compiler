@@ -140,9 +140,8 @@ public:
         logicalOffset += globalScratchOffset;
     }
 
-    static unsigned int createSpillSendMsgDescOWord(
-        unsigned int height,
-        G4_ExecSize& execSize);
+    static std::tuple<uint32_t, G4_ExecSize> createSpillSendMsgDescOWord(
+        unsigned int height);
 
 private:
 
