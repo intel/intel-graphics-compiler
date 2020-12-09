@@ -124,6 +124,14 @@ namespace IGC {
         // immediate or undef value
         CVariable(uint64_t immediate, VISA_Type type, uint16_t nbElem, bool undef);
     public:
+#if defined(_DEBUG) || defined(_INTERNAL)
+        void* operator new(size_t size, llvm::SpecificBumpPtrAllocator<CVariable> &Allocator)
+        {
+            return Allocator.Allocate(size / sizeof(CVariable));
+        }
+
+        void operator delete(void*, llvm::SpecificBumpPtrAllocator<CVariable>&) {}
+#endif
         // immediate variable
         CVariable(uint64_t immediate, VISA_Type type);
 

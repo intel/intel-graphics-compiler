@@ -511,7 +511,11 @@ protected:
     uint m_numBlocks;
     IGC::IGCMD::MetaDataUtils* m_pMdUtils;
 
+#if defined(_DEBUG) || defined(_INTERNAL)
+    llvm::SpecificBumpPtrAllocator<CVariable> Allocator;
+#else
     llvm::BumpPtrAllocator Allocator;
+#endif
 
     // Mapping from formal argument to its variable or from function to its
     // return variable. Per kernel mapping. Used when llvm functions are
