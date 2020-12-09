@@ -1631,6 +1631,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
+                mpm.add(llvm::createCFGSimplificationPass());
+
                 if (!extensiveShader(pContext) && pContext->m_instrTypes.hasNonPrimitiveAlloca)
                 {
                         if (pContext->m_DriverInfo.NeedCountSROA())
