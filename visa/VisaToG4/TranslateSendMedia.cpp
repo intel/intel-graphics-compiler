@@ -65,7 +65,7 @@ static unsigned int getObjWidth(
 * 0x0007001f == (R-1)<<16 + C * sizeof(el_type) - 1;
 *
 * 0x04186000 ==
-*  (((ObjectSize - 1) / numEltPerGRF(Type_UB) + 1)) << 16 +
+*  (((ObjectSize - 1) / numEltPerGRF<Type_UB>() + 1)) << 16 +
 *          0x4100000 + 0x6000 + I;
 *
 * ObjectSize = RoundUpPow2(C) * R * sizeof(el_type);
@@ -114,7 +114,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     G4_Operand *original_dst = NULL;
     G4_Declare *new_dcl = NULL;
 
-    if (obj_size < numEltPerGRF(Type_UB))
+    if (obj_size < numEltPerGRF<Type_UB>())
     {
         via_temp = true;
     }
@@ -124,7 +124,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         G4_VarBase *base = dstOpnd->asDstRegRegion()->getBase();
         G4_Declare *dcl = base->asRegVar()->getDeclare();
 
-        if (byte_subregoff  % numEltPerGRF(Type_UB) != 0)
+        if (byte_subregoff  % numEltPerGRF<Type_UB>() != 0)
         {
             via_temp = true;
         }
@@ -133,7 +133,7 @@ int IR_Builder::translateVISAMediaLoadInst(
             G4_Declare *aliasdcl = dcl;
             bool false_alias_align = false;
             while (aliasdcl->getAliasDeclare()) {
-                if (aliasdcl->getAliasOffset() % numEltPerGRF(Type_UB) != 0) {
+                if (aliasdcl->getAliasOffset() % numEltPerGRF<Type_UB>() != 0) {
                     false_alias_align = true;
                     break;
                 }
@@ -148,7 +148,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     if (via_temp == true)
     {
         original_dst = dstOpnd;
-        new_dcl = createTempVar(numEltPerGRF(Type_UB)/G4_Type_Table[Type_UD].byteSize,
+        new_dcl = createTempVar(numEltPerGRF<Type_UB>()/G4_Type_Table[Type_UD].byteSize,
             Type_UD, GRFALIGN);
         G4_DstRegRegion* tmp_dst_opnd = createDst(
             new_dcl->getRegVar(),
@@ -184,7 +184,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         d,
         payload,
         1,
-        (obj_size - 1) / numEltPerGRF(Type_UB) + 1,
+        (obj_size - 1) / numEltPerGRF<Type_UB>() + 1,
         send_exec_size,
         temp,
         SFID::DP_DC1,
@@ -198,7 +198,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     if (via_temp)
     {
         G4_Declare *new_dcl2 = createTempVar(
-            numEltPerGRF(Type_UB)/G4_Type_Table[original_dst->getType()].byteSize,
+            numEltPerGRF<Type_UB>()/G4_Type_Table[original_dst->getType()].byteSize,
             original_dst->getType(), GRFALIGN);
 
         new_dcl2->setAliasDeclare(new_dcl, 0);
@@ -223,7 +223,7 @@ int IR_Builder::translateVISAMediaLoadInst(
                     original_dst->getType());
 
                 dst_subregoff += curr_offset;
-                short ele_per_grf = numEltPerGRF(Type_UB)/G4_Type_Table[dstType].byteSize;
+                short ele_per_grf = numEltPerGRF<Type_UB>()/G4_Type_Table[dstType].byteSize;
                 if (dst_subregoff >= ele_per_grf)
                 {
                     dst_regoff += 1;
@@ -267,7 +267,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 * 0x0007001f is (R-1)<<16 + C * sizeof(el_type) - 1
 *
 * 0x05902000 ==
-*  ((((ObjectSize - 1) / numEltPerGRF(Type_UB) + 1)) + 1)<<20 +
+*  ((((ObjectSize - 1) / numEltPerGRF<Type_UB>() + 1)) + 1)<<20 +
 *          0x5000000 + 0x2000 + I
 * ObjectSize = RoundUpPow2(C) * R * sizeof(el_type)
 */
@@ -330,7 +330,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         msgDesc += (1 << getSendMsgLengthBitOffset()) + (1 << getSendHeaderPresentBitOffset());
         G4_DstRegRegion *dstOpnd = createNullDst(Type_UD);
 
-        unsigned extMsgLength = (obj_size - 1) / numEltPerGRF(Type_UB) + 1;
+        unsigned extMsgLength = (obj_size - 1) / numEltPerGRF<Type_UB>() + 1;
         uint16_t extFuncCtrl = 0;
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC1,
@@ -377,7 +377,7 @@ int IR_Builder::translateVISAMediaStoreInst(
             NULL,
             post_dst_opnd,
             payload,
-            ((obj_size - 1) / numEltPerGRF(Type_UB) + 1) + 1,
+            ((obj_size - 1) / numEltPerGRF<Type_UB>() + 1) + 1,
             0,
             G4_ExecSize(GENX_DATAPORT_IO_SZ),
             funcCtrl,
@@ -494,11 +494,11 @@ int IR_Builder::translateVISAVmeImeInst(
 
     if ((COMMON_ISA_VME_STREAM_MODE) stream_mode != VME_STREAM_OUT &&
         (COMMON_ISA_VME_STREAM_MODE) stream_mode != VME_STREAM_IN_OUT) {
-        regs2rcv = 224/numEltPerGRF(Type_UB);
+        regs2rcv = 224/numEltPerGRF<Type_UB>();
     } else if ((COMMON_ISA_VME_SEARCH_CTRL) search_ctrl == VME_SEARCH_DUAL_REF_DUAL_REC) {
-        regs2rcv = 352/numEltPerGRF(Type_UB);
+        regs2rcv = 352/numEltPerGRF<Type_UB>();
     } else {
-        regs2rcv = 288/numEltPerGRF(Type_UB);
+        regs2rcv = 288/numEltPerGRF<Type_UB>();
     }
 
     Create_Send_Inst_For_CISA(
@@ -757,8 +757,8 @@ int IR_Builder::translateVISASamplerVAGenericInst(
     G4_Declare* dcl  = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
     G4_Declare *dcl1 = createSendPayloadDcl(8,                      Type_UD);
     G4_Declare *dclF = createSendPayloadDcl(8,                      Type_F);
-    dcl1->setAliasDeclare (dcl, numEltPerGRF(Type_UB));
-    dclF->setAliasDeclare (dcl, numEltPerGRF(Type_UB));
+    dcl1->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());
+    dclF->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());
 
     /// Message Sequence Setup:
     /// When Functionality is MINMAX/BoolCentroid/Centroid, value is binary 1x.
@@ -863,7 +863,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
 
     G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     G4_DstRegRegion* post_dst = Check_Send_Dst(dstOpnd->asDstRegRegion());
-    int reg_receive = dstSize/numEltPerGRF(Type_UB);
+    int reg_receive = dstSize/numEltPerGRF<Type_UB>();
     if (reg_receive < 1)
         reg_receive = 1;
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, g4::SIMD8,
@@ -997,14 +997,14 @@ int IR_Builder::translateVISAAvsInst(
         Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(cmask, Type_UD), true);
 
         G4_Declare *dcl1 = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
-        dcl1->setAliasDeclare(dcl, numEltPerGRF(Type_UB));
+        dcl1->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
         /*
         Keeping destination type as UD, otherwise w-->f conversion happens,
         which affects the results.
         */
         G4_Declare *dcl1_ud = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
-        dcl1_ud->setAliasDeclare(dcl, numEltPerGRF(Type_UB));
+        dcl1_ud->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
         // mov  (1)     VA(0,0)<1>,  v2d
         Create_MOV_Inst(dcl1, 0, 0, g4::SIMD1, NULL, NULL, v2dOpnd, true);
@@ -1094,7 +1094,7 @@ int IR_Builder::translateVISAAvsInst(
             d,
             payload,
             2,
-            obj_size/numEltPerGRF(Type_UB),
+            obj_size/numEltPerGRF<Type_UB>(),
             g4::SIMD16,
             temp,
             SFID::SAMPLER,
@@ -1151,7 +1151,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
         dcl = createSendPayloadDcl(4 * GENX_SAMPLER_IO_SZ , Type_UD);
         //16 pairs of x,y coordinates
         dcl_offsets = createSendPayloadDcl(32                      , Type_W);
-        dcl_offsets->setAliasDeclare(dcl, numEltPerGRF(Type_UB) * 2);
+        dcl_offsets->setAliasDeclare(dcl, numEltPerGRF<Type_UB>() * 2);
         reg_to_send = 4;
     }
     else
@@ -1161,9 +1161,9 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     G4_Declare *dcl_payload_F = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
     G4_Declare *dcl_payload_UW = createSendPayloadDcl(GENX_DATAPORT_IO_SZ * 2, Type_UW);
 
-    dcl_payload_UD->setAliasDeclare (dcl,  numEltPerGRF(Type_UB));
-    dcl_payload_F->setAliasDeclare (dcl, numEltPerGRF(Type_UB));
-    dcl_payload_UW->setAliasDeclare (dcl, numEltPerGRF(Type_UB));
+    dcl_payload_UD->setAliasDeclare (dcl,  numEltPerGRF<Type_UB>());
+    dcl_payload_F->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());
+    dcl_payload_UW->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());
 
     /// Message Header Setup
     /// 19:18 output control format | 15 Alpha Write Channel Mask ARGB = 1101 = 0xD for sampler8x8
@@ -1475,13 +1475,13 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     if (!hdcMode)
     {
         post_dst = Check_Send_Dst(dstOpnd);
-        if ((dstSize %  numEltPerGRF(Type_UB)) != 0)
+        if ((dstSize %  numEltPerGRF<Type_UB>()) != 0)
         {
-            reg_to_receive = (unsigned int) std::ceil((double)dstSize/numEltPerGRF(Type_UB));
+            reg_to_receive = (unsigned int) std::ceil((double)dstSize/numEltPerGRF<Type_UB>());
         }
         else
         {
-            reg_to_receive = dstSize/numEltPerGRF(Type_UB);
+            reg_to_receive = dstSize/numEltPerGRF<Type_UB>();
         }
     } else {
         post_dst = createNullDst(Type_UD);

@@ -235,10 +235,10 @@ bool G4Verifier::dataHazardCheck(G4_Operand *dst, G4_Operand *src)
         return false;
     }
 
-    int dstReg = dstStart / numEltPerGRF(Type_UB);
-    int dstRegNum = (dstEnd - dstStart + numEltPerGRF(Type_UB)) / numEltPerGRF(Type_UB);
-    int srcReg = srcStart / numEltPerGRF(Type_UB);
-    int srcRegNum = (srcEnd - srcStart + numEltPerGRF(Type_UB)) / numEltPerGRF(Type_UB);
+    int dstReg = dstStart / numEltPerGRF<Type_UB>();
+    int dstRegNum = (dstEnd - dstStart + numEltPerGRF<Type_UB>()) / numEltPerGRF<Type_UB>();
+    int srcReg = srcStart / numEltPerGRF<Type_UB>();
+    int srcRegNum = (srcEnd - srcStart + numEltPerGRF<Type_UB>()) / numEltPerGRF<Type_UB>();
     int srcReg2 = -1;
 
     if (srcRegNum > 1)
@@ -275,8 +275,8 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST* inst)
             return;
         }
 
-        int dstStart = dst->getLinearizedStart() / numEltPerGRF(Type_UB);
-        int dstEnd = dst->getLinearizedEnd() / numEltPerGRF(Type_UB);
+        int dstStart = dst->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        int dstEnd = dst->getLinearizedEnd() / numEltPerGRF<Type_UB>();
 
         for (int i = 0; i < inst->getNumSrc(); i++)
         {
@@ -286,8 +286,8 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST* inst)
             {
                 bool overlap = dataHazardCheck(dst, src);
 
-                int srcStart = src->getLinearizedStart() / numEltPerGRF(Type_UB);
-                int srcEnd = src->getLinearizedEnd() / numEltPerGRF(Type_UB);
+                int srcStart = src->getLinearizedStart() / numEltPerGRF<Type_UB>();
+                int srcEnd = src->getLinearizedEnd() / numEltPerGRF<Type_UB>();
                 if (dstEnd != dstStart ||
                     srcStart != srcEnd)  //Any operand is more than 2 GRF
                 {
@@ -310,7 +310,7 @@ void G4Verifier::verifySend(G4_INST* inst)
         if (inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding())
         {
             auto checkEOTSrc = [](G4_SrcRegRegion* src) {
-                const unsigned int EOTStart = 112 * numEltPerGRF(Type_UB);
+                const unsigned int EOTStart = 112 * numEltPerGRF<Type_UB>();
                 if (src->isNullReg())
                 {
                     return true;
@@ -332,9 +332,9 @@ void G4Verifier::verifySend(G4_INST* inst)
         {
             if (src0->getBase()->isGreg() && src1 && src1->getBase()->isGreg())
             {
-                int src0Start = src0->getLinearizedStart() / numEltPerGRF(Type_UB);
+                int src0Start = src0->getLinearizedStart() / numEltPerGRF<Type_UB>();
                 int src0End = src0Start + inst->getMsgDesc()->MessageLength() - 1;
-                int src1Start = src1->getLinearizedStart() / numEltPerGRF(Type_UB);
+                int src1Start = src1->getLinearizedStart() / numEltPerGRF<Type_UB>();
                 int src1End = src1Start + inst->getMsgDesc()->extMessageLength() - 1;
                 bool noOverlap = src0End < src1Start ||
                     src1End < src0Start;
@@ -427,7 +427,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         {
             if (opnd->isRightBoundSet() && !opnd->isNullReg())
             {
-                unsigned int correctRB = ((inst->getMsgDesc()->ResponseLength() + opnd->asDstRegRegion()->getRegOff()) * numEltPerGRF(Type_UB)) - 1;
+                unsigned int correctRB = ((inst->getMsgDesc()->ResponseLength() + opnd->asDstRegRegion()->getRegOff()) * numEltPerGRF<Type_UB>()) - 1;
 
                 if (inst->getMsgDesc()->isScratchRW() == false &&
                     inst->getMsgDesc()->isOwordLoad() &&
@@ -436,7 +436,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 {
                     correctRB = opnd->getLeftBound() + 15;
                 }
-                else if (opnd->getTopDcl()->getByteSize() < numEltPerGRF(Type_UB))
+                else if (opnd->getTopDcl()->getByteSize() < numEltPerGRF<Type_UB>())
                 {
                     correctRB = opnd->getLeftBound() + opnd->getTopDcl()->getByteSize() - 1;
                 }
@@ -468,13 +468,13 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 int msgLength = (opnd == inst->getSrc(0)) ? inst->getMsgDesc()->MessageLength() : inst->getMsgDesc()->extMessageLength();
                 unsigned int numBytes = opnd->getTopDcl()->getByteSize();
                 unsigned int correctRB = 0;
-                if (numBytes < numEltPerGRF(Type_UB))
+                if (numBytes < numEltPerGRF<Type_UB>())
                 {
-                    correctRB = opnd->asSrcRegRegion()->getRegOff() * numEltPerGRF(Type_UB) + numBytes - 1;
+                    correctRB = opnd->asSrcRegRegion()->getRegOff() * numEltPerGRF<Type_UB>() + numBytes - 1;
                 }
                 else
                 {
-                    correctRB = ((msgLength + opnd->asSrcRegRegion()->getRegOff()) * numEltPerGRF(Type_UB)) - 1;
+                    correctRB = ((msgLength + opnd->asSrcRegRegion()->getRegOff()) * numEltPerGRF<Type_UB>()) - 1;
                 }
 
                 G4_Declare* parentDcl = opnd->getBase()->asRegVar()->getDeclare();
@@ -521,7 +521,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 newRgn.setRightBound(topdcl->getByteSize() - 1);
             }
 
-            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * numEltPerGRF(Type_UB)) &&
+            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * numEltPerGRF<Type_UB>()) &&
                 (inst->isPseudoUse() == false))
             {
                 if (!(inst->opcode() == G4_pln && inst->getSrc(1) == opnd))
@@ -618,7 +618,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 newRgn.setRightBound(topdcl->getByteSize() - 1);
             }
 
-            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * numEltPerGRF(Type_UB)) &&
+            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * numEltPerGRF<Type_UB>()) &&
                 (inst->isPseudoKill() == false))
             {
                 DEBUG_VERBOSE("Difference between left/right bound is greater than 2 GRF for dst region. Single non-send opnd cannot span 2 GRFs. lb = " <<

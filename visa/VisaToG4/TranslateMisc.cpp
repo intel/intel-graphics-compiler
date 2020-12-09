@@ -271,8 +271,8 @@ void IR_Builder::preparePayload(
         // regions.
         msgs[0] = srcs[0].opnd;
         msgs[1] = (splitPos == 0) ? 0 : srcs[splitPos].opnd;
-        sizes[0] = msgSizes[0] / numEltPerGRF(Type_UB);
-        sizes[1] = msgSizes[1] / numEltPerGRF(Type_UB);
+        sizes[0] = msgSizes[0] / numEltPerGRF<Type_UB>();
+        sizes[1] = msgSizes[1] / numEltPerGRF<Type_UB>();
 
         return;
     }
@@ -306,11 +306,11 @@ void IR_Builder::preparePayload(
     i = 0;
     if (current > 0) {
         msgs[i] = srcs[0].opnd;
-        sizes[i] = msgSizes[0] / numEltPerGRF(Type_UB);
+        sizes[i] = msgSizes[0] / numEltPerGRF<Type_UB>();
         ++i;
     }
     msgs[i] = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-    sizes[i] = msgSizes[current] / numEltPerGRF(Type_UB);
+    sizes[i] = msgSizes[current] / numEltPerGRF<Type_UB>();
 }
 
 G4_SrcRegRegion *IR_Builder::coalescePayload(
@@ -444,7 +444,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload(
 unsigned int IR_Builder::getByteOffsetSrcRegion(G4_SrcRegRegion* srcRegion)
 {
     unsigned int offset =
-        (srcRegion->getRegOff() * numEltPerGRF(Type_UB)) +
+        (srcRegion->getRegOff() * numEltPerGRF<Type_UB>()) +
         (srcRegion->getSubRegOff() * G4_Type_Table[srcRegion->getType()].byteSize);
 
     if (srcRegion->getBase() &&

@@ -182,8 +182,8 @@ private:
         if (base->isGreg())
         {
             uint32_t byteAddress = opnd->getLinearizedStart();
-            regRef.regNum = byteAddress / numEltPerGRF(Type_UB);
-            regRef.subRegNum = (byteAddress % numEltPerGRF(Type_UB)) / G4_Type_Table[opnd->getType()].byteSize;
+            regRef.regNum = byteAddress / numEltPerGRF<Type_UB>();
+            regRef.subRegNum = (byteAddress % numEltPerGRF<Type_UB>()) / G4_Type_Table[opnd->getType()].byteSize;
         }
         else if (opnd->isSrcRegRegion())
         {

@@ -704,7 +704,7 @@ void vISAVerifier::verifyRawOperand(
             currVar = header->getVar(currVar->alias_index-numPreDefinedVars);
         }
 
-        if (currVar->getSize() >= numEltPerGRF(Type_UB) && totalOffset % numEltPerGRF(Type_UB) != 0)
+        if (currVar->getSize() >= numEltPerGRF<Type_UB>() && totalOffset % numEltPerGRF<Type_UB>() != 0)
         {
             // raw operand must be GRF-aligned if it's >= 1GRF
             REPORT_INSTRUCTION(options,false, "Raw operand should be GRF-aligned: Raw offset is %d", totalOffset);

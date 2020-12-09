@@ -400,7 +400,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             {
                 VISA_Type vType = decl->genVar.getType();
                 G4_Type gType = GetGenTypeFromVISAType(vType);
-                unsigned int offset  = colOffset * G4_Type_Table[gType].byteSize + rowOffset * numEltPerGRF(Type_UB);
+                unsigned int offset  = colOffset * G4_Type_Table[gType].byteSize + rowOffset * numEltPerGRF<Type_UB>();
                 kernelBuilderImpl->CreateVISAAddressOfOperand(opnd, decl, offset);
             }
             else

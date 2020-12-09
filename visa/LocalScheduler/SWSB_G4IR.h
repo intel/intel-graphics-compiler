@@ -195,8 +195,8 @@ namespace vISA
             while (curFootprint2Ptr)
             {
                 if (fType == curFootprint2Ptr->fType &&
-                    ((LeftB / numEltPerGRF(Type_UB)) <= (curFootprint2Ptr->RightB / numEltPerGRF(Type_UB))) &&
-                    ((RightB / numEltPerGRF(Type_UB)) >= (curFootprint2Ptr->LeftB / numEltPerGRF(Type_UB))))
+                    ((LeftB / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB / numEltPerGRF<Type_UB>())) &&
+                    ((RightB / numEltPerGRF<Type_UB>()) >= (curFootprint2Ptr->LeftB / numEltPerGRF<Type_UB>())))
                 {
                     return true;
                 }
@@ -211,8 +211,8 @@ namespace vISA
                 while (curFootprint2Ptr)
                 {
                     if (fType == curFootprint2Ptr->fType &&
-                        ((curFootprintPtr->LeftB  / numEltPerGRF(Type_UB)) <= (curFootprint2Ptr->RightB  / numEltPerGRF(Type_UB))) &&
-                        ((curFootprintPtr->RightB  / numEltPerGRF(Type_UB)) >= (curFootprint2Ptr->LeftB  / numEltPerGRF(Type_UB))))
+                        ((curFootprintPtr->LeftB  / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB  / numEltPerGRF<Type_UB>())) &&
+                        ((curFootprintPtr->RightB  / numEltPerGRF<Type_UB>()) >= (curFootprint2Ptr->LeftB  / numEltPerGRF<Type_UB>())))
                     {
                         return true;
                     }
@@ -819,8 +819,8 @@ namespace vISA
             SBFootprint *footprint = bucketNode->node->getFirstFootprint(bucketNode->opndNum);
             while (footprint)
             {
-                unsigned int startBucket = footprint->LeftB / numEltPerGRF(Type_UB);
-                unsigned int endBucket = footprint->RightB / numEltPerGRF(Type_UB);
+                unsigned int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
+                unsigned int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
                 if (footprint->fType == ACC_T)
                 {
                     startBucket = startBucket + aregOffset;

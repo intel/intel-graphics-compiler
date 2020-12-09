@@ -482,7 +482,7 @@ void Optimizer::cloneSampleInst()
                         G4_Declare* maskAlias = builder.createTempVar(1, Type_UW, Any);
                         maskAlias->setAliasDeclare(
                             inst->getDst()->getBase()->asRegVar()->getDeclare(),
-                            (inst->getDst()->getRegOff() + rspLen - 1) * numEltPerGRF(Type_UB));
+                            (inst->getDst()->getRegOff() + rspLen - 1) * numEltPerGRF<Type_UB>());
                         G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(
                             maskAlias, builder.getRegionScalar());
                         G4_DstRegRegion* dst = builder.createDst(maskCopy->getRegVar(), Type_UW);
@@ -743,7 +743,7 @@ void getPhyRegs(G4_Operand* opnd, unsigned int& start, unsigned int& end)
                 r = r->getDeclare()->getRootDeclare()->getRegVar();
                 auto phyReg = r->getPhyReg()->asGreg();
                 auto subRegOff = r->getPhyRegOff();
-                start = phyReg->getRegNum() * numEltPerGRF(Type_UB);
+                start = phyReg->getRegNum() * numEltPerGRF<Type_UB>();
                 start += subRegOff * r->getDeclare()->getElemSize();
                 end = start + r->getDeclare()->getRootDeclare()->getByteSize() - 1;
             }
@@ -755,12 +755,12 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
 {
     auto gtpin = kernel.getGTPinData();
     gtpin->clearFreeGlobalRegs();
-    std::vector<bool> freeGRFs(kernel.getNumRegTotal() * numEltPerGRF(Type_UB), true);
+    std::vector<bool> freeGRFs(kernel.getNumRegTotal() * numEltPerGRF<Type_UB>(), true);
     unsigned int start = 0, end = 0;
 
     // Mark r0 as busy. Done explicitly because move from r0 is inserted
     // after reRA pass.
-    for (unsigned int i = 0; i < numEltPerGRF(Type_UB); i++)
+    for (unsigned int i = 0; i < numEltPerGRF<Type_UB>(); i++)
     {
         freeGRFs[i] = false;
     }
@@ -2010,10 +2010,10 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
                 // length of subregoff part
                 tempLen = dstRegion->getSubRegOff() * dstElSize + dist * dstHS;
 
-                if (tempLen >= numEltPerGRF(Type_UB))
+                if (tempLen >= numEltPerGRF<Type_UB>())
                 {
                     regOff = dst->getRegOff() + 1;
-                    subRegOff = (unsigned short)((tempLen - numEltPerGRF(Type_UB)) / defDstElSize);
+                    subRegOff = (unsigned short)((tempLen - numEltPerGRF<Type_UB>()) / defDstElSize);
                 }
                 else
                 {
@@ -2065,9 +2065,9 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
                 dstDist = FirstEltIndex * dstElSize * dstHS;
                 tempLen = dstDist + dst->getSubRegOff() * dstElSize;
                 regOff = (unsigned short)(dst->getRegOff() +
-                    tempLen / numEltPerGRF(Type_UB));
+                    tempLen / numEltPerGRF<Type_UB>());
 
-                subRegOff = (unsigned short)(tempLen % numEltPerGRF(Type_UB)) / defDstElSize;
+                subRegOff = (unsigned short)(tempLen % numEltPerGRF<Type_UB>()) / defDstElSize;
             }
 
             unsigned short defDstHS = defDstRegion->getHorzStride();
@@ -2357,8 +2357,8 @@ void Optimizer::doSimplification(G4_INST *inst)
 
         unsigned SrcSizeInBytes = inst->getExecSize() *
                 getTypeSize(inst->getSrc(0)->getType());
-        if (SrcSizeInBytes == numEltPerGRF(Type_UB)/2 ||
-            SrcSizeInBytes == numEltPerGRF(Type_UB))
+        if (SrcSizeInBytes == numEltPerGRF<Type_UB>()/2 ||
+            SrcSizeInBytes == numEltPerGRF<Type_UB>())
         {
             G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
             if (LEA && LEA->opcode() == G4_add &&
@@ -2377,8 +2377,8 @@ void Optimizer::doSimplification(G4_INST *inst)
                     // Immeidates in 'uv' ensures each element is a
                     // byte-offset within half-GRF.
                     G4_SubReg_Align SubAlign = GRFALIGN;
-                    if (SrcSizeInBytes <= numEltPerGRF(Type_UB)/2u)
-                        SubAlign = (G4_SubReg_Align)(numEltPerGRF(Type_UW)/2);
+                    if (SrcSizeInBytes <= numEltPerGRF<Type_UB>()/2u)
+                        SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>()/2);
                     inst->setOpcode(G4_movi);
                     if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != GRFALIGN)
                     {
@@ -3442,11 +3442,11 @@ void Optimizer::cselPeepHoleOpt()
                             //check elsewhere guarantees this is float.
                             G4_Type type = opnd2->getType();
                             unsigned short typeSize = (unsigned short)G4_Type_Table[type].byteSize;
-                            unsigned offset = opnd2->getRegOff() * numEltPerGRF(Type_UB) + opnd2->getSubRegOff() * typeSize;
+                            unsigned offset = opnd2->getRegOff() * numEltPerGRF<Type_UB>() + opnd2->getSubRegOff() * typeSize;
                             offset += useInst->getExecSize() * src0Stride * typeSize;
 
                             auto newSrc2 = builder.createSrcRegRegion(opnd2->getModifier(), Direct, opnd2->getBase(),
-                                offset / numEltPerGRF(Type_UB), (offset % numEltPerGRF(Type_UB)) / typeSize, opnd2->getRegion(),
+                                offset / numEltPerGRF<Type_UB>(), (offset % numEltPerGRF<Type_UB>()) / typeSize, opnd2->getRegion(),
                                 opnd2->getType());
                             useInst->setSrc(newSrc2, 2);
                         }
@@ -5596,7 +5596,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 // header is hard-coded to be 32 bytes
                 if (header->getTopDcl()    == dst->getTopDcl()         &&
                     dst->getLeftBound() >= header->getLeftBound()      &&
-                    dst->getRightBound() <= header->getLeftBound() + numEltPerGRF(Type_UB) -1)
+                    dst->getRightBound() <= header->getLeftBound() + numEltPerGRF<Type_UB>() -1)
                 {
                     return true;
                 }
@@ -6451,9 +6451,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // If subreg crosses GRF size, update reg and subreg offset accordingly
         newSubRegOffByte = subRegOffByte + newEleOffByte;
-        crossGRF = newSubRegOffByte / numEltPerGRF(Type_UB);
+        crossGRF = newSubRegOffByte / numEltPerGRF<Type_UB>();
 
-        newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF(Type_UB);
+        newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF<Type_UB>();
 
         // Compute final reg and subreg offsets
         regOff = src->getRegOff() + crossGRF;
@@ -6525,8 +6525,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             newSubRegOff = dst->getSubRegOff() + start * hs;
             newSubRegOffByte = newSubRegOff * G4_Type_Table[dstType].byteSize;
 
-            crossGRF = newSubRegOffByte / numEltPerGRF(Type_UB);
-            newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF(Type_UB);
+            crossGRF = newSubRegOffByte / numEltPerGRF<Type_UB>();
+            newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF<Type_UB>();
 
             // Compute final reg and subreg offsets
             regOff = dst->getRegOff() + crossGRF;
@@ -6685,7 +6685,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     if (Src0 && Src0->isGreg())
                     {
                         unsigned LB = Src0->getLinearizedStart();
-                        if (LB == 2 * numEltPerGRF(Type_UB))
+                        if (LB == 2 * numEltPerGRF<Type_UB>())
                         {
                             inst->setOptionOn(InstOpt_NoPreempt);
                         }
@@ -6966,7 +6966,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             ++iter;
         }
 
-        int regOffset = (inputEnd + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB);
+        int regOffset = (inputEnd + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
 
         static const unsigned SCRATCH_MSG_DESC_CATEGORY = 18;
         static const unsigned SCRATCH_MSG_DESC_OPERATION_MODE = 17;
@@ -7550,12 +7550,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // GlobalRA::setABIForStackCallFunctionCalls.
         assert(fcall->getDst()->isGreg());
         // call dst must not be overlapped with r2 which is hardcoded as the new jump target
-        assert((fcall->getDst()->getLinearizedStart() / numEltPerGRF(Type_UB)) != 2);
+        assert((fcall->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>()) != 2);
 
 
         // hardcoded add's dst to r2
         // the reg offset must be the same as call's dst reg, and must be 0 (HW restriction)
-        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF(Type_UB)
+        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
             / getTypeSize(fcall->getDst()->getType());
 
         G4_Declare* add_dst_decl =
@@ -7601,8 +7601,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // calculate the reserved register's num and offset from fcall's dst register (shoud be r125.0)
         assert(fcall->getDst()->isGreg());
-        uint32_t reg_num = fcall->getDst()->getLinearizedStart() / numEltPerGRF(Type_UB);
-        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF(Type_UB)
+        uint32_t reg_num = fcall->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
             / getTypeSize(fcall->getDst()->getType());
 
         G4_Declare* new_target_decl = createInstsForCallTargetOffset(insts, fcall, -64);
@@ -8563,7 +8563,7 @@ static bool checkMadDst(G4_INST *inst, IR_Builder &builder)
     // FIXME: This acc type size is only for simd 16.
     unsigned Sz = G4_Type_Table[Type_W].byteSize;
     Sz *= dst->getHorzStride() * inst->getExecSize();
-    return Sz <= numEltPerGRF(Type_UB);
+    return Sz <= numEltPerGRF<Type_UB>();
 }
 
 // Check whether this mad sequence can be turned into a MAC sequence.
@@ -9124,7 +9124,7 @@ static bool isCandidateDecl(G4_Declare *Dcl, const IR_Builder& builder)
 
     // Only split 4GRF variables. We should be able to split > 4GRF variables,
     // but this should have been done in FE.
-    if (RootDcl->getByteSize() != 4 * numEltPerGRF(Type_UB))
+    if (RootDcl->getByteSize() != 4 * numEltPerGRF<Type_UB>())
         return false;
 
     if (RootDcl->getAddressed())
@@ -9284,7 +9284,7 @@ void Optimizer::split4GRFVars()
                 {
                     uint32_t lb = opnd->getLeftBound();
                     uint32_t rb = opnd->getRightBound();
-                    return (lb < 2u * numEltPerGRF(Type_UB)) && (rb >= 2u * numEltPerGRF(Type_UB));
+                    return (lb < 2u * numEltPerGRF<Type_UB>()) && (rb >= 2u * numEltPerGRF<Type_UB>());
                 };
                 // check and remove decls with operands that cross 2GRF boundary
                 if (inst->getDst())
@@ -9342,7 +9342,7 @@ void Optimizer::split4GRFVars()
                 G4_Declare* dstRootDcl = dst->getTopDcl()->getRootDeclare();
                 if (DclMap.count(dstRootDcl))
                 {
-                    bool isLow = dst->getLeftBound() < 2u * numEltPerGRF(Type_UB);
+                    bool isLow = dst->getLeftBound() < 2u * numEltPerGRF<Type_UB>();
                     auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
                     auto NewDst = builder.createDst(NewDcl->getRegVar(),
                         dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(),
@@ -9360,7 +9360,7 @@ void Optimizer::split4GRFVars()
                     G4_Declare* srcRootDcl = src->getTopDcl()->getRootDeclare();
                     if (DclMap.count(srcRootDcl))
                     {
-                        bool isLow = src->getLeftBound() < 2u * numEltPerGRF(Type_UB);
+                        bool isLow = src->getLeftBound() < 2u * numEltPerGRF<Type_UB>();
                         auto NewSrcDcl = DclMap[srcRootDcl]->getDcl(builder, src->getType(), isLow);
                         auto NewSrc = builder.createSrcRegRegion(
                             srcRegion->getModifier(), src->getRegAccess(),
@@ -9740,14 +9740,14 @@ void Optimizer::dce()
 static bool retires(G4_Operand* Opnd, G4_INST* SI)
 {
     assert(Opnd && Opnd->isGreg());
-    unsigned LB = Opnd->getLinearizedStart() / numEltPerGRF(Type_UB);
-    unsigned RB = Opnd->getLinearizedEnd() / numEltPerGRF(Type_UB);
+    unsigned LB = Opnd->getLinearizedStart() / numEltPerGRF<Type_UB>();
+    unsigned RB = Opnd->getLinearizedEnd() / numEltPerGRF<Type_UB>();
 
     auto overlaps = [=](G4_Operand* A) {
         if (A == nullptr || A->isNullReg() || !A->isGreg())
             return false;
-        unsigned LB1 = A->getLinearizedStart() / numEltPerGRF(Type_UB);
-        unsigned RB1 = A->getLinearizedEnd() / numEltPerGRF(Type_UB);
+        unsigned LB1 = A->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        unsigned RB1 = A->getLinearizedEnd() / numEltPerGRF<Type_UB>();
         return (RB >= LB1 && RB1 >= LB);
     };
 
@@ -9775,9 +9775,9 @@ static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
     assert(SI && SI->isSend());
     G4_Operand* Src0 = SI->getSrc(0);
 
-    unsigned RegNum = Src0->getLinearizedStart() / numEltPerGRF(Type_UB);
+    unsigned RegNum = Src0->getLinearizedStart() / numEltPerGRF<Type_UB>();
     G4_Declare* Dcl = builder.createTempVar(16, Type_F, Any);
-    Dcl->setGRFBaseOffset(RegNum * numEltPerGRF(Type_UB));
+    Dcl->setGRFBaseOffset(RegNum * numEltPerGRF<Type_UB>());
     Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
 
     G4_DstRegRegion* MovDst = builder.createDst(Dcl->getRegVar(), 0, 0, 1, Type_F);

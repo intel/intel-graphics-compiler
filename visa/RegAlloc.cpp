@@ -761,8 +761,8 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
                 unsigned int lb = dst->getLeftBound();
                 unsigned int rb = dst->getRightBound();
 
-                unsigned int rowStart = lb / numEltPerGRF(Type_UB);
-                unsigned int rowEnd = rb / numEltPerGRF(Type_UB);
+                unsigned int rowStart = lb / numEltPerGRF<Type_UB>();
+                unsigned int rowEnd = rb / numEltPerGRF<Type_UB>();
 
                 it->second->set(rowStart, rowEnd);
             }
@@ -792,7 +792,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
         {
             if (!it.second->isSet(i))
             {
-                undefinedRows->set((i*numEltPerGRF(Type_UB)), ((i+1)*numEltPerGRF(Type_UB)) - 1);
+                undefinedRows->set((i*numEltPerGRF<Type_UB>()), ((i+1)*numEltPerGRF<Type_UB>()) - 1);
             }
         }
 
@@ -2336,7 +2336,7 @@ void LivenessAnalysis::dump() const
                 dumpVar(var);
             }
         }
-        std::cerr << "\nBB" << bb->getId() << "'s live in size: " << total_size / numEltPerGRF(Type_UB) << "\n\n";
+        std::cerr << "\nBB" << bb->getId() << "'s live in size: " << total_size / numEltPerGRF<Type_UB>() << "\n\n";
         std::cerr << "BB" << bb->getId() << "'s live out: ";
         total_size = 0;
         count = 0;
@@ -2348,7 +2348,7 @@ void LivenessAnalysis::dump() const
                 dumpVar(var);
             }
         }
-        std::cerr << "\nBB" << bb->getId() << "'s live out size: " << total_size / numEltPerGRF(Type_UB)<< "\n\n";
+        std::cerr << "\nBB" << bb->getId() << "'s live out size: " << total_size / numEltPerGRF<Type_UB>()<< "\n\n";
     }
 }
 
@@ -2661,7 +2661,7 @@ void FlowGraph::setABIForStackCallFunctionCalls()
 
             G4_INST* fcall = bb->back();
             // Set call dst to r125.0
-            G4_Declare* r1_dst = builder->createDeclareNoLookup(n, G4_GRF, numEltPerGRF(Type_UD), 1, Type_UD);
+            G4_Declare* r1_dst = builder->createDeclareNoLookup(n, G4_GRF, numEltPerGRF<Type_UD>(), 1, Type_UD);
             r1_dst->getRegVar()->setPhyReg(builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()), IR_Builder::SubRegs_Stackcall::Ret_IP);
             G4_DstRegRegion* dstRgn = builder->createDst(r1_dst->getRegVar(), 0, 0, 1, Type_UD);
             fcall->setDest(dstRgn);
@@ -2672,7 +2672,7 @@ void FlowGraph::setABIForStackCallFunctionCalls()
             const char* n = builder->getNameString(mem, 25, "FRET_RET_LOC_%d", ret_id++);
             G4_INST* fret = bb->back();
             const RegionDesc* rd = builder->createRegionDesc(2, 2, 1);
-            G4_Declare* r1_src = builder->createDeclareNoLookup(n, G4_INPUT, numEltPerGRF(Type_UD), 1, Type_UD);
+            G4_Declare* r1_src = builder->createDeclareNoLookup(n, G4_INPUT, numEltPerGRF<Type_UD>(), 1, Type_UD);
             r1_src->getRegVar()->setPhyReg(builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()), IR_Builder::SubRegs_Stackcall::Ret_IP);
             G4_Operand* srcRgn = builder->createSrc(r1_src->getRegVar(), 0, 0, rd, Type_UD);
             fret->setSrc(srcRgn, 0);
@@ -2721,7 +2721,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         // Verify Live-in
         std::map<uint32_t, G4_Declare*> LiveInRegMap;
         std::map<uint32_t, G4_Declare*>::iterator LiveInRegMapIt;
-        std::vector<uint32_t> liveInRegVec(numGRF * numEltPerGRF(Type_UW), UINT_MAX);
+        std::vector<uint32_t> liveInRegVec(numGRF * numEltPerGRF<Type_UW>(), UINT_MAX);
 
         for (auto dcl_it : kernel.Declares)
         {
@@ -2740,7 +2740,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                     uint32_t regOff = var->getPhyRegOff();
 
-                    uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                    uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                         (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
@@ -2779,7 +2779,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         G4_Declare *ret = kernel.fg.builder->getStackCallRet();
         std::map<uint32_t, G4_Declare*> liveOutRegMap;
         std::map<uint32_t, G4_Declare*>::iterator liveOutRegMapIt;
-        std::vector<uint32_t> liveOutRegVec(numGRF * numEltPerGRF(Type_UW), UINT_MAX);
+        std::vector<uint32_t> liveOutRegVec(numGRF * numEltPerGRF<Type_UW>(), UINT_MAX);
 
         for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
             dcl_it != kernel.Declares.end();
@@ -2800,7 +2800,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                     uint32_t regOff = var->getPhyRegOff();
 
-                    uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                    uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                         (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
@@ -2861,7 +2861,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                     uint32_t regOff = var->getPhyRegOff();
 
-                    uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                    uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                         (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
@@ -2932,7 +2932,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                         uint32_t regOff = var->getPhyRegOff();
 
-                        uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                        uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                             (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
@@ -2986,7 +2986,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                     uint32_t regOff = var->getPhyRegOff();
 
-                    uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                    uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                         (regOff * G4_Type_Table[ret->getElemType()].byteSize) / G4_WSIZE;
                     for (uint32_t i = 0; i < ret->getWordSize(); ++i, ++idx)
                     {
@@ -3020,7 +3020,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                     uint32_t regOff = var->getPhyRegOff();
 
-                    uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                    uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                         (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
@@ -3098,7 +3098,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                         uint32_t regOff = var->getPhyRegOff();
 
-                        uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                        uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                             (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
@@ -3165,7 +3165,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                         uint32_t regOff = var->getPhyRegOff();
 
-                        uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                        uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                             (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
@@ -3210,7 +3210,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                         uint32_t regOff = var->getPhyRegOff();
 
-                        uint32_t idx = regNum * numEltPerGRF(Type_UW) +
+                        uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
                             (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {

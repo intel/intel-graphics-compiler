@@ -261,23 +261,5 @@ const char *GetSteppingString()
     return steppingName[stepping];
 }
 
-G4_Type_Info G4_Type_Table[Type_UNDEF + 1] {
-    {Type_UD,  32, 4, 0x0F, "ud"},
-    {Type_D,   32, 4, 0x0F, "d"},
-    {Type_UW,  16, 2, 0x03, "uw"},
-    {Type_W,   16, 2, 0x03, "w"},
-    {Type_UB,   8, 1, 0x01, "ub"},
-    {Type_B,    8, 1, 0x01, "b"},
-    {Type_F,   32, 4, 0x0F, "f"},
-    {Type_VF,  32, 4, 0x0F, "vf"}, // handle as F?
-    {Type_V,   32, 4, 0x0F, "v"},  // handle as D?
-    {Type_DF,  64, 8, 0xFF, "df"},
-    {Type_BOOL, 1, 2, 0x01, "bool"}, // TODO: how to decide 1 bit here?
-    {Type_UV,  32, 4, 0x0F, "uv"},
-    {Type_Q,   64, 8, 0xFF, "q"},
-    {Type_UQ,  64, 8, 0xFF, "uq"},
-    {Type_HF,  16, 2, 0x03, "hf"},
-    {Type_NF,  64, 8, 0xFF, "nf"},
-    {Type_UNDEF, 0, 0, 0x0, "none"}
-};
+
 

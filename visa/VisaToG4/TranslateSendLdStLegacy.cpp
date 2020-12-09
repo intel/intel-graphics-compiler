@@ -521,7 +521,7 @@ int IR_Builder::translateVISAGatherInst(
     else if (!headerLess)
     {
         header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + effectiveNumElt, Type_UD);
-        offset->setAliasDeclare(header, numEltPerGRF(Type_UB));
+        offset->setAliasDeclare(header, numEltPerGRF<Type_UB>());
     }
 
     G4_SrcRegRegion* msgSrcOpnd = NULL;
@@ -961,7 +961,7 @@ int IR_Builder::translateVISAGather4Inst(
             header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
         } else {
             header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + numElt, Type_UD);
-            offset->setAliasDeclare(header, numEltPerGRF(Type_UB));
+            offset->setAliasDeclare(header, numEltPerGRF<Type_UB>());
         }
     } else {
         // When the surface is not stateless one, header is not used and therefore
@@ -1152,11 +1152,11 @@ int IR_Builder::translateVISAScatter4Inst(
             // (header, offset + data) if split-send is supported.
             header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
             offset = createSendPayloadDcl(payload_size, Type_UD);
-            data->setAliasDeclare(offset, (numElt/8) * numEltPerGRF(Type_UB));
+            data->setAliasDeclare(offset, (numElt/8) * numEltPerGRF<Type_UB>());
         } else {
             header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + payload_size, Type_UD);
-            offset->setAliasDeclare(header, numEltPerGRF(Type_UB));
-            data->setAliasDeclare(header, numEltPerGRF(Type_UB) * ((numElt/8) + 1));
+            offset->setAliasDeclare(header, numEltPerGRF<Type_UB>());
+            data->setAliasDeclare(header, numEltPerGRF<Type_UB>() * ((numElt/8) + 1));
         }
     } else {
         if (useSplitSend) {
@@ -1165,7 +1165,7 @@ int IR_Builder::translateVISAScatter4Inst(
             offset = createSendPayloadDcl(numElt, Type_UD);
         } else {
             offset = createSendPayloadDcl(payload_size, Type_UD);
-            data->setAliasDeclare(offset, (numElt/8) * numEltPerGRF(Type_UB));
+            data->setAliasDeclare(offset, (numElt/8) * numEltPerGRF<Type_UB>());
         }
     }
 
@@ -2659,12 +2659,12 @@ int IR_Builder::translateVISASVMScatterReadInst(
         // as message length is set to 2 (HW requirements),
         // we have to even align both src/dst to satisfy the WA
         G4_Declare* srcDcl = addresses->getTopDcl()->getRootDeclare();
-        if (srcDcl->getByteSize() <= numEltPerGRF(Type_UB))
+        if (srcDcl->getByteSize() <= numEltPerGRF<Type_UB>())
         {
             srcDcl->setEvenAlign();
         }
         G4_Declare* dstDcl = dst->getTopDcl()->getRootDeclare();
-        if (dstDcl->getByteSize() <= numEltPerGRF(Type_UB))
+        if (dstDcl->getByteSize() <= numEltPerGRF<Type_UB>())
         {
             dstDcl->setEvenAlign();
         }

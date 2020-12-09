@@ -1793,6 +1793,30 @@ typedef enum class AugmentationMasks
 namespace vISA
 {
 
+template <int Ty>
+unsigned int numEltPerGRF()
+{
+    constexpr auto typeSize = G4_Type_Table[Ty].byteSize;
+    return getGRFSize() / typeSize;
+}
+
+template unsigned int numEltPerGRF<Type_UD>();
+template unsigned int numEltPerGRF<Type_D>();
+template unsigned int numEltPerGRF<Type_UW>();
+template unsigned int numEltPerGRF<Type_W>();
+template unsigned int numEltPerGRF<Type_UB>();
+template unsigned int numEltPerGRF<Type_B>();
+template unsigned int numEltPerGRF<Type_F>();
+template unsigned int numEltPerGRF<Type_VF>();
+template unsigned int numEltPerGRF<Type_V>();
+template unsigned int numEltPerGRF<Type_DF>();
+template unsigned int numEltPerGRF<Type_BOOL>();
+template unsigned int numEltPerGRF<Type_UV>();
+template unsigned int numEltPerGRF<Type_Q>();
+template unsigned int numEltPerGRF<Type_UQ>();
+template unsigned int numEltPerGRF<Type_HF>();
+template unsigned int numEltPerGRF<Type_NF>();
+
 inline unsigned int numEltPerGRF(G4_Type t)
 {
     auto typeSize = G4_Type_Table[t].byteSize;
@@ -1944,7 +1968,7 @@ public:
 
     void resizeNumRows(unsigned int numrows)
     {
-        int byteSize = numrows * numEltPerGRF(Type_UB);
+        int byteSize = numrows * numEltPerGRF<Type_UB>();
         setTotalElems(byteSize / getElemSize());
     }
 
@@ -2054,11 +2078,11 @@ public:
     // returns number of elements per row
     unsigned short getNumElems() const
     {
-        return getNumRows() > 1 ? numEltPerGRF(Type_UB) / getElemSize() : numElements;
+        return getNumRows() > 1 ? numEltPerGRF<Type_UB>() / getElemSize() : numElements;
     }
     unsigned short getNumRows() const
     {
-        return (getByteSize() + (numEltPerGRF(Type_UB) - 1))/numEltPerGRF(Type_UB);
+        return (getByteSize() + (numEltPerGRF<Type_UB>() - 1))/numEltPerGRF<Type_UB>();
     }
     unsigned short getTotalElems() const
     {
@@ -2365,8 +2389,8 @@ public:
 
     bool crossGRF()
     {
-        return getRightBound() / numEltPerGRF(Type_UB) !=
-               getLeftBound() / numEltPerGRF(Type_UB);
+        return getRightBound() / numEltPerGRF<Type_UB>() !=
+               getLeftBound() / numEltPerGRF<Type_UB>();
     }
 
     unsigned getLeftBound()
@@ -3224,7 +3248,7 @@ public:
         if (isNullReg())
         {
             return inst != NULL &&
-                inst->getExecSize() * G4_Type_Table[type].byteSize * horzStride > numEltPerGRF(Type_UB);
+                inst->getExecSize() * G4_Type_Table[type].byteSize * horzStride > numEltPerGRF<Type_UB>();
         }
         if (isRightBoundSet() == false)
         {
@@ -3232,7 +3256,7 @@ public:
             getInst()->computeRightBound(this);
         }
 
-        return (left_bound / numEltPerGRF(Type_UB)) != right_bound / numEltPerGRF(Type_UB);
+        return (left_bound / numEltPerGRF<Type_UB>()) != right_bound / numEltPerGRF<Type_UB>();
     }
     unsigned short getHorzStride() const { return horzStride; }
     ChannelEnable  getWriteMask() const { return writeMask; }
@@ -4064,7 +4088,7 @@ static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int 
 
     // read/write in units of GRF.
     unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
-        LB + numReg * numEltPerGRF(Type_UB)) - 1;
+        LB + numReg * numEltPerGRF<Type_UB>()) - 1;
 
     unsigned NBytes = RB - LB + 1;
     opnd->setBitVecFromSize(NBytes);

@@ -50,7 +50,7 @@ void G4_SrcRegRegion::computePReg()
                 subRegNum = (subRegNum * declOpSize) / thisOpSize;
             }
 
-            unsigned int linearizedStart = (regNum * numEltPerGRF(Type_UB)) + (subRegNum * thisOpSize);
+            unsigned int linearizedStart = (regNum * numEltPerGRF<Type_UB>()) + (subRegNum * thisOpSize);
 
             dcl->setGRFBaseOffset(linearizedStart);
         }
@@ -79,7 +79,7 @@ void G4_DstRegRegion::computePReg()
                 subRegNum = (subRegNum * declOpSize) / thisOpSize;
             }
 
-            unsigned int linearizedStart = (regNum * numEltPerGRF(Type_UB)) + (subRegNum *  thisOpSize);
+            unsigned int linearizedStart = (regNum * numEltPerGRF<Type_UB>()) + (subRegNum *  thisOpSize);
 
             dcl->setGRFBaseOffset(linearizedStart);
         }

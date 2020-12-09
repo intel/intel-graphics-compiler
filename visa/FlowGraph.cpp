@@ -4022,7 +4022,7 @@ void FlowGraph::addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool)
     }
     if (scratchRegDcl == NULL)
     {
-        scratchRegDcl = builder.createDeclareNoLookup("SR", G4_GRF, numEltPerGRF(Type_UD), 1, Type_UD);
+        scratchRegDcl = builder.createDeclareNoLookup("SR", G4_GRF, numEltPerGRF<Type_UD>(), 1, Type_UD);
         scratchRegDcl->getRegVar()->setPhyReg(regPool.getGreg(builder.kernel.getSpillHeaderGRF()), 0);
     }
 }
@@ -4041,7 +4041,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     if (pseudoVCEDcl == NULL)
     {
         unsigned int numRowsVCE = getKernel()->getNumCalleeSaveRegs();
-        pseudoVCEDcl = builder.createDeclareNoLookup("VCE_SAVE", G4_GRF, numEltPerGRF(Type_UD), static_cast<unsigned short>(numRowsVCE), Type_UD);
+        pseudoVCEDcl = builder.createDeclareNoLookup("VCE_SAVE", G4_GRF, numEltPerGRF<Type_UD>(), static_cast<unsigned short>(numRowsVCE), Type_UD);
     }
     else
     {
@@ -4068,7 +4068,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
         const char* nameBase = "VCA_SAVE";
         const int maxIdLen = 3;
         const char* name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, i);
-        G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, numEltPerGRF(Type_UD), builder.kernel.getCallerSaveLastGRF(), Type_UD);
+        G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, numEltPerGRF<Type_UD>(), builder.kernel.getCallerSaveLastGRF(), Type_UD);
         name = builder.getNameString(mem, 50, "SA0_%d", i);
         G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
         name = builder.getNameString(mem, 64, "SFLAG_%d", i);
@@ -4847,12 +4847,12 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;
-    G4_Declare *dcl = builder->createSendPayloadDcl(numEltPerGRF(Type_UD), Type_UD);
+    G4_Declare *dcl = builder->createSendPayloadDcl(numEltPerGRF<Type_UD>(), Type_UD);
     G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(), builder->getRegionStride1());
     G4_INST *movInst = builder->createMov(
-        G4_ExecSize(numEltPerGRF(Type_UD)), movDst, r0Src, InstOpt_WriteEnable, false);
+        G4_ExecSize(numEltPerGRF<Type_UD>()), movDst, r0Src, InstOpt_WriteEnable, false);
     if (lastInst)
     {
         movInst->inheritDIFrom(lastInst);
@@ -4997,7 +4997,7 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
                     if (baseVar->isGreg()) {
                         uint32_t byteAddress = srcOpnd->getLinearizedStart();
                         if (byteAddress != 0) {
-                            regNum[0][i] = byteAddress / numEltPerGRF(Type_UB);
+                            regNum[0][i] = byteAddress / numEltPerGRF<Type_UB>();
                         }
                         else {
                             // before RA, use the value in Greg directly
@@ -5045,7 +5045,7 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
             for (int i = 0; i < 3; i++)
             {
                 output << i << "=";
-                for (int j = 0; j < (execSize[i] + (int)numEltPerGRF(Type_UB) - 1) / (int)numEltPerGRF(Type_UB); j++)
+                for (int j = 0; j < (execSize[i] + (int)numEltPerGRF<Type_UB>() - 1) / (int)numEltPerGRF<Type_UB>(); j++)
                 {
                     int reg_num = regNum[0][i] + j;
                     if (!(reg_num & 0x02) && reg_num < SECOND_HALF_BANK_START_GRF)
@@ -5069,8 +5069,8 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
                         regNum[1][i] = reg_num;
                     }
                 }
-                maxGRFNum = ((execSize[i] + (int)numEltPerGRF(Type_UB) - 1) / (int)numEltPerGRF(Type_UB)) > maxGRFNum ?
-                    ((execSize[i] + (int)numEltPerGRF(Type_UB) - 1) / (int)numEltPerGRF(Type_UB)) : maxGRFNum;
+                maxGRFNum = ((execSize[i] + (int)numEltPerGRF<Type_UB>() - 1) / (int)numEltPerGRF<Type_UB>()) > maxGRFNum ?
+                    ((execSize[i] + (int)numEltPerGRF<Type_UB>() - 1) / (int)numEltPerGRF<Type_UB>()) : maxGRFNum;
             }
         }
         output << "BC=";
@@ -5438,10 +5438,10 @@ uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, in
     {
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstRegs[0] = byteAddress / numEltPerGRF(Type_UB);
+        dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
         if (dstExecSize > getGRFSize())
         {
-            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB) - 1;
+            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
             isCompressedInst = true;
         }
     }
@@ -5462,7 +5462,7 @@ uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, in
                 currInstExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    currInstRegs[0][i] = byteAddress / numEltPerGRF(Type_UB);
+                    currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
                     if (i == 1)
                     {
                         isFDFSrc1 = IS_TYPE_F32_F64(srcOpnd->getType());
@@ -5753,10 +5753,10 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
     {
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstRegs[0] = byteAddress / numEltPerGRF(Type_UB);
+        dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
         if (dstExecSize > getGRFSize())
         {
-            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB) - 1;
+            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
             instSplit = true;
 
         }
@@ -5777,11 +5777,11 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
                 currInstExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    currInstRegs[0][i] = byteAddress / numEltPerGRF(Type_UB);
+                    currInstRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
 
                     if (currInstExecSize[i] > getGRFSize())
                     {
-                        currInstRegs[1][i] = currInstRegs[0][i] + (currInstExecSize[i] + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB) - 1;
+                        currInstRegs[1][i] = currInstRegs[0][i] + (currInstExecSize[i] + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                         instSplit = true;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src

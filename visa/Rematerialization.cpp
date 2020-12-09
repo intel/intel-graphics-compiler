@@ -59,8 +59,8 @@ namespace vISA
                         srcOpnd->isSrcRegRegion())
                     {
                         auto topdcl = srcOpnd->asSrcRegRegion()->getTopDcl();
-                        unsigned int startRow = srcOpnd->getLeftBound() / numEltPerGRF(Type_UB);
-                        unsigned int endRow = srcOpnd->getRightBound() / numEltPerGRF(Type_UB);
+                        unsigned int startRow = srcOpnd->getLeftBound() / numEltPerGRF<Type_UB>();
+                        unsigned int endRow = srcOpnd->getRightBound() / numEltPerGRF<Type_UB>();
                         if (topdcl)
                         {
                             auto dclIt = operations.find(topdcl);
@@ -848,13 +848,13 @@ namespace vISA
 
         if (!isSampler)
         {
-            unsigned int diffBound = dst->getRightBound() - (dst->getRegOff() * numEltPerGRF(Type_UB));
+            unsigned int diffBound = dst->getRightBound() - (dst->getRegOff() * numEltPerGRF<Type_UB>());
             unsigned numElems = (diffBound + 1) / G4_Type_Table[dst->getType()].byteSize;
             auto newTemp = kernel.fg.builder->createTempVar(numElems, dst->getType(), Any, "REMAT_");
             newTemp->copyAlign(dst->getTopDcl());
             gra.copyAlignment(newTemp, dst->getTopDcl());
             G4_DstRegRegion* newDst = kernel.fg.builder->createDst(newTemp->getRegVar(), 0,
-                (dst->getLeftBound() % numEltPerGRF(Type_UB)) / G4_Type_Table[dst->getType()].byteSize,
+                (dst->getLeftBound() % numEltPerGRF<Type_UB>()) / G4_Type_Table[dst->getType()].byteSize,
                 dst->getHorzStride(), dst->getType());
             G4_INST* dupOp = dstInst->cloneInst();
             dupOp->setDest(newDst);
@@ -961,8 +961,8 @@ namespace vISA
     {
         G4_SrcRegRegion* rematSrc = nullptr;
 
-        unsigned row = (srcToRemat->getLeftBound() / numEltPerGRF(Type_UB)) - (uniqueDef->getLeftBound() / numEltPerGRF(Type_UB));
-        unsigned subReg = (srcToRemat->getLeftBound() % numEltPerGRF(Type_UB)) / G4_Type_Table[srcToRemat->getType()].byteSize;
+        unsigned row = (srcToRemat->getLeftBound() / numEltPerGRF<Type_UB>()) - (uniqueDef->getLeftBound() / numEltPerGRF<Type_UB>());
+        unsigned subReg = (srcToRemat->getLeftBound() % numEltPerGRF<Type_UB>()) / G4_Type_Table[srcToRemat->getType()].byteSize;
 
         rematSrc = kernel.fg.builder->createSrcRegRegion(srcToRemat->getModifier(), Direct,
             rematTemp->getRegVar(), (short)row, (short)subReg, srcToRemat->getRegion(), srcToRemat->getType());

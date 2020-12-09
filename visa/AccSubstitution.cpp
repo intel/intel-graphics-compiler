@@ -228,10 +228,10 @@ void bankConflictAnalysisTGL(G4_INST* inst, int* suppressRegs, std::map<G4_INST*
     {
         dstExecSize = dstOpnd->getLinearizedEnd() - dstOpnd->getLinearizedStart() + 1;
         uint32_t byteAddress = dstOpnd->getLinearizedStart();
-        dstRegs[0] = byteAddress / numEltPerGRF(Type_UB);
+        dstRegs[0] = byteAddress / numEltPerGRF<Type_UB>();
         if (dstExecSize > 32)
         {
-            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB) - 1;
+            dstRegs[1] = dstRegs[0] + (dstExecSize + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
             instSplit = true;
         }
     }
@@ -250,11 +250,11 @@ void bankConflictAnalysisTGL(G4_INST* inst, int* suppressRegs, std::map<G4_INST*
                 srcExecSize[i] = srcOpnd->getLinearizedEnd() - srcOpnd->getLinearizedStart() + 1;
                 if (baseVar->isGreg()) {
                     uint32_t byteAddress = srcOpnd->getLinearizedStart();
-                    srcRegs[0][i] = byteAddress / numEltPerGRF(Type_UB);
+                    srcRegs[0][i] = byteAddress / numEltPerGRF<Type_UB>();
 
                     if (srcExecSize[i] > 32)
                     {
-                        srcRegs[1][i] = srcRegs[0][i] + (srcExecSize[i] + numEltPerGRF(Type_UB) - 1) / numEltPerGRF(Type_UB) - 1;
+                        srcRegs[1][i] = srcRegs[0][i] + (srcExecSize[i] + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>() - 1;
                         instSplit = true;
                     }
                     else if (srcOpnd->asSrcRegRegion()->isScalar()) //No Read suppression for SIMD 16/scalar src

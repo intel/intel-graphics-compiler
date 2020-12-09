@@ -269,7 +269,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         if (useInst->isSend())
         {
             // send operand doesn't take subreg, so the operand has to be GRF-aligned
-            if (!builder.isOpndAligned(lvnDst, numEltPerGRF(Type_UB)))
+            if (!builder.isOpndAligned(lvnDst, numEltPerGRF<Type_UB>()))
             {
                 canReplace = false;
                 break;
@@ -441,7 +441,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         //
         // In general, V3(0,0) src in op cannot be replaced by
         // V2(0,6).
-        if (lb % numEltPerGRF(Type_UB) != lvnDst->getLeftBound() % numEltPerGRF(Type_UB))
+        if (lb % numEltPerGRF<Type_UB>() != lvnDst->getLeftBound() % numEltPerGRF<Type_UB>())
         {
             canReplace = false;
         }
@@ -543,9 +543,9 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
             int offsetFromOrigDst = srcToReplace->getLeftBound() - defInst->getDst()->getLeftBound();
             // we can replace the regVar directly without changing the rest of the region
             auto typeSize = getTypeSize(srcToReplace->getType());
-            int offset = regOff * numEltPerGRF(Type_UB) + subRegOff * getTypeSize(lvnInst->getDst()->getType()) + offsetFromOrigDst;
-            short newRegOff = offset / numEltPerGRF(Type_UB);
-            short newSubRegOff = (offset % numEltPerGRF(Type_UB)) / typeSize;
+            int offset = regOff * numEltPerGRF<Type_UB>() + subRegOff * getTypeSize(lvnInst->getDst()->getType()) + offsetFromOrigDst;
+            short newRegOff = offset / numEltPerGRF<Type_UB>();
+            short newSubRegOff = (offset % numEltPerGRF<Type_UB>()) / typeSize;
 
             srcRgn = builder.createSrcRegRegion(srcMod, Direct, lvnInst->getDst()->getBase()->asRegVar(),
                 newRegOff, newSubRegOff, srcToReplace->getRegion(), srcToReplace->getType());

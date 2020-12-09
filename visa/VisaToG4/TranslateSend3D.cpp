@@ -207,16 +207,16 @@ int IR_Builder::translateVISAResInfoInst(
         {
             --numRows;
         }
-        unsigned int numElts = numRows * numEltPerGRF(Type_UB)/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
         msg = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
         payloadUD = createSendPayloadDcl(numElts, Type_UD);
     }
     else
     {
-        unsigned int numElts = numRows * numEltPerGRF(Type_UB)/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
         msg = createSendPayloadDcl(numElts, Type_UD);
         payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
-        payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF(Type_UB) : 0);
+        payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
 
         if (useHeader)
         {
@@ -371,7 +371,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
         --numRows;
         if (numRows > 0)
         {
-            unsigned int numElts = numRows * numEltPerGRF(Type_UB)/G4_Type_Table[Type_F].byteSize;
+            unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
             // we can use the urb handle directly since URB write will not modify its header
             //msg = createSendPayloadDcl(GENX_SAMPLER_IO_SZ, Type_UD);
             payloadUD = createSendPayloadDcl(numElts, Type_UD);
@@ -383,16 +383,16 @@ int IR_Builder::translateVISAURBWrite3DInst(
     }
     else
     {
-        unsigned int numElts = numRows * numEltPerGRF(Type_UB)/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
         msg = createSendPayloadDcl(numElts, Type_UD);
         if (numRows > 1)
         {
             payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
             payloadF = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_F);
             payloadD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_D);
-            payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF(Type_UB) : 0);
-            payloadF->setAliasDeclare(msg, useHeader ? numEltPerGRF(Type_UB) : 0);
-            payloadD->setAliasDeclare(msg, useHeader ? numEltPerGRF(Type_UB) : 0);
+            payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
+            payloadF->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
+            payloadD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
         }
     }
 
@@ -641,7 +641,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             msgF->setAliasDeclare(msg, 0);
         }
         //creating payload
-        unsigned int numElts = numRows * numEltPerGRF(Type_UB) / G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>() / G4_Type_Table[Type_F].byteSize;
         payloadUD = createSendPayloadDcl(numElts, Type_UD);
         payloadFOrHF = createSendPayloadDcl(numElts, FP16Data ? Type_HF : Type_F);
         payloadUW = createSendPayloadDcl(numElts, Type_UW);
@@ -653,7 +653,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     }
     else
     {
-        unsigned int numElts = numRows * numEltPerGRF(Type_UB)/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
         //creating enough space for header + payload
         msg = createSendPayloadDcl(numElts, Type_UD);
         msgF = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * 2, Type_F);
@@ -1378,7 +1378,7 @@ int IR_Builder::splitSampleInst(
     unsigned regOff = (useHeader ? 1 : 0);
     G4_SrcRegRegion* temp = nullptr;
     G4_ExecSize execSize = getNativeExecSize();
-    uint16_t numElts = numRows * numEltPerGRF(Type_F);
+    uint16_t numElts = numRows * numEltPerGRF<Type_F>();
     G4_Declare* payloadF = createSendPayloadDcl(numElts, Type_F);
     G4_Declare* payloadUD = createTempVar(numElts, Type_UD, GRFALIGN);
     payloadUD->setAliasDeclare(payloadF, 0);
@@ -2267,7 +2267,7 @@ int IR_Builder::translateVISASamplerNormInst(
     Create_MOV_Inst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(cmask, Type_UD));
 
     G4_Declare *dcl1 = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
-    dcl1->setAliasDeclare(dcl, numEltPerGRF(Type_UB));
+    dcl1->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
     // mov  (1)     VX(1,4)<1>,  deltaU
     Create_MOV_Inst(dcl1, 0, 4, g4::SIMD1, NULL, NULL, deltaUOpnd);
@@ -2294,7 +2294,7 @@ int IR_Builder::translateVISASamplerNormInst(
         d,
         payload,
         2,
-        32*numEnabledChannels*G4_Type_Table[Type_UW].byteSize/numEltPerGRF(Type_UB),
+        32*numEnabledChannels*G4_Type_Table[Type_UW].byteSize/numEltPerGRF<Type_UB>(),
         g4::SIMD32,
         temp,
         SFID::SAMPLER,
@@ -2356,7 +2356,7 @@ int IR_Builder::translateVISASamplerInst(
 
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
-    unsigned num_payload_elt = simdMode/2 * numEltPerGRF(Type_UB)/G4_Type_Table[Type_UD].byteSize;
+    unsigned num_payload_elt = simdMode/2 * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_UD].byteSize;
     G4_Declare *dcl = createSendPayloadDcl(num_payload_elt + GENX_SAMPLER_IO_SZ, Type_UD);
 
     // mov  VX(0,0)<1>, r0
@@ -2368,7 +2368,7 @@ int IR_Builder::translateVISASamplerInst(
     // set up the message payload
     // lod is always uninitialized for us as we don't support it.
     G4_Declare *dcl1 = createSendPayloadDcl(num_payload_elt, Type_UD);
-    dcl1->setAliasDeclare(dcl, numEltPerGRF(Type_UB));
+    dcl1->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
     /* mov  (sample_mode)    VX(0,0)<1>,  u */
     Create_MOV_Send_Src_Inst(dcl1, 0, 0, simdMode, uOffOpnd, 0);
     if (sampler == NULL)
@@ -2457,7 +2457,7 @@ int IR_Builder::translateVISASamplerInst(
         d,
         payload,
         1 + simdMode/2,
-        ((simdMode == 8) ? 32 : (numEnabledChannels*16))*G4_Type_Table[Type_F].byteSize/numEltPerGRF(Type_UB),
+        ((simdMode == 8) ? 32 : (numEnabledChannels*16))*G4_Type_Table[Type_F].byteSize/numEltPerGRF<Type_UB>(),
         G4_ExecSize(simdMode),
         temp,
         SFID::SAMPLER,

@@ -280,7 +280,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                     // Since rootDcl may have a different type than the operands', need to use
                     // operand's type instead of rootDcl, so we pass srcType into getInputDeclare().
                     G4_Type srcType = newInst->getSrc(i)->getType();
-                    int firstEltOffset = src->getRegOff() * numEltPerGRF(Type_UB) + src->getSubRegOff() * G4_Type_Table[srcType].byteSize;
+                    int firstEltOffset = src->getRegOff() * numEltPerGRF<Type_UB>() + src->getSubRegOff() * G4_Type_Table[srcType].byteSize;
                     G4_Declare* newInputDcl = getInputDeclare(builder, newInputs, rootDcl, srcType, size, firstEltOffset);
                     src = builder.createSrcRegRegion(
                         src->getModifier(), Direct, newInputDcl->getRegVar(),
@@ -342,7 +342,7 @@ static bool checkContiguous(
     unsigned offset1, unsigned offset2,
     G4_Type type, OPND_PATTERN& pattern, unsigned origOffset)
 {
-    if (origOffset + numEltPerGRF(Type_UB) <= offset2)
+    if (origOffset + numEltPerGRF<Type_UB>() <= offset2)
         return false;
     if (offset1 + G4_Type_Table[type].byteSize == offset2)
     {
@@ -659,7 +659,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos)
             {
                 return false;
             }
-            else if (prevSrcGRFOffset / numEltPerGRF(Type_UB) != srcGRFOffset / 32)
+            else if (prevSrcGRFOffset / numEltPerGRF<Type_UB>() != srcGRFOffset / 32)
             {
                 // resulting input would cross GRF boundary, and our RA does not like it one bit
                 return false;

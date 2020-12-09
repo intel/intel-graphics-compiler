@@ -113,16 +113,16 @@ static void getHeightWidth(
 {
     dclWidth = 1, dclHeight = 1;
     totalByteSize = numberElements * G4_Type_Table[type].byteSize;
-    if (totalByteSize <= (int)numEltPerGRF(Type_UB))
+    if (totalByteSize <= (int)numEltPerGRF<Type_UB>())
     {
         dclWidth = (uint16_t)numberElements;
     }
     else {
         // here we assume that the start point of the var is the beginning of a GRF?
         // so subregister must be 0?
-        dclWidth = numEltPerGRF(Type_UB) / G4_Type_Table[type].byteSize;
-        dclHeight = totalByteSize / numEltPerGRF(Type_UB);
-        if (totalByteSize % numEltPerGRF(Type_UB) != 0) {
+        dclWidth = numEltPerGRF<Type_UB>() / G4_Type_Table[type].byteSize;
+        dclHeight = totalByteSize / numEltPerGRF<Type_UB>();
+        if (totalByteSize % numEltPerGRF<Type_UB>() != 0) {
             dclHeight++;
         }
     }
@@ -1927,11 +1927,11 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
                 cisa_opnd->tag = OPERAND_GENERAL;
                 cisa_opnd->_opnd.v_opnd.tag = OPERAND_GENERAL;
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.index = decl->index;
-                cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.row_offset = offset / numEltPerGRF(Type_UB);
+                cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.row_offset = offset / numEltPerGRF<Type_UB>();
                 VISA_Type type = decl->genVar.getType();
                 unsigned int typeSize = G4_Type_Table[GetGenTypeFromVISAType(type)].byteSize;
                 assert((offset % typeSize) == 0);
-                cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = (offset % numEltPerGRF(Type_UB))/typeSize;
+                cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = (offset % numEltPerGRF<Type_UB>())/typeSize;
 
 
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.region =
@@ -2483,8 +2483,8 @@ int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd)
 
     const RegionDesc *rd = m_builder->getRegionStride1();
     G4_Type type = dcl->getElemType();
-    short row_offset = offset / numEltPerGRF(Type_UB);
-    short col_offset = (offset%numEltPerGRF(Type_UB)) / G4_Type_Table[type].byteSize;
+    short row_offset = offset / numEltPerGRF<Type_UB>();
+    short col_offset = (offset%numEltPerGRF<Type_UB>()) / G4_Type_Table[type].byteSize;
 
     cisa_opnd->g4opnd = m_builder->createSrc(
         dcl->getRegVar(),
@@ -2511,8 +2511,8 @@ int VISAKernelImpl::CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd)
         G4_Declare *dcl = cisa_opnd->decl->genVar.dcl;
 
         {
-            short row_offset = offset/numEltPerGRF(Type_UB);
-            short col_offset = (offset%numEltPerGRF(Type_UB))/G4_Type_Table[dcl->getElemType()].byteSize;
+            short row_offset = offset/numEltPerGRF<Type_UB>();
+            short col_offset = (offset%numEltPerGRF<Type_UB>())/G4_Type_Table[dcl->getElemType()].byteSize;
 
             cisa_opnd->g4opnd = m_builder->createDst(
                 dcl->getRegVar(),

@@ -480,7 +480,7 @@ void InstSplitPass::computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftB
         {
             if (dstRegion->getRegAccess() == Direct)
             {
-                leftBound = offset + newregoff * numEltPerGRF(Type_UB) + subRegOff * typeSize;
+                leftBound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * typeSize;
             }
             else
             {
@@ -553,7 +553,7 @@ void InstSplitPass::computeSrcBounds(G4_SrcRegRegion* srcRegion, uint32_t& leftB
         {
             if (srcRegion->getRegAccess() == Direct)
             {
-                leftBound = offset + newregoff * numEltPerGRF(Type_UB) + subRegOff * typeSize;
+                leftBound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * typeSize;
             }
             else
             {
