@@ -97,6 +97,10 @@ protected:
     virtual PlatformBase *GetPlatformHandleImpl(CIF::Version_t ver);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 5, 4) {
+    CIF_INHERIT_CONSTRUCTOR();
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclDeviceCtx, IGC::FclOclTranslationCtx, IGC::Platform);
 CIF_MARK_LATEST_VERSION(FclOclDeviceCtxLatest, FclOclDeviceCtx);
 using FclOclDeviceCtxTagOCL = FclOclDeviceCtxLatest; // Note : can tag with different version for
