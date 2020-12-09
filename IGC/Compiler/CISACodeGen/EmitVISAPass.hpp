@@ -708,6 +708,8 @@ private:
 
     void emitFeedbackEnable();
 
+    void emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast, CVariable* srcV, unsigned tag);
+
     // used for loading/storing uniform value using scatter/gather messages.
     CVariable* prepareAddressForUniform(
         CVariable* AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz, e_alignment Align);
