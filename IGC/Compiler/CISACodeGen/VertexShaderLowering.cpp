@@ -331,7 +331,7 @@ namespace IGC
                         case XP0:
                         case XP1:
                         case XP2:
-                            IGC_ASSERT(m_context->platform.supportsDrawParametersSGVs() || 
+                            IGC_ASSERT(m_context->platform.supportsDrawParametersSGVs() ||
                                 m_context->m_DriverInfo.UsesVertexBuffersToSendShaderDrawParameters());
                             vertexFetchSGVExtendedParameters.at(usage - XP0) = inst;
                             break;
@@ -355,7 +355,7 @@ namespace IGC
 
             if (baseVertex || baseInstance || drawIndex || vertexId || InstanceId)
             {
-                // Find first free location at the end i.e. after all user inputs. 
+                // Find first free location at the end i.e. after all user inputs.
                 unsigned int drawParametersIndex = (ARRAY_COUNT(m_inputUsed) - 1);
                 for (int index = drawParametersIndex; index >= 0; --index)
                 {
@@ -370,7 +370,7 @@ namespace IGC
                     }
                 }
 
-                /// UMD has to limit the number of user inputs in order 
+                /// UMD has to limit the number of user inputs in order
                 /// to be sure there are 2 free inputs at the end.
                 assert(drawParametersIndex < (ARRAY_COUNT(m_inputUsed) - 8));
 
@@ -439,6 +439,16 @@ namespace IGC
             {
                 unsigned int slot = InsertInEmptySlot(InstanceId, (!IGC_IS_FLAG_ENABLED(DisableMovingInstanceIDIndexOfVS)));
                 m_vsPropsPass->SetInstanceIdSlot(slot);
+            }
+        }
+
+        for (unsigned int slot = 0;
+            slot < ARRAY_COUNT(m_inputUsed);
+            ++slot)
+        {
+            if (m_inputUsed[slot])
+            {
+                m_vsPropsPass->SetInputSlotUsed(slot);
             }
         }
 
@@ -696,6 +706,7 @@ namespace IGC
     }
 
     VertexShaderProperties::VertexShaderProperties() :
+        m_MaxUsedInputSlots(0),
         m_HasVertexID(false),
         m_VID(0),
         m_HasInstanceID(false),
@@ -748,6 +759,12 @@ namespace IGC
     {
         m_vsProps.m_HasVertexID = true;
         m_vsProps.m_VID = VIDSlot;
+    }
+
+    void CollectVertexShaderProperties::SetInputSlotUsed(unsigned int slot)
+    {
+        m_vsProps.m_MaxUsedInputSlots =
+            std::max(m_vsProps.m_MaxUsedInputSlots, slot + 1);
     }
 
     void CollectVertexShaderProperties::SetShaderDrawParameter(size_t paramIndex, unsigned int slot)

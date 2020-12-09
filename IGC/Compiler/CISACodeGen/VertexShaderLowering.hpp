@@ -37,6 +37,8 @@ namespace IGC
     {
     public:
         VertexShaderProperties();
+        // Maximum used input vertex element component +1.
+        unsigned int m_MaxUsedInputSlots;
         bool m_HasVertexID;
         unsigned int m_VID;
         bool m_HasInstanceID;
@@ -53,6 +55,7 @@ namespace IGC
     public:
         CollectVertexShaderProperties();
         static char ID;
+        void SetInputSlotUsed(unsigned int slot);
         void SetVertexIdSlot(unsigned int VIDslot);
         void SetInstanceIdSlot(unsigned int IIDslot);
         void SetShaderDrawParameter(size_t paramIndex, unsigned int slot);

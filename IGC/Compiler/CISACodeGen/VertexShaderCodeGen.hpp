@@ -64,10 +64,12 @@ namespace IGC
 
         /// Returns the offset that SBE or GS should apply when reading the URB entries
         /// output by Vertex Shader.
-        /// This value is used to set the corresponding field in 3DSTATE_GS.
+        /// This value is used to set the corresponding field in 3DSTATE_VS.
         OctEltUnit        GetVertexURBEntryOutputReadOffset() const;
 
-        /// Returns the size of the vertex entry read used to load payload registers.
+        /// Returns the size of the vertex entry read used to load payload
+        /// registers. The value is calculated with vertex element component
+        /// packing applied.
         OctEltUnit        GetVertexURBEntryReadLength() const;
 
         /// Returns the offset that should be applied to vertex entry read used to load payload registers.
@@ -76,8 +78,16 @@ namespace IGC
         /// Returns the overall URB Allocation Size that should be used for handling of vertex data.
         OctEltUnit        GetURBAllocationSize() const;
 
-        /// Returns
+        /// Returns the maximum input register index (vertex element) accessed
+        /// in the shader plus 1. The value returned is calculated without
+        /// vertex element component packing applied. Driver uses this value to
+        /// to configure VF.
         QuadEltUnit       GetMaxNumInputRegister() const;
+
+        /// Returns the number of pushed input registers, in 4*DWORD units.
+        /// The value returned is calculated with vertex element component
+        /// packing applied.
+        QuadEltUnit       GetNumInputRegistersPushed() const;
 
         void              AddEpilogue(llvm::ReturnInst* pRet);
 

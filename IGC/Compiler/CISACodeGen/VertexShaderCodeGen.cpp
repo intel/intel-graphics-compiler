@@ -246,31 +246,33 @@ namespace IGC
         return m_R1;
     }
 
-
     /// Returns VS URB allocation size.
     /// This is the size of VS URB entry consisting of the header data and attribute data.
     OctEltUnit CVertexShader::GetURBAllocationSize() const
     {
-        const size_t payloadSize = m_Platform->getWATable().Wa_16011983264 ?
-            std::max(setup.size(), size_t(1)) :
-            setup.size();
-        // max index of the variables in the payload
-        const EltUnit maxSetupVarNum(isInputsPulled ? size_t(132) : payloadSize);
-        const OctEltUnit maxSetupOct = round_up<OctElement>(maxSetupVarNum);
-        // URB allocation size is the maximum of the input and ouput entry size.
-        return std::max(round_up<OctElement>(m_properties.m_URBOutputLength), maxSetupOct);
+        QuadEltUnit urbInputLength = isInputsPulled ?
+            GetMaxNumInputRegister() : GetNumInputRegistersPushed();
+        if (m_Platform->getWATable().Wa_16011983264)
+        {
+            const QuadEltUnit one(1);
+            urbInputLength = std::max(urbInputLength, one);
+        }
+
+        // URB allocation size is the maximum of the input and output entry size.
+        return round_up<OctElement>(
+            std::max(m_properties.m_URBOutputLength, urbInputLength));
     }
 
     OctEltUnit CVertexShader::GetVertexURBEntryReadLength() const
     {
-        // max index of the variables in the payload
-        const EltUnit maxSetupVarNum(
-            m_Platform->getWATable().Wa_16011983264 ?
-             std::max(setup.size(), size_t(1)) :
-             setup.size());
+        QuadEltUnit numInputsPushed = GetNumInputRegistersPushed();
+        if (m_Platform->getWATable().Wa_16011983264)
+        {
+            const QuadEltUnit one(1);
+            numInputsPushed = std::max(numInputsPushed, one);
+        }
 
-        // rounded up to 8-element size
-        return round_up<OctElement>(maxSetupVarNum);
+        return round_up<OctElement>(numInputsPushed);
     }
 
     OctEltUnit CVertexShader::GetVertexURBEntryReadOffset() const
@@ -300,9 +302,29 @@ namespace IGC
 
     QuadEltUnit CVertexShader::GetMaxNumInputRegister() const
     {
-        // max index of the variables in the payload
-        // if there are any pulled inputs set max num input register to max possible inputs 33 * 4
-        const EltUnit maxSetupVarNum(isInputsPulled ? 132 : setup.size());
+        const EltUnit maxSetupVarNum(isInputsPulled ?
+            m_properties.m_MaxUsedInputSlots : setup.size());
+        return round_up<QuadElement>(maxSetupVarNum);
+    }
+
+    QuadEltUnit CVertexShader::GetNumInputRegistersPushed() const
+    {
+        uint numInputComponents = 0;
+        if (m_ElementComponentPackingEnabled)
+        {
+            // This code does not expect inputs with index >= 32 to be pushed.
+            // see PushAnalysis pass.
+            IGC_ASSERT(setup.size() <= MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE);
+            for (int i = 0; i < MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE; ++i)
+            {
+                numInputComponents += iSTD::BitCount(m_ElementComponentEnableMask[i]);
+            }
+        }
+        else
+        {
+            numInputComponents = setup.size();
+        }
+        const EltUnit maxSetupVarNum(numInputComponents);
         return round_up<QuadElement>(maxSetupVarNum);
     }
 
