@@ -364,7 +364,7 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
     }
     pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
 
-    pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
+    pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
 
     pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGeometryShaderThreads();
     pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;

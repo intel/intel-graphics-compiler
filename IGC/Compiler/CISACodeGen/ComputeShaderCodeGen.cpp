@@ -351,7 +351,7 @@ namespace IGC
 
         pKernelProgram->DispatchAlongY = m_dispatchAlongY;
 
-        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
+        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
 
         pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
 

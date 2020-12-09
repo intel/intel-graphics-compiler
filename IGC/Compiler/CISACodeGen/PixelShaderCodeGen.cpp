@@ -860,7 +860,7 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     pKernelProgram->samplerCount = GetSamplerCount(m_samplerCount);
     pKernelProgram->renderTargetMask = m_RenderTargetMask;
     pKernelProgram->constantInterpolationEnableMask = m_ConstantInterpolationMask;
-    pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
+    pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
     pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
 
     CreateGatherMap();

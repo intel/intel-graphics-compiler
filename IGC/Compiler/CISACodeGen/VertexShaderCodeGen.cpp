@@ -188,7 +188,7 @@ namespace IGC
         pKernelProgram->hasInstanceID = m_properties.m_HasInstanceID;
         pKernelProgram->instanceIdLocation = m_properties.m_IID;
         pKernelProgram->vertexFetchSGVExtendedParameters = m_properties.m_VertexFetchSGVExtendedParameters;
-        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
+        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
         pKernelProgram->DeclaresVPAIndex = m_properties.m_hasVPAI;
         pKernelProgram->DeclaresRTAIndex = m_properties.m_hasRTAI;
         pKernelProgram->HasClipCullAsOutput = m_properties.m_hasClipDistance;

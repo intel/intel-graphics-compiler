@@ -470,6 +470,8 @@ public:
 
     // In bytes
     uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
+    // in DWORDs
+    uint32_t getMinPushConstantBufferAlignmentInBytes() const { return m_Platform->getMinPushConstantBufferAlignment() * sizeof(DWORD); }
 
 
     e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }

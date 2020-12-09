@@ -275,7 +275,7 @@ namespace IGC
         CreateGatherMap();
         CreateConstantBufferOutput(pKernelProgram);
 
-        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
+        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
 
         pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxDomainShaderThreads();
