@@ -405,6 +405,11 @@ bool hasSamplerSupport() const
     return true;
 }
 
+uint32_t getMinPushConstantBufferAlignment() const
+{
+    return 8; // DWORDs
+}
+
 bool hasNoFullI64Support() const
 {
     return hasNoInt64Inst();
