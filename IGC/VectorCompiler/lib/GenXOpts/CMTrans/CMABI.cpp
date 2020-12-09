@@ -82,6 +82,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <iterator>
 #include <numeric>
+#include <stack>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -306,6 +307,8 @@ private:
   void addIndirectGlobal(Function *F, Function *Callee) {
     getLocalizationInfo(F).addGlobals(getLocalizationInfo(Callee));
   }
+
+  void defineGVDirectUsers(GlobalVariable &GV);
 
   // Return true if pointer type arugment is only used to
   // load or store a simple value. This helps decide whehter
@@ -889,12 +892,16 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
   replaceUsesWithinFunction(GlobalsToReplace, Fn);
 }
 
+static void breakConstantExprs(Function *F);
+
 CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   Function *F = CGN->getFunction();
 
   // nothing to do for declarations or already visited functions.
   if (!F || F->isDeclaration() || AlreadyVisited.count(F))
     return 0;
+
+  breakConstantExprs(F);
 
   // Variables to be localized.
   LocalizationInfo &LI = getLocalizationInfo(F);
@@ -1845,6 +1852,32 @@ static void breakConstantExprs(Function *F) {
   }
 }
 
+static void fillStackWithUsers(std::stack<User *> &Stack, User &CurUser) {
+  for (User *Usr : CurUser.users())
+    Stack.push(Usr);
+}
+
+// Traverse in depth through GV constant users to find instruction users.
+// When instruction user is found, it is clear in which function GV is used.
+void CMABI::defineGVDirectUsers(GlobalVariable &GV) {
+  std::stack<User *> Stack;
+  Stack.push(&GV);
+  while (!Stack.empty()) {
+    auto *CurUser = Stack.top();
+    Stack.pop();
+
+    // Continue go in depth when a constant is met.
+    if (isa<Constant>(CurUser)) {
+      fillStackWithUsers(Stack, *CurUser);
+      continue;
+    }
+
+    // We've got what we looked for.
+    auto *Inst = cast<Instruction>(CurUser);
+    addDirectGlobal(Inst->getFunction(), &GV);
+  }
+}
+
 // For each function, compute the list of globals that need to be passed as
 // copy-in and copy-out arguments.
 void CMABI::AnalyzeGlobals(CallGraph &CG) {
@@ -1869,18 +1902,6 @@ void CMABI::AnalyzeGlobals(CallGraph &CG) {
   if (M.global_empty())
     return;
 
-  // Store functions in a SetVector to keep order and make searching efficient.
-  SetVector<Function *> Funcs;
-  for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I) {
-    const std::vector<CallGraphNode *> &SCCNodes = *I;
-    for (const CallGraphNode *Node : SCCNodes) {
-      Function *F = Node->getFunction();
-      if (F != nullptr && !F->isDeclaration()) {
-        Funcs.insert(F);
-        breakConstantExprs(F);
-      }
-    }
-  }
   auto PrintIndexChecker = [](Use &IUI) {
     CallInst *CI = dyn_cast<CallInst>(IUI.getUser());
     if (!CI)
@@ -1896,7 +1917,7 @@ void CMABI::AnalyzeGlobals(CallGraph &CG) {
     return std::any_of(User->use_begin(), User->use_end(), PrintIndexChecker);
   };
   const auto &DL = M.getDataLayout();
-  auto ToLocalize = selectGlobalsToLocalize(
+  std::vector<GlobalVariable *> ToLocalize = selectGlobalsToLocalize(
       M.globals(), LocalizationLimit.getValue(),
       [UsesPrintChecker](const GlobalVariable &GV) {
         // don't localize global constant format string if it's used by print_index intrinsic
@@ -1905,42 +1926,16 @@ void CMABI::AnalyzeGlobals(CallGraph &CG) {
                 UsesPrintIndex);
       },
       [&DL](const GlobalVariable &GV) { return calcGVWeight(GV, DL); });
-  for (auto I = Funcs.begin(), E = Funcs.end(); I != E; ++I) {
-    Function *Fn = *I;
-    LLVM_DEBUG(dbgs() << "Visiting " << Fn->getName() << "\n");
 
-    // Collect globals used directly.
-    for (GlobalVariable *GV : ToLocalize) {
-      for (Value::use_iterator UI = GV->use_begin(), UE = GV->use_end();
-           UI != UE; ++UI) {
-        Instruction *Inst = dyn_cast<Instruction>(UI->getUser());
-        // not used in this function.
-        if (!Inst || Inst->getParent()->getParent() != Fn)
-          continue;
-
-        // Find the global being used and populate this info.
-        for (unsigned i = 0, e = Inst->getNumOperands(); i < e; ++i) {
-          Value *Op = Inst->getOperand(i);
-          if (GlobalVariable *GV = dyn_cast<GlobalVariable>(Op))
-            addDirectGlobal(Fn, GV);
-        }
-      }
-    }
-
-    // Collect globals used indirectly.
-    for (inst_iterator II = inst_begin(Fn), IE = inst_end(Fn); II != IE; ++II) {
-      Instruction *Inst = &*II;
-      // Ignore InvokeInst.
-      if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
-        // Ignore indirect calls
-        if (Function *Callee = CI->getCalledFunction()) {
-          // Collect all globals from its callee.
-          if (!Callee->isDeclaration())
-            addIndirectGlobal(Fn, Callee);
-        }
-      }
-    }
-  }
+  // Collect direct and indirect (GV is used in a called function)
+  // uses of globals.
+  for (GlobalVariable *GV : ToLocalize)
+    defineGVDirectUsers(*GV);
+  for (const std::vector<CallGraphNode *> &SCCNodes :
+       make_range(scc_begin(&CG), scc_end(&CG)))
+    for (const CallGraphNode *Caller : SCCNodes)
+      for (const IGCLLVM::CallGraphNode::CallRecord &Callee : *Caller)
+        addIndirectGlobal(Caller->getFunction(), Callee.second->getFunction());
 }
 
 /***********************************************************************
