@@ -659,7 +659,6 @@ namespace vISA
         G4_INST* startInterval = nullptr;
         G4_INST* endInterval = nullptr;
         unsigned char* mask = nullptr;
-        AugmentationMasks maskType = AugmentationMasks::Undetermined;
         std::vector<G4_Declare*> subDclList;
         unsigned int subOff = 0;
         std::vector<G4_Declare*> bundleConflictDcls;
@@ -756,7 +755,7 @@ namespace vISA
 
         RAVarInfo defaultValues;
         std::vector<RAVarInfo> vars;
-
+        std::vector<AugmentationMasks> varMasks;
         std::vector<G4_Declare *> UndeclaredVars;
 
         // fake declares for each GRF reg, used by HRA
@@ -1116,18 +1115,19 @@ namespace vISA
         AugmentationMasks getAugmentationMask(G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
+            if (dclid >= varMasks.size())
             {
-                return defaultValues.maskType;
+                return AugmentationMasks::Undetermined;
             }
-            return vars[dclid].maskType;
+            return varMasks[dclid];
         }
 
         void setAugmentationMask(G4_Declare* dcl, AugmentationMasks m)
         {
             auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].maskType = m;
+            if (dclid >= varMasks.size())
+                varMasks.resize(dclid + 1);
+            varMasks[dclid] = m;
             if (dcl->getIsSplittedDcl())
             {
                 auto dclSubDclSize = getSubDclSize(dcl);
@@ -1317,6 +1317,7 @@ namespace vISA
             pointsToAnalysis(p2a)
         {
             vars.resize(k.Declares.size());
+            varMasks.resize(k.Declares.size());
 
             if (kernel.getOptions()->getOption(vISA_VerifyAugmentation))
             {
