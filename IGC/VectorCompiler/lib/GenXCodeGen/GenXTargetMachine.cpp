@@ -302,7 +302,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   PM.add(createSROAPass());
 
-  /// .. include:: GenXSwitchFixup.cpp
   PM.add(createGenXInstCombineCleanup());
 
   PM.add(createGenXLowerJmpTableSwitchPass());
@@ -425,7 +424,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// eliminates unreachable internal globals.
   ///
   PM.add(createGlobalDCEPass());
-  /// .. include:: FunctionGroup.h
   /// .. include:: GenXModule.h
   PM.add(createGenXModulePass());
   /// .. include:: GenXLiveness.h
