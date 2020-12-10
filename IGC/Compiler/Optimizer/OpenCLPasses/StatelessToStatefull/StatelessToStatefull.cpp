@@ -514,7 +514,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
 
         if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead ||
             intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
-            (isUntypedAtomics(intrinID) && doPromoteUntypedAtomics(intrinID, Inst)))
+            (IGC_IS_FLAG_ENABLED(EnableStatefulAtomic) && isUntypedAtomics(intrinID) && doPromoteUntypedAtomics(intrinID, Inst)))
         {
             Module* M = Inst->getParent()->getParent()->getParent();
             Function* F = Inst->getParent()->getParent();
