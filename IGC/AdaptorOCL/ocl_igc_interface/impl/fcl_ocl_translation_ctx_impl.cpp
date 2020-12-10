@@ -269,7 +269,9 @@ static std::vector<const char*>
     processFeOptions(llvm::sys::DynamicLibrary &LibInfo,
                      const std::string& inputFile,
                      CIF::Builtins::BufferSimple* options,
-                     llvm::StringSaver& stringSaver) {
+                     llvm::StringSaver& stringSaver,
+                     const char *platform,
+                     unsigned stepping) {
 
     llvm::SmallVector<const char*, 20> userArgs;
 
@@ -283,17 +285,8 @@ static std::vector<const char*>
         [](const auto& Item) { return std::strcmp(Item, "-cmc") == 0; });
     userArgs.erase(toErase, userArgs.end());
 
-    // WARNING-WARNING-WARNING*****DIRTY HACK*****WARNING-WARNING-WARNING
-    // The concept of a "default architecuture" for CM Frontend is a temporary
-    // workaround.
-    // The problem  is that in order to process CM code CM Frontend must know
-    // the target architecture.
-    // Currentl,y OCL runtime does not expose the target architecture
-    // in a format which CM Frontend understands. The information about
-    // the target architecture is available only when backend is invoked
-    // (through PLATFORM data structure).
-    // The expectation is that we should modify the behavior of OCL runtime
-    // to propagate the necessary arguments for CMFE
+    // this was old hack before FE can pass platform, now we prefer to use argument
+    // but if it is null, it may be still useful, so let it be for a while
     auto cmfeDefaultArchOpt = llvm::sys::Process::GetEnv("IGC_CMFE_DEFAULT_ARCH");
     const std::string& cmfeDefaultArch =
         cmfeDefaultArchOpt ? cmfeDefaultArchOpt.getValue() : "SKL";
@@ -305,14 +298,20 @@ static std::vector<const char*>
     };
     auto ItArchScanEnd = std::find_if(userArgs.begin(), userArgs.end(),
         [](const auto& Arg) { return std::strcmp(Arg, "--") == 0; });
+
+    // if user specified exact arch we are in trouble
+    // but then user knows what to do
     auto CmArchPresent = std::any_of(userArgs.begin(), ItArchScanEnd,
         [](const auto& Arg) {
           llvm::StringRef S = Arg;
           return S.startswith("-march=") || S.startswith("-mcpu=");
         });
     if (!CmArchPresent) {
-      // Pass the default architecture if user hasn't specified one
-      result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
+      // Pass the runtime-specified architecture if user hasn't specified one
+      if (platform)
+        result.push_back(stringSaver.save("-march=" + std::string(platform)).data());
+      else
+        result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
     }
 
     llvm::StringRef FeIncludesPath;
@@ -410,6 +409,31 @@ static std::string getCMFEWrapperDir() {
 
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
+// this is copied from Vectorcompiler/igcdeps/src/cmc.cpp
+// TODO: converge this code
+static const char* getPlatformStr(PLATFORM platform)
+{
+    switch (platform.eDisplayCoreFamily) {
+    case IGFX_GEN9_CORE:
+        return "SKL";
+    case IGFX_GEN10_CORE:
+        return "CNL";
+    case IGFX_GEN11_CORE:
+        if (platform.eProductFamily == IGFX_ICELAKE_LP ||
+            platform.eProductFamily == IGFX_LAKEFIELD)
+            return "ICLLP";
+        return "ICL";
+    case IGFX_GEN12_CORE:
+    case IGFX_GEN12LP_CORE:
+        if (platform.eProductFamily == IGFX_TIGERLAKE_LP ||
+            platform.eProductFamily == IGFX_DG1)
+            return "TGLLP";
+    default:
+        break;
+    }
+    return "SKL";
+}
+
 OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     CIF::Version_t outVersion,
     CIF::Builtins::BufferSimple* src,
@@ -425,16 +449,13 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     if (outputInterface == nullptr)
         return nullptr;
 
-    PRODUCT_FAMILY product = IGFX_UNKNOWN;
+    const char *platform = nullptr;
     uint32_t stepping = 0U;
 
     if(globalState.GetPlatformImpl()){
-        product = globalState.GetPlatformImpl()->p.eProductFamily;
+        platform = getPlatformStr(globalState.GetPlatformImpl()->p);
         stepping = globalState.GetPlatformImpl()->p.usRevId;
     }
-
-    (void)product;
-    (void)stepping;
 
     OclTranslationOutputBase& Out = *outputInterface;
 
@@ -454,7 +475,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
     auto& FE = MaybeFE.getValue();
-    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(), options, Saver);
+    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(), options, Saver, platform, stepping);
 
     auto Drv = FE.buildDriverInvocation(FeArgs);
     if (!Drv)
