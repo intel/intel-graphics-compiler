@@ -339,9 +339,10 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
         return VISA_FAILURE;
     }
 
-    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(true, this, kernelName);
+    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::KERNEL, this, kernelName);
     kernel = static_cast<VISAKernel*>(kerneltemp);
     m_kernel = kerneltemp;
+
     m_kernelsAndFunctions.push_back(kerneltemp);
     this->m_kernel_count++;
     this->m_nameToKernel[kernelName] = m_kernel;
@@ -362,7 +363,7 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
         return VISA_FAILURE;
     }
 
-    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(false, this, functionName);
+    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::FUNCTION, this, functionName);
     function = static_cast<VISAFunction*>(kerneltemp);
     m_kernel = kerneltemp;
     m_kernelsAndFunctions.push_back(kerneltemp);
@@ -373,6 +374,24 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
     {
         ClearAsmTextStreams();
     }
+
+    return VISA_SUCCESS;
+}
+
+int CISA_IR_Builder::AddPayloadSection(VISAFunction *& function, const char* functionName)
+{
+    if (function != NULL)
+    {
+        assert(0);
+        return VISA_FAILURE;
+    }
+
+    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::PAYLOAD, this, functionName);
+    function = static_cast<VISAFunction*>(kerneltemp);
+    m_kernel = kerneltemp;
+    m_kernelsAndFunctions.push_back(kerneltemp);
+    m_kernel->m_functionId = this->m_function_count++;
+    this->m_nameToKernel[functionName] = m_kernel;
 
     return VISA_SUCCESS;
 }
@@ -745,11 +764,13 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
         int i;
         unsigned int k = 0;
+        VISAKernelImpl* mainKernel = nullptr;
         for (iter = m_kernelsAndFunctions.begin(), i = 0; iter != end; iter++, i++)
         {
             VISAKernelImpl* kernel = (*iter);
+            mainKernel = (kernel->getIsKernel()) ? kernel : mainKernel;
             kernel->finalizeAttributes();
-            kernel->getIRBuilder()->setIsKernel(kernel->getIsKernel());
+            kernel->getIRBuilder()->setType(kernel->getType());
             if (kernel->getIsKernel() == false)
             {
                 if (kernel->getIRBuilder()->getArgSize() < kernel->getKernelFormat()->input_size)
@@ -767,12 +788,43 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 k++;
             }
 
+            if (kernel->getIsPayload())
+            {
+                // Copy main kernel's declarations (shader body) into payload section
+                kernel->CopyVars(mainKernel);
+                kernel->getKernel()->Declares = mainKernel->getKernel()->Declares;
+            }
+
             int status =  kernel->compileFastPath();
             if (status != VISA_SUCCESS)
             {
                 stopTimer(TimerID::TOTAL);
                 return status;
             }
+        }
+        // Here we change the payload section as the main kernel in m_kernelsAndFunctions
+        // During stitching, all functions will be cloned and stitched to the main kernel.
+        // Demoting the shader body to a function type makes it intact
+        // so we can stitch it again to another SIMD size of payload section
+        if (m_options.getuInt32Option(vISA_CodePatch))
+        {
+            VISAKernelImpl* oldMainKernel = nullptr;
+            assert((*m_kernelsAndFunctions.begin())->getIsKernel());
+            for (auto func : m_kernelsAndFunctions)
+            {
+                if (func->getIsKernel())
+                {
+                    oldMainKernel = func;
+                    func->setType(VISA_BUILD_TYPE::FUNCTION);
+                }
+                else if (func->getIsPayload())
+                {
+                    func->setType(VISA_BUILD_TYPE::KERNEL);
+                }
+            }
+            m_kernelsAndFunctions.pop_front();
+            m_kernelsAndFunctions.push_back(oldMainKernel);
+
         }
 
         // Preparing for stitching some functions to other functions
@@ -836,12 +888,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
             void* genxBuffer = func->compilePostOptimize(genxBufferSize);
             func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
-
             if (m_options.getOption(vISA_GenerateDebugInfo))
             {
                 func->computeAndEmitDebugInfo(subFunctions);
             }
-
             restoreFCallState(func->getKernel(), origFCallFRet);
 
 
@@ -939,11 +989,19 @@ int CISA_IR_Builder::verifyVISAIR()
     }
 
     std::vector<std::string> failedFiles;
+    VISAKernelImpl* mainKernel = nullptr;
     for (auto kTemp : m_kernelsAndFunctions)
     {
         unsigned funcId = 0;
+        if (kTemp->getIsKernel())
+        {
+            mainKernel = kTemp;
+        }
+        // Payload section is a mirror compilation to the main kernel
+        // Load the main kernel to access its symbol table
+        VISAKernelImpl* fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
 
-        VISAKernel_format_provider fmt(kTemp);
+        VISAKernel_format_provider fmt(fmtKernel);
 
         vISAVerifier verifier(m_header, &fmt, getOptions());
         verifier.run(kTemp);

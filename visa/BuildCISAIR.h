@@ -83,6 +83,7 @@ public:
     static int DestroyBuilder(CISA_IR_Builder *builder);
     VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
     VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
+    VISA_BUILDER_API virtual int AddPayloadSection(VISAFunction *& function, const char* functionName);
     VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
 
     VISA_BUILDER_API void SetOption(vISAOptions option, bool val) { m_options.setOption(option, val); }

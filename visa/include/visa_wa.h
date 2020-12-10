@@ -56,4 +56,17 @@ enum VISA_WA_BUG_TYPE
     VISA_WA_BUG_TYPE_FAIL       = 32
 };
 
+enum class VISA_BUILD_TYPE {
+    KERNEL = 0,
+    FUNCTION = 1,
+    PAYLOAD = 2
+};
+
+enum CODE_PATCH_TYPE {
+    CodePatch_Disabled = 0,
+    CodePatch_Payload_Prologue = 1,
+    CodePatch_Enable_NoLTO = 2,
+    CodePatch_Enable
+};
+
 #endif

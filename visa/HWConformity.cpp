@@ -6193,7 +6193,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
     G4_INST* madInst = builder.createInternalInst(
         nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD8,
         accDst, srcR, u, srcP,
-        options | InstOpt_WriteEnable)->InheritLLVMInst(inst);
+        options | InstOpt_WriteEnable);
     bb->insertBefore(it, madInst);
 
     G4_Predicate* pred = inst->getPredicate() ? builder.duplicateOperand(inst->getPredicate()) : nullptr;
@@ -6205,7 +6205,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
         dst->getRegOff() + (secondHalf ? 1 : 0), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
     G4_INST* secondMadInst = builder.createInternalInst(
         pred, G4_mad, condMod, inst->getSaturate(), g4::SIMD8,
-        newDst, accSrc, v, srcQ, options)->InheritLLVMInst(inst);
+        newDst, accSrc, v, srcQ, options);
     bb->insertBefore(it, secondMadInst);
 }
 

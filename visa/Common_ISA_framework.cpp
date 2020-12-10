@@ -504,9 +504,11 @@ int CisaBinary::isaDump(
     }
 
     std::vector<std::string> failedFiles;
+    VISAKernelImpl* mainKernel = nullptr;
     for (iter = m_kernels.begin(); iter != end; iter++)
     {
         VISAKernelImpl * kTemp = *iter;
+
         std::list<CisaFramework::CisaInst *>::iterator inst_iter = kTemp->getInstructionListBegin();
         std::list<CisaFramework::CisaInst *>::iterator inst_iter_end = kTemp->getInstructionListEnd();
 
@@ -518,9 +520,10 @@ int CisaBinary::isaDump(
 
             if (kTemp->getIsKernel())
             {
+                mainKernel = kTemp;
                 asmName << kTemp->getOutputAsmPath();
             }
-            else
+            else if (kTemp->getIsFunction())
             {
                 //if testName: test9_genx, function 0 has test9_genx_f0.isaasm
                 kTemp->GetFunctionId(funcId);
@@ -528,11 +531,18 @@ int CisaBinary::isaDump(
                 asmName << "_f";
                 asmName << funcId;
             }
+            else
+            {
+                assert(kTemp->getIsPayload());
+                asmName << mainKernel->getOutputAsmPath();
+                asmName << "_payload";
+            }
             asmName << ".visaasm";
             if (ILFile.isaasmListFile && m_options->getOption(vISA_GenIsaAsmList))
                 fputs(string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
 
-            VISAKernel_format_provider fmt(kTemp);
+            VISAKernelImpl* fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
+            VISAKernel_format_provider fmt(fmtKernel);
             sstr << fmt.printKernelHeader(m_header);
             for (; inst_iter != inst_iter_end; inst_iter++)
             {

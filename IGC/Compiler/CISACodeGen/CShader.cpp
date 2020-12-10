@@ -457,6 +457,16 @@ void CShader::CreateAliasVars()
     }
 }
 
+bool CShader::AppendPayloadSetup(CVariable* var)
+{
+    if (find(payloadLiveOutSetup.begin(), payloadLiveOutSetup.end(), var) != payloadLiveOutSetup.end())
+    {
+        return true;
+    }
+    payloadLiveOutSetup.push_back(var);
+    return false;
+}
+
 void CShader::AddSetup(uint index, CVariable* var)
 {
     if (setup.size() < index + 1) {
@@ -671,6 +681,12 @@ void CShader::MapPushedInputs()
         CVariable* var = GetSymbol(m_argListCache[I->second.argIndex]);
         AddSetup(I->second.index, var);
     }
+}
+
+bool CShader::IsPatchablePS()
+{
+    return (GetShaderType() == ShaderType::PIXEL_SHADER &&
+        static_cast<CPixelShader*>(this)->GetPhase() != PSPHASE_PIXEL);
 }
 
 CVariable* CShader::GetR0()
@@ -2095,6 +2111,12 @@ void CShader::BeginFunction(llvm::Function* F)
 
     CreateAliasVars();
     PreCompileFunction(*F);
+}
+
+// This method split payload interpolations from the shader into another compilation unit
+void CShader::SplitPayloadFromShader(llvm::Function* F)
+{
+    encoder.BeginPayloadSection();
 }
 
 /// This method is used to create the vISA variable for function F's formal return value

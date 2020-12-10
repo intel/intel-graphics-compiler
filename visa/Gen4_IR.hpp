@@ -575,11 +575,8 @@ protected:
     uint32_t global_id = (uint32_t) -1;
 
     const IR_Builder& builder;  // link to builder to access the various compilation options
-    const void *llvmInst;
 
 public:
-    const void* GetLLVMInst() { return llvmInst; };
-    G4_INST* InheritLLVMInst(G4_INST* i) { llvmInst = i->GetLLVMInst(); return this; };
     enum SWSBTokenType {
         TOKEN_NONE,
         AFTER_READ,

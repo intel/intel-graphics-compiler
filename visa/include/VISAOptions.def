@@ -90,6 +90,7 @@ DEF_VISA_OPTION(vISA_hasRNEandDenorm,       ET_BOOL, "-hasRNEandDenorm",    UNUS
 DEF_VISA_OPTION(vISA_forceNoFP64bRegioning, ET_BOOL, "-noFP64bRegion",      UNUSED, false)
 DEF_VISA_OPTION(vISA_alignBindlessSampler,  ET_BOOL, "-alignBS",            UNUSED, false)
 DEF_VISA_OPTION(vISA_noStitchExternFunc,    ET_BOOL, "-noStitchExternFunc", UNUSED, true)
+DEF_VISA_OPTION(vISA_CodePatch,   ET_INT32, (IGC_MANGLE("-codePatch")),        UNUSED, 0)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin,            ET_BOOL, "-noroundrobin",    UNUSED, true)

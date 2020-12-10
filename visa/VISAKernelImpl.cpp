@@ -154,9 +154,8 @@ int VISAKernelImpl::compileFastPath()
 {
     int status = VISA_SUCCESS;
 
-    // make sure attributes for kernel/function are correct
     assert(
-        (getIsKernel() ||
+        (getIsKernel() || getIsPayload() ||
          (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_ArgSize) &&
           m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_RetValSize))) &&
         "vISA: input for function must have attributes ArgSize and RetValSize!");
@@ -606,11 +605,16 @@ int VISAKernelImpl::InitializeFastPath()
         m_jitInfo,
         getCISABuilder()->getWATable());
 
-    m_builder->setIsKernel(m_isKernel);
+    m_builder->setType(m_type);
     m_builder->getcompilerStats().Link(m_compilerStats);
     initCompilerStats();
 
     return VISA_SUCCESS;
+}
+
+void VISAKernelImpl::CopyVars(VISAKernelImpl* from)
+{
+    m_builder->dclpool.getDeclareList() = from->m_builder->dclpool.getDeclareList();
 }
 
 int VISAKernelImpl::InitializeKernel(const char *kernel_name)
@@ -1239,7 +1243,7 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
     if (IS_GEN_BOTH_PATH)
     {
         //needs to be persistent since label opnd can be used multiple times
-        if (m_isKernel == false)
+        if (getIsFunction())
         {
             std::string fname = "L_f" + std::to_string(m_functionId) + "_" + name;
             opnd->g4opnd = m_builder->createLabel(fname, kind);
@@ -7706,7 +7710,7 @@ void VISAKernelImpl::finalizeKernel()
 
     /*****INPUTS******/
 
-    if (m_isKernel)
+    if (getIsKernel())
     {
         m_input_offset = m_kernel_data_size;
         m_cisa_kernel.input_count = (uint8_t)m_input_count;
@@ -8458,6 +8462,11 @@ int64_t VISAKernelImpl::getGenSize() const
     return size;
 }
 
+unsigned VISAKernelImpl::getNumRegTotal() const
+{
+    return m_kernel->getNumRegTotal();
+}
+
 const char* VISAKernelImpl::getFunctionName() const
 {
     return m_kernel->getName();
@@ -8510,12 +8519,6 @@ void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy& functions)
     emitDebugInfoToMem(this, functions, ptr, size);
     setGenxDebugInfoBuffer((char*)ptr, size);
 #endif
-}
-
-int VISAKernelImpl::AppendVISALLVMInst(void *inst)
-{
-    m_builder->SetCurrentInst(inst);
-    return VISA_SUCCESS;
 }
 
 extern "C" void freeBlock(void* ptr);

@@ -111,6 +111,7 @@ public:
         VISA_Type baseType = ISA_TYPE_UD);
     CVariable* GetSymbol(llvm::Value* value, bool fromConstantPool = false);
     void        AddSetup(uint index, CVariable* var);
+    bool        AppendPayloadSetup(CVariable* var);
     void        AddPatchConstantSetup(uint index, CVariable* var);
 
     // TODO: simplify calls to GetNewVariable to these shorter and more
@@ -245,6 +246,7 @@ public:
     void        AllocateNOSConstants(uint& offset);
     void        AllocateConstants3DShader(uint& offset);
     ShaderType  GetShaderType() const { return GetContext()->type; }
+    bool        IsPatchablePS();
     bool        IsValueCoalesced(llvm::Value* v);
 
     bool        GetHasBarrier() const { return m_HasBarrier; }
@@ -339,6 +341,8 @@ public:
 
     /// Initialize per function status.
     void BeginFunction(llvm::Function* F);
+    // This method split payload interpolations from the shader into another compilation unit
+    void SplitPayloadFromShader(llvm::Function* F);
     /// This method is used to create the vISA variable for function F's formal return value
     CVariable* getOrCreateReturnSymbol(llvm::Function* F);
     /// This method is used to create the vISA variable for function F's formal argument
@@ -536,6 +540,7 @@ protected:
 
     CEncoder encoder;
     std::vector<CVariable*> setup;
+    std::vector<CVariable*> payloadLiveOutSetup;
     std::vector<CVariable*> patchConstantSetup;
 
     uint m_maxBlockId;

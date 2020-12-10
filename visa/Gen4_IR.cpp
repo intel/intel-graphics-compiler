@@ -759,8 +759,7 @@ G4_INST::G4_INST(
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
-    builder(irb),
-    llvmInst(irb.GetCurrentInst())
+    builder(irb)
 {
     srcs[0] = s0;
     srcs[1] = s1;
@@ -803,8 +802,7 @@ G4_INST::G4_INST(
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
-    builder(irb),
-    llvmInst(irb.GetCurrentInst())
+    builder(irb)
 {
     srcs[0] = s0;
     srcs[1] = s1;
@@ -852,8 +850,7 @@ G4_INST::G4_INST(
     evenlySplitInst(false),
     execSize(size),
     bin(nullptr),
-    builder(irb),
-    llvmInst(irb.GetCurrentInst())
+    builder(irb)
 {
     srcs[0] = s0;
     srcs[1] = s1;

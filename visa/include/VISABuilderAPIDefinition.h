@@ -518,8 +518,6 @@ public:
 
     VISA_BUILDER_API virtual int AppendVISADebugLinePlaceholder() = 0;
 
-    VISA_BUILDER_API virtual int AppendVISALLVMInst(void *inst) = 0;
-
     /// AppendVISAMiscRawSend -- create a GEN send instruction
     /// [pred] send/sendc (esize) <dst> <src> <exMsgDesc> <desc> {emask}
     /// bit 0 of modifiers controls whether it's send (0) or sendc (1)
@@ -811,6 +809,8 @@ public:
 
     /// getGenSize -- Get gen binary size of this kernel/function
     VISA_BUILDER_API virtual int64_t getGenSize() const = 0;
+
+    VISA_BUILDER_API virtual unsigned getNumRegTotal() const = 0;
 };
 
 class VISAFunction : public VISAKernel
@@ -847,6 +847,7 @@ class VISABuilder
 public:
     VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName) = 0;
     VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName) = 0;
+    VISA_BUILDER_API virtual int AddPayloadSection(VISAFunction *& function, const char* functionName) = 0;
     VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream* os = nullptr, bool emit_visa_only = false) = 0;
 
     VISA_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;

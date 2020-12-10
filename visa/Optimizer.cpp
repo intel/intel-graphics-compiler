@@ -383,13 +383,13 @@ void Optimizer::insertHashMovs()
                         g4::SIMD16,
                         kernel.fg.builder->createNullDst(Type_UD),
                         kernel.fg.builder->createImm((unsigned int)(hashVal & 0xffffffff), Type_UD),
-                        InstOpt_WriteEnable, false)->InheritLLVMInst(inst);
+                        InstOpt_WriteEnable, false);
 
                     hi = kernel.fg.builder->createMov(
                         g4::SIMD16,
                         kernel.fg.builder->createNullDst(Type_UD),
                         kernel.fg.builder->createImm((unsigned int)((hashVal >> 32) & 0xffffffff), Type_UD),
-                        InstOpt_WriteEnable, false)->InheritLLVMInst(inst);
+                        InstOpt_WriteEnable, false);
 
                     bb->push_back(lo);
                     bb->push_back(hi);
@@ -1191,7 +1191,12 @@ int Optimizer::optimization()
 
     runPass(PI_FoldAddrImmediate);
 
-    runPass(PI_localSchedule);
+    // FIXME houjenko: Disable local scheduling due to issues when
+    // using extra regiser that may corrupt unknown liveout
+    if (!builder.getIsPayload())
+    {
+        runPass(PI_localSchedule);
+    }
 
     runPass(PI_accSubPostSchedule);
 
@@ -6761,7 +6766,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // insert "(W) mov(16) acc0.0:f 0x0:f" before EOT
                     G4_INST* movInst = builder.createMov(g4::SIMD16,
                         builder.createDst(builder.phyregpool.getAcc0Reg(),0, 0, 1, Type_F),
-                        builder.createImm(0, Type_F), InstOpt_WriteEnable, false)->InheritLLVMInst(inst);
+                        builder.createImm(0, Type_F), InstOpt_WriteEnable, false);
                     // insert mov before contiguous send, in case that there are instruction combined set on continuous
                     // two send
                     INST_LIST_ITER insert_point = ii;

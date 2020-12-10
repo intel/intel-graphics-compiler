@@ -335,7 +335,7 @@ private:
     CompilerStats         compilerStats;
 
     int                   subroutineId = -1;   // the kernel itself has id 0, as we always emit a subroutine label for kernel too
-    bool                  isKernel; // as opposed to what?
+    enum VISA_BUILD_TYPE type; // as opposed to what?
 
     // pre-defined declare that binds to R0 (the entire GRF)
     // when pre-emption is enabled, builtinR0 is replaced by a temp,
@@ -477,10 +477,6 @@ public:
     unsigned int   getInputCount();
     input_info_t * getRetIPArg();
 
-    // what's the void* really?
-    const void*    GetCurrentInst() const { return m_inst; };
-    void           SetCurrentInst(const void* inst) { m_inst = inst; };
-
     const CISA_IR_Builder* getParent() const { return parentBuilder; }
 
     void dump(std::ostream &os); // not const because G4_INST::emit isn't :(
@@ -594,8 +590,11 @@ public:
     bool isOpndAligned(G4_Operand* opnd, int alignByte) const;
     bool isOpndAligned(G4_Operand *opnd, unsigned short &offset, int align_byte) const;
 
-    void setIsKernel(bool value) { isKernel = value; }
-    bool getIsKernel() const { return isKernel; }
+    void setType(enum VISA_BUILD_TYPE _type) { type = _type; }
+    bool getIsKernel() const { return type == VISA_BUILD_TYPE::KERNEL; }
+    bool getIsFunction() const { return type == VISA_BUILD_TYPE::FUNCTION; }
+    bool getIsPayload() const { return type == VISA_BUILD_TYPE::PAYLOAD; }
+    enum VISA_BUILD_TYPE getType() const { return type; }
     void predefinedVarRegAssignment(uint8_t inputSize);
     void expandPredefinedVars();
     void setArgSize(unsigned short size) { arg_size = size; }
@@ -2360,7 +2359,6 @@ public:
 #include "HWCaps.inc"
 
 private:
-    const void* m_inst;
     G4_SrcRegRegion* createBindlessExDesc(uint32_t exdesc);
 };
 } // namespace vISA

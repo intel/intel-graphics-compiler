@@ -106,7 +106,8 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
     m_canAbortOnSpill(canAbortOnSpill),
     m_roundingMode_FP(ERoundingMode::ROUND_TO_NEAREST_EVEN),
     m_roundingMode_FPCvtInt(ERoundingMode::ROUND_TO_ZERO),
-    m_pSignature(pSignature)
+    m_pSignature(pSignature),
+    m_isDuplicate(false)
 {
     //Before calling getAnalysisUsage() for EmitPass, the passes that it depends on need to be initialized
     initializeDominatorTreeWrapperPassPass(*PassRegistry::getPassRegistry());
@@ -123,6 +124,49 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
 
 EmitPass::~EmitPass()
 {
+}
+
+// Switch to payload section
+// When switching to payload section, the code redirects vKernel pointing to the payload section
+// m_destination (LiveOut of interploation) will be allocated before compiling the kernel.
+void EmitPass::ContextSwitchPayloadSection()
+{
+    if (m_encoder->IsCodePatchCandidate())
+    {
+        m_tmpDest = m_destination;
+        m_isDuplicate = m_currShader->AppendPayloadSetup(m_destination);
+        // When duplication happens, multiple instructions in divergent branches write to the same VR.
+        if (m_isDuplicate)
+        {
+            auto uniformSIMDMode = m_currShader->m_Platform->getMinDispatchMode();
+            CVariable* src = m_destination;
+            uint16_t size = m_destination->IsUniform() ? numLanes(uniformSIMDMode) :
+                numLanes(m_currShader->m_SIMDSize);
+            CVariable* newSource = m_currShader->GetNewVariable(
+                    size,
+                    src->GetType(),
+                    EALIGN_GRF,
+                    m_destination->IsUniform(),
+                    src->getName());
+            m_currShader->AppendPayloadSetup(newSource);
+            m_destination = newSource;
+        }
+        m_encoder->SetPayloadSectionAsPrimary();
+    }
+}
+
+void EmitPass::ContextSwitchShaderBody()
+{
+    if (m_encoder->IsCodePatchCandidate())
+    {
+        m_encoder->SetPayloadSectionAsSecondary();
+        if (m_isDuplicate)
+        {
+            m_encoder->Copy(m_tmpDest, m_destination);
+            m_encoder->Push();
+            m_destination = m_tmpDest;
+        }
+    }
 }
 
 bool EmitPass::isHalfGRFReturn(CVariable* dst, SIMDMode simdMode)
@@ -528,6 +572,48 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             return false;
         }
+
+        if (IGC_GET_FLAG_VALUE(CodePatch) &&
+            ((!m_pCtx->hash.nosHash) || IGC_GET_FLAG_VALUE(CodePatch) > CodePatch_Enable_NoLTO) &&
+            m_currShader->IsPatchablePS() &&
+            m_SimdMode == SIMDMode::SIMD16 &&
+            (m_ShaderDispatchMode != ShaderDispatchMode::NOT_APPLICABLE))
+        {
+            m_encoder->SetIsCodePatchCandidate(true);
+
+            // FIXME: Skip corner cases for now. Remove this later.
+            for (uint i = 0; i < m_pattern->m_numBlocks && m_encoder->IsCodePatchCandidate(); i++)
+            {
+                SBasicBlock& block = m_pattern->m_blocks[i];
+                auto I = block.m_dags.rbegin(), E = block.m_dags.rend();
+                while (I != E && m_encoder->IsCodePatchCandidate())
+                {
+                    Instruction* llvmInst = (*I).m_root;
+                    if (llvmInst->getOpcode() == Instruction::Call)
+                    {
+                        if (GenIntrinsicInst * I = dyn_cast<GenIntrinsicInst>(llvmInst))
+                        {
+                            switch(I->getIntrinsicID())
+                            {
+                                case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
+                                case GenISAIntrinsic::GenISA_PullSnappedBarys:
+                                case GenISAIntrinsic::GenISA_PullCentroidBarys:
+                                    m_encoder->SetIsCodePatchCandidate(false);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                    ++I;
+                }
+            }
+        }
+        else
+        {
+            m_encoder->SetIsCodePatchCandidate(false);
+        }
+
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         initDefaultRoundingMode();
@@ -554,6 +640,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->InitFuncAttribute(&F, false);
             emitStackFuncEntry(&F);
         }
+    }
+    if (m_encoder->IsCodePatchCandidate())
+    {
+        m_currShader->SplitPayloadFromShader(&F);
     }
 
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
@@ -749,7 +839,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             }
         }
 
-        m_encoder->SetCurrentInst(nullptr);
 
         if (llvmtoVISADump)
         {
@@ -790,6 +879,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->MapPushedInputs();
         // Allocate the thread payload
         m_currShader->AllocatePayload();
+
+        if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills)
+            return false;
     }
 
     if (m_currShader->GetDebugInfoData())
@@ -3556,8 +3648,11 @@ void EmitPass::emitPSInputCst(llvm::Instruction* inst)
         m_encoder->SetSrcSubReg(0, 3);
     }
 
+    // This is where we have MOV for payload
+    ContextSwitchPayloadSection();
     m_encoder->Cast(m_destination, inputVar);
     m_encoder->Push();
+    ContextSwitchShaderBody();
 }
 
 
@@ -3602,7 +3697,10 @@ void EmitPass::emitPSInputPln(llvm::Instruction* inst)
     e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
     // need to do interpolation unless we do constant interpolation
     CVariable* baryVar = psProgram->GetBaryReg(mode);
+
+    ContextSwitchPayloadSection();
     emitPlnInterpolation(baryVar, inputVar);
+    ContextSwitchShaderBody();
 }
 
 void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
@@ -3765,7 +3863,10 @@ void EmitPass::emitInterpolate(llvm::GenIntrinsicInst* inst)
     uint setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
     // temp variable should be the same type as the destination
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
+
+    ContextSwitchPayloadSection();
     emitPlnInterpolation(barys, inputVar);
+    ContextSwitchShaderBody();
 }
 
 void EmitPass::emitInterpolate2(llvm::GenIntrinsicInst* inst)
@@ -9458,8 +9559,6 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
     {
         return;
     }
-
-    m_encoder->SetCurrentInst(inst);
 
     switch (inst->getOpcode())
     {

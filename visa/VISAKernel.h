@@ -62,8 +62,8 @@ class VISAKernelImpl : public VISAFunction
     friend class VISAKernel_format_provider;
 
 public:
-    VISAKernelImpl(bool isKernel, CISA_IR_Builder* cisaBuilder, const char* name)
-        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(cisaBuilder->getOptions()), m_isKernel(isKernel)
+    VISAKernelImpl(enum VISA_BUILD_TYPE type, CISA_IR_Builder* cisaBuilder, const char* name)
+        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(cisaBuilder->getOptions())
     {
         mBuildOption = m_CISABuilder->getBuilderOption();
         m_magic_number = COMMON_ISA_MAGIC_NUM;
@@ -94,6 +94,7 @@ public:
         m_input_offset = 0;
         m_num_pred_vars = 0;
         m_sampler_info_size = 0;
+        m_type = type;
 
         memset(&m_cisa_kernel, 0, sizeof(kernel_format_t));
         m_forward_label_count = 0;
@@ -198,8 +199,11 @@ public:
     unsigned int getNumPredVars() { return m_num_pred_vars; }
 
     unsigned long getKernelDataSize() { return m_kernel_data_size; }
-    void setIsKernel(bool isKernel) { m_isKernel = isKernel; };
-    bool getIsKernel() const { return m_isKernel; }
+    bool getIsKernel() const { return m_type == VISA_BUILD_TYPE::KERNEL; }
+    bool getIsFunction() const { return m_type == VISA_BUILD_TYPE::FUNCTION; }
+    bool getIsPayload() const { return m_type == VISA_BUILD_TYPE::PAYLOAD; }
+    enum VISA_BUILD_TYPE getType() const { return m_type; }
+    void setType(enum VISA_BUILD_TYPE _type) { m_type = _type; }
     unsigned long getCodeOffset() { return m_cisa_kernel.entry; }
 
     CISA_GEN_VAR * getDeclFromName(const std::string &name);
@@ -216,6 +220,8 @@ public:
     CISA_IR_Builder* getCISABuilder() { return m_CISABuilder; }
 
     int getVISAOffset() const;
+    void CopyVars(VISAKernelImpl* from);
+
 
     /***************** START EXPOSED APIS *************************/
     VISA_BUILDER_API int CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
@@ -466,8 +472,6 @@ public:
 
     VISA_BUILDER_API int AppendVISADebugLinePlaceholder();
 
-    VISA_BUILDER_API int AppendVISALLVMInst(void *inst);
-
     VISA_BUILDER_API int AppendVISAMiscRawSend(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, unsigned char modifiers,
         unsigned int exMsgDesc, unsigned char srcSize, unsigned char dstSize, VISA_VectorOpnd *desc,
         VISA_RawOpnd *src, VISA_RawOpnd *dst);
@@ -682,6 +686,9 @@ public:
 
     ///Gets gen binary size within instruction heap
     VISA_BUILDER_API int64_t getGenSize() const;
+
+    ///Gets num of total regs
+    VISA_BUILDER_API virtual unsigned getNumRegTotal() const;
 
     /// Get global function name
     VISA_BUILDER_API const char* getFunctionName() const;
@@ -934,7 +941,7 @@ private:
 
     std::vector<std::string> m_string_pool;
     CisaFramework::CisaInst * m_lastInst;
-    bool m_isKernel;
+    enum VISA_BUILD_TYPE m_type;
     unsigned int m_resolvedIndex;
 
     vISA::Mem_Manager m_mem;

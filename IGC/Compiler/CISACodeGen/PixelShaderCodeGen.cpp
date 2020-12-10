@@ -128,6 +128,10 @@ void CPixelShader::AllocatePixelPhasePayload()
 
 void CPixelShader::AllocatePSPayload()
 {
+    if (encoder.IsCodePatchCandidate())
+    {
+        encoder.SetPayloadSectionAsPrimary();
+    }
     // In bytes
     uint offset = 0;
 
@@ -286,7 +290,7 @@ void CPixelShader::AllocatePSPayload()
             {
                 GetDispatchSignature().inputOffset[i] = offset;
             }
-            payloadEnd = offset;
+            payloadEnd = offset + setup[i]->GetSize();
         }
 
         else
@@ -297,6 +301,38 @@ void CPixelShader::AllocatePSPayload()
 
     offset = payloadEnd;
 
+    // For code patching, we preallocate live-out of payload into physical registers.
+    // The preallocation must be aligned across contexts to ensure it is patchable.
+    if (encoder.IsCodePatchCandidate())
+    {
+        encoder.SetPayloadSectionAsSecondary();
+    }
+    if (offset % getGRFSize() != 0)
+    {
+        offset += (getGRFSize() - (offset % getGRFSize()));
+    }
+
+    // This is the preallocation for payload live-outs.
+    for (auto& var : payloadLiveOutSetup)
+    {
+        IGC_ASSERT(offset% getGRFSize() == 0);
+        auto v = var->GetAlias() ? var->GetAlias() : var;
+        AllocateInput(v, offset);
+        offset += v->GetSize();
+    }
+
+    // When preallocation failed (exceeding the total number of physical registers), early exit and give up this compilation._
+    ProgramOutput()->m_scratchSpaceUsedBySpills = offset > encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize();
+    if (ProgramOutput()->m_scratchSpaceUsedBySpills)
+    {
+        return;
+    }
+
+    offset = payloadEnd;
+    if (encoder.IsCodePatchCandidate())
+    {
+        encoder.SetPayloadSectionAsPrimary();
+    }
 
     // create output registers for coarse phase
     calignmentSize as;
@@ -322,6 +358,11 @@ void CPixelShader::AllocatePSPayload()
         }
         offset += m_CoarseoMask->GetSize();
     }
+    if (encoder.IsCodePatchCandidate())
+    {
+        encoder.SetPayloadSectionAsSecondary();
+    }
+    ProgramOutput()->m_scratchSpaceUsedBySpills = (offset > encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize());
 }
 
 PSSignature::DispatchSignature& CPixelShader::GetDispatchSignature()

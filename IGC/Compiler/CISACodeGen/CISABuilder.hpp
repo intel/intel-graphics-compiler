@@ -240,7 +240,6 @@ namespace IGC
         void File(std::string& s);
         void PredAdd(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
         void DebugLinePlaceholder();
-        void SetCurrentInst(llvm::Instruction *inst);
 
         inline void Jump(uint label);
         inline void Cast(CVariable* dst, CVariable* src);
@@ -358,6 +357,8 @@ namespace IGC
         inline void SetSecondNibble(bool secondNibble);
         inline bool IsSecondNibble();
 
+        inline void SetIsCodePatchCandidate(bool v);
+        inline bool IsCodePatchCandidate();
         inline void BeginForcedNoMaskRegion();
         inline void EndForcedNoMaskRegion();
 
@@ -391,6 +392,8 @@ namespace IGC
         /// \brief Initialize per function states and starts vISA emission
         /// as a vISA stack-call function
         void BeginStackFunction(llvm::Function* F);
+        /// \brief Initialize interpolation section for vISA emission
+        void BeginPayloadSection();
 
         void DestroyVISABuilder();
 
@@ -399,7 +402,8 @@ namespace IGC
         std::string GetVariableName(CVariable* var);
         std::string GetDumpFileName(std::string extension);
 
-
+        void SetPayloadSectionAsPrimary()   {vKernelTmp = vKernel; vKernel = vPayloadSection;}
+        void SetPayloadSectionAsSecondary() {vKernel = vKernelTmp;}
 
     private:
         // helper functions
@@ -592,6 +596,12 @@ namespace IGC
         VISAKernel* vMainKernel;
         VISABuilder* vbuilder;
         VISABuilder* vAsmTextBuilder;
+
+        // This is for CodePatch to split payload interpolation from a shader
+        VISAKernel* vPayloadSection;
+        VISAKernel* vKernelTmp;
+
+        bool m_isCodePatchCandidate = false;
 
         bool m_insideForcedNoMaskRegion = false;
 
@@ -906,6 +916,16 @@ namespace IGC
 
     inline void CEncoder::dp4a(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2) {
         Arithmetic(ISA_DP4A, dst, src0, src1, src2);
+    }
+
+    inline void CEncoder::SetIsCodePatchCandidate(bool v)
+    {
+        m_isCodePatchCandidate = v;
+    }
+
+    inline bool CEncoder::IsCodePatchCandidate()
+    {
+        return m_isCodePatchCandidate;
     }
 
     inline void CEncoder::BeginForcedNoMaskRegion()

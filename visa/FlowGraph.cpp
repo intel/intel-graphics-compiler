@@ -6050,7 +6050,6 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
 }
 void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
 {
-    const void *llvmInst = (*it)->GetLLVMInst();
     if ((*it)->isSend())
     {
         //

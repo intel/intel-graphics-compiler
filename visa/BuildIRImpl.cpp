@@ -753,13 +753,12 @@ IR_Builder::IR_Builder(
     FINALIZER_INFO *jitInfo,
     PWA_TABLE pWaTable)
     : platform(genPlatform), curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
-    isKernel(false), parentBuilder(parent),
+    type(VISA_BUILD_TYPE::KERNEL), parentBuilder(parent),
     builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
     CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
     mem(m), phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m), dclpool(m),
     instList(alloc), kernel(k), metadataMem(4096)
 {
-    m_inst = nullptr;
     num_temp_dcl = 0;
     kernel.setBuilder(this); // kernel needs pointer to the builder
     createBuiltinDecls();

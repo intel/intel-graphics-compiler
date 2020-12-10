@@ -3611,6 +3611,43 @@ namespace IGC
         V(vKernel->AppendVISACFLabelInst(visaLabel));
     }
 
+    void CEncoder::BeginPayloadSection()
+    {
+        // Payload Section is created as a function and compiled separately
+        // from the shader body
+        VISAFunction* visaFunc = nullptr;
+        V(vbuilder->AddPayloadSection(visaFunc, "PayloadSection"));
+        vPayloadSection = visaFunc;
+        CodeGenContext* context = m_program->GetContext();
+        std::string kernelName = std::string(m_program->entry->getName());
+        std::string asmName;
+        if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo)
+        {
+            // vISA does not support string of length >= 255. Truncate if this exceeds
+            // the limit. Note that vISA may append an extension, so relax it to a
+            // random number 240 here.
+            const int MAX_VISA_STRING_LENGTH = 240;
+            if (kernelName.size() >= MAX_VISA_STRING_LENGTH)
+            {
+                kernelName.resize(MAX_VISA_STRING_LENGTH);
+            }
+            asmName = GetDumpFileName("asm");
+        }
+        else
+        {
+            kernelName = "kernel";
+            asmName = "kernel.asm";
+        }
+        V(vPayloadSection->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
+
+        VISA_LabelOpnd* functionLabel = nullptr;
+        V(vPayloadSection->CreateVISALabelVar(functionLabel, "payload", LABEL_SUBROUTINE));
+        V(vPayloadSection->AppendVISACFLabelInst(functionLabel));
+        V(vPayloadSection->CreateVISASurfaceVar(dummySurface, "", 1));
+        V(vPayloadSection->CreateVISASamplerVar(samplervar, "", 1));
+        vMainKernel = vPayloadSection;
+    }
+
     void CEncoder::AddVISASymbol(std::string& symName, CVariable* cvar)
     {
         SModifier mod;
@@ -3804,6 +3841,7 @@ namespace IGC
         {
             SaveOption(vISA_cloneSampleInst, true);
         }
+
 
         if (m_program->m_Platform->getWATable().Wa_22011142311 && IGC_IS_FLAG_ENABLED(EnableEvaluateSamplerSplit))
         {
@@ -4685,6 +4723,9 @@ namespace IGC
 
     void CEncoder::DeclareInput(CVariable* var, uint offset, uint instance)
     {
+        // Avoid declaring more inputs/outputs than available registers
+        if (offset + var->GetSize() >= vKernel->getNumRegTotal() * getGRFSize())
+            return;
         V(vKernel->CreateVISAInputVar(
             var->visaGenVariable[instance],
             int_cast<unsigned short>(offset),
@@ -6329,11 +6370,6 @@ namespace IGC
         V(vKernel->AppendVISADebugLinePlaceholder());
     }
 
-    void CEncoder::SetCurrentInst(llvm::Instruction *inst)
-    {
-        V(vKernel->AppendVISALLVMInst(inst));
-    }
-
 
 
 
@@ -6367,16 +6403,6 @@ namespace IGC
     std::string CEncoder::GetDumpFileName(std::string extension)
     {
         std::string filename = IGC::Debug::GetDumpName(m_program, extension.c_str());
-        std::replace_if(filename.begin(), filename.end(),
-            [](const char& c) {return c == '>' || c == '<'; }, '_');
-        // vISA does not support string of length >= 255. Truncate if this exceeds
-        // the limit. Note that vISA may append an extension, so relax it to a
-        // random number 240 here.
-        const int MAX_VISA_STRING_LENGTH = 240;
-        if (filename.length() >= MAX_VISA_STRING_LENGTH)
-        {
-            filename.resize(MAX_VISA_STRING_LENGTH);
-        }
         return filename;
     }
 

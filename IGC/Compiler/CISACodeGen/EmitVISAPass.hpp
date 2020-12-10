@@ -582,6 +582,8 @@ public:
 
     llvm::DominatorTree* m_pDT;
     static char ID;
+    inline void ContextSwitchPayloadSection();
+    inline void ContextSwitchShaderBody();
 
 private:
     uint m_labelForDMaskJmp;
@@ -714,6 +716,9 @@ private:
     CVariable* prepareAddressForUniform(
         CVariable* AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz, e_alignment Align);
     CVariable* prepareDataForUniform(CVariable* DataVar, uint32_t ExecSz, e_alignment Align);
+    bool m_isDuplicate;
+    CVariable* m_tmpDest;
+
 };
 
 } // namespace IGC
