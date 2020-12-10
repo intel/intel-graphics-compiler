@@ -1821,7 +1821,7 @@ void Interference::buildInterferenceAmongLiveIns()
     G4_BB* entryBB = kernel.fg.getEntryBB();
 
 
-    for (unsigned int i = 0; i < maxId; i++)
+    for (unsigned int i = 0; i < liveAnalysis->getNumSelectedGlobalVar(); i++)
     {
         if (liveAnalysis->isLiveAtEntry(entryBB, i))
         {
@@ -1832,7 +1832,7 @@ void Interference::buildInterferenceAmongLiveIns()
                 lrs[i]->setIsSplittedDcl(false);
             }
 
-            for (unsigned j = i + 1; j < maxId; j++)
+            for (unsigned j = i + 1; j < liveAnalysis->getNumSelectedGlobalVar(); j++)
             {
                 if (liveAnalysis->isLiveAtEntry(entryBB, j))
                 {
@@ -3870,7 +3870,7 @@ void Augmentation::buildLiveIntervals()
 
     // Live-in variables have their start interval start with
     // first instruction of entry BB
-    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
     {
         if (liveAnalysis.isLiveAtEntry(entryBB, i))
         {
@@ -4083,7 +4083,7 @@ void Augmentation::buildLiveIntervals()
     // ToDo: this seems very slow when # variable is large, should look for sparse implementation
     auto extendVarLiveness = [this](G4_BB* bb, G4_INST* inst)
     {
-        for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+        for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
         {
             if (liveAnalysis.isLiveAtEntry(bb, i) == true)
             {
@@ -4181,7 +4181,7 @@ void Augmentation::buildLiveIntervals()
 
             G4_BB* startBB = backEdge.second;
             G4_BB* EndBB = backEdge.first;
-            for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+            for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
             {
                 if (liveAnalysis.isLiveAtEntry(startBB, i) == true &&
                     liveAnalysis.isLiveAtExit(EndBB, i) == true)
@@ -4612,8 +4612,8 @@ void Augmentation::addSIMDIntfForRetDclares(G4_Declare* newDcl)
     if (dclIt == retDeclares.end())
     {
         mask = (MASK_Declares*)m.alloc(sizeof(MASK_Declares));
-        mask->defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
-        mask->noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
+        mask->defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
+        mask->noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
         retDeclares[newDcl] = mask;
     }
     else
@@ -4853,7 +4853,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask)
 {
 
-    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
     {
         auto newDclAugMask = gra.getAugmentationMask(newDcl);
 
@@ -4960,8 +4960,8 @@ void Augmentation::augmentIntfGraph()
 
         for (unsigned i = 0; i < numFnId; i++)
         {
-            callsiteDeclares[i].defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
-            callsiteDeclares[i].noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedVar(), false);
+            callsiteDeclares[i].defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
+            callsiteDeclares[i].noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
         }
     }
 

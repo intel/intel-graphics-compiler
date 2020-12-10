@@ -395,6 +395,7 @@ struct VarRangeListPackage
 class LivenessAnalysis
 {
     unsigned numVarId;         // the var count
+    unsigned numGlobalVarId;   // the global var count
     unsigned numSplitVar;      // the split var count
     unsigned numSplitStartID;      // the split var count
     unsigned numUnassignedVarId;         // the unassigned var count
@@ -446,6 +447,10 @@ public:
     std::vector<BitSet> maydef;
 
     LivenessAnalysis(GlobalRA& gra, uint8_t kind);
+    bool isLocalVar(G4_Declare* decl);
+    bool setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
+    bool setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
+    bool setVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
     LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA, bool forceRun = false);
     ~LivenessAnalysis();
     void computeLiveness();
@@ -460,6 +465,7 @@ public:
         return (selectedRF & regKind) != 0;
     }
     unsigned getNumSelectedVar() const {return numVarId;}
+    unsigned getNumSelectedGlobalVar() const { return numGlobalVarId; }
     unsigned getNumSplitVar() const {return numSplitVar;}
     unsigned getNumSplitStartID() const {return numSplitStartID;}
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}

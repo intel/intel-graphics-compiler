@@ -424,23 +424,116 @@ LivenessAnalysis::LivenessAnalysis(
 {
 }
 
-LivenessAnalysis::LivenessAnalysis(
-        GlobalRA& g,
-        unsigned char kind,
-        bool verifyRA,
-        bool forceRun) :
-        numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind),
-        pointsToAnalysis(g.pointsToAnalysis), m(4096), gra(g), fg(g.kernel.fg)
+bool LivenessAnalysis::isLocalVar(G4_Declare* decl)
 {
-    //
-    // NOTE:
-    // The maydef sets are simply aliases to the mayuse sets, since their uses are
-    // mutually exclusive.
-    //
-    // Go over each reg var if it's a liveness candidate, assign id for bitset.
-    //
-    bool areAllPhyRegAssigned = !forceRun;
+    LocalLiveRange* dclLR = gra.getLocalLR(decl);
 
+    if (decl &&
+        dclLR &&
+        dclLR->isLiveRangeLocal()&&
+        decl->getRegFile() != G4_INPUT)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool LivenessAnalysis::setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
+{
+    bool phyRegAssigned = areAllPhyRegAssigned;
+
+    DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
+    while (di != gra.kernel.Declares.end())
+    {
+        G4_Declare* decl = *di;
+        if (!isLocalVar(decl))
+        {
+            /* Note that we only do local split, so there is no need to handle partial declare and splitted declare */
+            if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL)
+            {
+                decl->getRegVar()->setId(numGlobalVarId++);
+                if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
+                    numUnassignedVarId++;
+                if (decl->getRegVar()->isPhyRegAssigned() == false)
+                {
+                    phyRegAssigned = false;
+                }
+            }
+            else
+            {
+                decl->getRegVar()->setId(UNDEFINED_VAL);
+            }
+        }
+
+        di++;
+    }
+
+    return phyRegAssigned;
+}
+
+bool LivenessAnalysis::setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
+{
+    numVarId = numGlobalVarId;
+    bool phyRegAssigned = areAllPhyRegAssigned;
+
+    DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
+    while (di != gra.kernel.Declares.end())
+    {
+        G4_Declare* decl = *di;
+        if (isLocalVar(decl))
+        {
+            if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL)
+            {
+                if (decl->getIsSplittedDcl())
+                {
+                    decl->setSplitVarStartID(0);
+                }
+                if (decl->getIsPartialDcl())
+                {
+                    auto declSplitDcl = gra.getSplittedDeclare(decl);
+                    if (declSplitDcl->getIsSplittedDcl())
+                    {
+                        if (numSplitStartID == 0)
+                        {
+                            numSplitStartID = numVarId;
+                        }
+
+                        if (declSplitDcl->getSplitVarStartID() == 0)
+                        {
+                            declSplitDcl->setSplitVarStartID(numVarId);
+                        }
+                        numSplitVar++;
+                    }
+                    else
+                    {
+                        assert(0 && "Found child declare without parent");
+                    }
+                }
+
+                decl->getRegVar()->setId(numVarId++);
+                if (decl->getRegVar()->getPhyReg() == NULL && !decl->getIsPartialDcl())
+                    numUnassignedVarId++;
+                if (decl->getRegVar()->isPhyRegAssigned() == false)
+                {
+                    phyRegAssigned = false;
+                }
+            }
+            else
+            {
+                decl->getRegVar()->setId(UNDEFINED_VAL);
+            }
+        }
+
+        di++;
+    }
+
+    return phyRegAssigned;
+}
+
+bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
+{
+    bool phyRegAssigned = areAllPhyRegAssigned;
     DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
     while (di != gra.kernel.Declares.end())
     {
@@ -465,7 +558,7 @@ LivenessAnalysis::LivenessAnalysis(
                     {
                         declSplitDcl->setSplitVarStartID(numVarId);
                     }
-                    numSplitVar ++;
+                    numSplitVar++;
                 }
                 else
                 {
@@ -485,7 +578,7 @@ LivenessAnalysis::LivenessAnalysis(
 
             if (decl->getRegVar()->isPhyRegAssigned() == false)
             {
-                areAllPhyRegAssigned = false;
+                phyRegAssigned = false;
             }
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_EMIT(decl->getRegVar());
@@ -501,6 +594,40 @@ LivenessAnalysis::LivenessAnalysis(
             decl->getRegVar()->setId(UNDEFINED_VAL);
         }
         di++;
+    }
+
+    numGlobalVarId = numVarId;
+
+    return phyRegAssigned;
+}
+
+LivenessAnalysis::LivenessAnalysis(
+        GlobalRA& g,
+        unsigned char kind,
+        bool verifyRA,
+        bool forceRun) :
+        numVarId(0), numGlobalVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind),
+        pointsToAnalysis(g.pointsToAnalysis), m(4096), gra(g), fg(g.kernel.fg)
+{
+    //
+    // NOTE:
+    // The maydef sets are simply aliases to the mayuse sets, since their uses are
+    // mutually exclusive.
+    //
+    // Go over each reg var if it's a liveness candidate, assign id for bitset.
+    //
+    bool areAllPhyRegAssigned = !forceRun;
+    bool hasStackCall = fg.getHasStackCalls() || fg.getIsStackCallFunc();
+    bool fastCompile = fg.builder->getOption(vISA_FastCompileRA) && !hasStackCall;
+
+    if (fastCompile)
+    {
+        areAllPhyRegAssigned = setGlobalVarIDs(verifyRA, areAllPhyRegAssigned);
+        areAllPhyRegAssigned = setLocalVarIDs(verifyRA, areAllPhyRegAssigned);
+    }
+    else
+    {
+        areAllPhyRegAssigned = setVarIDs(verifyRA, areAllPhyRegAssigned);
     }
 
     // For Alias Dcl
