@@ -380,6 +380,7 @@ namespace vISA
             liveStartID(0), liveStartBBID(-1), liveEndID(0), liveEndBBID(-1), instKilled(false), sourceKilled(false), hasAW(false), hasAR(false), hasFollowDistOneAReg(false), footprints(Opnd_total_num, nullptr), globalID(-1)
         {
 
+            followDistOneAReg = false;
             sendID = -1;
             sendUseID = -1;
             instVec.push_back(i);
