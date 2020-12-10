@@ -2208,18 +2208,28 @@ bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
 // a helper routine for decomposeSdivPow2
 // return a new ConstantVector with the same type as input vector, that consists
 // of log2 of original vector;
-// input vector consists of only positive integer
-static Constant *getFloorLog2Vector(const ConstantDataVector &C) {
-  VectorType *Ty = C.getType();
-  IGC_ASSERT(Ty->getScalarType()->isIntegerTy() &&
-             "Error: getLog2Vector not int vector type");
-  SmallVector<Constant *, 4> Elts;
-  for (int V = 0; V != C.getNumElements(); ++V) {
-    APInt Elt = C.getElementAsAPInt(V);
-    Constant *Log2 = ConstantInt::get(Ty->getScalarType(), Elt.logBase2());
-    Elts.push_back(Log2);
+// input vector consists of only positive integer or only one positive integer
+static Constant *getFloorLog2(const Constant *C) {
+  IGC_ASSERT(C && "getFloorLog2 get nullptr");
+  IGC_ASSERT(C->getType()->isIntOrIntVectorTy() &&
+             "Error: getFloorLog2 get not int or vector of int type");
+  if (C->getType()->isVectorTy()) {
+    VectorType *Ty = cast<VectorType>(C->getType());
+    SmallVector<Constant *, 4> Elts;
+    const ConstantDataVector *Input = cast<ConstantDataVector>(C);
+    Elts.reserve(Input->getNumElements());
+    for (int V = 0; V != Input->getNumElements(); ++V) {
+      APInt Elt = Input->getElementAsAPInt(V);
+      Constant *Log2 = ConstantInt::get(Ty->getScalarType(), Elt.logBase2());
+      Elts.push_back(Log2);
+    }
+    return ConstantVector::get(Elts);
+  } else {
+    Type *Ty = C->getType();
+    const ConstantInt *Elt = cast<ConstantInt>(C);
+    const APInt Val = Elt->getValue();
+    return ConstantInt::get(Ty->getScalarType(), Val.logBase2());
   }
-  return ConstantVector::get(Elts);
 }
 
 // a helper routine for decomposeSdivInstruction and decomposeSdivPow2
@@ -2230,24 +2240,23 @@ bool isSuitableSdivPow2DecomposeInst(const Instruction &Inst) {
     return false; // not interesting
   // from this point operands are signed
   Value *Op1 = Inst.getOperand(1);
-  if (!isa<ConstantDataVector>(Op1))
+  if (!isa<Constant>(Op1)) // constant data vector or constant
     return false;
   if (PatternMatch::match(Op1, PatternMatch::m_Negative()))
-    return false;                    // the second operand is negative
-  if (!Inst.getType()->isVectorTy()) // not vector
-    return false;
-  Type *InstElementTy = cast<VectorType>(Inst.getType())->getElementType();
-  if (!InstElementTy->isIntegerTy()) // not vector of int
-    return false;
-  // wrong BitWidth, no ability to optimize
-  if (InstElementTy->getIntegerBitWidth() != genx::DWordBits)
-    return false;
+    return false; // the second operand is negative
+
+  if (!Inst.getType()->isIntOrIntVectorTy(genx::DWordBits))
+    return false; // not int and not vector of int, or width wrong
+  Type *InstElementTy = Inst.getType()->getScalarType();
+  IGC_ASSERT(InstElementTy &&
+             "ERROR: logic error in is isSuitableSdivPow2DecomposeInst");
   return PatternMatch::match(Op1, PatternMatch::m_Power2());
 }
 
 // optimization path if second operand of sdiv is power of 2
 // input:
 // Sdiv - only sdiv binary operator, second operand of which is ConstantVector
+//  or ConstantInt
 // Optimization for positive y:
 // intWidth = 32
 // x / y = ashr( x + lshr( ashr(x, intWidth - 1), intWidth - log2(y)), log2(y))
@@ -2258,28 +2267,33 @@ static void decomposeSdivPow2(Instruction &Sdiv,
 
   const Twine Name = "genxSdivOpt";
   Value *Op0 = Sdiv.getOperand(0);
-  ConstantDataVector *Op1 = cast<ConstantDataVector>(Sdiv.getOperand(1));
+  Constant *Op1 = cast<Constant>(Sdiv.getOperand(1));
+
   Type *SdivTy = Sdiv.getType();
-  Type *ElementTy = cast<VectorType>(SdivTy)->getElementType();
+  Type *ElementTy = SdivTy->getScalarType();
+  IGC_ASSERT(ElementTy && "ERROR: logic error in decomposeSdivPow2");
   unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
-  unsigned OperandWidth = cast<VectorType>(SdivTy)->getNumElements();
+  unsigned OperandWidth =
+      SdivTy->isVectorTy() ? cast<VectorType>(SdivTy)->getNumElements() : 0;
 
   IRBuilder<> Builder(&Sdiv);
   Builder.SetCurrentDebugLocation(Sdiv.getDebugLoc());
 
-  auto createConstantVector = [](unsigned int OperandWidth, Type *Ty,
-                                 int Value) {
-    return ConstantDataVector::getSplat(IGCLLVM::getElementCount(OperandWidth),
-                                        ConstantInt::get(Ty, Value));
+  auto createConstant = [](unsigned int OperandWidth, Type *Ty, int Value) {
+    return OperandWidth != 0 ? ConstantDataVector::getSplat(
+                                   IGCLLVM::getElementCount(OperandWidth),
+                                   ConstantInt::get(Ty, Value))
+                             : ConstantInt::get(Ty, Value);
+    ;
   };
 
   Constant *VecSignBit =
-      createConstantVector(OperandWidth, ElementTy, ElementBitWidth - 1);
+      createConstant(OperandWidth, ElementTy, ElementBitWidth - 1);
   Constant *VecBitWidth =
-      createConstantVector(OperandWidth, ElementTy, ElementBitWidth);
+      createConstant(OperandWidth, ElementTy, ElementBitWidth);
 
-  Constant *Log2Op1 = getFloorLog2Vector(*Op1);
-  IGC_ASSERT(Log2Op1 != nullptr && "getLog2Vector return null");
+  Constant *Log2Op1 = getFloorLog2(Op1);
+  IGC_ASSERT(Log2Op1 != nullptr && "getLog2 return nullptr");
 
   Value *ShiftSize = Builder.CreateSub(VecBitWidth, Log2Op1, Name);
   // if op0 is negative, Signdetect all ones, else all zeros
