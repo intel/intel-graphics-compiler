@@ -8381,6 +8381,12 @@ typedef struct _WA_TABLE
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
+        Wa_1407901919,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
         Wa_1606931601,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
@@ -8471,6 +8477,11 @@ typedef struct _WA_TABLE
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
+        Wa_1606932921,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D)
+        WA_DECLARE(
         Wa_14010875903,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
@@ -8504,6 +8515,32 @@ typedef struct _WA_TABLE
         Wa_16011983264,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1808326800,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_GMM)
+        WA_DECLARE(
+        Wa_1607610283,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+        WA_DECLARE(
+        Wa_1406664125,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+        WA_DECLARE(
+        Wa_22010594632,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+        WA_DECLARE(
+        Wa_1809626530,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
 } WA_TABLE, *PWA_TABLE;
@@ -8559,3 +8596,4 @@ struct HW_STATUS
 #define GRAPHICS_IS_WA(s, w)  ((s)->w)
 
 #endif
+

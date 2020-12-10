@@ -142,6 +142,8 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
     case IGFX_GEN12LP_CORE:
         if (   platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
             || platform->getPlatformInfo().eProductFamily == IGFX_DG1
+            || platform->getPlatformInfo().eProductFamily == IGFX_ROCKETLAKE
+            || platform->getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_S
            )
         {
             return IGA_GEN12p1;

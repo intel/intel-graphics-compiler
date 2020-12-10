@@ -43,6 +43,8 @@ typedef enum {
     IGFX_JASPERLAKE,
     IGFX_ELKHARTLAKE = IGFX_JASPERLAKE,
     IGFX_TIGERLAKE_LP,
+    IGFX_ROCKETLAKE,
+    IGFX_ALDERLAKE_S,
     IGFX_DG1 = 1210,
     IGFX_MAX_PRODUCT,
 
@@ -570,6 +572,21 @@ typedef enum __NATIVEGTTYPE
 #define ITGL_LP_GT0_ULT_DEVICE_F0_ID            0x9A7F
 
 #define DEV_ID_4905                             0x4905
+#define IRKL_1x2x16_GT1_ULT_SKU_DEVICE_F0_ID_0     0x4C80 // Obsolete, to be removed once removed from linux code base
+#define IRKL_1x2x16_GT1_SUPER_SKU_DEVICE_F0_ID_1   0x4C8A // Obsolete, to be removed once removed from linux code base
+#define IRKL_1X2X12_GT1_SUPER_SKU_DEVICE_F0_ID_2   0x4C8B // Obsolete, to be removed once removed from linux code base
+#define IRKL_1X1X16_GT0P5_SUPER_SKU_DEVICE_F0_ID_3 0x4C8C // Obsolete, to be removed once removed from linux code base
+#define IRKL_1X2X16_GT1_SUPER_SKU_DEVICE_F0_ID_4   0x4C90 // Obsolete, to be removed once removed from linux code base
+#define IRKL_1X2X16_GT1_SUPER_SKU_DEVICE_F0_ID_5   0x4C9A // Obsolete, to be removed once removed from linux code base
+#define IRKL_GT0_SKU_DEVICE_F0_ID                  0x4C9F // Obsolete, to be removed once removed from linux code base
+
+#define DEV_ID_4C80         0x4C80
+#define DEV_ID_4C8A         0x4C8A
+#define DEV_ID_4C8B         0x4C8B
+#define DEV_ID_4C8C         0x4C8C
+#define DEV_ID_4C90         0x4C90
+#define DEV_ID_4C9A         0x4C9A
+#define DEV_ID_4C9F         0x4C9F
 //LKF
 #define ILKF_1x8x8_DESK_DEVICE_F0_ID            0x9840
 #define ILKF_GT0_DESK_DEVICE_A0_ID              0x9850
@@ -583,5 +600,22 @@ typedef enum __NATIVEGTTYPE
 
 //JSL
 #define IJSL_1x4x8_DEVICE_A0_ID                 0x4500
+
+// ADL-S
+#define IADLS_1X2X16_GT1_UNKNOWN_SKU_ID_0                       0x4680
+#define IADLS_1X2X16_GT1_UNKNOWN_SKU_ID_1                       0x4681
+#define IADLS_1X2X12_GT1_UNKNOWN_SKU_ID_2                       0X4682
+#define IADLS_1X1X16_GT0P5_UNKNOWN_SKU_ID_3                     0x4683
+#define IADLS_1X2X16_GT1_UNKNOWN_SKU_ID_4                       0x4690
+#define IADLS_1X2X16_GT1_UNKNOWN_SKU_ID_5                       0x4691
+#define IADLS_1X2X12_GT1_UNKNOWN_SKU_ID_6                       0x4692
+#define IADLS_1X1X16_GT1_UNKNOWN_SKU_ID_7                       0x4693
+#define IADLS_1X2X16_GT1_UNKNOWN_SKU_ID_8                       0x4698
+#define IADLS_1X2X16_GT1_UNKNOWN_SKU_ID_9                       0x4699
+
+
+#define IADLS_GT0_DEVICE_A0_ID                                  0x469F
+#define DEV_ID_4600                                             0x4600
+#define DEV_ID_461F                                             0x461F
 
 #endif

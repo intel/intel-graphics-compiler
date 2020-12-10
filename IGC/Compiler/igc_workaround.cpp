@@ -102,6 +102,14 @@ namespace IGC
             InitDg1HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             InitDg1SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
+        case IGFX_ROCKETLAKE:
+            InitRklHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitRklSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
+        case IGFX_ALDERLAKE_S:
+            InitAdlsHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitAdlsSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
         default:
             IGC_ASSERT(0);
             break;
