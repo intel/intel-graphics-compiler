@@ -5981,9 +5981,6 @@ void G4_Kernel::emit_dep(std::ostream& output)
     output << "\n" << "//.CISA version " << (unsigned int)major_version
         << "." << (unsigned int)minor_version;
     output << "\n" << "//.kernel ID 0x" << hex << getKernelID() << "\n";
-    output << "\n" << "//.Bank_Good_Count " << dec << getBankGoodNum() << "\n";
-    output << "\n" << "//.Bank_Ok_Count " << dec << getBankOkNum() << "\n";
-    output << "\n" << "//.Bank_Bad_Count " << dec << getBankBadNum() << "\n";
     output << dec << "\n";
     int instOffset = 0;
 

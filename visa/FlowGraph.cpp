@@ -4433,8 +4433,11 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
         output << "\n" << "//.platform " << getGenxPlatformString(getGenxPlatform());
         output << "\n" << "//.stepping " << GetSteppingString();
-        output << "\n" << "//.vISA version " << (unsigned int)major_version
-            << "." << (unsigned int)minor_version;
+        output << "\n" << "//.thread_config " << "numGRF=" << numRegTotal << ", numAcc=" << numAcc;
+        if (fg.builder->hasSWSB())
+        {
+            output << ", numSWSB=" << numSWSBTokens;
+        }
         output << "\n" << "//.options_string \"" << m_options->getUserArgString().str() << "\"";
         output << "\n" << "//.full_options \"" << m_options->getFullArgString() << "\"";
         output << "\n" << "//.instCount " << asmInstCount;

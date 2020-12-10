@@ -1431,7 +1431,6 @@ class G4_Kernel
     G4_ExecSize simdSize {0u}; // must start as 0
     bool channelSliced = true;
     bool hasAddrTaken;
-    bool sharedRegisters;
     Options *m_options;
     const Attributes* m_kernelAttrs;
 
@@ -1444,10 +1443,6 @@ class G4_Kernel
 
     uint32_t asmInstCount;
     uint64_t kernelID;
-
-    uint32_t bank_good_num;
-    uint32_t bank_ok_num;
-    uint32_t bank_bad_num;
 
     unsigned int callerSaveLastGRF;
 
@@ -1467,6 +1462,7 @@ public:
 private:
     // stores all relocations to be performed after binary encoding
     RelocationTableTy relocationTable;
+    void setKernelParameters(void);
 
 public:
     FlowGraph fg;
@@ -1479,9 +1475,7 @@ public:
         Mem_Manager& m, Options* options, Attributes* anAttr,
         unsigned char major, unsigned char minor)
         : m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
-        asmInstCount(0), kernelID(0),
-        bank_good_num(0), bank_ok_num(0),
-        bank_bad_num(0), fg(alloc, this, m), major_version(major), minor_version(minor)
+        asmInstCount(0), kernelID(0), fg(alloc, this, m), major_version(major), minor_version(minor)
     {
         ASSERT_USER(
             major < COMMON_ISA_MAJOR_VER ||
@@ -1516,27 +1510,16 @@ public:
         fg.setBuilder(pBuilder);
     }
 
-    bool hasSharedRegisters() const { return sharedRegisters; }
 
     void setNumThreads(int nThreads) { numThreads = nThreads; }
     uint32_t getNumThreads() const { return numThreads; }
 
-    void setNumSWSBTokens(int nSWSBs) { numSWSBTokens = nSWSBs; }
     uint32_t getNumSWSBTokens() const { return numSWSBTokens; }
 
     uint32_t getNumAcc() const { return numAcc; }
 
     void setAsmCount(int count) { asmInstCount = count; }
     uint32_t getAsmCount() const { return asmInstCount; }
-
-    void setBankGoodNum(int num) {bank_good_num = num; }
-    uint32_t getBankGoodNum() {return bank_good_num; }
-
-    void setBankOkNum(int num) {bank_ok_num = num; }
-    uint32_t getBankOkNum() {return bank_ok_num; }
-
-    void setBankBadNum(int num) {bank_bad_num = num; }
-    uint32_t getBankBadNum() {return bank_bad_num; }
 
     void setKernelID(uint64_t ID) { kernelID = ID; }
     uint64_t getKernelID() const { return kernelID; }
@@ -1571,22 +1554,10 @@ public:
     void emit_RegInfoKernel(std::ostream& output);
     void emit_dep(std::ostream& output);
 
-    void setKernelParameters(void);
     void updateKernelByNumThreads(int nThreads);
 
     void evalAddrExp(void);
     void dumpDotFile(const char* appendix);
-
-    void setVersion(unsigned char major_ver, unsigned char minor_ver)
-    {
-        major_version = major_ver;
-        minor_version = minor_ver;
-    }
-
-    int getVersionAsInt() const
-    {
-        return major_version * 100 + minor_version;
-    }
 
     /// Dump this kernel to an ostream
     void print(std::ostream& OS) const;
