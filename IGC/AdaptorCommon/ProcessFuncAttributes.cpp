@@ -447,6 +447,13 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             mustAlwaysInline = true;
         }
+        // Enable inlining for -O0 in order to preserve debug info. This may be removed when debug stack call support is enabled.
+        else if (isOptDisable &&
+            FCtrl == FLAG_FCALL_DEFAULT &&
+            IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
+        {
+            mustAlwaysInline = true;
+        }
         else
         {
             // Add always attribute if function has an argument with opaque type
