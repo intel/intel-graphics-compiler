@@ -61,6 +61,9 @@ using namespace genx;
 
 #define DEBUG_TYPE "genx-tpm"
 
+static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(false), cl::Hidden,
+  cl::desc("Force putting thread-private memory to SVM"));
+
 namespace {
 
 // This actually should've been a FunctionGroupPass,
@@ -122,7 +125,7 @@ private:
   std::queue<Instruction *> m_AIUsers;
   std::set<Instruction *> m_AlreadyAdded;
   PreDefined_Surface m_stack;
-  bool m_useGlobalMem = false;
+  bool m_useGlobalMem = ForceSVMTPM;
 };
 } // namespace
 
