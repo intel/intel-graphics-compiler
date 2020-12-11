@@ -376,6 +376,11 @@ namespace IGC
 
     uint32_t CEncoder::getGRFSize() const { return m_program->getGRFSize(); }
 
+
+    std::string CEncoder::GetShaderName() {
+        return IGC::Debug::GetDumpNameObj(m_program, "").str();
+    }
+
     void CEncoder::SetProgram(CShader* program)
     {
         m_program = program;

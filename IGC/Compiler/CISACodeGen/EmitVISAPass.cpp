@@ -881,7 +881,20 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->AllocatePayload();
 
         if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills)
+        {
+            if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
+            {
+                errs() << "Skip Prologue : " << m_encoder->GetShaderName() << "\n";
+            }
             return false;
+        }
+        if (m_encoder->IsCodePatchCandidate())
+        {
+            if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
+            {
+                errs() << "Prologue/CodePatch : " << m_encoder->GetShaderName() << "\n";
+            }
+        }
     }
 
     if (m_currShader->GetDebugInfoData())
