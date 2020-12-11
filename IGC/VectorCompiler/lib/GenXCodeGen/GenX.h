@@ -134,6 +134,7 @@ const constexpr int DWordBits = 32;
 const constexpr int QWordBits = 64;
 const constexpr int OWordBits = 128;
 const constexpr int GRFBits = 256;
+const constexpr int GRFBytes = GRFBits / ByteBits;
 
 const constexpr int ByteBytes = ByteBits / ByteBits;
 const constexpr int WordBytes = WordBits / ByteBits;

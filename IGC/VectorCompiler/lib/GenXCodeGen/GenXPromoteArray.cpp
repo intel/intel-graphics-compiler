@@ -55,10 +55,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <queue>
 #include "Probe/Assertion.h"
 
-#define MAX_ALLOCA_PROMOTE_GRF_NUM 96
-
 using namespace llvm;
 using namespace genx;
+
+static cl::opt<unsigned>
+    PromoteMemThreshold("promote-mem-max", cl::init(96 * GRFBytes), cl::Hidden,
+                        cl::desc("Threshold for GenX memory promotion"));
 
 namespace {
 
@@ -459,7 +461,7 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
 
 bool TransformPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca) {
   unsigned int allocaSize = extractAllocaSize(pAlloca);
-  unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 32;
+  unsigned int allowedAllocaSizeInBytes = PromoteMemThreshold;
 
   // if alloca size exceeds alloc size threshold, emit warning
   // and discard promotion
