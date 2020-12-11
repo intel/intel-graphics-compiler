@@ -577,7 +577,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             ((!m_pCtx->hash.nosHash) || IGC_GET_FLAG_VALUE(CodePatch) > CodePatch_Enable_NoLTO) &&
             m_currShader->IsPatchablePS() &&
             m_SimdMode == SIMDMode::SIMD16 &&
-            (m_ShaderDispatchMode != ShaderDispatchMode::NOT_APPLICABLE))
+            (m_ShaderDispatchMode != ShaderDispatchMode::NOT_APPLICABLE) &&
+            (IGC_GET_FLAG_VALUE(CodePatchLimit) == 0 || 2 <= IGC_GET_FLAG_VALUE(CodePatchLimit)))
         {
             m_encoder->SetIsCodePatchCandidate(true);
 
@@ -890,9 +891,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         if (m_encoder->IsCodePatchCandidate())
         {
+            if (IGC_GET_FLAG_VALUE(CodePatchLimit) >= 2)
+            {
+                IGC_SET_FLAG_VALUE(CodePatchLimit, IGC_GET_FLAG_VALUE(CodePatchLimit) - 1);
+            }
             if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
             {
-                errs() << "Prologue/CodePatch : " << m_encoder->GetShaderName() << "\n";
+                errs() << IGC_GET_FLAG_VALUE(CodePatchLimit) << " Prologue/CodePatch : " << m_encoder->GetShaderName() << "\n";
             }
         }
     }
