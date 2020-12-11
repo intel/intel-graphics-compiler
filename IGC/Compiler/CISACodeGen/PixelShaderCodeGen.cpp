@@ -573,20 +573,30 @@ CVariable* CPixelShader::GetZWDelta()
 
 CVariable* CPixelShader::GetPositionZ()
 {
+    uint16_t numberInstance, numberLanes;
+    {
+        numberLanes = numLanes(m_SIMDSize);
+        numberInstance = m_numberInstance;
+    }
     if (!m_pPositionZPixel)
     {
         m_pPositionZPixel =
-            GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PosZPixel");
+            GetNewVariable(numberLanes, ISA_TYPE_F, EALIGN_GRF, false, numberInstance, "PosZPixel");
     }
     return m_pPositionZPixel;
 }
 
 CVariable* CPixelShader::GetPositionW()
 {
+    uint16_t numberInstance, numberLanes;
+    {
+        numberLanes = numLanes(m_SIMDSize);
+        numberInstance = m_numberInstance;
+    }
     if (!m_pPositionWPixel)
     {
         m_pPositionWPixel =
-            GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "PosWPixel");
+            GetNewVariable(numberLanes, ISA_TYPE_F, EALIGN_GRF, false, numberInstance, "PosWPixel");
     }
     return m_pPositionWPixel;
 }
