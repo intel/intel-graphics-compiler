@@ -2346,7 +2346,6 @@ void FlowGraph::removeEmptyBlocks()
                 INST_LIST::iterator removedBlockInst = bb->begin();
 
                 if ((*removedBlockInst)->isLabel() == false ||
-                    bb->getBBType() ||
                     strncmp((*removedBlockInst)->getLabelStr(),
                         "LABEL__EMPTYBB", 14) != 0)
                 {
