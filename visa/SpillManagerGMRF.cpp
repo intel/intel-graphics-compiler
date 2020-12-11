@@ -815,13 +815,16 @@ SpillManagerGRF::isUnalignedRegion (
 
     bool needs32ByteAlign = useScratchMsg_;
 
+    auto bytePerGRF = numEltPerGRF<Type_UB>();
     if (needs32ByteAlign)
     {
-        if (regionDisp%numEltPerGRF<Type_UB>() == 0 && regionByteSize%numEltPerGRF<Type_UB>() == 0)
+        if (regionDisp % bytePerGRF == 0 && regionByteSize % bytePerGRF == 0)
+        {
             return
-                regionByteSize / numEltPerGRF<Type_UB>() != 1 &&
-                regionByteSize / numEltPerGRF<Type_UB>() != 2 &&
-                regionByteSize / numEltPerGRF<Type_UB>() != 4;
+            regionByteSize / bytePerGRF != 1 &&
+            regionByteSize / bytePerGRF != 2 &&
+            regionByteSize / bytePerGRF != 4;
+        }
         else
             return true;
     }
@@ -834,8 +837,8 @@ SpillManagerGRF::isUnalignedRegion (
             //  mov (16) V91(6,0)<1>:ub  %retval_ub(0,0)<1;1,0>:ub {H1, Align1}
             //  mov (16) V91(6,16)<1>:ub %retval_ub(0,16)<1;1,0>:ub {H1, Align1}
             G4_RegVar* var = getRegVar(region);
-            if ((var->getDeclare()->getByteSize() > numEltPerGRF<Type_UB>()) &&
-                (regionByteSize < numEltPerGRF<Type_UB>() || regionDisp % numEltPerGRF<Type_UB>()))
+            if ((var->getDeclare()->getByteSize() > bytePerGRF) &&
+                (regionByteSize < bytePerGRF || regionDisp % bytePerGRF))
             {
                 return true;
             }
@@ -2512,15 +2515,13 @@ SpillManagerGRF::shouldPreloadSpillRange(
         isUnalignedRegion(spilledRangeRegion, execSize) ||
         instContext->isPartialWriteForSpill(!parentBB->isAllLaneActive()))
     {
-#if 0
-        // special check for scalar variables: no need for pre-fill if instruction is not predicated
-        // FIXME: need to update this if we ever decide to pack scalar variables in memory
-        if (spilledRangeRegion->getTopDcl()->getNumElems() == 1 &&
-            instContext->getPredicate() == nullptr)
+        // special check for scalar variables: no need for pre-fill if instruction writes to whole variable and is not predicated
+        auto spilledDcl = spilledRangeRegion->getTopDcl()->getRootDeclare();
+        if (execSize == g4::SIMD1 && getTypeSize(spilledRangeRegion->getType()) == spilledDcl->getByteSize() && !instContext->getPredicate())
         {
+            //ToDo: investigate why we are spilling so many scalar variables
             return false;
         }
-#endif
         return true;
     }
     // No pre-load for whole and aligned region writes
