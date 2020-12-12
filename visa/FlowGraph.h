@@ -247,16 +247,6 @@ class G4_BB
     // block is visited)
     //
     unsigned traversal;
-    //
-    // if the current BB is the return block after a CALL subroutine, then beforeCall points
-    // to the BB before the subroutine call.
-    //
-    G4_BB* beforeCall;
-    //
-    // if the current BB ends with a CALL subroutine, then afterCall points
-    // to the BB after the subroutine returns.
-    //
-    G4_BB* afterCall;
 
     //
     // if the current BB ends with a CALL subroutine, then the calleeInfo points
@@ -404,8 +394,7 @@ public:
 
     G4_BB(INST_LIST_NODE_ALLOCATOR& alloc, unsigned i, FlowGraph* fg) :
         id(i), preId(0), rpostId(0),
-        traversal(0), beforeCall(NULL),
-        afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
+        traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
         divergent(false), physicalPred(NULL), physicalSucc(NULL),
         parent(fg), instList(alloc)
@@ -434,10 +423,17 @@ public:
     void     removePredEdge(G4_BB* pred);
     void     writeBBId(std::ostream& cout)    {cout << "BB" << id;}
     G4_BB*   fallThroughBB();
-    G4_BB*   BBBeforeCall()                   {return beforeCall;}
-    G4_BB*   BBAfterCall()                    {return afterCall;}
-    void     setBBBeforeCall(G4_BB* before)   {beforeCall = before;}
-    void     setBBAfterCall(G4_BB* after)     {afterCall = after;}
+    G4_BB*   BBBeforeCall() const
+    {
+        assert((getBBType() & G4_BB_RETURN_TYPE) && "this must be a subroutine return BB");
+        return physicalPred;
+    }
+    G4_BB*   BBAfterCall() const
+    {
+        assert((getBBType() & G4_BB_CALL_TYPE) && "this must be a subroutine call BB");
+        return physicalSucc;
+    }
+
     FuncInfo*  getCalleeInfo() const          {return calleeInfo;}
     void       setCalleeInfo(FuncInfo* callee) {calleeInfo = callee;}
     FuncInfo*  getFuncInfo() const            {return funcInfo;}
@@ -946,9 +942,6 @@ public:
     //
     void mergeReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoTable);
     G4_BB* mergeSubRoutineReturn(G4_Label* subroutine);
-    void decoupleReturnBlock(G4_BB*);
-    void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
-    void decoupleExitBlock(G4_BB*);
     void normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable);
     void processGoto(bool HasSIMDCF);
     void processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& FuncInfoMap);
@@ -1136,11 +1129,11 @@ public:
 
     void NormalizeFlowGraph();
 
+    // This is mainly used to link subroutine call-return BBs
+    // ToDo: maintain this during BB add/delete instead of having to call it explicitly
     void setPhysicalPredSucc();
 
     void markRPOTraversal();
-
-    void DFSTraverse(G4_BB* bb, unsigned &preId, unsigned &postId, FuncInfo* fn);
 
     void findBackEdges();
 
@@ -1233,10 +1226,6 @@ public:
     void print(std::ostream& OS) const;
     void dump() const;
 private:
-    //
-    // Flow group traversal routines
-    //
-    void AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, std::list<G4_BB*>& rpoBBList);
     // Use normalized region descriptors for each source operand if possible.
     void normalizeRegionDescriptors();
     G4_BB *findLabelBB(char *label, int &label_offset);
@@ -1246,6 +1235,10 @@ private:
         BB_LIST_ITER StartIter,
         BB_LIST_ITER EndIter,
         const char* Label);
+
+    void decoupleReturnBlock(G4_BB*);
+    void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
+    void DFSTraverse(G4_BB* bb, unsigned& preId, unsigned& postId, FuncInfo* fn);
 };
 
 }

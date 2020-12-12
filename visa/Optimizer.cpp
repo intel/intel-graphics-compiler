@@ -125,6 +125,7 @@ static int getSrcSubReg(G4_Operand *src)
 void Optimizer::insertFallThroughJump()
 {
 
+    fg.setPhysicalPredSucc();
     for (BB_LIST_ITER it = fg.begin(); it != fg.end();)
     {
         G4_BB* bb = *it;

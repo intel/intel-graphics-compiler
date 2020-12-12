@@ -3448,6 +3448,8 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     }
 
     kernel.fg.reassignBlockIDs();
+    // do it once for whole RA pass. Assumption is RA should not modify CFG at all
+    kernel.fg.setPhysicalPredSucc();
 
     if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
     {

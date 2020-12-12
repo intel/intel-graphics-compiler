@@ -110,18 +110,18 @@ G4_BB* G4_BB::fallThroughBB()
 {
     G4_INST* last = (!instList.empty()) ? instList.back() : NULL;
 
-    if (last != NULL)
+    if (last)
     {
         if (last->opcode() == G4_goto || last->opcode() == G4_join)
         {
-            return NULL;
+            return nullptr;
         }
         if (last->isFlowControl())
         {
             // if No successor, return NULL;
             if (Succs.empty())
             {
-                return NULL;
+                return nullptr;
             }
 
             //
@@ -138,11 +138,11 @@ G4_BB* G4_BB::fallThroughBB()
             {
                 return BBAfterCall();
             }
-            else if (last->getPredicate() == NULL &&
+            else if (!last->getPredicate() &&
                 // G4_while considered to fall trhu even without pred, since break jumps to while
                 (last->opcode() == G4_jmpi || last->opcode() == G4_break || last->opcode() == G4_cont || last->isReturn()))
             {
-                return NULL;
+                return nullptr;
             }
             else
             {
@@ -1277,10 +1277,6 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
                     MUST_BE_TRUE(loc.second, ERROR_FLOWGRAPH);
                     bb->setCalleeInfo((*(loc.first)).second);
                 }
-
-                // set up BB after CALL link
-                bb->setBBAfterCall(retAddr);
-                retAddr->setBBBeforeCall(bb);
                 retAddr->setBBType(G4_BB_RETURN_TYPE);
             }
         }
@@ -1495,59 +1491,6 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
     newInitBB->push_back(labelInst);
 }
 
-
-void FlowGraph::decoupleExitBlock(G4_BB* bb)
-{
-    G4_BB* oldExitBB = bb;
-    G4_BB* newExitBB = createNewBB();
-    BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
-    MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
-    ++insertBefore;
-    BBs.insert(insertBefore, newExitBB);
-
-    BB_LIST_ITER kt = oldExitBB->Succs.begin();
-
-    while (kt != oldExitBB->Succs.end())
-    {
-        // the succs of this new EXIT BB are all call ret
-        if ((*kt)->getBBType() & G4_BB_RETURN_TYPE) {
-
-            newExitBB->Succs.push_back((*kt));
-
-            BB_LIST_ITER jt = (*kt)->Preds.begin();
-            while (jt != (*kt)->Preds.end()) {
-                if ((*jt) == oldExitBB)
-                {
-                    break;
-                }
-                jt++;
-            }
-            MUST_BE_TRUE(jt != (*kt)->Preds.end(), ERROR_FLOWGRAPH);
-            (*kt)->Preds.insert(jt, newExitBB);
-            (*kt)->Preds.erase(jt);
-
-            (*kt)->BBBeforeCall()->getCalleeInfo()->updateExitBB(newExitBB);
-
-            BB_LIST_ITER tmp_kt = kt;
-            ++kt;
-            // erase this succ from old EXIT BB's succs
-            oldExitBB->Succs.erase(tmp_kt);
-        }
-        else {
-            ++kt;
-        }
-    }
-
-    oldExitBB->unsetBBType(G4_BB_EXIT_TYPE);
-    newExitBB->setBBType(G4_BB_EXIT_TYPE);
-    addPredSuccEdges(oldExitBB, newExitBB);
-
-    std::string str = "LABEL__EMPTYBB__" + std::to_string(newExitBB->getId());
-    G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
-    G4_INST* labelInst = createNewLabelInst(label);
-    newExitBB->push_back(labelInst);
-}
-
 void FlowGraph::decoupleReturnBlock(G4_BB* bb)
 {
     G4_BB* oldRetBB = bb;
@@ -1592,14 +1535,8 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
     oldRetBB->Preds.erase(kt);
     oldRetBB->Preds.unique();
 
-
     oldRetBB->unsetBBType(G4_BB_RETURN_TYPE);
     newRetBB->setBBType(G4_BB_RETURN_TYPE);
-
-    newRetBB->setBBBeforeCall(oldRetBB->BBBeforeCall());
-    oldRetBB->BBBeforeCall()->setBBAfterCall(newRetBB);
-
-    oldRetBB->setBBBeforeCall(NULL);
 
     std::string str = "LABEL__EMPTYBB__" + std::to_string(newRetBB->getId());
     G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
@@ -1615,7 +1552,8 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
 // has a list of consecutive BBs.
 void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
 {
-    BB_LIST_ITER nexti = BBs.begin();
+    setPhysicalPredSucc();
+    auto nexti = BBs.begin();
     for (BB_LIST_ITER it = nexti; it != BBs.end(); it = nexti)
     {
         ++nexti;
@@ -1841,76 +1779,6 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
     }
     reassignBlockIDs();
     setPhysicalPredSucc();
-}
-
-void FlowGraph::AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, std::list<G4_BB*>& rpoBBList)
-{
-    bb->setPreId(preId++);
-    //
-    // perform a context-sensitive (actually just call-sensitive) traversal.
-    // if this is CALL block then we need to resume DFS at the corresponding RETURN block
-    //
-    if (bb->getBBType() & G4_BB_CALL_TYPE)
-    {
-        G4_BB* returnBB = bb->BBAfterCall();
-        MUST_BE_TRUE(returnBB->getPreId() == UINT_MAX, ERROR_FLOWGRAPH);
-        MUST_BE_TRUE(bb->Succs.front()->getBBType() & G4_BB_INIT_TYPE, ERROR_FLOWGRAPH);
-        MUST_BE_TRUE(bb->Succs.size() == 1, ERROR_FLOWGRAPH);
-        AssignDFSBasedIds(returnBB, preId, postId, rpoBBList);
-    }
-    //
-    // if this is the EXIT block of subroutine then just return. the CALL block
-    // will ensure traversal of the RETURN block.
-    //
-    else if (bb->getBBType() & G4_BB_EXIT_TYPE)
-    {
-        // do nothing
-    }
-    else {
-        std::list<G4_BB*> ordered_succs;
-        G4_INST* last = (bb->empty()) ? NULL : bb->back();
-        //
-        // visit "else" branches before "then" branches so that "then" block get a
-        // lower rpo number than "else" blocks.
-        //
-        if (last && last->getPredicate() &&
-            (last->opcode() == G4_jmpi || last->opcode() == G4_if) &&
-            bb->Succs.size() == 2)
-        {
-            G4_BB* true_branch = bb->Succs.front();
-            G4_BB* false_branch = bb->Succs.back();
-            ordered_succs.push_back(false_branch);
-            ordered_succs.push_back(true_branch);
-        }
-
-        std::list<G4_BB*>& succs = (ordered_succs.empty()) ? bb->Succs : ordered_succs;
-        //
-        // visit all successors
-        //
-        for (std::list<G4_BB*>::iterator it = succs.begin(), itEnd = succs.end(); it != itEnd; ++it)
-        {
-            G4_BB* succBB = *it;
-            //
-            // visit unmarked successors
-            //
-            if (succBB->getPreId() == UINT_MAX) {
-                AssignDFSBasedIds(*it, preId, postId, rpoBBList);
-            }
-            //
-            // track back-edges
-            //
-            else if (succBB->getRPostId() == UINT_MAX) {
-                backEdges.push_back(Edge(bb, succBB));
-            }
-        }
-    }
-    //
-    // Set the post id in the rpostid field. The caller will update the field to the
-    // actual postid number.
-    //
-    bb->setRPostId(postId++);
-
-    rpoBBList.push_front(bb);
 }
 
 // prevent overwriting dump file and indicate compilation order with dump serial number
@@ -2243,21 +2111,6 @@ void FlowGraph::removeRedundantLabels()
             // Propagate the removed block's type to its unique successor.
             //
             bb->Succs.front()->setBBType(bb->getBBType());
-            //
-            // Update the call graph if this is a RETURN node.
-            //
-            if (bb->BBBeforeCall())
-            {
-                bb->BBBeforeCall()->setBBAfterCall(bb->Succs.front());
-                bb->Succs.front()->setBBBeforeCall(bb->BBBeforeCall());
-            }
-            //
-            // A CALL node should never be empty.
-            //
-            else if (bb->BBBeforeCall())
-            {
-                MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
-            }
 
             bb->Succs.clear();
             bb->Preds.clear();
@@ -2417,21 +2270,6 @@ void FlowGraph::removeEmptyBlocks()
                     // Propagate the removed block's type to its unique successor.
                     //
                     succBB->setBBType(bb->getBBType());
-                    //
-                    // Update the call graph if this is a RETURN node.
-                    //
-                    if (bb->BBBeforeCall())
-                    {
-                        bb->BBBeforeCall()->setBBAfterCall(succBB);
-                        succBB->setBBBeforeCall(bb->BBBeforeCall());
-                    }
-                    else if (bb->BBBeforeCall())
-                    {
-                        //
-                        // A CALL node should never be empty.
-                        //
-                        MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
-                    }
                 }
                 //
                 // Remove the block to be removed.
@@ -6423,7 +6261,7 @@ void G4_Kernel::dump() const
 //
 void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, FuncInfo* fn)
 {
-    MUST_BE_TRUE(fn != NULL, "Invalid func info");
+    MUST_BE_TRUE(fn, "Invalid func info");
     std::stack<G4_BB*> traversalStack;
     traversalStack.push(startBB);
 
@@ -6574,6 +6412,7 @@ void FlowGraph::findBackEdges()
     unsigned postID = 0;
     backEdges.clear();
 
+    setPhysicalPredSucc();
     DFSTraverse(getEntryBB(), preId, postID, kernelInfo);
 
     for (auto fn : funcInfoTable)
@@ -6588,6 +6427,7 @@ void FlowGraph::findBackEdges()
 //
 void FlowGraph::findNaturalLoops()
 {
+    setPhysicalPredSucc();
     for (auto&& backEdge : backEdges)
     {
         G4_BB* head = backEdge.second;
@@ -6610,10 +6450,11 @@ void FlowGraph::findNaturalLoops()
             }
             else if (loopBlock->getBBType() & G4_BB_RETURN_TYPE)
             {
-                if (!loopBlock->BBBeforeCall()->isInNaturalLoop())
+                auto callBB = loopBlock->BBBeforeCall();
+                if (!callBB->isInNaturalLoop())
                 {
-                    loopBlocks.push_front(loopBlock->BBBeforeCall());
-                    loopBody.insert(loopBlock->BBBeforeCall());
+                    loopBlocks.push_front(callBB);
+                    loopBody.insert(callBB);
                 }
             }
             else

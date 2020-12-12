@@ -12459,7 +12459,6 @@ void GlobalRA::assignLocForReturnAddr()
             for (std::list<G4_BB*>::iterator it = caller.begin(); it != caller.end(); it++)
             {
                 G4_BB* bb = *it;
-                MUST_BE_TRUE(bb->BBAfterCall() != NULL, ERROR_FLOWGRAPH);
                 //
                 // Must re-start the traversal from each caller, otherwise will lose some circle cases like TestRA_Call_1_1_3B, D, F, G, H
                 //

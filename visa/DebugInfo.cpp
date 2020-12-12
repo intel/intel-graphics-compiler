@@ -1147,6 +1147,7 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
 
     emitDataUInt16((uint16_t) uniqueSubs.size(), t);
 
+    kernel->fg.setPhysicalPredSucc();
     for (auto bb : kernel->fg)
     {
         G4_INST* firstInst = nullptr;
@@ -2473,6 +2474,8 @@ void emitSubRoutineInfo(VISAKernelImpl* visaKernel)
 {
     auto kernel = visaKernel->getKernel();
 
+    // Is there a single entry point for debugInfo?
+    kernel->fg.setPhysicalPredSucc();
     for (auto bb : kernel->fg)
     {
         G4_INST* firstInst = nullptr;
