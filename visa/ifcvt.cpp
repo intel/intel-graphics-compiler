@@ -472,6 +472,11 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
             continue;
         }
 
+        if (t && (t->isEndWithCall() || (t->getLastOpcode() ==  G4_return)))
+        {
+            continue;
+        }
+
         G4_Predicate *pred = ifInst->getPredicate();
 
         unsigned n0 = getPredictableInsts(s0, ifInst);
