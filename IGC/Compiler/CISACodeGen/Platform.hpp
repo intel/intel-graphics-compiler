@@ -140,6 +140,8 @@ bool supportMSAARateInPayload() const
 bool support16BitImmSrcForMad() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
 }
+PRODUCT_FAMILY GetProductFamily() const { return m_platformInfo.eProductFamily; }
+unsigned short GetRevId() const { return m_platformInfo.usRevId; }
 GFXCORE_FAMILY GetPlatformFamily() const { return m_platformInfo.eRenderCoreFamily; }
 const PLATFORM& getPlatformInfo() const { return m_platformInfo; }
 void SetCaps(const SCompilerHwCaps& caps) { m_caps = caps; }

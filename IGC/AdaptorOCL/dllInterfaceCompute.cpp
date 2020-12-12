@@ -345,7 +345,8 @@ void DumpShaderFile(
     const char* pBuffer,
     const UINT bufferSize,
     const QWORD hash,
-    const std::string& ext)
+    const std::string& ext,
+    std::string* fileName = nullptr)
 {
     if (pBuffer && bufferSize > 0)
     {
@@ -365,6 +366,11 @@ void DumpShaderFile(
         {
             fwrite(pBuffer, 1, bufferSize, pFile);
             fclose(pFile);
+        }
+
+        if (fileName != nullptr)
+        {
+            *fileName = fullPath.str();
         }
     }
 }
@@ -879,16 +885,18 @@ bool TranslateBuild(
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
+        std::string iof, of, inputf;  // filenames for internal_options.txt, options.txt, and .spv/.bc
+
         const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
         QWORD hash = inputShHash.getAsmHash();
 
         if (inputDataFormatTemp == TB_DATA_FORMAT_LLVM_BINARY)
         {
-            DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".bc");
+            DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".bc", &inputf);
         }
         else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V)
         {
-            DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
+            DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv", &inputf);
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
             spv_text spirvAsm = nullptr;
             if (DisassembleSPIRV(pInputArgs->pInput, pInputArgs->InputSize, &spirvAsm) == SPV_SUCCESS)
@@ -899,8 +907,24 @@ bool TranslateBuild(
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
         }
 
-        DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt");
-        DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_options.txt");
+        DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt", &iof);
+        DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_options.txt", &of);
+
+        // dump cmd file that has igcstandalone command to compile this kernel.
+        std::ostringstream cmdfile;
+        cmdfile << "igcstandalone -api ocl"
+            << " -prod " << IGCPlatform.GetProductFamily()
+            << " -step " << IGCPlatform.GetRevId()
+            << " -inputcs " << inputf;
+        if (of.size() > 0)
+        {
+            cmdfile << " -foptions " << of;
+        }
+        if (iof.size() > 0)
+        {
+            cmdfile << " -finternal_options " << iof;
+        }
+        DumpShaderFile(pOutputFolder, cmdfile.str().c_str(), cmdfile.str().size(), hash, "_cmd.txt");
     }
 
     if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp))
