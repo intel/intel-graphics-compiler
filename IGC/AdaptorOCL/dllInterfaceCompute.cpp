@@ -886,14 +886,12 @@ bool TranslateBuild(
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
         std::string iof, of, inputf;  // filenames for internal_options.txt, options.txt, and .spv/.bc
-        bool isbc = false;
 
         const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
         QWORD hash = inputShHash.getAsmHash();
 
         if (inputDataFormatTemp == TB_DATA_FORMAT_LLVM_BINARY)
         {
-            isbc = true;
             DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".bc", &inputf);
         }
         else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V)
@@ -918,10 +916,6 @@ bool TranslateBuild(
             << " -prod " << IGCPlatform.GetProductFamily()
             << " -step " << IGCPlatform.GetRevId()
             << " -inputcs " << inputf;
-        if (isbc)
-        {
-            cmdfile << " -bitcode";
-        }
         if (of.size() > 0)
         {
             cmdfile << " -foptions " << of;
