@@ -5506,11 +5506,6 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         {
             lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
         }
-
-        if (gra.isEvenAligned(dcl))
-        {
-            lrs[var->getId()]->setEvenAlign();
-        }
     }
 }
 
@@ -12648,8 +12643,8 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
 //
 unsigned GraphColor::edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
 {
-    bool lr1EvenAlign = lr1->isEvenAlign();
-    bool lr2EvenAlign = lr2->isEvenAlign();
+    bool lr1EvenAlign = gra.isEvenAligned(lr1->getVar()->getDeclare());
+    bool lr2EvenAlign = gra.isEvenAligned(lr2->getVar()->getDeclare());
     unsigned lr1_nreg = lr1->getNumRegNeeded();
     unsigned lr2_nreg = lr2->getNumRegNeeded();
 

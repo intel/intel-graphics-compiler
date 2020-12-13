@@ -84,7 +84,6 @@ class LiveRange
     bool* forbidden = nullptr;
     int numForbidden = -1;
     bool spilled = false;
-    bool evenAlign = false;
 
     GlobalRA& gra;
     unsigned numRegNeeded;
@@ -178,11 +177,6 @@ public:
     {
         reg.phyReg = NULL;
         reg.subRegOff = 0;
-    }
-
-    void setEvenAlign() { evenAlign = true; }
-    bool isEvenAlign() const {
-        return evenAlign;
     }
 
     bool getIsPseudoNode() const { return isPseudoNode; }
