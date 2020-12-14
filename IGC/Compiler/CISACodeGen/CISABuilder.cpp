@@ -2521,6 +2521,11 @@ namespace IGC
             dstVar,
             numSources,
             opndArray));
+
+        if (IsIndirectAddress(offset) && resource.m_surfaceType == ESURFACE_STATELESS)
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor& resource, CVariable* lod, CVariable* dst)
@@ -2585,6 +2590,11 @@ namespace IGC
             dstVar,
             numSources,
             opndArray));
+
+        if (IsIndirectAddress(offset) && resource.m_surfaceType == ESURFACE_STATELESS)
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1)
@@ -2968,6 +2978,11 @@ namespace IGC
             ConvertSizeToVisaType(size),
             offset,
             dstVar));
+
+        if (IsIndirectAddress(src0) && resource.m_surfaceType == ESURFACE_STATELESS)
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::OWStore(CVariable* data, e_predefSurface surfaceType, CVariable* bufId, CVariable* src0, uint bytesToBeRead, uint srcOffset)
@@ -2987,6 +3002,11 @@ namespace IGC
         if (ESURFACE_STATELESS == surfaceType)
         {
             this->m_program->IncStatelessWritesCount();
+
+            if (IsIndirectAddress(src0))
+            {
+                this->m_program->IncIndirectStatelessCount();
+            }
         }
     }
 
@@ -3001,6 +3021,11 @@ namespace IGC
             true,   // always unaligned for now
             offset,
             dataVar));
+
+        if (IsIndirectAddress(src0))
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::OWLoadA64(CVariable* dst, CVariable* src0, uint bytesToBeRead, uint dstOffset)
@@ -3014,6 +3039,11 @@ namespace IGC
             true,   // always unaligned for now
             offset,
             dstVar));
+
+        if (IsIndirectAddress(src0))
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::MediaBlockMessage(
@@ -3150,6 +3180,11 @@ namespace IGC
         if (ISA_SCATTER == opcode && ESURFACE_STATELESS == surface)
         {
             this->m_program->IncStatelessWritesCount();
+
+            if (IsIndirectAddress(offset))
+            {
+                this->m_program->IncIndirectStatelessCount();
+            }
         }
     }
 
@@ -3669,6 +3704,10 @@ namespace IGC
                 break;
             }
         }
+    }
+
+    bool CEncoder::IsIndirectAddress(CVariable* var) {
+        return var->GetAlias() ? false : true;
     }
 
     void CEncoder::InitBuildParams(llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10>& params)
@@ -5384,6 +5423,11 @@ namespace IGC
         VISA_RawOpnd* addressOpnd = GetRawSource(offset);
         VISA_RawOpnd* dstOpnd = GetRawDestination(dst);
 
+        if (IsIndirectAddress(offset))
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
+
         SIMDMode thisSM = offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize;
         if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && thisSM == SIMDMode::SIMD16)
         {
@@ -5535,6 +5579,11 @@ namespace IGC
             visaBlockNum(numElems),
             addressOpnd, srcOpnd));
         this->m_program->IncStatelessWritesCount();
+
+        if (IsIndirectAddress(offset))
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::ByteGather(
@@ -5600,6 +5649,11 @@ namespace IGC
             surfaceOpnd,
             globalOffsetOpnd,
             addressOpnd, dstOpnd));
+
+        if (IsIndirectAddress(offset) && resource.m_surfaceType == ESURFACE_STATELESS)
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::ByteScatter(
@@ -5666,6 +5720,11 @@ namespace IGC
             surfaceOpnd,
             globalOffsetOpnd,
             addressOpnd, srcOpnd));
+
+        if (IsIndirectAddress(offset) && resource.m_surfaceType == ESURFACE_STATELESS)
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     void CEncoder::Gather4ScaledNd(CVariable* dst,
@@ -5692,6 +5751,11 @@ namespace IGC
             surfaceOpnd,
             globalOffsetOpnd,
             addressOpnd, dstOpnd));
+
+        if (IsIndirectAddress(offset) && resource.m_surfaceType == ESURFACE_STATELESS)
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
     }
 
     uint32_t CEncoder::getNumChannels(CVariable* var) const
@@ -5758,6 +5822,11 @@ namespace IGC
         if (ESURFACE_STATELESS == resource.m_surfaceType)
         {
             this->m_program->IncStatelessWritesCount();
+
+            if (IsIndirectAddress(offset))
+            {
+                this->m_program->IncIndirectStatelessCount();
+            }
         }
     }
 
@@ -5789,6 +5858,11 @@ namespace IGC
         VISA_VectorOpnd* globalOffsetOpnd = 0;
         int val = 0;
         V(vKernel->CreateVISAImmediate(globalOffsetOpnd, &val, ISA_TYPE_UD));
+
+        if (IsIndirectAddress(offset))
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
 
         if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && m_encoderState.m_simdSize == SIMDMode::SIMD16)
         {
@@ -5889,6 +5963,11 @@ namespace IGC
         VISA_VectorOpnd* globalOffsetOpnd = 0;
         int val = 0;
         V(vKernel->CreateVISAImmediate(globalOffsetOpnd, &val, ISA_TYPE_UD));
+
+        if (IsIndirectAddress(offset))
+        {
+            this->m_program->IncIndirectStatelessCount();
+        }
 
         if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && m_encoderState.m_simdSize == SIMDMode::SIMD16)
         {

@@ -560,6 +560,8 @@ namespace IGC
         void SaveOption(vISAOptions option, const char* val);
         void SetBuilderOptions(VISABuilder* pbuilder);
 
+        bool IsIndirectAddress(CVariable* var);
+
     protected:
         // encoder states
         SEncoderState m_encoderState;
