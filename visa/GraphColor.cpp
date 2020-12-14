@@ -12814,7 +12814,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
 
         bool start = (dcl->getRegFile() == G4_RegFileKind::G4_INPUT);
         bool done = false;
-        for (auto bb : gra.kernel.fg.getBBList())
+        for (auto bb : gra.kernel.fg)
         {
             for (auto inst : *bb)
             {
@@ -12845,7 +12845,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
     }
 
     // Now emit instructions with GRFs
-    for (auto bb : gra.kernel.fg.getBBList())
+    for (auto bb : gra.kernel.fg)
     {
         for (auto inst : *bb)
         {

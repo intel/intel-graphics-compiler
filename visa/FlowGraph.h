@@ -819,15 +819,48 @@ public:
     size_t size() { return BBs.size(); }
     bool empty() const { return BBs.empty(); }
     G4_BB* back() const {return BBs.back(); }
-    // ToDo: remove these and instead operata on BBs within CFG class only
-    BB_LIST_ITER insert(BB_LIST_ITER iter, G4_BB* bb) { return BBs.insert(iter, bb); }
+
+    static void setPhysicalLink(G4_BB* pred, G4_BB* succ)
+    {
+        if (pred)
+        {
+            pred->setPhysicalSucc(succ);
+        }
+        if (succ)
+        {
+            succ->setPhysicalPred(pred);
+        }
+    }
+
+    BB_LIST_ITER insert(BB_LIST_ITER iter, G4_BB* bb)
+    {
+        G4_BB* prev = iter != BBs.begin() ? *std::prev(iter) : nullptr;
+        G4_BB* next = iter != BBs.end() ? *iter : nullptr;
+        setPhysicalLink(prev, bb);
+        setPhysicalLink(bb, next);
+        return BBs.insert(iter, bb);
+    }
+
+    void push_back(G4_BB* bb)
+    {
+        insert(BBs.end(), bb);
+    }
+
+    void erase(BB_LIST_ITER iter)
+    {
+        G4_BB* prev = (iter != BBs.begin()) ? *std::prev(iter) : nullptr;
+        G4_BB* next = (std::next(iter) != BBs.end()) ? *std::next(iter) : nullptr;
+        setPhysicalLink(prev, next);
+        BBs.erase(iter);
+    }
+
     BB_LIST& getBBList() { return BBs; }
 
     // add BB to be the first BB
     void addPrologBB(G4_BB* BB)
     {
         G4_BB* oldEntry = getEntryBB();
-        BBs.push_front(BB);
+        insert(BBs.begin(), BB);
         addPredSuccEdges(BB, oldEntry);
     }
 

@@ -221,7 +221,7 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
 {
     if (first == NULL) return NULL;
     G4_BB* bb = (first->isLabel()) ? getLabelBB(map, first->getLabelStr()) : createNewBB();
-    BBs.push_back(bb); // append to BBs list
+    push_back(bb); // append to BBs list
     return bb;
 }
 
@@ -534,7 +534,7 @@ void FlowGraph::NormalizeFlowGraph()
                 G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
                 G4_INST* inst = createNewLabelInst(lbl, lInst->getLineNo(), lInst->getCISAOff());
                 newNode->push_back(inst);
-                BBs.insert(++it, newNode);
+                insert(++it, newNode);
                 it--;
 
                 retBB = newNode;
@@ -1129,11 +1129,11 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
             // For FC composable kernels insert exitBB as
             // last BB in BBs list. This automatically does
             // jump threading.
-            BBs.push_back(exitBB);
+            push_back(exitBB);
         }
         else
         {
-            BBs.insert(iter, exitBB);
+            insert(iter, exitBB);
         }
 
         std::string exitBBStr("__EXIT_BB");
@@ -1249,7 +1249,7 @@ void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHa
                     addPredSuccEdges(bb, newRetBB, true);
                     addPredSuccEdges(newRetBB, retAddr, true);
 
-                    BBs.insert(std::next(it), newRetBB);
+                    insert(std::next(it), newRetBB);
                     retAddr = newRetBB;
                 }
                 // Add EXIT->RETURN edge.
@@ -1381,7 +1381,7 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_Label* subroutineLabel)
         // insert newBB to fg.BBs list
         //
         newBB = createNewBB();
-        BBs.insert(BBs.end(), newBB);
+        insert(BBs.end(), newBB);
         // choose the last BB in retBBList as a candidate
         G4_BB* candidateBB = *(retBBList.rbegin());
         // Add <newBB, succBB> edges
@@ -1439,7 +1439,7 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
     G4_BB* newInitBB = createNewBB();
     BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
     MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
-    BBs.insert(insertBefore, newInitBB);
+    insert(insertBefore, newInitBB);
 
     BB_LIST_ITER kt = oldInitBB->Preds.begin();
     while (kt != oldInitBB->Preds.end())
@@ -1494,45 +1494,17 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
 void FlowGraph::decoupleReturnBlock(G4_BB* bb)
 {
     G4_BB* oldRetBB = bb;
+    G4_BB* itsExitBB = oldRetBB->BBBeforeCall()->getCalleeInfo()->getExitBB();
     G4_BB* newRetBB = createNewBB();
     BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
     MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
-    BBs.insert(insertBefore, newRetBB);
-    G4_BB* itsExitBB = oldRetBB->BBBeforeCall()->getCalleeInfo()->getExitBB();
+    insert(insertBefore, newRetBB);
 
-    BB_LIST_ITER jt = itsExitBB->Succs.begin();
-    BB_LIST_ITER jtEnd = itsExitBB->Succs.end();
-
-    for (; jt != jtEnd; ++jt)
-    {
-        if ((*jt) == oldRetBB)
-        {
-            break;
-        }
-    }
-
-    MUST_BE_TRUE(jt != itsExitBB->Succs.end(), ERROR_FLOWGRAPH);
-
-    itsExitBB->Succs.insert(jt, newRetBB);
-    itsExitBB->Succs.erase(jt);
+    std::replace(itsExitBB->Succs.begin(), itsExitBB->Succs.end(), oldRetBB, newRetBB);
     newRetBB->Preds.push_back(itsExitBB);
     newRetBB->Succs.push_back(oldRetBB);
 
-    BB_LIST_ITER kt = oldRetBB->Preds.begin();
-    BB_LIST_ITER ktEnd = oldRetBB->Preds.end();
-
-    for (; kt != ktEnd; ++kt)
-    {
-        if ((*kt) == itsExitBB)
-        {
-            break;
-        }
-    }
-
-    MUST_BE_TRUE(kt != oldRetBB->Preds.end(), ERROR_FLOWGRAPH);
-
-    oldRetBB->Preds.insert(kt, newRetBB);
-    oldRetBB->Preds.erase(kt);
+    std::replace(oldRetBB->Preds.begin(), oldRetBB->Preds.end(), itsExitBB, newRetBB);
     oldRetBB->Preds.unique();
 
     oldRetBB->unsetBBType(G4_BB_RETURN_TYPE);
@@ -1734,7 +1706,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
 
             BB_LIST_ITER prev = it;
             ++it;
-            BBs.erase(prev);
+            erase(prev);
         }
         else
         {
@@ -1857,7 +1829,7 @@ void FlowGraph::removeRedundantLabels()
 
             bb->clear();
             BB_LIST_ITER rt = it++;
-            BBs.erase(rt);
+            erase(rt);
 
             continue;
         }
@@ -1888,7 +1860,7 @@ void FlowGraph::removeRedundantLabels()
             }
 
             BB_LIST_ITER rt = it++;
-            BBs.erase(rt);
+            erase(rt);
 
             continue;
         }
@@ -2117,7 +2089,7 @@ void FlowGraph::removeRedundantLabels()
             bb->clear();
 
             BB_LIST_ITER rt = it++;
-            BBs.erase(rt);
+            erase(rt);
         }
         else
         {
@@ -2279,7 +2251,7 @@ void FlowGraph::removeEmptyBlocks()
                 bb->clear();
 
                 BB_LIST_ITER rt = it++;
-                BBs.erase(rt);
+                erase(rt);
                 changed = true;
             }
             else

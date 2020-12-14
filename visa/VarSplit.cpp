@@ -36,7 +36,7 @@ VarSplitPass::VarSplitPass(G4_Kernel& k) : kernel(k)
 
 void VarSplitPass::buildPreVerify()
 {
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -89,7 +89,7 @@ void VarSplitPass::verify()
     };
 
     // create parent->child mapping
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -116,7 +116,7 @@ void VarSplitPass::verify()
 
     // now check whether usage of child is correct
     std::unordered_map<G4_Declare*, unsigned int> parentDefCount;
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -179,7 +179,7 @@ void VarSplitPass::verifyOverlap()
     // parent dcl of the split dst.
     std::unordered_map<unsigned int, G4_Declare*> regToDcl;
     unsigned int numSplitLeft = 0;
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -283,7 +283,7 @@ void VarSplitPass::findSplitCandidates()
     };
 
     // Find all dcls that can be split in to smaller chunks
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -398,7 +398,7 @@ void VarSplitPass::findSplitCandidates()
 
     // Apply split cost heuristic
     std::unordered_map<G4_INST*, unsigned int> instId;
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -598,7 +598,7 @@ void VarSplitPass::replaceIntrinsics()
     }
 
     // Replace intrinsic.split with mov
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto inst :*bb)
         {
@@ -842,7 +842,7 @@ void VarSplitPass::undo(G4_Declare* parentDcl)
         unusedDcls.erase(child);
     }
 
-    for (auto bb : kernel.fg.getBBList())
+    for (auto bb : kernel.fg)
     {
         for (auto instIt = bb->begin(); instIt != bb->end();)
         {
