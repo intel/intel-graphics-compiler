@@ -431,7 +431,7 @@ DECLARE_IGC_REGKEY(bool, UseNewRegEncoding, true, "Use new location encoding for
 DECLARE_IGC_REGKEY(bool, EmitOffsetInDbgLoc, false, "Emit offset of private memory in DW_AT_location when available", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", false)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, true, "Split SIMD8 Sampler message to 2 subspans and SIMD16 to odd and even", false)
-DECLARE_IGC_REGKEY(bool, EnableEvaluateSamplerSplit, false, "Split evaluate messages to sampler into either SIMD8 or SIMD1 messages", false)
+DECLARE_IGC_REGKEY(bool, EnableEvaluateSamplerSplit, true, "Split evaluate messages to sampler into either SIMD8 or SIMD1 messages", false)
 DECLARE_IGC_REGKEY(DWORD, AllocaRAPressureThreshold, 500, "The threshold for the register pressure potential", false)
 DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Use the old subroutine augmentation code which is slower", false)
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)

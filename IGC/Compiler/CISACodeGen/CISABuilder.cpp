@@ -3850,7 +3850,7 @@ namespace IGC
         }
 
 
-        if (m_program->m_Platform->getWATable().Wa_22011142311 && IGC_IS_FLAG_ENABLED(EnableEvaluateSamplerSplit))
+        if (m_program->m_Platform->getWATable().Wa_14012760189 && IGC_IS_FLAG_ENABLED(EnableEvaluateSamplerSplit))
         {
             SaveOption(vISA_cloneEvaluateSampleInst, true);
         }
