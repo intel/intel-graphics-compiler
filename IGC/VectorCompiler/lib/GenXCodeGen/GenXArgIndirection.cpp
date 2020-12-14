@@ -1684,10 +1684,9 @@ void GenXArgIndirection::indirectBale(Bale *B, LiveRange *ArgLR,
       SmallVector<Use *, 4> Uses;
       for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue; ++ui)
         Uses.push_back(&*ui);
-      auto NewWr = cast<Instruction>(R.createWrRegion(
-            UndefValue::get(Inst->getType()), Inst,
-            Inst->getName() + ".indirected", Inst->getNextNode(),
-            Inst->getDebugLoc()));
+      auto NewWr = R.createWrRegion(UndefValue::get(Inst->getType()), Inst,
+                                    Inst->getName() + ".indirected",
+                                    Inst->getNextNode(), Inst->getDebugLoc());
       Liveness->setLiveRange(NewWr, ArgLR);
       Liveness->removeValue(Inst);
       for (auto ui = Uses.begin(), ue = Uses.end(); ui != ue; ++ui)

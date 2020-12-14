@@ -381,8 +381,9 @@ inline raw_ostream &operator<<(raw_ostream &OS, const Bale &B) {
 // on whether GenXFuncBaling or GenXGroupBaling created it)
 class GenXBaling {
   BalingKind Kind;
-  typedef llvm::ValueMap<const Value *, genx::BaleInfo,
-          IgnoreRAUWValueMapConfig<const Value *>> InstMap_t;
+  typedef llvm::ValueMap<const Instruction *, genx::BaleInfo,
+                         IgnoreRAUWValueMapConfig<const Instruction *>>
+      InstMap_t;
   GenXSubtarget *ST;
   InstMap_t InstMap;
   struct NeedClone {
@@ -415,7 +416,7 @@ public:
   void processInst(Instruction *Inst);
   // getBaleInfo : get BaleInfo for an instruction
   genx::BaleInfo getBaleInfo(const Instruction *Inst) const {
-    InstMap_t::const_iterator i = InstMap.find((const llvm::Value *)Inst);
+    InstMap_t::const_iterator i = InstMap.find(Inst);
     return i == InstMap.end() ? genx::BaleInfo() : i->second;
   }
   // setBaleInfo : set BaleInfo for an instruction
@@ -483,9 +484,8 @@ private:
                                  unsigned OperandNum, bool Unbale);
   int getAddrOperandNum(unsigned IID) const;
 
-  bool operandIsBaled(Instruction *Inst,
-             unsigned OperandNum, int ModType,
-             unsigned ArgInfoBits);
+  bool operandCanBeBaled(Instruction *Inst, unsigned OperandNum, int ModType,
+                         unsigned ArgInfoBits);
 
   bool  isRegionOKForIntrinsic(unsigned ArgInfoBits, const genx::Region &R,
                          bool CanSplitBale);

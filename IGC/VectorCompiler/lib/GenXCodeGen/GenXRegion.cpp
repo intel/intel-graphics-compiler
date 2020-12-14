@@ -797,8 +797,8 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
       return R.createRdRegion(Inst->getOperand(0),
         Inst->getName(), Inst, Inst->getDebugLoc());
     else if (GenXIntrinsic::isWrRegion(Inst))
-      return cast<Instruction>(R.createWrRegion(Inst->getOperand(0),
-        Inst->getOperand(1), Inst->getName(), Inst, Inst->getDebugLoc()));
+      return R.createWrRegion(Inst->getOperand(0), Inst->getOperand(1),
+                              Inst->getName(), Inst, Inst->getDebugLoc());
     return Inst;
   }
   ci = llvm::dyn_cast<llvm::ConstantInt>(elements[1]);
@@ -848,8 +848,8 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
     return R.createRdRegion(Inst->getOperand(0),
       Inst->getName(), Inst, Inst->getDebugLoc());
   else if (GenXIntrinsic::isWrRegion(Inst))
-    return cast<Instruction>(R.createWrRegion(Inst->getOperand(0),
-      Inst->getOperand(1), Inst->getName(), Inst, Inst->getDebugLoc()));
+    return R.createWrRegion(Inst->getOperand(0), Inst->getOperand(1),
+                            Inst->getName(), Inst, Inst->getDebugLoc());
   return Inst;
 }
 

@@ -809,8 +809,8 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
                          user->getName() + ".foldand2", user);
   NewSel->setDebugLoc(user->getDebugLoc());
   R.Mask = Inst->getOperand(1);
-  auto NewWrRegion = cast<Instruction>(R.createWrRegion(
-      user->getOperand(0), NewSel, "", user, user->getDebugLoc()));
+  auto NewWrRegion = R.createWrRegion(user->getOperand(0), NewSel, "", user,
+                                      user->getDebugLoc());
   NewWrRegion->takeName(user);
   user->replaceAllUsesWith(NewWrRegion);
   return true;

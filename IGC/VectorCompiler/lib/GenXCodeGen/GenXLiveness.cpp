@@ -1313,8 +1313,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
     if (Number)
       Numbering->setNumber(RdRegion, Number);
     // Create the wrregion, and mark that it bales in the rdregion (operand 1).
-    NewInst = cast<Instruction>(R.createWrRegion(Res, RdRegion, Name,
-          InsertBefore, DebugLoc()));
+    NewInst = R.createWrRegion(Res, RdRegion, Name, InsertBefore, DebugLoc());
     if (Number)
       Numbering->setNumber(NewInst, Number);
     if (Baling) {

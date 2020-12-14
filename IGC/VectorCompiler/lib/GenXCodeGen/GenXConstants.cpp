@@ -998,16 +998,14 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
       R.getSubregion(Idx, Size);
       if (SubLoader.isSimple()) {
         Value *SubV = SubC;
-        Result = cast<Instruction>(R.createWrConstRegion(
+        Result = R.createWrConstRegion(
             Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
-            SubV, "constant.split" + Twine(Idx),
-            Inst, Inst->getDebugLoc()));
+            SubV, "constant.split" + Twine(Idx), Inst, Inst->getDebugLoc());
       } else {
         Value* SubV = SubLoader.loadNonSimple(Inst);
-        Result = cast<Instruction>(R.createWrRegion(
+        Result = R.createWrRegion(
             Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
-            SubV, "constant.split" + Twine(Idx),
-            Inst, Inst->getDebugLoc()));
+            SubV, "constant.split" + Twine(Idx), Inst, Inst->getDebugLoc());
       }
       if (AddedInstructions)
         AddedInstructions->push_back(Result);
@@ -1114,8 +1112,8 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
                DL.getTypeSizeInBits(VT->getElementType()) / genx::ByteBits);
       Constant *NewConst = ConstantVector::getSplat(
           IGCLLVM::getElementCount(R.NumElements), BestSplatSetConst);
-      Result = cast<Instruction>(R.createWrConstRegion(Result, NewConst, "constant",
-            Inst, Inst->getDebugLoc()));
+      Result = R.createWrConstRegion(Result, NewConst, "constant", Inst,
+                                     Inst->getDebugLoc());
       if (AddedInstructions)
         AddedInstructions->push_back(Result);
     }
@@ -1322,10 +1320,9 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
       SubV = SubLoader.loadNonSimple(InsertBefore);
     Region R(C, &DL);
     R.getSubregion(Idx, Size);
-    Result = cast<Instruction>(R.createWrRegion(
-        Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
-        SubV, "constant.split" + Twine(Idx),
-        InsertBefore, DebugLoc()));
+    Result = R.createWrRegion(
+        Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()), SubV,
+        "constant.split" + Twine(Idx), InsertBefore, DebugLoc());
     if (AddedInstructions)
       AddedInstructions->push_back(Result);
     Idx += Size;

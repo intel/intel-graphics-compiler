@@ -131,11 +131,12 @@ public:
   // Modify Region object for a subregion
   void getSubregion(unsigned StartIdx, unsigned Size);
   // Create wrregion intrinsic from this Region
-  Value *createWrRegion(Value *OldVal, Value *Input, const Twine &Name,
-                        Instruction *InsertBefore, const DebugLoc &DL);
+  Instruction *createWrRegion(Value *OldVal, Value *Input, const Twine &Name,
+                              Instruction *InsertBefore, const DebugLoc &DL);
   // Create wrconstregion intrinsic from this Region
-  Value *createWrConstRegion(Value *OldVal, Value *Input, const Twine &Name,
-                             Instruction *InsertBefore, const DebugLoc &DL);
+  Instruction *createWrConstRegion(Value *OldVal, Value *Input,
+                                   const Twine &Name, Instruction *InsertBefore,
+                                   const DebugLoc &DL);
   // Create rdpredregion from given start index and size
   static Instruction *createRdPredRegion(Value *Input, unsigned Index,
                                          unsigned Size, const Twine &Name,
@@ -221,9 +222,10 @@ public:
 
 protected:
   // Create wrregion or wrconstregion intrinsic from this Region
-  Value *createWrCommonRegion(GenXIntrinsic::ID, Value *OldVal, Value *Input,
-                              const Twine &Name, Instruction *InsertBefore,
-                              const DebugLoc &DL);
+  Instruction *createWrCommonRegion(GenXIntrinsic::ID, Value *OldVal,
+                                    Value *Input, const Twine &Name,
+                                    Instruction *InsertBefore,
+                                    const DebugLoc &DL);
   // Get the function declaration for a region intrinsic
   static Function *getGenXRegionDeclaration(Module *M, GenXIntrinsic::ID IID, Type *RetTy,
                                         ArrayRef<Value *> Args);

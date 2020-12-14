@@ -856,9 +856,9 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
     auto V1I16Ty = IGCLLVM::FixedVectorType::get(I16Ty, 1);
     Region R(V1I16Ty);
     R.Mask = Inst;
-    auto NewWr = cast<Instruction>(R.createWrRegion(
+    auto NewWr = R.createWrRegion(
         Constant::getNullValue(V1I16Ty), ConstantInt::get(I16Ty, 1),
-        Inst->getName() + ".allany_lowered", InsertBefore, DL));
+        Inst->getName() + ".allany_lowered", InsertBefore, DL);
     auto NewBC = CastInst::Create(Instruction::BitCast, NewWr, I16Ty,
                                   NewWr->getName(), InsertBefore);
     auto NewPred = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, NewBC,
@@ -1122,10 +1122,10 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         Baling->setBaleInfo(NewRd, BaleInfo(BaleInfo::RDREGION));
         Region R2(NewRd);
         R2.Mask = R.Mask;
-        auto NewWr = cast<Instruction>(R2.createWrRegion(
+        auto NewWr = R2.createWrRegion(
             NewRd,
             i->Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum),
-            i->Inst->getName() + ".separatepred.wr", i->Inst, DL));
+            i->Inst->getName() + ".separatepred.wr", i->Inst, DL);
         auto NewBI = i->Info;
         NewBI.clearOperandBaled(GenXIntrinsic::GenXRegion::WrIndexOperandNum);
         Baling->setBaleInfo(NewWr, NewBI);
@@ -2181,8 +2181,7 @@ Instruction *GenXLegalization::transformByteMove(Bale *B) {
     WrR.VStride >>= LogAlignment;
     WrR.Width >>= LogAlignment;
     WrR.ElementBytes <<= LogAlignment;
-    auto NewWr = cast<Instruction>(
-        WrR.createWrRegion(BCOld, Val, "", Head, Wr->getDebugLoc()));
+    auto NewWr = WrR.createWrRegion(BCOld, Val, "", Head, Wr->getDebugLoc());
     NewWr->takeName(Wr);
     BaleInfo BI(BaleInfo::WRREGION);
     if (Rd)

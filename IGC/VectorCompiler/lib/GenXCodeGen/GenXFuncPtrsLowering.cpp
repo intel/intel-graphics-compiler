@@ -421,9 +421,9 @@ Value *GenXFunctionPointersLowering::reconstructValue(Value *V,
           R.Indirect, Type::getInt16Ty(*Ctx), "", I);
       cast<Instruction>(R.Indirect)->setDebugLoc(I->getDebugLoc());
     }
-    Result = cast<Instruction>(R.createWrRegion(
-        I->getOperand(0), I->getOperand(1), I->getName() + ".fptr_mem",
-        InsPoint, I->getDebugLoc()));
+    Result = R.createWrRegion(I->getOperand(0), I->getOperand(1),
+                              I->getName() + ".fptr_mem", InsPoint,
+                              I->getDebugLoc());
     I->replaceAllUsesWith(Result);
     I->eraseFromParent();
   }

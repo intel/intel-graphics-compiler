@@ -746,11 +746,10 @@ void GenXRegionCollapsing::processWrRegionElim(Instruction *OuterWr)
   if (OuterR != InnerR)
     return;
   // Create the combined wrregion.
-  Instruction *CombinedWr = cast<Instruction>(OuterR.createWrRegion(
+  Instruction *CombinedWr = OuterR.createWrRegion(
       InnerWr->getOperand(0),
       OuterWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum),
-      OuterWr->getName() + ".regioncollapsed", OuterWr,
-      OuterWr->getDebugLoc()));
+      OuterWr->getName() + ".regioncollapsed", OuterWr, OuterWr->getDebugLoc());
   OuterWr->replaceAllUsesWith(CombinedWr);
   // Do not erase OuterWr here -- it gets erased by the caller.
   Modified = true;
@@ -780,8 +779,9 @@ Instruction *GenXRegionCollapsing::processWrRegionBitCast(Instruction *WrRegion)
         == BC->getOperand(0)->getType()->getScalarType()) {
       // The bitcast is from scalar to 1-vector, or vice versa.
       Region R(WrRegion, BaleInfo());
-      auto NewInst = cast<Instruction>(R.createWrRegion(WrRegion->getOperand(0),
-            BC->getOperand(0), "", WrRegion, WrRegion->getDebugLoc()));
+      auto NewInst =
+          R.createWrRegion(WrRegion->getOperand(0), BC->getOperand(0), "",
+                           WrRegion, WrRegion->getDebugLoc());
       NewInst->takeName(WrRegion);
       WrRegion->replaceAllUsesWith(NewInst);
       WrRegion->eraseFromParent();
@@ -825,8 +825,8 @@ void GenXRegionCollapsing::processWrRegionBitCast2(Instruction *WrRegion)
       BCInputElementType, WrRegion->getName() + ".precast", WrRegion, DL,
       WrRegion->getDebugLoc());
   // Create the replacement wrregion.
-  auto NewInst = cast<Instruction>(R.createWrRegion(OldVal, BC->getOperand(0),
-        "", WrRegion, WrRegion->getDebugLoc()));
+  auto NewInst = R.createWrRegion(OldVal, BC->getOperand(0), "", WrRegion,
+                                  WrRegion->getDebugLoc());
   NewInst->takeName(WrRegion);
   // Cast it.
   Value *Res = createBitCast(NewInst, WrRegion->getType(),
@@ -1025,11 +1025,9 @@ Instruction *GenXRegionCollapsing::processWrRegion(Instruction *OuterWr)
   NewValInput = createBitCastToElementType(NewValInput, InnerR.ElementTy,
       NewValInput->getName() + ".bitcast_before_collapse", OuterWr, DL, OuterWr->getDebugLoc());
   // Create the combined wrregion.
-  Instruction *CombinedWr = cast<Instruction>(CombinedR.createWrRegion(
-      OldValInput,
-      NewValInput,
-      InnerWr->getName() + ".regioncollapsed", OuterWr,
-      InnerWr->getDebugLoc()));
+  Instruction *CombinedWr = CombinedR.createWrRegion(
+      OldValInput, NewValInput, InnerWr->getName() + ".regioncollapsed",
+      OuterWr, InnerWr->getDebugLoc());
   // Bitcast to the original type if necessary.
   Value *Res = createBitCast(CombinedWr, OuterWr->getType(),
       CombinedWr->getName() + ".cast", OuterWr,
@@ -1119,11 +1117,9 @@ Instruction *GenXRegionCollapsing::processWrRegionSplat(Instruction *OuterWr)
   NewValInput = createBitCastToElementType(NewValInput, OuterWr->getType()->getScalarType(),
       NewValInput->getName() + ".bitcast_before_collapse", OuterWr, DL, OuterWr->getDebugLoc());
   // Create the combined wrregion.
-  Instruction *CombinedWr = cast<Instruction>(CombinedR.createWrRegion(
-      OldValInput,
-      NewValInput,
-      InnerWr->getName() + ".regioncollapsed", OuterWr,
-      InnerWr->getDebugLoc()));
+  Instruction *CombinedWr = CombinedR.createWrRegion(
+      OldValInput, NewValInput, InnerWr->getName() + ".regioncollapsed",
+      OuterWr, InnerWr->getDebugLoc());
   // Bitcast to the original type if necessary.
   Value *Res = createBitCast(CombinedWr, OuterWr->getType(),
       CombinedWr->getName() + ".cast", OuterWr,

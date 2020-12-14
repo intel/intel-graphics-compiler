@@ -666,10 +666,10 @@ void VectorDecomposer::decomposeWrRegion(Instruction *WrRegion,
     // The wrregion writes only some of the decomposed part of the vector.
     // Create a new wrregion.
     WrR.Offset -= getPartOffset(PartIndex);
-    auto NewInst = cast<Instruction>(WrR.createWrRegion(Part,
-        WrRegion->getOperand(NewValueOperandNum),
-        WrRegion->getName() + ".decomp." + Twine(PartIndex),
-        WrRegion, WrRegion->getDebugLoc()));
+    auto NewInst =
+        WrR.createWrRegion(Part, WrRegion->getOperand(NewValueOperandNum),
+                           WrRegion->getName() + ".decomp." + Twine(PartIndex),
+                           WrRegion, WrRegion->getDebugLoc());
     (*Parts)[PartIndex] = NewInst;
     NewInsts.push_back(NewInst);
   }

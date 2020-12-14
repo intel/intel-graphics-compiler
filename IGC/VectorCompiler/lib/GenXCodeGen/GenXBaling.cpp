@@ -344,7 +344,7 @@ static int checkModifier(Instruction *Inst)
 }
 
 /***********************************************************************
- * operandIsBaled : check if a main inst is baled
+ * operandCanBeBaled : check if a operand in main inst can be baled
  *
  * Enter:   Inst = the main inst
  *          OperandNum = operand number to look at
@@ -353,10 +353,9 @@ static int checkModifier(Instruction *Inst)
  *          AI = GenXIntrinsicInfo::ArgInfo, so we can see any stride
  *               restrictions, omitted if Inst is not an intrinsic
  */
-bool
-GenXBaling::operandIsBaled(Instruction *Inst,
-               unsigned OperandNum, int ModType,
-               unsigned ArgInfoBits = GenXIntrinsicInfo::GENERAL) {
+bool GenXBaling::operandCanBeBaled(
+    Instruction *Inst, unsigned OperandNum, int ModType,
+    unsigned ArgInfoBits = GenXIntrinsicInfo::GENERAL) {
   GenXIntrinsicInfo::ArgInfo AI(ArgInfoBits);
   Instruction *Opnd = dyn_cast<Instruction>(Inst->getOperand(OperandNum));
   if (!Opnd)
@@ -1239,7 +1238,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
     if (auto SI = dyn_cast<SelectInst>(Inst)) {
       // If instruction is select, at first try to bale true and false value.
       for (unsigned i = 1; i <= 2; ++i)
-        if (operandIsBaled(Inst, i, ModType))
+        if (operandCanBeBaled(Inst, i, ModType))
           setOperandBaled(Inst, i, &BI);
       // If nothing was baled, it can be profitable to try convertion to wrregion.
       if (!BI.Bits && processSelectToPredicate(SI))
@@ -1252,17 +1251,17 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
     else {
       // See which operands we can bale in.
       for (unsigned i = 0, e = Inst->getNumOperands(); i != e; ++i)
-        if (operandIsBaled(Inst, i, ModType))
+        if (operandCanBeBaled(Inst, i, ModType))
           setOperandBaled(Inst, i, &BI);
     }
   } else if (IntrinID == GenXIntrinsic::genx_convert
       || IntrinID == GenXIntrinsic::genx_convert_addr) {
     // llvm.genx.convert can bale, and has exactly one arg
-    if (operandIsBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH))
+    if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH))
       setOperandBaled(Inst, 0, &BI);
   } else if (GenXIntrinsic::isAbs(IntrinID)) {
     BI.Type = BaleInfo::ABSMOD;
-    if (operandIsBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH))
+    if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH))
       setOperandBaled(Inst, 0, &BI);
   } else {
     // For an intrinsic, check the arg info of each arg to see if we can
@@ -1275,7 +1274,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
         switch (AI.getCategory()) {
           case GenXIntrinsicInfo::GENERAL:
             // This source operand of the intrinsic is general.
-            if (operandIsBaled(Inst, ArgIdx, AI.getModifier(), AI.Info))
+            if (operandCanBeBaled(Inst, ArgIdx, AI.getModifier(), AI.Info))
               setOperandBaled(Inst, ArgIdx, &BI);
             break;
           case GenXIntrinsicInfo::RAW:
@@ -1384,8 +1383,8 @@ bool GenXBaling::processSelectToPredicate(SelectInst *SI) {
     Value *OldVal = IsInverted ? SI->getTrueValue() : SI->getFalseValue();
     if (IsInverted)
       WrReg.Mask = invertCondition(WrReg.Mask);
-    auto *WrRegion = cast<Instruction>(WrReg.createWrRegion(OldVal, NewVal,
-          SI->getName(), SI, SI->getDebugLoc()));
+    auto *WrRegion = WrReg.createWrRegion(OldVal, NewVal, SI->getName(), SI,
+                                          SI->getDebugLoc());
     SI->replaceAllUsesWith(WrRegion);
     // Adjust liveness info if it presented.
     if (Liveness)
@@ -1537,8 +1536,9 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
   auto NewRd = RdSeq.RdR.createRdRegion(RdSeq.Input, RdSeq.StartWr->getName(),
       RdSeq.StartWr, RdSeq.StartWr->getDebugLoc());
   CI->setOperand(TwoAddrOperandNum, NewRd);
-  auto NewWr = cast<Instruction>(WrSeq.WrR.createWrRegion(WrSeq.OldVal, CI,
-      WrSeq.StartWr->getName(), WrSeq.StartWr, WrSeq.StartWr->getDebugLoc()));
+  auto NewWr =
+      WrSeq.WrR.createWrRegion(WrSeq.OldVal, CI, WrSeq.StartWr->getName(),
+                               WrSeq.StartWr, WrSeq.StartWr->getDebugLoc());
   WrSeq.EndWr->replaceAllUsesWith(NewWr);
   // Set baling info for new instructions. The BI for NewWr is just a copy of
   // the first wrregion in the sequence being replaced.
@@ -1576,7 +1576,7 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
 void GenXBaling::setBaleInfo(const Instruction *Inst, genx::BaleInfo BI)
 {
   IGC_ASSERT(BI.Bits < 1 << Inst->getNumOperands());
-  InstMap[static_cast<const llvm::Value *>(Inst)] = BI;
+  InstMap[Inst] = BI;
 }
 
 /***********************************************************************

@@ -1368,8 +1368,8 @@ bool GenXLowering::lowerInsertElement(Instruction *Inst) {
     Value *Src = Inst->getOperand(1);
     Region R(Src);
     R.Indirect = IdxVal;
-    NewInst = cast<Instruction>(R.createWrRegion(
-        Inst->getOperand(0), Src, Inst->getName(), Inst /*InsertBefore*/, DL));
+    NewInst = R.createWrRegion(Inst->getOperand(0), Src, Inst->getName(),
+                               Inst /*InsertBefore*/, DL);
   } else {
     // Boolean insertelement. We have to cast everything to i16, do the
     // insertelement, and cast it back again. All this gets further lowered

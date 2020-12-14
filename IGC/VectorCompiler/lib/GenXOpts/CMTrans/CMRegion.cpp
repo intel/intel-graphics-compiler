@@ -335,18 +335,20 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
  *          predication mask of all 0s, it is omitted and OldVal is returned
  *          instead.
  */
-Value *CMRegion::createWrRegion(Value *OldVal, Value *Input,
-    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
-{
+Instruction *CMRegion::createWrRegion(Value *OldVal, Value *Input,
+                                      const Twine &Name,
+                                      Instruction *InsertBefore,
+                                      const DebugLoc &DL) {
   return createWrCommonRegion(OldVal->getType()->isFPOrFPVectorTy()
         ? GenXIntrinsic::genx_wrregionf : GenXIntrinsic::genx_wrregioni,
       OldVal, Input,
       Name, InsertBefore, DL);
 }
 
-Value *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
-    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
-{
+Instruction *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
+                                           const Twine &Name,
+                                           Instruction *InsertBefore,
+                                           const DebugLoc &DL) {
   IGC_ASSERT(!Indirect);
   IGC_ASSERT(!Mask);
   IGC_ASSERT(isa<Constant>(Input));
@@ -354,9 +356,11 @@ Value *CMRegion::createWrConstRegion(Value *OldVal, Value *Input,
       Name, InsertBefore, DL);
 }
 
-Value *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID, Value *OldVal, Value *Input,
-    const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL)
-{
+Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
+                                            Value *OldVal, Value *Input,
+                                            const Twine &Name,
+                                            Instruction *InsertBefore,
+                                            const DebugLoc &DL) {
   IGC_ASSERT(ElementBytes && "not expecting i1 element type");
   if (isa<VectorType>(Input->getType()))
     IGC_ASSERT(NumElements ==
