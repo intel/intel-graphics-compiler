@@ -204,6 +204,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
@@ -218,6 +219,10 @@ using namespace genx;
 
 static cl::opt<unsigned> GenXShowCoalesceFailThreshold("genx-show-coalesce-fail-threshold", cl::init(UINT_MAX), cl::Hidden,
                                       cl::desc("GenX size threshold (bytes) for showing coalesce fails."));
+static cl::opt<bool> GenXCoalescingLessCopies(
+    "genx-coalescing-less-copies", cl::init(true), cl::Hidden,
+    cl::desc(
+        "GenX Coalescing will try to emit less copies on coalescing failures"));
 
 // Diagnostic information for error/warning relating fast-composition.
 class DiagnosticInfoFastComposition : public DiagnosticInfo {
@@ -281,10 +286,38 @@ namespace {
     Use *UseInDest;
     Instruction *InsertPoint;
     CopyType CopyT;
+    unsigned DestPos;
+    unsigned Serial;
     CopyData(SimpleValue Dest, SimpleValue Source, Use *UseInDest,
-             Instruction *InsertPoint, CopyType CopyT)
+             Instruction *InsertPoint, CopyType CopyT, unsigned DestPos,
+             unsigned Serial)
         : Dest(Dest), Source(Source), UseInDest(UseInDest),
-          InsertPoint(InsertPoint), CopyT(CopyT) {}
+          InsertPoint(InsertPoint), CopyT(CopyT), DestPos(DestPos),
+          Serial(Serial) {}
+    bool operator<(const CopyData &CD2) const {
+      if (DestPos != CD2.DestPos)
+        return DestPos < CD2.DestPos;
+      return Serial < CD2.Serial;
+    }
+  };
+
+  // Copies for values for live range
+  struct CopiesForLRData {
+    MapVector<SimpleValue, std::set<CopyData>> CopiesPerValue;
+    void insertData(Value *SourceVal, CopyData &CD) {
+      SimpleValue SourceSV(SourceVal, CD.Source.getIndex());
+      CopiesPerValue[SourceSV].insert(CD);
+    }
+  };
+
+  // Copies for all live ranges
+  // Note that SourceVal can differ from CD.Source due to
+  // CopyCoalescing (bitcasts between different types one register).
+  struct SortedCopies {
+    MapVector<LiveRange *, CopiesForLRData> CopiesPerLR;
+    void insertData(LiveRange *LR, Value *SourceVal, CopyData &CD) {
+      CopiesPerLR[LR].insertData(SourceVal, CD);
+    }
   };
 
   // GenX coalescing pass
@@ -299,6 +332,8 @@ namespace {
     std::vector<Candidate> NormalCandidates;
     std::vector<CallInst*> Callables;
     std::vector<CopyData> ToCopy;
+    std::unordered_map<Instruction *, Value *> CopyCoalesced;
+
   public:
     static char ID;
     explicit GenXCoalescing() : FunctionGroupPass(ID) {}
@@ -379,8 +414,15 @@ namespace {
                                   Instruction *InsertBefore);
     void showCoalesceFail(SimpleValue V, const DebugLoc &DL, const char *Intro,
                           LiveRange *DestLR, LiveRange *SourceLR);
+    // Functions for creating copies
     void applyCopies();
-    void applyCopy(CopyData &CD);
+    Instruction *createCopy(const CopyData &CD);
+    // Functions for opimized copies generation
+    SortedCopies getSortedCopyData();
+    void applyCopiesOptimized();
+    void applyCopiesForValue(const std::set<CopyData> &CDSet);
+    template <typename Iter>
+    Iter mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt, Iter EndIt);
     // Helpers
     DominatorTree *getDomTree(Function *F) { return DTWrapper->getDomTree(F); }
   };
@@ -463,6 +505,7 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   NormalCandidates.clear();
   Callables.clear();
   ToCopy.clear();
+  CopyCoalesced.clear();
   return true;
 }
 
@@ -886,6 +929,9 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
       // def of SourceLR but after it.
       if (!Liveness->copyInterfere(SourceLR, DestLR)) {
         Liveness->coalesce(DestLR, SourceLR, /*DisallowCASC=*/ false);
+        if (auto *BCI = dyn_cast<BitCastInst>(Dest.getValue())) {
+          CopyCoalesced[BCI] = Source.getValue();
+        }
         return;
       }
     } else {
@@ -999,8 +1045,9 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
 
   // Store info for two address op copy
   Instruction *DestInst = cast<Instruction>(Dest.getValue());
-  ToCopy.push_back(
-      CopyData(Dest, Source, Cand->UseInDest, DestInst, TWOADDRCOPY));
+  ToCopy.push_back(CopyData(Dest, Source, Cand->UseInDest, DestInst,
+                            TWOADDRCOPY, Numbering->getNumber(DestInst),
+                            ToCopy.size()));
 }
 
 /***********************************************************************
@@ -1131,7 +1178,8 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
 
   // Store info for copy
   ToCopy.push_back(CopyData(SimpleValue(Phi), SimpleValue(Incoming),
-                            &Phi->getOperandUse(Inc), InsertPoint, PHICOPY));
+                            &Phi->getOperandUse(Inc), InsertPoint, PHICOPY,
+                            Numbering->getNumber(InsertPoint), ToCopy.size()));
 }
 
 /***********************************************************************
@@ -1191,7 +1239,8 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
   // Store info for copy
   ToCopy.push_back(CopyData(SimpleValue(Phi), SimpleValue(Incoming),
                             &Phi->getOperandUse(Inc), InsertPoint,
-                            PHICOPY_BRANCHING_JP));
+                            PHICOPY_BRANCHING_JP,
+                            Numbering->getNumber(InsertPoint), ToCopy.size()));
 }
 
 /***********************************************************************
@@ -1748,19 +1797,229 @@ void GenXCoalescing::showCoalesceFail(SimpleValue V, const DebugLoc &DL,
  * created on joins falling path.
  */
 void GenXCoalescing::applyCopies() {
-  for (auto &CD : ToCopy) {
-    applyCopy(CD);
+  LLVM_DEBUG(dbgs() << "Applying copies\n");
+
+  if (GenXCoalescingLessCopies) {
+    LLVM_DEBUG(dbgs() << "Emitting optimized copies\n");
+
+    applyCopiesOptimized();
+  } else {
+    LLVM_DEBUG(dbgs() << "Emitting all copies\n");
+
+    // Just emit all copies
+    for (auto &CD : ToCopy) {
+      createCopy(CD);
+    }
+  }
+
+  LLVM_DEBUG(dbgs() << "Finished applying copies\n");
+}
+
+/***********************************************************************
+ * applyCopiesOptimized : insert copies according to collected data.
+ * Try to use less number of copies if possible.
+ *
+ * There are several assumptions in current algorithm:
+ *   - Possible bitcast sequences (bitcast->bitcast) are not handled.
+ *     Assuming that they were resolved earlier as redundant. However,
+ *     such sequences would not brake functionality, but can block
+ *     possible redundant copy elimination.
+ *   - The most suitable copy candidate is handled only. This is
+ *     done to simplify algorithm complexity in the first place.
+ *     Also, this is the most common case that can happen in single
+ *     liverange.
+ *   - The most suitable copy candidate is the one with smaller
+ *     number. This comes from GenX blocks layout.
+ *   - The most suitable copy candidate is the latest created copy.
+ *     That is to prevent unnecessary liverange interference. This
+ *     comes from the previous two bullets.
+ *
+ * These assumptions represent heuristic for the basic case when
+ * redundant copies appear. It is possible that there are some
+ * other cases to be optimized. However, the good thing here is
+ * that current algorithm cannot make situation any worse compared to
+ * non-optimized copy generator: the number of generated copies is
+ * less or equal to one produced by non-optimized generator. Also,
+ * this optimization doesn't affect any existing insertion points.
+ *
+ * The algorithm does the following steps:
+ *   1. Sort CopyData (see sortCopyData for details)
+ *      - It defines the traverse order.
+ *   2. Create initial copy
+ *   3. Try to apply it in other users
+ *      - There are several checks: same LR, same value, dominance,
+ *        interference. Same value check takes into account possible
+ *        copy coalescing that could be applied on source
+ *        value earlier.
+ *   4. Repeat from 2 on failure.
+ */
+void GenXCoalescing::applyCopiesOptimized() {
+  // Sort ToCopy array for simple traverse
+  SortedCopies SortedCD = getSortedCopyData();
+
+  // The loop hierarchy looks quite scary. However,
+  // it is still simple linear traverse through all copies.
+
+  // Traverse all LRs
+  for (auto LRDataIt : SortedCD.CopiesPerLR) {
+    // Traverse all copy values
+    for (auto CDIt : LRDataIt.second.CopiesPerValue) {
+      // Finally we got into current copy candidates.
+      // Traverse all copy data.
+      applyCopiesForValue(CDIt.second);
+    }
   }
 }
 
 /***********************************************************************
- * applyCopy : insert copy according to collected data.
+ * applyCopiesForValue: apply copies for CDSet set of copies candidates.
+ *
+ * For more details, check applyCopiesOptimized description.
+ */
+void GenXCoalescing::applyCopiesForValue(const std::set<CopyData> &CDSet) {
+  auto It = CDSet.begin(), EndIt = CDSet.end();
+  while (It != EndIt) {
+    // Create initial copy.
+    SimpleValue DestSV = It->Dest;
+    SimpleValue SourceSV = It->Source;
+    Instruction *CurrCopy = createCopy(*It);
+    unsigned Idx = It->Source.getIndex();
+
+    // Unlink copy from LR and build its own one. This LR
+    // is used to detect possible interference.
+    auto CopySV = SimpleValue(CurrCopy, Idx);
+    Liveness->removeValueNoDelete(CopySV);
+    auto *CopyLR = Liveness->buildLiveRange(CopySV);
+    auto *DestLR = Liveness->getLiveRange(DestSV);
+
+    LLVM_DEBUG(dbgs() << "Created copy for LR: "; DestLR->print(dbgs());
+               dbgs() << "\nValue that was copied: "; SourceSV.print(dbgs());
+               dbgs() << "\nCopy inst: "; CopySV.print(dbgs()); dbgs() << "\n");
+
+    // Try to apply this copy in other copy candidates.
+    It = mergeCopiesTillFailed(CopySV, ++It, EndIt);
+
+    LLVM_DEBUG(dbgs() << "Finished processing all candidates for that copy\n";
+               dbgs() << "Final copy val LR: "; CopyLR->print(dbgs());
+               dbgs() << "\n");
+
+    // All possible copies were handled. Coalesce copy with its dst.
+    DestLR = Liveness->coalesce(DestLR, CopyLR, false);
+
+    LLVM_DEBUG(dbgs() << "Updated dest LR: "; DestLR->print(dbgs());
+               dbgs() << "\n");
+  }
+}
+
+/***********************************************************************
+ * mergeCopiesTillFailed: merge all possible copy users until failure
+ * is met.
+ *
+ * Returns iterator to the element where merge has stopped or EndIt
+ * in case when all elements were handled.
+ *
+ * For more details, check applyCopiesOptimized description.
+ */
+template <typename Iter>
+Iter GenXCoalescing::mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt,
+                                           Iter EndIt) {
+  if (BeginIt == EndIt)
+    return EndIt;
+
+  auto *CopyLR = Liveness->buildLiveRange(CopySV);
+  auto *DestLR = Liveness->getLiveRange(BeginIt->Dest);
+  Instruction *CurrCopy = cast<Instruction>(CopySV.getValue());
+
+  for (auto It = BeginIt; It != EndIt; ++It) {
+    // Interference detection
+    if (Liveness->interfere(DestLR, CopyLR)) {
+      LLVM_DEBUG(dbgs() << "Interference detected\n");
+      return It;
+    }
+    // Dominance detection
+    if (!getDomTree(CurrCopy->getFunction())
+             ->dominates(CurrCopy, cast<Instruction>(It->Dest.getValue()))) {
+      LLVM_DEBUG(dbgs() << "Copy doesn't dominate user\n");
+      return It;
+    }
+
+    // Copy may be redundant. Check interference after copy applied.
+    LLVM_DEBUG(dbgs() << "Current copy value LR: "; CopyLR->print(dbgs());
+               dbgs() << "\nChecking updated interference\n");
+    Value *OldValue = It->UseInDest->get();
+    BitCastInst *BCI = nullptr;
+    if (It->Source.getValue()->getType() == CurrCopy->getType()) {
+      *It->UseInDest = CurrCopy;
+    } else {
+      IGC_ASSERT(It->Source.getIndex() == 0 &&
+                 "Must be non-aggregated type: should come from bitcast");
+      IRBuilder<> Builder(CurrCopy->getNextNode());
+      BCI = cast<BitCastInst>(Builder.CreateBitCast(
+          CurrCopy, It->Source.getValue()->getType(), "red_copy_type_conv"));
+      Numbering->setNumber(BCI, Numbering->getNumber(CurrCopy));
+      *It->UseInDest = BCI;
+      auto *BitcastLR = Liveness->buildLiveRange(SimpleValue(BCI, 0));
+      CopyLR = Liveness->coalesce(CopyLR, BitcastLR, false);
+    }
+
+    Liveness->rebuildLiveRange(CopyLR);
+    if (!Liveness->twoAddrInterfere(DestLR, CopyLR)) {
+      LLVM_DEBUG(dbgs() << "Success. Moving to next candidate\n");
+      continue;
+    }
+
+    // Undo copy elimination
+    LLVM_DEBUG(dbgs() << "Interference detected\n");
+    *It->UseInDest = OldValue;
+    if (BCI) {
+      Liveness->removeValue(BCI);
+      BCI->eraseFromParent();
+    }
+    Liveness->rebuildLiveRange(CopyLR);
+    return It;
+  }
+
+  return EndIt;
+}
+
+/***********************************************************************
+ * getSortedCopyData : sort CopyData for optimizal traverse.
+ *
+ * The idea is to group CopyData in the following hierarchy:
+ *   - Destination LR
+ *     - Value to be copied
+ *       - Copy data with the same Source Idx
+ *         - Copy data sorted by instruction Num
+ *
+ * This is simply done by adding data into SortHelper. See
+ * SortedCopies struct implementation for details.
+ */
+SortedCopies GenXCoalescing::getSortedCopyData() {
+  SortedCopies SortHelper;
+
+  std::for_each(ToCopy.begin(), ToCopy.end(), [&](auto &CD) {
+    LiveRange *DestLR = Liveness->getLiveRange(CD.Dest);
+    Value *SourceVal = CD.Source.getValue();
+    // Apply copy coalesced value for source
+    if (Instruction *CopyInst = dyn_cast<Instruction>(SourceVal)) {
+      if (CopyCoalesced.count(CopyInst))
+        SourceVal = CopyCoalesced[CopyInst];
+    }
+    SortHelper.insertData(DestLR, SourceVal, CD);
+  });
+
+  return SortHelper;
+}
+
+/***********************************************************************
+ * createCopy : insert copy according to collected data.
  *
  * Only twoaddr and phi copies are handled now.
  */
-void GenXCoalescing::applyCopy(CopyData &CD) {
+Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
   LiveRange *DestLR = Liveness->getLiveRange(CD.Dest);
   LiveRange *SourceLR = Liveness->getLiveRange(CD.Source);
+  Instruction *NewCopy = nullptr;
   switch (CD.CopyT) {
   case PHICOPY:
   case PHICOPY_BRANCHING_JP: {
@@ -1773,8 +2032,7 @@ void GenXCoalescing::applyCopy(CopyData &CD) {
             : Numbering->getNumber(CD.InsertPoint);
     showCoalesceFail(CD.Dest, CD.InsertPoint->getDebugLoc(), "phi", DestLR,
                      SourceLR);
-    Instruction *NewCopy =
-        insertCopy(CD.Source, DestLR, CD.InsertPoint, "phicopy", Num);
+    NewCopy = insertCopy(CD.Source, DestLR, CD.InsertPoint, "phicopy", Num);
     Phi->setIncomingValue(CD.UseInDest->getOperandNo(), NewCopy);
     break;
   }
@@ -1785,8 +2043,8 @@ void GenXCoalescing::applyCopy(CopyData &CD) {
     Instruction *DestInst = cast<Instruction>(CD.Dest.getValue());
     showCoalesceFail(CD.Dest, DestInst->getDebugLoc(), "two address", DestLR,
                      SourceLR);
-    Instruction *NewCopy = insertCopy(CD.Source, DestLR, DestInst, "twoaddr",
-                                      Numbering->getNumber(DestInst) - 1);
+    NewCopy = insertCopy(CD.Source, DestLR, DestInst, "twoaddr",
+                         Numbering->getNumber(DestInst) - 1);
     NewCopy =
         insertIntoStruct(CD.Dest.getValue()->getType(), CD.Dest.getIndex(),
                          *CD.UseInDest, NewCopy, DestInst);
@@ -1804,6 +2062,10 @@ void GenXCoalescing::applyCopy(CopyData &CD) {
     // Extend liverange: we skipped some basic blocks
     Liveness->rebuildLiveRange(DestLR);
   }
+
+  IGC_ASSERT(NewCopy && "Bad copy");
+
+  return NewCopy;
 }
 
 /***********************************************************************
