@@ -10594,6 +10594,49 @@ CVariable* EmitPass::GetSymbol(llvm::Value* v)
     return m_currShader->GetSymbol(v);
 }
 
+void EmitPass::CountStatelessIndirectAccess(llvm::Value* value, ResourceDescriptor resource)
+{
+    phiNodesSet.clear();
+    if (resource.m_surfaceType == ESURFACE_STATELESS && IsIndirectAccess(value))
+    {
+        m_currShader->IncIndirectStatelessCount();
+    }
+}
+
+bool EmitPass::IsIndirectAccess(llvm::Value* value)
+{
+    if (Instruction* inst = dyn_cast<Instruction>(value))
+    {
+        for (unsigned int i = 0; i < inst->getNumOperands(); i++)
+        {
+            if (LoadInst* loadInst = dyn_cast<LoadInst>(inst->getOperand(i)))
+            {
+                return true;
+            }
+            else if (PHINode* phiNode = dyn_cast<PHINode>(inst->getOperand(i)))
+            {
+                if (phiNodesSet.count(phiNode))
+                {
+                    return false;
+                }
+                else
+                {
+                    phiNodesSet.insert(phiNode);
+                    if (IsIndirectAccess(inst->getOperand(i)))
+                    {
+                        return true;
+                    }
+                }
+            }
+            else if (IsIndirectAccess(inst->getOperand(i)))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void EmitPass::emitInsert(llvm::Instruction* inst)
 {
     auto IEI = llvm::cast<llvm::InsertElementInst>(inst);
@@ -15037,6 +15080,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
+    CountStatelessIndirectAccess(Ptr, resource);
     // eOffset is in bytes as 2/19/14
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
@@ -15477,6 +15521,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
+    CountStatelessIndirectAccess(Ptr, resource);
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ForceDMask(false);

@@ -554,6 +554,14 @@ public:
     // temporary helper function
     CVariable* GetSymbol(llvm::Value* v);
 
+    // Check if stateless indirect access is available
+    // If yes, increase the counter, otherwise do nothing
+    void CountStatelessIndirectAccess(llvm::Value* value, ResourceDescriptor resource);
+
+    // An indirect access is when the load instruction exists.
+    // Otherwise the access is direct.
+    bool IsIndirectAccess(llvm::Value* value);
+
     CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
     void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
@@ -587,6 +595,8 @@ public:
 
 private:
     uint m_labelForDMaskJmp;
+
+    llvm::SmallPtrSet<llvm::PHINode*, 16> phiNodesSet;
 
     // Current rounding Mode
     //   As RM of FPCvtInt and FP could be different, there
