@@ -412,6 +412,26 @@ uint32_t getMinPushConstantBufferAlignment() const
     return 8; // DWORDs
 }
 
+// Returns the default limit of pushed constant data in GRFs. This value limits
+// the amount of constant buffer data promoted to registers.
+uint32_t getBlockPushConstantGRFThreshold() const
+{
+    constexpr uint32_t defaultThreshold = 31;
+    constexpr uint32_t gen9GT2Threshold = 15;
+
+    const GTTYPE gt = m_platformInfo.eGTType;
+    switch (m_platformInfo.eProductFamily)
+    {
+    case IGFX_SKYLAKE:
+    case IGFX_KABYLAKE:
+        return (gt == GTTYPE_GT2) ? gen9GT2Threshold : defaultThreshold;
+    case IGFX_COFFEELAKE:
+        return gen9GT2Threshold;
+    default:
+        return defaultThreshold;
+    }
+}
+
 bool hasNoFullI64Support() const
 {
     return hasNoInt64Inst();

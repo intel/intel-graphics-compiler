@@ -153,7 +153,9 @@ DECLARE_IGC_REGKEY(bool, EnableExtractCommonMultiplier, false, "Enable ExtractCo
 DECLARE_IGC_REGKEY(bool, EnablePowToLogMulExp,          false, "Enable pow to exp(log(x)*y) optimization in CustomUnsafeOptPass.", false)
 DECLARE_IGC_REGKEY(bool, DisablePullConstantHeuristics, true, "Disable the heuristics to determine the no. push constants based on payload size.", false)
 DECLARE_IGC_REGKEY(DWORD,PayloadSizeThreshold,          11,    "Set the max payload size threshold for short shades that have PSD bottleneck.", false)
-DECLARE_IGC_REGKEY(DWORD, BlockPushConstantGRFThreshold, 31,    "Set the maximum limit for block push constants i.e. UBO data pushed.\
+DECLARE_IGC_REGKEY(DWORD, BlockPushConstantGRFThreshold, 0xFFFFFFFF,
+                                                               "Set the maximum limit for block push constants i.e. UBO data pushed.\
+                                                                Set to 0xFFFFFFFF to use the default threshold for the platform.\
                                                                 Note that for small pixel shaders the PayloadSizeThreshold may be the limiting factor.", false)
 DECLARE_IGC_REGKEY(bool, PSSIMD32HeuristicFP16, true, "enable PS SIMD32 heuristic based on fp16 characteristic ", false)
 DECLARE_IGC_REGKEY(bool, PSSIMD32HeuristicLoopAndDiscard, true, "enable PS SIMD32 heuristic based on loop info and discard", false)

@@ -59,14 +59,20 @@ namespace IGC
 
         unsigned getPushConstantThreshold(llvm::Function* F)
         {
-            if (thresholdMap.find(F) == thresholdMap.end())
-            {//pass must have been disabled so Map is not populated. Return default 31.
-                const unsigned pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
+            if (thresholdMap.find(F) != thresholdMap.end())
+            {
+                return thresholdMap[F];
+            }
+
+            const DWORD pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
+            if (pushConstantGRFThreshold != 0xFFFFFFFF)
+            {
                 return pushConstantGRFThreshold;
             }
             else
             {
-                return thresholdMap[F];
+                const CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                return ctx->platform.getBlockPushConstantGRFThreshold();
             }
 
         }
