@@ -5255,24 +5255,30 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 
     for (unsigned int i = 0; i < maxId; i++)
     {
-        bool isLiveIn = liveAnalysis->isLiveAtEntry(bb, i);
-        bool isLiveOut = liveAnalysis->isLiveAtExit(bb, i);
-        bool isKilled = liveAnalysis->use_kill[bb->getId()].isSet(i);
         bool isAddrSensitive = liveAnalysis->isAddressSensitive(i);
-        bool assigned = (lrs[i]->getVar()->getPhyReg() != NULL);
 
         // If a range is Address taken AND (live-in or live-out or killed)
         // mark it to interfere with all physical registers used by local RA
         // FIXME: need to check if this is actually needed
-        if (!assigned && (isAddrSensitive && (isLiveIn || isLiveOut || isKilled)))
+        if (isAddrSensitive)
         {
-            // Make it to interfere with all physical registers used in the BB
-            for (uint32_t j = 0, numReg = kernel.getNumRegTotal(); j < numReg; j++)
+            bool assigned = (lrs[i]->getVar()->getPhyReg() != NULL);
+            if (!assigned)
             {
-                if (LRASummary->isGRFBusy(j))
+                bool isLiveIn = liveAnalysis->isLiveAtEntry(bb, i);
+                bool isLiveOut = liveAnalysis->isLiveAtExit(bb, i);
+                bool isKilled = liveAnalysis->use_kill[bb->getId()].isSet(i);
+                if (isLiveIn || isLiveOut || isKilled)
                 {
-                    int k = getGRFDclForHRA(j)->getRegVar()->getId();
-                    checkAndSetIntf(i, k);
+                    // Make it to interfere with all physical registers used in the BB
+                    for (uint32_t j = 0, numReg = kernel.getNumRegTotal(); j < numReg; j++)
+                    {
+                        if (LRASummary->isGRFBusy(j))
+                        {
+                            int k = getGRFDclForHRA(j)->getRegVar()->getId();
+                            checkAndSetIntf(i, k);
+                        }
+                    }
                 }
             }
         }
