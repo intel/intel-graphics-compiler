@@ -618,7 +618,7 @@ LivenessAnalysis::LivenessAnalysis(
     //
     bool areAllPhyRegAssigned = !forceRun;
     bool hasStackCall = fg.getHasStackCalls() || fg.getIsStackCallFunc();
-    bool fastCompile = fg.builder->getOption(vISA_FastCompileRA) && !hasStackCall;
+    bool fastCompile = (fg.builder->getOption(vISA_FastCompileRA) || fg.builder->getOption(vISA_HybridRAWithSpill)) && !hasStackCall;
 
     if (fastCompile)
     {
@@ -3483,8 +3483,9 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     gra.assignLocForReturnAddr();
 
     //FIXME: here is a temp WA
+    bool hybridWithSpill = builder.getOption(vISA_HybridRAWithSpill) && !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc());
     if (kernel.fg.funcInfoTable.size() > 0 &&
-        kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
+        kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D && !hybridWithSpill)
     {
         kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
     }

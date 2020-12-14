@@ -4194,6 +4194,10 @@ namespace IGC
         {
             SaveOption(vISA_FastCompileRA, true);
         }
+        if (IGC_IS_FLAG_ENABLED(HybridRAWithSpill) && !hasStackCall)
+        {
+            SaveOption(vISA_HybridRAWithSpill, true);
+        }
         if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
         {
             SaveOption(vISA_dumpPayload, true);

@@ -4751,6 +4751,29 @@ void Augmentation::buildSIMDIntfAllOld(G4_Declare* newDcl)
     }
 }
 
+void Augmentation::updateActiveList(G4_Declare* newDcl, std::list<G4_Declare*>* dclMaskList)
+{
+    bool done = false;
+
+    for (auto defaultIt = dclMaskList->begin();
+        defaultIt != dclMaskList->end();
+        defaultIt++)
+    {
+        G4_Declare* defaultDcl = (*defaultIt);
+
+        if (gra.getEndInterval(defaultDcl)->getLexicalId() >= gra.getEndInterval(newDcl)->getLexicalId())
+        {
+            dclMaskList->insert(defaultIt, newDcl);
+            done = true;
+            break;
+        }
+    }
+
+    if (done == false)
+    {
+        dclMaskList->push_back(newDcl);
+    }
+ }
 
 //
 // Perform linear scan and mark interference between conflicting dcls with incompatible masks.
@@ -4783,27 +4806,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
         // Add newDcl to correct list
         if (gra.getHasNonDefaultMaskDef(newDcl) || newDcl->getAddressed() == true)
         {
-            bool done = false;
-
-            for (auto nonDefaultIt = nonDefaultMask.begin();
-                nonDefaultIt != nonDefaultMask.end();
-                nonDefaultIt++)
-            {
-                G4_Declare* nonDefaultDcl = (*nonDefaultIt);
-
-                if (gra.getEndInterval(nonDefaultDcl)->getLexicalId() >= gra.getEndInterval(newDcl)->getLexicalId())
-                {
-                    nonDefaultMask.insert(nonDefaultIt, newDcl);
-                    done = true;
-                    break;
-                }
-            }
-
-            if (done == false)
-            {
-                nonDefaultMask.push_back(newDcl);
-            }
-
+            updateActiveList(newDcl, &nonDefaultMask);
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Adding " << newDcl->getName() <<
                 " to non-default list" << std::endl);
@@ -4811,27 +4814,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
         }
         else
         {
-            bool done = false;
-
-            for (auto defaultIt = defaultMask.begin();
-                defaultIt != defaultMask.end();
-                defaultIt++)
-            {
-                G4_Declare* defaultDcl = (*defaultIt);
-
-                if (gra.getEndInterval(defaultDcl)->getLexicalId() >= gra.getEndInterval(newDcl)->getLexicalId())
-                {
-                    defaultMask.insert(defaultIt, newDcl);
-                    done = true;
-                    break;
-                }
-            }
-
-            if (done == false)
-            {
-                defaultMask.push_back(newDcl);
-            }
-
+            updateActiveList(newDcl, &defaultMask);
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Adding " << newDcl->getName() <<
                 " to default list" << std::endl);
@@ -4931,6 +4914,17 @@ void Augmentation::buildInteferenceForCallsite(int fnId)
             buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[fnId]);
         }
     }
+    if (kernel.getOption(vISA_LocalRA))
+    {
+        for (uint32_t j = 0; j < kernel.getNumRegTotal(); j++)
+        {
+            if (localSummaryOfCallee[fnId]->isGRFBusy(j))
+            {
+                G4_Declare* varDcl = gra.getGRFDclForHRA(j);
+                buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[fnId]);
+            }
+        }
+    }
 }
 
 void Augmentation::buildInteferenceForRetDeclares()
@@ -4939,6 +4933,53 @@ void Augmentation::buildInteferenceForRetDeclares()
     {
         buildInteferenceForCallSiteOrRetDeclare(retDclIt.first, retDclIt.second);
     }
+}
+
+void Augmentation::buildSummaryForCallees()
+{
+    int totalGRFNum = kernel.getNumRegTotal();
+    localSummaryOfCallee.resize(kernel.fg.sortedFuncTable.size(), nullptr);
+
+    for (auto func : kernel.fg.sortedFuncTable)
+    {
+        unsigned fid = func->getId();
+        if (fid == UINT_MAX)
+        {
+            // entry kernel
+            continue;
+        }
+        PhyRegSummary* funcSummary = new (m)PhyRegSummary(totalGRFNum);
+        for (auto&& bb : func->getBBList())
+        {
+            if (auto summary = kernel.fg.getBBLRASummary(bb))
+            {
+                for (int i = 0; i < totalGRFNum; i++)
+                {
+                    if (summary->isGRFBusy(i))
+                    {
+                        funcSummary->setGRFBusy(i);
+                    }
+                }
+            }
+        }
+
+        for (auto&& callee : func->getCallees())
+        {
+            PhyRegSummary* summary = localSummaryOfCallee[callee->getId()];
+            if (summary)
+            {
+                for (int i = 0; i < totalGRFNum; i++)
+                {
+                    if (summary->isGRFBusy(i))
+                    {
+                        funcSummary->setGRFBusy(i);
+                    }
+                }
+            }
+        }
+        localSummaryOfCallee[fid] = funcSummary;
+    }
+
 }
 
 void Augmentation::augmentIntfGraph()
@@ -4963,6 +5004,11 @@ void Augmentation::augmentIntfGraph()
             callsiteDeclares[i].defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
             callsiteDeclares[i].noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
         }
+    }
+
+    if (kernel.getOption(vISA_LocalRA))
+    {
+        buildSummaryForCallees();
     }
 
     // First check whether any definitions exist with incompatible mask
@@ -6743,7 +6789,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
-        bool willSpill = (builder.getOption(vISA_FastCompileRA) && !hasStackCall) ||
+        bool willSpill = ((builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) && !hasStackCall) ||
             (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             rpe->getMaxRP() >= kernel.getNumRegTotal() + 24);
         if (willSpill)
@@ -9532,6 +9578,7 @@ int GlobalRA::coloringRegAlloc()
         }
     }
 
+    bool fastCompile = (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) && !hasStackCall;
     if (!isReRAPass() && canDoLRA(kernel))
     {
         //Global linear scan RA
@@ -9584,7 +9631,7 @@ int GlobalRA::coloringRegAlloc()
             BankConflictPass bc(*this);
             LocalRA lra(bc, *this);
             bool success = lra.localRA();
-            if (!success)
+            if (!success && !builder.getOption(vISA_HybridRAWithSpill))
             {
                 if (canDoHRA(kernel))
                 {
@@ -9605,6 +9652,10 @@ int GlobalRA::coloringRegAlloc()
                 assignRegForAliasDcl();
                 computePhyReg();
                 return VISA_SUCCESS;
+            }
+            if (builder.getOption(vISA_HybridRAWithSpill))
+            {
+                insertPhyRegDecls();
             }
         }
     }
@@ -9631,7 +9682,6 @@ int GlobalRA::coloringRegAlloc()
     uint32_t GRFSpillFillCount = 0;
     uint32_t sendAssociatedGRFSpillFillCount = 0;
     unsigned fastCompileIter = 1;
-    bool fastCompile = builder.getOption(vISA_FastCompileRA) && !hasStackCall;
     if (fastCompile)
     {
         fastCompileIter = 0;
@@ -9648,7 +9698,10 @@ int GlobalRA::coloringRegAlloc()
         }
         setIterNo(iterationNo);
 
-        resetGlobalRAStates();
+        if (!builder.getOption(vISA_HybridRAWithSpill))
+        {
+            resetGlobalRAStates();
+        }
 
         if (builder.getOption(vISA_clearScratchWritesBeforeEOT) &&
             (globalScratchOffset + nextSpillOffset) > 0)
@@ -9658,7 +9711,10 @@ int GlobalRA::coloringRegAlloc()
         }
 
         //Identify the local variables to speedup following analysis
-        markGraphBlockLocalVars();
+        if (!builder.getOption(vISA_HybridRAWithSpill))
+        {
+            markGraphBlockLocalVars();
+        }
 
         //Do variable splitting in each iteration
         if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
@@ -9709,7 +9765,6 @@ int GlobalRA::coloringRegAlloc()
         startTimer(TimerID::GLOBAL_RA_LIVENESS);
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
         liveAnalysis.computeLiveness();
-        //liveAnalysis.dumpGlobalVarNum();
         if (builder.getOption(vISA_dumpLiveness))
         {
             liveAnalysis.dump();

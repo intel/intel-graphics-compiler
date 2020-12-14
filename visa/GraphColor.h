@@ -297,6 +297,7 @@ namespace vISA
         LiveRange** lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
+        std::vector<PhyRegSummary *> localSummaryOfCallee;
         std::vector<G4_Declare*> sortedIntervals;
         std::list<G4_Declare*> defaultMask;
         std::list<G4_Declare*> nonDefaultMask;
@@ -336,10 +337,12 @@ namespace vISA
         void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask);
         void buildInteferenceForCallsite(int fnId);
         void buildInteferenceForRetDeclares();
+        void buildSummaryForCallees();
         void expireIntervals(unsigned int startIdx);
         void buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall);
         void buildSIMDIntfAll(G4_Declare* newDcl);
         void buildSIMDIntfAllOld(G4_Declare* newDcl);
+        void updateActiveList(G4_Declare* newDcl, std::list<G4_Declare*>* dclMaskList);
         void handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, bool isCall);
         bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
 

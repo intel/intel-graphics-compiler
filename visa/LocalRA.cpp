@@ -179,8 +179,20 @@ void LocalRA::preLocalRAAnalysis()
     // Remove unreferenced dcls
     gra.removeUnreferencedDcls();
 
-    numRegLRA = numGRF - numRowsReserved;
+    if (builder.getOption(vISA_HybridRAWithSpill))
+    {
+        unsigned reserveSpillSize = 0;
+        unsigned int spillRegSize = 0;
+        unsigned int indrSpillRegSize = 0;
+        gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
+        reserveSpillSize = spillRegSize + indrSpillRegSize;
 
+        numRegLRA = numGRF - numRowsReserved - reserveSpillSize - 1;
+    }
+    else
+    {
+        numRegLRA = numGRF - numRowsReserved;
+    }
     bool isStackCall = (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc());
     unsigned int stackCallRegSize = isStackCall ? kernel.numReservedABIGRF() : 0;
     unsigned int reservedGRFNum = builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum);

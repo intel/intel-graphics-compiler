@@ -557,6 +557,8 @@ public:
 
     bool isGRFBusy(int regnum) const { return GRFUsage[regnum]; }
 
+    void setGRFBusy(int regnum) { GRFUsage[regnum] = true; }
+
     void printBusyRegs();
 
     uint32_t getNumFreeGRF() const
