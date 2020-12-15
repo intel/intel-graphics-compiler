@@ -1902,9 +1902,6 @@ namespace IGC
         ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
         SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
 
-        ModuleMetaData* modMD = m_Context->getModuleMetaData();
-        auto funcMD = modMD->FuncMD.find(entry);
-
         if (threadGroupSize->hasValue())
         {
             m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = true;
@@ -1917,9 +1914,12 @@ namespace IGC
             m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = subGroupSize->getSIMD_size();
         }
 
-        if (funcMD != modMD->FuncMD.end())
+        auto& FuncMap = m_Context->getModuleMetaData()->FuncMD;
+        auto FuncIter = FuncMap.find(entry);
+        if (FuncIter != FuncMap.end())
         {
-            WorkGroupWalkOrderMD workGroupWalkOrder = funcMD->second.workGroupWalkOrder;
+            IGC::FunctionMetaData funcMD = FuncIter->second;
+            WorkGroupWalkOrderMD workGroupWalkOrder = funcMD.workGroupWalkOrder;
 
             if (workGroupWalkOrder.dim0 || workGroupWalkOrder.dim1 || workGroupWalkOrder.dim2)
             {
@@ -1928,19 +1928,11 @@ namespace IGC
                 m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[2] = workGroupWalkOrder.dim2;
             }
 
-        }
+            m_kernelInfo.m_executionEnivronment.IsInitializer = funcMD.IsInitializer;
+            m_kernelInfo.m_executionEnivronment.IsFinalizer = funcMD.IsFinalizer;
 
-        auto& FuncMap = m_Context->getModuleMetaData()->FuncMD;
-        auto FuncIter = FuncMap.find(entry);
-        if (FuncIter != FuncMap.end())
-        {
-            auto& FuncInfo = FuncIter->second;
+            m_kernelInfo.m_executionEnivronment.CompiledSubGroupsNumber = funcMD.CompiledSubGroupsNumber;
 
-            m_kernelInfo.m_executionEnivronment.IsInitializer = FuncInfo.IsInitializer;
-            m_kernelInfo.m_executionEnivronment.IsFinalizer = FuncInfo.IsFinalizer;
-
-            m_kernelInfo.m_executionEnivronment.CompiledSubGroupsNumber =
-                FuncInfo.CompiledSubGroupsNumber;
         }
 
         m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
@@ -2348,24 +2340,24 @@ namespace IGC
         }
 
 
-
         //If forced SIMD Mode (by driver or regkey), then:
         // 1. Compile only that SIMD mode and nothing else
         // 2. Compile that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD() returns false for it.
         //    So, don't bother checking profitability for it
         if (m_Context->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
         {
-            //Entered here means driver has requested a specific SIMD mode
-            if ((simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 8) ||
+            // Entered here means driver has requested a specific SIMD mode, which was forced in the regkey ForceOCLSIMDWidth.
+            // We return the condition can we compile the given forcedSIMDSize with this simdMode?
+            return (
+                // These statements are basically equivalent to (simdMode == forcedSIMDSize)
+                (simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 8)   ||
                 (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 16) ||
-                (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32))
-            {
-                return true;
-            }
-            return false;
+                (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
+            );
         }
 
         SIMDStatus simdStatus = checkSIMDCompileConds(simdMode, EP, F);
+
 
         // Func and Perf checks pass, compile this SIMD
         if (simdStatus == SIMDStatus::SIMD_PASS)
@@ -2387,6 +2379,7 @@ namespace IGC
         return simdStatus == SIMDStatus::SIMD_PASS;
     }
 
+
     SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
         CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
@@ -2398,7 +2391,6 @@ namespace IGC
         if ((simd8Program && simd8Program->ProgramOutput()->m_programSize > 0) ||
             (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) ||
             (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
-
         {
             if (!(pCtx->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
                 return SIMDStatus::SIMD_FUNC_FAIL;
@@ -2460,15 +2452,16 @@ namespace IGC
         {
             switch (simd_size)
             {
+                // Apparently the only possible simdModes here are SIMD8, SIMD16, SIMD32
             case 8:
-                if (simdMode == SIMDMode::SIMD16 || simdMode == SIMDMode::SIMD32)
+                if (simdMode != SIMDMode::SIMD8)
                 {
                     pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 break;
             case 16:
-                if (simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD32)
+                if (simdMode != SIMDMode::SIMD16)
                 {
                     pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
@@ -2476,12 +2469,14 @@ namespace IGC
                 EP.m_canAbortOnSpill = false;
                 break;
             case 32:
-                if (simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16)
+                if (simdMode != SIMDMode::SIMD32)
                 {
                     pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
-                EP.m_canAbortOnSpill = false;
+                else {
+                    EP.m_canAbortOnSpill = false;
+                }
                 break;
             default:
                 IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size");
@@ -2508,6 +2503,7 @@ namespace IGC
             {
                 return SIMDStatus::SIMD_PASS;
             }
+
 
             if (groupSize != 0 && groupSize <= 16)
             {
