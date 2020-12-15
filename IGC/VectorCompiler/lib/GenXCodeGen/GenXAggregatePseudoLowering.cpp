@@ -201,7 +201,7 @@ static Instruction *getInsertionPtForSplitOp(Use &Op, Instruction &Inst) {
   auto &OpVal = *Op.get();
   if (isa<Instruction>(OpVal))
     return getFirstInsertionPtAfter(cast<Instruction>(OpVal));
-  IGC_ASSERT(isa<Constant>(OpVal) && "only instruction or constant are expected");
+  IGC_ASSERT_MESSAGE(isa<Constant>(OpVal), "only instruction or constant are expected");
   return getFirstInsertionPtBefore(Op, Inst);
 }
 
@@ -218,14 +218,14 @@ static Instruction *getInsertionPtForSplitOp(Use &Op, Instruction &Inst) {
 static std::vector<Instruction *> createSplitOperand(Use &Op,
                                                      Instruction &Inst) {
   auto &OpVal = *Op.get();
-  IGC_ASSERT(OpVal.getType()->isAggregateType() && "wrong argument");
+  IGC_ASSERT_MESSAGE(OpVal.getType()->isAggregateType(), "wrong argument");
   // TODO: support ArrayType
   auto *InstTy = cast<StructType>(OpVal.getType());
   auto *InsertionPt = getInsertionPtForSplitOp(Op, Inst);
   std::vector<Instruction *> SplitOperand;
   for (unsigned i = 0; i < InstTy->getNumElements(); ++i) {
-    IGC_ASSERT(!InstTy->getElementType(i)->isAggregateType() &&
-           "folded structures is yet unsupported");
+    IGC_ASSERT_MESSAGE(!InstTy->getElementType(i)->isAggregateType(),
+      "folded structures is yet unsupported");
     SplitOperand.push_back(
         ExtractValueInst::Create(&OpVal, i, "", InsertionPt));
   }
@@ -238,8 +238,8 @@ static std::vector<Instruction *> createSplitOperand(Use &Op,
 // Splits all aggregate operands of provided \p Inst.
 // Returns a map between original operands and created instructions.
 static SplitOpsMap createSplitOperands(Instruction &Inst) {
-  IGC_ASSERT(hasAggregateOperand(Inst) &&
-         "wrong argument: inst must have aggregate operand");
+  IGC_ASSERT_MESSAGE(hasAggregateOperand(Inst),
+    "wrong argument: inst must have aggregate operand");
   auto AggregateOps = make_filter_range(Inst.operands(), [](const Use &U) {
     return U->getType()->isAggregateType();
   });
@@ -284,15 +284,15 @@ std::vector<Value *> createSplitInstOperands(int elemIdx, OpRange OrigOps,
 static Instruction *createSplitInst(Instruction &Inst,
                                     const std::vector<Value *> &NewOps) {
   if (isa<SelectInst>(Inst)) {
-    IGC_ASSERT(NewOps.size() == 3 && "select must have 3 operands");
+    IGC_ASSERT_MESSAGE(NewOps.size() == 3, "select must have 3 operands");
     auto *NewSelect =
         SelectInst::Create(NewOps[0], NewOps[1], NewOps[2],
                            Inst.getName() + ".split.aggr", &Inst, &Inst);
     NewSelect->setDebugLoc(Inst.getDebugLoc());
     return NewSelect;
   }
-  IGC_ASSERT(isa<PHINode>(Inst) && "unsupported instruction");
-  IGC_ASSERT(Inst.getNumOperands() == NewOps.size() && "");
+  IGC_ASSERT_MESSAGE(isa<PHINode>(Inst), "unsupported instruction");
+  IGC_ASSERT(Inst.getNumOperands() == NewOps.size());
   auto *NewPHI = PHINode::Create(NewOps[0]->getType(), NewOps.size(),
                                  Inst.getName() + ".split.aggr", &Inst);
 
@@ -300,9 +300,8 @@ static Instruction *createSplitInst(Instruction &Inst,
   for (auto &&Incoming : zip(NewOps, OldPHI.blocks())) {
     Value *OpVal = std::get<0>(Incoming);
     BasicBlock *OpBB = std::get<1>(Incoming);
-    IGC_ASSERT(isa<ExtractValueInst>(OpVal) &&
-           "phi operands must be previously in this pass created "
-           "extractvalue insts");
+    IGC_ASSERT_MESSAGE(isa<ExtractValueInst>(OpVal),
+      "phi operands must be previously in this pass created extractvalue insts");
     auto *OpInst = cast<Instruction>(OpVal);
     NewPHI->addIncoming(OpInst, OpBB);
   }
@@ -341,8 +340,8 @@ createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps) {
 // Last insertvalue instruction that form full aggregate value is returned.
 static Instruction *joinSplitInsts(const std::vector<Instruction *> &SplitInsts,
                                    Type *JoinTy, Instruction *InsertBefore) {
-  IGC_ASSERT(SplitInsts.size() == cast<StructType>(JoinTy)->getNumElements() &&
-         "number of splitted insts doesn't correspond with aggregate type");
+  IGC_ASSERT_MESSAGE(SplitInsts.size() == cast<StructType>(JoinTy)->getNumElements(),
+    "number of splitted insts doesn't correspond with aggregate type");
   Value *JoinInst = UndefValue::get(JoinTy);
   unsigned Idx = 0;
   for (auto *SplitInst : SplitInsts) {
@@ -353,8 +352,8 @@ static Instruction *joinSplitInsts(const std::vector<Instruction *> &SplitInsts,
 }
 
 void GenXAggregatePseudoLowering::processInst(Instruction &Inst) {
-  IGC_ASSERT(hasAggregate(Inst) &&
-         "wrong argument: instruction doesn't work with aggregates");
+  IGC_ASSERT_MESSAGE(hasAggregate(Inst),
+    "wrong argument: instruction doesn't work with aggregates");
   SplitOpsMap NewOperands;
   if (hasAggregateOperand(Inst))
     NewOperands = createSplitOperands(Inst);
