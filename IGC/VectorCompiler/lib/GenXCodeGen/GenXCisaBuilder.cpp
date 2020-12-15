@@ -2371,10 +2371,13 @@ void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
       // via a general register. So the only pred->pred bitcast that arrives
       // here should be one from GenXLowering, and it should have been copy
       // coalesced in GenXCoalescing.
-      IGC_ASSERT(getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED) ==
-                     getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0),
-                                                DONTCARESIGNED) &&
-                 "uncoalesced phi move of predicate");
+      const Register *const Reg1 =
+        getRegForValueAndSaveAlias(KernFunc, CI, DONTCARESIGNED);
+      const Register *const Reg2 =
+        getRegForValueAndSaveAlias(KernFunc, CI->getOperand(0), DONTCARESIGNED);
+      IGC_ASSERT_MESSAGE(Reg1 == Reg2, "uncoalesced phi move of predicate");
+      (void) Reg1;
+      (void) Reg2;
       return;
     }
 
