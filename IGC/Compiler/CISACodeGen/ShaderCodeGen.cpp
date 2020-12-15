@@ -800,6 +800,125 @@ static void AddCodeGenPasses(
     COMPILER_TIME_END(&ctx, TIME_CG_Add_CodeGen_Passes);
 }
 
+// Adds Compute Shader CodeGen passes for all simd sizes required, used in
+// default case when no special registry keys are set.
+template<typename ContextType>
+void AddCodeGenPasses(
+    ContextType& ctx,
+    CShaderProgram::KernelShaderMap& shaders,
+    IGCPassManager& pm,
+    SIMDMode minSimdMode,
+    SIMDMode maxSimdMode,
+    bool& setEarlyExit16Stat)
+{
+    static const int SIMD16_NUM_TEMPREG_THRESHOLD = 92;
+    static const int SIMD16_SLM_NUM_TEMPREG_THRESHOLD = 128;
+
+    static const int SIMD32_NUM_TEMPREG_THRESHOLD = 40;
+
+    const SIMDMode defaultSimdMode = minSimdMode;
+    const bool isLastTry = ctx.m_retryManager.IsLastTry();
+
+    switch (defaultSimdMode)
+    {
+    case SIMDMode::SIMD8:
+    {
+        bool allowSpill = false;
+
+        if (maxSimdMode >= SIMDMode::SIMD16)
+        {
+            if (ctx.m_slmSize)
+            {
+                float occu8 = ctx.GetThreadOccupancy(SIMDMode::SIMD8);
+                float occu16 = ctx.GetThreadOccupancy(SIMDMode::SIMD16);
+                //float occu32 = ctx.getThreadOccupancy(SIMDMode::SIMD32);
+
+                // prefer simd16 over simd8 if same occupancy
+                if (occu16 >= occu8)
+                {
+                    allowSpill = true;
+                }
+            }
+
+            if (IGC_GET_FLAG_VALUE(CSSpillThresholdNoSLM) > 0)
+            {
+                allowSpill = true;
+            }
+        }
+        else
+        {
+            ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+        }
+
+        // if simd16 has better thread occupancy, then allows spills
+        unsigned tempThreshold16 = allowSpill
+            ? SIMD16_SLM_NUM_TEMPREG_THRESHOLD
+            : SIMD16_NUM_TEMPREG_THRESHOLD;
+
+        bool cgSimd16 = maxSimdMode >= SIMDMode::SIMD16 &&
+            ctx.m_tempCount <= tempThreshold16;
+
+        bool cgSimd32 = maxSimdMode == SIMDMode::SIMD32 &&
+            ctx.m_tempCount <= SIMD32_NUM_TEMPREG_THRESHOLD;
+
+        if (ctx.m_enableSubroutine || !cgSimd16)
+        {
+            AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD8, !isLastTry);
+            setEarlyExit16Stat = true;
+            ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+        }
+        else
+        {
+            bool earlyExit = (!allowSpill || ctx.instrStat[SROA_PROMOTED][EXCEED_THRESHOLD]);
+
+            // allow simd16 spill if having SLM
+            if (cgSimd16)
+                AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD16, earlyExit);
+            else
+                ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+
+            if (cgSimd32)
+                AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD32, true);
+            else
+                ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+
+            AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD8,
+                !isLastTry);
+        }
+        break;
+    }
+
+    case SIMDMode::SIMD16:
+    {
+        AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD16, !isLastTry);
+        if (!ctx.m_enableSubroutine && maxSimdMode == SIMDMode::SIMD32)
+        {
+            AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD32, true);
+        }
+        else
+        {
+            ctx.SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
+        }
+        ctx.SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+        break;
+    }
+
+    case SIMDMode::SIMD32:
+    {
+        AddCodeGenPasses(ctx, shaders, pm, SIMDMode::SIMD32, !isLastTry);
+        ctx.SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+        ctx.SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+        break;
+    }
+
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unexpected SIMD mode");
+    }
+}
+
+
 template<typename ContextType>
 void CodeGen(ContextType* ctx, CShaderProgram::KernelShaderMap& shaders);
 
@@ -999,109 +1118,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     }
     else
     {
-        static const int SIMD16_NUM_TEMPREG_THRESHOLD = 92;
-        static const int SIMD16_SLM_NUM_TEMPREG_THRESHOLD = 128;
-
-        static const int SIMD32_NUM_TEMPREG_THRESHOLD = 40;
-
-        switch (simdModeAllowed)
-        {
-        case SIMDMode::SIMD8:
-        {
-            bool allowSpill = false;
-
-            if (maxSimdMode >= SIMDMode::SIMD16)
-            {
-                if (ctx->m_slmSize)
-                {
-                    float occu8 = ctx->GetThreadOccupancy(SIMDMode::SIMD8);
-                    float occu16 = ctx->GetThreadOccupancy(SIMDMode::SIMD16);
-                    //float occu32 = ctx->getThreadOccupancy(SIMDMode::SIMD32);
-
-                    // prefer simd16 over simd8 if same occupancy
-                    if (occu16 >= occu8)
-                    {
-                        allowSpill = true;
-                    }
-                }
-
-                if (IGC_GET_FLAG_VALUE(CSSpillThresholdNoSLM) > 0)
-                {
-                    allowSpill = true;
-                }
-            }
-            else {
-                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-
-            // if simd16 has better thread occupancy, then allows spills
-            unsigned tempThreshold16 = allowSpill
-                ? SIMD16_SLM_NUM_TEMPREG_THRESHOLD
-                : SIMD16_NUM_TEMPREG_THRESHOLD;
-
-            bool cgSimd16 = maxSimdMode >= SIMDMode::SIMD16 &&
-                ctx->m_tempCount <= tempThreshold16;
-
-            bool cgSimd32 = maxSimdMode == SIMDMode::SIMD32 &&
-                ctx->m_tempCount <= SIMD32_NUM_TEMPREG_THRESHOLD;
-
-            if (ctx->m_enableSubroutine || !cgSimd16)
-            {
-                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
-                    !ctx->m_retryManager.IsLastTry());
-                setEarlyExit16Stat = true;
-                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            else
-            {
-                bool earlyExit = (!allowSpill || ctx->instrStat[SROA_PROMOTED][EXCEED_THRESHOLD]);
-
-                // allow simd16 spill if having SLM
-                if (cgSimd16)
-                    AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, earlyExit);
-                else
-                    ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-
-                if (cgSimd32)
-                    AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
-                else
-                    ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-
-                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
-                    !ctx->m_retryManager.IsLastTry());
-            }
-            break;
-        }
-
-        case SIMDMode::SIMD16:
-        {
-            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16,
-                !ctx->m_retryManager.IsLastTry());
-            if (!ctx->m_enableSubroutine && maxSimdMode == SIMDMode::SIMD32)
-            {
-                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
-            }
-            else {
-                ctx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
-            break;
-        }
-
-        case SIMDMode::SIMD32:
-        {
-            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32,
-                !ctx->m_retryManager.IsLastTry());
-            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-            ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
-            break;
-        }
-
-        default:
-            IGC_ASSERT_MESSAGE(0, "Unexpected SIMD mode");
-        }
+        AddCodeGenPasses(*ctx, shaders, PassMgr, simdModeAllowed, maxSimdMode, setEarlyExit16Stat);
     }
 
     COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
