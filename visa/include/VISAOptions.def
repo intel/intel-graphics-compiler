@@ -86,6 +86,7 @@ DEF_VISA_OPTION(vISA_UseSends,              ET_BOOL, "-nosends",            UNUS
 DEF_VISA_OPTION(vISA_doAlign1Ternary,       ET_BOOL, "-noalign1ternary",    UNUSED, true)
 DEF_VISA_OPTION(vISA_loadThreadPayload,     ET_BOOL, "-noLoadPayload",      UNUSED, true)
 DEF_VISA_OPTION(vISA_foldEOTtoPrevSend,     ET_BOOL, "-foldEOT",            UNUSED, false)
+//ToDo: useless, should be cleaned up later once tests stop passing it
 DEF_VISA_OPTION(vISA_hasRNEandDenorm,       ET_BOOL, "-hasRNEandDenorm",    UNUSED, false)
 DEF_VISA_OPTION(vISA_forceNoFP64bRegioning, ET_BOOL, "-noFP64bRegion",      UNUSED, false)
 DEF_VISA_OPTION(vISA_alignBindlessSampler,  ET_BOOL, "-alignBS",            UNUSED, false)

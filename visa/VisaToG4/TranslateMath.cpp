@@ -220,12 +220,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_Declare *t12 = createTempVarWithNoSpill(element_size, Type_DF, Any);
     G4_Declare *t13 = createTempVarWithNoSpill(element_size, Type_DF, Any);
 
-    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
-    // cr0.0 register
-    G4_Declare *regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
-    G4_DstRegRegion regDstCR0(Direct, phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
-    G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg() ,0, 0, getRegionScalar(), Type_UD);
-
     // r0 = 0.0:df, r1 = 1.0:df
     G4_Declare *t0  = getImmDcl(dbl_constant_0, element_size);
     G4_Declare *t1  = getImmDcl(dbl_constant_1, element_size);
@@ -355,28 +349,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_SrcRegRegion *t12SrcOpnd0x3 = createSrcRegRegion(tsrc12);
         G4_SrcRegRegion *t12SrcOpnd1 = createSrcRegRegion(tsrc12);
         G4_SrcRegRegion *t13SrcOpnd0 = createSrcRegRegion(tsrc13);
-
-        if (!hasDefaultRoundDenorm)
-        {
-            G4_DstRegRegion *cr0DstRegOpndForAndInst = createDstRegRegion(regDstCR0);
-            G4_DstRegRegion *cr0DstRegOpndForOrInst = createDstRegRegion(regDstCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForSaveInst = createSrcRegRegion(regSrcCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForOrInst = createSrcRegRegion(regSrcCR0);
-            auto tmpDstRegOpndForCR0 = Create_Dst_Opnd_From_Dcl(regCR0, 1);
-
-            // save cr0.0
-            inst = createMov(g4::SIMD1, tmpDstRegOpndForCR0, cr0SrcRegOpndForSaveInst,
-                InstOpt_WriteEnable, true);
-
-            // set rounding mod in CR0 to RNE
-            inst = createBinOp(G4_and, g4::SIMD1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
-                createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, true);
-
-            // set double precision denorm mode to 1
-            inst = createBinOp(G4_or, g4::SIMD1, cr0DstRegOpndForOrInst, cr0SrcRegOpndForOrInst,
-                createImm(0x40, Type_UD), InstOpt_WriteEnable, true);
-        }
 
         if (needsSrc0Move)
         {
@@ -525,15 +497,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             inst = createMadm(exsize, t11DstOpnd1, t6SrcOpnd3,
                 t7SrcOpndNeg3, t9SrcOpnd1x0, madmInstOpt);
 
-            if (!hasDefaultRoundDenorm)
-            {
-                G4_DstRegRegion *cr0DstRegOpndForRestoreIfInst = createDstRegRegion(regDstCR0);
-                auto tmpSrcOpndForCR0OnIf = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-                // restore cr0.0
-                inst = createMov(g4::SIMD1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
-                    InstOpt_WriteEnable, true);
-            }
-
             // madm (4) r8.noacc r9.acc9 r11.acc3 r12.acc2 {Align16, N1/N2}
             t8DstOpnd2->setAccRegSel(NOACC);
             t9SrcOpnd1x1->setAccRegSel(ACC9);
@@ -542,18 +505,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             inst = createMadm(exsize,
                 t8DstOpnd2, t9SrcOpnd1x1,
                 t11SrcOpnd1, t12SrcOpnd1, madmInstOpt);
-        }
-
-        if (generateIf && !hasDefaultRoundDenorm)
-        {
-            // else (8) {Q1/Q2}
-            inst = createElse(exsize, instOpt);
-
-            // restore cr0.0 {NoMask}
-            G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
-            auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-            inst = createMov(g4::SIMD1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
-                InstOpt_WriteEnable, true);
         }
 
         if (generateIf)
@@ -624,9 +575,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_F, Any);
     G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_F, Any);
 
-    // cr0.0 register
-    G4_Declare *regCR0  = createTempVarWithNoSpill(1, Type_UD, Any);
-
     // 0.0:f and 1.0:f constants
     G4_Declare *t2 = getImmDcl(flt_constant_0, exsize);
     G4_Declare *t5 = getImmDcl(flt_constant_1, exsize);
@@ -659,11 +607,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             instOpt, true); // mov (element_size) t4, src1RR {Q1/H1}
         src1RR = Create_Src_Opnd_From_Dcl(t4, getRegionStride1());
     }
-
-    // cr0.0 register
-    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
-    G4_DstRegRegion regDstCR0(Direct, phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
-    G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg(), 0, 0, getRegionScalar(), Type_UD);
 
     // t2 and t5 are constants
     G4_SrcRegRegion tsrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_F);
@@ -730,28 +673,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_SrcRegRegion *t9SrcOpnd1x1 = createSrcRegRegion(tsrc9);
         G4_SrcRegRegion *t10SrcOpnd0 = createSrcRegRegion(tsrc10);
         G4_SrcRegRegion *t11SrcOpnd0 = createSrcRegRegion(tsrc11);
-
-        if (!hasDefaultRoundDenorm)
-        {
-            G4_DstRegRegion *cr0DstRegOpndForAndInst = createDstRegRegion(regDstCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForSaveInst = createSrcRegRegion(regSrcCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
-
-            // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(regCR0, 1),
-                cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
-
-            // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
-            inst = createInst(NULL, G4_and, NULL, g4::NOSAT, g4::SIMD1,
-                cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
-                createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, true);
-            // set single denorm to 1: (W) or (1|M0) cr0.0<1>:ud cr0.0<0;1,0>:ud 0x80:ud
-            inst = createInst(nullptr, G4_or, nullptr, g4::NOSAT, g4::SIMD1,
-                createDstRegRegion(regDstCR0),
-                createSrcRegRegion(regSrcCR0),
-                createImm(0x80, Type_UW),
-                InstOpt_WriteEnable, true);
-        }
 
         t6SrcOpnd0 = createSrcRegRegion(fsrc0);
         t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -846,13 +767,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             t6DstOpnd0, t6SrcOpnd3,
             t4SrcOpndNeg2, t9SrcOpnd1x0, madmInstOpt);
 
-        if (!hasDefaultRoundDenorm)
-        {
-            // restore cr0.0: mov (1) cr0.0<1>:ud r116.1<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
-                Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
-        }
-
         // madm (8) r8.noacc r9.acc7 r6.acc8 r1.acc5 {Align16, Q1/Q2}
         t8DstOpnd1->setAccRegSel(NOACC);
         t9SrcOpnd1x1->setAccRegSel(ACC7);
@@ -861,16 +775,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         inst = createMadm(exsize,
             t8DstOpnd1, t9SrcOpnd1x1,
             t6SrcOpnd4, t1SrcOpnd1, madmInstOpt);
-
-        if (!hasDefaultRoundDenorm)
-        {
-            // else (8) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            inst = createElse(exsize, instOpt);
-
-            // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
-                Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
-        }
 
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
@@ -926,9 +830,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_F, Any);
     G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_F, Any);
 
-    // cr0.0 register
-    G4_Declare *regCR0  = createTempVarWithNoSpill(1, Type_UD, Any);
-
     // 0.0:f and 0.5:f constants
     G4_Declare* t0 = getImmDcl(flt_constant_0, exsize);
     G4_Declare *t8 = getImmDcl(flt_constant_05, exsize);
@@ -946,11 +847,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
         src0RR = Create_Src_Opnd_From_Dcl(t6, getRegionStride1());
     }
-
-    // cr0.0 register
-    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
-    G4_DstRegRegion regDstCR0(Direct, phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
-    G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg(), 0, 0, getRegionScalar(), Type_UD);
 
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_F);
     G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, srcRegionDesc, Type_F);
@@ -1013,24 +909,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         G4_SrcRegRegion *t11SrcOpnd0 = createSrcRegRegion(tsrc11);
         G4_SrcRegRegion *t11SrcOpnd1x0 = createSrcRegRegion(tsrc11);
         G4_SrcRegRegion *t11SrcOpnd1x1 = createSrcRegRegion(tsrc11);
-
-        if (!hasDefaultRoundDenorm)
-        {
-            G4_DstRegRegion *cr0DstRegOpndForAndInst = createDstRegRegion(regDstCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForSaveInst = createSrcRegRegion(regSrcCR0);
-            G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
-
-            // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(regCR0, 1),
-                cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
-
-            // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
-            inst = createBinOp(G4_and, g4::SIMD1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
-                createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, true);
-            // set single denorm to 1: (W) or (1|M0) cr0.0<1>:ud cr0.0<0;1,0>:ud 0x80:ud
-            inst = createBinOp(G4_or, g4::SIMD1, createDstRegRegion(regDstCR0),
-                createSrcRegRegion(regSrcCR0), createImm(0x80, Type_UW), InstOpt_WriteEnable, true);
-        }
 
         t6SrcOpnd0 = createSrcRegRegion(fsrc0);
         t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -1127,13 +1005,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         inst = createMadm( exsize, t10DstOpnd1, t6SrcOpnd2,
             t7SrcOpndNeg0, t7SrcOpnd2x1, madmInstOpt);
 
-        if (!hasDefaultRoundDenorm)
-        {
-            // restore cr0.0: mov (1) cr0.0<1>:ud r116.1<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
-                Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
-        }
-
         //madm (8) r7.noacc r7.acc7 r9.acc6 r10.acc8 {Aligned16, Q1/Q2}
         t7DstOpnd2->setAccRegSel(NOACC);
         t7SrcOpnd3->setAccRegSel(ACC7);
@@ -1141,16 +1012,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t10SrcOpnd2->setAccRegSel(ACC8);
         inst = createMadm(exsize, t7DstOpnd2, t7SrcOpnd3,
             t9SrcOpnd2, t10SrcOpnd2, madmInstOpt);
-
-        if (!hasDefaultRoundDenorm)
-        {
-            // else (exsize) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            inst = createElse(exsize, instOpt);
-
-            // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, createDstRegRegion(regDstCR0),
-                Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar()), InstOpt_WriteEnable, true);
-        }
 
         // endif (exsize) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
@@ -1188,8 +1049,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion *src1 = nullptr;
     G4_SrcRegRegion *src2 = nullptr;
     G4_SrcRegRegion *neg_src1 = nullptr;
-
-    G4_Imm *immData = nullptr;
 
     if (instExecSize == 1 || instExecSize == 4)
     {
@@ -1241,14 +1100,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         inst = createMov(element_size, dst0, src0RR, instOpt, true);
     }
 
-    bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
-    // cr0.0 register
-    G4_DstRegRegion regDstCR0(Direct, phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
-    G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg(), 0, 0, getRegionScalar(), Type_UD);
-
-    // temporary reg for saving/restoring cr0.0
-    G4_Declare *tmpRegCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
-
     // constants
 
     // r0 = 0.0:df, r1 = 1.0:df, r2(r8) = 0.5:df, r3 = 1.5:df
@@ -1292,31 +1143,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-
-        if (!hasDefaultRoundDenorm)
-        {
-            // save cr0.0
-            dst0 = Create_Dst_Opnd_From_Dcl(tmpRegCR0, 1);
-            src0 = createSrcRegRegion(regSrcCR0);
-            // mov (1) r108.0<1>:ud cr0.0<0;1,0>:ud {NoMask}
-            inst = createMov(g4::SIMD1, dst0, src0, InstOpt_WriteEnable, true);
-
-
-            // set rounding mod in CR0 to RNE
-            dst0 = createDstRegRegion(regDstCR0);
-            src0 = createSrcRegRegion(regSrcCR0);
-            immData = createImm(0xffffffcf, Type_UD);
-            // and (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
-            inst = createBinOp(G4_and, g4::SIMD1, dst0, src0, immData, InstOpt_WriteEnable, true);
-
-
-            // set double precision denorm mode to 1
-            dst0 = createDstRegRegion(regDstCR0);
-            src0 = createSrcRegRegion(regSrcCR0);
-            immData = createImm(0x40, Type_UD);
-            // or (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0x40:ud {NoMask}
-            inst = createBinOp(G4_or, g4::SIMD1, dst0, src0, immData, InstOpt_WriteEnable, true);
-        }
 
         // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
         dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC2);
@@ -1451,15 +1277,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             inst = createMadm(exsize,
                 dst0, src0, neg_src1, src2, madmInstOpt);
 
-            if (!hasDefaultRoundDenorm)
-            {
-                // restore cr0.0
-                dst0 = createDstRegRegion(regDstCR0);
-                src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
-                // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-                inst = createMov(g4::SIMD1, dst0, src0, InstOpt_WriteEnable, true);
-            }
-
             // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
             src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
@@ -1468,19 +1285,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             inst = createMadm(exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
-        }
-
-
-        if (generateIf && !hasDefaultRoundDenorm)
-        {
-            // else (8) {Q1/Q2}
-            inst = createElse(exsize, instOpt);
-
-            // restore cr0.0 {NoMask}
-            dst0 = createDstRegRegion(regDstCR0);
-            src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
-            // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-            inst = createMov(g4::SIMD1, dst0, src0, InstOpt_WriteEnable, true);
         }
 
         if (generateIf)
