@@ -619,7 +619,6 @@ void VISAKernelImpl::CopyVars(VISAKernelImpl* from)
 
 int VISAKernelImpl::InitializeKernel(const char *kernel_name)
 {
-
     int status = VISA_SUCCESS;
     m_num_pred_vars = Get_CISA_PreDefined_Var_Count();
     setName(kernel_name);

@@ -60,6 +60,7 @@ public:
         mBuildOption = buildOption;
         m_kernel_count = 0;
         m_function_count = 0;
+        m_prevKernel = nullptr;
 
         m_header.major_version = majorVersion;
         m_header.minor_version = minorVersion;
@@ -82,6 +83,7 @@ public:
         const PWA_TABLE pWaTable = nullptr);
     static int DestroyBuilder(CISA_IR_Builder *builder);
     VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
+    VISA_BUILDER_API virtual int SetPrevKernel(VISAKernel *& prevKernel);
     VISA_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName);
     VISA_BUILDER_API virtual int AddPayloadSection(VISAFunction *& function, const char* functionName);
     VISA_BUILDER_API virtual int Compile(const char * isaFileNameint, std::ostream * os = nullptr, bool emit_visa_only = false);
@@ -106,6 +108,7 @@ public:
 
     // the current vISA kernel/function being processed
     VISAKernelImpl *m_kernel;
+    VISAKernelImpl *m_prevKernel;
     CisaFramework::CisaBinary *m_cisaBinary;
     VISAKernelImpl * get_kernel() { return m_kernel; }
 
