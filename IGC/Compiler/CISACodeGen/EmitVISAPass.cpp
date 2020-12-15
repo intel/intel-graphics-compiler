@@ -12889,9 +12889,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                 CVariable* pDstAddr2 = m_currShader->GetNewVariable(
                     pDstAddr->GetNumberElement(), ISA_TYPE_UQ, EALIGN_GRF, CName::NONE);
                 m_encoder->Cast(pDstAddr2, pDstAddr);
-
                 m_encoder->AtomicRawA64(atomic_op, resource, pDst, pDstAddr2, pSrc0, pSrc1, bitwidth);
-
                 m_encoder->Push();
             }
             else
