@@ -998,7 +998,7 @@ static void PSCodeGen(
         enableHigherSimd = true;
     }
 
-    if (IGC_IS_FLAG_ENABLED(ForceBestSIMD))
+    if (!pixelShaderSIMDMode && IGC_IS_FLAG_ENABLED(ForceBestSIMD))
     {
         if (enableHigherSimd)
         {
@@ -1010,7 +1010,7 @@ static void PSCodeGen(
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
     }
-    else if (IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
+    else if (!pixelShaderSIMDMode && IsStage1BestPerf(ctx->m_CgFlag, ctx->m_StagingCtx))
     {
         // don't retry SIMD16 for ForcePSBestSIMD
         if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
@@ -1023,9 +1023,10 @@ static void PSCodeGen(
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
     }
-    else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
-             IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
-             IGC_GET_FLAG_VALUE(ForceFastestSIMD))
+    else if (!pixelShaderSIMDMode &&
+             (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
+              IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
+              IGC_GET_FLAG_VALUE(ForceFastestSIMD)))
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         useRegKeySimd = true;
