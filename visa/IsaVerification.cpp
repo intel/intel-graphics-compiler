@@ -2940,7 +2940,7 @@ void vISAVerifier::verifyKernelHeader()
             auto pi = header->getInput(i);
             unsigned Begin = pi->offset;
             unsigned End = Begin + pi->size;
-            if (End >= 32 * (256 - 1))
+            if (End >= (uint32_t) (getGRFSize() * (256 - 1)))
             {
                 REPORT_HEADER(options, false, "Input V%d is out of bound [%d, %d)", pi->index, Begin, End);
             }
