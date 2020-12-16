@@ -1268,19 +1268,11 @@ namespace IGC
     return modifiers;
     bool SupportsModifier(llvm::Instruction* inst)
     {
-        // Special cases
-        switch (inst->getOpcode())
+        if (llvm::CmpInst * cmp = dyn_cast<llvm::ICmpInst>(inst))
         {
-        case Instruction::ICmp:
-            // icmp supports modifier unless it is unsigned
-            return cast<ICmpInst>(inst)->isUnsigned();
-        case Instruction::Mul:
-            // integer mul supports modifier if not int64.
-            return !inst->getType()->isIntegerTy(64);
-        default:
-            break;
+            // special case, cmp supports modifier unless it is unsigned
+            return !cmp->isUnsigned();
         }
-
         switch (GetOpCode(inst))
         {
 #include "opCode.h"

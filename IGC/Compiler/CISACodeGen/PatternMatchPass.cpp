@@ -980,8 +980,8 @@ namespace IGC
             break;
         case Instruction::Mul:
             match = MatchFullMul32(I) ||
-                    MatchMulAdd16(I) ||
-                    MatchModifier(I);
+                MatchMulAdd16(I) ||
+                MatchModifier(I);
             break;
         case Instruction::Add:
             match = MatchMad(I) ||
