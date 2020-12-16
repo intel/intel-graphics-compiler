@@ -6158,7 +6158,7 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-binary");
   }
   if (OptimizationDisabled) {
-    addArgument("-noschedule");
+    addArgument("-debug");
   }
   return Argv;
 }
