@@ -103,7 +103,7 @@ using namespace genx;
 namespace {
   class GenXTidyControlFlow : public FunctionPass {
     const GenXSubtarget *ST = nullptr;
-    GenXLiveness *Liveness;
+    GenXLiveness *Liveness = nullptr;
     bool Modified;
   public:
     static char ID;
