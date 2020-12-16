@@ -838,9 +838,9 @@ void GenXFunctionGroupAnalysis::dump() {
 namespace {
 
     /// \brief Custom inliner for subroutines.
-    class SubroutineInliner : public LegacyInlinerBase {
+    class SubroutineInliner : public LegacyInlinerBase
+    {
         EstimateFunctionSize* FSA;
-
     public:
         static char ID; // Pass identification, replacement for typeid
 
@@ -921,7 +921,7 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
 
         if (FCtrl == FLAG_FCALL_DEFAULT)
         {
-            std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold);
+            std::size_t PerFuncThreshold = IGC_GET_FLAG_VALUE(SubroutineInlinerThreshold);
 
             // A single block function containing only a few instructions.
             auto isTrivialCall = [](const llvm::Function* F) {
@@ -930,10 +930,20 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
                 return false;
             };
 
-            if (FSA->getExpandedSize(Caller) <= Threshold ||
-                FSA->onlyCalledOnce(Callee) ||
-                isTrivialCall(Callee))
+            if (FSA->getExpandedSize(Caller) <= PerFuncThreshold)
+            {
                 return IGCLLVM::InlineCost::getAlways();
+            }
+            else if (isTrivialCall(Callee) || FSA->onlyCalledOnce(Callee))
+            {
+                return IGCLLVM::InlineCost::getAlways();
+            }
+            else if (!FSA->shouldEnableSubroutine())
+            {
+                // This function returns true if the estimated total inlining size exceeds some module threshold.
+                // If we don't exceed it, and there's no preference on inline vs noinline, we just inline.
+                return IGCLLVM::InlineCost::getAlways();
+            }
         }
     }
 

@@ -318,7 +318,7 @@ void EstimateFunctionSize::analyze() {
             if (auto * CI = dyn_cast<CallInst>(U)) {
                 // G calls F, or G --> F
                 Function* G = CI->getParent()->getParent();
-                FunctionNode* GN = get<FunctionNode>( G ); 
+                FunctionNode* GN = get<FunctionNode>( G );
                 GN->addCallee(&F);
                 Node->addCaller(G);
             }
@@ -399,8 +399,7 @@ std::size_t EstimateFunctionSize::getMaxExpandedSize() const {
 
 void EstimateFunctionSize::checkSubroutine() {
     auto CGW = getAnalysisIfAvailable<CodeGenContextWrapper>();
-    if (!CGW || AL != AL_Module)
-        return;
+    if (!CGW) return;
 
     EnableSubroutine = true;
     CodeGenContext* pContext = CGW->getCodeGenContext();
@@ -416,8 +415,9 @@ void EstimateFunctionSize::checkSubroutine() {
         {
             EnableSubroutine = false;
         }
-        else if (MaxSize > Threshold)
+        else if (MaxSize > Threshold && AL == AL_Module)
         {
+            // If max threshold is exceeded, do analysis on kernel trimming
             if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) &&
                 IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
             {
@@ -429,7 +429,6 @@ void EstimateFunctionSize::checkSubroutine() {
             }
         }
     }
-
     IGC_ASSERT(!HasRecursion || EnableSubroutine);
 }
 
