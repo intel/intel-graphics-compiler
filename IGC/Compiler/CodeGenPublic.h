@@ -843,9 +843,6 @@ namespace IGC
         std::vector<unsigned> m_indexableTempSize;
         bool         m_highPsRegisterPressure = 0;
 
-        // Record previous simd for code patching
-        CShader* m_prevShader = nullptr;
-
         // For IR dump after pass
         unsigned     m_numPasses = 0;
         bool m_threadCombiningOptDone = false;

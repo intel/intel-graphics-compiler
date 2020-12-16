@@ -131,7 +131,7 @@ namespace IGC
     class CEncoder
     {
     public:
-        void InitEncoder(bool canAbortOnSpill, bool hasStackCall, VISAKernel* prevKernel);
+        void InitEncoder(bool canAbortOnSpill, bool hasStackCall);
         void InitBuildParams(llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> & params);
         void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR);
         SEncoderState CopyEncoderState();
@@ -360,10 +360,6 @@ namespace IGC
 
         inline void SetIsCodePatchCandidate(bool v);
         inline bool IsCodePatchCandidate();
-        inline unsigned int GetPayloadEnd();
-        inline void SetPayloadEnd(unsigned int payloadEnd);
-        inline void SetHasPrevKernel(bool v);
-        inline bool HasPrevKernel();
         inline void BeginForcedNoMaskRegion();
         inline void EndForcedNoMaskRegion();
 
@@ -605,8 +601,6 @@ namespace IGC
         // This is for CodePatch to split payload interpolation from a shader
         VISAKernel* vPayloadSection;
         VISAKernel* vKernelTmp;
-        bool m_hasPrevKernel = false;
-        unsigned int m_payloadEnd = 0;
 
         bool m_isCodePatchCandidate = false;
 
@@ -933,26 +927,6 @@ namespace IGC
     inline bool CEncoder::IsCodePatchCandidate()
     {
         return m_isCodePatchCandidate;
-    }
-
-    inline void CEncoder::SetPayloadEnd(unsigned int payloadEnd)
-    {
-        m_payloadEnd = payloadEnd;
-    }
-
-    inline unsigned int CEncoder::GetPayloadEnd()
-    {
-        return m_payloadEnd;
-    }
-
-    inline void CEncoder::SetHasPrevKernel(bool v)
-    {
-        m_hasPrevKernel = v;
-    }
-
-    inline bool CEncoder::HasPrevKernel()
-    {
-        return m_hasPrevKernel;
     }
 
     inline void CEncoder::BeginForcedNoMaskRegion()

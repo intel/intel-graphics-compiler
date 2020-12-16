@@ -562,7 +562,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 
-    CShader* prevShader = m_pCtx->m_prevShader;
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
@@ -574,24 +573,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             return false;
         }
 
-        VISAKernel* prevKernel = nullptr;
-
-        if (prevShader &&
-            m_currShader->IsPatchablePS() &&
-            m_encoder->GetSimdSize() == prevShader->GetEncoder().GetSimdSize() &&
-            prevShader->GetEncoder().IsCodePatchCandidate() &&
-            prevShader->ProgramOutput()->m_programBin &&
-            prevShader->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
-        {
-            prevKernel = prevShader->GetEncoder().GetVISAKernel();
-            m_encoder->SetPayloadEnd(prevShader->GetEncoder().GetPayloadEnd());
-        }
-
         if (IGC_GET_FLAG_VALUE(CodePatch) &&
             ((!m_pCtx->hash.nosHash) || IGC_GET_FLAG_VALUE(CodePatch) > CodePatch_Enable_NoLTO) &&
             m_currShader->IsPatchablePS() &&
             m_SimdMode == SIMDMode::SIMD16 &&
-            (m_ShaderDispatchMode != ShaderDispatchMode::NOT_APPLICABLE || prevKernel) &&
+            (m_ShaderDispatchMode != ShaderDispatchMode::NOT_APPLICABLE) &&
             (IGC_GET_FLAG_VALUE(CodePatchLimit) == 0 || 2 <= IGC_GET_FLAG_VALUE(CodePatchLimit)))
         {
             m_encoder->SetIsCodePatchCandidate(true);
@@ -630,7 +616,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
 
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, prevKernel);
+        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
 
@@ -914,13 +900,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 errs() << IGC_GET_FLAG_VALUE(CodePatchLimit) << " Prologue/CodePatch : " << m_encoder->GetShaderName() << "\n";
             }
         }
-        else
-        {
-            if (IGC_GET_FLAG_VALUE(CodePatchExperiments))
-            {
-                errs() << IGC_GET_FLAG_VALUE(CodePatchLimit) << " not : " << m_encoder->GetShaderName() << "\n";
-            }
-        }
     }
 
     if (m_currShader->GetDebugInfoData())
@@ -946,7 +925,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             compileWithSymbolTable = true;
         }
         m_encoder->Compile(compileWithSymbolTable);
-        m_pCtx->m_prevShader = m_currShader;
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
         if (hasStackCall)
@@ -967,17 +945,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
 
-            if(!m_encoder->IsCodePatchCandidate() || m_encoder->HasPrevKernel())
-            {
-                m_pCtx->m_prevShader = nullptr;
                 // Postpone destroying VISA builder to
-                // after emitting debug info and passing context for code patching
+                // after emitting debug info
                 m_encoder->DestroyVISABuilder();
-            }
-            if (m_encoder->IsCodePatchCandidate() && m_encoder->HasPrevKernel())
-            {
-                prevShader->GetEncoder().DestroyVISABuilder();
-            }
         }
     }
 

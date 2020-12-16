@@ -4392,7 +4392,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -4431,7 +4431,6 @@ namespace IGC
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
             &m_vISAWaTable));
 
-        SetHasPrevKernel(prevKernel != nullptr);
         InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
 
         // Pass all build options to builder
@@ -4487,7 +4486,6 @@ namespace IGC
         }
 
         V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
-        V(vbuilder->SetPrevKernel(prevKernel));
         V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
 
         SetDispatchSimdSize();
