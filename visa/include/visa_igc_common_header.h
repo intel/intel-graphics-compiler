@@ -31,8 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef enum
 {
     vISA_DEFAULT,   // default mode: input is in-memory IR or vISA binary
-    vISA_3D,        // ToDo: remove and make 3D v. Media per-kernel. normal inputs should use vISA_DEFAULT
-    vISA_MEDIA,
     vISA_ASM_WRITER,    // mode for inline asm: input is in-memory IR + inline vISA assembly, output is vISA text
     vISA_ASM_READER     // mode for visa text input
 } vISABuilderMode;

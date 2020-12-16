@@ -266,7 +266,8 @@ int CISA_IR_Builder::CreateBuilder(
         return VISA_FAILURE;
     }
 
-    auto targetMode = (mode == vISA_3D || mode == vISA_ASM_WRITER || mode == vISA_ASM_READER) ? VISA_3D : VISA_CM;
+    // This should not matter anymore since each kernel should set its Target attribute to 3D/CM
+    auto targetMode = VISA_3D;
     builder->m_options.setTarget(targetMode);
     builder->m_options.setOptionInternally(vISA_isParseMode, mode == vISA_ASM_READER);
 
@@ -279,7 +280,7 @@ int CISA_IR_Builder::CreateBuilder(
 #endif
 
     // emit location info always for these cases
-    if (mode == vISABuilderMode::vISA_MEDIA && builder->m_options.getOption(vISA_outputToFile))
+    if (mode == vISABuilderMode::vISA_DEFAULT && builder->m_options.getOption(vISA_outputToFile))
     {
         builder->m_options.setOptionInternally(vISA_EmitLocation, true);
     }

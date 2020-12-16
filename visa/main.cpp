@@ -127,7 +127,7 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
         (platform == GENX_NONE) ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH;
     CISA_IR_Builder* cisa_builder = NULL;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, platform, argc, argv);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption, platform, argc, argv);
     MUST_BE_TRUE(cisa_builder, "cisa_builder is NULL.");
 
     vector<VISAKernel*> kernels;
@@ -184,7 +184,7 @@ int JITCompileAllOptions(const char* kernelName,
     // HW mode: default: GEN path; if dump/verify: Both path
     VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
 
-    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, getGenxPlatform(), numArgs, args);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption, getGenxPlatform(), numArgs, args);
     cisa_builder->setGtpinInit(gtpin_init);
 
     if (!cisa_builder)

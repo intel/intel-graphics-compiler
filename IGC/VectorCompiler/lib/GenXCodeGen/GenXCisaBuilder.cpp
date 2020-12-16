@@ -6213,7 +6213,7 @@ void GenXModule::InitCISABuilder() {
   GenXTargetMachine *TM = &getAnalysis<TargetPassConfig>()
                               .getTM<GenXTargetMachine>();
   const bool OptimizationDisabled = TM->getOptLevel() == CodeGenOpt::None;
-  const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_MEDIA;
+  const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_DEFAULT;
   CisaBuilder = createVISABuilder(*ST, EnableKernelDebug, AsmDumpsEnabled,
                                   OptimizationDisabled, Mode, WaTable,
                                   getContext(), ArgStorage);
