@@ -1596,7 +1596,7 @@ namespace vISA
             op == G4_halt ||
             op == G4_endif)
             return true;
-        else if (op == G4_call             &&
+        else if ((op == G4_call || op == G4_pseudo_fcall) &&
             inst->getSrc(0) &&
             inst->getSrc(0)->isLabel())
         {
@@ -2289,7 +2289,7 @@ namespace vISA
         // temporary WA, to be removed later
         // we disable compacting nop/return
         // until it is clear that we can compact them
-        if (op == G4_call || op == G4_return)
+        if (op == G4_call || op == G4_pseudo_fcall || op == G4_return || op == G4_pseudo_fret)
         {
             return false;
         }

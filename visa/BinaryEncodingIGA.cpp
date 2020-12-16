@@ -263,8 +263,15 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_break:   igaOp = iga::Op::BREAK; break;
     case G4_cont:    igaOp = iga::Op::CONT; break;
     case G4_halt:    igaOp = iga::Op::HALT; break;
-    case G4_call:    igaOp = iga::Op::CALL; break;
-    case G4_return:  igaOp = iga::Op::RET; break;
+    case G4_call:
+    case G4_pseudo_fcall:
+        //TODO: select calla for indirect call
+        igaOp = iga::Op::CALL;
+        break;
+    case G4_return:
+    case G4_pseudo_fret:
+        igaOp = iga::Op::RET;
+        break;
     case G4_goto:    igaOp = iga::Op::GOTO; break;
     case G4_join:    igaOp = iga::Op::JOIN; break;
     case G4_wait:
@@ -352,8 +359,6 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_pseudo_or:    igaOp = iga::Op::OR; break;
     case G4_pseudo_xor:   igaOp = iga::Op::XOR; break;
     case G4_pseudo_not:   igaOp = iga::Op::NOT; break;
-    case G4_pseudo_fcall: igaOp = iga::Op::CALL; break;
-    case G4_pseudo_fret:  igaOp = iga::Op::RET; break;
     case G4_pseudo_sada2: igaOp = iga::Op::SADA2; break;
     case G4_pseudo_exit:
         ASSERT_USER(!allowUnknownOp, "G4_pseudo_exit not GEN ISA OPCODE.");
