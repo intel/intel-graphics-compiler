@@ -827,7 +827,7 @@ void AddCodeGenPasses(
 
         if (maxSimdMode >= SIMDMode::SIMD16)
         {
-            if (ctx.m_slmSize)
+            if (ctx.GetSlmSize() > 0)
             {
                 float occu8 = ctx.GetThreadOccupancy(SIMDMode::SIMD8);
                 float occu16 = ctx.GetThreadOccupancy(SIMDMode::SIMD16);

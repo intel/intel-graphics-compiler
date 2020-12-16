@@ -1117,6 +1117,7 @@ namespace IGC
         /** get shader's thread group size */
         unsigned GetThreadGroupSize();
         unsigned GetSlmSizePerSubslice();
+        unsigned GetSlmSize() const;
         float GetThreadOccupancy(SIMDMode simdMode);
         /** get smallest SIMD mode allowed based on thread group size */
         SIMDMode GetLeastSIMDModeAllowed();

@@ -471,6 +471,11 @@ namespace IGC
         return 65536; // TODO: should get this from GTSysInfo instead of hardcoded value
     }
 
+    unsigned ComputeShaderContext::GetSlmSize() const
+    {
+        return m_slmSize;
+    }
+
     float ComputeShaderContext::GetThreadOccupancy(SIMDMode simdMode)
     {
         return GetThreadOccupancyPerSubslice(simdMode, GetThreadGroupSize(), GetHwThreadsPerWG(platform), m_slmSize, GetSlmSizePerSubslice());
