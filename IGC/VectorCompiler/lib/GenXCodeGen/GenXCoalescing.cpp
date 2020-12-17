@@ -617,8 +617,8 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
             }
           }
         } else if (isa<BitCastInst>(Inst) || isa<AddrSpaceCastInst>(Inst)) {
-          IGC_ASSERT(!isa<StructType>(Inst->getType()) && "not expecting bitcast to struct");
-          IGC_ASSERT(!isa<StructType>(Inst->getOperand(0)->getType()) && "not expecting bitcast from struct");
+          IGC_ASSERT_MESSAGE(!isa<StructType>(Inst->getType()), "not expecting bitcast to struct");
+          IGC_ASSERT_MESSAGE(!isa<StructType>(Inst->getOperand(0)->getType()), "not expecting bitcast from struct");
           // The source and destination of a bitcast can copy coalesce,
           // but only if it is not the case that the source is a phi and
           // the destination has a use in a phi node in the same block and
@@ -1138,10 +1138,10 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
-  IGC_ASSERT(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES &&
-         "Should be checked earlier!");
-  IGC_ASSERT(!isa<UndefValue>(Incoming) && "Should be checked earlier!");
-  IGC_ASSERT(!isa<Constant>(Incoming) && "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES,
+    "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(!isa<UndefValue>(Incoming), "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(!isa<Constant>(Incoming), "Should be checked earlier!");
   // Check it again: something could change
   if (Liveness->getLiveRange(Incoming) == DestLR) {
     LLVM_DEBUG(dbgs() << "Already coalesced " << Incoming->getName() << " -> "
@@ -1167,8 +1167,8 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   if (auto *I = dyn_cast<Instruction>(Incoming)) {
     // This should not happen for good BBs (not join blocks)
     // if DFG is correct.
-    IGC_ASSERT(DomTree->dominates(I->getParent(), InsertPoint->getParent()) &&
-           "Dominance corrupted!");
+    IGC_ASSERT_MESSAGE(DomTree->dominates(I->getParent(), InsertPoint->getParent()),
+      "Dominance corrupted!");
   }
 
   // Store info for copy
@@ -1187,15 +1187,15 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
   Value *Incoming = Phi->getIncomingValue(Inc);
   auto *IncomingBlock = Phi->getIncomingBlock(Inc);
   // Should be checked in analysePhiCopies
-  IGC_ASSERT(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES &&
-         "Should be checked earlier!");
-  IGC_ASSERT(!isa<UndefValue>(Incoming) && "Should be checked earlier!");
-  IGC_ASSERT(!isa<Constant>(Incoming) && "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(DestLR->getCategory() < RegCategory::NUMREALCATEGORIES,
+    "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(!isa<UndefValue>(Incoming), "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(!isa<Constant>(Incoming), "Should be checked earlier!");
   // Should be checked in processPhiCopy
-  IGC_ASSERT(Liveness->getLiveRange(Incoming) != DestLR &&
-         "Should be checked earlier!");
-  IGC_ASSERT(GotoJoin::isBranchingJoinLabelBlock(IncomingBlock) &&
-         "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(Liveness->getLiveRange(Incoming) != DestLR,
+    "Should be checked earlier!");
+  IGC_ASSERT_MESSAGE(GotoJoin::isBranchingJoinLabelBlock(IncomingBlock),
+    "Should be checked earlier!");
 
   LLVM_DEBUG(dbgs() << "Handling branching join label block case\n");
 
@@ -1214,7 +1214,7 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
     // This situation is detected via corrupted dominance.
     if (!DomTree->dominates(PhiPred->getParent(), InsertPoint->getParent())) {
       auto *PhiCopy = copyNonCoalescedPhi(PhiPred, Phi);
-      IGC_ASSERT(PhiCopy && "Invalid phi copy!");
+      IGC_ASSERT_MESSAGE(PhiCopy, "Invalid phi copy!");
       Phis.push_back(PhiCopy);
       return;
     }
@@ -1227,8 +1227,8 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
     // For join block, def must be somewhere before it
     // because of SIMD CF Conformance. Case for Phi is
     // described and handled above.
-    IGC_ASSERT(DomTree->dominates(I->getParent(), InsertPoint->getParent()) &&
-           "Dominance corrupted!");
+    IGC_ASSERT_MESSAGE(DomTree->dominates(I->getParent(), InsertPoint->getParent()),
+      "Dominance corrupted!");
   }
 
   // Store info for copy
@@ -1306,8 +1306,8 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
           for (unsigned StructIdx = 0,
                         se = IndexFlattener::getNumElements(Arg->getType());
                StructIdx != se; ++StructIdx) {
-            IGC_ASSERT(!StructIdx &&
-                   "coalesce failure on struct call arg not tested");
+            IGC_ASSERT_MESSAGE(!StructIdx,
+              "coalesce failure on struct call arg not tested");
             auto FuncArgSV = SimpleValue(Arg, StructIdx);
             auto CallArgSV = SimpleValue(CallArg, StructIdx);
             // See if they are coalesced.
@@ -1960,8 +1960,8 @@ Iter GenXCoalescing::mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt,
     if (It->Source.getValue()->getType() == CurrCopy->getType()) {
       *It->UseInDest = CurrCopy;
     } else {
-      IGC_ASSERT(It->Source.getIndex() == 0 &&
-                 "Must be non-aggregated type: should come from bitcast");
+      IGC_ASSERT_MESSAGE(It->Source.getIndex() == 0,
+        "Must be non-aggregated type: should come from bitcast");
       IRBuilder<> Builder(CurrCopy->getNextNode());
       BCI = cast<BitCastInst>(Builder.CreateBitCast(
           CurrCopy, It->Source.getValue()->getType(), "red_copy_type_conv"));
@@ -2033,7 +2033,7 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
   case PHICOPY:
   case PHICOPY_BRANCHING_JP: {
     PHINode *Phi = dyn_cast<PHINode>(CD.Dest.getValue());
-    IGC_ASSERT(Phi && "Expected PHI");
+    IGC_ASSERT_MESSAGE(Phi, "Expected PHI");
     unsigned Num =
         (CD.CopyT == PHICOPY)
             ? Numbering->getPhiNumber(
@@ -2072,7 +2072,7 @@ Instruction *GenXCoalescing::createCopy(const CopyData &CD) {
     Liveness->rebuildLiveRange(DestLR);
   }
 
-  IGC_ASSERT(NewCopy && "Bad copy");
+  IGC_ASSERT_MESSAGE(NewCopy, "Bad copy");
 
   return NewCopy;
 }
