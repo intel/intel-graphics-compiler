@@ -422,11 +422,10 @@ uint32_t getBlockPushConstantGRFThreshold() const
     const GTTYPE gt = m_platformInfo.eGTType;
     switch (m_platformInfo.eProductFamily)
     {
+    case IGFX_COFFEELAKE:
     case IGFX_SKYLAKE:
     case IGFX_KABYLAKE:
         return (gt == GTTYPE_GT2) ? gen9GT2Threshold : defaultThreshold;
-    case IGFX_COFFEELAKE:
-        return gen9GT2Threshold;
     default:
         return defaultThreshold;
     }
