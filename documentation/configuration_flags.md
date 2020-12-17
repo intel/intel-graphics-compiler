@@ -55,6 +55,7 @@ $ export IGC_ShaderDumpEnable=1
 - **EnableIntDivRemCombine** - Given div/rem pairs with same operands merged; replace rem with mul+sub on quotient; 0x3 (set bit[1]) forces this on constant power of two divisors as well
 - **EnableGroupScheduleForBC** - Enable bank conflict reduction in scheduling
 - **EnableGTLocationDebugging** - Enables GT location expression emissions for GPU debugger
+- **UseOffsetInLocation** - Using offset in location limits variables available for a debugger all time
 - **EnableLivenessDump** - Enable dumping out liveness info on stderr
 - **EnableLTODebug** - Enable debug information for LTO
 - **EnableMaxWGSizeCalculation** - Enable max work group size calculation [OCL only]

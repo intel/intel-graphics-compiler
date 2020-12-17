@@ -63,6 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Version.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
 
 #include "Probe/Assertion.h"
 
@@ -624,6 +625,33 @@ void CompileUnit::addConstantValue(DIE* Die, const APInt& Val, bool Unsigned)
     }
 
     addBlock(Die, dwarf::DW_AT_const_value, Block);
+}
+
+/// addConstantUValue - Add constant unsigned value entry in variable DIEBlock.
+void CompileUnit::addConstantUValue(DIEBlock* TheDie, uint64_t Val)
+{
+    dwarf::LocationAtom constOp = dwarf::DW_OP_const1u;
+    dwarf::Form constForm = DIEInteger::BestForm(false, Val);
+    switch (constForm)
+    {
+    case dwarf::DW_FORM_data1:
+        constOp = dwarf::DW_OP_const1u;
+        break;
+    case dwarf::DW_FORM_data2:
+        constOp = dwarf::DW_OP_const2u;
+        break;
+    case dwarf::DW_FORM_data4:
+        constOp = dwarf::DW_OP_const4u;
+        break;
+    case dwarf::DW_FORM_data8:
+        constOp = dwarf::DW_OP_const8u;
+        break;
+    default:
+        IGC_ASSERT_MESSAGE(false, "Unsupported encoding");
+        break;
+    }
+    addUInt(TheDie, dwarf::DW_FORM_data1, constOp);
+    addUInt(TheDie, constForm, Val);
 }
 
 /// addConstantData - Add constant data entry in variable DIE.
@@ -2473,26 +2501,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
     {
         auto loc = &locV;
         int64_t offset = 0;
-        auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
-        auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
-        VISAVariableLocation V(VISAMod);
-        if (storageMD && EmitSettings.EmitOffsetInDbgLoc)
-        {
-            // Storage offset is known so emit location as
-            // DW_OP_bregx (privateBase) + StorageOffset*SIMD_SIZE
-            // This is executed only when llvm.dbg.declare still exists.
-            // With mem2reg run, data is stored in GRFs and this wont be
-            // executed.
-            auto privateBaseRegNum = loc->GetVISAModule()->getPrivateBaseReg();
-            if (privateBaseRegNum)
-            {
-                auto simdSize = VISAMod->GetSIMDSize();
-                offset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
-                V = VISAVariableLocation(VISAModule::GENERAL_REGISTER_BEGIN + privateBaseRegNum, loc->IsRegister(),
-                    loc->IsInMemory(), loc->GetVectorNumElements(), loc->IsVectorized(), loc->IsInGlobalAddrSpace(), VISAMod);
-                loc = &V;
-            }
-        }
 
         if (EmitSettings.EnableSIMDLaneDebugging && isSliced)
         {
@@ -2524,6 +2532,147 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 IGC_ASSERT_MESSAGE(isa<DIEInteger>(skipOff), "Expecting DIEInteger");
                 offsetTaken = Block->ComputeSizeOnTheFly(Asm);
                 cast<DIEInteger>(secondHalfOff)->setValue(offsetTaken - offsetNotTaken);
+            }
+        }
+
+        auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+        auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
+        VISAVariableLocation V(VISAMod);
+        if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
+        {
+            // This is executed only when llvm.dbg.declare still exists.
+            // With mem2reg run, data is stored in GRFs and this wont be
+            // executed.
+            Instruction* perThreadOffsetInst = VISAMod->getPerThreadOffset();
+            ScalarVisaModule* scVMod = (ScalarVisaModule*)VISAMod;
+            IGC_ASSERT_MESSAGE(scVMod, "ScalarVisaModule error");
+
+            Value* pValPTO = dyn_cast_or_null<Value>(perThreadOffsetInst);
+            IGC_ASSERT_MESSAGE(pValPTO, "pValPTO error");
+
+            // At this point we expect only a register
+            CVariable* pVarPTO = scVMod->GetSymbol(perThreadOffsetInst, pValPTO);
+
+            IGC_ASSERT_MESSAGE(pVarPTO, "Per Thread Offset variable does not exist");
+            IGC_ASSERT_MESSAGE(pVarPTO->GetVarType() == EVARTYPE_GENERAL, "Unexpected VISA register type!");
+
+            int regPTO = scVMod->getDeclarationID(pVarPTO, false);
+            auto privateBaseRegNum = loc->GetVISAModule()->getPrivateBaseReg();
+            if (privateBaseRegNum)  // FIX ME if 0 is allowed
+            {
+                emitLocation = true;
+
+                // %Y = privateBase (%X) + (%perThreadOffset + (simdSize * <variable offset>) + (simdLaneId * <variable size>))
+                // CASE with Private Base and Per Thread Offset in GRF registers (both not spilled)
+                // 1 DW_OP_constu <Private Base reg encoded>
+                // 2 DW_OP_INTEL_regs     , i.e. Private Base
+                // 3 DW_OP_const1u <bit-offset to Private Base reg>
+                // 4 DW_OP_const1u 64  , i.e. size on bits
+                // 5 DW_OP_INTEL_push_bit_piece_stack
+                // 6 DW_OP_constu <Per Thread reg encoded>
+                // 7 DW_OP_INTEL_regs     , i.e. Per Thread Offset
+                // 8 DW_OP_const1u <bit-offset to Per Thread Offset>
+                // 9 DW_OP_const1u 32  , i.e. size in bits
+                // 10 DW_OP_INTEL_push_bit_piece_stack
+                // 11 DW_OP_plus , i.e. add Private Base to Per Thread Offset
+                // 12 DW_OP_const1u/2u/4u/8u simdSize * <variable offset> , i.e. offset in bits to the first lane's variable
+                // 13 DW_OP_plus
+                // 14 DW_OP_INTEL_push_simd_lane
+                //    DW_OP_lit16 <--
+                //    DW_OP_minus <-- Emitted only for second half of SIMD32 kernels
+                // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
+                // 16 DW_OP_mul
+                // 17 DW_OP_plus
+                auto simdSize = VISAMod->GetSIMDSize();
+
+                DbgDecoder::VarInfo varInfoPrivBase;
+                // Rely on getVarInfo result here.
+                VISAMod->getVarInfo("V", privateBaseRegNum, varInfoPrivBase);
+                IGC_ASSERT_MESSAGE(varInfoPrivBase.lrs.front().isGRF() || varInfoPrivBase.lrs.front().isSpill(),
+                    "Unexpected location of variable");
+                if (varInfoPrivBase.lrs.front().isGRF())
+                {
+                    uint16_t grfRegNumPrivBase = varInfoPrivBase.lrs.front().getGRF().regNum;
+                    unsigned int grfSubRegNumPrivBase = varInfoPrivBase.lrs.front().getGRF().subRegNum;
+                    auto bitOffsetToPrivBaseReg = grfSubRegNumPrivBase * 8;  // Bit-offset to GRF with Private Base
+
+                    auto DWRegPrivBaseEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
+                        grfRegNumPrivBase, EmitSettings.UseNewRegisterEncoding);
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);              // 1 DW_OP_constu <Private Base reg encoded>
+                    addUInt(Block, dwarf::DW_FORM_udata, DWRegPrivBaseEncoded);             // Register ID is shifted by offset
+                    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);                 // 2 DW_OP_INTEL_regs     , i.e. Private Base
+
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);             // 3 DW_OP_const1u <bit-offset to Private Base reg>
+                    addUInt(Block, dwarf::DW_FORM_data1, bitOffsetToPrivBaseReg);
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);             // 4 DW_OP_const1u 64  , i.e. size in bits
+                    addUInt(Block, dwarf::DW_FORM_data1, 64);
+                    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack); // 5 DW_OP_INTEL_push_bit_piece_stack
+                }
+                else if (varInfoPrivBase.lrs.front().isSpill())
+                {
+                    unsigned int memOffsetPrivBase = 0;
+                    memOffsetPrivBase = varInfoPrivBase.lrs.front().getSpillOffset().memoryOffset;
+                    addScratchLocation(Block, memOffsetPrivBase, 0);
+                    addBE_FP(Block);
+                }
+
+                DbgDecoder::VarInfo varInfoPerThOff;
+                // Rely on getVarInfo result here.
+                auto regNumPerThOff = regPTO; // loc->GetRegister();
+                VISAMod->getVarInfo("V", regNumPerThOff, varInfoPerThOff);
+
+                IGC_ASSERT_MESSAGE(varInfoPerThOff.lrs.front().isGRF() || varInfoPerThOff.lrs.front().isSpill(),
+                        "Unexpected location of variable");
+                if (varInfoPerThOff.lrs.front().isGRF())
+                {
+                    uint16_t grfRegNumPTO = varInfoPerThOff.lrs.front().getGRF().regNum;
+                    unsigned int grfSubRegPTO = varInfoPerThOff.lrs.front().getGRF().subRegNum;
+                    auto bitOffsetToPTOReg = grfSubRegPTO * 8;  // Bit-offset to GRF with Per Thread Offset
+
+                    auto DWRegPTOEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
+                        grfRegNumPTO, EmitSettings.UseNewRegisterEncoding);
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);              // 6 DW_OP_constu <Per Thread reg encoded>
+                    addUInt(Block, dwarf::DW_FORM_udata, DWRegPTOEncoded);                  // Register ID is shifted by offset
+                    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);                 // 7 DW_OP_INTEL_regs     , i.e. Per Thread Offset
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);             // 8 DW_OP_const1u <bit-offset to Per Thread Offset>
+                    addUInt(Block, dwarf::DW_FORM_data1, bitOffsetToPTOReg);
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);             // 9 DW_OP_const1u 32  , i.e. size on bits
+                    addUInt(Block, dwarf::DW_FORM_data1, 32);
+                    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack); // 10 DW_OP_INTEL_push_bit_piece_stack
+                }
+                else if (varInfoPerThOff.lrs.front().isSpill())
+                {
+                    unsigned int memOffsetPTO = 0;
+                    memOffsetPTO = varInfoPerThOff.lrs.front().getSpillOffset().memoryOffset;
+                    addScratchLocation(Block, memOffsetPTO, 0);
+                    addBE_FP(Block);
+                }
+
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 11 DW_OP_plus   , i.e. add Private Base to Per Thread Offset
+
+                // Variable's bit offset can be found in the first operand of StorageOffset metadata node.
+                offset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+
+                addConstantUValue(Block, offset);                                  // 12 DW_OP_const1u/2u/4u/8 offset , i.e. simdSize * <variable offset>
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 13 DW_OP_plus
+                addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);  // 14 DW_OP_INTEL_push_simd_lane
+
+                if (!firstHalf)
+                {
+                    // Fix offset to use for second half of SIMD32
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit16);
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_minus);
+                }
+
+                uint64_t varSizeInBytes = var.getBasicSize(DD) >> 3;
+                IGC_ASSERT_MESSAGE((var.getBasicSize(DD) & 0x7) == 0, "Unexpected variable size");
+
+                addConstantUValue(Block, varSizeInBytes);                          // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);            // 16 DW_OP_mul
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 17 DW_OP_plus
+
+                firstHalf = false;
+                continue;
             }
         }
 

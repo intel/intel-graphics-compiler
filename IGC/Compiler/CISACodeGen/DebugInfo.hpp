@@ -67,6 +67,8 @@ namespace IGC
 
         void markOutputVars(const llvm::Instruction* pInst);
         void markOutput(llvm::Function& F, CShader* m_currShader);
+        void markOutputPrivateBase(void);
+        void markOutputPTO(llvm::Instruction* pInst);
 
         void addVISAModule(llvm::Function* F, VISAModule* m)
         {

@@ -535,8 +535,18 @@ namespace IGC
         // This function coalesces GenISARange which is a vector of <start ip, end ip>
         static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
 
+        void setPerThreadOffset(llvm::Instruction* perThreadOffset)
+        {
+            IGC_ASSERT_MESSAGE(perThreadOffset, "Clear perThreadOffset");
+            m_perThreadOffset = perThreadOffset;
+        }
         void dump() const { print(llvm::dbgs()); }
         void print (llvm::raw_ostream &OS) const;
+
+        llvm::Instruction* getPerThreadOffset()
+        {
+            return m_perThreadOffset;
+        }
 
     private:
         std::string m_triple = "vISA_64";
@@ -558,6 +568,8 @@ namespace IGC
         InstInfoMap m_instInfoMap;
 
         ObjectType m_objectType = ObjectType::UNKNOWN;
+
+        llvm::Instruction* m_perThreadOffset = nullptr;
 
     public:
         /// Constants represents VISA register encoding in DWARF

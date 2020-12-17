@@ -966,6 +966,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // Find the implicit argument representing r0 and the private memory base.
     Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
     Argument* privateMemArg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::PRIVATE_BASE);
+    // Note: for debugging purposes privateMemArg will be marked as Output to keep its liveness all time
 
     // Resolve the call
 
@@ -1007,6 +1008,20 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     }
 
     Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
+    auto perThreadOffsetInst = dyn_cast_or_null<Instruction>(perThreadOffset);
+
+    if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
+    {
+        IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
+        if (perThreadOffsetInst)
+        {
+            // Note: for debugging purposes privateMemArg, as well as privateMemArg (aka ImplicitArg::PRIVATE_BASE)
+            // will be marked as Output to keep its liveness all time
+            auto perThreadOffsetMD = MDNode::get(entryBuilder.getContext(), ConstantAsMetadata::get(entryBuilder.getInt32(1)));
+
+            perThreadOffsetInst->setMetadata("perThreadOffset", perThreadOffsetMD);
+        }
+    }
 
     for (auto pAI : allocaInsts)
     {

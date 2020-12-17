@@ -237,6 +237,9 @@ namespace IGC
         /// addConstantFPValue - Add constant value entry in variable DIE.
         void addConstantFPValue(DIE* Die, const llvm::ConstantFP* CFP);
 
+        /// addConstantUValue - Add constant unsigned value entry in variable DIEBlock.
+        void addConstantUValue(DIEBlock* TheDie, uint64_t Val);
+
         /// addConstantData - Add constant data entry in variable DIE.
         void addConstantData(DIE* Die, const unsigned char* Ptr8, int NumBytes);
 

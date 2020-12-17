@@ -2,6 +2,7 @@
 #define SCALAR_VISAMODULE_HPP_1YOTGOUE
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISAModule.hpp"
 
@@ -75,8 +76,27 @@ public:
     }
 
     bool IsCatchAllIntrinsic(const llvm::Instruction* pInst) const override;
-
     bool IsIntelSymbolTableVoidProgram() const override;
+
+    CVariable* GetGlobalCVar(llvm::Value* pValue) {
+        return m_pShader->GetGlobalCVar(pValue);
+    }
+
+    CVariable* GetSymbol(const llvm::Instruction* pInst, llvm::Value* pValue) {
+        // CShader's symbols are emptied before compiling a new function.
+        // Whereas debug info emission starts after compilation of all functions.
+        return m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
+    }
+
+    int getDeclarationID(CVariable* pVar, bool isSecondSimd32Instruction) const {
+        int varId = isSecondSimd32Instruction ? 1 : 0;
+        if (isSecondSimd32Instruction) {
+            if (!((GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform()))) {
+                return -1; // Cannot get 2nd variable in SIMD32 (?) mode
+            }
+        }
+        return m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[varId]);
+    }
 
 private:
     /// @brief Constructor.
