@@ -218,15 +218,22 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                                 }
                                 else
                                 {
-                                    // case 3:  mov A0 V2
-                                    // conservatively assume address can point to anything
-                                    DEBUG_MSG("unexpected addr move for pointer analysis:\n");
-                                    DEBUG_EMIT(inst);
-                                    DEBUG_MSG("\n")
+                                    // case 3: mov A0 0
+                                    // Initial of address register, igore the point to analysis
+                                    // FIXME: currently, vISA don't expect mov imm value to the address register. So, 0 is treated as initialization.
+                                    // If support mov A0 imm in future, 0 may be R0.
+                                    if (!(src->isImm() && (src->asImm()->getImm() == 0)))
+                                    {
+                                        // case 4:  mov A0 V2
+                                        // conservatively assume address can point to anything
+                                        DEBUG_MSG("unexpected addr move for pointer analysis:\n");
+                                        DEBUG_EMIT(inst);
+                                        DEBUG_MSG("\n");
                                         for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
                                         {
                                             addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i]);
                                         }
+                                    }
                                 }
                             }
                         }
@@ -267,14 +274,14 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
 
                             if (src->isAddrExp())
                             {
-                                // case 4:  add/mul A0 &GRF src1
+                                // case 5:  add/mul A0 &GRF src1
                                 G4_RegVar* addrTaken = src->asAddrExp()->getRegVar();
                                 addToPointsToSet(ptr->asRegVar(), addrTaken);
                             }
                             else
                             {
                                 G4_VarBase* srcPtr = src->isSrcRegRegion() ? src->asSrcRegRegion()->getBase() : nullptr;
-                                // case 5:  add/mul A0 A1 src1
+                                // case 6:  add/mul A0 A1 src1
                                 // merge the two addr's points-to set together
                                 if (srcPtr && (ptr->asRegVar()->getId() != srcPtr->asRegVar()->getId()))
                                 {
@@ -288,7 +295,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                         }
                         else
                         {
-                            // case 6:  add/mul A0 V1 V2
+                            // case 7:  add/mul A0 V1 V2
                             DEBUG_MSG("unexpected addr add/mul for pointer analysis:\n");
                             DEBUG_EMIT(inst);
                             DEBUG_MSG("\n")
@@ -300,7 +307,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                     }
                     else
                     {
-                        // case 7: A0 = ???
+                        // case 8: A0 = ???
                         DEBUG_MSG("unexpected instruction with address destination:\n");
                         DEBUG_EMIT(inst);
                         DEBUG_MSG("\n");
