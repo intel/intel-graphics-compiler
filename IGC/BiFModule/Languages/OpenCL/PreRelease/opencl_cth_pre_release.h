@@ -368,7 +368,6 @@ intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities(
      uchar  bwd_ref_field_polarity,
      intel_sub_group_avc_mce_payload_t payload );
 
-#ifdef __opencl_c_images
 intel_sub_group_avc_mce_payload_t __attribute__((overloadable))
 intel_sub_group_avc_mce_set_single_ref_id(
     read_only image2d_t src_image,
@@ -381,7 +380,6 @@ intel_sub_group_avc_mce_set_dual_ref_id(
     read_only image2d_t fwd_ref_image,
     read_only image2d_t bwd_ref_image,
     intel_sub_group_avc_mce_payload_t payload );
-#endif //__opencl_c_images
 
 intel_sub_group_avc_mce_payload_t __attribute__((overloadable))
 intel_sub_group_avc_mce_set_ref_id_raw(
@@ -477,7 +475,6 @@ intel_sub_group_avc_ime_payload_t __attribute__((overloadable))
 intel_sub_group_avc_mce_convert_to_ime_payload(
       intel_sub_group_avc_mce_payload_t payload );
 
-#ifdef __opencl_c_images
 intel_sub_group_avc_ime_result_t __attribute__((overloadable))
 intel_sub_group_avc_ime_evaluate_with_single_reference(
       read_only image2d_t src_image,
@@ -541,7 +538,6 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload,
       intel_sub_group_avc_ime_dual_reference_streamin_t streamin );
-#endif //__opencl_c_images
 
 intel_sub_group_avc_ime_single_reference_streamin_t __attribute__((overloadable))
 intel_sub_group_avc_ime_get_single_reference_streamin(
@@ -785,7 +781,6 @@ intel_sub_group_avc_sic_payload_t __attribute__((overloadable))
 intel_sub_group_avc_sic_set_ac_only_haar(
     intel_sub_group_avc_sic_payload_t payload );
 
-#ifdef __opencl_c_images
 intel_sub_group_avc_ime_payload_t __attribute__((overloadable))
 intel_sub_group_avc_ime_set_dual_ref_id(
     read_only image2d_t src_image,
@@ -818,7 +813,6 @@ intel_sub_group_avc_sic_set_dual_ref_id(
     read_only image2d_t fwd_ref_image,
     read_only image2d_t bwd_ref_image,
     intel_sub_group_avc_sic_payload_t payload );
-#endif //__opencl_c_images
 
 intel_sub_group_avc_ime_payload_t __attribute__((overloadable))
 intel_sub_group_avc_ime_set_ref_id_raw(
@@ -969,7 +963,6 @@ intel_sub_group_avc_ref_payload_t __attribute__((overloadable))
 intel_sub_group_avc_ref_set_bilinear_filter_enable(
       intel_sub_group_avc_ref_payload_t payload );
 
-#ifdef __opencl_c_images
 intel_sub_group_avc_ref_result_t __attribute__((overloadable))
 intel_sub_group_avc_ref_evaluate_with_single_reference(
       read_only image2d_t src_image,
@@ -999,7 +992,6 @@ intel_sub_group_avc_ref_evaluate_with_multi_reference(
       uchar packed_reference_field_polarities,
       sampler_t vme_accelerator,
       intel_sub_group_avc_ref_payload_t payload );
-#endif //__opencl_c_images
 
 intel_sub_group_avc_mce_result_t __attribute__((overloadable))
 intel_sub_group_avc_ref_convert_to_mce_result(
@@ -1076,7 +1068,6 @@ intel_sub_group_avc_sic_set_block_based_raw_skip_sad(
       uchar block_based_skip_block_type,
       intel_sub_group_avc_sic_payload_t payload );
 
-#ifdef __opencl_c_images
 intel_sub_group_avc_sic_result_t __attribute__((overloadable))
 intel_sub_group_avc_sic_evaluate_ipe(
       read_only image2d_t src_image,
@@ -1112,7 +1103,6 @@ intel_sub_group_avc_sic_evaluate_with_multi_reference(
       uchar packed_reference_field_polarities,
       sampler_t vme_accelerator,
       intel_sub_group_avc_sic_payload_t payload );
-#endif //__opencl_c_images
 
 intel_sub_group_avc_mce_result_t __attribute__((overloadable))
 intel_sub_group_avc_sic_convert_to_mce_result(
@@ -1156,7 +1146,6 @@ intel_sub_group_avc_sic_get_inter_raw_sads(
 
 #endif // cl_intel_device_side_avc_motion_estimation
 
-#ifdef __opencl_c_images
 #ifdef cl_intel_device_side_va_enable
 // VA
 //
@@ -1166,6 +1155,7 @@ intel_sub_group_avc_sic_get_inter_raw_sads(
 // function extension.
 
 // These functions accept int2 un-normalized coordinates.
+
 void __attribute__((overloadable)) intel_work_group_va_boolcentroid(
     __local void* dst,
     int2 coord,
@@ -1472,8 +1462,6 @@ float __attribute__((overloadable)) intel_atomic_xchg   (image2d_depth_t image, 
 
 float __attribute__((overloadable)) intel_atomic_xchg   (image2d_array_depth_t image, int4 coord, float val);
 #endif
-#endif //__opencl_c_images
-
 
 #if defined(cl_intel_bit_instructions)
 // bfi i8
