@@ -142,6 +142,7 @@ public:
   // get : get a bit value
   bool get(unsigned Idx) const {
     IGC_ASSERT(Idx < NumElements);
+    IGC_ASSERT(BitsPerWord);
     return P[Idx / BitsPerWord] >> (Idx % BitsPerWord) & 1;
   }
   // isAllZero : return true if all bits zero
@@ -284,7 +285,7 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F)
  * For wrregion, there are two special cases:
  * - when no elements in the "new value" input of a wrregion are use,
  *   then bypass the wrregion with the "old value".
- * - when no elements in the "old value" input of a wrregion are used, 
+ * - when no elements in the "old value" input of a wrregion are used,
  *   then changes the input to undef.
  */
 bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
@@ -315,8 +316,8 @@ bool GenXDeadVectorRemoval::nullOutInstructions(Function *F)
         if (!Inst->use_empty()) {
           auto *SI = dyn_cast<StoreInst>(Inst->user_back());
           if (SI && genx::isGlobalStore(SI)) {
-            IGC_ASSERT(Inst->hasOneUse() &&
-                   "Wrregion in gstore bale has more than one use");
+            IGC_ASSERT_MESSAGE(Inst->hasOneUse(),
+              "Wrregion in gstore bale has more than one use");
             continue;
           }
         }
@@ -581,6 +582,7 @@ void GenXDeadVectorRemoval::processBitCast(Instruction *Inst, LiveBits LB)
   if (InLB.getNumElements() == LB.getNumElements())
     Modified = InLB.orBits(LB);
   else if (InLB.getNumElements() > LB.getNumElements()) {
+    IGC_ASSERT(LB.getNumElements());
     IGC_ASSERT((InLB.getNumElements() % LB.getNumElements()) == 0);
     int Scale = InLB.getNumElements() / LB.getNumElements();
     // Input element is smaller than result element.
@@ -588,6 +590,7 @@ void GenXDeadVectorRemoval::processBitCast(Instruction *Inst, LiveBits LB)
       if (LB.get(Idx))
         Modified |= InLB.setRange(Idx * Scale, Scale);
   } else {
+    IGC_ASSERT(InLB.getNumElements());
     IGC_ASSERT((LB.getNumElements() % InLB.getNumElements()) == 0);
     int Scale = LB.getNumElements() / InLB.getNumElements();
     // Input element is bigger than result element.
@@ -726,6 +729,7 @@ bool LiveBits::isAllZero() const
 bool LiveBits::set(unsigned Idx, bool Val)
 {
   IGC_ASSERT(Idx < NumElements);
+  IGC_ASSERT(BitsPerWord);
   uintptr_t *Ptr = P + Idx / BitsPerWord;
   uintptr_t Bit = 1ULL << (Idx % BitsPerWord);
   uintptr_t Entry = *Ptr;
@@ -744,6 +748,7 @@ bool LiveBits::set(unsigned Idx, bool Val)
 bool LiveBits::copy(LiveBits Src)
 {
   IGC_ASSERT(NumElements == Src.NumElements);
+  IGC_ASSERT(BitsPerWord);
   bool Modified = false;
   for (unsigned Idx = 0, End = (NumElements + BitsPerWord - 1) / BitsPerWord;
       Idx != End; ++Idx) {
