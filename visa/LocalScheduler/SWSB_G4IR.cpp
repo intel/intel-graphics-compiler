@@ -531,7 +531,7 @@ void SWSB::SWSBBuildSIMDCFG()
                     }
                 }
             }
-            else if (lastInst->isReturn() || lastInst->isCall() || lastInst->isFCall() || lastInst->isFReturn())
+            else if (lastInst->isReturn() || lastInst->isCall())
             {
                 BB_LIST_ITER iter = currBB->getBB()->Succs.begin();
                 while (iter != currBB->getBB()->Succs.end())
@@ -670,10 +670,8 @@ void SWSB::handleIndirectCall()
 
         SBNode* node = SBNodes[BBVector[i]->last_node];
 
-        if (((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) &&
-                !node->GetInstruction()->getSrc(0)->isLabel()) ||
-            node->GetInstruction()->isReturn() ||
-            node->GetInstruction()->isFReturn())
+        if ((node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()) ||
+            node->GetInstruction()->isReturn())
         {
             LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
             for (size_t j = 0; j < globalSendOpndList.size(); j++)
@@ -694,7 +692,7 @@ void SWSB::handleIndirectCall()
                 }
             }
         }
-        if (node->GetInstruction()->isReturn() || node->GetInstruction()->isFReturn())
+        if (node->GetInstruction()->isReturn())
         {
             node->GetInstruction()->setDistance(1);
         }
@@ -718,8 +716,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
         {
             SBNode* node = SBNodes[BBVector[i]->last_node];
 
-            if ((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall())
-                  && !node->GetInstruction()->getSrc(0)->isLabel())
+            if (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel())
             {
                 hasIndirectCall = true;
             }
@@ -1002,7 +999,6 @@ static bool isBranch(SBNode* N) {
         return false;
     // Skip function call/ret.
     if (Inst->isCall() || Inst->isReturn() ||
-        Inst->isFCall() || Inst->isFReturn() ||
         Inst->opcode() == G4_pseudo_fc_call ||
         Inst->opcode() == G4_pseudo_fc_ret)
         return false;
@@ -4854,8 +4850,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
 
         if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
-            ((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall())
-                && !node->GetInstruction()->getSrc(0)->isLabel()))
+            (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()))
         {
             node->setDistance(1);
         }
