@@ -208,7 +208,7 @@ bool genx::loadNonSimpleConstants(
 bool genx::loadConstantsForInlineAsm(
     CallInst *CI, const GenXSubtarget &Subtarget, const DataLayout &DL,
     SmallVectorImpl<Instruction *> *AddedInstructions) {
-  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
   bool Modified = false;
   auto ConstraintsInfo = genx::getGenXInlineAsmInfo(CI);
   Use *U;
@@ -836,10 +836,9 @@ bool genx::isReplicatedConstantVector(
 }
 
 void ConstantLoader::fixSimple(int OperandIdx) {
-  IGC_ASSERT(NewC &&
-     "no need to fix simple case");
-  IGC_ASSERT(User->getOperand(OperandIdx) == C &&
-      "wrong arguments: wrong operand index was provided");
+  IGC_ASSERT_MESSAGE(NewC, "no need to fix simple case");
+  IGC_ASSERT_MESSAGE(User->getOperand(OperandIdx) == C,
+    "wrong arguments: wrong operand index was provided");
   User->setOperand(OperandIdx, NewC);
   C = NewC;
   // indicate that we no longer need fix
@@ -884,7 +883,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
   }
   if (PackedIntScale) {
     auto PackTy = C->getType()->getScalarType();
-	// limit the constant-type to 32-bit because we do not want 64-bit operation
+    // limit the constant-type to 32-bit because we do not want 64-bit operation
     if (DL.getTypeSizeInBits(PackTy) > 32)
       PackTy = Type::getInt32Ty(Inst->getContext());
     // Load as a packed int vector with scale and/or adjust.
@@ -961,7 +960,7 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst)
     // Gather the elements.
     for (unsigned i = 0; i != NumElements; ++i) {
       Constant *El = CDV->getElementAsConstant(i);
-      IGC_ASSERT(!isa<UndefValue>(El) && "CDV element can't be undef");
+      IGC_ASSERT_MESSAGE(!isa<UndefValue>(El), "CDV element can't be undef");
       Elements.push_back(El);
     }
   } else {
@@ -1289,7 +1288,8 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore)
       return loadNonSimple(InsertBefore);
     return load(InsertBefore);
   }
-  IGC_ASSERT(!C->getType()->getScalarType()->isIntegerTy(1) && "not expecting predicate in here");
+  IGC_ASSERT_MESSAGE(!C->getType()->getScalarType()->isIntegerTy(1),
+    "not expecting predicate in here");
   if (Constant *Consolidated = getConsolidatedConstant(C)) {
     // Load as a consolidated constant, then bitcast to the correct type.
     auto Load =
@@ -1358,8 +1358,8 @@ bool ConstantLoader::isLegalSize()
  */
 bool ConstantLoader::isBigSimple()
 {
-  IGC_ASSERT(!needFixingSimple() &&
-      "simple case shall be fixed first before this call");
+  IGC_ASSERT_MESSAGE(!needFixingSimple(),
+    "simple case shall be fixed first before this call");
   if (isa<UndefValue>(C))
     return true; // undef is simple
   auto VT = dyn_cast<VectorType>(C->getType());
@@ -1379,8 +1379,8 @@ bool ConstantLoader::isBigSimple()
  */
 bool ConstantLoader::isSimple()
 {
-  IGC_ASSERT(!needFixingSimple() &&
-      "simple case shall be fixed first before this call");
+  IGC_ASSERT_MESSAGE(!needFixingSimple(),
+    "simple case shall be fixed first before this call");
   if (isa<UndefValue>(C))
     return true; // undef is simple (and generates no vISA code)
   if (C->getType()->getScalarType()->isIntegerTy(1) && C->isAllOnesValue())
@@ -1548,8 +1548,8 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
   }
   if (Elements.empty()) {
     // Constant is undef.
-    IGC_ASSERT(C == UndefValue::get(C->getType()) &&
-           "constant consists only of undef elements only if it's undef itself");
+    IGC_ASSERT_MESSAGE(C == UndefValue::get(C->getType()),
+      "constant consists only of undef elements only if it's undef itself");
     return;
   }
   if (Elements.size() == 1) {
@@ -1606,7 +1606,7 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements)
     if (DiffsSet.insert(AbsDiff).second)
       Diffs.push_back(AbsDiff);
   }
-  IGC_ASSERT(!Diffs.empty() && "not expecting splatted constant");
+  IGC_ASSERT_MESSAGE(!Diffs.empty(), "not expecting splatted constant");
   // Calculate the GCD (greatest common divisor) of the diffs
   uint64_t GCD = Diffs[0];
   if (Diffs.size() > 1) {
