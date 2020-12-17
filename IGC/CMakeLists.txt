@@ -2387,6 +2387,7 @@ if(MSVC)
       ALIAS ExceptionsEnabled          "/EHsc"
       ALIAS FaviorSize                 "/Os"
       ALIAS FaviorSpeed                "/Ot"
+      ALIAS InlineExpansion            "/Ob3"
       ALIAS MultiProcessorCompilation  "/MP"
       ALIAS OptimizeDisabled           "/Od"
       ALIAS OptimizeSize               "/O2" "/Oi" "/Os"
@@ -2432,6 +2433,7 @@ elseif(_igc_compiler_is_gnu)
       ALIAS ExceptionsEnabled          "-fexceptions"
       ALIAS FaviorSize                 "-Os"
       ALIAS FaviorSpeed                "-O3"
+      ALIAS InlineExpansion
       ALIAS MultiProcessorCompilation
       ALIAS OptimizeDisabled           "-O0"
       ALIAS OptimizeSize               "-Os"
@@ -2489,6 +2491,7 @@ elseif(_igc_compiler_is_clang)
       ALIAS ExceptionsEnabled          "-fexceptions"
       ALIAS FaviorSize                 "-Os"
       ALIAS FaviorSpeed                "-O3"
+      ALIAS InlineExpansion
       ALIAS MultiProcessorCompilation
       ALIAS OptimizeDisabled           "-O0"
       ALIAS OptimizeSize               "-Os"
@@ -2528,6 +2531,7 @@ else()
       ALIAS ExceptionsEnabled
       ALIAS FaviorSize
       ALIAS FaviorSpeed
+      ALIAS InlineExpansion
       ALIAS MultiProcessorCompilation
       ALIAS OptimizeDisabled
       ALIAS OptimizeSize
@@ -2683,6 +2687,19 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         # Disable LTCG due to increase of release build time
         #WholeProgramOptimization
     )
+
+  # Problem with 32-bit build with /Ob3 option
+  # only enable for 64-bit build
+  if( NOT IGC_OPTION__ARCHITECTURE_TARGET STREQUAL "Windows32")
+      igc_config_flag_apply_settings(
+      CompilerOptions
+      "${_compilerFlagName}"
+      PATTERN "${IGC_BUILD__RELEASE_PATTERN}"
+      SET
+        InlineExpansion
+    )
+  endif()
+
   igc_config_flag_apply_settings(
       CompilerOptions
       "${_compilerFlagName}"
