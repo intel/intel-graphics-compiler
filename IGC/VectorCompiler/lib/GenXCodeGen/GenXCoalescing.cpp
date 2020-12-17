@@ -1527,32 +1527,46 @@ void GenXCoalescing::processKernelArgs(FunctionGroup *FG)
 }
 
 void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
-  auto F = FG->getHead();
+  auto *F = FG->getHead();
   if (!isKernel(F))
     return;
 
-  std::string Name = GenXIntrinsic::getGenXName(GenXIntrinsic::genx_output_1);
-  Function *OutputFn = F->getParent()->getFunction(Name);
-  if (!OutputFn)
+  KernelMetadata KM(F);
+
+  SmallVector<Value*, 4> OutputArgs;
+  for(unsigned i = 0; i < KM.getNumArgs(); ++i)
+    if (KM.isOutputArg(i))
+      OutputArgs.push_back(F->arg_begin() + i);
+
+  if (OutputArgs.empty())
     return;
 
-  KernelMetadata KM(F);
-  for (auto U : OutputFn->users()) {
-    auto CI = dyn_cast<CallInst>(U);
-    if (!CI || CI->getParent()->getParent() != F)
+  auto GetNextGenXOutput = [](Instruction *StartFrom) -> CallInst* {
+    while(StartFrom) {
+      if (auto CI = dyn_cast<CallInst>(StartFrom))
+        if (GenXIntrinsic::getGenXIntrinsicID(CI) ==
+            GenXIntrinsic::genx_output_1)
+          return CI;
+      StartFrom = StartFrom->getNextNode();
+    };
+    return nullptr;
+  };
+
+  // Iterate over all exit blocks of this function and coalesce corresponding
+  // output argument with genx.output.1 intrinsic (assuming that their number
+  // and ordering are exactly the same).
+  for (auto &BB : *F) {
+    if(!isa<ReturnInst>(BB.getTerminator()))
       continue;
 
-    unsigned Idx = 0; // kernel argument index
-    unsigned i = 0;   // call argument index
-    for (auto I = F->arg_begin(), E = F->arg_end(); I != E; ++I) {
-      if (!KM.isOutputArg(Idx++))
-        continue;
+    CallInst *CI = GetNextGenXOutput(BB.getFirstNonPHI());
+    for (auto Arg : OutputArgs) {
+      IGC_ASSERT(CI && "No genx.output.1 intrinsic for output argument");
 
       // This is the final value stored into the output argument.
       // If this is coalesced into kernel argument, nothing to do.
       // Otherwise, insert a copy.
-      Value *V = CI->getArgOperand(i);
-      Value *Arg = &*I;
+      Value *V = CI->getArgOperand(0);
       LiveRange *LR1 = Liveness->getLiveRangeOrNull(V);
       LiveRange *LR2 = Liveness->getLiveRange(Arg);
 
@@ -1575,11 +1589,11 @@ void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
         // Insert copy and add a short live range for copy-out.
         unsigned Num = Numbering->getNumber(CI);
         auto Copy = insertCopy(V, LR2, CI, "copyout", Num);
-        CI->setArgOperand(i, Copy);
+        CI->setArgOperand(0, Copy);
         LR2->push_back(Num, Num + 1);
         LR2->sortAndMerge();
       }
-      ++i;
+      CI = GetNextGenXOutput(CI->getNextNode());
     }
   }
 }
@@ -1594,8 +1608,8 @@ void GenXCoalescing::coalesceCallables() {
       if (NI && isa<CallInst>(NI)) {
         CallInst *OC = cast<CallInst>(NI);
         if (GenXIntrinsic::getGenXIntrinsicID(OC) == GenXIntrinsic::genx_output_1) {
-          OC->eraseFromParent();
           NI = NI->getNextNode();
+          OC->eraseFromParent();
           continue;
         }
       }
