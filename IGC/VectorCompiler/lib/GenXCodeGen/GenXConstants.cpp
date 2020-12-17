@@ -337,7 +337,6 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     case GenXIntrinsic::genx_usmad:
     case GenXIntrinsic::genx_uumad:
     case GenXIntrinsic::genx_output:
-    case GenXIntrinsic::genx_output_1:
       // load all args for subroutine and some intrinsic calls.
       for (unsigned i = 0, e = CI->getNumArgOperands(); i != e; ++i) {
         U = &CI->getOperandUse(i);
