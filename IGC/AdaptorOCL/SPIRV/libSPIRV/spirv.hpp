@@ -318,6 +318,8 @@ enum FPFastMathModeMask {
     FPFastMathModeNotInfMask = 0x00000002,
     FPFastMathModeNSZMask = 0x00000004,
     FPFastMathModeAllowRecipMask = 0x00000008,
+    FPFastMathModeAllowContractINTELMask = 0x00010000,
+    FPFastMathModeAllowReassocINTELMask = 0x00020000,
     FPFastMathModeFastMask = 0x00000010,
 };
 
@@ -613,6 +615,7 @@ enum Capability {
     CapabilitySubgroupAvcMotionEstimationIntraINTEL = 5697,
     CapabilitySubgroupAvcMotionEstimationChromaINTEL = 5698,
     CapabilityVariableLengthArrayINTEL = 5817,
+    CapabilityFPFastMathModeINTEL = 5837,
     CapabilityUnstructuredLoopControlsINTEL = 5886,
 };
 
