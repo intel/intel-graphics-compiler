@@ -486,18 +486,19 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     }
 
     // At this point we expect only a register
+    CVariable* pVar = nullptr;
     auto globalSubCVar = m_pShader->GetGlobalCVar(pValue);
 
-    if (!globalSubCVar && !m_pShader->IsValueUsed(pValue)) {
-        ret.push_back(VISAVariableLocation(this));
-        return ret;
-    }
-
-    CVariable* pVar = nullptr;
-    if (globalSubCVar)
-        pVar = globalSubCVar;
-    else
+    if (!globalSubCVar) {
         pVar = m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
+        if (!pVar)
+        {
+            ret.push_back(VISAVariableLocation(this));
+            return ret;
+        }
+    }
+    else
+        pVar = globalSubCVar;
 
     IGC_ASSERT_MESSAGE(false == pVar->IsImmediate(), "Do not expect an immediate value at this level");
 

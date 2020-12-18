@@ -1084,7 +1084,7 @@ void DwarfDebug::beginModule()
 
         if (m_pModule->getSubroutines()->size() > 0)
         {
-            writeSubroutineCIE();
+            //writeSubroutineCIE();
         }
     }
 }
@@ -2341,7 +2341,7 @@ void DwarfDebug::endFunction(const Function* MF)
         }
         else
         {
-            writeFDESubroutine(m_pModule);
+            //writeFDESubroutine(m_pModule);
         }
     }
 
@@ -3520,6 +3520,19 @@ DbgDecoder::DbgInfoFormat* VISAModule::getCompileUnit() const
             co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
         {
             return &co;
+        }
+
+        if (GetType() == ObjectType::SUBROUTINE)
+        {
+            // Subroutine bounds are stored inside corresponding kernel struct
+            // in VISA debug info.
+            for (auto& Sub : co.subs)
+            {
+                if (Sub.name.compare(m_pEntryFunc->getName().str()) == 0)
+                {
+                    return &co;
+                }
+            }
         }
     }
 
