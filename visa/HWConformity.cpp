@@ -1017,7 +1017,8 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB* bb)
                 }
                 else
                 {
-                    inst->setSrc(insertMovBefore(it, 1, Type_W, bb), 1);
+                    G4_Type Ty = IS_SIGNED_INT(src1->getType()) ? Type_W : Type_UW;
+                    inst->setSrc(insertMovBefore(it, 1, Ty, bb), 1);
                     changed = true;
                 }
             }
