@@ -314,7 +314,7 @@ namespace IGC
         {
             // This code does not expect inputs with index >= 32 to be pushed.
             // see PushAnalysis pass.
-            IGC_ASSERT(setup.size() <= MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE);
+            IGC_ASSERT(setup.size() <= MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE * 4);
             for (int i = 0; i < MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE; ++i)
             {
                 numInputComponents += iSTD::BitCount(m_ElementComponentEnableMask[i]);

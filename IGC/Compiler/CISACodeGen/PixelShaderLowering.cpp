@@ -312,8 +312,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
     constexpr uint cMaxInputs = 32;
     constexpr uint cMaxInputComponents = cMaxInputs * 4;
     std::bitset<cMaxInputComponents> inputComponentsUsed;
-    static_assert(EINTERPOLATION_UNDEFINED == 0, "Code below needs update");
-    e_interpolation interpolation[cMaxInputs] = {};
+    std::bitset<cMaxInputs> isLinearInterpolation;
 
     llvm::Instruction* primId = nullptr;
     SmallVector<Instruction*, 4> instructionToRemove;
@@ -434,14 +433,26 @@ void PixelShaderLowering::FindIntrinsicOutput(
 
                     e_interpolation mode = (e_interpolation)
                         llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-                    if (mode == EINTERPOLATION_LINEARSAMPLE ||
-                        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE)
+                    switch (mode)
                     {
+                    case EINTERPOLATION_CONSTANT:
+                        IGC_ASSERT(!isLinearInterpolation.test(setupIndex / 4));
+                        break;
+                    case EINTERPOLATION_LINEARSAMPLE:
+                    case EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE:
                         m_isPerSample = true;
+                        // fall through
+                    case EINTERPOLATION_LINEAR:
+                    case EINTERPOLATION_LINEARCENTROID:
+                    case EINTERPOLATION_LINEARNOPERSPECTIVE:
+                    case EINTERPOLATION_LINEARNOPERSPECTIVECENTROID:
+                        isLinearInterpolation.set(setupIndex / 4);
+                        break;
+                    case EINTERPOLATION_UNDEFINED:
+                    case EINTERPOLATION_VERTEX:
+                    default:
+                        IGC_ASSERT_MESSAGE(0, "Unexpected Pixel Shader input interpolation mode.");
                     }
-                    IGC_ASSERT(interpolation[setupIndex / 4] == mode ||
-                        interpolation[setupIndex / 4] == EINTERPOLATION_UNDEFINED);
-                    interpolation[setupIndex / 4] = mode;
                 }
             }
         }
@@ -449,16 +460,15 @@ void PixelShaderLowering::FindIntrinsicOutput(
     if (primId)
     {
         // When PrimitiveId input is present in shader IGC allocates an additional input and returns
-        // information about the PrimitiveID input to UMD (to program SBE). This new input component 
-        // is created with constant interpolation and cannot be placed in a (4-dword) location that 
+        // information about the PrimitiveID input to UMD (to program SBE). This new input component
+        // is created with constant interpolation and cannot be placed in a (4-dword) location that
         // has linearly interpolated components. Alernatively code in MarkConstantInterpolation()
         // could be modified to ignore the additional input created for PrimitveID.
         unsigned int location;
         for (location = 0; location < cMaxInputComponents; location++)
         {
             if (inputComponentsUsed.test(location) == false &&
-                (interpolation[location / 4] == EINTERPOLATION_CONSTANT ||
-                 interpolation[location / 4] == EINTERPOLATION_UNDEFINED))
+                isLinearInterpolation.test(location / 4) == false)
             {
                 break;
             }
