@@ -1230,7 +1230,10 @@ void SWSB::SWSBGenerator()
 
     SWSBGlobalTokenGenerator(p, LB, globalSendsLB);
 
-    genSWSBPatchInfo();
+    if (fg.builder->getFCPatchInfo()->getFCComposableKernel())
+    {
+        genSWSBPatchInfo();
+    }
 
 #ifdef DEBUG_VERBOSE_ON
     std::cerr << "\n" << "Dependence Graph:" << "\n";
