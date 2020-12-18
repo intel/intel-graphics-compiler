@@ -721,7 +721,14 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
 
     if(pProgram->entry->getName() != "entry")
     {
-        dumpName = dumpName.PostFix(pProgram->entry->getName().str());
+        // TempWA, prevent dump size > 256, limit kernel name to 180 + path size
+        std::string progName = pProgram->entry->getName().str();
+        const int MAX_VISA_STRING_LENGTH = 180;
+        if (progName.size() >= MAX_VISA_STRING_LENGTH)
+        {
+            progName.resize(MAX_VISA_STRING_LENGTH);
+        }
+        dumpName = dumpName.PostFix(progName);
     }
     if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
     {
