@@ -39,6 +39,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
+    // Too many stateful promotion will overwhelm the surface state
+    // cache(32 entries per HDC), which will significally impact the
+    // performace. Simplily disable stateful promotion after 32 args.
+    constexpr uint maxPromotionCount = 32;
+
     class StatelessToStatefull : public llvm::FunctionPass, public llvm::InstVisitor<StatelessToStatefull>
     {
     public:
@@ -73,7 +78,7 @@ namespace IGC
         llvm::CallInst* createBufferPtr(
             unsigned addrSpace, llvm::Constant* argNumber, llvm::Instruction* InsertBefore);
         bool pointerIsPositiveOffsetFromKernelArgument(
-            llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber);
+            llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg);
 
         // Check if the given gep can be traced back to any kernel argument.
         // return the kernel argument if found, otherwise return nullptr.
@@ -133,6 +138,7 @@ namespace IGC
         KernelArgs* m_pKernelArgs;
         ArgInfoMap   m_argsInfo;
         bool m_changed;
+        std::unordered_set<const KernelArg*> m_promotedKernelArgs; // ptr args which have been promoted to stateful
     };
 
 }

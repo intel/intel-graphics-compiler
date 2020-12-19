@@ -196,6 +196,7 @@ bool StatelessToStatefull::runOnFunction(llvm::Function& F)
     finalizeArgInitialValue(&F);
     delete m_pImplicitArgs;
     delete m_pKernelArgs;
+    m_promotedKernelArgs.clear();
     return m_changed;
 }
 
@@ -369,7 +370,7 @@ bool StatelessToStatefull::pointerIsFromKernelArgument(Value& ptr)
 }
 
 bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
-    Function* F, Value* V, Value*& offset, unsigned int& argNumber)
+    Function* F, Value* V, Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg)
 {
     auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> unsigned {
         if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
@@ -464,6 +465,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
              (gepProducesPositivePointer && isAlignedPointee)) &&
             getOffsetFromGEP(F, GEPs, argNumber, arg->isImplicitArg(), offset))
         {
+            kernelArg = arg;
             return true;
         }
     }
@@ -530,7 +532,8 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
 
             Value* offset = nullptr;
             unsigned int baseArgNumber  = 0;
-            if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
+            const KernelArg* kernelArg = nullptr;
+            if (m_promotedKernelArgs.size() < maxPromotionCount && pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber, kernelArg))
             {
                 ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 FunctionMetaData* funcMD = &modMD->FuncMD[F];
@@ -601,6 +604,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 }
 
                 m_changed = true;
+                m_promotedKernelArgs.insert(kernelArg);
             }
         }
 
@@ -662,7 +666,8 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
 
     Value* offset = nullptr;
     unsigned int baseArgNumber = 0;
-    if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
+    const KernelArg* kernelArg = nullptr;
+    if (m_promotedKernelArgs.size() < maxPromotionCount && pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber, kernelArg))
     {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[F];
@@ -696,6 +701,7 @@ void StatelessToStatefull::visitLoadInst(LoadInst& I)
         I.eraseFromParent();
 
         m_changed = true;
+        m_promotedKernelArgs.insert(kernelArg);
     }
 
     // check if there's non-kernel-arg load/store
@@ -717,7 +723,8 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
 
     Value* offset = nullptr;
     unsigned int baseArgNumber = 0;
-    if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
+    const KernelArg* kernelArg = nullptr;
+    if (m_promotedKernelArgs.size() < maxPromotionCount && pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber, kernelArg))
     {
         Value* dataVal = I.getOperand(0);
 
@@ -744,6 +751,7 @@ void StatelessToStatefull::visitStoreInst(StoreInst& I)
             I.eraseFromParent();
 
             m_changed = true;
+            m_promotedKernelArgs.insert(kernelArg);
         }
     }
 
