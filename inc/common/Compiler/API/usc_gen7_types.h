@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #endif
 
-// reuse GFX enumeration types common to gen6 and gen7 
+// reuse GFX enumeration types common to gen6 and gen7
 #include <sstream>
 #include "usc.h"
 #include "SurfaceFormats.h"
@@ -83,7 +83,7 @@ which verifies in compile time whether manual padding is required.
 
 #ifdef _AMD64_
 #define PADDING_4_BYTES_x64_ONLY    PADDING_4_BYTES;
-#define PADDING_4_BYTES_x32_ONLY   
+#define PADDING_4_BYTES_x32_ONLY
 #else
 #define PADDING_4_BYTES_x32_ONLY    PADDING_4_BYTES;
 #define PADDING_4_BYTES_x64_ONLY
@@ -234,7 +234,7 @@ enum  GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT
 enum GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE
 {
     GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NONE,               // No Coverage
-    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NORMAL,             // OUTERCONSERVATIVE when conservative rasterization is enabled. 
+    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NORMAL,             // OUTERCONSERVATIVE when conservative rasterization is enabled.
                                                                     // Normal otherwise.
     GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_INNERCONSERVATIVE,  // INNER conservative rasterization
     GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_DEPTH_COVERAGE      // Depth coverage
@@ -260,66 +260,17 @@ struct STypedUAVReadEmulBTLayout
     unsigned int                    TypedUAVReadEmulBTEntriesSize;
 };
 
-struct ConstantAddress
-{
-    unsigned int bufId = 0;
-    unsigned int eltId = 0;
-    int size = 0;
-
-    void Serialize( std::stringstream& stringStream ) const
-    {
-        stringStream << bufId << eltId << size;
-    }
-};
-
-bool operator < (const ConstantAddress &a, const ConstantAddress &b);
-
-struct ConstantAddrValue
-{
-    ConstantAddress ca;
-    bool anyValue;
-    uint32_t value;
-};
-
-struct InlineDynConstants
-{
-    ConstantAddress ca;
-    uint32_t value;
-
-    void Serialize( std::stringstream& stringStream ) const
-    {
-        ca.Serialize( stringStream );
-
-        stringStream << value;
-    }
-};
-
-// Dynamic Constant Folding
-struct DynamicConstFoldingInputs
-{
-    const InlineDynConstants* pInlineDynConstants = nullptr;
-    unsigned int              m_inlineDynConstantsSize = 0;
-
-    void Serialize( std::stringstream& stringStream ) const
-    {
-        for( unsigned int i = 0; i < m_inlineDynConstantsSize; i++ )
-        {
-            pInlineDynConstants[ i ].Serialize( stringStream );
-        }
-    }
-};
-
-// Constant Buffer to Constant Register gather entry 
-struct SConstantGatherEntry 
+// Constant Buffer to Constant Register gather entry
+struct SConstantGatherEntry
 {
     // ### DW3 3DSTATE_GATHER_CONSTANT_* ###
     union _GatherEntry
     {
         struct _Fields
         {
-            unsigned short    constantBufferIndex  : 4;   // bits 3:0 
-            unsigned short    channelMask          : 4;   // bits 7:4 
-            unsigned short    constantBufferOffset : 8;   // bits 15:8  
+            unsigned short    constantBufferIndex  : 4;   // bits 3:0
+            unsigned short    channelMask          : 4;   // bits 7:4
+            unsigned short    constantBufferOffset : 8;   // bits 15:8
         } Fields;
         unsigned short   Value;
     } GatherEntry;
@@ -337,17 +288,13 @@ struct SComputeShaderNOSLayout
 
 struct SCompilerInputCommon
 {
-    DynamicConstFoldingInputs m_DcfInputs;
     void* m_pGTPinInput;
     const unsigned int* m_pShaderDebugInfo;
-
     IGC::PushConstantMode m_PushConstantMode;
 
     void Serialize( std::stringstream& shaderCacheBlob ) const
     {
-        m_DcfInputs.Serialize( shaderCacheBlob );
         shaderCacheBlob << (unsigned int)m_PushConstantMode;
-
         // Assume that m_pGTPinInput and m_pShaderDebugInfo are not valid when caching
     }
 };
@@ -374,7 +321,7 @@ static const SComputeShaderNOSLayout g_nosLayout = { 0, 1, 2 };
 struct SCompilerOutputCommon_Gen7
 {
     // DX10+ immediate constants defined in shader code; expected driver behavior:
-    //    a) allocate an internal CB of size 'm_ImmediateConstantsSize' 
+    //    a) allocate an internal CB of size 'm_ImmediateConstantsSize'
     //    b) copy 'm_pImmediateConstants' data to this CBbuffer
     //    c) bind internal CB to 'SBindingTableLayout.immediateConstantBufferIndex'
     void*           m_pImmediateConstants;
@@ -382,30 +329,30 @@ struct SCompilerOutputCommon_Gen7
 
     // DX11+ shader interface binding table; expected driver behavior:
     //    a) allocate an internal CB of size 'm_InterfaceConstantsSize'
-    //    b) lock buffer for writting on SetShaderWithInterfaces() 
+    //    b) lock buffer for writting on SetShaderWithInterfaces()
     //    c) call Populate*ShaderInterfaceData11() passing interface bind data
     //    d) unmap buffer and bind to 'SBindingTableLayout.interfaceConstantBufferIndex'
-    unsigned int   m_InterfaceConstantsSize;        // if 0, interface buffer not used 
+    unsigned int   m_InterfaceConstantsSize;        // if 0, interface buffer not used
     void*          VFuncOffsets;               // call offsets to virtual functions used in kernel program
 
-    // Helper field containing a pointer to the compiled shader object. 
+    // Helper field containing a pointer to the compiled shader object.
     // IVB-specific. Should not be used on HSW+ platforms.
     void*   m_pShaderHandle;
 
     // Constant Buffer to Constant Register gather map
     SConstantGatherEntry*   m_pGatherConstants;
-    // Number of entries in gather constants map. The number of entries is always even 
+    // Number of entries in gather constants map. The number of entries is always even
     // which makes the gather constants map size a multiple of unsigned int.
     unsigned int    m_GatherConstantsSize;          // if 0, gather map not used
     // Bitmap of valid constant buffers in the push constants gather.
     // Specifies which of the 16 constant buffers are used in the push constants gather.
-    // If a bit is set it indicates the corresponding constant buffer is used. 
+    // If a bit is set it indicates the corresponding constant buffer is used.
     // If a bit is clear it indicates the corresponding constant buffer is not used.
     // ### DW1 3DSTATE_GATHER_CONSTANT_* ###
     unsigned short  m_GatherConstantsBufferValid;   // if 0, gather buffer not used
 
     bool m_IsMessageTargetDataCacheDataPort;
-    
+
     // USC enables this to indicate that it expects that the VE component packing
     // has been applied to the delivered thread's payload
     // ### Gen9+: (DW0, bit 9) 3DSTATE_VF ###
@@ -434,19 +381,19 @@ struct SCompilerOutputCommon_Gen7
     // ISA to IL map.
     unsigned int    m_ISA2ILMapSize[3];
     void*           m_pISA2ILMap[3];
-    
+
     // Bitmask of shader resources accessed by gather4 instructions
     // with green channel select and not accessed by any other then gather4
-    // instruction type. This bitmask is a part of 
-    // the WaGather4WithGreenChannelSelectOnR32G32Float workaround. 
-    // DW0 - bitmask of resource indexes  0 - 31 
+    // instruction type. This bitmask is a part of
+    // the WaGather4WithGreenChannelSelectOnR32G32Float workaround.
+    // DW0 - bitmask of resource indexes  0 - 31
     // DW1 - bitmask of resource indexes 32 - 63
     // DW2 - bitmask of resource indexes 64 - 95
     // DW3 - bitmask of resource indexes 96 - 127
     unsigned int m_WaGather4WithGreenResourceMask[4];
 
-    // Bitmask of shader resources accessed by sample_c instructions. This 
-    // field is only used when shader compiler was created with the 
+    // Bitmask of shader resources accessed by sample_c instructions. This
+    // field is only used when shader compiler was created with the
     // EnableWaCheckResourceFormatForNFSRivals bit set.
     unsigned int m_SampleWithComparisonResourceMask[4];
 
@@ -461,22 +408,22 @@ struct SCompilerOutputCommon_Gen7
     unsigned int ElementComponentUseMask[ NUM_VSHADER_INPUT_REGISTERS_PACKAGEABLE ];
 
     // Bitmask of input registers that are *used* by the shader.
-    // The field ElementComponentDeliverMask contains 4-bit nibbles. Subsequent 
+    // The field ElementComponentDeliverMask contains 4-bit nibbles. Subsequent
     // nibbles are referring to subsequent bits set in this mask. In other words,
     // for bits cleared in this mask, nibbles are omitted from the field
     // ElementComponentDeliverMask (only nibbles for bits set here are present).
     unsigned int ElementDeliverMask;
 
-    unsigned long long       m_UAVSlotsWAppendConsume;       // used as bitfield, each bit 
-    // represent UAV slot that is 
+    unsigned long long       m_UAVSlotsWAppendConsume;       // used as bitfield, each bit
+    // represent UAV slot that is
     // referenced with Append/Consume.
 
     // Planar YUV formats NOS data.
     // For each texture with index 'i' declared as planar YUV by
     // SGen6PixelShaderKernelProgramCacheKey.SetPlanarYUVFormat(i, ...)
     // this table keeps resource numbers of the additional planes used by sampling.
-    // If three separate planes are defined, Y is at the original texture index 
-    // while indices of U and V are given in this table. When Y, V channels are 
+    // If three separate planes are defined, Y is at the original texture index
+    // while indices of U and V are given in this table. When Y, V channels are
     // packed in one plane, both indices are set to the same resource number.
     // E.g.:
     // For YV12:
@@ -534,14 +481,14 @@ struct SCompilerOutputVertexShader_Gen7 : public SCompilerOutputCommon_Gen7
     unsigned int    m_DispatchGRFStartRegister; // Dispatch GRF Start Register  (DW4, bit 24..20)
     unsigned int    m_VertexURBEntryReadLength; // Vertex URB Entry Read Length (DW4, bit 16..11)
     unsigned int    m_VertexURBEntryReadOffset; // Vertex URB Entry Read Offset (DW4, bit 9..4)
-    
+
     // ### DW5 3DSTATE_VS ###
-    unsigned int    m_MaxNumberThreads;         // Maximum Number Of Threads    (DW5, bit 31..25) 
+    unsigned int    m_MaxNumberThreads;         // Maximum Number Of Threads    (DW5, bit 31..25)
 
     // ### DW1 3DSTATE_SBE ###
     unsigned int   m_SBEVertexURBEntryReadOffset; // Vertex URB Entry Read Offset in 256bit values (DW1, bit 9..4)
 
-    // Other    
+    // Other
     unsigned int    m_URBAllocationSize;
     unsigned int    m_URBEntryWriteLength;
     unsigned int    m_URBEntriesPerHandle;
@@ -579,7 +526,7 @@ struct SCompilerOutputHullShader_Gen7 : public SCompilerOutputCommon_Gen7
                                         //Gen7 and Gen7.5+ with HW binding table generation disabled.
     unsigned int   m_BindingTableEntryBitmap;  //Binding Table Entry Count     (DW2, bit 25..18)
                                         //Gen7.5+ with HW binding table generation enabled.
-    unsigned int   m_MaxNumberThreads;         //Maximum Number Of Threads     (DW1, bit 6..0) 
+    unsigned int   m_MaxNumberThreads;         //Maximum Number Of Threads     (DW1, bit 6..0)
 
     // ### DW2 3DSTATE_HS ###
     int    m_HSEnable;                 //HS Enable                     (DW2, bit 31)
@@ -703,36 +650,36 @@ struct SCompilerOutputGeometryShader_Gen7 : public SCompilerOutputCommon_Gen7
     // ### DW3 3DSTATE_GS ###
     unsigned int   m_PerThreadScratchSpace;    //Per-Thread Scratch Space      (DW3, bit 3..0)
 
-    // ### DW4 3DSTATE_GS ###    
+    // ### DW4 3DSTATE_GS ###
     unsigned int   m_OutputVertexSize[2];      //Output Vertex Size            (DW4, bit 28..23)
                                         //[Rendering Disabled|Enabled]
     GFX3DPRIMITIVE_TOPOLOGY_TYPE   m_OutputTopology;  //Output Topology (DW4, bit 22..17)
     unsigned int   m_VertexEntryReadLength;    //Vertex URB Entry Read Length  (DW4, bit 16..11)
     int    m_IncludeVertexHandles;     //Include Vertex Handles        (DW4, bit 10)
     unsigned int   m_VertexEntryReadOffset;    //Vertex URB Entry Read Offset  (DW4, bit 9..4)
-    unsigned int   m_DispatchGRFStartRegister; //Dispatch GRF Start Register   (DW4, bit 3..0)      
-    
+    unsigned int   m_DispatchGRFStartRegister; //Dispatch GRF Start Register   (DW4, bit 3..0)
+
     // ### DW5 3DSTATE_GS ###
-    unsigned int   m_MaxNumberThreads;         //Maximum Number Of Threads     (DW5, bit 31..25) 
-    GFX3DSTATE_CONTROL_DATA_FORMAT m_ControlDataFormat; //Control Data Format (DW5, bit 24) 
-    unsigned int   m_ControlDataHeaderSize;    //Control Data Header Size      (DW5, bit 23..20) 
+    unsigned int   m_MaxNumberThreads;         //Maximum Number Of Threads     (DW5, bit 31..25)
+    GFX3DSTATE_CONTROL_DATA_FORMAT m_ControlDataFormat; //Control Data Format (DW5, bit 24)
+    unsigned int   m_ControlDataHeaderSize;    //Control Data Header Size      (DW5, bit 23..20)
     unsigned int   m_InstanceControl;          //Instance Control              (DW5, bit 19..15)
-    unsigned int   m_DefaultStreamId;          //Default Stream ID             (DW5, bit 14..13)      
-    GFX3DSTATE_GEOMETRY_SHADER_DISPATCH_MODE m_DispatchMode; //Control Data Format (DW5, bit 12..11) 
+    unsigned int   m_DefaultStreamId;          //Default Stream ID             (DW5, bit 14..13)
+    GFX3DSTATE_GEOMETRY_SHADER_DISPATCH_MODE m_DispatchMode; //Control Data Format (DW5, bit 12..11)
                                         //Statistics Enable             (DW5, bit 10)
                                         //GS Invocations Increment Value(DW5, bit 9..5)
     int    m_IncludePrimitiveIdEnable; //Include PrimitiveId Enable    (DW5, bit 4)
                                         //Rendering Enable Hint         (DW5, bit 3)
     int    m_ReorderEnable;            //Reorder Enable                (DW5, bit 2)
     int    m_DiscardAdjacencyEnable;   //Discard Adjacency Enable      (DW5, bit 1)
-    int    m_GSEnable;                 //GS Enable                     (DW5, bit 0)                                            
+    int    m_GSEnable;                 //GS Enable                     (DW5, bit 0)
 
     // ### DW1 3DSTATE_SBE ###
     unsigned int    m_SBEVertexURBEntryReadOffset; // Vertex URB Entry Read Offset in 256bit values (DW1, bit 9..4)
 
     // Other
     unsigned int    m_URBAllocationSize;
-    unsigned int    m_URBEntryWriteLength; 
+    unsigned int    m_URBEntryWriteLength;
     unsigned int    m_URBEntriesPerHandle;
 
     unsigned int    m_UserClipDistancesMask;
@@ -754,7 +701,7 @@ USC_PARAM()
 struct SCompilerOutputPixelShader_Gen7 : public SCompilerOutputCommon_Gen7
 {
     // ### DW1, DW6, DW7 3DSTATE_PS ###
-                                        
+
     void*           m_pKernelProgram[NUM_PS_DISPATCH_TYPES];
     unsigned int    m_KernelProgramSize[NUM_PS_DISPATCH_TYPES];
     int             m_EnablePixelDispatch[NUM_PS_DISPATCH_TYPES];
@@ -781,8 +728,8 @@ struct SCompilerOutputPixelShader_Gen7 : public SCompilerOutputCommon_Gen7
     int             m_HasOMaskOutput;           // OMask Present to RT          (DW4, bit 9)
     int             m_AttributeEnable;          // Attribute Enable             (DW4, bit 10)
     int             m_PushConstantEnable;       // Push Constant Enable         (DW4, bit 11)
-    unsigned int    m_SampleMask;               // Sample Mask, for Gen7.5 only (DW4, bit 19..12) 
-    unsigned int    m_MaxNumberThreads;         // Maximum Number Of Threads    (DW4, bit 31..23) 
+    unsigned int    m_SampleMask;               // Sample Mask, for Gen7.5 only (DW4, bit 19..12)
+    unsigned int    m_MaxNumberThreads;         // Maximum Number Of Threads    (DW4, bit 31..23)
 
     // ### DW5 3DSTATE_PS ###
                                         // Dispatch GRF Start Registers For Constant/Setup Data
@@ -830,12 +777,12 @@ struct SCompilerOutputPixelShader_Gen7 : public SCompilerOutputCommon_Gen7
     int             m_SampleCmpWaRequiresSingleLODResources; // sampled resources must have only 1 LOD or have MIP filter disabled
     int             m_SampleCmpWaSampler; // index of the sampler used by sample_c instructions
     unsigned int    m_SampleCmpWaResourcesMask[4]; // bitmap of resources sampled by sample_c instructions
-    
+
     unsigned int    m_InstructionCount[NUM_PS_DISPATCH_TYPES];
 
     bool            m_HigherSIMDRecommended;        // True if a compilation in higher SIMD can be beneficial.
     bool            m_HasSampleInfoInstruction;      // True if pixel shader uses samplepos instruction.
-    
+
     // Used by SWStencil
     bool            m_IsSWStencilPossible;
     bool            m_NeedMSAARate;
@@ -856,7 +803,7 @@ struct SCompilerOutputComputeShader_Gen7 : public SCompilerOutputCommon_Gen7
     // ### DW1 INTERFACE_DESCRIPTOR_DATA ###
     GFX3DSTATE_FLOATING_POINT_MODE   m_FloatingPointMode;            // (DW1, bit 16)
     GFX3DSTATE_PROGRAM_FLOW   m_SingleProgramFlow;                   // (DW1, bit 18)
-    
+
     // ### DW2 INTERFACE_DESCRIPTOR_DATA ###
     unsigned int   m_SamplerCount;             // Sampler Count                (DW2, bit 4..2)
 
@@ -874,9 +821,9 @@ struct SCompilerOutputComputeShader_Gen7 : public SCompilerOutputCommon_Gen7
     int    m_BarrierUsed;              // Barrier Enable               (DW5, bit 21)
     GFX3DSTATE_ROUNDING_MODE   m_RoundingMode;      // Rounding Mode    (DW5, bit 23..22)
     unsigned int   m_BarrierReturnGrfOffset;   // Barrier Return GRF Offset    (DW5, bit 31..24)
-    
+
     // ### DW6 INTERFACE_DESCRIPTOR_DATA [DevHSW] ###
-    unsigned int   m_ThreadConstantDataReadLength; // [DevHSW] Cross-Thread Constant Data Read Length                                            
+    unsigned int   m_ThreadConstantDataReadLength; // [DevHSW] Cross-Thread Constant Data Read Length
                                             //                          (DW6  bit 7..0)
                                             // [PreDevHSW] Per Thread Constant Data in 256bit units
 
@@ -885,11 +832,11 @@ struct SCompilerOutputComputeShader_Gen7 : public SCompilerOutputCommon_Gen7
 
     // ### DW2 MEDIA_VFE_STATE ###
     GFXMEDIA_GPGPU_MODE    m_GPGPUMode; // GPGPU Mode                   (DW2, bit 2)
-    GFXMEDIA_MMIO_ACCESS_CONTROL   m_GtwMMIOAccess;                  // (DW2, bit 4..3) 
-    int    m_FastPreempt;              // Fast Preempt                 (DW2, bit 5) 
-    int    m_GtwBypass;                // Bypass Gateway Control       (DW2, bit 6) 
-    int    m_GtwResetTimer;            // Reset Gateway Timer          (DW2, bit 7) 
-    unsigned int   m_URBEntriesNum;            // Number of URB Entries        (DW2, bit 15..8) 
+    GFXMEDIA_MMIO_ACCESS_CONTROL   m_GtwMMIOAccess;                  // (DW2, bit 4..3)
+    int    m_FastPreempt;              // Fast Preempt                 (DW2, bit 5)
+    int    m_GtwBypass;                // Bypass Gateway Control       (DW2, bit 6)
+    int    m_GtwResetTimer;            // Reset Gateway Timer          (DW2, bit 7)
+    unsigned int   m_URBEntriesNum;            // Number of URB Entries        (DW2, bit 15..8)
     unsigned int   m_MaxNumberThreads;         // Maximum Number Of Threads    (DW2, bit 31..16)
 
     // ### DW3 MEDIA_VFE_STATE ###
