@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // disable warning about deprecated functions:
 // 'vsprintf' and 'fopen'
 #   pragma warning(push)
-#   pragma warning(disable: 4996)  
+#   pragma warning(disable: 4996)
 #elif defined(__GNUC__)
 #   include <libgen.h>
 #   include <sys/stat.h>
@@ -144,7 +144,7 @@ inline void* FileOpen( const char * fileName,
 #if defined(_WIN32)
     // Clear extra error information = ERROR_ALREADY_EXISTS set by windows when function success
     // It is necessary, cause it could be wrongly interpreted as fail of other function.
-    if ( pFile &&  GetLastError() == ERROR_ALREADY_EXISTS ) 
+    if ( pFile &&  GetLastError() == ERROR_ALREADY_EXISTS )
     {
         SetLastError( 0 );
     }
@@ -189,7 +189,7 @@ inline void FileWrite( const void* pFile, const char * str, ... )
     if( str != NULL )
     {
         va_list args;
-        
+
         va_start( args, str );
         const size_t length = _vscprintf( str, args );
         va_end( args );
@@ -305,19 +305,19 @@ inline void LogToFile( const char* filename, const char * str, ... )
     if( str != NULL )
     {
         va_list args;
-        
+
         va_start( args, str );
         const size_t length = _vscprintf( str, args );
         va_end( args );
-        
+
         char* temp = new char[ length + 1 ];
-        
+
         if( temp )
         {
             va_start( args, str );
             VSNPRINTF( temp, length + 1, length + 1, str, args );
             va_end( args );
-            
+
             FILE* file = fopen( filename, "a" );
             if( file )
             {
@@ -379,11 +379,11 @@ Inline Function:
     CreateAppOutputDir
 
 Description:
-    Creates folder path based on outputDirectory string and input parameters. 
+    Creates folder path based on outputDirectory string and input parameters.
     Then writes it in pathBuf.
 
 Input:
-    unsigned int    bufSize 
+    unsigned int    bufSize
     const char*     outputDirectory
     bool            addSystemDrive
     bool            addProcName
@@ -479,7 +479,7 @@ inline int CreateAppOutputDir(
         currDirectory[currDirIter++] = *cPtr;
         currDirectory[currDirIter] = 0;
 
-        // If we found backslash, create directory.
+        // If we found backslash, create directory
         // Omit first backslash - this is the root
         if( *cPtr == '\\' )
         {
@@ -509,7 +509,7 @@ inline int CreateAppOutputDir(
     MemCopy( pathBuf, outputDirPath, length );
     pathBuf[length] = 0;
 
-#elif !defined(_WIN32) 
+#elif !defined(_WIN32)
 //if not Win, need to be Linux or Android.
 //not _WIN32 is needed because not all projects define ISTDLIB_UMD
     char *path = (char*)malloc(sizeof(char)*bufSize);
@@ -527,6 +527,7 @@ inline int CreateAppOutputDir(
         const int defaultBuffSize = 1024; //max size for file from /proc/%d/cmdline
         char cmdpath[defaultBuffSize];
         char cmdline[defaultBuffSize] = "\0";
+        char cmdlineoutput[defaultBuffSize] = "/";
         unsigned int pid = getpid();
 
         snprintf(cmdpath, defaultBuffSize - 1, "/proc/%u/cmdline", pid);
@@ -556,17 +557,18 @@ inline int CreateAppOutputDir(
                 }
             }
 
-            char* pch = strrchr(cmdline, '/');
+            strcat(cmdlineoutput, cmdline);
+            char* pch = strrchr(cmdlineoutput, '/');
             unsigned int i = 0;
             if (pch != NULL)
             {
                 pch++; //remove last occurrence of '/'
-                for (; i < defaultBuffSize - (pch - cmdline) && pch[i] != '\0'; i++)
+                for (; i < defaultBuffSize - (pch - cmdlineoutput) && pch[i] != '\0'; i++)
                 {
-                    cmdline[i] = pch[i];
+                    cmdlineoutput[i] = pch[i];
                 }
             }
-            cmdline[i] = '\0';
+            cmdlineoutput[i] = '\0';
         }
 
         size_t pathLen = strnlen(outputDirectoryCopy, bufSize);
@@ -581,15 +583,15 @@ inline int CreateAppOutputDir(
 
             if (pidEnabled)
             {
-                snprintf(outputDirectoryCopy + pathLen, bufSize - pathLen, "%s_%u/", cmdline, pid);
+                snprintf(outputDirectoryCopy + pathLen, bufSize - pathLen, "%s_%u/", cmdlineoutput, pid);
             }
             else
             {
-                snprintf(outputDirectoryCopy + pathLen, bufSize - pathLen, "%s/", cmdline);
+                snprintf(outputDirectoryCopy + pathLen, bufSize - pathLen, "%s/", cmdlineoutput);
             }
         }
     }
-    
+
     struct stat statbuf;
     unsigned int i = 0;
 
@@ -647,7 +649,7 @@ Inline Function:
     CreateAppOutputDir
 
 Description:
-    Creates folder path based on outputDirectory string. 
+    Creates folder path based on outputDirectory string.
     Then writes it in pathBuf.
 
 Input:
@@ -660,8 +662,8 @@ Output:
 
 \*****************************************************************************/
 inline int CreateAppOutputDir(
-    char*           pathBuf, 
-    unsigned int    bufSize, 
+    char*           pathBuf,
+    unsigned int    bufSize,
     const char*     outputDirectory )
 {
     int ret = CreateAppOutputDir( pathBuf, bufSize, outputDirectory, true, true, false );
