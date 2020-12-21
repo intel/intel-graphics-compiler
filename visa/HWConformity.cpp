@@ -1017,7 +1017,15 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB* bb)
                 }
                 else
                 {
-                    inst->setSrc(insertMovBefore(it, 1, Type_W, bb), 1);
+                    bool hasModMinus = false;
+                    if (src1->isSrcRegRegion())
+                    {
+                        G4_SrcModifier mod = src1->asSrcRegRegion()->getModifier();
+                        hasModMinus = (mod == Mod_Minus || mod == Mod_Minus_Abs);
+                    }
+                    // If minus modifier is present, need signed type.
+                    G4_Type Ty = (IS_SIGNED_INT(src1->getType()) || hasModMinus) ? Type_W : Type_UW;
+                    inst->setSrc(insertMovBefore(it, 1, Ty, bb), 1);
                     changed = true;
                 }
             }
