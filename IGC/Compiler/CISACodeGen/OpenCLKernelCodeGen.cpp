@@ -2413,7 +2413,7 @@ namespace IGC
         }
 
         // Cannot compile simd32 for function calls due to slicing
-        if (m_FGA && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
+        if (m_FGA && m_FGA->getGroup(&F) && (!m_FGA->getGroup(&F)->isSingle() || m_FGA->getGroup(&F)->hasStackCall()))
         {
             // Fail on SIMD32 for all groups with function calls
             if (simdMode == SIMDMode::SIMD32)

@@ -559,28 +559,28 @@ public:
 
     SBasicBlock& getCurrentBlock() const { return m_pattern->m_blocks[m_currentBlock]; }
 
-    CodeGenContext* m_pCtx;
-    CVariable* m_destination;
-    GenXFunctionGroupAnalysis* m_FGA;
-    CodeGenPatternMatch* m_pattern;
-    DeSSA* m_deSSA;
-    BlockCoalescing* m_blockCoalescing;
+    CodeGenContext* m_pCtx = nullptr;
+    CVariable* m_destination = nullptr;
+    GenXFunctionGroupAnalysis* m_FGA = nullptr;
+    CodeGenPatternMatch* m_pattern = nullptr;
+    DeSSA* m_deSSA = nullptr;
+    BlockCoalescing* m_blockCoalescing = nullptr;
     SIMDMode m_SimdMode;
     ShaderDispatchMode m_ShaderDispatchMode;
     CShaderProgram::KernelShaderMap& m_shaders;
     CShader* m_currShader;
     CEncoder* m_encoder;
-    const llvm::DataLayout* m_DL;
-    CoalescingEngine* m_CE;
-    VariableReuseAnalysis* m_VRA;
-    ModuleMetaData* m_moduleMD;
+    const llvm::DataLayout* m_DL = nullptr;
+    CoalescingEngine* m_CE = nullptr;
+    VariableReuseAnalysis* m_VRA = nullptr;
+    ModuleMetaData* m_moduleMD = nullptr;
     bool m_canAbortOnSpill;
     PSSignature* m_pSignature;
 
     // Debug info emitter
-    IDebugEmitter* m_pDebugEmitter;
+    IDebugEmitter* m_pDebugEmitter = nullptr;
 
-    llvm::DominatorTree* m_pDT;
+    llvm::DominatorTree* m_pDT = nullptr;
     static char ID;
     inline void ContextSwitchPayloadSection();
     inline void ContextSwitchShaderBody();
@@ -717,7 +717,7 @@ private:
         CVariable* AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz, e_alignment Align);
     CVariable* prepareDataForUniform(CVariable* DataVar, uint32_t ExecSz, e_alignment Align);
     bool m_isDuplicate;
-    CVariable* m_tmpDest;
+    CVariable* m_tmpDest = nullptr;
 
 };
 

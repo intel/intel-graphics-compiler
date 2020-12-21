@@ -63,17 +63,17 @@ namespace
         }
 
     private:
-        CodeGenContext* m_Ctx;
-        Function* m_F;
-        const DataLayout* m_DL;
+        CodeGenContext* m_Ctx = nullptr;
+        Function* m_F = nullptr;
+        const DataLayout* m_DL = nullptr;
 
         // Indicate supported integer width
-        bool m_SupportInt8;
-        bool m_SupportInt16;
-        bool m_SupportInt32;
-        bool m_SupportInt64;
+        bool m_SupportInt8 = false;
+        bool m_SupportInt16 = false;
+        bool m_SupportInt32 = false;
+        bool m_SupportInt64 = false;
 
-        bool m_Changed;
+        bool m_Changed = false;
         void matchRotate(Instruction* I);
     };
 }  // namespace
@@ -338,4 +338,3 @@ void GenRotate::matchRotate(Instruction* I)
     m_Changed = true;
     return;
 }
-
