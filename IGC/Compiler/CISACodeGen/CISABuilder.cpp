@@ -3963,6 +3963,7 @@ namespace IGC
         else
         {
             SaveOption(vISA_preRA_Schedule, false);
+            SaveOption(vISA_QuickTokenAllocation, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(ReplaceIndirectCallWithJmpi))
