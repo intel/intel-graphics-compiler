@@ -545,5 +545,18 @@ SPIRVModuleProcessed::decode(std::istream &I) {
     Module->setModuleProcessed(S);
 }
 
+template <spv::Op OC> void SPIRVContinuedInstINTELBase<OC>::validate() const {
+    SPIRVEntry::validate();
+}
+
+template <spv::Op OC>
+void SPIRVContinuedInstINTELBase<OC>::decode(std::istream& I) {
+    SPIRVEntry::getDecoder(I) >> (Elements);
+}
+
+SPIRVType* SPIRVTypeStructContinuedINTEL::getMemberType(size_t I) const {
+    return static_cast<SPIRVType*>(SPIRVEntry::getEntry(Elements[I]));
+}
+
 } // namespace spv
 

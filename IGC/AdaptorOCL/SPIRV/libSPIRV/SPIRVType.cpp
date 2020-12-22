@@ -290,7 +290,7 @@ SPIRVType::isTypeVectorOrScalarFloat() const {
 
 void SPIRVTypeStruct::decode(std::istream &I)
 {
-    auto Decoder = getDecoder(I);
+    SPIRVDecoder Decoder = getDecoder(I);
     Decoder >> Id;
 
     for (size_t i = 0, e = MemberTypeVec.size(); i != e; ++i)
@@ -300,12 +300,33 @@ void SPIRVTypeStruct::decode(std::istream &I)
 
         if (Decoder.M.exist(currId))
         {
-            MemberTypeVec[i] = static_cast<SPIRVType*>(Decoder.M.getEntry(currId));
+            SPIRVEntry* Entry = Decoder.M.getEntry(currId);
+            MemberTypeVec[i] = static_cast<SPIRVType*>(Entry);
         }
         else
         {
             MemberTypeVec[i] = nullptr;
             Decoder.M.addUnknownStructField(this, i, currId);
+        }
+    }
+
+    Module->add(this);
+
+    Decoder.getWordCountAndOpCode();
+    while (!I.eof()) {
+
+        SPIRVEntry* Entry = Decoder.getEntry();
+        if (Entry != nullptr)
+        {
+            Module->add(Entry);
+        }
+        if (Entry && Decoder.OpCode == ContinuedOpCode) {
+            auto ContinuedInst = static_cast<ContinuedInstType>(Entry);
+            addContinuedInstruction(ContinuedInst);
+            Decoder.getWordCountAndOpCode();
+        }
+        else {
+            break;
         }
     }
 }

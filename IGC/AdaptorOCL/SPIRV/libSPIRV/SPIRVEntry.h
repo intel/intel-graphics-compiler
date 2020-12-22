@@ -68,6 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SPIRVEnum.h"
 #include "SPIRVError.h"
+
 #include <iostream>
 #include <map>
 #include <memory>
@@ -93,6 +94,9 @@ class SPIRVExtInst;
 // Used inside class definition.
 #define _SPIRV_DCL_DEC \
     void decode(std::istream &I);
+
+#define _SPIRV_DCL_DEC_OVERRIDE \
+    void decode(std::istream &I) override;
 
 // Add implementation of decode functions to a class.
 // Used out side of class definition.
@@ -663,6 +667,90 @@ T* bcast(SPIRVEntry *E) {
 template <spv::Op OC> bool isa(SPIRVEntry *E) {
   return E ? E->getOpCode() == OC : false;
 }
+
+template <spv::Op OC>
+class SPIRVContinuedInstINTELBase : public SPIRVEntryNoId<OC> {
+public:
+    template <spv::Op _OC, class T = void>
+    using EnableIfCompositeConst =
+        typename std::enable_if_t<_OC == OpConstantCompositeContinuedINTEL ||
+        _OC ==
+        OpSpecConstantCompositeContinuedINTEL,
+        T>;
+    // Complete constructor
+    SPIRVContinuedInstINTELBase(SPIRVModule* M,
+        const std::vector<SPIRVValue*>& TheElements)
+        : SPIRVEntryNoId<OC>(M, TheElements.size() + 1) {
+
+        Elements = SPIRVEntry::getIds(TheElements);
+        validate();
+    }
+
+    SPIRVContinuedInstINTELBase(SPIRVModule* M, unsigned NumOfElements)
+        : SPIRVEntryNoId<OC>(M, NumOfElements + 1) {
+        Elements.resize(NumOfElements, SPIRVID_INVALID);
+        validate();
+    }
+
+    // Incomplete constructor
+    SPIRVContinuedInstINTELBase() : SPIRVEntryNoId<OC>() {}
+
+    template <spv::Op OPC = OC>
+    EnableIfCompositeConst<OPC, std::vector<SPIRVValue*>> getElements() const {
+        return SPIRVEntry::getValues(Elements);
+    }
+
+    SPIRVWord getNumElements() const { return Elements.size(); }
+
+protected:
+    void validate() const override;
+
+    void setWordCount(SPIRVWord WordCount) override {
+        SPIRVEntry::setWordCount(WordCount);
+        Elements.resize(WordCount - 1);
+    }
+    _SPIRV_DCL_DEC_OVERRIDE
+
+    std::vector<SPIRVId> Elements;
+};
+
+class SPIRVTypeStructContinuedINTEL
+    : public SPIRVContinuedInstINTELBase<OpTypeStructContinuedINTEL> {
+public:
+    constexpr static Op OC = OpTypeStructContinuedINTEL;
+    // Complete constructor
+    SPIRVTypeStructContinuedINTEL(SPIRVModule * M, unsigned NumOfElements)
+        : SPIRVContinuedInstINTELBase<OC>(M, NumOfElements) {}
+
+    // Incomplete constructor
+    SPIRVTypeStructContinuedINTEL() : SPIRVContinuedInstINTELBase<OC>() {}
+
+    void setElementId(size_t I, SPIRVId Id) { Elements[I] = Id; }
+
+    SPIRVType* getMemberType(size_t I) const;
+};
+using SPIRVConstantCompositeContinuedINTEL =
+SPIRVContinuedInstINTELBase<OpConstantCompositeContinuedINTEL>;
+using SPIRVSpecConstantCompositeContinuedINTEL =
+SPIRVContinuedInstINTELBase<OpSpecConstantCompositeContinuedINTEL>;
+
+template <spv::Op OpCode> struct InstToContinued;
+
+template <> struct InstToContinued<OpTypeStruct> {
+    using Type = SPIRVTypeStructContinuedINTEL *;
+    constexpr static spv::Op OpCode = OpTypeStructContinuedINTEL;
+};
+
+template <> struct InstToContinued<OpConstantComposite> {
+    using Type = SPIRVConstantCompositeContinuedINTEL *;
+    constexpr static spv::Op OpCode = OpConstantCompositeContinuedINTEL;
+};
+
+template <> struct InstToContinued<OpSpecConstantComposite> {
+    using Type = SPIRVSpecConstantCompositeContinuedINTEL *;
+    constexpr static spv::Op OpCode = OpSpecConstantCompositeContinuedINTEL;
+};
+
 
 // ToDo: The following typedef's are place holders for SPIRV entity classes
 // to be implemented.

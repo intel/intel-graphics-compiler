@@ -386,7 +386,7 @@ operator<(const SPIRVTypeImageDescriptor &A,
 class SPIRVTypeImage:public SPIRVType {
 public:
   const static Op OC = OpTypeImage;
-  const static SPIRVWord FixedWC = 9;
+  constexpr static SPIRVWord FixedWC = 9;
   SPIRVTypeImage(SPIRVModule *M, SPIRVId TheId, SPIRVId TheSampledType,
       const SPIRVTypeImageDescriptor &TheDesc)
     :SPIRVType(M, FixedWC, OC, TheId), SampledType(TheSampledType),
@@ -499,31 +499,60 @@ protected:
 
 class SPIRVTypeStruct:public SPIRVType {
 public:
+    const static Op OC = OpTypeStruct;
+    // There are always 2 words in this instruction except member types:
+    // 1) WordCount + OpCode
+    // 2) Result Id
+    constexpr static SPIRVWord FixedWC = 2;
+    using ContinuedInstType = typename InstToContinued<OC>::Type;
   // Complete constructor
   SPIRVTypeStruct(SPIRVModule *M, SPIRVId TheId,
       const std::vector<SPIRVType *> &TheMemberTypes, const std::string &TheName)
-    :SPIRVType(M, 2 + TheMemberTypes.size(), OpTypeStruct, TheId),
+    :SPIRVType(M, FixedWC + TheMemberTypes.size(), OC, TheId),
      MemberTypeVec(TheMemberTypes){
     Name = TheName;
     validate();
   }
   // Incomplete constructor
-  SPIRVTypeStruct():SPIRVType(OpTypeStruct){}
+  SPIRVTypeStruct():SPIRVType(OC){}
 
   SPIRVWord getMemberCount() const { return MemberTypeVec.size();}
   SPIRVType *getMemberType(size_t I) const { return MemberTypeVec[I];}
-  void setMemberType(size_t I, SPIRVType* pTy) { MemberTypeVec[I] = pTy; }
+  void setMemberType(size_t I, SPIRVType* pTy) 
+  {
+      if (I >= MemberTypeVec.size() && !ContinuedInstructions.empty()) {
+          const size_t MaxNumElements = MaxWordCount - FixedWC;
+          I -= MaxNumElements; // Remove operands that included into OpTypeStruct
+          ContinuedInstructions[I / MaxNumElements]->setElementId(
+              I % MaxNumElements, pTy->getId());
+      }
+      else {
+          MemberTypeVec[I] = pTy;
+      }
+  }
   bool isPacked() const;
   void setPacked(bool Packed);
 
+  void addContinuedInstruction(ContinuedInstType Inst) {
+      ContinuedInstructions.push_back(Inst);
+  }
+
+  std::vector<ContinuedInstType> getContinuedInstructions() {
+      return ContinuedInstructions;
+  }
+
 protected:
+  void setWordCount(SPIRVWord WordCount) { MemberTypeVec.resize(WordCount - FixedWC);}
+
   _SPIRV_DCL_DEC
-  void setWordCount(SPIRVWord WordCount) { MemberTypeVec.resize(WordCount - 2);}
+
   void validate()const {
     SPIRVEntry::validate();
   }
 private:
   std::vector<SPIRVType *> MemberTypeVec;      // Member Types
+  std::vector<ContinuedInstType> ContinuedInstructions;
+  const spv::Op ContinuedOpCode = InstToContinued<OC>::OpCode;
 };
 
 class SPIRVTypeFunction:public SPIRVType {

@@ -57,6 +57,8 @@ namespace spv{
 typedef SPIRVMap<Type, std::string> MapType; \
 inline MapType getNameMap(Type){ MapType MT; return MT;}
 
+constexpr unsigned MaxWordCount = UINT16_MAX;
+
 // A bi-way map
 template<class Ty1, class Ty2, class Identifier = void>
 struct SPIRVMap {

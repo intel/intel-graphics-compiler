@@ -510,3 +510,7 @@ _SPIRV_OP(RestoreMemoryINTEL, 5820)
 _SPIRV_OP(LoopControlINTEL, 5887)
 // SPV_EXT_shader_atomic_float_add
 _SPIRV_OP(AtomicFAddEXT, 6035)
+// SPV_INTEL_long_constant_composite
+_SPIRV_OP(TypeStructContinuedINTEL, 6090)
+_SPIRV_OP(ConstantCompositeContinuedINTEL, 6091)
+_SPIRV_OP(SpecConstantCompositeContinuedINTEL, 6092)
