@@ -12889,12 +12889,12 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
             if (pSrc0)
             {
-                pSrc0 = m_currShader->BitCast(pSrc0, ISA_TYPE_UD);
+                pSrc0 = m_currShader->BitCast(pSrc0, bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ);
             }
 
             if (pSrc1)
             {
-                pSrc1 = m_currShader->BitCast(pSrc1, ISA_TYPE_UD);
+                pSrc1 = m_currShader->BitCast(pSrc1, bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ);
             }
             uint label = 0;
             CVariable* flag = nullptr;
