@@ -2635,7 +2635,9 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst& I)
                 {
                     InsertElementInst* insertElementInst = cast<InsertElementInst>(bitCastInst->getOperand(0));
 
-                    if (isa<Constant>(insertElementInst->getOperand(0)) && cast<ConstantInt>(insertElementInst->getOperand(2))->getZExtValue() == 1)
+                    if (isa<Constant>(insertElementInst->getOperand(0)) &&
+                        cast<Constant>(insertElementInst->getOperand(0))->getAggregateElement((unsigned int)0)->isZeroValue() &&
+                        cast<ConstantInt>(insertElementInst->getOperand(2))->getZExtValue() == 1)
                     {
                         IRBuilder<> builder(&I);
                         Value* vectorValue = UndefValue::get(bitCastInst->getOperand(0)->getType());
