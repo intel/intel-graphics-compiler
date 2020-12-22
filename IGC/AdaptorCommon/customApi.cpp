@@ -469,6 +469,7 @@ namespace IGC
             if (custom_dir != nullptr && strlen(custom_dir) > 0)
             {
                 dumpPath = custom_dir;
+                dumpPath += "/";
             }
 
             char pathBuf[256];
@@ -580,7 +581,7 @@ namespace IGC
                 }
 
                 char path[MAX_PATH] = { 0 };
-                bool pidEnabled = IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable);
+                bool pidEnabled = IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable);
 
                 if (needMkdir)
                 {

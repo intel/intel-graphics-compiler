@@ -339,6 +339,7 @@ namespace FCL
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
             if (strlen(custom_dir) > 0 && (found == std::string::npos))
             {
+                strcat(custom_dir, "/");
                 dumpPath = custom_dir;
             }
             else
@@ -421,7 +422,7 @@ namespace FCL
             bool needMkdir = true;
 
             char path[MAX_PATH] = { 0 };
-            bool pidEnabled = FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable);
+            bool pidEnabled = !FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable);
 
             if (needMkdir)
             {
