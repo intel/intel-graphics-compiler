@@ -448,21 +448,6 @@ void GenXDeadVectorRemoval::processRdRegion(Instruction *Inst, LiveBits LB)
     addToWorkList(InInst);
 }
 
-static Constant *undefDeadConstElements(Constant *C, LiveBits LB) {
-  if (isa<UndefValue>(C) || isa<ConstantAggregateZero>(C))
-    return C;
-  if (!C->getType()->isVectorTy()) {
-    IGC_ASSERT(LB.getNumElements() == 1);
-    return LB.get(0) ? C : UndefValue::get(C->getType());
-  }
-  SmallVector<Constant *, 8> NewElems;
-  for (unsigned i = 0; i < LB.getNumElements(); ++i)
-    NewElems.push_back(LB.get(i)
-                           ? C->getAggregateElement(i)
-                           : UndefValue::get(C->getType()->getScalarType()));
-  return ConstantVector::get(NewElems);
-}
-
 /***********************************************************************
  * processWrRegion : process a wrregion instruction for element liveness
  */
@@ -548,9 +533,23 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
       addToWorkList(OldInInst);
     // If some constant values are not in use, set it to undef so ConstantLoader
     // can benefit from it.
-    else if (auto OldInConst = dyn_cast<Constant>(OldInVal))
-      Inst->setOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum,
-                       undefDeadConstElements(OldInConst, OldInLB));
+    else if (auto OldInConst = dyn_cast<Constant>(OldInVal)) {
+      Constant *NewInConst = nullptr;
+      if (isa<UndefValue>(OldInConst))
+        NewInConst = UndefValue::get(OldInConst->getType());
+      else if(isa<ConstantAggregateZero>(OldInConst))
+        NewInConst = ConstantAggregateZero::get(OldInConst->getType());
+      else {
+        SmallVector<Constant *, 8> NewElems;
+        for (unsigned i = 0; i < OldInLB.getNumElements(); ++i)
+          NewElems.push_back(OldInLB.get(i) ?
+              OldInConst->getAggregateElement(i) :
+              UndefValue::get(OldInConst->getType()->getScalarType()));
+        NewInConst = ConstantVector::get(NewElems);
+      }
+      IGC_ASSERT(NewInConst);
+      Inst->setOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum, NewInConst);
+    }
   }
   if (UsedOldInput) {
     // We know that at least one element of the "old value" input is used,
@@ -564,20 +563,10 @@ void GenXDeadVectorRemoval::processWrRegion(Instruction *Inst, LiveBits LB)
  */
 void GenXDeadVectorRemoval::processBitCast(Instruction *Inst, LiveBits LB)
 {
-  LiveBits InLB;
-  LiveBitsStorage ConstVecLBS;
-  auto InVal = Inst->getOperand(0);
-  if (auto InInst = dyn_cast<Instruction>(InVal))
-    InLB = createLiveBits(InInst);
-  else if (isa<Constant>(InVal)) {
-    unsigned NumElems =
-        isa<VectorType>(InVal->getType())
-            ? cast<VectorType>(InVal->getType())->getNumElements()
-            : 1;
-    ConstVecLBS.setNumElements(NumElems);
-    InLB = LiveBits(&ConstVecLBS, NumElems);
-  } else
+  auto InInst = dyn_cast<Instruction>(Inst->getOperand(0));
+  if (!InInst)
     return;
+  LiveBits InLB = createLiveBits(InInst);
   bool Modified = false;
   if (InLB.getNumElements() == LB.getNumElements())
     Modified = InLB.orBits(LB);
@@ -600,12 +589,8 @@ void GenXDeadVectorRemoval::processBitCast(Instruction *Inst, LiveBits LB)
         Modified |= InLB.set(Idx);
     }
   }
-  if (Modified) {
-    if (auto InInst = dyn_cast<Instruction>(InVal))
-      addToWorkList(InInst);
-    else if (auto InConst = dyn_cast<Constant>(InVal))
-      Inst->setOperand(0, undefDeadConstElements(InConst, InLB));
-  }
+  if (Modified)
+    addToWorkList(InInst);
 }
 
 /***********************************************************************
