@@ -306,6 +306,15 @@ void CPixelShader::AllocatePSPayload()
     if (encoder.IsCodePatchCandidate())
     {
         encoder.SetPayloadSectionAsSecondary();
+        if (encoder.HasPrevKernel())
+        {
+            // Get previous context's PayloadEnd to ensure it is patchable
+            offset = encoder.GetPayloadEnd();
+        }
+        else
+        {
+            encoder.SetPayloadEnd(payloadEnd);
+        }
     }
     if (offset % getGRFSize() != 0)
     {

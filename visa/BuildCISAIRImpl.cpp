@@ -356,6 +356,15 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     return VISA_SUCCESS;
 }
 
+int CISA_IR_Builder::SetPrevKernel(VISAKernel *& prevKernel)
+{
+    if (prevKernel)
+    {
+        m_prevKernel = (VISAKernelImpl*)prevKernel;
+    }
+    return VISA_SUCCESS;
+}
+
 int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionName)
 {
     if (function)
