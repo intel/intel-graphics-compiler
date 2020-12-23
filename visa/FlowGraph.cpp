@@ -1751,6 +1751,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
     }
     reassignBlockIDs();
     setPhysicalPredSucc();
+    reassignFuncIds(funcInfoHT);
 }
 
 // prevent overwriting dump file and indicate compilation order with dump serial number
@@ -2382,6 +2383,18 @@ void FlowGraph::linkDummyBB()
             dumBB->Preds.push_back(bb);
             bb->Succs.push_back(dumBB);
         }
+    }
+}
+
+//
+// Re-assign function ids as implementation expects them to be consecutive.
+//
+void FlowGraph::reassignFuncIds(FuncInfoHashTable& funcInfoHT)
+{
+    unsigned int index = 0;
+    for (auto& item : funcInfoHT)
+    {
+        item.second->setId(index++);
     }
 }
 

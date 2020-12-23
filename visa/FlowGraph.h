@@ -1106,11 +1106,20 @@ public:
     // Add a dummy BB for multiple-exit flow graph
     //
     void linkDummyBB();
+
+    //
+    // Reassign function ids in case some functions were optimized away as dead code.
+    // Implementation uses function id to index in to std::vector so there shouldnt
+    // be holds in function ids.
+    //
+    void reassignFuncIds(FuncInfoHashTable& funcInfoHT);
+
     //
     // Re-assign block ID so that we can use id to determine the ordering of two blocks in
     // the code layout
     //
     void reassignBlockIDs();
+
     //
     // Remove blocks that are unreachable via control flow of program
     //
