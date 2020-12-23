@@ -1280,6 +1280,9 @@ namespace IGC
         case Instruction::Mul:
             // integer mul supports modifier if not int64.
             return !inst->getType()->isIntegerTy(64);
+        case Instruction::URem:
+            // neg mod is negative. Disable it as URem must have positive operands,
+            return false;
         default:
             break;
         }
