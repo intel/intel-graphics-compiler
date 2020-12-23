@@ -226,6 +226,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 
         IGC::CPlatform igcPlatform = this->globalState.GetIgcCPlatform();
 
+        // extra ocl options set from regkey
         const char *extraOptions = IGC_GET_REGKEYSTRING(ExtraOCLOptions);
         std::string combinedOptions;
         if (extraOptions[0] != '\0')
@@ -237,6 +238,20 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             combinedOptions += extraOptions;
             inputArgs.pOptions = combinedOptions.c_str();
             inputArgs.OptionsSize = combinedOptions.size();
+        }
+
+        // extra ocl internal options set from regkey
+        const char *extraInternlOptions = IGC_GET_REGKEYSTRING(ExtraOCLInternalOptions);
+        std::string combinedInternalOptions;
+        if (extraInternlOptions[0] != '\0')
+        {
+            if (inputArgs.pInternalOptions != nullptr)
+            {
+                combinedInternalOptions = std::string(inputArgs.pInternalOptions) + ' ';
+            }
+            combinedInternalOptions += extraInternlOptions;
+            inputArgs.pInternalOptions = combinedInternalOptions.c_str();
+            inputArgs.InternalOptionsSize = combinedInternalOptions.size();
         }
 
         bool success = false;
