@@ -1552,14 +1552,14 @@ void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
     return nullptr;
   };
 
-  // Iterate over all exit blocks of this function and coalesce corresponding
-  // output argument with genx.output.1 intrinsic (assuming that their number
-  // and ordering are exactly the same).
+  // Iterate over all basic blocks with genx.output.1 intrinsics and coalesce
+  // corresponding output argument with intrinsic argument (assuming that their
+  // number and ordering are exactly the same).
   for (auto &BB : *F) {
-    if(!isa<ReturnInst>(BB.getTerminator()))
+    CallInst *CI = GetNextGenXOutput(BB.getFirstNonPHI());
+    if (!CI)
       continue;
 
-    CallInst *CI = GetNextGenXOutput(BB.getFirstNonPHI());
     for (auto Arg : OutputArgs) {
       IGC_ASSERT(CI && "No genx.output.1 intrinsic for output argument");
 
