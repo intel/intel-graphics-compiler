@@ -794,13 +794,14 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
 
     Value* Cond = nullptr;
 
+    // Only LSB of ShAmt is used for shift
+    ShAmt = IRB->CreateAnd(ShAmt, 63);
     if (!isa<ConstantInt>(ShAmt)) {
         // Create outer if-endif to handle the special case where `ShAmt` is zero.
         // We have option to handle that with `((S >> (~ShAmt)) >> 1)`. However, as
         // a zero `ShAmt` is a very rare case so that the outer branch should be
         // uniform one in most cases.
-        Value* NE = IRB->CreateICmpNE(IRB->CreateAnd(ShAmt, 63),
-            Constant::getNullValue(ShAmt->getType()));
+        Value* NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
         BasicBlock* JointBB = OldBB->splitBasicBlock(&BinOp);
         ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.lo", &BinOp);
         ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.hi", &BinOp);
@@ -816,10 +817,9 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         // Create the inner branch.
         IRB->SetInsertPoint(&(*TrueBB->begin()));
 
-        Cond = IRB->CreateICmpEQ(IRB->CreateAnd(ShAmt, 32),
-            Constant::getNullValue(ShAmt->getType()));
+        Cond = IRB->CreateICmpULT(ShAmt, IRB->getInt32(32));
         // Prepare to generate branches to handle the case where `ShAmt` is less
-        // than 32 or otherwise.
+        // than 32 (true branch) or otherwise (false branch).
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
         InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.lo", TrueJmp);
         InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.hi", TrueJmp);
@@ -844,8 +844,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         cast<PHINode>(ResHi)->addIncoming(InnerResHi, InnerJBB);
     }
     else
-        Cond = IRB->CreateICmpEQ(IRB->CreateAnd(ShAmt, 32),
-            Constant::getNullValue(ShAmt->getType()));
+        Cond = IRB->CreateICmpULT(ShAmt, IRB->getInt32(32));
 
     if (Cond == IRB->getTrue() || InnerTBB) {
         if (InnerTBB) IRB->SetInsertPoint(&(*InnerTBB->begin()));
@@ -914,13 +913,14 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
 
     Value* Cond = nullptr;
 
+    // Only LSB of ShAmt is used for shift
+    ShAmt = IRB->CreateAnd(ShAmt, 63);
     if (!isa<ConstantInt>(ShAmt)) {
         // Create outer if-endif to handle the special case where `ShAmt` is zero.
         // We have option to handle that with `((S >> (~ShAmt)) >> 1)`. However, as
         // a zero `ShAmt` is a very rare case so that the outer branch should be
         // uniform one in most cases.
-        Value* NE = IRB->CreateICmpNE(IRB->CreateAnd(ShAmt, 63),
-            Constant::getNullValue(ShAmt->getType()));
+        Value* NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
         BasicBlock* JointBB = OldBB->splitBasicBlock(&BinOp);
         ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.lo", &BinOp);
         ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.hi", &BinOp);
@@ -936,10 +936,9 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         // Create the inner branch.
         IRB->SetInsertPoint(&(*TrueBB->begin()));
 
-        Cond = IRB->CreateICmpEQ(IRB->CreateAnd(ShAmt, 32),
-            Constant::getNullValue(ShAmt->getType()));
+        Cond = IRB->CreateICmpULT(ShAmt, IRB->getInt32(32));
         // Prepare to generate branches to handle the case where `ShAmt` is less
-        // than 32 or otherwise.
+        // than 32 (true branch) or otherwise (false branch).
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
         InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.lo", TrueJmp);
         InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.hi", TrueJmp);
@@ -964,8 +963,7 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         cast<PHINode>(ResHi)->addIncoming(InnerResHi, InnerJBB);
     }
     else
-        Cond = IRB->CreateICmpEQ(IRB->CreateAnd(ShAmt, 32),
-            Constant::getNullValue(ShAmt->getType()));
+        Cond = IRB->CreateICmpULT(ShAmt, IRB->getInt32(32));
 
     if (Cond == IRB->getTrue() || InnerTBB) {
         if (InnerTBB) IRB->SetInsertPoint(&(*InnerTBB->begin()));
@@ -1034,13 +1032,14 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
 
     Value* Cond = nullptr;
 
+    // Only LSB of ShAmt is used for shift
+    ShAmt = IRB->CreateAnd(ShAmt, 63);
     if (!isa<ConstantInt>(ShAmt)) {
         // Create outer if-endif to handle the special case where `ShAmt` is zero.
         // We have option to handle that with `((S >> (~ShAmt)) >> 1)`. However, as
         // a zero `ShAmt` is a very rare case so that the outer branch should be
         // uniform one in most cases.
-        Value* NE = IRB->CreateICmpNE(IRB->CreateAnd(ShAmt, 63),
-            Constant::getNullValue(ShAmt->getType()));
+        Value* NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
         BasicBlock* JointBB = OldBB->splitBasicBlock(&BinOp);
         ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.lo", &BinOp);
         ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.hi", &BinOp);
@@ -1056,8 +1055,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         // Create the inner branch.
         IRB->SetInsertPoint(&(*TrueBB->begin()));
 
-        Cond = IRB->CreateICmpEQ(IRB->CreateAnd(ShAmt, 32),
-            Constant::getNullValue(ShAmt->getType()));
+        Cond = IRB->CreateICmpULT(ShAmt, IRB->getInt32(32));
         // Prepare to generate branches to handle the case where `ShAmt` is less
         // than 32 or otherwise.
         BasicBlock* InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
@@ -1084,8 +1082,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         cast<PHINode>(ResHi)->addIncoming(InnerResHi, InnerJBB);
     }
     else
-        Cond = IRB->CreateICmpEQ(IRB->CreateAnd(ShAmt, 32),
-            Constant::getNullValue(ShAmt->getType()));
+        Cond = IRB->CreateICmpULT(ShAmt, IRB->getInt32(32));
 
     if (Cond == IRB->getTrue() || InnerTBB) {
         if (InnerTBB) IRB->SetInsertPoint(&(*InnerTBB->begin()));
