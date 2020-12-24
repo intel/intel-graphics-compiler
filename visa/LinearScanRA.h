@@ -341,8 +341,8 @@ namespace vISA
         std::vector<LSInputLiveRange*> activeInput;
     } ACTIVE_GRFS;
 
-    typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned int>> CALL_DECL_MAP;
-    typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned int>>::iterator CALL_DECL_MAP_ITER;
+    typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, FuncInfo*>> CALL_DECL_MAP;
+    typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, FuncInfo*>>::iterator CALL_DECL_MAP_ITER;
 
     class globalLinearScan {
     private:

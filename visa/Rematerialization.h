@@ -260,17 +260,12 @@ namespace vISA
             }
 
             // Map BBs in subroutines
-            unsigned int numFuncs = kernel.fg.getNumFuncs();
-            for (unsigned int func = 0; func != numFuncs; func++)
+            for (auto curFuncInfo : kernel.fg.funcInfoTable)
             {
-                auto curFuncInfo = kernel.fg.getFunc(func);
-                if (curFuncInfo)
+                const auto& bbList = curFuncInfo->getBBList();
+                for (auto bb : bbList)
                 {
-                    const auto& bbList = curFuncInfo->getBBList();
-                    for (auto bb : bbList)
-                    {
-                        BBPerSubroutine.insert(std::make_pair(bb, curFuncInfo));
-                    }
+                    BBPerSubroutine.insert(std::make_pair(bb, curFuncInfo));
                 }
             }
         }

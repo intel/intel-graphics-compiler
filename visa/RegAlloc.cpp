@@ -700,9 +700,6 @@ LivenessAnalysis::LivenessAnalysis(
         use_kill[i]= BitSet(numVarId, false);
         indr_use[i]= BitSet(numVarId, false);
     }
-
-    numFnId = (unsigned) fg.funcInfoTable.size();
-    maydef.resize(numFnId);
 }
 
 LivenessAnalysis::~LivenessAnalysis()
@@ -1291,13 +1288,14 @@ void LivenessAnalysis::maydefAnalysis()
             continue;
         }
 
+        auto& BV = subroutineMaydef[func];
         for (auto&& bb : func->getBBList())
         {
-            maydef[fid] |= def_out[bb->getId()];
+            BV |= def_out[bb->getId()];
         }
         for (auto&& callee : func->getCallees())
         {
-            maydef[fid] |= maydef[callee->getId()];
+            BV |= subroutineMaydef[callee];
         }
     }
 }
@@ -1367,7 +1365,7 @@ void LivenessAnalysis::useAnalysis(FuncInfo* subroutine)
 // use_out[call-BB] = (use_in[ret-BB] | arg[callee]) - retval[callee]
 //
 void LivenessAnalysis::useAnalysisWithArgRetVal(FuncInfo* subroutine,
-    const std::vector<BitSet>& args, const std::vector<BitSet>& retVal)
+    const std::unordered_map<FuncInfo*, BitSet>& args, const std::unordered_map<FuncInfo*, BitSet>& retVal)
 {
     bool changed = false;
     do
@@ -1390,8 +1388,12 @@ void LivenessAnalysis::useAnalysisWithArgRetVal(FuncInfo* subroutine,
             {
                 use_out[bbid] = use_in[bb->getPhysicalSucc()->getId()];
                 auto callee = bb->getCalleeInfo();
-                use_out[bbid] |= args[callee->getId()];
-                use_out[bbid] -= retVal[callee->getId()];
+                auto BVIt = args.find(callee);
+                MUST_BE_TRUE(BVIt != args.end(), "Missing entry in map");
+                use_out[bbid] |= (*BVIt).second;
+                BVIt = retVal.find(callee);
+                MUST_BE_TRUE(BVIt != retVal.end(), "Missing entry in map");
+                use_out[bbid] -= (*BVIt).second;
             }
             else
             {
@@ -1487,8 +1489,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
 {
 
     assert (fg.sortedFuncTable.size() > 0 && "topological sort must already be performed");
-    std::vector<BitSet> args(fg.funcInfoTable.size());
-    std::vector<BitSet> retVal(fg.funcInfoTable.size());
+    std::unordered_map<FuncInfo*, BitSet> args;
+    std::unordered_map<FuncInfo*, BitSet> retVal;
 
     auto initKernelLiveOut = [this, &kernelOutput]()
     {
@@ -1528,8 +1530,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
         useAnalysis(subroutine);
         if (subroutine != fg.kernelInfo)
         {
-            retVal[subroutine->getId()] = use_out[subroutine->getExitBB()->getId()];
-            retVal[subroutine->getId()] -= use_in[subroutine->getInitBB()->getId()];
+            retVal[subroutine] = use_out[subroutine->getExitBB()->getId()];
+            retVal[subroutine] -= use_in[subroutine->getInitBB()->getId()];
         }
         for (auto&& bb : subroutine->getBBList())
         {
@@ -1557,8 +1559,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
         useAnalysisWithArgRetVal(subroutine, args, retVal);
         if (subroutine != fg.kernelInfo)
         {
-            args[subroutine->getId()] = use_in[subroutine->getInitBB()->getId()];
-            args[subroutine->getId()] -= use_out[subroutine->getExitBB()->getId()];
+            args[subroutine] = use_in[subroutine->getInitBB()->getId()];
+            args[subroutine] -= use_out[subroutine->getExitBB()->getId()];
         }
     }
 

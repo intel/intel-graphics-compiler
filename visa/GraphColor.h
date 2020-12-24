@@ -291,11 +291,11 @@ namespace vISA
         LiveRange** lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
-        std::vector<PhyRegSummary *> localSummaryOfCallee;
+        std::unordered_map<FuncInfo*, PhyRegSummary *> localSummaryOfCallee;
         std::vector<G4_Declare*> sortedIntervals;
         std::list<G4_Declare*> defaultMask;
         std::list<G4_Declare*> nonDefaultMask;
-        MASK_Declares* callsiteDeclares;
+        std::unordered_map<FuncInfo*, MASK_Declares> callsiteDeclares;
         std::map <G4_Declare*, MASK_Declares*> retDeclares;
         Mem_Manager& m;
 
@@ -329,7 +329,7 @@ namespace vISA
         bool isCompatible(G4_Declare* testDcl, G4_Declare* biggerDcl);
         void buildInterferenceIncompatibleMask();
         void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask);
-        void buildInteferenceForCallsite(int fnId);
+        void buildInteferenceForCallsite(FuncInfo* func);
         void buildInteferenceForRetDeclares();
         void buildSummaryForCallees();
         void expireIntervals(unsigned int startIdx);

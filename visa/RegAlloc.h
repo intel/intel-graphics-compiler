@@ -444,7 +444,7 @@ public:
     std::vector<BitSet> use_gen;
     std::vector<BitSet> use_kill;
     std::vector<BitSet> indr_use;
-    std::vector<BitSet> maydef;
+    std::unordered_map<FuncInfo*, BitSet> subroutineMaydef;
 
     LivenessAnalysis(GlobalRA& gra, uint8_t kind);
     bool isLocalVar(G4_Declare* decl);
@@ -480,7 +480,7 @@ public:
     void hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput);
     void useAnalysis(FuncInfo* subroutine);
     void useAnalysisWithArgRetVal(FuncInfo* subroutine,
-        const std::vector<BitSet>& args, const std::vector<BitSet>& retVal);
+        const std::unordered_map<FuncInfo*, BitSet>& args, const std::unordered_map<FuncInfo*, BitSet>& retVal);
     void defAnalysis(FuncInfo* subroutine);
     void maydefAnalysis();
 

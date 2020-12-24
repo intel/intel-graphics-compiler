@@ -732,7 +732,8 @@ public:
     std::list<Edge> backEdges;                  // list of all backedges (tail->head)
     Loop naturalLoops;
 
-    std::vector<FuncInfo*> funcInfoTable;       // the vector of function info nodes. entry function is not included.
+    // function info nodes. entry function is not included.
+    std::vector<FuncInfo*> funcInfoTable;
 
     std::vector<FuncInfo*> sortedFuncTable;     // subroutines in reverse topographical order (leaf at top)
                                                 // kernelInfo is the last element with invalid func id
@@ -1000,13 +1001,6 @@ public:
         return unsigned(funcInfoTable.size());
     }
 
-    FuncInfo* getFunc(unsigned int id)
-    {
-        if (id < getNumFuncs())
-            return funcInfoTable[id];
-        return nullptr;
-    }
-
     void handleReturn(std::map<std::string, G4_BB*>& map, FuncInfoHashTable& funcInfoTable);
     void linkReturnAddr(G4_BB* bb, G4_BB* returnAddr);
 
@@ -1106,14 +1100,6 @@ public:
     // Add a dummy BB for multiple-exit flow graph
     //
     void linkDummyBB();
-
-    //
-    // Reassign function ids in case some functions were optimized away as dead code.
-    // Implementation uses function id to index in to std::vector so there shouldnt
-    // be holds in function ids.
-    //
-    void reassignFuncIds(FuncInfoHashTable& funcInfoHT);
-
     //
     // Re-assign block ID so that we can use id to determine the ordering of two blocks in
     // the code layout

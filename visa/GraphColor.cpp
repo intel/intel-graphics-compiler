@@ -3914,9 +3914,8 @@ void Augmentation::buildLiveIntervals()
                 updateEndInterval(scallDcl, inst);
 
                 FuncInfo* callee = curBB->getCalleeInfo();
-                unsigned int funcId = callee->getId();
-                std::pair<G4_INST*, unsigned int> callInfo(inst, funcId);
-                callDclMap.insert(std::pair<G4_Declare*, std::pair<G4_INST*, unsigned int>>(scallDcl, callInfo));
+                std::pair<G4_INST*, FuncInfo*> callInfo(inst, callee);
+                callDclMap.insert(std::pair<G4_Declare*, std::pair<G4_INST*, FuncInfo*>>(scallDcl, callInfo));
 
                 continue;
             }
@@ -4710,8 +4709,8 @@ void Augmentation::buildSIMDIntfAll(G4_Declare* newDcl)
             addSIMDIntfForRetDclares(varDcl);
         }
 
-        unsigned int funcId = (*callDclMapIt).second.second;
-        addSIMDIntfDclForCallSite(&callsiteDeclares[funcId]);
+        auto& func = (*callDclMapIt).second.second;
+        addSIMDIntfDclForCallSite(&callsiteDeclares[func]);
 
         return;
     }
@@ -4735,10 +4734,10 @@ void Augmentation::buildSIMDIntfAllOld(G4_Declare* newDcl)
             buildSIMDIntfDcl(varDcl, false);
         }
 
-        unsigned int funcId = (*callDclMapIt).second.second;
+        auto& func = (*callDclMapIt).second.second;
         for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
         {
-            if (liveAnalysis.maydef[funcId].isSet(i))
+            if (liveAnalysis.subroutineMaydef[func].isSet(i))
             {
                 varDcl = lrs[i]->getDcl();
                 buildSIMDIntfDcl(varDcl, true);
@@ -4824,10 +4823,9 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
     if (!kernel.fg.builder->getOption(vISA_UseOldSubRoutineAugIntf))
     {
-        unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
-        for (unsigned int i = 0; i < numFnId; i++)
+        for (auto func : kernel.fg.funcInfoTable)
         {
-            buildInteferenceForCallsite(i);
+            buildInteferenceForCallsite(func);
         }
         buildInteferenceForRetDeclares();
     }
@@ -4904,24 +4902,24 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, M
     }
 }
 
-void Augmentation::buildInteferenceForCallsite(int fnId)
+void Augmentation::buildInteferenceForCallsite(FuncInfo* func)
 {
     for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
     {
-        if (liveAnalysis.maydef[fnId].isSet(i))
+        if (liveAnalysis.subroutineMaydef[func].isSet(i))
         {
             G4_Declare* varDcl = lrs[i]->getDcl();
-            buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[fnId]);
+            buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[func]);
         }
     }
     if (kernel.getOption(vISA_LocalRA))
     {
         for (uint32_t j = 0; j < kernel.getNumRegTotal(); j++)
         {
-            if (localSummaryOfCallee[fnId]->isGRFBusy(j))
+            if (localSummaryOfCallee[func]->isGRFBusy(j))
             {
                 G4_Declare* varDcl = gra.getGRFDclForHRA(j);
-                buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[fnId]);
+                buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[func]);
             }
         }
     }
@@ -4938,7 +4936,6 @@ void Augmentation::buildInteferenceForRetDeclares()
 void Augmentation::buildSummaryForCallees()
 {
     int totalGRFNum = kernel.getNumRegTotal();
-    localSummaryOfCallee.resize(kernel.fg.sortedFuncTable.size(), nullptr);
 
     for (auto func : kernel.fg.sortedFuncTable)
     {
@@ -4965,7 +4962,7 @@ void Augmentation::buildSummaryForCallees()
 
         for (auto&& callee : func->getCallees())
         {
-            PhyRegSummary* summary = localSummaryOfCallee[callee->getId()];
+            PhyRegSummary* summary = localSummaryOfCallee[callee];
             if (summary)
             {
                 for (int i = 0; i < totalGRFNum; i++)
@@ -4977,7 +4974,7 @@ void Augmentation::buildSummaryForCallees()
                 }
             }
         }
-        localSummaryOfCallee[fid] = funcSummary;
+        localSummaryOfCallee[func] = funcSummary;
     }
 
 }
@@ -4997,12 +4994,11 @@ void Augmentation::augmentIntfGraph()
     unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
     if (numFnId)
     {
-        callsiteDeclares = (MASK_Declares*)m.alloc(sizeof(MASK_Declares) * numFnId);
-
-        for (unsigned i = 0; i < numFnId; i++)
+        for(auto func : kernel.fg.funcInfoTable)
         {
-            callsiteDeclares[i].defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
-            callsiteDeclares[i].noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
+            auto& item = callsiteDeclares[func];
+            item.defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
+            item.noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
         }
     }
 
