@@ -803,22 +803,18 @@ bool CMRegion::changeElementType(Type *NewElementType)
     ElementTy = NewElementType;
     return true;
   }
-  unsigned Ratio = NewElementBytes / ElementBytes;
+  int Ratio = NewElementBytes/ElementBytes;
   if (Ratio >= 1) {
-    IGC_ASSERT(isPowerOf2_32(Ratio) && "Ratio must be pow of 2");
     // Trying to make the element size bigger.
-    if (Width & (Ratio - 1))
+    if (Width & ((1 * Ratio) - 1))
       return false; // width misaligned
-    if (VStride & (Ratio - 1))
-      return false; // vstride misaligned
     if (Stride != 1)
       return false; // rows not contiguous
-    if (Offset & (Ratio - 1))
+    if (Offset % NewElementBytes != 0)
       return false;
-    unsigned LogRatio = Log2_32(Ratio);
-    NumElements >>= LogRatio;
-    Width >>= LogRatio;
-    VStride >>= LogRatio;
+    NumElements = NumElements / Ratio;
+    Width = Width / Ratio;
+    VStride = VStride / Ratio;
     if (Width == 1) {
       // Width is now 1, so turn it into a 1D region.
       Stride = VStride;
@@ -830,25 +826,23 @@ bool CMRegion::changeElementType(Type *NewElementType)
     return true;
   }
   // Trying to make the element size smaller.
-  Ratio = ElementBytes / NewElementBytes;
-  IGC_ASSERT(isPowerOf2_32(Ratio) && "Ratio must be pow of 2");
-  unsigned LogRatio = Log2_32(Ratio);
+  Ratio = ElementBytes / NewElementBytes;;
   if (Stride == 1 || Width == 1) {
     // Row contiguous.
     Stride = 1;
-    NumElements <<= LogRatio;
-    Width <<= LogRatio;
-    VStride <<= LogRatio;
+    NumElements *= Ratio;
+    Width *= Ratio;
+    VStride *= Ratio;
     ElementTy = NewElementType;
     ElementBytes = NewElementBytes;
     return true;
   }
   if (!is2D()) {
     // 1D and not contiguous. Turn it into a 2D region.
-    VStride = Stride >> LogRatio;
+    VStride = Stride * Ratio;
     Stride = 1;
-    Width = Ratio;
-    NumElements >>= LogRatio;
+    Width = 1 * Ratio;
+    NumElements *= Ratio;
     ElementTy = NewElementType;
     ElementBytes = NewElementBytes;
     return true;
