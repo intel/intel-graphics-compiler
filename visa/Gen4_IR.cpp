@@ -3661,7 +3661,7 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         }
         if (isSpillIntrinsic())
         {
-            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "x32] ";
+            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "] ";
         }
         else if (dst)
         {
@@ -3687,7 +3687,7 @@ void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         }
         if (isFillIntrinsic())
         {
-            output << "Scratch[" << asFillIntrinsic()->getOffset() << "x32] ";
+            output << "Scratch[" << asFillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "] ";
         }
 
         if (isFlowControl() && asCFInst()->getJip())
