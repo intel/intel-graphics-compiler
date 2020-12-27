@@ -333,13 +333,18 @@ namespace FCL
         else
         {
             std::string dumpPath = "/tmp/IntelIGC/";        // default if something goes wrong
-            char custom_dir[256];
+            const size_t maxLen = 255;
+            char custom_dir[ maxLen + 1] = { 0 };
             std::string DumpToCustomDirFlagNameWithEqual = "DumpToCustomDir=";
             std::size_t found = RegKeysFlagsFromOptions.find(DumpToCustomDirFlagNameWithEqual);
-            FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
+            FCLReadIGCRegistry("DumpToCustomDir", custom_dir, maxLen);
             if (strlen(custom_dir) > 0 && (found == std::string::npos))
             {
-                strcat(custom_dir, "/");
+                assert( strlen(custom_dir) < maxLen && "custom_dir path too long" );
+                if (strlen( custom_dir ) < maxLen )
+                {
+                    strncat(custom_dir, "/", 1);
+                }
                 dumpPath = custom_dir;
             }
             else

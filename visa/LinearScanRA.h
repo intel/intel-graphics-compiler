@@ -372,14 +372,13 @@ namespace vISA
         void freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, std::list<LSLiveRange*>& spillLRs);
         bool spillFromActiveList(LSLiveRange* tlr, std::list<LSLiveRange*>& spillLRs);
 
-        unsigned int globalLRSize;
-        unsigned int startGRFReg;
-        unsigned int numRegLRA;
-        unsigned int numRowsEOT;
-        unsigned int lastLexicalID;
+        unsigned int startGRFReg = 0;
+        unsigned int numRegLRA = 0;
+        unsigned int numRowsEOT = 0;
+        unsigned int lastLexicalID = 0;
 
-        bool doBankConflict;
-        bool highInternalConflict;
+        bool doBankConflict = false;
+        bool highInternalConflict = false;
 
     public:
         globalLinearScan(GlobalRA& g, LivenessAnalysis* l, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>* eotLiveIntervals,

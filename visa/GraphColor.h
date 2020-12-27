@@ -810,7 +810,7 @@ namespace vISA
         std::unordered_map<G4_BB*, unsigned> callerSaveRegCountMap;
         std::unordered_map<G4_BB*, std::vector<bool>> retRegsMap;
         std::vector<bool> calleeSaveRegs;
-        unsigned calleeSaveRegCount;
+        unsigned calleeSaveRegCount = 0;
 
     public:
         G4_Kernel& kernel;
