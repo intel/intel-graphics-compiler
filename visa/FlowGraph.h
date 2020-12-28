@@ -1485,8 +1485,11 @@ class G4_Kernel
 
     VarSplitPass* varSplitPass = nullptr;
 
-    // store the actual sourfce line stream for each source file referenced by this kernel.
-    std::map<std::string, std::vector<std::string> > debugSrcLineMap;
+    // map key is filename string with complete path.
+    // if first elem of pair is false, file wasnt found.
+    // second elem of pair stores the actual source line stream
+    // for each source file referenced by this kernel.
+    std::map<std::string, std::pair<bool, std::vector<std::string>>> debugSrcLineMap;
 
     // This must be explicitly set by kernel attributes later
     VISATarget kernelType = VISA_3D;

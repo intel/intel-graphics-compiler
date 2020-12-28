@@ -4777,6 +4777,8 @@ std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
         std::ifstream ifs(fileName);
         if (!ifs)
         {
+            // file doesnt exist
+            debugSrcLineMap[fileName] = std::make_pair<bool, std::vector<std::string>>(false, {});
             return "Can't find src file";
         }
         std::string line;
@@ -4785,14 +4787,15 @@ std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
         {
             srcLines.push_back(line);
         }
-        debugSrcLineMap[fileName] = srcLines;
+        debugSrcLineMap[fileName] = std::make_pair(true, std::move(srcLines));
     }
     iter = debugSrcLineMap.find(fileName);
-    if (iter == debugSrcLineMap.end())
+    if (iter == debugSrcLineMap.end() ||
+        !(*iter).second.first)
     {
         return "Can't find src file";
     }
-    auto lines = iter->second;
+    auto& lines = iter->second.second;
     if (srcLine > (int) lines.size() || srcLine <= 0)
     {
         return "invalid line number";
