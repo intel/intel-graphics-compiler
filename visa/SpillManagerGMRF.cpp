@@ -3112,10 +3112,8 @@ SpillManagerGRF::insertSpillRangeCode(
             createAndInitMHeader (
                 (G4_RegVarTransient *) spillRangeDcl->getRegVar ());
 
-        // Assumption here is that a NoMask send doesn't need read-modify-write
-        // since it writes the entire GRF(s).
-        // May need to revisit if we have some strange sends that update partial GRFs. (e.g., SIMD4 scatter read)
-        if (!inst->isWriteEnableInst())
+        bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive());
+        if (needRMW)
         {
             sendInSpilledRegVarPortions(
                 spillRangeDcl, mRangeDcl, 0,
