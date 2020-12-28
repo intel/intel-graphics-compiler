@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <math.h>
 #include <sstream>
 #include <fstream>
+#include <unordered_set>
 
 using namespace std;
 using namespace vISA;
@@ -3006,7 +3007,7 @@ SpillManagerGRF::replaceFilledRange (
     for (int i = 0; i < G4_MAX_SRCS; i++) {
         G4_Operand * src = filledInst->getSrc(i);
 
-        if (src != NULL && src->isSrcRegRegion())
+        if (src && src->isSrcRegRegion())
         {
             G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
             if (*srcRgn == *filledRegion)
@@ -3081,7 +3082,7 @@ SpillManagerGRF::sendOutSpilledRegVarPortions (
 
 // Create the code to create the spill range and save it to spill memory.
 
-INST_LIST::iterator
+void
 SpillManagerGRF::insertSpillRangeCode(
     INST_LIST::iterator spilledInstIter, G4_BB* bb)
 {
@@ -3094,16 +3095,23 @@ SpillManagerGRF::insertSpillRangeCode(
     G4_INST* spillSendInst = NULL;
     auto spilledRegion = inst->getDst();
 
-    // Handle send instructions (special treatment)
-    // Create the spill range for the whole post destination, assign spill
-    // offset to the spill range and create the instructions to load the
-    // save the spill range to spill memory.
+    auto spillDcl = spilledRegion->getTopDcl()->getRootDeclare();
+    if (scalarImmSpill.find(spillDcl) != scalarImmSpill.end())
+    {
+        // do not spill scalar immediate values
+        bb->erase(spilledInstIter);
+        return;
+    }
 
     //subreg offset for new dst that replaces the spilled dst
     auto newSubregOff = 0;
 
     if (inst->mayExceedTwoGRF())
     {
+        // Handle send instructions (special treatment)
+        // Create the spill range for the whole post destination, assign spill
+        // offset to the spill range and create the instructions to load the
+        // save the spill range to spill memory.
         INST_LIST::iterator sendOutIter = spilledInstIter;
         assert (getRFType (spilledRegion) == G4_GRF);
         G4_Declare * spillRangeDcl =
@@ -3261,7 +3269,6 @@ SpillManagerGRF::insertSpillRangeCode(
 
     INST_LIST::iterator insertPos = std::next(spilledInstIter);
     replaceSpilledRange (replacementRangeDcl, spilledRegion, *spilledInstIter, newSubregOff);
-    INST_LIST::iterator nextIter = std::next(spilledInstIter);
 
     splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
 
@@ -3277,13 +3284,11 @@ SpillManagerGRF::insertSpillRangeCode(
     {
         splice(bb, spilledInstIter, builder_->instList, curInst->getCISAOff());
     }
-
-    return nextIter;
 }
 
 // Create the code to create the GRF fill range and load it to spill memory.
 
-INST_LIST::iterator
+void
 SpillManagerGRF::insertFillGRFRangeCode (
     G4_SrcRegRegion *   filledRegion,
     INST_LIST::iterator filledInstIter,
@@ -3299,8 +3304,31 @@ SpillManagerGRF::insertFillGRFRangeCode (
 
     bool optimizeSplitLLR = false;
     G4_INST* inst = *filledInstIter;
-    G4_DstRegRegion* dstRegion = inst->getDst();
-    G4_INST* fillSendInst = NULL;
+    auto dstRegion = inst->getDst();
+    G4_INST* fillSendInst = nullptr;
+    auto spillDcl = filledRegion->getTopDcl()->getRootDeclare();
+    auto sisIt = scalarImmSpill.find(spillDcl);
+    if (sisIt != scalarImmSpill.end())
+    {
+        //re-materialize the scalar immediate value
+        auto imm = sisIt->second;
+        auto tempDcl = builder_->createTempVar(1, imm->getType(), spillDcl->getSubRegAlign());
+        auto movInst = builder_->createMov(g4::SIMD1, builder_->Create_Dst_Opnd_From_Dcl(tempDcl, 1), imm, InstOpt_WriteEnable, false);
+        bb->insertBefore(filledInstIter, movInst);
+        assert(!filledRegion->isIndirect());
+        auto newSrc = builder_->createSrc(tempDcl->getRegVar(), filledRegion->getRegOff(), filledRegion->getSubRegOff(), filledRegion->getRegion(),
+            filledRegion->getType(), filledRegion->getAccRegSel());
+        int i = 0;
+        for (; i < inst->getNumSrc(); ++i)
+        {
+            if (inst->getSrc(i) == filledRegion)
+            {
+                break;
+            }
+        }
+        inst->setSrc(newSrc, i);
+        return;
+    }
 
     {
         fillRangeDcl =
@@ -3351,11 +3379,6 @@ SpillManagerGRF::insertFillGRFRangeCode (
         {
             prevInst->setDest(builder_->createDst(GetTopDclFromRegRegion(dstRegion)->getRegVar(), 0, 0, 1, Type_UD));
         }
-        return nextIter;
-    }
-    else
-    {
-        return ++filledInstIter;
     }
 }
 
@@ -4121,6 +4144,38 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel* kernel, PointsToAnalysis& point
     }
 }
 
+void SpillManagerGRF::runSpillAnalysis()
+{
+
+    std::unordered_set<G4_Declare*> spilledDcl;
+    scalarImmSpill.clear();
+
+    for (auto bb : gra.kernel.fg)
+    {
+        for (auto inst : *bb)
+        {
+            auto dst = inst->getDst();
+            auto dcl = dst && dst->getTopDcl() ? dst->getTopDcl()->getRootDeclare() : nullptr;
+            if (!dcl || dcl->getAddressed() || dcl->getNumElems() != 1 || !shouldSpillRegister(dcl->getRegVar()))
+            {
+                // declare must be a scalar without address taken
+                continue;
+            }
+            if (spilledDcl.count(dcl))
+            {
+                // this spilled declare is defined more than once
+                scalarImmSpill.erase(dcl);
+                continue;
+            }
+            spilledDcl.insert(dcl);
+            if (inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD1 && inst->getSrc(0)->isImm() && !inst->getPredicate() && !inst->getSaturate())
+            {
+                scalarImmSpill[dcl] = inst->getSrc(0)->asImm();
+            }
+        }
+    }
+}
+
 // Insert spill/fill code for all registers that have not been assigned
 // physical registers in the current iteration of the graph coloring
 // allocator.
@@ -4130,40 +4185,29 @@ SpillManagerGRF::insertSpillFillCode (
     G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis
 )
 {
+
+    runSpillAnalysis();
     // Set the spill flag of all spilled regvars.
-    for (LR_LIST::const_iterator lt = spilledLRs_->begin ();
-        lt != spilledLRs_->end (); ++lt) {
+    for (LR_LIST::const_iterator lt = spilledLRs_->begin();
+        lt != spilledLRs_->end(); ++lt) {
 
         // Ignore request to spill/fill the spill/fill ranges
         // as it does not help the allocator.
-        if (shouldSpillRegister ((*lt)->getVar ()) == false)
+        if (shouldSpillRegister((*lt)->getVar()) == false)
         {
             bool needsEOTGRF = (*lt)->getEOTSrc() && builder_->hasEOTGRFBinding();
             if (failSafeSpill_ && needsEOTGRF &&
                 ((*lt)->getVar()->isRegVarTransient() ||
-                 (*lt)->getVar()->isRegVarTmp()))
+                    (*lt)->getVar()->isRegVarTmp()))
             {
                 (*lt)->getVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_ > (kernel->getNumRegTotal() - 16) ? spillRegStart_ : (kernel->getNumRegTotal() - 16)), 0);
                 continue;
-            }
-            else if (lvInfo_->isAddressSensitive((*lt)->getVar()->getId())) {
-                DEBUG_MSG("Register allocation warning: Spilling of variable("
-                     << (*lt)->getVar ()->getDeclare ()->getName()
-                     << ") whose address is taken!"
-                     << endl);
-            }
-            else {
-                DEBUG_MSG("Register allocation warning: Spilling infinite live range ("
-                     << (*lt)->getVar ()->getDeclare ()->getName()
-                     << ")!"
-                     << endl);
-
             }
             return false;
         }
         else
         {
-            (*lt)->getVar ()->getDeclare ()->setSpillFlag ();
+            (*lt)->getVar()->getDeclare()->setSpillFlag();
         }
     }
 

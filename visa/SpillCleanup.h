@@ -103,7 +103,7 @@ namespace vISA
     public:
         CoalesceSpillFills(G4_Kernel& k, LivenessAnalysis& l, GraphColor& g,
             SpillManagerGRF& s, unsigned int iterationNo, RPE& r, GlobalRA& gr) :
-            kernel(k), liveness(l), graphColor(g), gra(gr), spill(s), rpe(r)
+            kernel(k), liveness(l), graphColor(g), gra(gr), spill(s), iterNo(iterationNo), rpe(r)
         {
             unsigned int numGRFs = k.getNumRegTotal();
             auto scale = [=](unsigned threshold) -> unsigned {
@@ -112,8 +112,6 @@ namespace vISA
             };
             fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
             spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
-
-            iterationNo = iterNo;
 
             computeAddressTakenDcls();
         }
