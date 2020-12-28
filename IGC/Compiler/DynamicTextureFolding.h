@@ -55,12 +55,28 @@ namespace IGC
         {
             AU.addRequired<CodeGenContextWrapper>();
         }
-
+        enum GFXSURFACESTATE_SURFACETYPE
+        {
+            GFXSURFACESTATE_SURFACETYPE_1D = 0x0,
+            GFXSURFACESTATE_SURFACETYPE_2D,
+            GFXSURFACESTATE_SURFACETYPE_3D,
+            GFXSURFACESTATE_SURFACETYPE_CUBE,
+            GFXSURFACESTATE_SURFACETYPE_BUFFER,
+            GFXSURFACESTATE_SURFACETYPE_STRBUF,
+            GFXSURFACESTATE_SURFACETYPE_RESERVED = 0x6,
+            GFXSURFACESTATE_SURFACETYPE_NULL
+        };
         virtual bool runOnFunction(llvm::Function& F) override;
+        bool doFinalization(llvm::Module&) override;
         void visitCallInst(llvm::CallInst& I);
-
     private:
+        CodeGenContext* m_context;
+        std::unordered_map<unsigned, SResInfoFoldingOutput> m_ResInfoFoldingOutput;
         void FoldSingleTextureValue(llvm::CallInst& I);
+        template<typename ContextT>
+        void copyResInfoData(ContextT* pShaderCtx);
+        void FoldResInfoValue(llvm::GenIntrinsicInst* pCall);
+        llvm::Value* ShiftByLOD(llvm::Instruction* pCall, unsigned int dimension, llvm::Value* val);
     };
 }
 

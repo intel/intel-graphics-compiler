@@ -79,6 +79,19 @@ namespace IGC
         DefaultResourceExtensionType,
     };
 
+    struct InlineResInfo
+    {
+        unsigned int textureID = 0;
+        unsigned int SurfaceType = 0x7;
+        unsigned int WidthOrBufferSize = 0;
+        unsigned int Height = 0;
+        unsigned int Depth = 0;
+        unsigned int SurfaceArray = 0;
+        unsigned int QWidth = 0;
+        unsigned int QHeight = 0;
+        unsigned int MipCount = 0;
+    };
+
     struct ArgDependencyInfoMD
     {
         int argDependency = 0;
@@ -389,6 +402,7 @@ namespace IGC
         uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
         std::map<ConstantAddress, uint32_t>   inlineDynConstants;
         std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
+        std::vector<InlineResInfo> inlineResInfoData;
         ImmConstantInfo immConstant;
         std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
         std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;

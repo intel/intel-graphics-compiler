@@ -311,6 +311,12 @@ namespace IGC
     };
 
 
+    struct SResInfoFoldingOutput
+    {
+        uint32_t textureID;
+        bool value[4];
+    };
+
     enum SIMDInfoBit
     {
         SIMD_SELECTED,       // 0: if the SIMD is selected. If 1, all the other bits are ignored.
@@ -355,7 +361,7 @@ namespace IGC
         unsigned int bufferSlot = 0;
         unsigned int statelessCBPushedSize = 0;
 
-
+        std::vector<SResInfoFoldingOutput> m_ResInfoFoldingOutput;
         // GenUpdateCB outputs
         void*       m_ConstantBufferReplaceShaderPatterns = nullptr;
         uint        m_ConstantBufferReplaceShaderPatternsSize = 0;

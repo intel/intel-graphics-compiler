@@ -1494,8 +1494,8 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createPromoteMemoryToRegisterPass());
         }
 
-        if (!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) &&
-            pContext->getModuleMetaData()->inlineDynTextures.size() > 0)
+        if ((!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) && pContext->getModuleMetaData()->inlineDynTextures.size() > 0) ||
+            (!IGC_IS_FLAG_ENABLED(DisableDynamicResInfoFolding)))
         {
             mpm.add(new DynamicTextureFolding());
         }
