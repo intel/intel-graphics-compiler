@@ -623,7 +623,8 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
                   getPriority(CI->getType(), CI->getParent()));
             }
           }
-        } else if (isa<BitCastInst>(Inst) || isa<AddrSpaceCastInst>(Inst)) {
+        } else if (auto *CI = dyn_cast<CastInst>(Inst);
+                   CI && CI->isNoopCast(CI->getModule()->getDataLayout())) {
           IGC_ASSERT(!isa<StructType>(Inst->getType()) && "not expecting bitcast to struct");
           IGC_ASSERT(!isa<StructType>(Inst->getOperand(0)->getType()) && "not expecting bitcast from struct");
           // The source and destination of a bitcast can copy coalesce,
@@ -929,9 +930,9 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
       // def of SourceLR but after it.
       if (!Liveness->copyInterfere(SourceLR, DestLR)) {
         Liveness->coalesce(DestLR, SourceLR, /*DisallowCASC=*/ false);
-        if (auto *BCI = dyn_cast<BitCastInst>(Dest.getValue())) {
-          CopyCoalesced[BCI] = Source.getValue();
-        }
+        if (auto *CI = dyn_cast<CastInst>(Dest.getValue());
+            CI && CI->isNoopCast(CI->getModule()->getDataLayout()))
+          CopyCoalesced[CI] = Source.getValue();
         return;
       }
     } else {
@@ -1022,8 +1023,9 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
     return; // Return value pre-copy, defer copy insertion
   if (!Cand->UseInDest)
     return; // Return value post-copy, defer copy insertion
-  if (isa<BitCastInst>(Dest.getValue()) || isa<AddrSpaceCastInst>(Dest.getValue())) {
-    // A bitcast is normally copy coalesced, which means it cannot fail to
+  if (auto *CI = dyn_cast<CastInst>(Dest.getValue());
+      CI && CI->isNoopCast(CI->getModule()->getDataLayout())) {
+    // Any no-op cast is normally copy coalesced, which means it cannot fail to
     // coalesce. However, if the source is a phi node and the destination
     // wraps round the loop and is used in another phi node in the same
     // block that is later than the first phi node, then we instead
