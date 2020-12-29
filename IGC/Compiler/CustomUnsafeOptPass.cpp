@@ -2445,6 +2445,7 @@ private:
     static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> & Values, Instruction* I);
     static bool canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, FCmpInst* FC);
     static bool canOptimizeDirectOutput(SmallVector<Instruction*, 4> & Values, GenIntrinsicInst* GII, Value*& SI, unsigned int ShaderLength);
+    static bool canOptimizeMulMaxMatch(SmallVector<Instruction*, 4> & Values, Instruction* I);
     static bool DotProductMatch(const Instruction* I);
     static bool DotProductSourceMatch(const Instruction* I);
     static BasicBlock* tryFoldAndSplit(
@@ -2857,6 +2858,42 @@ bool EarlyOutPatterns::DotProductSourceMatch(const Instruction* I)
     return false;
 }
 
+bool EarlyOutPatterns::canOptimizeMulMaxMatch(SmallVector<Instruction*, 4> & Values, Instruction* I)
+{
+    // %a = fmul fast float %b, %b
+
+    //   some other instructions that can be skipped
+
+    // %mul_xa = fmul fast float %x, %a
+    // %mul_ya = fmul fast float %y, %a
+    // %mul_za = fmul fast float %z, %a
+    // %result_a = call fast float @llvm.maxnum.f32(float% mul_xa, float 0.000000e+00)
+    // %result_b = call fast float @llvm.maxnum.f32(float% mul_ya, float 0.000000e+00)
+    // %result_c = call fast float @llvm.maxnum.f32(float% mul_za, float 0.000000e+00)
+
+    if (I->getOpcode() != Instruction::FMul || I->getOperand(0) != I->getOperand(1))
+        return false;
+
+    for (auto iter = I->user_begin(); iter != I->user_end(); iter++)
+    {
+        if (Instruction * mulInst = dyn_cast<Instruction>(*iter))
+        {
+            if (mulInst->getOpcode() != Instruction::FMul || !mulInst->hasOneUse())
+            {
+                return false;
+            }
+            if (Instruction * maxInst = dyn_cast<Instruction>(*mulInst->user_begin()))
+            {
+                ConstantFP* c = dyn_cast<ConstantFP>(maxInst->getOperand(1));
+                if (!c || !c->isZero())
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
 
 bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, FCmpInst* FC)
 {
@@ -3036,6 +3073,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
     bool DPFSatPatternEnable = 0;
     bool NdotLPatternEnable = 0;
     bool DirectOutputPatternEnable = 0;
+    bool MulMaxMatchEnable = 0;
 
     // Each pattern below is given a bit to toggle on/off
     // to isolate the performance for each individual pattern.
@@ -3053,6 +3091,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
         DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x4) != 0;
         NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x8) != 0;
         DirectOutputPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x10) != 0;
+        MulMaxMatchEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x20) != 0;
     }
 
     while (BBSplit)
@@ -3138,7 +3177,14 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                 OptCandidate = NdotLPatternEnable &&
                     canOptimizeNdotL(Values, FC) && canOptimizeDotProduct(Values, &II);
             }
-
+            else if (II.getOpcode() == Instruction::FMul)
+            {
+                OptCandidate = MulMaxMatchEnable && canOptimizeMulMaxMatch(Values, &II);
+                if (OptCandidate)
+                {
+                    Values.push_back(&II);
+                }
+            }
             if (OptCandidate)
             {
                 BasicBlock* BB1 = tryFoldAndSplit(Values, Root,
