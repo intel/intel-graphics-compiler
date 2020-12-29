@@ -192,7 +192,7 @@ DECLARE_IGC_REGKEY(bool, EnableSplitUnalignedVector,    true,    "Enable Splitti
 DECLARE_IGC_REGKEY(bool, DisableFDivReassociation,      false,   "Disable reassociation for Fdiv operations to avoid precision difference", false)
 DECLARE_IGC_REGKEY(bool, EnableTrigFuncRangeReduction,    false,    "reduce the sin and cosing function domain range", true)
 DECLARE_IGC_REGKEY(bool, EnableUnmaskedFunctions,    true,    "Enable unmaksed functions SYCL feature.", true)
-DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       true,    "Enable promoting stateless atomic to stateful atomic.", true)
+DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting stateless atomic to stateful atomic.", false)
 
 
 DECLARE_IGC_GROUP("Shader debugging")
