@@ -2766,12 +2766,9 @@ public:
     }
 };
 
-//
-// for label and jmp inst
-//
 class G4_Label: public G4_Operand
 {
-    friend class OperandHashTable; // labels are hashed, and only OperandHashTable may create a label
+    friend class IR_Builder;
 
     const char* label;
     bool funcLabel;

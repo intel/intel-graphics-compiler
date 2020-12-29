@@ -1409,7 +1409,7 @@ bool CISA_IR_Builder::CISA_create_label(const char *label_name, int lineNum)
     if (m_kernel->getLabelOperandFromFunctionName(std::string(label_name)) == NULL)
     {
         opnd[0] = m_kernel->getLabelOpndFromLabelName(std::string(label_name));
-        if (opnd[0] == NULL)
+        if (!opnd[0])
         {
             // forward jump
             VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[0], label_name, LABEL_BLOCK);
@@ -1533,10 +1533,9 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             //determine correct IDs since function directive might not have been
             //encountered yet
             opnd[i] = m_kernel->getLabelOperandFromFunctionName(std::string(target_label));
-            if (opnd[i] == NULL)
+            if (!opnd[i])
             {
-                VISA_CALL_TO_BOOL(CreateVISALabelVar,
-                    opnd[i], target_label, LABEL_SUBROUTINE);
+                VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, LABEL_SUBROUTINE);
                 opnd[i]->tag = ISA_SUBROUTINE;
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
@@ -1550,10 +1549,9 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             opnd[i] = m_kernel->getLabelOpndFromLabelName(std::string(target_label));
 
             //forward jump label: create the label optimistically
-            if (opnd[i] == NULL)
+            if (!opnd[i])
             {
-                VISA_CALL_TO_BOOL(CreateVISALabelVar,
-                    opnd[i], target_label, LABEL_BLOCK);
+                VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, LABEL_BLOCK);
             }
 
             VISA_CALL_TO_BOOL(AppendVISACFJmpInst, (VISA_PredOpnd *) pred, opnd[i]);
@@ -1565,10 +1563,9 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
             opnd[i] = m_kernel->getLabelOpndFromLabelName(std::string(target_label));
 
             //forward jump label: create the label optimistically
-            if (opnd[i] == nullptr)
+            if (!opnd[i])
             {
-                VISA_CALL_TO_BOOL(CreateVISALabelVar,
-                    opnd[i], target_label, LABEL_BLOCK);
+                VISA_CALL_TO_BOOL(CreateVISALabelVar, opnd[i], target_label, LABEL_BLOCK);
             }
             VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
             VISA_CALL_TO_BOOL(AppendVISACFGotoInst,

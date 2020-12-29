@@ -88,9 +88,8 @@ public:
     VISA_BUILDER_API virtual int CreateVISASurfaceVar(VISA_SurfaceVar *&decl, const char* name, unsigned int numberElements) = 0;
 
     /// CreateVISALabelVar - create an instance of vISA label variable and return it via decl.
-    /// a label is either a block label or a subroutine label
-    /// namse must be unique for all labels in a kernel/function
-    /// FIXME: why is label an operand?
+    /// a label is either a block label or a subroutine label.
+    /// name is for IR dump and debugging only; a fresh label is always returned even if another label with same name exists.
     VISA_BUILDER_API virtual int CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name, VISA_Label_Kind kind) = 0;
 
     /// CreateVISAImplicitInputVar - create an input variable from a vISA general variable

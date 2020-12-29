@@ -225,9 +225,6 @@ public:
     // For floating-point types, 'imm' needs to be G4_Imm(<float-value>.getImm().
     G4_Imm*          lookupImm(int64_t imm, G4_Type ty);
     G4_Imm*          createImm(int64_t imm, G4_Type ty);
-
-    G4_Label*        lookupLabel(const char* lab);
-    G4_Label*        createLabel(const char* lab);
 };
 
 //
@@ -401,6 +398,21 @@ private:
                CanonicalRegionStride1, // <1; 1, 0>
                CanonicalRegionStride2, // <2; 1, 0>
                CanonicalRegionStride4; // <4; 1, 0>
+
+    // map of all stack functioncs ever invoked by this builder's kernel/function
+    std::map<std::string, G4_Label*> m_fcallLabels;
+
+    G4_Label* getFcallLabel(std::string str)
+    {
+        auto it = m_fcallLabels.find(str);
+        if (it == m_fcallLabels.end())
+        {
+            auto label = createLabel(str, LABEL_FUNCTION);
+            m_fcallLabels[str] = label;
+            return label;
+        }
+        return it->second;
+    }
 
     class PreDefinedVars
     {
@@ -1053,25 +1065,16 @@ public:
     }
 
     //
-    // return the label operand; create one if not found
-    //
-    G4_Label* lookupLabel(char* lab)
-    {
-        G4_Label* l = hashtable.lookupLabel(lab);
-        return l;
-    }
-
-    //
-    // return the label operand; create one if not found.
-    // a new copy of "lab" is created for the new label, so
+    // a new null-terminated copy of "lab" is created for the new label, so
     // caller does not have to allocate memory for lab
     //
-    G4_Label* createLabel(std::string& lab, VISA_Label_Kind kind)
+    G4_Label* createLabel(const std::string& lab, VISA_Label_Kind kind)
     {
         auto labStr = lab.c_str();
-
-        G4_Label* l = hashtable.lookupLabel(labStr);
-        return (l != NULL)? l : hashtable.createLabel(labStr);
+        size_t len = strlen(labStr) + 1;
+        char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
+        strcpy_s(new_str, len, labStr);
+        return new (mem) G4_Label(new_str);
     }
 
     G4_Predicate* createPredicate(

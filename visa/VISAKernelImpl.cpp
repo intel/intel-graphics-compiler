@@ -1291,14 +1291,16 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
                 inst_desc = &CISA_INST_table[ISA_LABEL];
                 opnd->tag = ISA_LABEL;
             }
-        }else
+        }
+        else
         {
             if (getLabelOperandFromFunctionName(name) == NULL)
             {
                 m_funcName_to_labelID_map[std::string(name)] = opnd;
                 inst_desc = &CISA_INST_table[ISA_SUBROUTINE];
                 opnd->tag = ISA_SUBROUTINE;
-            }else
+            }
+            else
             {
                 assert(0);
                 return VISA_FAILURE;
@@ -7875,9 +7877,9 @@ VISA_LabelOpnd* VISAKernelImpl::getLabelOpndFromLabelName(std::string name)
 {
     auto it = m_label_name_to_index_map.find(name);
     if (m_label_name_to_index_map.end() == it) {
-        return NULL;
+        return nullptr;
     } else {
-        return (VISA_LabelOpnd *)it->second;
+        return it->second;
     }
 }
 

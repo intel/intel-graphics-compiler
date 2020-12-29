@@ -165,6 +165,8 @@ int IR_Builder::translateVISACFFCallInst(
 
     uint8_t exsize = (uint8_t)Get_VISA_Exec_Size(execsize);
 
+    auto callLabel = getFcallLabel(funcName);
+
     auto fcall = createInst(
         predOpnd,
         G4_pseudo_fcall,
@@ -172,7 +174,7 @@ int IR_Builder::translateVISACFFCallInst(
         g4::NOSAT,
         exsize,
         nullptr,
-        createLabel(funcName, LABEL_FUNCTION),  //src0 is a fake label containing callee's name
+        callLabel,
         nullptr,
         InstOpt_NoOpt,
         true);

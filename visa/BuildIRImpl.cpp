@@ -1208,7 +1208,6 @@ G4_Type IR_Builder::getNewType(int64_t imm, G4_Type ty)
     return ty;
 }
 
-
 //
 // look up an imm operand
 //
@@ -1217,15 +1216,6 @@ G4_Imm* OperandHashTable::lookupImm(int64_t imm, G4_Type ty)
     ImmKey key(imm, ty);
     auto iter = immTable.find(key);
     return iter != immTable.end() ? iter->second : nullptr;
-}
-
-//
-// look up label operand
-//
-G4_Label* OperandHashTable::lookupLabel(const char* lab)
-{
-    auto iter = labelTable.find(lab);
-    return iter != labelTable.end() ? iter->second : nullptr;
 }
 
 //
@@ -1239,21 +1229,6 @@ G4_Imm* OperandHashTable::createImm(int64_t imm, G4_Type ty)
     return i;
 }
 
-//
-// create a label operand
-//
-G4_Label* OperandHashTable::createLabel(const char* lab)
-{
-    //
-    // create a new string (new_str) and copy lab to new_str
-    //
-    size_t len = strlen(lab) + 1;
-    char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
-    strcpy_s(new_str, len, lab);
-    G4_Label* l = new (mem) G4_Label(new_str);
-    labelTable[new_str] = l;
-    return l;
-}
 
 //
 // create the region <vstride; width, hstride> if not yet created
