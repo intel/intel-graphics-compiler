@@ -571,7 +571,7 @@ private:
         G4_SrcRegRegion * filledRegion,
         G4_INST *         filledInst);
 
-    void insertSpillRangeCode(
+    INST_LIST::iterator insertSpillRangeCode(
         INST_LIST::iterator spilledInstIter,
         G4_BB* bb
     );
@@ -581,7 +581,7 @@ private:
         INST_LIST::iterator filledInstIter,
         G4_BB* bb);
 
-    void insertFillGRFRangeCode(
+    INST_LIST::iterator insertFillGRFRangeCode(
         G4_SrcRegRegion *   filledRegion,
         INST_LIST::iterator filledInstIter,
         G4_BB* bb);
@@ -671,15 +671,6 @@ private:
     int globalScratchOffset;
 
     bool useScratchMsg_;
-
-    // spilled declares that represent a scalar immediate (created due to encoding restrictions)
-    // We rematerialize the immediate value instead of spill/fill them
-    std::unordered_map<G4_Declare*, G4_Imm*> scalarImmSpill;
-
-    // analysis pass to assist in spill/fill code gen
-    // currently it identifies scalar imm variables that should be re-mat
-    // later on we can add detection to avoid unncessary read-modify-write for spills
-    void runSpillAnalysis();
 
 
     bool headerNeeded()
