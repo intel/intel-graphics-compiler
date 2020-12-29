@@ -1123,6 +1123,9 @@ namespace IGC
     {
         SetCurrentPart(inst, 0);
         const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
+        const uint grfSize = outProgram->GetContext()->platform.getGRFSize();
+        const uint numSubVarsPerOperand = numLanes(simdMode) / (grfSize / 4);
+        IGC_ASSERT(numSubVarsPerOperand == 1 || numSubVarsPerOperand == 2);
         CoalescingEngine::CCTuple* ccTuple = nullptr;
         int payloadToCCTupleRelativeOffset = 0;
         Value* dummyValPtr = nullptr;
@@ -1168,7 +1171,8 @@ namespace IGC
 
                 CVariable* dataElement = outProgram->GetSymbol(val);
                 //FIXME: need to do additional checks for size
-                encoder->SetDstSubVar(payloadToCCTupleRelativeOffset + index);
+                uint subVar = payloadToCCTupleRelativeOffset + index * numSubVarsPerOperand;
+                encoder->SetDstSubVar(subVar);
                 payload = outProgram->GetCCTupleToVariableMapping(ccTuple);
 
                 if (touchedValuesSet.count(val)) {
@@ -1215,7 +1219,7 @@ namespace IGC
             {
                 Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
                 CVariable* data = outProgram->GetSymbol(val);
-                encoder->SetDstSubVar(i);
+                encoder->SetDstSubVar(i * numSubVarsPerOperand);
                 encoder->Copy(payload, data);
                 encoder->Push();
             }
