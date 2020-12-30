@@ -354,6 +354,7 @@ namespace IGC
         std::map<unsigned int, int> constantReg;
         std::array<SimplePushInfo, g_c_maxNumberOfBufferPushed> simplePushInfoArr;
         unsigned int simplePushBufferUsed = 0;
+
         std::vector<ArgDependencyInfoMD> pushAnalysisWIInfos;
     };
 

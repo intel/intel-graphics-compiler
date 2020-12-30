@@ -43,11 +43,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-    struct SimplePushData:SimplePushInfo
-    {
-        std::map<llvm::Instruction*, unsigned int> Load;
-    };
-
     class PushAnalysis : public llvm::ModulePass
     {
         const llvm::DataLayout* m_DL;
@@ -87,9 +82,6 @@ namespace IGC
         std::set <llvm::Value*> m_dynamicBufferOffsetArgs;
         FunctionUpgrader m_pFuncUpgrade;
 
-        unsigned int ConstantInfoArrCount = 0;
-        std::map<unsigned int, SimplePushData> AllConstantInfoArr;
-
         // Helper function
         /// Return true if the constant is in the range which we are allowed to push
         bool IsPushableShaderConstant(
@@ -120,7 +112,7 @@ namespace IGC
         void BlockPushConstants();
 
         /// Try to push allocate space for the constant to be pushed
-        void CollectAllConstantInfo(
+        unsigned int AllocatePushedConstant(
             llvm::Instruction* load,
             unsigned int cbIdx,
             int pushableAddressGrfOffset,
@@ -130,7 +122,7 @@ namespace IGC
             bool isStateless);
 
         /// promote the load to function argument
-        void PromoteLoadToSimplePush(SimplePushData& info);
+        void PromoteLoadToSimplePush(llvm::Instruction* load, SimplePushInfo& info, unsigned int offset);
 
         /// return true if the inputs are uniform
         bool AreUniformInputsBasedOnDispatchMode();
