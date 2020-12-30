@@ -4168,7 +4168,7 @@ void SpillManagerGRF::runSpillAnalysis()
                 continue;
             }
             spilledDcl.insert(dcl);
-            if (inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD1 && inst->getSrc(0)->isImm() && !inst->getPredicate() && !inst->getSaturate())
+            if (inst->isRawMov() && inst->getExecSize() == g4::SIMD1 && inst->getSrc(0)->isImm() && !inst->getPredicate() && dcl->getNumElems() == 1)
             {
                 scalarImmSpill[dcl] = inst->getSrc(0)->asImm();
             }
@@ -4186,7 +4186,7 @@ SpillManagerGRF::insertSpillFillCode (
 )
 {
 
-    //runSpillAnalysis();
+    runSpillAnalysis();
     // Set the spill flag of all spilled regvars.
     for (LR_LIST::const_iterator lt = spilledLRs_->begin();
         lt != spilledLRs_->end(); ++lt) {
