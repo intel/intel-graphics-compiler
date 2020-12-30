@@ -352,7 +352,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
     IGC_ASSERT_MESSAGE(PtrTy, "simdBlockRead has non-pointer type!");
     SmallVector<Value*, 1> args;
     args.push_back(Ptr);
-    SmallVector<Type*, 2>  types;
+    SmallVector<Type*, 3>  types;
     types.push_back(nullptr); types.push_back(nullptr);
     GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockRead;
     ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();

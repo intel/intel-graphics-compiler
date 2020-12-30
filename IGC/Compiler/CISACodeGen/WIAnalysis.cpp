@@ -1161,7 +1161,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_eu_id        ||
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
-        GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca)
+        GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
+        GII_id == GenISAIntrinsic::GenISA_getR0)
     {
         if (intrinsic_name == llvm_input ||
             intrinsic_name == llvm_shaderinputvec)
@@ -1236,6 +1237,11 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             {
                 return WIAnalysis::RANDOM;
             }
+        }
+
+        if(GII_id == GenISAIntrinsic::GenISA_getR0)
+        {
+            return WIAnalysis::UNIFORM;
         }
 
         // Iterate over all input dependencies. If all are uniform - propagate it.

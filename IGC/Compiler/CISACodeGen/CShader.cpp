@@ -2076,9 +2076,11 @@ void CShader::BeginFunction(llvm::Function* F)
     bool useStackCall = m_FGA && m_FGA->useStackCall(F);
     if (useStackCall)
     {
-        m_R0 = nullptr;
         globalSymbolMapping.clear();
         encoder.BeginStackFunction(F);
+        // create pre-defined r0
+        m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
+        encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);	
     }
     else
     {

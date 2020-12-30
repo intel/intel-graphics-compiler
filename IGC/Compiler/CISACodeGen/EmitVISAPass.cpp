@@ -8505,6 +8505,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_CatchAllDebugLine:
         emitDebugPlaceholder(inst);
         break;
+    case GenISAIntrinsic::GenISA_getR0:
+        emitR0(inst);
+        break;
     case GenISAIntrinsic::GenISA_dummyInst:
         emitDummyInst(inst);
         break;
@@ -15101,6 +15104,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     bool directIndexing = false;
     BufferType bufType = DecodeAS4GFXResource(ptrType->getAddressSpace(), directIndexing, bufferIndex);
 
+
     // First, special handling for less than 4 bytes of loaded value
     if (totalBytes < 4)
     {
@@ -17341,6 +17345,13 @@ void EmitPass::emitDummyInst(llvm::GenIntrinsicInst* GII)
     CVariable* src = m_currShader->GetR0();
     m_encoder->Copy(dst, src);
     m_encoder->Push();
+}
+
+void EmitPass::emitR0(llvm::GenIntrinsicInst* I)
+{
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(m_currShader->getGRFSize() / SIZE_DWORD));
+    m_encoder->SetNoMask();
+    m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetR0());
 }
 
 

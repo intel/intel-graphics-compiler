@@ -92,6 +92,10 @@ namespace IGC
         {
             return ADDRESS_SPACE_GLOBAL;
         }
+        else if (bufType == STATELESS_A32)
+        {
+            return ADDRESS_SPACE_A32;
+        }
         else if (auto *CI = dyn_cast<ConstantInt>(&bufIdx))
         {
             unsigned int bufId = static_cast<unsigned>(CI->getZExtValue());
@@ -120,6 +124,10 @@ namespace IGC
         if (addrSpace == ADDRESS_SPACE_LOCAL)
         {
             return SLM;
+        }
+        else if (addrSpace == ADDRESS_SPACE_A32)
+        {
+            return STATELESS_A32;
         }
         unsigned bufType = temp.bits.bufType - 1;
         if (bufType < BUFFER_TYPE_UNKNOWN)

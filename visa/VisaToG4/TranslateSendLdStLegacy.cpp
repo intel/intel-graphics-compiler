@@ -83,7 +83,6 @@ static void BuildStatelessSurfaceMessageHeader(IR_Builder *IRB, G4_Declare *Head
 {
     // For A32, clearing off scratch space offset or Buffer Base Address is
     // always required once header is present.
-
     G4_Type ElemTy = Header->getElemType();
 
     // R0.5<31:10> is defined as Scratch Space Offset.

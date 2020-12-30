@@ -111,6 +111,7 @@ namespace IGC
         RENDER_TARGET,
         STATELESS,
         STATELESS_READONLY,
+        STATELESS_A32,
         BUFFER_TYPE_UNKNOWN = 15,
     };
 
@@ -130,6 +131,7 @@ namespace IGC
         ADDRESS_SPACE_CONSTANT = 2,
         ADDRESS_SPACE_LOCAL = 3,
         ADDRESS_SPACE_GENERIC = 4,
+        ADDRESS_SPACE_A32 = 5,
 
         ADDRESS_SPACE_GLOBAL_OR_PRIVATE = 20,
 
