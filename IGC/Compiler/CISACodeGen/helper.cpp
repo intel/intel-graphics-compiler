@@ -407,6 +407,32 @@ namespace IGC
         Value* srcPtr = nullptr;
         Value* baseValue = resourcePtr;
 
+        // Returns true if resource pointers describe the same resource.
+        auto ResourcePointersEq = [](Value* a, Value* b)->bool
+        {
+            if (a == b)
+            {
+                return true;
+            }
+            if (a->getType()->isPointerTy() && b->getType()->isPointerTy())
+            {
+                unsigned idxA, idxB;
+                BufferType bufA, bufB;
+                BufferAccessType accessA, accessB;
+                bool needBufferOffsetA, needBufferOffsetB;
+
+                if (GetResourcePointerInfo(a, idxA, bufA, accessA, needBufferOffsetA) &&
+                    GetResourcePointerInfo(b, idxB, bufB, accessB, needBufferOffsetB) &&
+                    idxA == idxB &&
+                    accessA == accessB &&
+                    needBufferOffsetA == needBufferOffsetB)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         while (true)
         {
             if (fillList)
@@ -475,6 +501,7 @@ namespace IGC
                     return baseValue;
                 }
                 visitedPHIs.insert(inst);
+
                 for (unsigned int i = 0; i < inst->getNumIncomingValues(); ++i)
                 {
                     // All phi paths must be trace-able and trace back to the same source
@@ -500,7 +527,7 @@ namespace IGC
                         srcPtr = phiSrcPtr;
                         instList.insert(instList.end(), splitList.begin(), splitList.end());
                     }
-                    else if (srcPtr != phiSrcPtr)
+                    else if (!ResourcePointersEq(srcPtr , phiSrcPtr))
                     {
                         // The source pointers have diverged. Bail out.
                         return nullptr;
@@ -520,7 +547,8 @@ namespace IGC
                 // source pointer, otherwise we can't determine which one to use.
                 Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, enablePhiLoops, fillList, instList, visitedPHIs);
                 Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, enablePhiLoops, false, instList, visitedPHIs);
-                if (selectSrc0 && selectSrc1 && selectSrc0 == selectSrc1)
+                if (selectSrc0 && selectSrc1 &&
+                    ResourcePointersEq(selectSrc0, selectSrc1))
                 {
                     srcPtr = selectSrc0;
                     break;
