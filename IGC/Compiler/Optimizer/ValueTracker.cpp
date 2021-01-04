@@ -344,6 +344,23 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
             {
                 return CI->getOperand(1);
             }
+            else if (!CI->getCalledFunction()->isIntrinsic()) // handle user-defined functions
+            {
+                for (const auto& OP : CI->operands())
+                {
+                    if (OP == V)
+                    {
+                        Function* F = CI->getCalledFunction();
+                        unsigned OpNo = OP.getOperandNo();
+                        IGC_ASSERT(F->arg_size() > OpNo);
+                        if (auto leaf = findAllocaValue(F->arg_begin() + OpNo, depth))
+                        {
+                            callInsts.push_back(CI);
+                            return leaf;
+                        }
+                    }
+                }
+            }
         }
         else if (auto* LI = dyn_cast<LoadInst>(U))
         {
@@ -388,7 +405,7 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
 Value* ValueTracker::trackValue(CallInst* CI, const uint index)
 {
     Value* baseValue = CI->getOperand(index);
-    auto isFinalValue = [](auto V) { return (V == nullptr || llvm::isa<Argument>(V) || llvm::isa<ConstantInt>(V)); };
+    auto isFinalValue = [this](auto V) { return callInsts.empty() && (V == nullptr || llvm::isa<Argument>(V) || llvm::isa<ConstantInt>(V)); };
 
     while (true)
     {
@@ -397,7 +414,19 @@ Value* ValueTracker::trackValue(CallInst* CI, const uint index)
 
         visitedValues.insert(baseValue);
 
-        if (auto* I = dyn_cast<AllocaInst>(baseValue))
+        if (auto* I = dyn_cast<Argument>(baseValue))
+        {
+            // If we are here, it means that baseValue is an argument of function not argument of kernel,
+            // so we need to continue tracking
+            IGC_ASSERT(!callInsts.empty());
+            CallInst* CI = callInsts.back();
+            IGC_ASSERT(CI->getNumOperands() > I->getArgNo());
+            baseValue = CI->getOperand(I->getArgNo());
+            // Remove the last call instruction as callee function body has already been processed
+            // by tracing algorithm
+            callInsts.pop_back();
+        }
+        else if (auto* I = dyn_cast<AllocaInst>(baseValue))
         {
             // As alloca has been found, proceed with the second step of the algorithm.
             baseValue = findAllocaValue(I, gepIndices.size());

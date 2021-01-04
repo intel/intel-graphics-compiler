@@ -62,6 +62,7 @@ namespace IGC
         llvm::Function* m_Function;
 
         std::vector<llvm::ConstantInt*> gepIndices;
+        std::vector<llvm::CallInst*> callInsts;
         llvm::SmallPtrSet<llvm::Value*, 10> visitedValues;
     public:
         static llvm::Value* track(
