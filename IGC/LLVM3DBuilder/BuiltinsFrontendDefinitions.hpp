@@ -2656,30 +2656,29 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateGen9PlusIma
     IGC_ASSERT(nullptr != m_Platform);
     IGC_ASSERT(m_Platform->GetPlatformFamily() >= IGFX_GEN9_CORE);
 
-    if (m_Platform->hasHDCSupportForTypedReadsUnormSnormToFloatConversion())
+    switch (surfaceFormat)
     {
-        // Starting with CNL, values returned by Typed Surface Read on several
-        // UNORM/SNORM surfaces do not need additional software conversion to
-        // floats, as this conversion is performed by hardware out of the box.
-        switch (surfaceFormat)
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_SNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_UNORM:
+    case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_SNORM:
+        if (m_Platform->hasHDCSupportForTypedReadsUnormSnormToFloatConversion())
         {
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_UNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16B16A16_SNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_UNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8B8A8_SNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_UNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16G16_SNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_UNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8G8_SNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_UNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R16_SNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_UNORM:
-        case IGC::SURFACE_FORMAT::SURFACE_FORMAT_R8_SNORM:
             return pLdUAVTypedResult;
-        default:
-            break;
         }
+        break;
+    default:
+        break;
     }
+
 
     llvm::Value* pFormatConvertedLLVMLdUAVTypedResult = pLdUAVTypedResult;
     switch (surfaceFormat)
