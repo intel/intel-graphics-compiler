@@ -569,7 +569,6 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
                             IGC_ASSERT_MESSAGE(0, "Cannot inline for recursion!");
                             return false;
                         }
-                        pFuncOnPath->removeFnAttr("visaStackCall");
                         pFuncOnPath->removeFnAttr(llvm::Attribute::NoInline);
                         pFuncOnPath->addFnAttr(llvm::Attribute::AlwaysInline);
                         changed = true;
