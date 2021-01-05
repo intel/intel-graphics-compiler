@@ -781,7 +781,7 @@ namespace IGC
         return size;
     }
 
-    unsigned int PushAnalysis::AllocatePushedConstant(
+    void PushAnalysis::CollectAllConstantInfo(
         Instruction* load,
         unsigned int cbIdx,
         int pushableAddressGrfOffset,
@@ -792,14 +792,11 @@ namespace IGC
     {
         if (cbIdx > m_context->m_DriverInfo.MaximumSimplePushBufferID())
         {
-            return 0;
+            return;
         }
         unsigned int size = GetSizeInBits(load->getType()) / 8;
         IGC_ASSERT_MESSAGE(isa<LoadInst>(load), "Expected a load instruction");
-        PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
-        bool canPromote = false;
-        unsigned int sizeGrown = 0;
         // greedy allocation for now
         // first check if we are already pushing from the buffer
         unsigned int piIndex;
@@ -808,9 +805,9 @@ namespace IGC
         //For stateless buffers, we store the GRFOffset into the simplePushInfoArr[piIndex].cbIdx
         //For stateful buffers, we store the bufferId into the simplePushInfoArr[piIndex].cbIdx
         //We traverse the array and identify which CB we're in based on either GFXOffset or bufferId
-        for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
+        for (piIndex = 0; piIndex < ConstantInfoArrCount; piIndex++)
         {
-            const SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
+            SimplePushData& info = AllConstantInfoArr[piIndex];
             if (info.isStateless == isStateless &&
                 info.isStateless == false &&
                 info.cbIdx == cbIdx)
@@ -829,26 +826,20 @@ namespace IGC
         }
         if (regionFound)
         {
-            unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getMinPushConstantBufferAlignmentInBytes());
-            unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getMinPushConstantBufferAlignmentInBytes());
+            unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, AllConstantInfoArr[piIndex].offset), getGRFSize());
+            unsigned int newEndOffset = iSTD::Round(std::max(offset + size, AllConstantInfoArr[piIndex].offset + AllConstantInfoArr[piIndex].size), getGRFSize());
             unsigned int newSize = newEndOffset - newStartOffset;
 
-            if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
+            if (newSize <= maxSizeAllowed)
             {
-                sizeGrown = newSize - pushInfo.simplePushInfoArr[piIndex].size;
-                canPromote = true;
-                pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
-                pushInfo.simplePushInfoArr[piIndex].size = newSize;
-                pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
+                AllConstantInfoArr[piIndex].offset = newStartOffset;
+                AllConstantInfoArr[piIndex].size = newSize;
+                AllConstantInfoArr[piIndex].Load[load] = offset;
+                AllConstantInfoArr[piIndex].isStateless = isStateless;
             }
         }
-
-        const unsigned int maxNumberOfPushedBuffers = pushInfo.MaxNumberOfPushedBuffers;
-
         // we couldn't add it to an existing buffer try to add a new one if there is a slot available
-        if (canPromote == false &&
-            maxSizeAllowed > 0 &&
-            pushInfo.simplePushBufferUsed < maxNumberOfPushedBuffers)
+        else
         {
             unsigned int newStartOffset = iSTD::RoundDown(offset, getMinPushConstantBufferAlignmentInBytes());
             unsigned int newEndOffset = iSTD::Round(offset + size, getMinPushConstantBufferAlignmentInBytes());
@@ -856,11 +847,9 @@ namespace IGC
 
             if (newSize <= maxSizeAllowed)
             {
-                canPromote = true;
-                sizeGrown = newSize;
 
-                piIndex = pushInfo.simplePushBufferUsed;
-                SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
+                piIndex = ConstantInfoArrCount;
+                SimplePushData& info = AllConstantInfoArr[piIndex];
                 if (isStateless)
                 {
                     info.pushableAddressGrfOffset = pushableAddressGrfOffset;
@@ -874,107 +863,105 @@ namespace IGC
                 info.offset = newStartOffset;
                 info.size = newSize;
                 info.isStateless = isStateless;
-                pushInfo.simplePushBufferUsed++;
+                info.Load[load] = offset;
+                ConstantInfoArrCount++;
             }
         }
-
-        if (canPromote)
-        {
-            // promote the load to be pushed
-            PromoteLoadToSimplePush(load, pushInfo.simplePushInfoArr[piIndex], offset);
-        }
-        return sizeGrown;
     }
 
-    void PushAnalysis::PromoteLoadToSimplePush(Instruction* load, SimplePushInfo& info, unsigned int offset)
+    void PushAnalysis::PromoteLoadToSimplePush(SimplePushData& info)
     {
-        unsigned int num_elms = 1;
-        llvm::Type* pTypeToPush = load->getType();
-        if (pTypeToPush->isPointerTy())
+        for (auto I = info.Load.begin(), E = info.Load.end(); I != E; I++)
         {
-            pTypeToPush = IntegerType::get(
-                load->getContext(),
-                m_DL->getPointerSizeInBits(pTypeToPush->getPointerAddressSpace()));
-        }
-        llvm::Value* pReplacedInst = nullptr;
-        llvm::Type* pScalarTy = pTypeToPush;
-
-        if (pTypeToPush->isVectorTy())
-        {
-            num_elms = (unsigned)cast<VectorType>(pTypeToPush)->getNumElements();
-            pTypeToPush = cast<VectorType>(pTypeToPush)->getElementType();
-            llvm::Type* pVecTy = IGCLLVM::FixedVectorType::get(pTypeToPush, num_elms);
-            pReplacedInst = llvm::UndefValue::get(pVecTy);
-            pScalarTy = cast<VectorType>(pVecTy)->getElementType();
-        }
-
-        SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
-        bool allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(load), extracts);
-
-        for (unsigned int i = 0; i < num_elms; ++i)
-        {
-            uint address = offset + i * ((unsigned int)pScalarTy->getPrimitiveSizeInBits() / 8);
-            auto it = info.simplePushLoads.find(address);
-            llvm::Value* value = nullptr;
-            if (it != info.simplePushLoads.end())
+            llvm::Instruction* load = I->first;
+            unsigned int num_elms = 1;
+            llvm::Type* pTypeToPush = load->getType();
+            if (pTypeToPush->isPointerTy())
             {
-                // Value is already getting pushed
-                IGC_ASSERT_MESSAGE((it->second <= m_argIndex), "Function arguments list and metadata are out of sync!");
-                value = m_argList[it->second];
-                if (pTypeToPush != value->getType())
-                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
+                pTypeToPush = IntegerType::get(
+                    load->getContext(),
+                    m_DL->getPointerSizeInBits(pTypeToPush->getPointerAddressSpace()));
             }
-            else
-            {
-                value = addArgumentAndMetadata(pTypeToPush, VALUE_NAME("cb"), WIAnalysis::UNIFORM);
-                if (pTypeToPush != value->getType())
-                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
+            llvm::Value* pReplacedInst = nullptr;
+            llvm::Type* pScalarTy = pTypeToPush;
 
-                info.simplePushLoads.insert(std::make_pair(address, m_argIndex));
+            if (pTypeToPush->isVectorTy())
+            {
+                num_elms = (unsigned)cast<VectorType>(pTypeToPush)->getNumElements();
+                pTypeToPush = cast<VectorType>(pTypeToPush)->getElementType();
+                llvm::Type* pVecTy = IGCLLVM::FixedVectorType::get(pTypeToPush, num_elms);
+                pReplacedInst = llvm::UndefValue::get(pVecTy);
+                pScalarTy = cast<VectorType>(pVecTy)->getElementType();
             }
 
-            if (load->getType()->isVectorTy())
+            SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
+            bool allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(load), extracts);
+
+            for (unsigned int i = 0; i < num_elms; ++i)
             {
-                if (!allExtract)
+                uint address = info.offset + i * ((unsigned int)pScalarTy->getPrimitiveSizeInBits() / 8);
+                auto it = info.simplePushLoads.find(address);
+                llvm::Value* value = nullptr;
+                if (it != info.simplePushLoads.end())
                 {
-                    pReplacedInst = llvm::InsertElementInst::Create(
-                        pReplacedInst, value, llvm::ConstantInt::get(llvm::IntegerType::get(load->getContext(), 32), i), "", load);
+                    // Value is already getting pushed
+                    IGC_ASSERT_MESSAGE((it->second <= m_argIndex), "Function arguments list and metadata are out of sync!");
+                    value = m_argList[it->second];
+                    if (pTypeToPush != value->getType())
+                        value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
                 }
                 else
                 {
-                    for (auto II : extracts[i])
+                    value = addArgumentAndMetadata(pTypeToPush, VALUE_NAME("cb"), WIAnalysis::UNIFORM);
+                    if (pTypeToPush != value->getType())
+                        value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
+
+                    info.simplePushLoads.insert(std::make_pair(address, m_argIndex));
+                }
+
+                if (load->getType()->isVectorTy())
+                {
+                    if (!allExtract)
                     {
-                        II->replaceAllUsesWith(value);
+                        pReplacedInst = llvm::InsertElementInst::Create(
+                            pReplacedInst, value, llvm::ConstantInt::get(llvm::IntegerType::get(load->getContext(), 32), i), "", load);
+                    }
+                    else
+                    {
+                        for (auto II : extracts[i])
+                        {
+                            II->replaceAllUsesWith(value);
+                        }
                     }
                 }
-            }
-            else
-            {
-                if (load->getType()->isPointerTy())
+                else
                 {
-                    value = IntToPtrInst::Create(
-                        Instruction::IntToPtr,
-                        value,
-                        load->getType(),
-                        load->getName(),
-                        load);
+                    if (load->getType()->isPointerTy())
+                    {
+                        value = IntToPtrInst::Create(
+                            Instruction::IntToPtr,
+                            value,
+                            load->getType(),
+                            load->getName(),
+                            load);
+                    }
+                    pReplacedInst = value;
                 }
-                pReplacedInst = value;
-            }
 
-        }
-        if (!allExtract)
-        {
-            load->replaceAllUsesWith(pReplacedInst);
+            }
+            if (!allExtract)
+            {
+                load->replaceAllUsesWith(pReplacedInst);
+            }
         }
     }
-
 
     void PushAnalysis::BlockPushConstants()
     {
         auto& inputs = m_context->getModuleMetaData()->pushInfo.inputs;
         typedef const std::map<unsigned int, SInputDesc>::value_type& inputPairType;
         unsigned int largestIndex = 0;
+        AllConstantInfoArr.clear();
         if (m_context->m_DriverInfo.EnableSimplePushRestriction())
         {
             auto largestPair = std::max_element(inputs.begin(), inputs.end(),
@@ -1011,16 +998,47 @@ namespace IGC
                     offset,
                     isStateless))
                 {
-                    sizePushed += AllocatePushedConstant(
+                    CollectAllConstantInfo(
                         &(*i),
                         cbIdx,
                         pushableAddressGrfOffset,
                         pushableOffsetGrfOffset,
                         offset,
-                        cthreshold - sizePushed,
+                        cthreshold,
                         isStateless);
                 }
             }
+        }
+        PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
+        while (pushInfo.simplePushBufferUsed < pushInfo.MaxNumberOfPushedBuffers &&
+            (AllConstantInfoArr.size()>0))
+        {
+            unsigned int iter = AllConstantInfoArr.begin()->first;
+            SimplePushData info = AllConstantInfoArr.begin()->second;
+            for (auto I = AllConstantInfoArr.begin(), E = AllConstantInfoArr.end(); I != E; I++)
+            {
+                if (I->second.size > info.size)
+                {
+                    info = I->second;
+                    iter = I->first;
+                }
+            }
+            if (sizePushed + info.size <= cthreshold)
+            {
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].cbIdx = info.cbIdx;
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].isStateless = info.isStateless;
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].offset = info.offset;
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].pushableAddressGrfOffset = info.pushableAddressGrfOffset;
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].pushableOffsetGrfOffset = info.pushableOffsetGrfOffset;
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].size = info.size;
+                sizePushed += info.size;
+                PromoteLoadToSimplePush(info);
+                pushInfo.simplePushInfoArr[pushInfo.simplePushBufferUsed].simplePushLoads = info.simplePushLoads;
+                pushInfo.simplePushBufferUsed++;
+                if (sizePushed >= cthreshold)
+                    break;
+            }
+            AllConstantInfoArr.erase(iter);
         }
     }
 
