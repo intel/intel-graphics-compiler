@@ -407,12 +407,14 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         inst->setCondMod(condModOverflow);
 
         bool generateIf = true;
+        G4_Label* endifLabel = nullptr;
 
         if (generateIf)
         {
             // if
-            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            G4_Predicate *predicateFlagReg = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            endifLabel = createLabel("endif", LABEL_BLOCK);
+            inst = createGoto(predicateFlagReg, exsize, endifLabel, instOpt, true);
         }
         {
             // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
@@ -509,8 +511,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
         if (generateIf)
         {
-            // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+            // endif
+            inst = createLabelInst(endifLabel, true);
         }
     }; //for loop
 
@@ -704,9 +706,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-        G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, exsize, instOpt);
+        // if
+        G4_Predicate *predicateFlagReg = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0, predCtrlValue);
+        auto endifLabel = createLabel("endif", LABEL_BLOCK);
+        inst = createGoto(predicateFlagReg, exsize, endifLabel, instOpt, true);
 
         // madm (8) r9.acc3 r2.noacc r6.noacc r8.acc2 {Align16, Q1/Q2}
         G4_SrcRegRegion *t2SrcOpnd = createSrcRegRegion(tsrc2);
@@ -777,7 +780,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             t6SrcOpnd4, t1SrcOpnd1, madmInstOpt);
 
         // endif (8) {Q1/Q2}
-        inst = createEndif(exsize, instOpt);
+        inst = createLabelInst(endifLabel, true);
     };
 
     // make final copy to dst
@@ -925,9 +928,10 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        // (-f1.0) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_IF_LABEL__0 {Q1/Q2}
-        G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, exsize, instOpt);
+        // if
+        G4_Predicate *predicateFlagReg = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0, predCtrlValue);
+        auto endifLabel = createLabel("endif", LABEL_BLOCK);
+        inst = createGoto(predicateFlagReg, exsize, endifLabel, instOpt, true);
 
 
         //madm (8) r9.acc3 r0.noacc r8.noacc r7.acc2 {Aligned16, Q1/Q2}
@@ -1014,7 +1018,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
             t9SrcOpnd2, t10SrcOpnd2, madmInstOpt);
 
         // endif (exsize) {Q1/Q2}
-        inst = createEndif(exsize, instOpt);
+        inst = createLabelInst(endifLabel, true);
     };
 
     // make final copy to dst
@@ -1162,12 +1166,14 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         inst->setCondMod(condModOverflow);
 
         bool generateIf = true;
+        G4_Label* endifLabel = nullptr;
 
         if (generateIf)
         {
             // if
-            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            G4_Predicate *predicateFlagReg = createPredicate(PredState_Plus, flagReg->getRegVar(), 0, predCtrlValue);
+            endifLabel = createLabel("endif", LABEL_BLOCK);
+            inst = createGoto(predicateFlagReg, exsize, endifLabel, instOpt, true);
         }
 
         {
@@ -1289,8 +1295,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
         if (generateIf)
         {
-            // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+            // endif
+            inst = createLabelInst(endifLabel, true);
         }
     };
 
