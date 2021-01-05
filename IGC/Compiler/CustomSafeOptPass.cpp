@@ -440,8 +440,10 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         }
 
         case GenISAIntrinsic::GenISA_bfi:
+        {
             visitBfi(inst);
             break;
+        }
 
         case GenISAIntrinsic::GenISA_f32tof16_rtz:
         {
@@ -3074,6 +3076,21 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             if (C0)
             {
                 C = constantFolder.CreateFirstBitLo(C0);
+            }
+        }
+        break;
+        case llvm_bfi:
+        {
+            Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
+            Constant* C2 = dyn_cast<Constant>(inst->getOperand(2));
+            Constant* C3 = dyn_cast<Constant>(inst->getOperand(3));
+            if (C0 && C0->isZeroValue() && C3)
+            {
+                C = C3;
+            }
+            else if (C0 && C1 && C2 && C3)
+            {
+                C = constantFolder.CreateBfi(C0, C1, C2, C3);
             }
         }
         break;

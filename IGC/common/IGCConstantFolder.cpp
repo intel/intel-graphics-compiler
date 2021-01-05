@@ -315,4 +315,24 @@ llvm::Constant* IGCConstantFolder::CreateFirstBitLo(llvm::Constant* C0) const
     return llvm::ConstantInt::get(C0->getType(), fbl);
 }
 
+llvm::Constant* IGCConstantFolder::CreateBfi(llvm::Constant* C0, llvm::Constant* C1, llvm::Constant* C2, llvm::Constant* C3) const
+{
+    if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1) || llvm::isa<llvm::UndefValue>(C2))
+    {
+        return nullptr;
+    }
+    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0); // width
+    llvm::ConstantInt* CI1 = llvm::cast<llvm::ConstantInt>(C1); // offset
+    llvm::ConstantInt* CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number the bits are taken from.
+    llvm::ConstantInt* CI3 = llvm::cast<llvm::ConstantInt>(C3); // the number with bits to be replaced.
+    uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
+    uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
+    uint32_t bitwidth = CI2->getType()->getBitWidth();
+    llvm::APInt bitmask = llvm::APInt::getBitsSet(bitwidth, offset, offset + width);
+    llvm::APInt result = CI2->getValue();
+    result = result.shl(offset);
+    result = (result & bitmask) | (CI3->getValue() & ~bitmask);
+    return llvm::ConstantInt::get(C0->getContext(), result);
+}
+
 } // namespace IGC
