@@ -639,6 +639,7 @@ bool WaOverwriteFFID() const
     return m_WaTable.Wa_1409460247 != 0;
 }
 
+
 bool alignBindlessSampler() const
 {
     return true;
