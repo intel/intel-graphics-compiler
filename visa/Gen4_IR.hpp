@@ -4036,7 +4036,7 @@ inline bool G4_INST::isRelocationMov() const
 
 inline const char* G4_INST::getLabelStr() const
 {
-    MUST_BE_TRUE(srcs[0] && srcs[0]->isLabel(), ERROR_UNKNOWN);
+    MUST_BE_TRUE(srcs[0] != NULL && srcs[0]->isLabel(), ERROR_UNKNOWN);
     return srcs[0]->asLabel()->getLabel();
 }
 

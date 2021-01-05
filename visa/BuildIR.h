@@ -1068,7 +1068,7 @@ public:
     // a new null-terminated copy of "lab" is created for the new label, so
     // caller does not have to allocate memory for lab
     //
-    G4_Label* createLabel(std::string lab, VISA_Label_Kind kind)
+    G4_Label* createLabel(const std::string& lab, VISA_Label_Kind kind)
     {
         auto labStr = lab.c_str();
         size_t len = strlen(labStr) + 1;
@@ -1170,11 +1170,6 @@ public:
     G4_INST* createLabelInst(G4_Label* label, bool appendToInstList);
     G4_INST* createJmp(
         G4_Predicate* pred, G4_Operand* jmpTarget, G4_InstOpts options, bool appendToInstList);
-    G4_INST* createGoto(G4_Predicate* pred, G4_ExecSize execSize, G4_Label* target, G4_InstOpts options, bool addToInstList)
-    {
-        // jip is computed later during CFG construction
-        return createCFInst(pred, G4_goto, execSize, nullptr, target, options, addToInstList);
-    }
 
     // ToDo: make createInternalInst() private as well and add wraper for them
     G4_INST* createInternalInst(

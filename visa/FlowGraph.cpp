@@ -200,16 +200,16 @@ G4_opcode G4_BB::getLastOpcode() const
 // return label's corresponding BB
 // if label's BB is not yet created, then create one and add map label to BB
 //
-G4_BB* FlowGraph::getLabelBB(Label_BB_Map& map, G4_Label* label)
+G4_BB* FlowGraph::getLabelBB(Label_BB_Map& map, char const* label)
 {
-    if (map.find(label) != map.end())
-    {
-        return map[label];
-    }
-    else
+    MUST_BE_TRUE(label != NULL, ERROR_INTERNAL_ARGUMENT);
+    std::string label_string = label;
+    if (map.find(label_string) != map.end())
+        return map[label_string];
+    else    // BB does not exist
     {
         G4_BB* bb = createNewBB();
-        map[label] = bb;
+        map[label_string] = bb;             // associate them
         return bb;
     }
 }
@@ -220,7 +220,7 @@ G4_BB* FlowGraph::getLabelBB(Label_BB_Map& map, G4_Label* label)
 G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
 {
     if (first == NULL) return NULL;
-    G4_BB* bb = (first->isLabel()) ? getLabelBB(map, first->getSrc(0)->asLabel()) : createNewBB();
+    G4_BB* bb = (first->isLabel()) ? getLabelBB(map, first->getLabelStr()) : createNewBB();
     push_back(bb); // append to BBs list
     return bb;
 }
@@ -575,7 +575,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     //
     // map label to its corresponding BB
     //
-    std::unordered_map<G4_Label*, G4_BB*> labelMap;
+    std::map<std::string, G4_BB*> labelMap;
     //
     // create the entry block of the flow graph
     //
@@ -642,7 +642,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                     //
                     if (i->getSrc(0)->isLabel())
                     {
-                        addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->getSrc(0)->asLabel()));
+                        addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->getLabelStr()));
                     }
                     else if (i->asCFInst()->isIndirectJmp())
                     {
@@ -656,13 +656,13 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         // each individual labels, so that we still maintain the property
                         // that every basic block ends with a control flow instruction
                         const std::list<G4_Label*>& jmpTargets = i->asCFInst()->getIndirectJmpLabels();
-                        for (auto it = jmpTargets.begin(), jmpTrgEnd = jmpTargets.end(); it != jmpTrgEnd; ++it)
+                        for (std::list<G4_Label*>::const_iterator it = jmpTargets.begin(), jmpTrgEnd = jmpTargets.end(); it != jmpTrgEnd; ++it)
                         {
                             G4_INST* jmpInst = builder->createJmp(nullptr, *it, InstOpt_NoOpt, true);
                             indirectJmpTarget.emplace(jmpInst);
                             INST_LIST_ITER jmpInstIter = builder->instList.end();
                             curr_BB->splice(curr_BB->end(), builder->instList, --jmpInstIter);
-                            addPredSuccEdges(curr_BB, getLabelBB(labelMap, (*it)));
+                            addPredSuccEdges(curr_BB, getLabelBB(labelMap, (*it)->getLabel()));
                         }
                     }
 
@@ -691,14 +691,14 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         if (i->opcode() == G4_else || i->opcode() == G4_while)
                         {
                             // for G4_while, jump no matter predicate
-                            addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getJip()));
+                            addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getJipLabelStr()));
                         }
                         else if ((i->getPredicate() != NULL) ||
                             ((i->getCondMod() != NULL) &&
                             (i->getSrc(0) != NULL) &&
                                 (i->getSrc(1) != NULL)))
                         {
-                            addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getJip()));
+                            addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getJipLabelStr()));
                         }
                     }
                     if (i->opcode() == G4_while)
@@ -721,10 +721,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                     // JIP and UIP must have been computed at this point
                     MUST_BE_TRUE(i->asCFInst()->getJip() != NULL && i->asCFInst()->getUip() != NULL,
                         "null JIP or UIP for break/cont instruction");
-                    addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getJip()));
+                    addPredSuccEdges(curr_BB, getLabelBB(labelMap, ((G4_Label *)i->asCFInst()->getJip())->getLabel()));
 
                     if (strcmp(i->asCFInst()->getJipLabelStr(), i->asCFInst()->getUipLabelStr()) != 0)
-                        addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getUip()));
+                        addPredSuccEdges(curr_BB, getLabelBB(labelMap, ((G4_Label *)i->asCFInst()->getUip())->getLabel()));
 
                     //
                     // pred means conditional branch
@@ -761,7 +761,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                 {
                     hasNoUniformGoto = true;
                     hasSIMDCF = true;
-                    addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getUip()));
+                    addPredSuccEdges(curr_BB, getLabelBB(labelMap, i->asCFInst()->getUipLabelStr()));
 
                     if (i->getPredicate())
                     {
@@ -833,7 +833,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     handleExit(subroutineStartBB.size() > 1 ? subroutineStartBB[1] : nullptr);
 
     handleReturn(labelMap, funcInfoHashTable);
-    mergeReturn(funcInfoHashTable);
+    mergeReturn(labelMap, funcInfoHashTable);
     normalizeSubRoutineBB(funcInfoHashTable);
 
     handleWait();
@@ -884,7 +884,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
     if (hasSIMDCF && pKernel->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
     {
-        processSCF(funcInfoHashTable);
+        processSCF(labelMap, funcInfoHashTable);
         addSIMDEdges();
     }
 
@@ -1212,7 +1212,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
 // the algorithm traverses from the block of foo to search for RETURN and link the block of
 // RETURN with the block of the return address
 //
-void FlowGraph::handleReturn(Label_BB_Map& labelMap, FuncInfoHashTable& funcInfoHashTable)
+void FlowGraph::handleReturn(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& funcInfoHashTable)
 {
     for (std::list<G4_BB*>::iterator it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
     {
@@ -1228,8 +1228,9 @@ void FlowGraph::handleReturn(Label_BB_Map& labelMap, FuncInfoHashTable& funcInfo
                 MUST_BE_TRUE1(bb->Succs.size() == 2, last->getLineNo(),
                     ERROR_FLOWGRAPH);
 
-                // find the subroutine BB and return Addr BB
-                G4_BB* subBB = labelMap[last->getSrc(0)->asLabel()];
+                // find the  subroutine BB and return Addr BB
+                std::string subName = last->getLabelStr();
+                G4_BB* subBB = labelMap[subName];
                 //
                 // the fall through BB must be the front
                 //
@@ -1334,7 +1335,7 @@ void FlowGraph::linkReturnAddr(G4_BB* entryBB, G4_BB* returnAddr)
 //          and the afterCAll BB. It is impossible to insert spill codes of different return BBs all before
 //          afterCall BB.
 //
-void FlowGraph::mergeReturn(FuncInfoHashTable& funcInfoHashTable)
+void FlowGraph::mergeReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoHashTable)
 {
 
     for (auto I = subroutines.begin(), E = subroutines.end(); I != E; ++I)
@@ -2407,6 +2408,36 @@ void FlowGraph::reassignBlockIDs()
     numBBId = i;
 }
 
+//
+// given a label string, find its BB and the label's offset in the BB
+// label_offset is the offset of label in BB, since there may be nop insterted before the label
+//
+G4_BB *FlowGraph::findLabelBB(char *label, int &label_offset)
+{
+    MUST_BE_TRUE(label, ERROR_INTERNAL_ARGUMENT);
+
+    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+    {
+        G4_BB* bb = *it;
+        G4_INST *first = bb->empty() ? NULL : bb->front();
+
+        const char *label_t = NULL;
+
+        if (first && first->isLabel())
+        {
+            label_t = first->getLabelStr();
+            label_offset = 0;
+        }
+        if (label_t == NULL)
+            continue;
+
+        if (strcmp(label, label_t) == 0)
+            return bb;
+    }
+
+    return NULL;
+}
+
 G4_BB* FlowGraph::findLabelBB(
     BB_LIST_ITER StartIter, BB_LIST_ITER EndIter, const char* Label)
 {
@@ -2439,7 +2470,7 @@ G4_BB* FlowGraph::findLabelBB(
 *  The simd control flow blocks must be well-structured
 *
 */
-void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap)
+void FlowGraph::processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable &FuncInfoMap)
 {
     std::stack<StructuredCF*> ifAndLoops;
     std::vector<StructuredCF*> structuredSimdCF;
