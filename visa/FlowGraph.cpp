@@ -4242,6 +4242,11 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             }
         }
 
+        auto privateMemSize = getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+        if (privateMemSize != 0)
+        {
+            output << "\n.//.private memory size " << privateMemSize;
+        }
         output << "\n\n";
 
         //Step2: emit declares (as needed)
