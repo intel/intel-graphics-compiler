@@ -232,9 +232,9 @@ void CPixelShader::AllocatePSPayload()
                 }
                 offset += getGRFSize();
             }
-            if (m_ZWDelta)
+            if (m_ZWDelta && i == numInstances - 1)
             {
-                AllocateInput(m_ZWDelta, offset, i);
+                AllocateInput(m_ZWDelta, offset);
                 if (m_Signature)
                 {
                     GetDispatchSignature().ZWDelta = offset;
@@ -574,7 +574,7 @@ CVariable* CPixelShader::GetZWDelta()
         uint numLanes = 8; // single GRF
 
         m_ZWDelta =
-            GetNewVariable(numLanes, ISA_TYPE_F, EALIGN_GRF, false, m_numberInstance, "ZWDelta");
+            GetNewVariable(numLanes, ISA_TYPE_F, EALIGN_GRF, false, 1, "ZWDelta");
     }
     return m_ZWDelta;
 }
