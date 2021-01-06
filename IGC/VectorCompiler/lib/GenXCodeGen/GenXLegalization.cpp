@@ -179,7 +179,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
-#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -381,8 +380,7 @@ private:
                          Instruction *InsertBefore, const DebugLoc &DL);
   Instruction *convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
                                       Region *R, Instruction *InsertBefore);
-  Instruction *transformMoveType(Bale *B, IntegerType *FromTy,
-                                 IntegerType *ToTy);
+  Instruction *transformByteMove(Bale *B);
   Value *splatPredicateIfNecessary(Value *V, Type *ValueToWriteTy,
                                    Instruction *InsertBefore,
                                    const DebugLoc &DL);
@@ -719,33 +717,12 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     // Any other instruction: split.
   }
   // Check if it is a byte move that we want to transform into a short/int move.
-  if (EnableTransformByteMove) {
-    auto *I8Ty = Type::getInt8Ty(Inst->getContext());
-    auto *I16Ty = Type::getInt16Ty(Inst->getContext());
-    auto *I32Ty = Type::getInt32Ty(Inst->getContext());
-    if (transformMoveType(&B, I8Ty, I32Ty) ||
-        transformMoveType(&B, I8Ty, I16Ty)) {
-      // Successfully transformed. Run legalization on the new instruction
-      // (which got inserted before the existing one, so will be processed
-      // next).
-      LLVM_DEBUG(dbgs() << "done transform of byte move\n");
-      return false;
-    }
+  if (EnableTransformByteMove && transformByteMove(&B)) {
+    // Successfully transformed. Run legalization on the new instruction (which
+    // got inserted before the existing one, so will be processed next).
+    LLVM_DEBUG(dbgs() << "done transformByteMove\n");
+    return false;
   }
-
-  // Check if it is a 64-bit move that we want to transform into 32-bit move.
-  if (ST->emulateLongLong()) {
-    auto *I32Ty = Type::getInt32Ty(Inst->getContext());
-    auto *I64Ty = Type::getInt64Ty(Inst->getContext());
-    if (transformMoveType(&B, I64Ty, I32Ty)) {
-      // Successfully transformed. Run legalization on the new instruction
-      // (which got inserted before the existing one, so will be processed
-      // next).
-      LLVM_DEBUG(dbgs() << "done transform of long long move\n");
-      return false;
-    }
-  }
-
   // Normal instruction splitting.
   LLVM_DEBUG(dbgs() << "processBale: "; B.print(dbgs()));
 
@@ -2080,124 +2057,168 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
   return NewInst;
 }
 
-// Get value bitcasted to NewTy.
-static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
-                                    Instruction *InsertBefore) {
-  if (auto *C = dyn_cast<Constant>(V))
-    return ConstantFoldCastOperand(Instruction::BitCast, C, NewTy,
-                                   InsertBefore->getModule()->getDataLayout());
-  if (auto *BCI = dyn_cast<BitCastInst>(V)) {
-    if (BCI->getSrcTy() == NewTy)
-      return BCI->getOperand(0);
-  }
-  return CastInst::Create(Instruction::BitCast, V, NewTy,
-                          V->getName() + ".cast", InsertBefore);
-}
-
-// Get type that represents OldTy as vector of NewScalarType.
-static Type *getNewVectorType(Type *OldTy, IntegerType *NewScalarType) {
-  IGC_ASSERT(OldTy->isIntOrIntVectorTy());
-  unsigned OldElemSize = OldTy->getScalarSizeInBits(),
-           OldNumElems = isa<VectorType>(OldTy)
-                             ? cast<VectorType>(OldTy)->getNumElements()
-                             : 1;
-  unsigned NewElemSize = NewScalarType->getBitWidth();
-  if (OldElemSize * OldNumElems % NewElemSize)
-    return nullptr;
-  return VectorType::get(NewScalarType,
-                         OldElemSize * OldNumElems / NewElemSize);
-}
-
 /***********************************************************************
- * transformMoveType : transform move bale to new integer type.
+ * transformByteMove : transform a byte move into short or int move
  *
  * Enter:   B = bale (not necessarily a byte move)
- *          FromTy = old type of move
- *          ToTy = required new type
  *
  * Return:  0 if nothing changed, else the new head of bale (ignoring the
  *          bitcasts inserted either side)
  *
+ * If the bale is a byte move (a lone wrregion or lone rdregion or
+ * rdregion+wrregion where the element type is byte), and the region parameters
+ * are suitably aligned, we turn it into a short or int move. This saves the
+ * jitter having to split the byte move into an even half and an odd half.
+ *
  * If the code is modified, it updates bale info.
  *
- * This transformation needs to be done when baling info is available, so
+ * This optimization needs to be done when baling info is available, so
  * legalization is a handy place to put it.
  */
-Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
-                                                 IntegerType *ToTy) {
-  using GenXIntrinsic::GenXRegion::NewValueOperandNum;
-  using GenXIntrinsic::GenXRegion::OldValueOperandNum;
-
-  IGC_ASSERT(FromTy != ToTy && "Convertion of same types attempted");
-  // Recognize move dst and src in bale.
-  auto Head = B->getHead();
-  auto HeadInst = Head->Inst;
-  if (HeadInst->getType()->getScalarType() != FromTy)
+Instruction *GenXLegalization::transformByteMove(Bale *B) {
+  auto HeadBI = B->getHead();
+  Instruction *Head = HeadBI->Inst;
+  if (!Head->getType()->getScalarType()->isIntegerTy(8))
     return nullptr;
   Instruction *Wr = nullptr, *Rd = nullptr;
-  if (Head->Info.Type == BaleInfo::WRREGION) {
-    Wr = HeadInst;
-    if (Head->Info.isOperandBaled(NewValueOperandNum)) {
-      auto *BaledInst = cast<Instruction>(HeadInst->getOperand(NewValueOperandNum));
-      auto BaledInstInfo = Baling->getBaleInfo(BaledInst);
-      if (BaledInstInfo.Type == BaleInfo::RDREGION)
-        Rd = BaledInst;
-      // Allow single cast instruction in wrregion input.
-      else if (!isa<CastInst>(BaledInst) || BaledInstInfo.isOperandBaled(0))
+  if (HeadBI->Info.Type == BaleInfo::WRREGION) {
+    Wr = Head;
+    if (HeadBI->Info.isOperandBaled(
+            GenXIntrinsic::GenXRegion::NewValueOperandNum)) {
+      Rd = dyn_cast<Instruction>(
+          Wr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
+      if (!GenXIntrinsic::isRdRegion(Rd))
         return nullptr;
     }
-  } else if (Head->Info.Type == BaleInfo::RDREGION)
-    Rd = HeadInst;
-  // Either wrregion or rdregion should be presented.
-  if (!Wr && !Rd)
-    return nullptr;
-
-  Value *Src = Rd ? Rd->getOperand(OldValueOperandNum)
-                  : Wr->getOperand(NewValueOperandNum);
-  Region SrcRgn =
-      Rd ? Region(Rd, BaleInfo()) : Region(Wr->getOperand(NewValueOperandNum));
-  Value *Dst = Wr ? Wr : Rd;
-  Region DstRgn = Wr ? Region(Wr, BaleInfo()) : Region(Rd);
-
-  // Check that dst and src regions can be changed on new type.
-  if (SrcRgn.Indirect || DstRgn.Indirect || DstRgn.Mask)
-    return nullptr;
-  Type *NewSrcTy = getNewVectorType(Src->getType(), ToTy),
-       *NewDstTy = getNewVectorType(Dst->getType(), ToTy);
-  if (!NewSrcTy || !NewDstTy || !SrcRgn.changeElementType(ToTy) ||
-      !DstRgn.changeElementType(ToTy))
-    return nullptr;
-  IGC_ASSERT(SrcRgn.NumElements == DstRgn.NumElements);
-
-  Instruction *NewWr = nullptr, *NewRd = nullptr;
-  // Transform src operand.
-  Value *NewSrc = createBitCastIfNeeded(Src, NewSrcTy, HeadInst);
-  if (Rd) {
-    NewSrc = NewRd = SrcRgn.createRdRegion(NewSrc, Rd->getName(), HeadInst,
-                                           Rd->getDebugLoc());
-    Baling->setBaleInfo(NewRd, Baling->getBaleInfo(Rd));
+  } else {
+    if (HeadBI->Info.Type != BaleInfo::RDREGION)
+      return nullptr;
+    Rd = Head;
   }
-  // Transform dst operand.
-  Value *NewDst = NewSrc;
+  // Now Rd is the rdregion and Wr is the wrregion, and one of them might be 0.
+  if (Rd && !isa<VectorType>(Rd->getType()))
+    return nullptr;
+  if (Wr && !isa<VectorType>(Wr->getOperand(1)->getType()))
+    return nullptr;
+  IGC_ASSERT(Rd || Wr);
+  Value *In = Rd ? Rd->getOperand(0) : Wr->getOperand(1);
+  Region WrR;
   if (Wr) {
-    Value *NewOldVal = createBitCastIfNeeded(Wr->getOperand(OldValueOperandNum),
-                                             NewDstTy, HeadInst);
-    NewDst = NewWr = DstRgn.createWrRegion(NewOldVal, NewSrc, Wr->getName(),
-                                           HeadInst, Wr->getDebugLoc());
-    Baling->setBaleInfo(NewWr, Baling->getBaleInfo(Wr));
+    WrR = Region(Wr, BaleInfo());
+    if (WrR.Stride != 1 || WrR.Indirect || WrR.Mask)
+      return nullptr;
+  } else
+    WrR = Region(Rd); // representing just the result of the rd, not the region
+  Region RdR;
+  if (Rd) {
+    RdR = Region(Rd, BaleInfo());
+    if (RdR.Stride != 1 || RdR.Indirect)
+      return nullptr;
+  } else
+    RdR = Region(Wr->getOperand(0)); // representing just the value being
+                                     // written in to the region
+  unsigned InNumElements = cast<VectorType>(In->getType())->getNumElements();
+  IGC_ASSERT(Wr || Rd);
+  unsigned OutNumElements =
+      cast<VectorType>((Wr ? Wr : Rd)->getType())->getNumElements();
+  unsigned Misalignment = InNumElements | OutNumElements | RdR.NumElements |
+                          RdR.Width | RdR.VStride | RdR.Offset |
+                          WrR.NumElements | WrR.Width | WrR.VStride |
+                          WrR.Offset;
+  if (Misalignment & 1)
+    return nullptr;
+  unsigned LogAlignment = Misalignment & 2 ? 1 : 2;
+  auto InTy = IGCLLVM::FixedVectorType::get(
+      Type::getIntNTy(Head->getContext(), 8 << LogAlignment),
+      InNumElements >> LogAlignment);
+  // Create the bitcast of the input if necessary. (We do that even if the input
+  // is constant, on the basis that EarlyCSE will simplify it.)
+  Value *BCIn = nullptr;
+  if (BitCastInst *InCast = dyn_cast<BitCastInst>(In)) {
+    if (InCast->getSrcTy() == InTy)
+      BCIn = InCast->getOperand(0);
   }
-  IGC_ASSERT(NewWr || NewRd);
+  if (BCIn == nullptr) {
+    BCIn = CastInst::Create(Instruction::BitCast, In, InTy, "bytemov", Head);
+    cast<CastInst>(BCIn)->setDebugLoc(Head->getDebugLoc());
+  }
+  Value *Val = BCIn;
+  if (Rd) {
+    // Create the new rdregion.
+    RdR.NumElements >>= LogAlignment;
+    RdR.VStride >>= LogAlignment;
+    RdR.Width >>= LogAlignment;
+    RdR.ElementBytes <<= LogAlignment;
+    auto NewRd = RdR.createRdRegion(Val, "", Head, Rd->getDebugLoc(),
+                                    /*AllowScalar=*/false);
+    NewRd->takeName(Rd);
+    Baling->setBaleInfo(NewRd, BaleInfo(BaleInfo::RDREGION));
+    Val = NewRd;
+  }
+  if (Wr) {
+    // Create the bitcast of the old value of the vector. (Or just reuse
+    // the first bitcast if it is of the same value -- I saw this in
+    // Boxfilter.)
+    Value *BCOld = BCIn;
+    if (In != Wr->getOperand(0)) {
+      Value *OV = Wr->getOperand(0);
+      BCOld = nullptr;
+      auto ResTy = IGCLLVM::FixedVectorType::get(
+          Type::getIntNTy(Head->getContext(), 8 << LogAlignment),
+          OutNumElements >> LogAlignment);
+      if (BitCastInst *OVCast = dyn_cast<BitCastInst>(OV)) {
+        if (OVCast->getSrcTy() == ResTy)
+          BCOld = OVCast->getOperand(0);
+      }
+      if (BCOld == nullptr) {
+        BCOld =
+            CastInst::Create(Instruction::BitCast, OV, ResTy, "bytemov", Head);
+        cast<CastInst>(BCOld)->setDebugLoc(Wr->getDebugLoc());
+      }
+    }
+    // Create the new wrregion.
+    WrR.NumElements >>= LogAlignment;
+    WrR.VStride >>= LogAlignment;
+    WrR.Width >>= LogAlignment;
+    WrR.ElementBytes <<= LogAlignment;
+    auto NewWr = WrR.createWrRegion(BCOld, Val, "", Head, Wr->getDebugLoc());
+    NewWr->takeName(Wr);
+    BaleInfo BI(BaleInfo::WRREGION);
+    if (Rd)
+      BI.setOperandBaled(GenXIntrinsic::GenXRegion::NewValueOperandNum);
+    Baling->setBaleInfo(NewWr, BI);
+    Val = NewWr;
+  }
 
-  // Create bitcast to OldTy of NewDst
-  Dst->replaceAllUsesWith(CastInst::Create(Instruction::BitCast, NewDst,
-                                           Dst->getType(),
-                                           Dst->getName() + ".cast", HeadInst));
-
+  bool NeedBC = true;
+  if (Head->hasOneUse()) {
+    auto U = Head->use_begin()->getUser();
+    if (BitCastInst *UBC = dyn_cast<BitCastInst>(U)) {
+      if (UBC->getDestTy() == Val->getType()) {
+        UBC->replaceAllUsesWith(Val);
+        eraseInst(UBC);
+        NeedBC = false;
+      }
+    }
+  }
+  if (NeedBC) {
+    // Create the bitcast back to the original type.
+    auto BCOut = CastInst::Create(Instruction::BitCast, Val, Head->getType(),
+                                  "bytemov", Head);
+    BCOut->setDebugLoc(Head->getDebugLoc());
+    // Replace and erase the original rdregion and wrregion. We do not need
+    // to do anything with their baling info as that is a ValueMap and they get
+    // removed automatically.
+    Head->replaceAllUsesWith(BCOut);
+  }
   if (Wr)
     eraseInst(Wr);
   if (Rd)
     eraseInst(Rd);
-  return NewWr ? NewWr : NewRd;
+  // Return the new wrregion if any, else the new rdregion. Do not return
+  // BCOut as it is not part of the bale for the move.
+  IGC_ASSERT(dyn_cast<Instruction>(Val));
+  return cast<Instruction>(Val);
 }
 
 /***********************************************************************
