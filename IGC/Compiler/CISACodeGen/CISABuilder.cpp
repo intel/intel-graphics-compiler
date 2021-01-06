@@ -4302,6 +4302,11 @@ namespace IGC
             SaveOption(vISA_HasEarlyGRFRead, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressoinWA))
+        {
+            SaveOption(vISA_InsertDummyMovForHWRSWA, true);
+        }
+
         if (IGC_GET_FLAG_VALUE(SWSBTokenNum) != 0)
         {
             SaveOption(vISA_SWSBTokenNum, IGC_GET_FLAG_VALUE(SWSBTokenNum));

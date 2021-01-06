@@ -347,6 +347,74 @@ void Optimizer::insertDummyCompactInst()
     bb->push_back(movInst);
 }
 
+void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *opnd)
+{
+    short LB = (short)opnd->getLinearizedStart() / numEltPerGRF<Type_UB>();
+    short RB = ((short)opnd->getLinearizedEnd() + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
+    int regNum = RB - LB;
+
+    for (int regOff = 0; regOff < regNum; regOff++)
+    {
+        G4_SrcRegRegion* src = builder.createSrc(
+            opnd->getBase(),
+            opnd->asDstRegRegion()->getRegOff() + regOff,
+            0,
+            builder.getRegionStride1(),
+            Type_UD);
+
+        G4_DstRegRegion* dst = builder.createDst(
+            opnd->getBase(),
+            opnd->asDstRegRegion()->getRegOff() + regOff,
+            0,
+            1,
+            Type_UD);
+
+        G4_ExecSize curExSize{ numEltPerGRF<Type_UD>() };
+        G4_INST* movInst = builder.createMov(curExSize, dst, src, InstOpt_WriteEnable, false);
+        bb->insertBefore(inst_it, movInst);
+
+        G4_SrcRegRegion* src1 = builder.createSrc(
+            opnd->getBase(),
+            opnd->asDstRegRegion()->getRegOff() + regOff,
+            0,
+            builder.getRegionStride1(),
+            Type_F);
+
+        G4_DstRegRegion* dst1 = builder.createDst(
+            opnd->getBase(),
+            opnd->asDstRegRegion()->getRegOff() + regOff,
+            0,
+            1,
+            Type_F);
+
+        G4_ExecSize curExSize1{ numEltPerGRF<Type_F>() };
+        G4_INST* movInst1 = builder.createMov(curExSize1, dst1, src1, InstOpt_WriteEnable, false);
+
+        bb->insertBefore(inst_it, movInst1);
+    }
+}
+
+void Optimizer::insertDummyMovForHWRSWA()
+{
+    for (BB_LIST_ITER bb_it = kernel.fg.begin();
+        bb_it != kernel.fg.end();
+        bb_it++)
+    {
+        G4_BB* bb = (*bb_it);
+
+        INST_LIST_ITER curr_iter = bb->begin();
+        while (curr_iter != bb->end())
+        {
+            G4_INST* inst = (*curr_iter);
+            if (inst->isSend() && inst->getPredicate() && !inst->getDst()->isNullReg())
+            {
+                insertDummyMov(bb, curr_iter, inst->getDst());
+            }
+            ++curr_iter;
+        }
+    }
+}
+
 void Optimizer::insertHashMovs()
 {
     // As per request from IGC team, we want to conditionally insert
@@ -634,6 +702,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(HWWorkaround,            vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(insertInstLabels,        vISA_EnableAlways,            TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertHashMovs,          vISA_InsertHashMovs,          TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(insertDummyMovForHWRSWA,          vISA_InsertDummyMovForHWRSWA,          TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertDummyCompactInst,  vISA_InsertDummyCompactInst,  TimerID::NUM_TIMERS);
     INITIALIZE_PASS(mergeScalarInst,         vISA_MergeScalar,             TimerID::OPTIMIZER);
     INITIALIZE_PASS(lowerMadSequence,        vISA_EnableMACOpt,            TimerID::OPTIMIZER);
@@ -1232,6 +1301,8 @@ int Optimizer::optimization()
     runPass(PI_insertInstLabels);
 
     runPass(PI_insertHashMovs);
+
+    runPass(PI_insertDummyMovForHWRSWA);
 
     runPass(PI_collectStats);
 

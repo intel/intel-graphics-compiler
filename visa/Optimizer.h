@@ -246,6 +246,8 @@ private:
     G4_Declare* createInstsForCallTargetOffset(
         InstListType& insts, G4_INST* fcall, int64_t adjust_off);
 
+    void insertDummyMov(G4_BB* bb, INST_LIST_ITER inst_it, G4_Operand* opnd);
+    void insertDummyMovForHWRSWA();
     void insertHashMovs();
     void insertDummyCompactInst();
     void removeLifetimeOps();
@@ -314,6 +316,7 @@ public:
         PI_HWWorkaround,               // always
         PI_insertInstLabels,           // always
         PI_insertHashMovs,
+        PI_insertDummyMovForHWRSWA,
         PI_insertDummyCompactInst,
         PI_mergeScalarInst,
         PI_lowerMadSequence,
