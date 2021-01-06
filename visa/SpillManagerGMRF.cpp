@@ -4147,6 +4147,11 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel* kernel, PointsToAnalysis& point
 void SpillManagerGRF::runSpillAnalysis()
 {
 
+    if (failSafeSpill_)
+    {
+        return;
+    }
+
     std::unordered_set<G4_Declare*> spilledDcl;
     scalarImmSpill.clear();
 
@@ -4186,7 +4191,7 @@ SpillManagerGRF::insertSpillFillCode (
 )
 {
 
-    //runSpillAnalysis();
+    runSpillAnalysis();
     // Set the spill flag of all spilled regvars.
     for (LR_LIST::const_iterator lt = spilledLRs_->begin();
         lt != spilledLRs_->end(); ++lt) {
