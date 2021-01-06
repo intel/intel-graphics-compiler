@@ -3278,7 +3278,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         }
 
         G4_INST* endifInst = CFG->builder->createInternalCFInst(
-            NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
+            NULL, G4_endif, execSize, nextJoinLabel, NULL, gotoInst->getOption());
         // Set CISA index link here explicitly since not doing so causes
         // endif to merge with immediately following line. This prevents
         // debugger from setting bp on src line immediately following
@@ -3291,7 +3291,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         MUST_BE_TRUE(pred != NULL, "if must have non-null predicate");
         pred->setState(pred->getState() == PredState_Plus ? PredState_Minus : PredState_Plus);
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
-            pred, G4_if, execSize, endifLabel, endifLabel, InstOpt_NoOpt);
+            pred, G4_if, execSize, endifLabel, endifLabel, gotoInst->getOption());
         ifInst->inheritDIFrom(endifInst);
         begin->pop_back();
         begin->push_back(ifInst);
@@ -3388,7 +3388,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         // BB of else part,  and replace goto in the begin BB with if
         // instruction.
         auto endifInst = CFG->builder->createInternalCFInst(
-            NULL, G4_endif, execSize, nextJoinLabel, NULL, InstOpt_NoOpt);
+            NULL, G4_endif, execSize, nextJoinLabel, NULL, gotoInst->getOption());
         endifInst->inheritDIFrom(gotoInst);
         insertAtBegin(exit, endifInst);
 
@@ -3400,7 +3400,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
 
         // if instruction : jip = else_label, uip = endif
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
-            pred, G4_if, execSize, elseLabel, endifLabel, InstOpt_NoOpt);
+            pred, G4_if, execSize, elseLabel, endifLabel, gotoInst->getOption());
         ifInst->inheritDIFrom(endifInst);
         begin->pop_back();
         begin->push_back(ifInst);
@@ -3420,7 +3420,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         }
         G4_INST *thenGoto = newThenLastBB->back();
         G4_INST* elseInst = CFG->builder->createInternalCFInst(
-            NULL, G4_else, execSize, endifLabel, endifLabel, InstOpt_NoOpt);
+            NULL, G4_else, execSize, endifLabel, endifLabel, gotoInst->getOption());
         elseInst->inheritDIFrom(endifInst);
         if (thenGoto->opcode() == G4_goto)
         {
