@@ -850,9 +850,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         if (InnerTBB) IRB->SetInsertPoint(&(*InnerTBB->begin()));
 
         Value* L = IRB->CreateShl(Lo, ShAmt);
-        Value* Amt =
-            isa<ConstantInt>(ShAmt) ? IRB->CreateSub(IRB->getInt32(32), ShAmt) :
-            IRB->CreateNeg(ShAmt);
+        Value* Amt = IRB->CreateSub(IRB->getInt32(32), ShAmt);
         Value* T0 = IRB->CreateLShr(Lo, Amt);
         Value* H = IRB->CreateShl(Hi, ShAmt);
         H = IRB->CreateOr(H, T0);
@@ -873,8 +871,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
         if (InnerFBB) IRB->SetInsertPoint(&(*InnerFBB->begin()));
 
         Value* L = IRB->getInt32(0);
-        Value* Amt =
-            isa<ConstantInt>(ShAmt) ? IRB->CreateSub(ShAmt, IRB->getInt32(32)) : ShAmt;
+        Value* Amt = IRB->CreateSub(ShAmt, IRB->getInt32(32));
         Value* H = IRB->CreateShl(Lo, Amt);
 
         if (InnerFBB) {
@@ -969,9 +966,12 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         if (InnerTBB) IRB->SetInsertPoint(&(*InnerTBB->begin()));
 
         Value* H = IRB->CreateLShr(Hi, ShAmt);
-        Value* Amt =
-            isa<ConstantInt>(ShAmt) ? IRB->CreateSub(IRB->getInt32(32), ShAmt) :
-            IRB->CreateNeg(ShAmt);
+
+        // Avoid using IRB->CreateNeg(ShAmt) as shift amount, because (-ShAmt) will
+        // be interpret as a number bigger than 32. LLVM might figure out this out
+        // and thus makes shift result undefined!
+        Value* Amt = IRB->CreateSub(IRB->getInt32(32), ShAmt);
+
         Value* T0 = IRB->CreateShl(Hi, Amt);
         Value* L = IRB->CreateLShr(Lo, ShAmt);
         L = IRB->CreateOr(L, T0);
@@ -992,8 +992,11 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
         if (InnerFBB) IRB->SetInsertPoint(&(*InnerFBB->begin()));
 
         Value* H = IRB->getInt32(0);
-        Value* Amt =
-            isa<ConstantInt>(ShAmt) ? IRB->CreateSub(ShAmt, IRB->getInt32(32)) : ShAmt;
+
+        // Avoid using ShAmt as shift amount as it is bigger than 32. LLVM might figure out
+        // this shift amount is bigger than 32 and thus makes the shift result undefined.
+        Value* Amt = IRB->CreateSub(ShAmt, IRB->getInt32(32));
+
         Value* L = IRB->CreateLShr(Hi, Amt);
 
         if (InnerFBB) {
@@ -1088,9 +1091,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         if (InnerTBB) IRB->SetInsertPoint(&(*InnerTBB->begin()));
 
         Value* H = IRB->CreateAShr(Hi, ShAmt);
-        Value* Amt =
-            isa<ConstantInt>(ShAmt) ? IRB->CreateSub(IRB->getInt32(32), ShAmt) :
-            IRB->CreateNeg(ShAmt);
+        Value* Amt = IRB->CreateSub(IRB->getInt32(32), ShAmt);
         Value* T0 = IRB->CreateShl(Hi, Amt);
         Value* L = IRB->CreateLShr(Lo, ShAmt);
         L = IRB->CreateOr(L, T0);
@@ -1111,8 +1112,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
         if (InnerFBB) IRB->SetInsertPoint(&(*InnerFBB->begin()));
 
         Value* H = IRB->CreateAShr(Hi, 31);
-        Value* Amt =
-            isa<ConstantInt>(ShAmt) ? IRB->CreateSub(ShAmt, IRB->getInt32(32)) : ShAmt;
+        Value* Amt = IRB->CreateSub(ShAmt, IRB->getInt32(32));
         Value* L = IRB->CreateAShr(Hi, Amt);
 
         if (InnerFBB) {
