@@ -7048,7 +7048,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         {
             CVariable* flag = m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
-            uint subvar = numLanes(m_currShader->m_SIMDSize) / (getGRFSize() >> 2) * 4;
+            uint subvar = numLanes(m_currShader->m_SIMDSize) * 4 / (getGRFSize() >> 2);
             m_encoder->SetSrcSubVar(0, subvar);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
             CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
