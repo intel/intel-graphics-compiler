@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 INLINE char OVERLOADABLE select( char a, char b, char c )
 {
-    return __builtin_spirv_OpenCL_select_i8_i8_i8( a, b, c );
+    return __builtin_spirv_OpenCL_select_i8_i8_i8( as_uchar(a), as_uchar(b), as_uchar(c) );
 }
 
 static INLINE char OVERLOADABLE __intel_vector_select_helper( char a, char b, char c )
@@ -75,7 +75,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, uchar, uch
 
 INLINE short OVERLOADABLE select( short a, short b, short c )
 {
-    return __builtin_spirv_OpenCL_select_i16_i16_i16( a, b, c );
+    return __builtin_spirv_OpenCL_select_i16_i16_i16( as_ushort(a), as_ushort(b), as_ushort(c) );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_select_helper( short a, short b, short c )
@@ -85,7 +85,7 @@ static INLINE short OVERLOADABLE __intel_vector_select_helper( short a, short b,
 
 INLINE short OVERLOADABLE select( short a, short b, ushort c )
 {
-    return __builtin_spirv_OpenCL_select_i16_i16_i16( a, b, c );
+    return __builtin_spirv_OpenCL_select_i16_i16_i16( as_ushort(a), as_ushort(b), c );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_select_helper( short a, short b, ushort c )
@@ -121,7 +121,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, ushort, us
 
 INLINE int OVERLOADABLE select( int a, int b, int c )
 {
-    return __builtin_spirv_OpenCL_select_i32_i32_i32( a, b, c );
+    return __builtin_spirv_OpenCL_select_i32_i32_i32( as_uint(a), as_uint(b), as_uint(c) );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_select_helper( int a, int b, int c )
@@ -131,7 +131,7 @@ static INLINE int OVERLOADABLE __intel_vector_select_helper( int a, int b, int c
 
 INLINE int OVERLOADABLE select( int a, int b, uint c )
 {
-    return __builtin_spirv_OpenCL_select_i32_i32_i32( a, b, c );
+    return __builtin_spirv_OpenCL_select_i32_i32_i32( as_uint(a), as_uint(b), c );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_select_helper( int a, int b, uint c )
@@ -167,7 +167,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, uint, uint
 
 INLINE long OVERLOADABLE select( long a, long b, long c )
 {
-    return __builtin_spirv_OpenCL_select_i64_i64_i64( a, b, c );
+    return __builtin_spirv_OpenCL_select_i64_i64_i64( as_ulong(a), as_ulong(b), as_ulong(c) );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_select_helper( long a, long b, long c )
@@ -177,7 +177,7 @@ static INLINE long OVERLOADABLE __intel_vector_select_helper( long a, long b, lo
 
 INLINE long OVERLOADABLE select( long a, long b, ulong c )
 {
-    return __builtin_spirv_OpenCL_select_i64_i64_i64( a, b, c );
+    return __builtin_spirv_OpenCL_select_i64_i64_i64( as_ulong(a), as_ulong(b), c );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_select_helper( long a, long b, ulong c )
