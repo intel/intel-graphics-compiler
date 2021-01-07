@@ -369,7 +369,7 @@ uint __get_pipe_max_packets(pipe int pipe_, uint bytes, uint alignment)
 __attribute__((always_inline))
 ulong OVERLOADABLE intel_get_cycle_counter( void )
 {
-    return __builtin_spirv_OpReadClockKHR_i64(0);
+    return __builtin_spirv_OpReadClockKHR_i64_i32(0);
 }
 
 __attribute__((always_inline))

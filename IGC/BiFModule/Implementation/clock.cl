@@ -26,13 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* Shader clock extension */
 __attribute__((always_inline))
-ulong __builtin_spirv_OpReadClockKHR_i64(uint scope) {
+ulong __builtin_spirv_OpReadClockKHR_i64_i32(uint scope) {
   (void) scope;
   return as_ulong(__builtin_IB_read_cycle_counter());
 }
 
 __attribute__((always_inline))
-uint __builtin_spirv_OpReadClockKHR_i32(uint scope) {
-  return (uint) __builtin_spirv_OpReadClockKHR_i64(scope);
+uint __builtin_spirv_OpReadClockKHR_i32_i32(uint scope) {
+  return (uint) __builtin_spirv_OpReadClockKHR_i64_i32(scope);
 }
 
