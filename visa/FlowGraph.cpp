@@ -5757,7 +5757,7 @@ uint32_t G4_BB::countReadModifyWrite(std::ostream& output, G4_INST *inst)
     }
     auto dst = inst->getDst();
     auto dstTy = dst->getType();
-    if (getTypeSize(dstTy) == 1 && dst->getHorzStride() > 1)
+    if (TypeSize(dstTy) == 1 && dst->getHorzStride() > 1)
     {
         return 1;
     }
@@ -6108,9 +6108,7 @@ void G4_Kernel::computeChannelSlicing()
             if (regFileKind != G4_RegFileKind::G4_GRF && regFileKind != G4_RegFileKind::G4_INPUT)
                 continue;
 
-            auto dstElemSize = G4_Type_Table[dst->getType()].byteSize;
-
-            if (dst->getTopDcl()->getByteSize() <= dstElemSize * simdSize)
+            if (dst->getTopDcl()->getByteSize() <= dst->getTypeSize() * (unsigned)simdSize)
                 continue;
 
             auto emaskOffStart = inst->getMaskOffset();
@@ -7040,7 +7038,7 @@ void G4_Kernel::renameAliasDeclares()
             if (rootDcl->getElemType() != dcl->getElemType())
             {
                 newName += "_";
-                newName += G4_Type_Table[dcl->getElemType()].str;
+                newName += TypeSymbol(dcl->getElemType());
             }
             if (offset != 0)
             {

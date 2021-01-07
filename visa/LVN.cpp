@@ -98,7 +98,7 @@ bool LVN::getDstData(int64_t srcImm, G4_Type srcType, int64_t& dstImm, G4_Type d
     bool dstImmValid = false;
     int64_t andMask = 0;
     canNegate = (srcImm == 0 ? false : true);
-    andMask = (0xffffffffffffffff >> ((sizeof(int64_t) * 8) - G4_Type_Table[dstType].bitSize));
+    andMask = (0xffffffffffffffff >> ((sizeof(int64_t) * 8) - TypeBitSize(dstType)));
 
     if (srcType == Type_W || srcType == Type_UW ||
         srcType == Type_D || srcType == Type_UD ||
@@ -298,8 +298,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
                 break;
             }
 
-            if (useInst->isRawMov() &&
-                G4_Type_Table[useInst->getDst()->getType()].byteSize == 1)
+            if (useInst->isRawMov() && useInst->getDst()->getTypeSize() == 1)
             {
                 // For byte-type raw movs, src modifier '-' is invalid
                 canReplace = false;
@@ -391,7 +390,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         }
         // For integers, they must have the same type width to be replaced
         if ((IS_TYPE_INT(lvnDstType) && IS_TYPE_INT(defType)) &&
-            G4_Type_Table[lvnDstType].byteSize != G4_Type_Table[defType].byteSize)
+            TypeSize(lvnDstType) != TypeSize(defType))
         {
             canReplace = false;
         }
@@ -542,8 +541,8 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
             assert(srcToReplace->getLeftBound() >= defInst->getDst()->getLeftBound() && "orig dst does not fully define use");
             int offsetFromOrigDst = srcToReplace->getLeftBound() - defInst->getDst()->getLeftBound();
             // we can replace the regVar directly without changing the rest of the region
-            auto typeSize = getTypeSize(srcToReplace->getType());
-            int offset = regOff * numEltPerGRF<Type_UB>() + subRegOff * getTypeSize(lvnInst->getDst()->getType()) + offsetFromOrigDst;
+            auto typeSize = srcToReplace->getTypeSize();
+            int offset = regOff * numEltPerGRF<Type_UB>() + subRegOff * lvnInst->getDst()->getTypeSize() + offsetFromOrigDst;
             short newRegOff = offset / numEltPerGRF<Type_UB>();
             short newSubRegOff = (offset % numEltPerGRF<Type_UB>()) / typeSize;
 
@@ -557,7 +556,7 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
             unsigned short hstride = getActualHStride(srcToReplace);
             G4_Type type = srcToReplace->getType();
 
-            unsigned int subRegOffScaled = subRegOff * G4_Type_Table[lvnInst->getDst()->getType()].byteSize / G4_Type_Table[type].byteSize;
+            unsigned int subRegOffScaled = subRegOff * lvnInst->getDst()->getTypeSize() / TypeSize(type);
 
             srcRgn = builder.createSrcRegRegion(srcMod, Direct,
                 lvnInst->getDst()->getBase()->asRegVar(),
@@ -1144,8 +1143,7 @@ bool LVN::opndsMatch(T* opnd1, K* opnd2)
             else
             {
                 // opnd1/opnd2 can be either src/dst regions and may not of the same type.
-                if (topdcl1 != topdcl2 ||
-                    G4_Type_Table[opnd1->getType()].str != G4_Type_Table[opnd2->getType()].str)
+                if (topdcl1 != topdcl2 || opnd1->getType() != opnd2->getType())
                 {
                     match = false;
                 }
@@ -1457,7 +1455,7 @@ bool LVN::valuesMatch(Value& val1, Value& val2, bool checkNegImm)
             {
                 auto imm1 = opnd1->asImm()->getImm();
                 auto imm2 = opnd2->asImm()->getImm();
-                auto bitSize = G4_Type_Table[type1].bitSize;
+                auto bitSize = TypeBitSize(type1);
                 // Check all bits except for sign-bit.
                 // Assume sign-bit is always the MSB of type.
                 for (unsigned int i = 0; i != bitSize - 1; i++)

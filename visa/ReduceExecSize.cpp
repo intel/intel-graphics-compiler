@@ -101,7 +101,7 @@ HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter, G4_BB *bb)
 
     bool dstAligned = builder.isOpndAligned(reg, 16);
 
-    unsigned hsInBytes = reg->getHorzStride() * G4_Type_Table[reg->getType()].byteSize;
+    unsigned hsInBytes = reg->getHorzStride() * reg->getTypeSize();
     for (int k = 0, e = inst->getNumSrc(); k < e; ++k)
     {
         G4_Operand *src = inst->getSrc(k);
@@ -120,7 +120,7 @@ HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter, G4_BB *bb)
             inst->setSrc(insertMovBefore(iter, k, moveTy, bb), k);
             changed = true;
         }
-        else if (hsInBytes != G4_Type_Table[moveTy].byteSize)
+        else if (hsInBytes != TypeSize(moveTy))
         {
             if (hsInBytes == 4 && execSize < 8)
             {
@@ -175,7 +175,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
     {
         if (extypesize < (int)numEltPerGRF<Type_UB>()/2)
         {
-            uint32_t dst_elsize = G4_Type_Table[inst->getDst()->getType()].byteSize;
+            uint32_t dst_elsize = inst->getDst()->getTypeSize();
             if (dst_elsize < (unsigned int)extypesize)
             {
                 if (fixDstAlignment(i, bb, extype, dst_elsize))
@@ -208,7 +208,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
             // Recompute the execution type size if there is some change.
             // This allows fixDstAlignment to fix possible conformity issues.
             extype = inst->getOpExecType(extypesize);
-            uint32_t dst_elsize = G4_Type_Table[inst->getDst()->getType()].byteSize;
+            uint32_t dst_elsize = inst->getDst()->getTypeSize();
             if (dst_elsize < unsigned(extypesize)) {
               if (fixDstAlignment(i, bb, extype, dst_elsize)) {
                 insertedInst = true;
@@ -238,7 +238,7 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
             uint8_t exSize = inst->getExecSize();
             if (src->getRegAccess() == Direct && src->crossGRF())
             {
-                int elementSize = G4_Type_Table[src->getType()].byteSize;
+                int elementSize = src->getTypeSize();
                 int startOffset = src->getLeftBound() % numEltPerGRF<Type_UB>();
                 for (int row = 0; row < exSize / wd; row++)
                 {
@@ -286,7 +286,7 @@ bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER& iter, G4_BB* bb)
                 }
             }
             else if (kernel.getKernelType() == VISA_CM && builder.no64bitRegioning() &&
-                getTypeSize(src->getType()) == 8)
+                src->getTypeSize() == 8)
             {
                 // for CM, split non-scalar, non-contiguous source that cross GRF as HW conformity
                 // may be not equipped to deal with them later
@@ -760,12 +760,12 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
             // mov (16) r6.0<2>:b r1.0<8;8,1>:d  -- other dst alignment fix will take care of dst.
             // (f0.0) mov (16) r3.5<1>:b r6.0<32;16,2>:b
 
-            uint8_t scale = G4_Type_Table[instExecType].byteSize / G4_Type_Table[dst->getType()].byteSize;
+            uint8_t scale = TypeSize(instExecType) / dst->getTypeSize();
 
             if (scale > 1 &&
-                G4_Type_Table[instExecType].byteSize * execSize > numEltPerGRF<Type_UB>())
+                TypeSize(instExecType) * (unsigned)execSize > numEltPerGRF<Type_UB>())
             {
-                scale = numEltPerGRF<Type_UB>() / G4_Type_Table[dst->getType()].byteSize / execSize;
+                scale = numEltPerGRF<Type_UB>() / dst->getTypeSize() / execSize;
             }
             else if (scale == 0)
             {
@@ -1402,7 +1402,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb, bool checkOve
         {
             int newMaskOffset = origMaskOffset + (i == 0 ? 0 : currExSize);
             bool nibOk = builder.hasNibCtrl() &&
-                (getTypeSize(inst->getDst()->getType()) == 8 || getTypeSize(inst->getExecType()) == 8);
+                (inst->getDst()->getTypeSize() == 8 || TypeSize(inst->getExecType()) == 8);
             G4_InstOption newMask = G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
             if (newMask == InstOpt_NoOpt)
             {
@@ -1509,7 +1509,7 @@ void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t num
     G4_ExecSize execSize = inst->getExecSize();
 
     G4_Operand *src = inst->getSrc(srcNum);
-    uint32_t srcTypeSize = G4_Type_Table[src->getType()].byteSize;
+    uint32_t srcTypeSize = src->getTypeSize();
     uint16_t dclSize = (numEltPerGRF<Type_UB>() * numGRF) / srcTypeSize;
     uint16_t hs = dclSize / execSize;
     uint16_t wd = execSize;
@@ -1580,7 +1580,7 @@ void HWConformity::saveDst(INST_LIST_ITER& it, uint8_t stride, G4_BB *bb)
     G4_DstRegRegion *dst = inst->getDst();
     G4_ExecSize execSize = inst->getExecSize();
     G4_Type dstType = dst->getType();
-    uint16_t dstWidthBytes = execSize * G4_Type_Table[dstType].byteSize * stride;
+    uint16_t dstWidthBytes = execSize * TypeSize(dstType) * stride;
 
     G4_SubReg_Align subAlign = getDclAlignment(dstWidthBytes, inst, execSize == 1);
 
@@ -1640,8 +1640,8 @@ void HWConformity::insertMovAfter(INST_LIST_ITER& it, uint16_t stride, G4_BB* bb
     G4_DstRegRegion *dst = inst->getDst();
     G4_ExecSize execSize = inst->getExecSize();
     G4_Type execType = inst->getExecType(), dstType = dst->getType();
-    uint16_t opExecWidthBytes = execSize * G4_Type_Table[execType].byteSize;
-    uint16_t dstWidthBytes = execSize * G4_Type_Table[dstType].byteSize * stride;
+    uint16_t opExecWidthBytes = execSize * TypeSize(execType);
+    uint16_t dstWidthBytes = execSize * TypeSize(dstType) * stride;
 
     G4_SubReg_Align subAlign = getDclAlignment(opExecWidthBytes > dstWidthBytes ? opExecWidthBytes : dstWidthBytes,
         inst, execSize == 1);

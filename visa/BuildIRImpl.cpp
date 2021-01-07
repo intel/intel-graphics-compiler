@@ -88,7 +88,7 @@ G4_Declare* DeclarePool::createDeclare(
     }
     else if (regFile != G4_FLAG)
     {
-        if (nElems * nRows * G4_Type_Table[ty].byteSize >= numEltPerGRF<Type_UB>())
+        if ((unsigned int)nElems * nRows * TypeSize(ty) >= numEltPerGRF<Type_UB>())
         {
             dcl->setSubRegAlign(GRFALIGN);
         }
@@ -184,7 +184,7 @@ bool IR_Builder::isOpndAligned(
     case G4_Operand::srcRegRegion:
     case G4_Operand::dstRegRegion:
     {
-        int type_size = G4_Type_Table[opnd->getType()].byteSize;
+        int type_size = opnd->getTypeSize();
         G4_Declare *dcl = NULL;
         if (opnd->getBase()->isRegVar())
         {
@@ -386,13 +386,13 @@ void IR_Builder::predefinedVarRegAssignment(uint8_t inputSize)
         {
             unsigned short new_offset = preDefinedStart + getPredefinedVarByteOffset(i);
             unsigned int regNum = new_offset / numEltPerGRF<Type_UB>();
-            unsigned int subRegNum = (new_offset % numEltPerGRF<Type_UB>()) / G4_Type_Table[ty].byteSize;
+            unsigned int subRegNum = (new_offset % numEltPerGRF<Type_UB>()) / TypeSize(ty);
             dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
         }
         else
         {
             unsigned int regNum = 0;
-            unsigned int subRegNum = getPredefinedVarByteOffset(i) / G4_Type_Table[ty].byteSize;
+            unsigned int subRegNum = getPredefinedVarByteOffset(i) / TypeSize(ty);
             dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
         }
     }
@@ -878,16 +878,17 @@ G4_Declare* IR_Builder::createTempVar(
         getNameString(mem, 20, "%s", prefix);
 
     unsigned short dcl_width = 0, dcl_height = 1;
-    int totalByteSize = numElements * G4_Type_Table[type].byteSize;
+    const uint16_t typeSize = TypeSize(type);
+    int totalByteSize = numElements * typeSize;
     if (totalByteSize <= (int)numEltPerGRF<Type_UB>())
     {
-        dcl_width = totalByteSize / G4_Type_Table[type].byteSize;
+        dcl_width = totalByteSize / typeSize;
     }
     else
     {
         // here we assume that the start point of the var is the beginning of a GRF?
         // so subregister must be 0?
-        dcl_width = numEltPerGRF<Type_UB>() / G4_Type_Table[type].byteSize;
+        dcl_width = numEltPerGRF<Type_UB>() / typeSize;
         dcl_height = totalByteSize / numEltPerGRF<Type_UB>();
         if (totalByteSize % numEltPerGRF<Type_UB>() != 0)
         {
@@ -918,7 +919,7 @@ G4_Declare* IR_Builder::createHardwiredDeclare(
     uint32_t numElements, G4_Type type, uint32_t regNum, uint32_t regOff)
 {
     G4_Declare* dcl = createTempVar(numElements, type, Any);
-    unsigned int linearizedStart = (regNum * numEltPerGRF<Type_UB>()) + (regOff * getTypeSize(type));
+    unsigned int linearizedStart = (regNum * numEltPerGRF<Type_UB>()) + (regOff * TypeSize(type));
     // since it's called post RA (specifically post computePReg) we have to manually set the GRF's byte offset
     dcl->setGRFBaseOffset(linearizedStart);
     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), regOff);
@@ -1032,18 +1033,20 @@ G4_Declare* IR_Builder::createFlag(uint16_t numFlagElements, const char* name)
 G4_Declare* IR_Builder::createPreVar(
     PreDefinedVarsInternal preDefVar_index, unsigned short numElements, G4_Type type)
 {
-    MUST_BE_TRUE(preDefVar_index < PreDefinedVarsInternal::VAR_LAST, "illegal predefined var index");
+    MUST_BE_TRUE(preDefVar_index < PreDefinedVarsInternal::VAR_LAST,
+        "illegal predefined var index");
     unsigned short dcl_width = 0, dcl_height = 1;
-    int totalByteSize = numElements * G4_Type_Table[type].byteSize;
+    auto typeSize = TypeSize(type);
+    int totalByteSize = numElements * typeSize;
     if (totalByteSize <= (int)numEltPerGRF<Type_UB>())
     {
-        dcl_width = totalByteSize / G4_Type_Table[type].byteSize;
+        dcl_width = totalByteSize / typeSize;
     }
     else
     {
         // here we assume that the start point of the var is the beginning of a GRF?
         // so subregister must be 0?
-        dcl_width = numEltPerGRF<Type_UB>() / G4_Type_Table[type].byteSize;
+        dcl_width = numEltPerGRF<Type_UB>() / typeSize;
         dcl_height = totalByteSize / numEltPerGRF<Type_UB>();
         if (totalByteSize % numEltPerGRF<Type_UB>() != 0)
         {
@@ -1051,7 +1054,8 @@ G4_Declare* IR_Builder::createPreVar(
         }
     }
 
-    G4_Declare* dcl = createPreVarDeclareNoLookup(preDefVar_index, dcl_width, dcl_height, type);
+    G4_Declare* dcl = createPreVarDeclareNoLookup(
+        preDefVar_index, dcl_width, dcl_height, type);
     // subAlign has to be type size at the minimum
     dcl->setSubRegAlign(Get_G4_SubRegAlign_From_Type(type));
     return dcl;
@@ -2371,8 +2375,9 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RT(
 G4_Declare* IR_Builder::createSendPayloadDcl(unsigned num_elt, G4_Type type)
 {
     const char* name = getNameString(mem, 16, "M%u", ++num_temp_dcl);
-    unsigned short numRow = (num_elt * G4_Type_Table[type].byteSize - 1) / numEltPerGRF<Type_UB>() + 1;
-    unsigned short numElt = (numRow == 1) ? num_elt : (numEltPerGRF<Type_UB>()/G4_Type_Table[type].byteSize);
+    const uint16_t sizeOfType = TypeSize(type);
+    unsigned short numRow = (num_elt * sizeOfType - 1) / numEltPerGRF<Type_UB>() + 1;
+    unsigned short numElt = (numRow == 1) ? num_elt : (numEltPerGRF<Type_UB>()/sizeOfType);
     G4_Declare *dcl = createDeclareNoLookup(
         name,
         G4_GRF,
@@ -2489,9 +2494,9 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
 
     if (scalar_src && src_opnd->getType() != Type_UD) {
         // change the type of dst dcl to src type
-        remained_dword = num_dword * (G4_Type_Table[Type_UD].byteSize/G4_Type_Table[src_opnd->getType()].byteSize);
+        remained_dword = num_dword * (TypeSize(Type_UD)/src_opnd->getTypeSize());
         dst_dcl = createSendPayloadDcl(remained_dword, src_opnd->getType());
-        dst_dcl->setAliasDeclare(dcl, regoff * numEltPerGRF<Type_UB>() + subregoff * G4_Type_Table[Type_UD].byteSize);
+        dst_dcl->setAliasDeclare(dcl, regoff * numEltPerGRF<Type_UB>() + subregoff * TypeSize(Type_UD));
         dst_regoff = 0;
         dst_subregoff = 0;
         non_ud_scalar = true;
@@ -2499,8 +2504,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
 
     src_regoff = src_opnd->asSrcRegRegion()->getRegOff();
     src_subregoff = src_opnd->asSrcRegRegion()->getSubRegOff();
-    src_subregoff = (src_subregoff * G4_Type_Table[src_opnd->getType()].byteSize) / G4_Type_Table[dst_dcl->getElemType()].byteSize;
-
+    src_subregoff = src_subregoff * src_opnd->getTypeSize() / dst_dcl->getElemSize();
 
     auto getMaxEsize = [](uint32_t opt)
     {
@@ -2526,7 +2530,7 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
     // here remained_dword is not the number of DW, but the number of dst data type.
     while (remained_dword)
     {
-        if (non_ud_scalar && G4_Type_Table[src_opnd->getType()].byteSize != G4_Type_Table[Type_UD].byteSize)
+        if (non_ud_scalar && src_opnd->getTypeSize() != TypeSize(Type_UD))
         {
             if (remained_dword >= 32)
             {
@@ -2627,9 +2631,9 @@ void IR_Builder::Create_MOV_Send_Src_Inst(
                 }
                 if (!scalar_src) {
                     src_subregoff += execsize;
-                    if (src_subregoff > (short)(numEltPerGRF<Type_UB>() / G4_Type_Table[Type_UD].byteSize)) {
+                    if (src_subregoff > (short)(numEltPerGRF<Type_UB>() / TypeSize(Type_UD))) {
                         src_regoff++;
-                        src_subregoff -= numEltPerGRF<Type_UB>() / G4_Type_Table[Type_UD].byteSize;
+                        src_subregoff -= numEltPerGRF<Type_UB>() / TypeSize(Type_UD);
                     }
                 }
             }
@@ -2693,7 +2697,8 @@ G4_DstRegRegion* IR_Builder::Check_Send_Dst(G4_DstRegRegion *dst_opnd)
     G4_DstRegRegion* d;
     // check if dst is align to GRF
 
-    if (G4_Type_Table[dst_opnd->getType()].byteSize > G4_Type_Table[Type_B].byteSize)
+    const unsigned short SIZEOF_DW = 4;
+    if (dst_opnd->getTypeSize() > 1)
     {
         d = dst_opnd;
     }
@@ -2703,7 +2708,7 @@ G4_DstRegRegion* IR_Builder::Check_Send_Dst(G4_DstRegRegion *dst_opnd)
         short new_SubRegOff = dst_opnd->getSubRegOff();
         if (dst_opnd->getRegAccess() == Direct)
         {
-            new_SubRegOff = dst_opnd->getSubRegOff() * G4_Type_Table[Type_B].byteSize / G4_Type_Table[Type_UD].byteSize;
+            new_SubRegOff = dst_opnd->getSubRegOff() / SIZEOF_DW;
         }
         G4_DstRegRegion new_dst(
             dst_opnd->getRegAccess(),

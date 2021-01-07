@@ -183,20 +183,21 @@ private:
         {
             uint32_t byteAddress = opnd->getLinearizedStart();
             regRef.regNum = byteAddress / numEltPerGRF<Type_UB>();
-            regRef.subRegNum = (byteAddress % numEltPerGRF<Type_UB>()) / G4_Type_Table[opnd->getType()].byteSize;
+            regRef.subRegNum =
+                (byteAddress % numEltPerGRF<Type_UB>()) / opnd->getTypeSize();
         }
         else if (opnd->isSrcRegRegion())
         {
             bool valid, subvalid;
-            regRef.regNum = (uint8_t) opnd->asSrcRegRegion()->ExRegNum(valid);
-            regRef.subRegNum = (uint8_t) opnd->asSrcRegRegion()->ExSubRegNum(subvalid);
+            regRef.regNum = (uint8_t)opnd->asSrcRegRegion()->ExRegNum(valid);
+            regRef.subRegNum = (uint8_t)opnd->asSrcRegRegion()->ExSubRegNum(subvalid);
         }
         else
         {
             assert(opnd->isDstRegRegion() && "expect DstRegRegion");
             bool valid, subvalid;
-            regRef.regNum = (uint8_t) opnd->asDstRegRegion()->ExRegNum(valid);
-            regRef.subRegNum = (uint8_t) opnd->asDstRegRegion()->ExSubRegNum(subvalid);
+            regRef.regNum = (uint8_t)opnd->asDstRegRegion()->ExRegNum(valid);
+            regRef.subRegNum = (uint8_t)opnd->asDstRegRegion()->ExSubRegNum(subvalid);
         }
         return regRef;
     }

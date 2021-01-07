@@ -55,8 +55,8 @@ static G4_Declare* getInputDeclare(IR_Builder& builder,
     // As the new dcl's offset is in unit of element type, we will convert offset in bytes to
     // offset in elementType.  As the previous check guarantees that the byte offset must be
     // multiple of elementType, here just add additional checks to make sure this is the case.
-    uint32_t offset = input->getRegVar()->getPhyRegOff() * G4_Type_Table[input->getElemType()].byteSize + firstEltOffset;
-    uint32_t eltBytes = G4_Type_Table[eltType].byteSize;
+    uint32_t offset = input->getRegVar()->getPhyRegOff() * input->getElemSize() + firstEltOffset;
+    uint32_t eltBytes = TypeSize(eltType);
     MUST_BE_TRUE((offset % eltBytes) == 0, "Offset shoule be mutiple of element size");
     offset = offset / eltBytes;
     const char* name = builder.getNameString(builder.mem, 16, "InputR%d.%d", input->getRegVar()->getPhyReg()->asGreg()->getRegNum(), offset);
@@ -93,7 +93,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                 // since we are rounding up esize to 4, we have to make sure the source is
                 // not out of bound. If it is we merge the first two inst instead
                 G4_SrcRegRegion* lastSrc = inst[size - 1]->getSrc(pos)->asSrcRegRegion();
-                if (lastSrc->getLeftBound() + G4_Type_Table[lastSrc->getType()].byteSize >=
+                if (lastSrc->getLeftBound() + lastSrc->getTypeSize() >=
                     lastSrc->getTopDcl()->getByteSize())
                 {
                     deleteLastInst();
@@ -135,8 +135,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             }
             if (dcl->getAliasDeclare() != NULL)
             {
-                if (dcl->getAliasOffset() !=
-                    G4_Type_Table[dst->getType()].byteSize * instId)
+                if (dcl->getAliasOffset() != dst->getTypeSize() * instId)
                 {
                     return false;
                 }
@@ -161,8 +160,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                 }
                 if (dcl->getAliasDeclare() != NULL)
                 {
-                    if (dcl->getAliasOffset() !=
-                        G4_Type_Table[src->getType()].byteSize * instId)
+                    if (dcl->getAliasOffset() != src->getTypeSize() * instId)
                     {
                         return false;
                     }
@@ -199,11 +197,11 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             G4_Declare* dstDcl = inst[i]->getDst()->getTopDcl();
             if (dstDcl->getAliasDeclare() == NULL)
             {
-                dstDcl->setAliasDeclare(newDcl, i * G4_Type_Table[dstType].byteSize);
+                dstDcl->setAliasDeclare(newDcl, i * TypeSize(dstType));
                 modifiedDcl.insert(dstDcl);
 #ifdef DEBUG_VERBOSE_ON
                 cout << "Dcl " << dstDcl->getName() << "--> (" << newDcl->getName() << ", "
-                    << i * G4_Type_Table[dstType].byteSize << ")\n";
+                    << i * TypeSize(dstType) << ")\n";
 #endif
             }
         }
@@ -238,11 +236,11 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                 G4_Declare* srcDcl = src->getTopDcl();
                 if (srcDcl->getAliasDeclare() == NULL)
                 {
-                    srcDcl->setAliasDeclare(newDcl, j * G4_Type_Table[srcType].byteSize);
+                    srcDcl->setAliasDeclare(newDcl, j * TypeSize(srcType));
                     modifiedDcl.insert(srcDcl);
 #ifdef DEBUG_VERBOSE_ON
                     cout << "Dcl " << srcDcl->getName() << "--> (" << newDcl->getName() << ", "
-                        << i * G4_Type_Table[srcType].byteSize << ")\n";
+                        << i * TypeSize(srcType) << ")\n";
 #endif
                 }
             }
@@ -280,7 +278,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                     // Since rootDcl may have a different type than the operands', need to use
                     // operand's type instead of rootDcl, so we pass srcType into getInputDeclare().
                     G4_Type srcType = newInst->getSrc(i)->getType();
-                    int firstEltOffset = src->getRegOff() * numEltPerGRF<Type_UB>() + src->getSubRegOff() * G4_Type_Table[srcType].byteSize;
+                    int firstEltOffset =
+                        src->getRegOff() * numEltPerGRF<Type_UB>() +
+                            src->getSubRegOff() * TypeSize(srcType);
                     G4_Declare* newInputDcl = getInputDeclare(builder, newInputs, rootDcl, srcType, size, firstEltOffset);
                     src = builder.createSrcRegRegion(
                         src->getModifier(), Direct, newInputDcl->getRegVar(),
@@ -344,7 +344,7 @@ static bool checkContiguous(
 {
     if (origOffset + numEltPerGRF<Type_UB>() <= offset2)
         return false;
-    if (offset1 + G4_Type_Table[type].byteSize == offset2)
+    if (offset1 + TypeSize(type) == offset2)
     {
         switch (pattern)
         {
@@ -394,7 +394,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
         return false;
     }
 
-    if (builder.no64bitRegioning() && getTypeSize(inst->getDst()->getType()) == 8)
+    if (builder.no64bitRegioning() && inst->getDst()->getTypeSize() == 8)
     {
         // applying merge scalar makes code quality worse since we need to insert moves
         // to compensate for the lack of 64-bit regions later
@@ -406,7 +406,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
     if (dstDcl != nullptr &&
         (dstDcl->getAliasDeclare() != nullptr ||
             dstDcl->getTotalElems() != 1 ||
-            G4_Type_Table[inst->getDst()->getType()].byteSize != dstDcl->getElemSize() ||
+            inst->getDst()->getTypeSize() != dstDcl->getElemSize() ||
             !dstDcl->useGRF()))
     {
         return false;
@@ -437,7 +437,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
                 return false;
             }
             // can't do opt if source decl type is inconsistent with its use
-            if (G4_Type_Table[srcDcl->getElemType()].byteSize != G4_Type_Table[src->getType()].byteSize)
+            if (TypeSize(srcDcl->getElemType()) != src->getTypeSize())
             {
                 return false;
             }
@@ -460,7 +460,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
 static bool isScalarNaturalAlignedVar(G4_Declare* dcl)
 {
     return dcl->getTotalElems() == 1 && dcl->getAliasDeclare() == NULL &&
-        dcl->getByteAlignment() == G4_Type_Table[dcl->getElemType()].byteSize && !dcl->isInput();
+        dcl->getByteAlignment() == TypeSize(dcl->getElemType()) && !dcl->isInput();
 }
 
 //

@@ -803,13 +803,10 @@ inline void BinaryEncodingCNL::EncodeOneSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
 
     if (src0->isImm())
     {
-        //this should be compiled as dead code in non-debug mode
-        if (inst->opcode() != G4_mov                   &&
-            G4_Type_Table[src0->getType()].byteSize == 8)
-        {
-            MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
-        }
-        if (G4_Type_Table[src0->getType()].byteSize == 8) {
+        // this should be compiled as dead code in non-debug mode
+        MUST_BE_TRUE(inst->opcode() == G4_mov || src0->getTypeSize() != 8,
+            "only Mov is allowed for 64-bit immediate");
+        if (src0->getTypeSize() == 8) {
             G9HDL::EU_INSTRUCTION_IMM64_SRC* ptr = (G9HDL::EU_INSTRUCTION_IMM64_SRC*) &oneSrc;
             EncodeSrcImm64Data(*ptr, src0);
         }
@@ -860,7 +857,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
 
     if (src0->isImm())
     {
-        MUST_BE_TRUE(G4_Type_Table[src0->getType()].byteSize < 8, "only Mov is allowed for 64bit immediate");
+        MUST_BE_TRUE(src0->getTypeSize() < 8, "only Mov is allowed for 64bit immediate");
         // FIXME: feels like this should be 0 here, but it gives a type mismatch as the headers assume src0
         // must be REG
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_IMM, 1>::EncodeSrcImmData(
@@ -892,11 +889,8 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
 
     if (src1->isImm())
     {
-        if (inst->opcode() != G4_mov                   &&
-            G4_Type_Table[src1->getType()].byteSize == 8)
-        {
-            MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
-        }
+        MUST_BE_TRUE(inst->opcode() == G4_mov || src1->getTypeSize() != 8,
+            "only Mov is allowed for 64bit immediate");
 
         SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_IMM,1>::EncodeSrcImmData(
             twoSrc.GetImmsource(), src1);

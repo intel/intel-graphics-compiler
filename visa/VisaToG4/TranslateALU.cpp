@@ -256,13 +256,13 @@ int IR_Builder::translateVISACompareInst(
     G4_Type dstType;
     if (IS_TYPE_FLOAT_ALL(src0Type))
     {
-        dstType = (getTypeSize(src0Type) > getTypeSize(src1Type)) ? src0Type : src1Type;
+        dstType = (TypeSize(src0Type) > TypeSize(src1Type)) ? src0Type : src1Type;
     }
     else
     {
         // FIXME: why does exec size matter here?
         dstType = exsize == 16 ? Type_W :
-            (getTypeSize(src0Type) > getTypeSize(src1Type) ? src0Type : src1Type);
+            (TypeSize(src0Type) > TypeSize(src1Type) ? src0Type : src1Type);
         if (IS_VTYPE(dstType))
         {
             dstType = Type_UD;
@@ -324,7 +324,7 @@ int IR_Builder::translateVISALogicInst(
             G4_DstRegRegion* tmp_dst_opnd = createDst(tempDcl->getRegVar(), 0, 0, 1, tmpType);
 
             uint16_t vs = exsize;
-            if (exsize * G4_Type_Table[g4Srcs[i]->asSrcRegRegion()->getType()].byteSize > numEltPerGRF<Type_UB>())
+            if ((unsigned)exsize * g4Srcs[i]->asSrcRegRegion()->getTypeSize() > numEltPerGRF<Type_UB>())
             {
                 vs /= 2;
             }

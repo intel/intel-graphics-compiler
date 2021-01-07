@@ -1391,7 +1391,7 @@ void LinearScanRA::generateInputIntervals(G4_Declare *topdcl, G4_INST* inst, std
     unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
     unsigned int regOff = var->getPhyRegOff();
     unsigned int idx = regNum * numEltPerGRF<Type_UW>() +
-        (regOff * G4_Type_Table[topdcl->getElemType()].byteSize) / G4_WSIZE + topdcl->getWordSize() - 1;
+        (regOff * topdcl->getElemSize()) / G4_WSIZE + topdcl->getWordSize() - 1;
 
     unsigned int numWords = topdcl->getWordSize();
     for (int i = numWords - 1; i >= 0; --i, --idx)

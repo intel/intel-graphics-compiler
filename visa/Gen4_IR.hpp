@@ -1790,13 +1790,8 @@ typedef enum class AugmentationMasks
 namespace vISA
 {
 
-template <int Ty>
-unsigned int numEltPerGRF()
-{
-    constexpr auto typeSize = G4_Type_Table[Ty].byteSize;
-    return getGRFSize() / typeSize;
-}
-
+template <G4_Type T>
+unsigned int numEltPerGRF() {return getGRFSize() / TypeSize(T);}
 template unsigned int numEltPerGRF<Type_UD>();
 template unsigned int numEltPerGRF<Type_D>();
 template unsigned int numEltPerGRF<Type_UW>();
@@ -1816,8 +1811,7 @@ template unsigned int numEltPerGRF<Type_NF>();
 
 inline unsigned int numEltPerGRF(G4_Type t)
 {
-    auto typeSize = G4_Type_Table[t].byteSize;
-    return getGRFSize() / typeSize;
+    return getGRFSize() / TypeSize(t);
 }
 
 class G4_Declare
@@ -2023,9 +2017,9 @@ public:
     unsigned getByteAlignment() const
     {
         // we only consider subalign here
-        unsigned byteAlign = getSubRegAlign() * G4_Type_Table[Type_UW].byteSize;
-        return byteAlign < G4_Type_Table[elemType].byteSize ?
-            G4_Type_Table[elemType].byteSize : byteAlign;
+        unsigned byteAlign = getSubRegAlign() * TypeSize(Type_UW);
+        return byteAlign < TypeSize(elemType) ?
+            TypeSize(elemType) : byteAlign;
     }
 
     void setRegFile(G4_RegFileKind rfile) { regFile = rfile; }
@@ -2094,7 +2088,7 @@ public:
     }
 
     G4_Type          getElemType() const {return elemType;}
-    uint16_t         getElemSize() const {return static_cast<uint16_t>(G4_Type_Table[elemType].byteSize);}
+    uint16_t         getElemSize() const {return TypeSize(elemType);}
     const G4_RegVar *getRegVar() const {return regVar;}
           G4_RegVar *getRegVar()       {return regVar;}
 
@@ -2235,6 +2229,7 @@ protected:
 public:
     Kind getKind() const { return kind; }
     G4_Type getType() const { return type; }
+    unsigned short getTypeSize() const { return TypeSize(getType()); }
 
     bool isImm() const { return kind == Kind::immediate; }
     bool isSrcRegRegion() const { return kind == Kind::srcRegRegion; }
@@ -3071,7 +3066,7 @@ namespace vISA
         const RegionDesc* getRegion() const  { return desc; }
         G4_RegAccess      getRegAccess() const { return acc; }
         short             getAddrImm()  const { return immAddrOff; }
-        unsigned short    getElemSize() const { return (unsigned short)G4_Type_Table[type].byteSize; }
+        unsigned short    getElemSize() const { return TypeSize(type); }
 
         void setImmAddrOff(short off) { immAddrOff = off; }
         void setModifier(G4_SrcModifier m) { mod = m; }
@@ -3118,7 +3113,7 @@ namespace vISA
             // FIXME: we should forbid setType() where ty has a different size than old type
             bool recomputeLeftBound = false;
 
-            if (G4_Type_Table[type].byteSize != G4_Type_Table[ty].byteSize)
+            if (TypeSize(type) != TypeSize(ty))
             {
                 unsetRightBound();
                 recomputeLeftBound = true;
@@ -3242,7 +3237,7 @@ public:
         if (isNullReg())
         {
             return inst != NULL &&
-                inst->getExecSize() * G4_Type_Table[type].byteSize * horzStride > numEltPerGRF<Type_UB>();
+                (unsigned)inst->getExecSize() * getTypeSize() * horzStride > numEltPerGRF<Type_UB>();
         }
         if (isRightBoundSet() == false)
         {
@@ -3256,7 +3251,7 @@ public:
     ChannelEnable  getWriteMask() const { return writeMask; }
     void           setWriteMask(ChannelEnable channels);
     short          getAddrImm() const { return immAddrOff; }
-    unsigned short getElemSize() const { return (unsigned short)(G4_Type_Table[type].byteSize); }
+    unsigned short getElemSize() const { return getTypeSize(); }
     unsigned short getExecTypeSize() const { return horzStride * getElemSize(); }
 
     void setImmAddrOff(short off) { immAddrOff = off; }
@@ -3293,7 +3288,7 @@ public:
     {
         bool recomputeLeftBound = false;
 
-        if (G4_Type_Table[type].byteSize != G4_Type_Table[ty].byteSize)
+        if (TypeSize(type) != TypeSize(ty))
         {
             unsetRightBound();
             recomputeLeftBound = true;

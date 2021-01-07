@@ -400,7 +400,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             {
                 VISA_Type vType = decl->genVar.getType();
                 G4_Type gType = GetGenTypeFromVISAType(vType);
-                unsigned int offset  = colOffset * G4_Type_Table[gType].byteSize + rowOffset * numEltPerGRF<Type_UB>();
+                unsigned int offset  = colOffset * TypeSize(gType) + rowOffset * numEltPerGRF<Type_UB>();
                 kernelBuilderImpl->CreateVISAAddressOfOperand(opnd, decl, offset);
             }
             else
@@ -526,9 +526,10 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
                     if (isAddressoff)
                     {
                         VISA_SurfaceVar* decl = container.surfaceVarDecls[index];
-                        unsigned int offsetB = offset * G4_Type_Table[Type_UW].byteSize;
+                        unsigned int offsetB = offset * TypeSize(Type_UW);
                         kernelBuilderImpl->CreateVISAAddressOfOperand(opnd, decl, offsetB);
-                    }else
+                    }
+                    else
                     {
                         VISA_SurfaceVar* decl = container.surfaceVarDecls[index];
                         kernelBuilderImpl->CreateVISAStateOperand(opnd, decl, (uint8_t) size, offset, isDst);
@@ -540,7 +541,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
                     VISA_SamplerVar* decl = container.samplerVarDecls[index];
                     if (isAddressoff)
                     {
-                        unsigned int offsetB = offset * G4_Type_Table[Type_UW].byteSize;
+                        unsigned int offsetB = offset * TypeSize(Type_UW);
                         kernelBuilderImpl->CreateVISAAddressOfOperandGeneric(opnd, decl, offsetB);
                     }
                     else

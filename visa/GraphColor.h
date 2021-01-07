@@ -141,7 +141,7 @@ public:
             output << "(";
             reg.phyReg->emit(output);
             output << '.' << reg.subRegOff << ':';
-            output << G4_Type_Table[getVar ()->getDeclare()->getElemType()].str << ")";
+            output << TypeSymbol(getVar()->getDeclare()->getElemType()) << ")";
         }
         output << "(size = " << getDcl()->getByteSize() <<
             ", spill cost = " << getSpillCost() << ", degree = " << getDegree() << ")";

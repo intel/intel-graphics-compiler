@@ -348,8 +348,8 @@ bool LiveNode::alignedWithChannelMask(
         IsContinguous = UseRegDesc->isContiguous(UseInst->getExecSize());
     }
 
-    unsigned DefTySz = G4_Type_Table[DefOpnd->getType()].byteSize;
-    unsigned UseTySz = G4_Type_Table[UseOpnd->getType()].byteSize;
+    unsigned DefTySz = DefOpnd->getTypeSize();
+    unsigned UseTySz = UseOpnd->getTypeSize();
 
     // Common cases.
     if (DefStride == 1 && IsContinguous && DefTySz == UseTySz) {

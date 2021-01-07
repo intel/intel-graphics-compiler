@@ -40,7 +40,7 @@ static unsigned int getObjWidth(
     unsigned blockWidth, unsigned blockHeight, G4_Declare * dcl)
 {
     // makes sure io_width is divisible by 4
-    unsigned ioWidth = (blockWidth + G4_Type_Table[Type_D].byteSize - 1) & (~(G4_Type_Table[Type_D].byteSize - 1));
+    unsigned ioWidth = (blockWidth + TypeSize(Type_D) - 1) & (~(TypeSize(Type_D) - 1));
     // gets next power of 2 size
     return Round_Up_Pow2(ioWidth / dcl->getElemSize()) * dcl->getElemSize();
 }
@@ -120,7 +120,8 @@ int IR_Builder::translateVISAMediaLoadInst(
     }
     else
     {
-        unsigned byte_subregoff = dstOpnd->asDstRegRegion()->getSubRegOff() * G4_Type_Table[dstOpnd->getType()].byteSize;
+        unsigned byte_subregoff =
+            dstOpnd->asDstRegRegion()->getSubRegOff() * dstOpnd->getTypeSize();
         G4_VarBase *base = dstOpnd->asDstRegRegion()->getBase();
         G4_Declare *dcl = base->asRegVar()->getDeclare();
 
@@ -148,7 +149,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     if (via_temp == true)
     {
         original_dst = dstOpnd;
-        new_dcl = createTempVar(numEltPerGRF<Type_UB>()/G4_Type_Table[Type_UD].byteSize,
+        new_dcl = createTempVar(numEltPerGRF<Type_UB>()/TypeSize(Type_UD),
             Type_UD, GRFALIGN);
         G4_DstRegRegion* tmp_dst_opnd = createDst(
             new_dcl->getRegVar(),
@@ -198,12 +199,12 @@ int IR_Builder::translateVISAMediaLoadInst(
     if (via_temp)
     {
         G4_Declare *new_dcl2 = createTempVar(
-            numEltPerGRF<Type_UB>()/G4_Type_Table[original_dst->getType()].byteSize,
+            numEltPerGRF<Type_UB>()/original_dst->getTypeSize(),
             original_dst->getType(), GRFALIGN);
 
         new_dcl2->setAliasDeclare(new_dcl, 0);
 
-        unsigned short remained_ele = obj_size / G4_Type_Table[original_dst->getType()].byteSize;
+        unsigned short remained_ele = obj_size / original_dst->getTypeSize();
         // max execution size is 32
         G4_ExecSize curr_exec_size = G4_ExecSize(getNativeExecSize() * 2);
         unsigned char curr_offset = 0;
@@ -223,7 +224,7 @@ int IR_Builder::translateVISAMediaLoadInst(
                     original_dst->getType());
 
                 dst_subregoff += curr_offset;
-                short ele_per_grf = numEltPerGRF<Type_UB>()/G4_Type_Table[dstType].byteSize;
+                short ele_per_grf = numEltPerGRF<Type_UB>()/TypeSize(dstType);
                 if (dst_subregoff >= ele_per_grf)
                 {
                     dst_regoff += 1;
@@ -341,13 +342,13 @@ int IR_Builder::translateVISAMediaStoreInst(
     }
     else
     {
-        uint32_t temp =  new_obj_size/G4_Type_Table[Type_UD].byteSize + GENX_DATAPORT_IO_SZ;
+        uint32_t temp =  new_obj_size/TypeSize(Type_UD) + GENX_DATAPORT_IO_SZ;
 
         G4_Declare *dcl = createSendPayloadDcl(temp, Type_UD);
 
         /* mov  (c*r)    VX(1,0)<1>,  M */
         /* decl for data to write */
-        temp =  obj_size/G4_Type_Table[Type_UD].byteSize;
+        temp =  obj_size/TypeSize(Type_UD);
 
         Create_MOV_Send_Src_Inst(dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable);
 
@@ -417,23 +418,23 @@ int IR_Builder::translateVISAVmeImeInst(
 
     if ((COMMON_ISA_VME_STREAM_MODE) stream_mode != VME_STREAM_IN &&
         (COMMON_ISA_VME_STREAM_MODE) stream_mode != VME_STREAM_IN_OUT) {
-        input_size_dw = (uni_input_size + 2)*32/G4_Type_Table[Type_UD].byteSize;
+        input_size_dw = (uni_input_size + 2)*32/TypeSize(Type_UD);
     } else if ((COMMON_ISA_VME_SEARCH_CTRL) search_ctrl == VME_SEARCH_DUAL_REF_DUAL_REC) {
-        input_size_dw = (uni_input_size + 6)*32/G4_Type_Table[Type_UD].byteSize;
+        input_size_dw = (uni_input_size + 6)*32/TypeSize(Type_UD);
     } else {
-        input_size_dw = (uni_input_size + 4)*32/G4_Type_Table[Type_UD].byteSize;
+        input_size_dw = (uni_input_size + 4)*32/TypeSize(Type_UD);
     }
 
     G4_Declare *dcl = createSendPayloadDcl(input_size_dw, Type_UD);
 
     // mov  (96)    VX(0,0)<1>,  UNIInput
     Create_MOV_Send_Src_Inst(dcl, 0, 0,
-        uni_input_size*32/G4_Type_Table[Type_UD].byteSize,
+        uni_input_size*32/TypeSize(Type_UD),
         uniInputOpnd, InstOpt_WriteEnable);
 
     // mov  (192)   VX(3,0)<1>,  IMEInput
     Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0,
-        (input_size_dw - uni_input_size*32/G4_Type_Table[Type_UD].byteSize),
+        (input_size_dw - uni_input_size*32/TypeSize(Type_UD)),
         imeInputOpnd, InstOpt_WriteEnable);
 
     // and  (1)     VX(0,13)<1>, VX(0,13):ub, 0xF8
@@ -533,7 +534,7 @@ int IR_Builder::translateVISAVmeSicInst(
     uni_input_size = 4;
 
     // add dcl for VX
-    unsigned input_size_dw = (uni_input_size + 4)*32/G4_Type_Table[Type_UD].byteSize;
+    unsigned input_size_dw = (uni_input_size + 4)*32/TypeSize(Type_UD);
 
     G4_Declare *dcl = NULL;
     G4_Declare *topDcl = uniInputOpnd->getTopDcl();
@@ -551,9 +552,9 @@ int IR_Builder::translateVISAVmeSicInst(
     {
         dcl = createSendPayloadDcl(input_size_dw, Type_UD);
         // mov  (96)    VX(0,0)<1>,  UNIInput
-        Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, uniInputOpnd, InstOpt_WriteEnable);
+        Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), uniInputOpnd, InstOpt_WriteEnable);
         // mov  (128)   VX(3,0)<1>,  SICInput
-        Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/G4_Type_Table[Type_UD].byteSize, sicInputOpnd, InstOpt_WriteEnable);
+        Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), sicInputOpnd, InstOpt_WriteEnable);
     }
 
     // send's operands preparation
@@ -602,15 +603,15 @@ int IR_Builder::translateVISAVmeFbrInst(
     uni_input_size = 4;
 
     // add dcl for VX
-    unsigned input_size_dw = (uni_input_size + 4)*32/G4_Type_Table[Type_UD].byteSize;
+    unsigned input_size_dw = (uni_input_size + 4)*32/TypeSize(Type_UD);
 
     G4_Declare *dcl = createSendPayloadDcl(input_size_dw, Type_UD);
 
     // mov  (96)    VX(0,0)<1>,  UNIInput
-    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, unitInputOpnd, InstOpt_WriteEnable);
+    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), unitInputOpnd, InstOpt_WriteEnable);
 
     // mov  (128)   VX(3,0)<1>,  FBRInput
-    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/G4_Type_Table[Type_UD].byteSize, fbrInputOpnd, InstOpt_WriteEnable);
+    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), fbrInputOpnd, InstOpt_WriteEnable);
 
     // mov  (1)     VX(2,20)<1>, FBRMbMode
     G4_DstRegRegion* tmp_dst1_opnd = createDst(
@@ -700,15 +701,15 @@ int IR_Builder::translateVISAVmeIdmInst(
     uni_input_size = 4;
 
     // add dcl for VX
-    unsigned input_size_dw = (uni_input_size + 1)*32/G4_Type_Table[Type_UD].byteSize;
+    unsigned input_size_dw = (uni_input_size + 1)*32/TypeSize(Type_UD);
 
     G4_Declare *dcl = createSendPayloadDcl(input_size_dw, Type_UD);
 
     // mov  (128)    VX(0,0)<1>,  UNIInput
-    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/G4_Type_Table[Type_UD].byteSize, unitInputOpnd, InstOpt_WriteEnable);
+    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), unitInputOpnd, InstOpt_WriteEnable);
 
     // mov  (32)   VX(3,0)<1>,  IDMInput
-    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 32/G4_Type_Table[Type_UD].byteSize, idmInputOpnd, InstOpt_WriteEnable);
+    Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 32/TypeSize(Type_UD), idmInputOpnd, InstOpt_WriteEnable);
 
     // send's operands preparation
     // create a currDst for VX
@@ -984,7 +985,7 @@ int IR_Builder::translateVISAAvsInst(
             number_elements_returned = 16;
         }
 
-        unsigned obj_size = number_elements_returned*numEnabledChannels*G4_Type_Table[output_type].byteSize;
+        unsigned obj_size = number_elements_returned*numEnabledChannels*TypeSize(output_type);
         // mov (8)      VX(0,0)<1>,  r0:ud
         // add dcl for VX
         G4_Declare *dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);

@@ -221,13 +221,13 @@ enum G4_Type
 typedef struct
 {
     G4_Type type;
-    unsigned int bitSize;
-    unsigned int byteSize;
-    unsigned short footprint; // bit pattern that corresponds to type's byte usage
-    const char* str; //constant string representation of the type
+    unsigned char bitSize;
+    unsigned char byteSize;
+    unsigned char footprint; // bit pattern that corresponds to type's byte usage
+    const char *syntax; // constant string representation of the type
 } G4_Type_Info;
 
-constexpr G4_Type_Info G4_Type_Table[Type_UNDEF + 1]{
+constexpr G4_Type_Info G4_Type_Table[Type_UNDEF + 1] {
     {Type_UD,  32, 4, 0x0F, "ud"},
     {Type_D,   32, 4, 0x0F, "d"},
     {Type_UW,  16, 2, 0x03, "uw"},
@@ -244,8 +244,28 @@ constexpr G4_Type_Info G4_Type_Table[Type_UNDEF + 1]{
     {Type_UQ,  64, 8, 0xFF, "uq"},
     {Type_HF,  16, 2, 0x03, "hf"},
     {Type_NF,  64, 8, 0xFF, "nf"},
-    {Type_UNDEF, 0, 0, 0x0, "none"}
+    {Type_UNDEF, 0, 0, 0x0, "???"}
 };
+static inline constexpr G4_Type_Info TypeInfo(G4_Type t) {
+    return G4_Type_Table[(unsigned)t > (unsigned)Type_UNDEF ? Type_UNDEF : t];
+}
+static inline constexpr unsigned short TypeSize(G4_Type t)
+{
+    return TypeInfo(t).byteSize;
+}
+static inline constexpr unsigned short TypeBitSize(G4_Type t)
+{
+    // TODO: can we use TypeBitSize/8 here? Need to determine why bool is 2 B
+    return TypeInfo(t).bitSize;
+}
+static inline constexpr unsigned short TypeFootprint(G4_Type t)
+{
+    return TypeInfo(t).footprint;
+}
+static inline constexpr const char * TypeSymbol(G4_Type t)
+{
+    return TypeInfo(t).syntax;
+}
 
 enum G4_InstType
 {
@@ -444,8 +464,6 @@ inline unsigned int getNumAddrRegisters(void) { return 16; }
 uint8_t roundDownPow2(uint8_t n);
 
 // G4_type related global functions
-// ToDo: consider making G4_Type a class instead to encapsulate these functions
-inline uint32_t getTypeSize(G4_Type ty) { return G4_Type_Table[ty].byteSize; }
 inline bool isLowPrecisionFloatTy(G4_Type ty)
 {
     return ty == Type_HF;
@@ -454,7 +472,7 @@ inline bool isLowPrecisionFloatTy(G4_Type ty)
 inline G4_Type floatToSameWidthIntType(G4_Type floatTy)
 {
     assert(IS_TYPE_FLOAT_ALL(floatTy));
-    switch (getTypeSize(floatTy))
+    switch (TypeSize(floatTy))
     {
     case 1:
         return Type_UB;

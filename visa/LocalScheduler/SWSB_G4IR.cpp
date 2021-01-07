@@ -4307,8 +4307,8 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
             uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
             uint32_t regOff = var->getPhyRegOff();
 
-            linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * G4_Type_Table[dcl->getElemType()].byteSize;
-            linearizedEnd = regNum * numEltPerGRF<Type_UB>() + regOff * G4_Type_Table[dcl->getElemType()].byteSize + dcl->getByteSize() - 1;
+            linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
+            linearizedEnd = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType()) + dcl->getByteSize() - 1;
         }
 
         void* allocedMem = mem.alloc(sizeof(SBFootprint));

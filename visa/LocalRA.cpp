@@ -1356,7 +1356,7 @@ void LocalRA::calculateInputIntervals()
                             unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
                             unsigned int regOff = var->getPhyRegOff();
                             unsigned int idx = regNum * numEltPerGRF<Type_UW>() +
-                                (regOff * G4_Type_Table[topdcl->getElemType()].byteSize) / G4_WSIZE + topdcl->getWordSize() - 1;
+                                (regOff * topdcl->getElemSize()) / G4_WSIZE + topdcl->getWordSize() - 1;
 
                             unsigned int numWords = topdcl->getWordSize();
                             for (int i = numWords - 1; i >= 0; --i, --idx)
@@ -1410,7 +1410,7 @@ void LocalRA::calculateInputIntervals()
                                 unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
                                 unsigned int regOff = var->getPhyRegOff();
                                 unsigned int idx = regNum * numEltPerGRF<Type_UW>() +
-                                    (regOff * G4_Type_Table[topdcl->getElemType()].byteSize) / G4_WSIZE + topdcl->getWordSize() - 1;
+                                    (regOff * TypeSize(topdcl->getElemType())) / G4_WSIZE + topdcl->getWordSize() - 1;
 
                                 unsigned int numWords = topdcl->getWordSize();
                                 for (int i = numWords - 1; i >= 0; --i, --idx)
@@ -1459,7 +1459,7 @@ void LocalRA::calculateInputIntervals()
             unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
             unsigned int regOff = var->getPhyRegOff();
             unsigned int idx = regNum * numEltPerGRF<Type_UW>() +
-                (regOff * G4_Type_Table[curDcl->getElemType()].byteSize) / G4_WSIZE;
+                (regOff * TypeSize(curDcl->getElemType())) / G4_WSIZE;
 
             unsigned int numWords = curDcl->getWordSize();
             for (unsigned int i = 0; i < numWords; ++i, ++idx)

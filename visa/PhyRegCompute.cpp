@@ -30,7 +30,7 @@ using namespace vISA;
 
 void G4_SrcRegRegion::computePReg()
 {
-    int thisOpSize(G4_Type_Table[type].byteSize);
+    int thisOpSize = TypeSize(type);
     unsigned int regNum = 0, subRegNum = 0;
     if (base->isRegVar() && base->asRegVar()->isPhyRegAssigned())
     {
@@ -43,7 +43,7 @@ void G4_SrcRegRegion::computePReg()
 
             subRegNum = baseVar->getPhyRegOff();
 
-            int declOpSize(G4_Type_Table[dcl->getElemType()].byteSize);
+            int declOpSize = dcl->getElemSize();
 
             if (thisOpSize != declOpSize)
             {
@@ -71,8 +71,8 @@ void G4_DstRegRegion::computePReg()
 
             subRegNum = baseVar->getPhyRegOff();
 
-            int declOpSize(G4_Type_Table[dcl->getElemType()].byteSize);
-            int thisOpSize(G4_Type_Table[type].byteSize);
+            int declOpSize = dcl->getElemSize();
+            int thisOpSize = TypeSize(type);
 
             if (thisOpSize != declOpSize)
             {

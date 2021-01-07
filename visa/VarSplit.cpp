@@ -521,7 +521,7 @@ void VarSplitPass::split()
             auto srcRgn = kernel.fg.builder->createSrc(dstDcl->getRegVar(),
                 item.second.def.first->getRegOff() + (i * numRows), item.second.def.first->getSubRegOff(),
                 kernel.fg.builder->getRegionStride1(), Type_UD);
-            G4_ExecSize execSize {(getGRFSize() / G4_Type_Table[Type_UD].byteSize) * numRows};
+            G4_ExecSize execSize {(getGRFSize() / TypeSize(Type_UD)) * numRows};
             auto intrin = kernel.fg.builder->createIntrinsicInst(
                 nullptr, Intrinsic::Split, execSize, dstRgn, srcRgn, nullptr, nullptr,
                 item.second.def.first->getInst()->getOption() | G4_InstOption::InstOpt_WriteEnable, true);

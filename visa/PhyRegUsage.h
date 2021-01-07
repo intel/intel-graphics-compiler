@@ -267,7 +267,7 @@ public:
         //
         // we allocate sub reg in 2-byte granularity
         //
-        unsigned nbytes = nelems* G4_Type_Table[ty].byteSize;
+        unsigned nbytes = nelems* TypeSize(ty);
         return nbytes/G4_WSIZE + nbytes%G4_WSIZE;
     }
 
@@ -275,7 +275,7 @@ public:
     static unsigned offsetAllocUnit(unsigned nelems, G4_Type ty)
     {
 
-        unsigned nbytes = nelems* G4_Type_Table[ty].byteSize;
+        unsigned nbytes = nelems * TypeSize(ty);
         //RA allocate register in unit of G4_WSIZE bytes
         //pre-assigned register may start from nbytes%G4_WSIZE != 0, i.e, within an allocUnit
         return nbytes/G4_WSIZE;

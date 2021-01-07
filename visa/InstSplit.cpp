@@ -110,7 +110,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
     {
         if (dst->isNullReg())
         {
-            return (inst->getExecSize() * G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride()) > (getGRFSize() * 2u);
+            return ((unsigned)inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride()) > (getGRFSize() * 2u);
         }
         uint32_t leftBound = 0, rightBound = 0;
         computeDstBounds(dst, leftBound, rightBound);
@@ -146,8 +146,8 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
             // that is, if the execution size is 16 and the comparison type
             // is QW.
             if (needSplitByExecSize(execSize) && inst->getDst()->isNullReg() &&
-                (G4_Type_Table[inst->getSrc(0)->getType()].byteSize > 4 ||
-                    G4_Type_Table[inst->getSrc(1)->getType()].byteSize > 4))
+                (inst->getSrc(0)->getTypeSize() > 4 ||
+                    inst->getSrc(1)->getTypeSize() > 4))
             {
                 doSplit = true;
             }
@@ -284,7 +284,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
         {
             int newMaskOffset = inst->getMaskOffset() + (i == 0 ? 0 : newExecSize);
             bool nibOk = m_builder->hasNibCtrl() &&
-                (getTypeSize(inst->getDst()->getType()) == 8 || getTypeSize(inst->getExecType()) == 8);
+                (inst->getDst()->getTypeSize() == 8 || TypeSize(inst->getExecType()) == 8);
             G4_InstOption newMask = G4_INST::offsetToMask(newExecSize, newMaskOffset, nibOk);
             newInst->setMaskOption(newMask);
         }
@@ -441,7 +441,7 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion* dstRegion,
 // carries several aditional calculations and asserts restricted to 2 GRFs.
 void InstSplitPass::computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftBound, uint32_t& rightBound)
 {
-    unsigned short typeSize = (unsigned short)G4_Type_Table[dstRegion->getType()].byteSize;
+    unsigned short typeSize = dstRegion->getTypeSize();
 
     // Calculate left bound
     {
@@ -484,7 +484,7 @@ void InstSplitPass::computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftB
             }
             else
             {
-                leftBound = subRegOff * G4_Type_Table[ADDR_REG_TYPE].byteSize;
+                leftBound = subRegOff * TypeSize(ADDR_REG_TYPE);
             }
         }
     }
@@ -500,7 +500,7 @@ void InstSplitPass::computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftB
         }
         else
         {
-            rightBound = leftBound + G4_Type_Table[ADDR_REG_TYPE].byteSize - 1;
+            rightBound = leftBound + TypeSize(ADDR_REG_TYPE) - 1;
         }
     }
 }
@@ -510,7 +510,7 @@ void InstSplitPass::computeDstBounds(G4_DstRegRegion* dstRegion, uint32_t& leftB
 // carries several aditional calculations and asserts restricted to 2 GRFs.
 void InstSplitPass::computeSrcBounds(G4_SrcRegRegion* srcRegion, uint32_t& leftBound, uint32_t& rightBound)
 {
-    unsigned short typeSize = (unsigned short)G4_Type_Table[srcRegion->getType()].byteSize;
+    unsigned short typeSize = srcRegion->getTypeSize();
 
     // Calculate left bound
     {
@@ -557,7 +557,7 @@ void InstSplitPass::computeSrcBounds(G4_SrcRegRegion* srcRegion, uint32_t& leftB
             }
             else
             {
-                leftBound = subRegOff * G4_Type_Table[ADDR_REG_TYPE].byteSize;
+                leftBound = subRegOff * TypeSize(ADDR_REG_TYPE);
             }
         }
     }
@@ -598,7 +598,7 @@ void InstSplitPass::computeSrcBounds(G4_SrcRegRegion* srcRegion, uint32_t& leftB
             {
                 numAddrSubReg = srcRegion->getInst()->getExecSize() / srcRegion->getRegion()->width;
             }
-            rightBound = leftBound + G4_Type_Table[ADDR_REG_TYPE].byteSize * numAddrSubReg - 1;
+            rightBound = leftBound + TypeSize(ADDR_REG_TYPE) * numAddrSubReg - 1;
         }
     }
 }
@@ -606,8 +606,8 @@ void InstSplitPass::computeSrcBounds(G4_SrcRegRegion* srcRegion, uint32_t& leftB
 // Generates the byte footprint of an instruction's operand
 void InstSplitPass::generateBitMask(G4_Operand* opnd, BitSet& footprint)
 {
-    uint64_t bitSeq = G4_Type_Table[opnd->getType()].footprint;
-    unsigned short typeSize = (unsigned short)G4_Type_Table[opnd->getType()].byteSize;
+    uint64_t bitSeq = TypeFootprint(opnd->getType());
+    unsigned short typeSize = opnd->getTypeSize();
 
     if (opnd->isDstRegRegion())
     {

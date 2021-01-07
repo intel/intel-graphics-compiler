@@ -168,8 +168,7 @@ std::string printVariableDeclName(
                     {
                         G4_Declare* aliasDcl = header->getVar(declID - numPreDefinedVars)->dcl;
                         unsigned int aliasOff = 0;
-                        std::string type =
-                            G4_Type_Table[aliasDcl->getElemType()].str;
+                        std::string type = TypeSymbol(aliasDcl->getElemType());
 
                         while (aliasDcl->getAliasDeclare() != NULL)
                         {

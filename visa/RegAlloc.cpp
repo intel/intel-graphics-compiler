@@ -1756,8 +1756,8 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
     // If the region does not cover the whole declare then it does not write the whole region.
        //
 
-    if (G4_Type_Table[dst->getType()].byteSize * execSize !=
-        G4_Type_Table[primaryDcl->getElemType()].byteSize * primaryDcl->getNumElems() * primaryDcl->getNumRows()) {
+    if (dst->getTypeSize() * execSize !=
+        primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows()) {
            return false;
     }
 
@@ -2877,7 +2877,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regOff = var->getPhyRegOff();
 
                     uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                        (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                        (regOff * dcl->getElemSize()) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
                         LiveInRegMapIt = LiveInRegMap.find(idx);
@@ -2937,7 +2937,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regOff = var->getPhyRegOff();
 
                     uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                        (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                        (regOff * dcl->getElemSize()) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
                         liveOutRegMapIt = liveOutRegMap.find(idx);
@@ -2998,7 +2998,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regOff = var->getPhyRegOff();
 
                     uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                        (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                        (regOff * dcl->getElemSize()) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
                         liveOutRegMapIt = liveOutRegMap.find(idx);
@@ -3069,7 +3069,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regOff = var->getPhyRegOff();
 
                         uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                            (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                            (regOff * dcl->getElemSize()) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
                             liveOutRegMapIt = liveOutRegMap.find(idx);
@@ -3123,7 +3123,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regOff = var->getPhyRegOff();
 
                     uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                        (regOff * G4_Type_Table[ret->getElemType()].byteSize) / G4_WSIZE;
+                        regOff * ret->getElemSize() / G4_WSIZE;
                     for (uint32_t i = 0; i < ret->getWordSize(); ++i, ++idx)
                     {
                         liveOutRegMapIt = liveOutRegMap.find(idx);
@@ -3157,7 +3157,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t regOff = var->getPhyRegOff();
 
                     uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                        (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                        (regOff * dcl->getElemSize()) / G4_WSIZE;
                     for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                     {
                         liveOutRegMapIt = liveOutRegMap.find(idx);
@@ -3235,7 +3235,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regOff = var->getPhyRegOff();
 
                         uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                            (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                            (regOff * dcl->getElemSize()) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
                             liveOutRegMapIt = liveOutRegMap.find(idx);
@@ -3302,7 +3302,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regOff = var->getPhyRegOff();
 
                         uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                            (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                            (regOff * dcl->getElemSize()) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
                             if (liveOutRegVec[idx] != UINT_MAX)
@@ -3347,7 +3347,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regOff = var->getPhyRegOff();
 
                         uint32_t idx = regNum * numEltPerGRF<Type_UW>() +
-                            (regOff * G4_Type_Table[dcl->getElemType()].byteSize) / G4_WSIZE;
+                            (regOff * dcl->getElemSize()) / G4_WSIZE;
                         for (uint32_t i = 0; i < dcl->getWordSize(); ++i, ++idx)
                         {
                             liveOutRegMapIt = liveOutRegMap.find(idx);

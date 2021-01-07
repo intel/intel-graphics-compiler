@@ -203,8 +203,7 @@ void IR_Builder::preparePayload(
         const G4_Declare *srcDcl = getDeclare(srcReg);
         ASSERT_USER(srcDcl, "Declaration is missing!");
 
-        unsigned regionSize = srcs[i].execSize *
-            G4_Type_Table[srcReg->getType()].byteSize;
+        unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
 
         if (regionSize < COMMON_ISA_GRF_REG_SIZE) {
             // FIXME: Need a better solution to decouple the value type from
@@ -280,8 +279,7 @@ void IR_Builder::preparePayload(
     // Count remaining message size.
     for (; i != len; ++i) {
         G4_SrcRegRegion *srcReg = srcs[i].opnd;
-        unsigned regionSize = srcs[i].execSize *
-            G4_Type_Table[srcReg->getType()].byteSize;
+        unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
         if (regionSize < COMMON_ISA_GRF_REG_SIZE) {
             // FIXME: Need a better solution to decouple the value type from
             // the container type to generate better COPY if required.
@@ -293,7 +291,7 @@ void IR_Builder::preparePayload(
 
     // Allocate a new large enough GPR to copy in the payload.
     G4_Declare *msg =
-        createSendPayloadDcl(msgSizes[current]/G4_Type_Table[Type_UD].byteSize, Type_UD);
+        createSendPayloadDcl(msgSizes[current]/TypeSize(Type_UD), Type_UD);
 
     // Copy sources.
     unsigned regOff = 0;
@@ -367,7 +365,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
         if (src && !src->isNullReg())
         {
             // ToDo: add D16 support later
-            auto laneSize = getTypeSize(src->getType()) == 8 ? 8 : 4;
+            auto laneSize = src->getTypeSize() == 8 ? 8 : 4;
             numPayloadGRF += std::max(1u, (payloadWidth * laneSize) / getGRFSize());
         }
     }
@@ -380,7 +378,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
         if (src && !src->isNullReg()) {
 
             // ToDo: add D16 support later
-            auto laneSize = getTypeSize(src->getType()) == 8 ? 8 : 4;
+            auto laneSize = src->getTypeSize() == 8 ? 8 : 4;
             auto totalSize = srcSize * laneSize;
 
             // for each payload we copy <srcSize> lanes to its corresponding location in payload
@@ -430,7 +428,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload(
     G4_SrcRegRegion* srcRgn = createSrcRegRegion(*src);
     srcRgn->setType(payload->getElemType());
     createMov(execSize, payloadDstRgn, srcRgn, emask, true);
-    if (getTypeSize(payload->getElemType()) == 2)
+    if (TypeSize(payload->getElemType()) == 2)
     {
         // for half float each source occupies 1 GRF regardless of execution size
         regOff++;
@@ -445,7 +443,7 @@ unsigned int IR_Builder::getByteOffsetSrcRegion(G4_SrcRegRegion* srcRegion)
 {
     unsigned int offset =
         (srcRegion->getRegOff() * numEltPerGRF<Type_UB>()) +
-        (srcRegion->getSubRegOff() * G4_Type_Table[srcRegion->getType()].byteSize);
+        (srcRegion->getSubRegOff() * srcRegion->getTypeSize());
 
     if (srcRegion->getBase() &&
         srcRegion->getBase()->isRegVar())
@@ -495,7 +493,7 @@ bool IR_Builder::checkIfRegionsAreConsecutive(
 
         if (firstDcl == secondDcl)
         {
-            if ((firstOff + (execSize * G4_Type_Table[type].byteSize)) == secondOff)
+            if (firstOff + execSize * TypeSize(type) == secondOff)
             {
                 isConsecutive = true;
             }

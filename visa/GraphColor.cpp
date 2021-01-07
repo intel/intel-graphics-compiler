@@ -1319,7 +1319,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
             G4_RegVar* spillVar = (*it)->getVar();
             optreport << "Spill candidate " << spillVar->getName() << " intf:";
             optreport << "\t(" << spillVar->getDeclare()->getTotalElems() << "):" <<
-                G4_Type_Table[spillVar->getDeclare()->getElemType()].str << std::endl;
+                TypeSymbol(spillVar->getDeclare()->getElemType()) << std::endl;
 
             if (getLocalLR(spillVar->getDeclare()) != NULL)
             {
@@ -1346,7 +1346,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
 
                     optreport << "\t" << intfRangeVar->getName() << "(" <<
                         intfRangeVar->getDeclare()->getTotalElems() << "):" <<
-                        G4_Type_Table[intfRangeVar->getDeclare()->getElemType()].str;
+                        TypeSymbol(intfRangeVar->getDeclare()->getElemType());
 
                     if (lrs[i]->getPhyReg() == NULL)
                     {
@@ -3194,9 +3194,9 @@ bool Augmentation::verifyMaskIfInit(G4_Declare* dcl, AugmentationMasks mask)
 bool Augmentation::checkGRFPattern2(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
     unsigned int lb, unsigned int rb, unsigned int execSize)
 {
-    auto opndByteSize = G4_Type_Table[dst->getType()].byteSize;
+    auto opndByteSize = dst->getTypeSize();
     unsigned int modWith = opndByteSize*kernel.getSimdSize();
-    if (lb%modWith - (maskOff * opndByteSize * dst->getHorzStride()) <= opndByteSize)
+    if (lb % modWith - (maskOff * opndByteSize * dst->getHorzStride()) <= opndByteSize)
     {
         if ((lb + (execSize * opndByteSize * dst->getHorzStride() - dst->getHorzStride()) - rb) < opndByteSize)
         {
@@ -3227,7 +3227,7 @@ bool Augmentation::checkGRFPattern2(G4_Declare* dcl, G4_DstRegRegion* dst, unsig
 bool Augmentation::checkGRFPattern1(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
     unsigned int lb, unsigned int rb, unsigned int execSize)
 {
-    auto opndByteSize = G4_Type_Table[dst->getType()].byteSize;
+    auto opndByteSize = dst->getTypeSize();
     unsigned int modWith = opndByteSize*kernel.getSimdSize();
     if (dst->getHorzStride() == 1)
     {
@@ -4571,12 +4571,12 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask, Augmentation
     {
         // Weak edge needed in case #GRF exceeds 2
         if (newDclMask == AugmentationMasks::Default64Bit)
-            return (G4_Type_Table[Type_Q].byteSize * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF<Type_UB>());
+            return (TypeSize(Type_Q) * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF<Type_UB>());
 
         if (newDclMask == AugmentationMasks::Default32Bit)
         {
             // Even align up to 2 GRFs size variable, use weak edges beyond
-            return (G4_Type_Table[Type_D].byteSize * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF<Type_UB>());
+            return (TypeSize(Type_D) * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF<Type_UB>());
         }
     }
     else
@@ -5939,7 +5939,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
             // 2. the size of the subdeclare must be G4_WSIZE aligned
             markBusyForDclSplit(G4_GRF,
                 ((G4_Greg*)pr)->getRegNum(),
-                (lrs[lr->getParentLRID()]->getPhyRegOff() * G4_Type_Table[dcl->getElemType()].byteSize + gra.getSubOffset(dcl)) / G4_WSIZE,
+                (lrs[lr->getParentLRID()]->getPhyRegOff() * TypeSize(dcl->getElemType()) + gra.getSubOffset(dcl)) / G4_WSIZE,
                 dcl->getByteSize() / G4_WSIZE,
                 dcl->getNumRows());
         }
@@ -6763,7 +6763,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
                 //
                 // set up Odd word or Even word sub reg alignment
                 //
-                unsigned nbytes = dcl->getNumElems()* G4_Type_Table[dcl->getElemType()].byteSize;
+                unsigned nbytes = dcl->getNumElems() * TypeSize(dcl->getElemType());
                 unsigned nwords = nbytes / G4_WSIZE + nbytes % G4_WSIZE;
                 if (nwords >= 2 && lrs[i]->getRegKind() == G4_GRF)
                 {
@@ -8559,7 +8559,7 @@ void VarSplit::rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, st
 void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize)
 {
     dclWidth = 1, dclHeight = 1;
-    totalByteSize = numberElements * G4_Type_Table[type].byteSize;
+    totalByteSize = numberElements * TypeSize(type);
     if (totalByteSize <= (int)numEltPerGRF<Type_UB>())
     {
         dclWidth = (uint16_t)numberElements;
@@ -8567,7 +8567,7 @@ void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigne
     else {
         // here we assume that the start point of the var is the beginning of a GRF?
         // so subregister must be 0?
-        dclWidth = numEltPerGRF<Type_UB>() / G4_Type_Table[type].byteSize;
+        dclWidth = numEltPerGRF<Type_UB>() / TypeSize(type);
         dclHeight = totalByteSize / numEltPerGRF<Type_UB>();
         if (totalByteSize % numEltPerGRF<Type_UB>() != 0) {
             dclHeight++;
@@ -11583,8 +11583,8 @@ void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
     if (it == masks.end())
         return;
 
-    if (dcl->getByteSize() >= numEltPerGRF<Type_UD>() * G4_Type_Table[Type_UD].byteSize &&
-        dcl->getByteSize() <= 2 * numEltPerGRF<Type_UD>() * G4_Type_Table[Type_UD].byteSize &&
+    if (dcl->getByteSize() >= numEltPerGRF<Type_UD>() * TypeSize(Type_UD) &&
+        dcl->getByteSize() <= 2 * numEltPerGRF<Type_UD>() * TypeSize(Type_UD) &&
         kernel->getSimdSize() > numEltPerGRF<Type_UD>())
     {
         auto assignment = dcl->getRegVar()->getPhyReg();
@@ -11686,7 +11686,7 @@ unsigned int getGRFBaseOffset(G4_Declare* dcl)
     unsigned int regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
     unsigned int regOff = dcl->getRegVar()->getPhyRegOff();
     auto type = dcl->getElemType();
-    return (regNum * numEltPerGRF<Type_UB>()) + (regOff * getTypeSize(type));
+    return (regNum * numEltPerGRF<Type_UB>()) + (regOff * TypeSize(type));
 }
 
 bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)

@@ -1976,7 +1976,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             return false;
         }
 
-        if (!fg.builder->hasByteALU() && (getTypeSize(Dst->getType()) == 1))
+        if (!fg.builder->hasByteALU() && Dst->getTypeSize() == 1)
         {
             return false;
         }
@@ -2048,16 +2048,16 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
     G4_Type dstType = dst->getType();
     G4_DstRegRegion *dstRegion = dst;
     bool indirectDst = (dstRegion->getRegAccess() != Direct);
-    unsigned char srcElSize = (unsigned char)G4_Type_Table[srcType].byteSize;
+    unsigned char srcElSize = (unsigned char)TypeSize(srcType);
 
     G4_DstRegRegion *defDstRegion = defInst->getDst();
     G4_DstRegRegion *newDstOpnd = dst;
 
-    unsigned char defDstElSize = (unsigned char)G4_Type_Table[defDstRegion->getType()].byteSize;
+    unsigned char defDstElSize = (unsigned char)defDstRegion->getTypeSize();
     G4_CmpRelation rel = src->compareOperand(defDstRegion);
     G4_Type defDstType = defDstRegion->getType();
 
-    unsigned char dstElSize = (unsigned char)G4_Type_Table[dstType].byteSize;
+    unsigned char dstElSize = (unsigned char)TypeSize(dstType);
     unsigned short dstHS = dst->getHorzStride();
 
     if (rel == Rel_gt || srcElSize != defDstElSize ||
@@ -2358,7 +2358,7 @@ static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2)
 {
     if (IS_TYPE_INT(type1) && IS_TYPE_INT(type2))
     {
-        if (G4_Type_Table[type1].byteSize == 8 || G4_Type_Table[type2].byteSize == 8)
+        if (TypeSize(type1) == 8 || TypeSize(type2) == 8)
         {
             return Type_UNDEF;
         }
@@ -2410,9 +2410,10 @@ void Optimizer::doSimplification(G4_INST *inst)
         inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1 &&
         // destination stride in bytes must be equal to the source element size
         // in bytes.
-        getTypeSize(inst->getSrc(0)->getType()) ==
-        getTypeSize(inst->getDst()->getType()) *
-        inst->getDst()->asDstRegRegion()->getHorzStride()) {
+        inst->getSrc(0)->getTypeSize() ==
+            inst->getDst()->getTypeSize() *
+                inst->getDst()->asDstRegRegion()->getHorzStride())
+    {
         // Convert 'mov' to 'movi' if the following conditions are met.
 
         auto getSingleDefInst = [](G4_INST *UI,
@@ -2432,8 +2433,8 @@ void Optimizer::doSimplification(G4_INST *inst)
             return Def;
         };
 
-        unsigned SrcSizeInBytes = inst->getExecSize() *
-                getTypeSize(inst->getSrc(0)->getType());
+        unsigned SrcSizeInBytes =
+            inst->getExecSize() * inst->getSrc(0)->getTypeSize();
         if (SrcSizeInBytes == numEltPerGRF<Type_UB>()/2 ||
             SrcSizeInBytes == numEltPerGRF<Type_UB>())
         {
@@ -2603,7 +2604,7 @@ void Optimizer::reassociateConst()
                     return false;
                 }
                 auto useSrc = use->getSrc(0)->asSrcRegRegion();
-                if (useSrc->hasModifier() || getTypeSize(def->getDst()->getType()) != getTypeSize(useSrc->getType()) ||
+                if (useSrc->hasModifier() || def->getDst()->getTypeSize() != useSrc->getTypeSize() ||
                     def->getDst()->compareOperand(useSrc) != Rel_eq)
                 {
                     // make sure def fully defines use and have the same integer type size (signed-ness should not matter)
@@ -2617,7 +2618,7 @@ void Optimizer::reassociateConst()
                 // additionally check for the use inst that dst type size is >= src type size
                 // otherwise the first add may truncate upper bits due to overflow,
                 // which makes reassociation unsafe
-                if (getTypeSize(useSrc->getType()) < getTypeSize(use->getDst()->getType()))
+                if (useSrc->getTypeSize() < use->getDst()->getTypeSize())
                 {
                     return false;
                 }
@@ -3115,8 +3116,8 @@ void Optimizer::newLocalCopyPropagation()
                     }
                     G4_SrcModifier new_mod = mergeModifier(src, use);
 
-                    unsigned use_elsize = G4_Type_Table[use->getType()].byteSize;
-                    unsigned dstElSize = G4_Type_Table[inst->getDst()->getType()].byteSize;
+                    unsigned use_elsize = use->getTypeSize();
+                    unsigned dstElSize = inst->getDst()->getTypeSize();
                     const RegionDesc *rd = src->asSrcRegRegion()->getRegion();
                     G4_Operand *new_src_opnd = NULL;
                     bool new_src = false;
@@ -3167,7 +3168,7 @@ void Optimizer::newLocalCopyPropagation()
                     {
                         G4_DstRegRegion *dst = inst->getDst();
                         G4_SrcRegRegion *src0 = src->asSrcRegRegion();
-                        unsigned typeSizeRatio = G4_Type_Table[src0->getType()].byteSize / G4_Type_Table[dst->getType()].byteSize;
+                        unsigned typeSizeRatio = src0->getTypeSize() / dst->getTypeSize();
                         unsigned numElt = src0->isScalar() ? 1 : inst->getExecSize() * typeSizeRatio;
                         // src0 region is guaranteed to be scalar/contiguous due to canPropagate() check earlier
                         const RegionDesc* region = src0->isScalar() ?
@@ -3518,7 +3519,7 @@ void Optimizer::cselPeepHoleOpt()
                         {
                             //check elsewhere guarantees this is float.
                             G4_Type type = opnd2->getType();
-                            unsigned short typeSize = (unsigned short)G4_Type_Table[type].byteSize;
+                            unsigned short typeSize = TypeSize(type);
                             unsigned offset = opnd2->getRegOff() * numEltPerGRF<Type_UB>() + opnd2->getSubRegOff() * typeSize;
                             offset += useInst->getExecSize() * src0Stride * typeSize;
 
@@ -3760,10 +3761,10 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* next_inst)
         next_inst->getCondMod() != NULL ||
         next_inst->getSaturate() == true ||
         next_inst->getDst()->getRegAccess() == Direct ||
-        getTypeSize(next_inst->getDst()->getType()) == 1 ||
-        getTypeSize(next_inst->getSrc(0)->getType()) == 1 ||
+        next_inst->getDst()->getTypeSize() == 1 ||
+        next_inst->getSrc(0)->getTypeSize() == 1 ||
         (builder.getPlatform() < GENX_SKL && builder.getPlatform() != GENX_BDW) ||
-        getTypeSize(next_inst->getDst()->getType()) < getTypeSize(next_inst->getSrc(0)->getType()))
+        next_inst->getDst()->getTypeSize() < next_inst->getSrc(0)->getTypeSize())
     {
         return false;
     }
@@ -6476,7 +6477,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 short numRows = start / wd;
                 short numCols = start % wd;
-                short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[srcType].byteSize;
+                short newOff = (numRows * vs + numCols * hs) * TypeSize(srcType);
                 auto newSrc = createIndirectSrc(src->getModifier(), src->getBase(), src->getRegOff(), src->getSubRegOff(), rd,
                     src->getType(), src->getAddrImm() + newOff);
                 return newSrc;
@@ -6523,8 +6524,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             (start >= wd && vs != wd * hs ? (start / wd * (vs - wd * hs)) : 0);
 
         // Linearize offsets into bytes to verify potential GRF crossing
-        newEleOffByte = newEleOff * G4_Type_Table[src->getType()].byteSize;
-        subRegOffByte = src->getSubRegOff() * G4_Type_Table[src->getType()].byteSize;
+        newEleOffByte = newEleOff * src->getTypeSize();
+        subRegOffByte = src->getSubRegOff() * src->getTypeSize();
 
         // If subreg crosses GRF size, update reg and subreg offset accordingly
         newSubRegOffByte = subRegOffByte + newEleOffByte;
@@ -6534,7 +6535,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // Compute final reg and subreg offsets
         regOff = src->getRegOff() + crossGRF;
-        subRegOff = newSubRegOffByte / G4_Type_Table[src->getType()].byteSize;
+        subRegOff = newSubRegOffByte / src->getTypeSize();
 
         return createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd,
             srcType, src->getAccRegSel());
@@ -6548,7 +6549,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             if (start > 0)
             {
                 // just change immediate offset
-                uint16_t newOff = start * G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride();
+                uint16_t newOff = start * dst->getTypeSize() * dst->getHorzStride();
                 G4_DstRegRegion* newDst = duplicateOperand(dst);
                 newDst->setImmAddrOff(dst->getAddrImm() + newOff);
                 return newDst;
@@ -6600,14 +6601,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             uint16_t newSubRegOff, newSubRegOffByte, crossGRF;
 
             newSubRegOff = dst->getSubRegOff() + start * hs;
-            newSubRegOffByte = newSubRegOff * G4_Type_Table[dstType].byteSize;
+            newSubRegOffByte = newSubRegOff * TypeSize(dstType);
 
             crossGRF = newSubRegOffByte / numEltPerGRF<Type_UB>();
             newSubRegOffByte = newSubRegOffByte - crossGRF * numEltPerGRF<Type_UB>();
 
             // Compute final reg and subreg offsets
             regOff = dst->getRegOff() + crossGRF;
-            subRegOff = newSubRegOffByte / G4_Type_Table[dstType].byteSize;
+            subRegOff = newSubRegOffByte / TypeSize(dstType);
 
             // create a new one
             return createDst(dst->getBase(), regOff, subRegOff, hs, dst->getType(),
@@ -6798,15 +6799,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (builder.no64bitRegioning() && inst->isSend())
                 {
                     G4_DstRegRegion* dst = inst->getDst();
-                    if (dst != NULL &&
-                        G4_Type_Table[dst->getType()].byteSize == 8)
+                    if (dst != nullptr && dst->getTypeSize() == 8)
                     {
                         dst->setType(Type_D);
                     }
 
                     G4_Operand *src0 = inst->getSrc(0);
-                    if (src0 != NULL &&
-                        G4_Type_Table[src0->getType()].byteSize == 8)
+                    if (src0 != nullptr && src0->getTypeSize() == 8)
                     {
                         src0->asSrcRegRegion()->setType(Type_D);
                     }
@@ -6814,8 +6813,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     if (inst->isSplitSend())
                     {
                         G4_Operand *src1 = inst->getSrc(1);
-                        if (src1 != NULL &&
-                            G4_Type_Table[src1->getType()].byteSize == 8)
+                        if (src1 != nullptr && src1->getTypeSize() == 8)
                         {
                             src1->asSrcRegRegion()->setType(Type_D);
                         }
@@ -6942,7 +6940,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_Operand* dst = inst->getDst();
                     if (dst != NULL &&
                         dst->asDstRegRegion()->getHorzStride() > 1 &&
-                        G4_Type_Table[dst->getType()].byteSize == 8)
+                        dst->getTypeSize() == 8)
                     {
                         dst->asDstRegRegion()->setHorzStride(1);
                     }
@@ -7633,7 +7631,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // hardcoded add's dst to r2
         // the reg offset must be the same as call's dst reg, and must be 0 (HW restriction)
         uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
-            / getTypeSize(fcall->getDst()->getType());
+            / fcall->getDst()->getTypeSize();
 
         G4_Declare* add_dst_decl =
             builder.createHardwiredDeclare(1, fcall->getDst()->getType(), 2, reg_off);
@@ -7680,7 +7678,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         assert(fcall->getDst()->isGreg());
         uint32_t reg_num = fcall->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
         uint32_t reg_off = fcall->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
-            / getTypeSize(fcall->getDst()->getType());
+            / fcall->getDst()->getTypeSize();
 
         G4_Declare* new_target_decl = createInstsForCallTargetOffset(insts, fcall, -64);
 
@@ -8638,7 +8636,7 @@ static bool checkMadDst(G4_INST *inst, IR_Builder &builder)
 
     // Only acc0 is available for w/uw destination.
     // FIXME: This acc type size is only for simd 16.
-    unsigned Sz = G4_Type_Table[Type_W].byteSize;
+    unsigned Sz = TypeSize(Type_W);
     Sz *= dst->getHorzStride() * inst->getExecSize();
     return Sz <= numEltPerGRF<Type_UB>();
 }
@@ -9254,9 +9252,9 @@ private:
         }
 
         // Create such an alias if it does not exist yet.
-        unsigned NElts = RootDcl->getByteSize() / G4_Type_Table[Ty].byteSize;
+        unsigned NElts = RootDcl->getByteSize() / TypeSize(Ty);
         auto Alias = Builder.createTempVar(NElts, Ty, Any,
-            (std::string(RootDcl->getName()) + "_" + G4_Type_Table[Ty].str).c_str(), false);
+            (std::string(RootDcl->getName()) + "_" + TypeSymbol(Ty)).c_str(), false);
         Alias->setAliasDeclare(RootDcl, 0);
         Aliases.push_back(Alias);
         return Alias;
@@ -9580,7 +9578,7 @@ void Optimizer::analyzeMove()
             auto srcTy = inst->getSrc(0)->getType();
             if (inst->getSrc(0)->isImm())
             {
-                moveCount[getTypeSize(srcTy) == 8 ? MovTypes::Imm64 : MovTypes::Imm32]++;
+                moveCount[TypeSize(srcTy) == 8 ? MovTypes::Imm64 : MovTypes::Imm32]++;
             }
             else if (inst->getSrc(0)->isSrcRegRegion())
             {
@@ -9598,11 +9596,11 @@ void Optimizer::analyzeMove()
                         // distinguish inttofp and fpconvert?
                         moveCount[MovTypes::FPConvert]++;
                     }
-                    else if (getTypeSize(dstTy) > getTypeSize(srcTy))
+                    else if (TypeSize(dstTy) > TypeSize(srcTy))
                     {
                         moveCount[MovTypes::Extend]++;
                     }
-                    else if (getTypeSize(srcTy) > getTypeSize(dstTy))
+                    else if (TypeSize(srcTy) > TypeSize(dstTy))
                     {
                         moveCount[MovTypes::Trunc]++;
                     }
@@ -9673,7 +9671,7 @@ void Optimizer::changeMoveType()
         auto src0 = movInst->getSrc(0);
         if (src0->isImm())
         {
-            uint32_t mask = getTypeSize(newTy) == 4 ? 0xFFFFFFFF : 0xFFFF;
+            uint32_t mask = TypeSize(newTy) == 4 ? 0xFFFFFFFF : 0xFFFF;
             movInst->setSrc(fg.builder->createImm(src0->asImm()->getImm() & mask, newTy), 0);
         }
         else
@@ -9716,7 +9714,7 @@ void Optimizer::changeMoveType()
                 if (src0->isGreg())
                 {
                     bool isIntCopyMove = IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0Ty) &&
-                        getTypeSize(dstTy) == getTypeSize(src0Ty);
+                        TypeSize(dstTy) == TypeSize(src0Ty);
                     if (isIntCopyMove)
                     {
                         if (dstTy == Type_D || dstTy == Type_UD)

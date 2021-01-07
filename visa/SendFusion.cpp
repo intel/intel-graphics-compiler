@@ -498,8 +498,8 @@ G4_VarBase* SendFusion::getVarBase(G4_VarBase* Var, G4_Type Ty)
     {
         return Var;
     }
-    int16_t sz = G4_Type_Table[DclTy].byteSize * Dcl->getNumElems();
-    int16_t elts = sz / G4_Type_Table[Ty].byteSize;
+    int16_t sz = TypeSize(DclTy) * Dcl->getNumElems();
+    int16_t elts = sz / TypeSize(Ty);
     G4_Declare* newDcl = Builder->createTempVar(elts, Ty, Any);
     newDcl->setAliasDeclare(Dcl->getRootDeclare(), Dcl->getAliasOffset());
     return newDcl->getRegVar();
@@ -1074,7 +1074,7 @@ void SendFusion::unpackPayload(
     G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     G4_Type Ty = FusedSend->getDst()->getType();
-    assert(G4_Type_Table[Ty].byteSize == 4 && "Unexpected Type!");
+    assert(TypeSize(Ty) == 4 && "Unexpected Type!");
 
     // Use the original option for mov instructions
     G4_ExecSize execSize = Send0->getExecSize();
@@ -1398,7 +1398,7 @@ void SendFusion::doFusion(
     if (rspLen > 0)
     {
         G4_Type DstTy = I0->getDst()->getType();
-        if (G4_Type_Table[DstTy].byteSize != 4)
+        if (TypeSize(DstTy) != 4)
         {
             DstTy = Type_UD;
         }
@@ -1508,7 +1508,7 @@ void SendFusion::doFusion(
     // First, create fused send.
     const RegionDesc* region = Builder->getRegionStride1();
     G4_Type P0Ty = I0->getOperand(Opnd_src0)->getType();
-    if (G4_Type_Table[P0Ty].byteSize != 4)
+    if (TypeSize(P0Ty) != 4)
     {
         P0Ty = Type_UD;
     }
@@ -1520,7 +1520,7 @@ void SendFusion::doFusion(
     if (isSplitSend)
     {
         G4_Type P1Ty = I0->getOperand(Opnd_src1)->getType();
-        if (G4_Type_Table[P1Ty].byteSize != 4)
+        if (TypeSize(P1Ty) != 4)
         {
             P1Ty = Type_UD;
         }

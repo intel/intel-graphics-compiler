@@ -112,7 +112,7 @@ static void getHeightWidth(
     int& totalByteSize)
 {
     dclWidth = 1, dclHeight = 1;
-    totalByteSize = numberElements * G4_Type_Table[type].byteSize;
+    totalByteSize = numberElements * TypeSize(type);
     if (totalByteSize <= (int)numEltPerGRF<Type_UB>())
     {
         dclWidth = (uint16_t)numberElements;
@@ -120,7 +120,7 @@ static void getHeightWidth(
     else {
         // here we assume that the start point of the var is the beginning of a GRF?
         // so subregister must be 0?
-        dclWidth = numEltPerGRF<Type_UB>() / G4_Type_Table[type].byteSize;
+        dclWidth = numEltPerGRF<Type_UB>() / TypeSize(type);
         dclHeight = totalByteSize / numEltPerGRF<Type_UB>();
         if (totalByteSize % numEltPerGRF<Type_UB>() != 0) {
             dclHeight++;
@@ -1934,7 +1934,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.index = decl->index;
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.row_offset = offset / numEltPerGRF<Type_UB>();
                 VISA_Type type = decl->genVar.getType();
-                unsigned int typeSize = G4_Type_Table[GetGenTypeFromVISAType(type)].byteSize;
+                unsigned int typeSize = TypeSize(GetGenTypeFromVISAType(type));
                 assert((offset % typeSize) == 0);
                 cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset = (offset % numEltPerGRF<Type_UB>())/typeSize;
 
@@ -2489,7 +2489,7 @@ int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd)
     const RegionDesc *rd = m_builder->getRegionStride1();
     G4_Type type = dcl->getElemType();
     short row_offset = offset / numEltPerGRF<Type_UB>();
-    short col_offset = (offset%numEltPerGRF<Type_UB>()) / G4_Type_Table[type].byteSize;
+    short col_offset = (offset % numEltPerGRF<Type_UB>()) / TypeSize(type);
 
     cisa_opnd->g4opnd = m_builder->createSrc(
         dcl->getRegVar(),
@@ -2517,7 +2517,7 @@ int VISAKernelImpl::CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd)
 
         {
             short row_offset = offset/numEltPerGRF<Type_UB>();
-            short col_offset = (offset%numEltPerGRF<Type_UB>())/G4_Type_Table[dcl->getElemType()].byteSize;
+            short col_offset = (offset%numEltPerGRF<Type_UB>())/dcl->getElemSize();
 
             cisa_opnd->g4opnd = m_builder->createDst(
                 dcl->getRegVar(),
@@ -5978,7 +5978,7 @@ int VISAKernelImpl::AppendVISAVABooleanCentroid(
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, NULL, uOffset->g4opnd,
             vOffset->g4opnd, vSize->g4opnd, hSize->g4opnd, NULL, 0, 0, subOp,
-            dstOpnd, dstOpnd->getType(), 16 * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize);
+            dstOpnd, dstOpnd->getType(), 16 * dstOpnd->getBase()->asRegVar()->getDeclare()->getElemSize());
     }
     if (IS_VISA_BOTH_PATH)
     {
@@ -6028,7 +6028,7 @@ int VISAKernelImpl::AppendVISAVACentroid(
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, NULL, uOffset->g4opnd,
             vOffset->g4opnd, vSize->g4opnd, NULL, NULL, 0, 0, subOp,
-            dstOpnd, dstOpnd->getType(), 32 * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize);
+            dstOpnd, dstOpnd->getType(), 32 * dstOpnd->getBase()->asRegVar()->getDeclare()->getElemSize());
     }
     if (IS_VISA_BOTH_PATH)
     {
@@ -6075,7 +6075,7 @@ int VISAKernelImpl::AppendVISAVAConvolve(
     {
         CreateGenRawDstOperand(dst);
         G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
-        unsigned int dstSize = conv_exec_mode_size[execMode] * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize;
+        unsigned int dstSize = conv_exec_mode_size[execMode] * dstOpnd->getBase()->asRegVar()->getDeclare()->getElemSize();
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, sampler->g4opnd, uOffset->g4opnd,
             vOffset->g4opnd, NULL, NULL, NULL, 0, execMode, subOp,
             dstOpnd, dstOpnd->getType(), dstSize, isBigKernel);
@@ -6305,7 +6305,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
-        unsigned int dstSize = dstDcl->getNumElems() * dstDcl->getNumRows() * G4_Type_Table[dstType].byteSize;
+        unsigned int dstSize = dstDcl->getNumElems() * dstDcl->getNumRows() * TypeSize(dstType);
 
         uint8_t execMode = 0;
         uint8_t functionality = 0x3; /*reserved*/
@@ -6394,7 +6394,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
         /*should be UW*/
-        unsigned int dstSize = 8 * G4_Type_Table[dstType].byteSize;
+        unsigned int dstSize = 8 * TypeSize(dstType);
 
         uint8_t execMode = is8Connect;
         uint8_t functionality = 0x3; /*reserved*/
@@ -6481,7 +6481,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
         /*should be UB*/
-        unsigned int dstSize = lbp_correlation_mode_size[execMode]* G4_Type_Table[dstType].byteSize;
+        unsigned int dstSize = lbp_correlation_mode_size[execMode]* TypeSize(dstType);
 
 
         status = m_builder->translateVISAVaSklPlusGeneralInst(
@@ -6566,7 +6566,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
         /*should be UB*/
-        unsigned int dstSize = lbp_creation_exec_mode_size[functionality]* G4_Type_Table[dstType].byteSize;
+        unsigned int dstSize = lbp_creation_exec_mode_size[functionality]* TypeSize(dstType);
 
 
         status = m_builder->translateVISAVaSklPlusGeneralInst(
@@ -6653,7 +6653,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1D(
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
         /*should be W*/
-        unsigned int dstSize = conv_exec_mode_size[execMode]* G4_Type_Table[dstType].byteSize;
+        unsigned int dstSize = conv_exec_mode_size[execMode]* TypeSize(dstType);
 
 
         status = m_builder->translateVISAVaSklPlusGeneralInst(
@@ -6739,7 +6739,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
         /*should be W*/
-        unsigned int dstSize = conv_exec_mode_size[execMode]* G4_Type_Table[dstType].byteSize;
+        unsigned int dstSize = conv_exec_mode_size[execMode]* TypeSize(dstType);
 
 
         status = m_builder->translateVISAVaSklPlusGeneralInst(

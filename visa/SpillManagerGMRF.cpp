@@ -1026,11 +1026,9 @@ SpillManagerGRF::isMultiRegComprSource(
     if (inst->isComprInst () == false) {
         return false;
     }
-
     else if (isScalarReplication(src)) {
         return false;
     }
-
     else if (inst->getExecSize() <= 8) {
         return false;
     }
@@ -1038,18 +1036,14 @@ SpillManagerGRF::isMultiRegComprSource(
     {
         return false;
     }
-
     else if (inst->getExecSize () == 16 &&
              inst->getDst () &&
-             G4_Type_Table[inst->getDst ()->getType ()].byteSize == 4 &&
-             inst->getDst()->getHorzStride () == 1) {
-
-        if (G4_Type_Table[src->getType()].byteSize == 2 &&
-            src->isNativePackedRegion()) {
+             inst->getDst ()->getTypeSize() == 4 &&
+             inst->getDst()->getHorzStride () == 1)
+    {
+        if (src->getTypeSize() == 2 && src->isNativePackedRegion()) {
             return false;
-        }
-
-        else {
+        } else {
             return true;
         }
     }
@@ -2518,7 +2512,7 @@ SpillManagerGRF::shouldPreloadSpillRange(
     {
         // special check for scalar variables: no need for pre-fill if instruction writes to whole variable and is not predicated
         auto spilledDcl = spilledRangeRegion->getTopDcl()->getRootDeclare();
-        if (execSize == g4::SIMD1 && getTypeSize(spilledRangeRegion->getType()) == spilledDcl->getByteSize() && !instContext->getPredicate())
+        if (execSize == g4::SIMD1 && spilledRangeRegion->getTypeSize() == spilledDcl->getByteSize() && !instContext->getPredicate())
         {
             //ToDo: investigate why we are spilling so many scalar variables
             return false;

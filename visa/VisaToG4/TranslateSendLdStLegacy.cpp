@@ -229,7 +229,7 @@ int IR_Builder::translateVISAOwordLoadInst(
             (d->getType() != Type_UW)) {
             short new_SubRegOff = dstOpnd->asDstRegRegion()->getSubRegOff();
             if (dstOpnd->getRegAccess() == Direct) {
-                new_SubRegOff = (dstOpnd->asDstRegRegion()->getSubRegOff() * G4_Type_Table[dstOpnd->getType()].byteSize) / G4_Type_Table[Type_W].byteSize;
+                new_SubRegOff = (dstOpnd->asDstRegRegion()->getSubRegOff() * dstOpnd->getTypeSize()) / TypeSize(Type_W);
             }
             G4_DstRegRegion new_dst(
                 dstOpnd->getRegAccess(),
@@ -367,12 +367,12 @@ int IR_Builder::translateVISAOwordStoreInst(
     }
     else
     {
-        uint32_t temp =  obj_size/G4_Type_Table[Type_UD].byteSize + GENX_DATAPORT_IO_SZ;
+        uint32_t temp =  obj_size/TypeSize(Type_UD) + GENX_DATAPORT_IO_SZ;
 
         G4_Declare *dcl = createSendPayloadDcl(temp, Type_UD);
 
         /* mov  (c*r)    VX(1,0)<1>,  V */
-        temp =  obj_size/G4_Type_Table[Type_UD].byteSize;
+        temp =  obj_size/TypeSize(Type_UD);
 
         Create_MOV_Send_Src_Inst(dcl, 1, 0, temp, srcOpnd, InstOpt_WriteEnable);
 
@@ -2557,7 +2557,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     sources[len].instOpt = InstOpt_WriteEnable;
     ++len;
 
-    if (src->getElemSize() < getTypeSize(Type_UD))
+    if (src->getElemSize() < TypeSize(Type_UD))
     {
         // use D for size computation. Src is guaranteed to be GRF-aligend per vISA spec
         src->setType(Type_UD);
@@ -2758,7 +2758,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     G4_Type srcType = src->getType();
     if ((blockSize == SVM_BLOCK_TYPE_BYTE) &&
         (numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2) &&
-        (G4_Type_Table[srcType].byteSize != 4))
+        (TypeSize(srcType) != 4))
         src->setType(Type_UD);
 
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);

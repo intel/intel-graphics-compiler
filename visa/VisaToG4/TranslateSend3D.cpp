@@ -207,13 +207,13 @@ int IR_Builder::translateVISAResInfoInst(
         {
             --numRows;
         }
-        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
         msg = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
         payloadUD = createSendPayloadDcl(numElts, Type_UD);
     }
     else
     {
-        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
         msg = createSendPayloadDcl(numElts, Type_UD);
         payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
         payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
@@ -371,7 +371,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
         --numRows;
         if (numRows > 0)
         {
-            unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
+            unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
             // we can use the urb handle directly since URB write will not modify its header
             //msg = createSendPayloadDcl(GENX_SAMPLER_IO_SZ, Type_UD);
             payloadUD = createSendPayloadDcl(numElts, Type_UD);
@@ -383,7 +383,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
     }
     else
     {
-        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
         msg = createSendPayloadDcl(numElts, Type_UD);
         if (numRows > 1)
         {
@@ -641,7 +641,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             msgF->setAliasDeclare(msg, 0);
         }
         //creating payload
-        unsigned int numElts = numRows * numEltPerGRF<Type_UB>() / G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>() / TypeSize(Type_F);
         payloadUD = createSendPayloadDcl(numElts, Type_UD);
         payloadFOrHF = createSendPayloadDcl(numElts, FP16Data ? Type_HF : Type_F);
         payloadUW = createSendPayloadDcl(numElts, Type_UW);
@@ -653,7 +653,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     }
     else
     {
-        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_F].byteSize;
+        unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
         //creating enough space for header + payload
         msg = createSendPayloadDcl(numElts, Type_UD);
         msgF = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * 2, Type_F);
@@ -1371,8 +1371,8 @@ int IR_Builder::splitSampleInst(
     int status = VISA_SUCCESS;
     G4_SrcRegRegion *secondHalf[12];
 
-    bool isHalfReturn = G4_Type_Table[dst->getType()].byteSize == 2;
-    const bool halfInput = G4_Type_Table[params[0]->getType()].byteSize == 2;
+    bool isHalfReturn = dst->getTypeSize() == 2;
+    const bool halfInput = params[0]->getTypeSize() == 2;
 
     // Now, depending on message type emit out parms to payload
     unsigned regOff = (useHeader ? 1 : 0);
@@ -1441,7 +1441,7 @@ int IR_Builder::splitSampleInst(
     {
         temp = params[paramCounter];
         uint32_t MovInstOpt = InstOpt_WriteEnable;
-        if (G4_Type_Table[temp->getType()].byteSize == 2)
+        if (temp->getTypeSize() == 2)
         {
             // we should generate
             // mov (8) dst<1>:hf src.0<8;8,1>:hf
@@ -1581,7 +1581,7 @@ int IR_Builder::splitSampleInst(
             {
                 secondHalf[i] = params[i];
             }
-            else if (getTypeSize(params[i]->getType()) == 2)
+            else if (params[i]->getTypeSize() == 2)
             {
                 // V1(0,8)<8;8,1>
                 secondHalf[i] = createSrcWithNewSubRegOff(params[i], execSize);
@@ -1599,7 +1599,7 @@ int IR_Builder::splitSampleInst(
             temp = secondHalf[paramCounter];
             uint32_t MovInstOpt = InstOpt_WriteEnable;
 
-            if (G4_Type_Table[temp->getType()].byteSize == 2)
+            if (temp->getTypeSize() == 2)
             {
                 // we should generate
                 // mov (8) dst<1>:hf src.8<8;8,1>:hf
@@ -1847,7 +1847,7 @@ int IR_Builder::translateVISASampler3DInst(
 
     // Message header and payload size is numParms GRFs
 
-    const bool FP16Return = G4_Type_Table[dst->getType()].byteSize == 2;
+    const bool FP16Return = dst->getTypeSize() == 2;
     const bool FP16Input = params[0]->getType() == Type_HF;
 
     bool useHeader = false;
@@ -1977,8 +1977,8 @@ int IR_Builder::translateVISALoad3DInst(
     G4_ExecSize execSize = toExecSize(executionSize);
     G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
 
-    const bool halfReturn = G4_Type_Table[dst->getType()].byteSize == 2;
-    const bool halfInput = G4_Type_Table[opndArray[0]->getType()].byteSize == 2;
+    const bool halfReturn = dst->getTypeSize() == 2;
+    const bool halfInput = opndArray[0]->getTypeSize() == 2;
 
     unsigned int numRows = numParms * getNumGRF(halfInput, execSize);
 
@@ -2103,7 +2103,7 @@ int IR_Builder::translateVISAGather3dInst(
     G4_ExecSize execSize = toExecSize(executionSize);
     G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
 
-    const bool FP16Return = G4_Type_Table[dst->getType()].byteSize == 2;
+    const bool FP16Return = dst->getTypeSize() == 2;
     const bool FP16Input = opndArray[0]->getType() == Type_HF;
 
     unsigned int numRows = numOpnds * getNumGRF(FP16Input, execSize);
@@ -2294,7 +2294,7 @@ int IR_Builder::translateVISASamplerNormInst(
         d,
         payload,
         2,
-        32*numEnabledChannels*G4_Type_Table[Type_UW].byteSize/numEltPerGRF<Type_UB>(),
+        32*numEnabledChannels*TypeSize(Type_UW)/numEltPerGRF<Type_UB>(),
         g4::SIMD32,
         temp,
         SFID::SAMPLER,
@@ -2356,7 +2356,7 @@ int IR_Builder::translateVISASamplerInst(
 
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
-    unsigned num_payload_elt = simdMode/2 * numEltPerGRF<Type_UB>()/G4_Type_Table[Type_UD].byteSize;
+    unsigned num_payload_elt = simdMode/2 * numEltPerGRF<Type_UB>()/TypeSize(Type_UD);
     G4_Declare *dcl = createSendPayloadDcl(num_payload_elt + GENX_SAMPLER_IO_SZ, Type_UD);
 
     // mov  VX(0,0)<1>, r0
@@ -2439,7 +2439,7 @@ int IR_Builder::translateVISASamplerInst(
             (d->getType() != Type_UW)) {
             short new_SubRegOff = dstOpnd->asDstRegRegion()->getSubRegOff();
             if (dstOpnd->getRegAccess() == Direct) {
-                new_SubRegOff = (dstOpnd->asDstRegRegion()->getSubRegOff() * G4_Type_Table[dstOpnd->getType()].byteSize) / G4_Type_Table[Type_W].byteSize;
+                new_SubRegOff = (dstOpnd->asDstRegRegion()->getSubRegOff() * dstOpnd->getTypeSize()) / TypeSize(Type_W);
             }
             G4_DstRegRegion new_dst(
                 dstOpnd->getRegAccess(),
@@ -2457,7 +2457,7 @@ int IR_Builder::translateVISASamplerInst(
         d,
         payload,
         1 + simdMode/2,
-        ((simdMode == 8) ? 32 : (numEnabledChannels*16))*G4_Type_Table[Type_F].byteSize/numEltPerGRF<Type_UB>(),
+        ((simdMode == 8) ? 32 : (numEnabledChannels*16))*TypeSize(Type_F)/numEltPerGRF<Type_UB>(),
         G4_ExecSize(simdMode),
         temp,
         SFID::SAMPLER,

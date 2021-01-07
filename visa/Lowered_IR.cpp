@@ -42,8 +42,8 @@ unsigned short G4_SrcRegRegion::ExRegNum(bool &valid) const {
             unsigned RegNum = (static_cast<G4_Greg*>(baseVar->getPhyReg()))->getRegNum();
             unsigned SubRegNum = baseVar->getPhyRegOff();
 
-            int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
-            int thisOpSize(G4_Type_Table[type].byteSize);
+            int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
+            int thisOpSize = TypeSize(type);
 
             if (thisOpSize != declOpSize)
             {
@@ -82,8 +82,8 @@ unsigned short G4_SrcRegRegion::ExSubRegNum(bool &valid) {
             {
                 MUST_BE_TRUE(regOff == 0,
                     ERROR_DATA_RANGE("register offset"));
-                int thisOpSize(G4_Type_Table[this->type].byteSize);
-                int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
+                int thisOpSize = getTypeSize();
+                int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
                 if (thisOpSize > declOpSize)
                 {
                     MUST_BE_TRUE((thisOpSize/declOpSize) == 2 || (thisOpSize/declOpSize) == 4,
@@ -106,8 +106,8 @@ unsigned short G4_SrcRegRegion::ExSubRegNum(bool &valid) {
         {
             normSubRegNum = (short)baseVar->getPhyRegOff();
 
-            int thisOpSize(G4_Type_Table[this->type].byteSize);
-            int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
+            int thisOpSize = getTypeSize();
+            int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
 
             if (thisOpSize != declOpSize)
             {
@@ -162,8 +162,8 @@ unsigned short G4_DstRegRegion::ExRegNum(bool &valid) {
             unsigned RegNum = (static_cast<G4_Greg*>(baseVar->getPhyReg()))->getRegNum();
             unsigned SubRegNum = baseVar->getPhyRegOff();
 
-            int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
-            int thisOpSize(G4_Type_Table[type].byteSize);
+            int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
+            int thisOpSize = TypeSize(type);
 
             if (thisOpSize != declOpSize)
             {
@@ -202,8 +202,8 @@ unsigned short G4_DstRegRegion::ExSubRegNum(bool &valid) {
             {
                 MUST_BE_TRUE(regOff == 0,
                     ERROR_DATA_RANGE("register offset"));
-                int thisOpSize(G4_Type_Table[this->type].byteSize);
-                int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
+                int thisOpSize = getTypeSize();
+                int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
                 if (thisOpSize > declOpSize)
                 {
                     MUST_BE_TRUE((thisOpSize/declOpSize) == 2 || (thisOpSize/declOpSize) == 4,
@@ -226,8 +226,8 @@ unsigned short G4_DstRegRegion::ExSubRegNum(bool &valid) {
         {
             normSubRegNum = (short)baseVar->getPhyRegOff();
 
-            int thisOpSize(G4_Type_Table[this->type].byteSize);
-            int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
+            int thisOpSize = getTypeSize();
+            int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
 
             if (thisOpSize != declOpSize)
             {

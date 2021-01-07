@@ -156,7 +156,7 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum,
     // adjust regOff to its corresponding word position
     //
 
-    int startWord = regOff*G4_Type_Table[ty].byteSize / G4_WSIZE;
+    int startWord = regOff * TypeSize(ty) / G4_WSIZE;
     auto subregMask = getSubregBitMask(startWord, nwords);
     availableSubRegs[regNum] |= subregMask;
 
@@ -976,7 +976,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*     varBasis,
             // word: stay the same, dword: *2, byte: /2
             // assign r_i.off
             varBasis->setPhyReg(regPool.getGreg(phyReg.reg),
-                phyReg.subreg*G4_WSIZE / G4_Type_Table[decl->getElemType()].byteSize);
+                phyReg.subreg*G4_WSIZE / decl->getElemSize());
             retVal = true;
         }
 
@@ -1092,7 +1092,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
                 // word: stay the same, dword: *2, byte: /2
                 // assign r_i.off
                 varBasis->setPhyReg(regPool.getGreg(phyReg.reg),
-                    phyReg.subreg*G4_WSIZE / G4_Type_Table[decl->getElemType()].byteSize);
+                    phyReg.subreg * G4_WSIZE / decl->getElemSize());
                 retVal = true;
             }
 
@@ -1179,7 +1179,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
         if (findContiguousAddrFlag(availableAddrs, forbidden, subAlign, regNeeded, getNumAddrRegisters(), startARFReg, i))
         {
             // subregoffset should consider the declare data type
-            varBasis->setPhyReg(regPool.getAddrReg(), i*G4_WSIZE / G4_Type_Table[decl->getElemType()].byteSize);
+            varBasis->setPhyReg(regPool.getAddrReg(), i*G4_WSIZE / decl->getElemSize());
             return true;
         }
         return false;
@@ -1405,7 +1405,7 @@ void LiveRange::dump()
     else
     {
         DEBUG_MSG("\t(" << decl->getNumRows() << "x" << decl->getNumElems() << "):"
-            << G4_Type_Table[decl->getElemType()].str);
+            << TypeSymbol(decl->getElemType()));
     }
 }
 

@@ -150,7 +150,7 @@ uint16_t LatencyTable::getOccupancyG12(G4_INST* Inst) const
     if (Inst->isFastHFInstruction())
         Scale = (Sz <= 16) ? 1 : 2;
     else if (G4_DstRegRegion* Dst = Inst->getDst()) {
-        if (G4_Type_Table[Dst->getType()].byteSize == 8)
+        if (Dst->getTypeSize() == 8)
             Scale = (Sz <= 4) ? 1 : 2;
     }
     return uint16_t(G12_OC_Others * Scale);

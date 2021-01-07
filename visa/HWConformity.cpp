@@ -144,13 +144,13 @@ G4_DstRegRegion* HWConformity::insertMovAfter(INST_LIST_ITER& it, G4_DstRegRegio
     G4_ExecSize newExecSize =
         ((inst->opcode() == G4_sel || inst->getImplAccSrc() || !scalarSrc) ? exec_size : g4::SIMD1);
 
-    uint32_t opExecWidthBytes = newExecSize * G4_Type_Table[execType].byteSize;
+    uint32_t opExecWidthBytes = newExecSize * TypeSize(execType);
     if (execType == Type_DF && IS_BTYPE(type))
     {
         type = (type == Type_UB ? Type_UW : Type_W);
     }
-    uint16_t dstWidthBytes = newExecSize * G4_Type_Table[type].byteSize;
-    uint16_t scale = G4_Type_Table[execType].byteSize / G4_Type_Table[type].byteSize;
+    uint16_t dstWidthBytes = newExecSize * TypeSize(type);
+    uint16_t scale = TypeSize(execType) / TypeSize(type);
     /*   so according to comments in function that call it MAD needs to have packed format.
         It ends up with hStride 2, due to DefHoisting.
         So it is trying to undo it.
@@ -239,7 +239,7 @@ void HWConformity::broadcast(
     uint32_t instMask = inst->getMaskOption();
 
     // avoid simd16 Qword moves
-    MUST_BE_TRUE(execSize * G4_Type_Table[type].byteSize <= 2u * numEltPerGRF<Type_UB>(),
+    MUST_BE_TRUE((unsigned)execSize * TypeSize(type) <= 2u * numEltPerGRF<Type_UB>(),
         "move can't exceed 2 GRFs");
 
     G4_Declare* dcl = builder.createTempVar(execSize, type, align);
@@ -374,7 +374,7 @@ G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4
         {
             if (scale == 1 && !IS_VTYPE(src->getType()))
             {
-                scale = (uint16_t)(getTypeSize(src->getType()) / getTypeSize(type));
+                scale = (uint16_t)(TypeSize(src->getType()) / TypeSize(type));
             }
             if (scale == 0)
             {
@@ -385,7 +385,7 @@ G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4
     }
     else
     {
-        scale = (uint16_t)(getTypeSize(src->getType()) / getTypeSize(type));
+        scale = src->getTypeSize() / TypeSize(type);
         if (scale == 0)
         {
             scale = 1;
@@ -397,7 +397,7 @@ G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4
         numEltPerGRF<Type_UB>() / 2 * (execSize > 8 ? execSize / 8 : 1) :
         (src->getType() == Type_VF ?
             numEltPerGRF<Type_UB>() / 2 * (execSize > 4 ? execSize / 4 : 1) :
-            newExecSize * getTypeSize(type)* scale);
+            newExecSize * TypeSize(type) * scale);
 
     subAlign = getDclAlignment(opExecWidthBytes, inst, newExecSize == 1);
 
@@ -679,7 +679,7 @@ static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2)
 {
     if (IS_TYPE_INT(type1) && IS_TYPE_INT(type2))
     {
-        if (G4_Type_Table[type1].byteSize == 8 || G4_Type_Table[type2].byteSize == 8)
+        if (TypeSize(type1) == 8 || TypeSize(type2) == 8)
         {
             return Type_UNDEF;
         }
@@ -851,8 +851,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB* bb)
             // math immediate src0 is handled separately in fixMathInst()
             // If src0 is not 64-bit, src1 is 64-bit, swap them to save one move.
             if (INST_COMMUTATIVE(inst->opcode()) && src0->isImm() && src1->isImm() &&
-                G4_Type_Table[src0->getType()].byteSize != 8 &&
-                G4_Type_Table[src1->getType()].byteSize == 8)
+                src0->getTypeSize() != 8 && src1->getTypeSize() == 8)
             {
                 inst->swapSrc(0, 1);
                 inst->swapDefUse();
@@ -1300,7 +1299,7 @@ void HWConformity::fixCompareInst(
     if (dst && dst->isNullReg())
     {
         // change dst hstride if necessary
-        if (G4_Type_Table[exType].byteSize != G4_Type_Table[dst->getType()].byteSize)
+        if (TypeSize(exType) != dst->getTypeSize())
         {
             // create a new dst with new stride
             G4_DstRegRegion* new_null = builder.createNullDst(exType);
@@ -1348,8 +1347,8 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
     bool isIntPackingMove = false;
     if (IS_TYPE_INT(dst->getType()) && IS_TYPE_INT(src0->getType()))
     {
-        uint32_t dstAlign = G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride();
-        if (dstAlign < G4_Type_Table[src0->getType()].byteSize)
+        uint32_t dstAlign = dst->getTypeSize() * dst->getHorzStride();
+        if (dstAlign < src0->getTypeSize())
         {
             isIntPackingMove = true;
         }
@@ -1364,7 +1363,7 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
     // as VxH and strided regions are a bit harder to update
     if (src0->getRegion()->isContiguous(inst->getExecSize()))
     {
-        uint16_t newHS = extypesize / G4_Type_Table[dst->getType()].byteSize;
+        uint16_t newHS = extypesize / dst->getTypeSize();
         if (newHS > 4)
         {
             // rule out Q -> B moves if Q is not scalar
@@ -1383,7 +1382,7 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
     // becomes
     // mov (8) r1.0<1>:b r2.16<32;8,4>:b
     // This is safe since integer down conversion is based on truncation
-    uint32_t typeSizeRatio = extypesize / G4_Type_Table[dst->getType()].byteSize;
+    uint32_t typeSizeRatio = extypesize / dst->getTypeSize();
     uint32_t numElt = src0->isScalar() ? 1 : inst->getExecSize() * typeSizeRatio;
     G4_Declare* newDcl = builder.createTempVar(numElt, dst->getType(), Any);
     newDcl->setAliasDeclare(src0->getBase()->asRegVar()->getDeclare(), 0);
@@ -1477,7 +1476,7 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
     MUST_BE_TRUE(IS_WTYPE(dst->getType()) || IS_DTYPE(dst->getType()), "dst type must be *W or *D");
     MUST_BE_TRUE(IS_WTYPE(src->getType()) || IS_DTYPE(src->getType()), "src type must be *W or *D");
 
-    if (G4_Type_Table[dst->getType()].byteSize != G4_Type_Table[src->getType()].byteSize)
+    if (dst->getTypeSize() != src->getTypeSize())
     {
         // keep exec type same and change dst to be same type as src
         replaceDst(i, src->getType());
@@ -1514,7 +1513,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
     G4_DstRegRegion* dst = inst->getDst();
     G4_Operand* src0 = inst->getSrc(0);
     unsigned h_stride = dst->getHorzStride();
-    unsigned int extypesize = G4_Type_Table[extype].byteSize;
+    unsigned int extypesize = TypeSize(extype);
 
     if (hasDedicateAlignRegionConformity(i))
     {
@@ -1554,7 +1553,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         inst->getSaturate() == false &&
         IS_BTYPE(dst->getType()) &&
         !IS_TYPE_F32_F64(src0->getType()) &&
-        builder.isOpndAligned(dst, getTypeSize(src0->getType())))
+        builder.isOpndAligned(dst, src0->getTypeSize()))
     {
         // inst is a mov with packed byte dst and int imm source
         int64_t value = src0->asImm()->getInt();
@@ -1691,7 +1690,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB* bb)
     bool null_src1 = !src1 || (inst->isMath() && src1->isNullReg());
 
     const int addr_reg_max_count = 16;
-    const int addr_reg_size = G4_Type_Table[Type_UW].byteSize;
+    const int addr_reg_size = TypeSize(Type_UW);
     int src_uniq_count = 0;
     int src1_count = 0;
     int src0_count = 0;
@@ -1889,7 +1888,7 @@ void HWConformity::fixDstHstride(INST_LIST_ITER i, int extypesize)
 {
     G4_INST* inst = *i;
     G4_DstRegRegion* dst = inst->getDst();
-    int dst_elsize = G4_Type_Table[dst->getType()].byteSize;
+    int dst_elsize = dst->getTypeSize();
 
     if (dst)
     {
@@ -2090,7 +2089,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 
     if (!builder.supportSrcModforMul() &&
         (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
-        ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
+        ((src0->getTypeSize()) < 4 || (src1->getTypeSize()) < 4))
 
     {
         checkSrcMod(i, bb, 0);
@@ -2132,7 +2131,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
                 return false;
             }
             // ok if source is scalar or qword-aligned
-            doNativeMul = (getTypeSize(dst->getType()) * dst->getHorzStride() == 8);
+            doNativeMul = dst->getTypeSize() * dst->getHorzStride() == 8;
             auto isQWordStride = [inst, this](G4_SrcRegRegion* src)
             {
                 const RegionDesc* region = src->getRegion();
@@ -2325,9 +2324,8 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
     // create a mov inst
     if (satMod == g4::NOSAT)
     {
-        bool extra_mov = dst &&
-            dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize;
-        extra_mov |= (isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst));
+        bool extra_mov = dst && dst->getExecTypeSize() > TypeSize(Type_D);
+        extra_mov |= isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst);
 
         G4_INST* movInst = builder.createMov(execSize, dst, builder.createSrcRegRegion(*acc_src_opnd),
             inst_opt, false);
@@ -2486,7 +2484,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
 
     if (!builder.supportSrcModforMul() &&
         (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
-        ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
+        (((src0->getTypeSize()) < 4) || (src1->getTypeSize()) < 4))
     {
         checkSrcMod(i, bb, 0);
         src0 = inst->getSrc(0);
@@ -2548,7 +2546,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
     // ToDo: this should be checked by fixAcc?
     G4_DstRegRegion* dst = inst->getDst();
     if (inst->getSaturate() ||
-        dst->getExecTypeSize() > G4_Type_Table[Type_D].byteSize ||
+        dst->getExecTypeSize() > TypeSize(Type_D) ||
         isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst))
     {
         // add a tmp mov
@@ -2604,11 +2602,11 @@ void HWConformity::copyDwords(G4_Declare* dst,
 
     G4_SrcRegRegion* srcOpnd = builder.createSrc(
         newSrc->getRegVar(), srcOffset / numEltPerGRF<Type_UB>(),
-        (srcOffset % numEltPerGRF<Type_UB>()) / G4_Type_Table[Type_UD].byteSize,
+        (srcOffset % numEltPerGRF<Type_UB>()) / TypeSize(Type_UD),
         builder.getRegionStride1(), Type_UD);
     G4_DstRegRegion* dstOpnd = builder.createDst(newDst->getRegVar(),
         dstOffset / numEltPerGRF<Type_UB>(),
-        (dstOffset % numEltPerGRF<Type_UB>()) / G4_Type_Table[Type_UD].byteSize, 1, Type_UD);
+        (dstOffset % numEltPerGRF<Type_UB>()) / TypeSize(Type_UD), 1, Type_UD);
 
     G4_INST* movInst = builder.createMov(G4_ExecSize(numDwords), dstOpnd, srcOpnd, InstOpt_WriteEnable, false);
 
@@ -2637,8 +2635,9 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
     G4_BB* bb,
     INST_LIST_ITER iter)
 {
-    MUST_BE_TRUE(G4_Type_Table[dst->getElemType()].byteSize >= 4 &&
-        G4_Type_Table[src->getType()].byteSize >= 4, "dst and src must have dword or qword type");
+    MUST_BE_TRUE(
+        TypeSize(dst->getElemType()) >= 4 && src->getTypeSize() >= 4,
+        "dst and src must have dword or qword type");
 
     MUST_BE_TRUE(src->getRegAccess() == IndirGRF, "source must be indirect GRF");
 
@@ -2652,7 +2651,7 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
     }
 
     G4_SrcRegRegion* newSrc = builder.duplicateOperand(src);
-    MUST_BE_TRUE(G4_Type_Table[newSrc->getType()].byteSize == 8, "only support 64-bit type source so far");
+    MUST_BE_TRUE(newSrc->getTypeSize() == 8, "only support 64-bit type source so far");
     newSrc->setType(Type_UD);
     newSrc->setModifier(Mod_src_undef);
     if (newSrc->getRegion()->isRegionWH())
@@ -2743,12 +2742,12 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
         }
         else
         {
-            if (G4_Type_Table[src0RR->getType()].byteSize < 8)
+            if (src0RR->getTypeSize() < 8)
                 rgnToUse = src0RR->getRegion();
             else
             {
                 // this will be broken up in to 2 instructions
-                auto factor = G4_Type_Table[src0RR->getType()].byteSize / G4_Type_Table[dst->getType()].byteSize;
+                auto factor = src0RR->getTypeSize() / dst->getTypeSize();
                 auto vs = src0RR->getRegion()->vertStride * factor;
                 auto w = src0RR->getRegion()->width;
                 auto hs = src0RR->getRegion()->horzStride * factor;
@@ -2756,9 +2755,9 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
             }
         }
 
-        if (G4_Type_Table[dst->getType()].byteSize == 8)
+        if (dst->getTypeSize() == 8)
         {
-            if (G4_Type_Table[src0->getType()].byteSize == 8)
+            if (src0->getTypeSize() == 8)
             {
                 // may be q->uq or uq->q or raw mov
                 // safe to do raw copy for all 3 cases
@@ -2822,7 +2821,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
 
                 return true;
             }
-            else if (G4_Type_Table[dst->getType()].byteSize == 8 && G4_Type_Table[src0->getType()].byteSize < 8)
+            else if (dst->getTypeSize() == 8 && src0->getTypeSize() < 8)
             {
                 // d/ud/w/uw/b/ub -> q/uq
                 if (IS_SIGNED_INT(src0->getType()))
@@ -2916,7 +2915,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
                 }
             }
         }
-        else if (G4_Type_Table[dst->getType()].byteSize < 8 && G4_Type_Table[src0->getType()].byteSize == 8)
+        else if (dst->getTypeSize() < 8 && src0->getTypeSize() == 8)
         {
             // truncate
             // q/uq -> d/ud/w/uw/b/ub
@@ -2928,7 +2927,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
             // =>
             // mov(8) r10.0<1>:d   r20.2<4;1,0>:d
 
-            unsigned int factor = G4_Type_Table[src0->getType()].byteSize / G4_Type_Table[dst->getType()].byteSize;
+            unsigned int factor = src0->getTypeSize() / dst->getTypeSize();
             auto newDst = builder.createDstRegRegion(*dst);
             auto newSrc = builder.createSrcRegRegion(Mod_src_undef, src0RR->getRegAccess(), src0RR->getBase(), src0RR->getRegOff(),
                 src0RR->isIndirect() ? src0RR->getSubRegOff() : (src0RR->getSubRegOff() * factor), rgnToUse, dst->getType());
@@ -3016,7 +3015,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
     {
         return false;
     }
-    if (inst->getDst() && getTypeSize(inst->getDst()->getType()) == 8)
+    if (inst->getDst() && inst->getDst()->getTypeSize() == 8)
     {
         uses64BitType = true;
     }
@@ -3024,7 +3023,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
     {
         G4_Operand* src = inst->getSrc(i);
 
-        if (src && getTypeSize(src->getType()) == 8)
+        if (src && src->getTypeSize() == 8)
         {
             uses64BitType = true;
         }
@@ -3060,7 +3059,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
             {
                 G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
                 const RegionDesc* region = srcAsRegion->getRegion();
-                int byteSize = G4_Type_Table[srcAsRegion->getType()].byteSize;
+                int byteSize = srcAsRegion->getTypeSize();
                 if (byteSize == 8)
                 {
                     // right bound is not available for indirect operands
@@ -3084,7 +3083,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                             byteSize;
                     }
 
-                    int numDwords = rightBound / G4_Type_Table[Type_UD].byteSize;
+                    int numDwords = rightBound / TypeSize(Type_UD);
                     numDwords = Round_Up_Pow2(numDwords);
                     G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), GRFALIGN);
                     // new source's region varies depending on whether it's VxH or 1x1
@@ -3114,7 +3113,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
             {
                 G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
                 const RegionDesc* region = srcAsRegion->getRegion();
-                int byteSize = G4_Type_Table[srcAsRegion->getType()].byteSize;
+                int byteSize = srcAsRegion->getTypeSize();
 
                 if (!isDWMultiply && !region->isScalar() &&
                     (byteSize != 8 && (byteSize * region->horzStride) < 8))
@@ -3174,7 +3173,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                         // we turn it into
                         // mov (8) r10.0<1>:ud r1.2<1;1,0>:ud {NoMask}
                         // add (2) ... r10.0<4;2,2>:q
-                        int numDwords = (src->getRightBound() - src->getLeftBound() + 1) / G4_Type_Table[Type_UD].byteSize;
+                        int numDwords = (src->getRightBound() - src->getLeftBound() + 1) / TypeSize(Type_UD);
                         numDwords = Round_Up_Pow2(numDwords);
                         G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), GRFALIGN);
                         copyDwords(tmpSrc, 0, src->getTopDcl(), src->getLeftBound(), numDwords, bb, iter);
@@ -3221,7 +3220,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                         {
                             // Make sure the new hs does not cross GRF
                             uint32_t nbytesIn1stGRF = numEltPerGRF<Type_UB>() - (src->getLeftBound() % numEltPerGRF<Type_UB>());
-                            uint32_t eltBytes = G4_Type_Table[srcAsRegion->getType()].byteSize;
+                            uint32_t eltBytes = srcAsRegion->getTypeSize();
                             uint32_t neltsIn1stGRF = nbytesIn1stGRF / eltBytes;
 
                             MUST_BE_TRUE((nbytesIn1stGRF % eltBytes) == 0, "Bad region with element crossing GRF");
@@ -3254,7 +3253,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
             if (needsTmpDst)
             {
                 // we need to have a temp dst that is direct and GRF-aligned
-                if (dst->getRegAccess() == Direct && G4_Type_Table[dst->getType()].byteSize == 8)
+                if (dst->getRegAccess() == Direct && dst->getTypeSize() == 8)
                 {
                     // the same src/dst offset restriction applies to move as well, so we have to generate
                     // a move with UD type to work around the restriction
@@ -3269,7 +3268,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     // mov (8) r3.0<1>:ud r1.4<1;1,0>:ud {NoMask}
                     // add (2) r3.0<2>:q ...
                     // mov (8) r1.4<1>:ud r3.0<1;1,0>:ud {NoMask}
-                    int numDwords = (dst->getRightBound() - dst->getLeftBound() + 1) / G4_Type_Table[Type_UD].byteSize;
+                    int numDwords = (dst->getRightBound() - dst->getLeftBound() + 1) / TypeSize(Type_UD);
                     numDwords = Round_Up_Pow2(numDwords);
                     G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), GRFALIGN);
                     if (numDwords > execSize * 2)
@@ -3289,7 +3288,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     G4_Declare* tmpDstDcl = tmpDst->getTopDcl();
                     tmpDstDcl->setSubRegAlign(GRFALIGN);
                     inst->setDest(tmpDst);
-                    if (G4_Type_Table[dst->getType()].byteSize == 8)
+                    if (dst->getTypeSize() == 8)
                     {
                         // tmpDst is indirect and thus still does not conform
                         // we rewrite
@@ -3386,7 +3385,7 @@ void HWConformity::fixMulSrc1(INST_LIST_ITER i, G4_BB* bb)
         else
         {
             // create a new opnd with type UW
-            unsigned short scale = G4_Type_Table[Type_D].byteSize / G4_Type_Table[Type_UW].byteSize;
+            unsigned short scale = TypeSize(Type_D) / TypeSize(Type_UW);
             unsigned short newHS = rd->horzStride * scale;
             unsigned short newVS = rd->vertStride * scale;
             const RegionDesc* new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
@@ -3492,7 +3491,7 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
         return false;
     }
 
-    auto dstTySize = getTypeSize(dst->getType());
+    auto dstTySize = dst->getTypeSize();
 
     int alignInBytes = std::max((int) dstTySize, builder.get3SrcDstAlign());
 
@@ -3515,11 +3514,11 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
     }
 
     uint32_t effectiveStride = dst->getHorzStride();
-    if (dstTySize < getTypeSize(execType))
+    if (dstTySize < TypeSize(execType))
     {
         if (IS_TYPE_INT(dst->getType()))
         {
-            effectiveStride *= getTypeSize(execType) / dstTySize;
+            effectiveStride *= TypeSize(execType) / dstTySize;
         }
         else
         {
@@ -3590,7 +3589,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
         // permanent WA: simd16 inst can't have src0 imm.
         // Instead of splitting, we just add a move
 
-        if (canBeImm && (srcPos == 0 || srcPos == 2) && G4_Type_Table[src->getType()].byteSize <= 2)
+        if (canBeImm && (srcPos == 0 || srcPos == 2) && src->getTypeSize() <= 2)
         {
             if (VISA_WA_CHECK(builder.getPWaTable(), WaNoSimd16TernarySrc0Imm))
             {
@@ -3627,7 +3626,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
                     // we have to make sure width is not being used to cross GRF, as <1;1,0>
                     // is not a legal region for align1 ternary source (vs 1 not supported)
                     // mad doesn't support <1;1,0>, the width is at least 2
-                    int minAlignment = G4_Type_Table[src->getType()].byteSize * 2;
+                    int minAlignment = src->getTypeSize() * 2;
                     return builder.isOpndAligned(src, minAlignment);
                 }
             }
@@ -3745,7 +3744,7 @@ bool HWConformity::isGoodAlign16Src(G4_INST* inst, int srcPos)
 
         if (region->isContiguous(execSize))
         {
-            if (builder.getPlatform() == GENX_BDW && getTypeSize(opnd_type) < 4)
+            if (builder.getPlatform() == GENX_BDW && TypeSize(opnd_type) < 4)
             {
                 // BDW HF has to be 32-byte aligned
                 if (!builder.isOpndAligned(src, 32))
@@ -3758,7 +3757,7 @@ bool HWConformity::isGoodAlign16Src(G4_INST* inst, int srcPos)
                 if (execSize >= 8)
                 {
                     // operand must be GRF aligned, or oword aligned for HF/W
-                    uint32_t align = std::min<uint32_t>(execSize * getTypeSize(src->getType()), 32);
+                    uint32_t align = std::min<uint32_t>(execSize * src->getTypeSize(), 32);
                     if (!builder.isOpndAligned(src, align))
                     {
                         return false;
@@ -3971,7 +3970,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
         {
             inst->swapSrc(0, 1);
         }
-        else if (src1->isImm() && getTypeSize(src1->getType()) == 2)
+        else if (src1->isImm() && src1->getTypeSize() == 2)
         {
             //swap src0 and src1 as src0 supports imm
             inst->swapSrc(0, 1);
@@ -4040,8 +4039,8 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
 
                     // If minus modifier is present, need signed type.
                     G4_Type type = (IS_SIGNED_INT(src->getType()) || hasModMinus) ? Type_W : Type_UW;
-                    auto dstStrideInBytes = inst->getDst()->getHorzStride() * getTypeSize(inst->getDst()->getType());
-                    uint16_t stride = (uint16_t)(dstStrideInBytes / getTypeSize(type));
+                    auto dstStrideInBytes = inst->getDst()->getHorzStride() * TypeSize(inst->getDst()->getType());
+                    uint16_t stride = (uint16_t)(dstStrideInBytes / TypeSize(type));
                     inst->setSrc(insertMovBefore(iter, k, type, bb, stride, GRFALIGN), k);
                 }
                 else
@@ -4091,7 +4090,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
         preferFpMad = isFpMadPreferred(bb, iter);
     }
 
-    auto alignMent = execSize * G4_Type_Table[dst->getType()].byteSize;
+    auto alignMent = execSize * dst->getTypeSize();
     alignMent = (alignMent > 32) ? 32 : alignMent;
     alignMent = (alignMent < 16) ? 16 : alignMent;
 
@@ -4383,7 +4382,7 @@ void HWConformity::convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB* bb)
     G4_Type mulOpDstType = addOpDst->getType();
     G4_Type mulOpExecType = inst->getExecType();
     // pick the widest type of mad's src and dst as the intermediate type
-    if (G4_Type_Table[mulOpDstType].byteSize > G4_Type_Table[mulOpExecType].byteSize)
+    if (TypeSize(mulOpDstType) > TypeSize(mulOpExecType))
     {
         mulOpExecType = mulOpDstType;
     }
@@ -4642,7 +4641,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
 
             G4_SubReg_Align sad2TmpSubAlign = Get_G4_SubRegAlign_From_Type(dst->getType());
 
-            if (inst->getExecSize() * G4_Type_Table[dst->getType()].byteSize > numEltPerGRF<Type_UB>())
+            if ((unsigned)inst->getExecSize() * dst->getTypeSize() > numEltPerGRF<Type_UB>())
             {
                 // align to GRF
                 sad2TmpSubAlign = GRFALIGN;
@@ -4778,7 +4777,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             G4_Type type = sendSrc->getType();
             G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, GRFALIGN);
 
-            MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src opnd type for send.");
+            MUST_BE_TRUE(TypeSize(type) == 4, "Invalid src opnd type for send.");
 
             const RegionDesc* region = builder.getRegionStride1();
             G4_VarBase* base = sendSrc->getBase();
@@ -4962,7 +4961,7 @@ void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
         return;
     }
 
-    auto dstSize = inst->getExecSize() * getTypeSize(dst->getType()) * dst->getHorzStride();
+    auto dstSize = inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride();
     if (dstSize > getGRFSize())
     {
         // special check for 2-GRF instruction with VxH operands
@@ -5153,7 +5152,7 @@ void HWConformity::conformBB(G4_BB* bb)
             bool null_dst = !dst || inst->hasNULLDst();
             if (!null_dst)
             {
-                dst_elsize = dst->isPredicate() ? G4_Type_Table[Type_UW].byteSize : G4_Type_Table[dst->getType()].byteSize;
+                dst_elsize = dst->isPredicate() ? TypeSize(Type_UW) : dst->getTypeSize();
             }
             int extypesize;
             G4_Type extype = inst->getOpExecType(extypesize);
@@ -5177,11 +5176,11 @@ void HWConformity::conformBB(G4_BB* bb)
         {
             dst = inst->getDst();
             G4_Type extype = inst->getExecType2();
-            int extypesize = G4_Type_Table[extype].byteSize;
+            int extypesize = TypeSize(extype);
             int dst_elsize = 0;
             if (dst)
             {
-                dst_elsize = G4_Type_Table[dst->getType()].byteSize;
+                dst_elsize = dst->getTypeSize();
             }
 
             if (dst &&
@@ -5464,7 +5463,7 @@ bool HWConformity::hasBadRegion(G4_INST* inst)
             {
                 secondSubRegOffDiff = origRegion->horzStride;
             }
-            secondAddrImmedDiff = (short)(secondSubRegOffDiff * G4_Type_Table[expandSrcRegion->getType()].byteSize);
+            secondAddrImmedDiff = (short)(secondSubRegOffDiff * expandSrcRegion->getTypeSize());
             if ((expandSrcRegion->getAddrImm() + secondAddrImmedDiff) > G4_MAX_ADDR_IMM)
             {
                 badRegion = true;
@@ -5545,7 +5544,7 @@ bool HWConformity::splitInstListForByteDst(INST_LIST_ITER it, G4_BB* bb, uint16_
         (!bb->isAllLaneActive() && !inst->isWriteEnableInst()) ||
         dst->getByteOffset() % extypesize != 0 ||
         dst->getHorzStride() != 1 ||
-        extypesize != G4_Type_Table[Type_W].byteSize)
+        extypesize != TypeSize(Type_W))
     {
         return false;
     }
@@ -5758,14 +5757,14 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
                         (newWD == 1 && newExecSize == 1) ? 0 : origRegion->vertStride,
                         newWD, (newWD == 1) ? 0 : origRegion->horzStride * 2);
                 }
-                secondAddrImmedDiff = (short)(secondSubRegOffDiff * G4_Type_Table[expand_src->getType()].byteSize);
+                secondAddrImmedDiff = (short)(secondSubRegOffDiff * expand_src->getTypeSize());
                 expandSrcRegion->setRegion(newRegion);
 
                 bool directSrc = (expandSrcRegion->getRegAccess() == Direct);
                 if (secondAddrImmedDiff >= (int)numEltPerGRF<Type_UB>())
                 {
                     secondSubRegOffDiff =
-                        (short)((secondAddrImmedDiff - numEltPerGRF<Type_UB>()) / G4_Type_Table[expand_src->getType()].byteSize);
+                        (short)((secondAddrImmedDiff - numEltPerGRF<Type_UB>()) / expand_src->getTypeSize());
                 }
                 G4_SrcRegRegion* secondSrcOpnd = builder.createSrcRegRegion(
                     expandSrcRegion->getModifier(),
@@ -5813,10 +5812,8 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
 //  7. Dst.HorzStride must not be 0.        -- this needs not to be checked.
 //  8. VertStride must be used to cross GRF register boundaries. This rule implies that
 //      elements within a 'Width' cannot cross GRF boundaries.
-
 void HWConformity::fixSrcRegion(G4_INST* inst)
 {
-
     bool comprInst = isCompressedInst(inst);
     for (int i = 0; i < G4_MAX_SRCS; i++)
     {
@@ -5842,7 +5839,7 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
             MUST_BE_TRUE(inst->isSend() || exSize >= wd, " Bad source region: Width is greater than execution size.");
             if (comprInst)
             {
-                if (G4_Type_Table[inst->getSrc(i)->getType()].byteSize > G4_WSIZE&&
+                if (inst->getSrc(i)->getTypeSize() > G4_WSIZE &&
                     wd == exSize &&
                     vs == wd && hs == 1)
                 {
@@ -5867,9 +5864,9 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
                 wd = 1;
             }
             if (hs == 0 &&
-                ((G4_Type_Table[inst->getSrc(i)->getType()].byteSize == G4_WSIZE &&
+                ((inst->getSrc(i)->getTypeSize() == G4_WSIZE &&
                     exSize == 32 && vs == 32 && wd == 32) ||
-                    (G4_Type_Table[inst->getSrc(i)->getType()].byteSize == G4_DSIZE &&
+                    (inst->getSrc(i)->getTypeSize() == G4_DSIZE &&
                         exSize == 16 && vs == 16 && wd == 16)))
             {
                 vs = 0;
@@ -5878,8 +5875,8 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
 
             // check cross GRF (rule 2H)
             // TODO! for the following two cases, split the instruction:
-            // source region is like<8;4,1>
-            // source region is like<2;4,1>
+            // source region is like <8;4,1>
+            // source region is like <2;4,1>
             if (src->getRegAccess() == Direct && src->crossGRF() && hs != 0)
             {
                 // TODO: this is a temp fix
@@ -5888,7 +5885,7 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
                 // check number of elements in first GRF.
                 uint16_t execTypeSize = hs * src->getElemSize();
                 uint16_t sizeInFirstGRF = numEltPerGRF<Type_UB>() - src->getLeftBound() % numEltPerGRF<Type_UB>();
-                uint16_t vertSize = vs * G4_Type_Table[src->getType()].byteSize;
+                uint16_t vertSize = vs * src->getTypeSize();
                 uint16_t numEle = (sizeInFirstGRF + execTypeSize - 1) / execTypeSize;
                 uint16_t rowSize = wd * execTypeSize;
 
@@ -5975,7 +5972,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             // check if the opnd is global
             !(kernel.fg.globalOpndHT.isOpndGlobal(opnd)) &&
             // check if the opnd is used as packed byte
-            G4_Type_Table[opnd->getType()].byteSize == 1 &&
+            opnd->getTypeSize() == 1 &&
             !hasDedicateAlignRegionConformity(inst) &&
             dcl->getElemSize() == 1 &&
             opnd->asDstRegRegion()->getHorzStride() == 1 &&
@@ -5985,7 +5982,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             // (This should be the most common case that can benefit
             //  from this optimization. It could be extended to other
             //  cases like D execution type).
-            G4_Type_Table[inst->getExecType()].byteSize == 2)
+            TypeSize(inst->getExecType()) == 2)
         {
             unsigned int leftBound = opnd->asDstRegRegion()->getLeftBound();
             unsigned int rightBound = opnd->asDstRegRegion()->getRightBound();
@@ -6008,7 +6005,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             // check if the opnd is global
             !(kernel.fg.globalOpndHT.isOpndGlobal(opnd)) &&
             // check if the opnd is used as packed byte
-            G4_Type_Table[opnd->getType()].byteSize == 1 &&
+            opnd->getTypeSize() == 1 &&
             dcl->getElemSize() == 1 &&
             opnd->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))
         {
@@ -6376,7 +6373,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             // When exec_size = 16, src2 is 2 GRFs after src1 with size = 2 GRFs
             unsigned short numGRFsToCopy = inst->getExecSize() == g4::SIMD8 ? 2 : 4;
 
-            G4_Declare* tmpDcl = builder.createTempVar((unsigned short)(numEltPerGRF<Type_UB>() / G4_Type_Table[Type_F].byteSize * numGRFsToCopy), Type_F,
+            G4_Declare* tmpDcl = builder.createTempVar((unsigned short)(numEltPerGRF<Type_UB>() / TypeSize(Type_F) * numGRFsToCopy), Type_F,
                 Any);
 
             // Before:
@@ -6437,7 +6434,7 @@ void HWConformity::fixImm64(INST_LIST_ITER i,
         G4_Operand* src = inst->getSrc(j);
         if (!src ||
             !(src->isImm()) ||
-            G4_Type_Table[src->getType()].byteSize != 8)
+            src->getTypeSize() != 8)
         {
             continue;
         }
@@ -6560,7 +6557,7 @@ void HWConformity::helperGenerateTempDst(
 {
     G4_DstRegRegion* dst = inst->getDst();
     G4_ExecSize execSize = inst->getExecSize();
-    uint8_t dstSize = execSize * G4_Type_Table[tempDstType].byteSize;
+    uint8_t dstSize = execSize * TypeSize(tempDstType);
     //create a new temp with horizontal stride of 1 (packed)
     //create a move to dst.
 
@@ -6813,7 +6810,7 @@ void HWConformity::fixPackedHFConversions(INST_LIST_ITER it, G4_BB* bb)
     G4_INST* inst = *it;
     G4_DstRegRegion* dst = inst->getDst();
     if (dst && dst->getType() == Type_HF && dst->getHorzStride() == 1 &&
-        getTypeSize(inst->getExecType()) > 2)
+        TypeSize(inst->getExecType()) > 2)
     {
         helperGenerateTempDst(bb, it, inst, 2, Type_HF);
     }
@@ -6856,7 +6853,7 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, GRFALIGN), srcPos);
 
         // Check if dst stride aligns with src2.
-        if (dstEltSz != G4_Type_Table[srcTy].byteSize)
+        if (dstEltSz != TypeSize(srcTy))
         {
             replaceDst(it, inst->getDst()->getType(), GRFALIGN);
         }
@@ -6897,7 +6894,7 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
                 inst->setSrc(newSrc, 0);
             }
         }
-        else if (getTypeSize(type) == 8)
+        else if (TypeSize(type) == 8)
         {
             int numDwords = inst->getExecSize() * 2;
             G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src0->getType(), Any);

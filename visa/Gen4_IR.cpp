@@ -140,16 +140,16 @@ uint8_t roundDownPow2(uint8_t n)
  */
 static short Operand_Type_Base_Rank(G4_Type type)
 {
-    short type_size = (short)G4_Type_Table[type].byteSize;
+    short type_size = (short)TypeSize(type);
     short type_rank = type_size * 2;
 
     if (type == Type_V || type == Type_UV)
     {
-        type_rank = (short)G4_Type_Table[Type_W].byteSize;
+        type_rank = (short)TypeSize(Type_W);
     }
     else if (type == Type_VF)
     {
-        type_rank = (short)G4_Type_Table[Type_F].byteSize;
+        type_rank = (short)TypeSize(Type_F);
     }
     else if (IS_TYPE_FLOAT_ALL(type))
     {
@@ -999,7 +999,7 @@ G4_Type G4_INST::getExecType() const
         if (srcs[i] != NULL)
         {
             G4_Type srcType = srcs[i]->getType();
-            if (G4_Type_Table[srcType].byteSize >= G4_Type_Table[execType].byteSize)
+            if (TypeSize(srcType) >= TypeSize(execType))
             {
                 if (IS_DTYPE(srcType))
                 {
@@ -1056,7 +1056,7 @@ G4_Type G4_INST::getExecType2() const
         }
         G4_Type srcType = srcs[i]->getType();
         if (isLowPrecisionFloatTy(srcType) &&
-            G4_Type_Table[srcType].byteSize >= G4_Type_Table[execType].byteSize)
+            TypeSize(srcType) >= TypeSize(execType))
         {
             execType = srcType;
             break;
@@ -1082,13 +1082,13 @@ G4_Type G4_INST::getExecType2() const
             execType = Type_F;
         }
         else if (IS_DTYPE(srcType) &&
-            G4_Type_Table[srcType].byteSize >= G4_Type_Table[execType].byteSize &&
+            TypeSize(srcType) >= TypeSize(execType) &&
             !IS_DFTYPE(execType) && !IS_FTYPE(execType))
         {
             execType = Type_D;
         }
         else if (IS_QTYPE(srcType) &&
-            G4_Type_Table[srcType].byteSize >= G4_Type_Table[execType].byteSize &&
+            TypeSize(srcType) >= TypeSize(execType) &&
             !IS_DFTYPE(execType) && !IS_FTYPE(execType))
         {
             execType = Type_Q;
@@ -1115,7 +1115,7 @@ G4_Type G4_INST::getExecType2() const
 
 uint16_t G4_INST::getMaskOffset() const
 {
-    unsigned maskOption = (this->getOption() & InstOpt_QuarterMasks);
+    unsigned maskOption = (getOption() & InstOpt_QuarterMasks);
 
     if (!builder.hasNibCtrl())
     {
@@ -1733,7 +1733,7 @@ G4_Type G4_INST::getOpExecType(int& extypesize)
     }
     else
     {
-        extypesize = G4_Type_Table[extype].byteSize;
+        extypesize = TypeSize(extype);
     }
 
     return extype;
@@ -1766,12 +1766,11 @@ static G4_INST::MovType getMovType(
 
         // TODO: Do we need to treat 'vf' differently?
 
-        if (G4_Type_Table[srcTy].byteSize < G4_Type_Table[dstTy].byteSize)
+        if (TypeSize(srcTy) < TypeSize(dstTy))
             return G4_INST::FPUpConv;
 
-        ASSERT_USER(G4_Type_Table[srcTy].byteSize >
-                    G4_Type_Table[dstTy].byteSize,
-                    "Unexpected FP source and destination type sizes!");
+        ASSERT_USER(TypeSize(srcTy) > TypeSize(dstTy),
+            "Unexpected FP source and destination type sizes!");
         return G4_INST::FPDownConv;
     }
 
@@ -1799,7 +1798,7 @@ static G4_INST::MovType getMovType(
         return G4_INST::ZExt;
 
     // Treat that mov as truncation.
-    if (G4_Type_Table[srcTy].byteSize > G4_Type_Table[dstTy].byteSize)
+    if (TypeSize(srcTy) > TypeSize(dstTy))
     {
         if (IS_SIGNED_INT(srcTy) &&
            srcMod != Mod_src_undef &&
@@ -1815,7 +1814,7 @@ static G4_INST::MovType getMovType(
 
     // Treat that mov as sign extend or zero extend based on the signedness of
     // the source type only.
-    if (G4_Type_Table[srcTy].byteSize < G4_Type_Table[dstTy].byteSize) {
+    if (TypeSize(srcTy) < TypeSize(dstTy)) {
         if (IS_SIGNED_INT(srcTy)) {
             // Treat ABS as zero-extenstion.
             if (srcMod == Mod_Abs)
@@ -1922,7 +1921,7 @@ G4_INST::MovType G4_INST::canPropagate() const
     G4_Type srcType = src->getType();
 
     if (!builder.hasByteALU()
-        && (getTypeSize(dstType) == 1 || getTypeSize(srcType) == 1))
+        && (TypeSize(dstType) == 1 || TypeSize(srcType) == 1))
     {
         return SuperMov;
     }
@@ -1956,9 +1955,7 @@ G4_INST::MovType G4_INST::canPropagate() const
             return SuperMov;
         G4_SrcRegRegion *src0 = src->asSrcRegRegion();
         if (src0->getRegion()->isContiguous(getExecSize())) {
-            unsigned newHS =
-                G4_Type_Table[srcType].byteSize /
-                G4_Type_Table[dstType].byteSize;
+            unsigned newHS = TypeSize(srcType) / TypeSize(dstType);
             if (newHS > 4) {
                 // Rule out Q -> B. WHY?
                 return SuperMov;
@@ -2065,7 +2062,7 @@ bool G4_INST::isSignSensitive(Gen4_Operand_Number opndNum) const
     G4_Type dstType = dst->getType();
 
     // If extending is required, most of insts are sign sensitive.
-    if (G4_Type_Table[dstType].byteSize > G4_Type_Table[useType].byteSize) {
+    if (TypeSize(dstType) > TypeSize(useType)) {
         return true;
     }
 
@@ -2367,7 +2364,7 @@ bool G4_INST::canPropagateTo(
     // Check T1 and T2 has the same bit/byte size. Otherwise, it's not legal to
     // be propagated.
     // TODO: Revisit later if exection mask is guaranteed to be NoMask.
-    if (G4_Type_Table[dstType].byteSize != G4_Type_Table[useType].byteSize) {
+    if (TypeSize(dstType) != TypeSize(useType)) {
         return false;
     }
 
@@ -2435,9 +2432,9 @@ bool G4_INST::canPropagateTo(
     }
 
     // Cannot generally safely propagate replicated vectors.
-    unsigned dstElSize = G4_Type_Table[dstType].byteSize;
-    unsigned srcElSize = G4_Type_Table[propType].byteSize;
-    unsigned useElSize = G4_Type_Table[useType].byteSize;
+    unsigned dstElSize = TypeSize(dstType);
+    unsigned srcElSize = TypeSize(propType);
+    unsigned useElSize = TypeSize(useType);
 
     const RegionDesc *rd =
         src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : nullptr;
@@ -2641,9 +2638,9 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     }
     G4_Type defDstType = def_dst->getType();
     G4_Type dstType = dst->getType(), srcType = srcs[0]->getType();
-    unsigned int srcElSize = G4_Type_Table[srcType].byteSize;
-    unsigned int dstElSize = G4_Type_Table[dstType].byteSize;
-    unsigned int defDstElSize = G4_Type_Table[defDstType].byteSize;
+    unsigned int srcElSize = TypeSize(srcType);
+    unsigned int dstElSize = TypeSize(dstType);
+    unsigned int defDstElSize = TypeSize(defDstType);
 
     // cannot hoist an accumulator access into an instruction
     // that doesn't have a dst hz stride that matches source
@@ -2781,7 +2778,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         return false;
     }
 
-    bool same_type_size = G4_Type_Table[def_dst->getType()].byteSize == G4_Type_Table[srcType].byteSize;
+    bool same_type_size = def_dst->getTypeSize() == TypeSize(srcType);
     bool scalarSrc = srcs[0]->asSrcRegRegion()->isScalar();
     // handle predicated MOV and float def
     if ((getPredicate() && (execSize > g4::SIMD1) && !same_type_size) ||
@@ -2809,7 +2806,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
 
     // check type conversion
     if (IS_SIGNED_INT(dstType) && (defInst->opcode() == G4_mov) &&
-        (G4_Type_Table[dstType].byteSize > srcElSize) &&
+        (TypeSize(dstType) > srcElSize) &&
         ((IS_SIGNED_INT(defDstType) && IS_UNSIGNED_INT(defInst->getSrc(0)->getType())) ||
         (IS_UNSIGNED_INT(defDstType) && IS_SIGNED_INT(defInst->getSrc(0)->getType()))))
     {
@@ -2881,7 +2878,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     // Cannot do it for this case.
     if (defInst->opcode() == G4_shl || defInst->opcode() == G4_shr || defInst->opcode() == G4_asr)
     {
-        uint32_t defSrc0Bytes = G4_Type_Table[defInst->getSrc(0)->getType()].byteSize;
+        uint32_t defSrc0Bytes = defInst->getSrc(0)->getTypeSize();
         bool QMode = (defDstElSize == 8 || defSrc0Bytes == 8);
         if ((QMode && defSrc0Bytes != 8 && dstElSize != 8) ||
             (!QMode && dstElSize == 8))
@@ -3132,8 +3129,8 @@ bool G4_INST::detectComprInst() const
              dst->getHorzStride() != UNDEFINED_SHORT &&
              dst->getType() != Type_UNDEF)
     {
-        if (execSize * G4_Type_Table[dst->getType()].byteSize *
-             dst->getHorzStride() > numEltPerGRF<Type_UB>())
+        if ((unsigned)execSize * dst->getTypeSize() * dst->getHorzStride() >
+            numEltPerGRF<Type_UB>())
         {
             comprInst = ComprInstStates::T;
         }
@@ -3146,8 +3143,7 @@ bool G4_INST::detectComprInst() const
     // Uncompressed instructions can only operate on a max of 4 DFs or
     // 8 DF4/F/DWs or 16 W/Bs (the only exception being packed byte
     // moves which always have destinations).
-    else if (execSize * G4_Type_Table[execType].byteSize >
-             numEltPerGRF<Type_UB>())
+    else if ((unsigned)execSize * TypeSize(execType) > numEltPerGRF<Type_UB>())
     {
         comprInst = ComprInstStates::T;
     }
@@ -3236,7 +3232,7 @@ G4_INST::isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos)
     else
     {
         int num_rows  = getExecSize() / src->getRegion()->width;
-        int type_sz   = G4_Type_Table[src->getType()].byteSize;
+        int type_sz   = (int)src->getTypeSize();
         int byte_size = src->getRegion()->vertStride * type_sz * num_rows;
 
         if (getDst() && getDst()->isNativePackedRegion() &&
@@ -3999,7 +3995,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
             return roundDownPow2(maxExSize);
         }
 
-        uint32_t elSize = G4_Type_Table[type].byteSize;
+        uint32_t elSize = getTypeSize();
         uint8_t maxSize = 0;
 
         uint32_t prevPos = pos * elSize;
@@ -4046,7 +4042,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
     }
 
     // align1 direct
-    uint32_t elSize = G4_Type_Table[type].byteSize;
+    uint32_t elSize = TypeSize(type);
     uint8_t maxSize = 1;
 
     bool alignToRow = pos % desc->width == 0;
@@ -4118,7 +4114,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
         // Given a linearized index, compute its byte offset relative to the
         // first element (index 0).
         auto computeOffset = [=](unsigned index) -> unsigned {
-            unsigned typeSize = G4_Type_Table[type].byteSize;
+            unsigned typeSize = TypeSize(type);
             unsigned offset = (index % desc->width) * desc->horzStride * typeSize;
             offset += (index / desc->width) * desc->vertStride * typeSize;
             return offset;
@@ -4281,8 +4277,8 @@ void printRegVarOff(std::ostream&  output,
         if (base->isRegVar())
         {
             G4_RegVar* baseVar = static_cast<G4_RegVar*>(base);
-            int declOpSize(G4_Type_Table[baseVar->getDeclare()->getElemType()].byteSize);
-            int thisOpSize(G4_Type_Table[type].byteSize);
+            int declOpSize = baseVar->getDeclare()->getElemSize();
+            uint16_t thisOpSize = TypeSize(type);
 
             if (baseVar->isPhyRegAssigned())
             {
@@ -4306,11 +4302,11 @@ void printRegVarOff(std::ostream&  output,
                     {
                         // This is before RA and getLineariedStart() only contains the left bound
                         // we have to add the declare's phyreg
-                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * getGRFSize() + baseVar->getPhyRegOff() * getTypeSize(type);
+                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * getGRFSize() + baseVar->getPhyRegOff() * TypeSize(type);
                     }
 
                     regNum = byteAddress / getGRFSize();
-                    subRegNum = (byteAddress % getGRFSize()) / G4_Type_Table[type].byteSize;
+                    subRegNum = (byteAddress % getGRFSize()) / TypeSize(type);
 
 
                      output << "r" << regNum;
@@ -4506,7 +4502,7 @@ void G4_SrcRegRegion::emit(std::ostream& output, bool symbolreg)
     if (Type_UNDEF != type)
     {
         if (!symbolreg || acc != Direct)                // can output register data type for indirect addressing in any time
-            output << ':' << G4_Type_Table[type].str;
+            output << ':' << TypeSymbol(type);
     }
 }
 
@@ -4658,7 +4654,7 @@ void G4_DstRegRegion::computeLeftBound()
     }
     else if (base != NULL && base->isAccReg())
     {
-        left_bound = subRegOff * G4_Type_Table[type].byteSize;
+        left_bound = subRegOff * TypeSize(type);
         if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1)
         {
             left_bound += getGRFSize();
@@ -4666,13 +4662,13 @@ void G4_DstRegRegion::computeLeftBound()
         byteOffset = left_bound;
     } else if (top_dcl) {
         if (acc == Direct) {
-            left_bound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * G4_Type_Table[type].byteSize;
+            left_bound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * TypeSize(type);
             if (top_dcl->getTotalElems() * top_dcl->getElemSize() >= (int)numEltPerGRF<Type_UB>()) {
                 byteOffset = left_bound;
             }
-            else{
-                unsigned alignOff = G4_Type_Table[type].byteSize > G4_Type_Table[Type_W].byteSize ?
-                    G4_Type_Table[type].byteSize : G4_Type_Table[Type_W].byteSize;
+            else {
+                unsigned alignOff = TypeSize(type) > TypeSize(Type_W) ?
+                    TypeSize(type) : TypeSize(Type_W);
 
                 if (top_dcl->getSubRegAlign() == Even_Word || top_dcl->getSubRegAlign() >= Four_Word) {
                     alignOff = top_dcl->getSubRegAlign() * 2;
@@ -4681,11 +4677,11 @@ void G4_DstRegRegion::computeLeftBound()
                 byteOffset = left_bound + alignOff;
             }
         }
-        else{
-            left_bound = subRegOff * G4_Type_Table[ADDR_REG_TYPE].byteSize;
-            byteOffset = G4_Type_Table[type].byteSize;
+        else {
+            left_bound = subRegOff * TypeSize(ADDR_REG_TYPE);
+            byteOffset = TypeSize(type);
         }
-    }else{  //arch reg
+    } else { // arch reg
         left_bound = 0;
         byteOffset = left_bound;
     }
@@ -4717,11 +4713,11 @@ void G4_DstRegRegion::setDstBitVec(uint8_t exec_size)
     uint64_t footprint0 = 0;
     uint64_t footprint1 = 0;
 
-    unsigned short type_size = (unsigned short)G4_Type_Table[type].byteSize;
+    unsigned short type_size = getTypeSize();
     unsigned short s_size = horzStride * type_size;
 
     // General cases.
-    uint64_t bit_seq = G4_Type_Table[type].footprint;
+    uint64_t bit_seq = TypeFootprint(type);
     for (uint8_t i = 0; i < exec_size; ++i)
     {
         int eltOffset = i * s_size;
@@ -4754,7 +4750,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
             // mov (1) f0.1<1>:uw ...
             // subreg is 1 if it's a 32 bit flag and we want to set the upper 16 bits
             left_bound = subRegOff * 16;
-            totalBits = G4_Type_Table[type].bitSize;
+            totalBits = TypeBitSize(type);
         }
         else
         {
@@ -4787,7 +4783,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
         {
             setDstBitVec(exec_size);
 
-            unsigned short type_size = (unsigned short)G4_Type_Table[type].byteSize;
+            unsigned short type_size = TypeSize(type);
             unsigned short s_size = horzStride * type_size;
             unsigned totalBytes = (exec_size - 1) * s_size + type_size;
             right_bound = left_bound + totalBytes - 1;
@@ -4796,7 +4792,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
         {
             // indirect
             bitVec[0] |= 0x3;
-            right_bound = left_bound + G4_Type_Table[ADDR_REG_TYPE].byteSize - 1;
+            right_bound = left_bound + TypeSize(ADDR_REG_TYPE) - 1;
         }
     }
     rightBoundSet = true;
@@ -5014,7 +5010,7 @@ bool G4_DstRegRegion::coverGRF(uint16_t numGRF, uint8_t execSize)
         }
         if (horzStride > 1)
         {
-            if (size == execSize * horzStride * G4_Type_Table[type].byteSize)
+            if (size == execSize * horzStride * TypeSize(type))
             {
                 return true;
             }
@@ -5022,7 +5018,7 @@ bool G4_DstRegRegion::coverGRF(uint16_t numGRF, uint8_t execSize)
     }
     else
     {
-        if (size == execSize * horzStride * G4_Type_Table[type].byteSize)
+        if (size == execSize * horzStride * TypeSize(type))
         {
             return true;
         }
@@ -5039,16 +5035,9 @@ bool G4_DstRegRegion::goodOneGRFDst(uint8_t execSize)
 {
     if (acc != Direct)
     {
-        if (horzStride * G4_Type_Table[type].byteSize * execSize == numEltPerGRF<Type_UB>())
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        return horzStride * TypeSize(type) * execSize == numEltPerGRF<Type_UB>();
     }
-    uint32_t halfSize = (getRightBound() - getLeftBound() + 1 + (horzStride - 1) * G4_Type_Table[type].byteSize) / 2;
+    uint32_t halfSize = (getRightBound() - getLeftBound() + 1 + (horzStride - 1) * getTypeSize()) / 2;
     uint32_t middle = getLeftBound() + halfSize;
     if (getLeftBound()/(numEltPerGRF<Type_UB>()/2) == getRightBound()/(numEltPerGRF<Type_UB>()/2) ||
         (getLeftBound()/(numEltPerGRF<Type_UB>()/2) == (getRightBound()/(numEltPerGRF<Type_UB>()/2) - 1) &&
@@ -5076,7 +5065,7 @@ bool G4_DstRegRegion::evenlySplitCrossGRF(uint8_t execSize)
         return false;
     }
 
-    int halfBytes = left_bound + horzStride * G4_Type_Table[type].byteSize * (execSize >> 1);
+    int halfBytes = left_bound + horzStride * TypeSize(type) * (execSize / 2);
     int halfOffset = halfBytes % numEltPerGRF<Type_UB>();
     int startOffset = left_bound % numEltPerGRF<Type_UB>();
     return halfOffset == startOffset;
@@ -5089,10 +5078,8 @@ bool G4_DstRegRegion::evenlySplitCrossGRF(uint8_t execSize)
  */
 bool G4_DstRegRegion::checkGRFAlign() const
 {
-
     bool GRF_aligned = false;
-    unsigned byte_subregoff =
-        subRegOff * G4_Type_Table[type].byteSize;
+    unsigned byte_subregoff = subRegOff * TypeSize(type);
 
     if (byte_subregoff  % numEltPerGRF<Type_UB>() != 0)
     {
@@ -5175,14 +5162,14 @@ static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
 
     if (base->asRegVar()->isPhyRegAssigned())
     {
-        offset = (subRegOff + base->asRegVar()->getPhyRegOff()) * getTypeSize(opnd->getType());
+        offset = (subRegOff + base->asRegVar()->getPhyRegOff()) * TypeSize(opnd->getType());
         offset %= getGRFSize();
         return true;
     }
 
     uint32_t subregByte = 0;
     G4_Declare *rootDcl = base->asRegVar()->getDeclare()->getRootDeclare(subregByte);
-    subregByte += subRegOff * G4_Type_Table[opnd->getType()].byteSize;
+    subregByte += subRegOff * TypeSize(opnd->getType());
 
     if (rootDcl->getSubRegAlign() < GRFALIGN)
     {
@@ -5210,7 +5197,7 @@ uint8_t G4_DstRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool twoGRFs
         return roundDownPow2(maxExSize);
     }
 
-    uint8_t elSize = (uint8_t) G4_Type_Table[type].byteSize;
+    uint8_t elSize = (uint8_t)getTypeSize();
     uint8_t exTypeSize = horzStride * elSize;
     uint8_t maxSize = roundDownPow2(maxExSize);
     uint32_t newLB = getLeftBound() + pos * exTypeSize,
@@ -5351,7 +5338,7 @@ void G4_DstRegRegion::emit(std::ostream& output, bool symbolreg)
     if (Type_UNDEF != type)
     {
         if (!symbolreg || acc != Direct)                // can output register data type for indirect addressing in any time
-            output << ':' << G4_Type_Table[type].str;
+            output << ':' << TypeSymbol(type);
     }
 }
 
@@ -5526,7 +5513,7 @@ void G4_Declare::emit(std::ostream &output) const
     output << " size=" << getByteSize();
     if (Type_UNDEF != elemType)
     {
-        output << " type=" << G4_Type_Table[elemType].str;
+        output << " type=" << TypeSymbol(elemType);
     }
     if (AliasDCL)
     {
@@ -5974,7 +5961,7 @@ G4_Imm::emit(std::ostream& output, bool symbolreg)
 
     if (Type_UNDEF != type)
     {
-        output << ':' << G4_Type_Table[type].str;
+        output << ':' << TypeSymbol(type);
     }
 }
 
@@ -6005,7 +5992,7 @@ G4_Imm::emitAutoFmt(std::ostream& output)
 
     if (Type_UNDEF != type)
     {
-        output << ':' << G4_Type_Table[type].str;
+        output << ':' << TypeSymbol(type);
     }
 }
 
@@ -6090,7 +6077,7 @@ G4_RegVar::emit(std::ostream& output, bool symbolreg)
         output << "(";
         reg.phyReg->emit(output);
         output << '.' << reg.subRegOff << ':' <<
-            G4_Type_Table[getDeclare()->getElemType()].str << ")";
+            TypeSymbol(getDeclare()->getElemType()) << ")";
     }
 }
 int G4_AddrExp::eval()
@@ -6109,13 +6096,12 @@ int G4_AddrExp::eval()
         byteAddr = m_addressedReg->getByteAddr(); //let's assume the unsigned=>int won't overflow for now.
     }
 
-    //byteAddr += offsetInEle * G4_Type_Table[addressedReg->getDeclare()->getElemType()].byteSize;
+    // byteAddr += offsetInEle * addressedReg->getDeclare()->getElemSize();
     byteAddr += m_offset;
 
     return byteAddr;
 }
-void
-G4_AddrExp::emit(std::ostream& output, bool symbolreg)
+void G4_AddrExp::emit(std::ostream& output, bool symbolreg)
 {
     output << '&';
     m_addressedReg->emit(output);
@@ -6173,7 +6159,7 @@ void G4_SrcRegRegion::computeLeftBound()
     }
     else if (base != NULL && base->isAccReg())
     {
-        left_bound = subRegOff * G4_Type_Table[type].byteSize;
+        left_bound = subRegOff * TypeSize(type);
         if (base->asAreg()->getArchRegType() == AREG_ACC1)
         {
             left_bound += 32;  // TODO: size of ACC is assumed to be 32 BYTEs.
@@ -6184,15 +6170,15 @@ void G4_SrcRegRegion::computeLeftBound()
     {
         if (acc == Direct)
         {
-            left_bound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * G4_Type_Table[type].byteSize;
+            left_bound = offset + newregoff * numEltPerGRF<Type_UB>() + subRegOff * TypeSize(type);
             if (top_dcl->getTotalElems() * top_dcl->getElemSize() >= (int)numEltPerGRF<Type_UB>())
             {
                 byteOffset = left_bound;
             }
             else
             {
-                unsigned alignOff = G4_Type_Table[type].byteSize > G4_Type_Table[Type_W].byteSize ?
-                    G4_Type_Table[type].byteSize : G4_Type_Table[Type_W].byteSize;
+                unsigned alignOff = TypeSize(type) > TypeSize(Type_W) ?
+                    TypeSize(type) : TypeSize(Type_W);
                 if (top_dcl->getSubRegAlign() == Even_Word || top_dcl->getSubRegAlign() >= Four_Word)
                 {
                     alignOff = top_dcl->getSubRegAlign() * 2;
@@ -6202,20 +6188,20 @@ void G4_SrcRegRegion::computeLeftBound()
         }
         else
         {
-            left_bound = subRegOff * G4_Type_Table[ADDR_REG_TYPE].byteSize;
-            byteOffset = G4_Type_Table[type].byteSize;
+            left_bound = subRegOff * TypeSize(ADDR_REG_TYPE);
+            byteOffset = TypeSize(type);
         }
 
         if (desc && desc->isScalar())
         {
-            right_bound = left_bound + G4_Type_Table[type].byteSize - 1;
+            right_bound = left_bound + TypeSize(type) - 1;
         }
         else
         {
             right_bound = 0;
             // for other cases, we need execution size and instruction compression attr, so we just set
             // partial value here, which will be patched later
-            // right_bound = desc->horzStride * G4_Type_Table[type].byteSize;
+            // right_bound = desc->horzStride * TypeSize(type);
             // patch it with *exec_size + left_bound
             // if vertical stride == 0 and width < exec_size, divide it by 2
         }
@@ -6229,8 +6215,8 @@ void G4_SrcRegRegion::computeLeftBound()
 
 void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
 {
-    uint64_t bit_seq = G4_Type_Table[type].footprint;
-    unsigned short typeSize = (unsigned short)G4_Type_Table[type].byteSize;
+    uint64_t bit_seq = TypeFootprint(type);
+    unsigned short typeSize = TypeSize(type);
 
     uint64_t footPrint0 = 0;
     uint64_t footPrint1 = 0;
@@ -6281,7 +6267,7 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
     unsigned short hs = desc->isScalar() ? 1 : desc->horzStride;
     unsigned short vs = desc->isScalar() ? 0 : desc->vertStride;
     rightBoundSet = true;
-    unsigned short typeSize = (unsigned short) G4_Type_Table[type].byteSize;
+    unsigned short typeSize = TypeSize(type);
 
     bitVec[0] = 0;
     bitVec[1] = 0;
@@ -6292,8 +6278,8 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
         {
             // mov (1) ... fx.1<0;1,0>:uw
             left_bound = subRegOff * 16;
-            totalBits = base->asRegVar()->getDeclare()->getNumberFlagElements() < G4_Type_Table[type].bitSize ?
-                        base->asRegVar()->getDeclare()->getNumberFlagElements() : G4_Type_Table[type].bitSize;
+            totalBits = base->asRegVar()->getDeclare()->getNumberFlagElements() < TypeBitSize(type) ?
+                        base->asRegVar()->getDeclare()->getNumberFlagElements() : TypeBitSize(type);
         }
         else
         {
@@ -6359,7 +6345,7 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
             {
                 bitVec[0] |= ((uint64_t) 0x3) << (i * 2);
             }
-            right_bound = left_bound + G4_Type_Table[ADDR_REG_TYPE].byteSize * numAddrSubReg - 1;
+            right_bound = left_bound + TypeSize(ADDR_REG_TYPE) * numAddrSubReg - 1;
         }
     }
     return right_bound;
@@ -6406,7 +6392,7 @@ bool G4_SrcRegRegion::coverTwoGRF()
         return false;
     if (desc->horzStride > 1)
     {
-        range += (desc->horzStride - 1) * G4_Type_Table[type].byteSize;
+        range += (desc->horzStride - 1) * TypeSize(type);
     }
     if (range == numEltPerGRF<Type_UB>() * 2 &&
         (desc->vertStride == desc->horzStride * desc->width ||
@@ -6437,7 +6423,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
     MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
     uint8_t firstSubRegOff = getLeftBound() % numEltPerGRF<Type_UB>();
     uint8_t left = firstSubRegOff;
-    uint8_t typeSize = (uint8_t) G4_Type_Table[type].byteSize;
+    uint8_t typeSize = (uint8_t)TypeSize(type);
     uint8_t execTySize = (desc->horzStride == 0 ? 1 : desc->horzStride) * typeSize;
     uint8_t lastEltEndByte = desc->horzStride * (desc->width - 1) * typeSize + typeSize;
     uint8_t realRowSize = lastEltEndByte;
@@ -6449,7 +6435,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
         {
             // realRowSize is used to handle V12(0,17)<32;8,2>:b
             eleInFirstGRF += desc->width;
-            left += desc->vertStride * G4_Type_Table[type].byteSize;
+            left += desc->vertStride * TypeSize(type);
         }
         else
         {
@@ -6468,7 +6454,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
                 eleInFirstGRF++;
                 if (eleInFirstGRF % desc->width == 0)
                 {
-                    left += desc->vertStride * G4_Type_Table[type].byteSize;
+                    left += desc->vertStride * TypeSize(type);
                 }
                 else
                 {
@@ -6477,7 +6463,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize, bool &sameSubRegOff,
             }
             else if (eleInFirstGRF % desc->width == 0)
             {
-                left += desc->vertStride * G4_Type_Table[type].byteSize;
+                left += desc->vertStride * TypeSize(type);
             }
             else if (typeSize == execTySize)
             {
@@ -6545,7 +6531,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(uint8_t execSize)
 bool G4_SrcRegRegion::checkGRFAlign() {
 
     bool GRF_aligned = false;
-    uint32_t byte_subregoff = subRegOff * G4_Type_Table[type].byteSize;
+    uint32_t byte_subregoff = subRegOff * getTypeSize();
 
     if (byte_subregoff  % numEltPerGRF<Type_UB>() != 0) {
         return false;
@@ -6633,11 +6619,11 @@ unsigned G4_RegVar::getByteAddr() const
     if (reg.phyReg->isGreg())
     {
         return reg.phyReg->asGreg()->getRegNum() * numEltPerGRF<Type_UB>() +
-            reg.subRegOff * (G4_Type_Table[decl->getElemType()].byteSize);
+            reg.subRegOff * decl->getElemSize();
     }
     if (reg.phyReg->isA0())
     {
-        return reg.subRegOff * (G4_Type_Table[Type_UW].byteSize);
+        return reg.subRegOff * TypeSize(Type_UW);
     }
 
     MUST_BE_TRUE(false, ERROR_UNKNOWN);
@@ -6647,7 +6633,7 @@ unsigned G4_RegVar::getByteAddr() const
 void G4_RegVar::setSubRegAlignment(G4_SubReg_Align subAlg)
 {
     // sub reg alignment can only be more restricted than prior setting
-    MUST_BE_TRUE(subAlign == Any || subAlign == subAlg || subAlign%2 == 0,
+    MUST_BE_TRUE(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
                  ERROR_UNKNOWN);
     if (subAlign > subAlg)
     {
@@ -7315,7 +7301,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     {
         return;
     }
-    uint32_t eltSize = G4_Type_Table[getType()].byteSize;
+    uint32_t eltSize = getTypeSize();
     uint32_t subRegOffset = getLinearizedStart() % numEltPerGRF<Type_UB>();
     uint32_t endOffset = subRegOffset + inst->getExecSize() * eltSize;
 
@@ -7900,8 +7886,8 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     }
 
     // check that src0 and dst have the same type/alignment
-    auto dstEltSize = getDst()->getHorzStride() * G4_Type_Table[getDst()->getType()].byteSize;
-    if (dstEltSize > getTypeSize(src->getType()))
+    auto dstEltSize = getDst()->getHorzStride() * getDst()->getTypeSize();
+    if (dstEltSize > TypeSize(src->getType()))
     {
         return false;
     }

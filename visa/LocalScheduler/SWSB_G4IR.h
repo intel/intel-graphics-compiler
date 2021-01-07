@@ -581,8 +581,8 @@ namespace vISA
         int getMaxDepDistance() const
         {
             auto inst = GetInstruction();
-            if (inst->getDst() && getTypeSize(inst->getDst()->getType()) == 8)
-            {  //Note that for Gen12lp, there is no 8 bytes ALU instruction.
+            if (inst->getDst() && inst->getDst()->getTypeSize() == 8)
+            {  // Note that for Gen12lp, there are no 8 bytes ALU instruction.
                 return SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
             }
             else

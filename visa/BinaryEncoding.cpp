@@ -1570,10 +1570,9 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
     G4_Operand *src0 = inst->getSrc(0);
 
     if (src0 == NULL ||src0->isLabel()) return FAILURE;
-    if (inst->opcode() == G4_jmpi      &&
-         src0->isSrcRegRegion())
+    if (inst->opcode() == G4_jmpi && src0->isSrcRegRegion())
     {
-        //will treat this src0 as src1 in EncodeOperandSrc1
+        // will treat this src0 as src1 in EncodeOperandSrc1
         return SUCCESS;
     }
 
@@ -1581,8 +1580,7 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST* inst)
     EncodeSrc0RegFile(mybin, src0);
     if (src0->isImm())
     {
-         if (inst->opcode() != G4_mov                   &&
-              G4_Type_Table[src0->getType()].byteSize == 8)
+        if (inst->opcode() != G4_mov && src0->getTypeSize() == 8)
         {
             MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
         }
@@ -2349,10 +2347,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
     EncodeSrc1Type(mybin, src1);
     if (src1->isImm())
     {
-        if (G4_Type_Table[src1->getType()].byteSize == 8)
-        {
-            MUST_BE_TRUE(false, "64bit immediate must be src0");
-        }
+        MUST_BE_TRUE(src1->getTypeSize() != 8, "64-bit immediate must be src0");
         EncodeSrcImmData(mybin, src1);
     }
     else

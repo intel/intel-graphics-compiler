@@ -503,7 +503,7 @@ void getGRF(G4_Declare* dcl, unsigned int& regNum, unsigned int& subRegNumInByte
     if (dcl->getRegVar()->getPhyReg() != NULL)
     {
         regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-        subRegNumInBytes = dcl->getRegVar()->getPhyRegOff() * G4_Type_Table[dcl->getElemType()].byteSize;
+        subRegNumInBytes = dcl->getRegVar()->getPhyRegOff() * dcl->getElemSize();
     }
     else
     {
