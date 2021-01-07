@@ -622,8 +622,8 @@ typedef SPIRVMap<Attribute::AttrKind, SPIRVFuncParamAttrKind>
 
 template<> inline void
 SPIRVMap<Attribute::AttrKind, SPIRVFunctionControlMaskKind>::init() {
-  add(Attribute::ReadOnly, FunctionControlPureMask);
-  add(Attribute::ReadNone, FunctionControlConstMask);
+  add(Attribute::ReadNone, FunctionControlPureMask);
+  add(Attribute::ReadOnly, FunctionControlConstMask);
   add(Attribute::AlwaysInline, FunctionControlInlineMask);
   add(Attribute::NoInline, FunctionControlDontInlineMask);
 }
