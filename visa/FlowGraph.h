@@ -207,7 +207,7 @@ public:
 //
 typedef std::unordered_map<int, vISA::FuncInfo*> FuncInfoHashTable;
 
-typedef std::unordered_map<vISA::G4_Label*, vISA::G4_BB*> Label_BB_Map;
+typedef std::map<std::string, vISA::G4_BB*> Label_BB_Map;
 typedef std::list<vISA::G4_BB*>             BB_LIST;
 typedef std::list<vISA::G4_BB*>::iterator   BB_LIST_ITER;
 typedef std::list<vISA::G4_BB*>::const_iterator   BB_LIST_CITER;
@@ -878,7 +878,7 @@ public:
         }
     }
 
-    G4_BB* getLabelBB(Label_BB_Map& map, G4_Label* label);
+    G4_BB* getLabelBB(Label_BB_Map& map, const char* label);
     G4_BB* beginBB(Label_BB_Map& map, G4_INST* first);
 
     bool performIPA() const
@@ -974,11 +974,11 @@ public:
     //
     // Merge multiple returns into one, prepare for spill code insertion
     //
-    void mergeReturn(FuncInfoHashTable& funcInfoTable);
+    void mergeReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoTable);
     G4_BB* mergeSubRoutineReturn(G4_Label* subroutine);
     void normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable);
     void processGoto(bool HasSIMDCF);
-    void processSCF(FuncInfoHashTable& FuncInfoMap);
+    void processSCF(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable& FuncInfoMap);
     void insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip);
 
     // functions for structure analysis
@@ -1001,7 +1001,7 @@ public:
         return unsigned(funcInfoTable.size());
     }
 
-    void handleReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoTable);
+    void handleReturn(std::map<std::string, G4_BB*>& map, FuncInfoHashTable& funcInfoTable);
     void linkReturnAddr(G4_BB* bb, G4_BB* returnAddr);
 
     void handleExit(G4_BB* lastKernelBB);
@@ -1256,6 +1256,7 @@ public:
 private:
     // Use normalized region descriptors for each source operand if possible.
     void normalizeRegionDescriptors();
+    G4_BB *findLabelBB(char *label, int &label_offset);
 
     // Find the BB that has the given label from the range [StartIter, EndIter).
     G4_BB* findLabelBB(
