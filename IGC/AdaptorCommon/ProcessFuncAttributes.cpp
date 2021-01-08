@@ -551,14 +551,19 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // Forcing subroutines/stack-call/indirect-call
             bool forceSubroutine = FCtrl == FLAG_FCALL_FORCE_SUBROUTINE;
             bool forceStackCall = FCtrl == FLAG_FCALL_FORCE_STACKCALL;
-            bool forceIndirectCall = F->hasFnAttribute("IndirectlyCalled") &&
-                (FCtrl == FLAG_FCALL_FORCE_INDIRECTCALL || F->hasFnAttribute("IFCALL_BUILTIN"));
+            bool forceIndirectCall = (FCtrl == FLAG_FCALL_FORCE_INDIRECTCALL || F->hasFnAttribute("IFCALL_BUILTIN"));
 
             if (forceSubroutine || forceStackCall || forceIndirectCall)
             {
                 SetNoInline(F);
                 if (forceStackCall)
                 {
+                    F->addFnAttr("visaStackCall");
+                }
+                else if (forceIndirectCall)
+                {
+                    pCtx->m_enableFunctionPointer = true;
+                    F->addFnAttr("IndirectlyCalled");
                     F->addFnAttr("visaStackCall");
                 }
             }
