@@ -63,7 +63,7 @@ namespace vISA
         // with coalesced operands with correct offset.
         std::map<G4_Declare*, std::pair<G4_Declare*, unsigned int>> replaceMap;
 
-        void replaceCoalescedOperands(G4_INST*);
+        bool replaceCoalescedOperands(G4_INST*);
 
         void dumpKernel();
         void dumpKernel(unsigned int v1, unsigned int v2);

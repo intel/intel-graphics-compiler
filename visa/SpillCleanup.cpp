@@ -920,8 +920,10 @@ void CoalesceSpillFills::removeWARFills(std::list<INST_LIST_ITER>& fills, std::l
     }
 }
 
-void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
+// Return true if an operand was replaced
+bool CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
 {
+    bool IRChanged = false;
     auto dst = inst->getDst();
     if (dst &&
         dst->getTopDcl())
@@ -937,6 +939,7 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
 
             newDstRgn->setAccRegSel(dstRgn->getAccRegSel());
             inst->setDest(newDstRgn);
+            IRChanged = true;
         }
     }
 
@@ -964,9 +967,12 @@ void CoalesceSpillFills::replaceCoalescedOperands(G4_INST* inst)
                     opnd->getType());
                 newSrcRgn->setAccRegSel(srcRgn->getAccRegSel());
                 inst->setSrc(newSrcRgn, i);
+                IRChanged = true;
             }
         }
     }
+
+    return IRChanged;
 }
 
 bool CoalesceSpillFills::allSpillsSameVar(std::list<INST_LIST_ITER>& spills)
@@ -1087,7 +1093,14 @@ void CoalesceSpillFills::fills()
                 continue;
             }
 
-            replaceCoalescedOperands(inst);
+            while (replaceCoalescedOperands(inst))
+            {
+                // replaceCoalescedOperands() updates references to old
+                // dcls in IR that are coalesced. Having a single pass to
+                // replace operands is insufficient if a coalesced range
+                // gets re-coalesced. This can happen rarely when window
+                // heuristic hits boundary condition.
+            };
             instIt++;
         }
     }
@@ -1271,7 +1284,14 @@ void CoalesceSpillFills::spills()
                 continue;
             }
 
-            replaceCoalescedOperands(inst);
+            while (replaceCoalescedOperands(inst))
+            {
+                // replaceCoalescedOperands() updates references to old
+                // dcls in IR that are coalesced. Having a single pass to
+                // replace operands is insufficient if a coalesced range
+                // gets re-coalesced. This can happen rarely when window
+                // heuristic hits boundary condition.
+            };
             instIt++;
         }
     }
