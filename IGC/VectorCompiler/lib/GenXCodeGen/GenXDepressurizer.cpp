@@ -1569,9 +1569,8 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
   for (unsigned i = 0, e = Backedges.size(); i != e; ++i) {
     BasicBlock *BB = Backedges[i];
     auto BBNode = getNode(BB);
-    IGC_ASSERT(BBNode->Succs.size() == 1 &&
-           "expecting backedge to have one successor "
-           "as we have split critical edges");
+    IGC_ASSERT_MESSAGE(BBNode->Succs.size() == 1,
+      "expecting backedge to have one successor as we have split critical edges");
     BasicBlock *Header = BBNode->Succs[0];
     BBNode->LoopHeader = Header;
     BBNode->Succs.clear(); // This removes Header as BB's only successor.
