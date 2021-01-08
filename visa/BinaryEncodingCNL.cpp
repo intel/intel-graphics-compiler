@@ -105,6 +105,7 @@ uint32_t BinaryEncodingBase::getEUOpcode(G4_opcode g4opc)
     case G4_brd: euopcode = G9HDL::EU_OPCODE_BRD; break;
     case G4_break: euopcode = G9HDL::EU_OPCODE_BREAK; break;
     case G4_call: euopcode = G9HDL::EU_OPCODE_CALL; break;
+    case G4_pseudo_fcall: euopcode = G9HDL::EU_OPCODE_CALL; break;
         //case G4_calla: euopcode = G9HDL::EU_OPCODE_CALLA; break;
     case G4_cont: euopcode = G9HDL::EU_OPCODE_CONT; break;
     case G4_else: euopcode = G9HDL::EU_OPCODE_ELSE; break;
@@ -114,7 +115,10 @@ uint32_t BinaryEncodingBase::getEUOpcode(G4_opcode g4opc)
     case G4_if: euopcode = G9HDL::EU_OPCODE_IF; break;
     case G4_jmpi: euopcode = G9HDL::EU_OPCODE_JMPI; break;
     case G4_join: euopcode = G9HDL::EU_OPCODE_JOIN; break;
-    case G4_return: euopcode = G9HDL::EU_OPCODE_RET; break;
+    case G4_return:
+    case G4_pseudo_fret:
+        euopcode = G9HDL::EU_OPCODE_RET;
+        break;
     case G4_wait: euopcode = G9HDL::EU_OPCODE_WAIT; break;
     case G4_while: euopcode = G9HDL::EU_OPCODE_WHILE; break;
 
@@ -1744,8 +1748,8 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if (op == G4_call              &&
-         inst->getSrc(0)            &&
+    if ((op == G4_call || op == G4_pseudo_fcall) &&
+         inst->getSrc(0) &&
          inst->getSrc(0)->isLabel())
     {
         G4_Operand *opnd = inst->getSrc(0);
@@ -2389,7 +2393,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncoding(G4_INST* inst)
         {
             DoAllEncodingCF(inst);
         }
-        else if (inst->opcode() == G4_call)
+        else if (inst->opcode() == G4_call || inst->opcode() == G4_pseudo_fcall)
         {
             DoAllEncodingCALL(inst);
         }
@@ -2511,7 +2515,8 @@ void BinaryEncodingCNL::DoAll()
                 }
                 binInstList.push_back(inst->getBinInst());
 
-                if (inst->opcode() >= G4_jmpi && inst->opcode() <= G4_join)
+                if ((inst->opcode() >= G4_jmpi && inst->opcode() <= G4_join)
+                    || inst->opcode() == G4_pseudo_fcall || inst->opcode() == G4_pseudo_fret)
                 {
                     if (!EncodeConditionalBranches(inst, globalHalfInstNum))
                     {

@@ -819,13 +819,13 @@ namespace vISA
             }
 
             // ToDo: disable compacting nop/return until it is clear that we can compact them
-            if (op == G4_nop || op == G4_return)
+            if (op == G4_nop || op == G4_return || op == G4_pseudo_fret)
             {
                 return false;
             }
 
             // temporary WA, to be removed later
-            if (op == G4_call)
+            if (op == G4_call || op == G4_pseudo_fcall)
             {
                 return false;
             }
