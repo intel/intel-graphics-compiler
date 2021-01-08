@@ -453,24 +453,24 @@ const char* cmc::getPlatformStr(PLATFORM platform)
 {
     switch (platform.eDisplayCoreFamily) {
     case IGFX_GEN9_CORE:
-        return "SKL";
+        return IGC_MANGLE("SKL");
     case IGFX_GEN10_CORE:
-        return "CNL";
+        return IGC_MANGLE("CNL");
     case IGFX_GEN11_CORE:
         if (platform.eProductFamily == IGFX_ICELAKE_LP ||
             platform.eProductFamily == IGFX_LAKEFIELD)
-            return "ICLLP";
-        return "ICL";
+            return IGC_MANGLE("ICLLP");
+        return IGC_MANGLE("ICL");
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
         if (platform.eProductFamily == IGFX_TIGERLAKE_LP ||
             platform.eProductFamily == IGFX_DG1)
-            return "TGLLP";
+            return IGC_MANGLE("TGLLP");
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;
     }
-    return "SKL";
+    return IGC_MANGLE("SKL");
 }
 
 static void generateSymbols(const vc::ocl::KernelInfo& info,
