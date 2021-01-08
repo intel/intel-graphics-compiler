@@ -102,7 +102,7 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
     getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto FlatAddrSpace = TTI.getFlatAddressSpace();
 
-  IGC_ASSERT(DL && "null datalayout");
+  IGC_ASSERT_MESSAGE(DL, "null datalayout");
 #if 0
   // a good place to fix block layout
   if (LI->empty())
@@ -171,7 +171,7 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   IGC_ASSERT(Builder);
   Value *PtrOp = GEP->getPointerOperand();
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
-  IGC_ASSERT(PtrTy && "Only accept scalar pointer!");
+  IGC_ASSERT_MESSAGE(PtrTy, "Only accept scalar pointer!");
 
   // This is the value of the pointer, which will ultimately replace gep.
   Value *PointerValue = getInitialPointerValue(*PtrOp);
