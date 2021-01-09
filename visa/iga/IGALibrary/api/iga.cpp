@@ -106,26 +106,23 @@ const char *iga_status_to_string(iga_status_t st) {
 }
 
 // conversion to an internal platform
+// we could just re-interpret the bits but this checks for garbage
+// (validates the enum)
 iga::Platform ToPlatform(iga_gen_t gen)
 {
-    for (size_t i = 0; i < ALL_PLATFORMS_LEN; i++) {
-        const auto &p = ALL_PLATFORMS[i];
-        if (p.platform == static_cast<iga::Platform>(gen))
-            return p.platform;
-    }
-
-    return iga::Platform::INVALID;
+    const auto *m = iga::Model::LookupModel(iga::Platform(gen));
+    return m ? m->platform : iga::Platform::INVALID;
 }
 
 iga_status_t iga_platforms_list(
-  size_t gens_length_bytes,
-  iga_gen_t *gens,
-  size_t *gens_length_bytes_required)
+    size_t gens_length_bytes,
+    iga_gen_t *gens,
+    size_t *gens_length_bytes_required)
 {
     if (gens_length_bytes != 0 && gens == nullptr)
         return IGA_INVALID_ARG;
 
-    const size_t MAX_SPACE_NEEDED = ALL_PLATFORMS_LEN*sizeof(iga_gen_t);
+    const size_t MAX_SPACE_NEEDED = ALL_MODELS_LEN*sizeof(iga_gen_t);
     if (gens_length_bytes_required)
         *gens_length_bytes_required = MAX_SPACE_NEEDED;
     if (gens) {
@@ -133,7 +130,7 @@ iga_status_t iga_platforms_list(
             i < std::min(gens_length_bytes,MAX_SPACE_NEEDED)/sizeof(iga_gen_t);
             i++)
         {
-            gens[i] = static_cast<iga_gen_t>(ALL_PLATFORMS[i].platform);
+            gens[i] = static_cast<iga_gen_t>(ALL_MODELS[i]->platform);
         }
     }
     return IGA_SUCCESS;
@@ -144,10 +141,10 @@ iga_status_t iga_platform_symbol_suffix(
 {
     if (suffix == nullptr)
         return IGA_INVALID_ARG;
-    for (size_t i = 0; i < ALL_PLATFORMS_LEN; i++) {
-        const auto &p = ALL_PLATFORMS[i];
-        if (p.platform == static_cast<iga::Platform>(gen)) {
-            *suffix = p.suffix;
+    for (size_t i = 0; i < ALL_MODELS_LEN; i++) {
+        const auto &p = ALL_MODELS[i];
+        if (p->platform == static_cast<iga::Platform>(gen)) {
+            *suffix = p->extension;
             return IGA_SUCCESS;
         }
     }
@@ -155,22 +152,22 @@ iga_status_t iga_platform_symbol_suffix(
     return IGA_INVALID_ARG;
 }
 
+// c.f. iga_platform_names
 struct PlatformNameMap {
     std::unordered_map<iga::Platform,std::vector<std::string>> map;
 
     PlatformNameMap() {
-        // Thus runs at module load-time
-        for (size_t i = 0; i < ALL_PLATFORMS_LEN; i++) {
-            const auto &pe = ALL_PLATFORMS[i];
+        for (size_t i = 0; i < ALL_MODELS_LEN; i++) {
+            const Model &me = *ALL_MODELS[i];
             std::vector<std::string> names;
-            for (int nameIdx = 0;
-                nameIdx < MAX_PLATFORM_NAMES &&
-                    !pe.names[nameIdx].str().empty();
-                nameIdx++)
+            for (const auto &mn : me.names)
             {
-                names.push_back(pe.names[nameIdx]);
+                std::string str = mn.str();
+                if (str.empty())
+                    break;
+                names.push_back(str);
             }
-            map[pe.platform] = names;
+            map[me.platform] = names;
         }
     }
 };
@@ -187,7 +184,7 @@ iga_status_t iga_platform_names(
     // We run into a minor annoyance here.  We must return IGA memory that
     // that never gets cleaned up by the user.  Thus we use module global
     // memory.  On DLL detach it should be cleaned up.
-    static PlatformNameMap s_names;
+    static const PlatformNameMap s_names;
     auto itr = s_names.map.find(static_cast<iga::Platform>(gen));
     if (itr == s_names.map.end()) {
         return IGA_INVALID_ARG;
@@ -1020,6 +1017,7 @@ iga_status_t iga_diagnostic_get_text_extent(
 //
 // TODO: another method would be to store this as a relative address...
 // relative to something near the instspec....
+// (or store as Platform x Op)
 // That would translate to fairly small integer that should be in the
 // no access range (near 0)
 static iga_opspec_t opspec_to_handle(const OpSpec *os) {

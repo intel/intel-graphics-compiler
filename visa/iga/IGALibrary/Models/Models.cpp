@@ -378,6 +378,32 @@ bool RegInfo::decode(uint8_t regNumBits, int &reg) const
 }
 
 
+// static const iga::Model MODEL_GEN7(
+//    Platform::GEN7P5, &MODEL_GEN7_OPSPECS[0], "7", "ivb");
+static constexpr Model MODEL_GEN7P5(
+    Platform::GEN7P5, &MODEL_GEN7P5_OPSPECS[0], "7p5", "hsw");
+static constexpr Model MODEL_GEN8(
+    Platform::GEN8, &MODEL_GEN8_OPSPECS[0], "8", "bdw");
+static constexpr Model MODEL_GEN9(
+    Platform::GEN9, &MODEL_GEN9_OPSPECS[0], "9", "skl");
+static constexpr Model MODEL_GEN10(
+    Platform::GEN10, &MODEL_GEN10_OPSPECS[0], "10", "cnl");
+static constexpr Model MODEL_GEN11(
+    Platform::GEN11, &MODEL_GEN11_OPSPECS[0], "11", "icl");
+static constexpr Model MODEL_GEN12P1(
+    Platform::GEN12P1, &MODEL_GEN12P1_OPSPECS[0], "12p1",
+    "xe", "tgl");
+
+const Model * const iga::ALL_MODELS[] {
+    &MODEL_GEN7P5,
+    &MODEL_GEN8,
+    &MODEL_GEN9,
+    &MODEL_GEN10,
+    &MODEL_GEN11,
+    &MODEL_GEN12P1,
+};
+const size_t iga::ALL_MODELS_LEN = sizeof(ALL_MODELS)/sizeof(ALL_MODELS[0]);
+
 const Model *Model::LookupModel(Platform p)
 {
     switch (p) {
@@ -400,18 +426,3 @@ const Model *Model::LookupModel(Platform p)
         return nullptr;
     }
 }
-
-const PlatformEntry iga::ALL_PLATFORMS[] {
-    {iga::Platform::GEN7,     "7",   "ivb"},
-    {iga::Platform::GEN7P5,   "7p5", "hsw"},
-    {iga::Platform::GEN8,     "8",   "bdw"},
-    {iga::Platform::GEN8LP,   "8lp",  "chv"},
-    {iga::Platform::GEN9,     "9",    "skl"},
-    {iga::Platform::GEN9LP,   "9lp",  "bxt"},
-    {iga::Platform::GEN9P5,   "9p5",  "kbl"},
-    {iga::Platform::GEN10,    "10",   "cnl"},
-    {iga::Platform::GEN11,    "11",   "icl", "icllp"},
-    {iga::Platform::GEN12P1,  "12p1", "tgl", "tgllp", "dg1"},
-};
-
-const size_t iga::ALL_PLATFORMS_LEN = sizeof(ALL_PLATFORMS)/sizeof(ALL_PLATFORMS[0]);

@@ -683,13 +683,6 @@ namespace iga {
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         }
-    };
-
-    static const iga::Model MODEL_GEN12P1 {
-        iga::Platform::GEN12P1, "12p1", "TGL", &MODEL_GEN12P1_OPSPECS[0]
-    }; // end GEN12p1 initializer
+    }; // end MODEL_GEN12P1_OPSPECS
 } // namespace iga
-
-
 #endif // IGA_MODELS12P1_HPP
-

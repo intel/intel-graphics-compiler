@@ -747,13 +747,6 @@ namespace iga {
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         }
-    };
-
-    static const iga::Model MODEL_GEN7P5 {
-        iga::Platform::GEN7P5, "7p5", "HSW", &MODEL_GEN7P5_OPSPECS[0]
-    }; // end GEN7p5 initializer
+    }; // end MODEL_GEN7P5_OPSPECS
 } // namespace iga
-
-
 #endif // IGA_MODELS7P5_HPP
-

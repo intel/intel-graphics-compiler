@@ -899,13 +899,6 @@ namespace iga {
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         }
-    };
-
-    static const iga::Model MODEL_GEN8 {
-        iga::Platform::GEN8, "8", "BDW", &MODEL_GEN8_OPSPECS[0]
-    }; // end GEN8 initializer
+    }; // end MODEL_GEN8_OPSPECS
 } // namespace iga
-
-
 #endif // IGA_MODELS8_HPP
-

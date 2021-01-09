@@ -921,13 +921,6 @@ namespace iga {
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
         }
-    };
-
-    static const iga::Model MODEL_GEN9 {
-        iga::Platform::GEN9, "9", "SKL", &MODEL_GEN9_OPSPECS[0]
-    }; // end GEN9 initializer
+    }; // end MODEL_GEN9_OPSPECS
 } // namespace iga
-
-
 #endif // IGA_MODELS9_HPP
-

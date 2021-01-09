@@ -26,8 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_MODELS_HPP
 #define IGA_MODELS_HPP
 
-#include "../IR/Types.hpp"
 #include "../asserts.hpp"
+#include "../IR/Types.hpp"
 #include "OpSpec.hpp"
 
 #include <cstddef>
@@ -296,18 +296,34 @@ namespace iga
     // opcode value (7 bit encoding), and enumeration value (Op).
     struct Model {
         Platform             platform;
-        const char          *ext;  // e.g. "9p5"
-        const char          *name; // e.g. "KBL"
 
         // the table of supported ops for this model indexed by iga::Op
         const OpSpec         *const opsArray;
+        //
+        const char          *extension;
+        //
+        static const size_t  MAX_NAMES = 4;
+        ModelString          names[MAX_NAMES];
+
+        constexpr Model(
+            Platform p,
+            const OpSpec *const opsArr,
+            const char *ext,
+            ModelString name0,
+            ModelString name1 = ModelString(),
+            ModelString name2 = ModelString(),
+            ModelString name3 = ModelString())
+            : platform(p), opsArray(opsArr), extension(ext)
+            , names{name0, name1, name2, name3}
+        {
+        }
 
         /*
          * Enables iteration of all valid ops in the table in a for all loop
          * E.g. one would write:
          *   iga::Model model = ...
-         *   for (const OpSpec *os : model.op()) {
-         *      IGA_ASSERT(os->isValid(),"all ops walked will be valid");
+         *   for (const OpSpec *os : model.ops()) {
+         *      IGA_ASSERT(os->isValid(), "all ops walked will be valid");
          *   }
          */
         OpSpecTableWalker ops() const {return OpSpecTableWalker(opsArray);}
@@ -386,6 +402,7 @@ namespace iga
             switch(getSWSBEncodeMode()) {
             case SWSB_ENCODE_MODE::SingleDistPipe:
                 return 16;
+
             default:
                 break;
             }
@@ -400,26 +417,9 @@ namespace iga
     }; // class Model
 
     ///////////////////////////////////////////////////////////////////////////
-    // Functions to enumerate information about platforms such as names
-    // extensions and whatnot.
-    //
-    static const size_t MAX_PLATFORM_NAMES = 3;
-    struct PlatformEntry {
-        Platform      platform;
-        const char   *suffix; // platform file suffix; e.g. "12p1"
-        ModelString   names[MAX_PLATFORM_NAMES]; // various platform names
-        constexpr PlatformEntry(
-            Platform p, const char *s,
-            ModelString sfx0,
-            ModelString sfx1 = ModelString(),
-            ModelString sfx2 = ModelString())
-            : platform(p), suffix(s), names{sfx0, sfx1, sfx2}
-        {
-        }
-    };
-    //
-    extern const PlatformEntry ALL_PLATFORMS[];
-    extern const size_t ALL_PLATFORMS_LEN;
+    // In rare cases where one must iterate all models
+    extern const Model * const ALL_MODELS[];
+    extern const size_t ALL_MODELS_LEN;
 } // namespace iga::*
 
 #endif // IGA_MODELS_HPP
