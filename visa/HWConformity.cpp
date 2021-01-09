@@ -347,6 +347,12 @@ G4_Operand* HWConformity::insertMovBefore(
     INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB* bb,
     G4_SubReg_Align tmpAlign)
 {
+    return insertMovBefore(it, srcNum, type, bb, 0, tmpAlign);
+}
+
+G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4_Type type, G4_BB* bb,
+    uint16_t tmpStride, G4_SubReg_Align tmpAlign)
+{
     G4_INST* inst = *it;
     G4_SubReg_Align subAlign;
     const RegionDesc* region = nullptr;
@@ -360,13 +366,20 @@ G4_Operand* HWConformity::insertMovBefore(
 
     if (newExecSize > 1)
     {
-        if (scale == 1 && !IS_VTYPE(src->getType()))
+        if (tmpStride)
         {
-            scale = (uint16_t)(getTypeSize(src->getType()) / getTypeSize(type));
+            scale = tmpStride;
         }
-        if (scale == 0)
+        else
         {
-            scale = 1;
+            if (scale == 1 && !IS_VTYPE(src->getType()))
+            {
+                scale = (uint16_t)(getTypeSize(src->getType()) / getTypeSize(type));
+            }
+            if (scale == 0)
+            {
+                scale = 1;
+            }
         }
         region = builder.createRegionDesc(scale, 1, 0);
     }
@@ -4010,7 +4023,31 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
             }
             else
             {
-                return false;
+                // Promote src2 from :b to :w to allow mad, for example:
+                //     pseudo_mad (16) V211(0,0)<1>:d V210(0,0)<1;0>:d V106(0,0)<0;0>:b V81(0,0)<1;0>:d
+                //  =>
+                //     mov (1) TV74(0,0)<1>:w V106(0,0)<0;1,0>:b {Q1, Align1, NoMask}
+                //     mad (16) V211(0,0)<1>:d V81(0,0)<1;0>:d V210(0,0)<1;0>:d TV74(0,0)<0;0>:w {H1, Align1}
+                bool isSrc2 = (k == 0);
+                if (builder.noSrc2Regioning() && isSrc2 && IS_BTYPE(src->getType()))
+                {
+                    bool hasModMinus = false;
+                    if (src->isSrcRegRegion())
+                    {
+                        G4_SrcModifier mod = src->asSrcRegRegion()->getModifier();
+                        hasModMinus = (mod == Mod_Minus || mod == Mod_Minus_Abs);
+                    }
+
+                    // If minus modifier is present, need signed type.
+                    G4_Type type = (IS_SIGNED_INT(src->getType()) || hasModMinus) ? Type_W : Type_UW;
+                    auto dstStrideInBytes = inst->getDst()->getHorzStride() * getTypeSize(inst->getDst()->getType());
+                    uint16_t stride = (uint16_t)(dstStrideInBytes / getTypeSize(type));
+                    inst->setSrc(insertMovBefore(iter, k, type, bb, stride, GRFALIGN), k);
+                }
+                else
+                {
+                    return false;
+                }
             }
         }
         else
