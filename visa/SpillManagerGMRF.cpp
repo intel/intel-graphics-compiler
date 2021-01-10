@@ -4147,6 +4147,12 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel* kernel, PointsToAnalysis& point
 void SpillManagerGRF::runSpillAnalysis()
 {
 
+    if (failSafeSpill_)
+    {
+        // ToDo: use the reserved GRFs to perform scalar immediate rematerialization
+        return;
+    }
+
     std::unordered_set<G4_Declare*> spilledDcl;
     scalarImmSpill.clear();
 
