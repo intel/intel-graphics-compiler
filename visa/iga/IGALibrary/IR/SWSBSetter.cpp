@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BitSet.hpp"
 
 #include <iterator>
+#include <limits>
 
 using namespace iga;
 
