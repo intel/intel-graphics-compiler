@@ -59,7 +59,7 @@ public:
   }
 
   bool runOnModule(Module &M) override {
-    IGC_ASSERT(Dest && "Expected dest to be initialized");
+    IGC_ASSERT_MESSAGE(Dest, "Expected dest to be initialized");
     auto &Info = getAnalysis<GenXOCLRuntimeInfo>();
     *Dest = Info.stealCompiledModule();
     return false;
