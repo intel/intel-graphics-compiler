@@ -114,7 +114,8 @@ namespace llvm {
           : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
             Ty(Ty), Alignment(LogAlignment) {
         static const char* Prefix[] = { "ERR", "V", "A", "P", "S", "T", "VME" };
-        IGC_ASSERT(Category && Category < genx::RegCategory::NUMREALCATEGORIES);
+        IGC_ASSERT(Category);
+        IGC_ASSERT(Category < genx::RegCategory::NUMREALCATEGORIES);
         NameStr = Prefix[Category] + std::to_string(Num);
       }
 
@@ -178,7 +179,7 @@ namespace llvm {
         genx::Signedness Signed = genx::DONTCARESIGNED, Type *OverrideType = 0)
     {
       Reg* R = getRegForValueOrNull(kernel, V, Signed, OverrideType);
-      IGC_ASSERT(R && "no register allocated for this value");
+      IGC_ASSERT_MESSAGE(R, "no register allocated for this value");
       return R;
     }
     // Get the vISA virtual register for a value or nullptr if there is no

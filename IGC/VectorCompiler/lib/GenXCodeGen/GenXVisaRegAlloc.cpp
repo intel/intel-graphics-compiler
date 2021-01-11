@@ -332,8 +332,8 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
   IGC_ASSERT(!Ty->isVoidTy());
   if (LR->Category == RegCategory::PREDICATE) {
     VectorType *VT = dyn_cast<VectorType>(Ty);
-    IGC_ASSERT((!VT || genx::exactLog2(VT->getNumElements()) >= 0) &&
-           "invalid predicate width");
+    IGC_ASSERT_MESSAGE((!VT || genx::exactLog2(VT->getNumElements()) >= 0),
+      "invalid predicate width");
     (void)VT;
   }
   // Allocate the register, also setting the alignment.
@@ -378,9 +378,9 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
       return nullptr;
     auto CI = cast<CallInst>(V.getValue());
     unsigned Id = cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue();
-    IGC_ASSERT(Id < 4 && "Invalid predefined surface ID!");
-    IGC_ASSERT(PredefinedSurfaceRegs.size() == VISA_NUM_RESERVED_SURFACES &&
-        "Predefined surface registers have not been initialized");
+    IGC_ASSERT_MESSAGE(Id < 4, "Invalid predefined surface ID!");
+    IGC_ASSERT_MESSAGE(PredefinedSurfaceRegs.size() == VISA_NUM_RESERVED_SURFACES,
+      "Predefined surface registers have not been initialized");
     return PredefinedSurfaceRegs[Id];
   }
   return i->second;
