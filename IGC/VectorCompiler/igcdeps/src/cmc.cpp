@@ -718,7 +718,6 @@ static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
     std::memset(static_cast<char*>(kernelBin) + size, 0, padding);
 
     // Update program info.
-    std::memset(&kernel.getProgramOutput(), 0, sizeof(IGC::SProgramOutput));
     kernel.getProgramOutput().m_programBin = kernelBin;
     kernel.getProgramOutput().m_programSize = size + padding;
     kernel.getProgramOutput().m_unpaddedProgramSize = size;
