@@ -102,6 +102,7 @@ STATISTIC(NumArgumentsTransformed, "Number of pointer arguments transformed");
 static constexpr int PrivateAddrSpace = 0;
 
 namespace llvm {
+void initializeCMABIAnalysisPass(PassRegistry &);
 void initializeCMABIPass(PassRegistry &);
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
 }
@@ -222,9 +223,6 @@ private:
 
   // \brief Global variables that are used directly or indirectly.
   GlobalSetTy Globals;
-
-  // This map keeps track of argument index for a global variable.
-  SmallDenseMap<GlobalVariable *, unsigned> IndexMap;
 };
 
 // Diagnostic information for error/warning for overlapping arg
@@ -252,7 +250,63 @@ public:
 };
 int DiagnosticInfoOverlappingArgs::KindID = 0;
 
+class CMABIAnalysis : public ModulePass {
+  // This map captures all global variables to be localized.
+  std::vector<LocalizationInfo *> LocalizationInfoObjs;
 
+public:
+  static char ID;
+
+  // Kernels in the module being processed.
+  SmallPtrSet<Function *, 8> Kernels;
+
+  // Map from function to the index of its LI in LI storage
+  SmallDenseMap<Function *, LocalizationInfo *> GlobalInfo;
+
+  CMABIAnalysis() : ModulePass{ID} {}
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<CallGraphWrapperPass>();
+    AU.setPreservesAll();
+  }
+
+  StringRef getPassName() const override { return "GenX CMABI analysis"; }
+
+  bool runOnModule(Module &M) override;
+
+  void releaseMemory() override {
+    for (auto *LI : LocalizationInfoObjs)
+      delete LI;
+    LocalizationInfoObjs.clear();
+    Kernels.clear();
+    GlobalInfo.clear();
+  }
+
+  // \brief Returns the localization info associated to a function.
+  LocalizationInfo &getLocalizationInfo(Function *F) {
+    if (GlobalInfo.count(F))
+      return *GlobalInfo[F];
+    LocalizationInfo *LI = new LocalizationInfo{F};
+    LocalizationInfoObjs.push_back(LI);
+    GlobalInfo[F] = LI;
+    return *LI;
+  }
+
+private:
+  bool runOnCallGraph(CallGraph &CG);
+  void analyzeGlobals(CallGraph &CG);
+
+  void addDirectGlobal(Function *F, GlobalVariable *GV) {
+    getLocalizationInfo(F).addGlobal(GV);
+  }
+
+  // \brief Add all globals from callee to caller.
+  void addIndirectGlobal(Function *F, Function *Callee) {
+    getLocalizationInfo(F).addGlobals(getLocalizationInfo(Callee));
+  }
+
+  void defineGVDirectUsers(GlobalVariable &GV);
+};
 
 struct CMABI : public CallGraphSCCPass {
   static char ID;
@@ -261,13 +315,13 @@ struct CMABI : public CallGraphSCCPass {
     initializeCMABIPass(*PassRegistry::getPassRegistry());
   }
 
-  virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     CallGraphSCCPass::getAnalysisUsage(AU);
+    AU.addRequired<CMABIAnalysis>();
   }
 
   virtual bool runOnSCC(CallGraphSCC &SCC);
 
-  virtual bool doInitialization(CallGraph &CG);
   virtual bool doFinalization(CallGraph &CG);
 
 private:
@@ -285,31 +339,6 @@ private:
   // \brief Create allocas for globals and replace their uses.
   void LocalizeGlobals(LocalizationInfo &LI);
 
-  // \brief Compute the localized global variables for each function.
-  void AnalyzeGlobals(CallGraph &CG);
-
-  // \brief Returns the localization info associated to a function.
-  LocalizationInfo &getLocalizationInfo(Function *F) {
-    if (!GlobalInfo.count(F)) {
-      LocalizationInfo *LI = new LocalizationInfo(F);
-      LocalizationInfoObjs.push_back(LI);
-      GlobalInfo[F] = LI;
-      return *LI;
-    }
-    return *GlobalInfo[F];
-  }
-
-  void addDirectGlobal(Function *F, GlobalVariable *GV) {
-    getLocalizationInfo(F).addGlobal(GV);
-  }
-
-  // \brief Add all globals from callee to caller.
-  void addIndirectGlobal(Function *F, Function *Callee) {
-    getLocalizationInfo(F).addGlobals(getLocalizationInfo(Callee));
-  }
-
-  void defineGVDirectUsers(GlobalVariable &GV);
-
   // Return true if pointer type arugment is only used to
   // load or store a simple value. This helps decide whehter
   // it is safe to convert ptr arg to by-value arg or
@@ -319,20 +348,24 @@ private:
   // \brief Diagnose illegal overlapping by-ref args.
   void diagnoseOverlappingArgs(CallInst *CI);
 
-  // This map captures all global variables to be localized.
-  SmallDenseMap<Function *, LocalizationInfo *> GlobalInfo;
-
-  // Kernels in the module being processed.
-  SmallPtrSet<Function *, 8> Kernels;
-
   // Already visited functions.
   SmallPtrSet<Function *, 8> AlreadyVisited;
-
-  // LocalizationInfo objects created.
-  SmallVector<LocalizationInfo *, 8> LocalizationInfoObjs;
+  CMABIAnalysis *Info;
 };
 
 } // namespace
+
+char CMABIAnalysis::ID = 0;
+INITIALIZE_PASS_BEGIN(CMABIAnalysis, "cmabi-analysis",
+                      "helper analysis pass to get info for CMABI", false, true)
+INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
+INITIALIZE_PASS_END(CMABIAnalysis, "cmabi-analysis",
+                    "Fix ABI issues for the genx backend", false, true)
+
+bool CMABIAnalysis::runOnModule(Module &M) {
+  runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
+  return false;
+}
 
 // Currently weight of the global defines by its size
 static int calcGVWeight(const GlobalVariable &GV, const DataLayout &DL) {
@@ -405,10 +438,10 @@ auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
   return ToLocalize;
 }
 
-bool CMABI::doInitialization(CallGraph &CG) {
+bool CMABIAnalysis::runOnCallGraph(CallGraph &CG) {
   // Analyze global variable usages and for each function attaches global
   // variables to be copy-in and copy-out.
-  AnalyzeGlobals(CG);
+  analyzeGlobals(CG);
 
   auto getValue = [](Metadata *M) -> Value * {
     if (auto VM = dyn_cast<ValueAsMetadata>(M))
@@ -444,14 +477,13 @@ bool CMABI::doFinalization(CallGraph &CG) {
     }
   }
 
-  for (LocalizationInfo *Obj : LocalizationInfoObjs)
-    delete Obj;
-
   return Changed;
 }
 
 bool CMABI::runOnSCC(CallGraphSCC &SCC) {
-  bool Changed = false, LocalChange;
+  Info = &getAnalysis<CMABIAnalysis>();
+  bool Changed = false;
+  bool LocalChange;
 
   // Diagnose overlapping by-ref args.
   for (auto i = SCC.begin(), e = SCC.end(); i != e; ++i) {
@@ -904,10 +936,10 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   breakConstantExprs(F);
 
   // Variables to be localized.
-  LocalizationInfo &LI = getLocalizationInfo(F);
+  LocalizationInfo &LI = Info->getLocalizationInfo(F);
 
   // This is a kernel.
-  if (Kernels.count(F)) {
+  if (Info->Kernels.count(F)) {
     // Localize globals for kernels.
     if (!LI.getGlobals().empty())
       LocalizeGlobals(LI);
@@ -1768,7 +1800,7 @@ CallGraphNode *CMABI::TransformNode(Function &OrigFunc,
   // It turns out sometimes llvm will recycle function pointers which confuses
   // this pass. We delete its localization info and mark this function as
   // already visited.
-  GlobalInfo.erase(&OrigFunc);
+  Info->GlobalInfo.erase(&OrigFunc);
   AlreadyVisited.insert(&OrigFunc);
 
   NewFuncCGN->stealCalledFunctionsFrom(CG[&OrigFunc]);
@@ -1859,7 +1891,7 @@ static void fillStackWithUsers(std::stack<User *> &Stack, User &CurUser) {
 
 // Traverse in depth through GV constant users to find instruction users.
 // When instruction user is found, it is clear in which function GV is used.
-void CMABI::defineGVDirectUsers(GlobalVariable &GV) {
+void CMABIAnalysis::defineGVDirectUsers(GlobalVariable &GV) {
   std::stack<User *> Stack;
   Stack.push(&GV);
   while (!Stack.empty()) {
@@ -1880,7 +1912,7 @@ void CMABI::defineGVDirectUsers(GlobalVariable &GV) {
 
 // For each function, compute the list of globals that need to be passed as
 // copy-in and copy-out arguments.
-void CMABI::AnalyzeGlobals(CallGraph &CG) {
+void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   Module &M = CG.getModule();
   // assuming the device module is self-contained,
   // set internal-linkage for global variables
@@ -2195,6 +2227,7 @@ void DiagnosticInfoOverlappingArgs::print(DiagnosticPrinter &DP) const
 char CMABI::ID = 0;
 INITIALIZE_PASS_BEGIN(CMABI, "cmabi", "Fix ABI issues for the genx backend", false, false)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(CMABIAnalysis)
 INITIALIZE_PASS_END(CMABI, "cmabi", "Fix ABI issues for the genx backend", false, false)
 
 Pass *llvm::createCMABIPass() { return new CMABI(); }
