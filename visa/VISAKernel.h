@@ -207,6 +207,7 @@ public:
     unsigned long getCodeOffset() { return m_cisa_kernel.entry; }
 
     CISA_GEN_VAR * getDeclFromName(const std::string &name);
+    bool declExistsInCurrentScope(const std::string &name) const;
     bool setNameIndexMap(const std::string &name, CISA_GEN_VAR *, bool unique = false);
     void pushIndexMapScopeLevel();
     void popIndexMapScopeLevel();

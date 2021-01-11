@@ -7825,6 +7825,20 @@ CISA_GEN_VAR * VISAKernelImpl::getDeclFromName(const std::string &name)
     return NULL;
 }
 
+bool VISAKernelImpl::declExistsInCurrentScope(const std::string &name) const
+{
+    // newest scope back and guaranteed to exist since we start with at least
+    // one scope
+    const GenDeclNameToVarMap &currScope = m_GenNamedVarMap.back();
+    bool inCurrScope = currScope.find(name) != currScope.end();
+    //
+    // we also must prohibit globally reserved variables that must be
+    // unique in all scopes (e.g. V0 or V1)
+    bool reservedVarible =
+        m_UniqueNamedVarMap.find(name) != m_UniqueNamedVarMap.end();
+    return inCurrScope || reservedVarible;
+}
+
 bool VISAKernelImpl::setNameIndexMap(const std::string &name, CISA_GEN_VAR * genDecl, bool unique)
 {
     MUST_BE_TRUE(!m_GenNamedVarMap.empty(), "decl map is empty!");

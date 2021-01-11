@@ -136,7 +136,7 @@ public:
     template <typename...Ts>
     void RecordParseError(int lineNum, Ts...ts)
     {
-        if (HasParseError())
+        if (HasParseError()) // report first only
             return;
 
         std::stringstream ss;

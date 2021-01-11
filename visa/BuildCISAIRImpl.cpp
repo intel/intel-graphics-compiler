@@ -1180,7 +1180,7 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
 
     VISA_GenVar *parentDecl = NULL;
 
-    if (m_kernel->getDeclFromName(var_name) != nullptr) {
+    if (m_kernel->declExistsInCurrentScope(var_name)) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
@@ -1189,6 +1189,7 @@ bool CISA_IR_Builder::CISA_general_variable_decl(
     {
         parentDecl = (VISA_GenVar *)m_kernel->getDeclFromName(var_alias_name);
         if (parentDecl == nullptr) {
+            // alias=... points to a nonexistent variable
             RecordParseError(lineNum, var_alias_name, ": unbound alias referent");
             return false;
         }
@@ -1209,7 +1210,7 @@ bool CISA_IR_Builder::CISA_addr_variable_decl(
     const char *var_name, unsigned int var_elements,
     VISA_Type data_type, std::vector<attr_gen_struct *>& scope, int lineNum)
 {
-    if (m_kernel->getDeclFromName(var_name) != nullptr) {
+    if (m_kernel->declExistsInCurrentScope(var_name)) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
@@ -1226,7 +1227,7 @@ bool CISA_IR_Builder::CISA_addr_variable_decl(
 bool CISA_IR_Builder::CISA_predicate_variable_decl(
     const char *var_name, unsigned int var_elements, std::vector<attr_gen_struct*>& attrs, int lineNum)
 {
-    if (m_kernel->getDeclFromName(var_name) != nullptr) {
+    if (m_kernel->declExistsInCurrentScope(var_name)) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
@@ -1243,7 +1244,7 @@ bool CISA_IR_Builder::CISA_predicate_variable_decl(
 bool CISA_IR_Builder::CISA_sampler_variable_decl(
     const char *var_name, int num_elts, const char* name, int lineNum)
 {
-    if (m_kernel->getDeclFromName(var_name) != nullptr) {
+    if (m_kernel->declExistsInCurrentScope(var_name)) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
@@ -1257,7 +1258,7 @@ bool CISA_IR_Builder::CISA_surface_variable_decl(
     const char *var_name, int num_elts, const char* name,
     std::vector<attr_gen_struct*>& attrs, int lineNum)
 {
-    if (m_kernel->getDeclFromName(var_name) != nullptr) {
+    if (m_kernel->declExistsInCurrentScope(var_name)) {
         RecordParseError(lineNum, var_name, ": variable redeclaration");
         return false;
     }
