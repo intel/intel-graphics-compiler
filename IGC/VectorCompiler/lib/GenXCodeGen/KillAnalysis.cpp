@@ -157,8 +157,9 @@ SmallVectorImpl<Instruction *> *KillAnalysis::getKills(Value *V)
       if (BB) {
         // Push predecessors onto stack.
         for (auto bui = BB->use_begin(), bue = BB->use_end(); bui != bue; ++bui) {
-	      Instruction *Inst = cast<Instruction>(bui->getUser());
-          IGC_ASSERT(Inst && Inst->isTerminator() && "cannot cope with computed goto");
+          Instruction *Inst = cast<Instruction>(bui->getUser());
+          IGC_ASSERT_MESSAGE(Inst, "cannot cope with computed goto");
+          IGC_ASSERT_MESSAGE(Inst->isTerminator(), "cannot cope with computed goto");
           Stack.push_back(Inst->getParent());
         }
       }
