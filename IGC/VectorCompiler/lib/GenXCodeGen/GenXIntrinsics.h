@@ -186,7 +186,7 @@ public:
     MODIFIER_ARITH =        GENX_ITR_FLAGENUM(8, 1), // src modifier: arithmetic
     MODIFIER_LOGIC =        GENX_ITR_FLAGENUM(8, 2), // src modifier: logic
     MODIFIER_EXTONLY =      GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
-    DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed 
+    DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed
   };
   struct ArgInfo {
     unsigned Info;
@@ -287,7 +287,9 @@ public:
     }
     // getModifier : get what source modifier is allowed
     unsigned getModifier() {
-      IGC_ASSERT(isGeneral() && isArgOrRet() && !isRet());
+      IGC_ASSERT(isGeneral());
+      IGC_ASSERT(isArgOrRet());
+      IGC_ASSERT(!isRet());
       return Info & MODIFIER;
     }
   };
@@ -301,7 +303,7 @@ public:
     bool operator!=(iterator i) { return p != i.p; }
   };
   iterator begin() {
-    IGC_ASSERT(isNotNull() && "iterating an intrinsic without info");
+    IGC_ASSERT_MESSAGE(isNotNull(), "iterating an intrinsic without info");
     return iterator(Args);
   }
   iterator end() { return iterator(0); }
