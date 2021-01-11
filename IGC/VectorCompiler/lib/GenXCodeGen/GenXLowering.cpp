@@ -835,7 +835,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
     NumChannels = (NumChannels & 1) + ((NumChannels & 2) >> 1) +
                   ((NumChannels & 4) >> 2) + ((NumChannels & 8) >> 3);
   }
-  
+
   unsigned NumBlks = 1;
   if (IID == GenXIntrinsic::genx_svm_scatter ||
       IID == GenXIntrinsic::genx_svm_gather) {
@@ -1013,7 +1013,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
  */
 
 bool GenXLowering::generatePredicatedWrrForNewLoad(CallInst *CI) {
-  IGC_ASSERT(isNewLoadInst(CI) && "New load expected");
+  IGC_ASSERT_MESSAGE(isNewLoadInst(CI), "New load expected");
   // Generate predicated wrr if result of a load is predicated with a select
   if (auto *SI = getLoadSelect(CI)) {
     Value *NewResult = SI->getFalseValue();
@@ -2450,7 +2450,7 @@ static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
   case Intrinsic::maxnum:
     return GenXIntrinsic::genx_fmax;
   };
-  IGC_ASSERT("unknown min/max intrinsic");
+  IGC_ASSERT_MESSAGE(0, "unknown min/max intrinsic");
   return GenXIntrinsic::not_any_intrinsic;
 }
 
@@ -2468,8 +2468,8 @@ bool GenXLowering::lowerMinMax(CallInst *CI, unsigned IntrinsicID) {
 
 // Lower llvm.sqrt to genx.ieee.sqrt equivalent.
 bool GenXLowering::lowerSqrt(CallInst *CI) {
-  IGC_ASSERT(GenXIntrinsic::getAnyIntrinsicID(CI) == Intrinsic::sqrt &&
-      "llvm.sqrt expected");
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getAnyIntrinsicID(CI) == Intrinsic::sqrt,
+    "llvm.sqrt expected");
   auto *ResTy = CI->getType();
   auto *SqrtDecl = GenXIntrinsic::getGenXDeclaration(
       CI->getModule(), GenXIntrinsic::genx_ieee_sqrt, {ResTy, ResTy});
