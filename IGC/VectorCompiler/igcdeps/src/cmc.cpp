@@ -473,366 +473,346 @@ const char* cmc::getPlatformStr(PLATFORM platform)
     return IGC_MANGLE("SKL");
 }
 
-static void generateSymbols(const vc::ocl::KernelInfo& info,
-                            IGC::SProgramOutput& kernelProgram)
-{
-    if (info.RelocationTable.Size > 0) {
-        kernelProgram.m_funcRelocationTable = info.RelocationTable.Buf;
-        kernelProgram.m_funcRelocationTableSize = info.RelocationTable.Size;
-        kernelProgram.m_funcRelocationTableEntries =
-            info.RelocationTable.NumEntries;
-        // EnableZEBinary: ZEBinary related code
-        kernelProgram.m_relocs = info.ZEBinInfo.Relocations;
-    }
-    if (info.SymbolTable.Size > 0) {
-        kernelProgram.m_funcSymbolTable = info.SymbolTable.Buf;
-        kernelProgram.m_funcSymbolTableSize = info.SymbolTable.Size;
-        kernelProgram.m_funcSymbolTableEntries = info.SymbolTable.NumEntries;
-        // EnableZEBinary: ZEBinary related code
-        kernelProgram.m_symbols.function = info.ZEBinInfo.Symbols.Functions;
-        kernelProgram.m_symbols.global = info.ZEBinInfo.Symbols.Globals;
-        kernelProgram.m_symbols.globalConst = info.ZEBinInfo.Symbols.Constants;
-    }
+static void setSymbolsInfo(const vc::ocl::KernelInfo &Info,
+                           IGC::SProgramOutput &KernelProgram) {
+  if (Info.RelocationTable.Size > 0) {
+    KernelProgram.m_funcRelocationTable = Info.RelocationTable.Buf;
+    KernelProgram.m_funcRelocationTableSize = Info.RelocationTable.Size;
+    KernelProgram.m_funcRelocationTableEntries =
+        Info.RelocationTable.NumEntries;
     // EnableZEBinary: ZEBinary related code
-    kernelProgram.m_symbols.local = info.ZEBinInfo.Symbols.Local;
+    KernelProgram.m_relocs = Info.ZEBinInfo.Relocations;
+  }
+  if (Info.SymbolTable.Size > 0) {
+    KernelProgram.m_funcSymbolTable = Info.SymbolTable.Buf;
+    KernelProgram.m_funcSymbolTableSize = Info.SymbolTable.Size;
+    KernelProgram.m_funcSymbolTableEntries = Info.SymbolTable.NumEntries;
+    // EnableZEBinary: ZEBinary related code
+    KernelProgram.m_symbols.function = Info.ZEBinInfo.Symbols.Functions;
+    KernelProgram.m_symbols.global = Info.ZEBinInfo.Symbols.Globals;
+    KernelProgram.m_symbols.globalConst = Info.ZEBinInfo.Symbols.Constants;
+  }
+  // EnableZEBinary: ZEBinary related code
+  KernelProgram.m_symbols.local = Info.ZEBinInfo.Symbols.Local;
 }
 
-void generateKernelArgInfo(const std::vector<vc::ocl::ArgInfo> &Args,
-                           std::vector<iOpenCL::KernelArgumentInfoAnnotation*> &ArgsAnnotation)
-{
-    KernelArgInfoBuilder ArgsAnnotationBuilder;
-    for (auto &Arg : Args)
-        switch(Arg.Kind)
-        {
-          case vc::ocl::ArgKind::General:
-          case vc::ocl::ArgKind::Buffer:
-          case vc::ocl::ArgKind::SVM:
-          case vc::ocl::ArgKind::Sampler:
-          case vc::ocl::ArgKind::Image1d:
-          case vc::ocl::ArgKind::Image2d:
-          case vc::ocl::ArgKind::Image3d:
-              ArgsAnnotationBuilder.insert(Arg.Index, Arg.Kind, Arg.AccessKind);
-              break;
-          default:
-              continue;
-        }
-    ArgsAnnotation = std::move(ArgsAnnotationBuilder).emit();
+static void generateKernelArgInfo(
+    const std::vector<vc::ocl::ArgInfo> &Args,
+    std::vector<iOpenCL::KernelArgumentInfoAnnotation *> &ArgsAnnotation) {
+  KernelArgInfoBuilder ArgsAnnotationBuilder;
+  for (auto &Arg : Args)
+    switch (Arg.Kind) {
+    case vc::ocl::ArgKind::General:
+    case vc::ocl::ArgKind::Buffer:
+    case vc::ocl::ArgKind::SVM:
+    case vc::ocl::ArgKind::Sampler:
+    case vc::ocl::ArgKind::Image1d:
+    case vc::ocl::ArgKind::Image2d:
+    case vc::ocl::ArgKind::Image3d:
+      ArgsAnnotationBuilder.insert(Arg.Index, Arg.Kind, Arg.AccessKind);
+      break;
+    default:
+      continue;
+    }
+  ArgsAnnotation = std::move(ArgsAnnotationBuilder).emit();
 }
 
-static void generatePatchTokens_v2(const vc::ocl::KernelInfo& info,
-                                   const vc::ocl::GTPinInfo* ginfo,
-                                   CMKernel& kernel)
-{
-    llvm::transform(
-        llvm::enumerate(info.PrintStrings),
-        std::back_inserter(kernel.m_kernelInfo.m_printfStringAnnotations),
-        [](const auto EnumStr) {
-            auto* stringAnnotation = new iOpenCL::PrintfStringAnnotation;
-            stringAnnotation->Index = EnumStr.index();
-            const std::string& printString = EnumStr.value();
-            const unsigned stringSize = printString.size();
-            stringAnnotation->StringSize = stringSize;
-            // Though string size is present in annotation, string
-            // should be null terminated: patchtokens processor
-            // ignores size field for some reason.
-            stringAnnotation->StringData = new char[stringSize + 1];
-            std::copy_n(printString.c_str(), stringSize + 1,
-                        stringAnnotation->StringData);
-            return stringAnnotation;
-        });
+static void setArgumentsInfo(const vc::ocl::KernelInfo &Info,
+                             CMKernel &Kernel) {
+  llvm::transform(
+      llvm::enumerate(Info.PrintStrings),
+      std::back_inserter(Kernel.m_kernelInfo.m_printfStringAnnotations),
+      [](const auto EnumStr) {
+        auto *StringAnnotation = new iOpenCL::PrintfStringAnnotation;
+        StringAnnotation->Index = EnumStr.index();
+        const std::string &PrintString = EnumStr.value();
+        const unsigned StringSize = PrintString.size();
+        StringAnnotation->StringSize = StringSize;
+        // Though string size is present in annotation, string
+        // should be null terminated: patchtokens processor
+        // ignores size field for some reason.
+        StringAnnotation->StringData = new char[StringSize + 1];
+        std::copy_n(PrintString.c_str(), StringSize + 1,
+                    StringAnnotation->StringData);
+        return StringAnnotation;
+      });
 
-    // This is the starting constant thread payload
-    // r0-r1 are reserved for SIMD1 dispatch
-    const unsigned constantPayloadStart = info.GRFSizeInBytes * 2;
+  // This is the starting constant thread payload
+  // r0-r1 are reserved for SIMD1 dispatch
+  const unsigned ConstantPayloadStart = Info.GRFSizeInBytes * 2;
 
-    // Setup argument to BTI mapping.
-    kernel.m_kernelInfo.m_argIndexMap.clear();
+  // Setup argument to BTI mapping.
+  Kernel.m_kernelInfo.m_argIndexMap.clear();
 
-    for (const vc::ocl::ArgInfo& arg : info.Args)
-    {
-        IGC_ASSERT_MESSAGE(arg.Offset >= constantPayloadStart,
-                           "Argument overlaps with thread payload");
-        const unsigned argOffset = arg.Offset - constantPayloadStart;
+  for (const vc::ocl::ArgInfo &Arg : Info.Args) {
+    IGC_ASSERT_MESSAGE(Arg.Offset >= ConstantPayloadStart,
+                       "Argument overlaps with thread payload");
+    const unsigned ArgOffset = Arg.Offset - ConstantPayloadStart;
 
-        using ArgKind = vc::ocl::ArgKind;
-        switch (arg.Kind)
-        {
-        default:
-            break;
-        case ArgKind::General:
-            kernel.createConstArgumentAnnotation(arg.Index, arg.SizeInBytes,
-                                                 argOffset);
-            break;
-        case ArgKind::LocalSize:
-            kernel.createSizeAnnotation(
-                argOffset, iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE);
-            break;
-        case ArgKind::GroupCount:
-            kernel.createSizeAnnotation(
-                argOffset, iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS);
-            break;
-        case ArgKind::Buffer:
-            kernel.createPointerGlobalAnnotation(
-                arg.Index, argOffset, arg.SizeInBytes, arg.BTI, arg.AccessKind);
-            kernel.createBufferStatefulAnnotation(arg.Index, arg.AccessKind);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            break;
-        case ArgKind::SVM:
-            kernel.createPointerGlobalAnnotation(
-                arg.Index, argOffset, arg.SizeInBytes, arg.BTI, arg.AccessKind);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            break;
-        case ArgKind::Sampler:
-            kernel.createSamplerAnnotation(arg.Index);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            break;
-        case ArgKind::Image1d:
-            kernel.createImageAnnotation(arg.Index, arg.BTI, /*dim=*/1,
-                                         arg.AccessKind);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            break;
-        case ArgKind::Image2d:
-            kernel.createImageAnnotation(arg.Index, arg.BTI, /*dim=*/2,
-                                         arg.AccessKind);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            break;
-        case ArgKind::Image3d:
-            kernel.createImageAnnotation(arg.Index, arg.BTI, /*dim=*/3,
-                                         arg.AccessKind);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            break;
-        case ArgKind::PrintBuffer:
-            kernel.m_kernelInfo.m_printfBufferAnnotation = new iOpenCL::PrintfBufferAnnotation();
-            kernel.m_kernelInfo.m_printfBufferAnnotation->AnnotationSize = sizeof(kernel.m_kernelInfo.m_printfBufferAnnotation);
-            kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber =
-                arg.Index;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition =
-                argOffset;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
-            kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
-            break;
-        case ArgKind::PrivateBase:
-            if (info.StatelessPrivateMemSize)
-            {
-                kernel.createPrivateBaseAnnotation(
-                    arg.Index, arg.SizeInBytes, argOffset, arg.BTI,
-                    info.StatelessPrivateMemSize);
-                kernel.m_kernelInfo.m_executionEnivronment
-                    .PerThreadPrivateOnStatelessSize =
-                    info.StatelessPrivateMemSize;
-                kernel.m_kernelInfo.m_argIndexMap[arg.Index] = arg.BTI;
-            }
-            break;
-        }
+    using ArgKind = vc::ocl::ArgKind;
+    switch (Arg.Kind) {
+    default:
+      break;
+    case ArgKind::General:
+      Kernel.createConstArgumentAnnotation(Arg.Index, Arg.SizeInBytes,
+                                           ArgOffset);
+      break;
+    case ArgKind::LocalSize:
+      Kernel.createSizeAnnotation(
+          ArgOffset, iOpenCL::DATA_PARAMETER_ENQUEUED_LOCAL_WORK_SIZE);
+      break;
+    case ArgKind::GroupCount:
+      Kernel.createSizeAnnotation(ArgOffset,
+                                  iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS);
+      break;
+    case ArgKind::Buffer:
+      Kernel.createPointerGlobalAnnotation(
+          Arg.Index, ArgOffset, Arg.SizeInBytes, Arg.BTI, Arg.AccessKind);
+      Kernel.createBufferStatefulAnnotation(Arg.Index, Arg.AccessKind);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      break;
+    case ArgKind::SVM:
+      Kernel.createPointerGlobalAnnotation(
+          Arg.Index, ArgOffset, Arg.SizeInBytes, Arg.BTI, Arg.AccessKind);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      break;
+    case ArgKind::Sampler:
+      Kernel.createSamplerAnnotation(Arg.Index);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      break;
+    case ArgKind::Image1d:
+      Kernel.createImageAnnotation(Arg.Index, Arg.BTI, /*dim=*/1,
+                                   Arg.AccessKind);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      break;
+    case ArgKind::Image2d:
+      Kernel.createImageAnnotation(Arg.Index, Arg.BTI, /*dim=*/2,
+                                   Arg.AccessKind);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      break;
+    case ArgKind::Image3d:
+      Kernel.createImageAnnotation(Arg.Index, Arg.BTI, /*dim=*/3,
+                                   Arg.AccessKind);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      break;
+    case ArgKind::PrintBuffer:
+      Kernel.m_kernelInfo.m_printfBufferAnnotation =
+          new iOpenCL::PrintfBufferAnnotation();
+      Kernel.m_kernelInfo.m_printfBufferAnnotation->AnnotationSize =
+          sizeof(Kernel.m_kernelInfo.m_printfBufferAnnotation);
+      Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      Kernel.m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber = Arg.Index;
+      Kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = ArgOffset;
+      Kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
+      Kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
+      break;
+    case ArgKind::PrivateBase:
+      if (Info.StatelessPrivateMemSize) {
+        Kernel.createPrivateBaseAnnotation(Arg.Index, Arg.SizeInBytes,
+                                           ArgOffset, Arg.BTI,
+                                           Info.StatelessPrivateMemSize);
+        Kernel.m_kernelInfo.m_executionEnivronment
+            .PerThreadPrivateOnStatelessSize = Info.StatelessPrivateMemSize;
+        Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
+      }
+      break;
     }
-    generateKernelArgInfo(info.Args, kernel.m_kernelInfo.m_kernelArgInfo);
+  }
+  generateKernelArgInfo(Info.Args, Kernel.m_kernelInfo.m_kernelArgInfo);
 
-    const unsigned maxArgEnd = std::accumulate(
-        info.Args.begin(), info.Args.end(), constantPayloadStart,
-        [](unsigned maxArgEnd, const vc::ocl::ArgInfo& arg) {
-            return std::max(maxArgEnd, arg.Offset + arg.SizeInBytes);
-        });
-    const unsigned constantBufferLengthInGRF =
-        iSTD::Align(maxArgEnd - constantPayloadStart, info.GRFSizeInBytes) /
-        info.GRFSizeInBytes;
-    kernel.m_kernelInfo.m_kernelProgram.ConstantBufferLength =
-        constantBufferLengthInGRF;
-
-    IGC_ASSERT_MESSAGE(
-        kernel.m_kernelInfo.m_executionEnivronment.CompiledSIMDSize == 1,
-        "CM code must be dispatched in SIMD1 mode");
-    IGC::SProgramOutput& kernelProgram = kernel.getProgramOutput();
-
-    generateSymbols(info, kernelProgram);
-
-    // GTPin
-    if (ginfo && ginfo->GTPinBuffer.size() > 0) {
-        size_t bufSize = ginfo->GTPinBuffer.size();
-        void *gtpinBuffer = IGC::aligned_malloc(bufSize, 16);
-        memcpy_s(gtpinBuffer, bufSize, ginfo->GTPinBuffer.data(), bufSize);
-
-        kernelProgram.m_gtpinBufferSize = bufSize;
-        kernelProgram.m_gtpinBuffer = gtpinBuffer;
-    }
+  const unsigned MaxArgEnd = std::accumulate(
+      Info.Args.begin(), Info.Args.end(), ConstantPayloadStart,
+      [](unsigned MaxArgEnd, const vc::ocl::ArgInfo &Arg) {
+        return std::max(MaxArgEnd, Arg.Offset + Arg.SizeInBytes);
+      });
+  const unsigned ConstantBufferLengthInGRF =
+      iSTD::Align(MaxArgEnd - ConstantPayloadStart, Info.GRFSizeInBytes) /
+      Info.GRFSizeInBytes;
+  Kernel.m_kernelInfo.m_kernelProgram.ConstantBufferLength =
+      ConstantBufferLengthInGRF;
 }
 
-// Combine vc compiler metadata with jitter info.
-static void populateKernelInfo_v2(const vc::ocl::KernelInfo& info,
-                                  const FINALIZER_INFO& JITInfo,
-                                  const vc::ocl::GTPinInfo* GtpinInfo,
-                                  llvm::ArrayRef<uint8_t> genBin,
-                                  llvm::ArrayRef<uint8_t> dbgInfo,
-                                  CMKernel& kernel)
-{
-    kernel.m_GRFSizeInBytes = info.GRFSizeInBytes;
-    // ExecutionEnivronment:
-    //
-    IGC::SOpenCLKernelInfo& kInfo = kernel.m_kernelInfo;
-    kInfo.m_kernelName = info.Name;
-    // Fixed SIMD1.
-    kInfo.m_executionEnivronment.CompiledSIMDSize = 1;
-    // SLM size in bytes, align to 1KB.
-    kInfo.m_executionEnivronment.SumFixedTGSMSizes =
-        iSTD::Align(info.SLMSize, 1024);
-    kInfo.m_executionEnivronment.HasBarriers = info.HasBarriers;
-    kInfo.m_executionEnivronment.HasReadWriteImages = info.HasReadWriteImages;
-    kInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired = true;
-    kInfo.m_executionEnivronment.NumGRFRequired = JITInfo.numGRFTotal;
+static void setExecutionInfo(const vc::ocl::KernelInfo &BackendInfo,
+                             const FINALIZER_INFO &JitterInfo,
+                             CMKernel &Kernel) {
+  Kernel.m_GRFSizeInBytes = BackendInfo.GRFSizeInBytes;
+  Kernel.m_kernelInfo.m_kernelName = BackendInfo.Name;
 
-    // Allocate spill-fill buffer
-    if (JITInfo.isSpill || JITInfo.hasStackcalls) {
-        kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.spillMemUsed;
+  iOpenCL::ExecutionEnivronment &ExecEnv =
+      Kernel.m_kernelInfo.m_executionEnivronment;
+  // Fixed SIMD1.
+  ExecEnv.CompiledSIMDSize = 1;
+  // SLM size in bytes, align to 1KB.
+  ExecEnv.SumFixedTGSMSizes = iSTD::Align(BackendInfo.SLMSize, 1024);
+  ExecEnv.HasBarriers = BackendInfo.HasBarriers;
+  ExecEnv.HasReadWriteImages = BackendInfo.HasReadWriteImages;
+  ExecEnv.SubgroupIndependentForwardProgressRequired = true;
+  ExecEnv.NumGRFRequired = JitterInfo.numGRFTotal;
+
+  // Allocate spill-fill buffer
+  if (JitterInfo.isSpill || JitterInfo.hasStackcalls)
+    ExecEnv.PerThreadScratchSpace += JitterInfo.spillMemUsed;
+  if (!JitterInfo.hasStackcalls && BackendInfo.ThreadPrivateMemSize)
+    // CM stack calls and thread-private memory use the same value to control
+    // scratch space. Consequently, if we have stack calls, there is no need
+    // to add this value for thread-private memory. It should be fixed if
+    // these features begin to calculate the required space separately.
+    ExecEnv.PerThreadScratchSpace += BackendInfo.ThreadPrivateMemSize;
+
+  // ThreadPayload.
+  {
+    iOpenCL::ThreadPayload &Payload = Kernel.m_kernelInfo.m_threadPayload;
+    // Local IDs are always present now.
+    Payload.HasLocalIDx = true;
+    Payload.HasLocalIDy = true;
+    Payload.HasLocalIDz = true;
+    Payload.HasGroupID = BackendInfo.HasGroupID;
+    Payload.HasLocalID =
+        Payload.HasLocalIDx || Payload.HasLocalIDy || Payload.HasLocalIDz;
+    Payload.CompiledForIndirectPayloadStorage = true;
+    Payload.OffsetToSkipPerThreadDataLoad =
+        JitterInfo.offsetToSkipPerThreadDataLoad;
+  }
+
+  // Iterate kernel arguments (This should stay in sync with cmc on resource
+  // type.)
+  auto isResource = [](vc::ocl::ArgKind Kind) {
+    using ArgKind = vc::ocl::ArgKind;
+    switch (Kind) {
+    case ArgKind::Buffer:
+    case ArgKind::Image1d:
+    case ArgKind::Image2d:
+    case ArgKind::Image3d:
+    case ArgKind::SVM:
+      return true;
+    default:
+      break;
     }
-    if (!JITInfo.hasStackcalls && info.ThreadPrivateMemSize)
-    {
-        // CM stack calls and thread-private memory use the same value to control
-        // scratch space. Consequently, if we have stack calls, there is no need
-        // to add this value for thread-private memory. It should be fixed if
-        // these features begin to calculate the required space separately.
-        kInfo.m_executionEnivronment.PerThreadScratchSpace +=
-            info.ThreadPrivateMemSize;
+    return false;
+  };
+
+  int NumUAVs = 0;
+  int NumResources = 0;
+  // cmc does not do stateless-to-stateful optimization, therefore
+  // set >4GB to true by default, to false if we see any resource-type.
+  ExecEnv.CompiledForGreaterThan4GBBuffers = true;
+  for (const vc::ocl::ArgInfo &Arg : BackendInfo.Args) {
+    if (isResource(Arg.Kind)) {
+      if (Arg.Kind == vc::ocl::ArgKind::Buffer ||
+          Arg.Kind == vc::ocl::ArgKind::SVM)
+        NumUAVs++;
+      else if (Arg.AccessKind == vc::ocl::ArgAccessKind::WriteOnly ||
+               Arg.AccessKind == vc::ocl::ArgAccessKind::ReadWrite)
+        NumUAVs++;
+      else
+        NumResources++;
+      ExecEnv.CompiledForGreaterThan4GBBuffers = false;
     }
+  }
+  // Update BTI layout.
+  Kernel.RecomputeBTLayout(NumUAVs, NumResources);
+}
 
-    // ThreadPayload.
-    {
-        iOpenCL::ThreadPayload& payload = kInfo.m_threadPayload;
-        // Local IDs are always present now.
-        payload.HasLocalIDx = true;
-        payload.HasLocalIDy = true;
-        payload.HasLocalIDz = true;
-        payload.HasGroupID = info.HasGroupID;
-        payload.HasLocalID =
-            payload.HasLocalIDx || payload.HasLocalIDy || payload.HasLocalIDz;
-        payload.CompiledForIndirectPayloadStorage = true;
-        payload.OffsetToSkipPerThreadDataLoad =
-            JITInfo.offsetToSkipPerThreadDataLoad;
-    }
+static void setGenBinary(const FINALIZER_INFO &JitterInfo,
+                         const std::vector<char> &GenBinary, CMKernel &Kernel) {
+  // Kernel binary, padding is hard-coded.
+  const size_t Size = GenBinary.size();
+  const size_t Padding = iSTD::GetAlignmentOffset(Size, 64);
+  void *KernelBin = IGC::aligned_malloc(Size + Padding, 16);
+  memcpy_s(KernelBin, Size + Padding, GenBinary.data(), Size);
+  // Pad out the rest with 0s.
+  std::memset(static_cast<char *>(KernelBin) + Size, 0, Padding);
 
-    // Kernel binary, padding is hard-coded.
-    const size_t size = genBin.size();
-    const size_t padding = iSTD::GetAlignmentOffset(size, 64);
-    void* kernelBin = IGC::aligned_malloc(size + padding, 16);
-    memcpy_s(kernelBin, size + padding, genBin.data(), size);
-    // pad out the rest with 0s
-    std::memset(static_cast<char*>(kernelBin) + size, 0, padding);
+  // Update program info.
+  IGC::SProgramOutput &PO = Kernel.getProgramOutput();
+  PO.m_programBin = KernelBin;
+  PO.m_programSize = Size + Padding;
+  PO.m_unpaddedProgramSize = Size;
+  PO.m_InstructionCount = JitterInfo.numAsmCount;
+}
 
-    // Update program info.
-    kernel.getProgramOutput().m_programBin = kernelBin;
-    kernel.getProgramOutput().m_programSize = size + padding;
-    kernel.getProgramOutput().m_unpaddedProgramSize = size;
-    kernel.getProgramOutput().m_InstructionCount = JITInfo.numAsmCount;
+static void setDebugInfo(const std::vector<char> &DebugInfo, CMKernel &Kernel) {
+  if (DebugInfo.empty())
+    return;
 
-    const size_t DbgSize = dbgInfo.size();
-    if (DbgSize)
-    {
-        void* debugInfo = IGC::aligned_malloc(DbgSize, sizeof(void*));
-        memcpy_s(debugInfo, DbgSize, dbgInfo.data(), DbgSize);
-        kernel.getProgramOutput().m_debugDataVISA = debugInfo;
-        kernel.getProgramOutput().m_debugDataVISASize = DbgSize;
-    }
+  const size_t DebugInfoSize = DebugInfo.size();
+  void *DebugInfoBuf = IGC::aligned_malloc(DebugInfoSize, sizeof(void *));
+  memcpy_s(DebugInfoBuf, DebugInfoSize, DebugInfo.data(), DebugInfoSize);
+  Kernel.getProgramOutput().m_debugDataVISA = DebugInfoBuf;
+  Kernel.getProgramOutput().m_debugDataVISASize = DebugInfoSize;
+}
 
-    if (JITInfo.numBytesScratchGtpin > 0)
-    {
-        kernel.getProgramOutput().m_scratchSpaceUsedByGtpin = JITInfo.numBytesScratchGtpin;
-        kInfo.m_executionEnivronment.PerThreadScratchSpace += JITInfo.numBytesScratchGtpin;
-    }
+static void setGtpinInfo(const FINALIZER_INFO &JitterInfo,
+                         const vc::ocl::GTPinInfo &GtpinInfo,
+                         CMKernel &Kernel) {
+  Kernel.getProgramOutput().m_scratchSpaceUsedByGtpin =
+      JitterInfo.numBytesScratchGtpin;
+  Kernel.m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace +=
+      JitterInfo.numBytesScratchGtpin;
 
-    // Iterate kernel arguments (This should stay in sync with cmc on resource type.)
-    int numUAVs = 0;
-    int numResources = 0;
+  if (!GtpinInfo.GTPinBuffer.empty()) {
+    const size_t BufSize = GtpinInfo.GTPinBuffer.size();
+    void *GtpinBuffer = IGC::aligned_malloc(BufSize, 16);
+    memcpy_s(GtpinBuffer, BufSize, GtpinInfo.GTPinBuffer.data(), BufSize);
+    Kernel.getProgramOutput().m_gtpinBufferSize = BufSize;
+    Kernel.getProgramOutput().m_gtpinBuffer = GtpinBuffer;
+  }
+}
 
-    auto isResource = [](vc::ocl::ArgKind kind) {
-        using ArgKind = vc::ocl::ArgKind;
-        switch (kind)
-        {
-        case ArgKind::Buffer:
-        case ArgKind::Image1d:
-        case ArgKind::Image2d:
-        case ArgKind::Image3d:
-        case ArgKind::SVM:
-            return true;
-        default:
-            break;
-        }
-        return false;
-    };
+// Transform backend collected into encoder format (OCL patchtokens or L0
+// structures).
+static void fillKernelInfo(const vc::ocl::CompileInfo &CompKernel,
+                           CMKernel &ResKernel) {
+  setExecutionInfo(CompKernel.KernelInfo, CompKernel.JitInfo, ResKernel);
+  setArgumentsInfo(CompKernel.KernelInfo, ResKernel);
+  setSymbolsInfo(CompKernel.KernelInfo, ResKernel.getProgramOutput());
 
-    // cmc does not do stateless-to-stateful optimization, therefore
-    // set >4GB to true by default, to false if we see any resource-type
-    kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = true;
-    for (const vc::ocl::ArgInfo& arg : info.Args)
-    {
-        if (isResource(arg.Kind))
-        {
-            if (arg.Kind == vc::ocl::ArgKind::Buffer ||
-                arg.Kind == vc::ocl::ArgKind::SVM)
-                numUAVs++;
-            else if (arg.AccessKind == vc::ocl::ArgAccessKind::WriteOnly ||
-                     arg.AccessKind == vc::ocl::ArgAccessKind::ReadWrite)
-                numUAVs++;
-            else
-                numResources++;
-            kInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers = false;
-        }
-    }
-
-    // update BTI layout.
-    kernel.RecomputeBTLayout(numUAVs, numResources);
-
-    // Generate OCL patch tokens.
-    generatePatchTokens_v2(info, GtpinInfo, kernel);
+  setGenBinary(CompKernel.JitInfo, CompKernel.GenBinary, ResKernel);
+  setDebugInfo(CompKernel.DebugInfo, ResKernel);
+  setGtpinInfo(CompKernel.JitInfo, CompKernel.GtpinInfo, ResKernel);
 }
 
 template <typename AnnotationT>
 std::unique_ptr<AnnotationT>
 getDataAnnotation(const vc::ocl::DataInfoT &DataInfo) {
-  auto allocSize = DataInfo.Buffer.size() + DataInfo.AdditionalZeroedSpace;
-  IGC_ASSERT_MESSAGE(allocSize >= 0, "illegal allocation size");
-  if (allocSize == 0)
+  auto AllocSize = DataInfo.Buffer.size() + DataInfo.AdditionalZeroedSpace;
+  IGC_ASSERT_MESSAGE(AllocSize >= 0, "illegal allocation size");
+  if (AllocSize == 0)
     return nullptr;
-  auto initConstant = std::make_unique<AnnotationT>();
-  initConstant->Alignment = DataInfo.Alignment;
-  initConstant->AllocSize = allocSize;
+  auto InitConstant = std::make_unique<AnnotationT>();
+  InitConstant->Alignment = DataInfo.Alignment;
+  InitConstant->AllocSize = AllocSize;
 
-  auto bufferSize = DataInfo.Buffer.size();
-  initConstant->InlineData.resize(bufferSize);
-  memcpy_s(initConstant->InlineData.data(), bufferSize, DataInfo.Buffer.data(),
-           bufferSize);
+  auto BufferSize = DataInfo.Buffer.size();
+  InitConstant->InlineData.resize(BufferSize);
+  memcpy_s(InitConstant->InlineData.data(), BufferSize, DataInfo.Buffer.data(),
+           BufferSize);
 
-  return std::move(initConstant);
+  return std::move(InitConstant);
 }
 
-void fillOCLProgramInfo(IGC::SOpenCLProgramInfo &programInfo, const vc::ocl::ModuleInfoT &ModuleInfo)
-{
-    auto constantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(ModuleInfo.ConstantData);
-    if (constantAnnotation)
-        programInfo.m_initConstantAnnotation.push_back(std::move(constantAnnotation));
-    auto globalAnnotation = getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.GlobalData);
-    if (globalAnnotation)
-        programInfo.m_initGlobalAnnotation.push_back(std::move(globalAnnotation));
+static void fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
+                               const vc::ocl::ModuleInfoT &ModuleInfo) {
+  auto ConstantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(
+      ModuleInfo.ConstantData);
+  if (ConstantAnnotation)
+    ProgramInfo.m_initConstantAnnotation.push_back(
+        std::move(ConstantAnnotation));
+  auto GlobalAnnotation =
+      getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.GlobalData);
+  if (GlobalAnnotation)
+    ProgramInfo.m_initGlobalAnnotation.push_back(std::move(GlobalAnnotation));
 };
 
-void vc::createBinary(
-    iOpenCL::CGen8CMProgram& CMProgram,
-    const vc::ocl::CompileOutput& CompileInfos)
-{
-    bool ProgramIsDebuggable = false;
-    fillOCLProgramInfo(*CMProgram.m_programInfo, CompileInfos.ModuleInfo);
-    for (const vc::ocl::CompileInfo& Info : CompileInfos.Kernels)
-    {
-        CMKernel* K = new CMKernel(CMProgram.getPlatform());
-        CMProgram.m_kernels.push_back(K);
-        llvm::ArrayRef<uint8_t> GenBin{
-            reinterpret_cast<const uint8_t*>(Info.GenBinary.data()),
-            Info.GenBinary.size()};
-        llvm::ArrayRef<uint8_t> DbgInfo{
-            reinterpret_cast<const uint8_t*>(Info.DebugInfo.data()),
-            Info.DebugInfo.size()};
-        populateKernelInfo_v2(Info.KernelInfo, Info.JitInfo, &(Info.GtpinInfo),
-                              GenBin, DbgInfo, *K);
-
-        ProgramIsDebuggable |= (Info.DebugInfo.size() > 0);
-    }
-    CMProgram.m_ContextProvider.updateDebuggableStatus(ProgramIsDebuggable);
+void vc::createBinary(iOpenCL::CGen8CMProgram &CMProgram,
+                      const vc::ocl::CompileOutput &CompileInfos) {
+  bool ProgramIsDebuggable = false;
+  fillOCLProgramInfo(*CMProgram.m_programInfo, CompileInfos.ModuleInfo);
+  for (const vc::ocl::CompileInfo &Info : CompileInfos.Kernels) {
+    CMKernel *K = new CMKernel(CMProgram.getPlatform());
+    CMProgram.m_kernels.push_back(K);
+    fillKernelInfo(Info, *K);
+    ProgramIsDebuggable |= !Info.DebugInfo.empty();
+  }
+  CMProgram.m_ContextProvider.updateDebuggableStatus(ProgramIsDebuggable);
 }
