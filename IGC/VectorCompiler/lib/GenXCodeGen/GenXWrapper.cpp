@@ -400,7 +400,7 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
       bool Enabled = Feature.consume_front("+");
       if (!Enabled) {
         bool Disabled = Feature.consume_front("-");
-        IGC_ASSERT(Disabled && "unexpected feature format");
+        IGC_ASSERT_MESSAGE(Disabled, "unexpected feature format");
       }
       Features.AddFeature(Feature.str(), Enabled);
     }
@@ -428,7 +428,7 @@ createTargetMachine(const vc::CompileOptions &Opts, Triple &TheTriple) {
   std::string Error;
   const Target *TheTarget = TargetRegistry::lookupTarget(
       TheTriple.getArchName().str(), TheTriple, Error);
-  IGC_ASSERT(TheTarget && "vc target was not registered");
+  IGC_ASSERT_MESSAGE(TheTarget, "vc target was not registered");
 
   const std::string FeaturesStr = getSubtargetFeatureString(Opts);
   // These ones do not look useful for now. Maybe will be adjusted
@@ -536,7 +536,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
   bool AddPasses =
       TM.addPassesToEmitFile(PM, OS, nullptr, FileType, /*NoVerify*/ true);
-  IGC_ASSERT(!AddPasses && "Bad filetype for vc-codegen");
+  IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
 }
 
 vc::ocl::ModuleInfoT convertInternalOCLModuleInfo(
