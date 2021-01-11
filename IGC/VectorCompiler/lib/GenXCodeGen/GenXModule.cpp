@@ -137,9 +137,11 @@ bool GenXModule::runOnModule(Module &M) {
           Visited[Inst->getFunction()].insert(&F);
         }
         // recursive funcs must use stack
-        if (Inst->getFunction() == &F)
-          IGC_ASSERT(F.hasFnAttribute(genx::FunctionMD::CMStackCall) &&
-                 "Found recursive function without CMStackCall attribute");
+        if (Inst->getFunction() == &F) {
+          const bool UsesStack = F.hasFnAttribute(genx::FunctionMD::CMStackCall);
+          IGC_ASSERT_MESSAGE(UsesStack, "Found recursive function without CMStackCall attribute");
+          (void) UsesStack;
+        }
       }
     }
 
