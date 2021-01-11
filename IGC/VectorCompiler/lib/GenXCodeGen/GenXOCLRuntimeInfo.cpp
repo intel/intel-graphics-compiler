@@ -124,8 +124,8 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
 
 void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
     const Function &Kernel, genx::KernelMetadata &KM) {
-  IGC_ASSERT(Kernel.arg_size() == KM.getNumArgs() &&
-         "Expected same number of arguments");
+  IGC_ASSERT_MESSAGE(Kernel.arg_size() == KM.getNumArgs(),
+    "Expected same number of arguments");
   // Some arguments are part of thread payload and do not require
   // entries in arguments info for OCL runtime.
   auto NonPayloadArgs =
@@ -168,7 +168,7 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
   GRFSizeInBytes = ST.getGRFWidth();
 
   genx::KernelMetadata KM{FG.getHead()};
-  IGC_ASSERT(KM.isKernel() && "Expected kernel as head of function group");
+  IGC_ASSERT_MESSAGE(KM.isKernel(), "Expected kernel as head of function group");
   setMetadataProperties(KM, ST);
   setArgumentProperties(*FG.getHead(), KM);
   setPrintStrings(*FG.getHead()->getParent());
@@ -462,8 +462,7 @@ private:
     IGC_ASSERT_MESSAGE(!GenBinary.empty(),
                        "The binary must contain a least the kernel");
     auto &KernelSection = getKernelSection();
-    IGC_ASSERT_MESSAGE(
-        KernelSection.Info.Offset == 0,
+    IGC_ASSERT_MESSAGE(KernelSection.Info.Offset == 0,
         "It's presumed that the kernel is at the front of the binary");
   }
 };
@@ -485,8 +484,9 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   void *GenBin = nullptr;
   int GenBinSize = 0;
   CISA_CALL(BuiltFunc.GetGenxBinary(GenBin, GenBinSize));
-  IGC_ASSERT_MESSAGE(
-      GenBin && GenBinSize,
+  IGC_ASSERT_MESSAGE(GenBin,
+      "Unexpected null buffer or zero-sized kernel (compilation failed?)");
+  IGC_ASSERT_MESSAGE(GenBinSize,
       "Unexpected null buffer or zero-sized kernel (compilation failed?)");
   GenBinary.append(&Func, ArrayRef<char>{reinterpret_cast<char *>(GenBin),
                                          static_cast<size_t>(GenBinSize)});
