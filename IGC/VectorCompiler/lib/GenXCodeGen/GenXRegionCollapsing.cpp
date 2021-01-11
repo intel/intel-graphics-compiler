@@ -354,7 +354,8 @@ static Value *createBitCastToElementType(Value *Input, Type *ElementTy,
                                          const DebugLoc &DbgLoc) {
   unsigned ElBytes = ElementTy->getPrimitiveSizeInBits() / 8U;
   if (!ElBytes) {
-    IGC_ASSERT(ElementTy->isPointerTy() && ElementTy->getPointerElementType()->isFunctionTy());
+    IGC_ASSERT(ElementTy->isPointerTy());
+    IGC_ASSERT(ElementTy->getPointerElementType()->isFunctionTy());
     ElBytes = DL->getTypeSizeInBits(ElementTy) / 8;
   }
   unsigned InputBytes = Input->getType()->getPrimitiveSizeInBits() / 8U;
@@ -362,10 +363,11 @@ static Value *createBitCastToElementType(Value *Input, Type *ElementTy,
     Type *T = Input->getType();
     if (T->isVectorTy())
       T = cast<VectorType>(T)->getElementType();
-    IGC_ASSERT(T->isPointerTy() && T->getPointerElementType()->isFunctionTy());
+    IGC_ASSERT(T->isPointerTy());
+    IGC_ASSERT(T->getPointerElementType()->isFunctionTy());
     InputBytes = DL->getTypeSizeInBits(T) / 8;
   }
-  IGC_ASSERT(!(InputBytes & (ElBytes - 1)) && "non-integral number of elements");
+  IGC_ASSERT_MESSAGE(!(InputBytes & (ElBytes - 1)), "non-integral number of elements");
   auto Ty = IGCLLVM::FixedVectorType::get(ElementTy, InputBytes / ElBytes);
   return createBitCast(Input, Ty, Name, InsertBefore, DbgLoc);
 }
@@ -436,7 +438,8 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
     return;
 
   // skip call above shall check for RdRegion among other things
-  IGC_ASSERT(Rd && GenXIntrinsic::isRdRegion(Rd));
+  IGC_ASSERT(Rd);
+  IGC_ASSERT(GenXIntrinsic::isRdRegion(Rd));
 
   // We have a single use rdregion as the input to the bitcast.
   // Adjust the region parameters if possible so the element type is that of
@@ -913,7 +916,8 @@ static bool hasMemoryDeps(CallInst *L1, CallInst *L2, Value *Addr,
 
 // Check whether two values are bitwise identical.
 static bool isBitwiseIdentical(Value *V1, Value *V2, DominatorTree *DT) {
-  IGC_ASSERT(V1 && V2 && "null value");
+  IGC_ASSERT_MESSAGE(V1, "null value");
+  IGC_ASSERT_MESSAGE(V2, "null value");
   if (V1 == V2)
     return true;
   if (BitCastInst *BI = dyn_cast<BitCastInst>(V1))
