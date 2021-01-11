@@ -114,8 +114,8 @@ bool GenXInstCombineCleanup::runOnFunction(Function &F)
       continue;
 
     unsigned CondSize = CondTy->getPrimitiveSizeInBits();
-    IGC_ASSERT(CondSize != genx::BoolBits &&
-           "CondSize == 1 is not expected here. See typeMustBeChanged");
+    IGC_ASSERT_MESSAGE(CondSize != genx::BoolBits,
+        "CondSize == 1 is not expected here. See typeMustBeChanged");
     // Round up to the next power of 2 skipping i2 and i4 (i3 -> i8, i2 -> i8,
     // etc)
     unsigned Size =
