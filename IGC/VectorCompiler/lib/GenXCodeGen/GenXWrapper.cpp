@@ -24,17 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "vc/Support/BackendConfig.h"
-#include "GenXOCLRuntimeInfo.h"
 #include "GenXWATable.h"
 
 #include "llvmWrapper/Target/TargetMachine.h"
 
+#include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXCodeGen/GenXTarget.h"
 #include "vc/GenXCodeGen/GenXWrapper.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Options/Options.h"
+#include "vc/Support/BackendConfig.h"
 #include "vc/Support/Status.h"
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"

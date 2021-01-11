@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "GenXOCLRuntimeInfo.h"
+#include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 
 #include "ConstantEncoder.h"
 #include "GenX.h"

@@ -54,12 +54,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "FunctionGroup.h"
 #include "GenX.h"
-#include "vc/Support/BackendConfig.h"
 #include "GenXDebugInfo.h"
 #include "GenXModule.h"
-#include "GenXOCLRuntimeInfo.h"
 
+#include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXOpts/GenXOpts.h"
+#include "vc/Support/BackendConfig.h"
+
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/TargetTransformInfo.h"

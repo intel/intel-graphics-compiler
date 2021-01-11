@@ -25,7 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "GenX.h"
-#include "GenXOCLRuntimeInfo.h"
+
+#include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
+
 #include "llvm/Pass.h"
 #include "Probe/Assertion.h"
 

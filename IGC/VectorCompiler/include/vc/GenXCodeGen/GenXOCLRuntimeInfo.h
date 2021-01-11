@@ -27,10 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef VCOPT_LIB_GENXCODEGEN_GENXOCLRUNTIMEINFO_H
 #define VCOPT_LIB_GENXCODEGEN_GENXOCLRUNTIMEINFO_H
 
-#include "FunctionGroup.h"
-#include "vc/Support/BackendConfig.h"
-
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Support/BackendConfig.h"
 
 #include "llvm/ADT/Optional.h"
 #include "llvm/Pass.h"
@@ -42,6 +40,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace llvm {
 class Function;
+
+class FunctionGroup;
 class GenXSubtarget;
 
 void initializeGenXOCLRuntimeInfoPass(PassRegistry &PR);
