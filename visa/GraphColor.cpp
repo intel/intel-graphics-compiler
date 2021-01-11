@@ -2177,8 +2177,8 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         // Following condition skips marking interference for
         // pseudo_kill nodes.
         //
-        if (inst->isPseudoKill() == false &&
-            inst->isLifeTimeEnd() == false)
+        if (!inst->isPseudoKill() &&
+            !inst->isLifeTimeEnd())
         {
             lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);  // update reference count
 
@@ -12639,8 +12639,8 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
 //
 unsigned GraphColor::edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
 {
-    bool lr1EvenAlign = gra.isEvenAligned(lr1->getVar()->getDeclare());
-    bool lr2EvenAlign = gra.isEvenAligned(lr2->getVar()->getDeclare());
+    bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
+    bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
     unsigned lr1_nreg = lr1->getNumRegNeeded();
     unsigned lr2_nreg = lr2->getNumRegNeeded();
 

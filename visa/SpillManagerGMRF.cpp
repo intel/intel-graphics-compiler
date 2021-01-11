@@ -534,31 +534,24 @@ SpillManagerGRF::calculateSpillDisp (
     // Locate the blocked locations calculated from the interfering
     // spilled live ranges and put them into a list in ascending order.
 
-    typedef std::deque < G4_RegVar * > LocList;
+    using LocList = std::list<G4_RegVar*>;
     LocList locList;
     unsigned lrId =
         (regVar->getId () >= varIdCount_)?
         regVar->getBaseRegVar ()->getId (): regVar->getId ();
     assert (lrId < varIdCount_);
 
-    for (unsigned i = 0; i < varIdCount_; i++) {
-
-        if (spillMemLifetimeInterfere (lrId, i)) {
-            G4_RegVar * intfRegVar = getRegVar (i);
-            assert (getRegVar (i)->isAliased () == false);
-            if (intfRegVar->isRegVarTransient ()) continue;
-            unsigned iDisp = intfRegVar->getDisp ();
-            if (iDisp == UINT_MAX) continue;
-            LocList::iterator loc;
-            for (loc = locList.begin ();
-                 loc != locList.end () && (*loc)->getDisp () < iDisp;
-                 ++loc);
-            if (loc != locList.end ())
-                locList.insert (loc, intfRegVar);
-            else
-                locList.push_back (intfRegVar);
-        }
+    std::vector<unsigned int>& intfs = spillIntf_->getSparseIntfForVar(lrId);
+    for (auto edge : intfs)
+    {
+        auto lrEdge = getRegVar(edge);
+        if (lrEdge->isRegVarTransient())
+            continue;
+        if (lrEdge->getDisp() == UINT_MAX)
+            continue;
+        locList.push_back(lrEdge);
     }
+    locList.sort([](G4_RegVar* v1, G4_RegVar* v2) { return v1->getDisp() < v2->getDisp(); });
 
     // Find a spill slot for lRange within the locList.
     // we always start searching from nextSpillOffset_ to facilitate intra-iteration reuse.

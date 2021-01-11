@@ -379,7 +379,7 @@ namespace vISA
         // like dense matrix, interference is not symmetric (that is, if v1 and v2 interfere and v1 < v2,
         // we insert (v1, v2) but not (v2, v1)) for better cache behavior
         std::vector<std::unordered_set<uint32_t> > sparseMatrix;
-        const uint32_t denseMatrixLimit = 0x20000;
+        const uint32_t denseMatrixLimit = 0x80000;
 
         void updateLiveness(BitSet& live, uint32_t id, bool val)
         {
@@ -418,7 +418,7 @@ namespace vISA
         {
             if (useDenseMatrix())
             {
-                unsigned N = rowSize * maxId;
+                auto N = (size_t)rowSize * (size_t)maxId;
                 matrix = new uint32_t[N];
                 memset(matrix, 0, N * sizeof(int));
             }
@@ -439,7 +439,7 @@ namespace vISA
             sparseIntf.clear();
             if (useDenseMatrix())
             {
-                unsigned N = rowSize * maxId;
+                auto N = (size_t)rowSize * (size_t)maxId;
                 std::memset(matrix, 0, N * sizeof(int));
             }
             else
