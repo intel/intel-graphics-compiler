@@ -60,7 +60,7 @@ namespace IGC
         }
     }
 
-    inline llvm::Type* GetResourceDimensionType(llvm::Module& module, RESOURCE_DIMENSION_TYPE resourceDimTypeId)
+    inline llvm::Type* GetResourceDimensionType(const llvm::Module& module, RESOURCE_DIMENSION_TYPE resourceDimTypeId)
     {
         IGC_ASSERT((resourceDimTypeId == DIM_TYPED_BUFFER_TYPE ||
             resourceDimTypeId == DIM_1D_TYPE || resourceDimTypeId == DIM_1D_ARRAY_TYPE ||
