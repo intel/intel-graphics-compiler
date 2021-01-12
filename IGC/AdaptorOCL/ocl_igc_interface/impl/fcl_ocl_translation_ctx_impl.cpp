@@ -426,7 +426,9 @@ static const char* getPlatformStr(PLATFORM platform)
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
         if (platform.eProductFamily == IGFX_TIGERLAKE_LP ||
-            platform.eProductFamily == IGFX_DG1)
+            platform.eProductFamily == IGFX_DG1 ||
+            platform.eProductFamily == IGFX_ROCKETLAKE ||
+            platform.eProductFamily == IGFX_ALDERLAKE_S )
             return "TGLLP";
     default:
         break;
