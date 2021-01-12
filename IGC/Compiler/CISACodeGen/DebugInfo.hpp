@@ -65,10 +65,12 @@ namespace IGC
         CShader* m_pShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;
 
+        static void markOutputPrivateBase(CShader* pShader);
+        static void markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName);
+        static void markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
+
         void markOutputVars(const llvm::Instruction* pInst);
         void markOutput(llvm::Function& F, CShader* m_currShader);
-        void markOutputPrivateBase(void);
-        void markOutputPTO(llvm::Instruction* pInst);
 
         void addVISAModule(llvm::Function* F, VISAModule* m)
         {

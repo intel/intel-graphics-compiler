@@ -128,6 +128,21 @@ std::vector<llvm::Value*> ImplicitGlobalId::runOnBasicBlock(llvm::Instruction* i
         if (isa<Instruction>(extractElem))
         {
             cast<Instruction>(extractElem)->setDebugLoc(B.getCurrentDebugLocation());
+            auto extractElemInst = dyn_cast_or_null<Instruction>(extractElem);
+
+            if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
+            {
+                IGC_ASSERT_MESSAGE(extractElemInst, "__ocl_dbg_ will not be marked as Output");
+                if (extractElemInst)
+                {
+                    // Note: for debugging purposes __ocl_dbg_gid0/1/2, __ocl_dbg_lid0/1/2, __ocl_dbg_grid0/1/2
+                    // will be marked as Output to keep its liveness all time
+                    auto extractElemInstMD = MDNode::get(m_pModule->getContext(), nullptr);
+
+                    extractElemInst->setMetadata("implicitGlobalID", extractElemInstMD);
+                }
+            }
+
         }
         vec.push_back(extractElem);
     }

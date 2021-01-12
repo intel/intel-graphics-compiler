@@ -924,13 +924,20 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (m_currShader->GetDebugInfoData())
+    if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
+    {
+        DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
+    }
+    else
     {
         m_currShader->GetDebugInfoData()->markOutput(F, m_currShader);
+    }
+
+    if (m_currShader->GetDebugInfoData())
+    {
         m_currShader->GetDebugInfoData()->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());
         m_currShader->GetDebugInfoData()->transferMappings(F);
     }
-
 
     // Compile only when this is the last function for this kernel.
     bool finalize = (!m_FGA || m_FGA->isGroupTail(&F));

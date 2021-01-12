@@ -2502,39 +2502,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         auto loc = &locV;
         int64_t offset = 0;
 
-        if (EmitSettings.EnableSIMDLaneDebugging && isSliced)
-        {
-            // DW_OP_push_simd_lane
-            // DW_OP_lit16
-            // DW_OP_ge
-            // DW_OP_bra secondHalf
-            // -- emit first half
-            // DW_OP_skip end
-            // secondHalf:
-            // -- emit second half
-            // end:
-            if (firstHalf)
-            {
-                addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit16);
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_ge);
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bra);
-                addUInt(Block, dwarf::DW_FORM_data2, 0xf00d);
-                secondHalfOff = Block->getValues().back();
-                IGC_ASSERT_MESSAGE(isa<DIEInteger>(secondHalfOff), "Expecting DIEInteger");
-                offsetNotTaken = Block->ComputeSizeOnTheFly(Asm);
-            }
-            else
-            {
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_skip);
-                addUInt(Block, dwarf::DW_FORM_data2, 0xbeef);
-                skipOff = Block->getValues().back();
-                IGC_ASSERT_MESSAGE(isa<DIEInteger>(skipOff), "Expecting DIEInteger");
-                offsetTaken = Block->ComputeSizeOnTheFly(Asm);
-                cast<DIEInteger>(secondHalfOff)->setValue(offsetTaken - offsetNotTaken);
-            }
-        }
-
         auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
         auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
         VISAVariableLocation V(VISAMod);
@@ -2578,8 +2545,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 // 12 DW_OP_const1u/2u/4u/8u simdSize * <variable offset> , i.e. offset in bits to the first lane's variable
                 // 13 DW_OP_plus
                 // 14 DW_OP_INTEL_push_simd_lane
-                //    DW_OP_lit16 <--
-                //    DW_OP_minus <-- Emitted only for second half of SIMD32 kernels
                 // 15 DW_OP_const1u/2u/4u/8u <variableSize>  , i.e. size in bytes
                 // 16 DW_OP_mul
                 // 17 DW_OP_plus
@@ -2657,13 +2622,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 13 DW_OP_plus
                 addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);  // 14 DW_OP_INTEL_push_simd_lane
 
-                if (!firstHalf)
-                {
-                    // Fix offset to use for second half of SIMD32
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit16);
-                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_minus);
-                }
-
                 uint64_t varSizeInBytes = var.getBasicSize(DD) >> 3;
                 IGC_ASSERT_MESSAGE((var.getBasicSize(DD) & 0x7) == 0, "Unexpected variable size");
 
@@ -2671,11 +2629,45 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);            // 16 DW_OP_mul
                 addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);           // 17 DW_OP_plus
 
-                firstHalf = false;
-                continue;
+                // As long as for debugging there is no slicing of variables handled above,
+                // 2nd run of this loop is not needed in SIMD32, because opcodes above describe
+                // location for all 32 lanes.
+                break;
             }
         }
 
+        if (EmitSettings.EnableSIMDLaneDebugging && isSliced)
+        {
+            // DW_OP_push_simd_lane
+            // DW_OP_lit16
+            // DW_OP_ge
+            // DW_OP_bra secondHalf
+            // -- emit first half
+            // DW_OP_skip end
+            // secondHalf:
+            // -- emit second half
+            // end:
+            if (firstHalf)
+            {
+                addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit16);
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_ge);
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bra);
+                addUInt(Block, dwarf::DW_FORM_data2, 0xf00d);
+                secondHalfOff = Block->getValues().back();
+                IGC_ASSERT_MESSAGE(isa<DIEInteger>(secondHalfOff), "Expecting DIEInteger");
+                offsetNotTaken = Block->ComputeSizeOnTheFly(Asm);
+            }
+            else
+            {
+                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_skip);
+                addUInt(Block, dwarf::DW_FORM_data2, 0xbeef);
+                skipOff = Block->getValues().back();
+                IGC_ASSERT_MESSAGE(isa<DIEInteger>(skipOff), "Expecting DIEInteger");
+                offsetTaken = Block->ComputeSizeOnTheFly(Asm);
+                cast<DIEInteger>(secondHalfOff)->setValue(offsetTaken - offsetNotTaken);
+            }
+        }
         DbgDecoder::VarInfo varInfo;
         if (!vars)
         {
