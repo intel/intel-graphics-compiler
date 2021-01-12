@@ -347,72 +347,108 @@ void Optimizer::insertDummyCompactInst()
     bb->push_back(movInst);
 }
 
+// Float and DP share same GRF cache.
+// Integer and Math shader same GRF cache.
+void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
+{
+    //Dst
+    auto nullDst1 = builder.createNullDst(Type_UD);
+    auto nullDst2 = builder.createNullDst(Type_F);
+
+    const RegionDesc* region = kernel.fg.builder->getRegionScalar();
+    //Src0
+    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_UD, 0, 0);
+    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, 0, 0);
+    G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+
+    G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+
+    G4_SrcRegRegion* src2Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+
+    auto madInst1 = builder.createInternalInst(
+        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1,
+        nullDst1, src0Opnd_0, src1Opnd_0, src2Opnd_0,
+        InstOpt_WriteEnable);
+
+    auto madInst2 = builder.createInternalInst(
+        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1,
+        nullDst2, src0Opnd_1, src1Opnd_1, src2Opnd_1,
+        InstOpt_WriteEnable);
+
+    bb->insertBefore(inst_it, madInst1);
+    bb->insertBefore(inst_it, madInst2);
+}
+
 void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *opnd)
 {
-    short LB = (short)opnd->getLinearizedStart() / numEltPerGRF<Type_UB>();
-    short RB = ((short)opnd->getLinearizedEnd() + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
-    int regNum = RB - LB;
+    G4_SrcRegRegion* src = builder.createSrc(
+        opnd->getBase(),
+        opnd->asSrcRegRegion()->getRegOff(),
+        0,
+        builder.getRegionScalar(),
+        Type_UD);
+    G4_DstRegRegion* dst = builder.createDst(
+        opnd->getBase(),
+        opnd->asSrcRegRegion()->getRegOff(),
+        0,
+        1,
+        Type_UD);
+    G4_INST* movInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+    bb->insertBefore(inst_it, movInst);
 
-    for (int regOff = 0; regOff < regNum; regOff++)
-    {
-        G4_SrcRegRegion* src = builder.createSrc(
-            opnd->getBase(),
-            opnd->asDstRegRegion()->getRegOff() + regOff,
-            0,
-            builder.getRegionStride1(),
-            Type_UD);
-
-        G4_DstRegRegion* dst = builder.createDst(
-            opnd->getBase(),
-            opnd->asDstRegRegion()->getRegOff() + regOff,
-            0,
-            1,
-            Type_UD);
-
-        G4_ExecSize curExSize{ numEltPerGRF<Type_UD>() };
-        G4_INST* movInst = builder.createMov(curExSize, dst, src, InstOpt_WriteEnable, false);
-        bb->insertBefore(inst_it, movInst);
-
-        G4_SrcRegRegion* src1 = builder.createSrc(
-            opnd->getBase(),
-            opnd->asDstRegRegion()->getRegOff() + regOff,
-            0,
-            builder.getRegionStride1(),
-            Type_F);
-
-        G4_DstRegRegion* dst1 = builder.createDst(
-            opnd->getBase(),
-            opnd->asDstRegRegion()->getRegOff() + regOff,
-            0,
-            1,
-            Type_F);
-
-        G4_ExecSize curExSize1{ numEltPerGRF<Type_F>() };
-        G4_INST* movInst1 = builder.createMov(curExSize1, dst1, src1, InstOpt_WriteEnable, false);
-
-        bb->insertBefore(inst_it, movInst1);
-    }
+    return;
 }
+
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
+    bool hasNonUniformBranch = false;
+    bool hasPredicatedSendOrIndirect = false;
+
     for (BB_LIST_ITER bb_it = kernel.fg.begin();
         bb_it != kernel.fg.end();
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
 
+        if (bb->empty())
+        {
+            continue;
+        }
+
         INST_LIST_ITER curr_iter = bb->begin();
         while (curr_iter != bb->end())
         {
             G4_INST* inst = (*curr_iter);
-            if (inst->isSend() && inst->getPredicate() && !inst->getDst()->isNullReg())
+
+
+            if (inst->getPredicate() &&
+                inst->getDst() &&
+                !inst->getDst()->isNullReg())
             {
-                insertDummyMov(bb, curr_iter, inst->getDst());
+                if (inst->isSend())
+                {
+                    insertDummyMad(bb, curr_iter);
+                    hasPredicatedSendOrIndirect = true;
+                }
             }
+
             ++curr_iter;
         }
+
+        G4_INST* inst = (bb->getInstList().back());
+        if (inst->isFlowControl() && !inst->asCFInst()->isUniform())
+        {
+            INST_LIST_ITER iter = bb->end();
+            iter--;
+            insertDummyMad(bb, iter);
+            hasNonUniformBranch = true;
+        }
     }
+
 }
 
 void Optimizer::insertHashMovs()
@@ -702,7 +738,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(HWWorkaround,            vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(insertInstLabels,        vISA_EnableAlways,            TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertHashMovs,          vISA_InsertHashMovs,          TimerID::NUM_TIMERS);
-    INITIALIZE_PASS(insertDummyMovForHWRSWA,          vISA_InsertDummyMovForHWRSWA,          TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(insertDummyMovForHWRSWA, vISA_InsertDummyMovForHWRSWA, TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertDummyCompactInst,  vISA_InsertDummyCompactInst,  TimerID::NUM_TIMERS);
     INITIALIZE_PASS(mergeScalarInst,         vISA_MergeScalar,             TimerID::OPTIMIZER);
     INITIALIZE_PASS(lowerMadSequence,        vISA_EnableMACOpt,            TimerID::OPTIMIZER);

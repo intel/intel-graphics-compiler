@@ -246,6 +246,8 @@ private:
     G4_Declare* createInstsForCallTargetOffset(
         InstListType& insts, G4_INST* fcall, int64_t adjust_off);
 
+    void insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it);
+
     void insertDummyMov(G4_BB* bb, INST_LIST_ITER inst_it, G4_Operand* opnd);
     void insertDummyMovForHWRSWA();
     void insertHashMovs();

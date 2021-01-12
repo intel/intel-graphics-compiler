@@ -4302,7 +4302,7 @@ namespace IGC
             SaveOption(vISA_HasEarlyGRFRead, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressoinWA))
+        if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressionWA))
         {
             SaveOption(vISA_InsertDummyMovForHWRSWA, true);
         }

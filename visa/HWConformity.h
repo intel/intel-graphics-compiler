@@ -122,6 +122,7 @@ namespace vISA
         void fixAlign13SrcInst(INST_LIST_ITER i, G4_BB* bb);
         void fixCompareInst(INST_LIST_ITER i, G4_BB *bb, G4_Type exType, int dst_elsize);
         bool fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype, unsigned int dst_elsize);
+        void fixPredicateIndirectInst(INST_LIST_ITER i, G4_BB* bb);
         bool fixDstAlignmentWithVectorImm(INST_LIST_ITER i, G4_BB *bb);
         bool fixAcc(INST_LIST_ITER i, G4_BB* bb);
         void fixDstHstride(INST_LIST_ITER i, int extypesize);

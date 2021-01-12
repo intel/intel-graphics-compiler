@@ -1670,6 +1670,41 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
     return insertMOV;
 }
 
+void HWConformity::fixPredicateIndirectInst(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* inst = (*it);
+    if (inst->getPredicate() &&
+        inst->getDst() &&
+        !inst->getDst()->isNullReg() &&
+        inst->getDst()->getRegAccess() == Direct)
+    {
+        bool hasIndirectSource = false;
+        for (int i = 0; i < inst->getNumSrc(); i++)
+        {
+            G4_Operand* opnd = inst->getSrc(i);
+
+            if (opnd && opnd->isSrcRegRegion() &&
+                opnd->asSrcRegRegion()->getRegAccess() == IndirGRF)
+            {
+                if (inst->opcode() == G4_sel)
+                {
+                    replaceSrc(it, i, opnd->getType(), bb);
+                }
+                else
+                {
+                    hasIndirectSource = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasIndirectSource)
+        {
+            replaceDst(it, inst->getDst()->getType());
+        }
+    }
+}
+
 /*
  * This function checks to see if the instruction's indirect operands
  * potentially require totally more than 8 distinct addr reg sub-registers, and
@@ -5050,6 +5085,10 @@ void HWConformity::conformBB(G4_BB* bb)
             avoidDstSrcOverlap(i, bb);
         }
 
+        if (builder.getOption(vISA_InsertDummyMovForHWRSWA))
+        {
+            fixPredicateIndirectInst(i, bb);
+        }
         // do this early since otherwise the moves inserted by other passes may still
         // inherit bad regions from the original inst
         fixSrcRegion(inst);
