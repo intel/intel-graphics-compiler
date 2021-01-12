@@ -312,16 +312,17 @@ void Options::showUsage(std::ostream& output)
     output << std::setw(64) << "supported platforms are: " << makePlatformsString() << std::endl;
 
     output << std::setw(50) << "    -binary"
-           << std::setw(60) << "- Emit the binary code." << std::endl;
+           << std::setw(60) << "- Emit the binary code (CISA binary .isa and GEN bits as .dat)." << std::endl;
 #endif
     output << std::setw(50) << "    -output"
-           << std::setw(60) << "- Emit target assembly code to a file." << std::endl;
+           << std::setw(60) << "- Emit GEN assembly code to a file (.asm)." << std::endl;
+    output << std::setw(50) << "    -dumpcommonisa"
+        << std::setw(60) << "- Emit CISA assembly (.visaasm)." << std::endl;
     output << std::setw(50) << "    -noschedule"
            << std::setw(60) << "- Turn off code scheduling." << std::endl;
     output << std::setw(50) << "    -nocompaction"
            << std::setw(60) << "- Turn off binary compaction." << std::endl;
-    output << std::setw(50) << "    -dumpcommonisa"
-           << std::setw(60) << "- Emit CISA assembly." << std::endl;
+    output << "    -...\n";
     output << std::endl;
     output << "USAGE: GenX_IR <InputFilename.visaasm> {Option List}" << std::endl;
     output << "Converting a CISA assembly file into CISA binary file" << std::endl;
