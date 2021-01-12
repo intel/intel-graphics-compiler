@@ -343,7 +343,7 @@ namespace FCL
                 assert( strlen(custom_dir) < maxLen && "custom_dir path too long" );
                 if (strlen( custom_dir ) < maxLen )
                 {
-                    strncat(custom_dir, "/", 1);
+                    strcat(custom_dir, "/");
                 }
                 dumpPath = custom_dir;
             }
