@@ -615,13 +615,13 @@ static void setRegkeyFromOption(
     bool isString = (strcmp(dataTypeName, "debugString") == 0);
     if(isBool)
     {
-        bool bval = true;
+        // ignore if there is no value
         if(vstring.size() == 1)
         {
-            bval = (vstring.at(0) == '0') ? false : true;
+            bool bval = (vstring.at(0) == '0') ? false : true;
+            *((bool*)pRegkeyVar) = bval;
+            isKeySet = true;
         }
-        *((bool*)pRegkeyVar) = bval;
-        isKeySet = true;
     }
     else if(isInt)
     {
