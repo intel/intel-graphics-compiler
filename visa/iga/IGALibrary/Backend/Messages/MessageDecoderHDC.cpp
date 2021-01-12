@@ -299,7 +299,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         int extraAttrs)
     {
         CacheOpt caching = CacheOpt::DEFAULT;
-
+        const SendOpInfo &opInfo = lookupSendOpInfo(op);
         std::stringstream ss;
         ss << "hdc_";
         ss << msgSym; // e.g. "load"
@@ -355,7 +355,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
             ss << ".d" << bitsPerElemMem << "u" << bitsPerElemReg;
         }
         int chEnMask = 0;
-        if (SendOpHasCmask(op)) {
+        if (opInfo.hasChMask()) {
             ss << ".";
             // in legacy HDC messages, this is a channel disable mask
             auto chDisabled = getDescBits(8,4);

@@ -35,7 +35,7 @@ static void errorInFile(
     std::stringstream ss;
     const char *tool = opts.mode == Opts::Mode::XDCMP ? "dcmp" : "ifs";
     ss << "-X" << tool << ": " << inpFile << ": " << msg;
-    fatalExitWithMessage(ss.str().c_str());
+    fatalExitWithMessage(ss.str());
 };
 
 static void ifXdcmpCheckForNonCompacted(Opts::Mode m, const std::string &str)
@@ -379,7 +379,7 @@ bool decodeInstructionFields(const Opts &baseOpts)
     } else if (baseOpts.inputFiles.size() == 2) {
         return decodeFieldsDiff(baseOpts);
     } else {
-        fatalExitWithMessage("iga: -Xifs requires one or two arguments");
+        fatalExitWithMessage("-Xifs requires one or two arguments");
         return true;
     }
 }
@@ -394,7 +394,7 @@ bool debugCompaction(Opts opts)
     opts.autoCompact = false;
 
     if (opts.inputFiles.empty()) {
-        fatalExitWithMessage("iga: -Xdcmp requires an argument");
+        fatalExitWithMessage("-Xdcmp requires an argument");
         return true;
     }
     inferPlatformAndMode(opts.inputFiles[0], opts);

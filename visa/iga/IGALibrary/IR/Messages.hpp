@@ -52,100 +52,77 @@ namespace iga
     // different units (maybe different hardware generate the same message).
     enum class SendOp {
         INVALID,
-        ///////////////////////////////////////////////////////////////////////
-        // load ops
-        IS_LOAD_OP = 0x1000, // group can be tested via this bit
-        // vector load (can be transposed)
-        //   examples: dword gather read
-        LOAD,
-        // similar to vector but with a component mask (cmask, XYZW, RGBA)
-        //   examples: a64 untyped read in DC1, a32 typed read...
-        LOAD_QUAD,
-        // block load
-        //   examples: OWord block load, HWord scratch block load
-        LOAD_STRIDED,
-        //
-        // special load operations
-        LOAD_STATUS,
-        //
-        // e.g. surface info (NMS_RSI)
-        READ_STATE,
-        //
-        ///////////////////////////////////////////////////////////////////////
-        // store ops
-        IS_STORE_OP = 0x2000, // group can be tested via this bit
-        // vector store (can be transposed)
-        //   examples: dword scattered write
-        STORE,
-        // vector store (can be transposed)
-        //   examples: untyped write
-        STORE_QUAD,
-        // vector store (can be transposed)
-        //   examples: block write
-        STORE_STRIDED,
-        //
-        ///////////////////////////////////////////////////////////////////////
-        // atomic ops
-        ///////////////////////////////////
-        // atomic bitwise
-        IS_ATOMIC_OP = 0x4000, // group can be tested via this bit
-        ATOMIC_LOAD, ATOMIC_STORE,
-        ATOMIC_AND, ATOMIC_XOR, ATOMIC_OR,
-        // atomic integer ops
-        ATOMIC_IINC, ATOMIC_IDEC, ATOMIC_IPDEC,
-        ATOMIC_IADD, ATOMIC_ISUB, ATOMIC_IRSUB,
-        ATOMIC_ICAS,
-        ATOMIC_SMIN, ATOMIC_SMAX, // signed
-        ATOMIC_UMIN, ATOMIC_UMAX, // unsigned
-        // floating point
-        ATOMIC_FADD, ATOMIC_FSUB,
-        ATOMIC_FMIN, ATOMIC_FMAX,
-        ATOMIC_FCAS,
-        //
-        ///////////////////////////////////////////////////////////////////////
-        IS_OTHER_OP = 0x8000, // group can be tested via this bit
-        //
-        FENCE,
-        //
-        // gateway and thread-spawner events
-        BARRIER,
-        MONITOR,
-        UNMONITOR,
-        WAIT,
-        SIGNAL_EVENT,
-        EOT,
-        //
-        // TODO: a domain expert should break this into better ops
-        // TODO: all sampler loads should go into the load category
-        SAMPLER_LOAD,
-        SAMPLER_FLUSH,
-        //
-        // TODO: a domain expert should break this into better ops
-        // TODO: all loads should be moved up to IS_LOAD and reads IS_STORE
-        RENDER_WRITE,
-        RENDER_READ,
+#define DEFINE_SEND_OP(E, M, A) E,
+#include "EnumSendOpInfo.hpp"
+#undef DEFINE_SEND_OP
     };
-    static inline bool SendOpIsLoad(SendOp op) {
-        return (static_cast<int>(op) &
-            static_cast<int>(SendOp::IS_LOAD_OP)) != 0;
+
+    struct SendOpInfo {
+        SendOp op;
+        const char *mnemonic; // e.g. "load" for SendOp::LOAD
+
+        // typesafe bitset of send op attributes
+        enum class Attr {
+            NONE = 0x0,
+            //
+            // the may have a destination (e.g. loads or atomics)
+            // certain control ops may or may not have destinations
+            HAS_DST = 0x1,
+            //
+            // is the address a scalar register (e.g. load_block)
+            IS_SCALAR_ADDR = 0x2,
+            //
+            // if the operation supports a ChMask (e.g. load_quad)
+            HAS_CMASK = 0x4,
+            //
+            // the op is a load, store, or atomic
+            GROUP_LOAD   = 0x10,
+            GROUP_STORE  = 0x20,
+            GROUP_ATOMIC = 0x40,
+            GROUP_OTHER  = 0x80, // e.g. fence, barrier, etc...
+
+            // for atomics, the number of data arguments in src1
+            ATOMIC_UNARY   = 0x100, // none (atomic_iinc)
+            ATOMIC_BINARY  = 0x200, // one (atomic_fadd)
+            ATOMIC_TERNARY = 0x400, // two (atomic_icas)
+        };
+        Attr attrs;
+
+        constexpr SendOpInfo(
+            SendOp o,
+            const char *mne,
+            Attr _attrs = Attr::NONE)
+            : op(o), mnemonic(mne), attrs(_attrs) { }
+
+        bool isValid() const {return op != SendOp::INVALID;}
+        bool hasAttr(Attr a) const {return (((int)attrs & (int)a)) != 0;}
+
+        bool hasDst() const {return hasAttr(Attr::HAS_DST);}
+        bool hasChMask() const {return hasAttr(Attr::HAS_CMASK);}
+        bool isAddressScalar() const {return hasAttr(Attr::IS_SCALAR_ADDR);}
+
+        bool isLoad() const {return hasAttr(Attr::GROUP_LOAD);}
+        bool isStore() const {return hasAttr(Attr::GROUP_STORE);}
+        bool isAtomic() const {return hasAttr(Attr::GROUP_ATOMIC);}
+        bool isOther() const {return hasAttr(Attr::GROUP_OTHER);}
+
+        int numAtomicArgs() const {
+            return hasAttr(Attr::ATOMIC_UNARY) ? 0 :
+                hasAttr(Attr::ATOMIC_BINARY) ? 1 :
+                hasAttr(Attr::ATOMIC_TERNARY) ? 2 :
+                -1;
+        }
+    }; // SendOpInfo
+    static inline constexpr SendOpInfo::Attr operator|(
+        SendOpInfo::Attr a1,
+        SendOpInfo::Attr a2)
+    {
+        return SendOpInfo::Attr(int(a1) | int(a2));
     }
-    static inline bool SendOpIsStore(SendOp op) {
-        return (static_cast<int>(op) &
-            static_cast<int>(SendOp::IS_STORE_OP)) != 0;
-    }
-    static inline bool SendOpIsAtomic(SendOp op) {
-        return (static_cast<int>(op) &
-            static_cast<int>(SendOp::IS_ATOMIC_OP)) != 0;
-    }
-    static inline bool SendOpIsOther(SendOp op) {
-        return (static_cast<int>(op) &
-            static_cast<int>(SendOp::IS_OTHER_OP)) != 0;
-    }
-    static inline bool SendOpHasCmask(SendOp op) {
-        return op == SendOp::LOAD_QUAD
-            || op == SendOp::STORE_QUAD
-            ;
-    }
+
+
+    const SendOpInfo &lookupSendOpInfo(SendOp op);
+    const SendOpInfo &lookupSendOpInfo(const char *mnemonic);
 
     std::string ToSyntax(SendOp op);
 
@@ -294,23 +271,9 @@ namespace iga
             return execWidth == 1 && (isLoad() || isStore());
         }
         //
-        // A proper load message (not an atomic returning a value)
-        bool isLoad() const {
-            return (static_cast<int>(op) &
-                static_cast<int>(SendOp::IS_LOAD_OP)) != 0;
-        }
-        //
-        // A proper store message (not an atomic that is storing something)
-        bool isStore() const {
-            return (static_cast<int>(op) &
-                static_cast<int>(SendOp::IS_STORE_OP)) != 0;
-        }
-        //
-        // An atomic message (it may or may not return a value)
-        bool isAtomic() const {
-            return (static_cast<int>(op) &
-                static_cast<int>(SendOp::IS_ATOMIC_OP)) != 0;
-        }
+        bool isLoad() const {return lookupSendOpInfo(op).isLoad();}
+        bool isStore() const {return lookupSendOpInfo(op).isStore();}
+        bool isAtomic() const {return lookupSendOpInfo(op).isAtomic();}
         //
         // An atomic that returns a value
         bool isAtomicLoad() const {return hasAttr(ATOMIC_RETURNS);}
@@ -338,7 +301,7 @@ namespace iga
         //     const MessageInfo &mi,
         //     SFID sfid,
         //     std::string *err = nullptr);
-    }; //class MessageInfo
+    }; // class MessageInfo
 
     SFID sfidFromEncoding(Platform p, uint32_t sfidBits);
 
@@ -368,13 +331,6 @@ namespace iga
             uint32_t exDesc);
     };
 
-    // Attempts to deduce the destination length for a given message.
-    // For messages where a dst == null is permitted and implies 0,
-    // be careful to check that before calling this.
-    //
-    // Returns -1 if unable to decode (not all messages are supported).
-    //
-
 
     // Organizes various parts of syntax during decoding.  This enables
     // formatters to interleave real registers.
@@ -401,13 +357,13 @@ namespace iga
         enum class Layout {
             // unset
             INVALID = 0,
-            // e.g. load, load_strided, load_blocks2d
+            // e.g. load, load_strided, load_quad, load_blocks2d, ...
             LOAD,
-            // e.g. store, store_quad, store_strided
+            // e.g. store, store_quad, store_strided, ...
             STORE,
             // e.g. atomic_iinc, atomic_fadd
             ATOMIC,
-            // e.g. barrier or eot (fence is LOAD since it returns a reg)
+            // e.g. barrier or eot
             CONTROL
         };
         Layout layout = Layout::INVALID;
@@ -421,17 +377,12 @@ namespace iga
 
         std::string   mnemonic; // e.g. "load" or "load_block"
         // SFID          sfid;     // e.g. "ugm"
-        std::string   controls; // e.g. ".ugm.ca.ca"
+        std::string   controls; // e.g. ".ugm.d32.a64.ca.ca"
 
         // address stuff
         std::string   surface;     // e.g. "bti<0x2>", "flat", or "bti<a0.4>"
         std::string   scale;       // e.g. 4*...
         std::string   immOffset;   // e.g. -0x40
-        ///////////// part of control
-        // std::string   addressType; // e.g. ":a32"
-        //
-        // data stuff
-        // std::string   dataType; // e.g. ":d32x4", or ":d32.xyw", or ":d32x2t"
 
         // emits rough syntax
         std::string str(
@@ -444,7 +395,6 @@ namespace iga
         // (suffixes surface, scaling and offset)
         std::string sym() const;
     }; // MessageSyntax
-
 
     //
     // Returns the resulting information of a message decode
@@ -460,20 +410,11 @@ namespace iga
 
     // Attempts to decode the descriptor for
     DecodeResult tryDecode(
-        Platform p, SFID sfid,
+        Platform p, SFID sfid, ExecSize execSize,
         SendDesc exDesc, SendDesc desc, RegRef indDesc,
         DecodedDescFields *fields);
 
-    ///////////////////////////////////////////////////////////////////////////
-    // parsing support
-    SendOp     lookupSendOp(std::string mnemonic);
     //
-    struct SendOpInfo {
-        bool hasDst;
-        int src1Args; // e.g. atomics
-        bool isSingleRegAddr; // e.g. a block load
-    };
-    SendOpInfo lookupSendOpInfo(SendOp op);
     // returns true if the SFID on a given platform is eligible for symbolic
     // translate for load/store syntax; this function enables us to
     // incrementally enable load/store syntax
@@ -516,30 +457,20 @@ namespace iga
         // for simple vector messages, it's dataVectorSize, but for
         // messages with a component mask, it's the number of enabled channels
         int elementsPerAddress() const {
-            if (SendOpHasCmask(op)) {
+            if (lookupSendOpInfo(op).hasChMask()) {
                 int n = 0;
                 for (int i = 0; i < 4; i++)
-                    n += (((1<<i) & dataComponentMask) ? 1 : 0);
+                    n += (((1 << i) & dataComponentMask) ? 1 : 0);
                 return n;
             } else {
                 return dataVectorSize;
             }
         }
 
-        bool isLoad() const {
-            return static_cast<int>(op) & static_cast<int>(SendOp::IS_LOAD_OP);
-        }
-        bool isStore() const {
-            return static_cast<int>(op) &
-                static_cast<int>(SendOp::IS_STORE_OP);
-        }
-        bool isAtomic() const {
-            return static_cast<int>(op) &
-                static_cast<int>(SendOp::IS_ATOMIC_OP);
-        }
-        bool hasCMask() const {
-            return SendOpHasCmask(op);
-        }
+        bool isLoad() const {return lookupSendOpInfo(op).isLoad();}
+        bool isStore() const {return lookupSendOpInfo(op).isStore();}
+        bool isAtomic() const {return lookupSendOpInfo(op).isAtomic();}
+        bool hasCMask() const {return lookupSendOpInfo(op).hasChMask();}
     }; // VectorMessageArgs
 
     bool encodeDescriptors(

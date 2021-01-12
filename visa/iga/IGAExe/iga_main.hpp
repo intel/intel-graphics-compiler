@@ -118,8 +118,8 @@ static inline void writeText(const Opts &opts, const std::string &outp) {
         // http://stackoverflow.com/questions/22633665/extremely-slow-stdcout-using-ms-compiler
         // MSVC's stdout is unbuffered for most cases ...
         // (internally it can buffer sometimes, but not with std::cout)
-        // We can force buffering here (stdout sits below cout apparently).
-        // This is the recommended fix.
+        // We can force buffering here (apparently stdout sits below cout).
+        // This a recommended fix.
         setvbuf(stdout, 0, _IOLBF, 4096);
 #endif
         writeTextStream("<<stdout>>", std::cout, outp.c_str());
@@ -137,7 +137,7 @@ static inline void writeBinary(const Opts &opts, const void *bits, size_t bitsLe
         _setmode(_fileno(stdout), _O_BINARY);
 #endif
         if (fwrite(bits, 1, bitsLen, stdout) < bitsLen) {
-            fatalExitWithMessage("iga: failed to write entire output");
+            fatalExitWithMessage("failed to write entire output");
         }
     } else {
         writeBinaryFile(opts.outputFile.c_str(), bits, bitsLen);
@@ -149,7 +149,7 @@ static inline void writeBinary(const Opts &opts, const void *bits, size_t bitsLe
         iga_status_t _st = F(__VA_ARGS__);                     \
         if (_st != IGA_SUCCESS) {                              \
             fatalExitWithMessage(                              \
-                "iga: " #F ": %s", iga_status_to_string(_st)); \
+                "iga: " #F ": ", iga_status_to_string(_st));   \
         }                                                      \
     } while (0)
 
@@ -269,7 +269,7 @@ static inline void ensurePlatformIsSet(const Opts &opts)
             "???";
 
         fatalExitWithMessage(
-            "-X%s: unable to infer platform (use -p=...)", tool);
+            "-X", tool, ": unable to infer platform (use -p=...)");
     }
 }
 

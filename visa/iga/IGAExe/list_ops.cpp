@@ -59,8 +59,7 @@ bool listOps(const Opts &opts, const std::string &opmn)
         }
         hasError = !foundOp;
         if (!foundOp) {
-            fatalExitWithMessage("iga: %s: mnemonic not found for platform",
-                opmn.c_str());
+            fatalExitWithMessage(opmn, ": mnemonic not found for platform");
         }
     }
     writeText(opts, ss.str().c_str());

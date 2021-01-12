@@ -26,12 +26,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "iga_main.hpp"
 
+
 bool assemble(
     const Opts &opts,
     igax::Context &ctx,
     const std::string &inpFile)
 {
-    std::string inpText = readTextFile(inpFile.c_str());
+    std::string inpText;
+    if (inpFile == IGA_STDIN_FILENAME) {
+        igax::Bits stdinBits = readBinaryStreamStdin();
+        stdinBits.push_back(0); // NUL
+        inpText = (const char *)stdinBits.data();
+    } else {
+        inpText = readTextFile(inpFile.c_str());
+    }
+
     igax::Bits bits;
     bool success = assemble(opts, ctx, inpFile, inpText, bits);
     if (success) {

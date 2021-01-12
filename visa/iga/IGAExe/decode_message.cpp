@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 
 
@@ -78,16 +79,16 @@ static void formatSIMT(
     for (int vecIx = 0; vecIx < mi.elemsPerAddr; vecIx++) {
         int dataSize = mi.elemSizeBitsRegFile/8;
         int bytesPerVecElem = mi.execWidth*dataSize;
-        int regsPerVecElem = std::max<int>(1,bytesPerVecElem/grfSizeB);
+        int regsPerVecElem = std::max<int>(1, bytesPerVecElem/grfSizeB);
         // 32B, float (4B), SIMD16 ==> 8
         // 32B/4B == 8
-        int chsPerGrf = std::min<int>(grfSizeB/dataSize,mi.execWidth);
+        int chsPerGrf = std::min<int>(grfSizeB/dataSize, mi.execWidth);
         int chIxBase = 0;
         for (int regIx = 0; regIx < regsPerVecElem; regIx++) {
             // walk the channels in reverse order
             emitSpan(os, '-', grfSizeB - mi.execWidth*dataSize);
             for (int chIxR = chsPerGrf - 1; chIxR >= 0; chIxR--) {
-                emitDataElem(os, chIxBase+chIxR, mi);
+                emitDataElem(os, chIxBase + chIxR, mi);
             }
             emitRegName(os, currGrf++);
             if (regIx == 0 && mi.elemsPerAddr > 1)
@@ -112,7 +113,7 @@ static void formatSIMD(
     // exists and we can make this algorithm aware of that possible
     // extension
     for (int chIx = 0; chIx < mi.execWidth; chIx++) {
-        int totalRegs = std::max<int>(1,mi.elemsPerAddr/vecElemsPerReg);
+        int totalRegs = std::max<int>(1, mi.elemsPerAddr/vecElemsPerReg);
         int elemsLeft = mi.elemsPerAddr;
         int vecIx = 0;
         for (int regIx = 0; regIx < totalRegs; regIx++) {
@@ -123,7 +124,7 @@ static void formatSIMD(
                 // a register
                 emitSpan(os, '-', (vecElemsPerReg - elemsLeft)*dataSize);
             }
-            int elemsToPrint = std::min<int>(elemsLeft,vecElemsPerReg);
+            int elemsToPrint = std::min<int>(elemsLeft, vecElemsPerReg);
             for (int vi = elemsToPrint - 1; vi >= 0; --vi) {
                 emitDataElem(os, chIx, mi);
             }
@@ -150,8 +151,17 @@ bool decodeSendDescriptor(const Opts &opts)
 
     ensurePlatformIsSet(opts);
 
-    if (opts.inputFiles.size() != 3 && opts.inputFiles.size() != 2) {
-        fatalExitWithMessage("-Xdsd: expects: SFID ex_desc desc");
+    size_t minArgs = opts.platform < IGA_GEN12p1 ? 2 : 3;
+
+    if (opts.inputFiles.size() != minArgs &&
+        opts.inputFiles.size() != minArgs + 1)
+    {
+        if (minArgs == 2)
+            fatalExitWithMessage("-Xdsd: for this platform expects: "
+                "ExecSize? ExDesc Desc");
+        else
+            fatalExitWithMessage("-Xdsd: for this platform expects: "
+                "SFID ExecSize? ExDesc Desc");
     }
     auto parseSendDescArg =
         [&] (const char *which, std::string inp) {
@@ -162,8 +172,8 @@ bool decodeSendDescriptor(const Opts &opts)
                     a0rr.subRegNum = (uint16_t)std::stoul(inp, nullptr, 10);
                 } catch (...) {
                     fatalExitWithMessage(
-                        "-Xdsd: %s: %s: invalid a0 subregister",
-                        which, inp.c_str());
+                        "-Xdsd: ", which, ": ", inp,
+                        ": invalid a0 subregister");
                 }
                 return iga::SendDesc(a0rr);
             }
@@ -177,42 +187,101 @@ bool decodeSendDescriptor(const Opts &opts)
                 val = std::stoul(inp, nullptr, base);
             } catch (std::invalid_argument i) {
                 fatalExitWithMessage(
-                    "-Xdsd: %s: %s: parse error", which, inp.c_str());
+                    "-Xdsd: ", which, ": ", inp, ": parse error");
             } catch (std::out_of_range i) {
                 fatalExitWithMessage(
-                    "-Xdsd: %s: %s: value out of range", which, inp.c_str());
+                    "-Xdsd: ", which, ": ", inp, ": value out of range");
             }
             return iga::SendDesc(val);
         };
-    int descArgOff = opts.inputFiles.size() == 2 ? 0 : 1;
-    auto exDesc = parseSendDescArg("ex_desc", opts.inputFiles[descArgOff]);
-    auto desc = parseSendDescArg("desc", opts.inputFiles[descArgOff+1]);
-
-    iga::SFID sfid = iga::SFID::INVALID;
-    if (opts.inputFiles.size() == 3) {
-        std::string sfidSym = opts.inputFiles[0];
+    auto tryParseSFID = [&](std::string sfidSym) {
         std::transform(
             sfidSym.begin(), sfidSym.end(), sfidSym.begin(), toLower);
-        sfid = iga::FromSyntax<iga::SFID>(sfidSym);
-        if (sfid == iga::SFID::INVALID) {
+        return iga::FromSyntax<iga::SFID>(sfidSym);
+    };
+    int argOff = 0;
+    iga::SFID sfid = tryParseSFID(opts.inputFiles[argOff]);
+    if (sfid != iga::SFID::INVALID) {
+        argOff++;
+        if (opts.platform < IGA_GEN12p1)
             fatalExitWithMessage(
-                "-Xdsd: %s: invalid or unsupported SFID for this platform",
-                opts.inputFiles[0].c_str());
+                "-Xdsd: ", opts.inputFiles[argOff],
+                ": SFID is encoded in ExDesc[3:0] for this platform");
+    } else if (sfid == iga::SFID::INVALID && opts.platform >= IGA_GEN12p1) {
+        fatalExitWithMessage(
+            "-Xdsd: ", opts.inputFiles[argOff],
+            ": invalid SFID for this platform");
+    }
+    // Formats are:
+    //   <=GEN11:      ExecSize? ExDesc  Desc
+    //   >=GEN12: SFID ExecSize? ExDesc  Desc
+    //
+    // If ExecSize is not given, then we deduce it from the platform.
+
+    // ExecSize is '(' INT ('|' ('M0' | 'M4' | ...))? ')'
+    // e.g. all the following produce ExecSize::SIMD8:
+    //   "(8)", "( 8 )", "(8|M24)"
+    //
+    iga::ExecSize execSize = iga::ExecSize::INVALID;
+    auto tryExecSize = [&](std::string str) {
+        if (str.empty() ||
+            str.substr(0, 1) != "(" ||
+            str.substr(str.size() - 1) != ")")
+        {
+            return iga::ExecSize::INVALID;
         }
-    } else if (opts.platform <= IGA_GEN11) {
+        size_t off = 1;
+        while (off < str.size() && std::isspace(str[off]))
+            off++;
+        size_t len = 0;
+        int execSizeInt = 0;
+        while (off + len < str.size() && std::isdigit(str[off + len])) {
+            execSizeInt = 10 * execSizeInt + str[off + len] - '0';
+            len++;
+        }
+        while (off + len < str.size() && std::isspace(str[off + len])) {
+            len++;
+        }
+        if (len == 0 || off + len == str.size() || (str[off + len] != ')' && str[off + len] != '|'))
+            return iga::ExecSize::INVALID;
+        switch (execSizeInt) {
+        case 1: return iga::ExecSize::SIMD1;
+        case 2: return iga::ExecSize::SIMD2;
+        case 4: return iga::ExecSize::SIMD4;
+        case 8: return iga::ExecSize::SIMD8;
+        case 16: return iga::ExecSize::SIMD16;
+        case 32: return iga::ExecSize::SIMD32;
+        default: return iga::ExecSize::INVALID;
+        }
+    };
+
+    // ExecSize? (optional SIMD argument)
+    if (opts.inputFiles.size() > minArgs) {
+        execSize = tryExecSize(opts.inputFiles[argOff]);
+        if (execSize == iga::ExecSize::INVALID)
+            fatalExitWithMessage(
+                "-Xdsd: ", opts.inputFiles[argOff], ": invalid ExecSize");
+        argOff++;
+    }
+
+    // ExDesc
+    const iga::SendDesc exDesc =
+        parseSendDescArg("ExDesc", opts.inputFiles[argOff]);
+    if (opts.platform < IGA_GEN12p1 && sfid == iga::SFID::INVALID) {
         // decode it from ex_desc[3:0]
         if (exDesc.isImm())
             sfid = iga::sfidFromEncoding(
                 static_cast<iga::Platform>(opts.platform),
                 exDesc.imm & 0xF);
         if (sfid == iga::SFID::INVALID) {
+            std::stringstream ss;
+            ss << "0x" << std::hex << std::uppercase << (exDesc.imm & 0xF);
             fatalExitWithMessage(
-              "-Xdsd: 0x%x: invalid or unsupported SFID for this platform",
-              exDesc);
+                "-Xdsd: ", ss.str(),
+                ": invalid or unsupported SFID for this platform");
         }
-    } else {
-        fatalExitWithMessage("-Xdsd: expected three arguments");
     }
+    auto desc = parseSendDescArg("Desc", opts.inputFiles[argOff+1]);
 
     auto emitDiagnostics =
         [&](const iga::DiagnosticList &ds, bool errors) {
@@ -239,10 +308,20 @@ bool decodeSendDescriptor(const Opts &opts)
             }
         };
 
-    // TODO: allow an extra parameter for indDesc
+    iga::Platform p = iga::Platform(opts.platform);
+
+    if (execSize == iga::ExecSize::INVALID) {
+        // Normally tryDecode() gets the ExecSize from IR or decoded from the
+        // descriptor; since we don't have that here, cheat and guess with a
+        // sort of pre-decode scam.  It's not ideal, but I can't think of
+        // anything better right now.
+        execSize =
+                iga::ExecSize::SIMD16;
+    }
+    //
     iga::DecodedDescFields decodedFields;
     const auto dr = iga::tryDecode(
-        static_cast<iga::Platform>(opts.platform), sfid,
+        p, sfid, execSize,
         exDesc, desc, iga::REGREF_INVALID,
         &decodedFields);
     emitDiagnostics(dr.warnings, false);
@@ -326,7 +405,8 @@ bool decodeSendDescriptor(const Opts &opts)
         } else if (dr.info.addrType == iga::AddrType::BTI) {
             os << "  Surface:                    ";
             std::stringstream ss;
-            ss << "surface index " << emitDesc(dr.info.surfaceId);
+            ss << "surface binding table index " <<
+                emitDesc(dr.info.surfaceId);
             emitYellowText(os,ss.str());
             os << "\n";
         }
@@ -349,7 +429,8 @@ bool decodeSendDescriptor(const Opts &opts)
         os << "  Data Elements Per Address:  ";
         emitYellowText(os, dr.info.elemsPerAddr);
         os << " element" << (dr.info.elemsPerAddr != 1 ? "s" : "");
-        if (iga::SendOpHasCmask(dr.info.op)) {
+        const iga::SendOpInfo &opInfo = iga::lookupSendOpInfo(dr.info.op);
+        if (opInfo.hasChMask()) {
             os << "  (";
             emitYellowText(os, ".");
             if (dr.info.channelsEnabled & 0x1)

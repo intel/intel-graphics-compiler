@@ -865,6 +865,7 @@ void Formatter::formatSrcOp(
 
     switch (src.getKind()) {
     case Operand::Kind::DIRECT: {
+        //
         bool hasSubreg =
             os.hasSrcSubregister(static_cast<int>(srcIx), i.isMacro());
         bool isSimt =
@@ -1061,7 +1062,8 @@ bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
 
     const auto sfid = i.getSendFc();
     const auto di =
-        tryDecode(platform(), sfid, exDesc, desc, indDesc, nullptr);
+        tryDecode(platform(), sfid, i.getExecSize(),
+            exDesc, desc, indDesc, nullptr);
     if (!di) {
         // if decode failed fallback to the canonical send syntax
         return false;

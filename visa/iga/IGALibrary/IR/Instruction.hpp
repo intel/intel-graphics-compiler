@@ -44,9 +44,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga
 {
     enum class SourceIndex {
-        SRC0,
-        SRC1,
-        SRC2,
+        SRC0 = 0,
+        SRC1 = 1,
+        SRC2 = 2,
     };
 
     // represents a GEN instruction

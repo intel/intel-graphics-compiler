@@ -674,24 +674,6 @@ class CmdlineSpec {
                 value = true;
             });
     }
-    /*
-    TODO: need make names std::string so I can dynamically create them
-
-    // expands a flag -foo to --foo and --no-foo
-    void defineFlagPair(
-        const char *sNm, // e.g. print-ldst
-        const char *lNm,
-        const char *desc,
-        const char *extDesc,
-        int attrs, // OptAttrs
-        bool &value)
-    {
-        defineFlag(sNm, lNm, dec, extDesc, attrs,
-            [&] (const char *, const ErrorHandler &, O &) {
-                value = true;
-            });
-    }
-    */
 
     void defineOpt(
         const char *sNm,

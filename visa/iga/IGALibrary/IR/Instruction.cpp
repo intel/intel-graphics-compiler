@@ -190,8 +190,6 @@ std::string Instruction::str(Platform pltfm) const
 {
     ErrorHandler eh;
     std::stringstream ss;
-    // TODO: see if we can wrestle the Platform out of this interface
-    //  (or pass it as an argument to str())
     FormatOpts fopt(pltfm);
     fopt.setSWSBEncodingMode(Model::LookupModel(pltfm)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopt, *this);

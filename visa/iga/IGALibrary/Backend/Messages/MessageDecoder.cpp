@@ -34,20 +34,21 @@ using namespace iga;
 void MessageDecoder::decodePayloadSizes() {
     bool hasMLenRLenInDesc = true;
     bool hasXLenInExDesc = true;
+    auto plural = [](int x) {return x == 1 ? "" : "s";};
     if (hasMLenRLenInDesc) {
         decodeDescField("Mlen", 25, 4,
-            [] (std::stringstream &ss, uint32_t val) {
-                ss << val << " address registers written";
+            [&] (std::stringstream &ss, uint32_t val) {
+                ss << val << " address register" << plural(val) << " written";
             });
         decodeDescField("Rlen", 20, 5,
-            [] (std::stringstream &ss, uint32_t val) {
-                ss << val << " registers read back";
+            [&] (std::stringstream &ss, uint32_t val) {
+                ss << val << " register" << plural(val) << " read back";
             });
     }
     if (hasXLenInExDesc) {
         decodeDescField("Xlen", 32 + 6, 5,
-            [] (std::stringstream &ss, uint32_t val) {
-                ss << val << " data registers written";
+            [&] (std::stringstream &ss, uint32_t val) {
+                ss << val << " data register" << plural(val) << " written";
             });
     }
     if (platform() <= Platform::GEN11) {

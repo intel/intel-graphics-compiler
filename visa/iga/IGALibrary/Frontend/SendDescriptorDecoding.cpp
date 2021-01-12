@@ -164,7 +164,7 @@ void iga::EmitSendDescriptorInfo(
 
     if (desc.isImm()) {
         const DecodeResult dr =
-            tryDecode(p, sfid, exDesc, desc, indDesc, nullptr);
+            tryDecode(p, sfid, execSize, exDesc, desc, indDesc, nullptr);
         if (dr.syntax.isValid()) {
             ss << "; " << dr.syntax.sym();
         } else if (!dr.info.description.empty()) {
@@ -179,13 +179,26 @@ void iga::EmitSendDescriptorInfo(
         }
 
         if (dr.info.hasAttr(MessageInfo::HAS_UVRLOD) && src0Len > 0) {
-            const int REG_FILE_BITS =
+            // Deduce the number of typed coordinates included
+            // (e.g. U, V, R, LOD)
+            const int BITS_PER_REG =
                     256;
-            const int QUARTER_EXEC_BITS = REG_FILE_BITS/32/2/2;
-            int elems = std::max<int>(QUARTER_EXEC_BITS, dr.info.execWidth);
-            int regsForU =
-                std::max<int>(1, elems*dr.info.addrSizeBits/REG_FILE_BITS);
-            switch (src0Len/regsForU) {
+            // We do this by assuming address coordinates are in GRF padded
+            // SOA order:
+            //   - U's registers, then V's, then R's, the LOD's
+            //   - if a cooridate takes less than a full GRF, then we pad it up
+            //     to that
+            //   - not all decoded combinations are supported in hardware, but
+            //     that's between the user and their deity; we're an assembler
+            //     and can't track the endlessly changing spec
+            // Typical usage is the default message and a GRF's worth of A32
+            // elements as the SIMD size (e.g. 8 for TGL)
+            //
+            // bits for a full vector's worth of U's, V's, etc....
+            const int regsPerCoord =
+                std::max<int>(1,
+                    dr.info.execWidth*dr.info.addrSizeBits/BITS_PER_REG);
+            switch (src0Len/regsPerCoord) {
             case 1: ss << "; u"; break;
             case 2: ss << "; u,v"; break;
             case 3: ss << "; u,v,r"; break;

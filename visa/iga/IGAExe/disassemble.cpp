@@ -25,11 +25,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "iga_main.hpp"
 
+
 bool disassemble(
     const Opts &opts, igax::Context &ctx, const std::string &inpFile)
 {
     std::vector<unsigned char> inp;
-    readBinaryFile(inpFile.c_str(), inp);
+    if (inpFile == IGA_STDIN_FILENAME) {
+        inp = readBinaryStreamStdin();
+    } else {
+        readBinaryFile(inpFile.c_str(), inp);
+    }
 
     iga_disassemble_options_t dopts = IGA_DISASSEMBLE_OPTIONS_INIT();
     dopts.formatting_opts = makeFormattingOpts(opts);

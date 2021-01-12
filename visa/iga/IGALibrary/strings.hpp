@@ -111,8 +111,7 @@ namespace iga {
     struct hex {
         uint64_t value;
         short cols;
-        template <typename T>
-        hex(T _value, int _cols = 0)
+        hex(uint64_t _value, int _cols = 0)
             : value(_value), cols((short)_cols) { }
     };
 

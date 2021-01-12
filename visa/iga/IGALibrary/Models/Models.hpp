@@ -300,8 +300,10 @@ namespace iga
         // the table of supported ops for this model indexed by iga::Op
         const OpSpec         *const opsArray;
         //
+        // file ext (e.g. "12p1" for TGL)
         const char          *extension;
         //
+        // various platform names we match for this model (e.g. "TGL")
         static const size_t  MAX_NAMES = 4;
         ModelString          names[MAX_NAMES];
 
@@ -402,7 +404,6 @@ namespace iga
             switch(getSWSBEncodeMode()) {
             case SWSB_ENCODE_MODE::SingleDistPipe:
                 return 16;
-
             default:
                 break;
             }

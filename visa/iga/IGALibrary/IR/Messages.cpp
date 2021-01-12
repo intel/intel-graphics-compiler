@@ -41,7 +41,7 @@ static void deducePayloadSizes(
     SendDesc desc(_desc), exDesc(0);
 
     const auto result =
-        tryDecode(p, sfid, exDesc, desc, REGREF_INVALID, nullptr);
+        tryDecode(p, sfid, execSize, exDesc, desc, REGREF_INVALID, nullptr);
     if (!result) {
         return;
     }
@@ -100,21 +100,21 @@ static void deducePayloadSizes(
             dlen *= mi.elemsPerAddr;
         }
         //
+        const auto &opInfo = lookupSendOpInfo(mi.op);
         lens.src0Len = numAddrRegsForVector();
-        if (SendOpIsLoad(mi.op)) {
+        if (opInfo.isLoad()) {
             lens.dstLen = dlen;
             lens.src1Len = 0;
-        } else if (SendOpIsStore(mi.op)) {
+        } else if (opInfo.isStore()) {
             lens.dstLen = 0;
             lens.src1Len = dlen;
-        } else if (SendOpIsAtomic(mi.op)) {
+        } else if (opInfo.isAtomic()) {
             lens.dstLen = dlen;
             lens.src1Len = atomicParams;
         } else {
             IGA_ASSERT_FALSE("invalid message type");
         }
     };
-
     lens.uvrlod = mi.hasAttr(MessageInfo::TYPED);
 
     switch (mi.op) {
@@ -312,70 +312,22 @@ std::string MessageSyntax::sym() const
     return ss.str();
 }
 
+
+static constexpr SendOpInfo SEND_OPS[] {
+#define DEFINE_SEND_OP(ENUM, MNE, ATTRS) \
+    SendOpInfo(SendOp::ENUM, MNE, ATTRS),
+#include "EnumSendOpInfo.hpp"
+#undef DEFINE_SEND_OP
+};
+
 std::string iga::ToSyntax(SendOp op)
 {
-#define MK_CASE(X,S) case SendOp::X: return S
-    switch (op) {
-    MK_CASE(LOAD,         "load");
-    MK_CASE(LOAD_STRIDED, "load_strided");
-    MK_CASE(LOAD_QUAD,    "load_quad");
-    MK_CASE(LOAD_STATUS,   "load_status");
-    //
-    MK_CASE(STORE,         "store");
-    MK_CASE(STORE_STRIDED, "store_strided");
-    MK_CASE(STORE_QUAD,    "store_quad");
-    //
-    MK_CASE(ATOMIC_LOAD,  "atomic_load");
-    MK_CASE(ATOMIC_STORE, "atomic_store");
-    //
-    MK_CASE(ATOMIC_AND, "atomic_and");
-    MK_CASE(ATOMIC_XOR, "atomic_xor");
-    MK_CASE(ATOMIC_OR,  "atomic_or");
-    //
-    MK_CASE(ATOMIC_IINC,  "atomic_iinc");
-    MK_CASE(ATOMIC_IDEC,  "atomic_idec");
-    MK_CASE(ATOMIC_IPDEC, "atomic_ipdec");
-    MK_CASE(ATOMIC_IADD,  "atomic_iadd");
-    MK_CASE(ATOMIC_ISUB,  "atomic_isub");
-    MK_CASE(ATOMIC_IRSUB, "atomic_irsub");
-    MK_CASE(ATOMIC_ICAS,  "atomic_icas");
-    //
-    MK_CASE(ATOMIC_SMIN,  "atomic_smin");
-    MK_CASE(ATOMIC_SMAX,  "atomic_smax");
-    //
-    MK_CASE(ATOMIC_UMIN,  "atomic_umin");
-    MK_CASE(ATOMIC_UMAX,  "atomic_umax");
-    //
-    MK_CASE(ATOMIC_FADD,  "atomic_fadd");
-    MK_CASE(ATOMIC_FSUB,  "atomic_fsub");
-    MK_CASE(ATOMIC_FMIN,  "atomic_fmin");
-    MK_CASE(ATOMIC_FMAX,  "atomic_fmax");
-    MK_CASE(ATOMIC_FCAS,  "atomic_fcas");
-    //
-    MK_CASE(READ_STATE,  "read_state");
-    //
-    MK_CASE(FENCE,     "fence");
-    //
-    MK_CASE(BARRIER,   "barrier");
-    MK_CASE(MONITOR,   "monitor");
-    MK_CASE(UNMONITOR, "unmonitor");
-    MK_CASE(WAIT, "wait");
-    MK_CASE(SIGNAL_EVENT, "signal_event");
-    MK_CASE(EOT, "eot");
-    //
-    //
-    MK_CASE(SAMPLER_LOAD,  "sampler_load");
-    MK_CASE(SAMPLER_FLUSH, "sampler_flush");
-    //
-    MK_CASE(RENDER_WRITE, "render_write");
-    MK_CASE(RENDER_READ,  "render_read");
-    //
-    default:
-        std::stringstream ss;
-        ss << "0x" << std::hex << (int)op << "?";
-        return ss.str();
+    const auto &opInfo = lookupSendOpInfo(op);
+    if (opInfo.isValid()) {
+        return opInfo.mnemonic;
+    } else {
+        return iga::fmtHex(int(op), 2) + "?";
     }
-#undef MK_CASE
 }
 
 std::string iga::ToSymbol(CacheOpt op)
@@ -510,7 +462,7 @@ static void postProcessDecode(
 
 
 DecodeResult iga::tryDecode(
-    Platform platform, SFID sfid,
+    Platform platform, SFID sfid, ExecSize execSize,
     SendDesc exDesc, SendDesc desc, RegRef indDesc,
     DecodedDescFields *fields)
 {
@@ -534,91 +486,17 @@ DecodeResult iga::tryDecode(
     return result;
 }
 
-
-SendOp iga::lookupSendOp(std::string mne)
+const SendOpInfo &iga::lookupSendOpInfo(SendOp op)
 {
-    SendOp op = SendOp::INVALID;
-    if (mne == "load") {
-        op = SendOp::LOAD;
-    } else if (mne == "load_quad") {
-        op = SendOp::LOAD_QUAD;
-    } else if (mne == "load_strided") {
-        op = SendOp::LOAD_STRIDED;
-    } else if (mne == "load_status") {
-        op = SendOp::LOAD_STATUS;
-        //////////////////////////////////////////////////
-    } else if (mne == "store") {
-        op = SendOp::STORE;
-    } else if (mne == "store_quad") {
-        op = SendOp::STORE_QUAD;
-    } else if (mne == "store_strided") {
-        op = SendOp::STORE_STRIDED;
-        //////////////////////////////////////////////////
-    } else if (mne == "atomic_load") {
-        op = SendOp::ATOMIC_LOAD;
-    } else if (mne == "atomic_store") {
-        op = SendOp::ATOMIC_STORE;
-    } else if (mne == "atomic_and") {
-        op = SendOp::ATOMIC_AND;
-    } else if (mne == "atomic_xor") {
-        op = SendOp::ATOMIC_XOR;
-    } else if (mne == "atomic_or") {
-        op = SendOp::ATOMIC_OR;
-    } else if (mne == "atomic_iinc") {
-        op = SendOp::ATOMIC_IINC;
-    } else if (mne == "atomic_idec") {
-        op = SendOp::ATOMIC_IDEC;
-    } else if (mne == "atomic_ipdec") {
-        op = SendOp::ATOMIC_IPDEC;
-    } else if (mne == "atomic_iadd") {
-        op = SendOp::ATOMIC_IADD;
-    } else if (mne == "atomic_isub") {
-        op = SendOp::ATOMIC_ISUB;
-    } else if (mne == "atomic_irsub") {
-        op = SendOp::ATOMIC_IRSUB;
-    } else if (mne == "atomic_icas") {
-        op = SendOp::ATOMIC_ICAS;
-    } else if (mne == "atomic_smin") {
-        op = SendOp::ATOMIC_SMIN;
-    } else if (mne == "atomic_smax") {
-        op = SendOp::ATOMIC_SMAX;
-    } else if (mne == "atomic_umin") {
-        op = SendOp::ATOMIC_UMIN;
-    } else if (mne == "atomic_umax") {
-        op = SendOp::ATOMIC_UMAX;
-    } else if (mne == "atomic_fadd") {
-        op = SendOp::ATOMIC_FADD;
-    } else if (mne == "atomic_fsub") {
-        op = SendOp::ATOMIC_FSUB;
-    } else if (mne == "atomic_fmin") {
-        op = SendOp::ATOMIC_FMIN;
-    } else if (mne == "atomic_fmax") {
-        op = SendOp::ATOMIC_FMAX;
-    } else if (mne == "atomic_fcas") {
-        op = SendOp::ATOMIC_FCAS;
-    } else if (mne == "read_state") {
-        op = SendOp::READ_STATE;
-    } else if (mne == "fence") {
-        op = SendOp::FENCE;
-    } else if (mne == "barrier") {
-        op = SendOp::BARRIER;
-    } else if (mne == "monitor") {
-        op = SendOp::MONITOR;
-    } else if (mne == "unmonitor") {
-        op = SendOp::UNMONITOR;
-    } else if (mne == "wait") {
-        op = SendOp::WAIT;
-    } else if (mne == "signal_event") {
-        op = SendOp::SIGNAL_EVENT;
-    } else if (mne == "eot") {
-        op = SendOp::EOT;
+    for (int i = 0; i < sizeof(SEND_OPS)/sizeof(SEND_OPS[0]); i++) {
+        if (op == SEND_OPS[i].op) {
+            return SEND_OPS[i];
+        }
     }
-    // TODO: sampler and render messages
-    return op;
-}
 
-SendOpInfo iga::lookupSendOpInfo(SendOp op)
-{
+    static constexpr SendOpInfo INVALID(SendOp::INVALID, "?");
+    return INVALID;
+/*
     SendOpInfo soi {false, -1, false};
 
     switch (op) {
@@ -678,7 +556,20 @@ SendOpInfo iga::lookupSendOpInfo(SendOp op)
     }
 
     return soi;
+*/
 }
+
+const SendOpInfo &iga::lookupSendOpInfo(const char *mnemonic)
+{
+    std::string mne = mnemonic;
+    for (int i = 0; i < sizeof(SEND_OPS)/sizeof(SEND_OPS[0]); i++) {
+        if (mne == SEND_OPS[i].mnemonic) {
+            return SEND_OPS[i];
+        }
+    }
+
+    static constexpr SendOpInfo INVALID(SendOp::INVALID, "?");
+    return INVALID;}
 
 
 bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
@@ -691,7 +582,7 @@ bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
         op == SendOp::STORE ||
         op == SendOp::STORE_STRIDED ||
         op == SendOp::STORE_QUAD ||
-        SendOpIsAtomic(op);
+        lookupSendOpInfo(op).isAtomic();
     return supported;
 }
 

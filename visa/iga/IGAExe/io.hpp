@@ -27,8 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _IO_HPP_
 
 #ifdef _WIN32
-// for doesFileExist()
-#include <Windows.h>
+#include <Windows.h> // for doesFileExist()
+#include <fcntl.h> //
 #else
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -59,7 +59,20 @@ static inline void readBinaryStream(
         }
         bin.push_back((char)chr);
     }
-    fatalExitWithMessage("iga: error reading %s", streamName);
+    fatalExitWithMessage(streamName, ": error reading ");
+}
+
+#define IGA_STDIN_FILENAME std::string("std::cin")
+
+static inline std::vector<unsigned char> readBinaryStreamStdin()
+{
+#ifdef _WIN32
+    (void)_setmode(_fileno(stdin), _O_BINARY);
+    // #else Linux doesn't make a distinction
+#endif
+    std::vector<unsigned char> bits;
+    readBinaryStream("stdin", std::cin, bits);
+    return bits;
 }
 
 static inline void readBinaryFile(
@@ -67,7 +80,7 @@ static inline void readBinaryFile(
 {
     std::ifstream is(fileName, std::ios::binary);
     if (!is.is_open()) {
-        fatalExitWithMessage("iga: %s: failed to open file", fileName);
+        fatalExitWithMessage(fileName, ": failed to open file");
     }
     readBinaryStream(fileName, is, bin);
 }
@@ -81,7 +94,7 @@ static inline std::string readTextStream(
     s.append(std::istreambuf_iterator<char>(is),
              std::istreambuf_iterator<char>());
     if (!is.good()) {
-        fatalExitWithMessage("iga: error reading %s", streamName);
+        fatalExitWithMessage(streamName, ": error reading");
     }
     return s;
 }
@@ -91,7 +104,7 @@ static inline std::string readTextFile(
 {
     std::ifstream file(fileName);
     if (!file.good()) {
-        fatalExitWithMessage("iga: %s: failed to open file", fileName);
+        fatalExitWithMessage(fileName, ": failed to open file");
     }
     return readTextStream(fileName,file);
 }
@@ -102,34 +115,15 @@ static inline void writeTextStream(
     os.clear();
     os << output;
     if (!os.good()) {
-        fatalExitWithMessage("iga: error writing %s", streamName);
+        fatalExitWithMessage(streamName, ": error writing");
     }
 }
-
-#if 0
-static void writeTextStreamF(
-    const char *streamName,
-    FILE *stream,
-    const char *output,
-    size_t outputLength)
-{
-    if (fwrite(output, 1, outputLength, stream) != outputLength) {
-        fatalExitWithMessage("iga: error writing %s", streamName);
-    }
-// This also works...
-//    clearerr(stream);
-//    fputs(output, stream);
-//    if (ferror(stream)) {
-//        fatalExitWithMessage("iga: error writing %s", streamName);
-//    }
-}
-#endif
 
 static inline void writeTextFile(const char *fileName, const char *output)
 {
     std::ofstream file(fileName);
     if (!file.good()) {
-        fatalExitWithMessage("iga: %s: failed to open file", fileName);
+        fatalExitWithMessage(fileName, ": failed to open file");
     }
     writeTextStream(fileName, file, output);
 }
@@ -141,9 +135,9 @@ static inline void writeBinaryStream(
     size_t bitsLen)
 {
     os.clear();
-    os.write((const char *)bits,bitsLen);
+    os.write((const char *)bits, bitsLen);
     if (!os.good()) {
-        fatalExitWithMessage("iga: error writing %s", streamName);
+        fatalExitWithMessage(streamName, ": error writing stream");
     }
 }
 
@@ -154,7 +148,7 @@ static inline void writeBinaryFile(
 {
     std::ofstream file(fileName,std::ios::binary);
     if (!file.good()) {
-        fatalExitWithMessage("iga: %s: failed to open file", fileName);
+        fatalExitWithMessage(fileName, ": failed to open file");
     }
     writeBinaryStream(fileName,file,bits,bitsLen);
 }
@@ -166,8 +160,8 @@ static inline bool doesFileExist(const char *fileName) {
             !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 #else
     struct stat sb = {0};
-    if (stat(fileName,&sb) != 0) {
-        fatalExitWithMessage("iga: %s: failed to stat file", fileName);
+    if (stat(fileName, &sb) != 0) {
+        fatalExitWithMessage(fileName, ": failed to stat file");
     }
     return S_ISREG(sb.st_mode);
 #endif
@@ -207,7 +201,8 @@ struct StreamColorSetter {
         }
         stream.flush();
 #ifdef _WIN32
-        HANDLE h = GetStdHandle(isStderr() ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE);
+        HANDLE h = GetStdHandle(isStderr() ?
+            STD_ERROR_HANDLE : STD_OUTPUT_HANDLE);
         WORD w = FOREGROUND_INTENSITY;
         if (c == StreamColorSetter::Color::RED) {
             w |= FOREGROUND_RED;

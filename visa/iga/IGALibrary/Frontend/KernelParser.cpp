@@ -810,7 +810,6 @@ class KernelParser : GenParser
     Loc                   m_srcLocs[3];
     int                   m_sendSrcLens[2]; // send message lengths
     Loc                   m_sendSrcLenLocs[2]; // locations so we can referee
-
 public:
     KernelParser(
         const Model &model,

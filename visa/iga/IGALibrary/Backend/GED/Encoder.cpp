@@ -36,15 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-//
-// NOTE: if we have it to do again I would have:
-//     Encoder::encodeInstruction(Instruction &)
-//  instantiate a
-//     BasicInstructionEncoder (derives from InstructionEncoder)
-// And call run on that op (pass the GEDInstruction).
-// This localizes the encoding complexity per format.
-// The various template functions below would be inherited from
-// InstructionEncoder
 
 
 

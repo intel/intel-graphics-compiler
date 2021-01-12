@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstring>
 #include <exception>
 #include <iomanip>
+#include <malloc.h>
 #include <ostream>
 #include <sstream>
 #include <string>

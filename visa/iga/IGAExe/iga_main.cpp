@@ -337,13 +337,25 @@ extern "C" int iga_main(int argc, const char **argv)
         "This mode attempts to decode send descriptors to messages.\n"
         " This is a best effort and not all messages or platforms are "
             "supported.\n"
+        "The format (arguments) are:\n"
+        "  <GEN12:   -Xdsd      ExecSize? ExDesc Desc\n"
+        "  >=GEN12:  -Xdsd SFID ExecSize? ExDesc Desc\n"
+        "   ExecSize is the instruction ExecSize in parentheses "
+            "(e.g. \"(16|M0)\" or \"(16\")\n"
+        "   If ExecSize is absent, then we guess based on the platform (e.g. 16 on SKL)\n"
+        "   (typed is half the default untyped size)"
         "\n"
         "SFIDS are: DC0, DC1, DC2, DCRO, GTWY, RC, SMPL, TS, URB, VME"
         "\n"
         "\n"
         "EXAMPLES:\n"
-        "  % iga -p=11 -Xdsd DC1 0x0000010C  0x04025C01\n"
-        "    decodes message info for a GEN11 descriptor on SFID (DC1)\n",
+        "  % iga -p=11 -Xdsd     0x0000010C  0x04025C01\n"
+        "    decodes message info for a GEN11 descriptor on SFID (DC1)\n"
+        "  % iga -p=12p1 -Xdsd dc1     0x0  0x04025C01\n"
+        "  % iga -p=12p5 -Xdsd dc1 (8) a0.2 0x04025C01\n"
+        "    decodes message info for a GEN12 descriptor on SFID (DC1)\n"
+        "    the latter illustrates with ExecSize of 8 and ExDesc of a0.2\n"
+        "",
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::XDSD;
@@ -489,7 +501,10 @@ extern "C" int iga_main(int argc, const char **argv)
     cmdline.defineArg(
         "FILE",
         "the input files",
-        "The input files to assemble.  This defaults to stdin.",
+        "The input files to assemble.  "
+          "Use \"std::cin\" to indicate to read from the standard input "
+          "stream (e.g. for pipe target redirection).  Reading from std::cin "
+          "may not function for all tools (e.g. -Xifs).",
         opts::OptAttrs::ALLOW_UNSET | opts::OptAttrs::ALLOW_MULTI,
         [] (const char *inp, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.inputFiles.push_back(inp);
@@ -505,15 +520,13 @@ extern "C" int iga_main(int argc, const char **argv)
             inferPlatformAndMode(inpFile, os);
             if (os.mode == Opts::Mode::AUTO) {
                 fatalExitWithMessage(
-                    "%s: cannot infer mode based on file extension"
-                    " (use -d or -a to set mode)",
-                    inpFile.c_str());
+                    inpFile, ": cannot infer mode based on file extension"
+                    " (use -d or -a to set mode)");
             }
             if (os.platform == IGA_GEN_INVALID) {
                 fatalExitWithMessage(
-                    "%s: cannot infer project based on file extension"
-                    " (use -p=...)",
-                    inpFile.c_str());
+                    inpFile, ": cannot infer project based on file extension"
+                    " (use -p=...)");
             }
             return os;
         };
@@ -547,8 +560,10 @@ extern "C" int iga_main(int argc, const char **argv)
 
         // iterate each file and process it
         for (auto &inpFile : baseOpts.inputFiles) {
-            if (!doesFileExist(inpFile.c_str())) {
-                fatalExitWithMessage("%s: file not found", inpFile.c_str());
+            if (inpFile != IGA_STDIN_FILENAME &&
+                !doesFileExist(inpFile.c_str()))
+            {
+                fatalExitWithMessage(inpFile, ": file not found");
             }
 
             struct Opts opts = optsForFile(inpFile);
@@ -560,8 +575,8 @@ extern "C" int iga_main(int argc, const char **argv)
                     hasError |= !assemble(opts, ctx, inpFile);
                 } else {
                     fatalExitWithMessage(
-                        "%s: mode (-a or -d) must be specified for this file",
-                        inpFile.c_str());
+                        inpFile,
+                        ": mode (-a or -d) must be specified for this file");
                 }
             } catch (const igax::Error &err) {
                 err.emit(std::cerr);
