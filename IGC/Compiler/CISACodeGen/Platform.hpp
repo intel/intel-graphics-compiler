@@ -658,6 +658,11 @@ bool WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources() const
     return m_WaTable.Wa_1807084924 != 0;
 }
 
+bool WaDisableSampleLz() const
+{
+    return IGC_IS_FLAG_ENABLED(DisableWaSampleLZ);
+}
+
 bool WaEnableA64WA() const
 {
     if (IGC_IS_FLAG_ENABLED(EnableA64WA) && m_WaTable.Wa_14010595310) {

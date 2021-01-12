@@ -490,7 +490,7 @@ bool PayloadMapping::IsZeroLOD(const SampleIntrinsic* inst)
 {
     const CPlatform& platform = m_CodeGenContext->platform;
 
-    if (platform.supportSampleAndLd_lz())
+    if (platform.supportSampleAndLd_lz() && !platform.WaDisableSampleLz())
     {
         if (const SampleIntrinsic * sampleInst = dyn_cast<SampleIntrinsic>(inst))
         {
