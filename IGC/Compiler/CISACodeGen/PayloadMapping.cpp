@@ -451,31 +451,26 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
         numSources = numOperands - 3;
     }
 
-    llvm::Type* cubeTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
-    llvm::Type* textureType = inst->getTextureValue()->getType()->getPointerElementType();
-    if (textureType != cubeTextureType)
+    //Check for valid number of sources from the end of the list
+    for (uint i = (numSources - 1); i >= 1; i--)
     {
-        //Check for valid number of sources from the end of the list
-        for (uint i = (numSources - 1); i >= 1; i--)
-        {
-            if (IsUndefOrZeroImmediate(inst->getOperand(i)))
-            {
-                numSources--;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        //temp solution to send valid sources but having 0 as their values.
-        EOPCODE opCode = GetOpCode(inst);
-        ValidateNumberofSources(opCode, numSources);
-
-        if (IsZeroLOD(inst))
+        if (IsUndefOrZeroImmediate(inst->getOperand(i)))
         {
             numSources--;
         }
+        else
+        {
+            break;
+        }
+    }
+
+    //temp solution to send valid sources but having 0 as their values.
+    EOPCODE opCode = GetOpCode(inst);
+    ValidateNumberofSources(opCode, numSources);
+
+    if (IsZeroLOD(inst))
+    {
+        numSources--;
     }
 
     return numSources;
