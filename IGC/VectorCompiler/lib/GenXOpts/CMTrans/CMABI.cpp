@@ -41,13 +41,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_TYPE "cmabi"
 
+#include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/CallSite.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/Alignment.h"
+
+#include "Probe/Assertion.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/GenXSTLExtras.h"
+#include "vc/Support/BackendConfig.h"
+
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
@@ -76,9 +81,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 
-#include "llvmWrapper/Analysis/CallGraph.h"
-#include "Probe/Assertion.h"
-
 #include <algorithm>
 #include <iterator>
 #include <numeric>
@@ -88,13 +90,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 using namespace llvm;
-
-using LocalizationLimitT = int32_t;
-static constexpr auto LocalizeAll = std::numeric_limits<LocalizationLimitT>::max();
-static cl::opt<LocalizationLimitT>
-    LocalizationLimit("cm-abi-issues-localization-limit",
-                   cl::desc("maximum size (in bytes) used to localize global variables"),
-                   cl::init(LocalizeAll));
 
 STATISTIC(NumArgumentsTransformed, "Number of pointer arguments transformed");
 
@@ -253,6 +248,7 @@ int DiagnosticInfoOverlappingArgs::KindID = 0;
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
   std::vector<LocalizationInfo *> LocalizationInfoObjs;
+  GlobalsLocalizationConfig::LimitT GlobalsLocalizationLimit;
 
 public:
   static char ID;
@@ -267,6 +263,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CallGraphWrapperPass>();
+    AU.addRequired<GenXBackendConfig>();
     AU.setPreservesAll();
   }
 
@@ -359,10 +356,25 @@ char CMABIAnalysis::ID = 0;
 INITIALIZE_PASS_BEGIN(CMABIAnalysis, "cmabi-analysis",
                       "helper analysis pass to get info for CMABI", false, true)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(CMABIAnalysis, "cmabi-analysis",
                     "Fix ABI issues for the genx backend", false, true)
 
+static std::size_t
+defineGlobalsLocalizationLimit(const GenXBackendConfig &Config) {
+  if (Config.isGlobalsLocalizationForced())
+    return GlobalsLocalizationConfig::NoLimit;
+
+  // Half of a size of standard GenX register file in bytes.
+  // 128 * 32 / 2
+  constexpr std::size_t HalfGRF = 2048;
+  std::size_t Limit = Config.getGlobalsLocalizationLimit();
+  return std::min(Limit, HalfGRF);
+}
+
 bool CMABIAnalysis::runOnModule(Module &M) {
+  GlobalsLocalizationLimit =
+      defineGlobalsLocalizationLimit(getAnalysis<GenXBackendConfig>());
   runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
   return false;
 }
@@ -402,7 +414,7 @@ auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
       Globals, [ExcludePred](GVRef GV) { return !ExcludePred(GV); });
   using GVWithWeightT = std::pair<GVPtr, int>;
 
-  if (Bound == LocalizeAll) {
+  if (Bound == GlobalsLocalizationConfig::NoLimit) {
     std::vector<GVPtr> ToLocalize;
     transform(Unexcluded, std::back_inserter(ToLocalize),
               [](GVRef GV) { return &GV; });
@@ -1950,7 +1962,7 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   };
   const auto &DL = M.getDataLayout();
   std::vector<GlobalVariable *> ToLocalize = selectGlobalsToLocalize(
-      M.globals(), LocalizationLimit.getValue(),
+      M.globals(), GlobalsLocalizationLimit,
       [UsesPrintChecker](const GlobalVariable &GV) {
         // don't localize global constant format string if it's used by print_index intrinsic
         bool UsesPrintIndex = std::any_of(GV.use_begin(), GV.use_end(), UsesPrintChecker);

@@ -454,6 +454,10 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
+  BackendOpts.GlobalsLocalization =
+      (Opts.Binary == vc::BinaryKind::OpenCL)
+          ? GlobalsLocalizationConfig::CreateLocalizationWithLimit()
+          : GlobalsLocalizationConfig::CreateForcedLocalization();
   return BackendOpts;
 }
 
