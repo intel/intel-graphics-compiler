@@ -380,6 +380,16 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 
     bb->insertBefore(inst_it, madInst1);
     bb->insertBefore(inst_it, madInst2);
+
+    if (!(kernel.getKernelType() != VISA_3D ||
+        kernel.getOption(vISA_enablePreemption) ||
+        kernel.getOption(vISA_ReserveR0)))
+    {
+        G4_SrcRegRegion* src = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+        G4_DstRegRegion* dst = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_0, 1);
+        G4_INST* movInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+        bb->insertBefore(inst_it, movInst);
+    }
 }
 
 void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *opnd)

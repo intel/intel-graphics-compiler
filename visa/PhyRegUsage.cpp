@@ -1253,8 +1253,7 @@ void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel &kernel, unsigned 
         kernel.getOption(vISA_enablePreemption) ||
         reserveSpillSize > 0 ||
         stackCallRegSize > 0 ||
-        kernel.getOption(vISA_ReserveR0) ||
-        kernel.getOption(vISA_InsertDummyMovForHWRSWA))
+        kernel.getOption(vISA_ReserveR0))
     {
         regNum.push_back(0);
     }
