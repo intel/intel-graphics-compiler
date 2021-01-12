@@ -16,6 +16,5 @@ set(OPT_SOURCES
 add_library(VCTransforms ${OPT_SOURCES})
 target_link_libraries(VCTransforms
   VCHeaders
-  VCSupport
   LLVMGenXIntrinsics
   )

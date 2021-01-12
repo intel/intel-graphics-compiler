@@ -51,47 +51,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
 
-#include <limits>
-
 namespace llvm {
 
 void initializeGenXBackendConfigPass(PassRegistry &PR);
-
-struct GlobalsLocalizationConfig {
-  using LimitT = std::size_t;
-  static constexpr auto NoLimit = std::numeric_limits<LimitT>::max();
-
-private:
-  // Whether every global variable must be localized.
-  bool IsForced = true;
-  // How many GRF memory is allowed to be used for localization.
-  LimitT Limit = NoLimit;
-
-public:
-  GlobalsLocalizationConfig(bool IsForcedIn, LimitT LimitIn)
-      : IsForced{IsForcedIn}, Limit{LimitIn} {
-    if (IsForced)
-      IGC_ASSERT_MESSAGE(
-          Limit == NoLimit,
-          "there can be no localization limit when localization is forced");
-  }
-
-  GlobalsLocalizationConfig() {}
-
-  // Every global variable must be localized.
-  static GlobalsLocalizationConfig CreateForcedLocalization() { return {}; }
-
-  // GlobalsLocalization is allowed to localize globals but it can use only
-  // GlobalsLocalizationLimit bytes of GRF.
-  static GlobalsLocalizationConfig
-  CreateLocalizationWithLimit(LimitT GlobalsLocalizationLimitIn = NoLimit) {
-    return {false, GlobalsLocalizationLimitIn};
-  }
-
-  bool isForced() const { return IsForced; }
-
-  LimitT getLimit() const { return Limit; }
-};
 
 // Plain structure to be filled by users who want to create backend
 // configuration. Some values are default-initialized from cl options.
@@ -111,10 +73,6 @@ struct GenXBackendOptions {
   // Whether to enable dumps of kernel debug information
   bool EnableDebugInfoDumps;
   std::string DebugInfoDumpsNameOverride;
-
-  // Configuration for GlobalsLocalization pass
-  // (part of CMABI pass by historical reasons).
-  GlobalsLocalizationConfig GlobalsLocalization;
 
   GenXBackendOptions();
 };
@@ -173,13 +131,6 @@ public:
   bool dbgInfoDumpsEnabled() const { return Options.EnableDebugInfoDumps; }
   const std::string &dbgInfoDumpsNameOverride() const {
     return Options.DebugInfoDumpsNameOverride;
-  }
-
-  bool isGlobalsLocalizationForced() const {
-    return Options.GlobalsLocalization.isForced();
-  }
-  GlobalsLocalizationConfig::LimitT getGlobalsLocalizationLimit() const {
-    return Options.GlobalsLocalization.getLimit();
   }
 };
 } // namespace llvm
