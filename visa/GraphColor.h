@@ -41,7 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SCRATCH_MSG_LIMIT (128 * 1024)
 #define ROUND(x,y)    ((x) + ((y - x % y) % y))
 
-extern unsigned int BitMask[BITS_DWORD];
 namespace vISA
 {
     const float MAXSPILLCOST = (std::numeric_limits<float>::max());
@@ -375,7 +374,7 @@ namespace vISA
         std::vector<std::vector<unsigned int>> sparseIntf;
 
         // sparse intefernece matrix.
-        // we don't directly update spraseIntf to ensure uniqueness
+        // we don't directly update sparseIntf to ensure uniqueness
         // like dense matrix, interference is not symmetric (that is, if v1 and v2 interfere and v1 < v2,
         // we insert (v1, v2) but not (v2, v1)) for better cache behavior
         std::vector<std::unordered_set<uint32_t> > sparseMatrix;
@@ -409,7 +408,7 @@ namespace vISA
                 {
                     return nullptr;
                 }
-                return &((*it).second);
+                return &it->second;
             }
             return nullptr;
         }
@@ -419,8 +418,7 @@ namespace vISA
             if (useDenseMatrix())
             {
                 auto N = (size_t)rowSize * (size_t)maxId;
-                matrix = new uint32_t[N];
-                memset(matrix, 0, N * sizeof(int));
+                matrix = new uint32_t[N](); // zero-initialize
             }
             else
             {
@@ -468,7 +466,7 @@ namespace vISA
             if (useDenseMatrix())
             {
                 unsigned col = v2 / BITS_DWORD;
-                matrix[v1 * rowSize + col] |= BitMask[v2 - col * BITS_DWORD];
+                matrix[v1 * rowSize + col] |= 1 << (v2 % BITS_DWORD);
             }
             else
             {
@@ -491,7 +489,7 @@ namespace vISA
                 auto&& intfSet = sparseMatrix[v1];
                 for (int i = 0; i < BITS_DWORD; ++i)
                 {
-                    if (block & BitMask[i])
+                    if (block & (1 << i))
                     {
                         uint32_t v2 = col * BITS_DWORD + i;
                         intfSet.emplace(v2);

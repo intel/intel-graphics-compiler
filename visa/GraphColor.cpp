@@ -48,45 +48,6 @@ using namespace vISA;
 
 #define FAIL_SAFE_RA_LIMIT 3
 
-#define MIN(x,y)    (((x)<(y))? (x):(y))
-#define MAX(x,y)    (((x)<(y))? (y):(x))
-
-unsigned int BitMask[BITS_DWORD] =
-{
-    0x00000001,
-    0x00000002,
-    0x00000004,
-    0x00000008,
-    0x00000010,
-    0x00000020,
-    0x00000040,
-    0x00000080,
-    0x00000100,
-    0x00000200,
-    0x00000400,
-    0x00000800,
-    0x00001000,
-    0x00002000,
-    0x00004000,
-    0x00008000,
-    0x00010000,
-    0x00020000,
-    0x00040000,
-    0x00080000,
-    0x00100000,
-    0x00200000,
-    0x00400000,
-    0x00800000,
-    0x01000000,
-    0x02000000,
-    0x04000000,
-    0x08000000,
-    0x10000000,
-    0x20000000,
-    0x40000000,
-    0x80000000
-};
-
 const char* GlobalRA::StackCallStr = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
@@ -1579,7 +1540,7 @@ bool Interference::interfereBetween(unsigned v1, unsigned v2) const
     if (useDenseMatrix())
     {
         unsigned col = v2 / BITS_DWORD;
-        return (matrix[v1 * rowSize + col] & BitMask[v2 - col * BITS_DWORD]) ? true : false;
+        return matrix[v1 * rowSize + col] & (1 << (v2 % BITS_DWORD));
     }
     else
     {
@@ -1613,7 +1574,7 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
         unsigned rowSplited = n / BITS_DWORD;
         if (rowSplited == col)
         {
-            elt &= ~(BitMask[n % BITS_DWORD]);
+            elt &= ~(1 << (n % BITS_DWORD));
         }
     }
 
@@ -1690,9 +1651,9 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
 
             for (unsigned int j = 0; j < BITS_DWORD; j++)
             {
-                if (elt & BitMask[j])
+                if (elt & (1 << j))
                 {
-                    unsigned curPos = j + (k*BITS_DWORD);
+                    unsigned curPos = j + (k * BITS_DWORD);
                     safeSetInterference(curPos, i);
                 }
             }
@@ -1706,9 +1667,9 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
     {
         for (unsigned int j = 0; j < BITS_DWORD; j++)
         {
-            if (elt & BitMask[j])
+            if (elt & (1 << j))
             {
-                unsigned curPos = j + (colEnd*BITS_DWORD);
+                unsigned curPos = j + (colEnd * BITS_DWORD);
                 if (!varSplitCheckBeforeIntf(i, curPos))
                 {
                     checkAndSetIntf(i, curPos);
@@ -2548,7 +2509,7 @@ void Interference::generateSparseIntfGraph()
                 {
                     for (unsigned k = 0; k < BITS_DWORD; k++)
                     {
-                        if (intfBlk & BitMask[k])
+                        if (intfBlk & (1 << k))
                         {
                             unsigned int v2 = (j*BITS_DWORD) + k;
                             if (v2 != row)
@@ -5542,15 +5503,15 @@ void GraphColor::computeDegreeForGRF()
 
             if (isOdd)
             {
-                oddTotalDegree += bankDegree; //MAX(bankDegree, oddMaxDegree);
+                oddTotalDegree += bankDegree; //std::max(bankDegree, oddMaxDegree);
                 oddTotalRegNum += lrs[i]->getNumRegNeeded();
-                oddMaxRegNum = MAX(oddMaxRegNum, lrs[i]->getNumRegNeeded());
+                oddMaxRegNum = std::max(oddMaxRegNum, lrs[i]->getNumRegNeeded());
             }
             else
             {
-                evenTotalDegree += bankDegree; //MAX(bankDegree, evenMaxDegree);
+                evenTotalDegree += bankDegree; //std::max(bankDegree, evenMaxDegree);
                 evenTotalRegNum += lrs[i]->getNumRegNeeded();
-                evenMaxRegNum = MAX(evenMaxRegNum, lrs[i]->getNumRegNeeded());
+                evenMaxRegNum = std::max(evenMaxRegNum, lrs[i]->getNumRegNeeded());
             }
         }
 
@@ -7327,7 +7288,7 @@ void GlobalRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs)
                 }
             }
         }
-        unsigned winBound = (unsigned)MIN(saveRegs.size(), startPos + 4);
+        unsigned winBound = std::min(static_cast<unsigned>(saveRegs.size()), startPos + 4);
         for (; startPos < winBound && saveRegs[startPos]; ++startPos);
     }
 }
@@ -7384,7 +7345,7 @@ void GlobalRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vec
                 }
             }
         }
-        unsigned winBound = (unsigned)MIN(saveRegs.size(), startPos + 4);
+        unsigned winBound = std::min(static_cast<unsigned>(saveRegs.size()), startPos + 4);
         for (; startPos < winBound && saveRegs[startPos]; ++startPos);
     }
 }
@@ -8467,11 +8428,11 @@ VarRange* VarSplit::splitVarRange(VarRange *src1,
         return NULL;
     }
 
-    left1 = MIN(src1->leftBound, src2->leftBound);  //left
-    right1 = MAX(src1->leftBound, src2->leftBound);
+    left1 = std::min(src1->leftBound, src2->leftBound);  //left
+    right1 = std::max(src1->leftBound, src2->leftBound);
 
-    left2 = MIN(src1->rightBound, src2->rightBound); //right
-    right2 = MAX(src1->rightBound, src2->rightBound);
+    left2 = std::min(src1->rightBound, src2->rightBound); //right
+    right2 = std::max(src1->rightBound, src2->rightBound);
 
     if (left1 == right1) //Same left
     {
@@ -10361,8 +10322,8 @@ bool FlagSpillCleanup::addKilledGRFRanges(
     G4_Predicate*   predicate)
 {
     REG_RANGE range;
-    range.linearizedStart = MAX(scratchAccess->linearizedStart, linearizedStart);
-    range.linearizedEnd = MIN(scratchAccess->linearizedEnd, linearizedEnd);
+    range.linearizedStart = std::max(scratchAccess->linearizedStart, linearizedStart);
+    range.linearizedEnd = std::min(scratchAccess->linearizedEnd, linearizedEnd);
     range.predicate = predicate ? true : false;
 
     if (scratchAccess->killedRegRange.size() == 0)
@@ -10389,8 +10350,8 @@ bool FlagSpillCleanup::addKilledGRFRanges(
 
             if (!merged && IS_MERGEABLE_GRF_RANGES(range, killedRange))
             {
-                killedRange.linearizedStart = MIN(killedRange.linearizedStart, range.linearizedStart);
-                killedRange.linearizedEnd = MAX(killedRange.linearizedEnd, range.linearizedEnd);
+                killedRange.linearizedStart = std::min(killedRange.linearizedStart, range.linearizedStart);
+                killedRange.linearizedEnd = std::max(killedRange.linearizedEnd, range.linearizedEnd);
                 merged = true;
                 merged_range = &killedRange;
             }
@@ -10398,8 +10359,8 @@ bool FlagSpillCleanup::addKilledGRFRanges(
             {
                 if (IS_MERGEABLE_GRF_RANGES((*merged_range), killedRange))
                 {
-                    merged_range->linearizedStart = MIN(killedRange.linearizedStart, merged_range->linearizedStart);
-                    merged_range->linearizedEnd = MAX(killedRange.linearizedEnd, merged_range->linearizedEnd);
+                    merged_range->linearizedStart = std::min(killedRange.linearizedStart, merged_range->linearizedStart);
+                    merged_range->linearizedEnd = std::max(killedRange.linearizedEnd, merged_range->linearizedEnd);
                 }
             }
             if (IS_GRF_RANGE_OVERWRITE(scratchAccess, killedRange.linearizedStart, killedRange.linearizedEnd))
