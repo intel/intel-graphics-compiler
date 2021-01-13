@@ -37,8 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 using namespace vISA;
 
-#define MIN(x,y)    (((x)<(y))? (x):(y))
-
 
 static bool hasSameFunctionID(G4_INST* inst1, G4_INST* inst2)
 {
@@ -700,6 +698,7 @@ void SWSB::handleIndirectCall()
 
     return;
 }
+
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, LiveGRFBuckets& globalSendsLB)
 {
     bool hasIndirectCall = false;
@@ -1047,8 +1046,7 @@ static void updateTokenSet(FCPatchingInfo* FCPI, SBNODE_VECT& Nodes,
 void SWSB::genSWSBPatchInfo() {
     unsigned NumRegs = kernel.getNumRegTotal();
     auto FCPI = fg.builder->getFCPatchInfo();
-    for (auto NI = SBNodes.begin(), NE = SBNodes.end(); NI != NE; ++NI) {
-        auto Node = *NI;
+    for (auto Node : SBNodes) {
         updatePatchInfo(FCPI, Node, NumRegs, totalTokenNum);
     }
 
@@ -1108,8 +1106,7 @@ void SWSB::genSWSBPatchInfo() {
     // First access.
     std::cerr << "FirstAccess:\n";
     auto& FirstAccess = FCPI->RegFirstAccessList;
-    for (auto I = FirstAccess.begin(), E = FirstAccess.end(); I != E; ++I) {
-        auto& Access = *I;
+    for (auto& Access : FirstAccess) {
         fprintf(stderr, "r%03u.%s", Access.RegNo,
             (Access.Type == FCPatchingInfo::Fully_Def ? "def" : "use"));
         fprintf(stderr, ", P%04x", Access.Pipe);
@@ -1121,8 +1118,7 @@ void SWSB::genSWSBPatchInfo() {
     // Last access.
     std::cerr << "LastAccess:\n";
     auto& LastAccess = FCPI->RegLastAccessList;
-    for (auto I = LastAccess.begin(), E = LastAccess.end(); I != E; ++I) {
-        auto& Access = *I;
+    for (auto& Access : LastAccess) {
         fprintf(stderr, "r%03u.%s", Access.RegNo,
             (Access.Type == FCPatchingInfo::Fully_Def ? "def" : "use"));
         fprintf(stderr, ", P%04x", Access.Pipe);
@@ -1266,13 +1262,13 @@ void SWSB::SWSBGenerator()
     return;
 }
 
-unsigned SWSB::getDepDelay(SBNode* curNode)
+unsigned SWSB::getDepDelay(const SBNode* curNode)
 {
     int reuseDelay = 0;
 
     if (curNode->GetInstruction()->isSend())
     {
-        G4_SendMsgDescriptor* msgDesc = curNode->GetInstruction()->getMsgDesc();
+        const G4_SendMsgDescriptor* msgDesc = curNode->GetInstruction()->getMsgDesc();
 
         if (msgDesc->isSLMMessage())
         {
@@ -1381,14 +1377,14 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
             sn_it != sameTokenNodes[token].end();
             sn_it++)
         {
-            SBNode* snode = (*sn_it);
-            unsigned sNodeDelay = getDepDelay(snode);
+            SBNode* snode = *sn_it;
             unsigned char sNodeNestLoopLevel = BBVector[snode->getBBID()]->getBB()->getNestLevel();
 
-            int sReuseDelay = 0;
+            int sReuseDelay;
             int sDistance = 0;
             if (nodeID > snode->getNodeID())
             {
+                unsigned sNodeDelay = getDepDelay(snode);
                 sReuseDelay = sNodeDelay - (nodeID - snode->getNodeID());
                 if (sReuseDelay < 0)
                 {
@@ -1407,7 +1403,7 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
             unsigned loopLevelDiff = sNodeNestLoopLevel > nestLoopLevel ? sNodeNestLoopLevel - nestLoopLevel : nestLoopLevel - sNodeNestLoopLevel;
             if (sReuseDelay > 0)
             {
-                sReuseDelay = sReuseDelay / (loopLevelDiff * LOOP_FACTOR_FOR_TOAKE_REUSE + 1);
+                sReuseDelay /= loopLevelDiff * LOOP_FACTOR_FOR_TOAKE_REUSE + 1;
             }
             else
             {
@@ -2143,9 +2139,10 @@ bool SWSB::propogateDist(G4_BB* bb)
         for (unsigned i = 0; i < globalSendNum; i++)
         {
             if (BBVector[predID]->send_live_out->isDstSet(i) &&
-                BBVector[predID]->tokenLiveOutDist[i] != -1)
+                BBVector[predID]->tokenLiveOutDist[i] != -1 &&
+                BBVector[predID]->tokenLiveOutDist[i] < tokenLiveInDist[i])
             {
-                tokenLiveInDist[i] = MIN(BBVector[predID]->tokenLiveOutDist[i], tokenLiveInDist[i]);
+                tokenLiveInDist[i] = BBVector[predID]->tokenLiveOutDist[i];
             }
         }
     }

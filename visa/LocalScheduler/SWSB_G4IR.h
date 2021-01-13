@@ -120,14 +120,14 @@ namespace vISA
         G4_Type type;
         unsigned short LeftB;
         unsigned short RightB;
-        unsigned short offset;
+        unsigned short offset = 0;
         G4_INST*       inst;
-        struct SBFootprint *next;             //The ranges linked together to represent the possible registser ranges may be occupied by an operand.
+        struct SBFootprint *next = nullptr; //The ranges linked together to represent the possible registser ranges may be occupied by an operand.
                                          //For indirect access, non-contigious ranges exist.
 
-        SBFootprint(void) : fType(GRF_T), type (Type_UNDEF), LeftB(0), RightB(0), offset(0), inst(nullptr), next(nullptr) { ; }
+        SBFootprint() : fType(GRF_T), type (Type_UNDEF), LeftB(0), RightB(0), inst(nullptr) { ; }
         SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB, unsigned short RB, G4_INST *i)
-            : fType(ft), type(t), LeftB(LB), RightB(RB), offset(0), inst(i), next(nullptr) {
+            : fType(ft), type(t), LeftB(LB), RightB(RB), inst(i) {
             ;
         }
         ~SBFootprint()
@@ -284,27 +284,27 @@ namespace vISA
             src.set(ID, value);
         }
 
-        bool isEmpty()
+        bool isEmpty() const
         {
             return dst.isEmpty() && src.isEmpty();
         }
 
-        bool isDstEmpty()
+        bool isDstEmpty() const
         {
             return dst.isEmpty();
         }
 
-        bool isSrcEmpty()
+        bool isSrcEmpty() const
         {
             return src.isEmpty();
         }
 
-        bool isDstSet(unsigned i)
+        bool isDstSet(unsigned i) const
         {
             return dst.isSet(i);
         }
 
-        bool isSrcSet(unsigned i)
+        bool isSrcSet(unsigned i) const
         {
             return src.isSet(i);
         }
@@ -337,7 +337,7 @@ namespace vISA
             return *this;
         }
 
-        bool operator!= (const SBBitSets& other)
+        bool operator!= (const SBBitSets& other) const
         {
             return (dst != other.dst) || (src != other.src);
         }
@@ -351,92 +351,81 @@ namespace vISA
         unsigned      nodeID;          // Unique ID of the node
         unsigned      BBID;           // ID of basic block
         int      ALUID;          // The ID for in-order instructions. The out-of-order instructions are not counted.
-        unsigned      liveStartID;    // The start ID of live range
-        unsigned      liveEndID;      // The end ID of live range
-        unsigned      liveStartBBID;    // The start BB ID of live range
-        unsigned      liveEndBBID;    // The start BB ID of live range
-        bool          instKilled;     // Used for global analysis, if the node generated dependencies have all been resolved.
-        bool          sourceKilled;   // If the dependencies caused by source operands have all been resolved.
-        bool          hasAW;          // Used for global analysis, if has AW (RAW or WAW) dependencies from the node
-        bool          hasAR;          // Used for global analysis, if has AR (WAR) dependencies from the node
-        bool          hasFollowDistOneAReg;
-        bool          followDistOneAReg;
+        unsigned      liveStartID = 0; // The start ID of live range
+        unsigned      liveEndID = 0;   // The end ID of live range
+        unsigned      liveStartBBID = -1; // The start BB ID of live range
+        unsigned      liveEndBBID = -1; // The start BB ID of live range
+        bool          instKilled = false; // Used for global analysis, if the node generated dependencies have all been resolved.
+        bool          sourceKilled = false; // If the dependencies caused by source operands have all been resolved.
+        bool          hasAW = false;      // Used for global analysis, if has AW (RAW or WAW) dependencies from the node
+        bool          hasAR = false;      // Used for global analysis, if has AR (WAR) dependencies from the node
+        bool          hasFollowDistOneAReg = false;
+        bool          followDistOneAReg = false;
 
     public:
         std::vector<G4_INST *> instVec;
         SBDEP_VECTOR   succs;          // A list of node's successors in dependence graph
         SBDEP_VECTOR   preds;          // A list of node's predecessors in dependence graph
-        int            globalID;      // ID of global send instructions
-        int            sendID;
-        int            sendUseID;
-        SBNode *       tokenReusedNode;  // For global token reuse optimization, the node whose token is reused by current one.
-        SBBitSets* reachingSends;
-        SBBitSets* reachedUses;
-        unsigned reuseOverhead;
+        int            globalID = -1;  // ID of global send instructions
+        int            sendID = -1;
+        int            sendUseID = -1;
+        SBNode *       tokenReusedNode = nullptr;  // For global token reuse optimization, the node whose token is reused by current one.
+        SBBitSets* reachingSends = nullptr;
+        SBBitSets* reachedUses = nullptr;
+        unsigned reuseOverhead = 0;
 
         /* Constructor */
         SBNode(uint32_t id, int ALUId, uint32_t BBId, G4_INST *i)
             : nodeID(id), ALUID(ALUId), BBID(BBId),
-            liveStartID(0), liveStartBBID(-1), liveEndID(0), liveEndBBID(-1), instKilled(false), sourceKilled(false), hasAW(false), hasAR(false), hasFollowDistOneAReg(false), footprints(Opnd_total_num, nullptr), globalID(-1)
+            footprints(Opnd_total_num, nullptr)
         {
 
-            followDistOneAReg = false;
-            sendID = -1;
-            sendUseID = -1;
             instVec.push_back(i);
-            tokenReusedNode = nullptr;
-            reachingSends = nullptr;
-            reachedUses = nullptr;
-            reuseOverhead = 0;
         }
 
         ~SBNode()
         {
-            for (auto sm_it = footprints.begin();
-                sm_it != footprints.end();
-                sm_it++)
+            for (SBFootprint *sm : footprints)
             {
-                SBFootprint* sm = *sm_it;
                 sm->~SBFootprint();
             }
         }
+
         void setSendID(int ID)
         {
             sendID = ID;
-            return;
         }
 
         void setSendUseID(int ID)
         {
             sendUseID = ID;
-            return;
         }
 
-        int getSendID()
+        int getSendID() const
         {
             return sendID;
         }
 
-        int getSendUseID()
+        int getSendUseID() const
         {
             return sendUseID;
         }
 
         /* Member functions */
-        G4_INST*  GetInstruction(void) const { return instVec.front(); }
+        G4_INST*  GetInstruction() const { return instVec.front(); }
         void addInstruction(G4_INST *i) { instVec.push_back(i); }
-        G4_INST*  getLastInstruction(void) const { return instVec.back(); }
+        G4_INST*  getLastInstruction() const { return instVec.back(); }
 
-        int getALUID() { return ALUID; }
-        unsigned getNodeID(void) { return nodeID; };
-        unsigned getBBID(void) { return BBID; };
+        int getALUID() const { return ALUID; }
+        unsigned getNodeID() const { return nodeID; };
+        unsigned getBBID() const { return BBID; };
 
 
-        unsigned getLiveStartID() { return liveStartID; }
-        unsigned getLiveEndID() { return liveEndID; }
+        unsigned getLiveStartID() const { return liveStartID; }
+        unsigned getLiveEndID() const { return liveEndID; }
 
-        unsigned getLiveStartBBID() { return liveStartBBID; }
-        unsigned getLiveEndBBID() { return liveEndBBID; }
+        unsigned getLiveStartBBID() const { return liveStartBBID; }
+        unsigned getLiveEndBBID() const { return liveEndBBID; }
 
         void setLiveEarliesID(unsigned id, unsigned startBBID)
         {
@@ -450,7 +439,6 @@ namespace vISA
                 liveStartID = id;
                 liveStartBBID = startBBID;
             }
-            return;
         }
         void setLiveLatestID(unsigned id, unsigned endBBID)
         {
@@ -464,20 +452,16 @@ namespace vISA
                 liveEndID = id;
                 liveEndBBID = endBBID;
             }
-            return;
         }
 
         void setLiveEarliesID(unsigned id)
         {
             liveStartID = id;
-            return;
         }
 
         void setLiveLatestID(unsigned id)
         {
             liveEndID = id;
-
-            return;
         }
 
         void setInstKilled(bool value)
@@ -489,7 +473,7 @@ namespace vISA
             }
         }
 
-        bool isInstKilled()
+        bool isInstKilled() const
         {
             return instKilled;
         }
@@ -503,7 +487,7 @@ namespace vISA
             }
         }
 
-        bool isSourceKilled()
+        bool isSourceKilled() const
         {
             return sourceKilled;
         }
@@ -527,10 +511,10 @@ namespace vISA
             followDistOneAReg = true;
         }
 
-        bool hasAWDep() { return hasAW; }
-        bool hasARDep() { return hasAR; }
-        bool hasDistOneAreg() { return hasFollowDistOneAReg; }
-        bool followDistOneAreg() { return followDistOneAReg; }
+        bool hasAWDep() const { return hasAW; }
+        bool hasARDep() const { return hasAR; }
+        bool hasDistOneAreg() const { return hasFollowDistOneAReg; }
+        bool followDistOneAreg() const { return followDistOneAReg; }
 
         void setFootprint(SBFootprint *footprint, Gen4_Operand_Number opndNum)
         {
@@ -545,12 +529,12 @@ namespace vISA
             }
         }
 
-        SBFootprint* getFirstFootprint(Gen4_Operand_Number opndNum)
+        SBFootprint* getFirstFootprint(Gen4_Operand_Number opndNum) const
         {
             return footprints[opndNum];
         }
 
-        SBFootprint *getFootprint(Gen4_Operand_Number opndNum, G4_INST *inst)
+        SBFootprint *getFootprint(Gen4_Operand_Number opndNum, const G4_INST *inst) const
         {
             SBFootprint *sbFp = footprints[opndNum];
             while (sbFp->inst != inst)
@@ -598,11 +582,11 @@ namespace vISA
 
         void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
-        void dumpInterval()
+        void dumpInterval() const
         {
             std::cerr << "#" << nodeID << ": " << liveStartID << "-" << liveEndID << "\n";
         }
-        void dumpAssignedTokens()
+        void dumpAssignedTokens() const
         {
             std::cerr << "#" << nodeID << ": " << liveStartID << "-" << liveEndID << "\n";
             std::cerr << "Token: " << getLastInstruction()->getToken();
@@ -623,10 +607,10 @@ namespace vISA
 {
     //Similar as SBBucketNode, but it's used for the bucket descriptions got from each operands.
     struct SBBucketDescr {
-        int bucket;
-        Gen4_Operand_Number opndNum;
-        SBNode*  node;
-        G4_INST* inst;
+        const int bucket;
+        const Gen4_Operand_Number opndNum;
+        SBNode* const node;
+        G4_INST* const inst;
 
         SBBucketDescr(int Bucket, Gen4_Operand_Number opnd_num, SBNode *sNode, G4_INST *i)
             : bucket(Bucket), opndNum(opnd_num), inst(i), node(sNode) {
@@ -639,11 +623,11 @@ namespace vISA
     {
         SBNode*             node;
         Gen4_Operand_Number opndNum;
-        int                 sendID;
+        int                 sendID = -1;
         G4_INST*            inst;
 
         SBBucketNode(SBNode *node1, Gen4_Operand_Number opndNum1, G4_INST *i)
-            : node(node1), opndNum(opndNum1), sendID(-1), inst(i)
+            : node(node1), opndNum(opndNum1), inst(i)
         {
         }
 
@@ -654,15 +638,14 @@ namespace vISA
         void setSendID(int ID)
         {
             sendID = ID;
-            return;
         }
 
-        int getSendID()
+        int getSendID() const
         {
             return sendID;
         }
 
-        void dump()
+        void dump() const
         {
             std::cerr << "#" << node->getNodeID() << "-" << opndNum << ",";
         }
@@ -677,25 +660,21 @@ namespace vISA
         std::vector<SBBUCKET_VECTOR *> nodeBucketsArray;
         G4_Kernel &k;
         vISA::Mem_Manager &mem;
-        int numOfBuckets;
+        const int numOfBuckets;
 
     public:
         LiveGRFBuckets(vISA::Mem_Manager& m, int TOTAL_BUCKETS, G4_Kernel& k)
-            : k(k)
-            , mem(m)
+            : nodeBucketsArray(TOTAL_BUCKETS), k(k), mem(m), numOfBuckets(TOTAL_BUCKETS)
         {
-            numOfBuckets = TOTAL_BUCKETS;
-            nodeBucketsArray.resize(numOfBuckets);
-
             // Initialize a vector for each bucket
-            for (int bucket_i = 0; bucket_i != (int)numOfBuckets; ++bucket_i)
+            for (auto& bucket : nodeBucketsArray)
             {
                 void* allocedMem = mem.alloc(sizeof(SBBUCKET_VECTOR));
-                nodeBucketsArray[bucket_i] = new (allocedMem) SBBUCKET_VECTOR();
+                bucket = new (allocedMem) SBBUCKET_VECTOR();
             }
         }
 
-        ~LiveGRFBuckets(void)
+        ~LiveGRFBuckets()
         {
             for (int i = 0; i < numOfBuckets; i++)
             {
@@ -707,7 +686,7 @@ namespace vISA
             }
         }
 
-        int getNumOfBuckets()
+        int getNumOfBuckets() const
         {
             return numOfBuckets;
         }
@@ -731,7 +710,7 @@ namespace vISA
                 return *this;
             }
 
-            bool operator!=(const BN_iterator &it2)
+            bool operator!=(const BN_iterator &it2) const
             {
                 assert(LB == it2.LB);
                 return (!(bucket == it2.bucket && node_it == it2.node_it));
@@ -856,16 +835,15 @@ namespace vISA
 
         void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
-        void dumpLives()
+        void dumpLives() const
         {
             for (int curBucket = 0; curBucket < numOfBuckets; curBucket++)
             {
                 if (nodeBucketsArray[curBucket]->size())
                 {
                     std::cerr << " GRF" << curBucket << ":";
-                    for (auto it = nodeBucketsArray[curBucket]->begin(), ite = nodeBucketsArray[curBucket]->end(); it != ite; ++it)
+                    for (SBBucketNode *liveBN : *nodeBucketsArray[curBucket])
                     {
-                        SBBucketNode *liveBN = (*it);
                         std::cerr << " " << liveBN->node->getNodeID() << "(" << liveBN->opndNum << ")";
                     }
                     std::cerr << "\t";
@@ -912,51 +890,47 @@ namespace vISA
         BB_SWSB_LIST      domPreds;
         BB_SWSB_LIST      domSuccs;
 
-        int first_node;
-        int last_node;
+        int first_node = -1;
+        int last_node = -1;
 
         int first_send_node;
         int last_send_node;
 
-        bool tokenAssigned;
+        bool tokenAssigned = false;
 
-        int send_start;
-        int send_end;
+        int send_start = -1;
+        int send_end = -1;
 
-        unsigned      loopStartBBID;    // The start BB ID of live range
-        unsigned      loopEndBBID;    // The start BB ID of live range
+        unsigned      loopStartBBID = -1;    // The start BB ID of live range
+        unsigned      loopEndBBID = -1;    // The start BB ID of live range
         // send_live_in(BBi) = U(send_live_out(BBj)), BBj is the predecessor of BBi
         // send_live_out = (send_live_in - send_may_kill) + send_live_out
         // send_kill = send_live_in - send_live_out;
-        SBBitSets *send_def_out;
-        SBBitSets *send_live_in;
-        SBBitSets *send_live_out;
-        SBBitSets *send_may_kill;
-        SBBitSets *send_live_in_scalar;
-        SBBitSets *send_live_out_scalar;
-        SBBitSets *send_kill_scalar;
-        BitSet* send_WAW_may_kill;
+        SBBitSets *send_def_out = nullptr;
+        SBBitSets *send_live_in = nullptr;
+        SBBitSets *send_live_out = nullptr;
+        SBBitSets *send_may_kill = nullptr;
+        SBBitSets *send_live_in_scalar = nullptr;
+        SBBitSets *send_live_out_scalar = nullptr;
+        SBBitSets *send_kill_scalar = nullptr;
+        BitSet* send_WAW_may_kill = nullptr;
 
         BitSet* dominators;
 
         //For token reduction
-        BitSet   *liveInTokenNodes;
-        BitSet   *liveOutTokenNodes;
-        BitSet   *killedTokens;
-        BitSet   **tokeNodesMap;
+        BitSet   *liveInTokenNodes = nullptr;
+        BitSet   *liveOutTokenNodes = nullptr;
+        BitSet   *killedTokens = nullptr;
+        BitSet   **tokeNodesMap = nullptr;
         unsigned    *tokenLiveInDist;
         unsigned    *tokenLiveOutDist;
-        SBBitSets* localReachingSends;
+        SBBitSets* localReachingSends = nullptr;
 
         //BB local data dependence analysis
         G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
             SBBUCKET_VECTOR *globalSendOpndList,  SWSB_INDEXES *indexes, uint32_t &globalSendNum, LiveGRFBuckets *lb,
             LiveGRFBuckets *globalLB, PointsToAnalysis& p,
-            std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block),
-            first_node(-1), last_node(-1), send_start(-1), send_end(-1),
-            send_live_in(nullptr), send_live_out(nullptr), send_may_kill(nullptr), send_live_in_scalar(nullptr), send_live_out_scalar(nullptr), send_kill_scalar(nullptr), send_WAW_may_kill(nullptr),
-            liveInTokenNodes(nullptr), liveOutTokenNodes(nullptr), killedTokens(nullptr), tokeNodesMap(nullptr), loopStartBBID(-1), loopEndBBID(-1),
-            send_def_out(nullptr), tokenAssigned(false), localReachingSends(nullptr)
+            std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block)
         {
             first_send_node = -1;
             last_send_node = -1;
@@ -987,8 +961,8 @@ namespace vISA
             }
         }
 
-        G4_BB* getBB() { return bb; }
-        G4_Label* getLabel() { return BBLabel; }
+        G4_BB* getBB() const { return bb; }
+        G4_Label* getLabel() const { return BBLabel; }
 
         bool isGRFEdgeAdded(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a);
         void createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a);
@@ -1061,8 +1035,8 @@ namespace vISA
         void getLiveOutToken(unsigned allSendNum, SBNODE_VECT *SBNodes);
 
 
-        unsigned getLoopStartBBID() { return loopStartBBID; }
-        unsigned getLoopEndBBID() { return loopEndBBID; }
+        unsigned getLoopStartBBID() const { return loopStartBBID; }
+        unsigned getLoopEndBBID() const { return loopEndBBID; }
 
         void setLoopStartBBID(unsigned id) { loopStartBBID = id; }
         void setLoopEndBBID(unsigned id) { loopEndBBID = id; }
@@ -1138,52 +1112,52 @@ namespace vISA
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
         void setTokenInstructionCount(int count) { tokenInstructionCount = count; }
-        uint32_t getTokenInstructionCount() { return tokenInstructionCount; }
+        uint32_t getTokenInstructionCount() const { return tokenInstructionCount; }
 
         void setTokenReuseCount(int count) { tokenReuseCount = count; }
-        uint32_t getTokenReuseCount() { return tokenReuseCount; }
+        uint32_t getTokenReuseCount() const { return tokenReuseCount; }
 
         void setAWTokenReuseCount(int count) { AWTokenReuseCount = count; }
-        uint32_t getAWTokenReuseCount() { return AWTokenReuseCount; }
+        uint32_t getAWTokenReuseCount() const { return AWTokenReuseCount; }
 
         void setARTokenReuseCount(int count) { ARTokenReuseCount = count; }
-        uint32_t getARTokenReuseCount() { return ARTokenReuseCount; }
+        uint32_t getARTokenReuseCount() const { return ARTokenReuseCount; }
 
         void setAATokenReuseCount(int count) { AATokenReuseCount = count; }
-        uint32_t getAATokenReuseCount() { return AATokenReuseCount; }
+        uint32_t getAATokenReuseCount() const { return AATokenReuseCount; }
 
         void setMathInstCount(int count) { mathInstCount = count; }
-        uint32_t getMathInstCount() { return mathInstCount; }
+        uint32_t getMathInstCount() const { return mathInstCount; }
 
         void setSyncInstCount(int count) { syncInstCount = count; }
-        uint32_t getSyncInstCount() { return syncInstCount; }
+        uint32_t getSyncInstCount() const { return syncInstCount; }
 
         void setMathReuseCount(int count) { mathReuseCount = count; }
-        uint32_t getMathReuseCount() { return mathReuseCount; }
+        uint32_t getMathReuseCount() const { return mathReuseCount; }
 
         void setARSyncInstCount(int count) { ARSyncInstCount = count; }
-        uint32_t getARSyncInstCount() { return ARSyncInstCount; }
+        uint32_t getARSyncInstCount() const { return ARSyncInstCount; }
 
         void setAWSyncInstCount(int count) { AWSyncInstCount = count; }
-        uint32_t getAWSyncInstCount() { return AWSyncInstCount; }
+        uint32_t getAWSyncInstCount() const { return AWSyncInstCount; }
 
         void setARSyncAllCount(int count) { ARSyncAllCount = count; }
-        uint32_t getARSyncAllCount() { return ARSyncAllCount; }
+        uint32_t getARSyncAllCount() const { return ARSyncAllCount; }
 
         void setAWSyncAllCount(int count) { AWSyncAllCount = count; }
-        uint32_t getAWSyncAllCount() { return AWSyncAllCount; }
+        uint32_t getAWSyncAllCount() const { return AWSyncAllCount; }
 
         void setPrunedEdgeNum(int num) { prunedDepEdges = num; }
-        uint32_t getPrunedEdgeNum() { return prunedDepEdges; }
+        uint32_t getPrunedEdgeNum() const { return prunedDepEdges; }
 
         void setPrunedGlobalEdgeNum(int num) { prunedGlobalEdgeNum = num; }
-        uint32_t getPrunedGlobalEdgeNum() { return prunedGlobalEdgeNum; }
+        uint32_t getPrunedGlobalEdgeNum() const { return prunedGlobalEdgeNum; }
 
         void setPrunedDiffBBEdgeNum(int num) { prunedDiffBBEdgeNum = num; }
-        uint32_t getPrunedDiffBBEdgeNum() { return prunedDiffBBEdgeNum; }
+        uint32_t getPrunedDiffBBEdgeNum() const { return prunedDiffBBEdgeNum; }
 
         void setPrunedDiffBBSameTokenEdgeNum(int num) { prunedDiffBBSameTokenEdgeNum = num; }
-        uint32_t getPrunedDiffBBSameTokenEdgeNum() { return prunedDiffBBSameTokenEdgeNum; }
+        uint32_t getPrunedDiffBBSameTokenEdgeNum() const { return prunedDiffBBSameTokenEdgeNum; }
     };
 
     class SWSB {
@@ -1199,18 +1173,18 @@ namespace vISA
         SBNODE_VECT globalSBNodes;        // All instruction nodes
 #endif
         SWSB_INDEXES indexes;         // To pass ALU ID  from previous BB to current.
-        uint32_t  globalSendNum;    // The number of out-of-order instructions which generate global dependencies.
+        uint32_t  globalSendNum = 0;  // The number of out-of-order instructions which generate global dependencies.
         SBBUCKET_VECTOR globalSendOpndList;  //All send operands which live out their instructions' BBs. No redundant.
         uint32_t totalTokenNum;
 
         //For profiling
-        uint32_t syncInstCount;
-        uint32_t AWSyncInstCount;
-        uint32_t ARSyncInstCount;
-        uint32_t mathReuseCount;
-        uint32_t ARSyncAllCount;
-        uint32_t AWSyncAllCount;
-        uint32_t tokenReuseCount;
+        uint32_t syncInstCount = 0;
+        uint32_t AWSyncInstCount = 0;
+        uint32_t ARSyncInstCount = 0;
+        uint32_t mathReuseCount = 0;
+        uint32_t ARSyncAllCount = 0;
+        uint32_t AWSyncAllCount = 0;
+        uint32_t tokenReuseCount = 0;
 
         //Linear scan data structures for token allocation
         SBNODE_LIST linearScanLiveNodes;
@@ -1222,10 +1196,10 @@ namespace vISA
         SBNODE_VECT localTokenUsage;
 
         SBNODE_LIST sameTokenNodes[32];
-        int topIndex;
+        int topIndex = -1;
 
         std::map<G4_Label*, G4_BB_SB*> labelToBlockMap;
-        BitSet   **allTokenNodesMap;
+        BitSet   **allTokenNodesMap = nullptr;
         SWSB_TOKEN_PROFILE* tokenProfile;
 
         //Global dependence analysis
@@ -1276,7 +1250,7 @@ namespace vISA
         //Insert sync instructions
         G4_INST *insertTestInstruction(G4_BB *bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo, bool countSyns);  //FIXME: Please remove it when meta is not needed anymore
         G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
-        G4_INST * insertSyncInstructionAfter(G4_BB * bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
+        G4_INST *insertSyncInstructionAfter(G4_BB * bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
         G4_INST* insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
         G4_INST *insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs, INST_LIST_ITER nextIter, int CISAOff, int lineNo);
 
@@ -1318,36 +1292,20 @@ namespace vISA
         SWSB(G4_Kernel &k, vISA::Mem_Manager& m)
             : kernel(k), fg(k.fg), mem(m)
         {
-            globalSendNum = 0;
-            syncInstCount = 0;
-            mathReuseCount = 0;
-            ARSyncInstCount = 0;
-            AWSyncInstCount = 0;
-            ARSyncAllCount = 0;
-            AWSyncAllCount = 0;
-            tokenReuseCount = 0;
             indexes.instIndex = 0;
             indexes.ALUIndex = 0;
-            topIndex = -1;
 
-            allTokenNodesMap = nullptr;
             totalTokenNum = fg.builder->kernel.getNumSWSBTokens();
         }
         ~SWSB()
         {
-            for (SBNODE_VECT_ITER node_it = SBNodes.begin();
-                node_it != SBNodes.end();
-                node_it++)
+            for (SBNode *node : SBNodes)
             {
-                SBNode *node = *node_it;
                 node->~SBNode();
             }
 
-            for (BB_SWSB_VECTOR_ITER bb_it = BBVector.begin();
-                bb_it != BBVector.end();
-                bb_it++)
+            for (G4_BB_SB *bb : BBVector)
             {
-                G4_BB_SB *bb = *bb_it;
                 bb->~G4_BB_SB();
             }
             if (allTokenNodesMap != nullptr)
@@ -1360,7 +1318,7 @@ namespace vISA
         }
         void SWSBGenerator();
         SBNode * reuseTokenSelection(SBNode * node);
-        unsigned getDepDelay(SBNode *node);
+        unsigned getDepDelay(const SBNode *node);
     };
 }
 #endif // _SWSB_H_
