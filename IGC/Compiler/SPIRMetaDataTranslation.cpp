@@ -233,7 +233,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             int simd_size = reqdSubGroupSize->getSIMD_Size();
             if (!((simd_size == 8) || (simd_size == 16) || (simd_size == 32)))
             {
-                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size", spirKernel->getFunction());
+                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size");
                 return false;
             }
             sgHandle->setSIMD_size(simd_size);

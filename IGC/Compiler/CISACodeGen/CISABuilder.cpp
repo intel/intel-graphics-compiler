@@ -5123,7 +5123,7 @@ namespace IGC
                     raw_string_ostream S(output);
                     S << "parsing vISA inline assembly failed:\n" << vAsmTextBuilder->GetCriticalMsg();
                     S.flush();
-                    context->EmitError(output.c_str(), nullptr);
+                    context->EmitError(output.c_str());
                     vISAAsmParseError = true;
                 }
             }
