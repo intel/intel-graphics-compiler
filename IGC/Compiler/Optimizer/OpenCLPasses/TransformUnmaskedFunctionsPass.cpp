@@ -261,7 +261,7 @@ bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function& F)
         stream << "\nDetected non-uniform control flow inside unmasked function '"
                << F.getName().str() << "': '" << result.reason << "'\n";
         std::string errorMessage = stream.str();
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str());
+        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str(), &F);
     }
 
     F.removeFnAttr(llvm::Attribute::AlwaysInline);

@@ -393,7 +393,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         if (!cInst)
         {
             IGC_ASSERT_MESSAGE(0, "Unknown function usage");
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ");
+            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ", U);
             return;
         }
         //Return if any error
@@ -596,7 +596,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
             std::string Msg = "Invalid user defined function being processed: ";
             Msg += f->getName();
             Msg += "()\n";
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(Msg.c_str());
+            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(Msg.c_str(), f);
             return;
         }
         if (argData == nullptr)
@@ -721,7 +721,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
             if (!cInst)
             {
                 IGC_ASSERT_MESSAGE(0, " Not supported");
-                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ");
+                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ", v);
                 return;
             }
 

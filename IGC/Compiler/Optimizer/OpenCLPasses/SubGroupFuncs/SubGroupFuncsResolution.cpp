@@ -272,7 +272,7 @@ void SubGroupFuncsResolution::CheckSIMDSize(Instruction& I, StringRef msg)
     if ((simdSize == 32 || m_pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
         )
     {
-        m_pCtx->EmitError(std::string(msg).c_str());
+        m_pCtx->EmitError(std::string(msg).c_str(), &I);
     }
 }
 
@@ -360,7 +360,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
     supportLocal = m_pCtx->platform.supportSLMBlockMessage();
     if (AS == ADDRESS_SPACE_LOCAL && !supportLocal)
     {
-        m_pCtx->EmitError("BlockReadLocal not supported!");
+        m_pCtx->EmitError("BlockReadLocal not supported!", &CI);
         return;
     }
 
@@ -431,7 +431,7 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
     supportLocal = m_pCtx->platform.supportSLMBlockMessage();
     if (AS == ADDRESS_SPACE_LOCAL && !supportLocal)
     {
-        m_pCtx->EmitError("BlockWriteLocal not supported!");
+        m_pCtx->EmitError("BlockWriteLocal not supported!", &CI);
         return;
     }
 
@@ -775,7 +775,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             blockWidth = ValueTracker::track(&CI, 2);
             if (!blockWidth)
             {
-                m_pCtx->EmitError("width argument supplied to intel_media_block_read*() must be constant.");
+                m_pCtx->EmitError("width argument supplied to intel_media_block_read*() must be constant.", &CI);
                 return;
             }
         }
@@ -786,7 +786,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             blockHeight = ValueTracker::track(&CI, 3);
             if (!blockHeight)
             {
-                m_pCtx->EmitError("height argument supplied to intel_media_block_read*() must be constant.");
+                m_pCtx->EmitError("height argument supplied to intel_media_block_read*() must be constant.", &CI);
                 return;
             }
         }
@@ -827,7 +827,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             blockWidth = ValueTracker::track(&CI, 2);
             if (!blockWidth)
             {
-                m_pCtx->EmitError("width argument supplied to intel_media_block_write*() must be constant.");
+                m_pCtx->EmitError("width argument supplied to intel_media_block_write*() must be constant.", &CI);
                 return;
             }
         }
@@ -838,7 +838,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             blockHeight = ValueTracker::track(&CI, 3);
             if (!blockHeight)
             {
-                m_pCtx->EmitError("height argument supplied to intel_media_block_write*() must be constant.");
+                m_pCtx->EmitError("height argument supplied to intel_media_block_write*() must be constant.", &CI);
                 return;
             }
         }
@@ -992,7 +992,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
             raw_string_ostream S(output);
             S << "width for " << builtinPrefix << "*() must be <= " << 32 / typeSize;
             S.flush();
-            m_pCtx->EmitError(output.c_str());
+            m_pCtx->EmitError(output.c_str(), inst);
             return;
         }
 
@@ -1003,7 +1003,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
             S << "height for " << widthInBytes << " bytes wide "
                 << builtinPrefix << "*() must be <= " << maxRows;
             S.flush();
-            m_pCtx->EmitError(output.c_str());
+            m_pCtx->EmitError(output.c_str(), inst);
             return;
         }
 
@@ -1018,7 +1018,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
                 S << builtinPrefix << "*() attempt of " << IOSize <<
                     " bytes.  Must be <= " << maxIOSize << " bytes.";
                 S.flush();
-                m_pCtx->EmitError(output.c_str());
+                m_pCtx->EmitError(output.c_str(), inst);
                 return;
             }
         }
@@ -1036,7 +1036,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
                 S << builtinPrefix << "_us*() widths must be dual pixel aligned.";
             }
             S.flush();
-            m_pCtx->EmitError(output.c_str());
+            m_pCtx->EmitError(output.c_str(), inst);
             return;
         }
     }
