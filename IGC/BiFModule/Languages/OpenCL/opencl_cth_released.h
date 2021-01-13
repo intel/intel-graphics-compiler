@@ -6137,8 +6137,8 @@ void    __attribute__((overloadable)) intel_sub_group_block_write2( __global uin
 void    __attribute__((overloadable)) intel_sub_group_block_write4( __global uint* p, uint4 data );
 void    __attribute__((overloadable)) intel_sub_group_block_write8( __global uint* p, uint8 data );
 
-#ifdef __opencl_c_images
 #ifdef cl_intel_subgroups_half
+#ifdef __opencl_c_images
 ushort   __attribute__((overloadable)) intel_sub_group_block_read_half(read_only image2d_t image, int2 coord);
 ushort2  __attribute__((overloadable)) intel_sub_group_block_read2_half(read_only image2d_t image, int2 coord);
 ushort4  __attribute__((overloadable)) intel_sub_group_block_read4_half(read_only image2d_t image, int2 coord);
@@ -6404,8 +6404,8 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_uc16(__global 
 
 #endif // cl_intel_subgroups_char
 
-#ifdef __opencl_c_images
 #ifdef cl_intel_subgroups_long
+#ifdef __opencl_c_images
 ulong   __attribute__((overloadable)) intel_sub_group_block_read_ul(read_only image2d_t image, int2 coord);
 ulong2  __attribute__((overloadable)) intel_sub_group_block_read_ul2(read_only image2d_t image, int2 coord);
 ulong4  __attribute__((overloadable)) intel_sub_group_block_read_ul4(read_only image2d_t image, int2 coord);
