@@ -461,6 +461,11 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
             NewLargeRes = m_builder->CreateAShr(NewLargeSrc1, NewLargeSrc2);
             break;
         }
+        case Instruction::Shl:
+        {
+            NewLargeRes = m_builder->CreateShl(NewLargeSrc1, NewLargeSrc2);
+            break;
+        }
         default:
             printf("Binary Instruction seen with illegal int type. Legalization support missing. Inst opcode:%d", I.getOpcode());
             IGC_ASSERT_MESSAGE(0, "Binary Instruction seen with illegal int type. Legalization support missing.");
@@ -895,20 +900,59 @@ void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
         I.hasOneUse() &&
         isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()))
     {
-        //Need to see if it is safe to wipe it out. It is safe only if the user is a
-        //SExt or ZExt and the trunc starting bitwidth is less than the
-        //users bitwidth.
+        //Need to see if it is safe to replace, combine, or wipe out
         Value* new_inst = NULL;
         Instruction* castInst = I.user_back();
         auto Src = I.getOperand(0);
         auto Src_bitsize = Src->getType()->getScalarSizeInBits();
+        auto Trunc_bitsize = I.getType()->getScalarSizeInBits();
         auto castInst_bitsize = castInst->getType()->getScalarSizeInBits();
-        if (Src_bitsize < castInst_bitsize)
+        if (Src_bitsize <= castInst_bitsize)
         {
+            //Example 1:
+            //%a = trunc i8 %in to i5
+            //%out = sext i5 %a to i32
+            //=>
+            //%q = zext i8 %in to i32
+            //%s = shl i32 %q, 27
+            //%out = ashr i32 %s, 27
+
+            //Example 2:
+            //%a = trunc i8 %in to i5
+            //%out = zext i5 %a to i32
+            //=>
+            //%q = and i8 %in, 31
+            //%out = zext i8 %q to i32
+
             if (isa<SExtInst>(castInst))
-                new_inst = m_builder->CreateSExt(Src, castInst->getType());
-            if (isa<ZExtInst>(castInst))
-                new_inst = m_builder->CreateZExt(Src, castInst->getType());
+            {
+                auto shiftAmt = castInst_bitsize - Trunc_bitsize;
+                auto inst1 = m_builder->CreateZExt(Src, castInst->getType());
+                auto inst2 = m_builder->CreateShl(inst1, shiftAmt);
+                new_inst = m_builder->CreateAShr(inst2, shiftAmt);
+            }
+            else if (isa<ZExtInst>(castInst))
+            {
+                auto inst1 = m_builder->CreateAnd(Src, (1 << Trunc_bitsize) - 1);
+                new_inst = m_builder->CreateZExt(inst1, castInst->getType());
+            }
+        }
+        else if (Src_bitsize > castInst_bitsize)
+        {
+            //Most likely a trunc instruction lets combine these two truncs and try again
+            //Example:
+            //%261 = trunc i8 %260 to i5
+            //%262 = trunc i5 %261 to i3
+            //------>
+            //%out = trunc i8 %260 to i3
+            if (isa<TruncInst>(castInst))
+            {
+                auto new_val = m_builder->CreateTrunc(Src, castInst->getType());
+                castInst->replaceAllUsesWith(new_val);
+                if (auto *new_trunc = dyn_cast<TruncInst>(new_val))
+                    cleanupTruncInst(*new_trunc);
+                Changed = true;
+            }
         }
 
         if (new_inst != NULL)
