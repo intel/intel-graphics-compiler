@@ -84,7 +84,6 @@ namespace IGC {
                 delete (*I);
             }
         }
-
         /// \brief The entry kernel function of group.
         llvm::Function* getHead() {
             return Functions.front()->front();
@@ -137,9 +136,6 @@ namespace IGC {
 
         /// \brief Properties for each function
         llvm::DenseMap<llvm::Function*, uint32_t> FuncProperties;
-
-        /// \brief Special group that contains indirect call functions and the dummy kernel
-        FunctionGroup* IndirectCallGroup = nullptr;
 
     public:
         static char ID;
@@ -196,8 +192,10 @@ namespace IGC {
             SubGroupMap[F] = SubGroupHead;
         }
 
-        bool isIndirectCallGroup(llvm::Function* F) {
-            return (getGroup(F) == IndirectCallGroup);
+        void setGroupStackCall() {
+            for (auto FG : Groups) {
+                FG->m_hasStackCall = (FG->Functions.size() > 1);
+            }
         }
 
         /// \brief Check whether a group contains variable length alloca
@@ -237,9 +235,6 @@ namespace IGC {
 
         /// this is the knob to enable vISA stack-call for OpenCL
         bool useStackCall(llvm::Function* F);
-
-        /// sets the stackcall flag for each function group that has stackcalls
-        void setGroupStackCall();
 
         typedef llvm::SmallVectorImpl<FunctionGroup*>::iterator iterator;
         iterator begin() { return iterator(Groups.begin()); }
