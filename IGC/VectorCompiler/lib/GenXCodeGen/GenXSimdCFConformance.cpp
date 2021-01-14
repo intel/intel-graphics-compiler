@@ -403,7 +403,8 @@ private:
   Value *findLoweredEMValue(Value *Val);
   Value *buildLoweringViaGetEM(Value *Val, Instruction *InsertBefore);
   Value *getGetEMLoweredValue(Value *Val, Instruction *InsertBefore);
-  Value *lowerEVIUse(ExtractValueInst *EVI, Instruction *User);
+  Value *lowerEVIUse(ExtractValueInst *EVI, Instruction *User,
+                     BasicBlock *PhiPredBlock = nullptr);
   Value *lowerPHIUse(PHINode *PN, SetVector<Value *> &ToRemove);
   Value *lowerArgumentUse(Argument *Arg);
   Value *insertCond(Value *OldVal, Value *NewVal, const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
@@ -742,7 +743,7 @@ Value *GenXSimdCFConformance::findGotoJoinVal(int Cat, BasicBlock *Loc, Instruct
 
   LLVM_DEBUG(dbgs() << "Entering " << Loc->getName() << "\n");
 
-  // Check if value were found before
+  // Check if value was found before
   auto ResIt = foundVals.find(Loc);
   if (ResIt != foundVals.end())
     return ResIt->second;
@@ -2976,7 +2977,8 @@ Value *GenXSimdCFConformance::getGetEMLoweredValue(Value *Val,
  * EM is being lowered via genx_simdcf_get_em intrinsic.
  */
 Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
-                                          Instruction *User) {
+                                          Instruction *User,
+                                          BasicBlock *PhiPredBlock) {
   LLVM_DEBUG(dbgs() << "Lowering EVI use:\n" << *EVI << "\n");
 
   CallInst *GotoJoin = dyn_cast<CallInst>(EVI->getOperand(0));
@@ -2996,16 +2998,26 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
     BasicBlock *DefBB = GotoJoin->getParent();
     BasicBlock *TrueBlock = DefBB->getTerminator()->getSuccessor(0);
     BasicBlock *FalseBlock = DefBB->getTerminator()->getSuccessor(1);
+    BasicBlock *Loc = PhiPredBlock ? PhiPredBlock : User->getParent();
 
+    // GetEM is removed later if redundant.
     Value *TrueVal = Constant::getNullValue(EVI->getType());
     Value *FalseVal = getGetEMLoweredValue(EVI, FalseBlock->getFirstNonPHI());
+
+    // Early return for direct phi true edge: lowered value is zeroed
+    if (PhiPredBlock == DefBB && TrueBlock == User->getParent()) {
+      IGC_ASSERT(PhiPredBlock);
+      IGC_ASSERT_MESSAGE(FalseBlock != TrueBlock,
+                         "Crit edge should be inserted earlier!");
+      return TrueVal;
+    }
 
     std::map<BasicBlock *, Value *> foundVals;
     BasicBlockEdge TrueEdge(DefBB, TrueBlock);
     BasicBlockEdge FalseEdge(DefBB, FalseBlock);
 
-    return findGotoJoinVal(RegCategory::EM, User->getParent(), EVI, TrueEdge,
-                           FalseEdge, TrueVal, FalseVal, foundVals);
+    return findGotoJoinVal(RegCategory::EM, Loc, EVI, TrueEdge, FalseEdge,
+                           TrueVal, FalseVal, foundVals);
   }
 
   // Non-branching case: must be join. Insert get_em right after join's EM
@@ -3022,8 +3034,11 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
  * lowerPHIUse : lower PHI use.
  *
  * EM is being lowered via genx_simdcf_get_em intrinsic.
- * When PHI lowering is needed, we have to lower all incoming
- * values. Lowered phis are also stored in LoweredPhisMap to
+ * This intrinsic is inserted right after the phis in current BB
+ * in case of non-join block. For join blocks, the full PHI lowering
+ * is performed: we have to lower all incoming values.
+ *
+ * Lowered phis are also stored in LoweredPhisMap to
  * prevent redundant lowerings.
  */
 Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
@@ -3034,6 +3049,14 @@ Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
   if (auto *FoundVal = findLoweredEMValue(PN)) {
     return FoundVal;
   }
+
+  if (!GotoJoin::isJoinLabel(PN->getParent())) {
+    auto res = getGetEMLoweredValue(PN, PN->getParent()->getFirstNonPHI());
+    LLVM_DEBUG(dbgs() << "Created " << *res << "\n");
+    return res;
+  }
+
+  LLVM_DEBUG(dbgs() << "Performing full lowering\n");
 
   // Clone phi and store it as lowered value.
   auto *newPN = cast<PHINode>(PN->clone());
@@ -3081,7 +3104,10 @@ void GenXSimdCFConformance::replaceUseWithLoweredEM(Instruction *Val, unsigned o
   Value *LoweredEM = nullptr;
 
   if (auto *EVI = dyn_cast<ExtractValueInst>(EM)) {
-    LoweredEM = lowerEVIUse(EVI, Val);
+    BasicBlock *PhiPredBlock = nullptr;
+    if (auto *PN = dyn_cast<PHINode>(Val))
+      PhiPredBlock = PN->getIncomingBlock(operandNo);
+    LoweredEM = lowerEVIUse(EVI, Val, PhiPredBlock);
   } else if (auto *SVI = dyn_cast<ShuffleVectorInst>(EM)) {
     // Shuffle vector: go through it and lower its pred.
     // All changes will be applied here.
