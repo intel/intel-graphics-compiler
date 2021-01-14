@@ -223,7 +223,6 @@ class GenXLegalization : public FunctionPass {
   GenXBaling *Baling = nullptr;
   const GenXSubtarget *ST = nullptr;
   ScalarEvolution *SE = nullptr;
-  bool EnableTransformByteMove = true;
   // Work variables when in the process of splitting a bale.
   // The Bale being split. (Also info on whether it has FIXED4 and TWICEWIDTH
   // operands.)
@@ -441,16 +440,6 @@ bool GenXLegalization::runOnFunction(Function &F) {
       if (VT->getElementType()->isIntegerTy(1))
         IGC_ASSERT(getPredPart(Arg, 0).Size == VT->getNumElements() &&
                "function arg not allowed to be illegally sized predicate");
-  }
-
-  // TODO. remove this restriction.
-  for (auto &GV : F.getParent()->getGlobalList()) {
-    if (std::any_of(GV.user_begin(), GV.user_end(), [](Value *U) {
-          return isa<LoadInst>(U) || isa<StoreInst>(U);
-        })) {
-      EnableTransformByteMove = false;
-      break;
-    }
   }
 
   // Legalize instructions. This does a postordered depth first traversal of the
@@ -718,19 +707,18 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     }
     // Any other instruction: split.
   }
+
   // Check if it is a byte move that we want to transform into a short/int move.
-  if (EnableTransformByteMove) {
-    auto *I8Ty = Type::getInt8Ty(Inst->getContext());
-    auto *I16Ty = Type::getInt16Ty(Inst->getContext());
-    auto *I32Ty = Type::getInt32Ty(Inst->getContext());
-    if (transformMoveType(&B, I8Ty, I32Ty) ||
-        transformMoveType(&B, I8Ty, I16Ty)) {
-      // Successfully transformed. Run legalization on the new instruction
-      // (which got inserted before the existing one, so will be processed
-      // next).
-      LLVM_DEBUG(dbgs() << "done transform of byte move\n");
-      return false;
-    }
+  auto *I8Ty = Type::getInt8Ty(Inst->getContext());
+  auto *I16Ty = Type::getInt16Ty(Inst->getContext());
+  auto *I32Ty = Type::getInt32Ty(Inst->getContext());
+  if (transformMoveType(&B, I8Ty, I32Ty) ||
+      transformMoveType(&B, I8Ty, I16Ty)) {
+    // Successfully transformed. Run legalization on the new instruction
+    // (which got inserted before the existing one, so will be processed
+    // next).
+    LLVM_DEBUG(dbgs() << "done transform of byte move\n");
+    return false;
   }
 
   // Check if it is a 64-bit move that we want to transform into 32-bit move.
