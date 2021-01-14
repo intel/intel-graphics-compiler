@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "GenXSubtarget.h"
+#include "common/StringMacros.hpp"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Function.h"
@@ -82,6 +83,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("ICLLP", GENX_ICLLP)
     .Case("TGLLP", GENX_TGLLP)
     .Default(GENX_SKL);
+
 
   std::string CPUName(CPU);
   if (CPUName.empty())

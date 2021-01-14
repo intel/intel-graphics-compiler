@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "common/StringMacros.hpp"
 #include "ocl_igc_interface/fcl_ocl_translation_ctx.h"
 #include "ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.h"
 #include "ocl_igc_interface/impl/platform_impl.h"
