@@ -275,8 +275,8 @@ class G4_BB
     unsigned scopeID;
 
     // If a BB is divergent, this field is set to true. By divergent, it means
-    // that among all active lanes on entry to shader/kernel, not all lanes may
-    // be active in this BB.
+    // that among all active lanes on entry to shader/kernel, not all lanes are
+    // active in this BB.
     bool divergent;
 
     // the physical pred/succ for this block (i.e., the pred/succ for this block in the BB list)

@@ -2541,7 +2541,6 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap)
 //    has less than 4 active lanes,  it is divergent! As
 //    matter of fact, the entry BB must not be divergent.
 //
-// Note: this will be used to replace inSIMDCF gradually.
 void FlowGraph::markDivergentBBs()
 {
     if (BBs.empty())
@@ -2584,7 +2583,7 @@ void FlowGraph::markDivergentBBs()
     // If so, the algorithm sets LastJoinBBId to be the larger one of its join BB
     // and LastJoinBBId; For a non-negative LastJoinBBId, it means that there is
     // an active join in that BB, and therefore, all BBs from the current BB to
-    // that LastJoinBB (LastJoinBB not included) will be in divergent path.
+    // that LastJoinBB (LastJoinBB not included) are divergent.
     //
     // The algorithm checks the following cases and their join BBs are:
     //     case 1: cf inst = goto
@@ -2608,25 +2607,29 @@ void FlowGraph::markDivergentBBs()
     //          <joinBB>
     //
     //  The presence of loop makes the checking complicated. Before checking the
-    //  divergence of a loop head, we need to know if the loop has any non-uniform
-    //  out-of-loop branch, which includes checking the loop's backedge and any
-    //  out-going branches inside the loop body. For example,
+    //  divergence of a loop head, we need to know if the loop has ANY NON-UNIFORM
+    //  OUT-OF-LOOP BRANCH or OUT-OF-LOOP BRANCH in DIVERGENT BB, which includes
+    //  checking the loop's backedge and any out-going branches inside the loop body.
+    //  For example,
     //      L0:
-    //          B0   if (uniform cond)
-    //          B1:  else
-    //             B2
+    //          B0: (uniform cond) goto B1
+    //               ......
+    //          B1:
+    //             B2:
     //      L1:
     //             B3: goto OUT
-    //             B4 : if (non-uniform cond) goto  L1
-    //    OUT1:
-    //             B5
-    //          B6 : if (uniform cond) goto L0
+    //             B4: (non-uniform cond) goto  L1
+    //             B5:
+    //          B6: (uniform cond) goto L0
     //
-    //     OUT: B6
+    //     OUT: B7:
     //
-    //  Once scanning B0, we don't know whether it is divergent until we find out "goto OUT"
-    //  is divergent out-of-loop branch.  In turn, in order to know "goto OUT" is divergent,
-    //  we need to check the back branch of loop L1.  For this, we will pre-scan the loop.
+    //  At B0, we don't know whether B0 is divergent even though B0's goto is uniform. Once
+    //  we find out that B3 is divergent, "goto OUT" will make Loop L0 divergent, which means
+    //  any of L0's BBs, including B0, is divergent. In order to know B3 is divergent, we need
+    //  to check the back branch of loop L1. The fact that L1's backedge is non-uniform indicates
+    //  L1 is divergent, therefore B3 is divergent. This means that WE NEED TO DO PRE_SCAN in
+    //  order to know whether any BBs of a loop is divergent.
     //
     int LastJoinBBId;
 
