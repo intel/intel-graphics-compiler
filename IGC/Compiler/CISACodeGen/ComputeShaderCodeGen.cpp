@@ -341,6 +341,7 @@ namespace IGC
             pKernelProgram->CurbeReadLength);
 
         pKernelProgram->ThreadGroupSize = m_threadGroupSize;
+        pKernelProgram->SlmSize = pctx->m_slmSize;
 
         pKernelProgram->ThreadGroupModifier_X = m_threadGroupModifier_X;
         pKernelProgram->ThreadGroupModifier_Y = m_threadGroupModifier_Y;
@@ -451,6 +452,7 @@ namespace IGC
         {
             return false;
         }
+
 
         // skip simd32 if simd16 spills
         if (simdMode == SIMDMode::SIMD32 && simd16Program &&

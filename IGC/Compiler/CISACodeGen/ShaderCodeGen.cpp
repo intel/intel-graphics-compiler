@@ -1099,7 +1099,6 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     SIMDMode maxSimdMode = ctx->GetMaxSIMDMode();
     unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
 
-
     if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, false);
