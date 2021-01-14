@@ -379,6 +379,9 @@ _SPIRV_OP(SubgroupImageMediaBlockWriteINTEL, 5581)
 _SPIRV_OP(AsmTargetINTEL, 5609)
 _SPIRV_OP(AsmINTEL, 5610)
 _SPIRV_OP(AsmCallINTEL, 5611)
+// SPV_EXT_shader_atomic_float_min_max
+_SPIRV_OP(AtomicFMinEXT, 5614)
+_SPIRV_OP(AtomicFMaxEXT, 5615)
 // optimization_hints
 _SPIRV_OP(AssumeTrueINTEL, 5630)
 _SPIRV_OP(ExpectINTEL, 5631)

@@ -1743,6 +1743,247 @@ double __builtin_spirv_OpAtomicFAddEXT_p4f64_i32_i32_f64( volatile __generic dou
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+half __builtin_spirv_OpAtomicFMinEXT_p0f16_i32_i32_f16(volatile private half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    half orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    return orig;
+}
+
+half __builtin_spirv_OpAtomicFMinEXT_p1f16_i32_i32_f16(volatile global half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    half orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+half __builtin_spirv_OpAtomicFMinEXT_p3f16_i32_i32_f16(volatile local half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    half orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+half __builtin_spirv_OpAtomicFMinEXT_p4f16_i32_i32_f16(volatile generic half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFMinEXT_p3f16_i32_i32_f16((__local half*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFMinEXT_p1f16_i32_i32_f16((__global half*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+float __builtin_spirv_OpAtomicFMinEXT_p0f32_i32_i32_f32(volatile private float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    float orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    return orig;
+}
+
+float __builtin_spirv_OpAtomicFMinEXT_p1f32_i32_i32_f32(volatile global float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    atomic_operation_1op_as_float(__builtin_IB_atomic_min_global_f32, float, Pointer, Scope, Semantics, Value, true);
+}
+
+float __builtin_spirv_OpAtomicFMinEXT_p3f32_i32_i32_f32(volatile local float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    atomic_operation_1op_as_float(__builtin_IB_atomic_min_local_f32, float, Pointer, Scope, Semantics, Value, false);
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float __builtin_spirv_OpAtomicFMinEXT_p4f32_i32_i32_f32(volatile generic float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFMinEXT_p3f32_i32_i32_f32((__local float*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFMinEXT_p1f32_i32_i32_f32((__global float*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+double __builtin_spirv_OpAtomicFMinEXT_p0f64_i32_i32_f64(volatile private double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    return orig;
+}
+
+double __builtin_spirv_OpAtomicFMinEXT_p1f64_i32_i32_f64(volatile global double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+double __builtin_spirv_OpAtomicFMinEXT_p3f64_i32_i32_f64(volatile local double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double __builtin_spirv_OpAtomicFMinEXT_p4f64_i32_i32_f64(volatile generic double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFMinEXT_p3f64_i32_i32_f64((__local double*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFMinEXT_p1f64_i32_i32_f64((__global double*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+half __builtin_spirv_OpAtomicFMaxEXT_p0f16_i32_i32_f16(volatile private half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    half orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    return orig;
+}
+
+half __builtin_spirv_OpAtomicFMaxEXT_p1f16_i32_i32_f16(volatile global half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    half orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+half __builtin_spirv_OpAtomicFMaxEXT_p3f16_i32_i32_f16(volatile local half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    half orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+half __builtin_spirv_OpAtomicFMaxEXT_p4f16_i32_i32_f16(volatile generic half* Pointer, uint Scope, uint Semantics, half Value)
+{
+    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFMaxEXT_p3f16_i32_i32_f16((__local half*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFMaxEXT_p1f16_i32_i32_f16((__global half*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+float __builtin_spirv_OpAtomicFMaxEXT_p0f32_i32_i32_f32(volatile private float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    float orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    return orig;
+}
+
+float __builtin_spirv_OpAtomicFMaxEXT_p1f32_i32_i32_f32(volatile global float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    atomic_operation_1op_as_float(__builtin_IB_atomic_max_global_f32, float, Pointer, Scope, Semantics, Value, true);
+}
+
+float __builtin_spirv_OpAtomicFMaxEXT_p3f32_i32_i32_f32(volatile local float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    atomic_operation_1op_as_float(__builtin_IB_atomic_max_local_f32, float, Pointer, Scope, Semantics, Value, false);
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float __builtin_spirv_OpAtomicFMaxEXT_p4f32_i32_i32_f32(volatile generic float* Pointer, uint Scope, uint Semantics, float Value)
+{
+    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFMaxEXT_p3f32_i32_i32_f32((__local float*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFMaxEXT_p1f32_i32_i32_f32((__global float*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+double __builtin_spirv_OpAtomicFMaxEXT_p0f64_i32_i32_f64(volatile private double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    return orig;
+}
+
+double __builtin_spirv_OpAtomicFMaxEXT_p1f64_i32_i32_f64(volatile global double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+double __builtin_spirv_OpAtomicFMaxEXT_p3f64_i32_i32_f64(volatile local double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double __builtin_spirv_OpAtomicFMaxEXT_p4f64_i32_i32_f64(volatile generic double* Pointer, uint Scope, uint Semantics, double Value)
+{
+    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return __builtin_spirv_OpAtomicFMaxEXT_p3f64_i32_i32_f64((__local double*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return __builtin_spirv_OpAtomicFMaxEXT_p1f64_i32_i32_f64((__global double*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #undef ATOMIC_FLAG_FALSE
 #undef ATOMIC_FLAG_TRUE

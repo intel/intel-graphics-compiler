@@ -1852,6 +1852,9 @@ _SPIRV_OP(AtomicXor, true, 7)
 #define _SPIRV_OP(x, ...) \
   typedef SPIRVInstTemplate<SPIRVInstTemplateBase, Op##x, __VA_ARGS__> \
       SPIRV##x;
+// SPV_EXT_shader_atomic_float_min_max
+_SPIRV_OP(AtomicFMinEXT, true, 7)
+_SPIRV_OP(AtomicFMaxEXT, true, 7)
 // SPV_EXT_shader_atomic_float_add
 _SPIRV_OP(AtomicFAddEXT, true, 7)
 #undef _SPIRV_OP
