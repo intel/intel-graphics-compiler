@@ -1245,6 +1245,12 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
         return false;
     }
 
+    if (ctx->PsHighSimdDisable)
+    {
+        if (simdMode == SIMDMode::SIMD32)
+            return false;
+    }
+
     if (m_HasoStencil && !ctx->platform.supportsStencil(simdMode))
     {
         ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
