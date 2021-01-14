@@ -37,6 +37,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC {
     llvm::FunctionPass* createResolveGASPass();
     void initializeGASResolvingPass(llvm::PassRegistry&);
+
+    llvm::ModulePass* createLowerGPCallArg();
+    void initializeLowerGPCallArgPass(llvm::PassRegistry&);
 } // End namespace IGC
 
 #endif // _CISA_RESOLVEGAS_H_

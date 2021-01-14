@@ -30,13 +30,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-#include "common/LLVMWarningsPush.hpp"
 #include "WrapperLLVM/Utils.h"
+#include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Support/Debug.h"
 #include "llvmWrapper/IR/Constant.h"
+#include "LLVM3DBuilder/MetadataBuilder.h"
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/MemoryLocation.h>
@@ -891,4 +893,444 @@ bool GASResolving::checkGenericArguments(Function& F) const {
         }
     }
     return false;
+}
+
+namespace IGC
+{
+    //
+    // Optimization pass to lower genetic pointers in function arguments.
+    // If all call sites have the same origin address space, address space
+    // casts with the form of non-generic->generic can safely removed and
+    // function updated with non-generic pointer argument.
+    //
+    // The complete process to lower generic pointer args consists of 5 steps.
+    //   1) find all functions that are candidates
+    //   2) update functions and their signatures
+    //   3) update all call sites
+    //   4) update functions metadata
+    //   5) validate that all function calls are properly formed
+    //
+    //
+    // Current limitations/considerations:
+    // - only arguments of non-extern functions can be lowered
+    // - no recursive functions supported
+    //
+    class LowerGPCallArg : public llvm::ModulePass
+    {
+    public:
+        static char ID;
+
+        LowerGPCallArg() : ModulePass(ID)
+        {
+            initializeLowerGPCallArgPass(*PassRegistry::getPassRegistry());
+        }
+
+        bool runOnModule(Module&) override;
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CallGraphWrapperPass>();
+        }
+
+        virtual StringRef getPassName() const override
+        {
+            return "LowerGenericPointerCallArgs";
+        }
+    private:
+
+        //
+        // Functions to be updated.
+        // NewArgs keeps track of generic pointer arguments: arg number and address space
+        //
+        using GenericPointerArgs = std::vector<std::pair<unsigned int, unsigned int>>;
+        struct FuncToUpdate
+        {
+            Function* oldFunc;
+            GenericPointerArgs newArgs;
+            Function* newFunc;
+
+            FuncToUpdate(Function* f, GenericPointerArgs& args)
+            {
+                oldFunc = f;
+                newArgs = args;
+                newFunc = nullptr;
+            }
+        };
+
+        IGCMD::MetaDataUtils* mdUtils;
+        CodeGenContext* ctx;
+        bool hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite);
+        void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
+        void updateAllUsesWithNewFunction(FuncToUpdate& f);
+        void FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS);
+    };
+} // End anonymous namespace
+
+ModulePass* IGC::createLowerGPCallArg() { return new LowerGPCallArg(); }
+
+char LowerGPCallArg::ID = 0;
+
+#define GP_PASS_FLAG "igc-lower-gp-arg"
+#define GP_PASS_DESC "Lower generic pointers in call arguments"
+#define GP_PASS_CFG_ONLY false
+#define GP_PASS_ANALYSIS false
+namespace IGC
+{
+    IGC_INITIALIZE_PASS_BEGIN(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
+    IGC_INITIALIZE_PASS_END(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
+}
+
+
+bool LowerGPCallArg::runOnModule(llvm::Module& M)
+{
+    ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+
+    std::vector<FuncToUpdate> funcsToUpdate;
+
+    // Step 1: find the candidates, which are functions with generic pointer args.
+    // Functions will be updated later in topological ordering (top-down calls).
+    for (auto I = po_begin(CG.getExternalCallingNode()), E = po_end(CG.getExternalCallingNode()); I != E; ++I)
+    {
+        auto CGNode = *I;
+        // Skip external and indirect nodes.
+        if (auto F = CGNode->getFunction())
+        {
+            // Only non-extern functions within the module are optimized
+            if (F->hasFnAttribute("IndirectlyCalled") || F->isDeclaration()
+                || F->isIntrinsic() || F->user_empty())
+                continue;
+
+            // Skip functions that return generic pointer for now
+            PointerType* returnPointerType = dyn_cast<PointerType>(F->getReturnType());
+            if (returnPointerType && returnPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+                continue;
+
+
+            // To store <argNo, addressSpace> for each generic pointer argument
+            GenericPointerArgs genericPointerArgs;
+
+            // Look for function arguments that are generic pointers
+            for (auto& arg : F->args())
+            {
+                if (arg.use_empty() || !arg.getType()->isPointerTy())
+                    continue;
+                PointerType* argPointerType = dyn_cast<PointerType>(arg.getType());
+                if (argPointerType && argPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+                    genericPointerArgs.push_back(std::make_pair(arg.getArgNo(), ADDRESS_SPACE_GENERIC));
+            }
+
+            if (!genericPointerArgs.empty())
+            {
+                funcsToUpdate.push_back(FuncToUpdate(F, genericPointerArgs));
+            }
+        }
+    }
+
+    // If there are no functions to update, finish
+    if (funcsToUpdate.empty())
+        return false;
+
+    // Step 2: update functions and lower their generic pointer arguments
+    // to their non-generic address space.
+    for (auto I = funcsToUpdate.rbegin(); I != funcsToUpdate.rend(); I++)
+    {
+        Function* F = (*I).oldFunc;
+        GenericPointerArgs& GPArgs = (*I).newArgs;
+        // Determine the unique origin address space of generic pointer args
+        // If it can't be determined, remove it from the function to update
+        GPArgs.erase(std::remove_if(GPArgs.begin(), GPArgs.end(),
+            [this, F](std::pair<unsigned, unsigned>& func) {
+                return hasSameOriginAddressSpace(F, func.first, func.second) == false;
+            }),
+            GPArgs.end());
+
+        if (GPArgs.empty())
+            continue;
+
+        // Create the new function body and insert it into the module
+        FunctionType* pFuncType = F->getFunctionType();
+        std::vector<Type*> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
+        for (auto newArg : GPArgs)
+        {
+            PointerType* ptrType = PointerType::get(newParamTypes[newArg.first]->getPointerElementType(),
+                newArg.second);
+            newParamTypes[newArg.first] = ptrType;
+        }
+
+        // Create new function type with explicit and implicit parameter types
+        FunctionType* newFTy = FunctionType::get(F->getReturnType(), newParamTypes, F->isVarArg());
+
+        Function* newFunc = Function::Create(newFTy, F->getLinkage());
+        newFunc->copyAttributesFrom(F);
+        newFunc->setSubprogram(F->getSubprogram());
+        M.getFunctionList().insert(F->getIterator(), newFunc);
+        newFunc->takeName(F);
+        newFunc->getBasicBlockList().splice(newFunc->begin(), F->getBasicBlockList());
+
+        // Update argument list and transfer their uses from old function
+        updateFunctionArgs(F, newFunc, GPArgs);
+
+        (*I).newFunc = newFunc;
+    }
+
+    // At this point, there may be functions without generic pointers to be lowered
+    funcsToUpdate.erase(std::remove_if(funcsToUpdate.begin(), funcsToUpdate.end(),
+        [](FuncToUpdate& f) { return f.newFunc == nullptr; }),
+        funcsToUpdate.end());
+
+
+    // Step 3: update all call sites with the new pointers address space
+    for (auto &I : funcsToUpdate)
+    {
+        updateAllUsesWithNewFunction(I);
+    }
+
+    // Step 4: Update IGC Metadata. Function declarations have changed, so this needs
+    // to be reflected in the metadata.
+    MetadataBuilder mbuilder(&M);
+    auto& FuncMD = ctx->getModuleMetaData()->FuncMD;
+    for (auto &I : funcsToUpdate)
+    {
+        auto oldFuncIter = mdUtils->findFunctionsInfoItem(I.oldFunc);
+        mdUtils->setFunctionsInfoItem(I.newFunc, oldFuncIter->second);
+        mdUtils->eraseFunctionsInfoItem(oldFuncIter);
+        mbuilder.UpdateShadingRate(I.oldFunc, I.newFunc);
+        auto loc = FuncMD.find(I.oldFunc);
+        if (loc != FuncMD.end())
+        {
+            auto funcInfo = loc->second;
+            FuncMD.erase(I.oldFunc);
+            FuncMD[I.newFunc] = funcInfo;
+        }
+    }
+    // Update LLVM metadata based on IGC MetadataUtils
+    mdUtils->save(M.getContext());
+
+
+    // It's safe now to remove old functions
+    for (auto &I : funcsToUpdate)
+    {
+        IGC_ASSERT(nullptr != I.oldFunc);
+        IGC_ASSERT_MESSAGE(I.oldFunc->use_empty(), "All function uses should have been transfered to new function");
+        I.oldFunc->eraseFromParent();
+    }
+
+    // Step 5: after lowering pointers in function arguments, some of their uses can be
+    // other function calls whose arguments couldn't be lowered.
+    // e.g. (gp is generic pointer, lp is pointer to local)
+    //  kernel()                                                 kernel()
+    //     |                                After lowering:         |
+    //     ---> foo(gp1, gp2)                                       ---> foo(lp1, lp2)
+    //                 |                                                      |
+    //                 ---> bar(gp1, gp2)                                     ---> bar(lp1, gp2)
+    //
+    // gp1 is lowered in foo and bar, gp2 is lowered only in foo. When lowering gp2 in foo,
+    // all its uses were optimistically updated to lp2. We fix those unsuccessful cases here.
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    {
+        Function* func = &(*I);
+        for (auto UI = func->user_begin(), UE = func->user_end(); UI != UE; UI++)
+        {
+            if (CallInst* callInst = dyn_cast<CallInst>(*UI))
+            {
+                Function::arg_iterator funcArg = func->arg_begin();
+                for (unsigned int i = 0; i < callInst->getNumArgOperands(); ++i, ++funcArg)
+                {
+                    Value* callArg = callInst->getOperand(i);
+                    if (callArg->getType() != funcArg->getType())
+                    {
+                        PointerType* callArgTy = dyn_cast<PointerType>(callArg->getType());
+                        PointerType* funcArgTy = dyn_cast<PointerType>(funcArg->getType());
+
+                        // If generic is expected, simple add back the address space cast
+                        if (callArgTy && callArgTy->getAddressSpace() != ADDRESS_SPACE_GENERIC &&
+                            funcArgTy && funcArgTy->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+                        {
+                            AddrSpaceCastInst* asc = new AddrSpaceCastInst(callArg, funcArg->getType(), "", callInst);
+                            callInst->setArgOperand(i, asc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+bool LowerGPCallArg::hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned &addrSpaceCallSite)
+{
+    unsigned verifiedCallSites = 0;
+
+    // Check if all the callers have the same pointer address space
+    for (auto U : func->users())
+    {
+        auto CI = cast<CallInst>(U);
+        Value* V = CI->getArgOperand(argNo);
+
+        if (!V->getType()->isPointerTy())
+            continue;
+
+        unsigned addrSpaceCurrentCallSite = 0;
+
+        if (AddrSpaceCastInst* addrSpaceCastInst = dyn_cast<AddrSpaceCastInst>(V))
+            addrSpaceCurrentCallSite = addrSpaceCastInst->getSrcAddressSpace();
+        else
+            addrSpaceCurrentCallSite = (dyn_cast<PointerType>(V->getType()))->getAddressSpace();
+
+        if (verifiedCallSites == 0)
+        {
+            addrSpaceCallSite = addrSpaceCurrentCallSite;
+            verifiedCallSites++;
+            continue;
+        }
+
+        if (addrSpaceCallSite != addrSpaceCurrentCallSite)
+            break;
+
+        verifiedCallSites++;
+    }
+
+    return verifiedCallSites == func->getNumUses();
+}
+
+
+// Modifies address space in all BitCast or GEP uses of pointer argument
+void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS)
+{
+    IGC_ASSERT(newAS != oldAS);
+    for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
+    {
+        Instruction* inst = dyn_cast<Instruction>(*UI);
+        PointerType* instType = nullptr;
+        if (BitCastInst* bitCastInst = dyn_cast<BitCastInst>(inst))
+        {
+            instType = dyn_cast<PointerType>(bitCastInst->getType());
+        }
+        else if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(inst))
+        {
+            instType = dyn_cast<PointerType>(gepInst->getType());
+        }
+
+        if (instType && instType->getAddressSpace() == oldAS)
+        {
+            Type* eltType = instType->getElementType();
+            PointerType* ptrType = PointerType::get(eltType, newAS);
+            inst->mutateType(ptrType);
+            FixAddressSpaceInAllUses(inst, newAS, oldAS);
+        }
+    }
+}
+
+// Loops over the argument list transferring uses from old function to new one.
+void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs)
+{
+
+    Function::arg_iterator currArg = newFunc->arg_begin();
+    unsigned currentArgIdx = 0, newArgIdx = 0;
+
+    for (Function::arg_iterator I = oldFunc->arg_begin(), E = oldFunc->arg_end();
+        I != E; ++I, ++currArg, ++currentArgIdx)
+    {
+        Value* newArg = &(*currArg);
+        if ((*I).getType() != currArg->getType())
+        {
+            if (currentArgIdx == newArgs[newArgIdx].first)
+            {
+                PointerType* argPointerType = PointerType::get(I->getType()->getPointerElementType(),
+                    newArgs[newArgIdx].second);
+                I->mutateType(argPointerType);
+                FixAddressSpaceInAllUses(I, newArgs[newArgIdx].second, ADDRESS_SPACE_GENERIC);
+                newArgIdx++;
+            }
+        }
+        I->replaceAllUsesWith(newArg);
+        currArg->takeName(&(*I));
+    }
+}
+
+
+
+void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
+{
+    IGC_ASSERT(!f.oldFunc->use_empty());
+
+    // Keep track of old calls and addrspacecast to be deleted later
+    std::vector<CallInst*> callsToDelete;
+    std::vector<AddrSpaceCastInst*> ASCToDelete;
+
+    for (auto U = f.oldFunc->user_begin(), E = f.oldFunc->user_end(); U != E; ++U)
+    {
+        CallInst* cInst = dyn_cast<CallInst>(*U);
+        auto BC = dyn_cast<BitCastInst>(*U);
+        if (BC && BC->hasOneUse())
+            cInst = dyn_cast<CallInst>(BC->user_back());
+        if (!cInst)
+        {
+            IGC_ASSERT_MESSAGE(0, "Unknown function usage");
+            return;
+        }
+
+        // Prepare args for new call
+        std::vector<Value*> newCallArgs;
+
+        auto AI = f.newFunc->arg_begin();
+        for (unsigned int i = 0; i < cInst->getNumArgOperands(); ++i, ++AI)
+        {
+            Value* callArg = cInst->getOperand(i);
+            Value* funcArg = AI;
+            if (callArg->getType() != funcArg->getType())
+            {
+                IGC_ASSERT(callArg->getType()->isPointerTy() &&
+                    funcArg->getType()->isPointerTy());
+
+                PointerType* callArgTy = dyn_cast<PointerType>(callArg->getType());
+                PointerType* funcArgTy = dyn_cast<PointerType>(funcArg->getType());
+                if (callArgTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
+                    funcArgTy->getAddressSpace() != ADDRESS_SPACE_GENERIC)
+                {
+                    // If call site address space is generic and function arg is non-generic,
+                    // the addrspacecast is removed and non-generic address space lowered
+                    // to the function call.
+                    AddrSpaceCastInst* addrSpaceCastInst = dyn_cast<AddrSpaceCastInst>(callArg);
+                    if (addrSpaceCastInst)
+                    {
+                        callArg = addrSpaceCastInst->getOperand(0);
+                        ASCToDelete.push_back(addrSpaceCastInst);
+                    }
+                }
+            }
+            newCallArgs.push_back(callArg);
+        }
+
+        // Create new call and insert it before old one
+        CallInst* inst = CallInst::Create(f.newFunc, newCallArgs,
+            f.newFunc->getReturnType()->isVoidTy() ? "" : f.newFunc->getName(),
+            cInst);
+
+        inst->setCallingConv(f.newFunc->getCallingConv());
+        inst->setDebugLoc(cInst->getDebugLoc());
+        cInst->replaceAllUsesWith(inst);
+        callsToDelete.push_back(cInst);
+    }
+
+    // Delete old calls
+    for (auto i : callsToDelete)
+    {
+        i->eraseFromParent();
+    }
+
+    // Delete addrspacecasts that are no longer needed
+    for (auto i : ASCToDelete)
+    {
+        IGC_ASSERT(i->user_empty());
+        i->eraseFromParent();
+    }
 }

@@ -403,6 +403,10 @@ static void CommonOCLBasedPasses(
         // Add fix up of illegal `addrspacecast` in respect to OCL 2.0 spec.
         mpm.add(createFixAddrSpaceCastPass());
         mpm.add(createResolveGASPass());
+
+        if (IGC_IS_FLAG_ENABLED(EnableLowerGPCallArg))
+            mpm.add(createLowerGPCallArg());
+
         // Run another round of constant breaking as GAS resolving may generate constants (constant address)
         mpm.add(new BreakConstantExpr());
     }
