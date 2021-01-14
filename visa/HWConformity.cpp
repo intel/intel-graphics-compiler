@@ -4038,7 +4038,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
 
     // check src
     bool canBeImm = true;
-    for (int k = 0; k < inst->getNumSrc(); k++)
+    for (int k = inst->getNumSrc() - 1; k >= 0; k--)
     {
         G4_Operand* src = inst->getSrc(k);
         if (!isGoodAlign1TernarySrc(inst, k, canBeImm))
@@ -4062,8 +4062,11 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
                 //  =>
                 //     mov (1) TV74(0,0)<1>:w V106(0,0)<0;1,0>:b {Q1, Align1, NoMask}
                 //     mad (16) V211(0,0)<1>:d V81(0,0)<1;0>:d V210(0,0)<1;0>:d TV74(0,0)<0;0>:w {H1, Align1}
+                // Do not allow mad if both src1 and src2 are :b as it will generate mov+mov+mad. There is no benefit for
+                // instruction count as mov+mov+mas equals to mov+mul+add. In some spilled cases the performace may be
+                // even worse as more spill codes inserted.
                 bool isSrc2 = (k == 0);
-                if (builder.noSrc2Regioning() && isSrc2 && IS_BTYPE(src->getType()))
+                if (builder.noSrc2Regioning() && isSrc2 && IS_BTYPE(src->getType()) && !IS_BTYPE(inst->getSrc(1)->getType()))
                 {
                     bool hasModMinus = false;
                     if (src->isSrcRegRegion())
