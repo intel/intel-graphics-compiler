@@ -342,7 +342,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
     ICBE_DPF_STR(output, GFXDBG_HARDWARE, "** Program Scope patch lists **\n");
     ICBE_DPF_STR(output, GFXDBG_HARDWARE, "\n");
 
-    for (auto &iter : annotations.m_initConstantAnnotation)
+    for (const auto &iter : annotations.m_initConstantAnnotation)
     {
         iOpenCL::SPatchAllocateConstantMemorySurfaceProgramBinaryInfo   patch;
         memset( &patch, 0, sizeof( patch ) );
@@ -363,7 +363,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
         membuf.AddPadding(zeroPadding);
     }
 
-    for (auto &iter : annotations.m_initGlobalAnnotation)
+    for (const auto& iter : annotations.m_initGlobalAnnotation)
     {
         iOpenCL::SPatchAllocateGlobalMemorySurfaceProgramBinaryInfo   patch;
         memset( &patch, 0, sizeof( patch ) );
@@ -386,7 +386,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
     }
 
 
-    for (auto &iter : annotations.m_initKernelTypeAnnotation)
+    for (const auto& iter : annotations.m_initKernelTypeAnnotation)
     {
         iOpenCL::SPatchKernelTypeProgramBinaryInfo    patch;
 
@@ -405,7 +405,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
             iter->KernelName.size());
     }
 
-    for (auto &iter : annotations.m_initGlobalPointerAnnotation)
+    for (const auto& iter : annotations.m_initGlobalPointerAnnotation)
     {
         iOpenCL::SPatchGlobalPointerProgramBinaryInfo patch;
         memset( &patch, 0, sizeof( patch ) );
@@ -423,7 +423,7 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
             membuf );
     }
 
-    for (auto &iter : annotations.m_initConstantPointerAnnotation)
+    for (const auto& iter : annotations.m_initConstantPointerAnnotation)
     {
         iOpenCL::SPatchConstantPointerProgramBinaryInfo patch;
         memset( &patch, 0, sizeof( patch ) );
@@ -613,9 +613,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     }
 
     // Now, add the constant buffer, if present.
-    for( auto iter : annotations.m_pointerInput )
+    for (const auto& annotation : annotations.m_pointerInput)
     {
-        PointerInputAnnotation* annotation = iter;
         unsigned int bti = annotations.m_argIndexMap.at(annotation->ArgumentNumber);
         context.Surface.SurfaceOffset[ bti ] = (DWORD)membuf.Size();
 
@@ -629,9 +628,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                     false)));
     }
 
-    for( auto iter : annotations.m_pointerArgument )
+    for (const auto& annotation: annotations.m_pointerArgument)
     {
-        PointerArgumentAnnotation* annotation = iter;
         unsigned int bti = annotations.m_argIndexMap.at(annotation->ArgumentNumber);
         context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
 
@@ -646,9 +644,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     }
 
     // Images
-    for( auto i : annotations.m_imageInputAnnotations )
+    for (const auto& annotation : annotations.m_imageInputAnnotations)
     {
-        ImageArgumentAnnotation* annotation = i;
 
         if( annotation->IsFixedBindingTableIndex )
         {
@@ -805,7 +802,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
     // Fill up the SSH with BTI offsets increasing.  The runtime currently
     // expects this format.
-    for (auto &kv : SurfaceStates)
+    for (const auto& kv : SurfaceStates)
     {
         const unsigned bti = kv.first;
         const SurfaceState &state = kv.second;
@@ -897,7 +894,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             //  Indirect states for inline samplers:
             for (DWORD i = 0; i < numInlineSamplers && retValue.Success; i++)
             {
-                const SamplerInputAnnotation* samplerAnnotation = annotations.m_samplerInput[i];
+                const auto& samplerAnnotation = annotations.m_samplerInput[i];
 
                 G6HWC::SGfxSamplerIndirectState bcState = G6HWC::g_cInitGfxSamplerIndirectState;
                 bcState.BorderColorRed      = samplerAnnotation->BorderColorR;
@@ -932,12 +929,9 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
         DWORD borderColorStep = m_Context.hasProgrammableBorderColor() ? 1 : 0;
 
         // First handle the sampler arguments
-        for (auto i = annotations.m_samplerArgument.begin();
-            i != annotations.m_samplerArgument.end();
-            ++i, borderColorIndex += borderColorStep)
+        for (const auto& samplerAnnotation : annotations.m_samplerArgument)
         {
-            const SamplerArgumentAnnotation* samplerAnnotation = *i;
-
+            borderColorIndex += borderColorStep;
             context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex] = (DWORD)membuf.Size();
 
             // No need for sampler state for VME and VA...
@@ -994,12 +988,9 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             IGC_ASSERT(!m_Context.hasProgrammableBorderColor() || borderColorIndex == numArgumentSamplers);
 
             // And then the inline samplers
-            for (auto i = annotations.m_samplerInput.begin();
-                i != annotations.m_samplerInput.end();
-                ++i, borderColorIndex += borderColorStep)
+            for (const auto& samplerAnnotation : annotations.m_samplerInput)
             {
-                const SamplerInputAnnotation* samplerAnnotation = *i;
-
+                borderColorIndex += borderColorStep;
                 context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex] = (DWORD)membuf.Size( );
 
                 IGC_ASSERT(samplerAnnotation->SamplerType == SAMPLER_OBJECT_TEXTURE);
@@ -1281,12 +1272,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         if( retValue.Success )
         {
-            for( SamplerArgumentIterator i = annotations.m_samplerArgument.begin();
-                 i != annotations.m_samplerArgument.end();
-                 ++i )
+            for (const auto& samplerAnnotation : annotations.m_samplerArgument)
             {
-                SamplerArgumentAnnotation* samplerAnnotation = *i;
-
                 iOpenCL::SPatchSamplerKernelArgument    patch;
                 memset( &patch, 0, sizeof( patch ) );
 
@@ -1361,12 +1348,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     {
         bool transformable = InlineSamplersAllow3DImageTransformation(annotations);
 
-        for (ImageArgumentIterator i = annotations.m_imageInputAnnotations.begin();
-            i != annotations.m_imageInputAnnotations.end();
-            ++i )
+        for (const auto& imageInput : annotations.m_imageInputAnnotations)
         {
-            ImageArgumentAnnotation* imageInput = *i;
-
             iOpenCL::SPatchImageMemoryObjectKernelArgument  patch;
 
             memset( &patch, 0, sizeof( patch ) );
@@ -1451,12 +1434,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch information for variable TGSM data parameters:
     if( retValue.Success )
     {
-        for( LocalArgumentIterator i = annotations.m_localPointerArgument.begin();
-            i != annotations.m_localPointerArgument.end();
-            ++i )
+        for (const auto& localArg : annotations.m_localPointerArgument)
         {
-            LocalArgumentAnnotation* localArg = *i;
-
             iOpenCL::SPatchDataParameterBuffer  patch;
 
             memset( &patch, 0, sizeof( patch ) );
@@ -1487,12 +1466,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     //     Constant Input Parameters
     if( retValue.Success )
     {
-        for( ConstantInputIterator i = annotations.m_constantInputAnnotation.begin();
-            i != annotations.m_constantInputAnnotation.end();
-            ++i )
+        for (const auto& constInput : annotations.m_constantInputAnnotation)
         {
-            ConstantInputAnnotation* constInput = *i;
-
             iOpenCL::SPatchDataParameterBuffer  patch;
 
             memset( &patch, 0, sizeof( patch ) );
@@ -1527,12 +1502,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     //     Pointer Kernel Arguments
     if( retValue.Success )
     {
-        for( PointerArgumentIterator i = annotations.m_pointerArgument.begin();
-            i != annotations.m_pointerArgument.end();
-            ++i )
+        for (const auto& ptrArg : annotations.m_pointerArgument)
         {
-            PointerArgumentAnnotation* ptrArg = *i;
-
             if( ptrArg->IsStateless == true || ptrArg->IsBindlessAccess)
             {
                 if( ptrArg->AddressSpace == KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL )
@@ -1632,7 +1603,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     {
         if (annotations.m_printfBufferAnnotation != nullptr)
         {
-            iOpenCL::PrintfBufferAnnotation  *printfBufAnn = annotations.m_printfBufferAnnotation;
+            const auto& printfBufAnn = annotations.m_printfBufferAnnotation;
 
             iOpenCL::SPatchAllocateStatelessPrintfSurface  patch;
             memset(&patch, 0, sizeof(patch));
@@ -1659,7 +1630,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     {
         if (annotations.m_syncBufferAnnotation != nullptr)
         {
-            iOpenCL::SyncBufferAnnotation* syncBufAnn = annotations.m_syncBufferAnnotation;
+            const auto& syncBufAnn = annotations.m_syncBufferAnnotation;
 
             iOpenCL::SPatchAllocateSyncBuffer  patch;
             memset(&patch, 0, sizeof(patch));
@@ -1683,12 +1654,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Pointer inputs with initializer
     if( retValue.Success )
     {
-        for( PointerInputIterator i = annotations.m_pointerInput.begin();
-            i != annotations.m_pointerInput.end();
-            ++i )
+        for (const auto& ptrArg : annotations.m_pointerInput)
         {
-            PointerInputAnnotation* ptrArg = *i;
-
             if( ptrArg->IsStateless == true )
             {
                 if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_CONSTANT)
@@ -1735,12 +1702,11 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 }
                 else if(ptrArg->AddressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE)
                 {
-
                     iOpenCL::SPatchAllocateStatelessPrivateSurface patch;
                     memset( &patch, 0, sizeof( patch ) );
 
-                    PrivateInputAnnotation* ptrArg = static_cast<PrivateInputAnnotation*>(*i);
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                    PrivateInputAnnotation* privInput = static_cast<PrivateInputAnnotation*>(ptrArg.get());
+                    unsigned int bti = annotations.m_argIndexMap.at(privInput->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY;
                     patch.Size = sizeof( patch );
                     patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
@@ -1748,13 +1714,13 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch.IsSimtThread = 1;
                     patch.PerThreadPrivateMemorySize =
                             std::max((DWORD)IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize),
-                                     ptrArg->PerThreadPrivateMemorySize);
-                    patch.DataParamOffset = ptrArg->PayloadPosition;
-                    patch.DataParamSize = ptrArg->PayloadSizeInBytes;
+                                     privInput->PerThreadPrivateMemorySize);
+                    patch.DataParamOffset = privInput->PayloadPosition;
+                    patch.DataParamSize = privInput->PayloadSizeInBytes;
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
-                        ptrArg->PayloadPosition + ptrArg->PayloadSizeInBytes );
+                        privInput->PayloadPosition + privInput->PayloadSizeInBytes );
 
                     retValue = AddPatchItem(
                         patch,
@@ -1825,12 +1791,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Constant Arguments
     if( retValue.Success )
     {
-        for( ConstantArgumentIterator i = annotations.m_constantArgumentAnnotation.begin();
-            i != annotations.m_constantArgumentAnnotation.end();
-            ++i )
+        for (const auto& constInput : annotations.m_constantArgumentAnnotation)
         {
-            ConstantArgumentAnnotation* constInput = *i;
-
             iOpenCL::SPatchDataParameterBuffer  patch;
 
             memset( &patch, 0, sizeof( patch ) );
@@ -1861,7 +1823,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     }
     if (retValue.Success && annotations.m_startGAS != NULL)
     {
-        const iOpenCL::StartGASAnnotation* startGAS = annotations.m_startGAS;
+        const auto& startGAS = annotations.m_startGAS;
 
         iOpenCL::SPatchDataParameterBuffer  patch;
         memset(&patch, 0, sizeof(patch));
@@ -2051,12 +2013,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for String Annotations
     if( retValue.Success )
     {
-        for( PrintfStringIterator i = annotations.m_printfStringAnnotations.begin();
-                                  i != annotations.m_printfStringAnnotations.end();
-                                  i++ )
+        for (const auto& stringAnn : annotations.m_printfStringAnnotations)
         {
-            PrintfStringAnnotation *stringAnn = *i;
-
             iOpenCL::SPatchString  patch;
             memset( &patch, 0, sizeof( patch ) );
 
@@ -2348,7 +2306,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
 
         std::string filteredAttributes;
 
-        for( auto &s: tokens )
+        for (const auto& s: tokens)
         {
             for( int index = 0; index < numAllowedAttributes; index++ )
             {
@@ -2393,10 +2351,10 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
 
     RETVAL  retValue = g_cInitRetValue;
 
-    const std::vector<iOpenCL::KernelArgumentInfoAnnotation*>& kernelArgInfo = annotations.m_kernelArgInfo;
+    const auto& kernelArgInfo = annotations.m_kernelArgInfo;
 
     int index = 0;
-    for(auto argInfo : kernelArgInfo)
+    for (const auto& argInfo : kernelArgInfo)
     {
          iOpenCL::SPatchKernelArgumentInfo patch;
          memset( &patch, 0, sizeof( patch ) );
@@ -2742,9 +2700,8 @@ bool CGen8OpenCLStateProcessor::InlineSamplersAllow3DImageTransformation(const I
     //   addressMode == CLAMP_TO_EDGE
     //   filter == NEAREST
     //   normalizedCoords = false
-    for (auto i = annotations.m_samplerInput.begin(); i != annotations.m_samplerInput.end(); ++i)
+    for (const auto& samplerAnnotation : annotations.m_samplerInput)
     {
-        const SamplerInputAnnotation* samplerAnnotation = *i;
         if (samplerAnnotation->SamplerType == SAMPLER_OBJECT_TEXTURE)
         {
             if (samplerAnnotation->NormalizedCoords ||

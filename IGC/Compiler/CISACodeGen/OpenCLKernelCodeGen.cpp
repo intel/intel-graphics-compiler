@@ -85,140 +85,34 @@ namespace IGC
     void COpenCLKernel::ClearKernelInfo()
     {
         // Global pointer arguments
-        for (auto iter = m_kernelInfo.m_pointerArgument.begin();
-            iter != m_kernelInfo.m_pointerArgument.end();
-            ++iter)
-        {
-            iOpenCL::PointerArgumentAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_pointerArgument.clear();
 
         // Non-argument pointer inputs
-        for (auto iter = m_kernelInfo.m_pointerInput.begin();
-            iter != m_kernelInfo.m_pointerInput.end();
-            ++iter)
-        {
-            iOpenCL::PointerInputAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_pointerInput.clear();
 
         // Local pointer arguments
-        for (auto iter = m_kernelInfo.m_localPointerArgument.begin();
-            iter != m_kernelInfo.m_localPointerArgument.end();
-            ++iter)
-        {
-            iOpenCL::LocalArgumentAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_localPointerArgument.clear();
 
         // Sampler inputs
-        for (auto iter = m_kernelInfo.m_samplerInput.begin();
-            iter != m_kernelInfo.m_samplerInput.end();
-            ++iter)
-        {
-            iOpenCL::SamplerInputAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_samplerInput.clear();
 
         // Sampler arguments
-        for (auto iter = m_kernelInfo.m_samplerArgument.begin();
-            iter != m_kernelInfo.m_samplerArgument.end();
-            ++iter)
-        {
-            iOpenCL::SamplerArgumentAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_samplerArgument.clear();
 
         // Scalar inputs
-        for (auto iter = m_kernelInfo.m_constantInputAnnotation.begin();
-            iter != m_kernelInfo.m_constantInputAnnotation.end();
-            ++iter)
-        {
-            iOpenCL::ConstantInputAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_constantInputAnnotation.clear();
 
         // Scalar arguments
-        for (auto iter = m_kernelInfo.m_constantArgumentAnnotation.begin();
-            iter != m_kernelInfo.m_constantArgumentAnnotation.end();
-            ++iter)
-        {
-            iOpenCL::ConstantArgumentAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_constantArgumentAnnotation.clear();
 
         // Image arguments
-        for (auto iter = m_kernelInfo.m_imageInputAnnotations.begin();
-            iter != m_kernelInfo.m_imageInputAnnotations.end();
-            ++iter)
-        {
-            iOpenCL::ImageArgumentAnnotation* annotation = *iter;
-            delete annotation;
-        }
         m_kernelInfo.m_imageInputAnnotations.clear();
 
         // Kernel Arg Reflection Info
-        for (auto iter = m_kernelInfo.m_kernelArgInfo.begin();
-            iter != m_kernelInfo.m_kernelArgInfo.end();
-            ++iter)
-        {
-            delete* iter;
-        }
         m_kernelInfo.m_kernelArgInfo.clear();
 
         // Printf strings
-        for (auto iter = m_kernelInfo.m_printfStringAnnotations.begin();
-            iter != m_kernelInfo.m_printfStringAnnotations.end();
-            ++iter)
-        {
-            iOpenCL::PrintfStringAnnotation* annotation = *iter;
-
-            delete[] annotation->StringData;
-            delete annotation;
-        }
         m_kernelInfo.m_printfStringAnnotations.clear();
-
-        // Printf Buffer Annotation
-        if (m_kernelInfo.m_printfBufferAnnotation != nullptr)
-        {
-            delete m_kernelInfo.m_printfBufferAnnotation;
-            m_kernelInfo.m_printfBufferAnnotation = nullptr;
-        }
-
-        // Sync Buffer Annotation
-        if (m_kernelInfo.m_syncBufferAnnotation != nullptr)
-        {
-            delete m_kernelInfo.m_syncBufferAnnotation;
-            m_kernelInfo.m_syncBufferAnnotation = nullptr;
-        }
-
-        // StartGASAnnotationAnnotation
-        if (m_kernelInfo.m_startGAS != nullptr)
-        {
-            delete m_kernelInfo.m_startGAS;
-            m_kernelInfo.m_startGAS = nullptr;
-        }
-
-        // WindowSizeGASAnnotation Annotation
-        if (m_kernelInfo.m_WindowSizeGAS != nullptr)
-        {
-            delete m_kernelInfo.m_WindowSizeGAS;
-            m_kernelInfo.m_WindowSizeGAS = nullptr;
-        }
-
-        // PrivateMemSizeAnnotation Annotation
-        if (m_kernelInfo.m_PrivateMemSize != nullptr)
-        {
-            delete m_kernelInfo.m_PrivateMemSize;
-            m_kernelInfo.m_PrivateMemSize = nullptr;
-        }
 
         // Argument to BTI/Sampler index map
         m_kernelInfo.m_argIndexMap.clear();
@@ -296,12 +190,10 @@ namespace IGC
 
             ResourceAllocMD resAllocMD = funcMD.resAllocMD;
 
-            for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; ++i)
+            for (const auto &inlineSamplerMD : resAllocMD.inlineSamplersMD)
             {
-                InlineSamplersMD inlineSamplerMD = *i;
-                iOpenCL::SamplerInputAnnotation* samplerInput = new iOpenCL::SamplerInputAnnotation();
+                auto samplerInput = std::make_unique<iOpenCL::SamplerInputAnnotation>();
 
-                samplerInput->AnnotationSize = sizeof(samplerInput);
                 samplerInput->SamplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
                 samplerInput->SamplerTableIndex = inlineSamplerMD.index;
 
@@ -320,7 +212,7 @@ namespace IGC
                 samplerInput->BorderColorB = inlineSamplerMD.BorderColorB;
                 samplerInput->BorderColorA = inlineSamplerMD.BorderColorA;
 
-                m_kernelInfo.m_samplerInput.push_back(samplerInput);
+                m_kernelInfo.m_samplerInput.push_back(std::move(samplerInput));
             }
 
             m_kernelInfo.m_HasInlineVmeSamplers = funcMD.hasInlineVmeSamplers;
@@ -340,7 +232,7 @@ namespace IGC
 
         for (uint i = 0; i < count; ++i)
         {
-            iOpenCL::KernelArgumentInfoAnnotation* kernelArgInfo = new iOpenCL::KernelArgumentInfoAnnotation();
+            auto kernelArgInfo = std::make_unique<iOpenCL::KernelArgumentInfoAnnotation>();
             FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
 
             // Format the strings the way the OpenCL runtime expects them
@@ -409,7 +301,7 @@ namespace IGC
                 kernelArgInfo->TypeQualifier = "NONE";
             }
 
-            m_kernelInfo.m_kernelArgInfo.push_back(kernelArgInfo);
+            m_kernelInfo.m_kernelArgInfo.push_back(std::move(kernelArgInfo));
         }
     }
 
@@ -582,10 +474,9 @@ namespace IGC
         std::vector<std::pair<unsigned int, std::string>> printfStrings;
         GetPrintfStrings(printfStrings);
 
-        for (auto printfString : printfStrings)
+        for (const auto& printfString : printfStrings)
         {
-            iOpenCL::PrintfStringAnnotation* printfAnnotation = new iOpenCL::PrintfStringAnnotation();
-            printfAnnotation->AnnotationSize = sizeof(printfAnnotation);
+            auto printfAnnotation = std::make_unique<iOpenCL::PrintfStringAnnotation>();
             printfAnnotation->Index = printfString.first;
             printfAnnotation->StringSize = printfString.second.size() + 1;
             printfAnnotation->StringData = new char[printfAnnotation->StringSize + 1];
@@ -593,7 +484,7 @@ namespace IGC
             memcpy_s(printfAnnotation->StringData, printfAnnotation->StringSize, printfString.second.c_str(), printfAnnotation->StringSize);
             printfAnnotation->StringData[printfAnnotation->StringSize - 1] = '\0';
 
-            m_kernelInfo.m_printfStringAnnotations.push_back(printfAnnotation);
+            m_kernelInfo.m_printfStringAnnotations.push_back(std::move(printfAnnotation));
         }
     }
 
@@ -871,11 +762,10 @@ namespace IGC
             // total of 6 annotations, 3 of each type
             for (int i = 0; i < 6; ++i)
             {
-                iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
+                auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
                 DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
-                constInput->AnnotationSize = sizeof(constInput);
                 constInput->ConstantType = (i < 3 ?
                     iOpenCL::DATA_PARAMETER_GLOBAL_WORK_OFFSET :
                     iOpenCL::DATA_PARAMETER_LOCAL_WORK_SIZE);
@@ -883,7 +773,7 @@ namespace IGC
                 constInput->PayloadPosition = payloadPosition;
                 constInput->PayloadSizeInBytes = sizeInBytes;
                 constInput->ArgumentNumber = DEFAULT_ARG_NUM;
-                m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+                m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
 
                 payloadPosition += sizeInBytes;
             }
@@ -938,7 +828,7 @@ namespace IGC
                 IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
 
-                iOpenCL::PointerArgumentAnnotation* ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
+                auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
 
                 if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType)
                 {
@@ -952,7 +842,6 @@ namespace IGC
                 }
 
                 ptrAnnotation->AddressSpace = addressSpace;
-                ptrAnnotation->AnnotationSize = sizeof(ptrAnnotation);
                 ptrAnnotation->ArgumentNumber = argNo;
                 ptrAnnotation->BindingTableIndex = getBTI(resInfo);
                 ptrAnnotation->PayloadPosition = payloadPosition;
@@ -960,22 +849,21 @@ namespace IGC
                 ptrAnnotation->LocationIndex = kernelArg->getLocationIndex();
                 ptrAnnotation->LocationCount = kernelArg->getLocationCount();
                 ptrAnnotation->IsEmulationArgument = kernelArg->isEmulationArgument();
-                m_kernelInfo.m_pointerArgument.push_back(ptrAnnotation);
+                m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
             }
             break;
 
         case KernelArg::ArgType::PTR_LOCAL:
         {
-            iOpenCL::LocalArgumentAnnotation* locAnnotation = new iOpenCL::LocalArgumentAnnotation();
+            auto locAnnotation = std::make_unique<iOpenCL::LocalArgumentAnnotation>();
 
-            locAnnotation->AnnotationSize = sizeof(locAnnotation);
             locAnnotation->Alignment = (DWORD)kernelArg->getAlignment();
             locAnnotation->PayloadPosition = payloadPosition;
             locAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             locAnnotation->ArgumentNumber = kernelArg->getAssociatedArgNo();
             locAnnotation->LocationIndex = kernelArg->getLocationIndex();
             locAnnotation->LocationCount = kernelArg->getLocationCount();
-            m_kernelInfo.m_localPointerArgument.push_back(locAnnotation);
+            m_kernelInfo.m_localPointerArgument.push_back(std::move(locAnnotation));
         }
         break;
 
@@ -986,16 +874,15 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PointerArgumentAnnotation* ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
+            auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
 
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_DEVICE_QUEUE;
-            ptrAnnotation->AnnotationSize = sizeof(ptrAnnotation);
             ptrAnnotation->ArgumentNumber = argNo;
             ptrAnnotation->BindingTableIndex = getBTI(resInfo);
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
-            m_kernelInfo.m_pointerArgument.push_back(ptrAnnotation);
+            m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
         }
         break;
         case KernelArg::ArgType::CONSTANT_REG:
@@ -1008,11 +895,10 @@ namespace IGC
                 sourceOffsetBase = kernelArg->getStructArgOffset();
             }
 
-            iOpenCL::ConstantArgumentAnnotation* constInput = new iOpenCL::ConstantArgumentAnnotation();
+            auto constInput = std::make_unique<iOpenCL::ConstantArgumentAnnotation>();
 
             DWORD sizeInBytes = kernelArg->getAllocateSize();
 
-            constInput->AnnotationSize = sizeof(constInput);
             constInput->Offset = sourceOffsetBase;
             constInput->PayloadPosition = payloadPosition;
             constInput->PayloadSizeInBytes = sizeInBytes;
@@ -1020,7 +906,7 @@ namespace IGC
             constInput->LocationIndex = kernelArg->getLocationIndex();
             constInput->LocationCount = kernelArg->getLocationCount();
             constInput->IsEmulationArgument = kernelArg->isEmulationArgument();
-            m_kernelInfo.m_constantArgumentAnnotation.push_back(constInput);
+            m_kernelInfo.m_constantArgumentAnnotation.push_back(std::move(constInput));
 
             payloadPosition += sizeInBytes;
         }
@@ -1032,14 +918,14 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PointerInputAnnotation* ptrAnnotation = new iOpenCL::PointerInputAnnotation();
+            auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_CONSTANT;
             ptrAnnotation->BindingTableIndex = 0xffffffff;
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             ptrAnnotation->ArgumentNumber = argNo;
-            m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+            m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
         }
         break;
 
@@ -1049,14 +935,14 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PointerInputAnnotation* ptrAnnotation = new iOpenCL::PointerInputAnnotation();
+            auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
             ptrAnnotation->BindingTableIndex = 0xffffffff;
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             ptrAnnotation->ArgumentNumber = argNo;
-            m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+            m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
         }
         break;
 
@@ -1066,10 +952,9 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PrivateInputAnnotation* ptrAnnotation = new iOpenCL::PrivateInputAnnotation();
+            auto ptrAnnotation = std::make_unique<iOpenCL::PrivateInputAnnotation>();
 
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
-            ptrAnnotation->AnnotationSize = sizeof(ptrAnnotation);
             ptrAnnotation->ArgumentNumber = argNo;
             // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
             ptrAnnotation->PerThreadPrivateMemorySize = m_perWIStatelessPrivateMemSize;
@@ -1077,7 +962,7 @@ namespace IGC
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
-            m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+            m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
         }
         break;
 
@@ -1093,17 +978,16 @@ namespace IGC
 
             for (int i = 0; i < 3; ++i)
             {
-                iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
+                auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
                 DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
-                constInput->AnnotationSize = sizeof(constInput);
                 constInput->ConstantType = constantType;
                 constInput->Offset = i * sizeInBytes;
                 constInput->PayloadPosition = payloadPosition;
                 constInput->PayloadSizeInBytes = sizeInBytes;
                 constInput->ArgumentNumber = DEFAULT_ARG_NUM;
-                m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+                m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
 
                 payloadPosition += sizeInBytes;
             }
@@ -1137,15 +1021,14 @@ namespace IGC
             constantType = kernelArg->getDataParamToken();
             IGC_ASSERT(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
             {
-                iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
+                auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
-                constInput->AnnotationSize = sizeof(constInput);
                 constInput->ConstantType = constantType;
                 constInput->Offset = 0;
                 constInput->PayloadPosition = payloadPosition;
                 constInput->PayloadSizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
                 constInput->ArgumentNumber = kernelArg->getAssociatedArgNo();
-                m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+                m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
             }
             break;
 
@@ -1186,9 +1069,8 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation();
+            auto imageInput = std::make_unique<iOpenCL::ImageArgumentAnnotation>();
 
-            imageInput->AnnotationSize = sizeof(imageInput);
             imageInput->ArgumentNumber = argNo;
             imageInput->IsFixedBindingTableIndex = true;
             imageInput->BindingTableIndex = getBTI(resInfo);
@@ -1218,7 +1100,7 @@ namespace IGC
                 IGC_ASSERT_MESSAGE(0, "Unknown resource type");
                 break;
             }
-            m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
+            m_kernelInfo.m_imageInputAnnotations.push_back(std::move(imageInput));
 
             if (kernelArg->getAccessQual() == IGC::KernelArg::AccessQual::READ_WRITE)
             {
@@ -1266,8 +1148,7 @@ namespace IGC
                 samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
             }
 
-            iOpenCL::SamplerArgumentAnnotation* samplerArg = new iOpenCL::SamplerArgumentAnnotation();
-            samplerArg->AnnotationSize = sizeof(samplerArg);
+            auto samplerArg = std::make_unique<iOpenCL::SamplerArgumentAnnotation>();
             samplerArg->SamplerType = samplerType;
             samplerArg->ArgumentNumber = argNo;
             samplerArg->SamplerTableIndex = resInfo.Index;
@@ -1277,7 +1158,7 @@ namespace IGC
             samplerArg->IsEmulationArgument = kernelArg->isEmulationArgument();
             samplerArg->PayloadPosition = payloadPosition;
 
-            m_kernelInfo.m_samplerArgument.push_back(samplerArg);
+            m_kernelInfo.m_samplerArgument.push_back(std::move(samplerArg));
         }
         break;
 
@@ -1306,14 +1187,13 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::SyncBufferAnnotation* syncBuffer = new iOpenCL::SyncBufferAnnotation();
+            auto syncBuffer = std::make_unique<iOpenCL::SyncBufferAnnotation>();
 
-            syncBuffer->AnnotationSize = sizeof(syncBuffer);
             syncBuffer->ArgumentNumber = argNo;
             syncBuffer->PayloadPosition = payloadPosition;
             syncBuffer->DataSize = kernelArg->getAllocateSize();
 
-            m_kernelInfo.m_syncBufferAnnotation = syncBuffer;
+            m_kernelInfo.m_syncBufferAnnotation = std::move(syncBuffer);
         }
         break;
 
@@ -1323,15 +1203,14 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PrintfBufferAnnotation* printfBuffer = new iOpenCL::PrintfBufferAnnotation();
+            auto printfBuffer = std::make_unique<iOpenCL::PrintfBufferAnnotation>();
 
-            printfBuffer->AnnotationSize = sizeof(printfBuffer);
             printfBuffer->ArgumentNumber = argNo;
             printfBuffer->PayloadPosition = payloadPosition;
             printfBuffer->DataSize = kernelArg->getAllocateSize();
             printfBuffer->Index = 0; // This value is not used by Runtime.
 
-            m_kernelInfo.m_printfBufferAnnotation = printfBuffer;
+            m_kernelInfo.m_printfBufferAnnotation = std::move(printfBuffer);
         }
         break;
 
@@ -1342,7 +1221,7 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PointerInputAnnotation* ptrAnnotation = new iOpenCL::PointerInputAnnotation();
+            auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
 
             ptrAnnotation->AddressSpace = iOpenCL::ADDRESS_SPACE_INTERNAL_DEFAULT_DEVICE_QUEUE;
             ptrAnnotation->BindingTableIndex = getBTI(resInfo);
@@ -1350,7 +1229,7 @@ namespace IGC
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             ptrAnnotation->ArgumentNumber = argNo;
-            m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+            m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
         }
         break;
 
@@ -1361,14 +1240,14 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
 
-            iOpenCL::PointerInputAnnotation* ptrAnnotation = new iOpenCL::PointerInputAnnotation();
+            auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
             ptrAnnotation->AddressSpace = iOpenCL::ADDRESS_SPACE_INTERNAL_EVENT_POOL;
             ptrAnnotation->BindingTableIndex = getBTI(resInfo);
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
             ptrAnnotation->ArgumentNumber = argNo;
-            m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+            m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
         }
         break;
 
@@ -1382,43 +1261,42 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_PREFERED_WORKGROUP_MULTIPLE:
             constantType = kernelArg->getDataParamToken();
             {
-                iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
+                auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
                 DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
-                constInput->AnnotationSize = sizeof(constInput);
                 constInput->ConstantType = constantType;
                 constInput->Offset = 0;
                 constInput->PayloadPosition = payloadPosition;
                 constInput->PayloadSizeInBytes = sizeInBytes;
                 constInput->ArgumentNumber = DEFAULT_ARG_NUM;
-                m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+                m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
 
                 payloadPosition += sizeInBytes;
             }
             break;
         case KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS:
         {
-            iOpenCL::StartGASAnnotation* GASStart = new iOpenCL::StartGASAnnotation();
+            auto GASStart = std::make_unique<iOpenCL::StartGASAnnotation>();
             GASStart->Offset = payloadPosition;
             GASStart->gpuPointerSizeInBytes = kernelArg->getAllocateSize();
-            m_kernelInfo.m_startGAS = GASStart;
+            m_kernelInfo.m_startGAS = std::move(GASStart);
         }
         break;
         case KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE:
         {
-            iOpenCL::WindowSizeGASAnnotation* winSizeGAS = new iOpenCL::WindowSizeGASAnnotation();
+            auto winSizeGAS = std::make_unique<iOpenCL::WindowSizeGASAnnotation>();
 
             winSizeGAS->Offset = payloadPosition;
-            m_kernelInfo.m_WindowSizeGAS = winSizeGAS;
+            m_kernelInfo.m_WindowSizeGAS = std::move(winSizeGAS);
         }
         break;
         case KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE:
         {
-            iOpenCL::PrivateMemSizeAnnotation* privateMemSize = new iOpenCL::PrivateMemSizeAnnotation();
+            auto privateMemSize = std::make_unique<iOpenCL::PrivateMemSizeAnnotation>();
 
             privateMemSize->Offset = payloadPosition;
-            m_kernelInfo.m_PrivateMemSize = privateMemSize;
+            m_kernelInfo.m_PrivateMemSize = std::move(privateMemSize);
         }
         break;
         default:
@@ -1442,15 +1320,14 @@ namespace IGC
                 (type == KernelArg::ArgType::PTR_CONSTANT &&
                 (arg->use_empty() || !GetHasConstantStatelessAccess()))))
         {
-            iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
+            auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
-            constInput->AnnotationSize = sizeof(constInput);
             constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
             constInput->Offset = 0;
             constInput->PayloadPosition = payloadPosition;
             constInput->PayloadSizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
             constInput->ArgumentNumber = kernelArg->getAssociatedArgNo(); // used only for this token.
-            m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+            m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
         }
     }
 
@@ -2100,7 +1977,7 @@ namespace IGC
 
         {
             auto& FuncMap = ctx->getModuleMetaData()->FuncMD;
-            for (auto i : FuncMap)
+            for (const auto& i : FuncMap)
             {
                 std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> initConstant(new iOpenCL::KernelTypeProgramBinaryInfo());
                 initConstant->KernelName = i.first->getName().str();
@@ -2119,27 +1996,23 @@ namespace IGC
             }
         }
 
-        for (auto iter = modMD->GlobalPointerProgramBinaryInfos.begin();
-            iter != modMD->GlobalPointerProgramBinaryInfos.end();
-            iter++)
+        for (const auto& globPtrInfo : modMD->GlobalPointerProgramBinaryInfos)
         {
-            std::unique_ptr<iOpenCL::GlobalPointerAnnotation> initGlobalPointer(new iOpenCL::GlobalPointerAnnotation());
-            initGlobalPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
-            initGlobalPointer->PointeeBufferIndex = iter->PointeeBufferIndex;
-            initGlobalPointer->PointerBufferIndex = iter->PointerBufferIndex;
-            initGlobalPointer->PointerOffset = iter->PointerOffset;
+            auto initGlobalPointer = std::make_unique<iOpenCL::GlobalPointerAnnotation>();
+            initGlobalPointer->PointeeAddressSpace = globPtrInfo.PointeeAddressSpace;
+            initGlobalPointer->PointeeBufferIndex = globPtrInfo.PointeeBufferIndex;
+            initGlobalPointer->PointerBufferIndex = globPtrInfo.PointerBufferIndex;
+            initGlobalPointer->PointerOffset = globPtrInfo.PointerOffset;
             ctx->m_programInfo.m_initGlobalPointerAnnotation.push_back(std::move(initGlobalPointer));
         }
 
-        for (auto iter = modMD->ConstantPointerProgramBinaryInfos.begin();
-            iter != modMD->ConstantPointerProgramBinaryInfos.end();
-            iter++)
+        for (const auto& constPtrInfo : modMD->ConstantPointerProgramBinaryInfos)
         {
-            std::unique_ptr<iOpenCL::ConstantPointerAnnotation> initConstantPointer(new iOpenCL::ConstantPointerAnnotation());
-            initConstantPointer->PointeeAddressSpace = iter->PointeeAddressSpace;
-            initConstantPointer->PointeeBufferIndex = iter->PointeeBufferIndex;
-            initConstantPointer->PointerBufferIndex = iter->PointerBufferIndex;
-            initConstantPointer->PointerOffset = iter->PointerOffset;
+            auto  initConstantPointer = std::make_unique<iOpenCL::ConstantPointerAnnotation>();
+            initConstantPointer->PointeeAddressSpace = constPtrInfo.PointeeAddressSpace;
+            initConstantPointer->PointeeBufferIndex = constPtrInfo.PointeeBufferIndex;
+            initConstantPointer->PointerBufferIndex = constPtrInfo.PointerBufferIndex;
+            initConstantPointer->PointerOffset = constPtrInfo.PointerOffset;
 
             ctx->m_programInfo.m_initConstantPointerAnnotation.push_back(std::move(initConstantPointer));
         }
@@ -2272,7 +2145,7 @@ namespace IGC
         ctx->m_retryManager.kernelSet.clear();
 
         // gather data to send back to the driver
-        for (auto k : shaders)
+        for (const auto& k : shaders)
         {
             Function* pFunc = k.first;
             CShaderProgram* pKernel = static_cast<CShaderProgram*>(k.second);
@@ -2313,7 +2186,7 @@ namespace IGC
         }
 
         KernelArgs kernelArgs(F, m_DL, m_pMdUtils, m_ModuleMetadata, getGRFSize(), KernelArgsOrder::InputType::INDEPENDENT);
-        for (auto KA : kernelArgs)
+        for (const auto& KA : kernelArgs)
         {
             // RenderScript annotation sets "read_write" qualifier
             // for any applicable kernel argument, not only for kernel arguments

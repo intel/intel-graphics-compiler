@@ -64,7 +64,6 @@ enum TYPE_FORMAT
 
 struct KernelAnnotation
 {
-    DWORD AnnotationSize;
 };
 
 

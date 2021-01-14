@@ -608,23 +608,23 @@ namespace IGC
         std::string m_kernelName = {};
         QWORD       m_ShaderHashCode = {};
 
-        std::vector<iOpenCL::PointerInputAnnotation*>       m_pointerInput;
-        std::vector<iOpenCL::PointerArgumentAnnotation*>    m_pointerArgument;
-        std::vector<iOpenCL::LocalArgumentAnnotation*>      m_localPointerArgument;
-        std::vector<iOpenCL::SamplerInputAnnotation*>       m_samplerInput;
-        std::vector<iOpenCL::SamplerArgumentAnnotation*>    m_samplerArgument;
-        std::vector<iOpenCL::ConstantInputAnnotation*>      m_constantInputAnnotation;
-        std::vector<iOpenCL::ConstantArgumentAnnotation*>   m_constantArgumentAnnotation;
-        std::vector<iOpenCL::ImageArgumentAnnotation*>      m_imageInputAnnotations;
-        std::vector<iOpenCL::KernelArgumentInfoAnnotation*> m_kernelArgInfo;
-        std::vector<iOpenCL::PrintfStringAnnotation*>       m_printfStringAnnotations;
+        std::vector<std::unique_ptr<iOpenCL::PointerInputAnnotation>>       m_pointerInput;
+        std::vector<std::unique_ptr<iOpenCL::PointerArgumentAnnotation>>    m_pointerArgument;
+        std::vector<std::unique_ptr<iOpenCL::LocalArgumentAnnotation>>      m_localPointerArgument;
+        std::vector<std::unique_ptr<iOpenCL::SamplerInputAnnotation>>       m_samplerInput;
+        std::vector<std::unique_ptr<iOpenCL::SamplerArgumentAnnotation>>    m_samplerArgument;
+        std::vector<std::unique_ptr<iOpenCL::ConstantInputAnnotation>>      m_constantInputAnnotation;
+        std::vector<std::unique_ptr<iOpenCL::ConstantArgumentAnnotation>>   m_constantArgumentAnnotation;
+        std::vector<std::unique_ptr<iOpenCL::ImageArgumentAnnotation>>      m_imageInputAnnotations;
+        std::vector<std::unique_ptr<iOpenCL::KernelArgumentInfoAnnotation>> m_kernelArgInfo;
+        std::vector<std::unique_ptr<iOpenCL::PrintfStringAnnotation>>       m_printfStringAnnotations;
 
-        iOpenCL::PrintfBufferAnnotation*   m_printfBufferAnnotation = nullptr;
-        iOpenCL::SyncBufferAnnotation*     m_syncBufferAnnotation   = nullptr;
-        iOpenCL::StartGASAnnotation*       m_startGAS               = nullptr;
-        iOpenCL::WindowSizeGASAnnotation*  m_WindowSizeGAS          = nullptr;
-        iOpenCL::PrivateMemSizeAnnotation* m_PrivateMemSize         = nullptr;
-        std::string                                         m_kernelAttributeInfo = {};
+        std::unique_ptr<iOpenCL::PrintfBufferAnnotation>    m_printfBufferAnnotation;
+        std::unique_ptr<iOpenCL::SyncBufferAnnotation>      m_syncBufferAnnotation;
+        std::unique_ptr<iOpenCL::StartGASAnnotation>        m_startGAS;
+        std::unique_ptr<iOpenCL::WindowSizeGASAnnotation>   m_WindowSizeGAS;
+        std::unique_ptr<iOpenCL::PrivateMemSizeAnnotation>  m_PrivateMemSize;
+        std::string                                         m_kernelAttributeInfo;
 
         bool                                                m_HasInlineVmeSamplers = false;
 

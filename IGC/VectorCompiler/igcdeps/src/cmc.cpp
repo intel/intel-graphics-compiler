@@ -154,7 +154,8 @@ class KernelArgInfoBuilder
         static constexpr const char* Restrict = "restrict";
         static constexpr const char* Pipe = "pipe";
     };
-    using ArgInfoSeq = std::vector<iOpenCL::KernelArgumentInfoAnnotation*>;
+    using KernArgAnnotation = iOpenCL::KernelArgumentInfoAnnotation;
+    using ArgInfoSeq = std::vector<std::unique_ptr<KernArgAnnotation>>;
     ArgInfoSeq ArgInfos;
 
 public:
@@ -165,23 +166,16 @@ public:
     }
 
     // It is users responsibility to delete the annotation.
-    static iOpenCL::KernelArgumentInfoAnnotation* get(vc::ocl::ArgKind ArgKindID,
+    static std::unique_ptr<KernArgAnnotation> get(vc::ocl::ArgKind ArgKindID,
             vc::ocl::ArgAccessKind AccessKind = vc::ocl::ArgAccessKind::None)
     {
-        auto* Annotation = new iOpenCL::KernelArgumentInfoAnnotation;
+        auto Annotation = std::make_unique<KernArgAnnotation>();
         Annotation->AddressQualifier = AddressQualifiers::get(ArgKindID);
         Annotation->AccessQualifier = AccessQualifiers::get(AccessKind);
         Annotation->ArgumentName = "";
         Annotation->TypeName = "";
         Annotation->TypeQualifier = TypeQualifiers::None;
         return Annotation;
-    }
-
-    ArgInfoSeq emit() const &
-    {
-        IGC_ASSERT_MESSAGE(checkArgInfosCorrectness(),
-                           "arg info token is incorrect");
-        return ArgInfos;
     }
 
     ArgInfoSeq emit() &&
@@ -197,23 +191,26 @@ private:
         IGC_ASSERT_MESSAGE(RequiredSize > 0, "invalid required size");
         if (RequiredSize <= static_cast<int>(ArgInfos.size()))
             return;
-        ArgInfos.resize(RequiredSize, nullptr);
+
+        ArgInfos.reserve(RequiredSize);
+        for (int i = ArgInfos.size(); i < RequiredSize; ++i) {
+          ArgInfos.emplace_back(std::unique_ptr<KernArgAnnotation>());
+        }
     }
 
     // Returns whether arg infos are correct.
     bool checkArgInfosCorrectness() const
     {
         return std::none_of(ArgInfos.begin(), ArgInfos.end(),
-            [](iOpenCL::KernelArgumentInfoAnnotation* ArgInfo){ return ArgInfo == nullptr; });
+            [](const auto &ArgInfo){ return ArgInfo.get() == nullptr; });
     }
 };
 } // anonymous namespace
 
 void CMKernel::createConstArgumentAnnotation(unsigned argNo, unsigned sizeInBytes, unsigned payloadPosition)
 {
-    iOpenCL::ConstantArgumentAnnotation* constInput = new iOpenCL::ConstantArgumentAnnotation;
+    auto constInput = std::make_unique<iOpenCL::ConstantArgumentAnnotation>();
 
-    constInput->AnnotationSize = sizeof(constInput);
     constInput->Offset = 0;
     constInput->PayloadPosition = payloadPosition;
     constInput->PayloadSizeInBytes = sizeInBytes;
@@ -221,7 +218,8 @@ void CMKernel::createConstArgumentAnnotation(unsigned argNo, unsigned sizeInByte
     constInput->LocationIndex = 0;
     constInput->LocationCount = 0;
     constInput->IsEmulationArgument = false;
-    m_kernelInfo.m_constantArgumentAnnotation.push_back(constInput);
+
+    m_kernelInfo.m_constantArgumentAnnotation.push_back(std::move(constInput));
 
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
@@ -234,8 +232,7 @@ void CMKernel::createSamplerAnnotation(unsigned argNo)
     iOpenCL::SAMPLER_OBJECT_TYPE samplerType;
     samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
 
-    iOpenCL::SamplerArgumentAnnotation* samplerArg = new iOpenCL::SamplerArgumentAnnotation;
-    samplerArg->AnnotationSize = sizeof(samplerArg);
+    auto samplerArg = std::make_unique<iOpenCL::SamplerArgumentAnnotation>();
     samplerArg->SamplerType = samplerType;
     samplerArg->ArgumentNumber = argNo;
     samplerArg->SamplerTableIndex = 0;
@@ -245,7 +242,7 @@ void CMKernel::createSamplerAnnotation(unsigned argNo)
     samplerArg->IsEmulationArgument = false;
     samplerArg->PayloadPosition = 0;
 
-    m_kernelInfo.m_samplerArgument.push_back(samplerArg);
+    m_kernelInfo.m_samplerArgument.push_back(std::move(samplerArg));
 
     if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
         IGC_ASSERT_MESSAGE(0, "not yet supported for L0 binary");
@@ -254,12 +251,11 @@ void CMKernel::createSamplerAnnotation(unsigned argNo)
 void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI,
                                      unsigned dim, vc::ocl::ArgAccessKind Access)
 {
-    iOpenCL::ImageArgumentAnnotation* imageInput = new iOpenCL::ImageArgumentAnnotation;
+    auto imageInput = std::make_unique<iOpenCL::ImageArgumentAnnotation>();
     // As VC uses only statefull addrmode.
     constexpr int PayloadPosition = 0;
     constexpr int ArgSize = 0;
 
-    imageInput->AnnotationSize = sizeof(imageInput);
     imageInput->ArgumentNumber = argNo;
     imageInput->IsFixedBindingTableIndex = true;
     imageInput->BindingTableIndex = BTI;
@@ -279,7 +275,7 @@ void CMKernel::createImageAnnotation(unsigned argNo, unsigned BTI,
     imageInput->IsBindlessAccess = false;
     imageInput->PayloadPosition = PayloadPosition;
     imageInput->Writeable = Access != vc::ocl::ArgAccessKind::ReadOnly;
-    m_kernelInfo.m_imageInputAnnotations.push_back(imageInput);
+    m_kernelInfo.m_imageInputAnnotations.push_back(std::move(imageInput));
 
     zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
         PayloadPosition, ArgSize, argNo, zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
@@ -300,11 +296,10 @@ void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
                                              unsigned sizeInBytes, unsigned BTI,
                                              vc::ocl::ArgAccessKind access)
 {
-    iOpenCL::PointerArgumentAnnotation* ptrAnnotation = new iOpenCL::PointerArgumentAnnotation;
+    auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
     ptrAnnotation->IsStateless = true;
     ptrAnnotation->IsBindlessAccess = false;
     ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
-    ptrAnnotation->AnnotationSize = sizeof(ptrAnnotation);
     ptrAnnotation->ArgumentNumber = index;
     ptrAnnotation->BindingTableIndex = BTI;
     ptrAnnotation->PayloadPosition = offset;
@@ -312,7 +307,7 @@ void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
     ptrAnnotation->LocationIndex = 0;
     ptrAnnotation->LocationCount = 0;
     ptrAnnotation->IsEmulationArgument = false;
-    m_kernelInfo.m_pointerArgument.push_back(ptrAnnotation);
+    m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
 
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
@@ -327,11 +322,9 @@ void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
 void CMKernel::createPrivateBaseAnnotation(
     unsigned argNo, unsigned byteSize, unsigned payloadPosition, int BTI,
     unsigned statelessPrivateMemSize) {
-  iOpenCL::PrivateInputAnnotation *ptrAnnotation =
-      new iOpenCL::PrivateInputAnnotation();
+  auto ptrAnnotation = std::make_unique<iOpenCL::PrivateInputAnnotation>();
 
   ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
-  ptrAnnotation->AnnotationSize = sizeof(ptrAnnotation);
   ptrAnnotation->ArgumentNumber = argNo;
   // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
   ptrAnnotation->PerThreadPrivateMemorySize = statelessPrivateMemSize;
@@ -339,7 +332,7 @@ void CMKernel::createPrivateBaseAnnotation(
   ptrAnnotation->IsStateless = true;
   ptrAnnotation->PayloadPosition = payloadPosition;
   ptrAnnotation->PayloadSizeInBytes = byteSize;
-  m_kernelInfo.m_pointerInput.push_back(ptrAnnotation);
+  m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
 
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
@@ -350,9 +343,8 @@ void CMKernel::createPrivateBaseAnnotation(
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
                                               vc::ocl::ArgAccessKind accessKind)
 {
-    iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation;
+    auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
-    constInput->AnnotationSize = sizeof(constInput);
     constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
     constInput->Offset = 0;
     constInput->PayloadPosition = 0;
@@ -360,7 +352,7 @@ void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
     constInput->ArgumentNumber = argNo;
     constInput->LocationIndex = 0;
     constInput->LocationCount = 0;
-    m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+    m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
 
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
@@ -377,10 +369,9 @@ void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
          i < 3;
          ++i, payloadPosition += iOpenCL::DATA_PARAMETER_DATA_SIZE)
     {
-        iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation;
+        auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
         DWORD sizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
 
-        constInput->AnnotationSize = sizeof(constInput);
         constInput->ConstantType = Type;
         constInput->Offset = i * sizeInBytes;
         constInput->PayloadPosition = payloadPosition;
@@ -388,7 +379,7 @@ void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
         constInput->ArgumentNumber = 0;
         constInput->LocationIndex = 0;
         constInput->LocationCount = 0;
-        m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+        m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
     }
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
@@ -498,7 +489,7 @@ static void setSymbolsInfo(const vc::ocl::KernelInfo &Info,
 
 static void generateKernelArgInfo(
     const std::vector<vc::ocl::ArgInfo> &Args,
-    std::vector<iOpenCL::KernelArgumentInfoAnnotation *> &ArgsAnnotation) {
+    std::vector<std::unique_ptr<iOpenCL::KernelArgumentInfoAnnotation>> &ArgsAnnotation) {
   KernelArgInfoBuilder ArgsAnnotationBuilder;
   for (auto &Arg : Args)
     switch (Arg.Kind) {
@@ -523,7 +514,7 @@ static void setArgumentsInfo(const vc::ocl::KernelInfo &Info,
       llvm::enumerate(Info.PrintStrings),
       std::back_inserter(Kernel.m_kernelInfo.m_printfStringAnnotations),
       [](const auto EnumStr) {
-        auto *StringAnnotation = new iOpenCL::PrintfStringAnnotation;
+        auto StringAnnotation = std::make_unique<iOpenCL::PrintfStringAnnotation>();
         StringAnnotation->Index = EnumStr.index();
         const std::string &PrintString = EnumStr.value();
         const unsigned StringSize = PrintString.size();
@@ -597,9 +588,7 @@ static void setArgumentsInfo(const vc::ocl::KernelInfo &Info,
       break;
     case ArgKind::PrintBuffer:
       Kernel.m_kernelInfo.m_printfBufferAnnotation =
-          new iOpenCL::PrintfBufferAnnotation();
-      Kernel.m_kernelInfo.m_printfBufferAnnotation->AnnotationSize =
-          sizeof(Kernel.m_kernelInfo.m_printfBufferAnnotation);
+          std::make_unique<iOpenCL::PrintfBufferAnnotation>();
       Kernel.m_kernelInfo.m_argIndexMap[Arg.Index] = Arg.BTI;
       Kernel.m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber = Arg.Index;
       Kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = ArgOffset;
