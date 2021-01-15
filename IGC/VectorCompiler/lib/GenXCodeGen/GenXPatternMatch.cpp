@@ -152,6 +152,10 @@ public:
 
   void visitICmpInst(ICmpInst &I);
 
+  void visitSRem(BinaryOperator &I);
+
+  void visitSDiv(BinaryOperator &I);
+
   bool runOnFunction(Function &F) override;
 
   bool isFpMadEnabled() const {
@@ -183,7 +187,7 @@ private:
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
 
-  bool decomposeSdiv(Function *F);
+  bool clearDeadInstructions(Function &F);
 };
 
 } // namespace
@@ -224,11 +228,12 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
   visit(F);
 
   Changed |= simplifyVolatileGlobals(&F);
+
+  Changed |= clearDeadInstructions(F);
+
   Changed |= simplifySelect(&F);
   // Break big predicate variables and run after min/max pattern match.
   Changed |= decomposeSelect(&F);
-
-  Changed |= decomposeSdiv(&F);
 
   return Changed;
 }
@@ -2187,6 +2192,19 @@ bool GenXPatternMatch::simplifySelect(Function *F) {
   return Changed;
 }
 
+bool GenXPatternMatch::clearDeadInstructions(Function &F) {
+  bool Changed = false;
+  SmallVector<Instruction *, 8> ToErase;
+  for (auto &Inst : instructions(F))
+    if (isInstructionTriviallyDead(&Inst))
+      ToErase.push_back(&Inst);
+  if (!ToErase.empty()) {
+    Changed = true;
+    RecursivelyDeleteTriviallyDeadInstructions(ToErase);
+  }
+  return Changed;
+}
+
 // Perform volatile global related simplifications.
 bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
   bool Changed = false;
@@ -2195,11 +2213,6 @@ bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
       Instruction *Inst = &*I++;
       if (isa<LoadInst>(Inst))
         Changed |= normalizeGloads(Inst);
-    }
-    for (auto I = BB.rbegin(); I != BB.rend(); /*empty*/) {
-      Instruction *Inst = &*I++;
-      if (isInstructionTriviallyDead(Inst))
-        Inst->eraseFromParent();
     }
   }
   return Changed;
@@ -2232,25 +2245,22 @@ static Constant *getFloorLog2(const Constant *C) {
   }
 }
 
-// a helper routine for decomposeSdivInstruction and decomposeSdivPow2
-// return true if instruction can be optimized
-// input checked instruction
-bool isSuitableSdivPow2DecomposeInst(const Instruction &Inst) {
-  if (!isa<SDivOperator>(Inst))
-    return false; // not interesting
-  // from this point operands are signed
-  Value *Op1 = Inst.getOperand(1);
-  if (!isa<Constant>(Op1)) // constant data vector or constant
+// a helper routine for decomposeSdivPow2, decomposeSremPow2
+// return true if Value is constant data power 2 value
+// input operand - value
+bool isSuitableSdivSremPow2Operand(const Value *Operand) {
+  IGC_ASSERT(Operand && "nullptr in isSuitableSdivSremPow2Operand");
+  if (!isa<Constant>(Operand)) // constant data vector or constant
     return false;
-  if (PatternMatch::match(Op1, PatternMatch::m_Negative()))
+  if (PatternMatch::match(Operand, PatternMatch::m_Negative()))
     return false; // the second operand is negative
 
-  if (!Inst.getType()->isIntOrIntVectorTy(genx::DWordBits))
+  if (!Operand->getType()->isIntOrIntVectorTy(genx::DWordBits))
     return false; // not int and not vector of int, or width wrong
-  Type *InstElementTy = Inst.getType()->getScalarType();
+  Type *InstElementTy = Operand->getType()->getScalarType();
   IGC_ASSERT(InstElementTy &&
-             "ERROR: logic error in is isSuitableSdivPow2DecomposeInst");
-  return PatternMatch::match(Op1, PatternMatch::m_Power2());
+             "ERROR: logic error in is isSuitableSdivSremPow2DecomposeInst");
+  return PatternMatch::match(Operand, PatternMatch::m_Power2());
 }
 
 // optimization path if second operand of sdiv is power of 2
@@ -2260,9 +2270,10 @@ bool isSuitableSdivPow2DecomposeInst(const Instruction &Inst) {
 // Optimization for positive y:
 // intWidth = 32
 // x / y = ashr( x + lshr( ashr(x, intWidth - 1), intWidth - log2(y)), log2(y))
-static void decomposeSdivPow2(Instruction &Sdiv,
-                              SmallVectorImpl<Instruction *> &ToErase) {
-  IGC_ASSERT(isSuitableSdivPow2DecomposeInst(Sdiv) &&
+static void decomposeSdivPow2(BinaryOperator &Sdiv) {
+  IGC_ASSERT(Sdiv.getOpcode() == Instruction::SDiv &&
+             "Error: try to decompose sdiv for not sdiv instruction");
+  IGC_ASSERT(isSuitableSdivSremPow2Operand(Sdiv.getOperand(1)) &&
              "Error: try to decompose sdiv for not suitable instruction");
 
   const Twine Name = "genxSdivOpt";
@@ -2277,7 +2288,6 @@ static void decomposeSdivPow2(Instruction &Sdiv,
       SdivTy->isVectorTy() ? cast<VectorType>(SdivTy)->getNumElements() : 0;
 
   IRBuilder<> Builder(&Sdiv);
-  Builder.SetCurrentDebugLocation(Sdiv.getDebugLoc());
 
   auto createConstant = [](unsigned int OperandWidth, Type *Ty, int Value) {
     return OperandWidth != 0 ?
@@ -2300,30 +2310,47 @@ static void decomposeSdivPow2(Instruction &Sdiv,
   Value *NewRhs = Builder.CreateAdd(Op0, Addition, Name);
   Value *Answer = Builder.CreateAShr(NewRhs, Log2Op1, Name);
   Sdiv.replaceAllUsesWith(Answer);
-  ToErase.push_back(&Sdiv);
 }
 
-static bool decomposeSdivInstruction(Instruction &Inst,
-                                     SmallVectorImpl<Instruction *> &ToErase) {
-  if (isSuitableSdivPow2DecomposeInst(Inst)) {
-    decomposeSdivPow2(Inst, ToErase);
-    return true;
+void GenXPatternMatch::visitSDiv(BinaryOperator &I) {
+  if (isSuitableSdivSremPow2Operand(I.getOperand(1))) {
+    decomposeSdivPow2(I);
+    Changed = true;
   }
-  return false;
 }
 
-bool GenXPatternMatch::decomposeSdiv(Function *F) {
-  IGC_ASSERT(F && "Error: decomposeSdiv nullptr function");
-  bool changed = false;
-  SmallVector<Instruction *, 8> ToErase;
-  for (auto &I : instructions(F)) {
-    changed |= decomposeSdivInstruction(I, ToErase);
+// Srem - only srem binary operator
+// suppose that later sdiv operation will be optimized by decomposeSdivPow2
+// x % y = x - y * (x / y)
+static void decomposeSremPow2(BinaryOperator &Srem) {
+  IGC_ASSERT(Srem.getOpcode() == Instruction::SRem &&
+             "Error: try to decomposeSrem not srem");
+  IGC_ASSERT(isSuitableSdivSremPow2Operand(Srem.getOperand(1)) &&
+             "Error: try to decomposeSrem for not suitable Operand 1");
+  const Twine Name = "genxSremOpt";
+  Value *Op0 = Srem.getOperand(0);
+  Constant *Op1 = cast<Constant>(Srem.getOperand(1));
+
+  Type *SremTy = Srem.getType();
+  IGC_ASSERT(SremTy && "ERROR: logic error in decomposeSremPow2");
+
+  IRBuilder<> Builder(&Srem);
+
+  Value *Sdiv = Builder.CreateSDiv(Op0, Op1, Name);
+  Value *MulRes = Builder.CreateMul(Sdiv, Op1, Name);
+  Value *Result = Builder.CreateSub(Op0, MulRes, Name);
+
+  // optimize sdiv
+  decomposeSdivPow2(*cast<BinaryOperator>(Sdiv));
+
+  Srem.replaceAllUsesWith(Result);
+}
+
+void GenXPatternMatch::visitSRem(BinaryOperator &I) {
+  if (isSuitableSdivSremPow2Operand(I.getOperand(1))) {
+    decomposeSremPow2(I);
+    Changed = true;
   }
-  // remove all ToErase inst
-  for (auto &Deleted : ToErase) {
-    Deleted->eraseFromParent();
-  }
-  return changed;
 }
 
 // Decompose predicate operand for large vector selects.
