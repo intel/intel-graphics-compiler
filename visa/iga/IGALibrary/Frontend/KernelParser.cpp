@@ -2367,6 +2367,7 @@ public:
         // convert to the underlying data type
         Type sty = ParseSrcOpTypeWithoutDefault(srcOpIx, true);
 
+
         switch (sty) {
         case Type::B:
         case Type::UB:

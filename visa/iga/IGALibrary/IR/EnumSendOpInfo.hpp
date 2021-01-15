@@ -136,3 +136,6 @@ DEFINE_OTHER_OP(SAMPLER_FLUSH, "sampler_flush", ATTRS_NONE)
 // TODO: all loads should be moved up to IS_LOAD and reads IS_STORE
 DEFINE_OTHER_OP(RENDER_WRITE,  "render_write", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_READ,   "render_read",  ATTRS_NONE)
+
+#undef ATTRS_NONE
+#undef ATTRS_SCALARADDR
