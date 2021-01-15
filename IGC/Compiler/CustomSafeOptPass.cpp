@@ -3078,6 +3078,14 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
                 C = constantFolder.CreateFirstBitLo(C0);
             }
         }
+        case llvm_bfrev:
+        {
+            if (C0)
+            {
+                C = constantFolder.CreateBfrev(C0);
+            }
+        }
+        break;
         break;
         case llvm_bfi:
         {
