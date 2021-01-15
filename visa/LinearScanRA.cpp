@@ -2750,8 +2750,13 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& build
         lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
         if (!builder.getOptions()->getOption(vISA_LSFristFit))
         {
-            startGRFReg = (startGRFReg + nrows) % numRegLRA;
+            startGRFReg = (startGRFReg + nrows) % localRABound;
         }
+        else
+        {
+            assert(startGRFReg == 0);
+        }
+
         return true;
     }
     else if (!builder.getOptions()->getOption(vISA_LSFristFit))
@@ -2772,7 +2777,7 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& build
             COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << (int)bankAlign << std::endl;
 #endif
             lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
-            startGRFReg = (startGRFReg + nrows) % numRegLRA;
+            startGRFReg = (startGRFReg + nrows) % localRABound;
             return true;
         }
     }
