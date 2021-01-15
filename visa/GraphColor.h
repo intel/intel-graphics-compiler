@@ -75,7 +75,7 @@ namespace vISA
         }
     };
 
-class LiveRange
+class LiveRange final
 {
     G4_RegVar* var;
     G4_Declare* dcl;
@@ -118,10 +118,10 @@ public:
 
     void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
-    void setDegree(unsigned d)  {degree = d;}
-    unsigned getDegree()        {return degree;}
+    void setDegree(unsigned d) {degree = d;}
+    unsigned getDegree() const {return degree;}
 
-    unsigned getNumRegNeeded()  {return numRegNeeded;}
+    unsigned getNumRegNeeded() const {return numRegNeeded;}
 
     void subtractDegree(unsigned d)
     {
@@ -130,9 +130,9 @@ public:
     }
 
     void setActive(bool v) {active = v;}
-    bool getActive() {return active;}
+    bool getActive() const {return active;}
 
-    virtual void emit(std::ostream& output, bool symbolreg = false)
+    void emit(std::ostream& output, bool symbolreg = false)
     {
         output << getVar ()->getDeclare ()->getName();
         if (reg.phyReg != NULL)
@@ -146,7 +146,7 @@ public:
             ", spill cost = " << getSpillCost() << ", degree = " << getDegree() << ")";
     }
 
-    unsigned getRefCount()  {return refCount;}
+    unsigned getRefCount() const {return refCount;}
     void setRefCount(unsigned count) {refCount = count;}
 
     float getSpillCost()  {return spillCost;}
@@ -155,15 +155,9 @@ public:
     bool getIsInfiniteSpillCost() { return isInfiniteCost; }
     void checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::reverse_iterator& it);
 
-    G4_VarBase* getPhyReg()
-    {
-        return reg.phyReg;
-    }
+    G4_VarBase* getPhyReg() const { return reg.phyReg; }
 
-    unsigned getPhyRegOff()
-    {
-        return reg.subRegOff;
-    }
+    unsigned getPhyRegOff() const { return reg.subRegOff; }
 
     void setPhyReg(G4_VarBase* pr, unsigned off)
     {
@@ -199,7 +193,7 @@ public:
         void allocForbidden(vISA::Mem_Manager& mem, bool reserveStackCallRegs, unsigned reserveSpillSize, unsigned rerservedRegNum);
         void allocForbiddenCallerSave(vISA::Mem_Manager& mem, G4_Kernel* kernel);
         void allocForbiddenCalleeSave(vISA::Mem_Manager& mem, G4_Kernel* kernel);
-        const bool* getForbidden() { return forbidden; }
+        const bool* getForbidden() const { return forbidden; }
         void markForbidden(int reg, int numReg)
         {
             MUST_BE_TRUE(((int)getForbiddenVectorSize()) >= reg + numReg, "forbidden register is out of bound");
@@ -228,16 +222,16 @@ public:
             }
             return numForbidden;
         }
-        G4_RegVar* getVar() { return var; }
+        G4_RegVar* getVar() const { return var; }
         G4_Declare* getDcl() const { return dcl; }
-        G4_RegFileKind getRegKind() { return regKind; }
+        G4_RegFileKind getRegKind() const { return regKind; }
         void dump();
 
         void setCalleeSaveBias(bool v) { calleeSaveBias = v; }
-        bool getCalleeSaveBias() { return calleeSaveBias; }
+        bool getCalleeSaveBias() const { return calleeSaveBias; }
 
         void setCallerSaveBias(bool v) { callerSaveBias = v; }
-        bool getCallerSaveBias() { return callerSaveBias; }
+        bool getCallerSaveBias() const { return callerSaveBias; }
 
         void setEOTSrc() { isEOTSrc = true; }
         bool getEOTSrc() const { return isEOTSrc; }
@@ -364,10 +358,10 @@ namespace vISA
         G4_Kernel& kernel;
         LiveRange**& lrs;
         IR_Builder& builder;
-        unsigned maxId;
-        unsigned rowSize;
-        unsigned splitStartId;
-        unsigned splitNum;
+        const unsigned maxId;
+        const unsigned rowSize;
+        const unsigned splitStartId;
+        const unsigned splitNum;
         unsigned int* matrix = nullptr;
         LivenessAnalysis* liveAnalysis = nullptr;
 
@@ -378,7 +372,7 @@ namespace vISA
         // like dense matrix, interference is not symmetric (that is, if v1 and v2 interfere and v1 < v2,
         // we insert (v1, v2) but not (v2, v1)) for better cache behavior
         std::vector<std::unordered_set<uint32_t> > sparseMatrix;
-        const uint32_t denseMatrixLimit = 0x80000;
+        static const uint32_t denseMatrixLimit = 0x80000;
 
         void updateLiveness(BitSet& live, uint32_t id, bool val)
         {
@@ -512,7 +506,7 @@ namespace vISA
             }
         }
 
-        void addCalleeSaveBias(BitSet& live);
+        void addCalleeSaveBias(const BitSet& live);
         void buildInterferenceAtBBExit(G4_BB* bb, BitSet& live);
         void buildInterferenceWithinBB(G4_BB* bb, BitSet& live);
         void buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
@@ -568,19 +562,19 @@ namespace vISA
         Interference intf;
         PhyRegPool& regPool;
         IR_Builder& builder;
-        LiveRange** lrs;
+        LiveRange** lrs = nullptr;
         bool isHybrid;
         LIVERANGE_LIST spilledLRs;
         bool forceSpill;
         vISA::Mem_Manager mem;
         const Options *m_options;
 
-        unsigned evenTotalDegree;
-        unsigned oddTotalDegree;
-        unsigned evenTotalRegNum;
-        unsigned oddTotalRegNum;
-        unsigned evenMaxRegNum;
-        unsigned oddMaxRegNum;
+        unsigned evenTotalDegree = 1;
+        unsigned oddTotalDegree = 1;
+        unsigned evenTotalRegNum = 1;
+        unsigned oddTotalRegNum = 1;
+        unsigned evenMaxRegNum = 1;
+        unsigned oddMaxRegNum = 1;
 
         G4_Kernel& kernel;
         LivenessAnalysis& liveAnalysis;
@@ -614,13 +608,13 @@ namespace vISA
     public:
         GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_);
 
-        const Options * getOptions() { return m_options; }
+        const Options * getOptions() const { return m_options; }
 
         bool regAlloc(
             bool doBankConflictReduction,
             bool highInternalConflict,
             bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize, RPE* rpe);
-        bool requireSpillCode() { return !spilledLRs.empty(); }
+        bool requireSpillCode() const { return !spilledLRs.empty(); }
         Interference * getIntf() { return &intf; }
         void createLiveRanges(unsigned reserveSpillSize = 0);
         LiveRange ** getLiveRanges() const { return lrs; }
@@ -636,9 +630,7 @@ namespace vISA
         void dumpRegisterPressure();
         GlobalRA & getGRA() { return gra; }
         G4_SrcRegRegion* getScratchSurface() const;
-        LiveRange** getLRs() {
-            return lrs;
-        }
+        LiveRange** getLRs() const { return lrs; }
     };
 
     class RAVarInfo
@@ -676,7 +668,7 @@ namespace vISA
         std::unordered_map<G4_BB*, std::string> bbLabels;
         std::vector<std::tuple<G4_BB*, unsigned int, unsigned int>> BBLexId;
 
-        const char* getStr(AugmentationMasks a)
+        static const char* getStr(AugmentationMasks a)
         {
             if (a == AugmentationMasks::Default16Bit)
                 return "Default16Bit";
@@ -729,13 +721,12 @@ namespace vISA
                 return false;
             return true;
         }
-        static const char* StackCallStr;
+        static const char StackCallStr[];
 
     private:
         template <class REGION_TYPE> static unsigned getRegionDisp(REGION_TYPE * region);
         unsigned getRegionByteSize(G4_DstRegRegion * region, unsigned execSize);
-        static unsigned owordMask();
-        static bool owordAligned(unsigned offset);
+        static bool owordAligned(unsigned offset) { return offset % 16 == 0; }
         template <class REGION_TYPE> bool isUnalignedRegion(REGION_TYPE * region, unsigned execSize);
         bool shouldPreloadDst(G4_INST* instContext, G4_BB* curBB);
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
@@ -822,14 +813,14 @@ namespace vISA
         FCALL_RET_MAP fcallRetMap;
 
 
-        VarSplitPass* getVarSplitPass() { return kernel.getVarSplitPass(); }
+        VarSplitPass* getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
         unsigned int getSubRetLoc(G4_BB* bb)
         {
             auto it = subretloc.find(bb);
             if (it == subretloc.end())
                 return UNDEFINED_VAL;
-            return (*it).second;
+            return it->second;
         }
 
         void setSubRetLoc(G4_BB* bb, unsigned int s) { subretloc[bb] = s; }
@@ -891,12 +882,12 @@ namespace vISA
             UndeclaredVars.push_back(dcl);
         }
 
-        bool isUndefinedDcl(G4_Declare* dcl)
+        bool isUndefinedDcl(const G4_Declare* dcl) const
         {
             return std::find(UndeclaredVars.begin(), UndeclaredVars.end(), dcl) != UndeclaredVars.end();
         }
 
-        unsigned int getSplitVarNum(G4_Declare* dcl)
+        unsigned int getSplitVarNum(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -906,14 +897,14 @@ namespace vISA
             return vars[dclid].numSplit;
         }
 
-        void setSplitVarNum(G4_Declare* dcl, unsigned int val)
+        void setSplitVarNum(const G4_Declare* dcl, unsigned int val)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].numSplit = val;
         }
 
-        unsigned int getBBId(G4_Declare* dcl)
+        unsigned int getBBId(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -922,6 +913,7 @@ namespace vISA
             }
             return vars[dclid].bb_id;
         }
+
         void setBBId(G4_Declare* dcl, unsigned int id)
         {
             auto dclid = dcl->getDeclId();
@@ -929,12 +921,12 @@ namespace vISA
             vars[dclid].bb_id = id;
         }
 
-        bool isBlockLocal(G4_Declare* dcl)
+        bool isBlockLocal(const G4_Declare* dcl) const
         {
             return getBBId(dcl) < (UINT_MAX - 1);
         }
 
-        G4_Declare* getSplittedDeclare(G4_Declare* dcl)
+        G4_Declare* getSplittedDeclare(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -951,7 +943,7 @@ namespace vISA
             vars[dclid].splittedDCL = sd;
         }
 
-        LocalLiveRange* getLocalLR(G4_Declare* dcl) const
+        LocalLiveRange* getLocalLR(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1026,7 +1018,7 @@ namespace vISA
             vars[dclid].numRefs += 1;
         }
 
-        unsigned int getNumRefs(G4_Declare* dcl)
+        unsigned int getNumRefs(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1293,7 +1285,7 @@ namespace vISA
             return true;
         }
 
-        bool isEvenAligned(G4_Declare* dcl)
+        bool isEvenAligned(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
@@ -1449,12 +1441,8 @@ namespace vISA
     //
     typedef struct _CLEAN_NUM_PROFILE
     {
-        _CLEAN_NUM_PROFILE() {
-            for (auto& I : spill_clean_num) I = 0;
-            for (auto& I : fill_clean_num) I = 0;
-        }
-        unsigned spill_clean_num[10];
-        unsigned fill_clean_num[10];
+        unsigned spill_clean_num[10] {};
+        unsigned fill_clean_num[10] {};
     } CLEAN_NUM_PROFILE;
 
     typedef struct _SCRATCH_RANGE
