@@ -2023,6 +2023,10 @@ namespace IGC
         Type* Int8PtrTy = llvm::Type::getInt8PtrTy(M.getContext());
         for (auto* V : Values) {
             Constant* C = V;
+            //llvm will complain if members of llvm.uses doesn't have a name
+            if(C->getName().empty())
+                C->setName("gVar");
+
             if (V->getType()->getAddressSpace() != 0)
                 C = ConstantExpr::getAddrSpaceCast(V, Int8PtrTy);
             else
