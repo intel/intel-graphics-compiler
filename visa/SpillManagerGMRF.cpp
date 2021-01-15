@@ -4831,6 +4831,8 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
             auto header = inst->getSrc(0)->asSrcRegRegion();
             auto payload = inst->getSrc(1)->asSrcRegRegion();
             auto spillIt = instIt;
+            auto byteOff = inst->asSpillIntrinsic()->getOffsetInBytes() + numRows * numEltPerGRF<Type_UB>();
+            actualSpillSize = std::max(actualSpillSize, byteOff);
 
             auto rowOffset = payload->getRegOff();
             {
@@ -5005,6 +5007,8 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
             auto header = inst->getSrc(0)->asSrcRegRegion();
             auto resultRgn = inst->getDst();
             auto fillIt = instIt;
+            auto byteOff = inst->asFillIntrinsic()->getOffsetInBytes() + numRows * numEltPerGRF<Type_UB>();
+            actualSpillSize = std::max(actualSpillSize, byteOff);
 
             auto rowOffset = resultRgn->getRegOff();
             {

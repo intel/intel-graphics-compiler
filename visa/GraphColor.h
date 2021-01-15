@@ -791,6 +791,10 @@ namespace vISA
         uint32_t numGRFSpill = 0;
         uint32_t numGRFFill = 0;
 
+        // kernel's spill size
+        // We need this because spill code cleanup may result in OOB fill/spill during coalescing.
+        uint32_t actualSpillSize = 0;
+
         void expandFillNonStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt);
         void expandSpillNonStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_SrcRegRegion* payload, G4_BB* bb, INST_LIST_ITER& instIt);
         void expandFillStackcall(uint32_t numRows, uint32_t offset, short rowOffset, G4_SrcRegRegion* header, G4_DstRegRegion* resultRgn, G4_BB* bb, INST_LIST_ITER& instIt);

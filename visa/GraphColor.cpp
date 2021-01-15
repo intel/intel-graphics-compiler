@@ -10051,12 +10051,8 @@ int GlobalRA::coloringRegAlloc()
         return VISA_SPILL;
     }
 
-    // do not double count the spill mem offset
-    // Note that this includes both SLM and scratch space spills
-    uint32_t spillMemUsed = nextSpillOffset;
-    //
-    // Report spill memory usage information.
-    //
+    // this includes vISA's scratch space use only and does not include whatever IGC may use for private memory
+    uint32_t spillMemUsed = std::max(this->actualSpillSize, nextSpillOffset);
     if (spillMemUsed)
     {
         builder.criticalMsgStream() << "Spill memory used = " << spillMemUsed << " bytes for kernel " <<
