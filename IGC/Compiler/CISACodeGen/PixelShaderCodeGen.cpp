@@ -622,12 +622,15 @@ CVariable* CPixelShader::GetPositionXYOffset()
 
 CVariable* CPixelShader::GetInputCoverageMask()
 {
+    uint16_t numberInstance, numberLanes;
+    {
+        numberLanes = numLanes(m_SIMDSize);
+        numberInstance = m_numberInstance;
+    }
     if (!m_pInputCoverageMask)
     {
-        m_pInputCoverageMask =
-            GetNewVariable(
-                numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, false,
-                m_numberInstance, "InputCoverageMask");
+        m_pInputCoverageMask = GetNewVariable(
+                numberLanes, ISA_TYPE_F, EALIGN_GRF, false, numberInstance, "InputCoverageMask");
     }
     return m_pInputCoverageMask;
 }
