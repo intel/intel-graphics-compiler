@@ -634,12 +634,12 @@ public:
         depTokens.erase(depTokens.begin() + i);
     }
 
-    bool isOperandTypeIndicated() {return operandTypeIndicated;}
-    bool isClosestALUType() { return isClosestALUType_; }
-    unsigned char getDistance() { return depDistance; }
-    unsigned short getToken() { return SBToken; }
+    bool isOperandTypeIndicated() const {return operandTypeIndicated;}
+    bool isClosestALUType() const { return isClosestALUType_; }
+    unsigned char getDistance() const { return depDistance; }
+    unsigned short getToken() const { return SBToken; }
 
-    size_t getDepTokenNum() { return depTokens.size(); }
+    size_t getDepTokenNum() const { return depTokens.size(); }
     unsigned short getDepToken(unsigned int i, SWSBTokenType &type) const
     {
         type = depTokens[i].type;
@@ -926,7 +926,8 @@ public:
 
     void emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
     void emit(std::ostream& output, bool symbolreg = false, bool dotStyle = false);
-    void emitDefUse(std::ostream& output);
+    void emitDefUse(std::ostream& output) const;
+    void emitInstIds(std::ostream& output) const;
     void print(std::ostream& OS) const;
     void dump() const;
     bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const;
@@ -1193,7 +1194,7 @@ public:
 
     void setComments(const std::string& comments);
 
-    std::string getComments()
+    std::string getComments() const
     {
         auto comments = getMetadata(Metadata::InstComment);
         return comments && comments->isMDString() ? comments->asMDString()->getData() : "";
@@ -2781,7 +2782,7 @@ public:
 
     const char* getLabel() const {return label;}
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-    void emit(std::ostream& output, bool symbolreg=false) override;
+    void emit(std::ostream& output, bool symbolreg = false) override;
     void setFuncLabel(bool val) { funcLabel = val; }
     bool isFuncLabel() const { return funcLabel; }
     void setStartLoopLabel() { start_loop_label = true; }
@@ -3444,6 +3445,7 @@ public:
     void setControl(G4_Predicate_Control PredCtrl) { control = PredCtrl; }
     bool samePredicate(const G4_Predicate& prd) const;
     void emit(std::ostream& output, bool symbolreg = false) override;
+    void emit_body(std::ostream& output, bool symbolreg);
 
     void setAlign16PredicateControl(G4_Align16_Predicate_Control control) { align16Control = control; }
     G4_Align16_Predicate_Control getAlign16PredicateControl() const { return align16Control; }

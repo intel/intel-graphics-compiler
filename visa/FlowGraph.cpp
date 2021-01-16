@@ -3915,8 +3915,8 @@ void G4_Kernel::dumpPassInternal(const char* appendix)
         return;
 
     std::stringstream ss;
-    ss << (name ? name : "UnknownKernel") << "." << std::setfill('0') << std::setw(3) << dotDumpCount++ << "." << appendix << ".dump";
-
+    ss << (name ? name : "UnknownKernel") << "." << std::setfill('0') << std::setw(3) <<
+        dotDumpCount++ << "." << appendix << ".dump";
     std::string fname = ss.str();
     fname = sanitizePathString(fname);
 
@@ -4742,7 +4742,7 @@ std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
         {
             // file doesnt exist
             debugSrcLineMap[fileName] = std::make_pair<bool, std::vector<std::string>>(false, {});
-            return "Can't find src file";
+            return "can't find src file";
         }
         std::string line;
         std::vector<std::string> srcLines;
@@ -4756,7 +4756,7 @@ std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
     if (iter == debugSrcLineMap.end() ||
         !(*iter).second.first)
     {
-        return "Can't find src file";
+        return "can't find src file";
     }
     auto& lines = iter->second.second;
     if (srcLine > (int) lines.size() || srcLine <= 0)
@@ -4766,7 +4766,7 @@ std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
     return lines[srcLine - 1];
 };
 
-void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
+void G4_BB::emitBankConflict(std::ostream& output, const G4_INST *inst)
 {
     int regNum[2][G4_MAX_SRCS];
     int execSize[G4_MAX_SRCS];
@@ -5178,7 +5178,11 @@ static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, 
  *     1. Works for all source operands.
  *     2. intra suppression is the GRF read operation based(no read no suppression).
  */
-uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, int *suppressRegs, int &sameConflictTimes, int &twoSrcConflicts, int &simd16RS, bool zeroOne, bool isTGLLP)
+uint32_t G4_BB::emitBankConflictGen12(
+    std::ostream& os_output, const G4_INST *inst,
+    int *suppressRegs,
+    int &sameConflictTimes, int &twoSrcConflicts,
+    int &simd16RS, bool zeroOne, bool isTGLLP)
 {
     std::stringstream output;
 
@@ -5474,7 +5478,10 @@ uint32_t G4_BB::emitBankConflictGen12(std::ostream& os_output, G4_INST *inst, in
 * 1. for SIMD16, HW swap only happens when detecting conflicts in first simd8's registers. conflict in second simd8 will not trigger swap.
 * 2. for SIMD16, when swapping happens, the src1and src0 of both simd8 instructions will be swapped.
 */
-uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, int *suppressRegs, int *lastRegs, int &sameConflictTimes, int &twoSrcConflicts, int &simd16RS)
+uint32_t G4_BB::emitBankConflictGen12lp(
+    std::ostream& os_output, const G4_INST *inst,
+    int *suppressRegs, int *lastRegs,
+    int &sameConflictTimes, int &twoSrcConflicts, int &simd16RS)
 {
     std::stringstream output;
 
@@ -5751,7 +5758,7 @@ uint32_t G4_BB::emitBankConflictGen12lp(std::ostream& os_output, G4_INST *inst, 
     return conflictTimes;
 }
 
-uint32_t G4_BB::countReadModifyWrite(std::ostream& output, G4_INST *inst)
+uint32_t G4_BB::countReadModifyWrite(std::ostream& output, const G4_INST *inst)
 {
     if (!inst->getDst() || inst->getDst()->isNullReg() ||
         inst->isSend())
@@ -5769,44 +5776,27 @@ uint32_t G4_BB::countReadModifyWrite(std::ostream& output, G4_INST *inst)
 
 
 
-static void emitInstId(std::ostream& output, int srcLine, int vISAId, uint32_t genId, uint64_t pc)
-{
-    if (srcLine != 0)
-    {
-        output << "#" << srcLine << ":";
-    }
-    if (vISAId != -1)
-    {
-        output << "$" << vISAId << ":";
-    }
-    if (genId != -1)
-    {
-        output << "&" << genId;
-    }
 
-    if (pc != 0xffffffff)
-    {
-        output << ":%" << pc;
-    }
-}
-
-void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs)
+void G4_BB::emitBasicInstructionIga(
+    char* instSyntax,
+    std::ostream& output,
+    INST_LIST_ITER &it,
+    int *suppressRegs, int *lastRegs)
 {
-    G4_INST* inst = *it;
+    const G4_INST* inst = *it;
 
     auto platform = inst->getPlatform();
 
     output << instSyntax;
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
-        output << " //";
+        output << " // ";
 
         auto comments = inst->getComments();
-        if (comments != "")
-        {
+        if (!comments.empty()) {
             output << " " << comments << ", ";
         }
-        emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getLexicalId(), inst->getGenOffset());
+        inst->emitInstIds(output);
 
         if (getPlatformGeneration(platform) < PlatformGen::GEN12)
         {
@@ -5845,9 +5835,6 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         //
         G4_InstSend* SendInst = (*it)->asSendInst();
         SendInst->emit_send(output);
-
-        output << " //";
-        emitInstId(output, SendInst->getLineNo(), SendInst->getCISAOff(), SendInst->getLexicalId(), SendInst->getGenOffset());
         SendInst->emit_send_desc(output);
     }
     else
@@ -5859,8 +5846,6 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         inst->emit(output, parent->builder->getOption(vISA_SymbolReg));
         if ((*it)->isLabel() == false)
         {
-            output << " //";
-            emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getLexicalId(), inst->getGenOffset());
             emitBankConflict(output, inst);
         }
     }

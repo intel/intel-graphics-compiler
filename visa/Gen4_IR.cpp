@@ -34,23 +34,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gen4_IR.hpp"
 #include "BuildIR.h"
 
+#include <iomanip>
+
 using namespace std;
 using namespace vISA;
 
-static const char* CondModStr[Mod_cond_undef] =
-{
-    "z",  // zero
-    "e",  // equal
-    "nz", // not zero
-    "ne", // not equal
-    "g",  // greater
-    "ge", // greater or equal
-    "l",  // less
-    "le", // less or equal
-    "o",  // overflow
-    "r",  // round increment
-    "u",  // unorder (NaN)
-};
 
 static const char* SrcModifierStr[Mod_src_undef] =
 {
@@ -891,7 +879,6 @@ G4_InstSend::G4_InstSend(
     G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, desc, opt),
     msgDesc(md)
 {
-
 }
 
 G4_InstSend::G4_InstSend(
@@ -3423,9 +3410,378 @@ bool G4_INST::isOptBarrier() const
     return false;
 }
 
+
+static void emitPredWrEn(std::ostream& output, G4_INST &inst)
+{
+    G4_Predicate *pred = inst.getPredicate();
+    bool isNoMask = (inst.getOption() & InstOpt_WriteEnable) != 0;
+
+    if (pred) {
+        output << "(";
+        if (isNoMask)
+            output << "W&";
+        pred->emit_body(output, false);
+        output << ") ";
+    } else if (isNoMask) {
+        output << "(W) ";
+    } else {
+        output << "    "; // align for predication (.....)
+    }
+}
+
+static void emitExecSize(std::ostream& output, const G4_INST &inst)
+{
+    auto execSize = static_cast<int>(inst.getExecSize());
+    if (inst.opcode() != G4_nop && inst.opcode() != G4_wait)
+    {
+        output << '(';
+        if (execSize == UNDEFINED_EXEC_SIZE) {
+            output << "??";
+        } else {
+            output << execSize;
+        }
+        if (int execOffset = inst.getMaskOffset()) {
+            // non-zero channel offset
+            output << "|M" << execOffset;
+        }
+        output << ") ";
+    }
+}
+
+// the syntax column width of beinning instruction info
+//  (P1.0) and (16)     ...
+//         nop
+//         and (16|M0)  ...
+//                      ^ aligns operand start to same place here
+static const int INST_START_COLUMN_WIDTH = 24;
+
+// emits the first part of an instruction in an aligned column
+static void emitInstructionStartColumn(std::ostream& output, G4_INST &inst)
+{
+    std::stringstream oupPfx;
+    emitPredWrEn(oupPfx, inst);
+
+    oupPfx << G4_Inst_Table[inst.opcode()].str;
+    if (inst.isIntrinsic())
+    {
+        oupPfx << "." << inst.asIntrinsicInst()->getName();
+        if (inst.isSpillIntrinsic())
+        {
+            oupPfx << "." << inst.asSpillIntrinsic()->getNumRows();
+        }
+        else if (inst.isFillIntrinsic())
+        {
+            oupPfx << "." << inst.asFillIntrinsic()->getNumRows();
+        }
+    }
+    else if (inst.opcode() == G4_goto)
+    {
+        oupPfx << (inst.asCFInst()->isBackward() ? ".bwd" : ".fwd");
+    }
+    else if (inst.isMath() && inst.asMathInst()->getMathCtrl() != MATH_RESERVED)
+    {
+        oupPfx << "." << MathOpNames[inst.asMathInst()->getMathCtrl()];
+    }
+
+    oupPfx << ' ';
+    emitExecSize(oupPfx, inst);
+
+    G4_CondMod *mod = inst.getCondMod();
+    if (mod) {
+        oupPfx << ' ';
+        mod->emit(oupPfx);
+    }
+
+    std::string pfx = oupPfx.str();
+    output << pfx;
+    for (int i = 0; i < INST_START_COLUMN_WIDTH - (int)pfx.size(); i++)
+        output << ' ';
+}
+
+
+void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
+{
+    if (isLabel())
+    {
+        srcs[0]->emit(output);
+        output << ":";
+        if (((G4_Label*)srcs[0])->isStartLoopLabel())
+            output << " // do";
+    }
+    else
+    {
+        // predication, opcode, execsize, condition, ...
+        emitInstructionStartColumn(output, *this);
+
+        if (isSpillIntrinsic())
+        {
+            output << ' ';
+            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "]";
+        }
+        else if (dst)
+        {
+            output << ' ';
+            if (sat)
+                output << "(sat)";
+            dst->emit(output, symbol_dst);
+        } // else: may not have dst (e.g. branch)
+
+        auto numSrcOpnds = getNumSrc();
+        for (int i = 0; i < numSrcOpnds; i++)
+        {
+            if (srcs[i])
+            {
+                output << "  ";
+                if (symbol_srcs != NULL)
+                {
+                    srcs[i]->emit(output, symbol_srcs[i]);  // emit symbolic/physical register depends on the flag
+                }
+                else
+                {
+                    srcs[i]->emit(output, false);   // emit physical register
+                }
+            }
+        }
+        if (isFillIntrinsic())
+        {
+            output << "  ";
+            output << "Scratch[" << asFillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "] ";
+        }
+
+        if (isFlowControl() && asCFInst()->getJip())
+        {
+            output << "  ";
+            asCFInst()->getJip()->emit(output);
+        }
+
+        if (isFlowControl() && asCFInst()->getUip())
+        {
+            output << "  ";
+            asCFInst()->getUip()->emit(output);
+        }
+
+        emit_options(output);
+        if (getCISAOff() != -1) {
+            output << " // ";
+            emitInstIds(output);
+        }
+    } // end: non-label
+} // G4_INST::emit_inst
+
+
+void G4_INST::emitInstIds(std::ostream& output) const
+{
+    int srcLine = getLineNo();
+    if (srcLine != 0) {
+        output << "#" << srcLine << ":";
+    }
+
+    int vISAId = getCISAOff();
+    if (vISAId != -1) {
+        output << "$" << vISAId << ":";
+    }
+
+    uint32_t genId = getLexicalId();
+    if (genId != -1) {
+        output << "&" << genId << ":";
+    }
+
+    int64_t pc = getGenOffset();
+    if (pc != -1) {
+        std::stringstream ss;
+        ss << std::hex << std::setw(5) << std::setfill('0') << pc;
+        output << "[" << ss.str() << "]";
+    }
+}
+
+
+//
+// Here we add a parameter symbolreg instead of use global option Options::symbolReg,
+// because we should ouput non-symbolic register when dumping dot files
+//
+void G4_INST::emit(std::ostream& output, bool symbolreg, bool dotStyle)
+{
+    bool dst_valid = true;
+    bool srcs_valid[G4_MAX_SRCS];
+
+    if (symbolreg)
+    {
+        if (op==G4_nop || isLabel())
+        {
+            emit_inst(output, false, NULL);
+            return;
+        }
+
+        //
+        // Emit as comment if there is invalid operand, then emit instruction
+        // based on the situation of operand
+        //
+        if (!isValidSymbolOperand(dst_valid, srcs_valid))
+        {
+            if (!dotStyle)
+            {
+                output << "//";
+                bool srcs_valid1[G4_MAX_SRCS];
+                for (unsigned i = 0; i < G4_MAX_SRCS; i++)
+                    srcs_valid1[i] = true;
+                emit_inst(output, true, srcs_valid1); // emit comments
+                output << std::endl;
+            }
+        }
+        emit_inst(output, dst_valid, srcs_valid); // emit instruction
+    }
+    else
+        emit_inst(output, false, NULL); // emit instruction with physical register
+}
+
+std::ostream& operator<<(std::ostream& os, G4_INST& inst)
+{
+    inst.emit(os, false, false);
+    return os;
+}
+
+// add instruction options; only wrap in braces {...}
+// if there's at least one option
+// instructions are assumed Align1 and only Align16 will be explicitly stated
+void G4_INST::emit_options(std::ostream& output) const
+{
+    std::stringstream opts;
+    bool first = true;
+    auto emitOption = [&](const std::string &str) {
+        if (first) {
+            first = false;
+        } else {
+            opts << ",";
+        }
+        opts << str;
+    };
+
+
+    ////////////////////////////////////////////////////////////
+    // SWSB options
+    if (distanceHonourInstruction() && getDistance() != 0) {
+        std::stringstream dists;
+        dists << '@' << (int)getDistance();
+        emitOption(dists.str());
+    }
+    if (tokenHonourInstruction() && getToken() != (unsigned short)-1) {
+        std::stringstream tks;
+        tks << '$' << (int)getToken();
+        emitOption(tks.str());
+    }
+
+    if (getDepTokenNum() > 0)  {
+        for (size_t i = 0; i < getDepTokenNum(); i++) {
+            SWSBTokenType tkType;
+            auto id = getDepToken(i, tkType);
+            std::stringstream tks;
+            tks << '$' << (int)id;
+            switch (tkType) {
+            case TOKEN_NONE:               break;
+            case AFTER_READ:  tks << ".R"; break;
+            case AFTER_WRITE: tks << ".W"; break;
+            case READ_ALL:    tks << ".R*"; break;
+            case WRITE_ALL:   tks << ".W*"; break;
+            default:          tks << ".??"; break;
+            }
+            emitOption(tks.str());
+        }
+    }
+
+    ////////////////////////////////////////////////
+    // bitset options
+    unsigned int currOpts = option;
+    if (isEOT()) {
+        currOpts |= InstOpt_EOT;
+    }
+
+    // strip out stuff we handle elsewhere
+    currOpts &= ~(InstOpt_QuarterMasks | InstOpt_WriteEnable);
+    unsigned short optIdx = 0;
+    while (currOpts && 0xFFFFFFFF != InstOptInfo[optIdx].optMask)
+    {
+        if (currOpts & InstOptInfo[optIdx].optMask)
+        {
+            emitOption(InstOptInfo[optIdx].optStr);
+            currOpts &= ~InstOptInfo[optIdx].optMask; // clear this bit
+        }
+        optIdx++;
+    }
+
+    ////////////////////////////////////////////////
+    // for older Align16-supporting platforms
+    // absense implies Align1
+    if (isAligned16Inst()) {
+        emitOption("Align16");
+    }
+
+    //////////////////////////////////////////////////
+    // only include braces {...} if there's something
+    auto optsStr = opts.str();
+    if (!optsStr.empty())
+        output << " {" << optsStr << "}";
+}
+
+
+static const char* const operandString[] =
+{
+    OPND_NUM_ENUM(STRINGIFY)
+};
+
+void G4_INST::emitDefUse(std::ostream& output) const
+{
+    output << "Def:\n";
+    for (auto iter = defInstList.begin(), iterEnd = defInstList.end(); iter != iterEnd; ++iter)
+    {
+        G4_INST* inst = (*iter).first;
+        inst->emit(output);
+        output << "\t" << operandString[(*iter).second];
+        output << "\n";
+    }
+    output << "Use:\n";
+    for (auto iter = useInstList.begin(), iterEnd = useInstList.end(); iter != iterEnd; ++iter)
+    {
+        G4_INST* inst = (*iter).first;
+        inst->emit(output);
+        output << "\t" << operandString[(*iter).second];
+        output << "\n";
+    }
+}
+
+bool G4_INST::isMixedMode() const
+{
+    if (mayExceedTwoGRF() || !getDst())
+    {
+        return false;
+    }
+    for (int i = 0; i < getNumSrc(); ++i)
+    {
+        G4_Operand *tOpnd = getSrc(i);
+        if (!tOpnd)
+        {
+            continue;
+        }
+
+        G4_Type srcType = tOpnd->getType();
+        G4_Type dstType = getDst()->getType();
+
+        if ((dstType == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
+            dstType != srcType)
+        {
+            // do not consider int<->float conversion as mixed type
+            if (!IS_TYPE_INT(dstType) && !IS_TYPE_INT(srcType))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+
 bool G4_InstSend::isDirectSplittableSend()
 {
-
     unsigned short elemSize = dst->getElemSize();
     SFID funcID = msgDesc->getFuncId();
 
@@ -3435,7 +3791,7 @@ bool G4_InstSend::isDirectSplittableSend()
         switch (msgDesc->getHdcMessageType())
         {
         case DC1_A64_SCATTERED_READ:   //emask need be vertically cut.
-           return false;
+            return false;
 
         case DC1_A64_UNTYPED_SURFACE_READ:  //SVM gather 4: emask can be reused if the per-channel data is larger than 1 GRF
         case DC1_UNTYPED_SURFACE_READ:   //VISA gather 4
@@ -3491,44 +3847,23 @@ bool G4_InstSend::isDirectSplittableSend()
     return false;
 }
 
+
 //
 // emit send instruction with symbolic/physical register operand depending on the operand check
 //
 void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
 {
-    const G4_InstSend* sendInst = this;
+    emitInstructionStartColumn(output, *this);
 
-    if (sendInst->predicate)
-    {
-        sendInst->predicate->emit(output);
-    }
-
-    output << G4_Inst_Table[op].str;
-
-    if (sendInst->mod)
-    {
-        sendInst->mod->emit(output);
-    }
-    if (sendInst->sat)
-    {
-        output << ".sat";
-    }
     output << ' ';
+    dst->emit(output, symbol_dst);
 
-    output << '(' << static_cast<int>(sendInst->execSize) << ") ";
-
-    sendInst->dst->emit(output, symbol_dst);
     output << ' ';
-    G4_Operand* currSrc = sendInst->srcs[0];
-    if (currSrc->isSrcRegRegion())
-    {
-        //
+    G4_Operand* currSrc = srcs[0];
+    if (currSrc->isSrcRegRegion()) {
         // only output reg var & reg off; don't output region desc and type
-        //
         currSrc->asSrcRegRegion()->emitRegVarOff(output, false);
-    }
-    else
-    {
+    } else {
         currSrc->emit(output, false); //emit CurrDst
     }
     output << ' ';
@@ -3536,31 +3871,30 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
     if (isSplitSend())
     {
         // emit src1
-        sendInst->srcs[1]->asSrcRegRegion()->emitRegVarOff(output, false);
+        srcs[1]->asSrcRegRegion()->emitRegVarOff(output, false);
         output << ' ';
     }
 
     // emit exDesc if srcs[3] is not null.  It should always be a0.2 unless it was constant folded
     if (isSplitSend() && srcs[3])
     {
-        sendInst->srcs[3]->emit(output, false);
+        srcs[3]->emit(output, false);
         output << ' ';
     }
     else
     {
         std::ios::fmtflags outFlags(output.flags());
         output.flags(std::ios_base::hex | std::ios_base::showbase);
-        output << sendInst->getMsgDesc()->getExtendedDesc();
+        output << getMsgDesc()->getExtendedDesc();
         output << ' ';
         output.flags(outFlags);
     }
 
-
     // emit msgDesc (2 for sends and 1 for send). Last operand shown in asm.
     int msgDescId = isSplitSend() ? 2 : 1;
-    sendInst->srcs[msgDescId]->emit(output, false);
+    srcs[msgDescId]->emit(output, false);
 
-    sendInst->emit_options(output);
+    emit_options(output);
 }
 
 void G4_InstSend::emit_send(std::ostream& output, bool dotStyle)
@@ -3573,312 +3907,31 @@ void G4_InstSend::emit_send_desc(std::ostream& output)
     const G4_INST* sendInst = this;
 
     // Emit a text description of the descriptor if it is available
-     G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-     output << " // ";
-
-     if (msgDesc->getDescType() != NULL)
-     {
-         output << msgDesc->getDescType();
-     }
-
-     output << ", resLen=" << msgDesc->ResponseLength();
-     output << ", msgLen=" << msgDesc->MessageLength();
-     if (isSplitSend())
-     {
-         output << ", extMsgLen=" << msgDesc->extMessageLength();
-     }
-
-     if (msgDesc->isBarrierMsg())
-     {
-         output << ", barrier";
-     }
-}
-
-//
-// Add symbolic register support, emit instruction based on the situation of operands
-//
-void G4_INST::emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
-{
-
-    if (op==G4_nop)
-    {
-        output << G4_Inst_Table[op].str;
-        return;
+    G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
+    output << " // ";
+    if (getCISAOff() != -1) {
+        emitInstIds(output);
+        output << "; ";
     }
 
-    if (isLabel())
+    if (msgDesc->getDescType() != NULL)
     {
-        srcs[0]->emit(output);
-        output << ":";
-        if (((G4_Label*)srcs[0])->isStartLoopLabel())
-            output<<"\ndo";
+        output << msgDesc->getDescType();
     }
-    else
+
+    output << ", resLen=" << msgDesc->ResponseLength();
+    output << ", msgLen=" << msgDesc->MessageLength();
+    if (isSplitSend())
     {
-        if (predicate)
-        {
-            predicate->emit(output);
-        }
-        output << G4_Inst_Table[op].str;
-        if (isIntrinsic())
-        {
-            output << "." << asIntrinsicInst()->getName();
-            if (isSpillIntrinsic())
-            {
-                output << "." << asSpillIntrinsic()->getNumRows();
-            }
-            else if (isFillIntrinsic())
-            {
-                output << "." << asFillIntrinsic()->getNumRows();
-            }
-        }
-        else if (op == G4_goto)
-        {
-            output << (asCFInst()->isBackward() ? ".bwd" : ".fwd");
-        }
-        else if (isMath() && asMathInst()->getMathCtrl() != MATH_RESERVED)
-        {
-            output << "." << MathOpNames[asMathInst()->getMathCtrl()];
-        }
+        output << ", extMsgLen=" << msgDesc->extMessageLength();
+    }
 
-        if (mod)
-        {
-            mod->emit(output);
-        }
-        if (sat)
-        {
-            output << ".sat";
-        }
-        output << ' ';
-
-        if (UNDEFINED_EXEC_SIZE != execSize && op != G4_nop && op!=G4_wait)
-        {// no need to emit size for nop, wait
-            output << '(' << static_cast<int>(execSize) << ") ";
-        }
-        if (isSpillIntrinsic())
-        {
-            output << "Scratch[" << asSpillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "] ";
-        }
-        else if (dst)
-        {
-            dst->emit(output, symbol_dst);
-            output << ' ';
-        }
-
-        auto numSrcOpnds = getNumSrc();
-        for (int i = 0; i < numSrcOpnds; i++)
-        {
-            if (srcs[i])
-            {
-                if (symbol_srcs != NULL)
-                {
-                    srcs[i]->emit(output, symbol_srcs[i]);  // emit symbolic/physical register depends on the flag
-                }
-                else
-                {
-                    srcs[i]->emit(output, false);   // emit physical register
-                }
-                output << ' ';
-            }
-        }
-        if (isFillIntrinsic())
-        {
-            output << "Scratch[" << asFillIntrinsic()->getOffset() << "x" << numEltPerGRF<Type_UB>() << "] ";
-        }
-
-        if (isFlowControl() && asCFInst()->getJip())
-        {
-            asCFInst()->getJip()->emit(output);
-            output << ' ';
-        }
-
-        if (isFlowControl() && asCFInst()->getUip())
-        {
-            asCFInst()->getUip()->emit(output);
-            output << ' ';
-        }
-
-
-        this->emit_options(output);
-        output << "//" << srcCISAoff;
-
+    if (msgDesc->isBarrierMsg())
+    {
+        output << ", barrier";
     }
 }
 
-//
-// Here we add a parameter symbolreg instead of use global option Options::symbolReg, because we should ouput non-symbolic register when dumping dot files
-//
-void G4_INST::emit(std::ostream& output, bool symbolreg, bool dotStyle)
-{
-    bool dst_valid = true;
-    bool srcs_valid[G4_MAX_SRCS];
-
-    if (symbolreg)
-    {
-        if (op==G4_nop || isLabel())
-        {
-            emit_inst(output, false, NULL);
-            return;
-        }
-
-        //
-        // Emit as comment if there is invalid operand, then emit instruction based on the situation of operand
-        //
-        if (!isValidSymbolOperand(dst_valid, srcs_valid))
-        {
-            if (!dotStyle)
-            {
-                output << "//";
-                bool srcs_valid1[G4_MAX_SRCS];
-                for (unsigned i = 0; i < G4_MAX_SRCS; i++)
-                    srcs_valid1[i] = true;
-                emit_inst(output, true, srcs_valid1);           // emit comments
-                output << std::endl;
-            }
-        }
-        emit_inst(output, dst_valid, srcs_valid)    ;       // emit instruction
-    }
-    else
-        emit_inst(output, false, NULL)  ;       // emit instruction with physical register
-}
-
-std::ostream& operator<<(std::ostream& os, G4_INST& inst)
-{
-    inst.emit(os, false, false);
-    return os;
-}
-
-void
-G4_INST::emit_options(std::ostream& output) const
-{
-    unsigned int tmpOption = this->option;
-
-    if (isEOT())
-    {
-        tmpOption |= InstOpt_EOT;
-    }
-
-    //emit mask option
-    output << "{";
-    switch (getMaskOffset())
-    {
-    case 0:
-        output << (execSize == g4::SIMD4 ? "N1" : (execSize == g4::SIMD16 ? "H1" : "Q1"));
-        break;
-    case 4:
-        output << "N2";
-        break;
-    case 8:
-        output << (execSize == g4::SIMD4 ? "N3" : "Q2");
-        break;
-    case 12:
-        output << "N4";
-        break;
-    case 16:
-        output << (execSize == g4::SIMD4 ? "N5" : (execSize == g4::SIMD16 ? "H2" : "Q3"));
-        break;
-    case 20:
-        output << "N6";
-        break;
-    case 24:
-        output << (execSize == g4::SIMD4 ? "N7" : "Q4");
-        break;
-    case 28:
-        output << "N8";
-        break;
-    default:
-        assert(false && "unexpected mask offset");
-        break;
-    }
-    output << ", ";
-
-    tmpOption &= ~InstOpt_QuarterMasks;
-    if (0 != tmpOption)
-    {
-        if (isAligned1Inst())
-        {
-            output << "Align1, ";
-        }
-
-        unsigned short optIdx = 0;
-        while (0xFFFFFFFF != InstOptInfo[optIdx].optMask)
-        {
-            if (tmpOption & InstOptInfo[optIdx].optMask)
-            {
-                output << InstOptInfo[optIdx].optStr;
-                tmpOption &= ~InstOptInfo[optIdx].optMask; //clear this bit;
-                if (tmpOption != 0x0)
-                {
-                    output << ", ";
-                }
-            }
-            optIdx++;
-        }
-        output << '}';
-    }
-    else
-    {
-        //just print align1
-        output << "Align1}";
-    }
-}
-
-
-static const char* const operandString[] =
-{
-    OPND_NUM_ENUM(STRINGIFY)
-};
-
-void G4_INST::emitDefUse(std::ostream& output)
-{
-    output << "Def:\n";
-    for (auto iter = defInstList.begin(), iterEnd = defInstList.end(); iter != iterEnd; ++iter)
-    {
-        G4_INST* inst = (*iter).first;
-        inst->emit(output);
-        output << "\t" << operandString[(*iter).second];
-        output << "\n";
-    }
-    output << "Use:\n";
-    for (auto iter = useInstList.begin(), iterEnd = useInstList.end(); iter != iterEnd; ++iter)
-    {
-        G4_INST* inst = (*iter).first;
-        inst->emit(output);
-        output << "\t" << operandString[(*iter).second];
-        output << "\n";
-    }
-}
-
-bool G4_INST::isMixedMode() const
-{
-    if (mayExceedTwoGRF() || !getDst())
-    {
-        return false;
-    }
-    for (int i = 0; i < getNumSrc(); ++i)
-    {
-        G4_Operand *tOpnd = getSrc(i);
-        if (!tOpnd)
-        {
-            continue;
-        }
-
-        G4_Type srcType = tOpnd->getType();
-        G4_Type dstType = getDst()->getType();
-
-        if ((dstType == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
-            dstType != srcType)
-        {
-            // do not consider int<->float conversion as mixed type
-            if (!IS_TYPE_INT(dstType) && !IS_TYPE_INT(srcType))
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
 
 // print r#
 void G4_Greg::emit(std::ostream& output, bool symbolreg)
@@ -5575,8 +5628,14 @@ void G4_Declare::emit(std::ostream &output) const
     output << "\n";
 }
 
-void
-G4_Predicate::emit(std::ostream& output, bool symbolreg)
+void G4_Predicate::emit(std::ostream& output, bool symbolreg)
+{
+    output << "(";
+    emit_body(output, symbolreg);
+    output << ") ";
+}
+
+void G4_Predicate::emit_body(std::ostream& output, bool symbolreg)
 {
     static const char* align16ControlNames[] =
     {
@@ -5590,14 +5649,9 @@ G4_Predicate::emit(std::ostream& output, bool symbolreg)
         "all4h"
     };
 
-    output << "(";
     if (state == PredState_Minus)
     {
-        output << '-';
-    }
-    else // state == PredState_Plus || state == PredState_undef
-    {
-        output << '+';
+        output << '!';
     }
 
     if (getBase()->asRegVar()->isPhyRegAssigned())
@@ -5667,8 +5721,6 @@ G4_Predicate::emit(std::ostream& output, bool symbolreg)
             }
         }
     }
-
-    output << ") ";
 }
 
 G4_Predicate::G4_Predicate(G4_Predicate &prd)
@@ -5782,15 +5834,25 @@ void G4_Predicate::splitPred()
 
 void G4_CondMod::emit(std::ostream& output, bool symbolreg)
 {
-    output << '.' << CondModStr[mod];
-    output << '.';
-
+    static const char* CondModStr[Mod_cond_undef] =
+    {
+        "ze",  // zero
+        "eq",  // equal
+        "nz", // not zero
+        "ne", // not equal
+        "gt",  // greater
+        "ge", // greater or equal
+        "lt",  // less
+        "le", // less or equal
+        "ov",  // overflow
+        "ri",  // round increment
+        "un",  // unorder (NaN)
+    };
+    output << "(" <<  CondModStr[mod] << ")";
     if (getBase() == nullptr)
     {
         output << "f0.0";
-    }
-    else if (getBase()->asRegVar()->isPhyRegAssigned())
-    {
+    } else if (getBase()->asRegVar()->isPhyRegAssigned()) {
         getBase()->asRegVar()->getPhyReg()->emit(output);
         output << "." << getBase()->asRegVar()->getPhyRegOff();
     } else {

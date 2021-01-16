@@ -466,11 +466,11 @@ public:
     void emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it);
     void emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs);
     void emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it);
-    void emitBankConflict(std::ostream& output, G4_INST *inst);
+    void emitBankConflict(std::ostream& output, const G4_INST *inst);
 
-    uint32_t emitBankConflictGen12lp(std::ostream & os_output, G4_INST * inst, int * suppressRegs, int * lastRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS);
-    uint32_t countReadModifyWrite(std::ostream& os_output, G4_INST *inst);
-    uint32_t emitBankConflictGen12(std::ostream & os_output, G4_INST * inst, int * suppressRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS, bool zeroOne, bool isTGLLP);
+    uint32_t emitBankConflictGen12lp(std::ostream & os_output, const G4_INST * inst, int * suppressRegs, int * lastRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS);
+    uint32_t countReadModifyWrite(std::ostream& os_output, const G4_INST *inst);
+    uint32_t emitBankConflictGen12(std::ostream & os_output, const G4_INST * inst, int * suppressRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS, bool zeroOne, bool isTGLLP);
     void emitRegInfo(std::ostream& output, G4_INST* inst, int offset);
     void emitDepInfo(std::ostream& output, G4_INST *inst, int offset);
 
