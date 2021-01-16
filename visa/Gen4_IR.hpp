@@ -3046,14 +3046,21 @@ namespace vISA
 
         bool operator==(const G4_SrcRegRegion &other)
         {
-                if (base != other.base || regOff != other.regOff || subRegOff != other.subRegOff ||
-                    desc->vertStride != other.desc->vertStride ||
-                    desc->horzStride != other.desc->horzStride ||
-                    desc->width != other.desc->width ||
-                    mod != other.mod || acc != other.acc || immAddrOff != other.immAddrOff)
-                    return false;
-                else
-                    return true;
+            if (base != other.base || regOff != other.regOff || subRegOff != other.subRegOff ||
+                desc->vertStride != other.desc->vertStride ||
+                desc->horzStride != other.desc->horzStride ||
+                desc->width != other.desc->width ||
+                mod != other.mod || acc != other.acc || type != other.type)
+            {
+                return false;
+            }
+
+            if (acc == IndirGRF && immAddrOff != other.immAddrOff)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         void computeLeftBound();
