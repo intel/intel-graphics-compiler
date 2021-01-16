@@ -895,6 +895,8 @@ namespace IGC
         std::vector<int> m_psIdxMap;
         DWORD LtoUsedMask = 0;
         uint64_t m_SIMDInfo;
+        uint32_t HdcEnableIndexSize = 0;
+        std::vector<std::pair<int,int>> HdcEnableIndexValues;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
