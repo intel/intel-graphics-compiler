@@ -3663,10 +3663,6 @@ protected:
             {
                 updateMulNode(NI.root, NI.fsum);
             }
-            if (isLeafNode(NI.root))
-            {
-                NI.root->value->replaceAllUsesWith(ConstantFP::get(NI.root->value->getType(), 1.0));
-            }
         }
     }
 
