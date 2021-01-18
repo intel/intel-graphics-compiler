@@ -369,7 +369,13 @@ bool CMABIAnalysis::runOnModule(Module &M) {
 
 // Currently weight of the global defines by its size
 static int calcGVWeight(const GlobalVariable &GV, const DataLayout &DL) {
-  return DL.getTypeAllocSize(GV.getValueType());
+  if (!GV.getValueType()->isVectorTy())
+    return DL.getTypeAllocSize(GV.getValueType());
+  // Alignment rules are too restrictive for vectors and cannot be reduced
+  // (even though LangRef says that they can).
+  // GRF width (32) alignment was taken as it is considered that localized
+  // global vectors should be eventually promoted to GRF.
+  return alignTo(DL.getTypeStoreSize(GV.getValueType()), 32);
 }
 
 /* selectGlobalsToLocalize - chooses which globals to localize
