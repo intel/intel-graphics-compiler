@@ -362,7 +362,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   if (isa<UndefValue>(Ptr)) {
     if (auto PtrVecTy = dyn_cast<VectorType>(PtrTy))
       return UndefValue::get(
-          VectorType::get(MemTy, PtrVecTy->getNumElements()));
+          IGCLLVM::FixedVectorType::get(MemTy, PtrVecTy->getNumElements()));
     return UndefValue::get(MemTy);
   } else if (auto BC = dyn_cast<BitCastInst>(Ptr))
     return lookForPtrReplacement(BC->getOperand(0));
@@ -470,7 +470,7 @@ bool GenXThreadPrivateMemory::replaceShuffleVector(
   Value *NewVec1 = lookForPtrReplacement(Vec1);
   Value *NewVec2 = lookForPtrReplacement(Vec2);
   auto NewShuffleVec = new ShuffleVectorInst(
-      NewVec1, NewVec2, ShuffleVec->getMask(), ShuffleVec->getName() + ".tpm");
+      NewVec1, NewVec2, IGCLLVM::getShuffleMaskForBitcode(ShuffleVec), ShuffleVec->getName() + ".tpm");
   NewShuffleVec->insertAfter(ShuffleVec);
 
   auto CastToOldTy =

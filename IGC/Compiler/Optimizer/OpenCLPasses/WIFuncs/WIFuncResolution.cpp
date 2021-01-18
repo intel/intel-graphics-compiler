@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include <llvmWrapper/Support/Alignment.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 
 using namespace llvm;
 using namespace IGC;
@@ -282,7 +283,7 @@ static Value* BuildLoadInst(CallInst& CI, unsigned int Offset, unsigned int Size
     auto F = CI.getFunction();
     auto Int32Ptr = PointerType::get(Type::getInt32Ty(F->getParent()->getContext()), ADDRESS_SPACE_A32);
     auto ElemType = Type::getInt8Ty(F->getParent()->getContext());
-    auto LoadType = VectorType::get(ElemType, LoadSize);
+    auto LoadType = IGCLLVM::FixedVectorType::get(ElemType, LoadSize);
     auto PtrType = PointerType::get(LoadType, ADDRESS_SPACE_A32);
     auto IntToPtr = Builder.CreateIntToPtr(Builder.getIntN(F->getParent()->getDataLayout().getPointerSizeInBits(ADDRESS_SPACE_A32), AlignedOffset), Int32Ptr);
     auto BitCast = Builder.CreateBitCast(IntToPtr, PtrType);
@@ -291,7 +292,7 @@ static Value* BuildLoadInst(CallInst& CI, unsigned int Offset, unsigned int Size
 
     if (Offset != AlignedOffset)
     {
-        Value* NewVector = UndefValue::get(VectorType::get(ElemType, Size));
+        Value* NewVector = UndefValue::get(IGCLLVM::FixedVectorType::get(ElemType, Size));
         for (unsigned int I = Offset; I != (Offset + Size); ++I)
         {
             auto Elem = Builder.CreateExtractElement(LoadInst, I - AlignedOffset);
@@ -349,7 +350,7 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
         auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         llvm::IRBuilder<> Builder(&CI);
         Type* Int32Ty = Type::getInt32Ty(F->getParent()->getContext());
-        VectorType* Tys = VectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
+        VectorType* Tys = IGCLLVM::FixedVectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
         Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
         auto IntCall = Builder.CreateCall(R0Dcl);
         V = IntCall;
@@ -387,12 +388,12 @@ Value* WIFuncResolution::getGlobalSize(CallInst& CI)
     {
         llvm::IRBuilder<> Builder(&CI);
         auto ElemTypeQ = Type::getInt64Ty(F->getParent()->getContext());
-        auto VecTyQ = VectorType::get(ElemTypeQ, 3);
+        auto VecTyQ = IGCLLVM::FixedVectorType::get(ElemTypeQ, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GLOBAL_SIZE_X;
         unsigned int Size = sizeof(uint64_t) * 3;
         auto LoadInst = BuildLoadInst(CI, Offset, Size, VecTyQ);
         auto ElemType = CI.getType();
-        Value* Undef = UndefValue::get(VectorType::get(ElemType, 3));
+        Value* Undef = UndefValue::get(IGCLLVM::FixedVectorType::get(ElemType, 3));
         for (unsigned int I = 0; I != 3; ++I)
         {
             // Extract each dimension, truncate to i32, then insert in new vector
@@ -429,7 +430,7 @@ Value* WIFuncResolution::getLocalSize(CallInst& CI)
     {
         llvm::IRBuilder<> Builder(&CI);
         auto ElemTypeD = Type::getInt32Ty(F->getParent()->getContext());
-        auto VecTyD = VectorType::get(ElemTypeD, 3);
+        auto VecTyD = IGCLLVM::FixedVectorType::get(ElemTypeD, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::LOCAL_SIZE_X;
         unsigned int Size = sizeof(uint32_t) * 3;
         auto LoadInst = BuildLoadInst(CI, Offset, Size, VecTyD);
@@ -462,7 +463,7 @@ Value* WIFuncResolution::getEnqueuedLocalSize(CallInst& CI) {
         // Assume that enqueued local size is same as local size
         llvm::IRBuilder<> Builder(&CI);
         auto ElemTypeD = Type::getInt32Ty(F->getParent()->getContext());
-        auto VecTyD = VectorType::get(ElemTypeD, 3);
+        auto VecTyD = IGCLLVM::FixedVectorType::get(ElemTypeD, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::LOCAL_SIZE_X;
         unsigned int Size = sizeof(uint32_t) * 3;
         auto LoadInst = BuildLoadInst(CI, Offset, Size, VecTyD);
@@ -495,12 +496,12 @@ Value* WIFuncResolution::getGlobalOffset(CallInst& CI)
     {
         llvm::IRBuilder<> Builder(&CI);
         auto ElemTypeQ = Type::getInt64Ty(F->getParent()->getContext());
-        auto VecTyQ = VectorType::get(ElemTypeQ, 3);
+        auto VecTyQ = IGCLLVM::FixedVectorType::get(ElemTypeQ, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GLOBAL_OFFSET_X;
         unsigned int Size = sizeof(uint64_t) * 3;
         auto LoadInst = BuildLoadInst(CI, Offset, Size, VecTyQ);
         auto ElemType = CI.getType();
-        Value* Undef = UndefValue::get(VectorType::get(ElemType, 3));
+        Value* Undef = UndefValue::get(IGCLLVM::FixedVectorType::get(ElemType, 3));
         for (unsigned int I = 0; I != 3; ++I)
         {
             // Extract each dimension, truncate to i32, then insert in new vector
@@ -565,7 +566,7 @@ Value* WIFuncResolution::getNumGroups(CallInst& CI)
     {
         llvm::IRBuilder<> Builder(&CI);
         auto ElemTypeUD = Type::getInt32Ty(F->getParent()->getContext());
-        auto VecTyUD = VectorType::get(ElemTypeUD, 3);
+        auto VecTyUD = IGCLLVM::FixedVectorType::get(ElemTypeUD, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GROUP_COUNT_X;
         unsigned int Size = sizeof(uint32_t) * 3;
         auto LoadInst = BuildLoadInst(CI, Offset, Size, VecTyUD);
@@ -615,12 +616,12 @@ Value* WIFuncResolution::getStageInGridSize(CallInst& CI)
     {
         llvm::IRBuilder<> Builder(&CI);
         auto ElemTypeQ = Type::getInt64Ty(F->getParent()->getContext());
-        auto VecTyQ = VectorType::get(ElemTypeQ, 3);
+        auto VecTyQ = IGCLLVM::FixedVectorType::get(ElemTypeQ, 3);
         unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::GLOBAL_SIZE_X;
         unsigned int Size = sizeof(uint64_t) * 3;
         auto LoadInst = BuildLoadInst(CI, Offset, Size, VecTyQ);
         auto ElemType = Type::getInt32Ty(F->getParent()->getContext());
-        Value* Undef = UndefValue::get(VectorType::get(ElemType, 3));
+        Value* Undef = UndefValue::get(IGCLLVM::FixedVectorType::get(ElemType, 3));
         for (unsigned int I = 0; I != 3; ++I)
         {
             // Extract each dimension, truncate to i32, then insert in new vector

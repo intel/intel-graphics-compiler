@@ -7,6 +7,7 @@
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 
 #include "common/debug/Debug.hpp"
+#include "llvmWrapper/IR/DataLayout.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include <fstream>
@@ -191,7 +192,7 @@ namespace IGC
             {
                 PointerType* ptrType = dyn_cast<PointerType>(offsets.m_Var->getType());
                 Type* varType = ptrType->getElementType();
-                offset = iSTD::Align(offset, DL.getPreferredAlignment(offsets.m_Var));
+                offset = iSTD::Align(offset, IGCLLVM::getPreferredAlignValue(&DL, offsets.m_Var));
                 offset += (unsigned int) DL.getTypeAllocSize(varType);
             }
 

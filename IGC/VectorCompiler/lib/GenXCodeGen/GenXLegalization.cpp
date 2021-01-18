@@ -2092,7 +2092,7 @@ static Type *getNewVectorType(Type *OldTy, IntegerType *NewScalarType) {
   unsigned NewElemSize = NewScalarType->getBitWidth();
   if (OldElemSize * OldNumElems % NewElemSize)
     return nullptr;
-  return VectorType::get(NewScalarType,
+  return IGCLLVM::FixedVectorType::get(NewScalarType,
                          OldElemSize * OldNumElems / NewElemSize);
 }
 

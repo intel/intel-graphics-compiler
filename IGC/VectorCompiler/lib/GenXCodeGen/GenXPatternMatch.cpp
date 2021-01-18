@@ -2145,7 +2145,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
       Value *Mask = SI->getCondition();
       // Invert mask if needed.
       if (Inverted)
-        Mask = invertCondition(Mask);
+        Mask = llvm::genx::invertCondition(Mask);
       // Create new wrregion.
       Region WrReg(Wr, BaleInfo());
       WrReg.Mask = Mask;
@@ -2280,11 +2280,9 @@ static void decomposeSdivPow2(Instruction &Sdiv,
   Builder.SetCurrentDebugLocation(Sdiv.getDebugLoc());
 
   auto createConstant = [](unsigned int OperandWidth, Type *Ty, int Value) {
-    return OperandWidth != 0 ? ConstantDataVector::getSplat(
-                                   IGCLLVM::getElementCount(OperandWidth),
-                                   ConstantInt::get(Ty, Value))
-                             : ConstantInt::get(Ty, Value);
-    ;
+    return OperandWidth != 0 ?
+        ConstantDataVector::getSplat(OperandWidth, ConstantInt::get(Ty, Value)) :
+        ConstantInt::get(Ty, Value);
   };
 
   Constant *VecSignBit =

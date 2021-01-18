@@ -96,7 +96,7 @@ namespace IGCLLVM {
 #elif LLVM_VERSION_MAJOR <= 10
         return llvm::MaybeAlign(Val.getAlignment());
 #else
-        return Val.getAlign();
+        return llvm::Align(Val.getAlignment());
 #endif
     }
 
