@@ -71,7 +71,7 @@ void addCallFrameInfo(VISAKernelImpl* kernel);
 
 // For ranges colored during graph coloring
 void updateDebugInfo(vISA::G4_Kernel& kernel, vISA::G4_INST* inst,
-    vISA::LivenessAnalysis& liveAnalysis, vISA::LiveRange* lrs[], BitSet& live,
+    const vISA::LivenessAnalysis& liveAnalysis, vISA::LiveRange* lrs[], BitSet& live,
     vISA::DebugInfoState* state, bool closeAllOpenIntervals);
 // For ranges allocated by local RA
 void updateDebugInfo(vISA::G4_Kernel& kernel,

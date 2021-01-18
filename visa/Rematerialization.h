@@ -196,7 +196,7 @@ namespace vISA
 
         void cleanRedundantSamplerHeaders();
 
-        unsigned int getNumRematsInLoop() { return numRematsInLoop; }
+        unsigned int getNumRematsInLoop() const { return numRematsInLoop; }
         void incNumRematsInLoop() { numRematsInLoop++; }
         bool inSameSubroutine(G4_BB*, G4_BB*);
 
@@ -225,7 +225,7 @@ namespace vISA
 
                 // Mark all simultaneously live variables as remat candidates
                 unsigned int spillId = dcl->getRegVar()->getId();
-                auto& intfVec = coloring.getIntf()->getSparseIntfForVar(spillId);
+                const auto& intfVec = coloring.getIntf()->getSparseIntfForVar(spillId);
 
                 for (auto intfId : intfVec)
                 {

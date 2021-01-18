@@ -2123,7 +2123,7 @@ public:
     bool getIsRefInSendDcl() const { return refInSend; }
 
     void        setSplitVarStartID(unsigned id) { startID = id; };
-    unsigned    getSplitVarStartID() { return startID; };
+    unsigned    getSplitVarStartID() const { return startID; };
 
     void setDoNotSpill()      { doNotSpill = true; }
     bool isDoNotSpill() const { return doNotSpill; }
@@ -2825,8 +2825,8 @@ namespace vISA
         // will initialize the type according to its specific class. For eg,
         // Spill/Fill transient ranges will set this type to RegVarType::Transient.
         unsigned    id;        // id for register allocation
-        RegVarType type;
-        G4_Declare* decl;    // corresponding declare
+        const RegVarType type;
+        G4_Declare* const decl;    // corresponding declare
         AssignedReg reg;    // assigned physical register; set after reg alloc
         unsigned    disp;   // displacement offset in spill memory
         G4_SubReg_Align subAlign;    // To support sub register alignment
@@ -2905,7 +2905,7 @@ namespace vISA
     protected:
         bool isEvenAlign() const { return evenAlignment; }
         void setEvenAlign() { evenAlignment = true; }
-        G4_SubReg_Align getSubRegAlignment()
+        G4_SubReg_Align getSubRegAlignment() const
         {
             return subAlign;
         }

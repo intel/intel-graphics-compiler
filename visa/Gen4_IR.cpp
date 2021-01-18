@@ -39,8 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 using namespace vISA;
 
-
-static const char* SrcModifierStr[Mod_src_undef] =
+static const char* const SrcModifierStr[Mod_src_undef] =
 {
     "-",       // Mod_Minus
     "(abs)",   // Mod_Abs
@@ -5834,7 +5833,7 @@ void G4_Predicate::splitPred()
 
 void G4_CondMod::emit(std::ostream& output, bool symbolreg)
 {
-    static const char* CondModStr[Mod_cond_undef] =
+    static const char* const CondModStr[Mod_cond_undef] =
     {
         "ze",  // zero
         "eq",  // equal

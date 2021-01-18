@@ -84,8 +84,8 @@ public:
         unsigned                 varIdCount,
         const LivenessAnalysis * lvInfo,
         LiveRange **             lrInfo,
-        Interference *           intf,
-        LR_LIST *                spilledLRs,
+        const Interference *     intf,
+        const LR_LIST *          spilledLRs,
         unsigned                 iterationNo,
         bool                     useSpillReg,
         unsigned                 spillRegSize,
@@ -634,7 +634,7 @@ private:
     unsigned                 latestImplicitVarIdCount_;
     const LivenessAnalysis * lvInfo_;
     LiveRange **             lrInfo_;
-    LR_LIST *                spilledLRs_;
+    const LR_LIST *          spilledLRs_;
     LSLR_LIST*               spilledLSLRs_;
     unsigned *               spillRangeCount_;
     unsigned *               fillRangeCount_;
@@ -643,7 +643,7 @@ private:
     unsigned *               msgFillRangeCount_;
     unsigned                 nextSpillOffset_;
     unsigned                 iterationNo_;
-    unsigned                 bbId_;
+    unsigned                 bbId_ = UINT_MAX;
     unsigned                 spillAreaOffset_;
     bool                     doSpillSpaceCompression;
 
@@ -653,17 +653,17 @@ private:
     unsigned                 spillRegOffset_;
     LSLR_LIST                activeLR_;
 
-    Interference *             spillIntf_;
+    const Interference *     spillIntf_;
     vISA::Mem_Manager              mem_;
 
     // The number of GRF spill.
-    unsigned numGRFSpill;
+    unsigned numGRFSpill = 0;
 
     // The number of GRF fill.
-    unsigned numGRFFill;
+    unsigned numGRFFill = 0;
 
     // The number of mov.
-    unsigned numGRFMove;
+    unsigned numGRFMove = 0;
 
     // CISA instruction id of current instruction
     G4_INST* curInst;

@@ -36,7 +36,7 @@ namespace vISA
     class RPE
     {
     public:
-        RPE(const GlobalRA&, LivenessAnalysis*);
+        RPE(const GlobalRA&, const LivenessAnalysis*);
 
         ~RPE()
         {
@@ -53,12 +53,12 @@ namespace vISA
             return it->second;
         }
 
-        unsigned int getMaxRP()
+        unsigned int getMaxRP() const
         {
             return maxRP;
         }
 
-        const LivenessAnalysis* getLiveness() { return liveAnalysis; }
+        const LivenessAnalysis* getLiveness() const { return liveAnalysis; }
 
         void recomputeMaxRP();
 
@@ -67,7 +67,7 @@ namespace vISA
     private:
         Mem_Manager m;
         const GlobalRA& gra;
-        const LivenessAnalysis* liveAnalysis = nullptr;
+        const LivenessAnalysis* const liveAnalysis;
         std::unordered_map<G4_INST*, unsigned int> rp;
         double regPressure = 0;
         uint32_t maxRP = 0;

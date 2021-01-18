@@ -394,15 +394,15 @@ struct VarRangeListPackage
 
 class LivenessAnalysis
 {
-    unsigned numVarId;         // the var count
-    unsigned numGlobalVarId;   // the global var count
-    unsigned numSplitVar;      // the split var count
-    unsigned numSplitStartID;      // the split var count
-    unsigned numUnassignedVarId;         // the unassigned var count
-    unsigned numAddrId;     // the addr count
+    unsigned numVarId = 0;         // the var count
+    unsigned numGlobalVarId = 0;   // the global var count
+    unsigned numSplitVar = 0;      // the split var count
+    unsigned numSplitStartID = 0;      // the split var count
+    unsigned numUnassignedVarId = 0;         // the unassigned var count
+    unsigned numAddrId = 0;     // the addr count
     unsigned numBBId;          // the block count
     unsigned numFnId;          // the function count
-    unsigned char selectedRF;  // the selected reg file kind for performing liveness
+    const unsigned char selectedRF;  // the selected reg file kind for performing liveness
     PointsToAnalysis& pointsToAnalysis;
     std::map<G4_Declare*, BitSet*> neverDefinedRows;
 
@@ -446,16 +446,15 @@ public:
     std::vector<BitSet> indr_use;
     std::unordered_map<FuncInfo*, BitSet> subroutineMaydef;
 
-    LivenessAnalysis(GlobalRA& gra, uint8_t kind);
     bool isLocalVar(G4_Declare* decl);
     bool setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
     bool setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
     bool setVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
-    LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA, bool forceRun = false);
+    LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA = false, bool forceRun = false);
     ~LivenessAnalysis();
     void computeLiveness();
-    bool isLiveAtEntry(G4_BB* bb, unsigned var_id) const;
-    bool isLiveAtExit(G4_BB* bb, unsigned var_id) const;
+    bool isLiveAtEntry(const G4_BB* bb, unsigned var_id) const;
+    bool isLiveAtExit(const G4_BB* bb, unsigned var_id) const;
     bool isAddressSensitive (unsigned num) const  // returns true if the variable is address taken and also has indirect access
     {
         return addr_taken.isSet(num);

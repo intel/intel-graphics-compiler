@@ -32,10 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace vISA
 {
-    RPE::RPE(const GlobalRA& g, LivenessAnalysis* l) : m(1024), gra(g), live(l->getNumSelectedVar(), false),
+    RPE::RPE(const GlobalRA& g, const LivenessAnalysis* l) : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar(), false),
         vars(l->vars)
     {
-        liveAnalysis = l;
         options = g.kernel.getOptions();
     }
 

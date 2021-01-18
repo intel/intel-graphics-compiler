@@ -184,11 +184,11 @@ public:
         topdcl = dcl;
     }
 
-    G4_Declare* getTopDcl() { return topdcl; }
+    G4_Declare* getTopDcl() const { return topdcl; }
 
     void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-    bool hasIndirectAccess() { return isIndirectAccess; }
+    bool hasIndirectAccess() const { return isIndirectAccess; }
 
     void setFirstRef(G4_INST* inst, unsigned int idx)
     {
@@ -220,20 +220,20 @@ public:
     unsigned int getSizeInWords();
 
     void setAssigned(bool a) { assigned = a; }
-    bool getAssigned() { return assigned; }
+    bool getAssigned() const { return assigned; }
 
     void markEOT() { eot = true; }
-    bool isEOT() { return eot; }
+    bool isEOT() const { return eot; }
 
     void markSplit() { isSplit = true; }
-    bool getSplit() { return isSplit; }
+    bool getSplit() const { return isSplit; }
 
     void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); }
     std::unordered_set<unsigned int>& getForbidden() { return forbiddenGRFs; }
 
     void setHint(unsigned int h) { hint = h; }
-    bool hasHint() { return hint != UndefHint; }
-    unsigned int getHint() { return hint; }
+    bool hasHint() const { return hint != UndefHint; }
+    unsigned int getHint() const { return hint; }
 };
 
 class InputLiveRange

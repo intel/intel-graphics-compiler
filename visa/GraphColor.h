@@ -60,7 +60,7 @@ namespace vISA
         void setupBankConflictsforTwoGRFs(G4_INST* inst);
         void setupBankConflictsforMad(G4_INST* inst);
         void setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSourceInstNum, unsigned int &sendInstNum,
-        unsigned int numRegLRA, unsigned int & internalConflict);
+            unsigned int numRegLRA, unsigned int & internalConflict);
         bool hasInternalConflict3Srcs(BankConflict *srcBC);
         void setupBankForSrc0(G4_INST* inst, G4_INST* prevInst);
         void getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset);
@@ -77,9 +77,9 @@ namespace vISA
 
 class LiveRange final
 {
-    G4_RegVar* var;
-    G4_Declare* dcl;
-    G4_RegFileKind regKind;
+    G4_RegVar* const var;
+    G4_Declare* const dcl;
+    const G4_RegFileKind regKind;
     bool* forbidden = nullptr;
     int numForbidden = -1;
     bool spilled = false;
@@ -132,7 +132,7 @@ public:
     void setActive(bool v) {active = v;}
     bool getActive() const {return active;}
 
-    void emit(std::ostream& output, bool symbolreg = false)
+    void emit(std::ostream& output, bool symbolreg = false) const
     {
         output << getVar ()->getDeclare ()->getName();
         if (reg.phyReg != NULL)
@@ -149,10 +149,10 @@ public:
     unsigned getRefCount() const {return refCount;}
     void setRefCount(unsigned count) {refCount = count;}
 
-    float getSpillCost()  {return spillCost;}
+    float getSpillCost() const {return spillCost;}
     void setSpillCost(float cost) {spillCost = cost;}
 
-    bool getIsInfiniteSpillCost() { return isInfiniteCost; }
+    bool getIsInfiniteSpillCost() const { return isInfiniteCost; }
     void checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::reverse_iterator& it);
 
     G4_VarBase* getPhyReg() const { return reg.phyReg; }
@@ -168,7 +168,7 @@ public:
 
     void resetPhyReg()
     {
-        reg.phyReg = NULL;
+        reg.phyReg = nullptr;
         reg.subRegOff = 0;
     }
 
@@ -281,7 +281,7 @@ namespace vISA
         Interference& intf;
         GlobalRA& gra;
         LivenessAnalysis& liveAnalysis;
-        LiveRange** lrs;
+        LiveRange** const lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
         std::unordered_map<FuncInfo*, PhyRegSummary *> localSummaryOfCallee;
@@ -309,17 +309,17 @@ namespace vISA
         G4_BB* getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, unsigned int traversal);
         void updateStartIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateEndIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
-        void updateStartInterval(G4_Declare* dcl, G4_INST* curInst);
-        void updateEndInterval(G4_Declare* dcl, G4_INST* curInst);
+        void updateStartInterval(const G4_Declare* dcl, G4_INST* curInst);
+        void updateEndInterval(const G4_Declare* dcl, G4_INST* curInst);
         void updateStartIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateEndIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void buildLiveIntervals();
         void clearIntervalInfo();
         void sortLiveIntervals();
-        unsigned int getEnd(G4_Declare*& dcl);
-        bool isNoMask(G4_Declare* dcl, unsigned int size);
-        bool isConsecutiveBits(G4_Declare* dcl, unsigned int size);
-        bool isCompatible(G4_Declare* testDcl, G4_Declare* biggerDcl);
+        unsigned int getEnd(const G4_Declare* dcl) const;
+        bool isNoMask(const G4_Declare* dcl, unsigned int size) const;
+        bool isConsecutiveBits(const G4_Declare* dcl, unsigned int size) const;
+        bool isCompatible(const G4_Declare* testDcl, const G4_Declare* biggerDcl) const;
         void buildInterferenceIncompatibleMask();
         void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask);
         void buildInteferenceForCallsite(FuncInfo* func);
@@ -363,18 +363,18 @@ namespace vISA
         const unsigned splitStartId;
         const unsigned splitNum;
         unsigned int* matrix = nullptr;
-        LivenessAnalysis* liveAnalysis = nullptr;
+        LivenessAnalysis* const liveAnalysis;
 
         std::vector<std::vector<unsigned int>> sparseIntf;
 
-        // sparse intefernece matrix.
+        // sparse interference matrix.
         // we don't directly update sparseIntf to ensure uniqueness
         // like dense matrix, interference is not symmetric (that is, if v1 and v2 interfere and v1 < v2,
         // we insert (v1, v2) but not (v2, v1)) for better cache behavior
         std::vector<std::unordered_set<uint32_t> > sparseMatrix;
         static const uint32_t denseMatrixLimit = 0x80000;
 
-        void updateLiveness(BitSet& live, uint32_t id, bool val)
+        static void updateLiveness(BitSet& live, uint32_t id, bool val)
         {
             live.set(id, val);
         }
@@ -393,7 +393,7 @@ namespace vISA
             }
         }
 
-        std::vector<G4_Declare*>* getCompatibleSparseIntf(G4_Declare* d)
+        const std::vector<G4_Declare*>* getCompatibleSparseIntf(G4_Declare* d) const
         {
             if (compatibleSparseIntf.size() > 0)
             {
@@ -451,7 +451,7 @@ namespace vISA
             return matrix != nullptr ? matrix[idx] : 0;
         }
 
-        std::vector<unsigned int>& getSparseIntfForVar(unsigned int id) { return sparseIntf[id]; }
+        const std::vector<unsigned int>& getSparseIntfForVar(unsigned int id) const { return sparseIntf[id]; }
 
         // Only upper-half matrix is now used in intf graph.
         inline void safeSetInterference(unsigned v1, unsigned v2)
@@ -507,7 +507,7 @@ namespace vISA
         }
 
         void addCalleeSaveBias(const BitSet& live);
-        void buildInterferenceAtBBExit(G4_BB* bb, BitSet& live);
+        void buildInterferenceAtBBExit(const G4_BB* bb, BitSet& live);
         void buildInterferenceWithinBB(G4_BB* bb, BitSet& live);
         void buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
         void buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_VarBase* regVar);
@@ -615,7 +615,7 @@ namespace vISA
             bool highInternalConflict,
             bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize, RPE* rpe);
         bool requireSpillCode() const { return !spilledLRs.empty(); }
-        Interference * getIntf() { return &intf; }
+        const Interference * getIntf() const { return &intf; }
         void createLiveRanges(unsigned reserveSpillSize = 0);
         LiveRange ** getLiveRanges() const { return lrs; }
         const LIVERANGE_LIST & getSpilledLiveRanges() const { return spilledLRs; }
@@ -832,7 +832,7 @@ namespace vISA
         void insertSaveAddr(G4_BB*);
         void insertRestoreAddr(G4_BB*);
         void setIterNo(unsigned int i) { iterNo = i; }
-        unsigned int getIterNo() { return iterNo; }
+        unsigned int getIterNo() const { return iterNo; }
 
         G4_Declare* getRetDecl(uint32_t retLoc)
         {
@@ -962,7 +962,7 @@ namespace vISA
             lr->setTopDcl(dcl);
         }
 
-        LSLiveRange* getSafeLSLR(G4_Declare* dcl) const
+        LSLiveRange* getSafeLSLR(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             assert(dclid <= vars.size());
@@ -988,14 +988,14 @@ namespace vISA
             lr->setTopDcl(dcl);
         }
 
-        void resetLSLR(G4_Declare* dcl)
+        void resetLSLR(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].LSLR = nullptr;
         }
 
-        void resetLocalLR(G4_Declare* dcl)
+        void resetLocalLR(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
@@ -1011,7 +1011,7 @@ namespace vISA
             }
         }
 
-        void recordRef(G4_Declare* dcl)
+        void recordRef(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
@@ -1035,7 +1035,7 @@ namespace vISA
             vars[dclid].numRefs = refs;
         }
 
-        BankConflict getBankConflict(G4_Declare* dcl)
+        BankConflict getBankConflict(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1045,14 +1045,14 @@ namespace vISA
             return vars[dclid].conflict;
         }
 
-        void setBankConflict(G4_Declare* dcl, BankConflict c)
+        void setBankConflict(const G4_Declare* dcl, BankConflict c)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].conflict = c;
         }
 
-        G4_INST* getStartInterval(G4_Declare* dcl)
+        G4_INST* getStartInterval(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1062,14 +1062,14 @@ namespace vISA
             return vars[dclid].startInterval;
         }
 
-        void setStartInterval(G4_Declare* dcl, G4_INST* inst)
+        void setStartInterval(const G4_Declare* dcl, G4_INST* inst)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].startInterval = inst;
         }
 
-        G4_INST* getEndInterval(G4_Declare* dcl)
+        G4_INST* getEndInterval(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1079,14 +1079,14 @@ namespace vISA
             return vars[dclid].endInterval;
         }
 
-        void setEndInterval(G4_Declare* dcl, G4_INST* inst)
+        void setEndInterval(const G4_Declare* dcl, G4_INST* inst)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].endInterval = inst;
         }
 
-        unsigned char* getMask(G4_Declare* dcl)
+        unsigned char* getMask(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1103,7 +1103,7 @@ namespace vISA
             vars[dclid].mask = m;
         }
 
-        AugmentationMasks getAugmentationMask(G4_Declare* dcl) const
+        AugmentationMasks getAugmentationMask(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= varMasks.size())
@@ -1159,7 +1159,7 @@ namespace vISA
             return vars[dclid].bundleConflictDcls[i];
         }
 
-        unsigned getBundleConflictDclSize(G4_Declare* dcl)
+        unsigned getBundleConflictDclSize(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
@@ -1216,21 +1216,21 @@ namespace vISA
             vars[dclid].subDclList.clear();
         }
 
-        G4_Declare* getSubDcl(G4_Declare* dcl, unsigned i)
+        G4_Declare* getSubDcl(const G4_Declare* dcl, unsigned i)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             return vars[dclid].subDclList[i];
         }
 
-        unsigned getSubDclSize(G4_Declare* dcl)
+        unsigned getSubDclSize(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             return (unsigned)(vars[dclid].subDclList.size());
         }
 
-        unsigned int getSubOffset(G4_Declare* dcl)
+        unsigned int getSubOffset(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1240,21 +1240,21 @@ namespace vISA
             return vars[dclid].subOff;
         }
 
-        void setSubOffset(G4_Declare* dcl, unsigned int offset)
+        void setSubOffset(const G4_Declare* dcl, unsigned int offset)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].subOff = offset;
         }
 
-        G4_SubReg_Align getSubRegAlign(G4_Declare* dcl)
+        G4_SubReg_Align getSubRegAlign(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
             return vars[dclid].subAlign;
         }
 
-        void setSubRegAlign(G4_Declare* dcl, G4_SubReg_Align subAlg)
+        void setSubRegAlign(const G4_Declare* dcl, G4_SubReg_Align subAlg)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
@@ -1275,7 +1275,7 @@ namespace vISA
             }
         }
 
-        bool hasAlignSetup(G4_Declare* dcl)
+        bool hasAlignSetup(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);
@@ -1292,7 +1292,7 @@ namespace vISA
             return vars[dclid].isEvenAlign;
         }
 
-        void setEvenAligned(G4_Declare* dcl, bool e)
+        void setEvenAligned(const G4_Declare* dcl, bool e)
         {
             auto dclid = dcl->getDeclId();
             resize(dclid);

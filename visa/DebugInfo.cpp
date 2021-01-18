@@ -1815,7 +1815,7 @@ void resetGenOffsets(G4_Kernel& kernel)
     }
 }
 
-void updateDebugInfo(G4_Kernel& kernel, G4_INST* inst, LivenessAnalysis& liveAnalysis, LiveRange* lrs[], BitSet& live, DebugInfoState* state,
+void updateDebugInfo(G4_Kernel& kernel, G4_INST* inst, const LivenessAnalysis& liveAnalysis, LiveRange* lrs[], BitSet& live, DebugInfoState* state,
     bool closeAllOpenIntervals)
 {
     if (closeAllOpenIntervals && !state->getPrevInst())

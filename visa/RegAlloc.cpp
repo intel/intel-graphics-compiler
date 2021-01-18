@@ -397,13 +397,9 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
     for (unsigned i = 0; i < numAddrs; i++)
     {
         REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[i]];
-        unsigned indirectVarSize = 0;
-        for (REGVAR_VECTOR::iterator it = vec.begin();
-            it != vec.end();
-            it++)
+        for (const G4_RegVar* cur : vec)
         {
-            G4_RegVar* cur = (*it);
-            indirectVarSize = cur->getDeclare()->getByteSize();
+            unsigned indirectVarSize = cur->getDeclare()->getByteSize();
             assert((indirectVarSize <= (unsigned)getGRFSize()* fg.getKernel()->getNumRegTotal()) && "indirected variables' size is larger than GRF file size");
         }
     }
@@ -425,12 +421,6 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
 
 }
 
-LivenessAnalysis::LivenessAnalysis(
-    GlobalRA& g,
-    uint8_t kind) : LivenessAnalysis(g, kind, false)
-{
-}
-
 bool LivenessAnalysis::isLocalVar(G4_Declare* decl)
 {
     LocalLiveRange* dclLR = gra.getLocalLR(decl);
@@ -450,10 +440,8 @@ bool LivenessAnalysis::setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
 {
     bool phyRegAssigned = areAllPhyRegAssigned;
 
-    DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
-    while (di != gra.kernel.Declares.end())
+    for (G4_Declare* decl : gra.kernel.Declares)
     {
-        G4_Declare* decl = *di;
         if (!isLocalVar(decl))
         {
             /* Note that we only do local split, so there is no need to handle partial declare and splitted declare */
@@ -472,8 +460,6 @@ bool LivenessAnalysis::setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
                 decl->getRegVar()->setId(UNDEFINED_VAL);
             }
         }
-
-        di++;
     }
 
     return phyRegAssigned;
@@ -484,10 +470,8 @@ bool LivenessAnalysis::setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
     numVarId = numGlobalVarId;
     bool phyRegAssigned = areAllPhyRegAssigned;
 
-    DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
-    while (di != gra.kernel.Declares.end())
+    for (G4_Declare* decl : gra.kernel.Declares)
     {
-        G4_Declare* decl = *di;
         if (isLocalVar(decl))
         {
             if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL)
@@ -531,8 +515,6 @@ bool LivenessAnalysis::setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
                 decl->getRegVar()->setId(UNDEFINED_VAL);
             }
         }
-
-        di++;
     }
 
     return phyRegAssigned;
@@ -541,10 +523,8 @@ bool LivenessAnalysis::setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
 bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
 {
     bool phyRegAssigned = areAllPhyRegAssigned;
-    DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
-    while (di != gra.kernel.Declares.end())
+    for (G4_Declare* decl : gra.kernel.Declares)
     {
-        G4_Declare* decl = *di;
         if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL)
         {
             if (decl->getIsSplittedDcl())
@@ -600,7 +580,6 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
         {
             decl->getRegVar()->setId(UNDEFINED_VAL);
         }
-        di++;
     }
 
     numGlobalVarId = numVarId;
@@ -613,7 +592,7 @@ LivenessAnalysis::LivenessAnalysis(
         unsigned char kind,
         bool verifyRA,
         bool forceRun) :
-        numVarId(0), numGlobalVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind),
+        selectedRF(kind),
         pointsToAnalysis(g.pointsToAnalysis), m(4096), gra(g), fg(g.kernel.fg)
 {
     //
@@ -640,14 +619,14 @@ LivenessAnalysis::LivenessAnalysis(
     // For Alias Dcl
     for (auto decl : gra.kernel.Declares)
     {
-        if (livenessCandidate(decl, verifyRA) && (decl)->getAliasDeclare() != NULL)
+        if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() != NULL)
         {
             // It is an alias declaration. Set its id = base declaration id
-            (decl)->getRegVar()->setId((decl)->getAliasDeclare()->getRegVar()->getId());
+            decl->getRegVar()->setId(decl->getAliasDeclare()->getRegVar()->getId());
         }
 #ifdef DEBUG_VERBOSE_ON
-        DEBUG_EMIT((decl)->getRegVar());
-        DEBUG_VERBOSE(" id = " << (decl)->getRegVar()->getId() << std::endl);
+        DEBUG_EMIT(decl->getRegVar());
+        DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << std::endl);
 #endif
     }
 
@@ -718,9 +697,8 @@ LivenessAnalysis::~LivenessAnalysis()
     }
 
     // Remove liveness inserted pseudo kills
-    for (auto bbIt = fg.begin(); bbIt != fg.end(); ++bbIt)
+    for (auto bb : fg)
     {
-        auto bb = (*bbIt);
         for (auto instIt = bb->begin(); instIt != bb->end();)
         {
             auto inst = (*instIt);
@@ -794,12 +772,8 @@ void LivenessAnalysis::updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, Bi
 void LivenessAnalysis::performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB)
 {
     unsigned scopeID = curBB->getScopeID();
-    for (INST_LIST_ITER it = curBB->begin();
-        it != curBB->end();
-        it++)
+    for (G4_INST* inst : *curBB)
     {
-        G4_INST* inst = (*it);
-
         G4_DstRegRegion* dst = inst->getDst();
 
         if (dst &&
@@ -1030,12 +1004,11 @@ void LivenessAnalysis::computeLiveness()
     //
     // compute def_out and use_in vectors for each BB
     //
-    for (BB_LIST_ITER it = fg.begin(); it != fg.end(); ++it)
+    for (G4_BB * bb  : fg)
     {
-        G4_BB * bb = *it;
         unsigned id = bb->getId();
 
-        computeGenKillandPseudoKill((*it), def_out[id], use_in[id], use_gen[id], use_kill[id]);
+        computeGenKillandPseudoKill(bb, def_out[id], use_in[id], use_gen[id], use_kill[id]);
 
         //
         // exit block: mark output parameters live
@@ -1552,10 +1525,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
     // args are limited to variables actually used in this subroutine (and its callees)
     clearLiveSets();
     initKernelLiveOut();
-    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end();
-        FI != FE; ++FI)
+    for (auto subroutine : fg.sortedFuncTable)
     {
-        auto subroutine = *FI;
         useAnalysisWithArgRetVal(subroutine, args, retVal);
         if (subroutine != fg.kernelInfo)
         {
@@ -1597,9 +1568,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
     //       add def_out[call-BB] to all of callee's BBs
     def_in[fg.getEntryBB()->getId()] = kernelInput;
 
-    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    for (auto subroutine : fg.sortedFuncTable)
     {
-        auto subroutine = *FI;
         defAnalysis(subroutine);
     }
 
@@ -1636,9 +1606,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
             idToDecl[id] = dcl;
         }
     }
-    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    for (auto subroutine : fg.sortedFuncTable)
     {
-        auto subroutine = *FI;
         auto printVal = [&idToDecl](const BitSet& bs)
         {
             for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
@@ -2524,14 +2493,14 @@ void LivenessAnalysis::dumpGlobalVarNum() const
 // return true if var is live at the entry of bb
 // check both use_in and def_in, if one condition fails then var is not in the live range
 //
-bool LivenessAnalysis::isLiveAtEntry(G4_BB* bb, unsigned var_id) const
+bool LivenessAnalysis::isLiveAtEntry(const G4_BB* bb, unsigned var_id) const
 {
     return use_in[bb->getId()].isSet(var_id) && def_in[bb->getId()].isSet(var_id);
 }
 //
 // return true if var is live at the exit of bb
 //
-bool LivenessAnalysis::isLiveAtExit(G4_BB* bb, unsigned var_id) const
+bool LivenessAnalysis::isLiveAtExit(const G4_BB* bb, unsigned var_id) const
 {
     return use_out[bb->getId()].isSet(var_id) && def_out[bb->getId()].isSet(var_id);
 }
