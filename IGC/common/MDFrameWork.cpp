@@ -8,6 +8,8 @@
 #include <llvm/ADT/StringSwitch.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "StringMacros.hpp"
+
 #include <iostream>
 
 using namespace llvm;

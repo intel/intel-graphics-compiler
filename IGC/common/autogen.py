@@ -131,7 +131,7 @@ def printCalls(structName):
     for item in structDataMembers:
         item = item[:-1]
         p =  '"{}"'.format(item)
-        output.write("        CreateNode(" + structName + "Var" + "." + item + ", module, "+ p + "),\n")
+        output.write("        CreateNode(" + structName + "Var" + "." + item + ", module, IGC_MANGLE("+ p + ")),\n")
     output.write("    };\n")
     output.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
     output.write("    return node;\n")
@@ -143,7 +143,7 @@ def printEnumCalls(EnumName):
     output.write("    {\n")
     for item in structDataMembers:
         output.write("        case IGC::"+ item + ":\n"  )
-        output.write("            enumName = \"" + item + "\";\n" )
+        output.write("            enumName = IGC_MANGLE(\"" + item + "\");\n" )
         output.write("            break;\n" )
     output.write("    }\n")
     output.write("    Metadata* v[] = \n")
@@ -159,14 +159,22 @@ def printReadCalls(structName):
      for item in structDataMembers:
         item = item[:-1]
         p =  '"{}"'.format(item)
-        output.write("    readNode(" + structName + "Var" + "." + item + ", node ," + p + ");\n")
+        output.write("    readNode(" + structName + "Var" + "." + item + ", node , IGC_MANGLE(" + p + "));\n")
 
 def printEnumReadCalls(enumName):
     output.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
-    output.write("    "+ enumName + "Var = StringSwitch<IGC::" + enumName + ">(s)\n")
+    output.write("    std::string str = s.str();\n")
+    output.write("    "+ enumName + "Var = (IGC::" + enumName + ")(0);\n")
+  
     for item in structDataMembers:
-        output.write("        .Case(\""+ item + "\", IGC::"+ item + ")\n")
-    output.write("        .Default((IGC::" + enumName + ")(0));\n")
+        output.write("    if((str.size() == sizeof(\""+ item + "\")) && (::memcmp(str.c_str(),IGC_MANGLE(\""+ item + "\"),str.size())))\n")
+        output.write("    {\n")
+        output.write("            "+ enumName + "Var = IGC::"+ item + ";\n")
+        output.write("    } else\n")
+    
+    output.write("    {\n")
+    output.write("            "+ enumName + "Var = (IGC::" + enumName + ")(0);\n")
+    output.write("    }\n")
 
 def emitCodeBlock(names, declType, fmtFn, extractFn, printFn):
     for item in names:
