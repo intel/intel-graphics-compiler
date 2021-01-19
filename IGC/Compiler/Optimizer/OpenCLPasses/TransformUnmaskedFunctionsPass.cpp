@@ -143,6 +143,8 @@ static TrivialUniformity mergeUnifromity(TrivialUniformity a, TrivialUniformity 
 static const char* KnownPrefixes[] = {
     "__builtin_spirv_OpSConvert",
     "__builtin_spirv_OpUConvert",
+    "__spirv_SConvert",
+    "__spirv_UConvert",
 };
 
 static bool isKnownUniformLibraryFunction(const Function* F) {
@@ -150,7 +152,7 @@ static bool isKnownUniformLibraryFunction(const Function* F) {
         return false;
     }
     for (const char *prefix : KnownPrefixes) {
-        if (F->getName().startswith(prefix))
+        if (F->getName().contains(prefix))
             return true;
     }
     return false;

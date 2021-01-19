@@ -133,7 +133,7 @@ TYPE_ARG(double, f64)
 //*****************************************************************************/
 static OVERLOADABLE float __intel_spirv_half2float(ushort h)
 {
-    return __builtin_spirv_OpFConvert_f32_f16(as_half(h));
+    return SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(as_half(h));
 }
 
 #define VLOAD_SHORT(addressSpace, ASNUM)                                                                 \
@@ -240,22 +240,22 @@ __CLFN_DEF_F_VLOADA_HALFX_AS(__private,  0)
 // These helper functions are used to macro-ize the rounding mode built-ins.
 static OVERLOADABLE half __intel_spirv_float2half_rtz(float f)
 {
-    return __builtin_spirv_OpFConvert_RTZ_f16_f32(f);
+    return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _rtz_Rhalf)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half_rte(float f)
 {
-    return __builtin_spirv_OpFConvert_RTE_f16_f32(f);
+    return SPIRV_BUILTIN(FConvert, _RTE_f16_f32, _rte_Rhalf)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half_rtp(float f)
 {
-    return __builtin_spirv_OpFConvert_RTP_f16_f32(f);
+    return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _rtp_Rhalf)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half_rtn(float f)
 {
-    return __builtin_spirv_OpFConvert_RTN_f16_f32(f);
+    return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _rtn_Rhalf)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half(float f)
@@ -267,22 +267,22 @@ static OVERLOADABLE half __intel_spirv_float2half(float f)
 
 static OVERLOADABLE half __intel_spirv_double2half_rtz(double a)
 {
-    return __builtin_spirv_OpFConvert_RTZ_f16_f64(a);
+    return SPIRV_BUILTIN(FConvert, _RTZ_f16_f64, _rtz_Rhalf)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half_rte(double a)
 {
-    return __builtin_spirv_OpFConvert_RTE_f16_f64(a);
+    return SPIRV_BUILTIN(FConvert, _RTE_f16_f64, _rte_Rhalf)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half_rtp(double a)
 {
-    return __builtin_spirv_OpFConvert_RTP_f16_f64(a);
+    return SPIRV_BUILTIN(FConvert, _RTP_f16_f64, _rtp_Rhalf)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half_rtn(double a)
 {
-    return __builtin_spirv_OpFConvert_RTN_f16_f64(a);
+    return SPIRV_BUILTIN(FConvert, _RTN_f16_f64, _rtn_Rhalf)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half(double a)

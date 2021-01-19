@@ -129,7 +129,7 @@ INLINE char __builtin_spirv_OpenCL_s_mad_sat_i8_i8_i8(
     char c)
 {
     short res = (short)a * (short)b + (short)c;
-    return __builtin_spirv_OpSConvert_Sat_i8_i16(res);
+    return SPIRV_BUILTIN(SConvert, _Sat_i8_i16, _sat_Rchar)(res);
 }
 
 INLINE uchar __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8(
@@ -138,7 +138,7 @@ INLINE uchar __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8(
     uchar c)
 {
     ushort res = (ushort)a * (ushort)b + (ushort)c;
-    return __builtin_spirv_OpUConvert_Sat_i8_i16(res);
+    return SPIRV_BUILTIN(UConvert, _Sat_i8_i16, _sat_Ruchar)(res);
 }
 
 INLINE short __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16(
@@ -147,7 +147,7 @@ INLINE short __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16(
     short c)
 {
     int res = (int)a * (int)b + (int)c;
-    return __builtin_spirv_OpSConvert_Sat_i16_i32(res);
+    return SPIRV_BUILTIN(SConvert, _Sat_i16_i32, _sat_Rshort)(res);
 }
 
 INLINE ushort __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16(
@@ -156,7 +156,7 @@ INLINE ushort __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16(
     ushort c)
 {
     uint res = (uint)a * (uint)b + (uint)c;
-    return __builtin_spirv_OpUConvert_Sat_i16_i32(res);
+    return SPIRV_BUILTIN(UConvert, _Sat_i16_i32, _sat_Rushort)(res);
 }
 
 INLINE int __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32(
@@ -165,7 +165,7 @@ INLINE int __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32(
     int c)
 {
     long res = (long)a * (long)b + (long)c;
-    return __builtin_spirv_OpSConvert_Sat_i32_i64(res);
+    return SPIRV_BUILTIN(SConvert, _Sat_i32_i64, _sat_Rint)(res);
 }
 
 INLINE
@@ -174,7 +174,7 @@ uint __builtin_spirv_OpenCL_u_mad_sat_i32_i32_i32( uint a,
                                             uint c )
 {
     ulong res = (ulong)a * (ulong)b + (ulong)c;
-    return __builtin_spirv_OpUConvert_Sat_i32_i64(res);
+    return SPIRV_BUILTIN(UConvert, _Sat_i32_i64, _sat_Ruint)(res);
 }
 
 INLINE
@@ -580,7 +580,7 @@ half __builtin_spirv_OpenCL_atan_f16(half x ){
 
 INLINE
 half __builtin_spirv_OpenCL_ceil_f16(half x ){
-    return __builtin_spirv_OpFConvert_f16_f32(__builtin_spirv_OpenCL_ceil_f32(__builtin_spirv_OpFConvert_f32_f16(x)));
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_ceil_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
@@ -592,7 +592,7 @@ half __builtin_spirv_OpenCL_fabs_f16(half x ){
 
 INLINE
 half __builtin_spirv_OpenCL_floor_f16(half x ){
-    return __builtin_spirv_OpFConvert_f16_f32(__builtin_spirv_OpenCL_floor_f32(__builtin_spirv_OpFConvert_f32_f16(x)));
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_floor_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
@@ -631,12 +631,12 @@ half __builtin_spirv_OpenCL_mad_f16_f16_f16( half a,
 
 INLINE
 half __builtin_spirv_OpenCL_rint_f16(half x ){
-    return __builtin_spirv_OpFConvert_f16_f32(__builtin_spirv_OpenCL_rint_f32(__builtin_spirv_OpFConvert_f32_f16(x)));
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_rint_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE
 half __builtin_spirv_OpenCL_trunc_f16(half x ){
-    return __builtin_spirv_OpFConvert_f16_f32(__builtin_spirv_OpenCL_trunc_f32(__builtin_spirv_OpFConvert_f32_f16(x)));
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(__builtin_spirv_OpenCL_trunc_f32(SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x)));
 }
 
 INLINE

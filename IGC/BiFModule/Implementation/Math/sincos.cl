@@ -115,9 +115,9 @@ INLINE half __builtin_spirv_OpenCL_sincos_f16_p0f16( half            x,
                                        __private half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( __builtin_spirv_OpFConvert_f32_f16(x), &cos_x );
-    cosval[0] = __builtin_spirv_OpFConvert_f16_f32(cos_x);
-    return __builtin_spirv_OpFConvert_f16_f32(sin_x);
+    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
+    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1VAL_1PTRARG_LOOP( __builtin_spirv_OpenCL_sincos, half, half, half, f16, f16 )
@@ -126,18 +126,18 @@ INLINE half __builtin_spirv_OpenCL_sincos_f16_p1f16( half           x,
                                        __global half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( __builtin_spirv_OpFConvert_f32_f16(x), &cos_x );
-    cosval[0] = __builtin_spirv_OpFConvert_f16_f32(cos_x);
-    return __builtin_spirv_OpFConvert_f16_f32(sin_x);
+    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
+    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
 }
 
 INLINE half __builtin_spirv_OpenCL_sincos_f16_p3f16( half          x,
                                        __local half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( __builtin_spirv_OpFConvert_f32_f16(x), &cos_x );
-    cosval[0] = __builtin_spirv_OpFConvert_f16_f32(cos_x);
-    return __builtin_spirv_OpFConvert_f16_f32(sin_x);
+    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
+    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __builtin_spirv_OpenCL_sincos, half, __global, half, f16, p1 )
@@ -149,9 +149,9 @@ INLINE half __builtin_spirv_OpenCL_sincos_f16_p4f16( half            x,
                                        __generic half* cosval )
 {
     float   sin_x, cos_x;
-    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( __builtin_spirv_OpFConvert_f32_f16(x), &cos_x );
-    cosval[0] = __builtin_spirv_OpFConvert_f16_f32(cos_x);
-    return __builtin_spirv_OpFConvert_f16_f32(sin_x);
+    sin_x = __builtin_spirv_OpenCL_sincos_f32_p0f32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), &cos_x );
+    cosval[0] = SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(cos_x);
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)(sin_x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1VALARG_1PTRARG( __builtin_spirv_OpenCL_sincos, half, __generic, half, f16, p4 )

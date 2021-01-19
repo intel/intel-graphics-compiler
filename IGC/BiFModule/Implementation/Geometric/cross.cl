@@ -69,8 +69,8 @@ INLINE double4 __builtin_spirv_OpenCL_cross_v4f64_v4f64(double4 p0, double4 p1 )
 #if defined(cl_khr_fp16)
 
 INLINE half3 __builtin_spirv_OpenCL_cross_v3f16_v3f16(half3 p0, half3 p1 ){
-    float3 ret = __builtin_spirv_OpenCL_cross_v3f32_v3f32(__builtin_spirv_OpFConvert_v3f32_v3f16(p0), __builtin_spirv_OpFConvert_v3f32_v3f16(p1));
-    return __builtin_spirv_OpFConvert_v3f16_v3f32(ret);
+    float3 ret = __builtin_spirv_OpenCL_cross_v3f32_v3f32(SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(p0), SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(p1));
+    return SPIRV_BUILTIN(FConvert, _v3f16_v3f32, _Rhalf3)(ret);
 }
 
 INLINE half4 __builtin_spirv_OpenCL_cross_v4f16_v4f16(half4 p0, half4 p1 ){

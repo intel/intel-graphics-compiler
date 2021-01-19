@@ -288,109 +288,109 @@ INLINE float16 __builtin_spirv_OpenCL_lgamma_r_v16f32_p4v16i32( float16         
 INLINE half __builtin_spirv_OpenCL_lgamma_r_f16_p1i32( half          x,
                                          __global int* signp )
 {
-    return __builtin_spirv_OpFConvert_f16_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p1i32( __builtin_spirv_OpFConvert_f32_f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)( __builtin_spirv_OpenCL_lgamma_r_f32_p1i32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), signp ) );
 }
 
 INLINE half2 __builtin_spirv_OpenCL_lgamma_r_v2f16_p1v2i32( half2          x,
                                               __global int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f16_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p1v2i32( __builtin_spirv_OpFConvert_v2f32_v2f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f16_v2f32, _Rhalf2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p1v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f16, _Rfloat2)(x), signp ) );
 }
 
 INLINE half3 __builtin_spirv_OpenCL_lgamma_r_v3f16_p1v3i32( half3          x,
                                               __global int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f16_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p1v3i32( __builtin_spirv_OpFConvert_v3f32_v3f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f16_v3f32, _Rhalf3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p1v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(x), signp ) );
 }
 
 INLINE half4 __builtin_spirv_OpenCL_lgamma_r_v4f16_p1v4i32( half4          x,
                                               __global int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p1v4i32( __builtin_spirv_OpFConvert_v4f32_v4f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p1v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(x), signp ) );
 }
 
 INLINE half8 __builtin_spirv_OpenCL_lgamma_r_v8f16_p1v8i32( half8          x,
                                               __global int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f16_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p1v8i32( __builtin_spirv_OpFConvert_v8f32_v8f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f16_v8f32, _Rhalf8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p1v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f16, _Rfloat8)(x), signp ) );
 }
 
 INLINE half16 __builtin_spirv_OpenCL_lgamma_r_v16f16_p1v16i32( half16          x,
                                                  __global int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f16_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p1v16i32( __builtin_spirv_OpFConvert_v16f32_v16f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f16_v16f32, _Rhalf16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p1v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f16, _Rfloat16)(x), signp ) );
 }
 
 INLINE half __builtin_spirv_OpenCL_lgamma_r_f16_p0i32( half           x,
                                          __private int* signp )
 {
-    return __builtin_spirv_OpFConvert_f16_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p0i32( __builtin_spirv_OpFConvert_f32_f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)( __builtin_spirv_OpenCL_lgamma_r_f32_p0i32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), signp ) );
 }
 
 INLINE half2 __builtin_spirv_OpenCL_lgamma_r_v2f16_p0v2i32( half2           x,
                                               __private int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f16_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p0v2i32( __builtin_spirv_OpFConvert_v2f32_v2f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f16_v2f32, _Rhalf2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p0v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f16, _Rfloat2)(x), signp ) );
 }
 
 INLINE half3 __builtin_spirv_OpenCL_lgamma_r_v3f16_p0v3i32( half3           x,
                                               __private int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f16_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p0v3i32( __builtin_spirv_OpFConvert_v3f32_v3f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f16_v3f32, _Rhalf3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p0v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(x), signp ) );
 }
 
 INLINE half4 __builtin_spirv_OpenCL_lgamma_r_v4f16_p0v4i32( half4           x,
                                               __private int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p0v4i32( __builtin_spirv_OpFConvert_v4f32_v4f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p0v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(x), signp ) );
 }
 
 INLINE half8 __builtin_spirv_OpenCL_lgamma_r_v8f16_p0v8i32( half8           x,
                                               __private int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f16_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p0v8i32( __builtin_spirv_OpFConvert_v8f32_v8f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f16_v8f32, _Rhalf8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p0v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f16, _Rfloat8)(x), signp ) );
 }
 
 INLINE half16 __builtin_spirv_OpenCL_lgamma_r_v16f16_p0v16i32( half16           x,
                                                  __private int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f16_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p0v16i32( __builtin_spirv_OpFConvert_v16f32_v16f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f16_v16f32, _Rhalf16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p0v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f16, _Rfloat16)(x), signp ) );
 }
 
 INLINE half __builtin_spirv_OpenCL_lgamma_r_f16_p3i32( half         x,
                                          __local int* signp )
 {
-    return __builtin_spirv_OpFConvert_f16_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p3i32( __builtin_spirv_OpFConvert_f32_f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)( __builtin_spirv_OpenCL_lgamma_r_f32_p3i32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), signp ) );
 }
 
 INLINE half2 __builtin_spirv_OpenCL_lgamma_r_v2f16_p3v2i32( half2         x,
                                               __local int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f16_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p3v2i32( __builtin_spirv_OpFConvert_v2f32_v2f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f16_v2f32, _Rhalf2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p3v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f16, _Rfloat2)(x), signp ) );
 }
 
 INLINE half3 __builtin_spirv_OpenCL_lgamma_r_v3f16_p3v3i32( half3         x,
                                               __local int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f16_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p3v3i32( __builtin_spirv_OpFConvert_v3f32_v3f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f16_v3f32, _Rhalf3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p3v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(x), signp ) );
 }
 
 INLINE half4 __builtin_spirv_OpenCL_lgamma_r_v4f16_p3v4i32( half4         x,
                                               __local int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p3v4i32( __builtin_spirv_OpFConvert_v4f32_v4f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p3v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(x), signp ) );
 }
 
 INLINE half8 __builtin_spirv_OpenCL_lgamma_r_v8f16_p3v8i32( half8         x,
                                               __local int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f16_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p3v8i32( __builtin_spirv_OpFConvert_v8f32_v8f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f16_v8f32, _Rhalf8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p3v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f16, _Rfloat8)(x), signp ) );
 }
 
 INLINE half16 __builtin_spirv_OpenCL_lgamma_r_v16f16_p3v16i32( half16         x,
                                                  __local int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f16_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p3v16i32( __builtin_spirv_OpFConvert_v16f32_v16f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f16_v16f32, _Rhalf16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p3v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f16, _Rfloat16)(x), signp ) );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -398,37 +398,37 @@ INLINE half16 __builtin_spirv_OpenCL_lgamma_r_v16f16_p3v16i32( half16         x,
 INLINE half __builtin_spirv_OpenCL_lgamma_r_f16_p4i32( half           x,
                                          __generic int* signp )
 {
-    return __builtin_spirv_OpFConvert_f16_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p4i32( __builtin_spirv_OpFConvert_f32_f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f16_f32, _Rhalf)( __builtin_spirv_OpenCL_lgamma_r_f32_p4i32( SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(x), signp ) );
 }
 
 INLINE half2 __builtin_spirv_OpenCL_lgamma_r_v2f16_p4v2i32( half2           x,
                                               __generic int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f16_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p4v2i32( __builtin_spirv_OpFConvert_v2f32_v2f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f16_v2f32, _Rhalf2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p4v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f16, _Rfloat2)(x), signp ) );
 }
 
 INLINE half3 __builtin_spirv_OpenCL_lgamma_r_v3f16_p4v3i32( half3           x,
                                               __generic int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f16_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p4v3i32( __builtin_spirv_OpFConvert_v3f32_v3f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f16_v3f32, _Rhalf3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p4v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(x), signp ) );
 }
 
 INLINE half4 __builtin_spirv_OpenCL_lgamma_r_v4f16_p4v4i32( half4           x,
                                               __generic int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p4v4i32( __builtin_spirv_OpFConvert_v4f32_v4f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p4v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(x), signp ) );
 }
 
 INLINE half8 __builtin_spirv_OpenCL_lgamma_r_v8f16_p4v8i32( half8           x,
                                               __generic int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f16_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p4v8i32( __builtin_spirv_OpFConvert_v8f32_v8f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f16_v8f32, _Rhalf8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p4v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f16, _Rfloat8)(x), signp ) );
 }
 
 INLINE half16 __builtin_spirv_OpenCL_lgamma_r_v16f16_p4v16i32( half16           x,
                                                  __generic int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f16_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p4v16i32( __builtin_spirv_OpFConvert_v16f32_v16f16(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f16_v16f32, _Rhalf16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p4v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f16, _Rfloat16)(x), signp ) );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -440,109 +440,109 @@ INLINE half16 __builtin_spirv_OpenCL_lgamma_r_v16f16_p4v16i32( half16           
 double __builtin_spirv_OpenCL_lgamma_r_f64_p1i32( double        x,
                                            __global int* signp )
 {
-    return __builtin_spirv_OpFConvert_f64_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p1i32( __builtin_spirv_OpFConvert_f32_f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f64_f32, _Rdouble)( __builtin_spirv_OpenCL_lgamma_r_f32_p1i32( SPIRV_BUILTIN(FConvert, _f32_f64, _Rfloat)(x), signp ) );
 }
 
 double2 __builtin_spirv_OpenCL_lgamma_r_v2f64_p1v2i32( double2        x,
                                                 __global int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f64_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p1v2i32( __builtin_spirv_OpFConvert_v2f32_v2f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f64_v2f32, _Rdouble2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p1v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f64, _Rfloat2)(x), signp ) );
 }
 
 double3 __builtin_spirv_OpenCL_lgamma_r_v3f64_p1v3i32( double3        x,
                                                 __global int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f64_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p1v3i32( __builtin_spirv_OpFConvert_v3f32_v3f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f64_v3f32, _Rdouble3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p1v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f64, _Rfloat3)(x), signp ) );
 }
 
 double4 __builtin_spirv_OpenCL_lgamma_r_v4f64_p1v4i32( double4        x,
                                                 __global int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f64_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p1v4i32( __builtin_spirv_OpFConvert_v4f32_v4f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f64_v4f32, _Rdouble4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p1v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f64, _Rfloat4)(x), signp ) );
 }
 
 double8 __builtin_spirv_OpenCL_lgamma_r_v8f64_p1v8i32( double8        x,
                                                 __global int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f64_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p1v8i32( __builtin_spirv_OpFConvert_v8f32_v8f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f64_v8f32, _Rdouble8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p1v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f64, _Rfloat8)(x), signp ) );
 }
 
 double16 __builtin_spirv_OpenCL_lgamma_r_v16f64_p1v16i32( double16        x,
                                                    __global int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f64_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p1v16i32( __builtin_spirv_OpFConvert_v16f32_v16f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f64_v16f32, _Rdouble16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p1v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f64, _Rfloat16)(x), signp ) );
 }
 
 double __builtin_spirv_OpenCL_lgamma_r_f64_p0i32( double         x,
                                            __private int* signp )
 {
-    return __builtin_spirv_OpFConvert_f64_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p0i32( __builtin_spirv_OpFConvert_f32_f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f64_f32, _Rdouble)( __builtin_spirv_OpenCL_lgamma_r_f32_p0i32( SPIRV_BUILTIN(FConvert, _f32_f64, _Rfloat)(x), signp ) );
 }
 
 double2 __builtin_spirv_OpenCL_lgamma_r_v2f64_p0v2i32( double2         x,
                                                 __private int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f64_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p0v2i32( __builtin_spirv_OpFConvert_v2f32_v2f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f64_v2f32, _Rdouble2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p0v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f64, _Rfloat2)(x), signp ) );
 }
 
 double3 __builtin_spirv_OpenCL_lgamma_r_v3f64_p0v3i32( double3         x,
                                                 __private int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f64_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p0v3i32( __builtin_spirv_OpFConvert_v3f32_v3f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f64_v3f32, _Rdouble3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p0v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f64, _Rfloat3)(x), signp ) );
 }
 
 double4 __builtin_spirv_OpenCL_lgamma_r_v4f64_p0v4i32( double4         x,
                                                 __private int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f64_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p0v4i32( __builtin_spirv_OpFConvert_v4f32_v4f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f64_v4f32, _Rdouble4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p0v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f64, _Rfloat4)(x), signp ) );
 }
 
 double8 __builtin_spirv_OpenCL_lgamma_r_v8f64_p0v8i32( double8         x,
                                                 __private int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f64_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p0v8i32( __builtin_spirv_OpFConvert_v8f32_v8f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f64_v8f32, _Rdouble8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p0v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f64, _Rfloat8)(x), signp ) );
 }
 
 double16 __builtin_spirv_OpenCL_lgamma_r_v16f64_p0v16i32( double16         x,
                                                    __private int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f64_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p0v16i32( __builtin_spirv_OpFConvert_v16f32_v16f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f64_v16f32, _Rdouble16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p0v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f64, _Rfloat16)(x), signp ) );
 }
 
 double __builtin_spirv_OpenCL_lgamma_r_f64_p3i32( double       x,
                                            __local int* signp )
 {
-    return __builtin_spirv_OpFConvert_f64_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p3i32( __builtin_spirv_OpFConvert_f32_f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f64_f32, _Rdouble)( __builtin_spirv_OpenCL_lgamma_r_f32_p3i32( SPIRV_BUILTIN(FConvert, _f32_f64, _Rfloat)(x), signp ) );
 }
 
 double2 __builtin_spirv_OpenCL_lgamma_r_v2f64_p3v2i32( double2       x,
                                                 __local int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f64_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p3v2i32( __builtin_spirv_OpFConvert_v2f32_v2f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f64_v2f32, _Rdouble2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p3v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f64, _Rfloat2)(x), signp ) );
 }
 
 double3 __builtin_spirv_OpenCL_lgamma_r_v3f64_p3v3i32( double3       x,
                                                 __local int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f64_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p3v3i32( __builtin_spirv_OpFConvert_v3f32_v3f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f64_v3f32, _Rdouble3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p3v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f64, _Rfloat3)(x), signp ) );
 }
 
 double4 __builtin_spirv_OpenCL_lgamma_r_v4f64_p3v4i32( double4       x,
                                                 __local int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f64_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p3v4i32( __builtin_spirv_OpFConvert_v4f32_v4f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f64_v4f32, _Rdouble4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p3v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f64, _Rfloat4)(x), signp ) );
 }
 
 double8 __builtin_spirv_OpenCL_lgamma_r_v8f64_p3v8i32( double8       x,
                                                 __local int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f64_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p3v8i32( __builtin_spirv_OpFConvert_v8f32_v8f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f64_v8f32, _Rdouble8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p3v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f64, _Rfloat8)(x), signp ) );
 }
 
 double16 __builtin_spirv_OpenCL_lgamma_r_v16f64_p3v16i32( double16       x,
                                                    __local int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f64_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p3v16i32( __builtin_spirv_OpFConvert_v16f32_v16f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f64_v16f32, _Rdouble16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p3v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f64, _Rfloat16)(x), signp ) );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -550,37 +550,37 @@ double16 __builtin_spirv_OpenCL_lgamma_r_v16f64_p3v16i32( double16       x,
 double __builtin_spirv_OpenCL_lgamma_r_f64_p4i32( double         x,
                                            __generic int* signp )
 {
-    return __builtin_spirv_OpFConvert_f64_f32( __builtin_spirv_OpenCL_lgamma_r_f32_p4i32( __builtin_spirv_OpFConvert_f32_f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _f64_f32, _Rdouble)( __builtin_spirv_OpenCL_lgamma_r_f32_p4i32( SPIRV_BUILTIN(FConvert, _f32_f64, _Rfloat)(x), signp ) );
 }
 
 double2 __builtin_spirv_OpenCL_lgamma_r_v2f64_p4v2i32( double2         x,
                                                 __generic int2* signp )
 {
-    return __builtin_spirv_OpFConvert_v2f64_v2f32( __builtin_spirv_OpenCL_lgamma_r_v2f32_p4v2i32( __builtin_spirv_OpFConvert_v2f32_v2f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v2f64_v2f32, _Rdouble2)( __builtin_spirv_OpenCL_lgamma_r_v2f32_p4v2i32( SPIRV_BUILTIN(FConvert, _v2f32_v2f64, _Rfloat2)(x), signp ) );
 }
 
 double3 __builtin_spirv_OpenCL_lgamma_r_v3f64_p4v3i32( double3         x,
                                                 __generic int3* signp )
 {
-    return __builtin_spirv_OpFConvert_v3f64_v3f32( __builtin_spirv_OpenCL_lgamma_r_v3f32_p4v3i32( __builtin_spirv_OpFConvert_v3f32_v3f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v3f64_v3f32, _Rdouble3)( __builtin_spirv_OpenCL_lgamma_r_v3f32_p4v3i32( SPIRV_BUILTIN(FConvert, _v3f32_v3f64, _Rfloat3)(x), signp ) );
 }
 
 double4 __builtin_spirv_OpenCL_lgamma_r_v4f64_p4v4i32( double4         x,
                                                 __generic int4* signp )
 {
-    return __builtin_spirv_OpFConvert_v4f64_v4f32( __builtin_spirv_OpenCL_lgamma_r_v4f32_p4v4i32( __builtin_spirv_OpFConvert_v4f32_v4f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v4f64_v4f32, _Rdouble4)( __builtin_spirv_OpenCL_lgamma_r_v4f32_p4v4i32( SPIRV_BUILTIN(FConvert, _v4f32_v4f64, _Rfloat4)(x), signp ) );
 }
 
 double8 __builtin_spirv_OpenCL_lgamma_r_v8f64_p4v8i32( double8         x,
                                                 __generic int8* signp )
 {
-    return __builtin_spirv_OpFConvert_v8f64_v8f32( __builtin_spirv_OpenCL_lgamma_r_v8f32_p4v8i32( __builtin_spirv_OpFConvert_v8f32_v8f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v8f64_v8f32, _Rdouble8)( __builtin_spirv_OpenCL_lgamma_r_v8f32_p4v8i32( SPIRV_BUILTIN(FConvert, _v8f32_v8f64, _Rfloat8)(x), signp ) );
 }
 
 double16 __builtin_spirv_OpenCL_lgamma_r_v16f64_p4v16i32( double16         x,
                                                    __generic int16* signp )
 {
-    return __builtin_spirv_OpFConvert_v16f64_v16f32( __builtin_spirv_OpenCL_lgamma_r_v16f32_p4v16i32( __builtin_spirv_OpFConvert_v16f32_v16f64(x), signp ) );
+    return SPIRV_BUILTIN(FConvert, _v16f64_v16f32, _Rdouble16)( __builtin_spirv_OpenCL_lgamma_r_v16f32_p4v16i32( SPIRV_BUILTIN(FConvert, _v16f32_v16f64, _Rfloat16)(x), signp ) );
 }
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)

@@ -134,7 +134,7 @@ uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64( Sa
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
                 float layer = __builtin_spirv_OpenCL_fclamp_f32_f32_f32(__builtin_spirv_OpenCL_rint_f32((float)Coordinate.y), 0.0f, (float)(dt - 1));
-                float floatCoords = __builtin_spirv_OpConvertSToF_f32_i32(Coordinate.x);
+                float floatCoords = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(Coordinate.x);
                 return as_uint4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, (float2)(floatCoords, layer), Lod));
             }
             else
@@ -148,7 +148,7 @@ uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64( Sa
             {
                 int dt = __builtin_IB_get_image_array_size(image_id);
                 float layer = __builtin_spirv_OpenCL_fclamp_f32_f32_f32(__builtin_spirv_OpenCL_rint_f32((float)Coordinate.z), 0.0f, (float)(dt - 1));
-                float2 floatCoords = __builtin_spirv_OpConvertSToF_v2f32_v2i32(Coordinate.xy);
+                float2 floatCoords = SPIRV_BUILTIN(ConvertSToF, _v2f32_v2i32, _Rfloat2)(Coordinate.xy);
                 return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(floatCoords, layer, 0.0f), Lod));
             }
             else
@@ -163,7 +163,7 @@ uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64( Sa
     }
     else
     {
-        float float_lod = __builtin_spirv_OpConvertFToS_i32_f32( Lod );
+        float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)( Lod );
 
         if( isImageDim( SampledImage, Dim1D ) || isImageDim( SampledImage, DimBuffer ) )
         {
@@ -223,7 +223,7 @@ uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( S
                         float width = (float)(__builtin_IB_get_image_width(image_id));
                         tmpCoords = (float)(width*Coordinate.x);
                     }
-                    int2 intCoords = __builtin_spirv_OpConvertFToS_v2i32_v2f32((float2)(__builtin_spirv_OpenCL_floor_f32(tmpCoords),layer));
+                    int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)((float2)(__builtin_spirv_OpenCL_floor_f32(tmpCoords),layer));
                     return __builtin_IB_OCL_1darr_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -255,10 +255,10 @@ uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( S
                     float2 tmpCoords = Coordinate.xy;
                     if( CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
                     {
-                        float2 dim = __builtin_spirv_OpConvertUToF_v2f32_v2i32((uint2)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id)));
+                        float2 dim = SPIRV_BUILTIN(ConvertUToF, _v2f32_v2i32, _Rfloat2)((uint2)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id)));
                         tmpCoords = Coordinate.xy*dim;
                     }
-                    int4 intCoords = __builtin_spirv_OpConvertFToS_v4i32_v4f32((float4)(__builtin_spirv_OpenCL_floor_v2f32(tmpCoords), layer, 0.0f));
+                    int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)((float4)(__builtin_spirv_OpenCL_floor_v2f32(tmpCoords), layer, 0.0f));
                     return __builtin_IB_OCL_2darr_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -294,11 +294,11 @@ uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( S
                     float2 coords = Coordinate.xy;
                     if( CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
                     {
-                        float2 dim = __builtin_spirv_OpConvertUToF_v2f32_v2i32(
+                        float2 dim = SPIRV_BUILTIN(ConvertUToF, _v2f32_v2i32, _Rfloat2)(
                             (uint2)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id)));
                         coords = coords * dim;
                     }
-                    int2 intCoords = __builtin_spirv_OpConvertFToS_v2i32_v2f32(__builtin_spirv_OpenCL_floor_v2f32(coords));
+                    int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)(__builtin_spirv_OpenCL_floor_v2f32(coords));
                     return __builtin_IB_OCL_2d_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -324,11 +324,11 @@ uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( S
                 {
                     if( CLK_NORMALIZED_COORDS_TRUE == __builtin_IB_is_normalized_coords(sampler_id))
                     {
-                        float4 dim = __builtin_spirv_OpConvertUToF_v4f32_v4i32(
+                        float4 dim = SPIRV_BUILTIN(ConvertUToF, _v4f32_v4i32, _Rfloat4)(
                             (uint4)(__builtin_IB_get_image_width(image_id), __builtin_IB_get_image_height(image_id), __builtin_IB_get_image_depth(image_id), 0));
                         Coordinate = Coordinate*dim;
                     }
-                    int4 intCoords = __builtin_spirv_OpConvertFToS_v4i32_v4f32(__builtin_spirv_OpenCL_floor_v4f32(Coordinate));
+                    int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)(__builtin_spirv_OpenCL_floor_v4f32(Coordinate));
                     return __builtin_IB_OCL_3d_ldui(image_id, intCoords, 0);
                 }
                 else
@@ -509,12 +509,12 @@ uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_v3f32_v3f32
 #ifdef cl_khr_fp16
 half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32_i64(SampledImage, Coordinate, ImageOperands, Lod, NULL));
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32_i64(SampledImage, Coordinate, ImageOperands, Lod, NULL));
 }
 
 half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64(SampledImage, Coordinate, ImageOperands, Lod, NULL));
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64(SampledImage, Coordinate, ImageOperands, Lod, NULL));
 }
 #endif //cl_khr_fp16
 
@@ -628,7 +628,7 @@ float4 __builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i64( Image_t Image, Image
 #ifdef cl_khr_fp16
 half4 __builtin_spirv_OpImageRead_v4f16_i64_i64_v4i32_i64( Image_t Image, ImageType_t ImageType, int4 Coordinate, INLINEWA )
 {
-    return __builtin_spirv_OpFConvert_v4f16_v4f32(__builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i64( Image, ImageType, Coordinate, NULL ));
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageRead_v4f32_i64_i64_v4i32_i64( Image, ImageType, Coordinate, NULL ));
 }
 #endif // cl_khr_fp16
 
@@ -754,7 +754,7 @@ void __builtin_spirv_OpImageWrite_i64_i64_v4i32_f32_i64(Image_t Image, ImageType
 #ifdef cl_khr_fp16
 void __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f16_i64(Image_t Image, ImageType_t ImageType, int4 Coordinate, half4 Texel, INLINEWA )
 {
-    __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32_i64(Image, ImageType, Coordinate, __builtin_spirv_OpFConvert_v4f32_v4f16(Texel), NULL);
+    __builtin_spirv_OpImageWrite_i64_i64_v4i32_v4f32_i64(Image, ImageType, Coordinate, SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(Texel), NULL);
 }
 #endif // cl_khr_fp16
 
@@ -788,7 +788,7 @@ uint  __builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32_i64( Image_t Image, Im
 
 ulong __builtin_spirv_OpImageQuerySizeLod_i64_i64_i64_i32_i64( Image_t Image, ImageType_t ImageType, int Lod, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_i64_i32(__builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
+    return SPIRV_BUILTIN(UConvert, _i64_i32, _Rulong)(__builtin_spirv_OpImageQuerySizeLod_i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
 }
 
 uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32_i64( Image_t Image, ImageType_t ImageType, int Lod, INLINEWA )
@@ -799,7 +799,7 @@ uint2 __builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32_i64( Image_t Image, 
 
 ulong2 __builtin_spirv_OpImageQuerySizeLod_v2i64_i64_i64_i32_i64( Image_t Image, ImageType_t ImageType, int Lod, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_v2i64_v2i32(__builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
+    return SPIRV_BUILTIN(UConvert, _v2i64_v2i32, _Rulong2)(__builtin_spirv_OpImageQuerySizeLod_v2i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
 }
 
 
@@ -811,7 +811,7 @@ uint3 __builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32_i64( Image_t Image, 
 
 ulong3 __builtin_spirv_OpImageQuerySizeLod_v3i64_i64_i64_i32_i64( Image_t Image, ImageType_t ImageType, int Lod, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_v3i64_v3i32(__builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
+    return SPIRV_BUILTIN(UConvert, _v3i64_v3i32, _Rulong3)(__builtin_spirv_OpImageQuerySizeLod_v3i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
 }
 
 uint4 __builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32_i64( Image_t Image, ImageType_t ImageType, int Lod, INLINEWA )
@@ -822,7 +822,7 @@ uint4 __builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32_i64( Image_t Image, 
 
 ulong4 __builtin_spirv_OpImageQuerySizeLod_v4i64_i64_i64_i32_i64( Image_t Image, ImageType_t ImageType, int Lod, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_v4i64_v4i32(__builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
+    return SPIRV_BUILTIN(UConvert, _v4i64_v4i32, _Rulong4)(__builtin_spirv_OpImageQuerySizeLod_v4i32_i64_i64_i32_i64(Image, ImageType, Lod, NULL));
 }
 
 uint  __builtin_spirv_OpImageQuerySize_i32_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
@@ -833,7 +833,7 @@ uint  __builtin_spirv_OpImageQuerySize_i32_i64_i64_i64( Image_t Image, ImageType
 
 ulong __builtin_spirv_OpImageQuerySize_i64_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_i64_i32(__builtin_spirv_OpImageQuerySize_i32_i64_i64_i64(Image, ImageType, NULL));
+    return SPIRV_BUILTIN(UConvert, _i64_i32, _Rulong)(__builtin_spirv_OpImageQuerySize_i32_i64_i64_i64(Image, ImageType, NULL));
 }
 
 uint2 __builtin_spirv_OpImageQuerySize_v2i32_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
@@ -855,7 +855,7 @@ uint2 __builtin_spirv_OpImageQuerySize_v2i32_i64_i64_i64( Image_t Image, ImageTy
 
 ulong2 __builtin_spirv_OpImageQuerySize_v2i64_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_v2i64_v2i32(__builtin_spirv_OpImageQuerySize_v2i32_i64_i64_i64(Image, ImageType, NULL));
+    return SPIRV_BUILTIN(UConvert, _v2i64_v2i32, _Rulong2)(__builtin_spirv_OpImageQuerySize_v2i32_i64_i64_i64(Image, ImageType, NULL));
 }
 
 uint3 __builtin_spirv_OpImageQuerySize_v3i32_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
@@ -878,7 +878,7 @@ uint3 __builtin_spirv_OpImageQuerySize_v3i32_i64_i64_i64( Image_t Image, ImageTy
 
 ulong3 __builtin_spirv_OpImageQuerySize_v3i64_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_v3i64_v3i32(__builtin_spirv_OpImageQuerySize_v3i32_i64_i64_i64(Image, ImageType, NULL));
+    return SPIRV_BUILTIN(UConvert, _v3i64_v3i32, _Rulong3)(__builtin_spirv_OpImageQuerySize_v3i32_i64_i64_i64(Image, ImageType, NULL));
 }
 
 uint4 __builtin_spirv_OpImageQuerySize_v4i32_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
@@ -894,7 +894,7 @@ uint4 __builtin_spirv_OpImageQuerySize_v4i32_i64_i64_i64( Image_t Image, ImageTy
 
 ulong4 __builtin_spirv_OpImageQuerySize_v4i64_i64_i64_i64( Image_t Image, ImageType_t ImageType, INLINEWA )
 {
-    return __builtin_spirv_OpUConvert_v4i64_v4i32(__builtin_spirv_OpImageQuerySize_v4i32_i64_i64_i64(Image, ImageType, NULL));
+    return SPIRV_BUILTIN(UConvert, _v4i64_v4i32, _Rulong4)(__builtin_spirv_OpImageQuerySize_v4i32_i64_i64_i64(Image, ImageType, NULL));
 }
 
 uint __builtin_spirv_OpImageQueryLevels_i64_i64( Image_t Image, INLINEWA )
