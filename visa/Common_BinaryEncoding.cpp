@@ -223,10 +223,31 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
         dst->setRightBound(dst->getLeftBound() + 16);
         inst->setExecSize(isDoubleInst ? g4::SIMD2 : g4::SIMD4);
         G4_Predicate* pred = inst->getPredicate();
-        if (pred != NULL)
+        if (pred)
         {
             pred->setAlign16PredicateControl(PRED_ALIGN16_X);
         }
+    }
+    else if (inst->getExecSize() == g4::SIMD2 && !isDoubleInst)
+    {
+        int subRegOffset = dst->getLinearizedStart() % 16;
+        ChannelEnable writeMask = NoChannelEnable;
+        switch (subRegOffset / 4)
+        {
+        case 0:
+            writeMask = ChannelEnable_XY;
+            break;
+        case 2:
+            writeMask = ChannelEnable_ZW;
+            break;
+        default:
+            assert(false && "dst must be 8 byte aligned");
+        }
+        dst->setWriteMask(writeMask);
+        dst->setLeftBound(dst->getLeftBound() - subRegOffset);
+        dst->setRightBound(dst->getLeftBound() + 16);
+        inst->setExecSize(g4::SIMD4);
+        assert(!inst->getPredicate() && "do not support predicated SIMD2 mad");
     }
 
     // for double/half inst, we have to additionally fix the source as it doesn't support the .r swizzle
