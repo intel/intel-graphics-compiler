@@ -352,12 +352,13 @@ void Optimizer::insertDummyCompactInst()
 void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 {
     //Dst
-    auto nullDst1 = builder.createNullDst(Type_UD);
+    auto nullDst1 = builder.createNullDst(Type_W);
     auto nullDst2 = builder.createNullDst(Type_F);
 
-    const RegionDesc* region = kernel.fg.builder->getRegionScalar();
+    const RegionDesc* region = builder.createRegionDesc(8, 8, 1);
+
     //Src0
-    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_UD, 0, 0);
+    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, 0, 0);
     auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, 0, 0);
     G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
     G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
@@ -369,21 +370,21 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
     G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
 
     auto madInst1 = builder.createInternalInst(
-        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1,
+        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD8,
         nullDst1, src0Opnd_0, src1Opnd_0, src2Opnd_0,
-        InstOpt_WriteEnable);
+        InstOpt_NoOpt);
 
     auto madInst2 = builder.createInternalInst(
-        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1,
+        nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD8,
         nullDst2, src0Opnd_1, src1Opnd_1, src2Opnd_1,
-        InstOpt_WriteEnable);
+        InstOpt_NoOpt);
 
     bb->insertBefore(inst_it, madInst1);
     bb->insertBefore(inst_it, madInst2);
 
-    G4_SrcRegRegion* src = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
-    G4_DstRegRegion* dst = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_0, 1);
-    G4_INST* movInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+    G4_SrcRegRegion* src = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+    G4_DstRegRegion* dst = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_1, 1);
+    G4_INST* movInst = builder.createMov(g4::SIMD8, dst, src, InstOpt_NoOpt, false);
 
     bb->insertBefore(inst_it, movInst);
 }
@@ -394,7 +395,7 @@ void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *op
         opnd->getBase(),
         opnd->asSrcRegRegion()->getRegOff(),
         0,
-        builder.getRegionScalar(),
+        builder.createRegionDesc(8, 8, 1),
         Type_UD);
     G4_DstRegRegion* dst = builder.createDst(
         opnd->getBase(),
@@ -402,7 +403,7 @@ void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *op
         0,
         1,
         Type_UD);
-    G4_INST* movInst = builder.createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+    G4_INST* movInst = builder.createMov(g4::SIMD8, dst, src, InstOpt_NoOpt, false);
     bb->insertBefore(inst_it, movInst);
 
     return;
