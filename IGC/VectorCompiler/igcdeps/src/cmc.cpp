@@ -444,19 +444,18 @@ const char* cmc::getPlatformStr(PLATFORM platform)
 {
     switch (platform.eDisplayCoreFamily) {
     case IGFX_GEN9_CORE:
-        return IGC_MANGLE("SKL");
+        return "SKL";
     case IGFX_GEN10_CORE:
-        return IGC_MANGLE("CNL");
+        return "CNL";
     case IGFX_GEN11_CORE:
         if (platform.eProductFamily == IGFX_ICELAKE_LP ||
             platform.eProductFamily == IGFX_LAKEFIELD)
-            return IGC_MANGLE("ICLLP");
-        return IGC_MANGLE("ICL");
+            return "ICLLP";
+        return "ICL";
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
-        if (platform.eProductFamily == IGFX_TIGERLAKE_LP ||
-            platform.eProductFamily == IGFX_DG1)
-            return IGC_MANGLE("TGLLP");
+        if (platform.eProductFamily == IGFX_TIGERLAKE_LP)
+            return "TGLLP";
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;
