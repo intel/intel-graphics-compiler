@@ -139,7 +139,7 @@ findNearestInsertPt(DominatorTree *DT, ArrayRef<Instruction *> Users) {
     MI->second = &*BI;
   }
 
-  IGC_ASSERT(BBs.size() != 0 && "At least one BB should be found!");
+  IGC_ASSERT_MESSAGE(BBs.size() != 0, "At least one BB should be found!");
 
   auto MI = BBs.begin();
   if (BBs.size() == 1)
