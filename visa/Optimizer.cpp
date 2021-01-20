@@ -447,8 +447,7 @@ void Optimizer::insertDummyMovForHWRSWA()
         }
 
         G4_INST* inst = (bb->getInstList().back());
-        if (inst->isFlowControl() && !inst->asCFInst()->isUniform() &&
-            (inst->opcode() != G4_else && inst->opcode() != G4_endif))
+        if (inst->isRSWADivergentInst() && !inst->asCFInst()->isUniform())
         {
             INST_LIST_ITER iter = bb->end();
             iter--;

@@ -764,6 +764,7 @@ public:
     bool isIntrinsic() const { return op == G4_intrinsic; }
     bool isSend() const { return op == G4_send || op == G4_sendc || op == G4_sends || op == G4_sendsc; }
     bool isSplitSend() const { return op == G4_sends || op == G4_sendsc; }
+    bool isRSWADivergentInst() const { return op == G4_goto || op == G4_while || op == G4_if || op == G4_break; }
 
     // ToDo: get rid of these functions which don't make sense for non-sends
     virtual bool isEOT() const { return false; }
