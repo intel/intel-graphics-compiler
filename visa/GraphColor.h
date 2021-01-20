@@ -39,7 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VarSplit.h"
 
 #define BITS_DWORD 32
-#define SCRATCH_MSG_LIMIT (128 * 1024)
 #define ROUND(x,y)    ((x) + ((y - x % y) % y))
 
 namespace vISA
@@ -56,7 +55,7 @@ namespace vISA
         void setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2, unsigned int offset1, unsigned int offset2,
             BankConflict &srcBC1, BankConflict &srcBC2);
         void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict);
-        bool isOddOffset(unsigned int offset);
+        bool isOddOffset(unsigned int offset) const;
 
         void setupBankConflictsforTwoGRFs(G4_INST* inst);
         void setupBankConflictsforMad(G4_INST* inst);
@@ -585,7 +584,6 @@ namespace vISA
         LIVERANGE_LIST constrainedWorklist;
         unsigned int numColor = 0;
 
-#define GRAPH_COLOR_MEM_SIZE 16*1024
         unsigned edgeWeightGRF(const LiveRange* lr1, const LiveRange* lr2);
         unsigned edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2);
 
@@ -765,7 +763,7 @@ namespace vISA
         // map ret location to declare for call/ret
         std::map<uint32_t, G4_Declare*> retDecls;
 
-        RAVarInfo &setVar(const G4_Declare* dcl)
+        RAVarInfo &allocVar(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -908,7 +906,7 @@ namespace vISA
 
         void setSplitVarNum(const G4_Declare* dcl, unsigned int val)
         {
-            setVar(dcl).numSplit = val;
+            allocVar(dcl).numSplit = val;
         }
 
         unsigned int getBBId(const G4_Declare* dcl) const
@@ -918,7 +916,7 @@ namespace vISA
 
         void setBBId(const G4_Declare* dcl, unsigned int id)
         {
-            setVar(dcl).bb_id = id;
+            allocVar(dcl).bb_id = id;
         }
 
         bool isBlockLocal(const G4_Declare* dcl) const
@@ -933,7 +931,7 @@ namespace vISA
 
         void setSplittedDeclare(const G4_Declare* dcl, G4_Declare* sd)
         {
-            setVar(dcl).splittedDCL = sd;
+            allocVar(dcl).splittedDCL = sd;
         }
 
         LocalLiveRange* getLocalLR(const G4_Declare* dcl) const
@@ -943,7 +941,7 @@ namespace vISA
 
         void setLocalLR(G4_Declare* dcl, LocalLiveRange* lr)
         {
-            RAVarInfo &var = setVar(dcl);
+            RAVarInfo &var = allocVar(dcl);
             MUST_BE_TRUE(var.localLR == NULL, "Local live range already allocated for declaration");
             var.localLR = lr;
             lr->setTopDcl(dcl);
@@ -963,7 +961,7 @@ namespace vISA
 
         void setLSLR(G4_Declare* dcl, LSLiveRange* lr)
         {
-            RAVarInfo &var = setVar(dcl);
+            RAVarInfo &var = allocVar(dcl);
             MUST_BE_TRUE(var.LSLR == NULL, "Local live range already allocated for declaration");
             var.LSLR = lr;
             lr->setTopDcl(dcl);
@@ -971,12 +969,12 @@ namespace vISA
 
         void resetLSLR(const G4_Declare* dcl)
         {
-            setVar(dcl).LSLR = nullptr;
+            allocVar(dcl).LSLR = nullptr;
         }
 
         void resetLocalLR(const G4_Declare* dcl)
         {
-            setVar(dcl).localLR = nullptr;
+            allocVar(dcl).localLR = nullptr;
         }
 
         void clearStaleLiveRanges()
@@ -990,7 +988,7 @@ namespace vISA
 
         void recordRef(const G4_Declare* dcl)
         {
-            setVar(dcl).numRefs++;
+            allocVar(dcl).numRefs++;
         }
 
         unsigned int getNumRefs(const G4_Declare* dcl) const
@@ -1000,7 +998,7 @@ namespace vISA
 
         void setNumRefs(const G4_Declare* dcl, unsigned int refs)
         {
-            setVar(dcl).numRefs = refs;
+            allocVar(dcl).numRefs = refs;
         }
 
         BankConflict getBankConflict(const G4_Declare* dcl) const
@@ -1010,7 +1008,7 @@ namespace vISA
 
         void setBankConflict(const G4_Declare* dcl, BankConflict c)
         {
-            setVar(dcl).conflict = c;
+            allocVar(dcl).conflict = c;
         }
 
         G4_INST* getStartInterval(const G4_Declare* dcl) const
@@ -1020,7 +1018,7 @@ namespace vISA
 
         void setStartInterval(const G4_Declare* dcl, G4_INST* inst)
         {
-            setVar(dcl).startInterval = inst;
+            allocVar(dcl).startInterval = inst;
         }
 
         G4_INST* getEndInterval(const G4_Declare* dcl) const
@@ -1030,7 +1028,7 @@ namespace vISA
 
         void setEndInterval(const G4_Declare* dcl, G4_INST* inst)
         {
-            setVar(dcl).endInterval = inst;
+            allocVar(dcl).endInterval = inst;
         }
 
         unsigned char* getMask(const G4_Declare* dcl) const
@@ -1040,7 +1038,7 @@ namespace vISA
 
         void setMask(const G4_Declare* dcl, unsigned char* m)
         {
-            setVar(dcl).mask = m;
+            allocVar(dcl).mask = m;
         }
 
         AugmentationMasks getAugmentationMask(const G4_Declare* dcl) const
@@ -1075,12 +1073,12 @@ namespace vISA
 
         void addBundleConflictDcl(const G4_Declare *dcl, const G4_Declare* subDcl, int offset)
         {
-            setVar(dcl).bundleConflicts.emplace_back(subDcl, offset);
+            allocVar(dcl).bundleConflicts.emplace_back(subDcl, offset);
         }
 
         void clearBundleConflictDcl(const G4_Declare* dcl)
         {
-            setVar(dcl).bundleConflicts.clear();
+            allocVar(dcl).bundleConflicts.clear();
         }
 
         const std::vector<BundleConflict> &getBundleConflicts(const G4_Declare* dcl) const
@@ -1093,7 +1091,7 @@ namespace vISA
             return (((baseReg + offset) % 64) / 4);
         }
 
-        unsigned short getOccupiedBundle(G4_Declare* dcl)
+        unsigned short getOccupiedBundle(const G4_Declare* dcl) const
         {
             unsigned short occupiedBundles = 0;
             unsigned bundleNum = 0;
@@ -1126,12 +1124,12 @@ namespace vISA
 
         void addSubDcl(const G4_Declare *dcl, G4_Declare* subDcl)
         {
-            setVar(dcl).subDclList.push_back(subDcl);
+            allocVar(dcl).subDclList.push_back(subDcl);
         }
 
         void clearSubDcl(const G4_Declare* dcl)
         {
-            setVar(dcl).subDclList.clear();
+            allocVar(dcl).subDclList.clear();
         }
 
         const std::vector<const G4_Declare*> &getSubDclList(const G4_Declare* dcl) const
@@ -1146,7 +1144,7 @@ namespace vISA
 
         void setSubOffset(const G4_Declare* dcl, unsigned int offset)
         {
-            setVar(dcl).subOff = offset;
+            allocVar(dcl).subOff = offset;
         }
 
         G4_SubReg_Align getSubRegAlign(const G4_Declare* dcl) const
@@ -1156,7 +1154,7 @@ namespace vISA
 
         void setSubRegAlign(const G4_Declare* dcl, G4_SubReg_Align subAlg)
         {
-            auto& subAlign = setVar(dcl).subAlign;
+            auto& subAlign = allocVar(dcl).subAlign;
             // sub reg alignment can only be more restricted than prior setting
             MUST_BE_TRUE(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
                 ERROR_UNKNOWN);
@@ -1187,7 +1185,7 @@ namespace vISA
 
         void setEvenAligned(const G4_Declare* dcl, bool e)
         {
-            setVar(dcl).isEvenAlign = e;
+            allocVar(dcl).isEvenAlign = e;
         }
 
         BankAlign getBankAlign(G4_Declare*);

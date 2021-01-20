@@ -46,6 +46,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 using namespace vISA;
 
+#define GRAPH_COLOR_MEM_SIZE 16*1024
+#define SCRATCH_MSG_LIMIT (128 * 1024)
 #define FAIL_SAFE_RA_LIMIT 3
 
 const RAVarInfo GlobalRA::defaultValues;
@@ -771,7 +773,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
     return;
 }
 
-bool BankConflictPass::isOddOffset(unsigned int offset)
+bool BankConflictPass::isOddOffset(unsigned int offset) const
 {
     if (gra.kernel.fg.builder->oneGRFBankDivision())
     {
@@ -1298,7 +1300,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
             {
                 if (intf->interfereBetween(spillVarId, i))
                 {
-                    G4_RegVar* intfRangeVar = lrs[i]->getVar();
+                    const G4_RegVar* intfRangeVar = lrs[i]->getVar();
 
                     optreport << "\t" << intfRangeVar->getName() << "(" <<
                         intfRangeVar->getDeclare()->getTotalElems() << "):" <<
@@ -1689,7 +1691,7 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
 void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf)
 {
 
-    G4_Declare *dcl = lrs[lr_id]->getDcl();
+    const G4_Declare *dcl = lrs[lr_id]->getDcl();
     for (const G4_Declare *subDcl : gra.getSubDclList(dcl))
     {
         unsigned leftBound = gra.getSubOffset(subDcl);
@@ -1714,8 +1716,8 @@ void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
 
 void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2)
 {
-    G4_Declare * d1 = lrs[v1]->getDcl();
-    G4_Declare * d2 = lrs[v2]->getDcl();
+    const G4_Declare * d1 = lrs[v1]->getDcl();
+    const G4_Declare * d2 = lrs[v2]->getDcl();
 
     if (d1->getIsSplittedDcl() && !d2->getIsPartialDcl())
     {
@@ -1875,7 +1877,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
                     else if (kernel.getOption(vISA_LocalRA) && isDstRegAllocPartaker)
                     {
                         LocalLiveRange* localLR = nullptr;
-                        G4_Declare* topdcl = GetTopDclFromRegRegion(src);
+                        const G4_Declare* topdcl = GetTopDclFromRegRegion(src);
 
                         if (topdcl)
                             localLR = gra.getLocalLR(topdcl);
@@ -2483,7 +2485,7 @@ void Interference::generateSparseIntfGraph()
         // Iterate over intf graph matrix
         for (unsigned int row = 0; row < numVars; row++)
         {
-            unsigned int rowOffset = row*rowSize;
+            unsigned int rowOffset = row * rowSize;
             unsigned int colStart = (row + 1) / BITS_DWORD;
             for (unsigned int j = colStart; j < rowSize; j++)
             {
@@ -3251,7 +3253,7 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
     // Handle dst
     if (inst->isCall() || inst->isCallerSave())
     {
-        G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
+        const G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
         if (dcl && liveAnalysis.livenessClass(dcl->getRegFile()))
         {
             gra.setAugmentationMask(dcl->getRootDeclare(), AugmentationMasks::NonDefault);
@@ -3378,9 +3380,6 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
 // This function sets up lexical id of all instructions.
 bool Augmentation::markNonDefaultMaskDef()
 {
-    bool nonDefaultMaskDefFound = false;
-    unsigned int id = 0;
-
     // Iterate dcls list and mark obvious ones as non-default.
     // Obvoius non-default is 1 element, ie uniform dcl.
     for (auto dcl : kernel.Declares)
@@ -3402,6 +3401,7 @@ bool Augmentation::markNonDefaultMaskDef()
         }
     }
 
+    unsigned int id = 0;
     bool isFlagRA = liveAnalysis.livenessClass(G4_FLAG);
 
     for (auto bb : kernel.fg)
@@ -3427,6 +3427,7 @@ bool Augmentation::markNonDefaultMaskDef()
 
     // Update whether each dcl is default/not
     AugmentationMasks prevAugMask = AugmentationMasks::Undetermined;
+    bool nonDefaultMaskDefFound = false;
 
     for (auto dcl : kernel.Declares)
     {
@@ -3730,8 +3731,8 @@ static int calculateBankConflictsInBB(G4_BB* bb, int &even_odd_num, int &low_hig
                 regNum1 >= SECOND_HALF_BANK_START_GRF &&
                 regNum2 >= SECOND_HALF_BANK_START_GRF)
             {
-                if ((regNum1 % 2) == (regNum2) % 2 &&
-                    (regNum0 % 2) == (regNum1 % 2))
+                if (regNum1 % 2 == regNum2 % 2 &&
+                    regNum0 % 2 == regNum1 % 2)
                 {
                     conflict_num++;
                 }
@@ -3863,7 +3864,7 @@ void Augmentation::buildLiveIntervals()
                 }
                 else if (liveAnalysis.livenessClass(G4_GRF))
                 {
-                    LocalLiveRange* defdclLR = nullptr;
+                    LocalLiveRange* defdclLR;
 
                     // Handle ranges allocated by local RA
                     if (defdcl &&
