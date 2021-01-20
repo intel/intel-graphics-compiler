@@ -61,6 +61,11 @@ def vc_emit_debug : Flag<["-"], "g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
 def ze_kernel_debug_enable : Flag<["-"], "ze-kernel-debug-enable">,
   Alias<vc_emit_debug>, HelpText<"Alias for -g">;
+// these are coming from NEO when run under debugger
+def cl_opt_disable : Flag<["-"], "cl-opt-disable">,
+  Alias<vc_emit_debug>, HelpText<"Alias for -g">;
+def ze_opt_disable : Flag<["-"], "ze-opt-disable">,
+  Alias<vc_emit_debug>, HelpText<"Alias for -g">;
 
 def optimize : Separate<["-"], "optimize">,
   HelpText<"Set optimization level to either 'none' or 'full'">,
@@ -68,11 +73,6 @@ def optimize : Separate<["-"], "optimize">,
 def optimize_eq : Joined<["-"], "optimize=">,
   Alias<optimize>, HelpText<"Alias for -optimize">;
 def no_optimize : Flag<["-"], "no-optimize">,
-  Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
-
-def cl_opt_disable : Flag<["-"], "cl-opt-disable">,
-  Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
-def ze_opt_disable : Flag<["-"], "ze-opt-disable">,
   Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
 
 def no_vector_decomposition : Flag<["-"], "no-vector-decomposition">,
