@@ -794,7 +794,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int subregNum = 0;
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
-            BankAlign align = gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
             BankAlign bankAlign = BankAlign::Either;
 
             if (twoBanksRA &&
@@ -812,6 +811,8 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                 }
             }
 
+            auto assignAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : bankAlign;
+
             // Why?
             G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : gra.getSubRegAlign(dcl);
 
@@ -819,12 +820,12 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             {
                 unsigned short occupiedBundles = gra.getOccupiedBundle(dcl);
 
-                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align,
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, assignAlign,
                     subAlign, regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false, emptyForbidden, false, 0);
             }
             else
             {
-                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != BankAlign::Either) ? bankAlign : align,
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, assignAlign,
                     subAlign, regNum, subregNum, numRegLRA - 1, 0, 0, 0, false, emptyForbidden, false, 0);
             }
 
@@ -841,9 +842,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                     subregNum /= (dcl->getElemSize() / 2);
                 }
                 dcl->getRegVar()->setPhyReg(phyReg, subregNum);
-#ifdef DEBUG_VERBOSE_ON
-                COUT_ERROR << "R" << phyReg->getRegNum() << ", ";
-#endif
             }
             else
             {
