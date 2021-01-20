@@ -470,9 +470,9 @@ public:
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}
     void dump() const;
     void dumpGlobalVarNum() const;
-    bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
+    bool writeWholeRegion(const G4_BB* bb, G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
 
-    bool writeWholeRegion(G4_BB* bb, G4_INST* prd, G4_VarBase* flagReg);
+    bool writeWholeRegion(const G4_BB* bb, G4_INST* prd, G4_VarBase* flagReg);
 
     void performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB);
 

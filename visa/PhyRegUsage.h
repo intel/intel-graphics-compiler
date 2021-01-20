@@ -177,7 +177,7 @@ public:
         weakEdgeUsage[reg] = index;
     }
 
-    uint8_t getWeakEdgeUse(unsigned int reg)
+    uint8_t getWeakEdgeUse(unsigned int reg) const
     {
         return weakEdgeUsage[reg];
     }

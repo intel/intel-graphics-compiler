@@ -48,6 +48,7 @@ using namespace vISA;
 
 #define FAIL_SAFE_RA_LIMIT 3
 
+const RAVarInfo GlobalRA::defaultValues;
 const char GlobalRA::StackCallStr[] = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
@@ -1689,11 +1690,8 @@ void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
 {
 
     G4_Declare *dcl = lrs[lr_id]->getDcl();
-    auto subDclSize = gra.getSubDclSize(dcl);
-    for (unsigned i = 0; i < subDclSize; i++)
+    for (const G4_Declare *subDcl : gra.getSubDclList(dcl))
     {
-        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-
         unsigned leftBound = gra.getSubOffset(subDcl);
         unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
         if (!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
@@ -1721,10 +1719,8 @@ void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2)
 
     if (d1->getIsSplittedDcl() && !d2->getIsPartialDcl())
     {
-        auto d1SubDclSize = gra.getSubDclSize(d1);
-        for (unsigned i = 0; i < d1SubDclSize; i++)
+        for (const G4_Declare *subDcl : gra.getSubDclList(d1))
         {
-            G4_Declare * subDcl = gra.getSubDcl(d1, i);
             int subID = subDcl->getRegVar()->getId();
             checkAndSetIntf(v2, subID);
         }
@@ -1732,10 +1728,8 @@ void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2)
 
     if (d2->getIsSplittedDcl() && !d1->getIsPartialDcl())
     {
-        auto d2SubDclSize = gra.getSubDclSize(d2);
-        for (unsigned i = 0; i < d2SubDclSize; i++)
+        for (const G4_Declare *subDcl : gra.getSubDclList(d2))
         {
-            G4_Declare * subDcl = gra.getSubDcl(d2, i);
             int subID = subDcl->getRegVar()->getId();
             checkAndSetIntf(v1, subID);
         }
@@ -3543,11 +3537,8 @@ G4_BB* Augmentation::getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, uns
 
 void Augmentation::updateStartIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd)
 {
-    auto dclSubDclSize = gra.getSubDclSize(dcl);
-    for (unsigned i = 0; i < dclSubDclSize; i++)
+    for (const G4_Declare *subDcl : gra.getSubDclList(dcl))
     {
-        const G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-
         unsigned leftBound = gra.getSubOffset(subDcl);
         unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
         if (!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
@@ -3573,11 +3564,8 @@ void Augmentation::updateStartIntervalForSubDcl(G4_Declare* dcl, G4_INST* curIns
 
 void Augmentation::updateEndIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd)
 {
-    auto dclSubDclSize = gra.getSubDclSize(dcl);
-    for (unsigned i = 0; i < dclSubDclSize; i++)
+    for (const G4_Declare *subDcl : gra.getSubDclList(dcl))
     {
-        const G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-
         unsigned leftBound = gra.getSubOffset(subDcl);
         unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
         if (!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
@@ -4917,15 +4905,11 @@ void Augmentation::augmentIntfGraph()
         }
     }
 
-    unsigned numFnId = (unsigned)kernel.fg.funcInfoTable.size();
-    if (numFnId)
+    for (auto func : kernel.fg.funcInfoTable)
     {
-        for(auto func : kernel.fg.funcInfoTable)
-        {
-            auto& item = callsiteDeclares[func];
-            item.defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
-            item.noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
-        }
+        auto& item = callsiteDeclares[func];
+        item.defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
+        item.noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
     }
 
     if (kernel.getOption(vISA_LocalRA))
@@ -4951,7 +4935,7 @@ void Augmentation::augmentIntfGraph()
 
         if (kernel.getOption(vISA_DumpRegChart))
         {
-            gra.regChart = new RegChartDump(gra);
+            gra.regChart = std::make_unique<RegChartDump>(gra);
             gra.regChart->recordLiveIntervals(sortedIntervals);
         }
 
@@ -5607,14 +5591,11 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
     // normal live ranges, so that they get colored before all the normal
     // live ranges.
     //
-    std::vector <LiveRange *> ::iterator it = addressSensitiveVars.begin();
-    std::vector <LiveRange *> ::iterator itEnd = addressSensitiveVars.end();
-
-    for (; it != itEnd; ++it)
+    for (LiveRange *lr : addressSensitiveVars)
     {
-        if ((*it)->getSpillCost() != MAXSPILLCOST)
+        if (lr->getSpillCost() != MAXSPILLCOST)
         {
-            (*it)->setSpillCost(maxNormalCost + (*it)->getSpillCost());
+            lr->setSpillCost(maxNormalCost + lr->getSpillCost());
         }
     }
 }
@@ -9286,7 +9267,7 @@ void GlobalRA::removeSplitDecl()
 {
     for (auto dcl : kernel.Declares)
     {
-        if (getSubDclSize(dcl))
+        if (!getSubDclList(dcl).empty())
         {
             clearSubDcl(dcl);
             dcl->setIsSplittedDcl(false);
@@ -11664,10 +11645,10 @@ void VerifyAugmentation::verify()
         {
             auto& tup = masks[dcl];
             std::cerr << dcl->getName() << "(" << getStr(std::get<1>(tup)) << ") is split" << std::endl;
-            for (unsigned int i = 0; i != gra->getSubDclSize(dcl); i++)
+            for (const G4_Declare *subDcl : gra->getSubDclList(dcl))
             {
-                auto& tupSub = masks[gra->getSubDcl(dcl, i)];
-                std::cerr << "\t" << gra->getSubDcl(dcl, i)->getName() << " (" << getStr(std::get<1>(tupSub)) << ")" << std::endl;
+                auto& tupSub = masks[subDcl];
+                std::cerr << "\t" << subDcl->getName() << " (" << getStr(std::get<1>(tupSub)) << ")" << std::endl;
             }
         }
     }
@@ -12509,7 +12490,7 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
 // The above logic can be simplified to the following formula:
 //    lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2)
 //
-unsigned GraphColor::edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
+unsigned GraphColor::edgeWeightGRF(const LiveRange* lr1, const LiveRange* lr2)
 {
     bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
     bool lr2EvenAlign = gra.isEvenAligned(lr2->getDcl());
@@ -12518,7 +12499,7 @@ unsigned GraphColor::edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
 
     if (!lr1EvenAlign)
     {
-        return  lr1_nreg + lr2_nreg - 1;
+        return lr1_nreg + lr2_nreg - 1;
     }
     else if (!lr2EvenAlign)
     {
@@ -12536,7 +12517,7 @@ unsigned GraphColor::edgeWeightGRF(LiveRange* lr1, LiveRange* lr2)
     }
 }
 
-unsigned GraphColor::edgeWeightARF(LiveRange* lr1, LiveRange* lr2)
+unsigned GraphColor::edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2)
 {
     if (lr1->getRegKind() == G4_FLAG)
     {

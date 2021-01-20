@@ -1379,7 +1379,7 @@ void LiveRange::allocForbiddenCalleeSave(Mem_Manager& mem, G4_Kernel* kernel)
 //
 // print assigned reg info
 //
-void LiveRange::dump()
+void LiveRange::dump() const
 {
     G4_Declare* decl = var->getDeclare();
     DEBUG_EMIT(this);

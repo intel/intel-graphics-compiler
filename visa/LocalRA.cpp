@@ -2722,17 +2722,15 @@ unsigned short LinearScan::getOccupiedBundle(G4_Declare* dcl)
     unsigned bundleNum = 0;
 
 
-    for (size_t i = 0, dclConflictSize = gra.getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
+    for (const BundleConflict &conflict : gra.getBundleConflicts(dcl))
     {
-        int offset = 0;
-        G4_Declare* bDcl = gra.getBundleConflictDcl(dcl, i, offset);
-        LocalLiveRange* lr = gra.getLocalLR(bDcl);
-        G4_VarBase* preg;
+        LocalLiveRange* lr = gra.getLocalLR(conflict.dcl);
         int  subregnum;
-        preg = lr->getPhyReg(subregnum);
+        G4_VarBase* preg = lr->getPhyReg(subregnum);
 
         if (preg != NULL)
         {
+            int offset = conflict.offset;
             unsigned int reg = preg->asGreg()->getRegNum();
             unsigned int bundle = gra.get_bundle(reg, offset);
             unsigned int bundle1 = gra.get_bundle(reg, offset + 1);

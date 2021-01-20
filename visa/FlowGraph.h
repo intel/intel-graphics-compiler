@@ -413,12 +413,12 @@ public:
     G4_opcode    getLastOpcode() const;
     unsigned getId() const         {return id;}
     void     setId(unsigned i)     {id = i;}
-    unsigned getPreId()            {return preId;}
+    unsigned getPreId() const      {return preId;}
     void     setPreId(unsigned i)  {preId = i;}
-    unsigned getRPostId()           {return rpostId;}
+    unsigned getRPostId() const    {return rpostId;}
     void     setRPostId(unsigned i) {rpostId = i;}
     void     markTraversed(unsigned num)      {traversal = num;}
-    bool     isAlreadyTraversed(unsigned num) {return traversal >= num;}
+    bool     isAlreadyTraversed(unsigned num) const {return traversal >= num;}
     void     removeSuccEdge(G4_BB* succ);
     void     removePredEdge(G4_BB* pred);
     void     writeBBId(std::ostream& cout)    {cout << "BB" << id;}
@@ -442,17 +442,17 @@ public:
     void       setBBType(int type)            {BBType |= type;}
     void       unsetBBType(G4_BB_TYPE type)   {BBType &= ~unsigned(type);}
     void     setInNaturalLoop(bool val)       {inNaturalLoop = val;}
-    bool     isInNaturalLoop()                {return inNaturalLoop;}
+    bool     isInNaturalLoop() const          {return inNaturalLoop;}
 
-    void     setSendInBB(bool val)        { hasSendInBB = val; }
-    bool     isSendInBB()                { return hasSendInBB; }
-    void     setNestLevel()                   {loopNestLevel ++;}
-    unsigned char getNestLevel()              {return loopNestLevel;}
+    void     setSendInBB(bool val)            { hasSendInBB = val; }
+    bool     isSendInBB() const               { return hasSendInBB; }
+    void     setNestLevel()                   { loopNestLevel++;}
+    unsigned char getNestLevel() const        { return loopNestLevel; }
     void     resetNestLevel()                 { loopNestLevel = 0; }
     void     setDivergent(bool val) { divergent = val; }
     bool     isDivergent() const    { return divergent; }
     bool     isAllLaneActive() const;
-    unsigned getScopeID() { return scopeID; }
+    unsigned getScopeID() const { return scopeID; }
     void setScopeID(unsigned id) { scopeID = id; }
 
     G4_BB* getPhysicalPred() const     { return physicalPred; }

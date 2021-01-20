@@ -1649,7 +1649,7 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
 //
 // determine if the dst writes the whole region of target declare
 //
-bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
+bool LivenessAnalysis::writeWholeRegion(const G4_BB* bb,
                                         G4_INST* inst,
                                         G4_DstRegRegion* dst,
                                         const Options *opt) const
@@ -1736,7 +1736,7 @@ bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
 //
 // determine if the dst writes the whole region of target declare
 //
-bool LivenessAnalysis::writeWholeRegion(G4_BB* bb,
+bool LivenessAnalysis::writeWholeRegion(const G4_BB* bb,
                                         G4_INST* inst,
                                         G4_VarBase* flagReg)
 {

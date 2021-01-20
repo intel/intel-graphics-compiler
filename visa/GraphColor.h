@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <list>
 #include <unordered_set>
 #include <limits>
+#include <memory>
 #include "RPE.h"
 #include "BitSet.h"
 #include "VarSplit.h"
@@ -225,7 +226,7 @@ public:
         G4_RegVar* getVar() const { return var; }
         G4_Declare* getDcl() const { return dcl; }
         G4_RegFileKind getRegKind() const { return regKind; }
-        void dump();
+        void dump() const;
 
         void setCalleeSaveBias(bool v) { calleeSaveBias = v; }
         bool getCalleeSaveBias() const { return calleeSaveBias; }
@@ -268,11 +269,11 @@ typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned int>>::it
 //
 namespace vISA
 {
-    typedef struct _MASK_Declares
+    struct MASK_Declares
     {
         BitSet* defaultMask;
         BitSet* noneDefaultMask;
-    } MASK_Declares;
+    };
 
     class Augmentation
     {
@@ -585,8 +586,8 @@ namespace vISA
         unsigned int numColor = 0;
 
 #define GRAPH_COLOR_MEM_SIZE 16*1024
-        unsigned edgeWeightGRF(LiveRange* lr1, LiveRange* lr2);
-        unsigned edgeWeightARF(LiveRange* lr1, LiveRange* lr2);
+        unsigned edgeWeightGRF(const LiveRange* lr1, const LiveRange* lr2);
+        unsigned edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2);
 
         void computeDegreeForGRF();
         void computeDegreeForARF();
@@ -633,11 +634,17 @@ namespace vISA
         LiveRange** getLRs() const { return lrs; }
     };
 
-    class RAVarInfo
+    struct BundleConflict
     {
-    public:
+        const G4_Declare * const dcl;
+        const int offset;
+        BundleConflict(const G4_Declare *dcl, int offset) : dcl(dcl), offset(offset) { }
+    };
+
+    struct RAVarInfo
+    {
         unsigned numSplit = 0;
-        unsigned int bb_id = UINT_MAX;      // block local variable's block id.
+        unsigned bb_id = UINT_MAX;      // block local variable's block id.
         G4_Declare* splittedDCL = nullptr;
         LocalLiveRange* localLR = nullptr;
         LSLiveRange* LSLR = nullptr;
@@ -646,10 +653,9 @@ namespace vISA
         G4_INST* startInterval = nullptr;
         G4_INST* endInterval = nullptr;
         unsigned char* mask = nullptr;
-        std::vector<G4_Declare*> subDclList;
+        std::vector<const G4_Declare*> subDclList;
         unsigned int subOff = 0;
-        std::vector<G4_Declare*> bundleConflictDcls;
-        std::vector<int> bundleConflictoffsets;
+        std::vector<BundleConflict> bundleConflicts;
         G4_SubReg_Align subAlign = G4_SubReg_Align::Any;
         bool isEvenAlign = false;
     };
@@ -660,7 +666,7 @@ namespace vISA
         G4_Kernel* kernel = nullptr;
         GlobalRA* gra = nullptr;
         std::vector<G4_Declare*> sortedLiveRanges;
-        std::unordered_map<G4_Declare*, std::tuple<LiveRange*, AugmentationMasks, G4_INST*, G4_INST*>> masks;
+        std::unordered_map<const G4_Declare*, std::tuple<LiveRange*, AugmentationMasks, G4_INST*, G4_INST*>> masks;
         LiveRange** lrs = nullptr;
         unsigned int numVars = 0;
         const Interference* intf = nullptr;
@@ -711,8 +717,8 @@ namespace vISA
     class GlobalRA
     {
     public:
-        VerifyAugmentation *verifyAugmentation = nullptr;
-        RegChartDump* regChart = nullptr;
+        std::unique_ptr<VerifyAugmentation> verifyAugmentation;
+        std::unique_ptr<RegChartDump> regChart;
         static bool useGenericAugAlign()
         {
             auto gen = getPlatformGeneration(getGenxPlatform());
@@ -739,7 +745,7 @@ namespace vISA
         void expandFillIntrinsic(G4_BB*);
         void expandSpillFillIntrinsics(unsigned int);
 
-        RAVarInfo defaultValues;
+        static const RAVarInfo defaultValues;
         std::vector<RAVarInfo> vars;
         std::vector<AugmentationMasks> varMasks;
         std::vector<G4_Declare *> UndeclaredVars;
@@ -759,10 +765,18 @@ namespace vISA
         // map ret location to declare for call/ret
         std::map<uint32_t, G4_Declare*> retDecls;
 
-        void resize(unsigned int id)
+        RAVarInfo &setVar(const G4_Declare* dcl)
         {
-            if (id >= vars.size())
-                vars.resize(id + 1);
+            auto dclid = dcl->getDeclId();
+            if (dclid >= vars.size())
+                vars.resize(dclid + 1);
+            return vars[dclid];
+        }
+
+        const RAVarInfo &getVar(const G4_Declare* dcl) const
+        {
+            auto dclid = dcl->getDeclId();
+            return dclid >= vars.size() ? defaultValues : vars[dclid];
         }
 
         // temp variable storing the FP dcl's old value
@@ -889,36 +903,22 @@ namespace vISA
 
         unsigned int getSplitVarNum(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.numSplit;
-            }
-            return vars[dclid].numSplit;
+            return getVar(dcl).numSplit;
         }
 
         void setSplitVarNum(const G4_Declare* dcl, unsigned int val)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].numSplit = val;
+            setVar(dcl).numSplit = val;
         }
 
         unsigned int getBBId(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.bb_id;
-            }
-            return vars[dclid].bb_id;
+            return getVar(dcl).bb_id;
         }
 
-        void setBBId(G4_Declare* dcl, unsigned int id)
+        void setBBId(const G4_Declare* dcl, unsigned int id)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].bb_id = id;
+            setVar(dcl).bb_id = id;
         }
 
         bool isBlockLocal(const G4_Declare* dcl) const
@@ -928,78 +928,55 @@ namespace vISA
 
         G4_Declare* getSplittedDeclare(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.splittedDCL;
-            }
-            return vars[dclid].splittedDCL;
+            return getVar(dcl).splittedDCL;
         }
 
-        void setSplittedDeclare(G4_Declare* dcl, G4_Declare* sd)
+        void setSplittedDeclare(const G4_Declare* dcl, G4_Declare* sd)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].splittedDCL = sd;
+            setVar(dcl).splittedDCL = sd;
         }
 
         LocalLiveRange* getLocalLR(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.localLR;
-            }
-            return vars[dclid].localLR;
+            return getVar(dcl).localLR;
         }
 
         void setLocalLR(G4_Declare* dcl, LocalLiveRange* lr)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            MUST_BE_TRUE(vars[dclid].localLR == NULL, "Local live range already allocated for declaration");
-            vars[dclid].localLR = lr;
+            RAVarInfo &var = setVar(dcl);
+            MUST_BE_TRUE(var.localLR == NULL, "Local live range already allocated for declaration");
+            var.localLR = lr;
             lr->setTopDcl(dcl);
         }
 
         LSLiveRange* getSafeLSLR(const G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
-            assert(dclid <= vars.size());
+            assert(dclid < vars.size());
             return vars[dclid].LSLR;
         }
 
-        LSLiveRange* getLSLR(G4_Declare* dcl) const
+        LSLiveRange* getLSLR(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return nullptr;
-            }
-            return vars[dclid].LSLR;
+            return getVar(dcl).LSLR;
         }
 
         void setLSLR(G4_Declare* dcl, LSLiveRange* lr)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            MUST_BE_TRUE(vars[dclid].LSLR == NULL, "Local live range already allocated for declaration");
-            vars[dclid].LSLR = lr;
+            RAVarInfo &var = setVar(dcl);
+            MUST_BE_TRUE(var.LSLR == NULL, "Local live range already allocated for declaration");
+            var.LSLR = lr;
             lr->setTopDcl(dcl);
         }
 
         void resetLSLR(const G4_Declare* dcl)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].LSLR = nullptr;
+            setVar(dcl).LSLR = nullptr;
         }
 
         void resetLocalLR(const G4_Declare* dcl)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].localLR = nullptr;
+            setVar(dcl).localLR = nullptr;
         }
 
         void clearStaleLiveRanges()
@@ -1013,94 +990,57 @@ namespace vISA
 
         void recordRef(const G4_Declare* dcl)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].numRefs += 1;
+            setVar(dcl).numRefs++;
         }
 
         unsigned int getNumRefs(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.numRefs;
-            }
-            return vars[dclid].numRefs;
+            return getVar(dcl).numRefs;
         }
 
-        void setNumRefs(G4_Declare* dcl, unsigned int refs)
+        void setNumRefs(const G4_Declare* dcl, unsigned int refs)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].numRefs = refs;
+            setVar(dcl).numRefs = refs;
         }
 
         BankConflict getBankConflict(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.conflict;
-            }
-            return vars[dclid].conflict;
+            return getVar(dcl).conflict;
         }
 
         void setBankConflict(const G4_Declare* dcl, BankConflict c)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].conflict = c;
+            setVar(dcl).conflict = c;
         }
 
         G4_INST* getStartInterval(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.startInterval;
-            }
-            return vars[dclid].startInterval;
+            return getVar(dcl).startInterval;
         }
 
         void setStartInterval(const G4_Declare* dcl, G4_INST* inst)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].startInterval = inst;
+            setVar(dcl).startInterval = inst;
         }
 
         G4_INST* getEndInterval(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.endInterval;
-            }
-            return vars[dclid].endInterval;
+            return getVar(dcl).endInterval;
         }
 
         void setEndInterval(const G4_Declare* dcl, G4_INST* inst)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].endInterval = inst;
+            setVar(dcl).endInterval = inst;
         }
 
         unsigned char* getMask(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.mask;
-            }
-            return vars[dclid].mask;
+            return getVar(dcl).mask;
         }
 
-        void setMask(G4_Declare* dcl, unsigned char* m)
+        void setMask(const G4_Declare* dcl, unsigned char* m)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].mask = m;
+            setVar(dcl).mask = m;
         }
 
         AugmentationMasks getAugmentationMask(const G4_Declare* dcl) const
@@ -1113,7 +1053,7 @@ namespace vISA
             return varMasks[dclid];
         }
 
-        void setAugmentationMask(G4_Declare* dcl, AugmentationMasks m)
+        void setAugmentationMask(const G4_Declare* dcl, AugmentationMasks m)
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= varMasks.size())
@@ -1121,52 +1061,34 @@ namespace vISA
             varMasks[dclid] = m;
             if (dcl->getIsSplittedDcl())
             {
-                auto dclSubDclSize = getSubDclSize(dcl);
-                for (unsigned i = 0; i < dclSubDclSize; i++)
+                for (const G4_Declare *subDcl : getSubDclList(dcl))
                 {
-                    G4_Declare * subDcl = getSubDcl(dcl, i);
                     setAugmentationMask(subDcl, m);
                 }
             }
         }
 
-        bool getHasNonDefaultMaskDef(G4_Declare* dcl) const
+        bool getHasNonDefaultMaskDef(const G4_Declare* dcl) const
         {
             return (getAugmentationMask(dcl) == AugmentationMasks::NonDefault);
         }
 
-        void addBundleConflictDcl(G4_Declare *dcl, G4_Declare* subDcl, int offset)
+        void addBundleConflictDcl(const G4_Declare *dcl, const G4_Declare* subDcl, int offset)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].bundleConflictDcls.push_back(subDcl);
-            vars[dclid].bundleConflictoffsets.push_back(offset);
+            setVar(dcl).bundleConflicts.emplace_back(subDcl, offset);
         }
 
-        void clearBundleConflictDcl(G4_Declare* dcl)
+        void clearBundleConflictDcl(const G4_Declare* dcl)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].bundleConflictDcls.clear();
-            vars[dclid].bundleConflictoffsets.clear();
+            setVar(dcl).bundleConflicts.clear();
         }
 
-        G4_Declare* getBundleConflictDcl(G4_Declare* dcl, unsigned i, int &offset)
+        const std::vector<BundleConflict> &getBundleConflicts(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            offset = vars[dclid].bundleConflictoffsets[i];
-            return vars[dclid].bundleConflictDcls[i];
+            return getVar(dcl).bundleConflicts;
         }
 
-        unsigned getBundleConflictDclSize(const G4_Declare* dcl)
-        {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            return (unsigned)(vars[dclid].bundleConflictDcls.size());
-        }
-
-        unsigned int get_bundle(unsigned int baseReg, int offset)
+        unsigned int get_bundle(unsigned int baseReg, int offset) const
         {
             return (((baseReg + offset) % 64) / 4);
         }
@@ -1177,13 +1099,13 @@ namespace vISA
             unsigned bundleNum = 0;
 
 
-            for (size_t i = 0, dclConflictSize = getBundleConflictDclSize(dcl); i < dclConflictSize; i++)
+            for (const BundleConflict &conflict : getBundleConflicts(dcl))
             {
-                int offset = 0;
-                G4_Declare* bDcl = getBundleConflictDcl(dcl, i, offset);
-                if (bDcl->getRegVar()->isPhyRegAssigned())
+                const G4_RegVar *regVar = conflict.dcl->getRegVar();
+                if (regVar->isPhyRegAssigned())
                 {
-                    unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                    int offset = conflict.offset;
+                    unsigned int reg = regVar->getPhyReg()->asGreg()->getRegNum();
                     unsigned int bundle = get_bundle(reg, offset);
                     unsigned int bundle1 = get_bundle(reg, offset + 1);
                     if (!(occupiedBundles & ((unsigned short)1 << bundle)))
@@ -1202,64 +1124,39 @@ namespace vISA
             return occupiedBundles;
         }
 
-        void addSubDcl(G4_Declare *dcl, G4_Declare* subDcl)
+        void addSubDcl(const G4_Declare *dcl, G4_Declare* subDcl)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].subDclList.push_back(subDcl);
+            setVar(dcl).subDclList.push_back(subDcl);
         }
 
-        void clearSubDcl(G4_Declare* dcl)
+        void clearSubDcl(const G4_Declare* dcl)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].subDclList.clear();
+            setVar(dcl).subDclList.clear();
         }
 
-        G4_Declare* getSubDcl(const G4_Declare* dcl, unsigned i)
+        const std::vector<const G4_Declare*> &getSubDclList(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            return vars[dclid].subDclList[i];
+            return getVar(dcl).subDclList;
         }
 
-        unsigned getSubDclSize(const G4_Declare* dcl)
+        unsigned int getSubOffset(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            return (unsigned)(vars[dclid].subDclList.size());
-        }
-
-        unsigned int getSubOffset(const G4_Declare* dcl)
-        {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.subOff;
-            }
-            return vars[dclid].subOff;
+            return getVar(dcl).subOff;
         }
 
         void setSubOffset(const G4_Declare* dcl, unsigned int offset)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].subOff = offset;
+            setVar(dcl).subOff = offset;
         }
 
-        G4_SubReg_Align getSubRegAlign(const G4_Declare* dcl)
+        G4_SubReg_Align getSubRegAlign(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            return vars[dclid].subAlign;
+            return getVar(dcl).subAlign;
         }
 
         void setSubRegAlign(const G4_Declare* dcl, G4_SubReg_Align subAlg)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-
-            auto& subAlign = vars[dclid].subAlign;
+            auto& subAlign = setVar(dcl).subAlign;
             // sub reg alignment can only be more restricted than prior setting
             MUST_BE_TRUE(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
                 ERROR_UNKNOWN);
@@ -1275,28 +1172,22 @@ namespace vISA
             }
         }
 
-        bool hasAlignSetup(const G4_Declare* dcl)
+        bool hasAlignSetup(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            if (vars[dclid].subAlign == defaultValues.subAlign &&
-                dcl->getSubRegAlign() != defaultValues.subAlign)
+            if (getVar(dcl).subAlign == G4_SubReg_Align::Any &&
+                dcl->getSubRegAlign() != G4_SubReg_Align::Any)
                 return false;
             return true;
         }
 
-        bool isEvenAligned(const G4_Declare* dcl)
+        bool isEvenAligned(const G4_Declare* dcl) const
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            return vars[dclid].isEvenAlign;
+            return getVar(dcl).isEvenAlign;
         }
 
         void setEvenAligned(const G4_Declare* dcl, bool e)
         {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].isEvenAlign = e;
+            setVar(dcl).isEvenAlign = e;
         }
 
         BankAlign getBankAlign(G4_Declare*);
@@ -1312,17 +1203,8 @@ namespace vISA
 
             if (kernel.getOptions()->getOption(vISA_VerifyAugmentation))
             {
-                verifyAugmentation = new VerifyAugmentation();
+                verifyAugmentation = std::make_unique<VerifyAugmentation>();
             }
-        }
-
-        ~GlobalRA()
-        {
-            if (verifyAugmentation)
-                delete verifyAugmentation;
-
-            if (regChart)
-                delete regChart;
         }
 
         void emitFGWithLiveness(LivenessAnalysis& liveAnalysis);
