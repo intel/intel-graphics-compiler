@@ -146,16 +146,37 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
     // create a data section for global constant variables
     auto& ca = annotations.m_initConstantAnnotation.front();
     if (ca->AllocSize) {
+        // the normal .data.const size
         uint32_t dataSize = ca->InlineData.size();
-        uint32_t paddingSize = ca->AllocSize - dataSize;
+        // the zero-initialize variables size, the .bss.const size
+        uint32_t bssSize = ca->AllocSize - dataSize;
         uint32_t alignment = ca->Alignment;
 
-        // FIXME: Before runtime can support bss section, we still generate all zero-initialized variables
-        // in the .data.const section and no .bss.const section.
-        // The .bss.const section size is the padding size (ca->AllocSize - ca->InlineData.size()),
-        // and the normal .data.const size is ca->InlineData.size()
-        mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
-            dataSize, paddingSize, alignment);
+        if (IGC_IS_FLAG_ENABLED(AllocateZeroInitializedVarsInBss)) {
+            zebin::ZEELFObjectBuilder::SectionID normal_id = -1, bss_id = -1;
+            if (dataSize) {
+                // if the bss section existed, we leave the alignment in bss section.
+                // that in our design the entire global buffer is the size of normal section (.const) plus bss section
+                // we do not want to add the alignment twice on the both sections
+                // Alos set the padding size to 0 that we always put the padding into bss section
+                uint32_t normal_alignment = bssSize ? 0 : alignment;
+                normal_id = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
+                    dataSize, 0, normal_alignment);
+            }
+            if (bssSize) {
+                bss_id = mBuilder.addSectionBss("const", bssSize, alignment);
+            }
+
+            // set mGlobalConstSectID to normal_id if existed, and bss_id if not.
+            // mGlobalConstSectID will be used for symbol section reference. We always refer to normal_id section
+            // even if the the symbol is defeind in bss section when normal_id section exists
+            mGlobalConstSectID = dataSize ? normal_id : bss_id;
+        } else {
+            // before runtime can support bss section, we create all 0s in .const.data section by adding
+            // bssSize of padding
+            mGlobalConstSectID = mBuilder.addSectionData("const", (const uint8_t*)ca->InlineData.data(),
+                dataSize, bssSize, alignment);
+        }
     }
 
     // String literals
@@ -184,19 +205,31 @@ void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
         return;
 
     uint32_t dataSize = ca->InlineData.size();
-    uint32_t paddingSize = ca->AllocSize - dataSize;
+    uint32_t bssSize = ca->AllocSize - dataSize;
     uint32_t alignment = ca->Alignment;
 
-    // FIXME: Before runtime can support bss section, we still generate all zero-initialized variables
-    // in the .data.global
-    // The .bss.global section size is the padding size (ca->AllocSize - ca->InlineData.size()),
-    // and the normal .data.global size is ca->InlineData.size()
-    // Side note (when adding bss section):
-    // mGlobalSectID is the section id that will be referenced by global symbols.
-    // It should be .data.global if existed. If there's only .bss.global section, then all global
-    // symbols reference to .bss.global section, so set the mGlobalConstSectID to it
-    mGlobalSectID = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
-        dataSize, paddingSize, alignment);
+    if (IGC_IS_FLAG_ENABLED(AllocateZeroInitializedVarsInBss)) {
+        // The .bss.global section size is the bssSize (ca->AllocSize - ca->InlineData.size()),
+        // and the normal .data.global size is dataSize (ca->InlineData.size())
+        zebin::ZEELFObjectBuilder::SectionID normal_id = -1, bss_id = -1;
+        if (dataSize) {
+            uint32_t normal_alignment = bssSize ? 0 : alignment;
+            normal_id = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
+                dataSize, 0, normal_alignment);
+        }
+        if (bssSize) {
+            bss_id = mBuilder.addSectionBss("global", bssSize, alignment);
+        }
+        // mGlobalSectID is the section id that will be referenced by global symbols.
+        // It should be .data.global if existed. If there's only .bss.global section, then all global
+        // symbols reference to .bss.global section, so set the mGlobalConstSectID to it
+        mGlobalSectID = dataSize ? normal_id : bss_id;
+    } else {
+        // before runtime can support bss section, we create all 0s in .global.data section by adding
+        // bssSize of padding
+        mGlobalSectID = mBuilder.addSectionData("global", (const uint8_t*)ca->InlineData.data(),
+            dataSize, bssSize, alignment);
+    }
 }
 
 void ZEBinaryBuilder::addSPIRV(const uint8_t* data, uint32_t size)

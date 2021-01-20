@@ -265,17 +265,17 @@ private:
     class Symbol {
     public:
         Symbol(std::string name, uint64_t addr, uint64_t size, uint8_t binding,
-            uint8_t type, int32_t sectionId)
+            uint8_t type, SectionID sectionId)
             : m_name(name), m_addr(addr), m_size(size), m_binding(binding),
             m_type(type), m_sectionId(sectionId)
         {}
 
-        std::string&   name()            { return m_name;      }
-        uint64_t       addr()      const { return m_addr;      }
-        uint64_t       size()      const { return m_size;      }
-        uint8_t        binding()   const { return m_binding;   }
-        uint8_t        type()      const { return m_type;      }
-        int32_t        sectionId() const { return m_sectionId; }
+        std::string& name()            { return m_name;      }
+        uint64_t     addr()      const { return m_addr;      }
+        uint64_t     size()      const { return m_size;      }
+        uint8_t      binding()   const { return m_binding;   }
+        uint8_t      type()      const { return m_type;      }
+        SectionID    sectionId() const { return m_sectionId; }
 
     private:
         std::string m_name;
@@ -283,7 +283,7 @@ private:
         uint64_t m_size;
         uint8_t m_binding;
         uint8_t m_type;
-        int32_t m_sectionId;
+        SectionID m_sectionId;
     };
 
     class Relocation {

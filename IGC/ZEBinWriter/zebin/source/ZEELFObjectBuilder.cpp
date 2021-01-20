@@ -340,10 +340,11 @@ std::string ZEELFObjectBuilder::getSectionNameBySectionID(SectionID id)
 
 uint64_t ELFWriter::writeSectionData(const uint8_t* data, uint64_t size, uint32_t padding)
 {
-    IGC_ASSERT(nullptr != data);
-
     uint64_t start_off = m_W.OS.tell();
-    m_W.OS.write((const char*)data, size);
+
+    // it's possible that a section has only pading but no data
+    if (data != nullptr)
+        m_W.OS.write((const char*)data, size);
 
     writePadding(padding);
 
@@ -532,7 +533,8 @@ void ELFWriter::writeSections()
             IGC_ASSERT(entry.section->getKind() == Section::STANDARD);
             const StandardSection* const stdsect =
                 static_cast<const StandardSection*>(entry.section);
-            IGC_ASSERT(nullptr != stdsect && nullptr != stdsect->m_data);
+            IGC_ASSERT(nullptr != stdsect);
+            IGC_ASSERT(stdsect->m_size + stdsect->m_padding);
             entry.size = writeSectionData(
                 stdsect->m_data, stdsect->m_size, stdsect->m_padding);
             break;
