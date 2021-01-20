@@ -1647,7 +1647,9 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join)
     return true; // already at start
   Join->removeFromParent();
   Join->insertBefore(InsertBefore);
-  GotoJoinEVsMap[Join].hoistEVs();
+  // Such transformation should be performed only for Early Conformance pass
+  if (!FG)
+    GotoJoinEVsMap[Join].hoistEVs();
   Modified = true;
   return true;
 }
@@ -3248,8 +3250,10 @@ void GenXSimdCFConformance::checkInterference(SetVector<SimpleValue> *Vals,
     bool IsConstantPred = GenXIntrinsic::getGenXIntrinsicID(EMVal) == GenXIntrinsic::genx_constantpred;
     // Set of blocks where we know the value is live out.
     SmallSet<BasicBlock *, 8> LiveOut;
-    // Start from each use and scan backwards.
-    for (auto ui = EMVal->use_begin(), ue = EMVal->use_end(); ui != ue;) {
+    // Start from each use and scan backwards. If the EMVal was affected by
+    // transformations, there is no need to check other uses.
+    for (auto ui = EMVal->use_begin(), ue = EMVal->use_end();
+         ui != ue && ToRemove.count(EMVal) == 0;) {
       auto User = cast<Instruction>(ui->getUser());
       auto OpNo = ui->getOperandNo();
       ++ui;
