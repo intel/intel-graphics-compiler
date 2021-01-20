@@ -5070,7 +5070,7 @@ static int getConflictTimesForTGLLP(std::ostream& output, int *firstRegCandidate
     return conflictTimes;
 }
 
-static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, int &sameBankConflicts, bool zeroOne, bool isTGLLP)
+static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, int &sameBankConflicts, bool zeroOne, bool isTGLLP, bool reducedBundles)
 {
     int conflictTimes = 0;
     int bundles[2][16];
@@ -5119,9 +5119,13 @@ static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, 
             if (zeroOne)
             {
                 bankID = (firstRegCandidate[i]) % 2;
-                bundleID = (firstRegCandidate[i] % 16) / 2;
+                bundleID = (firstRegCandidate[i] % 32) / 2;
             }
 
+            if(reducedBundles)
+            {
+                bundleID = (firstRegCandidate[i] % 16) / 2;
+            }
             //Same bank and same bundle
             if (bundles[bankID][bundleID] != -1)  //Same bank and same bundle
             {
@@ -5182,7 +5186,7 @@ uint32_t G4_BB::emitBankConflictGen12(
     std::ostream& os_output, const G4_INST *inst,
     int *suppressRegs,
     int &sameConflictTimes, int &twoSrcConflicts,
-    int &simd16RS, bool zeroOne, bool isTGLLP)
+    int &simd16RS, bool zeroOne, bool isTGLLP, bool hasReducedBundles)
 {
     std::stringstream output;
 
@@ -5364,7 +5368,7 @@ uint32_t G4_BB::emitBankConflictGen12(
     //Get the bank conflict for the first GRF instruction.
     if (candidateNum > 1)
     {
-        conflictTimes = getConflictTimesForTGL(output, firstRegCandidate, sameConflictTimes, zeroOne, isTGLLP);
+        conflictTimes = getConflictTimesForTGL(output, firstRegCandidate, sameConflictTimes, zeroOne, isTGLLP, hasReducedBundles);
         if (candidateNum == 2)
         {
             twoSrcConflicts += conflictTimes;
@@ -5440,7 +5444,7 @@ uint32_t G4_BB::emitBankConflictGen12(
         if (candidateNum > 1)
         {
             int c = 0;
-            c = getConflictTimesForTGL(output, secondRegCandidate, sameConflictTimes, zeroOne, isTGLLP);
+            c = getConflictTimesForTGL(output, secondRegCandidate, sameConflictTimes, zeroOne, isTGLLP, false);
             conflictTimes += c;
             if (candidateNum == 2)
             {
@@ -5814,7 +5818,7 @@ void G4_BB::emitBasicInstructionIga(
             }
             else
             {
-                BCNum = emitBankConflictGen12(output, inst, suppressRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts, false, true);
+                BCNum = emitBankConflictGen12(output, inst, suppressRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts, false, true, false);
             }
             parent->G12BCStats.addBC(BCNum);
             parent->G12BCStats.addSameBankBC(sameBankConflicts);

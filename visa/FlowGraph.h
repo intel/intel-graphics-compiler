@@ -468,9 +468,9 @@ public:
     void emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it);
     void emitBankConflict(std::ostream& output, const G4_INST *inst);
 
+    uint32_t emitBankConflictGen12(std::ostream& os_output, const G4_INST* inst, int* suppressRegs, int& sameConflictTimes, int& twoSrcConflicts, int& simd16RS, bool zeroOne, bool isTGLLP, bool hasReducedBundles);
     uint32_t emitBankConflictGen12lp(std::ostream & os_output, const G4_INST * inst, int * suppressRegs, int * lastRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS);
     uint32_t countReadModifyWrite(std::ostream& os_output, const G4_INST *inst);
-    uint32_t emitBankConflictGen12(std::ostream & os_output, const G4_INST * inst, int * suppressRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS, bool zeroOne, bool isTGLLP);
     void emitRegInfo(std::ostream& output, G4_INST* inst, int offset);
     void emitDepInfo(std::ostream& output, G4_INST *inst, int offset);
 
