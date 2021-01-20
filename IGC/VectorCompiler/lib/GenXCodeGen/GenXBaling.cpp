@@ -298,6 +298,10 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
 static int checkModifier(Instruction *Inst)
 {
   switch (Inst->getOpcode()) {
+#if LLVM_VERSION_MAJOR > 8
+    case Instruction::FNeg:
+      return BaleInfo::NEGMOD;
+#endif
     case Instruction::Sub:
     case Instruction::FSub:
       // Negate is represented in LLVM IR by subtract from 0.
@@ -366,6 +370,8 @@ bool GenXBaling::operandCanBeBaled(
     switch (Mod) {
       case BaleInfo::MAININST:
         break;
+      case BaleInfo::NEGMOD:
+        return true;
       case BaleInfo::ZEXT:
       case BaleInfo::SEXT:
         if (ModType != GenXIntrinsicInfo::MODIFIER_DEFAULT)
@@ -1178,6 +1184,25 @@ bool GenXBaling::isHighCostBaling(uint16_t Type, Instruction *Inst) {
 }
 
 /***********************************************************************
+ * acceptableMainInst : if Inst acceptable as bale main instruction
+ */
+static bool acceptableMainInst(Instruction *Inst) {
+  if (isa<BinaryOperator>(Inst))
+    return true;
+  if (isa<CmpInst>(Inst))
+    return true;
+  if (isa<CastInst>(Inst))
+    return true;
+  if (isa<SelectInst>(Inst))
+    return true;
+#if LLVM_VERSION_MAJOR > 8
+  if (Inst->getOpcode() == Instruction::FNeg)
+    return true;
+#endif
+  return false;
+}
+
+/***********************************************************************
  * processMainInst : set up baling info for potential main instruction
  */
 void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
@@ -1186,8 +1211,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
   if (IntrinID == Intrinsic::dbg_value)
     return;
   if (IntrinID == GenXIntrinsic::not_any_intrinsic) {
-    if (!isa<BinaryOperator>(Inst) && !isa<CmpInst>(Inst)
-        && !isa<CastInst>(Inst) && !isa<SelectInst>(Inst))
+    if (!acceptableMainInst(Inst))
       return;
     if (isa<BitCastInst>(Inst))
       return;

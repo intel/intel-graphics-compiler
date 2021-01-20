@@ -2114,6 +2114,12 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     Mod |= MODIFIER_ABS;
     break;
   case BaleInfo::NEGMOD:
+#if LLVM_VERSION_MAJOR > 8
+    if (Inst->getOpcode() == Instruction::FNeg) {
+      Mod ^= MODIFIER_NEG;
+      break;
+    }
+#endif
     if (!(Mod & MODIFIER_ABS))
       Mod ^= MODIFIER_NEG;
     Idx = 1; // the input we want in "0-x" is x, not 0.
