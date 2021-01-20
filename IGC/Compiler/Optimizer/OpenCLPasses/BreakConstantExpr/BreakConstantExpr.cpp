@@ -121,7 +121,7 @@ bool BreakConstantExpr::runOnFunction(Function& F)
 
 void BreakConstantExpr::replaceConstantWith(llvm::Constant* exprOrVec, llvm::Instruction* newInst, int operandIndex, llvm::Instruction* user)
 {
-    if (PHINode * phi = dyn_cast<PHINode>(user))
+    if (PHINode* phi = dyn_cast<PHINode>(user))
     {
         newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
         user->setOperand(operandIndex, newInst);
@@ -131,12 +131,15 @@ void BreakConstantExpr::replaceConstantWith(llvm::Constant* exprOrVec, llvm::Ins
         newInst->insertBefore(user);
         // For debug info intrinsic, the operand is a metadata that
         // contains the constant expression.
-#if 1
-        // llvm 3.6.0 transition
-        user->setOperand(operandIndex, newInst);
-#else
-        IGC_ASSERT(0);
-#endif
+        if (auto* DDI = dyn_cast<DbgDeclareInst>(user))
+        {
+            MetadataAsValue* MAV = MetadataAsValue::get(user->getContext(), ValueAsMetadata::get(newInst));
+            user->setOperand(operandIndex, MAV);
+        }
+        else
+        {
+            user->setOperand(operandIndex, newInst);
+        }
     }
     else
     {
