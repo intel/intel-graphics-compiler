@@ -1512,18 +1512,11 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     memset( &patch, 0, sizeof( patch ) );
 
+                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_STATELESS_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT;
                     patch.Size = sizeof( patch );
                     patch.ArgumentNumber = ptrArg->ArgumentNumber;
-                    if (ptrArg->IsBindlessAccess)
-                    {
-                        patch.SurfaceStateHeapOffset = ptrArg->BindingTableIndex;
-                    }
-                    else
-                    {
-                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
-                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
-                    }
+                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.LocationIndex = ptrArg->LocationIndex;
