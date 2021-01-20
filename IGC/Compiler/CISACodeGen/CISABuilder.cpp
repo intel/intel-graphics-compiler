@@ -4302,7 +4302,8 @@ namespace IGC
             SaveOption(vISA_HasEarlyGRFRead, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressionWA))
+        if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressionWA) &&
+            VISAPlatform >= GENX_TGLLP)
         {
             SaveOption(vISA_InsertDummyMovForHWRSWA, true);
         }
