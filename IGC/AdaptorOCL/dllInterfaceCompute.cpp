@@ -375,6 +375,17 @@ void DumpShaderFile(
     }
 }
 
+std::string getBaseFilename(std::string& FName)
+{
+#if defined(_WIN32)
+    const char Sep = '\\';  // Windows file separator
+#else
+    const char Sep = '/';   // Linux file separator
+#endif
+    size_t i = FName.rfind(Sep);
+    return (i == std::string::npos ? FName : FName.substr(i + 1));
+}
+
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
 spv_result_t DisassembleSPIRV(const char* pBuffer, UINT bufferSize, spv_text* outSpirvAsm)
 {
@@ -920,18 +931,18 @@ bool TranslateBuild(
             << ".0x" << IGCPlatform.GetDeviceId()
             << ".0x" << IGCPlatform.GetRevId()
             << std::dec
-            << " -inputcs " << inputf;
+            << " -inputcs " << getBaseFilename(inputf);
         if (isbc)
         {
             cmdfile << " -bitcode";
         }
         if (of.size() > 0)
         {
-            cmdfile << " -foptions " << of;
+            cmdfile << " -foptions " << getBaseFilename(of);
         }
         if (iof.size() > 0)
         {
-            cmdfile << " -finternal_options " << iof;
+            cmdfile << " -finternal_options " << getBaseFilename(iof);
         }
         DumpShaderFile(pOutputFolder, cmdfile.str().c_str(), cmdfile.str().size(), hash, "_cmd.txt");
     }
