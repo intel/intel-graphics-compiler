@@ -243,6 +243,7 @@ namespace IGC
         bool disableVertexComponentPacking              = false;
         bool disablePartialVertexComponentPacking       = false;
         bool PreferBindlessImages                       = false;
+        bool UseBindlessMode                            = false;
         bool disableMathRefactoring                     = false;
         bool EnableTakeGlobalAddress                    = false;
         bool IsLibraryCompilation                       = false;

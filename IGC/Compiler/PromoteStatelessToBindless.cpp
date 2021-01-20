@@ -170,6 +170,9 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
 void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) const
 {
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ImplicitArgs implicitArgs(F, pMdUtils);
+
     // Modify the reference to the buffer not through all users but only in instructions
     // which are used in accesing (load/store) the buffer.
     for (auto inst : m_AddressUsedSrcPtrMap)
@@ -196,13 +199,18 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
     {
         Instruction* accessInst = cast<Instruction>(inst.first);
         Argument* srcPtr = cast<Argument>(inst.second);
+        Argument* srcOffset = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
 
         // Get the base bindless pointer
         IGCIRBuilder<> builder(accessInst);
         Value* resourcePtr = IGC::GetBufferOperand(accessInst);
         unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS);
         PointerType* basePointerType = PointerType::get(resourcePtr->getType()->getPointerElementType(), bindlessAS);
+#if 0
         Value* basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
+#else
+        Value* basePointer = builder.CreateIntToPtr(srcOffset, basePointerType);
+#endif
         Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
 
         if (LoadInst * load = dyn_cast<LoadInst>(accessInst))

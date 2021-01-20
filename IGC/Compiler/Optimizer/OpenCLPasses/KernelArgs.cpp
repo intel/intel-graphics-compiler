@@ -347,6 +347,8 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE;
     case ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE:
         return KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE;
+    case ImplicitArg::BINDLESS_OFFSET:
+        return KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET;
 
     default:
         return KernelArg::ArgType::NOT_TO_ALLOCATE;
@@ -374,7 +376,8 @@ unsigned int KernelArg::calcAssociatedArgNo(const ImplicitArg& implicitArg, cons
         (ImplicitArgs::isImplicitStruct(argType)) ||
         (argType == ImplicitArg::GET_OBJECT_ID) ||
         (argType == ImplicitArg::GET_BLOCK_SIMD_SIZE) ||
-        (argType == ImplicitArg::BUFFER_OFFSET)
+        (argType == ImplicitArg::BUFFER_OFFSET) ||
+        (argType == ImplicitArg::BINDLESS_OFFSET)
         )
     {
         // For implicit image and sampler and struct arguments and buffer offset,
@@ -787,6 +790,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
 
+            KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
+
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
             KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH,
             KernelArg::ArgType::IMPLICIT_IMAGE_DEPTH,
@@ -901,6 +906,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN,
             KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE,
             KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE,
+
+            KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET,
 
             KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT,
             KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH,

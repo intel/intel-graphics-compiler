@@ -128,6 +128,8 @@ namespace IGC
             IMPLICIT_STAGE_IN_GRID_ORIGIN,
             IMPLICIT_STAGE_IN_GRID_SIZE,
 
+            IMPLICIT_BINDLESS_OFFSET,
+
             // Argument types that shouldn't be allocated
             NOT_TO_ALLOCATE,
             SAMPLER = NOT_TO_ALLOCATE,

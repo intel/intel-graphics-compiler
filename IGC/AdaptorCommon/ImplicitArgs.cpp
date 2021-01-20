@@ -310,6 +310,8 @@ ImplicitArgs::ImplicitArgs(const llvm::Function& func , const MetaDataUtils* pMd
 
         IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::SYNC_BUFFER, "syncBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_PTR, false));
 
+        IMPLICIT_ARGS.push_back(ImplicitArg(ImplicitArg::BINDLESS_OFFSET, "bindlessOffset", ImplicitArg::INT, WIAnalysis::UNIFORM, 1, ImplicitArg::ALIGN_DWORD, true));
+
         IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS), "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
 
         {
@@ -514,6 +516,55 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
         }
 
         OffsetArgs[ImplicitArg::BUFFER_OFFSET].insert(argNo);
+    }
+    if (OffsetArgs.size() > 0)
+    {
+        ImplicitArgs::addNumberedArgs(F, OffsetArgs, pMdUtils);
+    }
+}
+
+// Add one implicit argument for each pointer argument to global or constant buffer.
+// Note that F is the original input function (ie, without implicit arguments).
+void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD)
+{
+    ImplicitArg::ArgMap OffsetArgs;
+    FunctionInfoMetaDataHandle funcInfoMD =
+        pMdUtils->getFunctionsInfoItem(const_cast<Function*>(&F));
+
+    IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
+
+    // StatelessToStatefull optimization is not applied on non-kernel functions.
+    if (!isEntryFunc(pMdUtils, &F))
+        return;
+
+    FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
+    for (auto& Arg : F.args())
+    {
+        Value* AV = &Arg;
+        PointerType* PTy = dyn_cast<PointerType>(AV->getType());
+        if (!PTy ||
+            (PTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT &&
+                PTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL))
+        {
+            continue;
+        }
+
+        int argNo = Arg.getArgNo();
+
+        std::string argbaseType = "";
+        if (funcMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNo)
+            argbaseType = funcMD->m_OpenCLArgBaseTypes[argNo];
+
+        // Do not generate implicit arg for any image arguments
+        KernelArg::ArgType ImgArgType;
+        if (KernelArg::isImage(
+            &Arg, argbaseType, ImgArgType) ||
+            KernelArg::isSampler(&Arg, argbaseType))
+        {
+            continue;
+        }
+
+        OffsetArgs[ImplicitArg::BINDLESS_OFFSET].insert(argNo);
     }
     if (OffsetArgs.size() > 0)
     {
