@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vc/igcdeps/cmc.h"
 
 #include "vc/GenXCodeGen/GenXWrapper.h"
-#include "vc/Support/StatusCode.h"
+#include "vc/Support/Status.h"
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/ScopeExit.h>
@@ -189,10 +189,6 @@ static std::error_code getError(llvm::Error Err,
   llvm::handleAllErrors(
       std::move(Err), [&Status, OutputArgs](const llvm::ErrorInfoBase &EI) {
         Status = EI.convertToErrorCode();
-        // Some tests check for build log when everything is ok.
-        // So let's not even try to touch things if we were not called.
-        if (static_cast<vc::errc>(Status.value()) == vc::errc::not_vc_codegen)
-          return;
         setErrorMessage(EI.message(), *OutputArgs);
       });
   return Status;
@@ -290,6 +286,13 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   const bool IsStrictParser = IGC_GET_FLAG_VALUE(VCStrictOptionParser);
   auto ExpOptions =
       vc::ParseOptions(ApiOptions, InternalOptions, IsStrictParser);
+
+  // If vc was not called, then observable state should not be changed.
+  if (ExpOptions.errorIsA<vc::NotVCError>()) {
+    llvm::consumeError(ExpOptions.takeError());
+    return vc::errc::not_vc_codegen;
+  }
+  // Other errors are VC related and should be reported.
   if (!ExpOptions)
     return getError(ExpOptions.takeError(), OutputArgs);
 
