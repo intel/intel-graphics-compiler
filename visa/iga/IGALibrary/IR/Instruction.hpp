@@ -252,7 +252,7 @@ namespace iga
         bool               isMovWithLabel() const;
 
         void               validate() const; // asserts on malformed IR
-        std::string        str(Platform p) const; // returns syntax of this instruction
+        std::string        str() const; // returns syntax of this instruction
     private:
         const OpSpec&    m_opSpec; // information about the specific inst op
         Subfunction      m_sf; // e.g. MathFC::INV for math.inv, SFID::DC0 for send.dc0

@@ -392,7 +392,7 @@ static constexpr Model MODEL_GEN11(
     Platform::GEN11, &MODEL_GEN11_OPSPECS[0], "11", "icl");
 static constexpr Model MODEL_GEN12P1(
     Platform::GEN12P1, &MODEL_GEN12P1_OPSPECS[0], "12p1",
-    "xe", "tgl");
+    "xe", "xelp", "tgl", "tgllp", "dg1");
 
 const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN7P5,

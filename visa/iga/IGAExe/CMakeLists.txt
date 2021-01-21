@@ -134,6 +134,7 @@ set_target_properties(IGA_EXE PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_EXE_DEFINITIONS}"
     PDB_NAME                                   "iga_exe"
     LINK_FLAGS                                 "${IGA_EXE_LINK_FLAGS}"
+    FOLDER                                     "IGAProjs"
   )
 
 target_include_directories(IGA_EXE PUBLIC "../IGALibrary" "../include")

@@ -135,42 +135,52 @@ iga_status_t iga_platforms_list(
     }
     return IGA_SUCCESS;
 }
+
+// We run into a minor annoyance here.  We must return IGA memory that
+// that never gets cleaned up by the user.  Thus we use module global
+// memory.  On DLL attach this initializer will run and on DLL detach it
+// should be cleaned up.
+//
+//
+// c.f. iga_platform_names and iga_platform_symbol_suffix
+struct PlatformNameMap {
+    std::unordered_map<iga::Platform,std::vector<std::string>> names;
+    std::unordered_map<iga::Platform,std::string> exts;
+
+    PlatformNameMap() {
+        for (size_t i = 0; i < ALL_MODELS_LEN; i++) {
+            const Model &me = *ALL_MODELS[i];
+            std::vector<std::string> nmlist;
+            for (const auto &mn : me.names)
+            {
+                std::string str = mn.str();
+                if (str.empty())
+                    break;
+                nmlist.push_back(str);
+            }
+            names[me.platform] = nmlist;
+            exts[me.platform] = me.extension.str();
+        }
+    }
+};
+//
+static const PlatformNameMap s_names;
+
 iga_status_t iga_platform_symbol_suffix(
     iga_gen_t gen,
     const char **suffix)
 {
     if (suffix == nullptr)
         return IGA_INVALID_ARG;
-    for (size_t i = 0; i < ALL_MODELS_LEN; i++) {
-        const auto &p = ALL_MODELS[i];
-        if (p->platform == static_cast<iga::Platform>(gen)) {
-            *suffix = p->extension;
-            return IGA_SUCCESS;
-        }
+    auto itr = s_names.exts.find(static_cast<iga::Platform>(gen));
+    if (itr == s_names.exts.end()) {
+        *suffix = nullptr;
+        return IGA_INVALID_ARG;
     }
-    *suffix = nullptr;
-    return IGA_INVALID_ARG;
+    *suffix = itr->second.c_str();
+
+    return IGA_SUCCESS;
 }
-
-// c.f. iga_platform_names
-struct PlatformNameMap {
-    std::unordered_map<iga::Platform,std::vector<std::string>> map;
-
-    PlatformNameMap() {
-        for (size_t i = 0; i < ALL_MODELS_LEN; i++) {
-            const Model &me = *ALL_MODELS[i];
-            std::vector<std::string> names;
-            for (const auto &mn : me.names)
-            {
-                std::string str = mn.str();
-                if (str.empty())
-                    break;
-                names.push_back(str);
-            }
-            map[me.platform] = names;
-        }
-    }
-};
 
 iga_status_t iga_platform_names(
     iga_gen_t gen,
@@ -181,12 +191,8 @@ iga_status_t iga_platform_names(
     if (names_bytes != 0 && names == nullptr)
         return IGA_INVALID_ARG;
 
-    // We run into a minor annoyance here.  We must return IGA memory that
-    // that never gets cleaned up by the user.  Thus we use module global
-    // memory.  On DLL detach it should be cleaned up.
-    static const PlatformNameMap s_names;
-    auto itr = s_names.map.find(static_cast<iga::Platform>(gen));
-    if (itr == s_names.map.end()) {
+    auto itr = s_names.names.find(static_cast<iga::Platform>(gen));
+    if (itr == s_names.names.end()) {
         return IGA_INVALID_ARG;
     }
     const auto &pltNames = itr->second;

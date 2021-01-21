@@ -103,10 +103,10 @@ else(MSVC)
 endif(MSVC)
 
 add_library(GEDLibrary OBJECT ${GED_files})
-
-set_property(TARGET GEDLibrary APPEND PROPERTY
+set_target_properties(GEDLibrary PROPERTIES
+    FOLDER                                     "IGAProjs"
     OUTPUT_NAME                                "ged${TARGET_MODIFIER}"
-  )
+)
 set_property(TARGET GEDLibrary APPEND PROPERTY
     COMPILE_DEFINITIONS                        ${GED_definitions}
   )

@@ -352,7 +352,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "  % iga -p=11 -Xdsd     0x0000010C  0x04025C01\n"
         "    decodes message info for a GEN11 descriptor on SFID (DC1)\n"
         "  % iga -p=12p1 -Xdsd dc1     0x0  0x04025C01\n"
-        "  % iga -p=12p5 -Xdsd dc1 (8) a0.2 0x04025C01\n"
+        "  % iga -p=12p1 -Xdsd dc1 (8) a0.2 0x04025C01\n"
         "    decodes message info for a GEN12 descriptor on SFID (DC1)\n"
         "    the latter illustrates with ExecSize of 8 and ExDesc of a0.2\n"
         "",

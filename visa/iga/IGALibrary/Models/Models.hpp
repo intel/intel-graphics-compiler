@@ -298,25 +298,27 @@ namespace iga
         Platform             platform;
 
         // the table of supported ops for this model indexed by iga::Op
-        const OpSpec         *const opsArray;
+        const OpSpec        *const opsArray;
         //
         // file ext (e.g. "12p1" for TGL)
-        const char          *extension;
+        ModelString          extension;
         //
         // various platform names we match for this model (e.g. "TGL")
-        static const size_t  MAX_NAMES = 4;
+        static const size_t  MAX_NAMES = 6;
         ModelString          names[MAX_NAMES];
 
         constexpr Model(
             Platform p,
             const OpSpec *const opsArr,
-            const char *ext,
+            ModelString ext,
             ModelString name0,
             ModelString name1 = ModelString(),
             ModelString name2 = ModelString(),
-            ModelString name3 = ModelString())
+            ModelString name3 = ModelString(),
+            ModelString name4 = ModelString(),
+            ModelString name5 = ModelString())
             : platform(p), opsArray(opsArr), extension(ext)
-            , names{name0, name1, name2, name3}
+            , names{name0, name1, name2, name3, name4, name5}
         {
         }
 

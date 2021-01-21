@@ -186,12 +186,13 @@ void Instruction::validate() const
 }
 
 
-std::string Instruction::str(Platform pltfm) const
+std::string Instruction::str() const
 {
     ErrorHandler eh;
     std::stringstream ss;
-    FormatOpts fopt(pltfm);
-    fopt.setSWSBEncodingMode(Model::LookupModel(pltfm)->getSWSBEncodeMode());
+    FormatOpts fopt(getOpSpec().platform);
+    fopt.setSWSBEncodingMode(
+        Model::LookupModel(getOpSpec().platform)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopt, *this);
     return ss.str();
 }
