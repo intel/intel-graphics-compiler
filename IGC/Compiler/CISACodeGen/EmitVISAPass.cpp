@@ -562,6 +562,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 
+
     CShader* prevShader = m_pCtx->m_prevShader;
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
     if (!m_FGA || m_FGA->isGroupHead(&F))

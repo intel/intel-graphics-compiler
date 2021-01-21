@@ -2080,7 +2080,7 @@ void CShader::BeginFunction(llvm::Function* F)
         encoder.BeginStackFunction(F);
         // create pre-defined r0
         m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
-        encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);	
+        encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
     }
     else
     {
@@ -3257,9 +3257,12 @@ void CShader::PackAndCopyVariable(
     encoder.Push();
 }
 
-bool CShader::CompileSIMDSizeInCommon()
+bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
-    return (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
+    bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
+
+
+    return ret;
 }
 
 CShader* CShaderProgram::GetShader(SIMDMode simd, ShaderDispatchMode mode)

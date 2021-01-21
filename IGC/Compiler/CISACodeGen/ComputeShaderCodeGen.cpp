@@ -420,7 +420,7 @@ namespace IGC
     //   simd16, simd32, simd8
     bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
-        if (!CompileSIMDSizeInCommon())
+        if (!CompileSIMDSizeInCommon(simdMode))
             return false;
 
         // this can be changed to SIMD32 if that is better after testing on HW

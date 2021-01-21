@@ -104,7 +104,7 @@ public:
         return nullptr;
     }
     virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
-    bool CompileSIMDSizeInCommon();
+    bool CompileSIMDSizeInCommon(SIMDMode simdMode);
     virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) { return true; }
     CVariable* LazyCreateCCTupleBackingVariable(
         CoalescingEngine::CCTuple* ccTuple,
@@ -596,6 +596,7 @@ protected:
     bool m_HasConstantStatelessMemoryAccess;
 
     bool m_HasGlobalAtomics = false;
+
 
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;

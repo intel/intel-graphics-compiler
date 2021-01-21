@@ -1223,7 +1223,7 @@ CVariable* CPixelShader::GetCurrentPhaseCounter()
 
 bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
 {
-    if (!CompileSIMDSizeInCommon())
+    if (!CompileSIMDSizeInCommon(simdMode))
         return false;
 
 

@@ -2203,7 +2203,7 @@ namespace IGC
 
     bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
-        if (!CompileSIMDSizeInCommon())
+        if (!CompileSIMDSizeInCommon(simdMode))
             return false;
 
         if (!m_Context->m_retryManager.IsFirstTry())
