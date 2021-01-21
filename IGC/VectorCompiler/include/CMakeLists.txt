@@ -8,9 +8,13 @@ target_include_directories(VCHeaders
   ${CMAKE_CURRENT_BINARY_DIR}
   )
 
+target_link_libraries(VCHeaders
+  INTERFACE
+  VCIntrinsicsHeaders
+  )
+
 add_dependencies(VCHeaders
   intrinsics_gen
-  GenXIntrinsicsGen
   VectorCompilerOptions
   )
 

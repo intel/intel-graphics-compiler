@@ -152,11 +152,19 @@ message(STATUS "[VC] Using vc-intrinsics source from: ${INTRSRC}")
 
 # We are using prebuilt SPIRV and building intrinsics.
 set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
-
-
-# Do not copy anything from prebuilts. libSPIRVDLL.so will be dynamically loaded at runtime.
 add_subdirectory(${INTRSRC} ${INTRBUILD})
-include_directories(${INTRSRC}/include ${INTRBUILD}/include)
+# Make separate target for intrinstics headers.
+# Ideally, this should be inside intrinsics, but
+# this breaks in-tree build of intrinsics with LLVM.
+add_library(VCIntrinsicsHeaders INTERFACE)
+target_include_directories(VCIntrinsicsHeaders
+  INTERFACE
+  ${INTRSRC}/include
+  ${INTRBUILD}/include
+  )
+add_dependencies(VCIntrinsicsHeaders
+  GenXIntrinsics
+  )
 
 include(cmake/spirv.cmake)
 include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
