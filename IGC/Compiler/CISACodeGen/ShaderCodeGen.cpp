@@ -170,6 +170,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
 
+
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
 The class CShader is inherited for each specific type of shaders to add specific
@@ -241,6 +242,7 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // WIAnalysis also requires BreakCriticalEdge because it assumes that
     // potential phi-moves will be placed at those blocks
     mpm.add(llvm::createBreakCriticalEdgesPass());
+
 
     // 3D MergeURBWrite pass should be added after PushAnalysis and DeadCodeElimination
     // to avoid URBRead/URBWrite interference

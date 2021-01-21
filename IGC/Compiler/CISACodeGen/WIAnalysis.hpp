@@ -113,13 +113,15 @@ namespace IGC
         WIAnalysisRunner() {}
         ~WIAnalysisRunner() {}
 
+        void disableBackwardUpdate() { m_disableBackwardUpdate = true; }
+
         bool run();
 
         /// @brief Returns the type of dependency the instruction has on
         /// the work-item
         /// @param val llvm::Value to test
         /// @return Dependency kind
-        WIBaseClass::WIDependancy whichDepend(const llvm::Value* val);
+        WIBaseClass::WIDependancy whichDepend(const llvm::Value* val) const;
 
         /// @brief Returns True if 'val' is uniform
         /// @param val llvm::Value to test
@@ -280,6 +282,7 @@ namespace IGC
         IGC::CodeGenContext* m_CGCtx;
         IGC::ModuleMetaData* m_ModMD;
         IGC::TranslationTable* m_TT;
+        bool m_disableBackwardUpdate = false;
 
         // Allow access to all the store into an alloca if we were able to track it
         llvm::DenseMap<const llvm::AllocaInst*, AllocaDep> m_allocaDepMap;

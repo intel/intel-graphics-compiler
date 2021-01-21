@@ -298,7 +298,11 @@ bool WIAnalysisRunner::run()
         updateDeps();
     }
 
-    genSpecificBackwardUpdate();
+    if (!m_disableBackwardUpdate)
+    {
+        genSpecificBackwardUpdate();
+    }
+
     if (PrintWiaCheck)
     {
         print(ods());
@@ -406,7 +410,6 @@ void WIAnalysisRunner::genSpecificBackwardUpdate()
             Instruction* def = dyn_cast<Instruction>(inst->getOperand(i));
             if (def && getDependency(def) == WIAnalysis::UNIFORM && allUsesRandom(def) && !needToBeUniform(def))
             {
-
                 // if it is cheap and easy to mark it as RANDOM
                 if (isInstructionSimple(def))
                 {
@@ -533,7 +536,7 @@ bool WIAnalysis::insideDivergentCF(const llvm::Value* val)
     return Runner.insideDivergentCF(val);
 }
 
-WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val)
+WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
 {
     IGC_ASSERT_MESSAGE(m_pChangedNew->empty(), "set should be empty before query");
     IGC_ASSERT_MESSAGE(nullptr != val, "Bad value");
