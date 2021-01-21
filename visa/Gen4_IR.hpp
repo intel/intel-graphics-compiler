@@ -1991,7 +1991,7 @@ public:
     }
     void setSpillFlag()
     {
-        if (getAliasDeclare() != NULL)
+        if (getAliasDeclare())
         {
             // Iterate to top level dcl to set spill flag
             getAliasDeclare()->setSpillFlag();

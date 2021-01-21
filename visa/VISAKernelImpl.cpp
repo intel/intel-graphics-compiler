@@ -1559,13 +1559,13 @@ attribute_info_t* VISAKernelImpl::allocAttributeImpl(CISA_GEN_VAR* Dcl, uint32_t
 }
 
 int VISAKernelImpl::AddAttributeToVarGeneric(
-    CISA_GEN_VAR *decl, const char* varName, unsigned int size, const void *val)
+    CISA_GEN_VAR *decl, const char* attrName, unsigned int size, const void *val)
 {
     TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
 
     attribute_info_t* attr = allocAttribute(decl);
-    attr->nameIndex = addStringPool(std::string(varName));
-    Attributes::ID aID = Attributes::getAttributeID(varName);
+    attr->nameIndex = addStringPool(std::string(attrName));
+    Attributes::ID aID = Attributes::getAttributeID(attrName);
     ASSERT_USER(Attributes::isVarAttr(aID), "ERROR: unknown var attribute");
 
     attr->size = (uint8_t)size;
@@ -1597,23 +1597,26 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
     {
     case GENERAL_VAR:
         {
-            //calculated during emission
-            //m_var_info_size += Get_Size_Attribute_Info(attr);
             if (IS_GEN_BOTH_PATH)
             {
-                if (Attributes::isAttribute(Attributes::ATTR_Input, varName) ||
-                    Attributes::isAttribute(Attributes::ATTR_Input_Output, varName))
+                auto rootDcl = decl->genVar.dcl->getRootDeclare();
+                if (Attributes::isAttribute(Attributes::ATTR_Input, attrName) ||
+                    Attributes::isAttribute(Attributes::ATTR_Input_Output, attrName))
                 {
-                    decl->genVar.dcl->getRootDeclare()->setLiveIn();
+                    rootDcl->setLiveIn();
                 }
-                if (Attributes::isAttribute(Attributes::ATTR_Output, varName) ||
-                    Attributes::isAttribute(Attributes::ATTR_Input_Output, varName))
+                if (Attributes::isAttribute(Attributes::ATTR_Output, attrName) ||
+                    Attributes::isAttribute(Attributes::ATTR_Input_Output, attrName))
                 {
-                    decl->genVar.dcl->getRootDeclare()->setLiveOut();
+                    rootDcl->setLiveOut();
                 }
-                if (Attributes::isAttribute(Attributes::ATTR_NoWidening, varName))
+                if (Attributes::isAttribute(Attributes::ATTR_NoWidening, attrName))
                 {
-                    decl->genVar.dcl->getRootDeclare()->setDoNotWiden();
+                    rootDcl->setDoNotWiden();
+                }
+                if (Attributes::isAttribute(Attributes::ATTR_DoNotSpill, attrName))
+                {
+                    rootDcl->setDoNotSpill();
                 }
             }
             break;
