@@ -810,7 +810,7 @@ namespace IGC
         if (const llvm::Function *F = getRelatedFunction(context)) {
             // If the function is a kernel just print the kernel name.
             if (isEntryPoint(this, F)) {
-                ss << "\nin kernel: '" << demangle_wrapper(F->getName()) << "'";
+                ss << "\nin kernel: '" << demangle_wrapper(std::string(F->getName())) << "'";
             // If the function is not a kernel try to print all kernels that
             // might be using this function.
             } else {
@@ -818,16 +818,16 @@ namespace IGC
                 findCallingKernles(this, F, &kernels);
 
                 const size_t kernelsCount = kernels.size();
-                ss << "\nin function: '" << demangle_wrapper(F->getName()) << "' ";
+                ss << "\nin function: '" << demangle_wrapper(std::string(F->getName())) << "' ";
                 if (kernelsCount == 0) {
                     ss << "called indirectly by at least one of the kernels.\n";
                 } else if (kernelsCount == 1) {
                     const llvm::Function *kernel = *kernels.begin();
-                    ss << "called by kernel: '" << demangle_wrapper(kernel->getName()) << "'\n";
+                    ss << "called by kernel: '" << demangle_wrapper(std::string(kernel->getName())) << "'\n";
                 } else {
                     ss << "called by kernels:\n";
                     for (const llvm::Function *kernel : kernels) {
-                        ss << "  - '" << demangle_wrapper(kernel->getName()) << "'\n";
+                        ss << "  - '" << demangle_wrapper(std::string(kernel->getName())) << "'\n";
                     }
                 }
             }

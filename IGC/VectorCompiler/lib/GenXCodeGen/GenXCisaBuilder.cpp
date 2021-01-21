@@ -332,9 +332,9 @@ static VISA_Type llvmToVisaType(Type *Type,
   VISA_Type Result = ISA_TYPE_NUM;
   if (T->isVectorTy() &&
       cast<VectorType>(T)->getElementType()->isIntegerTy(1)) {
-    IGC_ASSERT(cast<VectorType>(T)->getVectorNumElements() == 8 ||
-               cast<VectorType>(T)->getVectorNumElements() == 16 ||
-               cast<VectorType>(T)->getVectorNumElements() == 32);
+    IGC_ASSERT(cast<VectorType>(T)->getNumElements() == 8 ||
+               cast<VectorType>(T)->getNumElements() == 16 ||
+               cast<VectorType>(T)->getNumElements() == 32);
     Result = getVisaTypeFromBytesNumber(
         cast<VectorType>(Type)->getNumElements() / genx::ByteBits, false, Sign);
   } else {
