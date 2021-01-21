@@ -7594,7 +7594,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             // source depth:
             //      src_z = (x - xstart)*z_cx + (y - ystart)*z_cy + z_c0
             CVariable* delta = psProgram->GetZWDelta();
-            CVariable* floatR1 = psProgram->BitCast(psProgram->GetR1(), ISA_TYPE_F);
+            CVariable* floatR1 = nullptr;
+            {
+                floatR1 = psProgram->BitCast(psProgram->GetR1(), ISA_TYPE_F);
+            }
 
             // Returns (x - xstart) or (y - ystart) in float.
             auto getPixelPositionDelta = [this, psProgram, delta, floatR1](const uint component)->CVariable *
