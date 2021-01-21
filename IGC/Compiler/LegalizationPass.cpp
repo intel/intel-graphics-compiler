@@ -1417,7 +1417,7 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
     Value* src0 = I.getOperand(0);
     Value* src1 = I.getOperand(1);
     // The mask is guaranteed by the LLVM IR spec to be constant
-#if LLVM_VERSION_MAJON < 11
+#if LLVM_VERSION_MAJOR < 11
     Constant* mask = cast<Constant>(I.getOperand(2));
 #else
     Constant* mask = I.getShuffleMaskForBitcode();
