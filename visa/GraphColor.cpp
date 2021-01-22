@@ -1024,17 +1024,13 @@ bool compareBBLoopLevel(G4_BB* bb1, G4_BB* bb2)
  */
 bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict)
 {
-    BB_LIST orderedBBs;
     unsigned int threeSourceInstNumInKernel = 0;
     unsigned int internalConflict = 0;
     unsigned int instNumInKernel = 0;
     unsigned int sendInstNumInKernel = 0;
 
-    for (auto curBB : gra.kernel.fg)
-    {
-        orderedBBs.push_back(curBB);
-    }
-    orderedBBs.sort(compareBBLoopLevel);
+    std::vector<G4_BB *> orderedBBs(gra.kernel.fg.cbegin(), gra.kernel.fg.cend());
+    std::sort(orderedBBs.begin(), orderedBBs.end(), compareBBLoopLevel);
 
     for (auto bb : orderedBBs)
     {
