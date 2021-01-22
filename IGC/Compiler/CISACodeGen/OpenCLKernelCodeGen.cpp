@@ -694,6 +694,15 @@ namespace IGC
         }
         break;
 
+        case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:
+        {
+            zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::buffer_offset,
+                payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+        }
+        break;
+
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:

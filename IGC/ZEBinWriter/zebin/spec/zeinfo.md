@@ -1,5 +1,5 @@
 # ZE Info
-Version 1.1
+Version 1.2
 
 ## Grammar
 
@@ -113,7 +113,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | arg_type | <argument_type> | Required | | |
 | offset | int32 | Required | | |
 | size | int32 | Required | | |
-| arg_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer" or "arg_byvalue"|
+| arg_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer", "arg_byvalue" or "buffer_offset". For "arg_bypointer" and "arg_byvalue", this is the kernel argument index. For "buffer_offset", this is the index of the associated kernel argument. |
 | addrmode | <memory_addressing_mode> | Optional | | Present when arg_type is "arg_bypointer" |
 | addrspace | <address_space> | Optional | | Present when arg_type is "arg_bypointer" |
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
@@ -126,14 +126,15 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | ----- | ------ | ------ |
 | packed_local_ids | int16x3 | Compacted local id x, y, z for simd1 kernel |
 | local_id | int16 x N x n | N is the simd_size <br> n is the number of dimensions derived from work_group_walk_order_dimensions <br> Per id have to be GRF aligned |
-| local_size | int32x3 | Nnmber of work-items in a group |
+| local_size | int32x3 | Number of work-items in a group |
 | group_count | int32x3 | Number of group |
-| global_size | int32x3 | OpenCL specific. The total number of work-items in each dimension |
-| enqueued_local_size | int32x3 | OpenCL specific. The size returned by OCL get_enqueued_local_size API  |
+| global_size | int32x3 | OpenCL specific feacture. The total number of work-items in each dimension |
+| enqueued_local_size | int32x3 | OpenCL specific feature. The size returned by OCL get_enqueued_local_size API  |
 | global_id_offset | int32x3 | |
-| private_base_stateless | int64 | |
-| arg_byvalue | | |
-| arg_bypointer | | |
+| private_base_stateless | int64 | The base address of private buffer specified at per_thread_memory_buffers |
+| buffer_offset | | The extra offset for buffer reference to satisfy the alignment requirement of stateful memory access. |
+| arg_byvalue | | Explicit kernel argument |
+| arg_bypointer | | Explicit kernel argument |
 <!--- <argument_type> ArgType -->
 
 arg_byvalue and arg_bypointer are user arguments that are explcitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.
@@ -211,7 +212,7 @@ Supported <allocation_type> of Per Thread Memory Buffer.
 
 | Allocation Type | Description |
 | ----- | ----- |
-| global | Only the memory usage "private_base" can have global type <br> The base address of the global buffer will be passed in by payload_argument with private_base type
+| global | Only the memory usage "private_space" can have global type <br> The base address of the global buffer will be passed in by payload_argument with private_base_stateless type
 | scratch | Scratch could be bindless surface or stateless <br> The base offset of this scratch will be passed in r0.5. If more than one scratch buffer is requested, the scrach index of each is set by convention |
 | slm | |
 <!--- <allocation_type> MemBufferType -->
@@ -244,5 +245,6 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.2**: Add buffer_offset to argument_type.
 - **Version 1.1**: Add experimental_properties to kernel.
 - **Version 1.0**: Add version number. Add slot to per_thread_memory_buffers. Rename shared_local_memory to slm in memory_addressing_mode.
