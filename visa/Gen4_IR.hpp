@@ -217,7 +217,7 @@ typedef enum
     MATH_RSQRTM = 0xF
 } G4_MathOp;
 
-inline const char* MathOpNames[16] =
+inline const char* const MathOpNames[16] =
 {
     "reserved",
     "inv",
@@ -2563,7 +2563,7 @@ public:
 //
 class G4_Greg final : public G4_VarBase
 {
-    unsigned RegNum;
+    const unsigned RegNum;
 public:
     explicit G4_Greg(unsigned num) : G4_VarBase(VK_phyGReg), RegNum(num) {}
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
@@ -2585,7 +2585,7 @@ public:
 //
 class G4_Areg final : public G4_VarBase
 {
-    G4_ArchRegKind ArchRegType;
+    const G4_ArchRegKind ArchRegType;
 public:
     explicit G4_Areg(G4_ArchRegKind k)
         : G4_VarBase(VK_phyAReg), ArchRegType(k) {}
@@ -2798,10 +2798,8 @@ public:
 //
 struct AssignedReg
 {
-    vISA::G4_VarBase* phyReg;
-    unsigned    subRegOff;
-
-    AssignedReg (): phyReg (NULL), subRegOff (0) {}
+    vISA::G4_VarBase* phyReg = nullptr;
+    unsigned    subRegOff = 0;
 };
 
 namespace vISA
@@ -2954,7 +2952,7 @@ namespace vISA
 
     class G4_RegVarTmp : public G4_RegVar
     {
-        G4_RegVar * baseRegVar;
+        G4_RegVar * const baseRegVar;
 
     public:
         G4_RegVarTmp(G4_Declare * d, G4_RegVar * base) :
@@ -3586,7 +3584,7 @@ public:
 
 class G4_AddrExp final : public G4_Operand
 {
-    G4_RegVar* m_addressedReg;
+    G4_RegVar* const m_addressedReg;
     int m_offset;  //current implementation: byte offset
 
 public:

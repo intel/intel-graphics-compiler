@@ -281,7 +281,7 @@ namespace vISA
         Interference& intf;
         GlobalRA& gra;
         LivenessAnalysis& liveAnalysis;
-        LiveRange** const lrs;
+        LiveRange* const * const lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
         std::unordered_map<FuncInfo*, PhyRegSummary *> localSummaryOfCallee;
@@ -337,7 +337,7 @@ namespace vISA
         void addSIMDIntfForRetDclares(G4_Declare* newDcl);
 
     public:
-        Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* ranges[], GlobalRA& g);
+        Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g);
 
         void augmentIntfGraph();
     };
@@ -346,17 +346,15 @@ namespace vISA
     {
         friend class Augmentation;
 
-    protected:
         // This stores compatible ranges for each variable. Such
         // compatible ranges will not be present in sparseIntf set.
         // We store G4_Declare* instead of id is because variables
         // allocated by LRA will not have a valid id.
         std::map<G4_Declare*, std::vector<G4_Declare*>> compatibleSparseIntf;
 
-    private:
         GlobalRA& gra;
         G4_Kernel& kernel;
-        LiveRange**& lrs;
+        LiveRange** const & lrs;
         IR_Builder& builder;
         const unsigned maxId;
         const unsigned rowSize;
@@ -381,77 +379,10 @@ namespace vISA
 
         G4_Declare* getGRFDclForHRA(int GRFNum) const;
 
-    public:
-        Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
-            GlobalRA& g);
-
-        ~Interference()
-        {
-            if (useDenseMatrix())
-            {
-                delete[] matrix;
-            }
-        }
-
-        const std::vector<G4_Declare*>* getCompatibleSparseIntf(G4_Declare* d) const
-        {
-            if (compatibleSparseIntf.size() > 0)
-            {
-                auto it = compatibleSparseIntf.find(d);
-                if (it == compatibleSparseIntf.end())
-                {
-                    return nullptr;
-                }
-                return &it->second;
-            }
-            return nullptr;
-        }
-
-        void init(vISA::Mem_Manager& m)
-        {
-            if (useDenseMatrix())
-            {
-                auto N = (size_t)rowSize * (size_t)maxId;
-                matrix = new uint32_t[N](); // zero-initialize
-            }
-            else
-            {
-                sparseMatrix.resize(maxId);
-            }
-        }
-
         bool useDenseMatrix() const
         {
             return maxId < denseMatrixLimit;
         }
-
-        // Clean data filled while computing interference.
-        void clear()
-        {
-            sparseIntf.clear();
-            if (useDenseMatrix())
-            {
-                auto N = (size_t)rowSize * (size_t)maxId;
-                std::memset(matrix, 0, N * sizeof(int));
-            }
-            else
-            {
-                for (auto &I : sparseMatrix)
-                {
-                    I.clear();
-                }
-            }
-        }
-
-        void computeInterference();
-        bool interfereBetween(unsigned v1, unsigned v2) const;
-        inline unsigned int getInterferenceBlk(unsigned idx) const
-        {
-            assert(useDenseMatrix() && "matrix is not initialized");
-            return matrix != nullptr ? matrix[idx] : 0;
-        }
-
-        const std::vector<unsigned int>& getSparseIntfForVar(unsigned int id) const { return sparseIntf[id]; }
 
         // Only upper-half matrix is now used in intf graph.
         inline void safeSetInterference(unsigned v1, unsigned v2)
@@ -492,7 +423,79 @@ namespace vISA
             }
         }
 
-        inline bool varSplitCheckBeforeIntf(unsigned v1, unsigned v2);
+        unsigned int getInterferenceBlk(unsigned idx) const
+        {
+            assert(useDenseMatrix() && "matrix is not initialized");
+            return matrix[idx];
+        }
+
+        void addCalleeSaveBias(const BitSet& live);
+
+        void buildInterferenceAtBBExit(const G4_BB* bb, BitSet& live);
+        void buildInterferenceWithinBB(G4_BB* bb, BitSet& live);
+        void buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
+        void buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, const G4_VarBase* regVar);
+
+        inline void filterSplitDclares(unsigned startIdx, unsigned endIdx, unsigned n, unsigned col, unsigned &elt, bool is_split);
+
+        void buildInterferenceWithLive(BitSet& live, unsigned i);
+        void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf);
+        void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
+
+        void markInterferenceForSend(G4_BB* bb, G4_INST* inst, G4_DstRegRegion* dst);
+
+        void buildInterferenceWithLocalRA(G4_BB* bb);
+
+        void buildInterferenceAmongLiveIns();
+
+        void markInterferenceToAvoidDstSrcOverlap(G4_BB* bb, G4_INST* inst);
+
+        void generateSparseIntfGraph();
+
+    public:
+        Interference(LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
+            GlobalRA& g);
+
+        ~Interference()
+        {
+            if (useDenseMatrix())
+            {
+                delete[] matrix;
+            }
+        }
+
+        const std::vector<G4_Declare*>* getCompatibleSparseIntf(G4_Declare* d) const
+        {
+            if (compatibleSparseIntf.size() > 0)
+            {
+                auto it = compatibleSparseIntf.find(d);
+                if (it == compatibleSparseIntf.end())
+                {
+                    return nullptr;
+                }
+                return &it->second;
+            }
+            return nullptr;
+        }
+
+        void init(vISA::Mem_Manager& m)
+        {
+            if (useDenseMatrix())
+            {
+                auto N = (size_t)rowSize * (size_t)maxId;
+                matrix = new uint32_t[N](); // zero-initialize
+            }
+            else
+            {
+                sparseMatrix.resize(maxId);
+            }
+        }
+
+        void computeInterference();
+        bool interfereBetween(unsigned v1, unsigned v2) const;
+        const std::vector<unsigned int>& getSparseIntfForVar(unsigned int id) const { return sparseIntf[id]; }
+
+        inline bool varSplitCheckBeforeIntf(unsigned v1, unsigned v2) const;
 
         void checkAndSetIntf(unsigned v1, unsigned v2)
         {
@@ -506,34 +509,13 @@ namespace vISA
             }
         }
 
-        void addCalleeSaveBias(const BitSet& live);
-        void buildInterferenceAtBBExit(const G4_BB* bb, BitSet& live);
-        void buildInterferenceWithinBB(G4_BB* bb, BitSet& live);
-        void buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
-        void buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_VarBase* regVar);
-
-        inline void filterSplitDclares(unsigned startIdx, unsigned endIdx, unsigned n, unsigned col, unsigned &elt, bool is_split);
-
-        void buildInterferenceWithLive(BitSet& live, unsigned i);
-        void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf);
-        void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
-
-        void markInterferenceForSend(G4_BB* bb, G4_INST* inst, G4_DstRegRegion* dst);
-
         void dumpInterference() const;
         bool dumpIntf(const char*) const;
         void interferenceVerificationForSplit() const;
 
-        bool linearScanVerify();
+        bool linearScanVerify() const;
 
-        void buildInterferenceWithLocalRA(G4_BB* bb);
-
-        void buildInterferenceAmongLiveIns();
-
-        void markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb, G4_INST* inst);
-
-        void generateSparseIntfGraph();
-        bool isStrongEdgeBetween(G4_Declare*, G4_Declare*);
+        bool isStrongEdgeBetween(const G4_Declare*, const G4_Declare*) const;
     };
 
     // Class to compute reg chart dump and dump it to ostream.
@@ -544,7 +526,7 @@ namespace vISA
         GlobalRA& gra;
         std::vector<G4_Declare*> sortedLiveIntervals;
         std::unordered_map<G4_Declare*, std::pair<G4_INST*, G4_INST*>> startEnd;
-        void recordLiveIntervals(std::vector<G4_Declare*>& dcls);
+        void recordLiveIntervals(const std::vector<G4_Declare*>& dcls);
         void dumpRegChart(std::ostream&, LiveRange** lrs = nullptr, unsigned int numLRs = 0);
 
         RegChartDump(GlobalRA& g) : gra(g) {}
@@ -665,7 +647,7 @@ namespace vISA
         GlobalRA* gra = nullptr;
         std::vector<G4_Declare*> sortedLiveRanges;
         std::unordered_map<const G4_Declare*, std::tuple<LiveRange*, AugmentationMasks, G4_INST*, G4_INST*>> masks;
-        LiveRange** lrs = nullptr;
+        LiveRange* const * lrs = nullptr;
         unsigned int numVars = 0;
         const Interference* intf = nullptr;
         std::unordered_map<G4_Declare*, LiveRange*> DclLRMap;
@@ -707,7 +689,7 @@ namespace vISA
             bbLabels.clear();
             BBLexId.clear();
         }
-        void loadAugData(std::vector<G4_Declare*>& s, LiveRange** l, unsigned int n, Interference* i, GlobalRA& g);
+        void loadAugData(std::vector<G4_Declare*>& s, LiveRange* const * l, unsigned int n, const Interference* i, GlobalRA& g);
         void dump(const char* dclName);
         bool isClobbered(LiveRange* lr, std::string& msg);
     };
@@ -759,7 +741,7 @@ namespace vISA
         // reallocation policy.
         std::list<LocalLiveRange> localLiveRanges;
 
-        std::unordered_map<G4_BB*, unsigned int> subretloc;
+        std::unordered_map<const G4_BB*, unsigned int> subretloc;
         // map ret location to declare for call/ret
         std::map<uint32_t, G4_Declare*> retDecls;
 
@@ -827,7 +809,7 @@ namespace vISA
 
         VarSplitPass* getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
-        unsigned int getSubRetLoc(G4_BB* bb)
+        unsigned int getSubRetLoc(const G4_BB* bb)
         {
             auto it = subretloc.find(bb);
             if (it == subretloc.end())
@@ -835,7 +817,7 @@ namespace vISA
             return it->second;
         }
 
-        void setSubRetLoc(G4_BB* bb, unsigned int s) { subretloc[bb] = s; }
+        void setSubRetLoc(const G4_BB* bb, unsigned int s) { subretloc[bb] = s; }
 
         bool isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, unsigned stackTop);
         void assignLocForReturnAddr();
@@ -1188,7 +1170,7 @@ namespace vISA
             allocVar(dcl).isEvenAlign = e;
         }
 
-        BankAlign getBankAlign(G4_Declare*);
+        BankAlign getBankAlign(const G4_Declare*) const;
         bool areAllDefsNoMask(G4_Declare*);
         void removeUnreferencedDcls();
         LocalLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl);
@@ -1206,7 +1188,7 @@ namespace vISA
         }
 
         void emitFGWithLiveness(LivenessAnalysis& liveAnalysis);
-        void reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring);
+        void reportSpillInfo(const LivenessAnalysis& liveness, const GraphColor& coloring) const;
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();
         void updateSubRegAlignment(G4_SubReg_Align subAlign);

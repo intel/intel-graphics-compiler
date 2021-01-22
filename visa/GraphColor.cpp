@@ -66,14 +66,14 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 #define NOMASK_BYTE 0x80
 
 
-Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
+Interference::Interference(LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
     GlobalRA& g) : gra(g), kernel(g.kernel), lrs(lr),
     builder(*g.kernel.fg.builder), maxId(n), splitStartId(ns), splitNum(nm),
     liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1)
 {
 }
 
-inline bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2)
+inline bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2) const
 {
     const LiveRange * l1 = lrs[v1];
     const LiveRange * l2 = lrs[v2];
@@ -1107,9 +1107,9 @@ bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
     return retval;
 }
 
-BankAlign GlobalRA::getBankAlign(G4_Declare* dcl)
+BankAlign GlobalRA::getBankAlign(const G4_Declare* dcl) const
 {
-    IR_Builder* builder = kernel.fg.builder;
+    const IR_Builder* builder = kernel.fg.builder;
     switch (getBankConflict(dcl))
     {
     case BANK_CONFLICT_FIRST_HALF_EVEN:
@@ -1258,7 +1258,7 @@ void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)
     }
 }
 
-void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
+void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColor& coloring) const
 {
     // Emit out interference graph of each spill candidate
     // and if a spill candidate is a local range, emit its
@@ -1270,7 +1270,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
     for (const vISA::LiveRange* slr : coloring.getSpilledLiveRanges())
     {
         if (slr->getRegKind() == G4_GRF) {
-            G4_RegVar* spillVar = slr->getVar();
+            const G4_RegVar* spillVar = slr->getVar();
             optreport << "Spill candidate " << spillVar->getName() << " intf:";
             optreport << "\t(" << spillVar->getDeclare()->getTotalElems() << "):" <<
                 TypeSymbol(spillVar->getDeclare()->getElemType()) << std::endl;
@@ -1905,7 +1905,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
     }
 }
 
-void Interference::markInterferenceToAvoidDstSrcOvrelap(G4_BB* bb,
+void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB* bb,
     G4_INST* inst)
 {
     bool isDstRegAllocPartaker = false;
@@ -2077,7 +2077,7 @@ uint32_t GlobalRA::getRefCount(int loopNestLevel)
 }
 
 // handle return value interference for fcall
-void Interference::buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_VarBase* regVar)
+void Interference::buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, const G4_VarBase* regVar)
 {
     assert(inst->opcode() == G4_pseudo_fcall && "expect fcall inst");
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
@@ -2085,7 +2085,7 @@ void Interference::buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* i
 
     if (regVar->isRegAllocPartaker())
     {
-        unsigned id = ((G4_RegVar*)regVar)->getId();
+        unsigned id = static_cast<const G4_RegVar*>(regVar)->getId();
         lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
 
         buildInterferenceWithLive(live, id);
@@ -2240,7 +2240,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
         }
         else if (kernel.fg.builder->avoidDstSrcOverlap() && dst && !dst->isNullReg())
         {
-            markInterferenceToAvoidDstSrcOvrelap(bb, inst);
+            markInterferenceToAvoidDstSrcOverlap(bb, inst);
         }
 
         if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg())
@@ -2668,7 +2668,7 @@ void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
     }
 }
 
-Augmentation::Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* ranges[], GlobalRA& g) :
+Augmentation::Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g) :
     kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges), fcallRetMap(g.fcallRetMap), m(kernel.fg.mem)
 {
 }
@@ -2678,9 +2678,9 @@ Augmentation::Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, L
 bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
 {
 
-    G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
+    const G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
     unsigned char execSize = inst->getExecSize();
-    G4_DstRegRegion* dst = inst->getDst();
+    const G4_DstRegRegion* dst = inst->getDst();
     unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
     unsigned short elemSize = dst->getElemSize();
 
@@ -4430,7 +4430,7 @@ void Augmentation::expireIntervals(unsigned int startIdx)
 }
 
 // Return true if edge between dcl1 and dcl2 is strong.
-bool Interference::isStrongEdgeBetween(G4_Declare* dcl1, G4_Declare* dcl2)
+bool Interference::isStrongEdgeBetween(const G4_Declare* dcl1, const G4_Declare* dcl2) const
 {
     auto dcl1RegVar = dcl1->getRegVar();
     auto dcl2RegVar = dcl2->getRegVar();
@@ -4463,7 +4463,7 @@ bool Interference::isStrongEdgeBetween(G4_Declare* dcl1, G4_Declare* dcl2)
             bool allEdgesStrong = true;
             for (unsigned int i = startPhyReg; i < (startPhyReg + dcl2NumRows); i++)
             {
-                G4_Declare* lraPreg = getGRFDclForHRA(i);
+                const G4_Declare* lraPreg = getGRFDclForHRA(i);
                 allEdgesStrong &= interfereBetween(lraPreg->getRegVar()->getId(), dcl1RegVar->getId());
             }
 
@@ -5255,7 +5255,7 @@ void Interference::interferenceVerificationForSplit() const
     }
 }
 
-bool Interference::linearScanVerify()
+bool Interference::linearScanVerify() const
 {
      std::cout << "--------------- " << kernel.getName() << " ----------------" << "\n";
 
@@ -6756,11 +6756,11 @@ void GraphColor::resetTemporaryRegisterAssignments()
 
 void GraphColor::cleanupRedundantARFFillCode()
 {
-    for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); it++)
+    for (G4_BB *bb : builder.kernel.fg)
     {
         clearSpillAddrLocSignature();
 
-        for (std::list<G4_INST*>::iterator i = (*it)->begin(); i != (*it)->end();)
+        for (std::list<G4_INST*>::iterator i = bb->begin(); i != bb->end();)
         {
             G4_INST* inst = (*i);
 
@@ -6799,7 +6799,7 @@ void GraphColor::cleanupRedundantARFFillCode()
 
                         if (redundantAddrFill(dst, srcRgn, inst->getExecSize())) {
                             std::list<G4_INST*>::iterator j = i++;
-                            (*it)->erase(j);
+                            bb->erase(j);
                             continue;
                         }
                         else {
@@ -9440,7 +9440,7 @@ int GlobalRA::coloringRegAlloc()
 
             TIME_SCOPE(LINEARSCAN_RA);
             LinearScanRA lra(bc, *this, liveAnalysis);
-            int  success = lra.doLinearScanRA();
+            int success = lra.doLinearScanRA();
             if (success == VISA_SUCCESS)
             {
                 // TODO: Get correct spillSize from LinearScanRA
@@ -10048,7 +10048,7 @@ void  FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare*  topdcl,
     unsigned int& linearizedStart,
     unsigned int& linearizedEnd)
 {
-    G4_Areg* areg = topdcl->getRegVar()->getPhyReg()->asAreg();
+    const G4_Areg* areg = topdcl->getRegVar()->getPhyReg()->asAreg();
     linearizedStart = areg->getFlagNum() * 4;
     linearizedStart += topdcl->getRegVar()->getPhyRegOff() * topdcl->getElemSize();
     linearizedEnd = linearizedStart + topdcl->getByteSize();
@@ -10552,17 +10552,11 @@ void FlagSpillCleanup::regUseScratch(
     G4_Operand*        opnd,
     Gen4_Operand_Number opndNum)
 {
-    G4_Declare *topdcl = NULL;
-    topdcl = opnd->getTopDcl();
+    const G4_Declare *topdcl = opnd->getTopDcl();
 
     //Impact on previous scratch access
-    SCRATCH_PTR_LIST_ITER it = scratchTraceList->begin();
-    SCRATCH_PTR_LIST_ITER itEnd = scratchTraceList->end();
-    while (it != itEnd)
+    for (SCRATCH_ACCESS *scratchAccess : *scratchTraceList)
     {
-        SCRATCH_PTR_LIST_ITER kt = it;
-        kt++;
-        SCRATCH_ACCESS * scratchAccess = *it;
         if (topdcl == scratchAccess->scratchDcl)
         {
             if (opndNum == Opnd_dst)
@@ -10574,8 +10568,6 @@ void FlagSpillCleanup::regUseScratch(
                 scratchAccess->removeable = false;
             }
         }
-
-        it = kt;
     }
 }
 
@@ -10687,16 +10679,9 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(
 
 void FlagSpillCleanup::freeScratchAccess(SCRATCH_PTR_VEC *scratchAccessList)
 {
-    SCRATCH_PTR_VEC::iterator it = scratchAccessList->begin();
-    SCRATCH_PTR_VEC::iterator itEnd = scratchAccessList->end();
-    while (it != itEnd)
+    for (SCRATCH_ACCESS *scratchAccess : *scratchAccessList)
     {
-        SCRATCH_PTR_VEC::iterator kt = it;
-        kt++;
-        SCRATCH_ACCESS * scratchAccess = *it;
-
         delete scratchAccess;
-        it = kt;
     }
 
     scratchAccessList->clear();
@@ -11535,7 +11520,7 @@ void VerifyAugmentation::labelBBs()
 #endif
 }
 
-unsigned int getGRFBaseOffset(G4_Declare* dcl)
+unsigned int getGRFBaseOffset(const G4_Declare* dcl)
 {
     unsigned int regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
     unsigned int regOff = dcl->getRegVar()->getPhyRegOff();
@@ -11986,7 +11971,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
     return false;
 }
 
-void VerifyAugmentation::loadAugData(std::vector<G4_Declare*>& s, LiveRange** l, unsigned int n, Interference* i, GlobalRA& g)
+void VerifyAugmentation::loadAugData(std::vector<G4_Declare*>& s, LiveRange* const * l, unsigned int n, const Interference* i, GlobalRA& g)
 {
     reset();
     sortedLiveRanges = s;
@@ -12073,8 +12058,8 @@ bool GlobalRA::isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, un
     }
     else
     {
-        for (BB_LIST_ITER it = bb->Succs.begin(); it != bb->Succs.end(); it++)
-            if (isSubRetLocConflict(*it, usedLoc, stackTop))
+        for (G4_BB *succ : bb->Succs)
+            if (isSubRetLocConflict(succ, usedLoc, stackTop))
                 return true;
     }
 
@@ -12114,9 +12099,9 @@ unsigned GlobalRA::determineReturnAddrLoc(unsigned entryId, unsigned* retLoc, G4
             return determineReturnAddrLoc(entryId, retLoc, bb->BBAfterCall());
         }
         unsigned sharedId = entryId;
-        for (BB_LIST_ITER it = bb->Succs.begin(); it != bb->Succs.end(); it++)
+        for (G4_BB *succ : bb->Succs)
         {
-            unsigned loc = determineReturnAddrLoc(entryId, retLoc, *it);
+            unsigned loc = determineReturnAddrLoc(entryId, retLoc, succ);
             if (loc != entryId)
             {
                 while (retLoc[loc] != loc)  // find the root of subroutine loc
@@ -12610,7 +12595,7 @@ bool dump(const char* s, LiveRange** lrs, unsigned int size)
     return false;
 }
 
-bool dump(const char* s, G4_Kernel* kernel)
+bool dump(const char* s, const G4_Kernel* kernel)
 {
     // Utility function to dump dcl for given variable name.
     // Returns true if variable found.
@@ -12670,7 +12655,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
     std::unordered_map<G4_INST*, std::bitset<N>> busyGRFPerInst;
     bool dumpHex = false;
 
-    auto getPhyReg = [&](G4_Declare* dcl)
+    auto getPhyReg = [&](const G4_Declare* dcl)
     {
         auto preg = dcl->getRegVar()->getPhyReg();
         if (preg)
@@ -12678,7 +12663,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
 
         for (unsigned int i = 0; i != numLRs; i++)
         {
-            LiveRange* lr = lrs[i];
+            const LiveRange* lr = lrs[i];
             if (lr->getDcl() == dcl)
             {
                 preg = lr->getPhyReg();
@@ -12804,7 +12789,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
     }
 }
 
-void RegChartDump::recordLiveIntervals(std::vector<G4_Declare*>& dcls)
+void RegChartDump::recordLiveIntervals(const std::vector<G4_Declare*>& dcls)
 {
     sortedLiveIntervals = dcls;
     for (auto dcl : dcls)

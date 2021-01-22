@@ -917,8 +917,8 @@ public:
     G4_Declare*& getStackPtrDcl()                   {return stackPtrDcl;}
     G4_Declare*& getScratchRegDcl()                 {return scratchRegDcl;}
 
-    bool isPseudoVCEDcl(G4_Declare* dcl) const { return dcl == pseudoVCEDcl; }
-    bool isPseudoVCADcl(G4_Declare* dcl) const
+    bool isPseudoVCEDcl(const G4_Declare* dcl) const { return dcl == pseudoVCEDcl; }
+    bool isPseudoVCADcl(const G4_Declare* dcl) const
     {
         for (auto iter : fcallToPseudoDclMap)
         {
@@ -929,7 +929,7 @@ public:
         }
         return false;
     }
-    bool isPseudoA0Dcl(G4_Declare* dcl) const
+    bool isPseudoA0Dcl(const G4_Declare* dcl) const
     {
         for (auto iter : fcallToPseudoDclMap)
         {
@@ -940,7 +940,7 @@ public:
         }
         return false;
     }
-    bool isPseudoFlagDcl(G4_Declare* dcl) const
+    bool isPseudoFlagDcl(const G4_Declare* dcl) const
     {
         for (auto iter : fcallToPseudoDclMap)
         {
@@ -951,7 +951,7 @@ public:
         }
         return false;
     }
-    bool isPseudoDcl(G4_Declare* dcl) const
+    bool isPseudoDcl(const G4_Declare* dcl) const
     {
         if (!getHasStackCalls() && !getIsStackCallFunc())
         {
