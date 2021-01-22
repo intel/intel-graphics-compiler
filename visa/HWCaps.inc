@@ -45,7 +45,7 @@
 
     bool favorFloatMov() const
     {
-        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN11 || isGen12LP();
+        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN11 || isXeLP();
     }
 
     bool noScalarJmp() const
@@ -60,7 +60,7 @@
 
     bool encodeUnitStrideTernary() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
     bool hasMacl() const
@@ -231,7 +231,7 @@
 
     bool hasFdivPow() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) < PlatformGen::XE;
     }
 
     bool hasFdivPowWA() const
@@ -241,17 +241,17 @@
 
     bool hasCondModForTernary() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) < PlatformGen::XE;
     }
 
     bool hasSWSB() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
     bool hasPartialMixMode() const
     {
-        return getPlatformGeneration(getPlatform()) == PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) == PlatformGen::XE;
     }
 
     // whether EOT sources need to be assigned r112-r127
@@ -262,7 +262,7 @@
 
     bool hasSmov() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) < PlatformGen::XE;
     }
 
     bool doAccSub() const
@@ -273,7 +273,7 @@
     bool hasNFType() const
     {
         return getPlatform() >= GENX_ICLLP &&
-               getPlatformGeneration(getPlatform()) != PlatformGen::GEN12;
+               getPlatformGeneration(getPlatform()) != PlatformGen::XE;
     }
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
@@ -307,46 +307,46 @@
 
     bool avoidWAWSubRegHazard() const
     {
-        return getPlatformGeneration(getPlatform()) < PlatformGen::GEN12 &&
+        return getPlatformGeneration(getPlatform()) < PlatformGen::XE &&
                getOption(vISA_WAWSubregHazardAvoidance);
     }
 
     bool newTernaryStride() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
-    // acc restrictions that are relaxed for gen12
+    // acc restrictions that are relaxed for Xe
     // -- dp4a can take acc src/dst
     // -- the same acc may be used in both src0 and src1 of a three-source inst
     bool relaxedACCRestrictions2() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
     bool fuseURBMessage() const
     {
-        return isGen12LP();
+        return isXeLP();
     }
 
     bool supportSrcModforMul() const
     {
-        return getPlatformGeneration(getPlatform()) != PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) != PlatformGen::XE;
     }
 
     bool doMultiAccSub() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
     bool canMadHaveSrc0Acc() const
     {
-        return getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
     bool accDstforIndirectSrc() const
     {
-        return getPlatformGeneration(getPlatform()) != PlatformGen::GEN12;
+        return getPlatformGeneration(getPlatform()) != PlatformGen::XE;
     }
 
     bool favorFpMad() const
@@ -388,7 +388,7 @@
     {
 #if 0
         auto GEN = getPlatformGeneration(getPlatform());
-        return (GEN >= PlatformGen::GEN12) ? 1 : 2;
+        return (GEN >= PlatformGen::XE) ? 1 : 2;
 #else
         return 2;
 #endif
@@ -398,7 +398,7 @@
     {
 #if 0
         auto GEN = getPlatformGeneration(getPlatform());
-        if (GEN >= PlatformGen::GEN12)
+        if (GEN >= PlatformGen::XE)
             return false;
 #endif
 
@@ -407,7 +407,7 @@
 
     bool useIGAEncoder() const
     {
-        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getPlatform()) >= PlatformGen::GEN12;
+        return getOption(vISA_IGAEncoder) || getPlatformGeneration(getPlatform()) >= PlatformGen::XE;
     }
 
     bool needReplaceIndirectCallWithJmpi() const
@@ -438,7 +438,7 @@
         getPlatform() == GENX_ICLLP;
     }
 
-    bool isGen12LP() const
+    bool isXeLP() const
     {
         return getPlatform() == GENX_TGLLP;
     }
@@ -451,18 +451,18 @@
 
     bool noInt64() const
     {
-        return getPlatform() == GENX_ICLLP || isGen12LP();
+        return getPlatform() == GENX_ICLLP || isXeLP();
     }
 
     bool noFP64() const
     {
-        return getPlatform() == GENX_ICLLP || isGen12LP();
+        return getPlatform() == GENX_ICLLP || isXeLP();
     }
 
     bool no64bitRegioning() const
     {
         return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
-               getPlatform() == GENX_ICLLP || isGen12LP();
+               getPlatform() == GENX_ICLLP || isXeLP();
     }
 
     bool hasBankCollision() const
@@ -478,7 +478,7 @@
 
     bool hasMadm() const
     {
-        return getPlatform() != GENX_ICLLP && !isGen12LP();
+        return getPlatform() != GENX_ICLLP && !isXeLP();
     }
 
     bool hasSIMD16TypedRW() const

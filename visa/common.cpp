@@ -78,7 +78,7 @@ static const PlatformInfo ALL_PLATFORMS[] {
     PlatformInfo(GENX_BXT, PlatformGen::GEN9, 6, "BXT", "GEN9LP"),
     PlatformInfo(GENX_ICLLP, PlatformGen::GEN11, 10,
         "ICLLP", "ICL", "GEN11", "GEN11LP"),
-    PlatformInfo(GENX_TGLLP, PlatformGen::GEN12, 12,
+    PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12,
         "TGLLP", "DG1", "GEN12LP"
     ),
 }; // ALL_PLATFORMS

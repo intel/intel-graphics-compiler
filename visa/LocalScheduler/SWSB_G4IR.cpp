@@ -4453,7 +4453,7 @@ void G4_BB_SB::getGRFBucketDescrs(SBNode* node, std::vector<SBBucketDescr>& BDve
 // 1. scanning all buckets is time cost.
 // 2. some time, only 1 way checking is required.
 // 3. the function is called for every instruction, it's compilation time waste.
-void G4_BB_SB::clearKilledBucketNodeGen12LP(LiveGRFBuckets* LB, int ALUID)
+void G4_BB_SB::clearKilledBucketNodeXeLP(LiveGRFBuckets* LB, int ALUID)
 {
     for (int curBucket = 0; curBucket < LB->getNumOfBuckets(); curBucket++)
     {
@@ -4610,7 +4610,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 if (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE && ALUID != curInst->getALUID())
                 {
                     {
-                        clearKilledBucketNodeGen12LP(LB, ALUID);
+                        clearKilledBucketNodeXeLP(LB, ALUID);
                     }
                 }
                 continue;
@@ -4858,7 +4858,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE && ALUID != curInst->getALUID()))
         {
             {
-                clearKilledBucketNodeGen12LP(LB, ALUID);
+                clearKilledBucketNodeXeLP(LB, ALUID);
             }
         }
 
@@ -5506,7 +5506,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
             if (instKill)
             {
                 {
-                    BBVector[i]->clearKilledBucketNodeGen12LP(&send_use_kills, 0);
+                    BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
             }
         }
@@ -5824,7 +5824,7 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
             if (instKill)
             {
                 {
-                    BBVector[i]->clearKilledBucketNodeGen12LP(&send_use_kills, 0);
+                    BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
             }
         }

@@ -2234,7 +2234,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                 }
             }
         }
-        // try to avoid bank conflict for Gen12
+        // try to avoid bank conflict for Xe
         // Such as in following case:
         // r40 and r56 are from same bundle and have conflict
         // scheduling next instruction up can avoid the conflit.
@@ -2624,7 +2624,7 @@ static bool hasConflictForSchedule(int *regCandidates)
     return false;
 }
 
-//Gen12 check BC between adjacent instructions (this, node2)
+//Xe check BC between adjacent instructions (this, node2)
 //Scheduling can only solve the bank conflict between adjacent instructions
 //The src0 of second instruction is read together with src1 (and src2) of the first instruction.
 //We only handle the situation that first instruction is a three source instruction.

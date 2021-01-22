@@ -324,7 +324,7 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
         if (msgType == DC1_TYPED_ATOMIC)
             return true;
     }
-    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
     {
         if (msgType == DC1_TYPED_HALF_INTEGER_ATOMIC ||
             msgType == DC1_TYPED_HALF_COUNTER_ATOMIC ||
@@ -346,7 +346,7 @@ static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType)
             msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
             return true;
     }
-    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
     {
         if (msgType == DC1_UNTYPED_HALF_FLOAT_ATOMIC ||
             msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC)

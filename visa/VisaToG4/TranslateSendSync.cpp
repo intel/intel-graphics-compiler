@@ -167,11 +167,11 @@ void IR_Builder::generateBarrierWait()
     if (!hasUnifiedBarrier()) {
 
         if (getPlatform() < GENX_TGLLP) {
-            // before gen12: wait n0.0<0;1,0>:ud
+            // before Xe: wait n0.0<0;1,0>:ud
             waitSrc = createSrc(phyregpool.getN0Reg(),
                 0, 0, getRegionScalar(), Type_UD);
         } else {
-            // gen12: sync.bar null
+            // Xe: sync.bar null
             waitSrc = createNullSrc(Type_UD);
         }
     }

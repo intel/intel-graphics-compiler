@@ -239,7 +239,7 @@ enum class PlatformGen
     GEN9 = 9,
     GEN10 = 10,
     GEN11 = 11,
-    GEN12 = 12,
+    XE = 12,
 };
 
 unsigned char getGRFSize();

@@ -7,7 +7,7 @@ using namespace vISA;
 uint16_t LatencyTable::getLatency(G4_INST* Inst) const
 {
     auto GEN = getPlatformGeneration(m_builder->getPlatform());
-    if (GEN >= PlatformGen::GEN12)
+    if (GEN >= PlatformGen::XE)
         return getLatencyG12(Inst);
 
     return getLatencyLegacy(Inst);
@@ -17,7 +17,7 @@ uint16_t LatencyTable::getLatency(G4_INST* Inst) const
 uint16_t LatencyTable::getOccupancy(G4_INST* Inst) const
 {
     auto GEN = getPlatformGeneration(m_builder->getPlatform());
-    if (GEN >= PlatformGen::GEN12)
+    if (GEN >= PlatformGen::XE)
         return getOccupancyG12(Inst);
 
     return getOccupancyLegacy(Inst);
@@ -112,33 +112,33 @@ uint16_t LatencyTable::getLatencyG12(G4_INST* Inst) const
     if (Inst->isSend()) {
         G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
         if (MsgDesc->isSLMMessage())
-            return Inst->asSendInst()->isFence() ? GEN12Latencies::SLM_FENCE : GEN12Latencies::SLM;
+            return Inst->asSendInst()->isFence() ? LatenciesXe::SLM_FENCE : LatenciesXe::SLM;
         if (MsgDesc->isSampler())
-            return GEN12Latencies::SAMPLER_L3;
+            return LatenciesXe::SAMPLER_L3;
         if (MsgDesc->isHDC())
-            return GEN12Latencies::DP_L3;
+            return LatenciesXe::DP_L3;
         if (MsgDesc->isBarrierMsg())
-            return GEN12Latencies::BARRIER;
-         return GEN12Latencies::SEND_OTHERS;
+            return LatenciesXe::BARRIER;
+         return LatenciesXe::SEND_OTHERS;
     } else if (Inst->isMath()) {
-        return uint16_t(GEN12Latencies::MATH + GEN12Latencies::DELTA_MATH * Scale);
+        return uint16_t(LatenciesXe::MATH + LatenciesXe::DELTA_MATH * Scale);
     } else if (Inst->isFlowControl()) {
-        return GEN12Latencies::BRANCH;
+        return LatenciesXe::BRANCH;
     }
     else if (Inst->isArithmetic()) {
         G4_DstRegRegion *Dst = Inst->getDst();
         if (Dst->isAccReg())
-            return uint16_t(GEN12Latencies::FPU_ACC + GEN12Latencies::DELTA * Scale);
-        return uint16_t(GEN12Latencies::FPU + GEN12Latencies::DELTA * Scale);
+            return uint16_t(LatenciesXe::FPU_ACC + LatenciesXe::DELTA * Scale);
+        return uint16_t(LatenciesXe::FPU + LatenciesXe::DELTA * Scale);
     }
 
     // By default, use the FPU pipeline latency.
-    return uint16_t(GEN12Latencies::FPU);
+    return uint16_t(LatenciesXe::FPU);
 }
 
 uint16_t LatencyTable::getOccupancyG12(G4_INST* Inst) const
 {
-    enum GEN12Occupancy {
+    enum OccupancyXe {
         G12_OC_MATH = 4,
         G12_OC_Others = 1
     };

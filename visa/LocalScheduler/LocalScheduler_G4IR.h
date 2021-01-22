@@ -154,7 +154,7 @@ public:
     void addPairInstr(G4_INST *inst) { instVec.push_back(inst); }
     void clear() { instVec.clear(); }
     void deletePred(Node *pred);
-    //Gen12 check BC between adjacent instructions
+    //Xe check BC between adjacent instructions
     bool hasConflict(Node* node2);
 
     friend class DDD;

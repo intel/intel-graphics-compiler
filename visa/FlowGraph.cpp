@@ -4385,7 +4385,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         output << border;
         output << std::endl;
 
-        if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::GEN12)
+        if (getPlatformGeneration(getGenxPlatform()) < PlatformGen::XE)
         {
             fg.BCStats.clear();
         }
@@ -4609,7 +4609,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
     }
     if (newAsm)
     {
-        if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN12)
+        if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
         {
             output << "\n\n//.BankConflicts: " <<  fg.G12BCStats.BCNum << "\n";
             output << "//.sameBankConflicts: " <<  fg.G12BCStats.sameBankConflicts << "\n";
@@ -5166,7 +5166,7 @@ static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, 
 }
 
 /*
- * Gen12 BC evaluation
+ * Xe BC evaluation
  * All read suppression is GRF granularity based.
  * Read suppression only happens between or within a physical instruction not compressed one. Compressed one will be split into physical instructions.
  * Read suppression between instructions:
@@ -5182,7 +5182,7 @@ static int getConflictTimesForTGL(std::ostream& output, int *firstRegCandidate, 
  *     1. Works for all source operands.
  *     2. intra suppression is the GRF read operation based(no read no suppression).
  */
-uint32_t G4_BB::emitBankConflictGen12(
+uint32_t G4_BB::emitBankConflictXe(
     std::ostream& os_output, const G4_INST *inst,
     int *suppressRegs,
     int &sameConflictTimes, int &twoSrcConflicts,
@@ -5470,7 +5470,7 @@ uint32_t G4_BB::emitBankConflictGen12(
 }
 
 /*
-* In Gen12lp, there are 8 bundles and 2 banks per HW thread.
+* In XeLP, there are 8 bundles and 2 banks per HW thread.
 * Banks are divided according to EVEN / ODD of register index: 0101010101010101
 * There are 8 bundles per 16 registers : 0011223344556677
 * For two adjacent instructions : inst1 and inst2, inst1_src1(, inst1_src2) and inst2_src0 will be read in same cycle
@@ -5482,7 +5482,7 @@ uint32_t G4_BB::emitBankConflictGen12(
 * 1. for SIMD16, HW swap only happens when detecting conflicts in first simd8's registers. conflict in second simd8 will not trigger swap.
 * 2. for SIMD16, when swapping happens, the src1and src0 of both simd8 instructions will be swapped.
 */
-uint32_t G4_BB::emitBankConflictGen12lp(
+uint32_t G4_BB::emitBankConflictXeLP(
     std::ostream& os_output, const G4_INST *inst,
     int *suppressRegs, int *lastRegs,
     int &sameConflictTimes, int &twoSrcConflicts, int &simd16RS)
@@ -5648,7 +5648,7 @@ uint32_t G4_BB::emitBankConflictGen12lp(
     }
 
 
-    //No suppression, update the suppressRegs[0] for gen12lp
+    //No suppression, update the suppressRegs[0] for XeLP
     //suppressRegs[1], suppressRegs[2] will be updated with next instruction
 
     //src1 and src2 will be read with src0 of next instruction
@@ -5802,7 +5802,7 @@ void G4_BB::emitBasicInstructionIga(
         }
         inst->emitInstIds(output);
 
-        if (getPlatformGeneration(platform) < PlatformGen::GEN12)
+        if (getPlatformGeneration(platform) < PlatformGen::XE)
         {
             emitBankConflict(output, inst);
         }
@@ -5814,11 +5814,11 @@ void G4_BB::emitBasicInstructionIga(
             unsigned BCNum = 0;
             if (parent->builder->hasEarlyGRFRead())
             {
-                BCNum = emitBankConflictGen12lp(output, inst, suppressRegs, lastRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts);
+                BCNum = emitBankConflictXeLP(output, inst, suppressRegs, lastRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts);
             }
             else
             {
-                BCNum = emitBankConflictGen12(output, inst, suppressRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts, false, true, false);
+                BCNum = emitBankConflictXe(output, inst, suppressRegs, sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts, false, true, false);
             }
             parent->G12BCStats.addBC(BCNum);
             parent->G12BCStats.addSameBankBC(sameBankConflicts);
@@ -7360,10 +7360,10 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder& builder) const
     switch (inst->opcode()) {
     case G4_mov:
         // When src0 type is 64 bits:
-        //  On PreGen12:
+        //  On Pre-Xe:
         //   Src0.imm[31:0] mapped to Instruction [95:64]
         //   Src0.imm[63:32] mapped to Instruction [127:96]
-        //  On Gen12+:
+        //  On Xe+:
         //   Src0.imm[31:0] mapped to Instruction [127:96]
         //   Src0.imm[63:32] mapped to Instruction [95:64]
         // When src0 type is 32 bits:

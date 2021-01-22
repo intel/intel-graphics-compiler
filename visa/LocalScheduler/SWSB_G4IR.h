@@ -55,12 +55,12 @@ namespace vISA
 
 #define TOKEN_AFTER_READ_CYCLE 4
 
-#define TOKEN_AFTER_WRITE_MATH_CYCLE (fg.builder->isGen12LP() ? 20u : 17u)
-#define TOKEN_AFTER_WRITE_SEND_SLM_CYCLE (fg.builder->isGen12LP() ? 33u : 25u)   //unlocaled 25
-#define TOKEN_AFTER_WRITE_SEND_L1_MEMORY_CYCLE (fg.builder->isGen12LP() ? 65u : 50u)
+#define TOKEN_AFTER_WRITE_MATH_CYCLE (fg.builder->isXeLP() ? 20u : 17u)
+#define TOKEN_AFTER_WRITE_SEND_SLM_CYCLE (fg.builder->isXeLP() ? 33u : 25u)   //unlocaled 25
+#define TOKEN_AFTER_WRITE_SEND_L1_MEMORY_CYCLE (fg.builder->isXeLP() ? 65u : 50u)
 #define TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE 60u
-#define TOKEN_AFTER_WRITE_SEND_L3_MEMORY_CYCLE (fg.builder->isGen12LP() ? 106u : 150u)
-#define TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE (fg.builder->isGen12LP() ? 175u : 210u)
+#define TOKEN_AFTER_WRITE_SEND_L3_MEMORY_CYCLE (fg.builder->isXeLP() ? 106u : 150u)
+#define TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE (fg.builder->isXeLP() ? 175u : 210u)
 #define TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE (fg.builder->getOptions()->getOption(vISA_USEL3HIT) ? TOKEN_AFTER_WRITE_SEND_L3_MEMORY_CYCLE : TOKEN_AFTER_WRITE_SEND_L1_MEMORY_CYCLE)
 #define TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE (fg.builder->getOptions()->getOption(vISA_USEL3HIT) ? TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE : TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE)
 #define TOKEN_MAXIMAL_DELAY_CYCLE TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE
@@ -566,7 +566,7 @@ namespace vISA
         {
             auto inst = GetInstruction();
             if (inst->getDst() && inst->getDst()->getTypeSize() == 8)
-            {  // Note that for Gen12lp, there are no 8 bytes ALU instruction.
+            {  // Note that for XeLP, there are no 8 bytes ALU instruction.
                 return SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
             }
             else
@@ -1028,7 +1028,7 @@ namespace vISA
         void dumpTokenLiveInfo(SBNODE_VECT * SBSendNodes);
         void getLiveBucketsFromFootprint(SBFootprint *firstFootprint, SBBucketNode* sBucketNode, LiveGRFBuckets *send_use_kills);
         void addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR *globalSendOpndList, SBNODE_VECT *SBNodes, PointsToAnalysis &p, bool afterWrite);
-        void clearKilledBucketNodeGen12LP(LiveGRFBuckets * LB, int ALUID);
+        void clearKilledBucketNodeXeLP(LiveGRFBuckets * LB, int ALUID);
 
 
 

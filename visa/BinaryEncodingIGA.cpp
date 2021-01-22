@@ -289,7 +289,7 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_sends:
         sf = getSFID(inst);
         if (p >= iga::Platform::GEN12P1) {
-            // G4 IR still calls send sends after GEN12
+            // G4 IR still calls send sends after Xe
             igaOp = iga::Op::SEND;
         } else {
             igaOp = iga::Op::SENDS;
@@ -298,7 +298,7 @@ std::pair<iga::Op,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_sendsc:
         sf = getSFID(inst);
         if (p >= iga::Platform::GEN12P1) {
-            // G4 IR still calls send sends after GEN12
+            // G4 IR still calls send sends after Xe
             igaOp = iga::Op::SENDC;
         } else {
             igaOp = iga::Op::SENDSC;
@@ -544,7 +544,7 @@ void BinaryEncodingIGA::Encode()
 
             igaInst->addInstOpts(getIGAInstOptSet(inst));
 
-            if (getPlatformGeneration(platform) >= PlatformGen::GEN12) {
+            if (getPlatformGeneration(platform) >= PlatformGen::XE) {
                 iga::SWSB sw;
                 SetSWSB(inst, sw);
 
@@ -986,7 +986,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
 }
 
 SWSB_ENCODE_MODE BinaryEncodingIGA::getIGASWSBEncodeMode(const IR_Builder& builder) {
-    if (getPlatformGeneration(builder.getPlatform()) < PlatformGen::GEN12)
+    if (getPlatformGeneration(builder.getPlatform()) < PlatformGen::XE)
         return SWSB_ENCODE_MODE::SWSBInvalidMode;
 
 
@@ -1032,9 +1032,9 @@ static SendDesc encodeExDescSendUnary(
     uint32_t tVal = descG4->getExtendedDesc();
 
     // We must clear the funcID in the extended message.
-    // In Gen12+ this is part of the EU encoding, not the descriptor.
+    // In Xe+ this is part of the EU encoding, not the descriptor.
     // vISA/G4IR still treat it as part of the descriptor.
-    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
+    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::XE)
     {
         tVal = tVal & 0xFFFFFFF0;
     }
@@ -1047,7 +1047,7 @@ static SendDesc encodeExDescSendUnary(
 }
 
 ////////////////////////////////////////////////////////////////////
-// these handle binary sends (old "sends" and GEN12+ "send"
+// these handle binary sends (old "sends" and Xe+ "send"
 //
 SendDesc BinaryEncodingIGA::encodeExDescImm(
     G4_INST* sendInst,
@@ -1064,7 +1064,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     //
     exDescIga.type = SendDesc::Kind::IMM;
     exDescIga.imm = (uint32_t)exDescG4->asImm()->getImm();
-    // We must clear the funcID in the extended message for Gen12+
+    // We must clear the funcID in the extended message for Xe+
     // because it is part of the EU instruction, not the descriptor,
     // and, vISA/G4-IR still thinks of it as part of the descriptor.
     //
@@ -1079,7 +1079,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     //    uint32_t unnamed2 : 5;     // bit 11:15
     //    uint32_t extFuncCtrl : 16; // bit 16:31
     // };
-    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::GEN12)
+    if (getPlatformGeneration(sendInst->getPlatform()) >= PlatformGen::XE)
     {
         exDescIga.imm &= 0xFFFFFFC0;
     }

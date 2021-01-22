@@ -43,7 +43,7 @@ namespace vISA
     };
 
 
-    enum GEN12Latencies : uint16_t
+    enum LatenciesXe : uint16_t
     {
         //
         // General instruction latencies
