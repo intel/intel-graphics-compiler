@@ -452,8 +452,9 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
     }
 
     llvm::Type* cubeTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
+    llvm::Type* cubeArrayTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
     llvm::Type* textureType = inst->getTextureValue()->getType()->getPointerElementType();
-    if (textureType != cubeTextureType)
+    if (textureType != cubeTextureType && textureType != cubeArrayTextureType)
     {
         //Check for valid number of sources from the end of the list
         for (uint i = (numSources - 1); i >= 1; i--)
