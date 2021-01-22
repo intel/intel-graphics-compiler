@@ -383,6 +383,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             F->setLinkage(GlobalValue::InternalLinkage);
         }
 
+        // Invoke kernels are not detected as actual kernels.
+        // Set alwaysinline and stop processing further.
+        if (F->hasFnAttribute("ocl-invoke-kernel"))
+        {
+            SetAlwaysInline(F);
+            continue;
+        }
+
         // Add function attribute for indirectly called functions
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
