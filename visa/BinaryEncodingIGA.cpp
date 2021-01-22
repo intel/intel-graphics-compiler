@@ -549,7 +549,7 @@ void BinaryEncodingIGA::Encode()
                 SetSWSB(inst, sw);
 
                 SWSB::InstType instTy = SWSB::InstType::UNKNOWN;
-                if (inst->isMathPipeInst())
+                if (inst->isMath())
                     instTy = SWSB::InstType::MATH;
                 else if (inst->isSend())
                     instTy = SWSB::InstType::SEND;
