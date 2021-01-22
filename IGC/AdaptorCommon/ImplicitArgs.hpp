@@ -128,6 +128,9 @@ namespace IGC
 
             SYNC_BUFFER,
 
+            // Bindless buffer (for stateless to bindless optim)
+            BINDLESS_OFFSET,
+
             NUM_IMPLICIT_ARGS
         };
 
@@ -285,6 +288,12 @@ namespace IGC
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  pMdUtils        The Metadata API object
         static void addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
+
+        /// @brief  Create implicit arguments metadata for the given function. It adds one
+        ///         implicit argument for each explicit pointer argument to global or constant buffer.
+        /// @param  F               The function for which to create the implicit argument's metadata
+        /// @param  pMdUtils        The Metadata API object
+        static void addBindlessOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
 
         /// @brief  Returns the (implicit) function argument associated with the given implicit argument type
         /// @param  F               The function for which the implict argument should be returned

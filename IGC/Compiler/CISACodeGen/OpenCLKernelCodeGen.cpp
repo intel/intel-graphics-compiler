@@ -805,6 +805,14 @@ namespace IGC
             }
             break;
 
+        case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET:
+        {
+            int argNo = kernelArg->getAssociatedArgNo();
+            std::shared_ptr<iOpenCL::PointerArgumentAnnotation> ptrAnnotation = m_kernelInfo.m_argOffsetMap[argNo];
+            ptrAnnotation->BindingTableIndex = payloadPosition;
+        }
+            break;
+
         case KernelArg::ArgType::PTR_GLOBAL:
             if (addressSpace == iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_INVALID) {
                 addressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
@@ -828,7 +836,7 @@ namespace IGC
                 IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
                 ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[argNo];
 
-                auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
+                auto ptrAnnotation = std::make_shared<iOpenCL::PointerArgumentAnnotation>();
 
                 if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType)
                 {
@@ -841,6 +849,8 @@ namespace IGC
                     ptrAnnotation->IsBindlessAccess = false;
                 }
 
+                m_kernelInfo.m_argOffsetMap[argNo] = ptrAnnotation;
+
                 ptrAnnotation->AddressSpace = addressSpace;
                 ptrAnnotation->ArgumentNumber = argNo;
                 ptrAnnotation->BindingTableIndex = getBTI(resInfo);
@@ -849,7 +859,7 @@ namespace IGC
                 ptrAnnotation->LocationIndex = kernelArg->getLocationIndex();
                 ptrAnnotation->LocationCount = kernelArg->getLocationCount();
                 ptrAnnotation->IsEmulationArgument = kernelArg->isEmulationArgument();
-                m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
+                m_kernelInfo.m_pointerArgument.push_back(ptrAnnotation);
             }
             break;
 
