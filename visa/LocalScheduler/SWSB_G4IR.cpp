@@ -1322,6 +1322,7 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
         SBNode* curNode = (*node_it);
         int reuseDelay = 0;
         int curDistance = 0;
+        int sameTokenDistance = 0x7FFFFFFF;
         unsigned curNodeDelay = getDepDelay(curNode);
         unsigned char curNodeNestLoopLevel = BBVector[curNode->getBBID()]->getBB()->getNestLevel();
         unsigned short token = curNode->getLastInstruction()->getToken();
@@ -1437,9 +1438,9 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
                 reuseDelay = sReuseDelay;
             }
 
-            if (sDistance < curDistance)
+            if (sDistance < sameTokenDistance)
             {
-                curDistance = sDistance;
+                sameTokenDistance = sDistance;
             }
         }
 
@@ -1454,9 +1455,9 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
                 candidateNode = curNode;
             }
         }
-        else if (curDistance > distance)
+        else if (curDistance > distance && sameTokenDistance >= distance)
         {
-            distance = curDistance;
+            distance = curDistance < sameTokenDistance ? curDistance : sameTokenDistance;
             candidateNode = curNode;
         }
     }
