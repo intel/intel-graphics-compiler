@@ -293,7 +293,6 @@ void CPixelShader::AllocatePSPayload()
             payloadEnd = offset + setup[i]->GetSize();
         }
 
-        else
         {
             offset += 4 * SIZE_DWORD;
         }
