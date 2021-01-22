@@ -549,6 +549,15 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
 #undef DECLARE_IGC_GROUP
 
 
+static void checkAndSetIfKeyHasNoDefaultValue(SRegKeyVariableMetaData* pRegKeyVariable)
+{
+    // Todo: need to interpret value based on its type
+    if (pRegKeyVariable->m_Value != pRegKeyVariable->GetDefault())
+    {
+        pRegKeyVariable->SetToNonDefaultValue();
+    }
+}
+
 /// Function taken from LLVM CommandLine.cpp file
 /// ParseCStringVector - Break INPUT up wherever one or more
 /// whitespace characters are found, and store the resulting tokens in
@@ -698,7 +707,6 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
     if (isSet)
     {
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
-        regKey->hashes = hashes;
     }
 }
 
@@ -756,6 +764,8 @@ static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "", boo
         if (isSet)
         {
             memcpy_s(pRegKeyVariable[i].m_string, sizeof(value), value, sizeof(value));
+
+            checkAndSetIfKeyHasNoDefaultValue(&pRegKeyVariable[i]);
         }
 
         debugString valueFromOptions = { 0 };
@@ -879,14 +889,14 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
         }
 
 
-        if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
         {
             IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);
             IGC_SET_FLAG_VALUE(EnableVISASlowpath, true);
             IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
         }
 
-        if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         {
             IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
             IGC_SET_FLAG_VALUE(EnableCosDump, true);
@@ -911,7 +921,7 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
         }
 
-        switch(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
+        switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
         {
         case 32:
             IGC_SET_FLAG_VALUE(EnableOCLSIMD32, true);
@@ -931,5 +941,66 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
         }
     }
     loadFlags.unlock();
+}
+
+// Get all keys that have been set explicitly with a non-default value. Return
+// all of them via arguments:
+//     KeyValuePairs:
+//          key0   value0
+//          key1   value1
+//          ......
+//     OptionsKeys:
+//          key0=value0,key1=value1,...
+// Note OptionsKeys is used in igcstandalone's -option.
+void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys)
+{
+    if (!KeyValuePairs && !OptionKeys)
+        return;
+
+    std::stringstream pairs;
+    std::stringstream optionkeys;
+    SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
+    unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
+    bool isFirst = true;
+    for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
+    {
+        if (pRegKeyVariable[i].m_isSetToNonDefaultValue == false)
+        {
+            continue;
+        }
+        const char* key = pRegKeyVariable[i].GetName();
+
+        // Ignore dump keys
+        if (strcmp("ShaderDumpEnableAll", key) == 0 ||
+            strcmp("ShaderDumpEnable", key) == 0 ||
+            strcmp("DumpToCurrentDir", key) == 0)
+        {
+            continue;
+        }
+
+        unsigned value = pRegKeyVariable[i].m_Value;
+        pairs << "    " << key << "    " << value << "\n";
+        if (!isFirst)
+        {
+            optionkeys << ",";
+        }
+        optionkeys << key << "=" << value;
+        isFirst = false;
+    }
+
+    if (isFirst)
+    {
+        // No key set
+        return;
+    }
+
+    if (KeyValuePairs)
+    {
+        *KeyValuePairs = pairs.str();
+    }
+    if (OptionKeys)
+    {
+        *OptionKeys = optionkeys.str();
+    }
 }
 #endif

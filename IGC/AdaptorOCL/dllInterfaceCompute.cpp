@@ -924,8 +924,8 @@ bool TranslateBuild(
         DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_options.txt", &of);
 
         // dump cmd file that has igcstandalone command to compile this kernel.
-        std::ostringstream cmdfile;
-        cmdfile << "igcstandalone -api ocl"
+        std::ostringstream cmdline;
+        cmdline << "igcstandalone -api ocl"
             << std::hex
             << " -device 0x" << IGCPlatform.GetProductFamily()
             << ".0x" << IGCPlatform.GetDeviceId()
@@ -934,17 +934,33 @@ bool TranslateBuild(
             << " -inputcs " << getBaseFilename(inputf);
         if (isbc)
         {
-            cmdfile << " -bitcode";
+            cmdline << " -bitcode";
         }
         if (of.size() > 0)
         {
-            cmdfile << " -foptions " << getBaseFilename(of);
+            cmdline << " -foptions " << getBaseFilename(of);
         }
         if (iof.size() > 0)
         {
-            cmdfile << " -finternal_options " << getBaseFilename(iof);
+            cmdline << " -finternal_options " << getBaseFilename(iof);
         }
-        DumpShaderFile(pOutputFolder, cmdfile.str().c_str(), cmdfile.str().size(), hash, "_cmd.txt");
+
+        std::string keyvalues, optionstr;
+        GetKeysSetExplicitly(&keyvalues, &optionstr);
+        std::ostringstream outputstr;
+        outputstr << "IGC keys and command line to compile:\n\n";
+        if (!keyvalues.empty())
+        {
+            outputstr << keyvalues << "\n\n";
+        }
+        outputstr << cmdline.str() << "\n";
+
+        if (!optionstr.empty())
+        {
+            outputstr << "\n\nOr using the following with IGC keys set via -option\n\n";
+            outputstr << cmdline.str() << " -option " << optionstr << "\n";
+        }
+        DumpShaderFile(pOutputFolder, outputstr.str().c_str(), outputstr.str().size(), hash, "_cmd.txt");
     }
 
     if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp))

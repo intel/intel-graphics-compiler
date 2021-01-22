@@ -61,10 +61,12 @@ struct SRegKeyVariableMetaData
         debugString m_string;
     };
     std::vector<HashRange> hashes;
+    bool m_isSetToNonDefaultValue;
     virtual const char* GetName() const = 0;
+    virtual unsigned GetDefault() const = 0;
+    virtual void SetToNonDefaultValue() = 0;
     virtual ~SRegKeyVariableMetaData()
     {
-
     }
 };
 
@@ -82,6 +84,7 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     SRegKeyVariableMetaData_##regkeyName()          \
     {                                               \
         m_Value = (unsigned)defaultValue;           \
+        m_isSetToNonDefaultValue = false;           \
     }                                               \
     const char* GetName() const                     \
     {                                               \
@@ -91,9 +94,17 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     {                                               \
         return (unsigned)defaultValue;              \
     }                                               \
+    bool IsSetToNonDefaultValue() const             \
+    {                                               \
+        return m_isSetToNonDefaultValue;            \
+    }                                               \
+    void SetToNonDefaultValue()                     \
+    {                                               \
+        m_isSetToNonDefaultValue = true;            \
+    }                                               \
     bool IsReleaseMode() const                      \
     {                                               \
-        return releaseMode;                  \
+        return releaseMode;                         \
     }                                               \
 } regkeyName
 
@@ -144,12 +155,14 @@ struct DEVICE_INFO
     };
 #endif
 
+void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys);
 void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
 void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
 void SetCurrentDebugHash(unsigned long long hash);
 #undef LINUX_RELEASE_MODE
 #else
+static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys) {}
 static inline void SetCurrentDebugHash(unsigned long long hash) {}
 static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr) {}
 #define IGC_SET_FLAG_VALUE( name, regkeyValue ) ;
