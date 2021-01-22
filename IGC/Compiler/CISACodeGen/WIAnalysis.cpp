@@ -737,7 +737,8 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchIn
         {
             if (!brInfo->influence_region.count(srci->getParent()))
             {
-                return true;
+                // go on to check the next operand
+                continue;
             }
             else if (!isRegionInvariant(srci, brInfo, level + 1))
             {
