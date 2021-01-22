@@ -141,7 +141,8 @@ namespace IGC
         static const llvm::StringRef OCL_GET_GLOBAL_OFFSET;
         static const llvm::StringRef OCL_GET_LOCAL_ID;
         static const llvm::StringRef OCL_GET_GROUP_ID;
-        static const llvm::StringRef OCL_GET_SUBGROUP_ID_SPIRV;
+        static const llvm::StringRef OCL_GET_SUBGROUP_ID_IGC_SPVIR;
+        static const llvm::StringRef OCL_GET_SUBGROUP_ID_KHR_SPVIR;
         static const llvm::StringRef OCL_GET_SUBGROUP_ID;
     };
 

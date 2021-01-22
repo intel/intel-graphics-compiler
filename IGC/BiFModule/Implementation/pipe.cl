@@ -659,7 +659,7 @@ ReserveId_t __builtin_spirv_OpGroupReserveReadPipePackets_i32_i64_i32_i32( uint 
 
     if( Execution == Subgroup )
     {
-        if( __builtin_spirv_BuiltInSubgroupLocalInvocationId() == 0 )
+        if( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0 )
         {
             rid = __builtin_spirv_OpReserveReadPipePackets_i64_i32_i32( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
@@ -686,7 +686,7 @@ ReserveId_t __builtin_spirv_OpGroupReserveWritePipePackets_i32_i64_i32_i32( uint
 
     if( Execution == Subgroup )
     {
-        if( __builtin_spirv_BuiltInSubgroupLocalInvocationId() == 0 )
+        if( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0 )
         {
             rid = __builtin_spirv_OpReserveWritePipePackets_i64_i32_i32( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
@@ -711,7 +711,7 @@ void __builtin_spirv_OpGroupCommitReadPipe_i32_i64_i64_i32( uint Execution, Pipe
 {
     if( Execution == Subgroup )
     {
-        if (__builtin_spirv_BuiltInSubgroupLocalInvocationId() == 0)
+        if (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0)
         {
             __builtin_spirv_OpCommitReadPipe_i64_i64_i32( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
         }
@@ -731,7 +731,7 @@ void __builtin_spirv_OpGroupCommitWritePipe_i32_i64_i64_i32(uint Execution, Pipe
 {
     if( Execution == Subgroup )
     {
-        if (__builtin_spirv_BuiltInSubgroupLocalInvocationId() == 0)
+        if (SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )() == 0)
         {
             __builtin_spirv_OpCommitWritePipe_i64_i64_i32( Pipe, ReserveId, PacketSize/*, PacketAlignment */);
         }

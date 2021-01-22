@@ -26,58 +26,63 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #define MAX_DIM 2
-
 #define BuiltinVector(BuiltinName) \
     (size_t3)(BuiltinName(0),      \
               BuiltinName(1),      \
               BuiltinName(2))
 
 #ifdef NO_ASSUME_SUPPORT
-#    define BuiltinVectorAssumeGE0(v)
+    #define BuiltinAssumeGE0(s)
+    #define BuiltinVectorAssumeGE0(v)
 #else
-#    define BuiltinVectorAssumeGE0(v) \
-    __builtin_assume( (v.x) >= 0 ); \
-    __builtin_assume( (v.y) >= 0 ); \
-    __builtin_assume( (v.z) >= 0 );
+    #define BuiltinAssumeGE0(s) __builtin_assume( s >= 0 )
+    #define BuiltinVectorAssumeGE0(v) \
+        __builtin_assume( (v.x) >= 0 ); \
+        __builtin_assume( (v.y) >= 0 ); \
+        __builtin_assume( (v.z) >= 0 );
 #endif
 
-size_t3 __builtin_spirv_BuiltInNumWorkgroups()
-{
-    size_t3 v = BuiltinVector(__builtin_IB_get_num_groups);
+// Helper functions prefixed with '__intel'
 
+uint __intel_WorkgroupSize()
+{
+    uint totalWorkGroupSize =
+        __builtin_IB_get_local_size(0) *
+        __builtin_IB_get_local_size(1) *
+        __builtin_IB_get_local_size(2);
+
+    BuiltinAssumeGE0(totalWorkGroupSize);
+    return totalWorkGroupSize;
+}
+
+size_t __intel_EnqueuedWorkgroupSize()
+{
+    size_t totalWorkGroupSize =
+        __builtin_IB_get_enqueued_local_size(0) *
+        __builtin_IB_get_enqueued_local_size(1) *
+        __builtin_IB_get_enqueued_local_size(2);
+
+    BuiltinAssumeGE0(totalWorkGroupSize);
+    return totalWorkGroupSize;
+}
+
+size_t3 OVERLOADABLE __intel_WorkgroupId()
+{
+    size_t3 v = BuiltinVector(__builtin_IB_get_group_id);
     BuiltinVectorAssumeGE0(v);
     return v;
 }
 
-size_t3 __builtin_spirv_BuiltInWorkgroupSize()
+uint OVERLOADABLE __intel_LocalInvocationId(uint dim)
 {
-   size_t3 v = BuiltinVector(__builtin_IB_get_local_size);
-
-   BuiltinVectorAssumeGE0(v);
-
-   return v;
-}
-
-size_t3 __builtin_spirv_BuiltInWorkgroupId()
-{
-     size_t3 v = BuiltinVector(__builtin_IB_get_group_id);
-
-     BuiltinVectorAssumeGE0(v);
-
-     return v;
-}
-
-static size_t __intel_LocalInvocationId(uint dim)
-{
-    size_t v = 0;
-
-    if (dim > MAX_DIM) {
-        v = 0;
-    } else if (dim == 0) {
-        v =  __builtin_IB_get_local_id_x();
-    } else if (dim == 1) {
-        v =  __builtin_IB_get_local_id_y();
-    } else if (dim == 2) {
+    uint v = 0;
+    if (dim == 0) {
+        v = __builtin_IB_get_local_id_x();
+    }
+    else if (dim == 1) {
+        v = __builtin_IB_get_local_id_y();
+    }
+    else if (dim == 2) {
         v = __builtin_IB_get_local_id_z();
     }
 
@@ -89,12 +94,11 @@ static size_t __intel_LocalInvocationId(uint dim)
     return v;
 }
 
-size_t3 __builtin_spirv_BuiltInLocalInvocationId()
+size_t3 OVERLOADABLE __intel_LocalInvocationId()
 {
     size_t3 v = (size_t3)(__builtin_IB_get_local_id_x(),
                      __builtin_IB_get_local_id_y(),
                      __builtin_IB_get_local_id_z());
-
 
     BuiltinVectorAssumeGE0(v);
 #ifndef NO_ASSUME_SUPPORT
@@ -106,57 +110,68 @@ size_t3 __builtin_spirv_BuiltInLocalInvocationId()
     return v;
 }
 
-static size_t __intel_GlobalInvocationId(uint dim)
+size_t OVERLOADABLE __intel_GlobalInvocationId(uint dim)
 {
-    if (dim > MAX_DIM) {
+    if (dim > MAX_DIM)
         return 0;
-    }
 
     size_t v =
-         __builtin_IB_get_group_id(dim) * __builtin_IB_get_enqueued_local_size(dim) +
-         __intel_LocalInvocationId(dim) + __builtin_IB_get_global_offset(dim);
+        __builtin_IB_get_group_id(dim) * __builtin_IB_get_enqueued_local_size(dim) +
+        __intel_LocalInvocationId(dim) + __builtin_IB_get_global_offset(dim);
 
-#ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(v >= 0);
-#endif
+    BuiltinAssumeGE0(v);
     return v;
+}
 
+size_t3 OVERLOADABLE __intel_GlobalInvocationId()
+{
+    return BuiltinVector(__intel_GlobalInvocationId);
+}
+
+////////////////////////
+
+#if defined(OLD_SPIRV_BUILTINS)
+
+size_t3 __builtin_spirv_BuiltInNumWorkgroups()
+{
+    size_t3 v = BuiltinVector(__builtin_IB_get_num_groups);
+    BuiltinVectorAssumeGE0(v);
+    return v;
+}
+
+size_t3 __builtin_spirv_BuiltInWorkgroupSize()
+{
+   size_t3 v = BuiltinVector(__builtin_IB_get_local_size);
+   BuiltinVectorAssumeGE0(v);
+   return v;
+}
+
+size_t3 __builtin_spirv_BuiltInWorkgroupId()
+{
+    return __intel_WorkgroupId();
+}
+
+size_t3 __builtin_spirv_BuiltInLocalInvocationId()
+{
+    return __intel_LocalInvocationId();
 }
 
 size_t3 __builtin_spirv_BuiltInGlobalInvocationId()
 {
-    size_t3 v = BuiltinVector(__intel_GlobalInvocationId);
-
-    return v;
-}
-
-uint __builtin_spirv_BuiltInWorkDim()
-{
-    uint dim = __builtin_IB_get_work_dim();
-
-#ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(dim >= 0);
-    __builtin_assume(dim <= 3);
-#endif
-
-    return dim;
+    return __intel_GlobalInvocationId();
 }
 
 size_t3 __builtin_spirv_BuiltInGlobalSize()
 {
     size_t3 v = BuiltinVector(__builtin_IB_get_global_size);
-
     BuiltinVectorAssumeGE0(v);
-
     return v;
 }
 
 size_t3 __builtin_spirv_BuiltInEnqueuedWorkgroupSize()
 {
     size_t3 v = BuiltinVector(__builtin_IB_get_enqueued_local_size);
-
     BuiltinVectorAssumeGE0(v);
-
     return v;
 }
 
@@ -165,9 +180,63 @@ size_t3 __builtin_spirv_BuiltInGlobalOffset()
     return BuiltinVector(__builtin_IB_get_global_offset);
 }
 
-size_t __builtin_spirv_BuiltInGlobalLinearId()
+#else // not defined(OLD_SPIRV_BUILTINS)
+
+size_t OVERLOADABLE __spirv_BuiltInNumWorkgroups(int dimindx)
 {
-  uint dim = __builtin_spirv_BuiltInWorkDim();
+    size_t v = __builtin_IB_get_num_groups(dimindx);
+    BuiltinAssumeGE0(v);
+    return v;
+}
+
+size_t OVERLOADABLE __spirv_BuiltInWorkgroupSize(int dimindx)
+{
+    size_t v = __builtin_IB_get_local_size(dimindx);
+    BuiltinAssumeGE0(v);
+    return v;
+}
+
+size_t OVERLOADABLE __spirv_BuiltInWorkgroupId(int dimindx)
+{
+    size_t v = __builtin_IB_get_group_id(dimindx);
+    BuiltinAssumeGE0(v);
+    return v;
+}
+
+size_t OVERLOADABLE __spirv_BuiltInLocalInvocationId(int dimindx)
+{
+    return __intel_LocalInvocationId(dimindx);
+}
+
+size_t OVERLOADABLE __spirv_BuiltInGlobalInvocationId(int dimindx)
+{
+    return __intel_GlobalInvocationId(dimindx);
+}
+
+size_t OVERLOADABLE __spirv_BuiltInGlobalSize(int dimindx)
+{
+    size_t v = __builtin_IB_get_global_size(dimindx);
+    BuiltinAssumeGE0(v);
+    return v;
+}
+
+size_t OVERLOADABLE __spirv_BuiltInEnqueuedWorkgroupSize(int dimindx)
+{
+    size_t v = __builtin_IB_get_enqueued_local_size(dimindx);
+    BuiltinAssumeGE0(v);
+    return v;
+}
+
+size_t OVERLOADABLE __spirv_BuiltInGlobalOffset(int dimindx)
+{
+    return __builtin_IB_get_global_offset(dimindx);
+}
+
+#endif // defined(OLD_SPIRV_BUILTINS)
+
+size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )()
+{
+  uint dim = SPIRV_BUILTIN_NO_OP(BuiltInWorkDim, , )();
   size_t result = 0;
 
   switch (dim) {
@@ -187,14 +256,11 @@ size_t __builtin_spirv_BuiltInGlobalLinearId()
       break;
   }
 
-#ifndef NO_ASSUME_SUPPORT
-  __builtin_assume(result >= 0);
-#endif
-
+  BuiltinAssumeGE0(result);
   return result;
 }
 
-size_t __builtin_spirv_BuiltInLocalInvocationIndex()
+size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )()
 {
 #if 0
     // This doesn't work right now due to a bug in the runtime.
@@ -203,69 +269,31 @@ size_t __builtin_spirv_BuiltInLocalInvocationIndex()
     // the math to compute the linear local ID.
     return __builtin_IB_get_local_linear_id();
 #else
-    uint    llid;
-
+    uint llid;
     llid  = (uint)__intel_LocalInvocationId(2);
     llid *= (uint)__builtin_IB_get_local_size(1);
     llid += (uint)__intel_LocalInvocationId(1);
     llid *= (uint)__builtin_IB_get_local_size(0);
     llid += (uint)__intel_LocalInvocationId(0);
 
-#ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(llid >= 0);
-#endif
-
+    BuiltinAssumeGE0(llid);
     return llid;
 #endif
 }
 
-// Helper funcs ////////
-
-uint __spirv_LocalID(uint dim)
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInWorkDim, , )()
 {
-    return __intel_LocalInvocationId(dim);
-}
-
-uint __spirv_WorkgroupSize()
-{
-    uint totalWorkGroupSize =
-        (uint)__builtin_IB_get_local_size(0) *
-        (uint)__builtin_IB_get_local_size(1) *
-        (uint)__builtin_IB_get_local_size(2);
+    uint dim = __builtin_IB_get_work_dim();
 
 #ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(totalWorkGroupSize >= 0);
-#endif
-    return totalWorkGroupSize;
-}
-
-uint __spirv_EnqueuedWorkgroupSize( void )
-{
-    uint totalWorkGroupSize =
-        (uint)__builtin_IB_get_enqueued_local_size(0) *
-        (uint)__builtin_IB_get_enqueued_local_size(1) *
-        (uint)__builtin_IB_get_enqueued_local_size(2);
-
-#ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(totalWorkGroupSize >= 0);
-#endif
-    return totalWorkGroupSize;
-}
-
-uint __spirv_BuiltInLocalInvocationIndex()
-{
-    uint id = (uint)__builtin_spirv_BuiltInLocalInvocationIndex();
-
-#ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(id >= 0);
+    __builtin_assume(dim >= 0);
+    __builtin_assume(dim <= 3);
 #endif
 
-    return id;
+    return dim;
 }
 
-////////////////////////
-
-uint __builtin_spirv_BuiltInSubgroupMaxSize()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )()
 {
     uint v = __builtin_IB_get_simd_size();
 
@@ -277,9 +305,9 @@ uint __builtin_spirv_BuiltInSubgroupMaxSize()
     return v;
 }
 
-uint __builtin_spirv_BuiltInSubgroupId()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )()
 {
-    uint v = (uint)__builtin_spirv_BuiltInLocalInvocationIndex() / __builtin_spirv_BuiltInSubgroupMaxSize();
+    uint v = (uint)SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )() / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 
 #ifndef NO_ASSUME_SUPPORT
     __builtin_assume(v >= 0);
@@ -289,31 +317,30 @@ uint __builtin_spirv_BuiltInSubgroupId()
     return v;
 }
 
-uint __builtin_spirv_BuiltInNumSubgroups()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )()
 {
-    uint totalWorkGroupSize = __spirv_WorkgroupSize() + __builtin_spirv_BuiltInSubgroupMaxSize() - 1;
-    return totalWorkGroupSize / __builtin_spirv_BuiltInSubgroupMaxSize();
+    uint totalWorkGroupSize = __intel_WorkgroupSize() + SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1;
+    return totalWorkGroupSize / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 }
 
-uint __builtin_spirv_BuiltInSubgroupSize()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )()
 {
     uint    remainder =
-                __spirv_WorkgroupSize() & ( __builtin_spirv_BuiltInSubgroupMaxSize() - 1 );
+                __intel_WorkgroupSize() & ( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1 );
     bool    fullSubGroup =
                 ( remainder == 0 ) ||
-                ( __builtin_spirv_BuiltInSubgroupId() < __builtin_spirv_BuiltInNumSubgroups() - 1 );
+                ( SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )() < SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() - 1 );
 
-    return fullSubGroup ? __builtin_spirv_BuiltInSubgroupMaxSize() : remainder;
+    return fullSubGroup ? SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() : remainder;
 }
 
-uint __builtin_spirv_BuiltInNumEnqueuedSubgroups()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumEnqueuedSubgroups, , )()
 {
-    uint totalEnqueuedWorkGroupSize = __spirv_EnqueuedWorkgroupSize() + __builtin_spirv_BuiltInSubgroupMaxSize() - 1;
-    return totalEnqueuedWorkGroupSize / __builtin_spirv_BuiltInSubgroupMaxSize();
+    uint totalEnqueuedWorkGroupSize = __intel_EnqueuedWorkgroupSize() + SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )() - 1;
+    return totalEnqueuedWorkGroupSize / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 }
 
-uint __builtin_spirv_BuiltInSubgroupLocalInvocationId()
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )()
 {
     return __builtin_IB_get_simd_id();
 }
-

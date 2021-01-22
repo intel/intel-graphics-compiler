@@ -179,11 +179,15 @@ typedef size_t uintptr_t;
 #define SPIRV_OVERLOADABLE
 #define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
     __builtin_spirv_Op##opcode##old_mangling
+#define SPIRV_BUILTIN_NO_OP(opcode, old_mangling, new_mangling) \
+    __builtin_spirv_##opcode##old_mangling
 #define SPIRV_OCL_BUILTIN(func, old_mangling, new_mangling) \
     __builtin_spirv_OpenCL_##func##old_mangling
 #else
 #define SPIRV_OVERLOADABLE __attribute__((overloadable))
 #define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
+    __spirv_##opcode##new_mangling
+#define SPIRV_BUILTIN_NO_OP(opcode, old_mangling, new_mangling) \
     __spirv_##opcode##new_mangling
 #define SPIRV_OCL_BUILTIN(func, old_mangling, new_mangling) \
     __spirv_ocl_##func##new_mangling
@@ -267,23 +271,35 @@ typedef enum
 
 // Work-item functions
 
+#if defined(OLD_SPIRV_BUILTINS)
 size_t3 __builtin_spirv_BuiltInNumWorkgroups(void);
 size_t3 __builtin_spirv_BuiltInWorkgroupSize(void);
 size_t3 __builtin_spirv_BuiltInWorkgroupId(void);
 size_t3 __builtin_spirv_BuiltInLocalInvocationId(void);
 size_t3 __builtin_spirv_BuiltInGlobalInvocationId(void);
-uint    __builtin_spirv_BuiltInWorkDim(void);
 size_t3 __builtin_spirv_BuiltInGlobalSize(void);
 size_t3 __builtin_spirv_BuiltInEnqueuedWorkgroupSize(void);
 size_t3 __builtin_spirv_BuiltInGlobalOffset(void);
-size_t  __builtin_spirv_BuiltInGlobalLinearId(void);
-size_t  __builtin_spirv_BuiltInLocalInvocationIndex(void);
-uint    __builtin_spirv_BuiltInSubgroupSize(void);
-uint    __builtin_spirv_BuiltInSubgroupMaxSize(void);
-uint    __builtin_spirv_BuiltInNumSubgroups(void);
-uint    __builtin_spirv_BuiltInNumEnqueuedSubgroups(void);
-uint    __builtin_spirv_BuiltInSubgroupId(void);
-uint    __builtin_spirv_BuiltInSubgroupLocalInvocationId(void);
+#else
+size_t __attribute__((overloadable)) __spirv_BuiltInNumWorkgroups(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInWorkgroupSize(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInWorkgroupId(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInLocalInvocationId(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInGlobalInvocationId(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInGlobalSize(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInEnqueuedWorkgroupSize(int dimindx);
+size_t __attribute__((overloadable)) __spirv_BuiltInGlobalOffset(int dimindx);
+#endif // defined(OLD_SPIRV_BUILTINS)
+
+size_t  SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )(void);
+size_t  SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInWorkDim, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumEnqueuedSubgroups, , )(void);
+uint    SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )(void);
 
 // Image Instructions
 //

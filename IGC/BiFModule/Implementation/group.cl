@@ -28,9 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Group Instructions
 
-uint __spirv_BuiltInLocalInvocationIndex();
-uint __spirv_WorkgroupSize();
-uint __spirv_LocalID(uint dim);
+uint __intel_WorkgroupSize();
+uint OVERLOADABLE __intel_LocalInvocationId(uint dim);
 
 int OVERLOADABLE intel_sub_group_shuffle( int X, uint c );
 long OVERLOADABLE intel_sub_group_shuffle( long X, uint c );
@@ -1099,9 +1098,9 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
 #define BROADCAST_WORKGROUP(type)                                                       \
 {                                                                                       \
     GET_MEMPOOL_PTR(tmp, type, false, 1)                                                       \
-    if( (__spirv_LocalID(0) == LocalId.s0) &                                            \
-        (__spirv_LocalID(1) == LocalId.s1) &                                            \
-        (__spirv_LocalID(2) == LocalId.s2) )                                            \
+    if( (__intel_LocalInvocationId(0) == LocalId.s0) &                                            \
+        (__intel_LocalInvocationId(1) == LocalId.s1) &                                            \
+        (__intel_LocalInvocationId(2) == LocalId.s2) )                                            \
     {                                                                                   \
         *tmp = Value;                                                                   \
     }                                                                                   \
@@ -1569,7 +1568,7 @@ uint intel_sub_group_ballot(bool p)
 
 uint4 __builtin_spirv_BuiltInSubgroupEqMaskKHR()
 {
-    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     v.x = 1 << id;
@@ -1579,7 +1578,7 @@ uint4 __builtin_spirv_BuiltInSubgroupEqMaskKHR()
 
 uint4 __builtin_spirv_BuiltInSubgroupGeMaskKHR()
 {
-    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     v.x = as_uint(as_int(1 << 31) >> (31 - id));
@@ -1589,7 +1588,7 @@ uint4 __builtin_spirv_BuiltInSubgroupGeMaskKHR()
 
 uint4 __builtin_spirv_BuiltInSubgroupLeMaskKHR()
 {
-    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     uint bitIdx = 1 << id;
@@ -1610,7 +1609,7 @@ uint4 __builtin_spirv_BuiltInSubgroupGtMaskKHR()
 
 uint4 __builtin_spirv_BuiltInSubgroupLtMaskKHR()
 {
-    uint id = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    uint id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
     uint4 v = 0;
 
     v.x = (1 << id) - 1;
@@ -1704,8 +1703,8 @@ uint __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(uint Executio
     uint result = 0;
     if (Execution == Subgroup)
     {
-        uint sgsize = __builtin_spirv_BuiltInSubgroupSize();
-        uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();
+        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
         uint consideredBits = Value.x << (32 - sgsize);
         // intended fallthrough in the switch statement
         switch (Operation)
@@ -1735,7 +1734,7 @@ uint __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(uint Execution, ui
 {
     if (Execution == Subgroup)
     {
-        uint sgsize = __builtin_spirv_BuiltInSubgroupSize();
+        uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();
         uint consideredBits = Value.x << (32 - sgsize);
         return (sgsize - 1) - __builtin_spirv_OpenCL_clz_i32(consideredBits);
     }
@@ -1801,8 +1800,8 @@ DEFN_ARITH_OPERATIONS(half)
 #define DEFN_WORK_GROUP_REDUCE(type, op, identity, X)                                       \
 {                                                                                          \
     GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
-    uint lid = __spirv_BuiltInLocalInvocationIndex();                                        \
-    uint lsize = __spirv_WorkgroupSize();                                                 \
+    uint lid = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();                                        \
+    uint lsize = __intel_WorkgroupSize();                                                 \
     data[lid] = X;                                                                       \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);         \
     uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(lsize - 1)) - 1) ;  \
@@ -1825,8 +1824,8 @@ DEFN_ARITH_OPERATIONS(half)
 #define DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)                                   \
 {                                                                                          \
     GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
-    uint lid = __spirv_BuiltInLocalInvocationIndex();                                         \
-    uint lsize = __spirv_WorkgroupSize();                                                 \
+    uint lid = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();                                         \
+    uint lsize = __intel_WorkgroupSize();                                                 \
     data[lid] = X;                                                                       \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0,AcquireRelease |  WorkgroupMemory);         \
     uint offset = 1;                                                                      \
@@ -1848,8 +1847,8 @@ DEFN_ARITH_OPERATIONS(half)
 #define DEFN_WORK_GROUP_SCAN_EXCL(type, op, identity, X)                                   \
 {                                                                                         \
     GET_MEMPOOL_PTR(data, type, true, 1)                                                 \
-    uint lid = __spirv_BuiltInLocalInvocationIndex();                                         \
-    uint lsize = __spirv_WorkgroupSize();                                                 \
+    uint lid = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();                                         \
+    uint lsize = __intel_WorkgroupSize();                                                 \
     data[0] = identity;                                                                  \
     data[lid + 1] = X;                                                                   \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
@@ -1871,7 +1870,7 @@ DEFN_ARITH_OPERATIONS(half)
 
 #define DEFN_SUB_GROUP_REDUCE(type, type_abbr, op, identity, X)                             \
 {                                                                                         \
-    uint sgsize = __builtin_spirv_BuiltInSubgroupSize();                                 \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                 \
     if(sgsize == 8)    \
     {    \
         X = op((type)intel_sub_group_shuffle( X, 0 ),    \
@@ -1939,7 +1938,7 @@ DEFN_ARITH_OPERATIONS(half)
     }    \
     else    \
     {    \
-        uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();                     \
+        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                     \
         uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(sgsize - 1)) - 1 ); \
         while( mask > 0 )                                                                    \
         {                                                                                    \
@@ -1959,7 +1958,7 @@ DEFN_ARITH_OPERATIONS(half)
 
 #define DEFN_SUB_GROUP_SCAN_INCL(type, type_abbr, op, identity, X)                        \
 {                                                                                         \
-    uint sgsize = __builtin_spirv_BuiltInSubgroupSize();                                 \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                 \
     uint offset = 1;                                                                      \
     while( offset < sgsize )                                                             \
     {                                                                                    \
@@ -1972,7 +1971,7 @@ DEFN_ARITH_OPERATIONS(half)
 
 #define DEFN_SUB_GROUP_SCAN_EXCL(type, type_abbr, op, identity, X)                        \
 {                                                                                         \
-    uint sgsize = __builtin_spirv_BuiltInSubgroupSize();                                 \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                 \
     X = intel_sub_group_shuffle_up( (type)identity, X, 1 );                              \
     uint offset = 1;                                                                      \
     while( offset < sgsize )                                                             \
@@ -2119,7 +2118,7 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 
 #define DEFN_SUB_GROUP_SCAN_INCL_NON_UNIFORM(type, type_abbr, op, identity, X)                      \
 {                                                                                                   \
-    uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();                                \
+    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
     uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                 \
     activeChannels ^= 1 << activeId;                                                                \
@@ -2135,7 +2134,7 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 
 #define DEFN_SUB_GROUP_SCAN_EXCL_NON_UNIFORM(type, type_abbr, op, identity, X)                       \
 {                                                                                                    \
-    uint sglid = __builtin_spirv_BuiltInSubgroupLocalInvocationId();                                 \
+    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                 \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                             \
     type result = identity;                                                                          \
     while (activeChannels)                                                                           \

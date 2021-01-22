@@ -243,15 +243,15 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
     std::string nameFunc;
     if (wi == GlobalOrLocal::Global)
     {
-        nameFunc = "__builtin_spirv_BuiltInGlobalInvocationId";
+        nameFunc = "_Z26__intel_GlobalInvocationIdv";
     }
     else if (wi == GlobalOrLocal::Local)
     {
-        nameFunc = "__builtin_spirv_BuiltInLocalInvocationId";
+        nameFunc = "_Z25__intel_LocalInvocationIdv";
     }
     else if (wi == GlobalOrLocal::WorkItem)
     {
-        nameFunc = "__builtin_spirv_BuiltInWorkgroupId";
+        nameFunc = "_Z19__intel_WorkgroupIdv";
     }
 
     Function* getFunc = m_pModule->getFunction(nameFunc);

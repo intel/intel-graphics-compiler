@@ -45,9 +45,6 @@ namespace {
     const StringRef OCLBIF_GET_GLOBAL_ID = "_Z13get_global_idj";
     const StringRef OCLBIF_GET_LOCAL_ID = "_Z12get_local_idj";
     const StringRef OCLBIF_GET_GROUP_ID = "_Z12get_group_idj";
-    const StringRef OCLBIF_GET_GLOBAL_ID_SPIRV = "__builtin_spirv_BuiltInGlobalInvocationID";
-    const StringRef OCLBIF_GET_LOCAL_ID_SPIRV = "__builtin_spirv_BuiltInLocalInvocationId";
-    const StringRef OCLBIF_GET_GROUP_ID_SPIRV = "__builtin_spirv_BuiltInWorkgroupId";
 }
 
 // Register pass to igc-opt
@@ -88,7 +85,8 @@ void CodeAssumption::uniformHelper(Module* M)
         StringRef FN = F->getName();
 
         // sub_group_id
-        if (!FN.equals("__builtin_spirv_BuiltInSubgroupId") &&
+        if (!FN.equals("_Z25__spirv_BuiltInSubgroupIdv") &&
+            !FN.equals("__builtin_spirv_BuiltInSubgroupId") &&
             !FN.equals("_Z16get_sub_group_idv"))
             continue;
         // find all the callees

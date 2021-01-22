@@ -180,7 +180,7 @@ uint AtomicCompareExchange(local uint *Pointer, uint Scope, uint Equal, uint Une
 static INLINE
 uint SubgroupLocalId()
 {
-    return __builtin_spirv_BuiltInSubgroupLocalInvocationId();
+    return SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();
 }
 
 static INLINE OVERLOADABLE

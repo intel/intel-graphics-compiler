@@ -860,7 +860,8 @@ char PreBIImportAnalysis::ID = 0;
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_GLOBAL_OFFSET = "_Z17get_global_offsetj";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_LOCAL_ID = "_Z12get_local_idj";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_GROUP_ID = "_Z12get_group_idj";
-const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID_SPIRV = "__builtin_spirv_BuiltInSubgroupId";
+const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID_IGC_SPVIR = "__builtin_spirv_BuiltInSubgroupId";
+const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID_KHR_SPVIR = "_Z25__spirv_BuiltInSubgroupIdv";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID = "_Z16get_sub_group_idv";
 
 PreBIImportAnalysis::PreBIImportAnalysis() : ModulePass(ID)
@@ -883,7 +884,8 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
         if (funcName == OCL_GET_GLOBAL_OFFSET ||
             funcName == OCL_GET_LOCAL_ID ||
             funcName == OCL_GET_GROUP_ID ||
-            funcName == OCL_GET_SUBGROUP_ID_SPIRV ||
+            funcName == OCL_GET_SUBGROUP_ID_IGC_SPVIR ||
+            funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR ||
             funcName == OCL_GET_SUBGROUP_ID)
         {
             MetaDataUtils* pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -954,8 +956,9 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                   //and extracted from new framework later
                   modMD->FuncMD[f].groupIDPresent = true;
                 }
-                else if (funcName == OCL_GET_SUBGROUP_ID_SPIRV ||
-                  funcName == OCL_GET_SUBGROUP_ID)
+                else if (funcName == OCL_GET_SUBGROUP_ID_IGC_SPVIR ||
+                         funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR ||
+                         funcName == OCL_GET_SUBGROUP_ID)
                 {
                     modMD->FuncMD[f].workGroupWalkOrder.dim0 = 0;
                     modMD->FuncMD[f].workGroupWalkOrder.dim1 = 1;
