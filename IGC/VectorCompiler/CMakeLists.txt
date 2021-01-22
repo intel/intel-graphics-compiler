@@ -134,6 +134,10 @@ if(LLVM_ON_WIN32)
 
   # disable implicitly deleted dtor warning
   add_compile_options(/wd4624)
+
+  # Disable double-inline warning coming from StringRef.h:898
+  # For some reason it is not filtered by /external:I option
+  add_compile_options(/wd4141)
 endif()
 
 if(DEFINED VC_INTRINSICS_SRC)
