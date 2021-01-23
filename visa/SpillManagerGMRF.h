@@ -63,22 +63,20 @@ class SpillManagerGRF
 {
 public:
 
-    // Types
-
-    typedef std::list < G4_Declare * > DECLARE_LIST;
-    typedef std::list < LiveRange * > LR_LIST;
-    typedef std::list < LSLiveRange* > LSLR_LIST;
-    typedef std::list < G4_INST *, INST_LIST_NODE_ALLOCATOR > INST_LIST;
+    using DECLARE_LIST = std::list<G4_Declare *> ;
+    using LR_LIST = std::list<LiveRange *>;
+    using LSLR_LIST = std::list<LSLiveRange *>;
+    using INST_LIST = std::list<G4_INST *,INST_LIST_NODE_ALLOCATOR>;
     typedef struct Edge
     {
         unsigned first;
         unsigned second;
     } EDGE;
-    typedef std::list < EDGE > INTF_LIST;
+    using INTF_LIST = std::list<EDGE>;
 
     // Methods
 
-    SpillManagerGRF (
+    SpillManagerGRF(
         GlobalRA&                g,
         unsigned                 spillAreaOffset,
         unsigned                 varIdCount,
@@ -103,11 +101,10 @@ public:
         bool enableSpillSpaceCompression,
         bool useScratchMsg);
 
-    ~SpillManagerGRF () {}
+    ~SpillManagerGRF() {}
 
 
-    bool
-    insertSpillFillCode    (
+    bool insertSpillFillCode(
         G4_Kernel*         kernel,
         PointsToAnalysis& pointsToAnalysis
     );
@@ -144,91 +141,58 @@ public:
         unsigned int height);
 
 private:
-
-    // Methods
-
-    bool handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
+    bool handleAddrTakenSpills(G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis);
     unsigned int handleAddrTakenLSSpills(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
-    void insertAddrTakenSpillFill( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
+    void insertAddrTakenSpillFill(G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis);
     void insertAddrTakenLSSpillFill(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
-    void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it,
-        G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
-    void insertAddrTakenLSSpillAndFillCode(G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it, G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
-    void prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis );
+    void insertAddrTakenSpillAndFillCode(
+        G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it,
+        G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis,
+        bool spill, unsigned int bbid);
+    void insertAddrTakenLSSpillAndFillCode(G4_Kernel* kernel, G4_BB* bb,
+        INST_LIST::iterator inst_it, G4_Operand* opnd,
+        PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
+    void prunePointsTo(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
 
     void prunePointsToLS(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
 
-    unsigned
-    getMaxExecSize (
-        G4_Operand * operand
-    ) const;
+    bool isComprInst (G4_INST * inst) const;
 
-    bool
-    isComprInst (
-        G4_INST * inst
-    ) const;
-
-    bool
-    isMultiRegComprSource (
+    bool isMultiRegComprSource (
         G4_SrcRegRegion* src,
-        G4_INST *        inst
-    ) const;
+        G4_INST *        inst) const;
 
-    unsigned
-    getSendRspLengthBitOffset () const;
+    unsigned getSendRspLengthBitOffset() const;
 
-    unsigned
-    getSendMaxResponseLength () const;
+    unsigned getSendMaxResponseLength() const;
 
-    static unsigned
-    getSendMsgLengthBitOffset ();
+    static unsigned getSendMsgLengthBitOffset();
 
-    unsigned
-    getSendMaxMessageLength () const;
+    unsigned getSendMaxMessageLength() const;
 
-    static unsigned
-    getSendDescDataSizeBitOffset ();
+    static unsigned getSendDescDataSizeBitOffset();
 
-    unsigned
-    getSendReadTypeBitOffset () const;
+    unsigned getSendReadTypeBitOffset() const;
 
-    static unsigned
-    getSendWriteTypeBitOffset ();
+    static unsigned getSendWriteTypeBitOffset();
 
-    unsigned
-    getSendScReadType () const;
+    unsigned getSendScReadType() const;
 
-    unsigned
-    getSendScWriteType () const;
+    unsigned getSendScWriteType() const;
 
     unsigned getSendOwordReadType() const;
     static unsigned getSendOwordWriteType();
     unsigned getSendExDesc(bool isWrite, bool isScatter) const;
 
-    unsigned
-    getSpillIndex (
-        G4_RegVar *  spilledRegVar
-    );
+    unsigned getSpillIndex(G4_RegVar *  spilledRegVar);
 
-    unsigned
-    getFillIndex (
-        G4_RegVar *  spilledRegVar
-    );
+    unsigned getFillIndex(G4_RegVar *  spilledRegVar);
 
-    unsigned
-    getTmpIndex (
-        G4_RegVar *  spilledRegVar
-    );
+    unsigned getTmpIndex(G4_RegVar *  spilledRegVar);
 
-    unsigned
-    getMsgSpillIndex (
-        G4_RegVar *  spilledRegVar
-    );
+    unsigned getMsgSpillIndex(G4_RegVar *  spilledRegVar);
 
-    unsigned
-    getMsgFillIndex (
-        G4_RegVar *  spilledRegVar
-    );
+    unsigned getMsgFillIndex(G4_RegVar *  spilledRegVar);
 
     const char *
     createImplicitRangeName (
@@ -308,13 +272,13 @@ private:
         unsigned &    type);
 
     template <class REGION_TYPE>
-    unsigned getEncAlignedSegmentByteSize(REGION_TYPE * region, G4_ExecSize   execSize);
+    unsigned getEncAlignedSegmentByteSize(REGION_TYPE * region, G4_ExecSize execSize);
 
     template <class REGION_TYPE>
-    unsigned getEncAlignedSegmentDisp(REGION_TYPE * region, G4_ExecSize   execSize);
+    unsigned getEncAlignedSegmentDisp(REGION_TYPE * region, G4_ExecSize execSize);
 
     template <class REGION_TYPE>
-    unsigned getEncAlignedSegmentMsgType(REGION_TYPE * region, G4_ExecSize   execSize);
+    unsigned getEncAlignedSegmentMsgType(REGION_TYPE * region, G4_ExecSize execSize);
 
     template <class REGION_TYPE>
     unsigned getSegmentByteSize(REGION_TYPE * region, G4_ExecSize   execSize);
@@ -418,8 +382,7 @@ private:
         unsigned          regOff = 0,
         unsigned          subregOff = 0);
 
-    G4_DstRegRegion *
-    createMHeaderInputDstRegion(
+    G4_DstRegRegion * createMHeaderInputDstRegion(
         G4_RegVar *       grfRange,
         unsigned          subregOff = 0);
 
@@ -704,28 +667,33 @@ private:
     }
 };
 }
-bool isDisContRegion (
-    vISA::G4_DstRegRegion * region,
-    unsigned          execSize
-);
 
-bool isDisContRegion (
-    vISA::G4_SrcRegRegion * region,
-    unsigned          execSize
-);
+// Check if the destination region is discontiguous or not.
+// A destination region is discontiguous if there are portions of the
+// region that are not written and unaffected.
+static inline bool isDisContRegion(G4_DstRegRegion * region, unsigned execSize)
+{
+    // If the horizontal stride is greater than 1, then it has gaps.
+    // NOTE: Horizontal stride of 0 is not allowed for destination regions.
+    return region->getHorzStride() != 1;
+}
+
+// Check if the source region is discontiguous or not.
+// A source region is discontiguous in there are portions of the region
+// that are not read.
+static inline bool isDisContRegion(G4_SrcRegRegion * region, unsigned execSize)
+{
+    return region->getRegion()->isContiguous(execSize);
+}
+
 
 // Check if the region is partial or not, i.e does it read/write the
 // whole segment.
-
 template <class REGION_TYPE>
-bool isPartialRegion (
-    REGION_TYPE * region,
-    unsigned      execSize
-)
+static inline bool isPartialRegion(REGION_TYPE * region, unsigned execSize)
 {
     // If the region is discontiguous then it is partial.
-
-    if (isDisContRegion (region, execSize)) {
+    if (isDisContRegion(region, execSize)) {
         return true;
     }
     else
