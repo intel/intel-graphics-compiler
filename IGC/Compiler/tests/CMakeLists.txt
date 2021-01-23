@@ -1,5 +1,3 @@
-#
-#
 if(NOT TARGET igc_opt OR LLVM_USE_PREBUILT)
   message("[check-igc] LIT tests disabled. Missing igc_opt target.")
 elseif(NOT BS_ENABLE_ULT)

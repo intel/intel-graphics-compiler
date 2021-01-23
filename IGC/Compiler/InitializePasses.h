@@ -159,4 +159,3 @@ void initializeIGCInstructionCombiningPassPass(llvm::PassRegistry&);
 void initializeIntDivConstantReductionPass(llvm::PassRegistry&);
 void initializeIntDivRemCombinePass(llvm::PassRegistry&);
 void initializeGenRotatePass(llvm::PassRegistry&);
-void initializeSynchronizationObjectCoalescingPass(llvm::PassRegistry&);

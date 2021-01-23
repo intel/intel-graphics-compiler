@@ -96,7 +96,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
-#include "Compiler/Optimizer/SynchronizationObjectCoalescing.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -1779,12 +1778,6 @@ void OptimizeIR(CodeGenContext* const pContext)
 #if LLVM_VERSION_MAJOR >= 7
         mpm.add(new TrivialLocalMemoryOpsElimination());
 #endif
-        if (
-            pContext->type == ShaderType::HULL_SHADER ||
-            pContext->type == ShaderType::COMPUTE_SHADER)
-        {
-            mpm.add(new SynchronizationObjectCoalescing);
-        }
         mpm.add(createGenSimplificationPass());
 
         if (pContext->m_instrTypes.hasLoadStore)

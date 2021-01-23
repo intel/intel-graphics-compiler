@@ -26,7 +26,6 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/SynchronizationObjectCoalescing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ValueTracker.cpp"
   )
 
@@ -54,7 +53,6 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/SynchronizationObjectCoalescing.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ValueTracker.h"
   )
 
