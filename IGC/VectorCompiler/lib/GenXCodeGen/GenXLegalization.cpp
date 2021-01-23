@@ -486,9 +486,6 @@ bool GenXLegalization::runOnFunction(Function &F) {
  */
 unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
 
-  // HW does not support simd16/32 integer div/rem. Here it allows
-  // simd16 but not simdD32, as jitter will split it. This emits simd16
-  // moves not simd8 ones.
   switch (Inst->getOpcode()) {
   default:
     break;
@@ -496,7 +493,15 @@ unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
   case BinaryOperator::UDiv:
   case BinaryOperator::SRem:
   case BinaryOperator::URem:
-    return ST->emulateIDivRem() ? 0x3f : 0x1f;
+    // If integer division IS supported.
+    //   Set maximum SIMD width to 16:
+    //      Recent HW does not support SIMD16/SIMD32 division, however,
+    //      finalizer splits such SIMD16 operations and we piggy-back
+    //      on this behavior.
+    // If integer division IS NOT supported.
+    //   The expectation is for GenXEmulate pass to replace such operations
+    //   with emulation routines (which has no restriction on SIMD width)
+    return ST->hasIntegerDivision() ? 0x1f : 0x3f;
   }
 
   unsigned ID = GenXIntrinsic::getAnyIntrinsicID(Inst);

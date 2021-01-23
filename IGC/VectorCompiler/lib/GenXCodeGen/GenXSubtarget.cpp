@@ -65,6 +65,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   EmulateLongLong = false;
   OCLRuntime = false;
   HasSwitchjmp = false;
+  HasIntegerDivision = false;
 
   if (StackScratchMem)
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;
@@ -101,7 +102,7 @@ GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
 
 StringRef GenXSubtarget::getEmulateFunction(const Instruction *Inst) const {
   StringRef EmuFnName;
-  if (emulateIDivRem()) {
+  if (!hasIntegerDivision()) {
     unsigned Opcode = Inst->getOpcode();
     switch (Opcode) {
     default:

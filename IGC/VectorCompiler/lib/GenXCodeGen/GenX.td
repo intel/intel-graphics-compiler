@@ -65,6 +65,10 @@ def FeatureNoJumpTables : SubtargetFeature<"disable_jump_tables", "DisableJumpTa
 
 def FeatureSwitchjmp : SubtargetFeature<"switchjmp", "HasSwitchjmp", "true",
                                         "supports switchjmp visa instruction">;
+def FeatureIntegerDivision: SubtargetFeature<"int_division",
+                                             "HasIntegerDivision",
+                                             "true",
+                                             "supports integer division">;
 
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
@@ -81,17 +85,27 @@ class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
 def : Proc<"generic",         []>;
-def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp]>;
-def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp]>;
-def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp]>;
-def : Proc<"TGLLP",           [FeatureLongLongEmulation]>;
+def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntegerDivision]>;
 
 def GenX : Target {
   // Nothing here (yet?)

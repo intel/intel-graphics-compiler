@@ -114,6 +114,9 @@ private:
   // True if subtarget supports switchjmp visa instruction
   bool HasSwitchjmp;
 
+  // True if subtarget supports integer division
+  bool HasIntegerDivision;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -179,9 +182,6 @@ public:
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }
 
-  /// * emulateIDivRem - true if emulates integer division and reminder.
-  bool emulateIDivRem() const { return GenXVariant >= GENX_TGLLP; }
-
   /// * dumpRegAlloc - true if we should dump Reg Alloc info
   bool dumpRegAlloc() const { return DumpRegAlloc; }
 
@@ -203,6 +203,9 @@ public:
 
   /// * has switchjmp instruction
   bool hasSwitchjmp() const { return HasSwitchjmp; }
+
+  /// * has integer div/rem instruction
+  bool hasIntegerDivision() const { return HasIntegerDivision; }
 
   /// * warnCallable() - true if compiler only generate warning for
   ///   callable in the middle
