@@ -647,11 +647,6 @@ bool WaOverwriteFFID() const
 }
 
 
-bool alignBindlessSampler() const
-{
-    return true;
-}
-
 bool WaDisableSendSrcDstOverlap() const
 {
     return (!IGC_IS_FLAG_ENABLED(DisableSendSrcDstOverlapWA)) &&

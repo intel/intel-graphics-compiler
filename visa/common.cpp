@@ -39,19 +39,6 @@ static _THREAD TARGET_PLATFORM visaPlatform;
 // This is initialized in createBuilder and set once in SetStepping
 static _THREAD Stepping stepping;
 
-// We do not have a string for NONE
-const char* platformString[ALL] =
-{
-    "BDW",
-    "CHV",
-    "SKL",
-    "BXT",
-    "CNL",
-    "ICLLP",
-    "TGLLP",
-};
-
-
 struct PlatformInfo {
     TARGET_PLATFORM  platform;
     PlatformGen      family;

@@ -4373,11 +4373,6 @@ namespace IGC
             SaveOption(vISA_ReorderDPSendToDifferentBti, false);
         }
 
-        if (m_program->m_Platform->alignBindlessSampler())
-        {
-            SaveOption(vISA_alignBindlessSampler, true);
-        }
-
         if (m_program->m_Platform->WaDisableSendSrcDstOverlap())
         {
             SaveOption(vISA_noSendSrcDstOverlap, true);

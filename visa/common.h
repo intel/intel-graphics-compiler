@@ -225,7 +225,6 @@ TARGET_PLATFORM getGenxPlatform();
 // returns an array of all supported platforms
 const TARGET_PLATFORM *getGenxAllPlatforms(int *num);
 
-// replaces: extern const char* platformString[];
 const char *getGenxPlatformString(TARGET_PLATFORM);
 
 // returns nullptr terminated array of strings that can be parsed
