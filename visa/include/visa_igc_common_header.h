@@ -472,17 +472,6 @@ typedef enum {
     ALL
 } TARGET_PLATFORM;
 
-
-typedef enum {
-    Step_A      = 0,
-    Step_B      = 1,
-    Step_C      = 2,
-    Step_D      = 3,
-    Step_E      = 4,
-    Step_F      = 5,
-    Step_none   = 6  // make this the last one so comparison would work
-} Stepping;
-
 // gather/scatter element size
 typedef enum {
     GATHER_SCATTER_BYTE = 0x0,

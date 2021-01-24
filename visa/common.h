@@ -250,11 +250,6 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
 // NOTE: encoding values are not necessarily in order
 int getGenxPlatformEncoding();
 
-void        InitStepping();
-int         SetStepping(const char* s);
-Stepping    GetStepping();
-const char *GetSteppingString();
-
 // Error types
 #define ERROR_UNKNOWN               "ERROR: Unknown fatal internal error"
 #define ERROR_INTERNAL_ARGUMENT     "ERROR: Invalid argument in an internal function"

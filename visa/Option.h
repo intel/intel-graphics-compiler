@@ -39,6 +39,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MAX_OPTION_STR_LENGTH 256
 #define MAX_LABEL_STR_LENGTH 256
 
+enum Stepping {
+    Step_A = 0,
+    Step_B = 1,
+    Step_C = 2,
+    Step_D = 3,
+    Step_E = 4,
+    Step_F = 5,
+    Step_none = 6
+};
+
 enum EntryType {
     ET_UNINIT = 0,
     ET_BOOL,
@@ -155,12 +165,13 @@ public:
     std::stringstream& getUserArgString();
     std::string getFullArgString();
     std::string getEncoderOutputFile();
-    // Debug print of options
     void dump(void) const;
+
+    Stepping GetStepping() const { return stepping; }
+
 private:
     void setGTPin();
     bool get_isaasm(int argc, const char *argv[]);
-
 
     // This holds the data of a single vISAOptions entry
     struct VISAOptionsLine {
@@ -436,6 +447,43 @@ private:
 
     // for debugging, store the options passed to command line/vISA builder
     std::stringstream argString;
+
+    // legacy stepping setting for offline vISA compile.
+    // FE compilers should not use this and should instead program the appropriate WATable/vISA option flags instead.
+    Stepping stepping = Stepping::Step_none;
+
+    int SetStepping(const char* str) {
+
+        int retVal = VISA_SUCCESS;
+        char upperchar = (char)std::toupper(*str);
+
+        switch (upperchar)
+        {
+        case 'A':
+            stepping = Step_A;
+            break;
+        case 'B':
+            stepping = Step_B;
+            break;
+        case 'C':
+            stepping = Step_C;
+            break;
+        case 'D':
+            stepping = Step_D;
+            break;
+        case 'E':
+            stepping = Step_E;
+            break;
+        case 'F':
+            stepping = Step_F;
+            break;
+        default:
+            // err msg?
+            break;
+        }
+        return retVal;
+    }
+
 };
 
 #endif

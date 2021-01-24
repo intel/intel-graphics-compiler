@@ -5947,9 +5947,6 @@ void G4_Kernel::emit_RegInfo()
 void G4_Kernel::emit_RegInfoKernel(std::ostream& output)
 {
     output << "//.platform " << getGenxPlatformString(fg.builder->getPlatform());
-    output << "\n" << "//.stepping " << GetSteppingString();
-    output << "\n" << "//.CISA version " << (unsigned int)major_version
-        << "." << (unsigned int)minor_version;
     output << "\n" << "//.kernel ID 0x" << hex << getKernelID() << "\n";
     output << dec << "\n";
     int instOffset = 0;
@@ -5978,9 +5975,6 @@ void G4_Kernel::emit_RegInfoKernel(std::ostream& output)
 void G4_Kernel::emit_dep(std::ostream& output)
 {
     output << "//.platform " << getGenxPlatformString(fg.builder->getPlatform());
-    output << "\n" << "//.stepping " << GetSteppingString();
-    output << "\n" << "//.CISA version " << (unsigned int)major_version
-        << "." << (unsigned int)minor_version;
     output << "\n" << "//.kernel ID 0x" << hex << getKernelID() << "\n";
     output << dec << "\n";
     int instOffset = 0;

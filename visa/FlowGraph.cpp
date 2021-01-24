@@ -4213,7 +4213,6 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         }
 
         output << "\n" << "//.platform " << getGenxPlatformString(getGenxPlatform());
-        output << "\n" << "//.stepping " << GetSteppingString();
         output << "\n" << "//.thread_config " << "numGRF=" << numRegTotal << ", numAcc=" << numAcc;
         if (fg.builder->hasSWSB())
         {

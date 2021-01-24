@@ -254,9 +254,6 @@ int CISA_IR_Builder::CreateBuilder(
     //this must be called before any other API.
     SetVisaPlatform(platform);
 
-    // initialize stepping to none in case it's not passed in
-    InitStepping();
-
     builder = new CISA_IR_Builder(buildOption, mode, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
 
     if (!builder->m_options.parseOptions(numArgs, flags))
@@ -289,7 +286,7 @@ int CISA_IR_Builder::CreateBuilder(
     // We instead create and initialize some of the known ones here
     if (!pWaTable)
     {
-        builder->InitVisaWaTable(platform, GetStepping());
+        builder->InitVisaWaTable(platform, builder->m_options.GetStepping());
     }
 
     return VISA_SUCCESS;

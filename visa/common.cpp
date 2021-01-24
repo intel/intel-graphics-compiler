@@ -36,9 +36,6 @@ std::stringstream errorMsgs;
 
 static _THREAD TARGET_PLATFORM visaPlatform;
 
-// This is initialized in createBuilder and set once in SetStepping
-static _THREAD Stepping stepping;
-
 struct PlatformInfo {
     TARGET_PLATFORM  platform;
     PlatformGen      family;
@@ -190,63 +187,5 @@ int getGenxPlatformEncoding()
         return -1;
     }
 }
-
-void InitStepping()
-{
-    stepping = Step_none;
-}
-
-int SetStepping(const char * str) {
-
-    int retVal = VISA_SUCCESS;
-    char upperchar = (char)std::toupper(*str);
-
-    switch (upperchar)
-    {
-    case 'A':
-        stepping = Step_A;
-        break;
-    case 'B':
-        stepping = Step_B;
-        break;
-    case 'C':
-        stepping = Step_C;
-        break;
-    case 'D':
-        stepping = Step_D;
-        break;
-    case 'E':
-        stepping = Step_E;
-        break;
-    case 'F':
-        stepping = Step_F;
-        break;
-    default:
-        // err msg?
-        break;
-    }
-    return retVal;
-}
-
-Stepping GetStepping()
-{
-    return stepping;
-}
-
-const char *GetSteppingString()
-{
-    static const char* steppingName[Step_none + 1] {
-        "A",
-        "B",
-        "C",
-        "D",
-        "E",
-        "F",
-        "none"
-    };
-
-    return steppingName[stepping];
-}
-
 
 
