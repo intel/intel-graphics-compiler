@@ -325,6 +325,10 @@ public:
 
     BitSet& operator=(BitSet&& other) noexcept
     {
+        if (m_BitSetArray)
+        {
+            std::free(m_BitSetArray);
+        }
         m_BitSetArray = other.m_BitSetArray;
         m_Size = other.m_Size;
         other.m_BitSetArray = nullptr;

@@ -267,7 +267,11 @@ namespace vISA
         BitSet dst;
         BitSet src;
 
-        SBBitSets(vISA::Mem_Manager& mem, unsigned size) : dst(size, false), src(size, false)
+        SBBitSets()
+        {
+        }
+
+        SBBitSets(unsigned size) : dst(size, false), src(size, false)
         {
         }
 
@@ -282,6 +286,12 @@ namespace vISA
         void setSrc(int ID, bool value)
         {
             src.set(ID, value);
+        }
+
+        unsigned getSize() const
+        {
+            assert(dst.getSize() == src.getSize());
+            return dst.getSize();
         }
 
         bool isEmpty() const
@@ -316,6 +326,8 @@ namespace vISA
             return *this;
         }
 
+        SBBitSets& operator= (SBBitSets&& other) noexcept = default;
+
         SBBitSets& operator|= (const SBBitSets& other)
         {
             dst |= other.dst;
@@ -348,7 +360,7 @@ namespace vISA
     class SBNode {
     private:
         std::vector<SBFootprint*>  footprints;  // The coarse grained footprint of operands
-        unsigned      nodeID;          // Unique ID of the node
+        unsigned      nodeID = -1;          // Unique ID of the node
         unsigned      BBID;           // ID of basic block
         int      ALUID;          // The ID for in-order instructions. The out-of-order instructions are not counted.
         unsigned      liveStartID = 0; // The start ID of live range
@@ -370,11 +382,16 @@ namespace vISA
         int            sendID = -1;
         int            sendUseID = -1;
         SBNode *       tokenReusedNode = nullptr;  // For global token reuse optimization, the node whose token is reused by current one.
-        SBBitSets* reachingSends = nullptr;
-        SBBitSets* reachedUses = nullptr;
+        SBBitSets reachingSends;
+        SBBitSets reachedUses;
         unsigned reuseOverhead = 0;
 
         /* Constructor */
+        SBNode()
+        {
+
+        }
+
         SBNode(uint32_t id, int ALUId, uint32_t BBId, G4_INST *i)
             : nodeID(id), ALUID(ALUId), BBID(BBId),
             footprints(Opnd_total_num, nullptr)
@@ -903,28 +920,26 @@ namespace vISA
 
         unsigned      loopStartBBID = -1;    // The start BB ID of live range
         unsigned      loopEndBBID = -1;    // The start BB ID of live range
-        // send_live_in(BBi) = U(send_live_out(BBj)), BBj is the predecessor of BBi
-        // send_live_out = (send_live_in - send_may_kill) + send_live_out
-        // send_kill = send_live_in - send_live_out;
-        SBBitSets *send_def_out = nullptr;
-        SBBitSets *send_live_in = nullptr;
-        SBBitSets *send_live_out = nullptr;
-        SBBitSets *send_may_kill = nullptr;
-        SBBitSets *send_live_in_scalar = nullptr;
-        SBBitSets *send_live_out_scalar = nullptr;
-        SBBitSets *send_kill_scalar = nullptr;
-        BitSet* send_WAW_may_kill = nullptr;
 
-        BitSet* dominators;
+        SBBitSets send_def_out;
+        SBBitSets send_live_in;
+        SBBitSets send_live_out;
+        SBBitSets send_may_kill;
+        SBBitSets send_live_in_scalar;
+        SBBitSets send_live_out_scalar;
+        SBBitSets send_kill_scalar;
+
+        BitSet dominators;
+        BitSet send_WAW_may_kill;
 
         //For token reduction
-        BitSet   *liveInTokenNodes = nullptr;
-        BitSet   *liveOutTokenNodes = nullptr;
-        BitSet   *killedTokens = nullptr;
-        BitSet   **tokeNodesMap = nullptr;
+        BitSet   liveInTokenNodes;
+        BitSet   liveOutTokenNodes;
+        BitSet   killedTokens;
+        std::vector<BitSet> tokeNodesMap;
         unsigned    *tokenLiveInDist;
         unsigned    *tokenLiveOutDist;
-        SBBitSets* localReachingSends = nullptr;
+        SBBitSets localReachingSends;
 
         //BB local data dependence analysis
         G4_BB_SB(IR_Builder& b, Mem_Manager &m, G4_BB *block, SBNODE_VECT *SBNodes, SBNODE_VECT* SBSendNodes,
@@ -940,25 +955,6 @@ namespace vISA
 
         ~G4_BB_SB()
         {
-            send_def_out->~SBBitSets();
-            send_live_in->~SBBitSets();
-            send_live_out->~SBBitSets();
-            send_may_kill->~SBBitSets();
-            send_live_in_scalar->~SBBitSets();
-            send_live_out_scalar->~SBBitSets();
-            send_kill_scalar->~SBBitSets();
-            send_WAW_may_kill->~BitSet();
-            liveInTokenNodes->~BitSet();
-            liveOutTokenNodes->~BitSet();
-            killedTokens->~BitSet();
-
-            if (tokeNodesMap != nullptr)
-            {
-                for (uint32_t i = 0; i < builder.kernel.getNumSWSBTokens(); i++)
-                {
-                    tokeNodesMap[i]->~BitSet();
-                }
-            }
         }
 
         G4_BB* getBB() const { return bb; }
@@ -1199,8 +1195,8 @@ namespace vISA
         int topIndex = -1;
 
         std::map<G4_Label*, G4_BB_SB*> labelToBlockMap;
-        BitSet   **allTokenNodesMap = nullptr;
-        SWSB_TOKEN_PROFILE* tokenProfile;
+        std::vector<BitSet> allTokenNodesMap;
+        SWSB_TOKEN_PROFILE tokenProfile;
 
         //Global dependence analysis
         bool globalDependenceDefReachAnalysis(G4_BB* bb);
@@ -1308,12 +1304,11 @@ namespace vISA
             {
                 bb->~G4_BB_SB();
             }
-            if (allTokenNodesMap != nullptr)
+
+            for (int i = 0; i != (int)reachTokenArray.size(); ++i)
             {
-                for (size_t i = 0; i < fg.builder->kernel.getNumSWSBTokens(); i++)
-                {
-                    allTokenNodesMap[i]->~BitSet();
-                }
+                 reachTokenArray[i]->~SBNODE_VECT();
+                 reachUseArray[i]->~SBNODE_VECT();
             }
         }
         void SWSBGenerator();
