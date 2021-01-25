@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //===----------------------------------------------------------------------===//
 
+#include "IGC/common/StringMacros.hpp"
+
 #include "GenXSubtarget.h"
 #include "common/StringMacros.hpp"
 #include "llvm/CodeGen/MachineFunction.h"

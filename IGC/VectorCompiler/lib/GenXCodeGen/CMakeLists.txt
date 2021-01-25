@@ -5,6 +5,12 @@ set(LLVM_TARGET_DEFINITIONS GenX.td)
 tablegen(LLVM GenXGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(GenXCommonTableGen)
 
+set(GenXCommonTableGen_dependencies)
+list(APPEND GenXCommonTableGen_dependencies
+  GenXCommonTableGen)
+
+add_custom_target(GenXCommonTableGen_target DEPENDS ${GenXCommonTableGen_dependencies})
+
 set(CODEGEN_SOURCES
   FunctionGroup.cpp
   KillAnalysis.cpp
@@ -71,7 +77,7 @@ set(CODEGEN_SOURCES
 add_library(VCCodeGen ${CODEGEN_SOURCES})
 add_dependencies(VCCodeGen
   GenXUtilBuild
-  GenXCommonTableGen
+  GenXCommonTableGen_target
   )
 target_include_directories(VCCodeGen
   PRIVATE
