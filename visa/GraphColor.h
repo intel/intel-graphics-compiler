@@ -270,8 +270,8 @@ namespace vISA
 {
     struct MASK_Declares
     {
-        BitSet defaultMask;
-        BitSet noneDefaultMask;
+        BitSet* defaultMask;
+        BitSet* noneDefaultMask;
     };
 
     class Augmentation
@@ -284,7 +284,7 @@ namespace vISA
         LiveRange** const lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
-        std::unordered_map<FuncInfo*, PhyRegSummary> localSummaryOfCallee;
+        std::unordered_map<FuncInfo*, PhyRegSummary *> localSummaryOfCallee;
         std::vector<G4_Declare*> sortedIntervals;
         std::list<G4_Declare*> defaultMask;
         std::list<G4_Declare*> nonDefaultMask;

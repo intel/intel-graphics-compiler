@@ -540,12 +540,10 @@ public:
 class PhyRegSummary
 {
 private:
-    uint32_t totalNumGRF = 0;
+    uint32_t totalNumGRF;
     std::vector<bool> GRFUsage;
 
 public:
-    PhyRegSummary() {}
-
     PhyRegSummary(uint32_t numGRF) : totalNumGRF(numGRF)
     {
         GRFUsage.resize(totalNumGRF, false);
