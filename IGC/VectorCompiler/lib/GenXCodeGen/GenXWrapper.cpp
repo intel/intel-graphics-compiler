@@ -260,125 +260,6 @@ getModule(ArrayRef<char> Input, vc::FileType FType,
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown input kind");
 }
 
-static vc::ocl::ArgInfo
-convertOCLArgInfo(const GenXOCLRuntimeInfo::KernelArgInfo &Info) {
-  vc::ocl::ArgInfo Converted;
-
-  using ArgKind = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-  switch (Info.getKind()) {
-  case ArgKind::General:
-    Converted.Kind = vc::ocl::ArgKind::General;
-    break;
-  case ArgKind::LocalSize:
-    Converted.Kind = vc::ocl::ArgKind::LocalSize;
-    break;
-  case ArgKind::GroupCount:
-    Converted.Kind = vc::ocl::ArgKind::GroupCount;
-    break;
-  case ArgKind::Buffer:
-    Converted.Kind = vc::ocl::ArgKind::Buffer;
-    break;
-  case ArgKind::SVM:
-    Converted.Kind = vc::ocl::ArgKind::SVM;
-    break;
-  case ArgKind::Sampler:
-    Converted.Kind = vc::ocl::ArgKind::Sampler;
-    break;
-  case ArgKind::Image1D:
-    Converted.Kind = vc::ocl::ArgKind::Image1d;
-    break;
-  case ArgKind::Image2D:
-    Converted.Kind = vc::ocl::ArgKind::Image2d;
-    break;
-  case ArgKind::Image3D:
-    Converted.Kind = vc::ocl::ArgKind::Image3d;
-    break;
-  case ArgKind::PrintBuffer:
-    Converted.Kind = vc::ocl::ArgKind::PrintBuffer;
-    break;
-  case ArgKind::PrivateBase:
-    Converted.Kind = vc::ocl::ArgKind::PrivateBase;
-    break;
-  }
-
-  using ArgAccessKind = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
-  switch (Info.getAccessKind()) {
-  case ArgAccessKind::None:
-    Converted.AccessKind = vc::ocl::ArgAccessKind::None;
-    break;
-  case ArgAccessKind::ReadOnly:
-    Converted.AccessKind = vc::ocl::ArgAccessKind::ReadOnly;
-    break;
-  case ArgAccessKind::WriteOnly:
-    Converted.AccessKind = vc::ocl::ArgAccessKind::WriteOnly;
-    break;
-  case ArgAccessKind::ReadWrite:
-    Converted.AccessKind = vc::ocl::ArgAccessKind::ReadWrite;
-    break;
-  }
-
-  Converted.Index = Info.getIndex();
-  Converted.Offset = Info.getOffset();
-  Converted.SizeInBytes = Info.getSizeInBytes();
-  Converted.BTI = Info.getBTI();
-
-  return Converted;
-}
-
-static void convertOCLKernelInfo(vc::ocl::KernelInfo &Converted,
-                                 const GenXOCLRuntimeInfo::KernelInfo &Info) {
-  Converted.Name = Info.getName();
-  std::transform(Info.arg_begin(), Info.arg_end(),
-                 std::back_inserter(Converted.Args),
-                 [](const GenXOCLRuntimeInfo::KernelArgInfo &ArgInfo) {
-                   return convertOCLArgInfo(ArgInfo);
-                 });
-  Converted.PrintStrings = Info.getPrintStrings();
-  Converted.HasGroupID = Info.usesGroupId();
-  Converted.HasBarriers = Info.usesBarriers();
-  Converted.SLMSize = Info.getSLMSize();
-  Converted.ThreadPrivateMemSize = Info.getTPMSize();
-  Converted.StatelessPrivateMemSize = Info.getStatelessPrivMemSize();
-  Converted.GRFSizeInBytes = Info.getGRFSizeInBytes();
-
-  if (Info.getRelocationTable().Size > 0) {
-    Converted.RelocationTable.Buf = Info.getRelocationTable().Buffer;
-    Converted.RelocationTable.Size = Info.getRelocationTable().Size;
-    Converted.RelocationTable.NumEntries =
-        Info.getRelocationTable().Entries;
-  }
-  if (Info.getSymbolTable().Size > 0) {
-    Converted.SymbolTable.Buf = Info.getSymbolTable().Buffer;
-    Converted.SymbolTable.Size = Info.getSymbolTable().Size;
-    Converted.SymbolTable.NumEntries = Info.getSymbolTable().Entries;
-  }
-  Converted.ZEBinInfo.Relocations = Info.ZEBinInfo.Relocations;
-  Converted.ZEBinInfo.Symbols.Functions = Info.ZEBinInfo.Symbols.Functions;
-  Converted.ZEBinInfo.Symbols.Globals = Info.ZEBinInfo.Symbols.Globals;
-  Converted.ZEBinInfo.Symbols.Constants = Info.ZEBinInfo.Symbols.Constants;
-  Converted.ZEBinInfo.Symbols.Local = Info.ZEBinInfo.Symbols.Local;
-}
-
-static void convertOCLGTPinInfo(vc::ocl::GTPinInfo &Converted,
-                                const GenXOCLRuntimeInfo::GTPinInfo &Info) {
-  Converted.GTPinBuffer = Info.getGTPinBuffer();
-}
-
-static std::vector<vc::ocl::CompileInfo> convertInternalOCLInfo(
-    const std::vector<GenXOCLRuntimeInfo::CompiledKernel> &CompiledKernels) {
-  std::vector<vc::ocl::CompileInfo> Converted{CompiledKernels.size()};
-  for (unsigned i = 0, e = CompiledKernels.size(); i != e; ++i) {
-    auto &Conv = Converted[i];
-    auto &Orig = CompiledKernels[i];
-    convertOCLKernelInfo(Conv.KernelInfo, Orig.getKernelInfo());
-    convertOCLGTPinInfo(Conv.GtpinInfo, Orig.getGTPinInfo());
-    Conv.JitInfo = Orig.getJitterInfo();
-    Conv.GenBinary = Orig.getGenBinary();
-    Conv.DebugInfo = Orig.getDebugInfo();
-  }
-  return Converted;
-}
-
 static Triple overrideTripleWithVC(StringRef TripleStr) {
   Triple T{TripleStr};
   // Normalize triple.
@@ -539,20 +420,6 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
 }
 
-vc::ocl::ModuleInfoT convertInternalOCLModuleInfo(
-    const GenXOCLRuntimeInfo::ModuleInfoT &OCLModuleInfo) {
-  vc::ocl::ModuleInfoT Converted;
-  Converted.ConstantData.Buffer = OCLModuleInfo.ConstantData.Buffer;
-  Converted.ConstantData.Alignment = OCLModuleInfo.ConstantData.Alignment;
-  Converted.ConstantData.AdditionalZeroedSpace =
-      OCLModuleInfo.ConstantData.AdditionalZeroedSpace;
-  Converted.GlobalData.Buffer = OCLModuleInfo.GlobalData.Buffer;
-  Converted.GlobalData.Alignment = OCLModuleInfo.GlobalData.Alignment;
-  Converted.GlobalData.AdditionalZeroedSpace =
-      OCLModuleInfo.GlobalData.AdditionalZeroedSpace;
-  return std::move(Converted);
-}
-
 static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
                                             const vc::ExternalData &ExtData,
                                             TargetMachine &TM, Module &M) {
@@ -566,17 +433,13 @@ static vc::ocl::CompileOutput runOclCodeGen(const vc::CompileOptions &Opts,
   else
     populateCodeGenPassManager(Opts, ExtData, TM, NullOS, PM);
 
-  GenXOCLRuntimeInfo::CompiledModuleT CompiledKernels;
-  PM.add(createGenXOCLInfoExtractorPass(CompiledKernels));
+  GenXOCLRuntimeInfo::CompiledModuleT CompiledModule;
+  PM.add(createGenXOCLInfoExtractorPass(CompiledModule));
 
   PM.run(M);
   dumpFinalOutput(Opts, M, IsaBinary);
 
-  vc::ocl::CompileOutput Output;
-  Output.Kernels = convertInternalOCLInfo(CompiledKernels.Kernels);
-  Output.ModuleInfo = convertInternalOCLModuleInfo(CompiledKernels.ModuleInfo);
-  Output.PointerSizeInBytes = M.getDataLayout().getPointerSize();
-  return Output;
+  return CompiledModule;
 }
 
 static vc::cm::CompileOutput runCmCodeGen(const vc::CompileOptions &Opts,

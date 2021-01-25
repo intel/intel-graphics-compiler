@@ -603,7 +603,8 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
                  [this, &ModuleData](const FunctionGroup *FG) {
                    return collectFunctionGroupInfo(*FG, ModuleData);
                  });
-  return {getModuleInfo(std::move(ModuleData)), std::move(Kernels)};
+  return {getModuleInfo(std::move(ModuleData)), std::move(Kernels),
+          M.getDataLayout().getPointerSize()};
 }
 
 RuntimeInfoCollector::CompiledKernel

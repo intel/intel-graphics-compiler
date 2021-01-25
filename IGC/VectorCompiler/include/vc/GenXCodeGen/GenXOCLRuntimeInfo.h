@@ -38,6 +38,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <map>
 
+#include "Probe/Assertion.h"
+
 namespace llvm {
 class Function;
 
@@ -97,6 +99,18 @@ public:
       default:
         return false;
       }
+    }
+
+    bool isResource() const {
+      if (Kind == KindType::Buffer || Kind == KindType::SVM)
+        return true;
+      return isImage();
+    }
+
+    bool isWritable() const {
+      IGC_ASSERT_MESSAGE(isResource(),
+                         "Only resources can have writable property");
+      return AccessKind != AccessKindType::ReadOnly;
     }
   };
 
@@ -273,10 +287,12 @@ public:
     using KernelStorageTy = std::vector<CompiledKernel>;
     ModuleInfoT ModuleInfo;
     KernelStorageTy Kernels;
+    unsigned PointerSizeInBytes = 0;
 
     void clear() {
       ModuleInfo.clear();
       Kernels.clear();
+      PointerSizeInBytes = 0;
     }
   };
 

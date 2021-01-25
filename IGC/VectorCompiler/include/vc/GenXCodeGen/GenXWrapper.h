@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/Support/ShaderDump.h"
 
 #include <JitterDataStruct.h>
@@ -46,105 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace vc {
 
 namespace ocl {
-
-enum class ArgKind {
-  General,
-  LocalSize,  // IMPLICIT_LOCAL_SIZE
-  GroupCount, // IMPLICIT_NUM_GROUPS
-  Buffer,     // 1D buffer
-  SVM,        // stateless global pointer
-  Sampler,
-  Image1d,
-  Image2d,
-  Image3d,
-  PrintBuffer,
-  PrivateBase
-};
-
-enum class ArgAccessKind { None, ReadOnly, WriteOnly, ReadWrite };
-
-struct ArgInfo {
-  ArgKind Kind;
-  ArgAccessKind AccessKind;
-  unsigned Index;
-  unsigned Offset;
-  unsigned SizeInBytes;
-  unsigned BTI;
-};
-
-struct TableInfo {
-  void *Buf = nullptr;
-  uint32_t Size = 0;
-  uint32_t NumEntries = 0;
-};
-
-// This data partially duplicates KernelInfo data.
-// It exists due to OCLBinary to ZEBinary transition period.
-struct ZEBinaryInfo {
-  struct SymbolsInfo {
-    using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
-    ZESymEntrySeq Functions;
-    ZESymEntrySeq Globals;
-    ZESymEntrySeq Constants;
-    ZESymEntrySeq Local;
-    // for now only function and local symbols are used
-  };
-  using ZERelocEntrySeq = std::vector<vISA::ZERelocEntry>;
-  ZERelocEntrySeq Relocations;
-  SymbolsInfo Symbols;
-};
-
-// Mirror of cmc_kernel_info that owns its data.
-struct KernelInfo {
-  std::string Name;
-  std::vector<ArgInfo> Args;
-  std::vector<std::string> PrintStrings;
-  bool HasGroupID;
-  bool HasBarriers;
-  bool HasReadWriteImages;
-  unsigned SLMSize;
-  unsigned ThreadPrivateMemSize;
-  unsigned StatelessPrivateMemSize;
-  unsigned GRFSizeInBytes;
-
-  TableInfo RelocationTable;
-  TableInfo SymbolTable;
-  ZEBinaryInfo ZEBinInfo;
-};
-
-struct GTPinInfo {
-  std::vector<char> GTPinBuffer;
-};
-
-struct CompileInfo {
-  KernelInfo KernelInfo;
-  FINALIZER_INFO JitInfo;
-  GTPinInfo GtpinInfo;
-  std::vector<char> GenBinary;
-  std::vector<char> DebugInfo;
-};
-
-struct DataInfoT {
-  std::vector<char> Buffer;
-  int Alignment = 0;
-  // Runtime can allocate bigger zeroed out buffer, and fill only
-  // the first part of it with the data from Buffer field. So there's no
-  // need to fill Buffer with zero, one can just set AdditionalZeroedSpace,
-  // and it will be additionally allocated. The size is in bytes.
-  std::size_t AdditionalZeroedSpace = 0;
-};
-
-struct ModuleInfoT {
-  DataInfoT ConstantData;
-  DataInfoT GlobalData;
-};
-
-struct CompileOutput {
-  ModuleInfoT ModuleInfo;
-  std::vector<CompileInfo> Kernels;
-  unsigned PointerSizeInBytes;
-};
-
+using CompileOutput = llvm::GenXOCLRuntimeInfo::CompiledModuleT;
 } // namespace ocl
 
 namespace cm {

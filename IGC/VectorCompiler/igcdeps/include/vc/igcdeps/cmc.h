@@ -33,7 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CodeGenPublic.h"
 
-#include "vc/GenXCodeGen/GenXWrapper.h"
+#include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
+
+#include "Probe/Assertion.h"
 
 namespace iOpenCL {
   class CGen8CMProgram;
@@ -44,6 +46,9 @@ namespace cmc {
 // Interface to compile and package cm kernels into OpenCL binars.
 class CMKernel {
 public:
+    using ArgKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
+    using ArgAccessKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
+
     explicit CMKernel(const PLATFORM& platform);
     ~CMKernel();
 
@@ -54,6 +59,8 @@ public:
 
     // getter for convenience
     const IGC::SProgramOutput &getProgramOutput() const {
+        IGC_ASSERT_MESSAGE(m_kernelInfo.m_executionEnivronment.CompiledSIMDSize == 1,
+                           "SIMD size is expected to be 1 for CMKernel");
         return m_kernelInfo.m_kernelProgram.simd1;
     }
 
@@ -70,12 +77,12 @@ public:
 
     // 1D/2D/3D Surface
     void createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
-                               vc::ocl::ArgAccessKind Access);
+                               ArgAccessKind Access);
 
     // add a pointer patch token.
     void createPointerGlobalAnnotation(unsigned index, unsigned offset,
                                        unsigned sizeInBytes, unsigned BTI,
-                                       vc::ocl::ArgAccessKind access);
+                                       ArgAccessKind access);
 
     void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
                                      unsigned payloadPosition, int BTI,
@@ -83,7 +90,7 @@ public:
 
     // add a stateful buffer patch token.
     void createBufferStatefulAnnotation(unsigned argNo,
-                                        vc::ocl::ArgAccessKind accessKind);
+                                        ArgAccessKind accessKind);
 
     // Local or global size
     void createSizeAnnotation(unsigned payloadPosition, iOpenCL::DATA_PARAMETER_TOKEN type);
@@ -102,6 +109,7 @@ extern const char* getPlatformStr(PLATFORM platform);
 } // namespace cmc
 
 namespace vc {
-void createBinary(iOpenCL::CGen8CMProgram &CMProgram,
-                  const vc::ocl::CompileOutput &CompileInfos);
+void createBinary(
+    iOpenCL::CGen8CMProgram &CMProgram,
+    const llvm::GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule);
 } // namespace vc
