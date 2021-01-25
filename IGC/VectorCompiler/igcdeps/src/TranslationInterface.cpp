@@ -224,58 +224,6 @@ static ShaderHash getShaderHash(llvm::ArrayRef<char> Input) {
   return Hash;
 }
 
-static void dumpInputData(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
-                          llvm::StringRef InternalOptions,
-                          llvm::ArrayRef<char> Input, bool IsRaw) {
-  if (!IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-    return;
-
-  Dumper.dumpText(ApiOptions, IsRaw ? "options_raw.txt" : "options.txt");
-  Dumper.dumpText(InternalOptions,
-                  IsRaw ? "internal_options_raw.txt" : "internal_options.txt");
-  Dumper.dumpBinary(Input, IsRaw ? "igc_input_raw.spv" : "igc_input.spv");
-}
-
-static bool tryAddAuxiliaryOptions(llvm::StringRef AuxOpt,
-                                   llvm::StringRef InOpt,
-                                   std::string &Storage) {
-  if (AuxOpt.empty())
-    return false;
-
-  Storage.clear();
-  Storage.append(InOpt.data(), InOpt.size())
-      .append(" ")
-      .append(AuxOpt.data(), AuxOpt.size());
-  return true;
-}
-
-static llvm::Expected<vc::CompileOptions>
-parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
-             llvm::StringRef InternalOptions, llvm::ArrayRef<char> Input) {
-  dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/true);
-
-  auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
-  if (NewPathPayload.IsValid) {
-    ApiOptions = "-vc-codegen";
-    InternalOptions = Input.data() + NewPathPayload.VcOptsOffset;
-    Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
-  }
-
-  std::string AuxApiOptions;
-  std::string AuxInternalOptions;
-  if (tryAddAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCApiOptions), ApiOptions,
-                             AuxApiOptions))
-    ApiOptions = {AuxApiOptions.data(), AuxApiOptions.size()};
-  if (tryAddAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCInternalOptions),
-                             InternalOptions, AuxInternalOptions))
-    InternalOptions = {AuxInternalOptions.data(), AuxInternalOptions.size()};
-
-  dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/false);
-
-  const bool IsStrictParser = IGC_GET_FLAG_VALUE(VCStrictOptionParser);
-  return vc::ParseOptions(ApiOptions, InternalOptions, IsStrictParser);
-}
-
 std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                    TC::STB_TranslateOutputArgs *OutputArgs,
                                    TC::TB_DATA_FORMAT InputDataFormatTemp,
@@ -284,6 +232,16 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   llvm::StringRef ApiOptions{InputArgs->pOptions, InputArgs->OptionsSize};
   llvm::StringRef InternalOptions{InputArgs->pInternalOptions,
                                   InputArgs->InternalOptionsSize};
+
+  auto getAuxiliaryOptions = [](llvm::StringRef AuxOpt,
+                                llvm::StringRef InOpt,
+                                std::string &Storage) {
+    if (AuxOpt.empty())
+      return false;
+    Storage.clear();
+    Storage.append(InOpt.data(), InOpt.size()).append(" ").append(AuxOpt.data(), AuxOpt.size());
+    return true;
+  };
 
   llvm::ArrayRef<char> Input{InputArgs->pInput, InputArgs->InputSize};
 
@@ -295,7 +253,40 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     Dumper = vc::createDefaultShaderDumper();
   }
 
-  auto ExpOptions = parseOptions(*Dumper, ApiOptions, InternalOptions, Input);
+  if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
+    Dumper->dumpText(ApiOptions, "options_raw.txt");
+    Dumper->dumpText(InternalOptions, "internal_options_raw.txt");
+    Dumper->dumpBinary(Input, "igc_input_raw.spv");
+  }
+
+  auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
+  if (NewPathPayload.IsValid) {
+    ApiOptions = "-vc-codegen";
+    InternalOptions = InputArgs->pInput + NewPathPayload.VcOptsOffset;
+    Input = Input.take_front(static_cast<size_t>(NewPathPayload.IrSize));
+  }
+  std::string AuxApiOptions;
+  std::string AuxInternalOptions;
+  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCApiOptions),
+                          ApiOptions, AuxApiOptions)) {
+     ApiOptions = { AuxApiOptions.data(), AuxApiOptions.size() };
+  }
+  if (getAuxiliaryOptions(IGC_GET_REGKEYSTRING(VCInternalOptions),
+                          InternalOptions, AuxInternalOptions)) {
+     InternalOptions = { AuxInternalOptions.data(), AuxInternalOptions.size() };
+  }
+
+
+  if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
+    Dumper->dumpText(ApiOptions, "options.txt");
+    Dumper->dumpText(InternalOptions, "internal_options.txt");
+    Dumper->dumpBinary(Input, "igc_input.spv");
+  }
+
+  const bool IsStrictParser = IGC_GET_FLAG_VALUE(VCStrictOptionParser);
+  auto ExpOptions =
+      vc::ParseOptions(ApiOptions, InternalOptions, IsStrictParser);
+
   // If vc was not called, then observable state should not be changed.
   if (ExpOptions.errorIsA<vc::NotVCError>()) {
     llvm::consumeError(ExpOptions.takeError());
