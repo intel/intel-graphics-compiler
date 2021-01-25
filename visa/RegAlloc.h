@@ -404,7 +404,7 @@ class LivenessAnalysis
     unsigned numFnId;          // the function count
     const unsigned char selectedRF;  // the selected reg file kind for performing liveness
     PointsToAnalysis& pointsToAnalysis;
-    std::map<G4_Declare*, BitSet*> neverDefinedRows;
+    std::unordered_map<G4_Declare*, BitSet> neverDefinedRows;
 
     vISA::Mem_Manager m;
 

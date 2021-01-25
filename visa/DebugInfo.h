@@ -424,26 +424,9 @@ class DebugInfoState
 {
     // Class used to store state during RA.
 public:
-    DebugInfoState(Mem_Manager& mem) : m(mem)
-    {
-        prevBitset = nullptr;
-        prevInst = nullptr;
-    }
-
-    ~DebugInfoState()
-    {
-    }
-
     void setPrevBitset(BitSet& b)
     {
-        if (!prevBitset)
-        {
-            prevBitset = (BitSet*) new (m)BitSet(b);
-        }
-        else
-        {
-            prevBitset->operator=(b);
-        }
+        prevBitset = b;
     }
     void setPrevInst(G4_INST* i)
     {
@@ -453,13 +436,17 @@ public:
         }
     }
 
-    BitSet* getPrevBitset() { return prevBitset; }
+    BitSet* getPrevBitset()
+    {
+        if (prevBitset.getSize() == 0)
+            return nullptr;
+        return &prevBitset;
+    }
     G4_INST* getPrevInst() { return prevInst; }
 
 private:
-    Mem_Manager& m;
-    BitSet* prevBitset;
-    G4_INST* prevInst;
+    BitSet prevBitset;
+    G4_INST* prevInst = nullptr;
 };
 }
 /* Debug info format:
