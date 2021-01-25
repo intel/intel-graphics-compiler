@@ -1303,7 +1303,8 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
                     if (addrSpaceCastInst)
                     {
                         callArg = addrSpaceCastInst->getOperand(0);
-                        ASCToDelete.push_back(addrSpaceCastInst);
+                        if (addrSpaceCastInst->getNumUses() == 1)
+                            ASCToDelete.push_back(addrSpaceCastInst);
                     }
                 }
             }
