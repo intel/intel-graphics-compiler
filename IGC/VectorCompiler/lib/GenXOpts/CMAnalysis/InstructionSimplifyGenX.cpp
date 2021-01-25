@@ -97,7 +97,8 @@ template <typename OutIter>
 void processWriteWithUndefInput(Instruction &Inst, OutIter ToProcess) {
   IGC_ASSERT(isWriteWithUndefInput(Inst) &&
          "wrong argument: write intrinsic with undef input was expected");
-  Inst.replaceAllUsesWith(&getWriteOldValueOperand(Inst));
+  auto *OldVal = &getWriteOldValueOperand(Inst);
+  Inst.replaceAllUsesWith(OldVal);
   // As a result of operand promotion we can get new suitable instructions.
   // Using additional copy_if instead of make_filter_range as workaround,
   // because user_iterator returns pointer instead of reference.

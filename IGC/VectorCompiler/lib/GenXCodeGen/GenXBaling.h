@@ -381,8 +381,8 @@ inline raw_ostream &operator<<(raw_ostream &OS, const Bale &B) {
 // on whether GenXFuncBaling or GenXGroupBaling created it)
 class GenXBaling {
   BalingKind Kind;
-  typedef llvm::ValueMap<const Instruction *, genx::BaleInfo,
-                         IgnoreRAUWValueMapConfig<const Instruction *>>
+  typedef llvm::ValueMap<const Value*, genx::BaleInfo,
+                         IgnoreRAUWValueMapConfig<const Value *>>
       InstMap_t;
   GenXSubtarget *ST;
   InstMap_t InstMap;
