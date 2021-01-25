@@ -21,8 +21,8 @@ endif()
 
 add_library(AdaptorCM INTERFACE)
 
-vc_get_llvm_targets(LLVM_LIBS
-  LLVMSupport
+igc_get_llvm_targets(LLVM_LIBS
+  Support
 )
 
 message(STATUS "Linking CMFE with ${LLVM_LIBS}")

@@ -3,8 +3,8 @@ set(SUPPORT_SOURCES
   )
 
 add_library(VCOptions ${SUPPORT_SOURCES})
-vc_get_llvm_targets(LLVM_LIBS
-  LLVMOption
+igc_get_llvm_targets(LLVM_LIBS
+  Option
   )
 target_link_libraries(VCOptions
   VCHeaders

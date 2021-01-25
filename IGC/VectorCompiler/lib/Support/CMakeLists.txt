@@ -5,9 +5,9 @@ set(SUPPORT_SOURCES
   )
 
 add_library(VCSupport ${SUPPORT_SOURCES})
-vc_get_llvm_targets(LLVM_LIBS
-  LLVMSupport
-  LLVMCore
+igc_get_llvm_targets(LLVM_LIBS
+  Support
+  Core
   )
 target_link_libraries(VCSupport
   VCHeaders
