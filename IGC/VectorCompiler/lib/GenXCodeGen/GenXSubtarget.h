@@ -79,6 +79,7 @@ protected:
     GENX_CNL,
     GENX_ICLLP,
     GENX_TGLLP,
+    GENX_DG1,
   };
 
   // GenXVariant - GenX Tag identifying the variant to compile for
@@ -178,6 +179,8 @@ public:
   bool isICLLP() const { return GenXVariant == GENX_ICLLP; }
   /// * isTGLLP - true if target is TGL LP
   bool isTGLLP() const { return GenXVariant == GENX_TGLLP; }
+  /// * isDG1 - true if target is DG1
+  bool isDG1() const { return GenXVariant == GENX_DG1; }
 
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }
@@ -227,6 +230,8 @@ public:
   /// * hasSad2Support - returns true if sad2/sada2 are supported by target
   bool hasSad2Support() const {
     if (isICLLP() || isTGLLP())
+      return false;
+    if (isDG1())
       return false;
     return true;
   }
@@ -284,6 +289,8 @@ public:
     case GENX_ICLLP:
       return TARGET_PLATFORM::GENX_ICLLP;
     case GENX_TGLLP:
+      return TARGET_PLATFORM::GENX_TGLLP;
+    case GENX_DG1:
       return TARGET_PLATFORM::GENX_TGLLP;
     case GENX_KBL:
       return TARGET_PLATFORM::GENX_SKL;
