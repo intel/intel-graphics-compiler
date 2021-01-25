@@ -360,12 +360,46 @@ uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst* inst)
 }
 
 /// \brief Adjusts the number of sources for a sampler, based on a sampler type.
-void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint& numberofSrcs)
+void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& numberofSrcs)
 {
     switch (opCode)
     {
+    case llvm_sampleptr:
+    case llvm_sample_killpix:
+    case llvm_lodptr:
+    {
+        if (isCube)
+        {
+            numberofSrcs = numberofSrcs >= 3 ? numberofSrcs : 3;
+        }
+    }
+    break;
+
+    case llvm_sample_bptr:
+    case llvm_sample_cptr:
+    case llvm_sample_lptr:
+    {
+        if (isCube)
+        {
+            numberofSrcs = numberofSrcs >= 4 ? numberofSrcs : 4;
+        }
+
+        switch (numberofSrcs)
+        {
+        case 1:
+            numberofSrcs++;
+            break;
+        }
+    }
+    break;
+
     case llvm_sample_dptr:
     {
+        if (isCube)
+        {
+            numberofSrcs = numberofSrcs >= 7 ? numberofSrcs : 7;
+        }
+
         switch (numberofSrcs)
         {
         case 1:
@@ -384,6 +418,11 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint& numberofSrcs)
     break;
     case llvm_sample_dcptr:
     {
+        if (isCube)
+        {
+            numberofSrcs = numberofSrcs >= 8 ? numberofSrcs : 8;
+        }
+
         switch (numberofSrcs)
         {
         case 2:
@@ -404,21 +443,15 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint& numberofSrcs)
         }
     }
     break;
-    case llvm_sample_bptr:
-    case llvm_sample_cptr:
-    case llvm_sample_lptr:
-    {
-        switch (numberofSrcs)
-        {
-        case 1:
-            numberofSrcs++;
-            break;
-        }
-    }
-    break;
+
     case llvm_sample_lcptr:
     case llvm_sample_bcptr:
     {
+        if (isCube)
+        {
+            numberofSrcs = numberofSrcs >= 5 ? numberofSrcs : 5;
+        }
+
         switch (numberofSrcs)
         {
         case 1:
@@ -451,28 +484,26 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
         numSources = numOperands - 3;
     }
 
+    //Check for valid number of sources from the end of the list
+    for (uint i = (numSources - 1); i >= 1; i--)
+    {
+        if (IsUndefOrZeroImmediate(inst->getOperand(i)))
+        {
+            numSources--;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    //temp solution to send valid sources but having 0 as their values.
+    EOPCODE opCode = GetOpCode(inst);
     llvm::Type* cubeTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
     llvm::Type* cubeArrayTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
     llvm::Type* textureType = inst->getTextureValue()->getType()->getPointerElementType();
-    if (textureType != cubeTextureType && textureType != cubeArrayTextureType)
-    {
-        //Check for valid number of sources from the end of the list
-        for (uint i = (numSources - 1); i >= 1; i--)
-        {
-            if (IsUndefOrZeroImmediate(inst->getOperand(i)))
-            {
-                numSources--;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        //temp solution to send valid sources but having 0 as their values.
-        EOPCODE opCode = GetOpCode(inst);
-        ValidateNumberofSources(opCode, numSources);
-    }
+    bool isCube = (textureType == cubeTextureType || textureType == cubeArrayTextureType);
+    ValidateNumberofSources(opCode, isCube, numSources);
 
     if (IsZeroLOD(inst))
     {

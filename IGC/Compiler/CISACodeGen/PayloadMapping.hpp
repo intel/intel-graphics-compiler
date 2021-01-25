@@ -52,7 +52,7 @@ namespace IGC
     {
         friend class CoalescingEngine;
     public:
-        void ValidateNumberofSources(EOPCODE opCode, uint& numberofSrcs);
+        void ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& numberofSrcs);
 
         typedef llvm::DenseMap<std::pair<const llvm::Instruction*, uint>, llvm::Value*> PayloadMappingCache;
 
