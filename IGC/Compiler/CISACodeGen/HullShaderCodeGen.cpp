@@ -262,10 +262,6 @@ namespace IGC
     OctEltUnit CHullShader::GetVertexURBEntryReadLength() const
     {
         QuadEltUnit numOfPushedAttributesPerVertex = QuadEltUnit(m_properties.GetMaxInputPushed());
-        if (m_Platform->getWATable().Wa_16011983264)
-        {
-            numOfPushedAttributesPerVertex = std::max(numOfPushedAttributesPerVertex, QuadEltUnit(1));
-        }
         return round_up<OctElement>(numOfPushedAttributesPerVertex);
     }
 
