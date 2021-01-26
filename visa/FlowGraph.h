@@ -235,14 +235,6 @@ class G4_BB
     //
     unsigned id;
     //
-    // preorder block id
-    //
-    unsigned preId;
-    //
-    // reverse postorder block id
-    //
-    unsigned rpostId;
-    //
     // traversal is for traversing control flow graph (to indicate the
     // block is visited)
     //
@@ -289,10 +281,6 @@ class G4_BB
 
     INST_LIST instList;
 
-    INST_LIST_ITER insert(INST_LIST::iterator iter, G4_INST* inst)
-    {
-        return instList.insert(iter, inst);
-    }
 public:
     // forwarding functions to this BB's instList
     INST_LIST_ITER begin() { return instList.begin(); }
@@ -393,10 +381,9 @@ public:
     BB_LIST    Succs;
 
     G4_BB(INST_LIST_NODE_ALLOCATOR& alloc, unsigned i, FlowGraph* fg) :
-        id(i), preId(0), rpostId(0),
-        traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
+        id(i), traversal(0), calleeInfo(nullptr), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
-        divergent(false), physicalPred(NULL), physicalSucc(NULL),
+        divergent(false), physicalPred(nullptr), physicalSucc(nullptr),
         parent(fg), instList(alloc)
     {
     }
@@ -413,10 +400,6 @@ public:
     G4_opcode    getLastOpcode() const;
     unsigned getId() const         {return id;}
     void     setId(unsigned i)     {id = i;}
-    unsigned getPreId() const      {return preId;}
-    void     setPreId(unsigned i)  {preId = i;}
-    unsigned getRPostId() const    {return rpostId;}
-    void     setRPostId(unsigned i) {rpostId = i;}
     void     markTraversed(unsigned num)      {traversal = num;}
     bool     isAlreadyTraversed(unsigned num) const {return traversal >= num;}
     void     removeSuccEdge(G4_BB* succ);
@@ -529,7 +512,6 @@ public:
     void addSamplerFlushBeforeEOT();
 };
 }
-
 typedef enum
 {
     STRUCTURED_CF_IF = 0,
@@ -670,7 +652,6 @@ public:
     void dump();
 };
 }
-typedef std::pair<BB_LIST_ITER, BB_LIST_ITER> GRAPH_CUT_BOUNDS;
 
 namespace vISA
 {
@@ -1161,11 +1142,11 @@ public:
     // ToDo: maintain this during BB add/delete instead of having to call it explicitly
     void setPhysicalPredSucc();
 
-    void markRPOTraversal();
-
     void findBackEdges();
 
     void findNaturalLoops();
+
+    std::vector<uint32_t> doDFS(G4_BB* startBB, unsigned int p);
 
     void traverseFunc(FuncInfo* func, unsigned int *ptr);
     void topologicalSortCallGraph();
@@ -1265,7 +1246,7 @@ private:
 
     void decoupleReturnBlock(G4_BB*);
     void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
-    void DFSTraverse(G4_BB* bb, unsigned& preId, unsigned& postId, FuncInfo* fn);
+    void DFSTraverse(G4_BB* bb, unsigned& preId, unsigned& postId, FuncInfo* fn, std::vector<uint32_t>& bbPreId, std::vector<uint32_t>& bbRPostId);
 };
 
 }

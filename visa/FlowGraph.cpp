@@ -1030,7 +1030,7 @@ void G4_BB::addSamplerFlushBeforeEOT()
         builder->createImm(desc, Type_UD),
         0, msgDesc, true);
     auto iter = std::prev(this->end());
-    this->insert(iter, samplerFlushInst);
+    this->insertBefore(iter, samplerFlushInst);
 }
 
 //
@@ -1592,34 +1592,40 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
 //
 // This function does a DFS and any blocks that get visited will have their
 // preId set according to the ordering. Blocks that never get visited will
-// have their preId unmodified.
+// have a preId of UINT_MAX.
+// The difference between this and DFSTraverse() is that this one does not
+// differentiate subroutines but instead simply call/return as normal edges
 //
-void doDFS(G4_BB* startBB, unsigned int p)
+std::vector<uint32_t> FlowGraph::doDFS(G4_BB* startBB, unsigned int p)
 {
+    reassignBlockIDs();
     unsigned int currP = p;
     std::stack<G4_BB*> traversalStack;
     traversalStack.push(startBB);
+
+    std::vector<uint32_t> bbPreId(BBs.size(), UINT_MAX);
 
     while (!traversalStack.empty())
     {
         G4_BB* currBB = traversalStack.top();
         traversalStack.pop();
-        if (currBB->getPreId() != UINT_MAX)
+        if (bbPreId[currBB->getId()] != UINT_MAX)
         {
             continue;
         }
-        currBB->setPreId(currP++);
+        bbPreId[currBB->getId()] = currP++;
 
         BB_LIST_ITER IE = currBB->Succs.end();
         for (BB_LIST_ITER it = currBB->Succs.begin(); it != IE; ++it)
         {
             G4_BB* tmp = *it;
-            if (tmp->getPreId() == UINT_MAX)
+            if (bbPreId[tmp->getId()] == UINT_MAX)
             {
                 traversalStack.push(tmp);
             }
         }
     }
+    return bbPreId;
 }
 
 //
@@ -1632,17 +1638,11 @@ void doDFS(G4_BB* startBB, unsigned int p)
 void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
 {
     unsigned preId = 0;
-    //
-    // initializations
-    //
-    for (std::list<G4_BB*>::iterator it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
-    {
-        (*it)->setPreId(UINT_MAX);
-    }
-    //
+    vector<uint32_t> bbPreId;
+
     // assign DFS based pre/rpost ids to all blocks in the main program
     //
-    doDFS(getEntryBB(), preId);
+    bbPreId = doDFS(getEntryBB(), preId);
 
     //
     // Basic blocks with preId/rpostId set to UINT_MAX are unreachable.
@@ -1656,7 +1656,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
     while (it != BBs.end())
     {
         G4_BB* bb = (*it);
-        if (bb->getPreId() == UINT_MAX)
+        if (bbPreId[bb->getId()] == UINT_MAX)
         {
             if (bb->getBBType() & G4_BB_INIT_TYPE)
             {
@@ -1670,9 +1670,9 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
                 // If call bb is removed, its return BB shuld be removed as well.
                 G4_BB* retBB = bb->getPhysicalSucc();
                 assert(retBB && "vISA ICE: missing Return BB");
-                if (retBB->getPreId() != UINT_MAX)
+                if (bbPreId[retBB->getId()] != UINT_MAX)
                 {
-                    retBB->setPreId(UINT_MAX);
+                    bbPreId[retBB->getId()] = UINT_MAX;
                 }
             }
 
@@ -1714,7 +1714,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
                 G4_BB* retBB = bb->getPhysicalSucc();
                 assert(retBB && (retBB->getBBType() & G4_BB_RETURN_TYPE) &&
                        "vISA ICE: missing RETURN BB");
-                if (retBB->getPreId() == UINT_MAX)
+                if (bbPreId[retBB->getId()] == UINT_MAX)
                 {
                     // For example,
                     //    CALL_BB  : call A   succ: init_BB
@@ -1726,7 +1726,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
                     //    exit_BB:  succ : RETURN_BB
                     // Both RETURN_BB and exit_BB are unreachable, but
                     // we keep both!
-                    retBB->setPreId(UINT_MAX - 1);
+                    bbPreId[retBB->getId()] = (UINT_MAX - 1);
                 }
             }
             else if (bb->getBBType() & G4_BB_INIT_TYPE)
@@ -1738,10 +1738,10 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
                 FuncInfo* finfo = entry->second;
                 G4_BB* exitBB = finfo->getExitBB();
                 assert(exitBB && "vISA ICE: missing exit BB");
-                if (exitBB->getPreId() == UINT_MAX)
+                if (bbPreId[exitBB->getId()] == UINT_MAX)
                 {
                     // See the example above for G4_BB_CALL_TYPE
-                    exitBB->setPreId(UINT_MAX - 1);
+                    bbPreId[exitBB->getId()] = (UINT_MAX - 1);
                 }
             }
             it++;
@@ -6197,7 +6197,7 @@ void G4_Kernel::dump() const
 // Perform DFS traversal on the flow graph (do not enter subroutine, but mark subroutine blocks
 // so that they will be processed independently later)
 //
-void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, FuncInfo* fn)
+void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, FuncInfo* fn, std::vector<uint32_t>& bbPreId, std::vector<uint32_t>& bbRPostId)
 {
     MUST_BE_TRUE(fn, "Invalid func info");
     std::stack<G4_BB*> traversalStack;
@@ -6206,12 +6206,12 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
     while (!traversalStack.empty())
     {
         G4_BB*  bb = traversalStack.top();
-        if (bb->getPreId() != UINT_MAX)
+        if (bbPreId[bb->getId()] != UINT_MAX)
         {
             // Pre-processed already and continue to the next one.
             // Before doing so, set postId if not set before.
             traversalStack.pop();
-            if (bb->getRPostId() == UINT_MAX)
+            if (bbRPostId[bb->getId()] == UINT_MAX)
             {
                 // All bb's succ has been visited (PreId is set) at this time.
                 // if any of its succ has not been finished (RPostId not set),
@@ -6224,7 +6224,7 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
                 {
                     for (auto succBB : bb->Succs)
                     {
-                        if (succBB->getRPostId() == UINT_MAX)
+                        if (bbRPostId[succBB->getId()] == UINT_MAX)
                         {
                             backEdges.push_back(Edge(bb, succBB));
                         }
@@ -6233,13 +6233,13 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
 
                 // Need to keep this after backedge checking so that self-backedge
                 // (single-bb loop) will not be missed.
-                bb->setRPostId(postId++);
+                bbRPostId[bb->getId()] = postId++;
             }
             continue;
         }
 
         fn->addBB(bb);
-        bb->setPreId(preId++);
+        bbPreId[bb->getId()] = preId++;
 
         if (bb->getBBType() & G4_BB_CALL_TYPE)
         {
@@ -6263,7 +6263,7 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
                 }
             }
 
-            if (returnBB->getPreId() == UINT_MAX)
+            if (bbPreId[returnBB->getId()] == UINT_MAX)
             {
                 traversalStack.push(returnBB);
             }
@@ -6283,50 +6283,9 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
             for (BB_LIST_RITER rit = bb->Succs.rbegin(); rit != RIE; ++rit)
             {
                 G4_BB* succBB = *rit;
-                if (succBB->getPreId() == UINT_MAX)
+                if (bbPreId[succBB->getId()] == UINT_MAX)
                 {
                     traversalStack.push(succBB);
-                }
-            }
-        }
-        // As the top of stack may be different than that at the
-        // beginning of this iteration, cannot do pop here. Instead,
-        // do pop and set RPostId at the beginning of each iteration.
-        //
-        // traversalStack.pop();
-        // bb->setRPostId(postId++);
-    }
-}
-
-void FlowGraph::markRPOTraversal()
-{
-    MUST_BE_TRUE(numBBId == BBs.size(), ERROR_FLOWGRAPH);
-
-    unsigned postID = 0;
-    backEdges.clear();
-
-    for (auto curBB : BBs)
-    {
-        curBB->setRPostId(postID++);
-
-        if (curBB->size() > 0)
-        {
-            if (curBB->getBBType() & G4_BB_CALL_TYPE)
-            {
-                // skip
-            }
-            else if (curBB->getBBType() & G4_BB_EXIT_TYPE)
-            {
-                // Skip
-            }
-            else
-            {
-                for (auto succBB : curBB->Succs)
-                {
-                    if (curBB->getId() >= succBB->getId())
-                    {
-                        backEdges.push_back(Edge(curBB, succBB));
-                    }
                 }
             }
         }
@@ -6339,23 +6298,21 @@ void FlowGraph::markRPOTraversal()
 void FlowGraph::findBackEdges()
 {
     MUST_BE_TRUE(numBBId == BBs.size(), ERROR_FLOWGRAPH);
+    reassignBlockIDs();
 
-    for (auto bb : BBs)
-    {
-        bb->setPreId(UINT_MAX);
-        bb->setRPostId(UINT_MAX);
-    }
+    vector<uint32_t> bbPreId(BBs.size(), UINT_MAX);
+    vector<uint32_t> bbRPostId(BBs.size(), UINT_MAX);
 
     unsigned preId = 0;
     unsigned postID = 0;
     backEdges.clear();
 
     setPhysicalPredSucc();
-    DFSTraverse(getEntryBB(), preId, postID, kernelInfo);
+    DFSTraverse(getEntryBB(), preId, postID, kernelInfo, bbPreId, bbRPostId);
 
     for (auto fn : funcInfoTable)
     {
-        DFSTraverse(fn->getInitBB(), preId, postID, fn);
+        DFSTraverse(fn->getInitBB(), preId, postID, fn, bbPreId, bbRPostId);
     }
 }
 

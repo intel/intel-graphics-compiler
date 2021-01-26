@@ -1049,8 +1049,10 @@ namespace vISA
     {
     public:
         std::vector<G4_BB*> iDoms;
+        vector<uint32_t> bbPreId;
         Dom(G4_Kernel& k, vISA::Mem_Manager& m) : kernel(k), mem(m)
         {
+            bbPreId = kernel.fg.doDFS(kernel.fg.getEntryBB(), 0);
         }
 
         ~Dom()

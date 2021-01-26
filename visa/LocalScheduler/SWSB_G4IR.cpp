@@ -6329,25 +6329,24 @@ G4_BB* Dom::InterSect(G4_BB* bb, int i, int k)
     G4_BB* finger1 = immDoms[bb->getId()][i];
     G4_BB* finger2 = immDoms[bb->getId()][k];
 
-    while ((finger1 != finger2) &&
-        (finger1 != nullptr) &&
-        (finger2 != nullptr))
+    while (finger1 != finger2 && finger1 && finger2)
     {
-        if (finger1->getPreId() == finger2->getPreId())
+        // FIXME: How is this even possible???
+        if (bbPreId[finger1->getId()] == bbPreId[finger2->getId()])
         {
             assert(finger1 == kernel.fg.getEntryBB() || finger2 == kernel.fg.getEntryBB());
             return kernel.fg.getEntryBB();
         }
 
-        while ((iDoms[finger1->getId()] != nullptr) &&
-            (finger1->getPreId() > finger2->getPreId()))
+        while ((iDoms[finger1->getId()]) &&
+            (bbPreId[finger1->getId()] > bbPreId[finger2->getId()]))
         {
             finger1 = iDoms[finger1->getId()];
             immDoms[bb->getId()][i] = finger1;
         }
 
-        while ((iDoms[finger2->getId()] != nullptr) &&
-            (finger2->getPreId() > finger1->getPreId()))
+        while ((iDoms[finger2->getId()]) &&
+            (bbPreId[finger2->getId()] > bbPreId[finger1->getId()]))
         {
             finger2 = iDoms[finger2->getId()];
             immDoms[bb->getId()][k] = finger2;
@@ -6364,7 +6363,7 @@ G4_BB* Dom::InterSect(G4_BB* bb, int i, int k)
     {
         return finger1;
     }
-    else if (finger1->getPreId() > finger2->getPreId())
+    else if (bbPreId[finger1->getId()] > bbPreId[finger2->getId()])
     {
         return finger2;
     }
