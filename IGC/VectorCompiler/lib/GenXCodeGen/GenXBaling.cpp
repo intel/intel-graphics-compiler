@@ -298,47 +298,51 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
 static int checkModifier(Instruction *Inst)
 {
   switch (Inst->getOpcode()) {
-    case Instruction::Sub:
-    case Instruction::FSub:
-      // Negate is represented in LLVM IR by subtract from 0.
-      if (Constant *Lhs = dyn_cast<Constant>(Inst->getOperand(0))) {
-        // Canonicalize splats as well
-        if (isa<VectorType>(Lhs->getType()))
-          if (auto splat = Lhs->getSplatValue())
-            Lhs = splat;
+#if LLVM_VERSION_MAJOR > 8
+  case Instruction::FNeg:
+    return BaleInfo::NEGMOD;
+#endif
+  case Instruction::Sub:
+  case Instruction::FSub:
+    // Negate is represented in LLVM IR by subtract from 0.
+    if (Constant *Lhs = dyn_cast<Constant>(Inst->getOperand(0))) {
+      // Canonicalize splats as well
+      if (isa<VectorType>(Lhs->getType()))
+        if (auto splat = Lhs->getSplatValue())
+          Lhs = splat;
 
-        // Usage of negative modifier on unsigned value can lead
-        // to unexpected behaviour if baled into another instruction.
-        if (Lhs->isZeroValue() &&
-            std::none_of(
-                Inst->use_begin(), Inst->use_end(),
-                [](Use &UseOp) { return isa<UIToFPInst>(UseOp.getUser()); }) &&
-            std::none_of(Inst->op_begin(), Inst->op_end(),
-                         [](Value *Val) { return isa<FPToUIInst>(Val); }))
-          return BaleInfo::NEGMOD;
-      }
-      break;
-    case Instruction::Xor:
-      if (isIntNot(Inst))
-        return BaleInfo::NOTMOD;
-      break;
-    case Instruction::ZExt:
-      if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))
-        return BaleInfo::ZEXT;
-      break;
-    case Instruction::SExt:
-      if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))
-        return BaleInfo::SEXT;
-      break;
+      // Usage of negative modifier on unsigned value can lead
+      // to unexpected behaviour if baled into another instruction.
+      if (Lhs->isZeroValue() &&
+          std::none_of(
+              Inst->use_begin(), Inst->use_end(),
+              [](Use &UseOp) { return isa<UIToFPInst>(UseOp.getUser()); }) &&
+          std::none_of(Inst->op_begin(), Inst->op_end(),
+                       [](Value *Val) { return isa<FPToUIInst>(Val); }))
+        return BaleInfo::NEGMOD;
+    }
+    break;
+  case Instruction::Xor:
+    if (isIntNot(Inst))
+      return BaleInfo::NOTMOD;
+    break;
+  case Instruction::ZExt:
+    if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))
+      return BaleInfo::ZEXT;
+    break;
+  case Instruction::SExt:
+    if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))
+      return BaleInfo::SEXT;
+    break;
+  default:
+    switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
+    case GenXIntrinsic::genx_absi:
+    case GenXIntrinsic::genx_absf:
+      return BaleInfo::ABSMOD;
     default:
-      switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-        case GenXIntrinsic::genx_absi:
-        case GenXIntrinsic::genx_absf:
-          return BaleInfo::ABSMOD;
-        default:
-          break;
-      }
       break;
+    }
+    break;
   }
   return BaleInfo::MAININST;
 }
@@ -1178,6 +1182,25 @@ bool GenXBaling::isHighCostBaling(uint16_t Type, Instruction *Inst) {
 }
 
 /***********************************************************************
+ * acceptableMainInst : if Inst acceptable as bale main instruction
+ */
+static bool acceptableMainInst(Instruction *Inst) {
+  if (isa<BinaryOperator>(Inst))
+    return true;
+  if (isa<CmpInst>(Inst))
+    return true;
+  if (isa<CastInst>(Inst))
+    return true;
+  if (isa<SelectInst>(Inst))
+    return true;
+#if LLVM_VERSION_MAJOR > 8
+  if (Inst->getOpcode() == Instruction::FNeg)
+    return true;
+#endif
+  return false;
+}
+
+/***********************************************************************
  * processMainInst : set up baling info for potential main instruction
  */
 void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
@@ -1186,8 +1209,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
   if (IntrinID == Intrinsic::dbg_value)
     return;
   if (IntrinID == GenXIntrinsic::not_any_intrinsic) {
-    if (!isa<BinaryOperator>(Inst) && !isa<CmpInst>(Inst)
-        && !isa<CastInst>(Inst) && !isa<SelectInst>(Inst))
+    if (!acceptableMainInst(Inst))
       return;
     if (isa<BitCastInst>(Inst))
       return;
@@ -1752,19 +1774,33 @@ void GenXBaling::dump() const { print(errs()); }
 #endif
 
 void GenXBaling::print(raw_ostream &OS) const {
-  for (InstMap_t::const_iterator i = InstMap.begin(), e = InstMap.end(); i != e;
-       ++i) {
-    const Instruction *Inst = cast<const Instruction>(i->first);
-    const BaleInfo *BI = &i->second;
-    OS << *Inst << ": ";
-    OS << BI->getTypeString();
-
-    for (unsigned OperandNum = 0, e = Inst->getNumOperands();
-        OperandNum != e; ++OperandNum)
-      if (BI->isOperandBaled(OperandNum))
-        OS << " " << OperandNum;
-    OS << "\n";
+  // we need deterministic order of instructions for unit tests
+  // so we are collecting functions and then traversing all instructions
+  OS << "GenXBaling dump start\n";
+  std::set<const Function *> Funcs;
+  for (auto &&I : InstMap) {
+    const auto *Inst = cast<Instruction>(I.first);
+    IGC_ASSERT_MESSAGE(Inst->getParent(), "Instruction shall be in some BB");
+    Funcs.insert(Inst->getFunction());
   }
+
+  for (auto *F : Funcs) {
+    OS << "bales in function: " << F->getName() << ":\n";
+    for (auto &&Inst : instructions(F)) {
+      auto InstMapIt = InstMap.find(&Inst);
+      if (InstMapIt == InstMap.end())
+        continue;
+      const auto *BI = &InstMapIt->second;
+      OS << Inst << ": ";
+      OS << BI->getTypeString();
+      for (unsigned OperandNum = 0, e = Inst.getNumOperands(); OperandNum != e;
+           ++OperandNum)
+        if (BI->isOperandBaled(OperandNum))
+          OS << " " << OperandNum;
+      OS << "\n";
+    }
+  }
+  OS << "GenXBaling dump end\n";
 }
 
 /***********************************************************************
