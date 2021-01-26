@@ -257,7 +257,9 @@ static bool tryAddAuxiliaryOptions(llvm::StringRef AuxOpt,
 static llvm::Expected<vc::CompileOptions>
 parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
              llvm::StringRef InternalOptions, llvm::ArrayRef<char> &Input) {
-  dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/true);
+  auto RawInputDumper = llvm::make_scope_exit([=, &Dumper]() {
+    dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/true);
+  });
 
   auto NewPathPayload = tryExtractPayload(Input.data(), Input.size());
   if (NewPathPayload.IsValid) {
@@ -275,10 +277,18 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
                              InternalOptions, AuxInternalOptions))
     InternalOptions = {AuxInternalOptions.data(), AuxInternalOptions.size()};
 
-  dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/false);
+  auto InputDumper = llvm::make_scope_exit([=, &Dumper]() {
+    dumpInputData(Dumper, ApiOptions, InternalOptions, Input, /*IsRaw=*/false);
+  });
 
   const bool IsStrictParser = IGC_GET_FLAG_VALUE(VCStrictOptionParser);
-  return vc::ParseOptions(ApiOptions, InternalOptions, IsStrictParser);
+  auto ExpOptions =
+      vc::ParseOptions(ApiOptions, InternalOptions, IsStrictParser);
+  if (ExpOptions.errorIsA<vc::NotVCError>()) {
+    RawInputDumper.release();
+    InputDumper.release();
+  }
+  return std::move(ExpOptions);
 }
 
 std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
