@@ -128,8 +128,8 @@ namespace iga {
     {
         if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
             switch (instTy) {
-            case MATH:
-            case SEND:
+            case InstType::MATH:
+            case InstType::SEND:
                 if (distType == DistType::REG_DIST && tokenType == TokenType::SET)
                     return true;
                 break;
@@ -200,10 +200,28 @@ uint32_t SWSB::encode(SWSB_ENCODE_MODE enMode, InstType instTy) const
     return 0;
 }
 
+void SWSB::clear()
+{
+    distType = DistType::NO_DIST;
+    tokenType = TokenType::NOTOKEN;
+    minDist = 0;
+    sbid = 0;
+    spToken = SpecialToken::NONE;
+}
+
+bool SWSB::verifySpecialToken(SWSB_ENCODE_MODE enMode) const
+{
+    assert(hasSpecialToken());
+    return true;
+}
+
 bool SWSB::verify(SWSB_ENCODE_MODE enMode, InstType instTy) const
 {
     if (!hasSWSB())
         return true;
+
+    if (hasSpecialToken())
+        return verifySpecialToken(enMode);
 
     switch (enMode) {
     case SWSB_ENCODE_MODE::SingleDistPipe:

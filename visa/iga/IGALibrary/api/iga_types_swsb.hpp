@@ -50,42 +50,55 @@ namespace iga
     struct SWSB
     {
     public:
-        enum DistType {
+        enum class DistType {
             NO_DIST,
             REG_DIST,
         };
 
-        enum TokenType {
+        enum class TokenType {
             NOTOKEN,
             SET,
             SRC,
             DST
         };
 
-        enum InstType {
+        enum class InstType {
             UNKNOWN,
             MATH,
             SEND,
             OTHERS
         };
 
+        enum class SpecialToken {
+            NONE,
+        };
+
     public:
-        DistType  distType;
-        TokenType tokenType;
-        uint32_t  minDist; // distance to nearest register dependency
-        uint32_t  sbid; // swsb id. the barrier identifier (sbid) applies to all wait's
+        DistType     distType;
+        TokenType    tokenType;
+        uint32_t     minDist;     // distance to nearest register dependency
+        uint32_t     sbid;        // swsb id. the barrier identifier (sbid) applies to all wait's
+        SpecialToken spToken;
 
         constexpr SWSB()
             : distType(DistType::NO_DIST)
             , tokenType(TokenType::NOTOKEN)
             , minDist(0)
-            , sbid((uint32_t)-1) { }
+            , sbid(0)
+            , spToken(SpecialToken::NONE)
+        { }
+
         constexpr SWSB(DistType dt, TokenType tt, uint32_t dis, uint32_t id)
-            : distType(dt), tokenType(tt), minDist(dis), sbid(id) { }
+            : distType(dt), tokenType(tt), minDist(dis), sbid(id), spToken(SpecialToken::NONE)
+        { }
+
+        constexpr SWSB(SpecialToken st)
+            : distType(DistType::NO_DIST), tokenType(TokenType::NOTOKEN), minDist(0), sbid(0), spToken(st)
+        { }
 
         constexpr bool operator==(const SWSB& rhs) const {
             return distType == rhs.distType && tokenType == rhs.tokenType &&
-                sbid == rhs.sbid && minDist == rhs.minDist;
+                sbid == rhs.sbid && minDist == rhs.minDist && spToken == rhs.spToken;
         }
 
         constexpr bool operator!=(const SWSB& rhs) const {
@@ -93,8 +106,9 @@ namespace iga
         }
 
         constexpr bool hasSWSB() const {
-            return (distType != DistType::NO_DIST) ||
-                (tokenType != TokenType::NOTOKEN);
+            return (distType != DistType::NO_DIST)   ||
+                   (tokenType != TokenType::NOTOKEN) ||
+                   (spToken != SpecialToken::NONE);
         }
 
         constexpr bool hasBothDistAndToken() const {
@@ -106,8 +120,13 @@ namespace iga
             return distType != DistType::NO_DIST;
         }
 
+        // if this swsb has token, not including SpecialToken
         constexpr bool hasToken() const {
             return tokenType != TokenType::NOTOKEN;
+        }
+
+        constexpr bool hasSpecialToken() const {
+            return spToken != SpecialToken::NONE;
         }
 
 
@@ -127,9 +146,18 @@ namespace iga
 
         /// verify - verify if the SWSB is in the correct combination
         /// according to given instruction type and encoding mode
+        /// return true on pass, false on fail
         bool verify(SWSB_ENCODE_MODE enMode, InstType instTy) const;
 
     private:
+        /// verifySpecialToken - a helper function to verify if the specialToken is valid
+        /// Should only be called when hasSpecialToken is true
+        /// return true on pass, false on fail
+        bool verifySpecialToken(SWSB_ENCODE_MODE enMode) const;
+
+        // clear all fields
+        void clear();
+
         template<SWSB_ENCODE_MODE M>
         SWSB_STATUS decode(uint32_t swsbBits, InstType instTy);
 

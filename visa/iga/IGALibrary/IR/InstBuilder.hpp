@@ -192,15 +192,17 @@ public:
         int32_t memSBidAlloc = -1; // e.g. $2      -1 = not set
         int32_t memSBidDst = -1;   // e.g. $2.dst  -1 = not set
         int32_t memSBidSrc = -1;   // e.g. $2.src  -1 = not set
+        SWSB::SpecialToken spToken = SWSB::SpecialToken::NONE;
 
         SWSBInfo() { } // sets default values as above
 
         bool anyBarrierSet() const {
             return sbidAllocSet() || sbidDstSet() || sbidSrcSet();
         }
-        bool sbidAllocSet() const {return memSBidAlloc >= 0;}
-        bool sbidDstSet() const {return memSBidDst >= 0;}
-        bool sbidSrcSet() const {return memSBidSrc >= 0;}
+        bool sbidAllocSet()    const { return memSBidAlloc >= 0; }
+        bool sbidDstSet()      const { return memSBidDst >= 0; }
+        bool sbidSrcSet()      const { return memSBidSrc >= 0; }
+        bool specialTokenSet() const { return spToken != SWSB::SpecialToken::NONE; }
 
         bool operator==(const SWSBInfo &sbi) const {
             return
@@ -208,7 +210,8 @@ public:
                 regDist == sbi.regDist &&
                 memSBidAlloc == sbi.memSBidAlloc &&
                 memSBidDst == sbi.memSBidDst &&
-                memSBidSrc == sbi.memSBidSrc;
+                memSBidSrc == sbi.memSBidSrc &&
+                spToken == sbi.spToken;
         }
         bool operator!=(const SWSBInfo &sbi) const {
             return !(*this == sbi);
@@ -527,20 +530,12 @@ public:
             swInfo.sbid = m_depInfo.memSBidAlloc;
             swInfo.tokenType = SWSB::TokenType::SET;
         }
-
         if (m_depInfo.regDist > 0)
         {
             swInfo.minDist = m_depInfo.regDist;
             swInfo.distType = m_depInfo.distType;
         }
-        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
-        if (m_opSpec->isSendOrSendsFamily())
-            inst_type = SWSB::InstType::SEND;
-        else if (m_opSpec->is(Op::MATH))
-            inst_type = SWSB::InstType::MATH;
-        if (!swInfo.verify(m_model.getSWSBEncodeMode(), inst_type))
-            m_errorHandler.reportError(m_loc,
-                "Invalid SWSB token and dist combination");
+        swInfo.spToken = m_depInfo.spToken;
         inst->setSWSB(swInfo);
 
         m_pc += inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
@@ -965,15 +960,14 @@ public:
         m_depInfo.regDist = dist;
     }
 
+    void InstDepInfoSpecialToken(Loc loc, SWSB::SpecialToken token) {
+        m_depInfo.spToken = token;
+    }
+
     ///////////////////////////////////////////////
     // for decoding from binary
     void InstSwsb(Loc loc, SWSB swsb) {
         IGA_ASSERT(m_depInfo == SWSBInfo(), "resetting SWSB info");
-
-        // verify the given swsb
-        SWSB::InstType instType = m_opSpec->getSWSBInstType();
-        if (!swsb.verify(m_model.getSWSBEncodeMode(), instType))
-            m_errorHandler.reportError(loc, "invalid SWSB bits");
 
         switch(swsb.tokenType) {
         case SWSB::TokenType::NOTOKEN:

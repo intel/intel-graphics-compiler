@@ -251,6 +251,8 @@ namespace iga
 
         bool               isMovWithLabel() const;
 
+        SWSB::InstType     getSWSBInstType(SWSB_ENCODE_MODE mode) const;
+
         void               validate() const; // asserts on malformed IR
         std::string        str() const; // returns syntax of this instruction
     private:

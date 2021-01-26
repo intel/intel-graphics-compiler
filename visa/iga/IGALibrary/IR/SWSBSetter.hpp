@@ -154,8 +154,6 @@ namespace iga
         // (all, float, int, long) counters need to be set
         void advanceInorderInstCounter(DEP_PIPE dep_pipe);
 
-        SWSB::InstType getInstType(const Instruction& inst);
-
         // get number of dist pipe according to SWSB_ENCODE_MODE
         uint32_t getNumOfDistPipe();
 

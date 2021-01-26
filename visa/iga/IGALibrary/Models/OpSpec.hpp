@@ -403,8 +403,6 @@ namespace iga
                 !is(Op::NOP) &&
                 !is(Op::ILLEGAL);
         }
-
-        SWSB::InstType getSWSBInstType() const;
     }; // struct OpSpec
 } // namespace iga::*
 #endif // IGA_OPSPEC_HPP

@@ -128,11 +128,7 @@ void Decoder::decodeSWSB(Instruction* inst)
             GED_DECODE_RAW_TO(SWSB, swsbBits);
         }
         // must convert the raw encoding bits to our SWSB IR
-        SWSB::InstType instType = SWSB::InstType::OTHERS;
-        if (inst->getOpSpec().isSendOrSendsFamily())
-            instType = SWSB::InstType::SEND;
-        else if (inst->getOpSpec().is(Op::MATH))
-            instType = SWSB::InstType::MATH;
+        SWSB::InstType instType = inst->getSWSBInstType(m_SWSBEncodeMode);
         SWSB sw;
         SWSB_STATUS status = sw.decode(swsbBits, m_SWSBEncodeMode, instType);
 

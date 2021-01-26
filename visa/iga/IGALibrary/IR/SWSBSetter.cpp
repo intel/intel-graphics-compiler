@@ -633,7 +633,7 @@ void SWSBAnalyzer::processActiveSBID(SWSB &distanceDependency, const DepSet* inp
 
     // verify if the combination of token and dist is valid, if not, move the
     // token dependency out and add a sync for it
-    if (!distanceDependency.verify(m_swsbMode, getInstType(*input->getInstruction()))) {
+    if (!distanceDependency.verify(m_swsbMode, input->getInstruction()->getSWSBInstType(m_swsbMode))) {
         // add sync for the id
         SWSB sync_swsb(SWSB::DistType::NO_DIST, distanceDependency.tokenType, 0,
                         distanceDependency.sbid);
@@ -642,15 +642,7 @@ void SWSBAnalyzer::processActiveSBID(SWSB &distanceDependency, const DepSet* inp
         distanceDependency.tokenType = SWSB::TokenType::NOTOKEN;
         distanceDependency.sbid = 0;
     }
-    assert(distanceDependency.verify(m_swsbMode, getInstType(*input->getInstruction())));
-}
-
-SWSB::InstType SWSBAnalyzer::getInstType(const Instruction& inst) {
-    if (inst.getOpSpec().isSendOrSendsFamily())
-        return SWSB::InstType::SEND;
-    else if (inst.is(Op::MATH))
-        return SWSB::InstType::MATH;
-    return SWSB::InstType::OTHERS;
+    assert(distanceDependency.verify(m_swsbMode, input->getInstruction()->getSWSBInstType(m_swsbMode)));
 }
 
 uint32_t SWSBAnalyzer::getNumOfDistPipe()
@@ -778,7 +770,7 @@ SBID& SWSBAnalyzer::assignSBID(DepSet* input, DepSet* output, Instruction& inst,
     // FIXME: move the dist out here to let the sbid set on the instruction could have better readability
     // but a potential issue is that A@1 is required to be set on the instruction having
     // architecture read/write. This case A@1 will be moved out from the instruction
-    if (!distanceDependency.verify(m_swsbMode, getInstType(inst))) {
+    if (!distanceDependency.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode))) {
         SWSB tDep(distanceDependency.distType, SWSB::TokenType::NOTOKEN,
             distanceDependency.minDist, 0);
         Instruction* tInst = m_kernel.createSyncNopInstruction(tDep);
@@ -786,7 +778,7 @@ SBID& SWSBAnalyzer::assignSBID(DepSet* input, DepSet* output, Instruction& inst,
         distanceDependency.distType = SWSB::DistType::NO_DIST;
         distanceDependency.minDist = 0;
     }
-    assert(distanceDependency.verify(m_swsbMode, getInstType(inst)));
+    assert(distanceDependency.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode)));
 
     // add a sync to preserve the token for possibly shooting down instruction
     if (needSyncForShootDown) {
@@ -898,7 +890,7 @@ void SWSBAnalyzer::run()
 
                 // set to check all dist pipes
                 if (getNumOfDistPipe() == 1)
-                    distanceDependency.distType = SWSB::REG_DIST;
+                    distanceDependency.distType = SWSB::DistType::REG_DIST;
 
                 distanceDependency.minDist = 1;
                 // input and output must have the same dep class and in the same pipe
@@ -1012,7 +1004,7 @@ void SWSBAnalyzer::run()
 
                 inst->setSWSB(distanceDependency);
 
-            assert(distanceDependency.verify(m_swsbMode, getInstType(*inst)));
+            assert(distanceDependency.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
 
             if (inst->isBranching())
             {
@@ -1043,7 +1035,7 @@ void SWSBAnalyzer::run()
     {
         SWSB swsb;
         if (getNumOfDistPipe() == 1)
-            swsb.distType = SWSB::REG_DIST;
+            swsb.distType = SWSB::DistType::REG_DIST;
         swsb.minDist = 1;
         Instruction *syncInst = m_kernel.createSyncNopInstruction(swsb);
         lastBB->getInstList().push_back(syncInst);

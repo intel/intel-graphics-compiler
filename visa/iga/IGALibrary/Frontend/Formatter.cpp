@@ -1015,7 +1015,8 @@ void Formatter::formatInstOpts(
         emit(",");
     }
 
-    if (hasDepInfo) {
+
+    if (di.hasDist() || di.hasToken()) {
         switch (di.distType) {
         case SWSB::DistType::REG_DIST:
             emit("@");

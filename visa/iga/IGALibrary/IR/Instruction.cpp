@@ -169,6 +169,20 @@ void Instruction::setSource(SourceIndex srcIx, const Operand &op)
     m_srcs[ix] = op;
 }
 
+SWSB::InstType Instruction::getSWSBInstType(SWSB_ENCODE_MODE mode) const {
+    if (mode == SWSB_ENCODE_MODE::SWSBInvalidMode)
+        return SWSB::InstType::UNKNOWN;
+
+    if (getOpSpec().isSendOrSendsFamily())
+        return SWSB::InstType::SEND;
+
+    if (is(Op::MATH))
+        return SWSB::InstType::MATH;
+
+
+
+    return SWSB::InstType::OTHERS;
+}
 
 bool Instruction::isMacro() const {
     return is(Op::MADM) || (is(Op::MATH) && IsMacro(m_sf.math));
@@ -191,6 +205,7 @@ std::string Instruction::str() const
     ErrorHandler eh;
     std::stringstream ss;
     FormatOpts fopt(getOpSpec().platform);
+    IGA_ASSERT(Model::LookupModel(getOpSpec().platform) != nullptr, "Unsupported platform");
     fopt.setSWSBEncodingMode(
         Model::LookupModel(getOpSpec().platform)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopt, *this);

@@ -313,13 +313,3 @@ bool OpSpec::implicitSrcTypeVal(
         return false;
     }
 }
-
-
-SWSB::InstType OpSpec::getSWSBInstType() const {
-    SWSB::InstType instType = SWSB::InstType::OTHERS;
-    if (isSendOrSendsFamily())
-        instType = SWSB::InstType::SEND;
-    else if (op == Op::MATH)
-        instType = SWSB::InstType::MATH;
-    return instType;
-}

@@ -1727,19 +1727,12 @@ void Encoder::encodeOptions(const Instruction& inst)
     }
 
     if (platform() >= Platform::GEN12P1 && m_opcode != Op::ILLEGAL) {
-        SWSB::InstType inst_type = SWSB::InstType::OTHERS;
-
-        if (inst.getOpSpec().isSendOrSendsFamily())
-            inst_type = SWSB::InstType::SEND;
-        else if (inst.is(Op::MATH))
-            inst_type = SWSB::InstType::MATH;
-        uint32_t swsbBinary =
-            inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);
-
+        SWSB::InstType inst_type = inst.getSWSBInstType(m_opts.swsbEncodeMode);
+        uint32_t swsbBinary = inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);
         assert(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type));
+
         GED_ENCODE(SWSB, swsbBinary);
     }
-
 }
 
 
