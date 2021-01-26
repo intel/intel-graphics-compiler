@@ -2009,7 +2009,7 @@ void CoalesceSpillFills::run()
 
     if (kernel.fg.builder->getOption(vISA_DumpDotAll))
     {
-        string passName = "after.spillCleanup." + std::to_string(iterNo);
+        std::string passName = "after.spillCleanup." + std::to_string(iterNo);
         kernel.dumpDotFile(passName.c_str());
     }
 }

@@ -387,9 +387,9 @@ namespace vISA
             unsigned int numReg, unsigned int numEOT, unsigned int lastLexID, bool bankConflict,
             bool internalConflict);
 
-        void getCalleeSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
+        void getCalleeSaveGRF(std::vector<unsigned int>& regNum, G4_Kernel* kernel);
 
-        void getCallerSaveGRF(vector<unsigned int>& regNum, vector<unsigned int>& regRegNum, G4_Kernel* kernel);
+        void getCallerSaveGRF(std::vector<unsigned int>& regNum, std::vector<unsigned int>& regRegNum, G4_Kernel* kernel);
 
         void updateCallSiteLiveIntervals(LSLiveRange* callSiteLR);
 

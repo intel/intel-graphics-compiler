@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISAKernel.h"
 #include "Gen4_IR.hpp"
 #include "BuildIR.h"
+#include "BinaryEncodingIGA.h"
 
 #include <iomanip>
 
@@ -7170,13 +7171,7 @@ bool G4_INST::canSupportSaturate() const
 
     // note that IGA will return false for any opcode it does not recognize
     // If your psuedo opcode needs to support saturation you must add explicit check before this
-    const iga::Model* igaModel = builder.getIGAModel();
-    assert(igaModel != nullptr);
-
-    const auto opInfo =
-        BinaryEncodingIGA::getIgaOpInfo(op, this, igaModel->platform, true);
-    const iga::OpSpec& opSpec = igaModel->lookupOpSpec(opInfo.first);
-    return opSpec.supportsSaturation();
+    return InstSupportsSaturationIGA(getPlatform(), *this);
 }
 
 bool G4_INST::canSupportCondMod() const
@@ -7256,22 +7251,15 @@ bool G4_INST::canSupportCondMod() const
 bool G4_INST::canSupportSrcModifier() const
 {
 
-
     if (opcode() == G4_pseudo_mad)
     {
         return true;
     }
 
     // note that IGA will return false for any opcode it does not recognize
-    // If your psuedo opcode needs to support source modifier you must add explicit check before this
-    const iga::Model* igaModel = builder.getIGAModel();
-
-    assert(igaModel != nullptr);
-
-    const auto opInfo =
-        BinaryEncodingIGA::getIgaOpInfo(op, this, igaModel->platform, true);
-    const iga::OpSpec& opSpec = igaModel->lookupOpSpec(opInfo.first);
-    return opSpec.supportsSourceModifiers();
+    // If your psuedo opcode needs to support source modifier you must add
+    // explicit check before this
+    return InstSupportsSrcModifierIGA(getPlatform(), *this);
 }
 
 // convert (execsize, offset) into emask option

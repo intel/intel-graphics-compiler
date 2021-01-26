@@ -27,9 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BuildIR.h"
 #include "../Timer.h"
 
+using namespace vISA;
+
 static const unsigned MESSAGE_PRECISION_SUBTYPE_OFFSET  = 30;
 static const unsigned SIMD_MODE_2_OFFSET  = 29;
-
 
 static uint32_t createSamplerMsgDesc(
     VISASampler3DSubOpCode samplerOp,

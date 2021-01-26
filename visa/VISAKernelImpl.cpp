@@ -413,15 +413,12 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     //
     // Entry point to LIR conversion & transformations
     //
-
     startTimer(TimerID::ENCODE_AND_EMIT);
     if (m_builder->useIGAEncoder())
     {
-
-        // ToDo: add support for debug info/FastComposite
-        BinaryEncodingIGA pBinaryEncoding(*m_kernelMem, *m_kernel, m_asmName);
-        pBinaryEncoding.Encode();
-        binary = pBinaryEncoding.EmitBinary(binarySize);
+        auto r = EncodeKernelIGA(*m_kernelMem, *m_kernel, m_asmName);
+        binary = r.binary;
+        binarySize = (unsigned)r.binaryLen;
 
         if (isFCCallableKernel() || isFCCallerKernel())
         {

@@ -1432,12 +1432,12 @@ public:
     // frame descriptor as per VISA ABI.
     enum class FrameDescriptorOfsets
     {
-        FE_FP = IR_Builder::SubRegs_Stackcall::FE_FP * 8,
-        FE_SP = IR_Builder::SubRegs_Stackcall::FE_SP * 8,
-        Ret_IP = IR_Builder::SubRegs_Stackcall::Ret_IP * 4,
-        Ret_EM = IR_Builder::SubRegs_Stackcall::Ret_EM * 4,
-        BE_FP = IR_Builder::SubRegs_Stackcall::BE_FP * 4,
-        BE_SP = IR_Builder::SubRegs_Stackcall::BE_SP * 4
+        FE_FP = vISA::IR_Builder::SubRegs_Stackcall::FE_FP * 8,
+        FE_SP = vISA::IR_Builder::SubRegs_Stackcall::FE_SP * 8,
+        Ret_IP = vISA::IR_Builder::SubRegs_Stackcall::Ret_IP * 4,
+        Ret_EM = vISA::IR_Builder::SubRegs_Stackcall::Ret_EM * 4,
+        BE_FP = vISA::IR_Builder::SubRegs_Stackcall::BE_FP * 4,
+        BE_SP = vISA::IR_Builder::SubRegs_Stackcall::BE_SP * 4
     };
 };
 

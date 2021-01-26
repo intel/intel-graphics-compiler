@@ -665,12 +665,11 @@ private:
     {
         return useScratchMsg_ || useSplitSend();
     }
-};
-}
+}; // class SpillManagerGRF
 
-// Check if the destination region is discontiguous or not.
-// A destination region is discontiguous if there are portions of the
-// region that are not written and unaffected.
+   // Check if the destination region is discontiguous or not.
+   // A destination region is discontiguous if there are portions of the
+   // region that are not written and unaffected.
 static inline bool isDisContRegion(G4_DstRegRegion * region, unsigned execSize)
 {
     // If the horizontal stride is greater than 1, then it has gaps.
@@ -703,5 +702,6 @@ static inline bool isPartialRegion(REGION_TYPE * region, unsigned execSize)
 }
 
 G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare* decl);
+} // vISA::
 
 #endif // __SPILLMANAGERGMRF_H__

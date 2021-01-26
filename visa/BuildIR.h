@@ -44,7 +44,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_wa.h"
 #include "PreDefinedVars.h"
 #include "CompilerStats.h"
-#include "BinaryEncodingIGA.h"
 #include "inc/common/sku_wa.h"
 
 
@@ -451,9 +450,6 @@ private:
     // Have inserted two entires prolog for setting FFID for compute shaders
     bool hasComputeFFIDProlog = false;
 
-    // FIXME: should not leak IGA IR into G4/vISA except in encoder
-    const iga::Model* igaModel = nullptr;
-
     const CISA_IR_Builder* parentBuilder = nullptr;
 
     // stores all metadata ever allocated
@@ -581,8 +577,6 @@ public:
 
     void bindInputDecl(G4_Declare* dcl, int grfOffset);
 
-    // FIXME: Why is this needed, should not leak IGA internals into vISA!
-    const iga::Model* getIGAModel() const { return igaModel; }
     uint32_t getPerThreadInputSize() const
     {
         return kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
@@ -2375,6 +2369,6 @@ private:
 // any CISA bytecode will be assigned CISA offset = 0xffffffff.
 // This includes pseudo nodes, G4_labels, mov introduced for copying
 // r0 for pre-emption support.
-constexpr int UNMAPPABLE_VISA_INDEX = IR_Builder::OrphanVISAIndex;
+constexpr int UNMAPPABLE_VISA_INDEX = vISA::IR_Builder::OrphanVISAIndex;
 
 #endif

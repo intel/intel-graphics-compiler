@@ -2322,7 +2322,7 @@ void SpillManagerGRF::preloadSpillRange (
 
 }
 
-G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare * decl)
+G4_SrcRegRegion* vISA::getSpillFillHeader(IR_Builder& builder, G4_Declare * decl)
 {
     return builder.Create_Src_Opnd_From_Dcl(decl, builder.getRegionStride1());
 }
@@ -2331,7 +2331,7 @@ G4_SrcRegRegion* getSpillFillHeader(IR_Builder& builder, G4_Declare * decl)
 // segment into spill memory.
 // regOff - Offset of sub-spill. If one spill is splitted into more than one spill, this is the offset of them, unit in register size
 // spillOff - Offset of the original variable being spilled, unit in register size.
-G4_INST *SpillManagerGRF::createSpillSendInstr (
+G4_INST *SpillManagerGRF::createSpillSendInstr(
     G4_Declare *      spillRangeDcl,
     G4_Declare *      mRangeDcl,
     unsigned          regOff,

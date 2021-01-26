@@ -27,10 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _MERGESCALAR_H
 #define _MERGESCALAR_H
 
-#include "G4_Opcode.h"
 #include "Gen4_IR.hpp"
 #include "BuildIR.h"
 #include "FlowGraph.h"
+
+namespace vISA {
 
 // use by mergeScalar
 #define OPND_PATTERN_ENUM(DO) \
@@ -121,7 +122,7 @@ struct BUNDLE_INFO
     void findInstructionToMerge(INST_LIST_ITER& iter, const IR_Builder& builder);
 
     static bool isMergeCandidate(G4_INST* inst, const IR_Builder& builder, bool isInSimdFlow);
-
-};
+}; // BUNDLE_INFO
+} // vISA::
 
 #endif // _MERGESCALAR_H

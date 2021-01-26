@@ -4320,7 +4320,7 @@ static bool isSameOperand(G4_Operand* srcOpnd, struct LiveNode* ln)
 void HWConformity::localizeForAcc(G4_BB* bb)
 {
     std::map<const G4_Declare*, G4_Operand*> replacedOperand;
-    std::unordered_map<const G4_Declare*, vector<struct LiveNode>> useNodes;
+    std::unordered_map<const G4_Declare*, std::vector<struct LiveNode>> useNodes;
     std::vector<const G4_Declare*> erasedCandidates;
 
     curBB = bb;

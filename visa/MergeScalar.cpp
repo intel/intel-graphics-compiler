@@ -24,15 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <vector>
 #include "MergeScalar.h"
+
+#include <vector>
+
+using namespace vISA;
 
 // This will create a new dcl or reuse the existing one if available.
 // The returned dcl will have
 //    its Reg's byte address == input's
 //    its type == srcType
 //    itss numElem == bundleSize.
-static G4_Declare* getInputDeclare(IR_Builder& builder,
+static G4_Declare* getInputDeclare(
+    IR_Builder& builder,
     std::vector<G4_Declare*>& declares,
     G4_Declare* input,
     G4_Type eltType,

@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BuildIR.h"
 #include "../Timer.h"
 
+using namespace vISA;
 
 int IR_Builder::translateVISACFSwitchInst(
     G4_Operand *indexOpnd, uint8_t numLabels, G4_Label ** labels)

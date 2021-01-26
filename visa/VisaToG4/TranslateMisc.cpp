@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BuildIR.h"
 
+using namespace vISA;
 
 bool IR_Builder::isNoMask(VISA_EMask_Ctrl eMask) {
     switch (eMask) {

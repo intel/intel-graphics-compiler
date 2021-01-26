@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BuildIR.h"
 #include "../Timer.h"
 
+using namespace vISA;
+
 
 
 

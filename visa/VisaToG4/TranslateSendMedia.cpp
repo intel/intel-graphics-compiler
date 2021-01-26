@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cmath>
 
+using namespace vISA;
 
 #define SET_DATAPORT_MESSAGE_TYPE(dest, value)\
     dest |= value << 14;

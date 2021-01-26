@@ -778,9 +778,6 @@ IR_Builder::IR_Builder(
     fcPatchInfo = NULL;
 
     createPreDefinedVars();
-
-    igaModel = iga::Model::LookupModel(
-        BinaryEncodingIGA::getIGAInternalPlatform(getPlatform()));
 }
 
 
