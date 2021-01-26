@@ -101,7 +101,7 @@ void ErrorCheck::checkArgsSize(Function& F)
         std::string ErrorMsg = "Total size of kernel arguments exceeds limit! Total arguments size: "
             + std::to_string(TotalSize) + ", limit: " + std::to_string(MaxParamSize);
 
-        Ctx->EmitError(ErrorMsg.c_str(), &F);
+        Ctx->EmitError(ErrorMsg.c_str());
         m_hasError = true;
     }
 }
@@ -117,7 +117,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
         // For testing purpose, this check is skipped if ForceDPEmulation is on.
         if (I.getType()->isDoubleTy())
         {
-            ctx->EmitError("double type is not supported on this platform", &I);
+            ctx->EmitError("double type is not supported on this platform");
             m_hasError = true;
             return;
         }
@@ -125,7 +125,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
         {
             if (I.getOperand(i)->getType()->isDoubleTy())
             {
-                ctx->EmitError("double type is not supported on this platform", &I);
+                ctx->EmitError("double type is not supported on this platform");
                 m_hasError = true;
                 return;
             }
@@ -150,7 +150,7 @@ void ErrorCheck::visitCallInst(CallInst& CI)
                 std::string Msg = "Unsupported call to ";
                 Msg += CI.getCalledFunction() ?
                     CI.getCalledFunction()->getName() : "indirect function";
-                Ctx->EmitError(Msg.c_str(), &CI);
+                Ctx->EmitError(Msg.c_str());
                 m_hasError = true;
             }
             break;

@@ -160,7 +160,7 @@ namespace IGC
                 {
                     if (m_ExtensionMap[pArg] != expected)
                     {
-                        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Inconsistent use of image!", &CI);
+                        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Inconsistent use of image!");
                         return;
                     }
                 }
@@ -187,7 +187,7 @@ namespace IGC
                     if (subGroupSize->hasValue())
                     {
                         if (subGroupSize->getSIMD_size() != 16)
-                            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("SIMD16 is expected", &CI);
+                            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("SIMD16 is expected");
                     }
                     else
                         subGroupSize->setSIMD_size(16);

@@ -1654,7 +1654,7 @@ namespace IGC
                             uint totalOffset = offset + (allocSize * i);
                             if ((totalOffset / getGRFSize()) >= m_Context->getNumGRFPerThread())
                             {
-                                m_Context->EmitError("Kernel inputs exceed total register size!", A);
+                                m_Context->EmitError("Kernel inputs exceed total register size!");
                                 return;
                             }
                             AllocateInput(var, totalOffset, i);

@@ -963,7 +963,7 @@ namespace IGC
         virtual void InitVarMetaData();
         virtual ~CodeGenContext();
         void clear();
-        void EmitError(const char* errorstr, const llvm::Value *context);
+        void EmitError(const char* errorstr);
         bool HasError() const;
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();

@@ -24,11 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <sstream>
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
-#include <llvm/Demangle/Demangle.h>
-#include <llvm/IR/DebugInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -709,132 +706,15 @@ namespace IGC
         llvmCtxWrapper = nullptr;
     }
 
-    static const llvm::Function *getRelatedFunction(const llvm::Value *value)
+    void CodeGenContext::EmitError(const char* errorstr)
     {
-        if (value == nullptr)
-            return nullptr;
-
-        if (const llvm::Function *F = llvm::dyn_cast<llvm::Function>(value)) {
-            return F;
-        }
-        if (const llvm::Argument *A = llvm::dyn_cast<llvm::Argument>(value)) {
-            return A->getParent();
-        }
-        if (const llvm::BasicBlock *BB = llvm::dyn_cast<llvm::BasicBlock>(value)) {
-            return BB->getParent();
-        }
-        if (const llvm::Instruction *I = llvm::dyn_cast<llvm::Instruction>(value)) {
-            return I->getParent()->getParent();
-        }
-
-        return nullptr;
-    }
-
-    static bool isEntryPoint(CodeGenContext *ctx, const llvm::Function *F)
-    {
-        if (F == nullptr) {
-            return false;
-        }
-
-        auto& FuncMD = ctx->getModuleMetaData()->FuncMD;
-        auto FuncInfo = FuncMD.find(const_cast<llvm::Function *>(F));
-        if (FuncInfo == FuncMD.end()) {
-            return false;
-        }
-
-        const FunctionMetaData* MD = &FuncInfo->second;
-        return MD->functionType == KernelFunction;
-    }
-
-    static void findCallingKernles
-        (CodeGenContext *ctx, const llvm::Function *F, llvm::SmallPtrSetImpl<const llvm::Function *> *kernels)
-    {
-        if (F == nullptr || kernels->count(F))
-            return;
-
-        for (const llvm::User *U : F->users()) {
-            auto *CI = llvm::dyn_cast<llvm::CallInst>(U);
-            if (CI == nullptr)
-                continue;
-
-            if (CI->getCalledFunction() != F)
-                continue;
-
-            const llvm::Function *caller = getRelatedFunction(CI);
-            if (isEntryPoint(ctx, caller)) {
-                kernels->insert(caller);
-                continue;
-            }
-            // Caller is not a kernel, try to check which kerneles might
-            // be calling it:
-            findCallingKernles(ctx, caller, kernels);
-        }
-    }
-
-    // TODO: remove this wrapper once we move to LLVM 11
-    static std::string demangle_wrapper(const std::string &name) {
-#if LLVM_VERSION_MAJOR >= 11
-        return llvm::demangle(name);
-#else
-        char *demangled = nullptr;
-
-        demangled = llvm::itaniumDemangle(name.c_str(), nullptr, nullptr, nullptr);
-        if (demangled == nullptr) {
-            demangled = llvm::microsoftDemangle(name.c_str(), nullptr, nullptr, nullptr);
-        }
-
-        if (demangled == nullptr) {
-            return name;
-        }
-
-        std::string result = demangled;
-        std::free(demangled);
-        return result;
-#endif
-    }
-
-    void CodeGenContext::EmitError(const char* errorstr, const llvm::Value *context)
-    {
-        std::stringstream ss;
-
-        ss << "\nerror :";
-        ss << errorstr;
-        // Try to get debug location to print out the relevant info.
-        if (const llvm::Instruction *I = llvm::dyn_cast_or_null<llvm::Instruction>(context)) {
-            if (const llvm::DILocation *DL = I->getDebugLoc()) {
-                ss << "\nin file: " << DL->getFilename().str() << ":" << DL->getLine() << "\n";
-            }
-        }
-        // Try to find function related to given context
-        // to print more informative error message.
-        if (const llvm::Function *F = getRelatedFunction(context)) {
-            // If the function is a kernel just print the kernel name.
-            if (isEntryPoint(this, F)) {
-                ss << "\nin kernel: '" << demangle_wrapper(std::string(F->getName())) << "'";
-            // If the function is not a kernel try to print all kernels that
-            // might be using this function.
-            } else {
-                llvm::SmallPtrSet<const llvm::Function *, 16> kernels;
-                findCallingKernles(this, F, &kernels);
-
-                const size_t kernelsCount = kernels.size();
-                ss << "\nin function: '" << demangle_wrapper(std::string(F->getName())) << "' ";
-                if (kernelsCount == 0) {
-                    ss << "called indirectly by at least one of the kernels.\n";
-                } else if (kernelsCount == 1) {
-                    const llvm::Function *kernel = *kernels.begin();
-                    ss << "called by kernel: '" << demangle_wrapper(std::string(kernel->getName())) << "'\n";
-                } else {
-                    ss << "called by kernels:\n";
-                    for (const llvm::Function *kernel : kernels) {
-                        ss << "  - '" << demangle_wrapper(std::string(kernel->getName())) << "'\n";
-                    }
-                }
-            }
-        }
-        ss << "\nerror: backend compiler failed build.\n";
-
-        this->oclErrorMessage = ss.str();// where to get this from
+        std::string str(errorstr);
+        std::string  msg;
+        msg += "\nerror: ";
+        msg += str;
+        msg += "\nerror: backend compiler failed build.\n";
+        str = msg;
+        this->oclErrorMessage = str;// where to get this from
         return;
     }
 
