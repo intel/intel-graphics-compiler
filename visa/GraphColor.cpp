@@ -1114,30 +1114,13 @@ BankAlign GlobalRA::getBankAlign(const G4_Declare* dcl) const
     {
     case BANK_CONFLICT_FIRST_HALF_EVEN:
     case BANK_CONFLICT_SECOND_HALF_EVEN:
-        if (builder->oneGRFBankDivision())
-        {
-            return BankAlign::Even;
-        }
-        else
-        {
-            return BankAlign::Even2GRF;
-        }
-        break;
+        return builder->oneGRFBankDivision() ? BankAlign::Even : BankAlign::Even2GRF;
     case BANK_CONFLICT_FIRST_HALF_ODD:
     case BANK_CONFLICT_SECOND_HALF_ODD:
-        if (builder->oneGRFBankDivision())
-        {
-            return BankAlign::Odd;
-        }
-        else
-        {
-            return BankAlign::Odd2GRF;
-        }
-        break;
-    default: break;
+        return builder->oneGRFBankDivision() ? BankAlign::Odd : BankAlign::Odd2GRF;
+    default:
+        return BankAlign::Either;
     }
-
-    return BankAlign::Either;
 }
 
 void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)

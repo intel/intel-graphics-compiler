@@ -2762,7 +2762,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
     // Let local RA allocate only those ranges that need < 10 GRFs
     // Larger ranges are not many and are best left to global RA
-    // as it can make a better judgement by considering the
+    // as it can make a better judgment by considering the
     // spill cost.
     int nrows = 0;
     int size = lr->getSizeInWords();
@@ -2771,16 +2771,10 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     unsigned short occupiedBundles = getOccupiedBundle(dcl);
     localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
 
-    BankAlign bankAlign = BankAlign::Either;
-    if (doBankConflict &&
-        gra.getBankConflict(lr->getTopDcl()) != BANK_CONFLICT_NONE)
+    BankAlign bankAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
+    if (bankAlign == BankAlign::Either && doBankConflict)
     {
-        bankAlign = gra.getBankAlign(lr->getTopDcl());
-    }
-    if (bankAlign == BankAlign::Either)
-    {
-        // FIXME: ISTM the existing code is wrong, we should always honor even alignment
-        bankAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;
+        bankAlign = gra.getBankAlign(dcl);
     }
 
     *startGRFReg = lr->hasHint() ? lr->getHint() : *startGRFReg;
@@ -3165,7 +3159,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
 
     // Reverse the order for FF two banks RA.
     // For FF, second bank register allocated from back to front
-    if (lrBC != BANK_CONFLICT_NONE)
+    if (align == BankAlign::Either && lrBC != BANK_CONFLICT_NONE)
     {
         switch (lrBC)
         {
