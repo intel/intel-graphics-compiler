@@ -94,9 +94,18 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
         case GenXIntrinsic::genx_usdp4a_sat:
         case GenXIntrinsic::genx_uudp4a_sat:
           break;
+#if 0
+        // ThreadPrivateMemSize was not copied to igcmc structures
+        // always defaulting to zero and everything worked. After
+        // removal of igcmc structures TPMSize started to be
+        // initialized to values other than zero and some ispc tests
+        // started to fail.
+        // Restore old behavior as temporary fix until proper
+        // investigation will be performed. This is really strange.
         case GenXIntrinsic::genx_alloca:
           ThreadPrivateMemSize = BC.getStackSurfaceMaxSize();
           break;
+#endif
         }
       }
     }
