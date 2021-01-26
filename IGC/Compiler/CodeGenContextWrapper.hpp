@@ -58,7 +58,8 @@ namespace IGC
         // param CPlatform* _platform
         //             all of the above params are needed in order to create new CodeGenContext.
         // param bool _owner - true if the pass is the owner of the context and responsible to delete it.
-        CodeGenContextWrapper(ShaderType _type, CBTILayout* _bitLayout, CPlatform* _platform, CDriverInfo* driverInfo, bool _owner);
+        CodeGenContextWrapper(ShaderType _type, const CBTILayout* _bitLayout, const CPlatform* _platform,
+            const CDriverInfo* driverInfo, bool _owner);
         ~CodeGenContextWrapper();
 
         // return the Context

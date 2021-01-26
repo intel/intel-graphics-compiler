@@ -38,20 +38,22 @@ namespace IGC
 
 class CPlatform
 {
-PLATFORM m_platformInfo;
-SCompilerHwCaps m_caps;
-WA_TABLE m_WaTable;
-SKU_FEATURE_TABLE m_SkuTable;
-GT_SYSTEM_INFO      m_GTSystemInfo;
-OCLCaps m_OCLCaps;
+    PLATFORM m_platformInfo = {};
+    SCompilerHwCaps m_caps = {};
+    WA_TABLE m_WaTable = {};
+    SKU_FEATURE_TABLE m_SkuTable = {};
+    GT_SYSTEM_INFO m_GTSystemInfo = {};
+    OCLCaps m_OCLCaps = {};
 
 public:
-CPlatform(PLATFORM platform) {
-    m_platformInfo = platform;
-    m_GTSystemInfo = { 0 };
-}
-CPlatform() {}
+    CPlatform() {}
 
+    CPlatform(const PLATFORM& platform)
+    {
+        m_platformInfo = platform;
+    }
+
+public:
 void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
 uint32_t getMaxOCLParameteSize() const {
   uint32_t limitFromFlag = IGC_GET_FLAG_VALUE(OverrideOCLMaxParamSize);
