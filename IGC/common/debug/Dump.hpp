@@ -140,12 +140,11 @@ public:
         return stream();
     }
 
-    static bool isBinaryDump(DumpType type);
-
 private:
-    std::string               m_string;
+    std::string                m_string;
     DumpName                   m_name;
     llvm::raw_ostream*         m_pStream;
+    DumpType                   m_type;
 };
 
 void DumpLLVMIRText(

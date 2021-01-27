@@ -583,42 +583,26 @@ namespace
     };
 } // anonymous namespace
 
-bool Dump::isBinaryDump(DumpType type)
-{
-    switch (type)
-    {
-    case DumpType::ASM_BC:
-    case DumpType::TRANSLATED_IR_BC:
-    case DumpType::PASS_IR_BC:
-    case DumpType::OptIR_BC:
-    case DumpType::VISA_BC:
-    case DumpType::GENX_ISA_BC:
-        return true;
-
-    default:
-        return false;
-    }
-}
-
 // Note: This constructor is not allowed to hold on to the dumpName reference after it finishes
 // (In the case where Dump is on the heap and DumpName is on the stack, the reference would go bad
 // when the calling function returns)
 Dump::Dump( DumpName const& dumpName, DumpType type )
     : m_name( dumpName )
     , m_pStream( nullptr )
+    , m_type( type )
 {
     m_pStream = new llvm::raw_string_ostream(m_string); // buffered stream!
-    if(IGC_IS_FLAG_ENABLED(PrintToConsole) && isConsolePrintable(type))
+    if(IGC_IS_FLAG_ENABLED(PrintToConsole) && isConsolePrintable(m_type))
     {
         m_pStream->SetUnbuffered();
         m_pStream = new TeeOutputStream(&ods(), false, m_pStream, true);
     }
-    if ( isText( type ) && type != DumpType::TIME_STATS_CSV )
+    if (isText(m_type) && m_type != DumpType::TIME_STATS_CSV )
     {
         std::stringstream ss;
-        ss << commentPrefix(type) << "------------------------------------------------\n";
-        ss << commentPrefix(type) << dumpName.RelativePath() << "\n";
-        ss << commentPrefix(type) << "------------------------------------------------\n";
+        ss << commentPrefix(m_type) << "------------------------------------------------\n";
+        ss << commentPrefix(m_type) << dumpName.RelativePath() << "\n";
+        ss << commentPrefix(m_type) << "------------------------------------------------\n";
         m_pStream =
             new PrefixStream(
             ss.str(),
@@ -630,7 +614,10 @@ Dump::Dump( DumpName const& dumpName, DumpType type )
 
 Dump::~Dump()
 {
-    std::ofstream asmFile(m_name.str());
+    std::ios_base::openmode mode = std::ios_base::out;
+    if (!isText(m_type))
+        mode |= std::ios_base::binary;
+    std::ofstream asmFile(m_name.str(), mode);
 
     // Delete the stream first to flush all data to the underlying m_string.
     delete m_pStream;
