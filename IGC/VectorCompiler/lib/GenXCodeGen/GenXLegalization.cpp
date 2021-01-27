@@ -1873,9 +1873,10 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
         Pred, RS.InitialOffset, Width,
         SI->getName() + ".split" + Twine(StartIdx), InsertBefore, DL);
   }
+  default:
+    IGC_ASSERT(!isa<PHINode>(BInst.Inst) && "not expecting to split phi node");
   }
   // Splitting non-region instruction.
-  IGC_ASSERT(!isa<PHINode>(BInst.Inst) && "not expecting to split phi node");
   if (CastInst *CI = dyn_cast<CastInst>(BInst.Inst)) {
     Type *CastToTy = IGCLLVM::FixedVectorType::get(
         cast<VectorType>(CI->getType())->getElementType(), Width);
