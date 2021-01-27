@@ -340,12 +340,9 @@ namespace FCL
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, maxLen);
             if (strlen(custom_dir) > 0 && (found == std::string::npos))
             {
-                assert( strlen(custom_dir) < maxLen && "custom_dir path too long" );
-                if (strlen( custom_dir ) < maxLen )
-                {
-                    strcat(custom_dir, "/");
-                }
+                assert(strlen(custom_dir) < maxLen && "custom_dir path too long");
                 dumpPath = custom_dir;
+                dumpPath += "/";
             }
             else
             {
