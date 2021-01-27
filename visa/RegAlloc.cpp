@@ -3431,6 +3431,18 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
     {
         kernel.fg.findNaturalLoops();
+
+#ifdef DEBUG_VERBOSE_ON
+        for (auto backedge : kernel.fg.backEdges)
+        {
+            DEBUG_VERBOSE("\n===> Found natural loop: ");
+            for (auto block : kernel.fg.naturalLoops[backedge])
+            {
+                DEBUG_VERBOSE("\tBB" << block->getId());
+            }
+            DEBUG_VERBOSE(std::endl);
+        }
+#endif
     }
 
     //
