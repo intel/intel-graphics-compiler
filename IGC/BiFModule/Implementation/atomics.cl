@@ -398,7 +398,7 @@ uint __builtin_spirv_OpAtomicExchange_p3i32_i32_i32_i32( volatile __local uint *
 
 uint __builtin_spirv_OpAtomicExchange_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -509,7 +509,7 @@ ulong __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64( volatile __local ulong
 
 ulong __builtin_spirv_OpAtomicExchange_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicExchange_p3i64_i32_i32_i64((__local long*)Pointer, Scope, Semantics, Value);
     }
@@ -547,7 +547,7 @@ float __builtin_spirv_OpAtomicExchange_p3f32_i32_i32_f32( volatile __local float
 
 float __builtin_spirv_OpAtomicExchange_p4f32_i32_i32_f32( volatile __generic float *Pointer, uint Scope, uint Semantics, float Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value), false );
     }
@@ -582,7 +582,7 @@ double __builtin_spirv_OpAtomicExchange_p3f64_i32_i32_f64( volatile __local doub
 
 double __builtin_spirv_OpAtomicExchange_p4f64_i32_i32_f64( volatile __generic double *Pointer, uint Scope, uint Semantics, double Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicExchange_p3f64_i32_i32_f64((__local double*) Pointer, Scope, Semantics, Value);
     }
@@ -627,7 +627,7 @@ uint __builtin_spirv_OpAtomicCompareExchange_p3i32_i32_i32_i32_i32_i32( volatile
 
 uint __builtin_spirv_OpAtomicCompareExchange_p4i32_i32_i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (__local int*)Pointer, Scope, Equal, Value, Comparator, false );
     }
@@ -677,7 +677,7 @@ ulong __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64( volatil
 
 ulong __builtin_spirv_OpAtomicCompareExchange_p4i64_i32_i32_i32_i64_i64( volatile __generic ulong *Pointer, uint Scope, uint Equal, uint Unequal, ulong Value, ulong Comparator)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicCompareExchange_p3i64_i32_i32_i32_i64_i64( (__local long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
     }
@@ -721,7 +721,7 @@ float __builtin_spirv_OpAtomicCompareExchange_p3f32_i32_i32_i32_f32_f32( volatil
 
 float __builtin_spirv_OpAtomicCompareExchange_p4f32_i32_i32_i32_f32_f32( volatile __generic float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (__local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), false );
     }
@@ -813,7 +813,7 @@ uint __builtin_spirv_OpAtomicIIncrement_p3i32_i32_i32( volatile __local uint *Po
 
 uint __builtin_spirv_OpAtomicIIncrement_p4i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
@@ -849,7 +849,7 @@ ulong __builtin_spirv_OpAtomicIIncrement_p3i64_i32_i32( volatile __local ulong *
 
 ulong __builtin_spirv_OpAtomicIIncrement_p4i64_i32_i32( volatile __generic ulong *Pointer, uint Scope, uint Semantics )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicIIncrement_p3i64_i32_i32((__local long*)Pointer, Scope, Semantics );
     }
@@ -888,7 +888,7 @@ uint __builtin_spirv_OpAtomicIDecrement_p3i32_i32_i32( volatile __local uint *Po
 
 uint __builtin_spirv_OpAtomicIDecrement_p4i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
@@ -922,7 +922,7 @@ ulong __builtin_spirv_OpAtomicIDecrement_p3i64_i32_i32( volatile __local ulong *
 
 ulong __builtin_spirv_OpAtomicIDecrement_p4i64_i32_i32( volatile __generic ulong *Pointer, uint Scope, uint Semantics )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicIDecrement_p3i64_i32_i32( (__local long*)Pointer, Scope, Semantics );
     }
@@ -963,7 +963,7 @@ uint __builtin_spirv_OpAtomicIAdd_p3i32_i32_i32_i32( volatile __local uint *Poin
 
 uint __builtin_spirv_OpAtomicIAdd_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -994,7 +994,7 @@ ulong __builtin_spirv_OpAtomicIAdd_p3i64_i32_i32_i64( volatile __local ulong *Po
 
 ulong __builtin_spirv_OpAtomicIAdd_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicIAdd_p3i64_i32_i32_i64((__local ulong*)Pointer, Scope, Semantics, Value);
     }
@@ -1034,7 +1034,7 @@ uint __builtin_spirv_OpAtomicISub_p3i32_i32_i32_i32( volatile __local uint *Poin
 
 uint __builtin_spirv_OpAtomicISub_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1070,7 +1070,7 @@ ulong __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64( volatile __local ulong *Po
 
 ulong __builtin_spirv_OpAtomicISub_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicISub_p3i64_i32_i32_i64((__local long*)Pointer, Scope, Semantics, Value );
     }
@@ -1109,7 +1109,7 @@ int __builtin_spirv_OpAtomicSMin_p3i32_i32_i32_i32( volatile __local uint *Point
 
 int __builtin_spirv_OpAtomicSMin_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, int Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1144,7 +1144,7 @@ long __builtin_spirv_OpAtomicSMin_p3i64_i32_i32_i64( volatile __local ulong *Poi
 
 long __builtin_spirv_OpAtomicSMin_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicSMin_p3i64_i32_i32_i64((__local int*)Pointer, Scope, Semantics, Value );
     }
@@ -1181,7 +1181,7 @@ uint __builtin_spirv_OpAtomicUMin_p3i32_i32_i32_i32( volatile __local uint *Poin
 
 uint __builtin_spirv_OpAtomicUMin_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1216,7 +1216,7 @@ ulong __builtin_spirv_OpAtomicUMin_p3i64_i32_i32_i64( volatile __local ulong *Po
 
 ulong __builtin_spirv_OpAtomicUMin_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicUMin_p3i64_i32_i32_i64( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
@@ -1254,7 +1254,7 @@ int __builtin_spirv_OpAtomicSMax_p3i32_i32_i32_i32( volatile __local uint *Point
 
 int __builtin_spirv_OpAtomicSMax_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, int Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1289,7 +1289,7 @@ long __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( volatile __local ulong *Poi
 
 long __builtin_spirv_OpAtomicSMax_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, long Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicSMax_p3i64_i32_i32_i64( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
@@ -1329,7 +1329,7 @@ uint __builtin_spirv_OpAtomicUMax_p3i32_i32_i32_i32( volatile __local uint *Poin
 
 uint __builtin_spirv_OpAtomicUMax_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1364,7 +1364,7 @@ ulong __builtin_spirv_OpAtomicUMax_p3i64_i32_i32_i64( volatile __local ulong *Po
 
 ulong __builtin_spirv_OpAtomicUMax_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicUMax_p3i64_i32_i32_i64( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
@@ -1402,7 +1402,7 @@ uint __builtin_spirv_OpAtomicAnd_p3i32_i32_i32_i32( volatile __local uint *Point
 
 uint __builtin_spirv_OpAtomicAnd_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1437,7 +1437,7 @@ ulong __builtin_spirv_OpAtomicAnd_p3i64_i32_i32_i64( volatile __local ulong *Poi
 
 ulong __builtin_spirv_OpAtomicAnd_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicAnd_p3i64_i32_i32_i64( (__local ulong*)Pointer, Scope, Semantics, Value );
     }
@@ -1475,7 +1475,7 @@ uint __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32( volatile __local uint *Pointe
 
 uint __builtin_spirv_OpAtomicOr_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1510,7 +1510,7 @@ ulong __builtin_spirv_OpAtomicOr_p3i64_i32_i32_i64( volatile __local ulong *Poin
 
 ulong __builtin_spirv_OpAtomicOr_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
       return __builtin_spirv_OpAtomicOr_p3i64_i32_i32_i64( (__local long*)Pointer, Scope, Semantics, Value );
     }
@@ -1549,7 +1549,7 @@ uint __builtin_spirv_OpAtomicXor_p3i32_i32_i32_i32( volatile __local uint *Point
 
 uint __builtin_spirv_OpAtomicXor_p4i32_i32_i32_i32( volatile __generic uint *Pointer, uint Scope, uint Semantics, uint Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
@@ -1584,7 +1584,7 @@ ulong __builtin_spirv_OpAtomicXor_p3i64_i32_i32_i64( volatile __local ulong *Poi
 
 ulong __builtin_spirv_OpAtomicXor_p4i64_i32_i32_i64( volatile __generic ulong *Pointer, uint Scope, uint Semantics, ulong Value )
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicXor_p3i64_i32_i32_i64( (__local long*)Pointer, Scope, Semantics, Value );
     }
@@ -1687,7 +1687,7 @@ float __builtin_spirv_OpAtomicFAddEXT_p3f32_i32_i32_f32( volatile __local float 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 float __builtin_spirv_OpAtomicFAddEXT_p4f32_i32_i32_f32( volatile __generic float *Pointer, uint Scope, uint Semantics, float Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFAddEXT_p3f32_i32_i32_f32((local float*)Pointer, Scope, Semantics, Value);
     }
@@ -1732,7 +1732,7 @@ double __builtin_spirv_OpAtomicFAddEXT_p3f64_i32_i32_f64( volatile __local doubl
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 double __builtin_spirv_OpAtomicFAddEXT_p4f64_i32_i32_f64( volatile __generic double *Pointer, uint Scope, uint Semantics, double Value)
 {
-    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFAddEXT_p3f64_i32_i32_f64((local double*)Pointer, Scope, Semantics, Value);
     }
@@ -1777,7 +1777,7 @@ half __builtin_spirv_OpAtomicFMinEXT_p3f16_i32_i32_f16(volatile local half* Poin
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 half __builtin_spirv_OpAtomicFMinEXT_p4f16_i32_i32_f16(volatile generic half* Pointer, uint Scope, uint Semantics, half Value)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFMinEXT_p3f16_i32_i32_f16((__local half*)Pointer, Scope, Semantics, Value);
     }
@@ -1808,7 +1808,7 @@ float __builtin_spirv_OpAtomicFMinEXT_p3f32_i32_i32_f32(volatile local float* Po
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 float __builtin_spirv_OpAtomicFMinEXT_p4f32_i32_i32_f32(volatile generic float* Pointer, uint Scope, uint Semantics, float Value)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFMinEXT_p3f32_i32_i32_f32((__local float*)Pointer, Scope, Semantics, Value);
     }
@@ -1853,7 +1853,7 @@ double __builtin_spirv_OpAtomicFMinEXT_p3f64_i32_i32_f64(volatile local double* 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 double __builtin_spirv_OpAtomicFMinEXT_p4f64_i32_i32_f64(volatile generic double* Pointer, uint Scope, uint Semantics, double Value)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFMinEXT_p3f64_i32_i32_f64((__local double*)Pointer, Scope, Semantics, Value);
     }
@@ -1898,7 +1898,7 @@ half __builtin_spirv_OpAtomicFMaxEXT_p3f16_i32_i32_f16(volatile local half* Poin
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 half __builtin_spirv_OpAtomicFMaxEXT_p4f16_i32_i32_f16(volatile generic half* Pointer, uint Scope, uint Semantics, half Value)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFMaxEXT_p3f16_i32_i32_f16((__local half*)Pointer, Scope, Semantics, Value);
     }
@@ -1929,7 +1929,7 @@ float __builtin_spirv_OpAtomicFMaxEXT_p3f32_i32_i32_f32(volatile local float* Po
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 float __builtin_spirv_OpAtomicFMaxEXT_p4f32_i32_i32_f32(volatile generic float* Pointer, uint Scope, uint Semantics, float Value)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFMaxEXT_p3f32_i32_i32_f32((__local float*)Pointer, Scope, Semantics, Value);
     }
@@ -1974,7 +1974,7 @@ double __builtin_spirv_OpAtomicFMaxEXT_p3f64_i32_i32_f64(volatile local double* 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 double __builtin_spirv_OpAtomicFMaxEXT_p4f64_i32_i32_f64(volatile generic double* Pointer, uint Scope, uint Semantics, double Value)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
         return __builtin_spirv_OpAtomicFMaxEXT_p3f64_i32_i32_f64((__local double*)Pointer, Scope, Semantics, Value);
     }

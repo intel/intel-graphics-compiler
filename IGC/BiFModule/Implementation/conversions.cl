@@ -3461,20 +3461,20 @@ float convertSItoFP32(long value, char roundingMode)
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-INLINE private void* __builtin_spirv_OpGenericCastToPtrExplicit_p0i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage)
+INLINE private void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(const generic void *Pointer, StorageClass_t Storage)
 {
     return __builtin_IB_to_private(Pointer);
 }
 
-INLINE local   void* __builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage)
+INLINE local   void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(const generic void *Pointer, StorageClass_t Storage)
 {
     return __builtin_IB_to_local(Pointer);
 }
 
-INLINE global  void* __builtin_spirv_OpGenericCastToPtrExplicit_p1i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage)
+INLINE global  void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(const generic void *Pointer, StorageClass_t Storage)
 {
-    if((__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(Pointer, Storage) == NULL) &
-       (__builtin_spirv_OpGenericCastToPtrExplicit_p0i8_p4i8_i32(Pointer, Storage) == NULL))
+    if((SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(Pointer, Storage) == NULL) &
+       (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(Pointer, Storage) == NULL))
     {
         return (global void*)(Pointer);
     }
@@ -3484,7 +3484,7 @@ INLINE global  void* __builtin_spirv_OpGenericCastToPtrExplicit_p1i8_p4i8_i32(co
 
 INLINE uint __builtin_spirv_OpGenericPtrMemSemantics_p4i8(const generic void *Pointer)
 {
-    if (__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(Pointer, StorageWorkgroup) != NULL)
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(Pointer, StorageWorkgroup) != NULL)
     {
         return WorkgroupMemory;
     }

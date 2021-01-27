@@ -3385,18 +3385,12 @@ long8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _v8i64_v8i64, _Rlong8)(ul
 long16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(SatConvertUToS, _v16i64_v16i64, _Rlong16)(ulong16 x);
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-private void* __builtin_spirv_OpGenericCastToPtrExplicit_p0i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage);
-local   void* __builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage);
-global  void* __builtin_spirv_OpGenericCastToPtrExplicit_p1i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage);
+private void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(const generic void *Pointer, StorageClass_t Storage);
+local   void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(const generic void *Pointer, StorageClass_t Storage);
+global  void* SPIRV_OVERLOADABLE SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(const generic void *Pointer, StorageClass_t Storage);
 uint __builtin_spirv_OpGenericPtrMemSemantics_p4i8(const generic void *Pointer);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
-// Note: return type is part of mangle!
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-private void* __builtin_spirv_OpGenericCastToPtrExplicit_p0i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage);
-global  void* __builtin_spirv_OpGenericCastToPtrExplicit_p1i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage);
-local   void* __builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(const generic void *Pointer, StorageClass_t Storage);
-#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 // Arithmetic Instructions
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(half2 Vector1, half2 Vector2);
