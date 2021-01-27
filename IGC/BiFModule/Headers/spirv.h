@@ -3399,22 +3399,22 @@ local   void* __builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(const gen
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 // Arithmetic Instructions
 
-half __builtin_spirv_OpDot_v2f16_v2f16(half2 Vector1, half2 Vector2);
-half __builtin_spirv_OpDot_v3f16_v3f16(half3 Vector1, half3 Vector2);
-half __builtin_spirv_OpDot_v4f16_v4f16(half4 Vector1, half4 Vector2);
-half __builtin_spirv_OpDot_v8f16_v8f16(half8 Vector1, half8 Vector2);
-half __builtin_spirv_OpDot_v16f16_v16f16(half16 Vector1, half16 Vector2);
-float __builtin_spirv_OpDot_v2f32_v2f32(float2 Vector1, float2 Vector2);
-float __builtin_spirv_OpDot_v3f32_v3f32(float3 Vector1, float3 Vector2);
-float __builtin_spirv_OpDot_v4f32_v4f32(float4 Vector1, float4 Vector2);
-float __builtin_spirv_OpDot_v8f32_v8f32(float8 Vector1, float8 Vector2);
-float __builtin_spirv_OpDot_v16f32_v16f32(float16 Vector1, float16 Vector2);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(half2 Vector1, half2 Vector2);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(half3 Vector1, half3 Vector2);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(half4 Vector1, half4 Vector2);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v8f16_v8f16, )(half8 Vector1, half8 Vector2);
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f16_v16f16, )(half16 Vector1, half16 Vector2);
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(float2 Vector1, float2 Vector2);
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(float3 Vector1, float3 Vector2);
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(float4 Vector1, float4 Vector2);
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v8f32_v8f32, )(float8 Vector1, float8 Vector2);
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f32_v16f32, )(float16 Vector1, float16 Vector2);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpDot_v2f64_v2f64(double2 Vector1, double2 Vector2);
-double __builtin_spirv_OpDot_v3f64_v3f64(double3 Vector1, double3 Vector2);
-double __builtin_spirv_OpDot_v4f64_v4f64(double4 Vector1, double4 Vector2);
-double __builtin_spirv_OpDot_v8f64_v8f64(double8 Vector1, double8 Vector2);
-double __builtin_spirv_OpDot_v16f64_v16f64(double16 Vector1, double16 Vector2);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(double2 Vector1, double2 Vector2);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(double3 Vector1, double3 Vector2);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(double4 Vector1, double4 Vector2);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v8f64_v8f64, )(double8 Vector1, double8 Vector2);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f64_v16f64, )(double16 Vector1, double16 Vector2);
 #endif // defined(cl_khr_fp64)
 typedef struct { uchar a; uchar b; } TwoOp_i8;
 typedef struct { uchar2 a; uchar2 b; } TwoOp_v2i8;

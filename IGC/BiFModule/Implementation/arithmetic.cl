@@ -26,18 +26,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Arithmetic Instructions
 
-half __builtin_spirv_OpDot_v2f16_v2f16(half2 Vector1, half2 Vector2)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f16_v2f16, )(half2 Vector1, half2 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
 }
 
-half __builtin_spirv_OpDot_v3f16_v3f16(half3 Vector1, half3 Vector2)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f16_v3f16, )(half3 Vector1, half3 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.x, Vector2.x,
            __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
 }
 
-half __builtin_spirv_OpDot_v4f16_v4f16(half4 Vector1, half4 Vector2)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f16_v4f16, )(half4 Vector1, half4 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.x, Vector2.x,
            __builtin_spirv_OpenCL_mad_f16_f16_f16(Vector1.y, Vector2.y,
@@ -47,27 +47,27 @@ half __builtin_spirv_OpDot_v4f16_v4f16(half4 Vector1, half4 Vector2)
 
 // TODO: should we support beyond vec4 which is what OCL is limited to?
 #if 0
-half __builtin_spirv_OpDot_v8f16_v8f16(half8 Vector1, half8 Vector2)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v8f16_v8f16, )(half8 Vector1, half8 Vector2)
 {
 }
 
-half __builtin_spirv_OpDot_v16f16_v16f16(half16 Vector1, half16 Vector2)
+half SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f16_v16f16, )(half16 Vector1, half16 Vector2)
 {
 }
 #endif
 
-float __builtin_spirv_OpDot_v2f32_v2f32(float2 Vector1, float2 Vector2)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f32_v2f32, )(float2 Vector1, float2 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
 }
 
-float __builtin_spirv_OpDot_v3f32_v3f32(float3 Vector1, float3 Vector2)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f32_v3f32, )(float3 Vector1, float3 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.x, Vector2.x,
            __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
 }
 
-float __builtin_spirv_OpDot_v4f32_v4f32(float4 Vector1, float4 Vector2)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f32_v4f32, )(float4 Vector1, float4 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.x, Vector2.x,
            __builtin_spirv_OpenCL_mad_f32_f32_f32(Vector1.y, Vector2.y,
@@ -76,29 +76,29 @@ float __builtin_spirv_OpDot_v4f32_v4f32(float4 Vector1, float4 Vector2)
 }
 
 #if 0
-float __builtin_spirv_OpDot_v8f32_v8f32(float8 Vector1, float8 Vector2)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v8f32_v8f32, )(float8 Vector1, float8 Vector2)
 {
 }
 
-float __builtin_spirv_OpDot_v16f32_v16f32(float16 Vector1, float16 Vector2)
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f32_v16f32, )(float16 Vector1, float16 Vector2)
 {
 }
 #endif
 
 #if defined(cl_khr_fp64)
 
-double __builtin_spirv_OpDot_v2f64_v2f64(double2 Vector1, double2 Vector2)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(double2 Vector1, double2 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
 }
 
-double __builtin_spirv_OpDot_v3f64_v3f64(double3 Vector1, double3 Vector2)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(double3 Vector1, double3 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x, Vector2.x,
            __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
 }
 
-double __builtin_spirv_OpDot_v4f64_v4f64(double4 Vector1, double4 Vector2)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(double4 Vector1, double4 Vector2)
 {
     return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x, Vector2.x,
            __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.y, Vector2.y,
@@ -111,11 +111,11 @@ double __builtin_spirv_OpDot_v4f64_v4f64(double4 Vector1, double4 Vector2)
 #if 0
 
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpDot_v8f64_v8f64(double8 Vector1, double8 Vector2)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v8f64_v8f64, )(double8 Vector1, double8 Vector2)
 {
 }
 
-double __builtin_spirv_OpDot_v16f64_v16f64(double16 Vector1, double16 Vector2)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f64_v16f64, )(double16 Vector1, double16 Vector2)
 {
 }
 #endif
