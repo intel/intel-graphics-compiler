@@ -2039,7 +2039,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
         }
 
         // Further check data-dependency, that is, no other instruction
-        // should have no WAR or WAW dependency.
+        // should have WAR or WAW dependency with this inst.
         //
         //   defInst
         //

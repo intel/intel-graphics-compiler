@@ -2962,6 +2962,7 @@ bool G4_INST::isWARdep(G4_INST* inst)
     G4_Operand* src0_0 = inst->getSrc(0);
     G4_Operand* src0_1 = inst->getSrc(1);
     G4_Operand* src0_2 = inst->getSrc(2);
+    G4_Operand* src0_3 = inst->getSrc(3);
     G4_Operand* implicitSrc0 = inst->getImplAccSrc();
     G4_Predicate* pred0 = inst->getPredicate();
 
@@ -2974,6 +2975,7 @@ bool G4_INST::isWARdep(G4_INST* inst)
             (src0_0 && src0_0->compareOperand(dst1) != Rel_disjoint) ||
             (src0_1 && src0_1->compareOperand(dst1) != Rel_disjoint) ||
             (src0_2 && src0_2->compareOperand(dst1) != Rel_disjoint) ||
+            (src0_3 && src0_3->compareOperand(dst1) != Rel_disjoint) ||
             (msg0 && (msg0->compareOperand(dst1) != Rel_disjoint)) ||
             (pred0 && (pred0->compareOperand(dst1) != Rel_disjoint)) ||
             (implicitSrc0 && (implicitSrc0->compareOperand(dst1) != Rel_disjoint)))
@@ -3056,6 +3058,7 @@ bool G4_INST::isRAWdep(G4_INST *inst)
     G4_Operand *src1_0 = this->getSrc(0);
     G4_Operand *src1_1 = this->getSrc(1);
     G4_Operand *src1_2 = this->getSrc(2);
+    G4_Operand* src1_3 = this->getSrc(3);
     G4_Operand *implicitSrc1   = this->implAccSrc;
 
     bool NULLSrc1 = (this->opcode() == G4_math && src1_1->isNullReg());
@@ -3064,6 +3067,7 @@ bool G4_INST::isRAWdep(G4_INST *inst)
         if ((src1_0 && src1_0->compareOperand(dst0) != Rel_disjoint) ||
             (src1_1 && !NULLSrc1 && src1_1->compareOperand(dst0) != Rel_disjoint) ||
             (src1_2 && src1_2->compareOperand(dst0) != Rel_disjoint) ||
+            (src1_3 && src1_3->compareOperand(dst0) != Rel_disjoint) ||
             (msg1 && msg1->compareOperand(dst0) != Rel_disjoint) ||
             (pred1 && pred1->compareOperand(dst0) != Rel_disjoint) ||
             (implicitSrc1 && implicitSrc1->compareOperand(dst0) != Rel_disjoint))
