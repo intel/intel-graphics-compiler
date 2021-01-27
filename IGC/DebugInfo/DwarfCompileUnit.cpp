@@ -1886,7 +1886,7 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
     StringRef LinkageName = SP->getLinkageName();
     if (!LinkageName.empty())
     {
-        addString(SPDie, dwarf::DW_AT_MIPS_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
+        addString(SPDie, dwarf::DW_AT_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
     }
 
     // Constructors and operators for anonymous aggregates do not have names.

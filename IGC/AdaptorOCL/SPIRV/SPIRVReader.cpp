@@ -462,10 +462,6 @@ public:
           flags |= llvm::DINode::FlagProtected;
       if ((spirvFlags & SPIRVDebug::FlagAccess) == SPIRVDebug::FlagIsPrivate)
           flags |= llvm::DINode::FlagPrivate;
-      if (spirvFlags & SPIRVDebug::FlagIsProtected)
-          flags |= llvm::DINode::FlagProtected;
-      if (spirvFlags & SPIRVDebug::FlagIsPrivate)
-          flags |= llvm::DINode::FlagPrivate;
       if (spirvFlags & SPIRVDebug::FlagIsObjectPointer)
           flags |= llvm::DINode::FlagObjectPointer;
 
