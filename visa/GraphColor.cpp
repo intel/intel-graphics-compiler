@@ -9496,7 +9496,7 @@ int GlobalRA::coloringRegAlloc()
     const unsigned maxRAIterations = 10;
     unsigned iterationNo = 0;
 
-    int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+    const int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     bool useScratchMsgForSpill = !hasStackCall && (globalScratchOffset < (int)(SCRATCH_MSG_LIMIT * 0.6)
     );
     bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
@@ -9932,7 +9932,9 @@ int GlobalRA::coloringRegAlloc()
     }
 
     // this includes vISA's scratch space use only and does not include whatever IGC may use for private memory
-    uint32_t spillMemUsed = std::max(this->actualSpillSize, nextSpillOffset);
+
+    auto spillSizeFromMsg = (this->actualSpillSize > (uint32_t) globalScratchOffset) ? this->actualSpillSize - globalScratchOffset : this->actualSpillSize;
+    uint32_t spillMemUsed = std::max(spillSizeFromMsg, nextSpillOffset);
     if (spillMemUsed)
     {
         builder.criticalMsgStream() << "Spill memory used = " << spillMemUsed << " bytes for kernel " <<
