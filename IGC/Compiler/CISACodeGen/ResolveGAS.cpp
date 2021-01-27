@@ -898,7 +898,7 @@ bool GASResolving::checkGenericArguments(Function& F) const {
 namespace IGC
 {
     //
-    // Optimization pass to lower genetic pointers in function arguments.
+    // Optimization pass to lower generic pointers in function arguments.
     // If all call sites have the same origin address space, address space
     // casts with the form of non-generic->generic can safely removed and
     // function updated with non-generic pointer argument.
@@ -964,7 +964,7 @@ namespace IGC
         bool hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite);
         void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
         void updateAllUsesWithNewFunction(FuncToUpdate& f);
-        void FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS);
+        void FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC);
     };
 } // End anonymous namespace
 
@@ -1202,14 +1202,27 @@ bool LowerGPCallArg::hasSameOriginAddressSpace(Function* func, unsigned argNo, u
 }
 
 
-// Modifies address space in all BitCast or GEP uses of pointer argument
-void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS)
+// Modifies address space in uses of pointer argument
+void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC)
 {
     IGC_ASSERT(newAS != oldAS);
     for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
     {
         Instruction* inst = dyn_cast<Instruction>(*UI);
         PointerType* instType = nullptr;
+
+        if (StoreInst* storeInst = dyn_cast<StoreInst>(inst))
+        {
+            // We cannot propagate the non-generic AS to the value operand of a store.
+            // In this situation the pointer operand remains generic, so we add back the
+            // addrspacecast.
+            if (UI.getUse().getOperandNo() != storeInst->getPointerOperandIndex())
+            {
+                UI.getUse().set(recoverASC);
+                continue;
+            }
+        }
+
         if (BitCastInst* bitCastInst = dyn_cast<BitCastInst>(inst))
         {
             instType = dyn_cast<PointerType>(bitCastInst->getType());
@@ -1224,7 +1237,7 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             Type* eltType = instType->getElementType();
             PointerType* ptrType = PointerType::get(eltType, newAS);
             inst->mutateType(ptrType);
-            FixAddressSpaceInAllUses(inst, newAS, oldAS);
+            FixAddressSpaceInAllUses(inst, newAS, oldAS, recoverASC);
         }
     }
 }
@@ -1236,6 +1249,8 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
     Function::arg_iterator currArg = newFunc->arg_begin();
     unsigned currentArgIdx = 0, newArgIdx = 0;
 
+
+
     for (Function::arg_iterator I = oldFunc->arg_begin(), E = oldFunc->arg_end();
         I != E; ++I, ++currArg, ++currentArgIdx)
     {
@@ -1244,10 +1259,23 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
         {
             if (currentArgIdx == newArgs[newArgIdx].first)
             {
-                PointerType* argPointerType = PointerType::get(I->getType()->getPointerElementType(),
+                PointerType* originalPointerTy = dyn_cast<PointerType>(I->getType());
+
+                PointerType* newPointerTy = PointerType::get(I->getType()->getPointerElementType(),
                     newArgs[newArgIdx].second);
-                I->mutateType(argPointerType);
-                FixAddressSpaceInAllUses(I, newArgs[newArgIdx].second, ADDRESS_SPACE_GENERIC);
+                I->mutateType(newPointerTy);
+
+                // Add an addrspacecast in for cases where the non-generic can't be propagated.
+                AddrSpaceCastInst* recoverASC = new AddrSpaceCastInst(I, originalPointerTy, "",
+                    newFunc->getEntryBlock().getFirstNonPHI());
+
+                FixAddressSpaceInAllUses(I, newArgs[newArgIdx].second, ADDRESS_SPACE_GENERIC, recoverASC);
+
+                // Remove addrspacecast if it wasn't used
+                if (recoverASC->getNumUses() == 0)
+                {
+                    recoverASC->eraseFromParent();
+                }
                 newArgIdx++;
             }
         }
