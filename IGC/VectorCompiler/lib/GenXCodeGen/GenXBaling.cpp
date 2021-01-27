@@ -63,6 +63,22 @@ using namespace llvm;
 using namespace genx;
 using namespace GenXIntrinsic::GenXRegion;
 
+// set of debug options to switch off different baling types
+static cl::opt<bool> BaleBinary("bale-binary", cl::init(true), cl::Hidden,
+                                cl::desc("Bale binary operators"));
+
+static cl::opt<bool> BaleCmp("bale-cmp", cl::init(true), cl::Hidden,
+                             cl::desc("Bale comparisons"));
+
+static cl::opt<bool> BaleCast("bale-cast", cl::init(true), cl::Hidden,
+                              cl::desc("Bale casts"));
+
+static cl::opt<bool> BaleSelect("bale-select", cl::init(true), cl::Hidden,
+                                cl::desc("Bale selects"));
+
+static cl::opt<bool> BaleFNeg("bale-fneg", cl::init(true), cl::Hidden,
+                              cl::desc("Bale fneg"));
+
 //----------------------------------------------------------------------
 // Administrivia for GenXFuncBaling pass
 //
@@ -143,6 +159,8 @@ bool GenXBaling::processFunctionGroup(FunctionGroup *FG)
  */
 bool GenXBaling::processFunction(Function *F)
 {
+  LLVM_DEBUG(llvm::dbgs() << "Baling function analysis for " << F->getName()
+                          << "\n");
   bool Changed = prologue(F);
 
   for (df_iterator<BasicBlock *> i = df_begin(&F->getEntryBlock()),
@@ -300,6 +318,8 @@ static int checkModifier(Instruction *Inst)
   switch (Inst->getOpcode()) {
 #if LLVM_VERSION_MAJOR > 8
   case Instruction::FNeg:
+    LLVM_DEBUG(llvm::dbgs()
+               << "Instruction " << *Inst << " detected as NEGMOD\n");
     return BaleInfo::NEGMOD;
 #endif
   case Instruction::Sub:
@@ -318,32 +338,48 @@ static int checkModifier(Instruction *Inst)
               Inst->use_begin(), Inst->use_end(),
               [](Use &UseOp) { return isa<UIToFPInst>(UseOp.getUser()); }) &&
           std::none_of(Inst->op_begin(), Inst->op_end(),
-                       [](Value *Val) { return isa<FPToUIInst>(Val); }))
+                       [](Value *Val) { return isa<FPToUIInst>(Val); })) {
+        LLVM_DEBUG(llvm::dbgs()
+                   << "Instruction " << *Inst << " detected as NEGMOD\n");
         return BaleInfo::NEGMOD;
+      }
     }
     break;
   case Instruction::Xor:
-    if (isIntNot(Inst))
+    if (isIntNot(Inst)) {
+      LLVM_DEBUG(llvm::dbgs()
+                 << "Instruction " << *Inst << " detected as NOTMOD\n");
       return BaleInfo::NOTMOD;
+    }
     break;
   case Instruction::ZExt:
-    if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))
+    if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
+      LLVM_DEBUG(llvm::dbgs()
+                 << "Instruction " << *Inst << " detected as ZEXT\n");
       return BaleInfo::ZEXT;
+    }
     break;
   case Instruction::SExt:
-    if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1))
+    if (!Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1)) {
+      LLVM_DEBUG(llvm::dbgs()
+                 << "Instruction " << *Inst << " detected as SEXT\n");
       return BaleInfo::SEXT;
+    }
     break;
   default:
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_absi:
     case GenXIntrinsic::genx_absf:
+      LLVM_DEBUG(llvm::dbgs()
+                 << "Instruction " << *Inst << " detected as ABSMOD\n");
       return BaleInfo::ABSMOD;
     default:
       break;
     }
     break;
   }
+  LLVM_DEBUG(llvm::dbgs() << "Instruction " << *Inst
+                          << " detected as MAININST\n");
   return BaleInfo::MAININST;
 }
 
@@ -432,6 +468,9 @@ void GenXBaling::processWrPredRegion(Instruction *Inst)
   IGC_ASSERT(isa<CmpInst>(V) || isa<Constant>(V));
   BaleInfo BI(BaleInfo::WRPREDREGION);
   if (isa<CmpInst>(V)) {
+    LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #"
+                            << GenXIntrinsic::GenXRegion::NewValueOperandNum
+                            << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, GenXIntrinsic::GenXRegion::NewValueOperandNum, &BI);
   }
   setBaleInfo(Inst, BI);
@@ -513,6 +552,9 @@ void GenXBaling::processWrRegion(Instruction *Inst)
     // duplication.
   }
   if (V && isBalableNewValueIntoWrr(V, Region(Inst, BaleInfo()))) {
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
     if (Liveness) {
       // Ensure the wrregion's result has an
@@ -534,6 +576,9 @@ void GenXBaling::processWrRegion(Instruction *Inst)
   OperandNum = GenXIntrinsic::GenXRegion::WrIndexOperandNum;
   if (auto IndexOperand = Inst->getOperand(OperandNum);
       isBalableIndexAdd(IndexOperand)) {
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
     // We always set up InstMap for an address add, even though it does not
     // bale in any operands.
@@ -566,6 +611,9 @@ bool GenXBaling::processSelect(Instruction *Inst) {
   if (Src0 && Src0->isAllOnesValue() && Src1 && Src1->isNullValue()) {
     BaleInfo BI(BaleInfo::CMPDST);
     unsigned OperandNum = 0;
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
     setBaleInfo(Inst, BI);
   }
@@ -579,10 +627,17 @@ void GenXBaling::processStore(StoreInst *Inst) {
   BaleInfo BI(BaleInfo::GSTORE);
   unsigned OperandNum = 0;
   Instruction *V = dyn_cast<Instruction>(Inst->getOperand(OperandNum));
-  if (GenXIntrinsic::isWrRegion(V))
+  if (GenXIntrinsic::isWrRegion(V)) {
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
-  else if (isa<CallInst>(V) && cast<CallInst>(V)->isInlineAsm())
+  } else if (isa<CallInst>(V) && cast<CallInst>(V)->isInlineAsm()) {
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
+  }
   setBaleInfo(Inst, BI);
 }
 
@@ -638,6 +693,8 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
         // branch and the use of the goto/join in the extract as baled. The
         // former is done by the caller when we return true.
         BaleInfo BI;
+        LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
+                                << " to bale in instruction " << *Mask << "\n");
         setOperandBaled(Mask, /*OperandNum=*/0, &BI);
         setBaleInfo(Mask, BI);
         return true;
@@ -668,8 +725,12 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
         // The mask is the result of an all/any. Bale that in.
         // Also see if its operand can be baled in.
         BaleInfo BI(BaleInfo::ALLANY);
-        if (processPredicate(Mask, /*OperandNum=*/0))
+        if (processPredicate(Mask, /*OperandNum=*/0)) {
+          LLVM_DEBUG(llvm::dbgs()
+                     << __FUNCTION__ << " setting operand #" << 0
+                     << " to bale in instruction " << *Mask << "\n");
           setOperandBaled(Mask, /*OperandNum=*/0, &BI);
+        }
         setBaleInfo(Mask, BI);
         return true;
       }
@@ -681,8 +742,11 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
     // The mask is the result of a notp. Bale that in.
     // Also see if its operand can be baled in.
     BaleInfo BI(BaleInfo::NOTP);
-    if (processPredicate(Mask, /*OperandNum=*/0))
+    if (processPredicate(Mask, /*OperandNum=*/0)) {
+      LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
+                              << " to bale in instruction " << *Mask << "\n");
       setOperandBaled(Mask, /*OperandNum=*/0, &BI);
+    }
     setBaleInfo(Mask, BI);
     return true;
   }
@@ -706,19 +770,31 @@ void GenXBaling::processSat(Instruction *Inst)
     // It is an instruction where we are the only use. We can bale it in, if
     // it is a suitable instruction.
     auto ValIntrinID = GenXIntrinsic::getAnyIntrinsicID(V);
-    if (GenXIntrinsic::isRdRegion(ValIntrinID))
+    if (GenXIntrinsic::isRdRegion(ValIntrinID)) {
+      LLVM_DEBUG(llvm::dbgs()
+                 << __FUNCTION__ << " setting operand #" << OperandNum
+                 << " to bale in instruction " << *Inst << "\n");
       setOperandBaled(Inst, OperandNum, &BI);
-    else if (ValIntrinID==GenXIntrinsic::not_any_intrinsic) {
+    } else if (ValIntrinID == GenXIntrinsic::not_any_intrinsic) {
       if (isa<BinaryOperator>(V) || isa<SelectInst>(V) ||
-          (isa<CastInst>(V) && !isa<BitCastInst>(V)))
+          (isa<CastInst>(V) && !isa<BitCastInst>(V))) {
+        LLVM_DEBUG(llvm::dbgs()
+                   << __FUNCTION__ << " setting operand #" << OperandNum
+                   << " to bale in instruction " << *Inst << "\n");
         setOperandBaled(Inst, OperandNum, &BI);
+      }
     } else if (!GenXIntrinsic::isWrRegion(ValIntrinID)) {
       // V is an intrinsic other than rdregion/wrregion. Check that its return
       // value is suitable for baling.
       GenXIntrinsicInfo II(ValIntrinID);
-      if (!II.getRetInfo().isRaw() && II.getRetInfo().getSaturation() ==
-                                          GenXIntrinsicInfo::SATURATION_DEFAULT)
+      if (!II.getRetInfo().isRaw() &&
+          II.getRetInfo().getSaturation() ==
+              GenXIntrinsicInfo::SATURATION_DEFAULT) {
+        LLVM_DEBUG(llvm::dbgs()
+                   << __FUNCTION__ << " setting operand #" << OperandNum
+                   << " to bale in instruction " << *Inst << "\n");
         setOperandBaled(Inst, OperandNum, &BI);
+      }
     }
   }
   // We always set up InstMap for a saturate, even if it does not bale in any
@@ -738,11 +814,17 @@ void GenXBaling::processRdRegion(Instruction *Inst)
   BaleInfo BI(BaleInfo::RDREGION);
   if (auto IndexOperand = Inst->getOperand(OperandNum);
       isBalableIndexAdd(IndexOperand)) {
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
     // We always set up InstMap for an address add, even though it does not
     // bale in any operands.
     setBaleInfo(cast<Instruction>(IndexOperand), BaleInfo(BaleInfo::ADDRADD, 0));
   } else if (isBalableIndexOr(Inst->getOperand(OperandNum))) {
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << OperandNum
+               << " to bale in instruction " << *Inst << "\n");
     setOperandBaled(Inst, OperandNum, &BI);
     // We always set up InstMap for an address or, even though it does not
     // bale in any operands.
@@ -768,6 +850,9 @@ void GenXBaling::processInlineAsm(Instruction *Inst) {
       if (GenXIntrinsic::isRdRegion(RdR)) {
         switch (GenXIntrinsic::getGenXIntrinsicID(RdR->getOperand(0))) {
         default:
+          LLVM_DEBUG(llvm::dbgs()
+                     << __FUNCTION__ << " setting operand #" << I
+                     << " to bale in instruction " << *Inst << "\n");
           setOperandBaled(Inst, I, &BI);
           break;
         case GenXIntrinsic::genx_constanti:
@@ -1186,16 +1271,16 @@ bool GenXBaling::isHighCostBaling(uint16_t Type, Instruction *Inst) {
  */
 static bool acceptableMainInst(Instruction *Inst) {
   if (isa<BinaryOperator>(Inst))
-    return true;
+    return BaleBinary;
   if (isa<CmpInst>(Inst))
-    return true;
+    return BaleCmp;
   if (isa<CastInst>(Inst))
-    return true;
+    return BaleCast;
   if (isa<SelectInst>(Inst))
-    return true;
+    return BaleSelect;
 #if LLVM_VERSION_MAJOR > 8
   if (Inst->getOpcode() == Instruction::FNeg)
-    return true;
+    return BaleFNeg;
 #endif
   return false;
 }
@@ -1260,31 +1345,49 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
     if (auto SI = dyn_cast<SelectInst>(Inst)) {
       // If instruction is select, at first try to bale true and false value.
       for (unsigned i = 1; i <= 2; ++i)
-        if (operandCanBeBaled(Inst, i, ModType))
+        if (operandCanBeBaled(Inst, i, ModType)) {
+          LLVM_DEBUG(llvm::dbgs()
+                     << __FUNCTION__ << " setting operand #" << i
+                     << " to bale in instruction " << *Inst << "\n");
           setOperandBaled(Inst, i, &BI);
+        }
       // If nothing was baled, it can be profitable to try convertion to wrregion.
       if (!BI.Bits && processSelectToPredicate(SI))
         return;
       // If select was not converted, try to bale predicate.
       const unsigned OperandNum = 0;
-      if (processPredicate(Inst, OperandNum))
+      if (processPredicate(Inst, OperandNum)) {
+        LLVM_DEBUG(llvm::dbgs()
+                   << __FUNCTION__ << " setting operand #" << OperandNum
+                   << " to bale in instruction " << *Inst << "\n");
         setOperandBaled(Inst, OperandNum, &BI);
+      }
     }
     else {
       // See which operands we can bale in.
       for (unsigned i = 0, e = Inst->getNumOperands(); i != e; ++i)
-        if (operandCanBeBaled(Inst, i, ModType))
+        if (operandCanBeBaled(Inst, i, ModType)) {
+          LLVM_DEBUG(llvm::dbgs()
+                     << __FUNCTION__ << " setting operand #" << i
+                     << " to bale in instruction " << *Inst << "\n");
           setOperandBaled(Inst, i, &BI);
+        }
     }
   } else if (IntrinID == GenXIntrinsic::genx_convert
       || IntrinID == GenXIntrinsic::genx_convert_addr) {
     // llvm.genx.convert can bale, and has exactly one arg
-    if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH))
+    if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH)) {
+      LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
+                              << " to bale in instruction " << *Inst << "\n");
       setOperandBaled(Inst, 0, &BI);
+    }
   } else if (GenXIntrinsic::isAbs(IntrinID)) {
     BI.Type = BaleInfo::ABSMOD;
-    if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH))
+    if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH)) {
+      LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
+                              << " to bale in instruction " << *Inst << "\n");
       setOperandBaled(Inst, 0, &BI);
+    }
   } else {
     // For an intrinsic, check the arg info of each arg to see if we can
     // bale into it.
@@ -1296,8 +1399,12 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
         switch (AI.getCategory()) {
           case GenXIntrinsicInfo::GENERAL:
             // This source operand of the intrinsic is general.
-            if (operandCanBeBaled(Inst, ArgIdx, AI.getModifier(), AI.Info))
+            if (operandCanBeBaled(Inst, ArgIdx, AI.getModifier(), AI.Info)) {
+              LLVM_DEBUG(llvm::dbgs()
+                         << __FUNCTION__ << " setting operand #" << ArgIdx
+                         << " to bale in instruction " << *Inst << "\n");
               setOperandBaled(Inst, ArgIdx, &BI);
+            }
             break;
           case GenXIntrinsicInfo::RAW:
             // Rdregion can be baled in to a raw operand as long as it is
@@ -1305,6 +1412,9 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
             // the rdregion is 32 aligned.
             if (isValueRegionOKForRaw(Inst->getOperand(ArgIdx),
                                       /*IsWrite=*/false, ST)) {
+              LLVM_DEBUG(llvm::dbgs()
+                         << __FUNCTION__ << " setting operand #" << ArgIdx
+                         << " to bale in instruction " << *Inst << "\n");
               setOperandBaled(Inst, ArgIdx, &BI);
               if (Liveness) {
                 Value *Opnd = Inst->getOperand(ArgIdx);
@@ -1323,8 +1433,12 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
             break;
           case GenXIntrinsicInfo::PREDICATION:
             // See if there is any baling in to the predicate (mask) operand.
-            if (processPredicate(Inst, ArgIdx))
+            if (processPredicate(Inst, ArgIdx)) {
+              LLVM_DEBUG(llvm::dbgs()
+                         << __FUNCTION__ << " setting operand #" << ArgIdx
+                         << " to bale in instruction " << *Inst << "\n");
               setOperandBaled(Inst, ArgIdx, &BI);
+            }
             break;
         }
       }
@@ -1429,6 +1543,8 @@ void GenXBaling::processBranch(BranchInst *Branch)
   if (Branch->isConditional()) {
     BaleInfo BI(BaleInfo::MAININST);
     if (processPredicate(Branch, 0/*OperandNum of predicate*/)) {
+      LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0
+                              << " to bale in instruction " << *Branch << "\n");
       setOperandBaled(Branch, 0/*OperandNum*/, &BI);
       setBaleInfo(Branch, BI);
     }
@@ -1503,9 +1619,15 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
       return;
     // We can do the baling.
     auto BI = getBaleInfo(CI);
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << TwoAddrOperandNum
+               << " to bale in instruction " << *CI << "\n");
     setOperandBaled(CI, TwoAddrOperandNum, &BI);
     setBaleInfo(CI, BI);
     BI = getBaleInfo(Wr);
+    LLVM_DEBUG(llvm::dbgs()
+               << __FUNCTION__ << " setting operand #" << TwoAddrOperandNum
+               << " to bale in instruction " << *Wr << "\n");
     setOperandBaled(Wr, GenXIntrinsic::GenXRegion::NewValueOperandNum, &BI);
     setBaleInfo(Wr, BI);
     return;
@@ -1566,6 +1688,9 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
   // the first wrregion in the sequence being replaced.
   setBaleInfo(NewWr, getBaleInfo(WrSeq.StartWr));
   auto BI = getBaleInfo(CI);
+  LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #"
+                          << TwoAddrOperandNum << " to bale in instruction "
+                          << *CI << "\n");
   setOperandBaled(CI, TwoAddrOperandNum, &BI);
   setBaleInfo(CI, BI);
   // Remove original sequences if now unused.
@@ -1598,6 +1723,8 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
 void GenXBaling::setBaleInfo(const Instruction *Inst, genx::BaleInfo BI)
 {
   IGC_ASSERT(BI.Bits < 1 << Inst->getNumOperands());
+  LLVM_DEBUG(llvm::dbgs() << "Adding InstMap entry for " << *Inst
+                          << "; BI type: " << BI.getTypeString() << "\n");
   InstMap[Inst] = BI;
 }
 
