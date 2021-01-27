@@ -5117,6 +5117,9 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
 void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   LLVM_DEBUG(dbgs() << CI << "\n");
   Function *Callee = CI->getCalledFunction();
+  IGC_ASSERT_MESSAGE(
+      !Callee->isDeclaration(),
+      "Currently VC backend does not support modules with external functions");
 
   if (!Callee || Callee->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
     buildStackCall(CI, DstDesc);

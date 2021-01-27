@@ -893,10 +893,14 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
   SimpleValue Dest = Cand->Dest;
   SimpleValue Source;
   if (!Cand->UseInDest) {
+    auto *Callee = cast<CallInst>(Dest.getValue())->getCalledFunction();
+    // Do not process calls to external functions
+    if (Callee->isDeclaration())
+      return;
+
     // This is a return value post-copy coalesce candidate. The actual source
     // is the unified return value.
-    Source = SimpleValue(Liveness->getUnifiedRet(cast<CallInst>(
-            Dest.getValue())->getCalledFunction()), Cand->SourceIndex);
+    Source = SimpleValue(Liveness->getUnifiedRet(Callee), Cand->SourceIndex);
   } else
     Source = SimpleValue(*Cand->UseInDest, Cand->SourceIndex);
   LLVM_DEBUG(dbgs() << "Trying coalesce from ";
