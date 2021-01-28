@@ -1194,7 +1194,9 @@ namespace IGC
                 Use32BitPtrArith(false),
                 IncludeSIPKernelDebugWithLocalMemory(false),
                 DoReRA(false),
-                IntelHasBufferOffsetArg(false)
+                IntelHasBufferOffsetArg(false),
+                IntelBufferOffsetArgOptional(true),
+                IntelHasSubDWAlignedPtrArg(false)
             {
                 if (pInputArgs == nullptr)
                     return;
@@ -1243,6 +1245,15 @@ namespace IGC
                     strstr(options, "-opt-has-buffer-offset-arg"))
                 {
                     IntelHasBufferOffsetArg = true;
+                }
+                if (strstr(options, "-intel-buffer-offset-arg-required"))
+                {
+                    IntelBufferOffsetArgOptional = false;
+                }
+
+                if (strstr(options, "-intel-has-subDW-aligned-ptr-arg"))
+                {
+                    IntelHasSubDWAlignedPtrArg = true;
                 }
 
                 if (strstr(options, "-intel-disable-a64WA"))
@@ -1331,7 +1342,15 @@ namespace IGC
             bool Use32BitPtrArith = false;
             bool IncludeSIPKernelDebugWithLocalMemory;
             bool DoReRA;
-            bool IntelHasBufferOffsetArg;
+
+            // stateless to stateful optimization
+            bool IntelHasBufferOffsetArg;      // default: false
+            bool IntelBufferOffsetArgOptional; // default: true
+            bool IntelHasSubDWAlignedPtrArg;
+                 // default: false, meaning kernel's sub-DW ptrArgs (char*, short*) are DW-aligned.
+                 // This default is stronger than the natural alignment implied by char*/short*. But
+                 // for historical reason, we have this.
+
             bool replaceGlobalOffsetsByZero = false;
             bool IntelEnablePreRAScheduling = true;
             bool PromoteStatelessToBindless = false;

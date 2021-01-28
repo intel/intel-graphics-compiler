@@ -150,6 +150,7 @@ StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
     : FunctionPass(ID),
     m_hasBufferOffsetArg(hasBufOff),
     m_hasOptionalBufferOffsetArg(false),
+    m_hasSubDWAlignedPtrArg(false),
     m_ACT(nullptr),
     m_pImplicitArgs(nullptr),
     m_pKernelArgs(nullptr),
@@ -184,8 +185,10 @@ bool StatelessToStatefull::runOnFunction(llvm::Function& F)
     }
 
     // Caching arguments during the transformation
-    m_hasOptionalBufferOffsetArg =
-        (m_hasBufferOffsetArg && IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset));
+    m_hasOptionalBufferOffsetArg = (m_hasBufferOffsetArg &&
+        (IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) || modMD->compOpt.BufferOffsetArgOptional));
+
+    m_hasSubDWAlignedPtrArg = (IGC_IS_FLAG_ENABLED(UseSubDWAlignedPtrArg) || modMD->compOpt.HasSubDWAlignedPtrArg);
 
     m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -423,7 +426,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
         //
         // Note that implicit arg is always aligned.
         bool isAlignedPointee =
-            (IGC_IS_FLAG_DISABLED(UseSubDWAlignedPtrArg) || arg->isImplicitArg())
+            (!m_hasSubDWAlignedPtrArg || arg->isImplicitArg())
             ? true
             : (getPointeeAlign(DL, base) >= 4);
 

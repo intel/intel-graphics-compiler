@@ -236,6 +236,8 @@ namespace IGC
         bool ForceEnableA64WA                           = false;
         bool PushConstantsEnable                        = true;
         bool HasBufferOffsetArg                         = false;
+        bool BufferOffsetArgOptional                    = true;
+        bool HasSubDWAlignedPtrArg                      = false;
         bool replaceGlobalOffsetsByZero                 = false;
         unsigned forcePixelShaderSIMDMode               = 0;
         bool pixelShaderDoNotAbortOnSpill               = false;
