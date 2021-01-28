@@ -1414,8 +1414,8 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
                     unsigned curLoopEndBB = loopEndBB;
                     if (curLoopStartBB == -1 || curLoopEndBB == -1)
                     {
-                        curLoopStartBB = BBVector[curNode->getBBID()]->getLoopStartBBID();
-                        curLoopEndBB = BBVector[curNode->getBBID()]->getLoopEndBBID();
+                        curLoopStartBB = BBVector[snode->getBBID()]->getLoopStartBBID();
+                        curLoopEndBB = BBVector[snode->getBBID()]->getLoopEndBBID();
                     }
                     //Count the backedge, if the backedge distance is short, take it
                     if (curLoopStartBB != -1 && curLoopEndBB != -1)
