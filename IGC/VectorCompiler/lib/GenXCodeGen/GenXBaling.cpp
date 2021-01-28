@@ -313,7 +313,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
  *
  * Return:  ABSMOD, NEGMOD, NOTMOD, ZEXT, SEXT or MAININST (0) if not modifier
  */
-static BaleInfo::BaleType checkModifier(Instruction *Inst)
+static int checkModifier(Instruction *Inst)
 {
   switch (Inst->getOpcode()) {
 #if LLVM_VERSION_MAJOR > 8
@@ -582,7 +582,7 @@ void GenXBaling::processWrRegion(Instruction *Inst)
     setOperandBaled(Inst, OperandNum, &BI);
     // We always set up InstMap for an address add, even though it does not
     // bale in any operands.
-    setBaleInfo(cast<Instruction>(IndexOperand), BaleInfo(BaleInfo::ADDRADD));
+    setBaleInfo(cast<Instruction>(IndexOperand), BaleInfo(BaleInfo::ADDRADD, 0));
   }
   // See if there is any baling in to the predicate (mask) operand.
   if (processPredicate(Inst, GenXIntrinsic::GenXRegion::PredicateOperandNum))
@@ -715,7 +715,7 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
       }
       // We always set up InstMap for an rdpredregion, even though it does not
       // bale in any operands.
-      setBaleInfo(Mask, BaleInfo(BaleInfo::RDPREDREGION));
+      setBaleInfo(Mask, BaleInfo(BaleInfo::RDPREDREGION, 0));
       return true;
     }
     case GenXIntrinsic::genx_all:
@@ -820,7 +820,7 @@ void GenXBaling::processRdRegion(Instruction *Inst)
     setOperandBaled(Inst, OperandNum, &BI);
     // We always set up InstMap for an address add, even though it does not
     // bale in any operands.
-    setBaleInfo(cast<Instruction>(IndexOperand), BaleInfo(BaleInfo::ADDRADD));
+    setBaleInfo(cast<Instruction>(IndexOperand), BaleInfo(BaleInfo::ADDRADD, 0));
   } else if (isBalableIndexOr(Inst->getOperand(OperandNum))) {
     LLVM_DEBUG(llvm::dbgs()
                << __FUNCTION__ << " setting operand #" << OperandNum
@@ -828,7 +828,7 @@ void GenXBaling::processRdRegion(Instruction *Inst)
     setOperandBaled(Inst, OperandNum, &BI);
     // We always set up InstMap for an address or, even though it does not
     // bale in any operands.
-    setBaleInfo(cast<Instruction>(Inst->getOperand(OperandNum)), BaleInfo(BaleInfo::ADDROR));
+    setBaleInfo(cast<Instruction>(Inst->getOperand(OperandNum)), BaleInfo(BaleInfo::ADDROR, 0));
   }
   // We always set up InstMap for a rdregion, even if it does not bale in any
   // operands.
@@ -888,7 +888,7 @@ void GenXBaling::processExtractValue(ExtractValueInst *EV) {
   IGC_ASSERT(EV);
   if (auto CI = dyn_cast<CallInst>(EV->getAggregateOperand()))
     if (CI->isInlineAsm())
-      setBaleInfo(EV, BaleInfo(BaleInfo::MAININST));
+      setBaleInfo(EV, BaleInfo(BaleInfo::MAININST, 0));
 }
 
 /***********************************************************************
@@ -1352,7 +1352,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
           setOperandBaled(Inst, i, &BI);
         }
       // If nothing was baled, it can be profitable to try convertion to wrregion.
-      if (BI.Bits.none() && processSelectToPredicate(SI))
+      if (!BI.Bits && processSelectToPredicate(SI))
         return;
       // If select was not converted, try to bale predicate.
       const unsigned OperandNum = 0;
@@ -1479,7 +1479,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
 
   // Only give an instruction an entry in the map if (a) it is not a main
   // instruction or (b) it bales something in.
-  if (BI.Type || BI.Bits.any())
+  if (BI.Type || BI.Bits)
     setBaleInfo(Inst, BI);
 }
 
@@ -1722,7 +1722,7 @@ void GenXBaling::processTwoAddrSend(CallInst *CI)
  */
 void GenXBaling::setBaleInfo(const Instruction *Inst, genx::BaleInfo BI)
 {
-  IGC_ASSERT(BI.Bits.to_ulong() < (1ul << Inst->getNumOperands()));
+  IGC_ASSERT(BI.Bits < 1 << Inst->getNumOperands());
   LLVM_DEBUG(llvm::dbgs() << "Adding InstMap entry for " << *Inst
                           << "; BI type: " << BI.getTypeString() << "\n");
   InstMap[Inst] = BI;
@@ -1748,7 +1748,7 @@ void GenXBaling::setOperandBaled(Instruction *Inst, unsigned OperandNum,
     BaleInfo *BI)
 {
   // Set the bit.
-  BI->setOperandBaled(OperandNum);
+  BI->Bits |= 1 << OperandNum;
   // Check whether the operand has more than one use.
   Instruction *BaledInst = cast<Instruction>(Inst->getOperand(OperandNum));
   if (!BaledInst->hasOneUse()) {
@@ -2033,12 +2033,11 @@ void GenXBaling::buildBaleSub(Instruction *Inst, Bale *B, bool IncludeAddr) cons
     }
   }
 
-  IGC_ASSERT(BI.Bits.to_ulong() < (1ul << Inst->getNumOperands()) ||
-             Inst->getNumOperands() > BaleInfo::MaxOperandsNum);
+  IGC_ASSERT(BI.Bits < (1 << Inst->getNumOperands()) || Inst->getNumOperands() > 16);
 
-  for (unsigned Idx = 0; Idx < BI.Bits.size(); ++Idx) {
-    if (!BI.isOperandBaled(Idx))
-      continue;
+  while (BI.Bits) {
+    unsigned Idx = genx::log2(BI.Bits);
+    BI.Bits &= ~(1 << Idx);
     if (Instruction *Op = dyn_cast<Instruction>(Inst->getOperand(Idx)))
       buildBaleSub(Op, B, IncludeAddr);
   }
@@ -2070,6 +2069,21 @@ int GenXBaling::getAddrOperandNum(unsigned IID) const
     default:
       return -1;
   }
+}
+
+/***********************************************************************
+ * store : store updated BaleInfo for instruction
+ *
+ * Enter:   BI = BaleInst struct
+ *
+ * This function stores BI.Info as the new BaleInfo for BI.Inst
+ *
+ * It is used by GenXLegalization to unbale.
+ */
+void GenXBaling::store(BaleInst BI)
+{
+  IGC_ASSERT(BI.Info.Bits < 1<< BI.Inst->getNumOperands());
+  InstMap[BI.Inst] = BI.Info;
 }
 
 static bool skipTransform(Instruction *DefI, Instruction *UseI) {
@@ -2475,7 +2489,7 @@ int Bale::compare(const Bale &Other) const
     return size() < Other.size() ? -1 : 1;
   for (unsigned i = 0, e = size(); i != e; ++i) {
     if (Insts[i].Info.Bits != Other.Insts[i].Info.Bits)
-      return Insts[i].Info.Bits.to_ulong() < Other.Insts[i].Info.Bits.to_ulong() ? -1 : 1;
+      return Insts[i].Info.Bits < Other.Insts[i].Info.Bits ? -1 : 1;
     Instruction *Inst = Insts[i].Inst, *OtherInst = Other.Insts[i].Inst;
     if (Inst->getOpcode() != OtherInst->getOpcode())
       return Inst->getOpcode() < OtherInst->getOpcode() ? -1 : 1;
@@ -2520,7 +2534,7 @@ void Bale::hash()
   Hash = 0;
   for (auto i = begin(), e = end(); i != e; ++i) {
     BaleInst BI = *i;
-    Hash = hash_combine(Hash, BI.Info.Bits.to_ulong());
+    Hash = hash_combine(Hash, BI.Info.Bits);
     Hash = hash_combine(Hash, BI.Inst->getOpcode());
     for (unsigned j = 0, je = BI.Inst->getNumOperands(); j != je; ++j) {
       Value *Opnd = BI.Inst->getOperand(j);
