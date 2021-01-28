@@ -615,7 +615,7 @@ MCSymbol* StreamEmitter::GetSymbol(const GlobalValue* pGV) const
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + pGV->getName());
 }
 
-MCSymbol* StreamEmitter::GetTempSymbol(StringRef name, unsigned id) const
+MCSymbol* StreamEmitter::GetTempSymbol(StringRef name, uint64_t id) const
 {
     return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + name + Twine(id));
 }

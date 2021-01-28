@@ -627,7 +627,6 @@ namespace IGC
         // Store all DISubprogram nodes from LLVM IR as they are no longer available
         // in DICompileUnit
         std::vector<llvm::DISubprogram*> DISubprogramNodes;
-        std::map<llvm::DISubprogram*, const llvm::Function*> DISPToFunction;
 
         void gatherDISubprogramNodes();
 
@@ -641,11 +640,6 @@ namespace IGC
         // Store label for each %ip
         llvm::DenseMap<unsigned int, llvm::MCSymbol*> LabelsBeforeIp;
     public:
-        std::map<llvm::DISubprogram*, const llvm::Function*>* getDISPToFunction()
-        {
-            return &DISPToFunction;
-        }
-
         bool isStmtExists(unsigned int line, llvm::DILocation* inlinedAt, bool add)
         {
             auto it = isStmtSet.find(line);

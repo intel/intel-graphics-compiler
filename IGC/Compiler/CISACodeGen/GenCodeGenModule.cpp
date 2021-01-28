@@ -172,7 +172,6 @@ Function* GenXCodeGenModule::cloneFunc(Function* F)
                             IGC_ASSERT_MESSAGE(false, "Couldn't find metadata for cloned function!");
                         }
                     }
-                    IF_DEBUG_INFO(ClonedFunc->setName(DebugMetadataInfo::getUniqueFuncName(*F));)
                 }
             }
     }

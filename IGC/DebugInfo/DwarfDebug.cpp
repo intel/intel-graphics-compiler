@@ -422,10 +422,11 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
     {
         if (EmitSettings.EnableRelocation)
         {
+            auto Id = m_pModule->GetFuncId();
             SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
-                Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
+                Asm->GetTempSymbol("func_begin", Id));
             SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-                Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+                Asm->GetTempSymbol("func_end", Id));
         }
         else
         {
@@ -435,10 +436,11 @@ DIE* DwarfDebug::updateSubprogramScopeDIE(CompileUnit* SPCU, DISubprogram* SP)
     }
     else
     {
+        auto Id = m_pModule->GetFuncId();
         SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
-            Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
+            Asm->GetTempSymbol("func_begin", Id));
         SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-            Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+            Asm->GetTempSymbol("func_end", Id));
 
         if (EmitSettings.EnableSIMDLaneDebugging)
         {
@@ -2137,7 +2139,7 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     Asm->SetDwarfCompileUnitID(TheCU->getUniqueID());
 
     // Emit a label for the function so that we have a beginning address.
-    FunctionBeginSym = Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(MF));
+    FunctionBeginSym = Asm->GetTempSymbol("func_begin", m_pModule->GetFuncId());
     // Assumes in correct section after the entry point.
     Asm->EmitLabel(FunctionBeginSym);
 
@@ -2278,7 +2280,7 @@ void DwarfDebug::endFunction(const Function* MF)
     if (LScopes.empty()) return;
 
     // Define end label for subprogram.
-    FunctionEndSym = Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(MF));
+    FunctionEndSym = Asm->GetTempSymbol("func_end", m_pModule->GetFuncId());
     // Assumes in correct section after the entry point.
     Asm->EmitLabel(FunctionEndSym);
 
@@ -3423,9 +3425,9 @@ void DwarfDebug::gatherDISubprogramNodes()
     // iterates over all instructions to find unique DISubprogram
     // nodes and stores them in an std::set for other functions
     // to iterate over.
-
+    llvm::DenseSet<DISubprogram*> DISPToFunction;
+    llvm::DenseSet<MDNode*> Processed;
     DISubprogramNodes.clear();
-    DISPToFunction.clear();
 
     for (auto& F : *m_pModule->GetModule())
     {
@@ -3443,13 +3445,15 @@ void DwarfDebug::gatherDISubprogramNodes()
                 {
                     auto scope = debugLoc.getScope();
                     if (scope &&
-                        dyn_cast_or_null<llvm::DILocalScope>(scope))
+                        dyn_cast_or_null<llvm::DILocalScope>(scope) &&
+                        Processed.find(scope) == Processed.end())
                     {
                         auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
                         if (DISPToFunction.find(DISP) == DISPToFunction.end())
                         {
                             DISubprogramNodes.push_back(DISP);
-                            DISPToFunction[DISP] = &F;
+                            DISPToFunction.insert(DISP);
+                            Processed.insert(scope);
                         }
                     }
 
@@ -3461,8 +3465,6 @@ void DwarfDebug::gatherDISubprogramNodes()
             }
         }
     }
-
-    m_pModule->setDISPToFuncMap(&DISPToFunction);
 }
 
 bool VISAModule::getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var)

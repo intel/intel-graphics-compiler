@@ -111,7 +111,7 @@ namespace IGC
         /// @param name symbol name
         /// @param id symbol id
         /// @return Machine Code symbol
-        llvm::MCSymbol* GetTempSymbol(llvm::StringRef name, unsigned id) const;
+        llvm::MCSymbol* GetTempSymbol(llvm::StringRef name, uint64_t id) const;
 
         /// @brief Return an assembler temporary label with the specified stem.
         /// @param name symbol name

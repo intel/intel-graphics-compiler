@@ -81,29 +81,6 @@ namespace IGC {
     return (fullDebugInfo | lineNumbersOnly);
 }
 
-std::string DebugMetadataInfo::getUniqueFuncName(Function& F)
-{
-    // Find number of clones of function F. For n clones,
-    // generate name like $dup$n.
-    auto M = F.getParent();
-    unsigned int numClones = 0;
-    std::string funcName(F.getName().data());
-
-    for (auto funcIt = M->begin(); funcIt != M->end(); funcIt++)
-    {
-        std::string funcItName((*funcIt).getName().data());
-
-        auto found = funcItName.find("$dup");
-        if (found == funcName.length() &&
-            funcName.compare(0, funcName.length(), funcName) == 0)
-        {
-            numClones++;
-        }
-    }
-
-    return F.getName().str() + "$dup" + "$" + std::to_string(numClones);
-}
-
 ScalarVisaModule::ScalarVisaModule(CShader* TheShader)
   : m_pShader(TheShader), VISAModule(TheShader->entry) {
   UpdateVisaId();

@@ -20,8 +20,6 @@ class DebugMetadataInfo
 public:
     static bool hasDashGOption(CodeGenContext* ctx);
     static bool hasAnyDebugInfo(CodeGenContext* ctx, bool& fullDebugInfo, bool& lineNumbersOnly);
-    static std::string getUniqueFuncName(llvm::Function& F);
-    static std::string getOrigFuncName(std::string cloneName);
 };
 
 class ScalarVisaModule final : public IGC::VISAModule {

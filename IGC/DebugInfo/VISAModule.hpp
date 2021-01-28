@@ -381,12 +381,6 @@ namespace IGC
         /// @return VISA code size (in instructions)
         unsigned int GetVisaSize(const llvm::Instruction*) const;
 
-        /// @brief Return given function unique number.
-        /// @param Function to query.
-        /// @return unique number for given function
-        unsigned GetFunctionNumber(const llvm::Function*);
-        unsigned GetFunctionNumber(const char* name);
-
         /// @brief Return true if given instruction represents a debug info intrinsic.
         /// @param Instruction to query.
         /// @return true if given instruction is a debug info intrinsic, false otherwise.
@@ -451,11 +445,6 @@ namespace IGC
             isCloned = c;
         }
         void Reset();
-
-        void setDISPToFuncMap(std::map<llvm::DISubprogram*, const llvm::Function*>* d)
-        {
-            DISPToFunc = d;
-        }
 
         bool isDirectElfInput = false;
         // Store first VISA index->llvm::Instruction mapping
@@ -548,6 +537,8 @@ namespace IGC
             return m_perThreadOffset;
         }
 
+        uint64_t GetFuncId() const { return (uint64_t)m_pEntryFunc; }
+
     private:
         std::string m_triple = "vISA_64";
         const llvm::Module* m_pModule = nullptr;
@@ -556,8 +547,6 @@ namespace IGC
         // Its value is setup in DebugInfo pass, prior to it this is undefined.
         const llvm::Function* m_pEntryFunc;
         InstList m_instList;
-        std::map<const llvm::Function*, unsigned int> FuncIDMap;
-        std::map<llvm::DISubprogram*, const llvm::Function*>* DISPToFunc = nullptr;
         DwarfDebug* dd = nullptr;
 
         unsigned int m_currentVisaId = 0;

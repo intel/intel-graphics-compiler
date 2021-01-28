@@ -459,7 +459,6 @@ void DebugEmitter::ResetVISAModule()
     m_pVISAModule = m_pVISAModule->makeNew();
     toFree.push_back(m_pVISAModule);
     m_pVISAModule->Reset();
-    m_pVISAModule->setDISPToFuncMap(m_pDwarfDebug->getDISPToFunction());
     m_pVISAModule->SetDwarfDebug(m_pDwarfDebug);
 }
 void DebugEmitter::AddVISAModFunc(IGC::VISAModule* v, llvm::Function* f)
