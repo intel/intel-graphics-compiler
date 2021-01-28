@@ -58,6 +58,8 @@ bool disassemble(
             //      invalid project for instance
             err.emit(std::cerr);
         }
+        if (opts.outputOnFail)
+            writeText(opts, err.outputText);
     } catch (const igax::Error &err) {
         // some other error
         err.emit(std::cerr);

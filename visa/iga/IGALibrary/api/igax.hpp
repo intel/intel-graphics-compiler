@@ -198,14 +198,16 @@ struct DisassembleError : Error {
     std::vector<Diagnostic> errors;
     const void *bits;
     size_t bitsLen;
+    std::string outputText;
 
     DisassembleError(
         iga_status_t st,
         const char *api,
         const std::vector<Diagnostic> &errs,
         const void *_bits,
-        size_t _bitsLen)
-            : Error(st, api), errors(errs), bits(_bits), bitsLen(_bitsLen) {}
+        size_t _bitsLen,
+        std::string& text)
+            : Error(st, api), errors(errs), bits(_bits), bitsLen(_bitsLen), outputText(text) {}
 
     virtual void emit(std::ostream &os) const;
 };
@@ -216,8 +218,9 @@ struct DecodeError : DisassembleError {
         const char *api,
         const std::vector<Diagnostic> &errs,
         const void *_bits,
-        size_t _bitsLen)
-            : DisassembleError(IGA_DECODE_ERROR, api, errs, _bits, _bitsLen) { }
+        size_t _bitsLen,
+        std::string& text)
+            : DisassembleError(IGA_DECODE_ERROR, api, errs, _bits, _bitsLen, text) { }
 };
 
 
@@ -397,13 +400,16 @@ inline DisResult Context::disassembleToString(
     if (st != IGA_SUCCESS) {
         if (st == IGA_UNSUPPORTED_PLATFORM) {
             std::vector<Diagnostic> errs;
-            throw DisassembleError(st, "iga_disassemble", errs, bits, bitsLen);
+            std::string text_str = text;
+            throw DisassembleError(st, "iga_disassemble", errs, bits, bitsLen, text_str);
         }
         std::vector<Diagnostic> errs = igax::getErrors(context);
         if (st == IGA_DECODE_ERROR) {
-            throw DecodeError("iga_disassemble", errs, bits, bitsLen);
+            std::string text_str = text;
+            throw DecodeError("iga_disassemble", errs, bits, bitsLen, text_str);
         } else {
-            throw DisassembleError(st, "iga_disassemble", errs, bits, bitsLen);
+            std::string text_str = text;
+            throw DisassembleError(st, "iga_disassemble", errs, bits, bitsLen, text_str);
         }
     }
 

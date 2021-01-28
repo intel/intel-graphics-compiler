@@ -64,6 +64,7 @@ struct Opts {
     Color color              = Color::AUTO;          // --color=...
     bool numericLabels       = false;                // -n
     iga_gen_t platform       = IGA_GEN_INVALID;      // -p=...
+    bool outputOnFail        = false;                // --output-on-fail
     uint32_t enabledWarnings = IGA_WARNINGS_DEFAULT; // -W*
     bool autoCompact         = false;                // -X[no]-autocompact
     bool legacyDirectives    = false;                // -Xlegacy-directives

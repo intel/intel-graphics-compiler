@@ -217,6 +217,16 @@ extern "C" int iga_main(int argc, const char **argv)
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.outputFile);
 
+    cmdline.defineFlag(
+         nullptr,
+        "output-on-fail",
+        "write the disassembling result to output on fail",
+        "This option is effecitve only on disassembling mode",
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
+            baseOpts.outputOnFail = true;
+        });
+
     // TODO: maybe treat this as a fused argument -W....
     // then we allow stuff like -Wregions,types,no-scheduling
     opts::Group<Opts> &wGrp = cmdline.defineGroup("W", "Warnings");
