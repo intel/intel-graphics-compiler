@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "HWConformity.h"
 #include "Optimizer.h"
-#include "G4Verifier.h"
+#include "G4_Verifier.hpp"
 #include "InstSplit.h"
 
 using namespace vISA;

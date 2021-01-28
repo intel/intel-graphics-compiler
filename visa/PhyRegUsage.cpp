@@ -1210,7 +1210,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 //
 // allocate forbidden vectors
 //
-unsigned LiveRange::getForbiddenVectorSize()
+unsigned LiveRange::getForbiddenVectorSize() const
 {
     switch (regKind)
     {

@@ -1626,24 +1626,23 @@ SWSB_ENCODE_MODE vISA::GetIGASWSBEncodeMode(const IR_Builder& builder) {
     return SWSB_ENCODE_MODE::SingleDistPipe;
 }
 
-static const iga::Model *GetModelIGA(TARGET_PLATFORM p)
+static const iga::Model *GetModel(TARGET_PLATFORM p)
 {
-    return iga::Model::LookupModel(
+    const iga::Model *m = iga::Model::LookupModel(
         BinaryEncodingIGA::getIGAInternalPlatform(p));
+    return m;
 }
 
 bool vISA::InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i)
 {
-    const iga::Model *m =
-        iga::Model::LookupModel(BinaryEncodingIGA::getIGAInternalPlatform(p));
+    const iga::Model *m = GetModel(p);
     auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
     return oi.first && oi.first->isValid() && oi.first->supportsSaturation();
 }
 
 bool vISA::InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i)
 {
-    const iga::Model *m =
-        iga::Model::LookupModel(BinaryEncodingIGA::getIGAInternalPlatform(p));
+    const iga::Model *m = GetModel(p);
     auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
     return oi.first && oi.first->isValid() && oi.first->supportsSourceModifiers();
 }

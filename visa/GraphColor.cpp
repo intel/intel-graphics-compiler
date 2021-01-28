@@ -25,25 +25,27 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "BuildIR.h"
+#include "DebugInfo.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
-#include "SpillCode.h"
-#include <list>
-#include <iostream>
-#include <sstream>
-#include "Timer.h"
-#include <fstream>
-#include <algorithm>
 #include "LocalRA.h"
 #include "LinearScanRA.h"
-#include "DebugInfo.h"
+#include "Optimizer.h"
+#include "SCCAnalysis.h"
 #include "SpillCleanup.h"
+#include "SpillCode.h"
 #include "Rematerialization.h"
 #include "RPE.h"
-#include "Optimizer.h"
-#include <cmath>  // sqrt
+#include "Timer.h"
 
-using namespace std;
+#include <algorithm>
+#include <cmath>  // sqrt
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <sstream>
+
+// using namespace std;
 using namespace vISA;
 
 #define GRAPH_COLOR_MEM_SIZE 16*1024
@@ -112,7 +114,7 @@ inline bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2) cons
     return false;
 }
 
-BankConflict BankConflictPass::setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned int offset, bool oneGRFBank)
+BankConflict BankConflictPass::setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned offset, bool oneGRFBank)
 {
     BankConflict tgtBank;
 
@@ -158,7 +160,7 @@ BankConflict BankConflictPass::setupBankAccordingToSiblingOperand(BankConflict a
     return tgtBank;
 }
 
-void refNumBasedSort(unsigned int *refNum, unsigned int *index)
+void refNumBasedSort(unsigned *refNum, unsigned *index)
 {
     if (refNum[2] > refNum[1])
     {
@@ -207,14 +209,14 @@ bool BankConflictPass::hasInternalConflict3Srcs(BankConflict *srcBC)
 }
 
 void BankConflictPass::setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2,
-    unsigned int offset1, unsigned int offset2,
+    unsigned offset1, unsigned offset2,
     BankConflict &srcBC1, BankConflict &srcBC2)
 {
     ASSERT_USER(srcBC1 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
     ASSERT_USER(srcBC2 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
 
-    unsigned int refNum1 = gra.getNumRefs(dcl_1);
-    unsigned int refNum2 = gra.getNumRefs(dcl_2);
+    unsigned refNum1 = gra.getNumRefs(dcl_1);
+    unsigned refNum2 = gra.getNumRefs(dcl_2);
 
     BankConflict bank1 = BANK_CONFLICT_NONE;
     BankConflict bank2 = BANK_CONFLICT_NONE;
@@ -263,12 +265,12 @@ void BankConflictPass::setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_
 // 2. reference number is used to decide which to be assigned first
 // 3. When conflict detected, bank can be updated according to the reference count.
 //
-void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict)
+void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned &internalConflict)
 {
     BankConflict srcBC[3];
-    unsigned int regNum[3];
-    unsigned int refNum[3];
-    unsigned int offset[3];
+    unsigned regNum[3];
+    unsigned refNum[3];
+    unsigned offset[3];
     G4_Declare * dcls[3];
     G4_Declare * opndDcls[3];
     int bank_num = 0;
@@ -295,7 +297,7 @@ void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegN
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
         {
-            unsigned int reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
+            unsigned reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
             if ((reg + offset[i]) < SECOND_HALF_BANK_START_GRF)
             {
                 srcBC[i] = ((reg + offset[i]) % 2) ? BANK_CONFLICT_FIRST_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
@@ -487,7 +489,7 @@ void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegN
     return;
 }
 
-void BankConflictPass::getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset)
+void BankConflictPass::getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned *offset)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -513,7 +515,7 @@ void BankConflictPass::getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare *
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
         {
-            unsigned int reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
+            unsigned reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
             srcBC[i] = ((reg + offset[i]) % 2) ? BANK_CONFLICT_SECOND_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
         }
         else if (srcBC[i] != BANK_CONFLICT_NONE)
@@ -535,7 +537,7 @@ void BankConflictPass::getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare *
     return;
 }
 
-void BankConflictPass::getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset)
+void BankConflictPass::getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned *offset)
 {
     int execSize[G4_MAX_SRCS];
 
@@ -564,7 +566,7 @@ void BankConflictPass::getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Decla
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
         {
-            unsigned int reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
+            unsigned reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
             srcBC[i] = ((reg + offset[i]) % 2) ? BANK_CONFLICT_SECOND_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
         }
         else if (srcBC[i] != BANK_CONFLICT_NONE)
@@ -597,12 +599,12 @@ void BankConflictPass::setupBankForSrc0(G4_INST* inst, G4_INST* prevInst)
     BankConflict srcBC[3];
     G4_Declare * dcls[3];
     G4_Declare * opndDcls[3];
-    unsigned int offset[3];
+    unsigned offset[3];
 
     BankConflict prevSrcBC[3];
     G4_Declare * prevDcls[3];
     G4_Declare * prevOpndDcls[3];
-    unsigned int prevOffset[3];
+    unsigned prevOffset[3];
 
     if (prevInst->isSend() ||
         prevInst->isMath())
@@ -639,8 +641,8 @@ void BankConflictPass::setupBankForSrc0(G4_INST* inst, G4_INST* prevInst)
 void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
 {
     BankConflict srcBC[3];
-    unsigned int refNum[3];
-    unsigned int offset[3];
+    unsigned refNum[3];
+    unsigned offset[3];
     G4_Declare * dcls[3];
     G4_Declare * opndDcls[3];
     int bank_num = 0;
@@ -669,7 +671,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
 
         if (src->getBase()->asRegVar()->isPhyRegAssigned())
         {
-            unsigned int reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
+            unsigned reg = src->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum();
             srcBC[i] = ((reg + offset[i]) % 2) ? BANK_CONFLICT_SECOND_HALF_ODD : BANK_CONFLICT_FIRST_HALF_EVEN;
             gra.setBankConflict(dcls[i], srcBC[i]);
         }
@@ -723,7 +725,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
     }
     else if (bank_num == 0)
     {
-        unsigned int index[3];
+        unsigned index[3];
 
         refNumBasedSort(refNum, index);
 
@@ -773,7 +775,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
     return;
 }
 
-bool BankConflictPass::isOddOffset(unsigned int offset) const
+bool BankConflictPass::isOddOffset(unsigned offset) const
 {
     if (gra.kernel.fg.builder->oneGRFBankDivision())
     {
@@ -789,7 +791,7 @@ bool BankConflictPass::isOddOffset(unsigned int offset) const
 void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
 {
     BankConflict srcBC[3];
-    unsigned int offset[3];
+    unsigned offset[3];
     G4_Declare * dcls[3];
     G4_Declare * opndDcls[3];
     BankConflict assignedBank = BANK_CONFLICT_NONE; //Flip for next
@@ -943,10 +945,10 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
 
 
 void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
-    unsigned int &threeSourceInstNum,
-    unsigned int &sendInstNum,
-    unsigned int numRegLRA,
-    unsigned int & internalConflict)
+    unsigned &threeSourceInstNum,
+    unsigned &sendInstNum,
+    unsigned numRegLRA,
+    unsigned & internalConflict)
 {
     int bank1RegNum = 0;
     int bank2RegNum = 0;
@@ -1022,24 +1024,24 @@ bool compareBBLoopLevel(G4_BB* bb1, G4_BB* bb2)
  *        threeSourceCandidate, if there are enough three source instructions
  *        return value, if do bank confliction reduction to RR RA.
  */
-bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict)
+bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned numRegLRA, bool &highInternalConflict)
 {
-    unsigned int threeSourceInstNumInKernel = 0;
-    unsigned int internalConflict = 0;
-    unsigned int instNumInKernel = 0;
-    unsigned int sendInstNumInKernel = 0;
+    unsigned threeSourceInstNumInKernel = 0;
+    unsigned internalConflict = 0;
+    unsigned instNumInKernel = 0;
+    unsigned sendInstNumInKernel = 0;
 
     std::vector<G4_BB *> orderedBBs(gra.kernel.fg.cbegin(), gra.kernel.fg.cend());
     std::sort(orderedBBs.begin(), orderedBBs.end(), compareBBLoopLevel);
 
     for (auto bb : orderedBBs)
     {
-        unsigned int instNum = 0;
-        unsigned int sendInstNum = 0;
-        unsigned int threeSourceInstNum = 0;
-        unsigned int conflicts = 0;
+        unsigned instNum = 0;
+        unsigned sendInstNum = 0;
+        unsigned threeSourceInstNum = 0;
+        unsigned conflicts = 0;
 
-        unsigned int loopNestLevel = 0;
+        unsigned loopNestLevel = 0;
 
         setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum, numRegLRA, conflicts);
         loopNestLevel = bb->getNestLevel() + 1;
@@ -1088,7 +1090,7 @@ bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
         getAugmentationMask(dcl) != AugmentationMasks::NonDefault)
     {
         auto byteSize = dcl->getByteSize();
-        for (unsigned int i = 0; i < byteSize; i++)
+        for (unsigned i = 0; i < byteSize; i++)
         {
             if (maskUsed[i] != NOMASK_BYTE)
             {
@@ -1154,7 +1156,7 @@ void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)
             {
                 DEBUG_VERBOSE(std::endl << "Local RA: ");
                 {
-                    for (unsigned int i = 0; i < kernel.getNumRegTotal(); i++)
+                    for (unsigned i = 0; i < kernel.getNumRegTotal(); i++)
                     {
                         if (summary->isGRFBusy(i))
                         {
@@ -1263,7 +1265,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColo
                 if (getLocalLR(spillVar->getDeclare())->isLiveRangeLocal())
                 {
                     int start, end;
-                    unsigned int dummy;
+                    unsigned dummy;
                     start = getLocalLR(spillVar->getDeclare())->getFirstRef(dummy)->getLineNo();
                     end = getLocalLR(spillVar->getDeclare())->getLastRef(dummy)->getLineNo();
 
@@ -1273,7 +1275,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColo
             }
 
             const Interference* intf = coloring.getIntf();
-            unsigned int spillVarId = slr->getVar()->getId();
+            unsigned spillVarId = slr->getVar()->getId();
 
             for (int i = 0; i < (int)liveness.getNumSelectedVar(); i++)
             {
@@ -1409,7 +1411,7 @@ void LiveRange::checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::revers
         }
 
         // Check whether this liverange is used in nextInst
-        for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
+        for (unsigned i = 0; i < G4_MAX_SRCS; i++)
         {
             G4_Operand* src = nextInst->getSrc(i);
 
@@ -1559,7 +1561,7 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
         unsigned start_id = col * BITS_DWORD > startIdx ? 0 : startIdx % BITS_DWORD;
         unsigned end_id = (col + 1) * BITS_DWORD > endIdx ? endIdx % BITS_DWORD : BITS_DWORD;
 
-        for (unsigned int i = start_id; i < end_id; i++)
+        for (unsigned i = start_id; i < end_id; i++)
         {
             selt |= 1 << i;
         }
@@ -1620,7 +1622,7 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
                 filterSplitDclares(start_idx, end_idx, n, k, elt, is_partial);
             }
 
-            for (unsigned int j = 0; j < BITS_DWORD; j++)
+            for (unsigned j = 0; j < BITS_DWORD; j++)
             {
                 if (elt & (1 << j))
                 {
@@ -1636,7 +1638,7 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
     //checkAndSetIntf guarantee partial and splitted cases
     if (elt != 0)
     {
-        for (unsigned int j = 0; j < BITS_DWORD; j++)
+        for (unsigned j = 0; j < BITS_DWORD; j++)
         {
             if (elt & (1 << j))
             {
@@ -1746,7 +1748,7 @@ void Interference::buildInterferenceAmongLiveIns()
     const G4_BB* entryBB = kernel.fg.getEntryBB();
 
 
-    for (unsigned int i = 0; i < liveAnalysis->getNumSelectedGlobalVar(); i++)
+    for (unsigned i = 0; i < liveAnalysis->getNumSelectedGlobalVar(); i++)
     {
         if (liveAnalysis->isLiveAtEntry(entryBB, i))
         {
@@ -2450,11 +2452,11 @@ void Interference::computeInterference()
 void Interference::generateSparseIntfGraph()
 {
     // Generate sparse intf graph from the dense one
-    unsigned int numVars = liveAnalysis->getNumSelectedVar();
+    unsigned numVars = liveAnalysis->getNumSelectedVar();
 
     sparseIntf.resize(numVars);
 
-    for (unsigned int row = 0; row < numVars; row++)
+    for (unsigned row = 0; row < numVars; row++)
     {
         sparseIntf[row].reserve(SPARSE_INTF_VEC_SIZE);
     }
@@ -2462,20 +2464,20 @@ void Interference::generateSparseIntfGraph()
     if (useDenseMatrix())
     {
         // Iterate over intf graph matrix
-        for (unsigned int row = 0; row < numVars; row++)
+        for (unsigned row = 0; row < numVars; row++)
         {
-            unsigned int rowOffset = row * rowSize;
-            unsigned int colStart = (row + 1) / BITS_DWORD;
-            for (unsigned int j = colStart; j < rowSize; j++)
+            unsigned rowOffset = row * rowSize;
+            unsigned colStart = (row + 1) / BITS_DWORD;
+            for (unsigned j = colStart; j < rowSize; j++)
             {
-                unsigned int intfBlk = getInterferenceBlk(rowOffset + j);
+                unsigned intfBlk = getInterferenceBlk(rowOffset + j);
                 if (intfBlk != 0)
                 {
                     for (unsigned k = 0; k < BITS_DWORD; k++)
                     {
                         if (intfBlk & (1 << k))
                         {
-                            unsigned int v2 = (j*BITS_DWORD) + k;
+                            unsigned v2 = (j*BITS_DWORD) + k;
                             if (v2 != row)
                             {
                                 sparseIntf[v2].emplace_back(row);
@@ -2571,8 +2573,8 @@ bool GlobalRA::evenAlignNeeded(G4_Declare* dcl)
                 elemSizeToUse = 8;
 
             if (// Even align if size is between 1-2 GRFs, for >2GRF sizes use weak edges
-                (elemSizeToUse * kernelSimdSizeToUse) > (unsigned int)numEltPerGRF<Type_UB>() &&
-                (elemSizeToUse * kernelSimdSizeToUse) <= (unsigned int)(2 * numEltPerGRF<Type_UB>()) &&
+                (elemSizeToUse * kernelSimdSizeToUse) > (unsigned)numEltPerGRF<Type_UB>() &&
+                (elemSizeToUse * kernelSimdSizeToUse) <= (unsigned)(2 * numEltPerGRF<Type_UB>()) &&
                 !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                     dcl == kernel.fg.builder->getBuiltinR0()))
             {
@@ -2681,14 +2683,14 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         {
         case DC1_A64_SCATTERED_READ:   //a64 scattered read: svm_gather
         {
-            unsigned int blockNum = msgDesc->getBlockNum();
-            unsigned int blockSize = msgDesc->getBlockSize();
+            unsigned blockNum = msgDesc->getBlockNum();
+            unsigned blockSize = msgDesc->getBlockSize();
 
-            for (unsigned int i = 0; i < execSize; i++)
+            for (unsigned i = 0; i < execSize; i++)
             {
-                for (unsigned int j = 0; j < blockNum; j++)
+                for (unsigned j = 0; j < blockNum; j++)
                 {
-                    for (unsigned int k = 0; k < blockSize; k++)
+                    for (unsigned k = 0; k < blockSize; k++)
                     {
                         mask[(j * execSize + i) * blockSize + k] = curEMBit;
                     }
@@ -2707,7 +2709,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         case DC1_UNTYPED_SURFACE_READ:   //VISA gather 4
         case DC1_TYPED_SURFACE_READ:   //Gather 4 typed
         {
-            unsigned int channelNum = msgDesc->getEnabledChannelNum();
+            unsigned channelNum = msgDesc->getEnabledChannelNum();
             if (channelNum == 0)
             {
                 return false;
@@ -2717,11 +2719,11 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
                 elemSize = 4;
             }
 
-            for (unsigned int i = 0; i < channelNum; i++)
+            for (unsigned i = 0; i < channelNum; i++)
             {
-                for (unsigned int j = 0; j < execSize; j++)
+                for (unsigned j = 0; j < execSize; j++)
                 {
-                    for (unsigned int k = 0; k < elemSize; k++)
+                    for (unsigned k = 0; k < elemSize; k++)
                     {
                         mask[(i * execSize + j)*elemSize + k] = curEMBit;
                     }
@@ -2746,7 +2748,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled
         case DC2_A64_UNTYPED_SURFACE_READ: //SVM gather 4 scaled
         {
-            unsigned int channelNum = msgDesc->getEnabledChannelNum();
+            unsigned channelNum = msgDesc->getEnabledChannelNum();
             if (channelNum == 0)
             {
                 return false;
@@ -2756,11 +2758,11 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
                 elemSize = 4;
             }
 
-            for (unsigned int i = 0; i < channelNum; i++)
+            for (unsigned i = 0; i < channelNum; i++)
             {
-                for (unsigned int j = 0; j < execSize; j++)
+                for (unsigned j = 0; j < execSize; j++)
                 {
-                    for (unsigned int k = 0; k < elemSize; k++)
+                    for (unsigned k = 0; k < elemSize; k++)
                     {
                         mask[(i * execSize + j)*elemSize + k] = curEMBit;
                     }
@@ -2790,19 +2792,19 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
 
     case SFID::SAMPLER:
     {
-        unsigned int respLength = msgDesc->ResponseLength();
+        unsigned respLength = msgDesc->ResponseLength();
         unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
         elemSize = msgDesc->is16BitReturn() ? 2 : 4;
-        unsigned int warpNum = respLength * numEltPerGRF<Type_UB>() / (execSize * elemSize);
+        unsigned warpNum = respLength * numEltPerGRF<Type_UB>() / (execSize * elemSize);
         if (inst->isWriteEnableInst())
         {
             curEMBit = NOMASK_BYTE;
         }
-        for (unsigned int i = 0; i < warpNum; i++)
+        for (unsigned i = 0; i < warpNum; i++)
         {
-            for (unsigned int j = 0; j < execSize; j++)
+            for (unsigned j = 0; j < execSize; j++)
             {
-                for (unsigned int k = 0; k < elemSize; k++)
+                for (unsigned k = 0; k < elemSize; k++)
                 {
                     mask[(i * execSize + j)*elemSize + k] = curEMBit;
                 }
@@ -2863,7 +2865,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
 
         mask = gra.getMask(topdcl);
 
-        unsigned int size = topdcl->getByteSize();
+        unsigned size = topdcl->getByteSize();
         if (checkCmodOnly == true || dst->isFlag())
         {
             size *= BITS_PER_BYTE;
@@ -2882,7 +2884,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
 
         unsigned short hstride, elemSize;
         short row, subReg;
-        unsigned int startByte;
+        unsigned startByte;
 
         if (checkCmodOnly == false)
         {
@@ -2920,7 +2922,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
             startByte = cmod->asCondMod()->getLeftBound();
         }
 
-        unsigned int rb = 0xffffffff;
+        unsigned rb = 0xffffffff;
 
         if (checkCmodOnly == true)
         {
@@ -2937,7 +2939,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
             curEMBit = NOMASK_BYTE;
         }
 
-        for (unsigned int i = dclOffset + startByte;
+        for (unsigned i = dclOffset + startByte;
             i <= rb;
             i += (hstride * elemSize))
         {
@@ -2954,7 +2956,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
     }
 }
 
-unsigned int Augmentation::getByteSizeFromMask(AugmentationMasks type)
+unsigned Augmentation::getByteSizeFromMask(AugmentationMasks type)
 {
     if (type == AugmentationMasks::Default16Bit)
     {
@@ -2974,7 +2976,7 @@ unsigned int Augmentation::getByteSizeFromMask(AugmentationMasks type)
     return 0;
 }
 
-bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned int simdSize, AugmentationMasks type)
+bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, AugmentationMasks type)
 {
     // default mask is one where dst's hstride is 1 and
     // elem size is 4
@@ -2993,10 +2995,10 @@ bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned int simdSize, Augm
         G4_Declare* topdcl = dcl->getRootDeclare();
         bool isFlagDcl = (topdcl->getRegFile() == G4_FLAG);
 
-        unsigned int size = topdcl->getByteSize();
+        unsigned size = topdcl->getByteSize();
         unsigned char curEMBit = 0;
         bool found = true;
-        unsigned int wrapAround = simdSize*byteSize;
+        unsigned wrapAround = simdSize*byteSize;
 
         if (isFlagDcl == true)
         {
@@ -3004,7 +3006,7 @@ bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned int simdSize, Augm
             wrapAround = 16;
         }
 
-        for (unsigned int i = 0; i < size; i += 1)
+        for (unsigned i = 0; i < size; i += 1)
         {
             if (isFlagDcl == true)
             {
@@ -3048,7 +3050,7 @@ bool Augmentation::isDefaultMaskDcl(G4_Declare* dcl, unsigned int simdSize, Augm
     return isDefault;
 }
 
-bool Augmentation::isDefaultMaskSubDeclare(unsigned char* mask, unsigned int lb, unsigned int rb, G4_Declare* dcl, unsigned int simdSize)
+bool Augmentation::isDefaultMaskSubDeclare(unsigned char* mask, unsigned lb, unsigned rb, G4_Declare* dcl, unsigned simdSize)
 {
     bool isDefault = false;
 
@@ -3060,16 +3062,16 @@ bool Augmentation::isDefaultMaskSubDeclare(unsigned char* mask, unsigned int lb,
 
     if (mask != NULL)
     {
-        unsigned int size = dcl->getByteSize();
+        unsigned size = dcl->getByteSize();
         unsigned char curEMBit = 0;
         bool found = true;
-        unsigned int wrapAround = simdSize * 4;
+        unsigned wrapAround = simdSize * 4;
         unsigned leftBound = gra.getSubOffset(dcl);
         unsigned rightBound = leftBound + size - 1;
 
         ASSERT_USER(rightBound <= rb, "Wrong sub declare right bound!");
 
-        for (unsigned int i = lb; i < rightBound + 1; i += 1)
+        for (unsigned i = lb; i < rightBound + 1; i += 1)
         {
             if ((i - lb) % 4 == 0)
             {
@@ -3115,10 +3117,10 @@ bool Augmentation::verifyMaskIfInit(G4_Declare* dcl, AugmentationMasks mask)
 }
 
 bool Augmentation::checkGRFPattern2(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
-    unsigned int lb, unsigned int rb, unsigned int execSize)
+    unsigned lb, unsigned rb, unsigned execSize)
 {
     auto opndByteSize = dst->getTypeSize();
-    unsigned int modWith = opndByteSize*kernel.getSimdSize();
+    unsigned modWith = opndByteSize*kernel.getSimdSize();
     if (lb % modWith - (maskOff * opndByteSize * dst->getHorzStride()) <= opndByteSize)
     {
         if ((lb + (execSize * opndByteSize * dst->getHorzStride() - dst->getHorzStride()) - rb) < opndByteSize)
@@ -3148,10 +3150,10 @@ bool Augmentation::checkGRFPattern2(G4_Declare* dcl, G4_DstRegRegion* dst, unsig
 
 // Returns true if dcl mask deemed to be non-default, false otherwise.
 bool Augmentation::checkGRFPattern1(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
-    unsigned int lb, unsigned int rb, unsigned int execSize)
+    unsigned lb, unsigned rb, unsigned execSize)
 {
     auto opndByteSize = dst->getTypeSize();
-    unsigned int modWith = opndByteSize*kernel.getSimdSize();
+    unsigned modWith = opndByteSize*kernel.getSimdSize();
     if (dst->getHorzStride() == 1)
     {
         if ((lb%modWith == (maskOff * opndByteSize) &&
@@ -3250,7 +3252,7 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
         {
             return;
         }
-        unsigned int offTopDcl = 0;
+        unsigned offTopDcl = 0;
         while (dcl->getAliasDeclare())
         {
             offTopDcl += dcl->getAliasOffset();
@@ -3267,10 +3269,10 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
         if (gra.getAugmentationMask(dcl) == AugmentationMasks::NonDefault)
             return;
 
-        unsigned int maskOff = inst->getMaskOffset();
-        unsigned int lb = dst->getLeftBound() + offTopDcl;
-        unsigned int rb = dst->getRightBound() + offTopDcl;
-        unsigned int execSize = inst->getExecSize();
+        unsigned maskOff = inst->getMaskOffset();
+        unsigned lb = dst->getLeftBound() + offTopDcl;
+        unsigned rb = dst->getRightBound() + offTopDcl;
+        unsigned execSize = inst->getExecSize();
 
         if (dcl->getAddressed())
         {
@@ -3380,7 +3382,7 @@ bool Augmentation::markNonDefaultMaskDef()
         }
     }
 
-    unsigned int id = 0;
+    unsigned id = 0;
     bool isFlagRA = liveAnalysis.livenessClass(G4_FLAG);
 
     for (auto bb : kernel.fg)
@@ -3460,13 +3462,13 @@ bool Augmentation::markNonDefaultMaskDef()
     return nonDefaultMaskDefFound;
 }
 
-G4_BB* Augmentation::getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, unsigned int traversal)
+G4_BB* Augmentation::getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, unsigned traversal)
 {
     // Start from src BB and do a DFS. If any back-edges
     // are found then recursively invoke itself with dst
     // of back-edge. Any path that reaches BB "end"
     // will not be propagated forward.
-    unsigned int topLexId = src->front()->getLexicalId();
+    unsigned topLexId = src->front()->getLexicalId();
     G4_BB* topmostBB = src;
 
     if (src != end)
@@ -3490,7 +3492,7 @@ G4_BB* Augmentation::getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, uns
 
             if (recursiveTopMostBB != NULL)
             {
-                unsigned int recursiveTopMostBBLexId = recursiveTopMostBB->front()->getLexicalId();
+                unsigned recursiveTopMostBBLexId = recursiveTopMostBB->front()->getLexicalId();
 
                 if (recursiveTopMostBBLexId < topLexId)
                 {
@@ -3780,7 +3782,7 @@ void Augmentation::buildLiveIntervals()
 
     // Live-in variables have their start interval start with
     // first instruction of entry BB
-    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
+    for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
     {
         if (liveAnalysis.isLiveAtEntry(entryBB, i))
         {
@@ -3794,7 +3796,7 @@ void Augmentation::buildLiveIntervals()
         }
     }
 
-    unsigned int funcCnt = 0;
+    unsigned funcCnt = 0;
 
     for (G4_BB* curBB : kernel.fg)
     {
@@ -3891,7 +3893,7 @@ void Augmentation::buildLiveIntervals()
                 }
             }
 
-            for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
+            for (unsigned i = 0; i < G4_MAX_SRCS; i++)
             {
                 G4_Operand* src = inst->getSrc(i);
                 if (!src || !src->isSrcRegRegion())
@@ -3984,7 +3986,7 @@ void Augmentation::buildLiveIntervals()
     // ToDo: this seems very slow when # variable is large, should look for sparse implementation
     auto extendVarLiveness = [this](G4_BB* bb, G4_INST* inst)
     {
-        for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
+        for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
         {
             if (liveAnalysis.isLiveAtEntry(bb, i) == true)
             {
@@ -3997,7 +3999,7 @@ void Augmentation::buildLiveIntervals()
                 }
 
 #ifdef DEBUG_VERBOSE_ON
-                unsigned int oldStart = dcl->getStartInterval()->getLexicalId();
+                unsigned oldStart = dcl->getStartInterval()->getLexicalId();
 #endif
 
                 updateStartInterval(dcl, inst);
@@ -4063,8 +4065,8 @@ void Augmentation::buildLiveIntervals()
                     {
                         G4_BB* exitBB = succBB;
 
-                        unsigned int latchBBId = (backEdge.first)->getId();
-                        unsigned int exitBBId = succBB->getId();
+                        unsigned latchBBId = (backEdge.first)->getId();
+                        unsigned exitBBId = succBB->getId();
                         if (exitBBId < latchBBId &&
                             succBB->Succs.size() == 1)
                         {
@@ -4082,7 +4084,7 @@ void Augmentation::buildLiveIntervals()
 
             G4_BB* startBB = backEdge.second;
             G4_BB* EndBB = backEdge.first;
-            for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
+            for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
             {
                 if (liveAnalysis.isLiveAtEntry(startBB, i) == true &&
                     liveAnalysis.isLiveAtExit(EndBB, i) == true)
@@ -4095,7 +4097,7 @@ void Augmentation::buildLiveIntervals()
                     }
 
 #ifdef DEBUG_VERBOSE_ON
-                    unsigned int oldEnd = dcl->getEndInterval()->getLexicalId();
+                    unsigned oldEnd = dcl->getEndInterval()->getLexicalId();
 #endif
 
                     updateEndInterval(dcl, EndBB->back());
@@ -4180,7 +4182,7 @@ void Augmentation::sortLiveIntervals()
 #endif
 }
 
-unsigned int Augmentation::getEnd(const G4_Declare* dcl) const
+unsigned Augmentation::getEnd(const G4_Declare* dcl) const
 {
     return gra.getEndInterval(dcl)->getLexicalId();
 }
@@ -4192,12 +4194,12 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
 {
     auto markIntfWithLRAAssignment = [](const G4_Declare* firstDcl, const G4_Declare* lraAssigned, Interference& intf)
     {
-        unsigned int numRows = lraAssigned->getNumRows();
+        unsigned numRows = lraAssigned->getNumRows();
         const G4_VarBase* preg = lraAssigned->getRegVar()->getPhyReg();
         MUST_BE_TRUE(preg->isGreg(), "Expecting a physical register during building interference among incompatible masks");
-        unsigned int start = preg->asGreg()->getRegNum();
+        unsigned start = preg->asGreg()->getRegNum();
 
-        for (unsigned int i = start; i < (start + numRows); i++)
+        for (unsigned i = start; i < (start + numRows); i++)
         {
             auto GRFDcl = intf.getGRFDclForHRA(i);
             intf.checkAndSetIntf(firstDcl->getRegVar()->getId(), GRFDcl->getRegVar()->getId());
@@ -4293,7 +4295,7 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
     }
 }
 
-bool Augmentation::isNoMask(const G4_Declare* dcl, unsigned int size) const
+bool Augmentation::isNoMask(const G4_Declare* dcl, unsigned size) const
 {
     const unsigned char* mask = gra.getMask(dcl);
     bool result = false;
@@ -4302,7 +4304,7 @@ bool Augmentation::isNoMask(const G4_Declare* dcl, unsigned int size) const
     {
         result = true;
 
-        for (unsigned int i = 0; i < size; i++)
+        for (unsigned i = 0; i < size; i++)
         {
             if (mask[i] != NOMASK_BYTE)
             {
@@ -4314,7 +4316,7 @@ bool Augmentation::isNoMask(const G4_Declare* dcl, unsigned int size) const
     return result;
 }
 
-bool Augmentation::isConsecutiveBits(const G4_Declare* dcl, unsigned int size) const
+bool Augmentation::isConsecutiveBits(const G4_Declare* dcl, unsigned size) const
 {
     const unsigned char* mask = gra.getMask(dcl);
     bool result = false;
@@ -4323,7 +4325,7 @@ bool Augmentation::isConsecutiveBits(const G4_Declare* dcl, unsigned int size) c
     {
         result = true;
 
-        for (unsigned int i = 0; i < size; i++)
+        for (unsigned i = 0; i < size; i++)
         {
             if (mask[i] != i)
             {
@@ -4341,7 +4343,7 @@ bool Augmentation::isCompatible(const G4_Declare* testDcl, const G4_Declare* big
 
     unsigned testSize = testDcl->getRegVar()->isFlag() ? testDcl->getNumberFlagElements() : testDcl->getByteSize();
     unsigned biggerSize = biggerDcl->getRegVar()->isFlag() ? biggerDcl->getNumberFlagElements() : biggerDcl->getByteSize();
-    unsigned int size = (testSize < biggerSize ? testSize : biggerSize);
+    unsigned size = (testSize < biggerSize ? testSize : biggerSize);
 
     // Masks are compatible when:
     // i. Both decls have exactly 1 EM bit defining each byte
@@ -4378,7 +4380,7 @@ bool Augmentation::isCompatible(const G4_Declare* testDcl, const G4_Declare* big
     return compatible;
 }
 
-void Augmentation::expireIntervals(unsigned int startIdx)
+void Augmentation::expireIntervals(unsigned startIdx)
 {
     // Expire elements from both lists
     while (defaultMask.size() > 0)
@@ -4444,7 +4446,7 @@ bool Interference::isStrongEdgeBetween(const G4_Declare* dcl1, const G4_Declare*
             dcl2LR->getAssigned())
         {
             bool allEdgesStrong = true;
-            for (unsigned int i = startPhyReg; i < (startPhyReg + dcl2NumRows); i++)
+            for (unsigned i = startPhyReg; i < (startPhyReg + dcl2NumRows); i++)
             {
                 const G4_Declare* lraPreg = getGRFDclForHRA(i);
                 allEdgesStrong &= interfereBetween(lraPreg->getRegVar()->getId(), dcl1RegVar->getId());
@@ -4468,12 +4470,12 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask, Augmentation
     {
         // Weak edge needed in case #GRF exceeds 2
         if (newDclMask == AugmentationMasks::Default64Bit)
-            return (TypeSize(Type_Q) * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF<Type_UB>());
+            return (TypeSize(Type_Q) * kernel.getSimdSizeWithSlicing()) > (unsigned)(2 * numEltPerGRF<Type_UB>());
 
         if (newDclMask == AugmentationMasks::Default32Bit)
         {
             // Even align up to 2 GRFs size variable, use weak edges beyond
-            return (TypeSize(Type_D) * kernel.getSimdSizeWithSlicing()) > (unsigned int)(2 * numEltPerGRF<Type_UB>());
+            return (TypeSize(Type_D) * kernel.getSimdSizeWithSlicing()) > (unsigned)(2 * numEltPerGRF<Type_UB>());
         }
     }
     else
@@ -4632,7 +4634,7 @@ void Augmentation::buildSIMDIntfAllOld(G4_Declare* newDcl)
         }
 
         auto& func = callDclMapIt->second.second;
-        for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+        for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
         {
             if (liveAnalysis.subroutineMaydef[func].isSet(i))
             {
@@ -4681,7 +4683,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
     for (G4_Declare *newDcl : sortedIntervals)
     {
-        unsigned int startIdx = gra.getStartInterval(newDcl)->getLexicalId();
+        unsigned startIdx = gra.getStartInterval(newDcl)->getLexicalId();
 #ifdef DEBUG_VERBOSE_ON
         DEBUG_VERBOSE("New idx " << startIdx << std::endl);
 #endif
@@ -4728,7 +4730,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
 void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask)
 {
 
-    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
+    for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
     {
         auto newDclAugMask = gra.getAugmentationMask(newDcl);
 
@@ -4798,7 +4800,7 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, M
 
 void Augmentation::buildInteferenceForCallsite(FuncInfo* func)
 {
-    for (unsigned int i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
+    for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
     {
         if (liveAnalysis.subroutineMaydef[func].isSet(i))
         {
@@ -5002,7 +5004,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
         {
             LocalLiveRange* localLR = NULL;
             G4_Declare* topdcl = GetTopDclFromRegRegion(dst);
-            unsigned int t;
+            unsigned t;
 
             if (topdcl)
                 localLR = gra.getLocalLR(topdcl);
@@ -5075,7 +5077,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                 if (isPointRange)
                 {
                     // Mark interference with all busy physical registers
-                    for (unsigned int i = 0; i < kernel.getNumRegTotal(); i++)
+                    for (unsigned i = 0; i < kernel.getNumRegTotal(); i++)
                     {
                         if (cur.isSet(i) == false)
                         {
@@ -5154,7 +5156,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
         if (update == true)
         {
             // Mark interference with all live
-            for (unsigned int i = 0; i < kernel.getNumRegTotal(); i++)
+            for (unsigned i = 0; i < kernel.getNumRegTotal(); i++)
             {
                 if (cur.isSet(i) == false)
                 {
@@ -5181,7 +5183,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
         }
     }
 
-    for (unsigned int i = 0; i < maxId; i++)
+    for (unsigned i = 0; i < maxId; i++)
     {
         bool isAddrSensitive = liveAnalysis->isAddressSensitive(i);
 
@@ -5347,7 +5349,7 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
             continue;
         }
         lrs[var->getId()] = new (mem)LiveRange(var, this->gra);
-        unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
+        unsigned reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
 
         if (builder.kernel.fg.isPseudoDcl(dcl))
         {
@@ -5394,7 +5396,7 @@ void GraphColor::computeDegreeForGRF()
         if (!(lrs[i]->getIsPseudoNode()) &&
             !(lrs[i]->getIsPartialDcl()))
         {
-            const std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(i);
+            const std::vector<unsigned>& intfs = intf.getSparseIntfForVar(i);
             unsigned bankDegree = 0;
             auto lraBC = lrs[i]->getBC();
             bool isOdd = (lraBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
@@ -5446,7 +5448,7 @@ void GraphColor::computeDegreeForARF()
 
         if (!(lrs[i]->getIsPseudoNode()))
         {
-            const std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(i);
+            const std::vector<unsigned>& intfs = intf.getSparseIntfForVar(i);
             for (auto it : intfs)
             {
                 degree += edgeWeightARF(lrs[i], lrs[it]);
@@ -5590,7 +5592,7 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange* lr)
         !(lr->getIsPartialDcl()))
     {
         unsigned lr_id = lr->getVar()->getId();
-        const std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
+        const std::vector<unsigned>& intfs = intf.getSparseIntfForVar(lr_id);
         for (auto it : intfs)
         {
             LiveRange* lrs_it = lrs[it];
@@ -5625,7 +5627,7 @@ void GraphColor::relaxNeighborDegreeARF(LiveRange* lr)
     if (!(lr->getIsPseudoNode()))
     {
         unsigned lr_id = lr->getVar()->getId();
-        const std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
+        const std::vector<unsigned>& intfs = intf.getSparseIntfForVar(lr_id);
         for (auto it : intfs)
         {
             LiveRange* lrs_it = lrs[it];
@@ -5866,7 +5868,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     unsigned bank2_end = totalGRFRegCount - 1;
     unsigned bank1_start = 0;
     unsigned bank2_start = totalGRFRegCount - 1;
-    unsigned int totalGRFNum = kernel.getNumRegTotal();
+    unsigned totalGRFNum = kernel.getNumRegTotal();
     bool oneGRFBankDivision = gra.kernel.fg.builder->oneGRFBankDivision();
     bool allocFromBanks = liveAnalysis.livenessClass(G4_GRF) && builder.lowHighBundle() &&
         !builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
@@ -5951,7 +5953,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                             auto parentGRFNum = parentGRF->asGreg()->getRegNum();
                             auto parentNumRows = parentDcl->getNumRows();
                             auto numRows = lr->getDcl()->getNumRows();
-                            for (unsigned int i = parentGRFNum; i != (parentGRFNum + parentNumRows); i += numRows)
+                            for (unsigned i = parentGRFNum; i != (parentGRFNum + parentNumRows); i += numRows)
                             {
                                 if ((i - parentGRFNum) == siblingNum * numRows)
                                     continue;
@@ -5969,7 +5971,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             //
             PhyRegUsage regUsage(parms);
 
-            const std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
+            const std::vector<unsigned>& intfs = intf.getSparseIntfForVar(lr_id);
             auto weakEdgeSet = intf.getCompatibleSparseIntf(lrVar->getDeclare()->getRootDeclare());
             for (auto it : intfs)
             {
@@ -5997,7 +5999,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 for (auto weakDcl : *weakEdgeSet)
                 {
                     auto regVar = weakDcl->getRootDeclare()->getRegVar();
-                    unsigned int pvar = 0, numRegs = 0;
+                    unsigned pvar = 0, numRegs = 0;
                     if (regVar->isPhyRegAssigned())
                     {
                         // This branch will be taken for dcls assigned
@@ -6023,7 +6025,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     // here. If other sized types will also appear then
                     // augmentation mask also needs to be sent in
                     // weak edge data structure below.
-                    for (unsigned int r = pvar; r < (pvar + numRegs); r++)
+                    for (unsigned r = pvar; r < (pvar + numRegs); r++)
                     {
                         auto use = regUsage.getWeakEdgeUse(r);
                         if (use == 0 || use == (r - pvar + 1))
@@ -6266,7 +6268,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     // Verify that spilledLRs has no duplicate
     for (auto item : spilledLRs)
     {
-        unsigned int count = 0;
+        unsigned count = 0;
         for (auto checkItem : spilledLRs)
         {
             if (checkItem == item)
@@ -6520,7 +6522,8 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
 }
 
 
-bool GraphColor::regAlloc(bool doBankConflictReduction,
+bool GraphColor::regAlloc(
+    bool doBankConflictReduction,
     bool highInternalConflict,
     bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize,
     RPE* rpe)
@@ -6961,7 +6964,7 @@ void GlobalRA::stackCallProlog()
         auto payload = builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
         payload->setName(builder.getNameString(builder.kernel.fg.mem, 24, "FrameDescriptorGRF"));
         auto payloadSrc = builder.Create_Src_Opnd_From_Dcl(payload, builder.getRegionStride1());
-        const unsigned int execSize = 8;
+        const unsigned execSize = 8;
         G4_DstRegRegion* postDst = builder.createNullDst(Type_UD);
         G4_INST* store = nullptr;
         {
@@ -7253,7 +7256,7 @@ void GlobalRA::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vec
 
 void GraphColor::getCallerSaveRegisters()
 {
-    unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+    unsigned callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
     for (BB_LIST_ITER it = builder.kernel.fg.begin(); it != builder.kernel.fg.end(); ++it)
     {
@@ -7423,8 +7426,8 @@ void GlobalRA::addCallerSaveRestoreCode()
 
 void GraphColor::getCalleeSaveRegisters()
 {
-    unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
-    unsigned int numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
+    unsigned callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+    unsigned numCalleeSaveRegs = builder.kernel.getNumCalleeSaveRegs();
 
     // Determine the callee-save registers.
 
@@ -7432,7 +7435,7 @@ void GraphColor::getCalleeSaveRegisters()
     gra.calleeSaveRegCount = 0;
 
     unsigned pseudoVCEId = builder.kernel.fg.pseudoVCEDcl->getRegVar()->getId();
-    unsigned int stackCallStartReg = builder.kernel.getStackCallStartReg();
+    unsigned stackCallStartReg = builder.kernel.getStackCallStartReg();
     for (unsigned i = 0; i < numVar; i++)
     {
         if (pseudoVCEId != i && intf.interfereBetween(pseudoVCEId, i))
@@ -7464,7 +7467,7 @@ void GraphColor::getCalleeSaveRegisters()
 //
 void GlobalRA::addCalleeSaveRestoreCode()
 {
-    unsigned int callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
+    unsigned callerSaveNumGRF = builder.kernel.getCallerSaveLastGRF() + 1;
 
     OptimizeActiveRegsFootprint(calleeSaveRegs);
     unsigned calleeSaveRegsWritten = 0;
@@ -7837,7 +7840,7 @@ void GlobalRA::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
 //
 void GlobalRA::addCallerSavePseudoCode()
 {
-    unsigned int retID = 0;
+    unsigned retID = 0;
 
     for (G4_BB* bb : builder.kernel.fg)
     {
@@ -7919,8 +7922,8 @@ void GlobalRA::addCalleeSavePseudoCode()
 // (W) mov (4) r125.0<1>:ud        SR_BEStack<4;4,1>:ud <-- in epilog
 void GlobalRA::addStoreRestoreToReturn()
 {
-    unsigned int regNum = builder.kernel.getCallerSaveLastGRF();
-    unsigned int subRegNum = numEltPerGRF<Type_UD>() - 4;
+    unsigned regNum = builder.kernel.getCallerSaveLastGRF();
+    unsigned subRegNum = numEltPerGRF<Type_UD>() - 4;
     oldFPDcl = builder.createHardwiredDeclare(4, Type_UD, regNum, subRegNum);
     oldFPDcl->setName(builder.getNameString(builder.kernel.fg.mem, 24, "CallerSaveRetIp_BE_FP"));
 
@@ -8010,7 +8013,7 @@ void GlobalRA::reportUndefinedUses(
             opndName = "src2";
         }
 
-        unsigned int id = referencedDcl->getRegVar()->getId();
+        unsigned id = referencedDcl->getRegVar()->getId();
         if (liveAnalysis.def_in[bb->getId()].isSet(id) == false &&
             defs.find(referencedDcl) == defs.end())
         {
@@ -8079,7 +8082,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
                 reportUndefinedUses(liveAnalysis, bb, inst, referencedDcl, defs, optreport, Opnd_pred);
             }
 
-            for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
+            for (unsigned i = 0; i < G4_MAX_SRCS; i++)
             {
                 G4_Operand* opnd = inst->getSrc(i);
 
@@ -8149,7 +8152,7 @@ void GlobalRA::detectNeverDefinedUses()
                 map_it = vars.find(referencedDcl);
                 if (map_it == vars.end())
                 {
-                    vars.insert(make_pair(referencedDcl, true));
+                    vars.emplace(referencedDcl, true);
                 }
                 else
                 {
@@ -8169,7 +8172,7 @@ void GlobalRA::detectNeverDefinedUses()
                 map_it = vars.find(referencedDcl);
                 if (map_it == vars.end())
                 {
-                    vars.insert(make_pair(referencedDcl, true));
+                    vars.emplace(referencedDcl, true);
                 }
                 else
                 {
@@ -8193,11 +8196,11 @@ void GlobalRA::detectNeverDefinedUses()
                 map_it = vars.find(referencedDcl);
                 if (map_it == vars.end())
                 {
-                    vars.insert(make_pair(referencedDcl, false));
+                    vars.emplace(referencedDcl, false);
                 }
             }
 
-            for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
+            for (unsigned i = 0; i < G4_MAX_SRCS; i++)
             {
                 G4_Operand* opnd = inst->getSrc(i);
 
@@ -8214,7 +8217,7 @@ void GlobalRA::detectNeverDefinedUses()
                     map_it = vars.find(referencedDcl);
                     if (map_it == vars.end())
                     {
-                        vars.insert(make_pair(referencedDcl, false));
+                        vars.emplace(referencedDcl, false);
                     }
                 }
             }
@@ -8397,7 +8400,7 @@ void VarSplit::rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, st
     return;
 }
 
-void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize)
+void VarSplit::getHeightWidth(G4_Type type, unsigned numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize)
 {
     dclWidth = 1, dclHeight = 1;
     totalByteSize = numberElements * TypeSize(type);
@@ -8425,7 +8428,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
     }
 
     int splitVarSize = kernel.getSimdSize() == g4::SIMD8 ? 1 : 2;
-    for (unsigned int i = 0, bSizePerGRFSize = (oldDcl->getByteSize() / numEltPerGRF<Type_UB>()); i < bSizePerGRFSize; i += splitVarSize)
+    for (unsigned i = 0, bSizePerGRFSize = (oldDcl->getByteSize() / numEltPerGRF<Type_UB>()); i < bSizePerGRFSize; i += splitVarSize)
     {
         G4_Declare* splitDcl = NULL;
         unsigned leftBound = i * numEltPerGRF<Type_UB>();
@@ -8585,7 +8588,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     typedef std::map<G4_RegVar*, SPLIT_OPERANDS>::iterator SPLIT_DECL_OPERANDS_ITER;
 
     SPLIT_DECL_OPERANDS splitDcls;
-    unsigned int instIndex = 0;
+    unsigned instIndex = 0;
     int splitSize = kernel.getSimdSize() == g4::SIMD8 ? 1 : 2;
     for (auto bb : kernel.fg)
     {
@@ -8826,7 +8829,7 @@ void VarSplit::localSplit(IR_Builder& builder,
                     rangeListSpliting(&(varRanges[topdcl->getRegVar()].list), dstrgn, &toDelete);
                 }
 
-                localRanges[topdcl->getRegVar()].push_back(pair<G4_Operand*, INST_LIST_ITER>(dst, iterToInsert));  //Ordered from back to front.
+                localRanges[topdcl->getRegVar()].emplace_back(dst, iterToInsert);  // Ordered from back to front.
             }
         }
 
@@ -8871,7 +8874,7 @@ void VarSplit::localSplit(IR_Builder& builder,
 
                     rangeListSpliting(&(varRanges[topdcl->getRegVar()].list), src, &toDelete);
 
-                    localRanges[topdcl->getRegVar()].push_back(pair<G4_Operand*, INST_LIST_ITER>(src, iterToInsert));  //Ordered from back to front.
+                    localRanges[topdcl->getRegVar()].emplace_back(src, iterToInsert);  // Ordered from back to front.
                 }
             }
         }
@@ -9031,7 +9034,7 @@ void GlobalRA::addrRegAlloc()
             GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, false);
             unsigned spillRegSize = 0;
             unsigned indrSpillRegSize = 0;
-            if (coloring.regAlloc(false, false, false, spillRegSize, indrSpillRegSize, nullptr) == false)
+            if (!coloring.regAlloc(false, false, false, spillRegSize, indrSpillRegSize, nullptr))
             {
                 SpillManager spillARF(*this, coloring.getSpilledLiveRanges(), addrSpillId);
                 spillARF.insertSpillCode();
@@ -9109,7 +9112,7 @@ void GlobalRA::flagRegAlloc()
             GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, false);
             unsigned spillRegSize = 0;
             unsigned indrSpillRegSize = 0;
-            if (coloring.regAlloc(false, false, false, spillRegSize, indrSpillRegSize, nullptr) == false)
+            if (!coloring.regAlloc(false, false, false, spillRegSize, indrSpillRegSize, nullptr))
             {
                 SpillManager spillFlag(*this, coloring.getSpilledLiveRanges(), flagSpillId);
                 spillFlag.insertSpillCode();
@@ -9294,8 +9297,9 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
 
         unsigned spillRegSize = 0;
         unsigned indrSpillRegSize = 0;
-        bool isColoringGood = coloring.regAlloc(doBankConflictReduction, highInternalConflict, false, spillRegSize, indrSpillRegSize, &rpe);
-        if (isColoringGood == false)
+        bool isColoringGood =
+            coloring.regAlloc(doBankConflictReduction, highInternalConflict, false, spillRegSize, indrSpillRegSize, &rpe);
+        if (!isColoringGood)
         {
             if (!kernel.getOption(vISA_Debug))
             {
@@ -9323,7 +9327,6 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         }
     }
 
-
     kernel.setRAType(doBankConflictReduction ? RA_Type::HYBRID_BC_RA : RA_Type::HYBRID_RA);
     return true;
 }
@@ -9336,13 +9339,6 @@ bool canDoHRA(G4_Kernel& kernel)
     {
         ret = false;
     }
-
-    return ret;
-}
-
-bool canDoLRA(G4_Kernel& kernel)
-{
-    bool ret = true;
 
     return ret;
 }
@@ -9387,9 +9383,9 @@ int GlobalRA::coloringRegAlloc()
     TIME_SCOPE(GRF_RA);
 
     //
-    // If the graph has stack calls, then add the caller-save/callee-save pseudo declares and code.
-    // This currently must be done after flag/addr RA due to the assumption about the location
-    // of the pseudo save/restore instructions
+    // If the graph has stack calls, then add the caller-save/callee-save pseudo
+    // declares and code. This currently must be done after flag/addr RA due to
+    // the assumption about the location of the pseudo save/restore instructions
     //
     if (hasStackCall)
     {
@@ -9403,15 +9399,19 @@ int GlobalRA::coloringRegAlloc()
             addStoreRestoreToReturn();
         }
 
-        //bind builtinR0 to the reserved stack call ABI GRF so that caller and callee can agree on which GRF to use for r0
+        // bind builtinR0 to the reserved stack call ABI GRF so that caller and
+        // callee can agree on which GRF to use for r0
         if (builder.getOption(vISA_enablePreemption))
         {
-            builder.getBuiltinR0()->getRegVar()->setPhyReg(builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
+            builder.getBuiltinR0()->getRegVar()->setPhyReg(
+                builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
         }
     }
 
-    bool fastCompile = (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) && !hasStackCall;
-    if (!isReRAPass() && canDoLRA(kernel))
+    bool fastCompile =
+        (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
+        !hasStackCall;
+    if (!isReRAPass())
     {
         //Global linear scan RA
         if (builder.getOption(vISA_LinearScan))
@@ -9427,7 +9427,7 @@ int GlobalRA::coloringRegAlloc()
             if (success == VISA_SUCCESS)
             {
                 // TODO: Get correct spillSize from LinearScanRA
-                unsigned int spillSize = 0;
+                unsigned spillSize = 0;
                 expandSpillFillIntrinsics(spillSize);
                 assignRegForAliasDcl();
                 computePhyReg();
@@ -9628,8 +9628,9 @@ int GlobalRA::coloringRegAlloc()
 
             unsigned spillRegSize = 0;
             unsigned indrSpillRegSize = 0;
-            bool isColoringGood = coloring.regAlloc(doBankConflictReduction, highInternalConflict, reserveSpillReg, spillRegSize, indrSpillRegSize, &rpe);
-            if (isColoringGood == false)
+            bool isColoringGood =
+                coloring.regAlloc(doBankConflictReduction, highInternalConflict, reserveSpillReg, spillRegSize, indrSpillRegSize, &rpe);
+            if (!isColoringGood)
             {
                 if (isReRAPass())
                 {
@@ -9752,7 +9753,7 @@ int GlobalRA::coloringRegAlloc()
                     kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
                     !hasStackCall)
                 {
-                    unsigned int spillSize = 0;
+                    unsigned spillSize = 0;
                     const LIVERANGE_LIST& spilledLRs = coloring.getSpilledLiveRanges();
                     for (auto lr : spilledLRs)
                     {
@@ -10030,8 +10031,8 @@ int GlobalRA::coloringRegAlloc()
     ((s <= t->linearizedStart && t->linearizedEnd <= e))
 
 void  FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare*  topdcl,
-    unsigned int& linearizedStart,
-    unsigned int& linearizedEnd)
+    unsigned& linearizedStart,
+    unsigned& linearizedEnd)
 {
     const G4_Areg* areg = topdcl->getRegVar()->getPhyReg()->asAreg();
     linearizedStart = areg->getFlagNum() * 4;
@@ -10176,8 +10177,8 @@ bool FlagSpillCleanup::scratchKilledByPartial(
     for (auto &range : preScratchAccess->killedRegRange)
     {
         //Map the register kill to scratch kill
-        unsigned int leftOff = preScratchAccess->leftOff + (range.linearizedStart - preScratchAccess->linearizedStart);
-        unsigned int rightOff = preScratchAccess->leftOff + (range.linearizedEnd - preScratchAccess->linearizedStart);
+        unsigned leftOff = preScratchAccess->leftOff + (range.linearizedStart - preScratchAccess->linearizedStart);
+        unsigned rightOff = preScratchAccess->leftOff + (range.linearizedEnd - preScratchAccess->linearizedStart);
 
         if (!(scratchAccess->leftOff > rightOff ||
             leftOff > scratchAccess->rightOff))
@@ -10194,8 +10195,8 @@ bool FlagSpillCleanup::scratchKilledByPartial(
  *  do merging of ranges when possible.
  */
 bool FlagSpillCleanup::addKilledGRFRanges(
-    unsigned int    linearizedStart,
-    unsigned int    linearizedEnd,
+    unsigned    linearizedStart,
+    unsigned    linearizedEnd,
     SCRATCH_ACCESS* scratchAccess,
     G4_Predicate*   predicate)
 {
@@ -10262,8 +10263,8 @@ bool FlagSpillCleanup::addKilledGRFRanges(
  */
 bool FlagSpillCleanup::regFullyKilled(
     SCRATCH_ACCESS* scratchAccess,
-    unsigned int        linearizedStart,
-    unsigned int        linearizedEnd,
+    unsigned        linearizedStart,
+    unsigned        linearizedEnd,
     unsigned short      maskFlag)
 {
 
@@ -10291,8 +10292,8 @@ bool FlagSpillCleanup::regFullyKilled(
  */
 bool FlagSpillCleanup::inRangePartialKilled(
     SCRATCH_ACCESS* scratchAccess,
-    unsigned int    linearizedStart,
-    unsigned int    linearizedEnd,
+    unsigned    linearizedStart,
+    unsigned    linearizedEnd,
     unsigned short  maskFlag)
 {
     if ((scratchAccess->linearizedStart <= linearizedStart &&
@@ -10319,8 +10320,8 @@ bool FlagSpillCleanup::inRangePartialKilled(
  */
 bool FlagSpillCleanup::regDefineAnalysis(
     SCRATCH_ACCESS* scratchAccess,
-    unsigned int       linearizedStart,
-    unsigned int       linearizedEnd,
+    unsigned       linearizedStart,
+    unsigned       linearizedEnd,
     unsigned short     maskFlag,
     G4_Predicate*      predicate)
 {
@@ -10349,8 +10350,8 @@ void FlagSpillCleanup::regDefineFlag(
     G4_Operand*       opnd)
 {
     //Get the linearized address in GRF register file
-    unsigned int linearizedStart = 0;
-    unsigned int linearizedEnd = 0;
+    unsigned linearizedStart = 0;
+    unsigned linearizedEnd = 0;
     G4_Predicate* predicate = inst->getPredicate();
     G4_Declare*  topdcl = opnd->getTopDcl();
 
@@ -10414,7 +10415,7 @@ void FlagSpillCleanup::regDefineFlag(
             {
                 if (inRangePartialKilled(scratchAccess, linearizedStart, linearizedEnd, (unsigned short)maskFlag))
                 {
-                    scratchAccess->renameOperandVec.push_back(make_pair(inst, -1));
+                    scratchAccess->renameOperandVec.emplace_back(inst, -1);
                     scratchAccess->inRangePartialKilled = true;
                 }
                 else
@@ -10434,8 +10435,8 @@ void FlagSpillCleanup::regDefineFlag(
  */
 bool FlagSpillCleanup::regUseAnalysis(
     SCRATCH_ACCESS* scratchAccess,
-    unsigned int    linearizedStart,
-    unsigned int    linearizedEnd)
+    unsigned    linearizedStart,
+    unsigned    linearizedEnd)
 {
     //GRF in previous fill is used as part of current reg,
     //In this case, the fill can not be removed since the reuse can not happen.
@@ -10485,8 +10486,8 @@ void FlagSpillCleanup::regUseFlag(
     int                opndIndex)
 {
     //Get the linearized address in GRF register file
-    unsigned int linearizedStart = 0;
-    unsigned int linearizedEnd = 0;
+    unsigned linearizedStart = 0;
+    unsigned linearizedEnd = 0;
     G4_Declare *topdcl = NULL;
 
     topdcl = opnd->getTopDcl();
@@ -10523,7 +10524,7 @@ void FlagSpillCleanup::regUseFlag(
                 else if (scratchAccess->inRangePartialKilled || !scratchAccess->regKilled)
                 {
                     //can reuse previous register
-                    scratchAccess->renameOperandVec.push_back(make_pair(inst, opndIndex));
+                    scratchAccess->renameOperandVec.emplace_back(inst, opndIndex);
                 }
             }
         }
@@ -10702,8 +10703,8 @@ void FlagSpillCleanup::flagDefine(
     // ConMod, handled as register define
     unsigned maskFlag = (inst->getOption() & 0xFFF010C);
 
-    unsigned int linearizedStart = 0;
-    unsigned int linearizedEnd = 0;
+    unsigned linearizedStart = 0;
+    unsigned linearizedEnd = 0;
 
     G4_VarBase *flagReg = mod->getBase();
     if (!flagReg)
@@ -10738,7 +10739,7 @@ void FlagSpillCleanup::flagDefine(
             {
                 if (preScratchAccess->inRangePartialKilled)
                 {
-                    preScratchAccess->renameOperandVec.push_back(make_pair(inst, -3));
+                    preScratchAccess->renameOperandVec.emplace_back(inst, -3);
                 }
                 else
                 {
@@ -10829,8 +10830,8 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst
     }
 
     G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
-    unsigned int linearizedStart = 0;
-    unsigned int linearizedEnd = 0;
+    unsigned linearizedStart = 0;
+    unsigned linearizedEnd = 0;
     FlagLineraizedStartAndEnd(topdcl, linearizedStart, linearizedEnd);
 
     SCRATCH_PTR_LIST_ITER it = scratchTraceList.begin();
@@ -10854,7 +10855,7 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst
                 else if (preScratchAccess->inRangePartialKilled || !preScratchAccess->regKilled)
                 {
                     //can reuse previous register
-                    preScratchAccess->renameOperandVec.push_back(make_pair(inst, -2));
+                    preScratchAccess->renameOperandVec.emplace_back(inst, -2);
                 }
             }
         }
@@ -11219,7 +11220,7 @@ void GlobalRA::insertPhyRegDecls()
     }
 
     // Insert declarations for each GRF that is used
-    unsigned int numGRFsUsed = 0;
+    unsigned numGRFsUsed = 0;
     for (int i = 0; i < numGRF; i++)
     {
         if (grfUsed[i] == true)
@@ -11297,7 +11298,7 @@ void GraphColor::dumpRegisterPressure()
 {
     RPE rpe(gra, &liveAnalysis);
     uint32_t max = 0;
-    vector<G4_INST*> maxInst;
+    std::vector<G4_INST*> maxInst;
     rpe.run();
 
     for (auto bb : builder.kernel.fg)
@@ -11439,7 +11440,7 @@ void VerifyAugmentation::dump(const char* dclName)
 void VerifyAugmentation::labelBBs()
 {
     std::string prev = "X:";
-    unsigned int id = 0;
+    unsigned id = 0;
     for (auto bb : kernel->fg)
     {
         if (bbLabels.find(bb) == bbLabels.end())
@@ -11505,10 +11506,10 @@ void VerifyAugmentation::labelBBs()
 #endif
 }
 
-unsigned int getGRFBaseOffset(const G4_Declare* dcl)
+unsigned getGRFBaseOffset(const G4_Declare* dcl)
 {
-    unsigned int regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-    unsigned int regOff = dcl->getRegVar()->getPhyRegOff();
+    unsigned regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+    unsigned regOff = dcl->getRegVar()->getPhyRegOff();
     auto type = dcl->getElemType();
     return (regNum * numEltPerGRF<Type_UB>()) + (regOff * TypeSize(type));
 }
@@ -11516,8 +11517,8 @@ unsigned int getGRFBaseOffset(const G4_Declare* dcl)
 bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
 {
     bool interferes = true;
-    unsigned int v1 = dcl1->getRegVar()->getId();
-    unsigned int v2 = dcl2->getRegVar()->getId();
+    unsigned v1 = dcl1->getRegVar()->getId();
+    unsigned v2 = dcl2->getRegVar()->getId();
     bool v1Partaker = dcl1->getRegVar()->isRegAllocPartaker();
     bool v2Partaker = dcl2->getRegVar()->isRegAllocPartaker();
 
@@ -11547,12 +11548,12 @@ bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
     else if (!v1Partaker && v2Partaker)
     {
         // v1 is assigned by LRA
-        unsigned int startGRF = dcl1->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-        unsigned int numGRFs = dcl1->getNumRows();
+        unsigned startGRF = dcl1->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+        unsigned numGRFs = dcl1->getNumRows();
 
-        for (unsigned int grf = startGRF; grf != (startGRF + numGRFs); grf++)
+        for (unsigned grf = startGRF; grf != (startGRF + numGRFs); grf++)
         {
-            for (unsigned int var = 0; var != numVars; var++)
+            for (unsigned var = 0; var != numVars; var++)
             {
                 if (lrs[var] &&
                     lrs[var]->getPhyReg() == kernel->fg.builder->phyregpool.getGreg(grf) &&
@@ -11647,7 +11648,7 @@ void VerifyAugmentation::verify()
     for (auto dcl : sortedLiveRanges)
     {
         auto& tup = masks[dcl];
-        unsigned int startIdx = std::get<2>(tup)->getLexicalId();
+        unsigned startIdx = std::get<2>(tup)->getLexicalId();
         auto dclMask = std::get<1>(tup);
 
         auto getMaskStr = [](AugmentationMasks m)
@@ -11788,7 +11789,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
                         defs.push_back(std::make_tuple(instIt, bb));
                 }
 
-                for (unsigned int i = 0; i != G4_MAX_SRCS; i++)
+                for (unsigned i = 0; i != G4_MAX_SRCS; i++)
                 {
                     auto src = inst->getSrc(i);
                     if (src && src->isSrcRegRegion())
@@ -11809,12 +11810,12 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
         MUST_BE_TRUE(useStr.size() > 0, "empty string found");
         std::list<std::tuple<G4_INST*, G4_BB*>> rd;
 
-        for (unsigned int i = 0; i != G4_MAX_SRCS; i++)
+        for (unsigned i = 0; i != G4_MAX_SRCS; i++)
         {
             auto src = inst->getSrc(i);
             if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getTopDcl() == lr->getDcl())
             {
-                unsigned int lb = 0, rb = 0;
+                unsigned lb = 0, rb = 0;
                 lb = lr->getPhyReg()->asGreg()->getRegNum() * numEltPerGRF<Type_UB>() + (lr->getPhyRegOff()*lr->getDcl()->getElemSize());
                 lb += src->getLeftBound();
                 rb = lb + src->getRightBound() - src->getLeftBound();
@@ -11828,7 +11829,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
                     auto oiBB = otherInsts.second;
                     if (oiDst && oiDst->isDstRegRegion() && oiDst->getTopDcl())
                     {
-                        unsigned int oilb = 0, oirb = 0;
+                        unsigned oilb = 0, oirb = 0;
                         auto oiLR = DclLRMap[oiDst->getTopDcl()];
                         if (oiLR && !oiLR->getPhyReg())
                             continue;
@@ -11838,7 +11839,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
                         oilb += oiDst->getLeftBound();
                         oirb = oilb + oiDst->getRightBound() - oiDst->getLeftBound();
 
-                        if (oilb <= (unsigned int)rb && oirb >= (unsigned int)lb)
+                        if (oilb <= (unsigned)rb && oirb >= (unsigned)lb)
                         {
                             rd.push_back(std::make_tuple(otherInsts.first, oiBB));
                         }
@@ -11956,7 +11957,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
     return false;
 }
 
-void VerifyAugmentation::loadAugData(std::vector<G4_Declare*>& s, LiveRange* const * l, unsigned int n, const Interference* i, GlobalRA& g)
+void VerifyAugmentation::loadAugData(std::vector<G4_Declare*>& s, LiveRange* const * l, unsigned n, const Interference* i, GlobalRA& g)
 {
     reset();
     sortedLiveRanges = s;
@@ -11966,7 +11967,7 @@ void VerifyAugmentation::loadAugData(std::vector<G4_Declare*>& s, LiveRange* con
     numVars = n;
     intf = i;
 
-    for (unsigned int i = 0; i != numVars; i++)
+    for (unsigned i = 0; i != numVars; i++)
     {
         DclLRMap[lrs[i]->getDcl()] = lrs[i];
     }
@@ -12563,12 +12564,12 @@ unsigned GraphColor::edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2)
     return 0;
 }
 
-bool dump(const char* s, LiveRange** lrs, unsigned int size)
+bool dump(const char* s, LiveRange** lrs, unsigned size)
 {
     // Utility function to dump lr from name.
     // Returns true if lr name found.
     std::string name = s;
-    for (unsigned int i = 0; i != size; i++)
+    for (unsigned i = 0; i != size; i++)
     {
         auto lr = lrs[i];
         if (lr && name.compare(lr->getVar()->getName()) == 0)
@@ -12624,7 +12625,7 @@ bool Interference::dumpIntf(const char* s) const
     return false;
 }
 
-void LiveRange::setAllocHint(unsigned int h)
+void LiveRange::setAllocHint(unsigned h)
 {
     if ((h + dcl->getNumRows()) <= gra.kernel.getNumRegTotal())
         allocHint = h;
@@ -12634,9 +12635,9 @@ void LiveRange::setAllocHint(unsigned int h)
 // This can be invoked either post RA where phy regs are assigned to dcls,
 // or after assignColors with lrs and numLRs passed which makes this function
 // use temp allocations from lrs. Doesnt handle sub-routines yet.
-void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int numLRs)
+void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned numLRs)
 {
-    constexpr unsigned int N = 128;
+    constexpr unsigned N = 128;
     std::unordered_map<G4_INST*, std::bitset<N>> busyGRFPerInst;
     bool dumpHex = false;
 
@@ -12646,7 +12647,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
         if (preg)
             return preg;
 
-        for (unsigned int i = 0; i != numLRs; i++)
+        for (unsigned i = 0; i != numLRs; i++)
         {
             const LiveRange* lr = lrs[i];
             if (lr->getDcl() == dcl)
@@ -12693,7 +12694,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
                 if (!start)
                     continue;
 
-                for (unsigned int i = GRFStart; i != (GRFStart + numRows); i++)
+                for (unsigned i = GRFStart; i != (GRFStart + numRows); i++)
                 {
                     busyGRFPerInst[inst].set(i, true);
                 }
@@ -12715,7 +12716,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
     {
         for (auto inst : *bb)
         {
-            constexpr unsigned int maxInstLen = 80;
+            constexpr unsigned maxInstLen = 80;
             auto item = busyGRFPerInst[inst];
             std::stringstream ss;
             inst->emit(ss);
@@ -12724,7 +12725,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
             if (len <= maxInstLen)
             {
                 os << ss.str();
-                for (unsigned int i = 0; i != maxInstLen - ss.str().length(); i++)
+                for (unsigned i = 0; i != maxInstLen - ss.str().length(); i++)
                     os << " ";
             }
             else
@@ -12739,7 +12740,7 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
             if (!dumpHex)
             {
                 // dump GRFs | - busy, * - free
-                for (unsigned int i = 0; i != N; i++)
+                for (unsigned i = 0; i != N; i++)
                 {
                     // emit in groups of 10 GRFs
                     if (i > 0 && (i % 10) == 0)
@@ -12753,10 +12754,10 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned int 
             }
             else
             {
-                for (unsigned int i = 0; i != N; i+=sizeof(unsigned short)*8)
+                for (unsigned i = 0; i != N; i+=sizeof(unsigned short)*8)
                 {
                     unsigned short busyGRFs = 0;
-                    for (unsigned int j = 0; j != sizeof(unsigned short)*8; j++)
+                    for (unsigned j = 0; j != sizeof(unsigned short)*8; j++)
                     {
                         auto offset = i + j;
                         if (offset < N)

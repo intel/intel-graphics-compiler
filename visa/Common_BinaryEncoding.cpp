@@ -366,3 +366,8 @@ void BinaryEncodingBase::computeBinaryOffsets()
         offset += size;
     }
 }
+
+bool BinaryEncodingBase::doCompaction() const
+{
+    return kernel.getOption(vISA_Compaction);
+}

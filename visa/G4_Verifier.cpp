@@ -24,10 +24,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "G4Verifier.h"
+#include "G4_Verifier.hpp"
+
 using namespace vISA;
 
-void verifyG4Kernel(G4_Kernel &k, Optimizer::PassIndex index, bool alwaysOn, G4Verifier::VerifyControl ctrl)
+void verifyG4Kernel(
+    G4_Kernel &k, Optimizer::PassIndex index,
+    bool alwaysOn, G4Verifier::VerifyControl ctrl)
 {
     if (alwaysOn || k.fg.builder->getOption(VISA_FullIRVerify))
     {

@@ -34,8 +34,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include <string>
 
+#include "G4_Kernel.hpp"
 #include "Gen4_IR.hpp"
-#include "FlowGraph.h"
 #include "InstSplit.h"
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
@@ -518,7 +518,8 @@ public:
         if (be_sp == NULL)
         {
             be_sp = createDeclareNoLookup("be_sp", G4_GRF, 1, 1, Type_UD);
-            be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_Stackcall::BE_SP);
+            be_sp->getRegVar()->setPhyReg(
+                phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_Stackcall::BE_SP);
         }
 
         return be_sp;
@@ -529,7 +530,8 @@ public:
         if (be_fp == NULL)
         {
             be_fp = createDeclareNoLookup("be_fp", G4_GRF, 1, 1, Type_UD);
-            be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_Stackcall::BE_FP);
+            be_fp->getRegVar()->setPhyReg(
+                phyregpool.getGreg(kernel.getFPSPGRF()), SubRegs_Stackcall::BE_FP);
         }
 
         return be_fp;

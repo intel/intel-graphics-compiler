@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Optimizer.h"
 #include "visa_wa.h"
 #include "DebugInfo.h"
-#include "G4Verifier.h"
+#include "G4_Verifier.hpp"
 
 using namespace vISA;
 

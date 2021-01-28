@@ -191,12 +191,15 @@ set(GenX_Common_Sources_External_Other
   Common_BinaryEncoding.cpp
   DebugInfo.cpp
   FlowGraph.cpp
-  G4Verifier.cpp
+  G4_BB.cpp
+  G4_Kernel.cpp
+  G4_Verifier.cpp
   Gen4_IR.cpp
   GraphColor.cpp
   HWConformity.cpp
   InstSplit.cpp
   LVN.cpp
+  LinearScanRA.cpp
   LocalDataflow.cpp
   LocalRA.cpp
   Lowered_IR.cpp
@@ -208,7 +211,9 @@ set(GenX_Common_Sources_External_Other
   RPE.cpp
   ReduceExecSize.cpp
   RegAlloc.cpp
+  RelocationEntry.cpp
   Rematerialization.cpp
+  SCCAnalysis.cpp
   SendFusion.cpp
   SpillCleanup.cpp
   SpillCode.cpp
@@ -218,7 +223,6 @@ set(GenX_Common_Sources_External_Other
   VarSplit.cpp
   ifcvt.cpp
   main.cpp
-  LinearScanRA.cpp
   ${LocalScheduler_SOURCES}
 )
 
@@ -276,8 +280,10 @@ set(GenX_Common_Headers
   Common_GEN.h
   DebugInfo.h
   FlowGraph.h
-  G4Verifier.h
+  G4_BB.hpp
+  G4_Kernel.hpp
   G4_Opcode.h
+  G4_Verifier.hpp
   GTGPU_RT_ASM_Interface.h
   Gen4_IR.hpp
   GraphColor.h
@@ -285,17 +291,19 @@ set(GenX_Common_Headers
   IGfxHwEuIsaCNL.h
   InstSplit.h
   LVN.h
+  LinearScanRA.h
   LocalDataflow.h
   LocalRA.h
-  LinearScanRA.h
-  Metadata.h
   MergeScalar.h
+  Metadata.h
   Optimizer.h
   PhyRegUsage.h
   PreDefinedVars.h
   RPE.h
   RegAlloc.h
+  RelocationEntry.hpp
   Rematerialization.h
+  SCCAnalysis.h
   SendFusion.h
   SpillCleanup.h
   SpillCode.h

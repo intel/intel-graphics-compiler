@@ -3421,7 +3421,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     {
         kernel.fg.setABIForStackCallFunctionCalls();
         kernel.fg.addFrameSetupDeclares(builder, regPool);
-        kernel.fg.NormalizeFlowGraph();
+        kernel.fg.normalizeFlowGraph();
     }
 
     kernel.fg.reassignBlockIDs();

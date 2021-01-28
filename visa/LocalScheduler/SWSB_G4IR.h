@@ -1049,13 +1049,14 @@ namespace vISA
     {
     public:
         std::vector<G4_BB*> iDoms;
+
         Dom(G4_Kernel& k, vISA::Mem_Manager& m) : kernel(k), mem(m)
         {
         }
 
         ~Dom()
         {
-        };
+        }
 
         std::unordered_set<G4_BB*>& getDom(G4_BB*);
         std::vector<G4_BB*>& getImmDom(G4_BB*);

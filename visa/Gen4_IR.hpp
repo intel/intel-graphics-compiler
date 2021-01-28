@@ -77,7 +77,7 @@ namespace vISA
         typedef const T&       const_reference;
         typedef T              value_type;
 
-    explicit std_arena_based_allocator(std::shared_ptr<Mem_Manager> _other_ptr)
+        explicit std_arena_based_allocator(std::shared_ptr<Mem_Manager> _other_ptr)
             :mem_manager_ptr(_other_ptr)
         {
         }
@@ -1084,7 +1084,7 @@ public:
     DEF_EDGE_LIST::reference      def_back() { return defInstList.back(); }
     size_t use_size() const { return useInstList.size(); }
     size_t def_size() const { return defInstList.size(); }
-    void dumpDefUse();
+    void dumpDefUse(std::ostream &os = std::cerr);
     template <typename Compare> void sortUses(Compare Cmp)
     {
         useInstList.sort(Cmp);

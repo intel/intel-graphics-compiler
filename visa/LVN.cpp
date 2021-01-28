@@ -25,8 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "LVN.h"
+#include "Timer.h"
 
-using namespace std;
+#include <fstream>
+#include <sstream>
+#include <map>
+
 using namespace vISA;
 
 //#define DEBUG_LVN_ON
@@ -1841,7 +1845,7 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
                     ActiveDef newActiveDef;
                     newActiveDef.first = curDstTopDcl;
                     newActiveDef.second = dst;
-                    activeDefs.insert(make_pair(curDstTopDcl->getDeclId(), newActiveDef));
+                    activeDefs.emplace(curDstTopDcl->getDeclId(), newActiveDef);
                 }
             }
         }

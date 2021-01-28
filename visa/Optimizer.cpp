@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include "G4_Opcode.h"
 #include "Timer.h"
-#include "G4Verifier.h"
+#include "G4_Verifier.hpp"
 #include <map>
 #include <algorithm>
 #include "LVN.h"
@@ -1143,86 +1143,6 @@ void Optimizer::accSubPostSchedule()
 
     AccSubPass accSub(builder, kernel);
     accSub.run();
-}
-
-void* gtPinData::getFreeGRFInfo(unsigned int& size)
-{
-    // Here is agreed upon format for reporting free GRFs:
-    //struct freeBytes
-    //{
-    //    unsigned short startByte;
-    //    unsigned short numConsecutiveBytes;
-    //};
-
-    // Added magic 0xDEADD00D at start and
-    // magic 0xDEADBEEF at the end of buffer
-    // on request of gtpin team.
-    //
-    //struct freeGRFInfo
-    //{
-    //    unsigned short numItems;
-    //
-    //    freeBytes data[numItems];
-    //};
-    typedef struct freeBytes
-    {
-        unsigned short startByte;
-        unsigned short numConsecutiveBytes;
-    } freeBytes;
-
-    typedef struct freeGRFInfo
-    {
-        unsigned int magicStart;
-        unsigned int numItems;
-        freeBytes* data;
-    } freeGRFInfo;
-
-    // Compute free register information using vector for efficiency,
-    // then convert to POS for passing back to gtpin.
-    std::vector<std::pair<unsigned short, unsigned short>> vecFreeBytes;
-
-    for (auto byte : globalFreeRegs)
-    {
-        if (vecFreeBytes.size() > 0)
-        {
-            auto& lastFree = vecFreeBytes.back();
-            if (byte == (lastFree.first + lastFree.second))
-            {
-                lastFree.second += 1;
-            }
-            else
-            {
-                vecFreeBytes.push_back(std::make_pair(byte, 1));
-            }
-        }
-        else
-        {
-            vecFreeBytes.push_back(std::make_pair(byte, 1));
-        }
-    }
-
-    // Now convert vector to POS
-    unsigned int numItems = (unsigned int)vecFreeBytes.size();
-    freeGRFInfo* buffer = (freeGRFInfo*)malloc(numItems * sizeof(freeBytes) + sizeof(unsigned int)
-        + sizeof(unsigned int) + sizeof(unsigned int));
-    if (buffer)
-    {
-        buffer->numItems = numItems;
-        buffer->magicStart = 0xDEADD00D;
-        memcpy_s((unsigned char*)buffer + sizeof(unsigned int) + sizeof(unsigned int),
-            numItems * sizeof(freeBytes), vecFreeBytes.data(), numItems * sizeof(freeBytes));
-        unsigned int magicEnd = 0xDEADBEEF;
-        memcpy_s((unsigned char*)buffer + sizeof(unsigned int) + sizeof(unsigned int) + (numItems * sizeof(freeBytes)),
-            sizeof(magicEnd), &magicEnd, sizeof(magicEnd));
-
-        // numItems - unsigned int
-        // magicStart - unsigned int
-        // magicEnd - unsigned int
-        // data - numItems * sizeof(freeBytes)
-        size = sizeof(unsigned int) + sizeof(unsigned int) + sizeof(unsigned int) + (numItems * sizeof(freeBytes));
-    }
-
-    return (void*)buffer;
 }
 
 int Optimizer::optimization()

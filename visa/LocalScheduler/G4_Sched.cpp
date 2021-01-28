@@ -1,10 +1,12 @@
 #include "LocalScheduler_G4IR.h"
 #include "../GraphColor.h"
-#include <iostream>
+
 #include <functional>
+#include <fstream>
+#include <iostream>
 
 using namespace vISA;
-using namespace std;
+
 
 static const unsigned SMALL_BLOCK_SIZE = 10;
 static const unsigned LARGE_BLOCK_SIZE = 20000;
@@ -1628,7 +1630,7 @@ DepType preNode::checkBarrier(G4_INST* Inst)
         return CheckBarrier(Inst);
 }
 
-void preNode::print(ostream& os) const
+void preNode::print(std::ostream& os) const
 {
     os << "ID: " << this->ID << "\n";
     Inst->emit(os, false, false);
@@ -2098,12 +2100,12 @@ void preDDD::dumpDagDot()
 {
     const char* asmFileName = "nullasm";
     getOptions()->getOption(VISA_AsmFileName, asmFileName);
-    string fileName(asmFileName);
+    std::string fileName(asmFileName);
     fileName.append(".bb")
             .append(std::to_string(getBB()->getId()))
             .append(".preDDD.dot");
 
-    fstream ofile(fileName, ios::out);
+    std::fstream ofile(fileName, std::ios::out);
     ofile << "digraph DAG {" << std::endl;
 
     for (auto N : SNodes) {

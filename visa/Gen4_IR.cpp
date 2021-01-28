@@ -1458,8 +1458,8 @@ void G4_INST::trimDefInstList()
 }
 
 #ifdef _DEBUG
-static void printDefUseImpl(std::ostream &os, G4_INST *def, G4_INST *use,
-                            Gen4_Operand_Number pos)
+static void printDefUseImpl(
+    std::ostream &os, G4_INST *def, G4_INST *use, Gen4_Operand_Number pos)
 {
     os << "\n  def: ";
     def->emit(os);
@@ -1471,7 +1471,7 @@ static void printDefUseImpl(std::ostream &os, G4_INST *def, G4_INST *use,
 }
 #endif
 
-void G4_INST::dumpDefUse()
+void G4_INST::dumpDefUse(std::ostream &os)
 {
 #if _DEBUG
     std::cerr << "\n------------ defs ------------\n";

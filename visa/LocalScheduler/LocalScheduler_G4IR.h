@@ -27,18 +27,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _LOCALSCHEDULER_H_
 #define _LOCALSCHEDULER_H_
 
-#include <string>
-#include <set>
-#include <bitset>
 #include "../Mem_Manager.h"
 #include "../FlowGraph.h"
 #include "../BuildIR.h" // add IR_Builder and G4_Kernel objects to support the exit code patch and combined kernel
 #include "../Gen4_IR.hpp"
 #include "../Timer.h"
 #include "../BitSet.h"
-#include <vector>
 #include "LatencyTable.h"
 #include "Dependencies_G4IR.h"
+
+#include <list>
+#include <set>
+#include <string>
+#include <vector>
+
 
 #define THREE_SOURCE_BLOCK_HERISTIC 0.5
 
@@ -124,11 +126,8 @@ public:
 
 public:
     /* Constructor */
-    Node(unsigned, G4_INST*, Edge_Allocator& depEdgeAllocator,
-        const LatencyTable &LT);
-    ~Node()
-    {
-    }
+    Node(unsigned, G4_INST*, Edge_Allocator& depEdgeAllocator, const LatencyTable &LT);
+    ~Node() { }
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
     const std::list<G4_INST *> *getInstructions() const { return &instVec; }
     DepType isBarrier() const { return barrier; }
@@ -161,10 +160,10 @@ public:
     friend class G4_BB_Schedule;
 };
 
-typedef std::vector<Node *> NODE_VECT;
-typedef std::vector<Node *>::iterator NODE_VECT_ITER;
-typedef std::list<Node *> NODE_LIST;
-typedef std::list<Node *>::iterator NODE_LIST_ITER;
+using NODE_VECT = std::vector<Node *>;
+using NODE_VECT_ITER = NODE_VECT::iterator;
+using NODE_LIST = std::list<Node *>;
+using NODE_LIST_ITER = NODE_LIST::iterator;
 
 // The mask describes the range of data touched by a bucket.
 struct Mask {

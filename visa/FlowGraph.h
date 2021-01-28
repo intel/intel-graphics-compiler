@@ -23,39 +23,30 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#ifndef FLOWGRAPH_H
+#define FLOWGRAPH_H
 
-#ifndef _CONTROLFLOW_H_
-#define _CONTROLFLOW_H_
+#include "VISADefines.h"
+#include "G4_BB.hpp"
+#include "Gen4_IR.hpp"
+#include "RelocationInfo.h"
 
+#include <list>
 #include <map>
-#include <string>
-#include <iomanip>
-#include <unordered_set>
-#include <unordered_map>
+#include <ostream>
 #include <set>
 #include <string>
 #include <unordered_set>
-
-#include "VISADefines.h"
-
-#include "Gen4_IR.hpp"
-
-#include "include/gtpin_IGC_interface.h"
-#include "RelocationInfo.h"
+#include <unordered_map>
+#include <vector>
 
 namespace vISA
 {
-class IR_Builder;
-class PhyRegSummary;
-
-//
-// Forward definitions
-//
-
+class FlowGraph;
 class G4_BB;
 class G4_Kernel;
-class FlowGraph;
-class KernelDebugInfo;
+class IR_Builder;
+class PhyRegSummary;
 class VarSplitPass;
 
 //
@@ -64,12 +55,9 @@ class VarSplitPass;
 //    number of call sites). The functions's INIT block will contain a pointer to its
 //    related FuncInfo object. The FuncInfo definition is used for inter-procedural liveness
 //    analysis (IPA).
-//
-
 class FuncInfo
 {
 private:
-
     unsigned id;        // the function id
     G4_BB*   initBB;    // the init node
     G4_BB*   exitBB;    // the exit node
@@ -86,7 +74,8 @@ private:
 public:
 
     FuncInfo(unsigned p_id, G4_BB* p_initBB, G4_BB* p_exitBB)
-        : id(p_id), initBB(p_initBB), exitBB(p_exitBB), callCount(1), scopeID(0), visited(false), preID(0), postID(0)
+        : id(p_id), initBB(p_initBB), exitBB(p_exitBB), callCount(1)
+        , scopeID(0), visited(false), preID(0), postID(0)
     {
     }
 
@@ -98,484 +87,46 @@ public:
 
     void *operator new(size_t sz, Mem_Manager& m)    {return m.alloc(sz);}
 
-    bool doIPA() const
-    {
-        return callCount > 1;
-    }
+    bool doIPA() const {return callCount > 1;}
 
-    unsigned getId() const
-    {
-        return id;
-    }
+    unsigned getId() const {return id;}
+    void setId(unsigned val) {id = val;}
 
-    void setId(unsigned val)
-    {
-        id = val;
-    }
+    G4_BB* getInitBB() const {return initBB;}
+    G4_BB* getExitBB() const {return exitBB;}
 
-    G4_BB* getInitBB() const
-    {
-        return initBB;
-    }
+    void incrementCallCount() {++callCount;}
 
-    G4_BB* getExitBB() const
-    {
-        return exitBB;
-    }
+    void updateInitBB(G4_BB* p_initBB) {initBB = p_initBB;}
+    void updateExitBB(G4_BB* p_exitBB) {exitBB = p_exitBB;}
 
-    void incrementCallCount()
-    {
-        ++callCount;
-    }
+    void                    addCallee(FuncInfo *fn) {callees.push_back(fn);}
+    std::list<FuncInfo *>&  getCallees() {return callees;}
 
-    void updateInitBB(G4_BB* p_initBB)
-    {
-        initBB = p_initBB;
-    }
+    void                  addBB(G4_BB* bb) {BBList.push_back(bb);}
+    std::vector<G4_BB*>&  getBBList() {return BBList;}
 
-    void updateExitBB(G4_BB* p_exitBB)
-    {
-        exitBB = p_exitBB;
-    }
+    unsigned getScopeID() const {return scopeID;}
+    void     setScopeID(unsigned id) {scopeID = id;}
 
-    void addCallee(FuncInfo *fn)
-    {
-        callees.push_back(fn);
-    }
+    bool     getVisited() const {return visited;}
+    void     setVisited() {visited = true;}
 
-    std::list<FuncInfo *>&  getCallees()
-    {
-        return callees;
-    }
+    unsigned getPreID() const {return preID;}
+    void     setPreID(unsigned id) {preID = id;}
 
-    void addBB(G4_BB* bb)
-    {
-        BBList.push_back(bb);
-    }
-
-    std::vector<G4_BB*>&  getBBList()
-    {
-        return BBList;
-    }
-
-    unsigned getScopeID()
-    {
-        return scopeID;
-    }
-
-    void setScopeID(unsigned id)
-    {
-        scopeID = id;
-    }
-
-    bool getVisited()
-    {
-        return visited;
-    }
-
-    void setVisited()
-    {
-        visited = true;
-    }
-
-    unsigned getPreID()
-    {
-        return preID;
-    }
-
-    void setPreID(unsigned id)
-    {
-        preID = id;
-    }
-
-    unsigned getPostID()
-    {
-        return postID;
-    }
-
-    void setPostID(unsigned id)
-    {
-        postID = id;
-    }
+    unsigned getPostID() const {return postID;}
+    void     setPostID(unsigned id) {postID = id;}
 
     void dump() const;
-};
-}
+}; // FuncInfo
 
-//
-// A table mapping the subroutine (INIT) block id's to their FuncInfo nodes.
-//
-typedef std::unordered_map<int, vISA::FuncInfo*> FuncInfoHashTable;
 
-typedef std::unordered_map<vISA::G4_Label*, vISA::G4_BB*> Label_BB_Map;
-typedef std::list<vISA::G4_BB*>             BB_LIST;
-typedef std::list<vISA::G4_BB*>::iterator   BB_LIST_ITER;
-typedef std::list<vISA::G4_BB*>::const_iterator   BB_LIST_CITER;
-typedef std::list<vISA::G4_BB*>::reverse_iterator        BB_LIST_RITER;
 
-//
-// Block types (relevant for inter-procedural analysis).
-//
-enum G4_BB_TYPE
-{
-    G4_BB_NONE_TYPE   = 0x00,
-    G4_BB_CALL_TYPE   = 0x01,
-    G4_BB_RETURN_TYPE = 0x02,
-    G4_BB_INIT_TYPE   = 0x04,
-    G4_BB_EXIT_TYPE   = 0x08
-};
-
-namespace vISA
-{
-class G4_BB
-{
-
-    //
-    // basic block id
-    //
-    unsigned id;
-    //
-    // preorder block id
-    //
-    unsigned preId;
-    //
-    // reverse postorder block id
-    //
-    unsigned rpostId;
-    //
-    // traversal is for traversing control flow graph (to indicate the
-    // block is visited)
-    //
-    unsigned traversal;
-
-    //
-    // if the current BB ends with a CALL subroutine, then the calleeInfo points
-    // to the FuncInfo node corresponding to the called function.
-    // else if the block is an INIT/EXIT block of a function, then the funcInfo
-    // points to the FuncInfo node of its function.
-    //
-    union {
-        FuncInfo* calleeInfo;
-        FuncInfo* funcInfo;
-    };
-
-    //
-    // the block classification
-    //
-    unsigned BBType;
-
-    // indicates if the block is part of a natural loop or not
-    bool inNaturalLoop;
-    bool hasSendInBB;
-
-    // indicate the nest level of the loop
-    unsigned char loopNestLevel;
-
-    // indicates the scoping info in call graph
-    unsigned scopeID;
-
-    // If a BB is divergent, this field is set to true. By divergent, it means
-    // that among all active lanes on entry to shader/kernel, not all lanes are
-    // active in this BB.
-    bool divergent;
-
-    // the physical pred/succ for this block (i.e., the pred/succ for this block in the BB list)
-    // Note that some transformations may rearrange BB layout, so for safety it's best to recompute
-    // this
-    G4_BB* physicalPred;
-    G4_BB* physicalSucc;
-
-    FlowGraph* parent;
-
-    INST_LIST instList;
-
-    INST_LIST_ITER insert(INST_LIST::iterator iter, G4_INST* inst)
-    {
-        return instList.insert(iter, inst);
-    }
-public:
-    // forwarding functions to this BB's instList
-    INST_LIST_ITER begin() { return instList.begin(); }
-    INST_LIST_ITER end() { return instList.end(); }
-    INST_LIST::reverse_iterator rbegin() { return instList.rbegin(); }
-    INST_LIST::reverse_iterator rend() { return instList.rend(); }
-    INST_LIST& getInstList() { return instList; }
-
-    template <class InputIt>
-    INST_LIST_ITER insert(INST_LIST::iterator iter, InputIt first, InputIt last)
-    {
-        return instList.insert(iter, first, last);
-    }
-
-    INST_LIST_ITER insertBefore(INST_LIST::iterator iter, G4_INST* inst)
-    {
-        if (iter != instList.end() && !inst->isCISAOffValid())
-            inst->inheritDIFrom(*iter);
-        return instList.insert(iter, inst);
-    }
-
-    INST_LIST_ITER insertAfter(INST_LIST::iterator iter, G4_INST* inst)
-    {
-        auto next = iter;
-        ++next;
-        if (!inst->isCISAOffValid())
-        {
-            // Inheriting from iter seems more reasonable
-            // since invoking invokeAfter on iter means
-            // we're processing iter and not ++iter
-            inst->inheritDIFrom(*iter);
-        }
-        return instList.insert(next, inst);
-    }
-
-    INST_LIST_ITER erase(INST_LIST::iterator iter)
-    {
-        return instList.erase(iter);
-    }
-    INST_LIST_ITER erase(INST_LIST::iterator first, INST_LIST::iterator last)
-    {
-        return instList.erase(first, last);
-    }
-    void remove(G4_INST* inst) { instList.remove(inst); }
-    void clear() { instList.clear(); }
-    void pop_back() { instList.pop_back(); }
-    void pop_front() { instList.pop_front(); }
-    void push_back(G4_INST* inst)
-    {
-        insertBefore(instList.end(), inst);
-    }
-    void push_front(G4_INST* inst)
-    {
-        insertBefore(instList.begin(), inst);
-    }
-    size_t size() const { return instList.size(); }
-    bool empty() const { return instList.empty(); }
-    G4_INST* front() { return instList.front(); }
-    G4_INST* front() const { return instList.front(); }
-    G4_INST* back() { return instList.back(); }
-    G4_INST* back() const { return instList.back(); }
-    // splice functions below expect caller to have correctly set CISA offset
-    // in instructions to be spliced. CISA offsets must be maintained to
-    // preserve debug info links.
-    void splice(INST_LIST::iterator pos, INST_LIST& other)
-    {
-        instList.splice(pos, other);
-    }
-    void splice(INST_LIST::iterator pos, G4_BB* otherBB)
-    {
-        instList.splice(pos, otherBB->getInstList());
-    }
-    void splice(INST_LIST::iterator pos, INST_LIST& other, INST_LIST::iterator it)
-    {
-        instList.splice(pos, other, it);
-    }
-    void splice(INST_LIST::iterator pos, G4_BB* otherBB, INST_LIST::iterator it)
-    {
-        instList.splice(pos, otherBB->getInstList(), it);
-    }
-    void splice(INST_LIST::iterator pos, INST_LIST& other,
-        INST_LIST::iterator first, INST_LIST::iterator last)
-    {
-        instList.splice(pos, other, first, last);
-    }
-    void splice(INST_LIST::iterator pos, G4_BB* otherBB,
-        INST_LIST::iterator first, INST_LIST::iterator last)
-    {
-        instList.splice(pos, otherBB->getInstList(), first, last);
-    }
-
-    //
-    // Important invariant: fall-through BB must be at the front of Succs.
-    // If we don't maintain this property, extra checking (e.g., label
-    // comparison) is needed to retrieve fallThroughBB
-    //
-    BB_LIST    Preds;
-    BB_LIST    Succs;
-
-    G4_BB(INST_LIST_NODE_ALLOCATOR& alloc, unsigned i, FlowGraph* fg) :
-        id(i), preId(0), rpostId(0),
-        traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
-        inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
-        divergent(false), physicalPred(NULL), physicalSucc(NULL),
-        parent(fg), instList(alloc)
-    {
-    }
-
-    ~G4_BB()
-    {
-        instList.clear();
-    }
-
-    FlowGraph& getParent() const { return *parent; }
-    G4_Kernel& getKernel() const;
-
-    bool     isLastInstEOT();    // to check if the last instruction in list is EOT
-    G4_opcode    getLastOpcode() const;
-    unsigned getId() const         {return id;}
-    void     setId(unsigned i)     {id = i;}
-    unsigned getPreId() const      {return preId;}
-    void     setPreId(unsigned i)  {preId = i;}
-    unsigned getRPostId() const    {return rpostId;}
-    void     setRPostId(unsigned i) {rpostId = i;}
-    void     markTraversed(unsigned num)      {traversal = num;}
-    bool     isAlreadyTraversed(unsigned num) const {return traversal >= num;}
-    void     removeSuccEdge(G4_BB* succ);
-    void     removePredEdge(G4_BB* pred);
-    void     writeBBId(std::ostream& cout)    {cout << "BB" << id;}
-    G4_BB*   fallThroughBB();
-    G4_BB*   BBBeforeCall() const
-    {
-        assert((getBBType() & G4_BB_RETURN_TYPE) && "this must be a subroutine return BB");
-        return physicalPred;
-    }
-    G4_BB*   BBAfterCall() const
-    {
-        assert((getBBType() & G4_BB_CALL_TYPE) && "this must be a subroutine call BB");
-        return physicalSucc;
-    }
-
-    FuncInfo*  getCalleeInfo() const          {return calleeInfo;}
-    void       setCalleeInfo(FuncInfo* callee) {calleeInfo = callee;}
-    FuncInfo*  getFuncInfo() const            {return funcInfo;}
-    void       setFuncInfo(FuncInfo* func)    {funcInfo = func;}
-    int        getBBType() const              {return BBType;}
-    void       setBBType(int type)            {BBType |= type;}
-    void       unsetBBType(G4_BB_TYPE type)   {BBType &= ~unsigned(type);}
-    void     setInNaturalLoop(bool val)       {inNaturalLoop = val;}
-    bool     isInNaturalLoop() const          {return inNaturalLoop;}
-
-    void     setSendInBB(bool val)            { hasSendInBB = val; }
-    bool     isSendInBB() const               { return hasSendInBB; }
-    void     setNestLevel()                   { loopNestLevel++;}
-    unsigned char getNestLevel() const        { return loopNestLevel; }
-    void     resetNestLevel()                 { loopNestLevel = 0; }
-    void     setDivergent(bool val) { divergent = val; }
-    bool     isDivergent() const    { return divergent; }
-    bool     isAllLaneActive() const;
-    unsigned getScopeID() const { return scopeID; }
-    void setScopeID(unsigned id) { scopeID = id; }
-
-    G4_BB* getPhysicalPred() const     { return physicalPred; }
-    G4_BB* getPhysicalSucc() const     { return physicalSucc; }
-    void setPhysicalPred(G4_BB* pred)  { physicalPred = pred; }
-    void setPhysicalSucc(G4_BB* succ)  { physicalSucc = succ; }
-
-    void *operator new(size_t sz, Mem_Manager& m)    {return m.alloc(sz);}
-    void emit(std::ostream& output);
-    void emitInstruction(std::ostream& output, INST_LIST_ITER &it);
-    void emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it);
-    void emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs);
-    void emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it);
-    void emitBankConflict(std::ostream& output, const G4_INST *inst);
-
-    uint32_t emitBankConflictXe(std::ostream& os_output, const G4_INST* inst, int* suppressRegs, int& sameConflictTimes, int& twoSrcConflicts, int& simd16RS, bool zeroOne, bool isTGLLP, bool hasReducedBundles);
-    uint32_t emitBankConflictXeLP(std::ostream & os_output, const G4_INST * inst, int * suppressRegs, int * lastRegs, int & sameConflictTimes, int & twoSrcConflicts, int & simd16RS);
-    uint32_t countReadModifyWrite(std::ostream& os_output, const G4_INST *inst);
-    void emitRegInfo(std::ostream& output, G4_INST* inst, int offset);
-    void emitDepInfo(std::ostream& output, G4_INST *inst, int offset);
-
-    bool isEndWithCall() const { return getLastOpcode() == G4_call; }
-    bool isEndWithFCall() const { return getLastOpcode() == G4_pseudo_fcall; }
-    bool isEndWithFRet() const { return getLastOpcode() == G4_pseudo_fret; }
-    bool isEndWithGoto() const { return getLastOpcode() == G4_goto; }
-    bool isSuccBB(G4_BB* succ); // return true if succ is in bb's Succss
-
-    G4_Label* getLabel()
-    {
-        //FIXME: For now not all BBs will start with a label (e.g.,
-        //a block that follows a call).  We should fix it by getting rid
-        //of the g4_label instruction and associate each label with a BB
-        if (instList.size() > 0 && instList.front()->isLabel())
-        {
-            return instList.front()->getLabel();
-        }
-        return NULL;
-    }
-
-    // Return the first non-label instruction if any.
-    G4_INST *getFirstInst()
-    {
-        G4_INST *firstInst = nullptr;
-        if (instList.size() > 0)
-        {
-            INST_LIST_ITER I = instList.begin();
-            firstInst = *I;
-            if (firstInst->isLabel())
-            {
-                // Only first inst can be label.
-                ++I;
-                firstInst = (I != instList.end()) ? *I : nullptr;
-            }
-        }
-        return firstInst;
-    }
-
-    void addEOTSend(G4_INST* lastInst = NULL);
-
-    /// Dump instructions into the standard error.
-    const char* getBBTypeStr() const;
-    void print(std::ostream& OS) const;
-    void dump() const;
-    void dumpDefUse() const;
-
-    // reset this BB's instruction's local id so they are [0,..#BBInst-1]
-    void resetLocalId();
-
-    void removeIntrinsics(Intrinsic intrinId)
-    {
-        instList.remove_if ([=](G4_INST* inst) { return inst->isIntrinsic() && inst->asIntrinsicInst()->getIntrinsicId() == intrinId;});
-    }
-
-    void addSamplerFlushBeforeEOT();
-};
-}
-
-typedef enum
-{
-    STRUCTURED_CF_IF = 0,
-    STRUCTURED_CF_LOOP = 1
-} STRUCTURED_CF_TYPE;
-
-struct StructuredCF
-{
-    STRUCTURED_CF_TYPE mType;
-    // for if this is the block that ends with if
-    // for while this is the loop block
-    vISA::G4_BB* mStartBB;
-    // for if this is the endif block
-    // for while this is the block that ends with while
-    vISA::G4_BB* mEndBB;
-    // it's possible for a BB to have multiple endifs, so we need
-    // to know which endif corresponds to this CF
-    vISA::G4_INST* mEndInst;
-
-    StructuredCF* enclosingCF;
-
-    //ToDo: can add more infor (else, break, cont, etc.) as needed later
-
-    // endBB is set when we encounter the endif/while
-    StructuredCF(STRUCTURED_CF_TYPE type, vISA::G4_BB* startBB) :
-        mType(type), mStartBB(startBB), mEndBB(NULL), mEndInst(NULL), enclosingCF(NULL) {}
-
-    void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
-
-    void setEnd(vISA::G4_BB* endBB, vISA::G4_INST* endInst)
-    {
-        mEndBB = endBB;
-        mEndInst = endInst;
-    }
-};
-
-//return true to indicate do not visit the successor of the input bb
-typedef bool (* fgVisitFP1) (vISA::G4_BB *, void*);
-typedef bool (* fgVisitFP2) (vISA::G4_BB *, void*, int);
-typedef void(*fgVisitInstFP1) (vISA::G4_INST*, vISA::G4_INST*, void*);
-
-namespace vISA
-{
 ///
-/// A hashtable of <declare, node> where every node is a vector of {LB, RB}
-/// A source opernad (either SrcRegRegion or Predicate) is considered to be global
+/// A hashtable of <declare, node> where every node is a vector of
+/// {LB, RB} (left-bounds and right-bounds)
+/// A source operand (either SrcRegRegion or Predicate) is considered to be global
 /// if it is not fully defined in one BB
 ///
 class GlobalOpndHashTable
@@ -609,78 +160,32 @@ class GlobalOpndHashTable
         }
 
         void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-        void insert(uint16_t newLB, uint16_t newRB)
-        {
-            // check if the newLB/RB either subsumes or can be subsumed by an existing bound
-            // ToDo: consider merging bound as well
-            for (int i = 0, size = (int)bounds.size(); i < size; ++i)
-            {
-                uint16_t nodeLB = getLB(bounds[i]);
-                uint16_t nodeRB = getRB(bounds[i]);
-                if (newLB >= nodeLB && newRB <= nodeRB)
-                {
-                    return;
-                }
-                else if (newLB <= nodeLB && newRB >= nodeRB)
-                {
-                    bounds[i] = packBound(newLB, newRB);
-                    return;
-                }
-            }
-            bounds.push_back(packBound(newLB, newRB));
-        }
-        bool isInNode(uint16_t lb, uint16_t rb)
-        {
-            for (int i = 0, size = (int) bounds.size(); i < size; ++i)
-            {
-                uint16_t nodeLB = getLB(bounds[i]);
-                uint16_t nodeRB = getRB(bounds[i]);
-                if (lb <= nodeLB && rb >= nodeLB)
-                {
-                    return true;
-                }
-                else if (lb > nodeLB && lb <= nodeRB)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+
+        void insert(uint16_t newLB, uint16_t newRB);
+        bool isInNode(uint16_t lb, uint16_t rb) const;
     };
 
     std::map<G4_Declare*, HashNode*> globalOperands;
 
 public:
-    GlobalOpndHashTable(Mem_Manager& m) : mem(m)
-    {
-    }
+    GlobalOpndHashTable(Mem_Manager& m) : mem(m) { }
 
-    void addGlobalOpnd(G4_Operand *opnd);
+    void addGlobalOpnd(G4_Operand * opnd);
     // check if a def is a global variable
-    bool isOpndGlobal(G4_Operand *def);
-    void clearHashTable()
-    {
-        for (auto iter = globalOperands.begin(), end = globalOperands.end(); iter != end; ++iter)
-        {
-            iter->second->~HashNode();
-        }
-        globalOperands.clear();
-    }
+    bool isOpndGlobal(G4_Operand * def) const;
+    void clearHashTable();
 
-    void dump();
-};
-}
-typedef std::pair<BB_LIST_ITER, BB_LIST_ITER> GRAPH_CUT_BOUNDS;
+    void dump(std::ostream &os = std::cerr) const;
+}; // GlobalOpndHashTable
 
-namespace vISA
-{
+//
+// A table mapping the subroutine (INIT) block id's to their FuncInfo nodes.
+//
+typedef std::unordered_map<int, FuncInfo*> FuncInfoHashTable;
+typedef std::unordered_map<G4_Label*, G4_BB*> Label_BB_Map;
 
 class FlowGraph
 {
-    // Data
-
-private:
-
     // This list maintains the ordering of the basic blocks (i.e., asm and binary emission will output
     // the blocks in list oder.
     // Important: Due to the nature of SIMD CF, it is unsafe to change the order of basic blocks
@@ -699,7 +204,7 @@ private:
     bool     doIPA;                             // requires inter-procedural liveness analysis
     bool     hasStackCalls;                     // indicates that the flowgraph contains STACK_CALL calls
     bool     isStackCallFunc;                    // indicates the function itself is a STACK_CALL function
-    unsigned int autoLabelId;
+    unsigned autoLabelId;
     G4_Kernel* pKernel;                         // back pointer to the kernel object
 
     // map each BB to its local RA GRF usage summary, populated in local RA
@@ -806,7 +311,6 @@ public:
     } G12BCStats;
     unsigned numRMWs = 0;    // counting the number of read-modify-write
 public:
-
     // forwarding functions to the BBs list
     BB_LIST_ITER begin() { return BBs.begin(); }
     BB_LIST_ITER end() { return BBs.end(); }
@@ -814,102 +318,45 @@ public:
     BB_LIST::reverse_iterator rend() { return BBs.rend(); }
     BB_LIST::const_iterator cbegin() const { return BBs.cbegin(); }
     BB_LIST::const_iterator cend() const { return BBs.cend(); }
-    BB_LIST::const_reverse_iterator crbegin() { return BBs.crbegin(); }
-    BB_LIST::const_reverse_iterator crend() { return BBs.crend(); }
+    BB_LIST::const_reverse_iterator crbegin() const { return BBs.crbegin(); }
+    BB_LIST::const_reverse_iterator crend() const { return BBs.crend(); }
 
     size_t size() { return BBs.size(); }
     bool empty() const { return BBs.empty(); }
     G4_BB* back() const {return BBs.back(); }
 
-    static void setPhysicalLink(G4_BB* pred, G4_BB* succ)
-    {
-        if (pred)
-        {
-            pred->setPhysicalSucc(succ);
-        }
-        if (succ)
-        {
-            succ->setPhysicalPred(pred);
-        }
-    }
+    static void setPhysicalLink(G4_BB* pred, G4_BB* succ);
 
-    BB_LIST_ITER insert(BB_LIST_ITER iter, G4_BB* bb)
-    {
-        G4_BB* prev = iter != BBs.begin() ? *std::prev(iter) : nullptr;
-        G4_BB* next = iter != BBs.end() ? *iter : nullptr;
-        setPhysicalLink(prev, bb);
-        setPhysicalLink(bb, next);
-        return BBs.insert(iter, bb);
-    }
+    BB_LIST_ITER insert(BB_LIST_ITER iter, G4_BB* bb);
 
-    void push_back(G4_BB* bb)
-    {
-        insert(BBs.end(), bb);
-    }
 
-    void erase(BB_LIST_ITER iter)
-    {
-        G4_BB* prev = (iter != BBs.begin()) ? *std::prev(iter) : nullptr;
-        G4_BB* next = (std::next(iter) != BBs.end()) ? *std::next(iter) : nullptr;
-        setPhysicalLink(prev, next);
-        BBs.erase(iter);
-    }
+    void push_back(G4_BB* bb) {insert(BBs.end(), bb);}
+
+    void erase(BB_LIST_ITER iter);
 
     BB_LIST& getBBList() { return BBs; }
 
     // add BB to be the first BB
-    void addPrologBB(G4_BB* BB)
-    {
-        G4_BB* oldEntry = getEntryBB();
-        insert(BBs.begin(), BB);
-        addPredSuccEdges(BB, oldEntry);
-    }
+    void addPrologBB(G4_BB* BB);
+
 
     // append another CFG's BBs to this CFG.
     // note that we don't add additional CFG edges as its purpose is just to
     // stitch the two binaries togather
-    void append(const FlowGraph& otherFG)
-    {
-        for (auto I = otherFG.cbegin(), E = otherFG.cend(); I != E; ++I)
-        {
-            auto bb = *I;
-            BBs.push_back(bb);
-            incrementNumBBs();
-        }
-    }
+    void append(const FlowGraph& otherFG);
 
     G4_BB* getLabelBB(Label_BB_Map& map, G4_Label* label);
     G4_BB* beginBB(Label_BB_Map& map, G4_INST* first);
 
-    bool performIPA() const
-    {
-        return doIPA;
-    }
+    bool performIPA() const {return doIPA;}
 
-    bool getHasStackCalls() const
-    {
-        return hasStackCalls;
-    }
+    bool getHasStackCalls() const { return hasStackCalls; }
+    void setHasStackCalls() { hasStackCalls = true; }
 
-    void setHasStackCalls()
-    {
-        hasStackCalls = true;
-    }
+    bool getIsStackCallFunc() const {return isStackCallFunc;}
+    void setIsStackCallFunc() {isStackCallFunc = true;}
 
-    bool getIsStackCallFunc() const
-    {
-        return isStackCallFunc;
-    }
-
-    void setIsStackCallFunc()
-    {
-        isStackCallFunc = true;
-    }
-
-    G4_Kernel* getKernel()
-    {
-        return pKernel;
-    }
+    G4_Kernel* getKernel() {return pKernel;}
 
     void mergeFReturns();
 
@@ -983,23 +430,12 @@ public:
 
     // functions for structure analysis
     G4_Kernel *getKernel() const { return pKernel; }
-    G4_Label* insertEndif (G4_BB* bb, G4_ExecSize execSize, bool createLabel);
-    void setJIPForEndif (G4_INST* endif, G4_INST* target, G4_BB* targetBB);
-    void convertGotoToJmpi(G4_INST *gotoInst)
-    {
-        gotoInst->setOpcode(G4_jmpi);
-        gotoInst->setSrc(gotoInst->asCFInst()->getUip(), 0);
-        gotoInst->asCFInst()->setJip(NULL);
-        gotoInst->asCFInst()->setUip(NULL);
-        gotoInst->setExecSize(g4::SIMD1);
-        gotoInst->setOptions(InstOpt_NoOpt | InstOpt_WriteEnable);
-    }
+    G4_Label* insertEndif(G4_BB* bb, G4_ExecSize execSize, bool createLabel);
+    void setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB);
+    void convertGotoToJmpi(G4_INST *gotoInst);
     bool convertJmpiToGoto();
 
-    unsigned getNumFuncs() const
-    {
-        return unsigned(funcInfoTable.size());
-    }
+    unsigned getNumFuncs() const {return unsigned(funcInfoTable.size());}
 
     void handleReturn(Label_BB_Map& map, FuncInfoHashTable& funcInfoTable);
     void linkReturnAddr(G4_BB* bb, G4_BB* returnAddr);
@@ -1022,10 +458,7 @@ public:
 
     ~FlowGraph();
 
-    void setBuilder(IR_Builder *pBuilder)
-    {
-        builder = pBuilder;
-    }
+    void setBuilder(IR_Builder *pBuilder) {builder = pBuilder;}
 
     void addPredSuccEdges(G4_BB* pred, G4_BB* succ, bool tofront=true)
     {
@@ -1047,26 +480,7 @@ public:
         }
     }
 
-    void removePredSuccEdges(G4_BB* pred, G4_BB* succ)
-    {
-        MUST_BE_TRUE(pred != NULL && succ != NULL, ERROR_INTERNAL_ARGUMENT);
-
-        BB_LIST_ITER lt = pred->Succs.begin();
-        for (; lt != pred->Succs.end(); ++lt) {
-            if ((*lt) == succ) {
-                pred->Succs.erase(lt);
-                break;
-            }
-        }
-
-        lt = succ->Preds.begin();
-        for (; lt != succ->Preds.end(); ++lt) {
-            if ((*lt) == pred) {
-                succ->Preds.erase(lt);
-                break;
-            }
-        }
-    }
+    void removePredSuccEdges(G4_BB* pred, G4_BB* succ);
 
     G4_INST* createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = -1);
 
@@ -1117,8 +531,8 @@ public:
     void localDataFlowAnalysis();
     void resetLocalDataFlowData();
 
-    unsigned getNumBB() const      {return numBBId;}
-    G4_BB* getEntryBB()        {return BBs.front();}
+    unsigned getNumBB() const {return numBBId;}
+    G4_BB* getEntryBB()       {return BBs.front();}
 
     void addFrameSetupDeclares(IR_Builder& builder, PhyRegPool& regPool);
     void addSaveRestorePseudoDeclares(IR_Builder& builder);
@@ -1126,36 +540,9 @@ public:
 
     // Used for CISA 3.0
     void incrementNumBBs() { numBBId++ ; }
-    G4_BB* getUniqueReturnBlock()
-    {
-        // Return block that has a return instruction
-        // Return NULL if multiple return instructions found
-        G4_BB* uniqueReturnBlock = NULL;
+    G4_BB* getUniqueReturnBlock();
 
-        for (BB_LIST_ITER bb_it = BBs.begin(); bb_it != BBs.end(); ++bb_it) {
-            G4_BB* curBB = *bb_it;
-            G4_INST* last_inst = NULL;
-
-            if (!curBB->empty())
-            {
-                last_inst = curBB->back();
-
-                if (last_inst->opcode() == G4_pseudo_fret) {
-                    if (uniqueReturnBlock == NULL) {
-                        uniqueReturnBlock = curBB;
-                    }
-                    else {
-                        uniqueReturnBlock = NULL;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return uniqueReturnBlock;
-    }
-
-    void NormalizeFlowGraph();
+    void normalizeFlowGraph();
 
     // This is mainly used to link subroutine call-return BBs
     // ToDo: maintain this during BB add/delete instead of having to call it explicitly
@@ -1164,13 +551,12 @@ public:
     void markRPOTraversal();
 
     void findBackEdges();
-
     void findNaturalLoops();
 
-    void traverseFunc(FuncInfo* func, unsigned int *ptr);
+    void traverseFunc(FuncInfo* func, unsigned *ptr);
     void topologicalSortCallGraph();
     void findDominators(std::map<FuncInfo*, std::set<FuncInfo*>>& domMap);
-    unsigned int resolveVarScope(G4_Declare* dcl, FuncInfo* func);
+    unsigned resolveVarScope(G4_Declare* dcl, FuncInfo* func);
     void markVarScope(std::vector<G4_BB*>& BBList, FuncInfo* func);
     void markScope();
 
@@ -1211,7 +597,7 @@ public:
         return indirectJmpTarget.count(inst) > 0;
     }
 
-    G4_Label* getLabelForEndif (G4_INST* inst) const
+    G4_Label* getLabelForEndif(G4_INST* inst) const
     {
         auto iter = endifWithLabels.find(inst);
         if (iter != endifWithLabels.end())
@@ -1266,528 +652,13 @@ private:
     void decoupleReturnBlock(G4_BB*);
     void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
     void DFSTraverse(G4_BB* bb, unsigned& preId, unsigned& postId, FuncInfo* fn);
-};
+}; // FlowGraph
 
-}
-#define RA_TYPE(DO)                                                            \
-  DO(TRIVIAL_BC_RA)                                                            \
-  DO(TRIVIAL_RA)                                                               \
-  DO(LOCAL_ROUND_ROBIN_BC_RA)                                                  \
-  DO(LOCAL_ROUND_ROBIN_RA)                                                     \
-  DO(LOCAL_FIRST_FIT_BC_RA)                                                    \
-  DO(LOCAL_FIRST_FIT_RA)                                                       \
-  DO(HYBRID_BC_RA)                                                             \
-  DO(HYBRID_RA)                                                                \
-  DO(GRAPH_COLORING_RR_BC_RA)                                                  \
-  DO(GRAPH_COLORING_FF_BC_RA)                                                  \
-  DO(GRAPH_COLORING_RR_RA)                                                     \
-  DO(GRAPH_COLORING_FF_RA)                                                     \
-  DO(GRAPH_COLORING_SPILL_RR_BC_RA)                                            \
-  DO(GRAPH_COLORING_SPILL_FF_BC_RA)                                            \
-  DO(GRAPH_COLORING_SPILL_RR_RA)                                               \
-  DO(GRAPH_COLORING_SPILL_FF_RA)                                               \
-  DO(GLOBAL_LINEAR_SCAN_RA)                                                    \
-  DO(GLOBAL_LINEAR_SCAN_BC_RA)                                                 \
-  DO(UNKNOWN_RA)
 
-enum RA_Type
-{
-  RA_TYPE(MAKE_ENUM)
-};
 
-namespace vISA
-{
-class gtPinData
-{
-public:
-    enum RAPass
-    {
-        FirstRAPass = 0,
-        ReRAPass = 1
-    };
+class KernelDebugInfo;
+class VarSplitPass;
 
-    gtPinData(G4_Kernel& k) : kernel(k)
-    {
-        whichRAPass = FirstRAPass;
-    }
-
-    void *operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
-
-    ~gtPinData() {}
-
-    void markInst(G4_INST* i)
-    {
-        MUST_BE_TRUE(whichRAPass == FirstRAPass, "Unexpectedly marking in re-RA pass.");
-        markedInsts.insert(i);
-    }
-
-    void markInsts();
-    void clearMarkedInsts() { markedInsts.clear(); }
-    void removeUnmarkedInsts();
-
-    bool isFirstRAPass() { return whichRAPass == RAPass::FirstRAPass; }
-    bool isReRAPass() { return whichRAPass == RAPass::ReRAPass; }
-    void setRAPass(RAPass p) { whichRAPass = p; }
-
-    // All following functions work on byte granularity of GRF file
-    void clearFreeGlobalRegs() { globalFreeRegs.clear(); }
-    unsigned int getNumFreeGlobalRegs() { return (unsigned int)globalFreeRegs.size(); }
-    unsigned int getFreeGlobalReg(unsigned int n) { return globalFreeRegs[n]; }
-    void addFreeGlobalReg(unsigned int n) { globalFreeRegs.push_back(n); }
-
-    // This function internally mallocs memory to hold buffer
-    // of free GRFs. It is meant to be freed by caller after
-    // last use of the buffer.
-    void* getFreeGRFInfo(unsigned int& size);
-
-    void setGTPinInit(void* buffer);
-
-    gtpin::igc::igc_init_t* getGTPinInit() { return gtpin_init; }
-
-    // return igc_info_t format buffer. caller casts it to igc_info_t.
-    void* getGTPinInfoBuffer(unsigned int &bufferSize);
-
-    void setScratchNextFree(unsigned int next)
-    {
-        nextScratchFree = ((next + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>()) * numEltPerGRF<Type_UB>();
-    }
-    uint32_t getNumBytesScratchUse();
-
-    void setPerThreadPayloadBB(G4_BB* bb) { perThreadPayloadBB = bb; }
-    void setCrossThreadPayloadBB(G4_BB* bb) { crossThreadPayloadBB = bb; }
-
-    unsigned int getCrossThreadNextOff();
-    unsigned int getPerThreadNextOff();
-
-    void setGTPinInitFromL0(bool val) { gtpinInitFromL0 = val; }
-    bool isGTPinInitFromL0() { return gtpinInitFromL0; }
-
-private:
-    G4_Kernel& kernel;
-    std::set<G4_INST*> markedInsts;
-    RAPass whichRAPass;
-    // globalFreeRegs are in units of bytes in linearized register file.
-    // Data is assumed to be sorted in ascending order during insertion.
-    // Duplicates are not allowed.
-    std::vector<unsigned int> globalFreeRegs;
-    // Member stores next free scratch slot
-    unsigned int nextScratchFree = 0;
-
-    bool gtpinInitFromL0 = false;
-    gtpin::igc::igc_init_t* gtpin_init = nullptr;
-
-    G4_BB* perThreadPayloadBB = nullptr;
-    G4_BB* crossThreadPayloadBB = nullptr;
-};
-
-class RelocationEntry
-{
-    G4_INST* inst;             // instruction to be relocated
-    int opndPos;               // operand to be relocated. This should be a RelocImm
-    typedef GenRelocType RelocationType;
-    RelocationType relocType;
-    std::string symName;       // the symbol name that it's address to be resolved
-
-    RelocationEntry(G4_INST* i, int pos, RelocationType type, const std::string& symbolName) :
-        inst(i), opndPos(pos), relocType(type), symName(symbolName) {}
-
-public:
-    static RelocationEntry& createRelocation(G4_Kernel& kernel, G4_INST& inst,
-        int opndPos, const std::string& symbolName, RelocationType type);
-
-    G4_INST* getInst() const
-    {
-        return inst;
-    }
-
-    RelocationType getType() const
-    {
-        return relocType;
-    }
-
-    const char* getTypeString() const
-    {
-        switch (relocType)
-        {
-            case RelocationType::R_SYM_ADDR:
-                return "R_SYM_ADDR";
-            case RelocationType::R_SYM_ADDR_32:
-                return "R_SYM_ADDR_32";
-            case RelocationType::R_SYM_ADDR_32_HI:
-                return "R_SYM_ADDR_32_HI";
-            case RelocationType::R_PER_THREAD_PAYLOAD_OFFSET_32:
-                return "R_PER_THREAD_PAYLOAD_OFFSET_32";
-            default:
-                assert(false && "unhandled relocation type");
-                return "";
-        }
-    }
-
-    uint32_t getOpndPos() const
-    {
-        return opndPos;
-    }
-
-    const std::string& getSymbolName() const
-    {
-        return symName;
-    }
-
-    void doRelocation(const G4_Kernel& k, void* binary, uint32_t binarySize);
-
-    uint32_t getTargetOffset(const IR_Builder& builder) const;
-
-    void dump() const;
-};
-
-
-class G4_Kernel
-{
-    const char* name;
-    unsigned int numRegTotal;
-    unsigned int numThreads;
-    unsigned int numSWSBTokens;
-    unsigned int numAcc;
-    G4_ExecSize simdSize {0u}; // must start as 0
-    bool channelSliced = true;
-    bool hasAddrTaken;
-    Options *m_options;
-    const Attributes* m_kernelAttrs;
-
-    RA_Type RAType;
-    KernelDebugInfo* kernelDbgInfo;
-    void dumpDotFileInternal(const char* appendix);
-    void dumpPassInternal(const char *appendix);
-
-    gtPinData* gtPinInfo = nullptr;
-
-    uint32_t asmInstCount;
-    uint64_t kernelID;
-
-    unsigned int callerSaveLastGRF;
-
-    bool m_hasIndirectCall = false;
-
-    VarSplitPass* varSplitPass = nullptr;
-
-    // map key is filename string with complete path.
-    // if first elem of pair is false, file wasnt found.
-    // second elem of pair stores the actual source line stream
-    // for each source file referenced by this kernel.
-    std::map<std::string, std::pair<bool, std::vector<std::string>>> debugSrcLineMap;
-
-    // This must be explicitly set by kernel attributes later
-    VISATarget kernelType = VISA_3D;
-
-public:
-    typedef std::vector<RelocationEntry> RelocationTableTy;
-
-private:
-    // stores all relocations to be performed after binary encoding
-    RelocationTableTy relocationTable;
-    void setKernelParameters(void);
-
-public:
-    FlowGraph fg;
-    DECLARE_LIST           Declares;
-
-    unsigned char major_version;
-    unsigned char minor_version;
-
-    G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
-        Mem_Manager& m, Options* options, Attributes* anAttr,
-        unsigned char major, unsigned char minor)
-        : m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
-        asmInstCount(0), kernelID(0), fg(alloc, this, m), major_version(major), minor_version(minor)
-    {
-        ASSERT_USER(
-            major < COMMON_ISA_MAJOR_VER ||
-                (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
-            "CISA version not supported by this JIT-compiler");
-
-
-        name = NULL;
-        numThreads = 0;
-        hasAddrTaken = false;
-        kernelDbgInfo = nullptr;
-        if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
-            options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
-            options->getuInt32Option(vISAOptions::vISA_GTPinScratchAreaSize))
-        {
-            allocGTPinData();
-        }
-        else
-        {
-            gtPinInfo = nullptr;
-        }
-
-        setKernelParameters();
-    }
-
-    ~G4_Kernel();
-
-    void *operator new(size_t sz, Mem_Manager& m)    {return m.alloc(sz);}
-
-    void setBuilder(IR_Builder *pBuilder)
-    {
-        fg.setBuilder(pBuilder);
-    }
-
-
-    void setNumThreads(int nThreads) { numThreads = nThreads; }
-    uint32_t getNumThreads() const { return numThreads; }
-
-    uint32_t getNumSWSBTokens() const { return numSWSBTokens; }
-
-    uint32_t getNumAcc() const { return numAcc; }
-
-    void setAsmCount(int count) { asmInstCount = count; }
-    uint32_t getAsmCount() const { return asmInstCount; }
-
-    void setKernelID(uint64_t ID) { kernelID = ID; }
-    uint64_t getKernelID() const { return kernelID; }
-
-    Options *getOptions() { return m_options; }
-    const Attributes* getKernelAttrs() const { return m_kernelAttrs; }
-    bool getBoolKernelAttr(Attributes::ID aID) const
-    {
-        return getKernelAttrs()->getBoolKernelAttr(aID);
-    }
-    int32_t getInt32KernelAttr(Attributes::ID aID) const
-    {
-        return getKernelAttrs()->getInt32KernelAttr(aID);
-    }
-    bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
-    void computeChannelSlicing();
-    void calculateSimdSize();
-    G4_ExecSize getSimdSize() { return simdSize; }
-    bool getChannelSlicing() { return channelSliced; }
-    unsigned int getSimdSizeWithSlicing() { return channelSliced ? simdSize/2 : simdSize; }
-
-    void setHasAddrTaken(bool val) { hasAddrTaken = val; }
-    bool getHasAddrTaken() { return hasAddrTaken;  }
-
-    void setNumRegTotal(unsigned num) { numRegTotal = num; }
-    unsigned getNumRegTotal() const { return numRegTotal; }
-
-    void setName(const char* n) { name = n; }
-    const char* getName() { return name; }
-    void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
-    void emit_RegInfo();
-    void emit_RegInfoKernel(std::ostream& output);
-    void emit_dep(std::ostream& output);
-
-    void updateKernelByNumThreads(int nThreads);
-
-    void evalAddrExp(void);
-    void dumpDotFile(const char* appendix);
-
-    /// Dump this kernel to an ostream
-    void print(std::ostream& OS) const;
-
-    /// Dump this kernel to the standard error, often used in a debuger.
-    void dump() const;
-
-    void setRAType(RA_Type type) { RAType = type; }
-    RA_Type getRAType() { return RAType; }
-
-    void setKernelDebugInfo(KernelDebugInfo* k) { kernelDbgInfo = k; }
-    KernelDebugInfo* getKernelDebugInfo();
-
-    bool hasGTPinInit()
-    {
-        return gtPinInfo && gtPinInfo->getGTPinInit();
-    }
-
-    gtPinData* getGTPinData()
-    {
-        if (!gtPinInfo)
-            allocGTPinData();
-
-        return gtPinInfo;
-    }
-
-    void allocGTPinData()
-    {
-        gtPinInfo = new(fg.mem) gtPinData(*this);
-    }
-
-    unsigned int getCallerSaveLastGRF() { return callerSaveLastGRF; }
-
-    // This function returns starting register number to use
-    // for allocating FE/BE stack/frame ptrs.
-    unsigned int getStackCallStartReg() const;
-    unsigned int calleeSaveStart();
-    unsigned int getNumCalleeSaveRegs();
-
-    // return the number of reserved GRFs for stack call ABI
-    // the reserved registers are at the end of the GRF file (e.g., r125-r127)
-    uint32_t numReservedABIGRF() const
-    {
-        return 3;
-    }
-
-    // purpose of the GRFs reserved for stack call ABI
-    const int FPSPGRF = 0;
-    const int SpillHeaderGRF = 1;
-    const int ThreadHeaderGRF = 2;
-
-    uint32_t getFPSPGRF() const
-    {
-        return getStackCallStartReg() + FPSPGRF;
-    }
-
-    uint32_t getSpillHeaderGRF() const
-    {
-        return getStackCallStartReg() + SpillHeaderGRF;
-    }
-
-    uint32_t getThreadHeaderGRF() const
-    {
-        return getStackCallStartReg() + ThreadHeaderGRF;
-    }
-
-
-    void renameAliasDeclares();
-
-    bool hasIndirectCall() const
-    {
-        return m_hasIndirectCall;
-    }
-    void setHasIndirectCall()
-    {
-        m_hasIndirectCall = true;
-    }
-
-    RelocationTableTy& getRelocationTable()
-    {
-        return relocationTable;
-    }
-
-    const RelocationTableTy& getRelocationTable() const
-    {
-        return relocationTable;
-    }
-
-    void doRelocation(void* binary, uint32_t binarySize);
-
-    G4_INST* getFirstNonLabelInst() const;
-
-    std::string getDebugSrcLine(const std::string& filename, int lineNo);
-
-    VarSplitPass* getVarSplitPass();
-
-    VISATarget getKernelType() const { return kernelType; }
-    void setKernelType(VISATarget t) { kernelType = t; }
-
-};
-
-inline G4_Kernel& G4_BB::getKernel() const
-{
-    return *getParent().getKernel();
-}
-
-class SCCAnalysis
-{
-    //
-    // implements Tarjan's SCC algorithm
-    //
-    const FlowGraph& cfg;
-
-    // node used during the SCC algorithm
-    struct SCCNode
-    {
-        G4_BB* bb;
-        int index;
-        int lowLink;
-        bool isOnStack;
-
-        SCCNode(G4_BB* newBB, int curIndex) : bb(newBB), index(curIndex), lowLink(curIndex), isOnStack(true) {}
-        void dump() const
-        {
-            std::cerr << "SCCNode: BB" << bb->getId() << ", (" << index << "," << lowLink << ")\n";
-        }
-    };
-
-    std::stack<SCCNode*> SCCStack;
-    int curIndex = 0;
-    std::vector<SCCNode*> SCCNodes; // 1:1 mapping between SCCNode and BB, indexed by BBId
-
-    class SCC
-    {
-        G4_BB* root;
-        // list of BBs belonging to the SCC (including root as last BB)
-        // assumption is SCC is small (10s of BBs) so membership test is cheap
-        std::vector<G4_BB*> body;
-
-    public:
-        SCC(G4_BB* bb) : root(bb) {} // root gets pushed to body just like other BBs in SCC
-        void addBB(G4_BB* bb) { body.push_back(bb); }
-        std::vector<G4_BB*>::iterator body_begin() { return body.begin(); }
-        std::vector<G4_BB*>::iterator body_end() { return body.end(); }
-        size_t getSize() const { return body.size(); }
-        bool isMember(G4_BB* bb) const
-        {
-            return std::find(body.begin(), body.end(), bb) != body.end();
-        }
-        // get earliest BB in program order (this is not necessarily the root depending on DFS order)
-        // assumption is reassingBBId() is called
-        G4_BB* getEarliestBB() const
-        {
-            auto result = std::min_element(body.begin(), body.end(),
-                [](G4_BB* bb1, G4_BB* bb2) {return bb1->getId() < bb2->getId(); });
-            return *result;
-        }
-        void dump() const
-        {
-            std::cerr << "SCC (root = BB" << root->getId() << ", size = " << getSize() << "):\t";
-            for (auto bodyBB : body)
-            {
-                std::cerr << "BB" << bodyBB->getId() << ", ";
-            }
-            std::cerr << "\n";
-        }
-    };
-
-    // vector of SCCs
-    std::vector<SCC> SCCs;
-
-public:
-    SCCAnalysis(const FlowGraph& fg) : cfg(fg) {}
-    ~SCCAnalysis()
-    {
-        for (auto node : SCCNodes)
-        {
-            delete node;
-        }
-    }
-
-    void run();
-    void findSCC(SCCNode* node);
-
-    SCCNode* createSCCNode(G4_BB* bb)
-    {
-        assert(SCCNodes[bb->getId()] == nullptr && "SCCNode already exists");
-        SCCNode* newNode = new SCCNode(bb, curIndex++);
-        SCCNodes[bb->getId()] = newNode;
-        return newNode;
-    }
-
-    std::vector<SCC>::iterator SCC_begin() { return SCCs.begin(); }
-    std::vector<SCC>::iterator SCC_end() { return SCCs.end(); }
-    size_t getNumSCC() const { return SCCs.size(); }
-    void dump() const
-    {
-        for (auto node : SCCNodes)
-        {
-            node->dump();
-        }
-        for (auto SCC : SCCs)
-        {
-            SCC.dump();
-        }
-    }
-};
 
 class PostDom
 {
@@ -1807,5 +678,5 @@ private:
 
     void updateImmPostDom();
 };
-}
-#endif
+} // vISA::
+#endif // FLOWGRAPH_H

@@ -27,16 +27,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef __GRAPHCOLOR_H__
 #define __GRAPHCOLOR_H__
 
-#include "RegAlloc.h"
+#include "BitSet.h"
 #include "Gen4_IR.hpp"
+#include "RegAlloc.h"
+#include "RPE.h"
 #include "SpillManagerGMRF.h"
+#include "VarSplit.h"
+
 #include <list>
-#include <unordered_set>
 #include <limits>
 #include <memory>
-#include "RPE.h"
-#include "BitSet.h"
-#include "VarSplit.h"
+#include <map>
+#include <unordered_set>
+#include <vector>
 
 #define BITS_DWORD 32
 #define ROUND(x,y)    ((x) + ((y - x % y) % y))
@@ -51,23 +54,23 @@ namespace vISA
     private:
         GlobalRA& gra;
 
-        BankConflict setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned int offset, bool oneGRFBank);
-        void setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2, unsigned int offset1, unsigned int offset2,
+        BankConflict setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned offset, bool oneGRFBank);
+        void setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2, unsigned offset1, unsigned offset2,
             BankConflict &srcBC1, BankConflict &srcBC2);
-        void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict);
-        bool isOddOffset(unsigned int offset) const;
+        void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned &internalConflict);
+        bool isOddOffset(unsigned offset) const;
 
         void setupBankConflictsforTwoGRFs(G4_INST* inst);
         void setupBankConflictsforMad(G4_INST* inst);
-        void setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSourceInstNum, unsigned int &sendInstNum,
-            unsigned int numRegLRA, unsigned int & internalConflict);
+        void setupBankConflictsForBB(G4_BB* bb, unsigned &threeSourceInstNum, unsigned &sendInstNum,
+            unsigned numRegLRA, unsigned & internalConflict);
         bool hasInternalConflict3Srcs(BankConflict *srcBC);
         void setupBankForSrc0(G4_INST* inst, G4_INST* prevInst);
-        void getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset);
-        void getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned int *offset);
+        void getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned *offset);
+        void getPrevBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare **dcls, G4_Declare **opndDcls, unsigned *offset);
 
     public:
-        bool setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned int numRegLRA, bool &highInternalConflict);
+        bool setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned numRegLRA, bool &highInternalConflict);
 
         BankConflictPass(GlobalRA& g) : gra(g)
         {
@@ -92,8 +95,8 @@ class LiveRange final
     AssignedReg reg;
     float spillCost;
     BankConflict bc = BankConflict::BANK_CONFLICT_NONE;
-    const static unsigned int UndefHint = 0xffffffff;
-    unsigned int allocHint = UndefHint;
+    const static unsigned UndefHint = 0xffffffff;
+    unsigned allocHint = UndefHint;
 
     union {
         uint16_t bunch = 0;
@@ -179,13 +182,13 @@ public:
     bool getIsSplittedDcl() const { return isSplittedDeclare; }
     void setIsSplittedDcl(bool v) { isSplittedDeclare = v; }
     BankConflict getBC() const { return bc;  }
-    void setBC(BankConflict c)  { bc = c; }
+    void setBC(BankConflict c) { bc = c; }
     void setParentLRID(int id) { parentLRID = id; }
     unsigned getParentLRID() const { return parentLRID; }
 
-    unsigned int getAllocHint() const { return allocHint; }
+    unsigned getAllocHint() const { return allocHint; }
     bool hasAllocHint() const { return allocHint != UndefHint; }
-    void setAllocHint(unsigned int h);
+    void setAllocHint(unsigned h);
     void resetAllocHint() { allocHint = UndefHint; }
 
     // From VarBasis
@@ -244,10 +247,10 @@ public:
 
 private:
     //const Options *m_options;
-    unsigned getForbiddenVectorSize();
+    unsigned getForbiddenVectorSize() const;
     void allocForbiddenVector(vISA::Mem_Manager& mem);
-};
-}
+}; // class LiveRange
+} // vISA::
 typedef std::list<vISA::LiveRange*> LIVERANGE_LIST;
 typedef std::list<vISA::LiveRange*>::iterator LIVERANGE_LIST_ITER;
 
@@ -256,8 +259,8 @@ typedef std::list<vISA::LiveRange*>::iterator LIVERANGE_LIST_ITER;
 typedef std::map<vISA::G4_Declare*, vISA::G4_Declare*> FCALL_RET_MAP;
 typedef std::map<vISA::G4_Declare*, vISA::G4_Declare*>::iterator FCALL_RET_MAP_ITER;
 
-typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned int>> CALL_DECL_MAP;
-typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned int>>::iterator CALL_DECL_MAP_ITER;
+typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned>> CALL_DECL_MAP;
+typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned>>::iterator CALL_DECL_MAP_ITER;
 
 //
 // A bit array records all interference information.
@@ -294,19 +297,19 @@ namespace vISA
 
         bool updateDstMaskForScatter(G4_INST* inst, unsigned char* mask);
         void updateDstMask(G4_INST* inst, bool checkCmodOnly);
-        static unsigned int getByteSizeFromMask(AugmentationMasks type);
-        bool isDefaultMaskDcl(G4_Declare* dcl, unsigned int simdSize, AugmentationMasks type);
-        bool isDefaultMaskSubDeclare(unsigned char* mask, unsigned int lb, unsigned int rb, G4_Declare* dcl, unsigned int simdSize);
+        static unsigned getByteSizeFromMask(AugmentationMasks type);
+        bool isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, AugmentationMasks type);
+        bool isDefaultMaskSubDeclare(unsigned char* mask, unsigned lb, unsigned rb, G4_Declare* dcl, unsigned simdSize);
         bool verifyMaskIfInit(G4_Declare* dcl, AugmentationMasks mask);
         bool checkGRFPattern3(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
-            unsigned int lb, unsigned int rb, unsigned int execSize);
+            unsigned lb, unsigned rb, unsigned execSize);
         bool checkGRFPattern2(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
-            unsigned int lb, unsigned int rb, unsigned int execSize);
+            unsigned lb, unsigned rb, unsigned execSize);
         bool checkGRFPattern1(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
-            unsigned int lb, unsigned int rb, unsigned int execSize);
+            unsigned lb, unsigned rb, unsigned execSize);
         void markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd);
         bool markNonDefaultMaskDef();
-        G4_BB* getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, unsigned int traversal);
+        G4_BB* getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, unsigned traversal);
         void updateStartIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateEndIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateStartInterval(const G4_Declare* dcl, G4_INST* curInst);
@@ -316,16 +319,16 @@ namespace vISA
         void buildLiveIntervals();
         void clearIntervalInfo();
         void sortLiveIntervals();
-        unsigned int getEnd(const G4_Declare* dcl) const;
-        bool isNoMask(const G4_Declare* dcl, unsigned int size) const;
-        bool isConsecutiveBits(const G4_Declare* dcl, unsigned int size) const;
+        unsigned getEnd(const G4_Declare* dcl) const;
+        bool isNoMask(const G4_Declare* dcl, unsigned size) const;
+        bool isConsecutiveBits(const G4_Declare* dcl, unsigned size) const;
         bool isCompatible(const G4_Declare* testDcl, const G4_Declare* biggerDcl) const;
         void buildInterferenceIncompatibleMask();
         void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask);
         void buildInteferenceForCallsite(FuncInfo* func);
         void buildInteferenceForRetDeclares();
         void buildSummaryForCallees();
-        void expireIntervals(unsigned int startIdx);
+        void expireIntervals(unsigned startIdx);
         void buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall);
         void buildSIMDIntfAll(G4_Declare* newDcl);
         void buildSIMDIntfAllOld(G4_Declare* newDcl);
@@ -360,10 +363,10 @@ namespace vISA
         const unsigned rowSize;
         const unsigned splitStartId;
         const unsigned splitNum;
-        unsigned int* matrix = nullptr;
+        unsigned* matrix = nullptr;
         LivenessAnalysis* const liveAnalysis;
 
-        std::vector<std::vector<unsigned int>> sparseIntf;
+        std::vector<std::vector<unsigned>> sparseIntf;
 
         // sparse interference matrix.
         // we don't directly update sparseIntf to ensure uniqueness
@@ -423,7 +426,7 @@ namespace vISA
             }
         }
 
-        unsigned int getInterferenceBlk(unsigned idx) const
+        unsigned getInterferenceBlk(unsigned idx) const
         {
             assert(useDenseMatrix() && "matrix is not initialized");
             return matrix[idx];
@@ -493,7 +496,7 @@ namespace vISA
 
         void computeInterference();
         bool interfereBetween(unsigned v1, unsigned v2) const;
-        const std::vector<unsigned int>& getSparseIntfForVar(unsigned int id) const { return sparseIntf[id]; }
+        const std::vector<unsigned>& getSparseIntfForVar(unsigned id) const { return sparseIntf[id]; }
 
         inline bool varSplitCheckBeforeIntf(unsigned v1, unsigned v2) const;
 
@@ -527,7 +530,7 @@ namespace vISA
         std::vector<G4_Declare*> sortedLiveIntervals;
         std::unordered_map<G4_Declare*, std::pair<G4_INST*, G4_INST*>> startEnd;
         void recordLiveIntervals(const std::vector<G4_Declare*>& dcls);
-        void dumpRegChart(std::ostream&, LiveRange** lrs = nullptr, unsigned int numLRs = 0);
+        void dumpRegChart(std::ostream&, LiveRange** lrs = nullptr, unsigned numLRs = 0);
 
         RegChartDump(GlobalRA& g) : gra(g) {}
     };
@@ -564,7 +567,7 @@ namespace vISA
         std::vector<LiveRange*> colorOrder;
         LIVERANGE_LIST unconstrainedWorklist;
         LIVERANGE_LIST constrainedWorklist;
-        unsigned int numColor = 0;
+        unsigned numColor = 0;
 
         unsigned edgeWeightGRF(const LiveRange* lr1, const LiveRange* lr2);
         unsigned edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2);
@@ -628,13 +631,13 @@ namespace vISA
         G4_Declare* splittedDCL = nullptr;
         LocalLiveRange* localLR = nullptr;
         LSLiveRange* LSLR = nullptr;
-        unsigned int numRefs = 0;
+        unsigned numRefs = 0;
         BankConflict conflict = BANK_CONFLICT_NONE;      // used to indicate bank that should be assigned to dcl if possible
         G4_INST* startInterval = nullptr;
         G4_INST* endInterval = nullptr;
         unsigned char* mask = nullptr;
         std::vector<const G4_Declare*> subDclList;
-        unsigned int subOff = 0;
+        unsigned subOff = 0;
         std::vector<BundleConflict> bundleConflicts;
         G4_SubReg_Align subAlign = G4_SubReg_Align::Any;
         bool isEvenAlign = false;
@@ -648,11 +651,11 @@ namespace vISA
         std::vector<G4_Declare*> sortedLiveRanges;
         std::unordered_map<const G4_Declare*, std::tuple<LiveRange*, AugmentationMasks, G4_INST*, G4_INST*>> masks;
         LiveRange* const * lrs = nullptr;
-        unsigned int numVars = 0;
+        unsigned numVars = 0;
         const Interference* intf = nullptr;
         std::unordered_map<G4_Declare*, LiveRange*> DclLRMap;
         std::unordered_map<G4_BB*, std::string> bbLabels;
-        std::vector<std::tuple<G4_BB*, unsigned int, unsigned int>> BBLexId;
+        std::vector<std::tuple<G4_BB*, unsigned, unsigned>> BBLexId;
 
         static const char* getStr(AugmentationMasks a)
         {
@@ -689,7 +692,7 @@ namespace vISA
             bbLabels.clear();
             BBLexId.clear();
         }
-        void loadAugData(std::vector<G4_Declare*>& s, LiveRange* const * l, unsigned int n, const Interference* i, GlobalRA& g);
+        void loadAugData(std::vector<G4_Declare*>& s, LiveRange* const * l, unsigned n, const Interference* i, GlobalRA& g);
         void dump(const char* dclName);
         bool isClobbered(LiveRange* lr, std::string& msg);
     };
@@ -723,7 +726,7 @@ namespace vISA
         void fixAlignment();
         void expandSpillIntrinsic(G4_BB*);
         void expandFillIntrinsic(G4_BB*);
-        void expandSpillFillIntrinsics(unsigned int);
+        void expandSpillFillIntrinsics(unsigned);
 
         static const RAVarInfo defaultValues;
         std::vector<RAVarInfo> vars;
@@ -741,7 +744,7 @@ namespace vISA
         // reallocation policy.
         std::list<LocalLiveRange> localLiveRanges;
 
-        std::unordered_map<const G4_BB*, unsigned int> subretloc;
+        std::unordered_map<const G4_BB*, unsigned> subretloc;
         // map ret location to declare for call/ret
         std::map<uint32_t, G4_Declare*> retDecls;
 
@@ -771,7 +774,7 @@ namespace vISA
         std::unordered_set<G4_Declare*> addrFlagSpillDcls;
 
         // store iteration number for GRA loop
-        unsigned int iterNo = 0;
+        unsigned iterNo = 0;
 
         uint32_t numGRFSpill = 0;
         uint32_t numGRFFill = 0;
@@ -809,7 +812,7 @@ namespace vISA
 
         VarSplitPass* getVarSplitPass() const { return kernel.getVarSplitPass(); }
 
-        unsigned int getSubRetLoc(const G4_BB* bb)
+        unsigned getSubRetLoc(const G4_BB* bb)
         {
             auto it = subretloc.find(bb);
             if (it == subretloc.end())
@@ -817,7 +820,7 @@ namespace vISA
             return it->second;
         }
 
-        void setSubRetLoc(const G4_BB* bb, unsigned int s) { subretloc[bb] = s; }
+        void setSubRetLoc(const G4_BB* bb, unsigned s) { subretloc[bb] = s; }
 
         bool isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, unsigned stackTop);
         void assignLocForReturnAddr();
@@ -825,8 +828,8 @@ namespace vISA
         void insertCallReturnVar();
         void insertSaveAddr(G4_BB*);
         void insertRestoreAddr(G4_BB*);
-        void setIterNo(unsigned int i) { iterNo = i; }
-        unsigned int getIterNo() const { return iterNo; }
+        void setIterNo(unsigned i) { iterNo = i; }
+        unsigned getIterNo() const { return iterNo; }
 
         G4_Declare* getRetDecl(uint32_t retLoc)
         {
@@ -851,10 +854,10 @@ namespace vISA
         G4_INST* getSaveBE_FPInst() const { return saveBE_FPInst; };
         G4_INST* getRestoreBE_FPInst() const { return restoreBE_FPInst; };
 
-        static unsigned int owordToGRFSize(unsigned int numOwords);
-        static unsigned int hwordToGRFSize(unsigned int numHwords);
-        static unsigned int GRFToHwordSize(unsigned int numGRFs);
-        static unsigned int GRFSizeToOwords(unsigned int numGRFs);
+        static unsigned owordToGRFSize(unsigned numOwords);
+        static unsigned hwordToGRFSize(unsigned numHwords);
+        static unsigned GRFToHwordSize(unsigned numGRFs);
+        static unsigned GRFSizeToOwords(unsigned numGRFs);
 
         // RA specific fields
         G4_Declare* getGRFDclForHRA(int GRFNum) const { return GRFDclsForHRA[GRFNum]; }
@@ -881,22 +884,22 @@ namespace vISA
             return std::find(UndeclaredVars.begin(), UndeclaredVars.end(), dcl) != UndeclaredVars.end();
         }
 
-        unsigned int getSplitVarNum(const G4_Declare* dcl) const
+        unsigned getSplitVarNum(const G4_Declare* dcl) const
         {
             return getVar(dcl).numSplit;
         }
 
-        void setSplitVarNum(const G4_Declare* dcl, unsigned int val)
+        void setSplitVarNum(const G4_Declare* dcl, unsigned val)
         {
             allocVar(dcl).numSplit = val;
         }
 
-        unsigned int getBBId(const G4_Declare* dcl) const
+        unsigned getBBId(const G4_Declare* dcl) const
         {
             return getVar(dcl).bb_id;
         }
 
-        void setBBId(const G4_Declare* dcl, unsigned int id)
+        void setBBId(const G4_Declare* dcl, unsigned id)
         {
             allocVar(dcl).bb_id = id;
         }
@@ -973,12 +976,12 @@ namespace vISA
             allocVar(dcl).numRefs++;
         }
 
-        unsigned int getNumRefs(const G4_Declare* dcl) const
+        unsigned getNumRefs(const G4_Declare* dcl) const
         {
             return getVar(dcl).numRefs;
         }
 
-        void setNumRefs(const G4_Declare* dcl, unsigned int refs)
+        void setNumRefs(const G4_Declare* dcl, unsigned refs)
         {
             allocVar(dcl).numRefs = refs;
         }
@@ -1068,7 +1071,7 @@ namespace vISA
             return getVar(dcl).bundleConflicts;
         }
 
-        unsigned int get_bundle(unsigned int baseReg, int offset) const
+        unsigned get_bundle(unsigned baseReg, int offset) const
         {
             return (((baseReg + offset) % 64) / 4);
         }
@@ -1085,9 +1088,9 @@ namespace vISA
                 if (regVar->isPhyRegAssigned())
                 {
                     int offset = conflict.offset;
-                    unsigned int reg = regVar->getPhyReg()->asGreg()->getRegNum();
-                    unsigned int bundle = get_bundle(reg, offset);
-                    unsigned int bundle1 = get_bundle(reg, offset + 1);
+                    unsigned reg = regVar->getPhyReg()->asGreg()->getRegNum();
+                    unsigned bundle = get_bundle(reg, offset);
+                    unsigned bundle1 = get_bundle(reg, offset + 1);
                     if (!(occupiedBundles & ((unsigned short)1 << bundle)))
                     {
                         bundleNum++;
@@ -1119,12 +1122,12 @@ namespace vISA
             return getVar(dcl).subDclList;
         }
 
-        unsigned int getSubOffset(const G4_Declare* dcl) const
+        unsigned getSubOffset(const G4_Declare* dcl) const
         {
             return getVar(dcl).subOff;
         }
 
-        void setSubOffset(const G4_Declare* dcl, unsigned int offset)
+        void setSubOffset(const G4_Declare* dcl, unsigned offset)
         {
             allocVar(dcl).subOff = offset;
         }
@@ -1279,7 +1282,7 @@ namespace vISA
 
         VarRange* splitVarRange(VarRange *src1, VarRange *src2, std::stack<VarRange*> *toDelete);
         void rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, std::stack<VarRange*> *toDelete);
-        static void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
+        static void getHeightWidth(G4_Type type, unsigned numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
         void createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<G4_Declare*> &splitDclList);
         void insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
         void insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
@@ -1309,8 +1312,8 @@ namespace vISA
 
     typedef struct _SCRATCH_RANGE
     {
-        unsigned int leftOff;
-        unsigned int rightOff;
+        unsigned leftOff;
+        unsigned rightOff;
     }SCRATCH_RANGE;
 
     typedef std::vector<SCRATCH_RANGE >   SCRATCH_RANGE_VEC;
@@ -1318,8 +1321,8 @@ namespace vISA
 
     typedef struct _RANGE
     {
-        unsigned int linearizedStart;
-        unsigned int linearizedEnd;
+        unsigned linearizedStart;
+        unsigned linearizedEnd;
         bool         predicate;
     }REG_RANGE;
 
@@ -1339,11 +1342,11 @@ namespace vISA
         vISA::G4_Operand*    flagOpnd;
         INST_LIST_ITER inst_it;
 
-        unsigned int   linearizedStart; //linearized start regsiter address
-        unsigned int   linearizedEnd;   //linearized end regsiter address
-        unsigned int   leftOff;         //left offset in scratch space
-        unsigned int   rightOff;        //right offset in the scratch space
-        unsigned int   useCount;
+        unsigned   linearizedStart; //linearized start regsiter address
+        unsigned   linearizedEnd;   //linearized end regsiter address
+        unsigned   leftOff;         //left offset in scratch space
+        unsigned   rightOff;        //right offset in the scratch space
+        unsigned   useCount;
 
         bool     isSpill = false;
         bool     isBlockLocal = false;
@@ -1361,7 +1364,7 @@ namespace vISA
         bool     evicted = false;
         bool     scratchDefined = false;
 
-        unsigned int   maskFlag;
+        unsigned   maskFlag;
 
         RANAME_VEC              renameOperandVec;
         SCRATCH_RANGE_VEC       killedScratchRange;
@@ -1383,19 +1386,19 @@ namespace vISA
     private:
         GlobalRA& gra;
 
-        void FlagLineraizedStartAndEnd(G4_Declare*  topdcl, unsigned int& linearizedStart, unsigned int& linearizedEnd);
+        void FlagLineraizedStartAndEnd(G4_Declare*  topdcl, unsigned& linearizedStart, unsigned& linearizedEnd);
         bool replaceWithPreDcl(IR_Builder& builder, SCRATCH_ACCESS* scratchAccess, SCRATCH_ACCESS* preScratchAccess);
         bool scratchKilledByPartial(SCRATCH_ACCESS* scratchAccess, SCRATCH_ACCESS* preScratchAccess);
-        bool addKilledGRFRanges(unsigned int linearizedStart, unsigned int linearizedEnd, SCRATCH_ACCESS* scratchAccess,
+        bool addKilledGRFRanges(unsigned linearizedStart, unsigned linearizedEnd, SCRATCH_ACCESS* scratchAccess,
             G4_Predicate*   predicate);
-        bool regFullyKilled(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd,
+        bool regFullyKilled(SCRATCH_ACCESS* scratchAccess, unsigned linearizedStart, unsigned linearizedEnd,
             unsigned short maskFlag);
-        bool inRangePartialKilled(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd,
+        bool inRangePartialKilled(SCRATCH_ACCESS* scratchAccess, unsigned linearizedStart, unsigned linearizedEnd,
             unsigned short maskFlag);
-        bool regDefineAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd,
+        bool regDefineAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned linearizedStart, unsigned linearizedEnd,
             unsigned short maskFlag, G4_Predicate* predicate);
         void regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd);
-        bool regUseAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd);
+        bool regUseAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned linearizedStart, unsigned linearizedEnd);
         void regUseFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd, int opndIndex);
         void regUseScratch(SCRATCH_PTR_LIST * scratchTraceList, G4_INST * inst, G4_Operand * opnd, Gen4_Operand_Number opndIndex);
         void initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, INST_LIST_ITER inst_it);

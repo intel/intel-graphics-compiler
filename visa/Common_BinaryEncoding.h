@@ -1432,17 +1432,17 @@ namespace vISA
         _CompactSourceTable3Src_ CompactSourceTable3Src;
         _CompactSourceTable3SrcCHV_ CompactSourceTable3SrcCHV;
 
-    BinaryEncodingBase(Mem_Manager &m, G4_Kernel& k, std::string fname)
-        : BDWCompactControlTable(m),
-        BDWCompactSourceTable(m),
-        BDWCompactSubRegTable(m),
-        BDWCompactDataTypeTableStr(m),
-        mem(m),
-        fileName(fname),
-        kernel(k),
-        instCounts(0)
-    {
-    }
+        BinaryEncodingBase(Mem_Manager &m, G4_Kernel& k, std::string fname)
+            : BDWCompactControlTable(m),
+            BDWCompactSourceTable(m),
+            BDWCompactSubRegTable(m),
+            BDWCompactDataTypeTableStr(m),
+            mem(m),
+            fileName(fname),
+            kernel(k),
+            instCounts(0)
+        {
+        }
 
         typedef enum { SUCCESS, FAILURE } Status;
 
@@ -1481,15 +1481,12 @@ namespace vISA
         bool CHVcompactOneInstruction3Src(G4_INST *);
         bool uncompactOneInstruction(G4_INST *);
 
-        bool doCompaction() const
-        {
-            return kernel.getOption(vISA_Compaction);
-        }
+        bool doCompaction() const;
 
     protected:
 
         // returns the offset for label in # of half instructions (kernel entry is 0), or -1 if the label is not present
-        inline uint32_t GetLabelInfo(G4_Label* label)
+        uint32_t GetLabelInfo(G4_Label* label)
         {
             auto iter = LabelMap.find(label);
             if (iter == LabelMap.end())
@@ -1550,7 +1547,7 @@ namespace vISA
         // Should use G9HDL::EU_OPCODE as return type. But Forward declaration of enum
         // fails for linux, so use uint32_t as WA for now.
         uint32_t getEUOpcode(G4_opcode g4opc);  // defined in BinaryEncodingCNL.cpp
-    };
+    }; // BinaryEncodingBase
 }
 
 namespace vISA

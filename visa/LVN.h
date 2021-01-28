@@ -27,12 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _G4_LVN_H_
 
 #include "Optimizer.h"
-#include <fstream>
-#include <sstream>
 #include "G4_Opcode.h"
-#include "Timer.h"
-#include "G4Verifier.h"
-#include <map>
+#include "G4_Verifier.hpp"
 
 typedef uint64_t Value_Hash;
 namespace vISA
@@ -45,11 +41,11 @@ namespace vISA
         G4_INST* inst = nullptr;
 
         void initializeEmptyValue() { hash = 0; inst = nullptr; }
-        bool isValueEmpty()
+        bool isValueEmpty() const
         {
             return !inst;
         }
-        bool isEqualValueHash(Value& val2)
+        bool isEqualValueHash(Value& val2) const
         {
             return (hash == val2.hash);
         }
@@ -60,11 +56,8 @@ namespace vISA
                 return true;
             return false;
         }
-    };
-}
+    }; // Value
 
-namespace vISA
-{
     class LVNItemInfo
     {
     public:
@@ -89,8 +82,8 @@ namespace vISA
         // of this class in 2 buckets - dst dcl id, src0 dcl id. Doing so
         // helps to easily invalidate values due to redefs.
         bool active = false;
-    };
-}
+    }; // LVNItemInfo
+} // vISA::
 
 // LvnTable uses dcl id or immediate value as key. This key is mapped to
 // all operands with dcl id that have appeared so far in current BB. Or
@@ -188,12 +181,12 @@ namespace vISA
             duTablePopulated = false;
         }
 
+        ~LVN();
+
         void doLVN();
         unsigned int getNumInstsRemoved() { return numInstsRemoved; }
 
         static unsigned int removeRedundantSamplerMovs(G4_Kernel&, G4_BB*);
-
-        ~LVN();
     };
 }
 #endif
