@@ -82,8 +82,9 @@ $ export IGC_ShaderDumpEnable=1
 - **EnableZEBinary** - Enable output in ZE binary format
 - **ExtraOCLOptions** - Extra options for OpenCL
 - **FunctionControl** - Control function inlining/subroutine/stackcall
-- **ForceRPE** - Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst
+- **ForceInlineStackCallWithImplArg** - If enabled, stack calls that use implicit args will be force inlined.
 - **ForceOCLSIMDWidth** - Force using specified SIMD width. Possible values: 0 (off), 8, 16, 32.
+- **ForceRPE** - Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst
 - **InterleaveSourceShader** - Interleave the source shader in asm dump
 - **KernelTotalSizeThreshold** - Trimming target of kernel total size
 - **OGLMinimumDump** - Minimum dump for testing - first and last .ll, .cos and compiler output
