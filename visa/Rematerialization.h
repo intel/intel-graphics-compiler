@@ -74,7 +74,7 @@ namespace vISA
     {
     private:
         G4_Kernel& kernel;
-        LivenessAnalysis& liveness;
+        const LivenessAnalysis& liveness;
         GraphColor& coloring;
         GlobalRA& gra;
         G4_Declare* samplerHeader = nullptr;
@@ -85,8 +85,8 @@ namespace vISA
         unsigned int totalInstsBeforeRemat = 0;
         RPE& rpe;
 
-        const unsigned int cRematLoopRegPressure128GRF = 85;
-        const unsigned int cRematRegPressure128GRF = 120;
+        static const unsigned int cRematLoopRegPressure128GRF = 85;
+        static const unsigned int cRematRegPressure128GRF = 120;
 
         unsigned int rematLoopRegPressure = 0;
         unsigned int rematRegPressure = 0;
@@ -128,26 +128,26 @@ namespace vISA
             {
                 auto numUses = (*opIt).second.numUses;
                 if (numUses > 0)
-                    (*opIt).second.numUses = numUses - 1;
+                    opIt->second.numUses = numUses - 1;
 
                 if (numUses == 1)
                 {
-                    for (auto ref : (*opIt).second.def)
+                    for (auto ref : opIt->second.def)
                     {
                         ref.second->remove(ref.first);
                     }
-                    (*opIt).second.def.clear();
+                    opIt->second.def.clear();
                 }
             }
 
 
         }
 
-        unsigned int getNumUses(G4_Declare* dcl)
+        unsigned int getNumUses(G4_Declare* dcl) const
         {
             auto opIt = operations.find(dcl);
             if (opIt != operations.end())
-                return (*opIt).second.numUses;
+                return opIt->second.numUses;
 
             return 0;
         }
@@ -156,19 +156,19 @@ namespace vISA
         {
             auto opIt = operations.find(dcl);
             if (opIt != operations.end())
-                (*opIt).second.numRemats += 1;
+                opIt->second.numRemats += 1;
         }
 
-        unsigned int getNumRemats(G4_Declare* dcl)
+        unsigned int getNumRemats(G4_Declare* dcl) const
         {
             auto opIt = operations.find(dcl);
             if (opIt != operations.end())
-                return (*opIt).second.numRemats;
+                return opIt->second.numRemats;
 
             return 0;
         }
 
-        bool isRematCandidateOp(G4_INST* inst)
+        bool isRematCandidateOp(G4_INST* inst) const
         {
             if (inst->isFlowControl() || inst->isWait() ||
                 (inst->isSend() && inst->asSendInst()->isFence()) ||
@@ -201,7 +201,7 @@ namespace vISA
         bool inSameSubroutine(G4_BB*, G4_BB*);
 
     public:
-        Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r, GlobalRA& g) :
+        Rematerialization(G4_Kernel& k, const LivenessAnalysis& l, GraphColor& c, RPE& r, GlobalRA& g) :
             kernel(k), liveness(l), coloring(c), gra(g), rpe(r)
         {
             unsigned numGRFs = k.getNumRegTotal();
@@ -240,7 +240,7 @@ namespace vISA
 
                 if (loopIt != kernel.fg.naturalLoops.end())
                 {
-                    bbsInLoop.insert((*loopIt).second.begin(), (*loopIt).second.end());
+                    bbsInLoop.insert(loopIt->second.begin(), loopIt->second.end());
                 }
             }
 
@@ -278,7 +278,7 @@ namespace vISA
             }
         }
 
-        bool getChangesMade() { return IRChanged; }
+        bool getChangesMade() const { return IRChanged; }
 
         void run();
     };

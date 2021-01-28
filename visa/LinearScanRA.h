@@ -234,7 +234,7 @@ public:
     void markIndirectRef(bool indirectAccess) { isIndirectAccess = indirectAccess; }
 
     void recordRef(G4_BB* bb, bool fromEntry);
-    unsigned int getNumRefs()
+    unsigned int getNumRefs() const
     {
         return numRefs;
     }
@@ -246,11 +246,11 @@ public:
         topdcl = dcl;
     }
 
-    G4_Declare* getTopDcl() { return topdcl; }
+    G4_Declare* getTopDcl() const { return topdcl; }
 
     void* operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
-    bool hasIndirectAccess() { return isIndirectAccess; }
+    bool hasIndirectAccess() const { return isIndirectAccess; }
 
     void setFirstRef(G4_INST* inst, unsigned int idx)
     {
@@ -270,7 +270,7 @@ public:
         lrEndIdx = idx;
     }
 
-    G4_INST* getLastRef(unsigned int& idx)
+    G4_INST* getLastRef(unsigned int& idx) const
     {
         idx = lrEndIdx;
         return lastRef;
@@ -282,7 +282,7 @@ public:
 
     unsigned int getSizeInWords();
 
-    bool isLiveRangeGlobal();
+    bool isLiveRangeGlobal() const;
 
     void setAssigned(bool a) { assigned = a; }
     bool getAssigned() { return assigned; }

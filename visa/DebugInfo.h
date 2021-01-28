@@ -434,7 +434,7 @@ public:
     {
     }
 
-    void setPrevBitset(BitSet& b)
+    void setPrevBitset(const BitSet& b)
     {
         if (!prevBitset)
         {

@@ -607,9 +607,8 @@ public:
 
     void setDepToken(unsigned short token, SWSBTokenType type)
     {
-        for (size_t i = 0, size = depTokens.size(); i < size; i++)
+        for (DepToken &depToken : depTokens)
         {
-            DepToken &depToken = depTokens[i];
             if (depToken.token == token)
             {
                 if (depToken.type == AFTER_WRITE)
@@ -1503,7 +1502,7 @@ public:
     // -- A root thread originated from the media (generic) pipeline must terminate
     //    with a send instruction with message to the Thread Spawner unit. A child
     //    thread should also terminate with a send to TS.
-    bool canBeEOT()
+    bool canBeEOT() const
     {
         bool canEOT = msgDesc->ResponseLength() == 0 &&
             (msgDesc->getFuncId() != SFID::NULL_SFID &&
@@ -2252,6 +2251,8 @@ public:
           G4_VarBase *getBase() { return base; }
     void setBase(G4_VarBase *b) { base = b; }
     G4_RegAccess getRegAccess() const;
+
+    G4_Declare *getBaseRegVarRootDeclare() const;
 
     virtual bool isRelocImm() const { return false; }
     virtual void emit(std::ostream &output, bool symbolreg = false) = 0;
@@ -4125,7 +4126,7 @@ public:
     void setOffset(uint32_t o) { offset = o; }
     void setFP(G4_Declare* f) { fp = f; }
 
-    bool isOffsetValid() { return offset != InvalidOffset; }
+    bool isOffsetValid() const { return offset != InvalidOffset; }
 
     void computeRightBound(G4_Operand* opnd)
     {
@@ -4205,6 +4206,11 @@ private:
 inline bool G4_Operand::isScalarSrc() const
 {
     return isImm() || isAddrExp() || (isSrcRegRegion() && asSrcRegRegion()->isScalar());
+}
+
+inline G4_Declare *G4_Operand::getBaseRegVarRootDeclare() const
+{
+    return getBase()->asRegVar()->getDeclare()->getRootDeclare();
 }
 
 } // namespace vISA

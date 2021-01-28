@@ -68,7 +68,7 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 #define NOMASK_BYTE 0x80
 
 
-Interference::Interference(LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
+Interference::Interference(const LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
     GlobalRA& g) : gra(g), kernel(g.kernel), lrs(lr),
     builder(*g.kernel.fg.builder), maxId(n), splitStartId(ns), splitNum(nm),
     liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1)
@@ -160,7 +160,7 @@ BankConflict BankConflictPass::setupBankAccordingToSiblingOperand(BankConflict a
     return tgtBank;
 }
 
-void refNumBasedSort(unsigned *refNum, unsigned *index)
+void refNumBasedSort(const unsigned *refNum, unsigned *index)
 {
     if (refNum[2] > refNum[1])
     {
@@ -1125,34 +1125,28 @@ BankAlign GlobalRA::getBankAlign(const G4_Declare* dcl) const
     }
 }
 
-void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)
+void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
 {
-    for (BB_LIST_ITER it = kernel.fg.begin();
-        it != kernel.fg.end();
-        it++)
+#ifdef DEBUG_VERBOSE_ON
+    for (G4_BB* bb : kernel.fg)
     {
-
         DEBUG_VERBOSE(std::endl << "-----------------------------------------------------------------");
-        DEBUG_VERBOSE(std::endl << "BB" << (*it)->getId() << ":");
+        DEBUG_VERBOSE(std::endl << "BB" << bb->getId() << ":");
         DEBUG_VERBOSE(std::endl << "Preds: ");
-        for (BB_LIST_ITER pred_it = (*it)->Preds.begin();
-            pred_it != (*it)->Preds.end();
-            pred_it++)
+        for (const G4_BB* pred : bb->Preds)
         {
-            DEBUG_VERBOSE("BB" << (*pred_it)->getId() << ", ");
+            DEBUG_VERBOSE("BB" << pred->getId() << ", ");
         }
 
         DEBUG_VERBOSE(std::endl << "Succs: ");
-        for (BB_LIST_ITER succ_it = (*it)->Succs.begin();
-            succ_it != (*it)->Succs.end();
-            succ_it++)
+        for (const G4_BB* succ : bb->Succs)
         {
-            DEBUG_VERBOSE("BB" << (*succ_it)->getId() << ", ");
+            DEBUG_VERBOSE("BB" << succ->getId() << ", ");
         }
 
         if (kernel.getOption(vISA_LocalRA))
         {
-            if (auto summary = kernel.fg.getBBLRASummary(*it))
+            if (auto summary = kernel.fg.getBBLRASummary(bb))
             {
                 DEBUG_VERBOSE(std::endl << "Local RA: ");
                 {
@@ -1168,79 +1162,70 @@ void GlobalRA::emitFGWithLiveness(LivenessAnalysis& liveAnalysis)
         }
 
         DEBUG_VERBOSE(std::endl << "Gen: ");
-        for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-            dcl_it != kernel.Declares.end();
-            dcl_it++)
+        for (const G4_Declare * dcl : kernel.Declares)
         {
-            if ((*dcl_it)->getAliasDeclare() != NULL)
+            if (dcl->getAliasDeclare() != NULL)
                 continue;
 
-            if ((*dcl_it)->getRegVar()->isRegAllocPartaker())
+            if (dcl->getRegVar()->isRegAllocPartaker())
             {
-                if (liveAnalysis.use_gen[(*it)->getId()].isSet((*dcl_it)->getRegVar()->getId()))
+                if (liveAnalysis.use_gen[bb->getId()].isSet(dcl->getRegVar()->getId()))
                 {
-                    DEBUG_VERBOSE((*dcl_it)->getName() << ", ");
+                    DEBUG_VERBOSE(dcl->getName() << ", ");
                 }
             }
         }
 
         DEBUG_VERBOSE(std::endl << "Kill: ");
-        for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-            dcl_it != kernel.Declares.end();
-            dcl_it++)
+        for (const G4_Declare * dcl : kernel.Declares)
         {
-            if ((*dcl_it)->getAliasDeclare() != NULL)
+            if (dcl->getAliasDeclare() != NULL)
                 continue;
 
-            if ((*dcl_it)->getRegVar()->isRegAllocPartaker())
+            if (dcl->getRegVar()->isRegAllocPartaker())
             {
-                if (liveAnalysis.use_kill[(*it)->getId()].isSet((*dcl_it)->getRegVar()->getId()))
+                if (liveAnalysis.use_kill[bb->getId()].isSet(dcl->getRegVar()->getId()))
                 {
-                    DEBUG_VERBOSE((*dcl_it)->getName() << ", ");
+                    DEBUG_VERBOSE(dcl->getName() << ", ");
                 }
             }
         }
 
         DEBUG_VERBOSE(std::endl << "Live-in: ");
-        for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-            dcl_it != kernel.Declares.end();
-            dcl_it++)
+        for (const G4_Declare * dcl : kernel.Declares)
         {
-            if ((*dcl_it)->getAliasDeclare() != NULL)
+            if (dcl->getAliasDeclare() != NULL)
                 continue;
 
-            if ((*dcl_it)->getRegVar()->isRegAllocPartaker())
+            if (dcl->getRegVar()->isRegAllocPartaker())
             {
-                if (liveAnalysis.isLiveAtEntry((*it), (*dcl_it)->getRegVar()->getId()))
+                if (liveAnalysis.isLiveAtEntry(bb, dcl->getRegVar()->getId()))
                 {
-                    DEBUG_VERBOSE((*dcl_it)->getName() << ", ");
+                    DEBUG_VERBOSE(dcl->getName() << ", ");
                 }
             }
         }
 
         DEBUG_VERBOSE(std::endl << "Live-out: ");
-        for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-            dcl_it != kernel.Declares.end();
-            dcl_it++)
+        for (const G4_Declare * dcl : kernel.Declares)
         {
-            if ((*dcl_it)->getAliasDeclare() != NULL)
+            if (dcl->getAliasDeclare() != NULL)
                 continue;
 
-            if ((*dcl_it)->getRegVar()->isRegAllocPartaker())
+            if (dcl->getRegVar()->isRegAllocPartaker())
             {
-                if (liveAnalysis.isLiveAtExit((*it), (*dcl_it)->getRegVar()->getId()))
+                if (liveAnalysis.isLiveAtExit(bb, dcl->getRegVar()->getId()))
                 {
-                    DEBUG_VERBOSE((*dcl_it)->getName() << ", ");
+                    DEBUG_VERBOSE(dcl->getName() << ", ");
                 }
             }
         }
 
         DEBUG_VERBOSE(std::endl);
 
-#ifdef DEBUG_VERBOSE_ON
-        (*it)->emit(COUT_ERROR);
-#endif
+        bb->emit(COUT_ERROR);
     }
+#endif
 }
 
 void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColor& coloring) const
@@ -1553,8 +1538,8 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
         }
     }
 
-    //if current is splitted dcl, don't interference with  any of it's child nodes.
-    //if current is partial dcl, don't intereference with any other child nodes.
+    //if current is splitted dcl, don't interference with any of its child nodes.
+    //if current is partial dcl, don't interference with any other child nodes.
     if (col >= startIdx / BITS_DWORD  && col < (endIdx / BITS_DWORD + 1))
     {
         unsigned selt = 0;
@@ -1575,13 +1560,14 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
 // set interference for all live ranges that are currently live
 // for partial declares, following rules are applied
 // a. current partial declare does not interference with any other partial declare
-// b. current parent declare does not interference with it's children declares, can children declare interference with parent declare?
+// b. current parent declare does not interference with its children declares, can children declare interference with parent declare?
 // c. current partial declare does not interference with hybrid declares added by local RA, the reason is simple, these declares are assigned register already.
 //
-void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
+void Interference::buildInterferenceWithLive(const BitSet& live, unsigned i)
 {
-    bool is_partial = lrs[i]->getIsPartialDcl();
-    bool is_splitted = lrs[i]->getIsSplittedDcl();
+    const LiveRange* lr = lrs[i];
+    bool is_partial = lr->getIsPartialDcl();
+    bool is_splitted = lr->getIsSplittedDcl();
     unsigned n = 0;
 
     // For none partial varaible, interference with all varaibles
@@ -1595,15 +1581,15 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
 
     unsigned start_idx = 0;
     unsigned end_idx = 0;
-    if (is_splitted) //if current is splitted dcl, don't interference with all it's child nodes.
+    if (is_splitted) //if current is splitted dcl, don't interference with all its child nodes.
     {
-        start_idx = lrs[i]->getDcl()->getSplitVarStartID();
-        end_idx = lrs[i]->getDcl()->getSplitVarStartID() + gra.getSplitVarNum(lrs[i]->getDcl());
+        start_idx = lr->getDcl()->getSplitVarStartID();
+        end_idx = start_idx + gra.getSplitVarNum(lr->getDcl());
     }
 
     if (is_partial)   //if current is partial dcl, don't interference with all other partial dcls, and it's parent dcl.
     {
-        n = gra.getSplittedDeclare(lrs[i]->getDcl())->getRegVar()->getId();
+        n = gra.getSplittedDeclare(lr->getDcl())->getRegVar()->getId();
         start_idx = splitStartId;
         end_idx = splitStartId + splitNum;
     }
@@ -2653,7 +2639,7 @@ void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
     }
 }
 
-Augmentation::Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g) :
+Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g) :
     kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges), fcallRetMap(g.fcallRetMap), m(kernel.fg.mem)
 {
 }
@@ -3786,11 +3772,7 @@ void Augmentation::buildLiveIntervals()
     {
         if (liveAnalysis.isLiveAtEntry(entryBB, i))
         {
-            const G4_Declare* dcl = lrs[i]->getDcl();
-            while (dcl->getAliasDeclare() != NULL)
-            {
-                dcl = dcl->getAliasDeclare();
-            }
+            const G4_Declare* dcl = lrs[i]->getDcl()->getRootDeclare();
 
             updateStartInterval(dcl, entryBB->front());
         }
@@ -3864,12 +3846,7 @@ void Augmentation::buildLiveIntervals()
                 dst->getBase()->isRegVar())
             {
                 // Destination is indirect
-                G4_Declare* defdcl = dst->getBase()->asRegVar()->getDeclare();
-
-                while (defdcl->getAliasDeclare() != NULL)
-                {
-                    defdcl = defdcl->getAliasDeclare();
-                }
+                G4_Declare* defdcl = dst->getBaseRegVarRootDeclare();
 
                 updateEndInterval(defdcl, inst);
             }
@@ -3878,16 +3855,11 @@ void Augmentation::buildLiveIntervals()
             {
                 G4_CondMod* cmod = inst->getCondMod();
 
-                if (cmod != NULL &&
-                    cmod->getBase() != NULL)
+                if (cmod != nullptr &&
+                    cmod->getBase() != nullptr)
                 {
                     // Conditional modifier
-                    G4_Declare* dcl = cmod->getBase()->asRegVar()->getDeclare();
-
-                    while (dcl->getAliasDeclare() != NULL)
-                    {
-                        dcl = dcl->getAliasDeclare();
-                    }
+                    G4_Declare* dcl = cmod->getBaseRegVarRootDeclare();
 
                     updateStartInterval(dcl, inst);
                 }
@@ -3951,12 +3923,7 @@ void Augmentation::buildLiveIntervals()
                     srcRegion->getBase() &&
                     srcRegion->getBase()->isRegVar())
                 {
-                    G4_Declare* usedcl = src->asSrcRegRegion()->getBase()->asRegVar()->getDeclare();
-
-                    while (usedcl->getAliasDeclare() != NULL)
-                    {
-                        usedcl = usedcl->getAliasDeclare();
-                    }
+                    G4_Declare* usedcl = src->getBaseRegVarRootDeclare();
 
                     updateEndInterval(usedcl, inst);
                 }
@@ -3969,12 +3936,7 @@ void Augmentation::buildLiveIntervals()
                 if (pred != NULL)
                 {
                     // Predicate
-                    G4_Declare* dcl = pred->getBase()->asRegVar()->getDeclare();
-
-                    while (dcl->getAliasDeclare() != NULL)
-                    {
-                        dcl = dcl->getAliasDeclare();
-                    }
+                    G4_Declare* dcl = pred->getBaseRegVarRootDeclare();
 
                     updateEndInterval(dcl, inst);
                 }
@@ -3991,12 +3953,7 @@ void Augmentation::buildLiveIntervals()
             if (liveAnalysis.isLiveAtEntry(bb, i) == true)
             {
                 // Extend ith live-interval
-                G4_Declare* dcl = lrs[i]->getDcl();
-
-                while (dcl->getAliasDeclare() != NULL)
-                {
-                    dcl = dcl->getAliasDeclare();
-                }
+                G4_Declare* dcl = lrs[i]->getDcl()->getRootDeclare();
 
 #ifdef DEBUG_VERBOSE_ON
                 unsigned oldStart = dcl->getStartInterval()->getLexicalId();
@@ -4089,12 +4046,7 @@ void Augmentation::buildLiveIntervals()
                 if (liveAnalysis.isLiveAtEntry(startBB, i) == true &&
                     liveAnalysis.isLiveAtExit(EndBB, i) == true)
                 {
-                    const G4_Declare* dcl = lrs[i]->getDcl();
-
-                    while (dcl->getAliasDeclare() != NULL)
-                    {
-                        dcl = dcl->getAliasDeclare();
-                    }
+                    const G4_Declare* dcl = lrs[i]->getDcl()->getRootDeclare();
 
 #ifdef DEBUG_VERBOSE_ON
                     unsigned oldEnd = dcl->getEndInterval()->getLexicalId();
@@ -4636,7 +4588,8 @@ void Augmentation::buildSIMDIntfAllOld(G4_Declare* newDcl)
         auto& func = callDclMapIt->second.second;
         for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
         {
-            if (liveAnalysis.subroutineMaydef[func].isSet(i))
+            auto maydef = liveAnalysis.subroutineMaydef.find(func);
+            if (maydef != liveAnalysis.subroutineMaydef.end() && maydef->second.isSet(i))
             {
                 varDcl = lrs[i]->getDcl();
                 buildSIMDIntfDcl(varDcl, true);
@@ -4802,7 +4755,8 @@ void Augmentation::buildInteferenceForCallsite(FuncInfo* func)
 {
     for (unsigned i = 0; i < liveAnalysis.getNumSelectedVar(); i++)
     {
-        if (liveAnalysis.subroutineMaydef[func].isSet(i))
+        auto maydef = liveAnalysis.subroutineMaydef.find(func);
+        if (maydef != liveAnalysis.subroutineMaydef.end() && maydef->second.isSet(i))
         {
             G4_Declare* varDcl = lrs[i]->getDcl();
             buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[func]);
@@ -6515,8 +6469,8 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                 currentIndrSpillRegSize = indrDstSpillRegSize + indirSrcFillRegSize;
             }
 
-            spillRegSize = currentSpillRegSize > spillRegSize ? currentSpillRegSize : spillRegSize;
-            indrSpillRegSize = currentIndrSpillRegSize > indrSpillRegSize ? currentIndrSpillRegSize : indrSpillRegSize;
+            spillRegSize = std::max(spillRegSize, currentSpillRegSize);
+            indrSpillRegSize = std::max(indrSpillRegSize, currentIndrSpillRegSize);
         }
     }
 }
@@ -6526,7 +6480,7 @@ bool GraphColor::regAlloc(
     bool doBankConflictReduction,
     bool highInternalConflict,
     bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize,
-    RPE* rpe)
+    const RPE* rpe)
 {
 
     bool useSplitLLRHeuristic = false;
@@ -6567,8 +6521,8 @@ bool GraphColor::regAlloc(
         {
             auto dclLR = gra.getLocalLR(dcl);
 
-            if (dclLR != NULL &&
-                gra.getLocalLR(dcl)->getSplit())
+            if (dclLR != nullptr &&
+                dclLR->getSplit())
             {
                 useSplitLLRHeuristic = true;
             }
@@ -7471,10 +7425,8 @@ void GlobalRA::addCalleeSaveRestoreCode()
 
     OptimizeActiveRegsFootprint(calleeSaveRegs);
     unsigned calleeSaveRegsWritten = 0;
-    for (std::vector<bool>::iterator vit = calleeSaveRegs.begin(), vitend = calleeSaveRegs.end();
-        vit != vitend;
-        vit++)
-        calleeSaveRegsWritten += ((*vit) ? 1 : 0);
+    for (bool b : calleeSaveRegs)
+        calleeSaveRegsWritten += (b ? 1 : 0);
 
     INST_LIST_ITER insertSaveIt = builder.kernel.fg.getEntryBB()->end();
     for (--insertSaveIt; !(*insertSaveIt)->isCalleeSave(); --insertSaveIt);
@@ -8142,11 +8094,7 @@ void GlobalRA::detectNeverDefinedUses()
                 inst->getDst()->getBase() &&
                 inst->getDst()->getBase()->isRegVar())
             {
-                referencedDcl = inst->getDst()->getBase()->asRegVar()->getDeclare();
-                while (referencedDcl->getAliasDeclare() != NULL)
-                {
-                    referencedDcl = referencedDcl->getAliasDeclare();
-                }
+                referencedDcl = inst->getDst()->getBaseRegVarRootDeclare();
 
                 // Always insert top-most dcl
                 map_it = vars.find(referencedDcl);
@@ -8163,11 +8111,7 @@ void GlobalRA::detectNeverDefinedUses()
             if (inst->getCondModBase() &&
                 inst->getCondMod()->getBase()->isRegVar())
             {
-                referencedDcl = inst->getCondMod()->asCondMod()->getBase()->asRegVar()->getDeclare();
-                while (referencedDcl->getAliasDeclare() != NULL)
-                {
-                    referencedDcl = referencedDcl->getAliasDeclare();
-                }
+                referencedDcl = inst->getCondMod()->getBaseRegVarRootDeclare();
 
                 map_it = vars.find(referencedDcl);
                 if (map_it == vars.end())
@@ -8184,11 +8128,7 @@ void GlobalRA::detectNeverDefinedUses()
                 inst->getPredicate()->getBase() &&
                 inst->getPredicate()->getBase()->isRegVar())
             {
-                referencedDcl = inst->getPredicate()->asPredicate()->getBase()->asRegVar()->getDeclare();
-                while (referencedDcl->getAliasDeclare() != NULL)
-                {
-                    referencedDcl = referencedDcl->getAliasDeclare();
-                }
+                referencedDcl = inst->getPredicate()->getBaseRegVarRootDeclare();
 
                 // Check whether dcl was already added to list.
                 // If not, add it with flag set to false to indicate
@@ -8208,11 +8148,7 @@ void GlobalRA::detectNeverDefinedUses()
                     opnd->getBase() &&
                     opnd->getBase()->isRegVar())
                 {
-                    referencedDcl = opnd->getBase()->asRegVar()->getDeclare();
-                    while (referencedDcl->getAliasDeclare() != NULL)
-                    {
-                        referencedDcl = referencedDcl->getAliasDeclare();
-                    }
+                    referencedDcl = opnd->getBaseRegVarRootDeclare();
 
                     map_it = vars.find(referencedDcl);
                     if (map_it == vars.end())
@@ -9188,17 +9124,17 @@ void GlobalRA::assignRegForAliasDcl()
     //
     // assign Reg for Alias DCL
     //
-    for (DECLARE_LIST_ITER di = kernel.Declares.begin(), end = kernel.Declares.end(); di != end; ++di)
+    for (G4_Declare *dcl : kernel.Declares)
     {
         G4_RegVar * AliasRegVar;
         G4_RegVar * CurrentRegVar;
         unsigned tempoffset;
 
-        if ((*di)->getAliasDeclare() != NULL)
+        if (dcl->getAliasDeclare() != NULL)
         {
-            AliasRegVar = (*di)->getAliasDeclare()->getRegVar();
-            CurrentRegVar = (*di)->getRegVar();
-            tempoffset = AliasRegVar->getPhyRegOff()*AliasRegVar->getDeclare()->getElemSize() + (*di)->getAliasOffset();
+            AliasRegVar = dcl->getAliasDeclare()->getRegVar();
+            CurrentRegVar = dcl->getRegVar();
+            tempoffset = AliasRegVar->getPhyRegOff()*AliasRegVar->getDeclare()->getElemSize() + dcl->getAliasOffset();
             if (AliasRegVar->getPhyReg() != NULL)
             {
                 //
@@ -9237,8 +9173,8 @@ void GlobalRA::assignRegForAliasDcl()
                 // Propagate addr taken spill/fill to aliases
                 CurrentRegVar->getDeclare()->setAddrTakenSpillFill(AliasRegVar->getDeclare()->getAddrTakenSpillFill());
 
-                if ((*di)->isSpilled() == false)
-                    (*di)->setSpillFlag();
+                if (dcl->isSpilled() == false)
+                    dcl->setSpillFlag();
             }
         }
     }
@@ -9418,7 +9354,7 @@ int GlobalRA::coloringRegAlloc()
         {
             copyMissingAlignment();
             BankConflictPass bc(*this);
-            LivenessAnalysis liveAnalysis(*this,G4_GRF | G4_INPUT);
+            LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
             liveAnalysis.computeLiveness();
 
             TIME_SCOPE(LINEARSCAN_RA);
@@ -10406,8 +10342,7 @@ void FlagSpillCleanup::regDefineFlag(
             //     b. and the register in define and spill instruction can reuse previous one.
             // 4. Otherwise, the (pre)fill instruction can not be removed, and no reuse will happen.
             // 5. For pure fill, it's no killed by same declare
-            G4_Declare *preDcl = NULL;
-            preDcl = scratchAccess->flagOpnd->getTopDcl();
+            G4_Declare *preDcl = scratchAccess->flagOpnd->getTopDcl();
 
             if (topdcl == preDcl)
             {
@@ -10492,14 +10427,8 @@ void FlagSpillCleanup::regUseFlag(
     FlagLineraizedStartAndEnd(opnd->getTopDcl(), linearizedStart, linearizedEnd);
 
     //Impact on previous scratch access
-    SCRATCH_PTR_LIST_ITER it = scratchTraceList->begin();
-    SCRATCH_PTR_LIST_ITER itEnd = scratchTraceList->end();
-    while (it != itEnd)
+    for (SCRATCH_ACCESS * scratchAccess : *scratchTraceList)
     {
-        SCRATCH_PTR_LIST_ITER kt = it;
-        kt++;
-        SCRATCH_ACCESS * scratchAccess = *it;
-
         if (linearizedEnd &&
             IS_FLAG_RANGE_OVERLAP(linearizedStart, linearizedEnd, scratchAccess))
         {
@@ -10508,7 +10437,6 @@ void FlagSpillCleanup::regUseFlag(
                 inst->isPseudoUse())
             {
                 scratchAccess->removeable = false;
-                it = kt;
                 continue;
             }
 
@@ -10526,7 +10454,6 @@ void FlagSpillCleanup::regUseFlag(
                 }
             }
         }
-        it = kt;
     }
 }
 
@@ -10832,14 +10759,8 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst
     unsigned linearizedEnd = 0;
     FlagLineraizedStartAndEnd(topdcl, linearizedStart, linearizedEnd);
 
-    SCRATCH_PTR_LIST_ITER it = scratchTraceList.begin();
-    SCRATCH_PTR_LIST_ITER itEnd = scratchTraceList.end();
-    while (it != itEnd)
+    for (SCRATCH_ACCESS * preScratchAccess : scratchTraceList)
     {
-        SCRATCH_PTR_LIST_ITER kt = it;
-        kt++;
-
-        SCRATCH_ACCESS *preScratchAccess = *it;
         if (IS_FLAG_RANGE_OVERLAP(linearizedStart, linearizedEnd, preScratchAccess))
         {
             G4_Declare *preDcl = preScratchAccess->flagOpnd->getTopDcl();
@@ -10857,7 +10778,6 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst
                 }
             }
         }
-        it = kt;
     }
 
     return;
@@ -10992,76 +10912,55 @@ void FlagSpillCleanup::regFillClean(
     SCRATCH_PTR_VEC&  candidateList,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
-    if (candidateList.size())
+    for (SCRATCH_ACCESS * scratchAccess : candidateList)
     {
-        SCRATCH_PTR_VEC::iterator it = candidateList.begin();
-        SCRATCH_PTR_VEC::iterator itEnd = candidateList.end();
-        while (it != itEnd)
-        {
-            SCRATCH_PTR_VEC::iterator kt = it;
-            kt++;
-            SCRATCH_ACCESS* scratchAccess = *it;
-            SCRATCH_ACCESS* preScratchAccess = scratchAccess->preScratchAccess;
+        SCRATCH_ACCESS* preScratchAccess = scratchAccess->preScratchAccess;
 
-            // Since the reuse happens from front to end.
-            // If the pre scratchAccess is killed, current candidate can not reuse previous register any more
-            if (!scratchAccess->instKilled &&
-                (scratchAccess->removeable || scratchAccess->directKill))
+        // Since the reuse happens from front to end.
+        // If the pre scratchAccess is killed, current candidate can not reuse previous register any more
+        if (!scratchAccess->instKilled &&
+            (scratchAccess->removeable || scratchAccess->directKill))
+        {
+            if (scratchAccess->prePreScratchAccess)
             {
-                if (scratchAccess->prePreScratchAccess)
+                while (preScratchAccess &&
+                    preScratchAccess->preScratchAccess &&
+                    preScratchAccess != scratchAccess->prePreScratchAccess)
                 {
-                    while (preScratchAccess &&
-                        preScratchAccess->preScratchAccess &&
-                        preScratchAccess != scratchAccess->prePreScratchAccess)
+                    //If possible, propagate to previous scratchAccess
+                    if (preScratchAccess->preFillAccess)
                     {
-                        //If possible, propagate to previous scratchAccess
-                        if (preScratchAccess->preFillAccess)
+                        //to jump over prefill.
+                        if (preScratchAccess->isSpill &&
+                            preScratchAccess->preFillAccess &&
+                            preScratchAccess->preFillAccess->instKilled &&
+                            preScratchAccess->preScratchAccess)
                         {
-                            //to jump over prefill.
-                            if (preScratchAccess->isSpill &&
-                                preScratchAccess->preFillAccess &&
-                                preScratchAccess->preFillAccess->instKilled &&
-                                preScratchAccess->preScratchAccess)
-                            {
-                                preScratchAccess = preScratchAccess->preScratchAccess;
-                            }
-                            else
-                            {
-                                break;
-                            }
+                            preScratchAccess = preScratchAccess->preScratchAccess;
                         }
                         else
                         {
-                            if (!preScratchAccess->instKilled)
-                            {
-                                break;
-                            }
-                            preScratchAccess = preScratchAccess->preScratchAccess;
+                            break;
                         }
                     }
-
-                    if (preScratchAccess)
+                    else
                     {
-                        if (preScratchAccess->isSpill &&
-                            preScratchAccess->preFillAccess &&
-                            preScratchAccess->preFillAccess->instKilled)
+                        if (!preScratchAccess->instKilled)
                         {
+                            break;
                         }
-                        else if (!preScratchAccess->instKilled)
-                        {
-                            if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
-                            {
-                                bb->erase(scratchAccess->inst_it);
-                                scratchAccess->instKilled = true;
-                                scratchAccess->preScratchAccess->useCount--;
-                                clean_num_profile->fill_clean_num[0]++;
-                            }
-                        }
+                        preScratchAccess = preScratchAccess->preScratchAccess;
                     }
                 }
-                else
+
+                if (preScratchAccess)
                 {
-                    if (preScratchAccess && !preScratchAccess->instKilled)
+                    if (preScratchAccess->isSpill &&
+                        preScratchAccess->preFillAccess &&
+                        preScratchAccess->preFillAccess->instKilled)
+                    {
+                    }
+                    else if (!preScratchAccess->instKilled)
                     {
                         if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
                         {
@@ -11073,13 +10972,24 @@ void FlagSpillCleanup::regFillClean(
                     }
                 }
             }
-#ifdef _DEBUG
-            if (clean_num_profile->fill_clean_num[0] > FILL_DEBUG_THRESHOLD)
-                return;
-#endif
-
-            it = kt;
+            else
+            {
+                if (preScratchAccess && !preScratchAccess->instKilled)
+                {
+                    if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
+                    {
+                        bb->erase(scratchAccess->inst_it);
+                        scratchAccess->instKilled = true;
+                        scratchAccess->preScratchAccess->useCount--;
+                        clean_num_profile->fill_clean_num[0]++;
+                    }
+                }
+            }
         }
+#ifdef _DEBUG
+        if (clean_num_profile->fill_clean_num[0] > FILL_DEBUG_THRESHOLD)
+            return;
+#endif
     }
 
     return;
@@ -11091,37 +11001,27 @@ void FlagSpillCleanup::regSpillClean(
     SCRATCH_PTR_VEC&  candidateList,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
-    if (candidateList.size())
+    for (SCRATCH_ACCESS * scratchAccess : candidateList)
     {
-        SCRATCH_PTR_VEC::iterator it = candidateList.begin();
-        SCRATCH_PTR_VEC::iterator itEnd = candidateList.end();
-        while (it != itEnd)
+        if (scratchAccess->instKilled)
         {
-            SCRATCH_PTR_VEC::iterator kt = it;
-            kt++;
-            SCRATCH_ACCESS * scratchAccess = *it;
-            if (scratchAccess->instKilled)
-            {
-                it = kt;
-                continue;
-            }
-            if (!scratchAccess->instKilled &&
-                scratchAccess->isSpill &&
-                scratchAccess->removeable &&
-                scratchAccess->evicted &&
-                scratchAccess->useCount == 0)
-            {
-                bb->erase(scratchAccess->inst_it);
-                scratchAccess->instKilled = true;
-                clean_num_profile->spill_clean_num[0]++;
+            continue;
+        }
+        if (!scratchAccess->instKilled &&
+            scratchAccess->isSpill &&
+            scratchAccess->removeable &&
+            scratchAccess->evicted &&
+            scratchAccess->useCount == 0)
+        {
+            bb->erase(scratchAccess->inst_it);
+            scratchAccess->instKilled = true;
+            clean_num_profile->spill_clean_num[0]++;
 #ifdef _DEBUG
-                if (clean_num_profile->spill_clean_num[0] > SPILL_DEBUG_THRESHOLD)
-                {
-                    return;
-                }
-#endif
+            if (clean_num_profile->spill_clean_num[0] > SPILL_DEBUG_THRESHOLD)
+            {
+                return;
             }
-            it = kt;
+#endif
         }
     }
 
@@ -12117,17 +12017,17 @@ void GlobalRA::assignLocForReturnAddr()
     // a data structure for doing a quick map[id] ---> block
     //
     G4_BB**  BBs = (G4_BB**)builder.mem.alloc(fg.getNumBB() * sizeof(G4_BB*));
-    for (BB_LIST_ITER it = fg.begin(), bbEnd = fg.end(); it != bbEnd; it++)
+    for (G4_BB *bb : fg)
     {
-        unsigned i = (*it)->getId();
+        unsigned i = bb->getId();
         retLoc[i] = UNDEFINED_VAL;
-        BBs[i] = (*it);                                                     // BBs are sorted by ID
+        BBs[i] = bb;                                                     // BBs are sorted by ID
     }
 
     //
     // Firstly, keep the original algorithm unchanged to mark the retLoc
     //
-    std::list<G4_BB *> caller;                                          // just to accelerate the algorithm later
+    std::vector<G4_BB *> caller;                                          // just to accelerate the algorithm later
 
     for (unsigned i = 0, bbNum = fg.getNumBB(); i < bbNum; i++)
     {
@@ -12142,7 +12042,7 @@ void GlobalRA::assignLocForReturnAddr()
         MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
 #endif
 
-        caller.push_back(bb);                   // record the  callers, just to accelerate the algorithm
+        caller.push_back(bb);                   // record the callers, just to accelerate the algorithm
 
         G4_BB* subEntry = bb->getCalleeInfo()->getInitBB();
         if (retLoc[subEntry->getId()] != UNDEFINED_VAL) // a loc has been assigned to the subroutine
@@ -12349,7 +12249,7 @@ void GlobalRA::assignLocForReturnAddr()
             insertCallReturnVar();
 }
 
-void  GlobalRA::insertCallReturnVar()
+void GlobalRA::insertCallReturnVar()
 {
     for (auto bb : kernel.fg)
     {
@@ -12373,7 +12273,7 @@ void  GlobalRA::insertCallReturnVar()
     }
 }
 
-void  GlobalRA::insertSaveAddr(G4_BB* bb)
+void GlobalRA::insertSaveAddr(G4_BB* bb)
 {
     MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
     MUST_BE_TRUE(getSubRetLoc(bb) != UNDEFINED_VAL,
@@ -12394,7 +12294,7 @@ void  GlobalRA::insertSaveAddr(G4_BB* bb)
     }
 }
 
-void  GlobalRA::insertRestoreAddr(G4_BB* bb)
+void GlobalRA::insertRestoreAddr(G4_BB* bb)
 {
     MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
 

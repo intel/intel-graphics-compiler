@@ -570,8 +570,8 @@ void IR_Builder::createPreDefinedVars()
         if (predefinedVarNeedGRF(i))
         {
             // work item id variables are handled uniformly
-            G4_Type ty = GetGenTypeFromVISAType(getPredefinedVarType((PreDefinedVarsInternal)i));
-            dcl = createPreVar(getPredefinedVarID((PreDefinedVarsInternal)i), 1, ty);
+            G4_Type ty = GetGenTypeFromVISAType(getPredefinedVarType(i));
+            dcl = createPreVar(getPredefinedVarID(i), 1, ty);
         }
         else
         {

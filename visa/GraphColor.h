@@ -283,7 +283,7 @@ namespace vISA
         G4_Kernel& kernel;
         Interference& intf;
         GlobalRA& gra;
-        LivenessAnalysis& liveAnalysis;
+        const LivenessAnalysis& liveAnalysis;
         LiveRange* const * const lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
@@ -340,7 +340,7 @@ namespace vISA
         void addSIMDIntfForRetDclares(G4_Declare* newDcl);
 
     public:
-        Augmentation(G4_Kernel& k, Interference& i, LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g);
+        Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g);
 
         void augmentIntfGraph();
     };
@@ -364,7 +364,7 @@ namespace vISA
         const unsigned splitStartId;
         const unsigned splitNum;
         unsigned* matrix = nullptr;
-        LivenessAnalysis* const liveAnalysis;
+        const LivenessAnalysis* const liveAnalysis;
 
         std::vector<std::vector<unsigned>> sparseIntf;
 
@@ -441,7 +441,7 @@ namespace vISA
 
         inline void filterSplitDclares(unsigned startIdx, unsigned endIdx, unsigned n, unsigned col, unsigned &elt, bool is_split);
 
-        void buildInterferenceWithLive(BitSet& live, unsigned i);
+        void buildInterferenceWithLive(const BitSet& live, unsigned i);
         void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf);
         void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
 
@@ -456,7 +456,7 @@ namespace vISA
         void generateSparseIntfGraph();
 
     public:
-        Interference(LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
+        Interference(const LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
             GlobalRA& g);
 
         ~Interference()
@@ -525,14 +525,14 @@ namespace vISA
     // Used only when -dumpregchart is passed.
     class RegChartDump
     {
-    public:
-        GlobalRA& gra;
+        const GlobalRA& gra;
         std::vector<G4_Declare*> sortedLiveIntervals;
         std::unordered_map<G4_Declare*, std::pair<G4_INST*, G4_INST*>> startEnd;
+    public:
         void recordLiveIntervals(const std::vector<G4_Declare*>& dcls);
         void dumpRegChart(std::ostream&, LiveRange** lrs = nullptr, unsigned numLRs = 0);
 
-        RegChartDump(GlobalRA& g) : gra(g) {}
+        RegChartDump(const GlobalRA& g) : gra(g) {}
     };
 
     class GraphColor
@@ -540,9 +540,9 @@ namespace vISA
         GlobalRA& gra;
 
         unsigned totalGRFRegCount; // .reg_count_total
-        unsigned numVar;
-        unsigned numSplitStartID;
-        unsigned numSplitVar;
+        const unsigned numVar;
+        const unsigned numSplitStartID;
+        const unsigned numSplitVar;
         unsigned *spAddrRegSig;
         Interference intf;
         PhyRegPool& regPool;
@@ -597,7 +597,7 @@ namespace vISA
         bool regAlloc(
             bool doBankConflictReduction,
             bool highInternalConflict,
-            bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize, RPE* rpe);
+            bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize, const RPE* rpe);
         bool requireSpillCode() const { return !spilledLRs.empty(); }
         const Interference * getIntf() const { return &intf; }
         void createLiveRanges(unsigned reserveSpillSize = 0);
@@ -1190,7 +1190,7 @@ namespace vISA
             }
         }
 
-        void emitFGWithLiveness(LivenessAnalysis& liveAnalysis);
+        void emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const;
         void reportSpillInfo(const LivenessAnalysis& liveness, const GraphColor& coloring) const;
         static uint32_t getRefCount(int loopNestLevel);
         bool isReRAPass();

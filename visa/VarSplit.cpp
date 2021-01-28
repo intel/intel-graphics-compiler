@@ -505,7 +505,7 @@ void VarSplitPass::split()
             unsigned int rb = lb + (getGRFSize()*numRows)-1;
 
             auto name = kernel.fg.builder->getNameString(kernel.fg.mem, 50, "%s_%d_%d_%d", dstDcl->getName(), i, lb, rb);
-            auto splitDcl = kernel.fg.builder->createDeclareNoLookup((const char*)name,
+            auto splitDcl = kernel.fg.builder->createDeclareNoLookup(name,
                 G4_RegFileKind::G4_GRF, numEltPerGRF<Type_UD>(), numRows, Type_UD);
             splitParentDcl.insert(std::make_pair(splitDcl, dstDcl));
             splitChildren[dstDcl].push_back(splitDcl);

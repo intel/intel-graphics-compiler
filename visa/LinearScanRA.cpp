@@ -612,7 +612,7 @@ void LinearScanRA::linearScanMarkReferences(unsigned int& numRowsEOT)
     getGlobalDeclares();
 }
 
-bool LSLiveRange::isLiveRangeGlobal()
+bool LSLiveRange::isLiveRangeGlobal() const
 {
     if (numRefsInFG > 1 ||
         topdcl->isOutput() == true ||
@@ -628,12 +628,9 @@ bool LSLiveRange::isLiveRangeGlobal()
 
 void LinearScanRA::getGlobalDeclares()
 {
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (G4_Declare* dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-        LSLiveRange* lr = gra.getSafeLSLR(dcl);
+        const LSLiveRange* lr = gra.getSafeLSLR(dcl);
 
         if (lr && lr->isLiveRangeGlobal())
         {
