@@ -104,8 +104,10 @@ public:
         return nullptr;
     }
     virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
-    bool CompileSIMDSizeInCommon(SIMDMode simdMode);
-    virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) { return true; }
+    virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
+    {
+        return CompileSIMDSizeInCommon(simdMode);
+    }
     CVariable* LazyCreateCCTupleBackingVariable(
         CoalescingEngine::CCTuple* ccTuple,
         VISA_Type baseType = ISA_TYPE_UD);
@@ -490,6 +492,7 @@ public:
 
 protected:
     void GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings);
+    bool CompileSIMDSizeInCommon(SIMDMode simdMode);
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.
