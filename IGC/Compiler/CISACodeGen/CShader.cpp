@@ -129,14 +129,17 @@ void CShader::PreAnalysisPass()
     {
         if (funcMDItr->second.privateMemoryPerWI != 0)
         {
-            const uint32_t GRFSize = getGRFSize();
-            IGC_ASSERT(0 < GRFSize);
+            if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
+            {
+                const uint32_t GRFSize = getGRFSize();
+                IGC_ASSERT(0 < GRFSize);
 
-            m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
+                m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
 
-            // Round up to GRF-byte aligned.
-            m_ScratchSpaceSize = ((GRFSize + m_ScratchSpaceSize - 1) / GRFSize) * GRFSize;
+                // Round up to GRF-byte aligned.
+                m_ScratchSpaceSize = ((GRFSize + m_ScratchSpaceSize - 1) / GRFSize) * GRFSize;
 
+            }
         }
     }
 
@@ -3256,8 +3259,7 @@ void CShader::PackAndCopyVariable(
 
 bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
-    bool ret = ((m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace()) &&
-        (m_simdProgram.getScratchSpaceUsageInSlot1() <= m_ctx->platform.maxPerThreadScratchSpace()));
+    bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
 
 
     return ret;
