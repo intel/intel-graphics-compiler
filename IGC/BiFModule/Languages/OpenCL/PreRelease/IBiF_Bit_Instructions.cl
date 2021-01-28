@@ -34,42 +34,34 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(cl_intel_bit_instructions)
 
-#define GEN_DEFINITION_BFI( FUNC, OP, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2 ) \
-INLINE TYPE1 OVERLOADABLE FUNC( TYPE1 base, TYPE1 insert, TYPE2 offset, TYPE2 count ) { \
-    return __builtin_spirv_##OP##_##ABBR_TYPE1##_##ABBR_TYPE1##_##ABBR_TYPE2##_##ABBR_TYPE2(base, insert, offset, count); \
-}
+#define GEN_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE)                                                      \
+  INLINE TYPE OVERLOADABLE FUNC(TYPE base, TYPE insert, uint offset, uint count) {                                     \
+    return as_##TYPE(SPIRV_BUILTIN(OP, _##ABBR_TYPE##_##ABBR_TYPE##_i32_i32, )(                                        \
+        as_##SPIRV_TYPE(base), as_##SPIRV_TYPE(insert), as_int(offset), as_int(count)));                               \
+  }
 
-#define GEN_VECTOR_DEFINITION_BFI( FUNC, OP, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2, VEC_SIZE) \
-INLINE TYPE1##VEC_SIZE OVERLOADABLE FUNC( TYPE1##VEC_SIZE base, TYPE1##VEC_SIZE insert, TYPE2##VEC_SIZE offset, TYPE2##VEC_SIZE count ) { \
-    return __builtin_spirv_##OP##_v##VEC_SIZE##ABBR_TYPE1##_v##VEC_SIZE##ABBR_TYPE1##_v##VEC_SIZE##ABBR_TYPE2##_v##VEC_SIZE##ABBR_TYPE2 \
-        (base, insert, offset, count); \
-}
+#define GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, VEC_SIZE)                                     \
+  INLINE TYPE##VEC_SIZE OVERLOADABLE FUNC(TYPE##VEC_SIZE base, TYPE##VEC_SIZE insert, uint##VEC_SIZE offset,           \
+                                          uint##VEC_SIZE count) {                                                      \
+    return as_##TYPE##VEC_SIZE(                                                                                        \
+        SPIRV_BUILTIN(OP, _v##VEC_SIZE##ABBR_TYPE##_v##VEC_SIZE##ABBR_TYPE##_v##VEC_SIZE##i32_v##VEC_SIZE##i32, )(     \
+            as_##SPIRV_TYPE##VEC_SIZE(base), as_##SPIRV_TYPE##VEC_SIZE(insert), as_int##VEC_SIZE(offset),              \
+            as_int##VEC_SIZE(count)));                                                                                 \
+  }
 
-#define GEN_DEFINITIONS_BFI( FUNC, OP ) \
-    GEN_DEFINITION_BFI( FUNC, OP, uchar, uint, i8, i32 ) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uchar, uint, i8, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uchar, uint, i8, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uchar, uint, i8, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uchar, uint, i8, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uchar, uint, i8, i32, 16) \
-    GEN_DEFINITION_BFI( FUNC, OP, ushort, uint, i16, i32 ) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ushort, uint, i16, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ushort, uint, i16, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ushort, uint, i16, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ushort, uint, i16, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ushort, uint, i16, i32, 16) \
-    GEN_DEFINITION_BFI( FUNC, OP, uint, uint, i32, i32 ) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uint, uint, i32, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uint, uint, i32, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uint, uint, i32, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uint, uint, i32, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, uint, uint, i32, i32, 16) \
-    GEN_DEFINITION_BFI( FUNC, OP, ulong, uint, i64, i32 ) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ulong, uint, i64, i32, 2) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ulong, uint, i64, i32, 3) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ulong, uint, i64, i32, 4) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ulong, uint, i64, i32, 8) \
-    GEN_VECTOR_DEFINITION_BFI( FUNC, OP, ulong, uint, i64, i32, 16)
+#define GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE)                                          \
+  GEN_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE)                                                            \
+  GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, 2)                                                  \
+  GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, 3)                                                  \
+  GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, 4)                                                  \
+  GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, 8)                                                  \
+  GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, 16)
+
+#define GEN_DEFINITIONS_BFI(FUNC, OP)                                                                                  \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, uchar, i8, char)                                                            \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, ushort, i16, short)                                                         \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, uint, i32, int)                                                             \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, ulong, i64, long)
 
 #define GEN_DEFINITION_BFE( FUNC, OP, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2 ) \
 INLINE TYPE1 OVERLOADABLE FUNC( TYPE1 base, TYPE2 offset, TYPE2 count ) { \
@@ -170,7 +162,7 @@ INLINE TYPE##VEC_SIZE OVERLOADABLE FUNC( TYPE##VEC_SIZE base ) { \
     GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, ulong, i64, 8) \
     GEN_VECTOR_DEFINITION_BFREV( FUNC, OP, ulong, i64, 16) \
 
-GEN_DEFINITIONS_BFI( intel_bfi, OpBitFieldInsert )
+GEN_DEFINITIONS_BFI( intel_bfi, BitFieldInsert )
 GEN_DEFINITIONS_SBFE( intel_sbfe, OpBitFieldSExtract )
 GEN_DEFINITIONS_UBFE( intel_ubfe, OpBitFieldUExtract )
 GEN_DEFINITIONS_BFREV( intel_bfrev, OpBitReverse )
