@@ -2111,7 +2111,13 @@ bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(
 
 bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode, int lineNum)
 {
-    VISA_CALL_TO_BOOL(AppendVISASyncInst, opcode);
+    VISA_INST_Desc *inst_desc = NULL;
+    inst_desc = &CISA_INST_table[opcode];
+
+    CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+
+    inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0 , 0 ,NULL, 0, inst_desc);
+    m_kernel->addInstructionToEnd(inst);
     return true;
 }
 
