@@ -1003,7 +1003,7 @@ namespace vISA
             bool GRFOnly);
 
         void setDistance(SBFootprint * footprint, SBNode *node, SBNode *liveNode, bool dstDep);
-        void footprintMerge(SBNode * node, SBNode * nextNode);
+        static void footprintMerge(SBNode * node, const SBNode * nextNode);
 
         void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);
 
@@ -1220,6 +1220,9 @@ namespace vISA
         void expireIntervals(unsigned startID);
         void addToLiveList(SBNode *node);
 
+        void examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &curDistance, unsigned nodeID, unsigned nodeDelay, const SBNode *curNode, unsigned char nestLoopLevel, unsigned curLoopStartBB, unsigned curLoopEndBB) const;
+        SBNode * reuseTokenSelection(const SBNode * node) const;
+        unsigned getDepDelay(const SBNode *node) const;
         unsigned short reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*& candidateNode, bool& fromUse);
         void addReachingDefineSet(SBNode* node, SBBitSets* globalLiveSet, SBBitSets* localLiveSet);
         void addReachingUseSet(SBNode* node, SBNode* use);
@@ -1313,8 +1316,6 @@ namespace vISA
             }
         }
         void SWSBGenerator();
-        SBNode * reuseTokenSelection(SBNode * node);
-        unsigned getDepDelay(const SBNode *node);
     };
 }
 #endif // _SWSB_H_

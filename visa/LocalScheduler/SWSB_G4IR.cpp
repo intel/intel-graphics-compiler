@@ -1261,13 +1261,14 @@ void SWSB::SWSBGenerator()
     return;
 }
 
-unsigned SWSB::getDepDelay(const SBNode* curNode)
+unsigned SWSB::getDepDelay(const SBNode* curNode) const
 {
+    const G4_INST* inst = curNode->GetInstruction();
     int reuseDelay = 0;
 
-    if (curNode->GetInstruction()->isSend())
+    if (inst->isSend())
     {
-        const G4_SendMsgDescriptor* msgDesc = curNode->GetInstruction()->getMsgDesc();
+        const G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
 
         if (msgDesc->isSLMMessage())
         {
@@ -1282,7 +1283,7 @@ unsigned SWSB::getDepDelay(const SBNode* curNode)
             reuseDelay = TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE;
         }
     }
-    else if (curNode->GetInstruction()->isMathPipeInst())
+    else if (inst->isMathPipeInst())
     {
 
         reuseDelay = TOKEN_AFTER_WRITE_MATH_CYCLE;
@@ -1296,140 +1297,87 @@ unsigned SWSB::getDepDelay(const SBNode* curNode)
 }
 
 #define LOOP_FACTOR_FOR_TOAKE_REUSE  5
-//The algorithm for reuse selectoin: The live range which causes the least stall delay of current live range.
+void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &curDistance, unsigned nodeID, unsigned nodeDelay, const SBNode *curNode, unsigned char nestLoopLevel, unsigned curLoopStartBB, unsigned curLoopEndBB) const
+{
+    curDistance = 0;
+    if (nodeID > curNode->getNodeID())
+    {
+        unsigned curNodeDelay = getDepDelay(curNode);
+        reuseDelay = curNodeDelay - (nodeID - curNode->getNodeID());
+        if (reuseDelay < 0)
+        {
+            curDistance = nodeID - curNode->getNodeID();
+        }
+    }
+    else
+    {
+        reuseDelay = nodeDelay - (curNode->getNodeID() - nodeID);
+        if (reuseDelay < 0)
+        {
+            curDistance = curNode->getNodeID() - nodeID;
+        }
+    }
+
+    unsigned char curNodeNestLoopLevel = BBVector[curNode->getBBID()]->getBB()->getNestLevel();
+    unsigned loopLevelDiff = curNodeNestLoopLevel > nestLoopLevel ? curNodeNestLoopLevel - nestLoopLevel : nestLoopLevel - curNodeNestLoopLevel;
+    if (reuseDelay > 0)
+    {
+        reuseDelay /= LOOP_FACTOR_FOR_TOAKE_REUSE * loopLevelDiff + 1;
+    }
+    else
+    {
+        curDistance *= LOOP_FACTOR_FOR_TOAKE_REUSE * loopLevelDiff + 1;
+        if (nestLoopLevel && loopLevelDiff == 0)
+        {
+            if (curLoopStartBB == -1 || curLoopEndBB == -1)
+            {
+                curLoopStartBB = BBVector[curNode->getBBID()]->getLoopStartBBID();
+                curLoopEndBB = BBVector[curNode->getBBID()]->getLoopEndBBID();
+            }
+            //Count the backedge, if the backedge distance is short, take it
+            if (curLoopStartBB != -1 && curLoopEndBB != -1)
+            {
+                unsigned loopStartID = BBVector[curLoopStartBB]->first_node;
+                unsigned loopEndID = BBVector[curLoopEndBB]->last_node;
+                int backEdgeDistance = loopEndID - loopStartID - curDistance;
+                if (curDistance > backEdgeDistance)
+                {
+                    curDistance = backEdgeDistance;
+                }
+            }
+        }
+    }
+}
+
+//The algorithm for reuse selection: The live range which causes the least stall delay of current live range.
 //Fixme: for global variable, it's not accurate. Because the AFTER_SOURCE and AFTER_WRITE may in different branches.
 //Try not reuse the tokens set in adjacent instructions.
-SBNode * SWSB::reuseTokenSelection(SBNode * node)
+SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
 {
     int delay = TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE;
     int distance = 0;
-    unsigned nodeID = node->getNodeID();
-    unsigned nodeDelay = getDepDelay(node);
-    unsigned char nestLoopLevel = BBVector[node->getBBID()]->getBB()->getNestLevel();
-    unsigned loopStartBB = BBVector[node->getBBID()]->getLoopStartBBID();
-    unsigned loopEndBB = BBVector[node->getBBID()]->getLoopEndBBID();
-    unsigned loopStartID = -1;
-    unsigned loopEndID = -1;
+    const unsigned nodeID = node->getNodeID();
+    const unsigned nodeDelay = getDepDelay(node);
+    const unsigned char nestLoopLevel = BBVector[node->getBBID()]->getBB()->getNestLevel();
+    const unsigned loopStartBB = BBVector[node->getBBID()]->getLoopStartBBID();
+    const unsigned loopEndBB = BBVector[node->getBBID()]->getLoopEndBBID();
 
     assert(linearScanLiveNodes.size() <= totalTokenNum);
 
-    SBNode* candidateNode = *linearScanLiveNodes.begin();
-    for (SBNODE_LIST_ITER node_it = linearScanLiveNodes.begin();
-        node_it != linearScanLiveNodes.end();
-        node_it++)
+    SBNode* candidateNode = linearScanLiveNodes.front();
+    for (SBNode* curNode : linearScanLiveNodes)
     {
-        SBNode* curNode = (*node_it);
-        int reuseDelay = 0;
-        int curDistance = 0;
+        int reuseDelay;
+        int curDistance;
+        examineNodeForTokenReuse(reuseDelay, curDistance, nodeID, nodeDelay, curNode, nestLoopLevel, loopStartBB, loopEndBB);
+
+        const unsigned short token = curNode->getLastInstruction()->getToken();
         int sameTokenDistance = 0x7FFFFFFF;
-        unsigned curNodeDelay = getDepDelay(curNode);
-        unsigned char curNodeNestLoopLevel = BBVector[curNode->getBBID()]->getBB()->getNestLevel();
-        unsigned short token = curNode->getLastInstruction()->getToken();
-
-        if (nodeID > curNode->getNodeID())
+        for (const SBNode* snode : sameTokenNodes[token])
         {
-            reuseDelay = curNodeDelay - (nodeID - curNode->getNodeID());
-            if (reuseDelay < 0)
-            {
-                curDistance = nodeID - curNode->getNodeID();
-            }
-        }
-        else
-        {
-            reuseDelay = nodeDelay - (curNode->getNodeID() - nodeID);
-            if (reuseDelay < 0)
-            {
-                curDistance = curNode->getNodeID() - nodeID;
-            }
-        }
-        unsigned loopLevelDiff = curNodeNestLoopLevel > nestLoopLevel ? curNodeNestLoopLevel - nestLoopLevel : nestLoopLevel - curNodeNestLoopLevel;
-        if (reuseDelay > 0)
-        {
-            reuseDelay = reuseDelay / (LOOP_FACTOR_FOR_TOAKE_REUSE * loopLevelDiff + 1);
-        }
-        else
-        {
-            curDistance = (LOOP_FACTOR_FOR_TOAKE_REUSE * loopLevelDiff + 1) * curDistance;
-            if (nestLoopLevel && loopLevelDiff == 0)
-            {
-                unsigned curLoopStartBB = loopStartBB;
-                unsigned curLoopEndBB = loopEndBB;
-                if (curLoopStartBB == -1 || curLoopEndBB == -1)
-                {
-                    curLoopStartBB = BBVector[curNode->getBBID()]->getLoopStartBBID();
-                    curLoopEndBB = BBVector[curNode->getBBID()]->getLoopEndBBID();
-                }
-                //Count the backedge, if the backedge distance is short, take it
-                if (curLoopStartBB != -1 && curLoopEndBB != -1)
-                {
-                    loopStartID = BBVector[curLoopStartBB]->first_node;
-                    loopEndID = BBVector[curLoopEndBB]->last_node;
-                    int backEdgeDistance = loopEndID - loopStartID - curDistance;
-                    if (curDistance > backEdgeDistance)
-                    {
-                        curDistance = backEdgeDistance;
-                    }
-                }
-            }
-        }
-
-        for (SBNODE_LIST_ITER sn_it = sameTokenNodes[token].begin();
-            sn_it != sameTokenNodes[token].end();
-            sn_it++)
-        {
-            SBNode* snode = *sn_it;
-            unsigned char sNodeNestLoopLevel = BBVector[snode->getBBID()]->getBB()->getNestLevel();
-
             int sReuseDelay;
-            int sDistance = 0;
-            if (nodeID > snode->getNodeID())
-            {
-                unsigned sNodeDelay = getDepDelay(snode);
-                sReuseDelay = sNodeDelay - (nodeID - snode->getNodeID());
-                if (sReuseDelay < 0)
-                {
-                    sDistance = nodeID - snode->getNodeID();
-                }
-            }
-            else
-            {
-                sReuseDelay = nodeDelay - (snode->getNodeID() - nodeID);
-                if (sReuseDelay < 0)
-                {
-                    sDistance = snode->getNodeID() - nodeID;
-                }
-            }
-
-            unsigned loopLevelDiff = sNodeNestLoopLevel > nestLoopLevel ? sNodeNestLoopLevel - nestLoopLevel : nestLoopLevel - sNodeNestLoopLevel;
-            if (sReuseDelay > 0)
-            {
-                sReuseDelay /= loopLevelDiff * LOOP_FACTOR_FOR_TOAKE_REUSE + 1;
-            }
-            else
-            {
-                sDistance = (LOOP_FACTOR_FOR_TOAKE_REUSE * loopLevelDiff + 1) * sDistance;
-                if (nestLoopLevel && loopLevelDiff == 0)
-                {
-                    unsigned curLoopStartBB = loopStartBB;
-                    unsigned curLoopEndBB = loopEndBB;
-                    if (curLoopStartBB == -1 || curLoopEndBB == -1)
-                    {
-                        curLoopStartBB = BBVector[snode->getBBID()]->getLoopStartBBID();
-                        curLoopEndBB = BBVector[snode->getBBID()]->getLoopEndBBID();
-                    }
-                    //Count the backedge, if the backedge distance is short, take it
-                    if (curLoopStartBB != -1 && curLoopEndBB != -1)
-                    {
-                        loopStartID = BBVector[curLoopStartBB]->first_node;
-                        loopEndID = BBVector[curLoopEndBB]->last_node;
-                        int backEdgeDistance = loopEndID - loopStartID - sDistance;
-                        if (sDistance > backEdgeDistance)
-                        {
-                            sDistance = backEdgeDistance;
-                        }
-                    }
-                }
-            }
+            int sDistance;
+            examineNodeForTokenReuse(sReuseDelay, sDistance, nodeID, nodeDelay, snode, nestLoopLevel, loopStartBB, loopEndBB);
 
             //Get the largest delay for the token node
             if (sReuseDelay > reuseDelay)
@@ -1456,7 +1404,7 @@ SBNode * SWSB::reuseTokenSelection(SBNode * node)
         }
         else if (curDistance > distance && sameTokenDistance >= distance)
         {
-            distance = curDistance < sameTokenDistance ? curDistance : sameTokenDistance;
+            distance = std::min(curDistance, sameTokenDistance);
             candidateNode = curNode;
         }
     }
@@ -2431,9 +2379,8 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
         unsigned short curToken = (unsigned short)UNKNOWN_TOKEN;
         bool fromUse = false;
 
-        for (unsigned int k = 0; k < reachTokenArray[i]->size(); k++)
+        for (SBNode* liveNode : *reachTokenArray[i])
         {
-            SBNode* liveNode = (*reachTokenArray[i])[k];
             unsigned liveNodeDelay = getDepDelay(liveNode);
             unsigned liveNodeOverhead = 0;
 
@@ -2465,9 +2412,8 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
 
         if (fromSibling)
         {
-            for (unsigned int k = 0; k < reachUseArray[i]->size(); k++)
+            for (SBNode* useNode : *reachUseArray[i])
             {
-                SBNode* useNode = (*reachUseArray[i])[k];
                 unsigned nodeDelay = getDepDelay(node);
                 unsigned nodeOverhead = 0;
 
@@ -4492,7 +4438,7 @@ void G4_BB_SB::setDistance(SBFootprint* footprint, SBNode* node, SBNode* liveNod
 
 //The merged footprint is ordered from back to front instructions in the macro
 //As a result if killed, is the back instruction killed, which means front instructions are killed as well.
-void G4_BB_SB::footprintMerge(SBNode* node, SBNode* nextNode)
+void G4_BB_SB::footprintMerge(SBNode* node, const SBNode* nextNode)
 {
     for (Gen4_Operand_Number opndNum
         : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
