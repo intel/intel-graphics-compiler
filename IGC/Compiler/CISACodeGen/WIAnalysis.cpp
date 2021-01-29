@@ -145,6 +145,15 @@ gep_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
     /* RND */  {RND, RND, RND, RND, RND}
 };
 
+// For better readability, the rank of a dependency is used to compare two dependencies
+// to see which of them is weaker or stronger.
+//
+//   Dependancy rank : an integer value for each Dependancy, starting from 0.
+//   Property of rank: the lower (smaller) the rank, the stronger the dependancy.
+//
+// Currently, enum value of each dependency is used exactly as its rank.
+inline int depRank(WIAnalysis::WIDependancy D) { return (int)D; }
+
 namespace IGC {
     /// @Brief, given a conditional branch and its immediate post dominator,
     /// find its influence-region and partial joins within the influence region
@@ -622,46 +631,70 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
     // An exception are phi nodes since they can be the ancestor of themselves in
     // the def-use chain. Note that in this case we force the phi to have the
     // pre-header value already calculated.
-    if (!hasOriginal)
+    //
+    // Another case is that an inst might be set under control dependence (for example, phi)
+    // before any of its operands have been set. In this case, we will skip here. Here
+    // is the example (derived from ocl scheduler):
+    //      B0:  (p) goto Bt
+    //      B1:  goto Bf
+    //  L   B2:  x.lcssa = phi (x.0, Bn)      // B2: partial join
+    //      ...
+    //      Bt: ...
+    //      ...
+    //      Bf:
+    //      ...
+    //          goto Bm (out of loop)
+    //      Bn:
+    //          x.0 = ...
+    //          goto  B2
+    //      Bm:  ...
+    //      ...
+    //      B_ipd  ( iPDOM(B0) = B_ipd)
+    //
+    // B0's branch instruction has random dependency, which triggers control dependence calculation.
+    // B2 is a partial join in InfluenceRegion. Thus its phi is marked as random, but its operand
+    // x.0 is still not set yet.
+    unsigned int unsetOpNum = 0;
+    for (unsigned i = 0; i < inst->getNumOperands(); ++i)
     {
-        unsigned int unsetOpNum = 0;
-        for (unsigned i = 0; i < inst->getNumOperands(); ++i)
-        {
-            if (!hasDependency(inst->getOperand(i))) unsetOpNum++;
-        }
-        if (isa<PHINode>(inst))
-        {
-            // We do not calculate PhiNode with all incoming values unset.
-            //
-            // This seems right as we don't expect a phi that only depends upon other
-            // phi's (if it happens, those phis form a cycle dependency) so any phi's
-            // calculation will eventually be triggered from calculating a non-phi one
-            // which the phi depends upon.
-            if (unsetOpNum == inst->getNumOperands()) return;
-        }
-        else
-        {
-            // We do not calculate non-PhiNode instruction that have unset operands
-            if (unsetOpNum > 0) return;
+        if (!hasDependency(inst->getOperand(i))) unsetOpNum++;
+    }
+    if (isa<PHINode>(inst))
+    {
+        // We do not calculate PhiNode with all incoming values unset.
+        //
+        // This seems right as we don't expect a phi that only depends upon other
+        // phi's (if it happens, those phis form a cycle dependency) so any phi's
+        // calculation will eventually be triggered from calculating a non-phi one
+        // which the phi depends upon.
+        if (unsetOpNum == inst->getNumOperands()) return;
+    }
+    else
+    {
+        // We do not calculate non-PhiNode instruction that have unset operands
+        if (unsetOpNum > 0) return;
 
-            // We have all operands set. Check a special case from calculate_dep for
-            // binary ops (see the details below). It checks for ASHR+ADD and ASHR+SHL
-            // cases, and in particular it accesses dependency for ADD operands. It
-            // could happen these operands are not processed yet and in such case
-            // getDependency raises the assertion. Thus check if dependency is set.
-            // Currently we need to check dependency for ASHR->ADD operands only.
-            // For SHR, its operands are checked to be constant so skip this case.
-            // This code could be extended further depending on requirements.
-            if (inst->getOpcode() == Instruction::AShr)
+        // We have all operands set. Check a special case from calculate_dep for
+        // binary ops (see the details below). It checks for ASHR+ADD and ASHR+SHL
+        // cases, and in particular it accesses dependency for ADD operands. It
+        // could happen these operands are not processed yet and in such case
+        // getDependency raises the assertion. Thus check if dependency is set.
+        // Currently we need to check dependency for ASHR->ADD operands only.
+        // For SHR, its operands are checked to be constant so skip this case.
+        // This code could be extended further depending on requirements.
+        if (inst->getOpcode() == Instruction::AShr)
+        {
+            BinaryOperator* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
+            if (op0 && op0->getOpcode() == Instruction::Add &&
+                !hasDependency(op0->getOperand(1)))
             {
-                BinaryOperator* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
-                if (op0 && op0->getOpcode() == Instruction::Add &&
-                    !hasDependency(op0->getOperand(1)))
-                {
-                    return;
-                }
+                return;
             }
         }
+    }
+
+    if (!hasOriginal)
+    {
         orig = WIAnalysis::UNIFORM;
     }
     else
@@ -711,10 +744,17 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         {
             dep = WIAnalysis::RANDOM;
         }
-        // Save the new value of this instruction
-        updateDepMap(inst, dep);
+        // Update dependence of this instruction if dep is weaker than orig.
+        // Note depRank(orig) could be higher than depRank(dep) for phi.
+        // (Algo will never decrease the rank of a value.)
+        WIAnalysis::WIDependancy newDep = depRank(orig) < depRank(dep) ? dep : orig;
+        if (!hasOriginal || newDep != orig)
+        {
+            // update only for a new dep
+            updateDepMap(inst, newDep);
+        }
         // divergent branch, trigger updates due to control-dependence
-        if (inst->isTerminator() && dep != WIAnalysis::UNIFORM)
+        if (inst->isTerminator() && newDep != WIAnalysis::UNIFORM)
         {
             update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
         }
