@@ -183,6 +183,7 @@ namespace IGC
         int privateMemoryPerWI = 0;
         bool globalIDPresent = false;
         bool isUniqueEntry = false;
+        bool openCLNoLocalAddresses = false;
 
         // Analysis result of if there are non-kernel-argument ld/st in the kernel
         bool hasNonKernelArgLoad = false;
