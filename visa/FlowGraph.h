@@ -308,7 +308,7 @@ public:
         void add2SrcBC(unsigned num) { twoSrcBC += num; }
         void addSIMD8() { ++simd8; }
 
-    } G12BCStats;
+    } XeBCStats;
     unsigned numRMWs = 0;    // counting the number of read-modify-write
 public:
     // forwarding functions to the BBs list

@@ -49,8 +49,9 @@ struct PlatformInfo {
         const char *str0,
         const char *str1 = nullptr,
         const char *str2 = nullptr,
-        const char *str3 = nullptr)
-        : platform(p), family(f), encoding(e), symbols{str0, str1, str2, str3, nullptr}
+        const char *str3 = nullptr,
+        const char *str4 = nullptr)
+        : platform(p), family(f), encoding(e), symbols{str0, str1, str2, str3, str4, nullptr}
     {
     }
 }; // PlatformInfo

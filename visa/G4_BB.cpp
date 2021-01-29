@@ -277,10 +277,10 @@ void G4_BB::emitBasicInstructionIga(
                     sameBankConflicts, twoSrcConflicts, simd16SuppressionConflicts,
                     false, true, false);
             }
-            parent->G12BCStats.addBC(BCNum);
-            parent->G12BCStats.addSameBankBC(sameBankConflicts);
-            parent->G12BCStats.add2SrcBC(twoSrcConflicts);
-            parent->G12BCStats.addSimd16RSBC(simd16SuppressionConflicts);
+            parent->XeBCStats.addBC(BCNum);
+            parent->XeBCStats.addSameBankBC(sameBankConflicts);
+            parent->XeBCStats.add2SrcBC(twoSrcConflicts);
+            parent->XeBCStats.addSimd16RSBC(simd16SuppressionConflicts);
             parent->numRMWs += countReadModifyWrite(output, inst);
         }
     }
@@ -752,7 +752,7 @@ uint32_t G4_BB::emitBankConflictXe(
 {
     std::stringstream output;
 
-    parent->G12BCStats.addSIMD8();
+    parent->XeBCStats.addSIMD8();
 
     if (inst->isSend() || inst->isMath() ||
         inst->isSWSBSync() ||
@@ -845,7 +845,7 @@ uint32_t G4_BB::emitBankConflictXe(
 
     if (isCompressedInst)
     {
-        parent->G12BCStats.addSIMD8();
+        parent->XeBCStats.addSIMD8();
     }
 
     //Kill previous read suppression candiadte if it wrote in DST
@@ -1062,7 +1062,7 @@ uint32_t G4_BB::emitBankConflictXeLP(
 {
     std::stringstream output;
 
-    parent->G12BCStats.addSIMD8();
+    parent->XeBCStats.addSIMD8();
 
     if (inst->isSend() ||
         inst->isMath() ||
@@ -1175,7 +1175,7 @@ uint32_t G4_BB::emitBankConflictXeLP(
 
     if (instSplit)
     {
-        parent->G12BCStats.addSIMD8();
+        parent->XeBCStats.addSIMD8();
     }
 
     //Read Suppression for current instruction

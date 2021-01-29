@@ -842,7 +842,7 @@ void G4_Kernel::emit_asm(
         }
         else
         {
-            fg.G12BCStats.clear();
+            fg.XeBCStats.clear();
         }
         fg.numRMWs = 0;
     }
@@ -1063,11 +1063,11 @@ void G4_Kernel::emit_asm(
     {
         if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
         {
-            output << "\n\n//.BankConflicts: " <<  fg.G12BCStats.BCNum << "\n";
-            output << "//.sameBankConflicts: " <<  fg.G12BCStats.sameBankConflicts << "\n";
-            output << "//.simd16ReadSuppression: " <<  fg.G12BCStats.simd16ReadSuppression << "\n";
-            output << "//.twoSrcBankConflicts: " <<  fg.G12BCStats.twoSrcBC << "\n";
-            output << "//.SIMD8s: " <<  fg.G12BCStats.simd8 << "\n//\n";
+            output << "\n\n//.BankConflicts: " <<  fg.XeBCStats.BCNum << "\n";
+            output << "//.sameBankConflicts: " <<  fg.XeBCStats.sameBankConflicts << "\n";
+            output << "//.simd16ReadSuppression: " <<  fg.XeBCStats.simd16ReadSuppression << "\n";
+            output << "//.twoSrcBankConflicts: " <<  fg.XeBCStats.twoSrcBC << "\n";
+            output << "//.SIMD8s: " <<  fg.XeBCStats.simd8 << "\n//\n";
             output << "//.RMWs: " << fg.numRMWs << "\n//\n";
         }
         else
