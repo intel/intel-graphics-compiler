@@ -1022,13 +1022,13 @@ namespace vISA
         //Global SBID dependence analysis
         void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT *SBNodes, PointsToAnalysis &p);
         void dumpTokenLiveInfo(SBNODE_VECT * SBSendNodes);
-        void getLiveBucketsFromFootprint(SBFootprint *firstFootprint, SBBucketNode* sBucketNode, LiveGRFBuckets *send_use_kills);
+        void getLiveBucketsFromFootprint(const SBFootprint *firstFootprint, SBBucketNode* sBucketNode, LiveGRFBuckets *send_use_kills) const;
         void addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR *globalSendOpndList, SBNODE_VECT *SBNodes, PointsToAnalysis &p, bool afterWrite);
         void clearKilledBucketNodeXeLP(LiveGRFBuckets * LB, int ALUID);
 
 
 
-        void getLiveOutToken(unsigned allSendNum, SBNODE_VECT *SBNodes);
+        void getLiveOutToken(unsigned allSendNum, const SBNODE_VECT *SBNodes);
 
 
         unsigned getLoopStartBBID() const { return loopStartBBID; }
@@ -1039,7 +1039,7 @@ namespace vISA
 
         void *operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
-        void dumpLiveInfo(SBBUCKET_VECTOR *globalSendOpndList, unsigned globalSendNum, SBBitSets *send_kill);
+        void dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList, unsigned globalSendNum, const SBBitSets *send_kill) const;
     };
 
     typedef std::vector<G4_BB_SB *> BB_SWSB_VECTOR;
@@ -1060,7 +1060,7 @@ namespace vISA
 
         std::unordered_set<G4_BB*>& getDom(G4_BB*);
         std::vector<G4_BB*>& getImmDom(G4_BB*);
-        G4_BB* getCommonImmDom(std::unordered_set<G4_BB*>& bbs);
+        G4_BB* getCommonImmDom(const std::unordered_set<G4_BB*>& bbs);
         void runDOM();
         G4_BB* InterSect(G4_BB* bb, int i, int k);
         void runIDOM();
@@ -1192,7 +1192,7 @@ namespace vISA
         std::vector<SBNODE_VECT *> reachUseArray;
         SBNODE_VECT localTokenUsage;
 
-        SBNODE_LIST sameTokenNodes[32];
+        SBNODE_VECT sameTokenNodes[32];
         int topIndex = -1;
 
         std::map<G4_Label*, G4_BB_SB*> labelToBlockMap;
@@ -1208,7 +1208,7 @@ namespace vISA
 
         void removePredsEdges(SBNode * node, SBNode * pred);
 
-        void dumpImmDom(Dom* dom);
+        void dumpImmDom(Dom* dom) const;
 
         void setDefaultDistanceAtFirstInstruction();
 
@@ -1243,7 +1243,8 @@ namespace vISA
 
         //Assign Token
         void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
-        void assignDepToken(SBNode *node);
+        void assignDepToken(const SBNode *node);
+        void assignDepTokens();
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertTest();
 
@@ -1268,7 +1269,7 @@ namespace vISA
 
         //Optimizations
         void tokenDepReduction(SBNode* node1, SBNode *node2);
-        bool  cycleExpired(SBNode * node, int currentID);
+        bool cycleExpired(const SBNode * node, int currentID) const;
 
         void shareToken(SBNode *node, SBNode *succ, unsigned short token);
 
@@ -1277,10 +1278,10 @@ namespace vISA
 
 
         //Dump
-        void dumpDepInfo();
-        void dumpLiveIntervals();
-        void dumpTokeAssignResult();
-        void dumpSync(SBNode * tokenNode, SBNode * syncNode, unsigned short token, SWSBTokenType type);
+        void dumpDepInfo() const;
+        void dumpLiveIntervals() const;
+        void dumpTokeAssignResult() const;
+        void dumpSync(const SBNode * tokenNode, const SBNode * syncNode, unsigned short token, SWSBTokenType type) const;
 
         // Fast-composite support.
         void genSWSBPatchInfo();
