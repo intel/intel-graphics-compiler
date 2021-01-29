@@ -222,12 +222,31 @@ R0:
 //    local_id_s* local_id_buffer; // A64 ptr
 //    uint8_t structSize;
 //    uint8_t num_work_dim;
+//    uint8_t simd_width;
 //};
 
+// For SIMD8:
 //struct local_id_s {
-//    uint16_t lx[simd - width];
-//    uint16_t ly[simd - width];
-//    uint16_t lz[simd - width];
+//    uint16_t lx[8];
+//    uint16_t reserved[8];
+//    uint16_t ly[8];
+//    uint16_t reserved[8];
+//    uint16_t lz[8];
+//    uint16_t reserved[8];
+//};
+
+// For SIMD16:
+//struct local_id_s {
+//    uint16_t lx[16];
+//    uint16_t ly[16];
+//    uint16_t lz[16];
+//};
+
+// For SIMD32:
+//struct local_id_s {
+//    uint16_t lx[32];
+//    uint16_t ly[32];
+//    uint16_t lz[32];
 //};
 
 
@@ -259,9 +278,11 @@ public:
 
     static const uint32_t LOCAL_IDS = GROUP_COUNT_Z + sizeof(uint32_t);
 
-    static const uint32_t NUM_WORK_DIM = LOCAL_IDS + sizeof(uint64_t);
+    static const uint32_t STRUCT_SIZE = LOCAL_IDS + sizeof(uint64_t);
 
-    static const uint32_t STRUCT_SIZE = NUM_WORK_DIM + sizeof(uint8_t);
+    static const uint32_t NUM_WORK_DIM = STRUCT_SIZE + sizeof(uint8_t);
+
+    static const uint32_t SIMD_WIDTH = NUM_WORK_DIM + sizeof(uint8_t);
 };
 
 static bool hasStackCallAttr(const llvm::Function& F)
