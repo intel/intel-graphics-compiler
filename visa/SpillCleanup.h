@@ -68,6 +68,7 @@ namespace vISA
         void dumpKernel();
         void dumpKernel(unsigned int v1, unsigned int v2);
 
+        bool notOOB(unsigned int min, unsigned int max);
         void sendsInRange(std::list<INST_LIST_ITER>&,
             std::list<INST_LIST_ITER>&,
             unsigned int, unsigned int&, unsigned int&);

@@ -4326,6 +4326,11 @@ unsigned int GlobalRA::GRFSizeToOwords(unsigned int numGRFs)
     return numGRFs * (numEltPerGRF<Type_UB>() / OWORD_BYTE_SIZE);
 }
 
+unsigned int GlobalRA::getHWordByteSize()
+{
+    return HWORD_BYTE_SIZE;
+}
+
 static G4_INST* createSpillFillAddr(
     IR_Builder& builder, G4_Declare* addr, G4_Declare* fp, int offset)
 {
@@ -4508,8 +4513,6 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
             auto header = inst->getSrc(0)->asSrcRegRegion();
             auto payload = inst->getSrc(1)->asSrcRegRegion();
             auto spillIt = instIt;
-            auto byteOff = inst->asSpillIntrinsic()->getOffsetInBytes() + numRows * numEltPerGRF<Type_UB>();
-            actualSpillSize = std::max(actualSpillSize, byteOff);
 
             auto rowOffset = payload->getRegOff();
             {
@@ -4684,8 +4687,6 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
             auto header = inst->getSrc(0)->asSrcRegRegion();
             auto resultRgn = inst->getDst();
             auto fillIt = instIt;
-            auto byteOff = inst->asFillIntrinsic()->getOffsetInBytes() + numRows * numEltPerGRF<Type_UB>();
-            actualSpillSize = std::max(actualSpillSize, byteOff);
 
             auto rowOffset = resultRgn->getRegOff();
             {

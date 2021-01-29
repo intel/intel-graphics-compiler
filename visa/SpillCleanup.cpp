@@ -416,6 +416,31 @@ bool CoalesceSpillFills::fillHeuristic(std::list<INST_LIST_ITER>& coalesceableFi
     return true;
 }
 
+bool CoalesceSpillFills::notOOB(unsigned int min, unsigned int max)
+{
+    // Disallow coalescing if it exceeds spill size computed by RA
+    // as this may cause segmentation fault.
+    auto nextSpillOffset = spill.getNextOffset();
+    auto diff = max - min;
+    auto HWordByteSize = GlobalRA::getHWordByteSize();
+    if (diff == 2 &&
+        (min + 3) * HWordByteSize >= nextSpillOffset)
+    {
+        // Coalesce 1-1-
+        // Payload size 4 is needed as candidates are not back-to-back.
+        // Coalescing is illegal if last row exceeds spill size computed by RA.
+        return false;
+    }
+    else if (diff > 3 && diff < 7 &&
+        (min + 7) * HWordByteSize >= nextSpillOffset)
+    {
+        // payload size = 8 would be used
+        return false;
+    }
+
+    return true;
+}
+
 // instList contains all instructions (fills or spills) within window size.
 // At exit, instList will contain instructions that will not be coalesced.
 // coalescable list will contain instructions within min-max offset range.
@@ -475,7 +500,8 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
             // Check whether min/max can be extended
             if (scratchOffset <= min &&
                 (min - scratchOffset) <= (cMaxFillPayloadSize - 1) &&
-                (max - scratchOffset) <= (cMaxFillPayloadSize - 1))
+                (max - scratchOffset) <= (cMaxFillPayloadSize - 1) &&
+                notOOB(scratchOffset, max))
             {
                 // This instruction can be coalesced
                 min = scratchOffset;
@@ -489,7 +515,8 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
             }
             else if (scratchOffset >= max &&
                 (lastScratchOffset - min) <= (cMaxFillPayloadSize - 1) &&
-                (lastScratchOffset - max) <= (cMaxFillPayloadSize - 1))
+                (lastScratchOffset - max) <= (cMaxFillPayloadSize - 1) &&
+                notOOB(min, scratchOffset))
             {
                 max = lastScratchOffset;
 
