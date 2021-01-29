@@ -7910,9 +7910,9 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     }
 
     G4_SrcRegRegion* src = getSrc(srcId)->asSrcRegRegion();
-    if (srcId == 1 && src->getModifier() != Mod_src_undef)
+    if (srcId == 1 && src->hasModifier() && !IS_TYPE_FLOAT_ALL(src->getType()))
     {
-        // src1 acc does not support modifiers
+        // int src1 acc does not support modifiers
         return false;
     }
     if (!src->getRegion()->isContiguous(getExecSize()))
@@ -8007,7 +8007,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_mad:
         // no int acc if it's used as mul operand
         return builder.canMadHaveAcc() &&
-            ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) || (srcId == 0 && src->getModifier() == Mod_src_undef));
+            ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) || (srcId == 0 && !src->hasModifier()));
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_mul:
@@ -8016,9 +8016,9 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_not:
     case G4_or:
     case G4_xor:
-        return src->getModifier() == Mod_src_undef;
+        return !src->hasModifier();
     case G4_pln:
-        return builder.doPlane() && src->getModifier() == Mod_src_undef;
+        return builder.doPlane() && !src->hasModifier();
     case G4_dp4a:
         return builder.relaxedACCRestrictions2();
     default:
