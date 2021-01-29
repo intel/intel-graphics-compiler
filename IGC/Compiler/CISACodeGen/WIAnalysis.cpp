@@ -790,30 +790,6 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
         for (BasicBlock::iterator I = def_blk->begin(), E = def_blk->end(); I != E; ++I)
         {
             Instruction* defi = &(*I);
-
-            const unsigned nOps = defi->getNumOperands();
-            for (unsigned i = 0; i < nOps; ++i)
-            {
-                Value* op = defi->getOperand(i);
-                Instruction* srci = dyn_cast<Instruction>(op);
-                if (srci)
-                {
-                    for (auto UI = srci->user_begin(), E = srci->user_end(); UI != E; ++UI)
-                    {
-                        PHINode* phi = dyn_cast<PHINode>(*UI);
-                        if (phi)
-                        {
-                            BasicBlock* phi_block = phi->getParent();
-                            if (phi_block == br_info.full_join ||
-                                br_info.partial_joins.count(phi_block))
-                            {
-                                updateDepMap(phi, WIAnalysis::RANDOM);
-                            }
-                        }
-                    }
-                }
-            }
-
             if (hasDependency(defi) && getDependency(defi) == WIAnalysis::RANDOM)
             {
                 continue;
