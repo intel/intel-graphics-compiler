@@ -335,16 +335,4 @@ llvm::Constant* IGCConstantFolder::CreateBfi(llvm::Constant* C0, llvm::Constant*
     return llvm::ConstantInt::get(C0->getContext(), result);
 }
 
-llvm::Constant* IGCConstantFolder::CreateBfrev(llvm::Constant* C0) const
-{
-    if (llvm::isa<llvm::UndefValue>(C0))
-    {
-        return nullptr;
-    }
-    llvm::ConstantInt* CI0 = llvm::cast<llvm::ConstantInt>(C0);
-    llvm::APInt result = CI0->getValue();
-    result = result.reverseBits();
-    return llvm::ConstantInt::get(C0->getContext(), result);
-}
-
 } // namespace IGC
