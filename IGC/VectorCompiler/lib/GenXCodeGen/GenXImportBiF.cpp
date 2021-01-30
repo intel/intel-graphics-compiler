@@ -342,6 +342,13 @@ void BIConvert::runOnModule(Module &M) {
       Global.setLinkage(GlobalValue::InternalLinkage);
   }
   for (auto &F : M.getFunctionList()) {
+    // TODO: revise the code once CM-based BIFs are implemented
+    if (F.getName().contains("__cm_intrinsic_impl_")) {
+      IGC_ASSERT_MESSAGE(
+          F.getLinkage() == GlobalValue::ExternalLinkage,
+          "CM library functions are expected to have an external linkage");
+      continue;
+    }
     if (F.getIntrinsicID() == Intrinsic::not_intrinsic && !F.isDeclaration() &&
         !F.hasDLLExportStorageClass())
       F.setLinkage(GlobalValue::InternalLinkage);
