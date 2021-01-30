@@ -7910,10 +7910,14 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     }
 
     G4_SrcRegRegion* src = getSrc(srcId)->asSrcRegRegion();
-    if (srcId == 1 && src->getModifier() != Mod_src_undef)
+    if (srcId == 1 && src->hasModifier())
     {
-        // src1 acc does not support modifiers
-        return false;
+        // some platforms allow float src1 acc modifiers,
+        // while some don't allow src1 acc modifier at all.
+        if (!IS_TYPE_FLOAT_ALL(src->getType()) || !builder.relaxedACCRestrictions())
+        {
+            return false;
+        }
     }
     if (!src->getRegion()->isContiguous(getExecSize()))
     {
