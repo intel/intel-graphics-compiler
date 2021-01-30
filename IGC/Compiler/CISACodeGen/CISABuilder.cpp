@@ -4395,6 +4395,22 @@ namespace IGC
             SaveOption(vISA_NoRemat, true);
             SaveOption(vISA_SpillSpaceCompression, false);
             SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
+
+            if( IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_LVN )
+            { // LVN and quickToken
+                SaveOption( vISA_LVN, false );
+                SaveOption( vISA_QuickTokenAllocation, true );
+            }
+
+            if( IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LINEARSCAN )
+            { // use linearScan
+                SaveOption( vISA_LinearScan, true );
+            }
+
+            if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_1PASSRA )
+            { // use 1 iteration RA
+                SaveOption( vISA_FastCompileRA, true );
+            }
         }
     }
 

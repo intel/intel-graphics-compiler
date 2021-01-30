@@ -1562,7 +1562,11 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(new SampleMultiversioning(pContext));
         }
 
-        if (pContext->m_instrTypes.hasMultipleBB)
+        bool disableGOPT = ( ( IsStage1FastestCompile( pContext->m_CgFlag, pContext->m_StagingCtx ) ||
+                               IGC_GET_FLAG_VALUE( ForceFastestSIMD ) ) &&
+                             ( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_DISABLE_GOPT ) );
+
+        if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
         {
             // disable loop unroll for excessive large shaders
             if (pContext->m_instrTypes.hasLoop)
