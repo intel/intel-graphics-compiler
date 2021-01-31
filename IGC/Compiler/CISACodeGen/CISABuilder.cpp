@@ -4306,6 +4306,10 @@ namespace IGC
             VISAPlatform >= GENX_TGLLP)
         {
             SaveOption(vISA_InsertDummyMovForHWRSWA, true);
+            if (IGC_GET_FLAG_VALUE(RSWARegNum) != 0)
+            {
+                SaveOption(vISA_registerHWRSWA, IGC_GET_FLAG_VALUE(RSWARegNum));
+            }
         }
 
         if (IGC_GET_FLAG_VALUE(SWSBTokenNum) != 0)

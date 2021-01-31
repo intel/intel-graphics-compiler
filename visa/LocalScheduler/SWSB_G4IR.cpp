@@ -4311,6 +4311,16 @@ void G4_BB_SB::pushItemToQueue(std::vector<unsigned> *nodeIDQueue, unsigned node
     }
 }
 
+bool G4_BB_SB::isDummyCselInst(SBNode *node)
+{
+    assert(node->GetInstruction()->opcode() == G4_csel);
+
+    return (node->getFirstFootprint(Opnd_dst)->LeftB == 0) &&
+        (node->getFirstFootprint(Opnd_src0)->LeftB == 0) &&
+        (node->getFirstFootprint(Opnd_src1)->LeftB == 0) &&
+        (node->getFirstFootprint(Opnd_src2)->LeftB == 0);
+}
+
 void G4_BB_SB::SBDDD(G4_BB* bb,
     LiveGRFBuckets*& LB,
     LiveGRFBuckets*& globalSendsLB,
@@ -4373,6 +4383,26 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             node->setDistance(1);
             node->setDistOneAReg();
+        }
+
+        if (curInst->opcode() == G4_csel && isDummyCselInst(node) &&
+            nextInst->opcode() == G4_csel)
+        {
+            SBNode nextNode(nodeID, ALUID, bb->getId(), nextInst);
+            getGRFFootPrint(&nextNode, p);
+            if (isDummyCselInst(&nextNode))
+            {
+                footprintMerge(node, &nextNode);
+                node->addInstruction(nextInst);
+                curInst = nextInst;
+                iInst = iInstNext;
+                ALUID++;
+                iInstNext++;
+                if (iInstNext != iInstEnd)
+                {
+                    nextInst = *iInstNext;
+                }
+            }
         }
 
 

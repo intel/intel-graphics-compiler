@@ -357,9 +357,10 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 
     const RegionDesc* region = builder.createRegionDesc(8, 8, 1);
 
+    unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
     //Src0
-    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, 0, 0);
-    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, 0, 0);
+    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, rsReg, 0);
+    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, rsReg, 0);
     G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
     G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
 
@@ -387,6 +388,43 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
     G4_INST* movInst = builder.createMov(g4::SIMD8, dst, src, InstOpt_NoOpt, false);
 
     bb->insertBefore(inst_it, movInst);
+}
+
+void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it)
+{
+    const RegionDesc* region = builder.createRegionDesc(8, 8, 1);
+
+    unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
+
+    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, rsReg, 0);
+    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, rsReg, 0);
+    G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+    G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+    G4_SrcRegRegion* src2Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+
+    G4_DstRegRegion* dst0 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_0, 1);
+    G4_DstRegRegion* dst1 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_1, 1);
+
+    G4_Declare* dummyFlagDcl = builder.createTempFlag(1, "dmflag");
+    dummyFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(0), 0);
+    auto dummyCondMod0 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
+    auto dummyCondMod1 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
+
+    auto cselInst0 = builder.createInternalInst(
+        nullptr, G4_csel, dummyCondMod0, g4::NOSAT, g4::SIMD8,
+        dst0, src0Opnd_0, src1Opnd_0, src2Opnd_0,
+        InstOpt_NoOpt);
+
+    auto cselInst1 = builder.createInternalInst(
+        nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD8,
+        dst1, src0Opnd_1, src1Opnd_1, src2Opnd_1,
+        InstOpt_NoOpt);
+
+    bb->insertBefore(inst_it, cselInst0);
+    bb->insertBefore(inst_it, cselInst1);
 }
 
 void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *opnd)
@@ -438,7 +476,7 @@ void Optimizer::insertDummyMovForHWRSWA()
             {
                 if (inst->isSend())
                 {
-                    insertDummyMad(bb, curr_iter);
+                    insertDummyCsel(bb, curr_iter);
                     hasPredicatedSendOrIndirect = true;
                 }
             }
@@ -451,7 +489,7 @@ void Optimizer::insertDummyMovForHWRSWA()
         {
             INST_LIST_ITER iter = bb->end();
             iter--;
-            insertDummyMad(bb, iter);
+            insertDummyCsel(bb, iter);
             hasNonUniformBranch = true;
         }
     }

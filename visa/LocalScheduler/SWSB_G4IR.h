@@ -1007,6 +1007,8 @@ namespace vISA
 
         void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);
 
+        bool isDummyCselInst(SBNode* node);
+
         //Local distance dependence analysis and assignment
         void SBDDD(G4_BB* bb,
             LiveGRFBuckets* &LB,
