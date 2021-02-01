@@ -40,29 +40,37 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 
+#include "vc/GenXOpts/Utils/GenXSTLExtras.h"
+#include "vc/Support/BackendConfig.h"
+
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/Local.h"
-#include "llvm/ADT/SmallVector.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
+#include <algorithm>
 #include <queue>
+#include <vector>
 
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<unsigned>
-    PromoteMemThreshold("promote-mem-max", cl::init(96 * GRFBytes), cl::Hidden,
-                        cl::desc("Threshold for GenX memory promotion"));
+// The default threshhold is the size of 96 standard GRF width.
+static cl::opt<std::size_t>
+    AllocaLimitOpt("vc-promote-array-alloca-limit",
+                   cl::desc("max total size of promoted allocas in bytes"),
+                   cl::init(256 * GRFBytes), cl::Hidden);
 
 namespace {
 
@@ -146,7 +154,8 @@ public:
     return "TransformPrivMem";
   }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<GenXBackendConfig>();
     AU.setPreservesCFG();
   }
 
@@ -163,7 +172,8 @@ private:
                                           llvm::Type *pBaseType);
   void handleAllocaInst(llvm::AllocaInst *pAlloca);
 
-  bool CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca);
+  void selectAllocasToHandle();
+  bool CheckIfAllocaPromotable(AllocaInst &pAlloca);
 
   bool replaceSingleAggrStore(llvm::StoreInst *StI);
 
@@ -178,6 +188,7 @@ private:
   LLVMContext *m_ctx = nullptr;
   std::vector<llvm::AllocaInst *> m_allocasToPrivMem;
   llvm::Function *m_pFunc = nullptr;
+  bool ForcePromotion = false;
 };
 } // namespace
 
@@ -192,6 +203,7 @@ void initializeTransformPrivMemPass(PassRegistry &);
 #define PASS_ANALYSIS false
 INITIALIZE_PASS_BEGIN(TransformPrivMem, PASS_FLAG, PASS_DESCRIPTION,
                       PASS_CFG_ONLY, PASS_ANALYSIS)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(TransformPrivMem, PASS_FLAG, PASS_DESCRIPTION,
                     PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -309,6 +321,8 @@ bool TransformPrivMem::runOnFunction(llvm::Function &F) {
   m_ctx = &(m_pFunc->getContext());
 
   m_pDL = &F.getParent()->getDataLayout();
+  ForcePromotion = getAnalysis<GenXBackendConfig>().isArrayPromotionForced() &&
+                   AllocaLimitOpt.getNumOccurrences() == 0;
   m_allocasToPrivMem.clear();
 
   visit(F);
@@ -321,21 +335,21 @@ bool TransformPrivMem::runOnFunction(llvm::Function &F) {
       AggrRemoved |= replaceAggregatedStore(StI);
   }
 
-  std::vector<llvm::AllocaInst *> &allocaToHandle = m_allocasToPrivMem;
+  selectAllocasToHandle();
 
-  for (auto *Alloca : allocaToHandle) {
+  for (auto *Alloca : m_allocasToPrivMem) {
     handleAllocaInst(Alloca);
   }
 
   // Last remove alloca instructions
-  for (auto pInst : allocaToHandle) {
+  for (auto pInst : m_allocasToPrivMem) {
     if (pInst->use_empty()) {
       pInst->eraseFromParent();
     }
   }
   // IR changed only if we had alloca instruction to optimize or
   // if aggregated stores were replaced
-  return !allocaToHandle.empty() || AggrRemoved;
+  return !m_allocasToPrivMem.empty() || AggrRemoved;
 }
 
 unsigned int TransformPrivMem::extractAllocaSize(llvm::AllocaInst *pAlloca) {
@@ -463,25 +477,17 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
   return true;
 }
 
-bool TransformPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca) {
-  unsigned int allocaSize = extractAllocaSize(pAlloca);
-  unsigned int allowedAllocaSizeInBytes = PromoteMemThreshold;
-
-  // if alloca size exceeds alloc size threshold, emit warning
-  // and discard promotion
-  if (allocaSize > allowedAllocaSizeInBytes) {
-    DiagnosticInfoPromoteArray Warn(
-        m_pFunc->getName() + " allocation size is too big: using TPM",
-        DS_Warning);
-    m_pFunc->getContext().diagnose(Warn);
+bool TransformPrivMem::CheckIfAllocaPromotable(AllocaInst &Alloca) {
+  // Cannot promote VLA.
+  auto MaybeSize = Alloca.getAllocationSizeInBits(*m_pDL);
+  if (!MaybeSize.hasValue())
     return false;
-  }
 
   // Don't even look at non-array or non-struct allocas.
   // (extractAllocaDim can not handle them anyway, causing a crash)
-  llvm::Type *pType = pAlloca->getAllocatedType();
+  Type *pType = Alloca.getAllocatedType();
   if ((!pType->isStructTy() && !pType->isArrayTy() && !pType->isVectorTy()) ||
-      pAlloca->isArrayAllocation())
+      Alloca.isArrayAllocation())
     return false;
 
   Type *baseType = GetBaseType(pType, nullptr);
@@ -494,11 +500,11 @@ bool TransformPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca) {
     return false;
 
   // After promotion the variable will be illegal.
-  auto &VecTy = getVectorTypeForAlloca(*pAlloca, *Ty, *m_pDL);
+  auto &VecTy = getVectorTypeForAlloca(Alloca, *Ty, *m_pDL);
   if (!visa::Variable::isLegal(VecTy, *m_pDL))
     return false;
 
-  return CheckAllocaUsesInternal(pAlloca);
+  return CheckAllocaUsesInternal(&Alloca);
 }
 
 void TransformPrivMem::visitStore(StoreInst &I) {
@@ -508,10 +514,39 @@ void TransformPrivMem::visitStore(StoreInst &I) {
 
 void TransformPrivMem::visitAllocaInst(AllocaInst &I) {
   // find those allocas that can be promoted as a whole-vector
-  if (!CheckIfAllocaPromotable(&I)) {
+  if (CheckIfAllocaPromotable(I))
+    m_allocasToPrivMem.push_back(&I);
+}
+
+void TransformPrivMem::selectAllocasToHandle() {
+  if (m_allocasToPrivMem.empty())
     return;
+  // Promote them all.
+  if (ForcePromotion)
+    return;
+
+  std::sort(m_allocasToPrivMem.begin(), m_allocasToPrivMem.end(),
+            [this](const AllocaInst *LHS, const AllocaInst *RHS) {
+              return LHS->getAllocationSizeInBits(*m_pDL).getValue() <
+                     RHS->getAllocationSizeInBits(*m_pDL).getValue();
+            });
+  auto LastIt = genx::upper_partial_sum_bound(
+      m_allocasToPrivMem.begin(), m_allocasToPrivMem.end(),
+      AllocaLimitOpt.getValue(),
+      [this](std::size_t PrevSum, const AllocaInst *CurAlloca) {
+        return PrevSum + CurAlloca->getAllocationSizeInBits(*m_pDL).getValue() /
+                             genx::ByteBits;
+      });
+
+  // if alloca size exceeds alloc size threshold, emit warning
+  // and discard promotion
+  if (LastIt != m_allocasToPrivMem.end()) {
+    DiagnosticInfoPromoteArray Warn(
+        m_pFunc->getName() + " allocation size is too big: using TPM",
+        DS_Warning);
+    m_pFunc->getContext().diagnose(Warn);
   }
-  m_allocasToPrivMem.push_back(&I);
+  m_allocasToPrivMem.erase(LastIt, m_allocasToPrivMem.end());
 }
 
 void TransformPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {

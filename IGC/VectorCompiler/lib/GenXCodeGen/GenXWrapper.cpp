@@ -339,6 +339,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
       (Opts.Binary == vc::BinaryKind::OpenCL)
           ? GlobalsLocalizationConfig::CreateLocalizationWithLimit()
           : GlobalsLocalizationConfig::CreateForcedLocalization();
+  BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
   return BackendOpts;
 }
 
