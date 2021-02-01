@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ASYNC_WORK_GROUP_COPY(dst, src, num_elements, evt, __num_elements_type)                  \
     {                                                                       \
         __num_elements_type uiNumElements = num_elements;                                  \
-        __num_elements_type index = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();            \
+        __num_elements_type index = __intel_LocalInvocationIndex();            \
         __num_elements_type step = __intel_WorkgroupSize();                               \
         for( ; index < uiNumElements; index += step ) {                     \
             dst[index] = src[index];                                        \
@@ -53,7 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     {                                                                       \
         __num_elements_type uiNumElements = num_elements;                                  \
         __num_elements_type uiStride = src_stride;                                         \
-        __num_elements_type dstIndex = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();         \
+        __num_elements_type dstIndex = __intel_LocalInvocationIndex();         \
         __num_elements_type dstStep = __intel_WorkgroupSize();                            \
         __num_elements_type srcIndex = dstIndex * uiStride;                                \
         __num_elements_type srcStep = dstStep * uiStride;                                  \
@@ -67,7 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     {                                                                       \
         __num_elements_type uiNumElements = num_elements;                                  \
         __num_elements_type uiStride = dst_stride;                                         \
-        __num_elements_type srcIndex = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();         \
+        __num_elements_type srcIndex = __intel_LocalInvocationIndex();         \
         __num_elements_type srcStep = __intel_WorkgroupSize();                            \
         __num_elements_type dstIndex = srcIndex * uiStride;                                \
         __num_elements_type dstStep = srcStep * uiStride;                                  \

@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Group Instructions
 
+uint __intel_LocalInvocationIndex();
 uint __intel_WorkgroupSize();
 uint OVERLOADABLE __intel_LocalInvocationId(uint dim);
 
@@ -1800,7 +1801,7 @@ DEFN_ARITH_OPERATIONS(half)
 #define DEFN_WORK_GROUP_REDUCE(type, op, identity, X)                                       \
 {                                                                                          \
     GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
-    uint lid = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();                                        \
+    uint lid = __intel_LocalInvocationIndex();                                        \
     uint lsize = __intel_WorkgroupSize();                                                 \
     data[lid] = X;                                                                       \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);         \
@@ -1824,7 +1825,7 @@ DEFN_ARITH_OPERATIONS(half)
 #define DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)                                   \
 {                                                                                          \
     GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
-    uint lid = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();                                         \
+    uint lid = __intel_LocalInvocationIndex();                                         \
     uint lsize = __intel_WorkgroupSize();                                                 \
     data[lid] = X;                                                                       \
     __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0,AcquireRelease |  WorkgroupMemory);         \
@@ -1847,7 +1848,7 @@ DEFN_ARITH_OPERATIONS(half)
 #define DEFN_WORK_GROUP_SCAN_EXCL(type, op, identity, X)                                   \
 {                                                                                         \
     GET_MEMPOOL_PTR(data, type, true, 1)                                                 \
-    uint lid = SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )();                                         \
+    uint lid = __intel_LocalInvocationIndex();                                         \
     uint lsize = __intel_WorkgroupSize();                                                 \
     data[0] = identity;                                                                  \
     data[lid + 1] = X;                                                                   \

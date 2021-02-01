@@ -128,6 +128,27 @@ size_t3 OVERLOADABLE __intel_GlobalInvocationId()
     return BuiltinVector(__intel_GlobalInvocationId);
 }
 
+uint __intel_LocalInvocationIndex()
+{
+#if 0
+    // This doesn't work right now due to a bug in the runtime.
+    // If/when they fix their bug we can experiment if spending the
+    // register(s) for get_local_linear_id() is better than spending
+    // the math to compute the linear local ID.
+    return __builtin_IB_get_local_linear_id();
+#else
+    uint llid;
+    llid = (uint)__intel_LocalInvocationId(2);
+    llid *= (uint)__builtin_IB_get_local_size(1);
+    llid += (uint)__intel_LocalInvocationId(1);
+    llid *= (uint)__builtin_IB_get_local_size(0);
+    llid += (uint)__intel_LocalInvocationId(0);
+
+    BuiltinAssumeGE0(llid);
+    return llid;
+#endif
+}
+
 ////////////////////////
 
 #if defined(OLD_SPIRV_BUILTINS)
@@ -262,23 +283,7 @@ size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )()
 
 size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )()
 {
-#if 0
-    // This doesn't work right now due to a bug in the runtime.
-    // If/when they fix their bug we can experiment if spending the
-    // register(s) for get_local_linear_id() is better than spending
-    // the math to compute the linear local ID.
-    return __builtin_IB_get_local_linear_id();
-#else
-    uint llid;
-    llid  = (uint)__intel_LocalInvocationId(2);
-    llid *= (uint)__builtin_IB_get_local_size(1);
-    llid += (uint)__intel_LocalInvocationId(1);
-    llid *= (uint)__builtin_IB_get_local_size(0);
-    llid += (uint)__intel_LocalInvocationId(0);
-
-    BuiltinAssumeGE0(llid);
-    return llid;
-#endif
+    return __intel_LocalInvocationIndex();
 }
 
 uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInWorkDim, , )()
