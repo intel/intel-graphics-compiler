@@ -358,7 +358,7 @@ namespace IGC
         m_encoderState.m_simdSize = m_program->m_SIMDSize;
         m_encoderState.m_uniformSIMDSize = SIMDMode::SIMD1;
 
-        if (m_insideForcedNoMaskRegion) {
+        if (m_nestLevelForcedNoMaskRegion > 0) {
           m_encoderState.m_noMask = true;
         }
     }
@@ -4402,7 +4402,7 @@ namespace IGC
         m_encoderState.m_secondHalf = false;
         m_encoderState.m_secondNibble = false;
         m_enableVISAdump = false;
-        m_insideForcedNoMaskRegion = false;
+        m_nestLevelForcedNoMaskRegion = 0;
         labelMap.clear();
         labelMap.resize(m_program->entry->size(), nullptr);
         labelCounter = 0;

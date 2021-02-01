@@ -610,7 +610,7 @@ namespace IGC
 
         bool m_isCodePatchCandidate = false;
 
-        bool m_insideForcedNoMaskRegion = false;
+        int m_nestLevelForcedNoMaskRegion = 0;
 
         bool m_enableVISAdump;
         bool m_hasInlineAsm;
@@ -957,13 +957,14 @@ namespace IGC
 
     inline void CEncoder::BeginForcedNoMaskRegion()
     {
-        m_insideForcedNoMaskRegion = true;
+        ++m_nestLevelForcedNoMaskRegion;
         m_encoderState.m_noMask = true;
     }
 
     inline void CEncoder::EndForcedNoMaskRegion()
     {
-        m_insideForcedNoMaskRegion = false;
+        --m_nestLevelForcedNoMaskRegion;
+        IGC_ASSERT_MESSAGE(m_nestLevelForcedNoMaskRegion >= 0, "Invalid nesting of Unmasked regions");
     }
 
     inline void CEncoder::SetNoMask()
