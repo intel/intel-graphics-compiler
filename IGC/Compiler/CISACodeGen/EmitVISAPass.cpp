@@ -16680,6 +16680,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
 {
     ResourceDescriptor resource;
     BufferType bufType = BUFFER_TYPE_UNKNOWN;
+    uint as = 0;
     if (isa<GenIntrinsicInst>(resourcePtr) &&
         cast<GenIntrinsicInst>(resourcePtr)->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
     {
@@ -16691,7 +16692,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
     }
     else
     {
-        uint as = resourcePtr->getType()->getPointerAddressSpace();
+        as = resourcePtr->getType()->getPointerAddressSpace();
         uint bufferIndex = 0;
         bool directIndexing = false;
 
@@ -16767,6 +16768,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
             m_currShader->SetBindingTableEntryCountAndBitmap(directIndexing, bufType, bufferIndex, bti);
         }
     }
+
 
     if (IsBindless(bufType))
     {
