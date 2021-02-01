@@ -3503,30 +3503,30 @@ TwoOp_v16i64 __builtin_spirv_OpSMulExtended_v16i64_v16i64(long16 Operand1, long1
 
 // Bit Instructions
 
-char SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i8_i8_i32_i32, )(char Base, char Insert, int Offset, int Count);
-char2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i8_v2i8_v2i32_v2i32, )(char2 Base, char2 Insert, int2 Offset, int2 Count);
-char3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i8_v3i8_v3i32_v3i32, )(char3 Base, char3 Insert, int3 Offset, int3 Count);
-char4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i8_v4i8_v4i32_v4i32, )(char4 Base, char4 Insert, int4 Offset, int4 Count);
-char8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i8_v8i8_v8i32_v8i32, )(char8 Base, char8 Insert, int8 Offset, int8 Count);
-char16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i8_v16i8_v16i32_v16i32, )(char16 Base, char16 Insert, int16 Offset, int16 Count);
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i16_i16_i32_i32, )(short Base, short Insert, int Offset, int Count);
-short2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i16_v2i16_v2i32_v2i32, )(short2 Base, short2 Insert, int2 Offset, int2 Count);
-short3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i16_v3i16_v3i32_v3i32, )(short3 Base, short3 Insert, int3 Offset, int3 Count);
-short4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i16_v4i16_v4i32_v4i32, )(short4 Base, short4 Insert, int4 Offset, int4 Count);
-short8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i16_v8i16_v8i32_v8i32, )(short8 Base, short8 Insert, int8 Offset, int8 Count);
-short16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i16_v16i16_v16i32_v16i32, )(short16 Base, short16 Insert, int16 Offset, int16 Count);
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i32_i32_i32_i32, )(int Base, int Insert, int Offset, int Count);
-int2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i32_v2i32_v2i32_v2i32, )(int2 Base, int2 Insert, int2 Offset, int2 Count);
-int3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i32_v3i32_v3i32_v3i32, )(int3 Base, int3 Insert, int3 Offset, int3 Count);
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i32_v4i32_v4i32_v4i32, )(int4 Base, int4 Insert, int4 Offset, int4 Count);
-int8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i32_v8i32_v8i32_v8i32, )(int8 Base, int8 Insert, int8 Offset, int8 Count);
-int16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i32_v16i32_v16i32_v16i32, )(int16 Base, int16 Insert, int16 Offset, int16 Count);
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i64_i64_i32_i32, )(long Base, long Insert, int Offset, int Count);
-long2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i64_v2i64_v2i32_v2i32, )(long2 Base, long2 Insert, int2 Offset, int2 Count);
-long3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i64_v3i64_v3i32_v3i32, )(long3 Base, long3 Insert, int3 Offset, int3 Count);
-long4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i64_v4i64_v4i32_v4i32, )(long4 Base, long4 Insert, int4 Offset, int4 Count);
-long8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i64_v8i64_v8i32_v8i32, )(long8 Base, long8 Insert, int8 Offset, int8 Count);
-long16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i64_v16i64_v16i32_v16i32, )(long16 Base, long16 Insert, int16 Offset, int16 Count);
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i8_i8_i32_i32, )(char Base, char Insert, uint Offset, uint Count);
+char2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i8_v2i8_v2i32_v2i32, )(char2 Base, char2 Insert, uint2 Offset, uint2 Count);
+char3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i8_v3i8_v3i32_v3i32, )(char3 Base, char3 Insert, uint3 Offset, uint3 Count);
+char4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i8_v4i8_v4i32_v4i32, )(char4 Base, char4 Insert, uint4 Offset, uint4 Count);
+char8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i8_v8i8_v8i32_v8i32, )(char8 Base, char8 Insert, uint8 Offset, uint8 Count);
+char16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i8_v16i8_v16i32_v16i32, )(char16 Base, char16 Insert, uint16 Offset, uint16 Count);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i16_i16_i32_i32, )(short Base, short Insert, uint Offset, uint Count);
+short2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i16_v2i16_v2i32_v2i32, )(short2 Base, short2 Insert, uint2 Offset, uint2 Count);
+short3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i16_v3i16_v3i32_v3i32, )(short3 Base, short3 Insert, uint3 Offset, uint3 Count);
+short4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i16_v4i16_v4i32_v4i32, )(short4 Base, short4 Insert, uint4 Offset, uint4 Count);
+short8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i16_v8i16_v8i32_v8i32, )(short8 Base, short8 Insert, uint8 Offset, uint8 Count);
+short16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i16_v16i16_v16i32_v16i32, )(short16 Base, short16 Insert, uint16 Offset, uint16 Count);
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i32_i32_i32_i32, )(int Base, int Insert, uint Offset, uint Count);
+int2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i32_v2i32_v2i32_v2i32, )(int2 Base, int2 Insert, uint2 Offset, uint2 Count);
+int3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i32_v3i32_v3i32_v3i32, )(int3 Base, int3 Insert, uint3 Offset, uint3 Count);
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i32_v4i32_v4i32_v4i32, )(int4 Base, int4 Insert, uint4 Offset, uint4 Count);
+int8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i32_v8i32_v8i32_v8i32, )(int8 Base, int8 Insert, uint8 Offset, uint8 Count);
+int16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i32_v16i32_v16i32_v16i32, )(int16 Base, int16 Insert, uint16 Offset, uint16 Count);
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i64_i64_i32_i32, )(long Base, long Insert, uint Offset, uint Count);
+long2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v2i64_v2i64_v2i32_v2i32, )(long2 Base, long2 Insert, uint2 Offset, uint2 Count);
+long3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v3i64_v3i64_v3i32_v3i32, )(long3 Base, long3 Insert, uint3 Offset, uint3 Count);
+long4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v4i64_v4i64_v4i32_v4i32, )(long4 Base, long4 Insert, uint4 Offset, uint4 Count);
+long8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v8i64_v8i64_v8i32_v8i32, )(long8 Base, long8 Insert, uint8 Offset, uint8 Count);
+long16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _v16i64_v16i64_v16i32_v16i32, )(long16 Base, long16 Insert, uint16 Offset, uint16 Count);
 
 char __builtin_spirv_OpBitFieldSExtract_i8_i32_i32(char Base, uint Offset, uint Count);
 char2 __builtin_spirv_OpBitFieldSExtract_v2i8_v2i32_v2i32(char2 Base, uint2 Offset, uint2 Count);

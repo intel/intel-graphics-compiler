@@ -72,25 +72,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define GENERATE_VECTOR_FUNCTIONS_4ARGS_2TYPES_T1_T1_T2_T2( __func, __rettype, __argtype1, __argtype2, __abbrargtype1, __abbrargtype2 ) \
     __rettype##2  SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v2##__abbrargtype1##_v2##__abbrargtype1##_v2##__abbrargtype2##_v2##__abbrargtype2, ) \
-    ( __argtype1##2 a, __argtype1##2 b, __argtype2##2 c, __argtype2##2 d) { \
+    ( __argtype1##2 a, __argtype1##2 b, u##__argtype2##2 c, u##__argtype2##2 d) { \
         return ( __rettype##2 )( SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s0, b.s0, c.s0, d.s0), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s1, b.s1, c.s1, d.s1) ); \
     } \
     __rettype##3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v3##__abbrargtype1##_v3##__abbrargtype1##_v3##__abbrargtype2##_v3##__abbrargtype2, ) \
-    ( __argtype1##3 a, __argtype1##3 b, __argtype2##3 c, __argtype2##3 d) { \
+    ( __argtype1##3 a, __argtype1##3 b, u##__argtype2##3 c, u##__argtype2##3 d) { \
         return ( __rettype##3 )( SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s0, b.s0, c.s0, d.s0), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s1, b.s1, c.s1, d.s1), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s2, b.s2, c.s2, d.s2) ); \
     } \
     __rettype##4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v4##__abbrargtype1##_v4##__abbrargtype1##_v4##__abbrargtype2##_v4##__abbrargtype2, ) \
-    ( __argtype1##4 a, __argtype1##4 b, __argtype2##4 c, __argtype2##4 d) { \
+    ( __argtype1##4 a, __argtype1##4 b, u##__argtype2##4 c, u##__argtype2##4 d) { \
         return ( __rettype##4 )( SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s0, b.s0, c.s0, d.s0), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s1, b.s1, c.s1, d.s1), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s2, b.s2, c.s2, d.s2), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s3, b.s3, c.s3, d.s3) ); \
     } \
     __rettype##8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v8##__abbrargtype1##_v8##__abbrargtype1##_v8##__abbrargtype2##_v8##__abbrargtype2, ) \
-    ( __argtype1##8 a, __argtype1##8 b, __argtype2##8 c, __argtype2##8 d) { \
+    ( __argtype1##8 a, __argtype1##8 b, u##__argtype2##8 c, u##__argtype2##8 d) { \
         return ( __rettype##8 )( SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s0, b.s0, c.s0, d.s0), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s1, b.s1, c.s1, d.s1), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s2, b.s2, c.s2, d.s2), \
@@ -101,7 +101,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s7, b.s7, c.s7, d.s7) ); \
     } \
     __rettype##16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v16##__abbrargtype1##_v16##__abbrargtype1##_v16##__abbrargtype2##_v16##__abbrargtype2, ) \
-    ( __argtype1##16 a, __argtype1##16 b, __argtype2##16 c, __argtype2##16 d) { \
+    ( __argtype1##16 a, __argtype1##16 b, u##__argtype2##16 c, u##__argtype2##16 d) { \
         return ( __rettype##16 )( SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s0, b.s0, c.s0, d.s0), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s1, b.s1, c.s1, d.s1), \
                                  SPIRV_BUILTIN(__func, _##__abbrargtype1##_##__abbrargtype1##_##__abbrargtype2##_##__abbrargtype2, )(a.s2, b.s2, c.s2, d.s2), \
@@ -122,24 +122,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Bit Instructions
 
-char SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i8_i8_i32_i32, )(char Base, char Insert, int Offset, int Count)
+char SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i8_i8_i32_i32, )(char Base, char Insert, uint Offset, uint Count)
 {
     return __builtin_IB_bfi(Count, Offset, (uint)Insert, (uint)Base);
 }
 
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i16_i16_i32_i32, )(short Base, short Insert, int Offset, int Count)
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i16_i16_i32_i32, )(short Base, short Insert, uint Offset, uint Count)
 {
     return __builtin_IB_bfi(Count, Offset, (uint)Insert, (uint)Base);
 }
 
-int SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i32_i32_i32_i32, )(int Base, int Insert, int Offset, int Count)
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i32_i32_i32_i32, )(int Base, int Insert, uint Offset, uint Count)
 {
     // edge case: hardware reads width (count) from 5 bits, so it's unable to achieve 32
     const uint Result = __builtin_IB_bfi(Count, Offset, Insert, Base);
     return (Count == 32 && Offset == 0) ? Insert : Result;
 }
 
-long SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i64_i64_i32_i32, )(long Base, long Insert, int Offset, int Count)
+long SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i64_i64_i32_i32, )(long Base, long Insert, uint Offset, uint Count)
 {
     const int Size = 64;
     const uint OffsetPlusCount = Offset + Count;

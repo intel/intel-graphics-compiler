@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GEN_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE)                                                      \
   INLINE TYPE OVERLOADABLE FUNC(TYPE base, TYPE insert, uint offset, uint count) {                                     \
     return as_##TYPE(SPIRV_BUILTIN(OP, _##ABBR_TYPE##_##ABBR_TYPE##_i32_i32, )(                                        \
-        as_##SPIRV_TYPE(base), as_##SPIRV_TYPE(insert), as_int(offset), as_int(count)));                               \
+        as_##SPIRV_TYPE(base), as_##SPIRV_TYPE(insert), offset, count));                                               \
   }
 
 #define GEN_VECTOR_DEFINITION_BFI(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE, VEC_SIZE)                                     \
@@ -45,8 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                           uint##VEC_SIZE count) {                                                      \
     return as_##TYPE##VEC_SIZE(                                                                                        \
         SPIRV_BUILTIN(OP, _v##VEC_SIZE##ABBR_TYPE##_v##VEC_SIZE##ABBR_TYPE##_v##VEC_SIZE##i32_v##VEC_SIZE##i32, )(     \
-            as_##SPIRV_TYPE##VEC_SIZE(base), as_##SPIRV_TYPE##VEC_SIZE(insert), as_int##VEC_SIZE(offset),              \
-            as_int##VEC_SIZE(count)));                                                                                 \
+            as_##SPIRV_TYPE##VEC_SIZE(base), as_##SPIRV_TYPE##VEC_SIZE(insert), offset, count));                       \
   }
 
 #define GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, TYPE, ABBR_TYPE, SPIRV_TYPE)                                          \
