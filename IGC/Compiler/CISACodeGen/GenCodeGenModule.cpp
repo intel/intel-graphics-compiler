@@ -442,8 +442,11 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         delete SCCNodes;
     }
 
-    // Before adding indirect functions to groups, check and set stack call for each group
+    // Check and set stack call flag for each group
     FGA->setGroupStackCall();
+
+    // Check and set VLA flag for each group
+    FGA->setHasVariableLengthAlloca();
 
     // By swapping, we sort the function list to ensure codegen order for
     // functions. This relies on llvm module pass manager's implementation detail.
@@ -570,28 +573,22 @@ void GenXFunctionGroupAnalysis::setGroupStackCall()
         // Traverse each function in the FG to check for indirect calls
         if (!FG->m_hasStackCall)
         {
-            for (auto I = FG->Functions.begin(), E = FG->Functions.end(); I != E; I++)
+            for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
             {
-                SmallVector<AssertingVH<Function>, 8>::iterator iter;
-                for (iter = (*I)->begin(); iter != (*I)->end(); iter++)
+                // Set hasStackCall if there are any indirect calls
+                for (auto ii = inst_begin(*FI), ei = inst_end(*FI); ii != ei; ii++)
                 {
-                    // Set hasStackCall if there are any indirect calls
-                    Function* F = *iter;
-                    for (auto ii = inst_begin(F), ei = inst_end(F); ii != ei; ii++)
+                    if (CallInst* call = dyn_cast<CallInst>(&*ii))
                     {
-                        if (CallInst* call = dyn_cast<CallInst>(&*ii))
-                        {
-                            if (call->isInlineAsm()) continue;
+                        if (call->isInlineAsm()) continue;
 
-                            Function* calledF = call->getCalledFunction();
-                            if (!calledF || calledF->hasFnAttribute("IndirectlyCalled"))
-                            {
-                                FG->m_hasStackCall = true;
-                                break;
-                            }
+                        Function* calledF = call->getCalledFunction();
+                        if (!calledF || calledF->hasFnAttribute("IndirectlyCalled"))
+                        {
+                            FG->m_hasStackCall = true;
+                            break;
                         }
                     }
-                    if (FG->m_hasStackCall) break;
                 }
                 if (FG->m_hasStackCall) break;
             }
@@ -599,22 +596,20 @@ void GenXFunctionGroupAnalysis::setGroupStackCall()
     }
 }
 
-void GenXFunctionGroupAnalysis::setHasVariableLengthAlloca(llvm::Module* pModule)
+void GenXFunctionGroupAnalysis::setHasVariableLengthAlloca()
 {
     // check all functions in the group to see if there's an vla alloca
     // function attribute "hasVLA" should be set at ProcessFuncAttributes pass
-    for (auto GI = begin(), GE = end(); GI != GE; ++GI) {
-        for (auto SubGI = (*GI)->Functions.begin(), SubGE = (*GI)->Functions.end();
-            SubGI != SubGE; ++SubGI) {
-            for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI) {
-                Function* F = *FI;
-                if (F->hasFnAttribute("hasVLA")) {
-                    (*GI)->m_hasVaribleLengthAlloca = true;
-                    break;
-                }
-            }
-            if ((*GI)->m_hasVaribleLengthAlloca)
+    for (auto FG: Groups)
+    {
+        for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
+        {
+            Function* F = *FI;
+            if (F->hasFnAttribute("hasVLA"))
+            {
+                FG->m_hasVaribleLengthAlloca = true;
                 break;
+            }
         }
     }
 }
@@ -631,22 +626,18 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
 
     IGC_ASSERT(getGroup(defaultKernel) == nullptr);
     setSubGroupMap(defaultKernel, defaultKernel);
-    createFunctionGroup(defaultKernel);
-    IndirectCallGroup = getGroupForHead(defaultKernel);
+    IndirectCallGroup = createFunctionGroup(defaultKernel);
 
     // Add all externally linked functions into the default kernel group
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
-        if (isEntryFunc(pMdUtils, F)) continue;
+        if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
         if (F->hasFnAttribute("IndirectlyCalled"))
         {
             IGC_ASSERT(getGroup(F) == nullptr);
-            if (!F->isDeclaration())
-            {
-                addToFunctionGroup(F, IndirectCallGroup, F);
-            }
+            addToFunctionGroup(F, IndirectCallGroup, F);
         }
     }
 }
@@ -700,7 +691,7 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
     setGroupStackCall();
 
     // Once FGs are formed, set FG's HasVariableLengthAlloca
-    setHasVariableLengthAlloca(Mod);
+    setHasVariableLengthAlloca();
 
     // Verification.
     if (!verify())

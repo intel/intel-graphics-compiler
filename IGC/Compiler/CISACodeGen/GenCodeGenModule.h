@@ -77,7 +77,60 @@ namespace IGC {
         /// \brief use 2-d vector of Functions to represent FunctionGroup.
         /// Each sub-vector is a subgroup led by a kernel or a stack-call function.
         /// Element [0][0] is the group head. Element[i][0] is the sub-group head.
-        llvm::SmallVector<llvm::SmallVector<llvm::AssertingVH<llvm::Function>, 8>*, 4> Functions;
+        typedef llvm::SmallVector<llvm::AssertingVH<llvm::Function>, 8> SubGroupContainer;
+        typedef llvm::SmallVector<SubGroupContainer*, 4> FunctionGroupContainer;
+        FunctionGroupContainer Functions;
+
+        class iterator
+        {
+        public:
+            enum POS { BEGIN, END };
+            iterator(FunctionGroupContainer &FC, POS pos)
+            {
+                if (pos == BEGIN)
+                {
+                    major = FC.begin();
+                    majorEnd = FC.end();
+                    minor = (*major)->begin();
+                }
+                else if (pos == END)
+                {
+                    major = FC.end();
+                    majorEnd = FC.end();
+                    minor = FC.back()->end();
+                }
+            }
+            iterator& operator++()
+            {
+                minor++;
+                if (minor == (*major)->end())
+                {
+                    major++;
+                    if (major != majorEnd)
+                        minor = (*major)->begin();
+                }
+                return *this;
+            }
+            llvm::Function* operator*()
+            {
+                return *minor;
+            }
+            bool operator==(const iterator& rhs)
+            {
+                return (major == rhs.major && minor == rhs.minor);
+            }
+            bool operator!=(const iterator& rhs)
+            {
+                return !(*this == rhs);
+            }
+        private:
+            FunctionGroupContainer::iterator major;
+            FunctionGroupContainer::iterator majorEnd;
+            SubGroupContainer::iterator minor;
+        };
+
+        iterator begin() { return iterator(Functions, iterator::BEGIN); }
+        iterator end() { return iterator(Functions, iterator::END); }
 
         ~FunctionGroup() {
             for (auto I = Functions.begin(), E = Functions.end(); I != E; I++) {
@@ -201,9 +254,6 @@ namespace IGC {
             return FG != nullptr && FG == IndirectCallGroup;
         }
 
-        /// \brief Check whether a group contains variable length alloca
-        void setHasVariableLengthAlloca(llvm::Module* pModule);
-
         /// \brief Check whether this is a group header.
         bool isGroupHead(llvm::Function* F) {
             return getGroupForHead(F) != nullptr;
@@ -236,11 +286,14 @@ namespace IGC {
             }
         }
 
-        /// this is the knob to enable vISA stack-call for OpenCL
+        /// check if function is stack-called
         bool useStackCall(llvm::Function* F);
 
         /// sets the stackcall flag for each function group that has stackcalls
         void setGroupStackCall();
+
+        /// set whether a group contains variable length alloca
+        void setHasVariableLengthAlloca();
 
         typedef llvm::SmallVectorImpl<FunctionGroup*>::iterator iterator;
         iterator begin() { return iterator(Groups.begin()); }
