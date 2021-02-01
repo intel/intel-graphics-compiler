@@ -38,7 +38,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
-#include "llvmWrapper/Support/Alignment.h"
+#include "GenXVisa.h"
+
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/IRBuilder.h"
@@ -49,11 +50,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/ADT/SmallVector.h"
 
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include <queue>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -222,18 +224,20 @@ TransformPrivMem::TransformPrivMem() : FunctionPass(ID), m_pFunc(nullptr) {
   initializeTransformPrivMemPass(*PassRegistry::getPassRegistry());
 }
 
+static IGCLLVM::FixedVectorType &
+getVectorTypeForAlloca(AllocaInst &Alloca, Type &ElemTy, const DataLayout &DL) {
+  auto AllocaSize = Alloca.getAllocationSizeInBits(DL);
+  IGC_ASSERT_MESSAGE(AllocaSize.hasValue(), "VLA is not expected");
+  auto NumElem = AllocaSize.getValue() / DL.getTypeAllocSizeInBits(&ElemTy);
+  return *IGCLLVM::FixedVectorType::get(&ElemTy, NumElem);
+}
+
 llvm::AllocaInst *
 TransformPrivMem::createVectorForAlloca(llvm::AllocaInst *pAlloca,
                                         llvm::Type *pBaseType) {
   IRBuilder<> IRB(pAlloca);
-
-  unsigned int totalSize = extractAllocaSize(pAlloca) /
-                           (unsigned int)(m_pDL->getTypeAllocSize(pBaseType));
-
-  llvm::VectorType *pVecType =
-      IGCLLVM::FixedVectorType::get(pBaseType, totalSize);
-
-  AllocaInst *pAllocaValue = IRB.CreateAlloca(pVecType);
+  auto &VecType = getVectorTypeForAlloca(*pAlloca, *pBaseType, *m_pDL);
+  AllocaInst *pAllocaValue = IRB.CreateAlloca(&VecType);
   return pAllocaValue;
 }
 
@@ -487,6 +491,11 @@ bool TransformPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *pAlloca) {
   // only handle case with a simple base type
   if (!(Ty->isFloatingPointTy() || Ty->isIntegerTy()) &&
       !(Ty->isPointerTy() && Ty->getPointerElementType()->isFunctionTy()))
+    return false;
+
+  // After promotion the variable will be illegal.
+  auto &VecTy = getVectorTypeForAlloca(*pAlloca, *Ty, *m_pDL);
+  if (!visa::Variable::isLegal(VecTy, *m_pDL))
     return false;
 
   return CheckAllocaUsesInternal(pAlloca);

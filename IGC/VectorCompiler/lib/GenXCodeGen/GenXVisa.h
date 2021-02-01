@@ -32,15 +32,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GenX.h"
 #include "GenXBaling.h"
+#include "GenXModule.h"
+
 #include "llvm/ADT/Twine.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
+
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include <map>
 #include <string>
 #include <vector>
-#include "GenXModule.h"
-#include "Probe/Assertion.h"
 
 namespace llvm {
   namespace visa {
@@ -135,7 +140,48 @@ namespace llvm {
       VISA_INPUT_UNKNOWN
     };
 
-  } // end namespace Visa
+namespace Variable {
+
+namespace General {
+
+constexpr int MinNumElements = 1;
+constexpr int MaxNumElements = 4096;
+constexpr int MaxSizeInBytes = 4096;
+
+// Checks whether a general variable with the provided properties is legal
+// according to vISA spec.
+// Args:
+//    ElemSize - size of variable element, must contain a legal value;
+//    NumElems - number of variable elements, must be positive.
+bool isLegal(int ElemSize, int NumElems);
+// Checks whether a general variable with the provided type is legal
+// according to vISA spec.
+bool isLegal(IGCLLVM::FixedVectorType &Ty, const DataLayout &DL);
+
+} // namespace General
+
+namespace Predicate {
+
+constexpr int MinNumElements = 1;
+constexpr int MaxNumElements = 32;
+
+// Checks whether a predicate variable with the provided properties are legal
+// according to vISA spec.
+// Args:
+//    NumElems - number of variable elements, must be positive.
+bool isLegal(int NumElems);
+// Checks whether a predicate variable with the provided type is legal
+// according to vISA spec.
+// Only <N x i1> types are allowed.
+bool isLegal(IGCLLVM::FixedVectorType &Ty);
+
+} // namespace Predicate
+
+bool isLegal(IGCLLVM::FixedVectorType &Ty, const DataLayout &DL);
+
+} // namespace Variable
+
+} // end namespace visa
 
 } // end namespace llvm
 #endif // ndef GENXVISA_H

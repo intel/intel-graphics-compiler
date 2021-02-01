@@ -70,6 +70,7 @@ set(CODEGEN_SOURCES
   GenXUtil.cpp
   GenXVectorDecomposer.cpp
   GenXVisaRegAlloc.cpp
+  GenXVisa.cpp
   GenXWATable.cpp
   GenXWrapper.cpp
 )
