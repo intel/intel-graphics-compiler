@@ -3077,6 +3077,14 @@ Constant* IGCConstProp::ConstantFoldCallInstruction(CallInst* inst)
             }
         }
         break;
+        case llvm_bfrev:
+        {
+            if (C0)
+            {
+                C = constantFolder.CreateBfrev(C0);
+            }
+        }
+        break;
         case llvm_bfi:
         {
             Constant* C1 = dyn_cast<Constant>(inst->getOperand(1));
