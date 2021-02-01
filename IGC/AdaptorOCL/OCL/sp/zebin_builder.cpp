@@ -282,11 +282,11 @@ void ZEBinaryBuilder::addMemoryBuffer(
 
     //  single scratch space have everything
     if (scratch0 && !scratch1 && !private_on_global) {
-        ZEInfoBuilder::addPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
-            PreDefinedAttrGetter::MemBufferType::scratch,
+        ZEInfoBuilder::addScratchPerThreadMemoryBuffer(zeinfoKernel.per_thread_memory_buffers,
             PreDefinedAttrGetter::MemBufferUsage::single_space,
-            scratch0);
-
+            0,
+            scratch0
+        );
         return;
     }
 
