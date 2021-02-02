@@ -1256,6 +1256,12 @@ unsigned SWSB::getDepDelay(const SBNode* curNode) const
         {
             reuseDelay = TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE;
         }
+
+        if (inst->getDst() == nullptr ||
+            inst->getDst()->isNullReg())
+        {
+            return TOKEN_AFTER_READ_CYCLE;
+        }
     }
     else if (inst->isMathPipeInst())
     {

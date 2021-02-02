@@ -87,10 +87,10 @@ LSLiveRange* LinearScanRA::CreateLocalLiveRange(G4_Declare* topdcl)
     return lr;
 }
 
-class isLifetimeCandidateOpCandidateForRemoval
+class isLifetimeOpCandidateForRemoval
 {
 public:
-    isLifetimeCandidateOpCandidateForRemoval(GlobalRA& g) : gra(g)
+    isLifetimeOpCandidateForRemoval(GlobalRA& g) : gra(g)
     {
     }
 
@@ -140,7 +140,7 @@ void LinearScanRA::removeUnrequiredLifetimeOps()
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
-        bb->erase(std::remove_if(bb->begin(), bb->end(), isLifetimeCandidateOpCandidateForRemoval(this->gra)),
+        bb->erase(std::remove_if(bb->begin(), bb->end(), isLifetimeOpCandidateForRemoval(this->gra)),
             bb->end());
     }
 }
