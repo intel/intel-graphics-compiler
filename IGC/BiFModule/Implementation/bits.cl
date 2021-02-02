@@ -146,11 +146,11 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(BitFieldInsert, _i64_i64_i32_i32, )(long B
     const uint SizeMinusOffset = Size - Offset;
     const uint SizeMinusCount = Size - Count;
     const uint Rest = Size - OffsetPlusCount;
-    ulong xoo = (Base >> OffsetPlusCount) << OffsetPlusCount;
+    ulong xoo = (as_ulong(Base) >> OffsetPlusCount) << OffsetPlusCount;
     xoo = OffsetPlusCount == Size ? 0 : xoo;
-    ulong oox = (Base << SizeMinusOffset) >> SizeMinusOffset;
+    ulong oox = (as_ulong(Base) << SizeMinusOffset) >> SizeMinusOffset;
     oox = SizeMinusOffset == Size ? 0 : oox;
-    ulong oxo = Insert << SizeMinusCount;
+    ulong oxo = as_ulong(Insert) << SizeMinusCount;
     oxo = SizeMinusCount == Size ? 0 : oxo;
     oxo >>= Rest;
     oxo = Rest == Size ? 0 : oxo;
