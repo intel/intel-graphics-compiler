@@ -116,14 +116,14 @@ namespace vISA
     } FOOTPRINT_TYPE;
 
     struct SBFootprint {
-        FOOTPRINT_TYPE fType;
-        G4_Type type;
-        unsigned short LeftB;
-        unsigned short RightB;
+        const FOOTPRINT_TYPE fType;
+        const G4_Type type;
+        const unsigned short LeftB;
+        const unsigned short RightB;
         unsigned short offset = 0;
         G4_INST*       inst;
-        struct SBFootprint *next = nullptr; //The ranges linked together to represent the possible registser ranges may be occupied by an operand.
-                                         //For indirect access, non-contigious ranges exist.
+        struct SBFootprint *next = nullptr; //The ranges linked together to represent the possible register ranges may be occupied by an operand.
+                                         //For indirect access, non-contiguous ranges exist.
 
         SBFootprint() : fType(GRF_T), type (Type_UNDEF), LeftB(0), RightB(0), inst(nullptr) { ; }
         SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB, unsigned short RB, G4_INST *i)
@@ -136,27 +136,9 @@ namespace vISA
 
         void setOffset(unsigned short o) { offset = o; }
 
-        bool hasOverlap(SBFootprint* liveFootprint) const
+        bool hasOverlap(const SBFootprint *liveFootprint, unsigned short &internalOffset) const
         {
-            SBFootprint* curFootprint2Ptr = liveFootprint;
-            while (curFootprint2Ptr)
-            {
-                // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
-                if (fType == curFootprint2Ptr->fType &&
-                    LeftB <= curFootprint2Ptr->RightB && RightB >= curFootprint2Ptr->LeftB)
-                {
-                    return true;
-                }
-                curFootprint2Ptr = curFootprint2Ptr->next;
-            }
-
-            return false;
-        }
-
-        bool hasOverlap(SBFootprint *liveFootprint, unsigned short &internalOffset) const
-        {
-            SBFootprint *curFootprint2Ptr = liveFootprint;
-            while (curFootprint2Ptr)
+            for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
             {
                 // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB < curFootprint2Ptr->LeftB)
                 if (fType == curFootprint2Ptr->fType &&
@@ -165,15 +147,13 @@ namespace vISA
                     internalOffset = curFootprint2Ptr->offset;
                     return true;
                 }
-                curFootprint2Ptr = curFootprint2Ptr->next;
             }
 
             //Overlap with other ranges.
-            SBFootprint *curFootprintPtr = next;
-            while (curFootprintPtr)
+
+            for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
-                curFootprint2Ptr = liveFootprint;
-                while (curFootprint2Ptr)
+                for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
                     if (fType == curFootprint2Ptr->fType &&
                            curFootprintPtr->LeftB <= curFootprint2Ptr->RightB && curFootprintPtr->RightB >= curFootprint2Ptr->LeftB)
@@ -181,18 +161,15 @@ namespace vISA
                         internalOffset = curFootprint2Ptr->offset;
                         return true;
                     }
-                    curFootprint2Ptr = curFootprint2Ptr->next;
                 }
-                curFootprintPtr = curFootprintPtr->next;
             }
 
             return false;
         }
 
-        bool hasGRFGrainOverlap(SBFootprint *liveFootprint) const
+        bool hasGRFGrainOverlap(const SBFootprint *liveFootprint) const
         {
-            SBFootprint *curFootprint2Ptr = liveFootprint;
-            while (curFootprint2Ptr)
+            for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
             {
                 if (fType == curFootprint2Ptr->fType &&
                     ((LeftB / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB / numEltPerGRF<Type_UB>())) &&
@@ -200,15 +177,12 @@ namespace vISA
                 {
                     return true;
                 }
-                curFootprint2Ptr = curFootprint2Ptr->next;
             }
 
             //Overlap with other ranges.
-            SBFootprint *curFootprintPtr = next;
-            while (curFootprintPtr)
+            for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
             {
-                curFootprint2Ptr = liveFootprint;
-                while (curFootprint2Ptr)
+                for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr; curFootprint2Ptr = curFootprint2Ptr->next)
                 {
                     if (fType == curFootprint2Ptr->fType &&
                         ((curFootprintPtr->LeftB  / numEltPerGRF<Type_UB>()) <= (curFootprint2Ptr->RightB  / numEltPerGRF<Type_UB>())) &&
@@ -216,9 +190,7 @@ namespace vISA
                     {
                         return true;
                     }
-                    curFootprint2Ptr = curFootprint2Ptr->next;
                 }
-                curFootprintPtr = curFootprintPtr->next;
             }
 
             return false;
@@ -226,38 +198,30 @@ namespace vISA
 
 
         //Check if current footprint overlaps footprint2
-        //FIXME: it's conservative. Because for the indirect, the ranges may be contigious?
-        bool isWholeOverlap(SBFootprint *liveFootprint) const
+        //FIXME: it's conservative. Because for the indirect, the ranges may be contiguous?
+        bool isWholeOverlap(const SBFootprint *liveFootprint) const
         {
-            SBFootprint *curFootprintPtr = nullptr;
-            SBFootprint *footprint2Ptr = liveFootprint;
-
-            while (footprint2Ptr)
+            for (const SBFootprint *footprint2Ptr = liveFootprint; footprint2Ptr; footprint2Ptr = footprint2Ptr->next)
             {
                 if (fType == footprint2Ptr->fType &&
                     LeftB <= footprint2Ptr->LeftB && RightB >= footprint2Ptr->RightB)
                 {
                     return true;
                 }
-                curFootprintPtr = next;
-                while (curFootprintPtr)
+                for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
                 {
                     if (fType == footprint2Ptr->fType &&
                             curFootprintPtr->LeftB <= footprint2Ptr->LeftB && curFootprintPtr->RightB >= footprint2Ptr->RightB)
                     {
                         return true;
                     }
-                    curFootprintPtr = curFootprintPtr->next;
                 }
-                footprint2Ptr = footprint2Ptr->next;
             }
 
             return false;
         }
 
     };
-
-    typedef std::vector<vISA::SBFootprint*>::iterator SBMASK_VECT_ITER;
 
     // Bit set which is used for global dependence analysis for SBID.
     // Since dependencies may come from dst and src and there may be dependence kill between dst and src depencencies,
@@ -551,9 +515,9 @@ namespace vISA
             return footprints[opndNum];
         }
 
-        SBFootprint *getFootprint(Gen4_Operand_Number opndNum, const G4_INST *inst) const
+        const SBFootprint *getFootprint(Gen4_Operand_Number opndNum, const G4_INST *inst) const
         {
-            SBFootprint *sbFp = footprints[opndNum];
+            const SBFootprint *sbFp = footprints[opndNum];
             while (sbFp->inst != inst)
             {
                 sbFp = sbFp->next;
@@ -813,8 +777,7 @@ namespace vISA
             }
 
             //Kill the same node in other bucket.
-            SBFootprint *footprint = bucketNode->node->getFirstFootprint(bucketNode->opndNum);
-            while (footprint)
+            for (const SBFootprint *footprint = bucketNode->node->getFirstFootprint(bucketNode->opndNum); footprint; footprint = footprint->next)
             {
                 unsigned int startBucket = footprint->LeftB / numEltPerGRF<Type_UB>();
                 unsigned int endBucket = footprint->RightB / numEltPerGRF<Type_UB>();
@@ -835,7 +798,6 @@ namespace vISA
                         bucketKill(i, bucketNode->node, bucketNode->opndNum);
                     }
                 }
-                footprint = footprint->next;
             }
         }
 
@@ -960,7 +922,7 @@ namespace vISA
         G4_BB* getBB() const { return bb; }
         G4_Label* getLabel() const { return BBLabel; }
 
-        bool isGRFEdgeAdded(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a);
+        static bool isGRFEdgeAdded(const SBNode* pred, const SBNode* succ, DepType d, SBDependenceAttr a);
         void createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a);
 
         //Bucket and range analysis
@@ -979,7 +941,7 @@ namespace vISA
             G4_INST *inst,
             G4_Operand* opnd,
             Gen4_Operand_Number opnd_num);
-        void getGRFBuckets(SBNode* node, SBFootprint* footprint, Gen4_Operand_Number opndNum, std::vector<SBBucketDescr>& BDvec, bool GRFOnly);
+        void getGRFBuckets(SBNode* node, const SBFootprint* footprint, Gen4_Operand_Number opndNum, std::vector<SBBucketDescr>& BDvec, bool GRFOnly);
         bool getGRFFootPrintOperands(SBNode *node,
             G4_INST *inst,
             Gen4_Operand_Number first_opnd,
@@ -1002,7 +964,7 @@ namespace vISA
             std::vector<SBBucketDescr>& BDvec,
             bool GRFOnly);
 
-        void setDistance(SBFootprint * footprint, SBNode *node, SBNode *liveNode, bool dstDep);
+        void setDistance(const SBFootprint * footprint, SBNode *node, SBNode *liveNode, bool dstDep);
         static void footprintMerge(SBNode * node, const SBNode * nextNode);
 
         void pushItemToQueue(std::vector<unsigned>* nodeIDQueue, unsigned nodeID);
@@ -1045,7 +1007,6 @@ namespace vISA
     };
 
     typedef std::vector<G4_BB_SB *> BB_SWSB_VECTOR;
-    typedef BB_SWSB_VECTOR::iterator BB_SWSB_VECTOR_ITER;
 
     class Dom
     {
@@ -1079,29 +1040,24 @@ namespace vISA
     };
 
     class SWSB_TOKEN_PROFILE {
-        uint32_t tokenInstructionCount;
-        uint32_t tokenReuseCount;
-        uint32_t AWTokenReuseCount;
-        uint32_t ARTokenReuseCount;
-        uint32_t AATokenReuseCount;
-        uint32_t mathInstCount;
-        uint32_t syncInstCount;
-        uint32_t mathReuseCount;
-        uint32_t ARSyncInstCount;
-        uint32_t AWSyncInstCount;
-        uint32_t ARSyncAllCount;
-        uint32_t AWSyncAllCount;
-        uint32_t prunedDepEdges;
-        uint32_t prunedGlobalEdgeNum;
-        uint32_t prunedDiffBBEdgeNum;
-        uint32_t prunedDiffBBSameTokenEdgeNum;
+        uint32_t tokenInstructionCount = 0;
+        uint32_t tokenReuseCount = 0;
+        uint32_t AWTokenReuseCount = 0;
+        uint32_t ARTokenReuseCount = 0;
+        uint32_t AATokenReuseCount = 0;
+        uint32_t mathInstCount = 0;
+        uint32_t syncInstCount = 0;
+        uint32_t mathReuseCount = 0;
+        uint32_t ARSyncInstCount = 0;
+        uint32_t AWSyncInstCount = 0;
+        uint32_t ARSyncAllCount = 0;
+        uint32_t AWSyncAllCount = 0;
+        uint32_t prunedDepEdges = 0;
+        uint32_t prunedGlobalEdgeNum = 0;
+        uint32_t prunedDiffBBEdgeNum = 0;
+        uint32_t prunedDiffBBSameTokenEdgeNum = 0;
     public:
-        SWSB_TOKEN_PROFILE()
-            : tokenInstructionCount(0), tokenReuseCount(0),
-            AWTokenReuseCount(0), ARTokenReuseCount(0), AATokenReuseCount(0),
-            mathInstCount(0), syncInstCount(0), mathReuseCount(0),
-            ARSyncInstCount(0), AWSyncInstCount(0), ARSyncAllCount(0), AWSyncAllCount(0),
-            prunedDepEdges(0), prunedGlobalEdgeNum(0), prunedDiffBBEdgeNum(0), prunedDiffBBSameTokenEdgeNum(0) {
+        SWSB_TOKEN_PROFILE() {
             ;
         }
 
@@ -1194,7 +1150,7 @@ namespace vISA
         std::vector<SBNODE_VECT *> reachUseArray;
         SBNODE_VECT localTokenUsage;
 
-        SBNODE_VECT sameTokenNodes[32];
+        std::vector<const SBNode*> sameTokenNodes[32];
         int topIndex = -1;
 
         std::map<G4_Label*, G4_BB_SB*> labelToBlockMap;
@@ -1273,7 +1229,7 @@ namespace vISA
         void tokenDepReduction(SBNode* node1, SBNode *node2);
         bool cycleExpired(const SBNode * node, int currentID) const;
 
-        void shareToken(SBNode *node, SBNode *succ, unsigned short token);
+        void shareToken(const SBNode *node, const SBNode *succ, unsigned short token);
 
         void SWSBGlobalTokenAnalysis();
         bool globalTokenReachAnalysis(G4_BB *bb);
