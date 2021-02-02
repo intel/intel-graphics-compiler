@@ -1725,7 +1725,6 @@ void SWSB::assignToken(SBNode* node,
         {
             //Have free token
             token = topIndex;
-            sameTokenNodes[token].push_back(node);
             freeTokenList[token] = node; //Cannot be moved after setTopTokenIndex();
             setTopTokenIndex();
 #ifdef DEBUG_VERBOSE_ON
