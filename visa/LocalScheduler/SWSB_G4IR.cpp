@@ -4278,6 +4278,11 @@ void G4_BB_SB::clearKilledBucketNodeXeLP(LiveGRFBuckets* LB, int ALUID)
 
 void G4_BB_SB::setDistance(SBFootprint* footprint, SBNode* node, SBNode* liveNode, bool dstDep)
 {
+    if (isDummyCselInst(node) && isDummyCselInst(liveNode) && (node->getNodeID() - liveNode->getNodeID() == 1))
+    {
+        return;
+    }
+
     {
         auto dist = node->getALUID() - liveNode->getALUID();
         assert(dist <= liveNode->getMaxDepDistance() && "dist should not exceed the max dep distance");
@@ -4319,7 +4324,10 @@ void G4_BB_SB::pushItemToQueue(std::vector<unsigned> *nodeIDQueue, unsigned node
 
 bool G4_BB_SB::isDummyCselInst(SBNode *node)
 {
-    assert(node->GetInstruction()->opcode() == G4_csel);
+    if (node->GetInstruction()->opcode() != G4_csel)
+    {
+        return false;
+    }
 
     return (node->getFirstFootprint(Opnd_dst)->LeftB == 0) &&
         (node->getFirstFootprint(Opnd_src0)->LeftB == 0) &&
@@ -4389,26 +4397,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             node->setDistance(1);
             node->setDistOneAReg();
-        }
-
-        if (curInst->opcode() == G4_csel && isDummyCselInst(node) &&
-            nextInst->opcode() == G4_csel)
-        {
-            SBNode nextNode(nodeID, ALUID, bb->getId(), nextInst);
-            getGRFFootPrint(&nextNode, p);
-            if (isDummyCselInst(&nextNode))
-            {
-                footprintMerge(node, &nextNode);
-                node->addInstruction(nextInst);
-                curInst = nextInst;
-                iInst = iInstNext;
-                ALUID++;
-                iInstNext++;
-                if (iInstNext != iInstEnd)
-                {
-                    nextInst = *iInstNext;
-                }
-            }
         }
 
 
