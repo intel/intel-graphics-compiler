@@ -132,6 +132,14 @@ namespace IGC
             m_tileY = true;
             m_walkOrder = WO_YXZ;
         }
+
+        bool needsLinearWalk =
+            pCtx->getModuleMetaData()->csInfo.needsXYZLocalThreadIdWalkOrder;
+        if (needsLinearWalk)
+        {
+            m_tileY = false;
+            m_walkOrder = WO_XYZ;
+        }
     }
 
     void CComputeShader::CreateThreadPayloadData(void*& pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength)

@@ -267,6 +267,8 @@ namespace IGC
         bool forcedVISAPreRAScheduler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
+        // forces XYZ walk order
+        bool needsXYZLocalThreadIdWalkOrder = false;
     };
 
 
