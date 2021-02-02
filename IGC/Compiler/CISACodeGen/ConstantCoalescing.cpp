@@ -311,7 +311,7 @@ void ConstantCoalescing::VectorizePrep(llvm::BasicBlock* bb)
     {
         if (LoadInst * load = dyn_cast<LoadInst>(&(*I)))
         {
-            if (load->getType()->isVectorTy() && wiAns->isUniform(load))
+            if (load->getType()->isVectorTy() && (wiAns->whichDepend(load) == WIAnalysis::UNIFORM))
             {
                 srcNElts = (uint32_t)cast<VectorType>(load->getType())->getNumElements();
                 DenseMap<uint64_t, Instruction*> extractElementMap;
@@ -394,7 +394,7 @@ bool ConstantCoalescing::isProfitableLoad(
     {
         // \todo, another parameter to tune
         uint32_t MaxVectorInput =
-            (isa<LoadInst>(I) && wiAns->isUniform(I)) ?
+            (isa<LoadInst>(I) && wiAns->whichDepend(I) == WIAnalysis::UNIFORM) ?
             16 : 4;
 
         if (cast<VectorType>(LoadTy)->getNumElements() > MaxVectorInput)
@@ -440,7 +440,7 @@ void ConstantCoalescing::ProcessBlock(
                 uint offsetInBytes = (uint)offsetValue->getZExtValue();
                 if ((int32_t)offsetInBytes >= 0)
                 {
-                    if (wiAns->isUniform(ldRaw))
+                    if (wiAns->whichDepend(ldRaw) == WIAnalysis::UNIFORM)
                     {
                         uint maxEltPlus = 1;
                         if (!isProfitableLoad(ldRaw, maxEltPlus))
@@ -485,7 +485,7 @@ void ConstantCoalescing::ProcessBlock(
                 // As we handle all negative offsets as uint and some arithmetic operations do not work well. Needs more detailed fix
                 if ((int32_t)offsetInBytes >= 0)
                 {
-                    if (wiAns->isUniform(LI))
+                    if (wiAns->whichDepend(LI) == WIAnalysis::UNIFORM)
                     {   // uniform
                         if (elt_idxv)
                             MergeUniformLoad(LI, buf_idxv, 0, elt_idxv, offsetInBytes, maxEltPlus, indcb_owloads);
@@ -537,7 +537,7 @@ void ConstantCoalescing::ProcessBlock(
                     // As we handle all negative offsets as uint and some arithmetic operations do not work well. Needs more detailed fix
                     if ((int32_t)offsetInBytes >= 0)
                     {
-                        if (wiAns->isUniform(LI))
+                        if (wiAns->whichDepend(LI) == WIAnalysis::UNIFORM)
                         {   // uniform
                             MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, indcb_owloads);
                         }
@@ -874,7 +874,7 @@ Value* ConstantCoalescing::FormChunkAddress(BufChunk* chunk)
         Value* cv_start = ConstantInt::get(chunk->baseIdxV->getType(), chunk->chunkStart * chunk->elementSize);
         eac = irBuilder->CreateAdd(chunk->baseIdxV, cv_start);
         wiAns->incUpdateDepend(eac, wiAns->whichDepend(chunk->baseIdxV));
-        if (!wiAns->isUniform(chunk->baseIdxV))
+        if (wiAns->whichDepend(chunk->baseIdxV) != WIAnalysis::UNIFORM)
         {
             uniformness = WIAnalysis::RANDOM;
         }
@@ -1192,7 +1192,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
             splitter = EnlargeChunkAddExtract(cov_chunk, size_adj, eltid);
         }
         load->replaceAllUsesWith(splitter);
-        wiAns->incUpdateDepend(splitter, wiAns->whichDepend(load));
+        wiAns->incUpdateDepend(splitter, WIAnalysis::UNIFORM);
     }
 }
 
@@ -1514,7 +1514,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
                 if (chunk->chunkStart)
                 {
                     eac = irBuilder->CreateAdd(chunk->baseIdxV, eac);
-                    wiAns->incUpdateDepend(eac, wiAns->whichDepend(chunk->baseIdxV));
+                    wiAns->incUpdateDepend(eac, WIAnalysis::UNIFORM);
                 }
                 else
                 {
@@ -1530,7 +1530,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
         m_TT->RegisterNewValueAndAssignID(ptr);
         // Update debug location
         ptr->setDebugLoc(irBuilder->getCurrentDebugLocation());
-        wiAns->incUpdateDepend(ptr, wiAns->whichDepend(seedi));
+        wiAns->incUpdateDepend(ptr, WIAnalysis::UNIFORM);
         chunkLoad = irBuilder->CreateLoad(ptr);
         chunkLoad->setAlignment(getAlign(alignment));
         chunk->chunkIO = chunkLoad;
@@ -1546,7 +1546,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
             if (chunk->chunkStart)
             {
                 eac = irBuilder->CreateAdd(chunk->baseIdxV, eac);
-                wiAns->incUpdateDepend(eac, wiAns->whichDepend(chunk->baseIdxV));
+                wiAns->incUpdateDepend(eac, WIAnalysis::UNIFORM);
             }
             else
             {
@@ -1573,13 +1573,13 @@ Instruction* ConstantCoalescing::CreateChunkLoad(Instruction* seedi, BufChunk* c
         chunk->chunkIO = irBuilder->CreateCall(ldRawFn, arguments);
     }
 
-    wiAns->incUpdateDepend(chunk->chunkIO, wiAns->whichDepend(seedi));
+    wiAns->incUpdateDepend(chunk->chunkIO, WIAnalysis::UNIFORM);
 
     if (!seedi->getType()->isVectorTy())
     {
         Instruction* splitter = AddChunkExtract(chunk->chunkIO, eltid - chunk->chunkStart);
         seedi->replaceAllUsesWith(splitter);
-        wiAns->incUpdateDepend(splitter, wiAns->whichDepend(seedi));
+        wiAns->incUpdateDepend(splitter, WIAnalysis::UNIFORM);
     }
     else
     {
@@ -2411,7 +2411,7 @@ void ConstantCoalescing::ChangePTRtoOWordBased(BufChunk* chunk)
         }
         irBuilder->SetInsertPoint(pInsert);
         owordIndex = irBuilder->CreateAdd(owordIndex, ConstantInt::get(irBuilder->getInt32Ty(), chunk->chunkStart / 4));
-        wiAns->incUpdateDepend(owordIndex, wiAns->whichDepend(load));
+        wiAns->incUpdateDepend(owordIndex, WIAnalysis::UNIFORM);
     }
     Type* vty = IGCLLVM::FixedVectorType::get(load->getType()->getScalarType(), 4);
     Function* l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
@@ -2423,7 +2423,7 @@ void ConstantCoalescing::ChangePTRtoOWordBased(BufChunk* chunk)
     };
     irBuilder->SetInsertPoint(load);
     Instruction* owordPtr = irBuilder->CreateCall(l, attr);
-    wiAns->incUpdateDepend(owordPtr, wiAns->whichDepend(load));
+    wiAns->incUpdateDepend(owordPtr, WIAnalysis::UNIFORM);
     load->setOperand(0, owordPtr);
     load->setAlignment(getAlign(16));
 }

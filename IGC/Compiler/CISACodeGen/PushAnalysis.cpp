@@ -912,7 +912,7 @@ namespace IGC
                 }
                 else
                 {
-                    value = addArgumentAndMetadata(pTypeToPush, VALUE_NAME("cb"), WIAnalysis::UNIFORM_GLOBAL);
+                    value = addArgumentAndMetadata(pTypeToPush, VALUE_NAME("cb"), WIAnalysis::UNIFORM);
                     if (pTypeToPush != value->getType())
                         value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
 
@@ -1161,7 +1161,7 @@ namespace IGC
                     // at the beginning of the function and then we remove the instruction
                     value = addArgumentAndMetadata(pTypeToPush,
                         VALUE_NAME(std::string("cb_") + to_string(bufId) + std::string("_") + to_string(eltId) + std::string("_elm") + to_string(i)),
-                        WIAnalysis::UNIFORM_GLOBAL);
+                        WIAnalysis::UNIFORM);
                     if (pTypeToPush != value->getType())
                         value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
 
@@ -1231,8 +1231,7 @@ namespace IGC
                 {
                     IGC_ASSERT(inst->getType()->isHalfTy() || inst->getType()->isFloatTy());
                     llvm::Type* floatTy = Type::getFloatTy(m_pFunction->getContext());
-                    addArgumentAndMetadata(floatTy, VALUE_NAME(std::string("input_") + to_string(input.index)),
-                        uniformInput ? WIAnalysis::UNIFORM_GLOBAL : WIAnalysis::RANDOM);
+                    addArgumentAndMetadata(floatTy, VALUE_NAME(std::string("input_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
                     input.argIndex = m_argIndex;
                     pushInfo.inputs[input.index] = input;
                 }
@@ -1284,8 +1283,7 @@ namespace IGC
                             auto it = pushInfo.inputs.find(input.index);
                             if (it == pushInfo.inputs.end())
                             {
-                                addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("pushedinput_") + to_string(input.index)),
-                                    uniformInput ? WIAnalysis::UNIFORM_GLOBAL : WIAnalysis::RANDOM);
+                                addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("pushedinput_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
                                 input.argIndex = m_argIndex;
                                 pushInfo.inputs[input.index] = input;
                             }
@@ -1364,8 +1362,7 @@ namespace IGC
                             auto it = pushInfo.inputs.find(input.index);
                             if (it == pushInfo.inputs.end())
                             {
-                                addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("urb_read_") + to_string(input.index)),
-                                    uniformInput ? WIAnalysis::UNIFORM_GLOBAL : WIAnalysis::RANDOM);
+                                addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("urb_read_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
                                 input.argIndex = m_argIndex;
                                 pushInfo.inputs[input.index] = input;
                             }
@@ -1402,7 +1399,7 @@ namespace IGC
             arg = addArgumentAndMetadata(
                 runtimeValue->getType(),
                 VALUE_NAME(std::string("runtime_value_") + to_string(index)),
-                WIAnalysis::UNIFORM_GLOBAL);
+                WIAnalysis::UNIFORM);
             pushInfo.constantReg[index] = m_argIndex;
 
             if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() &&
@@ -1579,8 +1576,7 @@ namespace IGC
                             vsUrbReadIndexForInstanceIdSGV == input.index) ||
                         gsInstancingUsed;
 
-                    addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME(std::string("urb_read_") + to_string(input.index)),
-                        uniformInput ? WIAnalysis::UNIFORM_GLOBAL : WIAnalysis::RANDOM);
+                    addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME(std::string("urb_read_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
                     input.argIndex = m_argIndex;
                     pushInfo.inputs[input.index] = input;
                 }

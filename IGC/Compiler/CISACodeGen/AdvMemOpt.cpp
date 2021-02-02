@@ -146,7 +146,7 @@ bool AdvMemOpt::isLeadCandidate(BasicBlock* BB) const {
         if (II->mayWriteToMemory())
             return false;
         LoadInst* LD = dyn_cast<LoadInst>(&*II);
-        if (!LD || !WI->isUniform(LD))
+        if (!LD || WI->whichDepend(LD) != WIAnalysis::UNIFORM)
             continue;
         // Found uniform loads.
         return true;
@@ -292,7 +292,7 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock*> Line) const {
                 if (II->mayWriteToMemory())
                     break;
                 LoadInst* LD = dyn_cast<LoadInst>(&*II++);
-                if (!LD || !WI->isUniform(LD))
+                if (!LD || WI->whichDepend(LD) != WIAnalysis::UNIFORM)
                     continue;
                 if (!hoistUniformLoad(LD, Lead))
                     break; // Bail out if any uniform load could not be hoisted safely.

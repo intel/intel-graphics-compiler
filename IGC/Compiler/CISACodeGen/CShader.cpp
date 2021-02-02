@@ -334,7 +334,7 @@ void CShader::CreateImplicitArgs()
         ImplicitArg implictArg = implicitArgs[i];
         IGC_ASSERT_MESSAGE((implictArg.getNumberElements() < (UINT16_MAX)), "getNumberElements > higher than 64k");
 
-        bool isUniform = WIAnalysis::isDepUniform(implictArg.getDependency());
+        bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
         uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
 
         CVariable* var = GetNewVariable(
@@ -949,7 +949,7 @@ CVariable* CShader::GetNewAddressVariable(
 
 bool CShader::GetIsUniform(llvm::Value* v) const
 {
-    return m_WI ? (m_WI->isUniform(v)) : false;
+    return m_WI ? (m_WI->whichDepend(v) == WIAnalysis::UNIFORM) : false;
 }
 
 bool CShader::InsideDivergentCF(llvm::Instruction* inst)
@@ -1882,7 +1882,7 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
         for (auto UI = aV->user_begin(), UE = aV->user_end(); UI != UE; ++UI) {
             if (LoadInst* ST = dyn_cast<LoadInst>(*UI)) {
                 Value* Ptr = ST->getPointerOperand();
-                if (aWIA->isUniform(Ptr)) {
+                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                     if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pCtx))
                         return (pCtx->platform.getGRFSize() == 64) ? EALIGN_64WORD : EALIGN_32WORD;
                     return (pCtx->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
@@ -1890,7 +1890,7 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
             }
             if (StoreInst* ST = dyn_cast<StoreInst>(*UI)) {
                 Value* Ptr = ST->getPointerOperand();
-                if (aWIA->isUniform(Ptr)) {
+                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                     if (IGC::isA64Ptr(cast<PointerType>(Ptr->getType()), pCtx))
                         return (pCtx->platform.getGRFSize() == 64) ? EALIGN_64WORD : EALIGN_32WORD;
                     return (pCtx->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
@@ -1905,7 +1905,7 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
 
             if (IsRawAtomicIntrinsic(GII)) {
                 Value* Ptr = GII->getArgOperand(1);
-                if (aWIA->isUniform(Ptr)) {
+                if (aWIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                     if (PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType())) {
                         if (IGC::isA64Ptr(PtrTy, pCtx))
                             return (pCtx->platform.getGRFSize() == 64) ? EALIGN_64WORD : EALIGN_32WORD;
@@ -1956,7 +1956,7 @@ e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
     CodeGenContext* pContext)
 {
     // So far, non-uniform variables are always naturally aligned.
-    if (!WIA->isUniform(V))
+    if (WIA->whichDepend(V) != WIAnalysis::UNIFORM)
         return EALIGN_AUTO;
 
     // As the layout of argument is fixed, only naturally aligned could be
@@ -2218,7 +2218,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                 }
                 else
                 {
-                    bool isUniform = WIAnalysis::isDepUniform(implictArg.getDependency());
+                    bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
                     uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
 
 
@@ -2244,7 +2244,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
         bool isUniform = false;
         if (!ArgInCallee) {
             // Arg is for the current function and m_WI is available
-            isUniform = m_WI->isUniform(&*Arg);
+            isUniform = (m_WI->whichDepend(&*Arg) == WIAnalysis::UNIFORM);
         }
 
         VISA_Type type = GetType(Arg->getType());

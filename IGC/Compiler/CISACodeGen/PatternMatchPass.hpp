@@ -273,7 +273,7 @@ namespace IGC
 
         bool isUniform(const llvm::Value* V) const
         {
-            return m_WI && (m_WI->isUniform(V));
+            return m_WI && (m_WI->whichDepend(V) == WIAnalysis::UNIFORM);
         };
 
     public:

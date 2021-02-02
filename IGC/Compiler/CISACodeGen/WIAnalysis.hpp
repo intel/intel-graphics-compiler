@@ -71,15 +71,13 @@ namespace IGC
     public:
         /// @brief describes the type of dependency on the work item
         enum WIDependancy {
-            UNIFORM_GLOBAL    = 0,  /// Same for all work-items within a shader.
-            UNIFORM_WORKGROUP = 1,  /// Same for all work-items within a work group (compute).
-            UNIFORM_THREAD    = 2,  /// Same for all work-items within a HW thread.
-            CONSECUTIVE       = 3,  /// Elements are consecutive
-            PTR_CONSECUTIVE   = 4,  /// Elements are pointers which are consecutive
-            STRIDED           = 5,  /// Elements are in strides
-            RANDOM            = 6,  /// Unknown or non consecutive order
-            NumDeps           = 7,  /// Overall amount of dependencies
-            INVALID           = 8
+            UNIFORM = 0, /// All elements in vector are constant
+            CONSECUTIVE = 1, /// Elements are consecutive
+            PTR_CONSECUTIVE = 2, /// Elements are pointers which are consecutive
+            STRIDED = 3, /// Elements are in strides
+            RANDOM = 4, /// Unknown or non consecutive order
+            NumDeps = 5,  /// Overall amount of dependencies
+            INVALID = 6
         };
     };
 
@@ -127,9 +125,7 @@ namespace IGC
 
         /// @brief Returns True if 'val' is uniform
         /// @param val llvm::Value to test
-        bool isUniform(const llvm::Value* val) const;
-        bool isWorkGroupOrGlobalUniform(const llvm::Value* val);
-        bool isGlobalUniform(const llvm::Value* val);
+        bool isUniform(const llvm::Value* val);
 
         /// incremental update of the dep-map on individual value
         /// without propagation. Exposed for later pass.
@@ -226,7 +222,7 @@ namespace IGC
         /// @brief return true if there is calculated dependency type for requested value
         /// @param val llvm::Value to examine
         /// @return true if value has dependency type, false otherwise.
-        bool hasDependency(const llvm::Value* val) const;
+        bool hasDependency(const llvm::Value* val);
 
         /// @brief return true if all uses of this value are marked RANDOM
         bool allUsesRandom(const llvm::Value* val);
@@ -351,9 +347,7 @@ namespace IGC
 
         /// @brief Returns True if 'val' is uniform
         /// @param val llvm::Value to test
-        bool isUniform(const llvm::Value* val) const;  // Return true for any uniform
-        bool isWorkGroupOrGlobalUniform(const llvm::Value* val);
-        bool isGlobalUniform(const llvm::Value* val);
+        bool isUniform(const llvm::Value* val);
 
         /// incremental update of the dep-map on individual value
         /// without propagation. Exposed for later pass.
@@ -365,14 +359,6 @@ namespace IGC
         void releaseMemory() override
         {
             Runner.releaseMemory();
-        }
-
-
-        /// Return true if Dep is any of uniform dependancy.
-        static bool isDepUniform(WIDependancy Dep) {
-            return Dep == WIDependancy::UNIFORM_GLOBAL ||
-                Dep == WIDependancy::UNIFORM_WORKGROUP ||
-                Dep == WIDependancy::UNIFORM_THREAD;
         }
     private:
         WIAnalysisRunner Runner;

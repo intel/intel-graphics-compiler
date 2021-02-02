@@ -83,7 +83,7 @@ namespace IGC
 
     void AnnotateUniformAllocas::visitAllocaInst(AllocaInst& I)
     {
-        bool isUniformAlloca = WI->isUniform(&I);
+        bool isUniformAlloca = WI->whichDepend(&I) == WIAnalysis::UNIFORM;
         if (isUniformAlloca)
         {
             IRBuilder<> builder(&I);

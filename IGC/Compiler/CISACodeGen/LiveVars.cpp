@@ -219,7 +219,7 @@ LiveVars::LVInfo& LiveVars::getLVInfo(Value* LV) {
     DenseMap<Value*, LiveVars::LVInfo*>::const_iterator it = VirtRegInfo.find(LV);
     if (it == VirtRegInfo.end()) {
         LiveVars::LVInfo* lvInfo = new (Allocator.Allocate()) LiveVars::LVInfo();
-        lvInfo->uniform = (WIA && WIA->isUniform(LV));
+        lvInfo->uniform = (WIA && WIA->whichDepend(LV) == WIAnalysis::UNIFORM);
         VirtRegInfo.insert(std::pair<Value*, LVInfo*>(LV, lvInfo));
         if (Instruction * inst = dyn_cast<Instruction>(LV)) {
             // if the value is an instruction, default it to dead
@@ -276,7 +276,7 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
             hasLayoutPred = false;
         if (hasLayoutPred && VRInfo.uniform) {
             Instruction* cbr = PredBlk->getTerminator();
-            if (cbr && !WIA->isUniform(cbr))
+            if (cbr && WIA->whichDepend(cbr) != WIAnalysis::UNIFORM)
                 hasNonUniformBranch = true;
         }
     }
@@ -396,12 +396,12 @@ void LiveVars::HandleVirtRegUse(Value* VL, BasicBlock* MBB,
         BasicBlock* PredBlk = *PI;
         MarkVirtRegAliveInBlock(VRInfo, DefBlk, PredBlk);
         Instruction* cbr = PredBlk->getTerminator();
-        if (cbr && !WIA->isUniform(cbr))
+        if (cbr && WIA->whichDepend(cbr) != WIAnalysis::UNIFORM)
             hasNonUniformBranch = true;
         if (PredBlk == MBB->getPrevNode())
             hasLayoutPred = false;
     }
-    if (hasLayoutPred && hasNonUniformBranch && WIA->isUniform(VL)) {
+    if (hasLayoutPred && hasNonUniformBranch && WIA->whichDepend(VL) == WIAnalysis::UNIFORM) {
         BasicBlock* simdPred = MBB->getPrevNode();
         BasicBlock* DefBlk = (isa<Instruction>(VL)) ?
             cast<Instruction>(VL)->getParent() : NULL;

@@ -997,7 +997,7 @@ namespace IGC {
         void unionRegs(llvm::Value*, llvm::Value*);
 
         bool isUniform(llvm::Value* v) const {
-            return (WIA->isUniform(v));
+            return (WIA->whichDepend(v) == WIAnalysis::UNIFORM);
         }
 
         // Isolate a register.

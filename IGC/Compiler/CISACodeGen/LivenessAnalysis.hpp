@@ -122,7 +122,7 @@ namespace IGC
         // Return true if V is uniform
         bool isUniform(llvm::Value* V) const
         {
-            return m_WIA && m_WIA->isUniform(V);
+            return m_WIA && m_WIA->whichDepend(V) == WIAnalysis::UNIFORM;
         }
 
         bool isCandidateValue(llvm::Value* V)

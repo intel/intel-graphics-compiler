@@ -113,7 +113,7 @@ namespace IGC {
         bool isIsolated(llvm::Value*) const;
 
         bool isUniform(llvm::Value* v) const {
-            return (WIA->isUniform(v));
+            return (WIA->whichDepend(v) == WIAnalysis::UNIFORM);
         }
 
         void getAllValuesInCongruentClass(
