@@ -1872,6 +1872,13 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
     // Add function template parameters.
     addTemplateParams(*SPDie, SP->getTemplateParams());
 
+    // Add the linkage name if we have one.
+    StringRef LinkageName = SP->getLinkageName();
+    if (!LinkageName.empty())
+    {
+        addString(SPDie, dwarf::DW_AT_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
+    }
+
     // If this DIE is going to refer declaration info using AT_specification
     // then there is no need to add other attributes.
     if (DeclDie)
@@ -1880,13 +1887,6 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
         addDIEEntry(SPDie, dwarf::DW_AT_specification, DeclDie);
 
         return SPDie;
-    }
-
-    // Add the linkage name if we have one.
-    StringRef LinkageName = SP->getLinkageName();
-    if (!LinkageName.empty())
-    {
-        addString(SPDie, dwarf::DW_AT_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
     }
 
     // Constructors and operators for anonymous aggregates do not have names.
