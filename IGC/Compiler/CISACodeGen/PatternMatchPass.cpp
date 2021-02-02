@@ -884,7 +884,7 @@ namespace IGC
         {
             return;
         }
-        if (!isa<Constant>(v) && m_WI->whichDepend(v) != WIAnalysis::UNIFORM)
+        if (!isa<Constant>(v) && !m_WI->isUniform(v))
         {
             if (isa<PHINode>(v) || HasUseOutsideLoop(v))
             {
@@ -2941,7 +2941,7 @@ namespace IGC
                         if (!broadcast)
                         {
                             source.region_set = true;
-                            if (m_WI->whichDepend(value) == WIAnalysis::UNIFORM)
+                            if (m_WI->isUniform(value))
                                 source.region[0] = 0;
                             else
                                 source.region[0] = (unsigned char)nEltsRatio;

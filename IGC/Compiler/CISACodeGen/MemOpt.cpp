@@ -237,7 +237,7 @@ namespace {
             SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
             unsigned& NumElts)
         {
-            if (inst->getAlignment() < 4 && WI->whichDepend(inst) != WIAnalysis::UNIFORM)
+            if (inst->getAlignment() < 4 && !WI->isUniform(inst))
             {
                 llvm::Type* dataType = isa<LoadInst>(inst) ? inst->getType() : inst->getOperand(0)->getType();
                 unsigned scalarTypeSizeInBytes = unsigned(DL->getTypeSizeInBits(dataType->getScalarType()) / 8);
@@ -534,8 +534,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     SmallVector<unsigned, 8> profitVec;
     // FIXME: Enable for OCL shader only as other clients have regressions but
     // there's no way to trace down.
-    bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) &&
-        (WI->whichDepend(LeadingLoad) == WIAnalysis::UNIFORM);
+    bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad));
     if (isUniformLoad) {
         unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
         if (C == 0) C = 256;

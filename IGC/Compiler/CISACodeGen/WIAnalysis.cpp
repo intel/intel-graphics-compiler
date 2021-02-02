@@ -78,14 +78,18 @@ WIAnalysis::WIAnalysis() : FunctionPass(ID)
 const unsigned int WIAnalysisRunner::MinIndexBitwidthToPreserve = 16;
 
 /// Define shorter names for dependencies, for clarity of the conversion maps
-#define UNI WIAnalysis::UNIFORM
+#define UGL WIAnalysis::UNIFORM_GLOBAL
+#define UWG WIAnalysis::UNIFORM_WORKGROUP
+#define UTH WIAnalysis::UNIFORM_THREAD
 #define SEQ WIAnalysis::CONSECUTIVE
 #define PTR WIAnalysis::PTR_CONSECUTIVE
 #define STR WIAnalysis::STRIDED
 #define RND WIAnalysis::RANDOM
 
 static const char* const dep_str[] = {
-  "uniform",
+  "uniform_global",
+  "uniform_workgroup",
+  "uniform_thread",
   "consecu",
   "p_conse",
   "strided",
@@ -96,53 +100,64 @@ static const char* const dep_str[] = {
 
 static const WIAnalysis::WIDependancy
 add_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
-    /*          UNI, SEQ, PTR, STR, RND */
-    /* UNI */  {UNI, SEQ, PTR, STR, RND},
-    /* SEQ */  {SEQ, STR, STR, STR, RND},
-    /* PTR */  {PTR, STR, STR, STR, RND},
-    /* STR */  {STR, STR, STR, STR, RND},
-    /* RND */  {RND, RND, RND, RND, RND}
+    /*          UGL, UWG, UTH, SEQ, PTR, STR, RND */
+    /* UGL */  {UGL, UWG, UTH, SEQ, PTR, STR, RND},
+    /* UWG */  {UWG, UWG, UTH, SEQ, PTR, STR, RND},
+    /* UTH */  {UTH, UTH, UTH, SEQ, PTR, STR, RND},
+    /* SEQ */  {SEQ, SEQ, SEQ, STR, STR, STR, RND},
+    /* PTR */  {PTR, PTR, PTR, STR, STR, STR, RND},
+    /* STR */  {STR, STR, STR, STR, STR, STR, RND},
+    /* RND */  {RND, RND, RND, RND, RND, RND, RND}
 };
 
 static const WIAnalysis::WIDependancy
 sub_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
-    /*          UNI, SEQ, PTR, STR, RND */
-    /* UNI */  {UNI, STR, RND, RND, RND},
-    /* SEQ */  {SEQ, RND, RND, RND, RND},
-    /* PTR */  {PTR, RND, RND, RND, RND},
-    /* STR */  {STR, RND, RND, RND, RND},
-    /* RND */  {RND, RND, RND, RND, RND}
+    /*          UGL, UWG, UTH, SEQ, PTR, STR, RND */
+    /* UGL */  {UGL, UWG, UTH, STR, RND, RND, RND},
+    /* UWG */  {UWG, UWG, UTH, STR, RND, RND, RND},
+    /* UTH */  {UTH, UTH, UTH, STR, RND, RND, RND},
+    /* SEQ */  {SEQ, SEQ, SEQ, RND, RND, RND, RND},
+    /* PTR */  {PTR, PTR, PTR, RND, RND, RND, RND},
+    /* STR */  {STR, STR, STR, RND, RND, RND, RND},
+    /* RND */  {RND, RND, RND, RND, RND, RND, RND}
 };
 
 
 static const WIAnalysis::WIDependancy
 mul_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
-    /*          UNI, SEQ, PTR, STR, RND */
-    /* UNI */  {UNI, STR, STR, STR, RND},
-    /* SEQ */  {STR, RND, RND, RND, RND},
-    /* PTR */  {STR, RND, RND, RND, RND},
-    /* STR */  {STR, RND, RND, RND, RND},
-    /* RND */  {RND, RND, RND, RND, RND}
+    /*          UGL, UWG, UTH, SEQ, PTR, STR, RND */
+    /* UGL */  {UGL, UWG, UTH, STR, STR, STR, RND},
+    /* UWG */  {UWG, UWG, UTH, STR, STR, STR, RND},
+    /* UTH */  {UTH, UTH, UTH, STR, STR, STR, RND},
+    /* SEQ */  {STR, STR, STR, RND, RND, RND, RND},
+    /* PTR */  {STR, STR, STR, RND, RND, RND, RND},
+    /* STR */  {STR, STR, STR, RND, RND, RND, RND},
+    /* RND */  {RND, RND, RND, RND, RND, RND, RND}
 };
 
+// select is to have a weaker dep of two
 static const WIAnalysis::WIDependancy
 select_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
-    /*          UNI, SEQ, PTR, STR, RND */
-    /* UNI */  {UNI, STR, STR, STR, RND},
-    /* SEQ */  {STR, SEQ, STR, STR, RND},
-    /* PTR */  {STR, STR, PTR, STR, RND},
-    /* STR */  {STR, STR, STR, STR, RND},
-    /* RND */  {RND, RND, RND, RND, RND}
+    /*          UGL, UWG, UTH, SEQ, PTR, STR, RND */
+    /* UGL */  {UGL, UWG, UTH, STR, STR, STR, RND},
+    /* UWG */  {UWG, UWG, UTH, STR, STR, STR, RND},
+    /* UTH */  {UTH, UTH, UTH, STR, STR, STR, RND},
+    /* SEQ */  {STR, STR, STR, SEQ, STR, STR, RND},
+    /* PTR */  {STR, STR, STR, STR, PTR, STR, RND},
+    /* STR */  {STR, STR, STR, STR, STR, STR, RND},
+    /* RND */  {RND, RND, RND, RND, RND, RND, RND}
 };
 
 static const WIAnalysis::WIDependancy
 gep_conversion[WIAnalysis::NumDeps][WIAnalysis::NumDeps] = {
-    /* ptr\index UNI, SEQ, PTR, STR, RND */
-    /* UNI */  {UNI, PTR, RND, RND, RND},
-    /* SEQ */  {RND, RND, RND, RND, RND},
-    /* PTR */  {PTR, RND, RND, RND, RND},
-    /* STR */  {RND, RND, RND, RND, RND},
-    /* RND */  {RND, RND, RND, RND, RND}
+    /* ptr\index UGL, UWG, UTH, SEQ, PTR, STR, RND */
+    /* UGL */  {UGL, UWG, UTH, PTR, RND, RND, RND},
+    /* UWG */  {UWG, UWG, UTH, PTR, RND, RND, RND},
+    /* UTH */  {UTH, UTH, UTH, PTR, RND, RND, RND},
+    /* SEQ */  {RND, RND, RND, RND, RND, RND, RND},
+    /* PTR */  {PTR, PTR, PTR, RND, RND, RND, RND},
+    /* STR */  {RND, RND, RND, RND, RND, RND, RND},
+    /* RND */  {RND, RND, RND, RND, RND, RND, RND}
 };
 
 // For better readability, the rank of a dependency is used to compare two dependencies
@@ -417,7 +432,7 @@ void WIAnalysisRunner::genSpecificBackwardUpdate()
         for (unsigned i = 0; i < inst->getNumOperands(); ++i)
         {
             Instruction* def = dyn_cast<Instruction>(inst->getOperand(i));
-            if (def && getDependency(def) == WIAnalysis::UNIFORM && allUsesRandom(def) && !needToBeUniform(def))
+            if (def && WIAnalysis::isDepUniform(getDependency(def)) && allUsesRandom(def) && !needToBeUniform(def))
             {
                 // if it is cheap and easy to mark it as RANDOM
                 if (isInstructionSimple(def))
@@ -472,7 +487,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     for (int i = 0; i < implicitArgStart; ++i, ++ai)
     {
         IGC_ASSERT(ai != ae);
-        incUpdateDepend(&(*ai), IsSubroutine ? WIAnalysis::RANDOM : WIAnalysis::UNIFORM);
+        incUpdateDepend(&(*ai), IsSubroutine ? WIAnalysis::RANDOM : WIAnalysis::UNIFORM_GLOBAL);
     }
 
     // 2. add implicit args
@@ -495,7 +510,8 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
         if ((localX_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) ||
             (localY_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Y) ||
             (localZ_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Z)) {
-            dependency = WIAnalysis::UNIFORM;
+            // todo: may improve it to have UNIFORM_WORKGROUP
+            dependency = WIAnalysis::UNIFORM_THREAD;
         }
 
         incUpdateDepend(&(*ai), dependency);
@@ -535,9 +551,19 @@ WIAnalysis::WIDependancy WIAnalysis::whichDepend(const llvm::Value* val)
     return Runner.whichDepend(val);
 }
 
-bool WIAnalysis::isUniform(const llvm::Value* val)
+bool WIAnalysis::isUniform(const Value* val) const
 {
     return Runner.isUniform(val);
+}
+
+bool WIAnalysis::isGlobalUniform(const Value* val)
+{
+    return Runner.isGlobalUniform(val);
+}
+
+bool WIAnalysis::isWorkGroupOrGlobalUniform(const Value* val)
+{
+    return Runner.isWorkGroupOrGlobalUniform(val);
 }
 
 bool WIAnalysis::insideDivergentCF(const llvm::Value* val)
@@ -551,7 +577,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
     IGC_ASSERT_MESSAGE(nullptr != val, "Bad value");
     if (isa<Constant>(val))
     {
-        return WIAnalysis::UNIFORM;
+        return WIAnalysis::UNIFORM_GLOBAL;
     }
     auto EL = m_depMap.GetAttributeWithoutCreating(val);
     if (IGC_IS_FLAG_ENABLED(DisableUniformAnalysis))
@@ -565,12 +591,28 @@ WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
     return EL;
 }
 
-bool WIAnalysisRunner::isUniform(const llvm::Value* val)
+bool WIAnalysisRunner::isUniform(const Value* val) const
 {
     if (!hasDependency(val))
         return false;
 
-    return whichDepend(val) == WIAnalysis::UNIFORM;
+    return WIAnalysis::isDepUniform(whichDepend(val));
+}
+
+bool WIAnalysisRunner::isWorkGroupOrGlobalUniform(const Value* val)
+{
+    if (!hasDependency(val))
+        return false;
+    WIAnalysis::WIDependancy dep = whichDepend(val);
+    return dep == WIAnalysis::UNIFORM_GLOBAL || WIAnalysis::UNIFORM_WORKGROUP;
+}
+
+bool WIAnalysisRunner::isGlobalUniform(const Value* val)
+{
+    if (!hasDependency(val))
+        return false;
+    WIAnalysis::WIDependancy dep = whichDepend(val);
+    return dep == WIAnalysis::UNIFORM_GLOBAL;
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value* val)
@@ -578,9 +620,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value* val)
     if (m_depMap.GetAttributeWithoutCreating(val) == m_depMap.end())
     {
         // Make sure that constants are not added in the map.
-        if (!isa<Instruction>(val))
+        if (!isa<Instruction>(val) && !isa<Argument>(val))
         {
-            return WIAnalysis::UNIFORM;
+            return WIAnalysis::UNIFORM_GLOBAL;
         }
         // Don't expect this happens, let's assertion fail
         IGC_ASSERT_MESSAGE(0, "Dependence for 'val' should bave been set already!");
@@ -589,7 +631,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::getDependency(const Value* val)
     return m_depMap.GetAttributeWithoutCreating(val);
 }
 
-bool WIAnalysisRunner::hasDependency(const Value* val)
+bool WIAnalysisRunner::hasDependency(const Value* val) const
 {
 
     if (!isa<Instruction>(val) && !isa<Argument>(val))
@@ -695,7 +737,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
 
     if (!hasOriginal)
     {
-        orig = WIAnalysis::UNIFORM;
+        orig = WIAnalysis::UNIFORM_GLOBAL;
     }
     else
     {
@@ -733,14 +775,14 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
 
     if (m_func->hasFnAttribute("KMPLOCK"))
     {
-        dep = WIAnalysis::UNIFORM;
+        dep = WIAnalysis::UNIFORM_THREAD;
     }
 
     // If the value was changed in this calculation
     if (!hasOriginal || dep != orig)
     {
         // i1 instructions used in phi cannot be uniform as it may prevent us from removing the phi of 1
-        if (inst->getType()->isIntegerTy(1) && dep == WIAnalysis::UNIFORM && HasPhiUse(inst))
+        if (inst->getType()->isIntegerTy(1) && WIAnalysis::isDepUniform(dep) && HasPhiUse(inst))
         {
             dep = WIAnalysis::RANDOM;
         }
@@ -750,11 +792,11 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         WIAnalysis::WIDependancy newDep = depRank(orig) < depRank(dep) ? dep : orig;
         if (!hasOriginal || newDep != orig)
         {
-            // update only for a new dep
+            // update only if it is a new dep
             updateDepMap(inst, newDep);
         }
         // divergent branch, trigger updates due to control-dependence
-        if (inst->isTerminator() && newDep != WIAnalysis::UNIFORM)
+        if (inst->isTerminator() && dep != WIAnalysis::UNIFORM_GLOBAL)
         {
             update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
         }
@@ -794,6 +836,9 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchIn
 
 void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
 {
+    IGC_ASSERT(hasDependency(inst));
+    WIBaseClass::WIDependancy instDep = getDependency(inst);
+
     BasicBlock* blk = (BasicBlock*)(inst->getParent());
     BasicBlock* ipd = PDT->getNode(blk)->getIDom()->getBlock();
     // a branch can have NULL immediate post-dominator when a function
@@ -830,8 +875,9 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
         for (BasicBlock::iterator I = def_blk->begin(), E = def_blk->end(); I != E; ++I)
         {
             Instruction* defi = &(*I);
-            if (hasDependency(defi) && getDependency(defi) == WIAnalysis::RANDOM)
+            if (hasDependency(defi) && depRank(getDependency(defi)) >= depRank(instDep ))
             {
+                // defi is already weaker than or equal to inst (br), do nothing.
                 continue;
             }
 
@@ -874,7 +920,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                     br_info.partial_joins.count(user_blk) ||
                     !br_info.influence_region.count(user_blk))
                 {
-                    updateDepMap(defi, WIAnalysis::RANDOM);
+                    updateDepMap(defi, instDep);
                     // break out of the use loop
                     // since def is changed to RANDOM, all uses will be changed later
                     break;
@@ -886,6 +932,11 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
 
 void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
 {
+    // This is to bring down PHI's dep to br's dep.
+    // If PHI's dep is already weaker than br's dep, do nothing.
+    IGC_ASSERT(hasDependency(brInfo->cbr));
+    WIAnalysis::WIDependancy brDep = getDependency(brInfo->cbr);
+
     for (BasicBlock::iterator I = blk->begin(), E = blk->end(); I != E; ++I)
     {
         Instruction* defi = &(*I);
@@ -894,8 +945,9 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
         {
             break;
         }
-        if (hasDependency(phi) && getDependency(phi) == WIAnalysis::RANDOM)
+        if (hasDependency(phi) && depRank(getDependency(phi)) >= depRank(brDep))
         {
+            // phi's dep is already the same or weaker, do nothing.
             continue;
         }
         Value* trickySrc = nullptr;
@@ -905,7 +957,7 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
             Instruction* defi = dyn_cast<Instruction>(srcVal);
             if (defi && brInfo->influence_region.count(defi->getParent()))
             {
-                updateDepMap(phi, WIAnalysis::RANDOM);
+                updateDepMap(phi, brDep);
                 break;
             }
             else
@@ -923,7 +975,7 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
                     }
                     else if (trickySrc != srcVal)
                     {
-                        updateDepMap(phi, WIAnalysis::RANDOM);
+                        updateDepMap(phi, brDep);
                         break;
                     }
                 }
@@ -996,16 +1048,18 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_simple(const Instructio
 {
     // simply check that all operands are uniform, if so return uniform, else random
     const unsigned nOps = I->getNumOperands();
+    WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM_GLOBAL;
     for (unsigned i = 0; i < nOps; ++i)
     {
         const Value* op = I->getOperand(i);
-        WIAnalysis::WIDependancy dep = getDependency(op);
-        if (dep != WIAnalysis::UNIFORM)
+        WIAnalysis::WIDependancy D = getDependency(op);
+        dep = add_conversion[dep][D];
+        if (dep == WIAnalysis::RANDOM)
         {
-            return WIAnalysis::RANDOM;
+            break;
         }
     }
-    return WIAnalysis::UNIFORM;
+    return dep;
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const LoadInst* inst)
@@ -1025,9 +1079,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
 
     // For whatever binary operation,
     // uniform returns uniform
-    if (WIAnalysis::UNIFORM == dep0 && WIAnalysis::UNIFORM == dep1)
+    WIAnalysis::WIDependancy dep = select_conversion[dep0][dep1];
+    if (WIAnalysis::isDepUniform(dep))
     {
-        return WIAnalysis::UNIFORM;
+        return dep;
     }
 
     // FIXME:: assumes that the X value does not cross the +/- border - risky !!!
@@ -1043,7 +1098,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
         if (C1 || C0)
         {
             ConstantInt* C = C1 ? C1 : C0;
-            WIAnalysis::WIDependancy dep = C1 ? dep0 : dep1;
+            dep = C1 ? dep0 : dep1;
             // Cannot look at bit pattern of huge integers.
             if (C->getBitWidth() < 65)
             {
@@ -1073,7 +1128,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
         if (SHL && SHL->getOpcode() == Instruction::Add)
         {
             Value* addedVal = SHL->getOperand(1);
-            if (getDependency(addedVal) == WIAnalysis::UNIFORM)
+            if (WIAnalysis::isDepUniform(getDependency(addedVal)))
             {
                 SHL = dyn_cast<BinaryOperator>(SHL->getOperand(0));
             }
@@ -1112,7 +1167,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     case Instruction::Mul:
     case Instruction::FMul:
     case Instruction::Shl:
-        if (WIAnalysis::UNIFORM == dep0 || WIAnalysis::UNIFORM == dep1)
+        if (WIAnalysis::isDepUniform(dep0) || WIAnalysis::isDepUniform(dep1))
         {
             // If one of the sides is uniform, then we can adopt
             // the other side (stride*uniform is still stride).
@@ -1142,7 +1197,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
     if (llvmintrin != nullptr &&
         (llvmintrin->getIntrinsicID() == llvm::Intrinsic::stacksave ||
          llvmintrin->getIntrinsicID() == llvm::Intrinsic::stackrestore)) {
-        return WIAnalysis::UNIFORM;
+        return WIAnalysis::UNIFORM_THREAD;
     }
 
     if (IsMathIntrinsic(intrinsic_name) ||
@@ -1184,6 +1239,23 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
         GII_id == GenISAIntrinsic::GenISA_getR0)
     {
+        switch (GII_id)
+        {
+        default:
+            break;
+        case GenISAIntrinsic::GenISA_getR0:
+        case GenISAIntrinsic::GenISA_getSR0:
+        case GenISAIntrinsic::GenISA_getSR0_0:
+        case GenISAIntrinsic::GenISA_eu_id:
+        case GenISAIntrinsic::GenISA_hw_thread_id:
+            return WIAnalysis::UNIFORM_THREAD;
+        case GenISAIntrinsic::GenISA_slice_id:
+        case GenISAIntrinsic::GenISA_subslice_id:
+            // Make sure they are UNIFORM_WORKGROUP
+            //return WIAnalysis::UNIFORM_WORKGROUP;
+            return WIAnalysis::UNIFORM_THREAD;
+        }
+
         if (intrinsic_name == llvm_input ||
             intrinsic_name == llvm_shaderinputvec)
         {
@@ -1223,23 +1295,24 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         if (intrinsic_name == llvm_getMessagePhaseX ||
             intrinsic_name == llvm_getMessagePhaseXV)
         {
-            return WIAnalysis::UNIFORM;
+            return WIAnalysis::UNIFORM_THREAD;
         }
 
         if (intrinsic_name == llvm_waveShuffleIndex)
         {
             Value* op0 = inst->getArgOperand(0);
             Value* op1 = inst->getArgOperand(1);
-            if (WIAnalysis::UNIFORM == getDependency(op0) ||
-                WIAnalysis::UNIFORM == getDependency(op1))
+            WIAnalysis::WIDependancy dep0 = getDependency(op0);
+            WIAnalysis::WIDependancy dep1 = getDependency(op1);
+            if (WIAnalysis::isDepUniform(dep0) || WIAnalysis::isDepUniform(dep1))
             {
-                return WIAnalysis::UNIFORM;
+                return select_conversion[dep0][dep1];
             }
         }
 
         if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
         {
-            return WIAnalysis::UNIFORM;
+            return WIAnalysis::UNIFORM_THREAD;
         }
 
         if (intrinsic_name == llvm_waveClustered)
@@ -1251,7 +1324,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             if (clusterSize == maxSimdSize)
             {
                 // TODO: do the same for SIMD8 and SIMD16 if possible.
-                return WIAnalysis::UNIFORM;
+                return WIAnalysis::UNIFORM_THREAD;
             }
             else
             {
@@ -1261,29 +1334,25 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
 
         if(GII_id == GenISAIntrinsic::GenISA_getR0)
         {
-            return WIAnalysis::UNIFORM;
+            return WIAnalysis::UNIFORM_THREAD;
         }
 
 
         // Iterate over all input dependencies. If all are uniform - propagate it.
         // otherwise - return RANDOM
         unsigned numParams = inst->getNumArgOperands();
-
-        bool isAllUniform = true;
+        WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM_GLOBAL;
         for (unsigned i = 0; i < numParams; ++i)
         {
             Value* op = inst->getArgOperand(i);
-            WIAnalysis::WIDependancy dep = getDependency(op);
-            if (WIAnalysis::UNIFORM != dep)
+            WIAnalysis::WIDependancy tdep = getDependency(op);
+            dep = select_conversion[dep][tdep];
+            if (dep == WIAnalysis::RANDOM)
             {
-                isAllUniform = false;
                 break; // Uniformity check failed. no need to continue
             }
         }
-        if (isAllUniform)
-        {
-            return WIAnalysis::UNIFORM;
-        }
+        return dep;
     }
     return WIAnalysis::RANDOM;
 }
@@ -1291,25 +1360,24 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     const GetElementPtrInst* inst)
 {
+    const Value* opPtr = inst->getOperand(0);
+    WIAnalysis::WIDependancy dep = getDependency(opPtr);
     // running over the all indices arguments except for the last
     // here we assume the pointer is the first operand
     unsigned num = inst->getNumIndices();
     for (unsigned i = 1; i < num; ++i)
     {
         const Value* op = inst->getOperand(i);
-        WIAnalysis::WIDependancy dep = getDependency(op);
-        if (dep != WIAnalysis::UNIFORM)
+        WIAnalysis::WIDependancy tdep = getDependency(op);
+        dep = select_conversion[dep][tdep];
+        if (!WIAnalysis::isDepUniform(dep))
         {
             return WIAnalysis::RANDOM;
         }
     }
-    const Value* opPtr = inst->getOperand(0);
-    WIAnalysis::WIDependancy depPtr = getDependency(opPtr);
-
     const Value* lastInd = inst->getOperand(num);
     WIAnalysis::WIDependancy lastIndDep = getDependency(lastInd);
-
-    return gep_conversion[depPtr][lastIndDep];
+    return gep_conversion[dep][lastIndDep];
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
@@ -1357,20 +1425,20 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_terminator(
             // Conditional branch is uniform, if its condition is uniform
             Value* op = brInst->getCondition();
             WIAnalysis::WIDependancy dep = getDependency(op);
-            if (WIAnalysis::UNIFORM == dep)
+            if (WIAnalysis::isDepUniform(dep))
             {
-                return WIAnalysis::UNIFORM;
+                return dep;
             }
             return WIAnalysis::RANDOM;
         }
         // Unconditional branch is non TID-dependent
-        return WIAnalysis::UNIFORM;
+        return WIAnalysis::UNIFORM_GLOBAL;
     }
     //Return instructions are unconditional
     case Instruction::Ret:
-        return WIAnalysis::UNIFORM;
+        return WIAnalysis::UNIFORM_GLOBAL;
     case Instruction::Unreachable:
-        return WIAnalysis::UNIFORM;
+        return WIAnalysis::UNIFORM_GLOBAL;
     case Instruction::IndirectBr:
         return WIAnalysis::RANDOM;
         // TODO: Define the dependency requirements of indirectBr
@@ -1386,7 +1454,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const SelectInst* inst)
 {
     Value* op0 = inst->getOperand(0); // mask
     WIAnalysis::WIDependancy dep0 = getDependency(op0);
-    if (WIAnalysis::UNIFORM == dep0)
+    if (WIAnalysis::isDepUniform(dep0))
     {
         Value* op1 = inst->getOperand(1);
         Value* op2 = inst->getOperand(2);
@@ -1402,7 +1470,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const SelectInst* inst)
         // Select the "weaker" dep, but if only one dep is ptr_consecutive,
         // it must be promoted to strided ( as this data may
         // propagate to Load/Store instructions.
-        return select_conversion[dep1][dep2];
+        WIAnalysis::WIDependancy tDep = select_conversion[dep1][dep2];
+        return select_conversion[dep0][tDep];
     }
     // In case the mask is non-uniform the select outcome can be a combination
     // so we don't know nothing about it.
@@ -1497,7 +1566,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     // find assume-uniform
     if (depIt->second.assume_uniform)
     {
-        return WIAnalysis::UNIFORM;
+        return WIAnalysis::UNIFORM_THREAD;
     }
     // find the common dominator block among all the stores
     // that can be considered as the nearest logical location for alloca.
@@ -1518,7 +1587,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
     {
         if (hasDependency(SI))
         {
-            if (getDependency(SI) != WIAnalysis::UNIFORM)
+            if (!WIAnalysis::isDepUniform(getDependency(SI)))
             {
                 return WIAnalysis::RANDOM;
             }
@@ -1537,7 +1606,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
         }
     }
 
-    return WIAnalysis::UNIFORM;
+    return WIAnalysis::UNIFORM_THREAD;
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
@@ -1546,7 +1615,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CastInst* inst)
     WIAnalysis::WIDependancy dep0 = getDependency(op0);
 
     // independent remains independent
-    if (WIAnalysis::UNIFORM == dep0) return dep0;
+    if (WIAnalysis::isDepUniform(dep0)) return dep0;
 
     switch (inst->getOpcode())
     {

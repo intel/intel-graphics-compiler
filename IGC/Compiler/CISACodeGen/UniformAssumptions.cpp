@@ -64,7 +64,7 @@ namespace IGC {
             IGC::getTextureAndSamplerOperands(pIntr, pTextureValue, pSamplerValue);
 
             if (pTextureValue && pTextureValue->getType()->isPointerTy() &&
-                m_WIAnalysis->whichDepend(pTextureValue) != WIAnalysis::UNIFORM)
+                !m_WIAnalysis->isUniform(pTextureValue))
             {
                 // Check assumptions for texture:
                 if (IsAssumedUniform(pTextureValue))
@@ -74,7 +74,7 @@ namespace IGC {
             }
 
             if (pSamplerValue && pSamplerValue->getType()->isPointerTy() &&
-                m_WIAnalysis->whichDepend(pSamplerValue) != WIAnalysis::UNIFORM)
+                !m_WIAnalysis->isUniform(pSamplerValue))
             {
                 // Check assumptions for sampler:
                 if (IsAssumedUniform(pSamplerValue))
@@ -100,7 +100,7 @@ namespace IGC {
         }
 
         // Check if marked as uniform by WIAnalysis:
-        if (m_WIAnalysis->whichDepend(V) == WIAnalysis::UNIFORM)
+        if (m_WIAnalysis->isUniform(V))
         {
             return true;
         }
