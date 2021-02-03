@@ -8718,12 +8718,18 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         }
     }
 
-    // Special handling if LLVM replaces a variable with an immediate, we need to insert an extra move
     for (unsigned i = 0; i < opnds.size(); i++)
     {
         CVariable* opVar = opnds[i];
         StringRef constraint = constraints[i];
-        if (opVar && opVar->IsImmediate() && !constraint.equals("i"))
+
+        // All uniform variables must be broadcasted if 'rw' constraint was specified
+        if (opVar && opVar->IsUniform() && constraint.equals("rw"))
+        {
+            opnds[i] = BroadcastIfUniform(opVar);
+        }
+        // Special handling if LLVM replaces a variable with an immediate, we need to insert an extra move
+        else if (opVar && opVar->IsImmediate() && !constraint.equals("i"))
         {
             CVariable* tempMov = m_currShader->GetNewVariable(
                 1, opVar->GetType(), EALIGN_GRF, true, opVar->getName());
