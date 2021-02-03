@@ -820,7 +820,7 @@ void DepSet::setDstRegion(
 }
 
 uint32_t DepSet::addressOf(
-    RegName rnm, const RegRef &rr, uint32_t typeSizeBits)
+    RegName rnm, const RegRef &rr, uint32_t typeSizeBits) const
 {
     switch (rnm) {
     case RegName::GRF_R:
@@ -840,7 +840,7 @@ uint32_t DepSet::addressOf(
     }
 }
 
-bool DepSet::isRegTracked(RegName rnm)
+bool DepSet::isRegTracked(RegName rnm) const
 {
     switch (rnm) {
     case RegName::GRF_R:

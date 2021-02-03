@@ -121,8 +121,9 @@ private:
     DepSet& operator=(DepSet const&) = delete;
 
 public:
-    uint32_t addressOf(RegName rn, const RegRef &rr, uint32_t typeSizeBytes);
-    bool isRegTracked(RegName rn);
+    // FIXME: shold be moved to DepSetBuilder
+    uint32_t addressOf(RegName rn, const RegRef &rr, uint32_t typeSizeBytes) const;
+    bool isRegTracked(RegName rn) const;
 
     void setDstRegion(
         RegName rn,
