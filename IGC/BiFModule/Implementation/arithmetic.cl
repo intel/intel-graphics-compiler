@@ -85,6 +85,29 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v16f32_v16f32, )(float16 Vector1, f
 }
 #endif
 
+#if defined(cl_khr_fp64)
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(double2 Vector1, double2 Vector2)
+{
+    return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x,  Vector2.x, (Vector1.y * Vector2.y));
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(double3 Vector1, double3 Vector2)
+{
+    return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x, Vector2.x,
+           __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.y, Vector2.y, (Vector1.z * Vector2.z)));
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(double4 Vector1, double4 Vector2)
+{
+    return __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.x, Vector2.x,
+           __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.y, Vector2.y,
+           __builtin_spirv_OpenCL_mad_f64_f64_f64(Vector1.z, Vector2.z,
+                                           (Vector1.w * Vector2.w))));
+}
+
+#endif
+
 #if 0
 
 #if defined(cl_khr_fp64)

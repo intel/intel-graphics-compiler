@@ -29,6 +29,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_rsqrt, float, float, f32 )
 
+#if defined(cl_khr_fp64)
+
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_rsqrt, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
+
 #if defined(cl_khr_fp16)
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_rsqrt, half, half, f16 )
