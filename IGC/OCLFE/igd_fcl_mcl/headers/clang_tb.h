@@ -175,3 +175,14 @@ namespace TC
   };
 
 } // namespace TC
+
+namespace FCL {
+
+  // type for name of output folder
+  using OutputFolderName = const char*;
+
+  // function returns full path where to dump shaders for FCL
+  OutputFolderName  GetShaderOutputFolder();
+
+} // namespace FCL
+

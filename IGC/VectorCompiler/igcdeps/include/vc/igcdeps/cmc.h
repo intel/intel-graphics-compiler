@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 
 #include "Probe/Assertion.h"
+#include "common/VCPlatformSelector.hpp"
 
 namespace iOpenCL {
   class CGen8CMProgram;
@@ -103,8 +104,6 @@ public:
 
     void RecomputeBTLayout(int numUAVs, int numResources);
 };
-
-extern const char* getPlatformStr(PLATFORM platform);
 
 } // namespace cmc
 

@@ -241,10 +241,6 @@ namespace FCL
 
 #define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()
 
-
-
-    typedef const char* OutputFolderName;
-
     OutputFolderName  GetBaseIGCOutputFolder()
     {
 #if defined(IGC_DEBUG_VARIABLES)

@@ -444,29 +444,6 @@ void CMKernel::RecomputeBTLayout(int numUAVs, int numResources)
     layout->maxBTsize = index;
 }
 
-const char* cmc::getPlatformStr(PLATFORM platform)
-{
-    switch (platform.eDisplayCoreFamily) {
-    case IGFX_GEN9_CORE:
-        return "SKL";
-    case IGFX_GEN10_CORE:
-        return "CNL";
-    case IGFX_GEN11_CORE:
-        if (platform.eProductFamily == IGFX_ICELAKE_LP ||
-            platform.eProductFamily == IGFX_LAKEFIELD)
-            return "ICLLP";
-        return "ICL";
-    case IGFX_GEN12_CORE:
-    case IGFX_GEN12LP_CORE:
-        if (platform.eProductFamily == IGFX_TIGERLAKE_LP)
-            return "TGLLP";
-    default:
-        IGC_ASSERT_MESSAGE(0, "unsupported platform");
-        break;
-    }
-    return IGC_MANGLE("SKL");
-}
-
 static void setSymbolsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                            IGC::SProgramOutput &KernelProgram) {
   if (Info.getRelocationTable().Size > 0) {

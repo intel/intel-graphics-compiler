@@ -24,10 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "common/StringMacros.hpp"
-#include "ocl_igc_interface/fcl_ocl_translation_ctx.h"
 #include "ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.h"
+#include "AdaptorCommon/customApi.hpp"
+#include "common/StringMacros.hpp"
+#include "common/VCPlatformSelector.hpp"
+#include "common/debug/Dump.hpp"
+#include "ocl_igc_interface/fcl_ocl_translation_ctx.h"
 #include "ocl_igc_interface/impl/platform_impl.h"
+#include "3d/common/iStdLib/utility.h"
+#include "3d/common/iStdLib/File.h"
+#include "OCLFE/igd_fcl_mcl/headers/clang_tb.h"
 
 #pragma warning(disable:4141)
 #pragma warning(disable:4146)
@@ -48,6 +54,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -410,28 +418,41 @@ static std::string getCMFEWrapperDir() {
 
 #endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
 
-// this is copied from Vectorcompiler/igcdeps/src/cmc.cpp
-// TODO: converge this code
-static const char* getPlatformStr(PLATFORM platform)
-{
-    switch (platform.eDisplayCoreFamily) {
-    case IGFX_GEN9_CORE:
-        return "SKL";
-    case IGFX_GEN10_CORE:
-        return "CNL";
-    case IGFX_GEN11_CORE:
-        if (platform.eProductFamily == IGFX_ICELAKE_LP ||
-            platform.eProductFamily == IGFX_LAKEFIELD)
-            return "ICLLP";
-        return "ICL";
-    case IGFX_GEN12_CORE:
-    case IGFX_GEN12LP_CORE:
-        if (platform.eProductFamily == IGFX_TIGERLAKE_LP)
-            return "TGLLP";
-    default:
-        break;
-    }
-    return "SKL";
+// This essentialy duplicates existing DumpShaderFile in dllInterfaceCompute
+// but now I see no way to reuse it. To be converged later
+static void DumpPlatform(PLATFORM *Platform, const char *Selected,
+                         int Stepping) {
+#if defined( _DEBUG ) || defined( _INTERNAL )
+  std::ostringstream Os;
+  if (Platform) {
+    auto Core = Platform->eDisplayCoreFamily;
+    auto Product = Platform->eProductFamily;
+    auto RevId = Platform->usRevId;
+
+    Os << "Neo passed: " << Core << ", " << Product << ", " << RevId << "\n";
+    Os << "IGC translated into: " << Selected << ", " << Stepping << "\n";
+  } else {
+    Os << "Nothing came from NEO\n";
+  }
+
+  auto Outbuf = Os.str();
+
+  const char *DstDir = FCL::GetShaderOutputFolder();
+  unsigned long long Hash =
+      iSTD::HashFromBuffer(Outbuf.data(), Outbuf.size());
+
+  // do factual dump, this part can be replaced to DumpShaderFile
+  std::ostringstream FullPath(DstDir, std::ostringstream::ate);
+  FullPath << "VC_platform" << std::hex << std::setfill('0')
+           << std::setw(sizeof(Hash) * CHAR_BIT / 4) << Hash << std::dec
+           << std::setfill(' ') << ".txt";
+
+  std::ofstream OutF(FullPath.str(), std::ofstream::out);
+
+  // if we can create dump file at all...
+  if (OutF)
+    OutF << Outbuf;
+#endif // defined( _DEBUG ) || defined( _INTERNAL )
 }
 
 OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
@@ -453,8 +474,15 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     uint32_t stepping = 0U;
 
     if(globalState.GetPlatformImpl()){
-        platform = getPlatformStr(globalState.GetPlatformImpl()->p);
-        stepping = globalState.GetPlatformImpl()->p.usRevId;
+      // NEO supports platform interface
+      auto *PlatformImpl = globalState.GetPlatformImpl();
+      platform = cmc::getPlatformStr(PlatformImpl->p);
+      stepping = PlatformImpl->p.usRevId;
+      DumpPlatform(&PlatformImpl->p, platform, stepping);
+    }
+    else {
+      // nothing came from NEO
+      DumpPlatform(NULL, NULL, 0);
     }
 
     OclTranslationOutputBase& Out = *outputInterface;
