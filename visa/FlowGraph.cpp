@@ -103,15 +103,15 @@ bool GlobalOpndHashTable::HashNode::isInNode(uint16_t lb, uint16_t rb) const
     return false;
 }
 
-
 void GlobalOpndHashTable::clearHashTable()
 {
-    for (auto iter = globalOperands.begin(), end = globalOperands.end();
+    for (auto iter = globalVars.begin(), end = globalVars.end();
         iter != end; ++iter)
     {
         iter->second->~HashNode();
     }
-    globalOperands.clear();
+    globalVars.clear();
+    globalOpnds.clear();
 }
 
 // all of the operand in this table are srcRegion
@@ -119,11 +119,11 @@ void GlobalOpndHashTable::addGlobalOpnd(G4_Operand *opnd)
 {
     G4_Declare *topDcl = opnd->getTopDcl();
 
-    if (topDcl != NULL)
+    if (topDcl)
     {
         // global operands must have a declare
-        auto entry = globalOperands.find(topDcl);
-        if (entry != globalOperands.end())
+        auto entry = globalVars.find(topDcl);
+        if (entry != globalVars.end())
         {
             entry->second->insert(
                 (uint16_t)opnd->getLeftBound(),
@@ -135,8 +135,9 @@ void GlobalOpndHashTable::addGlobalOpnd(G4_Operand *opnd)
                 (uint16_t)opnd->getLeftBound(),
                 (uint16_t)opnd->getRightBound(),
                 private_arena_allocator);
-            globalOperands[topDcl] = node;
+            globalVars[topDcl] = node;
         }
+        globalOpnds.push_back(opnd);
     }
 }
 
@@ -156,8 +157,8 @@ bool GlobalOpndHashTable::isOpndGlobal(G4_Operand *opnd) const
     }
     else
     {
-        auto entry = globalOperands.find(dcl);
-        if (entry == globalOperands.end())
+        auto entry = globalVars.find(dcl);
+        if (entry == globalVars.end())
         {
             return false;
         }
@@ -170,7 +171,8 @@ bool GlobalOpndHashTable::isOpndGlobal(G4_Operand *opnd) const
 
 void GlobalOpndHashTable::dump(std::ostream &os) const
 {
-    for (auto&& entry : globalOperands)
+    os << "Global variables:\n";
+    for (auto&& entry : globalVars)
     {
         G4_Declare* dcl = entry.first;
         dcl->dump();
@@ -211,6 +213,14 @@ void GlobalOpndHashTable::dump(std::ostream &os) const
             }
         }
         os << "\n";
+    }
+    os << "Instructions with global operands:\n";
+    for (auto opnd : globalOpnds)
+    {
+        if (opnd->getInst())
+        {
+            opnd->getInst()->print(os);
+        }
     }
 }
 

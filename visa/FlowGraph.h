@@ -165,13 +165,18 @@ class GlobalOpndHashTable
         bool isInNode(uint16_t lb, uint16_t rb) const;
     };
 
-    std::map<G4_Declare*, HashNode*> globalOperands;
+    // "global" refers to declares with elements that are used without a preceding define in the same BB
+    std::map<G4_Declare*, HashNode*> globalVars;
+    // for debugging it's often useful to dump out the global operands, not just declares.
+    // Note that this may not be an exhaustive list, for example it does not cover dst global operands;
+    // for accuracy one should use isOpndGlobal()
+    std::vector<G4_Operand*> globalOpnds;
 
 public:
     GlobalOpndHashTable(Mem_Manager& m) : mem(m) { }
 
     void addGlobalOpnd(G4_Operand * opnd);
-    // check if a def is a global variable
+    // returns true if def may possibly define a global variable
     bool isOpndGlobal(G4_Operand * def) const;
     void clearHashTable();
 
