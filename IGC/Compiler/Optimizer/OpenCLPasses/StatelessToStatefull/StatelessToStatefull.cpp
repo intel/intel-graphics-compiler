@@ -151,6 +151,7 @@ StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
     m_hasBufferOffsetArg(hasBufOff),
     m_hasOptionalBufferOffsetArg(false),
     m_hasSubDWAlignedPtrArg(false),
+    m_hasPositivePointerOffset(false),
     m_ACT(nullptr),
     m_pImplicitArgs(nullptr),
     m_pKernelArgs(nullptr),
@@ -189,6 +190,8 @@ bool StatelessToStatefull::runOnFunction(llvm::Function& F)
         (IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) || modMD->compOpt.BufferOffsetArgOptional));
 
     m_hasSubDWAlignedPtrArg = (IGC_IS_FLAG_ENABLED(UseSubDWAlignedPtrArg) || modMD->compOpt.HasSubDWAlignedPtrArg);
+
+    m_hasPositivePointerOffset = (IGC_IS_FLAG_ENABLED(SToSProducesPositivePointer) || modMD->compOpt.HasPositivePointerOffset);
 
     m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -240,10 +243,9 @@ bool StatelessToStatefull::getOffsetFromGEP(
     Type* int32Ty = Type::getInt32Ty(M->getContext());
 
     Value* PointerValue;
-    // When SToSProducesPositivePointer is set, BUFFER_OFFSET are assumed to be zero,
+    // If m_hasPositivePointerOffset is true, BUFFER_OFFSET are assumed to be zero,
     // so is that for any implicit argument
-    if (m_hasBufferOffsetArg && !isImplicitArg &&
-        IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer))
+    if (m_hasBufferOffsetArg && !isImplicitArg && !m_hasPositivePointerOffset)
     {
         PointerValue = getBufferOffsetArg(F, argNumber);
         if (PointerValue == nullptr)
@@ -445,7 +447,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
         if (!arg->isImplicitArg() &&
             isAlignedPointee &&
             (!m_hasBufferOffsetArg || m_hasOptionalBufferOffsetArg) &&
-            IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer))
+            !m_hasPositivePointerOffset)
         {
             // This is for proving that the offset is positive.
             for (int i = 0, sz = GEPs.size(); i < sz; ++i)

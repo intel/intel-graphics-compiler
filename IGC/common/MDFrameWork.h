@@ -235,6 +235,7 @@ namespace IGC
         bool DisableA64WA                               = false;
         bool ForceEnableA64WA                           = false;
         bool PushConstantsEnable                        = true;
+        bool HasPositivePointerOffset                   = false;
         bool HasBufferOffsetArg                         = false;
         bool BufferOffsetArgOptional                    = true;
         bool HasSubDWAlignedPtrArg                      = false;

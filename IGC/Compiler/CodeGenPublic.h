@@ -1194,6 +1194,7 @@ namespace IGC
                 Use32BitPtrArith(false),
                 IncludeSIPKernelDebugWithLocalMemory(false),
                 DoReRA(false),
+                IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
                 IntelHasSubDWAlignedPtrArg(false)
@@ -1249,6 +1250,11 @@ namespace IGC
                 if (strstr(options, "-intel-buffer-offset-arg-required"))
                 {
                     IntelBufferOffsetArgOptional = false;
+                }
+
+                if (strstr(options, "-intel-has-positive-pointer-offset"))
+                {
+                    IntelHasPositivePointerOffset = true;
                 }
 
                 if (strstr(options, "-intel-has-subDW-aligned-ptr-arg"))
@@ -1344,8 +1350,9 @@ namespace IGC
             bool DoReRA;
 
             // stateless to stateful optimization
-            bool IntelHasBufferOffsetArg;      // default: false
-            bool IntelBufferOffsetArgOptional; // default: true
+            bool IntelHasPositivePointerOffset; // default: false
+            bool IntelHasBufferOffsetArg;       // default: false
+            bool IntelBufferOffsetArgOptional;  // default: true
             bool IntelHasSubDWAlignedPtrArg;
                  // default: false, meaning kernel's sub-DW ptrArgs (char*, short*) are DW-aligned.
                  // This default is stronger than the natural alignment implied by char*/short*. But
