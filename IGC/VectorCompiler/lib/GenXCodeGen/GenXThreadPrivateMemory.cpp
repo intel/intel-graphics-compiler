@@ -61,7 +61,7 @@ using namespace genx;
 
 #define DEBUG_TYPE "genx-tpm"
 
-static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(false), cl::Hidden,
+static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(true), cl::Hidden,
   cl::desc("Force putting thread-private memory to SVM"));
 
 namespace {
@@ -209,6 +209,7 @@ std::pair<Value *, unsigned>
 GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
                                          Instruction *Inst) {
   Type *I32Ty = Type::getInt32Ty(Inst->getContext());
+  Type *I64Ty = Type::getInt64Ty(Inst->getContext());
   Value *Res = From;
   Type *FromTy = From->getType();
   IGC_ASSERT(isa<VectorType>(FromTy));
@@ -235,22 +236,22 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     Res = CastInst::Create(Instruction::BitCast, Res, To, "", Inst);
-  } else if (cast<VectorType>(To)->getElementType()->getPrimitiveSizeInBits() <
-                 genx::DWordBits
-             // this is required for correct generation of svm.gather/scatter
-             // of data of type which size is < i32 because these intrinsics
-             // infer their block size from the type of the data they handle
-             && !m_useGlobalMem) {
+  } else if (m_DL->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) <
+             genx::DWordBits) {
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
-
-    Res = CastInst::Create(Instruction::ZExt, From, To, "", Inst);
-  } else if (cast<VectorType>(To)->getElementType()->getPrimitiveSizeInBits() ==
-             genx::QWordBits) {
+    Res = CastInst::CreateZExtOrBitCast(From, To, "", Inst);
+  } else if (!m_useGlobalMem &&
+             m_DL->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) ==
+                 genx::QWordBits) {
+    if (From->getType()->getScalarType()->isPointerTy()) {
+      auto *NewType = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
+      From = CastInst::Create(CastInst::PtrToInt, From, NewType, "", Inst);
+    }
     NumElts *= 2;
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
 
-    Res = CastInst::Create(Instruction::BitCast, From, To, "", Inst);
+    Res = CastInst::CreateBitOrPointerCast(From, To, "", Inst);
   }
 
   return std::make_pair(Res, EltSz);
@@ -259,6 +260,8 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
 Instruction *
 GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
                                                          Type *To) {
+  if (From->getType() == To)
+    return From;
   Instruction *Restored = From;
   unsigned EltSz = m_DL->getTypeSizeInBits(To->getScalarType());
   IGC_ASSERT(EltSz > 0);
@@ -495,35 +498,19 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
 
   unsigned NumEltsToLoad = cast<VectorType>(LdTy)->getNumElements();
-  unsigned LdEltTySz = m_DL->getTypeSizeInBits(LdEltTy);
-  if (!(m_useGlobalMem && LdEltTy->isIntegerTy(64)) &&
-      LdEltTySz == genx::QWordBits)
-    NumEltsToLoad *= 2;
+  unsigned ValueEltSz = m_DL->getTypeSizeInBits(LdEltTy) / genx::ByteBits;
 
   Value *PredVal = ConstantInt::get(Type::getInt1Ty(*m_ctx), 1);
   Value *Pred = Builder.CreateVectorSplat(NumEltsToLoad, PredVal);
 
   Type *I32Ty = Type::getInt32Ty(*m_ctx);
   Type *I64Ty = Type::getInt64Ty(*m_ctx);
-  Type *TyToLoad = (m_useGlobalMem && LdEltTy->isIntegerTy(64)) ? I64Ty : I32Ty;
-  if (LdEltTy->isFloatTy())
-    TyToLoad = LdEltTy;
-  Type *RealTyToLoad = LdEltTy;
-  if (!(m_useGlobalMem && LdEltTy->isIntegerTy(64)) &&
-      m_DL->getTypeSizeInBits(RealTyToLoad) == genx::QWordBits)
-    RealTyToLoad = I32Ty;
-  unsigned RealTyToLoadSz =
-      m_DL->getTypeSizeInBits(RealTyToLoad) / genx::ByteBits;
-  // we don't want to use improper block sizes for loads of i8/i16
-  // to make sure we comply with alignment rules for gathers
-  bool NoExtToDword =
-      m_useGlobalMem &&
-      !(LdI->getType()->isAggregateType() || LdI->getType()->isVectorTy()) &&
-      m_DL->getTypeSizeInBits(LdI->getType()) < genx::DWordBits;
-  if (NoExtToDword)
-    TyToLoad = LdI->getType();
   Value *OldValOfTheDataRead =
-      Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(TyToLoad));
+      Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(LdEltTy));
+  std::tie(OldValOfTheDataRead, ValueEltSz) =
+      NormalizeVector(OldValOfTheDataRead, LdTy, LdI);
+  NumEltsToLoad =
+      cast<VectorType>(OldValOfTheDataRead->getType())->getNumElements();
 
   Value *PointerOp = LdI->getPointerOperand();
   Value *Offset = lookForPtrReplacement(PointerOp);
@@ -533,10 +520,13 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
                  ? llvm::GenXIntrinsic::genx_svm_gather
                  : llvm::GenXIntrinsic::genx_gather_scaled;
 
-  Value *EltsOffset = FormEltsOffsetVector(NumEltsToLoad, RealTyToLoadSz, LdI);
+  Value *EltsOffset = FormEltsOffsetVector(NumEltsToLoad, ValueEltSz, LdI);
 
-  unsigned SrcSize = genx::log2(RealTyToLoadSz);
-  Value *logNumBlocks = ConstantInt::get(I32Ty, m_useGlobalMem ? 0 : SrcSize);
+  unsigned NumBlocks = m_DL->getTypeSizeInBits(LdEltTy) / genx::ByteBits;
+  // This logic is aligned with the on in CisaBuilder and GenXLowering
+  // The reason behind check for == 2 is that svm intrinsics don't support
+  // BlockSize of 2, so for ops with i16s we have to use BlockSize == 1 and NumBlocks == 2
+  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks == 2 ? NumBlocks : 1));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
@@ -576,6 +566,10 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
     LdVal->insertAfter(ProperGather);
     ProperGather = LdVal;
   }
+
+  Gather->setMetadata(SVMBlockType,
+                      MDNode::get(*m_ctx, llvm::ValueAsMetadata::get(
+                                              UndefValue::get(LdEltTy))));
 
   LLVM_DEBUG(dbgs() << *Gather << "\n");
   LdI->replaceAllUsesWith(ProperGather);
@@ -623,7 +617,9 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
       {Pred->getType(),
        (m_useGlobalMem ? Offset : EltsOffset)->getType(),
        ValueOp->getType()});
-  Value *logNumBlocks = ConstantInt::get(I32Ty, m_useGlobalMem ? 0 : genx::log2(ValueEltSz));
+  unsigned NumBlocks = m_DL->getTypeSizeInBits(ValueOpTy->getScalarType()) / genx::ByteBits;
+  // see the comment in replaceLoad above
+  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks == 2 ? NumBlocks : 1));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
@@ -637,6 +633,11 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
                                   StI->getName());
   Scatter->insertAfter(StI);
   StI->eraseFromParent();
+
+  Scatter->setMetadata(
+      SVMBlockType,
+      MDNode::get(*m_ctx, llvm::ValueAsMetadata::get(
+                              UndefValue::get(ValueOpTy->getScalarType()))));
 
   LLVM_DEBUG(dbgs() << *Scatter << "\n");
   m_scatter.push_back(Scatter);
@@ -1066,6 +1067,11 @@ void SplitScatter(CallInst *CI) {
                                   NewEltOffsets.second, OldVals.second});
   }
   IGC_ASSERT(FirstScatter && SecondScatter);
+  IGC_ASSERT(CI->getMetadata(SVMBlockType));
+
+  auto *MD = CI->getMetadata(SVMBlockType);
+  FirstScatter->setMetadata(SVMBlockType, MD);
+  SecondScatter->setMetadata(SVMBlockType, MD);
 
   FirstScatter->insertAfter(CI);
   SecondScatter->insertAfter(FirstScatter);
@@ -1135,6 +1141,11 @@ void SplitGather(CallInst *CI) {
                                   NewEltOffsets.second, OldVals.second});
   }
   IGC_ASSERT(FirstGather && SecondGather);
+  IGC_ASSERT(CI->getMetadata(SVMBlockType));
+
+  auto *MD = CI->getMetadata(SVMBlockType);
+  FirstGather->setMetadata(SVMBlockType, MD);
+  SecondGather->setMetadata(SVMBlockType, MD);
 
   FirstGather->insertAfter(CI);
   SecondGather->insertAfter(FirstGather);
@@ -1255,7 +1266,7 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
               .getGenXSubtarget();
   for (auto &F : M)
     visit(F);
-  if (!m_useGlobalMem &&
+  if (m_useGlobalMem ||
       std::find_if(m_alloca.begin(), m_alloca.end(), SVMChecker()) !=
           m_alloca.end()) {
     LLVM_DEBUG(dbgs() << "Switching TPM to SVM\n");
