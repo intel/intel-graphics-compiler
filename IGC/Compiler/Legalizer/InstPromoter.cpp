@@ -384,12 +384,35 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
     TypeSeq* TySeq;
     LegalizeAction Act;
     std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
-    IGC_ASSERT(TySeq->size() == 1);
+    IGC_ASSERT(Act == Legal || Act == Promote);
+
+    // Promote bitcast i24 %0 to <3 x i8>
+    // -->
+    // %1 = bitcast i32 %0 to <4 x i8>
+    // %2 = shufflevector <4 x i8> %1, <4 x i8> zeroinitializer, <i32 0, i32 1, i32 2>
+    if (Act == Legal && ValAct == Promote && Val->getType()->isIntegerTy() &&
+        I.getType()->isVectorTy()) {
+        Type* DestTy = I.getDestTy();
+        unsigned N =
+            Val->getType()->getScalarSizeInBits() / DestTy->getScalarSizeInBits();
+        Value* BC =
+            IRB->CreateBitCast(Val, VectorType::get(DestTy->getScalarType(), N));
+
+        std::vector<Constant*> Vals;
+        for (unsigned i = 0; i < DestTy->getVectorNumElements(); i++)
+            Vals.push_back(IRB->getInt32(i));
+
+        Value* Mask = ConstantVector::get(Vals);
+        Value* Zero = Constant::getNullValue(BC->getType());
+        Promoted = IRB->CreateShuffleVector(BC, Zero, Mask,
+            Twine(I.getName(), getSuffix()));
+        return true;
+    }
 
     // Promote bitcast <3 x i8> %0 to i24
-    // %1 = shufflevector <3 x i8> %0, <3 x i8> zeroinitializer, <i32 0, i32
-    // 1, i32 2, i32 3> %2 = bitcast <4 x i8> %1 to i32 bail out for other
-    // cases for now.
+    // -->
+    // %1 = shufflevector <3 x i8> %0, <3 x i8> zeroinitializer, <i32 0, i32 1, i32 2, i32 3>
+    // %2 = bitcast <4 x i8> %1 to i32
     if (Act == Promote && Val->getType()->isVectorTy() &&
         I.getType()->isIntegerTy()) {
         Type* PromotedTy = TySeq->front();
