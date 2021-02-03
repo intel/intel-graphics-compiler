@@ -299,8 +299,7 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
 
 void GASResolving::populateResolvableLoopPHIs() {
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    for (LoopInfo::reverse_iterator I = LI.rbegin(), E = LI.rend(); I != E; ++I) {
-        Loop* L = *I;
+    for (auto& L : LI.getLoopsInPreorder()) {
         populateResolvableLoopPHIsForLoop(L);
     }
 }
