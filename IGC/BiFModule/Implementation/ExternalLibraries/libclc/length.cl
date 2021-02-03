@@ -65,51 +65,6 @@ float __builtin_spirv_OpenCL_length_v4f32(float4 p) {
   return __builtin_spirv_OpenCL_sqrt_f32(l2);
 }
 
-#ifdef cl_khr_fp64
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
-double __builtin_spirv_OpenCL_length_f64(double p){
-  return __builtin_spirv_OpenCL_fabs_f64(p);
-}
-
-double __builtin_spirv_OpenCL_length_v2f64(double2 p) {
-  double l2 = SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p);
-  if (l2 < DBL_MIN) {
-      p *= 0x1.0p+563;
-      return __builtin_spirv_OpenCL_sqrt_f64(SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p)) * 0x1.0p-563;
-  } else if (__intel_relaxed_isinf(l2)) {
-      p *= 0x1.0p-513;
-      return __builtin_spirv_OpenCL_sqrt_f64(SPIRV_BUILTIN(Dot, _v2f64_v2f64, )(p, p)) * 0x1.0p+513;
-  }
-  return __builtin_spirv_OpenCL_sqrt_f64(l2);
-}
-
-double __builtin_spirv_OpenCL_length_v3f64(double3 p) {
-  double l2 = SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p);
-  if (l2 < DBL_MIN) {
-      p *= 0x1.0p+563;
-      return __builtin_spirv_OpenCL_sqrt_f64(SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p)) * 0x1.0p-563;
-  } else if (__intel_relaxed_isinf(l2)) {
-      p *= 0x1.0p-513;
-      return __builtin_spirv_OpenCL_sqrt_f64(SPIRV_BUILTIN(Dot, _v3f64_v3f64, )(p, p)) * 0x1.0p+513;
-  }
-  return __builtin_spirv_OpenCL_sqrt_f64(l2);
-}
-
-double __builtin_spirv_OpenCL_length_v4f64(double4 p) {
-  double l2 = SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p);
-  if (l2 < DBL_MIN) {
-      p *= 0x1.0p+563;
-      return __builtin_spirv_OpenCL_sqrt_f64(SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p)) * 0x1.0p-563;
-  } else if (__intel_relaxed_isinf(l2)) {
-      p *= 0x1.0p-513;
-      return __builtin_spirv_OpenCL_sqrt_f64(SPIRV_BUILTIN(Dot, _v4f64_v4f64, )(p, p)) * 0x1.0p+513;
-  }
-  return __builtin_spirv_OpenCL_sqrt_f64(l2);
-}
-
-#endif
-
 #ifdef cl_khr_fp16
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 

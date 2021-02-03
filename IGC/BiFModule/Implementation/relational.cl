@@ -95,18 +95,8 @@ bool  __builtin_spirv_OpIsNan_f32(float x)
     return x != x;
 }
 
-#if defined(cl_khr_fp64)
-bool  __builtin_spirv_OpIsNan_f64(double x)
-{
-    return x != x;
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNan, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNan, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNan, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpIsInf_f16(half x)
 {
@@ -118,18 +108,8 @@ bool __builtin_spirv_OpIsInf_f32(float x)
     return __builtin_spirv_OpenCL_fabs_f32(x) == (float)(INFINITY);
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpIsInf_f64(double x)
-{
-    return __builtin_spirv_OpenCL_fabs_f64(x) == (double)(INFINITY);
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsInf, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsInf, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsInf, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpIsFinite_f16(half x)
 {
@@ -141,18 +121,8 @@ bool __builtin_spirv_OpIsFinite_f32(float x)
     return __builtin_spirv_OpenCL_fabs_f32(x) < (float)(INFINITY);
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpIsFinite_f64(double x)
-{
-    return __builtin_spirv_OpenCL_fabs_f64(x) < (double)(INFINITY);
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsFinite, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsFinite, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsFinite, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpIsNormal_f16(half x)
 {
@@ -164,18 +134,8 @@ bool __builtin_spirv_OpIsNormal_f32(float x)
     return __builtin_spirv_OpIsFinite_f32(x) & (__builtin_spirv_OpenCL_fabs_f32(x) >= FLT_MIN);
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpIsNormal_f64(double x)
-{
-    return __builtin_spirv_OpIsFinite_f64(x) & (__builtin_spirv_OpenCL_fabs_f64(x) >= DBL_MIN);
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNormal, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNormal, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNormal, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpSignBitSet_f16(half x)
 {
@@ -187,18 +147,8 @@ bool __builtin_spirv_OpSignBitSet_f32(float x)
     return (as_int( x ) & FLOAT_SIGN_MASK) != 0;
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpSignBitSet_f64(double x)
-{
-    return (as_long( x ) & DOUBLE_SIGN_MASK) != 0;
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpLessOrGreater_f16_f16(half x, half y)
 {
@@ -210,18 +160,8 @@ bool __builtin_spirv_OpLessOrGreater_f32_f32(float x, float y)
     return (x < y) | (x > y);
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpLessOrGreater_f64_f64(double x, double y)
-{
-    return (x < y) | (x > y);
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpLessOrGreater, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpLessOrGreater, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpLessOrGreater, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpOrdered_f16_f16(half x, half y)
 {
@@ -233,18 +173,9 @@ bool __builtin_spirv_OpOrdered_f32_f32(float x, float y)
     return (x == x) & (y == y);
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpOrdered_f64_f64(double x, double y)
-{
-    return (x == x) & (y == y);
-}
-#endif
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpOrdered, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpOrdered, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpOrdered, __bool, double, f64)
-#endif
 
 bool __builtin_spirv_OpUnordered_f16_f16(half x, half y)
 {
@@ -256,15 +187,5 @@ bool __builtin_spirv_OpUnordered_f32_f32(float x, float y)
     return (x != x) | (y != y);
 }
 
-#if defined(cl_khr_fp64)
-bool __builtin_spirv_OpUnordered_f64_f64(double x, double y)
-{
-    return (x != x) | (y != y);
-}
-#endif
-
 GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpUnordered, __bool, half,   f16)
 GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpUnordered, __bool, float,  f32)
-#if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpUnordered, __bool, double, f64)
-#endif

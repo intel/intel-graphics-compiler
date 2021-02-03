@@ -175,34 +175,6 @@ void __builtin_spirv_OpenCL_prefetch_p1v16f16_i32(const global half16* p, uint n
 {
 }
 
-
-#if defined(cl_khr_fp64)
-void __builtin_spirv_OpenCL_prefetch_p1f64_i32(const global double* p, uint num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v2f64_i32(const global double2* p, uint num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v3f64_i32(const global double3* p, uint num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v4f64_i32(const global double4* p, uint num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v8f64_i32(const global double8* p, uint num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v16f64_i32(const global double16* p, uint num_elements)
-{
-}
-#endif // defined(cl_khr_fp64)
-
-
 void __builtin_spirv_OpenCL_prefetch_p1i8_i64(const global uchar* p, ulong num_elements)
 {
 }
@@ -351,31 +323,3 @@ void __builtin_spirv_OpenCL_prefetch_p1v8f16_i64(const global half8* p, ulong nu
 void __builtin_spirv_OpenCL_prefetch_p1v16f16_i64(const global half16* p, ulong num_elements)
 {
 }
-
-
-#if defined(cl_khr_fp64)
-void __builtin_spirv_OpenCL_prefetch_p1f64_i64(const global double* p, ulong num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v2f64_i64(const global double2* p, ulong num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v3f64_i64(const global double3* p, ulong num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v4f64_i64(const global double4* p, ulong num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v8f64_i64(const global double8* p, ulong num_elements)
-{
-}
-
-void __builtin_spirv_OpenCL_prefetch_p1v16f64_i64(const global double16* p, ulong num_elements)
-{
-}
-#endif // defined(cl_khr_fp64)
-

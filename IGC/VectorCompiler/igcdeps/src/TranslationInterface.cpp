@@ -114,9 +114,10 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
   return Result;
 }
 
-static std::unique_ptr<llvm::MemoryBuffer> getGenericModuleBuffer() {
+static std::unique_ptr<llvm::MemoryBuffer>
+getGenericModuleBuffer(int ResourceID) {
   std::ostringstream SS;
-  SS << '#' << static_cast<int>(OCL_BC);
+  SS << '#' << ResourceID;
   return std::unique_ptr<llvm::MemoryBuffer>{
       llvm::LoadBufferFromResource(SS.str().c_str(), "BC")};
 }
@@ -331,11 +332,17 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   Opts.Dumper = std::move(Dumper);
 
   std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule =
-      getGenericModuleBuffer();
+      getGenericModuleBuffer(OCL_BC);
   if (!OCLGenericBIFModule)
-    return getError(vc::make_error_code(vc::errc::generic_bif_load_fail),
+    return getError(vc::make_error_code(vc::errc::bif_load_fail),
                     OutputArgs);
-  vc::ExternalData ExtData{std::move(OCLGenericBIFModule)};
+  std::unique_ptr<llvm::MemoryBuffer> OCLFP64BIFModule =
+      getGenericModuleBuffer(OCL_BC_FP64);
+  if (!OCLFP64BIFModule)
+    return getError(vc::make_error_code(vc::errc::bif_load_fail),
+                    OutputArgs);
+  vc::ExternalData ExtData{std::move(OCLGenericBIFModule),
+                           std::move(OCLFP64BIFModule)};
   llvm::ArrayRef<uint32_t> SpecConstIds{InputArgs->pSpecConstantsIds,
                                         InputArgs->SpecConstantsSize};
   llvm::ArrayRef<uint64_t> SpecConstValues{InputArgs->pSpecConstantsValues,

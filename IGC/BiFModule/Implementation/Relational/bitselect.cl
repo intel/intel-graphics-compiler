@@ -86,20 +86,6 @@ float __builtin_spirv_OpenCL_bitselect_f32_f32_f32( float a,
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, float, float, f32 )
 
-#if defined(cl_khr_fp64)
-
-INLINE
-double __builtin_spirv_OpenCL_bitselect_f64_f64_f64( double a,
-                                              double b,
-                                              double c )
-{
-    return as_double( __builtin_spirv_OpenCL_bitselect_i64_i64_i64(as_long(a), as_long(b), as_long(c)) );
-}
-
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_bitselect, double, double, f64 )
-
-#endif // defined(cl_khr_fp64)
-
 #ifdef cl_khr_fp16
 
 INLINE

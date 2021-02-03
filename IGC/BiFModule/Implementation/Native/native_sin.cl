@@ -29,17 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_sin, float, float, f32 )
 
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_native_sin_f64( double x )
-{
-    return __builtin_spirv_OpenCL_native_sin_f32((float)x);
-}
-
-GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_sin, double, double, f64 )
-
-#endif // defined(cl_khr_fp64)
-
 #if defined(cl_khr_fp16)
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_sin, half, half, f16 )

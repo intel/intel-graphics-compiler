@@ -29,12 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fclamp, float, float, f32 )
 
-#if defined(cl_khr_fp64)
-
-GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fclamp, double, double, f64 )
-
-#endif // defined(cl_khr_fp64)
-
 #ifdef cl_khr_fp16
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_fclamp, half, half, f16 )

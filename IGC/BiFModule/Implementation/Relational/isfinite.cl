@@ -34,15 +34,6 @@ int OVERLOADABLE __intel_relaxed_isfinite( float x )
     return __FastRelaxedMath ? 1 : result;
 }
 
-#if defined(cl_khr_fp64)
-int OVERLOADABLE __intel_relaxed_isfinite( double x )
-{
-    int result = __builtin_spirv_OpIsFinite_f64(x);
-    // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
-    return __FastRelaxedMath ? 1 : result;
-}
-#endif // defined(cl_khr_fp64)
-
 int OVERLOADABLE __intel_relaxed_isfinite( half x )
 {
     int result = __builtin_spirv_OpIsFinite_f16(x);

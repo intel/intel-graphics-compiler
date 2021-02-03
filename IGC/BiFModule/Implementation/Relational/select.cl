@@ -87,22 +87,6 @@ static INLINE OVERLOADABLE float __intel_vector_select_helper( float a, float b,
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, float, uint, f32, i32 )
 
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_select_f64_f64_i64( double a, double b, ulong c )
-{
-    return c ? b : a;
-}
-
-static INLINE OVERLOADABLE double __intel_vector_select_helper( double a, double b, ulong c )
-{
-    return as_long(c) < 0 ? b : a;
-}
-
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, double, ulong, f64, i64 )
-
-#endif // defined(cl_khr_fp64)
-
 #if defined(cl_khr_fp16)
 
 INLINE half __builtin_spirv_OpenCL_select_f16_f16_i16( half a, half b, ushort c )
