@@ -51,20 +51,7 @@ namespace vISA
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE 11
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT 15
 #define SWSB_MAX_MATH_DEPENDENCE_DISTANCE 18
-#define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE 7
-
-#define TOKEN_AFTER_READ_CYCLE 4
-
-#define TOKEN_AFTER_WRITE_MATH_CYCLE (fg.builder->isXeLP() ? 20u : 17u)
-#define TOKEN_AFTER_WRITE_SEND_SLM_CYCLE (fg.builder->isXeLP() ? 33u : 25u)   //unlocaled 25
-#define TOKEN_AFTER_WRITE_SEND_L1_MEMORY_CYCLE (fg.builder->isXeLP() ? 65u : 50u)
-#define TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE 60u
-#define TOKEN_AFTER_WRITE_SEND_L3_MEMORY_CYCLE (fg.builder->isXeLP() ? 106u : 150u)
-#define TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE (fg.builder->isXeLP() ? 175u : 210u)
-#define TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE (fg.builder->getOptions()->getOption(vISA_USEL3HIT) ? TOKEN_AFTER_WRITE_SEND_L3_MEMORY_CYCLE : TOKEN_AFTER_WRITE_SEND_L1_MEMORY_CYCLE)
-#define TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE (fg.builder->getOptions()->getOption(vISA_USEL3HIT) ? TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE : TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE)
-#define TOKEN_MAXIMAL_DELAY_CYCLE TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE
-#define TOKEN_REUSE_DISTANCE  4   //The node ID distance
+#define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE 7u
 
 
 #define DEPENCENCE_ATTR(DO) \
@@ -528,23 +515,19 @@ namespace vISA
 
         const SBFootprint *getFootprint(Gen4_Operand_Number opndNum, const G4_INST *inst) const
         {
-            const SBFootprint *sbFp = footprints[opndNum];
-            while (sbFp->inst != inst)
+            for (const SBFootprint *sbFp = footprints[opndNum]; ; sbFp = sbFp->next)
             {
-                sbFp = sbFp->next;
+                assert((sbFp != nullptr) && "footprint not found");
+                if (sbFp->inst == inst)
+                {
+                    return sbFp;
+                }
             }
-
-            assert((sbFp != nullptr) && "null foot print found");
-
-            return sbFp;
         }
 
         void setDistance(unsigned distance)
         {
-            if (distance > SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE)
-            {
-                distance = SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE;
-            }
+            distance = std::min(distance, SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE);
             unsigned curDistance = (unsigned)instVec.front()->getDistance();
             if (curDistance == 0 ||
                 curDistance > distance)
@@ -1141,7 +1124,12 @@ namespace vISA
         SWSB_INDEXES indexes;         // To pass ALU ID  from previous BB to current.
         uint32_t  globalSendNum = 0;  // The number of out-of-order instructions which generate global dependencies.
         SBBUCKET_VECTOR globalSendOpndList;  //All send operands which live out their instructions' BBs. No redundant.
-        uint32_t totalTokenNum;
+        const uint32_t totalTokenNum;
+        static constexpr unsigned TOKEN_AFTER_READ_CYCLE = 4;
+        const unsigned tokenAfterWriteMathCycle;
+        const unsigned tokenAfterWriteSendSlmCycle;
+        const unsigned tokenAfterWriteSendMemoryCycle;
+        const unsigned tokenAfterWriteSendSamplerCycle;
 
         //For profiling
         uint32_t syncInstCount = 0;
@@ -1260,12 +1248,20 @@ namespace vISA
 
     public:
         SWSB(G4_Kernel &k, vISA::Mem_Manager& m)
-            : kernel(k), fg(k.fg), mem(m)
+            : kernel(k), fg(k.fg), mem(m),
+            totalTokenNum(k.fg.builder->kernel.getNumSWSBTokens()),
+            tokenAfterWriteMathCycle(k.fg.builder->isXeLP() ? 20u : 17u),
+            tokenAfterWriteSendSlmCycle(k.fg.builder->isXeLP() ? 33u : 25u), //unlocaled 25
+            tokenAfterWriteSendMemoryCycle(k.fg.builder->getOptions()->getOption(vISA_USEL3HIT)
+                ? (k.fg.builder->isXeLP() ? 106u : 150u) // TOKEN_AFTER_WRITE_SEND_L3_MEMORY_CYCLE
+                : (k.fg.builder->isXeLP() ? 65u : 50u)), // TOKEN_AFTER_WRITE_SEND_L1_MEMORY_CYCLE
+            tokenAfterWriteSendSamplerCycle(k.fg.builder->getOptions()->getOption(vISA_USEL3HIT)
+                ? (k.fg.builder->isXeLP() ? 175u : 210u) // TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE
+                : 60u)                                   // TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE
         {
             indexes.instIndex = 0;
             indexes.ALUIndex = 0;
 
-            totalTokenNum = fg.builder->kernel.getNumSWSBTokens();
         }
         ~SWSB()
         {

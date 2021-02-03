@@ -1237,31 +1237,30 @@ unsigned SWSB::getDepDelay(const SBNode* curNode) const
 
     if (inst->isSend())
     {
-        const G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
-
-        if (msgDesc->isSLMMessage())
-        {
-            reuseDelay = TOKEN_AFTER_WRITE_SEND_SLM_CYCLE;
-        }
-        else if (msgDesc->isSampler())
-        {
-            reuseDelay = TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE;
-        }
-        else
-        {
-            reuseDelay = TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE;
-        }
-
         if (inst->getDst() == nullptr ||
             inst->getDst()->isNullReg())
         {
             return TOKEN_AFTER_READ_CYCLE;
         }
+
+        const G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+        if (msgDesc->isSLMMessage())
+        {
+            reuseDelay = tokenAfterWriteSendSlmCycle;
+        }
+        else if (msgDesc->isSampler())
+        {
+            reuseDelay = tokenAfterWriteSendSamplerCycle;
+        }
+        else
+        {
+            reuseDelay = tokenAfterWriteSendMemoryCycle;
+        }
     }
     else if (inst->isMathPipeInst())
     {
 
-        reuseDelay = TOKEN_AFTER_WRITE_MATH_CYCLE;
+        reuseDelay = tokenAfterWriteMathCycle;
     }
     else
     {
@@ -1292,8 +1291,9 @@ void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &cu
         }
     }
 
-    unsigned char curNodeNestLoopLevel = BBVector[curNode->getBBID()]->getBB()->getNestLevel();
-    unsigned loopLevelDiff = curNodeNestLoopLevel > nestLoopLevel ? curNodeNestLoopLevel - nestLoopLevel : nestLoopLevel - curNodeNestLoopLevel;
+    const G4_BB_SB *bb = BBVector[curNode->getBBID()];
+    unsigned char curNodeNestLoopLevel = bb->getBB()->getNestLevel();
+    unsigned loopLevelDiff = std::abs(curNodeNestLoopLevel - nestLoopLevel);
     constexpr unsigned loopFactorForTokenReuse = 5;
     if (reuseDelay > 0)
     {
@@ -1306,8 +1306,8 @@ void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &cu
         {
             if (curLoopStartBB == -1 || curLoopEndBB == -1)
             {
-                curLoopStartBB = BBVector[curNode->getBBID()]->getLoopStartBBID();
-                curLoopEndBB = BBVector[curNode->getBBID()]->getLoopEndBBID();
+                curLoopStartBB = bb->getLoopStartBBID();
+                curLoopEndBB = bb->getLoopEndBBID();
             }
             //Count the backedge, if the backedge distance is short, take it
             if (curLoopStartBB != -1 && curLoopEndBB != -1)
@@ -1315,10 +1315,7 @@ void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &cu
                 unsigned loopStartID = BBVector[curLoopStartBB]->first_node;
                 unsigned loopEndID = BBVector[curLoopEndBB]->last_node;
                 int backEdgeDistance = loopEndID - loopStartID - curDistance;
-                if (curDistance > backEdgeDistance)
-                {
-                    curDistance = backEdgeDistance;
-                }
+                curDistance = std::min(curDistance, backEdgeDistance);
             }
         }
     }
@@ -1329,7 +1326,7 @@ void SWSB::examineNodeForTokenReuse(/* out */ int &reuseDelay, /* out */ int &cu
 //Try not reuse the tokens set in adjacent instructions.
 SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
 {
-    int delay = TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE;
+    int delay = tokenAfterWriteSendSamplerCycle;
     int distance = 0;
     const unsigned nodeID = node->getNodeID();
     const unsigned nodeDelay = getDepDelay(node);
@@ -1354,21 +1351,13 @@ SBNode * SWSB::reuseTokenSelection(const SBNode * node) const
             int sDistance;
             examineNodeForTokenReuse(sReuseDelay, sDistance, nodeID, nodeDelay, snode, nestLoopLevel, loopStartBB, loopEndBB);
 
-            //Get the largest delay for the token node
-            if (sReuseDelay > reuseDelay)
-            {
-                reuseDelay = sReuseDelay;
-            }
-
-            if (sDistance < sameTokenDistance)
-            {
-                sameTokenDistance = sDistance;
-            }
+            reuseDelay = std::max(reuseDelay, sReuseDelay);
+            sameTokenDistance = std::min(sameTokenDistance, sDistance);
         }
 
         //Smallest one is the best one
         //if Distance is not 0, count the distance, otherwise, use the delay.
-        //Distance is not 0 means there are  candidate whose distance is large than the delay
+        //Distance is not 0 means there are candidate whose distance is larger than the delay
         if (!distance && reuseDelay > 0)
         {
             if (reuseDelay < delay)
@@ -1398,20 +1387,20 @@ bool SWSB::cycleExpired(const SBNode* node, int currentID) const
 
         if (msgDesc->isSLMMessage())
         {
-            return TOKEN_AFTER_WRITE_SEND_SLM_CYCLE <= (currentID - node->getLiveStartID());
+            return tokenAfterWriteSendSlmCycle <= (currentID - node->getLiveStartID());
         }
         else if (msgDesc->isSampler())
         {
-            return TOKEN_AFTER_WRITE_SEND_SAMPLER_CYCLE <= (currentID - node->getLiveStartID());
+            return tokenAfterWriteSendSamplerCycle <= (currentID - node->getLiveStartID());
         }
         else
         {
-            return TOKEN_AFTER_WRITE_SEND_MEMORY_CYCLE <= (currentID - node->getLiveStartID());
+            return tokenAfterWriteSendMemoryCycle <= (currentID - node->getLiveStartID());
         }
     }
     else if (node->GetInstruction()->isMathPipeInst())
     {
-        return TOKEN_AFTER_WRITE_MATH_CYCLE <= (currentID - node->getLiveStartID());
+        return tokenAfterWriteMathCycle <= (currentID - node->getLiveStartID());
     }
     else
     {
