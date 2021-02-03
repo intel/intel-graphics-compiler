@@ -468,7 +468,10 @@ namespace IGC
 
     unsigned ComputeShaderContext::GetSlmSizePerSubslice()
     {
-        return 65536; // TODO: should get this from GTSysInfo instead of hardcoded value
+        // TODO: should get this from GTSysInfo instead of hardcoded value
+        {
+            return 65536;
+        }
     }
 
     unsigned ComputeShaderContext::GetSlmSize() const
