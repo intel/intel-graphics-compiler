@@ -4881,6 +4881,8 @@ void HWConformity::fixSendInst(G4_BB* bb)
                 if (inst->getPredicate() || (bb->isDivergent() && !inst->isWriteEnableInst()) || dstSize > src0Size + src1Size)
                 {
                     //copy src0/src1 if inst does not update all channels
+                    //ToDo: the copies may be OOB if src0/src1 are scalar. It should be ok since we don't care about the values,
+                    //but IR verifier might complain about OOB.
                     if (src0Overlap)
                     {
                         G4_Declare* copyDst = builder.createTempVar(src0Size * numEltPerGRF<Type_UD>(), Type_UD, Any);
@@ -4899,11 +4901,22 @@ void HWConformity::fixSendInst(G4_BB* bb)
                 else
                 {
                     // copy dst
-                    auto copyIter = i;
-                    ++copyIter;
+                    auto dst = inst->getDst();
+                    auto dstDcl = dst->getBase()->asRegVar()->getDeclare();
+                    auto copyIter = std::next(i);
                     G4_Declare* copySrc = builder.createTempVar(dstSize * numEltPerGRF<Type_UD>(), Type_UD, Any);
-                    copyRegs(inst->getDst()->getBase()->asRegVar()->getDeclare(), inst->getDst()->getRegOff() * getGRFSize(),
-                        copySrc, 0, dstSize, bb, copyIter);
+                    // speical case when send dst declare is <1 GRF (it must still be GRF-aligned)
+                    if (dstDcl->getByteSize() < getGRFSize())
+                    {
+                        auto numDWords = dstDcl->getByteSize() / TypeSize(Type_UD);
+                        assert(numDWords > 0);
+                        copyDwords(dstDcl, 0, copySrc, 0, numDWords, bb, copyIter);
+                    }
+                    else
+                    {
+                        copyRegs(dstDcl, dst->getRegOff() * getGRFSize(),
+                            copySrc, 0, dstSize, bb, copyIter);
+                    }
                     inst->setDest(builder.Create_Dst_Opnd_From_Dcl(copySrc, 1));
                 }
             }
