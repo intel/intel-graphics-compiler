@@ -502,6 +502,14 @@ CVariable* DebugInfoData::getMapping(const llvm::Function& F, const llvm::Value*
     return nullptr;
 }
 
+// Register pass to igc-opt
+#define PASS_FLAG "igc-catch-all-linenum"
+#define PASS_DESCRIPTION "CatchAllLineNumber pass"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(CatchAllLineNumber, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CatchAllLineNumber, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
 CatchAllLineNumber::CatchAllLineNumber() :
     FunctionPass(ID)
 {

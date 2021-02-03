@@ -38,7 +38,7 @@ using namespace llvm;
 using namespace IGC;
 
 
-#define PASS_FLAG "HandleFRemInstructions"
+#define PASS_FLAG "igc-handle-frem-inst"
 #define PASS_DESCRIPTION "Replace FRem instructions with proper builtin calls"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false

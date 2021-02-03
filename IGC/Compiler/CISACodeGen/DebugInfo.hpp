@@ -122,9 +122,9 @@ namespace IGC
     public:
         CatchAllLineNumber();
         virtual ~CatchAllLineNumber();
+        static char ID;
 
     private:
-        static char ID;
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
