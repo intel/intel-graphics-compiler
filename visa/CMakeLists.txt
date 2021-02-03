@@ -33,6 +33,13 @@ option(LINK_AS_STATIC_LIB "link with /MT or /MD" ON)
 
 
 ################################################################################
+# FC_link Related
+
+if (WIN32)
+message("-- Configuring Fast Composite Component")
+add_subdirectory(FC_linker)
+endif (WIN32)
+################################################################################
 # IGA Related
 #
 #   Controls whether internal or external GED is used and whether IP sensitive
