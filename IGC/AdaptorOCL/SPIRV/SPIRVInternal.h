@@ -99,7 +99,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 
 
-namespace spv {
+namespace igc_spv {
 
 using namespace llvm;
 
@@ -274,7 +274,7 @@ typedef SPIRVMap<std::string, Op> BuiltinOpaqueGenericTypeOpCodeMap;
 class mapSPIRVBuiltinVariableKind;
 template<> inline void
 SPIRVMap<SPIRVBuiltinVariableKind, std::string, mapSPIRVBuiltinVariableKind>::init() {
-#define _SPIRV_OP(x, ...) add(spv::BuiltIn::x, #x);
+#define _SPIRV_OP(x, ...) add(igc_spv::BuiltIn::x, #x);
 #include "libSPIRV/SPIRVBuiltinEnum.h"
 #undef _SPIRV_OP
 }
@@ -682,7 +682,7 @@ typedef SPIRVMap<OCLMemScopeKind, Scope>
 
 template<> inline void
 SPIRVMap<std::string, SPIRVGroupOperationKind>::init() {
-#define _SPIRV_OP(x,y) add(#x, spv::GroupOperation::y);
+#define _SPIRV_OP(x,y) add(#x, igc_spv::GroupOperation::y);
 _SPIRV_OP(reduce, GroupOperationReduce)
 _SPIRV_OP(scan_inclusive, GroupOperationInclusiveScan)
 _SPIRV_OP(scan_exclusive, GroupOperationExclusiveScan)

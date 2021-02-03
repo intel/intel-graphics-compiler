@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <unordered_map>
 
-namespace spv{
+namespace igc_spv{
 // Loads SPIRV from istream and translate to LLVM module.
 // Returns true if succeeds.
 bool ReadSPIRV(llvm::LLVMContext &C, std::istream &IS, llvm::Module *&M,

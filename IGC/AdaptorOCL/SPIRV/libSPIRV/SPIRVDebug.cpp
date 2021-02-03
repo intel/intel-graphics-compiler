@@ -39,8 +39,8 @@
 
 #include "SPIRVDebug.h"
 
-using namespace spv;
+using namespace igc_spv;
 
-bool spv::SPIRVDbgEnable = false;
-bool spv::SPIRVDbgAssertOnError = true;
-bool spv::SPIRVDbgErrorMsgIncludesSourceInfo = true;
+bool igc_spv::SPIRVDbgEnable = false;
+bool igc_spv::SPIRVDbgAssertOnError = true;
+bool igc_spv::SPIRVDbgErrorMsgIncludesSourceInfo = true;

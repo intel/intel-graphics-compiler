@@ -68,7 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVBasicBlock.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 
 class SPIRVDecoder;

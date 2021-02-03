@@ -28,7 +28,7 @@
 #include <tuple>
 #include <vector>
 
-namespace spv {
+namespace igc_spv {
 
 class SPIRVAsmTargetINTEL : public SPIRVEntry {
 public:
@@ -138,5 +138,5 @@ protected:
   std::vector<SPIRVWord> Args;
 };
 
-} // namespace spv
+} // namespace igc_spv
 #endif // SPIRV_LIBSPIRV_SPIRVASM_H

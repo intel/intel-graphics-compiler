@@ -71,7 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 
 
-namespace spv{
+namespace igc_spv{
 
 typedef uint32_t SPIRVWord;
 typedef uint32_t SPIRVId;
@@ -87,10 +87,10 @@ mkWord(unsigned WordCount, Op OpCode) {
   return (WordCount << 16) | OpCode;
 }
 
-const SPIRVWord SPIRVMagicNumber = spv::MagicNumber;
+const SPIRVWord SPIRVMagicNumber = igc_spv::MagicNumber;
 
 enum SPIRVVersionSupported {
-   fullyCompliant = spv::Version
+   fullyCompliant = igc_spv::Version
 };
 
 
@@ -102,21 +102,21 @@ enum SPIRVInstructionSchemaKind {
   SPIRVISCH_Default,
 };
 
-typedef spv::Capability SPIRVCapabilityKind;
-typedef spv::ExecutionModel SPIRVExecutionModelKind;
-typedef spv::ExecutionMode SPIRVExecutionModeKind;
-typedef spv::AccessQualifier SPIRVAccessQualifierKind;
-typedef spv::AddressingModel SPIRVAddressingModelKind;
-typedef spv::LinkageType SPIRVLinkageTypeKind;
-typedef spv::MemoryModel SPIRVMemoryModelKind;
-typedef spv::StorageClass SPIRVStorageClassKind;
-typedef spv::FunctionControlMask SPIRVFunctionControlMaskKind;
-typedef spv::FPRoundingMode SPIRVFPRoundingModeKind;
-typedef spv::FunctionParameterAttribute SPIRVFuncParamAttrKind;
-typedef spv::BuiltIn SPIRVBuiltinVariableKind;
-typedef spv::MemoryAccessMask SPIRVMemoryAccessKind;
-typedef spv::GroupOperation SPIRVGroupOperationKind;
-typedef spv::Dim SPIRVImageDimKind;
+typedef igc_spv::Capability SPIRVCapabilityKind;
+typedef igc_spv::ExecutionModel SPIRVExecutionModelKind;
+typedef igc_spv::ExecutionMode SPIRVExecutionModeKind;
+typedef igc_spv::AccessQualifier SPIRVAccessQualifierKind;
+typedef igc_spv::AddressingModel SPIRVAddressingModelKind;
+typedef igc_spv::LinkageType SPIRVLinkageTypeKind;
+typedef igc_spv::MemoryModel SPIRVMemoryModelKind;
+typedef igc_spv::StorageClass SPIRVStorageClassKind;
+typedef igc_spv::FunctionControlMask SPIRVFunctionControlMaskKind;
+typedef igc_spv::FPRoundingMode SPIRVFPRoundingModeKind;
+typedef igc_spv::FunctionParameterAttribute SPIRVFuncParamAttrKind;
+typedef igc_spv::BuiltIn SPIRVBuiltinVariableKind;
+typedef igc_spv::MemoryAccessMask SPIRVMemoryAccessKind;
+typedef igc_spv::GroupOperation SPIRVGroupOperationKind;
+typedef igc_spv::Dim SPIRVImageDimKind;
 
 template<typename K>
 SPIRVCapabilityKind
@@ -247,10 +247,10 @@ inline bool isValidSPIRVMemSemanticsMask(SPIRVWord MemMask) {
 }
 
 //enum SPIRVSamplerAddressingModeKind
-typedef spv::SamplerAddressingMode SPIRVSamplerAddressingModeKind;
+typedef igc_spv::SamplerAddressingMode SPIRVSamplerAddressingModeKind;
 
 //enum SPIRVSamplerFilterModeKind
-typedef spv::SamplerFilterMode SPIRVSamplerFilterModeKind;
+typedef igc_spv::SamplerFilterMode SPIRVSamplerFilterModeKind;
 
 inline bool isValid(SPIRVGroupOperationKind G) {
   return (unsigned)G < (unsigned)GroupOperationCount;

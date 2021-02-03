@@ -69,7 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVAsm.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 template<typename T>
 SPIRVEntry* create() {
@@ -79,7 +79,7 @@ SPIRVEntry* create() {
 SPIRVEntry *
 SPIRVEntry::create(Op OpCode) {
   switch (OpCode) {
-#define _SPIRV_OP(x,...) case Op##x: return spv::create<SPIRV##x>();
+#define _SPIRV_OP(x,...) case Op##x: return igc_spv::create<SPIRV##x>();
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP
   default:
@@ -545,11 +545,11 @@ SPIRVModuleProcessed::decode(std::istream &I) {
     Module->setModuleProcessed(S);
 }
 
-template <spv::Op OC> void SPIRVContinuedInstINTELBase<OC>::validate() const {
+template <igc_spv::Op OC> void SPIRVContinuedInstINTELBase<OC>::validate() const {
     SPIRVEntry::validate();
 }
 
-template <spv::Op OC>
+template <igc_spv::Op OC>
 void SPIRVContinuedInstINTELBase<OC>::decode(std::istream& I) {
     SPIRVEntry::getDecoder(I) >> (Elements);
 }
@@ -558,5 +558,5 @@ SPIRVType* SPIRVTypeStructContinuedINTEL::getMemberType(size_t I) const {
     return static_cast<SPIRVType*>(SPIRVEntry::getEntry(Elements[I]));
 }
 
-} // namespace spv
+} // namespace igc_spv
 

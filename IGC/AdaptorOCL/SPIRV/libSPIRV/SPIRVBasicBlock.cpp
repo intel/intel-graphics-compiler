@@ -68,7 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVFunction.h"
 #include "Probe/Assertion.h"
 
-using namespace spv;
+using namespace igc_spv;
 
 SPIRVBasicBlock::SPIRVBasicBlock(SPIRVId TheId, SPIRVFunction *Func)
   :SPIRVValue(Func->getModule(), 2, OpLabel, TheId), ParentF(Func) {

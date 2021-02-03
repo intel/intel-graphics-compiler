@@ -20,7 +20,7 @@
 
 // The Type class hierarchy models the different types in OCL.
 
-namespace SPIR {
+namespace igc_SPIR {
 
   // Supported SPIR versions
   enum SPIRversion {

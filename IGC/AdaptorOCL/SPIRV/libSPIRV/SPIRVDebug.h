@@ -42,7 +42,7 @@
 
 #include <iostream>
 
-namespace spv{
+namespace igc_spv{
 
 #define _SPIRVDBG
 #ifdef _SPIRVDBG

@@ -77,7 +77,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 class SPIRVModule;
 class SPIRVDecoder;
@@ -664,14 +664,14 @@ T* bcast(SPIRVEntry *E) {
   return static_cast<T*>(E);
 }
 
-template <spv::Op OC> bool isa(SPIRVEntry *E) {
+template <igc_spv::Op OC> bool isa(SPIRVEntry *E) {
   return E ? E->getOpCode() == OC : false;
 }
 
-template <spv::Op OC>
+template <igc_spv::Op OC>
 class SPIRVContinuedInstINTELBase : public SPIRVEntryNoId<OC> {
 public:
-    template <spv::Op _OC, class T = void>
+    template <igc_spv::Op _OC, class T = void>
     using EnableIfCompositeConst =
         typename std::enable_if_t<_OC == OpConstantCompositeContinuedINTEL ||
         _OC ==
@@ -695,7 +695,7 @@ public:
     // Incomplete constructor
     SPIRVContinuedInstINTELBase() : SPIRVEntryNoId<OC>() {}
 
-    template <spv::Op OPC = OC>
+    template <igc_spv::Op OPC = OC>
     EnableIfCompositeConst<OPC, std::vector<SPIRVValue*>> getElements() const {
         return SPIRVEntry::getValues(Elements);
     }
@@ -734,21 +734,21 @@ SPIRVContinuedInstINTELBase<OpConstantCompositeContinuedINTEL>;
 using SPIRVSpecConstantCompositeContinuedINTEL =
 SPIRVContinuedInstINTELBase<OpSpecConstantCompositeContinuedINTEL>;
 
-template <spv::Op OpCode> struct InstToContinued;
+template <igc_spv::Op OpCode> struct InstToContinued;
 
 template <> struct InstToContinued<OpTypeStruct> {
     using Type = SPIRVTypeStructContinuedINTEL *;
-    constexpr static spv::Op OpCode = OpTypeStructContinuedINTEL;
+    constexpr static igc_spv::Op OpCode = OpTypeStructContinuedINTEL;
 };
 
 template <> struct InstToContinued<OpConstantComposite> {
     using Type = SPIRVConstantCompositeContinuedINTEL *;
-    constexpr static spv::Op OpCode = OpConstantCompositeContinuedINTEL;
+    constexpr static igc_spv::Op OpCode = OpConstantCompositeContinuedINTEL;
 };
 
 template <> struct InstToContinued<OpSpecConstantComposite> {
     using Type = SPIRVSpecConstantCompositeContinuedINTEL *;
-    constexpr static spv::Op OpCode = OpSpecConstantCompositeContinuedINTEL;
+    constexpr static igc_spv::Op OpCode = OpSpecConstantCompositeContinuedINTEL;
 };
 
 

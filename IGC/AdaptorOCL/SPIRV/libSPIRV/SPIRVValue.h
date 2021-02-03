@@ -78,7 +78,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <memory>
 
-namespace spv{
+namespace igc_spv{
 
 class SPIRVValue: public SPIRVEntry {
 public:
@@ -361,7 +361,7 @@ protected:
 
   std::vector<SPIRVId> Elements;
   std::vector<ContinuedInstType> ContinuedInstructions;
-  const spv::Op ContinuedOpCode = InstToContinued<OC>::OpCode;
+  const igc_spv::Op ContinuedOpCode = InstToContinued<OC>::OpCode;
 };
 
 typedef SPIRVConstantCompositeBase<OpConstantComposite> SPIRVConstantComposite;

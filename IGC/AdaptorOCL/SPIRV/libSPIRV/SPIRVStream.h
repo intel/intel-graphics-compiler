@@ -76,7 +76,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <string>
 
-namespace spv{
+namespace igc_spv{
 
 class SPIRVFunction;
 class SPIRVBasicBlock;
@@ -146,5 +146,5 @@ SPIRV_DEC_DEC(OCLExtOpDbgKind)
 
 const SPIRVDecoder& operator>>(const SPIRVDecoder&I, std::string& Str);
 
-} // namespace spv
+} // namespace igc_spv
 #endif

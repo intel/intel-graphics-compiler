@@ -49,7 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ** IN THE MATERIALS.
 */
 
-namespace OpenCLLIB {
+namespace igc_OpenCLLIB {
 
 enum Entrypoints {
 #define _OCL_EXT_OP(name, num) name = num,

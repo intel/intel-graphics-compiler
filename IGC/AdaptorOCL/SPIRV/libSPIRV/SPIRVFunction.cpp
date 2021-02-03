@@ -67,7 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVStream.h"
 #include "Probe/Assertion.h"
 
-using namespace spv;
+using namespace igc_spv;
 
 SPIRVFunctionParameter::SPIRVFunctionParameter(SPIRVType *TheType, SPIRVId TheId,
     SPIRVFunction *TheParent, unsigned TheArgNo):

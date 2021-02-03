@@ -80,7 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mangler/ParameterType.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 void
 saveLLVMModule(Module *M, const std::string &OutputFile) {

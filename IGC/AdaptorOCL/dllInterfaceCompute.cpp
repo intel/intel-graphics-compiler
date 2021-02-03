@@ -474,7 +474,7 @@ bool ProcessElfInput(
                                                                                   InputArgs.pSpecConstantsIds,
                                                                                   InputArgs.pSpecConstantsValues,
                                                                                   InputArgs.SpecConstantsSize);
-              bool success = spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
+              bool success = igc_spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
               // handle OpenCL Compiler Options
               GenerateCompilerOptionsMD(
                   *Context.getLLVMContext(),
@@ -721,7 +721,7 @@ bool ParseInput(
                                                                             pInputArgs->pSpecConstantsIds,
                                                                             pInputArgs->pSpecConstantsValues,
                                                                             pInputArgs->SpecConstantsSize);
-        bool success = spv::ReadSPIRV(oclContext, IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
+        bool success = igc_spv::ReadSPIRV(oclContext, IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
         // handle OpenCL Compiler Options
         GenerateCompilerOptionsMD(
             oclContext,
@@ -762,7 +762,7 @@ bool ParseInput(
 #if defined(IGC_SPIRV_ENABLED)
 bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo)
 {
-    using namespace spv;
+    using namespace igc_spv;
 
     std::unique_ptr<SPIRVModule> BM(SPIRVModule::createSPIRVModule());
     IS >> *BM;

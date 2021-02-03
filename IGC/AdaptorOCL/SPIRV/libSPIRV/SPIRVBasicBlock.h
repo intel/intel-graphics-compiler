@@ -70,7 +70,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 class SPIRVFunction;
 class SPIRVInstruction;
 class SPIRVDecoder;

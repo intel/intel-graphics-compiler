@@ -51,7 +51,7 @@
 #include <vector>
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 #define SPIRV_DEF_NAMEMAP(Type,MapType) \
 typedef SPIRVMap<Type, std::string> MapType; \

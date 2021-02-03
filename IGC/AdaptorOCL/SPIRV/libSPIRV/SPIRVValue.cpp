@@ -42,7 +42,7 @@
 
 #include "SPIRVValue.h"
 
-namespace spv{
+namespace igc_spv{
 
 void
 SPIRVValue::setAlignment(SPIRVWord A) {

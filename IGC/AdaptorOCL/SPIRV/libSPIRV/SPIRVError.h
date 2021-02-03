@@ -71,7 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <sstream>
 
-namespace spv{
+namespace igc_spv{
 
 // Check condition and set error code and error msg.
 // To use this macro, function checkError must be defined in the scope.

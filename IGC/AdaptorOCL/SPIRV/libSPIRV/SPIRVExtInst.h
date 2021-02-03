@@ -73,7 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 
-namespace spv{
+namespace igc_spv{
 
 
 inline bool
@@ -87,12 +87,12 @@ isSPIRVDebugInfoSet(SPIRVExtInstSetKind Set) {
         Set == SPIRVEIS_OpenCL_DebugInfo_100;
 }
 
-typedef OpenCLLIB::Entrypoints OCLExtOpKind;
+typedef igc_OpenCLLIB::Entrypoints OCLExtOpKind;
 typedef SPIRVDebugInfo::Entrypoints OCLExtOpDbgKind;
 
 template<> inline void
 SPIRVMap<OCLExtOpKind, std::string>::init() {
-#define _OCL_EXT_OP(name, num) add(OpenCLLIB::name, #name);
+#define _OCL_EXT_OP(name, num) add(igc_OpenCLLIB::name, #name);
 #include "OpenCL.stdfuncs.h"
 #undef _OCL_EXT_OP
 }

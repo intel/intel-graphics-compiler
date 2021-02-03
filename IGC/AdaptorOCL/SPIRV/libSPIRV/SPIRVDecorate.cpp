@@ -68,7 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVValue.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 SPIRVDecorateGeneric::SPIRVDecorateGeneric(Op OC, SPIRVWord WC,
     Decoration TheDec, SPIRVEntry *TheTarget)

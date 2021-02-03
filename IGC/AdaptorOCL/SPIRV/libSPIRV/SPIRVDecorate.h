@@ -69,7 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVEntry.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 class SPIRVDecorationGroup;
 class SPIRVDecorateGeneric:public SPIRVAnnotationGeneric{
 public:

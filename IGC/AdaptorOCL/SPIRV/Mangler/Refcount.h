@@ -15,7 +15,7 @@
 
 #include "Probe/Assertion.h"
 
-namespace SPIR {
+namespace igc_SPIR {
 
 template <typename T>
 class RefCount{

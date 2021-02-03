@@ -71,7 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 template<> inline void
 SPIRVMap<Op, std::string>::init() {

@@ -96,7 +96,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 
 
-namespace spv{
+namespace igc_spv{
 // Prefix for placeholder global variable name.
 const char* kPlaceholderPrefix = "placeholder.";
 
@@ -989,7 +989,7 @@ public:
   bool isTypeVoid(SPIRVId id)
   {
       auto entry = BM->get<SPIRVEntry>(id);
-      return entry && entry->getOpCode() == spv::Op::OpTypeVoid;
+      return entry && entry->getOpCode() == igc_spv::Op::OpTypeVoid;
   }
 
   DISubroutineType* createSubroutineType(SPIRVExtInst* inst)
@@ -1015,7 +1015,7 @@ public:
   bool isDebugInfoNone(SPIRVId id)
   {
       auto e = BM->get<SPIRVEntry>(id);
-      if (e->getOpCode() == spv::Op::OpExtInst)
+      if (e->getOpCode() == igc_spv::Op::OpExtInst)
       {
           auto entry = BM->get<SPIRVExtInst>(id);
           return entry && entry->getExtOp() == OCLExtOpDbgKind::DebugInfoNone;
@@ -1502,12 +1502,12 @@ private:
   Instruction *transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F);
   Instruction *transLifetimeInst(SPIRVInstTemplateBase* BV, BasicBlock* BB, Function* F);
   uint64_t calcImageType(const SPIRVValue *ImageVal);
-  std::string transOCLImageTypeName(spv::SPIRVTypeImage* ST);
-  std::string transOCLSampledImageTypeName(spv::SPIRVTypeSampledImage* ST);
-  std::string transOCLImageTypeAccessQualifier(spv::SPIRVTypeImage* ST);
-  std::string transOCLPipeTypeAccessQualifier(spv::SPIRVTypePipe* ST);
+  std::string transOCLImageTypeName(igc_spv::SPIRVTypeImage* ST);
+  std::string transOCLSampledImageTypeName(igc_spv::SPIRVTypeSampledImage* ST);
+  std::string transOCLImageTypeAccessQualifier(igc_spv::SPIRVTypeImage* ST);
+  std::string transOCLPipeTypeAccessQualifier(igc_spv::SPIRVTypePipe* ST);
 
-  Value *oclTransConstantSampler(spv::SPIRVConstantSampler* BCS);
+  Value *oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS);
 
   template<class Source, class Func>
   bool foreachFuncCtlMask(Source, Func);
@@ -1717,7 +1717,7 @@ SPIRVToLLVM::transFPType(SPIRVType* T) {
 }
 
 std::string
-SPIRVToLLVM::transOCLImageTypeName(spv::SPIRVTypeImage* ST) {
+SPIRVToLLVM::transOCLImageTypeName(igc_spv::SPIRVTypeImage* ST) {
   return std::string(kSPR2TypeName::OCLPrefix)
        + rmap<std::string>(ST->getDescriptor())
        + kSPR2TypeName::Delimiter
@@ -1725,7 +1725,7 @@ SPIRVToLLVM::transOCLImageTypeName(spv::SPIRVTypeImage* ST) {
 }
 
 std::string
-SPIRVToLLVM::transOCLSampledImageTypeName(spv::SPIRVTypeSampledImage* ST) {
+SPIRVToLLVM::transOCLSampledImageTypeName(igc_spv::SPIRVTypeSampledImage* ST) {
    return std::string(kLLVMName::builtinPrefix) + kSPIRVTypeName::SampledImage;
 }
 
@@ -2364,12 +2364,12 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
 }
 
 std::string
-SPIRVToLLVM::transOCLPipeTypeAccessQualifier(spv::SPIRVTypePipe* ST) {
+SPIRVToLLVM::transOCLPipeTypeAccessQualifier(igc_spv::SPIRVTypePipe* ST) {
   return SPIRSPIRVAccessQualifierMap::rmap(ST->getAccessQualifier());
 }
 
 Value *
-SPIRVToLLVM::oclTransConstantSampler(spv::SPIRVConstantSampler* BCS) {
+SPIRVToLLVM::oclTransConstantSampler(igc_spv::SPIRVConstantSampler* BCS) {
   auto Lit = (BCS->getAddrMode() << 1) |
       BCS->getNormalized() |
       ((BCS->getFilterMode() + 1) << 4);
@@ -3887,12 +3887,12 @@ SPIRVToLLVM::transFPContractMetadata() {
     }
   }
   if (!ContractOff)
-    M->getOrInsertNamedMetadata(spv::kSPIR2MD::FPContract);
+    M->getOrInsertNamedMetadata(igc_spv::kSPIR2MD::FPContract);
   return true;
 }
 
 std::string SPIRVToLLVM::transOCLImageTypeAccessQualifier(
-    spv::SPIRVTypeImage* ST) {
+    igc_spv::SPIRVTypeImage* ST) {
   return SPIRSPIRVAccessQualifierMap::rmap(ST->getAccessQualifier());
 }
 
@@ -4092,17 +4092,17 @@ SPIRVToLLVM::transKernelMetadata()
         // Generate metadata for reqd_work_group_size
         if (auto EM = BF->getExecutionMode(ExecutionModeLocalSize)) {
             KernelMD.push_back(getMDNodeStringIntVec(Context,
-                spv::kSPIR2MD::WGSize, EM->getLiterals()));
+                igc_spv::kSPIR2MD::WGSize, EM->getLiterals()));
         }
         // Generate metadata for work_group_size_hint
         if (auto EM = BF->getExecutionMode(ExecutionModeLocalSizeHint)) {
             KernelMD.push_back(getMDNodeStringIntVec(Context,
-                spv::kSPIR2MD::WGSizeHint, EM->getLiterals()));
+                igc_spv::kSPIR2MD::WGSizeHint, EM->getLiterals()));
         }
         // Generate metadata for vec_type_hint
         if (auto EM = BF->getExecutionMode(ExecutionModeVecTypeHint)) {
             std::vector<Metadata*> MetadataVec;
-            MetadataVec.push_back(MDString::get(*Context, spv::kSPIR2MD::VecTyHint));
+            MetadataVec.push_back(MDString::get(*Context, igc_spv::kSPIR2MD::VecTyHint));
             Type *VecHintTy = decodeVecTypeHint(*Context, EM->getLiterals()[0]);
             MetadataVec.push_back(ValueAsMetadata::get(UndefValue::get(VecHintTy)));
             MetadataVec.push_back(
@@ -4128,7 +4128,7 @@ SPIRVToLLVM::transKernelMetadata()
         {
             unsigned subgroupSize = EM->getLiterals()[0];
             std::vector<Metadata*> MetadataVec;
-            MetadataVec.push_back(MDString::get(*Context, spv::kSPIR2MD::ReqdSubgroupSize));
+            MetadataVec.push_back(MDString::get(*Context, igc_spv::kSPIR2MD::ReqdSubgroupSize));
             MetadataVec.push_back(
                 ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(*Context),
                 subgroupSize)));
@@ -4294,7 +4294,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
   }
 
   IGC_ASSERT_MESSAGE(Set == SPIRVEIS_OpenCL, "Not OpenCL extended instruction");
-  if (EntryPoint == OpenCLLIB::printf)
+  if (EntryPoint == igc_OpenCLLIB::printf)
     IsPrintf = true;
   else {
       FuncName = OCLExtOpMap::map(static_cast<OCLExtOpKind>(

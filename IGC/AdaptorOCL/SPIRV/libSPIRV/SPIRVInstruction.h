@@ -81,7 +81,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <unordered_set>
 
-namespace spv{
+namespace igc_spv{
 
 typedef std::vector<SPIRVValue *> ValueVec;
 typedef std::pair<ValueVec::iterator, ValueVec::iterator> ValueRange;
@@ -344,11 +344,11 @@ public:
   }
 
   bool hasExecScope() const {
-    return spv::hasExecScope(OpCode);
+    return igc_spv::hasExecScope(OpCode);
   }
 
   bool hasGroupOperation() const {
-    return spv::hasGroupOperation(OpCode);
+    return igc_spv::hasGroupOperation(OpCode);
   }
 
   SPIRVGroupOperationKind getGroupOperation() const {
@@ -1258,13 +1258,13 @@ public:
     switch(EOC) {
     default:
       return false;
-    case OpenCLLIB::vloadn:
-    case OpenCLLIB::vload_halfn:
-    case OpenCLLIB::vloada_halfn:
+    case igc_OpenCLLIB::vloadn:
+    case igc_OpenCLLIB::vload_halfn:
+    case igc_OpenCLLIB::vloada_halfn:
       return Index == 2;
-    case OpenCLLIB::vstore_half_r:
-    case OpenCLLIB::vstore_halfn_r:
-    case OpenCLLIB::vstorea_halfn_r:
+    case igc_OpenCLLIB::vstore_half_r:
+    case igc_OpenCLLIB::vstore_halfn_r:
+    case igc_OpenCLLIB::vstorea_halfn_r:
       return Index == 3;
     }
   }

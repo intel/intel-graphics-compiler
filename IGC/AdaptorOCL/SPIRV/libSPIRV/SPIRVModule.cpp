@@ -73,7 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVAsm.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 SPIRVModule::SPIRVModule()
 {}
@@ -234,7 +234,7 @@ public:
   {
       for (auto& item : IdEntryMap)
       {
-          if (item.second->getOpCode() == spv::Op::OpExtInst)
+          if (item.second->getOpCode() == igc_spv::Op::OpExtInst)
           {
               auto extInst = static_cast<SPIRVExtInst*>(item.second);
               if ((extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
@@ -253,7 +253,7 @@ public:
 
       for (auto& item : IdEntryMap)
       {
-          if (item.second->getOpCode() == spv::Op::OpExtInst)
+          if (item.second->getOpCode() == igc_spv::Op::OpExtInst)
           {
               auto extInst = static_cast<SPIRVExtInst*>(item.second);
               if ((extInst->getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
@@ -273,9 +273,9 @@ public:
       for (auto& item : IdEntryMap)
       {
           Op opcode = item.second->getOpCode();
-          if (opcode == spv::Op::OpSpecConstant ||
-              opcode == spv::Op::OpSpecConstantTrue ||
-              opcode == spv::Op::OpSpecConstantFalse)
+          if (opcode == igc_spv::Op::OpSpecConstant ||
+              opcode == igc_spv::Op::OpSpecConstantTrue ||
+              opcode == igc_spv::Op::OpSpecConstantFalse)
           {
               auto specConstant = static_cast<SPIRVValue*>(item.second);
               specConstants.push_back(specConstant);

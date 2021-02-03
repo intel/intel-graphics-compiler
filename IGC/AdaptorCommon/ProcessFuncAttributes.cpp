@@ -433,7 +433,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         // Add always attribtue if function is a builtin
         if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
-            F->getName().startswith(spv::kLLVMName::builtinPrefix))
+            F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
         {
             // OptNone builtins are special versions of builtins assuring that all
             // theirs parameters are constant values.

@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVInstruction.h"
 #include "SPIRVExtInst.h"
 
-namespace spv {
+namespace igc_spv {
 
     // SPIRVDebug is shared with common clang's SPIRV emitter
     namespace SPIRVDebug {

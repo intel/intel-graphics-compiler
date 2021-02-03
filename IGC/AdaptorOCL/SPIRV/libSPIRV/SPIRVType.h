@@ -79,7 +79,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 class SPIRVType: public SPIRVEntry {
 public:
@@ -552,7 +552,7 @@ protected:
 private:
   std::vector<SPIRVType *> MemberTypeVec;      // Member Types
   std::vector<ContinuedInstType> ContinuedInstructions;
-  const spv::Op ContinuedOpCode = InstToContinued<OC>::OpCode;
+  const igc_spv::Op ContinuedOpCode = InstToContinued<OC>::OpCode;
 };
 
 class SPIRVTypeFunction:public SPIRVType {

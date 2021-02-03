@@ -54,10 +54,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //   C, C++, C++11, JSON, Lua, Python
 //
 // - C will have tokens with a "Spv" prefix, e.g.: SpvSourceLanguageGLSL
-// - C++ will have tokens in the "spv" name space, e.g.: spv::SourceLanguageGLSL
-// - C++11 will use enum classes in the spv namespace, e.g.: spv::SourceLanguage::GLSL
-// - Lua will use tables, e.g.: spv.SourceLanguage.GLSL
-// - Python will use dictionaries, e.g.: spv['SourceLanguage']['GLSL']
+// - C++ will have tokens in the "igc_spv" name space, e.g.: spv::SourceLanguageGLSL
+// - C++11 will use enum classes in the igc_spv namespace, e.g.: spv::SourceLanguage::GLSL
+// - Lua will use tables, e.g.: igc_spv.SourceLanguage.GLSL
+// - Python will use dictionaries, e.g.: igc_spv['SourceLanguage']['GLSL']
 //
 // Some tokens act like mask values, which can be OR'd together,
 // while others are mutually exclusive.  The mask-like ones have
@@ -67,7 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef spirv_H
 #define spirv_H
 
-namespace spv {
+namespace igc_spv {
 
 typedef unsigned int Id;
 
@@ -637,7 +637,7 @@ inline MemorySemanticsMask operator|(MemorySemanticsMask a, MemorySemanticsMask 
 inline MemoryAccessMask operator|(MemoryAccessMask a, MemoryAccessMask b) { return MemoryAccessMask(unsigned(a) | unsigned(b)); }
 inline KernelProfilingInfoMask operator|(KernelProfilingInfoMask a, KernelProfilingInfoMask b) { return KernelProfilingInfoMask(unsigned(a) | unsigned(b)); }
 
-}  // end namespace spv
+}  // end namespace igc_spv
 
 #endif  // #ifndef spirv_H
 

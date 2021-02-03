@@ -75,7 +75,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 #include <vector>
 
-namespace spv{
+namespace igc_spv{
 
 class SPIRVBasicBlock;
 class SPIRVEntry;

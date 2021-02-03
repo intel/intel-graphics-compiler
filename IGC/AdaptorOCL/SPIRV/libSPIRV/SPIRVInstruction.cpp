@@ -69,7 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Probe/Assertion.h"
 
 
-namespace spv {
+namespace igc_spv {
 
 // Complete constructor for instruction with type and id
 SPIRVInstruction::SPIRVInstruction(unsigned TheWordCount, Op TheOC,

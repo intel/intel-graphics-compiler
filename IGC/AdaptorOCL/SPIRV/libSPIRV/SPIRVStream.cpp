@@ -69,7 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVDebugInfoExt.h"
 #include "Probe/Assertion.h"
 
-namespace spv{
+namespace igc_spv{
 
 SPIRVDecoder::SPIRVDecoder(std::istream &InputStream, SPIRVFunction &F)
   :IS(InputStream), M(*F.getModule()), WordCount(0), OpCode(OpNop),
@@ -115,19 +115,19 @@ const SPIRVDecoder& DecodeBinary(const SPIRVDecoder& I, T &V) {
   const SPIRVDecoder& DecodeBinary \
   (const SPIRVDecoder& I, Type &V);
 
-INSTANTIATE_DECODER_BINARY(enum spv::StorageClass)
-INSTANTIATE_DECODER_BINARY(enum spv::Dim)
-INSTANTIATE_DECODER_BINARY(enum spv::AccessQualifier)
-INSTANTIATE_DECODER_BINARY(enum spv::Scope)
-INSTANTIATE_DECODER_BINARY(enum spv::ExecutionModel)
-INSTANTIATE_DECODER_BINARY(enum spv::ExecutionMode)
-INSTANTIATE_DECODER_BINARY(enum spv::AddressingModel)
-INSTANTIATE_DECODER_BINARY(enum spv::MemoryModel)
-INSTANTIATE_DECODER_BINARY(enum spv::SpvSourceLanguage)
-INSTANTIATE_DECODER_BINARY(enum spv::Capability)
-INSTANTIATE_DECODER_BINARY(enum spv::SPIRVVersionSupported)
-INSTANTIATE_DECODER_BINARY(enum spv::SPIRVGeneratorKind)
-INSTANTIATE_DECODER_BINARY(enum spv::SPIRVInstructionSchemaKind)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::StorageClass)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::Dim)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::AccessQualifier)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::Scope)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::ExecutionModel)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::ExecutionMode)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::AddressingModel)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::MemoryModel)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::SpvSourceLanguage)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::Capability)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::SPIRVVersionSupported)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::SPIRVGeneratorKind)
+INSTANTIATE_DECODER_BINARY(enum igc_spv::SPIRVInstructionSchemaKind)
 #undef SPIRV_DEF_DEC
 
 
