@@ -201,24 +201,35 @@ namespace vISA
         //FIXME: it's conservative. Because for the indirect, the ranges may be contiguous?
         bool isWholeOverlap(const SBFootprint *liveFootprint) const
         {
+            bool findOverlap = false;
+
             for (const SBFootprint *footprint2Ptr = liveFootprint; footprint2Ptr; footprint2Ptr = footprint2Ptr->next)
             {
+                findOverlap = false;
+
                 if (fType == footprint2Ptr->fType &&
                     LeftB <= footprint2Ptr->LeftB && RightB >= footprint2Ptr->RightB)
                 {
-                    return true;
+                    findOverlap = true;
+                    continue;
                 }
                 for (const SBFootprint *curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
                 {
                     if (fType == footprint2Ptr->fType &&
                             curFootprintPtr->LeftB <= footprint2Ptr->LeftB && curFootprintPtr->RightB >= footprint2Ptr->RightB)
                     {
-                        return true;
+                        findOverlap = true;
+                        break;
                     }
+                }
+
+                if (!findOverlap)
+                {
+                    return false;
                 }
             }
 
-            return false;
+            return findOverlap;
         }
 
     };
