@@ -101,11 +101,6 @@ bool AddImplicitArgs::runOnModule(Module &M)
             ImplicitArgs::addBufferOffsetArgs(*pFunc, m_pMdUtils, ctx->getModuleMetaData());
         }
 
-        if (ctx->getModuleMetaData()->compOpt.UseBindlessMode)
-        {
-            ImplicitArgs::addBindlessOffsetArgs(*pFunc, m_pMdUtils, ctx->getModuleMetaData());
-        }
-
         ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
 
         // Create the new function body and insert it into the module

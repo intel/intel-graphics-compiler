@@ -610,7 +610,7 @@ namespace IGC
         QWORD       m_ShaderHashCode = {};
 
         std::vector<std::unique_ptr<iOpenCL::PointerInputAnnotation>>       m_pointerInput;
-        std::vector<std::shared_ptr<iOpenCL::PointerArgumentAnnotation>>    m_pointerArgument;
+        std::vector<std::unique_ptr<iOpenCL::PointerArgumentAnnotation>>    m_pointerArgument;
         std::vector<std::unique_ptr<iOpenCL::LocalArgumentAnnotation>>      m_localPointerArgument;
         std::vector<std::unique_ptr<iOpenCL::SamplerInputAnnotation>>       m_samplerInput;
         std::vector<std::unique_ptr<iOpenCL::SamplerArgumentAnnotation>>    m_samplerArgument;
@@ -632,8 +632,6 @@ namespace IGC
         // This maps argument numbers to BTI and sampler indices
         // (e.g. kernel argument 3, which is is an image_2d, may be mapped to BTI 6)
         std::map<DWORD, unsigned int> m_argIndexMap = {};
-
-        std::map<unsigned int, std::shared_ptr<iOpenCL::PointerArgumentAnnotation>> m_argOffsetMap = {};
 
         iOpenCL::ThreadPayload        m_threadPayload = {};
 
