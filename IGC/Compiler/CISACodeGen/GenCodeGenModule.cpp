@@ -448,6 +448,9 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     // Check and set VLA flag for each group
     FGA->setHasVariableLengthAlloca();
 
+    // Check and set inline asm flag for each group
+    FGA->setGroupHasInlineAsm();
+
     // By swapping, we sort the function list to ensure codegen order for
     // functions. This relies on llvm module pass manager's implementation detail.
     SmallVector<Function*, 16> OrderedList;
@@ -498,6 +501,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
 char GenXFunctionGroupAnalysis::ID = 0;
 
 IGC_INITIALIZE_PASS_BEGIN(GenXFunctionGroupAnalysis, "GenXFunctionGroupAnalysis", "GenXFunctionGroupAnalysis", false, true)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(GenXFunctionGroupAnalysis, "GenXFunctionGroupAnalysis", "GenXFunctionGroupAnalysis", false, true)
 
@@ -512,6 +516,7 @@ GenXFunctionGroupAnalysis::GenXFunctionGroupAnalysis()
 }
 
 void GenXFunctionGroupAnalysis::getAnalysisUsage(AnalysisUsage& AU) const {
+    AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.setPreservesAll();
 }
@@ -614,6 +619,26 @@ void GenXFunctionGroupAnalysis::setHasVariableLengthAlloca()
     }
 }
 
+void GenXFunctionGroupAnalysis::setGroupHasInlineAsm()
+{
+    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.hasInlineAsm)
+    {
+        // check all functions in the group to see it uses inline asm inst
+        for (auto FG : Groups)
+        {
+            for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
+            {
+                Function* F = *FI;
+                if (IGC::hasInlineAsmInFunc(*F))
+                {
+                    FG->m_hasInlineAsm = true;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -692,6 +717,9 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module* Mod) {
 
     // Once FGs are formed, set FG's HasVariableLengthAlloca
     setHasVariableLengthAlloca();
+
+    // Set FGs flag for inline asm
+    setGroupHasInlineAsm();
 
     // Verification.
     if (!verify())

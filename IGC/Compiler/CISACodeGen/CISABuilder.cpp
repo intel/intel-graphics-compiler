@@ -4414,7 +4414,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -4426,7 +4426,7 @@ namespace IGC
         labelMap.clear();
         labelMap.resize(m_program->entry->size(), nullptr);
         labelCounter = 0;
-        m_hasInlineAsm = context->m_DriverInfo.SupportInlineAssembly() && context->m_instrTypes.hasInlineAsm;
+        m_hasInlineAsm = hasInlineAsmCall;
 
         vbuilder = nullptr;
         vAsmTextBuilder = nullptr;

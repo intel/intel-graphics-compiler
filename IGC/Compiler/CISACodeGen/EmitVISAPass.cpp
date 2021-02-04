@@ -630,8 +630,14 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->SetIsCodePatchCandidate(false);
         }
 
+        // Check if the function, or the FG, has inline asm calls.
+        // We need this to set the correct builder mode to parse inline asm.
+        bool hasInlineAsmCall = m_pCtx->m_instrTypes.hasInlineAsm &&
+            m_pCtx->m_DriverInfo.SupportInlineAssembly() &&
+            (!m_FGA ? IGC::hasInlineAsmInFunc(F) : m_FGA->getGroup(&F)->hasInlineAsm());
+
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, prevKernel);
+        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, prevKernel);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
 

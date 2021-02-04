@@ -154,6 +154,9 @@ namespace IGC {
         bool hasStackCall() {
             return m_hasStackCall;
         }
+        bool hasInlineAsm() {
+            return m_hasInlineAsm;
+        }
         /// \brief Function group has a variable length alloca
         bool hasVariableLengthAlloca() {
             return m_hasVaribleLengthAlloca;
@@ -168,6 +171,7 @@ namespace IGC {
 
     private:
         bool m_hasStackCall = false;
+        bool m_hasInlineAsm = false;
         bool m_hasVaribleLengthAlloca = false;
     };
 
@@ -294,6 +298,9 @@ namespace IGC {
 
         /// set whether a group contains variable length alloca
         void setHasVariableLengthAlloca();
+
+        /// set flag for function groups that uses the inline asm instruction
+        void setGroupHasInlineAsm();
 
         typedef llvm::SmallVectorImpl<FunctionGroup*>::iterator iterator;
         iterator begin() { return iterator(Groups.begin()); }

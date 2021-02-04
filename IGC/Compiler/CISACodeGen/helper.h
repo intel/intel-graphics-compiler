@@ -478,4 +478,7 @@ namespace IGC
     llvm::Value* CreateMulhU64(llvm::IRBuilder<>& B, llvm::Value* const u, llvm::Value* const v);
     llvm::Value* CreateMulh(llvm::Function& F, llvm::IRBuilder<>& B, const bool isSigned, llvm::Value* const u, llvm::Value* const v);
 
+    // Returns true if a function has an inline asm call instruction
+    bool hasInlineAsmInFunc(llvm::Function& F);
+
 } // namespace IGC

@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
+#include <llvm/IR/InstIterator.h>
 #include "llvm/Analysis/ValueTracking.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -2268,6 +2269,21 @@ namespace IGC
             IGC_ASSERT_MESSAGE(0, "CreateMulH must be 32 or 64");
         }
         return res;
+    }
+
+    bool hasInlineAsmInFunc(llvm::Function& F)
+    {
+        for (auto ii = inst_begin(&F), ie = inst_end(&F); ii != ie; ii++)
+        {
+            if (llvm::CallInst* call = llvm::dyn_cast<llvm::CallInst>(&*ii))
+            {
+                if (call->isInlineAsm())
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 } // namespace IGC
