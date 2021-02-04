@@ -115,6 +115,7 @@ struct GenXBackendOptions {
   // Configuration for GlobalsLocalization pass
   // (part of CMABI pass by historical reasons).
   GlobalsLocalizationConfig GlobalsLocalization;
+  bool ForceArrayPromotion = false;
 
   GenXBackendOptions();
 };
@@ -181,6 +182,7 @@ public:
   GlobalsLocalizationConfig::LimitT getGlobalsLocalizationLimit() const {
     return Options.GlobalsLocalization.getLimit();
   }
+  bool isArrayPromotionForced() const { return Options.ForceArrayPromotion; }
 };
 } // namespace llvm
 
