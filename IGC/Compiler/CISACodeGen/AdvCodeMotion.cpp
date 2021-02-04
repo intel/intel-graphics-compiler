@@ -226,7 +226,7 @@ bool AdvCodeMotion::hoistUniform(BasicBlock* Src, BasicBlock* Dst) const {
     auto Pos = Dst->getTerminator();
     for (auto BI = Src->begin(), BE = Src->end(); BI != BE; /*EMPTY*/) {
         Instruction* Inst = &*BI++;
-        if (WI->whichDepend(Inst) != WIAnalysis::UNIFORM)
+        if (!WI->isUniform(Inst))
             break;
         Inst->moveBefore(Pos);
         Changed = true;

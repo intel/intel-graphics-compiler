@@ -426,7 +426,7 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop* L) {
         if (!L->contains(Br->getSuccessor(0))) // Not condition of `continue`.
             continue;
         ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
-        if (WI->whichDepend(Br) != WIAnalysis::UNIFORM) {
+        if (!WI->isUniform(Br)) {
             BinaryOperator* BO = dyn_cast<BinaryOperator>(Br->getCondition());
             if (!BO)
                 continue;
@@ -434,11 +434,11 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop* L) {
                 continue;
             ICmpInst* Cond = nullptr;
             ICmpInst* Op0 = dyn_cast<ICmpInst>(BO->getOperand(0));
-            if (Op0 && (WI->whichDepend(Op0) == WIAnalysis::UNIFORM))
+            if (Op0 && WI->isUniform(Op0))
                 Cond = Op0;
             if (!Cond) {
                 ICmpInst* Op1 = dyn_cast<ICmpInst>(BO->getOperand(1));
-                if (Op1 && (WI->whichDepend(Op1) == WIAnalysis::UNIFORM))
+                if (Op1 && WI->isUniform(Op1))
                     Cond = Op1;
             }
             if (!Cond)
@@ -706,10 +706,10 @@ bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value* V) {
         return false;
 
     auto Op0 = PN->getIncomingValue(0);
-    if (WI->whichDepend(Op0) != WIAnalysis::UNIFORM)
+    if (!WI->isUniform(Op0))
         return false;
     auto Op1 = PN->getIncomingValue(1);
-    if (WI->whichDepend(Op1) != WIAnalysis::UNIFORM)
+    if (!WI->isUniform(Op1))
         return false;
 
     auto BB0 = PN->getIncomingBlock(0);
@@ -737,7 +737,7 @@ bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value* V) {
         std::swap(LHS, RHS);
         break;
     }
-    if (WI->whichDepend(RHS) != WIAnalysis::UNIFORM)
+    if (!WI->isUniform(RHS))
         return false;
     return !isGetGlobalIdX(LHS);
 }
@@ -815,7 +815,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
             BasicBlock* block = *BBI;
 
             Instruction* term = block->getTerminator();
-            if ((WI->whichDepend(term) != WIAnalysis::UNIFORM)) {
+            if (!WI->isUniform(term)) {
                 auto Br = dyn_cast<BranchInst>(term);
                 // Check special case for non-uniform loop where, except the
                 // initial, current, and next values, STEP and COUNT are
@@ -829,7 +829,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
                         std::tie(Init, Curr, Step, Next)
                             = getInductionVariable(loop);
                         if (Init && Curr && Next && Step &&
-                            WI->whichDepend(Step) == WIAnalysis::UNIFORM) {
+                            WI->isUniform(Step)) {
                             auto Op0 = ICmp->getOperand(0);
                             auto Op1 = ICmp->getOperand(1);
                             if (Op0 != Next && Op0 != Curr)
@@ -841,12 +841,12 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
                                 // TODO: Need to check whether Init is linear to
                                 // global/local ID. However, that checking is not
                                 // that straightforward before code emitter.
-                                if (WI->whichDepend(Op1) == WIAnalysis::UNIFORM)
+                                if (WI->isUniform(Op1))
                                     continue;
                                 // TODO: Eable IndVarSimplify to simlify the
                                 // following check.
                                 if (Value * Count = getLoopCount(Init, Op1)) {
-                                    if (WI->whichDepend(Count) == WIAnalysis::UNIFORM)
+                                    if (WI->isUniform(Count))
                                         continue;
                                     if (isSelectBasedOnGlobalIdX(Count))
                                         continue;
@@ -897,7 +897,7 @@ unsigned Simd32ProfitabilityAnalysis::getLoopCyclomaticComplexity() {
         for (auto BI = L->block_begin(), BE = L->block_end(); BI != BE; ++BI) {
             BasicBlock* BB = *BI;
             IGCLLVM::TerminatorInst* TI = BB->getTerminator();
-            bool IsUniform = WI->whichDepend(TI) == WIAnalysis::UNIFORM;
+            bool IsUniform = WI->isUniform(TI);
             CC += TI->getNumSuccessors() * (IsUniform ? 1 : 2);
         }
         CC -= L->getNumBlocks();
@@ -912,7 +912,7 @@ static unsigned getNumOfNonUniformExits(Loop* L, WIAnalysis* WI) {
     unsigned Count = 0;
     for (auto BB : ExistingBlocks) {
         IGCLLVM::TerminatorInst* TI = BB->getTerminator();
-        bool IsUniform = WI->whichDepend(TI) == WIAnalysis::UNIFORM;
+        bool IsUniform = WI->isUniform(TI);
         Count += !IsUniform;
     }
 
@@ -1014,7 +1014,7 @@ static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) 
                 VectorType* VTy = dyn_cast<VectorType>(LD->getType());
                 if (!VTy || IGCLLVM::GetVectorTypeBitWidth(VTy) <= 128)
                     continue;
-                if (WI->whichDepend(LD) == WIAnalysis::UNIFORM)
+                if (WI->isUniform(LD))
                     continue;
                 ++LDs;
             }
@@ -1024,7 +1024,7 @@ static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) 
                 VectorType* VTy = dyn_cast<VectorType>(Val->getType());
                 if (!VTy || IGCLLVM::GetVectorTypeBitWidth(VTy) <= 128)
                     continue;
-                if (WI->whichDepend(Ptr) == WIAnalysis::UNIFORM)
+                if (WI->isUniform(Ptr))
                     continue;
                 ++STs;
             }
