@@ -1995,7 +1995,6 @@ e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
         return (Align == EALIGN_AUTO) ? (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD : Align;
     }
 
-
     // Check how that value is used.
     return GetPreferredAlignmentOnUse(V, WIA, pContext);
 }

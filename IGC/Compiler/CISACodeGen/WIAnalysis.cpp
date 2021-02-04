@@ -1346,7 +1346,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             return WIAnalysis::UNIFORM_THREAD;
         }
 
-
         // Iterate over all input dependencies. If all are uniform - propagate it.
         // otherwise - return RANDOM
         unsigned numParams = inst->getNumArgOperands();
