@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -136,39 +137,13 @@ void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
       *DL, V, Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth);
 }
 
-// Get logical size of given simple value.
-// Every simple value has size of its type except for
-// volatile globals. Volatile globals are pointer types in IR
-// but their logical type is pointee type.
-// TODO: move this logic to SimpleValue::getType and remove
-// all the code in other parts that checks for volatiles.
-static unsigned getValueSizeInBits(const SimpleValue SV, const DataLayout &DL) {
-  const Value *Val = SV.getValue();
-  IGC_ASSERT_MESSAGE(Val, "Unexpected null simple value");
-
-  // If this is a volatile global, then its pointer
-  // actually means nothing and pointee type should be
-  // used instead.
-  auto *GV = dyn_cast<GlobalVariable>(Val);
-  if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile)) {
-    return DL.getTypeSizeInBits(GV->getValueType());
-  }
-
-  Type *SimpleTy = SV.getType();
-  return DL.getTypeSizeInBits(SimpleTy);
-}
-
 /***********************************************************************
  * setAlignmentFromValue : set a live range's alignment from a value
  */
 void LiveRange::setAlignmentFromValue(const DataLayout &DL, const SimpleValue V,
                                       const unsigned GRFWidth) {
-  // FIXME: this quite contradicts CMKernelArgOffset logic
-  // regarding arguments alignment though it works. Need to recheck.
-  const unsigned SizeInBits = getValueSizeInBits(V, DL);
-  const auto SizeInBytes =
-      static_cast<unsigned>(divideCeil(SizeInBits, genx::ByteBits));
-  const unsigned LogByteAlign = Log2_32(SizeInBytes);
+  const unsigned AlignInBytes = getValueAlignmentInBytes(*(V.getValue()), DL);
+  const unsigned LogByteAlign = Log2_32(AlignInBytes);
   // Set max alignment to GRF.
   const unsigned MaxLogAlign =
       genx::getLogAlignment(VISA_Align::ALIGN_GRF, GRFWidth);

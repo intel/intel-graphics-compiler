@@ -84,6 +84,15 @@ Value *SimplifyGenX(CallInst *I, const DataLayout &DL);
 // Returns whether the function was modified.
 bool simplifyWritesWithUndefInput(Function &F);
 
+//===----------------------------------------------------------------------===//
+//
+// getValueAlignmentInBytes - calculate alignment of value
+// used in CMKernelArgOffset and GenXLiveness analysis
+// defined in CMKernelArgOffset
+//
+
+unsigned getValueAlignmentInBytes(const Value &Val, const DataLayout &DL);
+
 } // end namespace llvm
 
 #endif
