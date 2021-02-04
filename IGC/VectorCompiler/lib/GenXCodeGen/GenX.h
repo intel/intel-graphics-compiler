@@ -168,8 +168,6 @@ enum ImmIntVec : int8_t {
   MinSInt = -(1 << (ElemSize - 1))
 };
 
-// Internal VC metadata, not to be exposed to anywhere else
-static constexpr char SVMBlockType[] = "SVMBlockType";
 
 } // End genx namespace
 } // End llvm namespace
