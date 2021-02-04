@@ -289,6 +289,13 @@ int CISA_IR_Builder::CreateBuilder(
         builder->InitVisaWaTable(platform, builder->m_options.GetStepping());
     }
 
+    if (mode == vISA_ASM_WRITER)
+    {
+        // If writing asm text, clear the stream and print the build version
+        builder->ClearAsmTextStreams();
+        builder->m_ssIsaAsm << printBuildVersion(builder->m_header) << endl;
+    }
+
     return VISA_SUCCESS;
 }
 
@@ -309,7 +316,15 @@ int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder)
 VISAKernel* CISA_IR_Builder::GetVISAKernel(const std::string& kernelName)
 {
     if (kernelName.empty())
+    {
+        if (m_builderMode == vISA_ASM_READER)
+        {
+            auto kernel = m_kernelsAndFunctions.front();
+            assert(kernel->getIsKernel());
+            return static_cast<VISAKernel*>(kernel);
+        }
         return static_cast<VISAKernel*>(m_kernel);
+    }
     return static_cast<VISAKernel*>(m_nameToKernel.at(kernelName));
 }
 
@@ -317,11 +332,8 @@ int CISA_IR_Builder::ClearAsmTextStreams()
 {
     if (m_builderMode == vISA_ASM_WRITER)
     {
-        m_ssIsaAsmHeader.str(std::string());
-        m_ssIsaAsmHeader.clear();
         m_ssIsaAsm.str(std::string());
         m_ssIsaAsm.clear();
-
         return VISA_SUCCESS;
     }
 
@@ -347,9 +359,10 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 
     if (m_builderMode == vISA_ASM_WRITER)
     {
-        ClearAsmTextStreams();
+        m_ssIsaAsm << "//// KERNEL: ////" << endl;
+        VISAKernel_format_provider fmt(m_kernel);
+        m_ssIsaAsm << printFunctionDecl(&fmt, true) << endl;
     }
-
     return VISA_SUCCESS;
 }
 
@@ -379,9 +392,10 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
 
     if (m_builderMode == vISA_ASM_WRITER)
     {
-        ClearAsmTextStreams();
+        m_ssIsaAsm << endl << "//// FUNCTION: ////" << endl;
+        VISAKernel_format_provider fmt(m_kernel);
+        m_ssIsaAsm << printFunctionDecl(&fmt, false) << endl;
     }
-
     return VISA_SUCCESS;
 }
 
@@ -560,23 +574,12 @@ static void Stitch_Compiled_Units(
 }
 
 
-int CISA_IR_Builder::WriteVISAHeader()
-{
-    if (m_builderMode == vISA_ASM_WRITER)
-    {
-        VISAKernel_format_provider fmt(m_kernel);
-        m_ssIsaAsmHeader << fmt.printKernelHeader(this->m_header) << endl;
-        return VISA_SUCCESS;
-    }
-    return VISA_FAILURE;
-}
-
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int CISAparse(CISA_IR_Builder *builder);
 extern YY_BUFFER_STATE CISA_scan_string(const char* yy_str);
 extern void CISA_delete_buffer(YY_BUFFER_STATE buf);
 
-int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile)
+int CISA_IR_Builder::ParseVISAText(const std::string& visaText, const std::string& visaTextFile)
 {
 #if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
     // Direct output of parser to null
@@ -587,21 +590,18 @@ int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::str
 #endif
 
     int status = VISA_SUCCESS;
-    std::stringstream ss;
-    ss << visaHeader << "\n" << visaText << "\n";
-    std::string visaListing = ss.str();
 
     // Dump the visa text
     if (m_options.getOption(vISA_GenerateISAASM) && !visaTextFile.empty())
     {
         std::ofstream ofs(visaTextFile.c_str(), std::ofstream::out);
         if (ofs.good()) {
-            ofs << visaListing;
+            ofs << visaText;
             ofs.close();
         }
     }
 
-    YY_BUFFER_STATE visaBuf = CISA_scan_string(visaListing.c_str());
+    YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
     if (CISAparse(this) != 0)
     {
 #ifndef DLL_MODE

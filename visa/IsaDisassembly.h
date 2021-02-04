@@ -37,14 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /// Looks up a GEN variable name
 const char* getGenVarName(int id, const print_format_provider_t& header);
 
-/// - Print out kernel scope header
-std::string printKernelHeader(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    bool isKernel,
-    int funcionId,
-    const Options *opt);
-
 ///
 /// - Takes an isa header, a kernel/function header, and isa instruction and
 ///   returns a string contraining the instruction's isaasm.
@@ -97,4 +89,8 @@ std::string printVectorOperand(
     const vector_opnd& opnd,
     const Options *opt,
     bool showRegion);
-
+std::string printFunctionDecl(
+    const print_format_provider_t* header,
+    bool isKernel);
+std::string printBuildVersion(
+    const common_isa_header& isaHeader);

@@ -1475,6 +1475,14 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     }
 
     addAttribute(attrName, attr);
+
+    if (IsAsmWriterMode())
+    {
+        // Print attribute
+        VISAKernel_format_provider fmt(this);
+        m_CISABuilder->m_ssIsaAsm << ".kernel_attr " << printOneAttribute(&fmt, attr) << endl;
+    }
+
     return VISA_SUCCESS;
 }
 

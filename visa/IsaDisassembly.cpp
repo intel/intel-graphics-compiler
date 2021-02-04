@@ -2473,92 +2473,79 @@ std::string VISAKernel_format_provider::printKernelHeader(
 {
     std::stringstream sstr;
 
-    uint8_t major_version = isaHeader.major_version;
-    uint8_t minor_version = isaHeader.minor_version;
-
-    sstr << ".version " << (unsigned)(major_version) << "." << (unsigned)(minor_version) << "\n";
-
-    std::string name = this->getString(this->getNameIndex());
-    std::replace_if(name.begin(), name.end(), [](char c) { return c == '.'; }, ' ');
-
     bool isKernel = m_kernel->getIsKernel();
-    sstr << (!isKernel ? ".global_function " : ".kernel ");
-    encodeStringLiteral(sstr, name.c_str());
-    sstr << "\n";
 
-    /// Print all functions in the same object
+    sstr << printBuildVersion(isaHeader) << std::endl;
+    sstr << printFunctionDecl(this, isKernel) << std::endl;
+
+    // Print all functions in the same object
     if (isKernel)
     {
         for (unsigned i = 0; i < isaHeader.num_functions; i++)
         {
-            sstr << "\n" << ".funcdecl ";
+            sstr << ".funcdecl ";
             encodeStringLiteral(sstr, isaHeader.functions[i].name);
         }
     }
 
     auto options = const_cast<VISAKernelImpl*>(m_kernel)->getOptions();
 
-    // In asm text mode, declarations are printed at variable creation time, we dont need to print them here
-    if (!m_kernel->IsAsmWriterMode())
+    // Print the predefined variables as comments
+    sstr << "\n" << "/// VISA Predefined Variables";
+    for (unsigned i = 0; i < Get_CISA_PreDefined_Var_Count(); i++)
     {
-        // For debug purposes only
-        // Print the predefined variables as comments
-        sstr << "\n" << "/// VISA Predefined Variables";
-        for (unsigned i = 0; i < Get_CISA_PreDefined_Var_Count(); i++)
+        const var_info_t* predefVar = this->getPredefVar(i);
+        if (predefVar->name_index != -1)
         {
-            const var_info_t* predefVar = this->getPredefVar(i);
-            if (predefVar->name_index != -1)
-            {
-                sstr << "\n" << "// .decl V" << i
-                    << " v_type=G"
-                    << " v_name=" << this->getString(predefVar->name_index);
-            }
+            sstr << "\n" << "// .decl V" << i
+                << " v_type=G"
+                << " v_name=" << this->getString(predefVar->name_index);
         }
-        for (unsigned i = 0; i < Get_CISA_PreDefined_Surf_Count(); i++)
+    }
+    for (unsigned i = 0; i < Get_CISA_PreDefined_Surf_Count(); i++)
+    {
+        const state_info_t* predefSurface = this->getPredefSurface(i);
+        if (predefSurface->name_index != -1)
         {
-            const state_info_t* predefSurface = this->getPredefSurface(i);
-            if (predefSurface->name_index != -1)
-            {
-                sstr << "\n" << "// .decl T" << i
-                    << " v_type=T"
-                    << " v_name=" << this->getString(predefSurface->name_index);
-            }
+            sstr << "\n" << "// .decl T" << i
+                << " v_type=T"
+                << " v_name=" << this->getString(predefSurface->name_index);
         }
-        sstr << "\n";
+    }
+    sstr << "\n";
 
-        // emit var decls
-        //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>] [alias=(<alias_index>,<alias_offset>)]
-        for (unsigned i = 0; i < this->getVarCount(); i++)
-        {
-            sstr << "\n" << printVariableDecl(this, i, options);
-        }
-        // address decls
-        for (unsigned i = 0; i < this->getAddrCount(); i++)
-        {
-            sstr << "\n" << printAddressDecl(isaHeader, this, i);
-        }
-        // pred decls
-        for (unsigned i = 0; i < this->getPredCount(); i++)
-        {
-            // P0 is reserved; starting from P1 if there is predicate decl
-            sstr << "\n" << printPredicateDecl(this, i);
-        }
-        // sampler
-        for (unsigned i = 0; i < this->getSamplerCount(); i++)
-        {
-            sstr << "\n" << printSamplerDecl(this, i);
-        }
-        // surface
-        unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-        for (unsigned i = 0; i < this->getSurfaceCount(); i++)
-        {
-            sstr << "\n" << printSurfaceDecl(this, i, numPreDefinedSurfs);
-        }
-        // inputs to kernel
-        for (unsigned i = 0; i < this->getInputCount(); i++)
-        {
-            sstr << "\n" << printFuncInput(this, i, isKernel, options);
-        }
+    // emit var decls
+    //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>] [alias=(<alias_index>,<alias_offset>)]
+    for (unsigned i = 0; i < this->getVarCount(); i++)
+    {
+        sstr << "\n" << printVariableDecl(this, i, options);
+    }
+    // address decls
+    for (unsigned i = 0; i < this->getAddrCount(); i++)
+    {
+        sstr << "\n" << printAddressDecl(isaHeader, this, i);
+    }
+    // pred decls
+    for (unsigned i = 0; i < this->getPredCount(); i++)
+    {
+        // P0 is reserved; starting from P1 if there is predicate decl
+        sstr << "\n" << printPredicateDecl(this, i);
+    }
+    // sampler
+    for (unsigned i = 0; i < this->getSamplerCount(); i++)
+    {
+        sstr << "\n" << printSamplerDecl(this, i);
+    }
+    // surface
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
+    for (unsigned i = 0; i < this->getSurfaceCount(); i++)
+    {
+        sstr << "\n" << printSurfaceDecl(this, i, numPreDefinedSurfs);
+    }
+    // inputs to kernel
+    for (unsigned i = 0; i < this->getInputCount(); i++)
+    {
+        sstr << "\n" << printFuncInput(this, i, isKernel, options);
     }
 
     bool isTargetSet = false;
@@ -2584,6 +2571,24 @@ std::string VISAKernel_format_provider::printKernelHeader(
         }
     }
 
+    return sstr.str();
+}
+
+std::string printFunctionDecl(const print_format_provider_t* header, bool isKernel)
+{
+    std::stringstream sstr;
+    std::string name = header->getString(header->getNameIndex());
+    std::replace_if(name.begin(), name.end(), [](char c) { return c == '.'; }, ' ');
+
+    sstr << (!isKernel ? ".global_function " : ".kernel ");
+    encodeStringLiteral(sstr, name.c_str());
+    return sstr.str();
+}
+
+std::string printBuildVersion(const common_isa_header& isaHeader)
+{
+    std::stringstream sstr;
+    sstr << ".version " << (int)(isaHeader.major_version) << "." << (int)(isaHeader.minor_version);
     return sstr.str();
 }
 

@@ -481,31 +481,10 @@ int CisaBinary::isaDump(
 
     std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
     std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
-    std::string testName; // base kernel name saved for function's isaasm file name
-
-    for (; iter != end; iter++)
-    {
-        VISAKernelImpl * kTemp = *iter;
-        if (kTemp->getIsKernel())
-        {
-            //if asmName is test9_genx_0.asm, the testName is test9_genx.
-            std::string asmName = kTemp->getOutputAsmPath();
-            std::string::size_type asmNameEnd = asmName.find_last_of("_");
-            if (asmNameEnd != std::string::npos)
-            {
-                testName = asmName.substr(0, asmNameEnd);
-            }
-            else
-            {
-                testName = asmName;
-            }
-            break;
-        }
-    }
 
     std::vector<std::string> failedFiles;
     VISAKernelImpl* mainKernel = nullptr;
-    for (iter = m_kernels.begin(); iter != end; iter++)
+    for (; iter != end; iter++)
     {
         VISAKernelImpl * kTemp = *iter;
 
@@ -525,9 +504,9 @@ int CisaBinary::isaDump(
             }
             else if (kTemp->getIsFunction())
             {
-                //if testName: test9_genx, function 0 has test9_genx_f0.isaasm
+                //function 0 has kernel_f0.visaasm
                 kTemp->GetFunctionId(funcId);
-                asmName << testName.c_str();
+                asmName << mainKernel->getOutputAsmPath();
                 asmName << "_f";
                 asmName << funcId;
             }

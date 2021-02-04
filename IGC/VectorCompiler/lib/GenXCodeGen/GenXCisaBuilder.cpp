@@ -841,12 +841,9 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
 
   GenXModule *GM = KernelBuilder->GM;
   if (GM->HasInlineAsm()) {
-    CISA_CALL(KernelBuilder->CisaBuilder->WriteVISAHeader());
     auto VISAAsmTextReader = GM->GetVISAAsmReader();
-    auto VISATextHeader =
-        KernelBuilder->CisaBuilder->GetAsmTextHeaderStream().str();
     auto VISAText = KernelBuilder->CisaBuilder->GetAsmTextStream().str();
-    CISA_CALL(VISAAsmTextReader->ParseVISAText(VISATextHeader, VISAText, ""));
+    CISA_CALL(VISAAsmTextReader->ParseVISAText(VISAText, ""));
   }
 
   return false;

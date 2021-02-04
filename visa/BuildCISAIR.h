@@ -93,11 +93,9 @@ public:
     VISA_BUILDER_API void SetOption(vISAOptions option, const char *val) { m_options.setOption(option, val); }
 
     // Used for inline asm code generation
-    VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile);
+    VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaText, const std::string& visaTextFile);
     VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaFile);
-    VISA_BUILDER_API virtual int WriteVISAHeader();
     VISA_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
-    VISA_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }
     VISA_BUILDER_API virtual VISAKernel* GetVISAKernel(const std::string& kernelName);
     VISA_BUILDER_API virtual int ClearAsmTextStreams();
 
@@ -828,7 +826,6 @@ public:
 
     Options m_options;
     std::stringstream m_ssIsaAsm;
-    std::stringstream m_ssIsaAsmHeader;
 
     void setGtpinInit(void* buf) { gtpin_init = buf; }
     void* getGtpinInit() { return gtpin_init; }

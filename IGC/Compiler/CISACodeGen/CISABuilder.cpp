@@ -5061,10 +5061,6 @@ namespace IGC
         // Compile generated VISA text string for inlineAsm
         if (m_hasInlineAsm || visaAsmOverride)
         {
-            // Finalize the text builder by writing the header
-            if (m_hasInlineAsm)
-                V(vbuilder->WriteVISAHeader());
-
             llvm::SmallVector<const char*, 10> params;
             llvm::SmallVector<std::unique_ptr< char, std::function<void( char*)>>, 10> params2;
             InitBuildParams(params2);
@@ -5132,7 +5128,7 @@ namespace IGC
             else
             {
                 std::string parseTextFile = GetDumpFileName("inline.visaasm");
-                auto result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile);
+                auto result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextStream().str(), parseTextFile);
                 if (result != 0)
                 {
                     std::string output;
