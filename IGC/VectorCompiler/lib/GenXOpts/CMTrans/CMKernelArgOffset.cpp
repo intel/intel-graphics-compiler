@@ -105,21 +105,6 @@ static cl::opt<bool> BTIIndexCommoning("make-bti-index-common", cl::init(false),
 
 namespace llvm {
 void initializeCMKernelArgOffsetPass(PassRegistry &);
-
-unsigned getValueAlignmentInBytes(const Value &Val, const DataLayout &DL) {
-  // If this is a volatile global, then its pointer
-  // actually means nothing and pointee type should be
-  // used instead.
-  auto *GV = dyn_cast<GlobalVariable>(&Val);
-  if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile)) {
-    return divideCeil(DL.getTypeSizeInBits(GV->getValueType()), 8);
-  }
-  Type *Ty = Val.getType();
-  if (Ty->isPointerTy())
-    return IGCLLVM::getAlignmentValue(
-        DL.getPointerABIAlignment(Ty->getPointerAddressSpace()));
-  return divideCeil(DL.getTypeSizeInBits(Ty->getScalarType()), 8);
-}
 }
 
 namespace {
@@ -473,9 +458,16 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
     };
 
     for (auto &Arg : F->args()) {
-      unsigned Alignment = getValueAlignmentInBytes(Arg, DL);
       Type *Ty = Arg.getType();
-      unsigned Bytes = DL.getTypeSizeInBits(Ty) / 8;
+      unsigned Bytes = 0, Alignment = 0;
+      if (Ty->isPointerTy()) {
+        Bytes = DL.getPointerTypeSize(Ty);
+        Alignment = IGCLLVM::getAlignmentValue(
+            DL.getPointerABIAlignment(Ty->getPointerAddressSpace()));
+      } else {
+        Bytes = Ty->getPrimitiveSizeInBits() / 8;
+        Alignment = IGCLLVM::getAlignmentValue(Ty->getScalarSizeInBits() / 8);
+      }
       placeArg(&Arg, Bytes, Alignment);
     }
   }
