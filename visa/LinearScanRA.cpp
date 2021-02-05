@@ -416,12 +416,12 @@ void globalLinearScan::printActives()
             // There may be multiple variables take same register with different offsets
             for (auto lr : activeGRF[i].activeLV)
             {
-                int startregnum, endregnum, startsregnum, endsregnum;
-                G4_VarBase* op;
-                op = lr->getPhyReg(startsregnum);
+                int startsregnum;
+                G4_VarBase* op = lr->getPhyReg(startsregnum);
 
-                startregnum = endregnum = op->asGreg()->getRegNum();
-                endsregnum = startsregnum + (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) - 1;
+                int startregnum = op->asGreg()->getRegNum();
+                int endregnum = startregnum;
+                int endsregnum = startsregnum + (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) - 1;
 
                 if (lr->getTopDcl()->getNumRows() > 1) {
                     endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
@@ -1675,11 +1675,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
                     auto pointsToSet = l.getPointsToAnalysis().getAllInPointsTo(src->getBase()->asRegVar());
                     for (auto var : *pointsToSet)
                     {
-                        G4_Declare* dcl = var->getDeclare();
-                        while (dcl->getAliasDeclare())
-                        {
-                            dcl = dcl->getAliasDeclare();
-                        }
+                        G4_Declare* dcl = var->getDeclare()->getRootDeclare();
 
                         setSrcReferences(bb, inst_it, i, dcl, liveIntervals, eotLiveIntervals);
                     }
@@ -1705,11 +1701,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
                 auto pointsToSet = l.getPointsToAnalysis().getAllInPointsTo(dst->getBase()->asRegVar());
                 for (auto var : *pointsToSet)
                 {
-                    G4_Declare* dcl = var->getDeclare();
-                    while (dcl->getAliasDeclare())
-                    {
-                        dcl = dcl->getAliasDeclare();
-                    }
+                    G4_Declare* dcl = var->getDeclare()->getRootDeclare();
 
                     setDstReferences(bb, inst_it, dcl, liveIntervals, eotLiveIntervals);
                 }

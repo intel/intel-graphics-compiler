@@ -2098,7 +2098,7 @@ public:
         if (offsetFromBase == -1)
         {
             offsetFromBase = 0;
-            for (G4_Declare *dcl = this; dcl->getAliasDeclare() != NULL; dcl = dcl->getAliasDeclare())
+            for (const G4_Declare *dcl = this; dcl->getAliasDeclare() != NULL; dcl = dcl->getAliasDeclare())
             {
                 offsetFromBase += dcl->getAliasOffset();
             }

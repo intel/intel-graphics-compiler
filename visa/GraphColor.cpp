@@ -2137,12 +2137,8 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         //
         // add interferences to the list of potential indirect destination accesses.
         //
-        auto pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsTo(dst->getBase()->asRegVar());
-        if (pointsToSet == nullptr)
-        {
-            pointsToSet = liveAnalysis->getPointsToAnalysis().getIndrUseVectorPtrForBB(bb->getId());
-        }
-        for (auto var : *pointsToSet)
+        const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst, bb);
+        for (auto var : pointsToSet)
         {
             if (var->isRegAllocPartaker())
             {
@@ -2292,15 +2288,8 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                 else if (srcRegion->isIndirect() && liveAnalysis->livenessClass(G4_GRF))
                 {
                     // make every var in points-to set live
-                    PointsToAnalysis& pta = liveAnalysis->getPointsToAnalysis();
-                    auto pointsToSet = pta.getAllInPointsTo(srcRegion->getBase()->asRegVar());
-                    if (pointsToSet == nullptr)
-                    {
-                        // this can happen if the address is coming from addr spill
-                        // ToDo: we can avoid this by linking the spilled addr with its new temp addr
-                        pointsToSet = pta.getIndrUseVectorPtrForBB(bb->getId());
-                    }
-                    for (auto var : *pointsToSet)
+                    const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRegion, bb);
+                    for (auto var : pointsToSet)
                     {
                         if (var->isRegAllocPartaker())
                         {
@@ -3902,14 +3891,8 @@ void Augmentation::buildLiveIntervals()
                 }
                 else if (liveAnalysis.livenessClass(G4_GRF) && srcRegion->isIndirect())
                 {
-                    PointsToAnalysis& pta = liveAnalysis.getPointsToAnalysis();
-                    auto pointsToSet = pta.getAllInPointsTo(srcRegion->getBase()->asRegVar());
-                    if (pointsToSet == nullptr)
-                    {
-                        // this can happen if the address is coming from addr spill
-                        pointsToSet = pta.getIndrUseVectorPtrForBB(curBB->getId());
-                    }
-                    for (auto pointsToVar : *pointsToSet)
+                    const REGVAR_VECTOR& pointsToSet = liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRegion, curBB);
+                    for (auto pointsToVar : pointsToSet)
                     {
                         if (pointsToVar->isRegAllocPartaker())
                         {

@@ -43,8 +43,8 @@ using namespace vISA;
 
 #define GRAPH_COLOR
 
-PointsToAnalysis::PointsToAnalysis(DECLARE_LIST &declares, unsigned int numBB) :
-    numBBs(numBB), numAddrs(0), indirectUses(NULL), pointsToSets(NULL), addrPointsToSetIndex(NULL)
+PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares, unsigned int numBB) :
+    numBBs(numBB), numAddrs(0), indirectUses(std::make_unique<REGVAR_VECTOR[]>(numBB))
 {
     for (auto decl : declares)
     {
@@ -71,7 +71,6 @@ PointsToAnalysis::PointsToAnalysis(DECLARE_LIST &declares, unsigned int numBB) :
             decl->getRegVar()->setId(decl->getRegVar()->getId());
         }
     }
-    indirectUses = new REGVAR_VECTOR[numBBs];
 
     if (numAddrs > 0)
     {
@@ -88,8 +87,8 @@ PointsToAnalysis::PointsToAnalysis(DECLARE_LIST &declares, unsigned int numBB) :
             }
         }
 
-        pointsToSets = new REGVAR_VECTOR[numAddrs];
-        addrPointsToSetIndex = new unsigned[numAddrs];
+        pointsToSets.resize(numAddrs);
+        addrPointsToSetIndex.resize(numAddrs);
         // initially each address variable has its own points-to set
         for (unsigned i = 0; i < numAddrs; i++)
         {
@@ -98,12 +97,6 @@ PointsToAnalysis::PointsToAnalysis(DECLARE_LIST &declares, unsigned int numBB) :
     }
 }
 
-PointsToAnalysis::~PointsToAnalysis()
-{
-    delete[] pointsToSets;
-    delete[] addrPointsToSetIndex;
-    delete[] indirectUses;
-}
 
 //
 //  A flow-insensitive algroithm to compute the register usage for indirect accesses.
@@ -135,7 +128,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
 
     for (G4_BB* bb : fg)
     {
-        for (G4_INST* inst : *bb)
+        for (const G4_INST* inst : *bb)
         {
             G4_DstRegRegion* dst = inst->getDst();
             if (dst != NULL && dst->getRegAccess() == Direct && dst->getType() != Type_UD)
@@ -293,10 +286,10 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                             DEBUG_MSG("unexpected addr add/mul for pointer analysis:\n");
                             DEBUG_EMIT(inst);
                             DEBUG_MSG("\n")
-                                for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
-                                {
-                                    addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i]);
-                                }
+                            for (G4_RegVar *addrTakenVar : addrTakenVariables)
+                            {
+                                addToPointsToSet(ptr->asRegVar(), addrTakenVar);
+                            }
                         }
                     }
                     else
@@ -305,9 +298,9 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
                         DEBUG_MSG("unexpected instruction with address destination:\n");
                         DEBUG_EMIT(inst);
                         DEBUG_MSG("\n");
-                        for (int i = 0, size = (int)addrTakenVariables.size(); i < size; i++)
+                        for (G4_RegVar *addrTakenVar : addrTakenVariables)
                         {
-                            addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i]);
+                            addToPointsToSet(ptr->asRegVar(), addrTakenVar);
                         }
                     }
                 }
@@ -401,10 +394,10 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
     for (unsigned int i = 0; i < numBBs; i++)
     {
         DEBUG_VERBOSE("Indirect uses for BB" << i << "\t");
-        REGVAR_VECTOR grfVec = getIndrUseVectorForBB(i);
-        for (unsigned int j = 0; j < grfVec.size(); j++)
+        const REGVAR_VECTOR &grfVec = getIndrUseVectorForBB(i);
+        for (G4_RegVar* grf : grfVec)
         {
-            DEBUG_EMIT(grfVec[j]);
+            DEBUG_EMIT(grf);
             DEBUG_VERBOSE("\t");
         }
         DEBUG_VERBOSE("\n");
@@ -694,17 +687,15 @@ LivenessAnalysis::~LivenessAnalysis()
         for (auto instIt = bb->begin(); instIt != bb->end();)
         {
             auto inst = (*instIt);
-            if (!inst->isPseudoKill())
+            if (inst->isPseudoKill())
             {
-                ++instIt;
-                continue;
-            }
-            auto src0 = inst->getSrc(0);
-            MUST_BE_TRUE(src0 && src0->isImm(), "expecting src0 immediate for pseudo kill");
-            if (src0->asImm()->getImm() == PseudoKillType::FromLiveness)
-            {
-                instIt = bb->erase(instIt);
-                continue;
+                auto src0 = inst->getSrc(0);
+                MUST_BE_TRUE(src0 && src0->isImm(), "expecting src0 immediate for pseudo kill");
+                if (src0->asImm()->getImm() == PseudoKillType::FromLiveness)
+                {
+                    instIt = bb->erase(instIt);
+                    continue;
+                }
             }
             ++instIt;
         }
@@ -827,8 +818,10 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
         largeDefs.insert(std::make_pair(dcl, bitset));
     }
 
-    if (largeDefs.size() == 0)
+    if (largeDefs.empty())
         return;
+
+    const unsigned bytesPerGRF = numEltPerGRF<Type_UB>();
 
     // Update row usage of each dcl in largeDefs
     for (auto bb : gra.kernel.fg)
@@ -853,8 +846,8 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
                 unsigned int lb = dst->getLeftBound();
                 unsigned int rb = dst->getRightBound();
 
-                unsigned int rowStart = lb / numEltPerGRF<Type_UB>();
-                unsigned int rowEnd = rb / numEltPerGRF<Type_UB>();
+                unsigned int rowStart = lb / bytesPerGRF;
+                unsigned int rowEnd = rb / bytesPerGRF;
 
                 it->second->set(rowStart, rowEnd);
             }
@@ -864,31 +857,24 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
     // Propagate largeDefs to neverDefinedRows bit vector to later bitwise OR it
     for (auto it : largeDefs)
     {
-        bool allSet = true;
         unsigned int numRows = it.first->getNumRows();
+        BitSet* undefinedRows = nullptr;
         for (unsigned int i = 0; i < numRows; i++)
         {
             if (!it.second->isSet(i))
             {
-                allSet = false;
-                break;
+                if (undefinedRows == nullptr)
+                {
+                    undefinedRows = new (m) BitSet(it.first->getByteSize(), false);
+                }
+                undefinedRows->set(i * bytesPerGRF, i * bytesPerGRF + bytesPerGRF - 1);
             }
         }
 
-        if (allSet)
-            continue;
-
-        BitSet* undefinedRows = new (m) BitSet(it.first->getByteSize(), false);
-
-        for (unsigned int i = 0; i < numRows; i++)
+        if (undefinedRows != nullptr)
         {
-            if (!it.second->isSet(i))
-            {
-                undefinedRows->set((i*numEltPerGRF<Type_UB>()), ((i+1)*numEltPerGRF<Type_UB>()) - 1);
-            }
+            neverDefinedRows.insert(std::make_pair(it.first, undefinedRows));
         }
-
-        neverDefinedRows.insert(std::make_pair(it.first, undefinedRows));
     }
 
     for (auto it : largeDefs)
@@ -930,7 +916,7 @@ void LivenessAnalysis::computeLiveness()
 
     for (unsigned i = 0; i < numVarId; i++)
     {
-        bool setLiveIn = false, setLiveOut = false;
+        bool setLiveIn = false;
 
         G4_Declare *decl = vars[i]->getDeclare();
 
@@ -956,6 +942,7 @@ void LivenessAnalysis::computeLiveness()
 #endif
         }
 
+        bool setLiveOut = false;
         if (decl->isOutput() == true &&
             !(fg.builder->isPreDefRet(decl) &&
                 (fg.builder->getIsKernel() ||
@@ -1046,10 +1033,9 @@ void LivenessAnalysis::computeLiveness()
         // only GRF variables can have their address taken
         for (auto bb : fg)
         {
-            const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB(bb->getId());
-            for (unsigned i = 0; i < grfVecPtr->size(); i++)
+            const REGVAR_VECTOR& grfVec = pointsToAnalysis.getIndrUseVectorForBB(bb->getId());
+            for (const G4_RegVar* addrTaken : grfVec)
             {
-                G4_RegVar* addrTaken =(*grfVecPtr)[i];
                 indr_use[bb->getId()].set(addrTaken->getId(), true);
                 addr_taken.set(addrTaken->getId(), true);
             }
@@ -1843,7 +1829,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 {
                     // Write for dst was not seen before, so insert in to map
                     // bitsetSize is in bytes
-                    unsigned int bitsetSize = (dstrgn->isFlag()) ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
+                    unsigned int bitsetSize = dstrgn->isFlag() ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
 
                     BitSet* newBitSet;
                     newBitSet = new (m) BitSet(bitsetSize, false);
@@ -1910,12 +1896,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             else if ((selectedRF & G4_GRF) && dst->isIndirect())
             {
                 // conservatively add each variable potentially accessed by dst to gen
-                auto pointsToSet = pointsToAnalysis.getAllInPointsTo(dst->getBase()->asRegVar());
-                if (pointsToSet == nullptr)
-                {
-                    pointsToSet = pointsToAnalysis.getIndrUseVectorPtrForBB(bb->getId());
-                }
-                for (auto var : *pointsToSet)
+                const REGVAR_VECTOR& pointsToSet = pointsToAnalysis.getAllInPointsToOrIndrUse(dst, bb);
+                for (auto var : pointsToSet)
                 {
                     if (var->isRegAllocPartaker())
                     {
@@ -1956,8 +1938,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     {
                         unsigned int bitsetSize = (src->asSrcRegRegion()->isFlag()) ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
 
-                        BitSet* newBitSet;
-                        newBitSet = new (m) BitSet(bitsetSize, false);
+                        BitSet* newBitSet = new (m) BitSet(bitsetSize, false);
 
                         auto it = neverDefinedRows.find(topdcl);
                         if (it != neverDefinedRows.end())
@@ -2092,7 +2073,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == NULL, "Invalid alias flag decl.");
             if (flagReg->asRegVar()->isRegAllocPartaker())
             {
-                G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
+                const G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
                 unsigned id = topdcl->getRegVar()->getId();
                 BitSet* srcfootprint = footprints[id];
 
@@ -2102,11 +2083,9 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 }
                 else
                 {
-                    G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
                     unsigned int bitsetSize = topdcl->getNumberFlagElements();
 
-                    BitSet* newBitSet;
-                    newBitSet = new (m) BitSet(bitsetSize, false);
+                    BitSet* newBitSet = new (m) BitSet(bitsetSize, false);
                     toDelete.push(newBitSet);
                     std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
                     footprints[id] = newBitSet;
@@ -2158,7 +2137,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     ++nextIt;
                     if (nextIt != bb->rend())
                     {
-                        G4_INST* nextInst = (*nextIt);
+                        const G4_INST* nextInst = (*nextIt);
                         if (nextInst->isPseudoKill())
                         {
                             G4_DstRegRegion* nextDst = nextInst->getDst();
@@ -2644,10 +2623,10 @@ void GlobalRA::markBlockLocalVars()
             }
 
             // Track all indirect references.
-            const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB(bb->getId());
-            for (unsigned i = 0; i < grfVecPtr->size(); i++)
+            const REGVAR_VECTOR& grfVec = pointsToAnalysis.getIndrUseVectorForBB(bb->getId());
+            for (G4_RegVar* grf : grfVec)
             {
-                markBlockLocalVar((*grfVecPtr)[i], bb->getId());
+                markBlockLocalVar(grf, bb->getId());
             }
         }
     }

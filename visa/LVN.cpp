@@ -753,22 +753,14 @@ void LVN::removePhysicalVarRedefs(G4_DstRegRegion* dst)
     }
 }
 
-bool LVN::checkIfInPointsTo(G4_RegVar* addr, G4_RegVar* var)
+bool LVN::checkIfInPointsTo(const G4_RegVar* addr, const G4_RegVar* var) const
 {
     // Check whether var is present in points2 of addr
     auto ptrToAllPointsTo = p2a.getAllInPointsTo(addr);
     if (ptrToAllPointsTo)
     {
-        auto& allInPointsTo = *ptrToAllPointsTo;
-        G4_RegVar* topRegVar = var->getDeclare()->getRootDeclare()->getRegVar();
-
-        for (auto pointedTo : allInPointsTo)
-        {
-            if (pointedTo == topRegVar)
-            {
-                return true;
-            }
-        }
+        const G4_RegVar* topRegVar = var->getDeclare()->getRootDeclare()->getRegVar();
+        return std::find(ptrToAllPointsTo->begin(), ptrToAllPointsTo->end(), topRegVar) != ptrToAllPointsTo->end();
     }
 
     return false;
@@ -783,16 +775,14 @@ void LVN::removeAliases(G4_INST* inst)
     if (!dstPointsToPtr)
         return;
 
-    auto& dstPointsTo = *dstPointsToPtr;
-
-    for (auto item : dstPointsTo)
+    for (auto item : *dstPointsToPtr)
     {
         auto dcl = item->getDeclare()->getRootDeclare();
         auto it = dclValueTable.find(dcl);
         if (it == dclValueTable.end())
             continue;
 
-        for (auto d : (*it).second)
+        for (auto d : it->second)
         {
             d->active = false;
 #ifdef DEBUG_VERBOSE_ON

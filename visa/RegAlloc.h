@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _REGALLOC_H_
 #define _REGALLOC_H_
 #include "PhyRegUsage.h"
+#include <memory>
 #include <vector>
 
 #include "BitSet.h"
@@ -73,66 +74,48 @@ namespace vISA
 class PointsToAnalysis
 {
 private:
-    unsigned int numBBs;
+    const unsigned int numBBs;
     unsigned int numAddrs;
 
     // keeps track of the indirect variables used in each BB
-    REGVAR_VECTOR* indirectUses;
-    // array of points-to set for each address variable
-    REGVAR_VECTOR* pointsToSets;
-    // index of an address's points-to set in the pointsToSets array
-    unsigned int* addrPointsToSetIndex;
+    const std::unique_ptr<REGVAR_VECTOR[]> indirectUses;
+    // vector of points-to set for each address variable
+    std::vector<REGVAR_VECTOR> pointsToSets;
+    // index of an address's points-to set in the pointsToSets vector
+    std::vector<unsigned> addrPointsToSetIndex;
     // original regvar ptrs
     REGVAR_VECTOR regVars;
 
     void resizePointsToSet(unsigned int newsize)
     {
-        // Allocate larger new sets, copy over data from old sets,
-        // deallocate old sets, change numAddrs.
+        // Reallocate larger sets, change numAddrs.
         // Number of basic blocks is assumed to be unchanged.
 
-        REGVAR_VECTOR* newPointsToSets = new REGVAR_VECTOR[newsize];
-        unsigned int* newAddrPointsToSetIndex = new unsigned[newsize];
+        pointsToSets.resize(newsize);
 
-        for (unsigned int i = 0; i < numAddrs; i++)
+        addrPointsToSetIndex.resize(newsize);
+        for (unsigned i = numAddrs; i < newsize; i++)
         {
-            const REGVAR_VECTOR& vec = pointsToSets[i];
-
-            for (G4_RegVar* regVar : vec)
-            {
-                newPointsToSets[i].push_back(regVar);
-            }
-            newAddrPointsToSetIndex[i] = addrPointsToSetIndex[i];
+            addrPointsToSetIndex[i] = i;
         }
-
-        for (int unsigned i = numAddrs; i < newsize; i++)
-        {
-            newAddrPointsToSetIndex[i] = i;
-        }
-
-        delete[] pointsToSets;
-        delete[] addrPointsToSetIndex;
-
-        pointsToSets = newPointsToSets;
-        addrPointsToSetIndex = newAddrPointsToSetIndex;
 
         numAddrs = newsize;
     }
 
-    void addPointsToSetToBB(int bbId, G4_RegVar* addr)
+    void addPointsToSetToBB(int bbId, const G4_RegVar* addr)
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
             "expect address variable");
-        REGVAR_VECTOR& addrTakens = pointsToSets[addrPointsToSetIndex[addr->getId()]];
-        for (unsigned int i = 0; i < addrTakens.size(); i++)
+        const REGVAR_VECTOR& addrTakens = pointsToSets[addrPointsToSetIndex[addr->getId()]];
+        for (G4_RegVar* addrTaken : addrTakens)
         {
-            addIndirectUseToBB(bbId, addrTakens[i]);
+            addIndirectUseToBB(bbId, addrTaken);
         }
     }
 
     void addIndirectUseToBB(unsigned int bbId, G4_RegVar* var)
     {
-        MUST_BE_TRUE(bbId < numBBs, "invalid basic blokc id");
+        MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
         REGVAR_VECTOR& vec = indirectUses[bbId];
         bool isPresent = std::find(vec.begin(), vec.end(), var) != vec.end();
         if (!isPresent)
@@ -141,7 +124,7 @@ private:
         }
     }
 
-    void addToPointsToSet(G4_RegVar* addr, G4_RegVar* var)
+    void addToPointsToSet(const G4_RegVar* addr, G4_RegVar* var)
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
             "expect address variable");
@@ -159,7 +142,7 @@ private:
     // Merge addr2's points-to set into addr1's
     // basically we copy the content of addr2's points-to to addr1,
     // and have addr2 point to addr1's points-to set
-    void mergePointsToSet(G4_RegVar* addr1, G4_RegVar* addr2)
+    void mergePointsToSet(const G4_RegVar* addr1, const G4_RegVar* addr2)
     {
          MUST_BE_TRUE(addr1->getDeclare()->getRegFile() == G4_ADDRESS &&
              addr2->getDeclare()->getRegFile() == G4_ADDRESS,
@@ -175,29 +158,18 @@ private:
          DEBUG_VERBOSE("merge Addr " << addr1->getId() << " with Addr " << addr2->getId());
     }
 
-    unsigned int getIndexOfRegVar(G4_RegVar* r) const
+    unsigned int getIndexOfRegVar(const G4_RegVar* r) const
     {
-      unsigned int id = UINT_MAX;
-
         // Given a regvar pointer, return the index it was
         // found. This function is useful when regvar ids
         // are reset.
 
-        for (unsigned int i = 0; i < regVars.size(); i++)
-        {
-            if (regVars[i] == r)
-            {
-                id = i;
-                break;
-            }
-        }
-
-        return id;
+        const auto it = std::find(regVars.begin(), regVars.end(), r);
+        return it == regVars.end() ? UINT_MAX : static_cast<unsigned int>(it - regVars.begin());
     }
 
 public:
-    PointsToAnalysis(DECLARE_LIST& declares, unsigned numBBs);
-    ~PointsToAnalysis();
+    PointsToAnalysis(const DECLARE_LIST& declares, unsigned numBBs);
 
     void doPointsToAnalysis(FlowGraph& fg);
 
@@ -207,23 +179,17 @@ public:
         return indirectUses[bbId];
     }
 
-    const REGVAR_VECTOR* getIndrUseVectorPtrForBB(unsigned int bbId) const
-    {
-        MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
-        return &(indirectUses[bbId]);
-    }
-
     // Following methods were added to support address taken spill/fill
     // Since ids of addr regvars will be reset, we fall back to using
     // the regvar ptr
-    void insertAndMergeFilledAddr(G4_RegVar* addr1, G4_RegVar* addr2)
+    void insertAndMergeFilledAddr(const G4_RegVar* addr1, G4_RegVar* addr2)
     {
         unsigned int oldid = addr2->getId();
         addr2->setId(numAddrs);
         MUST_BE_TRUE(regVars.size() == numAddrs, "Inconsistency found between size of regvars and number of addr vars");
 
         if (addr2->getId() >= numAddrs)
-            resizePointsToSet(numAddrs+1);
+            resizePointsToSet(numAddrs + 1);
 
         regVars.push_back(addr2);
 
@@ -231,21 +197,31 @@ public:
         addr2->setId(oldid);
     }
 
-    const REGVAR_VECTOR* getAllInPointsTo(G4_RegVar* addr)
+    const REGVAR_VECTOR* getAllInPointsTo(const G4_RegVar* addr) const
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
             "expect address variable");
         unsigned int id = getIndexOfRegVar(addr);
 
         if (id == UINT_MAX)
-            return NULL;
+            return nullptr;
 
-        REGVAR_VECTOR* vec = &pointsToSets[addrPointsToSetIndex[id]];
+        const REGVAR_VECTOR* vec = &pointsToSets[addrPointsToSetIndex[id]];
 
         return vec;
     }
 
-    G4_RegVar* getPointsTo(G4_RegVar* addr, int idx)
+    const REGVAR_VECTOR& getAllInPointsToOrIndrUse(const G4_Operand* opnd, const G4_BB* bb) const
+    {
+        const REGVAR_VECTOR* pointsToSet = getAllInPointsTo(opnd->getBase()->asRegVar());
+        if (pointsToSet != nullptr)
+            return *pointsToSet;
+        // this can happen if the address is coming from addr spill
+        // ToDo: we can avoid this by linking the spilled addr with its new temp addr
+        return getIndrUseVectorForBB(bb->getId());
+    }
+
+    G4_RegVar* getPointsTo(const G4_RegVar* addr, int idx) const
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
             "expect address variable");
@@ -254,7 +230,7 @@ public:
         if (id == UINT_MAX)
             return NULL;
 
-        REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
+        const REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
 
         if (idx < (int)vec.size())
             return vec[idx];
@@ -262,7 +238,7 @@ public:
             return NULL;
     }
 
-    bool isPresentInPointsTo(G4_RegVar* addr, G4_RegVar* var)
+    bool isPresentInPointsTo(const G4_RegVar* addr, const G4_RegVar* var) const
     {
         MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
             "expect address variable");
@@ -271,19 +247,16 @@ public:
         if (id == UINT_MAX)
             return false;
 
-        REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
-        bool present = false;
-
-        for (unsigned int i = 0; i < vec.size(); i++)
+        const REGVAR_VECTOR& vec = pointsToSets[addrPointsToSetIndex[id]];
+        for (const G4_RegVar* pointsTo : vec)
         {
-            if (vec[i]->getId() == var->getId())
+            if (pointsTo->getId() == var->getId())
             {
-                present = true;
-                break;
+                return true;
             }
         }
 
-        return present;
+        return false;
     }
 
     void addFillToPointsTo(unsigned int bbid, G4_RegVar* addr, G4_RegVar* newvar)
@@ -467,7 +440,7 @@ public:
     void defAnalysis(FuncInfo* subroutine);
     void maydefAnalysis();
 
-    PointsToAnalysis& getPointsToAnalysis() const { return pointsToAnalysis; }
+    const PointsToAnalysis& getPointsToAnalysis() const { return pointsToAnalysis; }
 
     bool performIPA() const
     {

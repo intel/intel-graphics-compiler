@@ -129,15 +129,8 @@ namespace vISA
                 else if (src->asSrcRegRegion()->isIndirect())
                 {
                     // make every var in points-to set live
-                    PointsToAnalysis& pta = liveAnalysis->getPointsToAnalysis();
-                    auto pointsToSet = pta.getAllInPointsTo(src->getBase()->asRegVar());
-                    if (pointsToSet == nullptr)
-                    {
-                        // this can happen if the address is coming from addr spill
-                        // ToDo: we can avoid this by linking the spilled addr with its new temp addr
-                        pointsToSet = pta.getIndrUseVectorPtrForBB(bb->getId());
-                    }
-                    for (auto var : *pointsToSet)
+                    const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(src, bb);
+                    for (auto var : pointsToSet)
                     {
                         if (var->isRegAllocPartaker())
                         {

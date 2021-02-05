@@ -608,10 +608,10 @@ namespace vISA
                     return false;
                 }
 
-                auto pointsToSet = liveness.getPointsToAnalysis().getIndrUseVectorPtrForBB(bb->getId());
+                const auto &pointsToSet = liveness.getPointsToAnalysis().getIndrUseVectorForBB(bb->getId());
                 if (srcOpndTopDcl->getAddressed() &&
                     ((uniqueDefBB != bb) ||
-                      std::find(pointsToSet->begin(), pointsToSet->end(), srcOpndTopDcl->getRegVar()) != pointsToSet->end()))
+                      std::find(pointsToSet.begin(), pointsToSet.end(), srcOpndTopDcl->getRegVar()) != pointsToSet.end()))
                 {
                     // Indirectly addressed src opnd should not be extended
                     return false;

@@ -160,7 +160,7 @@ namespace vISA
         bool getDstData(int64_t srcImm, G4_Type srcType, int64_t& dstImm, G4_Type dstType, bool& canNegate);
         bool valuesMatch(Value& val1, Value& val2, bool checkNegImm);
         void removeAliases(G4_INST* inst);
-        bool checkIfInPointsTo(G4_RegVar* addr, G4_RegVar* var);
+        bool checkIfInPointsTo(const G4_RegVar* addr, const G4_RegVar* var) const;
         template<class T, class K>
         bool opndsMatch(T*, K*);
         LVNItemInfo* getOpndValue(G4_Operand* opnd, bool create = true);
