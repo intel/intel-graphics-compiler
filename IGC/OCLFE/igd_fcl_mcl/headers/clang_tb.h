@@ -184,5 +184,12 @@ namespace FCL {
   // function returns full path where to dump shaders for FCL
   OutputFolderName  GetShaderOutputFolder();
 
+  // different register-dependent functions
+  bool GetFCLShaderDumpEnable();
+  bool GetFCLShaderDumpPidDisable();
+  bool GetFCLDumpToCurrentDir();
+  bool GetFCLDumpToCustomDir();
 } // namespace FCL
 
+// convenient macro to check FCL flags
+#define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()

@@ -45,6 +45,10 @@ inline const char *getPlatformStr(PLATFORM Platform) {
   auto Product = Platform.eProductFamily;
   auto RevId = Platform.usRevId;
 
+  // we tend to believe eRenderFamily for display-less targets
+  if (Platform.eRenderCoreFamily > Core)
+    Core = Platform.eRenderCoreFamily;
+
   switch (Core) {
   case IGFX_GEN9_CORE:
     return "SKL";

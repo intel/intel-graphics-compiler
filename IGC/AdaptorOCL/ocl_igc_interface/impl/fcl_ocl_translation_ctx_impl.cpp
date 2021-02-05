@@ -423,13 +423,21 @@ static std::string getCMFEWrapperDir() {
 static void DumpPlatform(PLATFORM *Platform, const char *Selected,
                          int Stepping) {
 #if defined( _DEBUG ) || defined( _INTERNAL )
+  // check for shader dumps enabled
+  if (!FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    return;
+
+  // dump if yes
   std::ostringstream Os;
   if (Platform) {
     auto Core = Platform->eDisplayCoreFamily;
+    auto RenderCore = Platform->eRenderCoreFamily;
     auto Product = Platform->eProductFamily;
     auto RevId = Platform->usRevId;
 
-    Os << "Neo passed: " << Core << ", " << Product << ", " << RevId << "\n";
+    Os << "NEO passed: DisplayCore = " << Core
+       << ", RenderCore = " << RenderCore << ", Product = " << Product
+       << ", Revision = " << RevId << "\n";
     Os << "IGC translated into: " << Selected << ", " << Stepping << "\n";
   } else {
     Os << "Nothing came from NEO\n";

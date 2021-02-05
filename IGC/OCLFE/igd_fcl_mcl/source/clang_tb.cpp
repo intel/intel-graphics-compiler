@@ -239,8 +239,6 @@ namespace FCL
         return FCLDumpToCustomDir;
     }
 
-#define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()
-
     OutputFolderName  GetBaseIGCOutputFolder()
     {
 #if defined(IGC_DEBUG_VARIABLES)
