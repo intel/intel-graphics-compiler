@@ -13477,6 +13477,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         else if (geninst->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier_wait) {
             BarrierKind = EBARRIER_WAIT;
         }
+        m_currShader->SetHasBarrier();
         m_encoder->Barrier(BarrierKind);
         m_encoder->Push();
 
