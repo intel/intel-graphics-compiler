@@ -137,7 +137,7 @@ private:
     CLProgramCtxProvider m_ContextProvider;
 };
 
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#if defined(IGC_VC_ENABLED)
 class CGen8CMProgram : public CGen8OpenCLProgramBase {
 public:
     class CMProgramCtxProvider : public CGen8OpenCLStateProcessor::IProgramContext {
@@ -173,7 +173,7 @@ public:
 
     CMProgramCtxProvider m_ContextProvider;
 };
-#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#endif // defined(IGC_VC_ENABLED)
 }
 
 #endif //SPP_G8_H

@@ -56,12 +56,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
 
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#if defined(IGC_VC_ENABLED)
 #include "common/LLVMWarningsPush.hpp"
 #include "vc/igcdeps/TranslationInterface.h"
 #include "vc/Support/StatusCode.h"
 #include "common/LLVMWarningsPop.hpp"
-#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#endif // defined(IGC_VC_ENABLED)
 
 #include <iStdLib/MemCopy.h>
 
@@ -853,7 +853,7 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#if defined(IGC_VC_ENABLED)
     if (pInputArgs->pOptions) {
         std::error_code Status =
             vc::translateBuild(pInputArgs, pOutputArgs, inputDataFormatTemp,
@@ -864,7 +864,7 @@ bool TranslateBuild(
         if (static_cast<vc::errc>(Status.value()) != vc::errc::not_vc_codegen)
             return false;
     }
-#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#endif // defined(IGC_VC_ENABLED)
 
     // Disable code sinking in instruction combining.
     // This is a workaround for a performance issue caused by code sinking

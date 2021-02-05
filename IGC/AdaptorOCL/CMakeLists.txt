@@ -136,7 +136,7 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
 add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
-if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
+if(IGC_BUILD__VC_ENABLED)
   target_link_libraries("${IGC_BUILD__PROJ__AdaptorOCL}"
       PUBLIC
         VCCodeGen

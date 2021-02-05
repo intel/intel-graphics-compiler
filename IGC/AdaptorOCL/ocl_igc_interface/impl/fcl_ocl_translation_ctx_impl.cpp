@@ -59,7 +59,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#if defined(IGC_VC_ENABLED)
 #include "Frontend.h"
 
 #if defined(_WIN32)
@@ -67,7 +67,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/ConvertUTF.h>
 #include "inc/common/DriverStore.h"
 #endif
-#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#endif // defined(IGC_VC_ENABLED)
 
 #include "cif/macros/enable.h"
 
@@ -138,7 +138,7 @@ llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
     return binary;
 }
 
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#if defined(IGC_VC_ENABLED)
 
 static std::string detectCmIncludes(llvm::sys::DynamicLibrary &LibInfo) {
 #if defined(__linux__)
@@ -416,7 +416,7 @@ static std::string getCMFEWrapperDir() {
 #endif
 }
 
-#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#endif // defined(IGC_VC_ENABLED)
 
 // This essentialy duplicates existing DumpShaderFile in dllInterfaceCompute
 // but now I see no way to reuse it. To be converged later
@@ -495,7 +495,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 
     OclTranslationOutputBase& Out = *outputInterface;
 
-#if !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#if defined(IGC_VC_ENABLED)
     auto ErrFn = [&Out](const std::string& Err) {
         Out.GetImpl()->SetError(TranslationErrorType::Internal, Err.c_str());
     };
@@ -539,7 +539,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 #else
     Out.GetImpl()->SetError(TranslationErrorType::Internal,
                             "CM compilation is not supported in this configuration");
-#endif // !defined(WDDM_LINUX) && (!defined(IGC_VC_DISABLED) || !IGC_VC_DISABLED)
+#endif // defined(IGC_VC_ENABLED)
 
     return outputInterface;
 }

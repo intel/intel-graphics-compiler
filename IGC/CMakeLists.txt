@@ -3090,9 +3090,9 @@ if(IGC_BUILD__SPIRV_ENABLED)
 endif()
 
 #VC OPT switch on/off
-if(NOT IGC_BUILD__VC_ENABLED)
+if(IGC_BUILD__VC_ENABLED)
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
-      IGC_VC_DISABLED
+      IGC_VC_ENABLED
     )
 endif()
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
@@ -3343,11 +3343,11 @@ if(LLVM_ON_WIN32
 endif()
 
 
-if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
+if(IGC_BUILD__VC_ENABLED)
   add_subdirectory(CMFE)
 endif()
 
-if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
+if(IGC_BUILD__VC_ENABLED)
   add_subdirectory(VectorCompiler)
 endif()
 
@@ -3757,7 +3757,7 @@ if(_targetIsStatic)
         ${COMMON_CLANG}
         ${CMAKE_DL_LIBS}
       )
-    if(IGC_BUILD__VC_ENABLED AND NOT CMAKE_WDDM_LINUX)
+    if(IGC_BUILD__VC_ENABLED)
       target_link_libraries("${IGC_BUILD__PROJ__fcl_dll}" AdaptorCM)
     endif()
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
