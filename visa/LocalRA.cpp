@@ -690,6 +690,40 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign ali
     }
 }
 
+inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gra, G4_Declare* dcl)
+{
+    unsigned short occupiedBundles = 0;
+    unsigned bundleNum = 0;
+
+
+    for (const BundleConflict& conflict : gra.getBundleConflicts(dcl))
+    {
+        LocalLiveRange* lr = gra.getLocalLR(conflict.dcl);
+        int  subregnum;
+        G4_VarBase* preg = lr->getPhyReg(subregnum);
+
+        if (preg != NULL)
+        {
+            int offset = conflict.offset;
+            unsigned int reg = preg->asGreg()->getRegNum();
+            unsigned int bundle = gra.get_bundle(reg, offset);
+            unsigned int bundle1 = gra.get_bundle(reg, offset + 1);
+            if (!(occupiedBundles & ((unsigned short)1 << bundle)))
+            {
+                bundleNum++;
+            }
+            occupiedBundles |= (unsigned short)1 << bundle;
+            occupiedBundles |= (unsigned short)1 << bundle1;
+        }
+    }
+    if (bundleNum > 12)
+    {
+        occupiedBundles = 0;
+    }
+
+    return occupiedBundles;
+}
+
 bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 {
     // Iterate over all dcls and calculate number of rows
@@ -818,7 +852,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
             if (assignFromFront)
             {
-                unsigned short occupiedBundles = gra.getOccupiedBundle(dcl);
+                unsigned short occupiedBundles = getOccupiedBundle(builder, gra, dcl);
 
                 nrows = phyRegMgr.findFreeRegs(sizeInWords, assignAlign,
                     subAlign, regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false, emptyForbidden, false, 0);
@@ -2714,40 +2748,6 @@ void LinearScan::expireInputRanges(unsigned int global_idx, unsigned int local_i
     }
 }
 
-unsigned short LinearScan::getOccupiedBundle(G4_Declare* dcl)
-{
-    unsigned short occupiedBundles = 0;
-    unsigned bundleNum = 0;
-
-
-    for (const BundleConflict &conflict : gra.getBundleConflicts(dcl))
-    {
-        LocalLiveRange* lr = gra.getLocalLR(conflict.dcl);
-        int  subregnum;
-        G4_VarBase* preg = lr->getPhyReg(subregnum);
-
-        if (preg != NULL)
-        {
-            int offset = conflict.offset;
-            unsigned int reg = preg->asGreg()->getRegNum();
-            unsigned int bundle = gra.get_bundle(reg, offset);
-            unsigned int bundle1 = gra.get_bundle(reg, offset + 1);
-            if (!(occupiedBundles & ((unsigned short)1 << bundle)))
-            {
-                bundleNum++;
-            }
-            occupiedBundles |= (unsigned short)1 << bundle;
-            occupiedBundles |= (unsigned short)1 << bundle1;
-        }
-    }
-    if (bundleNum > 12)
-    {
-        occupiedBundles = 0;
-    }
-
-    return occupiedBundles;
-}
-
 // Allocate registers to live range. It makes a decision whether to spill
 // a currently active range or the range passed as parameter. The range
 // that has larger size and is longer is the spill candidate.
@@ -2768,7 +2768,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     int size = lr->getSizeInWords();
     G4_Declare *dcl = lr->getTopDcl();
     G4_SubReg_Align subalign = gra.getSubRegAlign(dcl);
-    unsigned short occupiedBundles = getOccupiedBundle(dcl);
+    unsigned short occupiedBundles = getOccupiedBundle(builder, gra, dcl);
     localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
 
     BankAlign bankAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : BankAlign::Either;

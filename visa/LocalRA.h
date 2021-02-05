@@ -500,7 +500,6 @@ private:
 
     void expireRanges(unsigned int);
     void expireInputRanges(unsigned int, unsigned int, unsigned int);
-    unsigned short getOccupiedBundle(G4_Declare* dcl);
     void expireAllActive();
     bool allocateRegsFromBanks(LocalLiveRange*);
     bool allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
