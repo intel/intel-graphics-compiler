@@ -1169,7 +1169,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                                 }
                             }
                             needsEOTSend = false;
-                            if (builder->getHasNullReturnSampler())
+                            if (builder->getHasNullReturnSampler() && VISA_WA_CHECK(builder->getPWaTable(), Wa_1607871015))
                             {
                                 bb->addSamplerFlushBeforeEOT();
                             }
