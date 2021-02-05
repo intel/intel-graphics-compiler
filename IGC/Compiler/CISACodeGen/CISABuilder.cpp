@@ -5175,6 +5175,14 @@ namespace IGC
 
         FINALIZER_INFO* jitInfo = nullptr;
         pMainKernel->GetJitInfo(jitInfo);
+
+        // Depend on vISA information about barriers presence to make sure that it's
+        // always set properly, even if a barrier is used as a part of Inline vISA code only.
+        if (jitInfo->usesBarrier)
+        {
+            m_program->SetHasBarrier();
+        }
+
         if (jitInfo->isSpill)
         {
             context->m_retryManager.SetSpillSize(jitInfo->numGRFSpillFill);
