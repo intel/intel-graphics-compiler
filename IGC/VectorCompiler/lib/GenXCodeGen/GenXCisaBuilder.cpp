@@ -1496,10 +1496,14 @@ bool GenXKernelBuilder::buildInstruction(Instruction *Inst) {
     // (but possibly baled in to a wrregion or sat modifier).
     buildLoneOperand(Inst, BI, Mod, DstDesc);
     return false;
+  case BaleInfo::MAININST:
+  case BaleInfo::NOTP:
+  case BaleInfo::ZEXT:
+  case BaleInfo::SEXT:
+    return buildMainInst(Inst, BI, Mod, DstDesc);
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported bale type");
   }
-  IGC_ASSERT(BI.Type == BaleInfo::MAININST || BI.Type == BaleInfo::NOTP ||
-         BI.Type == BaleInfo::ZEXT || BI.Type == BaleInfo::SEXT);
-  return buildMainInst(Inst, BI, Mod, DstDesc);
 }
 
 VISA_PredVar *GenXKernelBuilder::createPredicateDeclFromSelect(
@@ -2338,8 +2342,8 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
 void GenXKernelBuilder::buildBitCast(CastInst *CI, genx::BaleInfo BI,
                                      unsigned Mod, const DstOpndDesc &DstDesc) {
   if (!isMaskPacking(CI))
-    IGC_ASSERT(!BI.Bits && !Mod && !DstDesc.WrRegion &&
-           "non predicate bitcast should not be baled with anything");
+    IGC_ASSERT(BI.Bits.none() && !Mod && !DstDesc.WrRegion &&
+               "non predicate bitcast should not be baled with anything");
   // ignore bitcasts of volatile globals
   // (they used to be a part of load/store as a constexpr)
   if (isa<GlobalVariable>(CI->getOperand(0)) &&

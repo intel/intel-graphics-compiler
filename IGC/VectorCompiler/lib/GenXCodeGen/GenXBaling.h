@@ -256,18 +256,27 @@ namespace genx {
 struct BaleInfo {
   // Type is how this instruction relates to its bale, whether it is a
   // rdregion, wrregion, modifier, or main instruction.
-  enum { MAININST, WRREGION, SATURATE, NOTMOD, NEGMOD, ABSMOD,
+  enum BaleType : uint16_t { MAININST, WRREGION, SATURATE, NOTMOD, NEGMOD, ABSMOD,
       RDREGION, ADDRADD, ADDROR, FADDR, RDPREDREGION, ALLANY, NOTP, ZEXT, SEXT,
       SHUFFLEPRED, WRPREDREGION, WRPREDPREDREGION, CMPDST, GSTORE };
-  uint16_t Type;
-  uint16_t Bits; // bitmap of which operands are baled in
-  BaleInfo(int Type = MAININST, unsigned Bits = 0) : Type(Type), Bits(Bits) {}
+  BaleType Type;
+  static constexpr unsigned MaxOperandsNum = 16;
+  std::bitset<MaxOperandsNum> Bits; // bitmap of which operands are baled in
+  BaleInfo(BaleType Type = MAININST) : Type(Type), Bits() {}
   // isOperandBaled() : read Bits to see if operand is baled
-  bool isOperandBaled(unsigned OperandNum) const { return (Bits >> OperandNum) & 1; }
+  bool isOperandBaled(unsigned OperandNum) const {
+    return OperandNum < Bits.size() ? Bits.test(OperandNum) : false;
+  }
   // clearOperandBaled() : clear bit that says that operand is baled
-  void clearOperandBaled(unsigned OperandNum) { Bits &= ~(1 << OperandNum); }
+  void clearOperandBaled(unsigned OperandNum) {
+    if (OperandNum < Bits.size())
+      Bits.reset(OperandNum);
+  }
   // setOperandBaled() : set bit that says that operand is baled
-  void setOperandBaled(unsigned OperandNum) { Bits |= 1 << OperandNum; }
+  void setOperandBaled(unsigned OperandNum) {
+    IGC_ASSERT(OperandNum < Bits.size());
+    Bits.set(OperandNum);
+  }
   // getTypeString : get string for BaleInfo type
   const char *getTypeString() const;
 };
@@ -380,12 +389,10 @@ inline raw_ostream &operator<<(raw_ostream &OS, const Bale &B) {
 // GenXBaling : the baling information for a Function or FunctionGroup (depending
 // on whether GenXFuncBaling or GenXGroupBaling created it)
 class GenXBaling {
-  BalingKind Kind;
-  typedef llvm::ValueMap<const Value*, genx::BaleInfo,
-                         IgnoreRAUWValueMapConfig<const Value *>>
-      InstMap_t;
-  GenXSubtarget *ST;
+  using InstMap_t = DenseMap<const Instruction *, genx::BaleInfo>;
   InstMap_t InstMap;
+  GenXSubtarget *ST;
+  BalingKind Kind;
   struct NeedClone {
     Instruction *Inst;
     unsigned OperandNum;
@@ -432,9 +439,6 @@ public:
   Instruction *getBaleHead(Instruction *Inst);
   // buildBale : build Bale from head instruction. B assumed empty on entry
   void buildBale(Instruction *Inst, genx::Bale *B, bool IncludeAddr = false) const;
-  // store : store updated BaleInfo for Instruction (used to unbale by
-  // GenXLegalization)
-  void store(genx::BaleInst BI);
   // getIndexAdd : test whether the specified value is a constant add/sub that
   //   could be baled in as a variable index offset, but without checking that
   //   the index is in range

@@ -1309,7 +1309,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
     Instruction *RdRegion = R.createRdRegion(InputVal, Name, InsertBefore,
         DebugLoc(), true/*AllowScalar*/);
     if (Baling)
-      Baling->setBaleInfo(RdRegion, BaleInfo(BaleInfo::RDREGION, 0));
+      Baling->setBaleInfo(RdRegion, BaleInfo(BaleInfo::RDREGION));
     if (Number)
       Numbering->setNumber(RdRegion, Number);
     // Create the wrregion, and mark that it bales in the rdregion (operand 1).
