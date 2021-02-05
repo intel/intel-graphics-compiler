@@ -3404,6 +3404,14 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto OC = BV->getOpCode();
     if (isSPIRVCmpInstTransToLLVMInst(static_cast<SPIRVInstruction*>(BV))) {
       return mapValue(BV, transCmpInst(BV, BB, F));
+    } else if (isCvtOpCode(OC)) {
+        auto BI = static_cast<SPIRVInstruction *>(BV);
+        Value *Inst = nullptr;
+        if (BI->hasFPRoundingMode() || BI->isSaturatedConversion() || OC == OpGenericCastToPtrExplicit)
+           Inst = transSPIRVBuiltinFromInst(BI, BB);
+        else
+          Inst = transConvertInst(BV, F, BB);
+        return mapValue(BV, Inst);
     } else if (OCLSPIRVBuiltinMap::find(OC) ||
                isIntelSubgroupOpCode(OC)) {
        return mapValue(BV, transSPIRVBuiltinFromInst(
@@ -3411,14 +3419,6 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     } else if (isBinaryShiftLogicalBitwiseOpCode(OC) ||
                 isLogicalOpCode(OC)) {
           return mapValue(BV, transShiftLogicalBitwiseInst(BV, BB, F));
-    } else if (isCvtOpCode(OC)) {
-        auto BI = static_cast<SPIRVInstruction *>(BV);
-        Value *Inst = nullptr;
-        if (BI->hasFPRoundingMode() || BI->isSaturatedConversion())
-           Inst = transSPIRVBuiltinFromInst(BI, BB);
-        else
-          Inst = transConvertInst(BV, F, BB);
-        return mapValue(BV, Inst);
     }
     return mapValue(BV, transSPIRVBuiltinFromInst(
       static_cast<SPIRVInstruction *>(BV), BB));
