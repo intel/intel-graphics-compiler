@@ -24,32 +24,33 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "BinaryCISAEmission.h"
-#include "Common_ISA.h"
+#include <iostream>
+#include <fstream>
+
+
+#include "visa_igc_common_header.h"
 #include "Common_ISA_framework.h"
+#include "VISAKernel.h"
+#include "Option.h"
+#include "Common_ISA.h"
+#include "BinaryCISAEmission.h"
+#include "Timer.h"
+
 #include "DebugInfo.h"
+
 #ifndef DLL_MODE
 #include "EnumFiles.hpp"
 #endif
-#include "Option.h"
-#include "Timer.h"
-#include "VISAKernel.h"
-#include "visa_igc_common_header.h"
 
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <list>
-
+using namespace std;
 
 ///
 /// Reads byte code and calls the builder API as it does so.
 ///
-extern bool readIsaBinaryNG(
-  const char *buf, CISA_IR_Builder *builder,
-  std::vector<VISAKernel *> &kernels,
-  const char *kernelName, unsigned int majorVersion,
-  unsigned int minorVersion);
+extern bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
+                            vector<VISAKernel *> &kernels,
+                            const char *kernelName, unsigned int majorVersion,
+                            unsigned int minorVersion);
 
 #ifndef DLL_MODE
 void parseWrapper(const char *fileName, int argc, const char *argv[], Options &opt);
@@ -67,9 +68,7 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 #define JIT_INVALID_PLATFORM            5
 
 #ifndef DLL_MODE
-void parse(
-    const char *fileName,
-    int argc, const char *argv[], Options &opt)
+void parse(const char *fileName, std::string testName, int argc, const char *argv[], Options &opt)
 {
     // read in common isa binary file
     int c;
@@ -83,8 +82,8 @@ void parse(
     // open common isa file
     if ((commonISAInput = fopen(fileName, "rb")) == NULL)
     {
-        std::cerr << fileName << ": cannot open file\n";
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Cannot open file %s\n", fileName);
+        exit(1);
     }
 
     fseek(commonISAInput, 0, SEEK_END);
@@ -105,7 +104,7 @@ void parse(
     /// Try opening the file.
     FILE* isafile = fopen(fileName, "rb");
     if (!isafile) {
-        std::cerr << fileName << ": cannot open file\n";
+        cerr << "Failure, unable to be opened." << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -118,7 +117,7 @@ void parse(
     char* isafilebuf = (char*)mem.alloc(isafilesize);
     if (isafilesize != fread(isafilebuf, 1, isafilesize, isafile))
     {
-        std::cerr << fileName << ": unable to read entire file\n";
+        cerr << "Unable to read entire file into buffer." << endl;
         exit(EXIT_FAILURE);
     }
     fclose(isafile);
@@ -151,8 +150,7 @@ void parse(
 }
 #endif
 
-int JITCompileAllOptions(
-    const char* kernelName,
+int JITCompileAllOptions(const char* kernelName,
     const void* kernelIsa,
     unsigned int kernelIsaSize,
     void* &genBinary,
@@ -167,8 +165,7 @@ int JITCompileAllOptions(
     void* gtpin_init)
 {
     // This function becomes the new entry point even for JITCompile clients.
-    if (kernelName == NULL || kernelIsa == NULL ||
-        strlen(kernelName) > COMMON_ISA_MAX_KERNEL_NAME_LEN)
+    if (kernelName == NULL || kernelIsa == NULL || strlen(kernelName) > COMMON_ISA_MAX_KERNEL_NAME_LEN)
     {
         return JIT_INVALID_INPUT;
     }
@@ -187,8 +184,7 @@ int JITCompileAllOptions(
     // HW mode: default: GEN path; if dump/verify: Both path
     VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
 
-    CISA_IR_Builder::CreateBuilder(
-        cisa_builder, vISA_DEFAULT, builderOption, getGenxPlatform(), numArgs, args);
+    CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption, getGenxPlatform(), numArgs, args);
     cisa_builder->setGtpinInit(gtpin_init);
 
     if (!cisa_builder)
@@ -196,9 +192,8 @@ int JITCompileAllOptions(
         return JIT_CISA_ERROR;
     }
 
-    std::vector<VISAKernel*> kernels;
-    bool passed = readIsaBinaryNG(
-        isafilebuf, cisa_builder, kernels, kernelName, majorVersion, minorVersion);
+    vector<VISAKernel*> kernels;
+    bool passed = readIsaBinaryNG(isafilebuf, cisa_builder, kernels, kernelName, majorVersion, minorVersion);
 
     if (!passed)
     {
@@ -214,20 +209,19 @@ int JITCompileAllOptions(
     kernel->GetJitInfo(tempJitInfo);
     void* buf;
     unsigned int bufSize;
-    kernel->GetGenxDebugInfo(
-        tempJitInfo->genDebugInfo, tempJitInfo->genDebugInfoSize, buf, bufSize);
+    kernel->GetGenxDebugInfo(tempJitInfo->genDebugInfo, tempJitInfo->genDebugInfoSize, buf, bufSize);
 
     if (gtpin_init)
     {
         // Return free GRF info
-        kernel->GetGTPinBuffer(
-            tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
+        kernel->GetGTPinBuffer(tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
     }
 
     if (jitInfo != NULL && tempJitInfo != NULL)
         memcpy_s(jitInfo, sizeof(FINALIZER_INFO), tempJitInfo, sizeof(FINALIZER_INFO));
 
-    if (kernel->GetGenxBinary(genxBinary, size) != 0 || genBinary == nullptr) {
+    if (!(0 == kernel->GetGenxBinary(genxBinary, size) && genxBinary != NULL))
+    {
         return JIT_INVALID_INPUT;
     }
     genBinary = genxBinary;
@@ -240,19 +234,18 @@ int JITCompileAllOptions(
 /**
   * This is the main entry point for CM.
   */
-DLL_EXPORT int JITCompile(
-    const char* kernelName,
-    const void* kernelIsa,
-    unsigned int kernelIsaSize,
-    void* &genBinary,
-    unsigned int& genBinarySize,
-    const char* platform,
-    int majorVersion,
-    int minorVersion,
-    int numArgs,
-    const char* args[],
-    char* errorMsg,
-    FINALIZER_INFO* jitInfo)
+DLL_EXPORT int JITCompile(const char* kernelName,
+                          const void* kernelIsa,
+                          unsigned int kernelIsaSize,
+                          void* &genBinary,
+                          unsigned int& genBinarySize,
+                          const char* platform,
+                          int majorVersion,
+                          int minorVersion,
+                          int numArgs,
+                          const char* args[],
+                          char* errorMsg,
+                          FINALIZER_INFO* jitInfo)
 {
     // JITCompile will invoke the other JITCompile API that supports relocation.
     // Via this path, relocs will be NULL. This way we can share a single
@@ -279,10 +272,8 @@ DLL_EXPORT int JITCompile_v2(const char* kernelName,
     // JITCompile will invoke the other JITCompile API that supports relocation.
     // Via this path, relocs will be NULL. This way we can share a single
     // implementation of JITCompile.
-    return JITCompileAllOptions(
-        kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
-        platform, majorVersion, minorVersion, numArgs, args, errorMsg,
-        jitInfo, gtpin_init);
+    return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
+        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo, gtpin_init);
 }
 
 DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV)
@@ -303,10 +294,22 @@ static bool endsWith(const std::string &str, const std::string &suf)
 
 int main(int argc, const char *argv[])
 {
+    char fileName[256];
+    std::string testName = "F5";
+    cout << argv[0];
+    for (int i = 1; i < argc; i++) cout << " " << argv[i];
+    cout << endl;
+
+#if 0
+    _CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    //_crtBreakAlloc = 4763;
+#endif
+
+
     // here we let the tool quit instead of crashing
     if (argc < 2)
     {
-        Options::showUsage(std::cerr);
+        Options::showUsage(COUT_ERROR);
         return 1;
     }
 
@@ -334,7 +337,7 @@ int main(int argc, const char *argv[])
         const char* dbgName;
         opt.getOption(vISA_DecodeDbg, dbgName);
         decodeAndDumpDebugInfo((char*)dbgName);
-        exit(EXIT_SUCCESS);
+        exit(0);
     }
 
     bool platformIsSet = false;
@@ -347,10 +350,11 @@ int main(int argc, const char *argv[])
         parserMode = true;
 
     opt.getOption(vISA_GenerateBinary, generateBinary);
-    if (!platformIsSet)
+    if (!platformIsSet && ((!dumpCommonIsa && !parserMode) || generateBinary))
     {
-        std::cerr << "ERROR: must specify platform\n";
-        return EXIT_FAILURE;
+        std::cout << "USAGE: must specify platform" << std::endl;
+        Options::showUsage(COUT_ERROR);
+        return 1;
     }
 
     //
@@ -360,7 +364,6 @@ int main(int argc, const char *argv[])
     std::list<std::string> filesList;
     if (parserMode && opt.getOption(vISA_IsaasmNamesFileUsed))
     {
-        char fileName[256];
         const char* isaasmNamesFile;
         opt.getOption(vISA_ISAASMNamesFile, isaasmNamesFile);
         strcpy_s(fileName, 256, isaasmNamesFile);
@@ -373,16 +376,20 @@ int main(int argc, const char *argv[])
         //
         std::string cmdLine = argv[1];
         if (!PrepareInput(cmdLine, filesList)) {
-            std::cerr << "ERROR: unable to open input file(s)\n";
-            return EXIT_FAILURE;
+            std::cout << "ERROR: Unable to open input file(s)." << std::endl;
+            return 1;
         }
+        std::string::size_type testNameEnd = cmdLine.find_last_of(".");
+        if (testNameEnd != std::string::npos)
+            testName = cmdLine.substr(0, testNameEnd);
+        else
+            testName = cmdLine;
 
-        char fileName[256];
-        auto numChars = cmdLine.copy(fileName, std::string::npos);
+        std::string::size_type numChars = cmdLine.copy(fileName, std::string::npos);
         fileName[numChars] = '\0';
     }
 
-    for (const auto &fName : filesList)
+    for (auto fName : filesList)
     {
         if (parserMode)
         {
@@ -390,7 +397,7 @@ int main(int argc, const char *argv[])
         }
         else
         {
-            parse(fName.c_str(), argc - startPos, &argv[startPos], opt);
+            parse(fName.c_str(), testName, argc - startPos, &argv[startPos], opt);
         }
     }
 
@@ -409,7 +416,7 @@ int main(int argc, const char *argv[])
         "\t" << maxArenaLength << endl;
 #endif
 #endif
-    return EXIT_SUCCESS;
+    return 0;
 }
 #endif
 
@@ -464,7 +471,7 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
         file_names.push_back(fileName);
     }
 
-    // used to ignore duplicate file names
+    //used to ignore duplicate file names
     std::map<std::string, bool> files_parsed;
 
     TARGET_PLATFORM platform = getGenxPlatform();
