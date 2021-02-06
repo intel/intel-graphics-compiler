@@ -83,10 +83,7 @@ static std::string makePlatformsString()
 bool Options::parseOptions(int argc, const char* argv[])
 {
     int startPos = 0;
-    assert(! argToOption.empty() && "Must be initialized first!");
-
-#define MAX_ARGC 128
-    MUST_BE_TRUE(argc < MAX_ARGC, "too many options for vISA builder");
+    assert(!argToOption.empty() && "options map must be initialized first!");
 
     for (int i = 0; i < argc; ++i)
     {
@@ -102,8 +99,8 @@ bool Options::parseOptions(int argc, const char* argv[])
         // If arg not defined in the .def file, exit with an error
         auto it = argToOption.find(argv[i]);
         if (it == argToOption.end()) {
-            COUT_ERROR << "USAGE: Unrecognized option \"" << argv[i] << "\"!" << std::endl;
-            showUsage(COUT_ERROR);
+            std::cerr << "ERROR: unrecognized option \"" << argv[i] << "\n";
+            showUsage(std::cerr);
             return false;
         }
         // Arg corrsponds to vISAOpt.
@@ -151,11 +148,11 @@ bool Options::parseOptions(int argc, const char* argv[])
                 break;
             }
             default:
-                assert(0 && "Bad type");
+                assert(0 && "invalid option type");
             }
             break;
         default:
-            assert(0 && "Bad type");
+            assert(0 && "invalid option type");
         }
     }
 
@@ -200,8 +197,8 @@ bool Options::parseOptions(int argc, const char* argv[])
         }
         int status = SetStepping(stepping);
         if (status != 0) {
-            std::cout << "unrecognized stepping string: "
-                      << stepping << std::endl;
+            std::cerr <<
+                "unrecognized stepping string: " << stepping << "\n";
             return false;
         }
     }
@@ -272,10 +269,7 @@ bool Options::parseOptions(int argc, const char* argv[])
     }
 
     if (m_vISAOptions.isArgSetByUser(vISA_LabelStr)) {
-        ASSERT_USER(strlen(m_vISAOptions.getCstr(vISA_LabelStr))
-                    < MAX_LABEL_STR_LENGTH,
-                    "String length for unique labels is too long. Should be no larger than 8.");
-        m_vISAOptions.setBool(vISA_UniqueLabels, true);         //uniqueLabels = true;
+        m_vISAOptions.setBool(vISA_UniqueLabels, true);
     }
     if (m_vISAOptions.isArgSetByUser(VISA_AsmFileName)) {
         m_vISAOptions.setBool(VISA_AsmFileNameUser, true);
@@ -309,26 +303,27 @@ void Options::showUsage(std::ostream& output)
 #ifndef DLL_MODE
     output << std::setw(50) << std::left << "    -platform PLT"
            << std::setw(60) << "- Gen platform to use (required)" << std::endl;
-    output << std::setw(64) << "supported platforms are: " << makePlatformsString() << std::endl;
+    output << std::setw(30) << "        supported platforms are: " << std::left
+           << makePlatformsString() << std::endl;
 
     output << std::setw(50) << "    -binary"
-           << std::setw(60) << "- Emit the binary code (CISA binary .isa and GEN bits as .dat)." << std::endl;
+           << std::setw(60) << "- Emit all binary code (CISA binary .isa and GEN bits as .dat)" << std::endl;
 #endif
     output << std::setw(50) << "    -output"
-           << std::setw(60) << "- Emit GEN assembly code to a file (.asm)." << std::endl;
+           << std::setw(60) << "- Emit GEN assembly code to a file (.asm)" << std::endl;
     output << std::setw(50) << "    -dumpcommonisa"
-        << std::setw(60) << "- Emit CISA assembly (.visaasm)." << std::endl;
+        << std::setw(60) << "- Emit CISA assembly (.visaasm)" << std::endl;
     output << std::setw(50) << "    -noschedule"
-           << std::setw(60) << "- Turn off code scheduling." << std::endl;
+           << std::setw(60) << "- Turn off code scheduling" << std::endl;
     output << std::setw(50) << "    -nocompaction"
-           << std::setw(60) << "- Turn off binary compaction." << std::endl;
+           << std::setw(60) << "- Turn off binary compaction" << std::endl;
     output << "    -...\n";
     output << std::endl;
     output << "USAGE: GenX_IR <InputFilename.visaasm> {Option List}" << std::endl;
     output << "Converting a CISA assembly file into CISA binary file" << std::endl;
     output << "Options :" << std::endl;
     output << std::setw(50) << "    -outputCisaBinaryName <CISABinaryName>"
-           << std::setw(60) << "- name for the CISA binary file." << std::endl;
+           << std::setw(60) << "- name for the CISA binary file" << std::endl;
 }
 
 // This converts enum vISA_option to "vISA_option" so we can print it.
