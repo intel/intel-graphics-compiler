@@ -26,13 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Option.h"
 #include "Timer.h"
+
 #include <iostream>
 #include <fstream>
 #include <string>
 #ifdef _WIN32
 #include "Windows.h"
 #endif
-#include "assert.h"
+#include <cassert>
 
 #undef DEF_TIMER
 #define DEF_TIMER(ENUM, DESCR) DESCR,
@@ -93,7 +94,6 @@ static const char* timerNames[static_cast<int>(TimerID::NUM_TIMERS)] =
 #endif
 #endif // MEASURE_COMPILATION_TIME
 
-using namespace std;
 
 struct Timer {
     double time;
@@ -242,7 +242,7 @@ void dumpAllTimers(const char *asmFileName, bool outputTime)
     // TIMER1 TIMER2 TIMER3 ...
     // num1 num2 num3 ...
     std::ofstream krnlOutput;
-    krnlOutput.open("jit_time.txt", ios_base::app);
+    krnlOutput.open("jit_time.txt", std::ios_base::app);
 
     double totalTime = timers[static_cast<int>(TimerID::TOTAL)].time;
     for (unsigned int i = 0; i < getTotalTimers(); i++)
@@ -279,7 +279,7 @@ void dumpAllTimers(const char *asmFileName, bool outputTime)
     std::ofstream timerFile;
     std::stringstream ss;
     ss << "timers." << asmFileName;
-    timerFile.open(ss.str(), ios_base::out);
+    timerFile.open(ss.str(), std::ios_base::out);
     for (unsigned i = 0, e = getTotalTimers(); i < e; i++) {
         timerFile << timerNames[i] << ":";
         if (outputTime) {

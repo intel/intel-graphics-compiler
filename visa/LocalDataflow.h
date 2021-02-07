@@ -29,10 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "FlowGraph.h"
 #include "BuildIR.h"
+
 #include <unordered_map>
 
 using namespace vISA;
-using namespace std;
 
 // ToDo: move Local dataflow here and make it a class
 

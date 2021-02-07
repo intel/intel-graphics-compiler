@@ -45,7 +45,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <list>
 #include <sstream>
 
-// using namespace std;
 using namespace vISA;
 
 #define GRAPH_COLOR_MEM_SIZE 16*1024

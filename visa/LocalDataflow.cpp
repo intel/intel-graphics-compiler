@@ -32,7 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 
 using namespace vISA;
-using namespace std;
 
 namespace {
 
@@ -85,7 +84,7 @@ struct LiveNode {
     // LiveNode <I3, V33> will be partially defined by I2 or I1, and
     // I1 together with I2 fully defines this live node.
     //
-    vector<std::pair<G4_INST *, Gen4_Operand_Number>> DefNodes;
+    std::vector<std::pair<G4_INST *, Gen4_Operand_Number>> DefNodes;
 
     G4_Operand *getOperand() const
     {
@@ -137,7 +136,7 @@ struct LiveNode {
 struct LocalLivenessInfo {
     // Keep live nodes while scanning the block.
     // Each declare is associated with a list of live nodes.
-    std::unordered_map<const G4_Declare*, vector<LiveNode>> LiveNodes;
+    std::unordered_map<const G4_Declare*, std::vector<LiveNode>> LiveNodes;
 
     // This indicates if this block is in simd-cf or not.
     bool IsInSimdFlow;
@@ -639,7 +638,7 @@ void DefEscapeBBAnalysis::analyzeBB(G4_BB* bb)
     escapedInsts[bb] = escapedDefs;
 }
 
-void DefEscapeBBAnalysis::print(ostream& OS) const
+void DefEscapeBBAnalysis::print(std::ostream& OS) const
 {
     for (auto&& iter : escapedInsts)
     {

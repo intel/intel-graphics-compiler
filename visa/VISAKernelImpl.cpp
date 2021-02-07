@@ -55,7 +55,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cctype>
 
-using namespace std;
 using namespace CisaFramework;
 using namespace vISA;
 #define SIZE_VALUE m_kernel_data_size
@@ -1106,7 +1105,7 @@ int VISAKernelImpl::CreateVISAPredVar(
     if (IsAsmWriterMode())
     {
         VISAKernel_format_provider fmt(this);
-        m_CISABuilder->m_ssIsaAsm << printPredicateDecl(&fmt, m_printDeclIndex.pred_index++) << endl;
+        m_CISABuilder->m_ssIsaAsm << printPredicateDecl(&fmt, m_printDeclIndex.pred_index++) << "\n";
     }
 
     return VISA_SUCCESS;
@@ -1349,12 +1348,12 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             if (m_options->getOption(vISA_dumpToCurrentDir))
             {
                 auto found = str.find_last_of(DIR_WIN32_SEPARATOR);
-                if (found == string::npos)
+                if (found == std::string::npos)
                 {
                     found = str.find_last_of(DIR_UNIX_SEPARATOR);
                 }
 
-                if (found != string::npos)
+                if (found != std::string::npos)
                 {
                     str = str.substr(found + 1);
                 }
@@ -1480,7 +1479,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
     {
         // Print attribute
         VISAKernel_format_provider fmt(this);
-        m_CISABuilder->m_ssIsaAsm << ".kernel_attr " << printOneAttribute(&fmt, attr) << endl;
+        m_CISABuilder->m_ssIsaAsm << ".kernel_attr " << printOneAttribute(&fmt, attr) << "\n";
     }
 
     return VISA_SUCCESS;
@@ -8322,11 +8321,11 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
 
             if (opc == G4_pseudo_fc_call)
             {
-                FCInstMap.insert(make_pair(inst->getBinInst(), make_pair(inst, true)));
+                FCInstMap.emplace(inst->getBinInst(), std::make_pair(inst, true));
             }
             else if (opc == G4_pseudo_fc_ret)
             {
-                FCInstMap.insert(make_pair(inst->getBinInst(), make_pair(inst, false)));
+                FCInstMap.emplace(inst->getBinInst(), std::make_pair(inst, false));
             }
         }
     }

@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <unordered_set>
 
-using namespace std;
 using namespace vISA;
 
 // Configurations
@@ -1018,9 +1017,9 @@ const char *SpillManagerGRF::createImplicitRangeName(
     G4_RegVar *  spilledRegVar,
     unsigned     index)
 {
-    stringstream nameStrm;
+    std::stringstream nameStrm;
     nameStrm << baseName << "_" << spilledRegVar->getName()
-             << "_" << index << ends;
+             << "_" << index << std::ends;
     int nameLen = unsigned(nameStrm.str().length()) + 1;
     char * name = (char *) allocMem(nameLen);
     strcpy_s(name, nameLen, nameStrm.str().c_str ());

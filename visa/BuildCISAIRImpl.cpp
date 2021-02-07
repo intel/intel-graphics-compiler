@@ -24,12 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <list>
-
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
@@ -51,7 +45,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IsaVerification.h"
 #include "IGC/common/StringMacros.hpp"
 
-using namespace std;
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <string>
+#include <sstream>
+
 using namespace vISA;
 extern "C" int64_t getTimerTicks(unsigned int idx);
 
@@ -293,7 +292,7 @@ int CISA_IR_Builder::CreateBuilder(
     {
         // If writing asm text, clear the stream and print the build version
         builder->ClearAsmTextStreams();
-        builder->m_ssIsaAsm << printBuildVersion(builder->m_header) << endl;
+        builder->m_ssIsaAsm << printBuildVersion(builder->m_header) << "\n";
     }
 
     return VISA_SUCCESS;
@@ -359,9 +358,9 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 
     if (m_builderMode == vISA_ASM_WRITER)
     {
-        m_ssIsaAsm << "//// KERNEL: ////" << endl;
+        m_ssIsaAsm << "//// KERNEL: ////\n";
         VISAKernel_format_provider fmt(m_kernel);
-        m_ssIsaAsm << printFunctionDecl(&fmt, true) << endl;
+        m_ssIsaAsm << printFunctionDecl(&fmt, true) << "\n";
     }
     return VISA_SUCCESS;
 }
@@ -392,9 +391,9 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
 
     if (m_builderMode == vISA_ASM_WRITER)
     {
-        m_ssIsaAsm << endl << "//// FUNCTION: ////" << endl;
+        m_ssIsaAsm << "\n" << "//// FUNCTION: ////\n";
         VISAKernel_format_provider fmt(m_kernel);
-        m_ssIsaAsm << printFunctionDecl(&fmt, false) << endl;
+        m_ssIsaAsm << printFunctionDecl(&fmt, false) << "\n";
     }
     return VISA_SUCCESS;
 }
@@ -1015,7 +1014,7 @@ int CISA_IR_Builder::verifyVISAIR()
 
         if (verifier.hasErrors())
         {
-            stringstream verifierName;
+            std::stringstream verifierName;
 
             if (kTemp->getIsKernel())
             {
@@ -1037,7 +1036,7 @@ int CISA_IR_Builder::verifyVISAIR()
     }
     if (hasErrors)
     {
-        stringstream ss;
+        std::stringstream ss;
         ss << "Found a total of " << totalErrors << " errors in vISA input.\n";
         ss << "Please check\n";
         for (auto&& name : failedFiles)

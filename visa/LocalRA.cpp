@@ -26,12 +26,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "LocalRA.h"
 #include "RegAlloc.h"
-#include <fstream>
-#include <tuple>
 #include "DebugInfo.h"
 #include "common.h"
 
-using namespace std;
+#include <fstream>
+#include <tuple>
+
 using namespace vISA;
 
 //#define _DEBUG
@@ -43,8 +43,8 @@ using namespace vISA;
 #define SPLIT_USE_CNT_THRESHOLD 2
 #define SPLIT_USE_DISTANCE_THRESHOLD 100
 
-extern void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
-extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
+void getForbiddenGRFs(std::vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
+void getCallerSaveGRF(std::vector<unsigned int>& regNum, G4_Kernel* kernel);
 
 LocalRA::LocalRA(BankConflictPass& b, GlobalRA& g) :
     kernel(g.kernel), builder(g.builder), mem(g.builder.mem), bc(b), gra(g)
@@ -199,7 +199,7 @@ void LocalRA::preLocalRAAnalysis()
 
     if (isStackCall || reservedGRFNum || builder.getOption(vISA_Debug))
     {
-        vector<unsigned int> forbiddenRegs;
+        std::vector<unsigned int> forbiddenRegs;
         getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, 0, reservedGRFNum);
         for (unsigned int i = 0, size = forbiddenRegs.size(); i < size; i++)
         {
@@ -212,7 +212,7 @@ void LocalRA::preLocalRAAnalysis()
         {
             // Set r60 to r99 as unavailable for local RA since these registers are callee saved
             // Local RA will use only caller save registers for allocation.
-            vector<unsigned int> callerSaveRegs;
+            std::vector<unsigned int> callerSaveRegs;
             getCallerSaveGRF(callerSaveRegs, &kernel);
             for (unsigned int i = 0, size = callerSaveRegs.size(); i < size; i++)
             {
@@ -317,7 +317,6 @@ void LocalRA::trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate)
     {
         needGlobalRA = assignUniqueRegisters(threeSourceCandidate, false);
     }
-
 
     if (!needGlobalRA)
     {

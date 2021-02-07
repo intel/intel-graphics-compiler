@@ -660,11 +660,6 @@ private:
 }; // FlowGraph
 
 
-
-class KernelDebugInfo;
-class VarSplitPass;
-
-
 class PostDom
 {
 public:

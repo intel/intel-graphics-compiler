@@ -1,7 +1,6 @@
 #ifndef DLL_MODE
 #include <string.h>
 #include <algorithm>
-using namespace std;
 
 #if defined _WIN32
 #include <windows.h>
@@ -76,7 +75,7 @@ std::vector<std::string> split(const std::string &s, char delim)
     return split(s, delim, elems);
 }
 
-unsigned int PrepareInput(const std::string inputString, std::list<std::string> &preparedList)//char inputString, list<string> &destList)
+unsigned int PrepareInput(const std::string inputString, std::list<std::string> &preparedList)
 {
     std::vector<std::string> inputSeparatedList;
     inputSeparatedList = split(inputString, ',');
@@ -90,7 +89,7 @@ unsigned int PrepareInput(const std::string inputString, std::list<std::string> 
             continue;
         }
 #endif
-        dirListFiles((char *)inputSeparatedList[i].c_str(), preparedList);
+        dirListFiles((const char *)inputSeparatedList[i].c_str(), preparedList);
     }
 
     preparedList.sort();
@@ -151,7 +150,7 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
     hFind = FindFirstFile(path, &wfd);
     if (hFind == INVALID_HANDLE_VALUE)
     {
-        std::cout << "IGA: WARNING - no files meet specified criteria: \"" << startDir << "\"" << endl;
+        std::cerr << "vISA: WARNING - no files meet specified criteria: \"" << startDir << "\"" << std::endl;
         return;
     }
     if (!isDirectory)
@@ -184,13 +183,13 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
                 if (!isDirectory)
                 {
                     SNPRINTF(temp, "%s%s", startDirStr.c_str(), wfd.cFileName);
-                    inputFileList.push_back((string)temp);
+                    inputFileList.push_back(temp);
                     std::transform(inputFileList.back().begin(), inputFileList.back().end(), inputFileList.back().begin(), char_tolower);
                 }
                 else
                 {
                     SNPRINTF(temp, "%s%s", startDir, wfd.cFileName);
-                    inputFileList.push_back((string)temp);
+                    inputFileList.push_back(temp);
                     std::transform(inputFileList.back().begin(), inputFileList.back().end(), inputFileList.back().begin(), char_tolower);
                 }
             }
@@ -199,12 +198,12 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
     }
     if (GetLastError() != ERROR_NO_MORE_FILES)
     {
-        cout << "IGA: ERROR - can't find next file for some reason, path: " << path << endl;
+        std::cerr << "vISA: ERROR - can't find next file for some reason, path: " << path << std::endl;
         exit(-1);
     }
     if (FindClose(hFind) == FALSE)
     {
-        cout << "IGA: ERROR - can't close file, path: " << path << endl;
+        std::cerr << "vISA: ERROR - can't close file, path: " << path << std::endl;
         exit(-1);
     }
 }
@@ -230,11 +229,11 @@ void ConvertPathToAbsolute(std::string &currentPath)
         char *errMsg;
         DWORD errCode = GetLastError();
         FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, errCode, 0, (LPTSTR)&errMsg, 0, NULL);
-        cout << "IGA: ERROR - " << (char *)errMsg << endl;
+        std::cerr << "vISA: ERROR - " << (char *)errMsg << std::endl;
         if (errCode == ERROR_FILENAME_EXCED_RANGE)
         {
-            cout << "IGA: Maximum path length in your environment is " << MAX_PATH << " chars" << endl;
-            cout << "filename: " << currentPath.c_str() << " skipped" << endl;
+            std::cerr << "vISA: Maximum path length in your environment is " << MAX_PATH << " chars" << std::endl;
+            std::cerr << "filename: " << currentPath.c_str() << " skipped" << std::endl;
         }
         //        exit(-1);
     }
@@ -272,14 +271,13 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
     memset(temp, 0, MAXPATHLEN);
     struct stat path_stat;
     if (stat(path, &path_stat) != 0)
-
     {
         perror("stat");
         return;
     }
     if (S_ISREG(path_stat.st_mode))
-        {
-            inputFileList.push_back((string)path);
+    {
+            inputFileList.push_back(path);
         return;
     }
 
@@ -287,21 +285,21 @@ void dirListFiles(const char* startDir, std::list<std::string> &inputFileList)
     int count, i;
     struct dirent **files;
 
-    printf("IGA: Current Processing Directory = %s \n", path);
+    printf("vISA: Current Processing Directory = %s \n", path);
     count = scandir(path, &files, file_select, NULL);
 
     /* If no files found, make a non-selectable menu item */
     if (count <= 0)
     {
-        printf("IGA: WARNING - No files in this directory \n");
+        printf("vISA: WARNING - No files in this directory \n");
         //exit(0);
     }
-    printf("IGA: Number of files = %d \n", count);
+    printf("vISA: Number of files = %d \n", count);
     for (i = 0; i<count; ++i)
     {
         sprintf_s(temp, MAXPATHLEN, "%s%s", startDir, files[i]->d_name);
         printf("%s \n", temp);
-        inputFileList.push_back((string)temp);
+        inputFileList.push_back(temp);
     }
     printf("\n"); /* flush buffer */
 }

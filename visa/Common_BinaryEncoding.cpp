@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_BinaryEncoding.h"
 #include "BuildIR.h"
 
-using namespace std;
 using namespace vISA;
 
 unsigned long bitsSrcRegFile[4] = {128, 128, 128, 128};
@@ -39,7 +38,7 @@ BinaryEncodingBase::Status BinaryEncodingBase::WriteToDatFile()
 {
     std::string binFileName = fileName + ".dat";
     std::string errStr;
-    ofstream os(binFileName.c_str(), ios::binary);
+    std::ofstream os(binFileName.c_str(), std::ios::binary);
     if (!os)
     {
         errStr = "Can't open " + binFileName + ".\n";
@@ -74,23 +73,22 @@ void EncodingHelper::dumpOptReport(int totalInst,
     {
         std::ofstream optReport;
         getOptReportStream(optReport, kernel.fg.builder->getOptions());
-        optReport << "             === Binary Compaction ===" <<endl;
-        optReport<< fixed << endl;
-        optReport<< kernel.getName() <<": "
-            << numCompactedInst <<" out of " <<totalInst <<" instructions are compacted."<<endl;
+        optReport << "             === Binary Compaction ===\n";
+        optReport << std::fixed << "\n";
+        optReport << kernel.getName() <<": "
+            << numCompactedInst <<" out of " <<totalInst <<" instructions are compacted.\n";
         if (numCompacted3SrcInst>0)
         {
             optReport<< kernel.getName() <<": "
-                << numCompacted3SrcInst <<" instructions of 3 src (mad/pln) are compacted."<<endl;
+                << numCompacted3SrcInst <<" instructions of 3 src (mad/pln) are compacted\n";
         }
         if (((float)(totalInst)) != 0.0)
         {
-            optReport<< setprecision(0)
+            optReport<< std::setprecision(0)
                 << (float)(numCompactedInst*100)/(float)(totalInst)
-                << "% instructions of this kernel are compacted."
-                <<endl;
+                << "% instructions of this kernel are compacted\n";
         }
-        optReport<<endl;
+        optReport << "\n";
         closeOptReportStream(optReport);
     }
 }
@@ -171,7 +169,8 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
         ASSERT_USER(inst->getSrc(k)->isSrcRegRegion(), "Unexpected src to be converted to ALIGN16!");
         G4_SrcRegRegion* src = inst->getSrc(k)->asSrcRegRegion();
         src->setSwizzle(src->isScalar() ? "r" : "xyzw");
-        if (inst->opcode() == G4_math && (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM))
+        if (inst->opcode() == G4_math &&
+            (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM))
         {
             switch (inst->getSrc(k)->getType())
             {
@@ -361,7 +360,7 @@ void BinaryEncodingBase::computeBinaryOffsets()
     for (auto I = binInstList.begin(), E = binInstList.end(); I != E; ++I)
     {
         BinInst* binInst = *I;
-        streamsize size = GetCompactCtrl(binInst) ? (BYTES_PER_INST / 2) : BYTES_PER_INST;
+        std::streamsize size = GetCompactCtrl(binInst) ? (BYTES_PER_INST / 2) : BYTES_PER_INST;
         binInst->SetGenOffset(offset);
         offset += size;
     }

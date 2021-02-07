@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <algorithm>
 
-using namespace std;
 using namespace vISA;
 
 namespace vISA

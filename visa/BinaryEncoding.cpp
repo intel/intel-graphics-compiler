@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BinaryEncoding.h"
 #include "BuildIR.h"
 
-using namespace std;
 using namespace vISA;
 
 // Initlaize the platform dependent bit positions to some illegal value

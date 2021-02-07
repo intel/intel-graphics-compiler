@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iomanip>
 
-using namespace std;
 using namespace vISA;
 
 static const char* const SrcModifierStr[Mod_src_undef] =

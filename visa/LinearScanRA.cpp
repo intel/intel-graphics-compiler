@@ -24,8 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <fstream>
-#include <tuple>
 #include "DebugInfo.h"
 #include "common.h"
 #include "SpillManagerGMRF.h"
@@ -33,10 +31,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "LinearScanRA.h"
 #include "RegAlloc.h"
 
-using namespace std;
+#include <fstream>
+#include <tuple>
+
 using namespace vISA;
 
-extern void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
+extern void getForbiddenGRFs(std::vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
 
 LinearScanRA::LinearScanRA(BankConflictPass& b, GlobalRA& g, LivenessAnalysis& liveAnalysis) :
     kernel(g.kernel), builder(g.builder), l(liveAnalysis), mem(g.builder.mem), bc(b), gra(g)
@@ -711,7 +711,7 @@ void LinearScanRA::preRAAnalysis()
     bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
     if (hasStackCall || reservedGRFNum || builder.getOption(vISA_Debug))
     {
-        vector<unsigned int> forbiddenRegs;
+        std::vector<unsigned int> forbiddenRegs;
         unsigned int stackCallRegSize = hasStackCall ? gra.kernel.numReservedABIGRF() : 0;
         getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, 0, reservedGRFNum);
         for (unsigned int i = 0, size = forbiddenRegs.size(); i < size; i++)
@@ -1898,7 +1898,7 @@ globalLinearScan::globalLinearScan(GlobalRA& g, LivenessAnalysis* l, std::vector
     }
 }
 
-void globalLinearScan::getCalleeSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel)
+void globalLinearScan::getCalleeSaveGRF(std::vector<unsigned int>& regNum, G4_Kernel* kernel)
 {
     unsigned int startCallerSave = kernel->calleeSaveStart();
     unsigned int endCallerSave = startCallerSave + kernel->getNumCalleeSaveRegs();
@@ -1927,7 +1927,10 @@ void globalLinearScan::getCalleeSaveGRF(vector<unsigned int>& regNum, G4_Kernel*
     return;
 }
 
-void globalLinearScan::getCallerSaveGRF(vector<unsigned int>& regNum, vector<unsigned int>& retRegNum, G4_Kernel* kernel)
+void globalLinearScan::getCallerSaveGRF(
+    std::vector<unsigned int>& regNum,
+    std::vector<unsigned int>& retRegNum,
+    G4_Kernel* kernel)
 {
     unsigned int startCalleeSave = 1;
     unsigned int endCalleeSave = startCalleeSave + kernel->getCallerSaveLastGRF();
@@ -2113,8 +2116,8 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
 
         if (builder.kernel.fg.isPseudoVCADcl(dcl))
         {
-            vector<unsigned int> callerSaveRegs;
-            vector<unsigned int> regRegs;
+            std::vector<unsigned int> callerSaveRegs;
+            std::vector<unsigned int> regRegs;
             getCallerSaveGRF(callerSaveRegs, regRegs, &gra.kernel);
             for (unsigned int i = 0; i < callerSaveRegs.size(); i++)
             {
@@ -2141,8 +2144,8 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
         {
             if (dcl == gra.getOldFPDcl())
             {
-                vector<unsigned int> callerSaveRegs;
-                vector<unsigned int> regRegs;
+                std::vector<unsigned int> callerSaveRegs;
+                std::vector<unsigned int> regRegs;
                 getCallerSaveGRF(callerSaveRegs, regRegs, &gra.kernel);
                 for (unsigned int i = 0; i < callerSaveRegs.size(); i++)
                 {

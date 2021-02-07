@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FlowGraph.h"
 #include "GraphColor.h"
 
-using namespace std;
 using namespace vISA;
 
 PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
@@ -1241,7 +1240,9 @@ void LiveRange::allocForbiddenVector(Mem_Manager& mem)
     }
 }
 
-void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel &kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned rerservedRegNum)
+void getForbiddenGRFs(
+    std::vector<unsigned int>& regNum, G4_Kernel &kernel,
+    unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned rerservedRegNum)
 {
     // Push forbidden register numbers to vector regNum
     //
@@ -1288,7 +1289,7 @@ void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel &kernel, unsigned 
     }
 }
 
-void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel)
+void getCallerSaveGRF(std::vector<unsigned int>& regNum, G4_Kernel* kernel)
 {
     unsigned int startCalleeSave = kernel->calleeSaveStart();
     unsigned int endCalleeSave = startCalleeSave + kernel->getNumCalleeSaveRegs();
@@ -1299,7 +1300,7 @@ void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel)
     }
 }
 
-void getCalleeSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel)
+void getCalleeSaveGRF(std::vector<unsigned int>& regNum, G4_Kernel* kernel)
 {
     // r1-r59 are callee save regs for SKL
     unsigned int numCallerSaveGRFs = kernel->getCallerSaveLastGRF() + 1;
@@ -1322,7 +1323,7 @@ void LiveRange::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsi
 
     if (regKind == G4_GRF)
     {
-        vector<unsigned int> forbiddenGRFs;
+        std::vector<unsigned int> forbiddenGRFs;
         unsigned int stackCallRegSize = reserveStackCallRegs ? gra.kernel.numReservedABIGRF() : 0;
         getForbiddenGRFs(forbiddenGRFs, gra.kernel, stackCallRegSize, reserveSpillSize, rerservedRegNum);
 
@@ -1346,7 +1347,7 @@ void LiveRange::allocForbiddenCallerSave(Mem_Manager& mem, G4_Kernel* kernel)
 
     MUST_BE_TRUE(regKind == G4_GRF, ERROR_UNKNOWN);
 
-    vector<unsigned int> callerSaveRegs;
+    std::vector<unsigned int> callerSaveRegs;
     getCallerSaveGRF(callerSaveRegs, kernel);
     for (unsigned int i = 0; i < callerSaveRegs.size(); i++)
     {
@@ -1367,7 +1368,7 @@ void LiveRange::allocForbiddenCalleeSave(Mem_Manager& mem, G4_Kernel* kernel)
 
     MUST_BE_TRUE(regKind == G4_GRF, ERROR_UNKNOWN);
 
-    vector<unsigned int> calleeSaveRegs;
+    std::vector<unsigned int> calleeSaveRegs;
     getCalleeSaveGRF(calleeSaveRegs, kernel);
     for (unsigned int i = 0; i < calleeSaveRegs.size(); i++)
     {
@@ -1409,10 +1410,14 @@ void LiveRange::dump() const
     }
 }
 
-PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
-    unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
-    uint32_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges) : gra(g), startARFReg(startARF), startFlagReg(startFlag),
-    startGRFReg(startGRF), bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
+PhyRegUsageParms::PhyRegUsageParms(
+    GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m,
+    unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
+    unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e,
+    bool doBC, bool* avaGReg, uint32_t* avaSubReg,
+    bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges)
+    : gra(g), startARFReg(startARF), startFlagReg(startFlag), startGRFReg(startGRF),
+    bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
 {
     doBankConflict = doBC;
     availableGregs = avaGReg;

@@ -25,26 +25,27 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Optimizer.h"
-#include <fstream>
-#include <sstream>
 #include "G4_Opcode.h"
 #include "Timer.h"
 #include "G4_Verifier.hpp"
-#include <map>
-#include <algorithm>
 #include "LVN.h"
 #include "ifcvt.h"
-#include <random>
-#include <chrono>
 #include "FlowGraph.h"
 #include "SendFusion.h"
 #include "Common_BinaryEncoding.h"
-#include <tuple>
 #include "DebugInfo.h"
 #include "AccSubstitution.h"
 #include "MergeScalar.h"
 
-using namespace std;
+#include <algorithm>
+#include <chrono>
+#include <fstream>
+#include <map>
+#include <random>
+#include <sstream>
+#include <tuple>
+#include <vector>
+
 using namespace vISA;
 
 void Optimizer::LVN()
@@ -6082,18 +6083,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             std::ofstream optReport;
             getOptReportStream(optReport, builder.getOptions());
-            optReport << "             === Message Header Optimization ===" <<endl;
-            optReport<< fixed << endl;
+            optReport << "             === Message Header Optimization ===\n";
+            optReport<< std::fixed << "\n";
             optReport<< kernel.getName() <<" is reduced from "
-                <<ic_before <<" to " <<ic_after <<" instructions. "<<endl;
+                <<ic_before <<" to " <<ic_after <<" instructions.\n";
             if (((float)(ic_before)) != 0.0)
             {
-            optReport<< setprecision(0)
+            optReport << std::setprecision(0)
                 << (float)((ic_before-ic_after)*100)/(float)(ic_before)
-                << "% instructions of this kernel are removed."
-                <<endl;
+                << "% instructions of this kernel are removed.\n";
             }
-            optReport<<endl;
+            optReport << "\n";
             closeOptReportStream(optReport);
         }
     }
@@ -6206,7 +6206,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         const char *asmFileName;
         opt->getOption(VISA_AsmFileName, asmFileName);
         std::string optReportFileName = std::string(asmFileName) + "_optreport.txt";
-        reportStream.open(optReportFileName, ios::out | ios::app );
+        reportStream.open(optReportFileName, std::ios::out | std::ios::app );
         MUST_BE_TRUE(reportStream, "Fail to open " << optReportFileName);
     }
 
@@ -7247,7 +7247,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             //caluclates bytes that remain to be initialized
             remainder_bytes = remainder_bytes % exec_size;
             //next lowest execution size
-            exec_size = (uint16_t)max(1, exec_size / 2);
+            exec_size = (uint16_t)std::max(1, exec_size / 2);
         }
 
         //Initializaing Flag register

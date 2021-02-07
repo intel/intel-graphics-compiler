@@ -25,12 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #ifndef IS_RELEASE_DLL
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <limits>
-
-using namespace std;
 
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
@@ -50,6 +44,11 @@ using namespace std;
     snprintf(NULL, 0, __VA_ARGS__)
 #endif
 
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <limits>
+
 using namespace vISA;
 
 #define REPORT_HEADER(opt, cond, ...)          \
@@ -60,7 +59,7 @@ do if (!(cond)) {                              \
     memset(buf, 0, sz);                        \
     SNPRINTF(buf, sz, __VA_ARGS__);            \
     error_list.push_back(createIsaError(       \
-        isaHeader, header, string(buf), opt)); \
+        isaHeader, header, std::string(buf), opt)); \
     free(buf);                                 \
 } while (0)
 
@@ -73,13 +72,13 @@ do if (!(cond)) {                                    \
     memset(buf, 0, sz);                              \
     SNPRINTF(buf, sz, __VA_ARGS__);                  \
     error_list.push_back(createIsaError(             \
-        isaHeader, header, string(buf), opt, inst)); \
+        isaHeader, header, std::string(buf), opt, inst)); \
     free(buf);                                       \
 } while (0)
 
-string raw_opnd::toString() const
+std::string raw_opnd::toString() const
 {
-    stringstream sstr;
+    std::stringstream sstr;
     sstr << "V" << index;
     if (offset != 0)
     {
@@ -92,21 +91,21 @@ void vISAVerifier::writeReport(const char* filename)
 {
     if (kerror_list.size() > 0 || error_list.size() > 0)
     {
-        ofstream report;
+        std::ofstream report;
         report.open(filename);
 
         if (kerror_list.size() > 0)
         {
-            report << "Kernel Header / Declare Errors: " << endl;
+            report << "Kernel Header / Declare Errors:\n";
             for (auto I = kerror_list.begin(), E = kerror_list.end(); I != E; I++)
-                report << (*I) << endl;
+                report << (*I) << "\n";
             report << "\n\n\n";
         }
 
-        report << "Instruction / Operand / Region Errors: " << endl;
+        report << "Instruction / Operand / Region Errors:\n";
 
         for (auto I = error_list.begin(), E = error_list.end(); I != E; I++)
-            report << (*I) << endl;
+            report << (*I) << "\n";
 
         report << "\n\n\n";
         report.close();
@@ -138,13 +137,13 @@ static int getDstIndex(const CISA_INST* inst)
 }
 
 // diagDumpInstructionOperandDecls() is used to generate the error report
-static string diagDumpInstructionOperandDecls(
+static std::string diagDumpInstructionOperandDecls(
     const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     const CISA_INST* inst,
     Options *options)
 {
-    stringstream sstr;
+    std::stringstream sstr;
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
@@ -163,9 +162,9 @@ static string diagDumpInstructionOperandDecls(
                 case OPERAND_ADDRESS   :
                 case OPERAND_INDIRECT  : sstr << printAddressDecl   (isaHeader, header, index); break;
                 case OPERAND_PREDICATE : sstr << printPredicateDecl (header, index); break;
-                case OPERAND_ADDRESSOF : sstr << "ADDRESSOF Operand decl... are those even allowed>" << endl; break;
-                case OPERAND_IMMEDIATE : sstr << "Immediate operand: " << getPrimitiveOperand<unsigned>(inst, i) << endl; break;
-                default                : sstr << "Operand type: " << opnd.getOperandClass() << " unable to print." << endl; break;
+                case OPERAND_ADDRESSOF : sstr << "ADDRESSOF Operand decl... are those even allowed>\n"; break;
+                case OPERAND_IMMEDIATE : sstr << "Immediate operand: " << getPrimitiveOperand<unsigned>(inst, i) << "\n"; break;
+                default                : sstr << "Operand type: " << opnd.getOperandClass() << " unable to print." << "\n"; break;
             }
         }
         else if (inst->opnd_array[i]->opnd_type == CISA_OPND_RAW)
@@ -182,45 +181,45 @@ static string diagDumpInstructionOperandDecls(
             sstr << "unknown operand?";
         }
 
-        sstr << endl;
+        sstr << "\n";
         if (i != inst->opnd_count-1)
-        sstr << setw(33) << "                               ";
+            sstr << std::setw(33) << "                               ";
     }
 
     return sstr.str();
 }
 
-static string createIsaError(
+static std::string createIsaError(
     const common_isa_header& isaHeader,
     const print_format_provider_t* header,
-    string msg,
+    std::string msg,
     Options *opt,
     const CISA_INST* inst = NULL)
 {
-    stringstream sstr;
+    std::stringstream sstr;
     if (!inst)
     sstr << "\n/-------------------------------------------!!!KERNEL HEADER ERRORS FOUND!!!-------------------------------------------\\\n";
     else
     sstr << "\n/--------------------------------------------!!!INSTRUCTION ERROR FOUND!!!---------------------------------------------\\\n";
-    sstr << setw(33) << "Error in CISA routine with name: " << (char*)header->getString(header->getNameIndex()) << endl;
-    sstr << setw(33) << "Error Message: " << msg << endl;
+    sstr << std::setw(33) << "Error in CISA routine with name: " << (char*)header->getString(header->getNameIndex()) << "\n";
+    sstr << std::setw(33) << "Error Message: " << msg << "\n";
 
     if (NULL != inst)
     {
-        sstr << setw(33) << "Diagnostics: " << endl;
-        sstr << setw(33) << " Instruction variables' decls: ";
-        sstr << diagDumpInstructionOperandDecls(isaHeader, header, inst, opt) << endl;
-        sstr << setw(33) << " Violating Instruction: "  << printInstruction(header, inst, opt) << endl;
+        sstr << std::setw(33) << "Diagnostics:\n";
+        sstr << std::setw(33) << " Instruction variables' decls: ";
+        sstr << diagDumpInstructionOperandDecls(isaHeader, header, inst, opt) << "\n";
+        sstr << std::setw(33) << " Violating Instruction: "  << printInstruction(header, inst, opt) << "\n";
     }
 
     sstr << "\\----------------------------------------------------------------------------------------------------------------------/\n";
     return sstr.str();
 }
 
-void vISAVerifier::verifyPredicateDecl(
-    unsigned declID)
+void vISAVerifier::verifyPredicateDecl(unsigned declID)
 {
-    string declError = string(" Error in predicate variable decl: ") + printPredicateDecl(header, declID);
+    std::string declError =
+        std::string(" Error in predicate variable decl: ") + printPredicateDecl(header, declID);
 
     REPORT_HEADER(options,header->getPred(declID)->name_index < header->getStringCount(), "P%d's name index(%d) is not valid: %s", declID, header->getPred(declID)->name_index, declError.c_str());
 
@@ -240,7 +239,8 @@ void vISAVerifier::verifyPredicateDecl(
 
 void vISAVerifier::verifyAddressDecl(unsigned declID)
 {
-    string declError = string(" Error in address variable decl: ") + printAddressDecl(isaHeader, header, declID);
+    std::string declError = std::string(" Error in address variable decl: ") +
+        printAddressDecl(isaHeader, header, declID);
 
     REPORT_HEADER(options,header->getAddr(declID)->name_index < header->getStringCount(), "A%d's name index(%d) is not valid: %s", declID, header->getAddr(declID)->name_index, declError.c_str());
     REPORT_HEADER(options,header->getAddr(declID)->num_elements <= 16, "Max possible address registers are 16 on BDW+: %s", declError.c_str());
@@ -264,7 +264,8 @@ void vISAVerifier::verifyAddressDecl(unsigned declID)
 void vISAVerifier::verifyVariableDecl(
     unsigned declID)
 {
-    string declError = string(" Error in CISA variable decl: ") + printVariableDecl(header, declID, options);
+    std::string declError = std::string(" Error in CISA variable decl: ") +
+        printVariableDecl(header, declID, options);
 
     const var_info_t* var = header->getVar(declID);
     VISA_Align align = var->getAlignment();
@@ -301,7 +302,7 @@ void vISAVerifier::verifyVariableDecl(
         const var_info_t* currAliasVar = header->getVar(var->alias_index-numPreDefinedVars);
         unsigned totalOffset = var->alias_offset;
 
-        set<uint32_t> visitedAliasIndices;
+        std::set<uint32_t> visitedAliasIndices;
 
         while (currAliasVar->alias_index >= numPreDefinedVars)
         {
@@ -583,10 +584,8 @@ void vISAVerifier::verifyRegion(
             {
                 for (int j = 0; j < width_val; j++)
                 {
-                    unsigned region_offset = firstElementIndex     +
-                        (((i * v_stride_val)  +
-                        (j * h_stride_val)) *
-                        VN_size);
+                    unsigned region_offset = firstElementIndex +
+                        (((i * v_stride_val)  + (j * h_stride_val)) * VN_size);
 
                     if (region_offset > var_size)
                     {
@@ -597,10 +596,9 @@ void vISAVerifier::verifyRegion(
                         std::cout << "  (row_offset * GRF_SIZE + col_offset) + (((i * v_stride) + (j * h_stride)) * type_size) <= type_size * num_elements:\n";
                         std::cout << "(" << (int)row_offset << " * "<< COMMON_ISA_GRF_REG_SIZE << " + "<< (int)col_offset << ") + (((" <<
                             i << " * " << v_stride_val <<") + (" << j <<" * " << h_stride_val << ")) * " << VN_size <<
-                            ") <= " << VN_size << " * " << num_elements << std::endl;
-                        std::cout << "Violating Instruction: "
-                            << printInstruction(header, inst, options)
-                            << endl;
+                            ") <= " << VN_size << " * " << num_elements << "\n";
+                        std::cout << "Violating Instruction: " <<
+                            printInstruction(header, inst, options) << "\n";
 #endif // DLL_MODE
                     }
                 }
@@ -678,7 +676,7 @@ void vISAVerifier::verifyRawOperand(
         const var_info_t* currVar = header->getVar(opnd_index);
         unsigned totalOffset = opnd_offset;
 
-        set<uint32_t> visitedAliasIndices;
+        std::set<uint32_t> visitedAliasIndices;
 
         while (numPreDefinedVars <= currVar->alias_index)
         {
@@ -3076,7 +3074,9 @@ void vISAVerifier::verifyInstruction(
         case ISA_Inst_Data_Port: verifyInstructionDataport    (inst); break;
         default:
         {
-            stringstream sstr; sstr << "Illegal or unimplemented CISA instruction (opcode, type): (" << opcode << ", " << ISA_Inst_Table[opcode].type << ").";
+            std::stringstream sstr;
+            sstr << "Illegal or unimplemented CISA instruction (opcode, type): (" <<
+                opcode << ", " << ISA_Inst_Table[opcode].type << ").";
             ASSERT_USER(false, sstr.str());
         }
     }

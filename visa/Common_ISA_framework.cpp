@@ -40,8 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 #endif
 
-using namespace std;
-
 #define SIZE_VALUE m_kernel_data_size
 #define SIZE_VALUE_INST m_instruction_size
 
@@ -92,8 +90,8 @@ int CisaInst::createCisaInstruction(
         // if (descOpndCount != numOpnds)
         if (descOpndCount < numOpnds)
         {
-            string msg = "Number of operands mismatch between CISA instruction description and value passed in.";
-            cerr << msg << ": " << descOpndCount << " " << numOpnds << endl;
+            std::string msg = "Number of operands mismatch between CISA instruction description and value passed in.";
+            std::cerr << msg << ": " << descOpndCount << " " << numOpnds << "\n";
             MUST_BE_TRUE(false, msg);
         }
     }
@@ -139,7 +137,7 @@ int CisaInst::createCisaInstruction(
         if (opnd[i] == NULL)
         {
             assert(0);
-            cerr << "ONE OF THE OPERANDS IS NULL!" << endl;
+            std::cerr << "ONE OF THE OPERANDS IS NULL!\n";
             return VISA_FAILURE;
         }
         m_size += opnd[i]->size;
@@ -355,7 +353,7 @@ int CisaBinary::dumpToFile(std::string binFileName)
     {
         binFileName = "temp.isa";
     }
-    std::ofstream os(binFileName.c_str(), ios::binary|ios::out);
+    std::ofstream os(binFileName.c_str(), std::ios::binary|std::ios::out);
     if (!os)
     {
         std::cerr << binFileName << ": unable to open output file\n";
@@ -366,9 +364,9 @@ int CisaBinary::dumpToFile(std::string binFileName)
     return result;
 }
 
-void CisaBinary::writeIsaAsmFile(string filename, string isaasmStr) const
+void CisaBinary::writeIsaAsmFile(std::string filename, std::string isaasmStr) const
 {
-    ofstream isaasm;
+    std::ofstream isaasm;
     isaasm.open(filename.c_str());
 
     if (isaasm.fail())
@@ -494,8 +492,8 @@ int CisaBinary::isaDump(
         unsigned funcId = 0;
         if (!(m_options->getOption(vISA_DumpvISA) && m_options->getOption(vISA_IsaasmNamesFileUsed)))
         {
-            stringstream sstr;
-            stringstream asmName;
+            std::stringstream sstr;
+            std::stringstream asmName;
 
             if (kTemp->getIsKernel())
             {
@@ -518,7 +516,7 @@ int CisaBinary::isaDump(
             }
             asmName << ".visaasm";
             if (ILFile.isaasmListFile && m_options->getOption(vISA_GenIsaAsmList))
-                fputs(string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
+                fputs(std::string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
 
             VISAKernelImpl* fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
             VISAKernel_format_provider fmt(fmtKernel);
@@ -527,7 +525,7 @@ int CisaBinary::isaDump(
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
                 CISA_INST * inst = cisa_inst->getCISAInst();
-                sstr << printInstruction(&fmt, inst, kTemp->getOptions()) << endl;
+                sstr << printInstruction(&fmt, inst, kTemp->getOptions()) << "\n";
             }
 
             writeIsaAsmFile(asmName.str(), sstr.str());

@@ -24,17 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <fstream>
-#include <functional>
-#include <sstream>
 #include "LocalScheduler_G4IR.h"
 #include "Dependencies_G4IR.h"
 #include "../G4_Opcode.h"
 #include "../Timer.h"
 #include "visa_wa.h"
+
+#include <fstream>
+#include <functional>
+#include <sstream>
 #include <queue>
 
-using namespace std;
 using namespace vISA;
 
 /* Entry to the local scheduling. */
@@ -123,7 +123,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
     const char *asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
     std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".schedule";
-    fstream ofile(dumpFileName, ios::out);
+    std::ofstream ofile(dumpFileName, std::ios::out);
     auto nodeIT = scheduledNodes.begin();
     Node *finalNode = scheduledNodes.back();
     int lastBusyCycle = 0;
@@ -139,9 +139,9 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
             for (int cy_e = cycle + latency; cycle != cy_e; ++cycle)
             {
                 lastBusyCycle = cycle;
-                ofile << setw(4) << cycle << " ";
+                ofile << std::setw(4) << cycle << " ";
                 for (G4_INST *inst : (*nodeIT)->instVec) {
-                    ofile << setw(5) << G4_Inst_Table[inst->opcode()].str;
+                    ofile << std::setw(5) << G4_Inst_Table[inst->opcode()].str;
                 }
                 if (externCycle == cycle) {
                     ofile << "[" << (*nodeIT)->nodeID << "]";
@@ -183,7 +183,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
             }
             else
             {
-                ofile << setw(4) << cycle << " " << std::endl;
+                ofile << std::setw(4) << cycle << " " << std::endl;
             }
         }
     }
@@ -1774,7 +1774,7 @@ void DDD::dumpDagDot(G4_BB *bb)
     const char *asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
     std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".dag.dot";
-    fstream ofile(dumpFileName, ios::out);
+    std::ofstream ofile(dumpFileName, std::ios::out);
     ofile << "digraph DAG {" << std::endl;
 
     // 1. Get an ordering of the nodes
@@ -1863,7 +1863,7 @@ void DDD::dumpNodes(G4_BB *bb)
     const char *asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
     std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".nodes";
-    fstream ofile(dumpFileName, ios::out);
+    std::ofstream ofile(dumpFileName, std::ios::out);
 
     // 2. Generate the .dot file for the DAG
     for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it) {
@@ -2483,7 +2483,7 @@ void LocalScheduler::EmitNode(Node *node) {
     for (G4_INST *inst : *node->getInstructions()) {
         if (inst->isSend())
         {
-            inst->asSendInst()->emit_send(cerr);
+            inst->asSendInst()->emit_send(std::cerr);
         } else {
             DEBUG_EMIT(inst);
         }
@@ -2499,8 +2499,8 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
 
     MUST_BE_TRUE(name && strlen(name) < 220 && strlen(appendix) < 30,
         ERROR_SCHEDULER);
-    std::string fileName = std::string(name) + "." + std::string(appendix) + ".dot";
-    fstream ofile(fileName, ios::out);
+    std::string fileName = std::string(name) + "." + appendix + ".dot";
+    std::ofstream ofile(fileName, std::ios::out);
     if (!ofile)
     {
         MUST_BE_TRUE(false, "[Scheduling]:ERROR: Cannot open file " <<
@@ -2508,9 +2508,9 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
     }
 
     ofile << "digraph " << name << " {" << std::endl;
-    ofile << endl << "\t// Setup" << endl;
+    ofile << "\n" << "\t// Setup\n";
     ofile << "\tsize = \"80, 100\";\n";
-    ofile << endl << "\t// Nodes" << endl;
+    ofile << "\n" << "\t// Nodes\n";
     std::list<Node*>::iterator iNode(Nodes.begin()), endNodes(Nodes.end());
     for (; iNode != endNodes; ++iNode) {
         for (G4_INST *inst : *(*iNode)->getInstructions()) {
@@ -2532,17 +2532,17 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
 
             std::string dotStr(os.str());
             //TODO: dot doesn't like '<', '>', '{', or '}' this code below is a hack. need to replace with delimiters.
-            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1,'<'), '[');
-            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1, '>'), ']');
-            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1,'{'), '[');
-            std::replace_if(dotStr.begin(), dotStr.end(), bind(equal_to<char>(), placeholders::_1,'}'), ']');
+            std::replace_if(dotStr.begin(), dotStr.end(), std::bind(std::equal_to<char>(), std::placeholders::_1,'<'), '[');
+            std::replace_if(dotStr.begin(), dotStr.end(), std::bind(std::equal_to<char>(), std::placeholders::_1, '>'), ']');
+            std::replace_if(dotStr.begin(), dotStr.end(), std::bind(std::equal_to<char>(), std::placeholders::_1,'{'), '[');
+            std::replace_if(dotStr.begin(), dotStr.end(), std::bind(std::equal_to<char>(), std::placeholders::_1,'}'), ']');
 
             ofile << dotStr;
             ofile << "\\l";
             ofile << "} \"];" << std::endl;
         }
     }
-    ofile << endl << "\t// Edges" << endl;
+    ofile << "\n" << "\t// Edges\n";
 
     for (iNode = Nodes.begin(); iNode != endNodes; ++iNode)
     {
@@ -2559,7 +2559,7 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
 
 void G4_BB_Schedule::emit(std::ostream &out) {
     if (!scheduledNodes.empty()) {
-        out << endl;
+        out << "\n";
         for (uint32_t i = 0; i < (uint32_t)scheduledNodes.size(); i++) {
             for (G4_INST *inst : *scheduledNodes[i]->getInstructions()) {
                 out << scheduledNodes[i]->schedTime << ":\t";
@@ -2568,7 +2568,7 @@ void G4_BB_Schedule::emit(std::ostream &out) {
                 } else {
                     inst->asSendInst()->emit_send(out);
                 }
-                out << endl;
+                out << "\n";
             }
         }
     }

@@ -24,17 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <fstream>
-#include <functional>
-#include <sstream>
 #include "SWSB_G4IR.h"
 #include "../G4_Opcode.h"
 #include "../Timer.h"
 #include "../RegAlloc.h"
 #include "visa_wa.h"
+
+#include <fstream>
+#include <functional>
+#include <sstream>
 #include <queue>
 
-using namespace std;
 using namespace vISA;
 
 

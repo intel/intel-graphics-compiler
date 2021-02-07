@@ -1362,7 +1362,7 @@ void *BinaryEncodingIGA::EmitBinary(size_t& binarySize)
     {
         std::string binFileName = fileName + ".dat";
         std::string errStr;
-        ofstream os(binFileName.c_str(), ios::binary);
+        std::ofstream os(binFileName.c_str(), std::ios::binary);
         if (!os)
         {
             errStr = "Can't open " + binFileName + ".\n";

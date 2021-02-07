@@ -45,7 +45,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 *
 */
 
-#include <list>
 
 #include "JitterDataStruct.h"
 #include "visa_igc_common_header.h"
@@ -60,7 +59,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "VISAKernel.h"
 
-using namespace std;
+#include <list>
+
 using namespace vISA;
 
 struct RoutineContainer
@@ -88,7 +88,7 @@ struct RoutineContainer
     VISA_LabelOpnd**      labelVarDecls; unsigned     labelVarsCount;
     CISA_GEN_VAR**        inputVarDecls; unsigned     inputVarsCount;
 
-    vector<string> stringPool;
+    std::vector<std::string> stringPool;
 
     CISA_IR_Builder* builder = nullptr;
     VISAKernel*      kernelBuilder = nullptr;
@@ -965,7 +965,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             VISA_RawOpnd*   S = cntrls.isStencil ? readRawOperandNG(bytePos, buf, container) : NULL;
 
 
-            vector<VISA_RawOpnd*> rawOpndVector;
+            std::vector<VISA_RawOpnd*> rawOpndVector;
             if (s0a) rawOpndVector.push_back(s0a);
             if (oM) rawOpndVector.push_back(oM);
             if (R) rawOpndVector.push_back(R);
@@ -2066,13 +2066,13 @@ void readInstructionNG(
     case ISA_Inst_Sampler:   readInstructionSampler    (bytePos, buf, (ISA_Opcode)opcode, container); break;
     default:
         {
-            stringstream sstr;
+            std::stringstream sstr;
             sstr << "Illegal or unimplemented ISA opcode "
                 << ISA_Inst_Table[opcode].str
                 << " (" << (unsigned)opcode << ")"
                 << " at byte position " << bytePos-1
                 << "(0x" <<  std::hex   << bytePos-1
-                << ")"   << "." << endl;
+                << ")"   << ".";
             MUST_BE_TRUE(false, sstr.str());
         }
     }
@@ -2133,12 +2133,12 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned& bytePos, co
     }
 }
 
-static string getDeclLabelString(const char* prefix, uint32_t index, kernel_format_t& header, VISA_Label_Kind kind)
+static std::string getDeclLabelString(const char* prefix, uint32_t index, kernel_format_t& header, VISA_Label_Kind kind)
 {
     if (index) {
         if (kind == LABEL_FC)
           return header.strings[index];
-        stringstream sstr;
+        std::stringstream sstr;
         sstr << header.strings[index] << "_" << index;
         return sstr.str();
     }
@@ -2266,8 +2266,10 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         readVarBytes(majorVersion, minorVersion, header.addresses[declID].name_index, bytePos, buf);
         READ_CISA_FIELD(header.addresses[declID].num_elements   , uint16_t, bytePos, buf);
         READ_CISA_FIELD(header.addresses[declID].attribute_count, uint8_t , bytePos, buf);
-        header.addresses[declID].attributes = (attribute_info_t*)mem.alloc(sizeof(attribute_info_t) * header.addresses[declID].attribute_count);
-        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.addresses[declID].attributes, header.addresses[declID].attribute_count, mem);
+        header.addresses[declID].attributes =
+            (attribute_info_t*)mem.alloc(sizeof(attribute_info_t) * header.addresses[declID].attribute_count);
+        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header,
+            header.addresses[declID].attributes, header.addresses[declID].attribute_count, mem);
         header.addresses[declID].dcl = NULL;
 
         /// VISA Builder Call
@@ -2284,17 +2286,22 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
 
     // read predicate variables
     READ_CISA_FIELD(header.predicate_count, uint16_t, bytePos, buf);
-    header.predicates = (pred_info_t *) mem.alloc(sizeof(pred_info_t) * (header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED));
-    container.predicateVarDecls = (VISA_PredVar**)mem.alloc(sizeof(VISA_PredVar*) * (header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED));
+    header.predicates =
+        (pred_info_t *)mem.alloc(sizeof(pred_info_t) * (header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED));
+    container.predicateVarDecls =
+        (VISA_PredVar**)mem.alloc(sizeof(VISA_PredVar*) * (header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED));
     container.predicateVarsCount =  (header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED);
-    for (unsigned i = COMMON_ISA_NUM_PREDEFINED_PRED; i < (unsigned)(header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED); i++)
+    for (unsigned i = COMMON_ISA_NUM_PREDEFINED_PRED; i <
+        (unsigned)(header.predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED); i++)
     {
         unsigned declID = i;
         readVarBytes(majorVersion, minorVersion, header.predicates[declID].name_index, bytePos, buf);
         READ_CISA_FIELD(header.predicates[declID].num_elements   , uint16_t, bytePos, buf);
         READ_CISA_FIELD(header.predicates[declID].attribute_count, uint8_t , bytePos, buf);
-        header.predicates[declID].attributes = (attribute_info_t*)mem.alloc(sizeof(attribute_info_t) * header.predicates[declID].attribute_count);
-        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.predicates[declID].attributes, header.predicates[declID].attribute_count, mem);
+        header.predicates[declID].attributes =
+            (attribute_info_t*)mem.alloc(sizeof(attribute_info_t) * header.predicates[declID].attribute_count);
+        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header,
+            header.predicates[declID].attributes, header.predicates[declID].attribute_count, mem);
         header.predicates[declID].dcl = NULL;
 
         /// VISA Builder Call
@@ -2319,8 +2326,10 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         readVarBytes(majorVersion, minorVersion, header.labels[i].name_index, bytePos, buf);
         READ_CISA_FIELD(header.labels[i].kind, uint8_t, bytePos, buf);
         READ_CISA_FIELD(header.labels[i].attribute_count, uint8_t, bytePos, buf);
-        header.labels[i].attributes = (attribute_info_t*) mem.alloc(sizeof(attribute_info_t) * header.labels[i].attribute_count);
-        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.labels[i].attributes, header.labels[i].attribute_count, mem);
+        header.labels[i].attributes =
+            (attribute_info_t*)mem.alloc(sizeof(attribute_info_t) * header.labels[i].attribute_count);
+        readAttributesNG(majorVersion, minorVersion, bytePos, buf,
+            header, header.labels[i].attributes, header.labels[i].attribute_count, mem);
 
         /// VISA Builder Call
         unsigned declID = i;
@@ -2354,8 +2363,10 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         readVarBytes(majorVersion, minorVersion, header.samplers[i].name_index, bytePos, buf);
         READ_CISA_FIELD(header.samplers[i].num_elements, uint16_t, bytePos, buf);
         READ_CISA_FIELD(header.samplers[i].attribute_count, uint8_t, bytePos, buf);
-        header.samplers[i].attributes = (attribute_info_t *) mem.alloc(sizeof(attribute_info_t) * header.samplers[i].attribute_count);
-        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.samplers[i].attributes, header.samplers[i].attribute_count, mem);
+        header.samplers[i].attributes =
+            (attribute_info_t *)mem.alloc(sizeof(attribute_info_t) * header.samplers[i].attribute_count);
+        readAttributesNG(majorVersion, minorVersion, bytePos, buf,
+            header, header.samplers[i].attributes, header.samplers[i].attribute_count, mem);
 
         /// VISA Builder Call
         unsigned declID = i;
@@ -2396,8 +2407,10 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
         readVarBytes(majorVersion, minorVersion, header.surfaces[i].name_index, bytePos, buf);
         READ_CISA_FIELD(header.surfaces[i].num_elements, uint16_t, bytePos, buf);
         READ_CISA_FIELD(header.surfaces[i].attribute_count, uint8_t, bytePos, buf);
-        header.surfaces[i].attributes = (attribute_info_t *) mem.alloc(sizeof(attribute_info_t) * header.surfaces[i].attribute_count);
-        readAttributesNG(majorVersion, minorVersion, bytePos, buf, header, header.surfaces[i].attributes, header.surfaces[i].attribute_count, mem);
+        header.surfaces[i].attributes =
+            (attribute_info_t *)mem.alloc(sizeof(attribute_info_t) * header.surfaces[i].attribute_count);
+        readAttributesNG(majorVersion, minorVersion, bytePos, buf,
+            header, header.surfaces[i].attributes, header.surfaces[i].attribute_count, mem);
 
         /// VISA Builder Call
         unsigned declID = i;
@@ -2519,7 +2532,9 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
 // majorVerion/minorVersion -- version of the vISA binary
 // returns true if IR build succeeds, false otherwise
 //
-extern bool readIsaBinaryNG(const char* buf, CISA_IR_Builder* builder, vector<VISAKernel*> &kernels, const char* kernelName, unsigned int majorVersion, unsigned int minorVersion)
+bool readIsaBinaryNG(
+    const char* buf, CISA_IR_Builder* builder, std::vector<VISAKernel*> &kernels,
+    const char* kernelName, unsigned int majorVersion, unsigned int minorVersion)
 {
     MUST_BE_TRUE(buf, "Argument Exception: argument buf  is NULL.");
 

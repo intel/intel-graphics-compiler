@@ -24,21 +24,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include <vector>
-#include <optional>
-#include <limits.h>
 #include "Mem_Manager.h"
 #include "FlowGraph.h"
 #include "RegAlloc.h"
-#include <bitset>
 #include "GraphColor.h"
 #include "Timer.h"
-#include <fstream>
-#include <math.h>
 #include "DebugInfo.h"
 #include "VarSplit.h"
 
-using namespace std;
+#include <bitset>
+#include <climits>
+#include <cmath>
+#include <fstream>
+#include <optional>
+#include <vector>
+
 using namespace vISA;
 
 #define GRAPH_COLOR
@@ -1856,7 +1856,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     }
 
                     toDelete.push(newBitSet);
-                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
+                    std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
                     footprints[id] = newBitSet;
                     dstfootprint = newBitSet;
                     if (gra.isBlockLocal(topdcl) &&
@@ -2048,7 +2048,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         BitSet* newBitSet;
                         newBitSet = new (m) BitSet(bitsetSize, false);
                         toDelete.push(newBitSet);
-                        pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
+                        std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
                         footprints[id] = newBitSet;
                         dstfootprint = newBitSet;
 
@@ -2108,7 +2108,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     BitSet* newBitSet;
                     newBitSet = new (m) BitSet(bitsetSize, false);
                     toDelete.push(newBitSet);
-                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
+                    std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
                     footprints[id] = newBitSet;
                     srcfootprint = newBitSet;
                     if (gra.isBlockLocal(topdcl))
@@ -2832,7 +2832,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 DEBUG_MSG("RA verification warning: Found conflicting input variables: " << dcl->getName()
                                     << " and " << (*LiveInRegMapIt).second->getName() << " assigned to r" << regNum
-                                    << "." << regOff << "!" << endl);
+                                    << "." << regOff << "!\n");
                                 liveInRegVec[idx] = varID;
                                 LiveInRegMapIt->second = dcl;
                             }
@@ -2840,7 +2840,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 MUST_BE_TRUE(false, "RA verification error: Found conflicting live-in variables: " << dcl->getName()
                                     << " and " << LiveInRegMapIt->second->getName() << " assigned to r" <<
-                                    regNum << "." << regOff << "!" << endl);
+                                    regNum << "." << regOff << "!\n");
                             }
 
                         }
@@ -2848,7 +2848,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         {
                             liveInRegVec[idx] = varID;
                             MUST_BE_TRUE(LiveInRegMapIt == LiveInRegMap.end(), "RA verification error: Invalid entry in LiveInRegMap!");
-                            LiveInRegMap.insert(make_pair(idx, dcl));
+                            LiveInRegMap.emplace(idx, dcl);
                         }
                     }
                 }
@@ -2889,7 +2889,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 DEBUG_MSG("RA verification warning: Found conflicting input variables: " << dcl->getName()
                                     << " and " << liveOutRegMapIt->second->getName() << " assigned to r" << regNum
-                                    << "." << regOff << "!" << endl);
+                                    << "." << regOff << "!\n");
                                 liveOutRegVec[idx] = varID;
                                 liveOutRegMapIt->second = dcl;
                             }
@@ -2897,7 +2897,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 MUST_BE_TRUE(false, "RA verification error: Found conflicting live-out variables: " << dcl->getName()
                                     << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                    regNum << "." << regOff << "!" << endl);
+                                    regNum << "." << regOff << "!\n");
                             }
 
                         }
@@ -2905,7 +2905,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         {
                             liveOutRegVec[idx] = varID;
                             MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                            liveOutRegMap.insert(make_pair(idx, dcl));
+                            liveOutRegMap.emplace(idx, dcl);
                         }
                     }
                 }
@@ -2946,7 +2946,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         if (liveOutRegVec[idx] == UINT_MAX)
                         {
                             MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                            DEBUG_MSG("RA verification warning: Found unused variable " << dcl->getName() << "!" << endl);
+                            DEBUG_MSG("RA verification warning: Found unused variable " << dcl->getName() << "!\n");
                         }
                         else
                         {
@@ -2959,19 +2959,19 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                 {
                                     DEBUG_MSG("RA verification warning: Found conflicting stackCall variable: " << dcl->getName()
                                         << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                        regNum << "." << regOff << "!" << endl);
+                                        regNum << "." << regOff << "!\n");
                                 }
                                 else if (indr_use.isSet(liveOutRegVec[idx]) == true)
                                 {
                                     MUST_BE_TRUE(false, "RA verification warning: Found conflicting indirect variables: " << dcl->getName()
                                         << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                        regNum << "." << regOff << "!" << endl);
+                                        regNum << "." << regOff << "!\n");
                                 }
                                 else
                                 {
                                     MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
                                         << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                        regNum << "." << regOff << "!" << endl);
+                                        regNum << "." << regOff << "!\n");
                                 }
                             }
 
@@ -3016,7 +3016,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             if (liveOutRegVec[idx] == UINT_MAX)
                             {
                                 MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                                DEBUG_MSG("RA verification warning: Found unused variable " << dcl->getName() << "!" << endl);
+                                DEBUG_MSG("RA verification warning: Found unused variable " << dcl->getName() << "!\n");
                             }
                             else
                             {
@@ -3029,19 +3029,19 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         DEBUG_MSG("RA verification warning: Found conflicting stackCall variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                     else if (indr_use.isSet(liveOutRegVec[idx]) == true)
                                     {
                                         MUST_BE_TRUE(false, "RA verification warning: Found conflicting indirect variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                     else
                                     {
                                         MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                 }
                             }
@@ -3068,7 +3068,8 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     {
                         liveOutRegMapIt = liveOutRegMap.find(idx);
                         liveOutRegVec[idx] = UINT_MAX;
-                        MUST_BE_TRUE(liveOutRegMapIt != liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
+                        MUST_BE_TRUE(liveOutRegMapIt != liveOutRegMap.end(),
+                            "RA verification error: Invalid entry in liveOutRegMap!");
                         liveOutRegMap.erase(liveOutRegMapIt);
                     }
                 }
@@ -3105,7 +3106,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         {
                             liveOutRegVec[idx] = varID;
                             MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                            liveOutRegMap.insert(make_pair(idx, dcl));
+                            liveOutRegMap.emplace(idx, dcl);
                         }
                         else
                         {
@@ -3117,7 +3118,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                 {
                                     DEBUG_MSG("RA verification warning: Found conflicting input variables: " << dcl->getName()
                                         << " and " << liveOutRegMapIt->second->getName() << " assigned to r" << regNum
-                                        << "." << regOff << "!" << endl);
+                                        << "." << regOff << "!\n");
                                     liveOutRegVec[idx] = varID;
                                     liveOutRegMapIt->second = dcl;
                                 }
@@ -3125,13 +3126,13 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                 {
                                     DEBUG_MSG("RA verification warning: Found conflicting stackCall variables: " << dcl->getName()
                                         << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                        regNum << "." << regOff << "!" << endl);
+                                        regNum << "." << regOff << "!\n");
                                 }
                                 else if (indr_use.isSet(liveOutRegVec[idx]) == true)
                                 {
                                     MUST_BE_TRUE(false, "RA verification warning: Found conflicting indirect variables: " << dcl->getName()
                                         << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                        regNum << "." << regOff << "!" << endl);
+                                        regNum << "." << regOff << "!\n");
                                 }
                                 else
                                 {
@@ -3151,7 +3152,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                 }
                             }
@@ -3183,7 +3184,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 liveOutRegVec[idx] = varID;
                                 MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                                liveOutRegMap.insert(make_pair(idx, dcl));
+                                liveOutRegMap.emplace(idx, dcl);
                             }
                             else
                             {
@@ -3195,7 +3196,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         DEBUG_MSG("RA verification warning: Found conflicting input variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" << regNum
-                                            << "." << regOff << "!" << endl);
+                                            << "." << regOff << "!\n");
                                         liveOutRegVec[idx] = varID;
                                         liveOutRegMapIt->second = dcl;
                                     }
@@ -3203,13 +3204,13 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         DEBUG_MSG("RA verification warning: Found conflicting stackCall variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                     else if (indr_use.isSet(liveOutRegVec[idx]) == true)
                                     {
                                         MUST_BE_TRUE(false, "RA verification warning: Found conflicting indirect variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                     else
                                     {
@@ -3229,7 +3230,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                         {
                                             MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
                                                 << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                                regNum << "." << regOff << "!" << endl);
+                                                regNum << "." << regOff << "!\n");
                                         }
                                     }
                                 }
@@ -3250,7 +3251,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                 liveOutRegMapIt = liveOutRegMap.find(idx);
                                 MUST_BE_TRUE(liveOutRegMapIt != liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
                                 MUST_BE_TRUE(false, "RA verification error: Found live variable: " << dcl->getName()
-                                    << " after lifetime_end " << " assigned to r" << regNum << "." << regOff << "!" << endl);
+                                    << " after lifetime_end " << " assigned to r" << regNum << "." << regOff << "!\n");
                             }
                         }
                     }
@@ -3261,7 +3262,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
                         MUST_BE_TRUE(regNum >= 112,
                             "RA verification error: EOT source: " << dcl->getName()
-                            << " is assigned to r." << regNum << endl);
+                            << " is assigned to r." << regNum << "\n");
                     }
                 }
                 else if (src->isSrcRegRegion() && src->getRegAccess() == IndirGRF)
@@ -3289,7 +3290,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             {
                                 liveOutRegVec[idx] = varID;
                                 MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                                liveOutRegMap.insert(make_pair(idx, dcl));
+                                liveOutRegMap.emplace(idx, dcl);
                             }
                             else
                             {
@@ -3301,7 +3302,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         DEBUG_MSG("RA verification warning: Found conflicting input variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" << regNum
-                                            << "." << regOff << "!" << endl);
+                                            << "." << regOff << "!\n");
                                         liveOutRegVec[idx] = varID;
                                         liveOutRegMapIt->second = dcl;
                                     }
@@ -3309,13 +3310,13 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         MUST_BE_TRUE(false, "RA verification warning: Found conflicting indirect variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                     else
                                     {
                                         MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
                                             << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                            regNum << "." << regOff << "!" << endl);
+                                            regNum << "." << regOff << "!\n");
                                     }
                                 }
                             }
