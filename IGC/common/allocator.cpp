@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Includes for instrumentation
 #if defined ( _DEBUG ) || defined ( _INTERNAL )
+    #include <cstring>
     #include <stdlib.h>
     #include "IGC/common/igc_debug.h"
     #include "common/Stats.hpp"
@@ -274,16 +275,12 @@ void*
 \*****************************************************************************/
 inline void* CAllocator::Malloc(size_t size)
 {
-    void* ptr = NULL;
-
-    ptr = malloc(size);
+    void* ptr = malloc(size);
 
 #ifdef _DEBUG
     if(ptr)
     {
-        // does not introduce dependencies, is into memset by compiler
-        for(uint64_t t = 0; t<size; ++t)
-            static_cast< unsigned char* >(ptr)[t] = 0xcc;
+        std::memset(ptr, 0xcc, size);
     }
 #endif
 #ifdef _WIN32
