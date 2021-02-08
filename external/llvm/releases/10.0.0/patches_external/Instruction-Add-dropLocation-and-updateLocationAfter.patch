@@ -1,0 +1,261 @@
+From dfc5a9eb57aaaac972764bf731503419284bd3dc Mon Sep 17 00:00:00 2001
+From: Vedant Kumar <vsk@apple.com>
+Date: Tue, 8 Sep 2020 13:39:52 -0700
+Subject: [PATCH] [Instruction] Add dropLocation and updateLocationAfterHoist
+ helpers
+
+Introduce a helper which can be used to update the debug location of an
+Instruction after the instruction is hoisted. This can be used to safely
+drop a source location as recommended by the docs.
+
+For more context, see the discussion in https://reviews.llvm.org/D60913.
+
+Differential Revision: https://reviews.llvm.org/D85670
+---
+ include/llvm/IR/Instruction.h            | 14 ++++
+ lib/IR/DebugInfo.cpp                     | 32 +++++++++
+ lib/Transforms/Scalar/GVN.cpp            |  4 +-
+ lib/Transforms/Scalar/LICM.cpp           |  5 +-
+ test/DebugInfo/Generic/licm-hoist-debug-loc.ll |  3 +-
+ test/Transforms/GVN/PRE/phi-translate.ll |  7 +-
+ unittests/IR/InstructionsTest.cpp        | 72 +++++++++++++++++++
+ 8 files changed, 125 insertions(+), 14 deletions(-)
+
+diff --git a/include/llvm/IR/Instruction.h b/include/llvm/IR/Instruction.h
+index ceec001dccf4..24f8e0d6a4b1 100644
+--- a/include/llvm/IR/Instruction.h
++++ b/include/llvm/IR/Instruction.h
+@@ -492,6 +492,20 @@ public:
+   /// merged DebugLoc.
+   void applyMergedLocation(const DILocation *LocA, const DILocation *LocB);
+ 
++  /// Updates the debug location given that the instruction has been hoisted
++  /// from a block to a predecessor of that block.
++  /// Note: it is undefined behavior to call this on an instruction not
++  /// currently inserted into a function.
++  void updateLocationAfterHoist();
++
++  /// Drop the instruction's debug location. This does not guarantee removal
++  /// of the !dbg source location attachment, as it must set a line 0 location
++  /// with scope information attached on call instructions. To guarantee
++  /// removal of the !dbg attachment, use the \ref setDebugLoc() API.
++  /// Note: it is undefined behavior to call this on an instruction not
++  /// currently inserted into a function.
++  void dropLocation();
++
+ private:
+   /// Return true if we have an entry in the on-the-side metadata hash.
+   bool hasMetadataHashEntry() const {
+diff --git a/lib/IR/DebugInfo.cpp b/lib/IR/DebugInfo.cpp
+index 190b220dc9aa..603b88200001 100644
+--- a/lib/IR/DebugInfo.cpp
++++ b/lib/IR/DebugInfo.cpp
+@@ -696,6 +696,38 @@ void Instruction::applyMergedLocation(const DILocation *LocA,
+   setDebugLoc(DILocation::getMergedLocation(LocA, LocB));
+ }
+ 
++void Instruction::updateLocationAfterHoist() { dropLocation(); }
++
++void Instruction::dropLocation() {
++  const DebugLoc &DL = getDebugLoc();
++  if (!DL)
++    return;
++
++  // If this isn't a call, drop the location to allow a location from a
++  // preceding instruction to propagate.
++  if (!isa<CallBase>(this)) {
++    setDebugLoc(DebugLoc());
++    return;
++  }
++
++  // Set a line 0 location for calls to preserve scope information in case
++  // inlining occurs.
++  const DISubprogram *SP = getFunction()->getSubprogram();
++  if (SP)
++    // If a function scope is available, set it on the line 0 location. When
++    // hoisting a call to a predecessor block, using the function scope avoids
++    // making it look like the callee was reached earlier than it should be.
++    setDebugLoc(DebugLoc::get(0, 0, SP));
++  else
++    // The parent function has no scope. Go ahead and drop the location. If
++    // the parent function is inlined, and the callee has a subprogram, the
++    // inliner will attach a location to the call.
++    //
++    // One alternative is to set a line 0 location with the existing scope and
++    // inlinedAt info. The location might be sensitive to when inlining occurs.
++    setDebugLoc(DebugLoc());
++}
++
+ //===----------------------------------------------------------------------===//
+ // LLVM C API implementations.
+ //===----------------------------------------------------------------------===//
+diff --git a/lib/Transforms/Scalar/GVN.cpp b/lib/Transforms/Scalar/GVN.cpp
+index f8e8e2c773f9..c25fdd44dcf9 100644
+--- a/lib/Transforms/Scalar/GVN.cpp
++++ b/lib/Transforms/Scalar/GVN.cpp
+@@ -48,7 +48,6 @@
+ #include "llvm/IR/Constant.h"
+ #include "llvm/IR/Constants.h"
+ #include "llvm/IR/DataLayout.h"
+-#include "llvm/IR/DebugInfoMetadata.h"
+ #include "llvm/IR/DebugLoc.h"
+ #include "llvm/IR/Dominators.h"
+ #include "llvm/IR/Function.h"
+@@ -1323,8 +1322,7 @@ bool GVN::PerformLoadPRE(LoadInst *LI, AvailValInBlkVect &ValuesPerBlock,
+     // Instructions that have been inserted in predecessor(s) to materialize
+     // the load address do not retain their original debug locations. Doing
+     // so could lead to confusing (but correct) source attributions.
+-    if (const DebugLoc &DL = I->getDebugLoc())
+-      I->setDebugLoc(DebugLoc::get(0, 0, DL.getScope(), DL.getInlinedAt()));
++    I->updateLocationAfterHoist();
+ 
+     // FIXME: We really _ought_ to insert these value numbers into their
+     // parent's availability map.  However, in doing so, we risk getting into
+diff --git a/lib/Transforms/Scalar/LICM.cpp b/lib/Transforms/Scalar/LICM.cpp
+index 1b1679e1b03d..631fa2f27c5b 100644
+--- a/lib/Transforms/Scalar/LICM.cpp
++++ b/lib/Transforms/Scalar/LICM.cpp
+@@ -1736,10 +1736,7 @@ static void hoist(Instruction &I, const DominatorTree *DT, const Loop *CurLoop,
+     // Move the new node to the destination block, before its terminator.
+     moveInstructionBefore(I, *Dest->getTerminator(), *SafetyInfo, MSSAU, SE);
+ 
+-  // Apply line 0 debug locations when we are moving instructions to different
+-  // basic blocks because we want to avoid jumpy line tables.
+-  if (const DebugLoc &DL = I.getDebugLoc())
+-    I.setDebugLoc(DebugLoc::get(0, 0, DL.getScope(), DL.getInlinedAt()));
++  I.updateLocationAfterHoist();
+ 
+   if (isa<LoadInst>(I))
+     ++NumMovedLoads;
+diff --git a/test/DebugInfo/Generic/licm-hoist-debug-loc.ll b/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
+index 0a13e9604f0c..37c642170aa3 100644
+--- a/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
++++ b/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
+@@ -18,9 +18,8 @@
+ ; We make sure that the instruction that is hoisted into the preheader
+ ; does not have a debug location.
+ ; CHECK: for.body.lr.ph:
+-; CHECK: getelementptr{{.*}}%p.addr, i64 4{{.*}} !dbg [[zero:![0-9]+]]
++; CHECK: getelementptr{{.*}}%p.addr, i64 4{{$}}
+ ; CHECK: for.body:
+-; CHECK: [[zero]] = !DILocation(line: 0
+ ;
+ ; ModuleID = 't.ll'
+ source_filename = "test.c"
+diff --git a/test/Transforms/GVN/PRE/phi-translate.ll b/test/Transforms/GVN/PRE/phi-translate.ll
+index f80e002eab0a..2b6a577d6678 100644
+--- a/test/Transforms/GVN/PRE/phi-translate.ll
++++ b/test/Transforms/GVN/PRE/phi-translate.ll
+@@ -4,8 +4,8 @@ target datalayout = "e-p:64:64:64"
+ 
+ ; CHECK-LABEL: @foo(
+ ; CHECK: entry.end_crit_edge:
+-; CHECK: %[[INDEX:[a-z0-9.]+]] = sext i32 %x to i64{{.*}} !dbg [[ZERO_LOC:![0-9]+]]
+-; CHECK: %[[ADDRESS:[a-z0-9.]+]] = getelementptr [100 x i32], [100 x i32]* @G, i64 0, i64 %[[INDEX]]{{.*}} !dbg [[ZERO_LOC]]
++; CHECK: %[[INDEX:[a-z0-9.]+]] = sext i32 %x to i64{{$}}
++; CHECK: %[[ADDRESS:[a-z0-9.]+]] = getelementptr [100 x i32], [100 x i32]* @G, i64 0, i64 %[[INDEX]]{{$}}
+ ; CHECK:   %n.pre = load i32, i32* %[[ADDRESS]], !dbg [[N_LOC:![0-9]+]]
+ ; CHECK: br label %end
+ ; CHECK: then:
+@@ -14,8 +14,7 @@ target datalayout = "e-p:64:64:64"
+ ; CHECK:   %n = phi i32 [ %n.pre, %entry.end_crit_edge ], [ %z, %then ], !dbg [[N_LOC]]
+ ; CHECK:   ret i32 %n
+ 
+-; CHECK-DAG: [[N_LOC]] = !DILocation(line: 47, column: 1, scope: !{{.*}})
+-; CHECK-DAG: [[ZERO_LOC]] = !DILocation(line: 0
++; CHECK: [[N_LOC]] = !DILocation(line: 47, column: 1, scope: !{{.*}})
+ 
+ @G = external global [100 x i32]
+ define i32 @foo(i32 %x, i32 %z) !dbg !6 {
+diff --git a/unittests/IR/InstructionsTest.cpp b/unittests/IR/InstructionsTest.cpp
+index b25eee7279af..1324fe2d1dd7 100644
+--- a/unittests/IR/InstructionsTest.cpp
++++ b/unittests/IR/InstructionsTest.cpp
+@@ -13,6 +13,7 @@
+ #include "llvm/IR/BasicBlock.h"
+ #include "llvm/IR/Constants.h"
+ #include "llvm/IR/DataLayout.h"
++#include "llvm/IR/DebugInfoMetadata.h"
+ #include "llvm/IR/DerivedTypes.h"
+ #include "llvm/IR/Function.h"
+ #include "llvm/IR/IRBuilder.h"
+@@ -1304,5 +1305,76 @@ TEST(InstructionsTest, UnaryOperator) {
+   I->deleteValue();
+ }
+ 
++TEST(InstructionsTest, DropLocation) {
++  LLVMContext C;
++  std::unique_ptr<Module> M = parseIR(C,
++                                      R"(
++      declare void @callee()
++
++      define void @no_parent_scope() {
++        call void @callee()           ; I1: Call with no location.
++        call void @callee(), !dbg !11 ; I2: Call with location.
++        ret void, !dbg !11            ; I3: Non-call with location.
++      }
++
++      define void @with_parent_scope() !dbg !8 {
++        call void @callee()           ; I1: Call with no location.
++        call void @callee(), !dbg !11 ; I2: Call with location.
++        ret void, !dbg !11            ; I3: Non-call with location.
++      }
++
++      !llvm.dbg.cu = !{!0}
++      !llvm.module.flags = !{!3, !4}
++      !0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !1, producer: "", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
++      !1 = !DIFile(filename: "t2.c", directory: "foo")
++      !2 = !{}
++      !3 = !{i32 2, !"Dwarf Version", i32 4}
++      !4 = !{i32 2, !"Debug Info Version", i32 3}
++      !8 = distinct !DISubprogram(name: "f", scope: !1, file: !1, line: 1, type: !9, isLocal: false, isDefinition: true, scopeLine: 1, isOptimized: false, unit: !0, retainedNodes: !2)
++      !9 = !DISubroutineType(types: !10)
++      !10 = !{null}
++      !11 = !DILocation(line: 2, column: 7, scope: !8, inlinedAt: !12)
++      !12 = !DILocation(line: 3, column: 8, scope: !8)
++  )");
++  ASSERT_TRUE(M);
++
++  {
++    Function *NoParentScopeF =
++        cast<Function>(M->getNamedValue("no_parent_scope"));
++    BasicBlock &BB = NoParentScopeF->front();
++
++    auto *I1 = BB.getFirstNonPHI();
++    auto *I2 = I1->getNextNode();
++    auto *I3 = BB.getTerminator();
++
++    EXPECT_EQ(I1->getDebugLoc(), DebugLoc());
++    I1->dropLocation();
++    EXPECT_EQ(I1->getDebugLoc(), DebugLoc());
++
++    EXPECT_EQ(I2->getDebugLoc().getLine(), 2U);
++    I2->dropLocation();
++    EXPECT_EQ(I1->getDebugLoc(), DebugLoc());
++
++    EXPECT_EQ(I3->getDebugLoc().getLine(), 2U);
++    I3->dropLocation();
++    EXPECT_EQ(I3->getDebugLoc(), DebugLoc());
++  }
++
++  {
++    Function *WithParentScopeF =
++        cast<Function>(M->getNamedValue("with_parent_scope"));
++    BasicBlock &BB = WithParentScopeF->front();
++
++    auto *I2 = BB.getFirstNonPHI()->getNextNode();
++
++    MDNode *Scope = cast<MDNode>(WithParentScopeF->getSubprogram());
++    EXPECT_EQ(I2->getDebugLoc().getLine(), 2U);
++    I2->dropLocation();
++    EXPECT_EQ(I2->getDebugLoc().getLine(), 0U);
++    EXPECT_EQ(I2->getDebugLoc().getScope(), Scope);
++    EXPECT_EQ(I2->getDebugLoc().getInlinedAt(), nullptr);
++  }
++}
++
+ } // end anonymous namespace
+ } // end namespace llvm
+-- 
+2.29.2.windows.2
+
