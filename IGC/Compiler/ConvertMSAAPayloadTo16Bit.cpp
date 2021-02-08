@@ -56,33 +56,38 @@ ConvertMSAAPayloadTo16Bit::ConvertMSAAPayloadTo16Bit() : FunctionPass(ID)
     initializeWorkaroundAnalysisPass(*PassRegistry::getPassRegistry());
 };
 
+/*
+Returns vector of LdmsIntrinsics using inst directly and indirectly
+input: inst - instruction that ldms intrinsics we search for are using
+output: ldmsUsing - vector of ldmsIntrinsics using inst
+*/
+void ConvertMSAAPayloadTo16Bit::findLdmsUsingInstDownInTree(Value* inst, std::vector<GenIntrinsicInst*>& ldmsUsing)
+{
+    if (LdmsInstrinsic* ldms = dyn_cast<LdmsInstrinsic>(inst))
+    {
+        ldmsUsing.push_back(ldms);
+        return;
+    }
+    else
+    {
+        for (User* user : inst->users())
+        {
+            findLdmsUsingInstDownInTree(user, ldmsUsing);
+        }
+    }
+}
+
 void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
 {
-    if (const GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
+    if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
     {
         GenISAIntrinsic::ID intrID = intr->getIntrinsicID();
         switch (intrID)
         {
-        case GenISAIntrinsic::GenISA_ldmsptr:
+        case GenISAIntrinsic::GenISA_ldmcsptr:
         {
-            GenIntrinsicInst* ldmcs = nullptr;
-            Value* mcsData = I.getOperand(1);
-            if (BitCastInst * bcast = dyn_cast<BitCastInst>(mcsData))
-            {
-                mcsData = bcast->getOperand(0);
-            }
-            if (ExtractElementInst * extractInst = dyn_cast<ExtractElementInst>(mcsData))
-            {
-                mcsData = extractInst->getOperand(0);
-            }
-            if (BitCastInst * bcast = dyn_cast<BitCastInst>(mcsData))
-            {
-                mcsData = bcast->getOperand(0);
-            }
-            ldmcs = dyn_cast<GenIntrinsicInst>(mcsData);
+            GenIntrinsicInst* ldmcs = intr;
 
-
-            IGC_ASSERT(ldmcs != NULL);
             Type* coordType = m_builder->getInt32Ty();
             Type* types_ldmcs[] = {
                 IGCLLVM::FixedVectorType::get(m_builder->getInt16Ty(), 4),
@@ -114,31 +119,77 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             llvm::Value* mcs2 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(2));
             llvm::Value* mcs3 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(3));
 
-            Type* types_ldms[] = { I.getType(), I.getOperand(7)->getType() };
-            Function* func_ldms = GenISAIntrinsic::getDeclaration(
-                I.getParent()->getParent()->getParent(),
-                GenISAIntrinsic::GenISA_ldmsptr16bit,
-                ArrayRef<Type*>(types_ldms, 2));
+            // find ldms using this ldmcs call and convert them to 16 bit
+            std::vector<GenIntrinsicInst*> ldmsUsingldmcs;
+            findLdmsUsingInstDownInTree(ldmcs, ldmsUsingldmcs);
 
-            m_builder->SetInsertPoint(&I);
-            llvm::Value* packed_tex_params_ldms[] = {
-                 m_builder->CreateTrunc(I.getOperand(0), m_builder->getInt16Ty(), ""),
-                 mcs0,
-                 mcs1,
-                 mcs2,
-                 mcs3,
-                 m_builder->CreateTrunc(I.getOperand(3), m_builder->getInt16Ty()),
-                 m_builder->CreateTrunc(I.getOperand(4), m_builder->getInt16Ty()),
-                 m_builder->CreateTrunc(I.getOperand(5), m_builder->getInt16Ty()),
-                 m_builder->CreateTrunc(I.getOperand(6), m_builder->getInt16Ty()),
-                 I.getOperand(7),
-                 I.getOperand(8),
-                 I.getOperand(9),
-                 I.getOperand(10)
-            };
+            for (GenIntrinsicInst* ldms : ldmsUsingldmcs)
+            {
+                Type* types_ldms[] = { ldms->getType(), ldms->getOperand(7)->getType() };
+                Function* func_ldms = GenISAIntrinsic::getDeclaration(
+                    ldms->getParent()->getParent()->getParent(),
+                    GenISAIntrinsic::GenISA_ldmsptr16bit,
+                    ArrayRef<Type*>(types_ldms, 2));
 
-            llvm::CallInst* new_ldms = m_builder->CreateCall(func_ldms, packed_tex_params_ldms);
-            (&I)->replaceAllUsesWith(new_ldms);
+                m_builder->SetInsertPoint(ldms);
+                llvm::Value* packed_tex_params_ldms[] = {
+                     m_builder->CreateTrunc(ldms->getOperand(0), m_builder->getInt16Ty(), ""),
+                     mcs0,
+                     mcs1,
+                     mcs2,
+                     mcs3,
+                     m_builder->CreateTrunc(ldms->getOperand(3), m_builder->getInt16Ty()),
+                     m_builder->CreateTrunc(ldms->getOperand(4), m_builder->getInt16Ty()),
+                     m_builder->CreateTrunc(ldms->getOperand(5), m_builder->getInt16Ty()),
+                     m_builder->CreateTrunc(ldms->getOperand(6), m_builder->getInt16Ty()),
+                     ldms->getOperand(7),
+                     ldms->getOperand(8),
+                     ldms->getOperand(9),
+                     ldms->getOperand(10)
+                };
+
+                llvm::CallInst* new_ldms = m_builder->CreateCall(func_ldms, packed_tex_params_ldms);
+                ldms->replaceAllUsesWith(new_ldms);
+            }
+
+            // In OGL there are uses of ldmcs other then ldms, using vec4float type.
+            // Fix them to use newly created 16bit ldmcs.
+            if (ldmcs->getType()->isVectorTy() &&
+                ldmcs->getType()->getVectorElementType()->isFloatTy())
+            {
+                m_builder->SetInsertPoint(ldmcs);
+
+                uint ldmcsNumOfElements = ldmcs->getType()->getVectorNumElements();
+                uint new_mcs_callNumOfElements = new_mcs_call->getType()->getVectorNumElements();
+
+                // vec of 16bit ints to vec of 32bit ints
+                Type* new_mcs_callVecType = VectorType::get(m_builder->getInt32Ty(), new_mcs_callNumOfElements);
+                Value* ldmcsExtendedToInt32 = m_builder->CreateSExt(new_mcs_call, new_mcs_callVecType);
+
+                // if new ldmcs has fewer elements than ldmcs, extend vector
+                Value* newLdmcsSizedVector;
+                if (new_mcs_callNumOfElements < ldmcsNumOfElements)
+                {
+                    SmallVector<uint32_t, 4> maskVals;
+                    for (uint i = 0; i < ldmcsNumOfElements; i++)
+                    {
+                        maskVals.push_back(i);
+                    }
+                    auto* pMask = ConstantDataVector::get(I.getContext(), maskVals);
+
+                    newLdmcsSizedVector = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(VectorType::get(m_builder->getInt32Ty(), ldmcsNumOfElements)), pMask);
+                }
+                else
+                {
+                    newLdmcsSizedVector = ldmcsExtendedToInt32;
+                }
+                IGC_ASSERT(newLdmcsSizedVector);
+
+                Type* ldmcsFloatVecType = VectorType::get(m_builder->getFloatTy(), ldmcsNumOfElements);
+                Value* ldmcsBitcastedToFloat = m_builder->CreateBitCast(ldmcsExtendedToInt32, ldmcsFloatVecType);
+                ldmcs->replaceAllUsesWith(ldmcsBitcastedToFloat);
+            }
+
             break;
         }
 
