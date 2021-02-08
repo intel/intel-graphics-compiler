@@ -1191,6 +1191,9 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
       InstToMove->moveBefore(BaleTrace.back());
     }
   }
+  // For the undef input case, also modify that.
+  if (isa<UndefValue>(StartWrInput))
+    StartWr->setOperand(0, RdInput);
   // Now remove the useless wrregions found above.
   for (auto i = UselessWrRegions.begin(), e = UselessWrRegions.end();
       i != e; ++i) {
