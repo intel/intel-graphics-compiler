@@ -7,10 +7,11 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_shared/executable_format")
 
-  set(IGC_BUILD__SRC__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
-    )
+set(IGC_BUILD__SRC__AdaptorOCL
+    "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CleanupInputIR.cpp"
+  )
 
 if(IGC_BUILD__SPIRV_ENABLED)
   list(APPEND IGC_BUILD__SRC__AdaptorOCL
@@ -107,6 +108,7 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfoOCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CleanupInputIR.hpp"
 
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API/USC_d3d10.h"
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/usc_d3d10_umd.h"
