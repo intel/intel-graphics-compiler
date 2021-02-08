@@ -555,6 +555,15 @@ public:
     // temporary helper function
     CVariable* GetSymbol(llvm::Value* v);
 
+    // Check if stateless indirect access is available
+    // If yes, increase the counter, otherwise do nothing
+    void CountStatelessIndirectAccess(llvm::Value* pointer, ResourceDescriptor resource);
+
+    // An indirect access happens when GPU loads from an address that was not directly given as one of the kernel arguments.
+    // It's usually a pointer loaded from memory pointed by a kernel argument.
+    // Otherwise the access is direct.
+    bool IsIndirectAccess(llvm::Value* value);
+
     CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
     void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
@@ -588,6 +597,8 @@ public:
 
 private:
     uint m_labelForDMaskJmp;
+
+    llvm::DenseMap<llvm::Instruction*, bool> instrMap;
 
     // Current rounding Mode
     //   As RM of FPCvtInt and FP could be different, there

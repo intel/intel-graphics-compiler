@@ -10657,6 +10657,62 @@ CVariable* EmitPass::GetSymbol(llvm::Value* v)
     return m_currShader->GetSymbol(v);
 }
 
+void EmitPass::CountStatelessIndirectAccess(llvm::Value* pointer, ResourceDescriptor resource)
+{
+    instrMap.clear();
+    IGC_ASSERT_MESSAGE(isa<PointerType>(pointer->getType()), "Value should be a pointer");
+    if (resource.m_surfaceType == ESURFACE_STATELESS && IsIndirectAccess(pointer))
+    {
+        m_currShader->IncIndirectStatelessCount();
+    }
+}
+
+bool EmitPass::IsIndirectAccess(llvm::Value* pointer)
+{
+    Instruction* inst = dyn_cast<Instruction>(pointer);
+    if (inst == nullptr)
+    {
+        return false;
+    }
+
+    // we cache the instructions
+    // when we meet the instruction again know it has already been checked
+    if (instrMap.count(inst))
+    {
+        return instrMap.lookup(inst);
+    }
+
+    bool isIndirect = false;
+    instrMap.try_emplace(inst, isIndirect);
+    for (unsigned int i = 0; i < inst->getNumOperands(); i++)
+    {
+        if (LoadInst* loadInst = dyn_cast<LoadInst>(inst->getOperand(i)))
+        {
+            isIndirect = true;
+            break;
+        }
+        else if (CallInst* callInstr = dyn_cast<CallInst>(inst->getOperand(i)))
+        {
+            // if the call instruction isn't intrinsic we assume that it should be indirect
+            // because intrinsic is rather the simple arithmetic
+            GenIntrinsicInst* pIntrinsic = dyn_cast<GenIntrinsicInst>(callInstr);
+            if (pIntrinsic == nullptr)
+            {
+                isIndirect = true;
+            }
+            break;
+        }
+
+        if (IsIndirectAccess(inst->getOperand(i)))
+        {
+            isIndirect = true;
+            break;
+        }
+    }
+    instrMap.insert(std::make_pair(inst, isIndirect));
+    return isIndirect;
+}
+
 void EmitPass::emitInsert(llvm::Instruction* inst)
 {
     auto IEI = llvm::cast<llvm::InsertElementInst>(inst);
@@ -15098,6 +15154,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
+    CountStatelessIndirectAccess(Ptr, resource);
     // eOffset is in bytes as 2/19/14
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
@@ -15539,6 +15596,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
+    CountStatelessIndirectAccess(Ptr, resource);
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ForceDMask(false);
