@@ -1,0 +1,100 @@
+From a64f085d0f1ce0725d2ca896e32ad213515658a0 Mon Sep 17 00:00:00 2001
+From: Aleksander Us <aleksander.us@intel.com>
+Date: Mon, 26 Aug 2019 15:45:47 +0300
+Subject: [PATCH] [IndVarSimplify] Do not use SCEV expander for IVCount in
+ LFTR when possible.
+
+SCEV analysis cannot properly cache instruction with poison flags
+(for example, add nsw outside of loop will not be reused by expander).
+This can lead to generating of additional instructions by SCEV expander.
+
+Example IR:
+
+  ...
+  %maxval = add nuw nsw i32 %a1, %a2
+  ...
+for.body:
+  ...
+  %cmp22 = icmp ult i32 %ivadd, %maxval
+  br i1 %cmp22, label %for.body, label %for.end
+  ...
+
+SCEV expander will generate copy of %maxval in preheader but without
+nuw/nsw flags. This can be avoided by explicit check that iv count
+value gives the same SCEV expressions as calculated by LFTR.
+---
+ lib/Transforms/Scalar/IndVarSimplify.cpp  | 13 ++++++++++++-
+ test/Transforms/IndVarSimplify/add_nsw.ll | 23 +++++++++++++++++++++++
+ test/Transforms/IndVarSimplify/udiv.ll    |  1 +
+ 3 files changed, 36 insertions(+), 1 deletion(-)
+ create mode 100644 test/Transforms/IndVarSimplify/add_nsw.ll
+
+diff --git a/lib/Transforms/Scalar/IndVarSimplify.cpp b/lib/Transforms/Scalar/IndVarSimplify.cpp
+index 48d8e457ba7..4c7b6b4bbf4 100644
+--- a/lib/Transforms/Scalar/IndVarSimplify.cpp
++++ b/lib/Transforms/Scalar/IndVarSimplify.cpp
+@@ -2318,8 +2318,19 @@ static Value *genLoopLimit(PHINode *IndVar, const SCEV *IVCount, Loop *L,
+ 
+       IVLimit = SE->getAddExpr(IVInit, IVCount);
+     }
+-    // Expand the code for the iteration count.
++
++    // If computed limit is equal to old limit then do not use SCEV expander
++    // because it can lost NUW/NSW flags and create extra instructions.
+     BranchInst *BI = cast<BranchInst>(L->getExitingBlock()->getTerminator());
++    if (ICmpInst *Cmp = dyn_cast<ICmpInst>(BI->getOperand(0))) {
++      Value *Limit = Cmp->getOperand(0);
++      if (!L->isLoopInvariant(Limit))
++        Limit = Cmp->getOperand(1);
++      if (SE->getSCEV(Limit) == IVLimit)
++        return Limit;
++    }
++
++    // Expand the code for the iteration count.
+     IRBuilder<> Builder(BI);
+     assert(SE->isLoopInvariant(IVLimit, L) &&
+            "Computed iteration count is not loop invariant!");
+diff --git a/test/Transforms/IndVarSimplify/add_nsw.ll b/test/Transforms/IndVarSimplify/add_nsw.ll
+new file mode 100644
+index 00000000000..abd1cbb6c51
+--- /dev/null
++++ b/test/Transforms/IndVarSimplify/add_nsw.ll
+@@ -0,0 +1,23 @@
++; RUN: opt -indvars -S %s | FileCheck %s
++
++target datalayout = "e-p:32:32-i64:64-n8:16:32"
++
++; CHECK: for.body.preheader:
++; CHECK-NOT: add
++; CHECK: for.body:
++
++define void @foo(i32 %a1, i32 %a2) {
++entry:
++  %maxval = add nuw nsw i32 %a1, %a2
++  %cmp = icmp slt i32 %maxval, 1
++  br i1 %cmp, label %for.end, label %for.body
++
++for.body:                                         ; preds = %entry, %for.body
++  %j.02 = phi i32 [ 0, %entry ], [ %add31, %for.body ]
++  %add31 = add nuw nsw i32 %j.02, 1
++  %cmp22 = icmp slt i32 %add31, %maxval
++  br i1 %cmp22, label %for.body, label %for.end
++
++for.end:                                          ; preds = %for.body
++  ret void
++}
+diff --git a/test/Transforms/IndVarSimplify/udiv.ll b/test/Transforms/IndVarSimplify/udiv.ll
+index b3f2c2a6a66..3530343ef4a 100644
+--- a/test/Transforms/IndVarSimplify/udiv.ll
++++ b/test/Transforms/IndVarSimplify/udiv.ll
+@@ -133,6 +133,7 @@ declare i32 @printf(i8* nocapture, ...) nounwind
+ ; CHECK-LABEL: @foo(
+ ; CHECK: for.body.preheader:
+ ; CHECK-NOT: udiv
++; CHECK: for.body:
+ 
+ define void @foo(double* %p, i64 %n) nounwind {
+ entry:
+-- 
+2.18.0
+

@@ -1,0 +1,86 @@
+#    Description                  : Constant fold llvm.sqrt like other intrinsics
+
+
+From 12044b3dd7855fd39334ac5321645b27c6c7b49e Mon Sep 17 00:00:00 2001
+From: Justin Lebar <jlebar@google.com>
+Date: Sat, 21 Jan 2017 00:59:57 +0000
+Subject: [PATCH] [ConstantFolding] Constant-fold llvm.sqrt(x) like other
+ intrinsics.
+
+Summary:
+Currently we return undef, but we're in the process of changing the
+LangRef so that llvm.sqrt behaves like the other math intrinsics,
+matching the return value of the standard libcall but not setting errno.
+
+This change is legal even without the LangRef change because currently
+calling llvm.sqrt(x) where x is negative is spec'ed to be UB.  But in
+practice it's also safe because we're simply constant-folding fewer
+inputs: Inputs >= -0 get constant-folded as before, but inputs < -0 now
+aren't constant-folded, because ConstantFoldFP aborts if the host math
+function raises an fp exception.
+
+Reviewers: hfinkel, efriedma, sanjoy
+
+Subscribers: llvm-commits
+
+Differential Revision: https://reviews.llvm.org/D28929
+
+git-svn-id: https://llvm.org/svn/llvm-project/llvm/trunk@292692 91177308-0d34-0410-b5e6-96231b3b80d8
+---
+ lib/Analysis/ConstantFolding.cpp                  | 15 ++-------------
+ test/Transforms/InstCombine/constant-fold-math.ll |  5 +++--
+ 2 files changed, 5 insertions(+), 15 deletions(-)
+
+diff --git a/lib/Analysis/ConstantFolding.cpp b/lib/Analysis/ConstantFolding.cpp
+index 7386727..db8ac82 100644
+--- a/lib/Analysis/ConstantFolding.cpp
++++ b/lib/Analysis/ConstantFolding.cpp
+@@ -1630,6 +1630,8 @@ Constant *ConstantFoldScalarCall(StringRef Name, unsigned IntrinsicID, Type *Ty,
+           return ConstantFoldFP(sin, V, Ty);
+         case Intrinsic::cos:
+           return ConstantFoldFP(cos, V, Ty);
++        case Intrinsic::sqrt:
++          return ConstantFoldFP(sqrt, V, Ty);
+       }
+ 
+       if (!TLI)
+@@ -1683,19 +1685,6 @@ Constant *ConstantFoldScalarCall(StringRef Name, unsigned IntrinsicID, Type *Ty,
+         else if ((Name == "log10" && V > 0 && TLI->has(LibFunc::log10)) ||
+                  (Name == "log10f" && V > 0 && TLI->has(LibFunc::log10f)))
+           return ConstantFoldFP(log10, V, Ty);
+-        else if (IntrinsicID == Intrinsic::sqrt &&
+-                 (Ty->isHalfTy() || Ty->isFloatTy() || Ty->isDoubleTy())) {
+-          if (V >= -0.0)
+-            return ConstantFoldFP(sqrt, V, Ty);
+-          else {
+-            // Unlike the sqrt definitions in C/C++, POSIX, and IEEE-754 - which
+-            // all guarantee or favor returning NaN - the square root of a
+-            // negative number is not defined for the LLVM sqrt intrinsic.
+-            // This is because the intrinsic should only be emitted in place of
+-            // libm's sqrt function when using "no-nans-fp-math".
+-            return UndefValue::get(Ty);
+-          }
+-        }
+         break;
+       case 'r':
+         if ((Name == "round" && TLI->has(LibFunc::round)) ||
+diff --git a/test/Transforms/InstCombine/constant-fold-math.ll b/test/Transforms/InstCombine/constant-fold-math.ll
+index ce8d337..6eb371a 100644
+--- a/test/Transforms/InstCombine/constant-fold-math.ll
++++ b/test/Transforms/InstCombine/constant-fold-math.ll
+@@ -45,9 +45,10 @@ define double @constant_fold_fmuladd_f64() #0 {
+   ret double %x
+ }
+ 
+-; The sqrt intrinsic is undefined for negative inputs besides -0.0.
++; Currently we don't constant-fold intrinsics whose corresponding libcalls
++; raise an fp exception.
+ ; CHECK-LABEL: @bad_sqrt
+-; CHECK-NEXT: ret double undef
++; CHECK-NEXT: call double @llvm.sqrt.f64(double -2
+ define double @bad_sqrt() {
+   %x = call double @llvm.sqrt.f64(double -2.000000e+00)
+   ret double %x
+-- 
+2.7.4
+

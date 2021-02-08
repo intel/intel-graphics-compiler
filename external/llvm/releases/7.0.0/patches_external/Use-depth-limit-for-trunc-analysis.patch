@@ -1,0 +1,274 @@
+From a4cc6b11f900f62e2570a43980290441cfcbc925 Mon Sep 17 00:00:00 2001
+From: Teresa Johnson <tejohnson@google.com>
+Date: Tue, 12 Mar 2019 18:28:05 +0000
+Subject: [PATCH] Use depth limit for trunc analysis
+
+Summary:
+This fixes an extremely long compile time caused by recursive analysis
+of truncs, which were not previously subject to any depth limits unlike
+some of the other ops. I decided to use the same control used for
+sext/zext, since the routines analyzing these are sometimes mutually
+recursive with the trunc analysis.
+
+Reviewers: mkazantsev, sanjoy
+
+Subscribers: sanjoy, jdoerfert, llvm-commits
+
+Tags: #llvm
+
+Differential Revision: https://reviews.llvm.org/D58994
+
+llvm-svn: 355949
+---
+ llvm/include/llvm/Analysis/ScalarEvolution.h  |  8 ++-
+ llvm/lib/Analysis/ScalarEvolution.cpp         | 65 ++++++++++---------
+ .../Analysis/ScalarEvolution/limit-depth.ll   | 30 ++++++++-
+ 3 files changed, 70 insertions(+), 33 deletions(-)
+
+diff --git a/include/llvm/Analysis/ScalarEvolution.h b/include/llvm/Analysis/ScalarEvolution.h
+index 89918e3c205..b0855e18800 100644
+--- a/include/llvm/Analysis/ScalarEvolution.h
++++ b/include/llvm/Analysis/ScalarEvolution.h
+@@ -521,7 +521,7 @@ public:
+   const SCEV *getConstant(ConstantInt *V);
+   const SCEV *getConstant(const APInt &Val);
+   const SCEV *getConstant(Type *Ty, uint64_t V, bool isSigned = false);
+-  const SCEV *getTruncateExpr(const SCEV *Op, Type *Ty);
++  const SCEV *getTruncateExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
+   const SCEV *getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
+   const SCEV *getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth = 0);
+   const SCEV *getAnyExtendExpr(const SCEV *Op, Type *Ty);
+@@ -619,11 +619,13 @@ public:
+ 
+   /// Return a SCEV corresponding to a conversion of the input value to the
+   /// specified type.  If the type must be extended, it is zero extended.
+-  const SCEV *getTruncateOrZeroExtend(const SCEV *V, Type *Ty);
++  const SCEV *getTruncateOrZeroExtend(const SCEV *V, Type *Ty,
++                                      unsigned Depth = 0);
+ 
+   /// Return a SCEV corresponding to a conversion of the input value to the
+   /// specified type.  If the type must be extended, it is sign extended.
+-  const SCEV *getTruncateOrSignExtend(const SCEV *V, Type *Ty);
++  const SCEV *getTruncateOrSignExtend(const SCEV *V, Type *Ty,
++                                      unsigned Depth = 0);
+ 
+   /// Return a SCEV corresponding to a conversion of the input value to the
+   /// specified type.  If the type must be extended, it is zero extended.  The
+diff --git a/lib/Analysis/ScalarEvolution.cpp b/lib/Analysis/ScalarEvolution.cpp
+index 0e715b8814f..30708125203 100644
+--- a/lib/Analysis/ScalarEvolution.cpp
++++ b/lib/Analysis/ScalarEvolution.cpp
+@@ -197,9 +197,9 @@ static cl::opt<unsigned> MaxConstantEvolvingDepth(
+     cl::desc("Maximum depth of recursive constant evolving"), cl::init(32));
+ 
+ static cl::opt<unsigned>
+-    MaxExtDepth("scalar-evolution-max-ext-depth", cl::Hidden,
+-                cl::desc("Maximum depth of recursive SExt/ZExt"),
+-                cl::init(8));
++    MaxCastDepth("scalar-evolution-max-cast-depth", cl::Hidden,
++                 cl::desc("Maximum depth of recursive SExt/ZExt/Trunc"),
++                 cl::init(8));
+ 
+ static cl::opt<unsigned>
+     MaxAddRecSize("scalar-evolution-max-add-rec-size", cl::Hidden,
+@@ -1221,8 +1221,8 @@ const SCEV *SCEVAddRecExpr::evaluateAtIteration(const SCEV *It,
+ //                    SCEV Expression folder implementations
+ //===----------------------------------------------------------------------===//
+ 
+-const SCEV *ScalarEvolution::getTruncateExpr(const SCEV *Op,
+-                                             Type *Ty) {
++const SCEV *ScalarEvolution::getTruncateExpr(const SCEV *Op, Type *Ty,
++                                             unsigned Depth) {
+   assert(getTypeSizeInBits(Op->getType()) > getTypeSizeInBits(Ty) &&
+          "This is not a truncating conversion!");
+   assert(isSCEVable(Ty) &&
+@@ -1243,15 +1243,23 @@ const SCEV *ScalarEvolution::getTruncateExpr(const SCEV *Op,
+ 
+   // trunc(trunc(x)) --> trunc(x)
+   if (const SCEVTruncateExpr *ST = dyn_cast<SCEVTruncateExpr>(Op))
+-    return getTruncateExpr(ST->getOperand(), Ty);
++    return getTruncateExpr(ST->getOperand(), Ty, Depth + 1);
+ 
+   // trunc(sext(x)) --> sext(x) if widening or trunc(x) if narrowing
+   if (const SCEVSignExtendExpr *SS = dyn_cast<SCEVSignExtendExpr>(Op))
+-    return getTruncateOrSignExtend(SS->getOperand(), Ty);
++    return getTruncateOrSignExtend(SS->getOperand(), Ty, Depth + 1);
+ 
+   // trunc(zext(x)) --> zext(x) if widening or trunc(x) if narrowing
+   if (const SCEVZeroExtendExpr *SZ = dyn_cast<SCEVZeroExtendExpr>(Op))
+-    return getTruncateOrZeroExtend(SZ->getOperand(), Ty);
++    return getTruncateOrZeroExtend(SZ->getOperand(), Ty, Depth + 1);
++
++  if (Depth > MaxCastDepth) {
++    SCEV *S =
++        new (SCEVAllocator) SCEVTruncateExpr(ID.Intern(SCEVAllocator), Op, Ty);
++    UniqueSCEVs.InsertNode(S, IP);
++    addToLoopUseLists(S);
++    return S;
++  }
+ 
+   // trunc(x1 + ... + xN) --> trunc(x1) + ... + trunc(xN) and
+   // trunc(x1 * ... * xN) --> trunc(x1) * ... * trunc(xN),
+@@ -1263,7 +1271,7 @@ const SCEV *ScalarEvolution::getTruncateExpr(const SCEV *Op,
+     unsigned numTruncs = 0;
+     for (unsigned i = 0, e = CommOp->getNumOperands(); i != e && numTruncs < 2;
+          ++i) {
+-      const SCEV *S = getTruncateExpr(CommOp->getOperand(i), Ty);
++      const SCEV *S = getTruncateExpr(CommOp->getOperand(i), Ty, Depth + 1);
+       if (!isa<SCEVCastExpr>(CommOp->getOperand(i)) && isa<SCEVTruncateExpr>(S))
+         numTruncs++;
+       Operands.push_back(S);
+@@ -1287,7 +1295,7 @@ const SCEV *ScalarEvolution::getTruncateExpr(const SCEV *Op,
+   if (const SCEVAddRecExpr *AddRec = dyn_cast<SCEVAddRecExpr>(Op)) {
+     SmallVector<const SCEV *, 4> Operands;
+     for (const SCEV *Op : AddRec->operands())
+-      Operands.push_back(getTruncateExpr(Op, Ty));
++      Operands.push_back(getTruncateExpr(Op, Ty, Depth + 1));
+     return getAddRecExpr(Operands, AddRec->getLoop(), SCEV::FlagAnyWrap);
+   }
+ 
+@@ -1621,7 +1629,7 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+   ID.AddPointer(Ty);
+   void *IP = nullptr;
+   if (const SCEV *S = UniqueSCEVs.FindNodeOrInsertPos(ID, IP)) return S;
+-  if (Depth > MaxExtDepth) {
++  if (Depth > MaxCastDepth) {
+     SCEV *S = new (SCEVAllocator) SCEVZeroExtendExpr(ID.Intern(SCEVAllocator),
+                                                      Op, Ty);
+     UniqueSCEVs.InsertNode(S, IP);
+@@ -1639,7 +1647,7 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+     unsigned NewBits = getTypeSizeInBits(Ty);
+     if (CR.truncate(TruncBits).zeroExtend(NewBits).contains(
+             CR.zextOrTrunc(NewBits)))
+-      return getTruncateOrZeroExtend(X, Ty);
++      return getTruncateOrZeroExtend(X, Ty, Depth);
+   }
+ 
+   // If the input value is a chrec scev, and we can prove that the value
+@@ -1681,9 +1689,9 @@ ScalarEvolution::getZeroExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+         // Check whether the backedge-taken count can be losslessly casted to
+         // the addrec's type. The count is always unsigned.
+         const SCEV *CastedMaxBECount =
+-          getTruncateOrZeroExtend(MaxBECount, Start->getType());
+-        const SCEV *RecastedMaxBECount =
+-          getTruncateOrZeroExtend(CastedMaxBECount, MaxBECount->getType());
++            getTruncateOrZeroExtend(MaxBECount, Start->getType(), Depth);
++        const SCEV *RecastedMaxBECount = getTruncateOrZeroExtend(
++            CastedMaxBECount, MaxBECount->getType(), Depth);
+         if (MaxBECount == RecastedMaxBECount) {
+           Type *WideTy = IntegerType::get(getContext(), BitWidth * 2);
+           // Check whether Start+Step*MaxBECount has no unsigned overflow.
+@@ -1932,7 +1940,7 @@ ScalarEvolution::getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+   void *IP = nullptr;
+   if (const SCEV *S = UniqueSCEVs.FindNodeOrInsertPos(ID, IP)) return S;
+   // Limit recursion depth.
+-  if (Depth > MaxExtDepth) {
++  if (Depth > MaxCastDepth) {
+     SCEV *S = new (SCEVAllocator) SCEVSignExtendExpr(ID.Intern(SCEVAllocator),
+                                                      Op, Ty);
+     UniqueSCEVs.InsertNode(S, IP);
+@@ -1950,7 +1958,7 @@ ScalarEvolution::getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+     unsigned NewBits = getTypeSizeInBits(Ty);
+     if (CR.truncate(TruncBits).signExtend(NewBits).contains(
+             CR.sextOrTrunc(NewBits)))
+-      return getTruncateOrSignExtend(X, Ty);
++      return getTruncateOrSignExtend(X, Ty, Depth);
+   }
+ 
+   if (auto *SA = dyn_cast<SCEVAddExpr>(Op)) {
+@@ -2025,9 +2033,9 @@ ScalarEvolution::getSignExtendExpr(const SCEV *Op, Type *Ty, unsigned Depth) {
+         // Check whether the backedge-taken count can be losslessly casted to
+         // the addrec's type. The count is always unsigned.
+         const SCEV *CastedMaxBECount =
+-          getTruncateOrZeroExtend(MaxBECount, Start->getType());
+-        const SCEV *RecastedMaxBECount =
+-          getTruncateOrZeroExtend(CastedMaxBECount, MaxBECount->getType());
++            getTruncateOrZeroExtend(MaxBECount, Start->getType(), Depth);
++        const SCEV *RecastedMaxBECount = getTruncateOrZeroExtend(
++            CastedMaxBECount, MaxBECount->getType(), Depth);
+         if (MaxBECount == RecastedMaxBECount) {
+           Type *WideTy = IntegerType::get(getContext(), BitWidth * 2);
+           // Check whether Start+Step*MaxBECount has no signed overflow.
+@@ -4017,29 +4025,28 @@ const SCEV *ScalarEvolution::getMinusSCEV(const SCEV *LHS, const SCEV *RHS,
+   return getAddExpr(LHS, getNegativeSCEV(RHS, NegFlags), AddFlags, Depth);
+ }
+ 
+-const SCEV *
+-ScalarEvolution::getTruncateOrZeroExtend(const SCEV *V, Type *Ty) {
++const SCEV *ScalarEvolution::getTruncateOrZeroExtend(const SCEV *V, Type *Ty,
++                                                     unsigned Depth) {
+   Type *SrcTy = V->getType();
+   assert(SrcTy->isIntOrPtrTy() && Ty->isIntOrPtrTy() &&
+          "Cannot truncate or zero extend with non-integer arguments!");
+   if (getTypeSizeInBits(SrcTy) == getTypeSizeInBits(Ty))
+     return V;  // No conversion
+   if (getTypeSizeInBits(SrcTy) > getTypeSizeInBits(Ty))
+-    return getTruncateExpr(V, Ty);
+-  return getZeroExtendExpr(V, Ty);
++    return getTruncateExpr(V, Ty, Depth);
++  return getZeroExtendExpr(V, Ty, Depth);
+ }
+ 
+-const SCEV *
+-ScalarEvolution::getTruncateOrSignExtend(const SCEV *V,
+-                                         Type *Ty) {
++const SCEV *ScalarEvolution::getTruncateOrSignExtend(const SCEV *V, Type *Ty,
++                                                     unsigned Depth) {
+   Type *SrcTy = V->getType();
+   assert(SrcTy->isIntOrPtrTy() && Ty->isIntOrPtrTy() &&
+          "Cannot truncate or zero extend with non-integer arguments!");
+   if (getTypeSizeInBits(SrcTy) == getTypeSizeInBits(Ty))
+     return V;  // No conversion
+   if (getTypeSizeInBits(SrcTy) > getTypeSizeInBits(Ty))
+-    return getTruncateExpr(V, Ty);
+-  return getSignExtendExpr(V, Ty);
++    return getTruncateExpr(V, Ty, Depth);
++  return getSignExtendExpr(V, Ty, Depth);
+ }
+ 
+ const SCEV *
+diff --git a/test/Analysis/ScalarEvolution/limit-depth.ll b/test/Analysis/ScalarEvolution/limit-depth.ll
+index f4154130233..6fdf8c5df97 100644
+--- a/test/Analysis/ScalarEvolution/limit-depth.ll
++++ b/test/Analysis/ScalarEvolution/limit-depth.ll
+@@ -1,4 +1,4 @@
+-; RUN: opt -scalar-evolution-max-arith-depth=0 -scalar-evolution-max-ext-depth=0 -analyze -scalar-evolution < %s | FileCheck %s
++; RUN: opt -scalar-evolution-max-arith-depth=0 -scalar-evolution-max-cast-depth=0 -analyze -scalar-evolution < %s | FileCheck %s
+ 
+ ; Check that depth set to 0 prevents getAddExpr and getMulExpr from making
+ ; transformations in SCEV. We expect the result to be very straightforward.
+@@ -98,3 +98,31 @@ exit:
+   %ze2 = zext i64 %iv2.inc to i128
+   ret void
+ }
++
++define void @test_trunc(i32 %a, i32 %b, i32 %c, i32 %d, i32 %e, i32 %f) {
++; CHECK-LABEL: @test_trunc
++; CHECK:          %trunc2 = trunc i64 %iv2.inc to i32
++; CHECK-NEXT:     -->  {(trunc i64 (1 + {7,+,1}<%loop>) to i32),+,1}<%loop2>
++entry:
++  br label %loop
++
++loop:
++  %iv = phi i128 [ 6, %entry ], [ %iv.inc, %loop ]
++  %iv.inc = add nsw i128 %iv, 1
++  %cond = icmp sle i128 %iv.inc, 50
++  br i1 %cond, label %loop, label %between
++
++between:
++  %trunc = trunc i128 %iv.inc to i64
++  br label %loop2
++
++loop2:
++  %iv2 = phi i64 [ %trunc, %between ], [ %iv2.inc, %loop2 ]
++  %iv2.inc = add nuw i64 %iv2, 1
++  %cond2 = icmp sle i64 %iv2.inc, 50
++  br i1 %cond2, label %loop2, label %exit
++
++exit:
++  %trunc2 = trunc i64 %iv2.inc to i32
++  ret void
++}
+-- 
+2.18.0
+

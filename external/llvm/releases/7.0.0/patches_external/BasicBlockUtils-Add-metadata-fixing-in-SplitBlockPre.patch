@@ -1,0 +1,92 @@
+From cb729efafe85052dc43413ad403b5e67ee002303 Mon Sep 17 00:00:00 2001
+From: Aleksander Us <aleksander.us@intel.com>
+Date: Mon, 26 Aug 2019 15:47:41 +0300
+Subject: [PATCH] [BasicBlockUtils] Add metadata fixing in
+ SplitBlockPredecessors.
+
+In case when BB is header of some loop and predecessor is latch of
+this loop, metadata was not attached to newly created basic block.
+This led to loss of loop metadata for other passes.
+---
+ lib/Transforms/Utils/BasicBlockUtils.cpp      | 17 +++++++--
+ test/Transforms/LoopSimplify/loop_metadata.ll | 36 +++++++++++++++++++
+ 2 files changed, 50 insertions(+), 3 deletions(-)
+ create mode 100644 test/Transforms/LoopSimplify/loop_metadata.ll
+
+diff --git a/lib/Transforms/Utils/BasicBlockUtils.cpp b/lib/Transforms/Utils/BasicBlockUtils.cpp
+index 516a785dce1..6a0a1826df2 100644
+--- a/lib/Transforms/Utils/BasicBlockUtils.cpp
++++ b/lib/Transforms/Utils/BasicBlockUtils.cpp
+@@ -507,14 +507,24 @@ BasicBlock *llvm::SplitBlockPredecessors(BasicBlock *BB,
+   BranchInst *BI = BranchInst::Create(BB, NewBB);
+   BI->setDebugLoc(BB->getFirstNonPHIOrDbg()->getDebugLoc());
+ 
++  bool IsBBHeader = LI && LI->isLoopHeader(BB);
++  Loop *BBLoop = LI ? LI->getLoopFor(BB) : nullptr;
+   // Move the edges from Preds to point to NewBB instead of BB.
+-  for (unsigned i = 0, e = Preds.size(); i != e; ++i) {
++  for (BasicBlock *Pred : Preds) {
++    Instruction *PI = Pred->getTerminator();
+     // This is slightly more strict than necessary; the minimum requirement
+     // is that there be no more than one indirectbr branching to BB. And
+     // all BlockAddress uses would need to be updated.
+-    assert(!isa<IndirectBrInst>(Preds[i]->getTerminator()) &&
++    assert(!isa<IndirectBrInst>(PI) &&
+            "Cannot split an edge from an IndirectBrInst");
+-    Preds[i]->getTerminator()->replaceUsesOfWith(BB, NewBB);
++    if (IsBBHeader && BBLoop->contains(Pred) && BBLoop->isLoopLatch(Pred)) {
++      // Update loop metadata if it exists.
++      if (MDNode *LoopMD = PI->getMetadata(LLVMContext::MD_loop)) {
++        BI->setMetadata(LLVMContext::MD_loop, LoopMD);
++        PI->setMetadata(LLVMContext::MD_loop, nullptr);
++      }
++    }
++    PI->replaceUsesOfWith(BB, NewBB);
+   }
+ 
+   // Insert a new PHI node into NewBB for every PHI node in BB and that new PHI
+diff --git a/test/Transforms/LoopSimplify/loop_metadata.ll b/test/Transforms/LoopSimplify/loop_metadata.ll
+new file mode 100644
+index 00000000000..c15c92fe3ae
+--- /dev/null
++++ b/test/Transforms/LoopSimplify/loop_metadata.ll
+@@ -0,0 +1,36 @@
++; RUN: opt -S -loop-simplify < %s | FileCheck %s
++
++; CHECK: for.cond.loopexit:
++; CHECK: br label %for.cond, !llvm.loop !0
++; CHECK: br i1 %cmp1, label %for.body1, label %for.cond.loopexit
++
++define void @foo() {
++entry:
++  br label %for.cond
++
++for.cond:                                         ; preds = %for.cond1, %entry
++  %j = phi i32 [ 0, %entry ], [ %add, %for.cond1 ]
++  %cmp = icmp ult i32 %j, 8
++  br i1 %cmp, label %for.body, label %for.end
++
++for.body:                                         ; preds = %for.cond
++  %dummy1 = add i32 1, 1
++  %add = add nuw nsw i32 %j, 1
++  br label %for.cond1
++
++for.cond1:                                      ; preds = %for.body1, %for.body
++  %i.0 = phi i32 [ 1, %for.body ], [ %inc, %for.body1 ]
++  %cmp1 = icmp ult i32 %i.0, 8
++  br i1 %cmp1, label %for.body1, label %for.cond, !llvm.loop !0
++
++for.body1:                                      ; preds = %for.cond1
++  %dummy2 = add i32 1, 1
++  %inc = add nuw nsw i32 %i.0, 1
++  br label %for.cond1
++
++for.end:                                       ; preds = %for.cond
++  ret void
++}
++
++!0 = distinct !{!0, !1}
++!1 = !{!"llvm.loop.unroll.full"}
+-- 
+2.18.0
+

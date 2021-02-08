@@ -1,0 +1,12 @@
+#    Description                  : Fix build break for building opt
+
+--- a/tools/opt/CMakeLists.txt
++++ b/tools/opt/CMakeLists.txt
+@@ -9,6 +9,7 @@ set(LLVM_LINK_COMPONENTS
+   CodeGen
+   Core
+   Coroutines
++  Demangle
+   IPO
+   IRReader
+   InstCombine

@@ -50,7 +50,6 @@ $ git clone https://github.com/intel/vc-intrinsics vc-intrinsics
 $ git clone -b release/10.x https://github.com/llvm/llvm-project llvm-project
 $ git clone -b ocl-open-100 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
 $ git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
-$ git clone https://github.com/intel/llvm-patches llvm_patches
 ```
 These commands will set up a workspace with LLVM 10. If you wish to use any other version please refer to the [component revision table](#Revision-table)
 
@@ -59,7 +58,6 @@ Correct directory tree looks like this:
 <workspace>
     |- igc              https://github.com/intel/intel-graphics-compiler
     |- vc-intrinsics    https://github.com/intel/vc-intrinsics
-    |- llvm_patches     https://github.com/intel/llvm-patches
     |- llvm-project     https://github.com/llvm/llvm-project
         |- llvm/projects/opencl-clang    https://github.com/intel/opencl-clang
         |- llvm/projects/llvm-spirv      https://github.com/KhronosGroup/SPIRV-LLVM-Translator
@@ -173,7 +171,6 @@ Latest known configuration that compiles successfully:
 |-|-|-|
 | igc           | master       | 7d11ff43f42564fdfe2753b4d008abfd56ec9671 |
 | vc-intrinsics | master       | eabcd2022cf868a658b257b8ea6ad62acbbe7dc5 |
-| llvm_patches  | master       | d8b63ab67d688db9e60bca469d58f6aa3ec6b2a1 |
 | llvm-project  | release/11.x | llvmorg-11.0.0 |
 | opencl-clang  | ocl-open-110 | cdacb8a1dba95e8ebc5d948c0e0e574f87b1e861 |
 | SPIRV-LLVM-Translator | llvm_release_110 | d6dc999eee381158a26f048a333467c9ce7e77f2 |

@@ -1,0 +1,37 @@
+From 3436463bf7021c9986f3a52ea0b699abfcbd0b95 Mon Sep 17 00:00:00 2001
+From: Stefan Granitz <stefan.graenitz@gmail.com>
+Date: Fri, 11 Jan 2019 19:34:34 +0000
+Subject: [PATCH] [CMake] Export utility targets to the build/install tree
+ depending on LLVM_BUILD/INSTALL_UTILS
+
+Summary:
+Allow external projects to import test-related targets like FileCheck, count, not etc. and query binary paths, properties, etc.
+This would be useful for LLDB, because it reduces the difference between in-tree vs. standalone builds and simplifies CMake logic.
+
+Reviewers: chapuni, gottesmm, beanz
+
+Reviewed By: beanz
+
+Subscribers: mgorny, lldb-commits, llvm-commits, #lldb
+
+Differential Revision: https://reviews.llvm.org/D56606
+
+git-svn-id: https://llvm.org/svn/llvm-project/llvm/trunk@350959 91177308-0d34-0410-b5e6-96231b3b80d8
+---
+ cmake/modules/AddLLVM.cmake | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/cmake/modules/AddLLVM.cmake b/cmake/modules/AddLLVM.cmake
+index 9b7d24184fe0..4dbc0ddaf4f0 100644
+--- a/cmake/modules/AddLLVM.cmake
++++ b/cmake/modules/AddLLVM.cmake
+@@ -920,6 +920,9 @@ macro(add_llvm_utility name)
+                                DEPENDS ${name}
+                                COMPONENT ${name})
+     endif()
++    set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS ${name})
++  elseif( LLVM_BUILD_UTILS )
++    set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS_BUILDTREE_ONLY ${name})
+   endif()
+ endmacro(add_llvm_utility name)
+ 

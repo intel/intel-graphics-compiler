@@ -1,0 +1,142 @@
+
+From 08bf51ee2ac040f0101a0755790df1176e9c07a0 Mon Sep 17 00:00:00 2001
+From: Karl-Johan Karlsson <karl-johan.karlsson@ericsson.com>
+Date: Tue, 22 May 2018 08:46:48 +0000
+Subject: [PATCH] [LowerSwitch] Fixed faulty PHI node update
+
+Summary:
+When lowerswitch merge several cases into a new default block it's not
+updating the PHI nodes accordingly. The code that update the PHI nodes
+for the default edge only update the first entry and do not remove the
+remaining ones, to make sure the number of entries match the number of
+predecessors.
+
+This is easily fixed by replacing the code that update the PHI node with
+the already existing utility function for updating PHI nodes.
+
+Reviewers: hans, reames, arsenm
+
+Reviewed By: arsenm
+
+Subscribers: wdng, llvm-commits
+
+Differential Revision: https://reviews.llvm.org/D47055
+
+git-svn-id: https://llvm.org/svn/llvm-project/llvm/trunk@332960 91177308-0d34-0410-b5e6-96231b3b80d8
+---
+ lib/Transforms/Utils/LowerSwitch.cpp | 18 +++++------
+ test/Transforms/Util/lowerswitch.ll  | 58 +++++++++++++++++++++++++++++++++++-
+ 2 files changed, 66 insertions(+), 10 deletions(-)
+
+diff --git a/lib/Transforms/Utils/LowerSwitch.cpp b/lib/Transforms/Utils/LowerSwitch.cpp
+index 441c5fd8b5af..76ad35832dc3 100644
+--- a/lib/Transforms/Utils/LowerSwitch.cpp
++++ b/lib/Transforms/Utils/LowerSwitch.cpp
+@@ -512,25 +512,25 @@ void LowerSwitch::processSwitchInst(SwitchInst *SI,
+     }
+   }
+
++  unsigned NrOfDefaults = (SI->getDefaultDest() == Default) ? 1 : 0;
++  for (auto &Case : SI->cases())
++    if (Case.getCaseSuccessor() == Default)
++      NrOfDefaults++;
++
+   // Create a new, empty default block so that the new hierarchy of
+   // if-then statements go to this and the PHI nodes are happy.
+   BasicBlock *NewDefault = BasicBlock::Create(SI->getContext(), "NewDefault");
+   F->getBasicBlockList().insert(Default->getIterator(), NewDefault);
+   BranchInst::Create(Default, NewDefault);
+
+-  // If there is an entry in any PHI nodes for the default edge, make sure
+-  // to update them as well.
+-  for (BasicBlock::iterator I = Default->begin(); isa<PHINode>(I); ++I) {
+-    PHINode *PN = cast<PHINode>(I);
+-    int BlockIdx = PN->getBasicBlockIndex(OrigBlock);
+-    assert(BlockIdx != -1 && "Switch didn't go to this successor??");
+-    PN->setIncomingBlock((unsigned)BlockIdx, NewDefault);
+-  }
+-
+   BasicBlock *SwitchBlock =
+       switchConvert(Cases.begin(), Cases.end(), LowerBound, UpperBound, Val,
+                     OrigBlock, OrigBlock, NewDefault, UnreachableRanges);
+
++  // If there are entries in any PHI nodes for the default edge, make sure
++  // to update them as well.
++  fixPhis(Default, OrigBlock, NewDefault, NrOfDefaults);
++
+   // Branch to our shiny new if-then stuff...
+   BranchInst::Create(SwitchBlock, OrigBlock);
+
+diff --git a/test/Transforms/Util/lowerswitch.ll b/test/Transforms/Util/lowerswitch.ll
+index 1eddb43c1a06..70e1e239b3dd 100644
+--- a/test/Transforms/Util/lowerswitch.ll
++++ b/test/Transforms/Util/lowerswitch.ll
+@@ -3,7 +3,7 @@
+ ; Test that we don't crash and have a different basic block for each incoming edge.
+ define void @test0() {
+ ; CHECK-LABEL: @test0
+-; CHECK: %merge = phi i64 [ 1, %BB3 ], [ 0, %NewDefault ], [ 0, %NodeBlock5 ], [ 0, %LeafBlock1 ]
++; CHECK: %merge = phi i64 [ 1, %BB3 ], [ 0, %NodeBlock5 ], [ 0, %LeafBlock1 ], [ 0, %NewDefault ]
+ BB1:
+   switch i32 undef, label %BB2 [
+     i32 3, label %BB2
+@@ -186,3 +186,59 @@ define void @test2(i32 %mode) {
+ ._crit_edge:                                      ; preds = %34, %0
+   ret void
+ }
++
++; Test that the PHI node in for.cond should have one entry for each predecessor
++; of its parent basic block after lowerswitch merged several cases into a new
++; default block.
++define void @test3() {
++; CHECK-LABEL: @test3
++entry:
++  br label %lbl1
++
++lbl1:                                             ; preds = %cleanup, %entry
++  br label %lbl2
++
++lbl2:                                             ; preds = %cleanup, %lbl1
++  br label %for.cond
++
++for.cond:                                         ; preds = %cleanup, %cleanup, %lbl2
++; CHECK: for.cond:
++; CHECK: phi i16 [ undef, %lbl2 ], [ %b.3, %NewDefault ]{{$}}
++; CHECK: for.cond1:
++  %b.2 = phi i16 [ undef, %lbl2 ], [ %b.3, %cleanup ], [ %b.3, %cleanup ]
++  br label %for.cond1
++
++for.cond1:                                        ; preds = %for.inc, %for.cond
++  %b.3 = phi i16 [ %b.2, %for.cond ], [ undef, %for.inc ]
++  %tobool = icmp ne i16 %b.3, 0
++  br i1 %tobool, label %for.body, label %for.end
++
++for.body:                                         ; preds = %for.cond1
++  br i1 undef, label %if.then, label %for.inc
++
++if.then:                                          ; preds = %for.body
++  br label %cleanup
++
++for.inc:                                          ; preds = %for.body
++  br label %for.cond1
++
++for.end:                                          ; preds = %for.cond1
++  br i1 undef, label %if.then4, label %for.body7
++
++if.then4:                                         ; preds = %for.end
++  br label %cleanup
++
++for.body7:                                        ; preds = %for.end
++  br label %cleanup
++
++cleanup:                                          ; preds = %for.body7, %if.then4, %if.then
++  switch i32 undef, label %unreachable [
++    i32 0, label %for.cond
++    i32 2, label %lbl1
++    i32 5, label %for.cond
++    i32 3, label %lbl2
++  ]
++
++unreachable:                                      ; preds = %cleanup
++  unreachable
++}

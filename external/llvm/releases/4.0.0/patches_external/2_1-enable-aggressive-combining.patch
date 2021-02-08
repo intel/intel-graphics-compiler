@@ -1,0 +1,20 @@
+#    Description                  : Enable aggressive (gep (gep base, idx0), idx1) combining
+
+
+diff -Naur --strip-trailing-cr a/lib/Transforms/InstCombine/InstructionCombining.cpp b/lib/Transforms/InstCombine/InstructionCombining.cpp
+--- a/lib/Transforms/InstCombine/InstructionCombining.cpp	2017-10-24 08:51:48.146973901 -0400
++++ b/lib/Transforms/InstCombine/InstructionCombining.cpp	2017-10-24 08:52:36.064972024 -0400
+@@ -1573,11 +1573,13 @@
+         // normalized.
+         if (SO1->getType() != GO1->getType())
+           return nullptr;
++#if 0 
+         // Only do the combine when GO1 and SO1 are both constants. Only in
+         // this case, we are sure the cost after the merge is never more than
+         // that before the merge.
+         if (!isa<Constant>(GO1) || !isa<Constant>(SO1))
+           return nullptr;
++#endif 
+         Sum = Builder->CreateAdd(SO1, GO1, PtrOp->getName()+".sum");
+       }
+ 

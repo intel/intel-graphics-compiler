@@ -1,0 +1,46 @@
+From 381054a989ebd0b585fee46f2a01a7c5de10acf7 Mon Sep 17 00:00:00 2001
+From: Roman Lebedev <lebedev.ri@gmail.com>
+Date: Wed, 24 Jun 2020 21:12:09 +0300
+Subject: [PATCH] [InstCombine] visitBitCast(): do not crash on weird `bitcast
+ <1 x i8*> to i8*`
+
+Even if we know that RHS of a bitcast is a pointer,
+we can't assume LHS is, because it might be
+a single-element vector of pointer.
+---
+ lib/Transforms/InstCombine/InstCombineCasts.cpp | 3 ++-
+ test/Transforms/InstCombine/bitcast.ll          | 6 ++++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/lib/Transforms/InstCombine/InstCombineCasts.cpp b/lib/Transforms/InstCombine/InstCombineCasts.cpp
+index 3750f31e3cf..a8c87ea3558 100644
+--- a/lib/Transforms/InstCombine/InstCombineCasts.cpp
++++ b/lib/Transforms/InstCombine/InstCombineCasts.cpp
+@@ -2471,8 +2471,9 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
+   if (DestTy == Src->getType())
+     return replaceInstUsesWith(CI, Src);
+
+-  if (PointerType *DstPTy = dyn_cast<PointerType>(DestTy)) {
++  if (isa<PointerType>(SrcTy) && isa<PointerType>(DestTy)) {
+     PointerType *SrcPTy = cast<PointerType>(SrcTy);
++    PointerType *DstPTy = cast<PointerType>(DestTy);
+     Type *DstElTy = DstPTy->getElementType();
+     Type *SrcElTy = SrcPTy->getElementType();
+
+diff --git a/test/Transforms/InstCombine/bitcast.ll b/test/Transforms/InstCombine/bitcast.ll
+index 0f0cbdb364a..c4ee52f27a8 100644
+--- a/test/Transforms/InstCombine/bitcast.ll
++++ b/test/Transforms/InstCombine/bitcast.ll
+@@ -561,3 +561,9 @@ define void @constant_fold_vector_to_half() {
+   store volatile half bitcast (<4 x i4> <i4 0, i4 0, i4 0, i4 4> to half), half* undef
+   ret void
+ }
++
++; Ensure that we do not crash when looking at such a weird bitcast.
++define i8* @bitcast_from_single_element_pointer_vector_to_pointer(<1 x i8*> %ptrvec) {
++  %ptr = bitcast <1 x i8*> %ptrvec to i8*
++  ret i8* %ptr
++}
+--
+2.17.1
+

@@ -49,7 +49,7 @@ igc_arch_get_cpu(_cpuSuffix)
 set(BUILD_EXTERNAL YES)
 
 # --- LLVM ---
-if(IGC_BUILD__USING_SYSTEM_LLVM OR (WIN32 AND LLVM_USE_PREBUILT))
+if(${IGC_OPTION__LLVM_FROM_SYSTEM} OR (WIN32 AND ${IGC_OPTION__LLVM_PREBUILDS}))
   message(STATUS "[VC] Using system llvm")
 
   # Need to search for llvm-tblgen
@@ -65,7 +65,7 @@ if(IGC_BUILD__USING_SYSTEM_LLVM OR (WIN32 AND LLVM_USE_PREBUILT))
   # find_package was called by igc cmake, no need to do it again.
 else()
   # Prebuilt llvm does not have tblgen...
-  if(LLVM_USE_PREBUILT)
+  if(${IGC_OPTION__LLVM_PREBUILDS})
     message(FATAL_ERROR "[VC] vector compiler with prebuilt llvm is not supported")
   endif()
 
