@@ -2072,6 +2072,16 @@ mark_as_advanced(IGC_OPTION__BIF_LINK_BC)
 unset(_allowBifLink)
 
 
+# Currently IGC uses 2 legacy SPIRV-LLVM-Translators
+# First one is located at gfx-driver/Source/IGC/AdaptorOCL/SPIRV
+# Second one is taken as prebuilt shared library called SPIRVDLL
+# These translators will be replaced with vanilla Khronos translator.
+# The following cmake code perfoms search for the such translator.
+# But, until the transition is not completed, this code is under USE_KHRONOS_SPIRV_TRANSLATOR condition
+# Remove this condition after transition period is over
+option(USE_KHRONOS_SPIRV_TRANSLATOR "[Experimental] Enable link against Khronos SPIRV-LLVM-Translator, instead of legacy versions" OFF)
+
+
 
 set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"
     CACHE PATH "Built-in Functions: Root directory where sources for OpenCL builtins are located.")
@@ -3230,6 +3240,54 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm/llvm.cmake")
 add_subdirectory(WrapperLLVM)
 igc_sg_define(IGC__WrapperLLVM)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
+
+# ==================================== SPIRV-LLVM-Translator package ===================================
+
+if(USE_KHRONOS_SPIRV_TRANSLATOR)
+
+add_library(KHRONOS_SPIRV_TRANSLATOR INTERFACE)
+
+# If SPIRV-LLVM-Translator is located inside LLVM projects path, we cannot consider other options,
+# because they will conflict with in-tree version.
+if(EXISTS ${SPIRV_TRANSLATOR_IN_LLVM})
+    message(STATUS "[IGC] SPIRV_TRANSLATOR_IN_LLVM was set to \"${SPIRV_TRANSLATOR_IN_LLVM}\". "
+                   "Checking for LLVMSPIRVLib target...")
+    if(NOT TARGET LLVMSPIRVLib)
+        message(FATAL_ERROR "[IGC] SPIRV_TRANSLATOR_IN_LLVM does not have LLVMSPIRVLib target!")
+    endif()
+    find_path(SPIRV_TRANSLATOR_HEADER_DIR "LLVMSPIRVLib.h" PATHS ${SPIRV_TRANSLATOR_SOURCE_DIR}/include REQUIRED NO_DEFAULT_PATH)
+    target_link_libraries(KHRONOS_SPIRV_TRANSLATOR INTERFACE LLVMSPIRVLib)
+    target_include_directories(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_HEADER_DIR})
+    message(STATUS "[IGC] Using LLVMSPIRVLib from: ${SPIRV_TRANSLATOR_IN_LLVM}")
+elseif(SPIRV_TRANSLATOR_DIR)
+    message(STATUS "[IGC] SPIRV_TRANSLATOR_DIR was set to \"${SPIRV_TRANSLATOR_DIR}\". "
+                   "Checking for LLVMSPIRVLib target...")
+    # search for LLVMSPIRVLib only in SPIRV_TRANSLATOR_DIR, do not consider system paths
+    find_library(SPIRV_TRANSLATOR_LIB NAMES LLVMSPIRVLib PATHS ${SPIRV_TRANSLATOR_DIR}/lib/ REQUIRED NO_DEFAULT_PATH)
+    find_path(SPIRV_TRANSLATOR_HEADER_DIR "LLVMSPIRVLib.h" PATHS ${SPIRV_TRANSLATOR_DIR}/include/LLVMSPIRVLib REQUIRED NO_DEFAULT_PATH)
+    target_link_libraries(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_LIB})
+    target_include_directories(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_HEADER_DIR})
+    message(STATUS "[IGC] Using LLVMSPIRVLib from: ${SPIRV_TRANSLATOR_LIB}")
+else()
+    # search for LLVMSPIRVLib in system paths
+    find_package(PkgConfig REQUIRED QUIET)
+    pkg_search_module(SPIRV_TRANSLATOR REQUIRED IMPORTED_TARGET LLVMSPIRVLib)
+    if(NOT SPIRV_TRANSLATOR_FOUND)
+        message(FATAL_ERROR
+                "[IGC] LLVMSPIRVLib is not installed in your system. "
+                "You can install it OR "
+                "Set path to prebuilt package with SPIRV_TRANSLATOR_DIR cmake parameter OR "
+                "Set path to directory, containing LLVMSPIRVLib.pc to PKG_CONFIG_PATH environment variable.")
+    endif()
+    message(STATUS "[IGC] SPIRV_TRANSLATOR_LINK_LIBRARIES was set to \"${SPIRV_TRANSLATOR_LINK_LIBRARIES}\". "
+                   "Checking for LLVMSPIRVLib target...")
+    find_path(SPIRV_TRANSLATOR_HEADER_DIR "LLVMSPIRVLib.h" PATHS ${SPIRV_TRANSLATOR_INCLUDE_DIRS}/LLVMSPIRVLib REQUIRED NO_DEFAULT_PATH)
+    target_link_libraries(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_LIBRARIES})
+    target_include_directories(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_HEADER_DIR})
+    message(STATUS "[IGC] Using LLVMSPIRVLib from: ${SPIRV_TRANSLATOR_LINK_LIBRARIES}")
+endif()
+
+endif()
 
 # ======================================== Include directories =========================================
 
