@@ -81,9 +81,9 @@ namespace IGCLLVM
     inline unsigned arg_size(const llvm::CallInst& CI)
     {
 #if LLVM_VERSION_MAJOR < 8
-        return (unsigned)(CI.arg_end() - CI.arg_begin());
+        return CI.arg_end() - CI.arg_begin();
 #else
-        return (unsigned)CI.arg_size();
+        return CI.arg_size();
 #endif
     }
 
