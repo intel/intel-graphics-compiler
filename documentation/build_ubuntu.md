@@ -127,7 +127,6 @@ When checking out the components refer to the following table, replace **XX** wi
 |-----------------------|:----------------:|----------------------|------------------|
 | llvm-project          | -                | release/**XX**.x     | release/10.x     |
 | vc-intrinsics         | no               | master               | master           |
-| llvm_patches          | no               | master               | master           |
 | SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_100 |
 | opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-100     |
 
