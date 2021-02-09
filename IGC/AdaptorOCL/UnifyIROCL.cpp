@@ -46,7 +46,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPop.hpp"
 
-#include "CleanupInputIR.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "AdaptorCommon/LegalizeFunctionSignatures.h"
@@ -182,6 +181,8 @@ static void CommonOCLBasedPasses(
     std::unique_ptr<llvm::Module> BuiltinGenericModule,
     std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
+    IGCPassManager mpm(pContext, "Unify");
+
 #if defined( _DEBUG )
     llvm::verifyModule(*pContext->getModule());
 #endif
@@ -274,22 +275,6 @@ static void CommonOCLBasedPasses(
     CompilerOpts.EnableZEBinary =
         pContext->m_InternalOptions.EnableZEBinary;
 
-    IGCPassManager mpmSPIR(pContext, "Unify");
-    mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
-    mpmSPIR.add(new CodeGenContextWrapper(pContext));
-    mpmSPIR.add(new SPIRMetaDataTranslation());
-    mpmSPIR.run(*pContext->getModule());
-
-    bool isOptDisabled = CompilerOpts.OptDisable;
-    if (isOptDisabled)
-    {
-        // Do input IR cleanup under -O0 for now.
-        CleanupInputIR(pContext);
-        //DumpLLVMIR(pContext, "AfterCleanupInputIR");
-    }
-
-    IGCPassManager mpm(pContext, "Unify");
-
     // right now we don't support any standard function in the code gen
     // maybe we want to support some at some point to take advantage of LLVM optimizations
     TargetLibraryInfoImpl TLI;
@@ -300,6 +285,12 @@ static void CommonOCLBasedPasses(
     // This should be removed, once FE will be updated to use LLVM IR that supports
     // AllowContract and ApproxFunc FastMathFlags.
     mpm.add(new FixFastMathFlags());
+
+    IGCPassManager mpmSPIR(pContext, "Unify");
+    mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
+    mpmSPIR.add(new CodeGenContextWrapper(pContext));
+    mpmSPIR.add(new SPIRMetaDataTranslation());
+    mpmSPIR.run(*pContext->getModule());
 
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
@@ -525,6 +516,7 @@ static void CommonOCLBasedPasses(
     mpm.add(new SetFastMathFlags());
     mpm.add(new FixResourcePtr());
 
+    bool isOptDisabled = CompilerOpts.OptDisable;
     if(isOptDisabled)
     {
         // Run additional predefined constant resolving when optimization is
