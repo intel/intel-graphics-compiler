@@ -664,7 +664,7 @@ bool WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources() const
 
 bool WaDisableSampleLz() const
 {
-    return IGC_IS_FLAG_ENABLED(DisableWaSampleLZ);
+    return (IGC_IS_FLAG_DISABLED(DisableWaSampleLZ) && m_WaTable.Wa_14013297064);
 }
 
 bool WaEnableA64WA() const
