@@ -60,8 +60,6 @@ namespace IGC
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        void findLdmsUsingInstDownInTree(llvm::Value* inst, std::vector<llvm::GenIntrinsicInst*>& ldmsUsing);
-
         void visitCallInst(llvm::CallInst& I);
     };
 }
