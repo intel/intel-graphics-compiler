@@ -395,8 +395,8 @@
       "pred": [ "PREDICATION", 1 ],
       "surface": [ "SURFACE", 2 ],
       "offset": [ "URAW", 3 ],
-      "src": [ "RAW", 4 ],
-      "src1": [ "RAW", 5 ],
+      "src": [ "RAW", 5 ],
+      "src1": [ "RAW", 4 ],
       "twoaddr": [ "TWOADDR", 6 ],
       "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
     },
@@ -572,8 +572,8 @@
       "pred": [ "PREDICATION", 1 ],
       "surface": [ "SURFACE", 2 ],
       "offset": [ "URAW", 3 ],
-      "src": [ "RAW", 4 ],
-      "src1": [ "RAW", 5 ],
+      "src": [ "RAW", 5 ],
+      "src1": [ "RAW", 4 ],
       "dst": [ "RAW", "RAW_NULLALLOWED", 0 ]
     },
     "fma": {
@@ -1120,8 +1120,8 @@
       "V": [ "URAW", "RAW_NULLALLOWED", 6 ],
       "R": [ "URAW", "RAW_NULLALLOWED", 7 ],
       "LOD": [ "URAW", "RAW_NULLALLOWED", 8 ],
-      "src0": [ "URAW", 3 ],
-      "src1": [ "URAW", 4 ],
+      "src0": [ "URAW", 4 ],
+      "src1": [ "URAW", 3 ],
       "dst": [ "URAW", "RAW_NULLALLOWED", 0 ]
     },
     "genx_sssad2add": {
