@@ -402,8 +402,10 @@ namespace IGC
         const ComputeShaderContext* pCtx =
             static_cast<const ComputeShaderContext*>(GetContext());
 
-        if (IGC_IS_FLAG_ENABLED(DispatchGPGPUWalkerAlongYFirst) &&
-            (m_num2DAccesses > m_num1DAccesses) &&
+        // Assume DispatchGPGPUWalkerAlongYFirst is on here unless off explicitly
+        if (IGC_GET_FLAG_VALUE(DispatchGPGPUWalkerAlongYFirst) == 0)
+            m_dispatchAlongY = false;
+        else if ((m_num2DAccesses > m_num1DAccesses) &&
             !pCtx->getModuleMetaData()->csInfo.disableLocalIdOrderOptimizations &&
             GetContext()->m_DriverInfo.SupportsDispatchGPGPUWalkerAlongYFirst())
         {
