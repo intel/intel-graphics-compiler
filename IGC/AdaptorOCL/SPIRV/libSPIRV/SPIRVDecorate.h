@@ -86,10 +86,6 @@ public:
   std::vector<SPIRVWord> getVecLiteral() const;
   Decoration getDecorateKind() const;
   size_t getLiteralCount() const;
-  /// Compare for kind and literal only.
-  struct Comparator {
-    bool operator()(const SPIRVDecorateGeneric *A, const SPIRVDecorateGeneric *B) const;
-  };
   /// Compare kind, literals and target.
   friend bool operator==(const SPIRVDecorateGeneric &A,
       const SPIRVDecorateGeneric &B);
@@ -108,24 +104,7 @@ protected:
   SPIRVDecorationGroup *Owner; // Owning decorate group
 };
 
-class SPIRVDecorateSet: public std::multiset<const SPIRVDecorateGeneric *,
-    SPIRVDecorateGeneric::Comparator> {
-    public:
-  typedef std::multiset<const SPIRVDecorateGeneric *,
-      SPIRVDecorateGeneric::Comparator> BaseType;
-  iterator insert(const value_type& Dec) {
-    auto ER = BaseType::equal_range(Dec);
-    for (auto I = ER.first, E = ER.second; I != E; ++I) {
-      SPIRVDBG(bildbgs() << "[compare decorate] " << *Dec
-                        << " vs " << **I << " : ");
-      if (**I == *Dec)
-        return I;
-      SPIRVDBG(bildbgs() << " diff\n");
-    }
-    SPIRVDBG(bildbgs() << "[add decorate] " << *Dec << '\n');
-    return BaseType::insert(Dec);
-  }
-};
+typedef std::vector<const SPIRVDecorateGeneric *> SPIRVDecorateSet;
 
 class SPIRVDecorate:public SPIRVDecorateGeneric{
 public:

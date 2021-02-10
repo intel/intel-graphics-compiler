@@ -178,7 +178,6 @@ public:
   virtual void setMemoryModel(SPIRVMemoryModelKind) = 0;
   virtual void setName(SPIRVEntry *, const std::string&) = 0;
   virtual void setSourceLanguage(SpvSourceLanguage, SPIRVWord) = 0;
-  virtual void optimizeDecorates() = 0;
   virtual void setModuleProcessed(const std::string& MP) = 0;
 
   // Object creation functions

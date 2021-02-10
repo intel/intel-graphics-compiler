@@ -168,7 +168,6 @@ public:
   // Module changing functions
   bool importBuiltinSet(const std::string &, SPIRVId *) override;
   bool importBuiltinSetWithId(const std::string &, SPIRVId) override;
-  void optimizeDecorates() override;
   void setAddressingModel(SPIRVAddressingModelKind AM) override { AddrModel = AM;}
   void setAlignment(SPIRVValue *, SPIRVWord) override;
   void setMemoryModel(SPIRVMemoryModelKind MM) override { MemoryModel = MM;}
@@ -357,39 +356,6 @@ SPIRVModuleImpl::addLine(SPIRVString* FileName,
     SPIRVWord Line, SPIRVWord Column) {
   auto L = add(new SPIRVLine(this, FileName->getId(), Line, Column));
   return L;
-}
-
-// Creates decoration group and group decorates from decorates shared by
-// multiple targets.
-void
-SPIRVModuleImpl::optimizeDecorates() {
-  for (auto I = DecorateSet.begin(), E = DecorateSet.end(); I != E;) {
-    auto D = *I;
-    if (D->getOpCode() == OpMemberDecorate) {
-      ++I;
-      continue;
-    }
-    auto ER = DecorateSet.equal_range(D);
-    if (std::distance(ER.first, ER.second) < 2) {
-      I = ER.second;
-      continue;
-    }
-    auto G = new SPIRVDecorationGroup(this, getId());
-    std::vector<SPIRVId> Targets;
-    Targets.push_back(D->getTargetId());
-    const_cast<SPIRVDecorateGeneric*>(D)->setTargetId(G->getId());
-    G->getDecorations().insert(D);
-    for (I = ER.first; I != ER.second; ++I) {
-      auto E = *I;
-      if (*E == *D)
-        continue;
-      Targets.push_back(E->getTargetId());
-    }
-    DecorateSet.erase(ER.first, ER.second);
-    auto GD = new SPIRVGroupDecorate(G, Targets);
-    DecGroupVec.push_back(G);
-    GroupDecVec.push_back(GD);
-  }
 }
 
 void
@@ -625,7 +591,7 @@ SPIRVModuleImpl::addDecorate(const SPIRVDecorateGeneric *Dec) {
   bool Found = exist(Id, &Target);
   IGC_ASSERT_MESSAGE(Found, "Decorate target does not exist");
   if (!Dec->getOwner())
-    DecorateSet.insert(Dec);
+    DecorateSet.push_back(Dec);
   return Dec;
 }
 
@@ -816,7 +782,6 @@ operator>> (std::istream &I, SPIRVModule &M) {
   while(Decoder.getWordCountAndOpCode())
     Decoder.getEntry();
 
-  MI.optimizeDecorates();
   return I;
 }
 
