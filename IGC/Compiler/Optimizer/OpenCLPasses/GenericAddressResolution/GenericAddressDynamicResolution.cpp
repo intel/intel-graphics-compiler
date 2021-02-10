@@ -81,9 +81,6 @@ char GenericAddressAnalysis::ID = 0;
 
 bool GenericAddressAnalysis::runOnFunction(Function& F)
 {
-    bool noLocalAddresses = true;
-    bool ptrASGeneric = false;
-
     for (auto& BB : F.getBasicBlockList()) {
         for (auto& Inst : BB.getInstList()) {
             Type* Ty = Inst.getType();
@@ -97,28 +94,9 @@ bool GenericAddressAnalysis::runOnFunction(Function& F)
                 Ty = GEP->getPointerOperandType();
             auto PT = dyn_cast<PointerType>(Ty);
             if (PT && PT->getAddressSpace() == ADDRESS_SPACE_GENERIC) {
-                ptrASGeneric = true;
-            }
-            if( PT && PT->getAddressSpace() == ADDRESS_SPACE_LOCAL ) {
-                noLocalAddresses = false;
-            }
-            // if all analysis concluded then break further processing
-            if( ptrASGeneric && !noLocalAddresses )
-            {
-                break;
+                return true;
             }
         }
-    }
-
-    // if local addresses do not occur, then set flag in function metadata
-    if( noLocalAddresses ) {
-        ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        modMD->FuncMD[ &F ].openCLNoLocalAddresses = true;
-    }
-
-    if( ptrASGeneric )
-    {
-        return true;
     }
 
     return false;
@@ -150,13 +128,13 @@ namespace {
 
         virtual bool runOnFunction(Function& F) override;
 
-        bool visitLoadStoreInst(Instruction& I, bool const noLocalAddresses );
+        bool visitLoadStoreInst(Instruction& I);
         bool visitIntrinsicCall(CallInst& I);
         Module* getModule() { return m_module; }
 
     private:
         Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
-        void resolveGAS(Instruction& I, Value* pointerOperand, bool const noLocalAddresses );
+        void resolveGAS(Instruction& I, Value* pointerOperand);
         void resolveGASWithoutBranches(Instruction& I, Value* pointerOperand);
         bool allowArithmeticOnGenericAddressSpace(Function& F);
     };
@@ -180,9 +158,6 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     bool modified = false;
     bool changed = false;
-
-    ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    bool const noLocalAddresses = modMD->FuncMD[ &F ].openCLNoLocalAddresses;
 
     modified = allowArithmeticOnGenericAddressSpace(F);
 
@@ -212,7 +187,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
             Instruction& instruction = (*i);
 
             if (isa<LoadInst>(instruction) || isa<StoreInst>(instruction)) {
-                changed = visitLoadStoreInst(instruction, noLocalAddresses);
+                changed = visitLoadStoreInst(instruction);
             }
 
             if (changed) {
@@ -233,7 +208,7 @@ Type* GenericAddressDynamicResolution::getPointerAsIntType(LLVMContext& ctx, con
     return IntegerType::get(ctx, ptrBits);
 }
 
-bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I, bool const noLocalAddresses)
+bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
 {
     bool changed = false;
 
@@ -253,14 +228,13 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I, bool co
     }
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
-        if (m_ctx->forceGlobalMemoryAllocation() && (
-            m_ctx->hasNoLocalToGenericCast() || noLocalAddresses))
+        if (m_ctx->forceGlobalMemoryAllocation() && m_ctx->hasNoLocalToGenericCast())
         {
             resolveGASWithoutBranches(I, pointerOperand);
         }
         else
         {
-            resolveGAS(I, pointerOperand, noLocalAddresses );
+            resolveGAS(I, pointerOperand);
         }
         changed = true;
     }
@@ -268,7 +242,7 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I, bool co
     return changed;
 }
 
-void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand, bool const noLocalAddresses)
+void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand)
 {
     // Every time there is a load/store from/to a generic pointer, we have to resolve
     // its corresponding address space by looking at its tag on bits[61:63].
@@ -317,7 +291,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     }
 
     // Local Branch
-    if (!(m_ctx->hasNoLocalToGenericCast() || noLocalAddresses))
+    if (!m_ctx->hasNoLocalToGenericCast())
     {
         localBlock = BasicBlock::Create(I.getContext(), "LocalBlock", convergeBlock->getParent(), convergeBlock);
         // Local
@@ -359,7 +333,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     builder.SetInsertPoint(currentBlock);
 
     // Local branch can be saved if there are no local to generic casts
-    if (m_ctx->hasNoLocalToGenericCast() || noLocalAddresses)
+    if (m_ctx->hasNoLocalToGenericCast())
     {
         SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, 1);
         // Based on tag there are two cases 001: private, 000/111: global
