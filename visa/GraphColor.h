@@ -271,15 +271,11 @@ typedef std::map<vISA::G4_Declare*, std::pair<vISA::G4_INST*, unsigned>>::iterat
 //
 namespace vISA
 {
-    struct MASK_Declares
-    {
-        BitSet* defaultMask;
-        BitSet* noneDefaultMask;
-    };
-
     class Augmentation
     {
     private:
+        // pair of default mask, non-default mask
+        using MaskDeclares = std::pair<BitSet, BitSet>;
         G4_Kernel& kernel;
         Interference& intf;
         GlobalRA& gra;
@@ -287,12 +283,12 @@ namespace vISA
         LiveRange* const * const lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
-        std::unordered_map<FuncInfo*, PhyRegSummary *> localSummaryOfCallee;
+        std::unordered_map<FuncInfo*, PhyRegSummary> localSummaryOfCallee;
         std::vector<G4_Declare*> sortedIntervals;
         std::list<G4_Declare*> defaultMask;
         std::list<G4_Declare*> nonDefaultMask;
-        std::unordered_map<FuncInfo*, MASK_Declares> callsiteDeclares;
-        std::map <G4_Declare*, MASK_Declares*> retDeclares;
+        std::unordered_map<FuncInfo*, MaskDeclares> callsiteDeclares;
+        std::unordered_map <G4_Declare*, MaskDeclares> retDeclares;
         Mem_Manager& m;
 
         bool updateDstMaskForScatter(G4_INST* inst, unsigned char* mask);
@@ -324,7 +320,7 @@ namespace vISA
         bool isConsecutiveBits(const G4_Declare* dcl, unsigned size) const;
         bool isCompatible(const G4_Declare* testDcl, const G4_Declare* biggerDcl) const;
         void buildInterferenceIncompatibleMask();
-        void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask);
+        void buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MaskDeclares* mask);
         void buildInteferenceForCallsite(FuncInfo* func);
         void buildInteferenceForRetDeclares();
         void buildSummaryForCallees();
@@ -336,7 +332,7 @@ namespace vISA
         void handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, bool isCall);
         bool weakEdgeNeeded(AugmentationMasks, AugmentationMasks);
 
-        void addSIMDIntfDclForCallSite(MASK_Declares* maskDeclares);
+        void addSIMDIntfDclForCallSite(MaskDeclares* maskDeclares);
         void addSIMDIntfForRetDclares(G4_Declare* newDcl);
 
     public:

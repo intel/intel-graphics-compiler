@@ -2151,7 +2151,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
 
 void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
 {
-    DebugInfoState state(kernel.fg.mem);
+    DebugInfoState state;
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
         bb->getNestLevel() : 0);
 
@@ -4424,33 +4424,34 @@ bool Augmentation::weakEdgeNeeded(AugmentationMasks defaultDclMask, Augmentation
 //
 // Mark interference between newDcl and other incompatible dcls in current active lists.
 //
-void Augmentation::addSIMDIntfDclForCallSite(MASK_Declares* maskDeclares)
+void Augmentation::addSIMDIntfDclForCallSite(MaskDeclares* maskDeclares)
 {
     for (auto defaultDcl : defaultMask)
     {
-        maskDeclares->defaultMask->set(defaultDcl->getRegVar()->getId(), true);
+        maskDeclares->first.set(defaultDcl->getRegVar()->getId(), true);
     }
 
     for (auto nonDefaultDcl : nonDefaultMask)
     {
-        maskDeclares->noneDefaultMask->set(nonDefaultDcl->getRegVar()->getId(), true);
+        maskDeclares->second.set(nonDefaultDcl->getRegVar()->getId(), true);
     }
 }
 
 void Augmentation::addSIMDIntfForRetDclares(G4_Declare* newDcl)
 {
     auto dclIt = retDeclares.find(newDcl);
-    MASK_Declares* mask = nullptr;
+    MaskDeclares* mask = nullptr;
     if (dclIt == retDeclares.end())
     {
-        mask = (MASK_Declares*)m.alloc(sizeof(MASK_Declares));
-        mask->defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
-        mask->noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
-        retDeclares[newDcl] = mask;
+        MaskDeclares newMask;
+        newMask.first.resize(liveAnalysis.getNumSelectedGlobalVar());
+        newMask.second.resize(liveAnalysis.getNumSelectedGlobalVar());
+        retDeclares[newDcl] = std::move(newMask);
+        mask = &retDeclares[newDcl];
     }
     else
     {
-        mask = dclIt->second;
+        mask = &dclIt->second;
     }
     addSIMDIntfDclForCallSite(mask);
 }
@@ -4662,14 +4663,14 @@ void Augmentation::buildInterferenceIncompatibleMask()
     }
 }
 
-void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MASK_Declares* mask)
+void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, MaskDeclares* mask)
 {
 
     for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
     {
         auto newDclAugMask = gra.getAugmentationMask(newDcl);
 
-        if (mask->defaultMask->isSet(i))
+        if (mask->first.isSet(i))
         {
             G4_Declare* defaultDcl = lrs[i]->getDcl();
             if (gra.getAugmentationMask(defaultDcl) != newDclAugMask)
@@ -4724,7 +4725,7 @@ void Augmentation::buildInteferenceForCallSiteOrRetDeclare(G4_Declare* newDcl, M
         }
 
         // Mark interference among non-default mask variables
-        if (mask->noneDefaultMask->isSet(i))
+        if (mask->second.isSet(i))
         {
             G4_Declare* nonDefaultDcl = lrs[i]->getDcl();
             // Non-default masks are different so mark interference
@@ -4748,7 +4749,7 @@ void Augmentation::buildInteferenceForCallsite(FuncInfo* func)
     {
         for (uint32_t j = 0; j < kernel.getNumRegTotal(); j++)
         {
-            if (localSummaryOfCallee[func]->isGRFBusy(j))
+            if (localSummaryOfCallee[func].isGRFBusy(j))
             {
                 G4_Declare* varDcl = gra.getGRFDclForHRA(j);
                 buildInteferenceForCallSiteOrRetDeclare(varDcl, &callsiteDeclares[func]);
@@ -4761,7 +4762,7 @@ void Augmentation::buildInteferenceForRetDeclares()
 {
     for (auto retDclIt : retDeclares)
     {
-        buildInteferenceForCallSiteOrRetDeclare(retDclIt.first, retDclIt.second);
+        buildInteferenceForCallSiteOrRetDeclare(retDclIt.first, &retDclIt.second);
     }
 }
 
@@ -4777,7 +4778,7 @@ void Augmentation::buildSummaryForCallees()
             // entry kernel
             continue;
         }
-        PhyRegSummary* funcSummary = new (m)PhyRegSummary(totalGRFNum);
+        PhyRegSummary funcSummary(totalGRFNum);
         for (auto&& bb : func->getBBList())
         {
             if (auto summary = kernel.fg.getBBLRASummary(bb))
@@ -4786,7 +4787,7 @@ void Augmentation::buildSummaryForCallees()
                 {
                     if (summary->isGRFBusy(i))
                     {
-                        funcSummary->setGRFBusy(i);
+                        funcSummary.setGRFBusy(i);
                     }
                 }
             }
@@ -4794,21 +4795,20 @@ void Augmentation::buildSummaryForCallees()
 
         for (auto&& callee : func->getCallees())
         {
-            PhyRegSummary* summary = localSummaryOfCallee[callee];
+            PhyRegSummary* summary = &localSummaryOfCallee[callee];
             if (summary)
             {
                 for (int i = 0; i < totalGRFNum; i++)
                 {
                     if (summary->isGRFBusy(i))
                     {
-                        funcSummary->setGRFBusy(i);
+                        funcSummary.setGRFBusy(i);
                     }
                 }
             }
         }
         localSummaryOfCallee[func] = funcSummary;
     }
-
 }
 
 void Augmentation::augmentIntfGraph()
@@ -4826,8 +4826,8 @@ void Augmentation::augmentIntfGraph()
     for (auto func : kernel.fg.funcInfoTable)
     {
         auto& item = callsiteDeclares[func];
-        item.defaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
-        item.noneDefaultMask = new (m)BitSet(liveAnalysis.getNumSelectedGlobalVar(), false);
+        item.first.resize(liveAnalysis.getNumSelectedGlobalVar());
+        item.second.resize(liveAnalysis.getNumSelectedGlobalVar());
     }
 
     if (kernel.getOption(vISA_LocalRA))

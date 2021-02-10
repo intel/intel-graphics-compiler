@@ -676,11 +676,6 @@ LivenessAnalysis::~LivenessAnalysis()
         return;
     }
 
-    for (auto it : neverDefinedRows)
-    {
-        it.second->~BitSet();
-    }
-
     // Remove liveness inserted pseudo kills
     for (auto bb : fg)
     {
@@ -797,7 +792,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
     // writes when VISA optimizer optimizes away some rows of a variable.
     // In interest of compile time we only look for full rows that are
     // not defined rather than sub-regs.
-    std::map<G4_Declare*, BitSet*> largeDefs;
+    std::unordered_map<G4_Declare*, BitSet> largeDefs;
 
     // Populate largeDefs map with dcls > 1 GRF size
     for (auto dcl : gra.kernel.Declares)
@@ -813,9 +808,9 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
         if (dclNumRows < 2)
             continue;
 
-        BitSet* bitset = new (m) BitSet(dclNumRows, false);
+        BitSet bitset(dclNumRows, false);
 
-        largeDefs.insert(std::make_pair(dcl, bitset));
+        largeDefs.insert(std::make_pair(dcl, std::move(bitset)));
     }
 
     if (largeDefs.empty())
@@ -849,7 +844,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
                 unsigned int rowStart = lb / bytesPerGRF;
                 unsigned int rowEnd = rb / bytesPerGRF;
 
-                it->second->set(rowStart, rowEnd);
+                it->second.set(rowStart, rowEnd);
             }
         }
     }
@@ -861,7 +856,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
         BitSet* undefinedRows = nullptr;
         for (unsigned int i = 0; i < numRows; i++)
         {
-            if (!it.second->isSet(i))
+            if (!it.second.isSet(i))
             {
                 if (undefinedRows == nullptr)
                 {
@@ -871,15 +866,10 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
             }
         }
 
-        if (undefinedRows != nullptr)
+        if (undefinedRows)
         {
-            neverDefinedRows.insert(std::make_pair(it.first, undefinedRows));
+            neverDefinedRows.insert(std::make_pair(it.first, std::move(*undefinedRows)));
         }
-    }
-
-    for (auto it : largeDefs)
-    {
-        it.second->~BitSet();
     }
 }
 
@@ -1758,9 +1748,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                                                    BitSet& use_gen,
                                                    BitSet& use_kill)
 {
-    std::vector<BitSet*> footprints(numVarId, 0);
+    std::vector<BitSet> footprints(numVarId);
     std::vector<std::pair<G4_Declare*, INST_LIST_RITER>> pseudoKills;
-    std::stack<BitSet*> toDelete;
 
     //
     // Mark each fcall as using all globals and arg pre-defined var
@@ -1804,10 +1793,10 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             continue;
         }
 
-        if (dst != NULL)
+        if (dst)
         {
             G4_DstRegRegion* dstrgn = dst;
-            BitSet* dstfootprint = NULL;
+            BitSet* dstfootprint = nullptr;
 
             if (dstrgn->getBase()->isRegAllocPartaker())
             {
@@ -1823,28 +1812,24 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     continue;
                 }
 
-                dstfootprint = footprints[id];
+                dstfootprint = &footprints[id];
 
-                if (dstfootprint == NULL)
+                if (dstfootprint->getSize() == 0)
                 {
                     // Write for dst was not seen before, so insert in to map
                     // bitsetSize is in bytes
                     unsigned int bitsetSize = dstrgn->isFlag() ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
 
-                    BitSet* newBitSet;
-                    newBitSet = new (m) BitSet(bitsetSize, false);
+                    BitSet newBitSet(bitsetSize, false);
 
                     auto it = neverDefinedRows.find(topdcl);
                     if (it != neverDefinedRows.end())
                     {
                         // Bitwise OR new bitset with never defined rows
-                        *newBitSet |= *it->second;
+                        newBitSet |= it->second;
                     }
 
-                    toDelete.push(newBitSet);
-                    std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
-                    footprints[id] = newBitSet;
-                    dstfootprint = newBitSet;
+                    footprints[id] = std::move(newBitSet);
                     if (gra.isBlockLocal(topdcl) &&
                         topdcl->getAddressed() == false &&
                         dstrgn->getRegAccess() == Direct)
@@ -1913,9 +1898,9 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         for (unsigned j = 0; j < G4_MAX_SRCS; j++)
         {
             G4_Operand* src = i->getSrc(j);
-            BitSet* srcfootprint = NULL;
+            BitSet* srcfootprint = nullptr;
 
-            if (src == NULL)
+            if (!src)
             {
                 continue;
             }
@@ -1928,9 +1913,9 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 if (base->isRegAllocPartaker())
                 {
                     unsigned id = topdcl->getRegVar()->getId();
-                    srcfootprint = footprints[id];
+                    srcfootprint = &footprints[id];
 
-                    if (srcfootprint != NULL)
+                    if (srcfootprint->getSize() != 0)
                     {
                         footprintSrc(i, src->asSrcRegRegion(), srcfootprint);
                     }
@@ -1938,18 +1923,16 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     {
                         unsigned int bitsetSize = (src->asSrcRegRegion()->isFlag()) ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
 
-                        BitSet* newBitSet = new (m) BitSet(bitsetSize, false);
+                        BitSet newBitSet(bitsetSize, false);
 
                         auto it = neverDefinedRows.find(topdcl);
                         if (it != neverDefinedRows.end())
                         {
                             // Bitwise OR new bitset with never defined rows
-                            *newBitSet |= *it->second;
+                            newBitSet |= it->second;
                         }
 
-                        toDelete.push(newBitSet);
-                        footprints[id] = newBitSet;
-                        srcfootprint = newBitSet;
+                        footprints[id] = std::move(newBitSet);
                         if (gra.isBlockLocal(topdcl) &&
                             topdcl->getAddressed() == false &&
                             (topdcl->getRegFile() == G4_ADDRESS ||
@@ -1977,9 +1960,9 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         // Also add grf to the gen set as it may be potentially used
                         unsigned int id = grf->getId();
                         use_gen.set(id, true);
-                        srcfootprint = footprints[id];
+                        srcfootprint = &footprints[id];
 
-                        if (srcfootprint != NULL)
+                        if (srcfootprint->getSize() != 0)
                         {
                             srcfootprint->clear();
 
@@ -2006,32 +1989,28 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         // Process condMod
         //
         G4_CondMod* mod = i->getCondMod();
-        if (mod != NULL) {
+        if (mod) {
             G4_VarBase *flagReg = mod->getBase();
-            if (flagReg != NULL)
+            if (flagReg)
             {
                 if (flagReg->asRegVar()->isRegAllocPartaker())
                 {
-                    BitSet* dstfootprint = NULL;
+                    BitSet* dstfootprint = nullptr;
 
                     G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
-                    MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Invalid alias flag decl.");
+                    MUST_BE_TRUE(topdcl->getAliasDeclare() == nullptr, "Invalid alias flag decl.");
                     unsigned id = topdcl->getRegVar()->getId();
 
-                    dstfootprint = footprints[id];
+                    dstfootprint = &footprints[id];
 
-                    if (dstfootprint == NULL)
+                    if (dstfootprint->getSize() == 0)
                     {
                         // Write for dst was not seen before, so insert in to map
                         // bitsetSize is in bits for flag
                         unsigned int bitsetSize = topdcl->getNumberFlagElements();
 
-                        BitSet* newBitSet;
-                        newBitSet = new (m) BitSet(bitsetSize, false);
-                        toDelete.push(newBitSet);
-                        std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
-                        footprints[id] = newBitSet;
-                        dstfootprint = newBitSet;
+                        BitSet newBitSet(bitsetSize, false);
+                        footprints[id] = std::move(newBitSet);
 
                         if (gra.isBlockLocal(topdcl))
                         {
@@ -2059,7 +2038,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             {
                 MUST_BE_TRUE((i->opcode() == G4_sel ||
                     i->opcode() == G4_csel) &&
-                    i->getCondMod() != NULL,
+                    i->getCondMod() != nullptr,
                     "Invalid CondMod");
             }
         }
@@ -2068,16 +2047,16 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         // Process predicate
         //
         G4_Predicate* predicate = i->getPredicate();
-        if (predicate != NULL) {
+        if (predicate) {
             G4_VarBase *flagReg = predicate->getBase();
-            MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == NULL, "Invalid alias flag decl.");
+            MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == nullptr, "Invalid alias flag decl.");
             if (flagReg->asRegVar()->isRegAllocPartaker())
             {
                 const G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
                 unsigned id = topdcl->getRegVar()->getId();
-                BitSet* srcfootprint = footprints[id];
+                auto srcfootprint = &footprints[id];
 
-                if (srcfootprint != NULL)
+                if (srcfootprint->getSize() != 0)
                 {
                     footprintSrc(i, predicate, srcfootprint);
                 }
@@ -2085,11 +2064,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 {
                     unsigned int bitsetSize = topdcl->getNumberFlagElements();
 
-                    BitSet* newBitSet = new (m) BitSet(bitsetSize, false);
-                    toDelete.push(newBitSet);
-                    std::pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
-                    footprints[id] = newBitSet;
-                    srcfootprint = newBitSet;
+                    BitSet newBitSet(bitsetSize, false);
+                    footprints[id] = std::move(newBitSet);
                     if (gra.isBlockLocal(topdcl))
                     {
                         srcfootprint->setAll();
@@ -2108,13 +2084,13 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         // into and any reads in the block can be sourced from
         // writes within that block itself
         //
-        if (dst != NULL && dst->getBase()->isRegAllocPartaker())
+        if (dst && dst->getBase()->isRegAllocPartaker())
         {
             G4_Declare* topdcl = GetTopDclFromRegRegion(dst);
             unsigned id = topdcl->getRegVar()->getId();
-            BitSet* dstfootprint = footprints[id];
+            auto dstfootprint = &footprints[id];
 
-            if (dstfootprint != NULL)
+            if (dstfootprint->getSize() != 0)
             {
                 // Found dst in map
                 // Check whether all bits set
@@ -2175,14 +2151,14 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             }
         }
 
-        if (mod != NULL && mod->getBase() != NULL && mod->getBase()->asRegVar()->isRegAllocPartaker())
+        if (mod && mod->getBase() && mod->getBase()->asRegVar()->isRegAllocPartaker())
         {
             G4_VarBase *flagReg = mod->getBase();
             G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
             unsigned id = topdcl->getRegVar()->getId();
-            BitSet* dstfootprint = footprints[id];
+            auto dstfootprint = &footprints[id];
 
-            if (dstfootprint != NULL)
+            if (dstfootprint->getSize() != 0)
             {
                 bool wholeRegionWritten = false;
                 unsigned int first;
@@ -2237,15 +2213,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
     // initialize use_in
     //
     use_in = use_gen;
-
-    //
-    // Destroy bitsets allocated using mem manager
-    //
-    while (toDelete.size() > 0)
-    {
-        toDelete.top()->~BitSet();
-        toDelete.pop();
-    }
 }
 
 //
