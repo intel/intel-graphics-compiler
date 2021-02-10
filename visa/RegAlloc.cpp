@@ -418,6 +418,12 @@ bool LivenessAnalysis::isLocalVar(const G4_Declare* decl) const
         return true;
     }
 
+    // Since variable split is done only for local variables, there is no need to analysis for global variables.
+    if (decl->getIsSplittedDcl() || decl->getIsPartialDcl())
+    {
+        return true;
+    }
+
     return false;
 }
 
@@ -589,9 +595,8 @@ LivenessAnalysis::LivenessAnalysis(
     //
     bool areAllPhyRegAssigned = !forceRun;
     bool hasStackCall = fg.getHasStackCalls() || fg.getIsStackCallFunc();
-    bool fastCompile = (fg.builder->getOption(vISA_FastCompileRA) || fg.builder->getOption(vISA_HybridRAWithSpill)) && !hasStackCall;
 
-    if (fastCompile)
+    if (!fg.builder->getOption(vISA_GlobalSendVarSplit) && !hasStackCall)
     {
         areAllPhyRegAssigned = setGlobalVarIDs(verifyRA, areAllPhyRegAssigned);
         areAllPhyRegAssigned = setLocalVarIDs(verifyRA, areAllPhyRegAssigned);
