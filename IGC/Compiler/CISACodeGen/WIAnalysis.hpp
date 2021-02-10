@@ -115,8 +115,6 @@ namespace IGC
         WIAnalysisRunner() {}
         ~WIAnalysisRunner() {}
 
-        void disableBackwardUpdate() { m_disableBackwardUpdate = true; }
-
         bool run();
 
         /// @brief Returns the type of dependency the instruction has on
@@ -150,7 +148,6 @@ namespace IGC
             m_ctrlBranches.clear();
             m_changed1.clear();
             m_changed2.clear();
-            m_backwardList.clear();
             m_allocaDepMap.clear();
             m_storeDepMap.clear();
             m_depMap.clear();
@@ -277,8 +274,6 @@ namespace IGC
         std::vector<const llvm::Value*>* m_pChangedOld;
         std::vector<const llvm::Value*>* m_pChangedNew;
 
-        std::vector<const llvm::Instruction*> m_backwardList;
-
         llvm::Function* m_func;
         llvm::DominatorTree* DT;
         llvm::PostDominatorTree* PDT;
@@ -286,7 +281,6 @@ namespace IGC
         IGC::CodeGenContext* m_CGCtx;
         IGC::ModuleMetaData* m_ModMD;
         IGC::TranslationTable* m_TT;
-        bool m_disableBackwardUpdate = false;
 
         // Allow access to all the store into an alloca if we were able to track it
         llvm::DenseMap<const llvm::AllocaInst*, AllocaDep> m_allocaDepMap;

@@ -298,7 +298,6 @@ bool WIAnalysisRunner::run()
     m_pChangedOld = &m_changed2;
     m_ctrlBranches.clear();
 
-    m_backwardList.clear();
     m_storeDepMap.clear();
     m_allocaDepMap.clear();
 
@@ -321,11 +320,6 @@ bool WIAnalysisRunner::run()
         // This procedure is guranteed to converge since WI-dep can only
         // become less unifrom (uniform->consecutive->ptr->stride->random).
         updateDeps();
-    }
-
-    if (!m_disableBackwardUpdate)
-    {
-        genSpecificBackwardUpdate();
     }
 
     if (PrintWiaCheck)
@@ -422,27 +416,6 @@ bool WIAnalysisRunner::allUsesRandom(const Value* val)
         }
     }
     return true;
-}
-
-void WIAnalysisRunner::genSpecificBackwardUpdate()
-{
-    while (!m_backwardList.empty())
-    {
-        const Instruction* inst = m_backwardList.back();
-        m_backwardList.pop_back();
-        for (unsigned i = 0; i < inst->getNumOperands(); ++i)
-        {
-            Instruction* def = dyn_cast<Instruction>(inst->getOperand(i));
-            if (def && WIAnalysis::isDepUniform(getDependency(def)) && allUsesRandom(def) && !needToBeUniform(def))
-            {
-                // if it is cheap and easy to mark it as RANDOM
-                if (isInstructionSimple(def))
-                {
-                    m_depMap.SetAttribute(def, WIAnalysis::RANDOM);
-                }
-            }
-        }
-    }
 }
 
 void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
@@ -1005,17 +978,13 @@ void WIAnalysisRunner::updateDepMap(const Instruction* inst, WIAnalysis::WIDepen
             m_pChangedNew->push_back(it->second);
         }
     }
-    // accumulate work-list for backward adjustment
+
     if (dep == WIAnalysis::RANDOM)
     {
         EOPCODE eopcode = GetOpCode((Instruction*)inst);
         if (eopcode == llvm_insert)
         {
             updateInsertElements((const InsertElementInst*)inst);
-        }
-        else if (eopcode == llvm_URBWrite || eopcode == llvm_RTWrite || eopcode == llvm_dualRTWrite)
-        {
-            m_backwardList.push_back(inst);
         }
     }
 }
