@@ -175,7 +175,6 @@ void IR_Builder::expandPow(
     createMathInst(duplicateOperand(predOpnd), saturate, exsize, dstOpnd, expSrc, createNullSrc(mathType), MATH_EXP, instOpt, true);
 }
 
-
 int IR_Builder::translateVISAArithmeticDoubleInst(
     ISA_Opcode opcode, VISA_Exec_Size executionSize,
     VISA_EMask_Ctrl emask, G4_Predicate *predOpnd, G4_Sat saturate,
@@ -194,16 +193,18 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_Imm *dbl_constant_0 = createDFImm(0.0);
     G4_Imm *dbl_constant_1 = createDFImm(1.0);
 
-    if (instExecSize == 1 || instExecSize == 4)
     {
-        element_size = 4;
-        loopCount = 1;
-    }
-    else
-    {
-        element_size = instExecSize;
-        exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
-        loopCount = instExecSize / exsize;
+        if (instExecSize == 1 || instExecSize == 4)
+        {
+            element_size = 4;
+            loopCount = 1;
+        }
+        else
+        {
+            element_size = instExecSize;
+            exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
+            loopCount = instExecSize / exsize;
+        }
     }
 
     G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
@@ -1052,16 +1053,18 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion *src2 = nullptr;
     G4_SrcRegRegion *neg_src1 = nullptr;
 
-    if (instExecSize == 1 || instExecSize == 4)
     {
-        element_size = g4::SIMD4;
-        loopCount = 1;
-    }
-    else
-    {
-        element_size = instExecSize;
-        exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
-        loopCount = instExecSize / exsize;
+        if (instExecSize == 1 || instExecSize == 4)
+        {
+            element_size = g4::SIMD4;
+            loopCount = 1;
+        }
+        else
+        {
+            element_size = instExecSize;
+            exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
+            loopCount = instExecSize / exsize;
+        }
     }
 
     bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, getGRFSize()) &&
