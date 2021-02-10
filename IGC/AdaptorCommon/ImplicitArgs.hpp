@@ -43,7 +43,7 @@ namespace llvm
 namespace IGC
 {
     /// @brief  ImplicitArg is used for representing the implict information that is passed from the
-    ///         OpenCL runtime to IGC, charecterize it and allow IGC to use it.
+    ///         OpenCL runtime to IGC, characterize it and allow IGC to use it.
     /// @Author Marina Yatsina
     class ImplicitArg {
     public:
@@ -140,8 +140,6 @@ namespace IGC
         ///        sets that contain the relevant Values.
         typedef std::map<ImplicitArg::ArgType, ArgValSet> ArgMap;
 
-        /// @brief This map type is used to map implicit argument types to
-        //
         typedef std::pair<ImplicitArg::ArgType, unsigned int> StructArgElement;
         typedef std::vector<StructArgElement> StructArgList;
 
@@ -188,13 +186,13 @@ namespace IGC
         bool                            isLocalIDs() const;
 
     private:
-        ArgType                         m_argType;
-        std::string                     m_name;
-        ValType                         m_valType;
-        WIAnalysis::WIDependancy        m_dependency;
-        unsigned int                    m_nbElement;
-        ValAlign                        m_align;
-        bool                            m_isConstantBuf;
+        const ArgType                   m_argType;
+        const std::string               m_name;
+        const ValType                   m_valType;
+        const WIAnalysis::WIDependancy  m_dependency;
+        const unsigned int              m_nbElement;
+        const ValAlign                  m_align;
+        const bool                      m_isConstantBuf;
     };
 
     /// @brief  ImplicitArgs is used for accessing the actual implict information that is passed from
@@ -224,7 +222,7 @@ namespace IGC
         /// @brief  Returns the index of the appropriate implicit argument based on the given argument type
         /// @param  argType         The implicit argument type
         /// @return The implicit argument's index for a given argument type
-        unsigned int getArgIndex(ImplicitArg::ArgType argType);
+        unsigned int getArgIndex(ImplicitArg::ArgType argType) const;
 
         /// @brief  Returns the index of the appropriate implicit image or sampler argument
         ///         based on the given argument type and the associated image argument
@@ -232,7 +230,7 @@ namespace IGC
         ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
         /// @param  image           The associated image/sampler argument
         /// @return The implicit argument's index for a given argument type
-        unsigned int getImageArgIndex(ImplicitArg::ArgType argType, const llvm::Argument* image);
+        unsigned int getImageArgIndex(ImplicitArg::ArgType argType, const llvm::Argument* image) const;
 
         /// @brief  Returns the index of the appropriate implicit argument
         ///         based on the given argument type and the argument number
@@ -240,7 +238,7 @@ namespace IGC
         ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
         /// @param  argNum          The explicit argument number of the type
         /// @return The implicit argument's index for a given argument type
-        unsigned int getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum);
+        unsigned int getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) const;
 
         /// @brief  Returns the argument type of the argument at the given index
         /// @param  i               The implicit argument index
@@ -262,7 +260,7 @@ namespace IGC
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  implicitArgs    The implicit argument that are required by the given function
         /// @param  pMdUtils The Metadata API object
-        static void addImplicitArgs(llvm::Function& F, llvm::SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, IGCMD::MetaDataUtils* pMdUtils);
+        static void addImplicitArgs(llvm::Function& F, const llvm::SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, const IGCMD::MetaDataUtils* pMdUtils);
         //TODO doc
 
         /// @brief  Creates implict image arguments metadata for the give function based on the given implicit image
@@ -270,48 +268,48 @@ namespace IGC
         /// @param  F The function for which to create the implicit argument's metadata
         /// @param  argMap          A map of implict argument types to the Value pointers to the arguments
         /// @param  pMdUtils The Metadata API object
-        static void addImageArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, IGCMD::MetaDataUtils* pMdUtils);
+        static void addImageArgs(llvm::Function& F, const ImplicitArg::ArgMap& argMap, const IGCMD::MetaDataUtils* pMdUtils);
         // TODO doc
 
-        static void addStructArgs(llvm::Function& F, const llvm::Argument* A, const ImplicitArg::StructArgList& S, IGCMD::MetaDataUtils* pMdUtils);
+        static void addStructArgs(llvm::Function& F, const llvm::Argument* A, const ImplicitArg::StructArgList& S, const IGCMD::MetaDataUtils* pMdUtils);
 
         /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments
         ///         it should receive. If implicit metadata exists, it adds to it.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  argMap          A map of implict argument types to the set of numbers of arguments
         /// @param  pMdUtils        The Metadata API object
-        static void addNumberedArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, IGCMD::MetaDataUtils* pMdUtils);
+        static void addNumberedArgs(llvm::Function& F, const ImplicitArg::ArgMap& argMap, const IGCMD::MetaDataUtils* pMdUtils);
 
         /// @brief  Create implicit arguments metadata for the given function. It adds one
         ///         implicit argument for each explicit pointer argument to global or constant buffer.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  pMdUtils        The Metadata API object
-        static void addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
+        static void addBufferOffsetArgs(llvm::Function& F, const IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
 
         /// @brief  Create implicit arguments metadata for the given function. It adds one
         ///         implicit argument for each explicit pointer argument to global or constant buffer.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  pMdUtils        The Metadata API object
-        static void addBindlessOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
+        static void addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD);
 
         /// @brief  Returns the (implicit) function argument associated with the given implicit argument type
         /// @param  F               The function for which the implict argument should be returned
         /// @param  argType         The type of the implict argument that should be returned
         /// @return The (implicit) function argument associated with the given argument type
-        llvm::Argument* getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType);
+        llvm::Argument* getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) const;
 
         /// @brief  Check if the given implicit argument type exist in the(implicit) function argument associated
         /// @param  argType         The type of the implict argument that should be checked
         /// @return true if the argument exist, false otherwise.
-        bool isImplicitArgExist(ImplicitArg::ArgType argType);
-        static bool isImplicitArgExist(llvm::Function& F, ImplicitArg::ArgType argType, IGCMD::MetaDataUtils* pMdUtils);
+        bool isImplicitArgExist(ImplicitArg::ArgType argType) const;
+        static bool isImplicitArgExist(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils);
 
         /// @brief  Returns the (implicit) function argument associated with the given implicit argument type
         /// @param  F           The Function for which the implict argument should be returned
         /// @param  argType         The type of the implict argument that should be returned
         /// @return The (implicit) function argument associated with the given argument type
         ///         In case the argument doesn't exist, return nullptr
-        llvm::Argument* getImplicitArg(llvm::Function &F, ImplicitArg::ArgType argType);
+        llvm::Argument* getImplicitArg(llvm::Function &F, ImplicitArg::ArgType argType) const;
 
         /// @brief  Returns the (implicit) function argument associated with the given implicit argument type
         ///         and argument number
@@ -320,7 +318,7 @@ namespace IGC
         /// @param  argNum   The explicit argument number of the type
         /// @return The (implicit) function argument associated with the given argument type and number
         ///         In case the argument doesn't exist, return nullptr
-        llvm::Argument* getNumberedImplicitArg(llvm::Function &F, ImplicitArg::ArgType argType, int argNum);
+        llvm::Argument* getNumberedImplicitArg(llvm::Function &F, ImplicitArg::ArgType argType, int argNum) const;
 
         /// @brief  Returns true if the given argument type is an image or sampler.
         /// @param  argType The argument type to check.
@@ -331,20 +329,10 @@ namespace IGC
         static bool isImplicitStruct(ImplicitArg::ArgType argType);
 
     private:
-        /// @brief  Returns a map between operand numbers in the implicit metadata nodes to
-        ///         implicit argument types.
-        static std::map<int, ImplicitArg::ArgType> initIndexToArgMap();
-
-    private:
 
         /// @brief  All possible implicit arguments
         std::vector<ImplicitArg> IMPLICIT_ARGS;
 
-        /// @brief Maps operand numbers in the implicit argument metadata
-        ///        nodes to implicit argument types.
-        static const std::map<int, ImplicitArg::ArgType> IndexToArgType;
-
-        static const int numImageArgTypes;
         /// @brief The function's metadata information.
         IGCMD::FunctionInfoMetaDataHandle m_funcInfoMD;
 

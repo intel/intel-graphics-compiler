@@ -76,19 +76,18 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
     // Update function signatures
     // Create new functions with implicit args
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    for (Function& func : M)
     {
-        Function* pFunc = &(*I);
         // Only handle functions defined in this module
-        if (pFunc->isDeclaration()) continue;
+        if (func.isDeclaration()) continue;
         // skip non-entry functions
-        if (m_pMdUtils->findFunctionsInfoItem(pFunc) == m_pMdUtils->end_FunctionsInfo()) continue;
+        if (m_pMdUtils->findFunctionsInfoItem(&func) == m_pMdUtils->end_FunctionsInfo()) continue;
         // Skip functions called from function marked with IndirectlyCalled attribute
         // TODO: This function verifies only parent caller, in the future we may need to
         //       also verify all the callers up to the tree.
-        if (hasIndirectlyCalledParent(pFunc)) continue;
+        if (hasIndirectlyCalledParent(&func)) continue;
         // No implicit arg support for stack calls
-        if (pFunc->hasFnAttribute("visaStackCall")) continue;
+        if (func.hasFnAttribute("visaStackCall")) continue;
 
         // see the detail in StatelessToStatefull.cpp.
         // If SToSProducesPositivePointer is true, do not generate implicit arguments.
@@ -96,33 +95,33 @@ bool AddImplicitArgs::runOnModule(Module &M)
             (ctx->getModuleMetaData()->compOpt.HasBufferOffsetArg ||
              IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset)))
         {
-            ImplicitArgs::addBufferOffsetArgs(*pFunc, m_pMdUtils, ctx->getModuleMetaData());
+            ImplicitArgs::addBufferOffsetArgs(func, m_pMdUtils, ctx->getModuleMetaData());
         }
 
-        ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+        ImplicitArgs implicitArgs(func, m_pMdUtils);
 
         // Create the new function body and insert it into the module
-        FunctionType *pNewFTy = getNewFuncType(pFunc, &implicitArgs);
-        Function* pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
-        pNewFunc->copyAttributesFrom(pFunc);
-        pNewFunc->setSubprogram(pFunc->getSubprogram());
-        M.getFunctionList().insert(pFunc->getIterator(), pNewFunc);
-        pNewFunc->takeName(pFunc);
+        FunctionType *pNewFTy = getNewFuncType(&func, &implicitArgs);
+        Function* pNewFunc = Function::Create(pNewFTy, func.getLinkage());
+        pNewFunc->copyAttributesFrom(&func);
+        pNewFunc->setSubprogram(func.getSubprogram());
+        M.getFunctionList().insert(func.getIterator(), pNewFunc);
+        pNewFunc->takeName(&func);
 
         // Since we have now created the new function, splice the body of the old
         // function right into the new function, leaving the old body of the function empty.
-        pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
+        pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), func.getBasicBlockList());
 
         // Loop over the argument list, transferring uses of the old arguments over to
         // the new arguments
-        updateNewFuncArgs(pFunc, pNewFunc, &implicitArgs);
+        updateNewFuncArgs(&func, pNewFunc, &implicitArgs);
 
         // Map old func to new func
-        funcsMapping[pFunc] = pNewFunc;
+        funcsMapping[&func] = pNewFunc;
 
-        if (!pFunc->use_empty())
+        if (!func.use_empty())
         {
-            funcsMappingForReplacement[pFunc] = pNewFunc;
+            funcsMappingForReplacement[&func] = pNewFunc;
         }
     }
 
@@ -162,9 +161,9 @@ bool AddImplicitArgs::runOnModule(Module &M)
         return false;
     }
     // Go over all changed functions
-    for (MapList<Function*, Function*>::const_iterator I = funcsMapping.begin(), E = funcsMapping.end(); I != E; ++I)
+    for (const auto& I : funcsMapping)
     {
-        Function* pFunc = I->first;
+        Function* pFunc = I.first;
 
         IGC_ASSERT(nullptr != pFunc);
         IGC_ASSERT_MESSAGE(pFunc->use_empty(), "Assume all user function are inlined at this point");
@@ -177,13 +176,13 @@ bool AddImplicitArgs::runOnModule(Module &M)
     return true;
 }
 
-bool AddImplicitArgs::hasIndirectlyCalledParent(Function* F)
+bool AddImplicitArgs::hasIndirectlyCalledParent(const Function* F)
 {
     for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
     {
-        if (CallInst* call = dyn_cast<CallInst>(*u))
+        if (const CallInst* call = dyn_cast<CallInst>(*u))
         {
-            Function* parent = call->getParent()->getParent();
+            const Function* parent = call->getParent()->getParent();
             if (parent->hasFnAttribute("IndirectlyCalled"))
                 return true;
         }
@@ -191,10 +190,10 @@ bool AddImplicitArgs::hasIndirectlyCalledParent(Function* F)
     return false;
 }
 
-FunctionType* AddImplicitArgs::getNewFuncType(Function* pFunc, const ImplicitArgs* pImplicitArgs)
+FunctionType* AddImplicitArgs::getNewFuncType(const Function* pFunc, const ImplicitArgs* pImplicitArgs)
 {
     // Add all explicit parameters
-    FunctionType* pFuncType = pFunc->getFunctionType();
+    const FunctionType* pFuncType = pFunc->getFunctionType();
     std::vector<Type *> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
 
     // Add implicit arguments parameter types
@@ -204,7 +203,7 @@ FunctionType* AddImplicitArgs::getNewFuncType(Function* pFunc, const ImplicitArg
     }
 
     // Create new function type with explicit and implicit parameter types
-    return FunctionType::get( pFunc->getReturnType(),newParamTypes, pFunc->isVarArg());
+    return FunctionType::get(pFunc->getReturnType(), newParamTypes, pFunc->isVarArg());
 }
 
 void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs* pImplicitArgs)
@@ -233,25 +232,22 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
         // Iterate over each dbg.declare intrinsic call. If the address operand
         // matches with any argument from old function, pFunc, store it in a
         // data structure so we can fix it later.
-        for (auto bb = pNewFunc->begin(); bb != pNewFunc->end(); ++bb)
+        for (auto& bb : *pNewFunc)
         {
-            for (auto inst = bb->begin(); inst != bb->end();)
+            for (auto& inst : bb)
             {
-                auto DIInst = dyn_cast_or_null<DbgDeclareInst>(&(*inst));
+                auto DIInst = dyn_cast_or_null<DbgDeclareInst>(&inst);
                 if (DIInst)
                 {
+                    auto addr = dyn_cast_or_null<Value>(DIInst->getAddress());
+                    if (addr)
                     {
-                        auto addr = dyn_cast_or_null<Value>(DIInst->getAddress());
-                        if (addr)
+                        if (argMap.find(addr) != argMap.end())
                         {
-                            if (argMap.find(addr) != argMap.end())
-                            {
-                                newAddr.push_back(std::make_pair(DIInst, argMap.find(addr)->second));
-                            }
+                            newAddr.push_back(std::make_pair(DIInst, argMap.find(addr)->second));
                         }
                     }
                 }
-                ++inst;
             }
         }
     }
@@ -259,15 +255,15 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
     for (Function::arg_iterator I = pFunc->arg_begin(), E = pFunc->arg_end(); I != E; ++I, ++currArg)
     {
         llvm::Value* newArg = &(*currArg);
-        if ((*I).getType() != currArg->getType())
+        if (I->getType() != currArg->getType())
         {
-            // fix opague type mismatch on %opencl.image...
+            // fix opaque type mismatch on %opencl.image...
             std::string str0;
             llvm::raw_string_ostream s(str0);
             currArg->getType()->print(s);
 
             BasicBlock &entry = pNewFunc->getEntryBlock();
-            newArg = new llvm::BitCastInst(&(*currArg), (*I).getType(), "", &entry.front());
+            newArg = new llvm::BitCastInst(&(*currArg), I->getType(), "", &entry.front());
         }
         // Move the name and users over to the new version.
         I->replaceAllUsesWith(newArg);

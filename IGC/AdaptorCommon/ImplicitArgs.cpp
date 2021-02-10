@@ -331,7 +331,7 @@ const ImplicitArg& ImplicitArgs::operator[](unsigned int i) const {
     return IMPLICIT_ARGS[getArgType(i)];
 }
 
-unsigned int ImplicitArgs::getArgIndex(ImplicitArg::ArgType argType) {
+unsigned int ImplicitArgs::getArgIndex(ImplicitArg::ArgType argType) const {
     IGC_ASSERT_MESSAGE((this->size() > 0), "There are no implicit arguments!");
 
     // Find the first appearance of the given implicit arg type
@@ -356,12 +356,8 @@ bool ImplicitArgs::isImplicitArgExist(
 {
     bool res = false;
 
-    if (funcInfo->size_ImplicitArgInfoList() <= 0) //There are no implicit arguments!
-        return res;
-
     // Find the first appearance of the given implicit arg type
-    unsigned int implicitArgIndex = 0;
-    for (implicitArgIndex = 0; implicitArgIndex < funcInfo->size_ImplicitArgInfoList(); ++implicitArgIndex)
+    for (unsigned int implicitArgIndex = 0; implicitArgIndex < funcInfo->size_ImplicitArgInfoList(); ++implicitArgIndex)
     {
         ImplicitArg::ArgType type = (ImplicitArg::ArgType)
             funcInfo->getImplicitArgInfoListItem(implicitArgIndex)->getArgId();
@@ -375,7 +371,7 @@ bool ImplicitArgs::isImplicitArgExist(
     return res;
 }
 
-bool ImplicitArgs::isImplicitArgExist(ImplicitArg::ArgType argType)
+bool ImplicitArgs::isImplicitArgExist(ImplicitArg::ArgType argType) const
 {
     return isImplicitArgExist(m_funcInfoMD, argType);
 }
@@ -383,17 +379,17 @@ bool ImplicitArgs::isImplicitArgExist(ImplicitArg::ArgType argType)
 bool ImplicitArgs::isImplicitArgExist(
     llvm::Function& F,
     ImplicitArg::ArgType argType,
-    IGCMD::MetaDataUtils* pMdUtils)
+    const IGCMD::MetaDataUtils* pMdUtils)
 {
     return isImplicitArgExist(pMdUtils->getFunctionsInfoItem(&F), argType);
 }
 
-unsigned int ImplicitArgs::getImageArgIndex(ImplicitArg::ArgType argType, const Argument* image) {
+unsigned int ImplicitArgs::getImageArgIndex(ImplicitArg::ArgType argType, const Argument* image) const {
     IGC_ASSERT_MESSAGE(isImplicitImage(argType), "Non image/sampler implicit arg!");
     return getNumberedArgIndex(argType, image->getArgNo());
 }
 
-unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) {
+unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) const {
     IGC_ASSERT_MESSAGE((argNum >= 0), "objectNum cannot be less than 0");
 
     for (int i = 0, e = m_funcInfoMD->size_ImplicitArgInfoList() ; i < e; ++i)
@@ -409,7 +405,7 @@ unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int
     return m_funcInfoMD->size_ImplicitArgInfoList();
 }
 
-void ImplicitArgs::addImplicitArgs(llvm::Function& F, SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, MetaDataUtils* pMdUtils) {
+void ImplicitArgs::addImplicitArgs(llvm::Function& F, const SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, const MetaDataUtils* pMdUtils) {
     // Add implicit args metadata for the given function
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
     for (auto arg : implicitArgs)
@@ -423,29 +419,33 @@ void ImplicitArgs::addImplicitArgs(llvm::Function& F, SmallVectorImpl<ImplicitAr
     }
 }
 
-void ImplicitArgs::addImageArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, MetaDataUtils* pMdUtils)
+void ImplicitArgs::addImageArgs(llvm::Function& F, const ImplicitArg::ArgMap& argMap, const MetaDataUtils* pMdUtils)
 {
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
-    for (int i = 0; i < numImageArgTypes; ++i)
+    for (ImplicitArg::ArgType argType = ImplicitArg::IMAGES_START; argType <= ImplicitArg::IMAGES_END; argType = static_cast<ImplicitArg::ArgType>(argType + 1))
     {
-        ImplicitArg::ArgValSet& argSet = argMap[IndexToArgType.at(i)];
-        for (const auto& argI : argSet)
+        auto argMapIter = argMap.find(argType);
+        if (argMapIter != argMap.end())
         {
-            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
-            argMD->setArgId(IndexToArgType.at(i));
-            argMD->setExplicitArgNum(argI);
-            funcInfo->addImplicitArgInfoListItem(argMD);
+            for (const auto& argI : argMapIter->second)
+            {
+                ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+                argMD->setArgId(argType);
+                argMD->setExplicitArgNum(argI);
+                funcInfo->addImplicitArgInfoListItem(argMD);
+            }
         }
     }
 }
 
-void ImplicitArgs::addStructArgs(llvm::Function& F, const Argument* A, const ImplicitArg::StructArgList& S, MetaDataUtils* pMdUtils)
+void ImplicitArgs::addStructArgs(llvm::Function& F, const Argument* A, const ImplicitArg::StructArgList& S, const MetaDataUtils* pMdUtils)
 {
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
 
-    for (auto argI = S.begin(), end = S.end(); argI != end; ++argI) {
-        unsigned int id = argI->first;
-        unsigned int offset = argI->second;
+    for (const auto& argI : S)
+    {
+        unsigned int id = argI.first;
+        unsigned int offset = argI.second;
 
         ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
         argMD->setExplicitArgNum(A->getArgNo());
@@ -455,30 +455,29 @@ void ImplicitArgs::addStructArgs(llvm::Function& F, const Argument* A, const Imp
     }
 }
 
-void ImplicitArgs::addNumberedArgs(llvm::Function& F, ImplicitArg::ArgMap& argMap, IGCMD::MetaDataUtils* pMdUtils)
+void ImplicitArgs::addNumberedArgs(llvm::Function& F, const ImplicitArg::ArgMap& argMap, const IGCMD::MetaDataUtils* pMdUtils)
 {
-  FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
-  for (const auto& argPair : argMap)
-  {
-    ImplicitArg::ArgType argId = argPair.first;
-    ImplicitArg::ArgValSet argSet = argPair.second;
-    for (const auto& argNum : argSet)
+    FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+    for (const auto& argPair : argMap)
     {
-      ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
-      argMD->setArgId(argId);
-      argMD->setExplicitArgNum(argNum);
-      funcInfo->addImplicitArgInfoListItem(argMD);
+        ImplicitArg::ArgType argId = argPair.first;
+        ImplicitArg::ArgValSet argSet = argPair.second;
+        for (const auto& argNum : argSet)
+        {
+            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            argMD->setArgId(argId);
+            argMD->setExplicitArgNum(argNum);
+            funcInfo->addImplicitArgInfoListItem(argMD);
+        }
     }
-  }
 }
 
 // Add one implicit argument for each pointer argument to global or constant buffer.
 // Note that F is the original input function (ie, without implicit arguments).
-void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData *modMD)
+void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, const IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData *modMD)
 {
     ImplicitArg::ArgMap OffsetArgs;
-    FunctionInfoMetaDataHandle funcInfoMD =
-        pMdUtils->getFunctionsInfoItem(const_cast<Function*>(&F));
+    FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
 
     IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
@@ -523,11 +522,11 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
 
 // Add one implicit argument for each pointer argument to global or constant buffer.
 // Note that F is the original input function (ie, without implicit arguments).
-void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD)
+void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD)
 {
     ImplicitArg::ArgMap OffsetArgs;
     FunctionInfoMetaDataHandle funcInfoMD =
-        pMdUtils->getFunctionsInfoItem(const_cast<Function*>(&F));
+        pMdUtils->getFunctionsInfoItem(&F);
 
     IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
@@ -616,33 +615,27 @@ int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const
 
 
 TODO("Refactor code to avoid code triplication for getArgInFunc(), getImplicitArg() and WIFuncResolution::getImplicitArg()")
-Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) {
+Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) const {
     IGC_ASSERT_MESSAGE((F.arg_size() >= size()), "Invalid number of argumnents in the function!");
 
     unsigned int argIndex       =  getArgIndex(argType);
     unsigned int argIndexInFunc = F.arg_size() - size() + argIndex;
-    Function::arg_iterator arg  = F.arg_begin();
-    for (unsigned int i = 0; i < argIndexInFunc; ++i,  ++arg);
-
-    return &(*arg);
+    return F.arg_begin() + argIndexInFunc;
 }
 
-Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType)
+Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType) const
 {
-    unsigned int numImplicitArgs = this->size();
     if (!isImplicitArgExist(argType))
         return nullptr;
+    unsigned int numImplicitArgs = this->size();
     unsigned int implicitArgIndex = this->getArgIndex(argType);
 
     unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
-    Function::arg_iterator arg = F.arg_begin();
-    for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);
-
-    return &(*arg);
+    return F.arg_begin() + implicitArgIndexInFunc;
 }
 
-Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum)
+Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum) const
 {
     IGC_ASSERT_MESSAGE((F.arg_size() >= size()), "Invalid number of arguments in the function!");
 
@@ -653,23 +646,8 @@ Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::A
 
     unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
-    Function::arg_iterator arg = F.arg_begin();
-    for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);
-
-    return &(*arg);
+    return F.arg_begin() + implicitArgIndexInFunc;
 }
 
 TODO("The allocation size and alignment of constBase should change according to target bitness...")
 
-const int ImplicitArgs::numImageArgTypes = ImplicitArg::IMAGES_END - ImplicitArg::IMAGES_START + 1;
-
-std::map<int, ImplicitArg::ArgType> ImplicitArgs::initIndexToArgMap()
-{
-    std::map<int, ImplicitArg::ArgType> map;
-    for (int i = 0; i < ImplicitArgs::numImageArgTypes; ++i)
-    {
-        map[i] = (ImplicitArg::ArgType)(ImplicitArg::IMAGES_START + i);
-    }
-    return map;
-}
-const std::map<int, ImplicitArg::ArgType> ImplicitArgs::IndexToArgType = initIndexToArgMap();

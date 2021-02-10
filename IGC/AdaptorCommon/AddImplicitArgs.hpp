@@ -105,14 +105,14 @@ namespace IGC
         /// @brief  Check if a function has indirectly called parent to
         ///         decide whether implicit args should be added
         /// @param  pFunc           Source function
-        bool hasIndirectlyCalledParent(llvm::Function* pFunc);
+        static bool hasIndirectlyCalledParent(const llvm::Function* pFunc);
 
         /// @brief  Create the type of the new function,
         ///         including all explicit and needed impliict parameters
         /// @param  pFunc           The old function
         /// @param  pImplicitArgs   The impliict arguments needed by this function
         /// @returns    The new functuin type
-        llvm::FunctionType* getNewFuncType(llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
+        static llvm::FunctionType* getNewFuncType(const llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
 
         /// @brief  Transfers uses of old arguments to new arguments, sets names of all arguments
         /// @param  pFunc           The old function
