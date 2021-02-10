@@ -70,7 +70,7 @@ namespace IGC
         bool doFinalization(llvm::Module&) override;
         void visitCallInst(llvm::CallInst& I);
     private:
-        CodeGenContext* m_context;
+        CodeGenContext* m_context = nullptr;
         std::unordered_map<unsigned, SResInfoFoldingOutput> m_ResInfoFoldingOutput;
         void FoldSingleTextureValue(llvm::CallInst& I);
         template<typename ContextT>

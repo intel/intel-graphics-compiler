@@ -165,7 +165,7 @@ void WIFuncResolution::visitCallInst(CallInst& CI)
     }
 
     // Handle size_t return type for 64 bits
-    if (wiRes->getType()->getScalarSizeInBits() < CI.getType()->getScalarSizeInBits())
+    if (wiRes && wiRes->getType()->getScalarSizeInBits() < CI.getType()->getScalarSizeInBits())
     {
         CastInst* pCast = CastInst::Create(Instruction::ZExt, wiRes, IntegerType::get(CI.getContext(), CI.getType()->getScalarSizeInBits()), wiRes->getName(), &CI);
         updateDebugLoc(&CI, pCast);
@@ -173,7 +173,7 @@ void WIFuncResolution::visitCallInst(CallInst& CI)
     }
 
     // Replace original WI call instruction by the result of the appropriate sequence
-    CI.replaceAllUsesWith(wiRes);
+    if (wiRes) { CI.replaceAllUsesWith(wiRes); }
     CI.eraseFromParent();
 
     m_changed = true;

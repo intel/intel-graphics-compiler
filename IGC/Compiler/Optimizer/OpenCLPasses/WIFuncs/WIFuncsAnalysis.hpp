@@ -97,31 +97,31 @@ namespace IGC
         bool runOnFunction(llvm::Function& F);
 
         /// @brief  Marks whether group id is needed by the current function
-        bool m_hasGroupID;
+        bool m_hasGroupID = false;
         /// @brief  Marks whether global offset is needed by the current function
-        bool m_hasGlobalOffset;
+        bool m_hasGlobalOffset = false;
         /// @brief  Marks whether local id is needed by the current function
-        bool m_hasLocalID;
+        bool m_hasLocalID = false;
         /// @brief  Marks whether global size is needed by the current function
-        bool m_hasGlobalSize;
+        bool m_hasGlobalSize = false;
         /// @brief  Marks whether local size is needed by the current function
-        bool m_hasLocalSize;
+        bool m_hasLocalSize = false;
         /// @brief  Marks whether work dimension is needed by the current function
-        bool m_hasWorkDim;
+        bool m_hasWorkDim = false;
         /// @brief  Marks whether number of work groups is needed by the current function
-        bool m_hasNumGroups;
+        bool m_hasNumGroups = false;
         /// @brief  Marks whether enqueued local size is needed by the current function
-        bool m_hasEnqueuedLocalSize;
+        bool m_hasEnqueuedLocalSize = false;
         /// @brief  Marks whether stage_in_grid_origin is needed by the current function
-        bool m_hasStageInGridOrigin;
+        bool m_hasStageInGridOrigin = false;
         /// @brief  Marks whether stage_in_grid_size is needed by the current function
-        bool m_hasStageInGridSize;
+        bool m_hasStageInGridSize = false;
         /// @brief  Marks whether sync buffer is needed by the current function
-        bool m_hasSyncBuffer;
-	///  @brief Marks whether kernel has stackcalls
-        bool m_hasStackCalls;
-        /// @brief  MetaData utils used to generate LLVM metadata
-        IGCMD::MetaDataUtils* m_pMDUtils;
+        bool m_hasSyncBuffer = false;
+        /// @brief Marks whether kernel has stackcalls
+        bool m_hasStackCalls = false;
+        /// @brief MetaData utils used to generate LLVM metadata
+        IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
     };
 
 } // namespace IGC

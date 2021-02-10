@@ -323,8 +323,8 @@ namespace vISA
     private:
         std::vector<SBFootprint*>  footprints;  // The coarse grained footprint of operands
         unsigned      nodeID = -1;          // Unique ID of the node
-        unsigned      BBID;           // ID of basic block
-        int      ALUID;          // The ID for in-order instructions. The out-of-order instructions are not counted.
+        unsigned      BBID = 0;           // ID of basic block
+        int      ALUID = 0;          // The ID for in-order instructions. The out-of-order instructions are not counted.
         unsigned      liveStartID = 0; // The start ID of live range
         unsigned      liveEndID = 0;   // The end ID of live range
         unsigned      liveStartBBID = -1; // The start BB ID of live range

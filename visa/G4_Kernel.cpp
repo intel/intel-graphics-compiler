@@ -1084,6 +1084,12 @@ void G4_Kernel::emit_RegInfo()
 {
     const char* asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
+    const char* asmNameEmpty = "";
+    if( !asmName )
+    {
+        asmName = asmNameEmpty;
+    }
+
     std::string dumpFileName = std::string(asmName) + ".reginfo";
     std::fstream ofile(dumpFileName, std::ios::out);
 

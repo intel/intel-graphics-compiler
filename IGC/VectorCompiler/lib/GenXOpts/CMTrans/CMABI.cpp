@@ -248,7 +248,7 @@ int DiagnosticInfoOverlappingArgs::KindID = 0;
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
   std::vector<LocalizationInfo *> LocalizationInfoObjs;
-  GlobalsLocalizationConfig::LimitT GlobalsLocalizationLimit;
+  GlobalsLocalizationConfig::LimitT GlobalsLocalizationLimit = 0;
 
 public:
   static char ID;

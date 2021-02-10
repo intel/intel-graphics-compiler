@@ -1636,14 +1636,28 @@ static const iga::Model *GetModel(TARGET_PLATFORM p)
 bool vISA::InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i)
 {
     const iga::Model *m = GetModel(p);
-    auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
-    return oi.first && oi.first->isValid() && oi.first->supportsSaturation();
+    if(m)
+    {
+        auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
+        return oi.first && oi.first->isValid() && oi.first->supportsSaturation();
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool vISA::InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i)
 {
     const iga::Model *m = GetModel(p);
-    auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
-    return oi.first && oi.first->isValid() && oi.first->supportsSourceModifiers();
+    if(m)
+    {
+        auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
+        return oi.first && oi.first->isValid() && oi.first->supportsSourceModifiers();
+    }
+    else
+    {
+        return false;
+    }
 }
 

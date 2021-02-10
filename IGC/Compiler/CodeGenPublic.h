@@ -620,12 +620,12 @@ namespace IGC
         std::vector<std::unique_ptr<iOpenCL::KernelArgumentInfoAnnotation>> m_kernelArgInfo;
         std::vector<std::unique_ptr<iOpenCL::PrintfStringAnnotation>>       m_printfStringAnnotations;
 
-        std::unique_ptr<iOpenCL::PrintfBufferAnnotation>    m_printfBufferAnnotation;
-        std::unique_ptr<iOpenCL::SyncBufferAnnotation>      m_syncBufferAnnotation;
-        std::unique_ptr<iOpenCL::StartGASAnnotation>        m_startGAS;
-        std::unique_ptr<iOpenCL::WindowSizeGASAnnotation>   m_WindowSizeGAS;
-        std::unique_ptr<iOpenCL::PrivateMemSizeAnnotation>  m_PrivateMemSize;
-        std::string                                         m_kernelAttributeInfo;
+        std::unique_ptr<iOpenCL::PrintfBufferAnnotation>    m_printfBufferAnnotation = nullptr;
+        std::unique_ptr<iOpenCL::SyncBufferAnnotation>      m_syncBufferAnnotation = nullptr;
+        std::unique_ptr<iOpenCL::StartGASAnnotation>        m_startGAS = nullptr;
+        std::unique_ptr<iOpenCL::WindowSizeGASAnnotation>   m_WindowSizeGAS = nullptr;
+        std::unique_ptr<iOpenCL::PrivateMemSizeAnnotation>  m_PrivateMemSize = nullptr;
+        std::string                                         m_kernelAttributeInfo = {};
 
         bool                                                m_HasInlineVmeSamplers = false;
 

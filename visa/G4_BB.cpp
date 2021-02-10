@@ -217,8 +217,11 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         // emit send instruction
         //
         G4_InstSend* SendInst = (*it)->asSendInst();
-        SendInst->emit_send(output);
-        SendInst->emit_send_desc(output);
+        if( SendInst )
+        {
+            SendInst->emit_send( output );
+            SendInst->emit_send_desc( output );
+        }
     }
     else
     {

@@ -337,7 +337,7 @@ void globalLinearScan::printActives()
         lr->getFirstRef(start);
         lr->getLastRef(end);
 
-        int startregnum, endregnum, startsregnum, endsregnum;
+        int startregnum, endregnum, startsregnum=0, endsregnum;
         G4_VarBase* op;
         op = lr->getPhyReg(startsregnum);
 

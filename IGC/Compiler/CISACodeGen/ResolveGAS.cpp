@@ -958,8 +958,8 @@ namespace IGC
             }
         };
 
-        IGCMD::MetaDataUtils* mdUtils;
-        CodeGenContext* ctx;
+        IGCMD::MetaDataUtils* mdUtils = nullptr;
+        CodeGenContext* ctx = nullptr;
         bool hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite);
         void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
         void updateAllUsesWithNewFunction(FuncToUpdate& f);

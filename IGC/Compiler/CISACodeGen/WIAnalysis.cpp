@@ -1045,7 +1045,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     Value* op1 = inst->getOperand(1);
 
     WIAnalysis::WIDependancy dep0 = getDependency(op0);
+    IGC_ASSERT(dep0 < WIAnalysis::NumDeps);
     WIAnalysis::WIDependancy dep1 = getDependency(op1);
+    IGC_ASSERT(dep1 < WIAnalysis::NumDeps);
 
     // For whatever binary operation,
     // uniform returns uniform
@@ -1273,7 +1275,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             Value* op0 = inst->getArgOperand(0);
             Value* op1 = inst->getArgOperand(1);
             WIAnalysis::WIDependancy dep0 = getDependency(op0);
+            IGC_ASSERT(dep0 < WIAnalysis::NumDeps);
             WIAnalysis::WIDependancy dep1 = getDependency(op1);
+            IGC_ASSERT(dep1 < WIAnalysis::NumDeps);
             bool isUniform0 = WIAnalysis::isDepUniform(dep0);
             bool isUniform1 = WIAnalysis::isDepUniform(dep1);
             if ((isUniform0 && isUniform1) || (!isUniform0 && !isUniform1))

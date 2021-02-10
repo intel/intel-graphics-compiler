@@ -84,31 +84,34 @@ void G4Verifier::verify()
 bool G4Verifier::verifyInst(G4_INST *inst)
 {
     ASSERT_USER(inst != NULL, "null instruction upexpected");
-    verifyOpcode(inst);
-    verifyOpnd(inst->getDst(), inst);
-    verifyOpnd(inst->getSrc(0), inst);
-    verifyOpnd(inst->getSrc(1), inst);
-    verifyOpnd(inst->getSrc(2), inst);
-    verifyOpnd(inst->getPredicate(), inst);
-    verifyOpnd(inst->getCondMod(), inst);
-    verifyOpnd(inst->getImplAccDst(), inst);
-    verifyOpnd(inst->getImplAccSrc(), inst);
-
-    if (inst->isSend())
+    if( inst )
     {
-        verifySend(inst);
-    }
+        verifyOpcode( inst );
+        verifyOpnd( inst->getDst(), inst );
+        verifyOpnd( inst->getSrc( 0 ), inst );
+        verifyOpnd( inst->getSrc( 1 ), inst );
+        verifyOpnd( inst->getSrc( 2 ), inst );
+        verifyOpnd( inst->getPredicate(), inst );
+        verifyOpnd( inst->getCondMod(), inst );
+        verifyOpnd( inst->getImplAccDst(), inst );
+        verifyOpnd( inst->getImplAccSrc(), inst );
 
-    verifyDstSrcOverlap(inst);
+        if( inst->isSend() )
+        {
+            verifySend( inst );
+        }
 
-    if (passIndex == Optimizer::PI_cleanMessageHeader ||
-        passIndex == Optimizer::PI_renameRegister ||
-        passIndex == Optimizer::PI_newLocalDefHoisting ||
-        passIndex == Optimizer::PI_newLocalCopyPropagation ||
-        passIndex == Optimizer::PI_cselPeepHoleOpt)
-    {
-        // def-use chain should be valid after these passes
-        return verifyDefUseChain(inst);
+        verifyDstSrcOverlap( inst );
+
+        if( passIndex == Optimizer::PI_cleanMessageHeader ||
+            passIndex == Optimizer::PI_renameRegister ||
+            passIndex == Optimizer::PI_newLocalDefHoisting ||
+            passIndex == Optimizer::PI_newLocalCopyPropagation ||
+            passIndex == Optimizer::PI_cselPeepHoleOpt )
+        {
+            // def-use chain should be valid after these passes
+            return verifyDefUseChain( inst );
+        }
     }
     return true;
 }
@@ -189,7 +192,10 @@ void G4Verifier::printDefUseImpl(std::ostream &os, G4_INST *def, G4_INST *use,
     os << "\n user: ";
     use->emit(os);
     os << "\n opnd: ";
-    use->getOperand(pos)->emit(os);
+    if( use->getOperand( pos ) )
+    {
+        use->getOperand( pos )->emit( os );
+    }
 }
 
 /// Dump or warn def-use.
@@ -805,10 +811,13 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             {
                 auto dst = inst->getDst();
                 // should we assert if dst is not phyReg assigned?
-                bool dstIsAssigned = dst->getBase()->isRegVar() && dst->getBase()->asRegVar()->isPhyRegAssigned();
-                if (dstIsAssigned && dst->getLinearizedStart() % 16 != 0)
+                if( dst )
                 {
-                    assert(false && "destination of move instruction with V/VF imm is not 16-byte aligned");
+                    bool dstIsAssigned = dst->getBase()->isRegVar() && dst->getBase()->asRegVar()->isPhyRegAssigned();
+                    if( dstIsAssigned && dst->getLinearizedStart() % 16 != 0 )
+                    {
+                        assert( false && "destination of move instruction with V/VF imm is not 16-byte aligned" );
+                    }
                 }
             }
         }

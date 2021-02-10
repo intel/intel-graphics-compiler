@@ -105,22 +105,25 @@ bool CSystemThread::CreateSystemThreadKernel(
 
         const unsigned int DQWORD_SIZE = 2 * sizeof( unsigned long long );
 
-        pKernelProgram->Create(platform, mode, bindlessMode);
+        if( pKernelProgram )
+        {
+            pKernelProgram->Create( platform, mode, bindlessMode );
 
-        pSystemThreadKernelOutput->m_KernelProgramSize =  pKernelProgram->GetProgramSize();
+            pSystemThreadKernelOutput->m_KernelProgramSize = pKernelProgram->GetProgramSize();
 
-        const IGC::SCompilerHwCaps &Caps = const_cast<IGC::CPlatform&>(platform).GetCaps();
+            const IGC::SCompilerHwCaps& Caps = const_cast<IGC::CPlatform&>( platform ).GetCaps();
 
-        if (mode & SYSTEM_THREAD_MODE_CSR)
-        pSystemThreadKernelOutput->m_SystemThreadScratchSpace = Caps.KernelHwCaps.CsrSizeInMb * sizeof(MEGABYTE);
+            if( mode & SYSTEM_THREAD_MODE_CSR )
+                pSystemThreadKernelOutput->m_SystemThreadScratchSpace = Caps.KernelHwCaps.CsrSizeInMb * sizeof( MEGABYTE );
 
-        if (mode & (SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL))
-        pSystemThreadKernelOutput->m_SystemThreadResourceSize = Caps.KernelHwCaps.CsrSizeInMb * 2 * sizeof(MEGABYTE);
+            if( mode & ( SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL ) )
+                pSystemThreadKernelOutput->m_SystemThreadResourceSize = Caps.KernelHwCaps.CsrSizeInMb * 2 * sizeof( MEGABYTE );
 
-        pSystemThreadKernelOutput->m_pKernelProgram =
-            IGC::aligned_malloc( pSystemThreadKernelOutput->m_KernelProgramSize, DQWORD_SIZE );
+            pSystemThreadKernelOutput->m_pKernelProgram =
+                IGC::aligned_malloc( pSystemThreadKernelOutput->m_KernelProgramSize, DQWORD_SIZE );
 
-        success = ( pSystemThreadKernelOutput->m_pKernelProgram != nullptr );
+            success = ( pSystemThreadKernelOutput->m_pKernelProgram != nullptr );
+        }
 
         if( success )
         {
@@ -146,8 +149,12 @@ bool CSystemThread::CreateSystemThreadKernel(
             IGC_ASSERT(0);
             success = false;
         }
-        pKernelProgram->Delete( pKernelProgram );
-        delete pKernelProgram;
+
+        if( pKernelProgram )
+        {
+            pKernelProgram->Delete( pKernelProgram );
+            delete pKernelProgram;
+        }
     }
     return success;
 }
