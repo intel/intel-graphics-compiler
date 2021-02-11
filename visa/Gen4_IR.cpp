@@ -2524,7 +2524,8 @@ bool G4_INST::canPropagateTo(
     if ((srcElSize < useElSize) &&
         (dstElSize == srcElSize) &&
         (execSize > g4::SIMD1) &&
-        !src->isImm())
+        (!src->isImm()) &&
+        ((src->getByteOffset() % useElSize) != 0))
     {
         return false;
     }
@@ -2815,8 +2816,9 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
     {
         return false;
     }
-    if (dstElSize != defDstElSize && srcElSize == dstElSize &&
-        (indirect_dst || dstHS != srcHS))
+    if ((dstElSize != defDstElSize) && (srcElSize == dstElSize) &&
+        (indirect_dst || ((dst->getByteOffset() % defDstElSize) != 0) ||
+        (dstHS != srcHS)))
     {
         return false;
     }

@@ -537,11 +537,26 @@ int IR_Builder::translateVISAVmeSicInst(
     // add dcl for VX
     unsigned input_size_dw = (uni_input_size + 4)*32/TypeSize(Type_UD);
 
-    auto dcl = createSendPayloadDcl(input_size_dw, Type_UD);
-    // mov  (96)    VX(0,0)<1>,  UNIInput
-    Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size * 32 / TypeSize(Type_UD), uniInputOpnd, InstOpt_WriteEnable);
-    // mov  (128)   VX(3,0)<1>,  SICInput
-    Create_MOV_Send_Src_Inst(dcl, (short)uni_input_size, 0, 128 / TypeSize(Type_UD), sicInputOpnd, InstOpt_WriteEnable);
+    G4_Declare *dcl = NULL;
+    G4_Declare *topDcl = uniInputOpnd->getTopDcl();
+
+    // check if uniInputOpnd and sicInputOpnd are alias to the
+    // same top level decl with consistent payload layout
+    if ((topDcl == sicInputOpnd->getTopDcl()) &&
+        (uniInputOpnd->getByteOffset() == 0) &&
+        (sicInputOpnd->getByteOffset() == uni_input_size*32) &&
+        (topDcl->getByteSize() >= uni_input_size*32 + 128))
+    {
+        dcl = topDcl;
+    }
+    else
+    {
+        dcl = createSendPayloadDcl(input_size_dw, Type_UD);
+        // mov  (96)    VX(0,0)<1>,  UNIInput
+        Create_MOV_Send_Src_Inst(dcl, 0, 0, uni_input_size*32/TypeSize(Type_UD), uniInputOpnd, InstOpt_WriteEnable);
+        // mov  (128)   VX(3,0)<1>,  SICInput
+        Create_MOV_Send_Src_Inst(dcl, (short) uni_input_size, 0, 128/TypeSize(Type_UD), sicInputOpnd, InstOpt_WriteEnable);
+    }
 
     // send's operands preparation
     // create a currDst for VX
