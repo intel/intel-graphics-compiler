@@ -1197,7 +1197,10 @@ void SWSB::SWSBGenerator()
 #endif
     }
 
-    SWSBGlobalTokenGenerator(p, LB, globalSendsLB);
+    if (globalSendNum)
+    {
+        SWSBGlobalTokenGenerator(p, LB, globalSendsLB);
+    }
 
     if (fg.builder->getFCPatchInfo()->getFCComposableKernel())
     {
@@ -3552,8 +3555,6 @@ bool SWSB::globalDependenceDefReachAnalysis(G4_BB* bb)
         return false;
     }
 
-    assert(BBVector[bbID]->send_live_in.getSize() != 0);
-
     SBBitSets temp_live_in(globalSendNum);
     temp_live_in = BBVector[bbID]->send_live_in;
 
@@ -3602,8 +3603,6 @@ bool SWSB::globalDependenceUseReachAnalysis(G4_BB* bb)
     {
         return false;
     }
-
-    assert(BBVector[bbID]->send_live_in.getSize() != 0);
 
     SBBitSets temp_live_in(globalSendNum);
     temp_live_in = BBVector[bbID]->send_live_in;
