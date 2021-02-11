@@ -1239,15 +1239,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             }
         }
 
-        //Note:GenISA_hw_thread_id is exposed as __builtin_IB_hw_thread_id and we don't know how users use it,
-        //so, to be conservative, we treat it as RANDOM here.
-        //But GenISA_hw_thread_id_alloca is treated as uniform since it's used by IGC internally
-        if (GII_id == GenISAIntrinsic::GenISA_hw_thread_id &&
-            m_CGCtx->platform.hasFusedEU())
-        {
-            return WIAnalysis::RANDOM;
-        }
-
 
         if (intrinsic_name == llvm_sgv)
         {
