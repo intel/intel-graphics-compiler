@@ -6926,7 +6926,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             for (auto inst : *bb)
             {
                 if (inst->isCall() ||
-                    inst->isReturn())
+                    inst->isFCall() ||
+                    inst->isReturn() ||
+                    inst->isFReturn())
                 {
                     // Do not rewrite region for call or return,
                     // as the effective execution size is 2.

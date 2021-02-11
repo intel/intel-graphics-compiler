@@ -6369,6 +6369,11 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
     {
         if (acc == Direct)
         {
+            if (inst->isReturn() || inst->isFReturn())
+            {
+                exec_size = 2;
+            }
+
             setSrcBitVec(exec_size);
 
             if (desc->isScalar())
