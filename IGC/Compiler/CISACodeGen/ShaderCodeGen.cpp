@@ -518,6 +518,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         {
             mpm.add(new PrivateMemoryToSLM(
                 IGC_IS_FLAG_ENABLED(EnableOptReportPrivateMemoryToSLM)));
+            mpm.add(createInferAddressSpacesPass());
         }
         else if (IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
         {
@@ -527,8 +528,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(new PrivateMemoryToSLM(
                 forcedBuffers,
                 IGC_IS_FLAG_ENABLED(EnableOptReportPrivateMemoryToSLM)));
+            mpm.add(createInferAddressSpacesPass());
         }
-        mpm.add(createInferAddressSpacesPass());
     }
 
     if (ctx.m_instrTypes.hasLoop)
