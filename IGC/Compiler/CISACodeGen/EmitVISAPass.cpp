@@ -9389,6 +9389,34 @@ void EmitPass::emitUAVSerialize()
     m_encoder->Push();
 }
 
+bool EmitPass::useRasterizerOrderedByteAddressBuffer(GenIntrinsicInst* inst)
+{
+    bool isRov = false;
+    std::vector<uint32_t> ROV_RV = m_currShader->m_ModuleMetadata->RasterizerOrderedByteAddressBuffer;
+
+    unsigned calleeArgNo = 0;
+    PushInfo& pushInfo = m_currShader->m_ModuleMetadata->pushInfo;
+
+    Value* src = IGC::TracePointerSource(inst->getOperand(0));
+    if (Argument * calleeArg = dyn_cast<Argument>(src))
+    {
+        calleeArgNo = calleeArg->getArgNo();
+        for (auto index_it = pushInfo.constantReg.begin(); index_it != pushInfo.constantReg.end(); ++index_it)
+        {
+            if (index_it->second == calleeArgNo)
+            {
+                if (std::find(ROV_RV.begin(), ROV_RV.end(), index_it->first) != ROV_RV.end())
+                {
+                    isRov = true;
+                    break;
+                }
+            }
+        }
+    }
+    return isRov;
+}
+
+
 void EmitPass::emitLoadRawIndexed(GenIntrinsicInst* inst)
 {
     Value* buf_ptrv = inst->getOperand(0);

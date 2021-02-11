@@ -114,7 +114,7 @@ private:
         llvm::Value*& mask, llvm::Value*& src0Alpha,
         DebugLocArray& debugLocs);
 
-    void EmitMemoryFence(llvm::IRBuilder<>& builder);
+    void EmitMemoryFence(llvm::IRBuilder<>& builder, bool forceFlushNone = 0);
     void EmitRTWrite(ColorOutputArray& color, llvm::Value* depth,
         llvm::Value* stencil, llvm::Value* mask,
         llvm::Value* src0Alpha, DebugLocArray& debugLocs);

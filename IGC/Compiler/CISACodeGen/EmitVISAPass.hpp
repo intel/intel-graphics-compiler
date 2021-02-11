@@ -180,6 +180,9 @@ public:
     // set the predicate with current active channels
     void emitPredicateFromChannelIP(CVariable* dst, CVariable* alias = NULL);
 
+    // check if this load/store is accessing RasterizerOrderedByteAddressBuffer
+    bool useRasterizerOrderedByteAddressBuffer(llvm::GenIntrinsicInst* inst);
+
     // Helper methods for message emit functions.
     template <typename T>
     void prepareRenderTargetWritePayload(
