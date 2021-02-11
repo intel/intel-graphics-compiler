@@ -1466,8 +1466,6 @@ public:
         G4_DstRegRegion *carryBorrow);
 
 
-
-
     int translateVISACompareInst(
         ISA_Opcode opcode,
         VISA_Exec_Size execSize,

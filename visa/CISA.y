@@ -921,7 +921,6 @@ ArithInstruction_4OPND:
 
 
 
-
                      //  1            2           3            4             5                6
 AntiTrigInstruction: Predicate ANTI_TRIG_OP SatModOpt ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM
     {

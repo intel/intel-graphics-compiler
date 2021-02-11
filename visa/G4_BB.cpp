@@ -1514,7 +1514,6 @@ void G4_BB::removeIntrinsics(Intrinsic intrinId) {
 }
 
 
-
 // Add a sampler cache flush with null return before the EOT send
 // bb must end with an EOT send
 void G4_BB::addSamplerFlushBeforeEOT()

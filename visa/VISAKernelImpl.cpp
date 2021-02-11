@@ -7460,7 +7460,6 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
 
 
 
-
 int VISAKernelImpl::patchLastInst(VISA_LabelOpnd *label)
 {
     if (label->_opnd.other_opnd == CISA_INVALID_VAR_ID)

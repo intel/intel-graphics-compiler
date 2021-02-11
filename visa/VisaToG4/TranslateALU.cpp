@@ -182,7 +182,6 @@ int IR_Builder::translateVISAArithmeticInst(
 
 
 
-
 static bool needs32BitFlag(uint32_t opt)
 {
     switch (opt & InstOpt_QuarterMasks)
