@@ -7618,7 +7618,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             }
 
             // Returns (x - xstart) or (y - ystart) in float.
-            auto getPixelPositionDelta = [this, psProgram, delta, floatR1](const uint component)->CVariable *
+            auto getPixelPositionDelta = [this, psProgram, delta, floatR1](const uint component)->CVariable*
             {
                 IGC_ASSERT(component < 2);
                 CVariable* uintPixelPosition =
@@ -7698,15 +7698,19 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
         }
         else
         {
-            m_encoder->Copy(dst, psProgram->GetPositionZ());
-            m_encoder->Push();
+            {
+                m_encoder->Copy(dst, psProgram->GetPositionZ());
+                m_encoder->Push();
+            }
         }
         break;
     }
     case POSITION_W:
     {
-        m_encoder->Copy(dst, psProgram->GetPositionW());
-        m_encoder->Push();
+        {
+            m_encoder->Copy(dst, psProgram->GetPositionW());
+            m_encoder->Push();
+        }
         break;
     }
     case POSITION_X_OFFSET:
