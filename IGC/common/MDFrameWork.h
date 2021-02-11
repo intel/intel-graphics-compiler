@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <array>
+#include <optional>
 
 namespace llvm
 {

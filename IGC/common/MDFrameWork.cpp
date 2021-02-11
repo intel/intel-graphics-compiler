@@ -25,6 +25,8 @@ template<typename val>
 MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name);
 template<typename val, size_t s>
 MDNode* CreateNode(const std::array<val, s> &arr, Module* module, StringRef name);
+template<typename val>
+MDNode* CreateNode(const std::optional<val>& option, Module* module, StringRef name);
 MDNode* CreateNode(Value* val, Module* module, StringRef name);
 MDNode* CreateNode(StructType* Ty, Module* module, StringRef name);
 template<typename Key, typename Value>
@@ -45,6 +47,8 @@ template<typename T>
 void readNode(std::vector<T> &vec, MDNode* node);
 template<typename T, size_t s>
 void readNode(std::array<T, s> &arr, MDNode* node);
+template<typename T>
+void readNode(std::optional<T> &option, MDNode* node);
 void readNode(Function* &funcPtr, MDNode* node);
 void readNode(GlobalVariable* &globalVar, MDNode* node);
 void readNode(StructType* &Ty, MDNode* node);
@@ -177,6 +181,21 @@ MDNode* CreateNode(const std::array<val, s> &vec, Module* module, StringRef name
     return node;
 }
 
+template<typename val>
+MDNode* CreateNode(const std::optional<val> &option, Module* module, StringRef name)
+{
+    std::vector<Metadata*> nodes;
+    nodes.push_back(MDString::get(module->getContext(), name));
+    if (option.has_value())
+        nodes.push_back(CreateNode(*option, module, name.str() + "Option"));
+    else
+        nodes.push_back(ValueAsMetadata::get(
+            ConstantPointerNull::get(Type::getInt1PtrTy(module->getContext()))));
+
+    MDNode* node = MDNode::get(module->getContext(), nodes);
+    return node;
+}
+
 MDNode* CreateNode(Value* val, Module* module, StringRef name)
 {
     Metadata* v[] =
@@ -297,6 +316,23 @@ void readNode(std::array<T, s> &arr, MDNode* node)
         arr[k - 1] = vecEle;
     }
     return;
+}
+
+template<typename T>
+void readNode(std::optional<T>& option, MDNode* node)
+{
+    // If it is a value, that's just the null pointer placeholder
+    if (isa<ValueAsMetadata>(node->getOperand(1)))
+    {
+        option = std::nullopt;
+    }
+    else
+    {
+        // otherwise, read the contents
+        T tmp;
+        readNode(tmp, cast<MDNode>(node->getOperand(1)));
+        option = tmp;
+    }
 }
 
 void readNode(Function* &funcPtr, MDNode* node)
