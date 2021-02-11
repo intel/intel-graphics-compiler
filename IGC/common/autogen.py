@@ -29,6 +29,13 @@
 import os
 import sys
 import errno
+from typing import List, NamedTuple
+
+class DeclHeader(NamedTuple):
+    # line contains the entire string of the line the decl was found on
+    line: str
+    # declName is just the identifier name
+    declName: str
 
 # usage: autogen.py <path_to_MDFrameWork.h> <path_to_MDNodeFuncs.gen>
 __MDFrameWorkFile__ = sys.argv[1]
@@ -46,8 +53,8 @@ if not os.path.exists(__genDir__):
 output = open(__genFile__, 'w')
 inputFile = open(__MDFrameWorkFile__, 'r')
 
-enumNames = []
-structureNames = []
+enumNames: List[DeclHeader] = []
+structureNames: List[DeclHeader] = []
 structDataMembers = []
 
 with inputFile as file:
@@ -63,14 +70,15 @@ with inputFile as file:
             line = line.split("//")[0]
             if line.find("struct") != -1:
                 words = line.split()
-                structureNames.append(words[1])
+                structureNames.append(DeclHeader(line, words[1]))
                 while line.find("};") == -1:
                     line = next(file, None)
                     line = line.split("//")[0]
                 line = next(file, None)
             if line.find("enum") != -1:
                 words = line.split()
-                enumNames.append(words[1])
+                nameIdx = 2 if 'class' in words else 1
+                enumNames.append(DeclHeader(line, words[nameIdx]))
                 while line.find("};") == -1:
                     line = next(file, None)
                     line = line.split("//")[0]
@@ -142,7 +150,7 @@ def printEnumCalls(EnumName):
     output.write("    switch("+ EnumName+ "Var)\n")
     output.write("    {\n")
     for item in structDataMembers:
-        output.write("        case IGC::"+ item + ":\n"  )
+        output.write("        case IGC::" + EnumName + "::" + item + ":\n"  )
         output.write("            enumName = IGC_MANGLE(\"" + item + "\");\n" )
         output.write("            break;\n" )
     output.write("    }\n")
@@ -165,29 +173,29 @@ def printEnumReadCalls(enumName):
     output.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
     output.write("    std::string str = s.str();\n")
     output.write("    "+ enumName + "Var = (IGC::" + enumName + ")(0);\n")
-  
+
     for item in structDataMembers:
-        output.write("    if((str.size() == sizeof(\""+ item + "\")) && (::memcmp(str.c_str(),IGC_MANGLE(\""+ item + "\"),str.size())))\n")
+        output.write("    if((str.size() == sizeof(\""+ item + "\")-1) && (::memcmp(str.c_str(),IGC_MANGLE(\""+ item + "\"),str.size())==0))\n")
         output.write("    {\n")
-        output.write("            "+ enumName + "Var = IGC::"+ item + ";\n")
+        output.write("            "+ enumName + "Var = IGC::" + enumName + "::" + item + ";\n")
         output.write("    } else\n")
-    
+
     output.write("    {\n")
     output.write("            "+ enumName + "Var = (IGC::" + enumName + ")(0);\n")
     output.write("    }\n")
 
-def emitCodeBlock(names, declType, fmtFn, extractFn, printFn):
+def emitCodeBlock(names: List[DeclHeader], declType, fmtFn, extractFn, printFn):
     for item in names:
         foundStruct = False
         insideStruct = False
-        findStructDecl = "{} {}".format(declType, item)
+        findStructDecl = item.line
         inputFile = open(__MDFrameWorkFile__, 'r')
         with inputFile as file:
             for line in file:
                 line = line.split("//")[0]
                 if line.find(findStructDecl) != -1:
                     foundStruct = True
-                    output.write(fmtFn(item))
+                    output.write(fmtFn(item.declName))
                     output.write("{\n")
                 if foundStruct:
                     line = line.split("//")[0]
@@ -209,7 +217,7 @@ def emitCodeBlock(names, declType, fmtFn, extractFn, printFn):
                                 while skipLine(line):
                                     line = next(file, None)
                                 line = line.split("//")[0]
-                            printFn(item)
+                            printFn(item.declName)
                             del structDataMembers[:]
                             foundStruct = False
                             insideStruct = False
@@ -217,7 +225,7 @@ def emitCodeBlock(names, declType, fmtFn, extractFn, printFn):
 
 def emitEnumCreateNode():
     def fmtFn(item):
-        return "MDNode* CreateNode(IGC::" + item + " " + item + "Var" +", Module* module, StringRef name)\n"
+        return f"MDNode* CreateNode(IGC::{item} {item}Var, Module* module, StringRef name)\n"
     emitCodeBlock(enumNames, "enum", fmtFn, extractEnumVal, printEnumCalls)
 
 def emitStructCreateNode():
@@ -241,4 +249,5 @@ def genCode():
     emitEnumReadNode()
     emitStructReadNode()
 
-genCode()
+if __name__ == '__main__':
+    genCode()
