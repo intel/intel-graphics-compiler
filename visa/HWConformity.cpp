@@ -1328,11 +1328,9 @@ static bool canReplaceMovSrcType(IR_Builder& builder, G4_INST* inst, uint32_t ex
         return false;
     }
 
-    G4_DstRegRegion* dst = inst->getDst();
-    G4_SrcRegRegion* src0 = inst->getSrc(0)->asSrcRegRegion();
-    int dstByteOffset = dst->getByteOffset();
-    if (dstByteOffset % extypesize != 0 ||
-        dst->getRegAccess() != Direct)
+    auto dst = inst->getDst();
+    auto src0 = inst->getSrc(0)->asSrcRegRegion();
+    if (!builder.isOpndAligned(dst, extypesize) || dst->getRegAccess() != Direct)
     {
         // don't do this if dst is not GRF aligned, since we have to fix it later anyway
         return false;
@@ -5592,12 +5590,12 @@ bool HWConformity::splitInstListForByteDst(INST_LIST_ITER it, G4_BB* bb, uint16_
 {
     G4_INST* inst = *it;
     G4_opcode inst_op = inst->opcode();
-    G4_DstRegRegion* dst = inst->getDst();
+    auto dst = inst->getDst();
     // check if we can split the inst
     if (!canSplitByteDst(inst_op) ||
         inst->getExecSize() == g4::SIMD1 ||
         (!bb->isAllLaneActive() && !inst->isWriteEnableInst()) ||
-        dst->getByteOffset() % extypesize != 0 ||
+        !builder.isOpndAligned(dst, extypesize) ||
         dst->getHorzStride() != 1 ||
         extypesize != TypeSize(Type_W))
     {

@@ -2429,10 +2429,6 @@ public:
         }
         return bitVec[1];
     }
-    /*
-        For operands that do use it, it is computed during left bound compuation.
-    */
-    unsigned getByteOffset() const { return byteOffset; }
 
     // ToDo: get rid of this setter
     void setBitVecL(uint64_t bvl)
