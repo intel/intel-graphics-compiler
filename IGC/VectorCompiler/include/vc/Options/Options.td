@@ -75,16 +75,29 @@ def optimize_eq : Joined<["-"], "optimize=">,
 def no_optimize : Flag<["-"], "no-optimize">,
   Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
 
-def no_vector_decomposition : Flag<["-"], "no-vector-decomposition">,
+// This option switches off vector splitting in parts to better fit into GRF
+// It may have both positive and negative consequences for performance
+// so shall be used with extreme caution
+def no_vector_decomposition : Flag<["-"], "ze-no-vector-decomposition">,
   HelpText<"Disable vector decomposition pass">;
-// Old igcmc alias.
+// Compatibility aliases
 def no_vector_decomposition_old : Flag<["-"], "no_vector_decomposition">,
-  Alias<no_vector_decomposition>, HelpText<"Alias for -no-vector-decomposition"> {
+  Alias<no_vector_decomposition>, HelpText<"Alias for -ze-no-vector-decomposition"> {
+  let Flags = [ApiOption, IgcmcApiOption];
+}
+def no_vector_decomposition_old_2 : Flag<["-"], "no-vector-decomposition">,
+  Alias<no_vector_decomposition>, HelpText<"Alias for -ze-no-vector-decomposition"> {
   let Flags = [ApiOption, IgcmcApiOption];
 }
 
+// this option disables jump table generation
+// TODO: we shall add this to L0 extension spec
 def fno_jump_tables : Flag<["-"], "fno-jump-tables">,
   HelpText<"Disable the use of jump tables for lowering switches">;
+
+// this option enables legacy dataport legalization
+def ftranslate_legacy_memory_intrinsics : Flag<["-"], "-ftranslate-legacy-memory-intrinsics">,
+  HelpText<"Legalize old memory intrinsics">;
 
 def Xfinalizer : Separate<["-"], "Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;

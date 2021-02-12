@@ -74,10 +74,15 @@ struct CompileOptions {
   std::unique_ptr<ShaderDumper> Dumper = nullptr;
 
   // Api accessible options.
+  // -ze-no-vector-decomposition
   bool NoVecDecomp = false;
+  // -g
   bool EmitDebugInfo = false;
-
+  // -fno-jump-tables
   bool NoJumpTables = false;
+  // -ftranslate-legacy-memory-intrinsics
+  bool TranslateLegacyMemoryIntrinsics = false;
+
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;
 
