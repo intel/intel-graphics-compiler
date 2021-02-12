@@ -3523,10 +3523,11 @@ namespace IGC
                     if (I.getOperand(1 - i)->hasOneUse())
                     {
                         BoolOpPattern* pattern = new (m_allocator) BoolOpPattern();
+                        bool supportsMod = SupportsModifier(cmp);
                         pattern->boolOp = &I;
                         pattern->predicate = cmp->getPredicate();
-                        pattern->cmpSource[0] = GetSource(cmp->getOperand(0), true, false);
-                        pattern->cmpSource[1] = GetSource(cmp->getOperand(1), true, false);
+                        pattern->cmpSource[0] = GetSource(cmp->getOperand(0), supportsMod, false);
+                        pattern->cmpSource[1] = GetSource(cmp->getOperand(1), supportsMod, false);
                         pattern->binarySource = GetSource(I.getOperand(1 - i), false, false);
                         AddPattern(pattern);
                         found = true;
