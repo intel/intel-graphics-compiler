@@ -73,6 +73,7 @@ set(CODEGEN_SOURCES
   GenXVisa.cpp
   GenXWATable.cpp
   GenXWrapper.cpp
+  SPIRVWrapper.cpp
 )
 
 add_library(VCCodeGen ${CODEGEN_SOURCES})
@@ -95,3 +96,7 @@ target_link_libraries(VCCodeGen
   VCSupport
   GenXDebugInfo
   )
+
+if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
+  target_link_libraries(VCCodeGen KHRONOS_SPIRV_TRANSLATOR)
+endif()

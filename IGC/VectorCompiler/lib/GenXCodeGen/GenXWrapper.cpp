@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "GenXWATable.h"
+#include "SPIRVWrapper.h"
 
 #include "llvmWrapper/Target/TargetMachine.h"
 
@@ -56,12 +57,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/Path.h"
-#include "llvm/Support/Process.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -82,128 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "Probe/Assertion.h"
 
-#if defined(__linux__)
-#include <dlfcn.h>
-#endif
-#if defined(_WIN32)
-#include <Windows.h>
-#include "inc/common/DriverStore.h"
-#endif
-
 using namespace llvm;
-
-#if defined(_WIN64)
-// TODO: rename to SPIRVDLL64.dll when binary components are fixed.
-static constexpr char *SpirvLibName = "SPIRVDLL.dll";
-#elif defined(_WIN32)
-static constexpr char *SpirvLibName = "SPIRVDLL32.dll";
-#else
-static constexpr char *SpirvLibName = "libSPIRVDLL.so";
-#endif
-
-// Return standard path for SPIRVDLL for current build.
-// Linux: plain library name.
-// Windows: library name prefixed with current module
-// location (installed driver location).
-static std::string getSpirvDLLStandardPath() {
-#if defined(_WIN32)
-  // Expand libname to full driver path on windows.
-  char TmpPath[MAX_PATH] = {};
-  GetDependencyPath(TmpPath, SpirvLibName);
-  return TmpPath;
-#else
-  return SpirvLibName;
-#endif
-}
-
-// Get appropriate path to SPIRV DLL library for subsequent loading.
-static std::string findSpirvDLL() {
-  auto EnvSpirv = llvm::sys::Process::GetEnv("VC_SPIRVDLL_DIR");
-  if (!EnvSpirv)
-    return getSpirvDLLStandardPath();
-
-  SmallString<32> Path;
-  llvm::sys::path::append(Path, EnvSpirv.getValue(), SpirvLibName);
-  return std::string{Path.str()};
-}
-
-static Expected<std::vector<char>>
-translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
-                   ArrayRef<uint64_t> SpecConstValues) {
-  IGC_ASSERT(SpecConstIds.size() == SpecConstValues.size());
-  constexpr char *SpirvReadVerifyName = "spirv_read_verify_module";
-  using SpirvReadVerifyType =
-      int(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
-          const uint64_t *SpecConstVals, unsigned SpecConstSz,
-          void (*OutSaver)(const char *pOut, size_t OutSize, void *OutUserData),
-          void *OutUserData,
-          void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
-          void *ErrUserData);
-
-  const std::string SpirvLibPath = findSpirvDLL();
-#if defined(__linux__)
-  // Hack to workaround cmoc crashes during loading of SPIRV library
-  static auto DeepBindHack =
-      dlopen(SpirvLibPath.c_str(), RTLD_NOW | RTLD_DEEPBIND);
-#endif // __linux__
-
-  using DL = sys::DynamicLibrary;
-  std::string ErrMsg;
-  DL DyLib = DL::getPermanentLibrary(SpirvLibPath.c_str(), &ErrMsg);
-  if (!DyLib.isValid())
-    return make_error<vc::DynLoadError>(ErrMsg);
-
-  auto *SpirvReadVerifyFunc = reinterpret_cast<SpirvReadVerifyType *>(
-      DyLib.getAddressOfSymbol(SpirvReadVerifyName));
-  if (!SpirvReadVerifyFunc)
-    return make_error<vc::SymbolLookupError>(SpirvLibPath, SpirvReadVerifyName);
-
-  auto OutSaver = [](const char *pOut, size_t OutSize, void *OutData) {
-    auto *Vec = reinterpret_cast<std::vector<char> *>(OutData);
-    Vec->assign(pOut, pOut + OutSize);
-  };
-  auto ErrSaver = [](const char *pErrMsg, void *ErrData) {
-    auto *ErrStr = reinterpret_cast<std::string *>(ErrData);
-    *ErrStr = pErrMsg;
-  };
-
-  std::vector<char> Result;
-  int Status = SpirvReadVerifyFunc(
-      Input.data(), Input.size(), SpecConstIds.data(), SpecConstValues.data(),
-      SpecConstValues.size(), OutSaver, &Result, ErrSaver, &ErrMsg);
-  if (Status != 0)
-    return make_error<vc::BadSpirvError>(ErrMsg);
-
-  return {std::move(Result)};
-}
-
-static Expected<std::unique_ptr<llvm::Module>>
-getModuleFromSPIRV(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
-                   ArrayRef<uint64_t> SpecConstValues, LLVMContext &Ctx) {
-  auto ExpIR = translateSPIRVToIR(Input, SpecConstIds, SpecConstValues);
-  if (!ExpIR)
-    return ExpIR.takeError();
-
-  std::vector<char> &IR = ExpIR.get();
-  llvm::MemoryBufferRef BufferRef(llvm::StringRef(IR.data(), IR.size()),
-                                  "Deserialized SPIRV Module");
-  auto ExpModule = llvm::parseBitcodeFile(BufferRef, Ctx);
-
-  if (!ExpModule)
-    return llvm::handleExpected(
-        std::move(ExpModule),
-        []() -> llvm::Error {
-          IGC_ASSERT_EXIT_MESSAGE(0, "Should create new error");
-        },
-        [](const llvm::ErrorInfoBase &E) {
-          return make_error<vc::BadBitcodeError>(E.message());
-        });
-
-  if (verifyModule(*ExpModule.get()))
-    return make_error<vc::InvalidModuleError>();
-
-  return ExpModule;
-}
 
 static Expected<std::unique_ptr<llvm::Module>>
 getModuleFromLLVMText(ArrayRef<char> Input, LLVMContext &C) {
@@ -243,6 +120,16 @@ getModuleFromLLVMBinary(ArrayRef<char> Input, LLVMContext& C) {
     return make_error<vc::InvalidModuleError>();
 
   return ExpModule;
+}
+
+static Expected<std::unique_ptr<llvm::Module>>
+getModuleFromSPIRV(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
+                   ArrayRef<uint64_t> SpecConstValues, LLVMContext &Ctx) {
+  auto ExpIR = vc::translateSPIRVToIR(Input, SpecConstIds, SpecConstValues);
+  if (!ExpIR)
+    return ExpIR.takeError();
+
+  return getModuleFromLLVMBinary(ExpIR.get(), Ctx);
 }
 
 static Expected<std::unique_ptr<llvm::Module>>
