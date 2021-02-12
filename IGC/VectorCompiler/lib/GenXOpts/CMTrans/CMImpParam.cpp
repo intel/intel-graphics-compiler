@@ -30,13 +30,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /// ----------
 /// 
 /// As well as explicit kernel args declared in the CM kernel function, certain
-/// implicit args are also passed. These fall into two categories:
+/// implicit args are also passed. These fall into 3 categories:
 /// 
 /// 1. fields set up in r0 by the hardware, depending on which dispatch method
 ///    is being used (e.g. media walker);
 /// 
 /// 2. implicit args set up along with the explicit args in CURBE by the CM
 ///    runtime.
+///
+/// 3. implicit OCL/L0 args set up, e.g. private base, byval arg linearization.
 /// 
 /// The r0 implicit args are represented in LLVM IR by special intrinsics, and the
 /// GenX backend generates these to special reserved vISA registers.
@@ -78,9 +80,36 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /// variable for an implicit arg into local variable(s) passed into subroutines
 /// if necessary.
 ///
+/// This pass also linearizes kernel byval arguments.
+/// If a kernel has an input pointer argument with byval attribute, it means
+/// that it will be passed as a value with the argument's size = sizeof(the
+/// type), not sizeof(the type *). To support such kinds of arguments, VC (as
+/// well as scalar IGC) makes implicit linearization, e.g.
+///
+///   %struct.s1 = type { [2 x i32], i8 } ===> i32, i32, i8
+///
+/// This implicit linearization is added as kernel arguments and mapped via
+/// metadata to the original explicit byval argument.
+///
+///   %struct.s1 = type { [2 x i32], i8 }
+///
+///   declare i32 @foo(%struct.s1* byval(%struct.s1) "VCArgumentDesc"="svmptr_t"
+///                    "VCArgumentIOKind"="0" "VCArgumentKind"="0" %arg, i64
+///                    %arg1);
+///
+/// Will be transformed into (byval args uses will be changed in
+/// CMKernelArgOffset)
+///
+///   declare i32 @foo(%struct.s1* byval(%struct.s1) "VCArgumentDesc"="svmptr_t"
+///                     "VCArgumentIOKind"="0" "VCArgumentKind"="0" %arg, i64
+///                     %arg1, i32 %__arg_lin__arg_0, i32 %__arg_lin__arg_1, i8
+///                     %__arg_lin__arg_2);
+///
+/// Additionally, information about these implicit linearization will be written
+/// to kernel metadata as internal::KernelMDOp::LinearizationArgs. It stores
+/// mapping between explicit byval argument and its linearization.
+///
 //===----------------------------------------------------------------------===//
-
-#include "llvmWrapper/IR/DerivedTypes.h"
 
 #define DEBUG_TYPE "cmimpparam"
 #include "vc/GenXOpts/GenXOpts.h"
@@ -104,14 +133,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Support/raw_ostream.h"
 
 #include <set>
+#include <stack>
 #include <map>
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
+
 using namespace llvm;
 
-namespace llvm {
-void initializeCMImpParamPass(PassRegistry &);
-} // namespace llvm
+static cl::opt<bool>
+    CMRTOpt("cmimpparam-cmrt", cl::init(true), cl::Hidden,
+            cl::desc("Should be used only in llvm opt to switch RT"));
 
 namespace {
 
@@ -151,11 +184,21 @@ private:
   ImplicitSetTy Implicits;
 };
 
+// Helper struct to store temporary information for implicit arguments
+// linearization.
+struct LinearizationElt {
+  Type *Ty;
+  unsigned Offset;
+};
+using LinearizedTy = std::vector<LinearizationElt>;
+using ArgLinearization = std::unordered_map<Argument *, LinearizedTy>;
+
 struct CMImpParam : public ModulePass {
   static char ID;
   bool IsCmRT;
+  const DataLayout *DL = nullptr;
 
-  CMImpParam(bool isCmRT = true) : ModulePass(ID), IsCmRT(isCmRT) {
+  CMImpParam(bool isCmRT = true) : ModulePass(ID), IsCmRT(isCmRT && CMRTOpt) {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
@@ -173,10 +216,15 @@ struct CMImpParam : public ModulePass {
 private:
   void replaceWithGlobal(CallInst *CI, unsigned IID);
   bool AnalyzeImplicitUse(Module &M);
+  void WriteArgsLinearizationInfo(Module &M);
+
+  LinearizedTy LinearizeAggregateType(Type *AggrTy);
+  ArgLinearization GenerateArgsLinearizationInfo(Function &F);
+
   void MergeImplicits(ImplicitUseInfo &implicits, Function *F);
   void PropagateImplicits(Function *F, Module &M,
                           ImplicitUseInfo &implicits);
-  CallGraphNode *ProcessKernel(Function *F);
+  CallGraphNode *ProcessKernel(Function *F, MDNode *KernelMD);
 
   static Value *getValue(Metadata *M) {
     if (auto VM = dyn_cast<ValueAsMetadata>(M))
@@ -332,6 +380,8 @@ private:
 } // namespace
 
 bool CMImpParam::runOnModule(Module &M) {
+  DL = &M.getDataLayout();
+
   bool changed = false;
 
   // Apply necessary changes if kernels are compiled for OpenCL runtime.
@@ -347,6 +397,7 @@ bool CMImpParam::runOnModule(Module &M) {
       MDNode *Node = Named->getOperand(I);
       if (auto F = dyn_cast_or_null<Function>(
               getValue(Node->getOperand(genx::KernelMDOp::FunctionRef)))) {
+        genx::internal::createInternalMD(F);
         Kernels.insert(F);
         AlreadyVisited.clear();
         ImplicitUseInfo &implicits = getImplicitUseInfoKernel(F);
@@ -354,12 +405,13 @@ bool CMImpParam::runOnModule(Module &M) {
         // for OCL/L0 RT we should unconditionally add
         // implicit PRIVATE_BASE argument which is not supported on CM RT
         if (!implicits.empty() || !IsCmRT) {
-          ProcessKernel(F);
+          ProcessKernel(F, Node);
           changed |= true;
         }
       }
     }
   }
+
   for (ImplicitUseInfo *Obj : ImplicitsInfoObjs)
     delete Obj;
 
@@ -373,6 +425,114 @@ void CMImpParam::replaceWithGlobal(CallInst *CI, unsigned IID) {
       new LoadInst(GV->getType()->getPointerElementType(), GV,
                    GV->getName() + ".val", /* isVolatile */ false, CI);
   CI->replaceAllUsesWith(Load);
+}
+
+static bool isSupportedAggregateArgument(Argument &Arg) {
+  if (!Arg.getType()->isPointerTy())
+    return false;
+  if (!Arg.hasByValAttr())
+    return false;
+
+  Type *Ty = Arg.getType()->getPointerElementType();
+  auto *STy = cast<StructType>(Ty);
+  IGC_ASSERT(!STy->isOpaque());
+  return true;
+}
+
+// A helper structure to store current state of the aggregate traversal.
+struct PendingTypeInfo {
+  Type *Ty;         // Type to decompose
+  unsigned NextElt; // Subelement number to decompose next
+  unsigned Offset;  // Offset for the trivial type in Ty
+};
+
+// Byval aggregate arguments must be linearized. This function decomposes the
+// aggregate type into primitive types recursively.
+// Example:
+//   struct s1 {
+//     struct s2 {
+//       int a;
+//     };
+//     char b;
+//   };
+//
+//                Pending(stack) | LinTy(output)
+// Start:
+//                s1, 0, 0       | -
+// Iteration 0:
+//                s1, 1, 4       | -
+//                s2, 0, 0       |
+//   Comment: two elements in stack. s1, 1, 4 means subtype number 1 in the
+//   s1 must be decomposed. The first trivial type in the 1 subtype of s1 will
+//   have offset = 4. Note that this subtype may be also an aggregate type. In
+//   this case, offset = 4 will be propagated to the first nested trivial type.
+//   It is a recursive function, rewritten to use stack, so as not to have
+//   recursion problems.
+// Iteration 1:
+//                s1, 1, 4       | -
+//                int,0, 0       | -
+// Iteration 2:
+//                s1, 1, 4       | int, 0
+// Iteration 3:
+//                char, 0, 4     | int, 0
+// Iteration 4:
+//                -              | int, 0
+//                               | char, 4
+//
+LinearizedTy CMImpParam::LinearizeAggregateType(Type *AggrTy) {
+  LinearizedTy LinTy;
+
+  std::stack<PendingTypeInfo> Pending;
+  Pending.push({AggrTy, 0, 0});
+
+  while (!Pending.empty()) {
+    PendingTypeInfo Info = Pending.top();
+    Pending.pop();
+    Type *CurTy = Info.Ty;
+    unsigned CurElt = Info.NextElt;
+    unsigned NextElt = CurElt + 1;
+    if (auto *STy = dyn_cast<StructType>(CurTy)) {
+      unsigned NumElts = STy->getStructNumElements();
+      const StructLayout *Layout = DL->getStructLayout(STy);
+
+      IGC_ASSERT(CurElt < NumElts);
+      Type *EltType = STy->getElementType(CurElt);
+      if (NumElts > NextElt) {
+        unsigned CurOffset = Layout->getElementOffset(CurElt);
+        unsigned EltOffset = Layout->getElementOffset(NextElt) - CurOffset;
+        Pending.push({CurTy, NextElt, Info.Offset + EltOffset});
+      }
+      Pending.push({EltType, 0, Info.Offset});
+
+    } else if (auto *ATy = dyn_cast<ArrayType>(CurTy)) {
+      unsigned NumElts = ATy->getNumElements();
+      Type *EltTy = CurTy->getContainedType(0);
+      unsigned EltSize = DL->getTypeStoreSize(EltTy);
+
+      if (NumElts > NextElt)
+        Pending.push({Info.Ty, NextElt, Info.Offset + EltSize});
+      Pending.push({EltTy, 0, Info.Offset});
+    } else
+      LinTy.push_back({CurTy, Info.Offset});
+  }
+
+  return LinTy;
+}
+
+// For each byval aggregate calculate types of implicit args and their offsets
+// in this aggregate.
+ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
+  ArgLinearization Lin;
+  for (auto &Arg : F.args()) {
+    if (!isSupportedAggregateArgument(Arg))
+      continue;
+
+    Type *ArgTy = Arg.getType();
+    IGC_ASSERT(isa<PointerType>(ArgTy));
+    auto *STy = cast<StructType>(ArgTy->getPointerElementType());
+    Lin[&Arg] = LinearizeAggregateType(STy);
+  }
+  return Lin;
 }
 
 // For each function, see if it uses an intrinsic that in turn requires an
@@ -530,14 +690,16 @@ void CMImpParam::PropagateImplicits(Function *F, Module &M,
 // added if required elsewhere (in doInitialization)
 // We've already determined that this is a kernel and that it requires some
 // implicit arguments adding
-CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
+CallGraphNode *CMImpParam::ProcessKernel(Function *F, MDNode *KernelMD) {
   LLVMContext &Context = F->getContext();
   
   IGC_ASSERT(Kernels.count(F) && "ProcessKernel invoked on non-kernel CallGraphNode");
 
   AttributeList AttrVec;
   const AttributeList &PAL = F->getAttributes();
-  
+
+  ArgLinearization ArgsLin = GenerateArgsLinearizationInfo(*F);
+
   // Determine the new argument list
   SmallVector<Type *, 8> ArgTys;
   
@@ -567,6 +729,12 @@ CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
   if (!IsCmRT) {
     // PRIVATE_BASE arg
     ArgTys.push_back(Type::getInt64Ty(F->getContext()));
+
+    // Add types of implicit aggregates linearization
+    for (const auto &ArgLin : ArgsLin) {
+      for (const auto &LinTy : ArgLin.second)
+        ArgTys.push_back(LinTy.Ty);
+    }
   }
   
   FunctionType *NFTy = FunctionType::get(F->getReturnType(), ArgTys, false);
@@ -598,11 +766,13 @@ CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
   
   // Loop over the argument list, transferring uses of the old arguments to the
   // new arguments, also tranferring over the names as well
+  std::unordered_map<const Argument *, Argument *> OldToNewArg;
   Function::arg_iterator I2 = NF->arg_begin();
   for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
        ++I, ++I2) {
     I->replaceAllUsesWith(I2);
     I2->takeName(I);
+    OldToNewArg[&*I] = &*I2;
   }
   
   // Get the insertion point ready for stores to globals
@@ -630,10 +800,31 @@ CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
       ++I2;
     }
   }
+
+  // Collect arguments linearization to store as metadata.
+  genx::ArgToImplicitLinearization LinearizedArgs;
   if (!IsCmRT) {
+    // Private base
     I2->setName("privBase");
     ImpKinds.push_back(genx::KernelMetadata::AK_NORMAL |
                        genx::KernelMetadata::IMP_OCL_PRIVATE_BASE);
+    ++I2;
+
+    for (const auto &ArgLin : ArgsLin) {
+      Argument *ExplicitArg = OldToNewArg[ArgLin.first];
+      genx::LinearizedArgInfo &LinearizedArg = LinearizedArgs[ExplicitArg];
+      for (const auto &LinTy : ArgLin.second) {
+        I2->setName("__arg_lin_" + ExplicitArg->getName() + "." +
+                    std::to_string(LinTy.Offset));
+        ImpKinds.push_back(genx::KernelMetadata::AK_NORMAL |
+                           genx::KernelMetadata::IMP_OCL_LINEARIZATION);
+        auto &Ctx = F->getContext();
+        auto *I32Ty = Type::getInt32Ty(Ctx);
+        ConstantInt *Offset = ConstantInt::get(I32Ty, LinTy.Offset);
+        LinearizedArg.push_back({&*I2, Offset});
+        ++I2;
+      }
+    }
   }
 
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
@@ -642,32 +833,27 @@ CallGraphNode *CMImpParam::ProcessKernel(Function *F) {
   if (F->hasDLLExportStorageClass())
     NF->setDLLStorageClass(F->getDLLStorageClass());
   // Scan the CM kernel metadata and replace with NF
-  if (NamedMDNode *Named =
-          CG.getModule().getNamedMetadata(genx::FunctionMD::GenXKernels)) {
-    for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
-      MDNode *Node = Named->getOperand(I);
-      if (auto VM = dyn_cast_or_null<ValueAsMetadata>(
-              Node->getOperand(genx::KernelMDOp::FunctionRef))) {
-        if (F == VM->getValue()) {
-          Node->replaceOperandWith(genx::KernelMDOp::FunctionRef, ValueAsMetadata::get(NF));
-          llvm::SmallVector<llvm::Metadata *, 8> ArgKinds;
+  IGC_ASSERT(KernelMD);
+  IGC_ASSERT(F == cast<ValueAsMetadata>(
+                      KernelMD->getOperand(genx::KernelMDOp::FunctionRef))
+                      ->getValue());
+  KernelMD->replaceOperandWith(genx::KernelMDOp::FunctionRef,
+                               ValueAsMetadata::get(NF));
+  genx::internal::replaceInternalFunctionRef(F, NF);
 
-          // Create a new MDNode of Kinds
-          // First add all the current Kinds for explicit operands
-          MDNode *TypeNode =
-              dyn_cast<MDNode>(Node->getOperand(genx::KernelMDOp::ArgKinds));
-          IGC_ASSERT(TypeNode);
-          for (unsigned i = 0; i < TypeNode->getNumOperands(); ++i)
-            ArgKinds.push_back(TypeNode->getOperand(i));
-          for (uint32_t Kind : ImpKinds)
-            ArgKinds.push_back(ValueAsMetadata::getConstant(
-                ConstantInt::get(Type::getInt32Ty(Context), Kind)));
-          llvm::MDNode *Kinds = llvm::MDNode::get(Context, ArgKinds);
-          Node->replaceOperandWith(genx::KernelMDOp::ArgKinds, Kinds);
-        }
-      }
-    }
+  SmallVector<unsigned, 8> ArgKinds;
+  genx::KernelMetadata KM(NF);
+  // Update arg kinds for the NF.
+  for (unsigned i = 0; i < KM.getNumArgs(); ++i) {
+    if (LinearizedArgs.count(IGCLLVM::getArg(*NF, i)))
+      ArgKinds.push_back(genx::KernelMetadata::AK_NORMAL |
+                         genx::KernelMetadata::IMP_OCL_BYVALSVM);
+    else
+      ArgKinds.push_back(KM.getArgKind(i));
   }
+  std::copy(ImpKinds.begin(), ImpKinds.end(), std::back_inserter(ArgKinds));
+  KM.updateArgKindsMD(std::move(ArgKinds));
+  KM.updateLinearizationMD(std::move(LinearizedArgs));
 
   // Now that the old function is dead, delete it. If there is a dangling
   // reference to the CallGraphNode, just leave the dead function around

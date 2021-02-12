@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef GENX_KERNEL_INFO_H
 #define GENX_KERNEL_INFO_H
 
+#include "vc/GenXCodeGen/GenXInternalMetadata.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
@@ -39,9 +40,6 @@ namespace genx {
 
 enum { VISA_MAJOR_VERSION = 3, VISA_MINOR_VERSION = 6 };
 
-namespace DebugMD {
-static constexpr const char DebuggableKernels[] = "VC.Debug.Enable";
-}
 
 // Utility function to tell whether a Function is a vISA kernel.
 inline bool isKernel(const Function *F) {
@@ -59,9 +57,19 @@ template <typename Ty = llvm::Value> Ty *getValueAsMetadata(Metadata *M) {
   return nullptr;
 }
 
-/// KernelMetadata : class to parse kernel metadata
+struct ImplicitLinearizationInfo {
+  Argument *Arg;
+  ConstantInt *Offset;
+};
+using LinearizedArgInfo = std::vector<ImplicitLinearizationInfo>;
+using ArgToImplicitLinearization =
+    std::unordered_map<Argument *, LinearizedArgInfo>;
+
+/// KernelMetadata : class to parse and update kernel metadata
 class KernelMetadata {
   const Function *F = nullptr;
+  MDNode *ExternalNode = nullptr;
+  MDNode *InternalNode = nullptr;
   bool IsKernel = false;
   StringRef Name;
   unsigned SLMSize = 0;
@@ -69,6 +77,8 @@ class KernelMetadata {
   SmallVector<unsigned, 4> ArgOffsets;
   SmallVector<unsigned, 4> ArgIOKinds;
   SmallVector<StringRef, 4> ArgTypeDescs;
+  SmallVector<unsigned, 4> ArgIndexes;
+  SmallVector<unsigned, 4> OffsetInArgs;
   // Assign a BTI value to a surface or sampler, OCL path only.
   // Given buffer x,                       --> UAV
   //       read_only image                 --> SRV
@@ -76,6 +86,7 @@ class KernelMetadata {
   //
   // First assign SRV then UAV resources.
   SmallVector<int32_t, 4> BTIs;
+  ArgToImplicitLinearization Linearization;
 
 public:
   // default constructor
@@ -87,69 +98,39 @@ public:
    * Enter:   F = Function that purports to be a CM kernel
    *
    */
-  KernelMetadata(const Function *F) {
-    if (!genx::isKernel(F))
-      return;
-    NamedMDNode *Named =
-        F->getParent()->getNamedMetadata(genx::FunctionMD::GenXKernels);
-    if (!Named)
-      return;
+  KernelMetadata(const Function *F);
 
-    MDNode *Node = nullptr;
-    for (unsigned i = 0, e = Named->getNumOperands(); i != e; ++i) {
-      if (i == e)
-        return;
-      Node = Named->getOperand(i);
-      if (Node->getNumOperands() > KernelMDOp::ArgTypeDescs &&
-          getValueAsMetadata(Node->getOperand(KernelMDOp::FunctionRef)) == F)
-        break;
-    }
-    if (!Node)
-      return;
+private:
+  void updateArgsMD(const SmallVectorImpl<unsigned> &Values, MDNode *Node,
+                    unsigned NodeOpNo) const;
 
-    // Node is the metadata node for F, and it has the required number of
-    // operands.
-    this->F = F;
-    IsKernel = true;
-    if (MDString *MDS = dyn_cast<MDString>(Node->getOperand(KernelMDOp::Name)))
-      Name = MDS->getString();
-    if (ConstantInt *Sz = getValueAsMetadata<ConstantInt>(Node->getOperand(KernelMDOp::SLMSize)))
-      SLMSize = Sz->getZExtValue();
-    // Build the argument kinds and offsets arrays that should correspond to the
-    // function arguments (both explicit and implicit)
-    MDNode *KindsNode = dyn_cast<MDNode>(Node->getOperand(KernelMDOp::ArgKinds));
-    MDNode *OffsetsNode = dyn_cast<MDNode>(Node->getOperand(KernelMDOp::ArgOffsets));
-    MDNode *InputOutputKinds = dyn_cast<MDNode>(Node->getOperand(KernelMDOp::ArgIOKinds));
-    MDNode *ArgDescNode = dyn_cast<MDNode>(Node->getOperand(KernelMDOp::ArgTypeDescs));
+public:
+  void updateArgOffsetsMD(SmallVectorImpl<unsigned> &&Offsets);
+  void updateArgKindsMD(SmallVectorImpl<unsigned> &&Kinds);
+  void updateArgIndexesMD(SmallVectorImpl<unsigned> &&Indexes);
+  void updateOffsetInArgsMD(SmallVectorImpl<unsigned> &&Offsets);
+  void updateLinearizationMD(ArgToImplicitLinearization &&Lin);
 
-    IGC_ASSERT(KindsNode);
-
-    for (unsigned i = 0, e = KindsNode->getNumOperands(); i != e; ++i) {
-      ArgKinds.push_back(
-          getValueAsMetadata<ConstantInt>(KindsNode->getOperand(i))
-              ->getZExtValue());
-      if (OffsetsNode == nullptr)
-        ArgOffsets.push_back(0);
-      else {
-        IGC_ASSERT_MESSAGE(OffsetsNode->getNumOperands() == e, "out of sync");
-        ArgOffsets.push_back(
-            getValueAsMetadata<ConstantInt>(OffsetsNode->getOperand(i))
-                ->getZExtValue());
-      }
-    }
-    IGC_ASSERT(InputOutputKinds);
-    IGC_ASSERT(KindsNode->getNumOperands() >= InputOutputKinds->getNumOperands());
-    for (unsigned i = 0, e = InputOutputKinds->getNumOperands(); i != e; ++i)
-      ArgIOKinds.push_back(
-          getValueAsMetadata<ConstantInt>(InputOutputKinds->getOperand(i))
-              ->getZExtValue());
-    IGC_ASSERT(ArgDescNode);
-    for (unsigned i = 0, e = ArgDescNode->getNumOperands(); i < e; ++i) {
-      MDString *MDS = dyn_cast<MDString>(ArgDescNode->getOperand(i));
-      IGC_ASSERT(MDS);
-      ArgTypeDescs.push_back(MDS->getString());
-    }
+  bool hasArgLinearization(Argument *Arg) const {
+    return Linearization.count(Arg);
   }
+
+  // Linearization iterators
+  LinearizedArgInfo::const_iterator arg_lin_begin(Argument *Arg) const {
+    IGC_ASSERT(hasArgLinearization(Arg));
+    const auto &L = Linearization.at(Arg);
+    return L.cbegin();
+  }
+  LinearizedArgInfo::const_iterator arg_lin_end(Argument *Arg) const {
+    IGC_ASSERT(hasArgLinearization(Arg));
+    const auto &L = Linearization.at(Arg);
+    return L.cend();
+  }
+  using arg_lin_range = iterator_range<LinearizedArgInfo::const_iterator>;
+  arg_lin_range arg_lin(Argument *Arg) const {
+    return arg_lin_range(arg_lin_begin(Arg), arg_lin_end(Arg));
+  }
+
   // Accessors
   bool isKernel() const { return IsKernel; }
   StringRef getName() const { return Name; }
@@ -293,6 +274,8 @@ public:
     IMP_OCL_GROUP_OR_LOCAL_SIZE = 0xA << 3,
     IMP_OCL_PRINTF_BUFFER = 0xB << 3,
     IMP_OCL_PRIVATE_BASE = 0xC << 3,
+    IMP_OCL_LINEARIZATION = 0xD << 3,
+    IMP_OCL_BYVALSVM = 0xE << 3,
     IMP_PSEUDO_INPUT = 0x10 << 3
   };
 
@@ -308,6 +291,8 @@ public:
     return K;
   }
   unsigned getArgOffset(unsigned Idx) const { return ArgOffsets[Idx]; }
+  unsigned getOffsetInArg(unsigned Idx) const { return OffsetInArgs[Idx]; }
+  unsigned getArgIndex(unsigned Idx) const { return ArgIndexes[Idx]; }
 
   enum ArgIOKind {
     IO_Normal = 0,
@@ -367,6 +352,10 @@ struct KernelArgInfo {
   bool isPrivateBase() const {
     uint32_t Val = Kind & 0xFFF8;
     return Val == genx::KernelMetadata::IMP_OCL_PRIVATE_BASE;
+  }
+  bool isByValSVM() const {
+    uint32_t Val = Kind & 0xFFF8;
+    return Val == genx::KernelMetadata::IMP_OCL_BYVALSVM;
   }
 };
 

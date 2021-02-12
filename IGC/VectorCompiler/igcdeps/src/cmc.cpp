@@ -211,11 +211,13 @@ private:
 };
 } // anonymous namespace
 
-void CMKernel::createConstArgumentAnnotation(unsigned argNo, unsigned sizeInBytes, unsigned payloadPosition)
-{
+void CMKernel::createConstArgumentAnnotation(unsigned argNo,
+                                             unsigned sizeInBytes,
+                                             unsigned payloadPosition,
+                                             unsigned offsetInArg) {
     auto constInput = std::make_unique<iOpenCL::ConstantArgumentAnnotation>();
 
-    constInput->Offset = 0;
+    constInput->Offset = offsetInArg;
     constInput->PayloadPosition = payloadPosition;
     constInput->PayloadSizeInBytes = sizeInBytes;
     constInput->ArgumentNumber = argNo;
@@ -529,7 +531,7 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       break;
     case ArgKind::General:
       Kernel.createConstArgumentAnnotation(Arg.getIndex(), Arg.getSizeInBytes(),
-                                           ArgOffset);
+                                           ArgOffset, Arg.getOffsetInArg());
       break;
     case ArgKind::LocalSize:
       Kernel.createSizeAnnotation(
@@ -591,6 +593,10 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
             .PerThreadPrivateOnStatelessSize = Info.getStatelessPrivMemSize();
         Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       }
+      break;
+    case ArgKind::ByValSVM:
+      // Do nothing because it has already been linearized and implicit args
+      // will be set instead of it.
       break;
     }
   }
