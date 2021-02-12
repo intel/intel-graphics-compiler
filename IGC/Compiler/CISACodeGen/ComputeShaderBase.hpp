@@ -39,9 +39,9 @@ namespace IGC
                         void*& pThreadPayload,
                         uint& curbeTotalDataLength,
                         uint& curbeReadLength,
-                        bool tileY);
+                        ThreadIDLayout layout) const;
         void        AllocatePerThreadConstantData(uint32_t &offset);
-        uint        GetNumberOfId();
+        uint        GetNumberOfId() const;
 
         /// Get the Thread ID's in Group
         CVariable* CreateThreadIDinGroup(SGVUsage channelNum);

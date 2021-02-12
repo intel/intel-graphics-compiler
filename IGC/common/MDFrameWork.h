@@ -260,6 +260,16 @@ namespace IGC
         bool EnableZEBinary                             = false;
     };
 
+    enum class ThreadIDLayout
+    {
+        // layout IDs along X,Y,Z
+        X,
+        // Tile along just the y-dimension
+        TileY,
+        // tile IDs in 2x2 groups as expected by derivative calculations
+        QuadTile
+    };
+
     struct ComputeShaderInfo
     {
         unsigned int maxWorkGroupSize = 0;
@@ -269,8 +279,8 @@ namespace IGC
         bool forcedVISAPreRAScheduler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
-        // forces XYZ walk order
-        bool needsXYZLocalThreadIdWalkOrder = false;
+        // If nullopt, then there is no requirement
+        std::optional<ThreadIDLayout> neededThreadIdLayout;
     };
 
 

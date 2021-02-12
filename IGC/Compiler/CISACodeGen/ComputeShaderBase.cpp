@@ -47,7 +47,7 @@ namespace IGC
         void*& pThreadPayload,
         uint& curbeTotalDataLength,
         uint& curbeReadLength,
-        bool tileY)
+        ThreadIDLayout layout) const
     {
         typedef uint16_t ThreadPayloadEntry;
 
@@ -108,7 +108,7 @@ namespace IGC
                     lane++;
                 }
 
-                if(tileY)
+                if(layout == ThreadIDLayout::TileY)
                 {
                     const unsigned int tileSizeY = 4;
                     ++currThreadY;
@@ -136,7 +136,7 @@ namespace IGC
                         currThreadZ = 0;
                     }
                 }
-                else
+                else if (layout == ThreadIDLayout::X)
                 {
                     ++currThreadX;
 
@@ -156,6 +156,49 @@ namespace IGC
                     {
                         currThreadZ = 0;
                     }
+                }
+                else if (layout == ThreadIDLayout::QuadTile)
+                {
+                    const unsigned int tileSizeX = 2;
+                    const unsigned int tileSizeY = 2;
+                    ++currThreadX;
+
+                    if (currThreadX % tileSizeX == 0)
+                    {
+                        ++currThreadY;
+                    }
+
+                    if ((currThreadX % tileSizeX == 0) &&
+                        (currThreadY % tileSizeY == 0))
+                    {
+                        currThreadY -= tileSizeY;
+                    }
+                    else if (currThreadX % tileSizeX == 0)
+                    {
+                        currThreadX -= tileSizeX;
+                    }
+
+                    if (currThreadX >= m_threadGroupSize_X)
+                    {
+                        currThreadX = 0;
+                        currThreadY += tileSizeY;
+                    }
+
+                    if (currThreadY >= m_threadGroupSize_Y)
+                    {
+                        currThreadX = 0;
+                        currThreadY = 0;
+                        ++currThreadZ;
+                    }
+
+                    if (currThreadZ >= m_threadGroupSize_Z)
+                    {
+                        currThreadZ = 0;
+                    }
+                }
+                else
+                {
+                    IGC_ASSERT_MESSAGE(0, "unhandled layout!");
                 }
             }
         }
@@ -231,7 +274,7 @@ namespace IGC
         }
     }
 
-    uint CComputeShaderBase::GetNumberOfId()
+    uint CComputeShaderBase::GetNumberOfId() const
     {
         uint numberIdPushed = 0;
 

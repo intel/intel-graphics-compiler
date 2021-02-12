@@ -91,7 +91,7 @@ namespace IGC
             }
         }
         void selectWalkOrder();
-        bool m_tileY;
+        ThreadIDLayout m_ThreadIDLayout;
         WALK_ORDER m_walkOrder;
     };
 

@@ -44,7 +44,7 @@ namespace IGC
         , m_dispatchAlongY(false)
         , m_disableMidThreadPreemption(false)
         , m_hasSLM(false)
-        , m_tileY(false)
+        , m_ThreadIDLayout(ThreadIDLayout::X)
         , m_walkOrder(WO_XYZ)
         , m_threadGroupModifier_X(0)
         , m_threadGroupModifier_Y(0)
@@ -125,19 +125,25 @@ namespace IGC
         const ComputeShaderContext* pCtx =
             static_cast<const ComputeShaderContext*>(GetContext());
 
+        if (pCtx->getModuleMetaData()->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile)
+        {
+            m_ThreadIDLayout = ThreadIDLayout::QuadTile;
+            return;
+        }
+
         if ((m_numberOfTypedAccess >= m_numberOfUntypedAccess) &&
             m_threadGroupSize_Y % 4 == 0 &&
             !pCtx->getModuleMetaData()->csInfo.disableLocalIdOrderOptimizations &&
             IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder)) {
-            m_tileY = true;
+            m_ThreadIDLayout = ThreadIDLayout::TileY;
             m_walkOrder = WO_YXZ;
         }
 
         bool needsLinearWalk =
-            pCtx->getModuleMetaData()->csInfo.needsXYZLocalThreadIdWalkOrder;
+            pCtx->getModuleMetaData()->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
         if (needsLinearWalk)
         {
-            m_tileY = false;
+            m_ThreadIDLayout = ThreadIDLayout::X;
             m_walkOrder = WO_XYZ;
         }
     }
@@ -149,7 +155,7 @@ namespace IGC
             pThreadPayload,
             curbeTotalDataLength,
             curbeReadLength,
-            m_tileY);
+            m_ThreadIDLayout);
      }
 
     void CComputeShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
