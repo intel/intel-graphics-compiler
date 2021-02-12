@@ -933,7 +933,18 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
     {
-        DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
+        if ((IGC_GET_FLAG_VALUE(FunctionControl) < FLAG_FCALL_FORCE_STACKCALL) ||
+            ((OpenCLProgramContext*)(m_currShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
+        {
+            DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
+        }
+        ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->GetVISAModule());
+        if (!scVISAMod->getPerThreadOffset())
+        {
+            // Stack calls in use. Nothing is needed to be marked as Output.
+            // Just setting frame pointer is required for debug info when stack calls are in use.
+            m_pDebugEmitter->GetVISAModule()->setFramePtr(m_currShader->GetFP());
+        }
     }
     else
     {
@@ -9798,7 +9809,7 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
         // If we have written the previous FP to the current frame's start, the start of
         // private memory will be offset by 16 bytes
         CVariable* tempFP = m_currShader->GetNewVariable(pFP);
-        emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(SIZE_OWORD, ISA_TYPE_UD));
+        emitAddPointer(tempFP, pFP, m_currShader->ImmToVariable(getFPOffset(), ISA_TYPE_UD));
         pFP = tempFP;
     }
     CVariable* pOffset = m_currShader->GetSymbol(GII->getOperand(0));

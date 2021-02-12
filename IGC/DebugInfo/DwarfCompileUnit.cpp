@@ -63,6 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Version.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 
 #include "Probe/Assertion.h"
@@ -2505,25 +2506,29 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
         auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
         VISAVariableLocation V(VISAMod);
-        if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
+        ScalarVisaModule* scVISAMod = (ScalarVisaModule*)VISAMod;
+        IGC_ASSERT_MESSAGE(scVISAMod, "ScalarVisaModule error");
+
+        Instruction* perThreadOffsetInst = scVISAMod->getPerThreadOffset();
+
+        if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation) && perThreadOffsetInst)
         {
-            // This is executed only when llvm.dbg.declare still exists.
+            // This is executed only when llvm.dbg.declare still exists and no stack call is supported.
             // With mem2reg run, data is stored in GRFs and this wont be
             // executed.
-            Instruction* perThreadOffsetInst = VISAMod->getPerThreadOffset();
-            ScalarVisaModule* scVMod = (ScalarVisaModule*)VISAMod;
-            IGC_ASSERT_MESSAGE(scVMod, "ScalarVisaModule error");
+
+            IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffsetInst not passed");
 
             Value* pValPTO = dyn_cast_or_null<Value>(perThreadOffsetInst);
             IGC_ASSERT_MESSAGE(pValPTO, "pValPTO error");
 
             // At this point we expect only a register
-            CVariable* pVarPTO = scVMod->GetSymbol(perThreadOffsetInst, pValPTO);
+            CVariable* pVarPTO = scVISAMod->GetSymbol(perThreadOffsetInst, pValPTO);
 
             IGC_ASSERT_MESSAGE(pVarPTO, "Per Thread Offset variable does not exist");
             IGC_ASSERT_MESSAGE(pVarPTO->GetVarType() == EVARTYPE_GENERAL, "Unexpected VISA register type!");
 
-            int regPTO = scVMod->getDeclarationID(pVarPTO, false);
+            int regPTO = scVISAMod->getDeclarationID(pVarPTO, false);
             auto privateBaseRegNum = loc->GetVISAModule()->getPrivateBaseReg();
             if (privateBaseRegNum)  // FIX ME if 0 is allowed
             {
@@ -2583,11 +2588,11 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
                 DbgDecoder::VarInfo varInfoPerThOff;
                 // Rely on getVarInfo result here.
-                auto regNumPerThOff = regPTO; // loc->GetRegister();
+                auto regNumPerThOff = regPTO;
                 VISAMod->getVarInfo("V", regNumPerThOff, varInfoPerThOff);
 
                 IGC_ASSERT_MESSAGE(varInfoPerThOff.lrs.front().isGRF() || varInfoPerThOff.lrs.front().isSpill(),
-                        "Unexpected location of variable");
+                    "Unexpected location of variable");
                 if (varInfoPerThOff.lrs.front().isGRF())
                 {
                     uint16_t grfRegNumPTO = varInfoPerThOff.lrs.front().getGRF().regNum;
@@ -2636,6 +2641,66 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             }
         }
 
+        auto sizeMD = var.getDbgInst()->getMetadata("StorageSize");
+        if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation) && sizeMD)
+        {
+            emitLocation = true;
+            auto simdSize = VISAMod->GetSIMDSize();
+            uint64_t storageOffset = simdSize * dyn_cast<ConstantAsMetadata>(storageMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+            uint64_t storageSize = dyn_cast<ConstantAsMetadata>(sizeMD->getOperand(0))->getValue()->getUniqueInteger().getSExtValue();
+            // There is a private value in the current stack frame
+            // 1 DW_OP_constu <Frame Pointer reg encoded>
+            // 2 DW_OP_INTEL_regs  , i.e. Frame Pointer
+            // 3 DW_OP_const1u <bit-offset to Frame Pointer reg>
+            // 4 DW_OP_const1u 64  , i.e. size in bits
+            // 5 DW_OP_INTEL_push_bit_piece_stack
+            // 6 DW_OP_const1u    SIZE_OWORD           // i.e. 0x10 taken from getFPOffset(); same as emitted in EmitPass::emitStackAlloca()
+            // 7 DW_OP_plus
+            // 8 DW_OP_push_simd_lane
+            // 9 DW_OP_const1u/2u/4u/8u  storageSize   // MD: StorageSize; the size of the variable
+            // 10 DW_OP_mul
+            // 11 DW_OP_plus
+            // 12 DW_OP_const1u/2u/4u/8u  storageOffset // MD: StorageOffset; the offset where each variable is stored in the current stack frame
+            // 13 DW_OP_plus
+
+            CVariable *framePtr = VISAMod->getFramePtr();
+            ScalarVisaModule* scVISAMod = (ScalarVisaModule*)VISAMod;
+            int regFP = scVISAMod->getDeclarationID(framePtr, false);
+            DbgDecoder::VarInfo varInfoFP;
+            // Rely on getVarInfo result here.
+            auto regNumFP = regFP;
+            VISAMod->getVarInfo("V", regNumFP, varInfoFP);
+            uint16_t grfRegNumFP = varInfoFP.lrs.front().getGRF().regNum;
+            uint16_t grfSubRegNumFP = varInfoFP.lrs.front().getGRF().subRegNum;
+            auto bitOffsetToFPReg = grfSubRegNumFP * 8;  // Bit-offset to GRF with Frame Pointer
+            auto DWRegFPEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(
+                grfRegNumFP, EmitSettings.UseNewRegisterEncoding);
+
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);          // 1 DW_OP_constu <Frame Pointer reg encoded>
+            addUInt(Block, dwarf::DW_FORM_udata, DWRegFPEncoded);               // Register ID is shifted by offset
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);             // 2 DW_OP_INTEL_regs  , i.e. Frame Pointer
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);         // 3 DW_OP_const1u <bit-offset to Frame Pointer reg>
+            addUInt(Block, dwarf::DW_FORM_data1, bitOffsetToFPReg);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);         // 4 DW_OP_const1u 64  , i.e. size in bits
+            addUInt(Block, dwarf::DW_FORM_data1, 64);
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack); // 5 DW_OP_INTEL_push_bit_piece_stack
+
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);         // 6 DW_OP_const1u    SIZE_OWORD (taken from getFPOffset())
+            addUInt(Block, dwarf::DW_FORM_data1, EmitPass::getFPOffset());
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);            // 7 DW_OP_plus
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);   // 8 DW_OP_INTEL_push_simd_lane
+            addConstantUValue(Block, storageSize);                              // 9 DW_OP_const1u/2u/4u/8u  storageSize
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);             // 10 DW_OP_mul
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);            // 11 DW_OP_plus
+            addConstantUValue(Block, storageOffset);                            // 12 DW_OP_const1u/2u/4u/8u  storageOffset
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);            // 13 DW_OP_plus
+
+            // As long as for debugging there is no slicing of variables handled above,
+            // 2nd run of this loop is not needed in SIMD32, because opcodes above describe
+            // location for all 32 lanes.
+            break;
+        }
+
         if (EmitSettings.EnableSIMDLaneDebugging && isSliced)
         {
             // DW_OP_push_simd_lane
@@ -2668,6 +2733,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 cast<DIEInteger>(secondHalfOff)->setValue(offsetTaken - offsetNotTaken);
             }
         }
+
         DbgDecoder::VarInfo varInfo;
         if (!vars)
         {

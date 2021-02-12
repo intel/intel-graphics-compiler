@@ -36,6 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VISAIDebugEmitter.hpp"
 #include "LexicalScopes.hpp"
 
+#include "Compiler/CISACodeGen/CVariable.hpp"
+
 #include <vector>
 #include <map>
 #include <string>
@@ -524,18 +526,12 @@ namespace IGC
         // This function coalesces GenISARange which is a vector of <start ip, end ip>
         static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
 
-        void setPerThreadOffset(llvm::Instruction* perThreadOffset)
-        {
-            IGC_ASSERT_MESSAGE(perThreadOffset, "Clear perThreadOffset");
-            m_perThreadOffset = perThreadOffset;
-        }
         void dump() const { print(llvm::dbgs()); }
         void print (llvm::raw_ostream &OS) const;
 
-        llvm::Instruction* getPerThreadOffset()
-        {
-            return m_perThreadOffset;
-        }
+        void setFramePtr(CVariable* pFP) { m_framePtr = pFP; }
+
+        CVariable* getFramePtr() { return m_framePtr; }
 
         uint64_t GetFuncId() const { return (uint64_t)m_pEntryFunc; }
 
@@ -558,7 +554,7 @@ namespace IGC
 
         ObjectType m_objectType = ObjectType::UNKNOWN;
 
-        llvm::Instruction* m_perThreadOffset = nullptr;
+        CVariable* m_framePtr = nullptr;
 
     public:
         /// Constants represents VISA register encoding in DWARF

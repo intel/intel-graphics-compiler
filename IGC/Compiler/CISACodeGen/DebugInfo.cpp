@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenCodeGenModule.h"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -357,7 +358,9 @@ void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter
 
 void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter)
 {
-    markOutputPrivateBase(pShader); // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
+    IGC_ASSERT_MESSAGE(pDebugEmitter, "Missing debug emitter");
+    VISAModule* visaModule = pDebugEmitter->GetVISAModule();
+    IGC_ASSERT_MESSAGE(visaModule, "Missing visa module");
 
     for (auto& bb : F)
     {
@@ -368,17 +371,28 @@ void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitte
                 // Per Thread Offset non-debug instruction must have 'Output' attribute
                 // added in the function to be called.
                 markOutputVar(pShader, pDebugEmitter, &pInst, "perThreadOffset");
-                IGC_ASSERT_MESSAGE(pDebugEmitter, "Missing debug emitter");
-                if (VISAModule* visaModule = pDebugEmitter->GetVISAModule())
-                {
-                    visaModule->setPerThreadOffset(&pInst);
-                }
+                markOutputPrivateBase(pShader); // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
+                ScalarVisaModule* scVISAModule = (ScalarVisaModule*)visaModule;
+                IGC_ASSERT_MESSAGE(scVISAModule->getPerThreadOffset()==nullptr, "setPerThreadOffset was set earlier");
+                scVISAModule->setPerThreadOffset(&pInst);
+
                 if (((OpenCLProgramContext*)(pShader->GetContext()))->m_InternalOptions.KernelDebugEnable == false)
                 {
                     return;
                 }
             }
-            else if (((OpenCLProgramContext*)(pShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
+        }
+    }
+
+    if (((OpenCLProgramContext*)(pShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
+    {
+        // Compute thread and group identification instructions will be marked here
+        // regardless of stack calls detection in this shader, so not only when per thread offset
+        // as well as a private base have been marked as Output earlier in this function.
+        // When stack calls are in use then only these group ID instructions are marked as Output.
+        for (auto& bb : F)
+        {
+            for (auto& pInst : bb)
             {
                 if (MDNode* implicitGlobalIDMD = pInst.getMetadata("implicitGlobalID"))
                 {
@@ -393,8 +407,6 @@ void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitte
 
 void DebugInfoData::markOutput(llvm::Function& F, CShader* m_currShader)
 {
-    IGC_ASSERT_MESSAGE(IGC_IS_FLAG_DISABLED(UseOffsetInLocation), "UseOffsetInLocation not disabled");
-
     for (auto& bb : F)
     {
         for (auto& pInst : bb)
@@ -447,8 +459,9 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
     CVariable* pVar = m_pShader->GetSymbol(pValue);
     if (pVar->GetVarType() == EVARTYPE_GENERAL)
     {
-        // We want to attach "Output" attribute to all variables
-        // (if UseOffsetInLocation is disabled)
+        // We want to attach "Output" attribute to all variables:
+        // - if UseOffsetInLocation is disabled, or
+        // - if UseOffsetInLocation is enabled but there is a stack call in use,
         // so that finalizer can extend their liveness to end of
         // the program. This will help debugger examine their
         // values anywhere in the code till they are in scope.

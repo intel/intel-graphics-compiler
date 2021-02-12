@@ -96,6 +96,15 @@ public:
         return m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[varId]);
     }
 
+    void setPerThreadOffset(llvm::Instruction* perThreadOffset) {
+        IGC_ASSERT_MESSAGE(perThreadOffset, "Clear perThreadOffset");
+        m_perThreadOffset = perThreadOffset;
+    }
+
+    llvm::Instruction* getPerThreadOffset() {
+        return m_perThreadOffset;
+    }
+
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.
@@ -109,6 +118,7 @@ private:
 
     CShader* m_pShader;
 
+    llvm::Instruction* m_perThreadOffset = nullptr;
 };
 
 }

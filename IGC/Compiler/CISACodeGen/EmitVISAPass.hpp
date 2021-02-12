@@ -252,6 +252,7 @@ public:
     void emitFlushSamplerCache();
     void emitSurfaceInfo(llvm::GenIntrinsicInst* intrinsic);
 
+    static uint64_t getFPOffset() { return SIZE_OWORD; }
     void emitStackAlloca(llvm::GenIntrinsicInst* intrinsic);
     void emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic);
 
