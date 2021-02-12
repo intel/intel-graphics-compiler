@@ -24,7 +24,7 @@ IN THE SOFTWARE.
 
 
 #include "spirv.h"
-#include "IMF/FP32/asin_s_la.cl"
+#include "Math/IMF/FP32/asin_s_la.cl"
 
 INLINE float __builtin_spirv_OpenCL_fclamp_f32_f32_f32(float x, float minval, float maxval ){
     return __builtin_spirv_OpenCL_fmin_f32_f32(__builtin_spirv_OpenCL_fmax_f32_f32(x, minval), maxval);
@@ -476,13 +476,6 @@ float FDIV_IEEE( float a,
 }
 
 INLINE
-double FDIV_IEEE_DOUBLE( double a,
-                           double b )
-{
-    return __builtin_IB_ieee_divide_f64(a, b);
-}
-
-INLINE
 float __builtin_spirv_OpenCL_fabs_f32(float x ){
     float neg = -x;
     return (x >= 0) ?  x : neg;
@@ -610,15 +603,6 @@ float __builtin_spirv_OpenCL_fma_f32_f32_f32( float a,
 }
 
 INLINE
-double __builtin_spirv_OpenCL_fma_f64_f64_f64( double a,
-                                      double b,
-                                      double c )
-{
-    return __builtin_fma(a, b, c);
-}
-
-
-INLINE
 half __builtin_spirv_OpenCL_mad_f16_f16_f16( half a,
                                       half b,
                                       half c )
@@ -685,71 +669,3 @@ half __builtin_spirv_OpenCL_native_tan_f16(half x ){
 }
 
 #endif
-
-#if defined(cl_khr_fp64)
-
-INLINE double __builtin_spirv_OpenCL_fclamp_f64_f64_f64(double x, double minval, double maxval ){
-    return __builtin_spirv_OpenCL_fmin_f64_f64(__builtin_spirv_OpenCL_fmax_f64_f64(x, minval), maxval);
-}
-
-INLINE
-double __builtin_spirv_OpenCL_ceil_f64(double x ){
-    //First part of the algorithm performs rounding towards zero by truncating bits in
-    //the fractional part of the number.This is done by finding out the position of the
-    //fractional bits of the mantissa and masking them out with zeros.
-
-    double roundedToZeroVal = __builtin_spirv_OpenCL_trunc_f64(x);
-    unsigned high32Bit = (int)(as_ulong( x ) >> 32);
-    ulong fraction = as_ulong(x) - as_ulong(roundedToZeroVal);    // getting fraction
-
-    // Second part is to calculate exponent adjustment based on sign of source
-
-    uint temp5 = (uint)(as_ulong( fraction ));
-    uint temp6 = (uint)(as_ulong( fraction ) >> 32);
-    uint sign = high32Bit & 0x80000000;
-    uint expBias = (sign == 0) ? 0x3ff00000 : 0;
-    uint orDst = temp5 | temp6;
-    ulong signAdjustedVal = (orDst == 0) ? 0 : (expBias);
-    double output = as_double( signAdjustedVal << 32 ) + as_double( roundedToZeroVal );
-    return output;
-}
-
-INLINE
-double __builtin_spirv_OpenCL_fabs_f64(double x ){
-    double neg = -x;
-    return (x >= 0) ?  x : neg;
-}
-
-INLINE
-double __builtin_spirv_OpenCL_floor_f64(double x ){
-    //First part of the algorithm performs rounding towards zero by truncating bits in
-    //the fractional part of the number.This is done by finding out the position of the
-    //fractional bits of the mantissa and masking them out with zeros.
-
-    double roundedToZeroVal = __builtin_spirv_OpenCL_trunc_f64(x);
-
-    ulong fraction = as_ulong(x) - as_ulong( roundedToZeroVal );       // getting fraction
-
-    // Second part is to calculate exponent adjustment based on sign of source
-
-    uint temp5 = (uint)( fraction );
-    uint temp6 = (uint)(fraction >> 32);
-    unsigned high32Bit = (uint)(as_ulong( x ) >> 32);
-    uint sign = high32Bit & 0x80000000;
-    uint expBias = (sign != 0) ? 0xbff00000 : 0;
-    uint orDst = temp5 | temp6;
-    ulong signAdjustedVal = (orDst == 0) ? 0 : (expBias);
-    double output = as_double( signAdjustedVal << 32 ) + as_double( roundedToZeroVal );
-    return output;
-}
-
-INLINE double __builtin_spirv_OpenCL_native_sqrt_f64(double x ){
-        return __builtin_IB_native_sqrtd(x);
-}
-
-INLINE double __builtin_spirv_OpenCL_native_rsqrt_f64(double x ){
-      return (1 / __builtin_IB_native_sqrtd(x));
-}
-
-#endif // defined(cl_khr_fp64)
-

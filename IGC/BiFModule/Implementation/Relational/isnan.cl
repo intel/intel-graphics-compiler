@@ -32,15 +32,6 @@ INLINE int OVERLOADABLE __intel_relaxed_isnan( float x )
     return __FastRelaxedMath ? 0 : result;
 }
 
-#if defined(cl_khr_fp64)
-INLINE int OVERLOADABLE __intel_relaxed_isnan( double x )
-{
-    int result = __builtin_spirv_OpIsNan_f64(x);
-    // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
-    return __FastRelaxedMath ? 0 : result;
-}
-#endif // defined(cl_khr_fp64)
-
 INLINE int OVERLOADABLE __intel_relaxed_isnan( half x )
 {
     int result = __builtin_spirv_OpIsNan_f16(x);
