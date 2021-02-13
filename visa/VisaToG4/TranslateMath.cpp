@@ -273,9 +273,12 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
-    for (uint16_t regIndex = 0; currEMask != vISA_NUM_EMASK && regIndex < loopCount;
-        ++regIndex, currEMask = Get_Next_EMask(currEMask, exsize))
+    uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_DF) * exsize + getGRFSize() - 1) / getGRFSize());
+    for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
+        ++loopIndex, currEMask = Get_Next_EMask(currEMask, exsize))
     {
+
+        uint16_t regIndex = loopIndex * splitInstGRFSize;
         instOpt = Get_Gen4_Emask(currEMask, exsize);
         instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0; // setting channels for non-mad insts
         unsigned int madmInstOpt = instOpt; // setting channels for mad insts
@@ -619,9 +622,11 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
 
     VISA_EMask_Ctrl currEMask = emask;
-    for (uint16_t regIndex = 0; currEMask != vISA_NUM_EMASK && regIndex < loopCount;
-        ++regIndex, currEMask = Get_Next_EMask(currEMask, exsize))
+    uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
+    for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
+        ++loopIndex, currEMask = Get_Next_EMask(currEMask, exsize))
     {
+        uint16_t regIndex = loopIndex * splitInstGRFSize;
         // set Q1 for insts within the 1st loop and Q2 for the 2nd, if inside SIMD CF
         instOpt = Get_Gen4_Emask(currEMask, exsize);
         instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0; // setting channels for non-mad insts
@@ -859,9 +864,11 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     G4_SrcRegRegion *t7_src_opnd_final = createSrcRegRegion(tsrc7_final);
 
     VISA_EMask_Ctrl currEMask = emask;
-    for (uint16_t regIndex = 0; currEMask != vISA_NUM_EMASK && regIndex < loopCount;
-        ++regIndex, currEMask = Get_Next_EMask(currEMask, exsize))
+    uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
+    for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
+        ++loopIndex, currEMask = Get_Next_EMask(currEMask, exsize))
     {
+        uint16_t regIndex = splitInstGRFSize * loopIndex;
         instOpt = Get_Gen4_Emask(currEMask, exsize);
         instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0;
         madmInstOpt = instOpt;
@@ -1117,9 +1124,11 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
-    for (uint16_t regIndex = 0; currEMask != vISA_NUM_EMASK && regIndex < loopCount;
-        ++regIndex, currEMask = Get_Next_EMask(currEMask, exsize))
+    uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_DF) * exsize + getGRFSize() - 1) / getGRFSize());
+    for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
+        ++loopIndex, currEMask = Get_Next_EMask(currEMask, exsize))
     {
+        uint16_t regIndex = splitInstGRFSize * loopIndex;
         instOpt = Get_Gen4_Emask(currEMask, exsize);
         instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0; // setting channels for non-mad insts
         unsigned int madmInstOpt = instOpt; // setting channels for mad insts
