@@ -1664,28 +1664,34 @@ namespace IGC
     void CEncoder::Arithmetic(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
     {
         unsigned numParts = 0;
-        if (NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
-            NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
-            NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true) ||
-            NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true)) {
+        bool needSplit = false;
+        VISA_EMask_Ctrl execMask = GetAluEMask(dst);
+        VISA_Exec_Size execSize = GetAluExecSize(dst);
 
-            VISA_EMask_Ctrl execMask = GetAluEMask(dst);
-            VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
-            VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
+        {
+            needSplit = NeedSplitting(dst, m_encoderState.m_dstOperand, numParts) ||
+                NeedSplitting(src0, m_encoderState.m_srcOperand[0], numParts, true) ||
+                NeedSplitting(src1, m_encoderState.m_srcOperand[1], numParts, true) ||
+                NeedSplitting(src2, m_encoderState.m_srcOperand[2], numParts, true);
+        }
+
+        if (needSplit) {
+
+            VISA_Exec_Size newExecSize = SplitExecSize(execSize, numParts);
 
             for (unsigned thePart = 0; thePart != numParts; ++thePart) {
-                SModifier newDstMod = SplitVariable(fromExecSize, toExecSize, thePart, dst, m_encoderState.m_dstOperand);
-                SModifier newSrc0Mod = SplitVariable(fromExecSize, toExecSize, thePart, src0, m_encoderState.m_srcOperand[0], true);
-                SModifier newSrc1Mod = SplitVariable(fromExecSize, toExecSize, thePart, src1, m_encoderState.m_srcOperand[1], true);
-                SModifier newSrc2Mod = SplitVariable(fromExecSize, toExecSize, thePart, src2, m_encoderState.m_srcOperand[2], true);
+                SModifier newDstMod = SplitVariable(execSize, newExecSize, thePart, dst, m_encoderState.m_dstOperand);
+                SModifier newSrc0Mod = SplitVariable(execSize, newExecSize, thePart, src0, m_encoderState.m_srcOperand[0], true);
+                SModifier newSrc1Mod = SplitVariable(execSize, newExecSize, thePart, src1, m_encoderState.m_srcOperand[1], true);
+                SModifier newSrc2Mod = SplitVariable(execSize, newExecSize, thePart, src2, m_encoderState.m_srcOperand[2], true);
                 VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, newDstMod);
                 VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, newSrc0Mod);
                 VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, newSrc1Mod);
                 VISA_VectorOpnd* srcOpnd2 = GetSourceOperand(src2, newSrc2Mod);
                 VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
                 V(vKernel->AppendVISAArithmeticInst(opcode, predOpnd, IsSat(),
-                    SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                    toExecSize,
+                    SplitEMask(execSize, newExecSize, thePart, execMask),
+                    newExecSize,
                     dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2));
             }
         }
@@ -1699,8 +1705,8 @@ namespace IGC
                 opcode,
                 predOpnd,
                 IsSat(),
-                GetAluEMask(dst),
-                GetAluExecSize(dst),
+                execMask,
+                execSize,
                 dstOpnd,
                 srcOpnd0,
                 srcOpnd1,
