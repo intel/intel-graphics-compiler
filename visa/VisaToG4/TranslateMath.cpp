@@ -194,7 +194,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_Imm *dbl_constant_1 = createDFImm(1.0);
 
     {
-        if (instExecSize == 1 || instExecSize == 4)
+        if (instExecSize == 1 || instExecSize == 2 || instExecSize == 4)
         {
             element_size = 4;
             loopCount = 1;
@@ -1061,7 +1061,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion *neg_src1 = nullptr;
 
     {
-        if (instExecSize == 1 || instExecSize == 4)
+        if (instExecSize == 1 || instExecSize == 2 || instExecSize == 4)
         {
             element_size = g4::SIMD4;
             loopCount = 1;
