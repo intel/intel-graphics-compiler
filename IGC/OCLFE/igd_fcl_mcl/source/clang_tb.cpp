@@ -1514,7 +1514,7 @@ namespace TC
         optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
         optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
 
-        optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
+        optionsEx += " -D__ENDIAN_LITTLE__";
 
         IOCLFEBinaryResult *pResultPtr = NULL;
 #ifdef _WIN32
