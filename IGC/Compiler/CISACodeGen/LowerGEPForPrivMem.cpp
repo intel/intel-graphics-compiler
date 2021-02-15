@@ -633,6 +633,29 @@ void TransposeHelper::handleGEPInst(
         pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, GepOpnd);
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
     }
+    while (T->isStructTy() || T->isArrayTy() || T->isVectorTy()) {
+        unsigned int arr_sz = 1;
+        if (T->isStructTy())
+        {
+            IGC_ASSERT(T->getStructNumElements() == 1);
+            T = T->getStructElementType(0);
+        }
+        else if (T->isArrayTy())
+        {
+            arr_sz = int_cast<unsigned int>(T->getArrayNumElements());;
+            T = T->getArrayElementType();
+        }
+        else if (T->isVectorTy())
+        {
+            arr_sz = (unsigned)cast<VectorType>(T)->getNumElements();
+            T = cast<VectorType>(T)->getElementType();
+        }
+        else
+        {
+            IGC_ASSERT(false);
+        }
+        pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
+    }
     pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
     HandleAllocaSources(pGEP, pScalarizedIdx);
 }
