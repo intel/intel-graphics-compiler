@@ -300,7 +300,6 @@ DwarfDebug::DwarfDebug(StreamEmitter* A, VISAModule* M) :
     DwarfVersion = getDwarfVersionFromModule(M->GetModule());
 
     gatherDISubprogramNodes();
-    M->SetDwarfDebug(this);
 }
 
 MCSymbol* DwarfDebug::getStringPoolSym()
@@ -1074,7 +1073,7 @@ void DwarfDebug::beginModule()
     if(DwarfFrameSectionNeeded())
     {
         Asm->SwitchSection(Asm->GetDwarfFrameSection());
-        if (m_pModule->hasOrIsStackCall())
+        if (m_pModule->hasOrIsStackCall(*decodedDbg))
         {
             // First stack call CIE is written out,
             // next subroutine CIE if required.
@@ -1082,7 +1081,7 @@ void DwarfDebug::beginModule()
             offsetCIESubroutine = writeStackcallCIE();
         }
 
-        if (m_pModule->getSubroutines()->size() > 0)
+        if (m_pModule->getSubroutines(*decodedDbg)->size() > 0)
         {
             //writeSubroutineCIE();
         }
@@ -1466,7 +1465,8 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
         uint32_t pointerSize, DbgVariable* RegVar, std::vector<VISAVariableLocation>& Locs,
         DbgDecoder::LiveIntervalsVISA& genIsaRange)
     {
-        auto allCallerSave = m_pModule->getAllCallerSave(startRange, endRange, genIsaRange);
+        auto allCallerSave = m_pModule->getAllCallerSave(*decodedDbg,
+                                                         startRange, endRange, genIsaRange);
         std::vector<DbgDecoder::LiveIntervalsVISA> vars = { genIsaRange };
 
         auto oldSize = dotLoc.loc.size();
@@ -1615,7 +1615,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 AbsVar->setDbgInst(pInst);
             }
 
-            bool needsCallerSave = m_pModule->getCompileUnit()->cfi.numCallerSaveEntries > 0;
+            bool needsCallerSave = m_pModule->getCompileUnit(*decodedDbg)->cfi.numCallerSaveEntries > 0;
             if ((!m_pModule->isDirectElfInput || !EmitSettings.EmitDebugLoc) && !needsCallerSave)
                 continue;
 
@@ -1761,7 +1761,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 {
                     DbgDecoder::VarInfo varInfo;
                     auto regNum = Loc.GetRegister();
-                    m_pModule->getVarInfo("V", regNum, varInfo);
+                    m_pModule->getVarInfo(*decodedDbg, "V", regNum, varInfo);
                     for (auto& genIsaRange : varInfo.lrs)
                     {
                         auto startEnd = findClosestStartEnd(genIsaRange.start, genIsaRange.end);
@@ -2335,7 +2335,7 @@ void DwarfDebug::endFunction(const Function* MF)
     if (DwarfFrameSectionNeeded())
     {
         Asm->SwitchSection(Asm->GetDwarfFrameSection());
-        if (m_pModule->hasOrIsStackCall())
+        if (m_pModule->hasOrIsStackCall(*decodedDbg))
         {
             writeFDEStackCall(m_pModule);
         }
@@ -3080,9 +3080,9 @@ void DwarfDebug::writeFDESubroutine(VISAModule* m)
     auto firstInst = (m->GetInstInfoMap()->begin())->first;
     auto funcName = firstInst->getParent()->getParent()->getName();
 
-    IGC::DbgDecoder::SubroutineInfo* sub = nullptr;
-    auto co = m->getCompileUnit();
-    for (auto& s : co->subs)
+    const IGC::DbgDecoder::SubroutineInfo* sub = nullptr;
+    const auto* co = m->getCompileUnit(*decodedDbg);
+    for (const auto& s : co->subs)
     {
         if (s.name.compare(funcName.str()) == 0)
         {
@@ -3121,8 +3121,8 @@ void DwarfDebug::writeFDESubroutine(VISAModule* m)
 
         return genOffset;
     };
-    uint64_t genOffStart = m->GetDwarfDebug()->lowPc;
-    uint64_t genOffEnd = m->GetDwarfDebug()->highPc;
+    uint64_t genOffStart = this->lowPc;
+    uint64_t genOffEnd = this->highPc;
     auto& retvarLR = sub->retval;
     IGC_ASSERT_MESSAGE(retvarLR.size() > 0, "expecting GRF for return");
     IGC_ASSERT_MESSAGE(retvarLR[0].var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF, "expecting GRF for return");
@@ -3170,7 +3170,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
     // <ip, <instructions to write> >
     auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
     std::map <uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
-    auto& dbgInfo = *m->getCompileUnit();
+    const auto& dbgInfo = *m->getCompileUnit(*decodedDbg);
     auto numGRFs = GetVISAModule()->getNumGRFs();
     auto specialGRF = GetSpecialGRF();
 
@@ -3230,7 +3230,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
             write(data, (uint8_t)item);
     };
 
-    auto writeLR = [this, writeOffBEFP](std::vector<uint8_t>& data, DbgDecoder::LiveIntervalGenISA& lr, bool deref)
+    auto writeLR = [this, writeOffBEFP](std::vector<uint8_t>& data, const DbgDecoder::LiveIntervalGenISA& lr, bool deref)
     {
         if (lr.var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
         {
@@ -3283,8 +3283,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
     // write CFA
     if (cfi.callerbefpValid)
     {
-        auto& callerFP = cfi.callerbefp;
-        for (auto& item : callerFP)
+        const auto& callerFP = cfi.callerbefp;
+        for (const auto& item : callerFP)
         {
             // map out CFA to an offset on be stack
             write(cfaOps[item.start], (uint8_t)llvm::dwarf::DW_CFA_def_cfa_expression);
@@ -3413,6 +3413,10 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
             Asm->EmitInt8(byte);
     }
 }
+bool DwarfDebug::DwarfFrameSectionNeeded() const
+{
+    return (m_pModule->hasOrIsStackCall(*decodedDbg) || (m_pModule->getSubroutines(*decodedDbg)->size() > 0));
+}
 
 void DwarfDebug::gatherDISubprogramNodes()
 {
@@ -3429,7 +3433,7 @@ void DwarfDebug::gatherDISubprogramNodes()
 
     for (auto& F : *m_pModule->GetModule())
     {
-        if (auto diSubprogram = F.getSubprogram())
+        if (auto* diSubprogram = F.getSubprogram())
         {
             DISubprogramNodes.push_back(diSubprogram);
         }
@@ -3463,80 +3467,6 @@ void DwarfDebug::gatherDISubprogramNodes()
             }
         }
     }
-}
-
-bool VISAModule::getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var)
-{
-    std::string name = prefix + std::to_string(vreg);
-    if (VirToPhyMap.size() == 0)
-    {
-        // populate map one time
-        auto co = getCompileUnit();
-        if (co)
-        {
-            for (auto& v : co->Vars)
-            {
-                VirToPhyMap.insert(std::make_pair(v.name, v));
-            }
-        }
-    }
-
-    auto it = VirToPhyMap.find(name);
-    if (it == VirToPhyMap.end())
-        return false;
-
-    var = (*it).second;
-    return true;
-}
-
-bool VISAModule::hasOrIsStackCall() const
-{
-    auto co = getCompileUnit();
-    if (!co)
-        return false;
-
-    auto& cfi = co->cfi;
-    if (cfi.befpValid || cfi.frameSize > 0 || cfi.retAddr.size() > 0)
-        return true;
-
-    return IsIntelSymbolTableVoidProgram();
-}
-
-std::vector<DbgDecoder::SubroutineInfo>* VISAModule::getSubroutines() const
-{
-    std::vector<DbgDecoder::SubroutineInfo> subs;
-    auto co = getCompileUnit();
-    if (co)
-        return &co->subs;
-    return nullptr;
-}
-
-DbgDecoder::DbgInfoFormat* VISAModule::getCompileUnit() const
-{
-    for (auto& co : dd->getDecodedDbg()->compiledObjs)
-    {
-        // TODO: Fix this for stack call use
-        if (dd->getDecodedDbg()->compiledObjs.size() == 1 ||
-            co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
-        {
-            return &co;
-        }
-
-        if (GetType() == ObjectType::SUBROUTINE)
-        {
-            // Subroutine bounds are stored inside corresponding kernel struct
-            // in VISA debug info.
-            for (auto& Sub : co.subs)
-            {
-                if (Sub.name.compare(m_pEntryFunc->getName().str()) == 0)
-                {
-                    return &co;
-                }
-            }
-        }
-    }
-
-    return nullptr;
 }
 
 llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)

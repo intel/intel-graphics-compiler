@@ -67,6 +67,9 @@ void IDebugEmitter::Release(IDebugEmitter* pDebugEmitter)
     delete pDebugEmitter;
 }
 
+DebugEmitter::DebugEmitter() : IDebugEmitter(), m_outStream(m_str)
+{
+}
 DebugEmitter::~DebugEmitter()
 {
     Reset();
@@ -75,56 +78,39 @@ DebugEmitter::~DebugEmitter()
 void DebugEmitter::Reset()
 {
     m_str.clear();
-    if (toFree.size() > 0)
-    {
-        for (auto& item : toFree)
-            delete item;
-        m_pVISAModule = nullptr;
-        toFree.clear();
-    }
-    if (m_pStreamEmitter)
-    {
-        delete m_pStreamEmitter;
-        m_pStreamEmitter = nullptr;
-    }
-    if (m_pDwarfDebug)
-    {
-        delete m_pDwarfDebug;
-        m_pDwarfDebug = nullptr;
-    }
+    m_pVISAModule = nullptr;
+
+    m_pStreamEmitter.reset();
+    m_pDwarfDebug.reset();
+    toFree.clear();
+
     m_initialized = false;
 }
 
 
-void DebugEmitter::Initialize(VISAModule* visaModule, const DebugEmitterOpts& Opts,
-                              bool debugEnabled)
+void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitterOpts& Opts)
 {
     IGC_ASSERT_MESSAGE(false == m_initialized, "DebugEmitter is already initialized!");
     m_initialized = true;
 
-    m_debugEnabled = debugEnabled;
+    m_pVISAModule = VM.get();
+    m_debugEnabled = Opts.DebugEnabled;
     // VISA module will be initialized even when debugger is disabled.
     // Its overhead is minimum and it will be used in debug mode to
     // assertion test on calling DebugEmitter in the right order.
-    m_pVISAModule = visaModule;
-    toFree.push_back(m_pVISAModule);
+    toFree.push_back(std::move(VM));
 
     if (!m_debugEnabled)
     {
         return;
     }
 
-    std::string dataLayout = m_pVISAModule->GetDataLayout();
+    const auto &dataLayout = m_pVISAModule->GetDataLayout();
+    m_pStreamEmitter = std::make_unique<StreamEmitter>(
+                        m_outStream, dataLayout, m_pVISAModule->GetTargetTriple(), Opts);
+    m_pDwarfDebug = std::make_unique<DwarfDebug>(m_pStreamEmitter.get(), m_pVISAModule);
 
-    m_pStreamEmitter = new StreamEmitter(m_outStream, dataLayout,
-                                         m_pVISAModule->GetTargetTriple(),
-                                         Opts);
-    m_pDwarfDebug = new DwarfDebug(m_pStreamEmitter, m_pVISAModule);
-}
-
-void DebugEmitter::setFunction(llvm::Function* F, bool isCloned)
-{
-    m_pVISAModule->SetEntryFunction(F, isCloned);
+    registerVISA(m_pVISAModule);
 }
 
 std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
@@ -134,6 +120,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
         return {};
     }
 
+    IGC_ASSERT_MESSAGE(m_pVISAModule, "active visa object must be selected before finalization");
     if (m_pVISAModule->isDirectElfInput)
     {
         m_pDwarfDebug->setDecodedDbg(decodedDbg);
@@ -162,8 +149,8 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
 
     if (m_pVISAModule->isDirectElfInput)
     {
-        m_pVISAModule->buildDirectElfMaps();
-        auto co = m_pVISAModule->getCompileUnit();
+        m_pVISAModule->buildDirectElfMaps(*decodedDbg);
+        auto co = m_pVISAModule->getCompileUnit(*decodedDbg);
 
         // Emit src line mapping directly instead of
         // relying on dbgmerge. elf generated will have
@@ -329,7 +316,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
         m_pStreamEmitter->Finalize();
 
         // Add program header table to satisfy latest gdb
-        unsigned int is64Bit = (GetVISAModule()->getPointerSize() == 8);
+        bool is64Bit = m_pVISAModule->getPointerSize() == 8;
         unsigned int phtSize = sizeof(llvm::ELF::Elf32_Phdr);
         if (is64Bit)
             phtSize = sizeof(llvm::ELF::Elf64_Phdr);
@@ -451,15 +438,16 @@ void DebugEmitter::EndEncodingMark()
 {
     m_pVISAModule->EndEncodingMark();
 }
-
-void DebugEmitter::ResetVISAModule()
+// TODO: do we really need it?
+void DebugEmitter::registerVISA(IGC::VISAModule* VM)
 {
-    m_pVISAModule = m_pVISAModule->makeNew();
-    toFree.push_back(m_pVISAModule);
-    m_pVISAModule->Reset();
-    m_pVISAModule->SetDwarfDebug(m_pDwarfDebug);
+    m_pDwarfDebug->registerVISA(VM);
 }
-void DebugEmitter::AddVISAModFunc(IGC::VISAModule* v, llvm::Function* f)
-{
-    m_pDwarfDebug->AddVISAModToFunc(v, f);
+void DebugEmitter::setCurrentVISA(IGC::VISAModule* VM) {
+    // TODO: add assert to check that this module is registered/owned
+    m_pVISAModule = VM;
+}
+void DebugEmitter::resetModule(std::unique_ptr<IGC::VISAModule> VM) {
+    m_pVISAModule = VM.get();
+    toFree.push_back(std::move(VM));
 }

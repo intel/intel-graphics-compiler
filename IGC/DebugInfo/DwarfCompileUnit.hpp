@@ -266,23 +266,23 @@ namespace IGC
         // - stateless surface location, or
         // - bindless surface location or
         // - bindless sampler location
-        void addGTRelativeLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+        void addGTRelativeLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
         // addBindlessOrStatelessLocation - add a sequence of attributes to calculate stateless or
         // bindless location of variable. baseAddr is one of the following base addreses:
         // - General State Base Address when variable located in stateless surface
         // - Bindless Surface State Base Address when variable located in bindless surface
         // - Bindless Sampler State Base Addres when variable located in bindless sampler
-        void addBindlessOrStatelessLocation(DIEBlock* Block, VISAVariableLocation* Loc, uint32_t baseAddr);
+        void addBindlessOrStatelessLocation(DIEBlock* Block, const VISAVariableLocation* Loc, uint32_t baseAddr);
 
         // addStatelessLocation - add a sequence of attributes to calculate stateless surface location of variable
-        void addStatelessLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+        void addStatelessLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
         // addBindlessSurfaceLocation - add a sequence of attributes to calculate bindless surface location of variable
-        void addBindlessSurfaceLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+        void addBindlessSurfaceLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
         // addBindlessSamplerLocation - add a sequence of attributes to calculate bindless sampler location of variable
-        void addBindlessSamplerLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+        void addBindlessSamplerLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
 
         // addBE_FP - emits operations to add contents of BE_FP to current top of dwarf stack
@@ -294,16 +294,16 @@ namespace IGC
 
 
         // addSLMLocation - add a sequence of attributes to emit SLM location of variable
-        void addSLMLocation(DIEBlock* Block, VISAVariableLocation* Loc);
+        void addSLMLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
         // addSimdLane - add a sequence of attributes to calculate location of variable
         // among SIMD lanes, e.g. a GRF subregister.
-        void addSimdLane(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc, DbgDecoder::LiveIntervalsVISA * lr,
+        void addSimdLane(DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation *Loc, DbgDecoder::LiveIntervalsVISA * lr,
             uint16_t regOffset, bool isPacked, bool isSecondHalf);
 
         // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
         // e.g. a GRF subregister.
-        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes);
+        void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes);
 
         /// getOrCreateNameSpace - Create a DIE for DINameSpace.
         DIE* getOrCreateNameSpace(llvm::DINamespace* NS);
@@ -429,9 +429,9 @@ namespace IGC
      public:
         // Added for 1-step elf
         void buildLocation(const llvm::Instruction*, IGC::DbgVariable&, IGC::DIE*);
-        DIEBlock* buildPointer(DbgVariable&, VISAVariableLocation*);
-        DIEBlock* buildSampler(DbgVariable&, VISAVariableLocation*);
-        DIEBlock* buildSLM(DbgVariable&, VISAVariableLocation*);
+        DIEBlock* buildPointer(DbgVariable&, const VISAVariableLocation*);
+        DIEBlock* buildSampler(DbgVariable&, const VISAVariableLocation*);
+        DIEBlock* buildSLM(DbgVariable&, const VISAVariableLocation*);
         DIEBlock* buildGeneral(DbgVariable&, std::vector<VISAVariableLocation>*, std::vector<DbgDecoder::LiveIntervalsVISA>*);
     };
 

@@ -777,7 +777,7 @@ void CompileUnit::addSimdWidth(DIE* Die, uint16_t SimdWidth)
 // - stateless surface location, or
 // - bindless surface location or
 // - bindless sampler location
-void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc)
+void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
 {
     if (EmitSettings.EnableGTLocationDebugging && Loc->HasSurface())
     {
@@ -880,7 +880,7 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, VISAVariableLocati
 // - Bindless Surface State Base Address when variable located in bindless surface
 // - Bindless Sampler State Base Addres when variable located in bindless sampler
 // Note: Scratch space location is not handled here.
-void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc, uint32_t baseAddrEncoded)
+void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc, uint32_t baseAddrEncoded)
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
@@ -935,7 +935,7 @@ void CompileUnit::addBindlessOrStatelessLocation(IGC::DIEBlock* Block, VISAVaria
 }
 
 // addStatelessLocation - add a sequence of attributes to calculate stateless surface location of variable
-void CompileUnit::addStatelessLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc)
+void CompileUnit::addStatelessLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
@@ -950,7 +950,7 @@ void CompileUnit::addStatelessLocation(IGC::DIEBlock* Block, VISAVariableLocatio
 }
 
 // addBindlessSurfaceLocation - add a sequence of attributes to calculate bindless surface location of variable
-void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc)
+void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
@@ -1010,8 +1010,8 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, VISAVariableL
         {
             DbgDecoder::VarInfo varInfo;
             auto regNum = Loc->GetRegister();
-            auto VISAMod = const_cast<VISAModule*>(Loc->GetVISAModule());
-            VISAMod->getVarInfo("V", regNum, varInfo);
+            const auto* VISAMod = Loc->GetVISAModule();
+            VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
             uint16_t regNumWithSurfOffset = varInfo.lrs.front().getGRF().regNum;
             unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
             auto bitOffsetToSurfReg = subReg * 8;  // Bit-offset to GRF with surface offset
@@ -1033,7 +1033,7 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, VISAVariableL
 
 
 // addBindlessSamplerLocation - add a sequence of attributes to calculate bindless sampler location of variable
-void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc)
+void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
@@ -1058,7 +1058,9 @@ void CompileUnit::addBE_FP(IGC::DIEBlock* Block)
     // DW_OP_const2u <32>
     // DW_OP_plus
     uint32_t BE_FP_RegNum = 0, BE_FP_SubRegNum = 0;
-    bool hasValidBEFP = DD->GetVISAModule()->getCompileUnit()->cfi.getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
+    const auto *vMod = DD->GetVISAModule();
+    const auto *CU = vMod->getCompileUnit(*DD->getDecodedDbg());
+    bool hasValidBEFP = CU->cfi.getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
     if (!hasValidBEFP)
         return;
 
@@ -1108,7 +1110,7 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock* Block, uint32_t memoryOffset
 }
 
 // addSLMLocation - add a sequence of attributes to emit SLM location of variable
-void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc)
+void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
 {
     if (EmitSettings.EnableGTLocationDebugging)
     {
@@ -1199,7 +1201,7 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock* Block, VISAVariableLocation* Loc
 // 11 DW_OP_const1u 16 or 8
 // 12 DW_OP_INTEL_bit_piece_stack
 //
-void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, VISAVariableLocation *Loc,
+void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation *Loc,
     DbgDecoder::LiveIntervalsVISA * lr, uint16_t simdWidthOffset, bool isPacked, bool isSecondHalf)
 {
     auto EmitPushSimdLane = [this](IGC::DIEBlock* Block, bool isSecondHalf)
@@ -1388,7 +1390,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, VISAVariabl
 
 // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
 // e.g. a GRF subregister.
-void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes)
+void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes)
 {
     if (EmitSettings.EnableSIMDLaneDebugging)
     {
@@ -2349,7 +2351,7 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
     }
 }
 
-IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, VISAVariableLocation* loc)
+IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, const VISAVariableLocation* loc)
 {
     auto bti = loc->GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
 
@@ -2392,7 +2394,7 @@ IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, VISAVariableLocation*
     return Block;
 }
 
-IGC::DIEBlock* CompileUnit::buildSampler(DbgVariable& var, VISAVariableLocation* loc)
+IGC::DIEBlock* CompileUnit::buildSampler(DbgVariable& var, const VISAVariableLocation* loc)
 {
     IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
 
@@ -2412,12 +2414,12 @@ IGC::DIEBlock* CompileUnit::buildSampler(DbgVariable& var, VISAVariableLocation*
     return Block;
 }
 
-IGC::DIEBlock* CompileUnit::buildSLM(DbgVariable& var, VISAVariableLocation* loc)
+IGC::DIEBlock* CompileUnit::buildSLM(DbgVariable& var, const VISAVariableLocation* loc)
 {
-    auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
+    const auto* VISAMod = loc->GetVISAModule();
     DbgDecoder::VarInfo varInfo;
     auto regNum = loc->GetRegister();
-    VISAMod->getVarInfo("V", regNum, varInfo);
+    VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
 
     if (varInfo.lrs.size() == 0)
         return nullptr;
@@ -2496,15 +2498,15 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
     // locs contains 1 item for SIMD8/SIMD16 kernels describing locations of all channels.
     // locs contains 2 items for SIMD32 kernels. First item has storage mapping for lower 16
     // channels, second item has storage mapping for upper 16 channels.
-    for (auto& locV : *locs)
+    for (const auto& locV : *locs)
     {
-        auto loc = &locV;
+        const auto* loc = &locV;
         int64_t offset = 0;
 
         auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
-        auto VISAMod = const_cast<VISAModule*>(loc->GetVISAModule());
+        const auto* VISAMod = loc->GetVISAModule();
         VISAVariableLocation V(VISAMod);
-        ScalarVisaModule* scVISAMod = (ScalarVisaModule*)VISAMod;
+        const ScalarVisaModule* scVISAMod = (const ScalarVisaModule*)VISAMod;
         IGC_ASSERT_MESSAGE(scVISAMod, "ScalarVisaModule error");
 
         Instruction* perThreadOffsetInst = scVISAMod->getPerThreadOffset();
@@ -2555,7 +2557,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
                 DbgDecoder::VarInfo varInfoPrivBase;
                 // Rely on getVarInfo result here.
-                VISAMod->getVarInfo("V", privateBaseRegNum, varInfoPrivBase);
+                VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", privateBaseRegNum, varInfoPrivBase);
                 IGC_ASSERT_MESSAGE(varInfoPrivBase.lrs.front().isGRF() || varInfoPrivBase.lrs.front().isSpill(),
                     "Unexpected location of variable");
                 if (varInfoPrivBase.lrs.front().isGRF())
@@ -2587,7 +2589,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 DbgDecoder::VarInfo varInfoPerThOff;
                 // Rely on getVarInfo result here.
                 auto regNumPerThOff = regPTO;
-                VISAMod->getVarInfo("V", regNumPerThOff, varInfoPerThOff);
+                VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumPerThOff, varInfoPerThOff);
 
                 IGC_ASSERT_MESSAGE(varInfoPerThOff.lrs.front().isGRF() || varInfoPerThOff.lrs.front().isSpill(),
                     "Unexpected location of variable");
@@ -2667,7 +2669,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             DbgDecoder::VarInfo varInfoFP;
             // Rely on getVarInfo result here.
             auto regNumFP = regFP;
-            VISAMod->getVarInfo("V", regNumFP, varInfoFP);
+            VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumFP, varInfoFP);
             uint16_t grfRegNumFP = varInfoFP.lrs.front().getGRF().regNum;
             uint16_t grfSubRegNumFP = varInfoFP.lrs.front().getGRF().subRegNum;
             auto bitOffsetToFPReg = grfSubRegNumFP * 8;  // Bit-offset to GRF with Frame Pointer
@@ -2738,7 +2740,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             // When vars is valid, use it to encode location directly, otherwise
             // rely on getVarInfo result here.
             auto regNum = loc->GetRegister();
-            VISAMod->getVarInfo("V", regNum, varInfo);
+            VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
         }
 
         if (varInfo.lrs.size() > 0 || (vars && vars->size() >= (firstHalf ? 1u : 2u)))

@@ -291,9 +291,6 @@ public:
     return Res;
   }
 
-  VISAModule *makeNew() const override {
-    return new GenXVisaModule(F, ST, VisaMapping, VisaKernelInfo, RA);
-  }
   void UpdateVisaId() override {
     // do nothing (the moment we need to advance index is controlled explicitly)
   }
@@ -325,6 +322,7 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
   raw_svector_ostream OS(DebugInfo[&KF]);
 
   IGC::DebugEmitterOpts DebugOpts;
+  DebugOpts.DebugEnabled = true;
   DebugOpts.isDirectElf = true;
   DebugOpts.UseNewRegisterEncoding = true;
 
@@ -338,13 +336,14 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
       .getTM<GenXTargetMachine>()
       .getGenXSubtarget();
   auto &RA = getAnalysis<GenXVisaRegAlloc>();
-  // Onwership of GenXVisaModule object is transfered to IDebugEmitter
-  auto *VM = new GenXVisaModule(KF, ST, VisaMapping, GenInfo, RA);
-  Emitter->Initialize(VM, DebugOpts, true);
 
-  Emitter->AddVISAModFunc(VM, const_cast<Function *>(&KF));
-  Emitter->SetVISAModule(VM);
-  Emitter->setFunction(const_cast<Function *>(&KF), false /*cloned*/);
+  // NOTE: temporary scope
+  {
+    // Onwership of GenXVisaModule object is transfered to IDebugEmitter
+    auto VM = std::unique_ptr<IGC::VISAModule>(
+            new GenXVisaModule(KF, ST, VisaMapping, GenInfo, RA));
+    Emitter->Initialize(std::move(VM), DebugOpts);
+  }
 
   const auto &V2I = VisaMapping.V2I;
   for (auto MappingIt = V2I.cbegin(); MappingIt != V2I.cend(); ++MappingIt) {
@@ -368,6 +367,7 @@ void GenXDebugInfo::processKernel(const Function &KF, const VISAKernel &VK,
     auto VisaIndexCurr = MappingIt->VisaIdx;
     auto VisaIndexNext = FindNextIndex(MappingIt);
 
+    auto *VM = Emitter->getCurrentVISA();
     // Note: "index - 1" is because we mimic index values as if they were
     // before corresponding instructions were inserted
     VM->SetVISAId(VisaIndexCurr - 1);

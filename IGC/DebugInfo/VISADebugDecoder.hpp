@@ -230,7 +230,7 @@ namespace IGC
             uint16_t numCallerSaveEntries = 0;
             std::vector<PhyRegSaveInfoPerIP> callerSaveEntry;
 
-            bool getBEFPRegNum(uint32_t& regNum, uint32_t& subRegNum)
+            bool getBEFPRegNum(uint32_t& regNum, uint32_t& subRegNum) const
             {
                 if (befp.size() == 0)
                     return false;
@@ -484,15 +484,15 @@ namespace IGC
                 decode();
         }
 
-        bool getVarInfo(std::string& kernelName, std::string& name, VarInfo& var)
+        bool getVarInfo(std::string& kernelName, std::string& name, VarInfo& var) const
         {
-            for (auto& k : compiledObjs)
+            for (const auto& k : compiledObjs)
             {
                 if (compiledObjs.size() > 1 &&
                     k.kernelName.compare(kernelName) != 0)
                     continue;
 
-                for (auto& v : k.Vars)
+                for (const auto& v : k.Vars)
                 {
                     if (v.name.compare(name) == 0)
                     {

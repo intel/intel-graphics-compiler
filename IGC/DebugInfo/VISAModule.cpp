@@ -55,7 +55,6 @@ VISAModule::VISAModule(llvm::Function * Entry)
 {
     m_pEntryFunc = Entry;
     m_pModule = m_pEntryFunc->getParent();
-    isCloned = false;
 }
 
 VISAModule::~VISAModule()
@@ -240,16 +239,9 @@ const std::string& VISAModule::GetTargetTriple() const
     return m_triple;
 }
 
-void VISAModule::Reset()
+void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
 {
-    m_instList.clear();
-    isCloned = false;
-    UpdateVisaId();
-}
-
-void VISAModule::buildDirectElfMaps()
-{
-    auto co = getCompileUnit();
+    const auto* co = getCompileUnit(VD);
     VISAIndexToInst.clear();
     VISAIndexToSize.clear();
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
@@ -315,11 +307,12 @@ void VISAModule::buildDirectElfMaps()
 //
 // It is assumed that if startRegNum is within caller save area then entire variable is
 // in caller save area.
-std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> VISAModule::getAllCallerSave(uint64_t startRange, uint64_t endRange,
-    DbgDecoder::LiveIntervalsVISA& genIsaRange)
+std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
+VISAModule::getAllCallerSave( const IGC::DbgDecoder& VD,
+                             uint64_t startRange, uint64_t endRange, DbgDecoder::LiveIntervalsVISA& genIsaRange)
 {
     std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
-    auto CO = getCompileUnit();
+    const auto* CO = getCompileUnit(VD);
 
     if(!CO)
         return std::move(callerSaveIPs);
@@ -549,6 +542,80 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
     coalesceRanges(GenISARange);
 
     return std::move(GenISARange);
+}
+bool VISAModule::getVarInfo(const IGC::DbgDecoder& VD, std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var) const
+{
+    std::string name = prefix + std::to_string(vreg);
+    if (VirToPhyMap.size() == 0)
+    {
+        // populate map one time
+        const auto* co = getCompileUnit(VD);
+        if (co)
+        {
+            for (auto& v : co->Vars)
+            {
+                VirToPhyMap.insert(std::make_pair(v.name, v));
+            }
+        }
+    }
+
+    auto it = VirToPhyMap.find(name);
+    if (it == VirToPhyMap.end())
+        return false;
+
+    var = (*it).second;
+    return true;
+}
+
+bool VISAModule::hasOrIsStackCall(const IGC::DbgDecoder& VD) const
+{
+    const auto* co = getCompileUnit(VD);
+    if (!co)
+        return false;
+
+    const auto& cfi = co->cfi;
+    if (cfi.befpValid || cfi.frameSize > 0 || cfi.retAddr.size() > 0)
+        return true;
+
+    return IsIntelSymbolTableVoidProgram();
+}
+
+const std::vector<DbgDecoder::SubroutineInfo>*
+VISAModule::getSubroutines(const IGC::DbgDecoder& VD) const
+{
+    const auto* co = getCompileUnit(VD);
+    if (co)
+        return &co->subs;
+    return nullptr;
+}
+
+const DbgDecoder::DbgInfoFormat*
+VISAModule::getCompileUnit(const IGC::DbgDecoder& VD) const
+{
+    for (const auto& co : VD.compiledObjs)
+    {
+        // TODO: Fix this for stack call use
+        if (VD.compiledObjs.size() == 1 ||
+            co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
+        {
+            return &co;
+        }
+
+        if (GetType() == ObjectType::SUBROUTINE)
+        {
+            // Subroutine bounds are stored inside corresponding kernel struct
+            // in VISA debug info.
+            for (auto& Sub : co.subs)
+            {
+                if (Sub.name.compare(m_pEntryFunc->getName().str()) == 0)
+                {
+                    return &co;
+                }
+            }
+        }
+    }
+
+    return nullptr;
 }
 
 bool VISAVariableLocation::IsSampler() const

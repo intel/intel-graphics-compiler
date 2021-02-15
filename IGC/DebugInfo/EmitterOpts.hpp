@@ -28,6 +28,7 @@ IN THE SOFTWARE.
 namespace IGC
 {
   struct DebugEmitterOpts {
+    bool DebugEnabled = false;
     bool isDirectElf = false;
     bool UseNewRegisterEncoding = true;
     bool EnableSIMDLaneDebugging = true;

@@ -590,9 +590,9 @@ namespace IGC
         /// string text.
         llvm::MCSymbol* getStringPoolEntry(llvm::StringRef Str);
 
-        void AddVISAModToFunc(VISAModule* M, llvm::Function* F)
+        void registerVISA(IGC::VISAModule* M)
         {
-            VISAModToFunc[M] = F;
+            VISAModToFunc[M] = M->getFunction();
         }
 
         llvm::Function* GetFunction(VISAModule* M)
@@ -631,7 +631,7 @@ namespace IGC
         // line#, vector<inlinedAt>
         std::map<unsigned int, std::vector<llvm::DILocation*>> isStmtSet;
 
-        DbgDecoder* decodedDbg = nullptr;
+        const DbgDecoder* decodedDbg = nullptr;
 
         std::map<llvm::MDNode*, std::vector<const llvm::Instruction*>> SameIATInsts;
 
@@ -668,8 +668,8 @@ namespace IGC
         // SIMD width
         unsigned short simdWidth = 0;   // Not set until IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging)
 
-        DbgDecoder* getDecodedDbg() { return decodedDbg; }
-        void setDecodedDbg(DbgDecoder* d)
+        const DbgDecoder* getDecodedDbg() { return decodedDbg; }
+        void setDecodedDbg(const DbgDecoder* d)
         {
             decodedDbg = d;
         }
@@ -686,10 +686,7 @@ namespace IGC
         uint32_t writeStackcallCIE();
         void writeFDESubroutine(VISAModule* m);
         void writeFDEStackCall(VISAModule* m);
-        bool DwarfFrameSectionNeeded()
-        {
-            return (m_pModule->hasOrIsStackCall() || (m_pModule->getSubroutines()->size() > 0));
-        }
+        bool DwarfFrameSectionNeeded() const;
 
         // Store offset of 2 CIEs, one for stack call and other for subroutines.
         uint32_t offsetCIEStackCall = 0;

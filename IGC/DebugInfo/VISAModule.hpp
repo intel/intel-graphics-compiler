@@ -157,7 +157,7 @@ namespace IGC
         unsigned int GetRegister() const { return m_locationReg; }
         unsigned int GetOffset() const { return m_locationOffset; }
         unsigned int GetVectorNumElements() const { return m_vectorNumElements; }
-        const VISAModule* GetVISAModule() { return m_pVISAModule; }
+        const VISAModule* GetVISAModule() const { return m_pVISAModule; }
 
         bool IsSampler() const;
         bool IsTexture() const;
@@ -336,8 +336,9 @@ namespace IGC
     };
     typedef std::map<const llvm::Instruction*, InstructionInfo> InstInfoMap;
 
-    /// @brief VISAModule holds information on LLVM entry point function
-    ///        and have access to emitted VISA code.
+    /// @brief VISAModule holds information on LLVM function from which
+    ///     visa function was constructed.
+    /// TODO: rename this class to something like VISAFunction/VISAObject
     class VISAModule
     {
     public:
@@ -440,13 +441,6 @@ namespace IGC
             return false;
         }
 
-        void SetEntryFunction(llvm::Function* F, bool c)
-        {
-            m_pEntryFunc = F;
-            isCloned = c;
-        }
-        void Reset();
-
         bool isDirectElfInput = false;
         // Store first VISA index->llvm::Instruction mapping
         std::map<unsigned int, const llvm::Instruction*> VISAIndexToInst;
@@ -468,14 +462,15 @@ namespace IGC
                 return v1.compare(v2) < 0;
             }
         };
-        std::map<std::string, DbgDecoder::VarInfo, comparer> VirToPhyMap;
+        mutable std::map<std::string, DbgDecoder::VarInfo, comparer> VirToPhyMap;
 
-        bool getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var);
-        bool hasOrIsStackCall() const;
-        std::vector<DbgDecoder::SubroutineInfo>* getSubroutines() const;
-        DbgDecoder::DbgInfoFormat* getCompileUnit() const;
+        bool getVarInfo(const IGC::DbgDecoder& VD, std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var) const;
 
-        void buildDirectElfMaps();
+        bool hasOrIsStackCall(const IGC::DbgDecoder& VD) const;
+        const std::vector<DbgDecoder::SubroutineInfo>* getSubroutines(const IGC::DbgDecoder& VD) const;
+        const DbgDecoder::DbgInfoFormat* getCompileUnit(const IGC::DbgDecoder& VD) const;
+
+        void buildDirectElfMaps(const IGC::DbgDecoder& VD);
 
         std::vector<std::pair<unsigned int, unsigned int>> getGenISARange(const InsnRange& Range);
 
@@ -484,7 +479,7 @@ namespace IGC
         // Return format is:
         // <start %ip of caller save, end %ip of caller save, stack slot offset for caller save>
         std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> getAllCallerSave(
-            uint64_t startRange, uint64_t endRange,
+            const IGC::DbgDecoder& VD, uint64_t startRange, uint64_t endRange,
             DbgDecoder::LiveIntervalsVISA& Locs);
 
         virtual unsigned getUnpaddedProgramSize() const = 0;
@@ -493,7 +488,6 @@ namespace IGC
         virtual unsigned getGRFSize() const = 0;
         virtual unsigned getNumGRFs() const = 0;
         virtual unsigned getPointerSize() const = 0;
-        virtual VISAModule* makeNew() const = 0;
 
         virtual llvm::ArrayRef<char> getGenDebug() const = 0;
         virtual llvm::ArrayRef<char> getGenBinary() const = 0;
@@ -506,10 +500,6 @@ namespace IGC
 
         unsigned int GetCurrentVISAId() { return m_currentVisaId; }
         void SetVISAId(unsigned ID) { m_currentVisaId = ID; }
-
-        void SetDwarfDebug(DwarfDebug* d) { dd = d; }
-
-        DwarfDebug* GetDwarfDebug() { return dd; }
 
         enum class ObjectType
         {
@@ -525,14 +515,15 @@ namespace IGC
         // This function coalesces GenISARange which is a vector of <start ip, end ip>
         static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
 
-        void dump() const { print(llvm::dbgs()); }
-        void print (llvm::raw_ostream &OS) const;
-
         void setFramePtr(CVariable* pFP) { m_framePtr = pFP; }
 
-        CVariable* getFramePtr() { return m_framePtr; }
+        CVariable* getFramePtr() const { return m_framePtr; }
 
+        llvm::Function* getFunction() const  { return m_pEntryFunc; }
         uint64_t GetFuncId() const { return (uint64_t)m_pEntryFunc; }
+
+        void dump() const { print(llvm::dbgs()); }
+        void print (llvm::raw_ostream &OS) const;
 
     private:
         std::string m_triple = "vISA_64";
@@ -540,14 +531,11 @@ namespace IGC
         // m_pEntryFunction points to llvm::Function that resulted in this VISAModule instance.
         // There is a 1:1 mapping between the two.
         // Its value is setup in DebugInfo pass, prior to it this is undefined.
-        const llvm::Function* m_pEntryFunc;
+        llvm::Function* m_pEntryFunc = nullptr;
         InstList m_instList;
-        DwarfDebug* dd = nullptr;
 
         unsigned int m_currentVisaId = 0;
         unsigned int m_catchAllVisaId = 0;
-
-        bool isCloned = false;
 
         InstInfoMap m_instInfoMap;
 

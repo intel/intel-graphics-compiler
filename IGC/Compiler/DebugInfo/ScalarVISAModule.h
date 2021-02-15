@@ -25,7 +25,8 @@ public:
 class ScalarVisaModule final : public IGC::VISAModule {
 
 public:
-    static VISAModule* BuildNew(CShader* s);
+
+    static std::unique_ptr<IGC::VISAModule> BuildNew(CShader* S, llvm::Function *F);
 
     unsigned int getUnpaddedProgramSize() const override {
         return m_pShader->ProgramOutput()->m_unpaddedProgramSize;
@@ -59,9 +60,6 @@ public:
     std::vector<VISAVariableLocation>
         GetVariableLocation(const llvm::Instruction* pInst) const override;
 
-    VISAModule* makeNew() const override {
-      return BuildNew(m_pShader);
-    }
     void UpdateVisaId() override;
     void ValidateVisaId() override;
     uint16_t GetSIMDSize() const override;
@@ -80,7 +78,7 @@ public:
         return m_pShader->GetGlobalCVar(pValue);
     }
 
-    CVariable* GetSymbol(const llvm::Instruction* pInst, llvm::Value* pValue) {
+    CVariable* GetSymbol(const llvm::Instruction* pInst, llvm::Value* pValue) const {
         // CShader's symbols are emptied before compiling a new function.
         // Whereas debug info emission starts after compilation of all functions.
         return m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
@@ -101,14 +99,14 @@ public:
         m_perThreadOffset = perThreadOffset;
     }
 
-    llvm::Instruction* getPerThreadOffset() {
+    llvm::Instruction* getPerThreadOffset() const {
         return m_perThreadOffset;
     }
 
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.
-    explicit ScalarVisaModule (CShader* m_pShader);
+    explicit ScalarVisaModule (CShader* TheShader, Function *TheFunction);
     /// @brief Trace given value to its origin value, searching for LLVM Argument.
     /// @param pVal value to process.
     /// @param isAddress indecates if the value represents an address.

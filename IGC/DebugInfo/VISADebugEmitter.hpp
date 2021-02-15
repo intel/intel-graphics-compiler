@@ -59,49 +59,40 @@ namespace IGC
     class DebugEmitter : public IDebugEmitter
     {
     public:
-        DebugEmitter() : IDebugEmitter(),
-            m_initialized(false),
-            m_debugEnabled(false),
-            m_outStream(m_str),
-            m_pVISAModule(nullptr),
-            m_pStreamEmitter(nullptr),
-            m_pDwarfDebug(nullptr) {}
-
+        DebugEmitter();
         ~DebugEmitter();
 
         // IDebugEmitter interface methods
-        void Initialize(VISAModule *visaModule, const DebugEmitterOpts& Opts,
-                        bool debugEnabled);
-        std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg);
-        void BeginInstruction(llvm::Instruction* pInst);
-        void EndInstruction(llvm::Instruction* pInst);
-        void BeginEncodingMark();
-        void EndEncodingMark();
-        void setFunction(llvm::Function* F, bool isCloned);
-        void ResetVISAModule();
-        VISAModule* GetVISAModule() { return m_pVISAModule; }
-        void SetVISAModule(VISAModule* other) { m_pVISAModule = other; }
-        void AddVISAModFunc(IGC::VISAModule* v, llvm::Function* f);
+        void Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitterOpts& Opts) override;
+        std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg) override;
+        void BeginInstruction(llvm::Instruction* pInst) override;
+        void EndInstruction(llvm::Instruction* pInst) override;
+        void BeginEncodingMark() override;
+        void EndEncodingMark() override;
+
+        IGC::VISAModule* getCurrentVISA() const override { return m_pVISAModule; }
+        void setCurrentVISA(IGC::VISAModule* VM) override;
+        void registerVISA(IGC::VISAModule*) override;
+
+        void resetModule(std::unique_ptr<IGC::VISAModule> VM) override;
 
     private:
         /// @brief Reset Debug Emitter instance.
         void Reset();
 
     private:
-        bool m_initialized;
-        bool m_debugEnabled;
+        bool m_initialized = false;
+        bool m_debugEnabled = false;
         bool doneOnce = false;
 
         llvm::SmallVector<char, 1000> m_str;
         llvm::raw_svector_ostream m_outStream;
 
-        VISAModule* m_pVISAModule;
-        StreamEmitter* m_pStreamEmitter;
-
+        VISAModule* m_pVISAModule = nullptr;
         /// m_pDwarfDebug - dwarf debug info processor.
-        DwarfDebug* m_pDwarfDebug;
-
-        std::vector<VISAModule*> toFree;
+        std::unique_ptr<IGC::DwarfDebug> m_pDwarfDebug;
+        std::unique_ptr<IGC::StreamEmitter> m_pStreamEmitter;
+        std::vector<std::unique_ptr<VISAModule>> toFree;
 
         unsigned int lastGenOff = 0;
 

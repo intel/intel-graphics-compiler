@@ -81,23 +81,23 @@ namespace IGC {
     return (fullDebugInfo | lineNumbersOnly);
 }
 
-ScalarVisaModule::ScalarVisaModule(CShader* TheShader)
-  : m_pShader(TheShader), VISAModule(TheShader->entry) {
+ScalarVisaModule::ScalarVisaModule(CShader* TheShader, Function *TheFunction)
+  : m_pShader(TheShader), VISAModule(TheFunction) {
   UpdateVisaId();
 }
 
-VISAModule* ScalarVisaModule::BuildNew(CShader* s)
+std::unique_ptr<IGC::VISAModule> ScalarVisaModule::BuildNew(CShader* S, llvm::Function *F)
 {
-    auto n = new ScalarVisaModule(s);
+    auto n = new ScalarVisaModule(S, F);
 
     if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat() ||
-        isLineTableOnly(s) ||
+        isLineTableOnly(S) ||
         IGC_GET_FLAG_VALUE(EnableOneStepElf))
     {
         n->isDirectElfInput = true;
     }
 
-    return n;
+    return std::unique_ptr<IGC::VISAModule>(n);
 }
 unsigned ScalarVisaModule::getPointerSize() const {
     return IGC::getPointerSize((llvm::Module &)(*GetModule()));

@@ -225,14 +225,13 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 
         for (auto& m : sortedVISAModules)
         {
-            m_pDebugEmitter->AddVISAModFunc(m.second.second, m.second.first);
+            m_pDebugEmitter->registerVISA(m.second.second);
         }
 
         for (auto& m : sortedVISAModules)
         {
             isOneStepElf |= m.second.second->isDirectElfInput;
-            m_pDebugEmitter->SetVISAModule(m.second.second);
-            m_pDebugEmitter->setFunction(m.second.first, isCloned);
+            m_pDebugEmitter->setCurrentVISA(m.second.second);
 
             if (--size == 0)
                 finalize = true;
@@ -359,7 +358,7 @@ void DebugInfoData::markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter
 void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter)
 {
     IGC_ASSERT_MESSAGE(pDebugEmitter, "Missing debug emitter");
-    VISAModule* visaModule = pDebugEmitter->GetVISAModule();
+    VISAModule* visaModule = pDebugEmitter->getCurrentVISA();
     IGC_ASSERT_MESSAGE(visaModule, "Missing visa module");
 
     for (auto& bb : F)
@@ -375,7 +374,6 @@ void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitte
                 ScalarVisaModule* scVISAModule = (ScalarVisaModule*)visaModule;
                 IGC_ASSERT_MESSAGE(scVISAModule->getPerThreadOffset()==nullptr, "setPerThreadOffset was set earlier");
                 scVISAModule->setPerThreadOffset(&pInst);
-
                 if (((OpenCLProgramContext*)(pShader->GetContext()))->m_InternalOptions.KernelDebugEnable == false)
                 {
                     return;

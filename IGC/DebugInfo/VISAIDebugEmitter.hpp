@@ -70,10 +70,9 @@ namespace IGC
         virtual ~IDebugEmitter() {}
 
         /// @brief Initialize debug emitter for processing the given shader.
-        /// @param pShader shader to process, and emit debug info for.
+        /// @param MainVisa module to process, and emit debug info for.
         /// @param debugEnabled indicator for emitting debug info or not.
-        virtual void Initialize(VISAModule *visaModule, const DebugEmitterOpts& Opts,
-                                bool debugEnabled) = 0;
+        virtual void Initialize(std::unique_ptr<IGC::VISAModule> VM, const DebugEmitterOpts& Opts) = 0;
 
         /// @brief Emit debug info to given buffer and reset debug emitter.
         /// @param finalize [IN] indicates whether this is last function in group.
@@ -95,15 +94,15 @@ namespace IGC
         /// @brief Mark end of VISA code emitting section.
         virtual void EndEncodingMark() = 0;
 
-        virtual void setFunction(llvm::Function* F, bool c) = 0;
+        virtual void resetModule(std::unique_ptr<IGC::VISAModule> VM) = 0;
 
-        virtual void ResetVISAModule() = 0;
+        /// @brief returns currently proccessed object
+        virtual IGC::VISAModule* getCurrentVISA() const  = 0;
+        /// @brief sets new object to process
+        virtual void setCurrentVISA(IGC::VISAModule* VF) = 0;
 
-        virtual IGC::VISAModule* GetVISAModule() = 0;
-
-        virtual void SetVISAModule(IGC::VISAModule*) = 0;
-
-        virtual void AddVISAModFunc(IGC::VISAModule*, llvm::Function*) = 0;
+        /// @brief registers VISA object for bookkeeping purposes
+        virtual void registerVISA(IGC::VISAModule* VF) = 0;
     };
 
 } // namespace IGC

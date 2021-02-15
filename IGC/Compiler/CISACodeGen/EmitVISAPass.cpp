@@ -692,9 +692,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
+        Function* Entry = m_currShader->entry;
         // owned by m_pDebugEmitter
-        IGC::VISAModule* vMod = IGC::ScalarVisaModule::BuildNew(m_currShader);
+        auto vMod = IGC::ScalarVisaModule::BuildNew(m_currShader, Entry);
         IGC::DebugEmitterOpts DebugOpts;
+        DebugOpts.DebugEnabled = DebugInfoData::hasDebugInfo(m_currShader);
         DebugOpts.isDirectElf = vMod->isDirectElfInput;
         DebugOpts.UseNewRegisterEncoding = IGC_IS_FLAG_ENABLED(UseNewRegEncoding);
         DebugOpts.EnableSIMDLaneDebugging = IGC_IS_FLAG_ENABLED(EnableSIMDLaneDebugging);
@@ -705,8 +707,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations);
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
-        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(
-            vMod, DebugOpts, DebugInfoData::hasDebugInfo(m_currShader));)
+        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);)
     }
 
     if (DebugInfoData::hasDebugInfo(m_currShader))
@@ -717,8 +718,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->GetDebugInfoData()->m_pShader = m_currShader;
         m_currShader->GetDebugInfoData()->m_pDebugEmitter = m_pDebugEmitter;
 
-        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
-            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->resetModule(
+                        IGC::ScalarVisaModule::BuildNew(m_currShader, &F));)
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
@@ -938,12 +939,12 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
         }
-        ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->GetVISAModule());
+        ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->getCurrentVISA());
         if (!scVISAMod->getPerThreadOffset())
         {
             // Stack calls in use. Nothing is needed to be marked as Output.
             // Just setting frame pointer is required for debug info when stack calls are in use.
-            m_pDebugEmitter->GetVISAModule()->setFramePtr(m_currShader->GetFP());
+            scVISAMod->setFramePtr(m_currShader->GetFP());
         }
     }
     else
@@ -953,7 +954,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (m_currShader->GetDebugInfoData())
     {
-        m_currShader->GetDebugInfoData()->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());
+        m_currShader->GetDebugInfoData()->addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
         m_currShader->GetDebugInfoData()->transferMappings(F);
     }
 
