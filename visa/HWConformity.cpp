@@ -551,16 +551,33 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
     bool isIntDivide = inst->asMathInst()->isMathIntDiv();
     bool hasSameOffset = hasSameSubregOffset(inst);
 
+    auto hasModMinus = [](G4_Operand* SrcOprd)
+    {
+        if (SrcOprd->isSrcRegRegion())
+        {
+            G4_SrcModifier mod = SrcOprd->asSrcRegRegion()->getModifier();
+            return (mod == Mod_Minus || mod == Mod_Minus_Abs);
+        }
+        return false;
+    };
+
     // check if the source needs a move and if so the new move type
-    auto needsMove = [this, inst, isIntDivide, hasSameOffset](int srcID, G4_Type& newType)
+    auto needsMove = [this, inst, isIntDivide, hasSameOffset, hasModMinus](int srcID, G4_Type& newType)
     {
         assert((srcID == 0 || srcID == 1) && "math can have at most two sources");
         G4_Operand* src = inst->getSrc(srcID);
         newType = src->getType();
         if (isIntDivide)
         {
-            G4_Type divType = IS_UNSIGNED_INT(inst->getSrc(0)->getType()) && IS_UNSIGNED_INT(inst->getSrc(1)->getType()) ?
-                Type_UD : Type_D;
+            //   cases:
+            //     math.quot  r10:w   r20:ub   -r30:ub
+            //       Make sure newType is D, not UD. The correct code is:
+            //          mov  r22:d  r20:ub
+            //          mov  r32:d  -r30:ub
+            //          math.quot r10:w  r22:d  r32:d
+            bool src0Unsigned = IS_UNSIGNED_INT(inst->getSrc(0)->getType()) && !hasModMinus(inst->getSrc(0));
+            bool src1Unsigned = IS_UNSIGNED_INT(inst->getSrc(1)->getType()) && !hasModMinus(inst->getSrc(1));
+            G4_Type divType = (src0Unsigned && src1Unsigned) ? Type_UD : Type_D;
             if (newType != divType)
             {
                 newType = divType;
