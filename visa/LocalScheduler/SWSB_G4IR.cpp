@@ -681,7 +681,6 @@ void SWSB::handleIndirectCall()
 
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, LiveGRFBuckets& globalSendsLB)
 {
-    bool hasIndirectCall = false;
     allTokenNodesMap.resize(totalTokenNum);
     for (size_t i = 0; i < totalTokenNum; i++)
     {
@@ -691,16 +690,6 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
     // Get the live out, may kill bit sets
     for (G4_BB_SB *bb : BBVector)
     {
-        if (bb->last_node != -1)
-        {
-            SBNode* node = SBNodes[bb->last_node];
-
-            if (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel())
-            {
-                hasIndirectCall = true;
-            }
-        }
-
         bb->send_live_in = SBBitSets(globalSendNum);
         bb->send_live_out = SBBitSets(globalSendNum);
         bb->send_def_out = SBBitSets(globalSendNum);
@@ -805,7 +794,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
         addGlobalDependence(globalSendNum, &globalSendOpndList, &SBNodes, p, true);
     }
 
-    if (hasIndirectCall)
+    if (kernel.hasIndirectCall())
     {
         handleIndirectCall();
     }
