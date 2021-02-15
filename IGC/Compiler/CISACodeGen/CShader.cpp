@@ -532,7 +532,7 @@ void CShader::AllocateConstants(uint& offset)
         m_ConstantBufferLength += var->GetSize();
     }
 
-    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
+    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getMinPushConstantBufferAlignmentInBytes());
     offset += m_ConstantBufferLength;
 }
 
@@ -560,7 +560,7 @@ void CShader::AllocateNOSConstants(uint& offset)
         maxConstantPushed = std::max(maxConstantPushed, I->first + 1);
     }
     maxConstantPushed = iSTD::Max(maxConstantPushed, static_cast<uint>(m_ModuleMetadata->MinNOSPushConstantSize));
-    m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, getGRFSize());
+    m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, getMinPushConstantBufferAlignmentInBytes());
     offset += m_NOSBufferSize;
 }
 
@@ -613,7 +613,7 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram* pKernelProgram)
             sizeof(USC::SConstantGatherEntry),
             &gatherMap[0],
             gatherMap.size() * sizeof(USC::SConstantGatherEntry));
-        pKernelProgram->ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in number of GRF bits
+        pKernelProgram->ConstantBufferLength = m_ConstantBufferLength / getMinPushConstantBufferAlignmentInBytes();
     }
 
     if (m_cbSlot != -1)
