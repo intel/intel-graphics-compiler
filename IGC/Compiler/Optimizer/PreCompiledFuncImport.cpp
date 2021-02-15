@@ -778,6 +778,11 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
             break;
         };
     }
+    else if (isDPDivSqrtEmu() && I.getOperand(0)->getType()->isDoubleTy() &&
+        I.getOpcode() == Instruction::FDiv)
+    {
+        processFPBinaryOperator(I, FUNCTION_DP_DIV);
+    }
 }
 
 //%rem = srem i8 %a, %b
@@ -1687,7 +1692,7 @@ As a result, we reduce 2x necessary work
         m_CallRemDiv.push_back(&I);
     }
 
-    if (!isDPEmu()) {
+    if (!isDPEmu() && !isDPDivSqrtEmu()) {
         return;
     }
 
@@ -1710,6 +1715,10 @@ As a result, we reduce 2x necessary work
         I.eraseFromParent();
 
         m_changed = true;
+        return;
+    }
+
+    if (!isDPEmu()) {
         return;
     }
 
@@ -2014,6 +2023,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
 
     bool SPDiv = isSPDiv();
     bool DPEmu = isDPEmu();
+    bool DPDivSqrtEmu = isDPDivSqrtEmu();
 
     Module* M = m_pCtx->getModule();
     for (auto FI = M->begin(), FE = M->end(); FI != FE; ++FI)
@@ -2026,6 +2036,10 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             default:
                 break;
             case Instruction::FDiv:
+                if (DPDivSqrtEmu && I->getOperand(0)->getType()->isDoubleTy())
+                {
+                    m_enableSubroutineCallForEmulation = true;
+                }
             case Instruction::FMul:
             case Instruction::FAdd:
             case Instruction::FSub:
@@ -2056,7 +2070,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);
             IntrinsicInst* IInst = dyn_cast<IntrinsicInst>(I);
             // Handle intrinsic calls
-            if (DPEmu && I->getType()->isDoubleTy() &&
+            if ((DPEmu || DPDivSqrtEmu) && I->getType()->isDoubleTy() &&
                 IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
             {
                 m_enableSubroutineCallForEmulation = true;

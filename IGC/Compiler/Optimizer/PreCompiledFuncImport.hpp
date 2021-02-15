@@ -52,9 +52,10 @@ namespace IGC
         EMU_UNUSED = 0,
         EMU_I64DIVREM = 0x1,    // bit 0: original emulation lib, mostly i64 div/rem
         EMU_DP = 0x2,           // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
-        EMU_SP_DIV = 0x4,       // bit 2: IEEE-complaint float div emulation (float)
-        EMU_I32DIVREM = 0x8,    // bit 3: emulation lib for i32 div/rem
-        EMU_I32DIVREM_SP = 0x10 //bit 4: emulation lib for i32 div/rem using fp32
+        EMU_DP_DIV_SQRT = 0x4,  // bit 2: IEEE-compliant double emulation for div and sqrt (EMU_DP subset)
+        EMU_SP_DIV = 0x8,       // bit 3: IEEE-complaint float div emulation (float)
+        EMU_I32DIVREM = 0x10,   // bit 4: emulation lib for i32 div/rem
+        EMU_I32DIVREM_SP = 0x20 // bit 5: emulation lib for i32 div/rem using fp32
     };
 
     class PreCompiledFuncImport : public llvm::ModulePass, public llvm::InstVisitor<PreCompiledFuncImport>
@@ -216,6 +217,7 @@ namespace IGC
         /// @brief  Kind of emulations. Its bits are defined by EmuKind.
         const uint32_t m_emuKind;
         bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
+        bool isDPDivSqrtEmu() const { return (m_emuKind & EmuKind::EMU_DP_DIV_SQRT) > 0; }
         bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
         bool isI32DivRem() const { return (m_emuKind & EmuKind::EMU_I32DIVREM) > 0; }
         bool isI32DivRemSP() const { return (m_emuKind & EmuKind::EMU_I32DIVREM_SP) > 0; }
