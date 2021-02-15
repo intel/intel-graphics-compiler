@@ -69,6 +69,11 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   HasSwitchjmp = false;
   HasIntegerDivision = false;
 
+  HasIndirectByteGRFCrossing = false;
+  HasMultiIndirectByteRegioning = false;
+  HasMultiIndirectFloatingPointRegioning = false;
+  HasMultiIndirectQWordRegioning = false;
+
   if (StackScratchMem)
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;
   else

@@ -72,6 +72,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CMREGION_H
 #define CMREGION_H
 
+#include "Probe/Assertion.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -206,6 +207,11 @@ public:
   // VectorType (a sign of multi indirection)
   bool isMultiIndirect() const {
     return Indirect && isa<VectorType>(Indirect->getType());
+  }
+  bool hasElementTy() const { return ElementTy != nullptr; }
+  const Type *getElementTy() const {
+    IGC_ASSERT(hasElementTy());
+    return ElementTy;
   }
   // Get bit mask in which ones values represent bytes which
   // were accessed by this region

@@ -112,6 +112,9 @@ public:
                         const GenXSubtarget *ST, Alignment Align);
 };
 
+// There are some subtarget restrictions for some region element types.
+bool canBeMultiIndirect(const CMRegion &R, const GenXSubtarget &ST);
+
 // RdWrRegionSequence : a sequence of rdregion-wrregion pairs probably
 // created by legalization or coalescing, conforming to the following
 // rules:
