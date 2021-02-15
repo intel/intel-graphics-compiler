@@ -9863,7 +9863,8 @@ int GlobalRA::coloringRegAlloc()
     // update jit metadata information for spill
     if (auto jitInfo = builder.getJitInfo())
     {
-        jitInfo->isSpill = spillMemUsed > 0;
+        jitInfo->isSpill = spillMemUsed > 0 ||
+            builder.kernel.fg.frameSizeInOWord > 0;
         jitInfo->hasStackcalls = kernel.fg.getHasStackCalls();
 
         if (builder.kernel.fg.frameSizeInOWord != 0) {
