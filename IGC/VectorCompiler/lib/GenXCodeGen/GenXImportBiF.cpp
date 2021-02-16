@@ -677,7 +677,7 @@ public:
   bool runOnModule(Module &M) override;
 
 private:
-  std::unique_ptr<Module> getBiFModule(GenXBackendConfig::BiFModuleKind Kind,
+  std::unique_ptr<Module> getBiFModule(BiFKind Kind,
                                        LLVMContext &Ctx);
 };
 
@@ -712,9 +712,9 @@ bool GenXImportBiF::runOnModule(Module &M) {
     return false;
 
   std::unique_ptr<Module> GenericBiFModule =
-      getBiFModule(GenXBackendConfig::BiFModuleKind::Generic, M.getContext());
+      getBiFModule(BiFKind::OCLGeneric, M.getContext());
   std::unique_ptr<Module> FP64BiFModule =
-      getBiFModule(GenXBackendConfig::BiFModuleKind::FP64, M.getContext());
+      getBiFModule(BiFKind::OCLFP64, M.getContext());
 
   GenericBiFModule->setDataLayout(M.getDataLayout());
   GenericBiFModule->setTargetTriple(M.getTargetTriple());
@@ -728,10 +728,10 @@ bool GenXImportBiF::runOnModule(Module &M) {
 }
 
 std::unique_ptr<Module>
-GenXImportBiF::getBiFModule(GenXBackendConfig::BiFModuleKind Kind,
+GenXImportBiF::getBiFModule(BiFKind Kind,
                             LLVMContext &Ctx) {
   MemoryBufferRef BiFModuleBuffer =
-      getAnalysis<GenXBackendConfig>().getOCLBiFModule(Kind);
+      getAnalysis<GenXBackendConfig>().getBiFModule(Kind);
   llvm::Expected<std::unique_ptr<llvm::Module>> BiFModule =
       getLazyBitcodeModule(BiFModuleBuffer, Ctx);
   if (!BiFModule) {

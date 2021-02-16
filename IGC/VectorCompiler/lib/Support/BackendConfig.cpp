@@ -101,25 +101,39 @@ GenXBackendOptions::GenXBackendOptions()
       GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
                           GlobalsLocalizationLimitOpt.getValue()} {}
 
-GenXBackendData::GenXBackendData() {
-  readBiFModuleFromFile(BiFModuleKind::Generic, OCLGenericBiFPath);
-  readBiFModuleFromFile(BiFModuleKind::FP64, OCLFP64BiFPath);
-}
-
-void GenXBackendData::readBiFModuleFromFile(BiFModuleKind Kind,
-                                            const cl::opt<std::string> &File) {
+static std::unique_ptr<MemoryBuffer>
+readBiFModuleFromFile(const cl::opt<std::string> &File) {
   if (File.getNumOccurrences() == 0)
-    return;
+    return nullptr;
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(File);
   if (!FileOrErr)
     report_fatal_error("opening OpenCL generic BiF file failed: " +
                        FileOrErr.getError().message());
-  OCLBiFModuleOwner[Kind] = std::move(FileOrErr.get());
-  OCLBiFModule[Kind] = IGCLLVM::makeMemoryBufferRef(*OCLBiFModuleOwner[Kind]);
+  return std::move(FileOrErr.get());
 }
 
-GenXBackendConfig::GenXBackendConfig() : ImmutablePass(ID) {
+GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
+  setOwningBiFModuleIf(BiFKind::OCLGeneric,
+                       readBiFModuleFromFile(OCLGenericBiFPath));
+  setOwningBiFModuleIf(BiFKind::OCLFP64, readBiFModuleFromFile(OCLFP64BiFPath));
+}
+
+void GenXBackendData::setOwningBiFModule(
+    BiFKind Kind, std::unique_ptr<MemoryBuffer> ModuleBuffer) {
+  IGC_ASSERT_MESSAGE(ModuleBuffer, "wrong argument");
+  BiFModuleOwner[Kind] = std::move(ModuleBuffer);
+  BiFModule[Kind] = IGCLLVM::makeMemoryBufferRef(*BiFModuleOwner[Kind]);
+}
+
+void GenXBackendData::setOwningBiFModuleIf(
+    BiFKind Kind, std::unique_ptr<MemoryBuffer> ModuleBuffer) {
+  if (ModuleBuffer)
+    setOwningBiFModule(Kind, std::move(ModuleBuffer));
+}
+
+GenXBackendConfig::GenXBackendConfig()
+    : ImmutablePass(ID), Data{GenXBackendData::InitFromLLMVOpts{}} {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());
 }
 

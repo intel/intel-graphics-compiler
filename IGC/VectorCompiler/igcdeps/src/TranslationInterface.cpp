@@ -292,6 +292,19 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
   return std::move(ExpOptions);
 }
 
+static llvm::Optional<vc::ExternalData> fillExternalData() {
+  vc::ExternalData ExtData;
+  ExtData.OCLGenericBIFModule =
+      getGenericModuleBuffer(OCL_BC);
+  if (!ExtData.OCLGenericBIFModule)
+    return {};
+  ExtData.OCLFP64BIFModule =
+      getGenericModuleBuffer(OCL_BC_FP64);
+  if (!ExtData.OCLFP64BIFModule)
+    return {};
+  return std::move(ExtData);
+}
+
 std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                    TC::STB_TranslateOutputArgs *OutputArgs,
                                    TC::TB_DATA_FORMAT InputDataFormatTemp,
@@ -331,24 +344,16 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   Opts.Dumper = std::move(Dumper);
 
-  std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule =
-      getGenericModuleBuffer(OCL_BC);
-  if (!OCLGenericBIFModule)
+  auto ExtData = fillExternalData();
+  if (!ExtData)
     return getError(vc::make_error_code(vc::errc::bif_load_fail),
                     OutputArgs);
-  std::unique_ptr<llvm::MemoryBuffer> OCLFP64BIFModule =
-      getGenericModuleBuffer(OCL_BC_FP64);
-  if (!OCLFP64BIFModule)
-    return getError(vc::make_error_code(vc::errc::bif_load_fail),
-                    OutputArgs);
-  vc::ExternalData ExtData{std::move(OCLGenericBIFModule),
-                           std::move(OCLFP64BIFModule)};
   llvm::ArrayRef<uint32_t> SpecConstIds{InputArgs->pSpecConstantsIds,
                                         InputArgs->SpecConstantsSize};
   llvm::ArrayRef<uint64_t> SpecConstValues{InputArgs->pSpecConstantsValues,
                                            InputArgs->SpecConstantsSize};
-  auto ExpOutput =
-      vc::Compile(Input, Opts, ExtData, SpecConstIds, SpecConstValues);
+  auto ExpOutput = vc::Compile(Input, Opts, ExtData.getValue(), SpecConstIds,
+                               SpecConstValues);
   if (!ExpOutput)
     return getError(ExpOutput.takeError(), OutputArgs);
   vc::CompileOutput &Res = ExpOutput.get();

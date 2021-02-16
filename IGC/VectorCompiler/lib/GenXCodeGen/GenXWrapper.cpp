@@ -71,6 +71,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Scalar.h"
 
+#include "Probe/Assertion.h"
+
 #include <cctype>
 #include <memory>
 #include <new>
@@ -78,7 +80,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <string>
 #include <vector>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 
@@ -233,9 +234,12 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 }
 
 static GenXBackendData createBackendData(const vc::ExternalData &Data) {
-  GenXBackendData BackendData{Data.getOCLGenericBIFModule(),
-                              Data.getOCLFP64BIFModule()};
-  return BackendData;
+  GenXBackendData BackendData;
+  BackendData.BiFModule[BiFKind::OCLGeneric] =
+      IGCLLVM::makeMemoryBufferRef(*Data.OCLGenericBIFModule);
+  BackendData.BiFModule[BiFKind::OCLFP64] =
+      IGCLLVM::makeMemoryBufferRef(*Data.OCLFP64BIFModule);
+  return std::move(BackendData);
 }
 
 static void optimizeIR(const vc::CompileOptions &Opts,
