@@ -195,11 +195,21 @@ CIGCTranslationBlock::~CIGCTranslationBlock()
 
 }
 
-static void SetErrorMessage(const std::string & ErrorMessage, STB_TranslateOutputArgs & pOutputArgs)
+static void SetOutputMessage(const std::string& OutputMessage, STB_TranslateOutputArgs& pOutputArgs)
 {
-    pOutputArgs.pErrorString = new char[ErrorMessage.size() + 1];
-    memcpy_s(pOutputArgs.pErrorString, ErrorMessage.size() + 1, ErrorMessage.c_str(), ErrorMessage.size() + 1);
-    pOutputArgs.ErrorStringSize = ErrorMessage.size() + 1;
+    pOutputArgs.pErrorString = new char[OutputMessage.size() + 1];
+    memcpy_s(pOutputArgs.pErrorString, OutputMessage.size() + 1, OutputMessage.c_str(), OutputMessage.size() + 1);
+    pOutputArgs.ErrorStringSize = OutputMessage.size() + 1;
+}
+
+static void SetWarningMessage(const std::string& OutputMessage, STB_TranslateOutputArgs& pOutputArgs)
+{
+    SetOutputMessage("warning: " + OutputMessage, pOutputArgs);
+}
+
+static void SetErrorMessage(const std::string& OutputMessage, STB_TranslateOutputArgs& pOutputArgs)
+{
+    SetOutputMessage("error: " + OutputMessage, pOutputArgs);
 }
 
 bool CIGCTranslationBlock::Create(
@@ -635,8 +645,8 @@ bool ProcessElfInput(
             }
             else
             {
-              std::string errorString = "\nWarning: File name not specified with the -dump-opt-llvm option.\n";
-              SetErrorMessage(errorString, OutputArgs);
+              std::string errorString = "File name not specified with the -dump-opt-llvm option.";
+              SetWarningMessage(errorString, OutputArgs);
             }
           }
         }
@@ -1202,13 +1212,15 @@ bool TranslateBuild(
             IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinFP64MathModule), std::move(BuiltinSizeModule));
         }
 
-        if (!(oclContext.oclErrorMessage.empty()))
+        if (oclContext.HasError())
         {
-             //The error buffer returned will be deleted when the module is unloaded so
-             //a copy is necessary
-            if (const char *pErrorMsg = oclContext.oclErrorMessage.c_str())
+            if (oclContext.HasWarning())
             {
-                SetErrorMessage(oclContext.oclErrorMessage, *pOutputArgs);
+                SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
+            }
+            else
+            {
+                SetOutputMessage(oclContext.GetError(), *pOutputArgs);
             }
             return false;
         }
@@ -1247,15 +1259,22 @@ bool TranslateBuild(
         }
     } while (retry);
 
-    if (!(oclContext.oclErrorMessage.empty()))
+    if (oclContext.HasError())
     {
-        //The error buffer returned will be deleted when the module is unloaded so
-        //a copy is necessary
-        if (const char* pErrorMsg = oclContext.oclErrorMessage.c_str())
+        if (oclContext.HasWarning())
         {
-            SetErrorMessage(oclContext.oclErrorMessage, *pOutputArgs);
+            SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
+        }
+        else
+        {
+            SetOutputMessage(oclContext.GetError(), *pOutputArgs);
         }
         return false;
+    }
+
+    if (oclContext.HasWarning())
+    {
+        SetOutputMessage(oclContext.GetWarning(), *pOutputArgs);
     }
 
     // Prepare and set program binary

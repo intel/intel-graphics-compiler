@@ -709,21 +709,20 @@ namespace IGC
         llvmCtxWrapper = nullptr;
     }
 
-    void CodeGenContext::EmitError(const char* errorstr)
+    void CodeGenContext::EmitWarning(const char* warningstr)
     {
-        std::string str(errorstr);
-        std::string  msg;
-        msg += "\nerror: ";
-        msg += str;
-        msg += "\nerror: backend compiler failed build.\n";
-        str = msg;
-        this->oclErrorMessage = str;// where to get this from
+        this->oclWarningMessage << "\nwarning: ";
+        this->oclWarningMessage << warningstr;
+        this->oclWarningMessage << "\n";
         return;
     }
 
-    bool CodeGenContext::HasError() const
+    void CodeGenContext::EmitError(const char* errorstr)
     {
-        return !this->oclErrorMessage.empty();
+        this->oclErrorMessage << "\nerror: ";
+        this->oclErrorMessage << errorstr;
+        this->oclErrorMessage << "\nerror: backend compiler failed build.\n";
+        return;
     }
 
     CompOptions& CodeGenContext::getCompilerOption()

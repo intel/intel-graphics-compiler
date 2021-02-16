@@ -805,7 +805,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
 
         CheckMediaBlockInstError(MediaBlockRead, true);
         //Return if any error
-        if (!m_pCtx->oclErrorMessage.empty())
+        if (m_pCtx->HasError())
         {
             return;
         }
@@ -858,7 +858,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
 
         CheckMediaBlockInstError(MediaBlockWrite, false);
         //Return if any error
-        if (!m_pCtx->oclErrorMessage.empty())
+        if (m_pCtx->HasError())
         {
             return;
         }

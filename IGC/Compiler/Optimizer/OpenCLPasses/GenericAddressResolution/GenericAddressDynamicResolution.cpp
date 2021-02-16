@@ -244,6 +244,8 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
 
 void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand)
 {
+    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(
+        "Adding additional control flow due to presence of generic address space operations");
     // Every time there is a load/store from/to a generic pointer, we have to resolve
     // its corresponding address space by looking at its tag on bits[61:63].
     // First, the generic pointer's tag is obtained to then perform the load/store

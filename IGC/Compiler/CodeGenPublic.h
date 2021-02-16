@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/debug/Dump.hpp"
 #include <set>
 #include <string.h>
+#include <sstream>
 #include "Compiler/CISACodeGen/ShaderUnits.hpp"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CISACodeGen/DriverInfo.hpp"
@@ -857,9 +858,6 @@ namespace IGC
         unsigned     m_numPasses = 0;
         bool m_threadCombiningOptDone = false;
 
-        //For storing error message
-        std::string oclErrorMessage;
-
         void* m_ConstantBufferReplaceShaderPatterns = nullptr;
         uint m_ConstantBufferReplaceShaderPatternsSize = 0;
         uint m_ConstantBufferUsageMask = 0;
@@ -896,6 +894,12 @@ namespace IGC
         uint64_t m_SIMDInfo;
         uint32_t HdcEnableIndexSize = 0;
         std::vector<std::pair<int,int>> HdcEnableIndexValues;
+
+    private:
+        //For storing error message
+        std::stringstream oclErrorMessage;
+        //For storing warning message
+        std::stringstream oclWarningMessage;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
@@ -963,7 +967,13 @@ namespace IGC
         virtual ~CodeGenContext();
         void clear();
         void EmitError(const char* errorstr);
-        bool HasError() const;
+        void EmitWarning(const char* warningstr);
+        inline bool HasError() const { return !this->oclErrorMessage.str().empty(); }
+        inline bool HasWarning() const { return !this->oclWarningMessage.str().empty(); }
+        inline const std::string GetWarning() { return this->oclWarningMessage.str(); }
+        inline const std::string GetError() { return this->oclErrorMessage.str(); }
+        inline const std::string GetErrorAndWarning() { return GetWarning() + GetError(); }
+
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();
         virtual uint32_t getNumThreadsPerEU() const;

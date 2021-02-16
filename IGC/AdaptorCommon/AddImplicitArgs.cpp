@@ -156,7 +156,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     m_pMdUtils->save(M.getContext());
 
     //Return if any error
-    if (!(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->oclErrorMessage.empty()))
+    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->HasError())
     {
         return false;
     }
@@ -391,7 +391,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
             return;
         }
         //Return if any error
-        if (!(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->oclErrorMessage.empty()))
+        if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->HasError())
         {
             return;
         }
