@@ -33,6 +33,7 @@ IN THE SOFTWARE.
 #include <string>
 #include <stdexcept>
 #include <fstream>
+#include <mutex>
 
 #include "AdaptorCommon/customApi.hpp"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
@@ -157,6 +158,8 @@ using namespace IGC;
 
 namespace TC
 {
+    static std::mutex llvm_mutex;
+
 
 extern bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
@@ -900,18 +903,24 @@ bool TranslateBuild(
     }
 #endif // defined(IGC_VC_ENABLED)
 
-    // Disable code sinking in instruction combining.
-    // This is a workaround for a performance issue caused by code sinking
-    // that is being done in LLVM's instcombine pass.
-    // This code will be removed once sinking is removed from instcombine.
-    auto optionsMap = llvm::cl::getRegisteredOptions();
-    llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
-    auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
-    if (instCombineSinkingSwitch != optionsMap.end()) {
-      if ((*instCombineSinkingSwitch).getValue()->getNumOccurrences() == 0) {
-        const char* args[] = { "igc", instCombineFlag.data() };
-        llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
-      }
+    // This part of code is a critical-section for threads,
+    // due static LLVM object which handles options.
+    // Setting mutex to ensure that single thread will enter and setup this flag.
+    {
+        const std::lock_guard<std::mutex> lock(llvm_mutex);
+        // Disable code sinking in instruction combining.
+        // This is a workaround for a performance issue caused by code sinking
+        // that is being done in LLVM's instcombine pass.
+        // This code will be removed once sinking is removed from instcombine.
+        auto optionsMap = llvm::cl::getRegisteredOptions();
+        llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
+        auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
+        if (instCombineSinkingSwitch != optionsMap.end()) {
+            if ((*instCombineSinkingSwitch).getValue()->getNumOccurrences() == 0) {
+                const char* args[] = { "igc", instCombineFlag.data() };
+                llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
+            }
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(QualityMetricsEnable))
