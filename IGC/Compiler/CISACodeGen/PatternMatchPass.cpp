@@ -2001,17 +2001,10 @@ namespace IGC
         }
 
         using namespace llvm::PatternMatch;
-        Value* LHS = NULL, * RHS = NULL, * Op1 = NULL, * Op0 = NULL;
         if (m_ctx->type == ShaderType::VERTEX_SHADER &&
             m_ctx->m_DriverInfo.PreventZFighting() &&
-            (match(&I,m_BinOp(m_FMul(m_Value(LHS), m_Value(RHS)), m_Value(Op1))) ||
-             match(&I,m_BinOp(m_Value(Op0), m_FMul(m_Value(LHS), m_Value(RHS))))) &&
-            I.hasOneUse() && isa<IntrinsicInst>(I.user_back()))
+            m_PosDep->PositionDependsOnInst(&I))
         {
-            auto fmul_val = Op0 != NULL ? I.getOperand(1) : I.getOperand(0);
-            auto fmul = cast<BinaryOperator>(fmul_val);
-            if (cast<IntrinsicInst>(I.user_back())->getIntrinsicID() == llvm::Intrinsic::sin &&
-                m_PosDep->PositionDependsOnInst(fmul) && NeedInstruction(*fmul))
                 return false;
         }
         if (IGC_IS_FLAG_ENABLED(DisableMatchMad))
