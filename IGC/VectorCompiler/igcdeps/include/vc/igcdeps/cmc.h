@@ -72,9 +72,9 @@ public:
     }
 
     // General argument
-    void createConstArgumentAnnotation(unsigned argNo, unsigned sizeInBytes,
-                                       unsigned payloadPosition,
-                                       unsigned offsetInArg);
+    void createConstArgumentAnnotation(unsigned argNo,
+                                       unsigned sizeInBytes,
+                                       unsigned payloadPosition);
 
     // 1D/2D/3D Surface
     void createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,

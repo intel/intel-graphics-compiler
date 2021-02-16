@@ -69,37 +69,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /// -enable-kernel-arg-reordering but is typically invoked as -mllvm
 /// -enable-kernel-arg-reordering=false (the default is true)
 ///
-/// Along with kernel argument offset calculation, it sets kernel argument
-/// indexes and implicit linearization offsets in the original explicit byval
-/// argument (OffsetsInArg). Argument index may differ from argument number in
-/// function. For instance, all the implicit linearization arguments have the
-/// index equal to the explicit argument index, because they must be mapped to
-/// it in OCL/L0 runtime argument annotation.
-///
-///   %struct.s1 = type { [2 x i32], i8 }
-///   declare i32 @foo(%struct.s1* byval(%struct.s1) "VCArgumentDesc"="svmptr_t"
-///                     "VCArgumentIOKind"="0" "VCArgumentKind"="0" %_arg_, i64
-///                     %_arg_1, i32 %__arg_lin__arg_0, i32 %__arg_lin__arg_1,
-///                     i8 %__arg_lin__arg_2);
-///
-///   Argument             | Index | OffsetsInArg |
-///   %_arg_               |     0 |           0  | explicit byval arg
-///   %_arg_1              |     1 |           0  | explicit arg
-///   %__arg_lin__arg_0.0  |     0 |           0  | linearization of %_arg_
-///   %__arg_lin__arg_0.4  |     0 |           4  | linearization of %_arg_
-///   %__arg_lin__arg_0.8  |     0 |           8  | linearization of %_arg_
-///
-/// This example shows that implicit linearization arguments
-/// (%__arg_lin__arg_0.0, %__arg_lin__arg_0.4 and %__arg_lin__arg_0.8) of the
-/// explicit byval %_arg_ must be mapped at argument with index = 0 (= %_arg_)
-/// and their offsets in this argument are 0, 4, 8 bytes. %_arg_ has %struct.s1
-/// type, consequently, %__arg_lin__arg_0.0 is the first element of the array in
-/// %struct.s1 type, %__arg_lin__arg_0.4 is the second element of the array, and
-/// %__arg_lin__arg_0.8 is the last i8  field. Additionally, at this point, all
-/// the uses of explicit byval arguments are changed to the appropriate
-/// linearization.
-///
-///
 //===----------------------------------------------------------------------===//
 
 #define DEBUG_TYPE "cmkernelargoffset"
@@ -134,9 +103,9 @@ static cl::opt<bool> BTIIndexCommoning("make-bti-index-common", cl::init(false),
                                        cl::Hidden,
                                        cl::desc("Enable BTI index commoning"));
 
-static cl::opt<bool>
-    CMRTOpt("cmkernelargoffset-cmrt", cl::init(true), cl::Hidden,
-            cl::desc("Should be used only in llvm opt to switch RT"));
+namespace llvm {
+void initializeCMKernelArgOffsetPass(PassRegistry &);
+}
 
 namespace {
 
@@ -182,8 +151,7 @@ class CMKernelArgOffset : public ModulePass {
 public:
   static char ID;
   CMKernelArgOffset(unsigned GrfByteSize = 32, bool OCLCodeGen = false)
-      : ModulePass(ID), OCLCodeGen(OCLCodeGen || !CMRTOpt),
-        GrfByteSize(GrfByteSize) {
+      : ModulePass(ID), OCLCodeGen(OCLCodeGen), GrfByteSize(GrfByteSize) {
     initializeCMKernelArgOffsetPass(*PassRegistry::getPassRegistry());
     GrfMaxCount = 256;
     GrfStartOffset = GrfByteSize;
@@ -195,8 +163,7 @@ public:
 
 private:
   void processKernel(MDNode *Node);
-  void processKernelOnOCLRT(Function *F);
-  void resolveByValArgs(Function *F) const;
+  void processKernelOnOCLRT(MDNode *Node, Function *F);
 
   static Value *getValue(Metadata *M) {
     if (auto VM = dyn_cast<ValueAsMetadata>(M))
@@ -221,6 +188,34 @@ private:
 
   // Relayout thread paylod for OpenCL runtime.
   bool enableOCLCodeGen() const { return OCLCodeGen; }
+
+  // Update offset MD node
+  void updateOffsetMD(MDNode *KernelMD,
+                      SmallDenseMap<Argument *, unsigned> &PlacedArgs) {
+    IGC_ASSERT(KM);
+    Function *F = dyn_cast_or_null<Function>(
+        getValue(KernelMD->getOperand(genx::KernelMDOp::FunctionRef)));
+    IGC_ASSERT_MESSAGE(F, "nullptr kernel");
+
+    // All arguments now have offsets. Update the metadata node containing the
+    // offsets.
+    IGC_ASSERT_MESSAGE(F->arg_size() == KM->getNumArgs(),
+      "Mismatch between metadata for kernel and number of args");
+    SmallVector<Metadata *, 8> ArgOffsets;
+    auto I32Ty = Type::getInt32Ty(F->getContext());
+    for (auto ai = F->arg_begin(), ae = F->arg_end(); ai != ae; ++ai) {
+      Argument *Arg = &*ai;
+      ArgOffsets.push_back(ValueAsMetadata::getConstant(
+          ConstantInt::get(I32Ty, PlacedArgs[Arg])));
+    }
+    MDNode *OffsetsNode = MDNode::get(F->getContext(), ArgOffsets);
+    KernelMD->replaceOperandWith(genx::KernelMDOp::ArgOffsets, OffsetsNode);
+
+    // Give an error on too many arguments.
+    if (ArgOffsets.size() >= GrfMaxCount)
+      DiagnosticInfoCMKernelArgOffset::emit(&F->front().front(),
+                                            "Too many kernel arguments");
+  }
 
   unsigned GrfByteSize;
   unsigned GrfMaxCount;
@@ -281,8 +276,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
 
   // Layout kernel arguments differently if to run on OpenCL runtime.
   if (enableOCLCodeGen()) {
-    resolveByValArgs(F);
-    return processKernelOnOCLRT(F);
+    return processKernelOnOCLRT(Node, F);
   }
 
   auto getTypeSizeInBytes = [=](Type *Ty) {
@@ -296,7 +290,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
   // improved packing where appropriate. The reordering algorithm replicates
   // that used in the legacy Cm compiler, as certain media walker applications
   // seem sensitive to the way the kernel inputs are laid out.
-  SmallDenseMap<const Argument *, unsigned> PlacedArgs;
+  SmallDenseMap<Argument *, unsigned> PlacedArgs;
   unsigned Offset = 0;
   if (EnableKernelArgReordering /*DoReordering*/) {
     // Reorder kernel input arguments. Arguments are placed in size order,
@@ -478,19 +472,8 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
     }
   }
 
-  SmallVector<unsigned, 8> ArgOffsets;
-  std::transform(
-      F->arg_begin(), F->arg_end(), std::back_inserter(ArgOffsets),
-      [&PlacedArgs](const Argument &Arg) { return PlacedArgs[&Arg]; });
-  KM.updateArgOffsetsMD(std::move(ArgOffsets));
-
-  SmallVector<unsigned, 8> OffsetInArgs(F->arg_size(), 0);
-  KM.updateOffsetInArgsMD(std::move(OffsetInArgs));
-
-  SmallVector<unsigned, 8> Indexes;
-  std::transform(F->arg_begin(), F->arg_end(), std::back_inserter(Indexes),
-                 [](const Argument &Arg) { return Arg.getArgNo(); });
-  KM.updateArgIndexesMD(std::move(Indexes));
+  // Update the offset MD node.
+  updateOffsetMD(Node, PlacedArgs);
 
   this->KM = nullptr;
 }
@@ -505,52 +488,7 @@ void DiagnosticInfoCMKernelArgOffset::emit(Instruction *Inst, StringRef Msg,
   Inst->getContext().diagnose(Err);
 }
 
-// CMImpParam generated byval aggregate arguments linearization metadata and
-// appended implicit linearization to function arguments. Now it's time to
-// change the use of the explicit byval aggregate argument to its implicit
-// linearization.
-void CMKernelArgOffset::resolveByValArgs(Function *F) const {
-  IGC_ASSERT(KM);
-
-  IRBuilder<> Builder(&*F->getEntryBlock().getFirstInsertionPt());
-  for (auto &Arg : F->args()) {
-    if (!KM->hasArgLinearization(&Arg))
-      continue;
-
-    auto *Base =
-        Builder.CreateAlloca(Arg.getType()->getPointerElementType(), nullptr,
-                             Arg.getName() + ".linearization");
-
-    Value *BaseAsI8Ptr = Builder.CreateBitCast(Base, Builder.getInt8PtrTy(),
-                                               Base->getName() + ".i8");
-    for (const auto &Info : KM->arg_lin(&Arg)) {
-      Value *StoreAddrUntyped = Builder.CreateGEP(BaseAsI8Ptr, Info.Offset);
-      Value *StoreAddrTyped = Builder.CreateBitCast(
-          StoreAddrUntyped, Info.Arg->getType()->getPointerTo());
-      Builder.CreateStore(Info.Arg, StoreAddrTyped);
-    }
-
-    Arg.replaceNonMetadataUsesWith(Base);
-  }
-}
-
-// Add entries to a container(map). A key is an implicit linearization argument
-// and value is an offset  for this implicit linearization argument.
-// Arg = explicit argument which has the implicit linearization
-// ArgOffset = offset of Arg
-template <typename OutIterT>
-void setImplicitLinearizationOffset(Argument &Arg, unsigned ArgOffset,
-                                    const genx::KernelMetadata &KM,
-                                    OutIterT OutIt) {
-  IGC_ASSERT(KM.hasArgLinearization(&Arg));
-  std::transform(KM.arg_lin_begin(&Arg), KM.arg_lin_end(&Arg), OutIt,
-                 [ArgOffset](const genx::ImplicitLinearizationInfo &Lin) {
-                   return std::make_pair(Lin.Arg, Lin.Offset->getZExtValue() +
-                                                      ArgOffset);
-                 });
-}
-
-void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
+void CMKernelArgOffset::processKernelOnOCLRT(MDNode *Node, Function *F) {
   IGC_ASSERT(KM);
   // Assign BTI values.
   {
@@ -609,7 +547,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     }
   }
 
-  SmallDenseMap<const Argument *, unsigned> PlacedArgs;
+  SmallDenseMap<Argument *, unsigned> PlacedArgs;
   {
     // OpenCL SIMD8 thread payloads are organized as follows:
     //
@@ -631,11 +569,6 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     // Starting offsets for non-implicit arguments.
     Offset += 1 * GrfByteSize;
 
-    // A map from implicit linearization argument to it's offset. The offset for
-    // this type of arguments is an offset of the explicit argument (which was
-    // linearized) + offset in the explicit argument.
-    std::unordered_map<Argument *, unsigned> ImplicitLinearizationArgToOffset;
-
     // Place an argument and update offset.
     // Arguments larger than a GRF must be at least GRF-aligned. Arguments
     // smaller than a GRF may not cross GRF boundaries. This means that
@@ -646,20 +579,8 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       unsigned EndGRF = (Offset + ByteSize - 1) / GrfByteSize;
       if (StartGRF != EndGRF)
         Offset = alignTo(Offset, GrfByteSize);
-      if (Arg->hasByValAttr()) {
-        PlacedArgs[Arg] = genx::KernelMetadata::SKIP_OFFSET_VAL;
-        auto InsertIt = std::inserter(ImplicitLinearizationArgToOffset,
-                                      ImplicitLinearizationArgToOffset.end());
-        setImplicitLinearizationOffset(*Arg, Offset, *KM, InsertIt);
-        Offset += ByteSize;
-      } else if (ImplicitLinearizationArgToOffset.count(Arg)) {
-        // Don't update offset. This implicit arg must be mapped on an explicit
-        // one.
-        PlacedArgs[Arg] = ImplicitLinearizationArgToOffset[Arg];
-      } else {
-        PlacedArgs[Arg] = Offset;
-        Offset += ByteSize;
-      }
+      PlacedArgs[Arg] = Offset;
+      Offset += ByteSize;
     };
 
     // First scan, assign implicit arguments.
@@ -708,15 +629,9 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
         Bytes = DL.getPointerSize();
         Alignment = IGCLLVM::getAlignmentValue(DL.getPointerABIAlignment(0));
       } else if (Ty->isPointerTy()) {
-        if (Arg.hasByValAttr()) {
-          Ty = Ty->getContainedType(0);
-          Bytes = DL.getTypeAllocSize(Ty);
-          Alignment = IGCLLVM::getAlignmentValue(Bytes);
-        } else {
-          Bytes = DL.getPointerTypeSize(Ty);
-          Alignment = IGCLLVM::getAlignmentValue(
-              DL.getPointerABIAlignment(Ty->getPointerAddressSpace()));
-        }
+        Bytes = DL.getPointerTypeSize(Ty);
+        Alignment = IGCLLVM::getAlignmentValue(
+            DL.getPointerABIAlignment(Ty->getPointerAddressSpace()));
       } else {
         Bytes = Ty->getPrimitiveSizeInBits() / 8;
         Alignment = IGCLLVM::getAlignmentValue(Ty->getScalarSizeInBits() / 8);
@@ -725,26 +640,5 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     }
   }
 
-  SmallVector<unsigned, 8> ArgOffsets;
-  std::transform(
-      F->arg_begin(), F->arg_end(), std::back_inserter(ArgOffsets),
-      [&PlacedArgs](const Argument &Arg) { return PlacedArgs[&Arg]; });
-  KM->updateArgOffsetsMD(std::move(ArgOffsets));
-
-  SmallVector<unsigned, 8> OffsetInArgs(F->arg_size(), 0);
-  SmallVector<unsigned, 8> Indexes;
-  std::transform(F->arg_begin(), F->arg_end(), std::back_inserter(Indexes),
-                 [](const Argument &Arg) { return Arg.getArgNo(); });
-  for (Argument &Arg : F->args()) {
-    if (!KM->hasArgLinearization(&Arg))
-      continue;
-    for (const auto &Lin : KM->arg_lin(&Arg)) {
-      unsigned LinArgNo = Lin.Arg->getArgNo();
-      OffsetInArgs[LinArgNo] = Lin.Offset->getZExtValue();
-      Indexes[LinArgNo] = Arg.getArgNo();
-    }
-  }
-
-  KM->updateOffsetInArgsMD(std::move(OffsetInArgs));
-  KM->updateArgIndexesMD(std::move(Indexes));
+  updateOffsetMD(Node, PlacedArgs);
 }

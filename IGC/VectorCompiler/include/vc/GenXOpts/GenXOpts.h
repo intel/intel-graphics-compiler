@@ -73,8 +73,6 @@ ModulePass *createGenXPacketizePass();
 
 void initializeGenXSimplifyPass(PassRegistry &);
 void initializeCMABIPass(PassRegistry &);
-void initializeCMImpParamPass(PassRegistry &);
-void initializeCMKernelArgOffsetPass(PassRegistry &);
 
 } // End llvm namespace
 
