@@ -1377,9 +1377,17 @@ namespace IGC
         {
             while (runtimeValue->hasOneUse() &&
                 (isa<BitCastInst>(runtimeValue->user_back()) ||
-                    isa<IntToPtrInst>(runtimeValue->user_back())))
+                 isa<IntToPtrInst>(runtimeValue->user_back())))
             {
-                runtimeValue = runtimeValue->user_back();
+                Value* castInst = runtimeValue->user_back();
+                if ((index % 2) != 0 &&
+                    (64 == GetSizeInBits(castInst->getType())) &&
+                    !castInst->getType()->isVectorTy())
+                {
+                    // 64bit runtime values must be 8B aligned in GRFs.
+                    break;
+                }
+                runtimeValue = castInst;
             }
             arg = addArgumentAndMetadata(
                 runtimeValue->getType(),
