@@ -794,7 +794,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets& LB, Liv
         addGlobalDependence(globalSendNum, &globalSendOpndList, &SBNodes, p, true);
     }
 
-    if (kernel.hasIndirectCall())
+    if (kernel.hasIndirectCall() || kernel.getBoolKernelAttr(Attributes::ATTR_Extern))
     {
         handleIndirectCall();
     }
