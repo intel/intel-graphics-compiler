@@ -406,14 +406,41 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph& fg)
 
 }
 
-bool LivenessAnalysis::isLocalVar(const G4_Declare* decl) const
+bool LivenessAnalysis::isLocalVar(G4_Declare* decl) const
 {
-    LocalLiveRange* dclLR = gra.getLocalLR(decl);
+    if ((decl->isInput() == true &&
+        !(fg.builder->getFCPatchInfo() &&
+            fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
+            !decl->isLiveIn())) &&
+        !(fg.builder->isPreDefArg(decl) &&
+            (fg.builder->getIsKernel() ||
+                (fg.getIsStackCallFunc() &&
+                    fg.builder->getArgSize() == 0))))
+        return false;
 
+    if (fg.builder->getOption(vISA_enablePreemption) &&
+        decl == fg.builder->getBuiltinR0())
+        return false;
+
+
+    if (decl->isOutput() == true &&
+        !(fg.builder->isPreDefRet(decl) &&
+            (fg.builder->getIsKernel() ||
+                (fg.getIsStackCallFunc() &&
+                    fg.builder->getRetVarSize() == 0))))
+        return false;
+
+    LocalLiveRange* dclLR = gra.getLocalLR(decl);
     if (decl &&
         dclLR &&
         dclLR->isLiveRangeLocal()&&
         decl->getRegFile() != G4_INPUT)
+    {
+        return true;
+    }
+
+    // Since variable split is done only for local variables, there is no need to analysis for global variables.
+    if (decl->getIsSplittedDcl() || decl->getIsPartialDcl())
     {
         return true;
     }
@@ -589,9 +616,8 @@ LivenessAnalysis::LivenessAnalysis(
     //
     bool areAllPhyRegAssigned = !forceRun;
     bool hasStackCall = fg.getHasStackCalls() || fg.getIsStackCallFunc();
-    bool fastCompile = (fg.builder->getOption(vISA_FastCompileRA) || fg.builder->getOption(vISA_HybridRAWithSpill)) && !hasStackCall;
 
-    if (fastCompile)
+    if (!fg.builder->getOption(vISA_GlobalSendVarSplit) && !hasStackCall)
     {
         areAllPhyRegAssigned = setGlobalVarIDs(verifyRA, areAllPhyRegAssigned);
         areAllPhyRegAssigned = setLocalVarIDs(verifyRA, areAllPhyRegAssigned);
