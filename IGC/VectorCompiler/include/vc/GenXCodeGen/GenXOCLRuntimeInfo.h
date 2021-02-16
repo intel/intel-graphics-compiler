@@ -63,7 +63,8 @@ public:
       Image2D,
       Image3D,
       PrintBuffer,
-      PrivateBase
+      PrivateBase,
+      ByValSVM
     };
 
     enum class AccessKindType { None, ReadOnly, WriteOnly, ReadWrite };
@@ -73,11 +74,14 @@ public:
     KindType Kind;
     AccessKindType AccessKind;
     unsigned Offset;
+    unsigned OffsetInArg; // Implicit arguments may be mapped to some part of an
+                          // explicit argument. This field shows offset in the
+                          // explicit arg.
     unsigned SizeInBytes;
     unsigned BTI;
 
   private:
-    void translateArgDesc(genx::KernelMetadata &KM);
+    void translateArgDesc(genx::KernelMetadata &KM, unsigned ArgNo);
 
   public:
     KernelArgInfo(const Argument &Arg, genx::KernelMetadata &KM,
@@ -89,6 +93,7 @@ public:
     unsigned getOffset() const { return Offset; }
     unsigned getSizeInBytes() const { return SizeInBytes; }
     unsigned getBTI() const { return BTI; }
+    unsigned getOffsetInArg() const { return OffsetInArg; }
 
     bool isImage() const {
       switch (Kind) {

@@ -51,6 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/GenXSTLExtras.h"
+#include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
 
 #include "llvm/ADT/DenseMap.h"
@@ -1158,21 +1159,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
   if (F->hasDLLExportStorageClass())
     NF->setDLLStorageClass(F->getDLLStorageClass());
 
-  auto getValue = [](Metadata *M) -> Value * {
-    if (auto VM = dyn_cast<ValueAsMetadata>(M))
-      return VM->getValue();
-    return nullptr;
-  };
-
-  // Scan the CM kernel metadata and replace with NF.
-  if (NamedMDNode *Named =
-          CG.getModule().getNamedMetadata(genx::FunctionMD::GenXKernels)) {
-    for (unsigned I = 0, E = Named->getNumOperands(); I != E; ++I) {
-      MDNode *Node = Named->getOperand(I);
-      if (F == dyn_cast_or_null<Function>(getValue(Node->getOperand(0))))
-        Node->replaceOperandWith(genx::KernelMDOp::FunctionRef, ValueAsMetadata::get(NF));
-    }
-  }
+  genx::replaceFunctionRefMD(*F, *NF);
 
   // Now that the old function is dead, delete it. If there is a dangling
   // reference to the CallgraphNode, just leave the dead function around.

@@ -217,6 +217,8 @@ static ArgKindType getOCLArgKind(const SmallVectorImpl<StringRef> &Tokens,
     return ArgKindType::PrintBuffer;
   if (KAI.isPrivateBase())
     return ArgKindType::PrivateBase;
+  if (KAI.isByValSVM())
+    return ArgKindType::ByValSVM;
 
   // Explicit arguments.
   switch (KM.getArgCategory(ArgNo)) {
@@ -265,8 +267,8 @@ getOCLArgAccessKind(const SmallVectorImpl<StringRef> &Tokens,
 
 // Initialize Kind and AccessKind from given ArgTypeDesc in metadata.
 void GenXOCLRuntimeInfo::KernelArgInfo::translateArgDesc(
-    genx::KernelMetadata &KM) {
-  std::string Translated{KM.getArgTypeDesc(Index)};
+    genx::KernelMetadata &KM, unsigned ArgNo) {
+  std::string Translated{KM.getArgTypeDesc(ArgNo)};
   // Transform each separator to space.
   std::transform(Translated.begin(), Translated.end(), Translated.begin(),
                  [](char C) {
@@ -282,7 +284,7 @@ void GenXOCLRuntimeInfo::KernelArgInfo::translateArgDesc(
   std::sort(Tokens.begin(), Tokens.end());
   Tokens.erase(std::unique(Tokens.begin(), Tokens.end()), Tokens.end());
 
-  Kind = getOCLArgKind(Tokens, Index, KM);
+  Kind = getOCLArgKind(Tokens, ArgNo, KM);
   AccessKind = getOCLArgAccessKind(Tokens, Kind);
 }
 
@@ -298,12 +300,18 @@ static unsigned getArgSizeInBytes(const Argument &Arg, genx::KernelMetadata &KM,
 
 GenXOCLRuntimeInfo::KernelArgInfo::KernelArgInfo(const Argument &Arg,
                                                  genx::KernelMetadata &KM,
-                                                 const DataLayout &DL)
-    : Index(Arg.getArgNo()) {
-  translateArgDesc(KM);
-  Offset = KM.getArgOffset(Index);
+                                                 const DataLayout &DL) {
+  unsigned ArgNo = Arg.getArgNo();
+  translateArgDesc(KM, ArgNo);
+  Offset = KM.getArgOffset(ArgNo);
   SizeInBytes = getArgSizeInBytes(Arg, KM, DL);
-  BTI = KM.getBTI(Index);
+  BTI = KM.getBTI(ArgNo);
+  // For implicit arguments that are byval argument linearization, index !=
+  // ArgNo in the IR function.
+  Index = KM.getArgIndex(ArgNo);
+  // Linearization arguments have a non-zero offset in the original explicit
+  // byval arg
+  OffsetInArg = KM.getOffsetInArg(ArgNo);
 }
 
 //===----------------------------------------------------------------------===//

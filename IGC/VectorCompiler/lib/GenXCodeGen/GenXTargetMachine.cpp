@@ -142,6 +142,8 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeCMABIPass(registry);
   initializeGenXLowerJmpTableSwitchPass(registry);
   initializeGenXGlobalVariableLoweringPass(registry);
+  initializeCMImpParamPass(registry);
+  initializeCMKernelArgOffsetPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
