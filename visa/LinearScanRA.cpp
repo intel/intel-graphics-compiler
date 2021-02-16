@@ -385,7 +385,7 @@ void globalLinearScan::printActives()
         {
             for (auto lr : activeGRF[i].activeLV)
             {
-                int startregnum, endregnum, startsregnum, endsregnum;
+                int startregnum, endregnum, startsregnum=0, endsregnum;
                 G4_VarBase* op;
                 op = lr->getPhyReg(startsregnum);
 
@@ -416,7 +416,7 @@ void globalLinearScan::printActives()
             // There may be multiple variables take same register with different offsets
             for (auto lr : activeGRF[i].activeLV)
             {
-                int startsregnum;
+                int startsregnum=0;
                 G4_VarBase* op = lr->getPhyReg(startsregnum);
 
                 int startregnum = op->asGreg()->getRegNum();
@@ -1830,7 +1830,7 @@ void LinearScanRA::printInputLiveIntervalsGlobal()
 
 static inline void printLiveInterval(LSLiveRange* lr, bool assign)
 {
-    int startregnum, endregnum, startsregnum, endsregnum;
+    int startregnum, endregnum, startsregnum=0, endsregnum;
     G4_VarBase* op;
     op = lr->getPhyReg(startsregnum);
 

@@ -638,141 +638,143 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
 
     const Instruction* const inst = dyn_cast<Instruction>(val);
     IGC_ASSERT_MESSAGE(nullptr != inst, "This Value is not an Instruction");
-
-    bool hasOriginal = hasDependency(inst);
-    WIAnalysis::WIDependancy orig;
-    // We only calculate dependency on unset instructions if all their operands
-    // were already given dependency. This is good for compile time since these
-    // instructions will be visited again after the operands dependency is set.
-    // An exception are phi nodes since they can be the ancestor of themselves in
-    // the def-use chain. Note that in this case we force the phi to have the
-    // pre-header value already calculated.
-    //
-    // Another case is that an inst might be set under control dependence (for example, phi)
-    // before any of its operands have been set. In this case, we will skip here. Here
-    // is the example (derived from ocl scheduler):
-    //      B0:  (p) goto Bt
-    //      B1:  goto Bf
-    //  L   B2:  x.lcssa = phi (x.0, Bn)      // B2: partial join
-    //      ...
-    //      Bt: ...
-    //      ...
-    //      Bf:
-    //      ...
-    //          goto Bm (out of loop)
-    //      Bn:
-    //          x.0 = ...
-    //          goto  B2
-    //      Bm:  ...
-    //      ...
-    //      B_ipd  ( iPDOM(B0) = B_ipd)
-    //
-    // B0's branch instruction has random dependency, which triggers control dependence calculation.
-    // B2 is a partial join in InfluenceRegion. Thus its phi is marked as random, but its operand
-    // x.0 is still not set yet.
-    unsigned int unsetOpNum = 0;
-    for (unsigned i = 0; i < inst->getNumOperands(); ++i)
+    if (inst)
     {
-        if (!hasDependency(inst->getOperand(i))) unsetOpNum++;
-    }
-    if (isa<PHINode>(inst))
-    {
-        // We do not calculate PhiNode with all incoming values unset.
+        bool hasOriginal = hasDependency(inst);
+        WIAnalysis::WIDependancy orig;
+        // We only calculate dependency on unset instructions if all their operands
+        // were already given dependency. This is good for compile time since these
+        // instructions will be visited again after the operands dependency is set.
+        // An exception are phi nodes since they can be the ancestor of themselves in
+        // the def-use chain. Note that in this case we force the phi to have the
+        // pre-header value already calculated.
         //
-        // This seems right as we don't expect a phi that only depends upon other
-        // phi's (if it happens, those phis form a cycle dependency) so any phi's
-        // calculation will eventually be triggered from calculating a non-phi one
-        // which the phi depends upon.
-        if (unsetOpNum == inst->getNumOperands()) return;
-    }
-    else
-    {
-        // We do not calculate non-PhiNode instruction that have unset operands
-        if (unsetOpNum > 0) return;
-
-        // We have all operands set. Check a special case from calculate_dep for
-        // binary ops (see the details below). It checks for ASHR+ADD and ASHR+SHL
-        // cases, and in particular it accesses dependency for ADD operands. It
-        // could happen these operands are not processed yet and in such case
-        // getDependency raises the assertion. Thus check if dependency is set.
-        // Currently we need to check dependency for ASHR->ADD operands only.
-        // For SHR, its operands are checked to be constant so skip this case.
-        // This code could be extended further depending on requirements.
-        if (inst->getOpcode() == Instruction::AShr)
+        // Another case is that an inst might be set under control dependence (for example, phi)
+        // before any of its operands have been set. In this case, we will skip here. Here
+        // is the example (derived from ocl scheduler):
+        //      B0:  (p) goto Bt
+        //      B1:  goto Bf
+        //  L   B2:  x.lcssa = phi (x.0, Bn)      // B2: partial join
+        //      ...
+        //      Bt: ...
+        //      ...
+        //      Bf:
+        //      ...
+        //          goto Bm (out of loop)
+        //      Bn:
+        //          x.0 = ...
+        //          goto  B2
+        //      Bm:  ...
+        //      ...
+        //      B_ipd  ( iPDOM(B0) = B_ipd)
+        //
+        // B0's branch instruction has random dependency, which triggers control dependence calculation.
+        // B2 is a partial join in InfluenceRegion. Thus its phi is marked as random, but its operand
+        // x.0 is still not set yet.
+        unsigned int unsetOpNum = 0;
+        for (unsigned i = 0; i < inst->getNumOperands(); ++i)
         {
-            BinaryOperator* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
-            if (op0 && op0->getOpcode() == Instruction::Add &&
-                !hasDependency(op0->getOperand(1)))
+            if (!hasDependency(inst->getOperand(i))) unsetOpNum++;
+        }
+        if (isa<PHINode>(inst))
+        {
+            // We do not calculate PhiNode with all incoming values unset.
+            //
+            // This seems right as we don't expect a phi that only depends upon other
+            // phi's (if it happens, those phis form a cycle dependency) so any phi's
+            // calculation will eventually be triggered from calculating a non-phi one
+            // which the phi depends upon.
+            if (unsetOpNum == inst->getNumOperands()) return;
+        }
+        else
+        {
+            // We do not calculate non-PhiNode instruction that have unset operands
+            if (unsetOpNum > 0) return;
+
+            // We have all operands set. Check a special case from calculate_dep for
+            // binary ops (see the details below). It checks for ASHR+ADD and ASHR+SHL
+            // cases, and in particular it accesses dependency for ADD operands. It
+            // could happen these operands are not processed yet and in such case
+            // getDependency raises the assertion. Thus check if dependency is set.
+            // Currently we need to check dependency for ASHR->ADD operands only.
+            // For SHR, its operands are checked to be constant so skip this case.
+            // This code could be extended further depending on requirements.
+            if (inst->getOpcode() == Instruction::AShr)
+            {
+                BinaryOperator* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
+                if (op0 && op0->getOpcode() == Instruction::Add &&
+                    !hasDependency(op0->getOperand(1)))
+                {
+                    return;
+                }
+            }
+        }
+
+        if (!hasOriginal)
+        {
+            orig = WIAnalysis::UNIFORM_GLOBAL;
+        }
+        else
+        {
+            orig = m_depMap.GetAttributeWithoutCreating(inst);
+
+            // if inst is already marked random, it cannot get better
+            if (orig == WIAnalysis::RANDOM)
             {
                 return;
             }
         }
-    }
 
-    if (!hasOriginal)
-    {
-        orig = WIAnalysis::UNIFORM_GLOBAL;
-    }
-    else
-    {
-        orig = m_depMap.GetAttributeWithoutCreating(inst);
+        WIAnalysis::WIDependancy dep = orig;
 
-        // if inst is already marked random, it cannot get better
-        if (orig == WIAnalysis::RANDOM)
+        // LLVM does not have compile time polymorphisms
+        // TODO: to make things faster we may want to sort the list below according
+        // to the order of their probability of appearance.
+        if (const BinaryOperator * BI = dyn_cast<BinaryOperator>(inst))         dep = calculate_dep(BI);
+        else if (const CallInst * CI = dyn_cast<CallInst>(inst))                     dep = calculate_dep(CI);
+        else if (isa<CmpInst>(inst))                                                dep = calculate_dep_simple(inst);
+        else if (isa<ExtractElementInst>(inst))                                     dep = calculate_dep_simple(inst);
+        else if (const GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(inst))  dep = calculate_dep(GEP);
+        else if (isa<InsertElementInst>(inst))                                      dep = calculate_dep_simple(inst);
+        else if (isa<InsertValueInst>(inst))                                        dep = calculate_dep_simple(inst);
+        else if (const PHINode * Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi);
+        else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst);
+        else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
+        else if (inst->isTerminator())                                              dep = calculate_dep_terminator(dyn_cast<IGCLLVM::TerminatorInst>(inst));
+        else if (const SelectInst * SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
+        else if (const AllocaInst * AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
+        else if (const CastInst * CI = dyn_cast<CastInst>(inst))                     dep = calculate_dep(CI);
+        else if (isa<ExtractValueInst>(inst))                                       dep = calculate_dep_simple(inst);
+        else if (const LoadInst * LI = dyn_cast<LoadInst>(inst))                     dep = calculate_dep(LI);
+        else if (const VAArgInst * VAI = dyn_cast<VAArgInst>(inst))                  dep = calculate_dep(VAI);
+
+        if (m_func->hasFnAttribute("KMPLOCK"))
         {
-            return;
+            dep = WIAnalysis::UNIFORM_THREAD;
         }
-    }
 
-    WIAnalysis::WIDependancy dep = orig;
-
-    // LLVM does not have compile time polymorphisms
-    // TODO: to make things faster we may want to sort the list below according
-    // to the order of their probability of appearance.
-    if (const BinaryOperator * BI = dyn_cast<BinaryOperator>(inst))         dep = calculate_dep(BI);
-    else if (const CallInst * CI = dyn_cast<CallInst>(inst))                     dep = calculate_dep(CI);
-    else if (isa<CmpInst>(inst))                                                dep = calculate_dep_simple(inst);
-    else if (isa<ExtractElementInst>(inst))                                     dep = calculate_dep_simple(inst);
-    else if (const GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(inst))  dep = calculate_dep(GEP);
-    else if (isa<InsertElementInst>(inst))                                      dep = calculate_dep_simple(inst);
-    else if (isa<InsertValueInst>(inst))                                        dep = calculate_dep_simple(inst);
-    else if (const PHINode * Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi);
-    else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst);
-    else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
-    else if (inst->isTerminator())                                              dep = calculate_dep_terminator(dyn_cast<IGCLLVM::TerminatorInst>(inst));
-    else if (const SelectInst * SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
-    else if (const AllocaInst * AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
-    else if (const CastInst * CI = dyn_cast<CastInst>(inst))                     dep = calculate_dep(CI);
-    else if (isa<ExtractValueInst>(inst))                                       dep = calculate_dep_simple(inst);
-    else if (const LoadInst * LI = dyn_cast<LoadInst>(inst))                     dep = calculate_dep(LI);
-    else if (const VAArgInst * VAI = dyn_cast<VAArgInst>(inst))                  dep = calculate_dep(VAI);
-
-    if (m_func->hasFnAttribute("KMPLOCK"))
-    {
-        dep = WIAnalysis::UNIFORM_THREAD;
-    }
-
-    // If the value was changed in this calculation
-    if (!hasOriginal || dep != orig)
-    {
-        // i1 instructions used in phi cannot be uniform as it may prevent us from removing the phi of 1
-        if (inst->getType()->isIntegerTy(1) && WIAnalysis::isDepUniform(dep) && HasPhiUse(inst))
+        // If the value was changed in this calculation
+        if (!hasOriginal || dep != orig)
         {
-            dep = WIAnalysis::RANDOM;
-        }
-        // Update dependence of this instruction if dep is weaker than orig.
-        // Note depRank(orig) could be higher than depRank(dep) for phi.
-        // (Algo will never decrease the rank of a value.)
-        WIAnalysis::WIDependancy newDep = depRank(orig) < depRank(dep) ? dep : orig;
-        if (!hasOriginal || newDep != orig)
-        {
-            // update only if it is a new dep
-            updateDepMap(inst, newDep);
-        }
-        // divergent branch, trigger updates due to control-dependence
-        if (inst->isTerminator() && dep != WIAnalysis::UNIFORM_GLOBAL)
-        {
-            update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
+            // i1 instructions used in phi cannot be uniform as it may prevent us from removing the phi of 1
+            if (inst->getType()->isIntegerTy(1) && WIAnalysis::isDepUniform(dep) && HasPhiUse(inst))
+            {
+                dep = WIAnalysis::RANDOM;
+            }
+            // Update dependence of this instruction if dep is weaker than orig.
+            // Note depRank(orig) could be higher than depRank(dep) for phi.
+            // (Algo will never decrease the rank of a value.)
+            WIAnalysis::WIDependancy newDep = depRank(orig) < depRank(dep) ? dep : orig;
+            if (!hasOriginal || newDep != orig)
+            {
+                // update only if it is a new dep
+                updateDepMap(inst, newDep);
+            }
+            // divergent branch, trigger updates due to control-dependence
+            if (inst->isTerminator() && dep != WIAnalysis::UNIFORM_GLOBAL)
+            {
+                update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
+            }
         }
     }
 }
