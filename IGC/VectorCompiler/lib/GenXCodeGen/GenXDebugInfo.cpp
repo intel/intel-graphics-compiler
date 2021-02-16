@@ -299,6 +299,11 @@ public:
   }
   uint16_t GetSIMDSize() const override { return 1; }
 
+  bool hasPTO() const override { return false; }
+  int getPTOReg() const override { return -1; }
+  int getFPReg() const override { return -1; }
+  uint64_t getFPOffset() const override { return 16; }
+
 private:
   const Function &F;
   const GenXSubtarget &ST;

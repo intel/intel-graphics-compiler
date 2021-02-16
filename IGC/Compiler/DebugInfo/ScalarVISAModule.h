@@ -2,6 +2,7 @@
 #define SCALAR_VISAMODULE_HPP_1YOTGOUE
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISAModule.hpp"
@@ -84,6 +85,10 @@ public:
         return m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
     }
 
+    void setFramePtr(CVariable* pFP) { m_framePtr = pFP; }
+
+    CVariable* getFramePtr() const { return m_framePtr; }
+
     int getDeclarationID(CVariable* pVar, bool isSecondSimd32Instruction) const {
         int varId = isSecondSimd32Instruction ? 1 : 0;
         if (isSecondSimd32Instruction) {
@@ -103,6 +108,13 @@ public:
         return m_perThreadOffset;
     }
 
+    bool hasPTO() const  override {
+        return getPerThreadOffset() != nullptr;
+    }
+    uint64_t getFPOffset() const override;
+    int getPTOReg() const override;
+    int getFPReg() const override;
+
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.
@@ -115,7 +127,7 @@ private:
     const llvm::Argument* GetTracedArgument64Ops(const llvm::Value* pVal) const;
 
     CShader* m_pShader;
-
+    CVariable* m_framePtr = nullptr;
     llvm::Instruction* m_perThreadOffset = nullptr;
 };
 

@@ -61,8 +61,6 @@ IN THE SOFTWARE.
 #include "Version.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
-#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
 
 #include "Probe/Assertion.h"
 
@@ -1217,7 +1215,7 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
     if (EmitSettings.EnableSIMDLaneDebugging && Loc->IsVectorized())
     {
         // SIMD lane
-        auto *VISAMod = Loc->GetVISAModule();
+        const auto* VISAMod = Loc->GetVISAModule();
 
         uint64_t varSizeInBits = Loc->IsInMemory() ? (uint64_t)Asm->GetPointerSize() * 8 : DV.getBasicSize(DD);
         IGC_ASSERT_MESSAGE(varSizeInBits % 8 == 0, "Variable's size not aligned to byte");
@@ -2218,7 +2216,7 @@ IGC::DIE* CompileUnit::constructVariableDIE(DbgVariable& DV, bool isScopeAbstrac
 void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& DV, IGC::DIE* VariableDie)
 {
     auto F = pDbgInst->getParent()->getParent();
-    auto VISAModule = DD->GetVISAModule(F);
+    const auto* VISAModule = DD->GetVISAModule(F);
     auto Locs = VISAModule->GetVariableLocation(pDbgInst);
     auto& FirstLoc = Locs.front();
 
@@ -2503,33 +2501,19 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         const auto* loc = &locV;
         int64_t offset = 0;
 
-        auto storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+        const auto* storageMD = var.getDbgInst()->getMetadata("StorageOffset");
         const auto* VISAMod = loc->GetVISAModule();
+        IGC_ASSERT_MESSAGE(VISAMod, "VISA Module is expected for LOC");
         VISAVariableLocation V(VISAMod);
-        const ScalarVisaModule* scVISAMod = (const ScalarVisaModule*)VISAMod;
-        IGC_ASSERT_MESSAGE(scVISAMod, "ScalarVisaModule error");
 
-        Instruction* perThreadOffsetInst = scVISAMod->getPerThreadOffset();
-
-        if (storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation) && perThreadOffsetInst)
+        if (VISAMod->hasPTO() && storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
         {
             // This is executed only when llvm.dbg.declare still exists and no stack call is supported.
             // With mem2reg run, data is stored in GRFs and this wont be
             // executed.
 
-            IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffsetInst not passed");
-
-            Value* pValPTO = dyn_cast_or_null<Value>(perThreadOffsetInst);
-            IGC_ASSERT_MESSAGE(pValPTO, "pValPTO error");
-
-            // At this point we expect only a register
-            CVariable* pVarPTO = scVISAMod->GetSymbol(perThreadOffsetInst, pValPTO);
-
-            IGC_ASSERT_MESSAGE(pVarPTO, "Per Thread Offset variable does not exist");
-            IGC_ASSERT_MESSAGE(pVarPTO->GetVarType() == EVARTYPE_GENERAL, "Unexpected VISA register type!");
-
-            int regPTO = scVISAMod->getDeclarationID(pVarPTO, false);
-            auto privateBaseRegNum = loc->GetVISAModule()->getPrivateBaseReg();
+            int regPTO = VISAMod->getPTOReg();
+            auto privateBaseRegNum = VISAMod->getPrivateBaseReg();
             if (privateBaseRegNum)  // FIX ME if 0 is allowed
             {
                 emitLocation = true;
@@ -2663,9 +2647,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             // 12 DW_OP_const1u/2u/4u/8u  storageOffset // MD: StorageOffset; the offset where each variable is stored in the current stack frame
             // 13 DW_OP_plus
 
-            CVariable *framePtr = VISAMod->getFramePtr();
-            ScalarVisaModule* scVISAMod = (ScalarVisaModule*)VISAMod;
-            int regFP = scVISAMod->getDeclarationID(framePtr, false);
+            int regFP = VISAMod->getFPReg();
             DbgDecoder::VarInfo varInfoFP;
             // Rely on getVarInfo result here.
             auto regNumFP = regFP;
@@ -2686,7 +2668,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack); // 5 DW_OP_INTEL_push_bit_piece_stack
 
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);         // 6 DW_OP_const1u    SIZE_OWORD (taken from getFPOffset())
-            addUInt(Block, dwarf::DW_FORM_data1, EmitPass::getFPOffset());
+            addUInt(Block, dwarf::DW_FORM_data1, VISAMod->getFPOffset());
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);            // 7 DW_OP_plus
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_simd_lane);   // 8 DW_OP_INTEL_push_simd_lane
             addConstantUValue(Block, storageSize);                              // 9 DW_OP_const1u/2u/4u/8u  storageSize

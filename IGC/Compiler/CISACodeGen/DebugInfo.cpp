@@ -27,7 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenCodeGenModule.h"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
-#include "Compiler/DebugInfo/ScalarVISAModule.h"
+
+#include "DebugInfo/ScalarVISAModule.h"
 
 using namespace llvm;
 using namespace IGC;

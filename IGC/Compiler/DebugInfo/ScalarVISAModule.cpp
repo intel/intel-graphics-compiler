@@ -99,6 +99,28 @@ std::unique_ptr<IGC::VISAModule> ScalarVisaModule::BuildNew(CShader* S, llvm::Fu
 
     return std::unique_ptr<IGC::VISAModule>(n);
 }
+
+int ScalarVisaModule::getPTOReg() const {
+    IGC_ASSERT_MESSAGE(hasPTO(), "PTO instruction required");
+    Value* pValPTO = dyn_cast_or_null<Value>(m_perThreadOffset);
+    IGC_ASSERT_MESSAGE(pValPTO, "pValPTO error");
+    // At this point we expect only a register
+    CVariable* pVarPTO = GetSymbol(m_perThreadOffset, pValPTO);
+
+    IGC_ASSERT_MESSAGE(pVarPTO, "Per Thread Offset variable does not exist");
+    IGC_ASSERT_MESSAGE(pVarPTO->GetVarType() == EVARTYPE_GENERAL, "Unexpected VISA register type!");
+
+    int regPTO = getDeclarationID(pVarPTO, false);
+    return regPTO;
+}
+int ScalarVisaModule::getFPReg() const {
+    CVariable *framePtr = getFramePtr();
+    int regFP = getDeclarationID(framePtr, false);
+    return regFP;
+}
+uint64_t ScalarVisaModule::getFPOffset() const {
+    return EmitPass::getFPOffset();
+}
 unsigned ScalarVisaModule::getPointerSize() const {
     return IGC::getPointerSize((llvm::Module &)(*GetModule()));
 }

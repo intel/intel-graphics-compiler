@@ -35,8 +35,6 @@ IN THE SOFTWARE.
 #include "VISAIDebugEmitter.hpp"
 #include "LexicalScopes.hpp"
 
-#include "Compiler/CISACodeGen/CVariable.hpp"
-
 #include <vector>
 #include <map>
 #include <string>
@@ -489,6 +487,11 @@ namespace IGC
         virtual unsigned getNumGRFs() const = 0;
         virtual unsigned getPointerSize() const = 0;
 
+        virtual bool hasPTO() const = 0;
+        virtual int getPTOReg() const = 0;
+        virtual int getFPReg() const = 0;
+        virtual uint64_t getFPOffset() const = 0;
+
         virtual llvm::ArrayRef<char> getGenDebug() const = 0;
         virtual llvm::ArrayRef<char> getGenBinary() const = 0;
 
@@ -515,10 +518,6 @@ namespace IGC
         // This function coalesces GenISARange which is a vector of <start ip, end ip>
         static void coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange);
 
-        void setFramePtr(CVariable* pFP) { m_framePtr = pFP; }
-
-        CVariable* getFramePtr() const { return m_framePtr; }
-
         llvm::Function* getFunction() const  { return m_pEntryFunc; }
         uint64_t GetFuncId() const { return (uint64_t)m_pEntryFunc; }
 
@@ -540,8 +539,6 @@ namespace IGC
         InstInfoMap m_instInfoMap;
 
         ObjectType m_objectType = ObjectType::UNKNOWN;
-
-        CVariable* m_framePtr = nullptr;
 
     public:
         /// Constants represents VISA register encoding in DWARF
