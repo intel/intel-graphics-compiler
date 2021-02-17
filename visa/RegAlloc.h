@@ -403,7 +403,7 @@ public:
     std::vector<BitSet> indr_use;
     std::unordered_map<FuncInfo*, BitSet> subroutineMaydef;
 
-    bool isLocalVar(G4_Declare* decl) const;
+    bool isLocalVar(const G4_Declare* decl) const;
     bool setGlobalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
     bool setLocalVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
     bool setVarIDs(bool verifyRA, bool areAllPhyRegAssigned);
