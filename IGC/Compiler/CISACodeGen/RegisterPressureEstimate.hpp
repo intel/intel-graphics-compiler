@@ -1,22 +1,38 @@
-//===-- RegisterPressureEstimate - Estimate Register Pressure -----------------===//
-//
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LRCENSE.TXT for details.
-//
-//  Copyright  (C) 2014-2020 Intel Corporation. All rights reserved.
-//
-// The information and source code contained herein is the exclusive
-// property of Intel Corporation and may not be disclosed, examined
-// or reproduced in whole or in part without explicit written authorization
-// from the company.
-//
-//===----------------------------------------------------------------------===//
-//
+/*========================== begin_copyright_notice ============================
+
+Copyright (c) 2015-2021 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+The LLVM Compiler Infrastructure
+
+This file is distributed under the University of Illinois Open Source License.
+See LRCENSE.TXT for details.
+
+============================= end_copyright_notice ===========================*/
+
 // Estimate the register pressure at a program point.
-//
-//===----------------------------------------------------------------------===//
+
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
