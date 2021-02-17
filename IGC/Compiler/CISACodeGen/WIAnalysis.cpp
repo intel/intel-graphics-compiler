@@ -1571,12 +1571,21 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const AllocaInst* inst)
                 I != m_ctrlBranches.end())
             {
                 auto& Branches = I->second;
-                for (auto *BrI : Branches)
+                WIAnalysis::WIDependancy cntrDep = WIAnalysis::UNIFORM_GLOBAL;
+                for (auto* BrI : Branches)
                 {
                     // exclude those branches that dominates alloca
                     if (!DT->dominates(BrI, CommonDomBB))
-                        return WIAnalysis::RANDOM;
+                    {
+                        // select a weaker one
+                        IGC_ASSERT(hasDependency(BrI));
+                        cntrDep = select_conversion[cntrDep][getDependency(BrI)];
+                        if (cntrDep == WIAnalysis::RANDOM)
+                            break;
+                    }
                 }
+                if (cntrDep == WIAnalysis::RANDOM)
+                    return WIAnalysis::RANDOM;
             }
         }
     }
