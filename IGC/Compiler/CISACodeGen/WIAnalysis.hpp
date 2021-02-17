@@ -156,8 +156,11 @@ namespace IGC
         /// print - print m_deps in human readable form
         void print(llvm::raw_ostream& OS, const llvm::Module* = 0) const;
 
-        /// dump - Dump the m_deps to dbgs().
+        /// dump - Dump the m_deps to a file.
         void dump() const;
+
+        // helper for dumping WI info into files with lock
+        void lock_print();
 
     private:
         struct AllocaDep
@@ -288,6 +291,9 @@ namespace IGC
         llvm::DenseMap<const llvm::StoreInst*, const llvm::AllocaInst*> m_storeDepMap;
 
         IGC::FastValueMap<WIBaseClass::WIDependancy, FastValueMapAttributeInfo<WIBaseClass::WIDependancy>> m_depMap;
+
+        // For dumpping WIA info per each invocation
+        static llvm::DenseMap<const llvm::Function*, int> m_funcInvocationId;
     };
 
     /// @brief Work Item Analysis class used to provide information on

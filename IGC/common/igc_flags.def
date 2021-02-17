@@ -255,6 +255,7 @@ DECLARE_IGC_REGKEY(bool, DumpOCLProgramInfo,            false, "dump OpenCL Patc
 DECLARE_IGC_REGKEY(bool, DumpPatchTokens,               false, "Enable dumping of patch tokens.", true)
 DECLARE_IGC_REGKEY(bool, DumpVariableAlias,             false, "Dump variable alias info, valid if EnableVariableAlias is on)", true)
 DECLARE_IGC_REGKEY(bool, DumpDeSSA,                     false, "dump DeSSA info into file.", true)
+DECLARE_IGC_REGKEY(bool, DumpWIA,                       false, "dump WI (uniform) infomation into files in dump directory if set to true", false)
 DECLARE_IGC_REGKEY(bool, EnableScalarizerDebugLog,      false, "print step by step scalarizer debug info.", true)
 DECLARE_IGC_REGKEY(bool, DumpTimeStats,                 false, "Timing of translation, code generation, finalizer, etc", true)
 DECLARE_IGC_REGKEY(bool, DumpTimeStatsCoarse,           false, "Only collect/dump coarse level time stats, i.e. skip opt detail timer for now", true)

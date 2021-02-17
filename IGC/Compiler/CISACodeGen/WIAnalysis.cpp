@@ -77,6 +77,9 @@ WIAnalysis::WIAnalysis() : FunctionPass(ID)
 
 const unsigned int WIAnalysisRunner::MinIndexBitwidthToPreserve = 16;
 
+// For dumpping WIA info per each invocation
+DenseMap<const Function*, int> WIAnalysisRunner::m_funcInvocationId;
+
 /// Define shorter names for dependencies, for clarity of the conversion maps
 /// Note that only UGL/UWG/UTH/RND are supported.
 #define UGL WIAnalysis::UNIFORM_GLOBAL
@@ -254,6 +257,25 @@ void WIAnalysisRunner::print(raw_ostream& OS, const Module*) const
     }
 }
 
+void WIAnalysisRunner::lock_print()
+{
+    IGC::Debug::DumpLock();
+    {
+        int id = m_funcInvocationId[m_func]++;
+        std::stringstream ss;
+        ss << m_func->getName().str() << "_WIAnalysis_" << id;
+        auto name =
+            DumpName(IGC::Debug::GetShaderOutputName())
+            .Hash(m_CGCtx->hash)
+            .Type(m_CGCtx->type)
+            .Pass(ss.str().c_str())
+            .Extension("txt");
+        print(Dump(name, DumpType::DBG_MSG_TEXT).stream());
+    }
+    IGC::Debug::DumpUnlock();
+}
+
+// Used for dumpping into a file with a fixed name while running in debugger
 void WIAnalysisRunner::dump() const
 {
     auto name =
@@ -322,6 +344,14 @@ bool WIAnalysisRunner::run()
         updateDeps();
     }
 
+    if (IGC_IS_FLAG_ENABLED(DumpWIA))
+    {
+        // Dump into a unique file under dump dir, per each function invocation.
+        lock_print();
+    }
+
+    // Original print to stdout
+    //   Need igc key PrintToConsole and llvm flag -print-wia-check
     if (PrintWiaCheck)
     {
         print(ods());
