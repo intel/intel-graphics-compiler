@@ -51,8 +51,8 @@ namespace vISA {
 
     iga::SWSB_ENCODE_MODE GetIGASWSBEncodeMode(const IR_Builder& builder);
 
-    bool InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i);
-    bool InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i);
+    bool InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i, const IR_Builder& builder);
+    bool InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i, const IR_Builder& builder);
 
 
 

@@ -370,7 +370,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     }
 
 
-    if (m_kernel->hasIndirectCall() && m_builder->hasSWSB())
+    if (m_kernel->hasIndirectCall() && m_builder->hasSWSB() && !m_builder->supportCallaRegSrc())
         adjustIndirectCallOffset();
 
     m_kernel->evalAddrExp();

@@ -654,6 +654,11 @@
         return 8;
     }
 
+    bool supportCallaRegSrc() const
+    {
+        return false;
+    }
+
     bool hasFusedEU() const
     {
         return (getPlatform() == GENX_TGLLP);

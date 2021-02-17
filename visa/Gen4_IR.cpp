@@ -7179,7 +7179,7 @@ bool G4_INST::canSupportSaturate() const
 
     // note that IGA will return false for any opcode it does not recognize
     // If your psuedo opcode needs to support saturation you must add explicit check before this
-    return InstSupportsSaturationIGA(getPlatform(), *this);
+    return InstSupportsSaturationIGA(getPlatform(), *this, builder);
 }
 
 bool G4_INST::canSupportCondMod() const
@@ -7267,7 +7267,7 @@ bool G4_INST::canSupportSrcModifier() const
     // note that IGA will return false for any opcode it does not recognize
     // If your psuedo opcode needs to support source modifier you must add
     // explicit check before this
-    return InstSupportsSrcModifierIGA(getPlatform(), *this);
+    return InstSupportsSrcModifierIGA(getPlatform(), *this, builder);
 }
 
 // convert (execsize, offset) into emask option

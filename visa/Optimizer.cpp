@@ -6900,15 +6900,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         if (builder.needReplaceIndirectCallWithJmpi() &&
             kernel.getBoolKernelAttr(Attributes::ATTR_Extern))
         {
+            // jmpi WA can't properly work on platforms with SWSB. We didn't re-caculate the
+            // jump offset after swsb insertion.
+            assert(!builder.hasSWSB());
             // replace ret in the external functions with jmpi. That we will
-            // also return the call with jmpi in VISAKernelImpl::compilePostOptimize
+            // also replace the call with jmpi in Optimizer::expandIndirectCallWithRegTarget
             replaceRetWithJmpi();
         }
 
-        if (kernel.hasIndirectCall())
+        if (!builder.supportCallaRegSrc() && kernel.hasIndirectCall())
         {
             // If the indirect call has regiser src0, the register must be a
-            // ip-based address of the call target. Insert a add before call to
+            // ip-based address of the call target. Insert instructions before call to
             // calculate the relative offset from call to the target
             expandIndirectCallWithRegTarget();
         }

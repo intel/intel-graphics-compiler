@@ -83,7 +83,7 @@ public:
     static iga::Platform       getIGAInternalPlatform(TARGET_PLATFORM genxPlatform);
 
     static std::pair<const iga::OpSpec *,iga::Subfunction> getIgaOpInfo(
-        const G4_INST *inst, const iga::Model *m, bool allowUnknownOp);
+        const G4_INST *inst, const iga::Model *m, bool allowUnknownOp, const IR_Builder& builder);
 private:
     static iga::PredCtrl getIGAPredCtrl(G4_Predicate_Control g4PredCntrl);
     static iga::Predication getIGAPredication(G4_Predicate* predG4);
@@ -453,7 +453,7 @@ iga::MathFC BinaryEncodingIGA::getMathFC(const G4_INST *inst)
 // an invalid will be returned in this case.
 //
 std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
-    const G4_INST *inst, const iga::Model *m, bool allowUnknownOp)
+    const G4_INST *inst, const iga::Model *m, bool allowUnknownOp, const IR_Builder& builder)
 {
     iga::Platform p = m->platform;
     iga::Op igaOp = iga::Op::INVALID;
@@ -491,7 +491,17 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_break:   igaOp = iga::Op::BREAK; break;
     case G4_cont:    igaOp = iga::Op::CONT; break;
     case G4_halt:    igaOp = iga::Op::HALT; break;
-    case G4_call:    igaOp = iga::Op::CALL; break;
+    case G4_call:
+    {
+        igaOp = iga::Op::CALL;
+        // check if we're using calla for indirect call
+        if (builder.supportCallaRegSrc()) {
+            // check if we're doing indiret call
+            if (inst->getSrc(0)->isGreg() || inst->getSrc(0)->isA0())
+                igaOp = iga::Op::CALLA;
+        }
+        break;
+    }
     case G4_return:  igaOp = iga::Op::RET; break;
     case G4_goto:    igaOp = iga::Op::GOTO; break;
     case G4_join:    igaOp = iga::Op::JOIN; break;
@@ -875,7 +885,7 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
     G4_INST *g4inst, iga::Block*& bbNew)
 {
     iga::Instruction *igaInst = nullptr;
-    auto opinfo = getIgaOpInfo(g4inst, platformModel, false);
+    auto opinfo = getIgaOpInfo(g4inst, platformModel, false, *kernel.fg.builder);
     // common fields: op, predicate, flag reg, exec size, exec mask offset,
     // mask ctrl, conditional modifier
     const OpSpec* opSpec = opinfo.first;
@@ -976,6 +986,7 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
         igaOp != iga::Op::JMPI &&
         igaOp != iga::Op::RET &&
         igaOp != iga::Op::CALL &&
+        igaOp != iga::Op::CALLA &&
         igaOp != iga::Op::BRC &&
         igaOp != iga::Op::BRD)
     {
@@ -1633,12 +1644,12 @@ static const iga::Model *GetModel(TARGET_PLATFORM p)
     return m;
 }
 
-bool vISA::InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i)
+bool vISA::InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i, const IR_Builder& builder)
 {
     const iga::Model *m = GetModel(p);
     if(m)
     {
-        auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
+        auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true, builder);
         return oi.first && oi.first->isValid() && oi.first->supportsSaturation();
     }
     else
@@ -1647,12 +1658,12 @@ bool vISA::InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i)
     }
 }
 
-bool vISA::InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i)
+bool vISA::InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i, const IR_Builder& builder)
 {
     const iga::Model *m = GetModel(p);
     if(m)
     {
-        auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true);
+        auto oi = BinaryEncodingIGA::getIgaOpInfo(&i, m, true, builder);
         return oi.first && oi.first->isValid() && oi.first->supportsSourceModifiers();
     }
     else
