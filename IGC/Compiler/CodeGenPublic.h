@@ -412,6 +412,8 @@ namespace IGC
         bool hasCoarsePixelSize;
         bool hasSampleOffset;
         bool hasZWDelta;
+        bool needPerspectiveBaryPlane;
+        bool needNonPerspectiveBaryPlane;
         bool posXYOffsetEnable;
         bool blendToFillEnabled;
         bool forceEarlyZ;

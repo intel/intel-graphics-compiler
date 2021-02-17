@@ -3939,9 +3939,11 @@ void EmitPass::emitInterpolate(llvm::GenIntrinsicInst* inst)
     // temp variable should be the same type as the destination
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
 
-    ContextSwitchPayloadSection();
-    emitPlnInterpolation(barys, inputVar);
-    ContextSwitchShaderBody();
+    {
+        ContextSwitchPayloadSection();
+        emitPlnInterpolation(barys, inputVar);
+        ContextSwitchShaderBody();
+    }
 }
 
 void EmitPass::emitInterpolate2(llvm::GenIntrinsicInst* inst)

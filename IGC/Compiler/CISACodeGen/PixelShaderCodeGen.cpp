@@ -261,12 +261,12 @@ void CPixelShader::AllocatePSPayload()
     }
 
     IGC_ASSERT(offset % getGRFSize() == 0);
+
     // need to return the starting grf for constant to client
     ProgramOutput()->m_startReg = offset / getGRFSize();
 
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);
-
 
 
     // Allocate size for attributes coming from VS
@@ -739,6 +739,8 @@ CPixelShader::~CPixelShader()
 void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
 {
     m_R1 = NULL;
+    m_PerspectiveBaryPlanes = nullptr;
+    m_NonPerspectiveBaryPlanes = nullptr;
     m_PerspectivePixel = NULL;
     m_PerspectiveCentroid = NULL;
     m_PerspectiveSample = NULL;
@@ -841,6 +843,8 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     pKernelProgram->hasCoarsePixelSize = m_HasCoarseSize;
     pKernelProgram->hasSampleOffset = m_SampleOffsetX || m_SampleOffsetY;
     pKernelProgram->hasZWDelta = m_ZWDelta;
+    pKernelProgram->needPerspectiveBaryPlane = m_PerspectiveBaryPlanes ? true : false;;
+    pKernelProgram->needNonPerspectiveBaryPlane = m_NonPerspectiveBaryPlanes ? true : false;;
     pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
     pKernelProgram->UavLoaded = m_uavLoaded;
     for (int i = 0; i < 4; i++)
