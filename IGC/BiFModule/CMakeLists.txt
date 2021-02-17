@@ -165,7 +165,11 @@ if(UNIX)
     get_target_property(CCLANG_LIB_PATH opencl-clang-lib "IMPORTED_LOCATION")
     execute_process(
       COMMAND readelf -d ${CCLANG_LIB_PATH}
+      RESULT_VARIABLE CCLANG_READELF_RESULT
       OUTPUT_VARIABLE CCLANG_READELF_CALL)
+    if(CCLANG_READELF_RESULT AND NOT CCLANG_READELF_RESULT EQUAL 0)
+      message(FATAL_ERROR "[IGC\\BiFModule] : Error occurred while executing readelf:  ${CCLANG_READELF_RESULT}")
+    endif()
     string(REGEX MATCH "\\[${COMMON_CLANG_LIB_FULL_NAME}\\.([0-9](\\.[0-9]*)*[a-zA-Z0-9]*)\\]" CCLANG_SONAME_VERSION "${CCLANG_READELF_CALL}")
     set(CCLANG_SONAME_VERSION "${CMAKE_MATCH_1}")
 
