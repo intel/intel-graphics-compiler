@@ -485,26 +485,30 @@ namespace IGC
     /** get smallest SIMD mode allowed based on thread group size */
     SIMDMode ComputeShaderContext::GetLeastSIMDModeAllowed()
     {
-        return getLeastSIMDAllowed(GetThreadGroupSize(), GetHwThreadsPerWG(platform));
+        SIMDMode mode = getLeastSIMDAllowed(
+            GetThreadGroupSize(),
+            GetHwThreadsPerWG(platform));
+        return mode;
     }
 
     /** get largest SIMD mode for performance based on thread group size */
     SIMDMode ComputeShaderContext::GetMaxSIMDMode()
     {
         unsigned threadGroupSize = GetThreadGroupSize();
-
+        SIMDMode mode;
         if (threadGroupSize <= 8)
         {
-            return SIMDMode::SIMD8;
+            mode = SIMDMode::SIMD8;
         }
         else if (threadGroupSize <= 16)
         {
-            return SIMDMode::SIMD16;
+            mode = SIMDMode::SIMD16;
         }
         else
         {
-            return SIMDMode::SIMD32;
+            mode = SIMDMode::SIMD32;
         }
+        return mode;
     }
 
     float ComputeShaderContext::GetSpillThreshold() const
