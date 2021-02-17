@@ -940,7 +940,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
         }
         ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->getCurrentVISA());
-        if (!scVISAMod->getPerThreadOffset())
+        if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP())
         {
             // Stack calls in use. Nothing is needed to be marked as Output.
             // Just setting frame pointer is required for debug info when stack calls are in use.

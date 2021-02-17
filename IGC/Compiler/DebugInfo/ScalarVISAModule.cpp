@@ -115,6 +115,7 @@ int ScalarVisaModule::getPTOReg() const {
 }
 int ScalarVisaModule::getFPReg() const {
     CVariable *framePtr = getFramePtr();
+    IGC_ASSERT_MESSAGE(framePtr, "Frame Pointer does not exist");
     int regFP = getDeclarationID(framePtr, false);
     return regFP;
 }
