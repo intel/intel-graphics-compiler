@@ -426,19 +426,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (isKernel)
             continue;
 
-        // OptNone builtins are special versions of builtins assuring that all
-        // theirs parameters are constant values.
-        if(isOptNoneBuiltin(F->getName()))
-        {
-            // OptimizeNone attribute was only required to prevent clang optimizations.
-            // We can remove it now to unblock IGC optimizations.
-            F->removeFnAttr(llvm::Attribute::OptimizeNone);
-            // Treat optnone builtins as subroutines to avoid kernel bloat.
-            // Optnone attribute implies noinline attribute being present, so we don't need to
-            // set noinline attribute explicitly here.
-            continue;
-        }
-
         // Flag for function calls where alwaysinline must be true
         bool mustAlwaysInline = false;
 
@@ -446,7 +433,20 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
             F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
         {
-            mustAlwaysInline = true;
+            // OptNone builtins are special versions of builtins assuring that all
+            // theirs parameters are constant values.
+            if (isOptNoneBuiltin(F->getName()))
+            {
+                // OptimizeNone attribute was only required to prevent clang optimizations.
+                // We can remove it now to unblock IGC optimizations.
+                F->removeFnAttr(llvm::Attribute::OptimizeNone);
+                // Remove the noinline attribute to allow IGC inlining heuristic to determine inlining
+                F->removeFnAttr(llvm::Attribute::NoInline);
+            }
+            else
+            {
+                mustAlwaysInline = true;
+            }
         }
         // inline all OCL math functions if __FastRelaxedMath is set
         else if (fastMathFunct.find(F) != fastMathFunct.end())
