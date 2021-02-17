@@ -30,6 +30,7 @@ IN THE SOFTWARE.
 #include "TranslationBlock.h"
 #include <string>
 #include <memory>
+#include <vector>
 
 #include "LoadBuffer.h"
 #include "AdaptorOCL/CLElfLib/ElfReader.h"
