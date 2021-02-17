@@ -60,6 +60,7 @@ DEFINE_TIME_STAT(           TIME_VISA_TOTAL_RA,                  "VISA Total RA"
 DEFINE_TIME_STAT(             TIME_VISA_ADDR_FLAG_RA,            "VISA Addr Flag RA",                      TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
 DEFINE_TIME_STAT(             TIME_VISA_LOCAL_RA,                "VISA Local RA",                          TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
 DEFINE_TIME_STAT(             TIME_VISA_HYBRID_RA,               "VISA Hybrid RA",                         TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
+DEFINE_TIME_STAT(             TIME_VISA_LINEARSCAN_RA,           "VISA Linear Scan RA",                    TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
 DEFINE_TIME_STAT(             TIME_VISA_GRF_GLOBAL_RA,           "VISA GRF Global RA0",                    TIME_VISA_TOTAL_RA,                 true,          false,          false,          true )
 DEFINE_TIME_STAT(               TIME_VISA_INTERFERENCE,          "VISA Interference",                      TIME_VISA_GRF_GLOBAL_RA,            true,          false,          false,          false )
 DEFINE_TIME_STAT(               TIME_VISA_COLORING,              "VISA Coloring",                          TIME_VISA_GRF_GLOBAL_RA,            true,          false,          false,          false )

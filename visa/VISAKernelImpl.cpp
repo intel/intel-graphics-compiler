@@ -2653,8 +2653,6 @@ int VISAKernelImpl::CreateVISANullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isD
   */
 int VISAKernelImpl::CreateGenNullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isDst)
 {
-    TIME_SCOPE(VISA_BUILDER_CREATE_OPND);
-
     if (IS_GEN_BOTH_PATH)
     {
         if (isDst)

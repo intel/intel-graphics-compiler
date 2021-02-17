@@ -9298,8 +9298,6 @@ int GlobalRA::coloringRegAlloc()
     }
 
 
-    TIME_SCOPE(GRF_RA);
-
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo
     // declares and code. This currently must be done after flag/addr RA due to
@@ -9512,14 +9510,12 @@ int GlobalRA::coloringRegAlloc()
             reserveSpillReg = true;
         }
 
-        startTimer(TimerID::GLOBAL_RA_LIVENESS);
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
         liveAnalysis.computeLiveness();
         if (builder.getOption(vISA_dumpLiveness))
         {
             liveAnalysis.dump();
         }
-        stopTimer(TimerID::GLOBAL_RA_LIVENESS);
 
 #ifdef DEBUG_VERBOSE_ON
         emitFGWithLiveness(liveAnalysis);
