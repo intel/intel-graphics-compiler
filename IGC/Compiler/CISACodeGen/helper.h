@@ -481,4 +481,6 @@ namespace IGC
     // Returns true if a function has an inline asm call instruction
     bool hasInlineAsmInFunc(llvm::Function& F);
 
+    std::tuple<std::string, std::string, unsigned> ParseVectorVariantFunctionString(llvm::StringRef varStr);
+
 } // namespace IGC

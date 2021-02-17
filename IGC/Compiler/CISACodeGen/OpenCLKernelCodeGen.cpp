@@ -2162,7 +2162,8 @@ namespace IGC
             COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
             COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
 
-            if (ctx->m_DriverInfo.sendMultipleSIMDModes() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
+            if ((ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
+                && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
             {
                 //Gather the kernel binary for each compiled kernel
                 if (SetKernelProgram(ctx, simd32Shader, 32))
@@ -2269,12 +2270,17 @@ namespace IGC
         CShader* simd32Program = m_parent->GetShader(SIMDMode::SIMD32);
 
         CodeGenContext* pCtx = GetContext();
+
+        bool compileFunctionVariants = pCtx->m_enableSimdVariantCompilation &&
+            (m_FGA && IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F)));
+
         // Here we see if we have compiled a size for this shader already
         if ((simd8Program && simd8Program->ProgramOutput()->m_programSize > 0) ||
             (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) ||
             (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
         {
-            if (!(pCtx->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
+            bool canCompileMultipleSIMD = pCtx->m_DriverInfo.sendMultipleSIMDModes() || compileFunctionVariants;
+            if (!(canCompileMultipleSIMD && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
                 return SIMDStatus::SIMD_FUNC_FAIL;
         }
 
@@ -2292,6 +2298,22 @@ namespace IGC
             Kernel = FG->getHead();
             funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
             simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        }
+
+        // For simd variant functions, detect which SIMD sizes are needed
+        if (compileFunctionVariants && F.hasFnAttribute("variant-function-def"))
+        {
+            bool canCompile = true;
+            if (simdMode == SIMDMode::SIMD16)
+                canCompile = F.hasFnAttribute("CompileSIMD16");
+            else if (simdMode == SIMDMode::SIMD8)
+                canCompile = F.hasFnAttribute("CompileSIMD8");
+
+            if (!canCompile)
+            {
+                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
+            }
         }
 
         // Cannot compile simd32 for function calls due to slicing

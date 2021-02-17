@@ -4750,8 +4750,43 @@ namespace IGC
 
         for (auto& F : pModule->getFunctionList())
         {
+            // Find all variant function declarations
+            if (F.isDeclaration() && F.hasFnAttribute("variant-function-decl"))
+            {
+                // Parse the function name string
+                auto [symStr, fName, vecLen] = IGC::ParseVectorVariantFunctionString(F.getName());
+
+                Function* VFDef = pModule->getFunction(fName);
+                if (VFDef && numLanes(m_program->m_dispatchSize) == vecLen)
+                {
+                    auto Iter = stackFuncMap.find(VFDef);
+                    IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(), "vISA function not found");
+
+                    vISA::GenSymEntry fEntry;
+                    IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+                    strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
+
+                    // Query vISA for the function's byte offset within the compiled module
+                    // The actual binary offset data should point to the function definition
+                    VISAFunction* visaFunc = Iter->second;
+                    fEntry.s_type = vISA::GenSymType::S_FUNC;
+                    fEntry.s_offset = (uint32_t)visaFunc->getGenOffset();
+                    fEntry.s_size = (uint32_t)visaFunc->getGenSize();
+
+                    // symbols for patch token
+                    symbolTable.push_back(fEntry);
+                    // symbols for ZEBinary
+                    symbols.function.emplace_back((vISA::GenSymType)fEntry.s_type, fEntry.s_offset, fEntry.s_size, F.getName().str());
+                }
+            }
+            // Ignore variant function definitions
+            else if (F.hasFnAttribute("variant-function-def"))
+            {
+                IGC_ASSERT_MESSAGE(F.getNumUses() == 0, "This function should never be accessed directly");
+                continue;
+            }
             // Find all functions in the module we need to export as symbols
-            if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
+            else if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
             {
                 vISA::GenSymEntry fEntry;
                 IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);

@@ -1172,7 +1172,7 @@ void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& kernels
     AddAnalysisPasses(*ctx, Passes);
 
     if (ctx->m_enableFunctionPointer
-        && ctx->m_DriverInfo.sendMultipleSIMDModes()
+        && (ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
         && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
     {
         // In order to support compiling multiple SIMD modes for function pointer calls,

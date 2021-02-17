@@ -548,7 +548,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
     for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++)
     {
         Function* F = IT->getFunction();
-        if (F && F->hasFnAttribute("visaStackCall"))
+        if (F && !F->isDeclaration() && F->hasFnAttribute("visaStackCall"))
         {
             FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(F);
             if (!funcInfo->empty_ImplicitArgInfoList())

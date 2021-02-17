@@ -512,6 +512,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             return false;
     }
 
+    if (!setCurrentShader(&F))
+    {
+        return false;
+    }
+
     // Dummy program is only used for symbol table info, check if compilation is required
     if (IGC::isIntelSymbolTableVoidProgram(&F))
     {
@@ -519,11 +524,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             return false;
         }
-    }
-
-    if (!setCurrentShader(&F))
-    {
-        return false;
     }
 
     bool isCloned = false;

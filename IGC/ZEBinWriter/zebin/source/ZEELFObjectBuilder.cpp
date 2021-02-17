@@ -448,8 +448,8 @@ uint64_t ELFWriter::writeSymTab()
 
         writeSymbol(nameoff, sym.addr(), sym.size(), sym.binding(), sym.type(),
             0, sect_idx);
-        // symbol name must be unique
-        IGC_ASSERT(m_SymNameIdxMap.find(sym.name()) == m_SymNameIdxMap.end());
+        // global symbol name must be unique
+        IGC_ASSERT(sym.binding() != llvm::ELF::STB_GLOBAL || m_SymNameIdxMap.find(sym.name()) == m_SymNameIdxMap.end());
         m_SymNameIdxMap.insert(std::make_pair(sym.name(), symidx));
         ++symidx;
     };

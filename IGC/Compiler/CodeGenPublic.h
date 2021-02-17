@@ -833,6 +833,8 @@ namespace IGC
         bool m_enableSubroutine = false;
         // Module flag for function pointers enabled
         bool m_enableFunctionPointer = false;
+        // Module flag for when we need to compile multiple SIMD sizes to support SIMD variants
+        bool m_enableSimdVariantCompilation = false;
 
         /// Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;

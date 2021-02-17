@@ -2286,4 +2286,65 @@ namespace IGC
         return false;
     }
 
+    // Parses the "vector-variant" attribute string to get a valid function
+    // variant symbol string supported by current implementation of IGC.
+    //
+    // Returns a tuple of values:
+    // R(0) is the reformatted variant symbol string.
+    // R(1) is the called function's name.
+    // R(2) is the required SIMD size.
+    // See the spec for Intel Vector Function ABI for parsed symbol meanings.
+    std::tuple<std::string, std::string, unsigned> ParseVectorVariantFunctionString(llvm::StringRef varStr)
+    {
+        unsigned vlen = 0;
+        std::stringstream outStr;
+
+        auto pos = varStr.begin();
+        auto strEnd = varStr.end();
+
+        // Starts with _ZGV
+        IGC_ASSERT(varStr.startswith("_ZGV"));
+        outStr << "_ZGV";
+        pos += 4;
+        // ISA class target processor type
+        IGC_ASSERT(*pos == 'x' || *pos == 'y' || *pos == 'Y' || *pos == 'z' || *pos == 'Z');
+        outStr << *pos;
+        pos++;
+        // Mask or NoMask, only support NoMask for now
+        IGC_ASSERT(*pos == 'M' || *pos == 'N');
+        outStr << 'N';
+        pos++;
+        // Parse vector length (input can be 1/2/4/8/16/32, output restricted to 8/16/32)
+        auto idStart = pos;
+        while (*pos >= '0' && *pos <= '9') pos++;
+        IGC_ASSERT(StringRef(idStart, pos - idStart).getAsInteger(10, vlen) == 0);
+        IGC_ASSERT(vlen == 1 || vlen == 2 || vlen == 4 || vlen == 8 || vlen == 16 || vlen == 32);
+        // Set min SIMD width to 8
+        vlen = (vlen < 8) ? 8 : vlen;
+        outStr << std::to_string(vlen);
+
+        while (pos != strEnd)
+        {
+            // End of vector properties symbols terminated with '_'
+            if (*pos == '_') {
+                outStr << *pos++;
+                break;
+            }
+            // Parameter variant type, only support default vector type
+            IGC_ASSERT(*pos == 'l' || *pos == 'u' || *pos == 'v' || *pos == 'R' || *pos == 'U' || *pos == 'L');
+            outStr << 'v';
+            pos++;
+            // Ignore alignment properties
+            if (*pos == 'a') {
+                pos++;
+                while (*pos >= '0' && *pos <= '9') pos++;
+            }
+        }
+
+        // Remaining characters form the function name
+        std::string fName = StringRef(pos, strEnd - pos).str();
+
+        return std::make_tuple(outStr.str(), fName, vlen);
+    }
+
 } // namespace IGC
