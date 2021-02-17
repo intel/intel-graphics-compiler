@@ -155,6 +155,7 @@ void SetGTSystemInfo(const SUscGTSystemInfo gtSystemInfo) {
     m_GTSystemInfo.ThreadCount = gtSystemInfo.ThreadCount;
     m_GTSystemInfo.SliceCount = gtSystemInfo.SliceCount;
     m_GTSystemInfo.SubSliceCount = gtSystemInfo.SubSliceCount;
+    m_GTSystemInfo.SLMSizeInKb = gtSystemInfo.SLMSizeInKb;
     m_GTSystemInfo.TotalPsThreadsWindowerRange = gtSystemInfo.TotalPsThreadsWindowerRange;
     m_GTSystemInfo.TotalVsThreads = gtSystemInfo.TotalVsThreads;
     m_GTSystemInfo.TotalVsThreads_Pocs = gtSystemInfo.TotalVsThreads_Pocs;

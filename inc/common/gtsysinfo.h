@@ -205,6 +205,8 @@ typedef struct GT_SYSTEM_INFO
     uint32_t        ReservedCCSWays;                // Reserved CCS ways provides value of reserved L3 ways for CCS when CCS is enabled.
                                                     // This is a hardcoded value as suggested by HW. No MMIO read is needed for same.
 
+    uint32_t        SLMSizeInKb;                    // SLM Size
+
 } GT_SYSTEM_INFO, *PGT_SYSTEM_INFO;
 
 #pragma pack(pop)

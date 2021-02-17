@@ -63,9 +63,10 @@ typedef struct _SUscGTSystemInfo
     unsigned int    ThreadCount;        // Total no. of system threads available.
     unsigned int    SliceCount;         // Total no. of enabled slices
     unsigned int    SubSliceCount;      // Total no. of enabled subslices.
+    unsigned int    SLMSizeInKb;        // SLM Size
 
     bool           IsDynamicallyPopulated;         // System details populated either via fuse reg. (TRUE) or hard-coded (FALSE)
-    
+
     unsigned int   TotalPsThreadsWindowerRange;
     unsigned int   TotalVsThreads;
     unsigned int   TotalVsThreads_Pocs;
@@ -174,7 +175,7 @@ Description:
 Input:
     BigSkuTable  bigSkuTable - sku feature table containing to initialize
                               USC sku feature table.
-    
+
     BigGTSystemInfo bigGTSystemInfo - GT_SYSTEM_INFO containing actuall data about
                                       EU and Thread count.
 Output:
@@ -217,6 +218,7 @@ inline void InitializeUscAdapterInfo(
     uscAdpaterInfo.UscGTSystemInfo.ThreadCount = bigGTSystemInfo.ThreadCount;
     uscAdpaterInfo.UscGTSystemInfo.SliceCount = bigGTSystemInfo.SliceCount;
     uscAdpaterInfo.UscGTSystemInfo.SubSliceCount = bigGTSystemInfo.SubSliceCount;
+    uscAdpaterInfo.UscGTSystemInfo.SLMSizeInKb = bigGTSystemInfo.SLMSizeInKb;
     uscAdpaterInfo.UscGTSystemInfo.TotalPsThreadsWindowerRange = bigGTSystemInfo.TotalPsThreadsWindowerRange;
     uscAdpaterInfo.UscGTSystemInfo.TotalVsThreads = bigGTSystemInfo.TotalVsThreads;
     uscAdpaterInfo.UscGTSystemInfo.TotalVsThreads_Pocs = bigGTSystemInfo.TotalVsThreads_Pocs;
@@ -439,7 +441,7 @@ typedef enum GTDI_KI_BUILD_TYPE_ENUM
 /*****************************************************************************\
 ENUM: GTDI_PROFILING_POINT_TYPE_ENUM
 \*****************************************************************************/
-typedef enum GTDI_KERNEL_PROFILING_POINT_TYPE_ENUM 
+typedef enum GTDI_KERNEL_PROFILING_POINT_TYPE_ENUM
 {
     GTDI_PROFILING_POINT_TIMESTAMP_INTEL          =   1 << 0,
     GTDI_PROFILING_POINT_STALL_COUNTER_INTEL      =   1 << 1,
@@ -546,7 +548,7 @@ enum GFX3DSTATE_PROGRAM_FLOW
 ENUM: GFX3DSTATE_FLOATING_POINT_MODE
 
 Description:
-    Indicates the floating point mode to be used by the hardware when running 
+    Indicates the floating point mode to be used by the hardware when running
     compiled kernel program.
 \*****************************************************************************/
 enum GFX3DSTATE_FLOATING_POINT_MODE
