@@ -57,6 +57,25 @@ typedef enum _HEADER_ORDER_
 
 namespace vISA
 {
+
+class DPASSrc2RSCache
+{
+public:
+    std::vector<int> GRFCache;
+    unsigned latestID;
+    bool firstDpas;
+
+    DPASSrc2RSCache()
+    {
+        latestID = 0;
+        firstDpas = true;
+        GRFCache.resize(16, -1);
+    }
+    ~DPASSrc2RSCache()
+    {
+    }
+};
+
 class MSGTable
 {
 public:

@@ -6699,6 +6699,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             addSwitchOptionToBB(fg.getEntryBB(), true);
         }
 
+
         // set physical pred/succ as it's needed for the call WA
         fg.setPhysicalPredSucc();
         BB_LIST_ITER ib, bend(fg.end());
@@ -6730,6 +6731,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         bb->insertBefore(nextIter, movInst);
                     }
                 }
+
 
                 if (inst->isCall() || inst->isFCall())
                 {
