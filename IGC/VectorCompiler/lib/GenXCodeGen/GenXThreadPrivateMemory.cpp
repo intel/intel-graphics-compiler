@@ -404,6 +404,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
     auto *Cast = CastInst::Create(Instruction::PtrToInt, LI, MemTy, "");
     Cast->insertAfter(LI);
     return Cast;
+  } else if (auto *ASCast = dyn_cast<AddrSpaceCastInst>(Ptr)) {
+    return lookForPtrReplacement(ASCast->getPointerOperand());
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(MemTy, 0);
 
