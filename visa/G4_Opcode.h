@@ -53,6 +53,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IS_TYPE_INT(type)        (IS_SIGNED_INT(type) || IS_UNSIGNED_INT(type))
 #define IS_TYPE_F32_F64(type)         (type == Type_F ||type == Type_DF || type == Type_NF)
 #define IS_TYPE_FLOAT_ALL(type)     (type == Type_F ||type == Type_DF || type == Type_HF || type == Type_NF)
+#define IS_TYPE_LONG(type)            (type == Type_DF || type == Type_UQ || type == Type_Q)
+#define IS_TYPE_INTEGER(type)         (type == Type_UW ||type == Type_W ||type == Type_B ||type == Type_UB ||type == Type_V ||type == Type_UV ||type == Type_UD ||type == Type_D)
 
 #define GENX_DATAPORT_IO_SZ       8   // # of dwords in read/write control area
 #define GENX_SAMPLER_IO_SZ        8   // # of control dwords for Sampling Engine unit

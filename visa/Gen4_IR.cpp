@@ -1456,6 +1456,61 @@ void G4_INST::trimDefInstList()
     }
 }
 
+bool G4_INST::isDFInstruction() const
+{
+    G4_Operand* dst = getDst();
+    if (dst && (dst->getType() == Type_DF))
+    {
+        return true;
+    }
+    for (int i = 0; i < getNumSrc(); i++)
+    {
+        G4_Operand* src = getSrc(i);
+        if (src && (src->getType() == Type_DF))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool G4_INST::isMathPipeInst() const
+{
+    if (isMath())
+    {
+        return true;
+    }
+
+
+    return false;
+}
+
+bool G4_INST::distanceHonourInstruction() const
+{
+    if (isSend() || op == G4_nop || isWait() || isMath() || op == G4_halt)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool G4_INST::tokenHonourInstruction() const
+{
+    return isSend() || isMath();
+}
+
+bool G4_INST::hasNoPipe()
+{
+    if (op == G4_wait || op == G4_halt || op == G4_nop)
+    {
+        return true;
+    }
+    return false;
+}
+
+
+
+
 #ifdef _DEBUG
 static void printDefUseImpl(
     std::ostream &os, G4_INST *def, G4_INST *use, Gen4_Operand_Number pos)

@@ -165,7 +165,6 @@ static bool WARDepRequired(const G4_INST* inst1, const G4_INST* inst2)
     return false;
 }
 
-
 // Return the dependence type {RAW,WAW,WAR,NODEP} for given operand numbers
 static DepType getDepForOpnd(Gen4_Operand_Number cur,
     Gen4_Operand_Number liv) {
@@ -424,18 +423,6 @@ static inline bool tokenHonourInstruction(const G4_INST* inst)
 {
     return inst->tokenHonourInstruction();
 }
-
-
-static bool hasNoPipe(const G4_INST* inst)
-{
-    if (inst->opcode() == G4_wait || inst->opcode() == G4_halt || inst->opcode() == G4_nop)
-    {
-        return true;
-    }
-    return false;
-}
-
-
 
 //Generate the dependence distance
 void SWSB::setDefaultDistanceAtFirstInstruction()
@@ -4558,7 +4545,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                             killed = true;
                         }
 
-                            if (!distanceHonourInstruction(curInst)
+                            if (!curInst->distanceHonourInstruction()
                                 )
 
                             {
@@ -6364,47 +6351,4 @@ G4_BB* Dom::getCommonImmDom(const std::unordered_set<G4_BB*>& bbs)
     }
 
     return entryBB;
-}
-
-bool G4_INST::isDFInstruction() const
-{
-    G4_Operand* dst = getDst();
-    if (dst && (dst->getType() == Type_DF))
-    {
-        return true;
-    }
-    for (int i = 0; i < getNumSrc(); i++)
-    {
-        G4_Operand* src = getSrc(i);
-        if (src && (src->getType() == Type_DF))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool G4_INST::isMathPipeInst() const
-{
-    if (isMath())
-    {
-        return true;
-    }
-
-
-    return false;
-}
-
-bool G4_INST::distanceHonourInstruction() const
-{
-    if (isSend() || op == G4_nop || isWait() || isMath())
-    {
-        return false;
-    }
-    return true;
-}
-
-bool G4_INST::tokenHonourInstruction() const
-{
-    return isSend() || isMath();
 }

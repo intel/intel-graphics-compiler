@@ -633,7 +633,7 @@
         return !noFP64();
     }
 
-    bool hasFixedCycleMathPipeline()
+    bool hasFixedCycleMathPipeline() const
     {
         return false;
     }

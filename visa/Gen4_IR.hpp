@@ -238,6 +238,7 @@ inline const char* const MathOpNames[16] =
 };
 
 
+
 typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR;
 
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>           INST_LIST;
@@ -645,13 +646,6 @@ public:
         return depTokens[i].token;
     }
 
-    bool isDFInstruction() const;
-
-    bool isMathPipeInst() const;
-
-    bool distanceHonourInstruction() const;
-    bool tokenHonourInstruction() const;
-
     void setALUID(int i) { ALUID = i; }
     int getALUID() const { return ALUID; }
 
@@ -1055,6 +1049,12 @@ public:
     void copyUsesTo(G4_INST *inst2, bool checked);
     void removeUseOfInst();
     void trimDefInstList();
+    bool isDFInstruction() const;
+    bool isMathPipeInst() const;
+    bool distanceHonourInstruction() const;
+    bool tokenHonourInstruction() const;
+    bool hasNoPipe();
+
     void swapDefUse();
     void addDefUse(G4_INST* use, Gen4_Operand_Number usePos);
     void uniqueDefUse()
