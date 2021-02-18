@@ -114,11 +114,6 @@ private:
   // True if subtarget supports switchjmp visa instruction
   bool HasSwitchjmp;
 
-  bool HasIndirectByteGRFCrossing;
-  bool HasMultiIndirectByteRegioning;
-  bool HasMultiIndirectFloatingPointRegioning;
-  bool HasMultiIndirectQWordRegioning;
-
   // True if subtarget supports integer division
   bool HasIntegerDivision;
 
@@ -221,25 +216,6 @@ public:
   /// * hasIndirectGRFCrossing - true if target supports an indirect region
   ///   crossing one GRF boundary
   bool hasIndirectGRFCrossing() const { return isSKLplus(); }
-
-  /// * hasIndirectByteGRFCrossing - true if target supports an indirect region
-  ///   crossing one GRF boundary with byte type
-  bool hasIndirectByteGRFCrossing() const {
-    return hasIndirectGRFCrossing() && HasIndirectByteGRFCrossing;
-  }
-
-  /// * hasMultiIndirectByteRegioning - true if target supports an mutli
-  /// indirect regions with byte type
-  bool hasMultiIndirectByteRegioning() const {
-    return HasMultiIndirectByteRegioning;
-  }
-  bool hasMultiIndirectFloatingPointRegioning() const {
-    return HasMultiIndirectFloatingPointRegioning;
-  }
-  bool hasMultiIndirectQWordRegioning() const {
-    return HasMultiIndirectQWordRegioning;
-  }
-
 
   /// * getMaxSlmSize - returns maximum allowed SLM size (in KB)
   unsigned getMaxSlmSize() const {

@@ -74,89 +74,36 @@ def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
 def OCLRuntime : SubtargetFeature<"ocl_runtime", "OCLRuntime", "true",
                                   "Prepare structures for OCL runtime">;
 
-def FeatureIndirectByteGRFCrossing
-    : SubtargetFeature<"indirect_byte_grf_crossing",
-                       "HasIndirectByteGRFCrossing", "true",
-                       "supports indirect byte GRF crossing">;
-
-def FeatureMultiIndirectByteRegioning
-    : SubtargetFeature<"multi_indirect_byte_region",
-                       "HasMultiIndirectByteRegioning", "true",
-                       "supports multi-indirect byte regioning">;
-
-def FeatureMultiIndirectFloatingPointRegioning
-    : SubtargetFeature<"multi_indirect_floating_point_region",
-                       "HasMultiIndirectFloatingPointRegioning", "true",
-                       "supports multi-indirect floatingpoint regioning">;
-
-def FeatureMultiIndirectQWordRegioning
-    : SubtargetFeature<"multi_indirect_qword_region",
-                       "HasMultiIndirectQWordRegioning", "true",
-                       "supports multi-indirect qword regioning">;
 
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
 //===----------------------------------------------------------------------===//
 
 class Proc<string Name, list<SubtargetFeature> Features>
-    : Processor<Name, NoItineraries, Features>;
+ : Processor<Name, NoItineraries, Features>;
 
-def : Proc<"generic", []>;
-def : Proc<"HSW", [
-  FeatureLongLongEmulation, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureMultiIndirectByteRegioning, FeatureMultiIndirectFloatingPointRegioning,
-  FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"BDW", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureMultiIndirectByteRegioning, FeatureMultiIndirectFloatingPointRegioning,
-  FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"CHV", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureMultiIndirectByteRegioning, FeatureMultiIndirectFloatingPointRegioning,
-  FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"SKL", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"BXT", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"KBL", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"GLK", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"CNL", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"ICL", [
-  FeatureLongLong, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"ICLLP", [
-  FeatureLongLongEmulation, FeatureSwitchjmp, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
-def : Proc<"TGLLP", [
-  FeatureLongLongEmulation, FeatureIntegerDivision,
-  FeatureIndirectByteGRFCrossing, FeatureMultiIndirectByteRegioning,
-  FeatureMultiIndirectFloatingPointRegioning, FeatureMultiIndirectQWordRegioning
-]>;
+def : Proc<"generic",         []>;
+def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
+                               FeatureIntegerDivision]>;
+def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntegerDivision]>;
 
 def GenX : Target {
   // Nothing here (yet?)

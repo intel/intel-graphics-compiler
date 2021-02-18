@@ -1186,8 +1186,8 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
           ModifiedStartIdx, true /*Allow2D*/,
           cast<VectorType>(i->Inst->getOperand(0)->getType())->getNumElements(),
           ST, &(Baling->AlignInfo));
-      if (ThisWidth == 1 && R.Indirect && !R.isMultiIndirect() &&
-          canBeMultiIndirect(R, *ST)) {
+      if (ThisWidth == 1 &&
+          R.Indirect && !R.isMultiIndirect()) {
         // This is a single indirect rdregion where we failed to make the
         // valid size any more than one. If possible, increase the valid size
         // to 4 or 8 on the assumption that we are going to convert it to a
@@ -1826,8 +1826,6 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
                        cast<VectorType>(BInst.Inst->getOperand(0)->getType())
                            ->getNumElements(),
                        ST, &(Baling->AlignInfo)) == 1;
-    if (!canBeMultiIndirect(R, *ST))
-      ConvertToMulti = false;
 
     R.getSubregion(StartIdx, Width);
     // The region to read from. This is normally from the input region baled

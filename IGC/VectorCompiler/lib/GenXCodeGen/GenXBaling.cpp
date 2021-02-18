@@ -382,15 +382,6 @@ static int checkModifier(Instruction *Inst)
   return BaleInfo::MAININST;
 }
 
-// SIToFP with an indirect region operand will eventually become MOV instruction
-// with floating point destination type and the indirect region as a src.
-static bool isMultiIndirectFloatingPointBale(const Instruction &Cast,
-                                             const Region &R) {
-  if (!isa<SIToFPInst>(Cast))
-    return false;
-  return R.isMultiIndirect();
-}
-
 /***********************************************************************
  * operandCanBeBaled : check if a operand in main inst can be baled
  *
@@ -458,10 +449,6 @@ bool GenXBaling::operandCanBeBaled(
       if (R.Indirect)
         return false;
     }
-
-    if (isMultiIndirectFloatingPointBale(*Inst, RdR))
-      return ST->hasMultiIndirectFloatingPointRegioning();
-
     return true;
   }
   return false;

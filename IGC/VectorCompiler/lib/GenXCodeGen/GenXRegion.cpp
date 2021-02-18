@@ -50,25 +50,6 @@ IN THE SOFTWARE.
 using namespace llvm;
 using namespace genx;
 
-
-bool llvm::genx::canBeMultiIndirect(const CMRegion &R,
-                                    const GenXSubtarget &ST) {
-  if (R.ElementBytes == genx::ByteBytes && !ST.hasMultiIndirectByteRegioning())
-    return false;
-  if (R.ElementBytes == genx::QWordBytes &&
-      !ST.hasMultiIndirectQWordRegioning())
-    return false;
-  // If the type cannot be checked and there are restrictions for some types,
-  // let's be pessimistic and forbid this region to be multi-indirect.
-  if (!R.hasElementTy() && !ST.hasMultiIndirectFloatingPointRegioning())
-    return false;
-  if (R.getElementTy()->isFloatingPointTy() &&
-      !ST.hasMultiIndirectFloatingPointRegioning())
-    return false;
-
-  return true;
-}
-
 /***********************************************************************
  * getWithOffset : get a Region given a rdregion/wrregion, baling in
  *      constant add of offset
@@ -487,9 +468,6 @@ unsigned Region::getLegalSize(unsigned Idx, bool Allow2D,
 
     }
   }
-
-  if (isMultiIndirect() && !canBeMultiIndirect(*this, *ST))
-    ValidWidth = 1;
   return ValidWidth;
 }
 
