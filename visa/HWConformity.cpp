@@ -6942,9 +6942,16 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
     if (src0 && src0->getRegAccess() == IndirGRF && src0->getRegion()->isRegionWH())
     {
         auto type = src0->getType();
-        if (type == Type_HF || type == Type_F)
+        // additionally check for int->float type conversion
+        // FIXME: replace with SWSB's pipe check functions
+        bool isFloatPipe = type == Type_HF || type == Type_F;
+        if (inst->opcode() == G4_mov)
         {
-            auto intType = type == Type_HF ? Type_UW : Type_UD;
+            isFloatPipe |= TypeSize(type) < 8 && (inst->getDst()->getType() == Type_HF || inst->getDst()->getType() == Type_F);
+        }
+        if (isFloatPipe)
+        {
+            auto intType = TypeSize(type) == 4 ? Type_UD : Type_UW;
             if (inst->isRawMov())
             {
                 // directly change the dst/src type to int
