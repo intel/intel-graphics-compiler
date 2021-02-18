@@ -103,6 +103,7 @@ namespace IGC {
         std::vector<llvm::AllocaInst*> m_allocasToPrivMem;
         RegisterPressureEstimate* m_pRegisterPressureEstimate = nullptr;
         llvm::Function* m_pFunc = nullptr;
+        MetaDataUtils* pMdUtils = nullptr;
 
         /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
         llvm::DenseMap<llvm::BasicBlock*, unsigned> m_pBBPressure;
@@ -170,7 +171,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
     m_ctx = pCtxWrapper->getCodeGenContext();
     m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     IGC_ASSERT(nullptr != pMdUtils);
     if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
     {
@@ -291,6 +292,16 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         unsigned d = simdMode == SIMDMode::SIMD32 ? 4 : 1;
 
         allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
+    }
+    else if (m_ctx->type == ShaderType::OPENCL_SHADER)
+    {
+        FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(m_pFunc);
+        SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+        if (subGroupSize->hasValue())
+        {
+            auto simdSize = (uint32_t)subGroupSize->getSIMD_size();
+            allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / simdSize;
+        }
     }
     Type* baseType = nullptr;
     if (!CanUseSOALayout(pAlloca, baseType))
