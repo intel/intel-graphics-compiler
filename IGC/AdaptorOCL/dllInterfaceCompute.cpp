@@ -850,6 +850,17 @@ static std::unique_ptr<llvm::MemoryBuffer> GetFP64ModuleBuffer() {
     return std::unique_ptr<llvm::MemoryBuffer>{llvm::LoadBufferFromResource(Resource, "BC")};
 }
 
+static void WriteSpecConstantsDump(const STB_TranslateInputArgs *pInputArgs,
+                                   QWORD hash) {
+    const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+    std::ostringstream outputstr;
+    for (unsigned i = 0; i < pInputArgs->SpecConstantsSize; ++i)
+      outputstr << pInputArgs->pSpecConstantsIds[i] << ": "
+                << pInputArgs->pSpecConstantsValues[i] << "\n";
+    DumpShaderFile(pOutputFolder, outputstr.str().c_str(), outputstr.str().size(),
+                   hash, "_specconst.txt");
+}
+
 bool TranslateBuild(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
@@ -857,6 +868,15 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
+    ShaderHash inputShHash = ShaderHashOCL((const UINT *)pInputArgs->pInput,
+                                           pInputArgs->InputSize / 4);
+
+    // on wrong spec constants, vc::translateBuild may fail
+    // so lets dump those early
+    if (pInputArgs->SpecConstantsSize > 0 &&
+        IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+      WriteSpecConstantsDump(pInputArgs, inputShHash.getAsmHash());
+
 #if defined(IGC_VC_ENABLED)
     if (pInputArgs->pOptions) {
         std::error_code Status =
@@ -895,8 +915,6 @@ bool TranslateBuild(
     llvm::Module* pKernelModule = nullptr;
     LLVMContextWrapper* llvmContext = new LLVMContextWrapper;
     RegisterComputeErrHandlers(*llvmContext);
-
-    ShaderHash inputShHash = ShaderHashOCL((const UINT*)pInputArgs->pInput, pInputArgs->InputSize / 4);
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
