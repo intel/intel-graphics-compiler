@@ -37,6 +37,7 @@ IN THE SOFTWARE.
 #define DEBUG_TYPE "cmimportbif"
 
 #include "GenX.h"
+#include "vc/GenXOpts/Utils/BiFTools.h"
 #include "vc/Support/BackendConfig.h"
 
 #include <llvm/ADT/STLExtras.h>
@@ -731,18 +732,5 @@ GenXImportBiF::getBiFModule(BiFKind Kind,
                             LLVMContext &Ctx) {
   MemoryBufferRef BiFModuleBuffer =
       getAnalysis<GenXBackendConfig>().getBiFModule(Kind);
-  llvm::Expected<std::unique_ptr<llvm::Module>> BiFModule =
-      getLazyBitcodeModule(BiFModuleBuffer, Ctx);
-  if (!BiFModule) {
-    auto Err = BiFModule.takeError();
-    std::stringstream ErrStream;
-    ErrStream << "GenXImportBiF failed to decode OCL BiF module "
-                 "because of following errors:\n";
-    handleAllErrors(std::move(Err),
-                    [&ErrStream](const llvm::ErrorInfoBase &EI) {
-                      ErrStream << EI.message() << std::endl;
-                    });
-    report_fatal_error(ErrStream.str());
-  }
-  return std::move(BiFModule.get());
+  return getLazyBiFModuleOrReportError(BiFModuleBuffer, Ctx);
 }

@@ -36,6 +36,7 @@ set(OPT_SOURCES
   CMPacketize/PacketBuilder_mem.cpp
   CMPacketize/PacketBuilder_misc.cpp
   CMPacketize/WIAnalysis.cpp
+  Utils/BiFTools.cpp
 )
 
 add_library(VCTransforms ${OPT_SOURCES})
