@@ -7,6 +7,6 @@
    Core
    Coroutines
 +  Demangle
+   Extensions
    IPO
    IRReader
-   InstCombine
