@@ -237,7 +237,8 @@ static bool isNonUserFunc(Function* F)
     StringRef FN = F->getName();
 
     // Guess which would be a non-user function
-    if (FN.contains_lower("sycl") &&
+    if (FN.contains("sycl") &&
+        !(FN.contains("handler") && FN.contains("_cl")) &&
         ((FN.contains_lower("accessor")) ||
          (FN.contains("__spirv")) ||
          (FN.contains("getDelinearizedIndex")) ||
