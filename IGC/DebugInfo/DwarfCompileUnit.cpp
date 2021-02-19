@@ -2737,14 +2737,12 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 {
                     addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
-                    if (lrToUse.getGRF().subRegNum != 0)
-                    {
-                        unsigned int subReg = lrToUse.getGRF().subRegNum;
-                        auto offsetInBits = subReg * 8;
-                        auto sizeInBits = (VISAMod->getGRFSize() * 8) - offsetInBits;
+                    if (lrToUse.getGRF().subRegNum != 0) {
+                        uint64_t varSizeInBits = var.getBasicSize(DD);
+                        auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
 
                         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
-                        addUInt(Block, dwarf::DW_FORM_udata, sizeInBits);
+                        addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
                         addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
                     }
                 }
