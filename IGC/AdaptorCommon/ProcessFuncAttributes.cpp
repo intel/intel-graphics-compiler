@@ -371,22 +371,19 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
 
         const bool isKernel = isEntryFunc(pMdUtils, F);
-        if (isKernel && !istrue)
+        const bool spirKernelConv = (F->getCallingConv() == CallingConv::SPIR_KERNEL);
+        if ((isKernel || spirKernelConv) && !istrue)
         {
+            // WA for spir kernels that can be called, like invoke kernels and cloned kernels, always inline these.
+            if (spirKernelConv)
+                SetAlwaysInline(F);
+
             // No need to process kernel funcs any further
             continue;
         }
         else if (!isKernel)
         {
             F->setLinkage(GlobalValue::InternalLinkage);
-        }
-
-        // Invoke kernels are not detected as actual kernels.
-        // Set alwaysinline and stop processing further.
-        if (F->hasFnAttribute("ocl-invoke-kernel"))
-        {
-            SetAlwaysInline(F);
-            continue;
         }
 
         // Add function attribute for indirectly called functions

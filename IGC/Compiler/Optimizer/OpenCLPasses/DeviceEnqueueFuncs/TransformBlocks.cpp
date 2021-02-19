@@ -1532,7 +1532,6 @@ namespace //Anonymous
 
                                 // Remove the kernel metadata.
                                 changed = dataContext.getMetaDataBuilder().eraseKernelMetadata(invoke, modMD) || changed;
-                                invoke->addFnAttr("ocl-invoke-kernel");
                             }
                         }
                     }
