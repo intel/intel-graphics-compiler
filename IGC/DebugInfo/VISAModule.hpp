@@ -497,6 +497,8 @@ namespace IGC
 
         virtual bool IsIntelSymbolTableVoidProgram() const { return false; }
 
+        virtual llvm::StringRef GetVISAFuncName(llvm::StringRef OldName) const { return OldName; }
+
         const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
 
         VISAModule& operator=(VISAModule& other) = default;

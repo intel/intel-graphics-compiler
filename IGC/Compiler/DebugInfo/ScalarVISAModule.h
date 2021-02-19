@@ -115,6 +115,8 @@ public:
     int getPTOReg() const override;
     int getFPReg() const override;
 
+    llvm::StringRef GetVISAFuncName(llvm::StringRef OldName) const override;
+
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.

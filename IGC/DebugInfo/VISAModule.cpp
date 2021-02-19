@@ -594,9 +594,11 @@ VISAModule::getCompileUnit(const IGC::DbgDecoder& VD) const
 {
     for (const auto& co : VD.compiledObjs)
     {
-        // TODO: Fix this for stack call use
+        auto EntryFuncName = m_pEntryFunc->getName();
+        EntryFuncName = GetVISAFuncName(EntryFuncName);
+
         if (VD.compiledObjs.size() == 1 ||
-            co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
+            co.kernelName.compare(EntryFuncName.str()) == 0)
         {
             return &co;
         }
@@ -607,7 +609,7 @@ VISAModule::getCompileUnit(const IGC::DbgDecoder& VD) const
             // in VISA debug info.
             for (auto& Sub : co.subs)
             {
-                if (Sub.name.compare(m_pEntryFunc->getName().str()) == 0)
+                if (Sub.name.compare(EntryFuncName.str()) == 0)
                 {
                     return &co;
                 }
