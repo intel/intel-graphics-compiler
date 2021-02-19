@@ -153,8 +153,8 @@ void iga::EmitSendDescriptorInfo(
     //
     ////////////////////////////////
     // now the message description
-    if (p < Platform::GEN12P1) {
-        // pre-GEN12, emit the SFID first since it's not part of the op yet
+    if (p < Platform::XE) {
+        // pre-XE, emit the SFID first since it's not part of the op yet
         if (exDesc.isReg()) {
             ss << "; sfid a0." << (int)exDesc.reg.subRegNum << "[3:0]";
         } else { // no a0.0

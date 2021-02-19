@@ -149,7 +149,7 @@ set(IGA_SOURCES
     ${IGA_Backend_GED}
     ${IGA_Backend_Messages}
     ${IGA_Backend_Native}
-    ${IGA_Backend_Native_Gen12}
+    ${IGA_Backend_Native_Xe}
     ${IGA_Frontend}
     ${IGA_IR}
     ${IGA_MemManager}

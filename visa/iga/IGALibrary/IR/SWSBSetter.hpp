@@ -63,7 +63,7 @@ namespace iga
             }
         }
     private:
-        vector<DepSet*> dependencies;
+        std::vector<DepSet*> dependencies;
     };
 
     class SWSBAnalyzer
@@ -119,13 +119,13 @@ namespace iga
         void calculateDependence(DepSet &dep,
                                  SWSB &distanceDependency,
                                  const Instruction &currInst,
-                                 vector<SBID> &activeSBID,
+                                 std::vector<SBID> &activeSBID,
                                  bool &needSyncForShootDownInst);
         void processActiveSBID(SWSB &distanceDependency,
                                const DepSet* input,
                                Block *bb,
                                InstList::iterator iter,
-                               vector<SBID>& activeSBID);
+                               std::vector<SBID>& activeSBID);
 
         // helper function to pick a free SBID and set it to distanceDependency.
         // This function only set SBID to distanceDependency, will not assign distanceDependency to
@@ -137,7 +137,7 @@ namespace iga
         // This function create SBID with depedency to given dep, and add it to activeSBID
         // it also set needSyncForShootDownInst if required.
         void setSbidDependency(DepSet& dep, const Instruction& currInst,
-            bool& needSyncForShootDownInst, vector<SBID>& activeSBID);
+            bool& needSyncForShootDownInst, std::vector<SBID>& activeSBID);
 
         // clear dependency of the given dep
         void clearDepBuckets(DepSet &dep);
@@ -149,9 +149,7 @@ namespace iga
         // helper function to insert sync.allrd and sync.allwr before the given inserPoint of given bb
         void insertSyncAllRdWr(InstList::iterator insertPoint, Block *bb);
 
-        // a helper function to increase inst id counter based on the current encoding (gen12 hp or lp)
-        // For lp, only consider one id counder for all in-order instrucions, for hp, all four
-        // (all, float, int, long) counters need to be set
+        // a helper function to increase inst id counter based on the current encoding mode
         void advanceInorderInstCounter(DEP_PIPE dep_pipe);
 
         // get number of dist pipe according to SWSB_ENCODE_MODE
@@ -183,7 +181,7 @@ namespace iga
 
         // id to dep set mapping, this tracks for which instructions' dependency that this id
         // is currently on. While we're re-using id, we clean up the dependency
-        map<uint32_t, pair<DepSet*, DepSet*>> m_IdToDepSetMap;
+        std::map<uint32_t, std::pair<DepSet*, DepSet*>> m_IdToDepSetMap;
 
         // m_distanceTracker - Track the DepSet of in-order instructions to see if their latency
         // is satisfied. If the distance to current instruction is larger then the latency, then

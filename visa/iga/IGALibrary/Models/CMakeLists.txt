@@ -4,12 +4,12 @@ set(IGA_ModelsOpen
   ${CMAKE_CURRENT_SOURCE_DIR}/Models.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/OpSpec.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/OpSpec.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model7P5.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model8.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model9.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model10.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model11.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model12P1.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen7p5.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen8.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen9.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen10.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen11.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelXe.hpp
 )
 set(IGA_ModelsExteneded )
 

@@ -84,7 +84,7 @@ void Encoder::encodeKernelPreProcess(Kernel &k)
 
 void Encoder::doEncodeKernelPreProcess(Kernel &k)
 {
-    if (m_opts.autoDepSet && platform() >= Platform::GEN12P1) {
+    if (m_opts.autoDepSet && platform() >= Platform::XE) {
         SWSBAnalyzer swsbAnalyzer(
             k, errorHandler(), m_opts.swsbEncodeMode, m_opts.sbidCount);
         swsbAnalyzer.run();
@@ -259,7 +259,7 @@ void Encoder::encodeFC(const Instruction &i)
         GED_MATH_FC mfc = lowerMathFC(i.getMathFc());
         GED_ENCODE(MathFC, mfc);
     } else if (os.isSendOrSendsFamily()) {
-        if (platform() >= Platform::GEN12P1) {
+        if (platform() >= Platform::XE) {
             // on earlier platforms this is stowed in ExDesc
             auto sfid = lowerSFID(i.getSendFc());
             GED_ENCODE(SFID, sfid);
@@ -345,7 +345,7 @@ void Encoder::encodeInstruction(Instruction& inst)
     }
 
     bool isImm64Src0Overlap =
-        platform() >= Platform::GEN12P1 &&
+        platform() >= Platform::XE &&
         inst.getSource(0).getKind() == Operand::Kind::IMMEDIATE &&
         TypeIs64b(inst.getSource(0).getType());
 
@@ -706,7 +706,7 @@ void Encoder::encodeBranchingInstruction(const Instruction& inst)
             GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
             GED_ENCODE(Src0DataType, ty);
         }
-        //before gen12 don't need to set JIP for control flow instructions that have UIP
+        //before XE don't need to set JIP for control flow instructions that have UIP
         //JIP
         if (m_opcode == Op::WHILE ||
             m_opcode == Op::ENDIF ||
@@ -859,7 +859,7 @@ void Encoder::encodeSendInstruction(const Instruction& inst)
     } // end else: desc
 
 
-    bool hasFusion = platform() >= Platform::GEN12P1;
+    bool hasFusion = platform() >= Platform::XE;
     if (hasFusion) {
         GED_ENCODE(FusionCtrl,
             inst.hasInstOpt(InstOpt::SERIALIZE) ?
@@ -1190,7 +1190,7 @@ void Encoder::encodeBasicSource(
 
 void Encoder::encodeSendDirectDestination(const Operand& dst)
 {
-    if (platform() >= Platform::GEN12P1) {
+    if (platform() >= Platform::XE) {
         //auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
         //GED_ENCODE(DstDataType, lowerDataType(t));
         GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
@@ -1211,7 +1211,7 @@ void Encoder::encodeSendDirectDestination(const Operand& dst)
 
 void Encoder::encodeSendDestinationDataType(const Operand& dst)
 {
-    if (platform() >= Platform::GEN12P1)
+    if (platform() >= Platform::XE)
         return;
 
     auto t = dst.getType() == Type::INVALID ? Type::UD : dst.getType();
@@ -1294,7 +1294,7 @@ void Encoder::encodeSendSource0(const Operand& src)
 }
 
 // The sends opCode exists on gen9+.  There is no sends opcode on pre-gen9.
-// Starting from gen12, send opcode can have two sources, so the sends opcode
+// Starting from XE, send opcode can have two sources, so the sends opcode
 // is not needed.
 
 void Encoder::encodeSendsSource0(const Operand& src)
@@ -1726,7 +1726,7 @@ void Encoder::encodeOptions(const Instruction& inst)
         GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_Normal);
     }
 
-    if (platform() >= Platform::GEN12P1 && m_opcode != Op::ILLEGAL) {
+    if (platform() >= Platform::XE && m_opcode != Op::ILLEGAL) {
         SWSB::InstType inst_type = inst.getSWSBInstType(m_opts.swsbEncodeMode);
         uint32_t swsbBinary = inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);
         assert(inst.getSWSB().verify(m_opts.swsbEncodeMode, inst_type));

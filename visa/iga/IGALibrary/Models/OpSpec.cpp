@@ -80,7 +80,7 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
 bool OpSpec::implicitDstTypeVal(Type &type) const {
     if (isSendFamily() && platform >= Platform::GEN8) {
         type = Type::UD;
-        if (platform >= Platform::GEN12P1) {
+        if (platform >= Platform::XE) {
             type = Type::UB;
         }
         return true;
@@ -109,7 +109,7 @@ Region OpSpec::implicitSrcRegion(
     // TODO: fold this into implicitSrcRegionPtr and elide the macro hacking
     //
     // TODO: this needs to work off the table from BXML
-    if (isSendFamily() && platform < Platform::GEN12P1) {
+    if (isSendFamily() && platform < Platform::XE) {
         return Region::SRC010;
     } else if (isMacro) {
         if (isTernary()) {
@@ -119,7 +119,7 @@ Region OpSpec::implicitSrcRegion(
             } else {
                 if (execSize == ExecSize::SIMD1) {
                     return Region::SRC0X0;
-                } else if (platform >= Platform::GEN12P1) {
+                } else if (platform >= Platform::XE) {
                     return Region::SRC1X0;
                 } else {
                     return Region::SRC2X1;
@@ -129,7 +129,7 @@ Region OpSpec::implicitSrcRegion(
             // basic macro: e.g. math.invm ...
             if (execSize == ExecSize::SIMD1) {
                 return Region::SRC010;
-            } else if (platform >= Platform::GEN12P1) {
+            } else if (platform >= Platform::XE) {
                 return Region::SRC110;
             } else {
                 return Region::SRC221;
@@ -140,7 +140,7 @@ Region OpSpec::implicitSrcRegion(
         return Region::SRC010;
     }
     else {
-        if (platform >= Platform::GEN12P1 && isBranching())
+        if (platform >= Platform::XE && isBranching())
             return Region::SRC110;
 
         if (srcOpIx == 0) {
@@ -154,7 +154,7 @@ Region OpSpec::implicitSrcRegion(
             case Op::BRC:
                 return Region::SRC221;
             case Op::RET: {
-                if (platform >= Platform::GEN12P1)
+                if (platform >= Platform::XE)
                     return Region::SRC010;
                 else
                     return Region::SRC221;
@@ -258,8 +258,8 @@ bool OpSpec::implicitSrcTypeVal(
 {
     // TODO: pull from BXML data (ideally somehow in the syntax)
     if (isTypedBranch()) {
-        // branches no longer take types in GEN12
-        if (platform >= Platform::GEN12P1) {
+        // branches no longer take types in XE
+        if (platform >= Platform::XE) {
             type = Type::INVALID;
             return true;
         }
@@ -280,18 +280,18 @@ bool OpSpec::implicitSrcTypeVal(
         // let GED pick the defaults
         type = Type::INVALID;
         return true;
-    } else if (isSendFamily() && platform < Platform::GEN12P1) {
+    } else if (isSendFamily() && platform < Platform::XE) {
         // TRB: we don't print the type on send instructions unless it's
         // not :ud, this allows us to phase out types on send operands
         // while meaningless, apparently there is a requirement on SKL
         // requiring the sampler to read the type from the operand.
         //
-        // Types on sends are totally gone in GEN12.
+        // Types on sends are totally gone in XE.
         type = Type::UD;
         return true;
     } else if (isSendOrSendsFamily()) {
         // for sends src0 is :ud, src1 has no type bits
-        if (platform < Platform::GEN12P1) {
+        if (platform < Platform::XE) {
             type = srcOpIx == 0 ? Type::UD : Type::INVALID;
         }
         else {

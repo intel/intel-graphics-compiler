@@ -151,7 +151,7 @@ bool decodeSendDescriptor(const Opts &opts)
 
     ensurePlatformIsSet(opts);
 
-    size_t minArgs = opts.platform < IGA_GEN12p1 ? 2 : 3;
+    size_t minArgs = opts.platform < IGA_XE ? 2 : 3;
 
     if (opts.inputFiles.size() != minArgs &&
         opts.inputFiles.size() != minArgs + 1)
@@ -203,18 +203,18 @@ bool decodeSendDescriptor(const Opts &opts)
     iga::SFID sfid = tryParseSFID(opts.inputFiles[argOff]);
     if (sfid != iga::SFID::INVALID) {
         argOff++;
-        if (opts.platform < IGA_GEN12p1)
+        if (opts.platform < IGA_XE)
             fatalExitWithMessage(
                 "-Xdsd: ", opts.inputFiles[argOff],
                 ": SFID is encoded in ExDesc[3:0] for this platform");
-    } else if (sfid == iga::SFID::INVALID && opts.platform >= IGA_GEN12p1) {
+    } else if (sfid == iga::SFID::INVALID && opts.platform >= IGA_XE) {
         fatalExitWithMessage(
             "-Xdsd: ", opts.inputFiles[argOff],
             ": invalid SFID for this platform");
     }
     // Formats are:
     //   <=GEN11:      ExecSize? ExDesc  Desc
-    //   >=GEN12: SFID ExecSize? ExDesc  Desc
+    //   >=XE:    SFID ExecSize? ExDesc  Desc
     //
     // If ExecSize is not given, then we deduce it from the platform.
 
@@ -267,7 +267,7 @@ bool decodeSendDescriptor(const Opts &opts)
     // ExDesc
     const iga::SendDesc exDesc =
         parseSendDescArg("ExDesc", opts.inputFiles[argOff]);
-    if (opts.platform < IGA_GEN12p1 && sfid == iga::SFID::INVALID) {
+    if (opts.platform < IGA_XE && sfid == iga::SFID::INVALID) {
         // decode it from ex_desc[3:0]
         if (exDesc.isImm())
             sfid = iga::sfidFromEncoding(

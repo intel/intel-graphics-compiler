@@ -36,8 +36,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga
 {
     // A live range is a path from a definition of some register values to
-    // a use.  The use may be a read or, oddly, a write (since we need to be
-    // able to track WAW dependencies).
+    // a use.  The use may be a read (typical case) or a write (since we need
+    // to be able to track WAW dependencies).
     struct Dep
     {
         // If the use is a read, this will be READ.
@@ -47,7 +47,7 @@ namespace iga
         //  ...
         //  add r0 ... // WRITE dependency
         //  mul ..  r0 // READ dependency (on the add)
-        enum Type{READ, WRITE}   useType = READ;
+        enum Type {READ, WRITE}  useType = READ;
         // The producer instruction
         Instruction             *def = nullptr;
         // The consumer instruction
@@ -65,7 +65,9 @@ namespace iga
         // TARGET:
         //        mul ...  r1 // crossesBranch = true here
         bool                     crossesBranch = false;
+        //
         // TODO: should track firstUse? (i.e. if live dominated by another use)
+
         Dep() { }
         Dep(Type t, Instruction *_use)
             : useType(t)
@@ -75,14 +77,14 @@ namespace iga
             , crossesBranch(false)
         {
         }
-#if !defined(_WIN32) || (_MSC_VER > 1800)
         Dep(const Dep &p) = default;
         Dep(Dep &&p) = default;
-#endif
+
         Dep operator=(const Dep &p) const { return Dep(p); }
         bool operator==(const Dep &p) const;
         bool operator!=(const Dep &p) const { return !(*this == p); }
 
+        // for debug
         void str(std::ostream &os) const;
         std::string str() const;
     };
@@ -102,6 +104,7 @@ namespace iga
     {
         // could just use BlockInfo here
         std::vector<BlockInfo>   blockInfo;
+        //
         // relation of definitions and all possible uses
         std::vector<Dep>         deps;
     };

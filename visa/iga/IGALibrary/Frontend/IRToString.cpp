@@ -46,8 +46,8 @@ std::string iga::ToSymbol(Platform x) {
     MAKE_CASE(Platform, GEN9P5);
     MAKE_CASE(Platform, GEN10);
     MAKE_CASE(Platform, GEN11);
-    MAKE_CASE(Platform, GEN12P1);
-    MAKE_CASE(Platform, GENNEXT);
+    MAKE_CASE(Platform, XE);
+    MAKE_CASE(Platform, FUTURE);
     MAKE_DEFAULT_CASE(Platform);
     }
 }

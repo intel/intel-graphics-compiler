@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MemManager.hpp"
 
 #include <memory>
-using namespace std;
+
 namespace iga
 {
 template <class T>
@@ -42,7 +42,6 @@ protected:
     std::shared_ptr<MemManager> MemManager_ptr;
 
 public:
-
     //for allocator_traits
     typedef size_t    size_type;
     typedef ptrdiff_t difference_type;
@@ -58,10 +57,8 @@ public:
     }
 
     explicit std_arena_based_allocator()
-        :MemManager_ptr(nullptr)
+        : MemManager_ptr(std::make_shared<MemManager>(4096))
     {
-        //This implicitly calls MemManager constructor.
-        MemManager_ptr = make_shared<MemManager>(4096);
     }
 
     explicit std_arena_based_allocator(const std_arena_based_allocator& other)

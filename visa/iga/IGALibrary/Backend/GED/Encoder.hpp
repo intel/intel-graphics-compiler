@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <list>
 #include <map>
+#include <vector>
 
 
 namespace iga
@@ -72,7 +73,7 @@ namespace iga
     } while (0)
 
 
-    typedef list<Block *, std_arena_based_allocator<Block*>> BlockList;
+    using BlockList = std::list<Block *, std_arena_based_allocator<Block*>>;
 
     class Encoder : protected GEDBitProcessor
     {
@@ -253,7 +254,7 @@ namespace iga
             JumpPatch(Instruction *i, const ged_ins_t &gi, uint8_t *bs)
                 : inst(i), gedInst(gi), bits(bs) { }
         };
-        vector<JumpPatch>                         m_needToPatch;
+        std::vector<JumpPatch>                    m_needToPatch;
         std::map<const Block *, int32_t>          m_blockToOffsetMap;
         std::map<const Instruction *, int32_t>    m_instPcs; // maps instruction ID to PC
 

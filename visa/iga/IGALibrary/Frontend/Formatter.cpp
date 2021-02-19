@@ -192,27 +192,57 @@ public:
     }
 
 
-    void formatInstructionBits(const Instruction& i, const void *vbits) {
+    void formatPrefixComment(const Instruction& i, const void *vbits) {
+        bool printBits = opts.printInstBits && currInstBits != nullptr;
+        bool printDepId = opts.printInstDeps;
+        bool printPc = opts.printInstPc;
+        if (!printBits && !printDepId && !printPc) {
+            return; // nothing to print
+        }
+
         const uint32_t *bits = (const uint32_t *)vbits;
         emit(ANSI_COMMENT);
-        o << std::hex;
-        emit("/* [");
-        o << setfill('0') << std::setw(4) << i.getPC();
-        emit("] ");
-        if (i.hasInstOpt(InstOpt::COMPACTED)) {
-            emit("        ");
-            emit(' ');
-            emit("        ");
-            emit(' ');
-        } else {
-            o << std::setw(8) << setfill('0') << bits[3];
-            emit('`');
-            o << std::setw(8) << setfill('0') << bits[2];
-            emit('`');
+        emit("/*");
+        bool first = true;
+        if (printDepId) {
+            std::stringstream ss;
+            ss << '#' << i.getID();
+            o << std::right << std::setw(4) << ss.str();
+            first = false;
         }
-        o << std::setw(8) << setfill('0') << bits[1];
-        emit('`');
-        o << std::setw(8) << setfill('0') << bits[0];
+
+        if (printPc) {
+            if (first) {
+                first = false;
+            } else {
+                emit(" ");
+            }
+            emit("[");
+            emitHexDigits<PC>(i.getPC(), 4);
+            emit("] ");
+        }
+
+        if (printBits) {
+            if (first) {
+                first = false;
+            } else {
+                emit(" ");
+            }
+            if (i.hasInstOpt(InstOpt::COMPACTED)) {
+                emit("        ");
+                emit(' ');
+                emit("        ");
+                emit(' ');
+            } else {
+                o << std::setw(8) << std::setfill('0') << bits[3];
+                emit('`');
+                o << std::setw(8) << std::setfill('0') << bits[2];
+                emit('`');
+            }
+            o << std::setw(8) << std::setfill('0') << bits[1];
+            emit('`');
+            o << std::setw(8) << std::setfill('0') << bits[0];
+        }
         emit(" */ ");
         o << std::setfill(' ');
         o << std::dec;
@@ -230,9 +260,7 @@ public:
     void formatInstruction(const Instruction& i) {
         currInst = &i;
 
-        if (opts.printInstBits && currInstBits != nullptr) {
-            formatInstructionBits(i, currInstBits);
-        }
+        formatPrefixComment(i, currInstBits);
 
         const bool isSend = i.getOpSpec().isSendOrSendsFamily();
         if (isSend) {
@@ -415,7 +443,7 @@ private:
         case Op::MATH:   subfunc = (ToSyntax(i.getMathFc())); break;
         case Op::SEND:
         case Op::SENDC:
-            if (platform() >= Platform::GEN12P1) {
+            if (platform() >= Platform::XE) {
                 subfunc = ToSyntax(i.getSendFc());
             } // else part of ex_desc
             break;
@@ -596,7 +624,7 @@ private:
 
     bool hasInstOptTokens(const Instruction &i) const {
         bool hasDepInfo =
-            platform() >= Platform::GEN12P1 && i.getSWSB().hasSWSB();
+            platform() >= Platform::XE && i.getSWSB().hasSWSB();
         return !i.getInstOpts().empty() || hasDepInfo;
     }
 
@@ -609,14 +637,6 @@ private:
 
         // separate all comments with a semicolon
         Intercalator semiColon(ss, "; ");
-
-        if (opts.printInstPc) {
-            semiColon.insert();
-            ss << "[" << i.getPC() << "]: #" << i.getID();
-        } else if (opts.liveAnalysis) {
-            semiColon.insert();
-            ss << "#" << i.getID();
-        }
 
         if (opts.liveAnalysis) {
             // -Xprint-deps
@@ -994,7 +1014,7 @@ void Formatter::formatInstOpts(
 
     const auto &di = i.getSWSB();
     hasDepInfo =
-        (platform() >= Platform::GEN12P1) && di.hasSWSB();
+        (platform() >= Platform::XE) && di.hasSWSB();
     if (iopts.empty() &&
         !hasDepInfo &&
         extraInstOpts.empty()) {

@@ -59,8 +59,8 @@ struct MessageDecoderOther : MessageDecoderLegacy
 
 
 void MessageDecoderOther::tryDecodeGTWY() {
-    auto choosePage = [&](const char *gen12, const char *genX = nullptr) {
-        return gen12 ? gen12 : genX;
+    auto choosePage = [&](const char *xe, const char *xe3 = nullptr) {
+        return xe ? xe : xe3;
     };
     std::stringstream sym, descs;
     int opBits = getDescBits(0, 3); // [2:0]
@@ -362,7 +362,7 @@ static SamplerSIMD decodeSimdSize(
 
 void MessageDecoderOther::tryDecodeSMPL()
 {
-    setDoc(platform() >= Platform::GEN12P1 ? "43860" : "12484");
+    setDoc(platform() >= Platform::XE ? "43860" : "12484");
     std::stringstream syms, descs;
 
     auto simd2 = decodeDescBitField("SIMD[2]", 29, "", "");

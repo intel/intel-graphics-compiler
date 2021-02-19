@@ -99,9 +99,9 @@ namespace iga {
         void setDoc(const char *doc) {
             setDoc(doc, doc);
         }
-        void setDoc(const char *preGen12, const char *pstGen12) {
-            result.info.docs = platform() < Platform::GEN12P1 ?
-                preGen12 : pstGen12;
+        void setDoc(const char *preXE, const char *pstXE) {
+            result.info.docs = platform() < Platform::XE ?
+                preXE : pstXE;
         }
 
         /////////////////////////////////////////////////////////////

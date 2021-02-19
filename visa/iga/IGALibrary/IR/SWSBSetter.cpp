@@ -211,7 +211,7 @@ void SWSBAnalyzer::clearDepBuckets(DepSet &depMatch)
 * So if instruction writes in to more then one GRF then multiple buckets will have the dependency
 */
 void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency,
-    const Instruction &currInst, vector<SBID>& activeSBID, bool &needSyncForShootDownInst)
+    const Instruction &currInst, std::vector<SBID>& activeSBID, bool &needSyncForShootDownInst)
 {
     needSyncForShootDownInst = false;
     auto currDepType = currDep.getDepType();
@@ -364,9 +364,9 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                                 distanceDependency.minDist =
                                     distanceDependency.minDist == 0 ?
                                     newDistance :
-                                    min(distanceDependency.minDist, newDistance);
+                                    std::min(distanceDependency.minDist, newDistance);
                                 // clamp the distance to max distance
-                                distanceDependency.minDist = min(distanceDependency.minDist, (uint32_t)MAX_VALID_DISTANCE);
+                                distanceDependency.minDist = std::min(distanceDependency.minDist, (uint32_t)MAX_VALID_DISTANCE);
                                 distanceDependency.distType = SWSB::DistType::REG_DIST;
                             }
                         }
@@ -404,7 +404,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
 }
 
 void SWSBAnalyzer::setSbidDependency(DepSet& dep, const Instruction& currInst,
-    bool& needSyncForShootDownInst, vector<SBID>& activeSBID)
+    bool& needSyncForShootDownInst, std::vector<SBID>& activeSBID)
 {
     /* For out of order we don't know how long it will finish
     * so need to test for SBID.
@@ -571,7 +571,7 @@ void SWSBAnalyzer::clearBuckets(DepSet* input, DepSet* output) {
 }
 
 void SWSBAnalyzer::processActiveSBID(SWSB &distanceDependency, const DepSet* input,
-    Block *bb, InstList::iterator instIter, vector<SBID>& activeSBID)
+    Block *bb, InstList::iterator instIter, std::vector<SBID>& activeSBID)
 {
     // If instruction depends on one or more SBIDS, first one goes in to SWSB field
     // for rest we generate wait instructions.
@@ -752,7 +752,7 @@ SBID& SWSBAnalyzer::assignSBID(DepSet* input, DepSet* output, Instruction& inst,
     output->setSBID(*sbidFree);
     if (m_IdToDepSetMap.find(sbidFree->sbid) != m_IdToDepSetMap.end())
         m_IdToDepSetMap.erase(sbidFree->sbid);
-    m_IdToDepSetMap.insert(make_pair(sbidFree->sbid, make_pair(input, output)));
+    m_IdToDepSetMap.emplace(sbidFree->sbid, std::make_pair(input, output));
 
     // adding the set for this SBID
     // if the swsb has the token set already, move it out to a sync
@@ -928,7 +928,7 @@ void SWSBAnalyzer::run()
                 }
             }
 
-            vector<SBID> activeSBID;
+            std::vector<SBID> activeSBID;
             bool needSyncForShootDown = false;
             // Calculates dependence between this instruction dependencies and previous ones.
             calculateDependence(*input, distanceDependency, *inst, activeSBID, needSyncForShootDown);

@@ -110,6 +110,14 @@ const char *iga_status_to_string(iga_status_t st) {
 // (validates the enum)
 iga::Platform ToPlatform(iga_gen_t gen)
 {
+    // for binary compatibilty we accept the enum values from pre Xe-renaming
+    // platforms (e.g IGA_GEN12p1 is GEN_VER(12,1), but we now name XE_VER(1,0)
+    switch (gen) {
+        case iga_gen_t::IGA_GEN12p1:  gen = iga_gen_t::IGA_XE;     break;
+        default:
+            break;
+    }
+
     const auto *m = iga::Model::LookupModel(iga::Platform(gen));
     return m ? m->platform : iga::Platform::INVALID;
 }
@@ -172,7 +180,7 @@ iga_status_t iga_platform_symbol_suffix(
 {
     if (suffix == nullptr)
         return IGA_INVALID_ARG;
-    auto itr = s_names.exts.find(static_cast<iga::Platform>(gen));
+    auto itr = s_names.exts.find(ToPlatform(gen));
     if (itr == s_names.exts.end()) {
         *suffix = nullptr;
         return IGA_INVALID_ARG;
@@ -191,7 +199,7 @@ iga_status_t iga_platform_names(
     if (names_bytes != 0 && names == nullptr)
         return IGA_INVALID_ARG;
 
-    auto itr = s_names.names.find(static_cast<iga::Platform>(gen));
+    auto itr = s_names.names.find(ToPlatform(gen));
     if (itr == s_names.names.end()) {
         return IGA_INVALID_ARG;
     }

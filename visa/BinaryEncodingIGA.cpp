@@ -280,7 +280,7 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
         platform = Platform::GEN11;
         break;
     case GENX_TGLLP:
-        platform = Platform::GEN12P1;
+        platform = Platform::XE;
         break;
     default:
         break;
@@ -506,7 +506,7 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_goto:    igaOp = iga::Op::GOTO; break;
     case G4_join:    igaOp = iga::Op::JOIN; break;
     case G4_wait:
-        if (p >= iga::Platform::GEN12P1)
+        if (p >= iga::Platform::XE)
         {
             igaOp = iga::Op::SYNC;
             sf = iga::SyncFC::BAR;
@@ -526,7 +526,7 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
         break;
     case G4_sends:
         sf = getSFID(inst);
-        if (p >= iga::Platform::GEN12P1) {
+        if (p >= iga::Platform::XE) {
             // G4 IR still calls send sends after Xe
             igaOp = iga::Op::SEND;
         } else {
@@ -535,7 +535,7 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
         break;
     case G4_sendsc:
         sf = getSFID(inst);
-        if (p >= iga::Platform::GEN12P1) {
+        if (p >= iga::Platform::XE) {
             // G4 IR still calls send sends after Xe
             igaOp = iga::Op::SENDC;
         } else {
@@ -1097,7 +1097,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
         // skip desc/exdesc as they are handled separately
         numSrcToEncode = inst->isSplitSend() ? 2 : 1;
 
-        if (numSrcToEncode == 1 && platformModel->platform >= Platform::GEN12P1)
+        if (numSrcToEncode == 1 && platformModel->platform >= Platform::XE)
         {
             RegRef regTemp(0, 0);
             Region rgnTemp = iga::Region::SRC010;

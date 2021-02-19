@@ -8,12 +8,12 @@
 #define TYPE(T) \
     ENUM_BITSET_VALUE(T, uint32_t)
 
-#include "bxml/Model7P5.hpp"
-#include "bxml/Model8.hpp"
-#include "bxml/Model9.hpp"
-#include "bxml/Model10.hpp"
-#include "bxml/Model11.hpp"
-#include "bxml/Model12P1.hpp"
+#include "bxml/ModelGen7p5.hpp"
+#include "bxml/ModelGen8.hpp"
+#include "bxml/ModelGen9.hpp"
+#include "bxml/ModelGen10.hpp"
+#include "bxml/ModelGen11.hpp"
+#include "bxml/ModelXe.hpp"
 #include "../bits.hpp"
 #include "../Backend/Native/MInst.hpp"
 
@@ -37,10 +37,10 @@ using namespace iga;
     IGA_REGISTER_SPEC(Platform::GEN6,PLAT_HI,REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG)
 // for >= some platform (up to the highest)
 #define IGA_REGISTER_SPEC_GE(PLAT_LO,REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG) \
-    IGA_REGISTER_SPEC(PLAT_LO,Platform::GENNEXT,REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG)
+    IGA_REGISTER_SPEC(PLAT_LO,Platform::FUTURE,REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG)
 // a specification valid on all platforms
 #define IGA_REGISTER_SPEC_UNIFORM(REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG) \
-    IGA_REGISTER_SPEC(Platform::GEN6,Platform::GENNEXT,REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG)
+    IGA_REGISTER_SPEC(Platform::GEN6,Platform::FUTURE,REGNAME,SYNTAX,DESCRIPTION,REGNUM7_4,REGNUM_BASE,ACC_GRAN,NUM_REGS,NUM_BYTE_PER_REG)
 
 
 // ordered by encoding of RegNum[7:4]
@@ -54,7 +54,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         128,(0)),
 
     IGA_REGISTER_SPEC_GE(
-        Platform::GEN12P1,
+        Platform::XE,
         RegName::GRF_R, "r", "General",
         0,0, // regNum7_4, regNumBase
         1,   // accGran
@@ -77,7 +77,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 0,
         1,
         2, (32,32)),
-    IGA_REGISTER_SPEC(Platform::GEN12P1, Platform::GEN12P1,
+    IGA_REGISTER_SPEC(Platform::XE, Platform::XE,
         RegName::ARF_ACC, "acc", "Accumulator",
         0x2, 0,
         1,
@@ -88,7 +88,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 2, // offset by 2 "acc2-9"
         4,
         8, (32,32,32,32,32,32,32,32)),
-    IGA_REGISTER_SPEC(Platform::GEN12P1, Platform::GEN12P1,
+    IGA_REGISTER_SPEC(Platform::XE, Platform::XE,
         RegName::ARF_MME, "mme", "Math Macro",
         0x2, 8, // offset by 8 "acc8-15"
         4,
@@ -186,7 +186,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     // fc1.0     channel enables
     // fc2       call mask
     // fc3       JEU fused mask
-    IGA_REGISTER_SPEC_GE(Platform::GEN12P1,
+    IGA_REGISTER_SPEC_GE(Platform::XE,
         RegName::ARF_FC, "fc", "Flow Control",
         0xD, 0,
         4,
@@ -390,8 +390,8 @@ static constexpr Model MODEL_GEN10(
     Platform::GEN10, &MODEL_GEN10_OPSPECS[0], "10", "cnl");
 static constexpr Model MODEL_GEN11(
     Platform::GEN11, &MODEL_GEN11_OPSPECS[0], "11", "icl");
-static constexpr Model MODEL_GEN12P1(
-    Platform::GEN12P1, &MODEL_GEN12P1_OPSPECS[0], "12p1",
+static constexpr Model MODEL_XE(
+    Platform::XE, &MODEL_XE_OPSPECS[0], "12p1",
     "xe", "xelp", "tgl", "tgllp", "dg1");
 
 const Model * const iga::ALL_MODELS[] {
@@ -400,7 +400,7 @@ const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN9,
     &MODEL_GEN10,
     &MODEL_GEN11,
-    &MODEL_GEN12P1,
+    &MODEL_XE,
 };
 const size_t iga::ALL_MODELS_LEN = sizeof(ALL_MODELS)/sizeof(ALL_MODELS[0]);
 
@@ -420,8 +420,8 @@ const Model *Model::LookupModel(Platform p)
         return &MODEL_GEN10;
     case Platform::GEN11:
         return &MODEL_GEN11;
-    case Platform::GEN12P1:
-        return &MODEL_GEN12P1;
+    case Platform::XE:
+        return &MODEL_XE;
     default:
         return nullptr;
     }

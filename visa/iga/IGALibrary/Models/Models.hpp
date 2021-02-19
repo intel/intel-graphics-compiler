@@ -382,7 +382,7 @@ namespace iga
         //  - branches don't have types
         //  - the pc is always relative to pre-inc (even jmpi)
         bool supportsSimplifiedBranches() const {
-            return platform >= Platform::GEN12P1;
+            return platform >= Platform::XE;
         }
 
         bool supportsAlign16() const { return platform <= Platform::GEN10; }
@@ -396,7 +396,7 @@ namespace iga
 
         /// getSWSBEncodeMode - get the default swsb encoding mode derived from platform
         SWSB_ENCODE_MODE getSWSBEncodeMode() const {
-            if (platform == Platform::GEN12P1)
+            if (platform == Platform::XE)
                 return SWSB_ENCODE_MODE::SingleDistPipe;
             return SWSB_ENCODE_MODE::SWSBInvalidMode;
         }

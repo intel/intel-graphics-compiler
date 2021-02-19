@@ -98,6 +98,12 @@ IGA_API const char *iga_version_string();
 /* The encoding for GEN version enumerates follows this pattern */
 #define GEN_VER(MAJ,MIN) (((MAJ)<<16)|(MIN))
 
+/* The encoding for XE version enumerates follows this pattern
+* All XE_VER() must be larger than GEN_VER().  XE_VER(0,*) is illegal. TGL is XE_VER(1,0)
+*/
+#define XE_VER(MAJ,MIN) (((MAJ)<<24)|(MIN))
+
+
 /* Represents the specific version of Gen being assembled or disassembled */
 typedef enum {
     IGA_GEN_INVALID = 0
@@ -110,7 +116,13 @@ typedef enum {
   , IGA_GEN9p5    = GEN_VER(9,5)
   , IGA_GEN10     = GEN_VER(10,0)
   , IGA_GEN11     = GEN_VER(11,0)
-  , IGA_GEN12p1   = GEN_VER(12,1)
+  // XE versions
+  , IGA_XE        = XE_VER(1, 0) // TGL
+
+  // TO BE DEPRECATED
+  // Preserve the old values to maintain the binary compatibility
+  // The value should not be used anymore
+  , IGA_GEN12p1  = GEN_VER(12,1)  // IGA_XE
 } iga_gen_t;
 
 

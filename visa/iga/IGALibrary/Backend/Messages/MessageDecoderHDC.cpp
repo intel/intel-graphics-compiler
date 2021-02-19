@@ -96,7 +96,7 @@ enum DC1 : uint32_t {
     MSD1A_DWAC     = 0x0B,
     MSD1A_DWTAI    = 0x06,
     //
-    // Gen12+
+    // XE+
     // e.g. MSD1R_WAC MSD1W_WAC => MSD1A_WAC (use "a" for atomic)
     MSD1A_WAC      = 0x0C, // typed atomic 16b int counter
     MSD1A_WTAI     = 0x07, // typed atomic 16b int op
@@ -841,7 +841,7 @@ void MessageDecoderHDC::tryDecodeDCRO() {
     }
 }
 
-// GEN12: DC0 https://gfxspecs.intel.com/Predator/Home/Index/44782
+// XE: DC0 https://gfxspecs.intel.com/Predator/Home/Index/44782
 void MessageDecoderHDC::tryDecodeDC0()
 {
     const int msgType = getDescBits(14, 5);

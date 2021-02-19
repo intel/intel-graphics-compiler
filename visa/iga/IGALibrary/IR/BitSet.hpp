@@ -27,11 +27,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _IGA_BITSET_HPP
 
 #include "../asserts.hpp"
+#include "common/secure_mem.h"
 
-#include <cstdint>
-#include <ostream>
-#include <cstring>
 #include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <ostream>
+#include <utility>
 
 // Align N up to the nearest multiple of 32
 #define ALIGN_UP_TO(A, N) \
@@ -50,30 +52,70 @@ class BitSet {
 public:
     static const size_t BITS_PER_WORD = 8 * sizeof(I);
 
-    BitSet(size_t bit_size) {
-        N = bit_size;
-        wordsSize = ALIGN_UP_TO(BITS_PER_WORD, N) / BITS_PER_WORD;
-        // allocate bits
+    // allocate and zero bits
+    BitSet(size_t numBits)
+        : N(numBits)
+        , wordsSize(ALIGN_UP_TO(BITS_PER_WORD, numBits) / BITS_PER_WORD)
+    {
         words = new I[wordsSize];
         reset();
     }
+    BitSet(const BitSet<I> &rhs)
+        : N(rhs.N)
+        , wordsSize(ALIGN_UP_TO(BITS_PER_WORD, rhs.N) / BITS_PER_WORD)
+
+    {
+        words = new I[wordsSize];
+        memcpy_s(
+            words, wordsSize * sizeof(I),
+            rhs.words, wordsSize * sizeof(I));
+    }
+
+    BitSet(BitSet<I> &&copy) noexcept
+        : N(copy.N)
+        , wordsSize(copy.wordsSize)
+        , words(copy.words)
+    {
+        copy.words = nullptr;
+        copy.N = copy.wordsSize = 0;
+    }
+
+    BitSet<I>& operator=(const BitSet<I>& rhs) {
+        if (rhs.N != N) {
+            // resize
+            if (words)
+                delete[] words;
+            N = rhs.N;
+            wordsSize = rhs.wordsSize;
+            words = new I[wordsSize];
+        }
+        memcpy_s(
+            words, wordsSize * sizeof(I),
+            rhs.words, wordsSize * sizeof(I));
+        return *this;
+    }
+
+
     ~BitSet() {
-        delete[] words;
+        if (words) {
+            delete[] words;
+            words = nullptr;
+        }
     }
 
     void reset() { memset(words, 0, wordsSize * sizeof(I)); }
     bool set(size_t off, size_t len = 1, bool val = true); // sets/clears range
-    bool test(size_t off) const { return testAny(off,1); }
+    bool test(size_t off) const { return testAny(off, 1); }
     bool testAny(size_t off, size_t len) const;
     bool testAll(size_t off, size_t len) const;
     bool empty() const {return !testAny(0, N);}
 
-    inline bool intersects(const BitSet<I> &rhs) const;
+    bool intersects(const BitSet<I> &rhs) const;
 
     // If the bitSets have intersects in given range, start from off and with legnth len
     // off: bit offset
     // len: range length in bits
-    inline bool intersects(const BitSet<I> &rhs, size_t off, size_t len) const;
+    bool intersects(const BitSet<I> &rhs, size_t off, size_t len) const;
 
     // if the given rhs is completely the same as itself
     bool equal(const BitSet<I> &rhs) const;
@@ -112,7 +154,7 @@ template <typename I>
 inline bool BitSet<I>::set(size_t off, size_t len, bool val)
 {
     IGA_ASSERT(off >= 0 && off + len <= N,
-        "BitSet::testAll: index out of bounds");
+        "BitSet::set: index out of bounds");
 
     // check the first word (misaligned mask)
     auto w_ix = off / BITS_PER_WORD;

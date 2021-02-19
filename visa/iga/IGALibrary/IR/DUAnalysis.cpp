@@ -237,9 +237,8 @@ struct DepAnalysisComputer
                         }
                     }
                 }
-            }
-
-        }
+            } // end if(not last block)
+        } // end for(block state)
     }
 
     void runAnalysis() {

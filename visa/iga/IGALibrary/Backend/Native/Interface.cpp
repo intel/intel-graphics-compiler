@@ -351,7 +351,7 @@ bool iga::native::IsEncodeSupported(
 {
     switch (m.platform)
     {
-    case Platform::GENNEXT:
+    case Platform::FUTURE:
     default:
         break;
     }
@@ -381,7 +381,7 @@ bool iga::native::IsDecodeSupported(
 {
     switch (m.platform)
     {
-    case Platform::GENNEXT: break;
+    case Platform::FUTURE: break;
     default: break;
     }
     return false;

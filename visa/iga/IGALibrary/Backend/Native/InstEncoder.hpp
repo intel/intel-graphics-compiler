@@ -292,7 +292,7 @@ namespace iga
 #endif
     private:
         void encodeForPlatform(const Instruction &i);
-        void encodeForPlatformFamilyGEN12(const Instruction &i);
+        void encodeForPlatformFamilyXE(const Instruction &i);
     }; // end class InstEncoder
 
     ///////////////////////////////////////////////////////////////////////////
@@ -434,8 +434,8 @@ namespace iga
     inline void InstEncoder::encodeForPlatform(const Instruction &i)
     {
         switch (platform()) {
-        case Platform::GEN12P1:
-        case Platform::GENNEXT:
+        case Platform::XE:
+        case Platform::FUTURE:
         default:
             // caller checks this and gives a soft error
             IGA_ASSERT_FALSE("unsupported platform for native encoder");

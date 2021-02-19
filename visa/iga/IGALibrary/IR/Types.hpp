@@ -44,7 +44,12 @@ namespace iga
 // The GEN platform version
 enum class Platform
 {
-#define IGA_GEN_VER_ORDINAL(MAJ,MIN) (((MAJ)<<16)|(MIN))
+// GEN version encoding. The version encoding must be the same as GEN_VER in iga.h
+#define IGA_GEN_VER_ORDINAL(MAJ,MIN) ((MAJ)<<16)|(MIN)
+
+// XE version encoding. The version encoding must be the same as XE_VER in iga.h
+#define IGA_XE_VER_ORDINAL(XE,SUBVER) (((XE)<<24)|SUBVER)
+
     INVALID     = 0,
 
     GEN6        = IGA_GEN_VER_ORDINAL( 6, 0 ),
@@ -57,8 +62,9 @@ enum class Platform
     GEN9P5      = IGA_GEN_VER_ORDINAL( 9, 5 ),
     GEN10       = IGA_GEN_VER_ORDINAL(10, 0 ),
     GEN11       = IGA_GEN_VER_ORDINAL(11, 0 ),
-    GEN12P1     = IGA_GEN_VER_ORDINAL(12, 1 ), // TGL
-    GENNEXT     = IGA_GEN_VER_ORDINAL(14, 0)
+    // XE version
+    XE          = IGA_XE_VER_ORDINAL(1, 0), // TGL
+    FUTURE      = 0x7FFFFFFF
 #undef IGA_GEN_VER_ORDINAL
 };
 
@@ -268,7 +274,7 @@ struct Region {
     static const Region SRCFF1;  // <16;16,1>
     static const Region SRC0X0;  // <0;0> (ternary align1 src0 and src1)
     static const Region SRC2X1;  // <2;1> (ternary align1 src0 and src1)
-    static const Region SRC1X0;  // <1;0> GEN12 changes 2 to 1 in encoding
+    static const Region SRC1X0;  // <1;0> XE changes 2 to 1 in encoding
     static const Region SRC4X1;  // <4;1> (ternary align1 src0 and src1)
     static const Region SRC8X1;  // <8;1> (ternary align1 src0 and src1)
     static const Region SRCXX0;  // <0>   (ternary align1 src2)

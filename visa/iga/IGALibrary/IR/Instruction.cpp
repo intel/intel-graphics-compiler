@@ -199,7 +199,6 @@ void Instruction::validate() const
     iga::SanityCheckIR(*this);
 }
 
-
 std::string Instruction::str() const
 {
     ErrorHandler eh;

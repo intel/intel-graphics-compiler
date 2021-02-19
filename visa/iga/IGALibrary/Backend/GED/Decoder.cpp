@@ -95,9 +95,9 @@ static Region macroDefaultSourceRegion(
     } else if (srcOpIx == 2) {
         return Region::SRCXX1;
     } else {
-        if (p >= Platform::GEN12P1) {
+        if (p >= Platform::XE) {
             return os.isTernary() ?
-                Region::SRC1X0 : // GEN12 ternary packed region
+                Region::SRC1X0 : // XE ternary packed region
                 Region::SRC110;
         }
         return os.isTernary() ?
@@ -120,7 +120,7 @@ Decoder::Decoder(const Model &model, ErrorHandler &errHandler) :
 
 void Decoder::decodeSWSB(Instruction* inst)
 {
-    if (platform() >= Platform::GEN12P1) {
+    if (platform() >= Platform::XE) {
         uint32_t swsbBits = 0;
         if (inst->getOp() != Op::INVALID &&
             inst->getOp() != Op::ILLEGAL)
@@ -254,7 +254,7 @@ Subfunction Decoder::decodeSubfunction()
         break;
     case Op::SENDC:
     case Op::SEND:
-        if (platform() >= Platform::GEN12P1) {
+        if (platform() >= Platform::XE) {
             GED_DECODE(SFID, GED_SFID, sfid, SFID);
             sf = sfid;
         } // else handled in descriptor decoding
@@ -420,7 +420,7 @@ Instruction *Decoder::decodeNextInstruction(Kernel &kernel)
         inst = decodeSendInstruction(kernel);
         break;
     case OpSpec::SYNC_UNARY:
-        if (platform() < Platform::GEN12P1) {
+        if (platform() < Platform::XE) {
             inst = decodeWaitInstruction(kernel);
         } else {
             inst = decodeSyncInstruction(kernel);
@@ -444,7 +444,7 @@ Instruction *Decoder::decodeNextInstruction(Kernel &kernel)
 
 bool Decoder::hasImm64Src0Overlap()
 {
-    if (platform() < Platform::GEN12P1)
+    if (platform() < Platform::XE)
         return false;
 
     // SWSB overlaps the flag modifier with src0
@@ -1091,7 +1091,7 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
     }
 
     SFID sfid = SFID::INVALID;
-    if (platform() >= Platform::GEN12P1) {
+    if (platform() >= Platform::XE) {
         // dig the SFID out of it's encoding location
         sfid = m_subfunc.send;
     } else if (exDesc.isImm()) {
@@ -1132,7 +1132,7 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
         decodeSendSource0(inst);
     }
 
-    bool hasFusionCtrl = platform() >= Platform::GEN12P1;
+    bool hasFusionCtrl = platform() >= Platform::XE;
     if (hasFusionCtrl) {
         GED_FUSION_CTRL fusionCtrl = GED_FUSION_CTRL_Normal;
         GED_DECODE_RAW_TO(FusionCtrl, fusionCtrl);
@@ -1512,7 +1512,7 @@ FlagRegInfo Decoder::decodeFlagRegInfo(bool imm64Src0Overlaps) {
         fri.pred = decodePredication();
     }
     if (m_opSpec->supportsFlagModifier() && !imm64Src0Overlaps) {
-        // GEN12 SWSB overlaps CondModifier and Imm64 values
+        // XE SWSB overlaps CondModifier and Imm64 values
         GED_DECODE_RAW(GED_COND_MODIFIER, condMod, CondModifier);
         fri.modifier = translate(condMod);
     } else if (m_opSpec->is(Op::MATH) && isMacro()) {
@@ -1692,7 +1692,7 @@ DirRegOpInfo Decoder::decodeDstDirRegInfo() {
     DirRegOpInfo dri;
     dri.type = m_opSpec->implicitDstType();
     bool hasDstType = true;
-    if (platform() >= Platform::GEN12P1) {
+    if (platform() >= Platform::XE) {
         hasDstType &= !m_opSpec->isSendOrSendsFamily();
         hasDstType &= !m_opSpec->isBranching();
     }
@@ -1716,7 +1716,7 @@ Type Decoder::decodeDstType() {
 bool Decoder::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
 {
     // FIXME: when entering this function, assuming it MUST NOT be imm or label src
-    if (platform() >= Platform::GEN12P1 &&
+    if (platform() >= Platform::XE &&
         (m_opSpec->isSendFamily() || m_opSpec->isBranching()))
     {
         dri.type = m_opSpec->implicitSrcType(

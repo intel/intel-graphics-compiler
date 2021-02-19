@@ -38,7 +38,7 @@ namespace iga
         ARF_NULL,  // null      0000b
         ARF_A,     // a#        0001b
         ARF_ACC,   // acc# ...  0010b with RegNum[3:0] = 0..1 for acc0-acc1
-                   // GEN12                              0..3 for acc0-acc3
+                   // XE                                 0..3 for acc0-acc3
 
         // Math Macro Exponent (or Extended).
         //
@@ -48,7 +48,7 @@ namespace iga
         // sometimes called "Special Accumulators"
         // formerly called acc2-acc9 used in madm and
         ARF_MME,   // mme# ...  0010b with RegNum[3:0] = 2..9  for mme0-mme7
-                   //           GEN12      RegNum[3:0] = 8..15 for mme0-mme7
+                   //           XE         RegNum[3:0] = 8..15 for mme0-mme7
 
         ARF_F,     // f#        0011b
         ARF_CE,    // ce        0100b

@@ -71,7 +71,7 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
     // MMR: technically only a couple bits each,
     // but treat as full registers just for simplicity
     RS_CREATE_SET(ARF_MME, "mme",   8, 32, RS_NEXT(ARF_ACC));
-    RS_CREATE_SET(ARF_F,     "f",   2,  4, RS_NEXT(ARF_MME));
+    RS_CREATE_SET(ARF_F,     "f",   4,  4, RS_NEXT(ARF_MME));
     RS_CREATE_SET(ARF_CR,   "cr",   3,  4, RS_NEXT(ARF_F));
     RS_CREATE_SET(ARF_SR,   "sr",   3,  4, RS_NEXT(ARF_CR));
     RS_CREATE_SET(ARF_IP,   "ip",   1,  4, RS_NEXT(ARF_SR));
@@ -106,7 +106,9 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
     //
     struct RegSet
     {
-        static RegSet emptySet() { RegSet rs; rs.reset(); return rs; }
+        using Set = BitSet<>;
+
+        // static RegSet emptySet() {RegSet rs; rs.reset(); return rs;}
 
         static bool addPredicationInputs(const Instruction &i, RegSet &rs);
         static bool addSourceInputs(const Instruction &i, RegSet &rs);
@@ -127,7 +129,7 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         }
         bool add(const RegSetInfo &rs, size_t off, size_t len);
         bool addFullReg(const RegSetInfo &rs, int reg) {
-            return add(rs, static_cast<size_t>(rs.bytesPerRegister) * reg, rs.bytesPerRegister);
+            return add(rs, size_t(rs.bytesPerRegister) * reg, rs.bytesPerRegister);
         }
         bool setDstRegion(
             RegName rn,
@@ -145,16 +147,20 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         bool        empty() const { return bits.empty(); }
         void        reset() { bits.reset(); }
         bool        intersects(const RegSet &rhs) const { return bits.intersects(rhs.bits); }
+
         void        str(std::ostream &os) const;
         std::string str() const;
 
-        const BitSet<>& getBitSet() const { return bits; }
-              BitSet<>& getBitSet()       { return bits; }
+        const Set& getBitSet() const { return bits; }
+              Set& getBitSet()       { return bits; }
 
         bool operator==(const RegSet &rs) const { return bits == rs.bits; }
         bool operator!=(const RegSet &rs) const { return bits != rs.bits; }
+
+        RegSet() : bits(RS_MAX_BITS) { }
     private:
-        BitSet<> bits = BitSet<>(RS_MAX_BITS);
+        Set bits;
+
         void formatShortReg(
             std::ostream &os,
             bool &first,
@@ -176,7 +182,6 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         std::string str() const { return unionOf().str(); }
 
         static InstSrcs compute(const Instruction &i);
-
     };
     struct InstDsts
     {

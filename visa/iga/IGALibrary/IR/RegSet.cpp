@@ -31,8 +31,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
-// This module implements what awas the original intent for RegDeps.
-// Unfortunately, that module coupled certain machine state with the
+// This module implements what was the original intent for RegDeps.
+// Unfortunately, that module was coupled certain machine state and other
 // dependencies that we don't want for things like DU analysis.
 //
 // FIXME: would be to
@@ -40,7 +40,7 @@ using namespace iga;
 //    (2) compose a RegSet within the DepState
 //
 
-const RegSetInfo *RegSetInfo::ALL[] = {
+const RegSetInfo *RegSetInfo::ALL[] {
     &RS_GRF_R,
     &RS_ARF_A,
     &RS_ARF_ACC,
@@ -156,7 +156,7 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
     bool added = false;
 
     if (i.getOpSpec().isSendOrSendsFamily()) {
-        // send register descriptors touch a0.#
+        // send register descriptors may touch a0.#
         auto desc = i.getMsgDescriptor();
         if (desc.isReg()) {
             added |= rs.add(RS_ARF_A, desc.reg.subRegNum, 4);
@@ -344,11 +344,12 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
 
     unsigned execOff = 4 * (static_cast<int>(i.getChannelOffset()));
     int execSize = static_cast<int>(i.getExecSize());
-    auto op = i.getDestination();
+    const auto &op = i.getDestination();
     auto tType = op.getType();
     auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 
     if (i.hasInstOpt(InstOpt::ACCWREN) /* || i.getDestination().getDirRegName() == RegName::ARF_ACC*/) { // AccWrEn
+// FIXME: for platforms with implicit AccWrEn
         auto elemsPerAccReg = 8*RS_ARF_ACC.bytesPerRegister / typeSizeBits; // e.g. 8 subreg elems for :f
         RegRef ar(
             execOff / elemsPerAccReg,
@@ -369,7 +370,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
         {
             int nregs = i.getDstLength();
             if (nregs < 0)
-                nregs = 31;
+                nregs = 32; // assume the worst
             for (int ri = 0; ri < nregs; ri++) {
                 uint16_t regNum = op.getDirRegRef().regNum;
                 if ((regNum + ri) >= RS_GRF_R.numRegisters) {
@@ -385,7 +386,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
                 op.getDirRegRef(),
                 op.getRegion(),
                 execSize,
-                typeSizeBits/8);
+                typeSizeBits);
         }
         break;
     case Operand::Kind::MACRO: {
@@ -396,7 +397,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
             op.getDirRegRef(),
             Region::DST1,
             execSize,
-            typeSizeBits/8);
+            typeSizeBits);
         auto MathMacroReg = op.getMathMacroExt();
         if (MathMacroReg != MathMacroExt::NOMME && MathMacroReg != MathMacroExt::INVALID) {
             // and the math macro register
@@ -407,7 +408,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
                 mmeRegRef,
                 Region::DST1,
                 execSize,
-                typeSizeBits/8);
+                typeSizeBits);
         }
         break;
     }

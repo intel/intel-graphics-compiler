@@ -170,7 +170,7 @@ public:
     std::string             str() const;
     bool                    destructiveSubtract(const DepSet &rhs);
 
-    const vector<size_t>&       getBuckets() const { return m_bucketList; }
+    const std::vector<size_t>&  getBuckets() const { return m_bucketList; }
     const BitSet<>&   getBitSet() const { return *bits; }
     BitSet<>&         getBitSetVol() { return *bits; }
 
@@ -207,7 +207,7 @@ private:
     DEP_PIPE m_dPipe;
     DEP_CLASS m_dClass;
     BitSet<>* bits;
-    vector<size_t> m_bucketList;
+    std::vector<size_t> m_bucketList;
     SBID m_sbid;
     bool m_hasIndirect;
     // set true if the instruction has access the special registers: CR, CE, SR

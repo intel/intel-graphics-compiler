@@ -348,8 +348,8 @@ extern "C" int iga_main(int argc, const char **argv)
         " This is a best effort and not all messages or platforms are "
             "supported.\n"
         "The format (arguments) are:\n"
-        "  <GEN12:   -Xdsd      ExecSize? ExDesc Desc\n"
-        "  >=GEN12:  -Xdsd SFID ExecSize? ExDesc Desc\n"
+        "  <XE:   -Xdsd      ExecSize? ExDesc Desc\n"
+        "  >=XE:  -Xdsd SFID ExecSize? ExDesc Desc\n"
         "   ExecSize is the instruction ExecSize in parentheses "
             "(e.g. \"(16|M0)\" or \"(16\")\n"
         "   If ExecSize is absent, then we guess based on the platform (e.g. 16 on SKL)\n"
@@ -363,7 +363,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "    decodes message info for a GEN11 descriptor on SFID (DC1)\n"
         "  % iga -p=12p1 -Xdsd dc1     0x0  0x04025C01\n"
         "  % iga -p=12p1 -Xdsd dc1 (8) a0.2 0x04025C01\n"
-        "    decodes message info for a GEN12 descriptor on SFID (DC1)\n"
+        "    decodes message info for a XE descriptor on SFID (DC1)\n"
         "    the latter illustrates with ExecSize of 8 and ExDesc of a0.2\n"
         "",
         opts::OptAttrs::ALLOW_UNSET,

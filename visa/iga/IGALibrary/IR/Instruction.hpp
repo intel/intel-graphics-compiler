@@ -182,6 +182,11 @@ namespace iga
         void setComment(std::string comment) {m_comment = comment;}
 
         ///////////////////////////////////////////////////////////////////////
+        // name lacks get*** for consistency with other classes that all use
+        // just "platform()"
+        Platform          platform() const {return m_opSpec.platform;}
+
+        ///////////////////////////////////////////////////////////////////////
         // operations that get instruction state
         //
         // the source or binary location

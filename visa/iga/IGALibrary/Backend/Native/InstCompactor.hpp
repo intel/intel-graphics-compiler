@@ -47,7 +47,7 @@ namespace iga {
         CompactionResult compactionResult = CompactionResult::CR_NO_COMPACT;
 
         CompactionResult tryToCompactImpl();
-        CompactionResult tryToCompactImplFamilyGen12();
+        CompactionResult tryToCompactImplFamilyXE();
     public:
         InstCompactor(BitProcessor &_parent, const Model &_model)
             : BitProcessor(_parent)
@@ -140,7 +140,7 @@ namespace iga {
     }; // InstCompactor
 
     //
-    void CompactGen12(Platform p, InstCompactor &ic);
+    void CompactGenXE(Platform p, InstCompactor &ic);
 };
 
 #endif // IGA_BACKEND_NATIVE_INSTCOMPACTOR_HPP

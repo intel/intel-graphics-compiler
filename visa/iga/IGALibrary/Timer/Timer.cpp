@@ -88,7 +88,6 @@ static int64_t CurrFreq() {
 }
 #endif
 
-using namespace std;
 
 struct Timer {
     double       time;
@@ -212,7 +211,7 @@ double getIGATimerUS(unsigned int idx)
 void dumpAllIGATimers(bool outputTime)
 {
     std::ofstream krnlOutput;
-    krnlOutput.open("jit_time.txt", ios_base::app);
+    krnlOutput.open("jit_time.txt", std::ios_base::app);
 
     krnlOutput << kernelAsmName << "\n";
 

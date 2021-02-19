@@ -838,7 +838,7 @@ public:
         // NOTE: even though jmpi is relative post-increment, remember
         // that IGA keeps the offsets normalized as pre-increment and in
         // bytes for uniformity (HSW had some QWord labels)
-        // (after GEN12 jmpi is also pre-increment)
+        // (after XE jmpi is also pre-increment)
 
         OperandInfo src = m_srcs[srcOpIx]; // copy init values
         src.loc = loc;

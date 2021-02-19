@@ -463,7 +463,7 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
 
     Platform p = ((KernelViewImpl*)kv)->m_model.platform;
     // <TGL: SFID is ExDesc[3:0]; if it's in a0, we're sunk
-    if (exDesc.isReg() && p < Platform::GEN12P1)
+    if (exDesc.isReg() && p < Platform::XE)
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
     SFID sfid = inst->getSendFc();

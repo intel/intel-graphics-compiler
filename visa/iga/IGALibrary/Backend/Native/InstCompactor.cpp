@@ -87,8 +87,8 @@ bool InstCompactor::compactIndex(
 
 CompactionResult InstCompactor::tryToCompactImpl() {
     switch (model.platform) {
-    case Platform::GEN12P1:
-    case Platform::GENNEXT:
+    case Platform::XE:
+    case Platform::FUTURE:
     default:
         compactionMissed = true;
         IGA_ASSERT_FALSE("compaction not supported on this platform");
@@ -97,7 +97,7 @@ CompactionResult InstCompactor::tryToCompactImpl() {
 }
 
 
-CompactionResult InstCompactor::tryToCompactImplFamilyGen12()
+CompactionResult InstCompactor::tryToCompactImplFamilyXE()
 {
     compactionResult = CompactionResult::CR_NO_FORMAT;
     return compactionResult;

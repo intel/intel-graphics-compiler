@@ -96,7 +96,7 @@ namespace iga
         PIXI, // pixel interpolator
         DC1,  // data cache 1
         CRE,  // check and refinement engine
-        A0REG  = 0x100, // for <GEN12 SFID can be indirect
+        A0REG  = 0x100, // for <XE SFID can be indirect
     };
     static const std::array<SFID,
         13

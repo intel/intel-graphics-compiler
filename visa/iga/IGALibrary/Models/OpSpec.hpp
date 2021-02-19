@@ -148,7 +148,7 @@ namespace iga
             // send[c] (..)  reg  reg      ex_desc  desc
             SEND_UNARY = (SEND|HAS_DST|UNARY) + 1,
             // sends[c] (..) reg  reg  reg  ex_desc  desc
-            // GEN12: send[c] (..) reg  reg  reg  ex_desc  desc
+            // XE: send[c] (..) reg  reg  reg  ex_desc  desc
 
             SEND_BINARY = (SEND|HAS_DST|BINARY) + 1,
 
@@ -159,7 +159,7 @@ namespace iga
             // since they both take a single register
             //
             //   sync.<syctrl> (1)   nreg
-            // GEN12:
+            // XE:
             //   sync.<syctrl> (..)  reg
             SYNC_UNARY = (SPECIAL|UNARY) + 2,
         };
@@ -257,7 +257,7 @@ namespace iga
             Type type = Type::INVALID;
             if (isSendOrSendsFamily()) {
                 type = Type::UD;
-                if (platform >= Platform::GEN12P1)
+                if (platform >= Platform::XE)
                     type = Type::UB;
             }
             return type;
@@ -399,7 +399,7 @@ namespace iga
         bool supportsDepCtrl() const {
             return
                 !isSendOrSendsFamily() &&
-                platform < Platform::GEN12P1 &&
+                platform < Platform::XE &&
                 !is(Op::NOP) &&
                 !is(Op::ILLEGAL);
         }

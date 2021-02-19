@@ -313,6 +313,12 @@ namespace iga {
             o << std::dec;
         }
 
+        template <typename T>
+        void emitHexDigits(const T &t, int cw = 0) {
+            fmtHexDigits(o, (uint64_t)t, cw);
+            o << std::dec;
+        }
+
 
         template <typename T>
         void emitBinary(const T &t) {

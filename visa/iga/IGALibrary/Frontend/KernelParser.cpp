@@ -1089,7 +1089,7 @@ public:
             ParseSendDescsLegacy();
             break;
         case OpSpec::SEND_BINARY:
-            if (platform() <= Platform::GEN12P1) {
+            if (platform() <= Platform::XE) {
                 ParseSendInstructionLegacy();
             } else {
                 IGA_ASSERT_FALSE("invalid format for platform");
@@ -1188,7 +1188,7 @@ public:
     }
 
 
-    // Original binary send <=GEN12P1 (sends, sendsc)
+    // Original binary send <=XE (sends, sendsc)
     void ParseSendInstructionLegacy() {
         ParseSendDstOp();
         ParseSendSrcOp(0, false);
@@ -1417,15 +1417,15 @@ public:
         } else if (pOs->is(Op::SYNC)) {
             m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<SyncFC>());
         } else if (pOs->isOneOf(Op::SEND, Op::SENDC)) {
-            if (platform() >= Platform::GEN12P1)
+            if (platform() >= Platform::XE)
                 m_builder.InstSubfunction(
                     ParseSubfunctionFromBxmlEnum<SFID>());
             // else: it's part of ExDesc
         } else {
-            // isOldSend: pre GEN12 will have a subfunction,
+            // isOldSend: pre XE will have a subfunction,
             // but we pull it from ExDesc
             bool isOldSend =
-                platform() < Platform::GEN12P1 || pOs->isSendOrSendsFamily();
+                platform() < Platform::XE || pOs->isSendOrSendsFamily();
             IGA_ASSERT(!pOs->supportsSubfunction() || isOldSend,
                 "INTERNAL ERROR: subfunction expected");
         }
@@ -1636,7 +1636,7 @@ public:
         }
         // determine if we support the old-style
         bool supportOldStyleAcc2ToAcc7 = true;
-        supportOldStyleAcc2ToAcc7 = platform() < Platform::GEN12P1;
+        supportOldStyleAcc2ToAcc7 = platform() < Platform::XE;
 
         if (supportOldStyleAcc2ToAcc7) {
             if (ConsumeIdentOneOf<MathMacroExt>(MATHMACROREGS_OLDSTYLE, mme)) {
@@ -2160,7 +2160,7 @@ public:
                 rgn = Region::SRC0X0;
             } else {
                 // packed access
-                rgn = platform() >= Platform::GEN12P1 ?
+                rgn = platform() >= Platform::XE ?
                     Region::SRC1X0 : Region::SRC2X1; // most conservative mux
             }
         }
@@ -2608,7 +2608,7 @@ public:
         const RegInfo *regInfo;
         int regNum;
 
-        // For GEN12 send now supports src1; sends goes away
+        // For XE send now supports src1; sends goes away
         // To support some older syntax floating around
         // underneath IGA will insert a null src1 if needed
         if (enableImplicitOperand) {
@@ -2759,7 +2759,7 @@ public:
     //
     // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
     void ParseSendDescsLegacy() {
-        IGA_ASSERT(platform() <= Platform::GEN12P1,
+        IGA_ASSERT(platform() <= Platform::XE,
             "wrong platform for function");
 
 
@@ -2767,7 +2767,7 @@ public:
         SendDesc exDesc;
         if (ParseAddrRegRefOpt(exDesc.reg)) {
             exDesc.type = SendDesc::Kind::REG32A;
-            if (platform() < Platform::GEN12P1)
+            if (platform() < Platform::XE)
                 m_builder.InstSubfunction(SFID::A0REG);
             // subfunc is already set as part of opcode (e.g. send.gtwy)
         } else {
@@ -2782,12 +2782,12 @@ public:
             }
             exDesc.imm = (uint32_t)v.s64;
             exDesc.type = SendDesc::Kind::IMM;
-            if (platform() >= Platform::GEN12P1 && (exDesc.imm & 0xF)) {
+            if (platform() >= Platform::XE && (exDesc.imm & 0xF)) {
                 FailAtT(exDescLoc,
                     "ExDesc[3:0] must be 0's; SFID is expressed "
                     "as a function control value (e.g. send.dc0 ...)");
             }
-            if (platform() < Platform::GEN12P1) {
+            if (platform() < Platform::XE) {
                 SFID sfid = sfidFromEncoding(platform(), exDesc.imm & 0xF);
                 m_builder.InstSubfunction(sfid);
             }
