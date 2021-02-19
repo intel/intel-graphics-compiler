@@ -40,13 +40,13 @@ INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) { \
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                       \
             Device,                                                                     \
-            SequentiallyConsistent);                                                    \
+            Relaxed);                                                                   \
 } \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p) { \
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                       \
             Device,                                                                     \
-            SequentiallyConsistent);                                                    \
+            Relaxed);                                                                   \
 }
 
 #define DEF_ATOM_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
@@ -54,14 +54,14 @@ INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
-            SequentiallyConsistent,                                                      \
+            Relaxed,                                                                     \
             val);                                                                        \
 } \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
-            SequentiallyConsistent,                                                      \
+            Relaxed,                                                                     \
             val);                                                                        \
 }
 
@@ -70,8 +70,8 @@ INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
-            SequentiallyConsistent,                                                      \
-            SequentiallyConsistent,                                                      \
+            Relaxed,                                                                     \
+            Relaxed,                                                                     \
             val,                                                                         \
             cmp);                                                                        \
 } \
@@ -79,8 +79,8 @@ INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp,
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
-            SequentiallyConsistent,                                                      \
-            SequentiallyConsistent,                                                      \
+            Relaxed,                                                                     \
+            Relaxed,                                                                     \
             val,                                                                         \
             cmp);                                                                        \
 }
@@ -230,7 +230,7 @@ INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) { 
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                       \
             Device,                                                                     \
-            SequentiallyConsistent);                                                    \
+            Relaxed);                                                                   \
 }
 
 #define DEF_ATOMIC_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
@@ -238,7 +238,7 @@ INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OC
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
-            SequentiallyConsistent,                                                      \
+            Relaxed,                                                                     \
             val);                                                                        \
 }
 
@@ -247,8 +247,8 @@ INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OC
     return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_i32_##IGC_TYPE_ABBR( \
             (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
-            SequentiallyConsistent,                                                      \
-            SequentiallyConsistent,                                                      \
+            Relaxed,                                                                     \
+            Relaxed,                                                                     \
             val,                                                                         \
             cmp);                                                                        \
 }
