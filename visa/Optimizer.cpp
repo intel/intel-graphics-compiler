@@ -451,11 +451,6 @@ void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *op
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
-    if (!VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344))
-    {
-        return;
-    }
-
     bool hasNonUniformBranch = false;
     bool hasPredicatedSendOrIndirect = false;
 
