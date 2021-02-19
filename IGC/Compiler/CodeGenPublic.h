@@ -1249,27 +1249,32 @@ namespace IGC
                     Use32BitPtrArith = true;
                 }
 
-                if (strstr(options, "-intel-greater-than-4GB-buffer-required") ||
-                    strstr(options, "-opt-greater-than-4GB-buffer-required"))
+                // -cl-intel-greater-than-4GB-buffer-required, -ze-opt-greater-than-4GB-buffer-required
+                if (strstr(options, "-greater-than-4GB-buffer-required"))
                 {
                     IntelGreaterThan4GBBufferRequired = true;
                 }
-                else if (strstr(options, "-intel-has-buffer-offset-arg") ||
-                    strstr(options, "-opt-has-buffer-offset-arg"))
+
+                // -cl-intel-has-buffer-offset-arg, -ze-opt-has-buffer-offset-arg
+                if (strstr(options, "-has-buffer-offset-arg"))
                 {
                     IntelHasBufferOffsetArg = true;
                 }
-                if (strstr(options, "-intel-buffer-offset-arg-required"))
+
+                // -cl-intel-buffer-offset-arg-required, -ze-opt-buffer-offset-arg-required
+                if (strstr(options, "-buffer-offset-arg-required"))
                 {
                     IntelBufferOffsetArgOptional = false;
                 }
 
-                if (strstr(options, "-intel-has-positive-pointer-offset"))
+                // -cl-intel-has-positive-pointer-offset, -ze-opt-has-positive-pointer-offset
+                if (strstr(options, "-has-positive-pointer-offset"))
                 {
                     IntelHasPositivePointerOffset = true;
                 }
 
-                if (strstr(options, "-intel-has-subDW-aligned-ptr-arg"))
+                // -cl-intel-has-subDW-aligned-ptr-arg, -ze-opt-has-subDW-aligned-ptr-arg
+                if (strstr(options, "-has-subDW-aligned-ptr-arg"))
                 {
                     IntelHasSubDWAlignedPtrArg = true;
                 }
