@@ -40,6 +40,7 @@ namespace llvm {
 
 class Function;
 class Instruction;
+class FunctionGroup;
 
 namespace genx {
 namespace di {
@@ -60,13 +61,29 @@ struct VisaMapping {
 // Builds and holds the debug information for the current module
 class GenXDebugInfo : public ModulePass {
 
-  using ElfBin = SmallVector<char, 4096>;
+  // NOTE: the term "program" is used to avoid the confusion as the term
+  // "kernel" may introduce some ambiguity.
+  // Here a "program" represents a kind of wrapper over a function group that
+  // finally gets compiled into a stand-alone gen entity (binary gen kernel)
+  // with some auxiliarry information
+  struct ProgramInfo {
+    struct FunctionInfo {
+      const genx::di::VisaMapping &VisaMapping;
+      VISAKernel &CompiledKernel;
+      Function &F;
+    };
+    // this is in fact a "flattened" representatoin of a function group to
+    // which the entry point belongs
+    // Invariant: we expect that FG[0] is the entry point/head of GROUP
+    std::vector<FunctionInfo> FG;
+  };
+
+  using ElfBin = std::vector<char>;
   using DbgInfoStorage = std::unordered_map<const Function *, ElfBin>;
-  DbgInfoStorage DebugInfo;
+  DbgInfoStorage ElfOutputs;
 
   void cleanup();
-  void processKernel(const Function &KernelFunction, const VISAKernel &VK,
-                     const genx::di::VisaMapping &V2I);
+  void processKernel(const ProgramInfo &PD);
 
 public:
   static char ID;
@@ -79,7 +96,7 @@ public:
   bool runOnModule(Module &M) override;
   void releaseMemory() override { cleanup(); }
 
-  const DbgInfoStorage &getModuleDebug() const { return DebugInfo; }
+  const DbgInfoStorage &getModuleDebug() const { return ElfOutputs; }
 };
 
 void initializeGenXDebugInfoPass(PassRegistry &);
