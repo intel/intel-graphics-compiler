@@ -930,6 +930,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
             bool TransposeMemLayout = CanUseSOALayout(pAI, pTypeOfAccessedObject);
+
             unsigned int bufferSize = 0;
             if (TransposeMemLayout)
             {
@@ -942,22 +943,18 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
             }
 
+
             Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
             Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
             perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
-
-
-            IGC_ASSERT_MESSAGE(privateBase->getType()->getScalarSizeInBits() == 32, "We assume privateBase type is i32*.");
-            Value* privateBufferPTR = builder.CreateIntToPtr(privateBase, Type::getInt32Ty(C)->getPointerTo(ADDRESS_SPACE_PRIVATE), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
-            totalOffset = builder.CreateLShr(totalOffset, 2); //convert byte* based offset to i32* based offset
-            privateBufferPTR = builder.CreateGEP(privateBufferPTR, totalOffset);
+            Value* threadOffset = builder.CreateAdd(privateBase, totalOffset, VALUE_NAME(pAI->getName() + ".threadOffset"));
+            Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, Type::getInt8Ty(C)->getPointerTo(ADDRESS_SPACE_PRIVATE), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
             Value* privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
             if (TransposeMemLayout)
             {
-                Value* privateBufferPtrInt = builder.CreatePtrToInt(privateBufferPTR, totalOffset->getType());
-                TransposeHelperPrivateMem helper(privateBufferPtrInt, simdSize, bufferSize, pTypeOfAccessedObject->isVectorTy());
+                TransposeHelperPrivateMem helper(threadOffset, simdSize, bufferSize, pTypeOfAccessedObject->isVectorTy());
                 Value* Idx = builder.getInt32(0);
                 helper.HandleAllocaSources(pAI, Idx);
                 helper.EraseDeadCode();
