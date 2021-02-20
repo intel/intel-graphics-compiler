@@ -1087,10 +1087,13 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
       if (Input->getType() != StartWrInput->getType())
         continue;
       RdInput = Input;
-      if (isa<PHINode>(Input)) {
-        // Prefer to save a live-range on Phi, which may help to
-        // save phi copies. This is observed on Histogram1.
-        break;
+      if (auto PhiNode = dyn_cast<PHINode>(Input)) {
+        // Prefer to save a live-range on Phi with EndWr value wrapped around,
+        // which may help to save phi copies. This is observed on Histogram1.
+        if (std::any_of(PhiNode->incoming_values().begin(),
+                        PhiNode->incoming_values().end(),
+                        [EndWr](Value *Val) { return Val == EndWr; }))
+          break;
       }
     }
     if (!RdInput)
