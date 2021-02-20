@@ -688,7 +688,7 @@ void GenXDepressurizer::processInstruction(Instruction *Inst) {
   Bale B;
   Baling->buildBale(Inst, &B);
   LLVM_DEBUG(dbgs() << '[' << InstNumbers[Inst] << ']';
-    if (!Inst->getDebugLoc())
+    if (Inst->getDebugLoc())
       dbgs() << " {line " << Inst->getDebugLoc().getLine() << '}';
     B.print(dbgs()));
   unsigned OldFlagPressure = Live->getPressure(Liveness::FLAG);
