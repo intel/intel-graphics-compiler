@@ -63,17 +63,17 @@ namespace {
 
 // TODO: we expect this to be turned on by default
 static cl::opt<bool> OptStrictEmulationRequests(
-    "genx-i64emu-strict-requests", cl::init(false),
+    "vc-i64emu-strict-requests", cl::init(false),
     cl::Hidden,
     cl::desc("Explicit emulation requests are subject to stricter checks"));
-static cl::opt<bool> OptIcmpEnable("genx-i64emu-icmp-enable", cl::init(true),
+static cl::opt<bool> OptIcmpEnable("vc-i64emu-icmp-enable", cl::init(true),
                                    cl::Hidden,
                                    cl::desc("enable icmp emulation"));
-static cl::opt<bool> OptProcessPtrs("genx-i64emu-ptrs-enable", cl::init(true),
+static cl::opt<bool> OptProcessPtrs("vc-i64emu-ptrs-enable", cl::init(true),
                                     cl::Hidden,
                                     cl::desc("enable icmp emulation"));
 static cl::opt<bool> OptConvertPartialPredicates(
-    "genx-i64emu-icmp-ppred-lowering", cl::init(true), cl::Hidden,
+    "vc-i64emu-icmp-ppred-lowering", cl::init(true), cl::Hidden,
     cl::desc("if \"partial predicates\" shall be converted to icmp"));
 
 using IRBuilder = IRBuilder<TargetFolder>;

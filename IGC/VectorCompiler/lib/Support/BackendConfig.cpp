@@ -39,7 +39,7 @@ using namespace llvm;
 //===----------------------------------------------------------------------===//
 
 static cl::opt<bool> GenerateDebugInfoOpt(
-    "emit-debug-info", cl::init(false), cl::Hidden,
+    "vc-emit-debug-info", cl::init(false), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
 static cl::opt<bool> DumpRegAllocOpt(
@@ -56,11 +56,11 @@ static cl::opt<bool>
                       cl::desc("Enable finalizer assembly dumps"),
                       cl::init(false));
 static cl::opt<bool>
-    EnableDebugInfoDumpOpt("genx-enable-dbginfo-dumps",
+    EnableDebugInfoDumpOpt("vc-enable-dbginfo-dumps",
                            cl::desc("Enable debug information-related dumps"),
                            cl::init(false));
 static cl::opt<std::string> DebugInfoDumpNameOverride(
-    "genx-dbginfo-dumps-name-override",
+    "vc-dbginfo-dumps-name-override",
     cl::desc("Override for 'suffix' part of debug info dump name"));
 
 static cl::opt<std::string>
