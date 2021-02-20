@@ -663,4 +663,8 @@
     {
         return (getPlatform() == GENX_TGLLP);
     }
+   bool hasEOTWait() const
+   {
+        return true;
+   }
     // end HW capabilities

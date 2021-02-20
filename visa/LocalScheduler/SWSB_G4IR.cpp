@@ -4609,7 +4609,8 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
 
         if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
-            (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()))
+            (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()) ||
+            (builder.hasEOTWait() && node->GetInstruction()->isEOT()))
         {
             node->setDistance(1);
         }
