@@ -492,7 +492,7 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
 bool GenXDebugInfo::runOnModule(Module &M) {
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
-  if (!BC.kernelDebugEnabled())
+  if (!BC.emitDebugInformation())
     return false;
 
   const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();

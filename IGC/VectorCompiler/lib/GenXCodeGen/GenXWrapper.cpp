@@ -219,7 +219,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
   if (Opts.StackMemSize)
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
-  BackendOpts.EnableKernelDebug = Opts.EmitDebugInfo;
+  BackendOpts.EmitDebugInformation = Opts.EmitDebugInformation;
+  BackendOpts.EmitDebuggableKernels = Opts.EmitDebuggableKernels;
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
   BackendOpts.EnableDebugInfoDumps = Opts.DumpDebugInfo;
   BackendOpts.Dumper = Opts.Dumper.get();
@@ -397,7 +398,7 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   PerModulePasses.run(M);
 
   // Temporary measure till KernelArgOffset is moved to the backend
-  if (Opts.EmitDebugInfo)
+  if (Opts.EmitDebuggableKernels)
     M.getOrInsertNamedMetadata(llvm::genx::DebugMD::DebuggableKernels);
 
   Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
@@ -505,8 +506,10 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   if (ApiOptions.hasArg(vc::options::OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
 
-  if (ApiOptions.hasArg(vc::options::OPT_vc_emit_debug))
-    Opts.EmitDebugInfo = true;
+  if (ApiOptions.hasArg(vc::options::OPT_vc_emit_debug)) {
+    Opts.EmitDebugInformation = true;
+    Opts.EmitDebuggableKernels = true;
+  }
   if (ApiOptions.hasArg(vc::options::OPT_fno_jump_tables))
     Opts.NoJumpTables = true;
   if (ApiOptions.hasArg(vc::options::OPT_ftranslate_legacy_memory_intrinsics))

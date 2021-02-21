@@ -96,8 +96,10 @@ public:
 // Plain structure to be filled by users who want to create backend
 // configuration. Some values are default-initialized from cl options.
 struct GenXBackendOptions {
-  // Enables debugging facilities for the compiled kernels
-  bool EnableKernelDebug;
+  // EmitDebuggable Kernels (allocate SIP Surface and avoid using BTI=0)
+  bool EmitDebuggableKernels = false;
+  // Enable emission of DWARF debug information
+  bool EmitDebugInformation = false;
   // Enable/disable regalloc dump.
   bool DumpRegAlloc;
   // Maximum available memory for stack (in bytes).
@@ -173,7 +175,8 @@ public:
     return Data.BiFModule[Kind];
   }
 
-  bool kernelDebugEnabled() const { return Options.EnableKernelDebug; }
+  bool emitDebugInformation() const { return Options.EmitDebugInformation; }
+  bool emitDebuggableKernels() const { return Options.EmitDebuggableKernels; }
   // Return whether shader dumper is installed.
   bool hasShaderDumper() const { return Options.Dumper; }
 

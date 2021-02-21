@@ -42,6 +42,10 @@ static cl::opt<bool> GenerateDebugInfoOpt(
     "vc-emit-debug-info", cl::init(false), cl::Hidden,
     cl::desc("Generate DWARF debug info for each compiled kernel"));
 
+static cl::opt<bool> EmitDebuggableKernelsOpt(
+    "vc-emit-debuggable-kernels", cl::init(false), cl::Hidden,
+    cl::desc("Emit kernels suitable for interaction with the debugger"));
+
 static cl::opt<bool> DumpRegAllocOpt(
     "genx-dump-regalloc", cl::init(false), cl::Hidden,
     cl::desc(
@@ -86,7 +90,9 @@ static cl::opt<GlobalsLocalizationConfig::LimitT> GlobalsLocalizationLimitOpt(
 char GenXBackendConfig::ID = 0;
 
 GenXBackendOptions::GenXBackendOptions()
-    : EnableKernelDebug(GenerateDebugInfoOpt), DumpRegAlloc(DumpRegAllocOpt),
+    : EmitDebugInformation(GenerateDebugInfoOpt),
+      EmitDebuggableKernels(EmitDebuggableKernelsOpt),
+      DumpRegAlloc(DumpRegAllocOpt),
       StackSurfaceMaxSize(StackMemSizeOpt), EnableAsmDumps(EnableAsmDumpsOpt),
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
