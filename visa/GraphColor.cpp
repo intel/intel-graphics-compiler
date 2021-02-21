@@ -9324,9 +9324,6 @@ int GlobalRA::coloringRegAlloc()
         }
     }
 
-    bool fastCompile =
-        (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
-        !hasStackCall;
     if (!isReRAPass())
     {
         //Global linear scan RA
@@ -9430,6 +9427,9 @@ int GlobalRA::coloringRegAlloc()
     uint32_t GRFSpillFillCount = 0;
     uint32_t sendAssociatedGRFSpillFillCount = 0;
     unsigned fastCompileIter = 1;
+    bool fastCompile =
+        (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
+        !hasStackCall;
     if (fastCompile)
     {
         fastCompileIter = 0;

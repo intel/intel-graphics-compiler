@@ -179,15 +179,25 @@ void LocalRA::preLocalRAAnalysis()
     // Remove unreferenced dcls
     gra.removeUnreferencedDcls();
 
-    if (builder.getOption(vISA_HybridRAWithSpill))
+    if (builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA))
     {
         unsigned reserveSpillSize = 0;
         unsigned int spillRegSize = 0;
         unsigned int indrSpillRegSize = 0;
+        LivenessAnalysis liveAnalysis(gra, G4_GRF | G4_INPUT);
         gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
-        reserveSpillSize = spillRegSize + indrSpillRegSize;
 
-        numRegLRA = numGRF - numRowsReserved - reserveSpillSize - 1;
+        reserveSpillSize = spillRegSize + indrSpillRegSize;
+        if (reserveSpillSize >= kernel.getNumCalleeSaveRegs())
+        {
+            const_cast<Options*>(builder.getOptions())->setOption(vISA_HybridRAWithSpill, false);
+            const_cast<Options*>(builder.getOptions())->setOption(vISA_FastCompileRA, false);
+            numRegLRA = numGRF - numRowsReserved;
+        }
+        else
+        {
+            numRegLRA = numGRF - numRowsReserved - reserveSpillSize - 1;
+        }
     }
     else
     {
@@ -794,7 +804,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
             BankAlign bankAlign = BankAlign::Either;
-
             if (twoBanksRA &&
                 gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
             {
