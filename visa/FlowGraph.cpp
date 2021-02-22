@@ -149,10 +149,6 @@ bool GlobalOpndHashTable::isOpndGlobal(G4_Operand *opnd) const
     {
         return false;
     }
-    else if (dcl->isOutput())
-    {
-        return true;
-    }
     else if (dcl->getAddressed())
     {
         // Conservatively assume that all address taken

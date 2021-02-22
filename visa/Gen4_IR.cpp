@@ -6200,31 +6200,6 @@ G4_RegVar::emit(std::ostream& output, bool symbolreg)
             TypeSymbol(getDeclare()->getElemType()) << ")";
     }
 }
-G4_CmpRelation vISA::G4_AddrExp::compareOperand(G4_Operand* opnd)
-{
-    auto getOffsetToRoot = [](G4_Declare* dcl)
-    {
-        unsigned int offsetToRoot = 0;
-        while (dcl->getAliasDeclare())
-        {
-            offsetToRoot += dcl->getAliasOffset();
-            dcl = dcl->getAliasDeclare();
-        }
-        return offsetToRoot;
-    };
-
-    if (!opnd->isAddrExp())
-        return G4_CmpRelation::Rel_disjoint;
-
-    if (getRegVar()->getDeclare()->getRootDeclare() == opnd->asAddrExp()->getRegVar()->getDeclare()->getRootDeclare() &&
-        getOffsetToRoot(getRegVar()->getDeclare()) == getOffsetToRoot(opnd->asAddrExp()->getRegVar()->getDeclare()))
-    {
-        return G4_CmpRelation::Rel_eq;
-    }
-
-    return G4_CmpRelation::Rel_disjoint;
-}
-
 int G4_AddrExp::eval()
 {
     int byteAddr = 0;
