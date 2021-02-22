@@ -2815,7 +2815,10 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                             addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
 
                             // Emit SIMD lane for GRF (unpacked)
-                            addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(DD->simdWidth * vectorElem), false, !firstHalf);
+                            const auto MaxUI16 = std::numeric_limits<uint16_t>::max();
+                            auto SimdOffset = DD->simdWidth * vectorElem;
+                            IGC_ASSERT(DD->simdWidth <= 32 && vectorElem < MaxUI16 && SimdOffset < MaxUI16);
+                            addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(SimdOffset), false, !firstHalf);
                         }
                     }
                 }
