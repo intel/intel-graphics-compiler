@@ -648,6 +648,161 @@ bool BIImport::runOnModule(Module& M)
         }
     }
 
+    // Builtins and intrinsics to support function pointers
+    for (auto& F : M)
+    {
+        auto funcName = F.getName();
+        // Builtin for OCL support for function pointers
+        // Gets the function address
+        if (funcName.startswith("__builtin_IB_get_function_pointer"))
+        {
+            for (auto user : F.users())
+            {
+                if (CallInst* CI = dyn_cast<CallInst>(&*user))
+                {
+                    // Get the function by name
+                    GetElementPtrInst* const funcStrV = cast<GetElementPtrInst>(CI->getArgOperand(0));
+                    IGC_ASSERT(nullptr != funcStrV);
+                    GlobalVariable* const global = cast<GlobalVariable>(funcStrV->getOperand(0));
+                    IGC_ASSERT(nullptr != global);
+                    ConstantDataArray* const gArray = cast<ConstantDataArray>(global->getInitializer());
+                    IGC_ASSERT(nullptr != gArray);
+                    Function* const pFunc = GetBuiltinFunction(gArray->getAsCString(), &M);
+                    IGC_ASSERT(nullptr != pFunc);
+                    pFunc->addFnAttr("IFCALL_BUILTIN");
+                    pFunc->setCallingConv(llvm::CallingConv::SPIR_FUNC);
+                    // Replace builtin with the actual function pointer
+                    IRBuilder<> builder(CI);
+                    Value* funcPtr = builder.CreatePointerCast(pFunc, CI->getType());
+                    CI->replaceAllUsesWith(funcPtr);
+                    InstToRemove.push_back(CI);
+                }
+            }
+        }
+        // Builtin for OCL support for function pointers
+        // Calls a function address
+        else if (funcName.startswith("__builtin_IB_call_function_pointer"))
+        {
+            for (auto user : F.users())
+            {
+                if (CallInst* CI = dyn_cast<CallInst>(&*user))
+                {
+                    IGCLLVM::IRBuilder<> builder(CI);
+                    Value* argBuffer = CI->getArgOperand(1);
+                    // Function type is always void (i8*)
+                    FunctionType* funcTy = FunctionType::get(builder.getVoidTy(), { argBuffer->getType() }, false);
+                    Value* funcPtr = builder.CreatePointerCast(CI->getArgOperand(0), PointerType::get(funcTy, 0));
+                    // Replace builtin with the function call
+                    CallInst* callFunc = builder.CreateCall(funcPtr, argBuffer);
+                    callFunc->setCallingConv(llvm::CallingConv::SPIR_FUNC);
+                    CI->replaceAllUsesWith(callFunc);
+                    InstToRemove.push_back(CI);
+                }
+            }
+        }
+
+        // Handles the function pointer SIMD variant functions
+        else if (funcName.startswith("__intel_create_simd_variant"))
+        {
+            // If we encounter this call, we need to enable this flag to indicate we need to compile multiple SIMD
+            auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+            pCtx->m_enableSimdVariantCompilation = true;
+
+            for (auto user : F.users())
+            {
+                if (CallInst* CI = dyn_cast<CallInst>(&*user))
+                {
+                    Function* calledF = dyn_cast<Function>(CI->getArgOperand(0));
+                    IGC_ASSERT(calledF && CI->hasFnAttr("vector-variant"));
+                    StringRef VariantName = CI->getAttributes()
+                        .getAttribute(AttributeList::FunctionIndex, "vector-variant")
+                        .getValueAsString();
+
+                    // Parse the variant string, and create a function declaration that represents a variant of the called function.
+                    auto [symStr, fName, vecLen] = IGC::ParseVectorVariantFunctionString(VariantName);
+                    std::string fDeclName = symStr + fName;
+                    Function* pNewFuncDecl = M.getFunction(fDeclName);
+                    if (!pNewFuncDecl)
+                    {
+                        SmallVector<Type*, 8> argTys;
+                        for (auto& arg : calledF->args()) argTys.push_back(arg.getType());
+                        FunctionType* signature = FunctionType::get(calledF->getReturnType(), argTys, false);
+                        pNewFuncDecl = Function::Create(signature, calledF->getLinkage(), fDeclName, &M);
+                        pNewFuncDecl->copyAttributesFrom(calledF);
+                        pNewFuncDecl->setCallingConv(llvm::CallingConv::SPIR_FUNC);
+                    }
+                    pNewFuncDecl->addFnAttr("variant-function-decl");
+                    calledF->addFnAttr("variant-function-def");
+                    calledF->addFnAttr("CompileSIMD" + std::to_string(vecLen));
+                    IGCLLVM::IRBuilder<> builder(CI);
+                    Value* bitcast = builder.CreateBitCast(pNewFuncDecl, CI->getType());
+                    CI->replaceAllUsesWith(bitcast);
+                    InstToRemove.push_back(CI);
+                }
+            }
+        }
+        // Handles the variant table calls
+        // FIXME: This is a temp solution, eventually if we support argument variants etc, it's unlikely
+        // we will have all the information for the variant index in this pass, and will have to move it
+        // to later passes. For now, since we only require subgroup size, this should suffice.
+        else if (funcName.startswith("__intel_indirect_call"))
+        {
+            MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            for (auto user : F.users())
+            {
+                if (CallInst* CI = dyn_cast<CallInst>(&*user))
+                {
+                    unsigned tableIndex = 0;
+                    Value* FPTablePtr = CI->getArgOperand(0);
+                    IGC_ASSERT(FPTablePtr->getType()->isPointerTy());
+
+                    if (CI->hasFnAttr("vector-variants"))
+                    {
+                        // Get the list of metadata strings indicating the function variant per index
+                        StringRef VariantsStr = CI->getAttributes()
+                            .getAttribute(AttributeList::FunctionIndex, "vector-variants")
+                            .getValueAsString();
+                        SmallVector<StringRef, 8> VariantsTable;
+                        VariantsStr.split(VariantsTable, ',');
+
+                        // Get the caller function
+                        Function* callerF = CI->getParent()->getParent();
+                        // Assume the caller has explicit subgroup size set, otherwise we cannot determine which variant to use
+                        FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(callerF);
+                        unsigned subgroup_size = (unsigned)funcInfoMD->getSubGroupSize()->getSIMD_size();
+                        IGC_ASSERT(subgroup_size != 0);
+
+                        // Parse each variant string in the table, stop at the first one that matches subgroup_size
+                        for (auto var : VariantsTable)
+                        {
+                            // We only need to get the SIMD size from the string
+                            auto [symStr, fName, vecLen] = IGC::ParseVectorVariantFunctionString(var);
+                            if (vecLen == subgroup_size)
+                                break;
+                            tableIndex++;
+                        }
+                        IGC_ASSERT_MESSAGE(tableIndex < VariantsTable.size(), "Subgroup size not found in function variants!");
+                    }
+
+                    IGCLLVM::IRBuilder<> builder(CI);
+                    // Load function address from the table index
+                    Value* FP = builder.CreateGEP(FPTablePtr, builder.getInt32(tableIndex));
+                    FP = builder.CreateLoad(FP);
+                    IGC_ASSERT(FP->getType()->isPointerTy() && cast<PointerType>(FP->getType())->getElementType()->isFunctionTy());
+                    // Call the loaded function address
+                    SmallVector<Value*, 8> Args;
+                    for (unsigned i = 1; i < CI->getNumArgOperands(); i++)
+                        Args.push_back(CI->getArgOperand(i));
+                    CallInst* CallFP = builder.CreateCall(FP, Args);
+                    CallFP->setCallingConv(llvm::CallingConv::SPIR_FUNC);
+
+                    CI->replaceAllUsesWith(CallFP);
+                    InstToRemove.push_back(CI);
+                }
+            }
+        }
+    }
+
     for (auto I : InstToRemove)
     {
         I->eraseFromParent();
