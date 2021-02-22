@@ -6782,6 +6782,7 @@ void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
     // to contain data in all the channels however,
     // if the variable is uniform, uniform analysis makes it a scalar value
     // we need to copy to simd form then.
+
     CVariable* channelMask = m_currShader->GetSymbol(inst->getOperand(1));
     if (!channelMask->IsImmediate())
     {

@@ -303,7 +303,6 @@ void MergeURBWrites::MergeInstructions()
         IGC_ASSERT(highWriteMask <= 0x0F);
         auto mergedMask = lowWriteMask | (highWriteMask << 4);
 
-
         // Move the data operands from the earlier instruction to the later instruction.
         // If instructions are in order, we need to add new operands to positions 2..5 while
         // moving the existing data operands from 2...5 to the higher positions 6...9.

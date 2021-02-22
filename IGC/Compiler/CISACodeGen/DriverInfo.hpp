@@ -188,6 +188,9 @@ namespace IGC
         virtual bool KeepDiscardHelperPixels() const { return false; }
         virtual bool SupportElfFormat() const { return false; }
 
+        // allow forcing urb write mask to full mask.
+        virtual bool AllowFullUrbWriteMask() const { return false; }
+
         // Choose to support parsing inlined asm instructions on specific platforms
         virtual bool SupportInlineAssembly() const { return false; }
 
