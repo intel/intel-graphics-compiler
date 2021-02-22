@@ -113,6 +113,13 @@ typedef struct ActiveDef
 } ActiveDef;
 typedef std::multimap<unsigned int, ActiveDef> ActiveDefMMap;
 
+class GlobalDataAddrCleanup
+{
+public:
+    std::unordered_map<vISA::G4_Declare*, unsigned int> addrVarDefCount;
+    std::unordered_map<vISA::G4_BB*, unsigned int> addrVarDefCountPerBB;
+};
+
 namespace vISA
 {
     class LVN
@@ -187,6 +194,64 @@ namespace vISA
         unsigned int getNumInstsRemoved() { return numInstsRemoved; }
 
         static unsigned int removeRedundantSamplerMovs(G4_Kernel&, G4_BB*);
+        static unsigned int removeRedundantAddrAdd(G4_Kernel& kernel, G4_BB* bb,
+            GlobalDataAddrCleanup& addrCleanup);
+    };
+
+    class CleanupAddrAdd {
+    private:
+        const unsigned int origInstCount;
+        IR_Builder& builder;
+        FlowGraph& fg;
+        G4_BB* bb = nullptr;
+        // store currently active defs
+        std::list<G4_INST*> activeAddrDefs;
+        // store map of old->new dcl
+        std::unordered_map<G4_Declare*, G4_Declare*> replacementMap;
+        // store count of addr var defs for BB
+        std::unordered_map<G4_Declare*, unsigned int>& addrVarDefCount;
+        // store information to invalidate based on WAR
+        std::unordered_map<G4_Declare*, std::vector<G4_INST*>> war;
+
+        G4_INST* getReplCand(G4_INST* other);
+        void invalidate(std::vector<G4_INST*>& insts);
+        void removeRedAddrAdd();
+    public:
+        CleanupAddrAdd(G4_Kernel& k, G4_BB* block,
+            GlobalDataAddrCleanup& globalData) :
+            origInstCount(block->size()), builder(*k.fg.builder), fg(k.fg),
+            addrVarDefCount(globalData.addrVarDefCount)
+        {
+            bb = block;
+        }
+
+        void run();
+        void dump(std::ostream& OS) const;
+
+        static void getAddrVarDataGlobal(FlowGraph& fg, GlobalDataAddrCleanup& addrCleanup)
+        {
+            auto& addrVarDefCount = addrCleanup.addrVarDefCount;
+            auto& addrVarDefCountPerBB = addrCleanup.addrVarDefCountPerBB;
+            for (auto bblock : fg)
+            {
+                for (auto inst : *bblock)
+                {
+                    auto dst = inst->getDst();
+                    if (dst)
+                    {
+                        if (auto topdcl = dst->getTopDcl())
+                        {
+                            if (topdcl->getRegFile() == G4_ADDRESS &&
+                                dst->isDirect())
+                            {
+                                addrVarDefCount[topdcl] += 1;
+                                addrVarDefCountPerBB[bblock] += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     };
 }
 #endif

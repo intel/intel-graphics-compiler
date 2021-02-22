@@ -62,6 +62,8 @@ void Optimizer::LVN()
     Mem_Manager mem(1024);
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
+    GlobalDataAddrCleanup addrCleanup;
+    CleanupAddrAdd::getAddrVarDataGlobal(fg, addrCleanup);
     for (auto bb : kernel.fg)
     {
         ::LVN lvn(fg, bb, mem, *fg.builder, p);
@@ -70,6 +72,8 @@ void Optimizer::LVN()
         numInstsRemoved += lvn.getNumInstsRemoved();
 
         numInstsRemoved += ::LVN::removeRedundantSamplerMovs(kernel, bb);
+
+        numInstsRemoved += ::LVN::removeRedundantAddrAdd(kernel, bb, addrCleanup);
     }
 
     if (kernel.getOption(vISA_OptReport))

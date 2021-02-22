@@ -1041,7 +1041,7 @@ void LVN::getValue(G4_INST* inst, Value& value)
         }
         else if (opnd->isImm())
         {
-            getValue(opnd->asImm()->getInt(), opnd, v);
+            getValue(opnd->asImm()->getImm(), opnd, v);
             value.hash += v.hash;
         }
     }
@@ -1212,7 +1212,8 @@ bool LVN::addValue(G4_INST* inst)
     {
         if (inst->opcode() == G4_mov ||
             inst->opcode() == G4_shl ||
-            inst->opcode() == G4_shr)
+            inst->opcode() == G4_shr ||
+            inst->opcode() == G4_mul)
             return true;
         return false;
     };
@@ -2029,10 +2030,227 @@ unsigned int LVN::removeRedundantSamplerMovs(G4_Kernel& kernel, G4_BB* bb)
     return numInstsRemoved;
 }
 
+unsigned int LVN::removeRedundantAddrAdd(G4_Kernel& kernel, G4_BB* bb,
+    GlobalDataAddrCleanup& addrVarDefCount)
+{
+    if (addrVarDefCount.addrVarDefCountPerBB[bb] > 1)
+    {
+        auto oldInstCount = bb->size();
+
+        CleanupAddrAdd cl(kernel, bb, addrVarDefCount);
+        cl.run();
+
+        return oldInstCount - bb->size();
+    }
+    return 0;
+}
+
 LVN::~LVN()
 {
     for (auto d : toDtor)
     {
         d->~LVNItemInfo();
     }
+}
+
+G4_INST* CleanupAddrAdd::getReplCand(G4_INST* other)
+{
+    // check whether any active activeAddrDef is an exact match
+    for (auto inst : activeAddrDefs)
+    {
+        bool candidate = true;
+        if (inst->getNumSrc() == other->getNumSrc() &&
+            inst->opcode() == other->opcode() &&
+            inst->getExecSize() == other->getExecSize() &&
+            !inst->getPredicate() && !other->getPredicate() &&
+            !inst->getCondMod() && !other->getCondMod() &&
+            inst->getOption() == other->getOption())
+        {
+            for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+            {
+                auto src = inst->getSrc(i);
+                auto srcOther = other->getSrc(i);
+                if (src->compareOperand(srcOther) != G4_CmpRelation::Rel_eq)
+                {
+                    candidate = false;
+                    break;
+                }
+            }
+            if (candidate)
+                return inst;
+        }
+    }
+    return nullptr;
+}
+
+void CleanupAddrAdd::invalidate(std::vector<G4_INST*>& insts)
+{
+    for (auto inst : insts)
+    {
+        auto it = std::find(activeAddrDefs.begin(), activeAddrDefs.end(), inst);
+        if (it != activeAddrDefs.end())
+            activeAddrDefs.erase(it);
+    }
+}
+
+void CleanupAddrAdd::removeRedAddrAdd()
+{
+    // This function eliminates addr_add instructions like:
+    // add (1) A0   V10    &V20
+    // add (1) A1...V10....&V20
+    //         = r[A1]
+    // -->
+    // add (1) A0...V10...&V20
+    //         =r[A0]
+    //
+    // doLVN() function does not support optimizing such
+    // address adds due to indirect addressing usage.
+
+    auto isGlobal = [this](G4_INST* inst)
+    {
+        if (!inst->getDst() ||
+            !inst->getDst()->getTopDcl())
+            return false;
+        bool isGlobal = fg.globalOpndHT.isOpndGlobal(inst->getDst());
+        auto it = addrVarDefCount.find(inst->getDst()->getTopDcl());
+        if (it != addrVarDefCount.end())
+        {
+            // variable is local but it has > 1 def in BB, so treat it
+            // as global
+            isGlobal |= (*it).second > 1;
+        }
+        return isGlobal;
+    };
+
+    for (auto inst_it = bb->begin();
+        inst_it != bb->end();
+        )
+    {
+        auto inst = (*inst_it);
+
+        if (inst->getDst() &&
+            inst->getDst()->getTopDcl())
+        {
+            auto it = war.find(inst->getDst()->getTopDcl());
+            if (it != war.end())
+            {
+                // invalidate all active addr_add instructions that
+                // refer to current inst dst
+                invalidate((*it).second);
+                war.erase(it);
+                continue;
+            }
+        }
+
+        if (!isGlobal(inst))
+        {
+            if (auto repl = getReplCand(inst))
+            {
+                // update map
+                replacementMap[inst->getDst()->getTopDcl()] = repl->getDst()->getTopDcl();
+                inst_it = bb->erase(inst_it);
+                continue;
+            }
+        }
+
+        // check whether any operand needs to be replaced
+        auto dst = inst->getDst();
+        if (dst &&
+            dst->isIndirect())
+        {
+            auto addrDcl = dst->getTopDcl();
+            auto replIt = replacementMap.find(addrDcl);
+            if (replIt != replacementMap.end())
+            {
+                auto newDst = builder.createIndirectDst((*replIt).second->getRegVar(),
+                    dst->getSubRegOff(), dst->getHorzStride(), dst->getType(), dst->getAddrImm());
+                inst->setDest(newDst);
+            }
+        }
+
+        for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+        {
+            auto opnd = inst->getSrc(i);
+            if (!opnd || opnd->isImm())
+                continue;
+
+            auto topdcl = opnd->getTopDcl();
+            if (!topdcl)
+                continue;
+
+            auto replIt = replacementMap.find(topdcl);
+            if (replIt != replacementMap.end())
+            {
+                auto oldSrc = opnd->asSrcRegRegion();
+                if (oldSrc->isIndirect())
+                {
+                    auto newSrc = builder.createIndirectSrc(oldSrc->getModifier(), (*replIt).second->getRegVar(),
+                        oldSrc->getRegOff(), oldSrc->getSubRegOff(), oldSrc->getRegion(), oldSrc->getType(),
+                        oldSrc->getAddrImm());
+                    inst->setSrc(newSrc, i);
+                }
+                else
+                {
+                    auto oldSrc = opnd->asSrcRegRegion();
+                    auto newSrc = builder.createSrcRegRegion(oldSrc->getModifier(), oldSrc->getRegAccess(),
+                        (*replIt).second->getRegVar(), oldSrc->getRegOff(),
+                        oldSrc->getSubRegOff(), oldSrc->getRegion(), oldSrc->getType(), oldSrc->getAccRegSel());
+                    inst->setSrc(newSrc, i);
+                }
+            }
+        }
+
+        // add instruction to replacement map
+        if (inst->opcode() == G4_add)
+        {
+            bool candidate = false;
+            auto dstTopDcl = inst->getDst()->getTopDcl();
+            if (dstTopDcl &&
+                dstTopDcl->getRegFile() == G4_ADDRESS)
+            {
+                candidate = true;
+                for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+                {
+                    auto src = inst->getSrc(i);
+                    if (src &&
+                        (src->isSrcRegRegion() || src->isImm() || src->isAddrExp()))
+                    {
+                        auto topdcl = src->getTopDcl();
+                        if (!topdcl && src->isAddrExp())
+                            topdcl = src->asAddrExp()->getRegVar()->getDeclare()->getRootDeclare();
+                        else if (topdcl)
+                        {
+                            if (topdcl->getRegVar()->isPhyRegAssigned() ||
+                                // add (1) A0   V10    &V20
+                                // dont allow optimization is src region V10 is addressed
+                                (!src->isAddrExp() && topdcl->getAddressed()))
+                                candidate = false;
+                        }
+                        if (candidate && src->isSrcRegRegion())
+                        {
+                            war[src->getTopDcl()].push_back(inst);
+                        }
+                        continue;
+                    }
+                    else
+                        candidate = false;
+                }
+            }
+
+            if (candidate)
+                activeAddrDefs.push_back(inst);
+        }
+
+        ++inst_it;
+    }
+}
+
+void CleanupAddrAdd::dump(std::ostream& OS) const
+{
+    OS << "Number of instructions optimized away: " << origInstCount - bb->size() << std::endl;
+}
+
+void CleanupAddrAdd::run()
+{
+    removeRedAddrAdd();
 }

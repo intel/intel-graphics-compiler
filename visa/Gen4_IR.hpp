@@ -3111,6 +3111,7 @@ namespace vISA
 
         void                       computePReg();
 
+        bool isDirect() const { return acc == Direct; }
         bool isIndirect() const { return acc != Direct; }
 
         unsigned computeRightBound(uint8_t exec_size) override;
@@ -3290,6 +3291,7 @@ public:
     short                      ExIndImmVal(void);
     void                       computePReg();
 
+    bool isDirect() const { return acc == Direct; }
     bool isIndirect() const { return acc != Direct; }
 
     void setType(G4_Type ty)
@@ -3600,10 +3602,12 @@ public:
     int getOffset() const { return m_offset; }
     void setOffset(int tOffset) { m_offset = tOffset; }
 
+    G4_CmpRelation compareOperand(G4_Operand* opnd) override;
+
     int eval();
     bool isRegAllocPartaker() const { return m_addressedReg->isRegAllocPartaker(); }
 
-    void emit(std::ostream& output, bool symbolreg = false);
+    void emit(std::ostream& output, bool symbolreg = false) override;
 };
 
 inline G4_RegAccess G4_Operand::getRegAccess() const
