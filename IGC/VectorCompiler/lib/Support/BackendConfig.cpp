@@ -78,12 +78,6 @@ static cl::opt<GlobalsLocalizationConfig::LimitT> GlobalsLocalizationLimitOpt(
     cl::desc("maximum size (in bytes) used to localize global variables"),
     cl::init(GlobalsLocalizationConfig::NoLimit));
 
-static cl::opt<std::string>
-    OCLFP64BiFPath("vc-ocl-fp64-bif-path",
-                   cl::desc("full name (with path) of a BiF file with "
-                            "precompiled OpenCL fp64 builtins"),
-                   cl::init(""));
-
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -106,7 +100,7 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(File);
   if (!FileOrErr)
-    report_fatal_error("opening OpenCL generic BiF file failed: " +
+    report_fatal_error("opening OpenCL BiF file failed: " +
                        FileOrErr.getError().message());
   return std::move(FileOrErr.get());
 }
@@ -114,7 +108,6 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
 GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
   setOwningBiFModuleIf(BiFKind::OCLGeneric,
                        readBiFModuleFromFile(OCLGenericBiFPath));
-  setOwningBiFModuleIf(BiFKind::OCLFP64, readBiFModuleFromFile(OCLFP64BiFPath));
 }
 
 void GenXBackendData::setOwningBiFModule(

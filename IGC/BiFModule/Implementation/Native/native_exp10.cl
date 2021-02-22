@@ -35,6 +35,17 @@ INLINE float __builtin_spirv_OpenCL_native_exp10_f32( float x )
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_exp10, float, float, f32 )
 
+#if defined(cl_khr_fp64)
+
+INLINE double __builtin_spirv_OpenCL_native_exp10_f64( double x )
+{
+    return __builtin_spirv_OpenCL_native_exp2_f32( (float)x * (float)(_M_LOG2_10) );
+}
+
+GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_native_exp10, double, double, f64 )
+
+#endif // defined(cl_khr_fp64)
+
 #if defined(cl_khr_fp16)
 
 INLINE half __builtin_spirv_OpenCL_native_exp10_f16( half x )

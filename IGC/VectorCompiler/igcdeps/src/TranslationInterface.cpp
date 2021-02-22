@@ -296,10 +296,6 @@ static llvm::Optional<vc::ExternalData> fillExternalData() {
       getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
     return {};
-  ExtData.OCLFP64BIFModule =
-      getGenericModuleBuffer(OCL_BC_FP64);
-  if (!ExtData.OCLFP64BIFModule)
-    return {};
   return std::move(ExtData);
 }
 

@@ -713,16 +713,9 @@ bool GenXImportBiF::runOnModule(Module &M) {
 
   std::unique_ptr<Module> GenericBiFModule =
       getBiFModule(BiFKind::OCLGeneric, M.getContext());
-  std::unique_ptr<Module> FP64BiFModule =
-      getBiFModule(BiFKind::OCLFP64, M.getContext());
-
   GenericBiFModule->setDataLayout(M.getDataLayout());
   GenericBiFModule->setTargetTriple(M.getTargetTriple());
-  FP64BiFModule->setDataLayout(M.getDataLayout());
-  FP64BiFModule->setTargetTriple(M.getTargetTriple());
-
   BiFImporter{M, std::move(GenericBiFModule)}.run();
-  BiFImporter{M, std::move(FP64BiFModule)}.run();
   BIConvert{}.runOnModule(M);
   return true;
 }

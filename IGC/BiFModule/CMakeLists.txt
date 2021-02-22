@@ -941,16 +941,6 @@ igc_bif_build_bc(
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
     OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
-igc_bif_build_bc(
-    OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv_fp64.bc"
-    TRIPLE               spir64
-    SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IBiF_Impl_FP64.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
-    INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS}
-    DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
-    DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
-  )
   if ( NOT "${_PRE_RELEASE_CL}" STREQUAL "" )
    igc_bif_build_bc(
       OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
@@ -1066,7 +1056,7 @@ set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ__BiFModule_OCL}" PAR
 set(IGC_BUILD__PROJ_LABEL__BiFModule_OCL "BiFModule-OCL")
 
 add_custom_target("${IGC_BUILD__PROJ__BiFModule_OCL}"
-    DEPENDS clang-tool "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv_fp64.bc"
+    DEPENDS clang-tool "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
     SOURCES ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
   )
 set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFModule_OCL}")

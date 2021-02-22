@@ -52,7 +52,6 @@ namespace IGC
 
         /// @brief Constructor
         BIImport(std::unique_ptr<llvm::Module> pGenericModule = nullptr,
-            std::unique_ptr<llvm::Module> pFP64MathModule = nullptr,
             std::unique_ptr<llvm::Module> pSizeModule = nullptr);
 
         /// @brief analyses used
@@ -89,14 +88,10 @@ namespace IGC
         ///         Only initializes flags that the built-ins need.
         void InitializeBIFlags(llvm::Module& M);
 
-        /// @brief  Search through module passed as argument for the specified function.
-        /// @param  funcName - name of func to search for.
-        /// @param  GenericModule - module to search through
-        static llvm::Function* GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
-
         /// @brief  Search through all builtin modules for the specified function.
         /// @param  funcName - name of func to search for.
-        llvm::Function* FindInOtherModules(llvm::StringRef funcName) const;
+        static llvm::Function* GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
+        llvm::Function* GetBuiltinFunction2(llvm::StringRef funcName) const;
 
         /// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
         static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int>& Map, char* pData, size_t dataSize);
@@ -104,16 +99,13 @@ namespace IGC
     protected:
         /// Builtin module - contains the source function definition to import
         std::unique_ptr<llvm::Module> m_GenericModule;
-        std::unique_ptr<llvm::Module> m_FP64MathModule;
         std::unique_ptr<llvm::Module> m_SizeModule;
     };
 
 } // namespace IGC
 
 extern "C" llvm::ModulePass* createBuiltInImportPass(
-    std::unique_ptr<llvm::Module> pGenericModule,
-    std::unique_ptr<llvm::Module> pFP64MathModule,
-    std::unique_ptr<llvm::Module> pSizeModule);
+    std::unique_ptr<llvm::Module> pGenericModule, std::unique_ptr<llvm::Module> pSizeModule);
 
 namespace IGC
 {

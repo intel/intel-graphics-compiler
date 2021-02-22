@@ -857,12 +857,6 @@ static std::unique_ptr<llvm::MemoryBuffer> GetGenericModuleBuffer() {
     return std::unique_ptr<llvm::MemoryBuffer>{llvm::LoadBufferFromResource(Resource, "BC")};
 }
 
-static std::unique_ptr<llvm::MemoryBuffer> GetFP64ModuleBuffer() {
-    char Resource[5] = { '-' };
-    _snprintf(Resource, sizeof(Resource), "#%d", OCL_BC_FP64);
-    return std::unique_ptr<llvm::MemoryBuffer>{llvm::LoadBufferFromResource(Resource, "BC")};
-}
-
 static void WriteSpecConstantsDump(const STB_TranslateInputArgs *pInputArgs,
                                    QWORD hash) {
     const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
@@ -1066,10 +1060,8 @@ bool TranslateBuild(
     do
     {
         std::unique_ptr<llvm::Module> BuiltinGenericModule = nullptr;
-        std::unique_ptr<llvm::Module> BuiltinFP64MathModule = nullptr;
         std::unique_ptr<llvm::Module> BuiltinSizeModule = nullptr;
         std::unique_ptr<llvm::MemoryBuffer> pGenericBuffer = nullptr;
-        std::unique_ptr<llvm::MemoryBuffer> pFP64MathBuffer = nullptr;
         std::unique_ptr<llvm::MemoryBuffer> pSizeTBuffer = nullptr;
         {
             // IGC has two BIF Modules:
@@ -1128,55 +1120,6 @@ bool TranslateBuild(
                 COMPILER_TIME_END(&oclContext, TIME_OCL_LazyBiFLoading);
             }
 
-            bool isDoubleTypeUsedInModule = false;
-            llvm::NamedMDNode* features = pKernelModule->getNamedMetadata("opencl.used.optional.core.features");
-
-            if (features != NULL && features->getNumOperands() == 1)
-            {
-                for (unsigned i = 0; i != features->getOperand(0)->getNumOperands(); ++i)
-                {
-                    const llvm::MDString* feature = llvm::dyn_cast<llvm::MDString>(features->getOperand(0)->getOperand(i).get());
-
-                    if (feature->getString().equals("cl_doubles"))
-                    {
-                        isDoubleTypeUsedInModule = true;
-                    }
-                }
-            }
-
-            if (isDoubleTypeUsedInModule)
-            {
-                pFP64MathBuffer = GetFP64ModuleBuffer();
-
-                if (pFP64MathBuffer == NULL)
-                {
-                    SetErrorMessage("Error loading the FP64 builtin resource", *pOutputArgs);
-                    return false;
-                }
-
-                llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                    getLazyBitcodeModule(pFP64MathBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
-
-                if (llvm::Error EC = ModuleOrErr.takeError())
-                {
-                    std::string error_str = "Error lazily loading bitcode for fp64 builtins,"
-                        "is bitcode the right version and correctly formed?";
-                    SetErrorMessage(error_str, *pOutputArgs);
-                    return false;
-                }
-                else
-                {
-                    BuiltinFP64MathModule = std::move(*ModuleOrErr);
-                }
-
-                if (BuiltinFP64MathModule == NULL)
-                {
-                    SetErrorMessage("Error loading the FP64 builtin module from buffer", *pOutputArgs);
-                    return false;
-                }
-            }
-
-
             // Load the builtin module -  pointer depended
             {
                 char ResNumber[5] = { '-' };
@@ -1214,11 +1157,11 @@ bool TranslateBuild(
 
         if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
         {
-            IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinFP64MathModule), std::move(BuiltinSizeModule));
+            IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
         }
         else // not SPIR
         {
-            IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinFP64MathModule), std::move(BuiltinSizeModule));
+            IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
         }
 
         if (oclContext.HasError())

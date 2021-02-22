@@ -178,7 +178,6 @@ namespace IGC
 static void CommonOCLBasedPasses(
     OpenCLProgramContext* pContext,
     std::unique_ptr<llvm::Module> BuiltinGenericModule,
-    std::unique_ptr<llvm::Module> BuiltinFP64MathModule,
     std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
 #if defined( _DEBUG )
@@ -210,10 +209,6 @@ static void CommonOCLBasedPasses(
     StringRef dataLayout = layoutstr;
     pContext->getModule()->setDataLayout(dataLayout);
     BuiltinGenericModule->setDataLayout(dataLayout);
-    if (BuiltinFP64MathModule)
-    {
-        BuiltinFP64MathModule->setDataLayout(dataLayout);
-    }
     if( BuiltinSizeModule )
     {
         BuiltinSizeModule->setDataLayout(dataLayout);
@@ -348,7 +343,7 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
-    mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinFP64MathModule), std::move(BuiltinSizeModule)));
+    mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
     mpm.add(new UndefinedReferencesPass());
 
@@ -558,19 +553,17 @@ static void CommonOCLBasedPasses(
 void UnifyIROCL(
     OpenCLProgramContext* pContext,
     std::unique_ptr<llvm::Module> BuiltinGenericModule,
-    std::unique_ptr<llvm::Module> BuiltinFP64MathModule,
     std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
-    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinFP64MathModule), std::move(BuiltinSizeModule));
+    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
 }
 
 void UnifyIRSPIR(
     OpenCLProgramContext* pContext,
     std::unique_ptr<llvm::Module> BuiltinGenericModule,
-    std::unique_ptr<llvm::Module> BuiltinFP64MathModule,
     std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
-    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinFP64MathModule), std::move(BuiltinSizeModule));
+    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
 }
 
 }

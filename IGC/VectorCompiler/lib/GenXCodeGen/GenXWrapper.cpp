@@ -235,8 +235,6 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data) {
   GenXBackendData BackendData;
   BackendData.BiFModule[BiFKind::OCLGeneric] =
       IGCLLVM::makeMemoryBufferRef(*Data.OCLGenericBIFModule);
-  BackendData.BiFModule[BiFKind::OCLFP64] =
-      IGCLLVM::makeMemoryBufferRef(*Data.OCLFP64BIFModule);
   return std::move(BackendData);
 }
 

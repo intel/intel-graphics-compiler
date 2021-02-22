@@ -122,7 +122,6 @@ struct GenXBackendOptions {
 
 enum BiFKind {
   OCLGeneric,
-  OCLFP64,
   Size
 };
 
