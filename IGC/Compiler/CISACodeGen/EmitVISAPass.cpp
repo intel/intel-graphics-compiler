@@ -16669,19 +16669,18 @@ void EmitPass::setPredicateForDiscard(CVariable* pPredicate)
         {
             if (pPredicate != nullptr)
             {
-                CVariable* pMask = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true, CName::NONE);
                 m_encoder->SetNoMask();
-                m_encoder->GenericAlu(EOPCODE_NOT, pMask, psProgram->GetDiscardPixelMask(), nullptr);
+                m_encoder->GenericAlu(EOPCODE_NOT, pPredicate, pPredicate, nullptr);
                 m_encoder->Push();
                 m_encoder->SetNoMask();
-                m_encoder->GenericAlu(EOPCODE_AND, pPredicate, pPredicate, pMask);
+                m_encoder->GenericAlu(EOPCODE_OR, pPredicate, pPredicate, psProgram->GetDiscardPixelMask());
                 m_encoder->Push();
             }
             else
             {
                 pPredicate = psProgram->GetDiscardPixelMask();
-                isInversePredicate = true;
             }
+            isInversePredicate = true;
         }
     }
     if (pPredicate != nullptr)
