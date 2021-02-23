@@ -78,7 +78,6 @@ namespace TC
         }
 
         bool EnableIntegerMad() const override { return true; }
-        bool AllowFullUrbWriteMask() const override { return true; }
     };
 
     // In case some cpas are specific to NEO
