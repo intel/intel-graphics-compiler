@@ -7560,8 +7560,10 @@ void GlobalRA::addCalleeStackSetupCode()
         G4_Operand* sp_src = builder.createSrc(stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Imm * src1 = builder.createImm(frameSize*factor, Type_UD);
         auto createBEFP = builder.createMov(g4::SIMD1, fp_dst, sp_src, InstOpt_WriteEnable, false);
+        createBEFP->setComments("vISA_FP = vISA_SP");
         auto addInst = builder.createBinOp(G4_add, g4::SIMD1,
             dst, src0, src1, InstOpt_WriteEnable, false);
+        addInst->setComments("vISA_SP += vISA_frameSize");
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
         auto insertIt = std::find(entryBB->begin(), entryBB->end(), getSaveBE_FPInst());
         MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
@@ -7859,6 +7861,7 @@ void GlobalRA::addCalleeSavePseudoCode()
 // (W) mov (4) r125.0<1>:ud        SR_BEStack<4;4,1>:ud <-- in epilog
 void GlobalRA::addStoreRestoreToReturn()
 {
+
     unsigned regNum = builder.kernel.getCallerSaveLastGRF();
     unsigned subRegNum = numEltPerGRF<Type_UD>() - 4;
     oldFPDcl = builder.createHardwiredDeclare(4, Type_UD, regNum, subRegNum);
@@ -7875,20 +7878,19 @@ void GlobalRA::addStoreRestoreToReturn()
     G4_Operand* FPsrc = builder.createSrc(SRDecl->getRegVar(), 0, 0, rd, Type_UD);
 
     saveBE_FPInst = builder.createMov(g4::SIMD4, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
+    saveBE_FPInst->setComments("save vISA SP/FP to temp");
     builder.setPartFDSaveInst(saveBE_FPInst);
-    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
-    for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
-        ++insertIt)
-    {   /*  void */
-    };
-    builder.kernel.fg.getEntryBB()->insertBefore(insertIt, saveBE_FPInst);
+
+    auto entryBB = builder.kernel.fg.getEntryBB();
+    auto insertIt = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+    entryBB->insertBefore(insertIt, saveBE_FPInst);
 
     restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
-    insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
-    for (--insertIt; (*insertIt)->isFReturn() == false; --insertIt)
-    {   /*  void */
-    };
-    builder.kernel.fg.getUniqueReturnBlock()->insertBefore(insertIt, restoreBE_FPInst);
+    restoreBE_FPInst->setComments("restore vISA SP/FP from temp");
+    auto fretBB = builder.kernel.fg.getUniqueReturnBlock();
+    auto iter = std::prev(fretBB->end());
+    assert((*iter)->isFReturn() && "fret BB must end with fret");
+    fretBB->insertBefore(iter, restoreBE_FPInst);
 
     if (builder.kernel.getOption(vISA_GenerateDebugInfo))
     {
