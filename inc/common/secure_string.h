@@ -33,7 +33,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static inline int
 strcpy_s(char *strDestination, size_t numberOfElements, const char *strSource)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+    // As WA for issue in Fedora build
+    // need to rework this
     strncpy(strDestination, strSource, numberOfElements);
+#pragma GCC diagnostic pop
     strDestination[numberOfElements - 1] = '\0';
     return 0;
 }
@@ -42,10 +47,20 @@ static inline int
 strncpy_s(char *strDestination, size_t numberOfElements, const char *strSource, size_t count)
 {
     if( numberOfElements - 1 > count ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+        // As WA for issue in Fedora build
+        // need to rework this
         strncpy(strDestination, strSource, count);
+#pragma GCC diagnostic pop
         strDestination[count] = '\0';
     } else {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+        // As WA for issue in Fedora build
+        // need to rework this
         strncpy(strDestination, strSource, numberOfElements - 1);
+#pragma GCC diagnostic pop
         strDestination[numberOfElements - 1] = '\0';
     }
     return 0;
@@ -59,10 +74,20 @@ strncat_s(char *strDestination, size_t numberOfElements, const char *strSource, 
     unsigned int elementsLeft = numberOfElements - existingIndex;
 
     if( elementsLeft > count ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+        // As WA for issue in Fedora build
+        // need to rework this
         strncpy(strDestination + existingIndex, strSource, count);
+#pragma GCC diagnostic pop
         strDestination[existingIndex + count] = '\0';
     } else if( elementsLeft > 1 ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+        // As WA for issue in Fedora build
+        // need to rework this
         strncpy(strDestination + existingIndex, strSource, elementsLeft - 1);
+#pragma GCC diagnostic pop
         strDestination[existingIndex + elementsLeft] = '\0';
     }
     return 0;
