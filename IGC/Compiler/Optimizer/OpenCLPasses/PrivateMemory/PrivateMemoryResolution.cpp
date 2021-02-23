@@ -908,6 +908,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
         }
 
+        bool enableTransposeMemLayoutSupport = true;
+
         for (auto pAI : allocaInsts)
         {
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
@@ -924,10 +926,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
             // Get buffer information from the analysis
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
-
             // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
-            bool TransposeMemLayout = CanUseSOALayout(pAI, pTypeOfAccessedObject);
+            bool TransposeMemLayout = enableTransposeMemLayoutSupport && CanUseSOALayout(pAI, pTypeOfAccessedObject);
 
             unsigned int bufferSize = 0;
             if (TransposeMemLayout)
@@ -941,11 +942,11 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
             }
 
-
             Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
             Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
             perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
+            totalOffset = builder.CreateZExt(totalOffset, privateBase->getType());
             Value* threadOffset = builder.CreateAdd(privateBase, totalOffset, VALUE_NAME(pAI->getName() + ".threadOffset"));
             Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, Type::getInt8Ty(C)->getPointerTo(ADDRESS_SPACE_PRIVATE), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
             Value* privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
