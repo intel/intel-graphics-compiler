@@ -6896,6 +6896,9 @@ void GlobalRA::stackCallProlog()
     // Useful data in r126 is expected to be preserved by all functions.
     if (kernel.fg.getIsStackCallFunc())
     {
+        if (kernel.getOption(vISA_skipFDE))
+            return;
+
         // emit frame descriptor
         auto payload = builder.createHardwiredDeclare(8, Type_UD, kernel.getFPSPGRF(), 0);
         payload->setName(builder.getNameString(builder.kernel.fg.mem, 24, "FrameDescriptorGRF"));

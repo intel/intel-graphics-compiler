@@ -31,6 +31,7 @@ DEF_VISA_OPTION(vISA_dumpRPE,               ET_BOOL, "-dumpRPE",         UNUSED,
 DEF_VISA_OPTION(vISA_dumpLiveness,               ET_BOOL, "-dumpLiveness",         UNUSED, false)
 DEF_VISA_OPTION(vISA_disableInstDebugInfo,  ET_BOOL, "-disableInstDebugInfo",      UNUSED, false)
 DEF_VISA_OPTION(vISA_analyzeMove,           ET_BOOL, "-analyzeMove",     UNUSED, false)
+DEF_VISA_OPTION(vISA_skipFDE,               ET_BOOL, "-skipFDE",         UNUSED, false)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways,          ET_BOOL, NULLSTR,            UNUSED, true)
