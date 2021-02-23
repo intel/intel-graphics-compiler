@@ -1184,7 +1184,10 @@ bool TranslateBuild(
             oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
             oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
         }
-
+        if( IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
+        {
+            oclContext.m_retryManager.AdvanceState();
+        }
         // Optimize the IR. This happens once for each program, not per-kernel.
         IGC::OptimizeIR(&oclContext);
 
