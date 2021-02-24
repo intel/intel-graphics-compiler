@@ -590,10 +590,7 @@ namespace IGC
         /// string text.
         llvm::MCSymbol* getStringPoolEntry(llvm::StringRef Str);
 
-        void registerVISA(IGC::VISAModule* M)
-        {
-            VISAModToFunc[M] = M->getFunction();
-        }
+        void registerVISA(IGC::VISAModule* M);
 
         llvm::Function* GetFunction(VISAModule* M)
         {

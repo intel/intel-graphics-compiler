@@ -316,6 +316,21 @@ MCSymbol* DwarfDebug::getStringPoolEntry(StringRef Str)
     }
     return Entry.first;
 }
+void DwarfDebug::registerVISA(IGC::VISAModule* M)
+{
+    IGC_ASSERT(M);
+    auto *F = M->getFunction();
+    // Sanity check that we have only single module associated
+    // with a Function
+    auto *EM = GetVISAModule(F);
+    if (M == EM)
+        return;
+    // TODO: we need to change this one to assert
+    if (EM != nullptr) {
+        VISAModToFunc.erase(EM);
+    }
+    VISAModToFunc[M] = M->getFunction();
+}
 
 // Define a unique number for the abbreviation.
 //
