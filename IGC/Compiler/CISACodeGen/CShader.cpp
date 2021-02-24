@@ -623,7 +623,7 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram* pKernelProgram)
             sizeof(USC::SConstantGatherEntry),
             &gatherMap[0],
             gatherMap.size() * sizeof(USC::SConstantGatherEntry));
-        pKernelProgram->ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in number of GRF bits
+        pKernelProgram->ConstantBufferLength = m_ConstantBufferLength / getMinPushConstantBufferAlignmentInBytes();
     }
 
     if (m_cbSlot != -1)
