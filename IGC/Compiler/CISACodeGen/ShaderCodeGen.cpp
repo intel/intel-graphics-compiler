@@ -1683,7 +1683,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(new GenUpdateCB());
 
-            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
+            if (!pContext->m_instrTypes.hasAtomics && 
+                !extensiveShader(pContext))
             {
                 // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
                 // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
@@ -1709,8 +1710,15 @@ void OptimizeIR(CodeGenContext* const pContext)
             }
             //some optimization can create switch statement we don't support
             mpm.add(llvm::createLowerSwitchPass());
-            // After lowering 'switch', run jump threading to remove redundant jumps.
-            mpm.add(llvm::createJumpThreadingPass());
+
+            // Conditions apply just as above due to problems with atomics
+            // (see comment above for details).
+            if (!pContext->m_instrTypes.hasAtomics &&
+                !extensiveShader(pContext))
+            {
+                // After lowering 'switch', run jump threading to remove redundant jumps.
+                mpm.add(llvm::createJumpThreadingPass());
+            }
 
             // run instruction combining to clean up the code after CFG optimizations
             mpm.add(createIGCInstructionCombiningPass());
