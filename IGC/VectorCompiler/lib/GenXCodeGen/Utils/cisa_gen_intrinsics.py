@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 #=========================== begin_copyright_notice ============================
 #
 # Copyright (c) 2020-2021 Intel Corporation
