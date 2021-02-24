@@ -3679,6 +3679,13 @@ list(APPEND _targetLinkLineCommon zebinlib)
 
 
 
+  if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
+    list(APPEND _targetLinkLineCommon
+        "$<$<CONFIG:Debug>:${IGC_BUILD__PROJ__SPIRV-Tools}>"
+    )
+  endif()
+
+
   list(APPEND _targetLinkLineCommon
       "${IGC_BUILD__PROJ__Compiler}"
       "${IGC_BUILD__PROJ__GenISAIntrinsics}"
