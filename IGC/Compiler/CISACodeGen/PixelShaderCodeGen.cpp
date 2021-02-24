@@ -394,6 +394,13 @@ void CPixelShader::AllocatePSPayload()
         }
     }
 
+    // This is the preallocation for temp variables in payload sections
+    for (auto& var : payloadTempSetup)
+    {
+        AllocateInput(var, offset);
+        offset += var->GetSize();
+    }
+
     // When preallocation failed (exceeding the total number of physical registers), early exit and give up this compilation._
     ProgramOutput()->m_scratchSpaceUsedBySpills = offset >= encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize();
     if (ProgramOutput()->m_scratchSpaceUsedBySpills)

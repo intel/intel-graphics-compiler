@@ -452,6 +452,11 @@ void CShader::CreateAliasVars()
     }
 }
 
+void CShader::AddPatchTempSetup(CVariable* var)
+{
+    payloadTempSetup.push_back(var);
+}
+
 bool CShader::AppendPayloadSetup(CVariable* var)
 {
     if (find(payloadLiveOutSetup.begin(), payloadLiveOutSetup.end(), var) != payloadLiveOutSetup.end())
@@ -884,7 +889,7 @@ CVariable* CShader::BitCast(CVariable* var, VISA_Type newType)
     return bitCast;
 }
 
-CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type)
+CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type, bool isCodePatchCandidate)
 {
     VISA_Type immType = type;
 
@@ -899,8 +904,16 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type)
             numLanes(m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
         // FIXME: We need to pop/push the encoder context
         //encoder.save();
+        if (isCodePatchCandidate)
+        {
+            encoder.SetPayloadSectionAsPrimary();
+        }
         encoder.SetP(dst, immVar);
         encoder.Push();
+        if (isCodePatchCandidate)
+        {
+            encoder.SetPayloadSectionAsSecondary();
+        }
         return dst;
     }
 

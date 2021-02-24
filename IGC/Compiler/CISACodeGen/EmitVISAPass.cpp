@@ -654,6 +654,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->InitFuncAttribute(&F, true);
             InitializeKernelStack(&F);
         }
+        if (m_encoder->IsCodePatchCandidate())
+        {
+            m_currShader->SplitPayloadFromShader(&F);
+        }
         m_currShader->AddPrologue();
     }
     else
@@ -668,10 +672,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_encoder->InitFuncAttribute(&F, false);
             emitStackFuncEntry(&F);
         }
-    }
-    if (m_encoder->IsCodePatchCandidate())
-    {
-        m_currShader->SplitPayloadFromShader(&F);
     }
 
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
@@ -3697,6 +3697,7 @@ void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
         tmpDeltaDst = psProgram->GetInputDelta(setupIndex);
         baryVar = psProgram->GetBaryReg(mode);
     }
+    ContextSwitchPayloadSection();
     //dst:hf = src1 * src0 + src3
     //dst = p    * u    + r
     //mad (16) r20.0.xyzw:hf r0.3.r:hf r0.0.r:hf r12.0.xyzw:hf {Align16, H1} // #??:$31:%209
@@ -3714,6 +3715,7 @@ void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
 
     m_encoder->Mad(m_destination, baryVar, tmpDeltaDst, m_destination);
     m_encoder->Push();
+    ContextSwitchShaderBody();
 }
 
 void EmitPass::emitPSInputCst(llvm::Instruction* inst)
@@ -7794,6 +7796,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             unsigned int subReg = 0;
             if (usage == VFACE)
             {
+                ContextSwitchPayloadSection();
                 for (unsigned int i = 0; i < numTri; i++)
                 {
                     CVariable* src = m_currShader->BitCast(reg, ISA_TYPE_W);
@@ -7809,6 +7812,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_encoder->Cast(dst, src);
                     m_encoder->Push();
                 }
+                ContextSwitchShaderBody();
             }
             else if (usage == RENDER_TARGET_ARRAY_INDEX)
             {

@@ -113,6 +113,7 @@ public:
     CVariable* GetSymbol(llvm::Value* value, bool fromConstantPool = false);
     void        AddSetup(uint index, CVariable* var);
     bool        AppendPayloadSetup(CVariable* var);
+    void        AddPatchTempSetup(CVariable* var);
     void        AddPatchConstantSetup(uint index, CVariable* var);
 
     // TODO: simplify calls to GetNewVariable to these shorter and more
@@ -205,7 +206,7 @@ public:
 
     void        AllocateInput(CVariable* var, uint offset, uint instance = 0, bool forceLiveOut = false);
     void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);
-    CVariable* ImmToVariable(uint64_t immediate, VISA_Type type);
+    CVariable* ImmToVariable(uint64_t immediate, VISA_Type type, bool isCodePatchCandidate = false);
     CVariable* GetConstant(llvm::Constant* C, CVariable* dstVar = nullptr);
     CVariable* GetScalarConstant(llvm::Value* c);
     CVariable* GetUndef(VISA_Type type);
@@ -545,6 +546,7 @@ protected:
     CEncoder encoder;
     std::vector<CVariable*> setup;
     std::vector<CVariable*> payloadLiveOutSetup;
+    std::vector<CVariable*> payloadTempSetup;
     std::vector<CVariable*> patchConstantSetup;
 
     uint m_maxBlockId;
