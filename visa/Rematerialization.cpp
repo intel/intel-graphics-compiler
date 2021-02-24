@@ -506,10 +506,12 @@ namespace vISA
             return false;
 
         // If uniqueDefBB is not under SIMD CF, current BB is under SIMD CF
-        // then we can remat only if def has NoMask option set.
+        // and use has NoMask set, then we can remat only if def has NoMask
+        // option set.
         if (!uniqueDefBB->isDivergent() &&
             bb->isDivergent() &&
-            !uniqueDefInst->isWriteEnableInst())
+            !uniqueDefInst->isWriteEnableInst() &&
+            srcInst->isWriteEnableInst())
         {
             return false;
         }
