@@ -111,6 +111,8 @@ public:
     bool        NeedVMask() { return m_VectorMask; }
     void        MarkConstantInterpolation(unsigned int index);
 
+    bool        HasZWDelta() { return m_ZWDelta != nullptr; }
+
     // check whether it's the last render target write
     bool        IsLastRTWrite(llvm::GenIntrinsicInst* inst);
 

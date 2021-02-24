@@ -203,7 +203,7 @@ public:
     void SaveStackState();
     void RestoreStackState();
 
-    void        AllocateInput(CVariable* var, uint offset, uint instance = 0);
+    void        AllocateInput(CVariable* var, uint offset, uint instance = 0, bool forceLiveOut = false);
     void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);
     CVariable* ImmToVariable(uint64_t immediate, VISA_Type type);
     CVariable* GetConstant(llvm::Constant* C, CVariable* dstVar = nullptr);
