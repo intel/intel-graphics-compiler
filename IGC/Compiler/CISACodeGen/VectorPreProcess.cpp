@@ -1302,27 +1302,56 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         if (N == MaxIndex + 1)
             return Inst;
 
-        Type* NewVecTy = FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
-            MaxIndex + 1);
+        //Check if we can turn a ldrawvector into a ldraw
+        Instruction* NewLI = nullptr;
         IRBuilder<> Builder(Inst);
-        Instruction* NewLI = ALI.Create(NewVecTy);
-
-        // Loop and replace all uses.
-        SmallVector<Value*, 8> NewEEI(MaxIndex + 1, nullptr);
-        for (auto EEI : ConstEEIUses)
+        auto ldrawvec = dyn_cast<LdRawIntrinsic>(Inst);
+        bool canSimplifyOneUse = ldrawvec && isa<VectorType>(ldrawvec->getType()) &&
+            ldrawvec->hasOneUse() &&
+            isa<ConstantInt>(ldrawvec->getOffsetValue()) &&
+            !ConstEEIUses.empty();
+        if (canSimplifyOneUse)
         {
-            auto CI = cast<ConstantInt>(EEI->getIndexOperand());
-            unsigned Idx = int_cast<unsigned>(CI->getZExtValue());
-            if (NewEEI[Idx] == nullptr)
-            {
-                NewEEI[Idx] = Builder.CreateExtractElement(NewLI, CI);
-            }
-            EEI->replaceAllUsesWith(NewEEI[Idx]);
-            EEI->eraseFromParent();
+            auto EE_user = ConstEEIUses.front();
+            auto return_type = cast<VectorType>(ldrawvec->getType())->getElementType();
+            auto buffer_ptr = ldrawvec->getResourceValue();
+            auto alignment = ldrawvec->getAlignment();
+            auto offset = (unsigned)cast<ConstantInt>(ldrawvec->getOffsetValue())->getZExtValue();
+            auto EE_index = (unsigned)cast<ConstantInt>(EE_user->getIndexOperand())->getZExtValue();
+            auto new_offset = offset + (EE_index * alignment); //Calculate new offset
+            Type* types[2] = { return_type , buffer_ptr->getType()};
+            Value* args[4] = { buffer_ptr, Builder.getInt32(new_offset),
+                Builder.getInt32(alignment), Builder.getInt32(ldrawvec->isVolatile())};
+            Function* newLdRawFunction =
+                GenISAIntrinsic::getDeclaration(ldrawvec->getModule(), GenISAIntrinsic::GenISA_ldraw_indexed, types);
+            NewLI = Builder.CreateCall(newLdRawFunction, args);
+            EE_user->replaceAllUsesWith(NewLI);
+            EE_user->eraseFromParent();
+            return NewLI;
         }
-        IGC_ASSERT_MESSAGE(Inst->use_empty(), "out of sync");
-        Inst->eraseFromParent();
-        return NewLI;
+        else
+        {
+            Type* NewVecTy = FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
+                MaxIndex + 1);
+            NewLI = ALI.Create(NewVecTy);
+
+            // Loop and replace all uses.
+            SmallVector<Value*, 8> NewEEI(MaxIndex + 1, nullptr);
+            for (auto EEI : ConstEEIUses)
+            {
+                auto CI = cast<ConstantInt>(EEI->getIndexOperand());
+                unsigned Idx = int_cast<unsigned>(CI->getZExtValue());
+                if (NewEEI[Idx] == nullptr)
+                {
+                    NewEEI[Idx] = Builder.CreateExtractElement(NewLI, CI);
+                }
+                EEI->replaceAllUsesWith(NewEEI[Idx]);
+                EEI->eraseFromParent();
+            }
+            IGC_ASSERT_MESSAGE(Inst->use_empty(), "out of sync");
+            Inst->eraseFromParent();
+            return NewLI;
+        }
     }
 
     // %2 = insertelement <4 x float> undef, float 1.000000e+00, i32 0
