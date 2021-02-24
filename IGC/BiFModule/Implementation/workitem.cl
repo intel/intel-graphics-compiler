@@ -71,9 +71,9 @@ size_t3 OVERLOADABLE __intel_WorkgroupId()
     return v;
 }
 
-size_t OVERLOADABLE __intel_LocalInvocationId(uint dim)
+uint OVERLOADABLE __intel_LocalInvocationId(uint dim)
 {
-    size_t v = 0;
+    uint v = 0;
     if (dim == 0) {
         v = __builtin_IB_get_local_id_x();
     }
@@ -90,11 +90,6 @@ size_t OVERLOADABLE __intel_LocalInvocationId(uint dim)
     __builtin_assume(v <= 0xffff);
 #endif
     return v;
-}
-
-uint __intel_LocalId(uint dim)
-{
-    return __intel_LocalInvocationId(dim);
 }
 
 size_t3 OVERLOADABLE __intel_LocalInvocationId()

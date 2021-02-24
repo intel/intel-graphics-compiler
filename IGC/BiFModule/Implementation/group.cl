@@ -28,7 +28,7 @@ IN THE SOFTWARE.
 
 uint __intel_LocalInvocationIndex();
 uint __intel_WorkgroupSize();
-uint __intel_LocalId(uint dim);
+uint OVERLOADABLE __intel_LocalInvocationId(uint dim);
 
 int OVERLOADABLE intel_sub_group_shuffle( int X, uint c );
 long OVERLOADABLE intel_sub_group_shuffle( long X, uint c );
@@ -1097,9 +1097,9 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
 #define BROADCAST_WORKGROUP(type)                                                       \
 {                                                                                       \
     GET_MEMPOOL_PTR(tmp, type, false, 1)                                                       \
-    if( (__intel_LocalId(0) == LocalId.s0) &                                            \
-        (__intel_LocalId(1) == LocalId.s1) &                                            \
-        (__intel_LocalId(2) == LocalId.s2) )                                            \
+    if( (__intel_LocalInvocationId(0) == LocalId.s0) &                                            \
+        (__intel_LocalInvocationId(1) == LocalId.s1) &                                            \
+        (__intel_LocalInvocationId(2) == LocalId.s2) )                                            \
     {                                                                                   \
         *tmp = Value;                                                                   \
     }                                                                                   \
