@@ -94,7 +94,7 @@ def fno_jump_tables : Flag<["-"], "fno-jump-tables">,
   HelpText<"Disable the use of jump tables for lowering switches">;
 
 // this option enables legacy dataport legalization
-def ftranslate_legacy_memory_intrinsics : Flag<["-"], "-ftranslate-legacy-memory-intrinsics">,
+def ftranslate_legacy_memory_intrinsics : Flag<["-"], "ftranslate-legacy-memory-intrinsics">,
   HelpText<"Legalize old memory intrinsics">;
 
 def Xfinalizer : Separate<["-"], "Xfinalizer">,
