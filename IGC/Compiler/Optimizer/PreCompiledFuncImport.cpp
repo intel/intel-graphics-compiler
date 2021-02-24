@@ -1803,11 +1803,9 @@ bool PreCompiledFuncImport::isDPConvFunc(Function* F) const
 bool PreCompiledFuncImport::usePrivateMemory(Function* F)
 {
     // Assume alloca is in entry BB
-    BasicBlock* entryBB = &F->getEntryBlock();
-    for (auto II = entryBB->begin(), IE = entryBB->end(); II != IE; ++II)
+    for (const Instruction& I : F->getEntryBlock())
     {
-        Instruction* I = &*II;
-        if (isa<AllocaInst>(I))
+        if (isa<AllocaInst>(&I))
             return true;
     }
     return false;

@@ -238,13 +238,13 @@ namespace IGC
         }
 
         T* release()
-        {   // !!! This method do not decrement the reference cound and thus should be used with care !!!
+        {   // !!! This method do not decrement the reference count and thus should be used with care !!!
             T* _Tmp = m_ptr;
-            m_ptr = 0;
+            m_ptr = nullptr;
             return (_Tmp);
         }
 
-        void reset(T* rhs = 0)
+        void reset(T* rhs = nullptr)
         {
             releaseRef();
             m_ptr = rhs;

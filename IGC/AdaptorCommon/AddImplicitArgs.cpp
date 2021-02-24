@@ -412,7 +412,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
             llvm::Value* arg = cInst->getOperand(i);
             if (arg->getType() != new_arg_iter->getType())
             {
-                // fix opague type mismatch on %opencl...
+                // fix opaque type mismatch on %opencl...
                 std::string str0;
                 llvm::raw_string_ostream s(str0);
                 arg->getType()->print(s);
@@ -636,7 +636,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
         for (; I != E; I++)
         {
             ArgInfoMetaDataHandle argInfo = *I;
-            ImplicitArg::ArgType argId = (ImplicitArg::ArgType)argInfo->getArgId();
+            ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
 
             if (argId < ImplicitArg::ArgType::STRUCT_START)
             {
@@ -654,7 +654,7 @@ void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNo
                 info.DW0.All.argExplictNum = argInfo->getExplicitArgNum();
                 info.DW0.All.argOffset = argInfo->getStructArgOffset();
                 info.DW0.All.argId = argId;
-                (*argData).StructArgSet.insert(info.DW0.Value);
+                argData->StructArgSet.insert(info.DW0.Value);
             }
             else if (argId <= ImplicitArg::ArgType::IMAGES_END || argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE)
             {

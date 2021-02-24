@@ -235,9 +235,9 @@ namespace IGC
                 args.push_back(pIDNode);
             }
 
-            for (const_iterator i = m_data.begin(), e = m_data.end(); i != e; ++i)
+            for (const item_type& i : m_data)
             {
-                args.push_back(Traits::generateValue(context, *i));
+                args.push_back(Traits::generateValue(context, i));
             }
 
             return llvm::MDNode::get(context, args);

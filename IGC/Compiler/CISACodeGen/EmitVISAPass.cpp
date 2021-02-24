@@ -195,7 +195,7 @@ static bool DefReachUseWithinLevel(llvm::Value* def, const llvm::Instruction* us
     return false;
 }
 
-uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& slicing)
+uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing)
 {
     m_encoder->SetSubSpanDestination(false);
     uint numInstance = m_currShader->m_numberInstance;
@@ -529,7 +529,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         auto fIT = m_moduleMD->FuncMD.find(&F);
         if (fIT != m_moduleMD->FuncMD.end() &&
-            (*fIT).second.isCloned)
+            fIT->second.isCloned)
         {
             isCloned = true;
         }
@@ -602,7 +602,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 auto I = block.m_dags.rbegin(), E = block.m_dags.rend();
                 while (I != E && m_encoder->IsCodePatchCandidate())
                 {
-                    Instruction* llvmInst = (*I).m_root;
+                    Instruction* llvmInst = I->m_root;
                     if (llvmInst->getOpcode() == Instruction::Call)
                     {
                         if (GenIntrinsicInst * I = dyn_cast<GenIntrinsicInst>(llvmInst))
@@ -747,7 +747,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         llvmtoVISADump->stream() << F.getName() << "{\n\n";
     }
 
-    DenseMap<Instruction*, uint32_t> rootToVISAId;
+    DenseMap<const Instruction*, uint32_t> rootToVISAId;
 
     StringRef curSrcFile, curSrcDir;
 
@@ -780,7 +780,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         auto I = block.m_dags.rbegin(), E = block.m_dags.rend();
         while (I != E)
         {
-            Instruction* llvmInst = (*I).m_root;
+            Instruction* llvmInst = I->m_root;
             if (llvmInst->getDebugLoc())
             {
                 unsigned int curLineNumber = llvmInst->getDebugLoc().getLine();
@@ -808,7 +808,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             }
 
             bool slicing = false;
-            uint numInstance = DecideInstanceAndSlice(*(block.bb), (*I), slicing);
+            uint numInstance = DecideInstanceAndSlice(*block.bb, *I, slicing);
             IGC_ASSERT(numInstance == 1 || numInstance == 2);
 
             if (slicing && !disableSlicing)
@@ -816,7 +816,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                     I = emitInSlice(block, I);
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
-                    llvmInst = (*I).m_root;
+                    llvmInst = I->m_root;
             }
 
             if (I != E)
@@ -838,7 +838,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 // If slicing happens, then recalculate the number of instances.
                 if (slicing)
                 {
-                    numInstance = DecideInstanceAndSlice(*(block.bb), (*I), slicing);
+                    numInstance = DecideInstanceAndSlice(*block.bb, *I, slicing);
                 }
 
                 if (llvmtoVISADump)
@@ -854,15 +854,15 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 if (numInstance < 2)
                 {
                     m_encoder->SetSecondHalf(false);
-                    (*I).m_pattern->Emit(this, init);
+                    I->m_pattern->Emit(this, init);
                     ++I;
                 }
                 else
                 {
                     m_encoder->SetSecondHalf(false);
-                    (*I).m_pattern->Emit(this, init);
+                    I->m_pattern->Emit(this, init);
                     m_encoder->SetSecondHalf(true);
-                    (*I).m_pattern->Emit(this, init);
+                    I->m_pattern->Emit(this, init);
                     ++I;
                 }
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(llvmInst);)
@@ -880,14 +880,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             {
                 llvmtoVISADump->stream() << "; BB" << block.id << ":\n";
             }
-            for (auto BBI = block.bb->begin(), BBE = block.bb->end(); BBI != BBE; ++BBI)
+            for (const Instruction& inst : *block.bb)
             {
-                Instruction* inst = &(*BBI);
-                inst->print(llvmtoVISADump->stream());
-                auto val = rootToVISAId.find(inst);
+                inst.print(llvmtoVISADump->stream());
+                auto val = rootToVISAId.find(&inst);
                 if (val != rootToVISAId.end())
                 {
-                    llvmtoVISADump->stream() << "\t\t; visa id: " << (*val).second;
+                    llvmtoVISADump->stream() << "\t\t; visa id: " << val->second;
                 }
                 llvmtoVISADump->stream() << "\n";
             }
@@ -10708,7 +10707,7 @@ void EmitPass::emitStore(StoreInst* inst, Value* offset, ConstantInt* immOffset)
     emitVectorStore(inst, offset, immOffset);
 }
 
-CVariable* EmitPass::GetSymbol(llvm::Value* v)
+CVariable* EmitPass::GetSymbol(llvm::Value* v) const
 {
     return m_currShader->GetSymbol(v);
 }
@@ -13293,7 +13292,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
-void setSIMDSizeMask(CEncoder* m_encoder, CShader* m_currShader, int i)
+void setSIMDSizeMask(CEncoder* m_encoder, const CShader* m_currShader, int i)
 {
     m_encoder->SetSimdSize(SIMDMode::SIMD8);
     m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);

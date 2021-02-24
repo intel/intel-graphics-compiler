@@ -835,7 +835,7 @@ void overrideOCLProgramBinary(OpenCLProgramContext &Ctx, char *&binaryOutput, in
     binarySize = newBinarySize;
 }
 
-void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, char *binaryOutput, int binarySize)
+void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, const char *binaryOutput, size_t binarySize)
 {
 #if LLVM_VERSION_MAJOR >= 7
     auto name = DumpName(IGC::Debug::GetShaderOutputName())
@@ -875,7 +875,7 @@ bool TranslateBuild(
     const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution)
 {
-    ShaderHash inputShHash = ShaderHashOCL((const UINT *)pInputArgs->pInput,
+    ShaderHash inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(pInputArgs->pInput),
                                            pInputArgs->InputSize / 4);
 
     // on wrong spec constants, vc::translateBuild may fail
@@ -910,8 +910,8 @@ bool TranslateBuild(
         llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
         auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
         if (instCombineSinkingSwitch != optionsMap.end()) {
-            if ((*instCombineSinkingSwitch).getValue()->getNumOccurrences() == 0) {
-                const char* args[] = { "igc", instCombineFlag.data() };
+            if (instCombineSinkingSwitch->getValue()->getNumOccurrences() == 0) {
+                const char* const args[] = { "igc", instCombineFlag.data() };
                 llvm::cl::ParseCommandLineOptions(sizeof(args) / sizeof(args[0]), args);
             }
         }
@@ -940,11 +940,11 @@ bool TranslateBuild(
         if (inputDataFormatTemp == TB_DATA_FORMAT_LLVM_BINARY)
         {
             isbc = true;
-            DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".bc", &inputf);
+            DumpShaderFile(pOutputFolder, pInputArgs->pInput, pInputArgs->InputSize, hash, ".bc", &inputf);
         }
         else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V)
         {
-            DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv", &inputf);
+            DumpShaderFile(pOutputFolder, pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv", &inputf);
 #if defined(IGC_SPIRV_TOOLS_ENABLED)
             spv_text spirvAsm = nullptr;
             if (DisassembleSPIRV(pInputArgs->pInput, pInputArgs->InputSize, &spirvAsm) == SPV_SUCCESS)
@@ -955,8 +955,8 @@ bool TranslateBuild(
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
         }
 
-        DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt", &iof);
-        DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_options.txt", &of);
+        DumpShaderFile(pOutputFolder, pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt", &iof);
+        DumpShaderFile(pOutputFolder, pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_options.txt", &of);
 
         // dump cmd file that has igcstandalone command to compile this kernel.
         std::ostringstream cmdline;
@@ -1248,7 +1248,7 @@ bool TranslateBuild(
         oclContext.m_programOutput.GetProgramBinary(programBinary, pointerSizeInBytes);
         binarySize = static_cast<int>(programBinary.Size());
         binaryOutput = new char[binarySize];
-        memcpy_s(binaryOutput, binarySize, (char*)programBinary.GetLinearPointer(), binarySize);
+        memcpy_s(binaryOutput, binarySize, programBinary.GetLinearPointer(), binarySize);
     } else {
         // ze binary foramt
         llvm::SmallVector<char, 64> buf;
@@ -1285,7 +1285,7 @@ bool TranslateBuild(
     if (debugDataSize > 0)
     {
         char* debugDataOutput = new char[debugDataSize];
-        memcpy_s(debugDataOutput, debugDataSize, (char*)programDebugData.GetLinearPointer(), debugDataSize);
+        memcpy_s(debugDataOutput, debugDataSize, programDebugData.GetLinearPointer(), debugDataSize);
 
         pOutputArgs->DebugDataSize = debugDataSize;
         pOutputArgs->pDebugData = debugDataOutput;
@@ -1299,7 +1299,7 @@ bool TranslateBuild(
     {
         const GEN_ISA_TYPE genIsa = GTPIN_IGC_OCL_GetGenIsaFromPlatform(IGCPlatform.getPlatformInfo());
         int instrumentedBinarySize = 0;
-        void* instrumentedBinaryOutput = NULL;
+        void* instrumentedBinaryOutput = nullptr;
         GTPIN_IGC_OCL_Instrument(genIsa, driverName,
             binarySize, binaryOutput,
             instrumentedBinarySize, instrumentedBinaryOutput);
@@ -1307,7 +1307,7 @@ bool TranslateBuild(
         void* newBuffer = operator new[](instrumentedBinarySize, std::nothrow);
         memcpy_s(newBuffer, instrumentedBinarySize, instrumentedBinaryOutput, instrumentedBinarySize);
         pOutputArgs->OutputSize = instrumentedBinarySize;
-        pOutputArgs->pOutput = (char*)newBuffer;
+        pOutputArgs->pOutput = static_cast<char*>(newBuffer);
 
         if (binaryOutput != nullptr)
         {
@@ -1335,7 +1335,7 @@ bool CIGCTranslationBlock::Initialize(
     const STB_CreateArgs* pCreateArgs)
 {
     const SGlobalData* pCreateArgsGlobalData =
-                  (const SGlobalData*)pCreateArgs->pCreateData;
+                  static_cast<const SGlobalData*>(pCreateArgs->pCreateData);
 
     // IGC maintains its own WA table - ignore the version in the global arguments.
     m_Platform = *pCreateArgsGlobalData->pPlatform;
@@ -1431,7 +1431,7 @@ TRANSLATION_BLOCK_API void Delete(
     CTranslationBlock* pTranslationBlock)
 {
     CIGCTranslationBlock*  pIGCTranslationBlock =
-        (CIGCTranslationBlock*)pTranslationBlock;
+        static_cast<CIGCTranslationBlock*>(pTranslationBlock);
 
     CIGCTranslationBlock::Delete(pIGCTranslationBlock);
 }

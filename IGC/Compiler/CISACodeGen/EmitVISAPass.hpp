@@ -465,7 +465,7 @@ public:
     template<size_t N>
     void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode);
     CVariable* BroadcastIfUniform(CVariable* pVar);
-    uint DecideInstanceAndSlice(llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
+    uint DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
     inline bool isUndefOrConstInt0(llvm::Value* val)
     {
         if (val == nullptr ||
@@ -556,7 +556,7 @@ public:
     CVariable* Add(CVariable* Src0, CVariable* Src1, const CVariable* DstPrototype);
 
     // temporary helper function
-    CVariable* GetSymbol(llvm::Value* v);
+    CVariable* GetSymbol(llvm::Value* v) const;
 
     // Check if stateless indirect access is available
     // If yes, increase the counter, otherwise do nothing
@@ -578,8 +578,8 @@ public:
     CodeGenPatternMatch* m_pattern = nullptr;
     DeSSA* m_deSSA = nullptr;
     BlockCoalescing* m_blockCoalescing = nullptr;
-    SIMDMode m_SimdMode;
-    ShaderDispatchMode m_ShaderDispatchMode;
+    const SIMDMode m_SimdMode;
+    const ShaderDispatchMode m_ShaderDispatchMode;
     CShaderProgram::KernelShaderMap& m_shaders;
     CShader* m_currShader;
     CEncoder* m_encoder;
@@ -588,7 +588,7 @@ public:
     VariableReuseAnalysis* m_VRA = nullptr;
     ModuleMetaData* m_moduleMD = nullptr;
     bool m_canAbortOnSpill;
-    PSSignature* m_pSignature;
+    PSSignature* const m_pSignature;
 
     // Debug info emitter
     IDebugEmitter* m_pDebugEmitter = nullptr;

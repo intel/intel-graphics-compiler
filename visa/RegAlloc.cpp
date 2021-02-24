@@ -838,11 +838,8 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
                     continue;
                 }
 
-                unsigned int lb = dst->getLeftBound();
-                unsigned int rb = dst->getRightBound();
-
-                unsigned int rowStart = lb / bytesPerGRF;
-                unsigned int rowEnd = rb / bytesPerGRF;
+                unsigned int rowStart = dst->getLeftBound() / bytesPerGRF;
+                unsigned int rowEnd = dst->getRightBound() / bytesPerGRF;
 
                 it->second.set(rowStart, rowEnd);
             }

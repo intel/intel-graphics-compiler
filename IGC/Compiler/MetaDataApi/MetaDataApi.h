@@ -877,6 +877,7 @@ namespace IGC {
             {
                 return m_ImplicitArgInfoList.getItem(index);
             }
+
             void clearImplicitArgInfoList()
             {
                 m_ImplicitArgInfoList.clear();
@@ -1020,6 +1021,7 @@ namespace IGC {
                     m_nodesToDelete.push_back(FunctionsInfoNode);
                 }
             }
+
             FunctionsInfoMap::iterator begin_FunctionsInfo()
             {
                 return m_FunctionsInfo.begin();
@@ -1029,6 +1031,7 @@ namespace IGC {
             {
                 return m_FunctionsInfo.end();
             }
+
             FunctionsInfoMap::const_iterator begin_FunctionsInfo() const
             {
                 return m_FunctionsInfo.begin();
@@ -1039,12 +1042,12 @@ namespace IGC {
                 return m_FunctionsInfo.end();
             }
 
-            size_t size_FunctionsInfo()  const
+            size_t size_FunctionsInfo() const
             {
                 return m_FunctionsInfo.size();
             }
 
-            bool empty_FunctionsInfo()  const
+            bool empty_FunctionsInfo() const
             {
                 return m_FunctionsInfo.empty();
             }
@@ -1053,7 +1056,6 @@ namespace IGC {
             {
                 return m_FunctionsInfo.hasValue();
             }
-
 
             FunctionsInfoMap::item_type getFunctionsInfoItem(const FunctionsInfoMap::key_type& index) const
             {

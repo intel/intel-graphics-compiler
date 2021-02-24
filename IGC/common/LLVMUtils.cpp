@@ -125,7 +125,7 @@ void IGCPassManager::add(Pass *P)
 
 IGCPassManager::~IGCPassManager()
 {
-    if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
     {
         for(auto it : m_irDumps)
         {

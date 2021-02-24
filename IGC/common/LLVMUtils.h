@@ -43,18 +43,13 @@ namespace IGC
     {
     public:
         ~IGCPassManager();
-        IGCPassManager(CodeGenContext* ctx, char* name = nullptr)
+        IGCPassManager(CodeGenContext* ctx, const char* name = "") : m_pContext(ctx), m_name(name)
         {
-            if(name)
-            {
-                m_name = std::string(name);
-            }
-            m_pContext = ctx;
         }
         void add(llvm::Pass *P);
     private:
-        CodeGenContext* m_pContext;
-        std::string m_name;
+        CodeGenContext* const m_pContext;
+        const std::string m_name;
         std::vector<Debug::Dump *> m_irDumps;
     };
 }
