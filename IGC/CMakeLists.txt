@@ -203,12 +203,10 @@ macro(  win_static_runtime )
       CMAKE_C_FLAGS_DEBUG
       CMAKE_C_FLAGS_MINSIZEREL
       CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_RELEASEINTERNAL
       CMAKE_C_FLAGS_RELWITHDEBINFO
       CMAKE_CXX_FLAGS_DEBUG
       CMAKE_CXX_FLAGS_MINSIZEREL
       CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_RELEASEINTERNAL
       CMAKE_CXX_FLAGS_RELWITHDEBINFO
     )
     foreach(configuration ${configurations})
@@ -229,12 +227,10 @@ macro(  win_dynamic_runtime )
       CMAKE_C_FLAGS_DEBUG
       CMAKE_C_FLAGS_MINSIZEREL
       CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_RELEASEINTERNAL
       CMAKE_C_FLAGS_RELWITHDEBINFO
       CMAKE_CXX_FLAGS_DEBUG
       CMAKE_CXX_FLAGS_MINSIZEREL
       CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_RELEASEINTERNAL
       CMAKE_CXX_FLAGS_RELWITHDEBINFO
     )
     foreach(configuration ${configurations})
@@ -1880,7 +1876,6 @@ endfunction()
 # ======================================================================================================
 
 # IGC project available configuration types:
-# One standard configuration + "ReleaseInternal" custom configurations.
 set(IGC_CMAKE_CONFIGURATION_TYPES
   "Debug"
   "Release"
@@ -1902,8 +1897,6 @@ else()
 
     if(_buildType MATCHES "^release$")
       set(_buildType "Release")
-    elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal$")
-      set(_buildType "ReleaseInternal")
     elseif(_buildType MATCHES "^debug$")
       set(_buildType "Debug")
     else()
@@ -1921,7 +1914,6 @@ endif()
 # Patterns which identify debug and release configurations.
 set(IGC_BUILD__DEBUG_PATTERN   "^Debug$")
 set(IGC_BUILD__RELEASE_PATTERN "^Release$")
-set(IGC_BUILD__RELINT_PATTERN  "^ReleaseInternal$")
 
 # The configuration variables used below are likely to have been most recently
 # defined by the project statement's call to the toolchain file
@@ -2025,8 +2017,6 @@ set_source_files_properties(${IGC_CODEGEN_DIR}/MDNodeFunctions.gen PROPERTIES GE
 # The section must be after project definition and its supported languages because otherwise
 # used variables are not available yet.
 
-# Setting flags for custom "ReleaseInternal" configurations.
-igc_custom_build_add("ReleaseInternal"       "Release")
 
 # Populating global property with list of debug configurations (based on pattern).
 set(_debugConfigs)
@@ -2693,14 +2683,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         # Disable LTCG due to increase of release build time
         #WholeProgramOptimization
     )
-  igc_config_flag_apply_settings(
-      CompilerOptions
-      "${_compilerFlagName}"
-      PATTERN "${IGC_BUILD__RELINT_PATTERN}"
-      SET
-        OptimizeSpeed
-        ControlFlowGuard
-    )
 
 
   # Adding needed settings specific to MSVC.
@@ -2964,13 +2946,6 @@ foreach(_linkerFlagName IN ITEMS "CMAKE_EXE_LINKER_FLAGS" "CMAKE_SHARED_LINKER_F
     igc_config_flag_apply_settings(
       LinkerOptions
       "${_linkerFlagName}"
-      PATTERN "${IGC_BUILD__RELINT_PATTERN}"
-      SET
-        ControlFlowGuard
-    )
-    igc_config_flag_apply_settings(
-      LinkerOptions
-      "${_linkerFlagName}"
       PATTERN "${IGC_BUILD__DEBUG_PATTERN}"
       SET
         DeadCodePreserve
@@ -3048,11 +3023,9 @@ endif()
 # +  _CRT_SECURE_NO_WARNINGS
 # +  _DEBUG                   if cfg:Debug
 # +  _IGC_
-# +  _INTERNAL                if cfg:ReleaseInternal
 # *  _LIB                     if build:static library
 # +  _SCL_SECURE_NO_WARNINGS
 # +* DEBUG                    if cfg:Debug
-# +* DLL_CPP                  if cfg:ReleaseInternal && build:shared library
 # +  DLL_MODE                 if visa
 # M  GHAL3D_SHADERDUMP_ENABLE if IGCStandalone
 # +  GHAL3D=USC
@@ -3071,7 +3044,7 @@ endif()
 # +  i386=1                   if bits:32
 # +  _X86_=1                  if bits:32
 # +  _AMD64_                  if bits:64
-# + ENABLE_REGISTRY_READ      if cfg:Debug or cfg:ReleaseInternal
+# + ENABLE_REGISTRY_READ      if cfg:Debug
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
       _IGC_
@@ -3170,25 +3143,11 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG
     ENABLE_REGISTRY_READ
   )
 
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL
-    _INTERNAL
-    DLL_CPP
-    ENABLE_REGISTRY_READ
-  )
-
-if(NOT _ASSERTBUILD)
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL
-   NDEBUG
-  )
-endif()
 
 if(NOT ANDROID)
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG
     CL_KHR_FP64_EXT
   )
-set_property(DIRECTORY APPEND PROPERTY "COMPILE_DEFINITIONS_RELEASE INTERNAL"
-    CL_KHR_FP64_EXT
-)
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
   CL_KHR_FP64_EXT
 )
@@ -3205,8 +3164,6 @@ elseif(_igc_compiler_is_gnu_or_clang)
 endif()
 igc_flag_remove_re(CMAKE_C_FLAGS                          "${_flagToRemove}")
 igc_flag_remove_re(CMAKE_CXX_FLAGS                        "${_flagToRemove}")
-igc_flag_remove_re(CMAKE_C_FLAGS_RELEASEINTERNAL   "${_flagToRemove}")
-igc_flag_remove_re(CMAKE_CXX_FLAGS_RELEASEINTERNAL "${_flagToRemove}")
 unset(_flagToRemove)
 endif()
 
@@ -3388,7 +3345,6 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG IGC_SPIRV_TOOLS_ENABLED)
-    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL IGC_SPIRV_TOOLS_ENABLED)
     igc_sg_define(IGC__SPIRV-Tools)
 endif()
 
@@ -3930,14 +3886,10 @@ elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
-          RUNTIME DESTINATION Release-Internal/lh64 CONFIGURATIONS ReleaseInternal)
-  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Debug/lh64            CONFIGURATIONS Debug)
 
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
           DESTINATION Release/lh64/pdb              CONFIGURATIONS Release)
-  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
-          DESTINATION Release-Internal/lh64/pdb     CONFIGURATIONS ReleaseInternal)
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
           DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
 
@@ -3945,14 +3897,10 @@ elseif (WIN32)
     install(TARGETS ${IGC_BUILD__PROJ__igc_dll} RUNTIME
             DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
     install(TARGETS ${IGC_BUILD__PROJ__igc_dll} RUNTIME
-            DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-    install(TARGETS ${IGC_BUILD__PROJ__igc_dll} RUNTIME
             DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
 
     install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
             DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-    install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
-            DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
     install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
             DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
   endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -3960,14 +3908,10 @@ elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
           RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
   install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
-          RUNTIME DESTINATION Release-Internal/lh64 CONFIGURATIONS ReleaseInternal)
-  install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
           RUNTIME DESTINATION Debug/lh64            CONFIGURATIONS Debug)
 
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
           DESTINATION Release/lh64/pdb              CONFIGURATIONS Release)
-  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
-          DESTINATION Release-Internal/lh64/pdb     CONFIGURATIONS ReleaseInternal)
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
           DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
 endif()
