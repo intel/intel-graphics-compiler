@@ -139,7 +139,7 @@ void CPixelShader::AllocatePSPayload()
         // For the payload section, we need to mark inputs to be outputs
         // so that inputs will be alive across the entire payload section
         forceLiveOut = true;
-        encoder.MarkAsOutput(m_R0);
+        encoder.MarkAsPayloadLiveOut(m_R0);
     }
     offset += getGRFSize();
 

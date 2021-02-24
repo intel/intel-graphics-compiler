@@ -1837,6 +1837,7 @@ class G4_Declare
 
     uint16_t liveIn : 1;   // indicate if this varaible has "Input" or "Input_Output" attribute
     uint16_t liveOut : 1;  // indicate if this varaible has "Output" or "Input_Output" attribute
+    uint16_t payloadLiveOut : 1;  // indicate if this varaible has "Output" attribute for the payload section
 
     // This is an optimization *hint* to indicate if optimizer should skip
     // widening this variable or not (e.g. byte to word).
@@ -1882,7 +1883,7 @@ public:
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
       name(n), regFile(k), elemType(ty), addressed(false), liveIn(false),
-      liveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
+      liveOut(false), payloadLiveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
       refInSend(false), numElements(numElems), offsetFromBase(-1)
     {
         //
@@ -1932,6 +1933,7 @@ public:
     void setLiveIn() { liveIn = true; }
     bool isLiveIn() const { return liveIn; }
     void setLiveOut() { liveOut = true; }
+    void setPayloadLiveOut() { payloadLiveOut = true; }
 
     void setDoNotWiden() { noWidening = true; }
     bool doNotWiden() const { return noWidening; }
@@ -2028,6 +2030,7 @@ public:
     bool useGRF() const { return (regFile & (G4_GRF | G4_INPUT)) != 0; }
     bool isInput() const { return liveIn || ((regFile & G4_INPUT) != 0); }
     bool isOutput() const { return liveOut; }
+    bool isPayloadLiveOut() const { return payloadLiveOut; }
 
     //
     // retrieving functions

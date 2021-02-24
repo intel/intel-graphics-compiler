@@ -799,6 +799,23 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 // Copy main kernel's declarations (shader body) into payload section
                 kernel->CopyVars(mainKernel);
                 kernel->getKernel()->Declares = mainKernel->getKernel()->Declares;
+
+                // Set payload LiveOuts to be output
+                uint32_t inputCount = kernel->getIRBuilder()->getInputCount();
+                for (unsigned int id = 0; id < inputCount; id++)
+                {
+                    input_info_t* input_info = kernel->getIRBuilder()->getInputArg(id);
+                    // skip pseudo input for register bindings.
+                    if (input_info->isPseudoInput())
+                    {
+                        continue;
+                    }
+                    vISA::G4_Declare* dcl = input_info->dcl;
+                    if (dcl->isPayloadLiveOut())
+                    {
+                        dcl->setLiveOut();
+                    }
+                }
             }
 
             int status =  kernel->compileFastPath();

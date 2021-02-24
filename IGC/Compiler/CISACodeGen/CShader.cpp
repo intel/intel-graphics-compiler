@@ -502,7 +502,7 @@ void CShader::AllocateInput(CVariable* var, uint offset, uint instance, bool for
     // so that inputs will be alive across the entire payload section
     if (forceLiveOut)
     {
-        encoder.MarkAsOutput(var);
+        encoder.MarkAsPayloadLiveOut(var);
     }
 }
 
@@ -538,7 +538,7 @@ void CShader::AllocateConstants(uint& offset)
     m_ConstantBufferLength = 0;
     for (auto I = pushInfo.constants.begin(), E = pushInfo.constants.end(); I != E; I++) {
         CVariable* var = GetSymbol(m_argListCache[I->second]);
-        AllocateInput(var, offset + m_ConstantBufferLength);
+        AllocateInput(var, offset + m_ConstantBufferLength, 0, encoder.IsCodePatchCandidate());
         m_ConstantBufferLength += var->GetSize();
     }
 

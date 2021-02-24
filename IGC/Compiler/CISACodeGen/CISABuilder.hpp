@@ -147,6 +147,7 @@ namespace IGC
         void CreateVISAVar(CVariable* var);
         void DeclareInput(CVariable* var, uint offset, uint instance);
         void MarkAsOutput(CVariable* var);
+        void MarkAsPayloadLiveOut(CVariable* var);
         void Compile(bool hasSymbolTable = false);
         std::string GetShaderName();
         void ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput);

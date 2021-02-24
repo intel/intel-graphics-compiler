@@ -1622,6 +1622,10 @@ int VISAKernelImpl::AddAttributeToVarGeneric(
                 {
                     rootDcl->setDoNotSpill();
                 }
+                if (Attributes::isAttribute(Attributes::ATTR_PayloadLiveOut, attrName))
+                {
+                    rootDcl->setPayloadLiveOut();
+                }
             }
             break;
         }

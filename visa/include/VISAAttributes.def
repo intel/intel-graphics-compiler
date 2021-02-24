@@ -25,6 +25,7 @@ DEF_ATTR_BOOL(ATTR_Composable,             "Composable",    AK_KERNEL, false, ""
 DEF_ATTR_BOOL(ATTR_Entry,                  "Entry",         AK_KERNEL, false, "")
 DEF_ATTR_BOOL(ATTR_Input,                  "Input",         AK_VAR,    false, "True if var is input var")
 DEF_ATTR_BOOL(ATTR_Output,                 "Output",        AK_VAR,    false, "True if var is output var")
+DEF_ATTR_BOOL(ATTR_PayloadLiveOut,         "PayloadLiveOut",AK_VAR,    false, "True if var is payload liveout var")
 DEF_ATTR_BOOL(ATTR_Input_Output,           "Input_Output",  AK_VAR,    false, "True if var is both input and output var")
 DEF_ATTR_BOOL(ATTR_NoWidening,             "NoWidening",    AK_VAR,    false, "")
 DEF_ATTR_BOOL(ATTR_DoNotSpill,             "DoNotSpill",    AK_VAR,    false, "True if var should not be spilled")

@@ -4721,6 +4721,14 @@ namespace IGC
         }
     }
 
+    void CEncoder::MarkAsPayloadLiveOut(CVariable* var)
+    {
+        for (unsigned int i = 0; i < var->GetNumberInstance(); i++)
+        {
+            V(vKernel->AddAttributeToVar(var->visaGenVariable[i], "PayloadLiveOut", 0, nullptr));
+        }
+    }
+
     bool CEncoder::AvoidRetryOnSmallSpill() const
     {
         CodeGenContext* context = m_program->GetContext();
