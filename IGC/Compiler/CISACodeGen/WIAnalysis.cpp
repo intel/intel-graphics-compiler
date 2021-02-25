@@ -1222,6 +1222,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_waveAll ||
         intrinsic_name == llvm_waveClustered ||
         intrinsic_name == llvm_ld_ptr ||
+        (IGC_IS_FLAG_DISABLED(DisableUniformTypedAccess) && intrinsic_name == llvm_typed_read) ||
         intrinsic_name == llvm_add_pair ||
         intrinsic_name == llvm_sub_pair ||
         intrinsic_name == llvm_mul_pair ||
