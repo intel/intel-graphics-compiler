@@ -452,12 +452,6 @@ namespace IGC
         bool hasSimd16 = simd16Program && simd16Program->ProgramOutput()->m_programSize > 0;
         bool hasSimd32 = simd32Program && simd32Program->ProgramOutput()->m_programSize > 0;
 
-        if (!ctx->m_retryManager.IsFirstTry())
-        {
-            ctx->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-            ctx->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-        }
-
         ////////
         // dynamic rules
         ////////
@@ -466,6 +460,12 @@ namespace IGC
         if (ctx->m_retryManager.GetSIMDEntry(simdMode) != nullptr)
         {
             return false;
+        }
+
+        if (!ctx->m_retryManager.IsFirstTry())
+        {
+            ctx->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+            ctx->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
         }
 
 
