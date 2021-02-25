@@ -1321,7 +1321,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             auto new_offset = offset + (EE_index * alignment); //Calculate new offset
             Type* types[2] = { return_type , buffer_ptr->getType()};
             Value* args[4] = { buffer_ptr, Builder.getInt32(new_offset),
-                Builder.getInt32(alignment), Builder.getInt32(ldrawvec->isVolatile())};
+                Builder.getInt32(alignment), Builder.getInt1(ldrawvec->isVolatile())};
             Function* newLdRawFunction =
                 GenISAIntrinsic::getDeclaration(ldrawvec->getModule(), GenISAIntrinsic::GenISA_ldraw_indexed, types);
             NewLI = Builder.CreateCall(newLdRawFunction, args);
