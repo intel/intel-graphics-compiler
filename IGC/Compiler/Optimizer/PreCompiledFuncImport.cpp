@@ -40,8 +40,7 @@ IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
-#include "Compiler/Optimizer/PreCompiledFuncLibrary.cpp"
-#include <unordered_map>
+#include "Compiler/Builtins/PreCompiledFuncLibrary.hpp"
 #include "Compiler/Builtins/LibraryIntS32DivRemEmu.hpp"
 #include "Compiler/Builtins/LibraryIntU32DivRemEmu.hpp"
 #include "Compiler/Builtins/LibraryIntS32DivRemEmuSP.hpp"
@@ -53,6 +52,8 @@ IN THE SOFTWARE.
 #include "common/LLVMUtils.h"
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
+
+#include <unordered_map>
 
 using namespace llvm;
 using namespace IGC;

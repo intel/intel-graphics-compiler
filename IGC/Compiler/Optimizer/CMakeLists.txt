@@ -46,7 +46,6 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIConverter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncImport.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncLibrary.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/RectListOptimizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.cpp"
