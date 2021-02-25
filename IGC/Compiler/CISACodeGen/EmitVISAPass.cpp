@@ -7805,10 +7805,6 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_encoder->SetSimdSize(simdSize);
                     m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
                     m_encoder->SetDstSubVar(i);
-                    if (m_encoder->IsCodePatchCandidate())
-                    {
-                        psProgram->SetR1Lo(src);
-                    }
                     m_encoder->Cast(dst, src);
                     m_encoder->Push();
                 }
