@@ -26,6 +26,7 @@ IN THE SOFTWARE.
 #include <cfenv>
 #include "Probe/Assertion.h"
 #include "Types.hpp"
+#include "iStdLib/utility.h"
 
 namespace IGC
 {
@@ -201,7 +202,8 @@ llvm::Constant* IGCConstantFolder::CreateUbfe(llvm::Constant* C0, llvm::Constant
     }
     else
     {
-        result = result.lshr(offset);
+        // For HW only bits 0..4 in offset value are relevant
+        result = result.lshr(offset & BITMASK_RANGE(0, 4));
     }
     return llvm::ConstantInt::get(C0->getContext(), result);
 }
@@ -227,7 +229,8 @@ llvm::Constant* IGCConstantFolder::CreateIbfe(llvm::Constant* C0, llvm::Constant
     }
     else
     {
-        result = result.ashr(offset);
+        // For HW only bits 0..4 in offset value are relevant
+        result = result.ashr(offset & BITMASK_RANGE(0, 4));
     }
     return llvm::ConstantInt::get(C0->getContext(), result);
 }
