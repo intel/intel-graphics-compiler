@@ -545,7 +545,7 @@ namespace vISA
                     if(loopInstToTotalInstRatio > 1.75f)
                         return false;
                 }
-                else if (loopInstToTotalInstRatio > 3.75f)
+                else if (loopInstToTotalInstRatio > 3.89f)
                     return false;
             }
         }
