@@ -393,12 +393,12 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 
 void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it)
 {
-    const RegionDesc* region = builder.createRegionDesc(4, 4, 1);
+    const RegionDesc* region = builder.createRegionDesc(8, 8, 1);
 
     unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
 
     auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, rsReg, 0);
-    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, rsReg, 4);
+    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, rsReg, 0);
     G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
     G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
     G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
@@ -415,12 +415,12 @@ void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it)
     auto dummyCondMod1 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
 
     auto cselInst0 = builder.createInternalInst(
-        nullptr, G4_csel, dummyCondMod0, g4::NOSAT, g4::SIMD4,
+        nullptr, G4_csel, dummyCondMod0, g4::NOSAT, g4::SIMD8,
         dst0, src0Opnd_0, src1Opnd_0, src2Opnd_0,
         InstOpt_NoOpt);
 
     auto cselInst1 = builder.createInternalInst(
-        nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD4,
+        nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD8,
         dst1, src0Opnd_1, src1Opnd_1, src2Opnd_1,
         InstOpt_NoOpt);
 
@@ -451,11 +451,6 @@ void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *op
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
-    if (!VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344))
-    {
-        return;
-    }
-
     bool hasNonUniformBranch = false;
     bool hasPredicatedSendOrIndirect = false;
 
