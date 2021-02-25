@@ -8014,21 +8014,10 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
     return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& mapGenISAOffsetToVISAIndex, unsigned int& mapNumElems) const
+int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size) const
 {
-    unsigned int i = 0;
     buffer = m_genx_debug_info_buffer;
     size = m_genx_debug_info_size;
-
-    auto& vecToUse = m_kernel->getKernelDebugInfo()->getMapGenISAOffsetToCISAIndex();
-    mapNumElems = (unsigned int)vecToUse.size();
-    mapGenISAOffsetToVISAIndex = mapNumElems ? (void*)allocCodeBlock(sizeof(unsigned int) * 2*mapNumElems) : nullptr;
-    for (auto& entries : vecToUse)
-    {
-        ((unsigned int*)mapGenISAOffsetToVISAIndex)[i * 2] = entries.first;
-        ((unsigned int*)mapGenISAOffsetToVISAIndex)[i * 2+1] = entries.second;
-        i++;
-    }
 
     return VISA_SUCCESS;
 }

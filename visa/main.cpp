@@ -207,9 +207,7 @@ int JITCompileAllOptions(const char* kernelName,
     void* genxBinary = NULL;
     int size = 0;
     kernel->GetJitInfo(tempJitInfo);
-    void* buf;
-    unsigned int bufSize;
-    kernel->GetGenxDebugInfo(tempJitInfo->genDebugInfo, tempJitInfo->genDebugInfoSize, buf, bufSize);
+    kernel->GetGenxDebugInfo(tempJitInfo->genDebugInfo, tempJitInfo->genDebugInfoSize);
 
     if (gtpin_init)
     {

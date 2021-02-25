@@ -1649,6 +1649,11 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
 #else
             varName += std::to_string(dclInfo.second);
 #endif
+
+            if (curKernel->getOptions()->getOption(vISA_UseFriendlyNameInDbg))
+            {
+                varName = dcl->getName();
+            }
             emitDataName(varName.c_str(), t);
 
             // Insert live-interval information

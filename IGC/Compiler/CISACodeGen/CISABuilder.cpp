@@ -5298,12 +5298,10 @@ namespace IGC
 
         void* dbgInfo = nullptr;
         unsigned int dbgSize = 0;
-        if (context->m_instrTypes.hasDebugInfo)
+        if (context->m_instrTypes.hasDebugInfo || m_enableVISAdump)
         {
             void* genxdbgInfo = nullptr;
-            void* VISAMap = nullptr;
-            unsigned int numElems = 0;
-            V(pMainKernel->GetGenxDebugInfo(genxdbgInfo, dbgSize, VISAMap, numElems));
+            V(pMainKernel->GetGenxDebugInfo(genxdbgInfo, dbgSize));
             if (m_enableVISAdump)
             {
                 std::string debugFileNameStr = IGC::Debug::GetDumpName(m_program, "dbg");
@@ -5322,7 +5320,6 @@ namespace IGC
             memcpy_s(dbgInfo, dbgSize, genxdbgInfo, dbgSize);
 
             freeBlock(genxdbgInfo);
-            freeBlock(VISAMap);
         }
 
         pOutput->m_programBin = kernel;

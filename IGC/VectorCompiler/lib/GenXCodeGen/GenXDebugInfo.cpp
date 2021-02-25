@@ -96,10 +96,8 @@ public:
 
   void releaseDebugInfoResources(const VISAKernel &VK) {
     void *GenXdbgInfo = nullptr;
-    void *VISAMap = nullptr;
     unsigned int DbgSize = 0;
-    unsigned int NumElems = 0;
-    auto Result = VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems);
+    auto Result = VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize);
     IGC_ASSERT_MESSAGE(Result == 0,
                        "could not get debug blob during cleanup procedure");
     IGC_ASSERT(GenXdbgInfo);
@@ -108,21 +106,17 @@ public:
 
   CompiledVisaWrapper(const Function &F, const VISAKernel &VK) {
     void *GenXdbgInfo = nullptr;
-    void *VISAMap = nullptr;
     unsigned int DbgSize = 0;
-    unsigned int NumElems = 0;
     if (VK.GetJitInfo(JitInfo) != 0) {
       ErrMsg = "could not extract jitter info";
       return;
     }
     IGC_ASSERT(JitInfo);
 
-    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize, VISAMap, NumElems) != 0) {
+    if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize) != 0) {
       ErrMsg = "visa info decode error";
       return;
     }
-    if (VISAMap)
-      freeBlock(VISAMap);
 
     if (!GenXdbgInfo) {
       ErrMsg = "could not get debug information from finalizer";
