@@ -144,6 +144,17 @@ int64_t CompileUnit::getDefaultLowerBound() const
     return -1;
 }
 
+static bool HasImplicitLocation(const DbgVariable& var) {
+#if LLVM_VERSION_MAJOR >= 9
+    if (auto* dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
+        if (auto* expr = dbgInst->getExpression())
+            return expr->isImplicit();
+    return false;
+#else
+    // We don't support implicit locations for LLVM less than 9
+    return false;
+#endif
+}
 /// Check whether the DIE for this MDNode can be shared across CUs.
 static bool isShareableAcrossCUs(llvm::MDNode* D)
 {
@@ -1399,18 +1410,28 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const
 
         auto offsetInBits = subRegInBytes * 8;
 
-        if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()))
+        if (isa<llvm::DbgDeclareInst>(DV.getDbgInst()) || HasImplicitLocation(DV))
         {
-            // Pointer
+            // Pointer or an implicit value of a variable
+            // Note: in case of implicit value we want to put the value of the
+            // bit_piece onto DWARF stack, so implict expression could operatate
+            // on it.
+            addConstantUValue(Block, varSizeInBits);
+            addConstantUValue(Block, offsetInBits);
+            IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
         }
         else
         {
             // Variable
             addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+            addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
+            addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
+
+            if (varSizeInBits > Loc->GetVISAModule()->getGRFSize() * 8)
+                LLVM_DEBUG(dbgs() << "warning: addSimdLaneScalar is trying to emit DW_OP_bit_piece which is larger " <<
+                           "than GRF" << *DV.getDbgInst());
         }
-        addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
-        addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
     }
 }
 
@@ -2493,6 +2514,22 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
     bool firstHalf = true;
     DIEValue* secondHalfOff = nullptr, *skipOff = nullptr;
     unsigned int offsetTaken = 0, offsetNotTaken = 0, offsetEnd = 0;
+
+    auto EmitExpression = [this](IGC::DIEBlock* Block, const DbgVariable& var) {
+        // Emit DIExpression if it exists
+        if (auto dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
+        {
+            if (auto expr = dbgInst->getExpression())
+            {
+                for (auto elem : expr->getElements())
+                {
+                    auto BF = DIEInteger::BestForm(false, elem);
+                    addUInt(Block, BF, elem);
+                }
+            }
+        }
+        return;
+    };
     // locs contains 1 item for SIMD8/SIMD16 kernels describing locations of all channels.
     // locs contains 2 items for SIMD32 kernels. First item has storage mapping for lower 16
     // channels, second item has storage mapping for upper 16 channels.
@@ -2737,13 +2774,22 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 {
                     addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
-                    if (lrToUse.getGRF().subRegNum != 0) {
-                        uint64_t varSizeInBits = var.getBasicSize(DD);
-                        auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
+                    auto varSizeInBits = var.getBasicSize(DD);
+                    auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
 
+                    if (HasImplicitLocation(var)) {
+                        addConstantUValue(Block, varSizeInBits);
+                        addConstantUValue(Block, offsetInBits);
+                        IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
+                        addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+                    } else if (lrToUse.getGRF().subRegNum != 0) {
                         addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
                         addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
                         addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
+
+                        if (varSizeInBits > VISAMod->getGRFSize() * 8)
+                            LLVM_DEBUG(dbgs() << "warning: buildGeneral is trying  to emit DW_OP_bit_piece" <<
+                                       "which is larger than GRF" << *var.getDbgInst());
                     }
                 }
                 else
@@ -2754,10 +2800,11 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     {
                         unsigned int subReg = lrToUse.getGRF().subRegNum;
                         addRegisterLoc(Block, regNum, 0, var.getDbgInst());
-
-                        addGTRelativeLocation(Block, loc); // Emit GT-relative location expression
-
-                        addSimdLaneScalar(Block, var, loc, &lrToUse, subReg); // Emit subregister for GRF (unpacked)
+                        // Emit GT-relative location expression
+                        addGTRelativeLocation(Block, loc);
+                        // Emit subregister for GRF (unpacked)
+                        addSimdLaneScalar(Block, var, loc, &lrToUse, subReg);
+                        EmitExpression(Block, var);
 
                         break;
                     }
@@ -2814,19 +2861,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             {
                 //IGC_ASSERT_MESSAGE(false, "\nVariable neither in GRF nor spilled\n");
             }
+            EmitExpression(Block, var);
 
-            // Emit DIExpression if it exists
-            if (auto dbgInst = dyn_cast_or_null<IGCLLVM::DbgVariableIntrinsic>(var.getDbgInst()))
-            {
-                if (auto expr = dbgInst->getExpression())
-                {
-                    for (auto elem : expr->getElements())
-                    {
-                        auto BF = DIEInteger::BestForm(false, elem);
-                        addUInt(Block, BF, elem);
-                    }
-                }
-            }
         }
         firstHalf = false;
     }
