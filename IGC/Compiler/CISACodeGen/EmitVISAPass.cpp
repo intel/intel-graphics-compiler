@@ -622,18 +622,19 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     ++I;
                 }
             }
+
+            // Cancel patching in SIMD16 if it has ZWDelta
+            CPixelShader* psProgram = static_cast<CPixelShader*>(prevShader);
+            if (psProgram && psProgram->HasZWDelta())
+            {
+                m_encoder->SetIsCodePatchCandidate(false);
+                prevShader->GetEncoder().DestroyVISABuilder();
+                prevKernel = nullptr;
+            }
         }
         else
         {
             m_encoder->SetIsCodePatchCandidate(false);
-        }
-        // Cancel patching in SIMD16 if it has ZWDelta
-        CPixelShader* psProgram = static_cast<CPixelShader*>(prevShader);
-        if (psProgram && psProgram->HasZWDelta())
-        {
-            m_encoder->SetIsCodePatchCandidate(false);
-            prevShader->GetEncoder().DestroyVISABuilder();
-            prevKernel = nullptr;
         }
 
         // Check if the function, or the FG, has inline asm calls.
