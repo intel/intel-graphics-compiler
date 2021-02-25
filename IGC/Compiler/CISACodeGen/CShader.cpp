@@ -3278,8 +3278,7 @@ void CShader::PackAndCopyVariable(
 
 bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
-    bool ret = ((m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace()) &&
-        (m_simdProgram.getScratchSpaceUsageInSlot1() <= m_ctx->platform.maxPerThreadScratchSpace()));
+    bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
 
 
     return ret;
