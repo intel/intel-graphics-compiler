@@ -214,20 +214,7 @@ int IR_Builder::translateVISACFIFCallInst(
         createMov(g4::SIMD1, Create_Dst_Opnd_From_Dcl(tmpSrc0, 1), src0, InstOpt_WriteEnable, true);
         src0 = Create_Src_Opnd_From_Dcl(tmpSrc0, getRegionScalar());
     }
-    // FIXME: Remove the "add" instruction here that this instruction must be right before
-    //        call that the result PC will be corresponding to the call instruction.
-    //        So may not create this "add" here
-/*
-    // Call target is (function_address - PC)
-    G4_Declare* callOffset = createTempVar(1, Type_D, Any);
-    createInst(nullptr, G4_add, nullptr, false, 1,
-               Create_Dst_Opnd_From_Dcl(callOffset, 1), src0,
-               createSrcRegRegion(Mod_Minus, Direct, phyregpool.getIpReg(), 0, 0,
-                                  getRegionScalar(), Type_UD),
-               InstOpt_WriteEnable);
-    auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, false, exsize,
-        nullptr, Create_Src_Opnd_From_Dcl(callOffset, getRegionScalar()), nullptr, 0, 0);
-*/
+
     auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, g4::NOSAT, exsize,
         nullptr, src0, nullptr, InstOpt_NoOpt, true);
 

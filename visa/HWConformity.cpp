@@ -5093,6 +5093,23 @@ void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
+void HWConformity::fixCalla(INST_LIST_ITER it, G4_BB *bb)
+{
+    G4_INST* fcall = *it;
+    G4_Operand* src0 = fcall->getSrc(0);
+
+    // fcall could have imm/label src for direct call
+    // No need to fix src reg at the case
+    if (!src0->isSrcRegRegion())
+        return;
+
+    if (builder.isOpndAligned(src0, getGRFSize()))
+        return;
+
+    // insert a mov before fcall(calla) to mov src to a grf aligned reg
+    replaceSrc(it, 0, src0->getType(), bb, GRFALIGN);
+}
+
 void HWConformity::conformBB(G4_BB* bb)
 {
     INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
@@ -5105,6 +5122,10 @@ void HWConformity::conformBB(G4_BB* bb)
         ++next_iter;
         G4_INST* inst = *i;
         G4_opcode opcode = inst->opcode();
+
+
+        if (inst->isFCall() && builder.supportCallaRegSrc())
+            fixCalla(i, bb);
 
         if ((inst->mayExceedTwoGRF() && !inst->isSend()) ||
             opcode == G4_nop ||

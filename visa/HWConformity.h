@@ -221,6 +221,9 @@ namespace vISA
 
         void fixPredCtrl(INST_LIST_ITER it, G4_BB* bb);
 
+        // Calla src register must be grf aligned (sub-reg offset must be 0)
+        void fixCalla(INST_LIST_ITER it, G4_BB* bb);
+
         // If alignment and region of all operands of any instruction are conformed
         // by a dedicated function, return true.
         // This is used to skip generic conformity functions, such as fixOpndTypeAlign().
