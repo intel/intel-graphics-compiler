@@ -505,7 +505,8 @@ void SWSB::SWSBBuildSIMDCFG()
                     }
                 }
             }
-            else if (lastInst->isReturn() || lastInst->isCall())
+            else if (lastInst->isReturn() || lastInst->isCall() ||
+                lastInst->isFReturn() || lastInst->isFCall())
             {
                 for (const G4_BB* bb : currBB->getBB()->Succs)
                 {
@@ -638,8 +639,8 @@ void SWSB::handleIndirectCall()
 
         SBNode* node = SBNodes[bb->last_node];
 
-        if ((node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()) ||
-            node->GetInstruction()->isReturn())
+        if (((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) && !node->GetInstruction()->getSrc(0)->isLabel()) ||
+            (node->GetInstruction()->isReturn() || node->GetInstruction()->isFReturn()))
         {
             LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal(), *fg.getKernel());
             for (const SBBucketNode* sBucketNode : globalSendOpndList)
@@ -659,7 +660,8 @@ void SWSB::handleIndirectCall()
                 }
             }
         }
-        if (node->GetInstruction()->isReturn())
+        if (node->GetInstruction()->isReturn() ||
+            node->GetInstruction()->isFReturn())
         {
             node->GetInstruction()->setDistance(1);
         }
@@ -1126,6 +1128,7 @@ void SWSB::SWSBGenerator()
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
 
+    kernel.fg.reassignBlockIDs();
     kernel.fg.findBackEdges();
     kernel.fg.findNaturalLoops();
 
@@ -4609,7 +4612,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
 
         if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
-            (node->GetInstruction()->isCall() && !node->GetInstruction()->getSrc(0)->isLabel()) ||
+            ((node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) && !node->GetInstruction()->getSrc(0)->isLabel()) ||
             (builder.hasEOTWait() && node->GetInstruction()->isEOT()))
         {
             node->setDistance(1);

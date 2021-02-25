@@ -8294,3 +8294,17 @@ void G4_INST::inheritDIFrom(const G4_INST* inst)
     setLocation(inst->getLocation());
     setCISAOff(getCISAOff() == UndefinedCisaOffset ? inst->getCISAOff() : getCISAOff());
 }
+
+void G4_INST::inheritSWSBFrom(const G4_INST* inst)
+{
+    // Copy the SWSB info
+    setDistance(inst->getDistance());
+    setLexicalId(inst->getLexicalId());
+
+    for (size_t i = 0; i < inst->getDepTokenNum(); i++)
+    {
+        SWSBTokenType type = TOKEN_NONE;
+        unsigned short token = inst->getDepToken(i, type);
+        setDepToken(token, type);
+    }
+}

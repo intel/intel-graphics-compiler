@@ -178,6 +178,111 @@ void Optimizer::regAlloc()
     }
 }
 
+void Optimizer::adjustIndirectCallOffset()
+{
+    // the call code sequence done at Optimizer::expandIndirectCallWithRegTarget
+    // is:
+    //       add  r2.0  -IP   call_target
+    //       add  r2.0  r2.0  -32
+    //       call r1.0  r2.0
+    // -32 is hardcoded. But SWSB could've inserted sync instructions between
+    // call and add. So we need to re-adjust the offset
+
+    for (auto bb : kernel.fg)
+    {
+        if (bb->empty())
+            continue;
+
+        // At this point G4_pseudo_fcall may be converted to G4_call
+        if (bb->back()->isCall() || bb->back()->isFCall())
+        {
+            G4_INST* fcall = bb->back();
+            if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0())
+            {
+                // for every indirect call, count # of instructions inserted
+                // between call and the first add
+                uint64_t sync_offset = 0;
+                G4_INST* first_add = nullptr;
+                INST_LIST::reverse_iterator it = bb->rbegin();
+                // skip call itself
+                ++it;
+                for (; it != bb->rend(); ++it)
+                {
+                    G4_INST* inst = *it;
+                    G4_opcode op = inst->opcode();
+                    if (op == G4_sync_allrd || op == G4_sync_allwr)
+                    {
+                        inst->setNoCompacted();
+                        sync_offset += 16;
+                        continue;
+                    }
+                    else if (op == G4_sync_nop) {
+                        inst->setCompacted();
+                        sync_offset += 8;
+                        continue;
+                    }
+                    else if (op == G4_add)
+                    {
+                        if (first_add == nullptr)
+                        {
+                            first_add = inst;
+                            continue;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    // instructions between call and add could only be
+                    // sync.nop, sync.allrd or sync.allwr
+                    assert(0);
+                }
+                assert(first_add->getSrc(1)->isImm());
+                int64_t adjust_off = first_add->getSrc(1)->asImm()->getInt() - sync_offset;
+                first_add->setSrc(builder.createImm(adjust_off, Type_D), 1);
+            }
+        }
+    }
+}
+
+void Optimizer::addSWSBInfo()
+{
+    if (!builder.hasSWSB())
+    {
+        return;
+    }
+
+    if (!builder.getOption(vISA_forceDebugSWSB))
+    {
+        SWSB swsb(kernel, mem);
+        swsb.SWSBGenerator();
+    }
+    else
+    {
+        forceDebugSWSB(&kernel);
+    }
+    kernel.dumpDotFile("after.SWSB");
+
+    if (builder.getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
+    {
+        singleInstStallSWSB(&kernel,
+            builder.getOptions()->getuInt32Option(vISA_SWSBTokenBarrier), 0, true);
+    }
+
+    if (builder.getOptions()->getuInt32Option(vISA_SWSBInstStall) != 0)
+    {
+        singleInstStallSWSB(&kernel,
+            builder.getOptions()->getuInt32Option(vISA_SWSBInstStall),
+            builder.getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
+    }
+
+    if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
+    {
+        adjustIndirectCallOffset();
+    }
+    return;
+}
+
 void Optimizer::countBankConflicts()
 {
     std::list<G4_INST*> conflicts;
@@ -811,6 +916,8 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(varSplit,                vISA_EnableAlways,            TimerID::OPTIMIZER);
     INITIALIZE_PASS(legalizeType,            vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(analyzeMove,             vISA_analyzeMove,             TimerID::MISC_OPTS);
+    INITIALIZE_PASS(removeInstrinsics,       vISA_removeInstrinsics,       TimerID::MISC_OPTS);
+    INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1325,6 +1432,13 @@ int Optimizer::optimization()
     runPass(PI_mapOrphans);
 
     runPass(PI_analyzeMove);
+
+    runPass(PI_removeInstrinsics);
+
+    //-----------------------------------------------------------------------------------------------------------------
+    //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
+    //-----------------------------------------------------------------------------------------------------------------
+    runPass(PI_addSWSBInfo);
 
     return VISA_SUCCESS;
 }
@@ -9659,6 +9773,17 @@ void Optimizer::analyzeMove()
     }
 
     #undef MOVE_TYPE
+}
+
+//
+// remove Intrinsics
+//
+void Optimizer::removeInstrinsics()
+{
+    for (auto bb : kernel.fg)
+    {
+        bb->removeIntrinsics(Intrinsic::MemFence);
+    }
 }
 
 //

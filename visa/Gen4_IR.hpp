@@ -1220,6 +1220,8 @@ public:
 
     void inheritDIFrom(const G4_INST* inst);
 
+    void inheritSWSBFrom(const G4_INST* inst);
+
 private:
 
     // use inheritDIFrom() instead
