@@ -1573,6 +1573,26 @@ bool GenXLowering::lowerTrunc(Instruction *Inst) {
  *          is now marked for erasing
  */
 bool GenXLowering::lowerCast(Instruction *Inst) {
+  // if it is a bitcast for vector of i1 predicate to vector,
+  // create bitcast to scalar and them bitcast to vector due to visa
+  // requirements
+  if (Inst->getOpcode() == Instruction::BitCast &&
+      Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1) &&
+      Inst->getType()->isVectorTy() &&
+      !Inst->getType()->getScalarType()->isIntegerTy(1)) {
+    IRBuilder<> Builder(Inst);
+    Value *operand = Inst->getOperand(0);
+    Type *originTy = Inst->getType();
+    Type *scalarIntTy =
+        Type::getIntNTy(Inst->getContext(), DL->getTypeSizeInBits(originTy));
+    const Twine Name = "pred";
+    Value *Scalar = Builder.CreateBitCast(operand, scalarIntTy, Name);
+    Value *Res = Builder.CreateBitCast(Scalar, originTy, Name);
+    Inst->replaceAllUsesWith(Res);
+    ToErase.push_back(Inst);
+    return true;
+  }
+
   // If it is zext/sext/UIToFP from (vector of) i1, turn into a select.
   if (Inst->getOperand(0)->getType()->getScalarType()->isIntegerTy(1) &&
       Inst->getOpcode() != Instruction::BitCast) {

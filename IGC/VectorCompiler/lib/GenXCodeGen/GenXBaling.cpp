@@ -2301,6 +2301,12 @@ bool GenXBaling::prologue(Function *F) {
       // bitcast (bitcast X to Ty1) to Ty2 ==> bitcast X to Ty2
       Value *X;
       if (match(Inst, m_BitCast(m_BitCast(m_Value(X))))) {
+        // matches bitcast from predicate - false positive
+        if (X->getType()->getScalarType()->isIntegerTy(1) &&
+            Inst->getType()->isVectorTy() &&
+            !Inst->getType()->getScalarType()->isIntegerTy(1))
+          continue;
+
         BitCastInst *NewCI = new BitCastInst(X, Inst->getType(), "", Inst);
         NewCI->setDebugLoc(Inst->getDebugLoc());
         NewCI->takeName(Inst);
