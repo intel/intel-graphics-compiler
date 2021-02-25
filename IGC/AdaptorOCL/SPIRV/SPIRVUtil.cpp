@@ -93,11 +93,7 @@ saveLLVMModule(Module *M, const std::string &OutputFile) {
 PointerType*
 getOrCreateOpaquePtrType(Module *M, const std::string &Name,
     unsigned AddrSpace) {
-#if LLVM_VERSION_MAJOR >= 12
-  auto OpaqueType = llvm::StructType::getTypeByName(M->getContext(), Name);
-#else
-  auto OpaqueType = M->getTypeByName(Name);
-#endif
+  auto OpaqueType = IGCLLVM::getTypeByName(M, Name);
   if (!OpaqueType)
     OpaqueType = StructType::create(M->getContext(), Name);
   return PointerType::get(OpaqueType, AddrSpace);

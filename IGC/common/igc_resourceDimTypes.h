@@ -67,8 +67,7 @@ namespace IGC
             resourceDimTypeId == DIM_3D_TYPE || resourceDimTypeId == DIM_CUBE_TYPE || resourceDimTypeId == DIM_CUBE_ARRAY_TYPE));
 
 #if LLVM_VERSION_MAJOR >= 12
-        llvm::LLVMContext& llvmCtx = module.getContext();
-        return llvm::StructType::getTypeByName(llvmCtx, ResourceDimensionTypeName[resourceDimTypeId]);
+        return llvm::StructType::getTypeByName(module.getContext(), ResourceDimensionTypeName[resourceDimTypeId]);
 #else
         return module.getTypeByName(ResourceDimensionTypeName[resourceDimTypeId]);
 #endif

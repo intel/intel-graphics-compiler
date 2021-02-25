@@ -33,6 +33,7 @@ IN THE SOFTWARE.
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -134,11 +135,7 @@ bool AdvMemOpt::runOnFunction(Function& F) {
     for (auto I = LI->begin(), E = LI->end(); I != E; ++I)
         for (auto DFI = df_begin(*I), DFE = df_end(*I); DFI != DFE; ++DFI) {
             Loop* L = *DFI;
-#if LLVM_VERSION_MAJOR >= 12
-            if (L->isInnermost())
-#else
-            if (L->empty())
-#endif
+            if (IGCLLVM::isInnermost(L))
                 InnermostLoops.push_back(L);
         }
 

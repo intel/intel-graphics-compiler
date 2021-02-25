@@ -39,12 +39,10 @@ inline unsigned getElementCount(unsigned EC) { return EC; }
 inline ElementCount getElementCount(unsigned EC) {
   return ElementCount(EC, false);
 }
-#elif LLVM_VERSION_MAJOR  == 12
+#else
 inline ElementCount getElementCount(unsigned EC) {
   return ElementCount::get(EC, false);
 }
-#else
-#error "unsupported LLVM version"
 #endif
 } // namespace IGCLLVM
 

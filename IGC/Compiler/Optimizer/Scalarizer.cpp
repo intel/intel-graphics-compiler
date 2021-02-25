@@ -778,7 +778,7 @@ void ScalarizeFunction::scalarizeInstruction(ShuffleVectorInst* SI)
 
     // Generate array for shuffled scalar values
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newVector;
-    unsigned width = int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements());
+    unsigned width = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements());
 
     // Generate undef value, which may be needed as some scalar elements
     UndefValue* undef = UndefValue::get(inputType->getElementType());

@@ -952,11 +952,7 @@ namespace //Anonymous
         {
             auto ndrangeStructName = "struct.ndrange_t";
             auto module = _deviceExecCall->getModule();
-#if LLVM_VERSION_MAJOR >= 12
-            auto ndrangeTy = llvm::StructType::getTypeByName(module->getContext(), ndrangeStructName);
-#else
-            auto ndrangeTy = module->getTypeByName(ndrangeStructName);
-#endif
+            auto ndrangeTy = IGCLLVM::getTypeByName(module, ndrangeStructName);
             if (ndrangeTy == nullptr)
             {
                 //create struct type

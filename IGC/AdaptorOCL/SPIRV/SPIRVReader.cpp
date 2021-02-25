@@ -1929,11 +1929,7 @@ SPIRVToLLVM::transType(SPIRVType *T) {
         auto name = isSubgroupAvcINTELTypeOpCode(OC) ?
             OCLSubgroupINTELTypeOpCodeMap::rmap(OC) :
             BuiltinOpaqueGenericTypeOpCodeMap::rmap(OC);
-#if LLVM_VERSION_MAJOR >= 12
-        auto *pST = llvm::StructType::getTypeByName(M->getContext(), name);
-#else
-        auto *pST = M->getTypeByName(name);
-#endif
+        auto *pST = IGCLLVM::getTypeByName(M, name);
         pST = pST ? pST : StructType::create(*Context, name);
 
         return mapType(T, PointerType::get(pST, getOCLOpaqueTypeAddrSpace(OC)));

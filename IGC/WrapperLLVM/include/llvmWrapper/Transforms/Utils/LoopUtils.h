@@ -41,6 +41,14 @@ namespace IGCLLVM
         return llvm::InsertPreheaderForLoop(L, DT, LI, nullptr, PreserveLCSSA);
     }
 #endif
+
+    inline bool isInnermost(llvm::Loop *L) {
+#if LLVM_VERSION_MAJOR >= 12
+        return L->isInnermost();
+#else
+        return L->empty();
+#endif
+    }
 }
 
 #endif

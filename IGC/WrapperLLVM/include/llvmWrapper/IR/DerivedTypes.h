@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Module.h"
 
 namespace IGCLLVM
 {
@@ -62,6 +63,15 @@ namespace IGCLLVM
         return false;
 #endif
     }
+
+    inline llvm::StructType *getTypeByName(llvm::Module *M, llvm::StringRef Name) {
+#if LLVM_VERSION_MAJOR >= 12
+        return llvm::StructType::getTypeByName(M->getContext(), Name);
+#else
+        return M->getTypeByName(Name);
+#endif
+    }
+
 }
 
 #endif

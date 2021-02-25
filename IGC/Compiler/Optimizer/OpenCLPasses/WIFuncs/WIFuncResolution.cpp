@@ -303,11 +303,7 @@ static Value* BuildLoadInst(CallInst& CI, unsigned int Offset, Type* DataType)
     auto Size = ElemByteSize;
     if (DataType->isVectorTy())
     {
-#if LLVM_VERSION_MAJOR >= 12
         Size *= cast<IGCLLVM::FixedVectorType>(DataType)->getNumElements();
-#else
-        Size *= DataType->getVectorNumElements();
-#endif
     }
     unsigned int AlignedOffset = (Offset / ElemByteSize) * ElemByteSize;
     unsigned int LoadByteSize = (Offset == AlignedOffset) ? Size : Size * 2;

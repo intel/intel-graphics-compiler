@@ -28,6 +28,7 @@ IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/DerivedTypes.h>
+#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Operator.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
@@ -995,11 +996,7 @@ static bool hasLongStridedLdStInLoop(Function* F, LoopInfo* LI, WIAnalysis* WI) 
     // Collect innermost simple loop.
     for (auto I = LI->begin(), E = LI->end(); I != E; ++I) {
         auto L = *I;
-#if LLVM_VERSION_MAJOR >= 12
-        if (!L->isInnermost())
-#else
-        if (!L->empty())
-#endif
+        if (!IGCLLVM::isInnermost(L))
             continue;
         if (L->getNumBlocks() != 2)
             continue;

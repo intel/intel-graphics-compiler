@@ -37,6 +37,7 @@ IN THE SOFTWARE.
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -216,13 +217,7 @@ namespace llvm {
 
         // Skip non-simple loop.
         if (L->getNumBlocks() != 1) {
-            if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) &&
-#if LLVM_VERSION_MAJOR >= 12
-                L->isInnermost()
-#else
-                L->empty()
-#endif
-               ) {
+            if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) && IGCLLVM::isInnermost(L)) {
                 auto countNonPHI = [](BasicBlock* BB) {
                     unsigned Total = BB->size();
                     unsigned PHIs = 0;

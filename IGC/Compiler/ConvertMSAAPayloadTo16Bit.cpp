@@ -153,21 +153,12 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             // In OGL there are uses of ldmcs other then ldms, using vec4float type.
             // Fix them to use newly created 16bit ldmcs.
             if (ldmcs->getType()->isVectorTy() &&
-#if LLVM_VERSION_MAJOR >= 12
-                ldmcs->getType()->getScalarType()->isFloatTy())
-#else
-                ldmcs->getType()->getVectorElementType()->isFloatTy())
-#endif
+                cast<IGCLLVM::FixedVectorType>(ldmcs->getType())->getElementType()->isFloatTy())
             {
                 m_builder->SetInsertPoint(ldmcs);
 
-#if LLVM_VERSION_MAJOR >= 12
                 uint ldmcsNumOfElements = cast<IGCLLVM::FixedVectorType>(ldmcs->getType())->getNumElements();
                 uint new_mcs_callNumOfElements = cast<IGCLLVM::FixedVectorType>(new_mcs_call->getType())->getNumElements();
-#else
-                uint ldmcsNumOfElements = ldmcs->getType()->getVectorNumElements();
-                uint new_mcs_callNumOfElements = new_mcs_call->getType()->getVectorNumElements();
-#endif
 
                 // vec of 16bit ints to vec of 32bit ints
                 Type* new_mcs_callVecType = IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), new_mcs_callNumOfElements);

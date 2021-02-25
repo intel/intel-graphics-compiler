@@ -398,13 +398,7 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
             IRB->CreateBitCast(Val, IGCLLVM::FixedVectorType::get(DestTy->getScalarType(), N));
 
         std::vector<Constant*> Vals;
-        for (unsigned i = 0;
-#if LLVM_VERSION_MAJOR >= 12
-             i < cast<IGCLLVM::FixedVectorType>(DestTy)->getNumElements();
-#else
-             i < DestTy->getVectorNumElements();
-#endif
-             i++)
+        for (unsigned i = 0; i < cast<IGCLLVM::FixedVectorType>(DestTy)->getNumElements(); i++)
             Vals.push_back(IRB->getInt32(i));
 
         Value* Mask = ConstantVector::get(Vals);
