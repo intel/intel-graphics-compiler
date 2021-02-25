@@ -4317,24 +4317,22 @@ namespace IGC
         SaveOption(vISA_noStitchExternFunc, false);
 
         // Turning off optimizations as much as possible to have the fastest compilation
-        if (IsStage1FastestCompile(context->m_CgFlag, context->m_StagingCtx) ||
-            IGC_GET_FLAG_VALUE(ForceFastestSIMD))
+        if( IsStage1FastestCompile( context->m_CgFlag, context->m_StagingCtx ) ||
+            IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
         {
-            SaveOption(vISA_FastSpill, true);
-            SaveOption(vISA_LocalScheduling, false);
-            SaveOption(vISA_preRA_Schedule, false);
-            SaveOption(vISA_NoRemat, true);
-            SaveOption(vISA_SpillSpaceCompression, false);
-            SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
+            SaveOption( vISA_LocalScheduling, false );
+            SaveOption( vISA_preRA_Schedule, false );
+            SaveOption( vISA_SpillSpaceCompression, false );
+            SaveOption( vISA_LVN, false );
+            SaveOption( vISA_QuickTokenAllocation, true );
 
-            if( IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_LVN )
-            { // LVN and quickToken
-                SaveOption( vISA_LVN, false );
-                SaveOption( vISA_QuickTokenAllocation, true );
+            if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_NOLINEARSCAN )
+            { // use fastSpill RA
+                SaveOption( vISA_FastSpill, true );
+                SaveOption( vISA_NoRemat, true );
+                SaveOption( vISA_LocalDeclareSplitInGlobalRA, false );
             }
-
-            if( IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_LINEARSCAN )
-            { // use linearScan
+            else { // use linearScan
                 SaveOption( vISA_LinearScan, true );
             }
 

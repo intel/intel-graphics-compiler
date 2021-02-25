@@ -176,8 +176,8 @@ typedef enum {
 typedef enum
 {
     FCEXP_NO_EXPRIMENT  = 0,
-    FCEXP_DISABLE_LVN   = 0x1,
-    FCEXP_LINEARSCAN    = 0x2,
+    FCEXP_TOBE_REUSED   = 0x1,
+    FCEXP_NOLINEARSCAN    = 0x2,
     FCEXP_DISABLE_GOPT  = 0x4,
     FCEXP_1PASSRA       = 0x8,
     FCEXP_TOBE_DESIGNED = 0x10,
