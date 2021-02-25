@@ -49,6 +49,16 @@ CVariable* CPixelShader::GetR1()
     return m_R1;
 }
 
+CVariable* CPixelShader::GetR1Lo()
+{
+    return m_R1Lo;
+}
+
+void CPixelShader::SetR1Lo(CVariable* var)
+{
+    m_R1Lo = var;
+}
+
 CVariable* CPixelShader::GetCoarseR1()
 {
     IGC_ASSERT(m_phase == PSPHASE_PIXEL);
@@ -153,6 +163,10 @@ void CPixelShader::AllocatePSPayload()
         for (uint i = 0; i < GetR1()->GetNumberInstance(); i++)
         {
             AllocateInput(GetR1(), offset, i, forceLiveOut);
+            if (GetR1Lo())
+            {
+                AllocateInput(GetR1Lo(), offset, i, forceLiveOut);
+            }
             offset += getGRFSize();
         }
     }
@@ -290,6 +304,7 @@ void CPixelShader::AllocatePSPayload()
                 }
             }
             AllocateInput(setup[i], offset + subRegOffset);
+
             if (m_Signature)
             {
                 GetDispatchSignature().inputOffset[i] = offset;
@@ -324,13 +339,31 @@ void CPixelShader::AllocatePSPayload()
         offset += (getGRFSize() - (offset % getGRFSize()));
     }
 
+    CVariable* prevAlias = nullptr;
+    uint prevOffset = offset;
     // This is the preallocation for payload live-outs.
     for (auto& var : payloadLiveOutSetup)
     {
-        IGC_ASSERT(offset% getGRFSize() == 0);
         auto v = var->GetAlias() ? var->GetAlias() : var;
-        AllocateInput(v, offset);
-        offset += v->GetSize();
+        IGC_ASSERT(offset% getGRFSize() == 0);
+        bool skip = (prevAlias == v);
+        if (!skip)
+        {
+            AllocateInput(var, offset);
+        }
+        else
+        {
+            AllocateInput(var, prevOffset);
+        }
+        if (v != var)
+        {
+            prevAlias = v;
+        }
+        if (!skip)
+        {
+            prevOffset = offset;
+            offset += var->GetSize();
+        }
     }
 
     // This is the preallocation for temp variables in payload sections
@@ -491,6 +524,10 @@ CVariable* CPixelShader::GetBaryRegLoweredHalf(e_interpolation mode)
             GetNewVariable(
                 2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
                 false, m_numberInstance, name);
+        if (encoder.IsCodePatchCandidate())
+        {
+            AddPatchTempSetup(m_BaryRegLoweredHalf[mode]);
+        }
     }
     return m_BaryRegLoweredHalf[mode];
 }
@@ -518,6 +555,10 @@ CVariable* CPixelShader::GetBaryRegLoweredFloat(e_interpolation mode)
             GetNewVariable(
                 2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
                 false, m_numberInstance, name);
+        if (encoder.IsCodePatchCandidate())
+        {
+            AddPatchTempSetup(m_BaryRegLoweredFloat[mode]);
+        }
     }
     return m_BaryRegLoweredFloat[mode];
 }
@@ -750,6 +791,7 @@ CPixelShader::~CPixelShader()
 void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
 {
     m_R1 = NULL;
+    m_R1Lo = NULL;
     m_PerspectiveBaryPlanes = nullptr;
     m_NonPerspectiveBaryPlanes = nullptr;
     m_PerspectivePixel = NULL;
@@ -1681,12 +1723,21 @@ void CPixelShader::emitPSInputLowering()
             unsigned int index = *iterSetupIndex;
             CVariable* inputVar = GetInputDelta(index, combineTwoDelta);
             CVariable* inputVarLowered = GetInputDeltaLowered(index);
+            if (encoder.IsCodePatchCandidate())
+            {
+                encoder.SetPayloadSectionAsPrimary();
+                AddPatchTempSetup(inputVarLowered);
+            }
 
             encoder.SetSrcRegion(0, 1, 1, 0);
             encoder.SetUniformSIMDSize(combineTwoDelta ? SIMDMode::SIMD8 : SIMDMode::SIMD4);
             encoder.SetNoMask();
             encoder.Cast(inputVarLowered, inputVar);
             encoder.Push();
+            if (encoder.IsCodePatchCandidate())
+            {
+                encoder.SetPayloadSectionAsSecondary();
+            }
             if (combineTwoDelta)
             {
                 ++iterSetupIndex;
@@ -1700,6 +1751,10 @@ void CPixelShader::emitPSInputLowering()
                 CVariable* baryVar = GetBaryReg((e_interpolation)i);
                 CVariable* baryVarLowered = GetBaryRegLoweredHalf((e_interpolation)i);
 
+                if (encoder.IsCodePatchCandidate())
+                {
+                    encoder.SetPayloadSectionAsPrimary();
+                }
                 for (uint8_t i = 0; i < m_numberInstance; ++i)
                 {
                     encoder.SetSecondHalf(i == 1);
@@ -1745,6 +1800,10 @@ void CPixelShader::emitPSInputLowering()
                         encoder.Push();
                     }
                     encoder.SetSecondHalf(false);
+                }
+                if (encoder.IsCodePatchCandidate())
+                {
+                    encoder.SetPayloadSectionAsSecondary();
                 }
             }
         }
