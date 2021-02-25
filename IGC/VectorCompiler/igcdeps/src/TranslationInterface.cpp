@@ -58,6 +58,21 @@ struct VcPayloadInfo {
   uint64_t VcOptsOffset = 0;
   uint64_t IrSize = 0;
 };
+
+class BuildDiag {
+public:
+  void addWarning(const std::string &Str) {
+    BuildLog << "warning: " << Str << "\n";
+  }
+  std::string getLog() const { return BuildLog.str(); }
+
+private:
+  // for now, we don't differentiate between warnings and errors
+  // the expectation is that a marker indicating an error shall be
+  // reported by other means
+  std::ostringstream BuildLog;
+};
+
 } // namespace
 
 static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
@@ -166,12 +181,19 @@ static void adjustDumpOptions(vc::CompileOptions &Opts) {
 
 static void adjustOptions(const IGC::CPlatform &IGCPlatform,
                           TC::TB_DATA_FORMAT DataFormat,
-                          vc::CompileOptions &Opts) {
+                          vc::CompileOptions &Opts, BuildDiag &Diag) {
   adjustPlatform(IGCPlatform, Opts);
   adjustFileType(DataFormat, Opts);
   adjustOptLevel(Opts);
   adjustBinaryFormat(Opts.Binary);
   adjustDumpOptions(Opts);
+
+  // ZE Binary does not support debug info
+  if (Opts.Binary == vc::BinaryKind::ZE && Opts.EmitDebuggableKernels) {
+    Opts.EmitDebuggableKernels = false;
+    Diag.addWarning("ZEBinary does not support debuggable kernels! "
+                    "Emission of debuggable kernels disabled");
+  }
 }
 
 static void setErrorMessage(const std::string &ErrorMessage,
@@ -200,6 +222,7 @@ static std::error_code getError(std::error_code Err,
 }
 
 static void outputBinary(llvm::StringRef Binary, llvm::StringRef DebugInfo,
+                         const BuildDiag &Diag,
                          TC::STB_TranslateOutputArgs *OutputArgs) {
   size_t BinarySize = Binary.size();
   char *BinaryOutput = new char[BinarySize];
@@ -212,6 +235,16 @@ static void outputBinary(llvm::StringRef Binary, llvm::StringRef DebugInfo,
              DebugInfo.size());
     OutputArgs->pDebugData = DebugInfoOutput;
     OutputArgs->DebugDataSize = DebugInfo.size();
+  }
+  const std::string &BuildLog = Diag.getLog();
+  if (!BuildLog.empty()) {
+    // Currently, if warnings are reported, we expected that there was no
+    // error string set.
+    IGC_ASSERT(OutputArgs->pErrorString == nullptr);
+#ifndef NDEBUG
+    llvm::errs() << BuildLog;
+#endif
+    setErrorMessage(BuildLog, *OutputArgs);
   }
 }
 
@@ -333,8 +366,9 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   const auto ClOptGuard =
       llvm::make_scope_exit([]() { llvm::cl::ResetAllOptionOccurrences(); });
 
+  BuildDiag Diag;
   vc::CompileOptions &Opts = ExpOptions.get();
-  adjustOptions(IGCPlatform, InputDataFormatTemp, Opts);
+  adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag);
 
   Opts.Dumper = std::move(Dumper);
 
@@ -355,7 +389,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   switch (Opts.Binary) {
   case vc::BinaryKind::CM: {
     auto &CompileResult = std::get<vc::cm::CompileOutput>(Res);
-    outputBinary(CompileResult.IsaBinary, llvm::StringRef(), OutputArgs);
+    outputBinary(CompileResult.IsaBinary, llvm::StringRef(), Diag, OutputArgs);
     break;
   }
   case vc::BinaryKind::OpenCL: {
@@ -374,7 +408,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
         ProgramDebugData.GetLinearPointer(),
         static_cast<std::size_t>(ProgramDebugData.Size())};
 
-    outputBinary(BinaryRef, DebugInfoRef, OutputArgs);
+    outputBinary(BinaryRef, DebugInfoRef, Diag, OutputArgs);
     break;
   }
   case vc::BinaryKind::ZE: {
@@ -392,7 +426,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
         ProgramDebugData.GetLinearPointer(),
         static_cast<std::size_t>(ProgramDebugData.Size())};
 
-    outputBinary(BinaryRef, DebugInfoRef, OutputArgs);
+    outputBinary(BinaryRef, DebugInfoRef, Diag, OutputArgs);
     break;
   }
   }
