@@ -2396,6 +2396,7 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
 
         if (strstr(mode, "<ST>"))
         {
+            cntrls.isStencil = true;
             Stencil = operands[counter++];
         }
 
