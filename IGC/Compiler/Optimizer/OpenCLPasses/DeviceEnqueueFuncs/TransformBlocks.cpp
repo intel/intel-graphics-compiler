@@ -952,7 +952,11 @@ namespace //Anonymous
         {
             auto ndrangeStructName = "struct.ndrange_t";
             auto module = _deviceExecCall->getModule();
+#if LLVM_VERSION_MAJOR >= 12
+            auto ndrangeTy = llvm::StructType::getTypeByName(module->getContext(), ndrangeStructName);
+#else
             auto ndrangeTy = module->getTypeByName(ndrangeStructName);
+#endif
             if (ndrangeTy == nullptr)
             {
                 //create struct type
@@ -1697,7 +1701,7 @@ namespace //Anonymous
                     // this generates <element_type><num_elements> string. Ie for char2 element_type is char and num_elements is 2
                     // that is done by callin BaseTypeName on vector element type, this recursive call has only a depth of one since
                     // there are no compound vectors in OpenCL.
-                    auto vType = llvm::dyn_cast<VectorType>(type);
+                    auto vType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(type);
                     return BaseTypeName(type->getContainedType(0), os) << vType->getNumElements();
                 }
                 default:

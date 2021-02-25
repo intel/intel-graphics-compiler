@@ -23,6 +23,8 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ===========================*/
 
 #include "llvm/Config/llvm-config.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
@@ -178,12 +180,11 @@ namespace {
         bool doInitialization(Module& M) override {
             if(M.size() > 0)
             {
-                Result.reset(new AddressSpaceAAResult(
-                getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(
 #if LLVM_VERSION_MAJOR >= 10
-                    *M.begin()
+                Function &F = *M.begin();
 #endif
-                    ),
+                Result.reset(new AddressSpaceAAResult(
+                getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(),
                     *getAnalysis<CodeGenContextWrapper>().getCodeGenContext()));
             }
             return false;

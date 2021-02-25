@@ -254,7 +254,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertLoop(Instruction* Loc, Value* L
 Value* ReplaceUnsupportedIntrinsics::replicateScalar(
     Value* ScalarVal, Type* Ty, Instruction* InsertBefore)
 {
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     Type* ETy = VTy ? VTy->getElementType() : Ty;
     uint32_t sBits = (unsigned int)ScalarVal->getType()->getPrimitiveSizeInBits();
     uint32_t nBits = (unsigned int)ETy->getPrimitiveSizeInBits();
@@ -868,7 +868,7 @@ void ReplaceUnsupportedIntrinsics::replaceFunnelShift(IntrinsicInst* I) {
     }
 
     Value* numBits = Builder.getIntN(sizeInBits, sizeInBits);
-    if (auto IVT = dyn_cast<VectorType>(I->getType())) {
+    if (auto IVT = dyn_cast<IGCLLVM::FixedVectorType>(I->getType())) {
         numBits = ConstantVector::getSplat(IGCLLVM::getElementCount((uint32_t)IVT->getNumElements()), cast<Constant>(numBits));
     }
     auto shiftModulo = Builder.CreateURem(I->getArgOperand(2), numBits);

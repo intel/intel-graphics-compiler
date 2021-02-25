@@ -719,7 +719,7 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
             }
 
             Type* newType = Type::getFloatTy(arg->getContext());
-            if (auto argVT = dyn_cast<VectorType>(arg->getType()))
+            if (auto argVT = dyn_cast<IGCLLVM::FixedVectorType>(arg->getType()))
             {
                 newType = IGCLLVM::FixedVectorType::get(newType, (unsigned)argVT->getNumElements());
             }
@@ -749,7 +749,7 @@ void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)
         IGC::SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg);
         arg = fixupPrintfArg(printfCall, arg, argDataType);
         uint vecSize = 0;
-        if (auto argVType = dyn_cast<VectorType>(argType)) {
+        if (auto argVType = dyn_cast<IGCLLVM::FixedVectorType>(argType)) {
             vecSize = (uint)argVType->getNumElements();
         }
         m_argDescriptors.push_back(SPrintfArgDescriptor(argDataType, arg, vecSize));

@@ -134,7 +134,11 @@ bool AdvMemOpt::runOnFunction(Function& F) {
     for (auto I = LI->begin(), E = LI->end(); I != E; ++I)
         for (auto DFI = df_begin(*I), DFE = df_end(*I); DFI != DFE; ++DFI) {
             Loop* L = *DFI;
+#if LLVM_VERSION_MAJOR >= 12
+            if (L->isInnermost())
+#else
             if (L->empty())
+#endif
                 InnermostLoops.push_back(L);
         }
 

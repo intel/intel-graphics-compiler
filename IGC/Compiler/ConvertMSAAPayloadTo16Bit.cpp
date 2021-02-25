@@ -153,15 +153,24 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
             // In OGL there are uses of ldmcs other then ldms, using vec4float type.
             // Fix them to use newly created 16bit ldmcs.
             if (ldmcs->getType()->isVectorTy() &&
+#if LLVM_VERSION_MAJOR >= 12
+                ldmcs->getType()->getScalarType()->isFloatTy())
+#else
                 ldmcs->getType()->getVectorElementType()->isFloatTy())
+#endif
             {
                 m_builder->SetInsertPoint(ldmcs);
 
+#if LLVM_VERSION_MAJOR >= 12
+                uint ldmcsNumOfElements = cast<IGCLLVM::FixedVectorType>(ldmcs->getType())->getNumElements();
+                uint new_mcs_callNumOfElements = cast<IGCLLVM::FixedVectorType>(new_mcs_call->getType())->getNumElements();
+#else
                 uint ldmcsNumOfElements = ldmcs->getType()->getVectorNumElements();
                 uint new_mcs_callNumOfElements = new_mcs_call->getType()->getVectorNumElements();
+#endif
 
                 // vec of 16bit ints to vec of 32bit ints
-                Type* new_mcs_callVecType = VectorType::get(m_builder->getInt32Ty(), new_mcs_callNumOfElements);
+                Type* new_mcs_callVecType = IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), new_mcs_callNumOfElements);
                 Value* ldmcsExtendedToInt32 = m_builder->CreateSExt(new_mcs_call, new_mcs_callVecType);
 
                 // if new ldmcs has fewer elements than ldmcs, extend vector
@@ -175,7 +184,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                     }
                     auto* pMask = ConstantDataVector::get(I.getContext(), maskVals);
 
-                    newLdmcsSizedVector = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(VectorType::get(m_builder->getInt32Ty(), ldmcsNumOfElements)), pMask);
+                    newLdmcsSizedVector = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(IGCLLVM::FixedVectorType::get(m_builder->getInt32Ty(), ldmcsNumOfElements)), pMask);
                 }
                 else
                 {
@@ -183,7 +192,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                 }
                 IGC_ASSERT(newLdmcsSizedVector);
 
-                Type* ldmcsFloatVecType = VectorType::get(m_builder->getFloatTy(), ldmcsNumOfElements);
+                Type* ldmcsFloatVecType = IGCLLVM::FixedVectorType::get(m_builder->getFloatTy(), ldmcsNumOfElements);
                 Value* ldmcsBitcastedToFloat = m_builder->CreateBitCast(ldmcsExtendedToInt32, ldmcsFloatVecType);
                 ldmcs->replaceAllUsesWith(ldmcsBitcastedToFloat);
             }

@@ -29,6 +29,7 @@ IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
@@ -604,7 +605,7 @@ public:
             Type* scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = UndefValue::get(pLoad->getType());
-            auto pLoadVT = cast<VectorType>(pLoad->getType());
+            auto pLoadVT = cast<IGCLLVM::FixedVectorType>(pLoad->getType());
             for (unsigned i = 0, e = (unsigned)pLoadVT->getNumElements(); i < e; ++i)
             {
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
@@ -643,7 +644,7 @@ public:
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
             Value* vec = pStore->getValueOperand();
 
-            unsigned vecNumElts = (unsigned)cast<VectorType>(vec->getType())->getNumElements();
+            unsigned vecNumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
             for (unsigned i = 0; i < vecNumElts; ++i)
             {
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
@@ -707,7 +708,7 @@ bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const T
         }
         else if(pTmpType->isVectorTy())
         {
-            auto pTmpVType = cast<VectorType>(pTmpType);
+            auto pTmpVType = cast<IGCLLVM::FixedVectorType>(pTmpType);
             tmpAllocaSize *= pTmpVType->getNumElements();
             pTmpType = pTmpType->getContainedType(0);
             ok = (nullptr != pTmpType);
@@ -815,7 +816,11 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // Construct an empty DebugLoc.
     IF_DEBUG_INFO(DebugLoc entryDebugLoc);
     // Assign with the function location if available.
+#if LLVM_VERSION_MAJOR >= 12
+    IF_DEBUG_INFO_IF(DISubprogram *subprogram = m_currFunction->getSubprogram(), entryDebugLoc = DILocation::get(subprogram->getContext(), subprogram->getLine(), 0, subprogram););
+#else
     IF_DEBUG_INFO_IF(DISubprogram *subprogram = m_currFunction->getSubprogram(), entryDebugLoc = DebugLoc::get(subprogram->getLine(), 0, subprogram););
+#endif
     IF_DEBUG_INFO(entryBuilder.SetCurrentDebugLocation(entryDebugLoc));
 
     if (privateOnStack)

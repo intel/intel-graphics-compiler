@@ -41,6 +41,7 @@ IN THE SOFTWARE.
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -146,7 +147,7 @@ RegUse RegisterEstimator::estimateNumOfRegs(Value* V) const
     Type* Ty = V->getType();
     if (!Ty->isVoidTy())
     {
-        VectorType* VTy = dyn_cast<VectorType>(Ty);
+        IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
         Type* eltTy = VTy ? VTy->getElementType() : Ty;
         uint32_t nelts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
         uint32_t eltBits = (uint32_t)m_DL->getTypeSizeInBits(eltTy);

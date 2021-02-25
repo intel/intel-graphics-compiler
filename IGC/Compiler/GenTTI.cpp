@@ -216,7 +216,13 @@ namespace llvm {
 
         // Skip non-simple loop.
         if (L->getNumBlocks() != 1) {
-            if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) && L->empty()) {
+            if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) &&
+#if LLVM_VERSION_MAJOR >= 12
+                L->isInnermost()
+#else
+                L->empty()
+#endif
+               ) {
                 auto countNonPHI = [](BasicBlock* BB) {
                     unsigned Total = BB->size();
                     unsigned PHIs = 0;
