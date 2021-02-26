@@ -88,18 +88,11 @@ set(GED_definitions_hide_enums
     GED_THREAD_CTRL_HIDDEN)
 
 
-set(GED_definitions_debug _CONSOLE _LIB ${GED_TARGET} GED_DISASSEMBLY ${GED_definitions_hide_enums} GED_DEBUG)
 set(GED_definitions       _CONSOLE _LIB ${GED_TARGET} GED_DISASSEMBLY ${GED_definitions_hide_enums})
 
 # Needs to be before add_library otherwise it doesn't get set.
 if(MSVC)
     add_compile_options($<$<CONFIG:Release>:/Ox> /Gy)
-endif(MSVC)
-
-if (MSVC)
-    set(IGA_LINK_FLAGS "/OPT:REF /OPT:ICF /LTCG /INCREMENTAL:NO")
-else(MSVC)
-    set(IGA_LINK_FLAGS "")
 endif(MSVC)
 
 add_library(GEDLibrary OBJECT ${GED_files})

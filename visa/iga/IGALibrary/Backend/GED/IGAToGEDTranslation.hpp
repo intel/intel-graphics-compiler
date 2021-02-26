@@ -135,7 +135,7 @@ namespace iga
         case Platform::GEN9P5: pltf = GED_MODEL_GEN_9;   break;
         case Platform::GEN10:  pltf = GED_MODEL_GEN_10;  break;
         case Platform::GEN11:  pltf = GED_MODEL_GEN_11;  break;
-        case Platform::XE: pltf = GED_MODEL_GEN_12_1; break;
+        case Platform::XE: pltf = GED_MODEL_GEN_TGL; break;
         default:
             break;
         }
