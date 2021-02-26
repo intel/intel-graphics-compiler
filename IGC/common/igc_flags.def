@@ -111,7 +111,6 @@ DECLARE_IGC_REGKEY(bool, DisableConstantCoalescing,     false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOutOfBoundsCheck,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing out of bounds check", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTextures, false, "Setting this to use HDC message rather than sampler ld for texture read", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTypedBuffers,  false, "Setting this to use HDC message rather than sampler ld for buffer read", false)
-DECLARE_IGC_REGKEY(bool, DisableUniformTypedAccess,     false, "Setting this will disable uniform typed access handling", false)
 DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge,          false, "Setting this to 1/true adds a compiler switch to disable URB write merge", false)
 DECLARE_IGC_REGKEY(bool, DisableEmptyBlockRemoval,      false, "Setting this to 1/true adds a compiler switch to disable empty block optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableSIMD32Slicing,          false, "Setting this to 1/true adds a compiler switch to disable emitting SIMD32 VISA code in slices", false)

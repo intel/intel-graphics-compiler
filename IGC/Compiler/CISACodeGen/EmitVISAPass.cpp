@@ -11182,7 +11182,7 @@ void EmitPass::JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode 
     }
 }
 
-CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar, bool nomask)
+CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
 {
     IGC_ASSERT_MESSAGE(nullptr != pVar, "pVar is null");
     VISA_Type VarT = pVar->GetType();
@@ -11215,16 +11215,12 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar, bool nomask)
 
         for (uint i = 0; i < elts; ++i)
         {
-            if (nomask)
-                m_encoder->SetNoMask();
             m_encoder->SetSrcSubReg(0, i * Stride);
             if (Stride != 1) m_encoder->SetDstRegion(Stride);
             m_encoder->SetDstSubReg((i * Stride) * width);
             m_encoder->Copy(Dst, ImmLo ? ImmLo : Src);
             m_encoder->Push();
             if (Need64BitEmu) {
-                if (nomask)
-                    m_encoder->SetNoMask();
                 m_encoder->SetSrcSubReg(0, i * Stride + 1);
                 if (Stride != 1) m_encoder->SetDstRegion(Stride);
                 m_encoder->SetDstSubReg((i * Stride) * width + 1);
@@ -13356,45 +13352,18 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
     CVariable* pU = GetSymbol(pllU);
 
-    pU = BroadcastIfUniform(pU, m_currShader->GetIsUniform(pInsn));
-    pV = pV ? BroadcastIfUniform(pV, m_currShader->GetIsUniform(pInsn)) : nullptr;
-    pR = pR ? BroadcastIfUniform(pR, m_currShader->GetIsUniform(pInsn)) : nullptr;
-    pLOD = pLOD ? BroadcastIfUniform(pLOD, m_currShader->GetIsUniform(pInsn)) : nullptr;
+    pU = BroadcastIfUniform(pU);
+    pV = pV ? BroadcastIfUniform(pV) : nullptr;
+    pR = pR ? BroadcastIfUniform(pR) : nullptr;
+    pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
 
     ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
 
     uint numChannels = iSTD::BitCount(writeMask);
-    SIMDMode instWidth = std::min(
-        m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
-        m_currShader->m_SIMDSize);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
-        CVariable* tempdst = nullptr;
-        tempdst = m_currShader->GetNewVariable(
-            numChannels * numLanes(instWidth),
-            ISA_TYPE_F,
-            EALIGN_GRF,
-            CName("tempDest"));
-        m_encoder->SetSimdSize(instWidth);
-        m_encoder->SetPredicate(nullptr);
-        m_encoder->SetNoMask();
-        m_encoder->TypedRead4(resource, pU, pV, pR, pLOD, tempdst, writeMask);
-
-        m_encoder->Push();
-
-        // Mov the required channel values to m_destination
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetNoMask();
-
-        uint32_t width8 = getGRFSize() / 4;
-        for (uint i = 0; i < numChannels; ++i)
-        {
-            m_encoder->SetSrcSubReg(0, i * width8);
-            m_encoder->SetDstSubReg(i);
-            m_encoder->Copy(m_destination, tempdst);
-            m_encoder->Push();
-        }
+        IGC_ASSERT_MESSAGE(0, "Uniform ld_uav_typed not implemented yet");
     }
     else
     {
@@ -13402,6 +13371,9 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
+        SIMDMode instWidth = std::min(
+            m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
+            m_currShader->m_SIMDSize);
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
 
         if (!needsSplit)
