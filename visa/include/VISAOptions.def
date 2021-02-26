@@ -35,8 +35,6 @@ DEF_VISA_OPTION(vISA_skipFDE,               ET_BOOL, "-skipFDE",         UNUSED,
 // setting this flag makes VISA emit matching name for variable wrt visaasm file
 // but this makes it impossible to emit correct elf, so this is strictly for debugging
 DEF_VISA_OPTION(vISA_UseFriendlyNameInDbg,  ET_BOOL, "-useFriendlyNameInDbg", UNUSED, false)
-DEF_VISA_OPTION(vISA_removeInstrinsics,           ET_BOOL, "-removeInstrinsics",     UNUSED, true)
-DEF_VISA_OPTION(vISA_addSWSBInfo,           ET_BOOL, "-addSWSBInfo",     UNUSED, true)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways,          ET_BOOL, NULLSTR,            UNUSED, true)

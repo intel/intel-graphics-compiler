@@ -32,7 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RegAlloc.h"
 #include "HWConformity.h"
 #include "LocalScheduler/LocalScheduler_G4IR.h"
-#include "LocalScheduler/SWSB_G4IR.h"
 #include <unordered_set>
 
 typedef struct{
@@ -176,11 +175,6 @@ class Optimizer
         LocalScheduler lSched(kernel.fg, mem);
         lSched.localScheduling();
     }
-
-    void adjustIndirectCallOffset();
-
-    void addSWSBInfo();
-
     void lowerMadSequence();
 
     void LVN();
@@ -217,8 +211,6 @@ private:
     void split4GRFVars();
     void legalizeType();
     void analyzeMove();
-
-    void removeInstrinsics();
 
     void countBankConflicts();
     unsigned int numBankConflicts;
@@ -355,8 +347,6 @@ public:
         PI_varSplit,
         PI_legalizeType,
         PI_analyzeMove,
-        PI_removeInstrinsics,
-        PI_addSWSBInfo,
         PI_NUM_PASSES
     };
 

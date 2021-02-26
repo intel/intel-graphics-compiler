@@ -526,7 +526,6 @@ static void Stitch_Compiled_Units(
                     fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
                     fcall->getDst(), calleeLabel->getSrc(0), fcall->getSrc(0), fcall->getOption());
                 callInst->inheritDIFrom(fcall);
-                callInst->inheritSWSBFrom(fcall);
                 cur->pop_back();
                 cur->push_back(callInst);
             }
@@ -537,7 +536,6 @@ static void Stitch_Compiled_Units(
                     fcall->getPredicate(), G4_call, nullptr, g4::NOSAT, fcall->getExecSize(),
                     fcall->getDst(), fcall->getSrc(0), fcall->getSrc(0), fcall->getOption());
                 callInst->inheritDIFrom(fcall);
-                callInst->inheritSWSBFrom(fcall);
                 cur->pop_back();
                 cur->push_back(callInst);
             }
@@ -555,7 +553,6 @@ static void Stitch_Compiled_Units(
                 fret->getPredicate(), G4_return, nullptr, g4::NOSAT, fret->getExecSize(),
                 builder->createNullDst(Type_UD), fret->getSrc(0), fret->getSrc(1), fret->getOption());
             retInst->inheritDIFrom(fret);
-            retInst->inheritSWSBFrom(fret);
             cur->pop_back();
             cur->push_back(retInst);
             FCallRetMap[cur] = fret;
@@ -902,7 +899,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 resetGenOffsets(*func->getKernel());
             }
         }
-
 
         // stitch functions and compile to gen binary
         for (auto func : mainFunctions)
