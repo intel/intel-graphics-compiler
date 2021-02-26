@@ -57,6 +57,10 @@ IN THE SOFTWARE.
 #include <string>
 #include <vector>
 
+#if defined( _DEBUG ) || defined( _INTERNAL )
+#include <numeric>
+#include <array>
+#endif // defined( _DEBUG ) || defined( _INTERNAL )
 #if defined(IGC_VC_ENABLED)
 #include "Frontend.h"
 
@@ -418,13 +422,23 @@ static std::string getCMFEWrapperDir() {
 
 // This essentialy duplicates existing DumpShaderFile in dllInterfaceCompute
 // but now I see no way to reuse it. To be converged later
-static void DumpPlatform(PLATFORM *Platform, const char *Selected,
-                         int Stepping) {
+static void DumpInputs(PLATFORM *Platform, const char *Selected,
+                       int Stepping, CIF::Builtins::BufferSimple* src,
+                       CIF::Builtins::BufferSimple* options,
+                       CIF::Builtins::BufferSimple* internalOptions,
+                       CIF::Builtins::BufferSimple* tracingOptions) {
 #if defined( _DEBUG ) || defined( _INTERNAL )
   // check for shader dumps enabled
   if (!FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     return;
 
+  auto AsStringRef = [](CIF::Builtins::BufferSimple* Src) {
+     if (!Src)
+       return llvm::StringRef();
+     size_t Size = Src->GetSize<char>();
+     const char* Buff = Src->GetMemory<char>();
+     return llvm::StringRef(Buff, Size);
+  };
   // dump if yes
   std::ostringstream Os;
   if (Platform) {
@@ -440,24 +454,42 @@ static void DumpPlatform(PLATFORM *Platform, const char *Selected,
   } else {
     Os << "Nothing came from NEO\n";
   }
+  auto PlatformInfo = Os.str();
 
-  auto Outbuf = Os.str();
+  struct DumpDescriptor {
+    llvm::StringRef OutputName;
+    llvm::StringRef Contents;
+  };
+  std::array<DumpDescriptor, 5> Dumps = {{
+    { "platform", PlatformInfo.c_str() },
+    { "options", AsStringRef(options) },
+    { "internal_options", AsStringRef(internalOptions) },
+    { "tracing_options", AsStringRef(tracingOptions) },
+    { "source_code", AsStringRef(src) }
+  }};
+  using HashType = unsigned long long;
+  auto Hash = std::accumulate(Dumps.begin(), Dumps.end(), 0ull,
+      [](const auto& HashVal, const auto& DI) {
+          const auto *BuffStart = DI.Contents.data();
+          auto BuffSize = DI.Contents.size();
+          return HashVal ^ iSTD::HashFromBuffer(BuffStart, BuffSize);
+      });
 
-  const char *DstDir = FCL::GetShaderOutputFolder();
-  unsigned long long Hash =
-      iSTD::HashFromBuffer(Outbuf.data(), Outbuf.size());
+  std::for_each(Dumps.begin(), Dumps.end(),
+      [&Hash](const auto &DI) {
+          // do factual dump, this part can be replaced to DumpShaderFile
+          const char *DstDir = FCL::GetShaderOutputFolder();
+          std::ostringstream FullPath(DstDir, std::ostringstream::ate);
+          FullPath << "VC_fe_"  << std::hex << std::setfill('0')
+              << std::setw(sizeof(Hash) * CHAR_BIT / 4) << Hash << std::dec
+              << std::setfill(' ') << "_" << DI.OutputName.str() << ".txt";
+          // NOTE: for now, we expect only text data here
+          std::ofstream OutF(FullPath.str(), std::ofstream::out);
+          // if we can create dump file at all...
+          if (OutF)
+            OutF.write(DI.Contents.data(), DI.Contents.size());
+      });
 
-  // do factual dump, this part can be replaced to DumpShaderFile
-  std::ostringstream FullPath(DstDir, std::ostringstream::ate);
-  FullPath << "VC_platform" << std::hex << std::setfill('0')
-           << std::setw(sizeof(Hash) * CHAR_BIT / 4) << Hash << std::dec
-           << std::setfill(' ') << ".txt";
-
-  std::ofstream OutF(FullPath.str(), std::ofstream::out);
-
-  // if we can create dump file at all...
-  if (OutF)
-    OutF << Outbuf;
 #endif // defined( _DEBUG ) || defined( _INTERNAL )
 }
 
@@ -476,20 +508,20 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     if (outputInterface == nullptr)
         return nullptr;
 
-    const char *platform = nullptr;
-    uint32_t stepping = 0U;
+    PLATFORM *platformDescr = nullptr;
+    const char *platformStr = nullptr;
+    uint32_t stepping       = 0U;
 
     if(globalState.GetPlatformImpl()){
       // NEO supports platform interface
       auto *PlatformImpl = globalState.GetPlatformImpl();
-      platform = cmc::getPlatformStr(PlatformImpl->p);
+      platformDescr = &PlatformImpl->p;
+      platformStr = cmc::getPlatformStr(PlatformImpl->p);
       stepping = PlatformImpl->p.usRevId;
-      DumpPlatform(&PlatformImpl->p, platform, stepping);
     }
-    else {
-      // nothing came from NEO
-      DumpPlatform(NULL, NULL, 0);
-    }
+
+    DumpInputs(platformDescr, platformStr, stepping,
+               src, options, internalOptions, tracingOptions);
 
     OclTranslationOutputBase& Out = *outputInterface;
 
@@ -509,7 +541,8 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
     auto& FE = MaybeFE.getValue();
-    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(), options, Saver, platform, stepping);
+    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(),
+                                   options, Saver, platformStr, stepping);
 
     auto Drv = FE.buildDriverInvocation(FeArgs);
     if (!Drv)
