@@ -345,7 +345,14 @@ uint16 __builtin_spirv_OpenCL_u_abs_v16i32( uint16 x )
 INLINE
 ulong __builtin_spirv_OpenCL_s_abs_i64( long x )
 {
-    return (ulong)((x >= 0) ? x : -x);
+    // -x would overflow if x = 0x8000000000000000, resulting undefined behavior
+    // -ux would never overflow and is well-defined.
+    // In llvm, -x could be "sub nsw  0, x", where -ux is "sub 0, ux". "nsw" indicates
+    // the result might be undefined.
+    // With this, this function will always return -INT64_MIN for x = INT64_MIN
+    // Note that the standard lib int abs(int) has undefined behavior when x = MIN.
+    ulong ux = (ulong)x;
+    return (ulong)((x >= 0) ? ux : -ux);
 }
 
 INLINE

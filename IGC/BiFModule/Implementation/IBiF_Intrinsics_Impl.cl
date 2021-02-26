@@ -42,7 +42,10 @@ ushort __builtin_spirv_OpenCL_s_abs_i16(short x ){
 
 INLINE
 uint __builtin_spirv_OpenCL_s_abs_i32(int x ){
-    return x > 0 ? x : -x;
+    // Convert signed to unsigned to have consistent result.
+    // Also, make abs(INT32_MIN) well defined : abs(INT32_MIN) = (ui32)(-(i64)INT32_MIN)
+    uint ux = (uint)x;
+    return x > 0 ? ux : -ux;
 }
 
 INLINE
