@@ -1416,8 +1416,8 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const
             // Note: in case of implicit value we want to put the value of the
             // bit_piece onto DWARF stack, so implict expression could operatate
             // on it.
-            addConstantUValue(Block, varSizeInBits);
             addConstantUValue(Block, offsetInBits);
+            addConstantUValue(Block, varSizeInBits);
             IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
             addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
         }
@@ -2778,8 +2778,8 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
 
                     if (HasImplicitLocation(var)) {
-                        addConstantUValue(Block, varSizeInBits);
                         addConstantUValue(Block, offsetInBits);
+                        addConstantUValue(Block, varSizeInBits);
                         IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
                         addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
                     } else if (lrToUse.getGRF().subRegNum != 0) {
