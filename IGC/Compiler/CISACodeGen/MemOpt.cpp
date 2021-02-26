@@ -813,7 +813,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             std::get<0>(I)->replaceAllUsesWith(Val);
         }
         else {
-            if (Pos > NumElts) {
+            if (Pos + 1 > NumElts) {
                 continue;
             }
             Value* Val = Builder.CreateExtractElement(NewLoad,
