@@ -1576,11 +1576,7 @@ void SPIRVToLLVMDbgTran::transDbgInfo(SPIRVValue *SV, Value *V) {
             Line->getColumn(), scope, iat);
 
         if(scope && !isa<DIFile>(scope))
-#if LLVM_VERSION_MAJOR >= 12
             I->setDebugLoc(DILocation::get(scope->getContext(), Line->getLine(), Line->getColumn(),
-#else
-            I->setDebugLoc(DebugLoc::get(Line->getLine(), Line->getColumn(),
-#endif
                 scope, iat));
     }
 }

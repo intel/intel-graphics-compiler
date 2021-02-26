@@ -816,11 +816,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // Construct an empty DebugLoc.
     IF_DEBUG_INFO(DebugLoc entryDebugLoc);
     // Assign with the function location if available.
-#if LLVM_VERSION_MAJOR >= 12
     IF_DEBUG_INFO_IF(DISubprogram *subprogram = m_currFunction->getSubprogram(), entryDebugLoc = DILocation::get(subprogram->getContext(), subprogram->getLine(), 0, subprogram););
-#else
-    IF_DEBUG_INFO_IF(DISubprogram *subprogram = m_currFunction->getSubprogram(), entryDebugLoc = DebugLoc::get(subprogram->getLine(), 0, subprogram););
-#endif
     IF_DEBUG_INFO(entryBuilder.SetCurrentDebugLocation(entryDebugLoc));
 
     if (privateOnStack)
