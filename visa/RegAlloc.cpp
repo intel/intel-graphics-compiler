@@ -857,15 +857,10 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
             {
                 if (undefinedRows == nullptr)
                 {
-                    undefinedRows = new (m) BitSet(it.first->getByteSize(), false);
+                    undefinedRows = &neverDefinedRows.emplace(it.first, BitSet(it.first->getByteSize(), false)).first->second;
                 }
                 undefinedRows->set(i * bytesPerGRF, i * bytesPerGRF + bytesPerGRF - 1);
             }
-        }
-
-        if (undefinedRows)
-        {
-            neverDefinedRows.insert(std::make_pair(it.first, std::move(*undefinedRows)));
         }
     }
 }

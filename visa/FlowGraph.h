@@ -478,7 +478,7 @@ public:
     void addUniquePredSuccEdges(G4_BB* pred, G4_BB* succ, bool tofront=true)
     {
         // like above, but check for duplicate edges
-        auto iter = std::find_if(pred->Succs.begin(), pred->Succs.end(), [succ](G4_BB* bb) { return bb == succ; });
+        auto iter = std::find(pred->Succs.begin(), pred->Succs.end(), succ);
         if (iter == pred->Succs.end())
         {
             addPredSuccEdges(pred, succ, tofront);
@@ -649,7 +649,7 @@ private:
     void normalizeRegionDescriptors();
 
     // Find the BB that has the given label from the range [StartIter, EndIter).
-    G4_BB* findLabelBB(
+    static G4_BB* findLabelBB(
         BB_LIST_ITER StartIter,
         BB_LIST_ITER EndIter,
         const char* Label);

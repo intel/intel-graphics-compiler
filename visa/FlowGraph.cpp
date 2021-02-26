@@ -68,17 +68,17 @@ void GlobalOpndHashTable::HashNode::insert(uint16_t newLB, uint16_t newRB)
 {
     // check if the newLB/RB either subsumes or can be subsumed by an existing bound
     // ToDo: consider merging bound as well
-    for (int i = 0, size = (int)bounds.size(); i < size; ++i)
+    for (uint32_t& bound : bounds)
     {
-        uint16_t nodeLB = getLB(bounds[i]);
-        uint16_t nodeRB = getRB(bounds[i]);
+        uint16_t nodeLB = getLB(bound);
+        uint16_t nodeRB = getRB(bound);
         if (newLB >= nodeLB && newRB <= nodeRB)
         {
             return;
         }
         else if (newLB <= nodeLB && newRB >= nodeRB)
         {
-            bounds[i] = packBound(newLB, newRB);
+            bound = packBound(newLB, newRB);
             return;
         }
     }
@@ -87,10 +87,10 @@ void GlobalOpndHashTable::HashNode::insert(uint16_t newLB, uint16_t newRB)
 
 bool GlobalOpndHashTable::HashNode::isInNode(uint16_t lb, uint16_t rb) const
 {
-    for (int i = 0, size = (int) bounds.size(); i < size; ++i)
+    for (uint32_t bound : bounds)
     {
-        uint16_t nodeLB = getLB(bounds[i]);
-        uint16_t nodeRB = getRB(bounds[i]);
+        uint16_t nodeLB = getLB(bound);
+        uint16_t nodeRB = getRB(bound);
         if (lb <= nodeLB && rb >= nodeLB)
         {
             return true;
@@ -105,10 +105,9 @@ bool GlobalOpndHashTable::HashNode::isInNode(uint16_t lb, uint16_t rb) const
 
 void GlobalOpndHashTable::clearHashTable()
 {
-    for (auto iter = globalVars.begin(), end = globalVars.end();
-        iter != end; ++iter)
+    for (auto& iter : globalVars)
     {
-        iter->second->~HashNode();
+        iter.second->~HashNode();
     }
     globalVars.clear();
     globalOpnds.clear();
@@ -535,9 +534,8 @@ void FlowGraph::preprocess(INST_LIST& instlist)
     std::unordered_set<G4_Label*> labels;   // label inst we have seen so far
 
     // Mark goto/jmpi/call as either forward or backward
-    for (auto it1 = instlist.begin(), itEnd = instlist.end(); it1 != itEnd; ++it1)
+    for (G4_INST* i : instlist)
     {
-        G4_INST* i = *it1;
         if (i->isLabel())
         {
             labels.emplace(i->getLabel());
@@ -560,9 +558,8 @@ void FlowGraph::preprocess(INST_LIST& instlist)
 
 #ifdef _DEBUG
     // sanity check to make sure we don't have undefined labels
-    for (auto I = instlist.begin(), E = instlist.end(); I != E; ++I)
+    for (G4_INST* i : instlist)
     {
-        G4_INST* i = *I;
         if (i->opcode() == G4_goto)
         {
             G4_Label* target = i->asCFInst()->getUip()->asLabel();
@@ -1262,14 +1259,13 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
 #ifdef _DEBUG
 
     // sanity check
-    for (BB_LIST_ITER iter = BBs.begin(), iterEnd = BBs.end(); iter != iterEnd; ++iter)
+    for (const G4_BB* bb : BBs)
     {
-        G4_BB* bb = *iter;
         if (bb->size() == 0)
         {
             continue;
         }
-        G4_INST* lastInst = bb->back();
+        const G4_INST* lastInst = bb->back();
         if (lastInst->opcode() == G4_pseudo_exit)
         {
             MUST_BE_TRUE(false, "All pseudo exits should be removed at this point");
@@ -1354,10 +1350,8 @@ void FlowGraph::handleReturn(Label_BB_Map& labelMap, FuncInfoHashTable& funcInfo
     //
     // remove <CALL, return addr> link when it is not a conditional call
     //
-    for (std::list<G4_BB*>::iterator it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+    for (G4_BB* bb : BBs)
     {
-        G4_BB* bb = (*it);
-
         if (bb->isEndWithCall())
         {
             G4_INST* last = bb->back();
@@ -1420,9 +1414,9 @@ void FlowGraph::mergeReturn(FuncInfoHashTable& funcInfoHashTable)
         // it's possible for the subroutine to never be called (e.g., kernel function)
         if (calleeInfoLoc != funcInfoHashTable.end() && mergedExitBB)
         {
-            (*calleeInfoLoc).second->getExitBB()->unsetBBType(G4_BB_EXIT_TYPE);
+            calleeInfoLoc->second->getExitBB()->unsetBBType(G4_BB_EXIT_TYPE);
             mergedExitBB->setBBType(G4_BB_EXIT_TYPE);
-            (*calleeInfoLoc).second->updateExitBB(mergedExitBB);
+            calleeInfoLoc->second->updateExitBB(mergedExitBB);
         }
     }
 }
@@ -1477,9 +1471,8 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_Label* subroutineLabel)
         //
         // Deal with all return BBs
         //
-        for (auto it = retBBList.begin(); it != retBBList.end(); ++it)
+        for (G4_BB * retBB : retBBList)
         {
-            G4_BB * retBB = (*it);
             if (retBB->getId() == newBB->getId())
             {
                 continue;
@@ -1544,7 +1537,7 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
 
     FuncInfoHashTable::iterator old_iter = funcInfoHashTable.find(oldInitBB->getId());
     MUST_BE_TRUE(old_iter != funcInfoHashTable.end(), " Function info is not in hashtable.");
-    FuncInfo* funcInfo = (*old_iter).second;
+    FuncInfo* funcInfo = old_iter->second;
 
     // Erase the old item from unordered_map and add the new one.
     funcInfo->updateInitBB(newInitBB);
@@ -1595,36 +1588,29 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
 void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
 {
     setPhysicalPredSucc();
-    auto nexti = BBs.begin();
-    for (BB_LIST_ITER it = nexti; it != BBs.end(); it = nexti)
+    for (G4_BB* bb : BBs)
     {
-        ++nexti;
-
-        if (((*it)->getBBType() & G4_BB_CALL_TYPE))
+        if ((bb->getBBType() & G4_BB_CALL_TYPE))
         {
-            G4_BB* callBB = (*it);
-
-            if (callBB->getBBType() & G4_BB_EXIT_TYPE)
+            if (bb->getBBType() & G4_BB_EXIT_TYPE)
             {
                 // As call BB has RETURN BB as fall-thru, cannot be EXIT
                 MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
             }
 
             // BB could be either INIT or RETURN, but not both.
-            if (callBB->getBBType() & G4_BB_INIT_TYPE)
+            if (bb->getBBType() & G4_BB_INIT_TYPE)
             {
-                decoupleInitBlock(callBB, funcInfoTable);
+                decoupleInitBlock(bb, funcInfoTable);
             }
-            else if (callBB->getBBType() & G4_BB_RETURN_TYPE)
+            else if (bb->getBBType() & G4_BB_RETURN_TYPE)
             {
-                decoupleReturnBlock(callBB);
+                decoupleReturnBlock(bb);
             }
         }
-        else if (((*it)->getBBType() & G4_BB_INIT_TYPE))
+        else if ((bb->getBBType() & G4_BB_INIT_TYPE))
         {
-            G4_BB* initBB = (*it);
-
-            if (initBB->getBBType() & G4_BB_RETURN_TYPE)
+            if (bb->getBBType() & G4_BB_RETURN_TYPE)
             {
                 // As retrun BB must have a pred, it cannot be init BB
                 MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
@@ -1632,30 +1618,26 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable)
 
             // Two possible combinations: INIT & CALL, or INIT & EXIT. INIT & CALL has
             // been processed in the previous IF, here only INIT and EXIT is possible.
-            if (initBB->getBBType() & G4_BB_EXIT_TYPE)
+            if (bb->getBBType() & G4_BB_EXIT_TYPE)
             {
-                decoupleInitBlock(initBB, funcInfoTable);
+                decoupleInitBlock(bb, funcInfoTable);
             }
         }
-        else if (((*it)->getBBType() & G4_BB_EXIT_TYPE))
+        else if ((bb->getBBType() & G4_BB_EXIT_TYPE))
         {
-            G4_BB* exitBB = (*it);
-
             // Only EXIT & RETURN are possible. (INIT & EXIT
             // has been processed)
-            if (exitBB->getBBType() & G4_BB_RETURN_TYPE)
+            if (bb->getBBType() & G4_BB_RETURN_TYPE)
             {
-                decoupleReturnBlock(exitBB);
+                decoupleReturnBlock(bb);
             }
         }
-        else if (((*it)->getBBType() & G4_BB_RETURN_TYPE))
+        else if ((bb->getBBType() & G4_BB_RETURN_TYPE))
         {
-            G4_BB* retBB = (*it);
-
             // Do we need to do this ?
-            if (retBB->Preds.size() > 1)
+            if (bb->Preds.size() > 1)
             {
-                decoupleReturnBlock(retBB);
+                decoupleReturnBlock(bb);
             }
         }
     }
@@ -1682,10 +1664,8 @@ void doDFS(G4_BB* startBB, unsigned int p)
         }
         currBB->setPreId(currP++);
 
-        BB_LIST_ITER IE = currBB->Succs.end();
-        for (BB_LIST_ITER it = currBB->Succs.begin(); it != IE; ++it)
+        for (G4_BB* tmp : currBB->Succs)
         {
-            G4_BB* tmp = *it;
             if (tmp->getPreId() == UINT_MAX)
             {
                 traversalStack.push(tmp);
@@ -1707,9 +1687,9 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
     //
     // initializations
     //
-    for (std::list<G4_BB*>::iterator it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+    for (G4_BB* bb : BBs)
     {
-        (*it)->setPreId(UINT_MAX);
+        bb->setPreId(UINT_MAX);
     }
     //
     // assign DFS based pre/rpost ids to all blocks in the main program
@@ -2127,15 +2107,7 @@ void FlowGraph::removeRedundantLabels()
             //
             // Replace the unique successor's predecessor links with the removed block's predessors.
             //
-            BB_LIST_ITER kt = bb->Succs.front()->Preds.begin();
-
-            for (; kt != bb->Succs.front()->Preds.end(); ++kt)
-            {
-                if ((*kt) == bb)
-                {
-                    break;
-                }
-            }
+            BB_LIST_ITER kt = std::find(bb->Succs.front()->Preds.begin(), bb->Succs.front()->Preds.end(), bb);
 
             BB_LIST_ITER mt = bb->Preds.begin();
 
@@ -2172,10 +2144,8 @@ void FlowGraph::removeRedundantLabels()
 //
 void FlowGraph::removeRedundMov()
 {
-    for (std::list<G4_BB*>::iterator it = BBs.begin(); it != BBs.end(); ++it)
+    for (G4_BB* bb : BBs)
     {
-        G4_BB* bb = (*it);
-
         INST_LIST_ITER curr_iter = bb->begin();
         while (curr_iter != bb->end())
         {
@@ -2262,16 +2232,7 @@ void FlowGraph::removeEmptyBlocks()
                     //
                     // Replace the predecessors successor links to the removed block's unique successor.
                     //
-                    BB_LIST_ITER jt = predBB->Succs.begin();
-                    BB_LIST_ITER jtEnd = predBB->Succs.end();
-
-                    for (; jt != jtEnd; ++jt)
-                    {
-                        if ((*jt) == bb)
-                        {
-                            break;
-                        }
-                    }
+                    BB_LIST_ITER jt = std::find(predBB->Succs.begin(), predBB->Succs.end(), bb);
 
                     for (auto succBB : bb->Succs)
                     {
@@ -2286,16 +2247,7 @@ void FlowGraph::removeEmptyBlocks()
                     //
                     // Replace the unique successor's predecessor links with the removed block's predessors.
                     //
-                    BB_LIST_ITER kt = succBB->Preds.begin();
-                    BB_LIST_ITER ktEnd = succBB->Preds.end();
-
-                    for (; kt != ktEnd; ++kt)
-                    {
-                        if ((*kt) == bb)
-                        {
-                            break;
-                        }
-                    }
+                    BB_LIST_ITER kt = std::find(succBB->Preds.begin(), succBB->Preds.end(), bb);
 
                     for (auto predBB : bb->Preds)
                     {
@@ -2339,12 +2291,8 @@ void FlowGraph::mergeFReturns()
     G4_BB* candidateFretBB = NULL;
     G4_Label *dumLabel = NULL;
 
-    for (BB_LIST_ITER bb_it = BBs.begin(), bb_itEnd = BBs.end();
-        bb_it != bb_itEnd;
-        bb_it++)
+    for (G4_BB* cur : BBs)
     {
-        G4_BB* cur = (*bb_it);
-
         if (cur->size() > 0 && cur->back()->isFReturn())
         {
             exitBBs.push_back(cur);
@@ -2376,10 +2324,8 @@ void FlowGraph::mergeFReturns()
             candidateFretBB = newExit;
         }
 
-        for (BB_LIST_ITER it = exitBBs.begin(); it != exitBBs.end(); ++it)
+        for (G4_BB* cur : exitBBs)
         {
-            G4_BB* cur = (*it);
-
             if (cur != candidateFretBB)
             {
                 G4_INST* last = cur->back();
@@ -2407,9 +2353,8 @@ void FlowGraph::linkDummyBB()
     //
     std::list<G4_BB*> exitBBs;
     int nonEotExitBB = 0;
-    for (std::list<G4_BB*>::iterator it = BBs.begin(); it != BBs.end(); ++it)
+    for (G4_BB *bb : BBs)
     {
-        G4_BB *bb = *it;
         if (bb->Succs.empty())
         {
             exitBBs.push_back(bb);      // record exit BBs
@@ -2443,9 +2388,8 @@ void FlowGraph::linkDummyBB()
         dumBB->push_back(label);
         BBs.push_back(dumBB);
 
-        for (std::list<G4_BB*>::iterator it = exitBBs.begin(), itEnd = exitBBs.end(); it != itEnd; ++it)
+        for (G4_BB *bb : exitBBs)
         {
-            G4_BB *bb = *it;
             dumBB->Preds.push_back(bb);
             bb->Succs.push_back(dumBB);
         }
@@ -2463,11 +2407,9 @@ void FlowGraph::reassignBlockIDs()
     // Important: since we re-assign id, there MUST NOT exist any instruction
     // that depends on BB id. Or the code will be incorrect once we reassign id.
     //
-    std::list<G4_BB*> function_start_list;
     unsigned i = 0;
-    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+    for (G4_BB* bb : BBs)
     {
-        G4_BB* bb = *it;
         bb->setId(i);
         i++;
         MUST_BE_TRUE(i <= getNumBB(), ERROR_FLOWGRAPH);
@@ -2549,12 +2491,10 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap)
     std::stack<StructuredCF*> ifAndLoops;
     std::vector<StructuredCF*> structuredSimdCF;
 
-    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+    for (G4_BB* bb : BBs)
     {
-        G4_BB* bb = *it;
-        for (INST_LIST_ITER it = bb->begin(), _itEnd = bb->end(); it != _itEnd; ++it)
+        for (G4_INST* inst : *bb)
         {
-            G4_INST* inst = *it;
             // check if first non-label inst is an endif
             if (inst->opcode() != G4_label && inst->opcode() != G4_join)
             {
@@ -2580,9 +2520,8 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap)
         }
 
         // check if bb is SIMD loop head
-        for (BB_LIST_ITER preds = bb->Preds.begin(), predsEnd = bb->Preds.end(); preds != predsEnd; ++preds)
+        for (G4_BB* predBB : bb->Preds)
         {
-            G4_BB* predBB = *preds;
             // check if one of the pred ends with a while
             if (predBB->getId() >= bb->getId())
             {
@@ -2622,9 +2561,8 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap)
 
     MUST_BE_TRUE(ifAndLoops.size() == 0, "not well-structured SIMD CF");
 
-    for (int i = 0, size = (int)structuredSimdCF.size(); i < size; i++)
+    for (StructuredCF* cf : structuredSimdCF)
     {
-        StructuredCF* cf = structuredSimdCF[i];
         if (cf->mType == STRUCTURED_CF_IF && cf->enclosingCF != NULL)
         {
             setJIPForEndif(cf->mEndInst, cf->enclosingCF->mEndInst, cf->enclosingCF->mEndBB);
@@ -2659,9 +2597,8 @@ void FlowGraph::markDivergentBBs()
     // (Note that each function has its own CFG)
     if (!builder->getIsKernel())
     {
-        for (auto IT = BBs.begin(), IE = BBs.end(); IT != IE; ++IT)
+        for (G4_BB* BB : BBs)
         {
-            G4_BB* BB = *IT;
             BB->setDivergent(true);
         }
         return;
@@ -2944,9 +2881,8 @@ void FlowGraph::markDivergentBBs()
 
             // BB could be head of several loops, and the following does pre-scan for
             //  every one of those loops.
-            for (auto PI0 = BB->Preds.begin(), PI0E = BB->Preds.end(); PI0 != PI0E; ++PI0)
+            for (G4_BB* predBB : BB->Preds)
             {
-                G4_BB* predBB = *PI0;
                 if (!isBackwardBranch(predBB, BB)) {
                     G4_opcode t_opc = predBB->getLastOpcode();
                     bool isBr = (t_opc == G4_goto || t_opc == G4_jmpi);
@@ -3017,9 +2953,8 @@ void FlowGraph::markDivergentBBs()
                     {
                         // Check loops that are fully inside the current loop.
                         G4_BB* H = *LoopIT;
-                        for (auto PI1 = H->Preds.begin(), PI1E = H->Preds.end(); PI1 != PI1E; ++PI1)
+                        for (G4_BB* T : H->Preds)
                         {
-                            G4_BB* T = *PI1;
                             if (!isBackwardBranch(T, H)) {
                                 continue;
                             }
@@ -3060,13 +2995,10 @@ G4_BB* FlowGraph::getUniqueReturnBlock()
     // Return NULL if multiple return instructions found
     G4_BB* uniqueReturnBlock = NULL;
 
-    for (BB_LIST_ITER bb_it = BBs.begin(); bb_it != BBs.end(); ++bb_it) {
-        G4_BB* curBB = *bb_it;
-        G4_INST* last_inst = NULL;
-
+    for (G4_BB* curBB : BBs) {
         if (!curBB->empty())
         {
-            last_inst = curBB->back();
+            G4_INST* last_inst = curBB->back();
 
             if (last_inst->opcode() == G4_pseudo_fret) {
                 if (uniqueReturnBlock == NULL) {
@@ -3215,10 +3147,8 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
         G4_INST* prevInst = NULL;
         if (target->opcode() == G4_endif)
         {
-            for (INST_LIST_ITER it = targetBB->begin(), itEnd = targetBB->end();
-                it != itEnd; ++it)
+            for (G4_INST* inst : *targetBB)
             {
-                G4_INST* inst = *it;
                 if (inst == target)
                 {
                     if (prevInst != NULL && prevInst->isLabel())
@@ -3377,9 +3307,8 @@ void FlowGraph::processGoto(bool HasSIMDCF)
     std::list<BlockSizePair> activeJoinBlocks;
     bool doScalarJmp = !builder->noScalarJmp();
 
-    for (BB_LIST_ITER it = BBs.begin(), itEnd = BBs.end(); it != itEnd; ++it)
+    for (G4_BB* bb : BBs)
     {
-        G4_BB* bb = *it;
         if (bb->size() == 0)
         {
             continue;
@@ -3723,9 +3652,8 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
             }
 
             // Handle loop
-            for (auto iter = BB->Preds.begin(), iterEnd = BB->Preds.end(); iter != iterEnd; ++iter)
+            for (G4_BB* predBB : BB->Preds)
             {
-                G4_BB* predBB = *iter;
                 G4_INST* lastInst = predBB->back();
                 if ((lastInst->opcode() == G4_while &&
                       lastInst->asCFInst()->getJip() == BB->getLabel()) ||
@@ -4225,7 +4153,7 @@ void FlowGraph::findDominators(std::map<FuncInfo*, std::set<FuncInfo*>>& domMap)
             }
             else
             {
-                (*predMapIter).second.insert(func);
+                predMapIter->second.insert(func);
             }
         }
     }
@@ -4660,9 +4588,8 @@ FlowGraph::~FlowGraph()
     // even though G4_BBs are allocated in a mem pool and freed in one shot,
     // we must call each BB's desstructor explicitly to free up the memory used
     // by the STL objects(list, vector, etc.) in each BB
-    for (unsigned i = 0, size = (unsigned)BBAllocList.size(); i < size; i++)
+    for (G4_BB* bb : BBAllocList)
     {
-        G4_BB* bb = BBAllocList[i];
         bb->~G4_BB();
     }
     BBAllocList.clear();
@@ -4735,7 +4662,7 @@ std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
     }
     iter = debugSrcLineMap.find(fileName);
     if (iter == debugSrcLineMap.end() ||
-        !(*iter).second.first)
+        !iter->second.first)
     {
         return "can't find src file";
     }
@@ -4882,16 +4809,10 @@ void PostDom::run()
     MUST_BE_TRUE(exitBB != nullptr, "Exit BB not found!");
 
     postDoms[exitBB->getId()] = { exitBB };
-    std::unordered_set<G4_BB*> allBBs;
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
-    {
-        auto bb = *I;
-        allBBs.insert(bb);
-    }
+    std::unordered_set<G4_BB*> allBBs(kernel.fg.cbegin(), kernel.fg.cend());
 
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
+    for (auto bb : kernel.fg)
     {
-        auto bb = *I;
         if (bb != exitBB)
         {
             postDoms[bb->getId()] = allBBs;
@@ -4903,9 +4824,8 @@ void PostDom::run()
     while (change)
     {
         change = false;
-        for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
+        for (auto bb : kernel.fg)
         {
-            auto bb = *I;
             if (bb == exitBB)
                 continue;
 
@@ -4967,9 +4887,8 @@ std::unordered_set<G4_BB*>& PostDom::getPostDom(G4_BB* bb)
 
 void PostDom::dumpImmDom()
 {
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
+    for (auto bb : kernel.fg)
     {
-        auto bb = *I;
         printf("BB%d - ", bb->getId());
         auto& pdomBBs = immPostDoms[bb->getId()];
         for (auto pdomBB : pdomBBs)
@@ -4993,22 +4912,19 @@ std::vector<G4_BB*>& PostDom::getImmPostDom(G4_BB* bb)
 void PostDom::updateImmPostDom()
 {
     // Update immPostDom vector with correct ordering
-    for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
+    for (auto bb : kernel.fg)
     {
-        auto bb = *I;
+        auto& postDomBBs = postDoms[bb->getId()];
+        auto& immPostDomBB = immPostDoms[bb->getId()];
+        immPostDomBB.resize(postDomBBs.size());
+        immPostDomBB[0] = bb;
+
+        for (auto pdomBB : postDomBBs)
         {
-            auto& postDomBBs = postDoms[bb->getId()];
-            auto& immPostDomBB = immPostDoms[bb->getId()];
-            immPostDomBB.resize(postDomBBs.size());
-            immPostDomBB[0] = bb;
+            if (pdomBB == bb)
+                continue;
 
-            for (auto pdomBB : postDomBBs)
-            {
-                if (pdomBB == bb)
-                    continue;
-
-                immPostDomBB[postDomBBs.size() - postDoms[pdomBB->getId()].size()] = pdomBB;
-            }
+            immPostDomBB[postDomBBs.size() - postDoms[pdomBB->getId()].size()] = pdomBB;
         }
     }
 }
@@ -5040,15 +4956,15 @@ G4_BB* PostDom::getCommonImmDom(std::unordered_set<G4_BB*>& bbs)
     }
 
     // Return first imm dom that is not a BB from bbs set
-    for (unsigned i = 0, size = commonImmDoms.size(); i != size; i++)
+    for (G4_BB* commonImmDom : commonImmDoms)
     {
-        if (commonImmDoms[i] &&
+        if (commonImmDom &&
             // Common imm pdom must be lexically last BB
-            commonImmDoms[i]->getId() >= maxId &&
-            ((commonImmDoms[i]->size() > 1 && commonImmDoms[i]->front()->isLabel()) ||
-            (commonImmDoms[i]->size() > 0 && !commonImmDoms[i]->front()->isLabel())))
+            commonImmDom->getId() >= maxId &&
+            ((commonImmDom->size() > 1 && commonImmDom->front()->isLabel()) ||
+            (commonImmDom->size() > 0 && !commonImmDom->front()->isLabel())))
         {
-            return commonImmDoms[i];
+            return commonImmDom;
         }
     }
 
