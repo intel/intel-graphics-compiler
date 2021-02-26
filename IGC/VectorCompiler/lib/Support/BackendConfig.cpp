@@ -119,6 +119,7 @@ GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
 void GenXBackendData::setOwningBiFModule(
     BiFKind Kind, std::unique_ptr<MemoryBuffer> ModuleBuffer) {
   IGC_ASSERT_MESSAGE(ModuleBuffer, "wrong argument");
+  IGC_ASSERT(static_cast<size_t>(Kind) < BiFModuleOwner.size());
   BiFModuleOwner[Kind] = std::move(ModuleBuffer);
   BiFModule[Kind] = IGCLLVM::makeMemoryBufferRef(*BiFModuleOwner[Kind]);
 }

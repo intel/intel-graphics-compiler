@@ -131,10 +131,10 @@ class GenXBackendData {
   // The owner of OpenCL generic BiF module.
   // For now it is only required for llvm-lit/debugging,
   // in libigc mode this field always holds nullptr.
-  std::unique_ptr<MemoryBuffer> BiFModuleOwner[BiFKind::Size];
+  std::array<std::unique_ptr<MemoryBuffer>, BiFKind::Size>  BiFModuleOwner;
 
 public:
-  MemoryBufferRef BiFModule[BiFKind::Size];
+  std::array<MemoryBufferRef, BiFKind::Size> BiFModule;
 
   struct InitFromLLMVOpts {};
 
