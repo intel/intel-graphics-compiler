@@ -747,6 +747,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         return m_cisaBinary->dumpToStream(os);
     }
 
+    VISAKernelImpl* oldMainKernel = nullptr;
     if (IS_GEN_BOTH_PATH)
     {
         Mem_Manager mem(4096);
@@ -773,6 +774,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
         int i;
         unsigned int k = 0;
+        bool isInPatchingMode = m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Enable_NoLTO && m_prevKernel;
         VISAKernelImpl* mainKernel = nullptr;
         for (iter = m_kernelsAndFunctions.begin(), i = 0; iter != end; iter++, i++)
         {
@@ -821,6 +823,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 }
             }
 
+            if (kernel->getIsKernel() && isInPatchingMode)
+            {
+                continue;
+            }
             int status =  kernel->compileFastPath();
             if (status != VISA_SUCCESS)
             {
@@ -834,7 +840,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         // so we can stitch it again to another SIMD size of payload section
         if (m_options.getuInt32Option(vISA_CodePatch))
         {
-            VISAKernelImpl* oldMainKernel = nullptr;
             assert((*m_kernelsAndFunctions.begin())->getIsKernel());
             for (auto func : m_kernelsAndFunctions)
             {
@@ -849,7 +854,14 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 }
             }
             m_kernelsAndFunctions.pop_front();
-            m_kernelsAndFunctions.push_back(oldMainKernel);
+            if (isInPatchingMode)
+            {
+                m_kernelsAndFunctions.push_back(m_prevKernel);
+            }
+            else
+            {
+                m_kernelsAndFunctions.push_back(oldMainKernel);
+            }
 
         }
 
@@ -903,7 +915,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             }
         }
 
-
+        bool hasPayloadPrologue = m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Payload_Prologue;
         // stitch functions and compile to gen binary
         for (auto func : mainFunctions)
         {
@@ -911,9 +923,31 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
             // store the BBs with FCall and FRet, which must terminate the BB
             std::map<G4_BB*, G4_INST*> origFCallFRet;
-            Stitch_Compiled_Units(func->getKernel(), subFunctionsNameMap, origFCallFRet);
+            if (!hasPayloadPrologue)
+            {
+                Stitch_Compiled_Units(func->getKernel(), subFunctionsNameMap, origFCallFRet);
+            }
 
-            void* genxBuffer = func->compilePostOptimize(genxBufferSize);
+            func->compilePostOptimize();
+            if (hasPayloadPrologue)
+            {
+                if (!isInPatchingMode)
+                {
+                    for (auto shaderBody : subFunctions)
+                    {
+                        shaderBody->getKernel()->fg.reassignBlockIDs();
+                        shaderBody->getKernel()->fg.setPhysicalPredSucc();
+                        shaderBody->compilePostOptimize();
+                    }
+                }
+                // Append shader body to payload section
+                for (auto&& iter : subFunctionsNameMap)
+                {
+                    G4_Kernel* callee = iter.second;
+                    func->getKernel()->fg.append(callee->fg);
+                }
+            }
+            void* genxBuffer = func->encodeAndEmit(genxBufferSize);
             func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
             if (m_options.getOption(vISA_GenerateDebugInfo))
             {
@@ -981,6 +1015,12 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         std::cerr << "[vISA Finalizer Messsages]\n" << criticalMsg.str();
     }
 #endif //DLL_MODE
+
+    if (m_options.getuInt32Option(vISA_CodePatch) && oldMainKernel)
+    {
+        m_kernelsAndFunctions.pop_back();
+        m_kernelsAndFunctions.push_back(oldMainKernel);
+    }
 
     return status;
 }

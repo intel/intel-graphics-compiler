@@ -322,9 +322,8 @@ void VISAKernelImpl::adjustIndirectCallOffset()
     }
 }
 
-void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
+void VISAKernelImpl::compilePostOptimize()
 {
-    void* binary = NULL;
 
     if (getOptions()->getOption(vISA_AddKernelID))
     {
@@ -371,6 +370,11 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
             inst->setOptionOn(InstOpt_BreakPoint);
         }
     }
+}
+
+void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
+{
+    void* binary = NULL;
 
     //
     // Entry point to LIR conversion & transformations

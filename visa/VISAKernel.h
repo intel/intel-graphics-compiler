@@ -769,7 +769,8 @@ public:
     unsigned char m_major_version;
     unsigned char m_minor_version;
 
-    void* compilePostOptimize(unsigned int& binarySize);
+    void compilePostOptimize();
+    void* encodeAndEmit(unsigned int& binarySize);
 
     void setInputSize(uint8_t size);
     void setReturnSize(unsigned int size);
