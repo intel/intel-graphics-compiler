@@ -4709,6 +4709,9 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
 
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes)
 {
+    if (spillSizeInBytes == 0)
+        return;
+
     auto globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 
     for (auto bb : kernel.fg)
