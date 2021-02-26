@@ -5302,14 +5302,26 @@ namespace IGC
             V(pMainKernel->GetGenxDebugInfo(genxdbgInfo, dbgSize));
             if (m_enableVISAdump)
             {
-                std::string debugFileNameStr = IGC::Debug::GetDumpName(m_program, "dbg");
-                FILE* const dbgFile = fopen(debugFileNameStr.c_str(), "wb+");
-                if (nullptr != dbgFile)
+                // passing VISAOptions: -generateDebugInfo should
+                // cause dbg file to be generated, even when
+                // hasDebugInfo = false.
+                if (context->m_instrTypes.hasDebugInfo)
                 {
+                    // assertion check makes sense only if debug info
+                    // is present in input.
                     IGC_ASSERT(nullptr != genxdbgInfo);
                     IGC_ASSERT(0 < dbgSize);
-                    fwrite(genxdbgInfo, dbgSize, 1, dbgFile);
-                    fclose(dbgFile);
+                }
+                if (dbgSize > 0)
+                {
+                    // dump dbg file only if it not empty
+                    std::string debugFileNameStr = IGC::Debug::GetDumpName(m_program, "dbg");
+                    FILE* const dbgFile = fopen(debugFileNameStr.c_str(), "wb+");
+                    if (nullptr != dbgFile)
+                    {
+                        fwrite(genxdbgInfo, dbgSize, 1, dbgFile);
+                        fclose(dbgFile);
+                    }
                 }
             }
 
