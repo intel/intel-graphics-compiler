@@ -357,9 +357,9 @@ class LivenessAnalysis
     unsigned numSplitStartID = 0;      // the split var count
     unsigned numUnassignedVarId = 0;         // the unassigned var count
     unsigned numAddrId = 0;     // the addr count
-    unsigned numBBId;          // the block count
-    unsigned numFnId;          // the function count
-    const unsigned char selectedRF;  // the selected reg file kind for performing liveness
+    unsigned numBBId = 0;          // the block count
+    unsigned numFnId = 0;          // the function count
+    const unsigned char selectedRF = 0;  // the selected reg file kind for performing liveness
     PointsToAnalysis& pointsToAnalysis;
     std::unordered_map<G4_Declare*, BitSet> neverDefinedRows;
 
