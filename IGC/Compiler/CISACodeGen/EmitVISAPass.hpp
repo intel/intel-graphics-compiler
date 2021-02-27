@@ -466,7 +466,8 @@ public:
     void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode);
     CVariable* BroadcastIfUniform(CVariable* pVar);
     uint DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
-    inline bool isUndefOrConstInt0(llvm::Value* val)
+    bool IsUndefOrZeroImmediate(const llvm::Value* value);
+    inline bool isUndefOrConstInt0(const llvm::Value* val)
     {
         if (val == nullptr ||
             llvm::isa<llvm::UndefValue>(val) ||

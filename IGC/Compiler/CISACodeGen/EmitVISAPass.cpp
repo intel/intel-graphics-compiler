@@ -326,6 +326,24 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
     return numInstance;
 }
 
+bool EmitPass::IsUndefOrZeroImmediate(const Value* value)
+{
+    if (isUndefOrConstInt0(value))
+    {
+        return true;
+    }
+
+    if (const llvm::ConstantFP* CFP = llvm::dyn_cast<llvm::ConstantFP>(value))
+    {
+        APInt api = CFP->getValueAPF().bitcastToAPInt();
+        if (api.getZExtValue() == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool EmitPass::setCurrentShader(llvm::Function* F)
 {
     llvm::Function* Kernel = F;
