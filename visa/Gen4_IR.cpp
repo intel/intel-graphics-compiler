@@ -2394,6 +2394,32 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
+    if ((useInst_op == G4_asr || useInst_op == G4_shl || useInst_op == G4_shr) &&
+        opndNum == Opnd_src0 && src->getTypeSize() < use->getTypeSize())
+    {
+        // Handle cases such as
+        //     mov  A:q  B:d
+        //     asr  r:d  A:q  C:q
+        //  if C is immediate and its value is in 0:31 (for d), it is okay to prop;
+        //  otherwise, no.
+        G4_Operand* src1 = useInst->getOperand(Opnd_src1);
+        if (src1->isImm())
+        {
+            // shiftAmt is LSB[0:useTypeBits - 1]
+            int64_t v = src1->asImm()->getImm();
+            uint32_t shiftAmt = (uint32_t)((uint64_t)v & (use->getTypeSize()*8 - 1));
+            uint32_t nbits = 8 * src->getTypeSize();
+            if (shiftAmt >= nbits)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     // In general, to check whether that MOV could be propagated:
     //
     //  dst/T1 = src/T0;
@@ -2448,7 +2474,6 @@ bool G4_INST::canPropagateTo(
     {
         return false;
     }
-
 
     // Don't propagate unsupported propType.
     if (!useInst->isLegalType(propType, opndNum))
