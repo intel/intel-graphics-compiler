@@ -135,9 +135,9 @@ CVariable::CVariable(
     }
     else
     {
-        const unsigned int denominator = CEncoder::GetCISADataTypeSize(m_type);
+        const unsigned int denominator = GetCISADataTypeSize(m_type);
         IGC_ASSERT(denominator);
-        m_nbElement = var->m_nbElement * CEncoder::GetCISADataTypeSize(var->m_type) / denominator;
+        m_nbElement = var->m_nbElement * GetCISADataTypeSize(var->m_type) / denominator;
     }
     IGC_ASSERT_MESSAGE(var->m_varType == EVARTYPE_GENERAL, "only general variable can have alias");
 }
@@ -208,3 +208,71 @@ void CVariable::print(llvm::raw_ostream& OS) const
     OS << "}\n";
 }
 
+uint CVariable::GetCISADataTypeSize(VISA_Type type)
+{
+    switch (type)
+    {
+    case ISA_TYPE_UD:    return 4;
+    case ISA_TYPE_D:     return 4;
+    case ISA_TYPE_UW:    return 2;
+    case ISA_TYPE_W:     return 2;
+    case ISA_TYPE_UB:    return 1;
+    case ISA_TYPE_B:     return 1;
+    case ISA_TYPE_DF:    return 8;
+    case ISA_TYPE_F:     return 4;
+    case ISA_TYPE_V:     return 4;
+    case ISA_TYPE_VF:    return 4;
+    case ISA_TYPE_BOOL:  return 1;
+    case ISA_TYPE_UV:    return 4;
+    case ISA_TYPE_Q:     return 8;
+    case ISA_TYPE_UQ:    return 8;
+    case ISA_TYPE_HF:    return 2;
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");
+        break;
+    }
+
+    return 0;
+}
+
+e_alignment CVariable::GetCISADataTypeAlignment(VISA_Type type)
+{
+    switch (type)
+    {
+    case ISA_TYPE_UD:
+        return EALIGN_DWORD;
+    case ISA_TYPE_D:
+        return EALIGN_DWORD;
+    case ISA_TYPE_UW:
+        return EALIGN_WORD;
+    case ISA_TYPE_W:
+        return EALIGN_WORD;
+    case ISA_TYPE_UB:
+        return EALIGN_BYTE;
+    case ISA_TYPE_B:
+        return EALIGN_BYTE;
+    case ISA_TYPE_DF:
+        return EALIGN_QWORD;
+    case ISA_TYPE_F:
+        return EALIGN_DWORD;
+    case ISA_TYPE_V:
+        return EALIGN_DWORD;
+    case ISA_TYPE_VF:
+        return EALIGN_DWORD;
+    case ISA_TYPE_BOOL:
+        return EALIGN_BYTE;
+    case ISA_TYPE_UV:
+        return EALIGN_BYTE;
+    case ISA_TYPE_Q:
+        return EALIGN_QWORD;
+    case ISA_TYPE_UQ:
+        return EALIGN_QWORD;
+    case ISA_TYPE_HF:
+        return EALIGN_WORD;
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");
+        break;
+    }
+
+    return EALIGN_BYTE;
+}

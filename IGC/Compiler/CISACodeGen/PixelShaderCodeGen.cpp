@@ -1100,7 +1100,7 @@ void CPixelShader::PullPixelPhasePayload()
     encoder.SetSrcRegion(0, 0, 1, 0);
     encoder.Cmp(EPREDICATE_EQ, f0, mask, ImmToVariable(0, ISA_TYPE_UW));
     encoder.Push();
-    m_epilogueLabel = encoder.GetNewLabelID();
+    m_epilogueLabel = encoder.GetNewLabelID("epilogue");
     encoder.Jump(f0, m_epilogueLabel);
     encoder.Push();
     // override the execution mask in sr0.2
@@ -1127,7 +1127,7 @@ void CPixelShader::AddPrologue()
         encoder.SetSimdSize(SIMDMode::SIMD1);
         encoder.Copy(m_PixelPhaseCounter, ImmToVariable(0, ISA_TYPE_UW));
         encoder.Push();
-        m_pixelPhaseLabel = encoder.GetNewLabelID();
+        m_pixelPhaseLabel = encoder.GetNewLabelID("pixel_phase");
         encoder.Label(m_pixelPhaseLabel);
         encoder.Push();
         PullPixelPhasePayload();

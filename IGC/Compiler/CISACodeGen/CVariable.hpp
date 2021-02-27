@@ -24,7 +24,6 @@ IN THE SOFTWARE.
 
 #pragma once
 
-#include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
@@ -35,11 +34,15 @@ IN THE SOFTWARE.
 #include <sstream>
 
 namespace IGC {
+#if defined(_DEBUG) || defined(_INTERNAL)
+#define IGC_MAP_LLVM_NAMES_TO_VISA
+#endif
+
     // A data type to track a variable's LLVM symbol name conditionally.
     // The intent is zero overhead on release builds, but otherwise
     // enable name tracking in release-internal or debug builds.
     class CName {
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
         // NOTE: if CVariable/CName's exist past the length of the underlying
         //   LLVM, then we should use a std::string or something else.
         std::string value;
@@ -49,18 +52,20 @@ namespace IGC {
         char dummy_value;
 #endif
     public:
+        // Constructor to tell vISA to create the name
+        // Prefer the value CName::NONE.
         CName() : CName(nullptr) { }
 
         CName(const CName &) = default;
 
         CName(const std::string &arg)
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : value(arg)
 #endif
         { }
 
         CName(const llvm::StringRef &arg)
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : value(arg.str())
 #endif
         { }
@@ -71,7 +76,7 @@ namespace IGC {
         CName(bool) = delete;
 
         CName(const char *arg)
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : value(arg == nullptr ? "" : arg)
 #endif
         { }
@@ -82,7 +87,7 @@ namespace IGC {
         //   ... CName(llvmValue->getName(), "Lo32")
         //   ... CName(llvmValue->getName(), "Hi32")
         CName(const CName &prefix, const char *suffix)
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : CName(prefix.value + suffix)
 #endif
         {
@@ -91,7 +96,7 @@ namespace IGC {
         // For instance variables:
         // e.g. for (i = 0; ...) ... CName("inputVar", i)
         CName(const CName &prefix, int suffix)
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
         {
             std::stringstream ss;
             ss << prefix.value << "_" << suffix;
@@ -103,10 +108,25 @@ namespace IGC {
 #endif
 
         const char *getVisaCString() const {
-#if defined(_DEBUG) || defined(_INTERNAL)
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             return value.empty() ? nullptr : value.c_str();
 #else
-            return nullptr;
+            return nullptr; // tells vISA to allocate the name automatically
+#endif
+        }
+
+        // like above but returns empty string if LLVM names are disabled
+        const char *getCString() const {
+            return getVisaCString() != nullptr ? getVisaCString() : "";
+        }
+
+        bool empty() const {return size() == 0;}
+
+        size_t size() const {
+#ifdef IGC_MAP_LLVM_NAMES_TO_VISA
+            return value.size();
+#else
+            return 0;
 #endif
         }
 
@@ -184,9 +204,9 @@ namespace IGC {
         uint16_t GetNumberElement() const { return m_nbElement; }
         bool IsUniform() const { return m_uniform; }
 
-        uint GetSize() { return m_nbElement * CEncoder::GetCISADataTypeSize(m_type); }
+        uint GetSize() { return m_nbElement * GetCISADataTypeSize(m_type); }
+        uint GetElemSize() { return GetCISADataTypeSize(m_type); }
 
-        uint GetElemSize() { return CEncoder::GetCISADataTypeSize(m_type); }
         CVariable* GetAlias() { return m_alias; }
         uint16_t GetAliasOffset() const { return m_aliasOffset; }
         VISA_Type GetType() const { return m_type; }
@@ -291,6 +311,8 @@ namespace IGC {
             default: return "illegal";
             }
         }
+        static uint GetCISADataTypeSize(VISA_Type type);
+        static e_alignment GetCISADataTypeAlignment(VISA_Type type);
 
     private:
         const uint64_t      m_immediateValue;

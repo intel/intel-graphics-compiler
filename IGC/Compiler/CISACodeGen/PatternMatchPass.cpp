@@ -4570,7 +4570,7 @@ namespace IGC
         bool isBigQW = ci && !ci->getValue().isNullValue() && !ci->getValue().isSignedIntN(32);
         bool isDF = val->getType()->isDoubleTy();
         return (isBigQW || isDF);
-    };
+    }
 
     uint CodeGenPatternMatch::GetBlockId(llvm::BasicBlock* block)
     {

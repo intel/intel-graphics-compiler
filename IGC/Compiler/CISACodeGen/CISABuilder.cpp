@@ -40,6 +40,9 @@ IN THE SOFTWARE.
 #include <llvm/ADT/Statistic.h>
 #include <iStdLib/utility.h>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include <fstream>
 #include "Probe/Assertion.h"
 
@@ -478,11 +481,13 @@ namespace IGC
         V(vKernel->AppendVISACFLabelInst(visaLabel));
     }
 
-    uint CEncoder::GetNewLabelID()
+    uint CEncoder::GetNewLabelID(const CName &name)
     {
         uint id = labelMap.size();
         labelMap.push_back(nullptr);
-        return (id);
+        labelNameMap.push_back(
+            CreateVisaLabelName(llvm::StringRef(name.getCString())));
+        return id;
     }
 
     void CEncoder::DwordAtomicRaw(
@@ -2827,10 +2832,17 @@ namespace IGC
         VISA_LabelOpnd* visaLabel = labelMap[label];
         if (visaLabel == nullptr)
         {
+            // all blocks should have labels; but new blocks inserted during
+            // encoding might not
             VISA_Label_Kind kind = LABEL_BLOCK;
-            char labelname[128] = "";
-            sprintf_s(labelname, sizeof(labelname), "label%d", labelCounter++);
-            V(vKernel->CreateVISALabelVar(visaLabel, labelname, kind));
+
+            std::stringstream lbl;
+            if (labelNameMap[label].empty()) {
+                lbl << CreateShortLabel(labelCounter++);
+            } else {
+                lbl << labelNameMap[label].getVisaCString();
+            }
+            V(vKernel->CreateVISALabelVar(visaLabel, lbl.str().c_str(), kind));
             labelMap[label] = visaLabel;
         }
         return visaLabel;
@@ -3379,90 +3391,6 @@ namespace IGC
         }
     }
 
-    uint CEncoder::GetCISADataTypeSize(VISA_Type type)
-    {
-        switch (type)
-        {
-        case ISA_TYPE_UD:
-            return 4;
-        case ISA_TYPE_D:
-            return 4;
-        case ISA_TYPE_UW:
-            return 2;
-        case ISA_TYPE_W:
-            return 2;
-        case ISA_TYPE_UB:
-            return 1;
-        case ISA_TYPE_B:
-            return 1;
-        case ISA_TYPE_DF:
-            return 8;
-        case ISA_TYPE_F:
-            return 4;
-        case ISA_TYPE_V:
-            return 4;
-        case ISA_TYPE_VF:
-            return 4;
-        case ISA_TYPE_BOOL:
-            return 1;
-        case ISA_TYPE_UV:
-            return 4;
-        case ISA_TYPE_Q:
-            return 8;
-        case ISA_TYPE_UQ:
-            return 8;
-        case ISA_TYPE_HF:
-            return 2;
-        default:
-            IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");
-            break;
-        }
-
-        return 0;
-    }
-
-    e_alignment CEncoder::GetCISADataTypeAlignment(VISA_Type type)
-    {
-        switch (type)
-        {
-        case ISA_TYPE_UD:
-            return EALIGN_DWORD;
-        case ISA_TYPE_D:
-            return EALIGN_DWORD;
-        case ISA_TYPE_UW:
-            return EALIGN_WORD;
-        case ISA_TYPE_W:
-            return EALIGN_WORD;
-        case ISA_TYPE_UB:
-            return EALIGN_BYTE;
-        case ISA_TYPE_B:
-            return EALIGN_BYTE;
-        case ISA_TYPE_DF:
-            return EALIGN_QWORD;
-        case ISA_TYPE_F:
-            return EALIGN_DWORD;
-        case ISA_TYPE_V:
-            return EALIGN_DWORD;
-        case ISA_TYPE_VF:
-            return EALIGN_DWORD;
-        case ISA_TYPE_BOOL:
-            return EALIGN_BYTE;
-        case ISA_TYPE_UV:
-            return EALIGN_BYTE;
-        case ISA_TYPE_Q:
-            return EALIGN_QWORD;
-        case ISA_TYPE_UQ:
-            return EALIGN_QWORD;
-        case ISA_TYPE_HF:
-            return EALIGN_WORD;
-        default:
-            IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");
-            break;
-        }
-
-        return EALIGN_BYTE;
-    }
-
     VISASampler3DSubOpCode CEncoder::ConvertSubOpcode(EOPCODE subOpcode, bool zeroLOD)
     {
         switch (subOpcode)
@@ -3552,15 +3480,13 @@ namespace IGC
 
     void CEncoder::BeginSubroutine(llvm::Function* F)
     {
-        labelMap.clear();
-        labelMap.resize(F->size(), nullptr);
+        InitLabelMap(F);
         V(vKernel->AppendVISACFLabelInst(GetFuncLabel(F)));
     }
 
     void CEncoder::BeginStackFunction(llvm::Function* F)
     {
-        labelMap.clear();
-        labelMap.resize(F->size(), nullptr);
+        InitLabelMap(F);
         // At this place, the vISA object is changed!
         vKernel = GetStackFunction(F);
         VISA_LabelOpnd* visaLabel = nullptr;
@@ -4343,6 +4269,85 @@ namespace IGC
         }
     }
 
+    // Creates a module/program-unique label prefix.
+    // E.g. the 3rd label of the 5th function would be
+    // "__4_002".  Ugly, yes, but you shouldn't see it as this is the
+    // fallback case.  Short, unique, and debuggable....
+    // Release-internal/debug will have better names.
+    std::string CEncoder::CreateShortLabel(unsigned labelIndex) const
+    {
+        std::stringstream ss;
+        ss << GetCompilerLabelPrefix() << labelFunctionIndex << "_" <<
+            std::setw(3) << std::setfill('0') << labelIndex;
+        return ss.str();
+    }
+
+    // Converts an LLVM label L into a name appropriate for vISA's label rules
+    //  * remove illegal chracters for vISA
+    //  * contrains the length while maintaining uniqueness
+    // The format is something that contains both function index and the
+    // label name passed in.
+    CName CEncoder::CreateVisaLabelName(const llvm::StringRef &L)
+    {
+#ifndef IGC_MAP_LLVM_NAMES_TO_VISA
+        return CreateShortLabel(labelCounter++);
+#else // IGC_MAP_LLVM_NAMES_TO_VISA
+        static const size_t MAX_VISA_LABEL = 254;
+
+        // The vISA backend constrains this to around 256 characters.
+        // (1) Function names can be extremely long (currFunctionName).
+        //     DPC++ with template gunk can be hundreds of characters.
+        //     If the names are too long, punt and use a function index.
+        //     Functions cannot be integers, thus the function part cannot
+        //     collide if we use this replacement.
+        // (2) LLVM labels (L) can be extremely long. E.g. LLVM chains
+        //     together names synthetically and can get to >900 chars.
+        //     In this case, we prefix a label index and suffix as much of
+        //     the LLVM label on as possible.
+        std::stringstream lbl;
+        lbl << GetCompilerLabelPrefix();
+        if (!currFunctionName.empty() && currFunctionName.size() < 64) {
+            lbl << currFunctionName.getVisaCString();
+        } else {
+            lbl << labelFunctionIndex;
+        }
+        lbl << "_";
+
+        size_t charsLeft = MAX_VISA_LABEL - (size_t)lbl.tellp();
+        if (L.size() > charsLeft) {
+            // We have to truncate the label.  That might destroy uniqueness
+            // So include another label prefix.
+            lbl << std::setw(3) << std::setfill('0') << labelCounter << "_";
+        }
+
+        // Suffix as many characters of the label as we can
+        for (size_t i = 0; i < std::min(charsLeft, L.size()); i++) {
+            if (isalnum(L[i]) || L[i] == '_')
+                lbl << L[i];
+            else
+                lbl << '_';
+        }
+
+        labelCounter++;
+        return lbl.str();
+#endif // IGC_MAP_LLVM_NAMES_TO_VISA
+    }
+
+    void CEncoder::InitLabelMap(const llvm::Function* F)
+    {
+        labelMap.clear();
+        labelMap.resize(F->size(), nullptr);
+        labelCounter = 0;
+        labelFunctionIndex++;
+        currFunctionName = F->getName();
+        labelNameMap.clear();
+        labelNameMap.reserve(F->size());
+        for (auto BI = F->begin(), BE = F->end(); BI != BE; BI++)
+        {
+            labelNameMap.emplace_back(CreateVisaLabelName(BI->getName()));
+        }
+    }
+
     void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
@@ -4352,10 +4357,9 @@ namespace IGC
         m_encoderState.m_secondNibble = false;
         m_enableVISAdump = false;
         m_nestLevelForcedNoMaskRegion = 0;
-        labelMap.clear();
-        labelMap.resize(m_program->entry->size(), nullptr);
-        labelCounter = 0;
         m_hasInlineAsm = hasInlineAsmCall;
+
+        InitLabelMap(m_program->entry);
 
         vbuilder = nullptr;
         vAsmTextBuilder = nullptr;
@@ -4457,7 +4461,7 @@ namespace IGC
 
         // Right now only 1 main function in the kernel
         VISA_LabelOpnd* functionLabel = nullptr;
-        V(vKernel->CreateVISALabelVar(functionLabel, "main", LABEL_SUBROUTINE));
+        V(vKernel->CreateVISALabelVar(functionLabel, "_main", LABEL_SUBROUTINE));
         V(vKernel->AppendVISACFLabelInst(functionLabel));
 
         V(vKernel->CreateVISASurfaceVar(dummySurface, "", 1));

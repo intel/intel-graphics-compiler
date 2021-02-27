@@ -10313,7 +10313,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             // First get the execution mask for active lanes
             CVariable* eMask = GetExecutionMask();
             // Create a label for the loop
-            uint label = m_encoder->GetNewLabelID();
+            uint label = m_encoder->GetNewLabelID("non_unif_call_body");
             m_encoder->Label(label);
             m_encoder->Push();
 
@@ -10326,7 +10326,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
             m_encoder->Push();
 
-            uint callLabel = m_encoder->GetNewLabelID();
+            uint callLabel = m_encoder->GetNewLabelID("non_unif_call_end");
             m_encoder->SetInversePredicate(true);
             m_encoder->Jump(callPred, callLabel);
             m_encoder->Push();
@@ -15028,7 +15028,8 @@ unsigned int EmitPass::GetScalarTypeSizeInRegister(Type* Ty) const
 }
 
 
-void EmitPass::A64LSLoopHead(CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label)
+void EmitPass::A64LSLoopHead(
+    CVariable* addr, CVariable*& curMask, CVariable*& lsPred, uint& label)
 {
     // Create a loop to calculate LS's pred (lsPred) that make sure for every active lane of the LS,
     // the address hi part must be the same
@@ -15061,7 +15062,7 @@ void EmitPass::A64LSLoopHead(CVariable* addr, CVariable*& curMask, CVariable*& l
     curMask = GetHalfExecutionMask();
 
     // create loop
-    label = m_encoder->GetNewLabelID();
+    label = m_encoder->GetNewLabelID("a64_loop");
     m_encoder->Label(label);
     m_encoder->Push();
 
@@ -16727,7 +16728,7 @@ void EmitPass::ForceDMask(bool createJmpForDiscard)
         CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
         if (psProgram->HasDiscard() && psProgram->GetDiscardPixelMask())
         {
-            m_labelForDMaskJmp = m_encoder->GetNewLabelID();
+            m_labelForDMaskJmp = m_encoder->GetNewLabelID("discard");
             m_encoder->Jump(psProgram->GetDiscardPixelMask(),
                 m_labelForDMaskJmp);
             m_encoder->Push();
@@ -16971,7 +16972,7 @@ bool EmitPass::ResourceLoopHeader(
     return ResourceLoopHeader(resource, sampler, flag, label);
 }
 
-// Insert loop header to handle none-uniform resource and sampler
+// Insert loop header to handle non-uniform resource and sampler
 // This generates sub-optimal code for SIMD32, this can be revisited if we need better code generation
 bool EmitPass::ResourceLoopHeader(
     ResourceDescriptor& resource,
@@ -16993,7 +16994,7 @@ bool EmitPass::ResourceLoopHeader(
     CVariable* resourceFlag = nullptr;
     CVariable* samplerFlag = nullptr;
     CVariable* offset = nullptr;
-    label = m_encoder->GetNewLabelID();
+    label = m_encoder->GetNewLabelID("resource_loop");
     m_encoder->Label(label);
     m_encoder->Push();
     if (!uniformResource)

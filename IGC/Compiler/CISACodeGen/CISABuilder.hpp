@@ -25,6 +25,7 @@ IN THE SOFTWARE.
 #pragma once
 
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "visa_wa.h"
@@ -33,7 +34,6 @@ IN THE SOFTWARE.
 namespace IGC
 {
     class CShader;
-    class CVariable;
 
     struct SFlag
     {
@@ -158,7 +158,7 @@ namespace IGC
         void SetProgram(CShader* program);
         void Jump(CVariable* flag, uint label);
         void Label(uint label);
-        uint GetNewLabelID();
+        uint GetNewLabelID(const CName &name);
         void DwordAtomicRaw(AtomicOp atomic_op,
             const ResourceDescriptor& bindingTableIndex,
             CVariable* dst, CVariable* elem_offset, CVariable* src0,
@@ -381,8 +381,9 @@ namespace IGC
         void SetRoundingMode_FP(ERoundingMode actualRM, ERoundingMode newRM);
         void SetRoundingMode_FPCvtInt(ERoundingMode actualRM, ERoundingMode newRM);
 
-        static uint GetCISADataTypeSize(VISA_Type type);
-        static e_alignment GetCISADataTypeAlignment(VISA_Type type);
+        static uint GetCISADataTypeSize(VISA_Type type) {return CVariable::GetCISADataTypeSize(type);}
+        static e_alignment GetCISADataTypeAlignment(VISA_Type type) {return CVariable::GetCISADataTypeAlignment(type);}
+
         static VISASampler3DSubOpCode ConvertSubOpcode(EOPCODE subOpcode, bool zeroLOD);
 
         // Wrappers for (potentially) common queries on types
@@ -422,6 +423,12 @@ namespace IGC
         VISA_StateOpndHandle* GetVISASurfaceOpnd(const ResourceDescriptor& resource);
         VISA_LabelOpnd* GetLabel(uint label);
         VISA_LabelOpnd* GetFuncLabel(llvm::Function* F);
+        void InitLabelMap(const llvm::Function* F);
+        CName CreateVisaLabelName(const llvm::StringRef &L = "");
+        std::string CreateShortLabel(unsigned labelIndex) const;
+        // Compiler labels must start with something a user won't use in inline
+        // assembly.
+        static const char *GetCompilerLabelPrefix() {return "_";}
 
         VISAFunction* GetStackFunction(llvm::Function* F);
 
@@ -612,10 +619,19 @@ namespace IGC
 
         bool m_enableVISAdump;
         bool m_hasInlineAsm;
+
         std::vector<VISA_LabelOpnd*> labelMap;
+        std::vector<CName> labelNameMap; // parallel to labelMap
 
         /// Per kernel label counter
-        unsigned labelCounter;
+        unsigned labelCounter = 0;
+        /// Each kernel might emit several functions;
+        /// we pre-increment this for each new function we process (InitLabelMap)
+        /// The first function will see 0, ...
+        unsigned labelFunctionIndex = (unsigned)-1;
+        ///
+        /// The name of the current function; set if we are emitting labels
+        CName currFunctionName;
 
         /// Keep a map between a function and its label, per kernel state.
         llvm::SmallDenseMap<llvm::Function*, VISA_LabelOpnd*> funcLabelMap;
