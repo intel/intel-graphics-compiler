@@ -1140,6 +1140,7 @@ namespace vISA
         uint32_t AWSyncAllCount = 0;
         uint32_t tokenReuseCount = 0;
 
+        bool hasFCall = false;
         //Linear scan data structures for token allocation
         SBNODE_LIST linearScanLiveNodes;
 
@@ -1215,7 +1216,7 @@ namespace vISA
         bool insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens, bool& keepDst, bool removeAllToken);
 
         void SWSBDepDistanceGenerator(PointsToAnalysis& p, LiveGRFBuckets &LB, LiveGRFBuckets &globalSendsLB);
-        void handleIndirectCall();
+        void handleFuncCall();
         void SWSBGlobalTokenGenerator(PointsToAnalysis& p, LiveGRFBuckets &LB, LiveGRFBuckets &globalSendsLB);
         void SWSBBuildSIMDCFG();
         void addSIMDEdge(G4_BB_SB *pred, G4_BB_SB* succ);

@@ -336,43 +336,6 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         m_kernel->setKernelID(kernelID);
     }
 
-    // remove SW fences at this point
-    // ToDo: remove all intrinsics?
-    for (auto bb : m_kernel->fg)
-    {
-        bb->removeIntrinsics(Intrinsic::MemFence);
-    }
-    if (m_builder->hasSWSB())
-    {
-        if (!getOptions()->getOption(vISA_forceDebugSWSB))
-        {
-            SWSB swsb(*m_kernel, *m_kernelMem);
-            swsb.SWSBGenerator();
-        }
-        else
-        {
-            forceDebugSWSB(m_kernel);
-        }
-        m_kernel->dumpDotFile("after.SWSB");
-    }
-
-    if (getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
-    {
-        singleInstStallSWSB(m_kernel,
-            getOptions()->getuInt32Option(vISA_SWSBTokenBarrier), 0, true);
-    }
-
-    if (getOptions()->getuInt32Option(vISA_SWSBInstStall) != 0)
-    {
-        singleInstStallSWSB(m_kernel,
-            getOptions()->getuInt32Option(vISA_SWSBInstStall),
-            getOptions()->getuInt32Option(vISA_SWSBInstStallEnd), false);
-    }
-
-
-    if (m_kernel->hasIndirectCall() && m_builder->hasSWSB() && !m_builder->supportCallaRegSrc())
-        adjustIndirectCallOffset();
-
     m_kernel->evalAddrExp();
 
     if (getOptions()->getOption(vISA_DumpRegInfo))
