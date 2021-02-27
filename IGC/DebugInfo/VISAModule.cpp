@@ -564,6 +564,7 @@ bool VISAModule::getVarInfo(const IGC::DbgDecoder& VD, std::string prefix, unsig
         return false;
 
     var = (*it).second;
+    IGC_ASSERT(!var.lrs.empty());
     return true;
 }
 
