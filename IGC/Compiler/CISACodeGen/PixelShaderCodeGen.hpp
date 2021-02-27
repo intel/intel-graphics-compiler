@@ -52,8 +52,6 @@ public:
     CPixelShader(llvm::Function* pFunc, CShaderProgram* pProgram);
     ~CPixelShader();
     CVariable* GetR1();
-    CVariable* GetR1Lo();
-    void SetR1Lo(CVariable* var);
     CVariable* GetCoarseR1();
     CVariable* GetBaryReg(e_interpolation mode);
     CVariable* GetBaryRegLoweredHalf(e_interpolation mode);
@@ -113,8 +111,6 @@ public:
     bool        NeedVMask() { return m_VectorMask; }
     void        MarkConstantInterpolation(unsigned int index);
 
-    bool        HasZWDelta() { return m_ZWDelta != nullptr; }
-
     // check whether it's the last render target write
     bool        IsLastRTWrite(llvm::GenIntrinsicInst* inst);
 
@@ -138,7 +134,6 @@ private:
     USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT GetActiveComponents(uint attribute) const;
 
     CVariable* m_R1;
-    CVariable* m_R1Lo;
     CVariable* m_PerspectiveBaryPlanes;
     CVariable* m_NonPerspectiveBaryPlanes;
     CVariable* m_CoarseR1;

@@ -627,14 +627,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             m_encoder->SetIsCodePatchCandidate(false);
         }
-        // Cancel patching in SIMD16 if it has ZWDelta
-        CPixelShader* psProgram = static_cast<CPixelShader*>(prevShader);
-        if (psProgram && psProgram->HasZWDelta())
-        {
-            m_encoder->SetIsCodePatchCandidate(false);
-            prevShader->GetEncoder().DestroyVISABuilder();
-            prevKernel = nullptr;
-        }
 
         // Check if the function, or the FG, has inline asm calls.
         // We need this to set the correct builder mode to parse inline asm.
@@ -7804,10 +7796,6 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_encoder->SetSimdSize(simdSize);
                     m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
                     m_encoder->SetDstSubVar(i);
-                    if (m_encoder->IsCodePatchCandidate())
-                    {
-                        psProgram->SetR1Lo(src);
-                    }
                     m_encoder->Cast(dst, src);
                     m_encoder->Push();
                 }

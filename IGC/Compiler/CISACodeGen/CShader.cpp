@@ -491,19 +491,13 @@ void CShader::AddPatchConstantSetup(uint index, CVariable* var)
     }
 }
 
-void CShader::AllocateInput(CVariable* var, uint offset, uint instance, bool forceLiveOut)
+void CShader::AllocateInput(CVariable* var, uint offset, uint instance)
 {
     // the input offset must respect the variable alignment
     IGC_ASSERT(nullptr != var);
     IGC_ASSERT(as[var->GetAlign()]);
     IGC_ASSERT(offset % as[var->GetAlign()] == 0);
     encoder.DeclareInput(var, offset, instance);
-    // For the payload section, we need to mark inputs to be outputs
-    // so that inputs will be alive across the entire payload section
-    if (forceLiveOut)
-    {
-        encoder.MarkAsPayloadLiveOut(var);
-    }
 }
 
 void CShader::AllocateOutput(CVariable* var, uint offset, uint instance)
@@ -538,7 +532,7 @@ void CShader::AllocateConstants(uint& offset)
     m_ConstantBufferLength = 0;
     for (auto I = pushInfo.constants.begin(), E = pushInfo.constants.end(); I != E; I++) {
         CVariable* var = GetSymbol(m_argListCache[I->second]);
-        AllocateInput(var, offset + m_ConstantBufferLength, 0, encoder.IsCodePatchCandidate());
+        AllocateInput(var, offset + m_ConstantBufferLength);
         m_ConstantBufferLength += var->GetSize();
     }
 
@@ -554,7 +548,7 @@ void CShader::AllocateSimplePushConstants(uint& offset)
         {
             uint subOffset = I.first;
             CVariable* var = GetSymbol(m_argListCache[I.second]);
-            AllocateInput(var, subOffset - pushInfo.simplePushInfoArr[i].offset + offset, 0, encoder.IsCodePatchCandidate());
+            AllocateInput(var, subOffset - pushInfo.simplePushInfoArr[i].offset + offset);
         }
         offset += pushInfo.simplePushInfoArr[i].size;
     }
@@ -566,7 +560,7 @@ void CShader::AllocateNOSConstants(uint& offset)
 
     for (auto I = pushInfo.constantReg.begin(), E = pushInfo.constantReg.end(); I != E; I++) {
         CVariable* var = GetSymbol(m_argListCache[I->second]);
-        AllocateInput(var, offset + I->first * SIZE_DWORD, 0, encoder.IsCodePatchCandidate());
+        AllocateInput(var, offset + I->first * SIZE_DWORD);
         maxConstantPushed = std::max(maxConstantPushed, I->first + 1);
     }
     maxConstantPushed = iSTD::Max(maxConstantPushed, static_cast<uint>(m_ModuleMetadata->MinNOSPushConstantSize));

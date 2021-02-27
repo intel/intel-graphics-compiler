@@ -49,16 +49,6 @@ CVariable* CPixelShader::GetR1()
     return m_R1;
 }
 
-CVariable* CPixelShader::GetR1Lo()
-{
-    return m_R1Lo;
-}
-
-void CPixelShader::SetR1Lo(CVariable* var)
-{
-    m_R1Lo = var;
-}
-
 CVariable* CPixelShader::GetCoarseR1()
 {
     IGC_ASSERT(m_phase == PSPHASE_PIXEL);
@@ -136,21 +126,15 @@ void CPixelShader::AllocatePixelPhasePayload()
 
 void CPixelShader::AllocatePSPayload()
 {
-    bool forceLiveOut = false;
+    if (encoder.IsCodePatchCandidate())
+    {
+        encoder.SetPayloadSectionAsPrimary();
+    }
     // In bytes
     uint offset = 0;
 
     // R0 is always allocated as a predefined variable. Increase offset for R0
     IGC_ASSERT(m_R0);
-    if (encoder.IsCodePatchCandidate())
-    {
-        encoder.SetPayloadSectionAsPrimary();
-
-        // For the payload section, we need to mark inputs to be outputs
-        // so that inputs will be alive across the entire payload section
-        forceLiveOut = true;
-        encoder.MarkAsPayloadLiveOut(m_R0);
-    }
     offset += getGRFSize();
 
     if (m_Signature)
@@ -162,11 +146,7 @@ void CPixelShader::AllocatePSPayload()
         IGC_ASSERT(GetR1());
         for (uint i = 0; i < GetR1()->GetNumberInstance(); i++)
         {
-            AllocateInput(GetR1(), offset, i, forceLiveOut);
-            if (GetR1Lo())
-            {
-                AllocateInput(GetR1Lo(), offset, i, forceLiveOut);
-            }
+            AllocateInput(GetR1(), offset, i);
             offset += getGRFSize();
         }
     }
@@ -178,46 +158,46 @@ void CPixelShader::AllocatePSPayload()
         // allocate size for bary
         if (m_PerspectivePixel)
         {
-            AllocateInput(m_PerspectivePixel, offset, i, forceLiveOut);
+            AllocateInput(m_PerspectivePixel, offset, i);
             offset += m_PerspectivePixel->GetSize();
         }
         if (m_PerspectiveCentroid)
         {
-            AllocateInput(m_PerspectiveCentroid, offset, i, forceLiveOut);
+            AllocateInput(m_PerspectiveCentroid, offset, i);
             offset += m_PerspectiveCentroid->GetSize();
         }
         if (m_PerspectiveSample)
         {
-            AllocateInput(m_PerspectiveSample, offset, i, forceLiveOut);
+            AllocateInput(m_PerspectiveSample, offset, i);
             offset += m_PerspectiveSample->GetSize();
         }
         if (m_NoPerspectivePixel)
         {
-            AllocateInput(m_NoPerspectivePixel, offset, i, forceLiveOut);
+            AllocateInput(m_NoPerspectivePixel, offset, i);
             offset += m_NoPerspectivePixel->GetSize();
         }
         if (m_NoPerspectiveCentroid)
         {
-            AllocateInput(m_NoPerspectiveCentroid, offset, i, forceLiveOut);
+            AllocateInput(m_NoPerspectiveCentroid, offset, i);
             offset += m_NoPerspectiveCentroid->GetSize();
         }
         if (m_NoPerspectiveSample)
         {
-            AllocateInput(m_NoPerspectiveSample, offset, i, forceLiveOut);
+            AllocateInput(m_NoPerspectiveSample, offset, i);
             offset += m_NoPerspectiveSample->GetSize();
         }
 
         // Add support for POSITION_Z
         if (m_pPositionZPixel)
         {
-            AllocateInput(m_pPositionZPixel, offset, i, forceLiveOut);
+            AllocateInput(m_pPositionZPixel, offset, i);
             offset += m_pPositionZPixel->GetSize();
         }
 
         // Add support for POSITION_W
         if (m_pPositionWPixel)
         {
-            AllocateInput(m_pPositionWPixel, offset, i, forceLiveOut);
+            AllocateInput(m_pPositionWPixel, offset, i);
             offset += m_pPositionWPixel->GetSize();
         }
 
@@ -225,7 +205,7 @@ void CPixelShader::AllocatePSPayload()
         if (m_pPositionXYOffset)
         {
             {
-                AllocateInput(m_pPositionXYOffset, offset, i, forceLiveOut);
+                AllocateInput(m_pPositionXYOffset, offset, i);
                 offset += m_pPositionXYOffset->GetSize();
             }
         }
@@ -233,7 +213,7 @@ void CPixelShader::AllocatePSPayload()
         // Add support for input coverage mask
         if (m_pInputCoverageMask)
         {
-            AllocateInput(m_pInputCoverageMask, offset, i, forceLiveOut);
+            AllocateInput(m_pInputCoverageMask, offset, i);
             offset += m_pInputCoverageMask->GetSize();
         }
 
@@ -242,17 +222,17 @@ void CPixelShader::AllocatePSPayload()
             {
                 if (m_pCPSRequestedSizeX)
                 {
-                    AllocateInput(m_pCPSRequestedSizeX, offset, i, forceLiveOut);
+                    AllocateInput(m_pCPSRequestedSizeX, offset, i);
                 }
                 if (m_pCPSRequestedSizeY)
                 {
-                    AllocateInput(m_pCPSRequestedSizeY, offset + SIZE_OWORD, i, forceLiveOut);
+                    AllocateInput(m_pCPSRequestedSizeY, offset + SIZE_OWORD, i);
                 }
                 offset += getGRFSize();
             }
             if (m_ZWDelta && i == numInstances - 1)
             {
-                AllocateInput(m_ZWDelta, offset, i, forceLiveOut);
+                AllocateInput(m_ZWDelta, offset);
                 if (m_Signature)
                 {
                     GetDispatchSignature().ZWDelta = offset;
@@ -263,11 +243,11 @@ void CPixelShader::AllocatePSPayload()
             {
                 if (m_SampleOffsetX)
                 {
-                    AllocateInput(m_SampleOffsetX, offset, i, forceLiveOut);
+                    AllocateInput(m_SampleOffsetX, offset, i);
                 }
                 if (m_SampleOffsetY)
                 {
-                    AllocateInput(m_SampleOffsetY, offset + SIZE_OWORD, i, forceLiveOut);
+                    AllocateInput(m_SampleOffsetY, offset + SIZE_OWORD, i);
                 }
                 if (m_Signature)
                 {
@@ -304,7 +284,6 @@ void CPixelShader::AllocatePSPayload()
                 }
             }
             AllocateInput(setup[i], offset + subRegOffset);
-
             if (m_Signature)
             {
                 GetDispatchSignature().inputOffset[i] = offset;
@@ -339,31 +318,13 @@ void CPixelShader::AllocatePSPayload()
         offset += (getGRFSize() - (offset % getGRFSize()));
     }
 
-    CVariable* prevAlias = nullptr;
-    uint prevOffset = offset;
     // This is the preallocation for payload live-outs.
     for (auto& var : payloadLiveOutSetup)
     {
-        auto v = var->GetAlias() ? var->GetAlias() : var;
         IGC_ASSERT(offset% getGRFSize() == 0);
-        bool skip = (prevAlias == v);
-        if (!skip)
-        {
-            AllocateInput(var, offset);
-        }
-        else
-        {
-            AllocateInput(var, prevOffset);
-        }
-        if (v != var)
-        {
-            prevAlias = v;
-        }
-        if (!skip)
-        {
-            prevOffset = offset;
-            offset += var->GetSize();
-        }
+        auto v = var->GetAlias() ? var->GetAlias() : var;
+        AllocateInput(v, offset);
+        offset += v->GetSize();
     }
 
     // This is the preallocation for temp variables in payload sections
@@ -374,7 +335,7 @@ void CPixelShader::AllocatePSPayload()
     }
 
     // When preallocation failed (exceeding the total number of physical registers), early exit and give up this compilation._
-    ProgramOutput()->m_scratchSpaceUsedBySpills = offset >= encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize();
+    ProgramOutput()->m_scratchSpaceUsedBySpills = offset > encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize();
     if (ProgramOutput()->m_scratchSpaceUsedBySpills)
     {
         return;
@@ -414,7 +375,7 @@ void CPixelShader::AllocatePSPayload()
     {
         encoder.SetPayloadSectionAsSecondary();
     }
-    ProgramOutput()->m_scratchSpaceUsedBySpills = (offset >= encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize());
+    ProgramOutput()->m_scratchSpaceUsedBySpills = (offset > encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize());
 }
 
 PSSignature::DispatchSignature& CPixelShader::GetDispatchSignature()
@@ -524,10 +485,6 @@ CVariable* CPixelShader::GetBaryRegLoweredHalf(e_interpolation mode)
             GetNewVariable(
                 2 * numLanes(m_SIMDSize), ISA_TYPE_HF, EALIGN_GRF,
                 false, m_numberInstance, name);
-        if (encoder.IsCodePatchCandidate())
-        {
-            AddPatchTempSetup(m_BaryRegLoweredHalf[mode]);
-        }
     }
     return m_BaryRegLoweredHalf[mode];
 }
@@ -555,10 +512,6 @@ CVariable* CPixelShader::GetBaryRegLoweredFloat(e_interpolation mode)
             GetNewVariable(
                 2 * numLanes(m_SIMDSize), ISA_TYPE_F, EALIGN_GRF,
                 false, m_numberInstance, name);
-        if (encoder.IsCodePatchCandidate())
-        {
-            AddPatchTempSetup(m_BaryRegLoweredFloat[mode]);
-        }
     }
     return m_BaryRegLoweredFloat[mode];
 }
@@ -791,7 +744,6 @@ CPixelShader::~CPixelShader()
 void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
 {
     m_R1 = NULL;
-    m_R1Lo = NULL;
     m_PerspectiveBaryPlanes = nullptr;
     m_NonPerspectiveBaryPlanes = nullptr;
     m_PerspectivePixel = NULL;
@@ -1723,21 +1675,12 @@ void CPixelShader::emitPSInputLowering()
             unsigned int index = *iterSetupIndex;
             CVariable* inputVar = GetInputDelta(index, combineTwoDelta);
             CVariable* inputVarLowered = GetInputDeltaLowered(index);
-            if (encoder.IsCodePatchCandidate())
-            {
-                encoder.SetPayloadSectionAsPrimary();
-                AddPatchTempSetup(inputVarLowered);
-            }
 
             encoder.SetSrcRegion(0, 1, 1, 0);
             encoder.SetUniformSIMDSize(combineTwoDelta ? SIMDMode::SIMD8 : SIMDMode::SIMD4);
             encoder.SetNoMask();
             encoder.Cast(inputVarLowered, inputVar);
             encoder.Push();
-            if (encoder.IsCodePatchCandidate())
-            {
-                encoder.SetPayloadSectionAsSecondary();
-            }
             if (combineTwoDelta)
             {
                 ++iterSetupIndex;
@@ -1751,10 +1694,6 @@ void CPixelShader::emitPSInputLowering()
                 CVariable* baryVar = GetBaryReg((e_interpolation)i);
                 CVariable* baryVarLowered = GetBaryRegLoweredHalf((e_interpolation)i);
 
-                if (encoder.IsCodePatchCandidate())
-                {
-                    encoder.SetPayloadSectionAsPrimary();
-                }
                 for (uint8_t i = 0; i < m_numberInstance; ++i)
                 {
                     encoder.SetSecondHalf(i == 1);
@@ -1800,10 +1739,6 @@ void CPixelShader::emitPSInputLowering()
                         encoder.Push();
                     }
                     encoder.SetSecondHalf(false);
-                }
-                if (encoder.IsCodePatchCandidate())
-                {
-                    encoder.SetPayloadSectionAsSecondary();
                 }
             }
         }
