@@ -8575,6 +8575,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dummyInst:
         emitDummyInst(inst);
         break;
+    case GenISAIntrinsic::GenISA_vectorUniform:
+        break;  // pseudo instruction, do nothing
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission, cases include:

@@ -88,8 +88,6 @@ namespace IGC {
 
         bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
         bool IsNativeType(Type* type);
-        /// Conservatively check if a store allow an Alloca to be uniform
-        bool IsUniformStore(llvm::StoreInst* pStore);
 
     public:
         static char ID;
@@ -575,6 +573,17 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     helper.HandleAllocaSources(pAlloca, idx);
     helper.EraseDeadCode();
     IGC_ASSERT(nullptr != pAlloca);
+    // for uniform alloca, we need to insert an initial definition
+    // to keep the promoted vector as uniform in the next round of WIAnalysis
+    bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
+    if (isUniformAlloca) {
+        IRBuilder<> IRB1(pAlloca);
+        auto pVecF = GenISAIntrinsic::getDeclaration(m_pFunc->getParent(),
+            GenISAIntrinsic::GenISA_vectorUniform, pVecAlloca->getAllocatedType());
+        auto pVecInit = IRB1.CreateCall(pVecF);
+        // create a store of pVecInit into pVecAlloca
+        IRB1.CreateStore(pVecInit, pVecAlloca);
+    }
     if (pAlloca->use_empty()) {
       IGC_ASSERT(m_DT);
       replaceAllDbgUsesWith(*pAlloca, *pVecAlloca, *pVecAlloca, *m_DT);
