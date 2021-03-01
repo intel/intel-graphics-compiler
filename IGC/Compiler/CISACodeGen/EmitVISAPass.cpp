@@ -632,6 +632,21 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                                 case GenISAIntrinsic::GenISA_PullCentroidBarys:
                                     m_encoder->SetIsCodePatchCandidate(false);
                                     break;
+                                case GenISAIntrinsic::GenISA_DCL_SystemValue:
+                                    {
+                                        // This is where we will have ZWDelta
+                                        if (m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER)
+                                        {
+                                            CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
+                                            SGVUsage usage = (SGVUsage)llvm::cast<llvm::ConstantInt>(I->getOperand(0))->getZExtValue();
+                                            if (usage == POSITION_Z &&
+                                                (psProgram->GetPhase() == PSPHASE_PIXEL || psProgram->GetPhase() == PSPHASE_COARSE))
+                                            {
+                                                m_encoder->SetIsCodePatchCandidate(false);
+                                            }
+                                        }
+                                    }
+                                    break;
                                 default:
                                     break;
                             }
@@ -7821,6 +7836,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                     m_encoder->SetSimdSize(simdSize);
                     m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
                     m_encoder->SetDstSubVar(i);
+                    if (m_encoder->IsCodePatchCandidate())
+                    {
+                        psProgram->SetR1Lo(src);
+                    }
                     m_encoder->Cast(dst, src);
                     m_encoder->Push();
                 }

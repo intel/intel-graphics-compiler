@@ -2195,7 +2195,6 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
 
             //create reg region
             G4_Declare *dcl = cisa_decl->genVar.dcl;
-
             const RegionDesc *rd = m_builder->createRegionDesc(vStride, width, hStride);
             G4_SrcModifier g4_mod = GetGenSrcModFromVISAMod(mod);
 

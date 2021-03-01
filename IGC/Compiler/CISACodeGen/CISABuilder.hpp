@@ -408,6 +408,7 @@ namespace IGC
         std::string GetVariableName(CVariable* var);
         std::string GetDumpFileName(std::string extension);
 
+        bool IsPayloadSectionAsPrimary()    {return vKernel == vPayloadSection;}
         void SetPayloadSectionAsPrimary()   {vKernelTmp = vKernel; vKernel = vPayloadSection;}
         void SetPayloadSectionAsSecondary() {vKernel = vKernelTmp;}
 
