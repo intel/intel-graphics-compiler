@@ -379,6 +379,11 @@ VISAModule::getAllCallerSave( const IGC::DbgDecoder& VD,
 
 void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int>>& GenISARange)
 {
+    // Treat 2 sub-intervals as coalesceable as long %ip end of first interval
+    // and %ip start of second interval is within a threshold.
+    // 0x20 is equivalent to 2 asm instructions.
+    const unsigned int CoalescingThreshold = 0x20;
+
     class Comp
     {
     public:
@@ -404,7 +409,8 @@ void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int
             if (GenISARange[j].first == (unsigned int)-1 && GenISARange[j].second == (unsigned int)-1)
                 continue;
 
-            if (GenISARange[j].first == GenISARange[i].second)
+            if (GenISARange[j].first >= GenISARange[i].second &&
+                GenISARange[j].first <= (CoalescingThreshold + GenISARange[i].second))
             {
                 GenISARange[i].second = GenISARange[j].second;
                 GenISARange[j].first = (unsigned int)-1;

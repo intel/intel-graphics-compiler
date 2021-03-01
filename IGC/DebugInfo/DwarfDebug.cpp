@@ -1630,9 +1630,21 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
                 AbsVar->setDbgInst(pInst);
             }
 
+            // Conditions below decide whether we want to emit location to debug_loc or inline it
+            // in the DIE. To inline in DIE, we simply dont emit anything here and continue the loop.
             bool needsCallerSave = m_pModule->getCompileUnit(*decodedDbg)->cfi.numCallerSaveEntries > 0;
             if ((!m_pModule->isDirectElfInput || !EmitSettings.EmitDebugLoc) && !needsCallerSave)
                 continue;
+
+            if (EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>(pInst))
+            {
+                // When using OffsetInLocation, we emit offset of variable from privateBase.
+                // This works only for -O0 when variables are stored in memory.
+                // When optimizations are enabled, ie when pInst is not dbgDeclare, we
+                // may choose to emit locations to debug_loc as variables may be mapped to
+                // registers.
+                continue;
+            }
 
             // assume that VISA preserves location thoughout its lifetime
             auto Locs = m_pModule->GetVariableLocation(pInst);
