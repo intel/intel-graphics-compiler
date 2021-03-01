@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2000-2021 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"),
@@ -44,6 +44,7 @@ IN THE SOFTWARE.
 #include <iomanip>
 
 #include "3d/common/iStdLib/File.h"
+#include "Probe/Assertion.h"
 
 #if defined( _DEBUG ) || defined( _INTERNAL )
 #define IGC_DEBUG_VARIABLES
@@ -332,7 +333,7 @@ namespace FCL
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, maxLen);
             if (strlen(custom_dir) > 0 && (found == std::string::npos))
             {
-                assert(strlen(custom_dir) < maxLen && "custom_dir path too long");
+                IGC_ASSERT_MESSAGE(strlen(custom_dir) < maxLen, "custom_dir path too long");
                 dumpPath = custom_dir;
                 dumpPath += "/";
             }
@@ -703,8 +704,8 @@ namespace TC
     \*****************************************************************************/
     void CClangTranslationBlock::SetErrorString(const char *pErrorString, STB_TranslateOutputArgs* pOutputArgs)
     {
-        assert(pErrorString != NULL);
-        assert(pOutputArgs != NULL);
+        IGC_ASSERT(pErrorString != NULL);
+        IGC_ASSERT(pOutputArgs != NULL);
         size_t strSize = strlen(pErrorString) + 1;
         pOutputArgs->ErrorStringSize = strSize;
 #ifdef WIN32
@@ -740,7 +741,7 @@ namespace TC
             if (NULL != pszOpt)
             {
                 // we are in control of internal option - assertion test the validity
-                assert(strlen(pszOpt + OCL_VERSION_OPT_SIZE) >= 3);
+                IGC_ASSERT(strlen(pszOpt + OCL_VERSION_OPT_SIZE) >= 3);
                 return std::string(pszOpt + OCL_VERSION_OPT_SIZE, 3);
             }
         }
@@ -951,17 +952,15 @@ namespace TC
         TranslateClangArgs* pClangArgs,
         std::string& exceptString)
     {
-        assert(pElfReader && "pElfReader is invalid");
+        IGC_ASSERT_MESSAGE(pElfReader, "pElfReader is invalid");
 
         const SElf64Header* pHeader = pElfReader->GetElfHeader();
-        assert((pHeader->Type == EH_TYPE_OPENCL_SOURCE) && "OPENCL_SOURCE elf type is expected");
+        IGC_ASSERT_MESSAGE(pHeader->Type == EH_TYPE_OPENCL_SOURCE, "OPENCL_SOURCE elf type is expected");
 
         // First section should be an OpenCL source code
         const SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(1);
-        if (NULL == pSectionHeader)
-        {
-            assert("pSectionHeader cannot be NULL");
-        }
+        IGC_ASSERT_MESSAGE(NULL != pSectionHeader, "pSectionHeader cannot be NULL");
+
         if (pSectionHeader->Type == SH_TYPE_OPENCL_SOURCE)
         {
             char *pData = NULL;
@@ -970,7 +969,7 @@ namespace TC
 
             if (pData != NULL)
             {
-                assert(pData[uiDataSize - 1] == '\0' && "Program source is not null terminated");
+                IGC_ASSERT_MESSAGE(pData[uiDataSize - 1] == '\0', "Program source is not null terminated");
                 pClangArgs->pszProgramSource = pData;
             }
         }
@@ -988,7 +987,7 @@ namespace TC
 
                 if (pData != NULL)
                 {
-                    assert(pData[uiDataSize - 1] == '\0' && "Header source is not null terminated");
+                    IGC_ASSERT_MESSAGE(pData[uiDataSize - 1] == '\0', "Header source is not null terminated");
                     pClangArgs->inputHeaders.push_back(pData);
                     pClangArgs->inputHeadersNames.push_back(pElfReader->GetSectionName(i));
                 }
@@ -1125,13 +1124,13 @@ namespace TC
     {
         unsigned long CTHeaderSize = 0;
         m_cthBuffer = llvm::LoadCharBufferFromResource(IDR_CTH_H, "H", CTHeaderSize);
-        assert(m_cthBuffer && "Error loading Opencl_cth.h");
+        IGC_ASSERT_MESSAGE(m_cthBuffer, "Error loading Opencl_cth.h");
 
         if (m_cthBuffer)
         {
             // Process the CT Header
-            assert(CTHeaderSize > 0 && "Resource for the CT Header is empty");
-            assert(m_cthBuffer[CTHeaderSize - 1] == '\0' && "Resource for the CT Header is not null terminated");
+            IGC_ASSERT_MESSAGE(CTHeaderSize > 0, "Resource for the CT Header is empty");
+            IGC_ASSERT_MESSAGE(m_cthBuffer[CTHeaderSize - 1] == '\0', "Resource for the CT Header is not null terminated");
 
             pArgs->inputHeaders.push_back(m_cthBuffer);
             pArgs->inputHeadersNames.push_back("CTHeader.h");
@@ -1609,12 +1608,12 @@ namespace TC
         }
 
         const SElf64Header* pHeader = pElfReader->GetElfHeader();
-        assert(pHeader != NULL);
+        IGC_ASSERT(pHeader != NULL);
 
         for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
         {
             const SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
-            assert(pSectionHeader != NULL);
+            IGC_ASSERT(pSectionHeader != NULL);
             if (pSectionHeader == NULL)
             {
                 SetErrorString("No section header", pOutputArgs);
