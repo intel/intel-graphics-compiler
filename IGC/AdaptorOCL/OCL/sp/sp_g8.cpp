@@ -56,8 +56,6 @@ IN THE SOFTWARE.
 
 #include "../../../visa/include/visaBuilder_interface.h"
 
-#include "gtpin_igc_ocl.h"
-
 #include <algorithm>
 #include <cstring>
 #include "Probe/Assertion.h"
@@ -252,8 +250,6 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     RETVAL retValue = g_cInitRetValue;
 
-    const bool gtpinEnabled = GTPIN_IGC_OCL_IsEnabled();
-
     ICBE_DPF_STR(m_oclStateDebugMessagePrintOut, GFXDBG_HARDWARE, "\n");
     ICBE_DPF_STR(m_oclStateDebugMessagePrintOut, GFXDBG_HARDWARE,
         "** Kernel Patch Lists : Kernel Name = %s **\n", annotations.m_kernelName.c_str());
@@ -275,7 +271,6 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
         retValue = CreateSurfaceStateHeap(
             annotations,
             layout,
-            gtpinEnabled,
             kernelContext,
             surfaceStateHeap );
     }
@@ -295,7 +290,6 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
             programInfo,
             layout,
             kernelContext,
-            gtpinEnabled,
             patchListHeap );
     }
 
@@ -573,7 +567,6 @@ RETVAL CGen8OpenCLStateProcessor::CreateKernelHeap(
 RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     const IGC::SOpenCLKernelInfo& annotations,
     const IGC::CBTILayout& layout,
-    const bool gtpinEnabled,
     SStateProcessorContextGen8_0& context,
     Util::BinaryStream& membuf )
 {
@@ -758,43 +751,6 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
                     SURFACE_FORMAT_RAW,
                     0,
                     false)));
-    }
-
-    // If GT-Pin is enabled, assign btis to GT-Pin's surfaces
-    if (gtpinEnabled)
-    {
-        const unsigned numGTPinSurfaces = 2;
-        IGC_ASSERT(GTPIN_IGC_OCL_NumberOfSurfaces() == numGTPinSurfaces);
-        unsigned btiAssigned[numGTPinSurfaces];
-
-        for ( unsigned i = 0; i < numGTPinSurfaces; i++ )
-        {
-            bool found = false;
-            const int maxUseableBTI = 250;
-            for (int bti=0; bti<maxUseableBTI; bti++)
-            {
-                if (SurfaceStates.find(bti) == SurfaceStates.end())
-                {
-                    btiAssigned[i] = bti;
-
-                    SurfaceStates.insert(
-                        std::make_pair(
-                            bti,
-                            SurfaceState(
-                                SURFACE_BUFFER,
-                                SURFACE_FORMAT_UNKNOWN,
-                                0,
-                                false)));
-                    found = true;
-                    break;
-                }
-            }
-
-            IGC_ASSERT_MESSAGE(found, "GTPIN_IGC_OCL Error: Fail to find a free BTI for GT-Pin surface (i)");
-        }
-        const int res = GTPIN_IGC_OCL_UpdateKernelInfo(0, btiAssigned[0], btiAssigned[1]);
-
-        IGC_ASSERT((0 == res) && ("GTPIN_IGC_OCL Error: Failed to call GTPIN_IGC_OCL_UpdateKernelInfo"));
     }
 
     // Fill up the SSH with BTI offsets increasing.  The runtime currently
@@ -1125,7 +1081,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     const IGC::SOpenCLProgramInfo& programInfo,
     const IGC::CBTILayout& layout,
     const SStateProcessorContextGen8_0& context,
-    const bool gtpinEnabled,
     Util::BinaryStream& membuf )
 {
     RETVAL retValue = g_cInitRetValue;
@@ -2044,31 +1999,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 #if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
             DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
-        }
-    }
-
-    // Patch for GT-Pin surfaces
-    if (gtpinEnabled)
-    {
-        for (int i = 0; i < GTPIN_IGC_OCL_NumberOfSurfaces(); i++)
-        {
-            if (retValue.Success)
-            {
-                const unsigned bti = GTPIN_IGC_OCL_GetSurfaceBTI(i);
-                const unsigned offset = context.Surface.SurfaceOffset[bti];
-                const unsigned param = GTPIN_IGC_OCL_GetSurfaceKernelArgNo(i);
-
-                // patched as global memory object
-                iOpenCL::SPatchGlobalMemoryObjectKernelArgument patch;
-                memset(&patch, 0, sizeof(patch));
-
-                patch.Token = iOpenCL::PATCH_TOKEN_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT;
-                patch.Size = sizeof(patch);
-                patch.ArgumentNumber = param;
-                patch.Offset = offset;
-
-                retValue = AddPatchItem(patch, membuf);
-            }
         }
     }
 

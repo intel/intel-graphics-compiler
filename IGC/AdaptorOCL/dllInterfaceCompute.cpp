@@ -53,8 +53,6 @@ IN THE SOFTWARE.
 #include "CLElfLib/ElfReader.h"
 #include "usc.h"
 
-#include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
-
 #if defined(IGC_VC_ENABLED)
 #include "common/LLVMWarningsPush.hpp"
 #include "vc/igcdeps/TranslationInterface.h"
@@ -1289,30 +1287,6 @@ bool TranslateBuild(
 
         pOutputArgs->DebugDataSize = debugDataSize;
         pOutputArgs->pDebugData = debugDataOutput;
-    }
-
-    const char* driverName =
-        GTPIN_DRIVERVERSION_OPEN;
-    // If GT-Pin is enabled, instrument the binary. Finally pOutputArgs will
-    // be pointing to the instrumented binary with the new size.
-    if (GTPIN_IGC_OCL_IsEnabled())
-    {
-        const GEN_ISA_TYPE genIsa = GTPIN_IGC_OCL_GetGenIsaFromPlatform(IGCPlatform.getPlatformInfo());
-        int instrumentedBinarySize = 0;
-        void* instrumentedBinaryOutput = nullptr;
-        GTPIN_IGC_OCL_Instrument(genIsa, driverName,
-            binarySize, binaryOutput,
-            instrumentedBinarySize, instrumentedBinaryOutput);
-
-        void* newBuffer = operator new[](instrumentedBinarySize, std::nothrow);
-        memcpy_s(newBuffer, instrumentedBinarySize, instrumentedBinaryOutput, instrumentedBinarySize);
-        pOutputArgs->OutputSize = instrumentedBinarySize;
-        pOutputArgs->pOutput = static_cast<char*>(newBuffer);
-
-        if (binaryOutput != nullptr)
-        {
-            delete[] binaryOutput;
-        }
     }
 
     COMPILER_TIME_END(&oclContext, TIME_TOTAL);

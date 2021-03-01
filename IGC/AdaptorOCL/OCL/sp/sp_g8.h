@@ -140,7 +140,6 @@ private:
     RETVAL CreateSurfaceStateHeap(
         const IGC::SOpenCLKernelInfo& annotations,
         const IGC::CBTILayout& layout,
-        const bool gtpinEnabled,
         SStateProcessorContextGen8_0& context,
         Util::BinaryStream& );
 
@@ -159,7 +158,6 @@ private:
         const IGC::SOpenCLProgramInfo& programInfo,
         const IGC::CBTILayout& layout,
         const SStateProcessorContextGen8_0& context,
-        const bool gtpinEnabled,
         Util::BinaryStream& );
 
     RETVAL CombineKernelBinary(
