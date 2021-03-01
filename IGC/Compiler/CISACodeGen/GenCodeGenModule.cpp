@@ -657,7 +657,8 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         Function* F = &(*I);
         if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
-        if (F->hasFnAttribute("IndirectlyCalled"))
+        // Add non-used function to default group
+        if (F->hasFnAttribute("IndirectlyCalled") || F->getNumUses() == 0)
         {
             IGC_ASSERT(getGroup(F) == nullptr);
             addToFunctionGroup(F, IndirectCallGroup, F);

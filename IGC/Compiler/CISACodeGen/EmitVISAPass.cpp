@@ -381,7 +381,7 @@ bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
     IGC_ASSERT(IGC::isIntelSymbolTableVoidProgram(F));
 
     // Has external functions attached
-    if ((m_FGA && !m_FGA->getGroup(F)->isSingle()))
+    if ((m_FGA && m_FGA->getGroup(F) && !m_FGA->getGroup(F)->isSingle()))
     {
         return true;
     }
@@ -580,7 +580,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
 
     CShader* prevShader = m_pCtx->m_prevShader;
-    bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
+    bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
@@ -658,7 +658,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->PreCompile();
 
         // initialize stack if having stack usage
-        bool hasVLA = (m_FGA && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
+        bool hasVLA = (m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
         if (hasStackCall || hasVLA)
         {
             m_encoder->InitFuncAttribute(&F, true);
@@ -9998,7 +9998,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
             }
         }
         // Only add additional stack memory if there are actual stack calls
-        if (m_FGA && m_FGA->getGroup(pKernel)->hasStackCall())
+        if (m_FGA && m_FGA->getGroup(pKernel) && m_FGA->getGroup(pKernel)->hasStackCall())
         {
             allocMemSize += largest;
             allocMemSize += (2 * 1024);

@@ -398,8 +398,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         {
             continue;
         }
-        bool hasStackCall = (FGA && FGA->getGroup(m_currFunction)->hasStackCall()) || m_currFunction->hasFnAttribute("visaStackCall");
-        bool hasVLA = (FGA && FGA->getGroup(m_currFunction)->hasVariableLengthAlloca()) || m_currFunction->hasFnAttribute("hasVLA");
+        bool hasStackCall = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasStackCall()) || m_currFunction->hasFnAttribute("visaStackCall");
+        bool hasVLA = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasVariableLengthAlloca()) || m_currFunction->hasFnAttribute("hasVLA");
         // Resolve collected alloca instructions for current function
         changed |= resolveAllocaInstructions(hasStackCall || hasVLA);
     }

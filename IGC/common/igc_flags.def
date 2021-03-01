@@ -339,6 +339,8 @@ DECLARE_IGC_REGKEY(DWORD, OverrideProductFamilyForWA,     0,   "Enable this to o
 
 
 
+DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlining of Unmasked functions till end of CG to avoid code movement inside/outside of unmasked region", false)
+
 DECLARE_IGC_GROUP("Performance experiments")
 DECLARE_IGC_REGKEY(bool, ForceNonCoherentStatelessBTI,  false, "Enable gneeration of non cache coherent stateless messages", false)
 DECLARE_IGC_REGKEY(bool, ForceSendsSupportOnSKLA0,      false, "Allow sends on SKL A0, may be unsafe", false)

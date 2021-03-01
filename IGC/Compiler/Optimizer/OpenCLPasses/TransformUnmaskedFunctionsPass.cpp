@@ -30,6 +30,7 @@ IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
@@ -299,55 +300,76 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
     CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    llvm::SmallSetVector<Function *, 16> Funcs;
-    for (Function& F : M) {
-        if (F.hasFnAttribute("sycl-unmasked")) {
-            Funcs.insert(&F);
-        }
+    if (IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)) {
+        // Clear function groups to safely remove functions later
+        auto m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+        m_FGA->clear();
     }
+    // There is a case in Embree where two iterations of inlining is
+    // required. Consider such a case:
+    // F: ... call F1 ...
+    // F1: ... call F2 ...
+    // F2: ...
+    // There are two call sites here. If F1 is inlined first then
+    // call to F2 is cloned and there are two calls to F2 after F1
+    // inlining. And only one call to F2 is collected in 'Calls'
+    // vector during first iteration.
+    bool changed = false;
+    do {
 
-    if (Funcs.size() == 0)
-        return false;
-
-    auto& FuncMD = pContext->getModuleMetaData()->FuncMD;
-    llvm::SmallSetVector<CallInst *, 16> Calls;
-
-    for (Function *F : Funcs) {
-        F->removeFnAttr(llvm::Attribute::NoInline);
-        F->addFnAttr(llvm::Attribute::AlwaysInline);
-
-        F->setLinkage(llvm::GlobalValue::InternalLinkage);
-
-        auto Iter = pMdUtils->findFunctionsInfoItem(F);
-        if (Iter != pMdUtils->end_FunctionsInfo()) {
-            pMdUtils->eraseFunctionsInfoItem(Iter);
-        }
-        if (FuncMD.find(F) != FuncMD.end()) {
-            FuncMD.erase(F);
+        llvm::SmallSetVector<Function *, 16> Funcs;
+        for (Function& F : M) {
+            if (F.hasFnAttribute("sycl-unmasked")) {
+                Funcs.insert(&F);
+            }
         }
 
-        for (User *U : F->users()) {
-            if (auto *CB = dyn_cast<CallInst>(U)) {
-                if (CB->getCalledFunction() == F) {
-                    Calls.insert(CB);
-                    annotateUnmaskedCallSite(CB);
+        if (Funcs.size() == 0)
+            break;
+
+        changed = true;
+        auto& FuncMD = pContext->getModuleMetaData()->FuncMD;
+        llvm::SmallSetVector<CallInst *, 16> Calls;
+
+        for (Function *F : Funcs) {
+            F->removeFnAttr(llvm::Attribute::NoInline);
+            F->addFnAttr(llvm::Attribute::AlwaysInline);
+
+            F->setLinkage(llvm::GlobalValue::InternalLinkage);
+
+            auto Iter = pMdUtils->findFunctionsInfoItem(F);
+            if (Iter != pMdUtils->end_FunctionsInfo()) {
+                pMdUtils->eraseFunctionsInfoItem(Iter);
+            }
+            if (FuncMD.find(F) != FuncMD.end()) {
+                FuncMD.erase(F);
+            }
+
+            for (User *U : F->users()) {
+                if (auto *CB = dyn_cast<CallInst>(U)) {
+                    if (CB->getCalledFunction() == F) {
+                        Calls.insert(CB);
+                        annotateUnmaskedCallSite(CB);
+                    }
                 }
             }
         }
-    }
 
-    llvm::InlineFunctionInfo IFI;
-    for (auto *CB : Calls)
-        IGCLLVM::InlineFunction(CB, IFI);
+        llvm::InlineFunctionInfo IFI;
+        for (auto *CB : Calls)
+            IGCLLVM::InlineFunction(CB, IFI);
 
-    for (Function *F : Funcs) {
-        F->removeDeadConstantUsers();
-        if (F->isDefTriviallyDead())
-            F->eraseFromParent();
-    }
+        for (Function *F : Funcs) {
+            F->removeDeadConstantUsers();
+            if (F->isDefTriviallyDead())
+                F->eraseFromParent();
+        }
 
-    pMdUtils->save(*pContext->getLLVMContext());
+    } while (changed);
 
-    return true;
+    if (changed)
+        pMdUtils->save(*pContext->getLLVMContext());
+
+    return changed;
 }
 

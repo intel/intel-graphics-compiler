@@ -1692,7 +1692,7 @@ namespace IGC
 
             IGC_ASSERT_MESSAGE(pFunc->use_empty(), "Assume all user function are inlined at this point");
 
-            if (FGA) {
+            if (FGA && FGA->getModule()) {
                 FGA->replaceEntryFunc(pFunc, I->second);
             }
             // Now, after changing funciton signature,

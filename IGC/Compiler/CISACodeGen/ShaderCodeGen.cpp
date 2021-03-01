@@ -291,6 +291,37 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // Fixup extract value pairs.
     mpm.add(createExtractValuePairFixupPass());
 
+    if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+        IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc))
+    {
+        mpm.add(new InlineUnmaskedFunctionsPass());
+        // Newly created memcpy intrinsic are lowered
+        mpm.add(createReplaceUnsupportedIntrinsicsPass());
+        // Split complex constant expression into 2 simple ones
+        mpm.add(new BreakConstantExpr());
+        // Some clean up passes
+	    mpm.add(createSROAPass());
+        mpm.add(createDeadCodeEliminationPass());
+        // Create functions groups after unmasked functions inlining
+        mpm.add(createGenXCodeGenModulePass());
+        // Allocate non-primitive allocas. These peace of code is copied
+        if (ctx.m_instrTypes.hasNonPrimitiveAlloca)
+        {
+            mpm.add(createBreakCriticalEdgesPass());
+            mpm.add(createAnnotateUniformAllocasPass());
+
+            if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
+                ctx.m_retryManager.AllowPromotePrivateMemory())
+            {
+                mpm.add(createPromotePrivateArrayToReg());
+                mpm.add(createCFGSimplificationPass());
+            }
+        }
+        mpm.add(createPromoteMemoryToRegisterPass());
+        // Resolving private memory allocas
+        mpm.add(CreatePrivateMemoryResolution());
+    }
+
     // This is for dumping register pressure info
     if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
         mpm.add(new RegisterEstimator());
@@ -489,7 +520,14 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     // Resolve the Private memory to register pass
     if (!isOptDisabled)
     {
-        if (ctx.m_instrTypes.hasNonPrimitiveAlloca)
+        // In case of late inlining of Unmasked function allocate non
+        // primitive Allocas after inlining is done. Otherwise there
+        // is possibility RegAlloc cannot allocate registers for all
+        // virtual registers. This piece of code is copied at the place
+        // where inlining is done.
+        if (ctx.m_instrTypes.hasNonPrimitiveAlloca &&
+            !(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+              IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)))
         {
             mpm.add(createBreakCriticalEdgesPass());
             mpm.add(createAnnotateUniformAllocasPass());
@@ -547,8 +585,14 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     }
 
     // Resolving private memory allocas
-    mpm.add(CreatePrivateMemoryResolution());
-
+    // In case of late inlining of Unmasked function postpone memory
+    // resolution till inlining is done as during inlining new Allocas
+    // are created.
+    if (!(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+          IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)))
+    {
+        mpm.add(CreatePrivateMemoryResolution());
+    }
     // Run MemOpt
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
@@ -618,7 +662,19 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(new BreakConstantExpr());
     }
 
-    bool KeepGEPs = false;
+    bool KeepGEPs;
+    // In case of late inlining of Unmasked function postpone memory
+    // resolution till inlining is done as during inlining new Allocas
+    // are created.
+    if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+        IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc))
+    {
+        KeepGEPs = true;
+    }
+    else
+    {
+        KeepGEPs = false;
+    }
     mpm.add(createGenIRLowerPass());
 
     if (KeepGEPs)
@@ -1839,7 +1895,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
         // mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
 
-        if(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions))
+        if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
+            IGC_IS_FLAG_DISABLED(LateInlineUnmaskedFunc))
         {
             mpm.add(new InlineUnmaskedFunctionsPass());
         }
