@@ -7603,7 +7603,22 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* dst = m_destination;
-    SGVUsage usage = (SGVUsage)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+    const SGVUsage usage = (SGVUsage)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+
+    // Helper lambda to copy SGV data from thread payload when no data
+    // processing/calculation is needed.
+    auto CopySGV = [this, &psProgram, usage](
+        CVariable* dst, CVariable* src)->void
+    {
+        IGC_ASSERT(usage == POSITION_Z ||
+            usage == POSITION_W ||
+            usage == INPUT_COVERAGE_MASK);
+        {
+            m_encoder->Copy(dst, src);
+            m_encoder->Push();
+        }
+    };
+
     switch (usage)
     {
     case POSITION_Z:
@@ -7699,19 +7714,13 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
         }
         else
         {
-            {
-                m_encoder->Copy(dst, psProgram->GetPositionZ());
-                m_encoder->Push();
-            }
+            CopySGV(dst, psProgram->GetPositionZ());
         }
         break;
     }
     case POSITION_W:
     {
-        {
-            m_encoder->Copy(dst, psProgram->GetPositionW());
-            m_encoder->Push();
-        }
+        CopySGV(dst, psProgram->GetPositionW());
         break;
     }
     case POSITION_X_OFFSET:
@@ -7851,8 +7860,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
     case INPUT_COVERAGE_MASK:
     {
         CVariable* pInputCoverageMask = psProgram->GetInputCoverageMask();
-        m_encoder->Copy(dst, pInputCoverageMask);
-        m_encoder->Push();
+        CopySGV(dst, pInputCoverageMask);
     }
     break;
     case ACTUAL_COARSE_SIZE_X:
