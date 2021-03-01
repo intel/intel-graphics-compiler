@@ -9730,7 +9730,9 @@ int GlobalRA::coloringRegAlloc()
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
-                    builder.getOption(vISA_FastSpill) || fastCompile || builder.getOption(vISA_Debug);
+                    builder.getOption(vISA_FastSpill) || fastCompile || builder.getOption(vISA_Debug) ||
+                    (!useScratchMsgForSpill
+                        );
 
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
                 {

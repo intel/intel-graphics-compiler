@@ -271,7 +271,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[],
         findContiguousNoWrapGRF(
         availRegs, forbidden, occupiedBundles, align, numRegNeeded, startPosRunOne, endPosRunOne, idx);
 
-    if (startPosRunOne > 0 && found == false && !isEOTSrc)
+    if (startPosRunOne > 0 && found == false && !isEOTSrc && !isCalleeSaveBias)
     {
         unsigned startPosRunTwo = 0;
         unsigned endPosRunTwo = startPos + numRegNeeded;

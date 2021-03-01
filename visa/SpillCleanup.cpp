@@ -300,8 +300,7 @@ bool CoalesceSpillFills::fillHeuristic(std::list<INST_LIST_ITER>& coalesceableFi
     G4_Declare* header = (*coalesceableFills.front())->asFillIntrinsic()->getHeader()->getTopDcl();
     for (auto f : coalesceableFills)
     {
-        if ((*f)->asFillIntrinsic()->getHeader()->getTopDcl() != header &&
-            !(*f)->asFillIntrinsic()->getFP())
+        if ((*f)->asFillIntrinsic()->getHeader()->getTopDcl() != header)
             return false;
 
         unsigned int scratchOffset, scratchSize;
@@ -573,8 +572,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(std::list<INST_LIST_ITER>& instLi
     {
         auto inst = (*instIt);
 
-        if (inst->asSpillIntrinsic()->getHeader()->getTopDcl() != header &&
-            !inst->asSpillIntrinsic()->getFP())
+        if (inst->asSpillIntrinsic()->getHeader()->getTopDcl() != header)
         {
             return;
         }
