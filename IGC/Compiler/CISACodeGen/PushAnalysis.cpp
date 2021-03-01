@@ -156,6 +156,33 @@ namespace IGC
             pAddress = cast<Instruction>(pAddress)->getOperand(0);
         }
 
+        SmallVector<Value*, 4> potentialPushableAddresses;
+        std::function<void(Value*)> GetPotentialPushableAddresses;
+        GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset, &GetPotentialPushableAddresses](
+            Value* pAddress)->void
+        {
+            BinaryOperator* pAdd = dyn_cast<BinaryOperator>(pAddress);
+            if (pAdd && pAdd->getOpcode() == llvm::Instruction::Add)
+            {
+                GetPotentialPushableAddresses(pAdd->getOperand(0));
+                GetPotentialPushableAddresses(pAdd->getOperand(1));
+            }
+            else if (isa<ZExtInst>(pAddress))
+            {
+                GetPotentialPushableAddresses(
+                    cast<ZExtInst>(pAddress)->getOperand(0));
+            }
+            else if (isa<ConstantInt>(pAddress))
+            {
+                ConstantInt* pConst = cast<ConstantInt>(pAddress);
+                offset += int_cast<uint>(pConst->getZExtValue());
+            }
+            else
+            {
+                potentialPushableAddresses.push_back(pAddress);
+            }
+        };
+
         if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(pAddress))
         {
             /*
@@ -173,8 +200,17 @@ namespace IGC
             %37 = extractvalue { i32, i32 } %36, 0
             %38 = extractvalue { i32, i32 } %36, 1
             %39 = call <2 x i32> addrspace(2)* @llvm.genx.GenISA.pair.to.ptr.p2v2i32(i32 %37, i32 %38)
-            2. TODO: add support for pushable 64bit address + pushable 32bit offset + immediate
-               offset pattern.
+
+            2. Pushable 64bit address + pushable 32bit offset + immediate offset pattern:
+            %7 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 2)
+            %8 = call i64 @llvm.genx.GenISA.RuntimeValue.i64(i32 0)
+            %9 = bitcast i64 %8 to <2 x i32>
+            %10 = extractelement <2 x i32> %9, i32 0
+            %11 = extractelement <2 x i32> %9, i32 1
+            %12 = call { i32, i32 } @llvm.genx.GenISA.add.pair(i32 %10, i32 %11, i32 %1, i32 0)
+            %13 = extractvalue { i32, i32 } %12, 0
+            %14 = extractvalue { i32, i32 } %12, 1
+            %15 = call i8 addrspace(1441792)* addrspace(2)* @llvm.genx.GenISA.pair.to.ptr.p2p1441792i8(i32 %13, i32 %14)
             */
             if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_pair_to_ptr)
             {
@@ -192,35 +228,41 @@ namespace IGC
 
                         if (genIntr2->getIntrinsicID() == GenISAIntrinsic::GenISA_add_pair)
                         {
+                            Value* pAddress = nullptr;
                             ExtractValueInst* Lo2 = dyn_cast<ExtractValueInst>(genIntr2->getOperand(0));
                             ExtractValueInst* Hi2 = dyn_cast<ExtractValueInst>(genIntr2->getOperand(1));
                             if (Lo2 && Hi2 && Lo2->getOperand(0) == Hi2->getOperand(0))
                             {
-                                if (GenIntrinsicInst * ptrToPair = dyn_cast<GenIntrinsicInst>(Lo2->getOperand(0)))
+                                if (GenIntrinsicInst* ptrToPair = dyn_cast<GenIntrinsicInst>(Lo2->getOperand(0)))
                                 {
                                     if (ptrToPair->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
                                     {
-                                        ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(genIntr2->getOperand(2));
-                                        if (!pConst)
-                                            return false;
-                                        offset = (uint)pConst->getZExtValue();
+                                        // pattern no. 1
                                         pAddress = ptrToPair->getOperand(0);
                                     }
                                 }
                             }
+                            else
+                            {
+                                ExtractElementInst* Lo3 = dyn_cast<ExtractElementInst>(genIntr2->getOperand(0));
+                                ExtractElementInst* Hi3 = dyn_cast<ExtractElementInst>(genIntr2->getOperand(1));
+                                if (Lo3 && Hi3 && Lo3->getOperand(0) == Hi3->getOperand(0))
+                                {
+                                    // pattern no. 2
+                                    pAddress = Lo3->getOperand(0);
+                                }
+                            }
+                            if (pAddress &&
+                                isa<ConstantInt>(genIntr2->getOperand(3)) &&
+                                cast<ConstantInt>(genIntr2->getOperand(3))->getZExtValue() == 0)
+                            {
+                                offset = 0;
+                                GetPotentialPushableAddresses(genIntr2->getOperand(2)); // offset
+                                GetPotentialPushableAddresses(pAddress);
+                            }
                         }
                     }
                 }
-            }
-            if (IsPushableAddress(
-                inst,
-                pAddress,
-                pushableAddressGrfOffset,
-                pushableOffsetGrfOffset))
-            {
-                IGC_ASSERT(pushableAddressGrfOffset >= 0);
-                IGC_ASSERT_MESSAGE(pushableOffsetGrfOffset == -1, "Pushable 32bit offset not supported yet!");
-                return true;
             }
         }
         else
@@ -243,52 +285,25 @@ namespace IGC
             */
 
             offset = 0;
-            SmallVector<Value*, 4> potentialPushableAddresses;
-            std::function<void(Value*)> GetPotentialPushableAddresses;
-            GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset, &GetPotentialPushableAddresses](
-                Value* pAddress)->void
-            {
-                BinaryOperator* pAdd = dyn_cast<BinaryOperator>(pAddress);
-                if (pAdd && pAdd->getOpcode() == llvm::Instruction::Add)
-                {
-                    GetPotentialPushableAddresses(pAdd->getOperand(0));
-                    GetPotentialPushableAddresses(pAdd->getOperand(1));
-                }
-                else if (isa<ZExtInst>(pAddress))
-                {
-                    GetPotentialPushableAddresses(
-                        cast<ZExtInst>(pAddress)->getOperand(0));
-                }
-                else if (isa<ConstantInt>(pAddress))
-                {
-                    ConstantInt* pConst = cast<ConstantInt>(pAddress);
-                    offset += int_cast<uint>(pConst->getZExtValue());
-                }
-                else
-                {
-                    potentialPushableAddresses.push_back(pAddress);
-                }
-            };
-
             GetPotentialPushableAddresses(pAddress);
-            if (potentialPushableAddresses.size() == 1 ||
-                potentialPushableAddresses.size() == 2)
+        }
+        if (potentialPushableAddresses.size() == 1 ||
+            potentialPushableAddresses.size() == 2)
+        {
+            for (Value* potentialAddress : potentialPushableAddresses)
             {
-                for (Value* potentialAddress : potentialPushableAddresses)
+                bool isPushable = IsPushableAddress(
+                    inst,
+                    potentialAddress,
+                    pushableAddressGrfOffset,
+                    pushableOffsetGrfOffset);
+                if (!isPushable)
                 {
-                    bool isPushable = IsPushableAddress(
-                        inst,
-                        potentialAddress,
-                        pushableAddressGrfOffset,
-                        pushableOffsetGrfOffset);
-                    if (!isPushable)
-                    {
-                        return false;
-                    }
+                    return false;
                 }
-                IGC_ASSERT(pushableAddressGrfOffset >= 0);
-                return true;
             }
+            IGC_ASSERT(pushableAddressGrfOffset >= 0);
+            return true;
         }
 
         return false;
