@@ -129,6 +129,9 @@ namespace IGC
         /// Must support FP64
         virtual bool NeedFP64(PRODUCT_FAMILY productFamily) const { return false; }
 
+        /// Needs IEEE fp64 div/sqrt
+        virtual bool NeedFP64DivSqrt() const { return false; }
+
         /// Must support of f32 IEEE divide (also sqrt)
         virtual bool NeedIEEESPDiv() const { return false; }
 
