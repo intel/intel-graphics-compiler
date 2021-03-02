@@ -1069,37 +1069,6 @@ namespace vISA
             return (((baseReg + offset) % 64) / 4);
         }
 
-        unsigned short getOccupiedBundle(const G4_Declare* dcl) const
-        {
-            unsigned short occupiedBundles = 0;
-            unsigned bundleNum = 0;
-
-
-            for (const BundleConflict &conflict : getBundleConflicts(dcl))
-            {
-                const G4_RegVar *regVar = conflict.dcl->getRegVar();
-                if (regVar->isPhyRegAssigned())
-                {
-                    int offset = conflict.offset;
-                    unsigned reg = regVar->getPhyReg()->asGreg()->getRegNum();
-                    unsigned bundle = get_bundle(reg, offset);
-                    unsigned bundle1 = get_bundle(reg, offset + 1);
-                    if (!(occupiedBundles & ((unsigned short)1 << bundle)))
-                    {
-                        bundleNum++;
-                    }
-                    occupiedBundles |= (unsigned short)1 << bundle;
-                    occupiedBundles |= (unsigned short)1 << bundle1;
-                }
-            }
-            if (bundleNum > 12)
-            {
-                occupiedBundles = 0;
-            }
-
-            return occupiedBundles;
-        }
-
         void addSubDcl(const G4_Declare *dcl, G4_Declare* subDcl)
         {
             allocVar(dcl).subDclList.push_back(subDcl);
