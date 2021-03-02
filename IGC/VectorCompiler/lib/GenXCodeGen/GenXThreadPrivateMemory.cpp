@@ -412,6 +412,29 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   report_fatal_error("Cannot find pointer replacement");
 }
 
+static std::pair<Value *, Value *>
+castValuesToCommonType(Value *V1, Value *V2, Instruction *InsertBefore) {
+  auto *V1T = V1->getType();
+  auto *V2T = V2->getType();
+  if (V1T == V2T)
+    return {V1, V2};
+
+  auto *V1I = dyn_cast<IntegerType>(V1T);
+  auto *V2I = dyn_cast<IntegerType>(V2T);
+  if (V1I && V2I) {
+    IGC_ASSERT(V1I->getBitWidth() != V2I->getBitWidth());
+    // Integer here is some pointer representation, thus using zero extension
+    if (V1I->getBitWidth() < V2I->getBitWidth())
+      V1 = new ZExtInst(V1, V2I, V1->getName() + ".common.ty", InsertBefore);
+    else
+      V2 = new ZExtInst(V2, V1I, V2->getName() + ".common.ty", InsertBefore);
+    return {V1, V2};
+  }
+
+  IGC_ASSERT_MESSAGE(0, "Cannot find common type for values");
+  return {V1, V2};
+}
+
 bool GenXThreadPrivateMemory::replaceAddrSpaceCast(
   AddrSpaceCastInst* AddrCast) {
   auto NewAlloca = lookForPtrReplacement(AddrCast->getPointerOperand());
@@ -925,6 +948,9 @@ bool GenXThreadPrivateMemory::replaceSelect(SelectInst *Sel) {
   Value *Cond = Sel->getCondition();
   Value *TrueValue = lookForPtrReplacement(Sel->getTrueValue());
   Value *FalseValue = lookForPtrReplacement(Sel->getFalseValue());
+
+  std::tie(TrueValue, FalseValue) =
+      castValuesToCommonType(TrueValue, FalseValue, Sel);
 
   SelectInst *NewSel = SelectInst::Create(Cond, TrueValue, FalseValue);
   NewSel->insertAfter(Sel);
