@@ -426,7 +426,7 @@ public:
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
-    void emitPushFrameToStack(unsigned& pushSize, llvm::Function* F);
+    void emitPushFrameToStack(unsigned& pushSize);
     void emitAddPointer(CVariable* Dst, CVariable* Src, CVariable* offset);
     // emitAddPair - emulate 64bit addtition by 32-bit operations.
     // Dst and Src0 must be a 64-bit type variable.
