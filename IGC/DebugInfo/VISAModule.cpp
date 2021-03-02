@@ -570,7 +570,9 @@ bool VISAModule::getVarInfo(const IGC::DbgDecoder& VD, std::string prefix, unsig
         return false;
 
     var = (*it).second;
-    return true;
+    // Note: vISA variables can be optimized out,
+    // In such case we'll end up with an empty live range
+    return !var.lrs.empty();
 }
 
 bool VISAModule::hasOrIsStackCall(const IGC::DbgDecoder& VD) const

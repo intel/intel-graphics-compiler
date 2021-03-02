@@ -1017,10 +1017,16 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, const VISAVar
         }
         else if (Loc->IsRegister())  // Is surface offset available as register?
         {
-            DbgDecoder::VarInfo varInfo;
             auto regNum = Loc->GetRegister();
             const auto* VISAMod = Loc->GetVISAModule();
-            VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
+
+            DbgDecoder::VarInfo varInfo;
+            if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo)) {
+                LLVM_DEBUG(dbgs() << "warning: register is not available " <<
+                           "for bindless surface offset of a V" << regNum);
+                return;
+            }
+
             uint16_t regNumWithSurfOffset = varInfo.lrs.front().getGRF().regNum;
             unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
             auto bitOffsetToSurfReg = subReg * 8;  // Bit-offset to GRF with surface offset
@@ -2436,12 +2442,13 @@ IGC::DIEBlock* CompileUnit::buildSampler(DbgVariable& var, const VISAVariableLoc
 IGC::DIEBlock* CompileUnit::buildSLM(DbgVariable& var, const VISAVariableLocation* loc)
 {
     const auto* VISAMod = loc->GetVISAModule();
-    DbgDecoder::VarInfo varInfo;
     auto regNum = loc->GetRegister();
-    VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
 
-    if (varInfo.lrs.size() == 0)
+    DbgDecoder::VarInfo varInfo;
+    if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo)) {
+        LLVM_DEBUG(dbgs() << "warning: could not build SLM location for V" << regNum);
         return nullptr;
+    }
 
     IGC::DIEBlock* Block = new (DIEValueAllocator)IGC::DIEBlock();
 
@@ -2549,7 +2556,6 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             // With mem2reg run, data is stored in GRFs and this wont be
             // executed.
 
-            int regPTO = VISAMod->getPTOReg();
             auto privateBaseRegNum = VISAMod->getPrivateBaseReg();
             if (privateBaseRegNum)  // FIX ME if 0 is allowed
             {
@@ -2576,9 +2582,12 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                 // 17 DW_OP_plus
                 auto simdSize = VISAMod->GetSIMDSize();
 
-                DbgDecoder::VarInfo varInfoPrivBase;
                 // Rely on getVarInfo result here.
-                VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", privateBaseRegNum, varInfoPrivBase);
+                DbgDecoder::VarInfo varInfoPrivBase;
+                if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", privateBaseRegNum, varInfoPrivBase)) {
+                    LLVM_DEBUG(dbgs() << "warning: could not get PrivateBase LR (V" << privateBaseRegNum << ")");
+                    return Block;
+                }
                 IGC_ASSERT_MESSAGE(varInfoPrivBase.lrs.front().isGRF() || varInfoPrivBase.lrs.front().isSpill(),
                     "Unexpected location of variable");
                 if (varInfoPrivBase.lrs.front().isGRF())
@@ -2607,10 +2616,14 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
                     addBE_FP(Block);
                 }
 
-                DbgDecoder::VarInfo varInfoPerThOff;
+                auto regNumPerThOff = VISAMod->getPTOReg();
+
                 // Rely on getVarInfo result here.
-                auto regNumPerThOff = regPTO;
-                VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumPerThOff, varInfoPerThOff);
+                DbgDecoder::VarInfo varInfoPerThOff;
+                if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumPerThOff, varInfoPerThOff)) {
+                    LLVM_DEBUG(dbgs() << "warning: could not get PTO LR (V" << regNumPerThOff << ")");
+                    return Block;
+                }
 
                 IGC_ASSERT_MESSAGE(varInfoPerThOff.lrs.front().isGRF() || varInfoPerThOff.lrs.front().isSpill(),
                     "Unexpected location of variable");
@@ -2684,11 +2697,15 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
             // 12 DW_OP_const1u/2u/4u/8u  storageOffset // MD: StorageOffset; the offset where each variable is stored in the current stack frame
             // 13 DW_OP_plus
 
-            int regFP = VISAMod->getFPReg();
-            DbgDecoder::VarInfo varInfoFP;
+            auto regNumFP = VISAMod->getFPReg();
+
             // Rely on getVarInfo result here.
-            auto regNumFP = regFP;
-            VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumFP, varInfoFP);
+            DbgDecoder::VarInfo varInfoFP;
+            if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNumFP, varInfoFP)) {
+                LLVM_DEBUG(dbgs() << "warning: no variable info for FP (V" << regNumFP << ")");
+                return Block;
+            }
+
             uint16_t grfRegNumFP = varInfoFP.lrs.front().getGRF().regNum;
             uint16_t grfSubRegNumFP = varInfoFP.lrs.front().getGRF().subRegNum;
             auto bitOffsetToFPReg = grfSubRegNumFP * 8;  // Bit-offset to GRF with Frame Pointer
@@ -2754,15 +2771,16 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         }
 
         DbgDecoder::VarInfo varInfo;
+        bool HasVarInfo = false;
         if (!vars)
         {
             // When vars is valid, use it to encode location directly, otherwise
             // rely on getVarInfo result here.
             auto regNum = loc->GetRegister();
-            VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
+            HasVarInfo = VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo);
         }
 
-        if (varInfo.lrs.size() > 0 || (vars && vars->size() >= (firstHalf ? 1u : 2u)))
+        if (HasVarInfo || (vars && vars->size() >= (firstHalf ? 1u : 2u)))
         {
             auto& lrToUse = vars ? vars->at(firstHalf ? 0 : 1) : varInfo.lrs.front();
             emitLocation = true;
