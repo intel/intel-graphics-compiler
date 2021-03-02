@@ -1544,12 +1544,18 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
             uint16_t newHStride = extypesize / dst_elsize;
             if (newHStride == 8)
             {
-                // dst is a null byte, this can be produced by logical optimization
-                // we chagne the type to W here; this should be safe since the conditional modifier
-                // is either .ez or .nz
                 MUST_BE_TRUE(dst_elsize == 1, "expect B/UB dst");
-                dst->setType(dst->getType() == Type_B ? Type_W : Type_UW);
-                dst->setHorzStride(4);
+                if (inst->opcode() == G4_mov && exec_size == 1 &&
+                    src0->isSrcRegRegion() && !src0->asSrcRegRegion()->hasModifier())
+                {
+                    // Just set src to be the same type as dst
+                    src0->asSrcRegRegion()->setType(dst->getType());
+                }
+                else
+                {
+                    replaceDst(i, Type_W);
+                    return true;
+                }
             }
             else
             {
