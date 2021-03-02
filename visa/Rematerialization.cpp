@@ -423,6 +423,30 @@ namespace vISA
         return true;
     }
 
+    bool Rematerialization::usesNoMaskWA(const Reference* uniqueDef)
+    {
+        auto defInst = uniqueDef->first;
+
+        // look for pattern like:
+        // (W&fx.y.anyh) inst
+        //
+        // where fx.y is:
+        // cmp.eq.fx.y (..)   null   rega   rega
+        if (!defInst->isWriteEnableInst())
+            return false;
+
+        if (!defInst->getPredicate())
+            return false;
+
+        auto predCtrl = defInst->getPredicate()->getControl();
+        if (predCtrl != PRED_ANY8H &&
+            predCtrl != PRED_ANY16H &&
+            predCtrl != PRED_ANY32H)
+            return false;
+
+        return defInst->getPredicate()->isSameAsNoMask();
+    }
+
     bool Rematerialization::canRematerialize(G4_SrcRegRegion* src, G4_BB* bb, const Reference*& ref, INST_LIST_ITER instIter)
     {
         // op1 (8) A   B   C
@@ -473,8 +497,11 @@ namespace vISA
         if (refs.numUses > MAX_USES_REMAT)
             return false;
 
-        if (uniqueDef->first->getPredicate() ||
-            uniqueDef->first->getCondMod())
+        if (uniqueDef->first->getCondMod())
+            return false;
+
+        if (uniqueDef->first->getPredicate() &&
+            !usesNoMaskWA(uniqueDef))
             return false;
 
         // It is illegal to rematerialize intrinsic.split instruction as it
@@ -955,6 +982,11 @@ namespace vISA
 
             cacheInst = newInst.back();
         }
+
+        // Fix for NoMaskWA
+        for (auto inst : newInst)
+            if (inst->getPredicate() && inst->getPredicate()->isSameAsNoMask())
+                inst->setPredicate(nullptr);
 
         return rematSrc;
     }

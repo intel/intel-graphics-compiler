@@ -111,6 +111,7 @@ namespace vISA
         void populateRefs();
         void populateSamplerHeaderMap();
         void deLVNSamplers(G4_BB*);
+        bool usesNoMaskWA(const Reference* uniqueDef);
         bool canRematerialize(G4_SrcRegRegion*, G4_BB*, const Reference*&, INST_LIST_ITER instIter);
         G4_SrcRegRegion* rematerialize(G4_SrcRegRegion*, G4_BB*, const Reference*, std::list<G4_INST*>&, G4_INST*&);
         G4_SrcRegRegion* createSrcRgn(G4_SrcRegRegion*, G4_DstRegRegion*, G4_Declare*);
