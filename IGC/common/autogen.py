@@ -25,99 +25,89 @@
 import os
 import sys
 import errno
-from typing import List, NamedTuple
+from typing import List
 
-class DeclHeader(NamedTuple):
+
+class DeclHeader:
     # line contains the entire string of the line the decl was found on
     line: str
     # declName is just the identifier name
     declName: str
+    # fields contains a list of all the names of the fields in the structure
+    fields: List[str]
 
-# usage: autogen.py <path_to_MDFrameWork.h> <path_to_MDNodeFuncs.gen>
-__MDFrameWorkFile__ = sys.argv[1]
-__genFile__         = sys.argv[2]
-
-__genDir__ = os.path.dirname(__genFile__)
-if not os.path.exists(__genDir__):
-    try:
-        os.makedirs(__genDir__)
-    except OSError as err:
-        # In case of a race to create this directory...
-        if err.errno != errno.EEXIST:
-            raise
-
-output = open(__genFile__, 'w')
-inputFile = open(__MDFrameWorkFile__, 'r')
+    def __init__(self, line_p, declName_p, fields_p):
+        self.line = line_p
+        self.declName = declName_p
+        self.fields = fields_p
 
 enumNames: List[DeclHeader] = []
 structureNames: List[DeclHeader] = []
-structDataMembers = []
 
-with inputFile as file:
-    insideIGCNameSpace = False
-    for line in file:
-        line = line.split("//")[0]
-        if line.find("namespace IGC") != -1:
-            line = line.split("//")[0]
-            while line.find("{") == -1:
-                line = next(file, None)
-            insideIGCNameSpace = True
-        if insideIGCNameSpace:
-            line = line.split("//")[0]
-            if line.find("struct") != -1:
-                words = line.split()
-                structureNames.append(DeclHeader(line, words[1]))
-                while line.find("};") == -1:
-                    line = next(file, None)
-                    line = line.split("//")[0]
-                line = next(file, None)
-            if line.find("enum") != -1:
-                words = line.split()
-                nameIdx = 2 if 'class' in words else 1
-                enumNames.append(DeclHeader(line, words[nameIdx]))
-                while line.find("};") == -1:
-                    line = next(file, None)
-                    line = line.split("//")[0]
-                line = next(file, None)
-                line = line.split("//")[0]
-            if line.find("};") != -1:
-                insideIGCNameSpace = False
+
+def parseCmdArgs():
+    if (len(sys.argv) != 3):
+        sys.exit("usage: autogen.py <path_to_MDFrameWork.h> <path_to_MDNodeFuncs.gen>")
+
+    # usage: autogen.py <path_to_MDFrameWork.h> <path_to_MDNodeFuncs.gen>
+    __MDFrameWorkFile__ = sys.argv[1]
+    __genFile__         = sys.argv[2]
+
+    if not os.path.isfile(__MDFrameWorkFile__):
+        sys.exit("Could not find the file " + __MDFrameWorkFile__)
+
+    __genDir__ = os.path.dirname(__genFile__)
+    # Try to create the path to MDNodeFuncs.gen if it doesn't already exist.
+    if not os.path.exists(__genDir__):
+        try:
+            os.makedirs(__genDir__)
+        except OSError as err:
+            # In case of a failure to create this directory, and the directory doesn't already exist.
+            if err.errno != errno.EEXIST:
+                sys.exit("Failed to create the directory " + __genDir__)
+
+    return __MDFrameWorkFile__ , __genFile__
+
 
 def skipLine(line):
+    if line.find("};") != -1:
+        return True
     return False
 
-def storeVars(line):
+
+def storeVars(line, declHeader):
     vars = line.split()
     for i in range(1, len(vars)):
         res = vars[i].split(",")
         for j in range(0, len(res)):
             if(res[j] != '' and res[j]!= ';' and res[j].find("ModuleMetaData") == -1 and res[j].find("FunctionMetaData") == -1):
                 if(i != len(vars)-1):
-                    structDataMembers.append(res[j] + ';')
+                    declHeader.fields.append(res[j] + ';')
                 else:
                     if(j != len(res)-1):
-                        structDataMembers.append(res[j] + ";")
+                        declHeader.fields.append(res[j] + ";")
                     else:
-                        structDataMembers.append(res[j])
+                        declHeader.fields.append(res[j])
 
 
-def extractVars(line):
+def extractVars(line, declHeader):
     vars = line.split()
     if(line.find("std::vector") != -1 or line.find("std::map") != -1 or line.find("std::array") != -1):
-        structDataMembers.append(vars[len(vars)-1])
+        declHeader.fields.append(vars[len(vars)-1])
         return
     if line.find("=") != -1:
-        structDataMembers.append(vars[vars.index("=")-1]+";")
+        declHeader.fields.append(vars[vars.index("=")-1]+";")
     elif(line.find(",")) == -1:
         if len(vars) == 2:
-            structDataMembers.append(vars[1])
+            declHeader.fields.append(vars[1])
         else:
             if(len(vars) == 3):
-                structDataMembers.append(vars[len(vars)-1])
+                declHeader.fields.append(vars[len(vars)-1])
     else:
-        storeVars(line)
+        storeVars(line, declHeader)
 
-def extractEnumVal(line):
+
+def extractEnumVal(line, declHeader):
     vars = line.split()
     if (len(vars) == 0) or (line.find("{") != -1):
         return
@@ -126,124 +116,157 @@ def extractEnumVal(line):
     if val[-1] == ',':
         val = val[:-1]
 
-    structDataMembers.append(val)
-
-def printCalls(structName):
-    output.write("    Metadata* v[] = \n")
-    output.write("    { \n")
-    output.write("        MDString::get(module->getContext(), name),\n")
-    for item in structDataMembers:
-        item = item[:-1]
-        p =  '"{}"'.format(item)
-        output.write("        CreateNode(" + structName + "Var" + "." + item + ", module, IGC_MANGLE("+ p + ")),\n")
-    output.write("    };\n")
-    output.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
-    output.write("    return node;\n")
+    declHeader.fields.append(val)
 
 
-def printEnumCalls(EnumName):
-    output.write("    StringRef enumName;\n")
-    output.write("    switch("+ EnumName+ "Var)\n")
-    output.write("    {\n")
-    for item in structDataMembers:
-        output.write("        case IGC::" + EnumName + "::" + item + ":\n"  )
-        output.write("            enumName = IGC_MANGLE(\"" + item + "\");\n" )
-        output.write("            break;\n" )
-    output.write("    }\n")
-    output.write("    Metadata* v[] = \n")
-    output.write("    { \n")
-    output.write("        MDString::get(module->getContext(), name),\n")
-    output.write("        MDString::get(module->getContext(), enumName),\n")
-    output.write("    };\n")
-    output.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
-    output.write("    return node;\n")
+def parseFile(fileName, insideIGCNameSpace):
+    inputFile = None
+    try:
+        inputFile = open(fileName, 'r')
+    except:
+        sys.exit("Failed to open the file " + fileName)
 
+    # with statement automatically closes the file
+    with inputFile as file:
+        for line in file:
+            line = line.split("//")[0]
 
-def printReadCalls(structName):
-     for item in structDataMembers:
-        item = item[:-1]
-        p =  '"{}"'.format(item)
-        output.write("    readNode(" + structName + "Var" + "." + item + ", node , IGC_MANGLE(" + p + "));\n")
-
-def printEnumReadCalls(enumName):
-    output.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
-    output.write("    std::string str = s.str();\n")
-    output.write("    "+ enumName + "Var = (IGC::" + enumName + ")(0);\n")
-
-    for item in structDataMembers:
-        output.write("    if((str.size() == sizeof(\""+ item + "\")-1) && (::memcmp(str.c_str(),IGC_MANGLE(\""+ item + "\"),str.size())==0))\n")
-        output.write("    {\n")
-        output.write("            "+ enumName + "Var = IGC::" + enumName + "::" + item + ";\n")
-        output.write("    } else\n")
-
-    output.write("    {\n")
-    output.write("            "+ enumName + "Var = (IGC::" + enumName + ")(0);\n")
-    output.write("    }\n")
-
-def emitCodeBlock(names: List[DeclHeader], declType, fmtFn, extractFn, printFn):
-    for item in names:
-        foundStruct = False
-        insideStruct = False
-        findStructDecl = item.line
-        inputFile = open(__MDFrameWorkFile__, 'r')
-        with inputFile as file:
-            for line in file:
-                line = line.split("//")[0]
-                if line.find(findStructDecl) != -1:
-                    foundStruct = True
-                    output.write(fmtFn(item.declName))
-                    output.write("{\n")
-                if foundStruct:
-                    line = line.split("//")[0]
-                    while line.find("{") == -1:
+            if line.find("namespace IGC") != -1:
+                while line.find("{") == -1:
+                    line = next(file, None)
+                insideIGCNameSpace = True
+                #
+            if insideIGCNameSpace:
+                if line.find("struct") != -1:
+                    words = line.split()
+                    found_struct = DeclHeader(line, words[1], [])
+                    while line.find("};") == -1:
                         line = next(file, None)
                         line = line.split("//")[0]
-                    insideStruct = True
-                if insideStruct:
-                    line = line.split("//")[0]
-                    if line.find("};") != -1:
-                        inputFile.close()
-                        continue
-                    else:
                         if not skipLine(line):
-                            line = line.split("//")[0]
-                            while line.find("};") == -1:
-                                extractFn(line)
-                                line = next(file, None)
-                                while skipLine(line):
-                                    line = next(file, None)
-                                line = line.split("//")[0]
-                            printFn(item.declName)
-                            del structDataMembers[:]
-                            foundStruct = False
-                            insideStruct = False
-        output.write("}\n\n")
+                            extractVars(line, found_struct)
+                    structureNames.append(found_struct)
+                    #
+                if line.find("enum") != -1:
+                    words = line.split()
+                    nameIdx = 2 if 'class' in words else 1
+                    found_enum = DeclHeader(line, words[nameIdx], [])
+                    while line.find("};") == -1:
+                        line = next(file, None)
+                        line = line.split("//")[0]
+                        if not skipLine(line):
+                            extractEnumVal(line, found_enum)
+                    enumNames.append(found_enum)
+                    #
+                if line.find("#include") != -1:
+                    words = line.split()
+                    parent_dir = os.path.dirname(fileName)
+                    include_file = words[1][1:-1]  # cut off the "" or <> surrounding the file name
+                    include_file_path = os.path.join(parent_dir, include_file)
+                    parseFile(include_file_path, True)
+                if line.find("}") != -1 and line.find("};") == -1:
+                    insideIGCNameSpace = False
 
-def emitEnumCreateNode():
+
+def printStructCalls(structDecl, outputFile):
+    outputFile.write("    Metadata* v[] = \n")
+    outputFile.write("    { \n")
+    outputFile.write("        MDString::get(module->getContext(), name),\n")
+    for item in structDecl.fields:
+        item = item[:-1]
+        p =  '"{}"'.format(item)
+        outputFile.write("        CreateNode(" + structDecl.declName + "Var" + "." + item + ", module, IGC_MANGLE("+ p + ")),\n")
+    outputFile.write("    };\n")
+    outputFile.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
+    outputFile.write("    return node;\n")
+
+
+def printEnumCalls(enumDecl, outputFile):
+    outputFile.write("    StringRef enumName;\n")
+    outputFile.write("    switch("+ enumDecl.declName + "Var)\n")
+    outputFile.write("    {\n")
+    for item in enumDecl.fields:
+        outputFile.write("        case IGC::" + enumDecl.declName + "::" + item + ":\n"  )
+        outputFile.write("            enumName = IGC_MANGLE(\"" + item + "\");\n" )
+        outputFile.write("            break;\n" )
+    outputFile.write("    }\n")
+    outputFile.write("    Metadata* v[] = \n")
+    outputFile.write("    { \n")
+    outputFile.write("        MDString::get(module->getContext(), name),\n")
+    outputFile.write("        MDString::get(module->getContext(), enumName),\n")
+    outputFile.write("    };\n")
+    outputFile.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
+    outputFile.write("    return node;\n")
+
+
+def printStructReadCalls(structDecl, outputFile):
+     for item in structDecl.fields:
+        item = item[:-1]
+        p =  '"{}"'.format(item)
+        outputFile.write("    readNode(" + structDecl.declName + "Var" + "." + item + ", node , IGC_MANGLE(" + p + "));\n")
+
+
+def printEnumReadCalls(enumDecl, outputFile):
+    outputFile.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
+    outputFile.write("    std::string str = s.str();\n")
+    outputFile.write("    "+ enumDecl.declName + "Var = (IGC::" + enumDecl.declName + ")(0);\n")
+
+    for item in enumDecl.fields:
+        outputFile.write("    if((str.size() == sizeof(\""+ item + "\")-1) && (::memcmp(str.c_str(),IGC_MANGLE(\""+ item + "\"),str.size())==0))\n")
+        outputFile.write("    {\n")
+        outputFile.write("            "+ enumDecl.declName + "Var = IGC::" + enumDecl.declName + "::" + item + ";\n")
+        outputFile.write("    } else\n")
+
+    outputFile.write("    {\n")
+    outputFile.write("            "+ enumDecl.declName + "Var = (IGC::" + enumDecl.declName + ")(0);\n")
+    outputFile.write("    }\n")
+
+
+def emitCodeBlock(names: List[DeclHeader], declType, fmtFn, printFn, outputFile):
+    for item in names:
+        outputFile.write(fmtFn(item.declName))
+        outputFile.write("{\n")
+        printFn(item, outputFile)
+        outputFile.write("}\n\n")
+
+
+def emitEnumCreateNode(outputFile):
     def fmtFn(item):
         return f"MDNode* CreateNode(IGC::{item} {item}Var, Module* module, StringRef name)\n"
-    emitCodeBlock(enumNames, "enum", fmtFn, extractEnumVal, printEnumCalls)
+    emitCodeBlock(enumNames, "enum", fmtFn, printEnumCalls, outputFile)
 
-def emitStructCreateNode():
+def emitStructCreateNode(outputFile):
     def fmtFn(item):
         return "MDNode* CreateNode(const IGC::" + item + "& " + item + "Var" +", Module* module, StringRef name)\n"
-    emitCodeBlock(structureNames, "struct", fmtFn, extractVars, printCalls)
+    emitCodeBlock(structureNames, "struct", fmtFn, printStructCalls, outputFile)
 
-def emitEnumReadNode():
+def emitEnumReadNode(outputFile):
     def fmtFn(item):
         return "void readNode( IGC::" + item + " &" + item + "Var," + " MDNode* node)\n"
-    emitCodeBlock(enumNames, "enum", fmtFn, extractEnumVal, printEnumReadCalls)
+    emitCodeBlock(enumNames, "enum", fmtFn, printEnumReadCalls, outputFile)
 
-def emitStructReadNode():
+def emitStructReadNode(outputFile):
     def fmtFn(item):
         return "void readNode( IGC::" + item + " &" + item + "Var," + " MDNode* node)\n"
-    emitCodeBlock(structureNames, "struct", fmtFn, extractVars, printReadCalls)
+    emitCodeBlock(structureNames, "struct", fmtFn, printStructReadCalls, outputFile)
 
-def genCode():
-    emitEnumCreateNode()
-    emitStructCreateNode()
-    emitEnumReadNode()
-    emitStructReadNode()
+
+def genCode(fileName):
+    outputFile = None
+    try:
+        outputFile = open(fileName, 'w')
+    except:
+        sys.exit("Failed to open the file " + fileName)
+
+    emitEnumCreateNode(outputFile)
+    emitStructCreateNode(outputFile)
+    emitEnumReadNode(outputFile)
+    emitStructReadNode(outputFile)
+
+    outputFile.close()
+
 
 if __name__ == '__main__':
-    genCode()
+    __MDFrameWorkFile__ , __genFile__ = parseCmdArgs()
+    parseFile(__MDFrameWorkFile__, False)
+    genCode(__genFile__)
