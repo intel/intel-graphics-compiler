@@ -256,18 +256,11 @@ namespace {
     Use *UseInDest;
     unsigned SourceIndex;
     unsigned Priority;
-    unsigned Serial;
     Candidate(SimpleValue Dest, Use *UseInDest, unsigned SourceIndex,
-          unsigned Priority, unsigned Serial)
-      : Dest(Dest), UseInDest(UseInDest), SourceIndex(SourceIndex),
-        Priority(Priority), Serial(Serial) {}
-    bool operator<(const Candidate &C2) const {
-      if (Priority != C2.Priority)
-        return Priority > C2.Priority;
-      // Make the sort order preserving for equal priority, to get consistent
-      // results across different runs.
-      return Serial < C2.Serial;
-    }
+              unsigned Priority)
+        : Dest(Dest), UseInDest(UseInDest), SourceIndex(SourceIndex),
+          Priority(Priority) {}
+    bool operator<(const Candidate &C2) const { return Priority > C2.Priority; }
   };
 
   struct PhiCopy {
@@ -473,8 +466,9 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   recordCallCandidates(&FG);
 
   // Sort the array of normal coalescing candidates (including phi ones) then
-  // process them.
-  std::sort(NormalCandidates.begin(), NormalCandidates.end());
+  // process them. Preserve original ordering for equal priority candidates
+  // to get consistent results across different runs.
+  std::stable_sort(NormalCandidates.begin(), NormalCandidates.end());
   for (unsigned i = 0; i != NormalCandidates.size(); ++i)
     processCandidate(&NormalCandidates[i]);
 
@@ -787,8 +781,8 @@ void GenXCoalescing::recordCallArgCandidates(Value *Dest, unsigned ArgNum,
     SmallVector<CallArg, 8> CallArgs;
     for (unsigned i = 0, ie = Insts.size(); i != ie; ++i) {
       Use *U = &Insts[i]->getOperandUse(ArgNum);
-      CallArgs.push_back(CallArg(U,
-          Liveness->getLiveRangeOrNull(SimpleValue(*U, StructIdx))));
+      CallArgs.emplace_back(
+          U, Liveness->getLiveRangeOrNull(SimpleValue(*U, StructIdx)));
     }
     for (unsigned i = 0, ie = CallArgs.size(); i != ie; ++i) {
       LiveRange *LR = CallArgs[i].LR;
@@ -867,8 +861,7 @@ void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
   if (UseInDest && isa<UndefValue>(*UseInDest))
     return;
   IGC_ASSERT(!UseInDest || !isa<Constant>(*UseInDest));
-  Candidates->push_back(Candidate(Dest, UseInDest, SourceIndex, Priority,
-        Candidates->size()));
+  Candidates->emplace_back(Dest, UseInDest, SourceIndex, Priority);
 }
 
 /***********************************************************************
@@ -1048,9 +1041,8 @@ void GenXCoalescing::processCandidate(Candidate *Cand, bool IsCopy)
 
   // Store info for two address op copy
   Instruction *DestInst = cast<Instruction>(Dest.getValue());
-  ToCopy.push_back(CopyData(Dest, Source, Cand->UseInDest, DestInst,
-                            TWOADDRCOPY, Numbering->getNumber(DestInst),
-                            ToCopy.size()));
+  ToCopy.emplace_back(Dest, Source, Cand->UseInDest, DestInst, TWOADDRCOPY,
+                      Numbering->getNumber(DestInst), ToCopy.size());
 }
 
 /***********************************************************************
@@ -1133,7 +1125,7 @@ void GenXCoalescing::analysePhiCopies(PHINode *Phi,
     LLVM_DEBUG(dbgs() << "Need phi copy " << Incoming->getName() << " -> "
                       << Phi->getName() << " in " << IncomingBlock->getName()
                       << "\n");
-    ToProcess.push_back(PhiCopy(Phi, i));
+    ToProcess.emplace_back(Phi, i);
   }
 }
 
@@ -1180,9 +1172,9 @@ void GenXCoalescing::processPhiCopy(PHINode *Phi, unsigned Inc,
   }
 
   // Store info for copy
-  ToCopy.push_back(CopyData(SimpleValue(Phi), SimpleValue(Incoming),
-                            &Phi->getOperandUse(Inc), InsertPoint, PHICOPY,
-                            Numbering->getNumber(InsertPoint), ToCopy.size()));
+  ToCopy.emplace_back(SimpleValue(Phi), SimpleValue(Incoming),
+                      &Phi->getOperandUse(Inc), InsertPoint, PHICOPY,
+                      Numbering->getNumber(InsertPoint), ToCopy.size());
 }
 
 /***********************************************************************
@@ -1240,10 +1232,10 @@ void GenXCoalescing::processPhiBranchingJoinLabelCopy(
   }
 
   // Store info for copy
-  ToCopy.push_back(CopyData(SimpleValue(Phi), SimpleValue(Incoming),
-                            &Phi->getOperandUse(Inc), InsertPoint,
-                            PHICOPY_BRANCHING_JP,
-                            Numbering->getNumber(InsertPoint), ToCopy.size()));
+  ToCopy.emplace_back(SimpleValue(Phi), SimpleValue(Incoming),
+                      &Phi->getOperandUse(Inc), InsertPoint,
+                      PHICOPY_BRANCHING_JP, Numbering->getNumber(InsertPoint),
+                      ToCopy.size());
 }
 
 /***********************************************************************
@@ -1523,7 +1515,7 @@ void GenXCoalescing::processKernelArgs(FunctionGroup *FG)
       **ui = Copy;
     auto NewLR = Liveness->getOrCreateLiveRange(Arg);
     NewLR->setCategory(LR->getCategory());
-    NewLR->push_back(Segment(Numbering->getNumber(F), Num));
+    NewLR->push_back(Numbering->getNumber(F), Num);
     NewLR->Offset = LR->Offset;
     LR->Offset = 0;
   }
