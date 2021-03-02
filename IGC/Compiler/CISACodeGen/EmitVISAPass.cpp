@@ -993,11 +993,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         // - Hard-code a large scratch-space for visa
         if (hasStackCall)
         {
-            if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
-            {
-                // Don't retry if we didn't spill
-                m_pCtx->m_retryManager.Disable();
-            }
+            // Disable retry when stackcalls are present
+            m_pCtx->m_retryManager.Disable();
+
             m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills =
                 MAX(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills, 8 * 1024);
         }
