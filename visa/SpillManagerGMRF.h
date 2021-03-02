@@ -141,6 +141,7 @@ public:
         unsigned int height);
 
 private:
+    G4_Declare* getOrCreateAddrSpillFillDcl(G4_Declare* spilledAddrTakenDcl, G4_Kernel* kernel);
     bool handleAddrTakenSpills(G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis);
     unsigned int handleAddrTakenLSSpills(G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis);
     void insertAddrTakenSpillFill(G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis);
@@ -193,6 +194,8 @@ private:
     unsigned getMsgSpillIndex(G4_RegVar *  spilledRegVar);
 
     unsigned getMsgFillIndex(G4_RegVar *  spilledRegVar);
+
+    unsigned getAddrSpillFillIndex(G4_RegVar *  spilledRegVar);
 
     const char *
     createImplicitRangeName (
@@ -604,6 +607,7 @@ private:
     unsigned *               tmpRangeCount_;
     unsigned *               msgSpillRangeCount_;
     unsigned *               msgFillRangeCount_;
+    unsigned *              addrSpillFillRangeCount_;
     unsigned                 nextSpillOffset_;
     unsigned                 iterationNo_;
     unsigned                 bbId_ = UINT_MAX;

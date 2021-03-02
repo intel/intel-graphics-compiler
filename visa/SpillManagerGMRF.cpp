@@ -218,6 +218,8 @@ SpillManagerGRF::SpillManagerGRF(
     memset(msgSpillRangeCount_, 0, size);
     msgFillRangeCount_ = (unsigned*)allocMem(size);
     memset(msgFillRangeCount_, 0, size);
+    addrSpillFillRangeCount_ = (unsigned*)allocMem(size);
+    memset(addrSpillFillRangeCount_, 0, size);
     spillAreaOffset_ = spillAreaOffset;
     builder_->instList.clear();
     curInst = NULL;
@@ -1009,6 +1011,13 @@ unsigned SpillManagerGRF::getMsgFillIndex(
     G4_RegVar *  spilledRegVar)
 {
     return msgFillRangeCount_[spilledRegVar->getId()]++;
+}
+
+// Get a unique msg index for addr spill fill regvar.
+unsigned SpillManagerGRF::getAddrSpillFillIndex(
+    G4_RegVar *  spilledRegVar)
+{
+    return addrSpillFillRangeCount_[spilledRegVar->getId()]++;
 }
 
 // Create a unique name for a regvar representing a spill/fill/msg live range.
@@ -3122,6 +3131,25 @@ G4_Declare* getOrCreateSpillFillDcl(
     return temp;
 }
 
+G4_Declare* SpillManagerGRF::getOrCreateAddrSpillFillDcl(
+    G4_Declare* spilledAddrTakenDcl, G4_Kernel* kernel)
+{
+    // If spilledAddrTakenDcl already has a spill/fill range created, return it.
+    // Else create new one and return it.
+#define ADDR_SPILL_FILL_NAME_SIZE 32
+    const char* dclName = kernel->fg.builder->getNameString(kernel->fg.mem, ADDR_SPILL_FILL_NAME_SIZE,
+        "ADDR_SP_FL_V%d_%d", spilledAddrTakenDcl->getDeclId(), getAddrSpillFillIndex(spilledAddrTakenDcl->getRegVar()));
+
+    // temp is created of sub-class G4_RegVarTmp so that is
+    // assigned infinite spill cost when coloring.
+    G4_Declare* temp = kernel->fg.builder->createDeclareNoLookup(dclName,
+        G4_GRF, spilledAddrTakenDcl->getNumElems(),
+        spilledAddrTakenDcl->getNumRows(), spilledAddrTakenDcl->getElemType(), DeclareType::Tmp, spilledAddrTakenDcl->getRegVar());
+    spilledAddrTakenDcl->setAddrTakenSpillFill(temp);
+
+    return temp;
+}
+
 // For each address taken register spill find an available physical register
 // and assign it to the decl. This physical register will be used for inserting
 // spill/fill code for indirect reference instructions that point to the
@@ -3174,11 +3202,6 @@ unsigned int SpillManagerGRF::handleAddrTakenLSSpills(
 
     for (LSLiveRange* lr : *spilledLSLRs_)
     {
-        if (lr->getTopDcl()->getAddressed())
-        {
-            getOrCreateSpillFillDcl(lr->getTopDcl(), kernel);
-        }
-
         if (lvInfo_->isAddressSensitive(lr->getTopDcl()->getRegVar()->getId()))
         {
             numAddrTakenSpills++;
@@ -3426,7 +3449,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
                 lr->getTopDcl()->getRegVar()))
         {
             unsigned int numrows = lr->getTopDcl()->getNumRows();
-            G4_Declare* temp = getOrCreateSpillFillDcl(lr->getTopDcl(), kernel);
+            G4_Declare* temp = getOrCreateAddrSpillFillDcl(lr->getTopDcl(), kernel);
 
             if (failSafeSpill_ &&
                 temp->getRegVar()->getPhyReg() == NULL)

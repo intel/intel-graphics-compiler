@@ -997,7 +997,6 @@ int LinearScanRA::linearScanRA()
         COUT_ERROR << "===== preAssignedLiveIntervals============" << std::endl;
         printLiveIntervals(preAssignedLiveIntervals);
 #endif
-
         PhyRegsManager pregManager(initPregs, doBCR);
         globalLinearScan ra(gra, &l, globalLiveIntervals, &preAssignedLiveIntervals, inputIntervals, pregManager,
             mem, numRegLRA, numRowsEOT, latestLexID,
