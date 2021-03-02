@@ -289,7 +289,7 @@ namespace IGC
             cast<PointerType>(Ptr->getType())->getElementType(),
             Ptr, "", false, Orig);
         LI->setVolatile(Orig->isVolatile());
-        LI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
+        LI->setAlignment(IGCLLVM::getCorrectAlign(Orig->getAlignment()));
         if (LI->isAtomic())
         {
             LI->setAtomic(Orig->getOrdering(), Orig->getSyncScopeID());
