@@ -231,7 +231,7 @@ DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               true,  "Enable render ta
 DECLARE_IGC_REGKEY(DWORD, MSAAClearedKernel,            0,     "Insert the discard code for MSAA_MSC_Cleared kernels. 2/4/8/16", false)
 DECLARE_IGC_REGKEY(bool, EnablerReadSuppressionWA,    false, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(DWORD, RSWARegNum,    0, "dummy register used for EnablerReadSuppressionWA", false)
-DECLARE_IGC_REGKEY(bool, EnableCleanupInputIR,          true,  "Enable cleaning up input IR under -O0 by aggressively inlining wrapper functions", false)
+DECLARE_IGC_REGKEY(bool, EnableCleanupInputIR,          false, "Enable cleaning up input IR under -O0 by aggressively inlining wrapper functions", false)
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)
