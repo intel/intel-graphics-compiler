@@ -4287,6 +4287,10 @@ namespace IGC
     //  * contrains the length while maintaining uniqueness
     // The format is something that contains both function index and the
     // label name passed in.
+    //
+    // If enabled the output will be:
+    //  _[FUNCTION-INDEX]_[LABEL-INDEX](_[LLVM-NAME])?
+    // i.e. if the LLVM name is empty we omit that whole suffix
     CName CEncoder::CreateVisaLabelName(const llvm::StringRef &L)
     {
 #ifndef IGC_MAP_LLVM_NAMES_TO_VISA
@@ -4311,17 +4315,19 @@ namespace IGC
         } else {
             lbl << labelFunctionIndex;
         }
-        lbl << "_";
+        // since the label name could be the empty string, and to keep things
+        // simple, we unconditionally use the label counter
+        lbl << "_" << labelCounter++;
 
         size_t charsLeft = MAX_VISA_LABEL - (size_t)lbl.tellp();
-        if (L.size() > charsLeft) {
-            // We have to truncate the label.  That might destroy uniqueness
-            // So include another label prefix.
-            lbl << std::setw(3) << std::setfill('0') << labelCounter << "_";
+        size_t nLeft = std::min(charsLeft, L.size());
+        if (L.size() > 0 && nLeft > 0) {
+            // if not the empty string then add a separator
+            lbl << "_";
+            nLeft--;
         }
-
-        // Suffix as many characters of the label as we can
-        for (size_t i = 0; i < std::min(charsLeft, L.size()); i++) {
+        // suffix as many characters of the label as we can
+        for (size_t i = 0; i < nLeft; i++) {
             if (isalnum(L[i]) || L[i] == '_')
                 lbl << L[i];
             else
