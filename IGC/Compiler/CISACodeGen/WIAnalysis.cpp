@@ -320,7 +320,6 @@ bool WIAnalysisRunner::run()
 
     m_storeDepMap.clear();
     m_allocaDepMap.clear();
-    m_forcedUniforms.clear();
 
     updateArgsDependency(&F);
 
@@ -341,35 +340,6 @@ bool WIAnalysisRunner::run()
         // This procedure is guranteed to converge since WI-dep can only
         // become less unifrom (uniform->consecutive->ptr->stride->random).
         updateDeps();
-
-        // sweep the dataflow started from those GenISA_vectorUniform,
-        // force all the insert-elements and phi-nodes to uniform
-        std::set<const Value*> visited;
-        while (!m_forcedUniforms.empty())
-        {
-            const Value* V = m_forcedUniforms.back();
-            m_forcedUniforms.pop_back();
-            visited.insert(V);
-            for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI)
-            {
-                const Value* use = (*UI);
-                if (!visited.count(use) && use->getType() == V->getType())
-                {
-                    if (auto INS = dyn_cast<InsertElementInst>(use))
-                    {
-                        if (!isUniform(use))
-                            m_depMap.SetAttribute(INS, WIAnalysis::UNIFORM_THREAD);
-                        m_forcedUniforms.push_back(use);
-                    }
-                    else if (auto PHI = dyn_cast<PHINode>(use))
-                    {
-                        if (!isUniform(use))
-                            m_depMap.SetAttribute(PHI, WIAnalysis::UNIFORM_THREAD);
-                        m_forcedUniforms.push_back(use);
-                    }
-                }
-            }
-        }
     }
 
     if (IGC_IS_FLAG_ENABLED(DumpWIA))
@@ -1269,17 +1239,12 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
-        GII_id == GenISAIntrinsic::GenISA_getR0 ||
-        GII_id == GenISAIntrinsic::GenISA_vectorUniform)
+        GII_id == GenISAIntrinsic::GenISA_getR0)
     {
         switch (GII_id)
         {
         default:
             break;
-        case GenISAIntrinsic::GenISA_vectorUniform:
-            // collect the seeds for forcing uniform vectors
-            m_forcedUniforms.push_back(inst);
-            return WIAnalysis::UNIFORM_THREAD;
         case GenISAIntrinsic::GenISA_getR0:
         case GenISAIntrinsic::GenISA_getSR0:
         case GenISAIntrinsic::GenISA_getSR0_0:
@@ -1368,6 +1333,11 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             {
                 return WIAnalysis::RANDOM;
             }
+        }
+
+        if(GII_id == GenISAIntrinsic::GenISA_getR0)
+        {
+            return WIAnalysis::UNIFORM_THREAD;
         }
 
 

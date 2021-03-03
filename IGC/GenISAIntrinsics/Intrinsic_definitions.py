@@ -52,7 +52,7 @@
 Imported_Intrinsics = \
 {
 ####################################################################################################
-"GenISA_assume_uniform": ["used by compiler to mark a uniform private array",
+"GenISA_assume_uniform": ["",
     [("void",                          "return nothing"),
     [("anyptr",                        "ptr")],
     "None"]],
@@ -1908,11 +1908,6 @@ Imported_Intrinsics = \
      ("float2",                        "coordinates"),
      ("int",                           "src image bti"),
      ("int",                           "sampler (accelerator) id")],
-    "None"]],
-####################################################################################################
-"GenISA_vectorUniform": ["used by compiler to mark an array in GRF",
-    [("anyvector",                     "return the vector value"),
-    [],
     "None"]],
 ####################################################################################################
 "GenISA_vmeSendFBR": ["",

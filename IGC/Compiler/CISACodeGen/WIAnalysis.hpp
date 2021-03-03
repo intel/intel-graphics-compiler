@@ -150,7 +150,6 @@ namespace IGC
             m_allocaDepMap.clear();
             m_storeDepMap.clear();
             m_depMap.clear();
-            m_forcedUniforms.clear();
         }
 
         /// print - print m_deps in human readable form
@@ -171,6 +170,9 @@ namespace IGC
 
         /// @brief Update dependency relations between all values
         void updateDeps();
+
+        /// @brief backward update dependency based upon use
+        void genSpecificBackwardUpdate();
 
         /// @brief mark the arguments dependency based on the metadata set
         void updateArgsDependency(llvm::Function* pF);
@@ -273,12 +275,6 @@ namespace IGC
         /// ptr to m_changed1, m_changed2
         std::vector<const llvm::Value*>* m_pChangedOld;
         std::vector<const llvm::Value*>* m_pChangedNew;
-
-        /// <summary>
-        ///  hold the vector-defs that are promoted from an uniform alloca
-        ///  therefore, need to be forced into uniform no matter what.
-        /// </summary>
-        std::vector<const llvm::Value*> m_forcedUniforms;
 
         llvm::Function* m_func;
         llvm::DominatorTree* DT;
