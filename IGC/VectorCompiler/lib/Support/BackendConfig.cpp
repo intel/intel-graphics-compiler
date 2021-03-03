@@ -82,6 +82,10 @@ static cl::opt<GlobalsLocalizationConfig::LimitT> GlobalsLocalizationLimitOpt(
     cl::desc("maximum size (in bytes) used to localize global variables"),
     cl::init(GlobalsLocalizationConfig::NoLimit));
 
+static cl::opt<bool> LocalizeLRsForAccUsageOpt(
+    "vc-acc-split", cl::init(false), cl::Hidden,
+    cl::desc("Localize arithmetic chain to reduce accumulator usages"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -97,7 +101,8 @@ GenXBackendOptions::GenXBackendOptions()
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
       GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
-                          GlobalsLocalizationLimitOpt.getValue()} {}
+                          GlobalsLocalizationLimitOpt.getValue()},
+      LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {

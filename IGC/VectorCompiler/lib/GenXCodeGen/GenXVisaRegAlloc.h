@@ -58,12 +58,16 @@ IN THE SOFTWARE.
 #include "GenX.h"
 #include "GenXLiveness.h"
 #include "GenXModule.h"
+
 #include "vc/GenXOpts/Utils/RegCategory.h"
+#include "vc/Support/BackendConfig.h"
+
+#include "Probe/Assertion.h"
 #include "visaBuilder_interface.h"
+
 #include <map>
 #include <string>
 #include <vector>
-#include "Probe/Assertion.h"
 
 namespace llvm {
 
@@ -146,6 +150,7 @@ namespace llvm {
     GenXLiveness *Liveness;
     GenXNumbering *Numbering;
     FunctionGroupAnalysis *FGA;
+    const GenXBackendConfig *BackendConfig;
 
     // pushReg callback that will be called once new register is created
     RegPushHook TheRegPushHook = nullptr;
@@ -221,8 +226,10 @@ namespace llvm {
     // print : dump the state of the pass. This is used by -genx-dump-regalloc
     virtual void print(raw_ostream &O, const Module *M) const;
   private:
-    void getLiveRanges(std::vector<genx::LiveRange *> *LRs) const;
-    void getLiveRangesForValue(Value *V, std::vector<genx::LiveRange *> *LRs) const;
+    void getLiveRanges(std::vector<genx::LiveRange *> &LRs) const;
+    void getLiveRangesForValue(Value *V,
+                               std::vector<genx::LiveRange *> &LRs) const;
+    void localizeLiveRangesForAccUsage(std::vector<genx::LiveRange *> &LRs);
     void extraCoalescing();
     void allocReg(genx::LiveRange *LR);
   public:

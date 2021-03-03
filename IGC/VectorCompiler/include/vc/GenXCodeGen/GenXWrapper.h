@@ -82,6 +82,7 @@ struct CompileOptions {
 
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;
+  bool LocalizeLiveRangesForAccUsage = false;
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...

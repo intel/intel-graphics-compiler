@@ -202,8 +202,7 @@ unsigned GenXNumbering::getBaleNumber(Instruction *Inst)
 /***********************************************************************
  * getNumber : get instruction number, or 0 if none
  */
-unsigned GenXNumbering::getNumber(Value *V)
-{
+unsigned GenXNumbering::getNumber(Value *V) const {
   auto i = Numbers.find(V), e = Numbers.end();
   if (i == e)
     return 0;

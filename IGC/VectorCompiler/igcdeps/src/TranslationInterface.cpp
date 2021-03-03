@@ -170,6 +170,11 @@ static void adjustBinaryFormat(vc::BinaryKind &Binary) {
     Binary = vc::BinaryKind::ZE;
 }
 
+static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
+  if (IGC_IS_FLAG_ENABLED(VCLocalizeAccUsage))
+    Opts.LocalizeLiveRangesForAccUsage = true;
+}
+
 static void adjustDumpOptions(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
     Opts.DumpIR = true;
@@ -194,6 +199,7 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
     Diag.addWarning("ZEBinary does not support debuggable kernels! "
                     "Emission of debuggable kernels disabled");
   }
+  adjustTransformationsAndOptimizations(Opts);
 }
 
 static void setErrorMessage(const std::string &ErrorMessage,

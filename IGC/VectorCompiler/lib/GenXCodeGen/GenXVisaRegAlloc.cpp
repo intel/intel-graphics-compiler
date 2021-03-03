@@ -36,6 +36,8 @@ IN THE SOFTWARE.
 #include "GenXNumbering.h"
 #include "GenXUtil.h"
 #include "visa_igc_common_header.h"
+#include "llvm/ADT/MapVector.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -45,6 +47,7 @@ IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -54,11 +57,15 @@ using namespace visa;
 static cl::opt<unsigned> LimitGenXExtraCoalescing("limit-genx-extra-coalescing", cl::init(UINT_MAX), cl::Hidden,
                                       cl::desc("Limit GenX extra coalescing."));
 
+static cl::opt<unsigned> ArithChainLengthThreshold(
+    "acc-split-arith-length", cl::init(4), cl::Hidden,
+    cl::desc("Arithmetic chain length to localize for accumulator usage"));
 
 char GenXVisaRegAlloc::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXVisaRegAlloc, "GenXVisaRegAlloc", "GenXVisaRegAlloc", false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(FunctionGroupAnalysis)
 INITIALIZE_PASS_END(GenXVisaRegAlloc, "GenXVisaRegAlloc", "GenXVisaRegAlloc", false, false)
 
@@ -73,6 +80,7 @@ void GenXVisaRegAlloc::getAnalysisUsage(AnalysisUsage &AU) const
   FunctionGroupPass::getAnalysisUsage(AU);
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();
+  AU.addRequired<GenXBackendConfig>();
   AU.addRequired<FunctionGroupAnalysis>();
   AU.setPreservesAll();
 }
@@ -89,6 +97,7 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();
   FGA = &getAnalysis<FunctionGroupAnalysis>();
+  BackendConfig = &getAnalysis<GenXBackendConfig>();
   // Empty out the analysis from the last function it was used on.
   RegMap.clear();
   RegStorage.clear();
@@ -113,7 +122,11 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   extraCoalescing();
   // Get the live ranges in a reproducible order.
   std::vector<LiveRange *> LRs;
-  getLiveRanges(&LRs);
+  getLiveRanges(LRs);
+
+  if (BackendConfig->localizeLiveRangesForAccUsage())
+    localizeLiveRangesForAccUsage(LRs);
+
   // Allocate a register to each live range.
   for (auto i = LRs.begin(), e = LRs.end(); i != e; ++i)
     allocReg(*i);
@@ -143,8 +156,7 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
  * get allocated a register. GenXArgIndirection uses that to stop an indirected
  * argument uselessly getting a register.
  */
-void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> *LRs) const
-{
+void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> &LRs) const {
   // create LRs for global variables.
   for (auto &GV : FG->getModule()->globals())
     getLiveRangesForValue(&GV, LRs);
@@ -162,13 +174,189 @@ void GenXVisaRegAlloc::getLiveRanges(std::vector<LiveRange *> *LRs) const
         getLiveRangesForValue(&*bi, LRs);
     }
   }
-  for (auto &LR : *LRs)
+  for (auto *LR : LRs)
     LR->prepareFuncs(FGA);
 }
 
-void GenXVisaRegAlloc::getLiveRangesForValue(Value *V,
-    std::vector<LiveRange *> *LRs) const
-{
+namespace {
+// Helper class for live range localization of
+// possible accumulator usages: finalizer can't
+// assign accumulator to VISA variable if it's used
+// outside of a BB. Localize such live ranges if profitable.
+class AccumulatorUsageLocalizer {
+public:
+  AccumulatorUsageLocalizer(const GenXNumbering &N, GenXLiveness &L)
+      : Numbering(N), Liveness(L) {}
+
+  template <typename OutIter>
+  void getSplitForLiveRange(genx::LiveRange *LR, OutIter Iter);
+
+private:
+  template <typename Iter>
+  std::pair<Iter, Iter>
+  getRangeOfInstructionsToLocalize(Iter InstBegin, Iter InstEnd, BasicBlock *BB,
+                                   genx::LiveRange *LR) const;
+
+  template <typename Iter>
+  std::pair<Iter, Iter> getArithmeticChainRange(Iter InstBegin,
+                                                Iter InstEnd) const;
+
+  static bool isArithmeticChainInst(const Value *V);
+
+  const GenXNumbering &Numbering;
+  GenXLiveness &Liveness;
+};
+} // namespace
+
+/***********************************************************************
+ * Finalizer can't assign accumulator to VISA variable if it's used
+ * outside of a BB. Localize such live ranges if profitable.
+ */
+void GenXVisaRegAlloc::localizeLiveRangesForAccUsage(
+    std::vector<genx::LiveRange *> &LRs) {
+  std::vector<genx::LiveRange *> NewLRs;
+  AccumulatorUsageLocalizer Localizer(*Numbering, *Liveness);
+
+  for (auto *LR : LRs) {
+    // Only general variable can be an accumulator
+    if (LR->Category != RegCategory::GENERAL)
+      continue;
+    Localizer.getSplitForLiveRange(LR, std::back_inserter(NewLRs));
+  }
+
+  std::for_each(NewLRs.begin(), NewLRs.end(),
+                [this](genx::LiveRange *LR) { return LR->prepareFuncs(FGA); });
+  LRs.insert(LRs.end(), std::make_move_iterator(NewLRs.begin()),
+             std::make_move_iterator(NewLRs.end()));
+}
+
+/***********************************************************************
+ * splitLiveRangeForAccUsage : Split live range into parts by moving
+ *  certain range of instructions into new live range. This method modifies
+ *  Liveness
+ *
+ * New live ranges are put into output itertaor if
+ * split needed.
+ */
+template <typename OutIter>
+void AccumulatorUsageLocalizer::getSplitForLiveRange(genx::LiveRange *LR,
+                                                     OutIter Iter) {
+  IGC_ASSERT(LR && LR->Category == RegCategory::GENERAL);
+
+  // Map all LR's values to each BB. Provide iteration in
+  // insertion order to preserve deterministic behaviour
+  MapVector<BasicBlock *, std::vector<Instruction *>> LRValuesForBB;
+  for (auto &SV : LR->getValues()) {
+    auto *I = dyn_cast<Instruction>(SV.getValue());
+    if (I) LRValuesForBB[I->getParent()].push_back(I);
+  }
+
+  for (auto &[BB, Insts] : LRValuesForBB) {
+    // Sort values in this BB according to GenXNumbering to
+    // identify bottom and up instructions
+    std::sort(Insts.begin(), Insts.end(),
+              [this](Instruction *I1, Instruction *I2) {
+                return Numbering.getNumber(I1) < Numbering.getNumber(I2);
+              });
+
+    auto [Start, End] =
+        getRangeOfInstructionsToLocalize(Insts.begin(), Insts.end(), BB, LR);
+    if (Start == End)
+      continue;
+
+    // Insert values to localize into new
+    // live range and remove them from the old one
+    Liveness.removeValueNoDelete(*Start);
+    genx::LiveRange *NewLR = Liveness.getOrCreateLiveRange(*Start);
+    NewLR->setCategory(RegCategory::GENERAL);
+
+    for (auto *I : make_range(std::next(Start), End)) {
+      Liveness.removeValueNoDelete(I);
+      Liveness.setLiveRange(I, NewLR);
+    }
+
+    *Iter++ = NewLR;
+  }
+}
+
+/***********************************************************************
+ * getRangeOfInstructionsToLocalize : get the range of instructions to
+ * localize if exists. This method analyses if live range spans across
+ * basic block. Accepts basic block and instructions of the basic block
+ * in the live range.
+ *
+ * Returns range if found localization range
+ */
+template <typename Iter>
+std::pair<Iter, Iter>
+AccumulatorUsageLocalizer::getRangeOfInstructionsToLocalize(
+    Iter InstBegin, Iter InstEnd, BasicBlock *BB, genx::LiveRange *LR) const {
+  // Determine if bottom value is used outside of BB. Also localization is
+  // needed if there exist a backedge phi user
+  Instruction *BottomI = *std::prev(InstEnd);
+  bool BottomValueLeaksAway = llvm::any_of(BottomI->users(), [&](User *U) {
+    return cast<Instruction>(U)->getParent() != BottomI->getParent()
+               ? true
+               : isa<PHINode>(U);
+  });
+  // Localization is needed if any of the operands of first instruction is used
+  // in the same LR and take place in different BB
+  Instruction *UpI = *InstBegin;
+  bool UpValueOperandsLeakIn = llvm::any_of(UpI->operands(), [&](Value *V) {
+    auto *I = dyn_cast<Instruction>(V);
+    return I && Liveness.getLiveRangeOrNull(I) == LR &&
+           I->getParent() != UpI->getParent();
+  });
+
+  if (!BottomValueLeaksAway && !UpValueOperandsLeakIn)
+    return {InstBegin, InstBegin};
+
+  // Now do only localization of arithmetic instruction chains
+  return getArithmeticChainRange(InstBegin, InstEnd);
+}
+
+/***********************************************************************
+ * getArithmeticChainRange : get the range of arithmetic instructions:
+ *      V = fma ...
+ *      V = fma V ...
+ *      V = fma V ...
+ *      ...
+ *
+ * Returns range if found such chain or empty range otherwise
+ */
+template <typename Iter>
+std::pair<Iter, Iter>
+AccumulatorUsageLocalizer::getArithmeticChainRange(Iter InstBegin,
+                                                   Iter InstEnd) const {
+  unsigned TotalArithChainInsts =
+      std::count_if(InstBegin, InstEnd, isArithmeticChainInst);
+  if (ArithChainLengthThreshold > TotalArithChainInsts)
+    return {InstBegin, InstBegin};
+
+  auto InstRange = llvm::make_range(InstBegin, InstEnd);
+  auto StartOfLocalizeSequence =
+      llvm::find_if(InstRange, isArithmeticChainInst);
+  auto EndOfLocalizeSequence =
+      llvm::find_if(llvm::reverse(InstRange), isArithmeticChainInst);
+
+  // Return element before the end of the range to not insert any copy-outs
+  return std::make_pair(StartOfLocalizeSequence,
+                        std::next(EndOfLocalizeSequence).base());
+}
+
+bool AccumulatorUsageLocalizer::isArithmeticChainInst(const Value *V) {
+  unsigned ID = GenXIntrinsic::getAnyIntrinsicID(V);
+  switch (ID) {
+  case Intrinsic::fma:
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
+
+void GenXVisaRegAlloc::getLiveRangesForValue(
+    Value *V, std::vector<LiveRange *> &LRs) const {
   auto Ty = V->getType();
   for (unsigned i = 0, e = IndexFlattener::getNumElements(Ty);
       i != e; ++i) {
@@ -180,7 +368,7 @@ void GenXVisaRegAlloc::getLiveRangesForValue(Value *V,
     // first in the LR. That avoids processing the same LR multiple times.
     if (SV != *LR->value_begin())
       continue;
-    LRs->push_back(LR);
+    LRs.push_back(LR);
   }
 }
 
@@ -524,7 +712,7 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const Module *M) const
     bool operator<(const LiveRangeAndLength &Rhs) const { return Length > Rhs.Length; }
   };
   std::vector<LiveRange *> LRs;
-  getLiveRanges(&LRs);
+  getLiveRanges(LRs);
   std::vector<LiveRangeAndLength> LRLs;
   for (auto i = LRs.begin(), e = LRs.end(); i != e; ++i)
     LRLs.push_back(LiveRangeAndLength(*i, (*i)->getLength(/*WithWeak=*/ false)));

@@ -119,6 +119,9 @@ struct GenXBackendOptions {
   GlobalsLocalizationConfig GlobalsLocalization;
   bool ForceArrayPromotion = false;
 
+  // Localize live ranges to reduce accumulator usage
+  bool LocalizeLRsForAccUsage;
+
   GenXBackendOptions();
 };
 
@@ -201,6 +204,10 @@ public:
     return Options.GlobalsLocalization.getLimit();
   }
   bool isArrayPromotionForced() const { return Options.ForceArrayPromotion; }
+
+  bool localizeLiveRangesForAccUsage() const {
+    return Options.LocalizeLRsForAccUsage;
+  }
 };
 } // namespace llvm
 

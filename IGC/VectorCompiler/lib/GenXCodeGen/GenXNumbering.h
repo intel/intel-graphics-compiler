@@ -123,7 +123,7 @@ public:
   const BBNumber *getBBNumber(BasicBlock *BB) { return &BBNumbers[BB]; }
   // get and set instruction number
   unsigned getBaleNumber(Instruction *Inst);
-  unsigned getNumber(Value *V);
+  unsigned getNumber(Value *V) const;
   unsigned getLastNumber() const { return LastNum; }
   void setNumber(Value *V, unsigned Number);
   // get and set "start instruction number" for a CallInst
