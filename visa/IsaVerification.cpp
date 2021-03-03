@@ -904,7 +904,7 @@ void vISAVerifier::verifyInstructionMove(
                          "greater than or equal to the size of the src0 operand's type size.");
                  REPORT_INSTRUCTION(options,dstModifier != MODIFIER_SAT,
                           "saturation is not allowed for dst operands of a flag copy mov instruction");
-                 REPORT_INSTRUCTION(options,inst->pred == 0,
+                 REPORT_INSTRUCTION(options,inst->pred.isNullPred(),
                           "predication is not allowed for dst operands of a flag copy mov instruction");
              }
 
@@ -1651,7 +1651,7 @@ void vISAVerifier::verifyInstructionLogic(
             case ISA_TYPE_BOOL:
             {
                  pred_logic = true;
-                 REPORT_INSTRUCTION(options, inst->pred == 0,
+                 REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
                     "Predicate can not be used in logic operantion for predicate operands.");
                  break;
             }
@@ -3054,7 +3054,7 @@ void vISAVerifier::verifyInstruction(
 
     if (hasPredicate(opcode))
     {
-        uint16_t predicateNum = inst->pred & 0xfff;
+        uint16_t predicateNum = inst->pred.getId();
         REPORT_INSTRUCTION(options,predicateNum < header->getPredCount() + COMMON_ISA_NUM_PREDEFINED_PRED, "CISA instruction uses an illegal predicate value.");
     }
 

@@ -2187,16 +2187,12 @@ bool CISA_IR_Builder::CISA_create_invtri_inst(
         num_operands ++;
     }
 
-    //pred id
-    unsigned short pred_id = 0;
-    if (pred != NULL)
-        pred_id = pred->_opnd.v_opnd.opnd_val.pred_opnd.index;
-
+    PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
     CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
     unsigned char size = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
     size += emask << 4;
-    inst->createCisaInstruction(opcode, size, 0 , pred_id,opnd, num_operands, inst_desc);
+    inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
     m_kernel->addInstructionToEnd(inst);
 
     return true;
