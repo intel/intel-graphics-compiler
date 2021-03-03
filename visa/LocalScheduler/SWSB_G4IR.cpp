@@ -1173,9 +1173,14 @@ void SWSB::SWSBGenerator()
 #endif
     }
 
-    if (globalSendNum)
+    if (SBSendNodes.size())
     {
         SWSBGlobalTokenGenerator(p, LB, globalSendsLB);
+    }
+    else
+    {
+        handleFuncCall();
+        insertTest();
     }
 
     if (fg.builder->getFCPatchInfo()->getFCComposableKernel())
