@@ -52,15 +52,8 @@ void LocalScheduler::localScheduling()
     LatencyTable LT(fg.builder);
 
     uint32_t totalCycles = 0;
-    uint32_t scheduleStartBBId = m_options->getuInt32Option(vISA_LocalSchedulingStartBB);
-    uint32_t shceduleEndBBId = m_options->getuInt32Option(vISA_LocalSchedulingEndBB);
     for (; ib != bend; ++ib)
     {
-        if ((*ib)->getId() < scheduleStartBBId || (*ib)->getId() > shceduleEndBBId)
-        {
-            continue;
-        }
-
         unsigned instCountBefore = (uint32_t)(*ib)->size();
         #define SCH_THRESHOLD 2
         if (instCountBefore < SCH_THRESHOLD)
