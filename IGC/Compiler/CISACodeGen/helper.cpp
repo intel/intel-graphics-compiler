@@ -2348,4 +2348,26 @@ namespace IGC
         return std::make_tuple(outStr.str(), fName, vlen);
     }
 
+    ///
+    /// Return base type from more complex type
+    ///
+    /// Return nullptr if complex type cannot be defined with only one type
+    ///
+    llvm::Type* GetBaseType(llvm::Type* ProcessedType)
+    {
+        while (ProcessedType->isArrayTy() || ProcessedType->isStructTy())
+        {
+            if (ProcessedType->isArrayTy())
+                ProcessedType = ProcessedType->getArrayElementType();
+            else
+            {
+                if (ProcessedType->getStructNumElements() != 1)
+                    return nullptr;
+
+                ProcessedType = ProcessedType->getStructElementType(0);
+            }
+        }
+
+        return ProcessedType;
+    }
 } // namespace IGC

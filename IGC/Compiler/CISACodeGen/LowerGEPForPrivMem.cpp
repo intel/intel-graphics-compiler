@@ -365,33 +365,6 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     return true;
 }
 
-static Type* GetBaseType(Type* pType)
-{
-    if (pType->isStructTy())
-    {
-        int num_elements = pType->getStructNumElements();
-        if (num_elements != 1)
-            return nullptr;
-
-        pType = pType->getStructElementType(0);
-    }
-
-    while (pType->isArrayTy())
-    {
-        pType = pType->getArrayElementType();
-    }
-
-    if (pType->isStructTy())
-    {
-        int num_elements = pType->getStructNumElements();
-        if (num_elements != 1)
-            return nullptr;
-
-        pType = pType->getStructElementType(0);
-    }
-    return pType;
-}
-
 static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
 {
     for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)

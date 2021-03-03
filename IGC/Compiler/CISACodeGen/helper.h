@@ -482,4 +482,6 @@ namespace IGC
 
     std::tuple<std::string, std::string, unsigned> ParseVectorVariantFunctionString(llvm::StringRef varStr);
 
+    // Return base type of complex type or nullptr if it cannot be processed
+    llvm::Type* GetBaseType(llvm::Type* ProcessedType);
 } // namespace IGC

@@ -102,9 +102,9 @@ namespace
         Instruction* insertReverseLoop(BasicBlock* Loc, BasicBlock* Post, Value* Length, StringRef BBName);
         Instruction* insertLoop(Instruction* Loc, Value* Length, StringRef BBName);
         Value* replicateScalar(Value* ScalarVal, Type* Ty, Instruction* InsertBefore);
-        void groupI8Stream(
+        void generalGroupI8Stream(
             LLVMContext& C, uint32_t NumI8, uint32_t Align,
-            uint32_t& NumI32, Type** Vecs, uint32_t& L);
+            uint32_t& NumI32, Type** Vecs, uint32_t& L, uint32_t BaseTypeSize);
 
         /// replace member function
         void replaceMemcpy(IntrinsicInst* I);
@@ -314,12 +314,16 @@ Value* ReplaceUnsupportedIntrinsics::replicateScalar(
 
 // A help functions to generate vector load or stores for efficient
 // memory operations.
+// However, if size of base type is to kept the generated vectors will be different
+// <8xi32>  for size of the base type = 32
+// <16xi16> for size of the base type = 16
 //
-// groupI8Stream() groups a stream of i8 into a stream of <8xi32> as
+// generalGroupI8Stream() groups a stream of i8 into a stream of <8xi32> or <16xi16> as
 // much as possible. Then for the remaining i8's ( < 32), group them
-// into vectors of element type i32 and/or i8. This results in at most
+// into vectors of element type i32(i16) and/or i8. This results in at most
 // the following 5 vectors and/or scalars:
-//    <4xi32>, <3xi32> or <2xi32>, i32, <2xi8>, i8
+//    <4xi32>, <3xi32> or <2xi32>, i32, <2xi8>, i8 or
+//    <8xi16>, <4xi16>, <2xi16>, i16, i8
 // Note that we will not generate <3xi8> (see also the code for details).
 // For example, given 127 i8's, we can
 // have:
@@ -341,59 +345,89 @@ Value* ReplaceUnsupportedIntrinsics::replicateScalar(
 // or stored by a single send instruction, where <3xi8> cannot (even
 // <3xi8> can be splitted later in VectorProcessing, but it's better
 // not generate <3xi8> vector in the first place).
-
+//
+// The same example with given 127 i8's but with keeping size of base
+// type of initial vector as 16 we can have:
+//   <16xi16>, <16xi16>, <16xi16>, <8xi16>, <4xi16>, <2xi16>, i16, i8
+//
+// The grouping result are kept in Vecs, L (actual length of Vecs),
+// and NumI32 (the number of <16xi16>, ie. the number of Vecs[0]. For all
+// the other vectors/scalars, ie Vecs[1 : L-1], the number is always 1).
+// For the above case, they are:
+//    Vecs[0] = <16xi16>
+//    Vecs[1] = <8xi16>
+//    Vecs[2] = <4xi16>
+//    Vecs[3] = <2xi16>
+//    Vecs[4] = i16
+//    Vecs[5] = i8
+//    L = 6;
+//    NumI32 = 3;
+//
 // Note that Vecs[] should be allocated by callers with enough space
-// to hold all vectors (6 should be enough; 1 for <8xi32>, 5 for the
-// others).
-void ReplaceUnsupportedIntrinsics::groupI8Stream(
+// to hold all vectors (6 should be enough; 1 for <8xi32>(<16xi16>),
+// 5 for the others).
+// We want from <4x<2xhalf>> [with size of the base type 16(half)]
+// generate <8xi16> not <4xi32>
+// Default BaseTypeSize=32 means that we don't concern about keeping
+// size of the base type
+void ReplaceUnsupportedIntrinsics::generalGroupI8Stream(
     LLVMContext& C, uint32_t NumI8, uint32_t Align,
-    uint32_t& NumI32, Type** Vecs, uint32_t& L)
+    uint32_t& VectorsNum, Type** Vecs, uint32_t& L, uint32_t BaseTypeSize = 32)
 {
-    NumI32 = NumI8 / 32; // size of <8xi32> = 32
+    VectorsNum = NumI8 / 32; // size of <8xi32> = 32. count of <8xi32> or <16xi16>
     uint32_t RemI8 = NumI8 % 32;
-    uint32_t CntI32 = RemI8 / 4; // the number of i32
-    uint32_t CntI8 = RemI8 % 4; // remaining number of i8(0-3)
+    uint32_t BaseTypeSizeInBytes = BaseTypeSize / 8;
+    uint32_t CntI = RemI8 / BaseTypeSizeInBytes;    // the number of i32(0..7) or i16(0..15)
+    uint32_t CntI8 = RemI8 % BaseTypeSizeInBytes;   // remaining number of i8(0-3) - for base_type_size = 32 or
+                                                    //                     i8(0-1) - for base_type_size = 16
 
-    Type* TyI32 = Type::getInt32Ty(C);
+    // To process all cases (3 for i32 and 4 for i16: it depends of how much CntI do we have)
+    uint32_t Power = 256 / BaseTypeSize;    // i32: (256 / 32) = 0b1000 = 8
+                                            // i16: (256 / 16) = 0b10000 = 16
+
+    Type* BaseType = Type::getIntNTy(C, BaseTypeSize);
     Type* TyI8 = Type::getInt8Ty(C);
 
     uint32_t n = 0;
-    Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 8);
-    // CntI32 range [0, 7]
-    if (CntI32 >= 4)
-    {
-        Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 4);
-        CntI32 -= 4;
-    }
-    if (CntI32 == 3 && Align >= 4)
-    {
-        Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 3);
-        CntI32 -= 3;
-    }
-    if (CntI32 >= 2)
-    {
-        Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI32, 2);
-        CntI32 -= 2;
-    }
-    if (CntI32 > 0)
-    {
-        Vecs[n++] = TyI32;
-        CntI32 -= 1;
-    }
-    IGC_ASSERT_MESSAGE(CntI32 == 0, "Did not handle all types of i32");
+    Vecs[n++] = IGCLLVM::FixedVectorType::get(BaseType, Power);
 
-    // CntI8 range [0, 3]
-    if (CntI8 >= 2)
+    while ((Power >>= 1) > 1)
     {
-        Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI8, 2);
-        CntI8 -= 2;
+        if (CntI >= Power)
+        {
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(BaseType, Power);
+            CntI -= Power;
+        }
+        if (CntI == 3 && BaseTypeSize == 32 && Align >= 4) // special case for <8xi32> not to generate <3xi8> but to generate <3xi32>
+        {
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(BaseType, 3);
+            CntI = 0;
+            break;
+        }
     }
-    if (CntI8 > 0)
+    if (CntI >= 1)
+    {
+        Vecs[n++] = BaseType;
+        CntI -= Power; // Assume that pow should be 1 to generate i32(i16) and not <1xi32>(<1xi16>)
+    }
+    IGC_ASSERT_MESSAGE(CntI == 0, "Did not handle all types of base_type");
+
+    Power = BaseTypeSize / 4;   // i32: 32 / 8 = 4
+                                // i16: 16 / 8 = 2
+    while ((Power >>= 1) > 1)
+    {
+        if (CntI8 >= Power)
+        {
+            Vecs[n++] = IGCLLVM::FixedVectorType::get(TyI8, Power);
+            CntI8 -= Power;
+        }
+    }
+    if (CntI8 >= 1)
     {
         Vecs[n++] = TyI8;
-        CntI8 -= 1;
+        CntI8 -= Power; // Assume that pow should be 1 to generate i8 not <1xi8>
     }
-    IGC_ASSERT_MESSAGE(CntI8 == 0, "Did not handle all types of i8");
+    IGC_ASSERT_MESSAGE(CntI8 == 0, "Did not handle all types of I8");
 
     L = n;
 }
@@ -426,13 +460,15 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
     //     Dst[lenv8*32 + i] = Src[lenv8*32 + i];
     //
     //   Note that the above epilog loop is optimized away with
-    //   as much as possible <nxi32> and <mxi8> loads and stores.
+    //   as much as possible <nxi32> and <mxi8> loads and stores
+    //   or if we want to keep size of the base type
+    //   (for 16bit there will be <nxi16> and <mxi8>)
     //
-    // Selecting 8 as vector length is due to that A64 messages can
-    // load eight i32 per SIMD channel. A32 will have 2 loads/stores
-    // for each eight i32, which is still efficient. Unaligned vector
-    // will be handled correctly and effciently later in vector load
-    // and store emit.
+    // Selecting 8 as vector length or 16 in case of i16 is due to
+    // that A64 messages can load eight i32 or sixteen i16 per SIMD channel.
+    // A32 will have 2 loads/stores for each vector, which is still efficient.
+    // Unaligned vector will be handled correctly and effciently later
+    // in vector load and store emit.
     MemCpyInst* MC = cast<MemCpyInst>(I);
     Value* Dst = MC->getRawDest();
     Value* Src = MC->getRawSource();
@@ -448,6 +484,17 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
 
     IRBuilder<> Builder(MC);
 
+    // BaseSize is flag if we want to handle algorithm in general way
+    // or want to keep size of base type to further optimizations
+    uint32_t BaseSize = 0;
+    Type* RawDstType = Dst->stripPointerCasts()->getType()->getPointerElementType();
+    if (Type* BaseType = GetBaseType(RawDstType))
+        BaseSize = BaseType->getScalarSizeInBits();
+
+    if (BaseSize != 16)
+        // size 32 is equal to size of i32, so general algorithm will be applied
+        BaseSize = 32;
+
     ConstantInt* CI = dyn_cast<ConstantInt>(LPCount);
     if (CI)
     {
@@ -455,7 +502,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
 
         Type* VecTys[8];
         uint32_t Len, NewCount;
-        groupI8Stream(C, Count, Align, NewCount, VecTys, Len);
+        generalGroupI8Stream(C, Count, Align, NewCount, VecTys, Len, BaseSize);
 
         Value* NewSrc, * NewDst, * vDst, * vSrc;
         uint32_t BOfst = 0; // Byte offset
@@ -631,7 +678,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
 
         Type* VecTys[8];
         uint32_t Len, NewCount;
-        groupI8Stream(C, Count, Align, NewCount, VecTys, Len);
+        generalGroupI8Stream(C, Count, Align, NewCount, VecTys, Len);
 
         // for true block (Src < Dst), do a reverse copy.
         {
@@ -755,7 +802,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
 
         Type* VecTys[8];
         uint32_t Len, NewCount;
-        groupI8Stream(C, Count, Align, NewCount, VecTys, Len);
+        generalGroupI8Stream(C, Count, Align, NewCount, VecTys, Len);
 
         Value* NewDst, * vDst, * vSrc;
         uint32_t BOfst = 0; // Byte offset
