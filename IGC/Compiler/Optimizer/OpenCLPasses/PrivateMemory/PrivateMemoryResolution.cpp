@@ -908,7 +908,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
         }
 
-        bool isBasePrivate = true;
+        ADDRESS_SPACE scratchMemoryAddressSpace = ADDRESS_SPACE_PRIVATE;
 
         for (auto pAI : allocaInsts)
         {
@@ -928,7 +928,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
             // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
-            bool TransposeMemLayout = isBasePrivate && CanUseSOALayout(pAI, pTypeOfAccessedObject);
+
+            bool TransposeMemLayout =
+                CanUseSOALayout(pAI, pTypeOfAccessedObject);
 
             unsigned int bufferSize = 0;
             if (TransposeMemLayout)
@@ -948,7 +950,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
             totalOffset = builder.CreateZExt(totalOffset, privateBase->getType());
             Value* threadOffset = builder.CreateAdd(privateBase, totalOffset, VALUE_NAME(pAI->getName() + ".threadOffset"));
-            Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, Type::getInt8Ty(C)->getPointerTo(isBasePrivate ? ADDRESS_SPACE_PRIVATE : ADDRESS_SPACE_GLOBAL), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
+            Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, Type::getInt8Ty(C)->getPointerTo(scratchMemoryAddressSpace), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
             Value* privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
             if (TransposeMemLayout)
