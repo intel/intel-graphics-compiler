@@ -51,19 +51,22 @@ DynamicTextureFolding::DynamicTextureFolding() : FunctionPass(ID)
 
 void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
 {
-
     ModuleMetaData* modMD = m_context->getModuleMetaData();
 
-    // nothing to fold
-    if (modMD->inlineDynTextures.size() == 0)
+    unsigned addrSpace = 0;
+    if (SampleIntrinsic *sInst = dyn_cast<SampleIntrinsic>(&I))
+    {
+        addrSpace = sInst->getTextureValue()->getType()->getPointerAddressSpace();
+    }
+    else if (SamplerLoadIntrinsic * lInst = dyn_cast<SamplerLoadIntrinsic>(&I))
+    {
+        addrSpace = lInst->getTextureValue()->getType()->getPointerAddressSpace();
+    }
+    else
     {
         return;
     }
 
-    llvm::Value* textureArgValue = cast<SampleIntrinsic>(&I)->getTextureValue();
-    IGC_ASSERT(nullptr != textureArgValue);
-
-    unsigned addrSpace = textureArgValue->getType()->getPointerAddressSpace();
     bool directIdx = false;
     uint textureIndex = 0;
     DecodeAS4GFXResource(addrSpace, directIdx, textureIndex);
@@ -255,10 +258,10 @@ void DynamicTextureFolding::visitCallInst(CallInst& I)
             if (ID == GenISAIntrinsic::GenISA_sampleptr ||
                 ID == GenISAIntrinsic::GenISA_sampleLptr ||
                 ID == GenISAIntrinsic::GenISA_sampleBptr ||
-                ID == GenISAIntrinsic::GenISA_sampleDptr)
+                ID == GenISAIntrinsic::GenISA_sampleDptr ||
+                ID == GenISAIntrinsic::GenISA_ldptr)
             {
                 FoldSingleTextureValue(I);
-                //todo: FoldUNormTexture(I);
             }
         }
         if (!IGC_IS_FLAG_ENABLED(DisableDynamicResInfoFolding) && ID == GenISAIntrinsic::GenISA_resinfoptr)
