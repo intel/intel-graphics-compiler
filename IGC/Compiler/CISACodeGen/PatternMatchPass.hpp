@@ -318,6 +318,9 @@ namespace IGC
         // Find bool values that will be emitted as uniform variables.
         // Otherwise they will be expanded to the SIMD size, by default.
         void gatherUniformBools(llvm::Value* Val);
+
+        // Return true if it is dbg related instruction
+        bool IsDbgInst(llvm::Instruction& inst) const;
     };
 
     //helper

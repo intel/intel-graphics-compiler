@@ -39,6 +39,7 @@ IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
+#include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -162,10 +163,16 @@ namespace IGC
         return false;
     }
 
-    inline bool IsDbgInst(llvm::Instruction& inst)
+    bool CodeGenPatternMatch::IsDbgInst(llvm::Instruction& inst) const
     {
         if (llvm::isa<llvm::DbgInfoIntrinsic>(&inst))
         {
+            return true;
+        }
+        if (DebugMetadataInfo::hasDashGOption(m_ctx) &&
+            inst.getMetadata("perThreadOffset") != nullptr)
+        {
+            // debugging needs this
             return true;
         }
         return false;
