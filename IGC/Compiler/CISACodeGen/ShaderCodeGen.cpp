@@ -300,7 +300,7 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         // Split complex constant expression into 2 simple ones
         mpm.add(new BreakConstantExpr());
         // Some clean up passes
-	    mpm.add(createSROAPass());
+        mpm.add(createSROAPass());
         mpm.add(createDeadCodeEliminationPass());
         // Create functions groups after unmasked functions inlining
         mpm.add(createGenXCodeGenModulePass());
@@ -1739,8 +1739,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             mpm.add(new GenUpdateCB());
 
-            if (!pContext->m_instrTypes.hasAtomics && 
-                !extensiveShader(pContext))
+            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
                 // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
                 // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
@@ -1769,8 +1768,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             // Conditions apply just as above due to problems with atomics
             // (see comment above for details).
-            if (!pContext->m_instrTypes.hasAtomics &&
-                !extensiveShader(pContext))
+            if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
                 // After lowering 'switch', run jump threading to remove redundant jumps.
                 mpm.add(llvm::createJumpThreadingPass());
