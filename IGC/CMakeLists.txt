@@ -37,11 +37,8 @@
 #  - IGC_OPTION__USCLAUNCHER_TOOL for ILAdapter
 
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
-if (${CMAKE_VERSION} VERSION_GREATER "3.0")
-  cmake_policy(SET CMP0043 OLD) # Have CMake to use the old behavior for COMPILE_DEFINITIONS_<CONFIG>
-  if (${CMAKE_VERSION} VERSION_GREATER "3.1")
-    cmake_policy(SET CMP0054 OLD) # Have CMake to automatically expand variables in strings
-  endif()
+if (${CMAKE_VERSION} VERSION_GREATER "3.1")
+  cmake_policy(SET CMP0054 OLD) # Have CMake to automatically expand variables in strings
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -3046,7 +3043,7 @@ endif()
 # +  _AMD64_                  if bits:64
 # + ENABLE_REGISTRY_READ      if cfg:Debug
 
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+add_compile_definitions(
       _IGC_
       GHAL3D=USC
       _HAS_EXCEPTIONS=0
@@ -3059,7 +3056,7 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
     )
 
 if(DEFINED VME_TYPES_DEFINED)
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+add_compile_definitions(
       VME_TYPES_DEFINED=${VME_TYPES_DEFINED}
     )
 endif()
@@ -3067,18 +3064,18 @@ endif()
 
 #SPIRV consumption flag
 if(IGC_BUILD__SPIRV_ENABLED)
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  add_compile_definitions(
       IGC_SPIRV_ENABLED
     )
 endif()
 
 #VC OPT switch on/off
 if(IGC_BUILD__VC_ENABLED)
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  add_compile_definitions(
       IGC_VC_ENABLED
     )
 endif()
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  add_compile_definitions(
       _SCL_SECURE_NO_WARNINGS
       _CRT_SECURE_NO_WARNINGS
       NOMINMAX
@@ -3093,11 +3090,11 @@ set(IGC_BUID__VISA_COMPILE_DEFINITIONS
   )
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+    add_compile_definitions(
         _AMD64_
       )
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+    add_compile_definitions(
         _X86_=1
         i386=1
       )
@@ -3106,7 +3103,7 @@ set(IGC_BUID__VISA_COMPILE_DEFINITIONS
 if(LLVM_ON_WIN32)
   # NOTE: _WIN32 should be defined by compiler.
   # TODO: WIN32 definition is used differently depending on project.
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  add_compile_definitions(
       ICBE_LHDM
       _WIN32
       "WIN32"
@@ -3116,7 +3113,7 @@ if(LLVM_ON_WIN32)
 
   # NOTE: _WIN64 should be defined by compiler.
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+    add_compile_definitions(
         _WIN64
         WIN64
       )
@@ -3124,7 +3121,7 @@ if(LLVM_ON_WIN32)
 endif()
 
 if(LLVM_ON_UNIX)
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  add_compile_definitions(
       ICBE_LINUX
       LINUX
 
@@ -3137,20 +3134,16 @@ if(LLVM_ON_UNIX)
 endif()
 
 
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG
-    _DEBUG
-    USC_DXX
-    ENABLE_REGISTRY_READ
+set(DIRECTORY_DEFS
+  _DEBUG
+  USC_DXX
+  ENABLE_REGISTRY_READ
   )
+add_compile_definitions("$<$<CONFIG:Debug>:${DIRECTORY_DEFS}>")
 
 
 if(NOT ANDROID)
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG
-    CL_KHR_FP64_EXT
-  )
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
-  CL_KHR_FP64_EXT
-)
+  add_compile_definitions(CL_KHR_FP64_EXT)
 endif()
 
 #NOTE: CMake defines some of compile definitions in compiler flags. We have to make sure that
@@ -3167,12 +3160,10 @@ igc_flag_remove_re(CMAKE_CXX_FLAGS                        "${_flagToRemove}")
 unset(_flagToRemove)
 endif()
 
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASE
-    NDEBUG
-  )
+add_compile_definitions("$<$<CONFIG:Release>:NDEBUG>")
 
 if(DEFINED ENV{TEST_P4_CHANGELIST})
-  set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+  add_compile_definitions(
     TB_BUILD_ID=$ENV{TEST_P4_CHANGELIST}
   )
 endif()
@@ -3344,7 +3335,7 @@ if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
     add_subdirectory("${IGC_SOURCE_DIR}/../external/SPIRV-Tools" "${IGC_OPTION__OUTPUT_DIR}/external/SPIRV-Tools/config" EXCLUDE_FROM_ALL)
     include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
     include_directories("${IGC_BUILD__SPIRV-Tools_DIR}/include")
-    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG IGC_SPIRV_TOOLS_ENABLED)
+    add_compile_definitions("$<$<CONFIG:Debug>:IGC_SPIRV_TOOLS_ENABLED>")
     igc_sg_define(IGC__SPIRV-Tools)
 endif()
 
