@@ -42,10 +42,13 @@ get_target_property(CODEGEN_LIBS VCCodeGen LINK_LIBRARIES)
 set(CODEGEN_LIBS VCCodeGen ${CODEGEN_LIBS})
 foreach(target ${CODEGEN_LIBS})
   # Filter out interface libraries -- these will not produce any files.
-  get_target_property(TARGET_TYPE ${target} TYPE)
-  if(NOT ("${TARGET_TYPE}" STREQUAL "INTERFACE_LIBRARY"))
-    set(CODEGEN_LIBS_FILES ${CODEGEN_LIBS_FILES} "$<TARGET_FILE:${target}>")
-  endif()
+  set(tgt_type "$<TARGET_PROPERTY:${target},TYPE>")
+  set(is_iface "$<STREQUAL:${tgt_type},INTERFACE_LIBRARY>")
+  set(not_iface "$<NOT:${is_iface}>")
+
+  set(tgt_file "$<TARGET_FILE:${target}>")
+  set(whole_gen "$<${not_iface}:${tgt_file}>")
+  list(APPEND CODEGEN_LIBS_FILES ${whole_gen})
 endforeach()
 
 # Cmake also does not add any dependencies for libraries
@@ -60,5 +63,4 @@ target_link_libraries(VCBackendPlugin
   ${CODEGEN_LIBS_FILES}
   # GenX_IR actually should be linked to LLVMGenXCodeGen.
   GenX_IR
-  GenXDebugInfo
   )
