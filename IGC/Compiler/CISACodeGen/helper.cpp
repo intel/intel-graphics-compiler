@@ -98,7 +98,7 @@ namespace IGC
         else if (auto *CI = dyn_cast<ConstantInt>(&bufIdx))
         {
             unsigned int bufId = static_cast<unsigned>(CI->getZExtValue());
-            IGC_ASSERT(bufId < (1 << 16));
+            IGC_ASSERT((bufType == BINDLESS_SAMPLER) || (bufId < (1 << 16)));
             temp.bits.bufId = bufId;
             return temp.u32Val;
         }
