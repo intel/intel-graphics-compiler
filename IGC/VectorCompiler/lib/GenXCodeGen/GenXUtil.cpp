@@ -1037,8 +1037,8 @@ unsigned ShuffleVectorAnalyzer::getSerializeCost(unsigned i) {
   return Cost;
 }
 
-
-IVSplitter::IVSplitter(Instruction &Inst, unsigned* BaseOpIdx) : Inst(Inst) {
+IVSplitter::IVSplitter(Instruction &Inst, const unsigned *BaseOpIdx)
+    : Inst(Inst) {
 
   ETy = Inst.getType();
   if (BaseOpIdx)

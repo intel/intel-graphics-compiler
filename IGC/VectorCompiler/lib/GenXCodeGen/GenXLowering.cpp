@@ -198,6 +198,7 @@ private:
   bool lowerLoadStore(Instruction *Inst);
   bool lowerMulSat(CallInst *CI, unsigned IntrinsicID);
   bool lowerMul64(Instruction *Inst);
+  bool lowerLzd(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
@@ -1135,6 +1136,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_usmul_sat:
     case GenXIntrinsic::genx_uumul_sat:
       return lowerMulSat(CI, IntrinsicID);
+    case GenXIntrinsic::genx_lzd:
+      return lowerLzd(Inst);
     case Intrinsic::trap:
       return lowerTrap(CI);
     case Intrinsic::ctpop:
@@ -2568,7 +2571,6 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
     return false;
 
   IRBuilder<> Builder(Inst);
-  Builder.SetCurrentDebugLocation(Inst->getDebugLoc());
 
   auto Src0 = SplitBuilder.splitOperandLoHi(0);
   auto Src1 = SplitBuilder.splitOperandLoHi(1);
@@ -2593,6 +2595,38 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
   auto *Replace = SplitBuilder.combineLoHiSplit({ ResL, ResH }, "mul64",
                                                 Inst->getType()->isIntegerTy());
   Inst->replaceAllUsesWith(Replace);
+  ToErase.push_back(Inst);
+  return true;
+}
+bool GenXLowering::lowerLzd(Instruction *Inst) {
+  const unsigned OpIndex = 0;
+  IVSplitter SplitBuilder(*Inst, &OpIndex);
+  if (!SplitBuilder.IsI64Operation())
+    return false;
+
+  IRBuilder<> Builder(Inst);
+
+  auto Src = SplitBuilder.splitOperandLoHi(0);
+
+  auto *VTy32 = cast<VectorType>(Src.Lo->getType());
+  IGC_ASSERT(VTy32->getScalarType() == Builder.getInt32Ty());
+  auto *Zero = ConstantInt::getNullValue(VTy32);
+  auto *K32 = ConstantInt::get(VTy32, 32);
+
+  auto *LzdF = GenXIntrinsic::getAnyDeclaration(
+      Inst->getModule(), GenXIntrinsic::genx_lzd, {Src.Lo->getType()});
+
+  // Lzd64 is lowered as:
+  // LoLzd  = lzd(Src.Lo)
+  // HiLzd  = lzd(Src.Hi)
+  // Result = (Src.Hi == 0) ? (LoLzd + 32) : HiLzd
+  auto *VlzdLo = Builder.CreateCall(LzdF, Src.Lo, "lower.lzd64.lo.");
+  auto *VlzdHi = Builder.CreateCall(LzdF, Src.Hi, "lower.lzd64.hi.");
+  auto *FlagHiZero = Builder.CreateICmpEQ(Src.Hi, Zero, "lower.lzd64.hicmp.");
+  auto *LoPathResult = Builder.CreateAdd(VlzdLo, K32, "lower.lzd64.lores.");
+  auto *Result =
+      Builder.CreateSelect(FlagHiZero, LoPathResult, VlzdHi, "lower.lzd64.");
+  Inst->replaceAllUsesWith(Result);
   ToErase.push_back(Inst);
   return true;
 }

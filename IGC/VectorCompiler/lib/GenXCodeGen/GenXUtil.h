@@ -331,7 +331,7 @@ public:
   // If BaseOpIdx indexes a scalar/vector operand of i64 type, then
   // IsI64Operation shall return true, otherwise the value type of an
   // instruction is used
-  IVSplitter(Instruction &Inst, unsigned* BaseOpIdx = nullptr);
+  IVSplitter(Instruction &Inst, const unsigned *BaseOpIdx = nullptr);
 
   // Splitted Operand is expected to be a scalar/vector of i64 type
   LoHiSplit splitOperandLoHi(unsigned SourceIdx);
