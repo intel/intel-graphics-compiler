@@ -229,7 +229,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
           ? GlobalsLocalizationConfig::CreateLocalizationWithLimit()
           : GlobalsLocalizationConfig::CreateForcedLocalization();
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
-  BackendOpts.LocalizeLRsForAccUsage = Opts.LocalizeLiveRangesForAccUsage;
+  if (Opts.ForceLiveRangesLocalizationForAccUsage)
+    BackendOpts.LocalizeLRsForAccUsage = true;
   return BackendOpts;
 }
 

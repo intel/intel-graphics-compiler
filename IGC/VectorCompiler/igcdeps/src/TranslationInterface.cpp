@@ -172,7 +172,7 @@ static void adjustBinaryFormat(vc::BinaryKind &Binary) {
 
 static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(VCLocalizeAccUsage))
-    Opts.LocalizeLiveRangesForAccUsage = true;
+    Opts.ForceLiveRangesLocalizationForAccUsage = true;
 }
 
 static void adjustDumpOptions(vc::CompileOptions &Opts) {
