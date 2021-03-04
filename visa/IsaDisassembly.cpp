@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * - common_isa_header
  * - kernel_format_t
  * - attribute_info_t
- * - VISA_opnd
+ * - CISA_opnd
  * - vector_opnd
  * - raw_opnd
  * - CISA_INST
@@ -245,13 +245,12 @@ static std::string printRegion(uint16_t region)
 
 std::string printVectorOperand(
     const print_format_provider_t* header,
-    const VISA_opnd* parentOpnd,
+    const vector_opnd& opnd,
     const Options *opt,
     bool showRegion)
 {
     std::stringstream sstr;
 
-    auto opnd = parentOpnd->_opnd.v_opnd;
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
 
     VISA_Modifier modifier = (VISA_Modifier)((opnd.tag >> 3) & 0x7);
@@ -293,7 +292,7 @@ std::string printVectorOperand(
         }
         case OPERAND_PREDICATE:
         {
-            sstr << Common_ISA_Get_Modifier_Name(modifier) << "P" << parentOpnd->convertToPred().getId();
+            sstr << Common_ISA_Get_Modifier_Name(modifier) << "P" << opnd.opnd_val.pred_opnd.index;
             break;
         }
         case OPERAND_INDIRECT:
@@ -366,7 +365,7 @@ static std::string printOperand(
     switch (getOperandType(inst, i))
     {
         case CISA_OPND_OTHER:  sstr << (getPrimitiveOperand<unsigned>             (inst, i)); break;
-        case CISA_OPND_VECTOR: sstr << printVectorOperand(header, inst->opnd_array[i], opt, true); break;
+        case CISA_OPND_VECTOR: sstr << printVectorOperand(header, getVectorOperand(inst, i), opt, true); break;
         case CISA_OPND_RAW:    sstr << printRawOperand   (header, getRawOperand   (inst, i), opt); break;
         default:               MUST_BE_TRUE(false, "Invalid operand type.");
     }
@@ -644,17 +643,19 @@ static std::string printExecutionSizeForScatterGather(uint8_t sizeAndMask)
     return sstr.str();
 }
 
-static std::string printPredicate(uint8_t opcode, PredicateOpnd predOpnd)
+static std::string printPredicate(uint8_t opcode, uint16_t predOpnd)
 {
     std::stringstream sstr;
 
-    if (hasPredicate((ISA_Opcode)opcode) && !predOpnd.isNullPred())
+    if (hasPredicate((ISA_Opcode)opcode) && predOpnd != 0)
     {
         sstr << "(";
-        if (predOpnd.isInverse()) sstr << "!";
-        sstr << "P" << predOpnd.getId();
+        if (predOpnd & 0x8000) sstr << "!";
+        sstr << "P" << (predOpnd & 0xfff);
 
-        VISA_PREDICATE_CONTROL control = predOpnd.getControl();
+        VISA_PREDICATE_CONTROL control =
+            (VISA_PREDICATE_CONTROL)((predOpnd & 0x6000) >> 13);
+
         switch (control)
         {
             case PRED_CTRL_ANY:
@@ -662,7 +663,6 @@ static std::string printPredicate(uint8_t opcode, PredicateOpnd predOpnd)
                 break;
             case PRED_CTRL_ALL:
                 sstr << ".all";
-                break;
             default:
                 break;
         }
@@ -831,7 +831,7 @@ static std::string printInstructionCommon(
 
                 if (curOpnd.getOperandClass() == OPERAND_ADDRESS)
                 {
-                    sstr << printVectorOperand(header, inst->opnd_array[i], opt, true);
+                    sstr << printVectorOperand(header, curOpnd, opt, true);
                 }
                 else
                 {

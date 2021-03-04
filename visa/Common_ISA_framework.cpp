@@ -50,7 +50,7 @@ int CisaInst::createCisaInstruction(
     ISA_Opcode opcode,
     unsigned char exec_size,
     unsigned char modifier,
-    PredicateOpnd pred,
+    unsigned short pred,
     VISA_opnd** opnd,
     int numOpnds,
     const VISA_INST_Desc* inst_desc)
