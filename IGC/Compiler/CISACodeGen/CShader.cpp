@@ -2029,7 +2029,7 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
     }
     else {
         auto mult = (m_SIMDSize == m_Platform->getMinDispatchMode()) ? 1 : 2;
-        mult = (baseVisaType == ISA_TYPE_HF) ? 1 : mult;
+        mult = CEncoder::GetCISADataTypeSize(baseVisaType) == 2 ? 1 : mult;
         unsigned int numRows = ccTuple->GetNumElements() * mult;
         const unsigned int denominator = CEncoder::GetCISADataTypeSize(ISA_TYPE_F);
         IGC_ASSERT(denominator);
@@ -2706,7 +2706,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
             CVariable* var = LazyCreateCCTupleBackingVariable(ccTuple, type);
 
             int mult = 1;
-            if (value->getType()->isHalfTy() && m_SIMDSize == SIMDMode::SIMD8)
+            if (CEncoder::GetCISADataTypeSize(type) == 2 && m_SIMDSize == SIMDMode::SIMD8)
             {
                 mult = 2;
             }
