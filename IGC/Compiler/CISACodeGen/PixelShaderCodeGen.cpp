@@ -623,7 +623,7 @@ CVariable* CPixelShader::GetZWDelta()
 {
     if (!m_ZWDelta)
     {
-        uint numLanes = 8; // single GRF
+        uint numLanes = getGRFSize() / SIZE_DWORD ; // single GRF
 
         m_ZWDelta =
             GetNewVariable(numLanes, ISA_TYPE_F, EALIGN_GRF, false, 1, "ZWDelta");
