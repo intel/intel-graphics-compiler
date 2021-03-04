@@ -67,8 +67,10 @@ add_custom_command(OUTPUT "${_fileOutput}"
     DEPENDS "${_intrinsicScript}" ${_fileInput}
     COMMENT "Generating Gen intrinsic definition file: ${_fileOutput}"
   )
-
-add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" "${_fileOutput}")
+add_custom_target("Gen${IGC_BUILD__PROJ__GenISAIntrinsics}"
+  DEPENDS "${_fileOutput}"
+  )
+add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" "Gen${IGC_BUILD__PROJ__GenISAIntrinsics}")
 
 #set up standard defines from the common WDK path.
 if(MSVC)
