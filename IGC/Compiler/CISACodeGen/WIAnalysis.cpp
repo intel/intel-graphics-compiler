@@ -1240,6 +1240,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
+        GII_id == GenISAIntrinsic::GenISA_StackAlloca ||
         GII_id == GenISAIntrinsic::GenISA_getR0)
     {
         switch (GII_id)
@@ -1312,6 +1313,15 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
                 // Select uniform one if only one is uniform
                 return isUniform0 ? dep0 : dep1;
             }
+        }
+
+        if (GII_id == GenISAIntrinsic::GenISA_StackAlloca)
+        {
+            WIAnalysis::WIDependancy dep0 = WIAnalysis::UNIFORM_THREAD;
+            Value* op0 = inst->getArgOperand(0);
+            WIAnalysis::WIDependancy dep1 = getDependency(op0);
+            // Select worse one
+            return select_conversion[dep0][dep1];
         }
 
         if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
