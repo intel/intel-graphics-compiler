@@ -31,8 +31,7 @@ IN THE SOFTWARE.
 #ifndef VC_PLATFORM_SELECTOR_H
 #define VC_PLATFORM_SELECTOR_H
 
-#include <cassert>
-
+#include "Probe/Assertion.h"
 #include "StringMacros.hpp"
 #include "igfxfmid.h"
 
@@ -61,9 +60,7 @@ inline const char *getPlatformStr(PLATFORM Platform) {
     if (Product == IGFX_TIGERLAKE_LP)
       return "TGLLP";
   default:
-    // trying to use IGC_ASSERT_MESSAGE here, I have problems with
-    // IGC::Probe::Logger::instance not linked to FCL
-    assert(0 && "unsupported platform");
+    IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
   }
   return IGC_MANGLE("SKL");
