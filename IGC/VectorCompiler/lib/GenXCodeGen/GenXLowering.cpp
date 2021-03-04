@@ -100,8 +100,8 @@ IN THE SOFTWARE.
 /// GenXLiveness has another go at splitting them up.
 ///
 //===----------------------------------------------------------------------===//
+#define DEBUG_TYPE "GENX_LOWERING"
 
-#include "IGC/common/debug/DebugMacros.hpp"
 #include "GenX.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
@@ -111,9 +111,11 @@ IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+#include "IGC/common/debug/DebugMacros.hpp"
 #include "visa_igc_common_header.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallSet.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -235,6 +237,7 @@ void GenXLowering::getAnalysisUsage(AnalysisUsage &AU) const {
  * is lowered to a bitcast and an element access.
  */
 bool GenXLowering::runOnFunction(Function &F) {
+  LLVM_DEBUG(dbgs() << "GenXLowering started\n");
   auto *DTWP = getAnalysisIfAvailable<DominatorTreeWrapperPass>();
   DT = DTWP ? &DTWP->getDomTree() : nullptr;
   ST = &getAnalysis<TargetPassConfig>()

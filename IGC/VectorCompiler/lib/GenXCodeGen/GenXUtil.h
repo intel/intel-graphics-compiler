@@ -71,6 +71,16 @@ inline int log2(T Val)
   return 31 - CLZ;
 }
 
+// Common functionality for media ld/st lowering and CISA builder
+template <typename T> inline T roundedVal(T Val, T RoundUp) {
+  T RoundedVal = static_cast<T>(1) << genx::log2(Val);
+  if (RoundedVal < Val)
+    RoundedVal *= 2;
+  if (RoundedVal < RoundUp)
+    RoundedVal = RoundUp;
+  return RoundedVal;
+}
+
 // createConvert : create a genx_convert intrinsic call
 CallInst *createConvert(Value *In, const Twine &Name, Instruction *InsertBefore,
                         Module *M = nullptr);

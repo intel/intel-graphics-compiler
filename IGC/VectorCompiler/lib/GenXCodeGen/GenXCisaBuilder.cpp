@@ -3311,29 +3311,22 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     // media width and the return type or final arg
     ConstantInt *Const =
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
-    if (!Const)
-      report_fatal_error("Incorrect args to intrinsic call");
+    IGC_ASSERT_MESSAGE(Const, "Incorrect args to intrinsic call");
     unsigned Width = Const->getZExtValue();
-    if (Width == 0 || Width > 64)
-      report_fatal_error("Invalid media width");
-    unsigned RoundedWidth = 1 << genx::log2(Width);
-    if (RoundedWidth < Width)
-      RoundedWidth *= 2;
-    if (RoundedWidth < 4)
-      RoundedWidth = 4;
+    IGC_ASSERT_MESSAGE(Width > 0 && Width <= 64, "Invalid media width");
+    unsigned RoundedWidth = roundedVal(Width, 4u);
     Type *DataType = CI->getType();
     if (DataType->isVoidTy())
       DataType = CI->getOperand(CI->getNumArgOperands() - 1)->getType();
     unsigned DataSize;
     if (VectorType *VT = dyn_cast<VectorType>(DataType))
-      DataSize = VT->getElementType()->getPrimitiveSizeInBits() / 8 *
-                 VT->getNumElements();
+      DataSize = DL.getTypeSizeInBits(VT) / genx::ByteBits;
     else
-      DataSize = DataType->getPrimitiveSizeInBits() / 8;
+      DataSize = DL.getTypeSizeInBits(DataType) / genx::ByteBits;
     if (DataSize <= RoundedWidth && DataSize >= Width)
       return static_cast<uint8_t>(1);
-    if (DataSize % RoundedWidth)
-      report_fatal_error("Invalid media width");
+    IGC_ASSERT_MESSAGE(RoundedWidth && (DataSize % RoundedWidth != 0),
+                       "Invalid media width");
     return static_cast<uint8_t>(DataSize / RoundedWidth);
   };
 
