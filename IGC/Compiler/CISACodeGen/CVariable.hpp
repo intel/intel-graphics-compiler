@@ -269,6 +269,8 @@ namespace IGC {
         // This accesses the name via a const char *.  This will return
         // nullptr if names are not tracked (e.g. release build).
         const char *getVisaCString() const {
+            if (IGC_IS_FLAG_ENABLED(UseVISAVarNames))
+                return nullptr;
             return m_llvmName.getVisaCString();
         }
 
