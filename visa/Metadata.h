@@ -166,7 +166,7 @@ public:
             // do not allow nullptr value for now. ToDo: distinguish between nullptr value vs. metadata not set?
             return;
         }
-        MDMap.emplace(key, value);
+        MDMap[key] = value;
     }
 
     MDNode* getMetadata(const std::string& key)

@@ -186,6 +186,7 @@ void CoalesceSpillFills::coalesceSpills(
 
     auto coalescedSpillSrc = generateCoalescedSpill(kernel.fg.builder->duplicateOperand(leadInst->asSpillIntrinsic()->getHeader()),
         min, payloadSize, useNoMask, mask, dcl, minRow);
+    coalescedSpillSrc->getInst()->inheritDIFrom(leadInst);
 
     if (declares.size() != 1)
     {
@@ -249,6 +250,7 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
 
     auto newFill = generateCoalescedFill(kernel.fg.builder->duplicateOperand(leadInst->asFillIntrinsic()->getHeader()),
         min, payloadSize, dclSize, gra.isEvenAligned(leadInst->getDst()->getTopDcl()));
+    newFill->inheritDIFrom(leadInst);
 
     for (auto c : coalesceableFills)
     {
