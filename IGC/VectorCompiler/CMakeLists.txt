@@ -145,3 +145,6 @@ add_subdirectory(lib)
 # some components in IGC.
 add_subdirectory(igcdeps)
 
+
+# --- CMCL  ---
+add_subdirectory(CMCL)
