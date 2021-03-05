@@ -9827,7 +9827,7 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 {
     // Static private mem access is done through the FP
     CVariable* pFP = m_currShader->GetFP();
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    if (IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) && (m_FGA && !m_FGA->isLeafFunc(GII->getParent()->getParent())))
     {
         // If we have written the previous FP to the current frame's start, the start of
         // private memory will be offset by 16 bytes
@@ -10036,7 +10036,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     emitAddPointer(pSP, pStackBufferBase, pThreadOffset);
 
     // Push a new stack frame
-    emitPushFrameToStack(totalAllocaSize);
+    emitPushFrameToStack(totalAllocaSize, pKernel);
 
     // Set the total alloca size for the entry function
     m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
@@ -10448,7 +10448,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     m_currShader->SaveStackState();
 
     // Push a new stack frame
-    emitPushFrameToStack(totalAllocaSize);
+    emitPushFrameToStack(totalAllocaSize, F);
 
     // Set the per-function private mem size
     m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
@@ -16306,16 +16306,19 @@ void EmitPass::emitGenISACopy(GenIntrinsicInst* GenCopyInst)
 //  Update FP to the current SP
 //  Increment SP by pushSize
 //  Store value of previous frame's FP to the address of updated FP (for stack-walk)
-void EmitPass::emitPushFrameToStack(unsigned& pushSize)
+void EmitPass::emitPushFrameToStack(unsigned& pushSize, Function* F)
 {
     CVariable* pFP = m_currShader->GetFP();
     CVariable* pSP = m_currShader->GetSP();
+
+    // Enable write OldFP to the SP of the new frame, only do it for non-leaf functions
+    bool WriteOldFPToStack = IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) && (m_FGA && !m_FGA->isLeafFunc(F));
 
     // Set FP = SP
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
 
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    if (WriteOldFPToStack)
     {
         // Allocate 1 extra oword to store previous frame's FP
         pushSize += SIZE_OWORD;
@@ -16324,7 +16327,7 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     // Update SP by pushSize
     emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
 
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+    if (WriteOldFPToStack)
     {
         // Store old FP value to current FP
         CVariable* pOldFP = m_currShader->GetPrevFP();
