@@ -272,9 +272,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function& F)
     {
         // Emitting a fence to ensure that the uav write is completed before an EOT is issued
         IRBuilder<> builder(F.getContext());
-
-        bool fenceFlushNone = 0;
-        EmitMemoryFence(builder, fenceFlushNone);
+        EmitMemoryFence(builder);
     }
 
     // EmitRender target write intrinsic
@@ -503,7 +501,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
     }
 }
 
-void PixelShaderLowering::EmitMemoryFence(IRBuilder<>& builder, bool forceFlushNone)
+void PixelShaderLowering::EmitMemoryFence(IRBuilder<>& builder)
 {
     Value* trueValue = builder.getInt1(true);
     Value* falseValue = builder.getInt1(false);
@@ -519,7 +517,7 @@ void PixelShaderLowering::EmitMemoryFence(IRBuilder<>& builder, bool forceFlushN
         falseValue,
     };
 
-    CallInst* temp = GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_memoryfence),
+    GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_memoryfence),
         arguments,
         "",
         m_ReturnBlock->getTerminator());
