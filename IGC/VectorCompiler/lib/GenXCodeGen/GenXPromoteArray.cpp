@@ -116,6 +116,7 @@ public:
   void handleAllocaSources(Instruction &Inst, GenericVectorIndex Idx);
   void handleGEPInst(GetElementPtrInst *pGEP, GenericVectorIndex Idx);
   void handleBCInst(BitCastInst &BC, GenericVectorIndex Idx);
+  void handlePTIInst(PtrToIntInst &BC, GenericVectorIndex Idx);
   void handlePHINode(PHINode *pPhi, GenericVectorIndex pScalarizedIdx,
                      BasicBlock *pIncomingBB);
   virtual void handleLoadInst(llvm::LoadInst *pLoad,
@@ -125,6 +126,10 @@ public:
   virtual void handlePrivateGather(llvm::IntrinsicInst *pInst,
                      llvm::Value *pScalarizedIdx) = 0;
   virtual void handlePrivateScatter(llvm::IntrinsicInst *pInst,
+                     llvm::Value *pScalarizedIdx) = 0;
+  virtual void handleSVMGather(llvm::IntrinsicInst *pInst,
+                     llvm::Value *pScalarizedIdx) = 0;
+  virtual void handleSVMScatter(llvm::IntrinsicInst *pInst,
                      llvm::Value *pScalarizedIdx) = 0;
   virtual void handleLLVMGather(llvm::IntrinsicInst *pInst,
                      llvm::Value *pScalarizedIdx) = 0;
@@ -221,12 +226,14 @@ namespace {
 
 class TransposeHelperPromote : public TransposeHelper {
 public:
-  void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx);
-  void handleStoreInst(StoreInst *pStore, GenericVectorIndex pScalarizedIdx);
-  void handlePrivateGather(IntrinsicInst *pInst, Value *pScalarizedIdx);
-  void handlePrivateScatter(IntrinsicInst *pInst, Value *pScalarizedIdx);
-  void handleLLVMGather(IntrinsicInst *pInst, Value *pScalarizedIdx);
-  void handleLLVMScatter(IntrinsicInst *pInst, Value *pScalarizedIdx);
+  void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) override;
+  void handleStoreInst(StoreInst *pStore, GenericVectorIndex pScalarizedIdx) override;
+  void handlePrivateGather(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
+  void handlePrivateScatter(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
+  void handleSVMGather(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
+  void handleSVMScatter(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
+  void handleLLVMGather(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
+  void handleLLVMScatter(IntrinsicInst *pInst, Value *pScalarizedIdx) override;
 
   AllocaInst *pVecAlloca;
 
@@ -406,6 +413,52 @@ static Type *GetBaseType(Type *pType, Type *pBaseType) {
   return pType;
 }
 
+static bool CheckPtrToIntCandidate(PtrToIntInst *PTI) {
+  // here we handle only the most common pattern for SVM instructions
+  // ptrtoint->insertelem->shuffle->arith_op->svm_gather/scatter
+  // others are possible, but not handled yet
+  if (!PTI->hasOneUse())
+    return false;
+  auto *Insert = dyn_cast<InsertElementInst>(PTI->user_back());
+  if (!Insert)
+    return false;
+  if (!Insert->hasOneUse())
+    return false;
+  auto *Shuffle = dyn_cast<ShuffleVectorInst>(Insert->user_back());
+  if (!Shuffle)
+    return false;
+  if (!Shuffle->hasOneUse())
+    return false;
+  auto *BinOp = dyn_cast<BinaryOperator>(Shuffle->user_back());
+  if (!BinOp)
+    return false;
+  if (BinOp->user_empty())
+    return false;
+  for (auto *MemOp : BinOp->users()) {
+    if (!isa<CallInst>(MemOp))
+      return false;
+    auto IID = GenXIntrinsic::getAnyIntrinsicID(MemOp);
+    if (IID != GenXIntrinsic::genx_svm_gather &&
+        IID != GenXIntrinsic::genx_svm_scatter)
+      return false;
+    // for now skip insts w/ blockSize > 1
+    // or weird things like <16 x i32> %res = svm.gather(<8 x i64> offsets, ...)
+    auto *Pred = MemOp->getOperand(0);
+    auto *NumBlocks = MemOp->getOperand(1);
+    auto *Input = MemOp->getOperand(3);
+    IGC_ASSERT(isa<ConstantInt>(NumBlocks));
+    if (cast<ConstantInt>(NumBlocks)->getZExtValue() ||
+        cast<VectorType>(Input->getType())->getNumElements() >
+            cast<VectorType>(Pred->getType())
+                ->getNumElements() ||
+        (isa<VectorType>(MemOp->getType()) &&
+         cast<VectorType>(Pred->getType())->getNumElements() <
+             cast<VectorType>(MemOp->getType())->getNumElements()))
+      return false;
+  }
+  return true;
+}
+
 static bool CheckAllocaUsesInternal(Instruction *I) {
   for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end();
        use_it != use_e; ++use_it) {
@@ -440,7 +493,7 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
       Type *sourceType = GetBaseType(
           pBitCast->getOperand(0)->getType()->getPointerElementType(), nullptr);
       IGC_ASSERT(sourceType);
-      // either the point-to-element-type is the same or 
+      // either the point-to-element-type is the same or
       // the point-to-element-type is the byte or a function pointer
       if (baseT != nullptr &&
           (baseT->getScalarSizeInBits() == 8 ||
@@ -452,6 +505,8 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
       }
       // Not a candidate.
       return false;
+    } else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(*use_it)) {
+      return CheckPtrToIntCandidate(PTI);
     } else if (IntrinsicInst *intr = dyn_cast<IntrinsicInst>(*use_it)) {
       auto IID = GenXIntrinsic::getAnyIntrinsicID(intr);
       if (IID == llvm::Intrinsic::lifetime_start ||
@@ -575,9 +630,6 @@ void TransformPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {
   llvm::AllocaInst *pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
   if (!pVecAlloca)
     return;
-  // skip processing of allocas that are already fine
-  if (pVecAlloca->getType() == pAlloca->getType())
-    return;
 
   IRBuilder<> IRB(pVecAlloca);
   GenericVectorIndex StartIdx{
@@ -626,6 +678,24 @@ void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
       BC, {NewIdx, static_cast<int>(DstDerefTy->getScalarSizeInBits())});
 }
 
+void TransposeHelper::handlePTIInst(PtrToIntInst &PTI, GenericVectorIndex Idx) {
+  IGC_ASSERT(PTI.hasOneUse() && isa<InsertElementInst>(PTI.user_back()));
+  IRBuilder<> IRB(&PTI);
+  auto *Insert = PTI.user_back();
+  auto *CastedIdx = IRB.CreateZExt(Idx.Index, PTI.getType(), PTI.getName());
+  auto *Mul = IRB.CreateMul(
+      CastedIdx,
+      ConstantInt::get(CastedIdx->getType(), Idx.getElementSizeInBytes()), "");
+  PTI.replaceAllUsesWith(Mul);
+  PTI.eraseFromParent();
+  IGC_ASSERT(Insert->hasOneUse() &&
+             isa<ShuffleVectorInst>(Insert->user_back()));
+  auto *Shuffle = Insert->user_back();
+  IGC_ASSERT(Shuffle->hasOneUse() && isa<BinaryOperator>(Shuffle->user_back()));
+  handleAllocaSources(*(Shuffle->user_back()),
+                      {Shuffle->user_back(), Idx.ElementSizeInBits});
+}
+
 void TransposeHelper::handleAllocaSources(Instruction &Inst,
                                           GenericVectorIndex Idx) {
   SmallVector<Value *, 10> Users{Inst.user_begin(), Inst.user_end()};
@@ -635,6 +705,8 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
       handleGEPInst(pGEP, Idx);
     } else if (BitCastInst *BC = dyn_cast<BitCastInst>(User)) {
       handleBCInst(*BC, Idx);
+    } else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(User)) {
+      handlePTIInst(*PTI, Idx);
     } else if (StoreInst *pStore = llvm::dyn_cast<StoreInst>(User)) {
       handleStoreInst(pStore, Idx);
     } else if (LoadInst *pLoad = llvm::dyn_cast<LoadInst>(User)) {
@@ -650,6 +722,10 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
         handlePrivateGather(IntrInst, Idx.Index);
       else if (IID == GenXIntrinsic::genx_scatter_private)
         handlePrivateScatter(IntrInst, Idx.Index);
+      else if (IID == GenXIntrinsic::genx_svm_gather)
+        handleSVMGather(IntrInst, Idx.Index);
+      else if (IID == GenXIntrinsic::genx_svm_scatter)
+        handleSVMScatter(IntrInst, Idx.Index);
       else if (IntrInst->getIntrinsicID() == llvm::Intrinsic::masked_gather)
         handleLLVMGather(IntrInst, Idx.Index);
       else if (IntrInst->getIntrinsicID() == llvm::Intrinsic::masked_scatter)
@@ -1197,6 +1273,71 @@ void TransposeHelperPromote::handleLLVMScatter(llvm::IntrinsicInst *pInst,
     R.createWrRegion(pLoadVecAlloca, pStoreVal, pInst->getName(),
       pInst /*InsertBefore*/, pInst->getDebugLoc()));
 
+  IRB.CreateStore(NewInst, pVecAlloca);
+  pInst->eraseFromParent();
+}
+
+void TransposeHelperPromote::handleSVMGather(IntrinsicInst *pInst,
+                                             Value *pScalarizedIdx) {
+  // %v = svm_gather %pred, %ptr + %offset
+  // is turned into
+  // %v0 = load <32 x float> *%ptr1
+  // %v1 = <32 x float> rdregion %v0, %offset, %pred
+
+  // here we rely on offset being previously generated
+  // by e.g. ISPC
+
+  // part of this is taken from handleLLVMGather above
+  IRBuilder<> IRB(pInst);
+  llvm::Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+  Region R(pInst);
+  R.Mask = pInst->getArgOperand(0);
+  R.Indirect = IRB.CreateTrunc(
+      pScalarizedIdx,
+      IGCLLVM::FixedVectorType::get(
+          IntegerType::getInt16Ty(pInst->getContext()),
+          cast<VectorType>(pScalarizedIdx->getType())->getNumElements()),
+      "");
+  R.Width = 1;
+  R.Stride = 0;
+  R.VStride = 0;
+  Value *Result =
+      R.createRdRegion(pLoadVecAlloca, pInst->getName(), pInst /*InsertBefore*/,
+                       pInst->getDebugLoc(), true /*AllowScalar*/);
+  // if old-value is not undefined and predicate is not all-one,
+  // create a select
+  auto PredVal = pInst->getArgOperand(2);
+  bool PredAllOne = false;
+  if (auto C = dyn_cast<ConstantVector>(PredVal)) {
+    if (auto B = C->getSplatValue())
+      PredAllOne = B->isOneValue();
+  }
+  auto OldVal = pInst->getArgOperand(3);
+  if (!PredAllOne && !isa<UndefValue>(OldVal))
+    Result = IRB.CreateSelect(PredVal, Result, OldVal);
+
+  pInst->replaceAllUsesWith(Result);
+  pInst->eraseFromParent();
+}
+
+void TransposeHelperPromote::handleSVMScatter(IntrinsicInst *pInst,
+                                              Value *pScalarizedIdx) {
+  IRBuilder<> IRB(pInst);
+  Value *pStoreVal = pInst->getArgOperand(3);
+  Value *pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+  Region R(pStoreVal);
+  R.Mask = pInst->getArgOperand(0);
+  R.Indirect = IRB.CreateTrunc(
+      pScalarizedIdx,
+      IGCLLVM::FixedVectorType::get(
+          IntegerType::getInt16Ty(pInst->getContext()),
+          cast<VectorType>(pScalarizedIdx->getType())->getNumElements()),
+      "");
+  R.Width = 1;
+  R.Stride = 0;
+  R.VStride = 0;
+  auto NewInst = R.createWrRegion(pLoadVecAlloca, pStoreVal, pInst->getName(),
+                                  pInst, pInst->getDebugLoc());
   IRB.CreateStore(NewInst, pVecAlloca);
   pInst->eraseFromParent();
 }
