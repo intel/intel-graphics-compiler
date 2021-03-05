@@ -667,4 +667,8 @@
    {
         return true;
    }
+   bool noMulExpandingBeforeScheduler()
+   {
+        return false;
+   }
     // end HW capabilities

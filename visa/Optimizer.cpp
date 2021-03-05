@@ -917,6 +917,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(legalizeType,            vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(analyzeMove,             vISA_analyzeMove,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(removeInstrinsics,       vISA_removeInstrinsics,       TimerID::MISC_OPTS);
+    INITIALIZE_PASS(expandMulPostSchedule,   vISA_expandMulPostSchedule,   TimerID::MISC_OPTS);
     INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
 
     // Verify all passes are initialized.
@@ -1434,6 +1435,8 @@ int Optimizer::optimization()
     runPass(PI_analyzeMove);
 
     runPass(PI_removeInstrinsics);
+
+    runPass(PI_expandMulPostSchedule);
 
     //-----------------------------------------------------------------------------------------------------------------
     //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
@@ -10814,5 +10817,136 @@ void Optimizer::doNoMaskWA()
         }
         // Clear it to prepare for the next BB
         NoMaskCandidates.clear();
+    }
+}
+
+// Convert vISA MULH dst:d src0:d src1:d into
+//    mul acc0.0<1>:d src0:d src1:w
+//    mach dst:d src0:d src1:d
+// convert vISA mul dst:d src0:d src1:d into
+//    mul acc0.0<1>:d src0:d src1:w
+//    macl dst:d src0:d src1:d
+void Optimizer::expandMulPostSchedule()
+{
+    if (!builder.noMulExpandingBeforeScheduler())
+    {
+        return;
+    }
+
+    for (auto bb : kernel.fg)
+    {
+        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); it++)
+        {
+            G4_INST* inst = *it;
+            if (inst->opcode() != G4_mul && inst->opcode() != G4_mulh)
+            {
+                continue;
+            }
+
+            G4_Operand* src0 = inst->getSrc(0);
+            G4_Operand* src1 = inst->getSrc(1);
+            G4_DstRegRegion* dst = inst->getDst();
+
+            if (dst->isAccReg())
+            {
+                continue;
+            }
+
+            if (!IS_DTYPE(src0->getType()) || !IS_DTYPE(src1->getType()) || !IS_DTYPE(dst->getType()))
+            {
+                continue;
+            }
+
+            MUST_BE_TRUE(inst->getSaturate() == g4::NOSAT, "NOSAT is expected in mul expanding");
+            MUST_BE_TRUE(!src0->isSrcRegRegion() || src0->asSrcRegRegion()->getModifier() == Mod_src_undef, "no src0 modifier is expected in mul expanding");
+            MUST_BE_TRUE(!src1->isSrcRegRegion() || src1->asSrcRegRegion()->getModifier() == Mod_src_undef, "no src1 modifier is expected in mul expanding");
+
+            uint32_t origOptions = inst->getOption();
+            inst->setOptionOn(InstOpt_WriteEnable);
+
+            G4_Predicate* predicate = inst->getPredicate();
+            if (predicate != nullptr)
+            {
+                // move pred to mach/macl
+                inst->setPredicate(nullptr);
+            }
+
+            if (inst->getCondMod() != nullptr)
+            {
+                // conditional modifier cannot be used
+                // when the MUL source operand is of dword type.
+                MUST_BE_TRUE(false, "Dw multiply does not support conditional modifiers");
+                inst->setCondMod(nullptr);
+            }
+
+            // Change dst of MUL to acc0
+            G4_Type accType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
+            G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, accType);
+            inst->setDest(accDstOpnd);
+
+            // Change the src1 of MUL from :d to :w
+            if (src1->isImm())
+            {
+                uint64_t truncVal = src1->asImm()->getImm() & 0xFFFF;
+                G4_Imm* new_src1 = builder.createImm(truncVal, Type_UW);
+                inst->setSrc(new_src1, 1);
+            }
+            else
+            {
+                assert(src1->isSrcRegRegion() && "region expected");
+
+                G4_SrcRegRegion* srcRegion = src1->asSrcRegRegion();
+                const RegionDesc* rd = srcRegion->getRegion();
+                assert(rd->horzStride < 4 && "invalid horz stride");
+
+                unsigned short scale = TypeSize(Type_D) / TypeSize(Type_UW);
+                unsigned short newHS = rd->horzStride * scale;
+                unsigned short newVS = rd->vertStride * scale;
+                const RegionDesc* new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
+                short subRegOff = srcRegion->getSubRegOff();
+                if (srcRegion->getRegAccess() == Direct)
+                {
+                    subRegOff *= scale;
+                }
+                auto new_src1 = builder.createSrcRegRegion(
+                    srcRegion->getModifier(), srcRegion->getRegAccess(),
+                    srcRegion->getBase(), srcRegion->getRegOff(), subRegOff, new_rd,
+                    Type_UW);
+                inst->setSrc(new_src1, 1);
+                if (srcRegion->getRegAccess() != Direct)
+                {
+                    new_src1->setImmAddrOff(srcRegion->getAddrImm());
+                }
+            }
+
+            G4_INST* maclOrMachInst = nullptr;
+            if (inst->opcode() == G4_mul)
+            {
+                // create a macl inst
+                maclOrMachInst = builder.createMacl(inst->getExecSize(),
+                    dst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, accType);
+            }
+            else
+            {
+                inst->setOpcode(G4_mul);
+                maclOrMachInst = builder.createMach(inst->getExecSize(),
+                    dst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, accType);
+            }
+
+            maclOrMachInst->setPredicate(predicate);
+
+            // maintain du chain as fixAccDst uses it later
+            inst->addDefUse(maclOrMachInst, Opnd_implAccSrc);
+
+            // Add mach/macl after mul
+            auto maclOrMachInstIt = bb->insertAfter(it, maclOrMachInst);
+
+            // Always add a dummy mov after mach/macl for HW read suppresion W/A
+            auto dummyMovSrc = builder.createSrc(dst->getTopDcl()->getRegVar(),
+                0, 0, builder.getRegionScalar(), Type_D);
+            G4_INST* dummyMov = builder.createMov(g4::SIMD16, builder.createNullDst(Type_D),
+                dummyMovSrc, InstOpt_WriteEnable, false);
+            bb->insertAfter(maclOrMachInstIt, dummyMov);
+        }
     }
 }

@@ -2030,15 +2030,20 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
     G4_Operand* src1 = mulInst->getSrc(1);
     MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()), "both sources must have dword type");
 
-    if (src1->isSrcRegRegion())
+    // src1 does not support modifier
+    checkSrcMod(it, bb, 1);
+    // fix src1 region: stride can't exceed 4, otherwise the stride of src1 in the expanded mul will be invalid
+    // mulh dst:d src0:d src1:d
+    //  =>
+    // mul acc0:d src0:d src1:uw
+    // mach dst:d src0:d src1:d
+    fixSrc1Region(it, bb);
+    src1 = mulInst->getSrc(1);
+
+    if (!builder.supportSrcModforMul())
     {
-        G4_SrcRegRegion* src1Region = src1->asSrcRegRegion();
-        if (src1Region->getModifier() != Mod_src_undef)
-        {
-            // need extra move for the modifier
-            src1 = insertMovBefore(it, 1, src1->getType(), bb);
-            mulInst->setSrc(src1, 1);
-        }
+        checkSrcMod(it, bb, 0);
+        src0 = mulInst->getSrc(0);
     }
 
     // sat cannot be used at all in the macro sequence
@@ -2046,47 +2051,63 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
     mulInst->setSaturate(g4::NOSAT);
 
     G4_DstRegRegion* origDst = mulInst->getDst();
-    G4_Type accType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
-    G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, accType);
-    mulInst->setDest(accDstOpnd);
-
-    uint32_t origOptions = mulInst->getOption();
-    fixMulSrc1(it, bb);
-    mulInst->setOptionOn(InstOpt_WriteEnable);
-
-    G4_Predicate* predicate = mulInst->getPredicate();
-    if (predicate != nullptr)
+    G4_Type tmpType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
+    if (builder.noMulExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
     {
-        // move pred to mach
-        mulInst->setPredicate(nullptr);
+        // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul+Macl expanding will
+        // be done in expandMulPostSchedule pass.
+
+        //need extra move for dst
+        if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
+            !builder.isOpndAligned(origDst, 32))
+        {
+            // macl dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
+            G4_DstRegRegion* tmpDst = insertMovAfter(it, origDst, tmpType, bb);
+            mulInst->setDest(tmpDst);
+        }
     }
-    if (mulInst->getCondMod() != nullptr)
+    else
     {
-        // conditional modifier cannot be used
-        // when the MUL source operand is of dword type.
-        MUST_BE_TRUE(false, "Dw multiply does not support conditional modifiers");
-        mulInst->setCondMod(nullptr);
+        G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmpType);
+        mulInst->setDest(accDstOpnd);
+
+        uint32_t origOptions = mulInst->getOption();
+        fixMulSrc1(it, bb);
+        mulInst->setOptionOn(InstOpt_WriteEnable);
+
+        G4_Predicate* predicate = mulInst->getPredicate();
+        if (predicate != nullptr)
+        {
+            // move pred to mach
+            mulInst->setPredicate(nullptr);
+        }
+        if (mulInst->getCondMod() != nullptr)
+        {
+            // conditional modifier cannot be used
+            // when the MUL source operand is of dword type.
+            MUST_BE_TRUE(false, "Dw multiply does not support conditional modifiers");
+            mulInst->setCondMod(nullptr);
+        }
+
+        // create a macl inst
+        G4_INST* maclInst = builder.createMacl(mulInst->getExecSize(),
+            origDst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, tmpType);
+        maclInst->setPredicate(predicate);
+
+        // maintain du chain as fixAccDst uses it later
+        mulInst->addDefUse(maclInst, Opnd_implAccSrc);
+
+        INST_LIST_ITER machIter = it;
+        machIter = bb->insertBefore(++machIter, maclInst);
+
+        if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
+            !builder.isOpndAligned(origDst, 32))
+        {
+            // macl dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
+            G4_DstRegRegion* tmpDst = insertMovAfter(machIter, origDst, tmpType, bb);
+            maclInst->setDest(tmpDst);
+        }
     }
-
-    // create a macl inst
-    G4_INST* machInst = builder.createMacl(mulInst->getExecSize(),
-        origDst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, accType);
-    machInst->setPredicate(predicate);
-
-    // maintain du chain as fixAccDst uses it later
-    mulInst->addDefUse(machInst, Opnd_implAccSrc);
-
-    INST_LIST_ITER machIter = it;
-    machIter = bb->insertBefore(++machIter, machInst);
-
-    if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
-        !builder.isOpndAligned(origDst, 32))
-    {
-        // mach dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
-        G4_DstRegRegion* tmpDst = insertMovAfter(machIter, origDst, accType, bb);
-        machInst->setDest(tmpDst);
-    }
-
 }
 
 // get rid of source modifiers on this inst[srcPos]
@@ -2133,7 +2154,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 
     // MUL is commutative and only
     // allows src1 to be a constant.
-    // If src1 is a constant and src1
+    // If src0 is a constant and src1
     // is not, they are swapped here.
     // If both are constants, they
     // will be fixed in checking HW conformity.
@@ -2259,15 +2280,14 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 
     G4_Type tmp_type = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
 
-    if (src1->isSrcRegRegion())
+    // src1 does not support modifier
+    checkSrcMod(i, bb, 1);
+    src1 = inst->getSrc(1);
+
+    if (!builder.supportSrcModforMul())
     {
-        G4_SrcRegRegion* src1Region = src1->asSrcRegRegion();
-        if (src1Region->getModifier() != Mod_src_undef)
-        {
-            // need extra move for the modifier
-            src1 = insertMovBefore(i, 1, src1->getType(), bb);
-            inst->setSrc(src1, 1);
-        }
+        checkSrcMod(i, bb, 0);
+        src0 = inst->getSrc(0);
     }
 
     auto satMod = inst->getSaturate();
@@ -2451,7 +2471,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 // Translate MULH into
 // MUL acc src0 src1
 // MACH dst src0 src1
-void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
+bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
 {
     G4_INST* inst = *i;
     INST_LIST_ITER iter = i;
@@ -2537,86 +2557,144 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         */
         inst->transferUse(tmpMov);
         inst->addDefUse(tmpMov, Opnd_src0);
-        return;
+        return true;
     }
 
-    if (!builder.supportSrcModforMul() &&
-        (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
-        (((src0->getTypeSize()) < 4) || (src1->getTypeSize()) < 4))
+    // src1 does not support modifier
+    checkSrcMod(i, bb, 1);
+    // fix src1 region: stride can't exceed 4, otherwise the stride of src1 in the expanded mul will be invalid
+    // mulh dst:d src0:d src1:d
+    //  =>
+    // mul acc0:d src0:d src1:uw
+    // mach dst:d src0:d src1:d
+    fixSrc1Region(i, bb);
+    src1 = inst->getSrc(1);
+
+    if (!builder.supportSrcModforMul())
     {
         checkSrcMod(i, bb, 0);
         src0 = inst->getSrc(0);
-    }
-
-    if (src1->isSrcRegRegion() && src1->asSrcRegRegion()->getModifier() != Mod_src_undef)
-    {
-        // src1 does not support modifiers
-        checkSrcMod(i, bb, 1);
-        src1 = inst->getSrc(1);
     }
 
     G4_Type tmp_type = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
 
     assert(IS_DTYPE(src0->getType()) && "src0 must be DW type");
 
-    G4_DstRegRegion* acc_dst_opnd = builder.createDst(
-        builder.phyregpool.getAcc0Reg(),
-        0,
-        0,
-        1,
-        tmp_type);
-    G4_INST* newMul = builder.createBinOp(G4_mul, execSize,
-        acc_dst_opnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt, false);
 
-    bb->insertBefore(iter, newMul);
-    inst->copyDefsTo(newMul, false);
-
-
-    fixMulSrc1(std::prev(i), bb);
-    newMul->setNoMask(true);
-
-    auto machSrc1 = inst->getSrc(1);
-    if (src1->isImm() && src0->getType() != src1->getType())
+    if (builder.noMulExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
     {
-        G4_Imm* oldImm = src1->asImm();
-        // Ensure src1 has the same type as src0.
-        machSrc1 = builder.createImm(oldImm->getInt(), src0->getType());
+        // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul + Macl expanding will
+        // be done in expandMulPostSchedule pass.
+
+        bool newInstInserted = false;
+
+        // sat cannot be used at all in the macro sequence
+        // this effectivly means sat is broken for mul D D D
+        inst->setSaturate(g4::NOSAT);
+
+        if (src1->isImm() && src0->getType() != src1->getType())
+        {
+            G4_Imm* oldImm = src1->asImm();
+            // Ensure src1 has the same type as src0.
+            inst->setSrc(builder.createImm(oldImm->getInt(), src0->getType()), 1);
+        }
+        else if (!IS_DTYPE(src1->getType()))
+        {
+            // this can happen due to vISA opt, convert them to src0 type which should be D/UD
+            // We use D as the tmp type to make sure we can represent all src1 values
+            inst->setSrc(insertMovBefore(i, 1, Type_D, bb), 1);
+        }
+
+        INST_LIST_ITER end_iter = i;
+        // check if the ACC source is aligned to mach dst
+        // ToDo: this should be checked by fixAcc?
+        G4_DstRegRegion* dst = inst->getDst();
+        if (inst->getSaturate() ||
+            dst->getExecTypeSize() > TypeSize(Type_D) ||
+            isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst))
+        {
+            // add a tmp mov
+            inst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
+            end_iter++;
+            newInstInserted = true;
+        }
+
+        if (execSize > builder.getNativeExecSize())
+        {
+            auto start_iter = i;
+            splitDWMULInst(i, end_iter, bb);
+            newInstInserted = true;
+        }
+
+        if (newInstInserted)
+        {
+            // it will decrease back to mulh
+            i++;
+        }
+        return newInstInserted;
     }
-    else if (!IS_DTYPE(src1->getType()))
+    else
     {
-        // this can happen due to vISA opt, convert them to src0 type which should be D/UD
-        // We use D as the tmp type to make sure we can represent all src1 values
-        machSrc1 = insertMovBefore(i, 1, Type_D, bb);
-    }
+        G4_DstRegRegion* acc_dst_opnd = builder.createDst(
+            builder.phyregpool.getAcc0Reg(),
+            0,
+            0,
+            1,
+            tmp_type);
 
-    // We don't duplicate the operands here as original inst is unlinked
-    // ToDo: this invalidate du-chain, do we still need to maintain it?
-    auto machInst = builder.createMach(inst->getExecSize(), inst->getDst(), inst->getSrc(0), machSrc1, inst_opt, tmp_type);
-    machInst->setPredicate(inst->getPredicate());
-    machInst->setCondMod(inst->getCondMod());
-    *i = machInst;
-    inst->transferUse(machInst);
-    inst->removeAllDefs();
-    newMul->addDefUse(machInst, Opnd_implAccSrc);
+        G4_INST* newMul = builder.createBinOp(G4_mul, execSize,
+            acc_dst_opnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt, false);
 
-    INST_LIST_ITER end_iter = i;
-    // check if the ACC source is aligned to mach dst
-    // ToDo: this should be checked by fixAcc?
-    G4_DstRegRegion* dst = inst->getDst();
-    if (inst->getSaturate() ||
-        dst->getExecTypeSize() > TypeSize(Type_D) ||
-        isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst))
-    {
-        // add a tmp mov
-        machInst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
-        end_iter++;
-    }
+        bb->insertBefore(iter, newMul);
+        inst->copyDefsTo(newMul, false);
 
-    if (execSize > builder.getNativeExecSize())
-    {
-        auto start_iter = std::prev(i);
-        splitDWMULInst(start_iter, end_iter, bb);
-        i = end_iter;
+        fixMulSrc1(std::prev(i), bb);
+        newMul->setNoMask(true);
+
+        auto machSrc1 = inst->getSrc(1);
+        if (src1->isImm() && src0->getType() != src1->getType())
+        {
+            G4_Imm* oldImm = src1->asImm();
+            // Ensure src1 has the same type as src0.
+            machSrc1 = builder.createImm(oldImm->getInt(), src0->getType());
+        }
+        else if (!IS_DTYPE(src1->getType()))
+        {
+            // this can happen due to vISA opt, convert them to src0 type which should be D/UD
+            // We use D as the tmp type to make sure we can represent all src1 values
+            machSrc1 = insertMovBefore(i, 1, Type_D, bb);
+        }
+
+        // We don't duplicate the operands here as original inst is unlinked
+        // ToDo: this invalidate du-chain, do we still need to maintain it?
+        auto machInst = builder.createMach(inst->getExecSize(), inst->getDst(), inst->getSrc(0), machSrc1, inst_opt, tmp_type);
+        machInst->setPredicate(inst->getPredicate());
+        machInst->setCondMod(inst->getCondMod());
+        *i = machInst;
+        inst->transferUse(machInst);
+        inst->removeAllDefs();
+        newMul->addDefUse(machInst, Opnd_implAccSrc);
+
+        INST_LIST_ITER end_iter = i;
+        // check if the ACC source is aligned to mach dst
+        // ToDo: this should be checked by fixAcc?
+        G4_DstRegRegion* dst = inst->getDst();
+        if (inst->getSaturate() ||
+            dst->getExecTypeSize() > TypeSize(Type_D) ||
+            isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst))
+        {
+            // add a tmp mov
+            machInst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
+            end_iter++;
+        }
+
+        if (execSize > builder.getNativeExecSize())
+        {
+            auto start_iter = std::prev(i);
+            splitDWMULInst(start_iter, end_iter, bb);
+            i = end_iter;
+        }
+        return true;
     }
 }
 
@@ -3435,40 +3513,26 @@ void HWConformity::fixMulSrc1(INST_LIST_ITER i, G4_BB* bb)
         assert(src1->isSrcRegRegion() && "region expected");
         G4_SrcRegRegion* srcRegion = src1->asSrcRegRegion();
         const RegionDesc* rd = srcRegion->getRegion();
-        if (rd->horzStride >= 4)
-        {
-            G4_Operand* new_src1 = insertMovBefore(i, 1, Type_UW, bb);
-            inst->setSrc(new_src1, 1);
-        }
-        else
-        {
-            // create a new opnd with type UW
-            unsigned short scale = TypeSize(Type_D) / TypeSize(Type_UW);
-            unsigned short newHS = rd->horzStride * scale;
-            unsigned short newVS = rd->vertStride * scale;
-            const RegionDesc* new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
-            short subRegOff = srcRegion->getSubRegOff();
-            if (srcRegion->getRegAccess() == Direct)
-            {
-                subRegOff *= scale;
-            }
-            auto new_src1 = builder.createSrcRegRegion(
-                srcRegion->getModifier(), srcRegion->getRegAccess(),
-                srcRegion->getBase(), srcRegion->getRegOff(), subRegOff, new_rd,
-                Type_UW);
-            inst->setSrc(new_src1, 1);
-            if (srcRegion->getRegAccess() != Direct)
-            {
-                new_src1->setImmAddrOff(srcRegion->getAddrImm());
-            }
-        }
-    }
 
-    G4_Operand* src0 = inst->getSrc(0);
-    if (!builder.supportSrcModforMul() && IS_DTYPE(src0->getType()))
-    {
-        checkSrcMod(i, bb, 0);
-        checkSrcMod(i, bb, 1);
+        // create a new opnd with type UW
+        unsigned short scale = TypeSize(Type_D) / TypeSize(Type_UW);
+        unsigned short newHS = rd->horzStride * scale;
+        unsigned short newVS = rd->vertStride * scale;
+        const RegionDesc* new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
+        short subRegOff = srcRegion->getSubRegOff();
+        if (srcRegion->getRegAccess() == Direct)
+        {
+            subRegOff *= scale;
+        }
+        auto new_src1 = builder.createSrcRegRegion(
+            srcRegion->getModifier(), srcRegion->getRegAccess(),
+            srcRegion->getBase(), srcRegion->getRegOff(), subRegOff, new_rd,
+            Type_UW);
+        inst->setSrc(new_src1, 1);
+        if (srcRegion->getRegAccess() != Direct)
+        {
+            new_src1->setImmAddrOff(srcRegion->getAddrImm());
+        }
     }
 }
 
@@ -5218,12 +5282,14 @@ void HWConformity::conformBB(G4_BB* bb)
 
         if (inst->opcode() == G4_mulh)
         {
-            fixMULHInst(i, bb);
-            // inserted mul before
-            // check the newly added MUL inst
-            i--;
-            next_iter = i;
-            continue;
+            if (fixMULHInst(i, bb))
+            {
+                // inserted mul before
+                // check the newly added MUL inst
+                i--;
+                next_iter = i;
+                continue;
+            }
         }
 
 #ifdef _DEBUG
@@ -7103,4 +7169,18 @@ bool HWConformity::hasDedicateAlignRegionConformity(const G4_INST *I) const
         break;
     }
     return false;
+}
+
+// get rid of source modifiers on this inst[srcPos]
+void HWConformity::fixSrc1Region(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* inst = *it;
+    G4_Operand* src1 = inst->getSrc(1);
+
+    // need extra move if horzStride >= 4
+    if (src1->isSrcRegRegion() && src1->asSrcRegRegion()->getRegion()->horzStride >= 4)
+    {
+        G4_Operand* new_src1 = insertMovBefore(it, 1, src1->getType(), bb);
+        inst->setSrc(new_src1, 1);
+    }
 }
