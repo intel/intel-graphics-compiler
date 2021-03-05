@@ -69,8 +69,6 @@ struct attr_gen_struct {
     bool  attr_set;
 };
 
-typedef CISA_opnd VISA_opnd;
-
 typedef struct _VISA_PredOpnd        : VISA_opnd {} VISA_PredOpnd;
 typedef struct _VISA_RawOpnd         : VISA_opnd {} VISA_RawOpnd;
 typedef struct _VISA_VectorOpnd      : VISA_opnd {} VISA_VectorOpnd;
@@ -102,7 +100,7 @@ public:
     CISA_INST             m_cisa_instruction;
     const VISA_INST_Desc* m_inst_desc;
 
-    int createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size, unsigned char modifier, unsigned short pred, VISA_opnd **opnd, int numOpnds, const VISA_INST_Desc* inst_desc);
+    int createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size, unsigned char modifier, PredicateOpnd pred, VISA_opnd **opnd, int numOpnds, const VISA_INST_Desc* inst_desc);
 
     int getSize() const {return m_size;}
 
@@ -130,8 +128,6 @@ public:
         return m_cisa_instruction.opnd_array[index];
     }
 
-    unsigned short       getPredicate    () const { return m_cisa_instruction.pred;             }
-    unsigned short       getPredicateNum () const { return getPredicate() & 0xfff;              }
     unsigned char        getOpcode       () const { return m_cisa_instruction.opcode;           }
     unsigned char        getModifier     () const { return m_cisa_instruction.modifier;         }
     unsigned             getOperandCount () const { return m_cisa_instruction.opnd_count;       }

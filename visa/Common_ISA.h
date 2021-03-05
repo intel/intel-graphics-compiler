@@ -652,6 +652,42 @@ typedef struct _VISA_SamplerVar : CISA_GEN_VAR { } VISA_SamplerVar;
 typedef struct _VISA_SurfaceVar : CISA_GEN_VAR { } VISA_SurfaceVar;
 typedef struct _VISA_LabelVar   : CISA_GEN_VAR { } VISA_LabelVar;
 
+// unfortunately vISA binary restricts the max number of predicates to 4K so that we could pack
+// pred id + control into 2 bytes. It seemed like a good idea at the time but our input programs now
+// regularly exceed it. Since we don't want to touch legacy binary format the alternative is
+// to make it work at least for vISA assembly.
+struct PredicateOpnd
+{
+
+private:
+    uint32_t predId;
+    uint16_t predInBinary; // bit[0:11] - LSB 12bit for pred id, bit[13:14] - pred control, bit[15] - pred inverse
+
+public:
+    PredicateOpnd() : predId(0), predInBinary(0) {}
+    PredicateOpnd(uint32_t id, uint16_t binaryId) : predId(id), predInBinary(binaryId) {}
+    PredicateOpnd(uint32_t id, VISA_PREDICATE_STATE state, VISA_PREDICATE_CONTROL cntrl)
+    {
+        predId = id;
+        predInBinary = (id & 0xFFF) | (cntrl << 13) | (state << 15);
+    }
+
+    uint32_t getId() const { return predId; }
+    bool isNullPred() const { return predId == 0; }
+    bool isInverse() const { return predInBinary & 0x8000; }
+    VISA_PREDICATE_CONTROL getControl() const
+    {
+        return (VISA_PREDICATE_CONTROL)((predInBinary & 0x6000) >> 13);
+    }
+
+    uint16_t getPredInBinary() const { return predInBinary; }
+    int constexpr getPredInBinarySize() { return sizeof(predInBinary); }
+
+    static PredicateOpnd getNullPred()
+    {
+        return PredicateOpnd();
+    }
+};
 
 typedef struct _CISA_opnd
 {
@@ -668,7 +704,13 @@ typedef struct _CISA_opnd
     } _opnd;
     vISA::G4_Operand *g4opnd;
     VISA_GenVar *decl;
-} CISA_opnd;
+
+    PredicateOpnd convertToPred() const
+    {
+        assert(_opnd.v_opnd.getOperandClass() == OPERAND_PREDICATE);
+        return PredicateOpnd(index, _opnd.v_opnd.opnd_val.pred_opnd.index);
+    }
+} VISA_opnd;
 
 typedef struct _CISA_INST
 {
@@ -676,8 +718,8 @@ typedef struct _CISA_INST
     unsigned char  execsize;
     unsigned char  modifier; /// Mainly used for media ld/store.
     ISA_Inst_Type  isa_type;
-    unsigned short pred;
-    CISA_opnd**    opnd_array;
+    PredicateOpnd  pred;
+    VISA_opnd**    opnd_array;
     unsigned       opnd_count;
     unsigned       id;
 

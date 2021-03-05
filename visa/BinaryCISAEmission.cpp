@@ -207,7 +207,8 @@ int CBinaryCISAEmitter::emitCisaInst(
                  (useSubDesc == true  && desc->getSubInstDesc(subOpcode).opnd_desc[i-1].opnd_type == OPND_PRED))
 
         {
-            cisa_kernel->writeInToCisaBinaryBuffer(&inst->pred, sizeof(inst->pred));
+            auto predInBinary = inst->pred.getPredInBinary();
+            cisa_kernel->writeInToCisaBinaryBuffer(&predInBinary, inst->pred.getPredInBinarySize());
             reverseOffset++;
         }
         else if (inst->opnd_array != NULL && inst->opnd_array[currendOpndIndex]->opnd_type == CISA_OPND_OTHER)

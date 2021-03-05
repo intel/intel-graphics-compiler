@@ -399,7 +399,16 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
             IGC_ASSERT_MESSAGE(0, "Instructions in the vector are not supported!");
         }
     }
-    return ConstantInt::get(m_int32Type, m_stringIndex - 1);
+    ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary)
+    {
+        return printfArg;
+    }
+    else
+    {
+        return ConstantInt::get(m_int32Type, m_stringIndex - 1);
+    }
+
 }
 
 
@@ -602,6 +611,17 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
 
         writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
         writeOffsetPtr->setDebugLoc(m_DL);
+
+        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        if (dataType == SHADER_PRINTF_STRING_LITERAL && (
+            IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary))
+        {
+            printfArg = CastInst::Create(Instruction::CastOps::PtrToInt,
+                argDesc->value,
+                m_int32Type,
+                "",
+                bblockTrue);
+        }
 
         // *write_offset = argument[i].value
         genStoreInternal(printfArg, writeOffsetPtr, bblockTrue, m_DL);

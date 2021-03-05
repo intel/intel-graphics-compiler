@@ -86,7 +86,7 @@ std::string printAttributes(
 /// Exposing these for inline asm code generation
 std::string printVectorOperand(
     const print_format_provider_t* header,
-    const vector_opnd& opnd,
+    const VISA_opnd* opnd,
     const Options *opt,
     bool showRegion);
 std::string printFunctionDecl(

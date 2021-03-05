@@ -259,14 +259,14 @@ static VISA_PredOpnd* readPredicateOperandNG(unsigned& bytePos, const char* buf,
     uint16_t predOpnd = 0;
     READ_CISA_FIELD(predOpnd, uint16_t, bytePos, buf);
 
-    if (0 == predOpnd) return NULL;
+    if (0 == predOpnd) return nullptr;
 
     VISAKernel* kernelBuilder = container.kernelBuilder;
     unsigned predID = (predOpnd & 0xfff);
     VISA_PREDICATE_CONTROL control = (VISA_PREDICATE_CONTROL)((predOpnd & 0x6000) >> 13);
     VISA_PREDICATE_STATE   state   = (VISA_PREDICATE_STATE)((predOpnd & 0x8000) >> 15);
     VISA_PredVar*  decl = container.predicateVarDecls[predID];
-    VISA_PredOpnd* opnd = NULL;
+    VISA_PredOpnd* opnd = nullptr;
 
     kernelBuilder->CreateVISAPredicateOperand(opnd, decl, state, control);
 
