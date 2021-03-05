@@ -256,7 +256,6 @@ public:
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_RegInfo();
     void emit_RegInfoKernel(std::ostream& output);
-    void emit_dep(std::ostream& output);
 
     void setRAType(RA_Type type) { RAType = type; }
     RA_Type getRAType() { return RAType; }

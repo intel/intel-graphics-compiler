@@ -305,7 +305,6 @@ public:
 
     // SWSB_G4IR.cpp
     void emitRegInfo(std::ostream& os, G4_INST * inst, int offset);
-    void emitDepInfo(std::ostream& os, G4_INST * inst, int offset);
 
     bool isEndWithCall() const { return getLastOpcode() == G4_call; }
     bool isEndWithFCall() const { return getLastOpcode() == G4_pseudo_fcall; }

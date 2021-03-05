@@ -580,74 +580,61 @@ protected:
 public:
     enum SWSBTokenType {
         TOKEN_NONE,
+        SB_SET,
         AFTER_READ,
         AFTER_WRITE,
         READ_ALL,
-        WRITE_ALL
+        WRITE_ALL,
     };
 
+typedef struct _SWSBInfo
+{
+    unsigned short depDistance : 3;
+    unsigned short distType : 4;
+    unsigned short SBToken : 5;
+    unsigned short tokenType : 4;
+    _SWSBInfo()
+    {
+        depDistance = 0;
+        SBToken = 0;
+        tokenType = TOKEN_NONE;
+    }
+    ~_SWSBInfo()
+    {
+    }
+} SWSBInfo;
 
 protected:
-    int ALUID = -1;
-    unsigned char depDistance = 0;
-    unsigned short SBToken = -1;
+    //unsigned char depDistance = 0;
     bool operandTypeIndicated = true;
     bool isClosestALUType_ = false;
 
-    struct DepToken {
-        unsigned short token;
-        SWSBTokenType type;
-    };
-    std::vector <DepToken> depTokens;
+    SWSBInfo  swsb;
 
 public:
-    void setDistance(unsigned char dep_distance) {depDistance = dep_distance;}
+
+    void setDistance(unsigned char dep_distance)
+    {
+        assert(swsb.depDistance <= 7);
+        swsb.depDistance = dep_distance;
+    }
+    unsigned char getDistance() const { return swsb.depDistance; }
+
+
+    void setToken(unsigned short token) {swsb.SBToken = token;}
+    unsigned short getToken() const { return swsb.SBToken; }
+    void setTokenType(SWSBTokenType type) {  swsb.tokenType = (unsigned short)type; }
+    SWSBTokenType getTokenType() const { return (SWSBTokenType)swsb.tokenType; }
+
+    void setSetToken(unsigned short token) {swsb.SBToken = token; swsb.tokenType = SB_SET;}
+    unsigned short getSetToken() const { if (swsb.tokenType == SB_SET) return swsb.SBToken; else return -1; }
+
+
     void setOperandTypeIndicated(bool indicated) { operandTypeIndicated = indicated; }
     void setIsClosestALUType(bool indicated) { isClosestALUType_ = indicated; }
-    void setToken(unsigned short token) {SBToken = token;}
-
-    void setDepToken(unsigned short token, SWSBTokenType type)
-    {
-        for (DepToken &depToken : depTokens)
-        {
-            if (depToken.token == token)
-            {
-                if (depToken.type == AFTER_WRITE)
-                {
-                    return;
-                }
-                if (type == AFTER_WRITE)
-                {
-                    depToken.type = type;
-                }
-                return;
-            }
-        }
-
-        struct DepToken dt;
-        dt.token = token;
-        dt.type = type;
-        depTokens.push_back(dt);
-    }
-    void eraseDepToken(unsigned i)
-    {
-        depTokens.erase(depTokens.begin() + i);
-    }
 
     bool isOperandTypeIndicated() const {return operandTypeIndicated;}
     bool isClosestALUType() const { return isClosestALUType_; }
-    unsigned char getDistance() const { return depDistance; }
-    unsigned short getToken() const { return SBToken; }
-
-    size_t getDepTokenNum() const { return depTokens.size(); }
-    unsigned short getDepToken(unsigned int i, SWSBTokenType &type) const
-    {
-        type = depTokens[i].type;
-        return depTokens[i].token;
-    }
-
-    void setALUID(int i) { ALUID = i; }
-    int getALUID() const { return ALUID; }
 
 
 public:

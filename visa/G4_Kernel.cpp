@@ -1126,34 +1126,6 @@ void G4_Kernel::emit_RegInfoKernel(std::ostream& output)
     return;
 }
 
-void G4_Kernel::emit_dep(std::ostream& output)
-{
-    output << "//.platform " << getGenxPlatformString(fg.builder->getPlatform());
-    output << "\n" << "//.kernel ID 0x" << std::hex << getKernelID() << "\n";
-    output << std::dec << "\n";
-    int instOffset = 0;
-
-    for (BB_LIST_ITER itBB = fg.begin(); itBB != fg.end(); ++itBB)
-    {
-        for (INST_LIST_ITER itInst = (*itBB)->begin(); itInst != (*itBB)->end(); ++itInst)
-        {
-            G4_INST* inst = (*itInst);
-            if (inst->isLabel())
-            {
-                continue;
-            }
-            if (inst->getLexicalId() == -1)
-            {
-                continue;
-            }
-
-            (*itBB)->emitDepInfo(output, inst, instOffset);
-            instOffset += inst->isCompactedInst() ? 8 : 16;
-        }
-    }
-    return;
-}
-
 KernelDebugInfo* G4_Kernel::getKernelDebugInfo()
 {
     if (kernelDbgInfo == nullptr)

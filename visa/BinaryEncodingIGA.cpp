@@ -627,7 +627,8 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
 void BinaryEncodingIGA::SetSWSB(G4_INST *inst, iga::SWSB &sw)
 {
     // Set token, e.g. $0
-    if (inst->tokenHonourInstruction() && (inst->getToken() != (unsigned short)-1))
+    using SWSBTokenType = vISA::G4_INST::SWSBTokenType;
+    if (inst->tokenHonourInstruction() && (inst->getTokenType() == SWSBTokenType::SB_SET))
     {
         sw.tokenType = SWSB::TokenType::SET;
         sw.sbid = inst->getToken();
@@ -644,29 +645,19 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, iga::SWSB &sw)
     }
 
     // Set token dependency, e.g. $1.src
-    if (inst->getDepTokenNum())
+    if (inst->getTokenType() == SWSBTokenType::AFTER_READ ||
+        inst->getTokenType() == SWSBTokenType::AFTER_WRITE)
     {
-        assert(sw.tokenType != SWSB::TokenType::SET &&
-               "unexpect SWSB dependence type");
-        assert(inst->getDepTokenNum() == 1 &&
-            "More than one token dependence in one instruction");
-
-        using SWSBTokenType = vISA::G4_INST::SWSBTokenType;
-
-        for (int i = 0; i < (int)inst->getDepTokenNum(); i++)
+        uint8_t token = (uint8_t)inst->getToken();
+        if (inst->getTokenType() == SWSBTokenType::AFTER_READ)
         {
-            SWSBTokenType type = SWSBTokenType::TOKEN_NONE;
-            uint8_t token = (uint8_t)inst->getDepToken(i, type);
-            if (type == SWSBTokenType::AFTER_READ)
-            {
-                sw.tokenType = SWSB::TokenType::SRC;
-            }
-            else if (type == SWSBTokenType::AFTER_WRITE)
-            {
-                sw.tokenType = SWSB::TokenType::DST;
-            }
-            sw.sbid = token;
+            sw.tokenType = SWSB::TokenType::SRC;
         }
+        else if (inst->getTokenType() == SWSBTokenType::AFTER_WRITE)
+        {
+            sw.tokenType = SWSB::TokenType::DST;
+        }
+        sw.sbid = token;
     }
     return;
 }

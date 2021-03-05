@@ -336,6 +336,12 @@ namespace vISA
         bool          hasFollowDistOneAReg = false;
         bool          followDistOneAReg = false;
 
+        struct DepToken {
+            unsigned short token;
+            SWSBTokenType type;
+        };
+        std::vector <DepToken> depTokens;
+
     public:
         std::vector<G4_INST *> instVec;
         SBDEP_VECTOR   succs;          // A list of node's successors in dependence graph
@@ -548,6 +554,41 @@ namespace vISA
             {
                 return SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
             }
+        }
+
+        void setDepToken(unsigned short token, SWSBTokenType type)
+        {
+            for (DepToken& depToken : depTokens)
+            {
+                if (depToken.token == token)
+                {
+                    if (depToken.type == SWSBTokenType::AFTER_WRITE)
+                    {
+                        return;
+                    }
+                    if (type == SWSBTokenType::AFTER_WRITE)
+                    {
+                        depToken.type = type;
+                    }
+                    return;
+                }
+            }
+
+            struct DepToken dt;
+            dt.token = token;
+            dt.type = type;
+            depTokens.push_back(dt);
+        }
+        void eraseDepToken(unsigned i)
+        {
+            depTokens.erase(depTokens.begin() + i);
+        }
+
+        size_t getDepTokenNum() const { return depTokens.size(); }
+        unsigned short getDepToken(unsigned int i, SWSBTokenType& type) const
+        {
+            type = depTokens[i].type;
+            return depTokens[i].token;
         }
 
         void setTokenReuseNode(SBNode *node)

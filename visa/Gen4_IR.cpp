@@ -3747,28 +3747,31 @@ void G4_INST::emit_options(std::ostream& output) const
         dists << '@' << (int)getDistance();
         emitOption(dists.str());
     }
-    if (tokenHonourInstruction() && getToken() != (unsigned short)-1) {
-        std::stringstream tks;
-        tks << '$' << (int)getToken();
-        emitOption(tks.str());
-    }
 
-    if (getDepTokenNum() > 0)  {
-        for (size_t i = 0; i < getDepTokenNum(); i++) {
-            SWSBTokenType tkType;
-            auto id = getDepToken(i, tkType);
-            std::stringstream tks;
-            tks << '$' << (int)id;
-            switch (tkType) {
-            case TOKEN_NONE:               break;
-            case AFTER_READ:  tks << ".R"; break;
-            case AFTER_WRITE: tks << ".W"; break;
-            case READ_ALL:    tks << ".R*"; break;
-            case WRITE_ALL:   tks << ".W*"; break;
-            default:          tks << ".??"; break;
-            }
-            emitOption(tks.str());
+    std::stringstream tks;
+    std::string tks1;
+    auto id = getToken();
+    SWSBTokenType tkType = getTokenType();
+    switch (tkType) {
+    case TOKEN_NONE:
+    case SB_SET:      break;
+    case AFTER_READ:  tks1 = ".R"; break;
+    case AFTER_WRITE: tks1 = ".W"; break;
+    case READ_ALL:    tks1 = ".R*"; break;
+    case WRITE_ALL:   tks1 = ".W*"; break;
+    default:          tks1 = ".??"; break;
+    }
+    if (tkType != TOKEN_NONE)
+    {
+        {
+            tks << '$' << (int)id << tks1;
         }
+
+        if (tks1.size())
+        {
+            tks << tks1;
+        }
+        emitOption(tks.str());
     }
 
     ////////////////////////////////////////////////
@@ -8326,10 +8329,8 @@ void G4_INST::inheritSWSBFrom(const G4_INST* inst)
     setDistance(inst->getDistance());
     setLexicalId(inst->getLexicalId());
 
-    for (size_t i = 0; i < inst->getDepTokenNum(); i++)
-    {
-        SWSBTokenType type = TOKEN_NONE;
-        unsigned short token = inst->getDepToken(i, type);
-        setDepToken(token, type);
-    }
+    unsigned short token = inst->getToken();
+    setToken(token);
+    SWSBTokenType type = inst->getTokenType();
+    setTokenType(type);
 }
