@@ -4416,6 +4416,10 @@ void GlobalRA::expandSpillNonStackcall(
                 inst->getDst(), headerOpnd, payloadToUse, msgDescImm,
                 inst->getOption(), msgDesc, extDesc);
 
+            std::stringstream comments;
+            comments << "scratch space spill: " << payloadToUse->getTopDcl()->getName() << " from offset[" << offset << "x32]";
+            sendInst->setComments(comments.str());
+
             instIt = bb->insertBefore(instIt, sendInst);
 
             numRows -= getPayloadSizeGRF(numRows);
@@ -4600,6 +4604,10 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
              auto sendInst = builder->createInternalSendInst(nullptr,
                  G4_send, g4::SIMD16, fillDst, headerOpnd, msgDescImm, inst->getOption(),
                  msgDesc);
+
+             std::stringstream comments;
+             comments << "scratch space fill: " << inst->getDst()->getTopDcl()->getName() << " from offset[" << offset << "x32]";
+             sendInst->setComments(comments.str());
 
              instIt = bb->insertBefore(instIt, sendInst);
 
