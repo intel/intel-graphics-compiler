@@ -5253,7 +5253,7 @@ void Interference::dumpInterference() const
                 lrs[j]->getVar()->emit(std::cout);
             }
         }
-        std::cout << "\n";
+        std::cout << "\n\n";
     }
 }
 
@@ -6517,9 +6517,6 @@ bool GraphColor::regAlloc(
     //
     intf.init(mem);
     intf.computeInterference();
-#ifdef DEBUG_VERBOSE_ON
-    intf.dumpInterference();
-#endif
 
     TIME_SCOPE(COLORING);
     //
@@ -6534,6 +6531,9 @@ bool GraphColor::regAlloc(
         computeDegreeForARF();
     }
     computeSpillCosts(useSplitLLRHeuristic);
+
+    if (kernel.getOption(vISA_DumpRAIntfGraph))
+        intf.dumpInterference();
 
     //
     // determine coloring order
@@ -9362,9 +9362,9 @@ int GlobalRA::coloringRegAlloc()
                     Interference intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), *this);
                     intf.init(mem);
                     intf.computeInterference();
-#ifdef DEBUG_VERBOSE_ON
-                    intf.dumpInterference();
-#endif
+
+                    if(kernel.getOption(vISA_DumpRAIntfGraph))
+                        intf.dumpInterference();
                     intf.linearScanVerify();
                 }
                 return VISA_SUCCESS;

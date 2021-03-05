@@ -1383,30 +1383,30 @@ void LiveRange::allocForbiddenCalleeSave(Mem_Manager& mem, G4_Kernel* kernel)
 void LiveRange::dump() const
 {
     G4_Declare* decl = var->getDeclare();
-    DEBUG_EMIT(this);
-    DEBUG_MSG(" : ");
+    this->emit(std::cout);
+    std::cout << " : ";
     //
     // print alignment
     //
-    DEBUG_MSG("\t");
+    std::cout << "\t";
     if (gra.getSubRegAlign(decl) == Any)
     {
-        DEBUG_MSG("\t");
+        std::cout << "\t";
     }
     else {
-        DEBUG_MSG(gra.getSubRegAlign(decl) << "_words SubReg_Align");
+        std::cout  << gra.getSubRegAlign(decl) << "_words SubReg_Align";
     }
     //
     // dump number of registers that are needed
     //
     if (decl->getRegFile() == G4_ADDRESS)
     {
-        DEBUG_MSG(" + " << (IS_DTYPE(decl->getElemType()) ? 2 * decl->getNumElems() : decl->getNumElems()) << " regs");
+        std::cout << " + " << (IS_DTYPE(decl->getElemType()) ? 2 * decl->getNumElems() : decl->getNumElems()) << " regs";
     }
     else
     {
-        DEBUG_MSG("\t(" << decl->getNumRows() << "x" << decl->getNumElems() << "):"
-            << TypeSymbol(decl->getElemType()));
+        std::cout << "\t(" << decl->getNumRows() << "x" << decl->getNumElems() << "):"
+            << TypeSymbol(decl->getElemType());
     }
 }
 
