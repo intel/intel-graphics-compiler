@@ -830,6 +830,10 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
                             WI->isUniform(Step)) {
                             auto Op0 = ICmp->getOperand(0);
                             auto Op1 = ICmp->getOperand(1);
+                            if (SExtInst *SI0 = dyn_cast<SExtInst>(Op0))
+                                Op0 = SI0->getOperand(0);
+                            if (SExtInst *SI1 = dyn_cast<SExtInst>(Op1))
+                                Op1 = SI1->getOperand(0);
                             if (Op0 != Next && Op0 != Curr)
                                 std::swap(Op0, Op1);
                             // Skip non-uniform loop which only terminates on
