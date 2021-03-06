@@ -4873,17 +4873,8 @@ namespace IGC
                         symbols.global.emplace_back((vISA::GenSymType)sEntry.s_type,
                             sEntry.s_offset, sEntry.s_size, name.str());
                     else
-                    {
-                        // Global constants and string literals
-                        Constant * initializer = pGlobal->getInitializer();
-                        ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer);
-                        if (cds && (cds->isCString() || cds->isString()))
-                            symbols.globalStringConst.emplace_back((vISA::GenSymType)sEntry.s_type,
-                                sEntry.s_offset, sEntry.s_size, name.str());
-                        else
-                            symbols.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
-                                sEntry.s_offset, sEntry.s_size, name.str());
-                    }
+                        symbols.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
+                            sEntry.s_offset, sEntry.s_size, name.str());
                 }
                 symbolTable.push_back(sEntry);
             }

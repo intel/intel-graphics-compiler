@@ -392,12 +392,6 @@ void ZEBinaryBuilder::addSymbols(
             getSymbolElfBinding(sym), getSymbolElfType(sym),
             (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalConstSectID);
 
-    // add symbols defined in global string constant section
-    for (auto sym : symbols.globalStringConst)
-        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-            getSymbolElfBinding(sym), getSymbolElfType(sym),
-            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mConstStringSectID);
-
     // add symbols defined in global section
     for (auto sym : symbols.global)
         mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
