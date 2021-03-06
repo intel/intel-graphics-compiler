@@ -2626,7 +2626,12 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
   auto *LoPathResult = Builder.CreateAdd(VlzdLo, K32, "lower.lzd64.lores.");
   auto *Result =
       Builder.CreateSelect(FlagHiZero, LoPathResult, VlzdHi, "lower.lzd64.");
+  auto *CastedResult =
+      scalarizeOrVectorizeIfNeeded(cast<Instruction>(Result), Inst);
+  if (CastedResult)
+    Result = CastedResult;
   Inst->replaceAllUsesWith(Result);
+  Result->takeName(Inst);
   ToErase.push_back(Inst);
   return true;
 }
