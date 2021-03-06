@@ -25,6 +25,7 @@ IN THE SOFTWARE.
 #pragma once
 
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -135,6 +136,20 @@ namespace IGC {
         static const CName NONE;
     };
 
+    // As uniform is splitted into multiple ones, CVariable ctor's boolean uniform
+    // arg need changing. To avoid large changes, UniformArgWrap is used to allow
+    // both bool (existing one) or the newer WIBaseClass::WIDependancy to pass
+    // into CVariable's ctor.  When boolean is no longer passed in, this wrap class
+    // should be removed.
+    class UniformArgWrap {
+    public:
+        WIBaseClass::WIDependancy m_dep;
+
+        UniformArgWrap() : m_dep(WIBaseClass::RANDOM) {}
+        UniformArgWrap(WIBaseClass::WIDependancy d) : m_dep(d) {}
+        UniformArgWrap(bool b) : m_dep(b ? WIBaseClass::UNIFORM_THREAD : WIBaseClass::RANDOM) {}
+    };
+
     ///-----------------------------------------------------------------------------
     /// CVariable
     ///-----------------------------------------------------------------------------
@@ -161,12 +176,12 @@ namespace IGC {
         // variable, otherwise it's only to a part of it.
         CVariable(
             CVariable* var, VISA_Type type, uint16_t offset,
-            uint16_t numElements, bool uniform);
+            uint16_t numElements, UniformArgWrap uniform);
 
         // general variable
         CVariable(
             uint16_t nbElement,
-            bool uniform,
+            UniformArgWrap uniform,
             VISA_Type type,
             e_varType varType,
             e_alignment align,
@@ -202,7 +217,10 @@ namespace IGC {
         void SetAlign(e_alignment thisAlign) { m_align = thisAlign; }
 
         uint16_t GetNumberElement() const { return m_nbElement; }
-        bool IsUniform() const { return m_uniform; }
+        bool IsUniform() const { return WIAnalysis::isDepUniform(m_uniform); }  // uniform_thread or above
+        bool IsWorkGroupOrGlobalUniform() const { return IsWorkGroupUniform() || IsGlobalUniform(); }
+        bool IsWorkGroupUniform() const { return m_uniform == WIBaseClass::UNIFORM_WORKGROUP; }
+        bool IsGlobalUniform() const { return m_uniform == WIBaseClass::UNIFORM_GLOBAL; }
 
         uint GetSize() { return m_nbElement * GetCISADataTypeSize(m_type); }
         uint GetElemSize() { return GetCISADataTypeSize(m_type); }
@@ -218,7 +236,8 @@ namespace IGC {
         }
         bool IsImmediate() const
         {
-            IGC_ASSERT_MESSAGE((!m_isImmediate || (m_isImmediate && m_uniform)), "IsImmediate => IsUniform invariant broken");
+            IGC_ASSERT_MESSAGE((!m_isImmediate || (m_isImmediate && IsGlobalUniform())),
+                "IsImmediate => IsUniform invariant broken");
             return m_isImmediate;
         }
         bool IsVectorUniform() const { return m_uniformVector; }
@@ -328,8 +347,8 @@ namespace IGC {
         const VISA_Type     m_type;
         const e_varType     m_varType;
         e_alignment         m_align;
+        const WIBaseClass::WIDependancy  m_uniform;
 
-        const unsigned char m_uniform : 1;
         const unsigned char m_isImmediate : 1;
         const unsigned char m_subspanUse : 1;
         const unsigned char m_uniformVector : 1;

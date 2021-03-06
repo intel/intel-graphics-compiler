@@ -139,7 +139,7 @@ public:
         uint16_t nbElement,
         VISA_Type type,
         e_alignment align,
-        bool uniform,
+        UniformArgWrap uniform,
         const CName &name)
     {
         return GetNewVariable(nbElement, type, align, uniform, 1, name);
@@ -148,14 +148,14 @@ public:
         uint16_t nbElement,
         VISA_Type type,
         e_alignment align,
-        bool uniform,
+        UniformArgWrap uniform,
         uint16_t numberInstance,
         const CName &name);
     CVariable* GetNewVariable(const CVariable* from);
     CVariable* GetNewAddressVariable(
         uint16_t nbElement,
         VISA_Type type,
-        bool uniform,
+        UniformArgWrap uniform,
         bool vectorUniform,
         const CName &name);
     CVariable* GetNewVector(llvm::Value* val, e_alignment preferredAlign = EALIGN_AUTO);
@@ -179,6 +179,7 @@ public:
     uint        GetNbVectorElementAndMask(llvm::Value* value, uint32_t& mask);
     uint32_t    GetExtractMask(llvm::Value* value);
     uint16_t    AdjustExtractIndex(llvm::Value* value, uint16_t elemIndex);
+    WIBaseClass::WIDependancy GetDependency(llvm::Value* v) const;
     bool        GetIsUniform(llvm::Value* v) const;
     bool        InsideDivergentCF(llvm::Instruction* inst);
     CEncoder& GetEncoder();

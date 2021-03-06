@@ -69,7 +69,7 @@ namespace IGC
     {
     public:
         /// @brief describes the type of dependency on the work item
-        enum WIDependancy {
+        enum WIDependancy : uint8_t {
             UNIFORM_GLOBAL    = 0,  /// Same for all work-items within a shader.
             UNIFORM_WORKGROUP = 1,  /// Same for all work-items within a work group (compute).
             UNIFORM_THREAD    = 2,  /// Same for all work-items within a HW thread.

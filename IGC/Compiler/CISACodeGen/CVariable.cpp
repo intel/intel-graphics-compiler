@@ -54,7 +54,7 @@ void CVariable::ResolveAlias()
 ///
 CVariable::CVariable(
     uint16_t nbElement,
-    bool uniform,
+    UniformArgWrap uniform,
     VISA_Type type,
     e_varType varType,
     e_alignment align,
@@ -69,7 +69,7 @@ CVariable::CVariable(
     m_type(type),
     m_varType(varType),
     m_align(align),
-    m_uniform(uniform),
+    m_uniform(uniform.m_dep),
     m_isImmediate(false),
     m_subspanUse(false),
     m_uniformVector(vectorUniform),
@@ -113,7 +113,7 @@ CVariable::CVariable(
     VISA_Type type,
     uint16_t offset,
     uint16_t numElements,
-    bool uniform) :
+    UniformArgWrap uniform) :
     m_immediateValue(0),
     m_alias(var),
     m_aliasOffset(offset),
@@ -121,7 +121,7 @@ CVariable::CVariable(
     m_type(type),
     m_varType(EVARTYPE_GENERAL),
     m_align(updateAlign(var->m_align, offset)),
-    m_uniform(uniform),
+    m_uniform(uniform.m_dep),
     m_isImmediate(false),
     m_subspanUse(var->m_subspanUse),
     m_uniformVector(false),
@@ -152,7 +152,7 @@ CVariable::CVariable(
     m_numberOfInstance(1),
     m_type(type),
     m_varType(EVARTYPE_GENERAL),
-    m_uniform(true),
+    m_uniform(WIBaseClass::UNIFORM_GLOBAL),
     m_isImmediate(true),
     m_subspanUse(false),
     m_uniformVector(false),

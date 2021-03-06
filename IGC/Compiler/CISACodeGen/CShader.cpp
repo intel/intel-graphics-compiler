@@ -927,7 +927,7 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type, bool isCod
 
 CVariable* CShader::GetNewVariable(
     uint16_t nbElement, VISA_Type type, e_alignment align,
-    bool isUniform, uint16_t numberInstance, const CName &name)
+    UniformArgWrap isUniform, uint16_t numberInstance, const CName &name)
 {
     e_varType varType;
     if (type == ISA_TYPE_BOOL)
@@ -954,7 +954,7 @@ CVariable* CShader::GetNewVariable(const CVariable* from)
 
 CVariable* CShader::GetNewAddressVariable(
     uint16_t nbElement, VISA_Type type,
-    bool isUniform, bool isVectorUniform,
+    UniformArgWrap isUniform, bool isVectorUniform,
     const CName &name)
 {
     CVariable* var = new (Allocator) CVariable(
@@ -963,6 +963,11 @@ CVariable* CShader::GetNewAddressVariable(
         isVectorUniform, 1, name);
     encoder.CreateVISAVar(var);
     return var;
+}
+
+WIBaseClass::WIDependancy CShader::GetDependency(Value* v) const
+{
+    return m_WI ? (m_WI->whichDepend(v)) : WIBaseClass::RANDOM;
 }
 
 bool CShader::GetIsUniform(llvm::Value* v) const
@@ -2534,7 +2539,9 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 {
                     // Map the entire vector value to the CVar
                     unsigned numElements = (unsigned)cast<VectorType>(value->getType())->getNumElements();
-                    var = GetNewVariable(numElements, ISA_TYPE_UQ, (GetContext()->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD, true, 1, valName);
+                    var = GetNewVariable(numElements, ISA_TYPE_UQ,
+                        (GetContext()->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD,
+                        WIBaseClass::UNIFORM_GLOBAL, 1, valName);
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
 
                     // Copy over each element
@@ -2550,7 +2557,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 }
                 else
                 {
-                    var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, valName);
+                    var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, WIBaseClass::UNIFORM_GLOBAL, 1, valName);
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
                     return var;
                 }
@@ -3078,7 +3085,8 @@ bool CShader::isUnpacked(llvm::Value* value)
 CVariable* CShader::GetNewVector(llvm::Value* value, e_alignment preferredAlign)
 {
     VISA_Type type = GetType(value->getType());
-    bool uniform = GetIsUniform(value);
+    WIBaseClass::WIDependancy dep = GetDependency(value);
+    bool uniform = WIAnalysis::isDepUniform(dep);
     uint32_t mask = 0;
     bool isUnpackedBool = isUnpacked(value);
     uint8_t multiplier = (isUnpackedBool) ? 2 : 1;
@@ -3113,7 +3121,7 @@ CVariable* CShader::GetNewVector(llvm::Value* value, e_alignment preferredAlign)
             nbElement,
             type,
             align,
-            uniform,
+            dep,
             numberOfInstance,
             valueName);
     if (isUnpackedBool)
