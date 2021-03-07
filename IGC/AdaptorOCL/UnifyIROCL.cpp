@@ -511,7 +511,10 @@ static void CommonOCLBasedPasses(
     mpm.add(createIGCInstructionCombiningPass());
 
     // "false" to createScalarizerPass() means that vector load/stores are NOT scalarized
-    mpm.add(createScalarizerPass(false));
+    if (IGC_IS_FLAG_ENABLED(DisableScalarizerGPGPU) == false)
+    {
+        mpm.add(createScalarizerPass(false));
+    }
 
     // Create a dummy kernel to attach the symbol table if necessary
     // Only needed if function pointers, externally linked functions, or relocatable global variables are present
