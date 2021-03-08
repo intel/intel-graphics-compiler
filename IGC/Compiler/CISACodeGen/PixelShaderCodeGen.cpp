@@ -144,8 +144,6 @@ void CPixelShader::AllocatePSPayload()
     IGC_ASSERT(m_R0);
     if (encoder.IsCodePatchCandidate())
     {
-        encoder.SetPayloadSectionAsPrimary();
-
         // For the payload section, we need to mark inputs to be outputs
         // so that inputs will be alive across the entire payload section
         forceLiveOut = true;
@@ -323,7 +321,6 @@ void CPixelShader::AllocatePSPayload()
     // The preallocation must be aligned across contexts to ensure it is patchable.
     if (encoder.IsCodePatchCandidate())
     {
-        encoder.SetPayloadSectionAsSecondary();
         if (encoder.HasPrevKernel())
         {
             // Get previous context's PayloadEnd to ensure it is patchable
@@ -382,10 +379,6 @@ void CPixelShader::AllocatePSPayload()
     }
 
     offset = payloadEnd;
-    if (encoder.IsCodePatchCandidate())
-    {
-        encoder.SetPayloadSectionAsPrimary();
-    }
 
     // create output registers for coarse phase
     calignmentSize as;
@@ -410,10 +403,6 @@ void CPixelShader::AllocatePSPayload()
             GetDispatchSignature().CoarseMask = true;
         }
         offset += m_CoarseoMask->GetSize();
-    }
-    if (encoder.IsCodePatchCandidate())
-    {
-        encoder.SetPayloadSectionAsSecondary();
     }
     ProgramOutput()->m_scratchSpaceUsedBySpills = (offset >= encoder.GetVISAKernel()->getNumRegTotal() * getGRFSize());
 }
