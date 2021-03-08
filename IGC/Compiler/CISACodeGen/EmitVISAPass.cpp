@@ -8592,6 +8592,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dummyInst:
         emitDummyInst(inst);
         break;
+    case GenISAIntrinsic::GenISA_vectorUniform:
+        break;  // pseudo instruction, do nothing
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission, cases include:
@@ -10881,6 +10883,19 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         }
         else
         {
+            // if the vector is uniform, laid-out horizontally in GRF, the per-lane
+            // offset needs to be ajusted as if the offset starts from lane-0 so that
+            // we can generate those scatter-mov(smov) in simd8/simd16 mode still end up
+            // with the correct address for the real active lane
+            if (pInstVar->IsUniform())
+            {
+                uint mask = vecTypeSize * numLanes(std::min(m_currShader->m_SIMDSize, SIMDMode::SIMD16));
+                mask = ~(mask - 1);
+                CVariable* pMask = m_currShader->ImmToVariable(mask, ISA_TYPE_UW);
+                m_encoder->And(pOffset2, pOffset2, pMask);
+                m_encoder->Push();
+            }
+
             // Lower execution size to avoid complains of indirectly addressing across more than two GRFs.
             // One example is below:
             //(W)     mov (1|M0)              f1.1<1>:uw    0x100:uw
