@@ -949,10 +949,11 @@ static const unsigned int HWORD_BYTE_SIZE = 32;
 G4_INST* IR_Builder::createSpill(
     G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
     G4_ExecSize execSize,
-    uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
+    uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
+    bool addToInstList)
 {
     G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
-        header, payload, nullptr, option, true);
+        header, payload, nullptr, option, addToInstList);
     spill->asSpillIntrinsic()->setFP(fp);
     spill->asSpillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF<Type_UB>()));
@@ -963,13 +964,13 @@ G4_INST* IR_Builder::createSpill(
 G4_INST* IR_Builder::createSpill(
     G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
     G4_ExecSize execSize, uint16_t numRows, uint32_t offset,
-    G4_Declare* fp, G4_InstOption option)
+    G4_Declare* fp, G4_InstOption option, bool addToInstList)
 {
     auto builtInR0 = getBuiltinR0();
     auto rd = getRegionStride1();
     auto srcRgnr0 = createSrc(builtInR0->getRegVar(), 0, 0, rd, Type_UD);
     G4_INST* spill = createIntrinsicInst(nullptr, Intrinsic::Spill, execSize, dst,
-        srcRgnr0, payload, nullptr, option, true);
+        srcRgnr0, payload, nullptr, option, addToInstList);
     spill->asSpillIntrinsic()->setFP(fp);
     spill->asSpillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF<Type_UB>()));
@@ -980,10 +981,11 @@ G4_INST* IR_Builder::createSpill(
 G4_INST* IR_Builder::createFill(
     G4_SrcRegRegion* header, G4_DstRegRegion* dstData,
     G4_ExecSize execSize,
-    uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option)
+    uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
+    bool addToInstList)
 {
     G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
-        header, nullptr, nullptr, option, true);
+        header, nullptr, nullptr, option, addToInstList);
     fill->asFillIntrinsic()->setFP(fp);
     fill->asFillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF<Type_UB>()));
@@ -994,13 +996,14 @@ G4_INST* IR_Builder::createFill(
 G4_INST* IR_Builder::createFill(
     G4_DstRegRegion* dstData,
     G4_ExecSize execSize,
-    uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option)
+    uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option,
+    bool addToInstList)
 {
     auto builtInR0 = getBuiltinR0();
     auto rd = getRegionStride1();
     auto srcRgnr0 = createSrc(builtInR0->getRegVar(), 0, 0, rd, Type_UD);
     G4_INST* fill = createIntrinsicInst(nullptr, Intrinsic::Fill, execSize, dstData,
-        srcRgnr0, nullptr, nullptr, option, true);
+        srcRgnr0, nullptr, nullptr, option, addToInstList);
 
     fill->asFillIntrinsic()->setFP(fp);
     fill->asFillIntrinsic()->setOffset((uint32_t)

@@ -6907,7 +6907,7 @@ void GlobalRA::stackCallProlog()
         G4_DstRegRegion* postDst = builder.createNullDst(Type_UD);
         G4_INST* store = nullptr;
         {
-            store = builder.createSpill(postDst, payloadSrc, G4_ExecSize(execSize), 1, 0, builder.getBESP(), InstOpt_WriteEnable);
+            store = builder.createSpill(postDst, payloadSrc, G4_ExecSize(execSize), 1, 0, builder.getBESP(), InstOpt_WriteEnable, false);
         }
         builder.setFDSpillInst(store);
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
@@ -6949,7 +6949,8 @@ void GlobalRA::saveRegs(
             builder.getRegionStride1(), Type_UD);
         G4_DstRegRegion* dst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
         G4_INST* spillIntrinsic = nullptr;
-        spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable);
+        spillIntrinsic = builder.createSpill(dst, sendSrc2, execSize, messageLength, frameOwordOffset/2, framePtr, InstOpt_WriteEnable, false);
+        spillIntrinsic->inheritDIFrom(*insertIt);
         bb->insertBefore(insertIt, spillIntrinsic);
         group.insert(spillIntrinsic);
     }
@@ -7032,7 +7033,8 @@ void GlobalRA::restoreRegs(
         dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         G4_DstRegRegion* dstRgn = builder.createDst(dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
         G4_INST* fillIntrinsic = nullptr;
-        fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable);
+        fillIntrinsic = builder.createFill(dstRgn, execSize, responseLength, frameOwordOffset / 2, framePtr, InstOpt_WriteEnable, false);
+        fillIntrinsic->inheritDIFrom(*insertIt);
         bb->insertBefore(insertIt, fillIntrinsic);
         group.insert(fillIntrinsic);
     }
@@ -7791,6 +7793,7 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_DstRegRegion* dst = builder.createDst(pseudoVCADcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_INST* saveInst = builder.createInternalIntrinsicInst(
                 nullptr, Intrinsic::CallerSave, g4::SIMD1, dst, nullptr, nullptr, nullptr, InstOpt_WriteEnable);
+            saveInst->inheritDIFrom(fcallInst);
             INST_LIST_ITER callBBIt = bb->end();
             bb->insertBefore(--callBBIt, saveInst);
 
@@ -7815,6 +7818,7 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_INST* restoreInst =
                 builder.createInternalIntrinsicInst(
                     nullptr, Intrinsic::CallerRestore, g4::SIMD1, nullptr, src, nullptr, nullptr, InstOpt_WriteEnable);
+            restoreInst->inheritDIFrom(fcallInst);
             retBB->insertBefore(retBBIt, restoreInst);
         }
     }
@@ -9730,9 +9734,7 @@ int GlobalRA::coloringRegAlloc()
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||
-                    builder.getOption(vISA_FastSpill) || fastCompile || builder.getOption(vISA_Debug) ||
-                    (!useScratchMsgForSpill
-                        );
+                    builder.getOption(vISA_FastSpill) || fastCompile || builder.getOption(vISA_Debug);
 
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
                 {
@@ -12445,6 +12447,57 @@ unsigned GraphColor::edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2)
     }
     MUST_BE_TRUE(false, "Found unsupported ARF reg type in register allocation!");
     return 0;
+}
+
+void GlobalRA::fixSrc0IndirFcall()
+{
+    // Indirect calls look like:
+    // mov (1|NM) V10    0x123456:ud
+    // fcall (1) dst     V10 <-- V10 which is src0 contains %ip to jump to
+    //
+    // In this function, we want to set V10 to r125.0 which is same as dst of fcall
+    // as per ABI. This way, when inserting save/restore code around fcall, no
+    // special checks are needed to handle V10.
+    //
+    // But this works only if V10 is a local. If it not a local we create a mov
+    // that copies V10 in to a new temp variable. And then we map this temp
+    // variable to r125.0. Hopefully V10 being global would be a rare occurence.
+    for (auto bb : kernel.fg)
+    {
+        if (bb->isEndWithFCall())
+        {
+            auto fcall = bb->back()->asCFInst();
+            if (!fcall->getSrc(0) ||
+                !fcall->getSrc(0)->isSrcRegRegion())
+                continue;
+
+            auto src0Rgn = fcall->getSrc(0)->asSrcRegRegion();
+            auto src0Dcl = src0Rgn->getBase()->asRegVar()->getDeclare();
+            auto src0TopDcl = src0Rgn->getTopDcl();
+
+            if (src0Dcl != src0TopDcl ||
+                !isBlockLocal(src0TopDcl) ||
+                src0TopDcl->getNumElems() > 1)
+            {
+                // create a copy
+                auto tmpDcl = kernel.fg.builder->createHardwiredDeclare(1, src0Rgn->getType(), kernel.getFPSPGRF(),
+                    IR_Builder::SubRegs_Stackcall::Ret_IP);
+                auto dst = kernel.fg.builder->createDst(tmpDcl->getRegVar(), src0Rgn->getType());
+                auto src = kernel.fg.builder->duplicateOperand(src0Rgn);
+                auto copy = kernel.fg.builder->createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, false);
+                auto iter = std::find_if(bb->begin(), bb->end(), [](G4_INST* inst) { return inst->isFCall(); });
+                bb->insertBefore(iter, copy);
+                auto newSrc = kernel.fg.builder->createSrc(tmpDcl->getRegVar(), 0, 0, kernel.fg.builder->getRegionScalar(),
+                    src0Rgn->getType());
+                fcall->setSrc(newSrc, 0);
+            }
+            else
+            {
+                src0TopDcl->getRegVar()->setPhyReg(fcall->getDst()->getBase()->asRegVar()->getPhyReg(),
+                    fcall->getDst()->getBase()->asRegVar()->getPhyRegOff());
+            }
+        }
+    }
 }
 
 bool dump(const char* s, LiveRange** lrs, unsigned size)
