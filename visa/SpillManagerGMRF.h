@@ -593,6 +593,8 @@ private:
         }
     }
 
+    void populateDefsTable();
+
     // Data
     GlobalRA&                gra;
     IR_Builder *             builder_;
@@ -622,6 +624,8 @@ private:
 
     const Interference *     spillIntf_;
     vISA::Mem_Manager              mem_;
+
+    std::unordered_map<G4_Declare*, unsigned int> VarDefs;
 
     // The number of GRF spill.
     unsigned numGRFSpill = 0;
