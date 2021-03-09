@@ -494,7 +494,6 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <oword_mod>           OwordModifier
 %type <StateVar>            DstStateOperand
 %type <StateVar>            SrcStateOperand
-%type <StateVar>            StateOperand
 %type <RawVar>              RawOperand
 %type <RawVar>              RawOperandNonNull
 %type <intval>              RawOperandOffsetSuffix
@@ -1574,12 +1573,16 @@ VMEOpndFBR: LPAREN VecSrcOperand_G_I_IMM COMMA VecSrcOperand_G_I_IMM COMMA VecSr
         $$.cisa_fbrSubPredMode_opnd = $6.cisa_gen_opnd;
     }
 
-SrcStateOperand: StateOperand
+SrcStateOperand:
+  Var LPAREN IntExp RPAREN
+    {
+        MUST_HOLD($3 < 0x100, "offset out of bounds");
+        $$.offset = (unsigned char)$3;
+        ABORT_ON_FAIL($$.cisa_gen_opnd = pBuilder->CISA_create_state_operand($1, (unsigned char)$3, CISAlineno, false));
+    }
 
-DstStateOperand: StateOperand
-
-StateOperand:
-    Var LPAREN IntExp RPAREN
+DstStateOperand:
+  Var LPAREN IntExp RPAREN
     {
         MUST_HOLD($3 < 0x100, "offset out of bounds");
         $$.offset = (unsigned char)$3;
