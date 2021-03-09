@@ -36,7 +36,7 @@ namespace IGC
         memset(&waTable, 0, sizeof(WA_TABLE));
         WA_INIT_PARAM      stWaInitParam = {};
         stWaInitParam.ePlatformType = platform->getPlatformInfo().ePlatformType;
-        if (IGC_GET_FLAG_VALUE(OverrideRevIdForWA))
+        if (IGC_GET_FLAG_VALUE(OverrideRevIdForWA)!=0xff)
             platform->OverrideRevId(IGC_GET_FLAG_VALUE(OverrideRevIdForWA));
         if (IGC_GET_FLAG_VALUE(OverrideDeviceIdForWA))
             platform->OverrideDeviceId(IGC_GET_FLAG_VALUE(OverrideDeviceIdForWA));
