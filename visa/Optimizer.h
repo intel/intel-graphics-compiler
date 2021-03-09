@@ -257,7 +257,7 @@ private:
 
     void insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it);
 
-    void insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it);
+    void insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it, bool newBB);
 
     void insertDummyMov(G4_BB* bb, INST_LIST_ITER inst_it, G4_Operand* opnd);
     void insertDummyMovForHWRSWA();

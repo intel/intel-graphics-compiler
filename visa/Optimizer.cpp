@@ -496,19 +496,20 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
     bb->insertBefore(inst_it, movInst);
 }
 
-void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it)
+void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it, bool newBB)
 {
-    const RegionDesc* region = builder.createRegionDesc(8, 8, 1);
+    const RegionDesc* region = builder.createRegionDesc(4, 4, 1);
 
     unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
 
-    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, rsReg, 0);
-    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, rsReg, 0);
+    auto src0Dcl_0 = builder.createHardwiredDeclare(4, Type_W, rsReg, 0);
+    auto src0Dcl_1 = builder.createHardwiredDeclare(4, Type_F, rsReg, 4);
+
     G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
-    G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
     G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
-    G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
     G4_SrcRegRegion* src2Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+    G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
     G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
 
     G4_DstRegRegion* dst0 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_0, 1);
@@ -520,17 +521,24 @@ void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it)
     auto dummyCondMod1 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
 
     auto cselInst0 = builder.createInternalInst(
-        nullptr, G4_csel, dummyCondMod0, g4::NOSAT, g4::SIMD8,
+        nullptr, G4_csel, dummyCondMod0, g4::NOSAT, g4::SIMD4,
         dst0, src0Opnd_0, src1Opnd_0, src2Opnd_0,
-        InstOpt_NoOpt);
-
+        InstOpt_WriteEnable);
     auto cselInst1 = builder.createInternalInst(
-        nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD8,
+        nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD4,
         dst1, src0Opnd_1, src1Opnd_1, src2Opnd_1,
-        InstOpt_NoOpt);
+        InstOpt_WriteEnable);
 
-    bb->insertBefore(inst_it, cselInst0);
-    bb->insertBefore(inst_it, cselInst1);
+    if (newBB)
+    {
+        bb->push_back(cselInst0);
+        bb->push_back(cselInst1);
+    }
+    else
+    {
+        bb->insertBefore(inst_it, cselInst0);
+        bb->insertBefore(inst_it, cselInst1);
+    }
 }
 
 void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *opnd)
@@ -556,6 +564,11 @@ void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *op
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
+    if (!VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344))
+    {
+        return;
+    }
+
     bool hasNonUniformBranch = false;
     bool hasPredicatedSendOrIndirect = false;
 
@@ -582,7 +595,7 @@ void Optimizer::insertDummyMovForHWRSWA()
             {
                 if (inst->isSend())
                 {
-                    insertDummyCsel(bb, curr_iter);
+                    insertDummyCsel(bb, curr_iter, false);
                     hasPredicatedSendOrIndirect = true;
                 }
             }
@@ -590,12 +603,73 @@ void Optimizer::insertDummyMovForHWRSWA()
             ++curr_iter;
         }
 
+        bool newBB = false;
         G4_INST* inst = (bb->getInstList().back());
         if (inst->isRSWADivergentInst() && !inst->asCFInst()->isUniform())
         {
             INST_LIST_ITER iter = bb->end();
             iter--;
-            insertDummyCsel(bb, iter);
+            if (iter != bb->begin())
+            {
+                INST_LIST_ITER preIter = iter;
+                preIter--;
+                G4_INST* preInst = (*preIter);
+                if (preInst->isLabel())
+                {
+                    bool hasJmpIPred = false;
+
+                    for (BB_LIST_ITER biter = bb->Preds.begin(), E1 = bb->Preds.end(); biter != E1; ++biter)
+                    {
+                        G4_BB* predBB = (*biter);
+                        G4_INST* predBBLastInst = NULL;
+                        if (!predBB->empty())
+                        {
+                            predBBLastInst = predBB->getInstList().back();
+                        }
+                        if (predBBLastInst && predBBLastInst->opcode() == G4_jmpi)
+                        {
+                            hasJmpIPred = true;
+                        }
+                    }
+                    G4_BB* wa_bb = hasJmpIPred ?
+                        kernel.fg.createNewBBWithLabel("WA_", preInst->getLineNo(), preInst->getCISAOff()) :
+                        kernel.fg.createNewBB();
+                    kernel.fg.insert(bb_it, wa_bb);
+                    G4_Label* newLabel = hasJmpIPred ? wa_bb->getLabel() : NULL;
+
+                    //replace bb with wa_bb in the pred BB of bb.
+                    for (BB_LIST_ITER biter = bb->Preds.begin(), E1 = bb->Preds.end(); biter != E1; ++biter)
+                    {
+                        G4_BB* predBB = (*biter);
+                        G4_INST* predBBLastInst = NULL;
+                        if (!predBB->empty())
+                        {
+                            predBBLastInst = predBB->getInstList().back();
+                        }
+                        if (predBBLastInst && predBBLastInst->opcode() == G4_jmpi)
+                        {
+                            assert(newLabel);
+                            predBBLastInst->setSrc(newLabel, 0);
+                        }
+
+                        for (BB_LIST_ITER succiter = predBB->Succs.begin(), E2 = predBB->Succs.end(); succiter != E2; ++succiter)
+                        {
+                            if (*succiter == bb)
+                            {
+                                *succiter = wa_bb;
+                            }
+                        }
+                        wa_bb->Preds.push_back(predBB);
+                    }
+                    wa_bb->Succs.push_back(bb);
+                    bb->Preds.clear();
+                    bb->Preds.push_back(wa_bb);
+                    newBB = true;
+                    bb = wa_bb;
+                }
+            }
+
+            insertDummyCsel(bb, iter, newBB);
             hasNonUniformBranch = true;
         }
     }

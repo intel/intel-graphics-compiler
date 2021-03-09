@@ -5209,7 +5209,7 @@ void HWConformity::conformBB(G4_BB* bb)
             avoidDstSrcOverlap(i, bb);
         }
 
-        if (builder.getOption(vISA_InsertDummyMovForHWRSWA))
+        if (builder.getOption(vISA_InsertDummyMovForHWRSWA) && VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344))
         {
             fixPredicateIndirectInst(i, bb);
         }
