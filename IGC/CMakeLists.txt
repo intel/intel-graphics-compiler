@@ -36,10 +36,7 @@
 #  - IGC_OPTION__OUTPUT_DIR
 #  - IGC_OPTION__USCLAUNCHER_TOOL for ILAdapter
 
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
-if (${CMAKE_VERSION} VERSION_GREATER "3.1")
-  cmake_policy(SET CMP0054 OLD) # Have CMake to automatically expand variables in strings
-endif()
+cmake_minimum_required(VERSION 3.13.4 FATAL_ERROR)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -48,10 +45,6 @@ project(IGC)
 
 if(UNIX)
   include(GNUInstallDirs)
-endif()
-
-if(POLICY CMP0058)
-    cmake_policy(SET CMP0058 NEW)
 endif()
 
 

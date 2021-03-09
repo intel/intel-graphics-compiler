@@ -92,10 +92,6 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   )
 
-cmake_policy(SET CMP0057 NEW)
-# cm offline compiler requires -rdynamic flag to be absent
-cmake_policy(SET CMP0065 NEW)
-
 include(AddLLVM)
 
 set(LLVM_MAIN_INCLUDE_DIR ${LLVM_INCLUDE_DIR})
