@@ -6859,11 +6859,11 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
                             inst->setSrc(insertMovBefore(instIter, 2, Type_F, bb), 2);
                         }
                     }
-                    // at this point src2 must be F. If dst is HF, it must be aligned to
+                    // at this point src2 must be F. Dst must be aligned to
                     // same subreg as src2 if src2 is non-scalar
                     bool nonScalarSrc2 = inst->getSrc(2)->isSrcRegRegion() &&
                         !inst->getSrc(2)->asSrcRegRegion()->getRegion()->isScalar();
-                    if (isLowPrecisionFloatTy(inst->getDst()->getType()) && nonScalarSrc2)
+                    if (nonScalarSrc2)
                     {
                         if (!builder.isOpndAligned(inst->getDst(), numEltPerGRF<Type_UB>()))
                         {
