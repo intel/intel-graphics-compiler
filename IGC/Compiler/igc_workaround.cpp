@@ -38,6 +38,8 @@ namespace IGC
         stWaInitParam.ePlatformType = platform->getPlatformInfo().ePlatformType;
         if (IGC_GET_FLAG_VALUE(OverrideRevIdForWA))
             platform->OverrideRevId(IGC_GET_FLAG_VALUE(OverrideRevIdForWA));
+        if (IGC_GET_FLAG_VALUE(OverrideDeviceIdForWA))
+            platform->OverrideDeviceId(IGC_GET_FLAG_VALUE(OverrideDeviceIdForWA));
         stWaInitParam.usRevId = platform->getPlatformInfo().usRevId;
         stWaInitParam.usRevId_PCH = platform->getPlatformInfo().usRevId_PCH;
         GT_SYSTEM_INFO sysInfo = platform->GetGTSystemInfo();

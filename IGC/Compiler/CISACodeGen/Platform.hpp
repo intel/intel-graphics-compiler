@@ -61,6 +61,13 @@ void OverrideRevId(unsigned short newRevId)
 {
     m_platformInfo.usRevId = newRevId;
 }
+
+void OverrideDeviceId(unsigned short newDeviceID)
+{
+	m_platformInfo.usDeviceID = newDeviceID;
+}
+
+
 void OverrideProductFamily(unsigned int productID)
 {
     PRODUCT_FAMILY eProd = static_cast<PRODUCT_FAMILY>(productID);
