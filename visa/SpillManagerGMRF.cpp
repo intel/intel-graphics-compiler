@@ -2804,47 +2804,6 @@ void SpillManagerGRF::insertSpillRangeCode(
         return;
     }
 
-    auto IsUniqueDef = [this, bb, spillDcl]()
-    {
-        // return true if spilled variable has a single def
-        // and it is not live-in to current bb (eg, loop, sub).
-        if (VarDefs[spillDcl] != 1)
-            return false;
-
-        // check whether variable is live-in to BB
-        if (lvInfo_->isLiveAtEntry(bb, spillDcl->getRegVar()->getId()))
-            return false;
-
-        return true;
-    };
-
-    auto PseudoKillFound = [spilledInstIter, bb, spillDcl]()
-    {
-        // Search upwards from spilledInstIter to find a pseudo kill.
-        // Return true if one is found, false otherwise.
-        // When a pseudo kill is found, it means read-modify-write is
-        // not needed.
-        auto bbBegin = bb->begin();
-        if (spilledInstIter == bbBegin)
-            return false;
-        auto it = spilledInstIter;
-        --it;
-        while (it != bbBegin)
-        {
-            auto inst = *it;
-            // check if adjacent instruction is a pseudo kill
-            if (inst->isPseudoKill())
-            {
-                if (inst->getDst()->getTopDcl() == spillDcl)
-                    return true;
-            }
-            else
-                return false;
-            --it;
-        }
-        return false;
-    };
-
     //subreg offset for new dst that replaces the spilled dst
     auto newSubregOff = 0;
 
@@ -2862,9 +2821,7 @@ void SpillManagerGRF::insertSpillRangeCode(
             createAndInitMHeader (
                 (G4_RegVarTransient *) spillRangeDcl->getRegVar());
 
-        bool needRMW = !PseudoKillFound() &&
-            !IsUniqueDef() &&
-            inst->isPartialWriteForSpill(!bb->isAllLaneActive());
+        bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive());
         if (needRMW)
         {
             sendInSpilledRegVarPortions(
@@ -2899,9 +2856,7 @@ void SpillManagerGRF::insertSpillRangeCode(
 
         // Unaligned region specific handling.
         unsigned int spillSendOption = InstOpt_WriteEnable;
-        if (!PseudoKillFound() &&
-            !IsUniqueDef() &&
-            shouldPreloadSpillRange(*spilledInstIter, bb)) {
+        if (shouldPreloadSpillRange(*spilledInstIter, bb)) {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
@@ -3918,31 +3873,6 @@ void SpillManagerGRF::runSpillAnalysis()
     }
 }
 
-void SpillManagerGRF::populateDefsTable()
-{
-    for (auto bb : gra.kernel.fg)
-    {
-        for (auto inst : *bb)
-        {
-            if (inst->isPseudoKill())
-                continue;
-
-            auto dst = inst->getDst();
-
-            if (dst && !dst->isNullReg())
-            {
-                auto topdcl = dst->getTopDcl();
-
-                if (topdcl)
-                {
-                    VarDefs[topdcl] += 1;
-                }
-            }
-        }
-    }
-}
-
-
 // Insert spill/fill code for all registers that have not been assigned
 // physical registers in the current iteration of the graph coloring
 // allocator.
@@ -3983,9 +3913,6 @@ bool SpillManagerGRF::insertSpillFillCode (
         return false;
     }
 
-    // Populate def table as it helps us decide whether read-modify-write is needed
-    populateDefsTable();
-
     // Insert spill/fill code for all basic blocks.
 
     FlowGraph& fg = kernel->fg;
@@ -3994,7 +3921,6 @@ bool SpillManagerGRF::insertSpillFillCode (
     {
         bbId_ = (*it)->getId();
         INST_LIST::iterator jt = (*it)->begin();
-        std::list<INST_LIST_ITER> pseudoKills;
 
         while (jt != (*it)->end()) {
             INST_LIST::iterator kt = jt;
@@ -4024,11 +3950,7 @@ bool SpillManagerGRF::insertSpillFillCode (
                     {
                         if (inst->isPseudoKill())
                         {
-                            // This pseudo kill corresponds to a spilled variable, so
-                            // it can be removed. But it is preserved till spill code
-                            // is inserted for the variable as it provides a hint to
-                            // spill insertion that read-modify-write is not needed.
-                            pseudoKills.push_back(jt);
+                            (*it)->erase(jt);
                             jt = kt;
                             continue;
                         }
@@ -4080,11 +4002,6 @@ bool SpillManagerGRF::insertSpillFillCode (
             }
 
             jt = kt;
-        }
-
-        for(auto killIt : pseudoKills)
-        {
-            (*it)->erase(killIt);
         }
     }
 
