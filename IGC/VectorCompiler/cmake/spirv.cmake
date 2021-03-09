@@ -92,7 +92,6 @@ endif()
 # Currently, release build of spirvdll is used to read spirv.
 # For debugging, one has to build debug version locally and replace release library.
 if(INSTALL_SPIRVDLL)
-if(NOT DEFINED SPIRV_PREBUILD_DIR AND NOT WIN32)
 include(ExternalProject)
 set(MAKE_EXEC ${CMAKE_MAKE_PROGRAM})
 message(STATUS "[VC] SPIRVDLL_SRC = ${SPIRVDLL_SRC}")
@@ -212,55 +211,4 @@ else()
   )
 
 endif(DEFINED SPIRVDLL_SRC)
-
-elseif(NOT TARGET SPIRVDLL)
-  if(DEFINED SPIRV_PREBUILD_DIR)
-    set(PREBUILT_SPIRVDLL_PATH "${SPIRV_PREBUILD_DIR}/lib" )
-  endif()
-  if(DEFINED WIN32)
-    set(SPIRVDLL_NAME "SPIRVDLL.dll")
-  else()
-    set(SPIRVDLL_NAME "libSPIRVDLL.so")
-  endif()
-  find_file(SPIRVDLL_LIB
-    ${SPIRVDLL_NAME}
-    PATHS ${PREBUILT_SPIRVDLL_PATH}
-    NO_DEFAULT_PATH
-  )
-  if(NOT SPIRVDLL_LIB)
-    message(FATAL_ERROR "[VC] Cannot find SPIRVDLL in prebuilds")
-  endif()
-  message(STATUS "[VC] Found SPIRVDLL: ${SPIRVDLL_LIB}")
-  if(WIN32)
-    if ("${vc_uses_custom_spirv}" STREQUAL "True")
-      set(INSTALL_SPRIRVDLL_NAME "SPIRVDLL.dll")
-      if("${_cpuSuffix}" STREQUAL "32")
-        set(INSTALL_SPRIRVDLL_NAME "SPIRVDLL32.dll")
-      endif()
-      install(FILES ${SPIRVDLL_LIB}
-        CONFIGURATIONS Debug Release
-        DESTINATION $<CONFIG>/lh64
-        RENAME ${INSTALL_SPRIRVDLL_NAME}
-      )
-    endif()
-  else()
-    install(FILES
-      ${SPIRVDLL_LIB}
-      DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-      COMPONENT igc-core
-      )
-  endif()
-else()
-  get_target_property(SPIRVDLL_IMPORTED SPIRVDLL IMPORTED)
-  if(SPIRVDLL_IMPORTED)
-    message(STATUS "[VC] SPIRVDLL is already imported")
-  else()
-    message(STATUS "[VC] SPIRVDLL will be built in-tree")
-    install(FILES
-      $<TARGET_FILE:SPIRVDLL>
-      DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-      COMPONENT igc-core
-    )
-  endif()
-endif()
 endif(INSTALL_SPIRVDLL)

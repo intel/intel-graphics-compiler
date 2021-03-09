@@ -41,11 +41,6 @@ set(IGC_BUILD__PROJ_LABEL__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}")
 message(STATUS "+++ Source/IGC/VectorCompiler +++")
 message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 
-
-igc_arch_get_cpu(_cpuSuffix)
-
-set(BUILD_EXTERNAL YES)
-
 # --- LLVM ---
 if(${IGC_OPTION__LLVM_FROM_SYSTEM} OR (WIN32 AND ${IGC_OPTION__LLVM_PREBUILDS}))
   message(STATUS "[VC] Using system llvm")
@@ -143,7 +138,8 @@ if(NOT DEFINED INTRSRC)
 endif()
 
 message(STATUS "[VC] Using vc-intrinsics source from: ${INTRSRC}")
-
+# Trick intrinsics.
+set(BUILD_EXTERNAL YES)
 # We are using prebuilt SPIRV and building intrinsics.
 set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
 add_subdirectory(${INTRSRC} ${INTRBUILD})
