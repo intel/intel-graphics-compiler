@@ -231,6 +231,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.ForceArrayPromotion = (Opts.Binary == vc::BinaryKind::CM);
   if (Opts.ForceLiveRangesLocalizationForAccUsage)
     BackendOpts.LocalizeLRsForAccUsage = true;
+  if (Opts.ForceDisableNonOverlappingRegionOpt)
+    BackendOpts.DisableNonOverlappingRegionOpt = true;
   return BackendOpts;
 }
 

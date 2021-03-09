@@ -173,6 +173,8 @@ static void adjustBinaryFormat(vc::BinaryKind &Binary) {
 static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(VCLocalizeAccUsage))
     Opts.ForceLiveRangesLocalizationForAccUsage = true;
+  if (IGC_IS_FLAG_ENABLED(VCDisableNonOverlappingRegionOpt))
+    Opts.ForceDisableNonOverlappingRegionOpt = true;
 }
 
 static void adjustDumpOptions(vc::CompileOptions &Opts) {

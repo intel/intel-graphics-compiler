@@ -86,6 +86,10 @@ static cl::opt<bool> LocalizeLRsForAccUsageOpt(
     "vc-acc-split", cl::init(false), cl::Hidden,
     cl::desc("Localize arithmetic chain to reduce accumulator usages"));
 
+static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
+    "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
+    cl::desc("Disable non-overlapping region optimization"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -102,7 +106,8 @@ GenXBackendOptions::GenXBackendOptions()
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
       GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
                           GlobalsLocalizationLimitOpt.getValue()},
-      LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt) {}
+      LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
+      DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {

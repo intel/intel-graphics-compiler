@@ -283,6 +283,7 @@ IN THE SOFTWARE.
 #include "GenXUtil.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Analysis/CFG.h"
+#include "vc/Support/BackendConfig.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -304,6 +305,7 @@ namespace {
 class GenXUnbaling : public FunctionGroupPass {
   enum { UNKNOWN, BEFORE, AFTER, NOTREACHES, REACHES };
 
+  const GenXBackendConfig *BackendConfig;
   GenXBaling *Baling;
   GenXLiveness *Liveness;
   GenXNumbering *Numbering;
@@ -349,6 +351,7 @@ namespace llvm { void initializeGenXUnbalingPass(PassRegistry &); }
 char GenXUnbaling::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXUnbaling, "GenXUnbaling", "GenXUnbaling", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
 INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
@@ -362,6 +365,7 @@ FunctionGroupPass *llvm::createGenXUnbalingPass() {
 void GenXUnbaling::getAnalysisUsage(AnalysisUsage &AU) const {
   FunctionGroupPass::getAnalysisUsage(AU);
   AU.addRequired<DominatorTreeGroupWrapperPass>();
+  AU.addRequired<GenXBackendConfig>();
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();
@@ -377,6 +381,7 @@ void GenXUnbaling::getAnalysisUsage(AnalysisUsage &AU) const {
  * runOnFunctionGroup : run the liveness analysis for this FunctionGroup
  */
 bool GenXUnbaling::runOnFunctionGroup(FunctionGroup &FG) {
+  BackendConfig = &getAnalysis<GenXBackendConfig>();
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();
@@ -1075,6 +1080,8 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
     return; // Can't deal with variable index
   Value *RdInput = StartWrInput;
   if (isa<UndefValue>(StartWrInput)) {
+    if (BackendConfig->disableNonOverlappingRegionOpt())
+      return;
     // In the case that the input to the start wrregion is undef, we need to
     // find a rdregion input that is the same type.
     RdInput = nullptr;

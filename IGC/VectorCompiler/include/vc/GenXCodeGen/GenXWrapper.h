@@ -83,6 +83,7 @@ struct CompileOptions {
   OptimizerLevel OptLevel = OptimizerLevel::Full;
   llvm::Optional<unsigned> StackMemSize;
   bool ForceLiveRangesLocalizationForAccUsage = false;
+  bool ForceDisableNonOverlappingRegionOpt = false;
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...

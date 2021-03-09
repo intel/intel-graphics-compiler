@@ -122,6 +122,10 @@ struct GenXBackendOptions {
   // Localize live ranges to reduce accumulator usage
   bool LocalizeLRsForAccUsage;
 
+  // Disable non-overlapping region transformation (the case with undef
+  // value in two-address operand)
+  bool DisableNonOverlappingRegionOpt;
+
   GenXBackendOptions();
 };
 
@@ -207,6 +211,10 @@ public:
 
   bool localizeLiveRangesForAccUsage() const {
     return Options.LocalizeLRsForAccUsage;
+  }
+
+  bool disableNonOverlappingRegionOpt() const {
+    return Options.DisableNonOverlappingRegionOpt;
   }
 };
 } // namespace llvm
