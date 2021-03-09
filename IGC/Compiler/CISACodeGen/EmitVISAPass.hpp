@@ -461,7 +461,7 @@ public:
     void SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSize, CVariable* payload, SIMDMode mode, uint half);
     template<size_t N>
     void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode);
-    CVariable* BroadcastIfUniform(CVariable* pVar);
+    CVariable* BroadcastIfUniform(CVariable* pVar, bool nomask = false);
     uint DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
     bool IsUndefOrZeroImmediate(const llvm::Value* value);
     inline bool isUndefOrConstInt0(const llvm::Value* val)
