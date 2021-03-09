@@ -10748,29 +10748,31 @@ bool EmitPass::IsIndirectAccess(llvm::Value* pointer)
 
     bool isIndirect = false;
     instrMap.try_emplace(inst, isIndirect);
-    for (unsigned int i = 0; i < inst->getNumOperands(); i++)
+
+    if (LoadInst* loadInst = dyn_cast<LoadInst>(inst))
     {
-        if (LoadInst* loadInst = dyn_cast<LoadInst>(inst->getOperand(i)))
+        isIndirect = true;
+    }
+    else if (CallInst* callInstr = dyn_cast<CallInst>(inst))
+    {
+        // if the call instruction isn't intrinsic we assume that it should be indirect
+        // because intrinsic is rather the simple arithmetic
+        GenIntrinsicInst* pIntrinsic = dyn_cast<GenIntrinsicInst>(callInstr);
+        if (pIntrinsic == nullptr)
         {
             isIndirect = true;
-            break;
         }
-        else if (CallInst* callInstr = dyn_cast<CallInst>(inst->getOperand(i)))
+    }
+
+    if (!isIndirect)
+    {
+        for (unsigned int i = 0; i < inst->getNumOperands(); i++)
         {
-            // if the call instruction isn't intrinsic we assume that it should be indirect
-            // because intrinsic is rather the simple arithmetic
-            GenIntrinsicInst* pIntrinsic = dyn_cast<GenIntrinsicInst>(callInstr);
-            if (pIntrinsic == nullptr)
+            if (IsIndirectAccess(inst->getOperand(i)))
             {
                 isIndirect = true;
+                break;
             }
-            break;
-        }
-
-        if (IsIndirectAccess(inst->getOperand(i)))
-        {
-            isIndirect = true;
-            break;
         }
     }
     instrMap.insert(std::make_pair(inst, isIndirect));
