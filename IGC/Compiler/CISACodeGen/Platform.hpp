@@ -313,9 +313,10 @@ bool SupportCPS() const
 
 bool supportsThreadCombining() const
 {
-    return !(!m_WaTable.WaEnablePooledEuFor2x6 &&
+    return (!(!m_WaTable.WaEnablePooledEuFor2x6 &&
         m_platformInfo.eProductFamily == IGFX_BROXTON &&
-        m_GTSystemInfo.SubSliceCount == 2);
+        m_GTSystemInfo.SubSliceCount == 2))
+        ;
 }
 
 bool enableMaxWorkGroupSizeCalculation() const
