@@ -2372,7 +2372,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(
                     headerOpnd = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), builder_->getRegionStride1());
             }
         }
-        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp, InstOpt_WriteEnable, true);
+        sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, execSize, height, off, fp, InstOpt_WriteEnable);
         sendInst->inheritDIFrom(curInst);
     }
     else
@@ -2435,7 +2435,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr (
             }
         }
         sendInst = builder_->createSpill(postDst, headerOpnd, srcOpnd, spillExecSize, (uint16_t)extMsgLength,
-            off, fp, static_cast<G4_InstOption>(option), true);
+            off, fp, static_cast<G4_InstOption>(option));
         sendInst->inheritDIFrom(curInst);
     }
     else
@@ -2618,7 +2618,7 @@ G4_INST * SpillManagerGRF::createFillSendInstr (
                 payload = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), builder_->getRegionStride1());
         }
     }
-    auto fillInst = builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable, true);
+    auto fillInst = builder_->createFill(payload, postDst, execSize, height, off, fp, InstOpt_WriteEnable);
     fillInst->inheritDIFrom(curInst);
     return fillInst;
 
@@ -2676,7 +2676,7 @@ G4_INST * SpillManagerGRF::createFillSendInstr(
     }
 
     unsigned responseLength = cdiv(segmentByteSize, REG_BYTE_SIZE);
-    auto fillInst = builder_->createFill(payload, postDst, execSize, responseLength, off, fp, InstOpt_WriteEnable, true);
+    auto fillInst = builder_->createFill(payload, postDst, execSize, responseLength, off, fp, InstOpt_WriteEnable);
     fillInst->inheritDIFrom(curInst);
     return fillInst;
 }

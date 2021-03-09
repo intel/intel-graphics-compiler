@@ -775,24 +775,21 @@ public:
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
         G4_ExecSize execSize,
-        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
-        bool addToInstList);
+        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option);
 
     G4_INST* createSpill(
         G4_DstRegRegion* dst, G4_SrcRegRegion* payload,
         G4_ExecSize execSize, uint16_t numRows, uint32_t offset,
-        G4_Declare* fp, G4_InstOption option, bool addToInstList);
+        G4_Declare* fp, G4_InstOption option);
 
 
     G4_INST* createFill(
         G4_SrcRegRegion* header,
         G4_DstRegRegion* dstData, G4_ExecSize execSize,
-        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option,
-        bool addToInstList);
+        uint16_t numRows, uint32_t offset, G4_Declare* fp, G4_InstOption option);
     G4_INST* createFill(
         G4_DstRegRegion* dstData, G4_ExecSize execSize,
-        uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option,
-        bool addToInstList);
+        uint16_t numRows, uint32_t offset, G4_Declare* fp , G4_InstOption option);
 
 
     // numberOfFlags MEANS NUMBER OF WORDS (e.g., 1 means 16-bit), not number of bits or number of data elements in operands.
