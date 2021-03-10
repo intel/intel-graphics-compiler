@@ -148,21 +148,8 @@ endif()
 if(LLVM_LINK_LLVM_DYLIB)
     # LLVM was built and configured in a way that tools (in our case IGC) should be linked
     # against single LLVM dynamic library.
-
-    # SET_LLVM_LIB_PATH is a CMake variable that can be passed in to specify the location
-    # to look for the LLVM .so. In some cases this is useful if multiple LLVM versions are installed
-    if(SET_LLVM_LIB_PATH)
-        set(IGC_BUILD__LLVM_LIBS_TO_LINK "${SET_LLVM_LIB_PATH}/libLLVM-${LLVM_VERSION_MAJOR}.so")
-        message(STATUS "[IGC] Link against specified LLVM dylib ${IGC_BUILD__LLVM_LIBS_TO_LINK}")
-    else()
-        find_library(IGC_BUILD__LLVM_LIBS_TO_LINK "libLLVM-${LLVM_VERSION_MAJOR}.so")
-        if(IGC_BUILD__LLVM_LIBS_TO_LINK)
-          message(STATUS "[IGC] Link against found LLVM dylib ${IGC_BUILD__LLVM_LIBS_TO_LINK}")
-        else()
-          message(FATAL_ERROR "[IGC] Could not find the LLVM dylib. Aborting.")
-        endif()
-    endif()
-
+    set(IGC_BUILD__LLVM_LIBS_TO_LINK "LLVM")
+    message(STATUS "[IGC] Link against LLVM dynamic library")
 else()
     # LLVM was built into multiple libraries (static or shared).
     message(STATUS "[IGC] Link against LLVM static or shared component libs")
