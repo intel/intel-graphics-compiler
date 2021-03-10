@@ -38,14 +38,6 @@ namespace FunctionMD {
 inline constexpr const char GenXKernelInternal[] = "genx.kernel.internal";
 }
 
-namespace InstMD {
-inline constexpr const char SVMBlockType[] = "SVMBlockType";
-}
-
-namespace ModuleMD {
-inline constexpr const char UseSVMStack[] = "genx.useGlobalMem";
-}
-
 namespace internal {
 
 namespace KernelMDOp {

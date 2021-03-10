@@ -3633,10 +3633,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     Value *V = CI;
     if (!AI.isRet())
       V = CI->getArgOperand(AI.getArgIdx());
-    auto *EltType = V->getType()->getScalarType();
-    if (auto *MDType = CI->getMetadata(InstMD::SVMBlockType))
-      EltType = cast<ValueAsMetadata>(MDType->getOperand(0).get())->getType();
-    unsigned ElBytes = getResultedTypeSize(EltType, DL);
+    unsigned ElBytes = getResultedTypeSize(V->getType()->getScalarType(), DL);
     switch (ElBytes) {
       // For N = 2 byte data type, use block size 1 and block count 2.
       // Otherwise, use block size N and block count 1.
