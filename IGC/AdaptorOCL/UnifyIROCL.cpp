@@ -510,10 +510,10 @@ static void CommonOCLBasedPasses(
     mpm.add(createSROAPass());
     mpm.add(createIGCInstructionCombiningPass());
 
-    // "false" to createScalarizerPass() means that vector load/stores are NOT scalarized
+    // true means selective scalarization
     if (IGC_IS_FLAG_ENABLED(DisableScalarizerGPGPU) == false)
     {
-        mpm.add(createScalarizerPass(false));
+        mpm.add(createScalarizerPass(true));
     }
 
     // Create a dummy kernel to attach the symbol table if necessary
