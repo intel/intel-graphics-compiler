@@ -519,12 +519,6 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
-    // Detect stack calls that use implicit args, and force inline them, since they are not supported
-    if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
-    {
-        pruneCallGraphForStackCalls(CG);
-    }
-
     if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE)
     {
         return false;
@@ -537,6 +531,12 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
         traveseCallGraphSCC(SCCNodes);
     }
 
+    // Detect stack calls that use implicit args, and force inline them, since they are not supported
+    if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
+    {
+        pruneCallGraphForStackCalls(CG);
+    }
+
     return false;
 }
 
@@ -545,6 +545,7 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
 bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
 {
     bool changed = false;
+    llvm::SmallSet<Function*, 16> PrunedFuncs;
     for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++)
     {
         Function* F = IT->getFunction();
@@ -556,21 +557,25 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
                 for (unsigned i = 0; i < IT.getPathLength(); i++)
                 {
                     Function* pFuncOnPath = IT.getPath(i)->getFunction();
-                    if (pFuncOnPath && pFuncOnPath->hasFnAttribute("visaStackCall"))
+                    if (pFuncOnPath)
                     {
                         if (pFuncOnPath->hasFnAttribute("forceRecurse"))
                         {
                             IGC_ASSERT_MESSAGE(0, "Cannot inline for recursion!");
                             return false;
                         }
-                        pFuncOnPath->removeFnAttr("visaStackCall");
-                        pFuncOnPath->removeFnAttr(llvm::Attribute::NoInline);
-                        pFuncOnPath->addFnAttr(llvm::Attribute::AlwaysInline);
+                        PrunedFuncs.insert(pFuncOnPath);
                         changed = true;
                     }
                 }
             }
         }
+    }
+    for (auto pF : PrunedFuncs)
+    {
+        pF->removeFnAttr("visaStackCall");
+        pF->removeFnAttr(llvm::Attribute::NoInline);
+        pF->addFnAttr(llvm::Attribute::AlwaysInline);
     }
     return changed;
 }
