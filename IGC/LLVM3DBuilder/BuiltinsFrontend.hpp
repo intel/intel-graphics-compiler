@@ -382,7 +382,7 @@ public:
         llvm::Value* offsetU,
         llvm::Value* offsetV,
         llvm::Value* offsetW,
-        llvm::Value* minlod = nullptr,
+        llvm::Value* minlod,
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
@@ -426,10 +426,9 @@ public:
         llvm::Value* int32_offsetU_358,
         llvm::Value* int32_offsetV_359,
         llvm::Value* int32_offsetW_359,
-        llvm::Value* minlod = nullptr,
+        llvm::Value* minlod,
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
-
 
     llvm::CallInst* Create_SAMPLEDC(
         llvm::Value* float_ref,
@@ -480,10 +479,9 @@ public:
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
         llvm::Value* int32_offsetW,
-        llvm::Value* minlod = nullptr,
+        llvm::Value* minlod,
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
-
 
     llvm::CallInst* Create_SAMPLEL(
         llvm::Value* float_lod_0,
@@ -510,7 +508,7 @@ public:
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
         llvm::Value* int32_offsetR,
-        llvm::Value* minlod = nullptr,
+        llvm::Value* minlod,
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
@@ -542,7 +540,6 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
-
     llvm::CallInst* Create_lod(
         llvm::Value* float_address_0,
         llvm::Value* float_address_1,
@@ -551,7 +548,6 @@ public:
         llvm::Value* int32_textureIdx_356,
         llvm::Value* int32_sampler_357,
         llvm::Type* returnType = nullptr);
-
 
     llvm::CallInst* Create_gather4(
         llvm::Value* float_address_0,

@@ -273,6 +273,8 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
         overloadTys.push_back(cast<SampleIntrinsic>(&I)->getSamplerValue()->getType());
         break;
     case GenISAIntrinsic::GenISA_ldptr:
+        overloadTys.push_back(cast<SamplerLoadIntrinsic>(&I)->getTextureValue()->getType());
+        break;
     case GenISAIntrinsic::GenISA_ldmsptr:
         overloadTys.push_back(cast<SamplerLoadIntrinsic>(&I)->getTextureValue()->getType());
         break;

@@ -1045,13 +1045,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), coordinate_u->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        coordinate_u->getType(),
+        ptr_textureIdx->getType(),
+        ptr_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
 }
@@ -1094,13 +1099,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_reference_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleCptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleCptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
 }
@@ -1137,9 +1147,14 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_reference_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     llvm::Function* func_llvm_GenISA_sampleLCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleLCptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
 }
@@ -1176,13 +1191,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_reference_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleLCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleLCptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleLCptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
 }
@@ -1219,13 +1239,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_reference_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4Cptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_gather4Cptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_gather4Cptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_gather4Cptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
 }
@@ -1264,13 +1289,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_src_reference_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_src_reference_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4POCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_gather4POCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_gather4POCptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_gather4POCptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
 }
@@ -1307,13 +1337,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_address_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4POptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_gather4POptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_gather4POptr, types);
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_gather4POptr_v4f32_f32, packed_tex_params);
 
     return packed_tex_call;
@@ -1336,26 +1371,19 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
     llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
     for (int i = 0, j = 0; i < 7; i = i + 2, j++)
     {
-        llvm::Value * packed_tex_params[] = {
+        llvm::Value* packed_tex_call = Create_gather4PO(
             float_address_0,
             float_address_1,
+            float_address_2,
             int_src_offsets[i],
             int_src_offsets[i + 1],
-            float_address_2,
             int32_textureIdx,
             int32_sampler,
             int32_offsetU,
             int32_offsetV,
-            m_int0,
-            int32_srcChannel
-        };
-
-        llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4), float_address_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
-
-        llvm::Function* func_llvm_GenISA_gather4POptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-            (module, llvm::GenISAIntrinsic::GenISA_gather4POptr, llvm::ArrayRef<llvm::Type*>(types, 4));
-
-        llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_gather4POptr_v4f32_f32, packed_tex_params);
+            int32_srcChannel,
+            false,
+            llvm::Type::getFloatTy(module->getContext()));
 
 
         gatherReturn = this->CreateInsertElement(
@@ -1386,29 +1414,20 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4Pos
     llvm::Value *gatherReturn = llvm::UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4));
     for (int i = 0, j = 0; i < 7; i = i + 2, j++)
     {
-        llvm::Value * packed_tex_params[] = {
-            float_reference_0,
+        llvm::Value* packed_tex_1527_call = Create_gather4POC(
             float_address_0,
             float_address_1,
+            float_address_2,
             int_src_offsets[i],
             int_src_offsets[i + 1],
-            float_address_2,
+            float_reference_0,
             int32_textureIdx_356,
             int32_sampler_357,
             int32_offsetU,
             int32_offsetV,
-            m_int0,
-            int32_srcChannel
-        };
-
-        //CallInst* packed_tex_1527_call = cast<CallInst>(this->CreateCall(this->llvm_GenISA_gather4POC_v4f32_f32(), packed_tex_params));
-
-        llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(llvm::Type::getFloatTy(module->getContext()), 4), float_reference_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
-
-        llvm::Function* func_llvm_GenISA_gather4POCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-            (module, llvm::GenISAIntrinsic::GenISA_gather4POCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
-
-        llvm::CallInst* packed_tex_1527_call = this->CreateCall(func_llvm_GenISA_gather4POCptr_v4f32_f32, packed_tex_params);
+            int32_srcChannel,
+            false,
+            llvm::Type::getFloatTy(module->getContext()));
 
         gatherReturn = this->CreateInsertElement(
             gatherReturn,
@@ -1459,13 +1478,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_bias_0->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_bias_0->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleB_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleBptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleBptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleB_v4f32_f32, packed_tex_params);
     return packed_tex_call;
@@ -1502,13 +1526,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_lod_0->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_lod_0->getType(),
+        ptr_textureIdx->getType(),
+        ptr_sampler->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_sampleL_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleLptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleLptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleL_v4f32_f32, packed_tex_params);
     return packed_tex_call;
@@ -1592,14 +1621,19 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_src1_s_chan0->getType(), ptr_textureIdx->getType(), ptr_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_src1_s_chan0->getType(),
+        ptr_textureIdx->getType(),
+        ptr_sampler->getType()
+    };
     if(feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
 
     llvm::Function* func_llvm_GenISA_sampleDptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleDptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleDptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleDptr_v4f32_f32, packed_tex_params);
 
@@ -1651,10 +1685,15 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_ref->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_ref->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
 
     llvm::Function* func_llvm_GenISA_sampleDCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleDCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleDCptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleDCptr_v4f32_f32, packed_tex_params);
 
@@ -1683,10 +1722,15 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_lod(
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_address_0->getType(),
+        int32_textureIdx_356->getType(),
+        int32_sampler_357->getType()
+    };
 
     llvm::Function* func_llvm_GenISA_lodptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_lodptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_lodptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_lodptr_v4f32_f32, packed_tex_params);
 
@@ -1724,13 +1768,18 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_address_0->getType(), int32_textureIdx_356->getType(), int32_sampler_357->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_address_0->getType(),
+        int32_textureIdx_356->getType(),
+        int32_sampler_357->getType()
+    };
     if (feedback_enabled)
     {
         types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
     llvm::Function* func_llvm_GenISA_gather4ptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_gather4ptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_gather4ptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_gather4ptr_v4f32_f32, packed_tex_params);
 
@@ -1764,10 +1813,13 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_load(
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, feedback_enabled ? 5 : 4), ptr_textureIdx->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, feedback_enabled ? 5 : 4),
+        ptr_textureIdx->getType()
+    };
 
     llvm::Function* func_llvm_GenISA_ldptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_ldptr, llvm::ArrayRef<llvm::Type*>(types, 2));
+        (module, llvm::GenISAIntrinsic::GenISA_ldptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_ldptr_v4f32_f32, packed_tex_params);
 
@@ -1802,7 +1854,7 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
 
     llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(this->getInt32Ty(), 2), this->getInt32Ty(), int32_textureIdx->getType() };
     llvm::Function* func_llvm_GenISA_ldmcsptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_ldmcsptr, llvm::ArrayRef<llvm::Type*>(types, 3));
+        (module, llvm::GenISAIntrinsic::GenISA_ldmcsptr, types);
     llvm::CallInst* packed_mcs_call = this->CreateCall(func_llvm_GenISA_ldmcsptr_v4f32_f32, packed_mcs_params);
 
 
@@ -1824,14 +1876,17 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
     };
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types_ldms[] = { IGCLLVM::FixedVectorType::get(dstType, 4), int32_textureIdx->getType()};
+    llvm::Type* types_ldms[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        int32_textureIdx->getType()
+    };
     if (feedback_enabled)
     {
         types_ldms[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
     }
 
     llvm::Function* func_llvm_GenISA_ldmsptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_ldmsptr, llvm::ArrayRef<llvm::Type*>(types_ldms, 2));
+        (module, llvm::GenISAIntrinsic::GenISA_ldmsptr, types_ldms);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_ldmsptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
@@ -4180,9 +4235,14 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = { IGCLLVM::FixedVectorType::get(dstType, 4), float_ref_value->getType(), int32_textureIdx->getType(), int32_sampler->getType() };
+    llvm::Type* types[] = {
+        IGCLLVM::FixedVectorType::get(dstType, 4),
+        float_ref_value->getType(),
+        int32_textureIdx->getType(),
+        int32_sampler->getType()
+    };
     llvm::Function* func_llvm_GenISA_sampleBCptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleBCptr, llvm::ArrayRef<llvm::Type*>(types, 4));
+        (module, llvm::GenISAIntrinsic::GenISA_sampleBCptr, types);
 
     llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleBCptr_v4f32_f32, packed_tex_params);
     return packed_tex_call;
