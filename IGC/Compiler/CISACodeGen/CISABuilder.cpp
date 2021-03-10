@@ -460,10 +460,14 @@ namespace IGC
         VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
 
-        // If EU fusion is on, goto is uniform if flag is workgroup/global uniform;
-        // otherwise, goto is uniform if flag is uniform (thread/workgroup/global).
-        if (flag == nullptr ||   // unconditional jump is always uniform
-            flag->IsWorkGroupOrGlobalUniform() ||
+        // As uniform maybe thread-uniform, it will not work for scalar jump
+        // for two threads whose flags are different. Once we improve uniform
+        // analysis to have global (uniform among all threads), not just local
+        // uniform (within a thread), we can still generate scalar jump when flag
+        // is a global uniform.
+        //
+        // For now, just disable uniform goto if EU fusion is on.
+        if (flag == nullptr ||
             (!m_program->m_Platform->hasFusedEU() && flag->IsUniform()))
         {
             execSize = EXEC_SIZE_1;
