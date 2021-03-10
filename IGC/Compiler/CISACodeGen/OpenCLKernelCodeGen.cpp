@@ -490,7 +490,6 @@ namespace IGC
     {
         switch (kernelArg->getArgType()) {
 
-        // Implicit args
         case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER:{
             // PayloadHeader contains global work offset x,y,z and local size x,y,z
             // global work offset, size is int32x3
@@ -700,6 +699,12 @@ namespace IGC
             arg.arg_index = kernelArg->getAssociatedArgNo();
         }
         break;
+
+        case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::printf_buffer,
+                payloadPosition, kernelArg->getAllocateSize());
+            break;
 
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:

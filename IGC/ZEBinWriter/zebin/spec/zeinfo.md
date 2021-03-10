@@ -23,7 +23,7 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.2
+Version 1.3
 
 ## Grammar
 
@@ -157,6 +157,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | global_id_offset | int32x3 | |
 | private_base_stateless | int64 | The base address of private buffer specified at per_thread_memory_buffers |
 | buffer_offset | | The extra offset for buffer reference to satisfy the alignment requirement of stateful memory access. |
+| printf_buffer | | The address of printf_buffer which holds the prtinf strings information. |
 | arg_byvalue | | Explicit kernel argument |
 | arg_bypointer | | Explicit kernel argument |
 <!--- <argument_type> ArgType -->
@@ -269,6 +270,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.3**: Add printf_buffer to argument_type.
 - **Version 1.2**: Add buffer_offset to argument_type.
 - **Version 1.1**: Add experimental_properties to kernel.
 - **Version 1.0**: Add version number. Add slot to per_thread_memory_buffers. Rename shared_local_memory to slm in memory_addressing_mode.

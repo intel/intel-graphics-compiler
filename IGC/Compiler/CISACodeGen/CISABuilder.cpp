@@ -4865,12 +4865,20 @@ namespace IGC
                     sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
                     // symbols for ZEBinary
-                    if (sEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR)
+                    if (sEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR) {
                         symbols.global.emplace_back((vISA::GenSymType)sEntry.s_type,
                             sEntry.s_offset, sEntry.s_size, name.str());
-                    else
-                        symbols.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
-                            sEntry.s_offset, sEntry.s_size, name.str());
+                    } else {
+                        // Global constants and string literals
+                        Constant * initializer = pGlobal->getInitializer();
+                        ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer);
+                        if (cds && (cds->isCString() || cds->isString()))
+                            symbols.globalStringConst.emplace_back((vISA::GenSymType)sEntry.s_type,
+                                sEntry.s_offset, sEntry.s_size, name.str());
+                        else
+                            symbols.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
+                                sEntry.s_offset, sEntry.s_size, name.str());
+                    }
                 }
                 symbolTable.push_back(sEntry);
             }

@@ -122,7 +122,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.2"; }
+    static zeinfo_str_t getVersionNumber() { return "1.3"; }
 
     enum class ArgType {
         packed_local_ids,
@@ -134,6 +134,7 @@ struct PreDefinedAttrGetter{
         global_id_offset,
         private_base_stateless,
         buffer_offset,
+        printf_buffer,
         arg_byvalue,
         arg_bypointer
     };
@@ -185,6 +186,8 @@ struct PreDefinedAttrGetter{
             return "private_base_stateless";
         case ArgType::buffer_offset:
             return "buffer_offset";
+        case ArgType::printf_buffer:
+            return "printf_buffer";
         case ArgType::arg_byvalue:
             return "arg_byvalue";
         case ArgType::arg_bypointer:

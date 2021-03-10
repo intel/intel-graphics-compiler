@@ -95,11 +95,12 @@ namespace IGC
         typedef std::vector<vISA::ZERelocEntry> RelocListTy;
         typedef std::vector<vISA::ZEFuncAttribEntry> FuncAttrListTy;
         struct SymbolLists {
-            SymbolListTy function;    // function symbols
-            SymbolListTy global;      // global symbols
-            SymbolListTy globalConst; // global constant symbols
-            SymbolListTy sampler;     // sampler symbols
-            SymbolListTy local;       // local symbols
+            SymbolListTy function;          // function symbols
+            SymbolListTy global;            // global symbols
+            SymbolListTy globalConst;       // global constant symbols
+            SymbolListTy globalStringConst; // global string constant symbols
+            SymbolListTy sampler;           // sampler symbols
+            SymbolListTy local;             // local symbols
         };
 
     public:

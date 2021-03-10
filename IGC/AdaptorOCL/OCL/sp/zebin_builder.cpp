@@ -137,8 +137,7 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
         return;
 
     // create a data section for global constant variables
-    // Two constant data sections: general constants and string literals
-    IGC_ASSERT(annotations.m_initConstantAnnotation.size() >= 1);
+    // There could be two constant data sections: general constants and string literals
 
     // General constants
     // create a data section for global constant variables
@@ -177,8 +176,11 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
         }
     }
 
-    if (annotations.m_initConstantAnnotation.size() != 2)
+    if (annotations.m_initConstantAnnotation.size() < 2)
       return;
+
+    // At most two const global buffers: general and string literals
+    IGC_ASSERT(annotations.m_initConstantAnnotation.size() == 2);
 
     // String literals
     auto& caString = annotations.m_initConstantAnnotation[1];
@@ -391,6 +393,12 @@ void ZEBinaryBuilder::addSymbols(
         mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
             getSymbolElfBinding(sym), getSymbolElfType(sym),
             (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalConstSectID);
+
+    // add symbols defined in global string constant section
+    for (auto sym : symbols.globalStringConst)
+        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
+            getSymbolElfBinding(sym), getSymbolElfType(sym),
+            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mConstStringSectID);
 
     // add symbols defined in global section
     for (auto sym : symbols.global)
