@@ -1819,9 +1819,7 @@ namespace IGC
     void CEncoder::SubPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1) {
         IGC_ASSERT_MESSAGE(m_encoderState.m_dstOperand.mod == EMOD_NONE, "subPair doesn't support saturate");
 
-        VISA_Exec_Size ExecSize = GetAluExecSize(Lo);
-        IGC_ASSERT((ExecSize == EXEC_SIZE_32) || (ExecSize == EXEC_SIZE_16) || (ExecSize == EXEC_SIZE_8) || (ExecSize == EXEC_SIZE_1));
-
+        IGC_ASSERT(Lo || Hi);  // At least one is used
         if (Hi == nullptr) {
             // When Hi part is ignored, reduce 64-bit subtraction into 32-bit.
             SetSrcModifier(1, EMOD_NEG);
@@ -1834,6 +1832,9 @@ namespace IGC
             Lo = m_program->GetNewVariable(
                 Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(), CName(Hi->getName(), "Carry"));
         }
+
+        VISA_Exec_Size ExecSize = GetAluExecSize(Lo);
+        IGC_ASSERT((ExecSize == EXEC_SIZE_32) || (ExecSize == EXEC_SIZE_16) || (ExecSize == EXEC_SIZE_8) || (ExecSize == EXEC_SIZE_1));
 
         // Use `UD` only.
         if (Lo->GetType() != ISA_TYPE_UD && Lo->GetType() != ISA_TYPE_UV) Lo = m_program->BitCast(Lo, ISA_TYPE_UD);
