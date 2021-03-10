@@ -60,11 +60,7 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
     set(_dependency "${embeddedFilePath}")
   endif()
 
-  if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    set(IGC_PYTHON "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/python2-win32/python.exe")
-  else()
-    find_program(IGC_PYTHON NAMES "python2" "python")
-  endif()
+  find_program(IGC_PYTHON NAMES "python2" "python")
 
   add_custom_command(OUTPUT "${_symbolFilePath}"
                             COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_EMBEDDER_DIR}"

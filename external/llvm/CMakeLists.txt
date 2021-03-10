@@ -30,18 +30,8 @@
 
 cmake_minimum_required(VERSION 3.13.4)
 
-if(BS_USE_OSDM_BUILD_SYSTEM)
-    include(${BUILD_SYS_INC}/utils.cmake)
-    bs_find_patch()
-    bs_find_python3()
-else()
-    if (NOT PATCH)
-        find_program(PATCH NAMES patch patch.exe)
-    endif()
-    if (NOT PYTHON)
-        find_program(PYTHON NAMES python3 python python3.exe python.exe)
-    endif()
-endif()
+find_program(PATCH NAMES patch patch.exe)
+find_program(PYTHON NAMES python3 python python3.exe python.exe)
 
 include(llvm_utils.cmake)
 

@@ -1983,11 +1983,7 @@ if(NOT GFX_DEVELOPMENT_DIR)
   get_filename_component(GFX_DEVELOPMENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(PYTHON_EXECUTABLE "${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/python3-win64/python.exe")
-else()
-  find_program(PYTHON_EXECUTABLE NAMES "python3" "python")
-endif()
+find_program(PYTHON_EXECUTABLE NAMES "python3" "python")
 
 set(IGC_CODEGEN_BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}/autogen")
 if(MSVC_IDE)
