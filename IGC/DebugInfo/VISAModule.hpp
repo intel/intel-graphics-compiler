@@ -439,6 +439,9 @@ namespace IGC
             return false;
         }
 
+        ///  @brief return false if inst is a placeholder instruction
+        bool IsExecutableInst(const llvm::Instruction& inst);
+
         bool isDirectElfInput = false;
         // Store first VISA index->llvm::Instruction mapping
         std::map<unsigned int, const llvm::Instruction*> VISAIndexToInst;

@@ -239,6 +239,21 @@ const std::string& VISAModule::GetTargetTriple() const
     return m_triple;
 }
 
+bool VISAModule::IsExecutableInst(const llvm::Instruction& inst)
+{
+    // Return false if inst is dbg info intrinsic or if it is
+    // catch all intrinsic. In both of these cases, we dont want
+    // to emit associated debug loc since there is no machine
+    // code generated for them.
+    if (IsCatchAllIntrinsic(&inst))
+        return false;
+
+    if (llvm::isa<DbgInfoIntrinsic>(inst))
+        return false;
+
+    return true;
+}
+
 void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
 {
     const auto* co = getCompileUnit(VD);
@@ -247,6 +262,10 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
     {
         const Instruction* pInst = *II;
+
+        // store VISA mapping only if pInst generates Gen code
+        if (!IsExecutableInst(*pInst))
+            continue;
 
         InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
         if (itr == m_instInfoMap.end())

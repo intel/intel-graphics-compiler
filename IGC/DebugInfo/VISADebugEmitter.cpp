@@ -48,6 +48,7 @@ IN THE SOFTWARE.
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
 #include "VISAModule.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "Probe/Assertion.h"
 #include "secure_mem.h"
@@ -232,7 +233,8 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
                 }
             }
 
-            if (instIt != VISAIndexToInst.end())
+            if (instIt != VISAIndexToInst.end() &&
+                m_pVISAModule->IsExecutableInst(*instIt->second))
             {
                 auto loc = instIt->second->getDebugLoc();
                 if (loc)
@@ -246,6 +248,12 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
                         if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
                         {
                             Flags |= DWARF2_FLAG_IS_STMT;
+                        }
+
+                        if (!m_pDwarfDebug->prologueEndExists(loc.get()->getScope()->getSubprogram(),
+                            loc.getInlinedAt(), true))
+                        {
+                            Flags |= DWARF2_FLAG_PROLOGUE_END;
                         }
                         m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
 
