@@ -981,7 +981,7 @@ bool TranslateBuild(
         std::string keyvalues, optionstr;
         GetKeysSetExplicitly(&keyvalues, &optionstr);
         std::ostringstream outputstr;
-        outputstr << "IGC keys and command line to compile:\n\n";
+        outputstr << "IGC keys (some dump keys not shown) and command line to compile:\n\n";
         if (!keyvalues.empty())
         {
             outputstr << keyvalues << "\n\n";

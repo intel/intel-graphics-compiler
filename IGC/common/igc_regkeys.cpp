@@ -968,10 +968,14 @@ void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys)
         }
         const char* key = pRegKeyVariable[i].GetName();
 
-        // Ignore dump keys
+        // Ignore some dump keys
         if (strcmp("ShaderDumpEnableAll", key) == 0 ||
             strcmp("ShaderDumpEnable", key) == 0 ||
-            strcmp("DumpToCurrentDir", key) == 0)
+            strcmp("DumpToCurrentDir", key) == 0 ||
+            strcmp("EnableCosDump", key) == 0 ||
+            strcmp("DumpToCustomDir", key) == 0 ||
+            strcmp("EnableDxbcDump", key) == 0 ||
+            strcmp("EnableDxAsmDump", key) == 0)
         {
             continue;
         }
