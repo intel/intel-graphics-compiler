@@ -2095,10 +2095,11 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     // Check whether local RA marked this range
                     (topdcl &&
                     (topdclLR = gra.getLocalLR(topdcl)) &&
-                        topdclLR->isLiveRangeLocal() &&
-                        topdclLR->getFirstRef(first) == i)) &&
-                        // If single inst writes whole region then dont insert pseudo_kill
-                        ((wholeRegionWritten = LivenessAnalysis::writeWholeRegion(bb, i, dst, fg.builder->getOptions())) == false))
+                    topdclLR->isLiveRangeLocal() &&
+                    (!topdcl->isInput()) &&
+                    topdclLR->getFirstRef(first) == i)) &&
+                    // If single inst writes whole region then dont insert pseudo_kill
+                    ((wholeRegionWritten = LivenessAnalysis::writeWholeRegion(bb, i, dst, fg.builder->getOptions())) == false))
                 {
                     bool foundKill = false;
                     INST_LIST::reverse_iterator nextIt = rit;
