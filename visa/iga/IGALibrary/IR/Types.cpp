@@ -1,28 +1,26 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
-
-======================= end_copyright_notice ==================================*/
+============================= end_copyright_notice ===========================*/
 
 #include "Types.hpp"
 #include "Loc.hpp"
@@ -39,9 +37,13 @@ const Loc Loc::INVALID(0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF);
 
 const Region Region::INVALID = REGION_VWH(VT_INVALID, WI_INVALID, HZ_INVALID);
 const Region Region::DST1   = REGION_VWH(VT_INVALID,WI_INVALID,HZ_1);
+const Region Region::DST2   = REGION_VWH(VT_INVALID,WI_INVALID,HZ_2);
+const Region Region::DST4   = REGION_VWH(VT_INVALID,WI_INVALID,HZ_4);
 // basic srcs
 const Region Region::SRC010 = REGION_VWH(VT_0,WI_1,HZ_0);
 const Region Region::SRC110 = REGION_VWH(VT_1,WI_1,HZ_0);
+const Region Region::SRC210 = REGION_VWH(VT_2,WI_1,HZ_0);
+const Region Region::SRC410 = REGION_VWH(VT_4,WI_1,HZ_0);
 const Region Region::SRC221 = REGION_VWH(VT_2,WI_2,HZ_1);
 const Region Region::SRC441 = REGION_VWH(VT_4,WI_4,HZ_1);
 const Region Region::SRC881 = REGION_VWH(VT_8,WI_8,HZ_1);

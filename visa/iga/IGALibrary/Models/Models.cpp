@@ -1,3 +1,27 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (c) 2019-2021 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+============================= end_copyright_notice ===========================*/
+
 #include "Models.hpp"
 
 // this must precede model*.hpp inclusion below
@@ -203,7 +227,6 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         1, (2*4)), // dbg0.{0,1}:ud
 };
 
-
 const OpSpec& Model::lookupOpSpec(Op op) const
 {
     if (op < Op::FIRST_OP || op > Op::LAST_OP) {
@@ -281,20 +304,38 @@ const RegInfo *Model::lookupRegInfoByRegName(RegName name) const
 
 uint32_t Model::getNumGRF() const
 {
-    const RegInfo* ri = lookupRegInfoByRegName(RegName::GRF_R);
-    return ri->getNumReg();
+    return getRegCount(RegName::GRF_R);
 }
 
 uint32_t Model::getNumFlagReg() const
 {
-    const RegInfo* ri = lookupRegInfoByRegName(RegName::ARF_F);
-    return ri->getNumReg();
+    return getRegCount(RegName::ARF_F);
 }
 
 uint32_t Model::getGRFByteSize() const
 {
     return 32;
 }
+
+uint32_t Model::getRegCount(RegName rn) const {
+    const RegInfo* ri = lookupRegInfoByRegName(rn);
+    IGA_ASSERT(ri, "invalid register for platform");
+    // for getNumReg 0 means single register (like ce); bump to 1
+    int n = std::max(ri->getNumReg(), 1);
+    return n;
+}
+
+uint32_t Model::getBytesPerReg(RegName rn) const {
+    const RegInfo* ri = lookupRegInfoByRegName(rn);
+    IGA_ASSERT(ri, "invalid register for platform");
+    if (rn == RegName::GRF_R) {
+        // GRF has 0's in numBytesPerReg[..]
+        return 32;
+    }
+    // we assume they are all equal length
+    return ri->numBytesPerReg[0];
+}
+
 
 const RegInfo *iga::GetRegisterSpecificationTable(int &len)
 {

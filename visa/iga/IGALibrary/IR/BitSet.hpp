@@ -1,28 +1,27 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
 #ifndef _IGA_BITSET_HPP
 #define _IGA_BITSET_HPP
 
@@ -35,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ostream>
 #include <utility>
 
-// Align N up to the nearest multiple of 32
+// Align N up to the nearest multiple of A
 #define ALIGN_UP_TO(A, N) \
     ((N + (A) - 1) - (N + (A) - 1) % (A))
 
@@ -194,7 +193,7 @@ inline bool BitSet<I>::set(size_t off, size_t len, bool val)
 
 template <typename I>
 inline bool BitSet<I>::intersects(const BitSet<I> &rhs) const {
-    for (size_t i = 0; i < N / BITS_PER_WORD; i++) {
+    for (size_t i = 0; i < wordsSize; i++) {
         if (words[i] & rhs.words[i]) {
             return true;
         }
@@ -240,7 +239,7 @@ inline bool BitSet<I>::intersects(
 template <typename I>
 inline bool BitSet<I>::equal(const BitSet<I> &rhs) const {
     bool result = true;
-    for (size_t i = 0; i < N / BITS_PER_WORD; i++) {
+    for (size_t i = 0; i < wordsSize; i++) {
         result = (words[i] == rhs.words[i]) ? true : false;
         if (!result)
             break;
@@ -254,7 +253,7 @@ template <typename I>
 inline bool BitSet<I>::andNot(const BitSet<I> &rhs)
 {
     bool changed = false;
-    for (size_t i = 0; i < N/BITS_PER_WORD; i++) {
+    for (size_t i = 0; i < wordsSize; i++) {
         auto old = words[i];
         words[i] &= ~rhs.words[i];
         changed |= (words[i] != old);
@@ -269,7 +268,7 @@ template <typename I>
 inline bool BitSet<I>::add(const BitSet<I> &rhs)
 {
     bool changed = false;
-    for (size_t i = 0; i < N/BITS_PER_WORD; i++) {
+    for (size_t i = 0; i < wordsSize; i++) {
         auto old = words[i];
         words[i] |= rhs.words[i];
         changed |= (words[i] != old);
@@ -284,10 +283,10 @@ template <typename I>
 inline bool BitSet<I>::intersectInto(
     const BitSet<I> &rhs, BitSet<I> &into) const
 {
-    bool notEmpty = true;
-    for (size_t i = 0; i < N/BITS_PER_WORD; i++) {
+    bool notEmpty = false;
+    for (size_t i = 0; i < wordsSize; i++) {
         into.words[i] = words[i] & rhs.words[i];
-        notEmpty |= (words[i] != 0);
+        notEmpty |= (into.words[i] != 0);
     }
     // doesn't matter if the padding matches (it'll be correct either way)
     return notEmpty;

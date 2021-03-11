@@ -1,28 +1,27 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
 #ifndef _IGA_IR_DUANALYSIS_HPP
 #define _IGA_IR_DUANALYSIS_HPP
 
@@ -44,16 +43,22 @@ namespace iga
         // WRITE indicates that bytes are being redefined.
         // E.g.
         //  mov r0 ...
-        //  ...
-        //  add r0 ... // WRITE dependency
-        //  mul ..  r0 // READ dependency (on the add)
-        enum Type {READ, WRITE}  useType = READ;
-        // The producer instruction
+        //  mul r1:q ..  r0 // RAW dependency (on the add)
+        //  add r0 ...   // WAR dependency
+        //  add r1:d ... // WAW
+        enum Type {RAW, WAR, WAW}  useType = RAW;
+        //
+        // The producer instruction;
+        // this can be nullptr if the value is a program input
         Instruction             *def = nullptr;
-        // The consumer instruction
+        //
+        // The consumer instruction;
+        // this can be nullptr if the value is a program output
         Instruction             *use = nullptr; // or write (redef)
+        //
         // The register values that are live in this path
-        RegSet                   live;
+        RegSet                   values;
+        //
         // This is number of in-order instructions this path covers
         // We determine in-orderness via OpSpec::isFixedLatency
         int                      minInOrderDist = 0;
@@ -65,22 +70,20 @@ namespace iga
         // TARGET:
         //        mul ...  r1 // crossesBranch = true here
         bool                     crossesBranch = false;
-        //
-        // TODO: should track firstUse? (i.e. if live dominated by another use)
 
-        Dep() { }
+        Dep(const Model &m) : values(m) { }
         Dep(Type t, Instruction *_use)
             : useType(t)
             , def(nullptr)
             , use(_use)
+            , values(*Model::LookupModel(_use->platform()))
             , minInOrderDist(0)
             , crossesBranch(false)
         {
         }
-        Dep(const Dep &p) = default;
-        Dep(Dep &&p) = default;
+        Dep(const Dep &) = default;
+        Dep &operator=(const Dep &) = default;
 
-        Dep operator=(const Dep &p) const { return Dep(p); }
         bool operator==(const Dep &p) const;
         bool operator!=(const Dep &p) const { return !(*this == p); }
 
@@ -102,10 +105,10 @@ namespace iga
 
     struct DepAnalysis
     {
-        // could just use BlockInfo here
+        // information on each block
         std::vector<BlockInfo>   blockInfo;
         //
-        // relation of definitions and all possible uses
+        // relation of definitions and uses
         std::vector<Dep>         deps;
     };
 

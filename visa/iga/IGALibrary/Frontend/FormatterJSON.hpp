@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2015-2021 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"),
@@ -22,15 +22,19 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-// An arena based memory manager implementation.
+#ifndef _IGA_FORMATTER_JSON
+#define _IGA_FORMATTER_JSON
 
-#include "MemManager.hpp"
-using namespace iga;
-MemManager::MemManager(size_t defaultArenaSize)
-    : _arenaManager (defaultArenaSize)
+#include "Formatter.hpp"
+
+namespace iga
 {
+    void FormatJSON(
+        std::ostream &o,
+        const FormatOpts &opts,
+        const Kernel &k,
+        const void *bits);
 }
 
-MemManager::~MemManager()
-{
-}
+
+#endif // _IGA_FORMATTER_JSON

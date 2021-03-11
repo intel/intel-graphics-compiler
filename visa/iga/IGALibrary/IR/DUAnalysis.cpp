@@ -1,28 +1,26 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
-
-======================= end_copyright_notice ==================================*/
+============================= end_copyright_notice ===========================*/
 
 
 /*******************************************************
@@ -51,7 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *   z <- 2 + x  #4        |    {#5/b,#5/x,#4/x}  introduce #4/w
  *   w <- b * x  #5        |    {#5/b,#5/x}       introduce uses of b and x
  *
- * EXAMPLE: SPLIT USE (consumer uses multiple producers)
+ * EXAMPLE: SPLIT USE (mult. consumer uses different parts of a produced result)
  *                              {#1/b}            FINAL LIVE-IN
  *   a <- 5 * b     #1        | {#1/b}            kills both #4 and #5 since
  *                                                write set is superset of both
@@ -104,53 +102,88 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *    sets reach a fixed point.  Finally, we walk through each block
  *    and complete each path per-instruction.
  *
- * The following implementation is an iterative data flow analyis.
- * ... more details ... bottom up ..., the joining function is ...
- *
  */
 #include "DUAnalysis.hpp"
 
+// #define ENABLE_TRACING
+
 #include <algorithm>
+#ifdef ENABLE_TRACING
 #include <cstdio>
+#include "../strings.hpp"
+#endif
 #include <list>
 #include <map>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 using namespace iga;
 
+#ifdef ENABLE_TRACING
+#define TRACE(...) printf(__VA_ARGS__)
+#else
 #define TRACE(...)
-// #define TRACE(...) printf(__VA_ARGS__)
+#endif
 
-// The map key is the instruction and a use type (READ or WRITE)
-typedef std::pair<Dep::Type,Instruction*> DepKey;
-typedef std::map<DepKey,Dep>              LiveDepMap;
+// The map key is the use instruction and a use type (READ or WRITE)
+using DepKey = std::pair<Dep::Type,Instruction*>;
+using LiveDepMap = std::map<DepKey,Dep>;
+
 
 static void EmitPaths(const LiveDepMap &defs)
 {
     for (const auto &pair : defs) {
         const Dep &d = pair.second;
-        if (d.use == nullptr)
-            return;
-        auto str = d.live.str();
-        TRACE("    #%s\n", str.c_str());
+        (void)d;
+        TRACE("    #%s\n", d.str().c_str());
     }
 }
+static std::string FormatLiveDepMap(const LiveDepMap &ldm)
+{
+    std::stringstream ss;
+    bool first = true;
+    ss << "{";
+    for (const auto &pair : ldm) {
+        if (first) first = false; else ss << ",";
+        const Dep &d = pair.second;
+        ss << d.str();
+    }
+    ss << "}";
+    return ss.str();
+}
+
+enum class EdgeType {FALLTHROUGH, JUMP};
 
 // Information pertaining to a given block.  We convert this to
 // a public-facing BlockInfo that discards all the temporary and
-// non-essential information from the algorithm.
+// non-essential information from the algorithm when extracting
+// and returning the results.
 struct BlockState
 {
     Block                                     *block;
+
     // predecessor info (second coordinate is true if the node is *not*
     // a fallthrough (i.e. it's a jump)
-    std::vector<std::pair<BlockState *,bool>>  pred;
+    // indexed by block ID
+    std::vector<std::pair<BlockState *,EdgeType>>  pred;
 
-    LiveDepMap                                 liveIn;
-    LiveDepMap                                 liveOut;
+    LiveDepMap                                     liveIn;
+    LiveDepMap                                     liveOut;
 
     BlockState(Block *b) : block(b) { }
+
+    std::string str() const {
+        std::stringstream ss;
+        ss << "B#" << block->getID() << " pred:{";
+        bool first = true;
+        for (const auto &pbse : pred) {
+            if (first) first = false; else ss << ",";
+            ss << "B#" << pbse.first->block->getID();
+        }
+        ss << "}";
+        return ss.str();
+    }
 };
 
 
@@ -158,6 +191,8 @@ struct DepAnalysisComputer
 {
     const Model                     &model;
     Kernel                          *k;
+
+    // sources and destinations indexed by instruction ID
     std::vector<InstDsts>            instDsts;
     std::vector<InstSrcs>            instSrcs;
 
@@ -171,75 +206,129 @@ struct DepAnalysisComputer
         : model(_k->getModel())
         , k(_k)
     {
+        sanityCheckIR(k); // should nop in release
+
         instSrcs.reserve(k->getInstructionCount());
         instDsts.reserve(k->getInstructionCount());
 
+        // we must do this so the vector doesn't resize
         blockState.reserve(k->getBlockList().size());
         int bIx = 0, iIx = 0;
 
-        // pre-assign ID's we know to be valid
-        TRACE("******** INITIAL CONDITIONS **********\n");
+        // pre-assign ID's we know to be valid and
+        // precompute instruction dependencies
         for (Block *b : k->getBlockList()) {
             blockState.emplace_back(b);
             b->setID(bIx++);
-            TRACE("  BLOCK #%d\n", b->getID());
 
             for (Instruction *i : b->getInstList()) {
                 i->setID(iIx++);
 
                 instSrcs.emplace_back(InstSrcs::compute(*i));
                 instDsts.emplace_back(InstDsts::compute(*i));
-
-                TRACE("    DEF #%03d |  %-96s ||  %s <== %s\n",
-                    i->getID(),
-                    i->str(model.platform).c_str(),
-                    instDsts.back().str().c_str(),
-                    instSrcs.back().str().c_str());
             }
         }
 
-        // pre-calculate predecessor blocks
+        // pre-calculate predecessor blocks by looking at the terminator op
         for (size_t i = 0; i < blockState.size(); i++) {
             BlockState &b = blockState[i];
 
             const auto &il = b.block->getInstList();
-            if (i < blockState.size() - 1) {
-                // not the last => potentially link the next block back to us
-                if (il.empty()) {
-                    // empty block fallthrough
-                    // E.g.
-                    //
-                    //  ...
-                    // FOO: // empty block, but valid branch target
-                    // BAR:
-                    //  ...
-                    blockState[i + 1].pred.emplace_back(&b, false);
-                } else {
-                    // at least one instruction in this block
-
-                    // unpredicated JMPI and an EOT are the only op that
-                    // stop the block hard
-                    const Instruction *iTerm = il.back();
-                    bool unconditionalJmp =
-                        iTerm->getOp() != Op::JMPI || iTerm->hasPredication();
-                    bool eotTerm =!iTerm->hasInstOpt(InstOpt::EOT);
-                    if (!unconditionalJmp && !eotTerm) {
-                        // normal fallthrough
-                        blockState[i + 1].pred.emplace_back(&b, false);
-                    }
-                    // link any jump target blocks back to us
-                    for (size_t srcIx = 0; srcIx < iTerm->getSourceCount(); srcIx++) {
-                        const Operand &src = iTerm->getSource(srcIx);
-                        if (src.getKind() == Operand::Kind::LABEL) {
-                            BlockState &tb =
-                                blockState[src.getTargetBlock()->getID()];
-                            tb.pred.emplace_back(&b, true);
-                        }
+            bool isLast = i == blockState.size() - 1;
+            // not the last => potentially link the next block back to us
+            if (il.empty()) {
+                // empty block fallthrough
+                // E.g.
+                //
+                //  ...
+                // FOO: // empty block, but valid branch target
+                // BAR:
+                //  ...
+                if (!isLast)
+                    blockState[i + 1].pred.emplace_back(
+                        &b, EdgeType::FALLTHROUGH);
+            } else {
+                // at least one instruction in this block;
+                // mark 'b' as a predecessor to all targets
+                //
+                // unpredicated JMPI and an EOT are the only op that
+                // stop the block hard
+                const Instruction *iTerm = il.back();
+                if (!isLast && fallthroughPossible(iTerm)) {
+                    // normal fallthrough
+                    blockState[i + 1].pred.emplace_back(
+                        &b, EdgeType::FALLTHROUGH);
+                }
+                for (unsigned srcIx = 0; srcIx < iTerm->getSourceCount();
+                    srcIx++)
+                {
+                    const Operand &src = iTerm->getSource(srcIx);
+                    if (src.getKind() == Operand::Kind::LABEL) {
+                        BlockState &tb =
+                            blockState[src.getTargetBlock()->getID()];
+                        tb.pred.emplace_back(&b, EdgeType::JUMP);
                     }
                 }
-            } // end if(not last block)
+            } // non-empty block 'b'
         } // end for(block state)
+
+        TRACE("******** INITIAL CONDITIONS **********\n");
+        for (const Block *b : k->getBlockList()) {
+            TRACE("  BLOCK %s\n", blockState[b->getID()].str().c_str());
+            for (const Instruction *i : b->getInstList()) {
+                (void)i;
+                TRACE("    DEF #%03d |  %-96s ||  %s <== %s\n",
+                    i->getID(),
+                    trimTrailingWs(i->str()).c_str(),
+                    instDsts[i->getID()].str().c_str(),
+                    instSrcs[i->getID()].str().c_str());
+            }
+        }
+    } // DepAnalysisComputer::DepAnalysisComputer
+
+    static bool fallthroughPossible(const Instruction *i) {
+        bool unconditionalJmp = i->getOp() == Op::JMPI && !i->hasPredication();
+        bool eotTerm = i->hasInstOpt(InstOpt::EOT);
+        return !unconditionalJmp && !eotTerm;
     }
+
+    // in debug builds this ensures:
+    //  1. block and instruction IDs aren't huge random numbers
+    //     (since we intend to index-map information)
+    //  2. ensure IDs are unique
+    //  3. ensure there are branch instructions hiding in the middle of
+    //     a block
+    static void sanityCheckIR(const Kernel *k) {
+#ifdef _DEBUG
+        // NOTE: this is redundant because we preset all the ids above;
+        // it does add checking for illegal mid-block branches
+        std::unordered_set<int> instIds, blockIds;
+        auto instCount = k->getInstructionCount();
+        for (const Block *b : k->getBlockList()) {
+            auto bId = b->getID();
+            IGA_ASSERT(bId < 2 * (int)k->getBlockList().size(),
+                "instruction ID's should be small");
+            IGA_ASSERT(blockIds.find(bId) == blockIds.end(),
+                "duplicate block ID");
+            for (const Instruction *i : b->getInstList()) {
+                auto id = i->getID();
+                IGA_ASSERT(id < 2 * (int)instCount,
+                    "instruction ID's should be small");
+                IGA_ASSERT(instIds.find(id) == instIds.end(),
+                    "duplicate instruction ID");
+                instIds.emplace(i->getID());
+
+                for (size_t sIx = 0; sIx < i->getSourceCount(); sIx++) {
+                    if (i->getSource(sIx).getKind() == Operand::Kind::LABEL) {
+                        IGA_ASSERT(b->getInstList().back() == i,
+                            "label in the middle of a block");
+                    }
+                }
+            }
+        }
+#endif // _DEBUG
+    }
+
 
     void runAnalysis() {
         computeLiveInPaths();
@@ -253,25 +342,22 @@ struct DepAnalysisComputer
         do {
             TRACE("******* STARTING LIVE-IN ITERATION %d\n", itr);
             changed = false;
+            // TODO: iterate these first in reverse order, then via worklist
             for (BlockState &bs : blockState) {
-                TRACE("  *** BLOCK %d with ...\n", bs.block->getID());
+                TRACE("  *** B#%d with ...\n", bs.block->getID());
                 EmitPaths(bs.liveIn);
-                changed |= iterateBlockLiveIn(bs, false);
+                changed |= recomputeBlockLiveIn(bs, false);
             }
+            TRACE("******* ENDING ITERATION %d\n", itr);
             itr++;
-            TRACE("\n");
         } while (changed);
     }
-    void completePaths() {
-        // copy out the data
-        for (BlockState &b : blockState) {
-            iterateBlockLiveIn(b, true);
-        }
-    }
 
-    bool iterateBlockLiveIn(
-        BlockState &b,
-        bool copyOut)
+    // Starting with liveOut, walk back through the instructions
+    // extending all paths backwards.  Kill off stuff definitely defined,
+    // and start new paths.  At the end, update this block's 'liveIn'
+    // and push it back across to predecessor block's 'liveOut'
+    bool recomputeBlockLiveIn(BlockState &b, bool copyOut)
     {
         // all the live paths at the end of this block
         LiveDepMap rLiveDefs = b.liveOut;
@@ -281,26 +367,25 @@ struct DepAnalysisComputer
         //   remove any paths killed off by a definition
         //   start any new paths induced by i's uses
         auto &il = b.block->getInstList();
-        for (InstList::reverse_iterator
-            iItr = il.rbegin(),
+        for (InstList::reverse_iterator iItr = il.rbegin(),
             iItrEnd = il.rend();
             iItr != iItrEnd;)
         {
             Instruction *i = *iItr;
-            TRACE("      *** INSTRUCTION: %-96s (def #%d)\n",
-                i->str(model.platform).c_str(),
-                i->getID());
+            TRACE("      *** I#%03d: %-96s\n",
+                i->getID(), trimTrailingWs(i->str()).c_str());
 
             // extend live ranges
             LiveDepMap::iterator
                 dItr = rLiveDefs.begin(),
                 dEnd = rLiveDefs.end();
             while (dItr != dEnd) {
-                dItr = extenedDepBackwards(i, rLiveDefs, dItr, copyOut);
-            } // live ranges while
+                dItr = extendDepBackwards(i, rLiveDefs, dItr, copyOut);
+            }
 
             // any use of a variable starts a new live range
             startNewDepsBackwards(i, rLiveDefs);
+
             iItr++;
         }
 
@@ -308,19 +393,33 @@ struct DepAnalysisComputer
         bool changedAnyPred = false;
         if (bLiveInChanged) {
             // push information back to predecessor nodes
+            TRACE("     propagating B#%d liveIn %s back to pred(s)\n",
+                b.block->getID(), FormatLiveDepMap(b.liveIn).c_str());
             for (auto &predEdge : b.pred) {
                 BlockState *bPred = (BlockState *)predEdge.first;
-                changedAnyPred |= joinBlocks(
+                TRACE("       pred B#%d out has %s\n",
+                    bPred->block->getID(),
+                    FormatLiveDepMap(bPred->liveOut).c_str());
+                bool predChanged = joinBlocks(
                     bPred->liveOut,
                     b.liveIn,
                     predEdge.second);
+                changedAnyPred |= predChanged;
+                TRACE("       liveOut for B#%d changed to %s\n",
+                    bPred->block->getID(),
+                    FormatLiveDepMap(bPred->liveOut).c_str());
             }
+        } else {
+            TRACE("    liveIn didn't change for this block\n");
         }
 
         return changedAnyPred;
     }
 
-    LiveDepMap::iterator extenedDepBackwards(
+
+    // extends a given dependency back one instruction,
+    // the range can be killed off and deleted or extended back normally
+    LiveDepMap::iterator extendDepBackwards(
         Instruction *i,
         LiveDepMap &rLiveDefs,
         LiveDepMap::iterator &dItr,
@@ -329,28 +428,42 @@ struct DepAnalysisComputer
         const InstDsts &iOups = instDsts[i->getID()];
         Dep &d = dItr->second;
 
-        RegSet overlap;
-        d.live.intersectInto(iOups.unionOf(), overlap);
-        if (copyOut && !overlap.empty()) {
+        RegSet overlap(model);
+        bool notEmpty = d.values.intersectInto(iOups.unionOf(), overlap);
+        if (notEmpty && copyOut) {
+            // this instruction defines some values used by this range
+            //  - subtract out those values in store it as a def-use
+            //    pair if this is the copyOut phase (after convergence)
             liveRangesResult.push_back(d);
-            Dep &d = liveRangesResult.back();
-            d.def = i;
-            d.live = overlap;
+            Dep &dCopy = liveRangesResult.back();
+            dCopy.def = i;
+            dCopy.values = overlap;
         }
 
-        if (!i->hasPredication()) {
+        if (notEmpty && (!i->hasPredication() || i->is(Op::SEL))) {
             // don't subtract if the instruction is predicated
             // since there could be another definition above this
-            d.live.destructiveSubtract(overlap);
+            //
+            // sel does kill every active lane
+            //
+            // TODO: a nice enhancement would be to see if someone
+            // behind us somewhere kills the other half
+            //   (f0.0)  x = ..
+            //   ...
+            //   (~f0.0) y = ..
+            // at def x with (x == y) we can fully kill the range off
+            d.values.destructiveSubtract(overlap);
         }
 
         // lr.live.destructiveSubtract(iOups.destinations);
         // lr.live.destructiveSubtract(iOups.flagModifier);
-        if (d.live.empty()) {
+        if (d.values.empty()) {
             TRACE("        %s: deleting range\n", d.str().c_str());
             dItr = rLiveDefs.erase(dItr);
         } else {
             if (i->getOpSpec().isFixedLatency()) {
+                // TODO: we should do a pipe comparison here
+                // compare the use's pipe with the definition's pipe
                 d.minInOrderDist++;
             }
             TRACE("        %s: extending range\n", d.str().c_str());
@@ -360,24 +473,25 @@ struct DepAnalysisComputer
     }
 
 
-    void startNewDepsBackwards(
-        Instruction *i,
-        LiveDepMap &rLiveDefs)
+    void startNewDepsBackwards(Instruction *i, LiveDepMap &rLiveDefs)
     {
-        const InstDsts &iOups = instDsts[i->getID()];
         const InstSrcs &iInps = instSrcs[i->getID()];
         startNewDepsBackwardsWithSets(
             i,
             rLiveDefs,
-            Dep::READ,
+            Dep::RAW,
             &iInps.predication,
             &iInps.sources);
+        /*
+        // disable WaW tracking for now
+        const InstDsts &iOups = instDsts[i->getID()];
         startNewDepsBackwardsWithSets(
             i,
             rLiveDefs,
-            Dep::WRITE,
+            Dep::WAW,
             &iOups.flagModifier,
             &iOups.destinations);
+        */
     }
     void startNewDepsBackwardsWithSets(
         Instruction *i,
@@ -387,52 +501,51 @@ struct DepAnalysisComputer
         const RegSet *rs2)
     {
         // early out (no dependencies on this instruction)
-        if ((rs1==nullptr || rs1->empty()) &&
-            (rs2==nullptr || rs2->empty()))
+        if ((rs1 == nullptr || rs1->empty()) &&
+            (rs2 == nullptr || rs2->empty()))
         {
             return;
         }
 
         Dep *d;
-        const auto &itr = rLiveDefs.find(DepKey(type,i));
+        const auto &itr = rLiveDefs.find(DepKey(type, i));
         if (itr != rLiveDefs.end()) {
             d = &itr->second;
         } else {
-            auto val = rLiveDefs.emplace(DepKey(type,i),Dep(type,i));
+            auto val = rLiveDefs.emplace(DepKey(type, i), Dep(type, i));
             d = &(*val.first).second;
             d->minInOrderDist = 1;
             d->crossesBranch = false;
         }
 
         // clobber the old value.
-        d->live.reset();
+        d->values.reset();
         if (rs1) {
-            d->live.destructiveUnion(*rs1);
+            d->values.destructiveUnion(*rs1);
         }
         if (rs2) {
-            d->live.destructiveUnion(*rs2);
+            d->values.destructiveUnion(*rs2);
         }
-        TRACE("        %s: spawning live range\n", d->str().c_str());
+        TRACE("        %s: starting live range\n", d->str().c_str());
     }
 
     bool joinBlocks(
               LiveDepMap &predOUT, // predecessor block live OUT
         const LiveDepMap &succIN,  // successor   block live IN
-        bool /* isJump */)         // as opposed to fallthrough
+        EdgeType /* ... */)        // jump or fallthrough
     {
         bool changed = false;
         for (const auto &lrElem : succIN) {
             const Dep &lrSuccIN = lrElem.second;
-            LiveDepMap::iterator itr = predOUT.find(lrElem.first);
-            if (itr == predOUT.end()) {
-                // clean insertion
-                Dep copy = lrSuccIN;
-                copy.crossesBranch = true;
-                predOUT[lrElem.first] = copy;
+            auto r = predOUT.emplace(lrElem.first, lrSuccIN);
+            auto isNewValue = r.second;
+            Dep &lrPredOUT = r.first->second;
+            if (isNewValue) {
+                // was a new path
+                lrPredOUT.crossesBranch = true;
                 changed = true;
             } else {
-                // mutation of existing path
-                Dep &lrPredOUT = itr->second;
+                // changes an existing path
 
                 // update the min distance
                 if (lrSuccIN.minInOrderDist < lrPredOUT.minInOrderDist) {
@@ -440,13 +553,13 @@ struct DepAnalysisComputer
                     lrPredOUT.minInOrderDist = lrSuccIN.minInOrderDist;
                     lrPredOUT.crossesBranch = true;
                 }
-
                 // add any new dependencies
-                changed |= lrPredOUT.live.destructiveUnion(lrSuccIN.live);
-            } // end else existing path
+                changed |= lrPredOUT.values.destructiveUnion(lrSuccIN.values);
+            }
         } // for all source paths
         return changed;
     }
+
     static bool updateLiveDefs(LiveDepMap &to, const LiveDepMap &from) {
         bool changed = from != to;
         if (changed)
@@ -469,17 +582,19 @@ struct DepAnalysisComputer
         lr1.str(ss);
         TRACE("  => %s\n", ss.str().c_str());
     }
+
+    void completePaths() {
+        // copy out the data
+        TRACE("************ COPYING OUT RESULTS\n");
+        for (BlockState &b : blockState) {
+            recomputeBlockLiveIn(b, true);
+        }
+    }
 };
 
 // RAR{@3, #5 <- ?, r13..r14}
-void iga::Dep::str(std::ostream &os) const
+void Dep::str(std::ostream &os) const
 {
-    if (useType == Dep::READ) {
-        os << "RAW"; // read after write
-    } else {
-        os << "WAW"; // write after read
-    }
-
     auto emitId = [&] (const Instruction *i) {
         if (i) {
             os << "#" << i->getID();
@@ -487,19 +602,18 @@ void iga::Dep::str(std::ostream &os) const
             os << "?";
         }
     };
-    os << "{";
-    os << "@" << minInOrderDist;
-    os << ", ";
+//    os << "@" << minInOrderDist;
+//    os << ", ";
     emitId(use);
     os << "<=";
     emitId(def);
-    os << ", ";
-    live.str(os);
-    os << "}";
+    os << "/";
+    values.str(os);
+//    os << "}";
 }
 
 
-std::string iga::Dep::str() const
+std::string Dep::str() const
 {
     std::stringstream ss;
     str(ss);
@@ -507,13 +621,13 @@ std::string iga::Dep::str() const
 }
 
 
-bool iga::Dep::operator==(const Dep &p) const
+bool Dep::operator==(const Dep &p) const
 {
     return
         def == p.def &&
         use == p.use &&
         useType == p.useType &&
-        live == p.live &&
+        values == p.values &&
         crossesBranch == p.crossesBranch &&
         minInOrderDist == p.minInOrderDist;
 }
@@ -537,7 +651,7 @@ DepAnalysis iga::ComputeDepAnalysis(Kernel *k)
             [] (const LiveDepMap &map, std::vector<Dep> &out) {
                 for (const auto &pair : map) {
                     const Dep &d = pair.second;
-                    if (d.def != nullptr || d.useType != Dep::WRITE) {
+                    if (d.def != nullptr || d.useType != Dep::WAW) {
                         // filter out any false WAW dependencies
                         out.push_back(d);
                     }
@@ -549,7 +663,7 @@ DepAnalysis iga::ComputeDepAnalysis(Kernel *k)
 
     // copy out the per-instruction live sets
     for (const Dep &d : lac.liveRangesResult) {
-        if (d.def != nullptr || d.useType != Dep::WRITE) {
+        if (d.def != nullptr || d.useType != Dep::WAW) {
             la.deps.push_back(d);
         }
     }

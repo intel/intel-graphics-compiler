@@ -1,28 +1,27 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
 #ifndef IGA_IR_TYPES_HPP
 #define IGA_IR_TYPES_HPP
 
@@ -217,23 +216,23 @@ struct Region {
         uint32_t bits;
     };
 
-    void set(Vert _v, Width _w, Horz _h) {
+    constexpr void set(Vert _v, Width _w, Horz _h) {
         this->bits = 0; // clear padding
         v = static_cast<unsigned int>(_v);
         w = static_cast<unsigned int>(_w);
         h = static_cast<unsigned int>(_h);
     }
 
-    void set(Vert vt) {
+    constexpr void set(Vert vt) {
         v = static_cast<unsigned int>(vt);
     }
-    void set(Width wi) {
+    constexpr void set(Width wi) {
         w = static_cast<unsigned int>(wi);
     }
-    void set(Horz hz) {
+    constexpr void set(Horz hz) {
         h = static_cast<unsigned int>(hz);
     }
-    void setDstHz(Horz hz) {
+    constexpr void setDstHz(Horz hz) {
         set(Vert::VT_INVALID, Width::WI_INVALID, hz);
     }
 
@@ -265,17 +264,31 @@ struct Region {
 
     // some useful region constants
     static const Region INVALID; // all RESERVED elements
+    //
+    // dst
     static const Region DST1;    // <1>
+    static const Region DST2;    // <2>
+    static const Region DST4;    // <4>
+    //
+    // generalized src regions
     static const Region SRC010;  // <0;1,0> (broadcast scalar)
     static const Region SRC110;  // <1;1,0> (packed access)
+    static const Region SRC210;  // <2;1,0> (even strided access)
+    static const Region SRC410;  // <4;1,0> (quarter stided access)
+    //
+    // older src regions
     static const Region SRC221;  // <2;2,1>
     static const Region SRC441;  // <4;4,1>
     static const Region SRC881;  // <8;8,1>
     static const Region SRCFF1;  // <16;16,1>
+    //
+    // special cases
+    // ternary src0/src1
     static const Region SRC0X0;  // <0;0> (ternary align1 src0 and src1)
     static const Region SRC2X1;  // <2;1> (ternary align1 src0 and src1)
-    static const Region SRC1X0;  // <1;0> XE changes 2 to 1 in encoding
+    static const Region SRC1X0;  // <1;0> XE_LP changes 2 to 1 in encoding
     static const Region SRC4X1;  // <4;1> (ternary align1 src0 and src1)
+    // ternary src2
     static const Region SRC8X1;  // <8;1> (ternary align1 src0 and src1)
     static const Region SRCXX0;  // <0>   (ternary align1 src2)
     static const Region SRCXX1;  // <1>   (ternary align1 src2)
