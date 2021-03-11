@@ -967,7 +967,8 @@ void TransposeHelperPromote::handleStoreInst(StoreInst *pStore,
       R.Indirect = ConstantExpr::getMul(
           ConstIdx,
           ConstantInt::get(IRB.getInt16Ty(),
-                           m_pDL->getTypeSizeInBits(NewStoreVal->getType()) /
+                           m_pDL->getTypeSizeInBits(
+                               NewStoreVal->getType()->getScalarType()) /
                                genx::ByteBits));
     else
       R.Indirect = ScalarizedIdx.Index;

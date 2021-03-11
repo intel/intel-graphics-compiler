@@ -872,8 +872,15 @@ void GenXBaling::processFuncPointer(Instruction *Inst) {
   IGC_ASSERT((CI && GenXIntrinsic::getGenXIntrinsicID(CI) ==
                         GenXIntrinsic::genx_faddr) &&
              "genx.faddr expected");
-  IGC_ASSERT(Inst->getNumUses() <= 1);
-  IGC_ASSERT(Inst->use_empty() || GenXIntrinsic::isWrRegion(Inst->user_back()));
+  IGC_ASSERT(Inst->getNumUses() == 1);
+  auto *NextUser = Inst->user_back();
+  if (isa<BitCastInst>(NextUser)) {
+    // bitcasts <N x i64> -> <2*N x i32> may appear after i64 emulation
+    IGC_ASSERT(NextUser->hasOneUse() &&
+               NextUser->getType()->getScalarType()->isIntegerTy(32));
+    NextUser = NextUser->user_back();
+  }
+  IGC_ASSERT(NextUser->use_empty() || GenXIntrinsic::isWrRegion(NextUser));
 
   BaleInfo BI(BaleInfo::FADDR);
   setBaleInfo(Inst, BI);
