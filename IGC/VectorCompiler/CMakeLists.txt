@@ -42,60 +42,36 @@ message(STATUS "+++ Source/IGC/VectorCompiler +++")
 message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 
 # --- LLVM ---
-if(${IGC_OPTION__LLVM_FROM_SYSTEM} OR (WIN32 AND ${IGC_OPTION__LLVM_PREBUILDS}))
-  message(STATUS "[VC] Using system llvm")
+if(IGC_OPTION__LLVM_FROM_SYSTEM OR IGC_OPTION__LLVM_PREBUILDS)
+  message(STATUS "[VC] Using system or prebuilt llvm")
 
-  # Need to search for llvm-tblgen
   find_program(LLVM_TABLEGEN_EXE "llvm-tblgen"
-    ${LLVM_TOOLS_BINARY_DIR}
+    PATHS ${LLVM_TOOLS_BINARY_DIR}
     NO_DEFAULT_PATH
     )
-  if(LLVM_TABLEGEN_EXE-NOTFOUND)
-    message(FATAL_ERROR "[VC] llvm-tblgen is not found")
+  if(NOT LLVM_TABLEGEN_EXE)
+    message(FATAL_ERROR "[VC] Tablegen is not found! Please specify LLVM_TABLEGEN_EXE to tblgen executable")
   endif()
   message(STATUS "[VC] Found tblgen: ${LLVM_TABLEGEN_EXE}")
-
-  # find_package was called by igc cmake, no need to do it again.
 else()
-  # Prebuilt llvm does not have tblgen...
-  if(${IGC_OPTION__LLVM_PREBUILDS})
-    message(FATAL_ERROR "[VC] vector compiler with prebuilt llvm is not supported")
-  endif()
-
-  # In last scenario we are building with llvm so every target is defined
-  # and LLVMConfig will only set needed variables.
   message(STATUS "[VC] Using llvm source build")
-  set(LLVM_BUILD_DIR "${LLVM_SOURCE_DIR}/../../build/src")
-  set(LLVM_CMAKE_DIR "${LLVM_BUILD_DIR}/lib/cmake/llvm")
-  message(STATUS "[VC] LLVMConfig.cmake location: ${LLVM_CMAKE_DIR}")
-  find_package(LLVM REQUIRED
-    HINTS ${LLVM_CMAKE_DIR}
-    NO_DEFAULT_PATH
-    )
 
-  # We have executable target, use it.
+  # Set correct module path.
+  set(LLVM_CMAKE_DIR "${LLVM_SOURCE_DIR}/cmake/modules")
+
   set(LLVM_TABLEGEN_EXE "llvm-tblgen")
   message(STATUS "[VC] Using executable target llvm-tlbgen for tablegenning")
-  # IGC has its own special cmake for external llvm.
-  # It sets LLVM_INCLUDE_DIRS instead of LLVM_INCLUDE_DIR.
-  set(LLVM_INCLUDE_DIR ${LLVM_INCLUDE_DIRS})
 endif()
 
-# Now find_package was called in all cases and we have all needed variables.
 set(CMAKE_MODULE_PATH
   ${LLVM_CMAKE_DIR}
   ${CMAKE_MODULE_PATH}
   )
 
 include(AddLLVM)
-
-set(LLVM_MAIN_INCLUDE_DIR ${LLVM_INCLUDE_DIR})
 include(TableGen)
 # Set LLVM_TABLEGEN_FLAGS manually based on include dirs.
-list(TRANSFORM LLVM_INCLUDE_DIR PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLAGS)
-
-message(STATUS "[VC] Including llvm headers: ${LLVM_INCLUDE_DIR}")
-include_directories(${LLVM_INCLUDE_DIR})
+list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLAGS)
 
 # --- VISA ---
 

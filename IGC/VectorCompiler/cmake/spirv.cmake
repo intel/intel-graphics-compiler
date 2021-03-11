@@ -97,6 +97,11 @@ set(MAKE_EXEC ${CMAKE_MAKE_PROGRAM})
 message(STATUS "[VC] SPIRVDLL_SRC = ${SPIRVDLL_SRC}")
 message(STATUS "[VC] SPIRV_SRC = ${SPIRV_SRC}")
 
+# LLVM DIR should be present in external build but can be missing with
+# in-tree build so set it manually in this case.
+if(NOT LLVM_DIR)
+  set(LLVM_DIR ${LLVM_BINARY_DIR}/lib/cmake/llvm)
+endif()
 if(DEFINED SPIRVDLL_SRC)
   if(NOT EXISTS ${SPIRVDLL_SRC})
     message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRVDLL_SRC}")
