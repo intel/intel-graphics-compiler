@@ -446,6 +446,31 @@ uint32_t getBlockPushConstantGRFThreshold() const
     }
 }
 
+bool hasDualSubSlices() const
+{
+    bool hasDualSS = m_platformInfo.eRenderCoreFamily == IGFX_GEN12_CORE ||
+        m_platformInfo.eRenderCoreFamily == IGFX_GEN12LP_CORE;
+    return hasDualSS;
+}
+
+unsigned getSlmSizePerSsOrDss() const
+{
+    // GTSysInfo sets SLMSize only for gen12+
+    unsigned slmSizePerSsOrDss = 65536;
+    if (hasDualSubSlices())
+    {
+        if (GetGTSystemInfo().DualSubSliceCount)
+        {
+            slmSizePerSsOrDss = GetGTSystemInfo().SLMSizeInKb / GetGTSystemInfo().DualSubSliceCount * 1024;
+        }
+        else
+        {
+            slmSizePerSsOrDss = 131072;
+        }
+    }
+    return slmSizePerSsOrDss;
+}
+
 bool hasNoFullI64Support() const
 {
     return hasNoInt64Inst();
