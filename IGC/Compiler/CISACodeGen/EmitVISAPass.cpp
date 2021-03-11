@@ -6602,7 +6602,14 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
             m_encoder->SetSrcSubVar(0, i);
-            m_encoder->SetSrcRegion(0, 2, 1, 0);
+            if (src->IsUniform())
+            {
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+            }
+            else
+            {
+                m_encoder->SetSrcRegion(0, 2, 1, 0);
+            }
             m_encoder->SetDstSubVar(payloadOffset++);
             m_encoder->SetDstSubReg(i * 8);
             m_encoder->Copy(payloadUW, src);
