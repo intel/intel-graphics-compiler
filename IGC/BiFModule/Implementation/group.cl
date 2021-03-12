@@ -1796,13 +1796,14 @@ DEFN_ARITH_OPERATIONS(double)
 DEFN_ARITH_OPERATIONS(half)
 #endif // defined(cl_khr_fp16)
 
-#define DEFN_WORK_GROUP_REDUCE(type, op, identity, X)                                       \
+#define DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                       \
+type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                                       \
 {                                                                                          \
     GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
     uint lid = __intel_LocalInvocationIndex();                                        \
     uint lsize = __intel_WorkgroupSize();                                                 \
     data[lid] = X;                                                                       \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);         \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
     uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(lsize - 1)) - 1) ;  \
     while( mask > 0 )                                                                    \
     {                                                                                    \
@@ -1820,7 +1821,8 @@ DEFN_ARITH_OPERATIONS(half)
 }
 
 
-#define DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)                                   \
+#define DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                   \
+type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)                      \
 {                                                                                          \
     GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
     uint lid = __intel_LocalInvocationIndex();                                         \
@@ -1843,7 +1845,8 @@ DEFN_ARITH_OPERATIONS(half)
 }
 
 
-#define DEFN_WORK_GROUP_SCAN_EXCL(type, op, identity, X)                                   \
+#define DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                   \
+type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)                      \
 {                                                                                         \
     GET_MEMPOOL_PTR(data, type, true, 1)                                                 \
     uint lid = __intel_LocalInvocationIndex();                                         \
@@ -1867,190 +1870,189 @@ DEFN_ARITH_OPERATIONS(half)
     return X;                                                                            \
 }
 
-#define DEFN_SUB_GROUP_REDUCE(type, type_abbr, op, identity, X)                             \
-{                                                                                         \
-    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                 \
-    if(sgsize == 8)    \
-    {    \
-        X = op((type)intel_sub_group_shuffle( X, 0 ),    \
-                op((type)intel_sub_group_shuffle( X, 1 ),    \
-                op((type)intel_sub_group_shuffle( X, 2 ),    \
-                op((type)intel_sub_group_shuffle( X, 3 ),    \
-                op((type)intel_sub_group_shuffle( X, 4 ),    \
-                op((type)intel_sub_group_shuffle( X, 5 ),    \
-                op((type)intel_sub_group_shuffle( X, 6 ),(type)intel_sub_group_shuffle( X, 7 )    \
-                )))))));    \
-    }    \
-    else if(sgsize == 16)    \
-    {    \
-        X = op((type)intel_sub_group_shuffle( X, 0 ),    \
-                op((type)intel_sub_group_shuffle( X, 1 ),    \
-                op((type)intel_sub_group_shuffle( X, 2 ),    \
-                op((type)intel_sub_group_shuffle( X, 3 ),    \
-                op((type)intel_sub_group_shuffle( X, 4 ),    \
-                op((type)intel_sub_group_shuffle( X, 5 ),    \
-                op((type)intel_sub_group_shuffle( X, 6 ),    \
-                op((type)intel_sub_group_shuffle( X, 7 ),    \
-                op((type)intel_sub_group_shuffle( X, 8 ),    \
-                op((type)intel_sub_group_shuffle( X, 9 ),    \
-                op((type)intel_sub_group_shuffle( X, 10 ),    \
-                op((type)intel_sub_group_shuffle( X, 11 ),    \
-                op((type)intel_sub_group_shuffle( X, 12 ),    \
-                op((type)intel_sub_group_shuffle( X, 13 ),    \
+#define DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity)                                  \
+type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                                       \
+{                                                                                                   \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                   \
+    if(sgsize == 8)                                                                                 \
+    {                                                                                               \
+        X = op((type)intel_sub_group_shuffle( X, 0 ),                                               \
+                op((type)intel_sub_group_shuffle( X, 1 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 2 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 3 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 4 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 5 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 6 ),(type)intel_sub_group_shuffle( X, 7 )      \
+                )))))));                                                                            \
+    }                                                                                               \
+    else if(sgsize == 16)                                                                           \
+    {                                                                                               \
+        X = op((type)intel_sub_group_shuffle( X, 0 ),                                               \
+                op((type)intel_sub_group_shuffle( X, 1 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 2 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 3 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 4 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 5 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 6 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 7 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 8 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 9 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 10 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 11 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 12 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 13 ),                                          \
                 op((type)intel_sub_group_shuffle( X, 14 ),(type)intel_sub_group_shuffle( X, 15 )    \
-                )))))))))))))));    \
-    }    \
-    else if(sgsize == 32)    \
-    {    \
-        X = op((type)intel_sub_group_shuffle( X, 0 ),    \
-                op((type)intel_sub_group_shuffle( X, 1 ),    \
-                op((type)intel_sub_group_shuffle( X, 2 ),    \
-                op((type)intel_sub_group_shuffle( X, 3 ),    \
-                op((type)intel_sub_group_shuffle( X, 4 ),    \
-                op((type)intel_sub_group_shuffle( X, 5 ),    \
-                op((type)intel_sub_group_shuffle( X, 6 ),    \
-                op((type)intel_sub_group_shuffle( X, 7 ),    \
-                op((type)intel_sub_group_shuffle( X, 8 ),    \
-                op((type)intel_sub_group_shuffle( X, 9 ),    \
-                op((type)intel_sub_group_shuffle( X, 10 ),    \
-                op((type)intel_sub_group_shuffle( X, 11 ),    \
-                op((type)intel_sub_group_shuffle( X, 12 ),    \
-                op((type)intel_sub_group_shuffle( X, 13 ),    \
-                op((type)intel_sub_group_shuffle( X, 14 ),    \
-                op((type)intel_sub_group_shuffle( X, 15 ),    \
-                op((type)intel_sub_group_shuffle( X, 16 ),    \
-                op((type)intel_sub_group_shuffle( X, 17 ),    \
-                op((type)intel_sub_group_shuffle( X, 18 ),    \
-                op((type)intel_sub_group_shuffle( X, 19 ),    \
-                op((type)intel_sub_group_shuffle( X, 20 ),    \
-                op((type)intel_sub_group_shuffle( X, 21 ),    \
-                op((type)intel_sub_group_shuffle( X, 22 ),    \
-                op((type)intel_sub_group_shuffle( X, 23 ),    \
-                op((type)intel_sub_group_shuffle( X, 24 ),    \
-                op((type)intel_sub_group_shuffle( X, 25 ),    \
-                op((type)intel_sub_group_shuffle( X, 26 ),    \
-                op((type)intel_sub_group_shuffle( X, 27 ),    \
-                op((type)intel_sub_group_shuffle( X, 28 ),    \
-                op((type)intel_sub_group_shuffle( X, 29 ),    \
+                )))))))))))))));                                                                    \
+    }                                                                                               \
+    else if(sgsize == 32)                                                                           \
+    {                                                                                               \
+        X = op((type)intel_sub_group_shuffle( X, 0 ),                                               \
+                op((type)intel_sub_group_shuffle( X, 1 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 2 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 3 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 4 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 5 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 6 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 7 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 8 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 9 ),                                           \
+                op((type)intel_sub_group_shuffle( X, 10 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 11 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 12 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 13 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 14 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 15 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 16 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 17 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 18 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 19 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 20 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 21 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 22 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 23 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 24 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 25 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 26 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 27 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 28 ),                                          \
+                op((type)intel_sub_group_shuffle( X, 29 ),                                          \
                 op((type)intel_sub_group_shuffle( X, 30 ),(type)intel_sub_group_shuffle( X, 31 )    \
-                )))))))))))))))))))))))))))))));    \
-    }    \
-    else    \
-    {    \
-        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                     \
+                )))))))))))))))))))))))))))))));                                                    \
+    }                                                                                               \
+    else                                                                                            \
+    {                                                                                               \
+        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                   \
         uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(sgsize - 1)) - 1 ); \
-        while( mask > 0 )                                                                    \
-        {                                                                                    \
-            uint c = sglid ^ mask;                                                            \
-            type other = ( c < sgsize ) ?                                                      \
-                            intel_sub_group_shuffle( X, c ):                                       \
-                            identity;                                                            \
-            X = op( other, X );                                                                 \
-            mask >>= 1;                                                                      \
-        }    \
-    }    \
-    uint3 vec3;                                                                              \
-    vec3.s0 = 0;                                                                           \
-    return __builtin_spirv_OpGroupBroadcast_i32_##type_abbr##_v3i32(Subgroup, X, vec3 ); \
+        while( mask > 0 )                                                                           \
+        {                                                                                           \
+            uint c = sglid ^ mask;                                                                  \
+            type other = ( c < sgsize ) ?                                                           \
+                            intel_sub_group_shuffle( X, c ):                                        \
+                            identity;                                                               \
+            X = op( other, X );                                                                     \
+            mask >>= 1;                                                                             \
+        }                                                                                           \
+    }                                                                                               \
+    uint3 vec3;                                                                                     \
+    vec3.s0 = 0;                                                                                    \
+    return __builtin_spirv_OpGroupBroadcast_i32_##type_abbr##_v3i32(Subgroup, X, vec3 );            \
 }
 
 
-#define DEFN_SUB_GROUP_SCAN_INCL(type, type_abbr, op, identity, X)                        \
-{                                                                                         \
-    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                 \
-    uint offset = 1;                                                                      \
+#define DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                    \
+type __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(type X)                     \
+{                                                                                        \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                        \
+    uint offset = 1;                                                                     \
     while( offset < sgsize )                                                             \
     {                                                                                    \
-        type other = intel_sub_group_shuffle_up( (type)identity, X, offset );              \
+        type other = intel_sub_group_shuffle_up( (type)identity, X, offset );            \
         X = op( X, other );                                                              \
         offset <<= 1;                                                                    \
     }                                                                                    \
     return X;                                                                            \
 }
 
-#define DEFN_SUB_GROUP_SCAN_EXCL(type, type_abbr, op, identity, X)                        \
-{                                                                                         \
-    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                 \
+#define DEFN_SUB_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                    \
+type __builtin_IB_SubGroupScanExclusive_##func##_##type_abbr(type X)                     \
+{                                                                                        \
+    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                        \
     X = intel_sub_group_shuffle_up( (type)identity, X, 1 );                              \
-    uint offset = 1;                                                                      \
+    uint offset = 1;                                                                     \
     while( offset < sgsize )                                                             \
     {                                                                                    \
-        type other = intel_sub_group_shuffle_up( (type)identity, X, offset );              \
+        type other = intel_sub_group_shuffle_up( (type)identity, X, offset );            \
         X = op( X, other );                                                              \
         offset <<= 1;                                                                    \
     }                                                                                    \
     return X;                                                                            \
 }
 
-#define WORK_GROUP_SWITCH(type, op, identity, X, Operation)                                 \
-{                                                                                         \
-    switch(Operation){                                                                     \
-        case GroupOperationReduce:                                                         \
-            DEFN_WORK_GROUP_REDUCE(type, op, identity, X)                                 \
-            break;                                                                         \
-        case GroupOperationInclusiveScan:                                                 \
-            DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)                             \
-            break;                                                                         \
-        case GroupOperationExclusiveScan:                                                 \
-            DEFN_WORK_GROUP_SCAN_EXCL(type, op, identity, X)                             \
-            break;                                                                         \
-        default:                                                                         \
-            return 0;                                                                    \
-            break;                                                                         \
-    }                                                                                     \
-}
-
-#define SUB_GROUP_SWITCH(type, type_abbr, op, identity, X, Operation)                     \
-{                                                                                         \
-    switch(Operation){                                                                     \
-        case GroupOperationReduce:                                                         \
-            DEFN_SUB_GROUP_REDUCE(type, type_abbr, op, identity, X)                         \
-            break;                                                                         \
-        case GroupOperationInclusiveScan:                                                 \
-            DEFN_SUB_GROUP_SCAN_INCL(type, type_abbr, op, identity, X)                     \
-            break;                                                                         \
-        case GroupOperationExclusiveScan:                                                 \
-            DEFN_SUB_GROUP_SCAN_EXCL(type, type_abbr, op, identity, X)                     \
-            break;                                                                         \
-        default:                                                                         \
-            return 0;                                                                     \
-            break;                                                                         \
-    }                                                                                     \
-}
-
-#define DEFN_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                             \
-type  __builtin_spirv_OpGroup##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X)       \
-{                                                                                                \
-    if (Execution == Workgroup)                                                                  \
-    {                                                                                            \
-        WORK_GROUP_SWITCH(type, op, identity, X, Operation)                                      \
-    }                                                                                            \
-    else if (Execution == Subgroup)                                                              \
+#define DEFN_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                              \
+                                                                                                  \
+DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity)                                        \
+DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                     \
+DEFN_SUB_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                     \
+                                                                                                  \
+DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                       \
+DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                    \
+DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                    \
+                                                                                                  \
+type  __builtin_spirv_OpGroup##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X) \
+{                                                                                                 \
+    if (Execution == Workgroup)                                                                   \
     {                                                                                             \
-        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                            \
-        {                                                                                        \
-            if (Operation == GroupOperationReduce)                                                     \
-            {                                                                                         \
-                return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);                         \
-            }                                                                                         \
-            else if (Operation == GroupOperationInclusiveScan)                                         \
-            {                                                                                         \
-                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                     \
-            }                                                                                         \
-            else if (Operation == GroupOperationExclusiveScan)                                         \
-            {                                                                                         \
-                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                           \
-            }                                                                                         \
+        switch(Operation){                                                                        \
+            case GroupOperationReduce:                                                            \
+                return __builtin_IB_WorkGroupReduce_##func##_##type_abbr(X);                      \
+                break;                                                                            \
+            case GroupOperationInclusiveScan:                                                     \
+                return __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(X);               \
+                break;                                                                            \
+            case GroupOperationExclusiveScan:                                                     \
+                return __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(X);               \
+                break;                                                                            \
+            default:                                                                              \
+                break;                                                                            \
         }                                                                                         \
-        else {                                                                                     \
-            SUB_GROUP_SWITCH(type, type_abbr, op, identity, X, Operation)                         \
+    }                                                                                             \
+    else if (Execution == Subgroup)                                                               \
+    {                                                                                             \
+        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                     \
+        {                                                                                         \
+            switch(Operation){                                                                    \
+            case GroupOperationReduce:                                                            \
+                return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);                     \
+                break;                                                                            \
+            case GroupOperationInclusiveScan:                                                     \
+                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                \
+                break;                                                                            \
+            case GroupOperationExclusiveScan:                                                     \
+                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                       \
+                break;                                                                            \
+            default:                                                                              \
+                break;                                                                            \
+            }                                                                                     \
         }                                                                                         \
-        return 0;                                                                                 \
-    }                                                                                            \
-    else                                                                                         \
-    {                                                                                            \
-        return 0;                                                                                \
-    }                                                                                            \
+        else                                                                                      \
+        {                                                                                         \
+            switch(Operation){                                                                    \
+            case GroupOperationReduce:                                                            \
+                return __builtin_IB_SubGroupReduce_##func##_##type_abbr(X);                       \
+                break;                                                                            \
+            case GroupOperationInclusiveScan:                                                     \
+                return __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(X);                \
+                break;                                                                            \
+            case GroupOperationExclusiveScan:                                                     \
+                return __builtin_IB_SubGroupScanExclusive_##func##_##type_abbr(X);                \
+                break;                                                                            \
+            default:                                                                              \
+                break;                                                                            \
+            }                                                                                     \
+        }                                                                                         \
+    }                                                                                             \
+                                                                                                  \
+    return 0;                                                                                     \
 }
 
 // ---- Add ----
