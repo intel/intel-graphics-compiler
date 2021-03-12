@@ -31,8 +31,6 @@ IN THE SOFTWARE.
 
 
 
-
-#include "../headers/clang_dll.h"
 #include "../headers/clang_tb.h"
 #include "secure_mem.h"
 

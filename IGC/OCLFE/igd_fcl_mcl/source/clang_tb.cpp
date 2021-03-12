@@ -456,7 +456,6 @@ namespace FCL
 #endif
 
 #if defined(_WIN32)
-#include "../tools/Frontend_Stats/CLANG_Stats.h"
 #include <Windows.h>
 #include "DriverStore.h"
 #endif

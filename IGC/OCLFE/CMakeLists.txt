@@ -51,7 +51,6 @@ set(IGC_BUILD__SRC__FCL
 )
 
 set(IGC_BUILD__HDR__FCL
-  "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/clang_dll.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/clang_tb.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/clang_debug.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/headers/resource.h"

@@ -24,7 +24,6 @@ IN THE SOFTWARE.
 
 #pragma once
 
-#include "IGILContext.h"
 #include "GlobalData.h"
 #include "igfxfmid.h"
 #include "TranslationBlock.h"
