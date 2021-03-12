@@ -593,6 +593,8 @@ private:
         }
     }
 
+    void populateDefsTable();
+
     // Data
     GlobalRA&                gra;
     IR_Builder *             builder_;
@@ -622,6 +624,11 @@ private:
 
     const Interference *     spillIntf_;
     vISA::Mem_Manager              mem_;
+
+    // Dcl -> vector[<lb, rb>]
+    // this data structure helps check whether a definition or part of it
+    // has multiple definitions in the program.
+    std::unordered_map<G4_Declare*, std::vector<std::pair<unsigned int, unsigned int>>> VarDefs;
 
     // The number of GRF spill.
     unsigned numGRFSpill = 0;
