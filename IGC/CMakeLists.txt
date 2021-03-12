@@ -3338,6 +3338,9 @@ if(LLVM_ON_WIN32
 endif()
 
 
+
+include(${IGC_SOURCE_DIR}/cmake/find_opencl_clang.cmake)
+
 if(IGC_BUILD__VC_ENABLED)
   add_subdirectory(CMFE)
 endif()
