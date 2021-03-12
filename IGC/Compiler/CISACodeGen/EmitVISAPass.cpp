@@ -7378,7 +7378,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     sampler = GetSamplerVariable(samplerValue);
 
     //Check for valid number of sources from the end of the list
-    for (uint i = (numSources - 1); i >= 1; i--)
+    for (uint i = (numOperands - 7 - 1); i >= 1; i--)
     {
         CVariable* validSrc = GetSymbol(inst->getOperand(i));
         if (validSrc->IsImmediate() &&

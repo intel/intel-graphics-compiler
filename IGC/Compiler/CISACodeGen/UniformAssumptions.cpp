@@ -84,12 +84,8 @@ namespace IGC {
         if (llvm::GenIntrinsicInst * pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(&CI))
         {
             // Figure out the intrinsic operands for texture & sampler
-            llvm::Value* pTextureValue = nullptr;
-            llvm::Value*pSamplerValue = nullptr;
-            IGC::getTextureAndSamplerOperands(
-                pIntr,
-                pTextureValue,
-                pSamplerValue);
+            llvm::Value* pTextureValue = nullptr, * pSamplerValue = nullptr;
+            IGC::getTextureAndSamplerOperands(pIntr, pTextureValue, pSamplerValue);
 
             if (pTextureValue && pTextureValue->getType()->isPointerTy() &&
                 !m_WIAnalysis->isUniform(pTextureValue))

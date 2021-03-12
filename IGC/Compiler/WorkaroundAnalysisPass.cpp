@@ -424,14 +424,9 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     }
     Value* zero = m_builder->getInt32(0);
     bool hasRef = gatherpo->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_gather4POCptr;
-    unsigned int offsetArgumentIndices[] = {
-        hasRef ? 8u : 7u,
-        hasRef ? 9u : 8u,
-        hasRef ? 10u : 9u,
-    };
-    if (gatherpo->getOperand(offsetArgumentIndices[0]) != zero ||
-        gatherpo->getOperand(offsetArgumentIndices[1]) != zero ||
-        gatherpo->getOperand(offsetArgumentIndices[2]) != zero)
+    if (gatherpo->getOperand(hasRef ? 8 : 7) != zero ||
+        gatherpo->getOperand(hasRef ? 9 : 8) != zero ||
+        gatherpo->getOperand(hasRef ? 10 : 9) != zero)
     {
         // only apply the WA if all the immediate offsets are zero
         return;
@@ -456,7 +451,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     arg.push_back(zero);
     arg.push_back(zero);
     arg.push_back(zero);
-    arg.push_back(gatherpo->getOperand(offsetArgumentIndices[2] + 1));
+    arg.push_back(gatherpo->getOperand(hasRef ? 11 : 10));
 
     for (unsigned int i = 0; i < 2; i++)
     {
