@@ -274,6 +274,7 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         return false;
 
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
+    bool useAssumeUniform = pAlloca->getMetadata("UseAssumeUniform") != nullptr;
     unsigned int allocaSize = extractConstAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
 
@@ -315,7 +316,7 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         allocaSize = iSTD::Round(allocaSize, SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
     }
 
-    if (allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
+    if (useAssumeUniform || allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
     {
         return true;
     }

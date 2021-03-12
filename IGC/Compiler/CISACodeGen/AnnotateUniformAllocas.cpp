@@ -84,6 +84,7 @@ namespace IGC
         bool isUniformAlloca = WI->isUniform(&I);
         if (isUniformAlloca)
         {
+            // add the meta-date to the alloca for promotion
             IRBuilder<> builder(&I);
             MDNode* node = MDNode::get(I.getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
             I.setMetadata("uniform", node);
@@ -98,6 +99,24 @@ namespace IGC
             if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_assume_uniform)
             {
                 AssumeToErase.push_back(pIntr);
+                // add the meta-date to the alloca for promotion
+                auto OpV = pIntr->getOperand(0);
+                while (OpV)
+                {
+                   if (auto CI = dyn_cast<CastInst>(OpV))
+                   {
+                       OpV = CI->getOperand(0);
+                       continue;
+                   }
+                   if (auto ALI = dyn_cast<AllocaInst>(OpV))
+                   {
+                       IRBuilder<> builder(ALI);
+                       MDNode* node = MDNode::get(ALI->getContext(),
+                               ConstantAsMetadata::get(builder.getInt1(true)));
+                       ALI->setMetadata("UseAssumeUniform", node);
+                   }
+                   break;
+                }
             }
         }
     }
