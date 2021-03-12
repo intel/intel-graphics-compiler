@@ -651,8 +651,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(createSplitIndirectEEtoSelPass());
     }
 
-    // Preprocess vector bitcasts to enable memory operations simplification.
-    mpm.add(createVectorBitCastOptPass());
     // Split big vector & 3-element load/store, etc.
     mpm.add(createVectorPreProcessPass());
 
