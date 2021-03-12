@@ -1242,22 +1242,19 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
 // Loops over the argument list transferring uses from old function to new one.
 void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs)
 {
-
     Function::arg_iterator currArg = newFunc->arg_begin();
     unsigned currentArgIdx = 0, newArgIdx = 0;
-
-
 
     for (Function::arg_iterator I = oldFunc->arg_begin(), E = oldFunc->arg_end();
         I != E; ++I, ++currArg, ++currentArgIdx)
     {
         Value* newArg = &(*currArg);
-        if ((*I).getType() != currArg->getType())
+        // Check if the next entry in newArgs is for currentArgIdx arg 
+        if (newArgIdx < newArgs.size() && currentArgIdx == newArgs[newArgIdx].first)
         {
-            if (currentArgIdx == newArgs[newArgIdx].first)
+            if ((*I).getType() != currArg->getType())
             {
                 PointerType* originalPointerTy = dyn_cast<PointerType>(I->getType());
-
                 PointerType* newPointerTy = PointerType::get(I->getType()->getPointerElementType(),
                     newArgs[newArgIdx].second);
                 I->mutateType(newPointerTy);
@@ -1273,15 +1270,13 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
                 {
                     recoverASC->eraseFromParent();
                 }
-                newArgIdx++;
             }
+            newArgIdx++;
         }
         I->replaceAllUsesWith(newArg);
         currArg->takeName(&(*I));
     }
 }
-
-
 
 void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
 {
