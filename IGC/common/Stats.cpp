@@ -1060,7 +1060,12 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
         subFile += "Shaders";
     else
         subFile += IGC::Debug::GetShaderCorpusName();
-    const std::string outputFilePath = std::string("c:\\Intel\\") + subFile + ".csv";
+    const std::string outputFilePath = 
+#if defined(__linux__)
+    subFile + ".csv";
+#else
+    std::string("c:\\Intel\\") + subFile + ".csv";
+#endif
     const char *outputFile = outputFilePath.c_str();
 
     bool fileExist = false;
