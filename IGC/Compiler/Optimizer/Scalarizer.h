@@ -42,7 +42,6 @@ IN THE SOFTWARE.
 
 #include <string>
 #include <sstream>
-#include <set>
 
 namespace IGC
 {
@@ -65,7 +64,7 @@ namespace IGC
     public:
         static char ID; // Pass identification, replacement for typeid
 
-        ScalarizeFunction(bool selectiveScalarization = false);
+        ScalarizeFunction(bool scalarizingVectorLDSTType = false);
 
         ~ScalarizeFunction();
 
@@ -84,8 +83,6 @@ namespace IGC
 
     private:
 
-        /// @brief select an exclusive set that would not be scalarized
-        void buildExclusiveSet();
         /// @brief main Method for dispatching instructions (according to inst type) for scalarization
         /// @param I instruction to dispatch
         void dispatchInstructionToScalarize(llvm::Instruction* I);
@@ -111,6 +108,14 @@ namespace IGC
         void scalarizeInstruction(llvm::CallInst* CI);
         void scalarizeInstruction(llvm::AllocaInst* CI);
         void scalarizeInstruction(llvm::GetElementPtrInst* CI);
+        void scalarizeInstruction(llvm::LoadInst* CI);
+        void scalarizeInstruction(llvm::StoreInst* CI);
+
+
+        /// @brief Check if worth scalarize Load/Store with given vector type
+        /// @param type vector type of Load/Store (can be NULL)
+        /// @return true if Load/Store worth scalarize, false otherwise
+        bool isScalarizableLoadStoreType(llvm::VectorType* type);
 
         /*! \name Scalarizarion Utility Functions
          *  \{ */
@@ -156,11 +161,6 @@ namespace IGC
         llvm::SmallDenseSet<llvm::Instruction*, ESTIMATED_INST_NUM> m_removedInsts;
         /// @brief Counters for "transpose" statistics
         int m_transposeCtr[llvm::Instruction::OtherOpsEnd];
-
-        /// <summary>
-        /// @brief The instructions we do not want to scalarize
-        /// </summary>
-        std::set<llvm::Value*> m_Excludes;
 
         /// @brief The SCM (scalar conversions map). Per each value - map of its scalar elements
         struct SCMEntry
@@ -223,14 +223,17 @@ namespace IGC
         static llvm::SmallVectorImpl<llvm::Value*>& getArgs(funcRootsVect& FRV) { return FRV.first; }
         static const llvm::SmallVectorImpl<llvm::Value*>& getArgs(const funcRootsVect& FRV) { return FRV.first; }
 
-        /// @brief flag for selective scalarization
-        bool m_SelectiveScalarization;
+
+        /// @brief flag to enable/disable scalarizing vector ld/st type.
+        bool m_ScalarizingVectorLDSTType;
 
         /// @brief This holds DataLayout of processed module
         const llvm::DataLayout* m_pDL;
+
+
     };
 
 } // namespace IGC
 
 /// By default (no argument given to this function), vector load/store are kept as is.
-extern "C" llvm::FunctionPass* createScalarizerPass(bool selectiveScalarization = false);
+extern "C" llvm::FunctionPass* createScalarizerPass(bool scalarizingVectorLDSTType = false);
