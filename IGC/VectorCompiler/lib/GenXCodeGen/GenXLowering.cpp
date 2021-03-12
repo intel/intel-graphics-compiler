@@ -2494,8 +2494,14 @@ bool GenXLowering::lowerSqrt(CallInst *CI) {
   IGC_ASSERT_MESSAGE(GenXIntrinsic::getAnyIntrinsicID(CI) == Intrinsic::sqrt,
     "llvm.sqrt expected");
   auto *ResTy = CI->getType();
-  auto *SqrtDecl = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_ieee_sqrt, {ResTy, ResTy});
+
+  GenXIntrinsic::ID SqrtID = (CI->getType()->getScalarType()->isDoubleTy() ||
+                              !CI->getFastMathFlags().isFast())
+                                 ? GenXIntrinsic::genx_ieee_sqrt
+                                 : GenXIntrinsic::genx_sqrt;
+
+  auto *SqrtDecl =
+      GenXIntrinsic::getGenXDeclaration(CI->getModule(), SqrtID, {ResTy});
   Value *Result = IRBuilder<>(CI).CreateCall(SqrtDecl, {CI->getArgOperand(0)},
                                              CI->getName());
   CI->replaceAllUsesWith(Result);

@@ -166,6 +166,7 @@ private:
   // flipBoolNot : flip a (vector) bool not instruction if beneficial
   bool flipBoolNot(Instruction *Inst);
   // foldBoolAnd : fold a (vector) bool and into sel/wrregion if beneficial
+  bool matchInverseSqrt(Instruction *I);
   bool foldBoolAnd(Instruction *Inst);
   bool simplifyPredRegion(CallInst *Inst);
   bool simplifyWrRegion(CallInst *Inst);
@@ -397,6 +398,9 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
                                  .getGenXSubtarget();
   switch (unsigned ID = GenXIntrinsic::getGenXIntrinsicID(&I)) {
   default:
+    break;
+  case GenXIntrinsic::genx_inv:
+    Changed |= matchInverseSqrt(&I);
     break;
   case GenXIntrinsic::genx_ssadd_sat:
   case GenXIntrinsic::genx_suadd_sat:
@@ -765,6 +769,42 @@ bool GenXPatternMatch::flipBoolNot(Instruction *Inst) {
     NewNot->takeName(Inst);
     Input->replaceAllUsesWith(NewNot);
   }
+  return true;
+}
+
+/// (inv (sqrt x)) -> (rsqrt x)
+bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
+  IGC_ASSERT(I);
+
+  auto *OpInst = dyn_cast<CallInst>(I->getOperand(0));
+  if (!OpInst)
+    return false;
+
+  // Leave as it is for double types
+  if (OpInst->getType()->getScalarType()->isDoubleTy())
+    return false;
+
+  // Generate inverse sqrt only if fast flag for llvm intrinsic is used or
+  // genx sqrt intrinsics is specified
+  auto IID = GenXIntrinsic::getAnyIntrinsicID(OpInst);
+  if (!(IID == GenXIntrinsic::genx_sqrt ||
+        (IID == Intrinsic::sqrt && OpInst->getFastMathFlags().isFast())))
+    return false;
+
+  // Leave as it if sqrt has multiple uses:
+  // generating rsqrt operation is not beneficial
+  if (OpInst->getNumUses() > 1)
+    return false;
+
+  Function *Decl = GenXIntrinsic::getGenXDeclaration(
+      I->getModule(), GenXIntrinsic::genx_rsqrt, {I->getType()});
+  auto NewInst =
+      CallInst::Create(Decl, {OpInst->getOperand(0)},
+                       OpInst->getName() + "inversed", I->getNextNode());
+  I->replaceAllUsesWith(NewInst);
+  I->eraseFromParent();
+
+  OpInst->eraseFromParent();
   return true;
 }
 
