@@ -951,8 +951,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       if (IdxMax != NONEED)
         Tys.push_back(Args[IdxMax]->getType());
 
-      auto Decl = GenXIntrinsic::getAnyDeclaration(
-          CI->getParent()->getParent()->getParent(), IID, Tys);
+      auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
       auto *Gather = CallInst::Create(Decl, Args, CI->getName() + ".split", CI);
       Gather->setDebugLoc(DL);
       if (IsNewLoad) {
@@ -992,8 +991,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
       // Create the target-wide scatter instructions.
       Type *Tys[] = {Args[PredIdx]->getType(), Args[AddrIdx]->getType(),
                      Args[DataIdx]->getType()};
-      auto Decl = GenXIntrinsic::getAnyDeclaration(
-          CI->getParent()->getParent()->getParent(), IID, Tys);
+      auto Decl = GenXIntrinsic::getAnyDeclaration(CI->getModule(), IID, Tys);
       auto NewInst = CallInst::Create(Decl, Args, "", CI);
       NewInst->setDebugLoc(DL);
     }
@@ -2997,7 +2995,7 @@ bool LoadStoreResolver::emitGather() {
 
   // Overload with return type, predicate type and element offset type
   Type *Tys[] = {OldVal->getType(), Args[0]->getType(), EltOffsetTy};
-  Module *M = Inst->getParent()->getParent()->getParent();
+  Module *M = Inst->getModule();
   auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_gather_scaled, Tys);
 
   Value *NewVal = Builder.CreateCall(Fn, Args);
@@ -3058,7 +3056,7 @@ bool LoadStoreResolver::emitScatter() {
 
   // Overload with predicate type, element offset type, value to write type.
   Type *Tys[] = {Args[0]->getType(), EltOffsetTy, Val->getType()};
-  Module *M = Inst->getParent()->getParent()->getParent();
+  Module *M = Inst->getModule();
   auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_scatter_scaled, Tys);
   Builder.CreateCall(Fn, Args);
   return true;
@@ -3114,7 +3112,7 @@ bool LoadStoreResolver::emitSVMGather() {
 
   // Overload with return type, predicate type and address vector type
   Type *Tys[] = {OldVal->getType(), Args[0]->getType(), Addr->getType()};
-  Module *M = Inst->getParent()->getParent()->getParent();
+  Module *M = Inst->getModule();
   auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_svm_gather, Tys);
 
   Value *NewVal = Builder.CreateCall(Fn, Args);
@@ -3161,7 +3159,7 @@ bool LoadStoreResolver::emitSVMScatter() {
 
   // Overload with predicate type, address vector type, and data type
   Type *Tys[] = {Args[0]->getType(), Addr->getType(), Val->getType()};
-  Module *M = Inst->getParent()->getParent()->getParent();
+  Module *M = Inst->getModule();
   auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_svm_scatter, Tys);
 
   Builder.CreateCall(Fn, Args);
