@@ -51,7 +51,6 @@ IN THE SOFTWARE.
 #include "common/shaderOverride.hpp"
 
 #include "CLElfLib/ElfReader.h"
-#include "usc.h"
 
 #if defined(IGC_VC_ENABLED)
 #include "common/LLVMWarningsPush.hpp"
@@ -256,21 +255,7 @@ bool CIGCTranslationBlock::Translate(
 
     IGC::CPlatform IGCPlatform(m_Platform);
 
-    SUscGTSystemInfo gtSystemInfo = { 0 };
-    gtSystemInfo.EUCount = m_SysInfo.EUCount;
-    gtSystemInfo.ThreadCount = m_SysInfo.ThreadCount;
-    gtSystemInfo.SliceCount = m_SysInfo.SliceCount;
-    gtSystemInfo.SubSliceCount = m_SysInfo.SubSliceCount;
-    gtSystemInfo.IsDynamicallyPopulated = m_SysInfo.IsDynamicallyPopulated;
-    gtSystemInfo.TotalVsThreads = m_SysInfo.TotalVsThreads;
-    gtSystemInfo.TotalPsThreadsWindowerRange = m_SysInfo.TotalPsThreadsWindowerRange;
-    gtSystemInfo.TotalDsThreads = m_SysInfo.TotalDsThreads;
-    gtSystemInfo.TotalGsThreads = m_SysInfo.TotalGsThreads;
-    gtSystemInfo.TotalHsThreads = m_SysInfo.TotalHsThreads;
-    gtSystemInfo.MaxEuPerSubSlice = m_SysInfo.MaxEuPerSubSlice;
-    gtSystemInfo.EuCountPerPoolMax = m_SysInfo.EuCountPerPoolMax;
-
-    IGC::SetGTSystemInfo(&gtSystemInfo, &IGCPlatform);
+    IGC::SetGTSystemInfo(&m_SysInfo, &IGCPlatform);
     IGC::SetWorkaroundTable(&m_SkuTable, &IGCPlatform);
     IGC::SetCompilerCaps(&m_SkuTable, &IGCPlatform);
 
