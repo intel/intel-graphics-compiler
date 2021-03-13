@@ -13674,18 +13674,10 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         L1_Invalidate &= globalConst->getValue().getBoolValue();
     }
 
-    // for untyped memory fence L3 flush is never necessary.
-    L3_Flush_RW_Data = false;
-    if (L3_Flush_RW_Data)
-    {
-        // dont flush L1 if L3 is also being flushed
-        L1_Invalidate = false;
-    }
-
     bool EmitFence = true;
     // If passed a non-constant parameter, be conservative and emit a fence.
     // We really don't want to add control-flow at this point.
-    if (ConstantInt * globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(5)))
+    if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(5)))
     {
         Global_Mem_Fence = globalConst->getValue().getBoolValue();
         if (globalConst->isZero())
@@ -13698,6 +13690,14 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
                 EmitFence = false;
             }
         }
+    }
+
+    // for untyped memory fence L3 flush is never necessary.
+    L3_Flush_RW_Data = false;
+    if (L3_Flush_RW_Data)
+    {
+        // dont flush L1 if L3 is also being flushed
+        L1_Invalidate = false;
     }
 
 
