@@ -54,8 +54,8 @@ public:
 public:
 void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
 uint32_t getMaxOCLParameteSize() const {
-  uint32_t limitFromFlag = IGC_GET_FLAG_VALUE(OverrideOCLMaxParamSize);
-  return limitFromFlag ? limitFromFlag : m_OCLCaps.MaxParameterSize;
+    uint32_t limitFromFlag = IGC_GET_FLAG_VALUE(OverrideOCLMaxParamSize);
+    return limitFromFlag ? limitFromFlag : m_OCLCaps.MaxParameterSize;
 }
 void OverrideRevId(unsigned short newRevId)
 {
@@ -64,7 +64,7 @@ void OverrideRevId(unsigned short newRevId)
 
 void OverrideDeviceId(unsigned short newDeviceID)
 {
-	m_platformInfo.usDeviceID = newDeviceID;
+    m_platformInfo.usDeviceID = newDeviceID;
 }
 
 

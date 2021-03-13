@@ -4268,7 +4268,8 @@ namespace IGC
                 SaveOption( vISA_FastCompileRA, true );
             }
         }
-    }
+
+    } // InitVISABuilderOptions
 
     // Creates a module/program-unique label prefix.
     // E.g. the 3rd label of the 5th function would be
