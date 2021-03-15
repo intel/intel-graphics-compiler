@@ -22,11 +22,9 @@
 #
 #============================ end_copyright_notice =============================
 
-add_library(CMCLHeaders INTERFACE)
+add_library(CMCLInterface INTERFACE)
 
-target_include_directories(CMCLHeaders
+target_include_directories(CMCLInterface
   INTERFACE
-  ${CMAKE_CURRENT_SOURCE_DIR}/Headers
+  ${CMAKE_CURRENT_SOURCE_DIR}
   )
-
-add_subdirectory(Support)

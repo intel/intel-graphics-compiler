@@ -22,11 +22,22 @@
 #
 #============================ end_copyright_notice =============================
 
-add_library(CMCLHeaders INTERFACE)
-
-target_include_directories(CMCLHeaders
-  INTERFACE
-  ${CMAKE_CURRENT_SOURCE_DIR}/Headers
+set(CM_CL_SUPPORT_SOURCES
+  BuiltinTranslator.cpp
+  TranslatorPass.cpp
+  InitializePasses.cpp
   )
 
-add_subdirectory(Support)
+add_library(CMCLSupport ${CM_CL_SUPPORT_SOURCES})
+
+# LLVM dependencies
+igc_get_llvm_targets(LLVM_LIBS
+  Core
+  Support
+  )
+
+target_link_libraries(CMCLSupport
+  CMCLInterface
+  LLVMGenXIntrinsics
+  ${LLVM_LIBS}
+  )

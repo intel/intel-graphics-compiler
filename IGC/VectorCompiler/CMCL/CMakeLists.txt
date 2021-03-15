@@ -22,4 +22,6 @@
 #
 #============================ end_copyright_notice =============================
 
+add_subdirectory(include)
 add_subdirectory(lib)
+add_subdirectory(tools)
