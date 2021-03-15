@@ -150,23 +150,23 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                 ldms->replaceAllUsesWith(new_ldms);
             }
 
-            // In OGL there are uses of ldmcs other then ldms, using vec4float type.
+            // There are uses of ldmcs other then ldms, using vector of int32 type.
             // Fix them to use newly created 16bit ldmcs.
             if (ldmcs->getType()->isVectorTy() &&
-                ldmcs->getType()->getVectorElementType()->isFloatTy())
+                ldmcs->getType()->getVectorElementType() == m_builder->getInt32Ty())
             {
                 m_builder->SetInsertPoint(ldmcs);
 
                 uint ldmcsNumOfElements = ldmcs->getType()->getVectorNumElements();
-                uint new_mcs_callNumOfElements = new_mcs_call->getType()->getVectorNumElements();
+                uint newLdmcsNumOfElements = new_mcs_call->getType()->getVectorNumElements();
 
                 // vec of 16bit ints to vec of 32bit ints
-                Type* new_mcs_callVecType = VectorType::get(m_builder->getInt32Ty(), new_mcs_callNumOfElements);
-                Value* ldmcsExtendedToInt32 = m_builder->CreateSExt(new_mcs_call, new_mcs_callVecType);
+                Type* newLdmcsVecType = VectorType::get(m_builder->getInt32Ty(), newLdmcsNumOfElements);
+                Value* ldmcsExtendedToInt32 = m_builder->CreateSExt(new_mcs_call, newLdmcsVecType);
 
-                // if new ldmcs has fewer elements than ldmcs, extend vector
-                Value* newLdmcsSizedVector;
-                if (new_mcs_callNumOfElements < ldmcsNumOfElements)
+                // if ldmcs has fewer elements than new ldmcs, extend vector
+                Value* ldmcsInt32CorrectlySized;
+                if (newLdmcsNumOfElements < ldmcsNumOfElements)
                 {
                     SmallVector<uint32_t, 4> maskVals;
                     for (uint i = 0; i < ldmcsNumOfElements; i++)
@@ -175,17 +175,15 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                     }
                     auto* pMask = ConstantDataVector::get(I.getContext(), maskVals);
 
-                    newLdmcsSizedVector = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(VectorType::get(m_builder->getInt32Ty(), ldmcsNumOfElements)), pMask);
+                    ldmcsInt32CorrectlySized = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(VectorType::get(m_builder->getInt32Ty(), ldmcsNumOfElements)), pMask);
                 }
                 else
                 {
-                    newLdmcsSizedVector = ldmcsExtendedToInt32;
+                    ldmcsInt32CorrectlySized = ldmcsExtendedToInt32;
                 }
-                IGC_ASSERT(newLdmcsSizedVector);
+                IGC_ASSERT(ldmcsInt32CorrectlySized);
 
-                Type* ldmcsFloatVecType = VectorType::get(m_builder->getFloatTy(), ldmcsNumOfElements);
-                Value* ldmcsBitcastedToFloat = m_builder->CreateBitCast(ldmcsExtendedToInt32, ldmcsFloatVecType);
-                ldmcs->replaceAllUsesWith(ldmcsBitcastedToFloat);
+                ldmcs->replaceAllUsesWith(ldmcsInt32CorrectlySized);
             }
 
             break;
