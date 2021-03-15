@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE float __builtin_spirv_OpenCL_mad_f32_f32_f32( float a, float b, float c )
 {
-    return a*b+c;
+    return __builtin_spirv_OpenCL_fma_f32_f32_f32(a,b,c);
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_mad, float, float, f32 )
@@ -36,7 +36,7 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_mad, float, float, f32 )
 
 INLINE double __builtin_spirv_OpenCL_mad_f64_f64_f64( double a, double b, double c )
 {
-    return a * b + c;
+    return __builtin_spirv_OpenCL_fma_f64_f64_f64(a,b,c);
 }
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS( __builtin_spirv_OpenCL_mad, double, double, f64 )
