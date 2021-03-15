@@ -233,10 +233,8 @@ public:
 
 class SamplerGatherIntrinsic : public GenIntrinsicInst {
 public:
-    inline unsigned int getTextureIndex() const { return getNumOperands() - 7; }
-    inline unsigned int getSamplerIndex() const { return getNumOperands() - 6; }
-    inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }
-    inline Value* getSamplerValue() const { return getOperand(getSamplerIndex()); }
+    inline Value* getTextureValue() const { return getOperand(getNumOperands() - 7); }
+    inline Value* getSamplerValue() const { return getOperand(getNumOperands() - 6); }
 
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
@@ -458,7 +456,6 @@ public:
     static inline bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
-
 };
 
 class LdRawIntrinsic : public GenIntrinsicInst {

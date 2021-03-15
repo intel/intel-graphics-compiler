@@ -810,21 +810,15 @@ namespace IGC
         switch (id)
         {
         case llvm::GenISAIntrinsic::GenISA_ldmcsptr:
-        {
-            llvm::Value* pTextureValue = cast<SamplerLoadIntrinsic>(pIntr)->getTextureValue();
             overloadedTys.push_back(pCalledFunc->getReturnType());
             overloadedTys.push_back(args[0]->getType());
-            overloadedTys.push_back(pTextureValue == oldPtr ? newPtr->getType() : pTextureValue->getType());
+            overloadedTys.push_back(newPtr->getType());
             break;
-        }
         case llvm::GenISAIntrinsic::GenISA_ldptr:
         case llvm::GenISAIntrinsic::GenISA_ldmsptr:
-        {
-            llvm::Value* pTextureValue = cast<SamplerLoadIntrinsic>(pIntr)->getTextureValue();
             overloadedTys.push_back(pCalledFunc->getReturnType());
-            overloadedTys.push_back(pTextureValue == oldPtr ? newPtr->getType() : pTextureValue->getType());
+            overloadedTys.push_back(newPtr->getType());
             break;
-        }
         case llvm::GenISAIntrinsic::GenISA_resinfoptr:
         case llvm::GenISAIntrinsic::GenISA_readsurfaceinfoptr:
         case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
@@ -845,21 +839,27 @@ namespace IGC
         case llvm::GenISAIntrinsic::GenISA_lodptr:
         {
             // Figure out the intrinsic operands for texture & sampler
-            llvm::Value* pTextureValue = nullptr;
-            llvm::Value* pSamplerValue = nullptr;
-            IGC::getTextureAndSamplerOperands(
-                pIntr,
-                pTextureValue,
-                pSamplerValue);
+            llvm::Value* pTextureValue = nullptr, * pSamplerValue = nullptr;
+            getTextureAndSamplerOperands(pIntr, pTextureValue, pSamplerValue);
 
             overloadedTys.push_back(pCalledFunc->getReturnType());
             overloadedTys.push_back(pIntr->getOperand(0)->getType());
-            overloadedTys.push_back(pTextureValue == oldPtr ? newPtr->getType() : pTextureValue->getType());
-            if (pSamplerValue != nullptr)
+
+            if (pTextureValue == oldPtr)
             {
-                // Samplerless messages will not have sampler in signature.
-                overloadedTys.push_back(pSamplerValue == oldPtr ? newPtr->getType() : pSamplerValue->getType());
+                overloadedTys.push_back(newPtr->getType());
+                if (pSamplerValue)
+                {
+                    // Samplerless messages will not have sampler in signature.
+                    overloadedTys.push_back(pSamplerValue->getType());
+                }
             }
+            else if (pSamplerValue == oldPtr)
+            {
+                overloadedTys.push_back(pTextureValue->getType());
+                overloadedTys.push_back(newPtr->getType());
+            }
+
             break;
         }
         case llvm::GenISAIntrinsic::GenISA_typedread:
@@ -948,10 +948,7 @@ namespace IGC
     ///
     /// Returns the sampler/texture pointers for resource access intrinsics
     ///
-    void getTextureAndSamplerOperands(
-        llvm::GenIntrinsicInst* pIntr,
-        llvm::Value*& pTextureValue,
-        llvm::Value*& pSamplerValue)
+    void getTextureAndSamplerOperands(llvm::GenIntrinsicInst* pIntr, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue)
     {
         if (llvm::SamplerLoadIntrinsic * pSamplerLoadInst = llvm::dyn_cast<llvm::SamplerLoadIntrinsic>(pIntr))
         {

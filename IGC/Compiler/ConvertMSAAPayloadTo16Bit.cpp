@@ -96,7 +96,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                 GenISAIntrinsic::getDeclaration(
                     I.getParent()->getParent()->getParent(),
                     GenISAIntrinsic::GenISA_ldmcsptr,
-                    types_ldmcs);
+                    llvm::ArrayRef<Type*>(types_ldmcs, 3));
 
             m_builder->SetInsertPoint(ldmcs);
             Value* packed_tex_params_ldmcs[] = {
@@ -127,7 +127,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                 Function* func_ldms = GenISAIntrinsic::getDeclaration(
                     ldms->getParent()->getParent()->getParent(),
                     GenISAIntrinsic::GenISA_ldmsptr16bit,
-                    types_ldms);
+                    ArrayRef<Type*>(types_ldms, 2));
 
                 m_builder->SetInsertPoint(ldms);
                 llvm::Value* packed_tex_params_ldms[] = {

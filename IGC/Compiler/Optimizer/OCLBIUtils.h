@@ -223,8 +223,7 @@ namespace IGC
         void prepareSamplerIndex(void);
 
         /// @brief  create a call to the GetBufferPtr intrinsic pseudo-instruction
-        /// @brief  push the image index into the function argument list
-        void createGetBufferPtr(void);
+        llvm::Value* createGetBufferPtr(void);
 
         /// @brief  returns "true" if the "val" is integer or float with fractional part = 0.
         static bool derivedFromInt(const llvm::Value* pVal);
@@ -234,7 +233,6 @@ namespace IGC
     protected:
         /// @brief  push the image index into the function argument list
         void prepareImageBTI(void);
-
         // m_pParamMap - maps image and sampler kernel parameters to BTIs
         //               and sampler array indexes, respecitvely
         ParamMap* m_pParamMap;
