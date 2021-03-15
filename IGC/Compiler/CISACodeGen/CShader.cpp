@@ -531,6 +531,7 @@ void CShader::AllocateConstants3DShader(uint& offset)
         AllocateConstants(offset);
         AllocateSimplePushConstants(offset);
     }
+    offset = iSTD::Align(offset, getGRFSize());
 }
 
 void CShader::AllocateConstants(uint& offset)
