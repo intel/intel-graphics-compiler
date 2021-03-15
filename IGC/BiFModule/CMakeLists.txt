@@ -530,7 +530,6 @@ function(igc_bif_build_bc)
   endif()
 
   # Final copy.
-  #igc_tool_get_activity_commandline(_copyOutCmd IGC_TARGET__TOOLS_COPY CopyPreserve ${_bcFiles} "${_outBcFilePath}")
   add_custom_command(
       OUTPUT "${_outBcFilePath}"
       COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${_bcFiles} "${_outBcFilePath}"
