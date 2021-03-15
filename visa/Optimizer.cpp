@@ -499,45 +499,50 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it, bool newBB)
 {
     const RegionDesc* region = builder.createRegionDesc(4, 4, 1);
-
     unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
-
-    auto src0Dcl_0 = builder.createHardwiredDeclare(4, Type_W, rsReg, 0);
-    auto src0Dcl_1 = builder.createHardwiredDeclare(4, Type_F, rsReg, 4);
-
-    G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
-    G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
-    G4_SrcRegRegion* src2Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
-    G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
-    G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
-    G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
-
-    G4_DstRegRegion* dst0 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_0, 1);
-    G4_DstRegRegion* dst1 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_1, 1);
 
     G4_Declare* dummyFlagDcl = builder.createTempFlag(1, "dmflag");
     dummyFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(0), 0);
     auto dummyCondMod0 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
-    auto dummyCondMod1 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
-
+    auto src0Dcl_0 = builder.createHardwiredDeclare(4, Type_W, rsReg, 0);
+    G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_SrcRegRegion* src2Opnd_0 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_0, region);
+    G4_DstRegRegion* dst0 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_0, 1);
     auto cselInst0 = builder.createInternalInst(
         nullptr, G4_csel, dummyCondMod0, g4::NOSAT, g4::SIMD4,
         dst0, src0Opnd_0, src1Opnd_0, src2Opnd_0,
-        InstOpt_WriteEnable);
-    auto cselInst1 = builder.createInternalInst(
-        nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD4,
-        dst1, src0Opnd_1, src1Opnd_1, src2Opnd_1,
         InstOpt_WriteEnable);
 
     if (newBB)
     {
         bb->push_back(cselInst0);
-        bb->push_back(cselInst1);
     }
     else
     {
         bb->insertBefore(inst_it, cselInst0);
-        bb->insertBefore(inst_it, cselInst1);
+    }
+
+    if (!builder.hasSingleALUPipe())
+    {
+        auto src0Dcl_1 = builder.createHardwiredDeclare(4, Type_F, rsReg, 4);
+        G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+        G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+        G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->Create_Src_Opnd_From_Dcl(src0Dcl_1, region);
+        G4_DstRegRegion* dst1 = kernel.fg.builder->Create_Dst_Opnd_From_Dcl(src0Dcl_1, 1);
+        auto dummyCondMod1 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
+        auto cselInst1 = builder.createInternalInst(
+            nullptr, G4_csel, dummyCondMod1, g4::NOSAT, g4::SIMD4,
+            dst1, src0Opnd_1, src1Opnd_1, src2Opnd_1,
+            InstOpt_WriteEnable);
+        if (newBB)
+        {
+            bb->push_back(cselInst1);
+        }
+        else
+        {
+            bb->insertBefore(inst_it, cselInst1);
+        }
     }
 }
 

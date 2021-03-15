@@ -643,6 +643,11 @@
         return true;
     }
 
+    bool hasSingleALUPipe() const
+    {
+        return getPlatform() == GENX_TGLLP;
+    }
+
     bool supportsSampler() const
     {
         return true;
