@@ -276,8 +276,8 @@ namespace {
 
   private:
     void validate() const {
-      IGC_ASSERT((ShiftedMask_ % 2 == 1 || CurCat_ == RegCategory::NUMCATEGORIES) &&
-             "invalid state");
+      IGC_ASSERT_MESSAGE((ShiftedMask_ % 2 == 1 || CurCat_ == RegCategory::NUMCATEGORIES),
+        "invalid state");
     }
   };
 
@@ -341,8 +341,10 @@ namespace {
     // When there's no real category uses (real is anything but NONE)
     // behavior is undefined.
     unsigned getMostUsedCat() const {
-      IGC_ASSERT(!empty() && !allHaveCat(RegCategory::NONE) &&
-             "works only for cases when there are uses with real categories");
+      IGC_ASSERT_MESSAGE(!empty(),
+        "works only for cases when there are uses with real categories");
+      IGC_ASSERT_MESSAGE(!allHaveCat(RegCategory::NONE),
+        "works only for cases when there are uses with real categories");
       return MostUsedCat_;
     }
 
@@ -356,7 +358,7 @@ namespace {
       Conv->insertAfter(Inst);
       Conv->setDebugLoc(Inst->getDebugLoc());
     } else {
-      IGC_ASSERT(isa<Argument>(Def) && "must be an argument if not an instruction");
+      IGC_ASSERT_MESSAGE(isa<Argument>(Def), "must be an argument if not an instruction");
       // Original value is a function argument. Insert at the start of the
       // function.
       Conv->insertBefore(&*Func->begin()->begin());
@@ -652,7 +654,7 @@ bool GenXCategory::processValue(Value *V)
       // The "no categories at all" case can only happen for a value that is
       // defined by a function argument or a phi node and used only in phi
       // nodes or subroutine call args.
-      IGC_ASSERT((isa<Argument>(V) || isa<PHINode>(V)) && "no register category");
+      IGC_ASSERT_MESSAGE((isa<Argument>(V) || isa<PHINode>(V)), "no register category");
       return false;
     }
     // Value defined with a category but only used in phi nodes.
@@ -684,7 +686,7 @@ bool GenXCategory::processValue(Value *V)
       }
       else
         Conv = Convs[UseInfo.Cat];
-      IGC_ASSERT(Conv && "must have such conversion");
+      IGC_ASSERT_MESSAGE(Conv, "must have such conversion");
       UseInfo.user->setOperand(UseInfo.OperandNum, Conv);
     }
   }
@@ -707,7 +709,8 @@ bool GenXCategory::processValue(Value *V)
  */
 Instruction *GenXCategory::createConversion(Value *V, unsigned Cat)
 {
-  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy() && "createConversion expects int type");
+  IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(),
+    "createConversion expects int type");
   if (Cat == RegCategory::ADDRESS) {
     Value *Input = V;
     int Offset = 0;
@@ -893,9 +896,9 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForDef(Value *V) const
 unsigned GenXCategory::getCategoryForInlasmConstraintedOp(CallInst *CI,
                                                           unsigned ArgNo,
                                                           bool IsOutput) const {
-  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
   InlineAsm *IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
-  IGC_ASSERT(!IA->getConstraintString().empty() && "Here should be constraints");
+  IGC_ASSERT_MESSAGE(!IA->getConstraintString().empty(), "Here should be constraints");
 
   auto ConstraintsInfo = genx::getGenXInlineAsmInfo(CI);
 
