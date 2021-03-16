@@ -991,24 +991,34 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
 
     std::vector<FuncToUpdate> funcsToUpdate;
 
+    auto skip = [](Function* F)
+    {
+        // Skip functions with variable number of arguments, e.g. printf.
+        if (F->isVarArg())
+            return true;
+
+        // Only non-extern functions within the module are optimized
+        if (F->hasFnAttribute("IndirectlyCalled") || F->isDeclaration()
+            || F->isIntrinsic() || F->user_empty())
+            return true;
+
+        // Skip functions that return generic pointer for now
+        PointerType* returnPointerType = dyn_cast<PointerType>(F->getReturnType());
+        if (returnPointerType && returnPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+            return true;
+
+        return false;
+    };
+
     // Step 1: find the candidates, which are functions with generic pointer args.
     // Functions will be updated later in topological ordering (top-down calls).
     for (auto I = po_begin(CG.getExternalCallingNode()), E = po_end(CG.getExternalCallingNode()); I != E; ++I)
     {
         auto CGNode = *I;
-        // Skip external and indirect nodes.
         if (auto F = CGNode->getFunction())
         {
-            // Only non-extern functions within the module are optimized
-            if (F->hasFnAttribute("IndirectlyCalled") || F->isDeclaration()
-                || F->isIntrinsic() || F->user_empty())
-                continue;
-
-            // Skip functions that return generic pointer for now
-            PointerType* returnPointerType = dyn_cast<PointerType>(F->getReturnType());
-            if (returnPointerType && returnPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
-                continue;
-
+            // Skip external and indirect nodes.
+            if (skip(F)) continue;
 
             // To store <argNo, addressSpace> for each generic pointer argument
             GenericPointerArgs genericPointerArgs;
@@ -1133,6 +1143,8 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* func = &(*I);
+        if (skip(func)) continue;
+
         for (auto UI = func->user_begin(), UE = func->user_end(); UI != UE; UI++)
         {
             if (CallInst* callInst = dyn_cast<CallInst>(*UI))
