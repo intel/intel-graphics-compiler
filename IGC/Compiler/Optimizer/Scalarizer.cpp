@@ -69,12 +69,12 @@ IGC_INITIALIZE_PASS_END(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 
 char ScalarizeFunction::ID = 0;
 
-ScalarizeFunction::ScalarizeFunction(bool selectiveScalarization) : FunctionPass(ID)
+ScalarizeFunction::ScalarizeFunction(bool scalarizingVectorLDSTType) : FunctionPass(ID)
 {
     initializeScalarizeFunctionPass(*PassRegistry::getPassRegistry());
 
     for (int i = 0; i < Instruction::OtherOpsEnd; i++) m_transposeCtr[i] = 0;
-    m_SelectiveScalarization = selectiveScalarization;
+    m_ScalarizingVectorLDSTType = scalarizingVectorLDSTType;
 
     // Initialize SCM buffers and allocation
     m_SCMAllocationArray = new SCMEntry[ESTIMATED_INST_NUM];
@@ -121,13 +121,6 @@ bool ScalarizeFunction::runOnFunction(Function& F)
     m_SCM.clear();
     releaseAllSCMEntries();
     m_DRL.clear();
-    m_Excludes.clear();
-
-    // collecting instructions that we want to avoid scalarization
-    if (m_SelectiveScalarization)
-    {
-        buildExclusiveSet();
-    }
 
     // Scalarization. Iterate over all the instructions
     // Always hold the iterator at the instruction following the one being scalarized (so the
@@ -139,14 +132,7 @@ bool ScalarizeFunction::runOnFunction(Function& F)
         Instruction* currInst = &*sI;
         // Move iterator to next instruction BEFORE scalarizing current instruction
         ++sI;
-        if (m_Excludes.count(currInst))
-        {
-            recoverNonScalarizableInst(currInst);
-        }
-        else
-        {
-            dispatchInstructionToScalarize(currInst);
-        }
+        dispatchInstructionToScalarize(currInst);
     }
 
     resolveVectorValues();
@@ -173,111 +159,6 @@ bool ScalarizeFunction::runOnFunction(Function& F)
 
     V_PRINT(scalarizer, "\nCompleted scalarizing function: " << m_currFunc->getName() << "\n");
     return true;
-}
-
-void ScalarizeFunction::buildExclusiveSet()
-{
-    inst_iterator sI = inst_begin(m_currFunc);
-    inst_iterator sE = inst_end(m_currFunc);
-    std::vector<llvm::Value*> workset;
-    while (sI != sE)
-    {
-        Instruction* currInst = &*sI;
-        ++sI;
-        if (CallInst* CI = dyn_cast<CallInst>(currInst))
-        {
-            unsigned numOperands = CI->getNumArgOperands();
-            for (unsigned i = 0; i < numOperands; i++)
-            {
-                Value* operand = CI->getArgOperand(i);
-                if (isa<VectorType>(operand->getType()))
-                {
-                    workset.push_back(operand);
-                }
-            }
-        }
-        else if (auto IEI = dyn_cast<InsertElementInst>(currInst))
-        {
-            Value* scalarIndexVal = IEI->getOperand(2);
-            // If the index is not a constant - we cannot statically remove this inst
-            if (!isa<ConstantInt>(scalarIndexVal)) {
-                workset.push_back(IEI);
-            }
-        }
-        else if (auto EEI = dyn_cast<ExtractElementInst>(currInst))
-        {
-            Value* scalarIndexVal = EEI->getOperand(1);
-            // If the index is not a constant - we cannot statically remove this inst
-            if (!isa<ConstantInt>(scalarIndexVal)) {
-                workset.push_back(EEI->getOperand(0));
-            }
-        }
-    }
-    while (!workset.empty())
-    {
-        auto Def = workset.back();
-        workset.pop_back();
-        if (m_Excludes.count(Def))
-        {
-            continue;
-        }
-        if (auto IEI = dyn_cast<InsertElementInst>(Def))
-        {
-            m_Excludes.insert(IEI);
-            if (!m_Excludes.count(IEI->getOperand(0)) &&
-                (isa<PHINode>(IEI->getOperand(0)) ||
-                 isa<ShuffleVectorInst>(IEI->getOperand(0)) ||
-                 isa<InsertElementInst>(IEI->getOperand(0))))
-            {
-                workset.push_back(IEI->getOperand(0));
-            }
-        }
-        else if (auto SVI = dyn_cast<ShuffleVectorInst>(Def))
-        {
-            m_Excludes.insert(SVI);
-            if (!m_Excludes.count(SVI->getOperand(0)) &&
-                (isa<PHINode>(SVI->getOperand(0)) ||
-                 isa<ShuffleVectorInst>(SVI->getOperand(0)) ||
-                 isa<InsertElementInst>(SVI->getOperand(0))))
-            {
-                workset.push_back(SVI->getOperand(0));
-            }
-            if (!m_Excludes.count(SVI->getOperand(1)) &&
-                (isa<PHINode>(SVI->getOperand(1)) ||
-                 isa<ShuffleVectorInst>(SVI->getOperand(1)) ||
-                 isa<InsertElementInst>(SVI->getOperand(1))))
-            {
-                workset.push_back(SVI->getOperand(1));
-            }
-        }
-        else if (auto PHI = dyn_cast<PHINode>(Def))
-        {
-            m_Excludes.insert(PHI);
-            for (int i = 0, n = PHI->getNumOperands(); i < n; ++i)
-            if (!m_Excludes.count(PHI->getOperand(i)) &&
-                (isa<PHINode>(PHI->getOperand(i)) ||
-                 isa<ShuffleVectorInst>(PHI->getOperand(i)) ||
-                 isa<InsertElementInst>(PHI->getOperand(i))))
-            {
-                workset.push_back(PHI->getOperand(i));
-            }
-        }
-        else
-        {
-            continue;
-        }
-        // check use
-        for (auto U : Def->users())
-        {
-            if (!m_Excludes.count(U) &&
-                (isa<PHINode>(U) ||
-                 isa<ShuffleVectorInst>(U) ||
-                 isa<InsertElementInst>(U)))
-            {
-                workset.push_back(U);
-            }
-        }
-    }
 }
 
 void ScalarizeFunction::dispatchInstructionToScalarize(Instruction* I)
@@ -354,6 +235,13 @@ void ScalarizeFunction::dispatchInstructionToScalarize(Instruction* I)
     case Instruction::GetElementPtr:
         scalarizeInstruction(dyn_cast<GetElementPtrInst>(I));
         break;
+    case Instruction::Load:
+        scalarizeInstruction(dyn_cast<LoadInst>(I));
+        break;
+    case Instruction::Store:
+        scalarizeInstruction(dyn_cast<StoreInst>(I));
+        break;
+
         // The remaining instructions are not supported for scalarization. Keep "as is"
     default:
         recoverNonScalarizableInst(I);
@@ -1004,6 +892,149 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
     m_removedInsts.insert(GI);
 }
 
+void ScalarizeFunction::scalarizeInstruction(LoadInst* LI)
+{
+    V_PRINT(scalarizer, "\t\tLoad instruction\n");
+    IGC_ASSERT_MESSAGE(LI, "instruction type dynamic cast failed");
+
+    VectorType* dataType = dyn_cast<VectorType>(LI->getType());
+    if (isScalarizableLoadStoreType(dataType) && m_pDL)
+    {
+        // Prepare empty SCM entry for the instruction
+        SCMEntry* newEntry = getSCMEntry(LI);
+
+        // Get additional info from instruction
+        unsigned int vectorSize = int_cast<unsigned int>(m_pDL->getTypeAllocSize(dataType));
+        unsigned int elementSize = int_cast<unsigned int>(m_pDL->getTypeSizeInBits(dataType->getElementType()) / 8);
+        IGC_ASSERT(elementSize);
+        IGC_ASSERT_MESSAGE((vectorSize / elementSize > 0), "vector size should be a multiply of element size");
+        IGC_ASSERT_MESSAGE((vectorSize % elementSize == 0), "vector size should be a multiply of element size");
+        unsigned numDupElements = int_cast<unsigned>(dataType->getNumElements());
+
+        // Obtain scalarized arguments
+// 1 - to allow scalarizing Load with any pointer type
+// 0 - to limit scalarizing to special case where packetizer benifit from the scalarizing
+#if 1
+        // Apply the bit-cast on the GEP base and add base-offset then fix the index by multiply it with numElements. (assuming one index only).
+        Value * GepPtr = LI->getOperand(0);
+        PointerType* GepPtrType = cast<PointerType>(GepPtr->getType());
+        Value* operandBase = BitCastInst::CreatePointerCast(GepPtr, dataType->getScalarType()->getPointerTo(GepPtrType->getAddressSpace()), "ptrVec2ptrScl", LI);
+        Type* indexType = Type::getInt32Ty(*m_moduleContext);
+        // Generate new (scalar) instructions
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newScalarizedInsts;
+        newScalarizedInsts.resize(numDupElements);
+        for (unsigned dup = 0; dup < numDupElements; dup++)
+        {
+            Constant* laneVal = ConstantInt::get(indexType, dup);
+            Value* pGEP = GetElementPtrInst::Create(nullptr, operandBase, laneVal, "GEP_lane", LI);
+            newScalarizedInsts[dup] = new LoadInst(pGEP->getType()->getPointerElementType(), pGEP, LI->getName(), LI);
+        }
+#else
+        GetElementPtrInst* operand = dyn_cast<GetElementPtrInst>(LI->getOperand(0));
+        if (!operand || operand->getNumIndices() != 1)
+        {
+            return recoverNonScalarizableInst(LI);
+        }
+        // Apply the bit-cast on the GEP base and add base-offset then fix the index by multiply it with numElements. (assuming one index only).
+        Value* GepPtr = operand->getPointerOperand();
+        PointerType* GepPtrType = cast<PointerType>(GepPtr->getType());
+        Value* operandBase = BitCastInst::CreatePointerCast(GepPtr, dataType->getScalarType()->getPointerTo(GepPtrType->getAddressSpace()), "ptrVec2ptrScl", LI);
+        Type* indexType = operand->getOperand(1)->getType();
+        // Generate new (scalar) instructions
+        Value* newScalarizedInsts[MAX_INPUT_VECTOR_WIDTH];
+        Constant* elementNumVal = ConstantInt::get(indexType, numElements);
+        for (unsigned dup = 0; dup < numDupElements; dup++)
+        {
+            Constant* laneVal = ConstantInt::get(indexType, dup);
+            Value* pGEP = GetElementPtrInst::Create(operandBase, laneVal, "GEP_lane", LI);
+            Value* pIndex = BinaryOperator::CreateMul(operand->getOperand(1), elementNumVal, "GEPIndex_s", LI);
+            pGEP = GetElementPtrInst::Create(pGEP, pIndex, "GEP_s", LI);
+            newScalarizedInsts[dup] = new LoadInst(pGEP, LI->getName(), LI);
+        }
+#endif
+        // Add new value/s to SCM
+        updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), LI, true);
+
+        // Remove original instruction
+        m_removedInsts.insert(LI);
+        return;
+    }
+    return recoverNonScalarizableInst(LI);
+}
+
+void ScalarizeFunction::scalarizeInstruction(StoreInst* SI)
+{
+    V_PRINT(scalarizer, "\t\tStore instruction\n");
+    IGC_ASSERT_MESSAGE(SI, "instruction type dynamic cast failed");
+
+    int indexPtr = SI->getPointerOperandIndex();
+    int indexData = 1 - indexPtr;
+    VectorType* dataType = dyn_cast<VectorType>(SI->getOperand(indexData)->getType());
+    if (isScalarizableLoadStoreType(dataType) && m_pDL)
+    {
+        // Get additional info from instruction
+        unsigned int vectorSize = int_cast<unsigned int>(m_pDL->getTypeAllocSize(dataType));
+        unsigned int elementSize = int_cast<unsigned int>(m_pDL->getTypeSizeInBits(dataType->getElementType()) / 8);
+        IGC_ASSERT(elementSize);
+        IGC_ASSERT_MESSAGE((vectorSize / elementSize > 0), "vector size should be a multiply of element size");
+        IGC_ASSERT_MESSAGE((vectorSize % elementSize == 0), "vector size should be a multiply of element size");
+
+        unsigned numDupElements = int_cast<unsigned>(dataType->getNumElements());
+
+        // Obtain scalarized arguments
+// 1 - to allow scalarizing Load with any pointer type
+// 0 - to limit scalarizing to special case where packetizer benifit from the scalarizing
+#if 1
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand0;
+
+        bool opIsConst;
+        obtainScalarizedValues(operand0, &opIsConst, SI->getOperand(indexData), SI);
+
+        // Apply the bit-cast on the GEP base and add base-offset then fix the index by multiply it with numElements. (assuming one index only).
+        Value* GepPtr = SI->getOperand(indexPtr);
+        PointerType* GepPtrType = cast<PointerType>(GepPtr->getType());
+        Value* operandBase = BitCastInst::CreatePointerCast(GepPtr, dataType->getScalarType()->getPointerTo(GepPtrType->getAddressSpace()), "ptrVec2ptrScl", SI);
+        Type* indexType = Type::getInt32Ty(*m_moduleContext);
+        // Generate new (scalar) instructions
+        for (unsigned dup = 0; dup < numDupElements; dup++)
+        {
+            Constant* laneVal = ConstantInt::get(indexType, dup);
+            Value* pGEP = GetElementPtrInst::Create(nullptr, operandBase, laneVal, "GEP_lane", SI);
+            new StoreInst(operand0[dup], pGEP, SI);
+        }
+#else
+        GetElementPtrInst* operand1 = dyn_cast<GetElementPtrInst>(SI->getOperand(indexPtr));
+        if (!operand1 || operand1->getNumIndices() != 1)
+        {
+            return recoverNonScalarizableInst(SI);
+        }
+        Value* operand0[MAX_INPUT_VECTOR_WIDTH];
+        bool opIsConst;
+        obtainScalarizedValues(operand0, &opIsConst, SI->getOperand(indexData), SI);
+
+        // Apply the bit-cast on the GEP base and add base-offset then fix the index by multiply it with numElements. (assuming one index only).
+        Value* GepPtr = operand1->getPointerOperand();
+        PointerType* GepPtrType = cast<PointerType>(GepPtr->getType());
+        Value* operandBase = BitCastInst::CreatePointerCast(GepPtr, dataType->getScalarType()->getPointerTo(GepPtrType->getAddressSpace()), "ptrVec2ptrScl", SI);
+        Type* indexType = operand1->getOperand(1)->getType();
+        // Generate new (scalar) instructions
+        Constant* elementNumVal = ConstantInt::get(indexType, numElements);
+        for (unsigned dup = 0; dup < numDupElements; dup++)
+        {
+            Constant* laneVal = ConstantInt::get(indexType, dup);
+            Value* pGEP = GetElementPtrInst::Create(operandBase, laneVal, "GEP_lane", SI);
+            Value* pIndex = BinaryOperator::CreateMul(operand1->getOperand(1), elementNumVal, "GEPIndex_s", SI);
+            pGEP = GetElementPtrInst::Create(pGEP, pIndex, "GEP_s", SI);
+            new StoreInst(operand0[dup], pGEP, SI);
+        }
+#endif
+        // Remove original instruction
+        m_removedInsts.insert(SI);
+        return;
+    }
+    return recoverNonScalarizableInst(SI);
+}
+
 void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValues, bool* retIsConstant,
     Value* origValue, Instruction* origInst, int destIdx)
 {
@@ -1380,9 +1411,17 @@ void ScalarizeFunction::resolveDeferredInstructions()
     m_DRL.clear();
 }
 
-extern "C" FunctionPass* createScalarizerPass(bool selectiveScalarization)
+bool ScalarizeFunction::isScalarizableLoadStoreType(VectorType* type)
 {
-    return new ScalarizeFunction(selectiveScalarization);
+    // Scalarize Load/Store worth doing only if:
+    //  1. Gather/Scatter are supported
+    //  2. Load/Store type is a vector
+    return (m_ScalarizingVectorLDSTType && (NULL != type));
+}
+
+extern "C" FunctionPass* createScalarizerPass(bool scalarizingVectorLDSTType)
+{
+    return new ScalarizeFunction(scalarizingVectorLDSTType);
 }
 
 
