@@ -41,9 +41,11 @@ IN THE SOFTWARE.
 #include "common/SIPKernels/Gen9GLVSIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSRDebug.h"
+#include "common/SIPKernels/Gen11SIPCSRDebugBindless.h"
 #include "common/SIPKernels/Gen11LKFSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSRDebug.h"
+#include "common/SIPKernels/Gen12LPSIPCSRDebugBindless.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -197,11 +199,15 @@ void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned in
 
     SIPKernelInfo[GEN11_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen11SIPCSRDebug, (int)sizeof(Gen11SIPCSRDebug));
 
+    SIPKernelInfo[GEN11_SIP_CSR_DEBUG_BINDLESS] = std::make_pair((void*)&Gen11SIPCSRDebugBindless, (int)sizeof(Gen11SIPCSRDebugBindless));
+
     SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR));
 
     SIPKernelInfo[GEN12_LP_CSR] = std::make_pair((void*)&Gen12LPSIPCSR, (int)sizeof(Gen12LPSIPCSR));
 
     SIPKernelInfo[GEN12_LP_CSR_DEBUG] = std::make_pair((void*)&Gen12LPSIPCSRDebug, (int)sizeof(Gen12LPSIPCSRDebug));
+
+    SIPKernelInfo[GEN12_LP_CSR_DEBUG_BINDLESS] = std::make_pair((void*)&Gen12LPSIPCSRDebugBindless, (int)sizeof(Gen12LPSIPCSRDebugBindless));
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -219,128 +225,106 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     case IGFX_GEN9_CORE:
     case IGFX_GENNEXT_CORE:
     {
-        if(bindlessMode)
+        if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
-            if(mode == SYSTEM_THREAD_MODE_DEBUG)
-            {
-                SIPIndex = GEN9_SIP_DEBUG_BINDLESS;
-            }
+            SIPIndex = bindlessMode ? GEN9_SIP_DEBUG_BINDLESS : GEN9_SIP_DEBUG;
+        }
+        else if (bindlessMode)
+        {
             //Add the rest later for bindless mode for preemption
-        }
-        else if(mode == SYSTEM_THREAD_MODE_DEBUG)
-        {
-            SIPIndex =  GEN9_SIP_DEBUG;
-        }
-        else if(mode == SYSTEM_THREAD_MODE_CSR)
-        {
-            if ((platform.getPlatformInfo().eProductFamily == IGFX_BROXTON) ||
-                (platform.getPlatformInfo().eProductFamily == IGFX_GEMINILAKE))
-            {
-                /*Special SIP for 2x6 from HW team with 64KB offset*/
-                SIPIndex = GEN9_BXT_SIP_CSR;
-            }
-            else
-            {
-                SIPIndex = GEN9_SIP_CSR;
-            }
-        }
-        else if(mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
-        {
-            SIPIndex = GEN9_SIP_CSR_DEBUG;
         }
         else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG_LOCAL))
         {
             SIPIndex = GEN9_SIP_CSR_DEBUG_LOCAL;
         }
+        else if (mode == SYSTEM_THREAD_MODE_CSR)
+        {
+            switch (platform.getPlatformInfo().eProductFamily)
+            {
+           case IGFX_BROXTON:
+           case IGFX_GEMINILAKE:
+               /*Special SIP for 2x6 from HW team with 64KB offset*/
+               SIPIndex = GEN9_BXT_SIP_CSR;
+               break;
+
+            default:
+               SIPIndex = GEN9_SIP_CSR;
+               break;
+            }
+        }
         break;
     }
     case IGFX_GEN10_CORE:
     {
-        if (bindlessMode)
+        if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
-            if (mode == SYSTEM_THREAD_MODE_DEBUG)
-            {
-                SIPIndex = GEN10_SIP_DEBUG_BINDLESS;
-            }
-            //Add the rest later for bindless mode for preemption
+            SIPIndex = bindlessMode ? GEN10_SIP_DEBUG_BINDLESS : GEN10_SIP_DEBUG;
         }
-        else if (mode == SYSTEM_THREAD_MODE_DEBUG)
+        else if (bindlessMode)
         {
-            SIPIndex = GEN10_SIP_DEBUG;
+            //Add the rest later for bindless mode for preemption
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
             SIPIndex = GEN10_SIP_CSR;
         }
-        else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
-        {
-            SIPIndex = GEN10_SIP_CSR_DEBUG;
-        }
         break;
     }
     case IGFX_GEN11_CORE:
     {
-        if (bindlessMode)
+        if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
-            if (mode == SYSTEM_THREAD_MODE_DEBUG)
-            {
-                SIPIndex = GEN10_SIP_DEBUG_BINDLESS;
-            }
-            //Add the rest later for bindless mode for preemption
+            SIPIndex = bindlessMode ? GEN11_SIP_CSR_DEBUG_BINDLESS : GEN11_SIP_CSR_DEBUG;
         }
-        else if (mode == SYSTEM_THREAD_MODE_DEBUG)
+        else if (bindlessMode)
         {
-            SIPIndex = GEN11_SIP_CSR_DEBUG;
+            //Add the rest later for bindless mode for preemption
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
-            if (platform.getPlatformInfo().eProductFamily == IGFX_ICELAKE_LP)
+            switch (platform.getPlatformInfo().eProductFamily)
             {
+            case IGFX_ICELAKE_LP:
                 SIPIndex = GEN11_SIP_CSR;
-            }
-            if ((platform.getPlatformInfo().eProductFamily == IGFX_LAKEFIELD)
-             || (platform.getPlatformInfo().eProductFamily == IGFX_ELKHARTLAKE)
-             || (platform.getPlatformInfo().eProductFamily == IGFX_JASPERLAKE)
-            )
-            {
+                break;
+
+            case IGFX_LAKEFIELD:
+             case IGFX_ELKHARTLAKE: // same as IGFX_JASPERLAKE
                 SIPIndex = GEN11_LKF_SIP_CSR;
+                break;
+
+            default:
+                break;
             }
-        }
-        else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
-        {
-            SIPIndex = GEN11_SIP_CSR_DEBUG;
         }
         break;
     }
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
     {
-        if (bindlessMode)
+        if (mode & SYSTEM_THREAD_MODE_DEBUG)
         {
-            if (mode == SYSTEM_THREAD_MODE_DEBUG)
-            {
-                SIPIndex =  GEN10_SIP_DEBUG_BINDLESS;
-            }
-            //Add the rest later for bindless mode for preemption
+            SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG;
         }
-        else if (mode == SYSTEM_THREAD_MODE_DEBUG)
+        else if (bindlessMode)
         {
-            SIPIndex = GEN12_LP_CSR_DEBUG;
+            //Add the rest later for bindless mode for preemption
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
-            if (   platform.getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
-                || platform.getPlatformInfo().eProductFamily == IGFX_DG1
-                || platform.getPlatformInfo().eProductFamily == IGFX_ROCKETLAKE
-                || platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_S
-            )
+            switch (platform.getPlatformInfo().eProductFamily)
             {
+            case IGFX_TIGERLAKE_LP:
+            case IGFX_DG1:
+            case IGFX_ROCKETLAKE:
+            case IGFX_ALDERLAKE_S:
                 SIPIndex = GEN12_LP_CSR;
+                break;
+
+
+            default:
+                break;
             }
-        }
-        else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
-        {
-            SIPIndex = GEN12_LP_CSR_DEBUG;
         }
         break;
     }

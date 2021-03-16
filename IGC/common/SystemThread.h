@@ -69,9 +69,11 @@ namespace SIP
         GEN9_GLV_SIP_CSR,
         GEN11_SIP_CSR,
         GEN11_SIP_CSR_DEBUG,
+        GEN11_SIP_CSR_DEBUG_BINDLESS,
         GEN11_LKF_SIP_CSR,
         GEN12_LP_CSR,
         GEN12_LP_CSR_DEBUG,
+        GEN12_LP_CSR_DEBUG_BINDLESS,
         GEN_SIP_MAX_INDEX
     };
 
