@@ -393,11 +393,10 @@ bool RegSet::addSourceImplicitAccumulator(const Instruction &i)
 {
     Type type = i.getDestination().getType();
     bool added = false;
-    bool readsAcc =
-        i.is(Op::MACH) ||  i.is(Op::MAC);
+    bool readsAcc = i.is(Op::MACH) ||  i.is(Op::MAC);
+    bool readsAcc64 = i.is(Op::MACH);
     if (readsAcc) {
-        bool accs64b = i.is(Op::MACH);
-        if (accs64b) {
+        if (readsAcc64) {
             type = Type::Q;
         }
         auto typeSizeBits = TypeSizeInBitsWithDefault(type, 32);
@@ -445,7 +444,6 @@ bool RegSet::addDestinationOutputs(const Instruction &i)
                 // we won't handle those cases
             }
             added |= addRegs(RegName::GRF_R, op.getDirRegRef().regNum, nregs);
-            rgn = Region::DST1;
         } else {
             // normal GRF target
             added |= setDstRegion(

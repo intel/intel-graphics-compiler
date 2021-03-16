@@ -47,23 +47,30 @@ IN THE SOFTWARE.
 #include "ged_model_gen11.h"
 #include "ged_model_gentgl.h"
 
+#ifdef GED_OBSCURE_MODEL_NAMES
+#define GED_MODEL_NAME_STRING(name) ""
+
+#else // GED_OBSCURE_MODEL_NAMES
+#define GED_MODEL_NAME_STRING(name) name
+#endif // GED_OBSCURE_MODEL_NAMES
+
 #ifndef GED_MODELS_ARRAY_HIDDEN
 ModelData ModelsArray[8] =
 {
-    { GEN7::Opcodes, "7", 116, (const ged_field_enum_table_t)OpcodeTable3, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
-    { GEN7_5::Opcodes, "7.5", 116, (const ged_field_enum_table_t)OpcodeTable4, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
-    { GEN8::Opcodes, "8", 116, (const ged_field_enum_table_t)OpcodeTable5, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
-    { GEN8_1::Opcodes, "8.1", 116, (const ged_field_enum_table_t)OpcodeTable5, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
-    { GEN9::Opcodes, "9", 116, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
-    { GEN10::Opcodes, "10", 116, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
-    { GEN11::Opcodes, "11", 116, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
-    { GENTGL::Opcodes, "tgl", 116, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL } // 7
+    { GEN7::Opcodes, GED_MODEL_NAME_STRING("7"), 116, (const ged_field_enum_table_t)OpcodeTable3, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
+    { GEN7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 116, (const ged_field_enum_table_t)OpcodeTable4, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
+    { GEN8::Opcodes, GED_MODEL_NAME_STRING("8"), 116, (const ged_field_enum_table_t)OpcodeTable5, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
+    { GEN8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 116, (const ged_field_enum_table_t)OpcodeTable5, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
+    { GEN9::Opcodes, GED_MODEL_NAME_STRING("9"), 116, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
+    { GEN10::Opcodes, GED_MODEL_NAME_STRING("10"), 116, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
+    { GEN11::Opcodes, GED_MODEL_NAME_STRING("11"), 116, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
+    { GENTGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 116, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL } // 7
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
 const unsigned int numOfSupportedModels = 8;
 
 #ifndef GED_MODELS_ARRAY_NAMES_HIDDEN
-const char* modelNames[8] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10", "gen11", "gentgl" };
+const char* modelNames[8] = { GED_MODEL_NAME_STRING("gen7"), GED_MODEL_NAME_STRING("gen7_5"), GED_MODEL_NAME_STRING("gen8"), GED_MODEL_NAME_STRING("gen8_1"), GED_MODEL_NAME_STRING("gen9"), GED_MODEL_NAME_STRING("gen10"), GED_MODEL_NAME_STRING("gen11"), GED_MODEL_NAME_STRING("tgl") };
 #endif // GED_MODELS_ARRAY_NAMES_HIDDEN
 
 #ifndef GED_MODELS_ARRAY_FUNCTION_HIDDEN
@@ -78,14 +85,14 @@ const char* modelNames[8] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10
  */
 bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
 {
-    if ("gen7" == name) model = GED_MODEL_GEN_7;
-    else if ("gen7_5" == name) model = GED_MODEL_GEN_7_5;
-    else if ("gen8" == name) model = GED_MODEL_GEN_8;
-    else if ("gen8_1" == name) model = GED_MODEL_GEN_8_1;
-    else if ("gen9" == name) model = GED_MODEL_GEN_9;
-    else if ("gen10" == name) model = GED_MODEL_GEN_10;
-    else if ("gen11" == name) model = GED_MODEL_GEN_11;
-    else if ("gentgl" == name) model = GED_MODEL_GEN_TGL;
+    if (GED_MODEL_NAME_STRING("gen7") == name) model = GED_MODEL_GEN_7;
+    else if (GED_MODEL_NAME_STRING("gen7_5") == name) model = GED_MODEL_GEN_7_5;
+    else if (GED_MODEL_NAME_STRING("gen8") == name) model = GED_MODEL_GEN_8;
+    else if (GED_MODEL_NAME_STRING("gen8_1") == name) model = GED_MODEL_GEN_8_1;
+    else if (GED_MODEL_NAME_STRING("gen9") == name) model = GED_MODEL_GEN_9;
+    else if (GED_MODEL_NAME_STRING("gen10") == name) model = GED_MODEL_GEN_10;
+    else if (GED_MODEL_NAME_STRING("gen11") == name) model = GED_MODEL_GEN_11;
+    else if (GED_MODEL_NAME_STRING("tgl") == name) model = GED_MODEL_GEN_TGL;
     else return false;
     return true;
 }

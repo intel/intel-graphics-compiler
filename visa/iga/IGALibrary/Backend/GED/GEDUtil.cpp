@@ -30,6 +30,32 @@ IN THE SOFTWARE.
 
 using namespace iga;
 
+static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
+    ged_ins_t* ins, GED_MODEL gedP, GED_OPCODE op,
+    bool supportsExMsgDesc, uint32_t exMsgDesc, uint32_t msgDesc)
+{
+    GED_RETURN_VALUE status = GED_InitEmptyIns(gedP, ins, op);
+
+    status = GED_SetExecSize(ins, 16);
+
+    if (supportsExMsgDesc && status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetExDescRegFile(ins, GED_REG_FILE_IMM);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetExMsgDesc(ins, exMsgDesc);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetDescRegFile(ins, GED_REG_FILE_IMM);
+    }
+
+    if (status == GED_RETURN_VALUE_SUCCESS) {
+        status = GED_SetMsgDesc(ins, msgDesc);
+    }
+    return status;
+}
+
 
 iga::SFMessageType iga::getMessageType(Platform p, SFID sfid, uint32_t desc)
 {
@@ -108,4 +134,55 @@ iga::SFMessageType iga::getMessageType(Platform p, SFID sfid, uint32_t desc)
         return translate(msgType);
     }
 
+}
+
+static uint32_t getSplitSendMsgLength(uint32_t exDesc) {
+    return getBits<uint32_t>(exDesc, 6, 4);
+}
+
+uint32_t iga::getMessageLengths(
+    Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc,
+    uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
+{
+    GED_MODEL gedP = lowerPlatform(p);
+    GED_OPCODE gedOp = GED_OPCODE_INVALID;
+    if (os.isSendFamily()) {
+        gedOp = GED_OPCODE_send;
+    }
+    else if (os.isSendsFamily()) {
+        gedOp = GED_OPCODE_sends;
+    }
+
+    if (gedOp == GED_OPCODE_INVALID)
+        return 0;
+
+    ged_ins_t gedInst;
+    auto getRetVal = constructPartialGEDSendInstruction(
+        &gedInst, gedP, gedOp, os.isSendsFamily(), exDesc, desc);
+
+    const uint32_t INVALID = ((uint32_t)0xFFFFFFFFF); // TODO: include macro in iga.h?
+
+    uint32_t n = 0; // count successes
+
+    *mLen = GED_GetMessageLength(desc, gedP, &getRetVal);
+    if (getRetVal != GED_RETURN_VALUE_SUCCESS) { // TODO: what do I do if return is not success?
+        *mLen = INVALID;
+    }
+    else n++;
+
+    if (os.isSendsFamily()) {
+        *emLen = GED_GetExMsgLength(&gedInst, &getRetVal);
+        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
+            *emLen = getSplitSendMsgLength(exDesc);
+        }
+        n++;
+    }
+
+    *rLen = GED_GetResponseLength(desc, gedP, &getRetVal);
+    if (getRetVal != GED_RETURN_VALUE_SUCCESS) { // TODO: what do I do if return is not success?
+        *rLen = INVALID;
+    }
+    else n++;
+
+    return n;
 }

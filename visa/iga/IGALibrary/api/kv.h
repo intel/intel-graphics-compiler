@@ -265,6 +265,25 @@ IGA_API kv_status_t kv_get_message_type(
     const kv_t *kv, int32_t pc, int32_t *message_type_enum);
 
 /*
+ * Determines the message type for the given send instruction.
+ * desc and sfid are passed in explicitly when indirect desc prevents
+ * use of kv_get_message_type.
+ * The result is returned via the pointer 'message_type_enum' - an
+ * iga::SFMessageType value.
+ *
+ * RETURNS:
+ *  KV_SUCCESS               on success
+ *  KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
+ *  KV_DESCRIPTOR_INDIRECT   if called on a send with reg descriptors
+ *  KV_DESCRIPTOR_INVALID    if unable to map the descriptor value
+ *                           (not all messages are mapped via this API)
+ *  KV_INVALID_PC            if passed an invalid PC
+ *  KV_INVALID_ARGUMENT      if given a null parameter
+ */
+IGA_API kv_status_t kv_get_message_type_ext(
+    const kv_t *kv, int32_t pc, uint32_t desc, int32_t sfid, int32_t *message_type_enum);
+
+/*
  * Determines the message sfid for the given send instruction.
  * The result is returned via the pointer 'sfid_enum' - an iga::SFID
  *
@@ -288,6 +307,15 @@ IGA_API kv_status_t kv_get_message_sfid(
 IGA_API uint32_t kv_get_message_len(
     const kv_t *kv, int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
 
+/*
+ * Gets message length, extended message length, and response length in
+ * units of registers.  The count of lengths successfully set is returned.
+ * Alternative version of kv_get_message_len when desc and/or exDesc is indirect.
+ * If any of the parameters is NULL, it returns 0. Invalid lengths are set
+ * to KV_INVALID_LEN.
+ */
+IGA_API uint32_t kv_get_message_len_ext(
+    const kv_t *kv, int32_t pc, uint32_t desc, uint32_t exDesc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
 /*
  * Returns the ExecSize of the instruction (SIMD width)
  * 0 - INVALID
@@ -454,18 +482,20 @@ IGA_API int32_t kv_get_destination_mme_number(
     const kv_t *kv, int32_t pc, int16_t *immoff);
 
 /*
- * This function return flag modifier
+ * This function return flag modifier (FlagModifier)
  */
 IGA_API uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc);
 
 /*
  * This function return source modifier
+ * This returns a SrcModifier
  */
 IGA_API uint32_t kv_get_source_modifier(
     const kv_t *kv, int32_t pc, uint32_t src_op);
 
 /*
  * This function return destination modifier
+ * This returns a DstModifier
  */
 IGA_API uint32_t kv_get_destination_modifier(const kv_t *kv, int32_t pc);
 
@@ -480,12 +510,12 @@ IGA_API int32_t kv_get_flag_register(const kv_t *kv, int32_t pc);
 IGA_API int32_t kv_get_flag_sub_register(const kv_t *kv, int32_t pc);
 
 /*
- * This function return the flag predicate mode
+ * This function return the flag predicate function (a PredCtrl)
  */
 IGA_API uint32_t kv_get_predicate(const kv_t *kv, int32_t pc);
 
 /*
- * This function return if inverse predicate is on or not
+ * This function returns the logical sign on the predicate (inverted or not)
  */
 IGA_API uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc);
 

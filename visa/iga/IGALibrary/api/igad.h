@@ -28,7 +28,7 @@ IN THE SOFTWARE.
 #include "iga.h"
 #include "kv.h"
 
-#if defined(WIN32)
+#if defined(_WIN32)
     #define CDECLATTRIBUTE __cdecl
 #elif __GNUC__
     #ifdef __x86_64__

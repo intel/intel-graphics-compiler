@@ -445,6 +445,32 @@ kv_status_t kv_get_message_type(
     return kv_status_t::KV_SUCCESS;
 }
 
+kv_status_t kv_get_message_type_ext(
+    const kv_t *kv, int32_t pc, uint32_t desc, int32_t sfid, int32_t *message_type_enum)
+{
+    if (!kv || !message_type_enum) {
+        return kv_status_t::KV_INVALID_ARGUMENT;
+    }
+
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst) {
+        return kv_status_t::KV_INVALID_PC;
+    }
+    else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+        return kv_status_t::KV_NON_SEND_INSTRUCTION;
+    }
+
+    Platform p = ((KernelViewImpl *)kv)->m_model.platform;
+    SFMessageType msgType = getMessageType(p, (iga::SFID)sfid, desc);
+
+    *message_type_enum = static_cast<int32_t>(msgType);
+
+    if (msgType == SFMessageType::INVALID)
+        return kv_status_t::KV_DESCRIPTOR_INVALID;
+
+    return kv_status_t::KV_SUCCESS;
+}
+
 kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
 {
     if (!kv || !sfid_enum) {
@@ -500,6 +526,22 @@ uint32_t kv_get_message_len(
     *emLen = setOne(inst->getSrc1Length());
 
     return numSet;
+}
+
+uint32_t kv_get_message_len_ext(
+    const kv_t *kv, int32_t pc, uint32_t desc, uint32_t exDesc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
+{
+    if (!mLen || !emLen || !rLen)
+        return 0;
+
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst) {
+        return 0;
+    }
+
+    Platform p = ((KernelViewImpl *)kv)->m_model.platform;
+
+    return getMessageLengths(p, inst->getOpSpec(), exDesc, desc, mLen, emLen, rLen);
 }
 
 uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc)
@@ -780,7 +822,7 @@ int32_t kv_is_source_vector(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
         return -1;
     }
 
-    auto src = inst->getSource((uint8_t)sourceNumber);
+    const auto &src = inst->getSource((uint8_t)sourceNumber);
     if (src.getKind() != Operand::Kind::DIRECT &&
         src.getKind() != Operand::Kind::INDIRECT)
     {
@@ -998,10 +1040,6 @@ int32_t kv_get_destination_mme_number(
     return 0;
 }
 
-/*
-* This function returns flag modifier for the instruction
-* EQ, NE, etc...
-*/
 uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -1014,10 +1052,6 @@ uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc)
     return (uint32_t)inst->getFlagModifier();
 }
 
-/*
-* This function returns source modifier for the operand
-* can be ABS, NEG, NEG_ABS, NONE
-*/
 uint32_t kv_get_source_modifier(const kv_t *kv, int32_t pc, uint32_t src_op)
 {
     if (!kv) {
@@ -1039,10 +1073,6 @@ uint32_t kv_get_source_modifier(const kv_t *kv, int32_t pc, uint32_t src_op)
     return (uint32_t)src.getSrcModifier();
 }
 
-/*
-* This function returns the destination modifier for a given instruction
-* can be NONE or SAT
-*/
 uint32_t kv_get_destination_modifier(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -1059,9 +1089,6 @@ uint32_t kv_get_destination_modifier(const kv_t *kv, int32_t pc)
     return (uint32_t)dst.getDstModifier();
 }
 
-/*
-* This function returns the flag register used by instruction
-*/
 int32_t kv_get_flag_register(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -1076,9 +1103,6 @@ int32_t kv_get_flag_register(const kv_t *kv, int32_t pc)
     return (int32_t)inst->getFlagReg().regNum;
 }
 
-/*
-* This function returns the flag sub-register used by instruction
-*/
 int32_t kv_get_flag_sub_register(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -1093,9 +1117,6 @@ int32_t kv_get_flag_sub_register(const kv_t *kv, int32_t pc)
     return (int32_t)inst->getFlagReg().subRegNum;
 }
 
-/*
-* This function returns the predicate function for a given instruction
-*/
 uint32_t kv_get_predicate(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -1109,9 +1130,6 @@ uint32_t kv_get_predicate(const kv_t *kv, int32_t pc)
     return (uint32_t)inst->getPredication().function;
 }
 
-/*
-* This function returns if inverse predicate is set
-*/
 uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc)
 {
     if (!kv) {

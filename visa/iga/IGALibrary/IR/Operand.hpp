@@ -45,7 +45,8 @@ public:
     Operand()
         : m_kind(Kind::INVALID)
         , m_lblBlock(nullptr)
-        , m_type(Type::INVALID) {}
+        , m_type(Type::INVALID)
+        , m_regOpSrcMod(SrcModifier::NONE) { }
 
     // direct destination constructor (for constants etc)
     Operand(
@@ -71,10 +72,20 @@ public:
         setDirectSource(srcMod, rType, reg, rgn, type);
     }
 
+    // generally you want a reference to an operand, not a copy
+    // this prevents:
+    //    auto o = i->getSource(...); // copies all state
+    // you usually want
+    //    const auto &o = ...
+    // but in rare cases maybe you want a copy
+    //    Operand copy(i->getSource(...));
+    explicit Operand(const Operand &) = default;
+
     // describes if the operand is direct (Operand::Kind::DIRECT),
     // indirect (Operand::Kind::INDIRECT) or immediate
     // (Operand::Kind::IMMEDIATE)
     Kind getKind() const {return m_kind;}
+
     // both labels and true immediates are considered immediates
     // for encoding and decoding sake
     bool isImm() const {

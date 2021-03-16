@@ -71,7 +71,7 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
     {
         for (uint32_t i = 0; i < inst.getSourceCount(); ++i)
         {
-            auto src = inst.getSource(i);
+            const auto &src = inst.getSource(i);
             if (src.getType() == Type::DF ||
                 src.getType() == Type::Q ||
                 src.getType() == Type::UQ)
@@ -82,7 +82,7 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
         }
         if (opsec.supportsDestination())
         {
-            auto dst = inst.getDestination();
+            const auto &dst = inst.getDestination();
             if (dst.getType() == Type::DF   ||
                 dst.getType() == Type::Q    ||
                 dst.getType() == Type::UQ)
@@ -404,7 +404,7 @@ void DepSet::setOutputsDstcDep()
         return;
     }
 
-    auto op = m_instruction->getDestination();
+    const auto & op = m_instruction->getDestination();
     auto tType = op.getType();
     auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 
@@ -552,7 +552,7 @@ void DepSet::setMathWAOutputsDstcDep()
 {
     size_t execSize = static_cast<size_t>(m_instruction->getExecSize()); //1 << (static_cast<int>(m_instruction->getExecSize()) - 1);
 
-    auto op = m_instruction->getDestination();
+    const auto & op = m_instruction->getDestination();
     auto tType = op.getType();
     auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 

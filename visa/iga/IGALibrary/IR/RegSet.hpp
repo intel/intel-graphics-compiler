@@ -30,9 +30,10 @@ IN THE SOFTWARE.
 
 #include "BitSet.hpp"
 #include "Instruction.hpp"
-#include "Kernel.hpp" // BlockList TODO: move to Blocks.hpp (elide Encoder def)
+#include "Kernel.hpp"
 
 #include <ostream>
+#include <string>
 
 
 namespace iga
@@ -109,12 +110,10 @@ namespace iga
             size_t execSize,
             size_t typeSizeBits);
 
-
         void        str(std::ostream &os) const;
         std::string str() const;
 
-        // const Set& getBitSet() const { return bits; }
-        //       Set& getBitSet()       { return bits; }
+    private:
 
     private:
         const Model *model;

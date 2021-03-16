@@ -415,7 +415,7 @@ void Encoder::encodeBasicInstruction(
     } else if (os.op == Op::WAIT ) {
         // wait has an implicit destination (same as first source)
         // but with dst region of <1>
-        Operand copy = inst.getSource(0);
+        Operand copy(inst.getSource(0));
         copy.setRegion(Region::DST1);
         encodeBasicDestination(inst, copy);
     }
