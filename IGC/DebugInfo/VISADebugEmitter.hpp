@@ -79,6 +79,7 @@ namespace IGC
     private:
         /// @brief Reset Debug Emitter instance.
         void Reset();
+        void processCurrentFunction(bool finalize, DbgDecoder* decodedDbg);
 
     private:
         bool m_initialized = false;

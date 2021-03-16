@@ -125,6 +125,8 @@ void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream& OS) const {
 void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const {
     OS << "<VISADebugInfo>\n";
     OS << "Kernel: " << kernelName << "\n";
+    OS << "RelocOffset: " << relocOffset << "\n";
+    OS << "NumSubroutines: " << numSubRoutines << "\n";
 
     IGC_ASSERT(numSubRoutines == subs.size());
     OS << "Subroutines:\n    ";

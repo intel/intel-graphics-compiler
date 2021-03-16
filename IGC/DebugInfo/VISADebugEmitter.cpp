@@ -113,6 +113,184 @@ void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM, const DebugEmitter
     registerVISA(m_pVISAModule);
 }
 
+void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg) {
+
+    auto EmitIpLabel = [&](unsigned int ip)
+    {
+        // Emit label before %ip
+        if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation)
+        {
+            auto instLabel = m_pDwarfDebug->GetLabelBeforeIp(ip);
+            m_pStreamEmitter->EmitLabel(instLabel);
+        }
+    };
+
+    if (!m_pVISAModule->isDirectElfInput) {
+        // Legacy path
+        unsigned int prevOffset = 0;
+        for (const Instruction *pInst : *m_pVISAModule)
+        {
+            unsigned int currOffset = m_pVISAModule->GetVisaOffset(pInst);
+
+            int currSize = (int)m_pVISAModule->GetVisaSize(pInst);
+            bool recordSrcLine = (currSize == 0) ? false : true;
+
+            // Emit bytes up to the current instruction
+            for (; prevOffset < currOffset; prevOffset++)
+            {
+                m_pStreamEmitter->EmitInt8(0);
+            }
+            m_pDwarfDebug->beginInstruction(pInst, recordSrcLine);
+            // Emit bytes of the current instruction
+            for (int i = 0; i < currSize; i++)
+            {
+                m_pStreamEmitter->EmitInt8(0);
+            }
+            m_pDwarfDebug->endInstruction(pInst);
+            prevOffset += currSize;
+        }
+        return;
+    }
+
+    m_pVISAModule->buildDirectElfMaps(*decodedDbg);
+    auto co = m_pVISAModule->getCompileUnit(*decodedDbg);
+
+    // Emit src line mapping directly instead of
+    // relying on dbgmerge. elf generated will have
+    // text section and debug_line sections populated.
+    const auto& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
+    const auto& VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
+    std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
+    unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
+    unsigned int prevLastGenOff = lastGenOff;
+    m_pDwarfDebug->lowPc = lastGenOff;
+
+    if (m_pStreamEmitter->GetEmitterSettings().EnableSIMDLaneDebugging)
+    {
+        // SIMD width
+        m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
+    }
+
+    if (co->subs.size() == 0)
+    {
+        GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
+        if (GenISAToVISAIndex.size() > 0)
+            lastGenOff = GenISAToVISAIndex.back().first;
+        m_pDwarfDebug->lowPc = co->relocOffset;
+    }
+    else
+    {
+        for (auto item : m_pVISAModule->GenISAToVISAIndex)
+        {
+            if ((item.first >= lastGenOff) || ((item.first | lastGenOff) == 0))
+            {
+                if (item.second <= subEnd || item.second == 0xffffffff)
+                {
+                    GenISAToVISAIndex.push_back(item);
+                    auto size = m_pVISAModule->GenISAInstSizeBytes[item.first];
+                    lastGenOff = item.first + size;
+                    continue;
+                }
+
+                if (item.second > subEnd)
+                    break;
+            }
+        }
+    }
+
+    auto genxISA = m_pVISAModule->getGenBinary();
+    DebugLoc prevSrcLoc = DebugLoc();
+    unsigned int pc = prevLastGenOff;
+
+    if (!GenISAToVISAIndex.empty()) {
+        IGC_ASSERT(GenISAToVISAIndex.rbegin()->first <= genxISA.size());
+        IGC_ASSERT(pc < genxISA.size());
+        IGC_ASSERT(GenISAToVISAIndex.begin()->first >= pc);
+    }
+    for (auto item : GenISAToVISAIndex)
+    {
+        for (unsigned int i = pc; i != item.first; i++)
+        {
+            EmitIpLabel(i);
+            m_pStreamEmitter->EmitInt8(genxISA[i]);
+        }
+
+        pc = item.first;
+
+        auto instIt = VISAIndexToInst.end();
+        auto sizeIt = VISAIndexToSize.find(item.second);
+        if (sizeIt != VISAIndexToSize.end())
+        {
+            // Lookup all VISA instructions that may
+            // map to an llvm::Instruction. This is useful
+            // when an llvm::Instruction leads to multiple
+            // VISA instructions, and VISA optimizer
+            // optimizes some of those away. Src line
+            // mapping for all VISA instructions is the
+            // same. So lookup any one that still exists.
+            auto startIdx = sizeIt->second.first;
+            auto numVISAInsts = sizeIt->second.second;
+            for (unsigned int visaId = startIdx;
+                visaId != (startIdx + numVISAInsts); visaId++)
+            {
+                instIt = VISAIndexToInst.find(visaId);
+                // Loop till at least one VISA instruction
+                // is found.
+                if (instIt != VISAIndexToInst.end())
+                    break;
+            }
+        }
+
+        if (instIt != VISAIndexToInst.end())
+        {
+            auto loc = instIt->second->getDebugLoc();
+            if (loc)
+            {
+                if (loc != prevSrcLoc)
+                {
+                    auto scope = loc->getScope();
+                    auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
+
+                    unsigned int Flags = 0;
+                    if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
+                    {
+                        Flags |= DWARF2_FLAG_IS_STMT;
+                    }
+                    m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
+
+                    prevSrcLoc = loc;
+                }
+            }
+        }
+    }
+
+    if (finalize)
+    {
+        size_t unpaddedSize = m_pVISAModule->getUnpaddedProgramSize();
+
+        IGC_ASSERT(unpaddedSize <= genxISA.size());
+        IGC_ASSERT((pc < genxISA.size() && pc < unpaddedSize) || pc == unpaddedSize);
+
+        for (unsigned int i = pc; i != unpaddedSize; i++)
+        {
+            m_pStreamEmitter->EmitInt8(genxISA[i]);
+            lastGenOff++;
+        }
+    }
+    else if (pc != lastGenOff)
+    {
+        IGC_ASSERT(lastGenOff <= genxISA.size());
+        IGC_ASSERT((pc < genxISA.size() && pc < lastGenOff) || pc == lastGenOff);
+        // for subroutines
+        for (unsigned int i = pc; i != lastGenOff; i++)
+        {
+            EmitIpLabel(i);
+            m_pStreamEmitter->EmitInt8(genxISA[i]);
+        }
+    }
+
+    m_pDwarfDebug->highPc = lastGenOff;
+}
 std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
 {
     if (!m_debugEnabled)
@@ -136,206 +314,41 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
     // Collect debug information for given function.
     m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
     m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
-
-    auto EmitIpLabel = [&](unsigned int ip)
-    {
-        // Emit label before %ip
-        if (m_pStreamEmitter->GetEmitterSettings().EnableRelocation)
-        {
-            auto instLabel = m_pDwarfDebug->GetLabelBeforeIp(ip);
-            m_pStreamEmitter->EmitLabel(instLabel);
-        }
-    };
-
-    if (m_pVISAModule->isDirectElfInput)
-    {
-        m_pVISAModule->buildDirectElfMaps(*decodedDbg);
-        auto co = m_pVISAModule->getCompileUnit(*decodedDbg);
-
-        // Emit src line mapping directly instead of
-        // relying on dbgmerge. elf generated will have
-        // text section and debug_line sections populated.
-        const auto& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
-        const auto& VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
-        std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
-        unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
-        unsigned int prevLastGenOff = lastGenOff;
-        m_pDwarfDebug->lowPc = lastGenOff;
-
-        if (m_pStreamEmitter->GetEmitterSettings().EnableSIMDLaneDebugging)
-        {
-            // SIMD width
-            m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
-        }
-
-        if (co->subs.size() == 0)
-        {
-            GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
-            if (GenISAToVISAIndex.size() > 0)
-                lastGenOff = GenISAToVISAIndex.back().first;
-            m_pDwarfDebug->lowPc = co->relocOffset;
-        }
-        else
-        {
-            for (auto item : m_pVISAModule->GenISAToVISAIndex)
-            {
-                if ((item.first >= lastGenOff) || ((item.first | lastGenOff) == 0))
-                {
-                    if (item.second <= subEnd || item.second == 0xffffffff)
-                    {
-                        GenISAToVISAIndex.push_back(item);
-                        auto size = m_pVISAModule->GenISAInstSizeBytes[item.first];
-                        lastGenOff = item.first + size;
-                        continue;
-                    }
-
-                    if (item.second > subEnd)
-                        break;
-                }
-            }
-        }
-
-        auto genxISA = m_pVISAModule->getGenBinary();
-        DebugLoc prevSrcLoc = DebugLoc();
-        unsigned int pc = prevLastGenOff;
-        for (auto item : GenISAToVISAIndex)
-        {
-            for (unsigned int i = pc; i != item.first; i++)
-            {
-                EmitIpLabel(i);
-                m_pStreamEmitter->EmitInt8(genxISA[i]);
-            }
-
-            pc = item.first;
-
-            auto instIt = VISAIndexToInst.end();
-            auto sizeIt = VISAIndexToSize.find(item.second);
-            if (sizeIt != VISAIndexToSize.end())
-            {
-                // Lookup all VISA instructions that may
-                // map to an llvm::Instruction. This is useful
-                // when an llvm::Instruction leads to multiple
-                // VISA instructions, and VISA optimizer
-                // optimizes some of those away. Src line
-                // mapping for all VISA instructions is the
-                // same. So lookup any one that still exists.
-                auto startIdx = sizeIt->second.first;
-                auto numVISAInsts = sizeIt->second.second;
-                for (unsigned int visaId = startIdx;
-                    visaId != (startIdx + numVISAInsts); visaId++)
-                {
-                    instIt = VISAIndexToInst.find(visaId);
-                    // Loop till at least one VISA instruction
-                    // is found.
-                    if (instIt != VISAIndexToInst.end())
-                        break;
-                }
-            }
-
-            if (instIt != VISAIndexToInst.end())
-            {
-                auto loc = instIt->second->getDebugLoc();
-                if (loc)
-                {
-                    if (loc != prevSrcLoc)
-                    {
-                        auto scope = loc->getScope();
-                        auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
-
-                        unsigned int Flags = 0;
-                        if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
-                        {
-                            Flags |= DWARF2_FLAG_IS_STMT;
-                        }
-                        m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
-
-                        prevSrcLoc = loc;
-                    }
-                }
-            }
-        }
-
-        if (finalize)
-        {
-            for (unsigned int i = pc; i != m_pVISAModule->getUnpaddedProgramSize(); i++)
-            {
-                m_pStreamEmitter->EmitInt8(genxISA[i]);
-                lastGenOff++;
-            }
-        }
-        else if (pc != lastGenOff)
-        {
-            // for subroutines
-            for (unsigned int i = pc; i != lastGenOff; i++)
-            {
-                EmitIpLabel(i);
-                m_pStreamEmitter->EmitInt8(genxISA[i]);
-            }
-        }
-
-        m_pDwarfDebug->highPc = lastGenOff;
-    }
-    else
-    {
-        unsigned int prevOffset = 0;
-        for (const Instruction *pInst : *m_pVISAModule)
-        {
-
-            unsigned int currOffset = m_pVISAModule->GetVisaOffset(pInst);
-
-            int currSize = (int)m_pVISAModule->GetVisaSize(pInst);
-            bool recordSrcLine = (currSize == 0) ? false : true;
-
-            // Emit bytes up to the current instruction
-            for (; prevOffset < currOffset; prevOffset++)
-            {
-                m_pStreamEmitter->EmitInt8(0);
-            }
-            m_pDwarfDebug->beginInstruction(pInst, recordSrcLine);
-            // Emit bytes of the current instruction
-            for (int i = 0; i < currSize; i++)
-            {
-                m_pStreamEmitter->EmitInt8(0);
-            }
-            m_pDwarfDebug->endInstruction(pInst);
-            prevOffset += currSize;
-        }
-    }
-
+    processCurrentFunction(finalize, decodedDbg);
     // Emit post-function debug information.
     m_pDwarfDebug->endFunction(pFunc);
 
-    if (finalize)
-    {
-        // Make sure we wrote out everything we need.
-        //m_pMCStreamer->Flush();
+    if (!finalize)
+        return {};
 
-        // Finalize debug information.
-        m_pDwarfDebug->endModule();
+    // Make sure we wrote out everything we need.
+    //m_pMCStreamer->Flush();
 
-        m_pStreamEmitter->Finalize();
+    // Finalize debug information.
+    m_pDwarfDebug->endModule();
 
-        // Add program header table to satisfy latest gdb
-        bool is64Bit = m_pVISAModule->getPointerSize() == 8;
-        unsigned int phtSize = sizeof(llvm::ELF::Elf32_Phdr);
-        if (is64Bit)
-            phtSize = sizeof(llvm::ELF::Elf64_Phdr);
+    m_pStreamEmitter->Finalize();
 
-        std::vector<char> Result(m_str.size() + phtSize);
-        std::copy(m_str.begin(), m_str.end(), Result.begin());
+    LLVM_DEBUG(dbgs() << "Finalized Visa Module:\n");
+    LLVM_DEBUG(m_pVISAModule->dump());
 
-        writeProgramHeaderTable(is64Bit, Result.data(), m_str.size());
-        if (m_pVISAModule->isDirectElfInput)
-            setElfType(is64Bit, Result.data());
+    // Add program header table to satisfy latest gdb
+    bool is64Bit = m_pVISAModule->getPointerSize() == 8;
+    unsigned int phtSize = sizeof(llvm::ELF::Elf32_Phdr);
+    if (is64Bit)
+        phtSize = sizeof(llvm::ELF::Elf64_Phdr);
 
-        LLVM_DEBUG(dbgs() << "Finalized Visa Module:\n");
-        LLVM_DEBUG(m_pVISAModule->dump());
-        // Reset all members and prepare for next beginModule() call.
-        Reset();
+    std::vector<char> Result(m_str.size() + phtSize);
+    std::copy(m_str.begin(), m_str.end(), Result.begin());
 
-        return std::move(Result);
-    }
-    return {};
+    writeProgramHeaderTable(is64Bit, Result.data(), m_str.size());
+    if (m_pVISAModule->isDirectElfInput)
+        setElfType(is64Bit, Result.data());
+
+    // Reset all members and prepare for next beginModule() call.
+    Reset();
+
+    return std::move(Result);
 }
 
 void DebugEmitter::setElfType(bool is64Bit, void* pBuffer)
