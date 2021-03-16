@@ -332,6 +332,7 @@ DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced 
 DECLARE_IGC_REGKEY(bool, UniformMemOptLimit,            false, "Limit of uniform memory optimization in bits", false)
 DECLARE_IGC_REGKEY(bool, EnableFunctionPointer,         true,  "Enables support for function pointers and indirect calls", false)
 DECLARE_IGC_REGKEY(bool, EnableIndirectCallOptimization, true, "Enables inlining indirect calls by comparing function addresses", false)
+DECLARE_IGC_REGKEY(bool, EnableExternalLinkFunctions,   false, "Enables Import/Export linkage of functions from outside the module", false)
 DECLARE_IGC_REGKEY(bool, ForceFFIDOverwrite,            false, "Force overwriting ffid in sr0.0", false)
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          true,  "Enables setting GTPin context flags by reading the input to the compiler adapters", false)
 DECLARE_IGC_REGKEY(bool, EnableRuntimeFuncAttributePatching, false,  "Creates a relocation entry to let runtime calculate the max call depth and patch required scratch space usage", true)

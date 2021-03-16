@@ -273,6 +273,23 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         F->removeFnAttr(llvm::Attribute::NoInline);
     };
 
+    // Returns true if a function is either import or export and requires external linking
+    auto NeedsLinking = [](Function* F)->bool
+    {
+        // builtins should not be externally linked, they will always be resolved by IGC
+        bool isInternalBuiltin = F->hasFnAttribute(llvm::Attribute::Builtin)
+            || F->getName().startswith("__builtin_")
+            || F->getName().startswith("__igcbuiltin_")
+            || F->getName().startswith("llvm.")
+            || F->getName().equals("printf");
+        // SPIRV FE translate import/export linkage to "ExternalLinkage" in LLVMIR
+        // Check all "ExternalLinkage" functions. Func declarations = Import, Func definition = Export
+        return IGC_IS_FLAG_ENABLED(EnableExternalLinkFunctions)
+            && F->hasExternalLinkage()
+            && !isInternalBuiltin
+            && F->getCallingConv() == CallingConv::SPIR_FUNC;
+    };
+
     // Process through all functions and add the appropriate function attributes
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -281,9 +298,10 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             if (F->getName() == "__translate_sampler_initializer")
                 F->addFnAttr(llvm::Attribute::ReadOnly);
-            if (F->hasFnAttribute("referenced-indirectly"))
+
+            // Functions requiring import from external module
+            if (F->hasFnAttribute("referenced-indirectly") || NeedsLinking(F))
             {
-                // External function not defined in current module
                 pCtx->m_enableFunctionPointer = true;
                 F->addFnAttr("IndirectlyCalled");
                 F->addFnAttr("visaStackCall");
@@ -381,52 +399,53 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // No need to process kernel funcs any further
             continue;
         }
-        else if (!isKernel)
-        {
-            F->setLinkage(GlobalValue::InternalLinkage);
-        }
 
         // Add function attribute for indirectly called functions
         if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
         {
-            // Check if the function can be called either from
-            // externally or as a function pointer
-            bool isExtern = (F->hasFnAttribute("referenced-indirectly"));
-            bool isIndirect = false;
-            for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
+            // Functions indirectly called or must be linked
+            bool isIndirect = F->hasFnAttribute("referenced-indirectly") || NeedsLinking(F);
+            if (!isIndirect)
             {
-                CallInst* call = dyn_cast<CallInst>(*u);
-
-                if (!call || IGCLLVM::getCalledValue(call) != F)
+                // Functions without Export Linkage and does not have the indirect attribute set can still be called indirectly.
+                // Set the indirect flag if the function's address is taken by a non-call instruction.
+                for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
                 {
-                    isIndirect = true;
+                    CallInst* call = dyn_cast<CallInst>(*u);
+                    if (!call || IGCLLVM::getCalledValue(call) != F)
+                    {
+                        isIndirect = true;
+                        break;
+                    }
                 }
             }
 
             // Add indirect call function attributes
-            if (isExtern || isIndirect)
+            if (isIndirect)
             {
                 pCtx->m_enableFunctionPointer = true;
-
                 F->addFnAttr("IndirectlyCalled");
                 if (!istrue)
                 {
                     F->addFnAttr("visaStackCall");
                 }
-                if (isExtern)
-                {
-                    F->setLinkage(GlobalValue::ExternalLinkage);
-                }
+                F->setLinkage(GlobalValue::ExternalLinkage);
             }
         }
 
         if (isKernel)
             continue;
 
+        // Set all non-externally linked functions to internally linked
+        if (!F->hasExternalLinkage())
+        {
+            F->setLinkage(GlobalValue::InternalLinkage);
+        }
+
         // Flag for function calls where alwaysinline must be true
         bool mustAlwaysInline = false;
 
-        // Add always attribtue if function is a builtin
+        // Add always attribute if function is a builtin
         if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
             F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
         {
