@@ -448,12 +448,13 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
   if (BC.dbgInfoDumpsEnabled()) {
-    StringRef NameSuffix = KernelName;
-    if (!BC.dbgInfoDumpsNameOverride().empty())
-      NameSuffix = BC.dbgInfoDumpsNameOverride();
 
-    auto DwarfDumpName = ("dbginfo_" + NameSuffix + "_dwarf.elf").str();
-    auto GendbgDumpName = ("dbginfo_" + NameSuffix + "_gen.dump").str();
+    std::string NamePrefix = "dbginfo_";
+    if (!BC.dbgInfoDumpsNameOverride().empty())
+      NamePrefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
+
+    auto DwarfDumpName = (NamePrefix + KernelName + "_dwarf.elf").str();
+    auto GendbgDumpName = (NamePrefix + KernelName + "_gen.dump").str();
     const auto &GenDbgBlob = GenXFunctions.front()->getGenDebug();
     if (BC.hasShaderDumper()) {
       BC.getShaderDumper().dumpBinary(ElfBin, DwarfDumpName);
