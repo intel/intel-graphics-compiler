@@ -334,13 +334,11 @@ bool StatelessToStatefull::getOffsetFromGEP(
     return true;
 }
 
-const KernelArg* StatelessToStatefull::gepIsFromKernelArgument(const PointerType& ptrType, GetElementPtrInst* gep)
+const KernelArg* StatelessToStatefull::getKernelArgFromPtr(const PointerType& ptrType, Value* pVal)
 {
-    // skip if no gep at all
-    if (gep == nullptr)
+    if (pVal == nullptr)
         return nullptr;
-
-    Value* base = gep->getPointerOperand()->stripPointerCasts();
+    Value* base = pVal;
 
     // stripPointerCasts might skip addrSpaceCast, thus check if AS is still
     // the original one.
@@ -364,10 +362,10 @@ bool StatelessToStatefull::pointerIsFromKernelArgument(Value& ptr)
         base = gep->getPointerOperand()->stripPointerCasts();
     }
 
-    if (gep == nullptr)
+    if (!m_supportNonGEPPtr && gep == nullptr)
         return false;
 
-    if (gepIsFromKernelArgument(*dyn_cast<PointerType>(ptr.getType()), gep) != nullptr)
+    if (getKernelArgFromPtr(*dyn_cast<PointerType>(ptr.getType()), base) != nullptr)
         return true;
     return false;
 }
@@ -409,8 +407,13 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
         base = gep->getPointerOperand()->stripPointerCasts();
     }
 
-    // if the last gep is from kerenl argument
-    if (const KernelArg * arg = gepIsFromKernelArgument(*ptrType, gep))
+    if (!m_supportNonGEPPtr && gep == nullptr)
+    {
+        return false;
+    }
+
+    // if the base is from kerenl argument
+    if (const KernelArg * arg = getKernelArgFromPtr(*ptrType, base))
     {
         // base is the argument!
         argNumber = arg->getAssociatedArgNo();
@@ -429,6 +432,15 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
             (!m_hasSubDWAlignedPtrArg || arg->isImplicitArg())
             ? true
             : (getPointeeAlign(DL, base) >= 4);
+
+        // special handling
+        if (m_supportNonGEPPtr && gep == nullptr && !arg->isImplicitArg())
+        {
+            // For NonGEP ptr, do stateful only if arg isn't char*/short*
+            // (We hit bugs when allowing stateful for char*/short* arg without GEP.
+            //  Here, we simply avoid doing stateful for char*/short*.)
+            isAlignedPointee = (getPointeeAlign(DL, base) >= 4);
+        }
 
         // If m_hasBufferOffsetArg is true, the offset argument is added to
         // the final offset to make it definitely positive. Thus skip checking

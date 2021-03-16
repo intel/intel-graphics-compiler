@@ -78,10 +78,9 @@ namespace IGC
         bool pointerIsPositiveOffsetFromKernelArgument(
             llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg);
 
-        // Check if the given gep can be traced back to any kernel argument.
+        // Check if the given pointer value can be traced back to any kernel argument.
         // return the kernel argument if found, otherwise return nullptr.
-        // lastGep - the last gep of pointer address, nullptr if no GEP
-        const KernelArg* gepIsFromKernelArgument(const llvm::PointerType& ptrType, llvm::GetElementPtrInst* gep);
+        const KernelArg* getKernelArgFromPtr(const llvm::PointerType& ptrType, llvm::Value* pVal);
 
         // check if the given pointer can be traced back to any kernel argument
         bool pointerIsFromKernelArgument(llvm::Value& ptr);
@@ -133,6 +132,11 @@ namespace IGC
 
         // When true, every messages that are in ptrArg + offset will have offset >= 0.
         bool       m_hasPositivePointerOffset;
+
+        // Handle non-gep pointer
+        //   For historic reason (probably non-DW aligned arg), non-gep ptr isn't handled.
+        //   If this field is true, non-gep ptr shall be handled.
+        const bool m_supportNonGEPPtr = false;
 
         llvm::AssumptionCacheTracker* m_ACT;
         llvm::AssumptionCache* getAC(llvm::Function* F)
