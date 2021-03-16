@@ -437,8 +437,8 @@ bool GenXLegalization::runOnFunction(Function &F) {
     Argument *Arg = &*fi;
     if (auto VT = dyn_cast<VectorType>(Arg->getType()))
       if (VT->getElementType()->isIntegerTy(1))
-        IGC_ASSERT(getPredPart(Arg, 0).Size == VT->getNumElements() &&
-               "function arg not allowed to be illegally sized predicate");
+        IGC_ASSERT_MESSAGE(getPredPart(Arg, 0).Size == VT->getNumElements(),
+          "function arg not allowed to be illegally sized predicate");
   }
 
   // Legalize instructions. This does a postordered depth first traversal of the
@@ -556,7 +556,8 @@ unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
 bool GenXLegalization::checkIfLongLongSupportNeeded(Instruction *Inst) const {
   // for now, we expect that the inspected instruction results in a value
   // 64-bit type (scalar or vector)
-  IGC_ASSERT(Inst && Inst->getType()->getScalarType()->isIntegerTy(64));
+  IGC_ASSERT(Inst);
+  IGC_ASSERT(Inst->getType()->getScalarType()->isIntegerTy(64));
   auto CheckGenXIntrinsic = [](const Instruction *Inst) {
     // wrregion/rdregion by themselves should not require any HW support
     // since finalizer should handle the respected VISA mov instructions.
@@ -950,10 +951,15 @@ bool GenXLegalization::processBitCastFromPredicate(Instruction *Inst,
   unsigned SplitWidth = getPredPart(Pred, 0).Size;
   if (SplitWidth == 0)
     return false;
-#if _DEBUG
-  unsigned WholeWidth = cast<VectorType>(Pred->getType())->getNumElements();
-  IGC_ASSERT(!(WholeWidth % SplitWidth) && "does not handle odd predicate sizes");
-#endif
+
+  {
+    unsigned WholeWidth = 0; // it will be assigned inside assertion statament
+    IGC_ASSERT((WholeWidth = cast<VectorType>(Pred->getType())->getNumElements(), 1));
+    IGC_ASSERT(SplitWidth);
+    IGC_ASSERT_MESSAGE(!(WholeWidth % SplitWidth), "does not handle odd predicate sizes");
+    (void) WholeWidth;
+  }
+
   // Bitcast each split predicate into an element of an int vector.
   // For example, if the split size is 16, then the result is a vector
   // of i16. Then bitcast that to the original result type.
@@ -999,7 +1005,8 @@ bool GenXLegalization::processBitCastToPredicate(Instruction *Inst,
                                                  Instruction *InsertBefore) {
   unsigned WholeWidth = cast<VectorType>(Inst->getType())->getNumElements();
   unsigned SplitWidth = getPredPart(Inst, 0).Size;
-  IGC_ASSERT(!(WholeWidth % SplitWidth) && "does not handle odd predicate sizes");
+  IGC_ASSERT(SplitWidth);
+  IGC_ASSERT_MESSAGE(!(WholeWidth % SplitWidth), "does not handle odd predicate sizes");
   unsigned NumSplits = WholeWidth / SplitWidth;
   if (NumSplits == 1)
     return false;
@@ -1433,8 +1440,8 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
     if (CallInst *CI = dyn_cast<CallInst>(Inst))
       NumOperands = CI->getNumArgOperands();
     if (NumOperands) {
-      IGC_ASSERT(isa<VectorType>(Inst->getOperand(0)->getType()) &&
-             "instruction not supported");
+      IGC_ASSERT_MESSAGE(isa<VectorType>(Inst->getOperand(0)->getType()),
+        "instruction not supported");
       unsigned InBytesPerElement =
           cast<VectorType>(Inst->getOperand(0)->getType())
               ->getElementType()
@@ -1579,8 +1586,8 @@ public:
         HeadIt->Info.Type == BaleInfo::WRPREDPREDREGION)
       End = HeadIt;
     else {
-      IGC_ASSERT(HeadIt->Info.Type != BaleInfo::GSTORE &&
-             "GSTORE must have been considered before");
+      IGC_ASSERT_MESSAGE(HeadIt->Info.Type != BaleInfo::GSTORE,
+        "GSTORE must have been considered before");
       End = SomeBale.end();
     }
   }
@@ -1595,18 +1602,18 @@ public:
 Value *GenXLegalization::joinBaleInsts(Value *PrevSliceRes, unsigned StartIdx,
                                        unsigned Width,
                                        Instruction *InsertBefore) {
-  IGC_ASSERT(SplittableInsts(B).end() != B.end() &&
-         "must have some instructions to join in the bale");
+  IGC_ASSERT_MESSAGE(SplittableInsts(B).end() != B.end(),
+    "must have some instructions to join in the bale");
   if (B.endsWithGStore()) {
-    IGC_ASSERT(SplittableInsts(B).end() == B.getPreHeadIt() &&
-           "a bale is considered to have only 1 dst, in case of GSTORE it's "
-           "represented by the last 2 instructions");
+    IGC_ASSERT_MESSAGE(SplittableInsts(B).end() == B.getPreHeadIt(),
+      "a bale is considered to have only 1 dst, in case of GSTORE it's "
+      "represented by the last 2 instructions");
     return joinGStore(PrevSliceRes, *B.getHead(), *B.getPreHead(), StartIdx,
                       Width, InsertBefore);
   } else {
-    IGC_ASSERT(SplittableInsts(B).end() == B.getHeadIt() &&
-           "a bale is considered to have only 1 dst, in common case it's "
-           "represented by the last instruction");
+    IGC_ASSERT_MESSAGE(SplittableInsts(B).end() == B.getHeadIt(),
+      "a bale is considered to have only 1 dst, in common case it's "
+      "represented by the last instruction");
     return joinAnyWrRegion(PrevSliceRes, *B.getHead(), StartIdx, Width,
                            InsertBefore);
   }
@@ -1624,11 +1631,13 @@ Value *GenXLegalization::joinBaleResult(Value *PrevSliceRes,
                                         Value *LastSplitInst, unsigned StartIdx,
                                         unsigned Width,
                                         Instruction *InsertBefore) {
-  IGC_ASSERT(PrevSliceRes && LastSplitInst && InsertBefore && "wrong arguments");
+  IGC_ASSERT_MESSAGE(PrevSliceRes, "wrong argument");
+  IGC_ASSERT_MESSAGE(LastSplitInst, "wrong argument");
+  IGC_ASSERT_MESSAGE(InsertBefore, "wrong argument");
   auto Head = B.getHeadIgnoreGStore()->Inst;
   auto VT = cast<VectorType>(Head->getType());
-  IGC_ASSERT(VT->getNumElements() != Width &&
-         "there's no need to join results if they have the proper type");
+  IGC_ASSERT_MESSAGE(VT->getNumElements() != Width,
+    "there's no need to join results if they have the proper type");
   if (VT->getElementType()->isIntegerTy(1)) {
     auto NewWr = Region::createWrPredRegion(
         PrevSliceRes, LastSplitInst, StartIdx,
@@ -1679,7 +1688,7 @@ Value *GenXLegalization::splitBale(Value *PrevSliceRes, unsigned StartIdx,
     LastCreatedInst =
         joinBaleInsts(PrevSliceRes, StartIdx, Width, InsertBefore);
   else {
-    IGC_ASSERT(LastCreatedInst && "must have at least some split inst");
+    IGC_ASSERT_MESSAGE(LastCreatedInst, "must have at least some split inst");
     auto Head = B.getHeadIgnoreGStore()->Inst;
     if (cast<VectorType>(Head->getType())->getNumElements() != Width)
       LastCreatedInst = joinBaleResult(PrevSliceRes, LastCreatedInst, StartIdx,
@@ -1694,7 +1703,7 @@ Value *GenXLegalization::splitBale(Value *PrevSliceRes, unsigned StartIdx,
 Value *GenXLegalization::joinGStore(Value *PrevSliceRes, BaleInst GStore,
                                     BaleInst WrRegion, unsigned StartIdx,
                                     unsigned Width, Instruction *InsertBefore) {
-  IGC_ASSERT(GStore.Info.Type == BaleInfo::GSTORE && "wrong argument");
+  IGC_ASSERT_MESSAGE(GStore.Info.Type == BaleInfo::GSTORE, "wrong argument");
   Value *Op =
       joinAnyWrRegion(PrevSliceRes, WrRegion, StartIdx, Width, InsertBefore);
   return new StoreInst(Op, GStore.Inst->getOperand(1), /*volatile*/ true,
@@ -1706,7 +1715,7 @@ Value *GenXLegalization::joinGStore(Value *PrevSliceRes, BaleInst GStore,
 Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
                                       unsigned StartIdx, unsigned Width,
                                       Instruction *InsertBefore) {
-  IGC_ASSERT(BInst.Info.Type == BaleInfo::WRREGION && "wrong argument");
+  IGC_ASSERT_MESSAGE(BInst.Info.Type == BaleInfo::WRREGION, "wrong argument");
   Region R(BInst.Inst, BInst.Info);
   R.getSubregion(StartIdx, Width);
   if (R.Mask && isa<VectorType>(R.Mask->getType()))
@@ -1739,7 +1748,7 @@ Value *GenXLegalization::joinPredPredWrRegion(Value *PrevSliceRes,
                                               BaleInst BInst, unsigned StartIdx,
                                               unsigned Width,
                                               Instruction *InsertBefore) {
-  IGC_ASSERT(BInst.Info.Type == BaleInfo::WRPREDPREDREGION && "wrong argument");
+  IGC_ASSERT_MESSAGE(BInst.Info.Type == BaleInfo::WRPREDPREDREGION, "wrong argument");
   unsigned WrPredStart =
       cast<ConstantInt>(BInst.Inst->getOperand(2))->getZExtValue();
   Value *WrPredNewVal = getSplitOperand(
@@ -1869,7 +1878,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     // predication logic anymore and can fallback to rdpredregions.
     auto *SI = cast<ShuffleVectorInst>(BInst.Inst);
     auto RS = ShuffleVectorAnalyzer::getReplicatedSliceDescriptor(SI);
-    IGC_ASSERT(RS.SliceSize == Width && "Unexpected width for predicate shuffle split");
+    IGC_ASSERT_MESSAGE(RS.SliceSize == Width, "Unexpected width for predicate shuffle split");
     Value *Pred = SI->getOperand(0);
     return Region::createRdPredRegionOrConst(
         Pred, RS.InitialOffset, Width,
@@ -1877,7 +1886,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
   }
   }
   // Splitting non-region instruction.
-  IGC_ASSERT(!isa<PHINode>(BInst.Inst) && "not expecting to split phi node");
+  IGC_ASSERT_MESSAGE(!isa<PHINode>(BInst.Inst), "not expecting to split phi node");
   if (CastInst *CI = dyn_cast<CastInst>(BInst.Inst)) {
     Type *CastToTy = IGCLLVM::FixedVectorType::get(
         cast<VectorType>(CI->getType())->getElementType(), Width);
@@ -2028,7 +2037,8 @@ Value *GenXLegalization::getSplitOperand(Instruction *Inst, unsigned OperandNum,
 Instruction *
 GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
                                          Region *R, Instruction *InsertBefore) {
-  IGC_ASSERT(!R->is2D() && (R->NumElements == 4 || R->NumElements == 8));
+  IGC_ASSERT(!R->is2D());
+  IGC_ASSERT((R->NumElements == 4) || (R->NumElements == 8));
   Value *Indirect = R->Indirect;
   IGC_ASSERT(Indirect);
   const DebugLoc &DL = Inst->getDebugLoc();
@@ -2133,7 +2143,7 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
   using GenXIntrinsic::GenXRegion::NewValueOperandNum;
   using GenXIntrinsic::GenXRegion::OldValueOperandNum;
 
-  IGC_ASSERT(FromTy != ToTy && "Convertion of same types attempted");
+  IGC_ASSERT_MESSAGE(FromTy != ToTy, "Convertion of same types attempted");
   // Recognize move dst and src in bale.
   auto Head = B->getHead();
   auto HeadInst = Head->Inst;
@@ -2376,8 +2386,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
     if (GenXIntrinsic::getGenXIntrinsicID(Root->getOperand(0)) ==
         GenXIntrinsic::genx_wrpredregion)
       continue; // not root of tree
-    IGC_ASSERT(isa<UndefValue>(Root->getOperand(0)) &&
-           "expecting undef input to root of tree");
+    IGC_ASSERT_MESSAGE(isa<UndefValue>(Root->getOperand(0)),
+      "expecting undef input to root of tree");
     // See if it really is illegally sized.
     if (getPredPart(Root, 0).Size ==
         cast<VectorType>(Root->getType())->getNumElements())
@@ -2423,8 +2433,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
       unsigned WrSize = cast<VectorType>(Entry->Wr->getOperand(1)->getType())
                             ->getNumElements();
       auto PP = getPredPart(Entry->Wr, WrOffset);
-      IGC_ASSERT(WrOffset + WrSize <= PP.Offset + PP.Size &&
-             "overlaps multiple parts");
+      IGC_ASSERT_MESSAGE(WrOffset + WrSize <= PP.Offset + PP.Size,
+        "overlaps multiple parts");
       Value *Part = Entry->Parts[PP.PartNum];
       if (WrSize != PP.Size) {
         // Not the whole part. We need to write into the previous value of this
@@ -2455,8 +2465,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
             cast<ConstantInt>(Rd->getOperand(1))->getZExtValue();
         unsigned RdSize = cast<VectorType>(Rd->getType())->getNumElements();
         auto PP = getPredPart(Entry->Wr, RdOffset);
-        IGC_ASSERT(RdOffset + RdSize <= PP.Offset + PP.Size &&
-               "overlaps multiple parts");
+        IGC_ASSERT_MESSAGE(RdOffset + RdSize <= PP.Offset + PP.Size,
+          "overlaps multiple parts");
         Value *Part = Entry->Parts[PP.PartNum];
         if (RdSize != PP.Size) {
           // Only reading a subregion of a part.
@@ -2468,20 +2478,24 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
           // will arise where the input to legalization had an odd size
           // rdpredregion in a wrregion where the input predicate is a v32i1
           // from an odd size CM select using an i32 as the mask.
-#if _DEBUG
+
           if (RdOffset) {
-            unsigned RdMisalignment = 1U << findFirstSet(RdOffset);
-            IGC_ASSERT((RdMisalignment >= 8 ||
+            unsigned RdMisalignment = 0; // it will be assigned inside assertion statament
+            IGC_ASSERT((RdMisalignment = 1U << findFirstSet(RdOffset), 1));
+            IGC_ASSERT_MESSAGE((RdMisalignment >= 8 ||
                     (RdMisalignment == 4 && Rd->hasOneUse() &&
                      cast<Instruction>(Rd->use_begin()->getUser())
                              ->getOperand(1)
                              ->getType()
                              ->getScalarType()
-                             ->getPrimitiveSizeInBits() == 64)) &&
-                   !((RdOffset - PP.Offset) % RdSize) &&
+                             ->getPrimitiveSizeInBits() == 64)),
                    "illegal rdpredregion");
+            IGC_ASSERT(RdSize);
+            IGC_ASSERT_MESSAGE(!((RdOffset - PP.Offset) % RdSize),
+                   "illegal rdpredregion");
+            (void) RdMisalignment;
           }
-#endif
+
           // Create a new rdpredregion.
           auto NewRd = Region::createRdPredRegion(
               Part, RdOffset - PP.Offset, RdSize, "", Rd, Rd->getDebugLoc());
@@ -2496,9 +2510,10 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
       for (auto ui = Entry->Wr->use_begin(), ue = Entry->Wr->use_end();
            ui != ue; ++ui) {
         auto User = cast<Instruction>(ui->getUser());
-        IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(User) ==
-               GenXIntrinsic::genx_wrpredregion &&
-               !ui->getOperandNo() && "expecting only wrpredregion uses");
+        IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(User) == GenXIntrinsic::genx_wrpredregion,
+          "expecting only wrpredregion uses");
+        IGC_ASSERT_MESSAGE(!ui->getOperandNo(),
+          "expecting only wrpredregion uses");
         Stack.push_back(StackEntry(User, Entry->Wr));
       }
     }
