@@ -1621,7 +1621,7 @@ Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
   if (Iter != EmulationFuns.end())
     return Iter->second;
 
-  IGC_ASSERT(ST && "subtarget expected");
+  IGC_ASSERT_MESSAGE(ST, "subtarget expected");
   StringRef EmuFnName = ST->getEmulateFunction(Inst);
   if (EmuFnName.empty())
     return nullptr;
@@ -1645,7 +1645,7 @@ Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
 Value *GenXEmulate::emulateInst(Instruction *Inst) {
   Function *EmuFn = getEmulationFunction(Inst);
   if (EmuFn) {
-    IGC_ASSERT(!isa<CallInst>(Inst) && "call emulation not supported yet");
+    IGC_ASSERT_MESSAGE(!isa<CallInst>(Inst), "call emulation not supported yet");
     llvm::IRBuilder<> Builder(Inst);
     SmallVector<Value *, 8> Args(Inst->operands());
     return Builder.CreateCall(EmuFn, Args);

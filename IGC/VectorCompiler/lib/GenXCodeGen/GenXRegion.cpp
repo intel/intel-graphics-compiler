@@ -50,6 +50,66 @@ IN THE SOFTWARE.
 using namespace llvm;
 using namespace genx;
 
+namespace {
+
+/***********************************************************************
+ * Local function for testing one assertion statement.
+ * It returns true if all is ok.
+ * If region index is a vector it should has given number of elements.
+ */
+bool testRegionIndexForSizeMismatch(const llvm::Value *const V,
+  const unsigned& Width, const unsigned& NumElements) {
+
+  bool Result = true;
+
+  const llvm::VectorType *const VT =
+    dyn_cast<const llvm::VectorType> (V->getType());
+
+  if (VT) {
+    const unsigned VectorElements = (VT->getNumElements() * Width);
+    Result = (VectorElements == NumElements);
+    IGC_ASSERT_MESSAGE(Result, "vector region index size mismatch");
+  }
+
+  return Result;
+}
+
+/***********************************************************************
+ * Local function for testing one assertion statement.
+ * It returns true if all is ok.
+ * Instruction 'or' should be changed to 'add' without any errors.
+ */
+bool testOperator(const llvm::Instruction *const Operator) {
+
+  IGC_ASSERT(Operator);
+  IGC_ASSERT(Operator->getModule());
+
+  const unsigned Opcode = Operator->getOpcode();
+  const bool IsAdd = (Instruction::Add == Opcode);
+  const bool IsSub = (Instruction::Sub == Opcode);
+  const bool IsOr = (Instruction::Or == Opcode);
+  const bool IsAddAddr =
+    (GenXIntrinsic::genx_add_addr == GenXIntrinsic::getGenXIntrinsicID(Operator));
+
+  bool Result = (IsAdd || IsSub || IsOr || IsAddAddr);
+  IGC_ASSERT_MESSAGE(Result,
+    "your offset seems to be calculated not through ADD or OR");
+
+  // check if instruction 'or' could be changed to 'add'
+  if (Result && IsOr) {
+    const llvm::Value *const Op0 = Operator->getOperand(0);
+    const llvm::Value *const Op1 = Operator->getOperand(1);
+    const DataLayout &DL = Operator->getModule()->getDataLayout();
+
+    Result = llvm::haveNoCommonBitsSet(Op0, Op1, DL);
+    IGC_ASSERT_MESSAGE(Result, "OR should be changed to ADD with no errors");
+  }
+
+  return Result;
+}
+
+} // namespace
+
 /***********************************************************************
  * getWithOffset : get a Region given a rdregion/wrregion, baling in
  *      constant add of offset
@@ -143,6 +203,7 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
     NumElements = VT->getNumElements();
   }
   const DataLayout &DL = Inst->getModule()->getDataLayout();
+  static_assert(genx::ByteBits);
   IGC_ASSERT(DL.getTypeSizeInBits(ElementTy) % genx::ByteBits  == 0);
   ElementBytes = DL.getTypeSizeInBits(ElementTy) / genx::ByteBits;
   VStride = cast<ConstantInt>(Inst->getOperand(ArgIdx))->getSExtValue();
@@ -151,13 +212,10 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
   ArgIdx += 3;
   // Get the start index.
   Value *V = Inst->getOperand(ArgIdx);
-  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy(16) &&
-         "region index must be i16 or vXi16 type");
-#if _DEBUG
-  if (VectorType *VT = dyn_cast<VectorType>(V->getType()))
-    IGC_ASSERT(VT->getNumElements() * Width == NumElements &&
-           "vector region index size mismatch");
-#endif
+  IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(16),
+    "region index must be i16 or vXi16 type");
+  IGC_ASSERT(testRegionIndexForSizeMismatch(V, Width, NumElements));
+
   if (ConstantInt *CI = dyn_cast<ConstantInt>(V))
     Offset = CI->getSExtValue(); // Constant index.
   else {
@@ -168,24 +226,13 @@ Region::Region(Instruction *Inst, const BaleInfo &BI, bool WantParentWidth)
       // a baled in add or add_addr, and ignore a baled in rdregion.
       if(!GenXIntrinsic::isRdRegion(Operator)) {
         // The index is variable and has a baled in or/add/sub/add_addr.
-        IGC_ASSERT((Operator->getOpcode() == Instruction::Add   ||
-                Operator->getOpcode() == Instruction::Sub   ||
-                Operator->getOpcode() == Instruction::Or    ||
-                GenXIntrinsic::getGenXIntrinsicID(Operator) == GenXIntrinsic::genx_add_addr)
-                && "error: your offset seems to be calculated not through 'add' or 'or' ");
+        // offset is calculated through 'add' or 'or'
+        IGC_ASSERT(testOperator(Operator));
+
         Constant *C = cast<Constant>(Operator->getOperand(1));
         ConstantInt *CI = dyn_cast<ConstantInt>(C);
         if (!CI)
           CI = cast<ConstantInt>(C->getSplatValue());
-
-        // check for or could be changed to add
-        if (Operator->getOpcode() == Instruction::Or &&
-          !haveNoCommonBitsSet(Operator->getOperand(0), Operator->getOperand(1),
-          Operator->getModule()->getDataLayout()))
-        {
-          IGC_ASSERT(false && "or should be changed to add without any errors");
-        }
-
 
         Offset = CI->getSExtValue();
 
@@ -737,8 +784,10 @@ Use *RdWrRegionSequence::getInputUse() const
       StartWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
   if (!GenXIntrinsic::isRdRegion(Rd))
     return nullptr;
-  IGC_ASSERT(Rd && Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum) == Input);
-  return &Rd->getOperandUse(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+  const unsigned OpIdx = GenXIntrinsic::GenXRegion::OldValueOperandNum;
+  IGC_ASSERT(Rd);
+  IGC_ASSERT(Rd->getOperand(OpIdx) == Input);
+  return &Rd->getOperandUse(OpIdx);
 }
 
 /***********************************************************************

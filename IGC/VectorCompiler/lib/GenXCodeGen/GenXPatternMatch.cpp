@@ -245,7 +245,7 @@ class MadMatcher {
 public:
   explicit MadMatcher(Instruction *I)
       : AInst(I), MInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic), NegIndex(-1) {
-    IGC_ASSERT(I && "null instruction");
+    IGC_ASSERT_MESSAGE(I, "null instruction");
     Srcs[0] = Srcs[1] = Srcs[2] = nullptr;
   }
 
@@ -318,7 +318,7 @@ class MinMaxMatcher {
 public:
   explicit MinMaxMatcher(Instruction *I)
       : SelInst(I), CmpInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic) {
-    IGC_ASSERT(I && "null instruction");
+    IGC_ASSERT_MESSAGE(I, "null instruction");
     Srcs[0] = Srcs[1] = nullptr;
     Annotation = 0;
   }
@@ -582,7 +582,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
           LHS = OpStack.pop_back_val();
           OpStack.push_back(Builder.CreateNot(LHS));
         }
-        IGC_ASSERT(false && "Unhandled logic op!");
+        IGC_ASSERT_MESSAGE(0, "Unhandled logic op!");
       }
       IGC_ASSERT(OpStack.size() == 1);
       I.replaceAllUsesWith(OpStack.pop_back_val());
@@ -1073,10 +1073,11 @@ public:
 std::tuple<Value *, bool>
 MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
                                Value *V, unsigned NumElts) const {
-  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy(32) && "I32 is expected!");
+  Type *ScalarType = V->getType()->getScalarType();
+  IGC_ASSERT_MESSAGE(ScalarType->isIntegerTy(32), "I32 is expected!");
   if (auto Ext = dyn_cast<ExtOperator>(V)) {
     V = Ext->getOperand(0);
-    if (V->getType()->getScalarType()->isIntegerTy(8)) {
+    if (ScalarType->isIntegerTy(8)) {
       Type *DstTy = Builder.getInt16Ty();
       if (auto VTy = dyn_cast<VectorType>(V->getType()))
         DstTy = IGCLLVM::FixedVectorType::get(DstTy, VTy->getNumElements());
@@ -1109,8 +1110,11 @@ MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
 
 // The floating point case is relatively simple. Only need to match with fmul.
 bool MadMatcher::matchFpMad() {
-  IGC_ASSERT(AInst->getOpcode() == Instruction::FAdd ||
-         AInst->getOpcode() == Instruction::FSub);
+  const bool isFAdd = AInst->getOpcode() == Instruction::FAdd;
+  const bool isFSub = AInst->getOpcode() == Instruction::FSub;
+  IGC_ASSERT(isFAdd || isFSub);
+  (void) isFAdd;
+
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
   for (unsigned Idx = 0; Idx != 2; ++Idx) {
@@ -1124,7 +1128,7 @@ bool MadMatcher::matchFpMad() {
         Srcs[2] = Op1;
 
         setMInst(BO);
-        if (AInst->getOpcode() == Instruction::FSub)
+        if (isFSub)
           NegIndex = 2 - Idx;
         break;
       }
@@ -1138,7 +1142,7 @@ bool MadMatcher::matchFpMad() {
           Srcs[2] = Op0;
 
           setMInst(BO);
-          if (AInst->getOpcode() == Instruction::FSub)
+          if (isFSub)
             NegIndex = 1;
           break;
         }
@@ -1154,8 +1158,11 @@ bool MadMatcher::matchFpMad() {
 }
 
 bool MadMatcher::matchIntegerMad() {
-  IGC_ASSERT(AInst->getOpcode() == Instruction::Add ||
-         AInst->getOpcode() == Instruction::Sub);
+  const bool isAdd = AInst->getOpcode() == Instruction::Add;
+  const bool isSub = AInst->getOpcode() == Instruction::Sub;
+  IGC_ASSERT(isAdd || isSub);
+  (void) isAdd;
+
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
   if (auto BI = dyn_cast<MulLikeOperator>(Ops[0])) {
@@ -1165,7 +1172,7 @@ bool MadMatcher::matchIntegerMad() {
     Srcs[0] = BI->getOperand(0);
     setMInst(cast<Instruction>(BI));
     if (isProfitable()) {
-      if (AInst->getOpcode() == Instruction::Sub)
+      if (isSub)
         NegIndex = 2;
     } else
       setMInst(nullptr);
@@ -1179,7 +1186,7 @@ bool MadMatcher::matchIntegerMad() {
       Srcs[0] = BI->getOperand(0);
       setMInst(cast<Instruction>(BI));
       if (isProfitable()) {
-        if (AInst->getOpcode() == Instruction::Sub)
+        if (isSub)
           NegIndex = 1;
       } else
         setMInst(nullptr);
@@ -1195,7 +1202,7 @@ bool MadMatcher::matchIntegerMad() {
         Srcs[0] = BI->getOperand(0);
         setMInst(cast<Instruction>(BI));
         if (isProfitable()) {
-          if (AInst->getOpcode() == Instruction::Sub)
+          if (isSub)
             NegIndex = 2;
         } else
           setMInst(nullptr);
@@ -1212,7 +1219,7 @@ bool MadMatcher::matchIntegerMad() {
         Srcs[0] = BI->getOperand(0);
         setMInst(cast<Instruction>(BI));
         if (isProfitable()) {
-          if (AInst->getOpcode() == Instruction::Sub)
+          if (isSub)
             NegIndex = 1;
         } else
           setMInst(nullptr);
@@ -1228,7 +1235,8 @@ bool MadMatcher::matchIntegerMad() {
 }
 
 bool MadMatcher::matchIntegerMad(unsigned IID) {
-  IGC_ASSERT((GenXIntrinsic::getAnyIntrinsicID(AInst) == IID) && "input out of sync");
+  IGC_ASSERT_MESSAGE((GenXIntrinsic::getAnyIntrinsicID(AInst) == IID),
+    "input out of sync");
   Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
 
   // TODO: handle cases like: cm_add(cm_mul(u, v), w).
@@ -1473,7 +1481,8 @@ bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
 }
 
 bool MinMaxMatcher::matchMinMax() {
-  IGC_ASSERT(SelInst->getOpcode() == Instruction::Select && "expected SelectInst");
+  IGC_ASSERT_MESSAGE(SelInst->getOpcode() == Instruction::Select,
+    "expected SelectInst");
   if ((CmpInst = dyn_cast<llvm::CmpInst>(SelInst->getOperand(0)))) {
     Srcs[0] = SelInst->getOperand(1);
     Srcs[1] = SelInst->getOperand(2);
@@ -1582,7 +1591,7 @@ bool MinMaxMatcher::emit() {
 static std::tuple<BasicBlock *, Instruction *>
 findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
                         std::function<bool(Instruction *)> IsSimilar) {
-  IGC_ASSERT(!isa<PHINode>(Ref) && "PHINode is not expected!");
+  IGC_ASSERT_MESSAGE(!isa<PHINode>(Ref), "PHINode is not expected!");
 
   // Shortcut case. If it's single-used, insert just before that user.
   if (I->hasOneUse())
@@ -1606,7 +1615,7 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
     MI->second = &*BI;
   }
 
-  IGC_ASSERT(BBs.size() != 0 && "Must find at least one BB!");
+  IGC_ASSERT_MESSAGE(!BBs.empty(), "Must find at least one BB!");
 
   auto MI = BBs.begin();
   // Another shortcut case. If it's only used in a single BB,
@@ -1630,8 +1639,8 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
 // For the specified constant, calculate its reciprocal if it's safe;
 // otherwise, return null.
 static Constant *getReciprocal(Constant *C, bool HasAllowReciprocal) {
-  IGC_ASSERT(C->getType()->isFPOrFPVectorTy() &&
-         "Floating point value is expected!");
+  IGC_ASSERT_MESSAGE(C->getType()->isFPOrFPVectorTy(),
+    "Floating point value is expected!");
 
   // TODO: remove this and use ConstantExpr::getFDiv.
 
@@ -1930,8 +1939,9 @@ bool GenXPatternMatch::simplifyPredRegion(CallInst *CI) {
 
   unsigned NElts = cast<VectorType>(CI->getType())->getNumElements();
   ConstantInt *C = dyn_cast<ConstantInt>(CI->getArgOperand(1));
-  IGC_ASSERT(C && "constant integer expected");
+  IGC_ASSERT_MESSAGE(C, "constant integer expected");
   unsigned Offset = (unsigned)C->getZExtValue();
+  IGC_ASSERT(NElts);
   IGC_ASSERT(Offset % NElts == 0);
 
   // The number of actual bits required.
@@ -2059,7 +2069,8 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
 // destination has the same type, it's incorrect to fold them into V directly
 // as the saturation is necessary.
 bool GenXPatternMatch::simplifyTruncSat(CallInst *Inst) {
-  IGC_ASSERT(GenXIntrinsic::isIntegerSat(Inst) && "Unexpected integer saturation intrinsic!");
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::isIntegerSat(Inst),
+    "Unexpected integer saturation intrinsic!");
 
   GenXIntrinsicInst *II = cast<GenXIntrinsicInst>(Inst);
   ExtOperator *Ext = dyn_cast<ExtOperator>(Inst->getOperand(0));
@@ -2559,7 +2570,7 @@ bool GenXPatternMatch::distributeIntegerMul(Function *F) {
       if (collect(RHS, Ops))
         continue;
 
-      IGC_ASSERT(!Ops.empty() && "There's no operands collected!");
+      IGC_ASSERT_MESSAGE(!Ops.empty(), "There's no operands collected!");
 
       IRBuilder<> Builder(cast<Instruction>(Mul));
       Value *Sum = nullptr;
