@@ -1128,8 +1128,12 @@ bool GenXKernelBuilder::run() {
     if (F->hasFnAttribute(genx::FunctionMD::CMStackCall) ||
         F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly)) {
       VISAFunction *stackFunc = nullptr;
+
       FuncName = F->getName();
       CisaBuilder->AddFunction(stackFunc, FuncName.c_str());
+      std::string AsmName = buildAsmName().append("_").append(FuncName);
+      CISA_CALL(stackFunc->AddKernelAttribute("OutputAsmPath",
+                                              AsmName.size(), AsmName.c_str()));
       IGC_ASSERT(stackFunc);
       Func2Kern[F] = stackFunc;
       Kernel = stackFunc;
