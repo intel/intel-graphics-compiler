@@ -53,6 +53,7 @@ add_subdirectory(WIFuncs)
 add_subdirectory(ClampLoopUnroll)
 add_subdirectory(Image3dToImage2darray)
 add_subdirectory(RewriteLocalSize)
+add_subdirectory(UnreachableHandling)
 
 
 
@@ -98,6 +99,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_ClampLoopUnroll}
     ${IGC_BUILD__SRC__OpenCLPasses_Image3dToImage2darray}
     ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
+    ${IGC_BUILD__SRC__OpenCLPasses_UnreachableHandling}
   )
 
 
@@ -145,6 +147,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_ClampLoopUnroll}
     ${IGC_BUILD__HDR__OpenCLPasses_Image3dToImage2darray}
     ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
+    ${IGC_BUILD__HDR__OpenCLPasses_UnreachableHandling}
   )
 
 
@@ -185,6 +188,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ClampLoopUnroll
     Compiler__OpenCLPasses_Image3dToImage2darray
     Compiler__OpenCLPasses_RewriteLocalSize
+    Compiler__OpenCLPasses_UnreachableHandling
   )
 
 
