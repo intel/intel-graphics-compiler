@@ -2783,121 +2783,6 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions (
     }
 }
 
-bool SpillManagerGRF::isUniqueDefInProgram(G4_INST* inst, G4_BB* bb, G4_Declare* spillDcl)
-{
-    // return true if spilled variable has a single static def
-    // and it is not live-in to current bb (eg, loop, sub).
-    if (VarDefs[spillDcl].size() != 1)
-    {
-        // check whether multiple defs exist in program for current
-        // lb, rb
-        auto dst = inst->getDst();
-        auto lb = dst->getLeftBound();
-        auto rb = dst->getRightBound();
-
-        unsigned int count = 0;
-        auto& defs = VarDefs[spillDcl];
-        for (auto& def : defs)
-        {
-            if (std::get<1>(def) <= rb &&
-                std::get<2>(def) >= lb)
-                ++count;
-        }
-
-        if (count > 1)
-            return false;
-
-        // spill/fill intrinsics work at either hword/grf granularity. so even
-        // if a def is unique, if it only writes part of a GRF (say upper 8 words)
-        // then a fill is still needed to preserve rest of GRF written by another
-        // def.
-        bool partialGRFDef = ((dst->getRightBound() + 1) % getGRFSize()) != 0 ||
-            (dst->getLeftBound() % getGRFSize()) != 0;
-        if (partialGRFDef)
-            return false;
-    }
-
-    // check whether variable is live-in to BB
-    if (lvInfo_->isLiveAtEntry(bb, spillDcl->getRegVar()->getId()))
-        return false;
-
-    return true;
-}
-
-bool SpillManagerGRF::pseudoKillFoundForDef(INST_LIST_ITER spilledInstIter, G4_BB* bb, G4_Declare* spillDcl)
-{
-    // Search upwards from spilledInstIter to find a pseudo kill.
-    // Return true if one is found, false otherwise.
-    auto bbBegin = bb->begin();
-    if (spilledInstIter == bbBegin)
-        return false;
-    auto it = spilledInstIter;
-    --it;
-    unsigned int pseudoKillDist = 0;
-    auto dst = (*spilledInstIter)->getDst();
-    bool partialGRFDef = ((dst->getRightBound() + 1) % getGRFSize()) != 0 ||
-        (dst->getLeftBound() % getGRFSize()) != 0;
-    while (it != bbBegin)
-    {
-        auto inst = *it;
-        // check if adjacent instruction is a pseudo kill
-        if (inst->isPseudoKill())
-        {
-            if (inst->getDst()->getTopDcl() == spillDcl)
-            {
-                // if pseudo_kill is previous instruction, then no need for fill
-                // however, if there are other instructions in between current and
-                // pseudo_kill then a fill can be skipped only if the def defines
-                // full GRF as spill/fill is currently in GRF granularity.
-                if (pseudoKillDist == 0 || !partialGRFDef)
-                    return true;
-                return false;
-            }
-        }
-        else
-        {
-            auto dst = inst->getDst();
-            if (!dst)
-                return false;
-
-            // recognize pattern where V10 is spilled:
-            // pseudo_kill V10
-            // op (8) V10(0,0) ...
-            // op (8) V10(2,0) ... <-- Current inst
-            //
-            // becomes:
-            // pseudo_kill V10
-            // op (8) SP_V10(0,0) ... [2]
-            // intrinsic_spill (8) ... SP_V10 ... [1]
-            // op (8) V10(2,0) <-- Current inst
-            if (inst->isSpillIntrinsic() &&
-                inst->asSpillIntrinsic()->getPayload() &&
-                inst->asSpillIntrinsic()->getPayload()->getTopDcl()->getRegVar()->isRegVarTransient())
-            {
-                auto spillBase = ((G4_RegVarTransient*)inst->asSpillIntrinsic()->getPayload()->getTopDcl()->getRegVar())->getAbsBaseRegVar();
-                if (spillBase->getDeclare()->getRootDeclare() != spillDcl)
-                    return false;
-                // Fall through for instruction [1] above
-            }
-            else if (dst &&
-                dst->getTopDcl() &&
-                dst->getTopDcl()->getRegVar()->isRegVarTransient())
-            {
-                auto spillBase = ((G4_RegVarTransient*)dst->getTopDcl()->getRegVar())->getAbsBaseRegVar();
-                if (spillBase->getDeclare()->getRootDeclare() != spillDcl)
-                    return false;
-                // Fall through for instruction [2] above
-            }
-            else if (inst->getDst()->getTopDcl() != spillDcl)
-                return false;
-
-            ++pseudoKillDist;
-        }
-        --it;
-    }
-    return false;
-}
-
 // Create the code to create the spill range and save it to spill memory.
 void SpillManagerGRF::insertSpillRangeCode(
     INST_LIST::iterator spilledInstIter, G4_BB* bb)
@@ -2919,41 +2804,6 @@ void SpillManagerGRF::insertSpillRangeCode(
         return;
     }
 
-    auto pseudoKillFound = pseudoKillFoundForDef(spilledInstIter, bb, spillDcl);
-    auto isUniqueDef = isUniqueDefInProgram(inst, bb, spillDcl);
-
-    auto checkRMWNeeded = [this, spillDcl, pseudoKillFound, isUniqueDef]()
-    {
-        // Read-Modify-Write (RMW) is not required when:
-        // * FlowGraph is reducible AND
-        // * Augmentation hasnt extended variable's live-range to top of do-while loop AND
-        // * A pseudo kill exists for current def OR Current def is unique def of the variable
-
-        if (builder_->kernel.fg.isReducible())
-        {
-            auto startInstDcl = gra.getStartInterval(spillDcl);
-            bool found = false;
-            for (auto it = VarDefs[spillDcl].begin(), endIt = VarDefs[spillDcl].end(); it != endIt; ++it)
-            {
-                if (std::get<0>(*it) == startInstDcl)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-                return true;
-
-            // this is a partial write, but if it is unique def/killed then no RMW is needed
-            if (pseudoKillFound || isUniqueDef)
-            {
-                return false;
-            }
-        }
-        return true;
-    };
-
     //subreg offset for new dst that replaces the spilled dst
     auto newSubregOff = 0;
 
@@ -2971,8 +2821,7 @@ void SpillManagerGRF::insertSpillRangeCode(
             createAndInitMHeader (
                 (G4_RegVarTransient *) spillRangeDcl->getRegVar());
 
-        bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive()) &&
-            checkRMWNeeded();
+        bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive());
         if (needRMW)
         {
             sendInSpilledRegVarPortions(
@@ -3007,8 +2856,7 @@ void SpillManagerGRF::insertSpillRangeCode(
 
         // Unaligned region specific handling.
         unsigned int spillSendOption = InstOpt_WriteEnable;
-        if (shouldPreloadSpillRange(*spilledInstIter, bb) &&
-            checkRMWNeeded()) {
+        if (shouldPreloadSpillRange(*spilledInstIter, bb)) {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
@@ -4025,33 +3873,6 @@ void SpillManagerGRF::runSpillAnalysis()
     }
 }
 
-void SpillManagerGRF::populateDefsTable()
-{
-    for (auto bb : gra.kernel.fg)
-    {
-        for (auto inst : *bb)
-        {
-            if (inst->isPseudoKill())
-                continue;
-
-            auto dst = inst->getDst();
-
-            if (dst && !dst->isNullReg())
-            {
-                auto topdcl = dst->getTopDcl();
-
-                if (topdcl)
-                {
-                    auto lb = dst->getLeftBound();
-                    auto rb = dst->getRightBound();
-                    VarDefs[topdcl].push_back(std::make_tuple(inst, lb, rb));
-                }
-            }
-        }
-    }
-}
-
-
 // Insert spill/fill code for all registers that have not been assigned
 // physical registers in the current iteration of the graph coloring
 // allocator.
@@ -4092,9 +3913,6 @@ bool SpillManagerGRF::insertSpillFillCode (
         return false;
     }
 
-    // Populate def table as it helps us decide whether read-modify-write is needed
-    populateDefsTable();
-
     // Insert spill/fill code for all basic blocks.
 
     FlowGraph& fg = kernel->fg;
@@ -4103,7 +3921,6 @@ bool SpillManagerGRF::insertSpillFillCode (
     {
         bbId_ = (*it)->getId();
         INST_LIST::iterator jt = (*it)->begin();
-        std::list<INST_LIST_ITER> pseudoKills;
 
         while (jt != (*it)->end()) {
             INST_LIST::iterator kt = jt;
@@ -4133,11 +3950,7 @@ bool SpillManagerGRF::insertSpillFillCode (
                     {
                         if (inst->isPseudoKill())
                         {
-                            // This pseudo kill corresponds to a spilled variable, so
-                            // it can be removed. But it is preserved till spill code
-                            // is inserted for the variable as it provides a hint to
-                            // spill insertion that read-modify-write is not needed.
-                            pseudoKills.push_back(jt);
+                            (*it)->erase(jt);
                             jt = kt;
                             continue;
                         }
@@ -4189,11 +4002,6 @@ bool SpillManagerGRF::insertSpillFillCode (
             }
 
             jt = kt;
-        }
-
-        for(auto killIt : pseudoKills)
-        {
-            (*it)->erase(killIt);
         }
     }
 
