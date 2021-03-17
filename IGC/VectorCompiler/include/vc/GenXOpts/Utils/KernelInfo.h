@@ -33,6 +33,8 @@ IN THE SOFTWARE.
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "Probe/Assertion.h"
 
+#include <unordered_map>
+
 namespace llvm {
 namespace genx {
 
