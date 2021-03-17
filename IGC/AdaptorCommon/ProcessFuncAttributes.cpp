@@ -774,49 +774,6 @@ ModulePass* createInsertDummyKernelForSymbolTablePass()
     return new InsertDummyKernelForSymbolTable();
 }
 
-// The code is based on the assumption that a kernel that takes an address
-// of an indirectly called function has to match in SIMD size with the kernel
-// invoking the function and the indirectly called function itself. Thus try
-// to propagate simd size from the caller. As of now assert if the function's
-// users have different simd sizes.
-inline void checkKernelSimdSize(Function* F, FunctionInfoMetaDataHandle funcInfoMD, MetaDataUtils* pMdUtils)
-{
-    Function* caller = nullptr;
-    int simd_size = 0;
-    for (auto U : F->users())
-    {
-        Instruction* I = dyn_cast<Instruction>(U);
-        // Get a kernel and its simd size
-        caller = I->getParent()->getParent();
-        FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(caller);
-        int sz = funcInfoMD->getSubGroupSize()->getSIMD_size();
-        if (simd_size == 0)
-            simd_size = sz;
-        // Assert now if sizes don't match.
-        // TODO. Extend this code to support indirect function call with
-        // different simd sizes
-        IGC_ASSERT_MESSAGE(simd_size == sz, "Function is called with different sub group size");
-    }
-    // Now propagate the computed simd size to the default kernel, which was
-    // created by the compiler, and to which all indirectly called functions
-    // are attached.
-    IGCMD::SubGroupSizeMetaDataHandle sgHandle = funcInfoMD->getSubGroupSize();
-    IGC_ASSERT_MESSAGE((simd_size == 8) || (simd_size == 16) || (simd_size == 32),
-        "Kernel has incorrect SIMD size");
-    if (sgHandle->getSIMD_size() == 0)
-    {
-        // The kernel still has no info set about simd size, thus set it.
-        sgHandle->setSIMD_size(simd_size);
-    }
-    else if (sgHandle->getSIMD_size() != simd_size)
-    {
-        // TODO. A placeholder for a code to mark the kernel with info
-        // that there should be code generation with multiple simd sizes.
-        // Until there is a mechanism to support this, issue an assert here.
-        IGC_ASSERT_MESSAGE(false, "INTEL_SYMBOL_TABLE_VOID_PROGRAM requires variant SIMD sizes");
-    }
-}
-
 bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
 {
     MetaDataUtilsWrapper& mduw = getAnalysis<MetaDataUtilsWrapper>();
@@ -861,22 +818,6 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
         FunctionMetaData* funcMD = &modMD->FuncMD[pNewFunc];
         funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
         fHandle->setType(FunctionTypeMD::KernelFunction);
-
-        // Promote SIMD size information from kernels, which has indirectly called
-        // functions. All such functions will be connected to the default kernel in
-        // GenCodeGenModule.cpp (addIndirectFuncsToKernelGroup)
-        for (auto I = M.begin(), E = M.end(); I != E; ++I)
-        {
-            Function* F = &(*I);
-            if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
-
-            if (F->hasFnAttribute("IndirectlyCalled"))
-            {
-                checkKernelSimdSize(F, fHandle, pMdUtils);
-            }
-
-        }
-
         pMdUtils->setFunctionsInfoItem(pNewFunc, fHandle);
         pMdUtils->save(M.getContext());
 
