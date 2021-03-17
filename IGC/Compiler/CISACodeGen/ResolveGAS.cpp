@@ -1215,8 +1215,11 @@ bool LowerGPCallArg::hasSameOriginAddressSpace(Function* func, unsigned argNo, u
 void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC)
 {
     IGC_ASSERT(newAS != oldAS);
-    for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
+    auto nextUI = ptr->user_begin(), E = ptr->user_end();
+    do
     {
+        auto UI = nextUI;
+        nextUI++;
         Instruction* inst = dyn_cast<Instruction>(*UI);
         PointerType* instType = nullptr;
 
@@ -1230,6 +1233,13 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
                 UI.getUse().set(recoverASC);
                 continue;
             }
+        }
+        else if (CallInst* cInst = dyn_cast<CallInst>(inst))
+        {
+            // We cannot propagate the non-generic AS to arg of a call.
+            // It will be propagate later if it is applicable.
+            UI.getUse().set(recoverASC);
+            continue;
         }
 
         if (BitCastInst* bitCastInst = dyn_cast<BitCastInst>(inst))
@@ -1246,9 +1256,16 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             Type* eltType = instType->getElementType();
             PointerType* ptrType = PointerType::get(eltType, newAS);
             inst->mutateType(ptrType);
+            // Add an addrspacecast in for cases where the non-generic can't be propagated.
+            AddrSpaceCastInst* recoverASC = new AddrSpaceCastInst(inst, instType, "", inst->getNextNode());
+
             FixAddressSpaceInAllUses(inst, newAS, oldAS, recoverASC);
+
+            // Remove addrspacecast if it wasn't used
+            if (recoverASC->getNumUses() == 0)
+                recoverASC->eraseFromParent();
         }
-    }
+    } while (nextUI != E);
 }
 
 // Loops over the argument list transferring uses from old function to new one.
@@ -1261,7 +1278,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
         I != E; ++I, ++currArg, ++currentArgIdx)
     {
         Value* newArg = &(*currArg);
-        // Check if the next entry in newArgs is for currentArgIdx arg 
+        // Check if the next entry in newArgs is for currentArgIdx arg
         if (newArgIdx < newArgs.size() && currentArgIdx == newArgs[newArgIdx].first)
         {
             if ((*I).getType() != currArg->getType())
@@ -1325,19 +1342,18 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
 
                 PointerType* callArgTy = dyn_cast<PointerType>(callArg->getType());
                 PointerType* funcArgTy = dyn_cast<PointerType>(funcArg->getType());
-                if (callArgTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
-                    funcArgTy->getAddressSpace() != ADDRESS_SPACE_GENERIC)
+                IGC_ASSERT(
+                    callArgTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
+                    funcArgTy->getAddressSpace() != ADDRESS_SPACE_GENERIC);
+                // If call site address space is generic and function arg is non-generic,
+                // the addrspacecast is removed and non-generic address space lowered
+                // to the function call.
+                AddrSpaceCastInst* addrSpaceCastInst = dyn_cast<AddrSpaceCastInst>(callArg);
+                if (addrSpaceCastInst)
                 {
-                    // If call site address space is generic and function arg is non-generic,
-                    // the addrspacecast is removed and non-generic address space lowered
-                    // to the function call.
-                    AddrSpaceCastInst* addrSpaceCastInst = dyn_cast<AddrSpaceCastInst>(callArg);
-                    if (addrSpaceCastInst)
-                    {
-                        callArg = addrSpaceCastInst->getOperand(0);
-                        if (addrSpaceCastInst->getNumUses() == 1)
-                            ASCToDelete.push_back(addrSpaceCastInst);
-                    }
+                    callArg = addrSpaceCastInst->getOperand(0);
+                    if (addrSpaceCastInst->getNumUses() == 1)
+                        ASCToDelete.push_back(addrSpaceCastInst);
                 }
             }
             newCallArgs.push_back(callArg);
