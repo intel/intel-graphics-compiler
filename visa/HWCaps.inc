@@ -676,4 +676,8 @@
    {
         return false;
    }
+   bool useSimplifiedRA()
+   {
+       return false;
+   }
     // end HW capabilities

@@ -1064,10 +1064,14 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
         return false;
     }
 
-    highInternalConflict = ((float)internalConflict / threeSourceInstNumInKernel) > INTERNAL_CONFLICT_RATIO_HEURISTIC;
+    highInternalConflict = gra.kernel.fg.builder->useSimplifiedRA() ? false :
+        ((float)internalConflict / threeSourceInstNumInKernel) > INTERNAL_CONFLICT_RATIO_HEURISTIC;
 
     //Bank conflict reduction is done only when there is enough three source instructions.
-    threeSourceCandidate = true;
+    if (!gra.kernel.fg.builder->useSimplifiedRA())
+    {
+        threeSourceCandidate = true;
+    }
 
     if (doLocalRR && sendInstNumInKernel)
     {
@@ -1078,7 +1082,7 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
         }
     }
 
-    return true;
+    return !gra.kernel.fg.builder->useSimplifiedRA();
 }
 
 bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
@@ -6595,7 +6599,7 @@ bool GraphColor::regAlloc(
             return !requireSpillCode();
         }
 
-        if (kernel.getOption(vISA_RoundRobin) && !hasStackCall && !gra.isReRAPass())
+        if (kernel.getOption(vISA_RoundRobin) && !hasStackCall && !gra.isReRAPass() && !builder.useSimplifiedRA())
         {
             if (assignColors(ROUND_ROBIN, doBankConflictReduction, highInternalConflict) == false)
             {
@@ -6616,8 +6620,8 @@ bool GraphColor::regAlloc(
         }
         else
         {
-            bool success = assignColors(FIRST_FIT, true, highInternalConflict);
-            if (!success)
+            bool success = assignColors(FIRST_FIT, !builder.useSimplifiedRA(), highInternalConflict);
+            if (!success && !builder.useSimplifiedRA())
             {
                 resetTemporaryRegisterAssignments();
                 assignColors(FIRST_FIT, false, false);

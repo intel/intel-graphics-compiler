@@ -319,14 +319,8 @@ void LocalRA::trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate)
     {
         std::cout << "\t--trivial RA\n";
     }
-    if (builder.lowHighBundle())
-    {
-        needGlobalRA = assignUniqueRegisters(threeSourceCandidate, true);
-    }
-    else
-    {
-        needGlobalRA = assignUniqueRegisters(threeSourceCandidate, false);
-    }
+
+    needGlobalRA = assignUniqueRegisters(threeSourceCandidate, builder.lowHighBundle());
 
     if (!needGlobalRA)
     {
@@ -454,14 +448,12 @@ bool LocalRA::localRA()
         std::cout << "--local RA--\n";
     }
 
-    bool doRoundRobin = builder.getOption(vISA_LocalRARoundRobin);
 
     int numGRF = kernel.getNumRegTotal();
     PhyRegsLocalRA phyRegs(&builder, numGRF);
     pregs = &phyRegs;
 
     globalLRSize = 0;
-    bool reduceBCInTAandFF = false;
     bool needGlobalRA = true;
 
     doSplitLLR = (builder.getOption(vISA_SpiltLLR) &&
@@ -470,6 +462,8 @@ bool LocalRA::localRA()
 
     preLocalRAAnalysis();
 
+    bool doRoundRobin = builder.getOption(vISA_LocalRARoundRobin) && !builder.useSimplifiedRA();
+    bool reduceBCInTAandFF = false;
     bool reduceBCInRR = false;
 
     if (builder.getOption(vISA_LocalBankConflictReduction) && builder.hasBankCollision())
@@ -699,6 +693,26 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign ali
     }
 }
 
+bool LocalRA::getBankAlign(G4_Declare *dcl, bool twoBanksRA, bool twoDirectionsAssign, BankAlign &bankAlign)
+{
+    if (twoBanksRA &&
+        gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
+    {
+        bankAlign = getBankAlignForUniqueAssign(dcl);
+
+        if (bankAlign == BankAlign::Even || bankAlign == BankAlign::Even2GRF)
+        {
+            return true;;
+        }
+        if (twoDirectionsAssign && (bankAlign == BankAlign::Odd || bankAlign == BankAlign::Odd2GRF))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 {
     // Iterate over all dcls and calculate number of rows
@@ -804,24 +818,11 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
             BankAlign bankAlign = BankAlign::Either;
-            if (twoBanksRA &&
-                gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
+            if (!builder.useSimplifiedRA())
             {
-                bankAlign = getBankAlignForUniqueAssign(dcl);
-
-                if (bankAlign == BankAlign::Even || bankAlign == BankAlign::Even2GRF)
-                {
-                    assignFromFront = true;
-                }
-                if (twoDirectionsAssign && (bankAlign == BankAlign::Odd || bankAlign == BankAlign::Odd2GRF))
-                {
-                    assignFromFront = false;
-                }
+                assignFromFront = getBankAlign(dcl, twoBanksRA, twoDirectionsAssign, bankAlign);
             }
-
             auto assignAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : bankAlign;
-
-            // Why?
             G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : gra.getSubRegAlign(dcl);
 
             if (assignFromFront)
