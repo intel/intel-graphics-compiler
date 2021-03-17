@@ -879,8 +879,6 @@ static Value *simplifyRegionWrite(Instruction *Inst) {
       return nullptr;
 
     auto OldValB = B->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-    if (GenXIntrinsic::isReadPredefReg(OldValB))
-      return nullptr;
     auto OldValC = Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
     if ((isa<UndefValue>(OldValC) &&
          OldValB->getType() == OldValC->getType()) ||

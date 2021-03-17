@@ -85,7 +85,6 @@ FunctionPass *createGenXRegionCollapsingPass();
 FunctionPass *createGenXExtractVectorizerPass();
 FunctionPass *createGenXRawSendRipperPass();
 FunctionPass *createGenXFuncBalingPass(BalingKind Kind, GenXSubtarget *ST);
-FunctionPass *createGenXPrologEpilogInsertionPass();
 FunctionPass *createGenXLegalizationPass();
 ModulePass *createGenXEmulatePass();
 FunctionPass *createGenXDeadVectorRemovalPass();

@@ -124,7 +124,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXNumberingPass(registry);
   initializeGenXPatternMatchPass(registry);
   initializeGenXPostLegalizationPass(registry);
-  initializeGenXPrologEpilogInsertionPass(registry);
   initializeGenXPromotePredicatePass(registry);
   initializeGenXRawSendRipperPass(registry);
   initializeGenXReduceIntSizePass(registry);
@@ -385,7 +384,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createDeadCodeEliminationPass());
   /// .. include:: GenXBaling.h
   PM.add(createGenXFuncBalingPass(BalingKind::BK_Legalization, &Subtarget));
-  PM.add(createGenXPrologEpilogInsertionPass());
   /// .. include:: GenXLegalization.cpp
   PM.add(createGenXLegalizationPass());
   /// .. include:: GenXEmulate.cpp

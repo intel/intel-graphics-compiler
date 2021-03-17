@@ -77,7 +77,6 @@ set(CODEGEN_SOURCES
   GenXPostLegalization.cpp
   GenXPrinter.cpp
   GenXPressureTracker.cpp
-  GenXPrologEpilogInsertion.cpp
   GenXPromoteArray.cpp
   GenXThreadPrivateMemory.cpp
   GenXPromotePredicate.cpp

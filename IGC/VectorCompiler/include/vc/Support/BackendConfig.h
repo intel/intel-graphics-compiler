@@ -126,9 +126,6 @@ struct GenXBackendOptions {
   // value in two-address operand)
   bool DisableNonOverlappingRegionOpt;
 
-  // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
-  bool UseNewStackBuilder = true;
-
   GenXBackendOptions();
 };
 
@@ -219,8 +216,6 @@ public:
   bool disableNonOverlappingRegionOpt() const {
     return Options.DisableNonOverlappingRegionOpt;
   }
-
-  bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }
 };
 } // namespace llvm
 

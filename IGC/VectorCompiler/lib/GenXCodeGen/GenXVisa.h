@@ -75,13 +75,6 @@ namespace llvm {
       RSI_Stateless = 255 // 255 is stateless, which is T5 in vISA
     };
 
-    constexpr static unsigned ArgRegSizeInGRFs = 32;
-    constexpr static unsigned RetRegSizeInGRFs = 12;
-    constexpr static unsigned BytesPerSVMPtr = 8;
-    constexpr static unsigned BytesPerOword = 16;
-    constexpr static unsigned StackPerThreadScratch = 256;
-    constexpr static unsigned StackPerThreadSVM = 8192*2;
-
     // Extracts surface Index (which is expected to be constant)
     // from llvm::Value
     // TODO: consider replacing dync_cast_or_null to dyn_cast

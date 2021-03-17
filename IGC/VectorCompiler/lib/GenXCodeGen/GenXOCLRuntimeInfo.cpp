@@ -23,7 +23,6 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
-#include "vc/GenXCodeGen/GenXInternalMetadata.h"
 
 #include "ConstantEncoder.h"
 #include "GenX.h"
@@ -115,9 +114,9 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
     genx::KernelMetadata &KM, const GenXSubtarget &ST) {
   Name = KM.getName();
   SLMSize = KM.getSLMSize();
-  // NOTE: this is a per-thread value
-  if (KM.getFunction()->getParent()->getModuleFlag(genx::ModuleMD::UseSVMStack))
-    StatelessPrivateMemSize = 16*8192;
+  // FIXME: replace with 8k * simdSize * numDispatchedThreads
+  if (KM.getFunction()->getParent()->getModuleFlag("genx.useGlobalMem"))
+    StatelessPrivateMemSize = 16 * 8192;
 
 }
 

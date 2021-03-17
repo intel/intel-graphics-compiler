@@ -150,7 +150,6 @@ namespace llvm {
     GenXLiveness *Liveness;
     GenXNumbering *Numbering;
     FunctionGroupAnalysis *FGA;
-    const GenXSubtarget *ST;
     const GenXBackendConfig *BackendConfig;
 
     // pushReg callback that will be called once new register is created
@@ -165,7 +164,6 @@ namespace llvm {
     RegMap_t RegMap;
     // List of pointers to predefined surface registers.
     std::vector<Reg*> PredefinedSurfaceRegs;
-    std::vector<Reg*> PredefinedRegs;
 
     // Array of current indexes being assigned to new register.
     unsigned CurrentRegId[genx::RegCategory::NUMREALCATEGORIES];

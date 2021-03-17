@@ -34,9 +34,7 @@ IN THE SOFTWARE.
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
 #include "GenXNumbering.h"
-#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-#include "vc/Support/BackendConfig.h"
 #include "visa_igc_common_header.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -83,7 +81,6 @@ void GenXVisaRegAlloc::getAnalysisUsage(AnalysisUsage &AU) const
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXNumbering>();
   AU.addRequired<GenXBackendConfig>();
-  AU.addRequired<TargetPassConfig>();
   AU.addRequired<FunctionGroupAnalysis>();
   AU.setPreservesAll();
 }
@@ -101,14 +98,10 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   Numbering = &getAnalysis<GenXNumbering>();
   FGA = &getAnalysis<FunctionGroupAnalysis>();
   BackendConfig = &getAnalysis<GenXBackendConfig>();
-  ST = &getAnalysis<TargetPassConfig>()
-            .getTM<GenXTargetMachine>()
-            .getGenXSubtarget();
   // Empty out the analysis from the last function it was used on.
   RegMap.clear();
   RegStorage.clear();
   PredefinedSurfaceRegs.clear();
-  PredefinedRegs.clear();
   for (unsigned i = 0; i != RegCategory::NUMREALCATEGORIES; ++i) {
     CurrentRegId[i] = 0;
   }
@@ -116,26 +109,6 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
     RegStorage.emplace_back(RegCategory::SURFACE, i);
     PredefinedSurfaceRegs.push_back(&RegStorage.back());
   }
-
-  RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_ARG,
-      VectorType::get(Type::getInt8Ty(FGArg.getContext()),
-                      visa::ArgRegSizeInGRFs * ST->getGRFWidth()));
-  PredefinedRegs.push_back(&RegStorage.back());
-  RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_RET,
-      VectorType::get(Type::getInt8Ty(FGArg.getContext()),
-                      visa::RetRegSizeInGRFs * ST->getGRFWidth()));
-  PredefinedRegs.push_back(&RegStorage.back());
-  RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_SP,
-      VectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
-  PredefinedRegs.push_back(&RegStorage.back());
-  RegStorage.emplace_back(
-      RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_FP,
-      VectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
-  PredefinedRegs.push_back(&RegStorage.back());
-
   for (auto &F : *FG) {
     if (F->hasFnAttribute(genx::FunctionMD::CMGenXMain) ||
         F->hasFnAttribute(genx::FunctionMD::CMStackCall))
@@ -581,7 +554,6 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
 GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *kernel,
     SimpleValue V) const
 {
-  LLVM_DEBUG(dbgs() << "getRegForValueUntyped " << *(V.getValue()) << "\n");
   // is possible if called for GenXPrinter
   if (RegMap.count(kernel) == 0)
     return nullptr;
@@ -589,22 +561,14 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
   KernRegMap_t::const_iterator i = KernMap.find(V);
   if (i == KernMap.end()) {
     // Check if it's predefined variables.
-    if (GenXIntrinsic::getGenXIntrinsicID(V.getValue()) ==
-        GenXIntrinsic::genx_predefined_surface) {
-      auto CI = cast<CallInst>(V.getValue());
-      unsigned Id = cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue();
-      IGC_ASSERT_MESSAGE(Id < 4, "Invalid predefined surface ID!");
-      IGC_ASSERT_MESSAGE(
-          PredefinedSurfaceRegs.size() == VISA_NUM_RESERVED_SURFACES,
-          "Predefined surface registers have not been initialized");
-      return PredefinedSurfaceRegs[Id];
-    } else if (GenXIntrinsic::isReadWritePredefReg(V.getValue())) {
-      auto CI = cast<CallInst>(V.getValue());
-      return PredefinedRegs[cast<ConstantInt>(CI->getArgOperand(0))
-                                ->getZExtValue() -
-                            PreDefined_Vars::PREDEFINED_ARG];
-    }
-    return nullptr;
+    if (GenXIntrinsic::getGenXIntrinsicID(V.getValue()) != GenXIntrinsic::genx_predefined_surface)
+      return nullptr;
+    auto CI = cast<CallInst>(V.getValue());
+    unsigned Id = cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue();
+    IGC_ASSERT_MESSAGE(Id < 4, "Invalid predefined surface ID!");
+    IGC_ASSERT_MESSAGE(PredefinedSurfaceRegs.size() == VISA_NUM_RESERVED_SURFACES,
+      "Predefined surface registers have not been initialized");
+    return PredefinedSurfaceRegs[Id];
   }
   return i->second;
 }
@@ -625,13 +589,11 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueUntyped(const Function *k
 GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     const Function* kernel, SimpleValue V, Signedness Signed, Type *OverrideType)
 {
-  LLVM_DEBUG(dbgs() << "getRegForValueOrNull " << *(V.getValue()) << "\n");
   Reg *R = getRegForValueUntyped(kernel, V);
   if (!R)
     return nullptr; // no register allocated
   if (R->Category != RegCategory::GENERAL)
     return R;
-  LLVM_DEBUG(dbgs() << "Found reg " << R->Num << "\n");
 
   if (!OverrideType)
     OverrideType = V.getType();
@@ -641,12 +603,6 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
       OverrideType = OverrideType->getPointerElementType();
   }
   OverrideType = &fixDegenerateVectorType(*OverrideType);
-  if (R->Num < VISA_NUM_RESERVED_REGS) {
-    OverrideType = VectorType::get(
-        OverrideType->getScalarType(),
-        R->Ty->getPrimitiveSizeInBits() /
-            OverrideType->getScalarType()->getPrimitiveSizeInBits());
-  }
 
   Reg *LastAlias = R;
   // std::find_if
@@ -655,7 +611,6 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     Type *ExistingType = CurAlias->Ty;
     ExistingType = &fixDegenerateVectorType(*ExistingType);
     if (ExistingType == OverrideType &&
-        CurAlias->Num >= VISA_NUM_RESERVED_REGS &&
         (CurAlias->Signed == Signed || Signed == DONTCARESIGNED)) {
       LLVM_DEBUG(dbgs() << "Using alias: "; CurAlias->print(dbgs()); dbgs() << "\n");
       return CurAlias;

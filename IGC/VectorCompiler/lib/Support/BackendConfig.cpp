@@ -90,11 +90,6 @@ static cl::opt<bool> DisableNonOverlappingRegionOptOpt(
     "vc-disable-non-overlapping-region-opt", cl::init(false), cl::Hidden,
     cl::desc("Disable non-overlapping region optimization"));
 
-static cl::opt<bool>
-    UseNewStackBuilderOpt("vc-use-new-stack-builder",
-                          cl::desc("Use prolog/epilog insertion pass"),
-                          cl::init(true));
-
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -109,7 +104,6 @@ GenXBackendOptions::GenXBackendOptions()
       StackSurfaceMaxSize(StackMemSizeOpt), EnableAsmDumps(EnableAsmDumpsOpt),
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
-      UseNewStackBuilder(UseNewStackBuilderOpt),
       GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
                           GlobalsLocalizationLimitOpt.getValue()},
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),

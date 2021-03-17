@@ -153,8 +153,6 @@ bool GenXLiveRanges::runOnFunctionGroup(FunctionGroup &ArgFG)
 bool GenXLiveRanges::isPredefinedVariable(Value *V) const {
   switch (GenXIntrinsic::getGenXIntrinsicID(V)) {
   case GenXIntrinsic::genx_predefined_surface:
-  case GenXIntrinsic::genx_read_predef_reg:
-  case GenXIntrinsic::genx_write_predef_reg:
     return true;
   default:
     break;
