@@ -205,7 +205,7 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
     auto Succ = BI->getSuccessor(0);
     adjustPhiNodesForBlockRemoval(Succ, BB);
     // Change all of BB's uses to use its successor instead.
-    IGC_ASSERT(BB->getSinglePredecessor() != BB && "self loop");
+    IGC_ASSERT_MESSAGE(BB->getSinglePredecessor() != BB, "self loop");
     BB->replaceAllUsesWith(BI->getSuccessor(0));
     BI->eraseFromParent();
     BB->eraseFromParent();
