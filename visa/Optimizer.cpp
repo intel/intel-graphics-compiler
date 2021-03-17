@@ -6875,16 +6875,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
 
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
-    // [DevBDW:A]: A goto instruction must not be followed by any instruction requiring register indirect access on source operands.
-    // [DevBDW:A]: A join instruction must not be followed by any instruction requiring register indirect access on source operands.
-    // [DevBDW]: A POW/FDIV operation must not be followed by an instruction that requires two destination registers.
-    // For BDW A-stepping, we need a WA to prevent the following instructions:
-    // Send r10  (read from data port to r10)
-    // Send null r10 (write dataport from r10)
-    // Insert a dummy mov from r10
-    // [BDW+]: call/return's execution size must be set to 16/32 so that the emask will be passed correctly to the callee
-    // [BDW,CHV,SKL]: A call instruction must be followed by an instruction that supports Switch.
-    //                When call takes a jump, the first instruction must have a Switch.
     void Optimizer::HWWorkaround()
     {
         // Ensure the first instruction of a stack function has switch option.
@@ -6908,7 +6898,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 G4_INST *inst = *ii;
 
                 G4_InstSend* sendInst = inst->asSendInst();
-                if (sendInst && sendInst->isFence())
+                if (sendInst && sendInst->isFence() && !builder.getOption(vISA_skipFenceCommit))
                 {
                     // ToDo: replace with fence.wait intrinsic so we could hide fence latency by scheduling them apart
                     if (sendInst->getMsgDesc()->ResponseLength() > 0)
