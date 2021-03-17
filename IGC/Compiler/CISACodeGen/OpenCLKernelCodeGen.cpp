@@ -701,6 +701,9 @@ namespace IGC
         break;
 
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
+            // disable printf support so that it'll fallback to legacy format
+            if (IGC_IS_FLAG_ENABLED(DisablePrintfOnZEBinary))
+                return false;
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::printf_buffer,
                 payloadPosition, kernelArg->getAllocateSize());
