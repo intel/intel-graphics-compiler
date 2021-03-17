@@ -239,6 +239,21 @@ const std::string& VISAModule::GetTargetTriple() const
     return m_triple;
 }
 
+bool VISAModule::IsExecutableInst(const llvm::Instruction& inst)
+{
+    // Return false if inst is dbg info intrinsic or if it is
+    // catch all intrinsic. In both of these cases, we dont want
+    // to emit associated debug loc since there is no machine
+    // code generated for them.
+    if (IsCatchAllIntrinsic(&inst))
+        return false;
+
+    if (llvm::isa<DbgInfoIntrinsic>(inst))
+        return false;
+
+    return true;
+}
+
 void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
 {
     const auto* co = getCompileUnit(VD);
@@ -247,6 +262,10 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
     {
         const Instruction* pInst = *II;
+
+        // store VISA mapping only if pInst generates Gen code
+        if (!IsExecutableInst(*pInst))
+            continue;
 
         InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
         if (itr == m_instInfoMap.end())
@@ -443,6 +462,17 @@ void VISAModule::print (raw_ostream &OS) const {
           Item.second.first << ", size: " << Item.second.second << "}\n";
 }
 
+const llvm::Instruction* getNextInst(const llvm::Instruction* start)
+{
+    // Return consecutive instruction in llvm IR.
+    // Iterate to next BB if required.
+    if (start->getNextNode())
+        return start->getNextNode();
+    else if (start->getParent()->getNextNode())
+        return &(start->getParent()->getNextNode()->front());
+    return (const llvm::Instruction*)nullptr;
+}
+
 std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(const InsnRange& Range)
 {
     // Given a range, return vector of start-end range for corresponding Gen ISA instructions
@@ -454,17 +484,6 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
     // means several independent sub-ranges will be present.
     std::vector<std::pair<unsigned int, unsigned int>> GenISARange;
     bool endNextInst = false;
-
-    auto getNextInst = [](const llvm::Instruction* start)
-    {
-        // Return consecutive instruction in llvm IR.
-        // Iterate to next BB if required.
-        if (start->getNextNode())
-            return start->getNextNode();
-        else if (start->getParent()->getNextNode())
-            return &(start->getParent()->getNextNode()->front());
-        return (const llvm::Instruction*)nullptr;
-    };
 
     while (1)
     {

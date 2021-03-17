@@ -588,14 +588,46 @@ DIE* DwarfDebug::constructLexicalScopeDIE(CompileUnit* TheCU, LexicalScope* Scop
 
 void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges)
 {
+    // When functions are inlined, their allocas get hoisted to top
+    // of kernel, including their dbg.declares. Since dbg.declare
+    // nodes have DebugLoc, it means the function would've 2
+    // live-intervals, first one being hoisted dbg.declare/alloca
+    // and second being actual function. When emitting debug_loc
+    // we only want to use the second interval since it includes
+    // actual function user wants to debug. Following loop prunes
+    // Ranges vector to include only actual function. It does so
+    // by checking whether any sub-range has DebugLoc attached to
+    // non-DbgInfoIntrinsic instruction.
+    auto IsValidRange = [](const InsnRange& R)
+    {
+        auto start = R.first;
+        auto end = R.second;
+        while (end != start && start)
+        {
+            if (!llvm::isa<DbgInfoIntrinsic>(start))
+                if (start->getDebugLoc())
+                    return true;
+
+            start = getNextInst(start);
+        }
+        return false;
+    };
+
+    llvm::SmallVector<InsnRange, 5> PrunedRanges;
+    for (auto& R : *Ranges)
+    {
+        if (IsValidRange(R))
+            PrunedRanges.push_back(R);
+    }
+
     // This makes sense only for full debug info.
-    if (Ranges->size() == 0)
+    if (PrunedRanges.size() == 0)
         return;
 
     // Resolve VISA index to Gen IP here.
     std::vector<std::pair<unsigned int, unsigned int>> AllGenISARanges;
-    for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges->begin(),
-        RE = Ranges->end(); RI != RE; ++RI)
+    for (SmallVectorImpl<InsnRange>::const_iterator RI = PrunedRanges.begin(),
+        RE = PrunedRanges.end(); RI != RE; ++RI)
     {
         auto GenISARanges = m_pModule->getGenISARange(*RI);
         for (auto& R : GenISARanges)

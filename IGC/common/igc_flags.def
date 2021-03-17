@@ -275,6 +275,7 @@ DECLARE_IGC_REGKEY(bool, EnableWriteOldFPToStack,       true,  "Setting this to 
 DECLARE_IGC_REGKEY(debugString, ExtraOCLOptions,        0,     "Extra options for OpenCL", true)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLInternalOptions, 0,    "Extra internal options for OpenCL", true)
 DECLARE_IGC_REGKEY(bool, UseVISAVarNames,               false, "Make VISA generate names for virtual variables so they match with dbg file", true)
+DECLARE_IGC_REGKEY(bool, EmitPrologueEnd,               true,  "Set to true to make IGC emit prologue_end flag", true)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode", true)

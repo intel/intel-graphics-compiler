@@ -63,6 +63,7 @@ namespace llvm
 }
 
 bool isUnsignedDIType(IGC::DwarfDebug* DD, llvm::DIType* Ty);
+const llvm::Instruction* getNextInst(const llvm::Instruction* start);
 
 namespace IGC
 {
@@ -634,7 +635,29 @@ namespace IGC
 
         // Store label for each %ip
         llvm::DenseMap<unsigned int, llvm::MCSymbol*> LabelsBeforeIp;
+
+        // function, inlinedAt
+        llvm::DenseMap<llvm::DISubprogram*, llvm::SmallPtrSet <llvm::DILocation*, 5>> prologueEnd;
     public:
+        bool prologueEndExists(llvm::DISubprogram* sp, llvm::DILocation* dl, bool add)
+        {
+            auto it = prologueEnd.find(sp);
+            if (it == prologueEnd.end())
+            {
+                if (add)
+                    prologueEnd[sp].insert(dl);
+                return false;
+            }
+
+            if (it->second.find(dl) != it->second.end())
+                return true;
+
+            if (add)
+                it->second.insert(dl);
+
+            return false;
+        }
+
         bool isStmtExists(unsigned int line, llvm::DILocation* inlinedAt, bool add)
         {
             auto it = isStmtSet.find(line);
