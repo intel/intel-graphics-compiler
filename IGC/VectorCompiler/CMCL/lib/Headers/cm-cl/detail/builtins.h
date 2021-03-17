@@ -101,6 +101,7 @@ vector_impl<T, width> select(vector_impl<char, width> cond,
 #endif // CM_CL_SOFT_BUILTINS
 }
 
+// Unlike __cm_cl_rdregion \p offset here is in T elements, not bytes.
 template <int vwidth, int vstride, int width, int stride, typename T,
           int src_width>
 vector_impl<T, vwidth * width> read_region(vector_impl<T, src_width> src,
@@ -111,11 +112,12 @@ vector_impl<T, vwidth * width> read_region(vector_impl<T, src_width> src,
     return src[offset];
   else {
     vector_impl<T, vwidth * width> res;
-    __cm_cl_rdregion(&res, &src, vstride, width, stride, offset);
+    __cm_cl_rdregion(&res, &src, vstride, width, stride, offset * sizeof(T));
     return res;
   }
 }
 
+// Unlike __cm_cl_wrregion \p offset here is in T elements, not bytes.
 template <int vstride, int width, int stride, typename T, int dst_width,
           int src_width>
 void write_region(vector_impl<T, dst_width> &dst, vector_impl<T, src_width> src,
@@ -126,7 +128,7 @@ void write_region(vector_impl<T, dst_width> &dst, vector_impl<T, src_width> src,
   if constexpr (src_width == 1 && width == 1)
     dst[offset] = src[0];
   else
-    __cm_cl_wrregion(&dst, &src, vstride, width, stride, offset);
+    __cm_cl_wrregion(&dst, &src, vstride, width, stride, offset * sizeof(T));
 }
 
 inline __global void *printf_buffer() { return __cm_cl_printf_buffer(); }
