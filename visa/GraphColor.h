@@ -280,7 +280,7 @@ namespace vISA
         Interference& intf;
         GlobalRA& gra;
         const LivenessAnalysis& liveAnalysis;
-        LiveRange* const * const lrs;
+        LiveRange** const& lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
         std::unordered_map<FuncInfo*, PhyRegSummary> localSummaryOfCallee;
@@ -313,7 +313,6 @@ namespace vISA
         void updateStartIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateEndIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void buildLiveIntervals();
-        void clearIntervalInfo();
         void sortLiveIntervals();
         unsigned getEnd(const G4_Declare* dcl) const;
         bool isNoMask(const G4_Declare* dcl, unsigned size) const;
@@ -336,7 +335,8 @@ namespace vISA
         void addSIMDIntfForRetDclares(G4_Declare* newDcl);
 
     public:
-        Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g);
+        Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange** const& ranges, GlobalRA& g);
+        ~Augmentation();
 
         void augmentIntfGraph();
     };
@@ -354,6 +354,7 @@ namespace vISA
         GlobalRA& gra;
         G4_Kernel& kernel;
         LiveRange** const & lrs;
+        Augmentation aug;
         IR_Builder& builder;
         const unsigned maxId;
         const unsigned rowSize;

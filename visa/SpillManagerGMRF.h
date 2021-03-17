@@ -593,6 +593,10 @@ private:
         }
     }
 
+    void populateDefsTable();
+    bool isUniqueDefInProgram(G4_INST*, G4_BB*, G4_Declare*);
+    bool pseudoKillFoundForDef(INST_LIST_ITER spilledInstIter, G4_BB* bb, G4_Declare* spillDcl);
+
     // Data
     GlobalRA&                gra;
     IR_Builder *             builder_;
@@ -622,6 +626,11 @@ private:
 
     const Interference *     spillIntf_;
     vISA::Mem_Manager              mem_;
+
+    // Dcl -> vector[<inst, lb, rb>]
+    // this data structure helps check whether a definition or part of it
+    // has multiple definitions in the program.
+    std::unordered_map<G4_Declare*, std::vector<std::tuple<G4_INST*, unsigned int, unsigned int>>> VarDefs;
 
     // The number of GRF spill.
     unsigned numGRFSpill = 0;

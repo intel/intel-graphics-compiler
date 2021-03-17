@@ -699,7 +699,7 @@ void G4_Kernel::emit_asm(
         auto privateMemSize = getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
         if (privateMemSize != 0)
         {
-            output << "\n.//.private memory size " << privateMemSize;
+            output << "\n//.private memory size " << privateMemSize;
         }
         output << "\n\n";
 

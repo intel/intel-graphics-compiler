@@ -69,6 +69,7 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
 Interference::Interference(const LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
     GlobalRA& g) : gra(g), kernel(g.kernel), lrs(lr),
+    aug(g.kernel, *this, *l, lr, g),
     builder(*g.kernel.fg.builder), maxId(n), splitStartId(ns), splitNum(nm),
     liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1)
 {
@@ -2415,7 +2416,6 @@ void Interference::computeInterference()
     }
 
     // Augment interference graph to accomodate non-default masks
-    Augmentation aug(kernel, *this, *liveAnalysis, lrs, gra);
     aug.augmentIntfGraph();
 
     generateSparseIntfGraph();
@@ -2627,9 +2627,24 @@ void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
     }
 }
 
-Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g) :
+Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange** const& ranges, GlobalRA& g) :
     kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges), fcallRetMap(g.fcallRetMap), m(kernel.fg.mem)
 {
+}
+
+Augmentation::~Augmentation()
+{
+    // Clear out calculated information so that subsequent RA
+    // iterations dont have stale information
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin(), end = kernel.Declares.end();
+        dcl_it != end;
+        dcl_it++)
+    {
+        gra.setStartInterval(*dcl_it, nullptr);
+        gra.setEndInterval(*dcl_it, nullptr);
+        gra.setMask(*dcl_it, nullptr);
+        gra.setAugmentationMask(*dcl_it, AugmentationMasks::Undetermined);
+    }
 }
 
 // For Scatter read, the channel is not handled as the block read.
@@ -4058,21 +4073,6 @@ void Augmentation::buildLiveIntervals()
 #endif
 }
 
-void Augmentation::clearIntervalInfo()
-{
-    // Clear out calculated information so that subsequent RA
-    // iterations dont have stale information
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin(), end = kernel.Declares.end();
-        dcl_it != end;
-        dcl_it++)
-    {
-        gra.setStartInterval(*dcl_it, nullptr);
-        gra.setEndInterval(*dcl_it, nullptr);
-        gra.setMask(*dcl_it, nullptr);
-        gra.setAugmentationMask(*dcl_it, AugmentationMasks::Undetermined);
-    }
-}
-
 class compareInterval
 {
 public:
@@ -4892,10 +4892,6 @@ void Augmentation::augmentIntfGraph()
             }
             gra.updateSubRegAlignment(GRFALIGN);
         }
-
-        // Clear information calculated in this iteration of RA so
-        // a later RA iteration does not use stale information
-        clearIntervalInfo();
     }
 }
 
