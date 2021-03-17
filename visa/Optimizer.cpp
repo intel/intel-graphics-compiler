@@ -1391,9 +1391,6 @@ int Optimizer::optimization()
 
     runPass(PI_cselPeepHoleOpt);
 
-    // this must be run after copy prop cleans up the moves
-    runPass(PI_cleanupBindless);
-
     runPass(PI_reassociateConst);
 
     runPass(PI_lowerMadSequence);
@@ -1409,6 +1406,9 @@ int Optimizer::optimization()
 
     // Local Value Numbering
     runPass(PI_LVN);
+
+    // this must be run after copy prop cleans up the moves
+    runPass(PI_cleanupBindless);
 
     runPass(PI_split4GRFVars);
 
@@ -5512,6 +5512,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     //
     void Optimizer::cleanupBindless()
     {
+        kernel.fg.resetLocalDataFlowData();
+        kernel.fg.localDataFlowAnalysis();
+
         // Perform send header cleanup for bindless sampler/surface
         for (auto bb : fg)
         {
