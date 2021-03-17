@@ -265,7 +265,7 @@ public:
   // from first and last elements of mask. This function decomposes
   // replicated slice to its parameters.
   ReplicatedSlice getReplicatedSliceDescriptor() const {
-    IGC_ASSERT(isReplicatedSlice() && "Expected replicated slice");
+    IGC_ASSERT_MESSAGE(isReplicatedSlice(), "Expected replicated slice");
     const unsigned TotalSize = (SI->getType())->getNumElements();
     const unsigned SliceStart = SI->getMaskValue(0);
     const unsigned SliceEnd = SI->getMaskValue(TotalSize - 1);
@@ -474,13 +474,13 @@ template <
         int>::type = 0>
 CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, ConstIter FirstType,
                                        ConstIter LastType) {
-  IGC_ASSERT(Inst && "wrong argument");
-  IGC_ASSERT(std::all_of(FirstType, LastType,
+  IGC_ASSERT_MESSAGE(Inst, "wrong argument");
+  IGC_ASSERT_MESSAGE(std::all_of(FirstType, LastType,
                      [Inst](Type *Ty) {
                        return Ty == Inst->getType() ||
                               Ty == getCorrespondingVectorOrScalar(
                                         Inst->getType());
-                     }) &&
+                     }),
          "wrong arguments: type of instructions must correspond");
 
   if (Inst->getType()->isVectorTy() &&

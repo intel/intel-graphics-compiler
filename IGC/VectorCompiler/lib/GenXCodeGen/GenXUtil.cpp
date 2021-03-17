@@ -54,6 +54,7 @@ IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 
 #include "Probe/Assertion.h"
+#include <cstddef>
 #include <iterator>
 
 using namespace llvm;
@@ -131,7 +132,8 @@ CallInst *genx::createAddAddr(Value *Lhs, Value *Rhs, const Twine &Name,
  * %Name.unifiedret = call Ty @llvm.ssa_copy(Ty undef)
  */
 CallInst *genx::createUnifiedRet(Type *Ty, const Twine &Name, Module *M) {
-  IGC_ASSERT(Ty && M && "wrong arguments");
+  IGC_ASSERT_MESSAGE(Ty, "wrong argument");
+  IGC_ASSERT_MESSAGE(M, "wrong argument");
   auto G = Intrinsic::getDeclaration(M, Intrinsic::ssa_copy, Ty);
   return CallInst::Create(G, UndefValue::get(Ty), Name + ".unifiedret",
                           static_cast<Instruction *>(nullptr));
@@ -145,14 +147,14 @@ CallInst *genx::createUnifiedRet(Type *Ty, const Twine &Name, Module *M) {
  * result. For scalar case only LSB of the result is set to corresponding value.
  */
 unsigned genx::getPredicateConstantAsInt(const Constant *C) {
-  IGC_ASSERT(C->getType()->isIntOrIntVectorTy(1) &&
-         "wrong argument: constant of i1 or Nxi1 type was expected");
+  IGC_ASSERT_MESSAGE(C->getType()->isIntOrIntVectorTy(1),
+    "wrong argument: constant of i1 or Nxi1 type was expected");
   if (auto CI = dyn_cast<ConstantInt>(C))
     return CI->getZExtValue(); // scalar
   unsigned Bits = 0;
   unsigned NumElements = cast<VectorType>(C->getType())->getNumElements();
-  IGC_ASSERT(NumElements <= sizeof(Bits) * CHAR_BIT &&
-         "vector has too much elements, it won't fit into Bits");
+  IGC_ASSERT_MESSAGE(NumElements <= sizeof(Bits) * CHAR_BIT,
+    "vector has too much elements, it won't fit into Bits");
   for (unsigned i = 0; i != NumElements; ++i) {
     auto El = C->getAggregateElement(i);
     if (!isa<UndefValue>(El))
@@ -360,8 +362,8 @@ bool genx::isIntNot(Instruction *Inst)
  */
 Value *genx::invertCondition(Value *Condition)
 {
-  IGC_ASSERT(Condition->getType()->getScalarType()->isIntegerTy(1) &&
-      "Condition is not of predicate type");
+  IGC_ASSERT_MESSAGE(Condition->getType()->getScalarType()->isIntegerTy(1),
+    "Condition is not of predicate type");
   // First: Check if it's a constant.
   if (Constant *C = dyn_cast<Constant>(Condition))
     return ConstantExpr::getNot(C);
@@ -486,7 +488,7 @@ Value *genx::getMaskOperand(const Instruction *Inst) {
 // 2 operands it points. The operand is returned.
 static Value *getOperandByMaskValue(const ShuffleVectorInst &SI,
                                     int MaskValue) {
-  IGC_ASSERT(MaskValue >= 0 && "invalid index");
+  IGC_ASSERT_MESSAGE(MaskValue >= 0, "invalid index");
   int FirstOpSize =
       cast<VectorType>(SI.getOperand(0)->getType())->getNumElements();
   if (MaskValue < FirstOpSize)
@@ -494,7 +496,7 @@ static Value *getOperandByMaskValue(const ShuffleVectorInst &SI,
   else {
     int SecondOpSize =
         cast<VectorType>(SI.getOperand(1)->getType())->getNumElements();
-    IGC_ASSERT(MaskValue < FirstOpSize + SecondOpSize && "invalid index");
+    IGC_ASSERT_MESSAGE(MaskValue < FirstOpSize + SecondOpSize, "invalid index");
     return SI.getOperand(1);
   }
 }
@@ -534,7 +536,7 @@ class MaskIndex {
 
 public:
   explicit MaskIndex(int InitIdx = 0) : Idx(InitIdx) {
-    IGC_ASSERT(Idx >= 0 && "Defined index must not be negative");
+    IGC_ASSERT_MESSAGE(Idx >= 0, "Defined index must not be negative");
   }
 
   static MaskIndex getUndef() {
@@ -553,13 +555,13 @@ public:
   bool isDefined() const { return Idx >= 0; }
 
   int get() const {
-    IGC_ASSERT(Idx >= 0 && "Can't call get() on invalid index");
+    IGC_ASSERT_MESSAGE(Idx >= 0, "Can't call get() on invalid index");
     return Idx;
   }
 
   int operator-(MaskIndex const &rhs) const {
-    IGC_ASSERT(isDefined() && rhs.isDefined() &&
-               "All operand indices must be valid");
+    IGC_ASSERT_MESSAGE(isDefined(), "All operand indices must be valid");
+    IGC_ASSERT_MESSAGE(rhs.isDefined(), "All operand indices must be valid");
     return Idx - rhs.Idx;
   }
 };
@@ -581,8 +583,8 @@ void makeSVIIndexesOperandIndexes(const ShuffleVectorInst &SI,
     });
     return;
   }
-  IGC_ASSERT(&Operand == SI.getOperand(1) &&
-         "wrong argument: a shufflevector operand was expected");
+  IGC_ASSERT_MESSAGE(&Operand == SI.getOperand(1),
+    "wrong argument: a shufflevector operand was expected");
   std::transform(FirstIt, LastIt, OutIt, [FirstOpSize](int MaskVal) {
     if (MaskVal < 0)
       return MaskIndex::getUndef();
@@ -606,12 +608,11 @@ template <typename ForwardIter>
 std::pair<ForwardIter, llvm::Optional<int>>
 estimateHorizontalStride(ForwardIter FirstIt, ForwardIter LastIt) {
 
-  IGC_ASSERT(FirstIt != LastIt && "the range must contain at least 1 element");
-  IGC_ASSERT(std::none_of(FirstIt, LastIt,
-                          [](MaskIndex Idx) { return Idx.isAnotherOp(); }) &&
-             "There must not be any AnotherOp indices in the range");
-  IGC_ASSERT(FirstIt->isDefined() &&
-             "first element in range must be a valid index");
+  IGC_ASSERT_MESSAGE(FirstIt != LastIt, "the range must contain at least 1 element");
+  IGC_ASSERT_MESSAGE(std::none_of(FirstIt, LastIt, [](MaskIndex Idx) { return Idx.isAnotherOp(); }),
+   "There must not be any AnotherOp indices in the range");
+  IGC_ASSERT_MESSAGE(FirstIt->isDefined(),
+    "first element in range must be a valid index");
   auto NextDefined =
       std::find_if(std::next(FirstIt), LastIt,
                    [](MaskIndex Elem) { return Elem.isDefined(); });
@@ -644,12 +645,13 @@ estimateHorizontalStride(ForwardIter FirstIt, ForwardIter LastIt) {
 template <typename ForwardIter>
 Region matchVectorRegionByIndexes(Region FirstElemRegion, ForwardIter FirstIt,
                                   ForwardIter LastIt, int BoundIndex) {
-  IGC_ASSERT(FirstIt != LastIt && "the range must contain at least 1 element");
-  IGC_ASSERT(std::none_of(FirstIt, LastIt,
-                          [](MaskIndex Idx) { return Idx.isAnotherOp(); }) &&
-             "There must not be any AnotherOp indices in the range.");
-  IGC_ASSERT(FirstIt->isDefined() && std::prev(LastIt)->isDefined() &&
-             "expected FirstIt and --LastIt point to valid indices");
+  IGC_ASSERT_MESSAGE(FirstIt != LastIt, "the range must contain at least 1 element");
+  IGC_ASSERT_MESSAGE(std::none_of(FirstIt, LastIt, [](MaskIndex Idx) { return Idx.isAnotherOp(); }),
+    "There must not be any AnotherOp indices in the range.");
+  IGC_ASSERT_MESSAGE(FirstIt->isDefined(),
+    "expected FirstIt and --LastIt point to valid indices");
+  IGC_ASSERT_MESSAGE(std::prev(LastIt)->isDefined(),
+    "expected FirstIt and --LastIt point to valid indices");
 
   if (std::distance(FirstIt, LastIt) == 1)
     return FirstElemRegion;
@@ -671,7 +673,7 @@ Region matchVectorRegionByIndexes(Region FirstElemRegion, ForwardIter FirstIt,
     NewRowIt = std::prev(NewRowIt, llvm::divideCeil(Overstep, *RefStride));
 
   int Width = std::distance(FirstIt, NewRowIt);
-  IGC_ASSERT(Width > 0 && "should be at least 1 according to algorithm");
+  IGC_ASSERT_MESSAGE(Width > 0, "should be at least 1 according to algorithm");
   if (Width == 1)
     // Stride doesn't play role when the Width is 1.
     // Also it prevents from writing to big value in the region.
@@ -701,13 +703,11 @@ llvm::Optional<int> estimateVerticalStride(Region FirstRowRegion,
                                            ForwardIter FirstIt,
                                            ForwardIter ReferenceIt) {
 
-  IGC_ASSERT(std::distance(FirstIt, ReferenceIt) >=
-                 static_cast<int>(FirstRowRegion.Width) &&
-             "Reference element must not be part of first row");
-  IGC_ASSERT(std::all_of(FirstIt, std::next(FirstIt, FirstRowRegion.Width),
-                         [](MaskIndex Elem) { return Elem.isDefined(); }) &&
-             "First row must contain only valid indices");
-  IGC_ASSERT(ReferenceIt->isDefined() && "Reference index must be valid");
+  IGC_ASSERT_MESSAGE(std::distance(FirstIt, ReferenceIt) >= static_cast<std::ptrdiff_t>(FirstRowRegion.Width),
+    "Reference element must not be part of first row");
+  IGC_ASSERT_MESSAGE(std::all_of(FirstIt, std::next(FirstIt, FirstRowRegion.Width), [](MaskIndex Elem) { return Elem.isDefined(); }),
+    "First row must contain only valid indices");
+  IGC_ASSERT_MESSAGE(ReferenceIt->isDefined(), "Reference index must be valid");
 
   int Width = FirstRowRegion.Width;
 
@@ -741,15 +741,16 @@ template <typename ForwardIter>
 Region matchMatrixRegionByIndexes(Region FirstRowRegion, ForwardIter FirstIt,
                                   ForwardIter LastIt, ForwardIter LastDefinedIt,
                                   int BoundIndex) {
-  IGC_ASSERT(FirstRowRegion.NumElements == FirstRowRegion.Width &&
-         FirstRowRegion.VStride == 0 &&
-         "wrong argunent: vector region (with no vstride) was expected");
-  IGC_ASSERT(FirstIt->isDefined() && LastDefinedIt->isDefined() &&
-             "expected FirstIt and LastDefinedIt point to valid indices");
-  //  TODO: rewrite this assertion statement to remove VS build error
-  //  IGC_ASSERT(std::distance(FirstIt, LastIt) >= FirstRowRegion.Width &&
-  //         "wrong argument: number of indexes must be at least equal to region
-  //         " "width");
+  IGC_ASSERT_MESSAGE(FirstRowRegion.NumElements == FirstRowRegion.Width,
+    "wrong argunent: vector region (with no vstride) was expected");
+  IGC_ASSERT_MESSAGE(FirstRowRegion.VStride == 0,
+    "wrong argunent: vector region (with no vstride) was expected");
+  IGC_ASSERT_MESSAGE(FirstIt->isDefined(),
+    "expected FirstIt and LastDefinedIt point to valid indices");
+  IGC_ASSERT_MESSAGE(LastDefinedIt->isDefined(),
+    "expected FirstIt and LastDefinedIt point to valid indices");
+  IGC_ASSERT_MESSAGE(std::distance(FirstIt, LastIt) >= static_cast<std::ptrdiff_t>(FirstRowRegion.Width),
+    "wrong argument: number of indexes must be at least equal to region width");
 
   auto FirstRowEndIt = std::next(FirstIt, FirstRowRegion.Width);
   if (FirstRowEndIt == LastIt)
@@ -808,9 +809,9 @@ Region matchMatrixRegionByIndexes(Region FirstRowRegion, ForwardIter FirstIt,
 //                             <3;2,1> vstride=3, width=2, stride=1
 ShuffleVectorAnalyzer::OperandRegionInfo
 ShuffleVectorAnalyzer::getMaskRegionPrefix(int StartIdx) {
-  IGC_ASSERT(StartIdx >= 0 &&
-         StartIdx < static_cast<int>(SI->getShuffleMask().size()) &&
-         "Start index is out of bound");
+  IGC_ASSERT_MESSAGE(StartIdx >= 0, "Start index is out of bound");
+  IGC_ASSERT_MESSAGE(StartIdx < static_cast<int>(SI->getShuffleMask().size()),
+    "Start index is out of bound");
 
   auto MaskVals = SI->getShuffleMask();
   auto StartIt = std::next(MaskVals.begin(), StartIdx);
@@ -1127,8 +1128,9 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
                                 bool Scalarize) {
   const auto &DL = Inst.getDebugLoc();
 
-  IGC_ASSERT(V1.getType() == V2.getType() && V1.getType()->isVectorTy() &&
-             cast<VectorType>(V1.getType())->getElementType()->isIntegerTy(32));
+  IGC_ASSERT(V1.getType() == V2.getType());
+  IGC_ASSERT(V1.getType()->isVectorTy());
+  IGC_ASSERT(cast<VectorType>(V1.getType())->getElementType()->isIntegerTy(32));
 
   // create the write-regions
   auto R1 = createSplitRegion(VI32Ty, RT1);
@@ -1153,8 +1155,8 @@ Value* IVSplitter::combineSplit(Value &V1, Value &V2, RegionType RT1,
 }
 Value *IVSplitter::combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,
                                     bool Scalarize) {
-
-  IGC_ASSERT(Split.Lo && Split.Hi);
+  IGC_ASSERT(Split.Lo);
+  IGC_ASSERT(Split.Hi);
 
   return combineSplit(*Split.Lo, *Split.Hi, RegionType::LoRegion,
                       RegionType::HiRegion, Name, Scalarize);
@@ -1162,7 +1164,8 @@ Value *IVSplitter::combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,
 
 Value *IVSplitter::combineHalfSplit(const HalfSplit &Split, const Twine &Name,
                                     bool Scalarize) {
-  IGC_ASSERT(Split.Left && Split.Right);
+  IGC_ASSERT(Split.Left);
+  IGC_ASSERT(Split.Right);
 
   return combineSplit(*Split.Left, *Split.Right, RegionType::FirstHalf,
                       RegionType::SecondHalf, Name, Scalarize);
@@ -1728,8 +1731,8 @@ genx::ConstraintType genx::getInlineAsmConstraintType(StringRef Codes) {
 
 unsigned
 genx::getInlineAsmMatchedOperand(const InlineAsm::ConstraintInfo &Info) {
-  IGC_ASSERT(genx::isInlineAsmMatchingInputConstraint(Info) &&
-         "Matching input expected");
+  IGC_ASSERT_MESSAGE(genx::isInlineAsmMatchingInputConstraint(Info),
+    "Matching input expected");
   int OperandValue = std::stoi(Info.Codes.front());
   IGC_ASSERT(OperandValue >= 0);
   return OperandValue;
@@ -1739,15 +1742,18 @@ std::vector<GenXInlineAsmInfo> genx::getGenXInlineAsmInfo(MDNode *MD) {
   std::vector<GenXInlineAsmInfo> Result;
   for (auto &MDOp : MD->operands()) {
     auto EntryMD = dyn_cast<MDTuple>(MDOp);
-    IGC_ASSERT(EntryMD && EntryMD->getNumOperands() == 3 &&
-           "error setting metadata for inline asm");
+    IGC_ASSERT_MESSAGE(EntryMD, "error setting metadata for inline asm");
+    IGC_ASSERT_MESSAGE(EntryMD->getNumOperands() == 3,
+      "error setting metadata for inline asm");
     ConstantAsMetadata *Op0 =
         dyn_cast<ConstantAsMetadata>(EntryMD->getOperand(0));
     ConstantAsMetadata *Op1 =
         dyn_cast<ConstantAsMetadata>(EntryMD->getOperand(1));
     ConstantAsMetadata *Op2 =
         dyn_cast<ConstantAsMetadata>(EntryMD->getOperand(2));
-    IGC_ASSERT(Op0 && Op1 && Op2 && "error setting metadata for inline asm");
+    IGC_ASSERT_MESSAGE(Op0, "error setting metadata for inline asm");
+    IGC_ASSERT_MESSAGE(Op1, "error setting metadata for inline asm");
+    IGC_ASSERT_MESSAGE(Op2, "error setting metadata for inline asm");
     auto CTy = static_cast<genx::ConstraintType>(
         cast<ConstantInt>(Op0->getValue())->getZExtValue());
     Result.emplace_back(CTy, cast<ConstantInt>(Op1->getValue())->getSExtValue(),
@@ -1757,13 +1763,13 @@ std::vector<GenXInlineAsmInfo> genx::getGenXInlineAsmInfo(MDNode *MD) {
 }
 
 std::vector<GenXInlineAsmInfo> genx::getGenXInlineAsmInfo(CallInst *CI) {
-  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
   MDNode *MD = CI->getMetadata(genx::MD_genx_inline_asm_info);
   // empty constraint info
   if (!MD) {
     auto *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
-    IGC_ASSERT(IA->getConstraintString().empty() &&
-           "No info only for empty constraint string");
+    IGC_ASSERT_MESSAGE(IA->getConstraintString().empty(),
+      "No info only for empty constraint string");
     (void)IA;
     return std::vector<GenXInlineAsmInfo>();
   }
@@ -1779,7 +1785,7 @@ bool genx::hasConstraintOfType(
 }
 
 unsigned genx::getInlineAsmNumOutputs(CallInst *CI) {
-  IGC_ASSERT(CI->isInlineAsm() && "Inline asm expected");
+  IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline asm expected");
   unsigned NumOutputs;
   if (CI->getType()->isVoidTy())
     NumOutputs = 0;
@@ -1796,8 +1802,8 @@ unsigned genx::getInlineAsmNumOutputs(CallInst *CI) {
  */
 Type *genx::getCorrespondingVectorOrScalar(Type *Ty) {
   if (Ty->isVectorTy()) {
-    IGC_ASSERT(cast<VectorType>(Ty)->getNumElements() == 1 &&
-               "wrong argument: scalar or degenerate vector is expected");
+    IGC_ASSERT_MESSAGE(cast<VectorType>(Ty)->getNumElements() == 1,
+      "wrong argument: scalar or degenerate vector is expected");
     return Ty->getScalarType();
   }
   return IGCLLVM::FixedVectorType::get(Ty, 1);
@@ -1916,9 +1922,8 @@ unsigned genx::ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth) {
 }
 
 bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
-  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) ==
-             GenXIntrinsic::genx_wrpredregion &&
-         "wrong argument: wrpredregion intrinsic was expected");
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) == GenXIntrinsic::genx_wrpredregion,
+    "wrong argument: wrpredregion intrinsic was expected");
   auto &NewValue = *WrPredRegion.getOperand(WrPredRegionOperand::NewValue);
   auto ExecSize = NewValue.getType()->isVectorTy()
                       ? cast<VectorType>(NewValue.getType())->getNumElements()
@@ -1944,7 +1949,8 @@ CallInst *genx::checkFunctionCall(Value *V, Function *F) {
 
 Value *genx::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
                                  Instruction *InsertPt) {
-  IGC_ASSERT(CurInst && InsertPt);
+  IGC_ASSERT(CurInst);
+  IGC_ASSERT(InsertPt);
   if (!CV)
     return nullptr;
   // Splat case.
@@ -2038,7 +2044,7 @@ bool genx::breakConstantExprs(Function *F) {
 unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
                                               const GenXSubtarget *ST,
                                               bool Allow2D) {
-  IGC_ASSERT(R.Indirect && "Indirect region expected");
+  IGC_ASSERT_MESSAGE(R.Indirect, "Indirect region expected");
   IGC_ASSERT(ST);
   if (ST->hasIndirectGRFCrossing() &&
       // SKL+. See if we can allow GRF crossing.
