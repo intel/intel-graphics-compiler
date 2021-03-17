@@ -192,7 +192,8 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
   unsigned NumGrfs = alignTo<256>(DL->getTypeSizeInBits(Inst->getType())) / 256;
   if (NumGrfs == 1)
     return false; // Ignore single GRF vector.
-  LLVM_DEBUG(dbgs() << "VectorDecomposer::determineDecomposition(" << Inst->getName() << ")\n");
+  LLVM_DEBUG(dbgs() << "VectorDecomposer::determineDecomposition(" << *Inst
+                    << ")\n");
   NotDecomposing = false;
   for (unsigned i = 0; i != NumGrfs; ++i)
     Decomposition.push_back(i);
@@ -203,6 +204,14 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
     if (GenXIntrinsic::isWrRegion(Inst)) {
       // wrregion. If the "old value of vector" input is not constant, include
       // it in the web.
+      auto *NewVal = dyn_cast<Instruction>(
+          Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
+      if (NewVal && GenXIntrinsic::isRdRegion(NewVal))
+        if (GenXIntrinsic::isReadPredefReg(NewVal->getOperand(
+                GenXIntrinsic::GenXRegion::OldValueOperandNum)))
+          setNotDecomposing(Inst, "read predefined reg");
+      // we still want to have this value in Seen,
+      // even we won't decompose this web
       addToWeb(Inst->getOperand(0), Inst);
     } else if (auto Phi = dyn_cast<PHINode>(Inst)) {
       // Phi node. Add all incomings to the web.

@@ -203,6 +203,8 @@ void GenXBaling::processInst(Instruction *Inst)
     processSat(Inst);
   else if (IntrinID == GenXIntrinsic::genx_faddr)
     processFuncPointer(Inst);
+  else if (GenXIntrinsic::isReadWritePredefReg(IntrinID))
+    processRdWrPredefReg(Inst);
   else if (GenXIntrinsic::isRdRegion(IntrinID))
     processRdRegion(Inst);
   else if (BranchInst *Branch = dyn_cast<BranchInst>(Inst))
@@ -883,6 +885,14 @@ void GenXBaling::processFuncPointer(Instruction *Inst) {
   IGC_ASSERT(NextUser->use_empty() || GenXIntrinsic::isWrRegion(NextUser));
 
   BaleInfo BI(BaleInfo::FADDR);
+  setBaleInfo(Inst, BI);
+}
+
+void GenXBaling::processRdWrPredefReg(Instruction *Inst) {
+  auto *CI = dyn_cast<CallInst>(Inst);
+  IGC_ASSERT((CI && GenXIntrinsic::isReadWritePredefReg(Inst)) &&
+             "genx.read/write.reg expected");
+  BaleInfo BI(BaleInfo::REGINTR);
   setBaleInfo(Inst, BI);
 }
 
