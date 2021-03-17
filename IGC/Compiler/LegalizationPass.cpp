@@ -1974,9 +1974,11 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I)
     llvm::ArrayRef<Value*> arrayRef_params(args, args_size);
     GenIntrinsicInst* CI = llvm::dyn_cast<GenIntrinsicInst>(&I);
 
-    llvm::SmallVector<Type*, 4> types;
+    llvm::SmallVector<Type*, 5> types;
+
     llvm::Value* texture = nullptr;
     llvm::Value* sampler = nullptr;
+
     if (SampleIntrinsic * inst = llvm::dyn_cast<SampleIntrinsic>(&I))
     {
         texture = inst->getTextureValue();

@@ -240,7 +240,7 @@ BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* 
     return (*pParamMap)[imageParam].type;
 }
 
-Value* CImagesBI::createGetBufferPtr()
+void CImagesBI::createGetBufferPtr()
 {
     Argument* pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
@@ -274,8 +274,6 @@ Value* CImagesBI::createGetBufferPtr()
             m_IncorrectBti = true;
         }
     }
-
-    return pDstBuffer;
 }
 
 inline bool  isInteger(APFloat& val)
@@ -669,7 +667,12 @@ public:
         if (!samplerIndexFound) return;
 
         prepareZeroOffsets();
-        Type* types[] = { m_pCallInst->getType(), m_pFloatType, m_args[5]->getType(), m_args[6]->getType() };
+        Type* types[] = {
+            m_pCallInst->getType(),
+            m_pFloatType,
+            m_args[5]->getType(),
+            m_args[6]->getType(),
+        };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleLptr, types);
     }
 };
@@ -698,7 +701,12 @@ public:
         prepareImageBTI();
         prepareSamplerIndex();
         prepareZeroOffsets();
-        Type* types[] = { m_pCallInst->getType(), m_pFloatType, m_args[11]->getType(), m_args[12]->getType() };
+        Type* types[] = {
+            m_pCallInst->getType(),
+            m_pFloatType,
+            m_args[11]->getType(),
+            m_args[12]->getType(),
+        };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleDptr, types);
     }
 };
@@ -716,9 +724,12 @@ public:
         m_args.push_back(CoordY);
         m_args.push_back(m_pCallInst->getOperand(2)); // LOD
         m_args.push_back(CoordZ);
-        Value* pDstBuffer = createGetBufferPtr();
+        createGetBufferPtr();
         prepareZeroOffsets();
-        Type* types[] = { m_pCallInst->getType(), pDstBuffer->getType() };
+        Type* types[] = {
+            m_pCallInst->getType(),
+            m_args[4]->getType(),
+        };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_ldptr, types);
     }
 };
@@ -736,10 +747,13 @@ public:
         m_args.push_back(CoordY);
         m_args.push_back(m_pCallInst->getOperand(2)); // LOD
         m_args.push_back(CoordZ);
-        Value* pDstBuffer = createGetBufferPtr();
+        createGetBufferPtr();
         prepareZeroOffsets();
-        Type* types[] = { IGCLLVM::FixedVectorType::get(m_pFloatType, 4), pDstBuffer->getType() };
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldptr, llvm::ArrayRef<llvm::Type*>(types, 2));
+        Type* types[] = {
+            IGCLLVM::FixedVectorType::get(m_pFloatType, 4),
+            m_args[4]->getType(),
+        };
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldptr, types);
     }
 };
 
@@ -840,14 +854,14 @@ public:
     {
         Value* Coord = m_pCallInst->getOperand(1);
         Value* Color = m_pCallInst->getOperand(2);
-        Value* pDstBuffer = createGetBufferPtr();
+        createGetBufferPtr();
         prepareCoords(m_dim, Coord, m_pIntZero);
         m_args.push_back(CoordX);
         m_args.push_back(CoordY);
         m_args.push_back(CoordZ);
         m_args.push_back(m_pCallInst->getOperand(3)); // LOD
         prepareColor(Color);
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_typedwrite, llvm::ArrayRef<llvm::Type*>(pDstBuffer->getType()));
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_typedwrite, llvm::ArrayRef<llvm::Type*>(m_args[0]->getType()));
     }
 };
 
