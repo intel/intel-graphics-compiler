@@ -373,7 +373,7 @@ namespace {
         }
 
         static Value* getLinearExpression(Value* Val, APInt& Scale, APInt& Offset,
-            ExtensionKind BaseExt, ExtensionKind& Extension, unsigned Depth,
+            ExtensionKind& Extension, unsigned Depth,
             const DataLayout* DL);
         static bool decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
             CodeGenContext* DL);
@@ -1433,7 +1433,7 @@ bool MemOpt::optimizeGEP64(Instruction* I) const {
 
 Value*
 SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
-    ExtensionKind BaseExt, ExtensionKind& Extension, unsigned Depth,
+    ExtensionKind& Extension, unsigned Depth,
     const DataLayout* DL) {
     IGC_ASSERT(nullptr != V);
     IGC_ASSERT(nullptr != V->getType());
@@ -1448,17 +1448,6 @@ SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
 
     if (BinaryOperator * BOp = dyn_cast<BinaryOperator>(V)) {
         if (ConstantInt * RHSC = dyn_cast<ConstantInt>(BOp->getOperand(1))) {
-
-            // We can be overflowed by this operator that can lead to merge non sequential
-            // memory accesses, so check if NSW/NUW flags are present.
-            if (OverflowingBinaryOperator * Op = dyn_cast<OverflowingBinaryOperator>(BOp)) {
-                if (BaseExt == EK_SignExt && !Op->hasNoSignedWrap())
-                    return V;
-
-                if (BaseExt == EK_ZeroExt && !Op->hasNoUnsignedWrap())
-                    return V;
-            }
-
             switch (BOp->getOpcode()) {
             default: break;
             case Instruction::Or:
@@ -1468,19 +1457,19 @@ SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
                     break;
                 // FALL THROUGH.
             case Instruction::Add:
-                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, BaseExt,
-                    Extension, Depth + 1, DL);
+                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
+                    Depth + 1, DL);
                 Offset += RHSC->getValue();
                 return V;
             case Instruction::Mul:
-                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, BaseExt,
-                    Extension, Depth + 1, DL);
+                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
+                    Depth + 1, DL);
                 Offset *= RHSC->getValue();
                 Scale *= RHSC->getValue();
                 return V;
             case Instruction::Shl:
-                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, BaseExt,
-                    Extension, Depth + 1, DL);
+                V = getLinearExpression(BOp->getOperand(0), Scale, Offset, Extension,
+                    Depth + 1, DL);
                 Offset <<= unsigned(RHSC->getValue().getLimitedValue());
                 Scale <<= unsigned(RHSC->getValue().getLimitedValue());
                 return V;
@@ -1500,8 +1489,8 @@ SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
         Offset = Offset.trunc(SmallWidth);
         Extension = isa<SExtInst>(V) ? EK_SignExt : EK_ZeroExt;
 
-        Value* Result = getLinearExpression(CastOp, Scale, Offset, BaseExt,
-            Extension, Depth + 1, DL);
+        Value* Result = getLinearExpression(CastOp, Scale, Offset, Extension,
+            Depth + 1, DL);
         Scale = Scale.zext(OldWidth);
         if (Extension == EK_SignExt)
             Offset = Offset.sext(OldWidth);
@@ -1597,16 +1586,9 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
                 if (ptrSize > Width)
                     Extension = EK_SignExt;
 
-                ExtensionKind BaseExt = EK_NotExtended;
-                if (isa<SExtInst>(Src))
-                    BaseExt = EK_SignExt;
-                if (isa<ZExtInst>(Src))
-                    BaseExt = EK_ZeroExt;
-
                 APInt IndexScale(Width, 0), IndexOffset(Width, 0);
-                Src = getLinearExpression(Src, IndexScale, IndexOffset, BaseExt,
-                    Extension, 0U, DL);
-
+                Src = getLinearExpression(Src, IndexScale, IndexOffset, Extension,
+                    0U, DL);
                 SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
                 Scale *= IndexScale.getSExtValue();
 
@@ -1711,16 +1693,9 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
                     Extension = EK_SignExt;
 
                 // Use getLinearExpression to decompose the index into a C1*V+C2 form.
-
-                ExtensionKind BaseExt = EK_NotExtended;
-                if (isa<SExtInst>(Ind))
-                    BaseExt = EK_SignExt;
-                if (isa<ZExtInst>(Ind))
-                    BaseExt = EK_ZeroExt;
-
                 APInt IndexScale(Width, 0), IndexOffset(Width, 0);
-                Value* new_Ind = getLinearExpression(Ind, IndexScale, IndexOffset, BaseExt,
-                    Extension, 0U, DL);
+                Value* new_Ind = getLinearExpression(Ind, IndexScale, IndexOffset, Extension,
+                    0U, DL);
 
                 // The GEP index scale ("Scale") scales C1*V+C2, yielding (C1*V+C2)*Scale.
                 // This gives us an aggregate computation of (C1*Scale)*V + C2*Scale.

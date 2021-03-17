@@ -24,7 +24,7 @@
 
 ; RUN: igc_opt %s -S -o - -basicaa -igc-memopt -instcombine | FileCheck %s
 
-target datalayout = "e-p:32:32:32-p1:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
+target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
 define void @f0(i32* %dst, i32* %src) {
 entry:
@@ -224,93 +224,7 @@ entry:
  ; CHECK: store <4 x i32> %2, <4 x i32>* %3, align 4
  ; CHECK: ret void
 
-
- define void @f6(i32 %i, i32 %j, i32 %k, i32 addrspace(1)* noalias %dst, i32 addrspace(1)* noalias %src) {
- entry:
-   %mul = mul nsw i32 %i, %j
-   %add1 = add nsw i32 %mul, %k
-   %idxprom0 = sext i32 %add1 to i64
-   %arrayidx0 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %idxprom0
-   %0 = load i32, i32 addrspace(1)* %arrayidx0, align 4
-   %arrayidx01 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %idxprom0
-   store i32 %0, i32 addrspace(1)* %arrayidx01, align 4
-   %add20 = add i32 %k, 1
-   %add2 = add nsw i32 %mul, %add20
-   %idxprom1 = sext i32 %add2 to i64
-   %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %idxprom1
-   %1 = load i32, i32 addrspace(1)* %arrayidx1, align 4
-   %arrayidx11 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %idxprom1
-   store i32 %1, i32 addrspace(1)* %arrayidx11, align 4
-   ret void
- }
-
- ; Without nsw/nuw flag in address calculation it cannot be merged
- ; in order to save correctness of merging
-
- ; CHECK-LABEL: define void @f6
- ; CHECK: %mul = mul nsw i32 %i, %j
- ; CHECK: %0 = add nsw i32 %mul, %k
- ; CHECK: %1 = sext i32 %0 to i64
- ; CHECK: %arrayidx0 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %1
- ; CHECK: %2 = load i32, i32 addrspace(1)* %arrayidx0, align 4
- ; CHECK: %3 = add nsw i32 %mul, %k
- ; CHECK: %4 = sext i32 %3 to i64
- ; CHECK: %arrayidx01 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %4
- ; CHECK: store i32 %2, i32 addrspace(1)* %arrayidx01, align 4
- ; CHECK: %add20 = add i32 %k, 1
- ; CHECK: %5 = add nsw i32 %mul, %add20
- ; CHECK: %6 = sext i32 %5 to i64
- ; CHECK: %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %6
- ; CHECK: %7 = load i32, i32 addrspace(1)* %arrayidx1, align 4
- ; CHECK: %8 = add nsw i32 %mul, %add20
- ; CHECK: %9 = sext i32 %8 to i64
- ; CHECK: %arrayidx11 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %9
- ; CHECK: store i32 %7, i32 addrspace(1)* %arrayidx11, align 4
- ; CHECK: ret void
-
-
- define void @f7(i32 %i, i32 %j, i32 %k, i32 addrspace(1)* noalias %dst, i32 addrspace(1)* noalias %src) {
- entry:
-   %mul = mul nuw i32 %i, %j
-   %add1 = add nuw i32 %mul, %k
-   %idxprom0 = zext i32 %add1 to i64
-   %arrayidx0 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %idxprom0
-   %0 = load i32, i32 addrspace(1)* %arrayidx0, align 4
-   %arrayidx01 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %idxprom0
-   store i32 %0, i32 addrspace(1)* %arrayidx01, align 4
-   %add20 = add i32 %k, 1
-   %add2 = add nuw i32 %mul, %add20
-   %idxprom1 = zext i32 %add2 to i64
-   %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %idxprom1
-   %1 = load i32, i32 addrspace(1)* %arrayidx1, align 4
-   %arrayidx11 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %idxprom1
-   store i32 %1, i32 addrspace(1)* %arrayidx11, align 4
-   ret void
- }
-
- ; CHECK-LABEL:  define void @f7
- ; CHECK: %mul = mul nuw i32 %i, %j
- ; CHECK: %0 = add nuw i32 %mul, %k
- ; CHECK: %1 = zext i32 %0 to i64
- ; CHECK: %arrayidx0 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %1
- ; CHECK: %2 = load i32, i32 addrspace(1)* %arrayidx0, align 4
- ; CHECK: %3 = add nuw i32 %mul, %k
- ; CHECK: %4 = zext i32 %3 to i64
- ; CHECK: %arrayidx01 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %4
- ; CHECK: store i32 %2, i32 addrspace(1)* %arrayidx01, align 4
- ; CHECK: %add20 = add i32 %k, 1
- ; CHECK: %5 = add nuw i32 %mul, %add20
- ; CHECK: %6 = zext i32 %5 to i64
- ; CHECK: %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %src, i64 %6
- ; CHECK: %7 = load i32, i32 addrspace(1)* %arrayidx1, align 4
- ; CHECK: %8 = add nuw i32 %mul, %add20
- ; CHECK: %9 = zext i32 %8 to i64
- ; CHECK: %arrayidx11 = getelementptr inbounds i32, i32 addrspace(1)* %dst, i64 %9
- ; CHECK: store i32 %7, i32 addrspace(1)* %arrayidx11, align 4
- ; CHECK: ret void
-
-
-!igc.functions = !{!0, !3, !4, !5, !6, !7, !8, !9}
+!igc.functions = !{!0, !3, !4, !5, !6, !7}
 
 !0 = !{void (i32*, i32*)* @f0, !1}
 !3 = !{void (i32*, i32*)* @f1, !1}
@@ -318,8 +232,6 @@ entry:
 !5 = !{void (i32, i32, i32*, i32*)* @f3, !1}
 !6 = !{void (i32, i32, i32*, i32*)* @f4, !1}
 !7 = !{void (i32*, i32*)* @f5, !1}
-!8 = !{void (i32, i32, i32, i32 addrspace(1)*, i32 addrspace(1)*)* @f6, !1}
-!9 = !{void (i32, i32, i32, i32 addrspace(1)*, i32 addrspace(1)*)* @f7, !1}
 
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
