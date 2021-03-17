@@ -446,6 +446,19 @@ static bool CheckPtrToIntCandidate(PtrToIntInst *PTI) {
     auto *Pred = MemOp->getOperand(0);
     auto *NumBlocks = MemOp->getOperand(1);
     auto *Input = MemOp->getOperand(3);
+    // ignore reads of types different from alloca types, e.g.
+    // %v0 = alloca [16 x i8]
+    // .. store of global to %v0
+    // %offsets = %v0 + <0, 4, 8, 12, 0, 4, 8, 12>
+    // ....
+    // %v1 = <8 x float> svm_gather %v0, %offsets, <8 x float> undef
+    // OR
+    // svm_scatter %v0, %offset, <8 x float> %value
+    if (Input->getType()->getScalarType() !=
+        GetBaseType(PTI->getOperand(0)->getType()->getPointerElementType(),
+                    nullptr))
+      return false;
+
     IGC_ASSERT(isa<ConstantInt>(NumBlocks));
     if (cast<ConstantInt>(NumBlocks)->getZExtValue() ||
         cast<VectorType>(Input->getType())->getNumElements() >
@@ -629,6 +642,9 @@ void TransformPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {
   pBaseType = pBaseType->getScalarType();
   llvm::AllocaInst *pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
   if (!pVecAlloca)
+    return;
+  // skip processing of allocas that are already fine
+  if (pVecAlloca->getType() == pAlloca->getType())
     return;
 
   IRBuilder<> IRB(pVecAlloca);
