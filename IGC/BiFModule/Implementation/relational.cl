@@ -25,28 +25,28 @@ IN THE SOFTWARE.
 // Relational and Logical Instructions
 
 
-bool __builtin_spirv_OpAny_v2i8(__bool2 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v2i8, )(__bool2 Vector)
 {
     return (Vector.s0 | Vector.s1);
 }
 
-bool __builtin_spirv_OpAny_v3i8(__bool3 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v3i8, )(__bool3 Vector)
 {
     return (Vector.s0 | Vector.s1 | Vector.s2);
 }
 
-bool __builtin_spirv_OpAny_v4i8(__bool4 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v4i8, )(__bool4 Vector)
 {
     return (Vector.s0 | Vector.s1 | Vector.s2 | Vector.s3);
 }
 
-bool __builtin_spirv_OpAny_v8i8(__bool8 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v8i8, )(__bool8 Vector)
 {
     return (Vector.s0 | Vector.s1 | Vector.s2 | Vector.s3 |
             Vector.s4 | Vector.s5 | Vector.s6 | Vector.s7);
 }
 
-bool __builtin_spirv_OpAny_v16i8(__bool16 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v16i8, )(__bool16 Vector)
 {
     return (Vector.s0 | Vector.s1 | Vector.s2 | Vector.s3 |
             Vector.s4 | Vector.s5 | Vector.s6 | Vector.s7 |
@@ -54,28 +54,28 @@ bool __builtin_spirv_OpAny_v16i8(__bool16 Vector)
             Vector.sc | Vector.sd | Vector.se | Vector.sf);
 }
 
-bool __builtin_spirv_OpAll_v2i8(__bool2 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v2i8, )(__bool2 Vector)
 {
     return (Vector.s0 & Vector.s1);
 }
 
-bool __builtin_spirv_OpAll_v3i8(__bool3 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v3i8, )(__bool3 Vector)
 {
     return (Vector.s0 & Vector.s1 & Vector.s2);
 }
 
-bool __builtin_spirv_OpAll_v4i8(__bool4 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v4i8, )(__bool4 Vector)
 {
     return (Vector.s0 & Vector.s1 & Vector.s2 & Vector.s3);
 }
 
-bool __builtin_spirv_OpAll_v8i8(__bool8 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v8i8, )(__bool8 Vector)
 {
     return (Vector.s0 & Vector.s1 & Vector.s2 & Vector.s3 &
             Vector.s4 & Vector.s5 & Vector.s6 & Vector.s7);
 }
 
-bool __builtin_spirv_OpAll_v16i8(__bool16 Vector)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v16i8, )(__bool16 Vector)
 {
     return (Vector.s0 & Vector.s1 & Vector.s2 & Vector.s3 &
             Vector.s4 & Vector.s5 & Vector.s6 & Vector.s7 &

@@ -3631,18 +3631,18 @@ ulong16 __builtin_spirv_OpBitCount_v16i64(ulong16 Base);
 
 
 // Our OpenCL C builtins currently do not call this
-bool __builtin_spirv_OpAny_v2i1(__bool2 Vector);
-bool __builtin_spirv_OpAny_v3i1(__bool3 Vector);
-bool __builtin_spirv_OpAny_v4i1(__bool4 Vector);
-bool __builtin_spirv_OpAny_v8i1(__bool8 Vector);
-bool __builtin_spirv_OpAny_v16i1(__bool16 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v2i1, )(__bool2 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v3i1, )(__bool3 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v4i1, )(__bool4 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v8i1, )(__bool8 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Any, _v16i1, )(__bool16 Vector);
 
 // Our OpenCL C builtins currently do not call this
-bool __builtin_spirv_OpAll_v2i1(__bool2 Vector);
-bool __builtin_spirv_OpAll_v3i1(__bool3 Vector);
-bool __builtin_spirv_OpAll_v4i1(__bool4 Vector);
-bool __builtin_spirv_OpAll_v8i1(__bool8 Vector);
-bool __builtin_spirv_OpAll_v16i1(__bool16 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v2i1, )(__bool2 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v3i1, )(__bool3 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v4i1, )(__bool4 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v8i1, )(__bool8 Vector);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v16i1, )(__bool16 Vector);
 
 bool  __builtin_spirv_OpIsNan_f16(half x);
 bool  __builtin_spirv_OpIsNan_f32(float x);
