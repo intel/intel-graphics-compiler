@@ -103,7 +103,7 @@ public:
     void        OutputMask() { m_HasoMask = true; }
     bool        HasRenderTarget() { return m_RenderTargetMask != 0; }
     void        SetPhase(PixelShaderPhaseType phase) { m_phase = phase; }
-    PixelShaderPhaseType GetPhase() { return m_phase; }
+    PixelShaderPhaseType GetPhase() const { return m_phase; }
     void        SetLastPhase() { m_IsLastPhase = true; }
     void        SetPSSignature(PSSignature* signature) { m_Signature = signature; }
     bool        IsLastPhase() { return m_IsLastPhase; }

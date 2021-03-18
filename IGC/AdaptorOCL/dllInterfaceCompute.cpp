@@ -1177,8 +1177,8 @@ bool TranslateBuild(
         // Now, perform code generation
         IGC::CodeGen(&oclContext);
 
-        retry = (oclContext.m_retryManager.AdvanceState() &&
-                !oclContext.m_retryManager.kernelSet.empty());
+        retry = (!oclContext.m_retryManager.kernelSet.empty() &&
+                 oclContext.m_retryManager.AdvanceState());
 
         if (retry)
         {

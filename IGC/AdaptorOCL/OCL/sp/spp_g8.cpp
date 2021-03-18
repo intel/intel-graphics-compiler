@@ -243,6 +243,14 @@ void overrideOCLKernelBinary(
     KernBin->Write(Buf.get(), newBinarySize);
 }
 
+void dumpOCLCos(const IGC::CShader *Kernel, const std::string &stateDebugMsg) {
+      auto name = IGC::Debug::GetDumpNameObj(Kernel, "cos");
+      auto dump = IGC::Debug::Dump(name, IGC::Debug::DumpType::COS_TEXT);
+
+      IGC::Debug::DumpLock();
+      dump.stream() << stateDebugMsg;
+      IGC::Debug::DumpUnlock();
+}
 
 void CGen8OpenCLProgram::GetZEBinary(
     llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes,
@@ -361,6 +369,10 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
                 m_pSystemThreadKernelOutput,
                 pOutput->m_unpaddedProgramSize);
 
+            if (IGC_IS_FLAG_ENABLED(EnableCosDump))
+                  dumpOCLCos(kernel,
+                             m_StateProcessor.m_oclStateDebugMessagePrintOut);
+
             if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
                 dumpOCLKernelBinary(kernel, data);
 
@@ -384,6 +396,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             }
 
             m_KernelBinaries.push_back(data);
+            m_StateProcessor.m_oclStateDebugMessagePrintOut.clear();
         }
     }
 }

@@ -116,10 +116,10 @@ private:
 };
 
 /// return the name of the file to dump
-std::string GetDumpName(CShader* pProgram, const char* ext);
+std::string GetDumpName(const CShader* pProgram, const char* ext);
 
 /// return the name of the file to dump
-DumpName GetDumpNameObj(CShader* pProgram, const char* ext);
+DumpName GetDumpNameObj(const CShader* pProgram, const char* ext);
 
 /// return the name of the file to dump for llvm IR
 DumpName GetLLDumpName(IGC::CodeGenContext* pContext, const char* dumpName);

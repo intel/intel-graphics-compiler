@@ -691,12 +691,12 @@ ShaderHash ShaderHashOGL(QWORD glslHash, QWORD nosHash)
     return shaderHash;
 }
 
-std::string GetDumpName(IGC::CShader* pProgram, const char* ext)
+std::string GetDumpName(const IGC::CShader* pProgram, const char* ext)
 {
     return GetDumpNameObj(pProgram, ext).str();
 }
 
-DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
+DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
 {
     IGC::CodeGenContext* context = pProgram->GetContext();
     DumpName dumpName =
@@ -718,7 +718,7 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
     }
     if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
     {
-        IGC::CPixelShader* psProgram = static_cast<IGC::CPixelShader*>(pProgram);
+        const IGC::CPixelShader* psProgram = static_cast<const IGC::CPixelShader*>(pProgram);
         dumpName = dumpName.PSPhase(psProgram->GetPhase());
     }
     else if (pProgram->GetShaderType() == ShaderType::VERTEX_SHADER)
