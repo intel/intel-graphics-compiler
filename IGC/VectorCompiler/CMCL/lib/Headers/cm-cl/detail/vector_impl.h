@@ -59,10 +59,31 @@ constexpr auto bit_cast(vector_impl<From, width> vec) {
     return __builtin_bit_cast(ret_t, vec);
 }
 
+// clang-9 somehow doesn't consider this function constexpr.
+#if __clang_major__ > 9
 template <typename T, int width>
 constexpr int get_width(vector_impl<T, width>) {
   return width;
 }
+#endif // __clang_major__ > 9
+
+template <typename T> struct width_getter {};
+
+template <typename T, int width>
+struct width_getter<__private vector_impl<T, width>>
+    : public cl::integral_constant<int, width> {};
+template <typename T, int width>
+struct width_getter<__global vector_impl<T, width>>
+    : public cl::integral_constant<int, width> {};
+template <typename T, int width>
+struct width_getter<__constant vector_impl<T, width>>
+    : public cl::integral_constant<int, width> {};
+template <typename T, int width>
+struct width_getter<__local vector_impl<T, width>>
+    : public cl::integral_constant<int, width> {};
+template <typename T, int width>
+struct width_getter<__generic vector_impl<T, width>>
+    : public cl::integral_constant<int, width> {};
 
 } // namespace detail
 } // namespace cm

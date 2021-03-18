@@ -292,8 +292,15 @@ public:
 
   vector_slice operator=(vector<T, width> rhs) {
     auto typed_orig = detail::bit_cast<T>(orig_vec);
+#if __clang_major__ > 9
     detail::write_region</* vstride */ 0, width, stride>(typed_orig, rhs.impl,
                                                          offset);
+#else  // __clang_major__ > 9
+    // clang-9 has some issues with type deduction, it needs help.
+    detail::write_region</* vstride */ 0, width, stride, T,
+                         detail::width_getter<decltype(typed_orig)>::value>(
+        typed_orig, rhs.impl, offset);
+#endif // __clang_major__ > 9
     auto back_typed_orig = detail::bit_cast<OrigT>(typed_orig);
     orig_vec = back_typed_orig;
     return *this;
