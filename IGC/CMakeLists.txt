@@ -2003,6 +2003,7 @@ if(MSVC)
       ALIAS RttiEnabled                "/GR"
       ALIAS TreatWarnAsErrorDisabled   "/WX-"
       ALIAS TreatWarnAsErrorEnabled    "/WX"
+      ALIAS UninitializedVarWarning    "/w14701"
       ALIAS UnreferencedVariable       "/w14189"
       ALIAS WholeProgramOptimization   "/GL"
       ALIAS ControlFlowGuard           "/guard:cf"
@@ -2049,6 +2050,7 @@ elseif(_igc_compiler_is_gnu)
       ALIAS TreatWarnAsErrorDisabled   TreatWarnAsError REMOVE_GROUP
       ALIAS TreatWarnAsErrorEnabled    "-Werror"
       ALIAS UnreferencedVariable
+      ALIAS UninitializedVarWarning
       ALIAS WholeProgramOptimization
       ALIAS ControlFlowGuard
 
@@ -2106,6 +2108,7 @@ elseif(_igc_compiler_is_clang)
       ALIAS TreatWarnAsErrorDisabled   TreatWarnAsError REMOVE_GROUP
       ALIAS TreatWarnAsErrorEnabled    "-Werror"
       ALIAS UnreferencedVariable
+      ALIAS UninitializedVarWarning
       ALIAS WholeProgramOptimization
       ALIAS ControlFlowGuard
 
@@ -2145,6 +2148,7 @@ else()
       ALIAS TreatWarnAsErrorDisabled
       ALIAS TreatWarnAsErrorEnabled
       ALIAS UnreferencedVariable
+      ALIAS UninitializedVarWarning
       ALIAS WholeProgramOptimization
       ALIAS ControlFlowGuard
 
