@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "LocalScheduler/LocalScheduler_G4IR.h"
 #include "LocalScheduler/SWSB_G4IR.h"
 #include <unordered_set>
+#include <optional>
 
 typedef struct{
     short immAddrOff = 0;
@@ -376,6 +377,8 @@ private:
     void runPass(PassIndex Index);
 
     bool isCopyPropProfitable(G4_INST* movInst) const;
+
+    std::optional<INST_LIST_ITER> findFenceCommitPos(INST_LIST_ITER fence, G4_BB* bb) const;
 
 public:
     Optimizer(vISA::Mem_Manager& m, IR_Builder& b, G4_Kernel& k, FlowGraph& f) :

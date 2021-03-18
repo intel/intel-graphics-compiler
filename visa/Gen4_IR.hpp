@@ -2463,6 +2463,19 @@ public:
         return Rel_disjoint;
     }
 
+    // should only be called post-RA, return true if this operand has overlapping GRF with other
+    // ToDo: extend to non-GRF operands?
+    bool hasOverlappingGRF(G4_Operand* other)
+    {
+        if (!other || !isGreg() || !other->isGreg())
+        {
+            return false;
+        }
+        auto LB = getLinearizedStart(), RB = getLinearizedEnd();
+        auto otherLB = other->getLinearizedStart(), otherRB = other->getLinearizedEnd();
+        return !(RB < otherLB || LB > otherRB);
+    }
+
     static G4_Type GetNonVectorImmType(G4_Type type)
     {
         switch (type)

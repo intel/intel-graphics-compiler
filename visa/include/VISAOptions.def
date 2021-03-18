@@ -75,6 +75,7 @@ DEF_VISA_OPTION(vISA_reassociate,           ET_BOOL, "-noreassoc",   UNUSED, tru
 DEF_VISA_OPTION(vISA_split4GRFVar,          ET_BOOL, "-no4GRFSplit", UNUSED, true)
 DEF_VISA_OPTION(vISA_divergentBB,           ET_BOOL, "-divergentBB", UNUSED, true)
 DEF_VISA_OPTION(vISA_splitInstructions,     ET_BOOL, "-noSplitInstructions", UNUSED, true)
+DEF_VISA_OPTION(vISA_scheduleFenceCommit,   ET_BOOL, NULLSTR, UNUSED, false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte,          ET_BOOL, "-nosrc1byte",         UNUSED, false)

@@ -6877,6 +6877,41 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     }
 
 
+    // returns for this fence instruction the iterator position where the commit move should be inserted.
+    // We conservatively assume a commit is needed before
+    // -- another send
+    // -- any optimization barrier
+    // -- any instruction that writes to fence's dst GRF
+    // If another instruction happens to read dst GRF, then it serves as the commit and we don't need the dummy move
+    std::optional<INST_LIST_ITER> Optimizer::findFenceCommitPos(INST_LIST_ITER fence, G4_BB* bb) const
+    {
+        auto fenceInst = *fence;
+        assert(fenceInst->isSend() && fenceInst->asSendInst()->isFence());
+        auto dst = fenceInst->getDst();
+        auto I = std::next(fence);
+        for (auto E = bb->end(); I != E; ++I)
+        {
+            G4_INST* inst = *I;
+            if (inst->isSend() || inst->isOptBarrier())
+            {
+                break;
+            }
+            if (dst->hasOverlappingGRF(inst->getDst()))
+            {
+                break;
+            }
+            for (auto SI = inst->src_begin(), SE = inst->src_end(); SI != SE; ++SI)
+            {
+                auto src = *SI;
+                if (dst->hasOverlappingGRF(src))
+                {
+                    return std::nullopt;
+                }
+            }
+        }
+        return I;
+    }
+
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
@@ -6890,6 +6925,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // set physical pred/succ as it's needed for the call WA
         fg.setPhysicalPredSucc();
+        const bool scheduleFenceCommit = builder.getOption(vISA_scheduleFenceCommit);
         BB_LIST_ITER ib, bend(fg.end());
         for (ib = fg.begin(); ib != bend; ++ib)
         {
@@ -6908,9 +6944,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     {
                         // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
                         // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
-                        INST_LIST_ITER nextIter = ii;
-                        nextIter++;
-                        G4_DstRegRegion* dst = inst->getDst();
+                        auto nextIter = std::next(ii);
+                        if (scheduleFenceCommit)
+                        {
+                            auto iter = findFenceCommitPos(ii, bb);
+                            if (!iter)
+                            {
+                                continue;   // skip this fence
+                            }
+                            nextIter = *iter;
+                        }
+                        auto dst = inst->getDst();
                         G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
                         G4_DstRegRegion* movDst = builder.createDst(
                             builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
