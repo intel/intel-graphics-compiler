@@ -39,6 +39,7 @@ add_library(VCIGCDeps STATIC "")
 target_link_libraries(VCIGCDeps
   VCHeaders
 
+  VCEmbeddedBiF
   VCCodeGen
   )
 

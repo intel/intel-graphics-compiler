@@ -236,10 +236,19 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   return BackendOpts;
 }
 
-static GenXBackendData createBackendData(const vc::ExternalData &Data) {
+static GenXBackendData createBackendData(const vc::ExternalData &Data,
+                                         int PointerSizeInBits) {
+  IGC_ASSERT_MESSAGE(PointerSizeInBits == 32 || PointerSizeInBits == 64,
+      "only 32 and 64 bit pointers are expected");
   GenXBackendData BackendData;
   BackendData.BiFModule[BiFKind::OCLGeneric] =
       IGCLLVM::makeMemoryBufferRef(*Data.OCLGenericBIFModule);
+  if (PointerSizeInBits == 64)
+    BackendData.BiFModule[BiFKind::VCPrintf] =
+        IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf64BIFModule);
+  else
+    BackendData.BiFModule[BiFKind::VCPrintf] =
+        IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf32BIFModule);
   return std::move(BackendData);
 }
 
@@ -252,7 +261,8 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PerModulePasses.add(
       createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
   PerModulePasses.add(new GenXBackendConfig{createBackendOptions(Opts),
-                                            createBackendData(ExtData)});
+                                            createBackendData(ExtData,
+                                                              TM.getPointerSizeInBits(0))});
   PerFunctionPasses.add(
       createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
 
@@ -305,7 +315,8 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   TargetLibraryInfoImpl TLII{TM.getTargetTriple()};
   PM.add(new TargetLibraryInfoWrapperPass(TLII));
   PM.add(new GenXBackendConfig{createBackendOptions(Opts),
-                               createBackendData(ExtData)});
+                               createBackendData(ExtData,
+                                   TM.getPointerSizeInBits(0))});
   // Non-constant pointer.
   WA_TABLE *WaTable = Opts.WATable.get();
   PM.add(new GenXWATable(WaTable));

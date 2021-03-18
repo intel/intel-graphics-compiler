@@ -73,6 +73,12 @@ static cl::opt<std::string>
                                "precompiled OpenCL generic builtins"),
                       cl::init(""));
 
+static cl::opt<std::string>
+    VCPrintfBiFPath("vc-printf-bif-path",
+                    cl::desc("full name (with path) of a BiF file with "
+                             "precompiled printf implementation"),
+                    cl::init(""));
+
 static cl::opt<bool> ForceGlobalsLocalizationOpt(
     "vc-force-globals-localization",
     cl::desc("all global variables must be localized"), cl::init(true));
@@ -124,6 +130,7 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
 GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
   setOwningBiFModuleIf(BiFKind::OCLGeneric,
                        readBiFModuleFromFile(OCLGenericBiFPath));
+  setOwningBiFModuleIf(BiFKind::VCPrintf, readBiFModuleFromFile(VCPrintfBiFPath));
 }
 
 void GenXBackendData::setOwningBiFModule(

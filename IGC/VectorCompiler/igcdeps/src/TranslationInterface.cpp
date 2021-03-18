@@ -27,6 +27,7 @@ IN THE SOFTWARE.
 #include "vc/igcdeps/ShaderDump.h"
 #include "vc/igcdeps/cmc.h"
 
+#include "vc/BiF/Wrapper.h"
 #include "vc/GenXCodeGen/GenXWrapper.h"
 #include "vc/Support/Status.h"
 
@@ -133,6 +134,12 @@ getGenericModuleBuffer(int ResourceID) {
   SS << '#' << ResourceID;
   return std::unique_ptr<llvm::MemoryBuffer>{
       llvm::LoadBufferFromResource(SS.str().c_str(), "BC")};
+}
+
+template <enum vc::bif::RawKind Kind>
+std::unique_ptr<llvm::MemoryBuffer> getVCModuleBuffer() {
+  return llvm::MemoryBuffer::getMemBuffer(vc::bif::getRawData<Kind>(), "",
+                                          false /* RequiresNullTerminator */);
 }
 
 static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
@@ -336,6 +343,15 @@ static llvm::Optional<vc::ExternalData> fillExternalData() {
   ExtData.OCLGenericBIFModule =
       getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
+    return {};
+  // FIXME: consider other binary kinds besides ocl.
+  ExtData.VCPrintf32BIFModule =
+      getVCModuleBuffer<vc::bif::RawKind::PrintfOCL32>();
+  if (!ExtData.VCPrintf32BIFModule)
+    return {};
+  ExtData.VCPrintf64BIFModule =
+      getVCModuleBuffer<vc::bif::RawKind::PrintfOCL64>();
+  if (!ExtData.VCPrintf64BIFModule)
     return {};
   return std::move(ExtData);
 }

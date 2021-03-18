@@ -131,6 +131,7 @@ struct GenXBackendOptions {
 
 enum BiFKind {
   OCLGeneric,
+  VCPrintf,
   Size
 };
 
