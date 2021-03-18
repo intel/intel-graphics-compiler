@@ -22,11 +22,14 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#include "GenXDebugInfo.h"
 #include "FunctionGroup.h"
-#include "vc/Support/BackendConfig.h"
+
+#include "GenXDebugInfo.h"
 #include "GenXTargetMachine.h"
 #include "GenXVisaRegAlloc.h"
+
+#include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Support/BackendConfig.h"
 
 #include "visa/include/visaBuilder_interface.h"
 
@@ -370,7 +373,8 @@ namespace llvm {
 
 void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
 
-  IGC_ASSERT(!PI.FG.empty());
+  IGC_ASSERT_MESSAGE(!PI.FIs.empty(),
+                     "Program must include at least one function");
 
   IGC::DebugEmitterOpts DebugOpts;
   DebugOpts.DebugEnabled = true;
@@ -386,10 +390,11 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
   using CompiledVisaWrappers =
       std::vector<std::unique_ptr<CompiledVisaWrapper>>;
   CompiledVisaWrappers CWs;
-  std::transform(
-      PI.FG.begin(), PI.FG.end(), std::back_inserter(CWs), [](const auto &FI) {
-        return std::make_unique<CompiledVisaWrapper>(FI.F, FI.CompiledKernel);
-      });
+  std::transform(PI.FIs.begin(), PI.FIs.end(), std::back_inserter(CWs),
+                 [](const auto &FI) {
+                   return std::make_unique<CompiledVisaWrapper>(
+                       FI.F, FI.CompiledKernel);
+                 });
   auto FaultyCwIt = std::find_if(
       CWs.begin(), CWs.end(), [](const auto &CW) { return CW->hasErrors(); });
   if (FaultyCwIt != CWs.end())
@@ -403,32 +408,42 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
   auto PrepareEmitter =
       [&Emitter](const GenXVisaRegAlloc &RA, const GenXSubtarget &ST,
                  const IGC::DebugEmitterOpts &DebugOpts,
-                 CompiledVisaWrappers &CWs, const ProgramInfo &KD) {
+                 CompiledVisaWrappers &CWs, const ProgramInfo &PI) {
         using GenXFunctionList = std::vector<GenXFunction *>;
         GenXFunctionList GFs;
 
-        IGC_ASSERT(CWs.size() == KD.FG.size());
-        for (auto &&[FI, CW] : llvm::zip(KD.FG, CWs)) {
+        IGC_ASSERT(CWs.size() == PI.FIs.size());
+        for (auto &&[FI, CW] : llvm::zip(PI.FIs, CWs)) {
           auto GF =
               std::make_unique<GenXFunction>(ST, RA, FI.F, *CW, FI.VisaMapping);
           GFs.push_back(GF.get());
-          if (&FI.F == &KD.FG.front().F) {
+          if (&FI.F == &PI.FIs.front().F) {
             Emitter->Initialize(std::move(GF), DebugOpts);
           } else {
             Emitter->registerVISA(GF.get());
             Emitter->resetModule(std::move(GF));
           }
         }
+        // Currently Debug Info Emitter expects that GenXFunctions are
+        // processed in the same order as they appear in the visa object
+        // (in terms of genisa instructions order)
+        std::sort(GFs.begin(), GFs.end(), [](auto *LGF, auto *RGF) {
+          const auto &LDI = LGF->getFinalizerDI();
+          const auto &RDI = RGF->getFinalizerDI();
+          return LDI.relocOffset < RDI.relocOffset;
+        });
         return GFs;
       };
 
-  auto &KF = PI.FG.front().F;
+  auto &KF = PI.FIs.front().F;
   IGC_ASSERT(ElfOutputs.count(&KF) == 0);
   auto &ElfBin = ElfOutputs[&KF];
 
   std::vector<GenXFunction *> GenXFunctions =
       PrepareEmitter(RA, ST, DebugOpts, CWs, PI);
   for (auto *GF : GenXFunctions) {
+    LLVM_DEBUG(dbgs() << "--- Processing GenXFunction:  "
+                      << GF->getFunction()->getName() << " ---\n");
     processGenXFunction(Emitter.get(), GF);
     bool ExpectMore = GF != GenXFunctions.back();
     LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization (final:  "
@@ -468,7 +483,7 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
   // this reset is needed to gracefully cleanup resources held by CWs
   GenXFunctions.clear();
   Emitter.reset();
-  CWs.front()->releaseDebugInfoResources(PI.FG.front().CompiledKernel);
+  CWs.front()->releaseDebugInfoResources(PI.FIs.front().CompiledKernel);
   CWs.clear();
 
   return;
@@ -484,6 +499,49 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXVisaRegAlloc>();
   AU.setPreservesAll();
 }
+
+void GenXDebugInfo::processFunctionGroup(GenXModule &GM, VISABuilder &VB,
+                                         const FunctionGroup &FG) {
+  const auto *KF = FG.getHead();
+  VISAKernel *VKEntry = VB.GetVISAKernel(KF->getName().str());
+  IGC_ASSERT(VKEntry);
+  LLVM_DEBUG(dbgs() << "DbgInfo: processing <" << KF->getName() << ">\n");
+
+  auto BuildFunctionInfo = [&GM](VISAKernel *VF, Function *F) {
+    const auto &Mapping = *GM.getVisaMapping(F);
+    return ProgramInfo::FunctionInfo{Mapping, *VF, *F};
+  };
+  // Currently, llvm Function can produce vISA which is incorporated in
+  // the main vISA object or in case of vISA-external functions - it can spawn
+  // a completely new vISA object.
+  // Thus, to create debug info, we split each function group into
+  // the set of "primary" and "indirectly-called" functions
+  std::vector<Function *> PrimaryFunctions, IndirectlyCalledFunctions;
+  std::partition_copy(
+      FG.begin(), FG.end(), std::back_inserter(IndirectlyCalledFunctions),
+      std::back_inserter(PrimaryFunctions), [](Function *F) {
+        return F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
+      });
+  for (auto *F : IndirectlyCalledFunctions) {
+    LLVM_DEBUG(dbgs() << "  F: " << F->getName() << " called indirectly!\n");
+    // Each indirectly-called function is compiled into a separate vISA kernel
+    auto *VF = VB.GetVISAKernel(F->getName());
+    processKernel(ProgramInfo{{BuildFunctionInfo(VF, F)}});
+  }
+  std::vector<ProgramInfo::FunctionInfo> PrimaryFIs;
+  std::transform(PrimaryFunctions.begin(), PrimaryFunctions.end(),
+                 std::back_inserter(PrimaryFIs),
+                 [&VKEntry, &BuildFunctionInfo](auto *F) {
+                   return BuildFunctionInfo(VKEntry, F);
+                 });
+  LLVM_DEBUG({
+    dbgs() << " - main kernel structure: ";
+    for (const auto *F : PrimaryFunctions)
+      dbgs() << F->getName() << ",";
+    dbgs() << "\n";
+  });
+  processKernel(ProgramInfo{std::move(PrimaryFIs)});
+}
 bool GenXDebugInfo::runOnModule(Module &M) {
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
@@ -497,19 +555,9 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   if (GM.HasInlineAsm())
     VB = GM.GetVISAAsmReader();
 
-  for (const auto *FG : FGA) {
-    const auto *KF = FG->getHead();
-    VISAKernel *Compiled = VB->GetVISAKernel(KF->getName().str());
+  for (const auto *FG : FGA)
+    processFunctionGroup(GM, *VB, *FG);
 
-    ProgramInfo PI;
-    std::transform(FG->begin(), FG->end(), std::back_inserter(PI.FG),
-                   [&GM, &Compiled](Function *F) {
-                     const auto &Mapping = *GM.getVisaMapping(F);
-                     return ProgramInfo::FunctionInfo{Mapping, *Compiled, *F};
-                   });
-    IGC_ASSERT(!PI.FG.empty() && FG->getHead() == &PI.FG[0].F);
-    processKernel(PI);
-  }
   return false;
 }
 

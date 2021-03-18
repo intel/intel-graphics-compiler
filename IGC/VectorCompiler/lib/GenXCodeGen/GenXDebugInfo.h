@@ -31,16 +31,20 @@ IN THE SOFTWARE.
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/Error.h>
 
+#include "Probe/Assertion.h"
+
 #include <unordered_map>
 #include <map>
 
 class VISAKernel;
+class VISABuilder;
 
 namespace llvm {
 
 class Function;
 class Instruction;
 class FunctionGroup;
+class GenXModule;
 
 namespace genx {
 namespace di {
@@ -61,21 +65,20 @@ struct VisaMapping {
 // Builds and holds the debug information for the current module
 class GenXDebugInfo : public ModulePass {
 
-  // NOTE: the term "program" is used to avoid the confusion as the term
-  // "kernel" may introduce some ambiguity.
-  // Here a "program" represents a kind of wrapper over a function group that
-  // finally gets compiled into a stand-alone gen entity (binary gen kernel)
-  // with some auxiliarry information
+  // NOTE: the term "program" is used to avoid a potential confusion
+  // since the term "kernel" may introduce some ambiguity.
+  // Here a "program" represents a kind of wrapper over a standalone vISA
+  // object (which currently is produced by function groups and
+  // visa-external functions) that finally gets compiled into a stand-alone
+  // gen entity (binary gen kernel) with some auxiliary information
   struct ProgramInfo {
     struct FunctionInfo {
       const genx::di::VisaMapping &VisaMapping;
       VISAKernel &CompiledKernel;
       Function &F;
     };
-    // this is in fact a "flattened" representatoin of a function group to
-    // which the entry point belongs
-    // Invariant: we expect that FG[0] is the entry point/head of GROUP
-    std::vector<FunctionInfo> FG;
+
+    std::vector<FunctionInfo> FIs;
   };
 
   using ElfBin = std::vector<char>;
@@ -84,6 +87,8 @@ class GenXDebugInfo : public ModulePass {
 
   void cleanup();
   void processKernel(const ProgramInfo &PD);
+  void processFunctionGroup(GenXModule &GM, VISABuilder &VB,
+                            const FunctionGroup &FG);
 
 public:
   static char ID;
