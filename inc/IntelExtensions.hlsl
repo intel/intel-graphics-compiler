@@ -25,11 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 //
-// Intel extension buffer structure, generic interface for 
-//   0-operand extensions (e.g. sync opcodes)  
-//   1-operand unary operations (e.g. render target writes) 
-//   2-operand binary operations (future extensions) 
-//   3-operand ternary operations (future extensions)  
+// Intel extension buffer structure, generic interface for
+//   0-operand extensions (e.g. sync opcodes)
+//   1-operand unary operations (e.g. render target writes)
+//   2-operand binary operations (future extensions)
+//   3-operand ternary operations (future extensions)
 //
 struct IntelExtensionStruct
 {
@@ -40,7 +40,7 @@ struct IntelExtensionStruct
     float4 src0f;   // float source operand  0
     float4 src1f;   // float source operand  0
     float4 src2f;   // float source operand  0
-    float4 dst0f;   // float destination operand 
+    float4 dst0f;   // float destination operand
 
     uint4  src0u;
     uint4  src1u;
@@ -68,12 +68,12 @@ RWStructuredBuffer<IntelExtensionStruct> g_IntelExt : register( u63 );
 
 //
 // Initialize Intel HSLS Extensions
-// This method should be called before any other extension function 
-// 
+// This method should be called before any other extension function
+//
 void IntelExt_Init()
 {
-    uint4 init = { 0x63746e69, 0x6c736c68, 0x6e747865, 0x0 }; // intc hlsl extn 
-    g_IntelExt[0].src0u = init; 
+    uint4 init = { 0x63746e69, 0x6c736c68, 0x6e747865, 0x0 }; // intc hlsl extn
+    g_IntelExt[0].src0u = init;
 }
 
 // Extension matching DirectX12 Wave instructions

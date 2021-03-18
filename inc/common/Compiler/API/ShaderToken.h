@@ -23,7 +23,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
+
 #include "ShaderTypesEnum.h"
 #include "usc_config.h"
 #include "ShaderTypes.h"

@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 //
 //  Filename : Driver_Model.h
 //  Purpose  : Global definitions for many #defines and Macros to be used
@@ -73,4 +74,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #endif // #ifdef _WIN32
 
-#endif   // End of file Driver_Model.h
+#endif // _DRIVER_MODEL_H_
