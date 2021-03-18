@@ -46,6 +46,7 @@ typedef enum {
     IGFX_ROCKETLAKE,
     IGFX_ALDERLAKE_S,
     IGFX_DG1 = 1210,
+    IGFX_XE_HP_SDV = 1250,
     IGFX_MAX_PRODUCT,
 
 
