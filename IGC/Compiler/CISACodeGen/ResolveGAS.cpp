@@ -1143,7 +1143,7 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* func = &(*I);
-        if (skip(func)) continue;
+        if (func->isVarArg()) continue;
 
         for (auto UI = func->user_begin(), UE = func->user_end(); UI != UE; UI++)
         {
