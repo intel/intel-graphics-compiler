@@ -297,17 +297,19 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
 // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
 void DebugInfoData::markOutputPrivateBase(CShader* pShader)
 {
-    CVariable* pVar = pShader->GetPrivateBase();
-
     IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(UseOffsetInLocation), "UseOffsetInLocation not enabled");
 
-    if (pVar && pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
+    if (pShader->GetContext()->getModuleMetaData()->compOpt.OptDisable)
     {
-        pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
-        if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVar->visaGenVariable[1])
+        CVariable* pVar = pShader->GetPrivateBase();
+        if (pVar)
         {
-            IGC_ASSERT_MESSAGE(false, "Private base expected to be a scalar!");  // Should never happen
-            pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[1], "Output", 0, nullptr);
+            pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
+            if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVar->visaGenVariable[1])
+            {
+                IGC_ASSERT_MESSAGE(false, "Private base expected to be a scalar!");  // Should never happen
+                pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[1], "Output", 0, nullptr);
+            }
         }
     }
 }
