@@ -4271,6 +4271,17 @@ namespace IGC
 
     } // InitVISABuilderOptions
 
+    // Get a unqiue label for inline asm instruction blocks at the module level.
+    // For each call to asm("..."), user can input the "%=" string format to generate a unique label for that call.
+    // In this case we would generate "__4_000" for the 1st usage of "%=" in an asm block in the 5th function of the module.
+    std::string CEncoder::GetUniqueInlineAsmLabel()
+    {
+        std::stringstream ss;
+        ss << GetCompilerLabelPrefix() << labelFunctionIndex << "_" <<
+            std::setw(3) << std::setfill('0') << labelInlineAsmCounter++;
+        return ss.str();
+    }
+
     // Creates a module/program-unique label prefix.
     // E.g. the 3rd label of the 5th function would be
     // "__4_002".  Ugly, yes, but you shouldn't see it as this is the
@@ -4346,6 +4357,7 @@ namespace IGC
         labelMap.clear();
         labelMap.resize(F->size(), nullptr);
         labelCounter = 0;
+        labelInlineAsmCounter = 0;
         labelFunctionIndex++;
         currFunctionName = F->getName();
         labelNameMap.clear();

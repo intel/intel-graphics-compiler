@@ -8817,6 +8817,24 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         }
     }
 
+    // Replace all instances of ${:uid} with a label string unique to this asm block.
+    // Clang translates the '%=' format string to '${:uid}' in LLVMIR.
+    // This option is useful when creating local labels and referring to them multiple times
+    // in a single template that generates multiple assembler instructions.
+    {
+        string hashStr = m_encoder->GetUniqueInlineAsmLabel();
+        string uniqueIDStr = "${:uid}";
+        size_t pos = 0;
+        while (pos < asmStr.size())
+        {
+            size_t varPos = asmStr.find(uniqueIDStr, pos);
+            if (varPos == string::npos)
+                break;
+            asmStr.replace(varPos, uniqueIDStr.size(), hashStr);
+            pos = varPos + hashStr.size();
+        }
+    }
+
     str << endl << "/// Inlined ASM" << endl;
     // Look for variables to replace with the VISA variable
     size_t startPos = 0;

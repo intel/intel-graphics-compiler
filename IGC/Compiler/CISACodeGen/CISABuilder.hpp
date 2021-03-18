@@ -412,6 +412,8 @@ namespace IGC
         void SetPayloadSectionAsPrimary()   {vKernelTmp = vKernel; vKernel = vPayloadSection;}
         void SetPayloadSectionAsSecondary() {vKernel = vKernelTmp;}
 
+        std::string GetUniqueInlineAsmLabel();
+
     private:
         // helper functions
         VISA_VectorOpnd* GetSourceOperand(CVariable* var, const SModifier& mod);
@@ -626,6 +628,8 @@ namespace IGC
 
         /// Per kernel label counter
         unsigned labelCounter = 0;
+        /// Per kernel label counter for each inline asm block
+        unsigned labelInlineAsmCounter = 0;
         /// Each kernel might emit several functions;
         /// we pre-increment this for each new function we process (InitLabelMap)
         /// The first function will see 0, ...
