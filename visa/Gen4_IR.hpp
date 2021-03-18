@@ -918,16 +918,13 @@ public:
     //      add  (8|M8) ...
     // will have 0xFF00, which lane 8-15
     uint32_t getExecLaneMask() const;
-    G4_ExecSize getExecSize() const { return execSize; }
-
-    const G4_CondMod* getCondMod() const { return mod; }
-    G4_CondMod* getCondMod() { return mod; }
-    const G4_VarBase* getCondModBase() const;
-    G4_VarBase* getCondModBase() {
-        return const_cast<G4_VarBase*>(((const G4_INST*)this)->getCondModBase());
-    }
-    bool hasCondModWithFlag() const;
-
+    G4_ExecSize getExecSize() const {return execSize;}
+    const G4_CondMod*    getCondMod() const {return mod;}
+          G4_CondMod*    getCondMod()       {return mod;}
+    const G4_VarBase*    getCondModBase() const;
+          G4_VarBase*    getCondModBase() {
+              return const_cast<G4_VarBase*>(((const G4_INST*)this)->getCondModBase());
+          }
     void setCondMod(G4_CondMod* m);
 
     bool isDead() const {return dead;}
@@ -4219,11 +4216,6 @@ inline bool G4_Operand::isScalarSrc() const
 inline G4_Declare *G4_Operand::getBaseRegVarRootDeclare() const
 {
     return getBase()->asRegVar()->getDeclare()->getRootDeclare();
-}
-
-inline bool G4_INST::hasCondModWithFlag() const
-{
-    return mod && mod->getBase();
 }
 
 } // namespace vISA
