@@ -3354,6 +3354,14 @@ private:
     return T->getPrimitiveSizeInBits();
   }
 
+  bool isVectorInst() const {
+    if (auto *LI = dyn_cast<LoadInst>(Inst))
+      return LI->getType()->isVectorTy();
+
+    auto *SI = cast<StoreInst>(Inst);
+    return SI->getValueOperand()->getType()->isVectorTy();
+  }
+
   // Return true if this load/store can be translated.
   bool isSupported() const;
 
@@ -3362,6 +3370,14 @@ private:
   bool emitScatter();
   bool emitSVMGather();
   bool emitSVMScatter();
+  bool emitSVMBlockLD();
+  bool emitSVMBlockST();
+  bool emitOwordLD();
+  bool emitOwordST();
+
+  // Helpers
+  std::tuple<IGCLLVM::FixedVectorType *, Type *, Value *>
+  castValueIfNeeded(IGCLLVM::FixedVectorType *ValTy, Value *Val = nullptr);
 };
 
 } // namespace
@@ -3390,6 +3406,14 @@ bool LoadStoreResolver::resolve() {
     return emitSVMGather();
   case GenXIntrinsic::genx_svm_scatter:
     return emitSVMScatter();
+  case GenXIntrinsic::genx_svm_block_ld:
+    return emitSVMBlockLD();
+  case GenXIntrinsic::genx_svm_block_st:
+    return emitSVMBlockST();
+  case GenXIntrinsic::genx_oword_ld:
+    return emitOwordLD();
+  case GenXIntrinsic::genx_oword_st:
+    return emitOwordST();
   default:
     break;
   }
@@ -3415,6 +3439,13 @@ bool LoadStoreResolver::isSupported() const {
   if (auto SI = dyn_cast<StoreInst>(Inst))
     ValTy = SI->getValueOperand()->getType();
 
+  // Use scalar type for vector: it will be resolved separately
+  unsigned VecWidth = 0;
+  if (auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(ValTy)) {
+    ValTy = VecTy->getScalarType();
+    VecWidth = VecTy->getNumElements();
+  }
+
   // Only scalar data types.
   if (!ValTy->isFloatingPointTy() && !ValTy->isIntegerTy() &&
       !ValTy->isPointerTy()) {
@@ -3429,17 +3460,37 @@ bool LoadStoreResolver::isSupported() const {
     return false;
   }
 
+  // Only legal vec size: 16/32/64/128 bytes
+  // TODO: it is possible to handle any vector by dividing it into
+  // separate instructions. This is uncommon case so it is not
+  // implemented now.
+  if (VecWidth) {
+    unsigned NumBytes = VecWidth * (NumBits / ByteBits);
+    if (NumBytes < 16 || NumBytes > 128 || !isPowerOf2_32(NumBytes)) {
+      Inst->getContext().emitError("unsupported vector type for load/store");
+    }
+  }
+
   // Translate this instruction.
   return true;
 }
 
 // Find a proper GenX intrinsic ID for this load/store instruction.
 GenXIntrinsic::ID LoadStoreResolver::getGenXIntrinsicID() const {
-  // A32 byte scattered stateless messages only work on CNL+.
   unsigned NBits = getPointerSizeInBits();
+  if (isVectorInst()) {
+    if (NBits == 32)
+      return isLoad() ? GenXIntrinsic::genx_oword_ld
+                      : GenXIntrinsic::genx_oword_st;
+    return isLoad() ? GenXIntrinsic::genx_svm_block_ld
+                    : GenXIntrinsic::genx_svm_block_st;
+  }
+
+  // A32 byte scattered stateless messages only work on CNL+.
   if (NBits == 32 && ST && !ST->WaNoA32ByteScatteredStatelessMessages())
     return isLoad() ? GenXIntrinsic::genx_gather_scaled
                     : GenXIntrinsic::genx_scatter_scaled;
+
   return isLoad() ? GenXIntrinsic::genx_svm_gather
                   : GenXIntrinsic::genx_svm_scatter;
 }
@@ -3665,6 +3716,146 @@ bool LoadStoreResolver::emitSVMScatter() {
   Module *M = Inst->getModule();
   auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_svm_scatter, Tys);
 
+  Builder.CreateCall(Fn, Args);
+  return true;
+}
+
+// Helper for pointer value cast.
+// Returns [Casted ValTy, Old ScalarTy, Casted Value]
+std::tuple<IGCLLVM::FixedVectorType *, Type *, Value *>
+LoadStoreResolver::castValueIfNeeded(IGCLLVM::FixedVectorType *ValTy,
+                                     Value *Val) {
+  Type *ScalarTy = ValTy->getScalarType();
+  if (ScalarTy->isPointerTy()) {
+    unsigned VecWidth = ValTy->getNumElements();
+    ValTy = IGCLLVM::FixedVectorType::get(
+        Builder.getIntNTy(getValueSizeInBits(ScalarTy)), VecWidth);
+    if (Val)
+      Val = Builder.CreatePtrToInt(Val, ValTy);
+  }
+
+  return {ValTy, ScalarTy, Val};
+}
+
+// Translate load to svm block ld.
+bool LoadStoreResolver::emitSVMBlockLD() {
+  IGC_ASSERT_MESSAGE(getPointerSizeInBits() == 64,
+                     "Incorrect ptr size for svm block ld");
+  auto *LI = cast<LoadInst>(Inst);
+
+  // Address argument should be int
+  Value *Addr = LI->getPointerOperand();
+  Type *IntPtrTy = getDL().getIntPtrType(Addr->getType());
+  Addr = Builder.CreatePtrToInt(Addr, IntPtrTy);
+
+  // Analyze types
+  auto *ValTy = cast<IGCLLVM::FixedVectorType>(LI->getType());
+  Type *BasicScalarTy = nullptr;
+  std::tie(ValTy, BasicScalarTy, std::ignore) = castValueIfNeeded(ValTy);
+
+  // Overload with return type and address type
+  Type *Tys[] = {ValTy, Addr->getType()};
+  Module *M = Inst->getModule();
+  auto *Fn = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_svm_block_ld, Tys);
+
+  Value *NewVal = Builder.CreateCall(Fn, Addr);
+  if (BasicScalarTy->isPointerTy())
+    NewVal = Builder.CreateIntToPtr(NewVal, LI->getType());
+  LI->replaceAllUsesWith(NewVal);
+  return true;
+}
+
+// Translate store to svm block st.
+bool LoadStoreResolver::emitSVMBlockST() {
+  IGC_ASSERT_MESSAGE(getPointerSizeInBits() == 64,
+                     "Incorrect ptr size for svm block st");
+  auto *SI = cast<StoreInst>(Inst);
+
+  // Address argument should be int
+  Value *Addr = SI->getPointerOperand();
+  Type *IntPtrTy = getDL().getIntPtrType(Addr->getType());
+  Addr = Builder.CreatePtrToInt(Addr, IntPtrTy);
+
+  // Data to write
+  Value *Val = SI->getValueOperand();
+  auto *ValTy = cast<IGCLLVM::FixedVectorType>(Val->getType());
+  std::tie(ValTy, std::ignore, Val) = castValueIfNeeded(ValTy, Val);
+
+  // Overload with predicate type, address vector type, and data type
+  Type *Tys[] = {Addr->getType(), ValTy};
+  Module *M = Inst->getModule();
+  auto *Fn = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_svm_block_st, Tys);
+
+  Builder.CreateCall(Fn, {Addr, Val});
+  return true;
+}
+
+// Translate load to oword ld.
+bool LoadStoreResolver::emitOwordLD() {
+  IGC_ASSERT_MESSAGE(getPointerSizeInBits() == 32,
+                     "Incorrect ptr size for oword ld");
+  auto *LI = cast<LoadInst>(Inst);
+
+  // Offset argument should be int
+  Value *Addr = LI->getPointerOperand();
+  Type *IntPtrTy = getDL().getIntPtrType(Addr->getType());
+  Addr = Builder.CreatePtrToInt(Addr, IntPtrTy);
+
+  // Analyze types
+  auto *ValTy = cast<IGCLLVM::FixedVectorType>(LI->getType());
+  Type *BasicScalarTy = nullptr;
+  std::tie(ValTy, BasicScalarTy, std::ignore) = castValueIfNeeded(ValTy);
+
+  // Arguments
+  Value *Args[] = {
+      Builder.getInt32(1), // is modified (ignored according to vISA spec)
+      Builder.getInt32(visa::getReservedSurfaceIndex(
+          PreDefined_Surface::PREDEFINED_SURFACE_T255)), // surface
+      Addr                                               // offset
+  };
+
+  // Overload with return type
+  Module *M = Inst->getModule();
+  auto *Fn =
+      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_oword_ld, ValTy);
+
+  Value *NewVal = Builder.CreateCall(Fn, Args);
+  if (BasicScalarTy->isPointerTy())
+    NewVal = Builder.CreateIntToPtr(NewVal, LI->getType());
+  LI->replaceAllUsesWith(NewVal);
+  return true;
+}
+
+// Translate store to oword st.
+bool LoadStoreResolver::emitOwordST() {
+  IGC_ASSERT_MESSAGE(getPointerSizeInBits() == 32,
+                     "Incorrect ptr size for oword st");
+  auto *SI = cast<StoreInst>(Inst);
+
+  // Offset argument should be int
+  Value *Addr = SI->getPointerOperand();
+  Type *IntPtrTy = getDL().getIntPtrType(Addr->getType());
+  Addr = Builder.CreatePtrToInt(Addr, IntPtrTy);
+
+  // Value to write
+  Value *Val = SI->getValueOperand();
+  auto *ValTy = cast<IGCLLVM::FixedVectorType>(Val->getType());
+  std::tie(ValTy, std::ignore, Val) = castValueIfNeeded(ValTy, Val);
+
+  // Arguments.
+  Value *Args[] = {
+      Builder.getInt32(visa::getReservedSurfaceIndex(
+          PreDefined_Surface::PREDEFINED_SURFACE_T255)), // surface
+      Addr,                                              // offset
+      Val                                                // value to write
+  };
+
+  // Overload with value to write type.
+  Module *M = Inst->getModule();
+  auto *Fn =
+      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_oword_st, ValTy);
   Builder.CreateCall(Fn, Args);
   return true;
 }
