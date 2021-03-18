@@ -1037,6 +1037,13 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
     Decomposition.push_back(Remaining);
     Offsets.push_back(Offset);
   }
+
+  IGC_ASSERT(Decomposition.size() == Offsets.size());
+
+  if (Decomposition.size() <= 1) {
+    setNotDecomposing();
+    return false;
+  }
 #if _DEBUG
   unsigned NumParts = (NumElts + Width - 1) / Width;
   IGC_ASSERT(NumParts == Decomposition.size());

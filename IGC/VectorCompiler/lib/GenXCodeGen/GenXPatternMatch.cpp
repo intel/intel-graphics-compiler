@@ -115,6 +115,10 @@ static cl::opt<bool> EnableMinMaxMatcher("enable-minmax", cl::init(true),
                                          cl::Hidden,
                                          cl::desc("Enable min/max matching."));
 
+static cl::opt<unsigned> PatternMatchAttemptsThreshold(
+    "pattern-match-num-iters", cl::init(32), cl::Hidden,
+    cl::desc("Number of iterations to run pattern match."));
+
 namespace {
 
 class GenXPatternMatch : public FunctionPass,
@@ -219,23 +223,33 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
                                  .getTM<GenXTargetMachine>()
                                  .getGenXSubtarget();
   loadPhiConstants(F, DT, *ST, *DL, true);
-  Changed |= distributeIntegerMul(&F);
-  Changed |= propagateFoldableRegion(&F);
-  Changed |= reassociateIntegerMad(&F);
-  Changed |= placeConstants(&F);
-  Changed |= vectorizeConstants(&F);
 
-  visit(F);
+  bool ChangedOnce = false;
+  unsigned PatternMatchAttempts = 0;
+  do {
+    Changed = false;
 
-  Changed |= simplifyVolatileGlobals(&F);
+    Changed |= distributeIntegerMul(&F);
+    Changed |= propagateFoldableRegion(&F);
+    Changed |= reassociateIntegerMad(&F);
+    Changed |= placeConstants(&F);
+    Changed |= vectorizeConstants(&F);
 
-  Changed |= clearDeadInstructions(F);
+    visit(F);
 
-  Changed |= simplifySelect(&F);
-  // Break big predicate variables and run after min/max pattern match.
-  Changed |= decomposeSelect(&F);
+    Changed |= simplifyVolatileGlobals(&F);
+    Changed |= simplifySelect(&F);
 
-  return Changed;
+    // Break big predicate variables and run after min/max pattern match.
+    Changed |= decomposeSelect(&F);
+    Changed |= clearDeadInstructions(F);
+
+    if (Changed)
+      ChangedOnce = true;
+
+  } while (Changed && PatternMatchAttempts++ < PatternMatchAttemptsThreshold);
+
+  return ChangedOnce;
 }
 
 namespace {
