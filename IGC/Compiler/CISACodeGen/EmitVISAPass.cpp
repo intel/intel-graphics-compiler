@@ -5019,7 +5019,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             "simdChannel size of simdShuffle should be 4 bytes!");
 
         // Choose the shift factor.
-        int shtAmt;
+        int shtAmt = 0;
         switch (m_encoder->GetCISADataTypeSize(m_destination->GetType()))
         {
         case 1:  shtAmt = 0; break;
@@ -15488,8 +15488,8 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             //   eOff   0   8                           // QW per lane
             // When nbelts = 3, lane 3 is not used. Since we don't have simd3,
             // use simd4 and set lane3 to lane2.
-            uint32_t incImm;
-            uint32_t incImm1;  // for activelanes=8
+            uint32_t incImm = 0;
+            uint32_t incImm1 = 0;  // for activelanes=8
             switch (activelanes) {
             default:
                 IGC_ASSERT_MESSAGE(0, "ICE: something wrong happened in computing activelanes!");

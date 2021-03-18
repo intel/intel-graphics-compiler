@@ -1428,7 +1428,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
 {
     unsigned num = inst->getNumIncomingValues();
     bool foundFirst = 0;
-    WIAnalysis::WIDependancy totalDep;
+    WIAnalysis::WIDependancy totalDep = WIAnalysis::WIDependancy::INVALID;
 
     for (unsigned i = 0; i < num; ++i)
     {

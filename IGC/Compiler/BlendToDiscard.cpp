@@ -336,7 +336,7 @@ bool BlendToDiscard::blendToDiscardMRT(
             }
         }
 
-        Value* cond;
+        Value* cond = nullptr;
         Value* alpha = outInst[i]->getOperand(3);
         Value* f0 = ConstantFP::get(alpha->getType(), 0.0);
         Value* f1 = ConstantFP::get(alpha->getType(), 1.0);

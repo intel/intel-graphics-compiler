@@ -30,6 +30,11 @@ set(IGC_BUILD__PROJ_LABEL__Compiler "${IGC_BUILD__PROJ__Compiler}")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+if(MSVC)
+add_compile_options(/w14701) #Unintialized Variable Warning
+else()
+add_compile_options(-Wuninitialized) #Unintialized Variable Warning
+endif()
 
 add_subdirectory(CISACodeGen)
 igc_sg_define(Compiler__CISACodeGen)

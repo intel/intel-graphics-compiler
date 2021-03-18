@@ -1749,8 +1749,10 @@ namespace IGC
 
         bool found = false;
 
-        llvm::Value* sources[2], * pred;
-        e_modifier src_mod[2], pred_mod;
+        llvm::Value* sources[2] = {nullptr,nullptr};
+        llvm::Value* pred = nullptr;
+        e_modifier src_mod[2] = { e_modifier::EMOD_NONE, e_modifier::EMOD_NONE };
+        e_modifier pred_mod = e_modifier::EMOD_NONE;
         bool invertPred = false;
         if (m_AllowContractions == false || IGC_IS_FLAG_ENABLED(DisableMatchPredAdd))
         {

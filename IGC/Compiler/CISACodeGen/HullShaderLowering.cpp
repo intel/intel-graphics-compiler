@@ -553,7 +553,7 @@ namespace IGC
         llvm::Value* m_pMulRes = nullptr;
         llvm::Value* m_pFinalOffset = nullptr;
         bool isOutputControlPointIdImmed = llvm::isa<llvm::ConstantInt>(controlPtId);
-        uint32_t outputControlPointid;
+        uint32_t outputControlPointid = 0;
 
         if (isOutputControlPointIdImmed)
         {

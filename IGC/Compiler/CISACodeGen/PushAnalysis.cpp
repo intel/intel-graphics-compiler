@@ -326,7 +326,7 @@ namespace IGC
         }
 
         llvm::GenIntrinsicInst* pRuntimeVal = llvm::dyn_cast<llvm::GenIntrinsicInst>(pAddress);
-        uint runtimeval0;
+        uint runtimeval0 = 0;
 
         bool isRuntimeValFound = false;
         if (pRuntimeVal == nullptr)

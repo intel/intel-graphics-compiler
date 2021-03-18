@@ -835,7 +835,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
 
     // Enum to check if given branch is signed or unsigned, e.g.
     // comes from SExt or ZExt value.
-    enum class OriginSignedness { originSigned, originUnsigned };
+    enum class OriginSignedness { originSigned, originUnsigned, originUnknown };
 
     // Note: the returned pattern from this lambda doesn't use m_ZExtOrSExt pattern on purpose -
     // There is no way to bind to both instruction and it's arguments, so we bind to instruction and
@@ -919,7 +919,7 @@ void CustomSafeOptPass::matchDp4a(BinaryOperator &I) {
           [&signs](OriginSignedness v) { return v == signs[0]; });
     };
 
-    OriginSignedness ABranch, BBranch;
+    OriginSignedness ABranch = OriginSignedness::originUnknown, BBranch = OriginSignedness::originUnknown;
     bool canMatch = AccVal->getType()->isIntegerTy(32) && checkIfValuesComeFromCharType(ExtA, ABranch) && checkIfValuesComeFromCharType(ExtB, BBranch);
     if (!canMatch) return;
 

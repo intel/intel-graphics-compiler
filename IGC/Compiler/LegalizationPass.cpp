@@ -1684,7 +1684,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
     case Intrinsic::sadd_sat:
 #endif
     {
-        llvm::Intrinsic::ID OverflowIntrinID;
+        llvm::Intrinsic::ID OverflowIntrinID = Intrinsic::not_intrinsic;
         switch (I.getIntrinsicID()) {
         case Intrinsic::usub_sat: OverflowIntrinID = Intrinsic::usub_with_overflow; break;
         case Intrinsic::ssub_sat: OverflowIntrinID = Intrinsic::ssub_with_overflow; break;

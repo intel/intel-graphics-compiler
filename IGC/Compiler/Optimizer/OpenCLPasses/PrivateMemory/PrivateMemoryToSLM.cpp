@@ -317,9 +317,9 @@ namespace IGC
                     Value* dimX = ConstantInt::get(typeInt32, xDim);
                     Value* dimXY = ConstantInt::get(typeInt32, xDim * yDim);
 
-                    Value* localIdX;
-                    Value* localIdY;
-                    Value* localIdZ;
+                    Value* localIdX = nullptr;
+                    Value* localIdY = nullptr;
+                    Value* localIdZ = nullptr;
 
                     if (CodeGenCtx->type == ShaderType::OPENCL_SHADER)
                     {

@@ -208,8 +208,8 @@ Value* ValueTracker::handleGlobalVariable(GlobalVariable* G)
 // of the overall algorithm. It currently supports only sampler index retrieving.
 Value* ValueTracker::handleConstExpr(ConstantExpr* CE)
 {
-    uint64_t samplerState;
-    uint64_t samplerIndex;
+    uint64_t samplerState = 0;
+    uint64_t samplerIndex = 0;
 
     // To handle Inline samplers defined as global variables
     if (m_pMDUtils == nullptr)

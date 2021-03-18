@@ -208,7 +208,7 @@ bool Layout::tryMovingWrite(llvm::Instruction* write, llvm::Loop* loop, LoopInfo
         llvm::BasicBlock* blk = blocksToMove.back();
 
         // If one (and only one) of the predecessors is in the needed loop, move blocks after it
-        llvm::BasicBlock* insertPoint;
+        llvm::BasicBlock* insertPoint = nullptr;
         int predsInLoop = 0;
         for (pred_iterator predIter = pred_begin(blk), predEnd = pred_end(blk);
             predIter != predEnd; ++predIter)

@@ -195,7 +195,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         return;
     }
     unsigned bufID = 0;
-    BufferType bufTy;
+    BufferType bufTy = BufferType::BUFFER_TYPE_UNKNOWN;
     BufferAccessType accTy;
     bool needBufferOffset;  // Unused
     bool canPromote = false;

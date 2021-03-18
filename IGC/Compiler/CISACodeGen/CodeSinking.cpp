@@ -964,7 +964,7 @@ namespace IGC {
                 }
                 else
                 {
-                    Instruction* last;
+                    Instruction* last = nullptr;
                     for (auto* I : leaves)
                     {
                         if (!predBB)
