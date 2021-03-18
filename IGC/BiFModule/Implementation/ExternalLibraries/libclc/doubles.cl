@@ -1260,7 +1260,7 @@ INLINE double libclc_cos_f64(double x) {
     int2 c = as_int2(regn & 1 ? sc.lo : sc.hi);
     c.hi ^= (regn > 1) << 31;
 
-    return __builtin_spirv_OpIsNan_f64(x) | __builtin_spirv_OpIsInf_f64(x) ? as_double(QNANBITPATT_DP64) : as_double(c);
+    return SPIRV_BUILTIN(IsNan, _f64, )(x) | SPIRV_BUILTIN(IsInf, _f64, )(x) ? as_double(QNANBITPATT_DP64) : as_double(c);
 }
 
 /*################################## libclc_cosh_f64 ##############################################*/
@@ -1590,8 +1590,8 @@ INLINE double libclc_log_f64(double x)
     double ret_far = r1 + r2;
     double ret = is_near ? ret_near : ret_far;
 
-    ret = __builtin_spirv_OpIsInf_f64(x) ? as_double(PINFBITPATT_DP64) : ret;
-    ret = __builtin_spirv_OpIsNan_f64(x) | (x < 0.0) ? as_double(QNANBITPATT_DP64) : ret;
+    ret = SPIRV_BUILTIN(IsInf, _f64, )(x) ? as_double(PINFBITPATT_DP64) : ret;
+    ret = SPIRV_BUILTIN(IsNan, _f64, )(x) | (x < 0.0) ? as_double(QNANBITPATT_DP64) : ret;
     ret = x == 0.0 ? as_double(NINFBITPATT_DP64) : ret;
     return ret;
 }
@@ -1694,7 +1694,7 @@ INLINE double libclc_sin_f64(double x) {
     int2 s = as_int2(regn & 1 ? sc.hi : sc.lo);
     s.hi ^= ((regn > 1) << 31) ^ ((x < 0.0) << 31);
 
-    return  __builtin_spirv_OpIsNan_f64( x ) | __builtin_spirv_OpIsInf_f64( x ) ? as_double(QNANBITPATT_DP64) : as_double(s);
+    return  SPIRV_BUILTIN(IsNan, _f64, )( x ) | SPIRV_BUILTIN(IsInf, _f64, )( x ) ? as_double(QNANBITPATT_DP64) : as_double(s);
 }
 
 /*################################## libclc_sinpi_f64 #####################################################*/

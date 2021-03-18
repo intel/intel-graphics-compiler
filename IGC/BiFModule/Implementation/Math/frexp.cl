@@ -908,7 +908,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p1i32( half          x,
                                       __global int* exp )
 {
     half temp;
-    if( __builtin_spirv_OpIsNormal_f16( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
@@ -1126,7 +1126,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p0i32( half           x,
                                       __private int* exp )
 {
     half temp;
-    if( __builtin_spirv_OpIsNormal_f16( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
@@ -1344,7 +1344,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p3i32( half         x,
                                       __local int* exp )
 {
     half temp;
-    if( __builtin_spirv_OpIsNormal_f16( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
@@ -1566,7 +1566,7 @@ half __builtin_spirv_OpenCL_frexp_f16_p4i32( half           x,
                                       __generic int* exp )
 {
     half temp;
-    if( __builtin_spirv_OpIsNormal_f16( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f16, )( x ) )
     {
         temp = as_half( (short)(( as_short( x ) & HALF_MANTISSA_MASK ) + HALF_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f16_f16_i16( temp, (half)(0.5f), (short)(temp == (half)(1.0f)) );
@@ -1788,7 +1788,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p1i32( double        x,
                                         __global int* exp )
 {
     double temp;
-    if( __builtin_spirv_OpIsNormal_f64( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
@@ -2006,7 +2006,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p0i32( double         x,
                                         __private int* exp )
 {
     double temp;
-    if( __builtin_spirv_OpIsNormal_f64( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
@@ -2224,7 +2224,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p3i32( double       x,
                                         __local int* exp )
 {
     double temp;
-    if( __builtin_spirv_OpIsNormal_f64( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );
@@ -2444,7 +2444,7 @@ double __builtin_spirv_OpenCL_frexp_f64_p4i32( double       x,
                                         __generic int* exp )
 {
     double temp;
-    if( __builtin_spirv_OpIsNormal_f64( x ) )
+    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
     {
         temp = as_double( (long)(( as_long( x ) & DOUBLE_MANTISSA_MASK ) + DOUBLE_NEG_ONE_EXP_MASK) );
         temp = __builtin_spirv_OpenCL_select_f64_f64_i64( temp, 0.5, (long)(temp == 1.0) );

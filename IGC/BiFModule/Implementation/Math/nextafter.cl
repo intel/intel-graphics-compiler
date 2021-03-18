@@ -102,7 +102,7 @@ double __builtin_spirv_OpenCL_nextafter_f64_f64( double x, double y )
 
     {
         double n = __builtin_spirv_OpenCL_nan_i64(0ul);
-        int test = __builtin_spirv_OpIsNan_f64(x) | __builtin_spirv_OpIsNan_f64(y);
+        int test = SPIRV_BUILTIN(IsNan, _f64, )(x) | SPIRV_BUILTIN(IsNan, _f64, )(y);
         result = test ? n : result;
     }
 
@@ -138,7 +138,7 @@ half __builtin_spirv_OpenCL_nextafter_f16_f16( half x, half y )
 
     {
         half n = __builtin_spirv_OpenCL_nan_i32(0u);
-        int test = __builtin_spirv_OpIsNan_f16(x) | __builtin_spirv_OpIsNan_f16(y);
+        int test = SPIRV_BUILTIN(IsNan, _f16, )(x) | SPIRV_BUILTIN(IsNan, _f16, )(y);
         result = test ? n : result;
     }
 

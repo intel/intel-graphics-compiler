@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE isinf( float x )
 {
-    return __builtin_spirv_OpIsInf_f32( x );
+    return SPIRV_BUILTIN(IsInf, _f32, )( x );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isinf_helper( float x )
@@ -41,7 +41,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isinf, __intel_vector_isinf_helper, int
 
 INLINE int OVERLOADABLE isinf( double x )
 {
-    return __builtin_spirv_OpIsInf_f64( x );
+    return SPIRV_BUILTIN(IsInf, _f64, )( x );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isinf_helper( double x )
@@ -57,7 +57,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isinf, __intel_vector_isinf_helper, lon
 
 INLINE int OVERLOADABLE isinf( half x )
 {
-    return __builtin_spirv_OpIsInf_f16( x );
+    return SPIRV_BUILTIN(IsInf, _f16, )( x );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isinf_helper( half x )
