@@ -206,15 +206,9 @@ static std::vector<const char*>
     else
         llvm::cl::TokenizeGNUCommandLine(userArgsStr, stringSaver, userArgs);
 
-    if (std::getenv(UseLegacyCMCPrefixEnv)) {
-        // TODO: remove this branch once all clients fixed their tests
-        auto toErase = std::remove_if(userArgs.begin(), userArgs.end(),
-             [](const auto& Item) { return std::strcmp(Item, "-cmc") == 0; });
-        userArgs.erase(toErase, userArgs.end());
-    } else {
-        IGC_ASSERT(!userArgs.empty() && strcmp(userArgs[0], "-cmc") == 0);
-        userArgs.erase(userArgs.begin());
-    }
+    auto toErase = std::remove_if(userArgs.begin(), userArgs.end(),
+        [](const auto& Item) { return std::strcmp(Item, "-cmc") == 0; });
+    userArgs.erase(toErase, userArgs.end());
 
     // this was old hack before FE can pass platform, now we prefer to use argument
     // but if it is null, it may be still useful, so let it be for a while

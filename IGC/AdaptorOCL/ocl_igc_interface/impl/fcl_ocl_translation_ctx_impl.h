@@ -29,9 +29,7 @@ IN THE SOFTWARE.
 #include <map>
 #include <memory>
 #include <mutex>
-#include <regex>
 #include <utility>
-#include <cstdlib>
 
 #include "cif/builtins/memory/buffer/impl/buffer_impl.h"
 #include "cif/export/pimpl_base.h"
@@ -50,8 +48,6 @@ namespace TC{
 }
 
 namespace IGC {
-
-static constexpr const char* UseLegacyCMCPrefixEnv = "IGC_USE_LEGACY_CMC_PREFIX";
 
 CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
 {
@@ -113,19 +109,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
                                         CIF::Builtins::BufferSimple *tracingOptions,
                                         uint32_t tracingOptionsCount
                                         ) {
-        auto needsCMFE = [](const char *optStart, size_t size) {
-            if (!optStart)
-                return false;
-
-            // TODO: remove this once all clients fixed their tests
-            if (std::getenv(UseLegacyCMCPrefixEnv)) {
-                return strstr(optStart, "-cmc") != nullptr;
-            }
-            // "-cmc" should be present as the first argument to invoke CM frontend
-            return std::regex_match(optStart, optStart + size,
-                                    std::regex("^\\s*-cmc(($)|(\\s+.*))"));
-        };
-        if (options != nullptr && needsCMFE(options->GetMemory<char>(), options->GetSizeRaw())) {
+        if ((options != nullptr) && (options->GetSizeRaw() > 0) && (strstr(options->GetMemory<char>(), "-cmc"))) {
             assert(this->outType == CodeType::spirV);
             return TranslateCM(outVersion, src, options, internalOptions, tracingOptions, tracingOptionsCount);
         }
