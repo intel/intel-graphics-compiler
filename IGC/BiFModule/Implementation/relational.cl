@@ -198,71 +198,71 @@ GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, float,  f32
 GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, double, f64)
 #endif
 
-bool __builtin_spirv_OpLessOrGreater_f16_f16(half x, half y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _f16_f16, )(half x, half y)
 {
     return (x < y) | (x > y);
 }
 
-bool __builtin_spirv_OpLessOrGreater_f32_f32(float x, float y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _f32_f32, )(float x, float y)
 {
     return (x < y) | (x > y);
 }
 
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpLessOrGreater_f64_f64(double x, double y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _f64_f64, )(double x, double y)
 {
     return (x < y) | (x > y);
 }
 #endif
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpLessOrGreater, __bool, half,   f16)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpLessOrGreater, __bool, float,  f32)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, half,   f16)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpLessOrGreater, __bool, double, f64)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, double, f64)
 #endif
 
-bool __builtin_spirv_OpOrdered_f16_f16(half x, half y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _f16_f16, )(half x, half y)
 {
     return (x == x) & (y == y);
 }
 
-bool __builtin_spirv_OpOrdered_f32_f32(float x, float y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _f32_f32, )(float x, float y)
 {
     return (x == x) & (y == y);
 }
 
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpOrdered_f64_f64(double x, double y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _f64_f64, )(double x, double y)
 {
     return (x == x) & (y == y);
 }
 #endif
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpOrdered, __bool, half,   f16)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpOrdered, __bool, float,  f32)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(Ordered, __bool, half,   f16)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(Ordered, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpOrdered, __bool, double, f64)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(Ordered, __bool, double, f64)
 #endif
 
-bool __builtin_spirv_OpUnordered_f16_f16(half x, half y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _f16_f16, )(half x, half y)
 {
     return (x != x) | (y != y);
 }
 
-bool __builtin_spirv_OpUnordered_f32_f32(float x, float y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _f32_f32, )(float x, float y)
 {
     return (x != x) | (y != y);
 }
 
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpUnordered_f64_f64(double x, double y)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _f64_f64, )(double x, double y)
 {
     return (x != x) | (y != y);
 }
 #endif
 
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpUnordered, __bool, half,   f16)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpUnordered, __bool, float,  f32)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(Unordered, __bool, half,   f16)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(Unordered, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-GENERATE_VECTOR_FUNCTIONS_2ARGS(__builtin_spirv_OpUnordered, __bool, double, f64)
+SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(Unordered, __bool, double, f64)
 #endif

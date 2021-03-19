@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE isordered( float x, float y )
 {
-    return __builtin_spirv_OpOrdered_f32_f32( x, y );
+    return SPIRV_BUILTIN(Ordered, _f32_f32, )( x, y );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isordered_helper( float x, float y )
@@ -41,7 +41,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( isordered, __intel_vector_isordered_he
 
 INLINE int OVERLOADABLE isordered( double x, double y )
 {
-    return __builtin_spirv_OpOrdered_f64_f64( x, y );
+    return SPIRV_BUILTIN(Ordered, _f64_f64, )( x, y );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isordered_helper( double x, double y )
@@ -57,7 +57,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( isordered, __intel_vector_isordered_he
 
 INLINE int OVERLOADABLE isordered( half x, half y )
 {
-    return __builtin_spirv_OpOrdered_f16_f16( x, y );
+    return SPIRV_BUILTIN(Ordered, _f16_f16, )( x, y );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isordered_helper( half x, half y )

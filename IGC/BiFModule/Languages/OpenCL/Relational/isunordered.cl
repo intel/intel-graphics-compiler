@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE isunordered( float x, float y )
 {
-    return __builtin_spirv_OpUnordered_f32_f32( x, y );
+    return SPIRV_BUILTIN(Unordered, _f32_f32, )( x, y );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isunordered_helper( float x, float y )
@@ -41,7 +41,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( isunordered, __intel_vector_isunordere
 
 INLINE int OVERLOADABLE isunordered( double x, double y )
 {
-    return __builtin_spirv_OpUnordered_f64_f64( x, y );
+    return SPIRV_BUILTIN(Unordered, _f64_f64, )( x, y );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isunordered_helper( double x, double y )
@@ -57,7 +57,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( isunordered, __intel_vector_isunordere
 
 INLINE int OVERLOADABLE isunordered( half x, half y )
 {
-    return __builtin_spirv_OpUnordered_f16_f16( x, y );
+    return SPIRV_BUILTIN(Unordered, _f16_f16, )( x, y );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isunordered_helper( half x, half y )

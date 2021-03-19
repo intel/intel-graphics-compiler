@@ -401,6 +401,68 @@ IN THE SOFTWARE.
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS( __func, __rettype, __argtype, __abbrargtype )     \
     GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT( __func, __func, __rettype, __argtype, __abbrargtype )
 
+// This is the same macro as GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT, but it supports both SPV-IR
+// representations. Once all builtins are translated to support SPV-IR, we can remove
+// GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT and use this once as default. For now, we need to keep both
+// macros.
+#define SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT(__func, __sfunc, __rettype, __argtype,            \
+                                                       __abbrargtype)                                    \
+    __rettype##2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v2##__abbrargtype##_v2##__abbrargtype, )(     \
+        __argtype##2 x, __argtype##2 y) {                                                                \
+        return (__rettype##2)(SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s0, y.s0),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s1, y.s1)); \
+    }                                                                                                    \
+    __rettype##3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v3##__abbrargtype##_v3##__abbrargtype, )(     \
+        __argtype##3 x, __argtype##3 y) {                                                                \
+        return (__rettype##3)(SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s0, y.s0),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s1, y.s1),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s2, y.s2)); \
+    }                                                                                                    \
+    __rettype##4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v4##__abbrargtype##_v4##__abbrargtype, )(     \
+        __argtype##4 x, __argtype##4 y) {                                                                \
+        return (__rettype##4)(SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s0, y.s0),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s1, y.s1),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s2, y.s2),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s3, y.s3)); \
+    }                                                                                                    \
+    __rettype##8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v8##__abbrargtype##_v8##__abbrargtype, )(     \
+        __argtype##8 x, __argtype##8 y) {                                                                \
+        return (__rettype##8)(SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s0, y.s0),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s1, y.s1),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s2, y.s2),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s3, y.s3),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s4, y.s4),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s5, y.s5),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s6, y.s6),  \
+                              SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s7, y.s7)); \
+    }                                                                                                    \
+    __rettype##16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(__func, _v16##__abbrargtype##_v16##__abbrargtype, )(  \
+        __argtype##16 x, __argtype##16 y) {                                                              \
+        return (__rettype##16)(                                                                          \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s0, y.s0),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s1, y.s1),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s2, y.s2),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s3, y.s3),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s4, y.s4),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s5, y.s5),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s6, y.s6),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s7, y.s7),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s8, y.s8),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.s9, y.s9),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.sa, y.sa),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.sb, y.sb),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.sc, y.sc),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.sd, y.sd),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.se, y.se),                    \
+            SPIRV_BUILTIN(__sfunc, _##__abbrargtype##_##__abbrargtype, )(x.sf, y.sf));                   \
+    }
+
+// This is the same macro as GENERATE_VECTOR_FUNCTIONS_2ARGS, but it supports both SPV-IR representations.
+// Once all builtins are translated to support SPV-IR, we can remove GENERATE_VECTOR_FUNCTIONS_2ARGS and
+// use this once as default. For now, we need to keep both macros.
+#define SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(__func, __rettype, __argtype, __abbrargtype)               \
+    SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS_EXPLICIT(__func, __func, __rettype, __argtype, __abbrargtype)
+
 #define GENERATE_VECTOR_FUNCTIONS_2ARGS_VV( __func, __rettype, __argtype0, __argtype1, __abbrargtype0, __abbrargtype1 ) \
     __rettype##2 __func##_v2##__abbrargtype0##_v2##__abbrargtype1( __argtype0##2 x, __argtype1##2 y ) {      \
         return (__rettype##2)( __func##_##__abbrargtype0##_##__abbrargtype1(x.s0, y.s0),                              \

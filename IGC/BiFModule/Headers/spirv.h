@@ -3749,67 +3749,67 @@ __bool8 __builtin_spirv_OpSignBitSet_v8f64(double8 x);
 __bool16 __builtin_spirv_OpSignBitSet_v16f64(double16 x);
 #endif // defined(cl_khr_fp64)
 
-bool __builtin_spirv_OpLessOrGreater_f16_f16(half x, half y);
-bool __builtin_spirv_OpLessOrGreater_f32_f32(float x, float y);
-__bool2 __builtin_spirv_OpLessOrGreater_v2f16_v2f16(half2 x, half2 y);
-__bool2 __builtin_spirv_OpLessOrGreater_v2f32_v2f32(float2 x, float2 y);
-__bool3 __builtin_spirv_OpLessOrGreater_v3f16_v3f16(half3 x, half3 y);
-__bool3 __builtin_spirv_OpLessOrGreater_v3f32_v3f32(float3 x, float3 y);
-__bool4 __builtin_spirv_OpLessOrGreater_v4f16_v4f16(half4 x, half4 y);
-__bool4 __builtin_spirv_OpLessOrGreater_v4f32_v4f32(float4 x, float4 y);
-__bool8 __builtin_spirv_OpLessOrGreater_v8f16_v8f16(half8 x, half8 y);
-__bool8 __builtin_spirv_OpLessOrGreater_v8f32_v8f32(float8 x, float8 y);
-__bool16 __builtin_spirv_OpLessOrGreater_v16f16_v16f16(half16 x, half16 y);
-__bool16 __builtin_spirv_OpLessOrGreater_v16f32_v16f32(float16 x, float16 y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _f16_f16, )(half x, half y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _f32_f32, )(float x, float y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v2f16_v2f16, )(half2 x, half2 y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v2f32_v2f32, )(float2 x, float2 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v3f16_v3f16, )(half3 x, half3 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v3f32_v3f32, )(float3 x, float3 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v4f16_v4f16, )(half4 x, half4 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v4f32_v4f32, )(float4 x, float4 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v8f16_v8f16, )(half8 x, half8 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v8f32_v8f32, )(float8 x, float8 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v16f16_v16f16, )(half16 x, half16 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v16f32_v16f32, )(float16 x, float16 y);
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpLessOrGreater_f64_f64(double x, double y);
-__bool2 __builtin_spirv_OpLessOrGreater_v2f64_v2f64(double2 x, double2 y);
-__bool3 __builtin_spirv_OpLessOrGreater_v3f64_v3f64(double3 x, double3 y);
-__bool4 __builtin_spirv_OpLessOrGreater_v4f64_v4f64(double4 x, double4 y);
-__bool8 __builtin_spirv_OpLessOrGreater_v8f64_v8f64(double8 x, double8 y);
-__bool16 __builtin_spirv_OpLessOrGreater_v16f64_v16f64(double16 x, double16 y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _f64_f64, )(double x, double y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v2f64_v2f64, )(double2 x, double2 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v3f64_v3f64, )(double3 x, double3 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v4f64_v4f64, )(double4 x, double4 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v8f64_v8f64, )(double8 x, double8 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(LessOrGreater, _v16f64_v16f64, )(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
 
-bool __builtin_spirv_OpOrdered_f16_f16(half x, half y);
-bool __builtin_spirv_OpOrdered_f32_f32(float x, float y);
-__bool2 __builtin_spirv_OpOrdered_v2f16_v2f16(half2 x, half2 y);
-__bool2 __builtin_spirv_OpOrdered_v2f32_v2f32(float2 x, float2 y);
-__bool3 __builtin_spirv_OpOrdered_v3f16_v3f16(half3 x, half3 y);
-__bool3 __builtin_spirv_OpOrdered_v3f32_v3f32(float3 x, float3 y);
-__bool4 __builtin_spirv_OpOrdered_v4f16_v4f16(half4 x, half4 y);
-__bool4 __builtin_spirv_OpOrdered_v4f32_v4f32(float4 x, float4 y);
-__bool8 __builtin_spirv_OpOrdered_v8f16_v8f16(half8 x, half8 y);
-__bool8 __builtin_spirv_OpOrdered_v8f32_v8f32(float8 x, float8 y);
-__bool16 __builtin_spirv_OpOrdered_v16f16_v16f16(half16 x, half16 y);
-__bool16 __builtin_spirv_OpOrdered_v16f32_v16f32(float16 x, float16 y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _f16_f16, )(half x, half y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _f32_f32, )(float x, float y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v2f16_v2f16, )(half2 x, half2 y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v2f32_v2f32, )(float2 x, float2 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v3f16_v3f16, )(half3 x, half3 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v3f32_v3f32, )(float3 x, float3 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v4f16_v4f16, )(half4 x, half4 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v4f32_v4f32, )(float4 x, float4 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v8f16_v8f16, )(half8 x, half8 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v8f32_v8f32, )(float8 x, float8 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v16f16_v16f16, )(half16 x, half16 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v16f32_v16f32, )(float16 x, float16 y);
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpOrdered_f64_f64(double x, double y);
-__bool2 __builtin_spirv_OpOrdered_v2f64_v2f64(double2 x, double2 y);
-__bool3 __builtin_spirv_OpOrdered_v3f64_v3f64(double3 x, double3 y);
-__bool4 __builtin_spirv_OpOrdered_v4f64_v4f64(double4 x, double4 y);
-__bool8 __builtin_spirv_OpOrdered_v8f64_v8f64(double8 x, double8 y);
-__bool16 __builtin_spirv_OpOrdered_v16f64_v16f64(double16 x, double16 y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _f64_f64, )(double x, double y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v2f64_v2f64, )(double2 x, double2 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v3f64_v3f64, )(double3 x, double3 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v4f64_v4f64, )(double4 x, double4 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v8f64_v8f64, )(double8 x, double8 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Ordered, _v16f64_v16f64, )(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
 
-bool __builtin_spirv_OpUnordered_f16_f16(half x, half y);
-bool __builtin_spirv_OpUnordered_f32_f32(float x, float y);
-__bool2 __builtin_spirv_OpUnordered_v2f16_v2f16(half2 x, half2 y);
-__bool2 __builtin_spirv_OpUnordered_v2f32_v2f32(float2 x, float2 y);
-__bool3 __builtin_spirv_OpUnordered_v3f16_v3f16(half3 x, half3 y);
-__bool3 __builtin_spirv_OpUnordered_v3f32_v3f32(float3 x, float3 y);
-__bool4 __builtin_spirv_OpUnordered_v4f16_v4f16(half4 x, half4 y);
-__bool4 __builtin_spirv_OpUnordered_v4f32_v4f32(float4 x, float4 y);
-__bool8 __builtin_spirv_OpUnordered_v8f16_v8f16(half8 x, half8 y);
-__bool8 __builtin_spirv_OpUnordered_v8f32_v8f32(float8 x, float8 y);
-__bool16 __builtin_spirv_OpUnordered_v16f16_v16f16(half16 x, half16 y);
-__bool16 __builtin_spirv_OpUnordered_v16f32_v16f32(float16 x, float16 y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _f16_f16, )(half x, half y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _f32_f32, )(float x, float y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v2f16_v2f16, )(half2 x, half2 y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v2f32_v2f32, )(float2 x, float2 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v3f16_v3f16, )(half3 x, half3 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v3f32_v3f32, )(float3 x, float3 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v4f16_v4f16, )(half4 x, half4 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v4f32_v4f32, )(float4 x, float4 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v8f16_v8f16, )(half8 x, half8 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v8f32_v8f32, )(float8 x, float8 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v16f16_v16f16, )(half16 x, half16 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v16f32_v16f32, )(float16 x, float16 y);
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpUnordered_f64_f64(double x, double y);
-__bool2 __builtin_spirv_OpUnordered_v2f64_v2f64(double2 x, double2 y);
-__bool3 __builtin_spirv_OpUnordered_v3f64_v3f64(double3 x, double3 y);
-__bool4 __builtin_spirv_OpUnordered_v4f64_v4f64(double4 x, double4 y);
-__bool8 __builtin_spirv_OpUnordered_v8f64_v8f64(double8 x, double8 y);
-__bool16 __builtin_spirv_OpUnordered_v16f64_v16f64(double16 x, double16 y);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _f64_f64, )(double x, double y);
+__bool2 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v2f64_v2f64, )(double2 x, double2 y);
+__bool3 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v3f64_v3f64, )(double3 x, double3 y);
+__bool4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v4f64_v4f64, )(double4 x, double4 y);
+__bool8 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v8f64_v8f64, )(double8 x, double8 y);
+__bool16 SPIRV_OVERLOADABLE SPIRV_BUILTIN(Unordered, _v16f64_v16f64, )(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
 
 // Atomic Instructions
