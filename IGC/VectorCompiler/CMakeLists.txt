@@ -44,29 +44,18 @@ message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 # --- LLVM ---
 if(IGC_OPTION__LLVM_FROM_SYSTEM OR IGC_OPTION__LLVM_PREBUILDS)
   message(STATUS "[VC] Using system or prebuilt llvm")
-
-  find_program(LLVM_TABLEGEN_EXE "llvm-tblgen"
-    PATHS ${LLVM_TOOLS_BINARY_DIR}
-    NO_DEFAULT_PATH
-    )
-  if(NOT LLVM_TABLEGEN_EXE)
-    message(FATAL_ERROR "[VC] Tablegen is not found! Please specify LLVM_TABLEGEN_EXE to tblgen executable")
-  endif()
-  message(STATUS "[VC] Found tblgen: ${LLVM_TABLEGEN_EXE}")
 else()
   message(STATUS "[VC] Using llvm source build")
-
   # Set correct module path.
   set(LLVM_CMAKE_DIR "${LLVM_SOURCE_DIR}/cmake/modules")
-
-  set(LLVM_TABLEGEN_EXE "llvm-tblgen")
-  message(STATUS "[VC] Using executable target llvm-tlbgen for tablegenning")
 endif()
 
 set(CMAKE_MODULE_PATH
   ${LLVM_CMAKE_DIR}
   ${CMAKE_MODULE_PATH}
   )
+
+set(LLVM_TABLEGEN_EXE "llvm-tblgen")
 
 include(AddLLVM)
 include(TableGen)
