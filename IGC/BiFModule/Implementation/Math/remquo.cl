@@ -51,8 +51,8 @@ float __builtin_spirv_OpenCL_remquo_f32_f32_p1i32( float         xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f32( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f32( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         float x = __builtin_spirv_OpenCL_fabs_f32(xx);
         float y = __builtin_spirv_OpenCL_fabs_f32(yy);
@@ -347,8 +347,8 @@ float __builtin_spirv_OpenCL_remquo_f32_f32_p0i32( float          xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f32( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f32( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         float x = __builtin_spirv_OpenCL_fabs_f32(xx);
         float y = __builtin_spirv_OpenCL_fabs_f32(yy);
@@ -643,8 +643,8 @@ float __builtin_spirv_OpenCL_remquo_f32_f32_p3i32( float        xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f32( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f32( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         float x = __builtin_spirv_OpenCL_fabs_f32(xx);
         float y = __builtin_spirv_OpenCL_fabs_f32(yy);
@@ -941,8 +941,8 @@ INLINE float __builtin_spirv_OpenCL_remquo_f32_f32_p4i32( float          xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f32( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f32( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f32, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f32, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         float x = __builtin_spirv_OpenCL_fabs_f32(xx);
         float y = __builtin_spirv_OpenCL_fabs_f32(yy);
@@ -2099,8 +2099,8 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p1i32( double        xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f64( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f64( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         double x = __builtin_spirv_OpenCL_fabs_f64(xx);
         double y = __builtin_spirv_OpenCL_fabs_f64(yy);
@@ -2395,8 +2395,8 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p0i32( double         xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f64( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f64( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         double x = __builtin_spirv_OpenCL_fabs_f64(xx);
         double y = __builtin_spirv_OpenCL_fabs_f64(yy);
@@ -2691,8 +2691,8 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p3i32( double       xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f64( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f64( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         double x = __builtin_spirv_OpenCL_fabs_f64(xx);
         double y = __builtin_spirv_OpenCL_fabs_f64(yy);
@@ -2989,8 +2989,8 @@ double __builtin_spirv_OpenCL_remquo_f64_f64_p4i32( double         xx,
     }
     else
     {
-        int signx = __builtin_spirv_OpSignBitSet_f64( xx ) ? -1 : 1;
-        int signy = __builtin_spirv_OpSignBitSet_f64( yy ) ? -1 : 1;
+        int signx = SPIRV_BUILTIN(SignBitSet, _f64, )( xx ) ? -1 : 1;
+        int signy = SPIRV_BUILTIN(SignBitSet, _f64, )( yy ) ? -1 : 1;
         int signn = (signx == signy) ? 1 : -1;
         double x = __builtin_spirv_OpenCL_fabs_f64(xx);
         double y = __builtin_spirv_OpenCL_fabs_f64(yy);

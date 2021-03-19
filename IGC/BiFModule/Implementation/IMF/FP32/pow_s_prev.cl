@@ -2012,7 +2012,7 @@ float __ocl_svml_spow_cout_rare (const float a, const float b)
                             else
                             {
                                 flTmp1 = (flAi * flAi);
-                                if (__builtin_spirv_OpIsInf_f32(flAi))
+                                if (SPIRV_BUILTIN(IsInf, _f32, )(flAi))
                                     flTmp1 = __builtin_spirv_OpenCL_fabs_f32(flAi);
                                 else
                                     flTmp1 = (flTmp1 * flBi);

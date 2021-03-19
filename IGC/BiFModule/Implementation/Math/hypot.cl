@@ -92,12 +92,12 @@ double __builtin_spirv_OpenCL_hypot_f64_f64( double x, double y )
     double minc = a.x > a.y ? a.y : a.x;
 
     double result;
-    if( __builtin_spirv_OpIsInf_f64(p.x) |
-        __builtin_spirv_OpIsInf_f64(p.y) )
+    if( SPIRV_BUILTIN(IsInf, _f64, )(p.x) |
+        SPIRV_BUILTIN(IsInf, _f64, )(p.y) )
     {
         result = INFINITY;
     }
-    else if( __builtin_spirv_OpIsNan_f64( minc ) )
+    else if( SPIRV_BUILTIN(IsNan, _f64, )( minc ) )
     {
         result = __builtin_spirv_OpenCL_nan_i32(0u);
     }
