@@ -144,7 +144,9 @@ std::unique_ptr<llvm::MemoryBuffer> getVCModuleBuffer() {
 
 static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
                            vc::CompileOptions &Opts) {
-  Opts.CPUStr = cmc::getPlatformStr(IGCPlatform.getPlatformInfo());
+  auto &PlatformInfo = IGCPlatform.getPlatformInfo();
+  unsigned RevId = PlatformInfo.usRevId;
+  Opts.CPUStr = cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
   Opts.WATable = std::make_unique<WA_TABLE>(IGCPlatform.getWATable());
 }
 

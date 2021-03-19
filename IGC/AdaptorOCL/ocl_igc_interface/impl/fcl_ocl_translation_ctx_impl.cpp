@@ -411,14 +411,14 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 
     PLATFORM *platformDescr = nullptr;
     const char *platformStr = nullptr;
-    uint32_t stepping       = 0U;
+    unsigned stepping       = 0U;
 
     if(globalState.GetPlatformImpl()){
       // NEO supports platform interface
       auto *PlatformImpl = globalState.GetPlatformImpl();
       platformDescr = &PlatformImpl->p;
-      platformStr = cmc::getPlatformStr(PlatformImpl->p);
       stepping = PlatformImpl->p.usRevId;
+      platformStr = cmc::getPlatformStr(PlatformImpl->p, /* inout */ stepping);
     }
 
     DumpInputs(platformDescr, platformStr, stepping,

@@ -37,10 +37,10 @@ IN THE SOFTWARE.
 
 namespace cmc {
 
-inline const char *getPlatformStr(PLATFORM Platform) {
+inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   auto Core = Platform.eDisplayCoreFamily;
   auto Product = Platform.eProductFamily;
-  auto RevId = Platform.usRevId;
+  IGC_ASSERT(RevId == Platform.usRevId);
 
   // we tend to believe eRenderFamily for display-less targets
   if (Platform.eRenderCoreFamily > Core)
