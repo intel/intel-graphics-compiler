@@ -39,12 +39,10 @@ using namespace llvm;
 namespace IGC
 {
     CComputeShader::CComputeShader(llvm::Function* pFunc, CShaderProgram* pProgram)
-        : CComputeShaderBase(pFunc, pProgram)
+        : CComputeShaderCommon(pFunc, pProgram)
         , m_dispatchAlongY(false)
         , m_disableMidThreadPreemption(false)
         , m_hasSLM(false)
-        , m_ThreadIDLayout(ThreadIDLayout::X)
-        , m_walkOrder(WO_XYZ)
         , m_threadGroupModifier_X(0)
         , m_threadGroupModifier_Y(0)
     {
@@ -119,38 +117,10 @@ namespace IGC
         }
     }
 
-    void CComputeShader::selectWalkOrder()
-    {
-        const ComputeShaderContext* pCtx =
-            static_cast<const ComputeShaderContext*>(GetContext());
-
-        if (pCtx->getModuleMetaData()->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile)
-        {
-            m_ThreadIDLayout = ThreadIDLayout::QuadTile;
-            return;
-        }
-
-        if ((m_numberOfTypedAccess >= m_numberOfUntypedAccess) &&
-            m_threadGroupSize_Y % 4 == 0 &&
-            !pCtx->getModuleMetaData()->csInfo.disableLocalIdOrderOptimizations &&
-            IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder)) {
-            m_ThreadIDLayout = ThreadIDLayout::TileY;
-            m_walkOrder = WO_YXZ;
-        }
-
-        bool needsLinearWalk =
-            pCtx->getModuleMetaData()->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
-        if (needsLinearWalk)
-        {
-            m_ThreadIDLayout = ThreadIDLayout::X;
-            m_walkOrder = WO_XYZ;
-        }
-    }
-
     void CComputeShader::CreateThreadPayloadData(void*& pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength)
     {
 
-        CComputeShaderBase::CreateThreadPayloadData(
+        CComputeShaderCommon::CreateThreadPayloadData(
             pThreadPayload,
             curbeTotalDataLength,
             curbeReadLength,
@@ -159,7 +129,6 @@ namespace IGC
 
     void CComputeShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
     {
-
         m_pThread_ID_in_Group_X = nullptr;
         m_pThread_ID_in_Group_Y = nullptr;
         m_pThread_ID_in_Group_Z = nullptr;
@@ -416,7 +385,13 @@ namespace IGC
         {
             m_dispatchAlongY = true;
         }
-        selectWalkOrder();
+        selectWalkOrder(
+            false,
+            m_numberOfTypedAccess,
+            m_numberOfUntypedAccess,
+            m_threadGroupSize_X,
+            m_threadGroupSize_Y,
+            m_threadGroupSize_Z);
     }
 
     void CComputeShader::AddPrologue()

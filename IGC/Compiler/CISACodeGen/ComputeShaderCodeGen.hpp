@@ -24,11 +24,11 @@ IN THE SOFTWARE.
 
 #pragma once
 
-#include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
+#include "Compiler/CISACodeGen/ComputeShaderCommon.hpp"
 
 namespace IGC
 {
-    class CComputeShader : public CComputeShaderBase
+    class CComputeShader : public CComputeShaderCommon
     {
     public:
         CComputeShader(llvm::Function* pFunc, CShaderProgram* pProgram);
@@ -69,14 +69,6 @@ namespace IGC
         uint                   m_threadGroupModifier_X;
         uint                   m_threadGroupModifier_Y;
     private:
-        enum WALK_ORDER {
-            WO_XYZ,
-            WO_XZY,
-            WO_YXZ,
-            WO_ZXY,
-            WO_YZX,
-            WO_ZYX
-        };
         CShader* getSIMDEntry(CodeGenContext* ctx, SIMDMode simdMode)
         {
             CShader* prog = ctx->m_retryManager.GetSIMDEntry(simdMode);
@@ -89,9 +81,6 @@ namespace IGC
                 return m_parent->GetShader(simdMode);
             }
         }
-        void selectWalkOrder();
-        ThreadIDLayout m_ThreadIDLayout;
-        WALK_ORDER m_walkOrder;
     };
 
 }
