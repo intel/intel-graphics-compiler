@@ -408,7 +408,7 @@ auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
                              ExcludePredT ExcludePred,
                              WeightCalculatorT WeightCalculator)
     -> std::vector<genx::ranges::range_pointer_t<ForwardRange>> {
-  IGC_ASSERT(Bound >= 0 && "bound must be nonnegative");
+  IGC_ASSERT_MESSAGE(Bound >= 0, "bound must be nonnegative");
   using GVPtr = genx::ranges::range_pointer_t<ForwardRange>;
   using GVRef = genx::ranges::range_reference_t<ForwardRange>;
   if (Bound == 0)
@@ -597,12 +597,12 @@ private:
   void addNode(Instruction &Inst, int OperandNo, Value *NewOperand) {
     // Users are covered here too as phi use can be back edge, so RPO won't help
     // and it won't be covered.
-    IGC_ASSERT_MESSAGE(
-        !isa<PHINode>(Inst) &&
-            (IsTerminal(Inst) ||
-             std::all_of(Inst.user_begin(), Inst.user_end(),
-                         [](const User *U) { return !isa<PHINode>(U); })),
-        "phi-nodes aren't yet supported");
+    IGC_ASSERT_MESSAGE(!isa<PHINode>(Inst),
+      "phi-nodes aren't yet supported");
+    IGC_ASSERT_MESSAGE(IsTerminal(Inst) ||
+      std::all_of(Inst.user_begin(), Inst.user_end(),
+        [](const User *U) { return !isa<PHINode>(U); }),
+      "phi-nodes aren't yet supported");
     auto InstIsTerminal = IsTerminal(Inst);
     Info.push_back({&Inst, OperandNo, NewOperand, InstIsTerminal});
     if (!InstIsTerminal)
@@ -624,9 +624,9 @@ static std::vector<Value *> createNewOperands(const InstToRebuild &OrigInst) {
   for (auto &&OpReplacement : zip(OrigInst.OperandNos, OrigInst.NewOperands)) {
     int OperandNo = std::get<0>(OpReplacement);
     Value *NewOperand = std::get<1>(OpReplacement);
-    IGC_ASSERT_MESSAGE(OperandNo >= 0 &&
-                           OperandNo < static_cast<int>(NewOperands.size()),
-                       "no such operand");
+    IGC_ASSERT_MESSAGE(OperandNo >= 0, "no such operand");
+    IGC_ASSERT_MESSAGE(OperandNo < static_cast<int>(NewOperands.size()),
+      "no such operand");
     NewOperands[OperandNo] = NewOperand;
   }
   return std::move(NewOperands);
@@ -706,9 +706,8 @@ public:
 
 private:
   Value &getSingleNewOperand() {
-    IGC_ASSERT_MESSAGE(
-        NewOperands.size() == 1,
-        "it should've been called only for instructions with a single operand");
+    IGC_ASSERT_MESSAGE(NewOperands.size() == 1,
+      "it should've been called only for instructions with a single operand");
     return *NewOperands.front();
   }
 };
@@ -823,8 +822,7 @@ private:
                               const UseToRebuild &CurUse) {
     IGC_ASSERT_MESSAGE(InstInfo.User == CurUse.User,
                        "trying to append a wrong use with wrong user");
-    IGC_ASSERT_MESSAGE(
-        InstInfo.IsTerminal == CurUse.IsTerminal,
+    IGC_ASSERT_MESSAGE(InstInfo.IsTerminal == CurUse.IsTerminal,
         "two uses don't agree on the instruction being terminal");
     InstInfo.OperandNos.push_back(CurUse.OperandNo);
     auto *NewOperand = CurUse.NewOperand;
@@ -1110,8 +1108,8 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
   }
 
   FunctionType *NFTy = FunctionType::get(F->getReturnType(), ArgTys, false);
-  IGC_ASSERT((NFTy != F->getFunctionType()) &&
-         "type out of sync, expect bool arguments");
+  IGC_ASSERT_MESSAGE((NFTy != F->getFunctionType()),
+    "type out of sync, expect bool arguments");
 
   // Add any function attributes.
   AttributeSet FnAttrs = PAL.getFnAttributes();
@@ -1194,7 +1192,8 @@ struct GlobalArgsInfo {
     IGC_ASSERT_MESSAGE(FirstGlobalArgIdx != UndefIdx,
                        "first global arg index isn't set");
     auto Idx = ArgIdx - FirstGlobalArgIdx;
-    IGC_ASSERT_MESSAGE(Idx >= 0 && Idx < static_cast<int>(Globals.size()),
+    IGC_ASSERT_MESSAGE(Idx >= 0, "out of bound access");
+    IGC_ASSERT_MESSAGE(Idx < static_cast<int>(Globals.size()),
                        "out of bound access");
     return Globals[ArgIdx - FirstGlobalArgIdx];
   }
@@ -1429,8 +1428,7 @@ static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
   if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
     auto Kind =
         NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
-    IGC_ASSERT_MESSAGE(
-        Kind == GlobalArgKind::ByValueInOut,
+    IGC_ASSERT_MESSAGE(Kind == GlobalArgKind::ByValueInOut,
         "only passed by value localized global should be copied-out");
     Builder.CreateStore(
         OutVal, NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(ArgIdx));
@@ -1464,8 +1462,7 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
            LocalizedGloabls)) {
     GVArg.setName(GAI.GV->getName() + ".in");
     if (!GVArg.getType()->isPointerTy()) {
-      IGC_ASSERT_MESSAGE(
-          isa<AllocaInst>(MaybeAlloca),
+      IGC_ASSERT_MESSAGE(isa<AllocaInst>(MaybeAlloca),
           "an alloca is expected when pass localized global by value");
       MaybeAlloca->setName(GAI.GV->getName() + ".local");
     }
@@ -1490,21 +1487,20 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
     IGC_ASSERT_MESSAGE(RetIdx == 0,
                        "original return value must be at zero index");
     Value *OrigRetVal = OrigRet.getReturnValue();
-    IGC_ASSERT(OrigRetVal && OrigRetVal->getType()->isSingleValueType() &&
+    IGC_ASSERT_MESSAGE(OrigRetVal, "type unexpected");
+    IGC_ASSERT_MESSAGE(OrigRetVal->getType()->isSingleValueType(),
                "type unexpected");
     return Builder.CreateInsertValue(&NewRetVal, OrigRetVal, RetIdx);
   }
   if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
     auto Kind =
         NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
-    IGC_ASSERT_MESSAGE(
-        Kind == GlobalArgKind::ByValueInOut,
+    IGC_ASSERT_MESSAGE(Kind == GlobalArgKind::ByValueInOut,
         "only passed by value localized global should be copied-out");
     Value *LocalizedGlobal =
         LocalizedGlobals[ArgIdx -
                          NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx];
-    IGC_ASSERT_MESSAGE(
-        isa<AllocaInst>(LocalizedGlobal),
+    IGC_ASSERT_MESSAGE(isa<AllocaInst>(LocalizedGlobal),
         "an alloca is expected when pass localized global by value");
     Value *LocalizedGlobalVal = Builder.CreateLoad(LocalizedGlobal);
     return Builder.CreateInsertValue(&NewRetVal, LocalizedGlobalVal, RetIdx);
@@ -1532,8 +1528,7 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
     return new LoadInst(GAI.GV->getType()->getPointerElementType(), GAI.GV,
                         GAI.GV->getName() + ".val",
                         /* isVolatile */ false, &OrigCall);
-  IGC_ASSERT_MESSAGE(
-      GAI.Kind == GlobalArgKind::ByPointer,
+  IGC_ASSERT_MESSAGE(GAI.Kind == GlobalArgKind::ByPointer,
       "localized global can be passed only by value or by pointer");
   auto *GVTy = cast<PointerType>(GAI.GV->getType());
   // No additional work when addrspaces match
@@ -1695,9 +1690,10 @@ private:
         [InsertPt](Value *Replacement, Argument &OrigArg) -> Value * {
           if (Replacement->getType() == OrigArg.getType())
             return Replacement;
-          IGC_ASSERT_MESSAGE(isa<PointerType>(Replacement->getType()) &&
-                                 isa<PointerType>(OrigArg.getType()),
-                             "only pointers can posibly mismatch");
+          IGC_ASSERT_MESSAGE(isa<PointerType>(Replacement->getType()),
+            "only pointers can posibly mismatch");
+          IGC_ASSERT_MESSAGE(isa<PointerType>(OrigArg.getType()),
+            "only pointers can posibly mismatch");
           IGC_ASSERT_MESSAGE(
               Replacement->getType()->getPointerAddressSpace() !=
                   OrigArg.getType()->getPointerAddressSpace(),
@@ -2116,7 +2112,7 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
                     GenXIntrinsic::GenXRegion::WrVStrideOperandNum))->getSExtValue();
               unsigned Width = cast<ConstantInt>(CI->getOperand(
                     GenXIntrinsic::GenXRegion::WrWidthOperandNum))->getZExtValue();
-              IGC_ASSERT((Width > 0)&& "Width of a region must be non-zero");
+              IGC_ASSERT_MESSAGE((Width > 0), "Width of a region must be non-zero");
               int Stride = cast<ConstantInt>(CI->getOperand(
                     GenXIntrinsic::GenXRegion::WrStrideOperandNum))->getSExtValue();
               OpndEntry = &ValMap[CI->getOperand(
@@ -2438,7 +2434,8 @@ static bool isBitCastForLifetimeMarker(Value *V) {
 
 // Check whether two values are bitwise identical.
 static bool isBitwiseIdentical(Value *V1, Value *V2) {
-  IGC_ASSERT(V1 && V2 && "null value");
+  IGC_ASSERT_MESSAGE(V1, "null value");
+  IGC_ASSERT_MESSAGE(V2, "null value");
   if (V1 == V2)
     return true;
   if (BitCastInst *BI = dyn_cast<BitCastInst>(V1))

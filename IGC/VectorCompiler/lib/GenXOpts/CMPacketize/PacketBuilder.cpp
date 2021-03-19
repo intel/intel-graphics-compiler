@@ -109,7 +109,7 @@ namespace pktz
     void PacketBuilder::SetTempAlloca(Value* inst)
     {
         AllocaInst* pAlloca = dyn_cast<AllocaInst>(inst);
-        IGC_ASSERT(pAlloca && "Unexpected non-alloca instruction");
+        IGC_ASSERT_MESSAGE(pAlloca, "Unexpected non-alloca instruction");
         MDNode* N = MDNode::get(getContext(), MDString::get(getContext(), "is_temp_alloca"));
         pAlloca->setMetadata("is_temp_alloca", N);
     }
@@ -117,7 +117,7 @@ namespace pktz
     bool PacketBuilder::IsTempAlloca(Value* inst)
     {
         AllocaInst* pAlloca = dyn_cast<AllocaInst>(inst);
-        IGC_ASSERT(pAlloca && "Unexpected non-alloca instruction");
+        IGC_ASSERT_MESSAGE(pAlloca, "Unexpected non-alloca instruction");
 
         return (pAlloca->getMetadata("is_temp_alloca") != nullptr);
     }

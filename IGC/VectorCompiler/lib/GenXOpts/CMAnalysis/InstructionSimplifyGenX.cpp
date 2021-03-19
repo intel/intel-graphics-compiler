@@ -94,8 +94,8 @@ static Value &getWriteOldValueOperand(Instruction &Inst) {
 // \p ToProcess output iterator.
 template <typename OutIter>
 void processWriteWithUndefInput(Instruction &Inst, OutIter ToProcess) {
-  IGC_ASSERT(isWriteWithUndefInput(Inst) &&
-         "wrong argument: write intrinsic with undef input was expected");
+  IGC_ASSERT_MESSAGE(isWriteWithUndefInput(Inst),
+   "wrong argument: write intrinsic with undef input was expected");
   auto *OldVal = &getWriteOldValueOperand(Inst);
   Inst.replaceAllUsesWith(OldVal);
   // As a result of operand promotion we can get new suitable instructions.

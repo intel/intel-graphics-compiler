@@ -731,7 +731,8 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *pInst) {
   B->IRB()->SetInsertPoint(pInst);
   CallInst *pCall = cast<CallInst>(pInst);
   Function *f = pCall->getCalledFunction();
-  IGC_ASSERT(f && f->isIntrinsic());
+  IGC_ASSERT(f);
+  IGC_ASSERT(f->isIntrinsic());
   auto id = GenXIntrinsic::getAnyIntrinsicID(f);
 
   // packetize intrinsic operands
@@ -780,7 +781,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       pReplacedInst = CallInst::Create(VF, ArgOps, CI->getName(), CI);
       return pReplacedInst;
     } else
-      IGC_ASSERT(false);
+      IGC_ASSERT(0);
   }
   uint32_t opcode = pInst->getOpcode();
 
@@ -1400,8 +1401,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         return replacement;
       }
       case GenXIntrinsic::genx_lane_id: {
-        IGC_ASSERT((CI->getType()->getIntegerBitWidth() == 32) &&
-               "Expected to return 32-bit integer.");
+        IGC_ASSERT_MESSAGE((CI->getType()->getIntegerBitWidth() == 32),
+          "Expected to return 32-bit integer.");
         if (B->mVWidth == 8) {
           std::initializer_list<uint32_t> l = {0, 1, 2, 3, 4, 5, 6, 7};
           replacement = B->C(l);
@@ -1415,7 +1416,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
               16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
           replacement = B->C(l);
         } else
-          IGC_ASSERT(false);
+          IGC_ASSERT(0);
         return replacement;
       } break;
       case GenXIntrinsic::genx_rdregionf:

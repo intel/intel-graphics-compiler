@@ -30,7 +30,7 @@ namespace pktz
 {
     void PacketBuilder::AssertMemoryUsageParams(Value* ptr, JIT_MEM_CLIENT usage)
     {
-        IGC_ASSERT(ptr->getType() != mInt64Ty &&
+        IGC_ASSERT_MESSAGE(ptr->getType() != mInt64Ty,
             "Address appears to be GFX access.  Requires translation through BuilderGfxMem.");
     }
 

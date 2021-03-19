@@ -64,8 +64,8 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
       Stride(1), Offset(0), Indirect(0), IndirectIdx(0), IndirectAddrOffset(0),
       Mask(0), ParentWidth(0)
 {
-  IGC_ASSERT(!Ty->isAggregateType() &&
-         "cannot create region based on an aggregate type");
+  IGC_ASSERT_MESSAGE(!Ty->isAggregateType(),
+    "cannot create region based on an aggregate type");
   ElementTy = Ty;
   if (VectorType *VT = dyn_cast<VectorType>(ElementTy)) {
     ElementTy = VT->getElementType();
@@ -78,7 +78,8 @@ CMRegion::CMRegion(Type *Ty, const DataLayout *DL)
   } else {
     unsigned BitSize = ElementTy->getPrimitiveSizeInBits();
     ElementBytes = alignTo<8>(BitSize) / 8;
-    IGC_ASSERT(ElementBytes && "Cannot compute element size without data layout");
+    IGC_ASSERT_MESSAGE(ElementBytes,
+      "Cannot compute element size without data layout");
   }
 }
 
@@ -139,6 +140,7 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
       break;
     default:
       IGC_ASSERT(0);
+      break;
   }
   // Get the region parameters.
   IGC_ASSERT(Subregion);
@@ -156,15 +158,8 @@ CMRegion::CMRegion(Instruction *Inst, bool WantParentWidth)
   ArgIdx += 3;
   // Get the start index.
   Value *V = Inst->getOperand(ArgIdx);
-  IGC_ASSERT(V->getType()->getScalarType()->isIntegerTy(16) &&
-         "region index must be i16 or vXi16 type");
-
-#if 0 // _DEBUG
-  // In one transform, this check does not work in the middle of transformation
-  if (VectorType *VT = dyn_cast<VectorType>(V->getType()))
-    IGC_ASSERT(VT->getNumElements() * Width == NumElements &&
-           "vector region index size mismatch");
-#endif
+  IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(16),
+    "region index must be i16 or vXi16 type");
 
   if (ConstantInt *CI = dyn_cast<ConstantInt>(V))
     Offset = CI->getSExtValue(); // Constant index.
@@ -289,7 +284,7 @@ void CMRegion::getSubregion(unsigned StartIdx, unsigned Size)
 Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
     Instruction *InsertBefore, const DebugLoc &DL, bool AllowScalar)
 {
-  IGC_ASSERT(ElementBytes && "not expecting i1 element type");
+  IGC_ASSERT_MESSAGE(ElementBytes, "not expecting i1 element type");
 
   Value *StartIdx = getStartIdx(Name, InsertBefore, DL);
   IntegerType *I32Ty = Type::getInt32Ty(Input->getContext());
@@ -360,16 +355,14 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
                                             const Twine &Name,
                                             Instruction *InsertBefore,
                                             const DebugLoc &DL) {
-  IGC_ASSERT(ElementBytes && "not expecting i1 element type");
+  IGC_ASSERT_MESSAGE(ElementBytes, "not expecting i1 element type");
   if (isa<VectorType>(Input->getType()))
-    IGC_ASSERT(NumElements ==
-                   cast<VectorType>(Input->getType())->getNumElements() &&
-               "input value and region are inconsistent");
+    IGC_ASSERT_MESSAGE(NumElements == cast<VectorType>(Input->getType())->getNumElements(),
+      "input value and region are inconsistent");
   else
-    IGC_ASSERT(NumElements == 1 && "input value and region are inconsistent");
-  IGC_ASSERT(OldVal->getType()->getScalarType() ==
-             Input->getType()->getScalarType() &&
-         "scalar type mismatch");
+    IGC_ASSERT_MESSAGE(NumElements == 1, "input value and region are inconsistent");
+  IGC_ASSERT_MESSAGE(OldVal->getType()->getScalarType() == Input->getType()->getScalarType(),
+    "scalar type mismatch");
   Value *StartIdx = getStartIdx(Name, InsertBefore, DL);
   IntegerType *I32Ty = Type::getInt32Ty(Input->getContext());
   Value *ParentWidthArg = UndefValue::get(I32Ty);
@@ -523,7 +516,7 @@ Instruction *CMRegion::createWrPredPredRegion(Value *OldVal, Value *Input,
   Function *CalledFunc = GenXIntrinsic::getGenXDeclaration(
       InsertBefore->getParent()->getParent()->getParent(),
       GenXIntrinsic::genx_wrpredpredregion, Tys);
-  Value *Args[] = { OldVal, Input, 
+  Value *Args[] = { OldVal, Input,
       ConstantInt::get(Type::getInt32Ty(InsertBefore->getContext()), Index),
       Pred };
   auto NewInst = CallInst::Create(CalledFunc, Args, "", InsertBefore);
@@ -547,7 +540,7 @@ void CMRegion::setRegionCalledFunc(Instruction *Inst)
     Opnds.push_back(CI->getOperand(i));
   Function *Decl = getGenXRegionDeclaration(
       Inst->getParent()->getParent()->getParent(),
-	  GenXIntrinsic::getGenXIntrinsicID(Inst),
+      GenXIntrinsic::getGenXIntrinsicID(Inst),
       Inst->getType(), Opnds);
   CI->setOperand(CI->getNumArgOperands(), Decl);
 }
@@ -793,7 +786,8 @@ Constant *CMRegion::evaluateConstantWrRegion(Constant *OldVal, Constant *NewVal)
  */
 bool CMRegion::changeElementType(Type *NewElementType)
 {
-  IGC_ASSERT(Offset % ElementBytes == 0 && "Impossible offset (in bytes) for data type");
+  IGC_ASSERT(ElementBytes);
+  IGC_ASSERT_MESSAGE(Offset % ElementBytes == 0, "Impossible offset (in bytes) for data type");
   unsigned NewElementBytes = NewElementType->getPrimitiveSizeInBits() / 8U;
   if (NewElementType->getPrimitiveSizeInBits())
     NewElementBytes = NewElementBytes ? NewElementBytes : 1;
@@ -804,7 +798,7 @@ bool CMRegion::changeElementType(Type *NewElementType)
   }
   unsigned Ratio = NewElementBytes / ElementBytes;
   if (Ratio >= 1) {
-    IGC_ASSERT(isPowerOf2_32(Ratio) && "Ratio must be pow of 2");
+    IGC_ASSERT_MESSAGE(isPowerOf2_32(Ratio), "Ratio must be pow of 2");
     // Trying to make the element size bigger.
     if (Width & (Ratio - 1))
       return false; // width misaligned
@@ -829,8 +823,9 @@ bool CMRegion::changeElementType(Type *NewElementType)
     return true;
   }
   // Trying to make the element size smaller.
+  IGC_ASSERT(NewElementBytes);
   Ratio = ElementBytes / NewElementBytes;
-  IGC_ASSERT(isPowerOf2_32(Ratio) && "Ratio must be pow of 2");
+  IGC_ASSERT_MESSAGE(isPowerOf2_32(Ratio), "Ratio must be pow of 2");
   unsigned LogRatio = Log2_32(Ratio);
   if (Stride == 1 || Width == 1) {
     // Row contiguous.
@@ -871,14 +866,17 @@ bool CMRegion::append(CMRegion AR)
   IGC_ASSERT(AR.isWholeNumRows());
   if (Indirect != AR.Indirect)
     return false;
+  IGC_ASSERT(AR.Width);
   unsigned ARNumRows = AR.NumElements / AR.Width;
   // Consider each row of AR separately.
   for (unsigned ARRow = 0; ARRow != ARNumRows;
       ++ARRow, AR.Offset += AR.VStride * AR.ElementBytes) {
     if (NumElements == Width) {
       // This region is currently 1D.
-      if (NumElements == 1)
+      if (NumElements == 1) {
+        IGC_ASSERT(ElementBytes);
         Stride = (AR.Offset - Offset) / ElementBytes;
+      }
       else if (AR.Width != 1 && Stride != AR.Stride)
         return false; // Mismatched stride.
       int NextOffset = Offset + Width * Stride * ElementBytes;
@@ -891,11 +889,13 @@ bool CMRegion::append(CMRegion AR)
       // AR is the start (or whole) of a second row.
       if (AR.Width > Width)
         return false; // AR row is bigger than this row.
+      IGC_ASSERT(ElementBytes);
       VStride = (AR.Offset - Offset) / ElementBytes;
       NumElements += AR.Width;
       continue;
     }
     // This region is already 2D.
+    IGC_ASSERT(Width);
     unsigned ExtraBit = NumElements % Width;
     int NextOffset = Offset + ((VStride * (NumElements / Width))
         + ExtraBit) * ElementBytes;
