@@ -5261,6 +5261,35 @@ void Interference::dumpInterference() const
     }
 }
 
+void Interference::dumpVarInterference() const
+{
+
+    std::cout << "\n\n **** Var Interference Table ****\n";
+    for (G4_Declare* decl : gra.kernel.Declares)
+    {
+        if (decl->getRegVar()->isRegAllocPartaker())
+        {
+            unsigned i = decl->getRegVar()->getId();
+            //std::cout << "(" << i << ") ";
+            lrs[i]->dump();
+            std::cout << "\n";
+            for (G4_Declare* decl : gra.kernel.Declares)
+            {
+                if (decl->getRegVar()->isRegAllocPartaker())
+                {
+                    unsigned j = decl->getRegVar()->getId();
+                    if (interfereBetween(i, j))
+                    {
+                        std::cout << "\t";
+                        lrs[j]->getVar()->emit(std::cout);
+                    }
+                }
+            }
+            std::cout << "\n\n";
+        }
+    }
+}
+
 GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_) :
     gra(live.gra), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
     intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
@@ -6538,7 +6567,6 @@ bool GraphColor::regAlloc(
 
     if (kernel.getOption(vISA_DumpRAIntfGraph))
         intf.dumpInterference();
-
     //
     // determine coloring order
     //

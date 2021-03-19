@@ -509,6 +509,7 @@ namespace vISA
         }
 
         void dumpInterference() const;
+        void dumpVarInterference() const;
         bool dumpIntf(const char*) const;
         void interferenceVerificationForSplit() const;
 
