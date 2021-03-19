@@ -461,6 +461,7 @@ enum FunctionControlMask {
     FunctionControlDontInlineMask = 0x00000002,
     FunctionControlPureMask = 0x00000004,
     FunctionControlConstMask = 0x00000008,
+    FunctionControlOptNoneINTELMask = 0x00010000,
     FunctionControlMaskMax = 0xF /* internal use only */
 };
 
@@ -617,6 +618,7 @@ enum Capability {
     CapabilityFPFastMathModeINTEL = 5837,
     CapabilityUnstructuredLoopControlsINTEL = 5886,
     CapabilityLongConstantCompositeINTEL = 6089,
+    CapabilityOptNoneINTEL = 6094
 };
 
 enum Op {

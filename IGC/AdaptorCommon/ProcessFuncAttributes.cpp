@@ -329,6 +329,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             continue;
         }
 
+        if (F->hasFnAttribute(llvm::Attribute::OptimizeNone))
+        {
+            SetNoInline(F);
+            continue;
+        }
+
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
                 // Go through call sites and remove NoInline atrributes.
