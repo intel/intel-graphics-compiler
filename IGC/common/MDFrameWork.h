@@ -303,6 +303,8 @@ namespace IGC
         bool forcedVISAPreRAScheduler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
+        // force enables dispatch along y optimization
+        bool dispatchAlongY = false;
         // If nullopt, then there is no requirement
         std::optional<ThreadIDLayout> neededThreadIdLayout;
     };
