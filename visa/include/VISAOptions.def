@@ -250,7 +250,7 @@ DEF_VISA_OPTION(vISA_DstSrcOverlapWA,               ET_BOOL,  "-dstSrcOverlapWA"
 DEF_VISA_OPTION(vISA_noSendSrcDstOverlap,           ET_BOOL,  "-noSendSrcDstOverlap", UNUSED, false)
 DEF_VISA_OPTION(vISA_cloneSampleInst,               ET_BOOL,  "-cloneSampleInst", UNUSED, false)
 DEF_VISA_OPTION(vISA_cloneEvaluateSampleInst,       ET_BOOL,  "-cloneEvaluateSampleInst", UNUSED, false)
-DEF_VISA_OPTION(vISA_expandMulPostSchedule,         ET_BOOL,  "-expandMulPostSchedule", UNUSED, false)
+DEF_VISA_OPTION(vISA_expandMulPostSchedule,         ET_BOOL,  "-expandMulPostSchedule", UNUSED, true)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo,   ET_BOOL,  "-generateDebugInfo", UNUSED, false)

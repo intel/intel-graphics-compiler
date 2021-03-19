@@ -2471,10 +2471,9 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
 // Translate MULH into
 // MUL acc src0 src1
 // MACH dst src0 src1
-bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
+void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
 {
     G4_INST* inst = *i;
-    INST_LIST_ITER iter = i;
     G4_ExecSize execSize = inst->getExecSize();
 
     int inst_opt = inst->getOption();
@@ -2541,23 +2540,20 @@ bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
             execSize > 1 ? builder.getRegionStride2() : builder.getRegionScalar(),
             dst->getType());
 
-        ++iter;
-
         G4_INST* tmpMov = builder.createMov(execSize, dst, tmpSrc, inst->getOption(), false);
         tmpMov->setPredicate(builder.duplicateOperand(inst->getPredicate()));
 
-        bb->insertBefore(iter, tmpMov);
-        //it will decrement back to mov
-        i = iter;
+        bb->insertAfter(i, tmpMov);
 
-        /*
-            Need to remove dst from uses list of mulh, and add them to movInst useList
-            add movInst to uselist of mulh.
-            Add mulh to def instruction list of movInst
-        */
+        // Check the new inserted mov inst
+        i++;
+
+        // Need to remove dst from uses list of mulh, and add them to movInst useList
+        // add movInst to uselist of mulh.
+        // Add mulh to def instruction list of movInst
         inst->transferUse(tmpMov);
         inst->addDefUse(tmpMov, Opnd_src0);
-        return true;
+        return;
     }
 
     // src1 does not support modifier
@@ -2585,8 +2581,6 @@ bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul + Macl expanding will
         // be done in expandMulPostSchedule pass.
-
-        bool newInstInserted = false;
 
         // sat cannot be used at all in the macro sequence
         // this effectivly means sat is broken for mul D D D
@@ -2616,22 +2610,19 @@ bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
             // add a tmp mov
             inst->setDest(insertMovAfter(i, dst, dst->getType(), bb));
             end_iter++;
-            newInstInserted = true;
         }
 
         if (execSize > builder.getNativeExecSize())
         {
             auto start_iter = i;
-            splitDWMULInst(i, end_iter, bb);
-            newInstInserted = true;
+            splitDWMULInst(start_iter, end_iter, bb);
+            // start_iter points to the first half of mulh. Need double check this new inserted mulh to see if need split again
+            i = start_iter;
         }
-
-        if (newInstInserted)
+        else
         {
-            // it will decrease back to mulh
             i++;
         }
-        return newInstInserted;
     }
     else
     {
@@ -2645,7 +2636,7 @@ bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         G4_INST* newMul = builder.createBinOp(G4_mul, execSize,
             acc_dst_opnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt, false);
 
-        bb->insertBefore(iter, newMul);
+        bb->insertBefore(i, newMul);
         inst->copyDefsTo(newMul, false);
 
         fixMulSrc1(std::prev(i), bb);
@@ -2692,10 +2683,16 @@ bool HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         {
             auto start_iter = std::prev(i);
             splitDWMULInst(start_iter, end_iter, bb);
-            i = end_iter;
+            // start_iter ponits to the first half of mul. Need to check the new inserted mul/mach instructions
+            i = start_iter;
         }
-        return true;
+        else
+        {
+            // i points to mach, and need to check the new inserted mul before mach
+            i = std::prev(i);
+        }
     }
+    return;
 }
 
 //
@@ -3580,6 +3577,11 @@ void HWConformity::splitDWMULInst(INST_LIST_ITER& start, INST_LIST_ITER& end, G4
         evenlySplitInst(iter, bb);
         G4_INST* expand_sec_half_op = *iter;
         bb->insertBefore(last_iter, expand_sec_half_op);
+        // For the case that only one instruction needed to split, that is to say start equals to end
+        if (start == end)
+        {
+            start--;
+        }
         end--;
         bb->erase(iter);
     }
@@ -5282,14 +5284,9 @@ void HWConformity::conformBB(G4_BB* bb)
 
         if (inst->opcode() == G4_mulh)
         {
-            if (fixMULHInst(i, bb))
-            {
-                // inserted mul before
-                // check the newly added MUL inst
-                i--;
-                next_iter = i;
-                continue;
-            }
+            fixMULHInst(i, bb);
+            next_iter = i;
+            continue;
         }
 
 #ifdef _DEBUG
