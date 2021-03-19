@@ -226,7 +226,7 @@ double sun_pow(double x, double y)
     /* special value of x */
     if(lx==0) {
         if(ix==0x7ff00000||ix==0||ix==0x3ff00000){
-        if(SPIRV_BUILTIN(SignBitSet, _f64, )(ax)) ax = -ax;
+        if(__builtin_spirv_OpSignBitSet_f64(ax)) ax = -ax;
         z = ax;            /*x is +-0,+-inf,+-1*/
         if(hy<0) z = one/z;    /* z = (1/|x|) */
         if(hx<0) {

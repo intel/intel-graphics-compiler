@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE isnan( float x )
 {
-    return SPIRV_BUILTIN(IsNan, _f32, )( x );
+    return __builtin_spirv_OpIsNan_f32( x );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isnan_helper( float x )
@@ -41,7 +41,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isnan, __intel_vector_isnan_helper, int
 
 INLINE int OVERLOADABLE isnan( double x )
 {
-    return SPIRV_BUILTIN(IsNan, _f64, )( x );
+    return __builtin_spirv_OpIsNan_f64( x );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isnan_helper( double x )
@@ -57,7 +57,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isnan, __intel_vector_isnan_helper, lon
 
 INLINE int OVERLOADABLE isnan( half x )
 {
-    return SPIRV_BUILTIN(IsNan, _f16, )( x );
+    return __builtin_spirv_OpIsNan_f16( x );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isnan_helper( half x )

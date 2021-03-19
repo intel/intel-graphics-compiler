@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE isfinite( float x )
 {
-    return SPIRV_BUILTIN(IsFinite, _f32, )( x );
+    return __builtin_spirv_OpIsFinite_f32( x );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isfinite_helper( float x )
@@ -41,7 +41,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isfinite, __intel_vector_isfinite_helpe
 
 INLINE int OVERLOADABLE isfinite( double x )
 {
-    return SPIRV_BUILTIN(IsFinite, _f64, )( x );
+    return __builtin_spirv_OpIsFinite_f64( x );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isfinite_helper( double x )
@@ -57,7 +57,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isfinite, __intel_vector_isfinite_helpe
 
 INLINE int OVERLOADABLE isfinite( half x )
 {
-    return SPIRV_BUILTIN(IsFinite, _f16, )( x );
+    return __builtin_spirv_OpIsFinite_f16( x );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isfinite_helper( half x )

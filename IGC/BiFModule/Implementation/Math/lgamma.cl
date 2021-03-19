@@ -35,7 +35,7 @@ INLINE float __builtin_spirv_OpenCL_lgamma_f32( float x )
     else
     {
         float g = __builtin_spirv_OpenCL_tgamma_f32(x);
-        r = SPIRV_BUILTIN(IsNan, _f32, )(g) ? INFINITY : __builtin_spirv_OpenCL_native_log_f32(__builtin_spirv_OpenCL_fabs_f32(g));
+        r = __builtin_spirv_OpIsNan_f32(g) ? INFINITY : __builtin_spirv_OpenCL_native_log_f32(__builtin_spirv_OpenCL_fabs_f32(g));
     }
     return r;
 }

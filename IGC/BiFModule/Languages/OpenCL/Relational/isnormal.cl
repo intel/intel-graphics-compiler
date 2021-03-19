@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE isnormal( float x )
 {
-    return SPIRV_BUILTIN(IsNormal, _f32, )( x );
+    return __builtin_spirv_OpIsNormal_f32( x );
 }
 
 static INLINE int OVERLOADABLE __intel_vector_isnormal_helper( float x )
@@ -46,7 +46,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT( isnormal, __intel_vector_isnormal_helpe
 
 INLINE int OVERLOADABLE isnormal(double x)
 {
-    return SPIRV_BUILTIN(IsNormal, _f64, )( x );
+    return __builtin_spirv_OpIsNormal_f64( x );
 }
 
 static INLINE long OVERLOADABLE __intel_vector_isnormal_helper( double x )
@@ -67,7 +67,7 @@ int OVERLOADABLE __intel_relaxed_isnormal( double x )
 
 INLINE int OVERLOADABLE isnormal( half x )
 {
-    return SPIRV_BUILTIN(IsNormal, _f16, )( x );
+    return __builtin_spirv_OpIsNormal_f16( x );
 }
 
 static INLINE short OVERLOADABLE __intel_vector_isnormal_helper( half x )

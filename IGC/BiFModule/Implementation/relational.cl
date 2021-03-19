@@ -83,119 +83,119 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(All, _v16i8, )(__bool16 Vector)
             Vector.sc & Vector.sd & Vector.se & Vector.sf);
 }
 
-bool  SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNan, _f16, )(half x)
+bool  __builtin_spirv_OpIsNan_f16(half x)
 {
     return x != x;
 }
 
-bool  SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNan, _f32, )(float x)
+bool  __builtin_spirv_OpIsNan_f32(float x)
 {
     return x != x;
 }
 
 #if defined(cl_khr_fp64)
-bool  SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNan, _f64, )(double x)
+bool  __builtin_spirv_OpIsNan_f64(double x)
 {
     return x != x;
 }
 #endif
 
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, half,   f16)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, float,  f32)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNan, __bool, half,   f16)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNan, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, double, f64)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNan, __bool, double, f64)
 #endif
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsInf, _f16, )(half x)
+bool __builtin_spirv_OpIsInf_f16(half x)
 {
     return __builtin_spirv_OpenCL_fabs_f16(x) == (half)(INFINITY);
 }
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsInf, _f32, )(float x)
+bool __builtin_spirv_OpIsInf_f32(float x)
 {
     return __builtin_spirv_OpenCL_fabs_f32(x) == (float)(INFINITY);
 }
 
 #if defined(cl_khr_fp64)
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsInf, _f64, )(double x)
+bool __builtin_spirv_OpIsInf_f64(double x)
 {
     return __builtin_spirv_OpenCL_fabs_f64(x) == (double)(INFINITY);
 }
 #endif
 
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, half,   f16)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, float,  f32)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsInf, __bool, half,   f16)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsInf, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, double, f64)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsInf, __bool, double, f64)
 #endif
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsFinite, _f16, )(half x)
+bool __builtin_spirv_OpIsFinite_f16(half x)
 {
     return __builtin_spirv_OpenCL_fabs_f16(x) < (half)(INFINITY);
 }
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsFinite, _f32, )(float x)
+bool __builtin_spirv_OpIsFinite_f32(float x)
 {
     return __builtin_spirv_OpenCL_fabs_f32(x) < (float)(INFINITY);
 }
 
 #if defined(cl_khr_fp64)
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsFinite, _f64, )(double x)
+bool __builtin_spirv_OpIsFinite_f64(double x)
 {
     return __builtin_spirv_OpenCL_fabs_f64(x) < (double)(INFINITY);
 }
 #endif
 
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, half,   f16)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, float,  f32)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsFinite, __bool, half,   f16)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsFinite, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, double, f64)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsFinite, __bool, double, f64)
 #endif
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNormal, _f16, )(half x)
+bool __builtin_spirv_OpIsNormal_f16(half x)
 {
-    return SPIRV_BUILTIN(IsFinite, _f16, )(x) & (__builtin_spirv_OpenCL_fabs_f16(x) >= HALF_MIN);
+    return __builtin_spirv_OpIsFinite_f16(x) & (__builtin_spirv_OpenCL_fabs_f16(x) >= HALF_MIN);
 }
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNormal, _f32, )(float x)
+bool __builtin_spirv_OpIsNormal_f32(float x)
 {
-    return SPIRV_BUILTIN(IsFinite, _f32, )(x) & (__builtin_spirv_OpenCL_fabs_f32(x) >= FLT_MIN);
+    return __builtin_spirv_OpIsFinite_f32(x) & (__builtin_spirv_OpenCL_fabs_f32(x) >= FLT_MIN);
 }
 
 #if defined(cl_khr_fp64)
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsNormal, _f64, )(double x)
+bool __builtin_spirv_OpIsNormal_f64(double x)
 {
-    return SPIRV_BUILTIN(IsFinite, _f64, )(x) & (__builtin_spirv_OpenCL_fabs_f64(x) >= DBL_MIN);
+    return __builtin_spirv_OpIsFinite_f64(x) & (__builtin_spirv_OpenCL_fabs_f64(x) >= DBL_MIN);
 }
 #endif
 
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, half,   f16)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, float,  f32)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNormal, __bool, half,   f16)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNormal, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, double, f64)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpIsNormal, __bool, double, f64)
 #endif
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(SignBitSet, _f16, )(half x)
+bool __builtin_spirv_OpSignBitSet_f16(half x)
 {
     return (as_short( x ) & HALF_SIGN_MASK) != 0;
 }
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(SignBitSet, _f32, )(float x)
+bool __builtin_spirv_OpSignBitSet_f32(float x)
 {
     return (as_int( x ) & FLOAT_SIGN_MASK) != 0;
 }
 
 #if defined(cl_khr_fp64)
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(SignBitSet, _f64, )(double x)
+bool __builtin_spirv_OpSignBitSet_f64(double x)
 {
     return (as_long( x ) & DOUBLE_SIGN_MASK) != 0;
 }
 #endif
 
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, half,   f16)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, float,  f32)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, half,   f16)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, float,  f32)
 #if defined(cl_khr_fp64)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, double, f64)
+GENERATE_VECTOR_FUNCTIONS_1ARG(__builtin_spirv_OpSignBitSet, __bool, double, f64)
 #endif
 
 bool __builtin_spirv_OpLessOrGreater_f16_f16(half x, half y)

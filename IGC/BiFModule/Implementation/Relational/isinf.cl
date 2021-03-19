@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 
 INLINE int OVERLOADABLE __intel_relaxed_isinf( float x )
 {
-    int result = SPIRV_BUILTIN(IsInf, _f32, )(x);
+    int result = __builtin_spirv_OpIsInf_f32(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return __FastRelaxedMath ? 0 : result;
 }
@@ -35,7 +35,7 @@ INLINE int OVERLOADABLE __intel_relaxed_isinf( float x )
 #if defined(cl_khr_fp64)
 INLINE int OVERLOADABLE __intel_relaxed_isinf( double x )
 {
-    int result = SPIRV_BUILTIN(IsInf, _f64, )(x);
+    int result = __builtin_spirv_OpIsInf_f64(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return __FastRelaxedMath ? 0 : result;
 }
@@ -43,7 +43,7 @@ INLINE int OVERLOADABLE __intel_relaxed_isinf( double x )
 
 INLINE int OVERLOADABLE __intel_relaxed_isinf( half x )
 {
-    int result = SPIRV_BUILTIN(IsInf, _f16, )(x);
+    int result = __builtin_spirv_OpIsInf_f16(x);
     // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
     return __FastRelaxedMath ? 0 : result;
 }

@@ -62,15 +62,15 @@ double __builtin_spirv_OpenCL_logb_f64( double x )
 {
     double result = 0.0;
 
-    if( SPIRV_BUILTIN(IsNormal, _f64, )( x ) )
+    if( __builtin_spirv_OpIsNormal_f64( x ) )
     {
         result = ( (as_long(x) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - DOUBLE_BIAS;
     }
-    else if( SPIRV_BUILTIN(IsNan, _f64, )( x ) )
+    else if( __builtin_spirv_OpIsNan_f64( x ) )
     {
         result = __builtin_spirv_OpenCL_nan_i64(0UL);
     }
-    else if( SPIRV_BUILTIN(IsInf, _f64, )( x ) )
+    else if( __builtin_spirv_OpIsInf_f64( x ) )
     {
         result = INFINITY;
     }

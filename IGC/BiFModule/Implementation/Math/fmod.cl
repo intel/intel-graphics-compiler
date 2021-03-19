@@ -225,14 +225,14 @@ double __builtin_spirv_OpenCL_fmod_f64_f64( double xx, double yy )
 {
     double result;
 
-    if( SPIRV_BUILTIN(IsNan, _f64, )(xx) |
-        SPIRV_BUILTIN(IsNan, _f64, )(yy) |
-        SPIRV_BUILTIN(IsInf, _f64, )(xx) |
+    if( __builtin_spirv_OpIsNan_f64(xx) |
+        __builtin_spirv_OpIsNan_f64(yy) |
+        __builtin_spirv_OpIsInf_f64(xx) |
         yy == 0.0)
     {
         result = __builtin_spirv_OpenCL_nan_i64((ulong)0);
     }
-    else if( SPIRV_BUILTIN(IsInf, _f64, )(yy) |
+    else if( __builtin_spirv_OpIsInf_f64(yy) |
              (xx == 0.0) )
     {
         result = xx;
