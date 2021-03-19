@@ -309,7 +309,7 @@ namespace IGC
     {
         llvm::StoreInst* SI = new llvm::StoreInst(Val, Ptr, Orig);
         SI->setVolatile(Orig->isVolatile());
-        SI->setAlignment(IGCLLVM::getAlign(Orig->getAlignment()));
+        SI->setAlignment(IGCLLVM::getCorrectAlign(Orig->getAlignment()));
         if (SI->isAtomic())
         {
             SI->setAtomic(Orig->getOrdering(), Orig->getSyncScopeID());
