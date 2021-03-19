@@ -48,7 +48,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(G4_SrcRegRegion* hea
     unsigned int option = useNoMask ? InstOpt_WriteEnable : 0;
     auto spillInst = kernel.fg.builder->createSpill(
         kernel.fg.builder->createNullDst(Type_UW), header, spillSrcPayload, g4::SIMD16, payloadSize,
-        GlobalRA::GRFToHwordSize(scratchOffset), fp, static_cast<G4_InstOption>(option));
+        GlobalRA::GRFToHwordSize(scratchOffset), fp, static_cast<G4_InstOption>(option), false);
 
     if (!useNoMask)
     {
@@ -84,7 +84,7 @@ G4_INST* CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion* header, unsi
         fp = kernel.fg.getFramePtrDcl();
 
     auto fillInst = kernel.fg.builder->createFill(header, fillDst, g4::SIMD16, payloadSize,
-        GlobalRA::GRFToHwordSize(scratchOffset), fp, InstOpt_WriteEnable);
+        GlobalRA::GRFToHwordSize(scratchOffset), fp, InstOpt_WriteEnable, false);
     return fillInst;
 }
 
@@ -302,7 +302,8 @@ bool CoalesceSpillFills::fillHeuristic(std::list<INST_LIST_ITER>& coalesceableFi
     G4_Declare* header = (*coalesceableFills.front())->asFillIntrinsic()->getHeader()->getTopDcl();
     for (auto f : coalesceableFills)
     {
-        if ((*f)->asFillIntrinsic()->getHeader()->getTopDcl() != header)
+        if ((*f)->asFillIntrinsic()->getHeader()->getTopDcl() != header &&
+            !(*f)->asFillIntrinsic()->getFP())
             return false;
 
         unsigned int scratchOffset, scratchSize;
@@ -574,7 +575,8 @@ void CoalesceSpillFills::keepConsecutiveSpills(std::list<INST_LIST_ITER>& instLi
     {
         auto inst = (*instIt);
 
-        if (inst->asSpillIntrinsic()->getHeader()->getTopDcl() != header)
+        if (inst->asSpillIntrinsic()->getHeader()->getTopDcl() != header &&
+            !inst->asSpillIntrinsic()->getFP())
         {
             return;
         }

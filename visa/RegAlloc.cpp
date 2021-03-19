@@ -3394,6 +3394,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
     {
         kernel.fg.addSaveRestorePseudoDeclares(builder);
+        gra.fixSrc0IndirFcall();
     }
 
     int status = gra.coloringRegAlloc();

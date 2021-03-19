@@ -822,6 +822,7 @@ namespace vISA
         void insertRestoreAddr(G4_BB*);
         void setIterNo(unsigned i) { iterNo = i; }
         unsigned getIterNo() const { return iterNo; }
+        void fixSrc0IndirFcall();
 
         G4_Declare* getRetDecl(uint32_t retLoc)
         {
