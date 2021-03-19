@@ -89,6 +89,7 @@ IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
@@ -1763,6 +1764,10 @@ void OptimizeIR(CodeGenContext* const pContext)
             }
             //some optimization can create switch statement we don't support
             mpm.add(llvm::createLowerSwitchPass());
+
+            // preferred to be added after all LowerSwitch pass runs, as switch lowering is able
+            // to benefit from unreachable instruction when it's in default switch case
+            mpm.add(new UnreachableHandling());
 
             // Conditions apply just as above due to problems with atomics
             // (see comment above for details).

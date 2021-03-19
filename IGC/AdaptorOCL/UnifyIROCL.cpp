@@ -85,7 +85,6 @@ IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AggregateArguments/AggregateArguments.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OCLBIConverter.h"
 #include "Compiler/Optimizer/OpenCLPasses/SetFastMathFlags/SetFastMathFlags.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/CorrectlyRoundedDivSqrt/CorrectlyRoundedDivSqrt.hpp"
@@ -311,8 +310,6 @@ static void CommonOCLBasedPasses(
     mpm.add(new ClampLoopUnroll(256));
 
     mpm.add(new MoveStaticAllocas());
-
-    mpm.add(new UnreachableHandling());
 
     // Skip this pass if OCL version < 2.0
     if (!(OCLMajor < 2))
