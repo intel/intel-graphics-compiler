@@ -642,14 +642,14 @@ void GenXBaling::processStore(StoreInst *Inst) {
 
 // We can bale in shufflevector of predicate if it is replicated slice.
 bool GenXBaling::processShufflePred(Instruction *Inst) {
-  IGC_ASSERT(Inst->getType()->getScalarSizeInBits() == 1 &&
-         "Expected bool shuffle");
+  IGC_ASSERT_MESSAGE(Inst->getType()->getScalarSizeInBits() == 1,
+    "Expected bool shuffle");
   auto *SI = dyn_cast<ShuffleVectorInst>(Inst);
   if (!SI)
     return false;
 
-  IGC_ASSERT(ShuffleVectorAnalyzer(SI).isReplicatedSlice() &&
-         "Predicate shuffle is not replicated slice!");
+  IGC_ASSERT_MESSAGE(ShuffleVectorAnalyzer(SI).isReplicatedSlice(),
+    "Predicate shuffle is not replicated slice!");
   BaleInfo BI(BaleInfo::SHUFFLEPRED);
   setBaleInfo(SI, BI);
   return true;
@@ -703,14 +703,25 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
   switch (GenXIntrinsic::getGenXIntrinsicID(Mask)) {
     case GenXIntrinsic::genx_rdpredregion: {
       if (Kind == BalingKind::BK_CodeGen) {
-#if _DEBUG
         // Sanity check the offset and number of elements being accessed.
-        unsigned MinSize = Inst->getType()->getScalarType()->getPrimitiveSizeInBits() == 64 ? 4 : 8;
-        unsigned NElems = cast<VectorType>(Mask->getType())->getNumElements();
-        unsigned Offset = dyn_cast<ConstantInt>(Mask->getOperand(1))->getZExtValue();
-        IGC_ASSERT(exactLog2(NElems) >= 0 && (Offset & (std::min(NElems, MinSize) - 1)) == 0 &&
-               "illegal offset and/or width in rdpredregion");
-#endif
+
+        unsigned MinSize = 0; // it will be assigned inside assertion statament
+        IGC_ASSERT((MinSize = Inst->getType()->getScalarType()->getPrimitiveSizeInBits() == 64 ? 4 : 8, 1));
+
+        unsigned NElems = 0; // it will be assigned inside assertion statament
+        IGC_ASSERT((NElems = cast<VectorType>(Mask->getType())->getNumElements(), 1));
+
+        unsigned Offset = 0; // it will be assigned inside assertion statament
+        IGC_ASSERT((Offset = dyn_cast<ConstantInt>(Mask->getOperand(1))->getZExtValue(), 1));
+
+        IGC_ASSERT_MESSAGE(exactLog2(NElems) >= 0,
+          "illegal offset and/or width in rdpredregion");
+        IGC_ASSERT_MESSAGE((Offset & (std::min(NElems, MinSize) - 1)) == 0,
+          "illegal offset and/or width in rdpredregion");
+
+        (void) MinSize;
+        (void) NElems;
+        (void) Offset;
       }
       // We always set up InstMap for an rdpredregion, even though it does not
       // bale in any operands.
@@ -841,7 +852,8 @@ void GenXBaling::processRdRegion(Instruction *Inst)
  */
 void GenXBaling::processInlineAsm(Instruction *Inst) {
   auto CI = dyn_cast<CallInst>(Inst);
-  IGC_ASSERT((CI && CI->isInlineAsm()) && "Inline Asm expected");
+  IGC_ASSERT_MESSAGE(CI, "Inline Asm expected");
+  IGC_ASSERT_MESSAGE(CI->isInlineAsm(), "Inline Asm expected");
 
   BaleInfo BI(BaleInfo::MAININST);
   for (unsigned I = 0; I < CI->getNumArgOperands(); I++)
@@ -869,15 +881,15 @@ void GenXBaling::processInlineAsm(Instruction *Inst) {
  */
 void GenXBaling::processFuncPointer(Instruction *Inst) {
   auto *CI = dyn_cast<CallInst>(Inst);
-  IGC_ASSERT((CI && GenXIntrinsic::getGenXIntrinsicID(CI) ==
-                        GenXIntrinsic::genx_faddr) &&
-             "genx.faddr expected");
+  IGC_ASSERT_MESSAGE(CI, "genx.faddr expected");
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_faddr,
+    "genx.faddr expected");
   IGC_ASSERT(Inst->getNumUses() == 1);
   auto *NextUser = Inst->user_back();
   if (isa<BitCastInst>(NextUser)) {
     // bitcasts <N x i64> -> <2*N x i32> may appear after i64 emulation
-    IGC_ASSERT(NextUser->hasOneUse() &&
-               NextUser->getType()->getScalarType()->isIntegerTy(32));
+    IGC_ASSERT(NextUser->hasOneUse());
+    IGC_ASSERT(NextUser->getType()->getScalarType()->isIntegerTy(32));
     NextUser = NextUser->user_back();
   }
   IGC_ASSERT(NextUser->use_empty() || GenXIntrinsic::isWrRegion(NextUser));
@@ -1021,7 +1033,7 @@ bool GenXBaling::isBalableIndexOr(Value *V)
   int Offset;
   if (!getIndexOr(V, Offset))
     return false;
-  IGC_ASSERT(Offset >=0 && "Offset in or appears to be less than zero");
+  IGC_ASSERT_MESSAGE(Offset >=0, "Offset in or appears to be less than zero");
   // It is a constant or. Check the constant is in range.
   return (Offset  <= G4_MAX_ADDR_IMM);
 }
@@ -1084,8 +1096,8 @@ static bool usesSameMaskAsOperand(Instruction *Inst, Value *Mask) {
 
   // If shufflevector replicates mask operand then we can bale
   if (SI->getOperand(0) == MaskOperand) {
-    IGC_ASSERT(!SIAnalyzer.getReplicatedSliceDescriptor().InitialOffset &&
-           "Expected zero initial offset");
+    IGC_ASSERT_MESSAGE(!SIAnalyzer.getReplicatedSliceDescriptor().InitialOffset,
+      "Expected zero initial offset");
     return true;
   }
 
@@ -1476,7 +1488,8 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID)
       }
     }
     if (Simplified) {
-      IGC_ASSERT(isa<Constant>(Simplified) && "expecting a constant when simplifying a modifier");
+      IGC_ASSERT_MESSAGE(isa<Constant>(Simplified),
+        "expecting a constant when simplifying a modifier");
       Inst->replaceAllUsesWith(Simplified);
       Inst->eraseFromParent();
       return;
