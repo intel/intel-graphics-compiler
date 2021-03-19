@@ -1425,10 +1425,10 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
     Type *DstTy = CI->getType();
     unsigned NumElts = cast<VectorType>(DstTy)->getNumElements();
     unsigned EltSz =
-        cast<VectorType>(DstTy)->getElementType()->getPrimitiveSizeInBits();
+        getTypeSize<genx::ByteBits>(cast<VectorType>(DstTy)->getElementType(), m_DL);
     unsigned ExecSz = NumElts * EltSz;
 
-    if (ExecSz > 2 * genx::GRFBits || NumElts > 32)
+    if (ExecSz > 2 * m_ST->getGRFWidth() || NumElts > 32)
       SplitGather(CI);
   }
 
@@ -1437,10 +1437,10 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
         CI->getArgOperand(m_useGlobalMem ? 3 : 5)->getType();
     unsigned NumElts = cast<VectorType>(DataTy)->getNumElements();
     unsigned EltSz =
-        cast<VectorType>(DataTy)->getElementType()->getPrimitiveSizeInBits();
+        getTypeSize<genx::ByteBits>(cast<VectorType>(DataTy)->getElementType(), m_DL);
     unsigned ExecSz = NumElts * EltSz;
 
-    if (ExecSz > 2 * genx::GRFBits || NumElts > 32)
+    if (ExecSz > 2 * m_ST->getGRFWidth() || NumElts > 32)
       SplitScatter(CI);
   }
 

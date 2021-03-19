@@ -289,5 +289,37 @@ public:
 };
 void initializeDominatorTreeGroupWrapperPassPass(PassRegistry &);
 
+//----------------------------------------------------------------------
+// LoopInfoGroupWrapperPass : Analysis pass which computes a LoopInfo
+// per Function in the FunctionGroup.
+class LoopInfo;
+
+class LoopInfoGroupWrapperPass : public FunctionGroupPass {
+  std::map<Function *, LoopInfo *> LIs;
+
+public:
+  static char ID;
+
+  LoopInfoGroupWrapperPass() : FunctionGroupPass(ID) {}
+  ~LoopInfoGroupWrapperPass() { releaseMemory(); }
+
+  LoopInfo *getLoopInfo(Function *F) { return LIs[F]; }
+  const DominatorTree &getDomTree();
+
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
+
+  void verifyAnalysis() const override;
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    FunctionGroupPass::getAnalysisUsage(AU);
+    AU.addRequired<DominatorTreeGroupWrapperPass>();
+    AU.setPreservesAll();
+  }
+
+  void releaseMemory() override;
+
+  void print(raw_ostream &OS, const Module *M = nullptr) const override;
+};
+void initializeLoopInfoGroupWrapperPassPass(PassRegistry &);
 } // end namespace llvm
 #endif // ndef FUNCTIONGROUP_H

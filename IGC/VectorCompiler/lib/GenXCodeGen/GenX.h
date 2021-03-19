@@ -125,36 +125,34 @@ enum Signedness {
   DONTCARESIGNED = 3, SIGNED = 1, UNSIGNED = 2
 };
 
-const constexpr int BoolBits  = 1;
-const constexpr int ByteBits  = 8;
-const constexpr int WordBits  = 16;
-const constexpr int DWordBits = 32;
-const constexpr int QWordBits = 64;
-const constexpr int OWordBits = 128;
-const constexpr int GRFBits = 256;
-const constexpr int GRFBytes = GRFBits / ByteBits;
+constexpr unsigned BoolBits  = 1;
+constexpr unsigned ByteBits  = 8;
+constexpr unsigned WordBits  = 16;
+constexpr unsigned DWordBits = 32;
+constexpr unsigned QWordBits = 64;
+constexpr unsigned OWordBits = 128;
 
-const constexpr int ByteBytes = ByteBits / ByteBits;
-const constexpr int WordBytes = WordBits / ByteBits;
-const constexpr int DWordBytes = DWordBits / ByteBits;
-const constexpr int QWordBytes = QWordBits / ByteBits;
-const constexpr int OWordBytes = OWordBits / ByteBits;
+constexpr unsigned ByteBytes = ByteBits / ByteBits;
+constexpr unsigned WordBytes = WordBits / ByteBits;
+constexpr unsigned DWordBytes = DWordBits / ByteBits;
+constexpr unsigned QWordBytes = QWordBits / ByteBits;
+constexpr unsigned OWordBytes = OWordBits / ByteBits;
 
-const constexpr int SurfaceElementBytes = 4;
-const constexpr int SamplerElementBytes = 4;
+constexpr unsigned SurfaceElementBytes = 4;
+constexpr unsigned SamplerElementBytes = 4;
 
 // Currently EM determines behavior of 32 lanes.
 // Probably that should be moved to subtarget if
 // different targets will support different EM sizes.
-const constexpr unsigned int TotalEMSize = 32;
+constexpr unsigned TotalEMSize = 32;
 
 // vISA allows [-512,511] for operation to be baled as offset
 // for rdregion, copied from visa
-const constexpr int G4_MAX_ADDR_IMM = 511;
-const constexpr int G4_MIN_ADDR_IMM = -512;
+constexpr int G4_MAX_ADDR_IMM = 511;
+constexpr int G4_MIN_ADDR_IMM = -512;
 
 // Default GRF Width if subtarget is not available
-const constexpr int defaultGRFWidth = 32;
+constexpr unsigned defaultGRFWidth = 32;
 
 // describe integer vector immediate (V, UV)
 enum ImmIntVec : int8_t {

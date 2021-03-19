@@ -34,6 +34,7 @@ IN THE SOFTWARE.
 //===----------------------------------------------------------------------===//
 
 #include "FunctionGroup.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -669,5 +670,48 @@ void DominatorTreeGroupWrapperPass::verifyAnalysis() const {
 void DominatorTreeGroupWrapperPass::print(raw_ostream &OS,
                                           const Module *) const {
   for (auto i = DTs.begin(), e = DTs.end(); i != e; ++i)
+    i->second->print(OS);
+}
+
+//===----------------------------------------------------------------------===//
+//  LoopInfoGroupWrapperPass Implementation
+//===----------------------------------------------------------------------===//
+//
+// The implementation details of the wrapper pass that holds a LoopInfo
+// per Function in a FunctionGroup.
+//
+//===----------------------------------------------------------------------===//
+char LoopInfoGroupWrapperPass::ID = 0;
+INITIALIZE_PASS_BEGIN(LoopInfoGroupWrapperPass, "grouploopinfo",
+                      "Group Loop Info Construction", true, true)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_END(LoopInfoGroupWrapperPass, "grouploopinfo",
+                    "Group Loop Info Construction", true, true)
+
+void LoopInfoGroupWrapperPass::releaseMemory() {
+  for (auto i = LIs.begin(), e = LIs.end(); i != e; ++i)
+    delete i->second;
+  LIs.clear();
+}
+
+bool LoopInfoGroupWrapperPass::runOnFunctionGroup(FunctionGroup &FG) {
+  auto &DTs = getAnalysis<DominatorTreeGroupWrapperPass>();
+  for (auto fgi = FG.begin(), fge = FG.end(); fgi != fge; ++fgi) {
+    Function *F = *fgi;
+    auto LI = new LoopInfo;
+    LI->analyze(*DTs.getDomTree(F));
+    LIs[F] = LI;
+  }
+  return false;
+}
+
+void LoopInfoGroupWrapperPass::verifyAnalysis() const {
+  auto &DTs = getAnalysis<DominatorTreeGroupWrapperPass>();
+  for (auto i = LIs.begin(), e = LIs.end(); i != e; ++i)
+    i->second->verify(*DTs.getDomTree(i->first));
+}
+
+void LoopInfoGroupWrapperPass::print(raw_ostream &OS, const Module *) const {
+  for (auto i = LIs.begin(), e = LIs.end(); i != e; ++i)
     i->second->print(OS);
 }

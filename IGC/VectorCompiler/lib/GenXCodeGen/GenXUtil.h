@@ -81,6 +81,15 @@ template <typename T> inline T roundedVal(T Val, T RoundUp) {
   return RoundedVal;
 }
 
+// Utility function to get type size in diffrent units.
+template<unsigned UnitBitSize = 1>
+unsigned getTypeSize(Type *Ty, const DataLayout *DL = nullptr) {
+  IGC_ASSERT(Ty && Ty->isSized());
+  unsigned BitTypeSize = DL ? DL->getTypeSizeInBits(Ty) : Ty->getPrimitiveSizeInBits();
+  IGC_ASSERT_MESSAGE(BitTypeSize, "Consider using DataLayout for retrieving this type size");
+  return 1 + (BitTypeSize - 1) / UnitBitSize;
+}
+
 // createConvert : create a genx_convert intrinsic call
 CallInst *createConvert(Value *In, const Twine &Name, Instruction *InsertBefore,
                         Module *M = nullptr);

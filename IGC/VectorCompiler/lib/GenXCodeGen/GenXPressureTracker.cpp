@@ -28,6 +28,7 @@ IN THE SOFTWARE.
 #include "GenXBaling.h"
 #include "GenXLiveness.h"
 #include "GenXRegion.h"
+#include "GenXUtil.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "Probe/Assertion.h"
 
@@ -51,7 +52,7 @@ unsigned PressureTracker::getSizeInBytes(LiveRange *LR, bool AllowWidening) {
   SimpleValue SV = *LR->value_begin();
   Value *V = SV.getValue();
   Type *Ty = IndexFlattener::getElementType(V->getType(), SV.getIndex());
-  unsigned Bytes = (Ty->getPrimitiveSizeInBits() + 15U) / 8U & -2U;
+  unsigned Bytes = getTypeSize<WordBits>(Ty) * WordBytes;
   if (!AllowWidening)
     return Bytes;
 

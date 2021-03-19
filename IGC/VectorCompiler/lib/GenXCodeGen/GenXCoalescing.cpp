@@ -315,11 +315,14 @@ namespace {
   // GenX coalescing pass
   class GenXCoalescing : public FunctionGroupPass {
   private:
+    const DataLayout *DL;
     const GenXSubtarget *ST;
     GenXBaling *Baling;
     GenXLiveness *Liveness;
     GenXNumbering *Numbering;
     DominatorTreeGroupWrapperPass *DTWrapper;
+    LoopInfoGroupWrapperPass *LIWrapper;
+
     std::vector<Candidate> CopyCandidates;
     std::vector<Candidate> NormalCandidates;
     std::vector<CallInst*> Callables;
@@ -336,8 +339,10 @@ namespace {
       AU.addRequired<GenXGroupBaling>();
       AU.addRequired<GenXNumbering>();
       AU.addRequired<DominatorTreeGroupWrapperPass>();
+      AU.addRequired<LoopInfoGroupWrapperPass>();
       AU.addRequired<TargetPassConfig>();
       AU.addPreserved<DominatorTreeGroupWrapperPass>();
+      AU.addPreserved<LoopInfoGroupWrapperPass>();
       AU.addPreserved<GenXGroupBaling>();
       AU.addPreserved<GenXLiveness>();
       AU.addPreserved<GenXModule>();
@@ -417,6 +422,7 @@ namespace {
     Iter mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt, Iter EndIt);
     // Helpers
     DominatorTree *getDomTree(Function *F) { return DTWrapper->getDomTree(F); }
+    LoopInfo *getLoopInfo(Function *F) { return LIWrapper->getLoopInfo(F); }
   };
 
 } // end anonymous namespace
@@ -430,6 +436,7 @@ INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
 INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_DEPENDENCY(GenXNumbering)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass);
+INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPass);
 INITIALIZE_PASS_END(GenXCoalescing, "GenXCoalescing", "GenXCoalescing", false, false)
 
 FunctionGroupPass *llvm::createGenXCoalescingPass() {
@@ -442,6 +449,7 @@ FunctionGroupPass *llvm::createGenXCoalescingPass() {
  */
 bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
 {
+  DL = &FG.getModule()->getDataLayout();
   // Get analyses that we use and/or modify.
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
@@ -450,6 +458,7 @@ bool GenXCoalescing::runOnFunctionGroup(FunctionGroup &FG)
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();
   DTWrapper = &getAnalysis<DominatorTreeGroupWrapperPass>();
+  LIWrapper = &getAnalysis<LoopInfoGroupWrapperPass>();
 
   // Coalesce all global loads prior to normal coalescing.
   coalesceGlobalLoads(&FG);
@@ -820,18 +829,20 @@ void GenXCoalescing::recordCallArgCandidates(Value *Dest, unsigned ArgNum,
  */
 unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB)
 {
-  // Set priority to the number of GRFs.
-  // FIXME this should also take into account a non power of two
-  // vector size, which would result in multiple copy instructions.
-  // See GenXCoalescing::insertCopy.
-  // FIXME scale by loop depth.
+  // Multiplier of priority when copy located in loop.
+  constexpr unsigned LoopScale = 4;
+
   unsigned Priority = 1;
+  // Estimate number of moves required for this type.
   if (Ty) {
-    if (VectorType *VT = dyn_cast<VectorType>(Ty)) {
-      Priority = VT->getNumElements() * VT->getElementType()->getPrimitiveSizeInBits();
-      Priority = (Priority + 255) / 256;
-    }
+    unsigned VecWidth = getTypeSize<genx::ByteBits>(Ty, DL);
+    Priority = VecWidth / ST->getGRFWidth();
+    Priority += countPopulation(VecWidth % ST->getGRFWidth());
   }
+  // Scale by loop depth.
+  if (BB)
+    Priority *=
+        std::pow(LoopScale, getLoopInfo(BB->getParent())->getLoopDepth(BB));
   return Priority;
 }
 

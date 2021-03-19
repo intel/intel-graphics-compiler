@@ -62,11 +62,11 @@ IN THE SOFTWARE.
 
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/Path.h"
@@ -549,7 +549,7 @@ class GenXKernelBuilder {
   bool HasAlloca = false;
   bool UseGlobalMem = false;
   // GRF width in unit of byte
-  unsigned GrfByteSize = 32;
+  unsigned GrfByteSize = defaultGRFWidth;
 
   int LastLabel = 0;
   unsigned LastLine = 0;
@@ -596,7 +596,7 @@ public:
   GenXVisaRegAlloc *RegAlloc = nullptr;
   FunctionGroupAnalysis *FGA = nullptr;
   GenXModule *GM = nullptr;
-  DominatorTreeGroupWrapperPass *DTs = nullptr;
+  LoopInfoGroupWrapperPass *LIs = nullptr;
   const GenXSubtarget *Subtarget = nullptr;
   const GenXBackendConfig *BackendConfig = nullptr;
   GenXBaling *Baling = nullptr;
@@ -638,7 +638,6 @@ private:
 
   void emitOptimizationHints();
 
-  LoopInfoBase<BasicBlock, Loop> *getLoops(Function *F);
   Value *getPredicateOperand(Instruction *Inst, unsigned OperandNum,
                              genx::BaleInfo BI, VISA_PREDICATE_CONTROL &Control,
                              VISA_PREDICATE_STATE &PredField,
@@ -841,7 +840,7 @@ public:
 char GenXCisaBuilder::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXCisaBuilder, "GenXCisaBuilderPass",
                       "GenXCisaBuilderPass", false, false)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBaling)
 INITIALIZE_PASS_DEPENDENCY(GenXLiveness)
 INITIALIZE_PASS_DEPENDENCY(GenXVisaRegAlloc)
@@ -857,7 +856,7 @@ FunctionGroupPass *llvm::createGenXCisaBuilderPass() {
 }
 
 void GenXCisaBuilder::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.addRequired<DominatorTreeGroupWrapperPass>();
+  AU.addRequired<LoopInfoGroupWrapperPass>();
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXLiveness>();
   AU.addRequired<GenXVisaRegAlloc>();
@@ -876,7 +875,7 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   KernelBuilder->CisaBuilder = KernelBuilder->GM->GetCisaBuilder();
   KernelBuilder->RegAlloc = getAnalysisIfAvailable<GenXVisaRegAlloc>();
   KernelBuilder->Baling = &getAnalysis<GenXGroupBaling>();
-  KernelBuilder->DTs = &getAnalysis<DominatorTreeGroupWrapperPass>();
+  KernelBuilder->LIs = &getAnalysis<LoopInfoGroupWrapperPass>();
   KernelBuilder->Liveness = &getAnalysis<GenXLiveness>();
   KernelBuilder->Subtarget = &getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
@@ -1085,7 +1084,7 @@ std::string GenXKernelBuilder::buildAsmName() const {
 }
 
 bool GenXKernelBuilder::run() {
-  GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : 32;
+  GrfByteSize = Subtarget ? Subtarget->getGRFWidth() : defaultGRFWidth;
   StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
 
   IGC_ASSERT_MESSAGE(TheKernelMetadata.isKernel(),
@@ -1414,7 +1413,7 @@ void GenXKernelBuilder::buildInstructions() {
           auto *TI = cast<IGCLLVM::TerminatorInst>(Inst);
           if (TI->getNumSuccessors() == 1) {
             auto Succ = TI->getSuccessor(0);
-            if (getLoops(Succ->getParent())->isLoopHeader(Succ)) {
+            if (LIs->getLoopInfo(Succ->getParent())->isLoopHeader(Succ)) {
               for (auto si = Succ->begin();; ++si) {
                 auto Phi = dyn_cast<PHINode>(&*si);
                 if (!Phi)
@@ -4816,7 +4815,7 @@ GenXKernelBuilder::createRegionOperand(Region *R, VISA_GenVar *Decl,
 
 
 bool GenXKernelBuilder::isInLoop(BasicBlock *BB) {
-  if (getLoops(BB->getParent())->getLoopFor(BB))
+  if (LIs->getLoopInfo(BB->getParent())->getLoopFor(BB))
     return true; // inside loop in this function
   // Now we need to see if this function is called from inside a loop.
   // First check the cache.
@@ -5341,20 +5340,6 @@ StringRef GenXKernelBuilder::getStringByIndex(unsigned Val) {
       return it.first;
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "Can't find string by index.");
-}
-
-/***********************************************************************
- * GenXKernelBuilder::getLoops : get loop info for given function, cacheing in
- *      Loops map
- */
-LoopInfoBase<BasicBlock, Loop> *GenXKernelBuilder::getLoops(Function *F) {
-  auto LoopsEntry = &Loops[F];
-  if (!*LoopsEntry) {
-    auto DT = DTs->getDomTree(F);
-    *LoopsEntry = new LoopInfoBase<BasicBlock, Loop>;
-    (*LoopsEntry)->analyze(*DT);
-  }
-  return *LoopsEntry;
 }
 
 /***********************************************************************

@@ -68,12 +68,12 @@ using namespace genx;
 static cl::opt<std::size_t> SingleAllocaLimitOpt(
     "vc-promote-array-single-alloca-limit",
     cl::desc("max size of a sindle promoted alloca in bytes"),
-    cl::init(96 * GRFBytes), cl::Hidden);
+    cl::init(96 * defaultGRFWidth), cl::Hidden);
 
 static cl::opt<std::size_t>
     TotalAllocaLimitOpt("vc-promote-array-total-alloca-limit",
                         cl::desc("max total size of promoted allocas in bytes"),
-                        cl::init(256 * GRFBytes), cl::Hidden);
+                        cl::init(256 * defaultGRFWidth), cl::Hidden);
 
 namespace {
 
