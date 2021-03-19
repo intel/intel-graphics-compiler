@@ -8787,10 +8787,17 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
                 // If input is linked to output reg, move the input value into the output
                 CVariable* cv = opnds[i];
                 CVariable* dest = opnds[destID];
-                if (cv && dest)
+                if (cv && dest && cv != dest)
                 {
-                    m_encoder->Copy(dest, cv);
-                    m_encoder->Push();
+                    if (inst->getType()->isVectorTy())
+                    {
+                        emitVectorCopy(dest, cv, int_cast<unsigned>(dyn_cast<VectorType>(inst->getType())->getNumElements()));
+                    }
+                    else
+                    {
+                        m_encoder->Copy(dest, cv);
+                        m_encoder->Push();
+                    }
                 }
             }
         }

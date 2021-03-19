@@ -82,7 +82,9 @@ IN THE SOFTWARE.
 #include "common/debug/Dump.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/InlineAsm.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <algorithm>
 #include "Probe/Assertion.h"
@@ -1017,6 +1019,37 @@ DeSSA::getInsEltRoot(Value* Val) const
     return RI->second;
 }
 
+/// <summary>
+/// Identify if an instruction has partial write semantics
+/// </summary>
+/// <param name="Inst"></param>
+/// <returns> the index of the source partial-write operand</returns>
+static
+int getPartialWriteSource(Value *Inst)
+{
+    if (isa<InsertElementInst>(Inst))
+        return 0;  // source 0 is the original value
+    if (auto CI = dyn_cast<CallInst>(Inst)) {
+        // only handle inline-asm with simple destination
+        if (CI->isInlineAsm() && !CI->getType()->isStructTy()) {
+            InlineAsm* IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
+            StringRef constraintStr(IA->getConstraintString());
+            SmallVector<StringRef, 8> constraints;
+            constraintStr.split(constraints, ',');
+            for (int i = 0; i < (int)constraints.size(); i++) {
+                unsigned destID;
+                if (constraints[i].getAsInteger(10, destID) == 0) {
+                    // constraint-string indicates that source(i-1) and
+                    // destination should be the same vISA variable
+                    if (i > 0 && destID == 0)
+                        return (i - 1);
+                }
+            }
+        }
+    }
+    return -1;
+}
+
 void
 DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
 {
@@ -1035,9 +1068,10 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
             }
 
             // For keeping the existing behavior of InsEltMap unchanged
-            if (isa<InsertElementInst>(Inst))
+            auto PWSrcIdx = getPartialWriteSource(Inst);
+            if (PWSrcIdx >= 0)
             {
-                Value* origSrcV = Inst->getOperand(0);
+                Value* origSrcV = Inst->getOperand(PWSrcIdx);
                 Value* SrcV = getAliasee(origSrcV);
                 if (SrcV != Inst && isArgOrNeededInst(origSrcV))
                 {
@@ -1076,7 +1110,7 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
         // extend the liveness of InsertElement due to union
         for (unsigned i = 0; i < Inst->getNumOperands(); ++i) {
             Value* SrcV = Inst->getOperand(i);
-            if (isa<InsertElementInst>(SrcV)) {
+            if (getPartialWriteSource(SrcV) >= 0) {
                 Value* RootV = getInsEltRoot(SrcV);
                 if (RootV != SrcV) {
                     LV->HandleVirtRegUse(RootV, Blk, Inst, true);
@@ -1084,13 +1118,14 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
             }
         }
 
-        if (!isa<InsertElementInst>(Inst)) {
+        auto PWSrcIdx = getPartialWriteSource(Inst);
+        if (PWSrcIdx < 0) {
             continue;
         }
         // handle InsertElement
         InsEltMapAddValue(Inst);
 
-        Value* SrcV = Inst->getOperand(0);
+        Value* SrcV = Inst->getOperand(PWSrcIdx);
         if (isa<Instruction>(SrcV) || isa<Argument>(SrcV)) {
             if (!LV->isLiveAt(SrcV, Inst)) {
                 Instruction* SrcDef = dyn_cast<Instruction>(SrcV);
