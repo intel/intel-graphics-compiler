@@ -22,6 +22,8 @@
 #
 #============================ end_copyright_notice =============================
 
+include_guard(DIRECTORY)
+
 # Convenience function to get list of LLVM components for
 # target_link_library. If LLVM was configured with llvm dylib, then
 # included in dylib llvm targets should be replaced with LLVM

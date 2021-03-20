@@ -122,7 +122,6 @@ add_dependencies(VCIntrinsicsHeaders
   )
 
 include(cmake/spirv.cmake)
-include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
 
 # --- VC Opt ---
 

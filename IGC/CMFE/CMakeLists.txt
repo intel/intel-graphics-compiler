@@ -32,5 +32,4 @@ message(STATUS
 message(STATUS
   "[CMFE] Using CMFE library name: ${INSTALL_CMFE_NAME}")
 
-include(${IGC_SOURCE_DIR}/cmake/utils.cmake)
 add_subdirectory(AdaptorCM)
