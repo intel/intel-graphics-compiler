@@ -269,6 +269,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.EnableTakeGlobalAddress =
         pContext->m_Options.EnableTakeGlobalAddress;
 
+    CompilerOpts.IsLibraryCompilation =
+        pContext->m_Options.IsLibraryCompilation;
+
     CompilerOpts.EnableZEBinary =
         pContext->m_InternalOptions.EnableZEBinary;
 
