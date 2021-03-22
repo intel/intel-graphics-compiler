@@ -347,20 +347,13 @@ void CPixelShader::AllocatePSPayload()
         if (!skip)
         {
             AllocateInput(var, offset);
-            if (IGC_IS_FLAG_ENABLED(CodePatchWA))
-            {
-                encoder.MarkAsOutput(var);
-            }
             prevOffset = offset;
             offset += var->GetSize();
+            prevAlias = var->GetAlias();
         }
         else
         {
             AllocateInput(var, prevOffset);
-            if (IGC_IS_FLAG_ENABLED(CodePatchWA))
-            {
-                encoder.MarkAsOutput(var);
-            }
         }
     }
 

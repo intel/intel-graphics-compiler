@@ -806,10 +806,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 kernel->getKernel()->Declares = mainKernel->getKernel()->Declares;
 
                 // Set payload LiveOuts to be output
-                uint32_t inputCount = kernel->getIRBuilder()->getInputCount();
+                uint32_t inputCount = mainKernel->getIRBuilder()->getInputCount();
                 for (unsigned int id = 0; id < inputCount; id++)
                 {
-                    input_info_t* input_info = kernel->getIRBuilder()->getInputArg(id);
+                    input_info_t* input_info = mainKernel->getIRBuilder()->getInputArg(id);
                     // skip pseudo input for register bindings.
                     if (input_info->isPseudoInput())
                     {
