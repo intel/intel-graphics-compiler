@@ -1465,9 +1465,12 @@ G4_SrcRegRegion * SpillManagerGRF::createFillRangeSrcRegion (
     }
     else
     {
+        // fill intrinsic's sub-reg offset is always 0 since it is GRF aligned.
+        // but original filled range's offset may not be 0, so actual filled
+        // src needs to use sub-reg offset from original region.
         return builder_->createSrcRegRegion(
             filledRegion->getModifier (), Direct, fillRangeRegVar,
-            REG_ORIGIN, SUBREG_ORIGIN, filledRegion->getRegion (),
+            REG_ORIGIN, filledRegion->getSubRegOff(), filledRegion->getRegion (),
             filledRegion->getType(), filledRegion->getAccRegSel());
     }
 }
