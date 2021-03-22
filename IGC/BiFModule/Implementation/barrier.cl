@@ -119,7 +119,7 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
     }
 }
 
-void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
 {
     if (Execution != Subgroup)
     {
@@ -138,7 +138,7 @@ void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Mem
     }
 }
 
-void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )(int Memory, int Semantics)
 {
     __intel_atomic_work_item_fence( Memory, Semantics );
 }
@@ -149,7 +149,7 @@ void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics)
 void __intel_getInitializedNamedBarrierArray(local uint* id)
 {
     *id = 0;
-    __builtin_spirv_OpControlBarrier_i32_i32_i32( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
 }
 
 bool __intel_is_first_work_group_item( void );
@@ -160,12 +160,12 @@ local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarr
     NB->count = SubGroupCount;
     NB->orig_count = SubGroupCount;
     NB->inc = 0;
-    __builtin_spirv_OpControlBarrier_i32_i32_i32( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
     if (__intel_is_first_work_group_item())
     {
         (*id)++;
     }
-    __builtin_spirv_OpControlBarrier_i32_i32_i32( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Workgroup, 0, SequentiallyConsistent | WorkgroupMemory );
     return NB;
 }
 
@@ -228,7 +228,7 @@ uint SubgroupAtomicInc(local uint *Pointer, uint Scope, uint Semantics)
 
 static void MemoryBarrier(Scope_t Memory, uint Semantics)
 {
-    __builtin_spirv_OpMemoryBarrier_i32_i32(Memory, Semantics);
+    SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )(Memory, Semantics);
 }
 
 void __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(local __namedBarrier* NB,Scope_t Memory, uint Semantics)

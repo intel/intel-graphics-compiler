@@ -722,7 +722,7 @@ void __builtin_spirv_OpGroupCommitReadPipe_i32_i64_i64_i32( uint Execution, Pipe
         }
     }
 
-    __builtin_spirv_OpControlBarrier_i32_i32_i32( Execution, Execution, Relaxed );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Execution, Execution, Relaxed );
 }
 
 void __builtin_spirv_OpGroupCommitWritePipe_i32_i64_i64_i32(uint Execution, Pipe_wo_t Pipe, ReserveId_t ReserveId, uint PacketSize/*, uint PacketAlignment*/)
@@ -742,7 +742,7 @@ void __builtin_spirv_OpGroupCommitWritePipe_i32_i64_i64_i32(uint Execution, Pipe
         }
     }
 
-    __builtin_spirv_OpControlBarrier_i32_i32_i32( Execution, Execution, Relaxed );
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )( Execution, Execution, Relaxed );
 }
 
 int __builtin_spirv_OpReadPipe_i64_p4i8_i32_i32( Pipe_t Pipe, generic void *Pointer, uint PacketSize, uint PacketAlignment )

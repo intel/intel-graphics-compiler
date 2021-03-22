@@ -946,8 +946,8 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p0i64(uint Execution, uint NumEve
 {
     if (Execution == Workgroup)
     {
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | CrossWorkgroupMemory);
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory );
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | CrossWorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | WorkgroupMemory );
     }
     else if (Execution == Subgroup)
     {
@@ -961,8 +961,8 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p4i64(uint Execution, uint NumEve
 {
     if (Execution == Workgroup)
     {
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | CrossWorkgroupMemory);
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | CrossWorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution,0, AcquireRelease | WorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
@@ -978,9 +978,9 @@ bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate)
     {
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate == 0); // Set to true if predicate is zero
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
         return (*tmp == 0); // Return true if none of them failed the test
     }
     else if (Execution == Subgroup)
@@ -1002,9 +1002,9 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     {
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate != 0); // Set to true if predicate is non-zero
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);
         return *tmp; // Return true if any of them passed the test
     }
     else if (Execution == Subgroup)
@@ -1103,9 +1103,9 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
     {                                                                                   \
         *tmp = Value;                                                                   \
     }                                                                                   \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);        \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     type ret = *tmp;                                                                    \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);        \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     return ret;                                                                         \
 }
 
@@ -1809,14 +1809,14 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
     if (sg_lid == sg_size - 1) {                                                                           \
         scratch[sg_id] = sg_x;                                                                             \
     }                                                                                                      \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);          \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);          \
                                                                                                            \
     type sg_aggregate = scratch[0];                                                                        \
     for (int s = 1; s < num_sg; ++s) {                                                                     \
         sg_aggregate = op(sg_aggregate, scratch[s]);                                                       \
     }                                                                                                      \
                                                                                                            \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);          \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);          \
     return sg_aggregate;                                                                                   \
 }
 
@@ -1835,7 +1835,7 @@ type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)           
     if (sg_lid == sg_size - 1) {                                                                                \
         scratch[sg_id] = sg_x;                                                                                  \
     }                                                                                                           \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
                                                                                                                 \
     type sg_prefix;                                                                                             \
     type sg_aggregate = scratch[0];                                                                             \
@@ -1853,7 +1853,7 @@ type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)           
     } else {                                                                                                    \
         result = op(sg_x, sg_prefix);                                                                           \
     }                                                                                                           \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
     return result;                                                                                              \
 }
 
@@ -1877,7 +1877,7 @@ type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)           
     if (sg_lid == sg_size - 1) {                                                                                \
         scratch[sg_id] = carry;                                                                                 \
     }                                                                                                           \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
                                                                                                                 \
     type sg_prefix;                                                                                             \
     type sg_aggregate = scratch[0];                                                                             \
@@ -1895,7 +1895,7 @@ type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)           
     } else {                                                                                                    \
         result = op(sg_x, sg_prefix);                                                                           \
     }                                                                                                           \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);               \
     return result;                                                                                              \
 }
 

@@ -144,7 +144,7 @@ INLINE cl_mem_fence_flags OVERLOADABLE get_fence(generic const void* ptr)
 
 INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags)
 {
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, Device, AcquireRelease | get_spirv_mem_fence(flags));
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, Device, AcquireRelease | get_spirv_mem_fence(flags));
 }
 
 INLINE void OVERLOADABLE barrier(cl_mem_fence_flags flags)
@@ -156,7 +156,7 @@ INLINE void OVERLOADABLE barrier(cl_mem_fence_flags flags)
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags, memory_scope scope)
 {
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(get_spirv_mem_scope(scope), Device, AcquireRelease | get_spirv_mem_fence(flags));
+    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(get_spirv_mem_scope(scope), Device, AcquireRelease | get_spirv_mem_fence(flags));
 }
 
 INLINE void OVERLOADABLE read_mem_fence(cl_mem_fence_flags flags)
@@ -185,7 +185,7 @@ INLINE void OVERLOADABLE mem_fence(cl_mem_fence_flags flags)
 
 INLINE void OVERLOADABLE atomic_work_item_fence( cl_mem_fence_flags flags, memory_order order, memory_scope scope )
 {
-    __builtin_spirv_OpMemoryBarrier_i32_i32( get_spirv_mem_scope( scope ), get_spirv_mem_order( order ) | get_spirv_mem_fence( flags ) );
+    SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )( get_spirv_mem_scope( scope ), get_spirv_mem_order( order ) | get_spirv_mem_fence( flags ) );
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0

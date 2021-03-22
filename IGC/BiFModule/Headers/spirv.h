@@ -4191,8 +4191,8 @@ double __builtin_spirv_OpAtomicFMaxEXT_p4f64_i32_i32_f64(volatile generic double
 
 // Barrier Instructions
 
-void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics);
-void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execution, int Memory, int Semantics);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(MemoryBarrier, _i32_i32, )(int Memory, int Semantics);
 
 #ifndef NAMED_BARRIER_STRUCT_TYPE
 #define NAMED_BARRIER_STRUCT_TYPE
