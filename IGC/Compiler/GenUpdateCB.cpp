@@ -444,7 +444,10 @@ bool GenUpdateCB::runOnFunction(Function& F)
     };
 
     // look for cases to create mini-shader
-    uint counter = 0;
+
+    // Retreive next avilable GRF offset for constant payload
+    // Convert byte offset to DWORD offset
+    uint counter = m_ctx->m_constantPayloadNextAvailableGRFOffset >> 2;
     if (foundCases)
     {
         Instruction* ret = nullptr;
@@ -545,6 +548,12 @@ bool GenUpdateCB::runOnFunction(Function& F)
             m_ctx->m_ConstantBufferReplaceShaderPatternsSize = bufferSize;
             m_ctx->m_ConstantBufferUsageMask = m_ConstantBufferUsageMask;
             m_ctx->m_ConstantBufferReplaceSize = iSTD::Align(counter, 8) / 8;
+
+            // Update derived constants offset
+            m_ctx->m_constantPayloadOffsets.DerivedConstantsOffset = m_ctx->m_constantPayloadNextAvailableGRFOffset;
+            // Update next available GRF offset
+            // conevrt DWORD offset to byte offset
+            m_ctx->m_constantPayloadNextAvailableGRFOffset = counter << 2;
         }
     }
     return changed;

@@ -310,6 +310,11 @@ namespace IGC
         bool isStateless = false;
     };
 
+    struct ConstantPayloadInfo
+    {
+        int  DerivedConstantsOffset = -1;
+    };
+
 
     struct SResInfoFoldingOutput
     {
@@ -867,6 +872,9 @@ namespace IGC
         uint m_ConstantBufferReplaceShaderPatternsSize = 0;
         uint m_ConstantBufferUsageMask = 0;
         uint m_ConstantBufferReplaceSize = 0;
+        // tracking next available GRF offset for constants payload
+        unsigned int        m_constantPayloadNextAvailableGRFOffset = 0;
+        ConstantPayloadInfo m_constantPayloadOffsets;
 
         void* gtpin_init = nullptr;
         bool m_hasLegacyDebugInfo = false;
