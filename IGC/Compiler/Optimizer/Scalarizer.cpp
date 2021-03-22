@@ -191,12 +191,12 @@ void ScalarizeFunction::buildExclusiveSet()
         ++sI;
         // find the seed for the workset
         std::vector<llvm::Value*> workset;
-        if (CallInst* CI = dyn_cast<CallInst>(currInst))
+        if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(currInst))
         {
-            unsigned numOperands = CI->getNumArgOperands();
+            unsigned numOperands = GII->getNumArgOperands();
             for (unsigned i = 0; i < numOperands; i++)
             {
-                Value* operand = CI->getArgOperand(i);
+                Value* operand = GII->getArgOperand(i);
                 if (isa<VectorType>(operand->getType()))
                 {
                     workset.push_back(operand);
@@ -217,14 +217,6 @@ void ScalarizeFunction::buildExclusiveSet()
             // If the index is not a constant - we cannot statically remove this inst
             if (!isa<ConstantInt>(scalarIndexVal)) {
                 workset.push_back(EEI->getOperand(0));
-            }
-        }
-        else if (auto STI = dyn_cast<StoreInst>(currInst))
-        {
-            auto V = STI->getValueOperand();
-            if (V->getType()->isVectorTy())
-            {
-                workset.push_back(V);
             }
         }
         // try to find a phi-web from the seed
