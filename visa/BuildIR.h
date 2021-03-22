@@ -2358,6 +2358,13 @@ public:
         return newNode;
     }
 
+    MDTokenLocation* allocateMDTokenLocation(unsigned short token, unsigned globalID)
+    {
+        auto newNode = new (metadataMem) MDTokenLocation(token, globalID);
+        allMDNodes.push_back(newNode);
+        return newNode;
+    }
+
 
     void materializeGlobalImm(G4_BB* entryBB); // why is in FlowGraph.cpp???
 

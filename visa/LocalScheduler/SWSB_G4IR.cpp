@@ -1616,7 +1616,7 @@ void SWSB::shareToken(const SBNode* node, const SBNode* succ, unsigned short tok
     return;
 }
 
-void SWSB::assignDepToken(const SBNode* node)
+void SWSB::assignDepToken(SBNode* node)
 {
     unsigned short token = node->getLastInstruction()->getSetToken();
     assert(token != (unsigned short)-1 && "Failed to add token dependence to the node without token");
@@ -1657,7 +1657,7 @@ void SWSB::assignDepToken(const SBNode* node)
 
         //set dependence token if live
         SWSBTokenType tokenType = type == WAR ? SWSBTokenType::AFTER_READ : SWSBTokenType::AFTER_WRITE;
-        succ->setDepToken(token, tokenType);
+        succ->setDepToken(token, tokenType, node);
 #ifdef DEBUG_VERBOSE_ON
         dumpSync(node, succ, token, tokenType);
 #endif
@@ -1666,7 +1666,7 @@ void SWSB::assignDepToken(const SBNode* node)
 
 void SWSB::assignDepTokens()
 {
-    for (const SBNode* node : SBSendNodes)
+    for (SBNode* node : SBSendNodes)
     {
         G4_INST* inst = node->getLastInstruction();
 
@@ -3000,6 +3000,9 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
     // 3. one Src token
     unsigned short dst = 0;
     unsigned short src = 0;
+    std::vector<std::pair<unsigned short, unsigned>> dst_loc;
+    std::vector<std::pair<unsigned short, unsigned>> src_loc;
+
     bool multipleDst = false;
     bool multipleSrc = false;
     unsigned short token = (unsigned short)-1;
@@ -3012,6 +3015,7 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
     {
         G4_INST* synAllInst = nullptr;
         token = node->getDepToken(i, type);
+        unsigned depNodeID = node->getDepTokenNodeID(i);
         unsigned short bitToken = (unsigned short)(1 << token);
         assert(token != (unsigned short)UNKNOWN_TOKEN);
 
@@ -3049,6 +3053,7 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
                     keepDst = true;
                     inst->setToken(token);
                     inst->setTokenType(type);
+                    inst->setTokenLoc(token, depNodeID);
                     token = (unsigned short)UNKNOWN_TOKEN;
                     i++;
                     continue;
@@ -3057,6 +3062,7 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
                 if (type == SWSBTokenType::AFTER_READ)
                 {
                     src |= bitToken;
+                    src_loc.push_back(std::make_pair(token, depNodeID));
                     if (!multipleSrc && (src & ~bitToken))
                     {
                         multipleSrc = true;
@@ -3068,6 +3074,7 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
                 {
                     assert(type == SWSBTokenType::AFTER_WRITE);
                     dst |= bitToken;
+                    dst_loc.push_back(std::make_pair(token, depNodeID));
                     if (!multipleDst && (dst & ~bitToken))
                     {
                         multipleDst = true;
@@ -3127,6 +3134,10 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
         }
         synInst->setLexicalId(newInstID);
         insertedSync = true;
+        for (auto loc:dst_loc)
+        {
+            synInst->setTokenLoc(loc.first, loc.second);
+        }
     }
 
     if (src)
@@ -3147,6 +3158,10 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
         }
         synInst->setLexicalId(newInstID);
         insertedSync = true;
+        for (auto loc:src_loc)
+        {
+            synInst->setTokenLoc(loc.first, loc.second);
+        }
     }
 
     return insertedSync;
@@ -4312,6 +4327,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         //For the instructions not counted in the distance, we assign the same ALUID as the following
         node = new (mem)SBNode(nodeID, ALUID, bb->getId(), curInst);
         SBNodes->emplace_back(node);
+        curInst->setLocalId(0);
 
         //Record the node IDs of the instrucrtions in BB
         if (first_node == -1)

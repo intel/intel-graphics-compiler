@@ -50,12 +50,14 @@ namespace vISA
 enum class MDType
 {
     String,
-    SrcLoc
+    SrcLoc,
+    TokenLoc
 };
 
 // forward declaration so that the asMD*() calls can work
 class MDString;
 class MDLocation;
+class MDTokenLocation;
 
 class MDNode
 {
@@ -77,6 +79,7 @@ protected:
 
     bool isMDString() const { return nodeType == MDType::String; }
     bool isMDLocation() const { return nodeType == MDType::SrcLoc; }
+    bool isMDTokenLocation() const { return nodeType == MDType::TokenLoc; }
 
     const MDString* asMDString() const
     {
@@ -86,6 +89,11 @@ protected:
     MDLocation* asMDLocation() const
     {
         return isMDLocation() ? reinterpret_cast<MDLocation*>(const_cast<MDNode*>(this)) : nullptr;
+    }
+
+    MDTokenLocation* asMDTokenLocation() const
+    {
+        return isMDTokenLocation() ? reinterpret_cast<MDTokenLocation*>(const_cast<MDNode*>(this)) : nullptr;
     }
 
     virtual void print(std::ostream& OS) const = 0;
@@ -143,6 +151,37 @@ public:
     }
 };
 
+class MDTokenLocation : public MDNode
+{
+    std::vector<unsigned short> token;
+    std::vector<unsigned> global_id;
+
+public:
+
+    MDTokenLocation(unsigned short _token, unsigned globalID) :
+        MDNode(MDType::TokenLoc)
+    {
+        token.push_back(_token);
+        global_id.push_back(globalID);
+    }
+
+    MDTokenLocation(const MDTokenLocation& node) = delete;
+
+    void operator=(const MDTokenLocation& node) = delete;
+
+    ~MDTokenLocation() = default;
+
+    void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+    int getTokenLocationNum() const { return global_id.size(); }
+    unsigned short getToken(int i) const { return token[i]; }
+    unsigned getTokenLocation(int i) const { return global_id[i]; }
+    void addTokenLocation(unsigned short _token, int globalID) { token.push_back(_token), global_id.push_back(globalID); }
+
+    void print(std::ostream& OS) const
+    {
+        OS << token.back() << "." << global_id.back();
+    }
+};
 
 class Metadata
 {
@@ -198,6 +237,7 @@ public:
     // list the known keys here to avoid typos
     inline static const std::string InstComment = "comment";
     inline static const std::string InstLoc = "location";
+    inline static const std::string TokenLoc = "tokenlocation";
 };
 
 }

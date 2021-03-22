@@ -4208,6 +4208,11 @@ namespace IGC
             SaveOption(vISA_EmitLocation, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        {
+            SaveOption(vISA_SBIDDepLoc, true);
+        }
+
         // Enable SendFusion for SIMD8
         // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but
         //  more investigation needs to be done on whether simply replacing sr0.2 with sr0.3 is enough.

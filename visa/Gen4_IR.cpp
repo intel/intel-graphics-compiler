@@ -1151,6 +1151,25 @@ void G4_INST::setComments(const std::string& str)
     setMetadata(Metadata::InstComment, node);
 }
 
+void G4_INST::setTokenLoc(unsigned short token, unsigned globalID)
+{
+    if (!builder.getOption(vISA_SBIDDepLoc))
+    {
+        return;
+    }
+    auto tokenLoc = getMetadata(Metadata::TokenLoc);
+    if (!tokenLoc)
+    {
+        auto node = const_cast<IR_Builder&>(builder).allocateMDTokenLocation(token, globalID);
+        setMetadata(Metadata::TokenLoc, node);
+    }
+    else
+    {
+        MDTokenLocation* tokenL = tokenLoc->asMDTokenLocation();
+        tokenL->addTokenLocation(token, globalID);
+    }
+}
+
 //
 // remove all references to this inst in other inst's use_list
 // this is used when we want to delete this instruction
@@ -3667,6 +3686,17 @@ void G4_INST::emitInstIds(std::ostream& output) const
     uint32_t genId = getLexicalId();
     if (genId != -1) {
         output << "&" << genId << ":";
+    }
+
+    if (builder.hasSWSB())
+    {
+        unsigned tokenLocNum = getTokenLocationNum();
+        for (unsigned i = 0; i < tokenLocNum; i++)
+        {
+            unsigned short token = 0;
+            uint32_t depId = getTokenLoc(i, token);
+            output << token << "." << depId << ":";
+        }
     }
 
     int64_t pc = getGenOffset();

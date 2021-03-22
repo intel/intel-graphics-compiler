@@ -338,7 +338,8 @@ namespace vISA
 
         struct DepToken {
             unsigned short token;
-            SWSBTokenType type;
+            SWSBTokenType  type;
+            SBNode*        depNode;
         };
         std::vector <DepToken> depTokens;
 
@@ -556,7 +557,7 @@ namespace vISA
             }
         }
 
-        void setDepToken(unsigned short token, SWSBTokenType type)
+        void setDepToken(unsigned short token, SWSBTokenType type, SBNode *node)
         {
             for (DepToken& depToken : depTokens)
             {
@@ -569,6 +570,7 @@ namespace vISA
                     if (type == SWSBTokenType::AFTER_WRITE)
                     {
                         depToken.type = type;
+                        depToken.depNode = node;
                     }
                     return;
                 }
@@ -577,6 +579,7 @@ namespace vISA
             struct DepToken dt;
             dt.token = token;
             dt.type = type;
+            dt.depNode = node;
             depTokens.push_back(dt);
         }
         void eraseDepToken(unsigned i)
@@ -589,6 +592,11 @@ namespace vISA
         {
             type = depTokens[i].type;
             return depTokens[i].token;
+        }
+
+        unsigned short getDepTokenNodeID(unsigned int i) const
+        {
+            return depTokens[i].depNode->getNodeID();;
         }
 
         void setTokenReuseNode(SBNode *node)
@@ -1242,7 +1250,7 @@ namespace vISA
 
         //Assign Token
         void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
-        void assignDepToken(const SBNode *node);
+        void assignDepToken(SBNode *node);
         void assignDepTokens();
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertTest();

@@ -1179,7 +1179,46 @@ public:
         return MD ? MD->getMetadata(key) : nullptr;
     }
 
+    unsigned getTokenLocationNum() const
+    {
+        auto tokenLoc = getMetadata(Metadata::TokenLoc);
+        if (!tokenLoc)
+        {
+            return 0;
+        }
+        MDTokenLocation *token = tokenLoc->asMDTokenLocation();
+        if (token != nullptr)
+        {
+            return token->getTokenLocationNum();
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    unsigned getTokenLoc(int i, unsigned short &tokenID) const
+    {
+        auto tokenLoc = getMetadata(Metadata::TokenLoc);
+        if (!tokenLoc)
+        {
+            return 0;
+        }
+        MDTokenLocation *token = tokenLoc->asMDTokenLocation();
+        if (token != nullptr)
+        {
+            tokenID = token->getToken(i);
+            return token->getTokenLocation(i);
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
     void setComments(const std::string& comments);
+
+    void setTokenLoc(unsigned short token, unsigned globalID);
 
     std::string getComments() const
     {
