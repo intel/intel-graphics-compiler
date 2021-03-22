@@ -95,18 +95,22 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   set(${RES_FILE} ${BIF_CPP_PATH} PARENT_SCOPE)
 endfunction()
 
-set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
-vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32)
-vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64)
+if (IGC_OPTION__VC_DISABLE_BIF)
+  target_compile_definitions(VCHeaders INTERFACE IGC_VC_DISABLE_BIF)
+else()
+  set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
+  vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32)
+  vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64)
 
-add_custom_target(VCBiFPreparation
-  DEPENDS ${PRINTF_OCL_32_CPP_PATH}
-          ${PRINTF_OCL_64_CPP_PATH}
-  SOURCES ${PRINTF_OCL_SRC_PATH})
+  add_custom_target(VCBiFPreparation
+    DEPENDS ${PRINTF_OCL_32_CPP_PATH}
+            ${PRINTF_OCL_64_CPP_PATH}
+    SOURCES ${PRINTF_OCL_SRC_PATH})
 
-add_library(VCEmbeddedBiF STATIC
-  ${PRINTF_OCL_32_CPP_PATH}
-  ${PRINTF_OCL_64_CPP_PATH})
-add_dependencies(VCEmbeddedBiF VCBiFPreparation)
-target_link_libraries(VCEmbeddedBiF VCHeaders)
+  add_library(VCEmbeddedBiF STATIC
+    ${PRINTF_OCL_32_CPP_PATH}
+    ${PRINTF_OCL_64_CPP_PATH})
+  add_dependencies(VCEmbeddedBiF VCBiFPreparation)
+  target_link_libraries(VCEmbeddedBiF VCHeaders)
+endif()
 

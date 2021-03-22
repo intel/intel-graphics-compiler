@@ -40,13 +40,21 @@ enum class RawKind {
 };
 
 inline llvm::StringRef getPrintfOCL32RawData() {
+#ifdef IGC_VC_DISABLE_BIF
+  return "";
+#else  // IGC_VC_DISABLE_BIF
   return {reinterpret_cast<char *>(VCBiFPrintfOCL32RawData),
           VCBiFPrintfOCL32RawData_size};
+#endif // IGC_VC_DISABLE_BIF
 }
 
 inline llvm::StringRef getPrintfOCL64RawData() {
+#ifdef IGC_VC_DISABLE_BIF
+  return "";
+#else  // IGC_VC_DISABLE_BIF
   return {reinterpret_cast<char *>(VCBiFPrintfOCL64RawData),
           VCBiFPrintfOCL64RawData_size};
+#endif // IGC_VC_DISABLE_BIF
 }
 
 template <enum RawKind> llvm::StringRef getRawData();

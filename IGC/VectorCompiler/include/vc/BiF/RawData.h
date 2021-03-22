@@ -27,10 +27,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef VC_BIF_RAW_DATA_H
 #define VC_BIF_RAW_DATA_H
 
+#ifndef IGC_VC_DISABLE_BIF
 extern unsigned char VCBiFPrintfOCL32RawData[];
 extern unsigned int VCBiFPrintfOCL32RawData_size;
 
 extern unsigned char VCBiFPrintfOCL64RawData[];
 extern unsigned int VCBiFPrintfOCL64RawData_size;
+#endif // IGC_VC_DISABLE_BIF
 
 #endif

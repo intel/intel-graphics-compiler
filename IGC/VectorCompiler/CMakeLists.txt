@@ -123,6 +123,14 @@ add_dependencies(VCIntrinsicsHeaders
 
 include(cmake/spirv.cmake)
 
+set(IGC_OPTION__VC_DISABLE_BIF_DEFAULT OFF)
+if(LLVM_VERSION_MAJOR LESS 9)
+  set(IGC_OPTION__VC_DISABLE_BIF_DEFAULT ON)
+endif()
+option(IGC_OPTION__VC_DISABLE_BIF
+  "disable BiF generation for VC (disables some BE features)"
+  ${IGC_OPTION__VC_DISABLE_BIF_DEFAULT})
+
 # --- VC Opt ---
 
 add_subdirectory(include)

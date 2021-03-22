@@ -39,9 +39,12 @@ add_library(VCIGCDeps STATIC "")
 target_link_libraries(VCIGCDeps
   VCHeaders
 
-  VCEmbeddedBiF
   VCCodeGen
   )
+
+if (NOT IGC_OPTION__VC_DISABLE_BIF)
+  target_link_libraries(VCIGCDeps VCEmbeddedBiF)
+endif()
 
 add_dependencies(VCIGCDeps
   "${IGC_BUILD__PROJ__GenISAIntrinsics}"
