@@ -74,7 +74,7 @@ Type* ImplicitArg::getLLVMType(LLVMContext& context) const
     // the allocation size, but not to determine the LLVM type, because every
     // work-item sees a scalar.
     Type* baseType = nullptr;
-    switch(m_valType)
+    switch (m_valType)
     {
     case BYTE:
         baseType = Type::getInt8Ty(context);
@@ -122,23 +122,18 @@ unsigned int ImplicitArg::getNumberElements() const
 
 VISA_Type ImplicitArg::getVISAType(const DataLayout& DL) const
 {
-    switch(m_valType)
+    switch (m_valType)
     {
     case BYTE:
         return VISA_Type::ISA_TYPE_B;
-        break;
     case SHORT:
         return VISA_Type::ISA_TYPE_W;
-        break;
     case INT:
         return VISA_Type::ISA_TYPE_D;
-        break;
     case LONG:
         return VISA_Type::ISA_TYPE_Q;
-        break;
     case FP32:
         return VISA_Type::ISA_TYPE_F;
-        break;
     case CONSTPTR:
     case GLOBALPTR:
     case PRIVATEPTR:
@@ -152,32 +147,32 @@ VISA_Type ImplicitArg::getVISAType(const DataLayout& DL) const
 }
 
 unsigned int ImplicitArg::getPointerSize(const DataLayout& DL) const {
-  switch (m_valType) {
-  case CONSTPTR:    return DL.getPointerSize(ADDRESS_SPACE_CONSTANT);
-  case PRIVATEPTR:  return DL.getPointerSize(ADDRESS_SPACE_PRIVATE);
-  case GLOBALPTR:   return DL.getPointerSize(ADDRESS_SPACE_GLOBAL);
-  default:
-    IGC_ASSERT_MESSAGE(0, "Unrecognized pointer type");
-    break;
-  }
-  return 0;
+    switch (m_valType) {
+    case CONSTPTR:    return DL.getPointerSize(ADDRESS_SPACE_CONSTANT);
+    case PRIVATEPTR:  return DL.getPointerSize(ADDRESS_SPACE_PRIVATE);
+    case GLOBALPTR:   return DL.getPointerSize(ADDRESS_SPACE_GLOBAL);
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unrecognized pointer type");
+        break;
+    }
+    return 0;
 }
 
 IGC::e_alignment ImplicitArg::getAlignType(const DataLayout& DL) const
 {
     switch (m_align)
     {
-        case ALIGN_DWORD:
-           return IGC::EALIGN_DWORD;
-        case ALIGN_QWORD:
-            return IGC::EALIGN_QWORD;
-        case ALIGN_GRF: //According to old implementation, EALIGN_GRF = EALIGN_HWORD, the correpsonding alignmentSize is 32, so EALIGN_HWORD will not change the old define.
-           return IGC::EALIGN_HWORD;  //FIXME: But, the ALIGN_GRF is really GRF aligned? If so, there is bug here.
-        case ALIGN_PTR:
-          return getPointerSize(DL) == 4 ? IGC::EALIGN_DWORD : IGC::EALIGN_QWORD;
-        default:
-            IGC_ASSERT_MESSAGE(0, "Uknown alignment");
-            break;
+    case ALIGN_DWORD:
+       return IGC::EALIGN_DWORD;
+    case ALIGN_QWORD:
+        return IGC::EALIGN_QWORD;
+    case ALIGN_GRF: //According to old implementation, EALIGN_GRF = EALIGN_HWORD, the correpsonding alignmentSize is 32, so EALIGN_HWORD will not change the old define.
+       return IGC::EALIGN_HWORD;  //FIXME: But, the ALIGN_GRF is really GRF aligned? If so, there is bug here.
+    case ALIGN_PTR:
+      return getPointerSize(DL) == 4 ? IGC::EALIGN_DWORD : IGC::EALIGN_QWORD;
+    default:
+        IGC_ASSERT_MESSAGE(0, "Uknown alignment");
+        break;
     }
 
     return IGC::EALIGN_DWORD;
@@ -197,7 +192,7 @@ unsigned int ImplicitArg::getAllocateSize(const DataLayout& DL) const
 {
     unsigned int elemSize = 0;
 
-    switch(m_valType)
+    switch (m_valType)
     {
     case BYTE:
         elemSize = 1;
@@ -461,10 +456,9 @@ void ImplicitArgs::addNumberedArgs(llvm::Function& F, const ImplicitArg::ArgMap&
     for (const auto& argPair : argMap)
     {
         ImplicitArg::ArgType argId = argPair.first;
-        ImplicitArg::ArgValSet argSet = argPair.second;
-        for (const auto& argNum : argSet)
+        for (const auto& argNum : argPair.second)
         {
-            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            ArgInfoMetaDataHandle argMD(ArgInfoMetaData::get());
             argMD->setArgId(argId);
             argMD->setExplicitArgNum(argNum);
             funcInfo->addImplicitArgInfoListItem(argMD);
@@ -486,10 +480,9 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, const IGCMD::MetaDataU
         return;
 
     FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
-    for (auto& Arg : F.args() )
+    for (const auto& Arg : F.args())
     {
-        Value* AV = &Arg;
-        PointerType* PTy = dyn_cast<PointerType>(AV->getType());
+        PointerType* PTy = dyn_cast<PointerType>(Arg.getType());
         if (!PTy ||
             (PTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT &&
              PTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL))
@@ -525,8 +518,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, const IGCMD::MetaDataU
 void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData* modMD)
 {
     ImplicitArg::ArgMap OffsetArgs;
-    FunctionInfoMetaDataHandle funcInfoMD =
-        pMdUtils->getFunctionsInfoItem(&F);
+    FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
 
     IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
@@ -535,10 +527,9 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function& F, const IGCMD::MetaDat
         return;
 
     FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
-    for (auto& Arg : F.args())
+    for (const auto& Arg : F.args())
     {
-        Value* AV = &Arg;
-        PointerType* PTy = dyn_cast<PointerType>(AV->getType());
+        PointerType* PTy = dyn_cast<PointerType>(Arg.getType());
         if (!PTy ||
             (PTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT &&
                 PTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL))
@@ -593,7 +584,7 @@ int32_t ImplicitArgs::getExplicitArgNum(unsigned int index) const
 {
     ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
 
-    if(argInfo->isExplicitArgNumHasValue())
+    if (argInfo->isExplicitArgNumHasValue())
     {
         return argInfo->getExplicitArgNum();
     }

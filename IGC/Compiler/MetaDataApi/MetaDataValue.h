@@ -34,7 +34,7 @@ IN THE SOFTWARE.
 namespace IGC
 {
     // Represents the meta data value stored using the positional schema
-    // The root node is actuall storing the value
+    // The root node is actually storing the value
     template<class T, class Traits = MDValueTraits<T> >
     class MetaDataValue
     {
@@ -65,7 +65,7 @@ namespace IGC
         {
         }
 
-        operator value_type()
+        operator value_type() const
         {
             return m_value;
         }
@@ -75,9 +75,9 @@ namespace IGC
             return m_value;
         }
 
-        llvm::MDNode* getMDNode()
+        llvm::MDNode* getMDNode() const
         {
-            return (llvm::MDNode*)m_pNode;
+            return static_cast<llvm::MDNode*>(m_pNode);
         }
 
         void set(const value_type& val)

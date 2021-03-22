@@ -255,7 +255,7 @@ namespace IGC
         /// @return The structure offset of the given implicit argument index
         int32_t getStructArgOffset(uint index) const;
 
-        /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments
+        /// @brief  Creates implict arguments metadata for the given function based on the given implicit arguments
         ///         it should receive. If implicit metadata exists, it adds to it.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  implicitArgs    The implicit argument that are required by the given function
@@ -263,7 +263,7 @@ namespace IGC
         static void addImplicitArgs(llvm::Function& F, const llvm::SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, const IGCMD::MetaDataUtils* pMdUtils);
         //TODO doc
 
-        /// @brief  Creates implict image arguments metadata for the give function based on the given implicit image
+        /// @brief  Creates implict image arguments metadata for the given function based on the given implicit image
         ///         arguments it should receive. If implicit image metadata exists, it adds to it.
         /// @param  F The function for which to create the implicit argument's metadata
         /// @param  argMap          A map of implict argument types to the Value pointers to the arguments
@@ -273,7 +273,7 @@ namespace IGC
 
         static void addStructArgs(llvm::Function& F, const llvm::Argument* A, const ImplicitArg::StructArgList& S, const IGCMD::MetaDataUtils* pMdUtils);
 
-        /// @brief  Creates implict arguments metadata for the give function based on the given implicit arguments
+        /// @brief  Creates implict arguments metadata for the given function based on the given implicit arguments
         ///         it should receive. If implicit metadata exists, it adds to it.
         /// @param  F               The function for which to create the implicit argument's metadata
         /// @param  argMap          A map of implict argument types to the set of numbers of arguments
