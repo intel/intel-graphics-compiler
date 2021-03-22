@@ -239,7 +239,7 @@ namespace IGC
             {
                 AllocateInput(m_pThread_ID_in_Group_X, offset, i);
                 offset += m_pThread_ID_in_Group_X->GetSize();
-                offset = iSTD::Round(offset, alignmentSize[m_pThread_ID_in_Group_X->GetAlign()]);
+                offset = iSTD::Round(offset, 1u << m_pThread_ID_in_Group_X->GetAlign());
             }
         }
 
@@ -249,7 +249,7 @@ namespace IGC
             {
                 AllocateInput(m_pThread_ID_in_Group_Y, offset, i);
                 offset += m_pThread_ID_in_Group_Y->GetSize();
-                offset = iSTD::Round(offset, alignmentSize[m_pThread_ID_in_Group_Y->GetAlign()]);
+                offset = iSTD::Round(offset, 1u << m_pThread_ID_in_Group_Y->GetAlign());
             }
         }
 
@@ -259,7 +259,7 @@ namespace IGC
             {
                 AllocateInput(m_pThread_ID_in_Group_Z, offset, i);
                 offset += m_pThread_ID_in_Group_Z->GetSize();
-                offset = iSTD::Round(offset, alignmentSize[m_pThread_ID_in_Group_Z->GetAlign()]);
+                offset = iSTD::Round(offset, 1u << m_pThread_ID_in_Group_Z->GetAlign());
             }
         }
     }

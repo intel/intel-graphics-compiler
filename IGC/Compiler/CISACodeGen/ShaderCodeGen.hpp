@@ -467,9 +467,8 @@ public:
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
     void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
-    uint32_t GetStatelessWritesCount() { return m_StatelessWritesCount; }
-    uint32_t GetIndirectStatelessCount() { return m_IndirectStatelessCount; }
-    calignmentSize as;
+    uint32_t GetStatelessWritesCount() const { return m_StatelessWritesCount; }
+    uint32_t GetIndirectStatelessCount() const { return m_IndirectStatelessCount; }
 
     // In bytes
     uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }

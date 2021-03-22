@@ -495,8 +495,7 @@ void CShader::AllocateInput(CVariable* var, uint offset, uint instance, bool for
 {
     // the input offset must respect the variable alignment
     IGC_ASSERT(nullptr != var);
-    IGC_ASSERT(as[var->GetAlign()]);
-    IGC_ASSERT(offset % as[var->GetAlign()] == 0);
+    IGC_ASSERT(offset % (1u << var->GetAlign()) == 0);
     encoder.DeclareInput(var, offset, instance);
     // For the payload section, we need to mark inputs to be outputs
     // so that inputs will be alive across the entire payload section
@@ -509,8 +508,7 @@ void CShader::AllocateInput(CVariable* var, uint offset, uint instance, bool for
 void CShader::AllocateOutput(CVariable* var, uint offset, uint instance)
 {
     IGC_ASSERT(nullptr != var);
-    IGC_ASSERT(as[var->GetAlign()]);
-    IGC_ASSERT(offset % as[var->GetAlign()] == 0);
+    IGC_ASSERT(offset % (1u << var->GetAlign()) == 0);
     encoder.DeclareInput(var, offset, instance);
     encoder.MarkAsOutput(var);
 }

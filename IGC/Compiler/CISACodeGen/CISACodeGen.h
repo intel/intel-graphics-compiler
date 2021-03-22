@@ -77,27 +77,6 @@ namespace IGC
 #define EALIGN_GRF EALIGN_HWORD
 #define EALIGN_2GRF EALIGN_32WORD
 
-    static const std::array<unsigned int, 8> alignmentSize =
-    {
-        1,
-        2,
-        4,
-        8,
-        16,
-        32,
-        64,
-        128
-    };
-
-    class calignmentSize
-    {
-    public:
-        unsigned int operator[](unsigned int idx)
-        {
-            return alignmentSize[idx];
-        }
-    };
-
     // XMACRO defining the CISA opCode
     // need to move to the CISA encoding file when breaking down code
 #define DECLARE_CISA_OPCODE(opCode, name, visaname) \

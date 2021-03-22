@@ -381,21 +381,20 @@ void CPixelShader::AllocatePSPayload()
     offset = payloadEnd;
 
     // create output registers for coarse phase
-    calignmentSize as;
-    for (auto it = m_CoarseOutput.begin(), ie = m_CoarseOutput.end(); it != ie; ++it)
+    for (const auto& it : m_CoarseOutput)
     {
-        CVariable* output = it->second;
-        offset = iSTD::Align(offset, as[output->GetAlign()]);
+        CVariable* output = it.second;
+        offset = iSTD::Align(offset, (size_t) 1 << output->GetAlign());
         AllocateOutput(output, offset);
         if (m_Signature)
         {
-            GetDispatchSignature().PSOutputOffset[it->first] = offset;
+            GetDispatchSignature().PSOutputOffset[it.first] = offset;
         }
         offset += output->GetSize();
     }
     if (m_CoarseoMask)
     {
-        offset = iSTD::Align(offset, as[m_CoarseoMask->GetAlign()]);
+        offset = iSTD::Align(offset, (size_t) 1 << m_CoarseoMask->GetAlign());
         AllocateOutput(m_CoarseoMask, offset);
         if (m_Signature)
         {

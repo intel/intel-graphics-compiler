@@ -166,7 +166,7 @@ IGC::e_alignment ImplicitArg::getAlignType(const DataLayout& DL) const
        return IGC::EALIGN_DWORD;
     case ALIGN_QWORD:
         return IGC::EALIGN_QWORD;
-    case ALIGN_GRF: //According to old implementation, EALIGN_GRF = EALIGN_HWORD, the correpsonding alignmentSize is 32, so EALIGN_HWORD will not change the old define.
+    case ALIGN_GRF: //According to old implementation, EALIGN_GRF = EALIGN_HWORD, the corresponding alignmentSize is 32, so EALIGN_HWORD will not change the old define.
        return IGC::EALIGN_HWORD;  //FIXME: But, the ALIGN_GRF is really GRF aligned? If so, there is bug here.
     case ALIGN_PTR:
       return getPointerSize(DL) == 4 ? IGC::EALIGN_DWORD : IGC::EALIGN_QWORD;
@@ -180,8 +180,7 @@ IGC::e_alignment ImplicitArg::getAlignType(const DataLayout& DL) const
 
 size_t ImplicitArg::getAlignment(const DataLayout& DL) const
 {
-    calignmentSize as;
-    return as[getAlignType(DL)];
+    return (size_t) 1 << getAlignType(DL);
 }
 
 WIAnalysis::WIDependancy ImplicitArg::getDependency() const {
