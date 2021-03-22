@@ -10918,19 +10918,6 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         }
         else
         {
-            // if the vector is uniform, laid-out horizontally in GRF, the per-lane
-            // offset needs to be ajusted as if the offset starts from lane-0 so that
-            // we can generate those scatter-mov(smov) in simd8/simd16 mode still end up
-            // with the correct address for the real active lane
-            if (pInstVar->IsUniform())
-            {
-                uint mask = vecTypeSize * numLanes(std::min(m_currShader->m_SIMDSize, SIMDMode::SIMD16));
-                mask = ~(mask - 1);
-                CVariable* pMask = m_currShader->ImmToVariable(mask, ISA_TYPE_UW);
-                m_encoder->And(pOffset2, pOffset2, pMask);
-                m_encoder->Push();
-            }
-
             // Lower execution size to avoid complains of indirectly addressing across more than two GRFs.
             // One example is below:
             //(W)     mov (1|M0)              f1.1<1>:uw    0x100:uw
@@ -10949,7 +10936,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             SIMDMode minDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
             SIMDMode execSizeNew = minDispatchMode;
             bool bWAMultiGRF = false;
-            if (m_currShader->m_Platform->enableMultiGRFAccessWA())
+            if (!pInstVar->IsUniform() && m_currShader->m_Platform->enableMultiGRFAccessWA())
             {
                 uint32_t dataTypeSize = pElement->getType()->getScalarSizeInBits();
                 uint32_t memSizeToUse = numLanes(simdMode) * dataTypeSize / 8;
@@ -11002,18 +10989,21 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                 for (uint lane = 0; lane < numLanes(simdMode); ++lane)
                 {
                     uint position = lane + i * 16;
-                    CVariable* immMask = m_currShader->ImmToVariable(1ULL << lane, ISA_TYPE_UD);
-                    CVariable* dstPred = m_currShader->GetNewVariable(
-                        numLanes(m_SimdMode),
-                        ISA_TYPE_BOOL,
-                        EALIGN_BYTE,
-                        CName::NONE);
+                    // write to uniform-vector has no-mask and no-predicate
+                    if (!pInstVar->IsUniform())
+                    {
+                        CVariable* immMask = m_currShader->ImmToVariable(1ULL << lane, ISA_TYPE_UD);
+                        CVariable* dstPred = m_currShader->GetNewVariable(
+                            numLanes(m_SimdMode),
+                            ISA_TYPE_BOOL,
+                            EALIGN_BYTE,
+                            CName::NONE);
 
-                    m_encoder->SetSimdSize(simdMode);
-                    m_encoder->SetP(dstPred, immMask);
-                    m_encoder->Push();
-
-                    m_encoder->SetPredicate(dstPred);
+                        m_encoder->SetSimdSize(simdMode);
+                        m_encoder->SetP(dstPred, immMask);
+                        m_encoder->Push();
+                        m_encoder->SetPredicate(dstPred);
+                    }
                     if (!pElemVar->IsUniform())
                     {
                         m_encoder->SetSrcSubReg(0, position);
@@ -11028,6 +11018,11 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                             m_encoder->SetSecondNibble((lane / 4) % 2 ? true : false);
                         }
                         m_encoder->SetSimdSize(execSizeNew);
+                    }
+                    else if (pInstVar->IsUniform())
+                    {
+                        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                        m_encoder->SetNoMask();
                     }
                     else
                     {
