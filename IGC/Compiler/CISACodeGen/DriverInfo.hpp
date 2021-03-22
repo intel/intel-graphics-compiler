@@ -126,7 +126,7 @@ namespace IGC
         /// Needs emulation of 64bits instructions
         virtual bool NeedI64BitDivRem() const { return false; }
 
-        /// Must support FP64
+        /// Return true if IGC needs FP64 emulation. (Valid if platform has no double inst.)
         virtual bool NeedFP64(PRODUCT_FAMILY productFamily) const { return false; }
 
         /// Needs IEEE fp64 div/sqrt

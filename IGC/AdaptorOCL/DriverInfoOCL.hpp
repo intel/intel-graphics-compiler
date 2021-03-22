@@ -69,12 +69,7 @@ namespace TC
         bool supportsStatelessSpacePrivateMemory() const override { return true; }
 
         bool NeedFP64(PRODUCT_FAMILY productFamily) const override {
-#if defined(__linux__)
-          if (IGC_IS_FLAG_ENABLED(EnableDPEmulation)) {
-              return true;
-          }
-#endif
-            return false;
+            return IGC_IS_FLAG_ENABLED(EnableDPEmulation);
         }
 
         bool EnableIntegerMad() const override { return true; }
