@@ -207,23 +207,13 @@ public:
 #undef CMFE_WRAPPER_GET_SYMBOL_IMPL
 };
 
-namespace detail {
-// Metafunction to remove cvref and create function pointer if needed.
-template <typename Ty> struct CleanFunctor {
-  using NoCV = typename std::remove_cv<Ty>::type;
-  using NoRef = typename std::remove_reference<NoCV>::type;
-  static constexpr bool IsFunc = std::is_function<NoRef>::value;
-  using type = typename std::conditional<IsFunc, NoRef *, NoRef>::type;
-};
-} // namespace detail
-
 // Create FEWrapper with given error handler ErrH.
 // DefaultDir parameter allows to override search order by providing
 // absolute path to directory with FE wrapper. Defaults to empty string
 // that is expanded to plain FE wrapper name.
 // Return Optional as it can fail during loading.
 template <typename ErrFn,
-          typename ErrFnTy = typename detail::CleanFunctor<ErrFn>::type>
+          typename ErrFnTy = typename std::decay<ErrFn>::type>
 inline llvm::Optional<FEWrapper<ErrFnTy>>
 makeFEWrapper(ErrFn &&ErrH, const std::string &DefaultDir = std::string{}) {
   FEWrapper<ErrFnTy> IFace{std::forward<ErrFn>(ErrH), DefaultDir};
