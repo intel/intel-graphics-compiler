@@ -744,6 +744,8 @@ bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const T
 
 bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 {
+    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
     // It is possible that there is no alloca instruction in the caller but there
     // is alloca in the callee. Save the total private memory to the metadata.
     unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(m_currFunction);
@@ -768,7 +770,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // appear in entry block of entry function. All such allocas get treated as being in prolog of
     // entry function. This results in live-range extension, but with -O0 this is not a problem as debugging
     // experience is more important than extra spills.
-    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (!modMD->compOpt.OptDisable)
     {
         if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold))
