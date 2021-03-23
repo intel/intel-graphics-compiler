@@ -48,11 +48,10 @@ function(igc_arch_detect targetArchVarName hostArchVarName)
       set(_targetArchitecture "Windows32")
     endif()
   # Use system processor set by toolchain or CMake.
-  elseif(ANDROID OR (CMAKE_SYSTEM_NAME MATCHES "Linux")
-      )
+  elseif(ANDROID OR (CMAKE_SYSTEM_NAME MATCHES "Linux"))
     if(ANDROID)
       set(_targetArchOS "Android")
-    elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    else()
       set(_targetArchOS "Linux")
     endif()
 
@@ -79,12 +78,8 @@ function(igc_arch_detect targetArchVarName hostArchVarName)
       set(_hostArchitecture "Windows32")
     endif()
   # Use 'uname -m' to detect kernel architecture.
-  elseif((CMAKE_HOST_SYSTEM_NAME MATCHES "Linux")
-      )
-    if(CMAKE_HOST_SYSTEM_NAME MATCHES "Linux")
-      set(_hostArchOS "Linux")
-    endif()
-
+  elseif(CMAKE_HOST_SYSTEM_NAME MATCHES "Linux")
+    set(_hostArchOS "Linux")
     set(_osArchitecture "x86_64")
     execute_process(
         COMMAND uname -m

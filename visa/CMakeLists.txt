@@ -7,7 +7,6 @@
 
 include(Functions.cmake)
 
-
 #none of the values about 32/64 are being propogated down
 #and BuildSetup.cmake is not part of IGC enviroment
 #so setting it manually
@@ -461,7 +460,7 @@ endif()
        ${FLEX_CISAScanner_OUTPUTS}
        ${GenX_IR_EXE_lex_yacc}
     )
-    add_dependencies(GenX_IR CISAScanner_target)
+  add_dependencies(GenX_IR CISAScanner_target)
   set_target_properties( GenX_IR PROPERTIES OUTPUT_NAME "igfxcmjit${TARGET_MODIFIER}")
   if(WIN32)
     target_link_libraries(GenX_IR ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)

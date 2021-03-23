@@ -81,7 +81,6 @@ if(MSVC)
     windows_libs_props_universal(${IGC_BUILD__PROJ__GenISAIntrinsics})
 endif()
 
-
 # add dependency for generating llvm intrinsics
 if(TARGET intrinsics_gen)
     add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" intrinsics_gen)

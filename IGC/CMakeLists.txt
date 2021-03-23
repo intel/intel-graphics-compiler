@@ -452,7 +452,7 @@ set(IGC_BUILD__PROJ_NAME_PREFIX "")
 
 #SPIRV consumption variable
 
-  set(IGC_BUILD__SPIRV_ENABLED ON)
+set(IGC_BUILD__SPIRV_ENABLED ON)
 
 
 # Enable vector compiler for Linux and Windows
@@ -493,10 +493,9 @@ set(IGC_BUILD__TOOLS_OUTPUT_DIR     "${IGC_OPTION__OUTPUT_DIR}/Tools")
 set(IGC_BUILD__UNIT_TEST_OUTPUT_DIR "${IGC_OPTION__OUTPUT_DIR}/UnitTests")
 set(IGC_BUILD__CTH_DIR              "${IGC_OPTION__OUTPUT_DIR}/fcl")
 
-    # Including CIF
-    SET(CIF_BASE_DIR "AdaptorOCL/cif")
-
-    add_subdirectory("${CIF_BASE_DIR}/cif" ${CMAKE_CURRENT_BINARY_DIR}/cif)
+# Including CIF
+set(CIF_BASE_DIR "AdaptorOCL/cif")
+add_subdirectory("${CIF_BASE_DIR}/cif" ${CMAKE_CURRENT_BINARY_DIR}/cif)
 
 # ================================================ Outputs =============================================
 
@@ -799,7 +798,6 @@ else()
           ALIAS DeadCodePreserve   GcSections REMOVE_GROUP
         )
     endif()
-
   endif()
 endif()
 
@@ -866,7 +864,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         # Disable LTCG due to increase of release build time
         #WholeProgramOptimization
     )
-
 
   # Adding needed settings specific to MSVC.
   if(MSVC)
@@ -1081,7 +1078,6 @@ igc_config_flag_apply_settings(
   )
 
 
-
 if(_igc_compiler_is_gnu_or_clang)
     igc_config_flag_apply_settings(
         CompilerOptions
@@ -1247,7 +1243,6 @@ add_compile_definitions(
     )
 endif()
 
-
 #SPIRV consumption flag
 if(IGC_BUILD__SPIRV_ENABLED)
   add_compile_definitions(
@@ -1261,30 +1256,30 @@ if(IGC_BUILD__VC_ENABLED)
       IGC_VC_ENABLED
     )
 endif()
-  add_compile_definitions(
-      _SCL_SECURE_NO_WARNINGS
-      _CRT_SECURE_NO_WARNINGS
-      NOMINMAX
-      STD_CALL
-      INSIDE_PLUGIN
-      _COMPILER_DLL_
-    )
+add_compile_definitions(
+  _SCL_SECURE_NO_WARNINGS
+  _CRT_SECURE_NO_WARNINGS
+  NOMINMAX
+  STD_CALL
+  INSIDE_PLUGIN
+  _COMPILER_DLL_
+  )
 
 # Additional definitions for vISA projects.
 set(IGC_BUID__VISA_COMPILE_DEFINITIONS
     DLL_MODE
   )
 
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    add_compile_definitions(
-        _AMD64_
-      )
-  elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    add_compile_definitions(
-        _X86_=1
-        i386=1
-      )
-  endif()
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  add_compile_definitions(
+    _AMD64_
+    )
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  add_compile_definitions(
+    _X86_=1
+    i386=1
+    )
+endif()
 
 if(LLVM_ON_WIN32)
   # NOTE: _WIN32 should be defined by compiler.
@@ -1318,7 +1313,6 @@ if(LLVM_ON_UNIX)
       USE_SSSE3
     )
 endif()
-
 
 set(DIRECTORY_DEFS
   _DEBUG
@@ -1426,7 +1420,6 @@ endif()
 
 # ======================================== Include directories =========================================
 
-
 include_directories(
     "${IGC_CODEGEN_DIR}"
 
@@ -1455,12 +1448,12 @@ include_directories(
     )
 
 
-  include_directories(
-      "${IGC_BUILD__COMMON_COMPILER_DIR}/common"
-  )
-  include_directories(
-      "${CIF_INCLUDE_DIR}"
-  )
+include_directories(
+  "${IGC_BUILD__COMMON_COMPILER_DIR}/common"
+)
+include_directories(
+  "${CIF_INCLUDE_DIR}"
+)
 
 include_directories(
     "${LLVM_INCLUDE_DIRS}"
@@ -1527,8 +1520,7 @@ endif()
 
 add_subdirectory(GenISAIntrinsics)
 
-if(LLVM_ON_WIN32
-        )
+if(LLVM_ON_WIN32)
   add_subdirectory(AdaptorOCL)
   igc_sg_define(IGC__AdaptorOCL)
 
@@ -1559,7 +1551,7 @@ if(NOT CMAKE_WDDM_LINUX)
 endif()
 endif()
 
-    add_subdirectory(OCLFE)
+add_subdirectory(OCLFE)
 
 if(MSVC)
   set(IGC_BUILD__RES__IGC__igc_common
@@ -1604,7 +1596,6 @@ set(IGC_BUILD__HDR__IGC__igc_common
     ${IGC_BUILD__HDR__IGC_common}
     ${IGC_BUILD__HDR__IGC_Common_CLElfLib}
     )
-
 
 set(IGC_BUILD__HDR__IGC__igc_dll
     ${IGC_BUILD__HDR__IGC__igc_common}
@@ -1660,7 +1651,6 @@ set_property(TARGET "${IGC_BUILD__PROJ__igc_dll}" PROPERTY PROJECT_LABEL "${IGC_
 #FCL
 #igc_target_flag_property_add_once_config_var("${IGC_BUILD__PROJ__fcl_dll}" LINK_FLAGS IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS)
 set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__fcl_dll}")
-
 
 
 #Set Universal properties if this is universal build
@@ -1755,7 +1745,6 @@ set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__G
 
 # =================================== Link targets and dependencies ====================================
 
-
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
@@ -1807,7 +1796,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       list(APPEND _targetLinkLineCommon
           "${IGC_BUILD__PROJ__ILAdapter}")
     endif()
-
   endif()
 
 list(APPEND _targetLinkLineCommon zebinlib)
@@ -1906,7 +1894,6 @@ endforeach()
   endif()
   unset(_targetType)
 
-
   set(_targetLinkLine)
 
   # Generated link line for IGC/IGC RS static library allows to properly use it in other projects.
@@ -1936,7 +1923,6 @@ endforeach()
       ${IGC_BUILD__LLVM_LIBS_TO_LINK}
       "${IGC_BUILD__END_GROUP}"
     )
-
 
 list(REMOVE_ITEM _targetLinkLine
     IGC_BUILD__LLVM_LIBS_TO_LINK
@@ -1999,13 +1985,13 @@ if(IGC_OPTION__USCLAUNCHER_TOOL)
   endif()
 endif()
 
-    if(MSVC)
-        add_custom_command( TARGET ${IGC_BUILD__PROJ__igc_dll}
-                            POST_BUILD
-                            COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
-                            COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
-        )
-    endif()
+if(MSVC)
+  add_custom_command( TARGET ${IGC_BUILD__PROJ__igc_dll}
+    POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
+    )
+endif()
 
 # ============================================== LIT TESTS =============================================
 

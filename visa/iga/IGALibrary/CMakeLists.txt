@@ -238,7 +238,7 @@ endif()
 #
 # IGA static library.  Combines piga.lib with the api/iga.cpp interface file
 ##############################################################################
-    add_library(IGA_SLIB STATIC $<TARGET_OBJECTS:GEDLibrary> $<TARGET_OBJECTS:IGA_OLIB> ${IGA_API})
+add_library(IGA_SLIB STATIC $<TARGET_OBJECTS:GEDLibrary> $<TARGET_OBJECTS:IGA_OLIB> ${IGA_API})
 
 set(IGA_SLIB_LINK_FLAGS "${IGA_LINK_FLAGS}")
 if(MSVC)
@@ -250,9 +250,9 @@ set(IGA_SLIB_DEFINITIONS ${IGA_DEFINITIONS} IGA_BUILDING_LIB)
 
 # The Windows DLL also produces an import library whose name conflicts with
 # this static library.  Hence, we must call this something other than the
-    set_target_properties(IGA_SLIB PROPERTIES
-        OUTPUT_NAME                                "iga_s${TARGET_MODIFIER}"
-      )
+set_target_properties(IGA_SLIB PROPERTIES
+    OUTPUT_NAME                                "iga_s${TARGET_MODIFIER}"
+  )
 set_target_properties(IGA_SLIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_SLIB_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
@@ -288,7 +288,7 @@ set(IGA_SOURCES_ENCODER_ONLY
   ${GED_INCLUDE}/ged.h
 )
 
-    add_library(IGA_ENC_LIB STATIC $<TARGET_OBJECTS:GEDLibrary> ${IGA_SOURCES_ENCODER_ONLY})
+add_library(IGA_ENC_LIB STATIC $<TARGET_OBJECTS:GEDLibrary> ${IGA_SOURCES_ENCODER_ONLY})
 
 set(IGA_ENC_LIB_DEFINITIONS ${IGA_DEFINITIONS} IGA_BUILDING_LIB)
 
@@ -315,7 +315,7 @@ target_compile_definitions(IGA_ENC_LIB PUBLIC IGA_DISABLE_ENCODER_EXCEPTIONS)
 ##############################################################################
 # iga##.dll
 ##############################################################################
-    add_library(IGA_DLL SHARED $<TARGET_OBJECTS:GEDLibrary> $<TARGET_OBJECTS:IGA_OLIB> ${IGA_API})
+add_library(IGA_DLL SHARED $<TARGET_OBJECTS:GEDLibrary> $<TARGET_OBJECTS:IGA_OLIB> ${IGA_API})
 
 set(IGA_DLL_DEFINITIONS ${IGA_DEFINITIONS} IGA_BUILDING_DLL)
 if (WIN32)
@@ -324,10 +324,10 @@ if (WIN32)
 endif(WIN32)
 set(IGA_DLL_LINK_FLAGS ${IGA_LINK_FLAGS})
 
-    # trb: why do we APPEND here instead of replacing these?
-    set_property(TARGET IGA_DLL APPEND PROPERTY
-        OUTPUT_NAME                                 "iga${TARGET_MODIFIER}"
-        )
+# trb: why do we APPEND here instead of replacing these?
+set_property(TARGET IGA_DLL APPEND PROPERTY
+    OUTPUT_NAME                                 "iga${TARGET_MODIFIER}"
+  )
 set_property(TARGET IGA_DLL APPEND PROPERTY
     COMPILE_DEFINITIONS                         ${IGA_DLL_DEFINITIONS}
   )
@@ -391,48 +391,48 @@ if(ANDROID AND MEDIA_IGA)
 endif(ANDROID AND MEDIA_IGA)
 # target_link_libraries(IGA PRIVATE GEDLibrary)
 
-  if(IGC_BUILD)
+if(IGC_BUILD)
     set_target_properties(IGA_DLL PROPERTIES
                           VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
                           SOVERSION "${IGC_API_MAJOR_VERSION}")
-  endif()
+endif()
 
-  if(UNIX)
-      if (CMAKE_INSTALL_FULL_LIBDIR)
-          set(IGA_LIB_PATH ${CMAKE_INSTALL_FULL_LIBDIR})
-      else()
-          set(IGA_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
-      endif()
-      INSTALL(TARGETS IGA_DLL LIBRARY DESTINATION ${IGA_LIB_PATH} COMPONENT igc-core)
-      unset(IGA_LIB_PATH)
-  elseif(MSVC)
-      install(TARGETS IGA_DLL RUNTIME
-              DESTINATION Release/lh64              CONFIGURATIONS Release)
-      install(TARGETS IGA_DLL RUNTIME
-              DESTINATION Release-Internal/lh64     CONFIGURATIONS ReleaseInternal)
-      install(TARGETS IGA_DLL RUNTIME
-              DESTINATION Debug/lh64                CONFIGURATIONS Debug)
+if(UNIX)
+    if (CMAKE_INSTALL_FULL_LIBDIR)
+        set(IGA_LIB_PATH ${CMAKE_INSTALL_FULL_LIBDIR})
+    else()
+        set(IGA_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
+    endif()
+    INSTALL(TARGETS IGA_DLL LIBRARY DESTINATION ${IGA_LIB_PATH} COMPONENT igc-core)
+    unset(IGA_LIB_PATH)
+elseif(MSVC)
+    install(TARGETS IGA_DLL RUNTIME
+        DESTINATION Release/lh64              CONFIGURATIONS Release)
+    install(TARGETS IGA_DLL RUNTIME
+        DESTINATION Release-Internal/lh64     CONFIGURATIONS ReleaseInternal)
+    install(TARGETS IGA_DLL RUNTIME
+        DESTINATION Debug/lh64                CONFIGURATIONS Debug)
 
-      install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-              DESTINATION Release/lh64/pdb          CONFIGURATIONS Release)
-      install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-              DESTINATION Release-Internal/lh64/pdb CONFIGURATIONS ReleaseInternal)
-      install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-              DESTINATION Debug/lh64/pdb            CONFIGURATIONS Debug)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+        DESTINATION Release/lh64/pdb          CONFIGURATIONS Release)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+        DESTINATION Release-Internal/lh64/pdb CONFIGURATIONS ReleaseInternal)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+        DESTINATION Debug/lh64/pdb            CONFIGURATIONS Debug)
 
-      if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
-          install(TARGETS IGA_DLL RUNTIME
-                  DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-          install(TARGETS IGA_DLL RUNTIME
-                  DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-          install(TARGETS IGA_DLL RUNTIME
-                  DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
+        install(TARGETS IGA_DLL RUNTIME
+            DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
+        install(TARGETS IGA_DLL RUNTIME
+            DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
+        install(TARGETS IGA_DLL RUNTIME
+            DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
 
-          install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-                  DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
-          install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-                  DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-          install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-                  DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
-      endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  endif()
+        install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
+        install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
+        install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+    endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+endif()

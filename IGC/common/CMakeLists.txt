@@ -54,10 +54,10 @@ list(APPEND IGC_BUILD__SRC__common
 )
 
 
-    list(APPEND IGC_BUILD__SRC__common
-      "${CMAKE_CURRENT_SOURCE_DIR}/allocator.cpp"
-      ${IGC_BUILD__SRC__Win}
-    )
+list(APPEND IGC_BUILD__SRC__common
+  "${CMAKE_CURRENT_SOURCE_DIR}/allocator.cpp"
+  ${IGC_BUILD__SRC__Win}
+  )
 
 set(IGC_BUILD__SRC__IGC_common
     ${IGC_BUILD__SRC__common}
@@ -100,9 +100,9 @@ endif()
 
 
 
-    list(APPEND IGC_BUILD__HDR__common
-      "${CMAKE_CURRENT_SOURCE_DIR}/allocator.h"
-    )
+list(APPEND IGC_BUILD__HDR__common
+  "${CMAKE_CURRENT_SOURCE_DIR}/allocator.h"
+  )
 
 set(IGC_BUILD__HDR__IGC_common
     ${IGC_BUILD__HDR__common}
