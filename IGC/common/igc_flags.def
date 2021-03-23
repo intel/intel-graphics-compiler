@@ -192,7 +192,6 @@ DECLARE_IGC_REGKEY(bool, DisableFDivReassociation,      false,   "Disable reasso
 DECLARE_IGC_REGKEY(bool, EnableTrigFuncRangeReduction,    false,    "reduce the sin and cosing function domain range", true)
 DECLARE_IGC_REGKEY(bool, EnableUnmaskedFunctions,    true,    "Enable unmaksed functions SYCL feature.", true)
 DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting stateless atomic to stateful atomic.", false)
-DECLARE_IGC_REGKEY(bool, forceFullUrbWriteMask,       false,   "Set Full URB write mask.", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary", false)
