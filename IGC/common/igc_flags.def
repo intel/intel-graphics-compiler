@@ -161,6 +161,7 @@ DECLARE_IGC_REGKEY(bool, PSSIMD32HeuristicLoopAndDiscard, true, "enable PS SIMD3
 DECLARE_IGC_REGKEY(bool, EnableBlendToDiscard,          true,  "Enable blend to discard based on blend state.", false)
 DECLARE_IGC_REGKEY(bool, EnableBlendToFill,             true,  "Enable blend to fill based on blend state.", false)
 DECLARE_IGC_REGKEY(bool, UseTiledCSThreadOrder,         true,  "Use 4x4 disaptch for CS order when it seems beneficial", false)
+DECLARE_IGC_REGKEY(bool, EnableWaveForce32,             false,  "Force Wave to use simd32", false)
 DECLARE_IGC_REGKEY(bool, EnableSLMConstProp,            true,   "Enable SLM constant propagation (compute shader only).", false)
 DECLARE_IGC_REGKEY(bool, EnableStatelessToStatefull,    true,  "Enable Stateless To Statefull transformation for global and constant address space in OpenCL kernels", false)
 DECLARE_IGC_REGKEY(bool, EnableStatefulToken,           true,  "Enable generating patch token to indicate a ptr argument is fully converted to stateful (temporary)", false)
