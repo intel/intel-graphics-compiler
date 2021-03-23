@@ -53,6 +53,7 @@ IN THE SOFTWARE.
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
@@ -63,6 +64,9 @@ IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace genx;
+
+SimpleValue::SimpleValue(const AssertingSV &ASV)
+    : SimpleValue(ASV.getValue(), ASV.getIndex()) {}
 
 char GenXLiveness::ID = 0;
 INITIALIZE_PASS_BEGIN(GenXLiveness, "GenXLiveness", "GenXLiveness", false, false)
@@ -101,7 +105,7 @@ bool GenXLiveness::runOnFunctionGroup(FunctionGroup &ArgFG)
 void GenXLiveness::clear()
 {
   while (!LiveRangeMap.empty()) {
-    LiveRange *LR = LiveRangeMap.begin()->second;
+    LiveRange *LR = begin()->second;
     for (auto i = LR->value_begin(), e = LR->value_end(); i != e; ++i) {
       SimpleValue V = *i;
       LiveRangeMap.erase(V);
@@ -128,8 +132,9 @@ void GenXLiveness::clear()
  */
 void GenXLiveness::setLiveRange(SimpleValue V, LiveRange *LR)
 {
-  IGC_ASSERT_MESSAGE(LiveRangeMap.find(V) == LiveRangeMap.end(),
-    "Attempting to set LiveRange for Value that already has one");
+  IGC_ASSERT_MESSAGE(
+      LiveRangeMap.find(V) == end(),
+      "Attempting to set LiveRange for Value that already has one");
   LR->addValue(V);
   LiveRangeMap[V] = LR;
   LR->setAlignmentFromValue(
@@ -516,7 +521,7 @@ void GenXLiveness::removeValue(SimpleValue V)
 LiveRange *GenXLiveness::removeValueNoDelete(SimpleValue V)
 {
   LiveRangeMap_t::iterator i = LiveRangeMap.find(V);
-  if (i == LiveRangeMap.end())
+  if (i == end())
     return nullptr;
   LiveRange *LR = i->second;
   LiveRangeMap.erase(i);
@@ -556,7 +561,7 @@ void GenXLiveness::replaceValue(Value *OldVal, Value *NewVal)
 void GenXLiveness::replaceValue(SimpleValue OldVal, SimpleValue NewVal)
 {
   LiveRangeMap_t::iterator i = LiveRangeMap.find(OldVal);
-  IGC_ASSERT(i != LiveRangeMap.end());
+  IGC_ASSERT(i != end());
   LiveRange *LR = i->second;
   LiveRangeMap.erase(i);
   LiveRangeMap[NewVal] = LR;
@@ -659,7 +664,7 @@ void GenXLiveness::eraseLiveRange(LiveRange *LR)
 const LiveRange *GenXLiveness::getLiveRangeOrNull(SimpleValue V) const
 {
   auto i = LiveRangeMap.find(V);
-  if (i == LiveRangeMap.end())
+  if (i == end())
     return nullptr;
   return i->second;
 }
@@ -688,11 +693,17 @@ LiveRange *GenXLiveness::getLiveRange(SimpleValue V)
  * Returns already created unified value, or creates new one
  * if there was no such.
  */
-Value *GenXLiveness::getUnifiedRet(Function *F)
-{
+Value *GenXLiveness::getUnifiedRet(Function *F) {
+  auto *Ret = getUnifiedRetIfExist(F);
+  if (!Ret)
+    return createUnifiedRet(F);
+  return Ret;
+}
+
+Value *GenXLiveness::getUnifiedRetIfExist(Function *F) const {
   auto RetIt = UnifiedRets.find(F);
   if (RetIt == UnifiedRets.end())
-    return createUnifiedRet(F);
+    return nullptr;
   return RetIt->second;
 }
 
@@ -1485,17 +1496,39 @@ void LiveRange::dump() const
 }
 #endif
 
+void GenXLiveness::printValueLiveness(Value *V, raw_ostream &OS) const {
+  const LiveRange *LR = getLiveRangeOrNull(V);
+  if (!LR)
+    return;
+  // Only show an LR if the map iterator is on the value that appears first
+  // in the LR. That avoids printing the same LR multiple times.
+  if (V != LR->value_begin()->getValue())
+    return;
+
+  LR->print(OS);
+  OS << "\n";
+}
+
 void GenXLiveness::print(raw_ostream &OS) const
 {
   OS << "GenXLiveness for FunctionGroup " << FG->getName() << "\n";
-  for (const_iterator i = begin(), e = end(); i != e; ++i) {
-    LiveRange *LR = i->second;
-    // Only show an LR if the map iterator is on the value that appears first
-    // in the LR. That avoids printing the same LR multiple times.
-    if (i->first == *LR->value_begin()) {
-      LR->print(OS);
-      OS << "\n";
+  // Print live ranges for global variables;
+  for (auto &G : FG->getModule()->globals())
+    printValueLiveness(&G, OS);
+  for (auto i = FG->begin(), e = FG->end(); i != e; ++i) {
+    Function *Func = *i;
+    // Print live ranges for args.
+    for (auto fi = Func->arg_begin(), fe = Func->arg_end(); fi != fe; ++fi)
+      printValueLiveness(&*fi, OS);
+    // Print live range(s) for unified return value.
+    if (i != FG->begin() && !Func->getReturnType()->isVoidTy()) {
+      auto Ret = getUnifiedRetIfExist(Func);
+      if (Ret)
+        printValueLiveness(Ret, OS);
     }
+    // Print live ranges for code.
+    for (auto &Inst : instructions(Func))
+      printValueLiveness(&Inst, OS);
   }
   OS << "\n";
 }

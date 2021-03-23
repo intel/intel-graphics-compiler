@@ -123,7 +123,7 @@ void GenXRematerialization::remat(Function *F, PressureTracker &RP) {
         LiveRange *LR = Liveness->getLiveRangeOrNull(CI);
         if (!LR || LR->value_size() != 1)
           continue;
-        IGC_ASSERT(*LR->value_begin() == CI);
+        IGC_ASSERT(LR->value_begin()->getValue() == CI);
         unsigned B = Numbering->getNumber(CI);
         for (auto &U : CI->uses()) {
           auto UI = U.getUser();

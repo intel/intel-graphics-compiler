@@ -264,6 +264,7 @@ public:
   // Constructor from a struct value and unflattened indices (as found in extractelement)
   SimpleValue(Value *V, ArrayRef<unsigned> Indices) : V(V),
     Index(IndexFlattener::flatten(cast<StructType>(V->getType()), Indices)) {}
+  SimpleValue(const AssertingSV &);
   // Accessors
   Value *getValue() const { return V; }
   unsigned getIndex() const { return Index; }
@@ -385,21 +386,14 @@ public:
   unsigned size() const { return Segments.size(); }
   void resize(unsigned len) { Segments.resize(len); }
   // Iterator forwarders for Values.
-  // This is complicated by the Values vector containing AssertingSV, but the
-  // iterator wants to dereference to a Simplevalue.
-  class value_iterator {
-    Values_t::iterator i;
-  public:
-    value_iterator(Values_t::iterator i) : i(i) {}
-    SimpleValue operator*() { return i->get(); }
-    AssertingSV *operator->() { return i; }
-    bool operator==(const value_iterator &Rhs) const { return i == Rhs.i; }
-    bool operator!=(const value_iterator &Rhs) const { return !(*this == Rhs); }
-    value_iterator &operator++() { ++i; return *this; }
-  };
+  using value_iterator = Values_t::iterator;
+  using const_value_iterator = Values_t::const_iterator;
   Values_t& getValues() { return Values; }
   value_iterator value_begin() { return Values.begin(); }
   value_iterator value_end() { return Values.end(); }
+  const_value_iterator value_begin() const { return Values.begin(); }
+  const_value_iterator value_end() const { return Values.end(); }
+
   unsigned value_size() { return Values.size(); }
   bool value_empty() { return Values.empty(); }
   // find : return iterator to segment containing Num (including the case
@@ -498,7 +492,7 @@ public:
 
 class GenXLiveness : public FunctionGroupPass {
   FunctionGroup *FG;
-  using LiveRangeMap_t = MapVector<genx::SimpleValue, genx::LiveRange *>;
+  using LiveRangeMap_t = std::map<genx::SimpleValue, genx::LiveRange *>;
   LiveRangeMap_t LiveRangeMap;
   genx::CallGraph *CG;
   GenXBaling *Baling;
@@ -602,6 +596,7 @@ public:
   // Get/create the unified return value for a function
   Value *getUnifiedRet(Function *F);
   Value *createUnifiedRet(Function *F);
+  Value *getUnifiedRetIfExist(Function *F) const;
   // Test whether a value is a unified return value (and return its Function).
   Function *isUnifiedRet(Value *V);
   // Move unified return value from OldF to NewF.
@@ -641,6 +636,7 @@ private:
   void rebuildLiveRangeForValue(genx::LiveRange *LR, genx::SimpleValue SV);
   genx::LiveRange *visitPropagateSLRs(Function *F);
   void merge(genx::LiveRange *LR1, genx::LiveRange *LR2);
+  void printValueLiveness(Value *V, raw_ostream &OS) const;
 };
 
 void initializeGenXLivenessPass(PassRegistry &);
