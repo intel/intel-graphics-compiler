@@ -4258,7 +4258,6 @@ void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* l
     }
 }
 
-
 //The merged footprint is ordered from back to front instructions in the macro
 //As a result if killed, is the back instruction killed, which means front instructions are killed as well.
 void G4_BB_SB::footprintMerge(SBNode* node, const SBNode* nextNode)

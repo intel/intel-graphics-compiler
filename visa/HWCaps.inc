@@ -680,4 +680,8 @@
    {
        return false;
    }
+   bool hasA0WARHWissue()
+   {
+       return false;
+   }
     // end HW capabilities
