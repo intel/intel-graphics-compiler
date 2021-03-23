@@ -25,6 +25,12 @@ IN THE SOFTWARE.
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
+#define USE_IMF_TGAMMA_IMPL 1
+
+#ifdef USE_IMF_TGAMMA_IMPL
+#include "../IMF/FP32/tgamma_s_noFP64.cl"
+#endif // USE_IMF_TGAMMA_IMPL
+
 #define SQRT_2PI                (as_float(0x40206C98)) // 2.5066282746310007f
 
 // Computes the gamma functions using a Lanczos approximation:
@@ -55,6 +61,9 @@ static float __intel_gamma(float z)
 
 float __builtin_spirv_OpenCL_tgamma_f32( float x )
 {
+#if USE_IMF_TGAMMA_IMPL
+    return __ocl_svml_tgammaf(x);
+#else // USE_IMF_TGAMMA_IMPL
     float ret;
     if ( (x < 0.0f) & (x == __builtin_spirv_OpenCL_floor_f32(x))) {
         ret = __builtin_spirv_OpenCL_nan_i32((uint)0);
@@ -75,6 +84,7 @@ float __builtin_spirv_OpenCL_tgamma_f32( float x )
         ret = ( as_uint(x) == FLOAT_SIGN_MASK ) ? -INFINITY : ret;
     }
     return ret;
+#endif // USE_IMF_TGAMMA_IMPL
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_tgamma, float, float, f32 )
