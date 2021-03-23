@@ -273,23 +273,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         F->removeFnAttr(llvm::Attribute::NoInline);
     };
 
-    // Returns true if a function is either import or export and requires external linking
-    auto NeedsLinking = [](Function* F)->bool
-    {
-        // SPIRV FE translate import/export linkage to "ExternalLinkage" in LLVMIR
-        // Check all "ExternalLinkage" functions. Func declarations = Import, Func definition = Export
-        if (F->hasExternalLinkage() && F->getCallingConv() == CallingConv::SPIR_FUNC)
-        {
-            // builtins should not be externally linked, they will always be resolved by IGC
-            return !(F->hasFnAttribute(llvm::Attribute::Builtin)
-                || F->getName().startswith("__builtin_")
-                || F->getName().startswith("__igcbuiltin_")
-                || F->getName().startswith("llvm.")
-                || F->getName().equals("printf"));
-        }
-        return false;
-    };
-
     // Process through all functions and add the appropriate function attributes
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -298,10 +281,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             if (F->getName() == "__translate_sampler_initializer")
                 F->addFnAttr(llvm::Attribute::ReadOnly);
-
-            // Functions requiring import from external module
-            if (F->hasFnAttribute("referenced-indirectly") || NeedsLinking(F))
+            if (F->hasFnAttribute("referenced-indirectly"))
             {
+                // External function not defined in current module
                 pCtx->m_enableFunctionPointer = true;
                 F->addFnAttr("IndirectlyCalled");
                 F->addFnAttr("visaStackCall");
@@ -388,66 +370,63 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
 
-        // Functions that have the spir_kernel calling convention
-        // This may be true even if isEntryFunc returns false, for invoke kernels and cloned callable kernels
+        const bool isKernel = isEntryFunc(pMdUtils, F);
         const bool spirKernelConv = (F->getCallingConv() == CallingConv::SPIR_KERNEL);
-        // Set for kernel functions
-        const bool isKernel = isEntryFunc(pMdUtils, F) || spirKernelConv;
-
-        // Check for functions that can be indirectly called
-        bool isIndirect = false;
-        if (!isKernel || istrue)
+        if ((isKernel || spirKernelConv) && !istrue)
         {
-            isIndirect = F->hasFnAttribute("referenced-indirectly") ||
-                (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.IsLibraryCompilation && NeedsLinking(F));
+            // WA for spir kernels that can be called, like invoke kernels and cloned kernels, always inline these.
+            if (spirKernelConv)
+                SetAlwaysInline(F);
 
-            if (!isIndirect)
+            // No need to process kernel funcs any further
+            continue;
+        }
+        else if (!isKernel)
+        {
+            F->setLinkage(GlobalValue::InternalLinkage);
+        }
+
+        // Add function attribute for indirectly called functions
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        {
+            // Check if the function can be called either from
+            // externally or as a function pointer
+            bool isExtern = (F->hasFnAttribute("referenced-indirectly"));
+            bool isIndirect = false;
+            for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
             {
-                // Functions without Export Linkage and does not have the indirect attribute set can still be called indirectly.
-                // Set the indirect flag if the function's address is taken by a non-call instruction.
-                for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
+                CallInst* call = dyn_cast<CallInst>(*u);
+
+                if (!call || IGCLLVM::getCalledValue(call) != F)
                 {
-                    CallInst* call = dyn_cast<CallInst>(*u);
-                    if (!call || IGCLLVM::getCalledValue(call) != F)
-                    {
-                        isIndirect = true;
-                        break;
-                    }
+                    isIndirect = true;
+                }
+            }
+
+            // Add indirect call function attributes
+            if (isExtern || isIndirect)
+            {
+                pCtx->m_enableFunctionPointer = true;
+
+                F->addFnAttr("IndirectlyCalled");
+                if (!istrue)
+                {
+                    F->addFnAttr("visaStackCall");
+                }
+                if (isExtern)
+                {
+                    F->setLinkage(GlobalValue::ExternalLinkage);
                 }
             }
         }
 
-        if (isIndirect)
-        {
-            // Add indirect call function attributes
-            pCtx->m_enableFunctionPointer = true;
-            F->addFnAttr("IndirectlyCalled");
-            if (!istrue)
-            {
-                F->addFnAttr("visaStackCall");
-            }
-            F->setLinkage(GlobalValue::ExternalLinkage);
-        }
-
         if (isKernel)
-        {
-            // WA for callable kernels, always inline these.
-            if (spirKernelConv && !istrue)
-                SetAlwaysInline(F);
-
-            // No need to process further for kernels
             continue;
-        }
-        else
-        {
-            // Set internal linkage for remaining non-kernel functions
-            F->setLinkage(GlobalValue::InternalLinkage);
-        }
 
         // Flag for function calls where alwaysinline must be true
         bool mustAlwaysInline = false;
 
-        // Add always attribute if function is a builtin
+        // Add always attribtue if function is a builtin
         if (F->hasFnAttribute(llvm::Attribute::Builtin) ||
             F->getName().startswith(igc_spv::kLLVMName::builtinPrefix))
         {

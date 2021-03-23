@@ -1428,10 +1428,6 @@ namespace IGC
                 {
                     EnableTakeGlobalAddress = true;
                 }
-                if (strstr(options, "-library-compilation"))
-                {
-                    IsLibraryCompilation = true;
-                }
 
                 // GTPin flags used by L0 driver runtime
                 if (strstr(options, "-gtpin-rera"))
@@ -1458,7 +1454,6 @@ namespace IGC
             bool NoSubgroupIFP;
             bool UniformWGS;
             bool EnableTakeGlobalAddress = false;
-            bool IsLibraryCompilation = false;
             bool GTPinReRA = false;
             bool GTPinGRFInfo = false;
             bool GTPinScratchAreaSize = false;
