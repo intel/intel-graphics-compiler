@@ -2173,6 +2173,9 @@ static DebugLoc getFnDebugLoc(DebugLoc DL, const LLVMContext& Ctx)
 // after the function entry point has been emitted.
 void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
 {
+    // Reset PrologEndLoc so that when processing next function with same DwarfDebug
+    // instance doesnt use stale value.
+    PrologEndLoc = DebugLoc();
     m_pModule = v;
 
     // Grab the lexical scopes for the function, if we don't have any of those
@@ -2205,12 +2208,13 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II)
     {
         const Instruction* MI = *II;
+        auto Loc = MI->getDebugLoc();
 
-        if (MI->getDebugLoc() &&
-            MI->getDebugLoc().getScope() != prevIAT)
+        if (Loc &&
+            Loc.getScope() != prevIAT)
         {
-            SameIATInsts[MI->getDebugLoc().getInlinedAt()].push_back(MI);
-            prevIAT = MI->getDebugLoc().getInlinedAt();
+            SameIATInsts[Loc.getInlinedAt()].push_back(MI);
+            prevIAT = Loc.getInlinedAt();
         }
 
         if (m_pModule->IsDebugValue(MI))
@@ -2253,15 +2257,15 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
             }
             History.push_back(MI);
         }
-        else
+        else if(m_pModule->IsExecutableInst(*MI))
         {
             // Not a DBG_VALUE instruction.
 
             // First known non-DBG_VALUE and non-frame setup location marks
             // the beginning of the function body.
-            if (!PrologEndLoc && MI->getDebugLoc())
+            if (!PrologEndLoc && Loc)
             {
-                PrologEndLoc = MI->getDebugLoc();
+                PrologEndLoc = Loc;
             }
         }
     }
