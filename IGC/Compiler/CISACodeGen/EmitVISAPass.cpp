@@ -15283,7 +15283,6 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     if (immOffset)
         immOffsetInt = static_cast<int>(immOffset->getSExtValue());
 
-
     Value* Ptr = inst->getPointerOperand();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
