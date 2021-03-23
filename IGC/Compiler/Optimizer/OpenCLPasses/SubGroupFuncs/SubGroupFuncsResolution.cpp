@@ -310,6 +310,7 @@ void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst& CI)
             use->getType());
         Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", &CI);
         use->replaceAllUsesWith(simdMediaBlockRead);
+        updateDebugLoc(&CI, simdMediaBlockRead);
         m_instsToDelete.push_back(bitCast);
         m_instsToDelete.push_back(&CI);
     }
@@ -319,6 +320,7 @@ void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst& CI)
             GenISAIntrinsic::GenISA_simdMediaBlockRead,
             CI.getType());
         Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", &CI);
+        updateDebugLoc(&CI, simdMediaBlockRead);
         CI.replaceAllUsesWith(simdMediaBlockRead);
         CI.eraseFromParent();
     }
@@ -336,6 +338,7 @@ void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst& CI)
         GenISAIntrinsic::GenISA_simdMediaBlockWrite,
         CI.getArgOperand(2)->getType());
     Instruction* simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", &CI);
+    updateDebugLoc(&CI, simdMediaBlockWrite);
 
     CI.replaceAllUsesWith(simdMediaBlockWrite);
     CI.eraseFromParent();
@@ -402,6 +405,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
             genIntrinID,
             types);
         Instruction* simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        updateDebugLoc(&CI, simdBlockRead);
         use->replaceAllUsesWith(simdBlockRead);
         m_instsToDelete.push_back(bitCast);
         m_instsToDelete.push_back(&CI);
@@ -413,6 +417,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
             genIntrinID,
             types);
         Instruction* simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        updateDebugLoc(&CI, simdBlockRead);
         CI.replaceAllUsesWith(simdBlockRead);
         CI.eraseFromParent();
     }
@@ -463,6 +468,7 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
     Function* simdBlockWriteFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
         GenISAIntrinsic::GenISA_simdBlockWrite, types);
     Instruction* simdBlockWrite = CallInst::Create(simdBlockWriteFunc, args, "", &CI);
+    updateDebugLoc(&CI, simdBlockWrite);
 
     CI.replaceAllUsesWith(simdBlockWrite);
     CI.eraseFromParent();
@@ -502,6 +508,8 @@ void SubGroupFuncsResolution::pushMediaBlockArgs(llvm::SmallVector<llvm::Value*,
 void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, GroupOpType groupType)
 {
     IRBuilder<> IRB(&CI);
+    IRB.SetCurrentDebugLocation(CI.getDebugLoc());
+
     Value* arg = CI.getArgOperand(0);
     // GenISA_Wave* instrinsics do not support i1 type. Handle this with i8 version of instrinsic.
     bool isBoolean = (arg->getType() == IRB.getInt1Ty());
@@ -570,6 +578,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group size
             Function* simdSizeFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdSize);
             Instruction* simdSize = CallInst::Create(simdSizeFunc, "simdSize", &CI);
+            updateDebugLoc(&CI, simdSize);
             CI.replaceAllUsesWith(simdSize);
         }
         CI.eraseFromParent();
@@ -582,7 +591,8 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         Function* simdLaneIdFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdLaneId);
         Instruction* simdLaneId16 = CallInst::Create(simdLaneIdFunc, "simdLaneId16", &CI);
         Instruction* simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, "simdLaneId", &CI);
-
+        updateDebugLoc(&CI, simdLaneId16);
+        updateDebugLoc(&CI, simdLaneId);
         CI.replaceAllUsesWith(simdLaneId);
         CI.eraseFromParent();
     }
@@ -605,7 +615,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         Function* simdShuffleFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_WaveShuffleIndex, args[0]->getType());
         Instruction* simdShuffle = CallInst::Create(simdShuffleFunc, args, "simdShuffle", &CI);
-
+        updateDebugLoc(&CI, simdShuffle);
         CI.replaceAllUsesWith(simdShuffle);
         CI.eraseFromParent();
     }
@@ -623,7 +633,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             GenISAIntrinsic::GenISA_simdShuffleDown,
             args[0]->getType());
         Instruction* simdShuffleDown = CallInst::Create(simdShuffleDownFunc, args, "simdShuffleDown", &CI);
-
+        updateDebugLoc(&CI, simdShuffleDown);
         CI.replaceAllUsesWith(simdShuffleDown);
         CI.eraseFromParent();
     }
@@ -876,7 +886,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
 
         Function* MediaBlockRectangleReadFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_MediaBlockRectangleRead);
         Instruction* MediaBlockRectangleRead = CallInst::Create(MediaBlockRectangleReadFunc, args, "", &CI);
-
+        updateDebugLoc(&CI, MediaBlockRectangleRead);
         CI.replaceAllUsesWith(MediaBlockRectangleRead);
         CI.eraseFromParent();
     }
@@ -925,7 +935,8 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
             Function* waveBarrier = GenISAIntrinsic::getDeclaration(
                 CI.getCalledFunction()->getParent(),
                 GenISAIntrinsic::GenISA_wavebarrier);
-            CallInst::Create(waveBarrier, "", &CI);
+            auto waveBarrierInst = CallInst::Create(waveBarrier, "", &CI);
+            updateDebugLoc(&CI, waveBarrierInst);
             CI.eraseFromParent();
         }
     }
