@@ -199,6 +199,9 @@ namespace IGC
             delete F;
         }
 
+        // Remove llvm.module.flags metadata before linking
+        void removeLLVMModuleFlag(llvm::Module* M);
+
         // Check if subroutine call is needed and set it if so.
         void checkAndSetEnableSubroutine();
         CodeGenContext* m_pCtx;

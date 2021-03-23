@@ -378,6 +378,32 @@ inline bool isPrecompiledEmulationFunction(Function* func)
     func->getName().contains("__igcbuiltin_sp_div");
 }
 
+void PreCompiledFuncImport::removeLLVMModuleFlag(Module* M)
+{
+    // llvm.module.flags has the following for now
+    //
+    //    !llvm.module.flags = !{!0}
+    //    !0 = !{i32 1, !"wchar_size", i32 4}
+    //
+    // If a user module has wchar_size=2, the linking will fail! Since builtin lib
+    // has no use of wchar, we can safely remove this entry from metadata, which
+    // will make builtin lib linkable to either wchar_size=2 or wchar_size=4.
+    // (It would be better that this metadata wchar_size does not appear in builtin
+    //  library in the first place.)
+    //
+    // "wchar_size" is only one seen so far, and it may have others in the future.
+    // Thus, we should check any new flags that are introduced in the future to make
+    // sure removing them is safe. In general, builtin libary's compatibility
+    // should not be affected by flags!
+    //
+    // For now, it is safe to remove llvm.module.flags completely.
+    NamedMDNode* ModFlags = M->getModuleFlagsMetadata();
+    if (ModFlags)
+    {
+        ModFlags->eraseFromParent();
+    }
+}
+
 bool PreCompiledFuncImport::runOnModule(Module& M)
 {
     // sanity check
@@ -452,10 +478,9 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                 // works for both 64 & 32 bit applications).
                 m_pBuiltinModule->setDataLayout(M.getDataLayout());
                 m_pBuiltinModule->setTargetTriple(M.getTargetTriple());
+                removeLLVMModuleFlag(m_pBuiltinModule.get());
 
                 // Linking the two modules
-                llvm::Linker ld(M);
-
                 if (ld.linkInModule(std::move(m_pBuiltinModule)))
                 {
                     IGC_ASSERT_MESSAGE(0, "Error linking the two modules");
