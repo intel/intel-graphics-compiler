@@ -26,18 +26,18 @@
 
 # Use LLVM sources stored at fixed location
 if(NOT DEFINED BUILD_PACKAGE)
-  set(IGC_OPTION__LLVM_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project)
+  set(IGC_LLVM_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project)
 endif()
 
-if(NOT EXISTS ${IGC_OPTION__LLVM_SOURCES_DIR})
-    # Use LLVM sources stored at fixed location
-    set(IGC_OPTION__LLVM_SOURCES_DIR /opt/src/llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION})
-endif()
-if(NOT EXISTS ${IGC_OPTION__LLVM_SOURCES_DIR})
-    # Use LLVM sources stored at fixed location
-    set(IGC_OPTION__LLVM_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION})
-endif()
-if(NOT EXISTS ${IGC_OPTION__LLVM_SOURCES_DIR})
-    # Use LLVM sources stored at fixed location
-    set(IGC_OPTION__LLVM_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION})
-endif()
+list(APPEND IGC_LLVM_PATHS
+  /opt/src/llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  )
+
+find_path(DEFAULT_IGC_LLVM_SOURCES_DIR
+  README.md
+  PATHS ${IGC_LLVM_PATHS}
+  NO_DEFAULT_PATH
+  )

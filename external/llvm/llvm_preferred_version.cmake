@@ -24,6 +24,4 @@
 
 #======================= end_copyright_notice ==================================
 
-if(NOT IGC_OPTION__LLVM_PREFERRED_VERSION)
-    set(IGC_OPTION__LLVM_PREFERRED_VERSION "10.0.0")
-endif()
+    set(DEFAULT_IGC_LLVM_VERSION "10.0.0")

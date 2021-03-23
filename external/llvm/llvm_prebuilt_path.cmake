@@ -24,7 +24,6 @@
 
 #======================= end_copyright_notice ==================================
 
-
 set(LLVM_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 
 if(DEFINED BUILD_TYPE)
@@ -35,15 +34,11 @@ if(DEFINED BUILD_TYPE)
   endif()
 endif()
 
+list(APPEND IGC_LLVM_PREBUILDS_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../../prebuild-llvm/${LLVM_BUILD_TYPE}")
 
-if(NOT DEFINED IGC_OPTION__LLVM_PREBUILDS_DIR)
-  if(NOT EXISTS ${IGC_OPTION__LLVM_PREBUILDS_DIR})
-    set(IGC_OPTION__LLVM_PREBUILDS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../prebuild-llvm/${LLVM_BUILD_TYPE}")
-  endif()
-endif()
-
-### Look for config file 
-if(NOT EXISTS ${IGC_OPTION__LLVM_PREBUILDS_DIR}/lib/cmake/llvm/LLVMConfig.cmake)
-  ### Not found
-  set(IGC_OPTION__LLVM_PREBUILDS_DIR "empty")
-endif()
+find_path(DEFAULT_IGC_LLVM_SOURCES_DIR
+  LLVMConfig.cmake
+  PATHS ${IGC_LLVM_PREBUILDS_PATHS}
+  PATH_SUFFIXES lib/cmake/llvm
+  NO_DEFAULT_PATH
+  )

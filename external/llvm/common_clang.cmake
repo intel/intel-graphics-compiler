@@ -24,21 +24,8 @@
 
 #======================= end_copyright_notice ==================================
 
-if(EXISTS ${IGC_OPTION__LLVM_PREBUILDS_DIR}/include)
-  list(APPEND CMAKE_MODULE_PATH "${IGC_OPTION__LLVM_PREBUILDS_DIR}/lib/cmake/llvm/")
-   
-  set(LLVM_DIR ${IGC_OPTION__LLVM_PREBUILDS_DIR}/lib/cmake/llvm)  
-  include(${IGC_OPTION__LLVM_PREBUILDS_DIR}/lib/cmake/llvm/LLVMConfig.cmake)
-  include(${IGC_OPTION__LLVM_PREBUILDS_DIR}/lib/cmake/llvm/AddLLVM.cmake)
-  
-  find_package(LLVM REQUIRED CONFIG)
-  
-  set(LLVM_INCLUDE_DIRS "${IGC_OPTION__LLVM_PREBUILDS_DIR}/include")
-  
-  set(IGC_OPTION__LLVM_PREBUILDS True)
-  
-  
-  message(STATUS "[LLVM_PATCHER\\Prebuilt] : Found prebuilt of llvm in version ${PACKAGE_VERSION}")
+# Handle common clang defines.
+if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
+  set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
 endif()
-
 

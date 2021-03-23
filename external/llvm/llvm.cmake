@@ -34,116 +34,91 @@
 
 #   IGC_OPTION__LLVM_PREFERRED_VERSION - define which version of llvm to pick, ex. "7.1.0" // By default 10.0.0
 
-### Check if user manual setup some of flag
-if(NOT IGC_OPTION__LLVM_SOURCES)
-  set(IGC_OPTION__LLVM_SOURCES FALSE)
-elseif(${IGC_OPTION__LLVM_SOURCES})
-  set(IGC_OPTION__LLVM_PREBUILDS FALSE)
-  set(IGC_OPTION__LLVM_FROM_SYSTEM FALSE)
+
+option(IGC_OPTION__LLVM_SOURCES "Use LLVM sources for build in-tree" OFF)
+option(IGC_OPTION__LLVM_PREBUILDS "Use LLVM prebuild package" OFF)
+option(IGC_OPTION__LLVM_FROM_SYSTEM "Use LLVM from system" OFF)
+
+# Sanity check that only one mode enabled (or nothing).
+if((IGC_OPTION__LLVM_SOURCES AND IGC_OPTION__LLVM_PREBUILDS) OR
+    (IGC_OPTION__LLVM_SOURCES AND IGC_OPTION__LLVM_FROM_SYSTEM) OR
+    (IGC_OPTION__LLVM_PREBUILDS AND IGC_OPTION__LLVM_FROM_SYSTEM))
+  message(FATAL_ERROR "Only one LLVM mode can be selected explicitly for IGC!")
 endif()
 
-if(NOT IGC_OPTION__LLVM_PREBUILDS)
-  set(IGC_OPTION__LLVM_PREBUILDS FALSE)
-elseif(${IGC_OPTION__LLVM_PREBUILDS})
-  set(IGC_OPTION__LLVM_FROM_SYSTEM FALSE)
-endif()
 
-if(NOT IGC_OPTION__LLVM_FROM_SYSTEM)
-  set(IGC_OPTION__LLVM_FROM_SYSTEM FALSE)
-endif()
-###
-
-if(NOT IGC_OPTION__LLVM_STOCK_SOURCES)
-  set(IGC_OPTION__LLVM_STOCK_SOURCES FALSE)
-endif()
-
-set(IGC_LLVM_TOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
+set(IGC_LLVM_TOOLS_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 ### Get preferred version of LLVM ###
-if(NOT IGC_OPTION__LLVM_PREFERRED_VERSION)
-  include(${IGC_LLVM_TOOLS_DIR}/llvm_preferred_version.cmake)
+include(${IGC_LLVM_TOOLS_DIR}/llvm_preferred_version.cmake)
+set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING "Preferred version of LLVM to use")
+
+# Get default source dir.
+include(${IGC_LLVM_TOOLS_DIR}/llvm_source_path.cmake)
+# Handle dependent options for source build.
+if(IGC_OPTION__LLVM_SOURCES)
+  option(IGC_OPTION__LLVM_STOCK_SOURCES "Use stock or patched sources" OFF)
+  set(IGC_OPTION__LLVM_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR} CACHE PATH "Path to LLVM sources")
 endif()
 
-set(IGC_LOOKING_FOR_LLVM TRUE)
+# Get default prebuild dir.
+include(${IGC_LLVM_TOOLS_DIR}/llvm_prebuilt_path.cmake)
+# Handle dependent options for prebuild build.
+if(IGC_OPTION__LLVM_PREBUILDS)
+  set(IGC_OPTION__LLVM_PREBUILDS_DIR ${DEFAULT_IGC_LLVM_PREBUILDS_DIR} CACHE PATH "Path to LLVM prebuild")
+endif()
+
+# Nothing was specified, start searching.
+if(NOT (IGC_OPTION__LLVM_SOURCES OR IGC_OPTION__LLVM_PREBUILDS OR IGC_OPTION__LLVM_FROM_SYSTEM))
+  message(STATUS "No LLVM mode was selected explicitly")
+  message(STATUS "IGC will search for LLVM sources first, then try prebuild and after try to take system LLVM")
+  set(IGC_LOOKING_FOR_LLVM TRUE)
+endif()
 
 ### Check by order first available way to link with LLVM ###
-if(${IGC_OPTION__LLVM_SOURCES} OR (NOT ${IGC_OPTION__LLVM_PREBUILDS} AND NOT ${IGC_OPTION__LLVM_FROM_SYSTEM}))
-  ### Get LLVM source code path
-  if(NOT IGC_OPTION__LLVM_SOURCES_DIR)
-    include(${IGC_LLVM_TOOLS_DIR}/llvm_source_path.cmake)
-  endif()
-  
-  if(NOT EXISTS ${IGC_OPTION__LLVM_SOURCES_DIR})
-    if(${IGC_OPTION__LLVM_SOURCES})
-      # User wants to build from sources, but we couldn't find them.
-      message(FATAL_ERROR "[IGC] : Cannot find LLVM sources, please provide sources path by IGC_OPTION__LLVM_SOURCES_DIR flag.")
-    endif()
+if(IGC_LOOKING_FOR_LLVM)
+  if(EXISTS "${DEFAULT_IGC_LLVM_SOURCES_DIR}")
+    set(IGC_FOUND_SOURCES TRUE)
+    set(IGC_OPTION__LLVM_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR})
+  elseif(EXISTS "${DEFAULT_IGC_LLVM_PREBUILDS_DIR}")
+    set(IGC_FOUND_PREBUILDS TRUE)
+    set(IGC_OPTION__LLVM_PREBUILDS_DIR ${DEFAULT_IGC_LLVM_PREBUILDS_DIR})
   else()
-    set(IGC_LOOKING_FOR_LLVM FALSE)
-    set(IGC_OPTION__LLVM_SOURCES TRUE)
+    set(IGC_USES_SYSTEM_LLVM TRUE)
   endif()
-endif()
-if(${IGC_LOOKING_FOR_LLVM} AND (${IGC_OPTION__LLVM_PREBUILDS} OR (NOT ${IGC_OPTION__LLVM_FROM_SYSTEM})))
-  ### Get LLVM prebuilts path
-  if(NOT IGC_OPTION__LLVM_PREBUILDS_DIR)
-    include(${IGC_LLVM_TOOLS_DIR}/llvm_prebuilt_path.cmake)
+endif(IGC_LOOKING_FOR_LLVM)
+
+include(${IGC_LLVM_TOOLS_DIR}/common_clang.cmake)
+
+if(IGC_OPTION__LLVM_SOURCES OR IGC_FOUND_SOURCES)
+  if(NOT EXISTS "${IGC_OPTION__LLVM_SOURCES_DIR}")
+    message(FATAL_ERROR "[IGC] Cannot find LLVM sources, please provide sources path by IGC_OPTION__LLVM_SOURCES_DIR flag")
   endif()
 
-  if(NOT EXISTS ${IGC_OPTION__LLVM_PREBUILDS_DIR})
-    if(${IGC_OPTION__LLVM_PREBUILDS})
-      # User wants to build from prebuilts, but we couldn't find them.
-      message(FATAL_ERROR "[IGC] : Cannot find LLVM prebuilts, please provide path by IGC_OPTION__LLVM_PREBUILDS_DIR flag.")
-    endif()
-  else()
-    set(IGC_LOOKING_FOR_LLVM FALSE)
-    set(IGC_OPTION__LLVM_PREBUILDS TRUE)
-  endif()
-endif()
-if(${IGC_LOOKING_FOR_LLVM})
-  # Try to find the LLVM in the system
-  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION})
-
-  if(LLVM_FOUND)
-    set(IGC_OPTION__LLVM_FROM_SYSTEM TRUE)
-  else()
-    if(${IGC_OPTION__LLVM_FROM_SYSTEM})
-      # User wants to build using LLVM from system, but we couldn't find them.
-      message(FATAL_ERROR "[IGC] : Cannot find LLVM in system in version ${IGC_OPTION__LLVM_PREFERRED_VERSION}. Please provide other version by flag IGC_OPTION__LLVM_PREFERRED_VERSION or install the missing one.")
-	else()
-	  message(FATAL_ERROR "[IGC] : Cannot find LLVM sources, prebuilt libraries or even installed package in system. Please provide LLVM.")
-    endif()
-  endif()
-endif()
-###
-
-if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
-    set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
-endif()
-
-if(WIN32)
-    igc_arch_get_cpu(_cpuSuffix)
-    set(COMMON_CLANG_LIBRARY_NAME ${COMMON_CLANG_LIBRARY_NAME}${_cpuSuffix})
-    set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-
-    message(STATUS "OpenCL Clang library name to load: ${COMMON_CLANG_LIB_FULL_NAME}")
-
-    add_compile_definitions(COMMON_CLANG_LIB_FULL_NAME=\"${COMMON_CLANG_LIB_FULL_NAME}\")
-else()
-    set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-endif()
-
-if(${IGC_OPTION__LLVM_SOURCES})
   message(STATUS "[IGC] IGC will build LLVM from sources.")
   message(STATUS "[IGC] LLVM sources folder : ${IGC_OPTION__LLVM_SOURCES_DIR}")
   message(STATUS "[IGC] LLVM sources in stock version : ${IGC_OPTION__LLVM_STOCK_SOURCES}")
   add_subdirectory(${IGC_LLVM_TOOLS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
-elseif(${IGC_OPTION__LLVM_PREBUILDS})
+  set(IGC_OPTION__LLVM_SOURCES ON)
+endif()
+
+if(IGC_OPTION__LLVM_PREBUILDS OR IGC_FOUND_PREBUILDS)
+  if(NOT EXISTS "${IGC_OPTION__LLVM_PREBUILDS_DIR}")
+    message(FATAL_ERROR "[IGC] Cannot find LLVM prebuilts, please provide path by IGC_OPTION__LLVM_PREBUILDS_DIR flag")
+  endif()
   message(STATUS "[IGC] IGC will take LLVM prebuilts.")
   message(STATUS "[IGC] LLVM prebuilts folder : ${IGC_OPTION__LLVM_PREBUILDS_DIR}")
-  include(${IGC_LLVM_TOOLS_DIR}/llvm_prebuilt.cmake)
-elseif(${IGC_OPTION__LLVM_FROM_SYSTEM})
-  message(STATUS "[IGC] IGC will take LLVM from system.")
+  set(LLVM_ROOT ${IGC_OPTION__LLVM_PREBUILDS_DIR})
+  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
+  set(IGC_OPTION__LLVM_PREBUILDS ON)
 endif()
+
+if(IGC_OPTION__LLVM_FROM_SYSTEM OR IGC_USES_SYSTEM_LLVM)
+  message(STATUS "[IGC] IGC will take LLVM from system")
+  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
+  set(IGC_OPTION__LLVM_FROM_SYSTEM ON)
+endif()
+
 
 if(LLVM_LINK_LLVM_DYLIB)
     # LLVM was built and configured in a way that tools (in our case IGC) should be linked
@@ -193,5 +168,4 @@ else()
           "LLVMBitstreamReader"
           )
     endif()
-
 endif()

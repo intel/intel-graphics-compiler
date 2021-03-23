@@ -28,6 +28,8 @@
 #   CCLANG_BUILD_PREBUILDS_DIR - set path to prebuilt cclang folder
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
 
+set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+
 find_library(CCLANG_FROM_SYSTEM ${COMMON_CLANG_LIBRARY_NAME})
 
 ### Check if user manual setup some of flag
