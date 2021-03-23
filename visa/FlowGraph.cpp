@@ -3663,7 +3663,9 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
                     // joinBB is the BB right after goto/while
                     BB_LIST_ITER predIter = std::find(BBs.begin(), BBs.end(), predBB);
                     ++predIter;
-                    assert(predIter != BBs.end() && "ICE: missing join BB!");
+                    // if predBB is the last BB then joinBB is not available
+                    if (predIter == BBs.end())
+                        continue;
                     G4_BB* joinBB = *predIter;
                     cfs.pushLoop(joinBB);
                 }
