@@ -3124,9 +3124,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     SPIRVCompositeExtract *CE = static_cast<SPIRVCompositeExtract *>(BV);
     auto Type = CE->getComposite()->getType();
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    IGC_ASSERT_MESSAGE(CE->getIndices().size() == 1, "Invalid index");
     if (Type->isTypeVector())
     {
+        IGC_ASSERT_MESSAGE(CE->getIndices().size() == 1, "Invalid index");
         return mapValue(BV, ExtractElementInst::Create(
             transValue(CE->getComposite(), F, BB),
             ConstantInt::get(*Context, APInt(32, CE->getIndices()[0])),
@@ -3156,9 +3156,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto CI = static_cast<SPIRVCompositeInsert *>(BV);
     auto Type = CI->getComposite()->getType();
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
-    IGC_ASSERT_MESSAGE(CI->getIndices().size() == 1, "Invalid index");
     if (Type->isTypeVector())
     {
+        IGC_ASSERT_MESSAGE(CI->getIndices().size() == 1, "Invalid index");
         return mapValue(BV, InsertElementInst::Create(
             transValue(CI->getComposite(), F, BB),
             transValue(CI->getObject(), F, BB),
