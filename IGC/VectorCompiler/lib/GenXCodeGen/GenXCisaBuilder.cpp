@@ -4961,8 +4961,9 @@ void GenXKernelBuilder::emitOptimizationHints() {
   if (skipOptWithLargeBlock(*FG))
     return;
 
+  const auto &DL = FG->getModule()->getDataLayout();
   // Track rp considering byte variable widening.
-  PressureTracker RP(*FG, Liveness, /*ByteWidening*/ true);
+  PressureTracker RP(DL, *FG, Liveness, /*ByteWidening*/ true);
   const std::vector<genx::LiveRange *> &WidenLRs = RP.getWidenVariables();
 
   if (!SkipNoWiden) {

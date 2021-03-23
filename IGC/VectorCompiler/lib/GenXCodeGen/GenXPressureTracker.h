@@ -32,12 +32,14 @@ namespace llvm {
 class Value;
 class GenXLiveness;
 class FunctionGroup;
+class DataLayout;
 
 namespace genx {
 
 class LiveRange;
 
 class PressureTracker {
+  const DataLayout &DL;
   FunctionGroup &FG;
   GenXLiveness *Liveness;
   // Flag to widen byte vectors to word vectors if applicable.
@@ -55,9 +57,9 @@ class PressureTracker {
   std::vector<Segment> HighPressureSegments;
 
 public:
-  PressureTracker(FunctionGroup &FG, GenXLiveness *L,
+  PressureTracker(const DataLayout& DL, FunctionGroup &FG, GenXLiveness *L,
                   bool WithByteWidening = false)
-      : FG(FG), Liveness(L), WithByteWidening(WithByteWidening) {
+      : DL(DL), FG(FG), Liveness(L), WithByteWidening(WithByteWidening) {
     calculate();
     calculateRedSegments();
   }

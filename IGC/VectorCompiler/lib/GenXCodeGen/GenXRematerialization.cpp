@@ -96,7 +96,8 @@ bool GenXRematerialization::runOnFunctionGroup(FunctionGroup &FG) {
   Baling = &getAnalysis<GenXGroupBaling>();
   Liveness = &getAnalysis<GenXLiveness>();
   Numbering = &getAnalysis<GenXNumbering>();
-  PressureTracker RP(FG, Liveness);
+  const auto &DL = FG.getModule()->getDataLayout();
+  PressureTracker RP(DL, FG, Liveness);
   for (auto fgi = FG.begin(), fge = FG.end(); fgi != fge; ++fgi)
     remat(*fgi, RP);
   return Modified;
