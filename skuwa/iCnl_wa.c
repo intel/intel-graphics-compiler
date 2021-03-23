@@ -1,28 +1,27 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2019-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
 #include "wa_def.h"
 
 #define SIWA_ONLY_CNL_A0    SIWA_ONLY_A0
@@ -58,7 +57,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     unsigned int usHwRevId_CNL = pWaParam->usRevId;
 
     ulStepId_CNL = (1 << usHwRevId_CNL);
-    ulStepId_PCH = (1 << pWaParam->usRevId_PCH); 
+    ulStepId_PCH = (1 << pWaParam->usRevId_PCH);
 
     WA_ENABLE(
         ulStepId_CNL,
@@ -80,7 +79,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
             SIWA_FOREVER);
     }
 
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaDisableSendsPreemption,
@@ -109,7 +108,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         ulStepId_CNL,
         WaConservativeRasterization,
         "No Link Provided" ,
-        "No Link Provided" , 
+        "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_A0 );
 
@@ -148,7 +147,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaForceCB0ToBeZeroWhenSendingPC,
@@ -157,11 +156,11 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_A0);
 
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaNearestFilterLODClamp,
-        "No Link Provided" , 
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
@@ -325,8 +324,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_B0);
-    
-    
+
+
     /*WA_ENABLE(
         ulStepId_CNL,
         WaLimit64BppScenarios,
@@ -352,7 +351,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_A0
         );
-        
+
     WA_ENABLE(
         ulStepId_CNL,
         WaFbcWakeMemOn,
@@ -383,10 +382,10 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         ulStepId_CNL,
         WaFbcTurnOffFbcWhenHyperVisorIsUsed,
         "No Link Provided" ,
-        "No HWSightingLink provided", 
+        "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_A0);
-        
+
     WA_ENABLE(
         ulStepId_CNL,
         WaFbcNukeOnHostModify,
@@ -410,7 +409,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_C0);
-        
+
     WA_ENABLE(
         ulStepId_CNL,
         WaDisableNullPageAsDummy,
@@ -565,7 +564,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          PLATFORM_ALL,
          SIWA_ONLY_CNL_A0);
 
-    
+
     WA_ENABLE(
          ulStepId_CNL,
          WaReadVcrDebugRegister,
@@ -573,7 +572,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          "No HWSightingLink provided",
          PLATFORM_ALL,
          SIWA_FOREVER);
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaEnablePreemptionGranularityControlByUMD,
@@ -582,7 +581,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaDisableRsInPostRestoreWaBb,
@@ -591,9 +590,9 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
-    
-    
+
+
+
     WA_ENABLE(
         ulStepId_CNL,
         WaUsePseudoL3AddressingScheme,
@@ -602,7 +601,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
 
-    
+
 
     WA_ENABLE(
         ulStepId_CNL,
@@ -627,7 +626,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaInvalidateTextureCache,
@@ -747,7 +746,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER );
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaVfPostSyncWrite,
@@ -764,8 +763,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER );
 
-    
-    
+
+
     WA_ENABLE(
         ulStepId_CNL,
         WaAllowUMDToModifyHDCChicken1,
@@ -774,8 +773,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
 
-    
-    
+
+
     WA_ENABLE(
         ulStepId_CNL,
         WaAllowUMDToModify3DPrimitiveExtParam,
@@ -784,8 +783,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
 
-    
-    
+
+
     WA_ENABLE(
         ulStepId_CNL,
         WaBindlessSamplerStateBoundsCheckingDefeature,
@@ -929,7 +928,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
-   
+
     WA_ENABLE(
         ulStepId_CNL,
         WaPlanePosPlusWidthLessThanPipeHorSize,
@@ -998,7 +997,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWBugLink provided",
         "No Link Provided" ,
         PLATFORM_ALL,
-        SIWA_FOREVER 
+        SIWA_FOREVER
         );
 
     WA_ENABLE(
@@ -1063,7 +1062,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0
-        );    
+        );
 
     SI_WA_ENABLE(
         WaDisableTWM,
@@ -1073,14 +1072,14 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SI_WA_NEVER
         );
 
-   
+
     SI_WA_ENABLE(
             WaSklLpt,
             "No HWBugLink provided",
             "No HWSightingLink provided",
             PLATFORM_ALL,
             SI_WA_FOR_EVER);
-    
+
 
     SI_WA_ENABLE(
         WaReducedGMBusReadRetryCount,
@@ -1103,7 +1102,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
         WaDisableDSHEncryptionForWiDi,
         "No Link Provided" ,
@@ -1123,7 +1122,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_CNL,
         WaEnableAccessToDisplayIO,
-        "WA: Set 0x162088 bit 0 and 0x162090 bit 0 to 1b to enable access to display IO registers, Before the display initialize sequence.", 
+        "WA: Set 0x162088 bit 0 and 0x162090 bit 0 to 1b to enable access to display IO registers, Before the display initialize sequence.",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0
@@ -1146,7 +1145,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
-    
+
         WA_ENABLE(
         ulStepId_CNL,
         WaRsGatherPoolEnable,
@@ -1163,7 +1162,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_ONLY_CNL_A0);
 
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaPipeControlBefore3DStateSamplePattern,
@@ -1251,7 +1250,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_ONLY_CNL_B0);
-        
+
     WA_ENABLE(
         ulStepId_CNL,
         WaDisableEnhancedSBEVertexCaching,
@@ -1260,10 +1259,10 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_B0);
 
-    
-    
-    
-    
+
+
+
+
     /*
     WA_ENABLE(
         ulStepId_CNL,
@@ -1290,7 +1289,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_A0);
 
-     
+
      WA_ENABLE(
          ulStepId_CNL,
          WaDisableReplayBufferBankArbitrationOptimization,
@@ -1299,8 +1298,8 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          PLATFORM_ALL,
          SIWA_FROM_CNL_B0);
 
-     
-     
+
+
      WA_ENABLE (
         ulStepId_CNL,
         WaPipelineFlushCoherentLines,
@@ -1325,7 +1324,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     if (!(ulStepId_CNL & SIWA_FROM_CNL_B0))
     {
         pSkuTable->FtrGtPsmi = 0;
@@ -1347,7 +1346,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_B0);
 
-    
+
     WA_ENABLE(
         ulStepId_CNL,
         WaClearRenderResponseMasks,
@@ -1430,7 +1429,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
             SI_WA_FOR_EVER);
     }
 
-    
+
 
     SI_WA_ENABLE(
         WaRsForcewakeAddDelayForAck,
@@ -1446,7 +1445,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_UNTIL_CNL_C0 );
-        
+
     SI_WA_ENABLE(
         WaPruneModesHavingHfrontPorchBetween122To130,
         "No Link Provided" ,
@@ -1497,6 +1496,6 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 #ifdef __KCH
 void InitCnlHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-    
+
 }
-#endif 
+#endif

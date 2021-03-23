@@ -1,28 +1,27 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2019-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
 #include "wa_def.h"
 
 #define SIWA_ONLY_SKL_A0    SIWA_ONLY_A0
@@ -91,14 +90,14 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     unsigned int ulStepId_SKL, ulStepId_PCH;
     unsigned int usHwRevId_SKL = pWaParam->usRevId;
 
-    ulStepId_SKL = (1 << usHwRevId_SKL); 
-    ulStepId_PCH = (1 << pWaParam->usRevId_PCH); 
+    ulStepId_SKL = (1 << usHwRevId_SKL);
+    ulStepId_PCH = (1 << pWaParam->usRevId_PCH);
 
-    
-    
-    
-    
-    
+
+
+
+
+
 #ifdef WIN32
     WA_ENABLE(
         ulStepId_SKL,
@@ -128,8 +127,8 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
-    
-    
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableDSHEncryptionForWiDi,
@@ -137,7 +136,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER);
-        
+
     WA_ENABLE(
         ulStepId_SKL,
         WAInsertNOPBetweenMathPOWDIVAnd2RegInstr,
@@ -145,7 +144,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
-        
+
     WA_ENABLE(
         ulStepId_SKL,
         WaForceEnableNonCoherent,
@@ -154,7 +153,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaIs64BInstrEnabled,
@@ -203,10 +202,10 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     if (pWaParam->ePCHProductFamily == PCH_SPT)
     {
-       
+
         WA_ENABLE(
             ulStepId_PCH,
             WaSPTMmioReadFailure,
@@ -215,7 +214,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
             PLATFORM_ALL,
             SIWA_FOREVER);
 
-        if ((pSkuTable->FtrDesktop && pWaParam->usRevId_PCH >= SKL_PCH_SPT_D0_REV_ID) || ((!pSkuTable->FtrDesktop) && pWaParam->usRevId_PCH >= SKL_PCH_SPT_C0_REV_ID)) 
+        if ((pSkuTable->FtrDesktop && pWaParam->usRevId_PCH >= SKL_PCH_SPT_D0_REV_ID) || ((!pSkuTable->FtrDesktop) && pWaParam->usRevId_PCH >= SKL_PCH_SPT_C0_REV_ID))
         {
             pWaTable->WaSPTMmioReadFailure = 0;
         }
@@ -247,7 +246,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWBugLink provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SIWA_UNTIL_SKL_A0); 
+        SIWA_UNTIL_SKL_A0);
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -296,7 +295,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER);
-        
+
      WA_ENABLE(
         ulStepId_SKL,
         WaEnsureLP7WMInPSR2,
@@ -340,9 +339,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER );
 
-    
-    
-    
+
+
+
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -422,7 +421,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWBugLink provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SIWA_FOREVER);    
+        SIWA_FOREVER);
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -464,9 +463,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
-    
-    
+
+
+
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -524,9 +523,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
-    
-    
+
+
+
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -632,7 +631,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableDSDualPatchMode,
@@ -681,9 +680,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_A0);
 
-    
-    
-    
+
+
+
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -692,7 +691,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaCSRUncachable,
@@ -717,7 +716,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaNearestFilterLODClamp,
@@ -785,7 +784,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     WA_ENABLE(
         ulStepId_SKL,
         WaResendURBWhenGSorHSGetsEnabled,
-        "No Link Provided" , 
+        "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_SKL_B0);
@@ -846,13 +845,13 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FROM_SKL_H0);
 
-    WA_ENABLE( 
-        ulStepId_SKL, 
-        WaDisableSamplerPowerBypassForSOPingPong, 
-        "No Link Provided" , 
-        "No HWSightingLink provided", 
+    WA_ENABLE(
+        ulStepId_SKL,
+        WaDisableSamplerPowerBypassForSOPingPong,
+        "No Link Provided" ,
+        "No HWSightingLink provided",
         PLATFORM_ALL,
-        SIWA_FOREVER); 
+        SIWA_FOREVER);
 
 
     WA_ENABLE(
@@ -879,7 +878,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_SKL_B0);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaInjectFlushInB2BFastCopyBlts,
@@ -902,7 +901,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
-        SI_WA_NEVER);  
+        SI_WA_NEVER);
 
     SI_WA_ENABLE(
         WaAvoidStcPMAStallShaderFiltering,
@@ -1101,7 +1100,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_SKL_E0);
-        
+
     WA_ENABLE(
         ulStepId_SKL,
         WaAvoid16KWidthForTiledSurfaces,
@@ -1170,7 +1169,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -1195,10 +1194,10 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
-    
-    
-    
-    
+
+
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaRsForcewakeDelayAckPoll,
@@ -1249,9 +1248,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
             PLATFORM_ALL,
             SIWA_UNTIL_SKL_E0);
     }
-    
-    
-    
+
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaEnableGoMsgToGAMDuringCPD,
@@ -1268,7 +1267,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaGsvEnableSWTurbo,
@@ -1276,15 +1275,15 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_UNTIL_SKL_D0);
-    
-    
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaFbcAsynchFlipDisableFbcQueue,
         "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SIWA_UNTIL_SKL_B0); 
+        SIWA_UNTIL_SKL_B0);
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -1349,7 +1348,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaFbcNukeOn3DBlt,
@@ -1366,7 +1365,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER
         );
-        
+
     WA_ENABLE(
         ulStepId_SKL,
         WaFbcWakeMemOn,
@@ -1382,7 +1381,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
-        SIWA_FOREVER); 
+        SIWA_FOREVER);
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -1391,7 +1390,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         PLATFORM_ALL,
         SIWA_FOREVER);
-    
+
 
     WA_ENABLE(
         ulStepId_SKL,
@@ -1409,9 +1408,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
-    
-    
+
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableRCWithAsyncFlip,
@@ -1436,7 +1435,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWBugLink provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SIWA_FOREVER 
+        SIWA_FOREVER
         );
 
     WA_ENABLE(
@@ -1445,7 +1444,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWBugLink provided",
         "No Link Provided" ,
         PLATFORM_ALL,
-        SIWA_FOREVER 
+        SIWA_FOREVER
         );
 
      WA_ENABLE(
@@ -1466,7 +1465,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SIWA_ONLY_SKL_C0
         );
 
-     
+
      WA_ENABLE(
          ulStepId_SKL,
          WaEnableChickenDCPR,
@@ -1476,7 +1475,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          SIWA_FOREVER
          );
 
-     
+
      WA_ENABLE(
          ulStepId_SKL,
          WaEnableBandWidthLimitation,
@@ -1486,7 +1485,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          SIWA_FOREVER
          );
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaControlPrimaryTLBUtilization,
@@ -1505,7 +1504,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         );
 
     WA_ENABLE(
-        ulStepId_SKL, 
+        ulStepId_SKL,
         WaIncreaseLatencyIPCEnabled,
         "No Link Provided" ,
         "No Link Provided" ,
@@ -1570,9 +1569,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
+
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableYTileForS3D,
@@ -1581,8 +1580,8 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_ONLY_SKL_A0);
 
-    
-    
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaHucStreamoutEnable,
@@ -1672,7 +1671,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SIWA_FOREVER);
 
 #if (_DEBUG || _RELEASE_INTERNAL)
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaEnableKernelDebugFeatureInHWUsingCsDebugMode1,
@@ -1682,9 +1681,9 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         SIWA_FOREVER);
 #endif
 
-    
-    
-    
+
+
+
 
    WA_ENABLE(
         ulStepId_SKL,
@@ -1702,7 +1701,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaL3UseSamplerForVectorLoadScatter,
@@ -1775,7 +1774,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_A0);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaFlushCoherentL3CacheLinesAtContextSwitch,
@@ -1792,7 +1791,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-        
+
     if( pSkuTable->FtrGT2 || pSkuTable->FtrGT1 )
     {
         WA_ENABLE(
@@ -1802,7 +1801,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
             "No HWSightingLink provided",
             PLATFORM_ALL,
             SIWA_FOREVER );
-    }        
+    }
     if( pSkuTable->FtrGT3 )
     {
         WA_ENABLE(
@@ -1813,7 +1812,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
             PLATFORM_ALL,
             SIWA_UNTIL_SKL_J0 );
     }
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableRepcolMessages,
@@ -1901,7 +1900,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaForceCB0ToBeZeroWhenSendingPC,
@@ -1918,7 +1917,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     /*WA_ENABLE(
         ulStepId_SKL,
         WaDisableIndirectDataAndFlushGPGPUWalker,
@@ -1945,8 +1944,8 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     if (pSkuTable->FtrGT4)
     {
-        
-        
+
+
         WA_ENABLE(
             ulStepId_SKL,
             WaDisableDopClockGating,
@@ -2044,7 +2043,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     if( pSkuTable->FtrGpGpuMidThreadLevelPreempt )
     {
         WA_ENABLE(
@@ -2121,7 +2120,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_UNTIL_SKL_A0);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableObjectLevelPreemptionForInstancedDraw,
@@ -2269,7 +2268,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaDisableMinuteIaClockGating,
@@ -2511,7 +2510,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-     
+
      WA_ENABLE(
          ulStepId_SKL,
          WaReadVcrDebugRegister,
@@ -2566,8 +2565,8 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          "No Link Provided" ,
          "No HWSightingLink provided",
          PLATFORM_ALL,
-         SIWA_FOREVER); 
-      
+         SIWA_FOREVER);
+
       WA_ENABLE(
          ulStepId_SKL,
          WaEnableLbsSlaRetryTimerDecrement,
@@ -2632,7 +2631,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaAllowUMDToModifyHDCChicken1,
@@ -2696,7 +2695,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaVFEStateAfterPipeControlwithMediaStateClear,
@@ -2733,11 +2732,11 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
-    
-    
+
+
+
+
+
     WA_ENABLE(
          ulStepId_SKL,
          WaDisableLSPCONAuxTransactionInLSMode,
@@ -2745,13 +2744,13 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
          "No HWSightingLink provided",
          PLATFORM_ALL,
          SIWA_FOREVER);
-    
-    
-    
-    
-    
 
-    
+
+
+
+
+
+
     WA_ENABLE(
         ulStepId_SKL,
         WaSKLDPAfeOverride,
@@ -2760,7 +2759,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_MOBILE,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaHDMIVswingChickenBitOverride,
@@ -2769,7 +2768,7 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SIWA_FOREVER);
 
-    
+
     WA_ENABLE(
         ulStepId_SKL,
         WaAudioSetEPSS,
@@ -2786,10 +2785,10 @@ void InitSklHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSK
     unsigned int ulStepId_SKL, ulStepId_PCH;
     unsigned int usHwRevId_SKL = pWaParam->usRevId;
 
-    ulStepId_SKL = (1 << usHwRevId_SKL); 
-    ulStepId_PCH = (1 << pWaParam->usRevId_PCH); 
+    ulStepId_SKL = (1 << usHwRevId_SKL);
+    ulStepId_PCH = (1 << pWaParam->usRevId_PCH);
 
-    
+
     WA_ENABLE(
         ulStepId_PCH,
         WaSPTMmioAccessSbi,
@@ -2797,6 +2796,6 @@ void InitSklHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSK
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FALSE);
-    
+
 }
-#endif 
+#endif

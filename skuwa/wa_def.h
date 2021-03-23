@@ -1,31 +1,30 @@
-#ifndef __WA_DEF_H__
-#define __WA_DEF_H__
+/*========================== begin_copyright_notice ============================
 
-/*===================== begin_copyright_notice ==================================
+Copyright (c) 2019-2021 Intel Corporation
 
-Copyright (c) 2017 Intel Corporation
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
+#ifndef __WA_DEF_H__
+#define __WA_DEF_H__
+
 #if defined(__KCH)
     #include "ct.h"
     #include <ntddk.h>
@@ -36,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif // if !defined(__KCH)
 #include "gtsysinfo.h"
 
-#define SIWA_TRUE               0x00000001    // force enable 
+#define SIWA_TRUE               0x00000001    // force enable
 #define SIWA_FALSE              0x00000000    // force disable
 #define FUTURE_PROJECT          2147483647    // INT_MAX
 
@@ -63,15 +62,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define SI_REV_ID(lo,hi) (lo | hi<<16) // LO represents the lowest revision ID for that stepping, HI is the highest for that stepping
 
-#define SI_REV_HI(SteppingID) ((SteppingID & 0xFFFF0000) >> 16) 
-#define SI_REV_LO(SteppingID) (SteppingID & 0xFFFF)     
+#define SI_REV_HI(SteppingID) ((SteppingID & 0xFFFF0000) >> 16)
+#define SI_REV_LO(SteppingID) (SteppingID & 0xFFFF)
 
 #define SI_WA_ENABLE(wa, HWBugLink, HWSightingLink, ulPlatformMask, bEnable) \
 { \
     pWaTable->wa = ((pWaParam->ePlatformType & (ulPlatformMask)) || ulPlatformMask == PLATFORM_ALL)  ? bEnable : 0;  \
 }
 
-#define SI_WA_ONLY(ulRevID,STEPPING) ((ulRevID <= (int)SI_REV_HI(STEPPING)) && (ulRevID >= (int)SI_REV_LO(STEPPING))) 
+#define SI_WA_ONLY(ulRevID,STEPPING) ((ulRevID <= (int)SI_REV_HI(STEPPING)) && (ulRevID >= (int)SI_REV_LO(STEPPING)))
 #define SI_WA_AFTER(ulRevID, STEPPING) (ulRevID > (int)SI_REV_HI(STEPPING))                       // Current Rev ID is higher than the highest Rev ID for that STEPPING
 #define SI_WA_BEFORE(ulRevID, STEPPING) (ulRevID < (int)SI_REV_LO(STEPPING))                     // Current Rev ID is lower than the lowest Rev ID for that STEPPING
 #define SI_WA_UNTIL(ulRevID, STEPPING) (ulRevID <= (int)SI_REV_HI(STEPPING))                    // Current Rev ID is lower than or equal to the highest Rev ID for that STEPPING
@@ -97,11 +96,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SIWA_ONLY_AB            0x0fff0800u
 #define SIWA_ONLY_AC            0x0fff1000u
 
-//Definition of SIWA_UNTIL_An: 
+//Definition of SIWA_UNTIL_An:
 //  The workaround is to be applied to all revisions UP TO AND INCLUDING An.
 #define SIWA_UNTIL_A0            (SIWA_ONLY_A0)
-#define SIWA_UNTIL_A1            (SIWA_UNTIL_A0 | SIWA_ONLY_A1)    
-#define SIWA_UNTIL_A2            (SIWA_UNTIL_A1 | SIWA_ONLY_A2)    
+#define SIWA_UNTIL_A1            (SIWA_UNTIL_A0 | SIWA_ONLY_A1)
+#define SIWA_UNTIL_A2            (SIWA_UNTIL_A1 | SIWA_ONLY_A2)
 #define SIWA_UNTIL_A3            (SIWA_UNTIL_A2 | SIWA_ONLY_A3)
 #define SIWA_UNTIL_A4            (SIWA_UNTIL_A3 | SIWA_ONLY_A4)
 #define SIWA_UNTIL_A5            (SIWA_UNTIL_A4 | SIWA_ONLY_A5)
@@ -113,11 +112,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SIWA_UNTIL_AB            (SIWA_UNTIL_AA | SIWA_ONLY_AB)
 #define SIWA_UNTIL_AC            (SIWA_UNTIL_AB | SIWA_ONLY_AC)
 
-//Definition of SIWA_AFTER_An: 
+//Definition of SIWA_AFTER_An:
 //  The workaround is to be applied to all revisions AFTER An.
 #define SIWA_AFTER_A0            (0x0fff0000 | (~SIWA_UNTIL_A0))
-#define SIWA_AFTER_A1            (0x0fff0000 | (~SIWA_UNTIL_A1))    
-#define SIWA_AFTER_A2            (0x0fff0000 | (~SIWA_UNTIL_A2))    
+#define SIWA_AFTER_A1            (0x0fff0000 | (~SIWA_UNTIL_A1))
+#define SIWA_AFTER_A2            (0x0fff0000 | (~SIWA_UNTIL_A2))
 #define SIWA_AFTER_A3            (0x0fff0000 | (~SIWA_UNTIL_A3))
 #define SIWA_AFTER_A4            (0x0fff0000 | (~SIWA_UNTIL_A4))
 #define SIWA_AFTER_A5            (0x0fff0000 | (~SIWA_UNTIL_A5))
@@ -129,7 +128,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SIWA_AFTER_AB            (0x0fff0000 | (~SIWA_UNTIL_AB))
 #define SIWA_AFTER_AC            (0x0fff0000 | (~SIWA_UNTIL_AC))
 
-//Definition of SIWA_FROM_An: 
+//Definition of SIWA_FROM_An:
 //  The workaround is to be applied to all revisions AFTER An AND An.
 #define SIWA_FROM_A0            (SIWA_AFTER_A0 | SIWA_ONLY_A0)
 #define SIWA_FROM_A1            (SIWA_AFTER_A1 | SIWA_ONLY_A1)
@@ -145,7 +144,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SIWA_FROM_AB            (SIWA_AFTER_AB | SIWA_ONLY_AB)
 #define SIWA_FROM_AC            (SIWA_AFTER_AC | SIWA_ONLY_AC)
 
-#define SIWA_FOREVER            0xffffffff    
+#define SIWA_FOREVER            0xffffffff
 
 #define SI_REV_A0                (SIWA_ONLY_A0 & 0xffff)
 #define SI_REV_A1                (SIWA_ONLY_A1 & 0xffff)
@@ -163,9 +162,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #define __S_INLINE static __inline
 #endif
 
-// WA Init parameters 
+// WA Init parameters
 typedef struct _WaInitParam
-{    
+{
     unsigned short   usRevId;
     unsigned short   usRevId_PCH;
     PLATFORM_TYPE    ePlatformType;
@@ -196,12 +195,12 @@ __S_INLINE unsigned int WaBoolean(unsigned int ulStepId, unsigned int ulWaMask)
         return (ulWaMask != 0);
     }
 
-    //Check if wa mask contains current rev id 
+    //Check if wa mask contains current rev id
     return ((ulStepId & ulWaMask) ? 1 : 0);
 }
 
 
-// Macro to call the WaBoolean function based on platformType 
+// Macro to call the WaBoolean function based on platformType
 #define PLATFORM_STEP_APPLICABLE(ulStepId, ulPlatformMask, ulWaMask) \
     (pWaParam->ePlatformType & (ulPlatformMask)) ? WaBoolean((ulStepId), (ulWaMask)) : 0;
 

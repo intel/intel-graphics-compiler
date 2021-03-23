@@ -1,28 +1,27 @@
-/*===================== begin_copyright_notice ==================================
+/*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017 Intel Corporation
+Copyright (c) 2019-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
 
+============================= end_copyright_notice ===========================*/
 
-======================= end_copyright_notice ==================================*/
 #include "wa_def.h"
 
 #define GLK_REV_ID_A0   SI_REV_ID(0,0)
@@ -35,16 +34,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-    
+
     int StepId_GLK = (int)pWaParam->usRevId;
 
-    
-    
-    
-    
-    
 
-    
+
+
+
+
+
+
     SI_WA_ENABLE(
 
         WaDisableDSHEncryptionForWiDi,
@@ -69,7 +68,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
 
         WaIs64BInstrEnabled,
@@ -86,9 +85,9 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER );
 
-    
-    
-    
+
+
+
 
     SI_WA_ENABLE(
 
@@ -228,7 +227,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
-        SI_WA_NEVER);  
+        SI_WA_NEVER);
 
     SI_WA_ENABLE(
 
@@ -281,8 +280,8 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
     SI_WA_ENABLE(
 
         WaSendPushConstantsFromMMIO,
-        "No HWBugLink provided", 
-        "No HWSightingLink provided", 
+        "No HWBugLink provided",
+        "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER );
 
@@ -300,7 +299,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_FOR_EVER);     
+        SI_WA_FOR_EVER);
 
     SI_WA_ENABLE(
         WaDCFlushOnL3CacheConfig,
@@ -389,16 +388,16 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    SI_WA_ENABLE( 
+    SI_WA_ENABLE(
         WaSetMipTailStartLODLargertoSurfaceLOD,
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
         SI_WA_FOR_EVER );
 
-    
-    
-    
+
+
+
 
     SI_WA_ENABLE(
 
@@ -440,8 +439,8 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
+
+
     SI_WA_ENABLE(
 
         WaFlushCoherentL3CacheLinesAtContextSwitch,
@@ -473,7 +472,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
         WaAllowUMDToModifyHDCChicken1,
         "No HWBugLink provided",
@@ -495,9 +494,9 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
+
+
+
 
     SI_WA_ENABLE(
 
@@ -553,7 +552,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-    
+
     SI_WA_ENABLE(
         WaHDMIRestrict12BpcRgbYuv444Modes,
         "WA 1139: Restrict HDMI to 8 bpc when the Htotal is >= 5461 pixels and the format is RGB or YUV444, \
@@ -605,9 +604,9 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
+
+
+
 
     SI_WA_ENABLE(
         WaFbcLinearSurfaceStride,
@@ -668,9 +667,9 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
+
+
+
 
     SI_WA_ENABLE(
 
@@ -719,7 +718,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
 
         WaEnableChromaTrellisQuantization,
@@ -793,7 +792,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
 
         WaReadVcrDebugRegister,
@@ -802,7 +801,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
 
         WaVeboxSliceEnable,
@@ -867,9 +866,9 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
+
+
+
 
     SI_WA_ENABLE(
         WaDisableRCWithAsyncFlip,
@@ -877,13 +876,13 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER );
-    
+
     SI_WA_ENABLE(
         WaUnitLevelClockGatingDisableGMBUS_SOC,
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
-        SI_WA_AFTER(StepId_GLK, GLK_REV_ID_A0) 
+        SI_WA_AFTER(StepId_GLK, GLK_REV_ID_A0)
         );
 
     SI_WA_ENABLE(
@@ -892,7 +891,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "WA: Do not use GMBUS with 4 block EDID reads or similar cases where there is a wait between block reads.",
         "No Link Provided" ,
         PLATFORM_ALL,
-        SI_WA_UNTIL(StepId_GLK, GLK_REV_ID_A2) 
+        SI_WA_UNTIL(StepId_GLK, GLK_REV_ID_A2)
         );
 
     SI_WA_ENABLE(
@@ -912,14 +911,14 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER
         );
-        
+
     SI_WA_ENABLE(
 
         WaWmMemoryReadLatency,
         "No HWBugLink provided",
         "No Link Provided" ,
         PLATFORM_ALL,
-        SI_WA_FOR_EVER 
+        SI_WA_FOR_EVER
         );
 
     SI_WA_ENABLE(
@@ -999,7 +998,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
-        SI_WA_UNTIL(StepId_GLK, GLK_REV_ID_A1) 
+        SI_WA_UNTIL(StepId_GLK, GLK_REV_ID_A1)
         );
 
     SI_WA_ENABLE(
@@ -1016,7 +1015,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER
         );
-        
+
     SI_WA_ENABLE(
         WaMPOReqMinPlaneLeftFourBelowHActive,
         "No Link Provided" ,
@@ -1031,7 +1030,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER
     );
-    
+
     SI_WA_ENABLE(
         WaPruneModesHavingHfrontPorchBetween122To130,
         "No Link Provided" ,
@@ -1045,10 +1044,10 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "Link",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-        
-    
-    
-    
+
+
+
+
 
     SI_WA_ENABLE(
 
@@ -1114,7 +1113,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
 
         WaLodRequiredOnTypedMsaaUav,
@@ -1172,7 +1171,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
+
     SI_WA_ENABLE(
         WaVFEStateAfterPipeControlwithMediaStateClear,
         "No Link Provided" ,
@@ -1218,31 +1217,31 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
 
-    
-    
-    
 
-    
-    
+
+
+
+
+
     SI_WA_ENABLE(
         WaDisableMultiChannelAudioForDP,
         "No Link Provided" ,
         "No Link Provided" ,
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-   
+
     SI_WA_ENABLE(
         WaDisableDcStatesWhenPSR_3DLUTEnabled,
         "No HWBugLink provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_FOR_EVER);
-   
+
 }
 
 #ifdef __KCH
 void InitGlkHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
-   
+
 }
-#endif 
+#endif
