@@ -600,6 +600,8 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   auto InsertBefore = Inst->getNextNode();
   if (isa<PHINode>(Inst))
     return false; // ignore phi node
+  if (GenXIntrinsic::isReadWritePredefReg(Inst))
+    return false;
   // Sanity check for illegal operand type
   const auto *ScalarType = Inst->getType()->getScalarType();
   if ((ScalarType->getPrimitiveSizeInBits() == 64) && !ST->hasLongLong()) {
@@ -1281,6 +1283,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     case BaleInfo::ADDRADD:
     case BaleInfo::ADDROR:
     case BaleInfo::GSTORE:
+    case BaleInfo::REGINTR:
       break;
     default: {
       ThisWidth = determineNonRegionWidth(i->Inst, StartIdx);
@@ -2078,6 +2081,16 @@ static Value *createBitCastIfNeeded(Value *V, Type *NewTy,
   if (auto *C = dyn_cast<Constant>(V))
     return ConstantFoldCastOperand(Instruction::BitCast, C, NewTy,
                                    InsertBefore->getModule()->getDataLayout());
+  if (GenXIntrinsic::isReadPredefReg(V)) {
+    // we don't need unnecessary bitcasts of read.predef.reg intrinsics
+    // as we can simply create a new call with an appropriate type
+    auto *CI = cast<CallInst>(V);
+    Function *RegReadIntr = GenXIntrinsic::getGenXDeclaration(
+        InsertBefore->getModule(), llvm::GenXIntrinsic::genx_read_predef_reg,
+        {NewTy, CI->getOperand(1)->getType()});
+    return CallInst::Create(RegReadIntr, {CI->getOperand(0), CI->getOperand(1)},
+                            "", InsertBefore);
+  }
   if (auto *BCI = dyn_cast<BitCastInst>(V)) {
     if (BCI->getSrcTy() == NewTy)
       return BCI->getOperand(0);
@@ -2149,6 +2162,8 @@ Instruction *GenXLegalization::transformMoveType(Bale *B, IntegerType *FromTy,
   Region SrcRgn =
       Rd ? Region(Rd, BaleInfo()) : Region(Wr->getOperand(NewValueOperandNum));
   Value *Dst = Wr ? Wr : Rd;
+  if (Dst->hasOneUse() && GenXIntrinsic::isWritePredefReg(Dst->user_back()))
+    return nullptr;
   Region DstRgn = Wr ? Region(Wr, BaleInfo()) : Region(Rd);
 
   // Check that dst and src regions can be changed on new type.

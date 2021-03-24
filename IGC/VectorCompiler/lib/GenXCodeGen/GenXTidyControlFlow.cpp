@@ -307,11 +307,12 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
       ReturnInst::Create(F->getContext(), PN, NewRetBlock);
     }
 
-    if (PN)
-      Liveness->setLiveRange(
-          SimpleValue(PN),
-          Liveness->getLiveRange(
-              ReturningBlocks.front()->getTerminator()->getOperand(0)));
+    if (PN) {
+      auto *TermVal = ReturningBlocks.front()->getTerminator()->getOperand(0);
+      if (GenXIntrinsic::isReadWritePredefReg(TermVal))
+        TermVal = cast<Instruction>(TermVal)->getOperand(1);
+      Liveness->setLiveRange(SimpleValue(PN), Liveness->getLiveRange(TermVal));
+    }
     // Loop over all of the blocks, replacing the return instruction with an
     // unconditional branch.
     for (auto BB : ReturningBlocks) {

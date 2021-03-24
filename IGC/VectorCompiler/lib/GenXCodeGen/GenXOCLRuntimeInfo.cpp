@@ -23,6 +23,7 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
+#include "vc/GenXCodeGen/GenXInternalMetadata.h"
 
 #include "ConstantEncoder.h"
 #include "GenX.h"
@@ -114,9 +115,9 @@ void GenXOCLRuntimeInfo::KernelInfo::setMetadataProperties(
     genx::KernelMetadata &KM, const GenXSubtarget &ST) {
   Name = KM.getName();
   SLMSize = KM.getSLMSize();
-  // FIXME: replace with 8k * simdSize * numDispatchedThreads
-  if (KM.getFunction()->getParent()->getModuleFlag("genx.useGlobalMem"))
-    StatelessPrivateMemSize = 16 * 8192;
+  // NOTE: this is a per-thread value
+  if (KM.getFunction()->getParent()->getModuleFlag(genx::ModuleMD::UseSVMStack))
+    StatelessPrivateMemSize = 16*8192;
 
 }
 
@@ -640,6 +641,24 @@ RuntimeInfoCollector::collectFunctionGroupInfo(
   FINALIZER_INFO *JitInfo = nullptr;
   CISA_CALL(VK->GetJitInfo(JitInfo));
   IGC_ASSERT_MESSAGE(JitInfo, "Jit info is not set by finalizer");
+  // TODO: this a temporary solution for spill mem size
+  // calculation. This has to be redesign properly, maybe w/ multiple
+  // KernelInfos or by introducing FunctionInfos
+  for (Function *F: FG) {
+    if (F == KernelFunction)
+      continue;
+    if (F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+      const std::string FuncName = F->getName().str();
+      VISAKernel *VF = VB.GetVISAKernel(FuncName);
+      IGC_ASSERT_MESSAGE(VF, "Function is null");
+      FINALIZER_INFO *FuncJitInfo = nullptr;
+      CISA_CALL(VF->GetJitInfo(FuncJitInfo));
+      IGC_ASSERT_MESSAGE(FuncJitInfo, "Func jit info is not set by finalizer");
+      JitInfo->isSpill |= FuncJitInfo->isSpill;
+      JitInfo->hasStackcalls |= FuncJitInfo->hasStackcalls;
+      JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
+    }
+  }
   genx::BinaryDataAccumulator<const Function *> GenBinary =
       getGenBinary(FG, VB);
 

@@ -497,7 +497,7 @@ void GenXArgIndirection::gatherArgLRs()
     Seen.insert(Liveness->getLiveRange(&*ai));
   // For a subroutine arg, add its LR to the list if it is not already in Seen.
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
-    if ((*fgi)->hasFnAttribute("referenced-indirectly"))
+    if ((*fgi)->hasFnAttribute(genx::FunctionMD::CMStackCall))
       continue;
     for (auto ai = (*fgi)->arg_begin(), ae = (*fgi)->arg_end(); ai != ae; ++ai) {
       Argument *Arg = &*ai;
@@ -966,7 +966,8 @@ CallSite *SubroutineArg::createCallSite(CallInst *CI)
   // Case 2: The call arg is a legalized contiguous rdregion or copy of
   // non-constant, and there is no retval coalesced with it.
   if (RetRWS.isNull() && !ArgRWS.isNull() && CoalescedRetIdx < 0
-      && !isa<Constant>(ArgRWS.Input)) {
+      && !isa<Constant>(ArgRWS.Input)
+      && !GenXIntrinsic::isReadPredefReg(ArgRWS.getInputUse()->get())) {
     // It is valid to indirect this arg only if one of these is true:
     // 1. the input to ArgRWS is not live over the call, or
     // 2. the coalesced live range for the arg is not written to inside the

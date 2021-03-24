@@ -180,6 +180,7 @@ void initializeGenXNumberingPass(PassRegistry &);
 void initializeGenXPatternMatchPass(PassRegistry &);
 void initializeGenXPostLegalizationPass(PassRegistry &);
 void initializeGenXPostLegalizationPass(PassRegistry &);
+void initializeGenXPrologEpilogInsertionPass(PassRegistry &);
 void initializeGenXPromotePredicatePass(PassRegistry &);
 void initializeGenXRawSendRipperPass(PassRegistry &);
 void initializeGenXReduceIntSizePass(PassRegistry &);

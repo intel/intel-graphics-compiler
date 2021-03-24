@@ -1103,7 +1103,11 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr)
           break;
       }
     }
-    if (!RdInput)
+    // TODO: in some cases this method produces incorrect code
+    // when predefined regs are involved, so isReadPredefReg(RdInput)
+    // is necessary. We need to investigate this further, some bug
+    // unrelated to the predef regs may exist here
+    if (!RdInput || GenXIntrinsic::isReadPredefReg(RdInput))
       return; // no such input found
     // We need to check that RdInput is not used again after this sequence,
     // otherwise we could be making the code worse. The use of RdInput is

@@ -521,6 +521,8 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
 {
   for (auto fgi = FG->begin(), fge = FG->end(); fgi != fge; ++fgi) {
     Function *F = *fgi;
+    LLVM_DEBUG(dbgs() << "Recording coalescing cands in func " << F->getName()
+                      << "\n");
     for (Function::iterator fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
       BasicBlock *BB = &*fi;
       for (BasicBlock::iterator bi = BB->begin(), be = BB->end(); bi != be; ++bi) {
@@ -542,6 +544,7 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
             }
           }
         } else if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
+          LLVM_DEBUG(dbgs() << "Processing call " << *CI << "\n");
           if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI)) {
             if (CI->isInlineAsm()) {
               InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
@@ -601,13 +604,16 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
                 Callables.push_back(CI);
               }
             }
-          } else {
+          } else if (!GenXIntrinsic::isReadWritePredefReg(CI)) {
             int OperandNum = getTwoAddressOperandNum(CI);
             if (OperandNum >= 0) {
               // This is an intrinsic with a two address operand (including
               // the case of operand 0 in wrregion). That operand has to be in
               // the same register as the result.
-              if (Baling->isBaled(CI)) {
+              // *.predef.reg intrinsics should not participate in coalescing
+              // since they don't have any LR
+              if (Baling->isBaled(CI) ||
+                  GenXIntrinsic::isReadWritePredefReg(CI->getOperand(0))) {
                 // The intrinsic is baled into a wrregion. The two address
                 // operand must also have a rdregion baled in whose input is
                 // the "old value" input of the wrregion, and the coalescing
@@ -640,6 +646,8 @@ void GenXCoalescing::recordCandidates(FunctionGroup *FG)
             recordNormalCandidate(Inst, &Inst->getOperandUse(0),
                 getPriority(Inst->getType(), Inst->getParent()));
           } else if (Liveness->getLiveRangeOrNull(Inst) &&
+                     !GenXIntrinsic::isReadWritePredefReg(
+                         Inst->getOperand(0)) &&
                      !(isa<GlobalVariable>(Inst->getOperandUse(0)) &&
                        cast<GlobalVariable>(Inst->getOperandUse(0))
                            ->hasAttribute(VCModuleMD::VCVolatile))) {
@@ -869,8 +877,10 @@ unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB)
 void GenXCoalescing::recordCandidate(SimpleValue Dest, Use *UseInDest,
     unsigned SourceIndex, unsigned Priority, std::vector<Candidate> *Candidates)
 {
+  LLVM_DEBUG(dbgs() << "Trying to record cand " << *(Dest.getValue()) << "\n");
   if (UseInDest && isa<UndefValue>(*UseInDest))
     return;
+  LLVM_DEBUG(dbgs() << "Recording cand " << *(Dest.getValue()) << "\n");
   IGC_ASSERT(!UseInDest || !isa<Constant>(*UseInDest));
   Candidates->emplace_back(Dest, UseInDest, SourceIndex, Priority);
 }
@@ -1295,6 +1305,8 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
   // For each subroutine...
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
     Function *F = *fgi;
+    if (F->hasFnAttribute(genx::FunctionMD::CMStackCall))
+      continue;
     // For each call site...
     for (auto *U: F->users()) {
       if (auto *CI = genx::checkFunctionCall(U, F)) {
@@ -1464,7 +1476,9 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
       if (!RI)
         continue;
       Value *Input = RI->getOperand(0);
-      if (isa<UndefValue>(Input))
+      // *.predef.reg intrinsics should not participate in coalescing
+      // since they don't have any LR
+      if (isa<UndefValue>(Input) || GenXIntrinsic::isReadWritePredefReg(Input))
         continue;
       Value *UnifiedRet = Liveness->getUnifiedRet(F);
       // For each struct element in the return value...
