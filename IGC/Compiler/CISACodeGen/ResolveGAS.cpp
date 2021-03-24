@@ -41,6 +41,7 @@ IN THE SOFTWARE.
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/MemoryLocation.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/NoFolder.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -1350,6 +1351,51 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
     }
 }
 
+// This function takes an Old value and a New value. If Old value is referenced in a
+// dbg.value or dbg.declare instruction, it replaces that intrinsic and makes new one
+// use the New value.
+//
+// This function is required anytime a pass modifies IR such that RAUW cannot be
+// used to directly update uses in metadata node. In case of GAS, RAUW asserts because
+// addrspace used in Old/New values are different and this is interpreted as different
+// types by LLVM and RAUW on different types is forbidden.
+void replaceValueInDbgInfoIntrinsic(llvm::Value* Old, llvm::Value* New, llvm::Module& M)
+{
+    if (Old->isUsedByMetadata())
+    {
+        auto localAsMD = ValueAsMetadata::getIfExists(Old);
+        auto addrSpaceMD = MetadataAsValue::getIfExists(Old->getContext(), localAsMD);
+        if (addrSpaceMD)
+        {
+            llvm::DIBuilder DIB(M);
+            std::vector<llvm::DbgInfoIntrinsic*> DbgInfoInstToDelete;
+            for (auto* User : addrSpaceMD->users())
+            {
+                if (cast<DbgInfoIntrinsic>(User))
+                {
+                    //User->dump();
+                    if (auto DbgV = cast<DbgValueInst>(User))
+                    {
+                        DIB.insertDbgValueIntrinsic(New,
+                            DbgV->getVariable(), DbgV->getExpression(), DbgV->getDebugLoc().get(),
+                            cast<llvm::Instruction>(User));
+                    }
+                    else if (auto DbgD = cast<DbgDeclareInst>(User))
+                    {
+                        DIB.insertDeclare(New,
+                            DbgD->getVariable(), DbgD->getExpression(), DbgD->getDebugLoc().get(),
+                            cast<llvm::Instruction>(User));
+                    }
+                    DbgInfoInstToDelete.push_back(cast<llvm::DbgInfoIntrinsic>(User));
+                }
+            }
+
+            for (auto DbgInfoInst : DbgInfoInstToDelete)
+                DbgInfoInst->eraseFromParent();
+        }
+    }
+}
+
 void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
 {
     IGC_ASSERT(!f.oldFunc->use_empty());
@@ -1396,7 +1442,15 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
                 {
                     callArg = addrSpaceCastInst->getOperand(0);
                     if (addrSpaceCastInst->getNumUses() == 1)
+                    {
+                        // when addrspacecast is used in a metadata node, replacing it
+                        // requires reconstruction of the node. we cannot used standard
+                        // llvm APIs to replace uses as they require that type be
+                        // preserved, which is not in this case.
+                        replaceValueInDbgInfoIntrinsic(addrSpaceCastInst, addrSpaceCastInst->getPointerOperand(),
+                            *f.newFunc->getParent());
                         ASCToDelete.push_back(addrSpaceCastInst);
+                    }
                 }
             }
             newCallArgs.push_back(callArg);
