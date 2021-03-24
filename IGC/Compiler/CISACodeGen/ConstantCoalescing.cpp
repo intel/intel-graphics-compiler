@@ -434,51 +434,18 @@ void ConstantCoalescing::ProcessBlock(
             {
                 continue;
             }
-
-            uint offsetInBytes = 0;
-            Value* baseOffsetInBytes = nullptr;
-            if (ConstantInt * offsetConstVal = dyn_cast<ConstantInt>(ldRaw->getOffsetValue()))
-            {
-                offsetInBytes = int_cast<uint>(offsetConstVal->getZExtValue());
-            }
-            else
-            {
-                baseOffsetInBytes = SimpleBaseOffset(ldRaw->getOffsetValue(), offsetInBytes);
-            }
-            if ((int32_t)offsetInBytes >= 0)
-            {
-                uint addrSpace = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
-                if (wiAns->isUniform(ldRaw))
+            if (auto* offsetValue = dyn_cast<ConstantInt>(ldRaw->getOffsetValue()))
+            {   // direct access
+                uint offsetInBytes = (uint)offsetValue->getZExtValue();
+                if ((int32_t)offsetInBytes >= 0)
                 {
-                    uint maxEltPlus = 1;
-                    if (!isProfitableLoad(ldRaw, maxEltPlus))
-                        continue;
-                    MergeUniformLoad(
-                        ldRaw,
-                        ldRaw->getResourceValue(),
-                        addrSpace,
-                        baseOffsetInBytes,
-                        offsetInBytes,
-                        maxEltPlus,
-                        baseOffsetInBytes ? indcb_owloads : dircb_owloads);
-                }
-                else
-                {
-#ifdef SUPPORT_GATHER4
-                    MergeScatterLoad(LI, nullptr, bufid, elt_idxv, eltid, 1, indcb_gathers);
-#else
-                    if (UsesTypedConstantBuffer(m_ctx) &&
-                        bufType == BINDLESS_CONSTANT_BUFFER)
+                    if (wiAns->isUniform(ldRaw))
                     {
-                        ScatterToSampler(
-                            ldRaw,
-                            ldRaw->getResourceValue(),
-                            addrSpace,
-                            baseOffsetInBytes,
-                            offsetInBytes,
-                            indcb_gathers);
+                        uint maxEltPlus = 1;
+                        if (!isProfitableLoad(ldRaw, maxEltPlus))
+                            continue;
+                        MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), 0, nullptr, offsetInBytes, maxEltPlus, dircb_owloads);
                     }
-#endif
                 }
             }
             continue;
@@ -1239,7 +1206,6 @@ Value* ConstantCoalescing::SimpleBaseOffset(Value* elt_idxv, uint& offset)
     {
         elt_idxv = reducedOffset->getOperand(0);
     }
-
     Instruction* expr = dyn_cast<Instruction>(elt_idxv);
     if (!expr)
     {
