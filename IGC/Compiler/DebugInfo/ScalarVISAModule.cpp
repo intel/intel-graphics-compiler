@@ -427,9 +427,9 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 
     if (pArgument)
     {
-        IGC_ASSERT_MESSAGE((pArgument->getParent() == GetEntryFunction() || pArgument->getParent()->hasFnAttribute("IndirectlyCalled")), "Argument does not belong to current processed function");
+        IGC_ASSERT_MESSAGE((pArgument->getParent() == GetEntryFunction() || pArgument->getParent()->hasFnAttribute("referenced-indirectly")), "Argument does not belong to current processed function");
 
-        const Function* curFunc = pArgument->getParent()->hasFnAttribute("IndirectlyCalled")
+        const Function* curFunc = pArgument->getParent()->hasFnAttribute("referenced-indirectly")
             ? pArgument->getParent() : GetEntryFunction();
         // Check if it is argument of image or sampler
         IGC::IGCMD::MetaDataUtils::FunctionsInfoMap::iterator itr =

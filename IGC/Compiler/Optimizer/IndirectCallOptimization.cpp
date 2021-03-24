@@ -120,7 +120,7 @@ namespace IGC
             {
                 if (Function* F = mdconst::dyn_extract<Function>(op))
                 {
-                    if (F->hasFnAttribute("IndirectlyCalled") && CompareCallFuncSignature(&CI, F))
+                    if (F->hasFnAttribute("referenced-indirectly") && CompareCallFuncSignature(&CI, F))
                     {
                         CallableFuncs.insert(F);
                         continue;

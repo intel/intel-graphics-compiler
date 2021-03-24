@@ -9877,7 +9877,7 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 void EmitPass::emitCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
-    if (!F || F->hasFnAttribute("IndirectlyCalled") || (m_FGA && m_FGA->useStackCall(F)))
+    if (!F || F->hasFnAttribute("referenced-indirectly") || (m_FGA && m_FGA->useStackCall(F)))
     {
         emitStackCall(inst);
         return;
@@ -10185,7 +10185,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
 
-    bool isIndirectFCall = !F || F->hasFnAttribute("IndirectlyCalled");
+    bool isIndirectFCall = !F || F->hasFnAttribute("referenced-indirectly");
     CVariable* ArgBlkVar = m_currShader->GetARGV();
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
@@ -10404,7 +10404,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     m_encoder->SetDispatchSimdSize();
     m_currShader->InitializeStackVariables();
 
-    if (F->hasFnAttribute("IndirectlyCalled"))
+    if (F->hasFnAttribute("referenced-indirectly"))
     {
         m_encoder->SetExternFunctionFlag();
     }
@@ -10415,7 +10415,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     std::vector<CVariable*> argsOnStack;
     for (auto& Arg : F->args())
     {
-        if (!F->hasFnAttribute("IndirectlyCalled"))
+        if (!F->hasFnAttribute("referenced-indirectly"))
         {
             // Skip unused arguments if any for direct call
             if (Arg.use_empty()) continue;
@@ -10563,8 +10563,8 @@ void EmitPass::emitSymbolRelocation(Function& F)
     SmallSet<Function*, 16> funcAddrSymbols;
     for (auto& FI : pModule->getFunctionList())
     {
-        // Create a relocation instruction for every "IndirectlyCalled" function being used in the current function
-        if (FI.hasFnAttribute("IndirectlyCalled") && FI.getNumUses() > 0)
+        // Create a relocation instruction for every "referenced-indirectly" function being used in the current function
+        if (FI.hasFnAttribute("referenced-indirectly") && FI.getNumUses() > 0)
         {
             if (ValueUsedInFunction(&FI, &F))
             {

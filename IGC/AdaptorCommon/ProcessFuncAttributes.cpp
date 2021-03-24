@@ -303,7 +303,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             if (F->hasFnAttribute("referenced-indirectly") || NeedsLinking(F))
             {
                 pCtx->m_enableFunctionPointer = true;
-                F->addFnAttr("IndirectlyCalled");
+                F->addFnAttr("referenced-indirectly");
                 F->addFnAttr("visaStackCall");
             }
 
@@ -421,7 +421,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             // Add indirect call function attributes
             pCtx->m_enableFunctionPointer = true;
-            F->addFnAttr("IndirectlyCalled");
+            F->addFnAttr("referenced-indirectly");
             if (!istrue)
             {
                 F->addFnAttr("visaStackCall");
@@ -588,7 +588,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 else if (forceIndirectCall)
                 {
                     pCtx->m_enableFunctionPointer = true;
-                    F->addFnAttr("IndirectlyCalled");
+                    F->addFnAttr("referenced-indirectly");
                     F->addFnAttr("visaStackCall");
                 }
             }
@@ -876,7 +876,7 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
         {
             Function* F = &(*I);
             if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
-            if (F->hasFnAttribute("IndirectlyCalled"))
+            if (F->hasFnAttribute("referenced-indirectly"))
             {
                 checkKernelSimdSize(F, fHandle, pMdUtils);
             }

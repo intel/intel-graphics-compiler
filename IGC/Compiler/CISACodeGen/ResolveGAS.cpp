@@ -1002,7 +1002,7 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
             return true;
 
         // Only non-extern functions within the module are optimized
-        if (F->hasFnAttribute("IndirectlyCalled") || F->isDeclaration()
+        if (F->hasFnAttribute("referenced-indirectly") || F->isDeclaration()
             || F->isIntrinsic() || F->user_empty())
             return true;
 

@@ -112,7 +112,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     }
     else
     {
-        if (F.hasFnAttribute("IndirectlyCalled") ||
+        if (F.hasFnAttribute("referenced-indirectly") ||
             (F.hasFnAttribute("visaStackCall") &&
             (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL ||
             IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL) &&
@@ -120,7 +120,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         {
             return false;
         }
-	    
+
         if (m_hasGroupID)
         {
             implicitArgs.push_back(ImplicitArg::R0);

@@ -4819,7 +4819,7 @@ namespace IGC
                 continue;
             }
             // Find all functions in the module we need to export as symbols
-            else if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
+            else if (F.hasFnAttribute("referenced-indirectly") && (!F.isDeclaration() || F.getNumUses() > 0))
             {
                 vISA::GenSymEntry fEntry;
                 IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
@@ -5123,7 +5123,7 @@ namespace IGC
                     Module* pModule = m_program->GetContext()->getModule();
                     for (auto& F : pModule->getFunctionList())
                     {
-                        if (F.hasFnAttribute("IndirectlyCalled") && (!F.isDeclaration() || F.getNumUses() > 0))
+                        if (F.hasFnAttribute("referenced-indirectly") && (!F.isDeclaration() || F.getNumUses() > 0))
                         {
                             auto Iter = stackFuncMap.find(&F);
                             IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(), "vISA function not found");

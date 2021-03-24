@@ -169,7 +169,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures()
         if (isEntryFunc(m_pMdUtils, pFunc))
             continue;
 
-        bool isIndirectCall = pFunc->hasFnAttribute("IndirectlyCalled");
+        bool isIndirectCall = pFunc->hasFnAttribute("referenced-indirectly");
         bool isStackCall = pFunc->hasFnAttribute("visaStackCall");
 
         // For binary linking, calling a function outside the module is possible, so declaration
@@ -347,7 +347,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(CallInst* callInst)
     SmallVector<Value*, 16> callArgs;
     bool needChange = false;
 
-    bool isIndirectCall = !calledFunc || calledFunc->hasFnAttribute("IndirectlyCalled");
+    bool isIndirectCall = !calledFunc || calledFunc->hasFnAttribute("referenced-indirectly");
     bool isStackCall = isIndirectCall || calledFunc->hasFnAttribute("visaStackCall");
 
     // Check return type

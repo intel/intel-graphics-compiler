@@ -80,7 +80,7 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
 
         if (F->use_empty() && !isEntryFunc(pMdUtils, F))
         {
-            if (F->hasFnAttribute("IndirectlyCalled") &&
+            if (F->hasFnAttribute("referenced-indirectly") &&
                 GlobalValue::isExternalLinkage(F->getLinkage()))
             {
                 // Do not delete externally linked functions, even if there are no uses in the current module.

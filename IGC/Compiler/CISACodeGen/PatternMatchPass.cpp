@@ -1170,7 +1170,7 @@ namespace IGC
                 }
             }
             // Match indirect call, support declarations for indirect funcs
-            else if (!Callee || Callee->hasFnAttribute("IndirectlyCalled"))
+            else if (!Callee || Callee->hasFnAttribute("referenced-indirectly"))
             {
                 match = MatchSingleInstruction(I);
             }

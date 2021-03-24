@@ -529,7 +529,7 @@ bool GenXFunctionGroupAnalysis::verify()
             for (auto FI = (*SubGI)->begin(), FE = (*SubGI)->end(); FI != FE; ++FI)
             {
                 Function* F = *FI;
-                if (F->hasFnAttribute("IndirectlyCalled"))
+                if (F->hasFnAttribute("referenced-indirectly"))
                 {
                     continue;
                 }
@@ -586,7 +586,7 @@ void GenXFunctionGroupAnalysis::setGroupStackCall()
                         if (call->isInlineAsm()) continue;
 
                         Function* calledF = call->getCalledFunction();
-                        if (!calledF || calledF->hasFnAttribute("IndirectlyCalled"))
+                        if (!calledF || calledF->hasFnAttribute("referenced-indirectly"))
                         {
                             FG->m_hasStackCall = true;
                             break;
@@ -658,7 +658,7 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
         // Add non-used function to default group
-        if (F->hasFnAttribute("IndirectlyCalled") || F->getNumUses() == 0)
+        if (F->hasFnAttribute("referenced-indirectly") || F->getNumUses() == 0)
         {
             IGC_ASSERT(getGroup(F) == nullptr);
             addToFunctionGroup(F, IndirectCallGroup, F);

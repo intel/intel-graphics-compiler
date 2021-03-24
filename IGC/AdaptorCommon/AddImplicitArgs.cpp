@@ -183,7 +183,7 @@ bool AddImplicitArgs::hasIndirectlyCalledParent(const Function* F)
         if (const CallInst* call = dyn_cast<CallInst>(*u))
         {
             const Function* parent = call->getParent()->getParent();
-            if (parent->hasFnAttribute("IndirectlyCalled"))
+            if (parent->hasFnAttribute("referenced-indirectly"))
                 return true;
         }
     }
@@ -751,7 +751,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
 
 void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(ImplicitArgmentDetail& data, Function * f)
 {
-    if (f->hasFnAttribute("IndirectlyCalled"))
+    if (f->hasFnAttribute("referenced-indirectly"))
         return;
 
     FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
