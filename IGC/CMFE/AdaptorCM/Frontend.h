@@ -203,6 +203,15 @@ public:
 
   DyLibTy &LibInfo() { return Lib; }
 
+  std::string getVCApiOptions(IDriverInvocation *DriverInvoc) {
+    auto *getVCOptions =
+        CMFE_WRAPPER_GET_SYMBOL(IntelCMClangFEGetVCApiOptions);
+    const char *vcOptions = getVCOptions(DriverInvoc);
+    if (!vcOptions)
+      return "";
+    return vcOptions;
+  }
+
 #undef CMFE_WRAPPER_GET_SYMBOL
 #undef CMFE_WRAPPER_GET_SYMBOL_IMPL
 };
