@@ -500,6 +500,7 @@ bool GASPropagator::visitPHINode(PHINode& PN) {
     for (unsigned i = 0; i != e; ++i)
         NewPN->addIncoming(NewIncomingValues[i], PN.getIncomingBlock(i));
     NewPN->takeName(&PN);
+    NewPN->setDebugLoc(PN.getDebugLoc());
 
     BuilderType::InsertPointGuard Guard(*IRB);
     IRB->SetInsertPoint(PN.getParent()->getFirstNonPHI());
