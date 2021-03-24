@@ -1292,7 +1292,7 @@ namespace TC
             pBuffer = new char[optionsSize];
             nextTok = new char[optionsSize];
 
-            strcpy(pBuffer, options);
+            strcpy_s(pBuffer, optionsSize, options);
             pParam = GetParam(pBuffer, nextTok);
 
             if (pParam)
@@ -1421,7 +1421,7 @@ namespace TC
                     {
                         ignoreNextToken = false;
                     }
-                    strcpy(pBuffer, nextTok);
+                    strcpy_s(pBuffer, optionsSize, nextTok);
                 } while ((pParam = GetParam(pBuffer, nextTok)) != NULL);
             }
 
