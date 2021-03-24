@@ -257,6 +257,12 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
         return false;
     }
 
+    if (IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToGlobalOnGeneric) && Ctx.m_instrTypes.hasGenericAddressSpacePointers)
+    {
+        // force private memory to global stateless buffer to avoid the branch overhead on Generic pointers
+        return false;
+    }
+
     //
     // For now, all APIs that use scratch space for private memory, must use scratch
     // memory except OpenCL, which can also use non-scratch space. For debugging

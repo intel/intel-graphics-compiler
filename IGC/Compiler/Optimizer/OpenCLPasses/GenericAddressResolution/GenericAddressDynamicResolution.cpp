@@ -226,7 +226,8 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     }
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
-        if (m_ctx->forceGlobalMemoryAllocation() && m_ctx->hasNoLocalToGenericCast())
+        bool allocatePrivateAsGlobal = m_ctx->forceGlobalMemoryAllocation() || IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToGlobalOnGeneric);
+        if (allocatePrivateAsGlobal && m_ctx->hasNoLocalToGenericCast())
         {
             resolveGASWithoutBranches(I, pointerOperand);
         }
