@@ -63,6 +63,7 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   set(BIF_SYMBOL ${MANGLED_BIF_NAME}RawData)
 
   get_target_include_opt_list(CMCL_INCLUDES CMCLHeaders)
+  get_target_include_opt_list(VC_INCLUDES VCHeaders)
 
   set(SPIR_TARGET spir)
   if(PTR_BIT_SIZE EQUAL 64)
@@ -70,7 +71,7 @@ function(vc_embed_bif RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   endif()
 
   add_custom_command(OUTPUT ${BIF_CLANG_BC_PATH}
-    COMMAND clang-tool -cc1 ${CMCL_INCLUDES} -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
+    COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES} -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
     -O2 -disable-llvm-passes -emit-llvm-bc -o ${BIF_CLANG_BC_NAME} ${CMCL_SRC_PATH}
     COMMENT "vc_embed_bif: Compiling CMCL source ${CMCL_SRC_PATH} to BC ${BIF_CLANG_BC_NAME}"
     DEPENDS clang-tool ${CMCL_SRC_PATH}
@@ -95,6 +96,8 @@ endfunction()
 
 if (IGC_OPTION__VC_DISABLE_BIF)
   target_compile_definitions(VCHeaders INTERFACE IGC_VC_DISABLE_BIF)
+# Adding it just to get binary dir property in lit and eventually xfail.
+  add_custom_target(VCBiFPreparation)
 else()
   set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
   vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32)
