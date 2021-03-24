@@ -1374,7 +1374,7 @@ public:
   Function *transFunction(SPIRVFunction *F);
   bool transFPContractMetadata();
   bool transKernelMetadata();
-  bool transSourceLanguage();
+  void transSourceLanguage();
   bool transSourceExtension();
   /*InlineAsm*/ Value *transAsmINTEL(SPIRVAsmINTEL *BA, Function *F,
                                      BasicBlock *BB);
@@ -3829,8 +3829,7 @@ SPIRVToLLVM::translate() {
     return false;
   if (!transFPContractMetadata())
     return false;
-  if (!transSourceLanguage())
-    return false;
+  transSourceLanguage();
   if (!transSourceExtension())
     return false;
   if (!transOCLBuiltinsFromVariables())
@@ -4348,18 +4347,18 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
 
 // SPIR-V only contains language version. Use OpenCL language version as
 // SPIR version.
-bool
+void
 SPIRVToLLVM::transSourceLanguage() {
   SPIRVWord Ver = 0;
   SpvSourceLanguage Lang = BM->getSourceLanguage(&Ver);
-  IGC_ASSERT_MESSAGE((Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP), "Unsupported source language");
-  unsigned short Major = 0;
-  unsigned char Minor = 0;
-  unsigned char Rev = 0;
-  std::tie(Major, Minor, Rev) = decodeOCLVer(Ver);
-  addOCLVersionMetadata(Context, M, kSPIR2MD::SPIRVer, Major, Minor);
-  addOCLVersionMetadata(Context, M, kSPIR2MD::OCLVer, Major, Minor);
-  return true;
+  if (Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP) {
+    unsigned short Major = 0;
+    unsigned char Minor = 0;
+    unsigned char Rev = 0;
+    std::tie(Major, Minor, Rev) = decodeOCLVer(Ver);
+    addOCLVersionMetadata(Context, M, kSPIR2MD::SPIRVer, Major, Minor);
+    addOCLVersionMetadata(Context, M, kSPIR2MD::OCLVer, Major, Minor);
+  }
 }
 
 bool
