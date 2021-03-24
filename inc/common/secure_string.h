@@ -33,12 +33,16 @@ IN THE SOFTWARE.
 static inline int
 strcpy_s(char *strDestination, size_t numberOfElements, const char *strSource)
 {
+#ifndef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
     // As WA for issue in Fedora build
     // need to rework this
+#endif
     strncpy(strDestination, strSource, numberOfElements);
+#ifndef __clang__
 #pragma GCC diagnostic pop
+#endif
     strDestination[numberOfElements - 1] = '\0';
     return 0;
 }
@@ -47,20 +51,28 @@ static inline int
 strncpy_s(char *strDestination, size_t numberOfElements, const char *strSource, size_t count)
 {
     if( numberOfElements - 1 > count ) {
+#ifndef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
         // As WA for issue in Fedora build
         // need to rework this
+#endif
         strncpy(strDestination, strSource, count);
+#ifndef __clang__
 #pragma GCC diagnostic pop
+#endif
         strDestination[count] = '\0';
     } else {
+#ifndef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
         // As WA for issue in Fedora build
         // need to rework this
+#endif
         strncpy(strDestination, strSource, numberOfElements - 1);
+#ifndef __clang__
 #pragma GCC diagnostic pop
+#endif
         strDestination[numberOfElements - 1] = '\0';
     }
     return 0;
@@ -74,20 +86,28 @@ strncat_s(char *strDestination, size_t numberOfElements, const char *strSource, 
     unsigned int elementsLeft = numberOfElements - existingIndex;
 
     if( elementsLeft > count ) {
+#ifndef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
         // As WA for issue in Fedora build
         // need to rework this
+#endif
         strncpy(strDestination + existingIndex, strSource, count);
+#ifndef __clang__
 #pragma GCC diagnostic pop
+#endif
         strDestination[existingIndex + count] = '\0';
     } else if( elementsLeft > 1 ) {
+#ifndef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
         // As WA for issue in Fedora build
         // need to rework this
+#endif
         strncpy(strDestination + existingIndex, strSource, elementsLeft - 1);
+#ifndef __clang__
 #pragma GCC diagnostic pop
+#endif
         strDestination[existingIndex + elementsLeft] = '\0';
     }
     return 0;

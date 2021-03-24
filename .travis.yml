@@ -23,134 +23,27 @@
 #============================ end_copyright_notice =============================
 
 language: cpp
+compiler: gcc
 
-#llvm 8
-v8: &v8
-  - llvm-8-tools
-  - llvm-8-dev
-  - libclang-8-dev
-  - clang-8
-  - clang-tools-8
+notifications:
+    email:
+        recipients: igc.git.maintainers@intel.com
+    on_success: never # default: change
+    on_failure: change # default: always
 
-#SPIRV for llvm8
-v8install: &v8install
-  - export TARBALL1=SPIRV-LLVM-Translator-v8.0.1-2-linux-${BUILD_TYPE}.zip
-  - wget https://github.com/KhronosGroup/SPIRV-LLVM-Translator/releases/download/v8.0.1-2/${TARBALL1} -O /tmp/${TARBALL1}
-  - unzip /tmp/${TARBALL1} -d spirv-llvm-translator
-
-#llvm 9
-v9: &v9
-  - llvm-9-tools
-  - llvm-9-dev
-  - libclang-9-dev
-  - clang-9
-  - clang-tools-9
-
-#SPIRV for llvm9
-v9install: &v9install
-  - export TARBALL2=SPIRV-LLVM-Translator-v9.0.0-1-linux-${BUILD_TYPE}.zip
-  - wget https://github.com/KhronosGroup/SPIRV-LLVM-Translator/releases/download/v9.0.0-1/${TARBALL2} -O /tmp/${TARBALL2}
-  - unzip /tmp/${TARBALL2} -d spirv-llvm-translator
-
+dist: focal
+os: linux
 
 matrix:
   include:
     - os: linux
-      dist: xenial # Ubuntu 16.04 w/ llvm8
-      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=gcc
-      before_install:
-          - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v8
-      install: *v8install
+      dist: focal # Ubuntu 20.04
+      compiler: gcc
+      env: LLVM_VER=10 BUILD_TYPE=Release
     - os: linux
-      dist: bionic # Ubuntu 18.04 w/ llvm8
-      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=gcc
-      before_install:
-          - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v8
-      install: *v8install
-    - os: linux
-      dist: xenial # Ubuntu 16.04 w/ llvm9
-      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=gcc
-      before_install:
-          - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v9
-      install: *v9install
-    - os: linux
-      dist: bionic # Ubuntu 18.04 w/ llvm9
-      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=gcc
-      before_install:
-          - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v9
-      install: *v9install
-    - os: linux
-      dist: xenial # Ubuntu 16.04 w/ llvm8
-      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=clang
-      before_install:
-          - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v8
-      install: *v8install
-    - os: linux
-      dist: bionic # Ubuntu 18.04 w/ llvm8
-      env: LLVM_VER=8 BUILD_TYPE=Release COMPILER=clang
-      before_install:
-          - git clone -b ocl-open-80 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v8
-      install: *v8install
-    - os: linux
-      dist: xenial # Ubuntu 16.04 w/ llvm9
-      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=clang
-      before_install:
-          - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-9 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v9
-      install: *v9install
-    - os: linux
-      dist: bionic # Ubuntu 18.04 w/ llvm9
-      env: LLVM_VER=9 BUILD_TYPE=Release COMPILER=clang
-      before_install:
-          - git clone -b ocl-open-90 https://github.com/intel/opencl-clang opencl-clang
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages: *v9
-      install: *v9install
+      dist: focal # Ubuntu 20.04
+      compiler: clang-10
+      env: LLVM_VER=10 BUILD_TYPE=Release COMPILER_EXTRA="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 -DIGC_BUILD__VC_ENABLED=OFF"
 
 git:
   depth: 1
@@ -160,11 +53,21 @@ branches:
     - master
 
 script:
-  - if [ "${LLVM_VER}" == "9" ]; then sudo touch /usr/lib/llvm-9/bin/lit-cpuid; fi #Cmake fix
-  - mkdir opencl-clang/build && cd opencl-clang/build
-  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DLLVM_NO_DEAD_STRIP=ON -DLLVMSPIRV_INCLUDED_IN_LLVM=OFF -DSPIRV_TRANSLATOR_DIR=../spirv-llvm-translator ..
-  - sudo make install
-  - cd ../..
+  - sudo apt-get update
+  - sudo apt-get install flex bison libz-dev cmake
+
+  - mkdir Old_IGC
+  - cd Old_IGC
+  - curl -s https://api.github.com/repos/intel/intel-graphics-compiler/releases/latest | grep browser_download_url | cut -d '"' -f 4 | wget -qi -
+  - sudo dpkg -i *.deb
+  - cd ..
+
+  - wget https://apt.llvm.org/llvm.sh
+  - chmod +x llvm.sh
+  - sudo ./llvm.sh ${LLVM_VER}
+
+  - git clone https://github.com/intel/vc-intrinsics ../vc-intrinsics
+  - git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator ../llvm-project/llvm/projects/llvm-spirv
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_FIND_DEBUG_MODE=ON -DIGC_PREFERRED_LLVM_VERSION=${LLVM_VER} -DCCLANG_FROM_SYSTEM=TRUE ../IGC
+  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DIGC_PREFERRED_LLVM_VERSION=${LLVM_VER} -DCCLANG_FROM_SYSTEM=TRUE -DIGC_OPTION__LLVM_FROM_SYSTEM=True ${COMPILER_EXTRA} ../IGC/
   - make -j`nproc`
