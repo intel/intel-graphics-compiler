@@ -6912,6 +6912,35 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         return I;
     }
 
+    bool Optimizer::addFenceCommit(INST_LIST_ITER ii, G4_BB* bb, bool scheduleFenceCommit)
+    {
+        G4_INST* inst = *ii;
+        G4_InstSend* sendInst = inst->asSendInst();
+        if (sendInst->getMsgDesc()->ResponseLength() > 0)
+        {
+            // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
+            // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
+            auto nextIter = std::next(ii);
+            if (scheduleFenceCommit)
+            {
+                auto iter = findFenceCommitPos(ii, bb);
+                if (!iter)
+                {
+                    return false;   // skip commit for this fence
+                }
+                nextIter = *iter;
+            }
+            auto dst = inst->getDst();
+            G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
+            G4_DstRegRegion* movDst = builder.createDst(
+                builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
+            G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
+            G4_INST* movInst = builder.createMov(g4::SIMD8, movDst, movSrc, InstOpt_WriteEnable, false);
+            bb->insertBefore(nextIter, movInst);
+        }
+        return true;
+    }
+
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
@@ -6925,7 +6954,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // set physical pred/succ as it's needed for the call WA
         fg.setPhysicalPredSucc();
-        const bool scheduleFenceCommit = builder.getOption(vISA_scheduleFenceCommit);
+        const bool scheduleFenceCommit = builder.getOption(vISA_scheduleFenceCommit) && builder.getPlatform() >= GENX_TGLLP;
         BB_LIST_ITER ib, bend(fg.end());
         for (ib = fg.begin(); ib != bend; ++ib)
         {
@@ -6939,31 +6968,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 G4_InstSend* sendInst = inst->asSendInst();
                 if (sendInst && sendInst->isFence() && !builder.getOption(vISA_skipFenceCommit))
                 {
-                    // ToDo: replace with fence.wait intrinsic so we could hide fence latency by scheduling them apart
-                    if (sendInst->getMsgDesc()->ResponseLength() > 0)
-                    {
-                        // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
-                        // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
-                        auto nextIter = std::next(ii);
-                        if (scheduleFenceCommit)
-                        {
-                            auto iter = findFenceCommitPos(ii, bb);
-                            if (!iter)
-                            {
-                                continue;   // skip this fence
-                            }
-                            nextIter = *iter;
-                        }
-                        auto dst = inst->getDst();
-                        G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
-                        G4_DstRegRegion* movDst = builder.createDst(
-                            builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
-                        G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
-                        G4_INST* movInst = builder.createMov(g4::SIMD8, movDst, movSrc, InstOpt_WriteEnable, false);
-                        bb->insertBefore(nextIter, movInst);
-                    }
+                    addFenceCommit(ii, bb, scheduleFenceCommit);
                 }
-
                 if (inst->isCall() || inst->isFCall())
                 {
                     if (VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall))
