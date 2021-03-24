@@ -627,11 +627,12 @@ namespace IGC
         void gatherDISubprogramNodes();
 
         // line#, vector<inlinedAt>
-        std::map<unsigned int, std::vector<llvm::DILocation*>> isStmtSet;
+        llvm::DenseMap<unsigned int, std::vector<llvm::DILocation*>> isStmtSet;
 
         const DbgDecoder* decodedDbg = nullptr;
 
-        std::map<llvm::MDNode*, std::vector<const llvm::Instruction*>> SameIATInsts;
+        // store all instructions corresponding to same InlinedAt MDNode
+        llvm::DenseMap<llvm::MDNode*, std::vector<const llvm::Instruction*>> SameIATInsts;
 
         // Store label for each %ip
         llvm::DenseMap<unsigned int, llvm::MCSymbol*> LabelsBeforeIp;

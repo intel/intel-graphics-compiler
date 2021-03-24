@@ -2176,6 +2176,8 @@ void DwarfDebug::beginFunction(const Function* MF, IGC::VISAModule* v)
     // Reset PrologEndLoc so that when processing next function with same DwarfDebug
     // instance doesnt use stale value.
     PrologEndLoc = DebugLoc();
+    // Clear stale isStmt from previous function compilation.
+    isStmtSet.clear();
     m_pModule = v;
 
     // Grab the lexical scopes for the function, if we don't have any of those
