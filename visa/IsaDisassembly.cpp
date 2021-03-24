@@ -2380,16 +2380,16 @@ static std::string printInstructionDataport(
             {
                 sstr << ".";
                 if (mode & (0x1 << 2)) sstr << "<RTI>";
-                if (mode & (0x1 << 0x3)) sstr << "<A>";
-                if (mode & (0x1 << 0x4)) sstr << "<O>";
-                if (mode & (0x1 << 0x5)) sstr << "<Z>";
-                if (mode & (0x1 << 0x6)) sstr << "<ST>";
-                if (mode & (0x1 << 0x7)) sstr << "<LRTW>";
-                if (mode & (0x1 << 0x8)) sstr << "<CPS>";
-                if (mode & (0x1 << 0x9)) sstr << "<PS>";
-                if (mode & (0x1 << 0x10)) sstr << "<CM>";
-                if (mode & (0x1 << 0x11)) sstr << "<SI>";
-                if (mode & (0x1 << 0x12)) sstr << "<NULLRT>";
+                if (mode & (0x1 << 3)) sstr << "<A>";
+                if (mode & (0x1 << 4)) sstr << "<O>";
+                if (mode & (0x1 << 5)) sstr << "<Z>";
+                if (mode & (0x1 << 6)) sstr << "<ST>";
+                if (mode & (0x1 << 7)) sstr << "<LRTW>";
+                if (mode & (0x1 << 8)) sstr << "<CPS>";
+                if (mode & (0x1 << 9)) sstr << "<PS>";
+                if (mode & (0x1 << 10)) sstr << "<CM>";
+                if (mode & (0x1 << 11)) sstr << "<SI>";
+                if (mode & (0x1 << 12)) sstr << "<NULLRT>";
             }
 
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize);

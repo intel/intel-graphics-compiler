@@ -4826,7 +4826,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     CVariable* bti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_D);
 
     CVariable* sampleIndex = nullptr;
-    if (perSample)
+    if (m_currShader->m_Platform->supportHeaderRTW() && perSample)
     {
         sampleIndex = GetSymbol(vSample);
         if (!sampleIndex->IsUniform())

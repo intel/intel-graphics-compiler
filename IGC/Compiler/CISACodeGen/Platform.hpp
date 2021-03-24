@@ -721,6 +721,11 @@ bool hasSCF() const
 }
 
 const SCompilerHwCaps& GetCaps() { return m_caps; }
+
+bool supportHeaderRTW() const
+{
+    return true;
+}
 };
 
 }//namespace IGC

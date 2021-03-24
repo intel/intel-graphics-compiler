@@ -5625,7 +5625,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
         for (unsigned int i = 0; i< numMsgSpecificOpnds; ++i)
         {
 #if START_ASSERT_CHECK
-            if (opndArray[i] == NULL)
+            if (opndArray[i] == nullptr)
             {
                 assert(0);
                 return VISA_FAILURE;
@@ -5642,9 +5642,9 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
             return VISA_FAILURE;
         }
 #endif
-        G4_SrcRegRegion *cPSCounterOpnd = (cPSCounter) ? cPSCounter->g4opnd->asSrcRegRegion(): NULL;
-        G4_SrcRegRegion *sampleIndexOpnd = (cntrls.isSampleIndex) ? sampleIndex->g4opnd->asSrcRegRegion() : NULL;
-        G4_Operand *renderTargetIndexOpnd = (cntrls.RTIndexPresent) ? renderTargetIndex->g4opnd : NULL;
+        G4_SrcRegRegion *cPSCounterOpnd = (cPSCounter) ? cPSCounter->g4opnd->asSrcRegRegion(): nullptr;
+        G4_SrcRegRegion *sampleIndexOpnd = (cntrls.isSampleIndex) ? sampleIndex->g4opnd->asSrcRegRegion() : nullptr;
+        G4_Operand *renderTargetIndexOpnd = (cntrls.RTIndexPresent) ? renderTargetIndex->g4opnd : nullptr;
         G4_SrcRegRegion *r1HeaderOpnd = nullptr;
 
         if (r1Header)
@@ -5692,7 +5692,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
         ADD_OPND(num_operands, opnd, r1Header);
 
         if (cntrls.isSampleIndex)
-            ADD_OPND(num_operands, opnd, sampleIndex);
+        ADD_OPND(num_operands, opnd, sampleIndex);
 
         if (cPSCounter)
             ADD_OPND(num_operands, opnd, cPSCounter);
@@ -5702,7 +5702,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
 
         for (int i = 0; i < numMsgSpecificOpnds; i++, num_operands++)
         {
-            if (opndArray[i] == NULL)
+            if (opndArray[i] == nullptr)
             {
                 assert(0);
                 return VISA_FAILURE;
