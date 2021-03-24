@@ -548,7 +548,7 @@ namespace IGC
 
     bool OpenCLProgramContext::hasNoLocalToGenericCast() const
     {
-        return m_InternalOptions.hasNoLocalToGeneric || !(getModuleMetaData()->hasLocalToGenericCast);
+        return m_InternalOptions.hasNoLocalToGeneric;
     }
 
     int16_t OpenCLProgramContext::getVectorCoalescingControl() const
