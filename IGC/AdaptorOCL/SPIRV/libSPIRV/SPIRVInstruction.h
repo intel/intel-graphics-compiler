@@ -407,31 +407,31 @@ public:
 class SPIRVMemoryAccess {
 public:
   SPIRVMemoryAccess(const std::vector<SPIRVWord> &TheMemoryAccess):
-    Alignment(0), Volatile(0) {
+    TheMemoryAccessMask(0), Alignment(0) {
     MemoryAccessUpdate(TheMemoryAccess);
   }
 
-  SPIRVMemoryAccess() : Alignment(0), Volatile(0){}
+  SPIRVMemoryAccess() : TheMemoryAccessMask(0), Alignment(0){}
 
   void MemoryAccessUpdate(const std::vector<SPIRVWord> &MemoryAccess) {
-    bool readAlignment = false;
-    for (auto MAValue : MemoryAccess) {
-      if (readAlignment) {
-        Alignment = MAValue;
-        readAlignment = false;
-        continue;
-      }
-      Volatile |= MAValue & MemoryAccessVolatileMask;
-      readAlignment = (MAValue & MemoryAccessAlignedMask) != 0;
+    if (!MemoryAccess.size())
+      return;
+    IGC_ASSERT_MESSAGE(MemoryAccess.size() == 1 || MemoryAccess.size() == 2, "Invalid memory access operand size");
+    TheMemoryAccessMask = MemoryAccess[0];
+    if (MemoryAccess[0] & MemoryAccessAlignedMask) {
+      IGC_ASSERT_MESSAGE(MemoryAccess.size() == 2, "Alignment operand is missing");
+      Alignment = MemoryAccess[1];
     }
-    IGC_ASSERT_MESSAGE(false == readAlignment, "MemoryAccess Alignment flag is not followed by value");
   }
-  SPIRVWord getVolatile() const { return Volatile; }
+
+  SPIRVWord isVolatile() const { return getMemoryAccessMask() & MemoryAccessVolatileMask; }
+  SPIRVWord isNonTemporal() const { return getMemoryAccessMask() & MemoryAccessNontemporalMask; }
+  SPIRVWord getMemoryAccessMask() const { return TheMemoryAccessMask; }
   SPIRVWord getAlignment() const { return Alignment; }
 
 protected:
+  SPIRVWord TheMemoryAccessMask;
   SPIRVWord Alignment;
-  SPIRVWord Volatile;
 };
 
 class SPIRVVariable : public SPIRVInstruction {

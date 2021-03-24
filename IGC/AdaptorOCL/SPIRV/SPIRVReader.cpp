@@ -1374,6 +1374,7 @@ public:
   Function *transFunction(SPIRVFunction *F);
   bool transFPContractMetadata();
   bool transKernelMetadata();
+  bool transNonTemporalMetadata(Instruction* I);
   void transSourceLanguage();
   bool transSourceExtension();
   /*InlineAsm*/ Value *transAsmINTEL(SPIRVAsmINTEL *BA, Function *F,
@@ -2935,7 +2936,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto *pValue    = transValue(BS->getSrc(), F, BB);
     auto *pPointer  = transValue(BS->getDst(), F, BB);
     bool isVolatile =
-        BS->hasDecorate(DecorationVolatile) || BS->SPIRVMemoryAccess::getVolatile() != 0;
+        BS->hasDecorate(DecorationVolatile) || BS->SPIRVMemoryAccess::isVolatile() != 0;
     unsigned alignment = BS->SPIRVMemoryAccess::getAlignment();
 
     if (auto *CS = dyn_cast<ConstantStruct>(pValue))
@@ -2984,12 +2985,15 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         return mapValue(BV, pMemCpy);
     }
 
-    return mapValue(BV, new StoreInst(
+    StoreInst *SI = new StoreInst(
       pValue,
       pPointer,
       isVolatile,
       IGCLLVM::getCorrectAlign(alignment),
-      BB));
+      BB);
+    if(BS->SPIRVMemoryAccess::isNonTemporal())
+      transNonTemporalMetadata(SI);
+    return mapValue(BV, SI);
   }
   break;
 
@@ -2997,15 +3001,18 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     SPIRVLoad *BL = static_cast<SPIRVLoad*>(BV);
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto val = transValue(BL->getSrc(), F, BB);
-    return mapValue(BV, new LoadInst(
+    LoadInst* LI = new LoadInst(
 #if LLVM_VERSION_MAJOR > 7
       val->getType()->getPointerElementType(),
 #endif
       val,
       BV->getName(),
-      BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::getVolatile() != 0,
+      BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::isVolatile() != 0,
       IGCLLVM::getCorrectAlign(BL->SPIRVMemoryAccess::getAlignment()),
-      BB));
+      BB);
+    if(BL->SPIRVMemoryAccess::isNonTemporal())
+      transNonTemporalMetadata(LI);
+    return mapValue(BV, LI);
     }
     break;
 
@@ -3015,7 +3022,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     llvm::Value *Dst = transValue(BC->getTarget(), F, BB);
     unsigned Align = BC->getAlignment();
     llvm::Value *Size = transValue(BC->getSize(), F, BB);
-    bool IsVolatile = BC->SPIRVMemoryAccess::getVolatile();
+    bool IsVolatile = BC->SPIRVMemoryAccess::isVolatile();
     IGCLLVM::IRBuilder<> Builder(BB);
 
     // If we copy from zero-initialized array, we can optimize it to llvm.memset
@@ -3978,6 +3985,14 @@ static void convertAnnotaionsToAttributes(llvm::Function *F, const std::vector<s
             F->addFnAttr("sycl-unmasked");
         }
     }
+}
+
+bool
+SPIRVToLLVM::transNonTemporalMetadata(Instruction* I) {
+    Constant* One = ConstantInt::get(Type::getInt32Ty(*Context), 1);
+    MDNode* Node = MDNode::get(*Context, ConstantAsMetadata::get(One));
+    I->setMetadata(M->getMDKindID("nontemporal"), Node);
+    return true;
 }
 
 bool
