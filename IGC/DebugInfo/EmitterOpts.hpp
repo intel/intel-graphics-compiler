@@ -39,6 +39,7 @@ namespace IGC
     bool EmitOffsetInDbgLoc = false;
     bool EnableRelocation = false;
     bool EmitPrologueEnd = true;
+    bool ScratchOffsetInOW = true;
   };
 }
 

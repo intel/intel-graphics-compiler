@@ -1090,6 +1090,13 @@ void CompileUnit::addBE_FP(IGC::DIEBlock* Block)
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
     addUInt(Block, dwarf::DW_FORM_data1, 32); // size of BE_FP ptr
     addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+    if (EmitSettings.ScratchOffsetInOW)
+    {
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+        addUInt(Block, dwarf::DW_FORM_data1, 16);
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);
+    }
+
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
 }
 
