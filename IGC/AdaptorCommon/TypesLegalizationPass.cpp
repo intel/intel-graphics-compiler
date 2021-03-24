@@ -342,9 +342,11 @@ void TypesLegalizationPass::ResolveStoreInst(
   else {
     Value *val =
       ResolveValue( storeInst,storeInst->getOperand( 0 ),indices );
-    IRBuilder<> builder( storeInst );
-    Value *pGEP = CreateGEP( builder,storeInst->getOperand( 1 ),indices );
-    builder.CreateStore( val,pGEP );
+    if (val) {
+        IRBuilder<> builder(storeInst);
+        Value* pGEP = CreateGEP(builder, storeInst->getOperand(1), indices);
+        builder.CreateStore(val, pGEP);
+    }
   }
 }
 
