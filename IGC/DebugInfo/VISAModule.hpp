@@ -443,18 +443,28 @@ namespace IGC
         bool IsExecutableInst(const llvm::Instruction& inst);
 
         bool isDirectElfInput = false;
-        // Store first VISA index->llvm::Instruction mapping
-        std::map<unsigned int, const llvm::Instruction*> VISAIndexToInst;
+
         // Store VISA index->[header VISA index, #VISA instructions] corresponding
         // to same llvm::Instruction. If llvm inst A generates VISA 3,4,5 then
         // this structure will have 3 entries:
         // 3 -> [3,3]
         // 4 -> [3,3]
         // 5 -> [3,3]
-        std::map<unsigned int, std::pair<unsigned int, unsigned int>> VISAIndexToSize;
-        std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
-        std::map<unsigned int, std::vector<unsigned int>> VISAIndexToAllGenISAOff;
-        std::map<unsigned int, unsigned int> GenISAInstSizeBytes;
+        struct VisaInterval {
+            unsigned VisaOffset;
+            unsigned VisaInstrNum;
+        };
+        struct IDX_Gen2Visa {
+            unsigned GenOffset;
+            unsigned VisaOffset;
+        };
+        // Store first VISA index->llvm::Instruction mapping
+        llvm::DenseMap<unsigned, const llvm::Instruction*> VISAIndexToInst;
+        llvm::DenseMap<unsigned, VisaInterval> VISAIndexToSize;
+        llvm::DenseMap<unsigned, unsigned> GenISAInstSizeBytes;
+        llvm::DenseMap<unsigned, std::vector<unsigned>> VISAIndexToAllGenISAOff;
+        std::vector<IDX_Gen2Visa> GenISAToVISAIndex;
+
         class comparer
         {
         public:

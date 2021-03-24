@@ -160,7 +160,7 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
     // text section and debug_line sections populated.
     const auto& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
     const auto& VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
-    std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
+    decltype(m_pVISAModule->GenISAToVISAIndex) GenISAToVISAIndex;
     unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
     unsigned int prevLastGenOff = lastGenOff;
     m_pDwarfDebug->lowPc = lastGenOff;
@@ -175,24 +175,24 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
     {
         GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
         if (GenISAToVISAIndex.size() > 0)
-            lastGenOff = GenISAToVISAIndex.back().first;
+            lastGenOff = GenISAToVISAIndex.back().GenOffset;
         m_pDwarfDebug->lowPc = co->relocOffset;
     }
     else
     {
         for (auto item : m_pVISAModule->GenISAToVISAIndex)
         {
-            if ((item.first >= lastGenOff) || ((item.first | lastGenOff) == 0))
+            if ((item.GenOffset >= lastGenOff) || ((item.GenOffset | lastGenOff) == 0))
             {
-                if (item.second <= subEnd || item.second == 0xffffffff)
+                if (item.VisaOffset <= subEnd || item.VisaOffset == 0xffffffff)
                 {
                     GenISAToVISAIndex.push_back(item);
-                    auto size = m_pVISAModule->GenISAInstSizeBytes[item.first];
-                    lastGenOff = item.first + size;
+                    auto size = m_pVISAModule->GenISAInstSizeBytes[item.GenOffset];
+                    lastGenOff = item.GenOffset + size;
                     continue;
                 }
 
-                if (item.second > subEnd)
+                if (item.VisaOffset > subEnd)
                     break;
             }
         }
@@ -203,22 +203,22 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
     unsigned int pc = prevLastGenOff;
 
     if (!GenISAToVISAIndex.empty()) {
-        IGC_ASSERT(GenISAToVISAIndex.rbegin()->first <= genxISA.size());
+        IGC_ASSERT(GenISAToVISAIndex.rbegin()->GenOffset <= genxISA.size());
         IGC_ASSERT(pc < genxISA.size());
-        IGC_ASSERT(GenISAToVISAIndex.begin()->first >= pc);
+        IGC_ASSERT(GenISAToVISAIndex.begin()->GenOffset >= pc);
     }
     for (auto item : GenISAToVISAIndex)
     {
-        for (unsigned int i = pc; i != item.first; i++)
+        for (unsigned int i = pc; i != item.GenOffset; i++)
         {
             EmitIpLabel(i);
             m_pStreamEmitter->EmitInt8(genxISA[i]);
         }
 
-        pc = item.first;
+        pc = item.GenOffset;
 
         auto instIt = VISAIndexToInst.end();
-        auto sizeIt = VISAIndexToSize.find(item.second);
+        auto sizeIt = VISAIndexToSize.find(item.VisaOffset);
         if (sizeIt != VISAIndexToSize.end())
         {
             // Lookup all VISA instructions that may
@@ -228,50 +228,48 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
             // optimizes some of those away. Src line
             // mapping for all VISA instructions is the
             // same. So lookup any one that still exists.
-            auto startIdx = sizeIt->second.first;
-            auto numVISAInsts = sizeIt->second.second;
+            auto startIdx = sizeIt->second.VisaOffset;
+            auto numVISAInsts = sizeIt->second.VisaInstrNum;
+            // Loop till at least one VISA instruction
+            // is found.
             for (unsigned int visaId = startIdx;
                 visaId != (startIdx + numVISAInsts); visaId++)
             {
                 instIt = VISAIndexToInst.find(visaId);
-                // Loop till at least one VISA instruction
-                // is found.
                 if (instIt != VISAIndexToInst.end())
                     break;
             }
         }
 
-        if (instIt != VISAIndexToInst.end() &&
-            m_pVISAModule->IsExecutableInst(*instIt->second))
+        if (instIt == VISAIndexToInst.end())
+            continue;
+        if (!m_pVISAModule->IsExecutableInst(*instIt->second))
+            continue;
+
+        const auto& loc = instIt->second->getDebugLoc();
+        if (!loc || loc == prevSrcLoc)
+            continue;
+
+        const auto* scope = loc->getScope();
+        auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
+
+        unsigned int Flags = 0;
+        if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
         {
-            auto loc = instIt->second->getDebugLoc();
-            if (loc)
+            Flags |= DWARF2_FLAG_IS_STMT;
+        }
+
+        if (!m_pDwarfDebug->prologueEndExists(loc.get()->getScope()->getSubprogram(),
+                                              loc.getInlinedAt(), true))
+        {
+            if (m_pStreamEmitter->GetEmitterSettings().EmitPrologueEnd)
             {
-                if (loc != prevSrcLoc)
-                {
-                    auto scope = loc->getScope();
-                    auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
-
-                    unsigned int Flags = 0;
-                    if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
-                    {
-                        Flags |= DWARF2_FLAG_IS_STMT;
-                    }
-
-                    if (!m_pDwarfDebug->prologueEndExists(loc.get()->getScope()->getSubprogram(),
-                        loc.getInlinedAt(), true))
-                    {
-                        if (m_pStreamEmitter->GetEmitterSettings().EmitPrologueEnd)
-                        {
-                            Flags |= DWARF2_FLAG_PROLOGUE_END;
-                        }
-                    }
-                    m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
-
-                    prevSrcLoc = loc;
-                }
+                Flags |= DWARF2_FLAG_PROLOGUE_END;
             }
         }
+        m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
+
+        prevSrcLoc = loc;
     }
 
     if (finalize)

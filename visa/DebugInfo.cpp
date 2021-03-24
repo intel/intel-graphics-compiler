@@ -596,7 +596,7 @@ void KernelDebugInfo::generateGenISAToVISAIndex()
         {
             if (inst->getGenOffset() == -1)
                 continue;
-            genISAOffsetToVISAIndex.push_back(std::make_pair((unsigned int)inst->getGenOffset(), (unsigned int)inst->getCISAOff()));
+            genISAOffsetToVISAIndex.push_back(IDX_VDbgGen2CisaIndex{(unsigned int)inst->getGenOffset(), (unsigned int)inst->getCISAOff()});
         }
     }
 }
@@ -610,21 +610,21 @@ void KernelDebugInfo::setVISAKernel(VISAKernelImpl* k)
 void KernelDebugInfo::generateCISAByteOffsetFromOffset()
 {
     // Using map1 and map2, generate map3
-    for (std::vector<std::pair<unsigned int, unsigned int>>::iterator it = mapCISAIndexGenOffset.begin();
+    for (decltype(mapCISAIndexGenOffset)::iterator it = mapCISAIndexGenOffset.begin();
         it != mapCISAIndexGenOffset.end();
         it++)
     {
         // Read each entry in CISA Index->Gen Offset then map CISA Index to CISA Offset.
         // Push back results.
-        unsigned int cisaIndex = (*it).first;
-        unsigned int genOffset = (*it).second;
+        unsigned int cisaIndex = (*it).CisaIndex;
+        unsigned int genOffset = (*it).GenOffset;
 
         std::map<unsigned int, unsigned int>::iterator map_it = mapCISAOffset.find(cisaIndex);
 
         if (map_it != mapCISAOffset.end())
         {
             unsigned int cisaOffset = mapCISAOffset.find(cisaIndex)->second;
-            mapCISAOffsetGenOffset.push_back(std::make_pair(cisaOffset, genOffset));
+            mapCISAOffsetGenOffset.push_back(IDX_VDbgCisaByte2Gen{cisaOffset, genOffset});
         }
     }
 }
@@ -699,14 +699,14 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
                     // mapping holds pair of CISA bytecode index and gen Offset
                     // Use VISAKernelImpl's member mapCISAOffset to convert
                     // CISA bytecode index to CISA bytecode byte offset
-                    mapCISAIndexGenOffset.push_back(std::make_pair(cisaByteIndex, (int)inst->getGenOffset()));
+                    mapCISAIndexGenOffset.push_back(IDX_VDbgCisaIndex2Gen{(unsigned)cisaByteIndex, (unsigned)inst->getGenOffset()});
                 }
             }
         }
     }
 
     // Insert out-of-sequence entry in to VISA index->Gen offset map
-    mapCISAIndexGenOffset.push_back(std::make_pair(++maxVISAIndex, (unsigned int)maxGenIsaOffset));
+    mapCISAIndexGenOffset.push_back(IDX_VDbgCisaIndex2Gen{++maxVISAIndex, (unsigned int)maxGenIsaOffset});
 }
 
 void KernelDebugInfo::emitRegisterMapping()
@@ -1571,9 +1571,9 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
         // Emit out actual CISA Offset:Gen Offset mapping elements
         for (unsigned int i = 0; i < numElementsCISAOffsetMap; i++)
         {
-            const unsigned int cisaOffset = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAOffsetGenOffset()[i].first;
-            const unsigned int genOffset = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAOffsetGenOffset()[i].second -
-                (unsigned int)reloc_offset;
+            const auto & CisaOffset2Gen = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAOffsetGenOffset()[i];
+            const unsigned int cisaOffset = CisaOffset2Gen.CisaByteOffset;
+            const unsigned int genOffset = CisaOffset2Gen.GenOffset - (unsigned int)reloc_offset;
 
             // Write cisa offset and gen offset
             emitDataUInt32((uint32_t)cisaOffset, t);
@@ -1588,9 +1588,9 @@ void emitData(std::list<VISAKernelImpl*>& compilationUnits, T t)
         // Emit out actual CISA index:Gen Offset mapping
         for (unsigned int i = 0; i < numElementsCISAIndexMap; i++)
         {
-            const unsigned int cisaIndex = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAIndexGenOffset()[i].first;
-            const unsigned int genOffset = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAIndexGenOffset()[i].second -
-                (unsigned int)reloc_offset;
+            const auto &CisaIndex2Gen = curKernel->getKernel()->getKernelDebugInfo()->getMapCISAIndexGenOffset()[i];
+            const unsigned int cisaIndex = CisaIndex2Gen.CisaIndex;
+            const unsigned int genOffset = CisaIndex2Gen.GenOffset - (unsigned int)reloc_offset;
 
             // Write cisa index and gen offset
             emitDataUInt32((uint32_t)cisaIndex, t);
@@ -2024,7 +2024,7 @@ void KernelDebugInfo::updateCallStackMain()
             start = (uint32_t)getBEFPSetupInst()->getGenOffset() +
                 (uint32_t)getBinInstSize(getBEFPSetupInst());
         }
-        updateDebugInfo(getKernel(), befp, start, mapCISAIndexGenOffset.back().second);
+        updateDebugInfo(getKernel(), befp, start, mapCISAIndexGenOffset.back().GenOffset);
     }
 }
 

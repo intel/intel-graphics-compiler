@@ -60,9 +60,22 @@ void emitDebugInfoToMem(VISAKernelImpl* curKernel, void*& info, unsigned& size);
 void emitDebugInfoToMem(VISAKernelImpl* kernel, std::list<VISAKernelImpl*>& functions, void*& info, unsigned& size);
 
 void emitRegisterMapping(vISA::G4_Kernel& kernel, std::vector<VarnameMap*>& varsMap);
+
+struct IDX_VDbgCisaByte2Gen {
+    unsigned CisaByteOffset;
+    unsigned GenOffset;
+};
+struct IDX_VDbgCisaIndex2Gen {
+    unsigned CisaIndex;
+    unsigned GenOffset;
+};
+struct IDX_VDbgGen2CisaIndex {
+    unsigned GenOffset;
+    unsigned VisaIndex;
+};
 void generateCISAByteOffsetFromOffset(std::map<unsigned int, unsigned int>& mapCISAIndexCISAOffset,
-                                      std::vector<std::pair<unsigned int, unsigned int>>& mapCISAIndexGenOffset,
-                                      std::vector<std::pair<unsigned int, unsigned int>>& mapCISAOffsetGenOffset);
+                                      std::vector<IDX_VDbgCisaIndex2Gen>& mapCISAIndexGenOffset,
+                                      std::vector<IDX_VDbgCisaByte2Gen>& mapCISAOffsetGenOffset);
 void generateByteOffsetMapping(vISA::G4_Kernel& kernel, std::vector<std::pair<unsigned int, unsigned int>>& mapping, std::list<vISA::G4_BB*>& stackCallEntryBBs);
 void updateRelocOffset(VISAKernelImpl& kernel);
 void resetGenOffsets(vISA::G4_Kernel& kernel);
@@ -166,9 +179,9 @@ private:
     INST_LIST oldInsts;
 
     // Store pair of cisa byte offset and gen byte offset in vector
-    std::vector<std::pair<unsigned int, unsigned int>> mapCISAOffsetGenOffset;
+    std::vector<IDX_VDbgCisaByte2Gen> mapCISAOffsetGenOffset;
     // Store pair of cisa index and gen byte offset in vector
-    std::vector<std::pair<unsigned int, unsigned int>> mapCISAIndexGenOffset;
+    std::vector<IDX_VDbgCisaIndex2Gen> mapCISAIndexGenOffset;
     // Store varname map instance for each dcl
     std::vector<VarnameMap*> varsMap;
     // Store map between CISA bytecode index and CISA offset
@@ -181,7 +194,7 @@ private:
     std::set<unsigned int> missingVISAIds;
     bool missingVISAIdsComputed;
 
-    std::vector<std::pair<unsigned int, unsigned int>> genISAOffsetToVISAIndex;
+    std::vector<IDX_VDbgGen2CisaIndex> genISAOffsetToVISAIndex;
 
     // Store all dcls that are from stack call function
     std::unordered_set<G4_Declare*> stackCallDcls;
@@ -296,15 +309,15 @@ public:
     {
         for (auto& item : mapCISAIndexGenOffset)
         {
-            if (item.first == v)
-                return item.second;
+            if (item.CisaIndex == v)
+                return item.GenOffset;
         }
         return 0;
     }
 
-    std::vector<std::pair<unsigned int, unsigned int>>& getMapCISAOffsetGenOffset() { return mapCISAOffsetGenOffset; }
-    std::vector<std::pair<unsigned int, unsigned int>>& getMapCISAIndexGenOffset() { return mapCISAIndexGenOffset; }
-    std::vector<std::pair<unsigned int, unsigned int>>& getMapGenISAOffsetToCISAIndex() { return genISAOffsetToVISAIndex; }
+    std::vector<IDX_VDbgCisaByte2Gen>& getMapCISAOffsetGenOffset() { return mapCISAOffsetGenOffset; }
+    std::vector<IDX_VDbgCisaIndex2Gen>& getMapCISAIndexGenOffset() { return mapCISAIndexGenOffset; }
+    std::vector<IDX_VDbgGen2CisaIndex>& getMapGenISAOffsetToCISAIndex() { return genISAOffsetToVISAIndex; }
     std::vector<VarnameMap*>& getVarsMap() { return varsMap; }
 
     uint32_t getVarIndex(G4_Declare* dcl);

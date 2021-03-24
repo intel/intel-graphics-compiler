@@ -275,8 +275,7 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
         VISAIndexToInst.insert(std::make_pair(currOffset, pInst));
         unsigned int currSize = itr->second.m_size;
         for (auto index = currOffset; index != (currOffset + currSize); index++)
-            VISAIndexToSize.insert(std::make_pair(index,
-                std::make_pair(currOffset, currSize)));
+            VISAIndexToSize.insert(std::make_pair(index, VisaInterval{currOffset, currSize}));
     }
     GenISAToVISAIndex.clear();
     for (auto i = 0;
@@ -284,7 +283,7 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
         i++)
     {
         auto& item = co->CISAIndexMap[i];
-        GenISAToVISAIndex.push_back(std::make_pair(item.second, item.first));
+        GenISAToVISAIndex.push_back(IDX_Gen2Visa{item.second, item.first});
     }
 
     // Compute all Gen ISA offsets corresponding to each VISA index
@@ -293,24 +292,28 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
     {
         auto VISAIndex = item.first;
         auto GenISAOffset = item.second;
+
         auto it = VISAIndexToAllGenISAOff.find(VISAIndex);
         if (it != VISAIndexToAllGenISAOff.end())
             it->second.push_back(GenISAOffset);
         else
         {
-            std::vector<unsigned int> vec;
+            std::vector<unsigned> vec;
             vec.push_back(GenISAOffset);
-            VISAIndexToAllGenISAOff[VISAIndex] = vec;
+            VISAIndexToAllGenISAOff[VISAIndex] = std::move(vec);
         }
     }
 
     GenISAInstSizeBytes.clear();
     for (auto i = 0; i != co->CISAIndexMap.size() - 1; i++)
     {
-        unsigned int size = GenISAToVISAIndex[i + 1].first - GenISAToVISAIndex[i].first;
-        GenISAInstSizeBytes.insert(std::make_pair(GenISAToVISAIndex[i].first, size));
+        const auto &NextGenIdx = GenISAToVISAIndex[i + 1];
+        const auto &CurGenIdx = GenISAToVISAIndex[i];
+        IGC_ASSERT(NextGenIdx.GenOffset >= CurGenIdx.GenOffset);
+        unsigned int size = NextGenIdx.GenOffset - CurGenIdx.GenOffset;
+        GenISAInstSizeBytes.insert(std::make_pair(CurGenIdx.GenOffset, size));
     }
-    GenISAInstSizeBytes.insert(std::make_pair(GenISAToVISAIndex[GenISAToVISAIndex.size() - 1].first, 16));
+    GenISAInstSizeBytes.insert(std::make_pair(GenISAToVISAIndex.back().GenOffset, 16));
 }
 
 // This function returns a vector of tuples. Each tuple corresponds to a call site where physical register startRegNum is saved. Tuple format:
@@ -449,17 +452,31 @@ void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int
         it++;
     }
 }
+template<class ContainerType, class BinaryFunction>
+void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit) {
+    std::vector<typename ContainerType::key_type> Keys;
+    std::transform(Data.begin(), Data.end(), std::back_inserter(Keys),
+                   [](const auto& KV) { return KV.first; });
+    std::sort(Keys.begin(), Keys.end());
+    for (const auto &Key : Keys) {
+        auto FoundIt = Data.find(Key);
+        IGC_ASSERT(FoundIt != Data.end());
+        const auto& Val = FoundIt->second;
+        Visit(Key, Val);
+    }
+}
 void VISAModule::print (raw_ostream &OS) const {
 
-  OS << "[DBG] VisaModule\n";
-  OS << "  Module VISAIndexToInst Dump\n  ---\n";
-  for (const auto &Item: VISAIndexToInst)
-      OS << "    visa_index: " << Item.first << " ->  inst: " <<
-          *(Item.second) << "\n";
-  OS << "  Module VISAIndexToSize Dump\n  ---\n";
-  for (const auto &Item: VISAIndexToSize)
-      OS << "    visa_index: " << Item.first << " -> {offset: " <<
-          Item.second.first << ", size: " << Item.second.second << "}\n";
+    OS << "[DBG] VisaModule\n";
+    OS << "  Module VISAIndexToInst Dump\n  ---\n";
+
+    OrderedTraversal(VISAIndexToInst, [&OS](const auto& VisaIdx, const auto& Inst) {
+          OS << "    visa_index: " << VisaIdx << " ->  inst: " << *Inst << "\n";
+      });
+    OrderedTraversal(VISAIndexToSize,[&OS](const auto& VisaIdx, const auto& SizeInfo) {
+          OS << "    visa_index: " << VisaIdx << " -> {offset: " <<
+                SizeInfo.VisaOffset << ", size: " << SizeInfo.VisaInstrNum << "}\n";
+      });
 }
 
 const llvm::Instruction* getNextInst(const llvm::Instruction* start)
@@ -513,7 +530,7 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
             if (it != VISAIndexToAllGenISAOff.end())
             {
                 int lastEnd = -1;
-                for (auto& genInst : it->second)
+                for (const auto& genInst : it->second)
                 {
                     unsigned int sizeGenInst = GenISAInstSizeBytes[genInst];
 
@@ -539,13 +556,13 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
     if (GenISARange.size() == 0)
         return GenISARange;
 
-    std::unordered_map<unsigned int, unsigned int> unassignedGenOffset;
+    llvm::DenseMap<unsigned, unsigned> unassignedGenOffset;
     if (m_catchAllVisaId != 0)
     {
         auto it = VISAIndexToAllGenISAOff.find(m_catchAllVisaId);
         if (it != VISAIndexToAllGenISAOff.end())
         {
-            for (auto& genInst : it->second)
+            for (const auto& genInst : it->second)
             {
                 unsigned int sizeGenInst = GenISAInstSizeBytes[genInst];
                 unassignedGenOffset[genInst] = sizeGenInst;

@@ -1449,7 +1449,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             }
             else
             {
-                startEnd.first = (*startIt).second.front();
+                startEnd.first = startIt->second.front();
                 break;
             }
         }
@@ -1466,7 +1466,7 @@ void DwarfDebug::collectVariableInfo(const Function* MF, SmallPtrSet<const MDNod
             }
             else
             {
-                startEnd.second = (*endIt).second.back();
+                startEnd.second = endIt->second.back();
                 break;
             }
         }
