@@ -70,13 +70,14 @@ using namespace llvm;
 using namespace vc::bif::printf;
 
 namespace PrintfImplFunc {
-enum Enum { Init, Fmt, Arg, Ret, Size };
-static constexpr const char *Name[Size] = {"__vc_printf_init",
-                                           "__vc_printf_fmt", "__vc_printf_arg",
-                                           "__vc_printf_ret"};
+enum Enum { Init, Fmt, FmtLegacy, Arg, Ret, Size };
+static constexpr const char *Name[Size] = {
+    "__vc_printf_init", "__vc_printf_fmt", "__vc_printf_fmt_legacy",
+    "__vc_printf_arg", "__vc_printf_ret"};
 } // namespace PrintfImplFunc
 
 static constexpr int FormatStringAddrSpace = 2;
+static constexpr int LegacyFormatStringAddrSpace = 0;
 
 namespace {
 class GenXPrintfResolution final : public ModulePass {
@@ -228,6 +229,11 @@ static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
       {TransferDataTy,
        PointerType::get(Type::getInt8Ty(Ctx), FormatStringAddrSpace)},
       IsVarArg);
+  FuncTys[PrintfImplFunc::FmtLegacy] = FunctionType::get(
+      TransferDataTy,
+      {TransferDataTy,
+       PointerType::get(Type::getInt8Ty(Ctx), LegacyFormatStringAddrSpace)},
+      IsVarArg);
   FuncTys[PrintfImplFunc::Arg] = FunctionType::get(
       TransferDataTy, {TransferDataTy, Type::getInt32Ty(Ctx), ArgDataTy},
       IsVarArg);
@@ -301,7 +307,15 @@ CallInst &GenXPrintfResolution::createPrintfFmtCall(CallInst &OrigPrintf,
                                                     CallInst &InitCall) {
   assertPrintfCall(OrigPrintf);
   IRBuilder<> IRB{&OrigPrintf};
-  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Fmt],
+  auto FmtAS =
+      cast<PointerType>(OrigPrintf.getOperand(0)->getType())->getAddressSpace();
+  if (FmtAS == FormatStringAddrSpace)
+    return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Fmt],
+                           {&InitCall, OrigPrintf.getOperand(0)},
+                           OrigPrintf.getName() + ".printf.fmt");
+  IGC_ASSERT_MESSAGE(FmtAS == LegacyFormatStringAddrSpace,
+                     "unexpected address space for format string");
+  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::FmtLegacy],
                          {&InitCall, OrigPrintf.getOperand(0)},
                          OrigPrintf.getName() + ".printf.fmt");
 }

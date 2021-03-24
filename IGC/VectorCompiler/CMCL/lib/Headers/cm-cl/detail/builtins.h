@@ -41,6 +41,7 @@ extern "C" void __cm_cl_wrregion(void *res, void *src, int vstride, int width,
                                  cm::detail::vector_offset_type offset);
 extern "C" __global void *__cm_cl_printf_buffer();
 extern "C" int __cm_cl_printf_format_index(__constant char *str);
+extern "C" int __cm_cl_printf_format_index_legacy(__private char *str);
 extern "C" void __cm_cl_svm_scatter(int num_blocks, void *address, void *src);
 extern "C" void __cm_cl_svm_atomic_add(void *dst, void *address, void *src);
 
@@ -133,6 +134,10 @@ inline __global void *printf_buffer() { return __cm_cl_printf_buffer(); }
 
 inline int printf_format_index(__constant char *str) {
   return __cm_cl_printf_format_index(str);
+}
+
+inline int printf_format_index(__private char *str) {
+  return __cm_cl_printf_format_index_legacy(str);
 }
 
 template <int num_blocks, typename T, int width>

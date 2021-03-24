@@ -118,9 +118,10 @@ printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
 
 // Format string handling. Just writing format string index to buffer and
 // promoting the pointer to buffer.
-static vector<BufferElementTy, TransferDataSize>
+template <typename T>
+vector<BufferElementTy, TransferDataSize>
 printf_fmt_impl(vector<BufferElementTy, TransferDataSize> TransferData,
-                __constant char *FormatString) {
+                T *FormatString) {
   vector<uintptr_t, 1> CurAddress = getCurAddress(TransferData);
   vector<BufferElementTy, 1> Index = detail::printf_format_index(FormatString);
   svm::scatter(CurAddress, Index);
@@ -152,6 +153,13 @@ __vc_printf_init(cl_vector<int, ArgsInfoVector::Size> ArgsInfo) {
 extern "C" cl_vector<BufferElementTy, TransferDataSize>
 __vc_printf_fmt(cl_vector<BufferElementTy, TransferDataSize> TransferData,
                 __constant char *FormatString) {
+  return printf_fmt_impl(TransferData, FormatString).cl_vector();
+}
+
+// legacy VC IR has no address spaces, so every pointer is "private".
+extern "C" cl_vector<BufferElementTy, TransferDataSize> __vc_printf_fmt_legacy(
+    cl_vector<BufferElementTy, TransferDataSize> TransferData,
+    __private char *FormatString) {
   return printf_fmt_impl(TransferData, FormatString).cl_vector();
 }
 

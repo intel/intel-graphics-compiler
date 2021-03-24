@@ -64,6 +64,7 @@ enum Enum {
   WrRegion,
   PrintfBuffer,
   PrintfFormatIndex,
+  PrintfFormatIndexLegacy,
   SVMScatter,
   SVMAtomicAdd,
   Size
@@ -76,6 +77,7 @@ constexpr const char *BuiltinNames[BuiltinID::Size] = {
     "__cm_cl_wrregion",
     "__cm_cl_printf_buffer",
     "__cm_cl_printf_format_index",
+    "__cm_cl_printf_format_index_legacy",
     "__cm_cl_svm_scatter",
     "__cm_cl_svm_atomic_add"};
 
@@ -152,6 +154,7 @@ constexpr const OperandKind::Enum *BuiltinOperandKind[BuiltinID::Size] = {
     WrRegionOperandKind,
     nullptr,
     PrintfFormatIndexOperandKind,
+    PrintfFormatIndexOperandKind, // Legacy
     SVMScatterOperandKind,
     SVMAtomicAddOperandKind};
 
@@ -161,6 +164,7 @@ constexpr int BuiltinOperandSize[BuiltinID::Size] = {
     WrRegionOperand::Size,
     PrintfBufferOperand::Size,
     PrintfFormatIndexOperand::Size,
+    PrintfFormatIndexOperand::Size, // Legacy
     SVMScatterOperand::Size,
     SVMAtomicAddOperand::Size};
 
@@ -402,6 +406,13 @@ std::vector<ValueRef> createMainInst<cmcl::BuiltinID::PrintfFormatIndex>(
 }
 
 template <>
+std::vector<ValueRef> createMainInst<cmcl::BuiltinID::PrintfFormatIndexLegacy>(
+    const std::vector<ValueRef> &Operands, Type &BiTy, IRBuilder<> &IRB) {
+  return createMainInst<cmcl::BuiltinID::PrintfFormatIndex>(Operands, BiTy,
+                                                            IRB);
+}
+
+template <>
 std::vector<ValueRef> createMainInst<cmcl::BuiltinID::SVMScatter>(
     const std::vector<ValueRef> &Operands, Type &BiTy, IRBuilder<> &IRB) {
   auto Width = cast<IGCLLVM::FixedVectorType>(
@@ -485,6 +496,8 @@ static BuiltinCallHandlerSeq getBuiltinCallHandlers() {
       handleBuiltinCall<cmcl::BuiltinID::PrintfBuffer>;
   Handlers[cmcl::BuiltinID::PrintfFormatIndex] =
       handleBuiltinCall<cmcl::BuiltinID::PrintfFormatIndex>;
+  Handlers[cmcl::BuiltinID::PrintfFormatIndexLegacy] =
+      handleBuiltinCall<cmcl::BuiltinID::PrintfFormatIndexLegacy>;
   Handlers[cmcl::BuiltinID::SVMScatter] =
       handleBuiltinCall<cmcl::BuiltinID::SVMScatter>;
   Handlers[cmcl::BuiltinID::SVMAtomicAdd] =
