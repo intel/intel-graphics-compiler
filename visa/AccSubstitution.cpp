@@ -441,10 +441,11 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
         return false;
     }
 
-    if (inst->getCondMod())
+    if (inst->getCondMod() && inst->opcode() != G4_sel)
     {
         // since our du-chain is on inst instead of operand, the presence of conditional modifier complicates the checks later.
         // This is somewhat conservative but shouldn't matter too much as inst with both dst and conditional modifiers are rare.
+        // Exception is for sel as flag register is not updated.
         return false;
     }
 

@@ -7980,13 +7980,15 @@ bool G4_INST::canDstBeAcc() const
     case G4_rnde:
     case G4_rndu:
     case G4_rndz:
-    case G4_sel:
     case G4_shr:
     case G4_smov:
     case G4_xor:
     case G4_rol:
     case G4_ror:
         return true;
+    case G4_sel:
+        // sel seems to fail with int acc for some strange reason (sign extension?)
+        return getCondMod() ? IS_TYPE_FLOAT_ALL(dst->getType()) : true;
     case G4_cmp:
     case G4_cmpn:
         // disable for now since it's causing some SKL tests to fail
