@@ -116,26 +116,88 @@ printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
   return generateTransferData(BufferPtr + Offset, BufferSize);
 }
 
+// Writes \p Data to printf buffer via \p CurAddress pointer.
+// Returns promoted pointer.
+static uintptr_t writeElementToBuffer(uintptr_t CurAddress,
+                                      BufferElementTy Data) {
+  vector<uintptr_t, 1> CurAddressVec = CurAddress;
+  vector<BufferElementTy, 1> DataVec = Data;
+  svm::scatter(CurAddressVec, DataVec);
+  return CurAddress + sizeof(Data);
+}
+
 // Format string handling. Just writing format string index to buffer and
 // promoting the pointer to buffer.
 template <typename T>
 vector<BufferElementTy, TransferDataSize>
 printf_fmt_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                 T *FormatString) {
-  vector<uintptr_t, 1> CurAddress = getCurAddress(TransferData);
-  vector<BufferElementTy, 1> Index = detail::printf_format_index(FormatString);
-  svm::scatter(CurAddress, Index);
-  CurAddress += FormatStringAnnotationSize;
-  setCurAddress(TransferData, CurAddress[0]);
+  uintptr_t CurAddress = getCurAddress(TransferData);
+  BufferElementTy Index = detail::printf_format_index(FormatString);
+  CurAddress = writeElementToBuffer(CurAddress, Index);
+  setCurAddress(TransferData, CurAddress);
   return TransferData;
 }
 
+// ArgCode is written into printf buffer before every argument.
+namespace ArgCode {
+enum Enum {
+  Invalid,
+  Byte,
+  Short,
+  Int,
+  Float,
+  String,
+  Long,
+  Pointer,
+  Double,
+  VectorByte,
+  VectorShort,
+  VectorInt,
+  VectorLong,
+  VectorFloat,
+  VectorDouble,
+  Size
+};
+} // namespace ArgCode
+
+namespace ArgInfo {
+enum Enum { Code, NumDWords, Size };
+} // namespace ArgInfo
+
+static vector<BufferElementTy, ArgInfo::Size> getArgInfo(ArgKind::Enum Kind) {
+  using RetInitT = cl_vector<BufferElementTy, ArgInfo::Size>;
+  switch (Kind) {
+  case ArgKind::Char:
+  case ArgKind::Short:
+  case ArgKind::Int:
+    return RetInitT{ArgCode::Int, 1};
+  case ArgKind::Long:
+    return RetInitT{ArgCode::Long, 2};
+  case ArgKind::Float:
+    return RetInitT{ArgCode::Float, 1};
+  case ArgKind::Double:
+    return RetInitT{ArgCode::Double, 2};
+  case ArgKind::Pointer:
+    return RetInitT{ArgCode::Pointer, 2};
+  case ArgKind::String:
+    return RetInitT{ArgCode::String, 1};
+  default:
+    return RetInitT{ArgCode::Invalid, 0};
+  }
+}
+
 // Single printf arg handling (those that are after format string).
-// FIXME: yet unsupported.
 static vector<BufferElementTy, TransferDataSize>
 printf_arg_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                 ArgKind::Enum Kind,
                 vector<BufferElementTy, ArgData::Size> Arg) {
+  vector<BufferElementTy, ArgInfo::Size> Info = getArgInfo(Kind);
+  uintptr_t CurAddress = getCurAddress(TransferData);
+  CurAddress = writeElementToBuffer(CurAddress, Info[ArgInfo::Code]);
+  for (int Idx = 0; Idx != Info[ArgInfo::NumDWords]; ++Idx)
+    CurAddress = writeElementToBuffer(CurAddress, Arg[Idx]);
+  setCurAddress(TransferData, CurAddress);
   return TransferData;
 }
 

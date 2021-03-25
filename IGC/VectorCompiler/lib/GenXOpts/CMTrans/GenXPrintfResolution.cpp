@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/iterator_range.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
@@ -59,6 +60,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Linker/Linker.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/ErrorHandling.h>
+
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include <algorithm>
 #include <functional>
@@ -99,7 +102,8 @@ private:
   void setAlwaysInlineForPrintfImpl();
   CallInst &createPrintfInitCall(CallInst &OrigPrintf);
   CallInst &createPrintfFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
-  CallInst &createPrintfArgCall(CallInst &OrigPrintf, CallInst &PrevCall);
+  CallInst &createPrintfArgCall(CallInst &OrigPrintf, CallInst &PrevCall,
+                                Value &Arg);
   CallInst &createPrintfRetCall(CallInst &OrigPrintf, CallInst &PrevCall);
 };
 } // namespace
@@ -203,7 +207,7 @@ void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   auto &LastArgCall = *std::accumulate(
       std::next(OrigPrintf.arg_begin()), OrigPrintf.arg_end(), &FmtCall,
       [&OrigPrintf, this](CallInst *PrevCall, Value *Arg) {
-        return &createPrintfArgCall(OrigPrintf, *PrevCall);
+        return &createPrintfArgCall(OrigPrintf, *PrevCall, *Arg);
       });
   auto &RetCall = createPrintfRetCall(OrigPrintf, LastArgCall);
   RetCall.takeName(&OrigPrintf);
@@ -320,10 +324,134 @@ CallInst &GenXPrintfResolution::createPrintfFmtCall(CallInst &OrigPrintf,
                          OrigPrintf.getName() + ".printf.fmt");
 }
 
+static ArgKind::Enum getIntegerArgKind(Type &ArgTy) {
+  IGC_ASSERT_MESSAGE(ArgTy.isIntegerTy(),
+                     "wrong argument: integer type was expected");
+  auto BitWidth = ArgTy.getIntegerBitWidth();
+  switch (BitWidth) {
+  case 64:
+    return ArgKind::Long;
+  case 32:
+    return ArgKind::Int;
+  case 16:
+    return ArgKind::Short;
+  default:
+    IGC_ASSERT_MESSAGE(BitWidth == 8, "unexpected integer type");
+    return ArgKind::Char;
+  }
+}
+
+static ArgKind::Enum getFloatingPointArgKind(Type &ArgTy) {
+  IGC_ASSERT_MESSAGE(ArgTy.isFloatingPointTy(),
+                     "wrong argument: floating point type was expected");
+  if (ArgTy.isDoubleTy())
+    return ArgKind::Double;
+  // FIXME: what about half?
+  IGC_ASSERT_MESSAGE(ArgTy.isFloatTy(), "unexpected floating point type");
+  return ArgKind::Float;
+}
+
+static ArgKind::Enum getPointerArgKind(Type &ArgTy) {
+  IGC_ASSERT_MESSAGE(ArgTy.isPointerTy(),
+                     "wrong argument: pointer type was expected");
+  if (ArgTy.getPointerElementType()->isIntegerTy(8))
+    // FIXME: what if we want to print a pointer to a string?
+    // Seems like it cannot be handled without parsing the format string.
+    return ArgKind::String;
+  return ArgKind::Pointer;
+}
+
+static ArgKind::Enum getArgKind(Type &ArgTy) {
+  if (ArgTy.isIntegerTy())
+    return getIntegerArgKind(ArgTy);
+  if (ArgTy.isFloatingPointTy())
+    return getFloatingPointArgKind(ArgTy);
+  return getPointerArgKind(ArgTy);
+}
+
+// sizeof(<2 x i32>) == 64
+static constexpr unsigned VecArgSize = 64;
+static constexpr auto VecArgElementSize = VecArgSize / ArgData::Size;
+
+// Casts Arg to <2 x i32> vector. For pointers ptrtoint i64 should be generated
+// first.
+Value &get64BitArgAsVector(Value &Arg, IRBuilder<> &IRB, const DataLayout &DL) {
+  IGC_ASSERT_MESSAGE(DL.getTypeSizeInBits(Arg.getType()) == 64,
+                     "64-bit argument was expected");
+  auto *VecArgTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), ArgData::Size);
+  Value *ArgToBitCast = &Arg;
+  if (Arg.getType()->isPointerTy())
+    ArgToBitCast =
+        IRB.CreatePtrToInt(&Arg, IRB.getInt64Ty(), Arg.getName() + ".arg.p2i");
+  return *IRB.CreateBitCast(ArgToBitCast, VecArgTy, Arg.getName() + ".arg.bc");
+}
+
+// Just creates this instruction:
+// insertelement <2 x i32> zeroinitializer, i32 %arg, i32 0
+// \p Arg must be i32 type.
+Value &get32BitIntArgAsVector(Value &Arg, IRBuilder<> &IRB,
+                              const DataLayout &DL) {
+  IGC_ASSERT_MESSAGE(Arg.getType()->isIntegerTy(32),
+                     "i32 argument was expected");
+  auto *VecArgTy =
+      IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), ArgData::Size);
+  auto *BlankVec = ConstantAggregateZero::get(VecArgTy);
+  return *IRB.CreateInsertElement(BlankVec, &Arg, IRB.getInt32(0),
+                                  Arg.getName() + ".arg.insert");
+}
+
+// Takes arg that is not greater than 32 bit and casts it to i32 with possible
+// zero extension.
+static Value &getArgAs32BitInt(Value &Arg, IRBuilder<> &IRB,
+                               const DataLayout &DL) {
+  auto ArgSize = DL.getTypeSizeInBits(Arg.getType());
+  IGC_ASSERT_MESSAGE(ArgSize <= VecArgElementSize,
+                     "argument isn't expected to be greater than 32 bit");
+  if (ArgSize < VecArgElementSize) {
+    // FIXME: seems like there may be some problems with signed types, depending
+    // on our BiF and runtime implementation.
+    // FIXME: What about half?
+    IGC_ASSERT_MESSAGE(Arg.getType()->isIntegerTy(),
+                       "only integers are expected to be less than 32 bits");
+    return *IRB.CreateZExt(&Arg, IRB.getInt32Ty(), Arg.getName() + ".arg.zext");
+  }
+  if (Arg.getType()->isPointerTy())
+    return *IRB.CreatePtrToInt(&Arg, IRB.getInt32Ty(),
+                               Arg.getName() + ".arg.p2i");
+  if (!Arg.getType()->isIntegerTy())
+    return *IRB.CreateBitCast(&Arg, IRB.getInt32Ty(),
+                              Arg.getName() + ".arg.bc");
+  return Arg;
+}
+
+// Args are passed via <2 x i32> vector. This function casts \p Arg to this
+// vector type. \p Arg is zext if necessary (zext in common sense - writing
+// top element of a vector with zeros is zero extending too).
+static Value &getArgAsVector(Value &Arg, IRBuilder<> &IRB,
+                             const DataLayout &DL) {
+  IGC_ASSERT_MESSAGE(!isa<IGCLLVM::FixedVectorType>(Arg.getType()),
+                     "scalar type is expected");
+  auto ArgSize = DL.getTypeSizeInBits(Arg.getType());
+
+  if (ArgSize == VecArgSize)
+    return get64BitArgAsVector(Arg, IRB, DL);
+  IGC_ASSERT_MESSAGE(ArgSize < VecArgSize,
+                     "arg is expected to be not greater than 64 bit");
+  Value &Arg32Bit = getArgAs32BitInt(Arg, IRB, DL);
+  return get32BitIntArgAsVector(Arg32Bit, IRB, DL);
+}
+
 CallInst &GenXPrintfResolution::createPrintfArgCall(CallInst &OrigPrintf,
-                                                    CallInst &PrevCall) {
+                                                    CallInst &PrevCall,
+                                                    Value &Arg) {
   assertPrintfCall(OrigPrintf);
-  return PrevCall;
+  ArgKind::Enum Kind = getArgKind(*Arg.getType());
+  IRBuilder<> IRB{&OrigPrintf};
+  Value &ArgVec = getArgAsVector(Arg, IRB, *DL);
+  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Arg],
+                         {&PrevCall, IRB.getInt32(Kind), &ArgVec},
+                         OrigPrintf.getName() + ".printf.arg");
 }
 
 CallInst &GenXPrintfResolution::createPrintfRetCall(CallInst &OrigPrintf,
