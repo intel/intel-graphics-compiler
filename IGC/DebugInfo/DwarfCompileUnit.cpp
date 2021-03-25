@@ -69,6 +69,59 @@ IN THE SOFTWARE.
 using namespace llvm;
 using namespace ::IGC;
 
+class PieceBuilder {
+public:
+    struct PieceInfo {
+        uint64_t sizeBits;
+        uint64_t offsetBits;
+    };
+    PieceBuilder(uint64_t RegSizeBits, uint64_t VarSizeBits, uint64_t SubRegOffsetBits)
+        : RegSizeBits(RegSizeBits),
+          VariableSizeInBits(VarSizeBits),
+          SubRegOffsetInBits(SubRegOffsetBits) {
+        IGC_ASSERT(SubRegOffsetInBits < RegSizeBits);
+        IGC_ASSERT(RegSizeBits > 0);
+    }
+    bool needsPieces () const {
+        if (VariableSizeInBits == 0)
+            return false;
+        if (pieceCount() == 1 && SubRegOffsetInBits != 0)
+            return true;
+        if (pieceCount() > 1)
+            return true;
+        return false;
+    }
+    uint64_t pieceCount () const {
+        auto AlignedSize = SubRegOffsetInBits + VariableSizeInBits;
+        auto Count = AlignedSize / RegSizeBits;
+        if (AlignedSize % RegSizeBits)
+            ++Count;
+        return Count;
+    }
+    PieceInfo get(uint64_t index) const {
+        assert(index < pieceCount());
+        auto AlignedSize = SubRegOffsetInBits + VariableSizeInBits;
+        if (index == 0) {
+            auto Offset = SubRegOffsetInBits;
+            auto Size = (AlignedSize > RegSizeBits)
+                          ? RegSizeBits - Offset
+                          : VariableSizeInBits;
+            return PieceInfo{Size, Offset};
+        }
+        if (RegSizeBits * (index + 1) <= AlignedSize) {
+            return PieceInfo{RegSizeBits, 0};
+        }
+        auto LastChunk = RegSizeBits * index;
+        if (LastChunk > AlignedSize)
+            return PieceInfo{0, 0};
+        return PieceInfo{AlignedSize - LastChunk, 0};
+    }
+private:
+    uint64_t RegSizeBits;
+    uint64_t VariableSizeInBits;
+    uint64_t SubRegOffsetInBits;
+};
+
 /// CompileUnit - Compile unit constructor.
 CompileUnit::CompileUnit(unsigned UID, DIE* D, DICompileUnit* Node,
     StreamEmitter* A, IGC::DwarfDebug* DW)
@@ -216,6 +269,12 @@ void CompileUnit::addUInt(IGC::DIEBlock* Block, dwarf::Form Form, uint64_t Integ
         (Form != dwarf::Form::DW_FORM_data1 && Form != dwarf::Form::DW_FORM_data2 && Form != dwarf::Form::DW_FORM_data4)),
         "Insufficient bits in form for encoding");
     addUInt(Block, (dwarf::Attribute)0, Form, Integer);
+}
+void CompileUnit::addBitPiece(IGC::DIEBlock* Block, uint64_t SizeBits, uint64_t OffsetBits)
+{
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+    addUInt(Block, dwarf::DW_FORM_udata, SizeBits);
+    addUInt(Block, dwarf::DW_FORM_udata, OffsetBits);
 }
 
 /// addSInt - Add an signed integer attribute data and value.
@@ -1436,14 +1495,16 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const
         }
         else
         {
-            // Variable
-            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
-            addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
-            addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
+            const auto* VISAMod = Loc->GetVISAModule();
+            const auto registerSizeInBits = VISAMod->getGRFSize() * 8;
 
-            if (varSizeInBits > Loc->GetVISAModule()->getGRFSize() * 8)
-                LLVM_DEBUG(dbgs() << "warning: addSimdLaneScalar is trying to emit DW_OP_bit_piece which is larger " <<
-                           "than GRF" << *DV.getDbgInst());
+            PieceBuilder PieceBuilder(registerSizeInBits, varSizeInBits, offsetInBits);
+            for (unsigned i = 0; i < PieceBuilder.pieceCount(); ++i) {
+                auto Piece = PieceBuilder.get(i);
+                if (i != 0) // RegisterLoc is already emitted for the first Piece
+                    addRegisterLoc(Block, lr->getGRF().regNum + i, 0, DV.getDbgInst());
+                addBitPiece(Block, Piece.sizeBits, Piece.offsetBits);
+            }
         }
     }
 }
@@ -2797,24 +2858,28 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
                 if (!EmitSettings.EnableSIMDLaneDebugging)
                 {
-                    addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
-
                     auto varSizeInBits = var.getBasicSize(DD);
                     auto offsetInBits = lrToUse.getGRF().subRegNum * 8;
+
+                    addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
                     if (HasImplicitLocation(var)) {
                         addConstantUValue(Block, offsetInBits);
                         addConstantUValue(Block, varSizeInBits);
                         IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
                         addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
-                    } else if (lrToUse.getGRF().subRegNum != 0) {
-                        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
-                        addUInt(Block, dwarf::DW_FORM_udata, varSizeInBits);
-                        addUInt(Block, dwarf::DW_FORM_udata, offsetInBits);
-
-                        if (varSizeInBits > VISAMod->getGRFSize() * 8)
-                            LLVM_DEBUG(dbgs() << "warning: buildGeneral is trying  to emit DW_OP_bit_piece" <<
-                                       "which is larger than GRF" << *var.getDbgInst());
+                    } else {
+                        const auto registerSizeInBits = VISAMod->getGRFSize() * 8;
+                        PieceBuilder PieceBuilder(registerSizeInBits, varSizeInBits, offsetInBits);
+                        // Note: if no pieces are required - we are done, since RegisterLoc was emitted
+                        if (PieceBuilder.needsPieces()) {
+                            for (unsigned i = 0; i < PieceBuilder.pieceCount(); ++i) {
+                                auto Piece = PieceBuilder.get(i);
+                                if (i != 0) // RegisterLoc is already emitted for the first Piece
+                                    addRegisterLoc(Block, lrToUse.getGRF().regNum + i, offset, var.getDbgInst());
+                                addBitPiece(Block, Piece.sizeBits, Piece.offsetBits);
+                            }
+                        }
                     }
                 }
                 else

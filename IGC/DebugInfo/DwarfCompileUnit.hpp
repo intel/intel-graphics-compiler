@@ -166,6 +166,8 @@ namespace IGC
 
         void addUInt(DIEBlock* Block, llvm::dwarf::Form Form, uint64_t Integer);
 
+        void addBitPiece(IGC::DIEBlock* Block, uint64_t SizeBits, uint64_t OffsetBits);
+
         /// addSInt - Add an signed integer attribute data and value.
         ///
         void addSInt(DIE* Die, llvm::dwarf::Attribute Attribute, llvm::Optional<llvm::dwarf::Form> Form,
