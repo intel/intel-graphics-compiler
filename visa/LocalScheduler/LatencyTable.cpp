@@ -108,6 +108,7 @@ uint16_t LatencyTable::getLatencyG12(G4_INST* Inst) const
 {
     int Sz = Inst->getExecSize();
     int Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
+    auto Dst = Inst->getDst();
 
     if (Inst->isSend()) {
         G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
@@ -120,13 +121,21 @@ uint16_t LatencyTable::getLatencyG12(G4_INST* Inst) const
         if (MsgDesc->isBarrierMsg())
             return LatenciesXe::BARRIER;
          return LatenciesXe::SEND_OTHERS;
-    } else if (Inst->isMath()) {
+    }
+    if (Inst->isMath())
+    {
         return uint16_t(LatenciesXe::MATH + LatenciesXe::DELTA_MATH * Scale);
-    } else if (Inst->isFlowControl()) {
+    }
+    if (Inst->isFlowControl())
+    {
         return LatenciesXe::BRANCH;
     }
-    else if (Inst->isArithmetic()) {
-        G4_DstRegRegion *Dst = Inst->getDst();
+    if (Inst->writesFlag() || (Dst && Dst->isA0()))
+    {
+        return LatenciesXe::ARF;
+    }
+    if (Inst->isArithmetic()) {
+
         if (Dst->isAccReg())
             return uint16_t(LatenciesXe::FPU_ACC + LatenciesXe::DELTA * Scale);
         return uint16_t(LatenciesXe::FPU + LatenciesXe::DELTA * Scale);

@@ -55,6 +55,7 @@ namespace vISA
         BARRIER                 = 30,   // Latency for barrier.
         DELTA                   = 1,    // Extra cycles for wider SIMD sizes, compute only.
         DELTA_MATH              = 4,
+        ARF                     = 16,   // latency for ARF dependencies (flag, address, etc.)
 
         //
         // Message latencies

@@ -1147,6 +1147,8 @@ public:
     bool canSupportSaturate() const;
     bool canSupportSrcModifier() const;
 
+    bool writesFlag() const;
+
     bool usesFlag() const
     {
         return predicate != nullptr || (op != G4_sel && mod != nullptr);
@@ -4255,6 +4257,11 @@ inline bool G4_Operand::isScalarSrc() const
 inline G4_Declare *G4_Operand::getBaseRegVarRootDeclare() const
 {
     return getBase()->asRegVar()->getDeclare()->getRootDeclare();
+}
+
+inline bool G4_INST::writesFlag() const
+{
+    return (mod && op != G4_sel) || (dst && dst->isFlag());
 }
 
 } // namespace vISA
