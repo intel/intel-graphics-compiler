@@ -78,6 +78,42 @@ void IGCMetaDataHelper::removeFunction(
     }
 }
 
+llvm::Optional<std::array<uint32_t, 3>>
+IGCMetaDataHelper::getThreadGroupDims(
+    MetaDataUtils& mdUtils,
+    llvm::Function* pKernelFunc)
+{
+    auto finfo = mdUtils.findFunctionsInfoItem(pKernelFunc);
+    if (finfo == mdUtils.end_FunctionsInfo())
+        return llvm::None;
+
+    auto& FI = finfo->second;
+
+    if (!FI->getThreadGroupSize()->hasValue())
+        return llvm::None;
+
+    auto Dims = FI->getThreadGroupSize();
+
+    std::array<uint32_t, 3> A {
+        (uint32_t)Dims->getXDim(),
+        (uint32_t)Dims->getYDim(),
+        (uint32_t)Dims->getZDim()
+    };
+
+    return A;
+}
+
+uint32_t IGCMetaDataHelper::getThreadGroupSize(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
+{
+    auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(mdUtils, pKernelFunc);
+    if (!Dims)
+        return 0;
+
+    auto& Vals = *Dims;
+
+    return Vals[0] * Vals[1] * Vals[2];
+}
+
 uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
 {
     FunctionInfoMetaDataHandle finfo = mdUtils.getFunctionsInfoItem(pKernelFunc);
@@ -87,19 +123,6 @@ uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils& mdUtils, llvm:
         size = finfo->getThreadGroupSizeHint()->getXDim() *
             finfo->getThreadGroupSizeHint()->getYDim() *
             finfo->getThreadGroupSizeHint()->getZDim();
-    }
-    return size;
-}
-
-uint32_t IGCMetaDataHelper::getThreadGroupSize(MetaDataUtils& mdUtils, llvm::Function* pKernelFunc)
-{
-    FunctionInfoMetaDataHandle finfo = mdUtils.getFunctionsInfoItem(pKernelFunc);
-    uint32_t size = 0;
-    if (finfo->getThreadGroupSize()->hasValue())
-    {
-        size = finfo->getThreadGroupSize()->getXDim() *
-            finfo->getThreadGroupSize()->getYDim() *
-            finfo->getThreadGroupSize()->getZDim();
     }
     return size;
 }
