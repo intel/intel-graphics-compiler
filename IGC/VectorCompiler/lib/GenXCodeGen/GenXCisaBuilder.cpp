@@ -3420,7 +3420,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       DataSize = DL.getTypeSizeInBits(DataType) / genx::ByteBits;
     if (DataSize <= RoundedWidth && DataSize >= Width)
       return static_cast<uint8_t>(1);
-    IGC_ASSERT_MESSAGE(RoundedWidth && (DataSize % RoundedWidth != 0),
+    IGC_ASSERT_MESSAGE(RoundedWidth && (DataSize % RoundedWidth == 0),
                        "Invalid media width");
     return static_cast<uint8_t>(DataSize / RoundedWidth);
   };
