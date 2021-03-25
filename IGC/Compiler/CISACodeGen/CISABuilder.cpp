@@ -4252,25 +4252,52 @@ namespace IGC
         if( IsStage1FastestCompile( context->m_CgFlag, context->m_StagingCtx ) ||
             IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
         {
-            SaveOption( vISA_LocalScheduling, false );
-            SaveOption( vISA_preRA_Schedule, false );
-            SaveOption( vISA_SpillSpaceCompression, false );
-            SaveOption( vISA_LVN, false );
-            SaveOption( vISA_QuickTokenAllocation, true );
-
-            if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_NOLINEARSCAN )
-            { // use fastSpill RA
-                SaveOption( vISA_FastSpill, true );
-                SaveOption( vISA_NoRemat, true );
-                SaveOption( vISA_LocalDeclareSplitInGlobalRA, false );
-            }
-            else { // use linearScan
+            if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) == FCEXP_NO_EXPRIMENT )
+            {
+                SaveOption( vISA_LocalScheduling, false );
+                SaveOption( vISA_preRA_Schedule, false );
+                SaveOption( vISA_SpillSpaceCompression, false );
+                SaveOption( vISA_LVN, false );
+                SaveOption( vISA_QuickTokenAllocation, true );
                 SaveOption( vISA_LinearScan, true );
             }
+            else
+            {
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_FASTSPILL )
+                    SaveOption( vISA_FastSpill, true );
 
-            if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_1PASSRA )
-            { // use 1 iteration RA
-                SaveOption( vISA_FastCompileRA, true );
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_LOCAL_SCHEDULING )
+                    SaveOption( vISA_LocalScheduling, false );
+
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_PRERA_SCHEDULING )
+                    SaveOption( vISA_preRA_Schedule, false );
+
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_NO_REMAT )
+                    SaveOption( vISA_NoRemat, true );
+
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_SPILL_COMPRESSION )
+                    SaveOption( vISA_SpillSpaceCompression, false );
+
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA )
+                    SaveOption( vISA_LocalDeclareSplitInGlobalRA, false );
+
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_DISABLE_LVN )
+                {
+                    SaveOption( vISA_LVN, false );
+                }
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_QUICKTOKEN_ALLOC )
+                {
+                    SaveOption( vISA_QuickTokenAllocation, true );
+                }
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_LINEARSCAN )
+                { // use linearScan
+                    SaveOption( vISA_LinearScan, true );
+                }
+
+                if( IGC_GET_FLAG_VALUE( FastestS1Experiments ) & FCEXP_1PASSRA )
+                { // use 1 iteration RA
+                    SaveOption( vISA_FastCompileRA, true );
+                }
             }
         }
 

@@ -175,12 +175,19 @@ typedef enum {
 // Fastest compilation experimental flags
 typedef enum
 {
-    FCEXP_NO_EXPRIMENT  = 0,
-    FCEXP_TOBE_REUSED   = 0x1,
-    FCEXP_NOLINEARSCAN    = 0x2,
-    FCEXP_DISABLE_GOPT  = 0x4,
-    FCEXP_1PASSRA       = 0x8,
-    FCEXP_TOBE_DESIGNED = 0x10,
+    FCEXP_NO_EXPRIMENT                  = 0,
+    FCEXP_DISABLE_LVN                   = ( 0x1 << 0x0 ),
+    FCEXP_LINEARSCAN                    = ( 0x1 << 0x1 ),
+    FCEXP_DISABLE_GOPT                  = ( 0x1 << 0x2 ),
+    FCEXP_1PASSRA                       = ( 0x1 << 0x3 ),
+    FCEXP_FASTSPILL                     = ( 0x1 << 0x4 ),
+    FCEXP_LOCAL_SCHEDULING              = ( 0x1 << 0x5 ),
+    FCEXP_PRERA_SCHEDULING              = ( 0x1 << 0x6 ),
+    FCEXP_NO_REMAT                      = ( 0x1 << 0x7 ),
+    FCEXP_SPILL_COMPRESSION             = ( 0x1 << 0x8 ),
+    FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA    = ( 0x1 << 0x9 ),
+    FCEXP_QUICKTOKEN_ALLOC              = ( 0x1 << 0xa ),
+    FCEXP_TOBE_DESIGNED                 = ( 0x1 << 0xb ),
 } FCEXP_FLAG_t;
 
 #endif // __IGC_H
