@@ -221,6 +221,7 @@ set(GenX_Common_Sources_External_Other
   Rematerialization.cpp
   SCCAnalysis.cpp
   SendFusion.cpp
+  SplitAlignedScalars.cpp
   SpillCleanup.cpp
   SpillCode.cpp
   SpillManagerGMRF.cpp
@@ -314,6 +315,7 @@ set(GenX_Common_Headers
   SpillCleanup.h
   SpillCode.h
   SpillManagerGMRF.h
+  SplitAlignedScalars.h
   VISAKernel.h
   VarSplit.h
   include/JitterDataStruct.h
