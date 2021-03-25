@@ -1310,23 +1310,43 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             ldrawvec->hasOneUse() &&
             isa<ConstantInt>(ldrawvec->getOffsetValue()) &&
             !ConstEEIUses.empty();
-        if (canSimplifyOneUse)
+
+        bool canSimplifyOneUseConstantOffset = canSimplifyOneUse && isa<ConstantInt>(ldrawvec->getOffsetValue());
+        bool canSimplifyOneUseZeroIndex = canSimplifyOneUse &&
+            cast<ConstantInt>(ConstEEIUses.front()->getIndexOperand())->getZExtValue() == 0;
+
+        auto simplifyLDVecToLDRaw = [&](bool calc_offset)
         {
             auto EE_user = ConstEEIUses.front();
             auto return_type = cast<VectorType>(ldrawvec->getType())->getElementType();
             auto buffer_ptr = ldrawvec->getResourceValue();
-            auto alignment = ldrawvec->getAlignment();
-            auto offset = (unsigned)cast<ConstantInt>(ldrawvec->getOffsetValue())->getZExtValue();
-            auto EE_index = (unsigned)cast<ConstantInt>(EE_user->getIndexOperand())->getZExtValue();
-            auto new_offset = offset + (EE_index * alignment); //Calculate new offset
-            Type* types[2] = { return_type , buffer_ptr->getType()};
-            Value* args[4] = { buffer_ptr, Builder.getInt32(new_offset),
-                Builder.getInt32(alignment), Builder.getInt1(ldrawvec->isVolatile())};
+            Value* OffsetVal = ldrawvec->getOffsetValue();
+            auto alloc_size = (unsigned)m_DL->getTypeAllocSize(return_type);
+            if (calc_offset)
+            {
+                auto offset = (unsigned)cast<ConstantInt>(OffsetVal)->getZExtValue();
+                auto EE_index = (unsigned)cast<ConstantInt>(EE_user->getIndexOperand())->getZExtValue();
+                auto new_offset = offset + (EE_index * alloc_size); //Calculate new offset
+                OffsetVal = Builder.getInt32(new_offset);
+            }
+            Type* types[2] = { return_type , buffer_ptr->getType() };
+            Value* args[4] = { buffer_ptr, OffsetVal,
+                Builder.getInt32(alloc_size), Builder.getInt1(ldrawvec->isVolatile()) };
             Function* newLdRawFunction =
                 GenISAIntrinsic::getDeclaration(ldrawvec->getModule(), GenISAIntrinsic::GenISA_ldraw_indexed, types);
             NewLI = Builder.CreateCall(newLdRawFunction, args);
             EE_user->replaceAllUsesWith(NewLI);
             EE_user->eraseFromParent();
+        };
+
+        if (canSimplifyOneUseZeroIndex)
+        {
+            simplifyLDVecToLDRaw(false);
+            return NewLI;
+        }
+        else if (canSimplifyOneUseConstantOffset)
+        {
+            simplifyLDVecToLDRaw(true);
             return NewLI;
         }
         else
