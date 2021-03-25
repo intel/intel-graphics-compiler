@@ -853,7 +853,7 @@ void BinaryEncodingIGA::Encode()
         auto secondBB = *(std::next(kernel.fg.begin()));
         auto iter = std::find_if(secondBB->begin(), secondBB->end(),
             [](G4_INST* inst) { return !inst->isLabel();});
-        assert(iter != secondBB->end() && "expect at least one non-label inst in second BB");
+        assert(iter != secondBB->end() && "execpt at least one non-label inst in second BB");
         kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad =
             (uint32_t)(*iter)->getGenOffset();
     }

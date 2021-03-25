@@ -60,7 +60,7 @@ namespace IGC
 {
 
     COpenCLKernel::COpenCLKernel(const OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
-        CComputeShaderBase(pFunc, pProgram)
+        CShader(pFunc, pProgram)
     {
         m_HasTID = false;
         m_HasGlobalSize = false;
@@ -138,21 +138,6 @@ namespace IGC
                 m_localOffsetsMap[loHandle.m_Var] = loHandle.m_Offset;
             }
         }
-    }
-
-    bool COpenCLKernel::hasWorkGroupWalkOrder()
-    {
-        const CodeGenContext* pCtx = GetContext();
-        const ModuleMetaData* MMD = pCtx->getModuleMetaData();
-        if (auto I = MMD->FuncMD.find(entry); I != MMD->FuncMD.end())
-        {
-            auto& FMD = I->second;
-            auto& Order = FMD.workGroupWalkOrder;
-            if (Order.dim0 != 0 || Order.dim1 != 0 || Order.dim2 != 0)
-                return true;
-        }
-
-        return false;
     }
 
     SOpenCLKernelInfo::SResourceInfo COpenCLKernel::getResourceInfo(int argNo)

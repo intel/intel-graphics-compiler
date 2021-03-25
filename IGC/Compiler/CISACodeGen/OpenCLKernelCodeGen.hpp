@@ -23,7 +23,7 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
-#include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
+#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 namespace IGC
 {
@@ -33,7 +33,7 @@ namespace IGC
 namespace IGC
 {
 
-    class COpenCLKernel : public CComputeShaderBase
+    class COpenCLKernel : public CShader
     {
     public:
         friend class CShaderProgram;
@@ -129,8 +129,6 @@ namespace IGC
         OpenCLProgramContext* m_Context;
 
         void ClearKernelInfo();
-    private:
-        bool hasWorkGroupWalkOrder();
     };
 
 }

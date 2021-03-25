@@ -56,11 +56,23 @@ WIFuncResolution::WIFuncResolution() : FunctionPass(ID), m_implicitArgs()
 Constant* WIFuncResolution::getKnownWorkGroupSize(
     IGCMD::MetaDataUtils* MDUtils, llvm::Function& F) const
 {
-    auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(*MDUtils, &F);
-    if (!Dims)
+    auto finfo = MDUtils->findFunctionsInfoItem(&F);
+    if (finfo == MDUtils->end_FunctionsInfo())
         return nullptr;
 
-    return ConstantDataVector::get(F.getContext(), *Dims);
+    auto& FI = finfo->second;
+    if (FI->getThreadGroupSize()->hasValue())
+    {
+        uint32_t Dims[] =
+        {
+            (uint32_t)FI->getThreadGroupSize()->getXDim(),
+            (uint32_t)FI->getThreadGroupSize()->getYDim(),
+            (uint32_t)FI->getThreadGroupSize()->getZDim(),
+        };
+        return ConstantDataVector::get(F.getContext(), Dims);
+    }
+
+    return nullptr;
 }
 
 bool WIFuncResolution::runOnFunction(Function& F)

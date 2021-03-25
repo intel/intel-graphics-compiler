@@ -51,9 +51,8 @@ namespace IGC
         uint threadGroupSize_Z)
     {
         const CodeGenContext* pCtx = GetContext();
-        const ModuleMetaData* MMD = pCtx->getModuleMetaData();
 
-        if (MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile)
+        if (pCtx->getModuleMetaData()->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile)
         {
             m_ThreadIDLayout = ThreadIDLayout::QuadTile;
             return;
@@ -61,14 +60,14 @@ namespace IGC
 
         if ((numberOfTypedAccess >= numberOfUntypedAccess) &&
             threadGroupSize_Y % 4 == 0 &&
-            !MMD->csInfo.disableLocalIdOrderOptimizations &&
+            !pCtx->getModuleMetaData()->csInfo.disableLocalIdOrderOptimizations &&
             IGC_IS_FLAG_ENABLED(UseTiledCSThreadOrder)) {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
             m_walkOrder = WO_YXZ;
         }
 
         bool needsLinearWalk =
-            MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
+            pCtx->getModuleMetaData()->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
         if (needsLinearWalk)
         {
             m_ThreadIDLayout = ThreadIDLayout::X;
