@@ -253,7 +253,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[],
     unsigned maxRegs,
     unsigned& startPos,
     unsigned& idx,
-    bool forceCalleeSaveOnly,
+    bool isCalleeSaveBias,
     bool isEOTSrc)
 {
     unsigned startPosRunOne = startPos;
@@ -271,7 +271,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[],
         findContiguousNoWrapGRF(
         availRegs, forbidden, occupiedBundles, align, numRegNeeded, startPosRunOne, endPosRunOne, idx);
 
-    if (startPosRunOne > 0 && found == false && !isEOTSrc && !forceCalleeSaveOnly)
+    if (startPosRunOne > 0 && found == false && !isEOTSrc)
     {
         unsigned startPosRunTwo = 0;
         unsigned endPosRunTwo = startPos + numRegNeeded;
@@ -868,6 +868,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
     G4_SubReg_Align subAlign,
     unsigned nwords)
 {
+
     int startReg = 0, endReg = totalGRFNum;
     PhyReg phyReg = { -1, -1 };
     if (calleeSaveBias)
@@ -881,24 +882,54 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
 
     int step = align == BankAlign::Even ? 2 : 1;
 
-    auto findSubGRFAlloc = [step, forbidden, this, subAlign, nwords](unsigned int startReg, unsigned int endReg)
+    // First preference is to accommodate a variable in a free sub-register
+    // irrespective of caller/callee partition to piggyback on save/restore
+    // that'll be emitted anyway.
+    for (int idx = 0; idx < endReg; idx += step)
     {
-        PhyReg phyReg = { -1, -1 };
-        for (auto idx = startReg; idx < endReg; idx += step)
+        if (forbidden && forbidden[idx])
         {
-            // forbidden GRF is not an allocation candidate
-            if (forbidden && forbidden[idx])
-            {
-                continue;
-            }
+            continue;
+        }
 
-            // check if entire GRF is available
-            if (availableSubRegs[idx] == 0xFFFFFFFF)
+        if (availableSubRegs[idx] == 0xFFFFFFFF)
+        {
+            // favor partially allocated GRF first
+            continue;
+        }
+        int subreg = findContiguousWords(availableSubRegs[idx], subAlign, nwords);
+        if (subreg != -1)
+        {
+            phyReg.reg = idx;
+            phyReg.subreg = subreg;
+            return phyReg;
+        }
+    }
+
+    // perform bias based assignment first
+    for (auto idx = startReg; idx < endReg; idx += step)
+    {
+        if (forbidden && forbidden[idx])  // forbidden != NULL check forbidden
+        {
+            continue;
+        }
+
+        int subreg = findContiguousWords(availableSubRegs[idx], subAlign, nwords);
+        if (subreg != -1)
+        {
+            phyReg.reg = idx;
+            phyReg.subreg = subreg;
+            return phyReg;
+        }
+    }
+
+    if (callerSaveBias || calleeSaveBias)
+    {
+        // no bias based assignment possible so search throughout GRF file
+        for (unsigned int idx = 0; idx < totalGRFNum; idx += step)
+        {
+            if (forbidden && forbidden[idx])  // forbidden != NULL check forbidden
             {
-                // favor partially allocated GRF first so dont
-                // return this assignment yet
-                phyReg.reg = idx;
-                phyReg.subreg = 0;
                 continue;
             }
 
@@ -910,21 +941,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
                 return phyReg;
             }
         }
-
-        // either return {-1, -1} or an allocation where entire GRF is available
-        return phyReg;
-    };
-
-    if (callerSaveBias || calleeSaveBias)
-    {
-        // attempt bias based assignment first
-        phyReg = findSubGRFAlloc(startReg, endReg);
-        if (phyReg.subreg != -1)
-            return phyReg;
     }
-
-    // Find sub-GRF allocation throughout GRF file
-    phyReg = findSubGRFAlloc(0, totalGRFNum);
 
     return phyReg;
 }
@@ -969,10 +986,9 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*     varBasis,
         bool success = false;
         if (varBasis->getEOTSrc() && builder.hasEOTGRFBinding())
         {
-            bool forceCalleeSaveAlloc = builder.kernel.fg.isPseudoVCEDcl(decl);
             startGRFReg = totalGRFNum - 16;
             success = findContiguousGRF(availableGregs, forbidden, 0, align, decl->getNumRows(), maxGRFCanBeUsed,
-                startGRFReg, i, forceCalleeSaveAlloc, true);
+                startGRFReg, i, false, true);
         }
         else
         {
@@ -1130,11 +1146,10 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
                 startGRFReg = totalGRFNum - 16;
             }
 
-            bool forceCalleeSaveAlloc = builder.kernel.fg.isPseudoVCEDcl(decl);
             unsigned short occupiedBundles = gra.getOccupiedBundle(decl);
             bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles,
                 getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
-                startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
+                startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {
                 varBasis->setPhyReg(regPool.getGreg(i), 0);
             }
