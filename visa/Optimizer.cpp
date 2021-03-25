@@ -4052,6 +4052,21 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         return false;
     }
 
+    // If dst is B and exectype is Q, dst is misaligned. This misaligned inst
+    // will be split in HWComformity. If a condMod is present, it would be
+    // harder to split and may result in wrong code. Here, simply disable folding.
+    //
+    // For example,
+    //    (W) mov (1)     conv_i(0,0)<1>:b   V0040(0,0)<0;1,0>:q
+    //    (W) cmp(1)  (eq)P01.0   null<1>:w  conv_i(0, 0)<0;1,0>:b  0:w
+    //
+    int extypesize = 0;
+    (void) inst->getOpExecType(extypesize);
+    if (inst->getDst()->getTypeSize() == 1 && extypesize == 8)
+    {
+        return false;
+    }
+
     auto cmpIter = std::find(iter, bb->end(), cmpInst);
 
     // check if cmp instruction is close enough
