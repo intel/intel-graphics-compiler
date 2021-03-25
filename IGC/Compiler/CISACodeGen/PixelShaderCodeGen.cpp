@@ -337,7 +337,6 @@ void CPixelShader::AllocatePSPayload()
     }
 
     CVariable* prevAlias = nullptr;
-    uint prevOffset = offset;
     // This is the preallocation for payload live-outs.
     for (auto& var : payloadLiveOutSetup)
     {
@@ -346,14 +345,9 @@ void CPixelShader::AllocatePSPayload()
         bool skip = (prevAlias == v);
         if (!skip)
         {
-            AllocateInput(var, offset);
-            prevOffset = offset;
+            AllocateInput(v, offset);
             offset += var->GetSize();
             prevAlias = var->GetAlias();
-        }
-        else
-        {
-            AllocateInput(var, prevOffset);
         }
     }
 
