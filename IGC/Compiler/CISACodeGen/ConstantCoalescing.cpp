@@ -434,18 +434,51 @@ void ConstantCoalescing::ProcessBlock(
             {
                 continue;
             }
-            if (auto* offsetValue = dyn_cast<ConstantInt>(ldRaw->getOffsetValue()))
-            {   // direct access
-                uint offsetInBytes = (uint)offsetValue->getZExtValue();
-                if ((int32_t)offsetInBytes >= 0)
+
+            uint offsetInBytes = 0;
+            Value* baseOffsetInBytes = nullptr;
+            if (ConstantInt * offsetConstVal = dyn_cast<ConstantInt>(ldRaw->getOffsetValue()))
+            {
+                offsetInBytes = int_cast<uint>(offsetConstVal->getZExtValue());
+            }
+            else
+            {
+                baseOffsetInBytes = SimpleBaseOffset(ldRaw->getOffsetValue(), offsetInBytes);
+            }
+            if ((int32_t)offsetInBytes >= 0)
+            {
+                uint addrSpace = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
+                if (wiAns->isUniform(ldRaw))
                 {
-                    if (wiAns->isUniform(ldRaw))
+                    uint maxEltPlus = 1;
+                    if (!isProfitableLoad(ldRaw, maxEltPlus))
+                        continue;
+                    MergeUniformLoad(
+                        ldRaw,
+                        ldRaw->getResourceValue(),
+                        addrSpace,
+                        baseOffsetInBytes,
+                        offsetInBytes,
+                        maxEltPlus,
+                        baseOffsetInBytes ? indcb_owloads : dircb_owloads);
+                }
+                else
+                {
+#ifdef SUPPORT_GATHER4
+                    MergeScatterLoad(LI, nullptr, bufid, elt_idxv, eltid, 1, indcb_gathers);
+#else
+                    if (UsesTypedConstantBuffer(m_ctx) &&
+                        bufType == BINDLESS_CONSTANT_BUFFER)
                     {
-                        uint maxEltPlus = 1;
-                        if (!isProfitableLoad(ldRaw, maxEltPlus))
-                            continue;
-                        MergeUniformLoad(ldRaw, ldRaw->getResourceValue(), 0, nullptr, offsetInBytes, maxEltPlus, dircb_owloads);
+                        ScatterToSampler(
+                            ldRaw,
+                            ldRaw->getResourceValue(),
+                            addrSpace,
+                            baseOffsetInBytes,
+                            offsetInBytes,
+                            indcb_gathers);
                     }
+#endif
                 }
             }
             continue;
@@ -1206,6 +1239,7 @@ Value* ConstantCoalescing::SimpleBaseOffset(Value* elt_idxv, uint& offset)
     {
         elt_idxv = reducedOffset->getOperand(0);
     }
+
     Instruction* expr = dyn_cast<Instruction>(elt_idxv);
     if (!expr)
     {
@@ -2192,7 +2226,7 @@ void ConstantCoalescing::ScatterToSampler(
                 wiAns->incUpdateDepend(dataAddress, WIAnalysis::RANDOM);
             }
 
-            ld = CreateSamplerLoad(dataAddress, addrSpace);
+            ld = CreateSamplerLoad(dataAddress, bufIdxV, addrSpace);
             cov_chunk->chunkIO = ld;
             chunk_vec.push_back(cov_chunk);
         }
@@ -2205,10 +2239,18 @@ void ConstantCoalescing::ScatterToSampler(
     }
 }
 
-Instruction* ConstantCoalescing::CreateSamplerLoad(Value* index, uint addrSpace)
+Instruction* ConstantCoalescing::CreateSamplerLoad(
+    Value* index,
+    Value* resourcePtr,
+    uint   addrSpace)
 {
-    unsigned int AS = addrSpace;
-    PointerType* resourceType = PointerType::get(irBuilder->getFloatTy(), AS);
+    IGC_ASSERT(!resourcePtr || isa<PointerType>(resourcePtr->getType()));
+    IGC_ASSERT(!resourcePtr || addrSpace == resourcePtr->getType()->getPointerAddressSpace());
+
+    PointerType* resourceType = resourcePtr ?
+        cast<PointerType>(resourcePtr->getType()) :
+        PointerType::get(irBuilder->getFloatTy(), addrSpace);
+
     Type* types[] = { IGCLLVM::FixedVectorType::get(irBuilder->getFloatTy(), 4), resourceType };
     Function* l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
         llvm::GenISAIntrinsic::GenISA_ldptr,
@@ -2219,7 +2261,7 @@ Instruction* ConstantCoalescing::CreateSamplerLoad(Value* index, uint addrSpace)
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),
-        ConstantPointerNull::get(resourceType),
+        resourcePtr ? resourcePtr : ConstantPointerNull::get(resourceType),
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),
