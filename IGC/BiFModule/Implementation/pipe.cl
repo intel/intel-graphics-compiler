@@ -129,12 +129,12 @@ INLINE static uint extract_index( ReserveId_t rid )
 
 INLINE static bool intel_lock_pipe_read( __global pipe_control_intel_t* p )
 {
-    int lock = __builtin_spirv_OpAtomicLoad_p1i32_i32_i32( &p->lock, Device, Relaxed );
+    int lock = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )( ( global int* )&p->lock, Device, Relaxed );
     while( lock <= 0 )
     {
         int newLock = lock - 1;
-        if (__builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(
-                &p->lock,
+        if (SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                ( global int* ) &p->lock,
                 Device,
                 SequentiallyConsistent,
                 SequentiallyConsistent,
@@ -153,8 +153,8 @@ INLINE static bool intel_lock_pipe_read( __global pipe_control_intel_t* p )
 
 static void intel_unlock_pipe_read( __global pipe_control_intel_t* p )
 {
-    __builtin_spirv_OpAtomicIIncrement_p1i32_i32_i32(
-            &p->lock,
+    SPIRV_BUILTIN(AtomicIIncrement, _p1i32_i32_i32, )(
+            ( global int* ) &p->lock,
             Device,
             SequentiallyConsistent );
     // OK to inc, since we must have locked.
@@ -162,13 +162,13 @@ static void intel_unlock_pipe_read( __global pipe_control_intel_t* p )
 
 static bool intel_lock_pipe_write( __global  pipe_control_intel_t* p )
 {
-    int lock = __builtin_spirv_OpAtomicLoad_p1i32_i32_i32( &p->lock, Device, Relaxed );
+    int lock = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )( ( global int* )&p->lock, Device, Relaxed );
 
     while( lock >= 0 )
     {
         int newLock = lock + 1;
-        if( __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(
-                    &p->lock,
+        if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                    ( global int* ) &p->lock,
                     Device,
                     SequentiallyConsistent,
                     SequentiallyConsistent,
@@ -187,8 +187,8 @@ static bool intel_lock_pipe_write( __global  pipe_control_intel_t* p )
 
 static void intel_unlock_pipe_write( __global pipe_control_intel_t* p )
 {
-    __builtin_spirv_OpAtomicIDecrement_p1i32_i32_i32(
-            &p->lock,
+    SPIRV_BUILTIN(AtomicIDecrement, _p1i32_i32_i32, )(
+            ( global int* ) &p->lock,
             Device,
             SequentiallyConsistent );
     // OK to dec, since we must have locked.
@@ -196,8 +196,8 @@ static void intel_unlock_pipe_write( __global pipe_control_intel_t* p )
 
 static uint read_head( __global pipe_control_intel_t* p )
 {
-    uint head = __builtin_spirv_OpAtomicLoad_p1i32_i32_i32(
-            &p->head,
+    int head = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )(
+            ( global int* )&p->head,
             Device,
             SequentiallyConsistent );
 
@@ -206,8 +206,8 @@ static uint read_head( __global pipe_control_intel_t* p )
 
 static uint read_tail( __global pipe_control_intel_t* p )
 {
-    uint tail = __builtin_spirv_OpAtomicLoad_p1i32_i32_i32(
-            &p->tail,
+    int tail = SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )(
+            ( global int* )&p->tail,
             Device,
             SequentiallyConsistent );
 
@@ -258,8 +258,8 @@ int __builtin_spirv_OpReadPipe_i64_p4i8_i32( Pipe_t Pipe, generic void *Pointer,
                 break;
             }
 
-            if( __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(
-                        &p->head,
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                        ( global int* ) &p->head,
                         Device,
                         SequentiallyConsistent,
                         SequentiallyConsistent,
@@ -326,8 +326,8 @@ int __builtin_spirv_OpWritePipe_i64_p4i8_i32( Pipe_wo_t Pipe, const generic void
                 break;
             }
 
-            if( __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(
-                        &p->tail,
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                        ( global int* ) &p->tail,
                         Device,
                         SequentiallyConsistent,
                         SequentiallyConsistent,
@@ -447,8 +447,8 @@ ReserveId_t __builtin_spirv_OpReserveReadPipePackets_i64_i32_i32( Pipe_t Pipe, u
                 break;
             }
 
-            if( __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(
-                        &p->head,
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                        ( global int* ) &p->head,
                         Device,
                         SequentiallyConsistent,
                         SequentiallyConsistent,
@@ -527,8 +527,8 @@ ReserveId_t __builtin_spirv_OpReserveWritePipePackets_i64_i32_i32(Pipe_wo_t Pipe
                 break;
             }
 
-            if( __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(
-                        &p->tail,
+            if( SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                        ( global int* ) &p->tail,
                         Device,
                         SequentiallyConsistent,
                         SequentiallyConsistent,
