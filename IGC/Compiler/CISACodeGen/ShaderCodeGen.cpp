@@ -57,6 +57,7 @@ IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/MemOpt2.h"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PreRAScheduler.hpp"
+#include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/CISACodeGen/ResolveGAS.h"
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
@@ -1716,6 +1717,8 @@ void OptimizeIR(CodeGenContext* const pContext)
             {
                 mpm.add(createReassociatePass());
             }
+
+            mpm.add(createPromoteConstantStructsPass());
 
             if (IGC_IS_FLAG_ENABLED(EnableGVN))
             {
