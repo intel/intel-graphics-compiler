@@ -109,7 +109,7 @@ namespace vISA
         void fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype);
         bool fixMathInst(INST_LIST_ITER it, G4_BB *bb);
         bool fixMULInst(INST_LIST_ITER &it, G4_BB *bb);
-        bool fixMULHInst(INST_LIST_ITER &i, G4_BB *bb);
+        void fixMULHInst(INST_LIST_ITER &i, G4_BB *bb);
         void fixMulSrc1(INST_LIST_ITER i, G4_BB* bb);
         void splitDWMULInst(INST_LIST_ITER &start, INST_LIST_ITER &end, G4_BB *bb);
         void fixOpnds(INST_LIST_ITER it, G4_BB *bb, G4_Type& exType);

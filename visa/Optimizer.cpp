@@ -11066,6 +11066,7 @@ void Optimizer::expandMulPostSchedule()
             }
             else
             {
+                // create a mach inst
                 inst->setOpcode(G4_mul);
                 maclOrMachInst = builder.createMach(inst->getExecSize(),
                     dst, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, accType);
@@ -11080,9 +11081,9 @@ void Optimizer::expandMulPostSchedule()
             auto maclOrMachInstIt = bb->insertAfter(it, maclOrMachInst);
 
             // Always add a dummy mov after mach/macl for HW read suppresion W/A
-            auto dummyMovSrc = builder.createSrc(dst->getTopDcl()->getRegVar(),
+            auto dummyMovSrc = builder.createSrc(dst->getBase(),
                 0, 0, builder.getRegionScalar(), Type_D);
-            G4_INST* dummyMov = builder.createMov(g4::SIMD16, builder.createNullDst(Type_D),
+            G4_INST* dummyMov = builder.createMov(g4::SIMD1, builder.createNullDst(Type_D),
                 dummyMovSrc, InstOpt_WriteEnable, false);
             bb->insertAfter(maclOrMachInstIt, dummyMov);
         }
