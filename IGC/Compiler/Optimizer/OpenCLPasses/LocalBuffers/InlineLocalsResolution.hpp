@@ -37,6 +37,7 @@ IN THE SOFTWARE.
 
 #include <map>
 #include <set>
+#include <unordered_set>
 
 namespace IGC
 {
@@ -83,6 +84,8 @@ namespace IGC
 
     protected:
 
+        void filterGlobals(llvm::Module&);
+        bool unusedGlobal(llvm::Value* V, std::unordered_set<llvm::Value*>& unusedNodes);
         void collectInfoOnSharedLocalMem(llvm::Module&);
         void computeOffsetList(llvm::Module&, std::map<llvm::Function*, unsigned int>&);
         void traveseCGN(llvm::CallGraphNode&);

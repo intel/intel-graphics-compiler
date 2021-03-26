@@ -35,6 +35,8 @@ IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <unordered_set>
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -112,6 +114,8 @@ bool InlineLocalsResolution::runOnModule(Module& M)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    if (!modMD->compOpt.OptDisable)
+      filterGlobals(M);
     // Compute the offset of each inline local in the kernel,
     // and their total size.
     std::map<Function*, unsigned int> sizeMap;
@@ -211,6 +215,100 @@ bool InlineLocalsResolution::runOnModule(Module& M)
         }
     }
 
+    return true;
+}
+
+void InlineLocalsResolution::filterGlobals(Module& M)
+{
+    // This data structure saves all the unused nodes,
+    // including the global variable definition itself, as well as all successive recursive user nodes,
+    // in all the def-use trees corresponding to all the global variables in the entire Module.
+    std::unordered_set<Value*> unusedNodes_forModule;
+
+    // let's loop all global variables
+    for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
+    {
+        // We only care about global variables, not other globals.
+        GlobalVariable* globalVar = dyn_cast<GlobalVariable>(&*I);
+        if (!globalVar)
+        {
+            continue;
+        }
+
+        PointerType* ptrType = cast<PointerType>(globalVar->getType());
+        // We only care about local address space here.
+        if (ptrType->getAddressSpace() != ADDRESS_SPACE_LOCAL)
+        {
+            continue;
+        }
+
+        // If the globalVar is determined to be unused,
+        // this data structure saves the globalVar,
+        // as well as all successive recursive user nodes in that def-use tree.
+        std::unordered_set<Value*> unusedNodes_forOne;
+        if (unusedGlobal(globalVar, unusedNodes_forOne))
+            unusedNodes_forModule.insert(unusedNodes_forOne.begin(), unusedNodes_forOne.end());
+    }
+
+    // We only remove all the unused nodes for this Module,
+    // after we are done processing all the global variables for the entire Module,
+    // to prevent iterators becoming invalidated when elements get removed from the ilist.
+    for (auto& element : unusedNodes_forModule) {
+        // for all unused Values,
+        //   replace all uses with undefs
+        //   delete the values
+        if (Instruction* node = dyn_cast<Instruction>(element)) {
+            Type* Ty = node->getType();
+            if (!Ty->isVoidTy())
+                node->replaceAllUsesWith(UndefValue::get(Ty));
+            node->eraseFromParent();
+        }
+        else if (GlobalVariable* node = dyn_cast<GlobalVariable>(element)) {
+            Type* Ty = node->getType();
+            if (!Ty->isVoidTy())
+                node->replaceAllUsesWith(UndefValue::get(Ty));
+            node->eraseFromParent();
+        }
+        // All other types of nodes are ignored.
+    }
+}
+
+bool InlineLocalsResolution::unusedGlobal(Value* V, std::unordered_set<Value*>& unusedNodes)
+{
+    for (Value::user_iterator U = V->user_begin(), UE = V->user_end(); U != UE; ++U)
+    {
+        if (GlobalVariable* globalVar = dyn_cast<GlobalVariable>(*U)) {
+            if (!unusedGlobal(*U, unusedNodes))
+                return false;
+        }
+        else if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*U)) {
+            if (!unusedGlobal(*U, unusedNodes))
+                return false;
+        }
+        else if (BitCastInst* bitcast = dyn_cast<BitCastInst>(*U)) {
+            if (!unusedGlobal(*U, unusedNodes))
+                return false;
+        }
+        else if (StoreInst* store = dyn_cast<StoreInst>(*U)) {
+            if (store->isUnordered()) {
+                if (store->getPointerOperand() == V) {
+                    if (!unusedGlobal(*U, unusedNodes))
+                        return false;
+                }
+                else if (store->getValueOperand() == V) {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+        else {  // some other instruction
+            return false;
+        }
+    }
+    // add an unused node to the data structure
+    unusedNodes.insert(V);
     return true;
 }
 
