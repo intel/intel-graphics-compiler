@@ -384,9 +384,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// removes code that has been made dead by other passes.
   ///
   PM.add(createDeadCodeEliminationPass());
+  PM.add(createGenXPrologEpilogInsertionPass());
   /// .. include:: GenXBaling.h
   PM.add(createGenXFuncBalingPass(BalingKind::BK_Legalization, &Subtarget));
-  PM.add(createGenXPrologEpilogInsertionPass());
   /// .. include:: GenXLegalization.cpp
   PM.add(createGenXLegalizationPass());
   /// .. include:: GenXEmulate.cpp
