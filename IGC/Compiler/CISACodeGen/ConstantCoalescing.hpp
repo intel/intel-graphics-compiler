@@ -269,7 +269,7 @@ namespace IGC
         llvm::Instruction* FindOrAddChunkExtract(BufChunk* cov_chunk, uint eltid);
         llvm::Instruction* EnlargeChunkAddExtract(BufChunk* cov_chunk, uint size_adj, uint eltid);
         llvm::Instruction* AdjustChunkAddExtract(BufChunk* cov_chunk, uint start_adj, uint size_adj, uint eltid);
-        llvm::Instruction* CreateSamplerLoad(llvm::Value* index, llvm::Value* resourcePtr, uint addrSpace);
+        llvm::Instruction* CreateSamplerLoad(llvm::Value* index, uint addrSpace);
         void ReplaceLoadWithSamplerLoad(
             Instruction* loadToReplace,
             Instruction* ldData,
