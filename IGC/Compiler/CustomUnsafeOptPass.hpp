@@ -109,8 +109,8 @@ namespace IGC
 
         void reassociateMulAdd(llvm::Function& F);
 
-        void strengthReducePow(llvm::IntrinsicInst* intrin,
-            llvm::Value* exponent);
+        void strengthReducePowOrExpLog(
+            llvm::IntrinsicInst* intrin, llvm::Value* base, llvm::Value* exponent, bool isPow);
     };
 
 } // namespace IGC

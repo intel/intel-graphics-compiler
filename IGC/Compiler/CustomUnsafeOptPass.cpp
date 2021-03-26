@@ -2127,114 +2127,120 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst& I)
     }
 }
 
-void CustomUnsafeOptPass::strengthReducePow(
-    IntrinsicInst* intrin, Value* exponent)
+void CustomUnsafeOptPass::strengthReducePowOrExpLog(
+    IntrinsicInst* intrin, Value* base, Value* exponent, bool isPow)
 {
-    Value* src = intrin->getOperand(0);
     IRBuilder<> irb(intrin);
     irb.setFastMathFlags(intrin->getFastMathFlags());
     if (exponent == ConstantFP::get(exponent->getType(), 0.5))
     {
         // pow(x, 0.5) -> sqrt(x)
         llvm::Function* sqrtIntr = llvm::Intrinsic::getDeclaration(
-            m_ctx->getModule(), Intrinsic::sqrt, src->getType());
-        llvm::CallInst* sqrt = irb.CreateCall(sqrtIntr, src);
+            m_ctx->getModule(), Intrinsic::sqrt, base->getType());
+        llvm::CallInst* sqrt = irb.CreateCall(sqrtIntr, base);
         intrin->replaceAllUsesWith(sqrt);
         intrin->eraseFromParent();
     }
-    else
-        if (exponent == ConstantFP::get(exponent->getType(), 1.0))
-        {
-            intrin->replaceAllUsesWith(src);
-            intrin->eraseFromParent();
-        }
-        else
-            if (exponent == ConstantFP::get(exponent->getType(), 2.0))
-            {
-                // pow(x, 2.0) -> x * x
-                Value* x2 = irb.CreateFMul(src, src);
-                intrin->replaceAllUsesWith(x2);
-                intrin->eraseFromParent();
-            }
-            else
-                if (exponent == ConstantFP::get(exponent->getType(), 3.0))
-                {
-                    // pow(x, 3.0) -> x * x * x
-                    Value* x2 = irb.CreateFMul(src, src);
-                    Value* x3 = irb.CreateFMul(x2, src);
-                    intrin->replaceAllUsesWith(x3);
-                    intrin->eraseFromParent();
-                }
-                else
-                    if (exponent == ConstantFP::get(exponent->getType(), 4.0))
-                    {
-                        // pow(x, 4.0) -> (x*x) * (x*x)
-                        Value* x2 = irb.CreateFMul(src, src);
-                        Value* x4 = irb.CreateFMul(x2, x2);
-                        intrin->replaceAllUsesWith(x4);
-                        intrin->eraseFromParent();
-                    }
-                    else
-                        if (exponent == ConstantFP::get(exponent->getType(), 5.0))
-                        {
-                            // pow(x, 5.0) -> (x*x) * (x*x) * x
-                            Value* x2 = irb.CreateFMul(src, src);
-                            Value* x4 = irb.CreateFMul(x2, x2);
-                            Value* x5 = irb.CreateFMul(x4, src);
-                            intrin->replaceAllUsesWith(x5);
-                            intrin->eraseFromParent();
-                        }
-                        else
-                            if (exponent == ConstantFP::get(exponent->getType(), 6.0))
-                            {
-                                // pow(x, 6.0) -> (x*x) * (x*x) * (x*x)
-                                Value* x2 = irb.CreateFMul(src, src);
-                                Value* x4 = irb.CreateFMul(x2, x2);
-                                Value* x6 = irb.CreateFMul(x4, x2);
-                                intrin->replaceAllUsesWith(x6);
-                                intrin->eraseFromParent();
-                            }
-                            else
-                                if (exponent == ConstantFP::get(exponent->getType(), 8.0))
-                                {
-                                    // pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
-                                    Value* x2 = irb.CreateFMul(src, src);
-                                    Value* x4 = irb.CreateFMul(x2, x2);
-                                    Value* x8 = irb.CreateFMul(x4, x4);
-                                    intrin->replaceAllUsesWith(x8);
-                                    intrin->eraseFromParent();
-                                }
-                                else
-                                    if (IGC_IS_FLAG_ENABLED(EnablePowToLogMulExp))
-                                    {
-                                        // pow(x, y) -> exp2(log2(x) * y)
-                                        Function* logf = Intrinsic::getDeclaration(
-                                            m_ctx->getModule(), Intrinsic::log2, src->getType());
-                                        Function* expf = Intrinsic::getDeclaration(
-                                            m_ctx->getModule(), Intrinsic::exp2, src->getType());
-                                        CallInst* logv = irb.CreateCall(logf, src);
-                                        Value* mulv = irb.CreateFMul(logv, exponent);
-                                        CallInst* expv = irb.CreateCall(expf, mulv);
-                                        intrin->replaceAllUsesWith(expv);
-                                        intrin->eraseFromParent();
-                                    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 1.0))
+    {
+        intrin->replaceAllUsesWith(base);
+        intrin->eraseFromParent();
+    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 2.0))
+    {
+        // pow(x, 2.0) -> x * x
+        Value* x2 = irb.CreateFMul(base, base);
+        intrin->replaceAllUsesWith(x2);
+        intrin->eraseFromParent();
+    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 3.0))
+    {
+        // pow(x, 3.0) -> x * x * x
+        Value* x2 = irb.CreateFMul(base, base);
+        Value* x3 = irb.CreateFMul(x2, base);
+        intrin->replaceAllUsesWith(x3);
+        intrin->eraseFromParent();
+    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 4.0))
+    {
+        // pow(x, 4.0) -> (x*x) * (x*x)
+        Value* x2 = irb.CreateFMul(base, base);
+        Value* x4 = irb.CreateFMul(x2, x2);
+        intrin->replaceAllUsesWith(x4);
+        intrin->eraseFromParent();
+    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 5.0))
+    {
+        // pow(x, 5.0) -> (x*x) * (x*x) * x
+        Value* x2 = irb.CreateFMul(base, base);
+        Value* x4 = irb.CreateFMul(x2, x2);
+        Value* x5 = irb.CreateFMul(x4, base);
+        intrin->replaceAllUsesWith(x5);
+        intrin->eraseFromParent();
+    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 6.0))
+    {
+        // pow(x, 6.0) -> (x*x) * (x*x) * (x*x)
+        Value* x2 = irb.CreateFMul(base, base);
+        Value* x4 = irb.CreateFMul(x2, x2);
+        Value* x6 = irb.CreateFMul(x4, x2);
+        intrin->replaceAllUsesWith(x6);
+        intrin->eraseFromParent();
+    }
+    else if (exponent == ConstantFP::get(exponent->getType(), 8.0))
+    {
+        // pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
+        Value* x2 = irb.CreateFMul(base, base);
+        Value* x4 = irb.CreateFMul(x2, x2);
+        Value* x8 = irb.CreateFMul(x4, x4);
+        intrin->replaceAllUsesWith(x8);
+        intrin->eraseFromParent();
+    }
+    else if (isPow && IGC_IS_FLAG_ENABLED(EnablePowToLogMulExp))
+    {
+        // pow(x, y) -> exp2(log2(x) * y)
+        Function* logf = Intrinsic::getDeclaration(
+            m_ctx->getModule(), Intrinsic::log2, base->getType());
+        Function* expf = Intrinsic::getDeclaration(
+            m_ctx->getModule(), Intrinsic::exp2, base->getType());
+        CallInst* logv = irb.CreateCall(logf, base);
+        Value* mulv = irb.CreateFMul(logv, exponent);
+        CallInst* expv = irb.CreateCall(expf, mulv);
+        intrin->replaceAllUsesWith(expv);
+        intrin->eraseFromParent();
+    }
 }
 
 void CustomUnsafeOptPass::visitCallInst(llvm::CallInst& I)
 {
-    if (llvm::IntrinsicInst * intr = dyn_cast<llvm::IntrinsicInst>(&I))
+    if (llvm::IntrinsicInst* intr = dyn_cast<llvm::IntrinsicInst>(&I))
     {
-        llvm::Intrinsic::ID ID = intr->getIntrinsicID();
+        const llvm::Intrinsic::ID ID = intr->getIntrinsicID();
         if (ID == llvm::Intrinsic::pow)
         {
-            strengthReducePow(intr, intr->getOperand(1));
+            strengthReducePowOrExpLog(intr, intr->getOperand(0), intr->getOperand(1), true /* isPow */);
+        }
+        else if (ID == Intrinsic::exp2)
+        {
+            llvm::BinaryOperator* mul = dyn_cast<BinaryOperator>(intr->getOperand((0)));
+            if (mul && mul->getOpcode() == Instruction::FMul)
+            {
+                for (uint j = 0; j < 2; j++)
+                {
+                    llvm::IntrinsicInst* log = dyn_cast<IntrinsicInst>(mul->getOperand(j));
+                    if (log && log->getIntrinsicID() == Intrinsic::log2)
+                    {
+                        strengthReducePowOrExpLog(intr, log->getOperand(0), mul->getOperand(1 - j), false /* isPow */);
+                    }
+                }
+            }
         }
         else if (ID == llvm::Intrinsic::sqrt)
         {
             // y*y = x if y = sqrt(x).
             for (auto iter = intr->user_begin(); iter != intr->user_end(); iter++)
             {
-                if (llvm::Instruction * mul = dyn_cast<Instruction>(*iter))
+                if (llvm::Instruction* mul = dyn_cast<Instruction>(*iter))
                 {
                     if (mul->getOpcode() == Instruction::FMul &&
                         mul->getOperand(0) == mul->getOperand(1))
