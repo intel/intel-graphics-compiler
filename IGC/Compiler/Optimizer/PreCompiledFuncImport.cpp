@@ -1947,7 +1947,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
         CallInst* cInst = dyn_cast<CallInst>(*U);
         if (!cInst)
         {
-            m_pCtx->EmitError(" undefined reference to `jmp()' ");
+            m_pCtx->EmitError(" undefined reference to `jmp()' ", *U);
             return;
         }
         Function* parent_func = cInst->getParent()->getParent();

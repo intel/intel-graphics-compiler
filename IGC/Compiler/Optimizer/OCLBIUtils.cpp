@@ -196,7 +196,7 @@ void CImagesBI::verifyCommand()
 {
     if (m_IncorrectBti)
     {
-        m_pCodeGenContext->EmitError("Inconsistent use of image!");
+        m_pCodeGenContext->EmitError("Inconsistent use of image!", NULL);
     }
 }
 
@@ -367,7 +367,7 @@ public:
         ConstantInt* samplerIndex = nullptr;
         Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD);
         if (!samplerParam) {
-            m_pCodeGenContext->EmitError("There are instructions that use a sampler, but no sampler found in the kernel!");
+            m_pCodeGenContext->EmitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
             return nullptr;
         }
 

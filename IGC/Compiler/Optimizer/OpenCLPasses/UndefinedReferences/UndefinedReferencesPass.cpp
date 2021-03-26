@@ -127,7 +127,7 @@ bool UndefinedReferencesPass::runOnModule(Module& M)
     {
         if (!errorMessage.empty())
         {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str());
+            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str(), nullptr);
         }
     }
 
