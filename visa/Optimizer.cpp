@@ -6907,7 +6907,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         for (auto E = bb->end(); I != E; ++I)
         {
             G4_INST* inst = *I;
-            if (inst->isSend() || inst->isOptBarrier())
+            if (inst->isSend() || inst->isCFInst() || inst->isLabel() || inst->isOptBarrier())
             {
                 break;
             }
@@ -6951,6 +6951,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
             G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
             G4_INST* movInst = builder.createMov(g4::SIMD8, movDst, movSrc, InstOpt_WriteEnable, false);
+            movInst->setComments("memory fence commit");
             bb->insertBefore(nextIter, movInst);
         }
         return true;
