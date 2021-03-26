@@ -201,6 +201,25 @@ printf_arg_impl(vector<BufferElementTy, TransferDataSize> TransferData,
   return TransferData;
 }
 
+// String argument requires a special treatment.
+// It could've been covered in standard arg routine, but in this case pointer
+// would have to pass through several bitcast, plus under condition. It would
+// cause some problems as llvm.genx.print.format.index should get pointer
+// directly from global constant. It would require several IR transformations
+// to get rid of those bitcasts and conditions. Which can be avoided by this
+// "specialization" for string argument.
+template <typename T>
+vector<BufferElementTy, TransferDataSize>
+printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
+                    T *String) {
+  uintptr_t CurAddress = getCurAddress(TransferData);
+  BufferElementTy Index = detail::printf_format_index(String);
+  CurAddress = writeElementToBuffer(CurAddress, ArgCode::String);
+  CurAddress = writeElementToBuffer(CurAddress, Index);
+  setCurAddress(TransferData, CurAddress);
+  return TransferData;
+}
+
 // Getting printf return value here.
 static int
 printf_ret_impl(vector<BufferElementTy, TransferDataSize> TransferData) {
@@ -230,6 +249,20 @@ __vc_printf_arg(cl_vector<BufferElementTy, TransferDataSize> TransferData,
                 ArgKind::Enum Kind,
                 cl_vector<BufferElementTy, ArgData::Size> Arg) {
   return printf_arg_impl(TransferData, Kind, Arg).cl_vector();
+}
+
+extern "C" cl_vector<BufferElementTy, TransferDataSize>
+__vc_printf_arg_str(cl_vector<BufferElementTy, TransferDataSize> TransferData,
+                    __constant char *String) {
+  return printf_arg_str_impl(TransferData, String).cl_vector();
+}
+
+// legacy VC IR has no address spaces, so every pointer is "private".
+extern "C" cl_vector<BufferElementTy, TransferDataSize>
+__vc_printf_arg_str_legacy(
+    cl_vector<BufferElementTy, TransferDataSize> TransferData,
+    __private char *String) {
+  return printf_arg_str_impl(TransferData, String).cl_vector();
 }
 
 extern "C" int

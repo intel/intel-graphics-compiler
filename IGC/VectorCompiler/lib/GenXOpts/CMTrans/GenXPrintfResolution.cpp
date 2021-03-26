@@ -73,10 +73,11 @@ using namespace llvm;
 using namespace vc::bif::printf;
 
 namespace PrintfImplFunc {
-enum Enum { Init, Fmt, FmtLegacy, Arg, Ret, Size };
+enum Enum { Init, Fmt, FmtLegacy, Arg, ArgStr, ArgStrLegacy, Ret, Size };
 static constexpr const char *Name[Size] = {
-    "__vc_printf_init", "__vc_printf_fmt", "__vc_printf_fmt_legacy",
-    "__vc_printf_arg", "__vc_printf_ret"};
+    "__vc_printf_init", "__vc_printf_fmt",     "__vc_printf_fmt_legacy",
+    "__vc_printf_arg",  "__vc_printf_arg_str", "__vc_printf_arg_str_legacy",
+    "__vc_printf_ret"};
 } // namespace PrintfImplFunc
 
 static constexpr int FormatStringAddrSpace = 2;
@@ -104,6 +105,8 @@ private:
   CallInst &createPrintfFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
   CallInst &createPrintfArgCall(CallInst &OrigPrintf, CallInst &PrevCall,
                                 Value &Arg);
+  CallInst &createPrintfArgStrCall(CallInst &OrigPrintf, CallInst &PrevCall,
+                                   Value &Arg);
   CallInst &createPrintfRetCall(CallInst &OrigPrintf, CallInst &PrevCall);
 };
 } // namespace
@@ -241,6 +244,8 @@ static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
   FuncTys[PrintfImplFunc::Arg] = FunctionType::get(
       TransferDataTy, {TransferDataTy, Type::getInt32Ty(Ctx), ArgDataTy},
       IsVarArg);
+  FuncTys[PrintfImplFunc::ArgStr] = FuncTys[PrintfImplFunc::Fmt];
+  FuncTys[PrintfImplFunc::ArgStrLegacy] = FuncTys[PrintfImplFunc::FmtLegacy];
   FuncTys[PrintfImplFunc::Ret] =
       FunctionType::get(Type::getInt32Ty(Ctx), TransferDataTy, IsVarArg);
   return FuncTys;
@@ -442,12 +447,33 @@ static Value &getArgAsVector(Value &Arg, IRBuilder<> &IRB,
   return get32BitIntArgAsVector(Arg32Bit, IRB, DL);
 }
 
+// Create call to printf argument handler implementation for string argument
+// (%s). Strings require a separate implementation.
+CallInst &GenXPrintfResolution::createPrintfArgStrCall(CallInst &OrigPrintf,
+                                                       CallInst &PrevCall,
+                                                       Value &Arg) {
+  assertPrintfCall(OrigPrintf);
+  IRBuilder<> IRB{&OrigPrintf};
+  auto StrAS = cast<PointerType>(Arg.getType())->getAddressSpace();
+  if (StrAS == FormatStringAddrSpace)
+    return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::ArgStr],
+                           {&PrevCall, &Arg},
+                           OrigPrintf.getName() + ".printf.arg");
+  IGC_ASSERT_MESSAGE(StrAS == LegacyFormatStringAddrSpace,
+                     "unexpected address space for a string argument");
+  return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::ArgStrLegacy],
+                         {&PrevCall, &Arg},
+                         OrigPrintf.getName() + ".printf.arg");
+}
+
 CallInst &GenXPrintfResolution::createPrintfArgCall(CallInst &OrigPrintf,
                                                     CallInst &PrevCall,
                                                     Value &Arg) {
   assertPrintfCall(OrigPrintf);
   ArgKind::Enum Kind = getArgKind(*Arg.getType());
   IRBuilder<> IRB{&OrigPrintf};
+  if (Kind == ArgKind::String)
+    return createPrintfArgStrCall(OrigPrintf, PrevCall, Arg);
   Value &ArgVec = getArgAsVector(Arg, IRB, *DL);
   return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Arg],
                          {&PrevCall, IRB.getInt32(Kind), &ArgVec},
