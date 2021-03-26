@@ -1638,18 +1638,6 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
            ) ||
         dstNotAlignedToExecType)
     {
-        /*
-         * 10.3
-         * For byte dst type:
-         * 1. no 1 horstride
-         * 2. no odd start subreg
-         * There is only one excpetion - raw mov op
-         * Raw means src operand has no attribute.
-         *
-         * Note: Actually all these cases are now controlled
-         *       by extypesize value.
-         */
-
         if (inst->isRawMov() &&
             (dst_byte_offset % extypesize == 0 ||
             (byteDst && dst_byte_offset % extypesize == 1)))
@@ -1674,8 +1662,9 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
             {
                 intHFConversion = true;
             }
-            // we allow packed destination for F to HF.
-            if (builder.getPlatform() >= GENX_CHV && !intHFConversion && inst->isMixedMode())
+            // F to packed HF operations are handled specially later
+            bool FtoHFMov = dst->getType() == Type_HF && src0->getType() == Type_F;
+            if (builder.getPlatform() >= GENX_CHV && !intHFConversion && (inst->isMixedMode() || (builder.hasFtoPackedHFMove() && FtoHFMov)))
             {
                 return insertMOV;
             }
