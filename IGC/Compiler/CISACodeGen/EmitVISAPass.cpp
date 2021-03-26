@@ -963,28 +963,28 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
-    {
-        if ((IGC_GET_FLAG_VALUE(FunctionControl) < FLAG_FCALL_FORCE_STACKCALL) ||
-            ((OpenCLProgramContext*)(m_currShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
-        {
-            DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
-        }
-        ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->getCurrentVISA());
-        if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP())
-        {
-            // Stack calls in use. Nothing is needed to be marked as Output.
-            // Just setting frame pointer is required for debug info when stack calls are in use.
-            scVISAMod->setFramePtr(m_currShader->GetFP());
-        }
-    }
-    else
-    {
-        m_currShader->GetDebugInfoData()->markOutput(F, m_currShader);
-    }
-
     if (m_currShader->GetDebugInfoData())
     {
+        if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
+        {
+            if ((IGC_GET_FLAG_VALUE(FunctionControl) < FLAG_FCALL_FORCE_STACKCALL) ||
+                ((OpenCLProgramContext*)(m_currShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
+            {
+                DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);
+            }
+            ScalarVisaModule* scVISAMod = (ScalarVisaModule*)(m_pDebugEmitter->getCurrentVISA());
+            if (!scVISAMod->getPerThreadOffset() && m_currShader->hasFP())
+            {
+                // Stack calls in use. Nothing is needed to be marked as Output.
+                // Just setting frame pointer is required for debug info when stack calls are in use.
+                scVISAMod->setFramePtr(m_currShader->GetFP());
+            }
+        }
+        else
+        {
+            m_currShader->GetDebugInfoData()->markOutput(F, m_currShader);
+        }
+
         m_currShader->GetDebugInfoData()->addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
         m_currShader->GetDebugInfoData()->transferMappings(F);
     }
