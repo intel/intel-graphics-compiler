@@ -4574,13 +4574,19 @@ void FlowGraph::print(std::ostream& OS) const
         << (builder->getIsKernel() ? " [kernel]" : " [non-kernel function]")
         << "\n\n";
     for (auto BB : BBs) {
-        BB->dump(OS);
+        BB->print(OS);
     }
 }
 
 void FlowGraph::dump() const
 {
     print(std::cerr);
+}
+
+void FlowGraph::dumptofile(const char* Filename) const
+{
+    std::fstream ofile(Filename, std::ios::out);
+    print(ofile);
 }
 
 FlowGraph::~FlowGraph()

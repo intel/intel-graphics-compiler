@@ -643,7 +643,8 @@ public:
     void findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDivergentBBs);
 
     void print(std::ostream& OS) const;
-    void dump() const;
+    void dump() const;  // used in debugger
+    void dumptofile(const char* Filename) const; // used in debugger
 private:
     // Use normalized region descriptors for each source operand if possible.
     void normalizeRegionDescriptors();

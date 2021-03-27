@@ -321,7 +321,8 @@ public:
     /// Dump instructions into the standard error.
     const char* getBBTypeStr() const;
 
-    void dump(std::ostream& os = std::cerr) const;
+    void print(std::ostream& os = std::cerr) const;
+    void dump() const;  // used in debugger
     void dumpDefUse(std::ostream& os = std::cerr) const;
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]

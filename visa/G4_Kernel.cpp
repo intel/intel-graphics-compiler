@@ -577,9 +577,14 @@ void G4_Kernel::evalAddrExp()
     }
 }
 
-void G4_Kernel::dump(std::ostream& OS) const
+void G4_Kernel::dump() const
 {
-    fg.print(OS);
+    fg.print(std::cerr);
+}
+
+void G4_Kernel::dumptofile(const char* Filename) const
+{
+    fg.dumptofile(Filename);
 }
 
 void G4_Kernel::dumpDotFile(const char* appendix)

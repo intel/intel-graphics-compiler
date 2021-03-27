@@ -1454,7 +1454,12 @@ const char* G4_BB::getBBTypeStr() const
     return " ";
 }
 
-void G4_BB::dump(std::ostream& OS) const
+void G4_BB::dump() const
+{
+    print(std::cerr);
+}
+
+void G4_BB::print(std::ostream& OS) const
 {
     OS << "BB" << getId() << ":";
     if (getBBType())

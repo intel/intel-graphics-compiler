@@ -251,7 +251,8 @@ public:
     void evalAddrExp();
 
     /// dump this kernel to the standard error
-    void dump(std::ostream& OS = std::cerr) const;
+    void dump() const;  // used in debugger
+    void dumptofile(const char* Filename) const;  // used in debugger
     void dumpDotFile(const char* appendix);
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_RegInfo();
