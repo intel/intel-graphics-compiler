@@ -176,9 +176,9 @@ namespace IGC
 
     struct WorkGroupWalkOrderMD
     {
-    int dim0 = 0;
-    int dim1 = 0;
-    int dim2 = 0;
+        int dim0 = 0;
+        int dim1 = 0;
+        int dim2 = 0;
     };
 
     struct FuncArgMD

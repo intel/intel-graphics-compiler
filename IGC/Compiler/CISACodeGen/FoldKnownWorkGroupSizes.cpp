@@ -95,27 +95,16 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst& I)
     }
     else if (funcName.equals(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE))
     {
-        auto itr = ctx->getMetaDataUtils()->findFunctionsInfoItem(I.getFunction());
+        auto Dims = IGCMetaDataHelper::getThreadGroupDims(
+            *ctx->getMetaDataUtils(),
+            I.getFunction());
 
-        //Check function exists in the metadata
-        if (itr == ctx->getMetaDataUtils()->end_FunctionsInfo())
-            return;
-
-        FunctionInfoMetaDataHandle funcMDHandle = itr->second;
-        ThreadGroupSizeMetaDataHandle tgMD = funcMDHandle->getThreadGroupSize();
-        //Check threadGroup has value
-        if (!tgMD->hasValue())
+        if (!Dims)
             return;
 
         IRBuilder<> IRB(&I);
 
-        uint32_t Dims[] =
-        {
-            (uint32_t)tgMD->getXDim(),
-            (uint32_t)tgMD->getYDim(),
-            (uint32_t)tgMD->getZDim(),
-        };
-        auto* CV = ConstantDataVector::get(I.getContext(), Dims);
+        auto* CV = ConstantDataVector::get(I.getContext(), *Dims);
 
         auto* Dim = I.getArgOperand(0);
         auto* EE = IRB.CreateExtractElement(CV, Dim, "enqueuedLocalSize");
