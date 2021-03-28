@@ -37,77 +37,110 @@ IN THE SOFTWARE.
 #include "Probe/Assertion.h"
 #include "common/VCPlatformSelector.hpp"
 
-namespace iOpenCL {
-  class CGen8CMProgram;
-}
+#include "AdaptorOCL/OCL/sp/spp_g8.h"
 
-namespace cmc {
+namespace vc {
 
 // Interface to compile and package cm kernels into OpenCL binars.
 class CMKernel {
 public:
-    using ArgKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-    using ArgAccessKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
+  using ArgKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
+  using ArgAccessKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
 
-    explicit CMKernel(const PLATFORM& platform);
-    ~CMKernel();
+  explicit CMKernel(const PLATFORM &platform);
+  ~CMKernel();
 
-    PLATFORM m_platform;
-    IGC::SOpenCLKernelInfo m_kernelInfo;
-    IGC::COCLBTILayout m_btiLayout;
-    uint32_t m_GRFSizeInBytes;
+  PLATFORM m_platform;
+  IGC::SOpenCLKernelInfo m_kernelInfo;
+  IGC::COCLBTILayout m_btiLayout;
+  uint32_t m_GRFSizeInBytes;
 
-    // getter for convenience
-    const IGC::SProgramOutput &getProgramOutput() const {
-        IGC_ASSERT_MESSAGE(m_kernelInfo.m_executionEnivronment.CompiledSIMDSize == 1,
-                           "SIMD size is expected to be 1 for CMKernel");
-        return m_kernelInfo.m_kernelProgram.simd1;
-    }
+  // getter for convenience
+  const IGC::SProgramOutput &getProgramOutput() const {
+    IGC_ASSERT_MESSAGE(m_kernelInfo.m_executionEnivronment.CompiledSIMDSize ==
+                           1,
+                       "SIMD size is expected to be 1 for CMKernel");
+    return m_kernelInfo.m_kernelProgram.simd1;
+  }
 
-    // getter for convenience
-    IGC::SProgramOutput &getProgramOutput() {
-        return const_cast<IGC::SProgramOutput&>(
-            static_cast<const CMKernel*>(this)->getProgramOutput());
-    }
+  // getter for convenience
+  IGC::SProgramOutput &getProgramOutput() {
+    return const_cast<IGC::SProgramOutput &>(
+        static_cast<const CMKernel *>(this)->getProgramOutput());
+  }
 
-    // General argument
-    void createConstArgumentAnnotation(unsigned argNo, unsigned sizeInBytes,
-                                       unsigned payloadPosition,
-                                       unsigned offsetInArg);
+  // General argument
+  void createConstArgumentAnnotation(unsigned argNo, unsigned sizeInBytes,
+                                     unsigned payloadPosition,
+                                     unsigned offsetInArg);
 
-    // 1D/2D/3D Surface
-    void createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
-                               ArgAccessKind Access);
+  // 1D/2D/3D Surface
+  void createImageAnnotation(unsigned argNo, unsigned BTI, unsigned dim,
+                             ArgAccessKind Access);
 
-    // add a pointer patch token.
-    void createPointerGlobalAnnotation(unsigned index, unsigned offset,
-                                       unsigned sizeInBytes, unsigned BTI,
-                                       ArgAccessKind access);
+  // add a pointer patch token.
+  void createPointerGlobalAnnotation(unsigned index, unsigned offset,
+                                     unsigned sizeInBytes, unsigned BTI,
+                                     ArgAccessKind access);
 
-    void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
-                                     unsigned payloadPosition, int BTI,
-                                     unsigned statelessPrivateMemSize);
+  void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
+                                   unsigned payloadPosition, int BTI,
+                                   unsigned statelessPrivateMemSize);
 
-    // add a stateful buffer patch token.
-    void createBufferStatefulAnnotation(unsigned argNo,
-                                        ArgAccessKind accessKind);
+  // add a stateful buffer patch token.
+  void createBufferStatefulAnnotation(unsigned argNo, ArgAccessKind accessKind);
 
-    // Local or global size
-    void createSizeAnnotation(unsigned payloadPosition, iOpenCL::DATA_PARAMETER_TOKEN type);
+  // Local or global size
+  void createSizeAnnotation(unsigned payloadPosition,
+                            iOpenCL::DATA_PARAMETER_TOKEN type);
 
-    // Global work offset/local work size
-    void createImplicitArgumentsAnnotation(unsigned payloadPosition);
+  // Global work offset/local work size
+  void createImplicitArgumentsAnnotation(unsigned payloadPosition);
 
-    // Sampler
-    void createSamplerAnnotation(unsigned argNo);
+  // Sampler
+  void createSamplerAnnotation(unsigned argNo);
 
-    void RecomputeBTLayout(int numUAVs, int numResources);
+  void RecomputeBTLayout(int numUAVs, int numResources);
 };
 
-} // namespace cmc
+class CGen8CMProgram : public iOpenCL::CGen8OpenCLProgramBase {
+public:
+  class CMProgramCtxProvider
+      : public iOpenCL::CGen8OpenCLStateProcessor::IProgramContext {
+  public:
+    CMProgramCtxProvider() {}
 
-namespace vc {
+    ShaderHash getProgramHash() const override { return {}; }
+    bool needsSystemKernel() const override { return false; }
+    bool isProgramDebuggable() const override { return IsDebuggable; }
+    bool hasProgrammableBorderColor() const override { return false; }
+
+    void updateDebuggableStatus(bool Debuggable) { IsDebuggable = Debuggable; }
+
+  private:
+    bool IsDebuggable = false;
+  };
+
+  explicit CGen8CMProgram(PLATFORM platform);
+  ~CGen8CMProgram();
+
+  // Produce the final ELF binary with the given CM kernels
+  // in OpenCL format.
+  void CreateKernelBinaries();
+  void GetZEBinary(llvm::raw_pwrite_stream &programBinary,
+                   unsigned pointerSizeInBytes) override;
+
+  // CM kernel list.
+  std::vector<CMKernel *> m_kernels;
+
+  // Data structure to create patch token based binaries.
+  std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
+
+  CMProgramCtxProvider m_ContextProvider;
+};
+
 void createBinary(
-    iOpenCL::CGen8CMProgram &CMProgram,
+    CGen8CMProgram &CMProgram,
     const llvm::GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule);
+
 } // namespace vc

@@ -420,7 +420,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   }
   case vc::BinaryKind::OpenCL: {
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
-    iOpenCL::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
+    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
     vc::createBinary(CMProgram, CompileResult);
     CMProgram.CreateKernelBinaries();
     Util::BinaryStream ProgramBinary;
@@ -439,7 +439,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   }
   case vc::BinaryKind::ZE: {
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
-    iOpenCL::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
+    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo()};
     vc::createBinary(CMProgram, CompileResult);
     llvm::SmallVector<char, 0> ProgramBinary;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};

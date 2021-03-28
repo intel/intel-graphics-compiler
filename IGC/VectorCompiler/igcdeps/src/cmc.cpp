@@ -42,7 +42,7 @@ IN THE SOFTWARE.
 
 #include "Probe/Assertion.h"
 
-using namespace cmc;
+using namespace vc;
 using namespace llvm;
 
 CMKernel::CMKernel(const PLATFORM& platform)
@@ -767,7 +767,7 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
 };
 
 void vc::createBinary(
-    iOpenCL::CGen8CMProgram &CMProgram,
+    vc::CGen8CMProgram &CMProgram,
     const GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule) {
   bool ProgramIsDebuggable = false;
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo);

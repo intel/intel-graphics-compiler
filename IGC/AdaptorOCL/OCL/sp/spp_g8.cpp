@@ -31,12 +31,6 @@ IN THE SOFTWARE.
 #include "../../../common/shaderOverride.hpp"
 #include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
-#if defined(IGC_VC_ENABLED)
-#include "common/LLVMWarningsPush.hpp"
-#include "vc/igcdeps/cmc.h"
-#include "common/LLVMWarningsPop.hpp"
-#endif // defined(IGC_VC_ENABLED)
-
 #include <iomanip>
 #include <fstream>
 #include "Probe/Assertion.h"
@@ -393,71 +387,5 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
         }
     }
 }
-
-#if defined(IGC_VC_ENABLED)
-// Implementation of CGen8CMProgram.
-CGen8CMProgram::CGen8CMProgram(PLATFORM platform)
-    : CGen8OpenCLProgramBase(platform, m_ContextProvider)
-    , m_programInfo(new IGC::SOpenCLProgramInfo)
-{
-}
-
-CGen8CMProgram::~CGen8CMProgram()
-{
-    for (auto kernel : m_kernels)
-      delete kernel;
-}
-
-void CGen8CMProgram::CreateKernelBinaries()
-{
-    CreateProgramScopePatchStream(*m_programInfo);
-    for (auto *kernel : m_kernels)
-    {
-        // Create the kernel binary streams.
-        KernelData data;
-        data.kernelBinary = new Util::BinaryStream;
-
-        m_StateProcessor.CreateKernelBinary(
-            reinterpret_cast<const char*>(kernel->getProgramOutput().m_programBin),
-            kernel->getProgramOutput().m_programSize,
-            kernel->m_kernelInfo,
-            *m_programInfo,
-            kernel->m_btiLayout,
-            *(data.kernelBinary),
-            m_pSystemThreadKernelOutput,
-            kernel->getProgramOutput().m_unpaddedProgramSize);
-
-        if (kernel->getProgramOutput().m_debugDataVISASize)
-        {
-            data.kernelDebugData = new Util::BinaryStream();
-            m_StateProcessor.CreateKernelDebugData(
-                reinterpret_cast<const char*>(kernel->getProgramOutput().m_debugDataVISA),
-                kernel->getProgramOutput().m_debugDataVISASize,
-                reinterpret_cast<const char*>(kernel->getProgramOutput().m_debugDataGenISA),
-                kernel->getProgramOutput().m_debugDataGenISASize,
-                kernel->m_kernelInfo.m_kernelName,
-                *(data.kernelDebugData));
-        }
-        m_KernelBinaries.push_back(data);
-    }
-}
-
-void CGen8CMProgram::GetZEBinary(
-    llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
-{
-    ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8, *m_programInfo, nullptr, 0};
-    zebuilder.setGfxCoreFamilyToELFMachine(m_Platform.eRenderCoreFamily);
-
-    for (auto *kernel : m_kernels)
-    {
-        zebuilder.createKernel(
-            reinterpret_cast<const char*>(kernel->getProgramOutput().m_programBin),
-            kernel->getProgramOutput().m_programSize,
-            kernel->m_kernelInfo,
-            kernel->m_GRFSizeInBytes);
-    }
-    zebuilder.getBinaryObject(programBinary);
-}
-#endif // defined(IGC_VC_ENABLED)
 
 } // namespace iOpenCL

@@ -42,11 +42,6 @@ namespace IGC
     struct SProgramOutput;
 };
 
-namespace cmc
-{
-    class CMKernel;
-};
-
 namespace iOpenCL
 {
 
@@ -135,43 +130,6 @@ private:
     CLProgramCtxProvider m_ContextProvider;
 };
 
-#if defined(IGC_VC_ENABLED)
-class CGen8CMProgram : public CGen8OpenCLProgramBase {
-public:
-    class CMProgramCtxProvider : public CGen8OpenCLStateProcessor::IProgramContext {
-    public:
-        CMProgramCtxProvider() {}
-
-        ShaderHash getProgramHash() const override  { return {}; }
-        bool needsSystemKernel() const  override { return false; }
-        bool isProgramDebuggable() const override  { return IsDebuggable; }
-        bool hasProgrammableBorderColor() const override { return false ; }
-
-        void updateDebuggableStatus(bool Debuggable) {
-            IsDebuggable = Debuggable;
-        }
-    private:
-        bool IsDebuggable = false;
-    };
-
-    explicit CGen8CMProgram(PLATFORM platform);
-    ~CGen8CMProgram();
-
-    // Produce the final ELF binary with the given CM kernels
-    // in OpenCL format.
-    void CreateKernelBinaries();
-    void GetZEBinary(llvm::raw_pwrite_stream& programBinary,
-        unsigned pointerSizeInBytes) override;
-
-    // CM kernel list.
-    std::vector<cmc::CMKernel*> m_kernels;
-
-    // Data structure to create patch token based binaries.
-    std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
-
-    CMProgramCtxProvider m_ContextProvider;
-};
-#endif // defined(IGC_VC_ENABLED)
 }
 
 #endif //SPP_G8_H
