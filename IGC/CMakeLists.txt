@@ -1326,20 +1326,6 @@ if(NOT ANDROID)
   add_compile_definitions(CL_KHR_FP64_EXT)
 endif()
 
-#NOTE: CMake defines some of compile definitions in compiler flags. We have to make sure that
-#      NDEBUG is not one of them when assert build flag is set
-
-if(_ASSERTBUILD)
-if(MSVC)
-  set(_flagToRemove "/D[ ]*NDEBUG")
-elseif(_igc_compiler_is_gnu_or_clang)
-  set(_flagToRemove "-DNDEBUG")
-endif()
-igc_flag_remove_re(CMAKE_C_FLAGS                          "${_flagToRemove}")
-igc_flag_remove_re(CMAKE_CXX_FLAGS                        "${_flagToRemove}")
-unset(_flagToRemove)
-endif()
-
 add_compile_definitions("$<$<CONFIG:Release>:NDEBUG>")
 
 if(DEFINED ENV{TEST_P4_CHANGELIST})
