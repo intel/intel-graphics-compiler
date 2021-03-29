@@ -1226,15 +1226,42 @@ endif()
 # + ENABLE_REGISTRY_READ      if cfg:Debug
 
 add_compile_definitions(
-      _IGC_
-      GHAL3D=USC
-      _HAS_EXCEPTIONS=0
-      IGC_EXPORTS=1
-      USC_EXPORTS=1
-      ISTDLIB_UMD
-      IGC_CMAKE
-      __STDC_CONSTANT_MACROS
-      __STDC_LIMIT_MACROS
+    _IGC_
+    GHAL3D=USC
+    _HAS_EXCEPTIONS=0
+    IGC_EXPORTS=1
+    USC_EXPORTS=1
+    ISTDLIB_UMD
+    IGC_CMAKE
+    __STDC_CONSTANT_MACROS
+    __STDC_LIMIT_MACROS
+    _SCL_SECURE_NO_WARNINGS
+    _CRT_SECURE_NO_WARNINGS
+    NOMINMAX
+    STD_CALL
+    INSIDE_PLUGIN
+    _COMPILER_DLL_
+    $<$<CONFIG:Debug>:_DEBUG>
+    $<$<CONFIG:Debug>:ENABLE_REGISTRY_READ>
+    $<$<CONFIG:Debug>:USC_DXX>
+    $<$<CONFIG:Release>:NDEBUG>
+    $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},4>:_X86_=1>
+    $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},4>:i386=1>
+    $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>:_AMD64_>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:ICBE_LINUX>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:LINUX>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_MMX>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSE>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSE2>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSE3>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Linux>:USE_SSSE3>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:ICBE_LHDM>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:_WIN32>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:"WIN32">
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:WIN32_LEAN_AND_MEAN=1>
+    $<$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>:WINNT=1>
+    $<$<AND:$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>,$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>>:_WIN64>
+    $<$<AND:$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>,$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>>:WIN64>
     )
 
 if(DEFINED VME_TYPES_DEFINED)
@@ -1256,77 +1283,15 @@ if(IGC_BUILD__VC_ENABLED)
       IGC_VC_ENABLED
     )
 endif()
-add_compile_definitions(
-  _SCL_SECURE_NO_WARNINGS
-  _CRT_SECURE_NO_WARNINGS
-  NOMINMAX
-  STD_CALL
-  INSIDE_PLUGIN
-  _COMPILER_DLL_
-  )
 
 # Additional definitions for vISA projects.
 set(IGC_BUID__VISA_COMPILE_DEFINITIONS
     DLL_MODE
   )
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  add_compile_definitions(
-    _AMD64_
-    )
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
-  add_compile_definitions(
-    _X86_=1
-    i386=1
-    )
-endif()
-
-if(LLVM_ON_WIN32)
-  # NOTE: _WIN32 should be defined by compiler.
-  # TODO: WIN32 definition is used differently depending on project.
-  add_compile_definitions(
-      ICBE_LHDM
-      _WIN32
-      "WIN32"
-      WIN32_LEAN_AND_MEAN=1
-      WINNT=1
-    )
-
-  # NOTE: _WIN64 should be defined by compiler.
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    add_compile_definitions(
-        _WIN64
-        WIN64
-      )
-  endif()
-endif()
-
-if(LLVM_ON_UNIX)
-  add_compile_definitions(
-      ICBE_LINUX
-      LINUX
-
-      USE_MMX
-      USE_SSE
-      USE_SSE2
-      USE_SSE3
-      USE_SSSE3
-    )
-endif()
-
-set(DIRECTORY_DEFS
-  _DEBUG
-  USC_DXX
-  ENABLE_REGISTRY_READ
-  )
-add_compile_definitions("$<$<CONFIG:Debug>:${DIRECTORY_DEFS}>")
-
-
 if(NOT ANDROID)
   add_compile_definitions(CL_KHR_FP64_EXT)
 endif()
-
-add_compile_definitions("$<$<CONFIG:Release>:NDEBUG>")
 
 if(DEFINED ENV{TEST_P4_CHANGELIST})
   add_compile_definitions(
