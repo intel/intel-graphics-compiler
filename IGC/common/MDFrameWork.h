@@ -45,6 +45,7 @@ const unsigned int INPUT_RESOURCE_SLOT_COUNT = 128;
 const unsigned int NUM_SHADER_RESOURCE_VIEW_SIZE = (INPUT_RESOURCE_SLOT_COUNT + 1) / 64;
 
 const unsigned int g_c_maxNumberOfBufferPushed = 4;
+static const int MAX_VECTOR_SIZE_TO_PRINT_IN_SHADER_DUMPS = 1000;
 
 namespace IGC
 {

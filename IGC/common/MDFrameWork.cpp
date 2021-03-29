@@ -33,6 +33,7 @@ IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 #include "StringMacros.hpp"
+#include "common/igc_regkeys.hpp"
 
 #include <iostream>
 
@@ -187,6 +188,16 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
     for (auto it = vec.begin(); it != vec.end(); ++it)
     {
         nodes.push_back(CreateNode(*(it), module, name.str() + "Vec[" + std::to_string(i++) + "]"));
+        if (IGC_IS_FLAG_DISABLED(ShowFullVectorsInShaderDumps) && i > MAX_VECTOR_SIZE_TO_PRINT_IN_SHADER_DUMPS)
+        {
+            std::string warningMessage = "ShaderDumpEnable Warning! " + name.str() + "Vec[] has " + std::to_string(vec.size())
+                + " elements. Including first " + std::to_string(MAX_VECTOR_SIZE_TO_PRINT_IN_SHADER_DUMPS)
+                + " items in ShaderDumps. To print all elements set ShowFullVectorsInShaderDumps register flag to True. "
+                + "ShaderOverride flag may not work properly without ShowFullVectorsInShaderDumps enabled.";
+            std::cout << warningMessage << std::endl;
+            nodes.push_back(CreateNode(false, module, warningMessage + " ShowFullVectorsInShaderDumps currently equals"));
+            break;
+        }
     }
     MDNode* node = MDNode::get(module->getContext(), nodes);
     return node;
