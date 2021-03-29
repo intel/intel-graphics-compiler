@@ -2629,7 +2629,13 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
   auto *FlagHiZero = Builder.CreateICmpEQ(Src.Hi, Zero, "lower.lzd64.hicmp.");
   auto *LoPathResult = Builder.CreateAdd(VlzdLo, K32, "lower.lzd64.lores.");
   auto *Result =
-      Builder.CreateSelect(FlagHiZero, LoPathResult, VlzdHi, "lower.lzd64.");
+      Builder.CreateSelect(FlagHiZero, LoPathResult, VlzdHi, "lower.lzd32.");
+  // TODO: allow lzd to have type of destination != operand type
+  if (Inst->getType()->getScalarType()->isIntegerTy(64)) {
+    Result = Builder.CreateZExt(Result,
+                                VectorType::getExtendedElementVectorType(VTy32),
+                                "lower.lzd64.");
+  }
   auto *CastedResult =
       scalarizeOrVectorizeIfNeeded(cast<Instruction>(Result), Inst);
   if (CastedResult)
