@@ -108,6 +108,9 @@ private:
   // Some targets do not support i64 ops natively, we have an option to emulate
   bool EmulateLongLong;
 
+  // True if target supports native 64-bit add
+  bool HasAdd64;
+
   // True if codegenerating for OCL runtime.
   bool OCLRuntime;
 

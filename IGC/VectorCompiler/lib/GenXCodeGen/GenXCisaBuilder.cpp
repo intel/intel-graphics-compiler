@@ -6337,9 +6337,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
 
 static void dumpFinalizerArgs(const SmallVectorImpl<const char *> &Argv,
                               StringRef CPU) {
-  // CPU actually is a lie. Finalizer platform names differ from ours.
-  outs() << "Finalizer Parameters:\n\t"
-         << " -platform " << CPU;
+  // NOTE: CPU is not the Platform used by finalizer
+  // The mapping is described by getVisaPlatform from GenXSubtarget.h
+  outs() << "GenXCpu: " << CPU << "\n";
+  outs() << "Finalizer Parameters:\n\t";
   std::for_each(Argv.begin(), Argv.end(),
                 [](const char *Arg) { outs() << " " << Arg; });
   outs() << "\n";
@@ -6359,8 +6360,8 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
                                       BumpPtrAllocator &Alloc) {
   auto Platform = ST.getVisaPlatform();
   // Use SKL for unknown platforms
-  if (Platform == GENX_NONE)
-    Platform = GENX_SKL;
+  if (Platform == TARGET_PLATFORM::GENX_NONE)
+    Platform = TARGET_PLATFORM::GENX_SKL;
 
   // Prepare array of arguments for Builder API.
   StringSaver Saver{Alloc};

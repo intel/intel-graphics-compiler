@@ -67,6 +67,10 @@ def FeatureIntegerDivision: SubtargetFeature<"int_division",
                                              "HasIntegerDivision",
                                              "true",
                                              "supports integer division">;
+def FeatureInstrAdd64: SubtargetFeature<"add64",
+                                       "HasAdd64",
+                                       "true",
+                                       "enable support for native add64 intruction">;
 
 def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
                                     "true", "warn instead of error on callable violation">;
@@ -86,21 +90,29 @@ def : Proc<"generic",         []>;
 def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntegerDivision]>;
 def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntegerDivision,
+                               FeatureInstrAdd64]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntegerDivision]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntegerDivision]>;

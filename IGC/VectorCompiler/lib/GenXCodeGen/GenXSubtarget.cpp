@@ -64,6 +64,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   DisableJumpTables = false;
   WarnCallable = false;
   EmulateLongLong = false;
+  HasAdd64 = false;
   OCLRuntime = false;
   HasSwitchjmp = false;
   HasIntegerDivision = false;
