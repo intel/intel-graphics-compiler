@@ -67,7 +67,7 @@ list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLA
 # HACK. We should use only visa/include without visa internal headers.
 set(VISA_INCLUDE_DIRS ${IGC_BUILD__VISA_DIR})
 
-# --- VC Intrinsics ---
+# --- Options ---
 
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
@@ -94,6 +94,8 @@ if(LLVM_ON_WIN32)
   add_compile_options(/wd4141)
 endif()
 
+# --- VC Intrinsics ---
+
 if(DEFINED VC_INTRINSICS_SRC)
   set(INTRSRC "${VC_INTRINSICS_SRC}/GenXIntrinsics")
 endif()
@@ -107,19 +109,7 @@ message(STATUS "[VC] Using vc-intrinsics source from: ${INTRSRC}")
 set(BUILD_EXTERNAL YES)
 # We are using prebuilt SPIRV and building intrinsics.
 set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
-add_subdirectory(${INTRSRC} ${INTRBUILD})
-# Make separate target for intrinstics headers.
-# Ideally, this should be inside intrinsics, but
-# this breaks in-tree build of intrinsics with LLVM.
-add_library(VCIntrinsicsHeaders INTERFACE)
-target_include_directories(VCIntrinsicsHeaders
-  INTERFACE
-  ${INTRSRC}/include
-  ${INTRBUILD}/include
-  )
-add_dependencies(VCIntrinsicsHeaders
-  GenXIntrinsics
-  )
+add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
 
 include(cmake/spirv.cmake)
 
