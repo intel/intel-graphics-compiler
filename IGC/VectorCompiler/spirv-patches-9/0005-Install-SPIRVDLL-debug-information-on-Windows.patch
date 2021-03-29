@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Victor Mustya <victor.mustya@intel.com>
+Date: Tue, 30 Jun 2020 18:14:24 -0700
+Subject: [PATCH 5/8] Install SPIRVDLL debug information on Windows
+
+---
+ lib/SPIRV/CMakeLists.txt | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
+index 00000000..00000000 100644
+--- a/lib/SPIRV/CMakeLists.txt
++++ b/lib/SPIRV/CMakeLists.txt
+@@ -58,6 +58,12 @@ install(TARGETS SPIRVDLL
+         LIBRARY DESTINATION lib
+         COMPONENT SPIRVDLL)
+ 
++if(WIN32)
++  install(FILES $<TARGET_PDB_FILE:SPIRVDLL>
++          CONFIGURATIONS Debug RelWithDebInfo Release
++          DESTINATION lib)
++endif()
++
+ add_llvm_install_targets(install-SPIRVDLL
+                          DEPENDS SPIRVDLL
+                          COMPONENT SPIRVDLL)
+-- 
+2.31.0
+

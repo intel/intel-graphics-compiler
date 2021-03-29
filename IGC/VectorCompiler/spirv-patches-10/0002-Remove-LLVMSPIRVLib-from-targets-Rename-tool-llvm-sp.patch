@@ -1,20 +1,20 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 11 Jun 2020 15:58:34 +0300
-Subject: [PATCH 3/6] Remove LLVMSPIRVLib from targets Rename tool llvm-spirv
+Subject: [PATCH 2/8] Remove LLVMSPIRVLib from targets Rename tool llvm-spirv
  to llvm-spirv-vc
 
 ---
- lib/SPIRV/CMakeLists.txt        | 23 -----------------------
+ lib/SPIRV/CMakeLists.txt        | 21 ---------------------
  test/CMakeLists.txt             | 12 ------------
  tools/llvm-spirv/CMakeLists.txt |  8 ++------
- 3 files changed, 2 insertions(+), 41 deletions(-)
+ 3 files changed, 2 insertions(+), 39 deletions(-)
 
 diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
-index 0000000..0000000 100755
+index 00000000..00000000 100755
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
-@@ -38,20 +38,6 @@ set(SPIRV_SOURCES
+@@ -37,18 +37,6 @@ set(SPIRV_SOURCES
    libSPIRV/SPIRVValue.cpp
  )
  
@@ -24,8 +24,6 @@ index 0000000..0000000 100755
 -    Analysis
 -    BitWriter
 -    Core
--    IRReader
--    Linker
 -    Support
 -    TransformUtils
 -  DEPENDS
@@ -35,7 +33,7 @@ index 0000000..0000000 100755
  # --- mock: add_llvm_library(SPIRVDLL MODULE ---
  # unfortunately this do not work for llvm build system as is so some magic below
  
-@@ -77,15 +63,6 @@ set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS SPIRVDLL)
+@@ -74,15 +62,6 @@ set_property(GLOBAL APPEND PROPERTY LLVM_EXPORTS SPIRVDLL)
  
  # --- end mock ---
  
@@ -52,7 +50,7 @@ index 0000000..0000000 100755
    PRIVATE
      ${LLVM_INCLUDE_DIRS}
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 0000000..0000000 100644
+index 00000000..00000000 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
 @@ -66,14 +66,6 @@ if(NOT LLVM_SPIRV_BUILD_EXTERNAL)
@@ -81,7 +79,7 @@ index 0000000..0000000 100644
    cmake_policy(POP)
  endif(LLVM_SPIRV_BUILD_EXTERNAL)
 diff --git a/tools/llvm-spirv/CMakeLists.txt b/tools/llvm-spirv/CMakeLists.txt
-index 0000000..0000000 100644
+index 00000000..00000000 100644
 --- a/tools/llvm-spirv/CMakeLists.txt
 +++ b/tools/llvm-spirv/CMakeLists.txt
 @@ -8,17 +8,13 @@ set(LLVM_LINK_COMPONENTS
@@ -95,7 +93,7 @@ index 0000000..0000000 100644
    NO_INSTALL_RPATH
  )
  
--if (LLVM_SPIRV_BUILD_EXTERNAL OR LLVM_LINK_LLVM_DYLIB)
+-if (LLVM_SPIRV_BUILD_EXTERNAL)
 -  target_link_libraries(llvm-spirv PRIVATE LLVMSPIRVLib)
 -endif()
 -
@@ -105,5 +103,5 @@ index 0000000..0000000 100644
      ${LLVM_INCLUDE_DIRS}
      ${LLVM_SPIRV_INCLUDE_DIRS}
 -- 
-2.17.1
+2.31.0
 

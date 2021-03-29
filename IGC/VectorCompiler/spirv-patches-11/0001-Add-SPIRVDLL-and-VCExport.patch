@@ -1,18 +1,21 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: nrudenko <nikita.rudenko@intel.com>
 Date: Thu, 4 Jun 2020 15:20:43 +0300
-Subject: [PATCH 2/6] Add SPIRVDLL and VCExport
+Subject: [PATCH 1/8] Add SPIRVDLL and VCExport
 
 ---
  lib/SPIRV/CMakeLists.txt | 41 +++++++++++++++++-
  lib/SPIRV/VCExport.cpp   | 89 ++++++++++++++++++++++++++++++++++++++++
  lib/SPIRV/VCExport.h     | 28 +++++++++++++
  3 files changed, 157 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 lib/SPIRV/CMakeLists.txt
  create mode 100755 lib/SPIRV/VCExport.cpp
  create mode 100755 lib/SPIRV/VCExport.h
 
 diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
-index 0000000..0000000 100644
+old mode 100644
+new mode 100755
+index 00000000..00000000
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
 @@ -1,4 +1,5 @@
@@ -33,7 +36,7 @@ index 0000000..0000000 100644
    LINK_COMPONENTS
      Analysis
      BitWriter
-@@ -44,6 +49,31 @@ add_llvm_library(LLVMSPIRVLib
+@@ -46,6 +51,31 @@ add_llvm_library(LLVMSPIRVLib
      intrinsics_gen
  )
  
@@ -65,7 +68,7 @@ index 0000000..0000000 100644
  target_include_directories(LLVMSPIRVLib
    PRIVATE
      ${LLVM_INCLUDE_DIRS}
-@@ -52,3 +82,12 @@ target_include_directories(LLVMSPIRVLib
+@@ -54,3 +84,12 @@ target_include_directories(LLVMSPIRVLib
      ${CMAKE_CURRENT_SOURCE_DIR}/libSPIRV
      ${CMAKE_CURRENT_SOURCE_DIR}/Mangler
  )
@@ -80,7 +83,7 @@ index 0000000..0000000 100644
 +)
 diff --git a/lib/SPIRV/VCExport.cpp b/lib/SPIRV/VCExport.cpp
 new file mode 100755
-index 0000000..0000000
+index 00000000..00000000
 --- /dev/null
 +++ b/lib/SPIRV/VCExport.cpp
 @@ -0,0 +1,89 @@
@@ -175,7 +178,7 @@ index 0000000..0000000
 +}
 diff --git a/lib/SPIRV/VCExport.h b/lib/SPIRV/VCExport.h
 new file mode 100755
-index 0000000..0000000
+index 00000000..00000000
 --- /dev/null
 +++ b/lib/SPIRV/VCExport.h
 @@ -0,0 +1,28 @@
@@ -208,5 +211,5 @@ index 0000000..0000000
 +
 +#endif // SPIRV_VCEXPORT_H
 -- 
-2.17.1
+2.31.0
 
