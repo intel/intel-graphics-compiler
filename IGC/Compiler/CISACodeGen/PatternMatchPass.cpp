@@ -4107,7 +4107,7 @@ namespace IGC
                 if (llvm::ConstantInt * channelVal = llvm::dyn_cast<llvm::ConstantInt>(intrin->getOperand(1)))
                 {
                     unsigned int offset = int_cast<unsigned int>(channelVal->getZExtValue());
-                    if (offset < 16)
+                    if (offset < 16 && !isUniform(intrin->getOperand(0)))
                     {
                         sourceMod.elementOffset = offset;
                         // SIMD shuffle force region <0,1;0>
