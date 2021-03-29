@@ -821,6 +821,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                         dcl->setLiveOut();
                     }
                 }
+                mainKernel->getIRBuilder()->getRealR0()->setLiveOut();
             }
 
             if (kernel->getIsKernel() && isInPatchingMode)
