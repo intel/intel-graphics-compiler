@@ -172,6 +172,16 @@ typedef enum {
     ValidStage2Modes(prev_ctx_ptr, stats) \
     )
 
+// CodePatch compilation experimental flags
+typedef enum
+{
+    CODE_PATCH_NO_EXPRIMENT                  = 0,
+    CODE_PATCH_NO_PullSampleIndex            = ( 0x1 << 0x0 ),
+    CODE_PATCH_NO_PullSnapped                = ( 0x1 << 0x1 ),
+    CODE_PATCH_NO_PullCentroid               = ( 0x1 << 0x2 ),
+    CODE_PATCH_NO_ZWDelta                    = ( 0x1 << 0x3 ),
+} CODE_PATCH_FLAG_t;
+
 // Fastest compilation experimental flags
 typedef enum
 {

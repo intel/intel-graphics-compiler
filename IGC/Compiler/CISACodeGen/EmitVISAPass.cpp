@@ -628,14 +628,31 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                             switch(I->getIntrinsicID())
                             {
                                 case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
+                                    {
+                                        if (IGC_GET_FLAG_VALUE(CodePatchFilter) & CODE_PATCH_NO_PullSampleIndex) {
+                                            m_encoder->SetIsCodePatchCandidate(false);
+                                        }
+                                    }
+                                    break;
                                 case GenISAIntrinsic::GenISA_PullSnappedBarys:
+                                    {
+                                        if (IGC_GET_FLAG_VALUE(CodePatchFilter) & CODE_PATCH_NO_PullSnapped) {
+                                            m_encoder->SetIsCodePatchCandidate(false);
+                                        }
+                                    }
+                                    break;
                                 case GenISAIntrinsic::GenISA_PullCentroidBarys:
-                                    m_encoder->SetIsCodePatchCandidate(false);
+                                    {
+                                        if (IGC_GET_FLAG_VALUE(CodePatchFilter) & CODE_PATCH_NO_PullCentroid) {
+                                            m_encoder->SetIsCodePatchCandidate(false);
+                                        }
+                                    }
                                     break;
                                 case GenISAIntrinsic::GenISA_DCL_SystemValue:
                                     {
                                         // This is where we will have ZWDelta
-                                        if (m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER)
+                                        if (IGC_GET_FLAG_VALUE(CodePatchFilter) & CODE_PATCH_NO_ZWDelta &&
+                                            m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER)
                                         {
                                             CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
                                             SGVUsage usage = (SGVUsage)llvm::cast<llvm::ConstantInt>(I->getOperand(0))->getZExtValue();
