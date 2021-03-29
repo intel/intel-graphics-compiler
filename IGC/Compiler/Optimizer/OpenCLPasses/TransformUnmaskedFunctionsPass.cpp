@@ -303,7 +303,9 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
     if (IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)) {
         // Clear function groups to safely remove functions later
         auto m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
-        m_FGA->clear();
+        if( m_FGA ) {
+            m_FGA->clear();
+        }
     }
     // There is a case in Embree where two iterations of inlining is
     // required. Consider such a case:

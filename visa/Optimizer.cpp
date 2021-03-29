@@ -6931,7 +6931,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         G4_INST* inst = *ii;
         G4_InstSend* sendInst = inst->asSendInst();
-        if (sendInst->getMsgDesc()->ResponseLength() > 0)
+        assert(sendInst);
+        if (sendInst && sendInst->getMsgDesc()->ResponseLength() > 0)
         {
             // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
             // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}

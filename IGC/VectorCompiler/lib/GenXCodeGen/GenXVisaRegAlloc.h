@@ -146,12 +146,12 @@ namespace llvm {
     using KernRegMap_t = std::map<genx::SimpleValue, Reg*>;
     using RegMap_t = std::map<const Function*, KernRegMap_t>;
   private:
-    FunctionGroup *FG;
-    GenXLiveness *Liveness;
-    GenXNumbering *Numbering;
-    FunctionGroupAnalysis *FGA;
-    const GenXSubtarget *ST;
-    const GenXBackendConfig *BackendConfig;
+    FunctionGroup *FG = nullptr;
+    GenXLiveness *Liveness = nullptr;
+    GenXNumbering *Numbering = nullptr;
+    FunctionGroupAnalysis *FGA = nullptr;
+    const GenXSubtarget *ST = nullptr;
+    const GenXBackendConfig *BackendConfig = nullptr;
 
     // pushReg callback that will be called once new register is created
     RegPushHook TheRegPushHook = nullptr;
@@ -240,7 +240,7 @@ namespace llvm {
     void addRetIPArgument();
   private:
     unsigned CoalescingCount = 0;
-    Reg* RetIP;
+    Reg* RetIP = nullptr;
   };
 
   namespace visa {

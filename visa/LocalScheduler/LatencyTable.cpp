@@ -135,7 +135,6 @@ uint16_t LatencyTable::getLatencyG12(G4_INST* Inst) const
         return LatenciesXe::ARF;
     }
     if (Inst->isArithmetic()) {
-
         if (Dst->isAccReg())
             return uint16_t(LatenciesXe::FPU_ACC + LatenciesXe::DELTA * Scale);
         return uint16_t(LatenciesXe::FPU + LatenciesXe::DELTA * Scale);

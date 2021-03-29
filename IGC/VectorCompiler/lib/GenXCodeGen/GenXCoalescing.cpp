@@ -315,13 +315,13 @@ namespace {
   // GenX coalescing pass
   class GenXCoalescing : public FunctionGroupPass {
   private:
-    const DataLayout *DL;
-    const GenXSubtarget *ST;
-    GenXBaling *Baling;
-    GenXLiveness *Liveness;
-    GenXNumbering *Numbering;
-    DominatorTreeGroupWrapperPass *DTWrapper;
-    LoopInfoGroupWrapperPass *LIWrapper;
+    const DataLayout *DL = nullptr;
+    const GenXSubtarget *ST = nullptr;
+    GenXBaling *Baling = nullptr;
+    GenXLiveness *Liveness = nullptr;
+    GenXNumbering *Numbering = nullptr;
+    DominatorTreeGroupWrapperPass *DTWrapper = nullptr;
+    LoopInfoGroupWrapperPass *LIWrapper = nullptr;
 
     std::vector<Candidate> CopyCandidates;
     std::vector<Candidate> NormalCandidates;

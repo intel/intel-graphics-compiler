@@ -27,6 +27,7 @@ IN THE SOFTWARE.
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string>
 #include <errno.h>
 #include "MemCopy.h"
 
@@ -546,7 +547,7 @@ inline int CreateAppOutputDir(
         }
         else
         {
-            for (int i = 0; i < defaultBuffSize && cmdline[i] != '\0'; i++)
+            for (int i = 0; i < defaultBuffSize - 1 && cmdline[i] != '\0'; i++)
             {
                 // If $APPNAME launches another process this another process is named "$APPNAME:another_process".
                 if (cmdline[i] == ':')
@@ -556,7 +557,14 @@ inline int CreateAppOutputDir(
                 }
             }
 
-            strcat(cmdlineoutput, cmdline);
+            // checking sizes.
+            size_t srcLen = strnlen( cmdline, defaultBuffSize );
+            size_t dstLen = strnlen( cmdlineoutput, defaultBuffSize );
+            size_t maxCopyLen = defaultBuffSize - 1 - dstLen;
+            size_t copyLen = srcLen < maxCopyLen ? srcLen : maxCopyLen;
+
+            // using safe macro.
+            STRCPY(cmdlineoutput, copyLen, cmdline);
             char* pch = strrchr(cmdlineoutput, '/');
             unsigned int i = 0;
             if (pch != NULL)

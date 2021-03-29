@@ -85,7 +85,7 @@ static constexpr int LegacyFormatStringAddrSpace = 0;
 
 namespace {
 class GenXPrintfResolution final : public ModulePass {
-  const DataLayout *DL;
+  const DataLayout *DL = nullptr;
   std::array<FunctionCallee, PrintfImplFunc::Size> PrintfImplDecl;
 
 public:
