@@ -37,29 +37,29 @@ IN THE SOFTWARE.
 
 #define DEF_ATOM_1SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                       \
             Device,                                                                     \
             Relaxed);                                                                   \
 } \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                       \
             Device,                                                                     \
             Relaxed);                                                                   \
 }
 
 #define DEF_ATOM_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
             Relaxed,                                                                     \
             val);                                                                        \
 } \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
             Relaxed,                                                                     \
             val);                                                                        \
@@ -67,8 +67,8 @@ INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE val)
 
 #define DEF_ATOM_3SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
             Relaxed,                                                                     \
             Relaxed,                                                                     \
@@ -76,8 +76,8 @@ INLINE OCL_TYPE OVERLOADABLE atom_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_
             cmp);                                                                        \
 } \
 INLINE OCL_TYPE OVERLOADABLE atom_##KEY(__##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
             Relaxed,                                                                     \
             Relaxed,                                                                     \
@@ -118,14 +118,14 @@ DEF_ATOM_2SRC(xchg, local, uint, Exchange, p3, i32, int)
 // atomic_min
 DEF_ATOM_2SRC(min, global, int, SMin, p1, i32, int)
 DEF_ATOM_2SRC(min, local, int, SMin, p3, i32, int)
-DEF_ATOM_2SRC(min, global, uint, UMin, p1, i32, uint)
-DEF_ATOM_2SRC(min, local, uint, UMin, p3, i32, uint)
+DEF_ATOM_2SRC(min, global, uint, UMin, p1, i32, int)
+DEF_ATOM_2SRC(min, local, uint, UMin, p3, i32, int)
 
 // atomic_max
 DEF_ATOM_2SRC(max, global, int, SMax, p1, i32, int)
 DEF_ATOM_2SRC(max, local, int, SMax, p3, i32, int)
-DEF_ATOM_2SRC(max, global, uint, UMax, p1, i32, uint)
-DEF_ATOM_2SRC(max, local, uint, UMax, p3, i32, uint)
+DEF_ATOM_2SRC(max, global, uint, UMax, p1, i32, int)
+DEF_ATOM_2SRC(max, local, uint, UMax, p3, i32, int)
 
 // atomic_and
 DEF_ATOM_2SRC(and, global, int, And, p1, i32, int)
@@ -186,14 +186,14 @@ DEF_ATOM_2SRC(xchg, local, ulong, Exchange, p3, i64, long)
 // atom_min
 DEF_ATOM_2SRC(min, global, long, SMin, p1, i64, long)
 DEF_ATOM_2SRC(min, local, long, SMin, p3, i64, long)
-DEF_ATOM_2SRC(min, global, ulong, UMin, p1, i64, ulong)
-DEF_ATOM_2SRC(min, local, ulong, UMin, p3, i64, ulong)
+DEF_ATOM_2SRC(min, global, ulong, UMin, p1, i64, long)
+DEF_ATOM_2SRC(min, local, ulong, UMin, p3, i64, long)
 
 // atom_max
 DEF_ATOM_2SRC(max, global, long, SMax, p1, i64, long)
 DEF_ATOM_2SRC(max, local, long, SMax, p3, i64, long)
-DEF_ATOM_2SRC(max, global, ulong, UMax, p1, i64, ulong)
-DEF_ATOM_2SRC(max, local, ulong, UMax, p3, i64, ulong)
+DEF_ATOM_2SRC(max, global, ulong, UMax, p1, i64, long)
+DEF_ATOM_2SRC(max, local, ulong, UMax, p3, i64, long)
 
 // atom_and
 DEF_ATOM_2SRC(and, global, long, And, p1, i64, long)
@@ -227,16 +227,16 @@ DEF_ATOM_3SRC(cmpxchg, local, ulong, CompareExchange, p3, i64, long)
 
 #define DEF_ATOMIC_1SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
 INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                       \
             Device,                                                                     \
             Relaxed);                                                                   \
 }
 
 #define DEF_ATOMIC_2SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
 INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE val) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                        \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
             Relaxed,                                                                     \
             val);                                                                        \
@@ -244,8 +244,8 @@ INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OC
 
 #define DEF_ATOMIC_3SRC(KEY, ADDRSPACE, OCL_TYPE, OPCODE, ADDRSPACE_ABBR, IGC_TYPE_ABBR, IGC_TYPE) \
 INLINE OCL_TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE OCL_TYPE *p, OCL_TYPE cmp, OCL_TYPE val) { \
-    return SPIRV_BUILTIN(Atomic##OPCODE, _##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_i32_##IGC_TYPE_ABBR, )( \
-            (__##ADDRSPACE IGC_TYPE *)p,                                                 \
+    return __builtin_spirv_OpAtomic##OPCODE##_##ADDRSPACE_ABBR##IGC_TYPE_ABBR##_i32_i32_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile __##ADDRSPACE IGC_TYPE *)p,                                        \
             Device,                                                                      \
             Relaxed,                                                                     \
             Relaxed,                                                                     \
@@ -292,14 +292,14 @@ DEF_ATOMIC_2SRC(xchg, local, double, Exchange, p3, f64, double)
 // atomic_min
 DEF_ATOMIC_2SRC(min, global, int, SMin, p1, i32, int)
 DEF_ATOMIC_2SRC(min, local, int, SMin, p3, i32, int)
-DEF_ATOMIC_2SRC(min, global, uint, UMin, p1, i32, uint)
-DEF_ATOMIC_2SRC(min, local, uint, UMin, p3, i32, uint)
+DEF_ATOMIC_2SRC(min, global, uint, UMin, p1, i32, int)
+DEF_ATOMIC_2SRC(min, local, uint, UMin, p3, i32, int)
 
 // atomic_max
 DEF_ATOMIC_2SRC(max, global, int, SMax, p1, i32, int)
 DEF_ATOMIC_2SRC(max, local, int, SMax, p3, i32, int)
-DEF_ATOMIC_2SRC(max, global, uint, UMax, p1, i32, uint)
-DEF_ATOMIC_2SRC(max, local, uint, UMax, p3, i32, uint)
+DEF_ATOMIC_2SRC(max, global, uint, UMax, p1, i32, int)
+DEF_ATOMIC_2SRC(max, local, uint, UMax, p3, i32, int)
 
 // atomic_and
 DEF_ATOMIC_2SRC(and, global, int, And, p1, i32, int)
@@ -369,8 +369,8 @@ INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE at
 } \
 INLINE OCL_TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order, memory_scope scope) \
 { \
-  return SPIRV_BUILTIN(Atomic##OPCODE, _##ABBR_ADDRSPACE##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR, )( \
-            (ADDRSPACE IGC_TYPE *)object,                                                \
+  return __builtin_spirv_OpAtomic##OPCODE##_##ABBR_ADDRSPACE##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile ADDRSPACE IGC_TYPE *)object,                                       \
             get_spirv_mem_scope(scope),                                                  \
             get_spirv_mem_order(order) |                                                 \
                 get_spirv_mem_fence(get_fence((const ADDRSPACE void *)object)),          \
@@ -382,14 +382,14 @@ ATOMIC_FETCH_FUNCTION_ADDRSPACE(KEY, OCL_TYPE, OPCODE, IGC_TYPE_ABBR, IGC_TYPE, 
 
 #if defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 #define ATOMIC_FETCH_SUPPORTED_TYPES(KEY, OPCODE) \
-ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, int) \
-ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, int) \
-ATOMIC_FETCH_FUNCTION(KEY, long, OPCODE, i64, long) \
-ATOMIC_FETCH_FUNCTION(KEY, ulong, OPCODE, i64, long)
+ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, uint) \
+ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, uint) \
+ATOMIC_FETCH_FUNCTION(KEY, long, OPCODE, i64, ulong) \
+ATOMIC_FETCH_FUNCTION(KEY, ulong, OPCODE, i64, ulong)
 #else
 #define ATOMIC_FETCH_SUPPORTED_TYPES(KEY, OPCODE) \
-ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, int) \
-ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, int)
+ATOMIC_FETCH_FUNCTION(KEY, int, OPCODE, i32, uint) \
+ATOMIC_FETCH_FUNCTION(KEY, uint, OPCODE, i32, uint)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 
 ATOMIC_FETCH_SUPPORTED_TYPES(add, IAdd)
@@ -429,20 +429,20 @@ INLINE void OVERLOADABLE atomic_store_explicit(volatile generic atomic_##OCL_TYP
 } \
 INLINE void OVERLOADABLE atomic_store_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order, memory_scope scope) \
 { \
-   SPIRV_BUILTIN(AtomicStore, _p4##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR, )( \
-            (generic IGC_TYPE *)object,                                                          \
+  __builtin_spirv_OpAtomicStore_p4##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile generic IGC_TYPE *)object,                                                 \
             get_spirv_mem_scope(scope),                                                          \
             get_spirv_mem_order(order) |                                                         \
                 get_spirv_mem_fence(get_fence((const generic void *)object)),                    \
             operand);                                                                            \
 }
 
-ATOMIC_STORE_FUNCTION(int, i32, int)
-ATOMIC_STORE_FUNCTION(uint, i32, int)
+ATOMIC_STORE_FUNCTION(int, i32, uint)
+ATOMIC_STORE_FUNCTION(uint, i32, uint)
 ATOMIC_STORE_FUNCTION(float, f32, float)
 #if defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
-ATOMIC_STORE_FUNCTION(long, i64, long)
-ATOMIC_STORE_FUNCTION(ulong, i64, long)
+ATOMIC_STORE_FUNCTION(long, i64, ulong)
+ATOMIC_STORE_FUNCTION(ulong, i64, ulong)
 ATOMIC_STORE_FUNCTION(double, f64, double)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 
@@ -465,19 +465,19 @@ INLINE OCL_TYPE OVERLOADABLE atomic_load_explicit(volatile generic atomic_##OCL_
 } \
 INLINE OCL_TYPE OVERLOADABLE atomic_load_explicit(volatile generic atomic_##OCL_TYPE *object, memory_order order, memory_scope scope) \
 { \
-  return SPIRV_BUILTIN(AtomicLoad, _p4##IGC_TYPE_ABBR##_i32_i32, )( \
-            (generic IGC_TYPE *)object,                                                          \
+  return __builtin_spirv_OpAtomicLoad_p4##IGC_TYPE_ABBR##_i32_i32( \
+            (volatile generic IGC_TYPE *)object,                                                 \
             get_spirv_mem_scope(scope),                                                          \
             get_spirv_mem_order(order) |                                                         \
                 get_spirv_mem_fence(get_fence((const generic void *)object)));                   \
 }
 
-ATOMIC_LOAD_FUNCTION(int, i32, int)
-ATOMIC_LOAD_FUNCTION(uint, i32, int)
+ATOMIC_LOAD_FUNCTION(int, i32, uint)
+ATOMIC_LOAD_FUNCTION(uint, i32, uint)
 ATOMIC_LOAD_FUNCTION(float, f32, float)
 #if defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
-ATOMIC_LOAD_FUNCTION(long, i64, long)
-ATOMIC_LOAD_FUNCTION(ulong, i64, long)
+ATOMIC_LOAD_FUNCTION(long, i64, ulong)
+ATOMIC_LOAD_FUNCTION(ulong, i64, ulong)
 ATOMIC_LOAD_FUNCTION(double, f64, double)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 
@@ -502,20 +502,20 @@ INLINE OCL_TYPE OVERLOADABLE atomic_exchange_explicit(volatile generic atomic_##
 } \
 INLINE OCL_TYPE OVERLOADABLE atomic_exchange_explicit(volatile generic atomic_##OCL_TYPE *object, OCL_TYPE desired, memory_order order, memory_scope scope) \
 { \
-  return SPIRV_BUILTIN(AtomicExchange, _p4##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR, )( \
-            (generic IGC_TYPE *)object,                                                \
+  return __builtin_spirv_OpAtomicExchange_p4##IGC_TYPE_ABBR##_i32_i32_##IGC_TYPE_ABBR( \
+            (volatile generic IGC_TYPE *)object,                                       \
             get_spirv_mem_scope(scope),                                                \
             get_spirv_mem_order(order) |                                               \
                 get_spirv_mem_fence(get_fence((const generic void *)object)),          \
             desired);                                                                  \
 }
 
-ATOMIC_EXCHANGE_FUNCTION(int, i32, int)
-ATOMIC_EXCHANGE_FUNCTION(uint, i32, int)
+ATOMIC_EXCHANGE_FUNCTION(int, i32, uint)
+ATOMIC_EXCHANGE_FUNCTION(uint, i32, uint)
 ATOMIC_EXCHANGE_FUNCTION(float, f32, float)
 #if defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
-ATOMIC_EXCHANGE_FUNCTION(long, i64, long)
-ATOMIC_EXCHANGE_FUNCTION(ulong, i64, long)
+ATOMIC_EXCHANGE_FUNCTION(long, i64, ulong)
+ATOMIC_EXCHANGE_FUNCTION(ulong, i64, ulong)
 ATOMIC_EXCHANGE_FUNCTION(double, f64, double)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 
@@ -567,7 +567,7 @@ INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH##_explicit(volatile 
 { \
   OCL_TYPE expected_start = (*expected);\
   IGC_TYPE before =                                                                 \
-            SPIRV_BUILTIN(Atomic##OPCODE, _p4##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR, )( \
+            __builtin_spirv_OpAtomic##OPCODE##_p4##IGC_TYPE_ABBR##_i32_i32_i32_##IGC_TYPE_ABBR##_##IGC_TYPE_ABBR( \
                 (volatile generic IGC_TYPE *)object,                                  \
                 get_spirv_mem_scope(scope),                                           \
                 success,                                                              \
@@ -590,17 +590,17 @@ INLINE bool OVERLOADABLE atomic_compare_exchange_##STRENGTH##_explicit(volatile 
   return ret; \
 }
 
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(int, strong, CompareExchange, i32, int)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(uint, strong, CompareExchange, i32, int)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(int, strong, CompareExchange, i32, uint)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(uint, strong, CompareExchange, i32, uint)
 ATOMIC_COMPARE_EXCHANGE_FUNCTION(float, strong, CompareExchange, f32, float)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(int, weak, CompareExchangeWeak, i32, int)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(uint, weak, CompareExchangeWeak, i32, int)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(float, weak, CompareExchangeWeak, i32, int)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(int, weak, CompareExchangeWeak, i32, uint)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(uint, weak, CompareExchangeWeak, i32, uint)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(float, weak, CompareExchangeWeak, i32, uint)
 #if defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(long, strong, CompareExchange, i64, long)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(ulong, strong, CompareExchange, i64, long)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(long, weak, CompareExchangeWeak, i64, long)
-ATOMIC_COMPARE_EXCHANGE_FUNCTION(ulong, weak, CompareExchangeWeak, i64, long)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(long, strong, CompareExchange, i64, ulong)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(ulong, strong, CompareExchange, i64, ulong)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(long, weak, CompareExchangeWeak, i64, ulong)
+ATOMIC_COMPARE_EXCHANGE_FUNCTION(ulong, weak, CompareExchangeWeak, i64, ulong)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 
 // The atomic_flag_test_and_set Functions
@@ -624,7 +624,7 @@ bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile ge
 }
 bool __attribute__((overloadable)) atomic_flag_test_and_set_explicit(volatile generic atomic_flag *object, memory_order order, memory_scope scope)
 {
-    return SPIRV_BUILTIN(AtomicFlagTestAndSet, _p4i32_i32_i32, )(
+    return __builtin_spirv_OpAtomicFlagTestAndSet_p4i32_i32_i32(
         (volatile generic uint *)object,
         get_spirv_mem_scope(scope),
         get_spirv_mem_order(order) |
@@ -651,7 +651,7 @@ void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic a
 }
 void __attribute__((overloadable)) atomic_flag_clear_explicit(volatile generic atomic_flag *object, memory_order order, memory_scope scope)
 {
-    SPIRV_BUILTIN(AtomicFlagClear, _p4i32_i32_i32, )(
+    __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32(
         (volatile generic uint *)object,
         get_spirv_mem_scope(scope),
         get_spirv_mem_order(order) |

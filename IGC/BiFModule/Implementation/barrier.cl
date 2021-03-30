@@ -173,7 +173,7 @@ local __namedBarrier* __builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarr
 static INLINE OVERLOADABLE
 uint AtomicCompareExchange(local uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator)
 {
-    return SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )((local int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
+    return __builtin_spirv_OpAtomicCompareExchange_p3i32_i32_i32_i32_i32_i32((volatile local uint*)Pointer, Scope, Equal, Unequal, Value, Comparator);
 }
 
 static INLINE
@@ -185,19 +185,19 @@ uint SubgroupLocalId()
 static INLINE OVERLOADABLE
 uint AtomicLoad(local uint *Pointer, uint Scope, uint Semantics)
 {
-    return SPIRV_BUILTIN(AtomicLoad, _p3i32_i32_i32, )((local int*)Pointer, Scope, Semantics);
+    return __builtin_spirv_OpAtomicLoad_p3i32_i32_i32((volatile local uint*)Pointer, Scope, Semantics);
 }
 
 static INLINE OVERLOADABLE
 void AtomicStore(local uint *Pointer, uint Scope, uint Semantics, uint Value)
 {
-    SPIRV_BUILTIN(AtomicStore, _p3i32_i32_i32_i32, )((local int*)Pointer, Scope, Semantics, Value);
+    __builtin_spirv_OpAtomicStore_p3i32_i32_i32_i32((volatile local uint*)Pointer, Scope, Semantics, Value);
 }
 
 static INLINE OVERLOADABLE
 uint AtomicInc(local uint *Pointer, uint Scope, uint Semantics)
 {
-    return SPIRV_BUILTIN(AtomicIIncrement, _p3i32_i32_i32, )((local int*)Pointer, Scope, Semantics);
+    return __builtin_spirv_OpAtomicIIncrement_p3i32_i32_i32((volatile local uint*)Pointer, Scope, Semantics);
 }
 
 static INLINE
