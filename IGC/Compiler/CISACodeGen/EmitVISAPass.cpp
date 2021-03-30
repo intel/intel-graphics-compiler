@@ -834,7 +834,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             continue;
         }
 
-        VidAnnotator.trackBlockId(block.bb, i);
+        if (llvmtoVISADump)
+        {
+            VidAnnotator.trackBlockId(block.bb, i);
+        }
 
         if (i != 0)
         {
