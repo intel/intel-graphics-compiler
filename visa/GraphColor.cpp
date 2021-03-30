@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <list>
 #include <sstream>
+#include "SplitAlignedScalars.h"
 
 using namespace vISA;
 
@@ -2106,14 +2107,6 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         }
 
         //
-        // bias all variables that are live through stack calls to get assigned the
-        // callee-save registers
-        //
-        if (kernel.fg.isPseudoVCADcl(lrs[id]->getDcl()))
-        {
-            addCalleeSaveBias(live);
-        }
-        //
         // if the write does not cover the whole dst region, we should continue let the
         // liveness propagate upwards
         //
@@ -2367,6 +2360,31 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
     }
 }
 
+void Interference::applyPartitionBias()
+{
+    // Any variable that interferes with a VCA dcl is live through an fcall.
+    // This function makes such variables callee save biased to avoid save/restore
+    // code around fcall. Save/restore may still be needed in case this is a
+    // stack call function (vs kernel), but a single save/restore sequence can
+    // free the callee save register throughout the function.
+    for (unsigned int i = 0; i != liveAnalysis->getNumSelectedGlobalVar(); i++)
+    {
+        if (kernel.fg.isPseudoVCADcl(lrs[i]->getDcl()))
+        {
+            const auto& intfs = sparseIntf[i];
+            for (const auto edge : intfs)
+            {
+                // no point adding bias to any variable already assigned
+                if (lrs[edge]->getPhyReg())
+                    continue;
+
+                lrs[edge]->setCalleeSaveBias(true);
+                lrs[edge]->setCallerSaveBias(false);
+            }
+        }
+    }
+}
+
 void Interference::computeInterference()
 {
     startTimer(TimerID::INTERFERENCE);
@@ -2423,6 +2441,12 @@ void Interference::computeInterference()
     aug.augmentIntfGraph();
 
     generateSparseIntfGraph();
+
+    // apply callee save bias after augmentation as interference graph is up-to-date.
+    if (kernel.fg.getHasStackCalls())
+    {
+        applyPartitionBias();
+    }
 }
 
 #define SPARSE_INTF_VEC_SIZE 64
@@ -9479,6 +9503,12 @@ int GlobalRA::coloringRegAlloc()
 
     bool rematDone = false;
     VarSplit splitPass(*this);
+    if (kernel.getOption(vISA_SplitGRFAlignedScalar))
+    {
+        SplitAlignedScalars split(*this);
+        split.run();
+    }
+
     while (iterationNo < maxRAIterations)
     {
         if (builder.getOption(vISA_RATrace))
@@ -11335,7 +11365,9 @@ void VerifyAugmentation::verifyAlign(G4_Declare* dcl)
         if (assignment && assignment->isGreg())
         {
             auto phyRegNum = assignment->asGreg()->getRegNum();
-            if (phyRegNum % 2 != 0)
+            auto augMask = std::get<1>((*it).second);
+            if (phyRegNum % 2 != 0 &&
+                augMask == AugmentationMasks::Default32Bit)
             {
                 printf("Dcl %s is Default32Bit but assignment is not Even aligned\n", dcl->getName());
             }
@@ -12669,7 +12701,8 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned numL
                     busyGRFPerInst[inst].set(i, true);
                 }
 
-                if (inst == endInst)
+                if (inst == endInst ||
+                    endInst == startInst)
                 {
                     done = true;
                     break;
