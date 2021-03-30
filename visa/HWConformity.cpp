@@ -2057,6 +2057,15 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul+Macl expanding will
         // be done in expandMulPostSchedule pass.
 
+        // Need extra mov if dst is acc and src0 is indirect
+        if (!builder.accDstforIndirectSrc())
+        {
+            if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() == IndirGRF)
+            {
+                mulInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
+            }
+        }
+
         //need extra move for dst
         if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
             !builder.isOpndAligned(origDst, getGRFSize()))
@@ -2597,6 +2606,15 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
             // this can happen due to vISA opt, convert them to src0 type which should be D/UD
             // We use D as the tmp type to make sure we can represent all src1 values
             inst->setSrc(insertMovBefore(i, 1, Type_D, bb), 1);
+        }
+
+        // Need extra mov if dst is acc and src0 is indirect
+        if (!builder.accDstforIndirectSrc())
+        {
+            if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() == IndirGRF)
+            {
+                inst->setSrc(insertMovBefore(i, 0, src0->getType(), bb), 0);
+            }
         }
 
         INST_LIST_ITER end_iter = i;

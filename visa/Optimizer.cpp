@@ -1457,6 +1457,8 @@ int Optimizer::optimization()
         runPass(PI_localSchedule);
     }
 
+    runPass(PI_expandMulPostSchedule);
+
     runPass(PI_accSubPostSchedule);
 
     runPass(PI_legalizeType);
@@ -1514,8 +1516,6 @@ int Optimizer::optimization()
     runPass(PI_analyzeMove);
 
     runPass(PI_removeInstrinsics);
-
-    runPass(PI_expandMulPostSchedule);
 
     //-----------------------------------------------------------------------------------------------------------------
     //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
