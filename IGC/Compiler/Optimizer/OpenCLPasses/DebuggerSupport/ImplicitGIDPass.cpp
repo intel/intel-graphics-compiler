@@ -168,7 +168,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     llvm::DIType* gid_di_type = getOrCreateIntDIType();
     SmallVector<uint64_t, 1> NewDIExpr;
 
-    auto gidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Global, loc);
+    auto gidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Global, DebugLoc());
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
@@ -181,7 +181,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
 
     // Similar code for local id
     llvm::DIType* lid_di_type = getOrCreateIntDIType();
-    auto lidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Local, loc);
+    auto lidVals = runOnBasicBlock(insert_before, GlobalOrLocal::Local, DebugLoc());
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the gids
@@ -194,7 +194,7 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
 
     // Similar code for work item id
     llvm::DIType* grid_di_type = getOrCreateIntDIType();
-    auto gridVals = runOnBasicBlock(insert_before, GlobalOrLocal::WorkItem, loc);
+    auto gridVals = runOnBasicBlock(insert_before, GlobalOrLocal::WorkItem, DebugLoc());
     for (unsigned i = 0; i < 3; ++i)
     {
         // Create implicit local variables to hold the work item ids
