@@ -633,6 +633,16 @@
         return !noFP64();
     }
 
+    bool hasMathAcc() const
+    {
+        return getOption(vISA_mathAccSub);
+    }
+
+    bool hasSrc2Acc() const
+    {
+        return getOption(vISA_src2AccSub);
+    }
+
     bool hasFixedCycleMathPipeline() const
     {
         return false;

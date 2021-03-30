@@ -480,6 +480,12 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
             threeSrcUses.push_back(useInst);
             switch (opndNum)
             {
+            case Opnd_src2:
+                if (!kernel.fg.builder->hasSrc2Acc())
+                {
+                    return false;
+                }
+                break;
             case Opnd_src1:
                 if (BC)
                 {
@@ -554,7 +560,7 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, i
             return false;
         }
 
-        int srcId = opndNum == Opnd_src0 ? 0 : 1;
+        int srcId = useInst->getSrcNum(opndNum);
         G4_Operand* src = useInst->getSrc(srcId);
         if (dst->getType() != src->getType() || kernel.fg.globalOpndHT.isOpndGlobal(src) ||
             dst->compareOperand(src) != Rel_eq)
@@ -680,7 +686,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
     {
         auto&& use = *I;
         G4_INST* useInst = use.first;
-        int srcId = use.second == Opnd_src0 ? 0 : 1;
+        int srcId = useInst->getSrcNum(use.second);
         G4_SrcRegRegion* oldSrc = useInst->getSrc(srcId)->asSrcRegRegion();
         G4_SrcRegRegion* accSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct,
             accReg, (short)accNum, 0, builder.getRegionStride1(), dst->getType());

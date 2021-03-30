@@ -7965,6 +7965,10 @@ bool G4_INST::canDstBeAcc() const
         }
     }
 
+    if (isMath())
+    {
+        return builder.hasMathAcc();
+    }
     switch (opcode())
     {
     case G4_add:
@@ -8016,8 +8020,8 @@ bool G4_INST::canDstBeAcc() const
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
 bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
 {
-    int srcId = opndNum == Opnd_src0 ? 0 : 1;
-    assert((srcId == 0 || srcId == 1) && "must be either src0 or src1");
+    int srcId = getSrcNum(opndNum);
+    assert((srcId == 0 || srcId == 1 || (builder.hasSrc2Acc() && srcId == 2)) && "must be either src0 or src1");
     if (getSrc(srcId) == nullptr || !getSrc(srcId)->isSrcRegRegion())
     {
         return false;
@@ -8103,6 +8107,10 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
         return false;
     }
 
+    if (isMath())
+    {
+        return builder.hasMathAcc();
+    }
     switch (opcode())
     {
     case G4_add:
@@ -8130,7 +8138,9 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_mad:
         // no int acc if it's used as mul operand
         return builder.canMadHaveAcc() &&
-            ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) || (srcId == 0 && src->getModifier() == Mod_src_undef));
+            ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) ||
+                (srcId == 0 && src->getModifier() == Mod_src_undef) ||
+                (builder.hasSrc2Acc() && srcId == 2 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_mul:
