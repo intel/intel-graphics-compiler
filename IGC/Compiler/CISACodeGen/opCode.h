@@ -116,7 +116,7 @@ DECLARE_OPCODE(SRem, Instruction, llvm_srem, true, false, false, false, false, f
 DECLARE_OPCODE(URem, Instruction, llvm_urem, true, false, false, false, false, false, false)
 DECLARE_OPCODE(SExt, Instruction, llvm_sext, true, true, false, false, false, false, false)
 DECLARE_OPCODE(ZExt, Instruction, llvm_zext, false, true, false, false, false, false, false)
-DECLARE_OPCODE(Trunc, Instruction, llvm_trunc, true, false, false, false, false, false, false)
+DECLARE_OPCODE(Trunc, Instruction, llvm_trunc, true, true, false, false, false, false, false)
 DECLARE_OPCODE(FPTrunc, Instruction, llvm_fptrunc, true, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_ftof_rte, GenISAIntrinsic, llvm_fptrunc_rte, true, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_ftof_rtz, GenISAIntrinsic, llvm_fptrunc_rtz, true, false, false, false, false, false, false)

@@ -3219,6 +3219,19 @@ namespace IGC
             }
         };
 
+        // dp4a with modifiers
+        struct Dp4aSatPattern : Pattern
+        {
+            GenIntrinsicInst* inst;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                DstModifier mod = modifier;
+                mod.sat = true;
+                pass->emitDP4A(inst, nullptr, mod);
+            }
+        };
+
+
         bool match = false;
         llvm::Value* source = nullptr;
         bool isUnsigned = false;
@@ -3236,6 +3249,13 @@ namespace IGC
                     binaryOpInst && (binaryOpInst->getOpcode() == llvm::BinaryOperator::BinaryOps::Add) && isUnsigned)
                 {
                     match = true;
+
+                    uint numSources = GetNbSources(*sourceInst);
+                    for (uint i = 0; i < numSources; i++)
+                    {
+                        MarkAsSource(sourceInst->getOperand(i));
+                    }
+
                     UAddPattern* uAddPattern = new (m_allocator) UAddPattern();
                     uAddPattern->inst = binaryOpInst;
                     AddPattern(uAddPattern);
@@ -3264,9 +3284,16 @@ namespace IGC
                     genIsaInst->getIntrinsicID() == llvm::GenISAIntrinsic::ID::GenISA_dp4a_us))
                 {
                     match = true;
-                    SatPattern* satPattern = new (m_allocator) SatPattern();
-                    satPattern->pattern = Match(*sourceInst);
-                    AddPattern(satPattern);
+
+                    uint numSources = GetNbSources(*sourceInst);
+                    for (uint i = 0; i < numSources; i++)
+                    {
+                        MarkAsSource(sourceInst->getOperand(i));
+                    }
+
+                    Dp4aSatPattern* dp4aSatPattern = new (m_allocator) Dp4aSatPattern();
+                    dp4aSatPattern->inst = genIsaInst;
+                    AddPattern(dp4aSatPattern);
                 }
                 else
                 {
