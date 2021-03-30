@@ -104,9 +104,13 @@ const char *iga_status_to_string(iga_status_t st) {
     }
 }
 
-// conversion to an internal platform
+// suppress -Wmissing-declarations
+iga::Platform ToPlatform(iga_gen_t gen);
+
+// Conversion to an internal platform
 // we could just re-interpret the bits but this checks for garbage
 // (validates the enum)
+// This is not static so that it can be used by other compilation units.
 iga::Platform ToPlatform(iga_gen_t gen)
 {
     // for binary compatibilty we accept the enum values from pre Xe-renaming
@@ -538,7 +542,7 @@ public:
             std::stringstream ss;
             FormatOpts fopts = formatterOpts(dopts, formatLbl, formatLblEnv);
             DepAnalysis la;
-            if (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_DEPS) {
+            if (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_DEFS) {
                 la = ComputeDepAnalysis(k);
                 fopts.liveAnalysis = &la;
             }

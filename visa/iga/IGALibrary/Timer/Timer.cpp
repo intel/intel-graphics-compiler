@@ -185,7 +185,7 @@ void stopIGATimer(int timer)
 #endif
 }
 
-unsigned int getIGATotalTimers()
+static unsigned int getIGATotalTimers()
 {
     return numTimers;
 }

@@ -33,6 +33,7 @@ IN THE SOFTWARE.
 #include "../Frontend/Formatter.hpp"
 #include "../strings.hpp"
 
+#include <mutex>
 #include <sstream>
 
 
@@ -46,46 +47,47 @@ using namespace iga;
 class KernelViewImpl {
 private:
     KernelViewImpl(const KernelViewImpl& k)
-        : m_model(*iga::Model::LookupModel(k.m_model.platform)) { }
+        : m_model(*Model::LookupModel(k.m_model.platform)) { }
 public:
-    const iga::Model                       &m_model;
-    iga::Kernel                            *m_kernel = nullptr;
-    iga::ErrorHandler                       m_errHandler;
-    std::map<uint32_t,iga::Instruction*>    m_instsByPc;
-    std::map<uint32_t, Block*>              m_blockToPcMap;
+    const Model                       &m_model;
+    Kernel                            *m_kernel = nullptr;
+    ErrorHandler                       m_errHandler;
+    std::map<uint32_t, const Instruction*> m_instsByPc;
+    std::map<uint32_t, const Block*>   m_blockToPcMap;
+    DepAnalysis                       *m_liveAnalysis = nullptr;
 
     KernelViewImpl(
-        iga::Platform platf,
+        Platform p,
         const void *bytes,
         size_t bytesLength,
-        SWSB_ENCODE_MODE swsb_enc_mode
-    )
-        : m_model(*iga::Model::LookupModel(platf))
+        SWSB_ENCODE_MODE swsb_enc_mode)
+        : m_model(*Model::LookupModel(p))
 
     {
-        iga::Decoder decoder(*Model::LookupModel(platf), m_errHandler);
+        Decoder decoder(*Model::LookupModel(p), m_errHandler);
         decoder.setSWSBEncodingMode(swsb_enc_mode);
-        IGA_ASSERT(Model::LookupModel(platf) != nullptr, "Unsupported platform");
+        IGA_ASSERT(Model::LookupModel(p) != nullptr, "unsupported platform");
         m_kernel = decoder.decodeKernelBlocks(bytes, bytesLength);
 
-        int32_t pc = 0;
-        for (iga::Block *b : m_kernel->getBlockList()) {
+        for (const Block *b : m_kernel->getBlockList()) {
             m_blockToPcMap[b->getPC()] = b;
-            for (iga::Instruction *inst : b->getInstList()) {
-                pc = inst->getPC();
-                m_instsByPc[pc] = inst;
+            for (const Instruction *inst : b->getInstList()) {
+                m_instsByPc[inst->getPC()] = inst;
             }
         }
     }
 
     ~KernelViewImpl() {
+        if (m_liveAnalysis) {
+            delete m_liveAnalysis;
+        }
         if (m_kernel) {
             delete m_kernel;
         }
     }
 
 
-    const iga::Instruction *getInstruction(int32_t pc) const {
+    const Instruction *getInstruction(int32_t pc) const {
         auto itr = m_instsByPc.find(pc);
         if (itr == m_instsByPc.end()) {
             return nullptr;
@@ -104,7 +106,7 @@ public:
 };
 
 // iga.cpp
-extern iga::Platform ToPlatform(iga_gen_t gen);
+Platform ToPlatform(iga_gen_t gen);
 
 kv_t *kv_create(
     iga_gen_t gen_platf,
@@ -119,8 +121,8 @@ kv_t *kv_create(
     if (errbuf && errbuf_cap > 0)
         *errbuf = 0;
 
-    iga::Platform p = ToPlatform(gen_platf);
-    if (p == iga::Platform::INVALID) {
+    Platform p = ToPlatform(gen_platf);
+    if (p == Platform::INVALID) {
         if (status)
             *status = IGA_UNSUPPORTED_PLATFORM;
         if (errbuf) {
@@ -139,7 +141,7 @@ kv_t *kv_create(
                 *status = IGA_OUT_OF_MEM;
             return nullptr;
         }
-    } catch (const iga::FatalError &fe) {
+    } catch (const FatalError &fe) {
         if (errbuf) {
             const char *msg = fe.what();
             formatToF(errbuf, errbuf_cap, "decoding error: %s", msg);
@@ -200,11 +202,11 @@ int32_t kv_get_inst_size(const kv_t *kv, int32_t pc)
     if (!kv)
         return 0;
 
-    const iga::Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
+    const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
     if (!inst) {
         return 0;
     }
-    return inst->hasInstOpt(iga::InstOpt::COMPACTED) ? 8 : 16;
+    return inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
 }
 
 
@@ -212,7 +214,7 @@ bool kv_has_inst_opt(const kv_t *kv, int32_t pc, uint32_t opt)
 {
     KernelViewImpl *kvImpl = (KernelViewImpl *)kv;
     const Instruction *inst = kvImpl->getInstruction(pc);
-    return inst->hasInstOpt((iga::InstOpt)opt);
+    return inst->hasInstOpt((InstOpt)opt);
 }
 
 uint32_t kv_get_inst_targets(
@@ -281,6 +283,15 @@ size_t kv_get_inst_syntax(
 
     std::stringstream ss;
     FormatOpts fopts(kvImpl->m_model.platform, labeler, labeler_env);
+    if (fopts.printInstDefs) {
+        static std::mutex m;
+        const std::lock_guard<std::mutex> g(m);
+        if (kvImpl->m_liveAnalysis == nullptr) {
+            kvImpl->m_liveAnalysis = new (std::nothrow) DepAnalysis();
+            *kvImpl->m_liveAnalysis = ComputeDepAnalysis(kvImpl->m_kernel);
+        }
+        fopts.liveAnalysis = kvImpl->m_liveAnalysis;
+    }
     fopts.addApiOpts(fmt_opts);
     fopts.setSWSBEncodingMode(kvImpl->m_model.getSWSBEncodeMode());
     FormatInstruction(
@@ -298,8 +309,7 @@ size_t kv_get_default_label_name(
     char *sbuf,
     size_t sbuf_cap)
 {
-    if (!sbuf || sbuf_cap == 0)
-    {
+    if (!sbuf || sbuf_cap == 0) {
         return 0;
     }
     std::stringstream strm;
@@ -403,7 +413,7 @@ void kv_get_send_indirect_descs(
 }
 
 /******************** KernelView analysis APIs *******************************/
-const Instruction *getInstruction(const kv_t *kv, int32_t pc)
+static const Instruction *getInstruction(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
         return nullptr;
@@ -558,7 +568,7 @@ uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc)
 }
 
 bool kv_get_swsb_info(
-    const kv_t *kv, int32_t pc, iga::SWSB_ENCODE_MODE, iga::SWSB& swsb)
+    const kv_t *kv, int32_t pc, SWSB_ENCODE_MODE, SWSB& swsb)
 {
     if (!kv) {
         return false;

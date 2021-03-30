@@ -84,6 +84,7 @@ namespace iga
         bool addPredicationInputs(const Instruction &i);
         bool addSourceOperandInput(const Instruction &i, int srcIx);
         bool addSourceImplicitAccumulator(const Instruction &i);
+        bool addDestinationInputs(const Instruction &i); // reg ind
         //
         bool addDestinationOutputs(const Instruction &i);
         bool addFlagModifierOutputs(const Instruction &i);

@@ -87,7 +87,7 @@ namespace iga
             , m_sendSrc1Length(-1)
         {
         }
-
+        Instruction(const Instruction &) = delete;
 
         // for placement allocation
         void operator delete(void *, MemManager*) { }

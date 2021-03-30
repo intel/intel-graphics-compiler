@@ -64,7 +64,7 @@ public:
 
     // emits an error value that'll blow up on JSON load
     void emitIrError(const char *what) {
-        emit("IR.error(\"", what, "\")");
+        emit("IR.Error(\"", what, "\")");
     }
 
     void emitEscaped(const std::string &s) {
@@ -72,6 +72,8 @@ public:
             switch (s[i]) {
             case '\n': emit("\\n"); break;
             case '\t': emit("\\t"); break;
+            case '\v': emit("\\v"); break;
+            case '\f': emit("\\f"); break;
             case '\a': emit("\\a"); break;
             case '\"': emit("\\\""); break;
             case '\\': emit("\\\\"); break;
@@ -107,31 +109,36 @@ public:
     }
 
     void emitKernel(const Kernel &k) {
-        emit("const listing = {\n");
-        emit("  version:\"1.0\",");
-        emit("  platform:\"", model.names[0].str(),"\",");
-        emit("  insts:[\n");
+        emit("{\n");
+        emit("  \"version\":\"1.0\",");
+        emit("  \"platform\":\"", model.names[0].str(),"\",");
+        emit("  \"insts\":[\n");
         currIndent += 2;
 
         for (const Block *b : k.getBlockList()) {
-
             emitIndent();
-            emit("{kind:\"L\", value:\"");
-                emitLabel(b->getPC()); emit("\"}");
+            emit("{\"kind\":\"L\"");
+                emit(",\"value\":\""); emitLabel(b->getPC()); emit("\"");
+            if (opts.printInstPc) {
+                emit(",\"pc\":", b->getPC());
+            }
+            emit("}");
             if (b != k.getBlockList().back() || !b->getInstList().empty())
                 emit(",");
             emit("\n");
 
             for (const Instruction *iP : b->getInstList()) {
                 emitInst(*iP);
-                if (iP != b->getInstList().back() || b != k.getBlockList().back())
+                if (iP != b->getInstList().back() ||
+                    b != k.getBlockList().back())
                     emit(",");
                 emit("\n");
             }
         }
 
+        emit("  ]\n");
         currIndent -= 2;
-        emit("]\n");
+        emit("}\n");
         emit("\n");
     }
 
@@ -143,8 +150,11 @@ public:
         const bool isSend = i.getOpSpec().isSendOrSendsFamily();
         emitIndent();
         emit("{");
-        emit("kind:\"I\"");
-        emit(", id:", i.getID(), ", pc:", fmtHex(i.getPC()));
+        emit("\"kind\":\"I\"");
+        emit(", \"id\":", i.getID());
+        if (opts.printInstPc) {
+            emit(", \"pc\":", i.getPC());
+        }
 
         if (opts.printLdSt) {
             if (!emitLdStInst(i)) {
@@ -155,7 +165,25 @@ public:
         }
 
         emitInstOpts(i);
-        emit(", comment:");
+
+        bool printBits = opts.printInstBits && bits != nullptr;
+        if (printBits) {
+            emit(", \"encoding\":");
+            const uint32_t *instBits = (const uint32_t *)(bits + i.getPC());
+            emit('\"');
+            if (!i.hasInstOpt(InstOpt::COMPACTED)) {
+                emitHex(instBits[3], 8);
+                emit('`');
+                emitHex(instBits[2], 8);
+                emit('`');
+            }
+            emitHex(instBits[1], 8);
+            emit('`');
+            emitHex(instBits[0], 8);
+            emit('\"');
+        }
+
+        emit(", \"comment\":");
         if (comments.empty()) {
             emit("null");
         } else {
@@ -183,15 +211,15 @@ public:
         emitPredOpSubfuncExecInfoFlagReg(
             i, i.getOpSpec().mnemonic.str(), subfunc);
         // implicit accumulator def/uses
-        emit(", acc:");
+        emit(", \"acc\":");
         if (opts.liveAnalysis) {
             emit("{");
             RegSet accIn(model);
             accIn.addSourceImplicitAccumulator(i);
             emitDepInputs(i, accIn);
-            RegSet accOu(model);
-            accOu.addDestinationImplicitAccumulator(i);
-            emit(", "); emitDepOutputs(i, accOu);
+            // RegSet accOu(model);
+            // accOu.addDestinationImplicitAccumulator(i);
+            // emit(", "); emitDepOutputs(i, accOu);
             emit("}");
         } else {
             emit("null");
@@ -200,9 +228,9 @@ public:
         emit(",\n");
 
         withIndent([&] {
-            emitIndent(); emit("dst:");
+            emitIndent(); emit("\"dst\":");
             emitDst(i); emit(",\n");
-            emitIndent(); emit("srcs:[\n");
+            emitIndent(); emit("\"srcs\":[\n");
             withIndent([&] {
                 for (unsigned srcIx = 0; srcIx < i.getSourceCount(); srcIx++) {
                     emitIndent(); emitSrc(i, srcIx);
@@ -217,17 +245,18 @@ public:
                         RegSet rs(model);
                         if (sd.type == SendDesc::Kind::REG32A) {
                             emitKindField(Operand::Kind::DIRECT);
-                            emit(", reg:");
+                            emit(", \"reg\":");
                             emitReg(RegName::ARF_A, sd.reg);
                             rs.setSrcRegion(RegName::ARF_A, sd.reg,
                                 Region::SRC010, 1, 4);
                         } else {
                             emitKindField(Operand::Kind::IMMEDIATE);
-                            emit(", value:");
+                            emit(", \"value\":\"");
                             emitHex(sd.imm);
+                            emit("\"");
                         }
-                        emit(", rgn:null");
-                        emit(", type:null");
+                        emit(", \"rgn\":null");
+                        emit(", \"type\":null");
                         emit(", "); emitDepInputs(i, rs);
                         emit("}");
                     };
@@ -272,33 +301,33 @@ public:
             if (!di.syntax.isStore()) {
                 // there is an explicit destination
                 const Operand &dst = i.getDestination();
-                emit("dst:{");
+                emit("\"dst\":{");
                 emitSendDataRegDst(i,
                     dst.getDirRegName(), dst.getDirRegRef().regNum,
                     i.getDstLength());
                 emit("}");
 
             } else {
-                emit("dst:null");
+                emit("\"dst\":null");
             }
             emit(",\n");
 
             /////////////////////////////////////////////
             // sources
-            emitIndent(); emit("srcs:[\n");
+            emitIndent(); emit("\"srcs\":[\n");
             withIndent([&] {
                 // everyone has src0 as an address
                 emitIndent();
-                emit("{kind:\"AD\"");
+                emit("{\"kind\":\"AD\"");
                 //
-                emit(", surf:");
+                emit(", \"surf\":");
                 emitAddrSurfInfo(i, di.info);
                 //
-                emit(", scale:1");
-                emit(", addr:");
+                emit(", \"scale\":1");
+                emit(", \"addr\":");
                     emitSendPayloadSrc(i, 0);
 
-                emit(", offset:");
+                emit(", \"offset\":");
                 if (di.info.immediateOffset.isImm()) {
                     emit(di.info.immediateOffset.imm);
                 } else {
@@ -331,43 +360,43 @@ public:
     {
         emitPred(i);
 
-        emit(", op:\"", mnemonic, "\"");
+        emit(", \"op\":\"", mnemonic, "\"");
         if (subop.empty()) {
-            emit(", subop:null");
+            emit(", \"subop\":null");
         } else {
             auto sf = subop[0] == '.' ? subop.substr(1) : subop;
-            emit(", subop:\"", sf, "\"");
+            emit(", \"subop\":\"", sf, "\"");
         }
 
         emitExecInfo(i);
 
         if (i.hasFlagModifier()) {
-            emit(", fm:{cond:\"",ToSyntax(i.getFlagModifier()),"\"");
-            emit(", ");
-            RegSet rs(model);
-            rs.addFlagModifierOutputs(i);
-            emitDepOutputs(i, rs);
+            emit(", \"fm\":{\"cond\":\"", ToSyntax(i.getFlagModifier()), "\"");
+            // emit(", ");
+            // RegSet rs(model);
+            // rs.addFlagModifierOutputs(i);
+            // emitDepOutputs(i, rs);
             emit("}");
         } else {
-            emit(", fm:null");
+            emit(", \"fm\":null");
         }
 
         emitFlagReg(i);
     }
 
     void emitExecInfo(const Instruction &i) {
-        emit(", es:", ToSyntax(i.getExecSize()));
-        emit(", eo:", 4*(int)(i.getChannelOffset()));
+        emit(", \"es\":", ToSyntax(i.getExecSize()));
+        emit(", \"eo\":", 4*(int)(i.getChannelOffset()));
     }
 
     // pred:{func:[null|""|".any"|".all"|...],inv:[true|false]"",wren:[true|false]}
     void emitPred(const Instruction &i) {
         Predication p = i.getPredication();
-        emit(", pred:");
+        emit(", \"pred\":");
         if (i.hasPredication()) {
             emit("{");
-            emit("inv:", p.inverse);
-            emit(", func:\"", ToSyntax(p.function), "\"");
+            emit("\"inv\":", p.inverse);
+            emit(", \"func\":\"", ToSyntax(p.function), "\"");
             emit(", ");
             RegSet rs(model); rs.addPredicationInputs(i);
             emitDepInputs(i, rs);
@@ -377,12 +406,12 @@ public:
             emit("null");
         }
         //
-        emit(", wren:", i.getMaskCtrl() == MaskCtrl::NOMASK);
+        emit(", \"wren\":", i.getMaskCtrl() == MaskCtrl::NOMASK);
     }
 
     // {flag:{reg:...}}
     void emitFlagReg(const Instruction &i) {
-        emit(", freg:");
+        emit(", \"freg\":");
         if (i.hasPredication() || (i.hasFlagModifier() && !i.is(Op::SEL))) {
             emitReg(RegName::ARF_F, i.getFlagReg());
         } else {
@@ -411,42 +440,43 @@ public:
         emitKindField(dst.getKind());
         switch (dst.getKind()) {
         case Operand::Kind::DIRECT:
-            emit(", reg:");
+            emit(", \"reg\":");
                 emitReg(dst.getDirRegName(), dst.getDirRegRef());
             break;
         case Operand::Kind::MACRO:
-            emit(", reg:");
+            emit(", \"reg\":");
                 emitReg(dst.getDirRegName(), dst.getDirRegRef());
             emit(", ");
             emitMathMacroExtField(dst.getMathMacroExt());
             break;
         case Operand::Kind::INDIRECT:
-            emit(", areg:");
+            emit(", \"areg\":");
                 emitReg(RegName::ARF_A, dst.getIndAddrReg());
-            emit(", aoff:", dst.getIndImmAddr());
+            emit(", \"aoff\":", dst.getIndImmAddr());
             break;
         default:
             break;
         }
-        emit(", sat:", dst.getDstModifier() == DstModifier::SAT);
-        emit(", rgn:");
+        emit(", \"sat\":", dst.getDstModifier() == DstModifier::SAT);
+        emit(", \"rgn\":");
         if (os.hasImplicitDstRegion(i.isMacro())) {
             emit("null");
         } else {
             emitRgn(i, dst.getRegion(), true);
         }
-        emit(", type:"); emitType(dst.getType());
+        emit(", \"type\":"); emitType(dst.getType());
+
         // def/uses
-        emit(", ");
+        emit(",");
         RegSet rs(model);
-        rs.addDestinationOutputs(i);
-        emitDepOutputs(i, rs);
+        rs.addDestinationInputs(i);
+        emitDepInputs(i, rs);
         emit("}");
     }
 
 
     void emitMathMacroExtField(MathMacroExt mme) {
-        emit("mme:\"", ToSyntax(mme).substr(1), "\"");
+        emit("\"mme\":\"", ToSyntax(mme).substr(1), "\"");
     }
 
 
@@ -462,27 +492,30 @@ public:
         bool immOrLbl = false;
         switch (src.getKind()) {
         case Operand::Kind::DIRECT:
-            emit(", reg:");
+            emitSrcModifierField(src.getSrcModifier());
+            emit(", \"reg\":");
                 emitReg(src.getDirRegName(), src.getDirRegRef());
+            emit(", \"rgn\":");
+                emitSrcRgn(i, srcIx);
             break;
         case Operand::Kind::MACRO:
-            emit(", reg:");
+            emitSrcModifierField(src.getSrcModifier());
+            emit(", \"reg\":");
                 emitReg(src.getDirRegName(), src.getDirRegRef());
             emit(", ");
                 emitMathMacroExtField(src.getMathMacroExt());
-            emit(", rgn:");
+            emit(", \"rgn\":");
                 emitSrcRgn(i, srcIx);
             break;
         case Operand::Kind::INDIRECT:
-        {
-            emit(", areg:");
+            emitSrcModifierField(src.getSrcModifier());
+            emit(", \"areg\":");
                 emitReg(RegName::ARF_A, src.getIndAddrReg());
-            emit(", aoff:", src.getIndImmAddr());
+            emit(", \"aoff\":", src.getIndImmAddr());
             break;
-        }
         case Operand::Kind::IMMEDIATE:
         {
-            emit(", value:");
+            emit(", \"value\":\"");
             auto imm = src.getImmediateValue();
             switch (src.getType()) {
             case Type::UB:  emitHex(imm.u8); break;
@@ -520,13 +553,14 @@ public:
             default:
                 emitIrError("invalid type for imm");
             }
+            emit("\"");
             immOrLbl = true;
             break;
         }
         case Operand::Kind::LABEL:
         {
             const Block *b = src.getTargetBlock();
-            emit(", target:\"");
+            emit(", \"target\":\"");
             emitLabel(b ? b->getPC() : src.getImmediateValue().s32);
             emit("\"");
             immOrLbl = true;
@@ -536,7 +570,7 @@ public:
             break;
         }
 
-        emit(", type:");
+        emit(", \"type\":");
         if (os.hasImplicitSrcType(srcIx, immOrLbl)) {
             emit("null");
         } else {
@@ -562,23 +596,23 @@ public:
                 dst.getDirRegRef().regNum,
                 i.getDstLength());
         } else {
-            emit("kind:\"RD\"");
-            emit(", reg:");
+            emit("\"kind\":\"RD\"");
+            emit(", \"reg\":");
                 emitReg(dst.getDirRegName(), dst.getDirRegRef());
         }
         emit("}");
     }
 
-    void emitSrcModifier(SrcModifier sm) {
-        emit(", mods:",
+    void emitSrcModifierField(SrcModifier sm) {
+        emit(", \"mods\":",
             sm == SrcModifier::NEG ? "\"n\"" :
             sm == SrcModifier::ABS ? "\"a\"" :
             sm == SrcModifier::NEG_ABS ? "\"na\"" :
-            "null");
+            "\"\"");
     }
 
     void emitKindField(Operand::Kind k) {
-        emit("kind:");
+        emit("\"kind\":");
         switch (k) {
         case Operand::Kind::DIRECT:    emit("\"RD\""); break;
         case Operand::Kind::MACRO:     emit("\"RM\""); break;
@@ -609,34 +643,34 @@ public:
             const auto di =
                 tryDecode(platform(), i.getSubfunction().send, i.getExecSize(),
                     i.getExtMsgDescriptor(), i.getMsgDescriptor(), dummy, nullptr);
-            emit("kind:\"AD\"");
-            emit(", surf:");
+            emit("\"kind\":\"AD\"");
+            emit(", \"surf\":");
             if (di) {
                 comments.push_back(di.info.description);
                 emitAddrSurfInfo(i, di.info);
             } else {
                 emit("null");
             }
-            emit(", scale:1");
-            emit(", addr:");
+            emit(", \"scale\":1");
+            emit(", \"addr\":");
             emitSendPayloadSrc(i, 0);
             if (di && di.info.immediateOffset.isImm()) {
                 // e.g. legacy scratch
-                emit(", offset:", di.info.immediateOffset.imm);
+                emit(", \"offset\":", di.info.immediateOffset.imm);
             } else {
                 // shouldn't be a reg, but we emit something
-                emit(", offset:0");
+                emit(", \"offset\":0");
             }
             emit("}");
         } else if (srcIx == 1 && i.getSrc1Length() >= 0) {
             emitSendPayloadSrc(i, 1, "DA");
         } else {
             // old send operand (treat as raw direct register access)
-            emit("kind:\"RD\"");
-            emit(", reg:");
+            emit("\"kind\":\"RD\"");
+            emit(", \"reg\":");
                 emitReg(src.getDirRegName(), src.getDirRegRef());
-            emit(", rgn:null");
-            emit(", type:null");
+            emit(", \"rgn\":null");
+            emit(", \"type\":null");
             // the best we can do is guess it's 1 without decoding the message
             emitSendPayloadDeps(i,
                 src.getDirRegName(),
@@ -645,14 +679,14 @@ public:
     }
 
     void emitAddrSurfInfo(const Instruction &i, const MessageInfo &mi) {
-        emit("{type:");
+        emit("{\"type\":");
         switch (mi.addrType) {
         case AddrType::FLAT: emit("\"flat\""); break;
         case AddrType::BTI:  emit("\"bti\""); break;
         default: emitIrError("invalid surface type");
         }
 
-        emit(", offset:");
+        emit(", \"offset\":");
         RegSet surfOffDeps(model);
         if (mi.surfaceId.isReg()) {
             surfOffDeps.setSrcRegion(RegName::ARF_A,
@@ -660,26 +694,27 @@ public:
                 Region::SRC010, 1, 4);
             emitReg(RegName::ARF_A, mi.surfaceId.reg);
         } else {
-            emitHex(mi.surfaceId.imm);
+            emitDecimal(mi.surfaceId.imm);
         }
         emit(", ");
         emitDepInputs(i, surfOffDeps);
         emit("}"); // end of surf:{...}
     }
 
-    void emitSendPayloadSrc(const Instruction &i, int srcIx, const char *kind = nullptr) {
+    void emitSendPayloadSrc(
+        const Instruction &i, int srcIx, const char *kind = nullptr)
+    {
         const Operand &src = i.getSource(srcIx);
         RegName regName = src.getDirRegName();
         int regStart = src.getDirRegRef().regNum;
         int regCount = srcIx == 0 ? i.getSrc0Length() : i.getSrc1Length();
         emit("{");
         if (kind) {
-            emit("kind:\"",kind,"\", ");
+            emit("\"kind\":\"",kind,"\", ");
         }
-        emit("reg:");
+        emit("\"reg\":");
         emitReg(regName, regStart);
-        emit(", len:", regCount);
-        emit(", ");
+        emit(", \"len\":", regCount);
         emitSendPayloadDeps(i, regName, regCount, regCount, true);
         emit("}");
     }
@@ -687,17 +722,16 @@ public:
     void emitSendDataRegDst(
         const Instruction &i, RegName dataReg, int regNum, int regLen)
     {
-        emit("kind:\"DA\"");
+        emit("\"kind\":\"DA\"");
         emitSendPayloadFields(dataReg, regNum, regLen);
-        emit(", ");
         emitSendPayloadDeps(i, dataReg, regNum, regLen, false);
     }
 
     void emitSendPayloadFields(RegName reg, int regNum, int numRegs)
     {
-        emit(", reg:");
+        emit(", \"reg\":");
         emitReg(reg, regNum);
-        emit(", len:", numRegs);
+        emit(", \"len\":", numRegs);
     }
     void emitSendPayloadDeps(
         const Instruction &i,
@@ -706,9 +740,11 @@ public:
         RegSet rs(model);
         rs.addRegs(reg, regNum, numRegs);
         if (isRead) {
+            emit(", ");
             emitDepInputs(i, rs);
         } else {
-            emitDepOutputs(i, rs);
+            // emit(", ");
+            // emitDepOutputs(i, rs);
         }
     }
 
@@ -748,19 +784,26 @@ public:
             }
         }
         emitRgn(r, dst);
-    }
+    } // emitRgn
+
     void emitRgn(Region r, bool dst = false) {
-        emit("IR.Rgns.");
         if (dst) {
+#if IGA_SHORTHAND_JSON
+            emit("IR.Rgns.");
             switch (r.getHz()) {
             case Region::Horz::HZ_1: emit("d1"); break;
             case Region::Horz::HZ_2: emit("d2"); break;
             case Region::Horz::HZ_4: emit("d4"); break;
-            default: emit("IR.error(\"invalid dst region\")");
+            default: emit("IR.Error(\"invalid dst region\")");
             }
+#else
+            emit("{\"Hz\":", int(r.getHz()), "}");
+#endif
         }
         else
         {
+#if IGA_SHORTHAND_JSON
+            emit("IR.Rgns.");
             if (r == Region::SRC010) {
                 emit("s0_1_0");
             } else if (r == Region::SRC110) {
@@ -780,6 +823,16 @@ public:
                     int(r.getWi()), ",",
                     int(r.getHz()), ")");
             }
+#else
+            emit("{");
+            if (r.getVt() == Region::Vert::VT_VxH) {
+                emit("\"Vt\":null");
+            } else {
+                emit("\"Vt\":", int(r.getVt()));
+            }
+            emit(",\"Wi\":", int(r.getWi()), ",\"Hz\":", int(r.getHz()));
+            emit("}");
+#endif
         }
     }
 
@@ -788,10 +841,14 @@ public:
             emit("null");
             return;
         }
+#if IGA_SHORTHAND_JSON
         emit("IR.Types."); // e.g. IR.Types.UQ
         auto s = ToSyntax(t); // ":uq"
         for (size_t i = 1; i < s.size(); i++)
             emit((char)toupper(s[i]));
+#else
+        emit("\"", ToSyntax(t).substr(1), "\""); // Type::UQ => "uq"
+#endif
     }
 
     void emitInstOpts(const Instruction &i) {
@@ -811,7 +868,7 @@ public:
         };
 
         InstOptSet ios = i.getInstOpts();
-        emit(", opts:[");
+        emit(", \"opts\":[");
         bool first = true;
         auto emitSeparator = [&]() {
             if (first)
@@ -858,6 +915,7 @@ public:
     }
 
     void emitReg(RegName rn, RegRef rr) {
+#if IGA_SHORTHAND_JSON
         bool hasShortName =
             rn == RegName::GRF_R ||
             rn == RegName::ARF_A || rn == RegName::ARF_ACC ||
@@ -881,17 +939,25 @@ public:
             emit("IR.Regs.reg(\"", ToSyntax(rn), "\",", rr.regNum, ",",
                 rr.subRegNum, ")");
         }
+#else
+        // use full JSON syntax (no shortcuts)
+        emit("{"
+            "\"rn\":\"", ToSyntax(rn), "\","
+            "\"r\":", rr.regNum, ",",
+            "\"sr\":", rr.subRegNum, "}");
+#endif
     }
     void emitReg(RegName rn, int regNum, int sr = 0) {
         emitReg(rn, RegRef((int16_t)regNum, (int16_t)sr));
     }
 
+    /*
     /////////////////////////////////////////////////////////////////////////
     // call this for operands that are instruction outputs
     void emitDepOutputs(const Instruction &i, const RegSet &rs) {
         // 'i' is writing 'rs' emit all pairs where this is the
         // def and report them as uess
-        emit("uses:[");
+        emit("\"uses\":[");
         if (opts.liveAnalysis) {
             emit("]");
             return;
@@ -909,19 +975,21 @@ public:
         }
         emit("]");
     }
+    */
 
     // call this for operands that are instruction inputs
     void emitDepInputs(const Instruction &i, const RegSet &rs) {
         // 'i' is writing 'rs' emit all pairs where this is the
         // def and report them as uess
-        emit("defs:[");
+        emit("\"defs\":[");
         if (opts.liveAnalysis == nullptr) {
             emit("]");
             return;
         }
         // the users of 'rs' are all those that use this set
         bool first = true;
-        for (const Dep *d : depUses[i.getID()]) {
+        auto c = depUses[i.getID()];
+        for (const Dep *d : c) {
             if (d->def != nullptr && rs.intersects(d->values)) {
                 if (first)
                     first = false;
@@ -941,4 +1009,13 @@ void iga::FormatJSON(
     const void *bits)
 {
     JSONFormatter(o, opts, bits).emitKernel(k);
+}
+
+void iga::FormatInstructionJSON(
+    std::ostream &o,
+    const FormatOpts &opts,
+    const Instruction &i,
+    const void *bits)
+{
+    JSONFormatter(o, opts, bits).emitInst(i);
 }

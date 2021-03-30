@@ -291,6 +291,7 @@ namespace iga
             case 0: val = val0; str = str0; break;
             case 1: val = val1; str = str1; break;
             default:
+                val = val0; // for compiler warning
                 IGA_ASSERT_FALSE("Unreachable");
                 break; // unreachable
             };
@@ -331,6 +332,7 @@ namespace iga
             case 2: val = val2; str = str2; break;
             case 3: val = val3; str = str3; break;
             default:
+                val = val0; // for compiler warning
                 IGA_ASSERT_FALSE("Unreachable");
                 break; // unreachable
             };

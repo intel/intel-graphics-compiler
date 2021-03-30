@@ -74,6 +74,7 @@ struct Opts {
     bool useNativeEncoder    = false;                // -Xnative
 
     bool printBits           = false;                // -Xprint-bits
+    bool printDefs           = false;                // -Xprint-defs
     bool printDeps           = false;                // -Xprint-deps
     bool printHexFloats      = false;                // -Xprint-hex-floats
     bool printJson           = false;                // -Xprint-json
@@ -294,6 +295,9 @@ static inline uint32_t makeFormattingOpts(const Opts &opts)
     setOptBit(fmtOpts,
         IGA_FORMATTING_OPT_PRINT_BITS,
         opts.printBits);
+    setOptBit(fmtOpts,
+        IGA_FORMATTING_OPT_PRINT_DEFS,
+        opts.printDefs);
     setOptBit(fmtOpts,
         IGA_FORMATTING_OPT_PRINT_DEPS,
         opts.printDeps);

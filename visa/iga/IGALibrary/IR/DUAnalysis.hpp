@@ -62,6 +62,7 @@ namespace iga
         // This is number of in-order instructions this path covers
         // We determine in-orderness via OpSpec::isFixedLatency
         int                      minInOrderDist = 0;
+        //
         // indicates if the dependency crosses a branch (JEU)
         // N.b. this will false for fallthrough since that isn't a branch
         //        mov r1 ...

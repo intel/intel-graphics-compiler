@@ -55,7 +55,8 @@ namespace iga {
         // swsb encoding mode, if not specified, the encoding mode will be
         // derived from platform by SWSB::getEncodeMode
         SWSB_ENCODE_MODE  swsbEncodingMode = SWSB_ENCODE_MODE::SWSBInvalidMode;
-        bool              printInstDeps = true;
+        bool              printInstDeps = false;
+        bool              printInstDefs = false;
         bool              printInstBits = true;
         bool              printLdSt = false;
         bool              printAnsi = false;
@@ -114,6 +115,7 @@ namespace iga {
 
 #ifndef IGA_DISABLE_ENCODER_EXCEPTIONS
     // this uses the decoder, which uses exceptions
+    // but only the IGA tester needs this; so we can ifdef it out
     void FormatInstruction(
         ErrorHandler &e,
         std::ostream &o,
@@ -126,7 +128,7 @@ namespace iga {
         std::ostream &o,
         const FormatOpts &opts,
         const void *bits);
-#endif
+#endif // IGA_DISABLE_ENCODER_EXCEPTIONS
 
     void GetDefaultLabelName(
         std::ostream &o,

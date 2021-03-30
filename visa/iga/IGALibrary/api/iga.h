@@ -436,7 +436,7 @@ static_assert(sizeof(iga_disassemble_options_t) == 5*4,
 #define IGA_FORMATTING_OPT_PRINT_PC         0x00000008u
 /* print the instruction bits */
 #define IGA_FORMATTING_OPT_PRINT_BITS       0x00000010u
-/* print instruction dependencies */
+/* print immediate instruction dependencies (mostly for IGA debugging) */
 #define IGA_FORMATTING_OPT_PRINT_DEPS       0x00000020u
 /* print load/store pseduo instructions where possible */
 #define IGA_FORMATTING_OPT_PRINT_LDST       0x00000040u
@@ -444,6 +444,8 @@ static_assert(sizeof(iga_disassemble_options_t) == 5*4,
 #define IGA_FORMATTING_OPT_PRINT_ANSI       0x00000100u
 /* emit JSON instead of asm */
 #define IGA_FORMATTING_OPT_PRINT_JSON       0x00000200u
+/* emit instruction definitions from a simple dataflow analysis */
+#define IGA_FORMATTING_OPT_PRINT_DEFS       0x00000400u
 
 /* just the default formatting opts */
 #define IGA_FORMATTING_OPTS_DEFAULT \
@@ -455,7 +457,8 @@ static_assert(sizeof(iga_disassemble_options_t) == 5*4,
     |IGA_FORMATTING_OPT_PRINT_HEX_FLOATS\
     |IGA_FORMATTING_OPT_PRINT_PC\
     |IGA_FORMATTING_OPT_PRINT_BITS\
-    |IGA_FORMATTING_OPT_PRINT_DEPS)
+    |IGA_FORMATTING_OPT_PRINT_DEPS\
+    |IGA_FORMATTING_OPT_PRINT_DEFS)
 
 /* uses the native decoder for decoding the kernel */
 #define IGA_DECODING_OPT_NATIVE   0x00000001u

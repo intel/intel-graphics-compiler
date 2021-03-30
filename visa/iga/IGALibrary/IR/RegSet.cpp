@@ -61,14 +61,12 @@ BitSet<> *RegSet::bitSetForPtr(RegName rn)
     return nullptr;
 }
 
-BitSet<> &RegSet::bitSetFor(RegName rn)
-{
+BitSet<> &RegSet::bitSetFor(RegName rn) {
     auto bs = bitSetForPtr(rn);
     IGA_ASSERT(bs, "not a tracked bitset");
     return *bs;
 }
-const BitSet<> &RegSet::bitSetFor(RegName rn) const
-{
+const BitSet<> &RegSet::bitSetFor(RegName rn) const {
     return const_cast<RegSet *>(this)->bitSetFor(rn);
 }
 
@@ -105,11 +103,10 @@ bool RegSet::operator==(const RegSet &rs) const {
     return true;
 }
 bool RegSet::empty() const {
-    return
-        bitsR.empty() &&
-        bitsA.empty() &&
-        bitsAcc.empty() &&
-        bitsF.empty();
+    for (RegName rn : TRACKED)
+        if (!bitSetFor(rn).empty())
+            return false;
+    return true;
 }
 void RegSet::reset() {
     for (RegName rn : TRACKED)
@@ -118,9 +115,9 @@ void RegSet::reset() {
 
 bool RegSet::intersects(const RegSet &rhs) const {
     for (RegName rn : TRACKED)
-        if (!bitSetFor(rn).intersects(rhs.bitSetFor(rn)))
-            return false;
-    return true;
+        if (bitSetFor(rn).intersects(rhs.bitSetFor(rn)))
+            return true;
+    return false;
 }
 
 bool RegSet::destructiveUnion(const RegSet &rhs) {
@@ -151,19 +148,25 @@ bool RegSet::addReg(RegName rn, int reg) {
 }
 
 bool RegSet::addRegs(RegName rn, int reg, int n) {
-    size_t bitsPerReg = 8 * model->getBytesPerReg(rn);
+    size_t bitsPerReg = 8 * (size_t)model->getBytesPerReg(rn);
     return add(rn, bitsPerReg * reg, bitsPerReg * n);
 }
 
 bool RegSet::add(RegName rn, size_t regFileOffBits, size_t numBits) {
+    if (!isTrackedReg(rn)) {
+        return false;
+    }
     // coarsen analysis to byte
     // need std::max since numBits might be <8 (e.g. flag reg SIMD1)
     size_t offBytes = regFileOffBits / 8;
     size_t lenBytes = std::max<size_t>(numBits / 8, 1);
     BitSet<> &bs = bitSetFor(rn);
-    IGA_ASSERT(offBytes + lenBytes <= BytesForRegSet(rn, *model),
-        "access is out of bounds for register");
-    return bs.set(offBytes, lenBytes);
+    if (offBytes + lenBytes <= BytesForRegSet(rn, *model)) {
+        return bs.set(offBytes, lenBytes);
+    } else {
+        IGA_ASSERT_FALSE("access is out of bounds for register");
+        return false;
+    }
 }
 
 bool RegSet::add(RegName rn, RegRef rr, Type t)
@@ -234,6 +237,8 @@ bool RegSet::addSourceInputs(const Instruction &i)
     }
 
     added |= addSourceImplicitAccumulator(i);
+
+    added |= addDestinationInputs(i); // e.g. indirect access uses a0
 
     // check all the source operands
     for (unsigned srcIx = 0; srcIx < i.getSourceCount(); srcIx++) {
@@ -416,6 +421,23 @@ bool RegSet::addSourceImplicitAccumulator(const Instruction &i)
     return added;
 }
 
+bool RegSet::addDestinationInputs(const Instruction &i)
+{
+    if (!i.getOpSpec().supportsDestination()) {
+        return false;
+    }
+    bool added = false;
+    const auto &dst = i.getDestination();
+    if (dst.getKind() == Operand::Kind::INDIRECT) {
+        added |= setDstRegion(
+            RegName::ARF_A,
+            dst.getIndAddrReg(),
+            Region::DST1,
+            1, // one element only
+            16); // :w is 16-bits
+    }
+    return added;
+}
 
 bool RegSet::addDestinationOutputs(const Instruction &i)
 {
@@ -479,14 +501,17 @@ bool RegSet::addDestinationOutputs(const Instruction &i)
         break;
     }
     case Operand::Kind::INDIRECT:
+        // this is an input! not an output
+        // (use addDestinationInputs or part of addSourceInputs)
+        //
         // indirect destinations use a single a0 value
         // (no fancy scattering)
-        added |= setDstRegion(
-            RegName::ARF_A,
-            op.getIndAddrReg(),
-            Region::DST1,
-            1, // one element only
-            16); // :w is 16-bits
+        // added |= setDstRegion(
+        //    RegName::ARF_A,
+        //    op.getIndAddrReg(),
+        //    Region::DST1,
+        //    1, // one element only
+        //    16); // :w is 16-bits
         break;
     default:
         break;
@@ -554,7 +579,7 @@ bool RegSet::setDstRegion(
     bool added = false;
     size_t baseOffBits =
         rr.regNum * model->getBytesPerReg(rn) * 8 +
-        rr.subRegNum * typeSizeBits;
+            rr.subRegNum * typeSizeBits;
     for (size_t ch = 0; ch < execSize; ch++) {
         size_t offsetBits = ch * hz * typeSizeBits;
         added |= add(rn, baseOffBits + offsetBits, typeSizeBits);
@@ -619,16 +644,31 @@ void RegSet::str(std::ostream &os) const
 
         size_t bytesPerReg = model->getBytesPerReg(rn);
         const BitSet<> &bs = bitSetFor(rn);
-        for (size_t i = 0; i < model->getRegCount(rn); i++) {
-            size_t regOff = offsetOf(rn, (int)i) / 8;
+        for (size_t ri = 0; ri < model->getRegCount(rn); ri++) {
+            size_t regOff = offsetOf(rn, (int)ri) / 8;
             if (bs.testAll(regOff, bytesPerReg)) {
-                // full reg: e.g. "r13"
-                emitReg(i);
+                // full reg: e.g. "r13" or "r13:8"
+                emitReg(ri);
+                size_t len = 1;
+                if (rn == RegName::GRF_R || rn == RegName::ARF_ACC) {
+                    // for GRF and ACC permit payload-form syntax
+                    // r10:8, acc0:2
+                    while (ri + len < model->getRegCount(rn) &&
+                        bs.testAll(
+                            offsetOf(rn, (int)ri + (int)len) / 8, bytesPerReg))
+                    {
+                        len++;
+                    }
+                }
+                if (len > 1) {
+                    os << ":" << len;
+                    ri += len - 1;
+                }
             } else if (bs.testAny(regOff, bytesPerReg)) {
                 // partial register
                 //    r13[7]   (e.g. r13.7<0;1,0>:b)
                 //    r13[0-3,8-11,..]  (e.g. r13.0<2;1,0>:d)
-                emitReg(i);
+                emitReg(ri);
                 os << '[';
                 bool firstSubreg = true;
                 for (size_t byte = 0; byte < bytesPerReg; byte++) {

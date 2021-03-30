@@ -946,7 +946,7 @@ void Encoder::encodeBasicDestination(
                 case 5: chEn = GED_DST_CHAN_EN_xz;   break;
                 case 6: chEn = GED_DST_CHAN_EN_yz;   break;
                 case 7: chEn = GED_DST_CHAN_EN_xyzw; break; // mme7/acc9 -> acc2.xyzw (0111b)
-                default: IGA_ASSERT_FALSE("unreachable");
+                default: IGA_ASSERT_FALSE("unreachable"); chEn = GED_DST_CHAN_EN_x;
                 }
                 GED_ENCODE(DstChanEn, chEn);
             } else {

@@ -21,7 +21,6 @@
 # IN THE SOFTWARE.
 #
 #============================ end_copyright_notice =============================
-
 # GED_external/build/autogen-intel64
 set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_api.cpp

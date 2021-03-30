@@ -35,6 +35,9 @@ IN THE SOFTWARE.
  */
 #if defined(_MSC_VER)
 #pragma warning(default : 4505)
+#pragma warning(disable:4701)
+#else
+#pragma GCC diagnostic ignored "-Wmissing-declarations"
 #endif
 
 #include "Lexemes.hpp"

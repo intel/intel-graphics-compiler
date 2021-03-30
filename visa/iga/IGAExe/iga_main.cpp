@@ -469,11 +469,18 @@ extern "C" int iga_main(int argc, const char **argv)
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.printBits);
     xGrp.defineFlag(
+        "print-defs",
+        nullptr,
+        "prints dependency definitions from each instruction",
+        "The analysis may be coarse.",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.printDefs);
+    xGrp.defineFlag(
         "print-deps",
         nullptr,
         "prints dependency info with each instruction",
-        "IGA does not promise this to be exact at the moment. "
-          "E.g. our analysis may be a local one only.",
+        "For each instruction print the tracked registers that the "
+        "instruction modifies.",
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.printDeps);
     xGrp.defineFlag(

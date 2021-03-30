@@ -34,6 +34,12 @@ namespace iga
         const FormatOpts &opts,
         const Kernel &k,
         const void *bits);
+
+    void FormatInstructionJSON(
+        std::ostream &o,
+        const FormatOpts &opts,
+        const Instruction &i,
+        const void *bits);
 }
 
 

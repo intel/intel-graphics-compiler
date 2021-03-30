@@ -121,7 +121,7 @@ IN THE SOFTWARE.
 using namespace iga;
 
 #ifdef ENABLE_TRACING
-#define TRACE(...) printf(__VA_ARGS__)
+#define TRACE(...) std::cout << iga::format(__VA_ARGS__)
 #else
 #define TRACE(...)
 #endif
@@ -136,7 +136,7 @@ static void EmitPaths(const LiveDepMap &defs)
     for (const auto &pair : defs) {
         const Dep &d = pair.second;
         (void)d;
-        TRACE("    #%s\n", d.str().c_str());
+        TRACE("    #", d.str());
     }
 }
 static std::string FormatLiveDepMap(const LiveDepMap &ldm)
@@ -272,16 +272,15 @@ struct DepAnalysisComputer
             } // non-empty block 'b'
         } // end for(block state)
 
-        TRACE("******** INITIAL CONDITIONS **********\n");
+        TRACE("******** INITIAL CONDITIONS **********");
         for (const Block *b : k->getBlockList()) {
-            TRACE("  BLOCK %s\n", blockState[b->getID()].str().c_str());
+            TRACE("  BLOCK ", blockState[b->getID()].str());
             for (const Instruction *i : b->getInstList()) {
                 (void)i;
-                TRACE("    DEF #%03d |  %-96s ||  %s <== %s\n",
-                    i->getID(),
-                    trimTrailingWs(i->str()).c_str(),
-                    instDsts[i->getID()].str().c_str(),
-                    instSrcs[i->getID()].str().c_str());
+                TRACE("    DEF #", i->getID(), " |  ",
+                    trimTrailingWs(i->str()), " ||  ",
+                    instDsts[i->getID()].str(), " <== ",
+                        instSrcs[i->getID()].str());
             }
         }
     } // DepAnalysisComputer::DepAnalysisComputer
@@ -340,15 +339,15 @@ struct DepAnalysisComputer
         bool changed;
         int itr = 0;
         do {
-            TRACE("******* STARTING LIVE-IN ITERATION %d\n", itr);
+            TRACE("******* STARTING LIVE-IN ITERATION ", itr);
             changed = false;
             // TODO: iterate these first in reverse order, then via worklist
             for (BlockState &bs : blockState) {
-                TRACE("  *** B#%d with ...\n", bs.block->getID());
+                TRACE("  *** B#", bs.block->getID(), " with ...");
                 EmitPaths(bs.liveIn);
                 changed |= recomputeBlockLiveIn(bs, false);
             }
-            TRACE("******* ENDING ITERATION %d\n", itr);
+            TRACE("******* ENDING ITERATION ", itr);
             itr++;
         } while (changed);
     }
@@ -372,8 +371,7 @@ struct DepAnalysisComputer
             iItr != iItrEnd;)
         {
             Instruction *i = *iItr;
-            TRACE("      *** I#%03d: %-96s\n",
-                i->getID(), trimTrailingWs(i->str()).c_str());
+            TRACE("      *** I#", i->getID(), ": ", trimTrailingWs(i->str()));
 
             // extend live ranges
             LiveDepMap::iterator
@@ -393,24 +391,22 @@ struct DepAnalysisComputer
         bool changedAnyPred = false;
         if (bLiveInChanged) {
             // push information back to predecessor nodes
-            TRACE("     propagating B#%d liveIn %s back to pred(s)\n",
-                b.block->getID(), FormatLiveDepMap(b.liveIn).c_str());
+            TRACE("     propagating B#", b.block->getID(),
+                " liveIn ", FormatLiveDepMap(b.liveIn), " back to pred(s)");
             for (auto &predEdge : b.pred) {
                 BlockState *bPred = (BlockState *)predEdge.first;
-                TRACE("       pred B#%d out has %s\n",
-                    bPred->block->getID(),
-                    FormatLiveDepMap(bPred->liveOut).c_str());
+                TRACE("       pred B#", bPred->block->getID(),
+                    " out has ", FormatLiveDepMap(bPred->liveOut));
                 bool predChanged = joinBlocks(
                     bPred->liveOut,
                     b.liveIn,
                     predEdge.second);
                 changedAnyPred |= predChanged;
-                TRACE("       liveOut for B#%d changed to %s\n",
-                    bPred->block->getID(),
-                    FormatLiveDepMap(bPred->liveOut).c_str());
+                TRACE("       liveOut for B#", bPred->block->getID(),
+                    " changed to ", FormatLiveDepMap(bPred->liveOut));
             }
         } else {
-            TRACE("    liveIn didn't change for this block\n");
+            TRACE("    liveIn didn't change for this block");
         }
 
         return changedAnyPred;
@@ -458,7 +454,7 @@ struct DepAnalysisComputer
         // lr.live.destructiveSubtract(iOups.destinations);
         // lr.live.destructiveSubtract(iOups.flagModifier);
         if (d.values.empty()) {
-            TRACE("        %s: deleting range\n", d.str().c_str());
+            TRACE("        ", d.str(), ": deleting range");
             dItr = rLiveDefs.erase(dItr);
         } else {
             if (i->getOpSpec().isFixedLatency()) {
@@ -466,7 +462,7 @@ struct DepAnalysisComputer
                 // compare the use's pipe with the definition's pipe
                 d.minInOrderDist++;
             }
-            TRACE("        %s: extending range\n", d.str().c_str());
+            TRACE("        ", d.str(), ": extending range");
             dItr++;
         }
         return dItr;
@@ -526,7 +522,7 @@ struct DepAnalysisComputer
         if (rs2) {
             d->values.destructiveUnion(*rs2);
         }
-        TRACE("        %s: starting live range\n", d->str().c_str());
+        TRACE("        ", d->str(), ": starting live range");
     }
 
     bool joinBlocks(
@@ -580,12 +576,12 @@ struct DepAnalysisComputer
 
         std::stringstream ss;
         lr1.str(ss);
-        TRACE("  => %s\n", ss.str().c_str());
+        TRACE("  => ", ss.str());
     }
 
     void completePaths() {
         // copy out the data
-        TRACE("************ COPYING OUT RESULTS\n");
+        TRACE("************ COPYING OUT RESULTS");
         for (BlockState &b : blockState) {
             recomputeBlockLiveIn(b, true);
         }
@@ -642,7 +638,7 @@ DepAnalysis iga::ComputeDepAnalysis(Kernel *k)
 
     // copy out block information
     for (const auto &bs : lac.blockState) {
-        TRACE("==== BLOCK %d LIVE-IN ====\n", bs.block->getID());
+        TRACE("==== BLOCK ", bs.block->getID(), " LIVE-IN ====");
         EmitPaths(bs.liveIn);
 
         la.blockInfo.emplace_back(bs.block);
@@ -663,11 +659,11 @@ DepAnalysis iga::ComputeDepAnalysis(Kernel *k)
 
     // copy out the per-instruction live sets
     for (const Dep &d : lac.liveRangesResult) {
-        if (d.def != nullptr || d.useType != Dep::WAW) {
+        if (d.useType != Dep::WAW) {
             la.deps.push_back(d);
         }
     }
 
-    TRACE("=========== END ===========\n");
+    TRACE("=========== END ===========");
     return la;
 }

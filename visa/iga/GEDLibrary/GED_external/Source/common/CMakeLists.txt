@@ -21,7 +21,6 @@
 # IN THE SOFTWARE.
 #
 #============================ end_copyright_notice =============================
-
 # GED_external/Source/common
 set(GED_common_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_basic_types.cpp

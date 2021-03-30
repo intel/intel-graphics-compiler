@@ -226,9 +226,9 @@ typedef size_t(CDECLATTRIBUTE *pIGAKVGetDefaultLabelName)(
 typedef size_t(CDECLATTRIBUTE *pIGAKVGetInstSyntax)(
     const kv_t *kv,
     int32_t pc,
-    uint32_t fmt_opts,
     char *sbuf,
     size_t sbuf_cap,
+    uint32_t fmt_opts,
     const char *(*get_label_name)(int32_t, void *),
     void *env);
 #define IGA_KV_GET_OPGROUP_STR "kv_get_opgroup"

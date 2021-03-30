@@ -21,7 +21,6 @@
 # IN THE SOFTWARE.
 #
 #============================ end_copyright_notice =============================
-
 # GED_external/Source/ged/xcoder
 set(GED_xcoder_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins.cpp

@@ -194,9 +194,9 @@ public:
 
     void formatPrefixComment(const Instruction& i, const void *vbits) {
         bool printBits = opts.printInstBits && currInstBits != nullptr;
-        bool printDepId = opts.printInstDeps;
+        bool printInstId = opts.printInstDefs;
         bool printPc = opts.printInstPc;
-        if (!printBits && !printDepId && !printPc) {
+        if (!printBits && !printInstId && !printPc) {
             return; // nothing to print
         }
 
@@ -204,7 +204,7 @@ public:
         emit(ANSI_COMMENT);
         emit("/*");
         bool first = true;
-        if (printDepId) {
+        if (printInstId) {
             std::stringstream ss;
             ss << '#' << i.getID();
             o << std::right << std::setw(4) << ss.str();
@@ -256,43 +256,12 @@ public:
         formatInstruction(i);
     }
 
-
-// #define IGA_DEBUG_DEPS
     void formatInstruction(const Instruction& i) {
         currInst = &i;
-#ifdef IGA_DEBUG_DEPS
-        using Func = decltype(RegSet::addDestinationOutputs);
-        bool first = true;
-        auto emitSet = [&](std::string what, Func f) {
-            RegSet rs;
-            f(i, rs);
-            if (!rs.empty()) {
-                if (first) {first = false; emitAnsi(ANSI_FADED, "// ");}
-                else emitAnsi(ANSI_FADED, ", ");
-                emitAnsi(ANSI_FADED, what, ":", rs.str());
-            }
-        };
-        emitSet("d", RegSet::addDestinationOutputs);
-        emitSet("d-fl", RegSet::addFlagModifierOutputs);
-        emitSet("d-acc", RegSet::addDestinationImplicitAccumulator);
-        if (!first) {
-            newline();
-            first = true;
+
+        if (opts.printInstDeps) {
+            formatInstructionDeps(i);
         }
-        for (int ix = 0; ix < (int)i.getSourceCount(); ix++) {
-            RegSet rs;
-            RegSet::addSourceOperandInput(i, ix, rs);
-            if (!rs.empty()) {
-                if (first) {first = false; emitAnsi(ANSI_FADED, "// ");}
-                else emitAnsi(ANSI_FADED, ", ");
-                emitAnsi(ANSI_FADED, "s", ix, ":", rs.str());
-            }
-        }
-        emitSet("s-pr", RegSet::addPredicationInputs);
-        emitSet("s-acc", RegSet::addSourceImplicitAccumulator);
-        if (!first)
-            newline();
-#endif
         formatPrefixComment(i, currInstBits);
 
         const bool isSend = i.getOpSpec().isSendOrSendsFamily();
@@ -306,6 +275,51 @@ public:
         }
 
         currInst = nullptr;
+    }
+
+    void formatInstructionDeps(const Instruction& i) {
+        bool first = true;
+        auto emitSet = [&](std::string what, const RegSet &rs) {
+            if (!rs.empty()) {
+                if (first) {first = false; emitAnsi(ANSI_FADED, "// ");}
+                else emitAnsi(ANSI_FADED, ", ");
+                emitAnsi(ANSI_FADED, what, ":", rs.str());
+            }
+        };
+        RegSet rsDst(*model);
+        rsDst.addDestinationOutputs(i);
+        emitSet("d", rsDst);
+
+        RegSet rsDfl(*model);
+        rsDfl.addFlagModifierOutputs(i);
+        emitSet("d-fl", rsDfl);
+
+        RegSet rsAcc(*model);
+        rsAcc.addDestinationImplicitAccumulator(i);
+        emitSet("d-acc", rsAcc);
+
+        if (!first) {
+            newline();
+            first = true;
+        }
+        for (int ix = 0; ix < (int)i.getSourceCount(); ix++) {
+            RegSet rs(*model);
+            rs.addSourceOperandInput(i, ix);
+            std::stringstream ss;
+            ss << "s" << ix;
+            emitSet(ss.str(), rs);
+        }
+
+        RegSet rsPrS(*model);
+        rsPrS.addPredicationInputs(i);
+        emitSet("s-pr", rsPrS);
+
+        RegSet rsAccS(*model);
+        rsAccS.addSourceImplicitAccumulator(i);
+        emitSet("s-acc", rsAccS);
+
+        if (!first)
+            newline();
     }
 
     bool formatLoadStoreSyntax(const Instruction& i);
@@ -679,7 +693,11 @@ private:
             intercalate(ss, ",", opts.liveAnalysis->deps,
                 [&](const Dep &d) {return d.use == &i;},
                 [&](const Dep &d) {
-                    ss << " #" << d.def->getID();
+                    if (d.def) {
+                        ss << " #" << d.def->getID();
+                    } else {
+                        ss << " IN";
+                    }
                     d.values.str(ss);
                     // ss << " @" << d.minInOrderDist;
                 });
@@ -1249,6 +1267,8 @@ void FormatOpts::addApiOpts(uint32_t fmtOpts)
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_PC) != 0;
     printInstBits =
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_BITS) != 0;
+    printInstDefs =
+        (fmtOpts & IGA_FORMATTING_OPT_PRINT_DEFS) != 0;
     printInstDeps =
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_DEPS) != 0;
     printLdSt =
@@ -1284,8 +1304,12 @@ void FormatInstruction(
     const Instruction& i,
     const void *bits)
 {
-    Formatter f(e, o, opts);
-    f.formatInstruction(i, (const uint8_t *)bits);
+    if (opts.printJson) {
+        FormatInstructionJSON(o, opts, i, bits);
+    } else {
+        Formatter f(e, o, opts);
+        f.formatInstruction(i, (const uint8_t *)bits);
+    }
 }
 
 
