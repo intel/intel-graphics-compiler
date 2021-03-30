@@ -733,6 +733,7 @@ namespace IGC
         bool AllowCodeSinking();
         bool AllowSimd32Slicing();
         bool AllowLargeURBWrite();
+        void SetFirstStateId(int id);
         bool IsFirstTry();
         bool IsLastTry();
         unsigned GetRetryId() const;
