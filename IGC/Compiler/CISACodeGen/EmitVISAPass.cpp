@@ -54,6 +54,8 @@ IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/FormattedStream.h"
+#include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -93,6 +95,37 @@ static void splitIntoPowerOfTwo(SmallVector<uint32_t, 16>& execsizeSeq, uint32_t
         }
     }
 }
+
+namespace IGC
+{
+    class VisaIdAnnotator : public llvm::AssemblyAnnotationWriter
+    {
+        DenseMap<const Value*, uint32_t> m_rootToVISAId;
+        DenseMap<const BasicBlock*, uint32_t> m_blockId;
+
+    public:
+        VisaIdAnnotator() {}
+
+        void emitBasicBlockStartAnnot(const BasicBlock* BB, formatted_raw_ostream& OS) override
+        {
+            OS << "; BB";
+            if (m_blockId.count(BB)) {
+                OS << m_blockId[BB] << " ";
+            }
+            OS << ":\n";
+        }
+
+        void printInfoComment(const Value& V, formatted_raw_ostream& OS) override
+        {
+            if (m_rootToVISAId.count(&V))
+                OS << "\t\t; visa id: " << m_rootToVISAId[&V];
+        }
+
+        void trackVisaId(const Instruction* I, uint32_t vid) { m_rootToVISAId[I] = vid; }
+        void trackBlockId(const BasicBlock* BB, uint32_t bbid) { m_blockId[BB] = bbid; }
+    };
+}
+
 
 EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature)
     : FunctionPass(ID),
@@ -787,11 +820,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         auto name = IGC::Debug::GetDumpNameObj(m_currShader, "visa.ll");
         llvmtoVISADump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
-        llvmtoVISADump->stream() << F.getName() << "{\n\n";
     }
-
-    DenseMap<const Instruction*, uint32_t> rootToVISAId;
-
+    VisaIdAnnotator VidAnnotator;  // for visa.ll dump
     StringRef curSrcFile, curSrcDir;
 
     for (uint i = 0; i < m_pattern->m_numBlocks; i++)
@@ -803,6 +833,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             continue;
         }
+
+        VidAnnotator.trackBlockId(block.bb, i);
 
         if (i != 0)
         {
@@ -886,7 +918,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
                 if (llvmtoVISADump)
                 {
-                    rootToVISAId.try_emplace(llvmInst, m_encoder->GetVISAKernel()->getvIsaInstCount() + 1);
+                    VidAnnotator.trackVisaId(llvmInst, m_encoder->GetVISAKernel()->getvIsaInstCount() + 1);
                 }
 
                 // Insert lifetime start if legal. Note taht m_destination
@@ -911,35 +943,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(llvmInst);)
             }
         }
-
-
-        if (llvmtoVISADump)
-        {
-            if (block.bb->hasName())
-            {
-                llvmtoVISADump->stream() << block.bb->getName() << ":\n";
-            }
-            else
-            {
-                llvmtoVISADump->stream() << "; BB" << block.id << ":\n";
-            }
-            for (const Instruction& inst : *block.bb)
-            {
-                inst.print(llvmtoVISADump->stream());
-                auto val = rootToVISAId.find(&inst);
-                if (val != rootToVISAId.end())
-                {
-                    llvmtoVISADump->stream() << "\t\t; visa id: " << val->second;
-                }
-                llvmtoVISADump->stream() << "\n";
-            }
-            llvmtoVISADump->stream() << "\n";
-        }
     }
 
     if (llvmtoVISADump)
     {
-        llvmtoVISADump->stream() << "}\n";
+        F.print(llvmtoVISADump->stream(), &VidAnnotator);
         delete llvmtoVISADump;
     }
 
