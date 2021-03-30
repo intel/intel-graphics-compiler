@@ -1835,25 +1835,6 @@ void GenXBaling::doClones()
     IGC_ASSERT(!isa<PHINode>(Opnd));
     Instruction *Cloned = Opnd->clone();
     Cloned->setName(Opnd->getName());
-    // We don't want to simply clone rdregions from read_predef_reg
-    // as it may cause overwriting of that predef reg.
-    // That's why we want to create wrregion to keep this value in a temp var
-    // But to do this only when necessary we can't do this earlier
-    // (in PrologEpilogInsertion pass)
-    if (GenXIntrinsic::isRdRegion(Cloned) &&
-        GenXIntrinsic::isReadPredefReg(Cloned->getOperand(
-            GenXIntrinsic::GenXRegion::OldValueOperandNum))) {
-      auto *ReadPredef = cast<Instruction>(
-          Cloned->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-      Region R(ReadPredef);
-      auto Wrr =
-          R.createWrRegion(UndefValue::get(ReadPredef->getType()), ReadPredef,
-                           "", ReadPredef->getNextNode(), DebugLoc());
-      ReadPredef->replaceAllUsesWith(Wrr);
-      Wrr->replaceUsesOfWith(Wrr, ReadPredef);
-      BaleInfo BI(BaleInfo::WRREGION);
-      setBaleInfo(Wrr, BI);
-    }
     // Change the use.
     NC.Inst->setOperand(NC.OperandNum, Cloned);
     if (IsBaled) {

@@ -1305,6 +1305,8 @@ void GenXCoalescing::processCalls(FunctionGroup *FG)
   // For each subroutine...
   for (auto fgi = FG->begin() + 1, fge = FG->end(); fgi != fge; ++fgi) {
     Function *F = *fgi;
+    if (F->hasFnAttribute(genx::FunctionMD::CMStackCall))
+      continue;
     // For each call site...
     for (auto *U: F->users()) {
       if (auto *CI = genx::checkFunctionCall(U, F)) {
