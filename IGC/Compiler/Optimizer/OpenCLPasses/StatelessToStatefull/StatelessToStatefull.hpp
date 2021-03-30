@@ -136,7 +136,7 @@ namespace IGC
         // Handle non-gep pointer
         //   For historic reason (probably non-DW aligned arg), non-gep ptr isn't handled.
         //   If this field is true, non-gep ptr shall be handled.
-        const bool m_supportNonGEPPtr = true;
+        const bool m_supportNonGEPPtr = false;
 
         llvm::AssumptionCacheTracker* m_ACT;
         llvm::AssumptionCache* getAC(llvm::Function* F)
