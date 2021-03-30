@@ -99,8 +99,8 @@ class GenXPrologEpilogInsertion
   bool HasCalls = false;
   unsigned PrivMemSize = 0;
 
-  unsigned ArgRegSize;
-  unsigned RetRegSize;
+  unsigned ArgRegSize = 0;
+  unsigned RetRegSize = 0;
 
   void generateKernelProlog(Function &F);
   void generateFunctionProlog(Function &F);
