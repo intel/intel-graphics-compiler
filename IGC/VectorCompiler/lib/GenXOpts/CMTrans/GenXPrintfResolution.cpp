@@ -42,6 +42,7 @@ IN THE SOFTWARE.
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/BiFTools.h"
+#include "vc/GenXOpts/Utils/Printf.h"
 
 #include "vc/BiF/PrintfIface.h"
 #include "vc/BiF/Tools.h"
@@ -99,10 +100,11 @@ private:
   void addPrintfImplDeclarations(Module &M);
   void updatePrintfImplDeclarations(Module &M);
   void setAlwaysInlineForPrintfImpl();
-  CallInst &createPrintfInitCall(CallInst &OrigPrintf);
+  CallInst &createPrintfInitCall(CallInst &OrigPrintf,
+                                 const PrintfArgInfoSeq &ArgsInfo);
   CallInst &createPrintfFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
   CallInst &createPrintfArgCall(CallInst &OrigPrintf, CallInst &PrevCall,
-                                Value &Arg);
+                                Value &Arg, PrintfArgInfo Info);
   CallInst &createPrintfArgStrCall(CallInst &OrigPrintf, CallInst &PrevCall,
                                    Value &Arg);
   CallInst &createPrintfRetCall(CallInst &OrigPrintf, CallInst &PrevCall);
@@ -199,16 +201,33 @@ static void assertPrintfCall(const CallInst &CI) {
   (void)CI;
 }
 
+static PrintfArgInfoSeq analyzeFormatString(const Value &FmtStrOp) {
+  auto FmtStr = getConstStringFromOperandOptional(FmtStrOp);
+  if (!FmtStr)
+    report_fatal_error(
+        "printf resolution cannot access format string during compile time");
+  return parseFormatString(FmtStr.getValue());
+}
+
 void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   assertPrintfCall(OrigPrintf);
+  auto ArgsInfo = analyzeFormatString(*OrigPrintf.getArgOperand(0));
+  if (ArgsInfo.size() != OrigPrintf.getNumArgOperands() - 1)
+    report_fatal_error("printf format string and arguments don't correspond");
 
-  auto &InitCall = createPrintfInitCall(OrigPrintf);
+  auto &InitCall = createPrintfInitCall(OrigPrintf, ArgsInfo);
   auto &FmtCall = createPrintfFmtCall(OrigPrintf, InitCall);
+
+  // FIXME: combine LLVM call args type and format string info in more
+  // intelligent way.
+  auto ArgsWithInfo = zip(ArgsInfo, drop_begin(OrigPrintf.args(), 1));
   // potentially FmtCall as there may be no arguments
   auto &LastArgCall = *std::accumulate(
-      std::next(OrigPrintf.arg_begin()), OrigPrintf.arg_end(), &FmtCall,
-      [&OrigPrintf, this](CallInst *PrevCall, Value *Arg) {
-        return &createPrintfArgCall(OrigPrintf, *PrevCall, *Arg);
+      ArgsWithInfo.begin(), ArgsWithInfo.end(), &FmtCall,
+      [&OrigPrintf, this](CallInst *PrevCall, auto &&ArgWithInfo) {
+        return &createPrintfArgCall(OrigPrintf, *PrevCall,
+                                    *std::get<Use &>(ArgWithInfo).get(),
+                                    std::get<PrintfArgInfo &>(ArgWithInfo));
       });
   auto &RetCall = createPrintfRetCall(OrigPrintf, LastArgCall);
   RetCall.takeName(&OrigPrintf);
@@ -274,7 +293,11 @@ void GenXPrintfResolution::updatePrintfImplDeclarations(Module &M) {
 
 using ArgsInfoStorage = std::array<unsigned, ArgsInfoVector::Size>;
 
-static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf) {
+// Returns arguments information required by init implementation function.
+// FIXME: combine LLVM call args type and format string info before this
+// function.
+static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf,
+                                       const PrintfArgInfoSeq &FmtArgsInfo) {
   assertPrintfCall(OrigPrintf);
 
   ArgsInfoStorage ArgsInfo;
@@ -287,25 +310,25 @@ static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf) {
       llvm::count_if(PrintfArgs, [](Value *Arg) {
         return Arg->getType()->getPrimitiveSizeInBits() == 64;
       });
-  // FIXME: what if we want to print a pointer to a string?
-  // Seems like it cannot be handled without parsing the format string.
-  ArgsInfo[ArgsInfoVector::NumPtr] = llvm::count_if(PrintfArgs, [](Value *Arg) {
-    return Arg->getType()->isPointerTy() &&
-           !Arg->getType()->getPointerElementType()->isIntegerTy(8);
-  });
-  ArgsInfo[ArgsInfoVector::NumStr] = llvm::count_if(PrintfArgs, [](Value *Arg) {
-    return Arg->getType()->isPointerTy() &&
-           Arg->getType()->getPointerElementType()->isIntegerTy(8);
-  });
+  ArgsInfo[ArgsInfoVector::NumPtr] =
+      llvm::count_if(FmtArgsInfo, [](PrintfArgInfo Info) {
+        return Info.Type == PrintfArgInfo::Pointer;
+      });
+  ArgsInfo[ArgsInfoVector::NumStr] =
+      llvm::count_if(FmtArgsInfo, [](PrintfArgInfo Info) {
+        return Info.Type == PrintfArgInfo::String;
+      });
   return ArgsInfo;
 }
 
-CallInst &GenXPrintfResolution::createPrintfInitCall(CallInst &OrigPrintf) {
+CallInst &GenXPrintfResolution::createPrintfInitCall(
+    CallInst &OrigPrintf, const PrintfArgInfoSeq &FmtArgsInfo) {
   assertPrintfCall(OrigPrintf);
-  auto ArgsInfo = collectArgsInfo(OrigPrintf);
+  auto ImplArgsInfo = collectArgsInfo(OrigPrintf, FmtArgsInfo);
 
   IRBuilder<> IRB{&OrigPrintf};
-  auto *ArgsInfoV = ConstantDataVector::get(OrigPrintf.getContext(), ArgsInfo);
+  auto *ArgsInfoV =
+      ConstantDataVector::get(OrigPrintf.getContext(), ImplArgsInfo);
   return *IRB.CreateCall(PrintfImplDecl[PrintfImplFunc::Init], ArgsInfoV,
                          OrigPrintf.getName() + ".printf.init");
 }
@@ -354,22 +377,24 @@ static ArgKind::Enum getFloatingPointArgKind(Type &ArgTy) {
   return ArgKind::Float;
 }
 
-static ArgKind::Enum getPointerArgKind(Type &ArgTy) {
+static ArgKind::Enum getPointerArgKind(Type &ArgTy, PrintfArgInfo Info) {
   IGC_ASSERT_MESSAGE(ArgTy.isPointerTy(),
                      "wrong argument: pointer type was expected");
-  if (ArgTy.getPointerElementType()->isIntegerTy(8))
-    // FIXME: what if we want to print a pointer to a string?
-    // Seems like it cannot be handled without parsing the format string.
+  IGC_ASSERT_MESSAGE(Info.Type == PrintfArgInfo::Pointer ||
+                         Info.Type == PrintfArgInfo::String,
+                     "only %s and %p should correspond to pointer argument");
+  (void)ArgTy;
+  if (Info.Type == PrintfArgInfo::String)
     return ArgKind::String;
   return ArgKind::Pointer;
 }
 
-static ArgKind::Enum getArgKind(Type &ArgTy) {
+static ArgKind::Enum getArgKind(Type &ArgTy, PrintfArgInfo Info) {
   if (ArgTy.isIntegerTy())
     return getIntegerArgKind(ArgTy);
   if (ArgTy.isFloatingPointTy())
     return getFloatingPointArgKind(ArgTy);
-  return getPointerArgKind(ArgTy);
+  return getPointerArgKind(ArgTy, Info);
 }
 
 // sizeof(<2 x i32>) == 64
@@ -466,9 +491,10 @@ CallInst &GenXPrintfResolution::createPrintfArgStrCall(CallInst &OrigPrintf,
 
 CallInst &GenXPrintfResolution::createPrintfArgCall(CallInst &OrigPrintf,
                                                     CallInst &PrevCall,
-                                                    Value &Arg) {
+                                                    Value &Arg,
+                                                    PrintfArgInfo Info) {
   assertPrintfCall(OrigPrintf);
-  ArgKind::Enum Kind = getArgKind(*Arg.getType());
+  ArgKind::Enum Kind = getArgKind(*Arg.getType(), Info);
   IRBuilder<> IRB{&OrigPrintf};
   if (Kind == ArgKind::String)
     return createPrintfArgStrCall(OrigPrintf, PrevCall, Arg);

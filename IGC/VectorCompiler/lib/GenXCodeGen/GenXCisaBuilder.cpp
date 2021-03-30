@@ -54,6 +54,7 @@ IN THE SOFTWARE.
 #include "GenXVisaRegAlloc.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/GenXOpts/Utils/Printf.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
@@ -4660,14 +4661,6 @@ void GenXKernelBuilder::buildAlloca(CallInst *CI, unsigned IntrinID,
       ISA_ADD, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1, DstSp, SpSrc, Imm));
 }
 
-// extracts underlying c-string from provided constant
-static StringRef extractCStr(const Constant &CStrConst) {
-  if (isa<ConstantDataArray>(CStrConst))
-    return cast<ConstantDataArray>(CStrConst).getAsCString();
-  IGC_ASSERT(isa<ConstantAggregateZero>(CStrConst));
-  return "";
-}
-
 /***********************************************************************
  * buildPrintIndex : build code for storing constant format strins as metadata
  *                   and returning idx for that string
@@ -4690,14 +4683,10 @@ void GenXKernelBuilder::buildPrintIndex(CallInst *CI, unsigned IntrinID,
             EXEC_SIZE_1, Dst, Imm));
 
   // access string
-  LLVMContext& Context = CI->getContext();
-  const Value *Val = CI->getArgOperand(0);
-  const Instruction *Gep = cast<Instruction>(Val);
-  Val = Gep->getOperand(0);
-  StringRef UnderlyingCStr =
-    extractCStr(*cast<GlobalVariable>(Val)->getInitializer());
+  StringRef UnderlyingCStr = getConstStringFromOperand(*CI->getArgOperand(0));
 
   // store metadata
+  LLVMContext &Context = CI->getContext();
   MDNode* N = MDNode::get(Context, MDString::get(Context, UnderlyingCStr));
   NMD->addOperand(N);
 }
