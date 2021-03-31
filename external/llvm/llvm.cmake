@@ -86,8 +86,6 @@ if(IGC_LOOKING_FOR_LLVM)
   endif()
 endif(IGC_LOOKING_FOR_LLVM)
 
-include(${IGC_LLVM_TOOLS_DIR}/common_clang.cmake)
-
 if(IGC_OPTION__LLVM_SOURCES OR IGC_FOUND_SOURCES)
   if(NOT EXISTS "${IGC_OPTION__LLVM_SOURCES_DIR}")
     message(FATAL_ERROR "[IGC] Cannot find LLVM sources, please provide sources path by IGC_OPTION__LLVM_SOURCES_DIR flag")

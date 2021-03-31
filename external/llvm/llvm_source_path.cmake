@@ -23,11 +23,8 @@
 #============================ end_copyright_notice =============================
 
 # Use LLVM sources stored at fixed location
-if(NOT DEFINED BUILD_PACKAGE)
-  set(IGC_LLVM_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project)
-endif()
-
 list(APPEND IGC_LLVM_PATHS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project
   /opt/src/llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}

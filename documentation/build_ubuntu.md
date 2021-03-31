@@ -95,6 +95,33 @@ $ cd llvm-project
 $ git checkout -b tag llvmorg-10.0.0
 ```
 
+#### Additional notes on build modes
+
+There are several flags for these builds modes that you can pass to
+cmake command.
+
+- `IGC_OPTION__LLVM_PREFERRED_VERSION` -- sets version of LLVM that
+  will be used by IGC (defaults to "10.0.0").
+- `IGC_OPTION__LLVM_SOURCES` -- whether IGC uses LLVM sources in build
+  (by default OFF). This mode has suboptions:
+  - `IGC_OPTION__LLVM_STOCK_SOURCES` -- whether non-patched LLVM will
+  be used or not (by default OFF).
+  - `IGC_OPTION__LLVM_SOURCES_DIR` -- path to llvm sources when
+  building with LLVM sources (by default IGC takes whatever can be
+  found on the same directory level like in example above).
+- `IGC_OPTION__LLVM_FROM_SYSTEM` -- whether IGC uses LLVM as a package
+  (by default OFF).
+
+As it can be noted, by default all modes are in OFF position. This
+means that IGC will start to look for LLVM in the following order:
+
+1. Source build (see [source build](#build-from-sources));
+1. Package build (see [build with packages](#use-preinstalled-packages)).
+
+In most cases IGC will automatically detect all components. However,
+in case of any problems you can set variables listed above to help
+IGC with locating of components.
+
 ### 3. Build and install IGC
 
 1. Download sources:
