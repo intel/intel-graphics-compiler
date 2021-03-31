@@ -32,7 +32,7 @@ IN THE SOFTWARE.
 //*****************************************************************************/
 
 #define VLOAD_MACRO(addressSpace, scalarType, numElements, offsetType, mangle)                                                                                \
-INLINE scalarType##numElements __builtin_spirv_OpenCL_vload##numElements##_##mangle(offsetType offset, const addressSpace scalarType *p)                             \
+INLINE scalarType##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, numElements##_##mangle, n_R##scalarType##numElements)(offsetType offset, addressSpace scalarType *p)                             \
 {                                                                                                                                                             \
   const addressSpace scalarType *pOffset = p + offset * numElements;                                                                                          \
   scalarType##numElements ret;                                                                                                                                \
@@ -49,16 +49,16 @@ INLINE void __builtin_spirv_OpenCL_vstore##numElements##_##mangle(scalarType##nu
 }
 
 #define ELEM_ARG(addressSpace, scalarType, mang)             \
-VLOAD_MACRO(addressSpace, scalarType, 2,  ulong, i64_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 2,  uint,  i32_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 3,  ulong, i64_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 3,  uint,  i32_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 4,  ulong, i64_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 4,  uint,  i32_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 8,  ulong, i64_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 8,  uint,  i32_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 16, ulong, i64_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 16, uint,  i32_##mang)
+VLOAD_MACRO(addressSpace, scalarType, 2,  long, i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 2,  int,  i32_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 3,  long, i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 3,  int,  i32_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 4,  long, i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 4,  int,  i32_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 8,  long, i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 8,  int,  i32_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 16, long, i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 16, int,  i32_##mang)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #define TYPE_ARG(TYPE, TYPEMANG)       \
@@ -75,10 +75,10 @@ ELEM_ARG(local,    TYPE, p3##TYPEMANG) \
 ELEM_ARG(private,  TYPE, p0##TYPEMANG)
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
-TYPE_ARG(uchar,  i8)
-TYPE_ARG(ushort, i16)
-TYPE_ARG(uint,   i32)
-TYPE_ARG(ulong,  i64)
+TYPE_ARG(char,  i8)
+TYPE_ARG(short, i16)
+TYPE_ARG(int,   i32)
+TYPE_ARG(long,  i64)
 TYPE_ARG(half,   f16)
 TYPE_ARG(float,  f32)
 #if defined(cl_khr_fp64)
@@ -129,17 +129,17 @@ TYPE_ARG(double, f64)
 //*****************************************************************************/
 // vload macros
 //*****************************************************************************/
-static OVERLOADABLE float __intel_spirv_half2float(ushort h)
+static OVERLOADABLE float __intel_spirv_half2float(short h)
 {
     return SPIRV_BUILTIN(FConvert, _f32_f16, _Rfloat)(as_half(h));
 }
 
 #define VLOAD_SHORT(addressSpace, ASNUM)                                                                 \
-INLINE static ushort __builtin_spirv_OpenCL_vload_i64_p##ASNUM##i16(ulong offset, const addressSpace ushort* p) \
+INLINE static short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, _i64_p##ASNUM##i16, n_Rshort)(long offset, addressSpace short* p) \
 {                                                                                                        \
     return *(p + offset);                                                                                \
 }                                                                                                        \
-INLINE static ushort __builtin_spirv_OpenCL_vload_i32_p##ASNUM##i16(uint offset, const addressSpace ushort* p)  \
+INLINE static short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, _i32_p##ASNUM##i16, n_Rshort)(int offset, addressSpace short* p)  \
 {                                                                                                        \
     return *(p + offset);                                                                                \
 }
@@ -152,55 +152,55 @@ VLOAD_SHORT(__local,    3)
 VLOAD_SHORT(__constant, 2)
 VLOAD_SHORT(__private,  0)
 
-GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG(__intel_spirv_half2float, float, ushort)
+GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG(__intel_spirv_half2float, float, short)
 
 // Two copies for the i32 and i64 size_t offsets.
 #define __CLFN_DEF_F_VLOAD_SCALAR_HALF(addressSpace, ASNUM)                                      \
-INLINE half __builtin_spirv_OpenCL_vload_i32_p##ASNUM##f16(uint offset, const addressSpace half* p) {   \
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, _i32_p##ASNUM##f16, _Rhalf)(int offset, addressSpace half* p) {   \
   return *(p + offset);                                                                          \
 }                                                                                                \
-INLINE half __builtin_spirv_OpenCL_vload_i64_p##ASNUM##f16(ulong offset, const addressSpace half* p) {  \
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, _i64_p##ASNUM##f16, _Rhalf)(long offset, addressSpace half* p) {  \
   return *(p + offset);                                                                          \
 }
 
-#define __CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, MANGSIZE, SIZETYPE, numElements)                                                        \
-INLINE float##numElements __builtin_spirv_OpenCL_vload_half##numElements##_##MANGSIZE##_p##ASNUM##f16(SIZETYPE offset, const addressSpace half* p) { \
-  return __intel_spirv_half2float(__builtin_spirv_OpenCL_vload##numElements##_##MANGSIZE##_p##ASNUM##i16(offset, (const addressSpace ushort*)p));          \
+#define __CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, MANGSIZE, SIZETYPE, numElements, postfix)                                                        \
+INLINE float##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload_half, numElements##_##MANGSIZE##_p##ASNUM##f16, postfix##_Rfloat##numElements)(SIZETYPE offset, addressSpace half* p) { \
+  return __intel_spirv_half2float(SPIRV_OCL_BUILTIN(vload, numElements##_##MANGSIZE##_p##ASNUM##i16, n_Rshort##numElements)(offset, (addressSpace short*)p));          \
 }
 
 #define __CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, MANGSIZE, SIZETYPE, step, numElements)                                                 \
-INLINE float##numElements __builtin_spirv_OpenCL_vloada_half##numElements##_##MANGSIZE##_p##ASNUM##f16(SIZETYPE offset, const addressSpace half* p) {  \
-  const addressSpace ushort##numElements* pHalf = (const addressSpace ushort##numElements*)(p + offset * step);                               \
-  return __intel_spirv_half2float(*pHalf);                                                                                                          \
+INLINE float##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vloada_half, numElements##_##MANGSIZE##_p##ASNUM##f16, n_Rfloat##numElements)(SIZETYPE offset, addressSpace half* p) {  \
+  const addressSpace short##numElements* pHalf = (const addressSpace short##numElements*)(p + offset * step);  \
+  return __intel_spirv_half2float(*pHalf);                                                                     \
 }
 
 #define __CLFN_DEF_F_VLOAD_HALFX_AS(addressSpace, ASNUM)             \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, ulong, )          \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, ulong, 2)         \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, ulong, 3)         \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, ulong, 4)         \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, ulong, 8)         \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, ulong, 16)        \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, uint, )           \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, uint, 2)          \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, uint, 3)          \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, uint, 4)          \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, uint, 8)          \
-__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, uint, 16)
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, long, , )         \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, long, 2, n)       \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, long, 3, n)       \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, long, 4, n)       \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, long, 8, n)       \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i64, long, 16, n)      \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, int, , )          \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, int, 2, n)        \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, int, 3, n)        \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, int, 4, n)        \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, int, 8, n)        \
+__CLFN_DEF_F_VLOAD_HALFX(addressSpace, ASNUM, i32, int, 16, n)
 
-#define __CLFN_DEF_F_VLOADA_HALFX_AS(addressSpace, ASNUM)           \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, ulong, 1, )     \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, ulong, 2, 2)    \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, ulong, 4, 3)    \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, ulong, 4, 4)    \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, ulong, 8, 8)    \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, ulong, 16, 16)  \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, uint, 1, )      \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, uint, 2, 2)     \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, uint, 4, 3)     \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, uint, 4, 4)     \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, uint, 8, 8)     \
-__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, uint, 16, 16)
+#define __CLFN_DEF_F_VLOADA_HALFX_AS(addressSpace, ASNUM)          \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, long, 1, )     \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, long, 2, 2)    \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, long, 4, 3)    \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, long, 4, 4)    \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, long, 8, 8)    \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i64, long, 16, 16)  \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, int, 1, )      \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, int, 2, 2)     \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, int, 4, 3)     \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, int, 4, 4)     \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, int, 8, 8)     \
+__CLFN_DEF_F_VLOADA_HALFX(addressSpace, ASNUM, i32, int, 16, 16)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #define __CLFN_DEF_F_VLOAD_HALF_ALL()       \
