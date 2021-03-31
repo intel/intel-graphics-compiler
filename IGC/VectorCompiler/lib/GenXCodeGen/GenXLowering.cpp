@@ -196,7 +196,8 @@ private:
   bool lowerSqrt(CallInst *CI);
   bool widenByteOp(Instruction *Inst);
   bool lowerLoadStore(Instruction *Inst);
-  bool lowerMulSat(CallInst *CI, unsigned IntrinsicID);
+  bool lowerGenXMul(CallInst *CI, unsigned IntrinsicID);
+  bool lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID);
   bool lowerMul64(Instruction *Inst);
   bool lowerLzd(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
@@ -1129,11 +1130,16 @@ bool GenXLowering::processInst(Instruction *Inst) {
       ToErase.push_back(Inst);
       return true;
     }
+    case GenXIntrinsic::genx_ssmul:
+    case GenXIntrinsic::genx_sumul:
+    case GenXIntrinsic::genx_usmul:
+    case GenXIntrinsic::genx_uumul:
+      return lowerGenXMul(CI, IntrinsicID);
     case GenXIntrinsic::genx_ssmul_sat:
     case GenXIntrinsic::genx_sumul_sat:
     case GenXIntrinsic::genx_usmul_sat:
     case GenXIntrinsic::genx_uumul_sat:
-      return lowerMulSat(CI, IntrinsicID);
+      return lowerGenXMulSat(CI, IntrinsicID);
     case GenXIntrinsic::genx_lzd:
       return lowerLzd(Inst);
     case Intrinsic::trap:
@@ -2509,8 +2515,53 @@ bool GenXLowering::lowerSqrt(CallInst *CI) {
   return true;
 }
 
+// Some GenX-specific mul intrinsics require special lowering
+bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
+  // DxD -> Q mul should be handled specially if MulDDQ is NOT desired
+  if (ST->useMulDDQ())
+    return false;
+  if (IID == GenXIntrinsic::genx_sumul || IID == GenXIntrinsic::genx_usmul)
+    return false;
+  IGC_ASSERT(IID == GenXIntrinsic::genx_uumul ||
+             IID == GenXIntrinsic::genx_ssmul);
+
+  auto ScalarType = [](Value *V) { return V->getType()->getScalarType(); };
+  if (!ScalarType(CI)->isIntegerTy(64))
+    return false;
+  Value *LH = CI->getOperand(0);
+  Value *RH = CI->getOperand(1);
+  if (!ScalarType(LH)->isIntegerTy(32) || !ScalarType(RH)->isIntegerTy(32))
+    return false;
+
+  auto *M = CI->getModule();
+  Type *tys[2] = {LH->getType(), RH->getType()};
+
+  Function *MulHFunc =
+      (IID == GenXIntrinsic::genx_uumul)
+          ? GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_umulh, tys)
+          : GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_smulh,
+                                              tys);
+
+  IRBuilder<> B(CI);
+  Value *MulLo = B.CreateMul(LH, RH, CI->getName() + ".lo.");
+  Value *MulHi = B.CreateCall(MulHFunc, {LH, RH}, CI->getName() + ".hi.");
+
+  IGC_ASSERT(MulLo->getType() == MulHi->getType());
+  if (!MulLo->getType()->isVectorTy()) {
+    auto *VTy = IGCLLVM::FixedVectorType::get(B.getInt32Ty(), 1);
+    MulLo = B.CreateBitCast(MulLo, VTy, MulLo->getName() + "v.");
+    MulHi = B.CreateBitCast(MulHi, VTy, MulHi->getName() + "v.");
+  }
+
+  IVSplitter SplitBuilder(*CI);
+  Value *Result = SplitBuilder.combineLoHiSplit(
+      {MulLo, MulHi}, CI->getName() + ".", CI->getType()->isIntegerTy());
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
+  return true;
+}
 // Lower integer mul with saturation since VISA support mul.sat only for float.
-bool GenXLowering::lowerMulSat(CallInst *CI, unsigned IntrinsicID) {
+bool GenXLowering::lowerGenXMulSat(CallInst *CI, unsigned IntrinsicID) {
   auto IsSignedMulSat = [](unsigned ID) -> std::pair<bool, bool> {
     switch (ID) {
     case GenXIntrinsic::genx_uumul_sat:
@@ -2567,7 +2618,9 @@ bool GenXLowering::lowerMulSat(CallInst *CI, unsigned IntrinsicID) {
   return true;
 }
 
-// Lower cmp instructions that GenX cannot deal with.
+// Generic lowering for mul64
+// GenX backend does not support 64-bit multiplication, so we try
+// To lower it to a sequence of 32-bit ops
 bool GenXLowering::lowerMul64(Instruction *Inst) {
 
   IVSplitter SplitBuilder(*Inst);

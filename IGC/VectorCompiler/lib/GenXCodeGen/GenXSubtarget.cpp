@@ -65,6 +65,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   WarnCallable = false;
   EmulateLongLong = false;
   HasAdd64 = false;
+  UseMulDDQ = false;
   OCLRuntime = false;
   HasSwitchjmp = false;
   HasIntegerDivision = false;

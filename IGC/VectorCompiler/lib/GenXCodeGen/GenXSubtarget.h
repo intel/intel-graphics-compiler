@@ -111,6 +111,9 @@ private:
   // True if target supports native 64-bit add
   bool HasAdd64;
 
+  // True if it is profitable to use native DxD->Q multiplication
+  bool UseMulDDQ;
+
   // True if codegenerating for OCL runtime.
   bool OCLRuntime;
 
@@ -192,6 +195,12 @@ public:
 
   /// * hasLongLong - true if target supports long long
   bool hasLongLong() const { return HasLongLong; }
+
+  /// * hasAdd64 - true if target supports native 64-bit add/sub
+  bool hasAdd64() const { return HasAdd64; }
+
+  /// * useMulDDQ - true if is desired to emit DxD->Q mul instruction
+  bool useMulDDQ() const { return UseMulDDQ; }
 
   /// * disableJmpi - true if jmpi is disabled.
   bool disableJmpi() const { return DisableJmpi; }
