@@ -4155,10 +4155,6 @@ namespace IGC
 
 
 
-        if (m_program->m_Platform->hasEarlyGRFRead())
-        {
-            SaveOption(vISA_HasEarlyGRFRead, true);
-        }
 
         if (IGC_IS_FLAG_ENABLED(EnablerReadSuppressionWA) &&
             VISAPlatform >= GENX_TGLLP)

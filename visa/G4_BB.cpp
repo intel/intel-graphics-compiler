@@ -678,13 +678,13 @@ static int getConflictTimesForTGL(
             }
 
             int bundleID = (firstRegCandidate[i] % 64) / 4;
+            int bankID = (firstRegCandidate[i] % 4) / 2;
             if (isTGLLP)
             {
+                bankID = (firstRegCandidate[i]) % 2;
                 bundleID = (firstRegCandidate[i] % 16) / 2;
             }
-
-            int bankID = (firstRegCandidate[i] % 4) / 2;
-            if (zeroOne)
+            else if (zeroOne)
             {
                 bankID = (firstRegCandidate[i]) % 2;
                 bundleID = (firstRegCandidate[i] % 32) / 2;
