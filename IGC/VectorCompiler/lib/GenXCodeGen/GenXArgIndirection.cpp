@@ -353,7 +353,7 @@ public:
   }
   Indirectability checkIndirectability();
   CallSite *createCallSite(CallInst *CI);
-  Alignment getIndirectAlignment() const;
+  Alignment getIndirectAlignment(unsigned GRFWidth) const;
   void gatherBalesToModify(Alignment Align);
   std::pair<Value *, Value *> addAddressArg();
   void fixCallSites();
@@ -605,10 +605,10 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
   }
   // Get the worst case alignment of the indices from the call sites if we
   // indirect this arg.
-  Alignment Align = Alignment(5, 0);
+  Alignment Align = Alignment(genx::log2(ST->getGRFWidth()), 0);
   for (auto SubrArg = SubrArgs.begin(), e = SubrArgs.end();
       SubrArg != e; ++SubrArg) {
-    auto ThisAlign = SubrArg->getIndirectAlignment();
+    auto ThisAlign = SubrArg->getIndirectAlignment(ST->getGRFWidth());
     Align = Align.merge(ThisAlign);
   }
   // Gather the bales that need indirecting, and check whether indirection is
@@ -956,10 +956,6 @@ CallSite *SubroutineArg::createCallSite(CallInst *CI)
         return new ConstArgRetCallSite(CI, LdConst, RetRWS.EndWr,
             RetRWS.getWrIndex());
       }
-      DiagnosticInfoArgIndirection Warn(CI, Arg,
-          "Coalesced return value does not match constant argument", DS_Warning);
-      CI->getContext().diagnose(Warn);
-      return nullptr;
     }
   }
 
@@ -1022,9 +1018,8 @@ CallSite *SubroutineArg::createCallSite(CallInst *CI)
  * getIndirectAlignment : get worst-case alignment of indices if we indirect
  *                        this arg and retval
  */
-Alignment SubroutineArg::getIndirectAlignment() const
-{
-  Alignment Align(5, 0); // best case is GRF aligned
+Alignment SubroutineArg::getIndirectAlignment(unsigned GRFWidth) const {
+  Alignment Align(genx::log2(GRFWidth), 0); // best case is GRF aligned
   for (auto csi = CallSites.begin(), cse = CallSites.end();
       csi != cse; ++csi) {
     auto CallSite = *csi;
@@ -1155,8 +1150,9 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
   if (MainInst) {
     // Check for things about the main instruction that stop us indexing
     // operand(s) or result in this bale.
-    if (MainInst->Inst->getType()->getPrimitiveSizeInBits() > 256
-        && !ST->hasIndirectGRFCrossing()) {
+    if (MainInst->Inst->getType()->getPrimitiveSizeInBits() / genx::ByteBits >
+            ST->getGRFWidth() &&
+        !ST->hasIndirectGRFCrossing()) {
       // An execution size bigger than 1 GRF disqualifies the main
       // instruction on <= BDW.
       LLVM_DEBUG(dbgs() << "execution size bigger than GRF\n");
@@ -1164,14 +1160,22 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
     }
     unsigned IID = GenXIntrinsic::getAnyIntrinsicID(MainInst->Inst);
     if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)) {
-      // Cannot indirect a raw operand. We approximate this conservatively by
-      // spotting an intrinsic with void return type or with raw result.
-      if (MainInst->Inst->getType()->isVoidTy()) {
-        LLVM_DEBUG(dbgs() << "intrinsic with void return type assumed to have raw operands\n");
+      auto IntrInfo = GenXIntrinsicInfo(IID);
+      // Cannot indirect a raw or direct only operand.
+      bool RawOrDirectOnly =
+          std::any_of(MainInst->Inst->op_begin(), MainInst->Inst->op_end(),
+                      [&IntrInfo](Use &U) {
+                        auto AI = IntrInfo.getArgInfo(U.getOperandNo());
+                        return AI.isRaw() || AI.isDirectOnly();
+                      });
+      if (RawOrDirectOnly) {
+        LLVM_DEBUG(dbgs() << *MainInst->Inst
+                          << "\n\tintrinsic has raw or direct only operand\n");
         return false;
       }
-      if (GenXIntrinsicInfo(IID).getRetInfo().isRaw()) {
-        LLVM_DEBUG(dbgs() << "intrinsic with raw return value\n");
+      if (IntrInfo.getRetInfo().isRaw()) {
+        LLVM_DEBUG(dbgs() << *MainInst->Inst
+                          << "\n\tintrinsic with raw return value\n");
         return false;
       }
     }

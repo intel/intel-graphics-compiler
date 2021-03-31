@@ -250,7 +250,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
     if (CanSplitBale)
       return true;
   }
-  if (R.Indirect && (AI.Info & GenXIntrinsicInfo::DIRECTONLY))
+  if (R.Indirect && (AI.isDirectOnly()))
     return false;
   unsigned Restriction = AI.getRestriction();
   if (!Restriction)

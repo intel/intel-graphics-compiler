@@ -195,10 +195,10 @@ public:
     // Construct from a field read from the intrinsics info table.
     ArgInfo(unsigned Info) : Info(Info) {}
     // getCategory : return field category
-    unsigned getCategory() { return Info & CATMASK; }
+    unsigned getCategory() const { return Info & CATMASK; }
     // getAlignment : get any special alignment requirement, else align to 1
     // byte
-    VISA_Align getAlignment() {
+    VISA_Align getAlignment() const {
       if (isGeneral()) {
         if (Info & GRFALIGNED)
           return VISA_Align::ALIGN_GRF;
@@ -211,27 +211,28 @@ public:
       return VISA_Align::ALIGN_BYTE;
     }
     // isGeneral : test whether this is a general operand
-    bool isGeneral() { return getCategory() == GENERAL; }
-    bool needsSigned() {
+    bool isGeneral() const { return getCategory() == GENERAL; }
+    bool needsSigned() const {
       if (isGeneral())
         return Info & SIGNED;
       if (isRaw())
         return Info & RAW_SIGNED;
       return false;
     }
-    bool needsUnsigned() {
+    bool needsUnsigned() const {
       if (isGeneral())
         return Info & UNSIGNED;
       if (isRaw())
         return Info & RAW_UNSIGNED;
       return false;
     }
-    bool rawNullAllowed() {
+    bool isDirectOnly() const { return Info & DIRECTONLY; }
+    bool rawNullAllowed() const {
       IGC_ASSERT(isRaw());
       return Info & RAW_NULLALLOWED;
     }
     // isArgOrRet : test whether this field has an arg index
-    bool isArgOrRet() {
+    bool isArgOrRet() const {
       if (isGeneral()) return true;
       if ((Info & CATMASK) >= FIRST_OPERAND)
         return true;
@@ -239,35 +240,38 @@ public:
     }
     // isRealArgOrRet : test whether this field has an arg index, and is
     // a "real" use of the arg
-    bool isRealArgOrRet() {
+    bool isRealArgOrRet() const {
       if (isGeneral()) return true;
       if ((Info & CATMASK) >= FIRST_REAL_OPERAND)
         return true;
       return false;
     }
     // getArgCountMin : return minimum number of arguments
-    int getArgCountMin() {
+    int getArgCountMin() const {
       IGC_ASSERT(getCategory() == ARGCOUNT);
       return (Info & ARGCOUNTMASK) >> FLAGBASE;
     }
     // getArgIdx : return argument index for this field, or -1 for return value
     //  (assuming isArgOrRet())
-    int getArgIdx() { IGC_ASSERT(isArgOrRet()); return (Info & OPNDMASK) - 1; }
+    int getArgIdx() const {
+      IGC_ASSERT(isArgOrRet());
+      return (Info & OPNDMASK) - 1;
+    }
     // getLiteral : for a LITERAL or EXECSIZE field, return the literal value
-    unsigned getLiteral() { return Info & LITMASK; }
+    unsigned getLiteral() const { return Info & LITMASK; }
     // isRet : test whether this is the field for the return value
     //  (assuming isArgOrRet())
-    bool isRet() { return getArgIdx() < 0; }
+    bool isRet() const { return getArgIdx() < 0; }
     // isRaw : test whether this is a raw arg or return value
-    bool isRaw() { return getCategory() == RAW; }
+    bool isRaw() const { return getCategory() == RAW; }
     // getSaturation : return saturation info for the arg
-    unsigned getSaturation() { return Info & SATURATION; }
+    unsigned getSaturation() const { return Info & SATURATION; }
     // getRestriction : return operand width/region restriction, one of
     // 0 (no restriction), FIXED4, CONTIGUOUS, TWICEWIDTH
-    unsigned getRestriction() { return Info & RESTRICTION; }
+    unsigned getRestriction() const { return Info & RESTRICTION; }
     // isImmediateDisallowed : test whether immediate disallowed
     //  (assuming isArgOrRet())
-    bool isImmediateDisallowed() {
+    bool isImmediateDisallowed() const {
       IGC_ASSERT(isArgOrRet());
       if (isGeneral())
         return Info & NOIMM;
@@ -285,7 +289,7 @@ public:
       return false;
     }
     // getModifier : get what source modifier is allowed
-    unsigned getModifier() {
+    unsigned getModifier() const {
       IGC_ASSERT(isGeneral());
       IGC_ASSERT(isArgOrRet());
       IGC_ASSERT(!isRet());
