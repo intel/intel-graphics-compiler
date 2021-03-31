@@ -67,8 +67,8 @@ namespace {
 
         const unsigned int InstructionsLimit = 1000;
 
-        MemoryDependenceResults *MD;
-        DominatorTree *DT;
+        MemoryDependenceResults *MD = nullptr;
+        DominatorTree *DT = nullptr;
 
         void getAnalysisUsage(AnalysisUsage &AU) const override {
             AU.addRequired<DominatorTreeWrapperPass>();
