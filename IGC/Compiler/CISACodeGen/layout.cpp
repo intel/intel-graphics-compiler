@@ -365,6 +365,10 @@ static bool HasThreadGroupBarrierInBlock(BasicBlock * blk)
 
 BasicBlock* Layout::getLastReturnBlock(Function& Func)
 {
+    // If Func has any return BB, return the last return BB (may have multiple);
+    // otherwise, return the last BB that has no succ;
+    //     or nullptr if every BB has Succ (infinite looping)
+    BasicBlock* noRetAndNoSucc = nullptr;  // for func that never returns
     Function::BasicBlockListType& bblist = Func.getBasicBlockList();
     for (Function::BasicBlockListType::reverse_iterator RI = bblist.rbegin(),
         RE = bblist.rend();  RI != RE; ++RI)
@@ -372,11 +376,18 @@ BasicBlock* Layout::getLastReturnBlock(Function& Func)
         BasicBlock* bb = &*RI;
         if (succ_begin(bb) == succ_end(bb))
         {
-            return bb;
+            if (isa_and_nonnull<ReturnInst>(bb->getTerminator()))
+            {
+                return bb;
+            }
+            if (!noRetAndNoSucc)
+            {
+                noRetAndNoSucc = bb;
+            }
         }
     }
     // Function does not have a return block
-    return nullptr;
+    return noRetAndNoSucc;
 }
 
 //
