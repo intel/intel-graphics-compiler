@@ -53,6 +53,8 @@ IN THE SOFTWARE.
 #include <limits>
 #include <memory>
 
+enum class FunctionControl { Default, StackCall };
+
 namespace llvm {
 
 void initializeGenXBackendConfigPass(PassRegistry &PR);
@@ -128,6 +130,8 @@ struct GenXBackendOptions {
 
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
+
+  FunctionControl FCtrl;
 
   GenXBackendOptions();
 };
@@ -222,6 +226,8 @@ public:
   }
 
   bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }
+
+  FunctionControl getFCtrl() const { return Options.FCtrl; }
 };
 } // namespace llvm
 

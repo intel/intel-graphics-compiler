@@ -258,6 +258,9 @@ public:
   // Map from function to the index of its LI in LI storage
   SmallDenseMap<Function *, LocalizationInfo *> GlobalInfo;
 
+  // Function control option if any
+  FunctionControl FCtrl;
+
   CMABIAnalysis() : ModulePass{ID} {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -372,8 +375,10 @@ defineGlobalsLocalizationLimit(const GenXBackendConfig &Config) {
 }
 
 bool CMABIAnalysis::runOnModule(Module &M) {
-  GlobalsLocalizationLimit =
-      defineGlobalsLocalizationLimit(getAnalysis<GenXBackendConfig>());
+  auto &&BCfg = getAnalysis<GenXBackendConfig>();
+  GlobalsLocalizationLimit = defineGlobalsLocalizationLimit(BCfg);
+  FCtrl = BCfg.getFCtrl();
+
   runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
   return false;
 }
@@ -966,6 +971,13 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
 
     // No changes to this kernel's prototype.
     return 0;
+  }
+
+  // Convert non-kernel to stack call if applicable
+  if (Info->FCtrl == FunctionControl::StackCall &&
+      !F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+    LLVM_DEBUG(dbgs() << "Adding stack call to: " << F->getName() << "\n");
+    F->addFnAttr(genx::FunctionMD::CMStackCall);
   }
 
   // Non-kernels, only transforms module locals.

@@ -172,6 +172,27 @@ static void adjustOptLevel(vc::CompileOptions &Opts) {
     Opts.OptLevel = vc::OptimizerLevel::None;
 }
 
+static void adjustStackCalls(vc::CompileOptions &Opts, BuildDiag &Diag) {
+  int FCtrlFlag = IGC_GET_FLAG_VALUE(FunctionControl);
+  switch (FCtrlFlag) {
+  default:
+    Opts.FCtrl = FunctionControl::Default;
+    break;
+  case FLAG_FCALL_FORCE_INLINE:
+    Diag.addWarning("VC does not support always inline");
+    break;
+  case FLAG_FCALL_FORCE_SUBROUTINE:
+    Diag.addWarning("VC does not support always subroutine");
+    break;
+  case FLAG_FCALL_FORCE_STACKCALL:
+    Opts.FCtrl = FunctionControl::StackCall;
+    break;
+  case FLAG_FCALL_FORCE_INDIRECTCALL:
+    Diag.addWarning("VC does not support always indirect calls");
+    break;
+  }
+}
+
 // Overwrite binary format option for backward compatibility with
 // environment variable approach.
 static void adjustBinaryFormat(vc::BinaryKind &Binary) {
@@ -203,6 +224,7 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustOptLevel(Opts);
   adjustBinaryFormat(Opts.Binary);
   adjustDumpOptions(Opts);
+  adjustStackCalls(Opts, Diag);
 
   // ZE Binary does not support debug info
   if (Opts.Binary == vc::BinaryKind::ZE && Opts.EmitDebuggableKernels) {

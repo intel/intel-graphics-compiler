@@ -25,6 +25,7 @@ IN THE SOFTWARE.
 #pragma once
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
+#include "vc/Support/BackendConfig.h"
 #include "vc/Support/ShaderDump.h"
 
 #include <JitterDataStruct.h>
@@ -93,6 +94,9 @@ struct CompileOptions {
   bool DumpAsm = false;
   bool DumpDebugInfo = false;
   bool TimePasses = false;
+
+  // from IGC_XXX env
+  FunctionControl FCtrl = FunctionControl::Default;
 };
 
 struct ExternalData {

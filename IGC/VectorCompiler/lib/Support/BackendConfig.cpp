@@ -101,6 +101,12 @@ static cl::opt<bool>
                           cl::desc("Use prolog/epilog insertion pass"),
                           cl::init(true));
 
+static cl::opt<FunctionControl> FunctionControlOpt(
+    "vc-function-control", cl::desc("Force special calls (see supported enum)"),
+    cl::init(FunctionControl::Default),
+    cl::values(clEnumValN(FunctionControl::Default, "default", "Default"),
+               clEnumValN(FunctionControl::StackCall, "stackcall", "Default")));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -111,15 +117,16 @@ char GenXBackendConfig::ID = 0;
 GenXBackendOptions::GenXBackendOptions()
     : EmitDebugInformation(GenerateDebugInfoOpt),
       EmitDebuggableKernels(EmitDebuggableKernelsOpt),
-      DumpRegAlloc(DumpRegAllocOpt),
-      StackSurfaceMaxSize(StackMemSizeOpt), EnableAsmDumps(EnableAsmDumpsOpt),
+      DumpRegAlloc(DumpRegAllocOpt), StackSurfaceMaxSize(StackMemSizeOpt),
+      EnableAsmDumps(EnableAsmDumpsOpt),
       EnableDebugInfoDumps(EnableDebugInfoDumpOpt),
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
       UseNewStackBuilder(UseNewStackBuilderOpt),
       GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
                           GlobalsLocalizationLimitOpt.getValue()},
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
-      DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt) {}
+      DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
+      FCtrl(FunctionControlOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {

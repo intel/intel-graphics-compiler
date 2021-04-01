@@ -233,6 +233,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.LocalizeLRsForAccUsage = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)
     BackendOpts.DisableNonOverlappingRegionOpt = true;
+  BackendOpts.FCtrl = Opts.FCtrl;
   return BackendOpts;
 }
 
