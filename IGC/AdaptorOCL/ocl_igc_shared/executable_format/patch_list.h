@@ -32,7 +32,7 @@ Abstract:   Contains common patch structure definitions
 
 namespace iOpenCL
 {
-const uint32_t CURRENT_ICBE_VERSION = 1070;
+const uint32_t CURRENT_ICBE_VERSION = 1071;
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
 
