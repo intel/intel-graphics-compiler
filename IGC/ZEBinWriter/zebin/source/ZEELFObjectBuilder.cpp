@@ -157,7 +157,7 @@ using namespace llvm;
 
 ZEELFObjectBuilder::Section&
 ZEELFObjectBuilder::addStandardSection(
-    std::string name, std::string sectName, const uint8_t* data, uint64_t size,
+    std::string sectName, const uint8_t* data, uint64_t size,
     unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections)
 {
     IGC_ASSERT(type != ELF::SHT_NULL);
@@ -170,7 +170,7 @@ ZEELFObjectBuilder::addStandardSection(
 
     // total required padding is (padding + need_padding_for_align)
     sections.emplace_back(
-        ZEELFObjectBuilder::StandardSection(name, sectName, data, size, type,
+        ZEELFObjectBuilder::StandardSection(sectName, data, size, type,
             (need_padding_for_align + padding), m_sectionId));
     ++m_sectionId;
     return sections.back();
@@ -188,7 +188,7 @@ ZEELFObjectBuilder::addSectionText(
     else
         sectName = m_TextName;
 
-    Section& sect = addStandardSection(name, sectName, data, size, ELF::SHT_PROGBITS,
+    Section& sect = addStandardSection(sectName, data, size, ELF::SHT_PROGBITS,
         padding, align, m_textSections);
 
     return sect.id();
@@ -205,7 +205,7 @@ ZEELFObjectBuilder::addSectionData(
     else
         sectName = m_DataName;
 
-    Section& sect = addStandardSection(name, sectName, data, size, ELF::SHT_PROGBITS,
+    Section& sect = addStandardSection(sectName, data, size, ELF::SHT_PROGBITS,
         padding, align, m_dataAndbssSections);
     return sect.id();
 }
@@ -221,7 +221,7 @@ ZEELFObjectBuilder::addSectionBss(
     else
         sectName = m_BssName;
 
-    Section& sect = addStandardSection(name, sectName, nullptr, size, ELF::SHT_NOBITS,
+    Section& sect = addStandardSection(sectName, nullptr, size, ELF::SHT_NOBITS,
         padding, align, m_dataAndbssSections);
     return sect.id();
 }
@@ -236,7 +236,7 @@ ZEELFObjectBuilder::addSectionGTPinInfo(std::string name, const uint8_t* data, u
     else
         sectName = m_GTPinInfoName;
 
-    addStandardSection(name, sectName,
+    addStandardSection(sectName,
         data, size, SHT_ZEBIN_GTPIN_INFO, 0, 0, m_otherStdSections);
 }
 
@@ -245,7 +245,7 @@ ZEELFObjectBuilder::addSectionSpirv(std::string name, const uint8_t* data, uint6
 {
     if (name.empty())
         name = m_SpvName;
-    addStandardSection(name, name, data, size, SHT_ZEBIN_SPIRV, 0, 0, m_otherStdSections);
+    addStandardSection(name, data, size, SHT_ZEBIN_SPIRV, 0, 0, m_otherStdSections);
 }
 
 ZEELFObjectBuilder::SectionID
@@ -254,7 +254,7 @@ ZEELFObjectBuilder::addSectionDebug(std::string name, const uint8_t* data, uint6
     if (name.empty())
         name = m_DebugName;
     Section& sect =
-        addStandardSection(name, name, data, size, ELF::SHT_PROGBITS, 0, 0, m_otherStdSections);
+        addStandardSection(name, data, size, ELF::SHT_PROGBITS, 0, 0, m_otherStdSections);
     return sect.id();
 }
 
@@ -291,12 +291,14 @@ ZEELFObjectBuilder::getOrCreateRelocSection(SectionID targetSectId)
     }
     // if not found, create one
     // adjust the section name to be .rel.applyTergetName
+    // If the targt name is empty, we use the defualt name .rel as the section name
+    // though in our case this should not happen
     std::string sectName;
     std::string targetName = getSectionNameBySectionID(targetSectId);
     if (!targetName.empty())
-        sectName = m_RelName + "." + targetName;
+        sectName = m_RelName + targetName;
     else
-        sectName = targetName;
+        sectName = m_RelName;
 
     m_relocSections.emplace_back(m_sectionId, targetSectId, sectName);
     ++m_sectionId;
@@ -323,15 +325,15 @@ std::string ZEELFObjectBuilder::getSectionNameBySectionID(SectionID id)
     // do linear search that we assume there won't be too many sections
     for (StandardSection& sect : m_textSections) {
         if (sect.id() == id)
-            return sect.m_name;
+            return sect.m_sectName;
     }
     for (StandardSection& sect : m_dataAndbssSections) {
         if (sect.id() == id)
-            return sect.m_name;
+            return sect.m_sectName;
     }
     for (StandardSection& sect : m_otherStdSections) {
         if (sect.id() == id)
-            return sect.m_name;
+            return sect.m_sectName;
     }
     IGC_ASSERT_MESSAGE(0, "getSectionNameBySectionID: invalid SectionID");
     return "";

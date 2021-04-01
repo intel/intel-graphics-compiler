@@ -153,7 +153,8 @@ public:
     // add .gtpin_info section
     // - name: section name. Do not includes leading .gtpin_info in the given
     //         name. For example, giving "func", the section name will be
-    //         ".gtpin_info.func"
+    //         ".gtpin_info.func". The defualt name is .gtpin_fino. It'll be apply
+    //         if the given name is empty.
     // - size in byte
     // - Note that the alignment requirement of the section should be satisfied
     //   by the given data and size
@@ -221,23 +222,16 @@ private:
 
     class StandardSection : public Section {
     public:
-        StandardSection(std::string name, std::string sectName, const uint8_t* data, uint64_t size,
+        StandardSection(std::string sectName, const uint8_t* data, uint64_t size,
             unsigned type, uint32_t padding, uint32_t id)
-            : Section(id), m_name(name), m_sectName(sectName), m_data(data), m_size(size), m_type(type),
+            : Section(id), m_sectName(sectName), m_data(data), m_size(size), m_type(type),
               m_padding(padding)
         {}
 
         Kind getKind() const { return STANDARD; }
 
-        // m_name - given name from addSectionData/addSectionText/...
-        // we need the name when there is relocations for this section, its reloc
-        // section name will be .rel.{m_name}
-        std::string m_name;
         // m_sectName - the final name presented in ELF section header
-        // For example, text section for kernel with "myKernel", the given
-        // name could be "myKernel", so m_name = "myKernel". And the
-        // m_sectName is ".text.myKernel". This field is required as the
-        // place holder for StringTable construction
+        // This field is required as the place holder for StringTable construction
         std::string m_sectName;
         const uint8_t* m_data;
         uint64_t m_size;
@@ -321,10 +315,8 @@ private:
     typedef std::vector<RelocSection> RelocSectionListTy;
 
 private:
-    // name: The given name added by addSection* APIs
-    // secName: The full name that will be represented in section header
     Section& addStandardSection(
-        std::string name, std::string sectName, const uint8_t* data, uint64_t size,
+        std::string sectName, const uint8_t* data, uint64_t size,
         unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections);
 
     RelocSection& getOrCreateRelocSection(SectionID targetSectId);
