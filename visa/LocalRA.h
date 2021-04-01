@@ -324,6 +324,8 @@ public:
 
     unsigned int get_bundle(unsigned int baseReg, int offset);
 
+    unsigned int get_bank(unsigned int baseReg, int offset);
+
     int findBundleConflictFreeRegister(int curReg, int endReg, unsigned short occupiedBundles, BankAlign align, bool evenAlign);
 
     void findRegisterCandiateWithAlignBackward(int& i, BankAlign align, bool evenAlign);
@@ -501,7 +503,6 @@ private:
 
     void expireRanges(unsigned int);
     void expireInputRanges(unsigned int, unsigned int, unsigned int);
-    unsigned short getOccupiedBundle(G4_Declare* dcl);
     void expireAllActive();
     bool allocateRegsFromBanks(LocalLiveRange*);
     bool allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);

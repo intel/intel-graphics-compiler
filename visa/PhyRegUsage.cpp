@@ -214,6 +214,52 @@ static int getSubAlignInWords(G4_SubReg_Align subAlign)
     return static_cast<int>(subAlign);
 }
 
+unsigned short PhyRegUsage::getOccupiedBundle(const G4_Declare* dcl) const
+{
+    unsigned short occupiedBundles = 0;
+    unsigned bundleNum = 0;
+
+
+    for (const BundleConflict& conflict : gra.getBundleConflicts(dcl))
+    {
+        unsigned reg = -1;
+        int offset = 0;
+
+        offset = conflict.offset;
+        const G4_RegVar* regVar = conflict.dcl->getRegVar();
+        if (regVar->isPhyRegAssigned())
+        {
+            reg = regVar->getPhyReg()->asGreg()->getRegNum();
+        }
+        else
+        {
+            LiveRange* lr = lrs[regVar->getId()];
+            if (lr && lr->getPhyReg())
+            {
+                reg = lr->getPhyReg()->asGreg()->getRegNum();
+            }
+        }
+
+        if (reg != -1)
+        {
+            unsigned bundle = gra.get_bundle(reg, offset);
+            unsigned bundle1 = gra.get_bundle(reg, offset + 1);
+            if (!(occupiedBundles & ((unsigned short)1 << bundle)))
+            {
+                bundleNum++;
+            }
+            occupiedBundles |= (unsigned short)1 << bundle;
+            occupiedBundles |= (unsigned short)1 << bundle1;
+        }
+    }
+    if (bundleNum > 12)
+    {
+        occupiedBundles = 0;
+    }
+
+    return occupiedBundles;
+}
+
 // returns the starting word index if we find enough free contiguous words satisfying alignment,
 // -1 otherwise
 int PhyRegUsage::findContiguousWords(
@@ -1134,7 +1180,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             }
 
             bool forceCalleeSaveAlloc = builder.kernel.fg.isPseudoVCEDcl(decl);
-            unsigned short occupiedBundles = gra.getOccupiedBundle(decl);
+            unsigned short occupiedBundles = getOccupiedBundle(decl);
             bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles,
                 getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
                 startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
