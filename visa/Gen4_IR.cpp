@@ -8140,6 +8140,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
         return builder.canMadHaveAcc() &&
             ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) ||
                 (srcId == 0 && src->getModifier() == Mod_src_undef) ||
+                (srcId == 0 && builder.relaxedACCRestrictions_1()) ||
                 (builder.hasSrc2Acc() && srcId == 2 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));
     case G4_csel:
         return builder.canMadHaveAcc();

@@ -496,6 +496,11 @@
         return false;
     }
 
+    bool relaxedACCRestrictions_1() const
+    {
+        return false;
+    }
+
     bool loadThreadPayload() const
     {
         return false;
