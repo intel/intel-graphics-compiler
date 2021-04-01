@@ -954,6 +954,18 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         delete llvmtoVISADump;
     }
 
+    if (m_FGA && !m_FGA->useStackCall(&F))
+    {
+        BasicBlock* exitBB = &*(F.getBasicBlockList().rbegin());
+        if (IGC_IS_FLAG_ENABLED(ForceSubReturn) &&
+            !isa_and_nonnull<ReturnInst>(exitBB->getTerminator()))
+        {
+            // No return, generate dummy return for each subroutine to meet visa requirement.
+            m_encoder->SubroutineRet(nullptr, &F);
+            m_encoder->Push();
+        }
+    }
+
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
         // Cache the arguments list into a vector for faster access
