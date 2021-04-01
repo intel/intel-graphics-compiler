@@ -31,8 +31,9 @@ IN THE SOFTWARE.
 #include "GenX.h"
 #include "GenXIntrinsics.h"
 #include "GenXRegion.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
+
+#include "vc/GenXOpts/Utils/Printf.h"
+
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/StringExtras.h"
@@ -48,7 +49,9 @@ IN THE SOFTWARE.
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "Probe/Assertion.h"
 #include <iterator>
@@ -2045,41 +2048,11 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
   return 1;
 }
 
-static bool isPrintFormatIndexGEPImpl(const User &GEP) {
-  IGC_ASSERT_MESSAGE(
-      isa<GetElementPtrInst>(GEP) ||
-          (isa<ConstantExpr>(GEP) &&
-           cast<ConstantExpr>(GEP).getOpcode() == Instruction::GetElementPtr),
-      "wrong argument: gep instruction or gep constexpr are expected");
-  return std::all_of(GEP.user_begin(), GEP.user_end(), [](const User *Usr) {
-    if (!isa<CallInst>(Usr))
-      return false;
-    const Function *Callee = cast<CallInst>(Usr)->getCalledFunction();
-    if (!Callee)
-      return false;
-    auto IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
-    return (IntrinID == GenXIntrinsic::genx_print_format_index);
-  });
-}
-
-bool genx::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
-  return isPrintFormatIndexGEPImpl(GEP);
-}
-
-bool genx::isPrintFormatIndexGEP(const Value &V) {
-  if (isa<GetElementPtrInst>(V))
-    return isPrintFormatIndexGEPImpl(cast<User>(V));
-  if (isa<ConstantExpr>(V) &&
-      cast<ConstantExpr>(V).getOpcode() == Instruction::GetElementPtr)
-    return isPrintFormatIndexGEPImpl(cast<User>(V));
-  return false;
-}
-
 bool genx::isRealGlobalVariable(const GlobalVariable &GV) {
   if (GV.hasAttribute("genx_volatile"))
     return false;
   return std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
-    return !genx::isPrintFormatIndexGEP(*Usr);
+    return !isPrintFormatIndexGEP(*Usr);
   });
 }
 

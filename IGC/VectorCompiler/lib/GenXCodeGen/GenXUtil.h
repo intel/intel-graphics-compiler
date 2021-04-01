@@ -682,13 +682,6 @@ public:
   std::vector<char> emitConsolidatedData() && { return std::move(Data); }
 };
 
-// There's a special case of GEP when all its users are genx.print.format.index
-// intrinsics. Such GEPs live until CisaBuilder and then handled as part of
-// genx.print.format.index intrinsic.
-// This function checks whether \p GEP is a such GEP.
-bool isPrintFormatIndexGEP(const GetElementPtrInst &GEP);
-bool isPrintFormatIndexGEP(const Value &V);
-
 // Not every global variable is a real global variable and should be eventually
 // encoded as a global variable.
 // GenX volatile and printf strings are exclusion for now.

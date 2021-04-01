@@ -24,6 +24,8 @@ IN THE SOFTWARE.
 
 #include "vc/GenXOpts/Utils/Printf.h"
 
+#include <llvm/GenXIntrinsics/GenXIntrinsics.h>
+
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringRef.h>
@@ -127,4 +129,34 @@ PrintfArgInfoSeq llvm::parseFormatString(StringRef FmtStr) {
   transform(ArgDescs, std::back_inserter(Args),
             [](SRefMatch ArgDesc) { return parseArgDesc(ArgDesc); });
   return Args;
+}
+
+static bool isPrintFormatIndexGEPImpl(const User &GEP) {
+  IGC_ASSERT_MESSAGE(
+      isa<GetElementPtrInst>(GEP) ||
+          (isa<ConstantExpr>(GEP) &&
+           cast<ConstantExpr>(GEP).getOpcode() == Instruction::GetElementPtr),
+      "wrong argument: gep instruction or gep constexpr are expected");
+  return std::all_of(GEP.user_begin(), GEP.user_end(), [](const User *Usr) {
+    if (!isa<CallInst>(Usr))
+      return false;
+    const Function *Callee = cast<CallInst>(Usr)->getCalledFunction();
+    if (!Callee)
+      return false;
+    auto IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
+    return (IntrinID == GenXIntrinsic::genx_print_format_index);
+  });
+}
+
+bool llvm::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
+  return isPrintFormatIndexGEPImpl(GEP);
+}
+
+bool llvm::isPrintFormatIndexGEP(const Value &V) {
+  if (isa<GetElementPtrInst>(V))
+    return isPrintFormatIndexGEPImpl(cast<User>(V));
+  if (isa<ConstantExpr>(V) &&
+      cast<ConstantExpr>(V).getOpcode() == Instruction::GetElementPtr)
+    return isPrintFormatIndexGEPImpl(cast<User>(V));
+  return false;
 }
