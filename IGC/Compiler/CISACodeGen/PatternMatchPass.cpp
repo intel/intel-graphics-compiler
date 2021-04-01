@@ -1180,7 +1180,12 @@ namespace IGC
                 match = MatchSingleInstruction(I);
             }
         }
-        IGC_ASSERT_MESSAGE(match, "no match for this call");
+        if (!match)
+        {
+            std::string errMsg = "undefined reference to `" + I.getCalledFunction()->getFunction().getName().str() + "()`\n";
+            IGC_ASSERT_MESSAGE(match, "%s", errMsg.c_str());
+            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errMsg.c_str(), &I);
+        }
     }
 
     void CodeGenPatternMatch::visitUnaryInstruction(llvm::UnaryInstruction& I)
