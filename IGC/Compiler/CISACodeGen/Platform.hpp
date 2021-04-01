@@ -295,11 +295,6 @@ bool NeedResetA0forVxHA0() const
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
 }
 
-bool enableVertexReorderingPhase2() const
-{
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
-}
-
 unsigned int GetLogBindlessSamplerSize() const
 {
     // Samplers are 16 bytes
