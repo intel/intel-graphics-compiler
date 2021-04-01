@@ -1161,6 +1161,11 @@ bool GenXLowering::processInst(Instruction *Inst) {
       Inst->getContext().emitError(
           Inst, "GenX backend cannot handle overflowing intrinsics yet");
       break;
+    case Intrinsic::assume:
+      ToErase.push_back(Inst);
+      return true;
+    case Intrinsic::expect:
+      llvm_unreachable("Expect intrinsic should be lowered before");
     }
     return false;
   }

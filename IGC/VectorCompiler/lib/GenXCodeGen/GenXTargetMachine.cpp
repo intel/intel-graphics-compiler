@@ -272,6 +272,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   PM.add(createSROAPass());
   PM.add(createEarlyCSEPass());
+  PM.add(createLowerExpectIntrinsicPass());
   PM.add(createCFGSimplificationPass());
   PM.add(createInstructionCombiningPass());
 
