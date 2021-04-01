@@ -35,6 +35,7 @@ IN THE SOFTWARE.
 #include "llvm/Support/CommandLine.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -1969,9 +1970,7 @@ void Legalization::visitBasicBlock(llvm::BasicBlock& BB) {
 
 void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I)
 {
-    Value* args[16];
-    const int args_size = I.getCalledFunction()->getFunctionType()->getNumParams();
-    llvm::ArrayRef<Value*> arrayRef_params(args, args_size);
+    llvm::SmallVector<llvm::Value*, 16> args(I.arg_begin(), I.arg_end());
     GenIntrinsicInst* CI = llvm::dyn_cast<GenIntrinsicInst>(&I);
 
     llvm::SmallVector<Type*, 5> types;
@@ -2002,7 +2001,7 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I)
     types[0] = I.getType();
     types[1] = Type::getFloatTy(I.getContext());
 
-    for (int index = 0; index < args_size; index++)
+    for (size_t index = 0; index < args.size(); index++)
     {
         Value* input = I.getOperand(index);
         if (input->getType()->isHalfTy())
@@ -2025,9 +2024,8 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I)
     }
 
     llvm::Function* f0 = GenISAIntrinsic::getDeclaration(m_ctx->getModule(), CI->getIntrinsicID(), types);
-    llvm::CallInst* I0 = GenIntrinsicInst::Create(f0, arrayRef_params, "", &I);
-    I.replaceAllUsesWith(I0);
-    I.eraseFromParent();
+    llvm::CallInst* I0 = GenIntrinsicInst::Create(f0, args);
+    llvm::ReplaceInstWithInst(&I, I0);
 }
 
 void Legalization::visitTruncInst(llvm::TruncInst& I) {
