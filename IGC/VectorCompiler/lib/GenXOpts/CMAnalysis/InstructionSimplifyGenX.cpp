@@ -45,20 +45,164 @@ IN THE SOFTWARE.
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/PatternMatch.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/Pass.h>
-#include <llvm/Support/Debug.h>
 #include <llvm/Support/CommandLine.h>
-#include "Probe/Assertion.h"
+#include <llvm/Support/Debug.h>
+
 #include "llvmWrapper/Support/TypeSize.h"
+#include "Probe/Assertion.h"
 
 using namespace llvm;
 
 static cl::opt<bool>
     GenXEnablePeepholes("genx-peepholes", cl::init(true), cl::Hidden,
                         cl::desc("apply additional peephole optimizations"));
+
+// Takes a constant and checks if it can be used as a RHS for mulDDQ operation
+// A constant can be used as such if every component of it can be represented
+// as signed/unsigned 32-bit integer.
+// LHSigned represents the preferred representation for the 32-bit ints
+static std::pair<Value *, bool> transformConstantToMulDDQOperand(bool LHSigned,
+                                                                 Constant *C) {
+  Type *Ty32 = Type::getInt32Ty(C->getContext());
+  // Checks that every value from the input array can be converted to
+  // desired type (signed/unsigned) 32-bit constant
+  auto ConvertableToI32 = [Ty32](const ArrayRef<uint64_t> &UVs, bool Signed) {
+    return std::all_of(UVs.begin(), UVs.end(), [Signed, Ty32](uint64_t U) {
+      if (Signed) {
+        auto S = static_cast<int64_t>(U);
+        return ConstantInt::isValueValidForType(Ty32, S);
+      }
+      return ConstantInt::isValueValidForType(Ty32, U);
+    });
+  };
+  SmallVector<uint64_t, 16> UVs;
+  bool IsVector = C->getType()->isVectorTy();
+  if (IsVector) {
+    auto *CDS = cast<ConstantDataSequential>(C);
+    for (unsigned i = 0, num = CDS->getNumElements(); i < num; ++i)
+      UVs.push_back(CDS->getElementAsInteger(i));
+  } else {
+    UVs.push_back(cast<ConstantInt>(C)->getZExtValue());
+  }
+  bool RHSigned = false;
+  if (ConvertableToI32(UVs, LHSigned)) {
+    RHSigned = LHSigned;
+  } else if (ConvertableToI32(UVs, !LHSigned)) {
+    RHSigned = !LHSigned;
+  } else
+    return {nullptr, false}; // Constant can't be expressed as i32 type
+
+  SmallVector<uint32_t, 16> CnvData;
+  std::transform(UVs.begin(), UVs.end(), std::back_inserter(CnvData),
+                 [](uint64_t V) { return static_cast<uint32_t>(V); });
+
+  Value *V = !IsVector ? ConstantInt::get(Ty32, CnvData.front(), RHSigned)
+                       : ConstantDataVector::get(Ty32->getContext(), CnvData);
+  return {V, RHSigned};
+}
+// simplifyMulDDQ:
+// Tries to detect cases when we do 64-bit mulitiplication which can be
+// replaced by multiplication of 32-bit integers to generate a more efficient
+// vISA.
+// Currently, the following patterns are detected:
+// DxD->Q:
+//   l = sext op1 to i64
+//   r = sext op2 to i64
+//  -> res = genx_ssmul(op1, op2)
+// UDxUD->UQ:
+//   l = zext op1 to i64
+//   r = zext op2 to i64
+//   res = mul l, r
+//  -> res = genx_uumul(op1, op2)
+// One of op1/op2 can be constant
+static Value *simplifyMulDDQ(BinaryOperator &Mul) {
+
+  Value *LH = nullptr;
+  Value *RH = nullptr;
+  Constant *C = nullptr;
+
+  // skip non 64-bit mulitplication
+  if (Mul.getType()->getScalarSizeInBits() != 64)
+    return nullptr;
+
+  using namespace llvm::PatternMatch;
+  if (!match(&Mul,
+             m_c_Mul(m_ZExtOrSExt(m_Value(LH)),
+                     m_CombineOr(m_ZExtOrSExt(m_Value(RH)), m_Constant(C)))))
+    return nullptr;
+
+  bool LHSigned = isa<SExtInst>(Mul.getOperand(0));
+  bool RHSigned = isa<SExtInst>(Mul.getOperand(1));
+  // If one of the operands is constant - we must make sure that we can convert
+  // it to i32 type, so we can use 32-bit multiplication
+  if (C) {
+    // One of the operand is Constant => SExt can be anywhere
+    LHSigned = LHSigned || RHSigned;
+    std::tie(RH, RHSigned) = transformConstantToMulDDQOperand(LHSigned, C);
+    if (!RH)
+      return nullptr;
+  }
+
+  if (LH->getType()->getScalarSizeInBits() > 32 ||
+      RH->getType()->getScalarSizeInBits() > 32)
+    return nullptr;
+
+  // Currently we do not support case when operands are of different signes.
+  // It is possible to handle such cases, but in that case we should make
+  // sure that such cases are handled properly by GenXLowering
+  if (LHSigned != RHSigned)
+    return nullptr;
+
+  IRBuilder<> Builder(&Mul);
+  if (LH->getType() != RH->getType()) {
+    auto TryUpcast = [](IRBuilder<> &B, Value *V, Type *To, bool Sign) {
+      if (V->getType()->getScalarSizeInBits() >= To->getScalarSizeInBits())
+        return V;
+      return Sign ? B.CreateSExt(V, To, V->getName() + ".sext")
+                  : B.CreateZExt(V, To, V->getName() + ".zext");
+    };
+    Type *Ty32 = Type::getInt32Ty(Mul.getContext());
+    // TODO: probably we could upcast to RH->getType()/LH->getType()
+    LH = TryUpcast(Builder, LH, Ty32, LHSigned);
+    RH = TryUpcast(Builder, RH, Ty32, RHSigned);
+  }
+
+  auto GetImulIntrinsicId = [](bool Op1Signed, bool Op2Signed) {
+    if (Op1Signed && Op2Signed)
+      return GenXIntrinsic::genx_ssmul;
+    if (Op1Signed && !Op2Signed)
+      return GenXIntrinsic::genx_sumul;
+    if (!Op1Signed && Op2Signed)
+      return GenXIntrinsic::genx_usmul;
+    if (!Op1Signed && !Op2Signed)
+      return GenXIntrinsic::genx_uumul;
+    llvm_unreachable("should not happen");
+  };
+
+  auto *Ty64 = Mul.getType();
+  auto *OpType = LH->getType();
+  auto IID = GetImulIntrinsicId(LHSigned, RHSigned);
+  auto *FIMul =
+      GenXIntrinsic::getGenXDeclaration(Mul.getModule(), IID, {Ty64, OpType});
+  auto *Result = Builder.CreateCall(FIMul, {LH, RH}, Mul.getName() + ".imul");
+  return Result;
+}
+
+static Value *GenXSimplifyInstruction(llvm::Instruction *Inst) {
+  IGC_ASSERT(Inst);
+  if (!GenXEnablePeepholes)
+    return nullptr;
+  if (Inst->getOpcode() == Instruction::Mul) {
+    return simplifyMulDDQ(*cast<BinaryOperator>(Inst));
+  }
+  return nullptr;
+}
 
 // isWriteWithUndefInput - checks whether provided \p Inst is a write
 // intrinsic (currently wrregion, wrpredregion) and it's input value
@@ -319,24 +463,36 @@ private:
 bool GenXSimplify::runOnFunction(Function &F) {
   const DataLayout &DL = F.getParent()->getDataLayout();
   bool Changed = false;
+
+  auto replaceWithNewValue = [](Instruction &Inst, Value &V) {
+    if (&Inst == &V)
+      return false;
+    Inst.replaceAllUsesWith(&V);
+    Inst.eraseFromParent();
+    return true;
+  };
+
   for (auto &BB : F) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
-      if (auto *CI = dyn_cast<CallInst>(Inst)) {
-        if (GenXIntrinsic::isGenXIntrinsic(CI)) {
-          if (Value *V = SimplifyGenX(CI, DL)) {
-            CI->replaceAllUsesWith(V);
-            CI->eraseFromParent();
-            Changed = true;
-          }
+
+      if (GenXIntrinsic::isGenXIntrinsic(Inst)) {
+        if (Value *V = SimplifyGenX(cast<CallInst>(Inst), DL)) {
+          Changed |= replaceWithNewValue(*Inst, *V);
           continue;
         }
       }
 
+      // Do general LLVM simplification
       if (Value *V = SimplifyInstruction(Inst, DL)) {
-        Inst->replaceAllUsesWith(V);
-        Inst->eraseFromParent();
-        Changed = true;
+        Changed |= replaceWithNewValue(*Inst, *V);
+        continue;
+      }
+
+      // Do GenX-specific Instruction simplification
+      if (Value *V = GenXSimplifyInstruction(Inst)) {
+        Changed |= replaceWithNewValue(*Inst, *V);
+        continue;
       }
     }
   }
