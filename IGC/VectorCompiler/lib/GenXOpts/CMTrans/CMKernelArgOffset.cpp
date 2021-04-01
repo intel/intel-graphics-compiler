@@ -124,10 +124,6 @@ IN THE SOFTWARE.
 
 using namespace llvm;
 
-static cl::opt<bool>
-    EnableKernelArgReordering("enable-kernel-arg-reordering", cl::init(true),
-                              cl::Hidden,
-                              cl::desc("Enable kernel argument reordering"));
 static cl::opt<bool> BTIIndexCommoning("make-bti-index-common", cl::init(false),
                                        cl::Hidden,
                                        cl::desc("Enable BTI index commoning"));
@@ -220,21 +216,6 @@ private:
     return nullptr;
   }
 
-  // Check whether there is an input/output argument attribute.
-  void checkArgKinds(Function *) {
-    IGC_ASSERT(KM);
-    IGC_ASSERT(KM->isKernel());
-    for (unsigned i = 0, e = KM->getNumArgs(); i != e; ++i) {
-      auto IOKind = KM->getArgInputOutputKind(i);
-      // If there is input/output attribute, compiler will not freely reorder
-      // arguments.
-      if (IOKind != genx::KernelMetadata::ArgIOKind::Normal) {
-        EnableKernelArgReordering = false;
-        break;
-      }
-    }
-  }
-
   // Relayout thread paylod for OpenCL runtime.
   bool enableOCLCodeGen() const { return OCLCodeGen; }
 
@@ -255,6 +236,13 @@ INITIALIZE_PASS_END(CMKernelArgOffset, "cmkernelargoffset",
 
 Pass *llvm::createCMKernelArgOffsetPass(unsigned GrfByteSize, bool OCLCodeGen) {
   return new CMKernelArgOffset(GrfByteSize, OCLCodeGen);
+}
+
+// Check whether there is an input/output argument attribute.
+static bool canReorderArguments(const genx::KernelMetadata &KM) {
+  using ArgIOKind = genx::KernelMetadata::ArgIOKind;
+  return llvm::all_of(KM.getArgIOKinds(),
+                      [](ArgIOKind K) { return K == ArgIOKind::Normal; });
 }
 
 /***********************************************************************
@@ -293,7 +281,6 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
 
   genx::KernelMetadata KM(F);
   this->KM = &KM;
-  checkArgKinds(F);
 
   // Layout kernel arguments differently if to run on OpenCL runtime.
   if (enableOCLCodeGen()) {
@@ -314,7 +301,7 @@ void CMKernelArgOffset::processKernel(MDNode *Node) {
   // seem sensitive to the way the kernel inputs are laid out.
   SmallDenseMap<const Argument *, unsigned> PlacedArgs;
   unsigned Offset = 0;
-  if (EnableKernelArgReordering /*DoReordering*/) {
+  if (canReorderArguments(KM)) {
     // Reorder kernel input arguments. Arguments are placed in size order,
     // largest first (then in natural argument order where arguments are the
     // same size). Each argument is placed at the lowest unused suitably
