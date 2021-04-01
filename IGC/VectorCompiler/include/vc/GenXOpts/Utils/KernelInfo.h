@@ -67,6 +67,15 @@ using ArgToImplicitLinearization =
 
 /// KernelMetadata : class to parse and update kernel metadata
 class KernelMetadata {
+public:
+  enum class ArgIOKind {
+    Normal = 0,
+    Input = 1,
+    Output = 2,
+    InputOutput = 3,
+  };
+
+private:
   const Function *F = nullptr;
   MDNode *ExternalNode = nullptr;
   MDNode *InternalNode = nullptr;
@@ -75,7 +84,7 @@ class KernelMetadata {
   unsigned SLMSize = 0;
   SmallVector<unsigned, 4> ArgKinds;
   SmallVector<unsigned, 4> ArgOffsets;
-  SmallVector<unsigned, 4> ArgIOKinds;
+  SmallVector<ArgIOKind, 4> ArgIOKinds;
   SmallVector<StringRef, 4> ArgTypeDescs;
   SmallVector<unsigned, 4> ArgIndexes;
   SmallVector<unsigned, 4> OffsetInArgs;
@@ -137,6 +146,7 @@ public:
   const Function *getFunction() const { return F; }
   unsigned getSLMSize() const { return SLMSize; }
   ArrayRef<unsigned> getArgKinds() const { return ArgKinds; }
+  ArrayRef<ArgIOKind> getArgIOKinds() const { return ArgIOKinds; }
   unsigned getNumArgs() const { return ArgKinds.size(); }
   unsigned getArgKind(unsigned Idx) const { return ArgKinds[Idx]; }
   StringRef getArgTypeDesc(unsigned Idx) const {
@@ -294,20 +304,17 @@ public:
   unsigned getOffsetInArg(unsigned Idx) const { return OffsetInArgs[Idx]; }
   unsigned getArgIndex(unsigned Idx) const { return ArgIndexes[Idx]; }
 
-  enum ArgIOKind {
-    IO_Normal = 0,
-    IO_INPUT = 1,
-    IO_OUTPUT = 2,
-    IO_INPUT_OUTPUT = 3
-  };
   ArgIOKind getArgInputOutputKind(unsigned Idx) const {
     if (Idx < ArgIOKinds.size())
-      return static_cast<ArgIOKind>(ArgIOKinds[Idx] & 0x3);
-    return IO_Normal;
+      return ArgIOKinds[Idx];
+    return ArgIOKind::Normal;
   }
   bool isOutputArg(unsigned Idx) const {
     auto Kind = getArgInputOutputKind(Idx);
-    return Kind == ArgIOKind::IO_OUTPUT || Kind == ArgIOKind::IO_INPUT_OUTPUT;
+    return Kind == ArgIOKind::Output || Kind == ArgIOKind::InputOutput;
+  }
+  bool isFastCompositeArg(unsigned Idx) const {
+    return isOutputArg(Idx) || getArgInputOutputKind(Idx) == ArgIOKind::Input;
   }
 };
 

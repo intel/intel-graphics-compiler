@@ -1120,13 +1120,13 @@ bool GenXKernelBuilder::run() {
       switch (TheKernelMetadata.getArgInputOutputKind(Idx++)) {
       default:
         break;
-      case KernelMetadata::IO_INPUT:
+      case KernelMetadata::ArgIOKind::Input:
         Kind = "Input";
         break;
-      case KernelMetadata::IO_OUTPUT:
+      case KernelMetadata::ArgIOKind::Output:
         Kind = "Output";
         break;
-      case KernelMetadata::IO_INPUT_OUTPUT:
+      case KernelMetadata::ArgIOKind::InputOutput:
         Kind = "Input_Output";
         break;
       }

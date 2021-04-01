@@ -228,7 +228,7 @@ private:
       auto IOKind = KM->getArgInputOutputKind(i);
       // If there is input/output attribute, compiler will not freely reorder
       // arguments.
-      if (IOKind != genx::KernelMetadata::IO_Normal) {
+      if (IOKind != genx::KernelMetadata::ArgIOKind::Normal) {
         EnableKernelArgReordering = false;
         break;
       }

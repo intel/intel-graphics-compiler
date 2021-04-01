@@ -1662,7 +1662,7 @@ void GenXCoalescing::coalesceCallables() {
     unsigned Idx = 0; // kernel argument index
     unsigned i = 0;   // call argument index
     for (auto I = F->arg_begin(), E = F->arg_end(); I != E; ++I) {
-      if (KM.getArgInputOutputKind(Idx++) == KernelMetadata::IO_Normal)
+      if (!KM.isFastCompositeArg(Idx++))
         continue;
 
       // This is the final value stored into the output argument.

@@ -106,14 +106,21 @@ void replaceFunctionRefMD(const Function &From, Function &To) {
   internal::replaceInternalFunctionRef(From, To);
 }
 
-static unsigned extractConstantIntMD(unsigned OpNo, unsigned OpNum,
-                                     const MDNode *ValuesNode) {
-  if (ValuesNode == nullptr)
-    return 0;
+template <typename RetTy = unsigned>
+static RetTy extractConstantIntMD(const MDOperand &Op) {
+  const auto *V = getValueAsMetadata<ConstantInt>(Op);
+  IGC_ASSERT_MESSAGE(V, "Unexpected null value in metadata");
+  return static_cast<RetTy>(V->getZExtValue());
+}
 
-  IGC_ASSERT_MESSAGE(ValuesNode->getNumOperands() == OpNum, "out of sync");
-  return getValueAsMetadata<ConstantInt>(ValuesNode->getOperand(OpNo))
-      ->getZExtValue();
+template <typename Cont>
+static void extractConstantsFromMDNode(const MDNode *N, Cont &C) {
+  if (!N)
+    return;
+  using ValTy = typename Cont::value_type;
+  std::transform(
+      N->op_begin(), N->op_end(), std::back_inserter(C),
+      [](const MDOperand &Op) { return extractConstantIntMD<ValTy>(Op); });
 }
 
 static ImplicitLinearizationInfo
@@ -214,16 +221,22 @@ KernelMetadata::KernelMetadata(const Function *F) {
 
   IGC_ASSERT(KindsNode);
 
-  for (unsigned i = 0, e = KindsNode->getNumOperands(); i != e; ++i) {
-    ArgKinds.push_back(extractConstantIntMD(i, e, KindsNode));
-    ArgOffsets.push_back(extractConstantIntMD(i, e, OffsetsNode));
-    OffsetInArgs.push_back(extractConstantIntMD(i, e, OffsetInArgsNode));
-    ArgIndexes.push_back(extractConstantIntMD(i, e, IndexesNode));
-  }
+  // These should have the same number of operands if they exist.
+  IGC_ASSERT(!OffsetsNode ||
+             KindsNode->getNumOperands() == OffsetsNode->getNumOperands());
+  IGC_ASSERT(!OffsetInArgsNode ||
+             KindsNode->getNumOperands() == OffsetInArgsNode->getNumOperands());
+  IGC_ASSERT(!IndexesNode ||
+             KindsNode->getNumOperands() == IndexesNode->getNumOperands());
+
+  extractConstantsFromMDNode(KindsNode, ArgKinds);
+  extractConstantsFromMDNode(OffsetsNode, ArgOffsets);
+  extractConstantsFromMDNode(OffsetInArgsNode, OffsetInArgs);
+  extractConstantsFromMDNode(IndexesNode, ArgIndexes);
+
   IGC_ASSERT(InputOutputKinds);
   IGC_ASSERT(KindsNode->getNumOperands() >= InputOutputKinds->getNumOperands());
-  for (unsigned i = 0, e = InputOutputKinds->getNumOperands(); i != e; ++i)
-    ArgIOKinds.push_back(extractConstantIntMD(i, e, InputOutputKinds));
+  extractConstantsFromMDNode(InputOutputKinds, ArgIOKinds);
 
   IGC_ASSERT(ArgDescNode);
   for (unsigned i = 0, e = ArgDescNode->getNumOperands(); i < e; ++i) {
