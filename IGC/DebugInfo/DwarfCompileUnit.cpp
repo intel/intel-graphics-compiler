@@ -1970,7 +1970,10 @@ IGC::DIE* CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
     StringRef LinkageName = SP->getLinkageName();
     if (!LinkageName.empty())
     {
-        addString(SPDie, dwarf::DW_AT_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
+        if (EmitSettings.EmitATLinkageName)
+        {
+            addString(SPDie, dwarf::DW_AT_linkage_name, llvm::GlobalValue::dropLLVMManglingEscape(LinkageName));
+        }
     }
 
     // If this DIE is going to refer declaration info using AT_specification

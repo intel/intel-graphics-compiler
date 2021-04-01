@@ -40,6 +40,7 @@ namespace IGC
     bool EnableRelocation = false;
     bool EmitPrologueEnd = true;
     bool ScratchOffsetInOW = true;
+    bool EmitATLinkageName = true;
   };
 }
 
