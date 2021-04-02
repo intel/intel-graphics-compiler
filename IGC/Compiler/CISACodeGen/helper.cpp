@@ -161,27 +161,24 @@ namespace IGC
         temp.u32Val = addressSpaceOfPtr;
 
         // Mark buffer as it is bindless for further processing
-        if (bufferType == BufferType::RESOURCE)
+        switch (bufferType)
         {
+        case BufferType::RESOURCE:
             temp.bits.bufType = IGC::BINDLESS_TEXTURE + 1;
-        }
-        if (bufferType == BufferType::CONSTANT_BUFFER)
-        {
+            break;
+        case BufferType::CONSTANT_BUFFER:
             temp.bits.bufType = IGC::BINDLESS_CONSTANT_BUFFER + 1;
-        }
-        if(bufferType == BufferType::UAV)
-        {
+            break;
+        case BufferType::UAV:
             temp.bits.bufType = IGC::BINDLESS + 1;
-        }
-        else if (bufferType == BufferType::SAMPLER)
-        {
+            break;
+        case BufferType::SAMPLER:
             temp.bits.bufType = IGC::BINDLESS_SAMPLER + 1;
-        }
-        else
-        {
+            break;
+        default:
             IGC_ASSERT_MESSAGE(0, "other types of buffers shouldn't reach this part");
+            break;
         }
-
         return temp.u32Val;
     }
 
