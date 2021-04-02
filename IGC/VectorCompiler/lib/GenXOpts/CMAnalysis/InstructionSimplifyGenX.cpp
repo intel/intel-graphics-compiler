@@ -55,6 +55,8 @@ IN THE SOFTWARE.
 #include <llvm/Support/Debug.h>
 
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -164,6 +166,10 @@ static Value *simplifyMulDDQ(BinaryOperator &Mul) {
     auto TryUpcast = [](IRBuilder<> &B, Value *V, Type *To, bool Sign) {
       if (V->getType()->getScalarSizeInBits() >= To->getScalarSizeInBits())
         return V;
+
+      if (auto *VTy = dyn_cast<VectorType>(V->getType()))
+        To = IGCLLVM::FixedVectorType::get(To, VTy->getNumElements());
+
       return Sign ? B.CreateSExt(V, To, V->getName() + ".sext")
                   : B.CreateZExt(V, To, V->getName() + ".zext");
     };
