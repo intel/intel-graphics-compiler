@@ -143,7 +143,7 @@ You can use following commands to build IGC:
 $ cd <workspace>
 $ mkdir build
 $ cd build
-$ cmake ../igc/IGC
+$ cmake ../igc
 $ make -j`nproc`
 ```
 
