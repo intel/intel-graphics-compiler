@@ -88,6 +88,7 @@ ScalarizeFunction::~ScalarizeFunction()
 {
     releaseAllSCMEntries();
     delete[] m_SCMAllocationArray;
+    destroyDummyFunc();
     V_PRINT(scalarizer, "ScalarizeFunction destructor\n");
 }
 
@@ -1090,17 +1091,14 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         // Generate a DRL: dummy values, which will be resolved after all scalarization is complete.
         V_PRINT(scalarizer, "\t\t\t*** Not found. Setting DRL. \n");
         Type* dummyType = origType->getElementType();
-        V_PRINT(scalarizer, "\t\tCreate Dummy Scalar value/s (of type " << *dummyType << ")\n");
-        Constant* dummyPtr = ConstantPointerNull::get(dummyType->getPointerTo());
+        Function* dummy_function = getOrCreateDummyFunc(dummyType);
         DRLEntry newDRLEntry;
         newDRLEntry.unresolvedInst = origValue;
         newDRLEntry.dummyVals.resize(width);
         for (unsigned i = 0; i < width; i++)
         {
-            // Generate dummy "load" instruction (but don't really place in function)
-            retValues[i + destIdx] = new LoadInst(dummyPtr->getType()->getPointerElementType(),
-                                                  dummyPtr, "", false, IGCLLVM::getAlign(1));
-
+            // Generate dummy "call" instruction (but don't really place in function)
+            retValues[i + destIdx] = CallInst::Create(dummy_function);
             newDRLEntry.dummyVals[i] = retValues[i + destIdx];
         }
 
@@ -1298,10 +1296,16 @@ void ScalarizeFunction::resolveDeferredInstructions()
     std::map<Value*, Value*> dummyToScalarMap;
 
     // lambda to check if a value is a dummy instruction
-    auto isDummyValue = [](Value* val)->bool
+    auto isDummyValue = [this](Value* val) -> bool
     {
-        LoadInst* ld = dyn_cast<LoadInst>(val);
-        return (ld && isa<ConstantPointerNull>(ld->getPointerOperand()));
+        auto* call = dyn_cast<CallInst>(val);
+        if (!call) return false;
+        // If the Value is one of the dummy functions that we created.
+        for (const auto& function : createdDummyFunctions) {
+            if (call->getCalledFunction() == function.second)
+                return true;
+        }
+        return false;
     };
 
     for (auto deferredEntry = m_DRL.begin(); m_DRL.size() > 0;)

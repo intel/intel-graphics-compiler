@@ -43,6 +43,7 @@ IN THE SOFTWARE.
 #include <string>
 #include <sstream>
 #include <set>
+#include <map>
 
 namespace IGC
 {
@@ -193,6 +194,26 @@ namespace IGC
         /// @brief release all allocations of SCM entries
         void releaseAllSCMEntries();
 
+        /// @brief create the dummy function which is called to signify a dummy value
+        inline llvm::Function* getOrCreateDummyFunc(llvm::Type* dummyType) {
+            if (createdDummyFunctions.find(dummyType) == createdDummyFunctions.end()) {
+                llvm::FunctionType* funcType = llvm::FunctionType::get(dummyType, false);
+                llvm::Function* function = llvm::Function::Create(funcType, llvm::Function::InternalLinkage);
+                createdDummyFunctions[dummyType] = function;
+                return function;
+            }
+            else
+                return createdDummyFunctions[dummyType];
+        }
+
+        /// @brief deletes the memory associated with all the created dynamic Function objects in the map
+        inline void destroyDummyFunc() {
+            for (auto& function : createdDummyFunctions) {
+                function.second->deleteValue();
+                function.second = nullptr;
+            }
+        }
+
         /// @brief An array of available SCMEntry's
         SCMEntry* m_SCMAllocationArray;
 
@@ -228,6 +249,9 @@ namespace IGC
 
         /// @brief This holds DataLayout of processed module
         const llvm::DataLayout* m_pDL;
+
+        /// @brief This holds all the created dummy functions throughout the lifetime of the pass, and manages their memory
+        std::map<llvm::Type*, llvm::Function*> createdDummyFunctions;
     };
 
 } // namespace IGC
