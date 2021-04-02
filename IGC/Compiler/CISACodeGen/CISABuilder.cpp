@@ -2442,21 +2442,25 @@ namespace IGC
             V(vKernel->CreateVISAImmediate(aoffimmi, &aoffimmiVal, ISA_TYPE_UW));
         }
 
-        V(vKernel->AppendVISA3dSampler(
-            ConvertSubOpcode(subOpcode, zeroLOD),
-            feedbackEnable, // pixel null mask
-            cpsEnable,
-            !nonUniformState,
-            predOpnd,
-            GetAluEMask(dst),
-            visaExecSize(m_encoderState.m_simdSize),
-            ConvertChannelMaskToVisaType(writeMask),
-            aoffimmi,
-            samplerOpnd,
-            btiOpnd,
-            dstVar,
-            numSources,
-            opndArray));
+        {
+            int status = vKernel->AppendVISA3dSampler(
+                ConvertSubOpcode(subOpcode, zeroLOD),
+                feedbackEnable, // pixel null mask
+                cpsEnable,
+                !nonUniformState,
+                predOpnd,
+                GetAluEMask(dst),
+                visaExecSize(m_encoderState.m_simdSize),
+                ConvertChannelMaskToVisaType(writeMask),
+                aoffimmi,
+                samplerOpnd,
+                btiOpnd,
+                dstVar,
+                numSources,
+                opndArray);
+
+            V(status);
+        }
     }
 
     void CEncoder::Load(
@@ -2486,18 +2490,22 @@ namespace IGC
 
         VISA_VectorOpnd* aoffimmi = GetSourceOperandNoModifier(offset);
 
-        V(vKernel->AppendVISA3dLoad(
-            ConvertSubOpcode(subOpcode, zeroLOD),
-            feedbackEnable, // pixel null mask
-            predOpnd,
-            GetAluEMask(dst),
-            GetAluExecSize(dst),
-            ConvertChannelMaskToVisaType(writeMask),
-            aoffimmi,
-            surfOpnd,
-            dstVar,
-            numSources,
-            opndArray));
+        {
+            int status = vKernel->AppendVISA3dLoad(
+                ConvertSubOpcode(subOpcode, zeroLOD),
+                feedbackEnable, // pixel null mask
+                predOpnd,
+                GetAluEMask(dst),
+                GetAluExecSize(dst),
+                ConvertChannelMaskToVisaType(writeMask),
+                aoffimmi,
+                surfOpnd,
+                dstVar,
+                numSources,
+                opndArray);
+
+            V(status);
+        }
     }
 
     void CEncoder::Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor& resource, CVariable* lod, CVariable* dst)
@@ -2549,19 +2557,23 @@ namespace IGC
             V(vKernel->CreateVISAImmediate(aoffimmi, &aoffimmiVal, ISA_TYPE_UW));
         }
 
-        V(vKernel->AppendVISA3dGather4(
-            ConvertSubOpcode(subOpcode, false),
-            feedbackEnable, // pixel null mask
-            predOpnd,
-            GetAluEMask(dst),
-            visaExecSize(m_encoderState.m_simdSize),
-            ConvertSingleSourceChannel(channel),
-            aoffimmi,
-            samplerOpnd,
-            surfOpnd,
-            dstVar,
-            numSources,
-            opndArray));
+        {
+            int status = vKernel->AppendVISA3dGather4(
+                ConvertSubOpcode(subOpcode, false),
+                feedbackEnable, // pixel null mask
+                predOpnd,
+                GetAluEMask(dst),
+                visaExecSize(m_encoderState.m_simdSize),
+                ConvertSingleSourceChannel(channel),
+                aoffimmi,
+                samplerOpnd,
+                surfOpnd,
+                dstVar,
+                numSources,
+                opndArray);
+
+            V(status);
+        }
     }
 
     void CEncoder::AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1)

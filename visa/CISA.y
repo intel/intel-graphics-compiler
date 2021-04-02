@@ -1145,33 +1145,47 @@ SampleInstruction:
            $5, $6, $7, $8, CISAlineno));
    }
 
-           //        1         2            3                      4            5                          6               7        8                     9   10  11         12
-Sample3dInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt NonUniformSamplerEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand RawOperandArray
+           //        1         2            3                      4            5                          6               7        8                     9   10  11
+Sample3dInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt NonUniformSamplerEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
+           //        12
+                     RawOperandArray
    {
-       ABORT_ON_FAIL(pBuilder->create3DSampleInstruction(
+       const bool success = pBuilder->create3DSampleInstruction(
            $1, $2, $3, $4, $5, ChannelMask::createFromAPI($6),
            $7.emask, $7.exec_size, $8.cisa_gen_opnd, $9, $10,
-           $11, (unsigned int)$12, rawOperandArray, CISAlineno));
+           $11, (unsigned int)$12, rawOperandArray, CISAlineno);
+
+    ABORT_ON_FAIL(success);
    }
 
 CPSEnableOpt: %empty {$$ = false;} | CPS  {$$ = true;}
 
 NonUniformSamplerEnableOpt: %empty {$$ = false;} | NON_UNIFORM_SAMPLER {$$ = true;}
 
-           //      1         2          3                      4               5        6                     7   8          9
-Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var RawOperand RawOperandArray
+           //      1         2          3                      4               5        6                     7   8
+Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var RawOperand
+           //      9
+                   RawOperandArray
    {
-       ABORT_ON_FAIL(pBuilder->create3DLoadInstruction(
+       const bool success = pBuilder->create3DLoadInstruction(
            $1, $2, $3, ChannelMask::createFromAPI($4),
-           $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7, $8, (unsigned int)$9, rawOperandArray, CISAlineno));
+           $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7,
+           $8, (unsigned int)$9, rawOperandArray, CISAlineno);
+
+    ABORT_ON_FAIL(success);
    }
 
-           //         1         2             3                      4               5        6                     7   8   9          10
-Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand RawOperandArray
+           //         1         2             3                      4               5        6                     7   8   9
+Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
+           //      10
+                   RawOperandArray
    {
-      ABORT_ON_FAIL(pBuilder->createSample4Instruction(
+       const bool success = pBuilder->createSample4Instruction(
           $1, $2, $3, ChannelMask::createFromAPI($4), $5.emask, $5.exec_size,
-          $6.cisa_gen_opnd, $7, $8, $9, (unsigned int)$10, rawOperandArray, CISAlineno));
+          $6.cisa_gen_opnd, $7, $8, $9,
+          (unsigned int)$10, rawOperandArray, CISAlineno);
+
+    ABORT_ON_FAIL(success);
    }
 
 PixelNullMaskEnableOpt: %empty {$$ = false;} | PIXEL_NULL_MASK {$$ = true;}
