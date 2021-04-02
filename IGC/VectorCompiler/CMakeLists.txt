@@ -62,11 +62,6 @@ include(TableGen)
 # Set LLVM_TABLEGEN_FLAGS manually based on include dirs.
 list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLAGS)
 
-# --- VISA ---
-
-# HACK. We should use only visa/include without visa internal headers.
-set(VISA_INCLUDE_DIRS ${IGC_BUILD__VISA_DIR})
-
 # --- Options ---
 
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})

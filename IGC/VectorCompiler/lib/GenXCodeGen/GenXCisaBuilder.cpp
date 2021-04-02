@@ -58,8 +58,7 @@ IN THE SOFTWARE.
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
-#include "visa/include/visaBuilder_interface.h"
-#include "visa/common.h"
+#include "visaBuilder_interface.h"
 
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/StringExtras.h"
@@ -85,17 +84,6 @@ IN THE SOFTWARE.
 #include <map>
 #include <string>
 #include <vector>
-
-// If 1, print VISA instructions after corresponding LLVM instruction.
-// Only for debug purposes, uses Finalizer internal API.
-#define DUMP_VISA_INTSTRUCTIONS 0
-
-#if DUMP_VISA_INTSTRUCTIONS
-#include "Common_ISA_framework.h"
-#include "IsaDisassembly.h"
-#include "Mem_Manager.h"
-#include "VISAKernel.h"
-#endif
 
 using namespace llvm;
 using namespace genx;
@@ -465,9 +453,7 @@ public:
   CisaVariable *getAlias(VISA_Type T, VISAKernel *K) {
     if (!AliasDecls[T]) {
       VISA_GenVar *VV = nullptr;
-      K->CreateVISAGenVar(VV, Name, getNumElements(T), T,
-          ALIGN_HWORD,
-          VisaVar);
+      K->CreateVISAGenVar(VV, Name, getNumElements(T), T, ALIGN_GRF, VisaVar);
       Storage.push_back(CisaVariable(T, ByteSize, VV));
       AliasDecls[T] = &Storage.back();
     }
@@ -1101,9 +1087,10 @@ bool GenXKernelBuilder::run() {
   IGC_ASSERT(Subtarget);
   addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget);
 
-  // Set CM target for all functions produced by VC
-  auto VISA_CM_Target = static_cast<uint8_t>(VISA_CM);
-  CISA_CALL(Kernel->AddKernelAttribute("Target", 1, &VISA_CM_Target));
+  // Set CM target for all functions produced by VC.
+  // See visa spec for CMTarget value (section 4, Kernel).
+  const uint8_t CMTarget = 0;
+  CISA_CALL(Kernel->AddKernelAttribute("Target", sizeof(CMTarget), &CMTarget));
 
   bool NeedRetIP = false; // Need special return IP variable for FC.
   if (TheKernelMetadata.isKernel()) {
@@ -1433,29 +1420,10 @@ void GenXKernelBuilder::buildInstructions() {
         }
         // Build the instruction.
         if (!Baling->isBaled(Inst)) {
-#if DUMP_VISA_INTSTRUCTIONS
-          errs() << *Inst << '\n';
-          auto CisaInstCount = Kernel->getvIsaInstCount();
-#endif
           if (isa<ReturnInst>(Inst) && !UseNewStackBuilder)
             endFunction(Func, cast<ReturnInst>(Inst));
           if (buildInstruction(Inst))
             NeedsLabel = false;
-#if DUMP_VISA_INTSTRUCTIONS
-          VISAKernelImpl *KernelImpl = (VISAKernelImpl *)Kernel;
-          if (CisaInstCount != Kernel->getvIsaInstCount()) {
-            VISAKernel_format_provider fmt(KernelImpl);
-            auto It = KernelImpl->getInstructionListBegin(),
-                 ItEnd = KernelImpl->getInstructionListEnd();
-            for (int Idx = 0; It != ItEnd; ++It, ++Idx) {
-              if (Idx >= CisaInstCount + 1) {
-                errs() << printInstruction(&fmt, (*It)->getCISAInst(),
-                                           KernelImpl->getOptions())
-                       << "\n\n";
-              }
-            }
-          }
-#endif
         } else {
           LLVM_DEBUG(dbgs() << "Skip baled inst: " << *Inst << "\n");
         }
@@ -5441,13 +5409,13 @@ void GenXKernelBuilder::emitVectorCopy(T1 *Dst, T2 *Src, unsigned &RowOff,
                                        unsigned &ColOff, unsigned &SrcRowOff,
                                        unsigned &SrcColOff, int TotalSize,
                                        bool DoCopy) {
-  auto partCopy = [&](int Sz) {
+  IGC_ASSERT(Subtarget);
+  auto partCopy = [&, GRFWidth = Subtarget->getGRFWidth()](int Sz) {
     int ByteSz = Sz * deduceByteSize(Dst, DL);
     IGC_ASSERT(ByteSz);
 
     unsigned Start = SrcRowOff;
-    unsigned End =
-        (SrcRowOff * getGRFSize() + SrcColOff + ByteSz) / getGRFSize();
+    unsigned End = (SrcRowOff * GRFWidth + SrcColOff + ByteSz) / GRFWidth;
 
     // mov is prohibited to span across >2 GRF
     if (End - Start >= 2) {
