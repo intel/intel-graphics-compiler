@@ -979,7 +979,7 @@ bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate)
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
-        __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate == 0); // Set to true if predicate is zero
+        SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )((local int*)tmp, Device, Relaxed, Predicate == 0); // Set to true if predicate is zero
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
         return (*tmp == 0); // Return true if none of them failed the test
     }
@@ -1003,7 +1003,7 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
         GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
-        __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate != 0); // Set to true if predicate is non-zero
+        SPIRV_BUILTIN(AtomicOr, _p3i32_i32_i32_i32, )((local int*)tmp, Device, Relaxed, Predicate != 0); // Set to true if predicate is non-zero
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);
         return *tmp; // Return true if any of them passed the test
     }
