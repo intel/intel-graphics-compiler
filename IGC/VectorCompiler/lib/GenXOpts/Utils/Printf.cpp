@@ -131,32 +131,41 @@ PrintfArgInfoSeq llvm::parseFormatString(StringRef FmtStr) {
   return Args;
 }
 
-static bool isPrintFormatIndexGEPImpl(const User &GEP) {
+bool llvm::isPrintFormatIndex(const User &Usr) {
+  return GenXIntrinsic::getGenXIntrinsicID(&Usr) ==
+         GenXIntrinsic::genx_print_format_index;
+}
+
+static bool isLegalPrintFormatIndexGEPImpl(const User &GEP) {
   IGC_ASSERT_MESSAGE(
-      isa<GetElementPtrInst>(GEP) ||
-          (isa<ConstantExpr>(GEP) &&
-           cast<ConstantExpr>(GEP).getOpcode() == Instruction::GetElementPtr),
+      isa<GEPOperator>(GEP),
       "wrong argument: gep instruction or gep constexpr are expected");
-  return std::all_of(GEP.user_begin(), GEP.user_end(), [](const User *Usr) {
-    if (!isa<CallInst>(Usr))
-      return false;
-    const Function *Callee = cast<CallInst>(Usr)->getCalledFunction();
-    if (!Callee)
-      return false;
-    auto IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
-    return (IntrinID == GenXIntrinsic::genx_print_format_index);
-  });
+  if (GEP.user_empty())
+    return false;
+  return std::all_of(GEP.user_begin(), GEP.user_end(),
+                     [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool llvm::isPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
-  return isPrintFormatIndexGEPImpl(GEP);
+bool llvm::isLegalPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
+  return isLegalPrintFormatIndexGEPImpl(GEP);
 }
 
-bool llvm::isPrintFormatIndexGEP(const Value &V) {
+bool llvm::isLegalPrintFormatIndexGEP(const Value &V) {
   if (isa<GetElementPtrInst>(V))
-    return isPrintFormatIndexGEPImpl(cast<User>(V));
+    return isLegalPrintFormatIndexGEPImpl(cast<User>(V));
   if (isa<ConstantExpr>(V) &&
       cast<ConstantExpr>(V).getOpcode() == Instruction::GetElementPtr)
-    return isPrintFormatIndexGEPImpl(cast<User>(V));
+    return isLegalPrintFormatIndexGEPImpl(cast<User>(V));
   return false;
+}
+
+bool llvm::isPrintFormatIndexGEP(const GEPOperator &GEP) {
+  return std::any_of(GEP.user_begin(), GEP.user_end(),
+                     [](const User *Usr) { return isPrintFormatIndex(*Usr); });
+}
+
+bool llvm::isPrintFormatIndexGEP(const User &Usr) {
+  if (!isa<GEPOperator>(Usr))
+    return false;
+  return isPrintFormatIndexGEP(cast<GEPOperator>(Usr));
 }

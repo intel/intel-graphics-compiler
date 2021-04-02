@@ -2057,9 +2057,20 @@ unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
 bool genx::isRealGlobalVariable(const GlobalVariable &GV) {
   if (GV.hasAttribute("genx_volatile"))
     return false;
-  return std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
-    return !isPrintFormatIndexGEP(*Usr);
-  });
+  bool IsIndexedString =
+      std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
+        return isLegalPrintFormatIndexGEP(*Usr);
+      });
+  if (IsIndexedString) {
+    IGC_ASSERT_MESSAGE(std::all_of(GV.user_begin(), GV.user_end(),
+                                   [](const User *Usr) {
+                                     return isLegalPrintFormatIndexGEP(*Usr);
+                                   }),
+                       "when global is an indexed string, its users can only "
+                       "be print format index GEPs");
+    return false;
+  }
+  return true;
 }
 
 std::size_t genx::getStructElementPaddedSize(unsigned ElemIdx,

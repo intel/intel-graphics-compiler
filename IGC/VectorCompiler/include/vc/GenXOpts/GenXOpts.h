@@ -78,6 +78,9 @@ void initializeCMKernelArgOffsetPass(PassRegistry &);
 ModulePass *createGenXPrintfResolutionPass();
 void initializeGenXPrintfResolutionPass(PassRegistry &);
 
+ModulePass *createGenXPrintfLegalizationPass();
+void initializeGenXPrintfLegalizationPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif

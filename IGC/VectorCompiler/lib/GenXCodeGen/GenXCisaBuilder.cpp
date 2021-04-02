@@ -2731,7 +2731,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     (void)LI; // no code generated
   } else if (auto GEPI = dyn_cast<GetElementPtrInst>(Inst)) {
     // Skip genx.print.format.index GEP here.
-    IGC_ASSERT_MESSAGE(isPrintFormatIndexGEP(*GEPI),
+    IGC_ASSERT_MESSAGE(isLegalPrintFormatIndexGEP(*GEPI),
                        "only genx.print.format.index src GEP can still be "
                        "present at this stage");
 #if (LLVM_VERSION_MAJOR > 8)

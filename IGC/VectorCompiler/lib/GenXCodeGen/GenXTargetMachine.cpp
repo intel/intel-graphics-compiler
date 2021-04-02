@@ -145,6 +145,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeCMImpParamPass(registry);
   initializeCMKernelArgOffsetPass(registry);
   initializeGenXPrintfResolutionPass(registry);
+  initializeGenXPrintfLegalizationPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -519,6 +520,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createGenXImportBiFPass());
     PM.add(createGenXPacketizePass());
     PM.add(createAlwaysInlinerLegacyPass());
+    PM.add(createGenXPrintfLegalizationPass());
     PM.add(createGlobalDCEPass());
     PM.add(createPromoteMemoryToRegisterPass());
     PM.add(createInferAddressSpacesPass());

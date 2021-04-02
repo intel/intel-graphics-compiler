@@ -30,6 +30,7 @@ set(OPT_SOURCES
   CMTrans/CMImpParam.cpp
   CMTrans/CMKernelArgOffset.cpp
   CMTrans/CMRegion.cpp
+  CMTrans/GenXPrintfLegalization.cpp
   CMTrans/GenXPrintfResolution.cpp
   CMPacketize/GenXPacketize.cpp
   CMPacketize/PacketBuilder.cpp

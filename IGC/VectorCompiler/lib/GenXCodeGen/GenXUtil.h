@@ -685,6 +685,9 @@ public:
 // Not every global variable is a real global variable and should be eventually
 // encoded as a global variable.
 // GenX volatile and printf strings are exclusion for now.
+// Printf strings should be already legalized to make it possible to use this
+// function. Which should already be done in middle-end so no problem for
+// calling it in codegen.
 bool isRealGlobalVariable(const GlobalVariable &GV);
 
 // Get size of an struct field including the size of padding for the next field,
