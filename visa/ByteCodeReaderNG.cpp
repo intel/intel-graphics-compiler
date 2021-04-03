@@ -1665,8 +1665,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             kernelBuilder->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
             kernelBuilderImpl->CreateVISAStateOperandHandle(samplerHnd, container.samplerVarDecls[sampler]);
             kernelBuilderImpl->AppendVISA3dSampler(op.opcode, op.pixelNullMask, op.cpsEnable, !op.nonUniformSampler, pred, emask, esize,
-                ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi, samplerHnd, surfaceHnd,
-                dst, numParams, params);
+                ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi, samplerHnd, surfaceHnd, dst, numParams, params);
             break;
         }
     case ISA_3D_LOAD:
@@ -1699,8 +1698,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             VISA_StateOpndHandle* surfaceHnd = NULL;
             kernelBuilder->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
             kernelBuilderImpl->AppendVISA3dLoad(op.opcode, op.pixelNullMask, pred, emask, esize,
-                ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi, surfaceHnd,
-                dst, numParams, params);
+                ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi, surfaceHnd, dst, numParams, params);
             break;
         }
     case ISA_3D_GATHER4:
@@ -1734,8 +1732,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
             kernelBuilder->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
             kernelBuilderImpl->CreateVISAStateOperandHandle(samplerHnd, container.samplerVarDecls[sampler]);
             kernelBuilder->AppendVISA3dGather4(op.opcode, op.pixelNullMask, pred, emask, esize,
-                (VISASourceSingleChannel)channel, aoffimmi, samplerHnd, surfaceHnd,
-                dst, numParams, params);
+                (VISASourceSingleChannel)channel, aoffimmi, samplerHnd, surfaceHnd, dst, numParams, params);
             break;
         }
     case ISA_3D_INFO:

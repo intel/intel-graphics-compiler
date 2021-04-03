@@ -189,42 +189,10 @@ namespace IGC
             CVariable* CPSCounter,
             CVariable* sampleIndex,
             CVariable* r1Reg);
-        void Sample(
-            EOPCODE subOpcode,
-            uint writeMask,
-            CVariable* offset,
-            const ResourceDescriptor& bindingTableIndex,
-            const SamplerDescriptor& SamplerIdx,
-            uint numSources,
-            CVariable* dst,
-            llvm::SmallVector<CVariable*, 4> & payload,
-            bool zeroLOD,
-            bool cpsEnable,
-            bool feedbackEnable,
-            bool nonUniformState = false);
-        void Load(
-            EOPCODE subOpcode,
-            uint writeMask,
-            CVariable* offset,
-            const ResourceDescriptor& resource,
-            uint numSources,
-            CVariable* dst,
-            llvm::SmallVector<CVariable*, 4> & payload,
-            bool zeroLOD,
-            bool feedbackEnable);
-
+        void Sample(EOPCODE subOpcode, uint writeMask, CVariable* offset, const ResourceDescriptor& bindingTableIndex, const SamplerDescriptor& SamplerIdx, uint numSources, CVariable* dst, llvm::SmallVector<CVariable*, 4> & payload, bool zeroLOD, bool cpsEnable, bool feedbackEnable, bool nonUniformState = false);
+        void Load(EOPCODE subOpcode, uint writeMask, CVariable* offset, const ResourceDescriptor& resource, uint numSources, CVariable* dst, llvm::SmallVector<CVariable*, 4> & payload, bool zeroLOD, bool feedbackEnable);
         void Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor& resource, CVariable* lod, CVariable* dst);
-
-        void Gather4Inst(
-            EOPCODE subOpcode,
-            CVariable* offset,
-            const ResourceDescriptor& resource,
-            const SamplerDescriptor& sampler,
-            uint numSources,
-            CVariable* dst,
-            llvm::SmallVector<CVariable*, 4> & payload,
-            uint channel,
-            bool feedbackEnable);
+        void Gather4Inst(EOPCODE subOpcode, CVariable* offset, const ResourceDescriptor& resource, const SamplerDescriptor& sampler, uint numSources, CVariable* dst, llvm::SmallVector<CVariable*, 4> & payload, uint channel, bool feedbackEnable);
 
         void OWLoad(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, bool owordAligned, uint dstSize, uint dstOffset = 0);
         void OWStore(CVariable* dst, e_predefSurface surfaceType, CVariable* bufidx, CVariable* offset, uint dstSize, uint srcOffset);
@@ -927,16 +895,7 @@ namespace IGC
         const ResourceDescriptor& resource, uint numSources, CVariable* dst,
         llvm::SmallVector<CVariable*, 4> & payload, bool feedbackEnable)
     {
-        Load(
-            subOpcode,
-            writeMask,
-            offset,
-            resource,
-            numSources,
-            dst,
-            payload,
-            false,
-            feedbackEnable);
+        Load(subOpcode, writeMask, offset, resource, numSources, dst, payload, false, feedbackEnable);
     }
 
     inline void CEncoder::Gather(CVariable* dst, CVariable* bufId, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize)

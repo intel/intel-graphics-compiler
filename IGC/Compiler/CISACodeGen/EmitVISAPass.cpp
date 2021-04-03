@@ -4324,16 +4324,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     {
         m_encoder->SetUniformSIMDSize(m_currShader->m_Platform->getMinDispatchMode());
     }
-    m_encoder->Load(
-        opCode,
-        writeMask,
-        offset,
-        resource,
-        numSources,
-        dst,
-        payload,
-        zeroLOD,
-        feedbackEnable);
+    m_encoder->Load(opCode, writeMask, offset, resource, numSources, dst, payload, zeroLOD, feedbackEnable);
     m_encoder->Push();
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
@@ -7140,18 +7131,9 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         m_encoder->SetPredicate(flag);
     }
     m_encoder->Sample(
-        opCode,
-        writeMask,
-        immOffset,
-        resource,
-        sampler,
-        numSources,
-        dst,
-        payload,
-        zeroLOD,
-        cpsEnable,
-        hasMaskResponse,
-        needLoop);
+        opCode, writeMask, immOffset, resource, sampler,
+        numSources, dst, payload,
+        zeroLOD, cpsEnable, hasMaskResponse, needLoop);
     m_encoder->Push();
 
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
@@ -7498,16 +7480,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
     m_encoder->SetPredicate(flag);
-    m_encoder->Gather4Inst(
-        opCode,
-        offset,
-        resource,
-        sampler,
-        numSources,
-        dst,
-        payload,
-        channel,
-        feedbackEnable);
+    m_encoder->Gather4Inst(opCode, offset, resource, sampler, numSources, dst, payload, channel, feedbackEnable);
     m_encoder->Push();
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {

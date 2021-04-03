@@ -1172,14 +1172,6 @@ bool CISA_IR_Builder::CISA_eval_sizeof_decl(int lineNum, const char *var, int64_
             return false; \
         } \
     } while (0)
-#define VISA_RESULT_CALL_TO_BOOL(FUNC_RESULT) \
-    do { \
-        int __status = FUNC_RESULT; \
-        if (__status != VISA_SUCCESS) { \
-            RecordParseError(lineNum, ""/*IGC_MANGLE(__FUNCTION__)*/, ": unknown error (internal line: ", __LINE__, ")"); \
-            return false; \
-        } \
-    } while (0)
 // similar to above, but returns nullptr on failure.
 #define VISA_CALL_TO_NULLPTR(FUNC, ...) \
     do { \
@@ -2554,12 +2546,10 @@ bool CISA_IR_Builder::createSample4Instruction(
         RecordParseError(lineNum, "one one of R,G,B,A may be specified for sample4 instruction");
         return false;
     }
-    int status = m_kernel->AppendVISA3dGather4(
+    VISA_CALL_TO_BOOL(AppendVISA3dGather4,
         subOpcode, pixelNullMask, (VISA_PredOpnd*)pred, emask,
         executionSize, channel.getSingleChannel(), (VISA_VectorOpnd*) aoffimmi,
-        sampler, surface,
-        (VISA_RawOpnd*) dst, numParameters, params);
-    VISA_RESULT_CALL_TO_BOOL(status);
+        sampler, surface, (VISA_RawOpnd*) dst, numParameters, params);
     return true;
 }
 
@@ -2583,11 +2573,10 @@ bool CISA_IR_Builder::create3DLoadInstruction(
         return false; // error recorded
 
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    int status = m_kernel->AppendVISA3dLoad(
+    VISA_CALL_TO_BOOL(AppendVISA3dLoad,
         subOpcode, pixelNullMask, (VISA_PredOpnd*)pred, emask,
-        executionSize, channels.getAPI(), (VISA_VectorOpnd*) aoffimmi, surface,
-        (VISA_RawOpnd*) dst, numParameters, params);
-    VISA_RESULT_CALL_TO_BOOL(status);
+        executionSize, channels.getAPI(), (VISA_VectorOpnd*) aoffimmi,
+        surface, (VISA_RawOpnd*)dst, numParameters, params);
     return true;
 }
 
@@ -2620,12 +2609,11 @@ bool CISA_IR_Builder::create3DSampleInstruction(
 
     VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
 
-    int status = m_kernel->AppendVISA3dSampler(
+    VISA_CALL_TO_BOOL(AppendVISA3dSampler,
         subOpcode, pixelNullMask, cpsEnable, uniformSampler,
         (VISA_PredOpnd*)pred, emask, executionSize, channels.getAPI(),
-        (VISA_VectorOpnd*)aoffimmi, sampler, surface,
-        (VISA_RawOpnd*)dst, numParameters, params);
-    VISA_RESULT_CALL_TO_BOOL(status);
+        (VISA_VectorOpnd*)aoffimmi,
+        sampler, surface, (VISA_RawOpnd*)dst, numParameters, params);
     return true;
 }
 

@@ -1343,9 +1343,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
      /// 109
-    { ALL, ISA_3D_SAMPLE, ISA_Inst_Sampler, "3d_sample",
-    9,
-    0,
+    { ALL, ISA_3D_SAMPLE, ISA_Inst_Sampler, "3d_sample", 9, 0,
     {
         {OPND_OTHER, ISA_TYPE_UB, 0},
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
@@ -1361,9 +1359,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
      /// 110
-    { ALL, ISA_3D_LOAD, ISA_Inst_Sampler, "3d_load",
-    8,
-    0,
+    { ALL, ISA_3D_LOAD, ISA_Inst_Sampler, "3d_load", 8, 0,
     {
         {OPND_OTHER, ISA_TYPE_UB, 0},
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
@@ -1378,9 +1374,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
      /// 111
-    { ALL, ISA_3D_GATHER4, ISA_Inst_Sampler, "3d_gather4",
-    9,
-    0,
+    { ALL, ISA_3D_GATHER4, ISA_Inst_Sampler, "3d_gather4", 9, 0,
     {
         {OPND_OTHER, ISA_TYPE_UB, 0},
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},

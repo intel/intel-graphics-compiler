@@ -1245,8 +1245,7 @@ static void checkCPSEnable(VISASampler3DSubOpCode op,
 
 static G4_Operand* createSampleHeader(
     IR_Builder* builder, G4_Declare* header, VISASampler3DSubOpCode actualop,
-    bool pixelNullMask, G4_Operand* aoffimmi, ChannelMask srcChannel,
-    G4_Operand* sampler)
+    bool pixelNullMask, G4_Operand* aoffimmi, ChannelMask srcChannel, G4_Operand* sampler)
 {
     G4_Operand* retSampler = sampler;
     uint16_t aoffimmiVal = aoffimmi->isImm() ? (uint16_t)aoffimmi->asImm()->getInt() : 0;
@@ -1433,8 +1432,7 @@ int IR_Builder::splitSampleInst(
         const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
         bool bindlessSampler = sampler ? isBindlessSampler(sampler) : false;
         header = getSamplerHeader(bindlessSampler, samplerIndexGE16);
-        sampler = createSampleHeader(this, header, actualop, pixelNullMask, aoffimmi, srcChannel,
-            sampler);
+        sampler = createSampleHeader(this, header, actualop, pixelNullMask, aoffimmi, srcChannel, sampler);
         Create_MOV_Inst(payloadUD, 0, 0, g4::SIMD8, nullptr, nullptr,
             Create_Src_Opnd_From_Dcl(header, getRegionStride1()), true);
     }
@@ -1815,8 +1813,7 @@ uint32_t IR_Builder::getSamplerResponseLength(
 
 static bool needSamplerHeader(
     IR_Builder* builder, bool pixelNullMask, bool nonZeroAoffImmi,
-    bool needHeaderForChannels, bool bindlessSampler,
-    bool simd16HFReturn)
+    bool needHeaderForChannels, bool bindlessSampler, bool simd16HFReturn)
 {
     return builder->forceSamplerHeader() ||
         (pixelNullMask && builder->hasPixelNullMask()) ||
@@ -1866,8 +1863,7 @@ int IR_Builder::translateVISASampler3DInst(
     bool nonZeroAoffImmi = !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
     bool simd16HFReturn = FP16Return && execSize == 16;
     if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi, needHeaderForChannels,
-        isBindlessSampler(sampler),
-        simd16HFReturn))
+        isBindlessSampler(sampler), simd16HFReturn))
     {
         useHeader = true;
         ++numRows;
@@ -1886,8 +1882,8 @@ int IR_Builder::translateVISASampler3DInst(
         }
 
         return splitSampleInst(actualop, pixelNullMask, cpsEnable, pred, chMask,
-            numChannels, aoffimmi, sampler, surface,
-            dst, emask, useHeader, numRows, numParms, params, uniformSampler);
+            numChannels, aoffimmi, sampler, surface, dst,
+            emask, useHeader, numRows, numParms, params, uniformSampler);
     }
 
     bool useSplitSend = useSends();
@@ -1899,8 +1895,7 @@ int IR_Builder::translateVISASampler3DInst(
         {
             const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
             G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
-            samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, chMask,
-                sampler);
+            samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, chMask, sampler);
             header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
         }
 
@@ -2012,8 +2007,9 @@ int IR_Builder::translateVISALoad3DInst(
             numRows -= numParms;
         }
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
-            pred_opnd, channelMask, numChannels, aoffimmi, NULL, surface,
-            dst, em, useHeader, numRows, numParms, opndArray);
+            pred_opnd, channelMask, numChannels, aoffimmi,
+            NULL, surface, dst, em, useHeader, numRows,
+            numParms, opndArray);
     }
 
     bool useSplitSend = useSends();
@@ -2023,8 +2019,7 @@ int IR_Builder::translateVISALoad3DInst(
     {
         G4_Declare* dcl = getSamplerHeader(false /*isBindlessSampler*/, false /*samperIndexGE16*/);
         {
-            (void)createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask,
-                nullptr);
+            (void)createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, nullptr);
         }
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
@@ -2119,8 +2114,7 @@ int IR_Builder::translateVISAGather3dInst(
     bool simd16HFReturn = FP16Return && execSize == 16;
 
     if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi, needHeaderForChannels,
-        isBindlessSampler(sampler),
-        simd16HFReturn))
+        isBindlessSampler(sampler), simd16HFReturn))
     {
         useHeader = true;
         ++numRows;
@@ -2137,8 +2131,9 @@ int IR_Builder::translateVISAGather3dInst(
         }
 
         return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/false,
-            pred, channelMask, 4, aoffimmi, sampler, surface,
-            dst, em, useHeader, numRows, numOpnds, opndArray);
+            pred, channelMask, 4, aoffimmi, sampler,
+            surface, dst, em, useHeader, numRows,
+            numOpnds, opndArray);
     }
 
     bool useSplitSend = useSends();
@@ -2151,8 +2146,7 @@ int IR_Builder::translateVISAGather3dInst(
         const bool samplerIndexGE16 = IsSamplerIndexGE16(aoffimmi);
         G4_Declare *dcl = getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
         {
-            samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask,
-                sampler);
+            samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi, channelMask, sampler);
         }
         header = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
