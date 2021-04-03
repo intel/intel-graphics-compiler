@@ -146,5 +146,3 @@ set(IGC_BUILD__HDR__IGC_DriverInterface__igc_dll
 
 igc_regex_escape(_reSrcDir "${CMAKE_CURRENT_SOURCE_DIR}")
 igc_regex_escape(_reUscDir "${IGC_BUILD__COMMON_COMPILER_DIR}")
-
-win_static_runtime()

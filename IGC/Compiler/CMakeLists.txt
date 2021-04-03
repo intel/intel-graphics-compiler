@@ -177,6 +177,3 @@ add_library("${IGC_BUILD__PROJ__Compiler}" STATIC
 set_property(TARGET "${IGC_BUILD__PROJ__Compiler}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__Compiler}")
 
 add_dependencies("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-
-win_static_runtime()
-

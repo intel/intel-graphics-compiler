@@ -76,57 +76,6 @@ include(igc_resource_utils)
 include(igc_source_group_utils)
 include(igc_llvm_utils)
 
-
-# Macros to set the runtime to /MT under windows (statically link to runtime.
-# Suitable for multi-threaded as well)
-macro(  win_static_runtime )
-  # Windows only
-  # NOTE: this is a directory level setting so everything for a given
-  # CMakeLists.txt must be either /MT or /MD
-  if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
-    set(configurations
-      CMAKE_C_FLAGS_DEBUG
-      CMAKE_C_FLAGS_MINSIZEREL
-      CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_RELWITHDEBINFO
-      CMAKE_CXX_FLAGS_DEBUG
-      CMAKE_CXX_FLAGS_MINSIZEREL
-      CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_RELWITHDEBINFO
-    )
-    foreach(configuration ${configurations})
-      if(${configuration} MATCHES "/MD")
-        string(REGEX REPLACE "/MD" "/MT" ${configuration} "${${configuration}}")
-      endif()
-    endforeach()
-  endif()
-endmacro( win_static_runtime)
-
-# Macros to set the runtime to /MD under windows (dynamically link to runtime)
-macro(  win_dynamic_runtime )
-  # Windows only
-  # NOTE: this is a directory level setting so everything for a given CMakeLists.txt
-  # must be either /MT or /MD
-  if(${CMAKE_GENERATOR} MATCHES "Visual Studio")
-    set(configurations
-      CMAKE_C_FLAGS_DEBUG
-      CMAKE_C_FLAGS_MINSIZEREL
-      CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_RELWITHDEBINFO
-      CMAKE_CXX_FLAGS_DEBUG
-      CMAKE_CXX_FLAGS_MINSIZEREL
-      CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_RELWITHDEBINFO
-    )
-    foreach(configuration ${configurations})
-      if(${configuration} MATCHES "/MT")
-        string(REGEX REPLACE "/MT" "/MD" ${configuration} "${${configuration}}")
-      endif()
-    endforeach()
-  endif()
-endmacro( win_dynamic_runtime)
-
-
 # ======================================================================================================
 # ======================================================================================================
 # ======================================================================================================
@@ -1910,8 +1859,6 @@ unset(_targetIsStatic)
 unset(_targetLinkLine)
 
 
-
-win_static_runtime()
 
 if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
   if (IGC_OPTION__BUILD_IGC_OPT)

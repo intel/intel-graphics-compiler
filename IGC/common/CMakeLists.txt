@@ -148,7 +148,3 @@ igc_sg_register(
       ${IGC_BUILD__SRC__Common_CLElfLib}
       ${IGC_BUILD__HDR__Common_CLElfLib}
   )
-
-
-win_static_runtime()
-
