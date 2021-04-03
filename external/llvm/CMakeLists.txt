@@ -55,7 +55,7 @@ else()
 endif()
 
 # Do not alter LLVM compilation flags -- clear them all.
-llvm_utils_set_build_flags()
+llvm_utils_push_build_flags()
 llvm_utils_python_set()
 # project() command sets global <project>_SOURCE_DIR and <project>_BINARY_DIR and we can use it later.
 add_subdirectory(${IGC_LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src EXCLUDE_FROM_ALL)

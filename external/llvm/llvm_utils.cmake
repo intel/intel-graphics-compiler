@@ -24,7 +24,10 @@
 
 include_guard(DIRECTORY)
 
-# Macro to set python interpreter for LLVM.
+
+#
+# Macro to set python interpreter for LLVM
+#
 macro(llvm_utils_python_set)
   # If cached PYTHON_EXECUTABLE already exists save it to restore.
   get_property(PYTHON_EXECUTABLE_BACKUP CACHE PYTHON_EXECUTABLE PROPERTY VALUE)
@@ -33,8 +36,9 @@ macro(llvm_utils_python_set)
   message(STATUS "[LLVM] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
 endmacro()
 
-
-# Macro to restore python interpreter.
+#
+# Macro to restore python interpreter
+#
 macro(llvm_utils_python_restore)
   if(PYTHON_EXECUTABLE_BACKUP)
     # Restore python interpreter.
@@ -45,22 +49,30 @@ macro(llvm_utils_python_restore)
   endif()
 endmacro()
 
-# Macro to set build flags for LLVM.
-macro(llvm_utils_set_build_flags)
+#
+# Macro to clear build flags that already set
+#
+macro(llvm_utils_push_build_flags)
+    message(STATUS "[LLVM] Clearing build system compilation flags")
 
-  set(cfgs ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
-  list(TRANSFORM cfgs TOUPPER)
-  list(TRANSFORM cfgs PREPEND "_")
-  list(APPEND cfgs "")
+    unset(CMAKE_C_FLAGS)
+    unset(CMAKE_CXX_FLAGS)
+    unset(CMAKE_SHARED_LINKER_FLAGS)
+    unset(CMAKE_EXE_LINKER_FLAGS)
+    unset(CMAKE_STATIC_LINKER_FLAGS)
+    unset(CMAKE_LOCAL_LINKER_FLAGS)
+    unset(CMAKE_MODULE_LINKER_FLAGS)
 
-  foreach(cfg IN LISTS cfgs)
-    foreach(flag_type "C" "CXX")
-      set(CMAKE_${flag_type}_FLAGS${cfg} "${llvm_lang_flags}")
+    foreach(configuration_type ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
+        string(TOUPPER ${configuration_type} capitalized_configuration_type)
+
+        unset(CMAKE_C_FLAGS_${capitalized_configuration_type})
+        unset(CMAKE_CXX_FLAGS_${capitalized_configuration_type})
+        unset(CMAKE_SHARED_LINKER_FLAGS_${capitalized_configuration_type})
+        unset(CMAKE_EXE_LINKER_FLAGS_${capitalized_configuration_type})
+        unset(CMAKE_STATIC_LINKER_FLAGS_${capitalized_configuration_type})
+        unset(CMAKE_MODULE_LINKER_FLAGS_${capitalized_configuration_type})
     endforeach()
-    foreach(flag_type "SHARED_LINKER" "EXE_LINKER" "STATIC_LINKER" "MODULE_LINKER")
-      set(CMAKE_${flag_type}_FLAGS${cfg} "${llvm_link_flags}")
-    endforeach()
-  endforeach()
 endmacro()
 
 # Convenience macro to set option and record its value in list.
