@@ -32,7 +32,6 @@
 #  - IGC_OPTION__BIF_LINK_BC
 #  - IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS
 #  - IGC_OPTION__OUTPUT_DIR
-#  - IGC_OPTION__USCLAUNCHER_TOOL for ILAdapter
 
 cmake_minimum_required(VERSION 3.13.4 FATAL_ERROR)
 
@@ -302,15 +301,11 @@ set(IGC_OPTION__IST_IGCC_ONLY ON CACHE BOOL
 
 set(IGC_OPTION__BUILD_IGC_OPT ON CACHE BOOL "Build project igc_opt.")
 
-set(IGC_OPTION__USCLAUNCHER_TOOL OFF CACHE BOOL
-    "Building USCLauncher tool for ILAdapter")
-
 igc_arch_get_cpu(_cpuSuffix)
 if(NOT DEFINED IGC_OPTION__OUTPUT_DIR)
 set(IGC_OPTION__OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "Output directory path where the final libraries will be stored.")
 endif()
 get_filename_component(IGC_OPTION__OUTPUT_DIR ${IGC_OPTION__OUTPUT_DIR} ABSOLUTE)
-set(USC_OPTION__OUTPUT_DIR "${IGC_SOURCE_DIR}/../../../output/dump${_cpuSuffix}/usc" CACHE PATH "Output directory path where the final USC libraries will be stored.")
 unset(_cpuSuffix)
 
 if(NOT DEFINED IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
@@ -423,7 +418,6 @@ set(IGC_BUILD__IGC_BIN_DIR          "${IGC_BINARY_DIR}")
 
 set(IGC_BUILD__GFX_DEV_SRC_DIR      "${IGC_SOURCE_DIR}/..")
 set(IGC_BUILD__GFX_DEV_TOOLS_DIR    "${IGC_SOURCE_DIR}/../../Tools")
-set(IGC_BUILD__GFX_OCL_DIR          "${IGC_SOURCE_DIR}/../../Source_OCL")
 
 set(IGC_BUILD__COMMON_DIR           "${IGC_BUILD__GFX_DEV_SRC_DIR}/Common")
 set(IGC_BUILD__3D_COMMON_DIR        "${IGC_BUILD__GFX_DEV_SRC_DIR}/3d/common")
@@ -434,7 +428,6 @@ set(IGC_BUILD__VISA_DIR             "${IGC_BUILD__GFX_DEV_SRC_DIR}/visa")
 
 set(IGC_BUILD__TOOLS_IGC_DIR        "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/IGC")
 set(IGC_BUILD__TOOLS_IST_DIR        "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/IST")
-set(IGC_BUILD__TOOLS_USCLAUNCHER_DIR "${GFX_DEVELOPMENT_DIR}/Test/usc/src")
 
 
 set(IGC_BUILD__BIF_DIR              "${IGC_OPTION__OUTPUT_DIR}/bif/${IGC_CMAKE_CFG_INTDIR}")
@@ -1588,28 +1581,6 @@ if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
     )
 endif()
 
-if(IGC_OPTION__USCLAUNCHER_TOOL)
-  # NOTE: Remember to always pass resources when linking with static library.
-  #       Use igc_rc_get_resource() with resource identifier like IGC__igc_libto get proper resource files.
-  #       Also use IGC_BUILD__LINK_LINE__igc_lib variable to get target_link_libraries()'s line which
-  #       links igc_lib correctly (with correct resolve of circular dependencies).
-  add_library("${IGC_BUILD__PROJ__igc_lib}" STATIC
-      ${IGC_BUILD__SRC__IGC__igc_lib}
-      ${IGC_BUILD__HDR__IGC__igc_lib}
-    )
-  if(MSVC)
-    bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
-    windows_libs_props_universal(${IGC_BUILD__PROJ__igc_lib})
-  endif()
-
-  set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__igc_lib}")
-  set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY EXCLUDE_FROM_ALL YES)
-  set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
-      ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES}
-      "__igc_lib"
-    )
-endif()
-
 # Output names.
 if(LLVM_ON_UNIX)
   set(_cpuSuffix "")
@@ -1662,9 +1633,6 @@ add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackag
 endif()
 
 if(LLVM_ON_WIN32)
-  if(IGC_OPTION__USCLAUNCHER_TOOL)
-    add_dependencies("${IGC_BUILD__PROJ__ILAdapter}"           "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-  endif()
 endif()
 
 
@@ -1691,11 +1659,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
     list(APPEND _targetLinkLineCommon
         "${IGC_BUILD__PROJ__AdaptorOCL}"
     )
-
-    if(IGC_OPTION__USCLAUNCHER_TOOL)
-      list(APPEND _targetLinkLineCommon
-          "${IGC_BUILD__PROJ__ILAdapter}")
-    endif()
   endif()
 
 list(APPEND _targetLinkLineCommon zebinlib)
@@ -1870,16 +1833,6 @@ if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
   endif()
   if(LLVM_ON_WIN32)
     add_subdirectory("${IGC_BUILD__TOOLS_IGC_DIR}" ist)
-  endif()
-endif()
-
-if(IGC_OPTION__USCLAUNCHER_TOOL)
-  if (IGC_OPTION__BUILD_IGC_OPT)
-    add_subdirectory(igc_opt)
-  endif()
-  # TODO: If we want IGCStandalone on Linux, someone must clean the code, so it will be compiling.
-  if(LLVM_ON_WIN32)
-    add_subdirectory("${IGC_BUILD__TOOLS_USCLAUNCHER_DIR}" usclauncher)
   endif()
 endif()
 
