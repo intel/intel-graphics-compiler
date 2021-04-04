@@ -92,9 +92,6 @@ namespace IGC
         IGC_ASSERT(stateId < getStateCnt());
         return RetryTable[stateId].allowLargeURBWrite;
     }
-    void RetryManager::SetFirstStateId(int id) {
-        firstStateId = id;
-    }
     bool RetryManager::IsFirstTry() {
         return (stateId == firstStateId);
     }

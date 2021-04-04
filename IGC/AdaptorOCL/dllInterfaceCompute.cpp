@@ -1170,7 +1170,6 @@ bool TranslateBuild(
         if( IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
         {
             oclContext.m_retryManager.AdvanceState();
-            oclContext.m_retryManager.SetFirstStateId(oclContext.m_retryManager.GetRetryId());
         }
         // Optimize the IR. This happens once for each program, not per-kernel.
         IGC::OptimizeIR(&oclContext);
