@@ -502,18 +502,18 @@ public:
   static char ID;
   explicit GenXFuncBaling(BalingKind Kind = BalingKind::BK_Legalization, GenXSubtarget *ST = nullptr)
       : FunctionPass(ID), GenXBaling(Kind, ST) {}
-  virtual StringRef getPassName() const {
+  StringRef getPassName() const override {
     return "GenX instruction baling analysis for a function";
   }
-  void getAnalysisUsage(AnalysisUsage &AU) const;
-  bool runOnFunction(Function &F) {
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  bool runOnFunction(Function &F) override {
     clear();
     return processFunction(&F);
   }
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O,
-                                  const std::string &Banner) const {
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
     return createGenXPrinterPass(O, Banner);
   }
   void print(raw_ostream &OS, const Module *M) const override {

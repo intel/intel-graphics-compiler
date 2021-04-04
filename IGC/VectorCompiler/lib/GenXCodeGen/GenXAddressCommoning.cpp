@@ -221,8 +221,8 @@ public:
   static char ID;
   explicit GenXAddressCommoning() : FunctionGroupPass(ID),
       OuterMap(OuterMap_t(BaseRegAndBaleHash::less)) { }
-  virtual StringRef getPassName() const { return "GenX address commoning"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const {
+  StringRef getPassName() const override { return "GenX address commoning"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
     FunctionGroupPass::getAnalysisUsage(AU);
     AU.addRequired<DominatorTreeGroupWrapperPass>();
     AU.addRequired<GenXModule>();
@@ -237,11 +237,14 @@ public:
     AU.addPreserved<FunctionGroupAnalysis>();
     AU.setPreservesCFG();
   }
-  bool runOnFunctionGroup(FunctionGroup &FG);
+  bool runOnFunctionGroup(FunctionGroup &FG) override;
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
-  virtual Pass *createPrinterPass(raw_ostream &O, const std::string &Banner) const
-  { return createGenXGroupPrinterPass(O, Banner); }
+  Pass *createPrinterPass(raw_ostream &O,
+                          const std::string &Banner) const override {
+    return createGenXGroupPrinterPass(O, Banner);
+  }
+
 private:
   bool processFunction(Function *F);
   bool processBaseReg(LiveRange *LR);

@@ -319,9 +319,9 @@ struct CMABI : public CallGraphSCCPass {
     AU.addRequired<CMABIAnalysis>();
   }
 
-  virtual bool runOnSCC(CallGraphSCC &SCC);
+  bool runOnSCC(CallGraphSCC &SCC) override;
 
-  virtual bool doFinalization(CallGraph &CG);
+  bool doFinalization(CallGraph &CG) override;
 
 private:
 
