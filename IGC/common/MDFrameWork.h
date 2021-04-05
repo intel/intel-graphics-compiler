@@ -300,6 +300,7 @@ namespace IGC
         unsigned int waveSize = 0; // force a wave size
         std::vector<ComputeShaderSecondCompileInputInfoMD> ComputeShaderSecondCompile;
         unsigned char forcedSIMDSize = 0;  // 0 means not forced
+        unsigned int forceTotalGRFNum = 0; // 0 means not forced
         bool forcedVISAPreRAScheduler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;

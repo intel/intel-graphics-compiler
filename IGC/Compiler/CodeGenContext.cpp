@@ -865,6 +865,10 @@ namespace IGC
         {
             return IGC_GET_FLAG_VALUE(TotalGRFNum);
         }
+        if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0)
+        {
+            return getModuleMetaData()->csInfo.forceTotalGRFNum;
+        }
         return 128;
     }
 
