@@ -295,7 +295,7 @@ void readNode(int &x, MDNode* node)
 
 void readNode(std::string &s, MDNode* node)
 {
-    s = cast<MDString>(node->getOperand(1))->getString();
+    s = cast<MDString>(node->getOperand(1))->getString().str();
     return;
 }
 

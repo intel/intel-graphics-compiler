@@ -70,7 +70,7 @@ namespace IGC
             return m_value;
         }
 
-        value_type get() const
+        const value_type& get() const
         {
             return m_value;
         }
