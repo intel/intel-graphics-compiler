@@ -408,10 +408,16 @@ bool GenXBaling::operandCanBeBaled(
       case BaleInfo::MAININST:
         break;
       case BaleInfo::ZEXT:
-      case BaleInfo::SEXT:
+      case BaleInfo::SEXT: {
+        // NOTE: mulh does not allow sext/zext bailing, as it allows only
+        // D/UD operands
+        auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+        if (IID == GenXIntrinsic::genx_smulh ||
+            IID == GenXIntrinsic::genx_umulh)
+          return false;
         if (ModType != GenXIntrinsicInfo::MODIFIER_DEFAULT)
           return true;
-        break;
+      } break;
       case BaleInfo::NOTMOD:
         if (ModType == GenXIntrinsicInfo::MODIFIER_LOGIC)
           return true;
