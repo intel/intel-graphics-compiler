@@ -178,12 +178,18 @@ namespace IGC
         //Todo: rename later
         unsigned int getScratchSpaceUsageInSlot0() const
         {
-            return roundSize(m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader));
+            //FIXME: temporarily disable slot1, enable it again when IGC is ready to handle r0.5+1
+            //return roundSize(m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader));
+            return roundSize(m_scratchSpaceUsedBySpills
+                            + m_scratchSpaceUsedByGtpin
+                            + ((m_separatePvtSpill && m_scratchSpaceUsedByShader > m_scratchSpaceSizeLimit) ? 0 : m_scratchSpaceUsedByShader));
         }
 
         unsigned int getScratchSpaceUsageInSlot1() const
         {
-            return roundSize((m_separatePvtSpill && m_scratchSpaceUsedByShader <= m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0);
+            //FIXME: temporarily disable slot1, enable it again when IGC is ready to handle r0.5+1
+            return 0;
+            //return roundSize((m_separatePvtSpill && m_scratchSpaceUsedByShader <= m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0);
         }
 
         unsigned int getScratchSpaceUsageInStateless() const
