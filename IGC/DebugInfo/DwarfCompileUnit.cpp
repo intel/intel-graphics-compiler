@@ -2970,7 +2970,10 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
     }
 
     if (!emitLocation)
+    {
+        Block->~DIEBlock();
         return nullptr;
+    }
 
     return Block;
 }
@@ -2988,9 +2991,6 @@ void CompileUnit::constructMemberDIE(DIE& Buffer, DIDerivedType* DT)
     addType(MemberDie, resolve(DT->getBaseType()));
 
     addSourceLine(MemberDie, DT);
-
-    IGC::DIEBlock* MemLocationDie = new (DIEValueAllocator)IGC::DIEBlock();
-    addUInt(MemLocationDie, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);
 
     if (DT->getTag() == dwarf::DW_TAG_inheritance && DT->isVirtual())
     {

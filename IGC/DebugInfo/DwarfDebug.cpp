@@ -302,6 +302,11 @@ DwarfDebug::DwarfDebug(StreamEmitter* A, VISAModule* M) :
     gatherDISubprogramNodes();
 }
 
+DwarfDebug::~DwarfDebug()
+{
+    decodedDbg = nullptr;
+}
+
 MCSymbol* DwarfDebug::getStringPoolSym()
 {
     return Asm->GetTempSymbol(StringPref);
@@ -1336,7 +1341,10 @@ void DwarfDebug::endModule()
     SPMap.clear();
     for (DenseMap<const MDNode*, CompileUnit*>::iterator I = CUMap.begin(), E = CUMap.end(); I != E; ++I)
     {
-        delete I->second;
+        auto CU = I->second;
+        auto CUDie = CU->getCUDie();
+        delete CUDie;
+        delete CU;
     }
     CUMap.clear();
 

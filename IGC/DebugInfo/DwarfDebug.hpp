@@ -524,10 +524,7 @@ namespace IGC
         //
         DwarfDebug(IGC::StreamEmitter* A, ::IGC::VISAModule* M);
 
-        ~DwarfDebug()
-        {
-            decodedDbg = nullptr;
-        }
+        ~DwarfDebug();
 
         void insertDIE(const llvm::MDNode* TypeMD, DIE* Die)
         {
