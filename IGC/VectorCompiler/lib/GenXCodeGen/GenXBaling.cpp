@@ -2302,6 +2302,13 @@ bool GenXBaling::prologue(Function *F) {
         if (skipTransform(V, Inst))
           continue;
 
+        // Do not transform if the predicate is not trivial.
+        Value *Mask =
+            Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+        auto *ConstantMask = dyn_cast<Constant>(Mask);
+        if (!ConstantMask || !ConstantMask->isAllOnesValue())
+          continue;
+
         // Do this transformation.
         // - Insert a region read right after Inst
         // - Replace all uses other than Inst with this region read
