@@ -284,6 +284,7 @@ namespace IGC
         unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
         unsigned int numAllocaInsts;
         unsigned int numPsInputs;
+        bool hasDynamicGenericLoadStore;
     };
 
     struct SSimplePushInfo

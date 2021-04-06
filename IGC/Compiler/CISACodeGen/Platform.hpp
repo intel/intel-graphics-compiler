@@ -461,6 +461,11 @@ unsigned getSlmSizePerSsOrDss() const
     return slmSizePerSsOrDss;
 }
 
+bool canForcePrivateToGlobal() const
+{
+    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE && IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToGlobalOnGeneric);
+}
+
 bool hasNoFullI64Support() const
 {
     return hasNoInt64Inst();

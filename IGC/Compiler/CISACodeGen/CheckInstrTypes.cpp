@@ -103,6 +103,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
     instrList->hasPullBary = false;
+    instrList->hasDynamicGenericLoadStore = false;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)
