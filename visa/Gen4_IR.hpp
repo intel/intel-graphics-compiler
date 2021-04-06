@@ -606,7 +606,7 @@ typedef struct _SWSBInfo
 
 protected:
     //unsigned char depDistance = 0;
-    bool operandTypeIndicated = true;
+    bool operandTypeIndicated = false;
     bool isClosestALUType_ = false;
 
     SWSBInfo  swsb;

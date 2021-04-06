@@ -4126,6 +4126,11 @@ namespace IGC
             SaveOption(vISA_SWSBStitch, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(DisableRegDistDep))
+        {
+            SaveOption(vISA_disableRegDistDep, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableForceDebugSWSB) ||
             IGC_IS_FLAG_ENABLED(EnableSWSBInstStall) ||
             IGC_IS_FLAG_ENABLED(EnableSWSBTokenBarrier))
