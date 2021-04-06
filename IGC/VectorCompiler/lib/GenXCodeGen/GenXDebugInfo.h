@@ -81,6 +81,8 @@ class GenXDebugInfo : public ModulePass {
     std::vector<FunctionInfo> FIs;
   };
 
+  std::vector<llvm::DISubprogram*> DISubprogramNodes;
+
   using ElfBin = std::vector<char>;
   using DbgInfoStorage = std::unordered_map<const Function *, ElfBin>;
   DbgInfoStorage ElfOutputs;

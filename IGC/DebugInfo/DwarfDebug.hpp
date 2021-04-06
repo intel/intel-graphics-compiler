@@ -64,6 +64,7 @@ namespace llvm
 
 bool isUnsignedDIType(IGC::DwarfDebug* DD, llvm::DIType* Ty);
 const llvm::Instruction* getNextInst(const llvm::Instruction* start);
+std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
 
 namespace IGC
 {
@@ -619,9 +620,7 @@ namespace IGC
     private:
         // Store all DISubprogram nodes from LLVM IR as they are no longer available
         // in DICompileUnit
-        std::vector<llvm::DISubprogram*> DISubprogramNodes;
-
-        void gatherDISubprogramNodes();
+        const std::vector<llvm::DISubprogram*>* DISubprogramNodes = nullptr;
 
         // line#, vector<inlinedAt>
         llvm::DenseMap<unsigned int, std::vector<llvm::DILocation*>> isStmtSet;
@@ -691,6 +690,12 @@ namespace IGC
         {
             decodedDbg = d;
         }
+
+        void setDISPNodes(const std::vector<llvm::DISubprogram*>* DISPNodes)
+        {
+            DISubprogramNodes = DISPNodes;
+        }
+
         llvm::MCSymbol* CopyDebugLoc(unsigned int offset);
         unsigned int CopyDebugLocNoReloc(unsigned int o);
 

@@ -299,7 +299,8 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
 
     m_pDwarfDebug->highPc = lastGenOff;
 }
-std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
+std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
+    const std::vector<llvm::DISubprogram*>& DISubprogramNodes)
 {
     if (!m_debugEnabled)
     {
@@ -314,6 +315,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg)
 
     if (!doneOnce)
     {
+        m_pDwarfDebug->setDISPNodes(&DISubprogramNodes);
         m_pDwarfDebug->beginModule();
         doneOnce = true;
     }

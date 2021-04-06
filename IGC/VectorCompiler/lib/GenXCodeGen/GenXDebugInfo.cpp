@@ -54,6 +54,8 @@ IN THE SOFTWARE.
 
 using namespace llvm;
 
+std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
+
 namespace {
 
 static void debugDump(const Twine &Name, const char *Content, size_t Size) {
@@ -448,7 +450,8 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
     bool ExpectMore = GF != GenXFunctions.back();
     LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization (final:  "
                       << !ExpectMore << ") ---\n");
-    auto Out = Emitter->Finalize(!ExpectMore, GF->getDIDecoder());
+    auto Out = Emitter->Finalize(!ExpectMore, GF->getDIDecoder(),
+                                 DISubprogramNodes);
     if (!ExpectMore) {
       ElfBin = std::move(Out);
     } else {
@@ -550,6 +553,8 @@ bool GenXDebugInfo::runOnModule(Module &M) {
 
   const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
   auto &GM = getAnalysis<GenXModule>();
+
+  DISubprogramNodes = gatherDISubprogramNodes(M);
 
   VISABuilder *VB = GM.GetCisaBuilder();
   if (GM.HasInlineAsm())

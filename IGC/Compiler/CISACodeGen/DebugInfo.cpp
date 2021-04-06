@@ -34,6 +34,8 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace std;
 
+std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
+
 char DebugInfoPass::ID = 0;
 char CatchAllLineNumber::ID = 0;
 
@@ -87,6 +89,8 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         if (simd16) units.push_back(simd16);
         if (simd32) units.push_back(simd32);
     }
+
+    std::vector<llvm::DISubprogram*> DISubprogramNodes = gatherDISubprogramNodes(M);
 
     for (auto& currShader : units)
     {
@@ -236,7 +240,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             if (--size == 0)
                 finalize = true;
 
-            EmitDebugInfo(finalize, &decodedDbg);
+            EmitDebugInfo(finalize, &decodedDbg, DISubprogramNodes);
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
@@ -259,11 +263,12 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     return false;
 }
 
-void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
+void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
+                                  const std::vector<llvm::DISubprogram*>& DISubprogramNodes)
 {
     std::vector<char> buffer;
 
-    IF_DEBUG_INFO_IF(m_pDebugEmitter, buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg);)
+    IF_DEBUG_INFO_IF(m_pDebugEmitter, buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg, DISubprogramNodes);)
 
     if (!buffer.empty())
     {

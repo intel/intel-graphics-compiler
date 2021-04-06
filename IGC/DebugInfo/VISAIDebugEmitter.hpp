@@ -78,7 +78,8 @@ namespace IGC
         /// @param finalize [IN] indicates whether this is last function in group.
         /// @param decodedDbg [IN] holds decoded VISA debug information.
         /// @return memory buffer which contains the emitted debug info.
-        virtual std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg) = 0;
+        virtual std::vector<char> Finalize(bool finalize, DbgDecoder* decodedDbg,
+            const std::vector<llvm::DISubprogram*>&) = 0;
 
         /// @brief Process instruction before emitting its VISA code.
         /// @param pInst instruction to process.

@@ -298,8 +298,6 @@ DwarfDebug::DwarfDebug(StreamEmitter* A, VISAModule* M) :
     ModuleBeginSym = ModuleEndSym = nullptr;;
 
     DwarfVersion = getDwarfVersionFromModule(M->GetModule());
-
-    gatherDISubprogramNodes();
 }
 
 DwarfDebug::~DwarfDebug()
@@ -1098,7 +1096,7 @@ void DwarfDebug::beginModule()
         // Assume all functions belong to same Compile Unit
         // With LLVM 4.0 DISubprogram nodes are no longer
         // present in DICompileUnit node.
-        for (auto& DISP : DISubprogramNodes)
+        for (auto& DISP : *DISubprogramNodes)
         {
             constructSubprogramDIE(CU, DISP);
         }
@@ -1171,7 +1169,7 @@ void DwarfDebug::collectDeadVariables()
     {
         DICompileUnit* TheCU = cast<DICompileUnit>(CU_Nodes->getOperand(i));
 
-        for (auto& SP : DISubprogramNodes)
+        for (auto& SP : *DISubprogramNodes)
         {
             if (!SP)
                 continue;
@@ -3540,7 +3538,17 @@ bool DwarfDebug::DwarfFrameSectionNeeded() const
     return (m_pModule->hasOrIsStackCall(*decodedDbg) || (m_pModule->getSubroutines(*decodedDbg)->size() > 0));
 }
 
-void DwarfDebug::gatherDISubprogramNodes()
+llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)
+{
+    auto it = LabelsBeforeIp.find(ip);
+    if (it != LabelsBeforeIp.end())
+        return (*it).second;
+    auto NewLabel = Asm->CreateTempSymbol();
+    LabelsBeforeIp[ip] = NewLabel;
+    return NewLabel;
+}
+
+std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M)
 {
     // Discover all DISubprogram nodes in program and store them
     // in an std::set. With LLVM 4.0 DISubprogram nodes are no
@@ -3551,9 +3559,9 @@ void DwarfDebug::gatherDISubprogramNodes()
     // to iterate over.
     llvm::DenseSet<DISubprogram*> DISPToFunction;
     llvm::DenseSet<MDNode*> Processed;
-    DISubprogramNodes.clear();
+    std::vector<llvm::DISubprogram*> DISubprogramNodes;
 
-    for (auto& F : *m_pModule->GetModule())
+    for (auto& F : M)
     {
         if (auto* diSubprogram = F.getSubprogram())
         {
@@ -3564,10 +3572,10 @@ void DwarfDebug::gatherDISubprogramNodes()
         {
             for (auto& inst : bb)
             {
-                auto debugLoc = inst.getDebugLoc();
+                auto debugLoc = inst.getDebugLoc().get();
                 while (debugLoc)
                 {
-                    auto scope = debugLoc.getScope();
+                    auto scope = debugLoc->getScope();
                     if (scope &&
                         dyn_cast_or_null<llvm::DILocalScope>(scope) &&
                         Processed.find(scope) == Processed.end())
@@ -3581,22 +3589,13 @@ void DwarfDebug::gatherDISubprogramNodes()
                         }
                     }
 
-                    if (debugLoc.getInlinedAt())
-                        debugLoc = debugLoc.getInlinedAt();
+                    if (debugLoc->getInlinedAt())
+                        debugLoc = debugLoc->getInlinedAt();
                     else
                         debugLoc = nullptr;
                 }
             }
         }
     }
-}
-
-llvm::MCSymbol* DwarfDebug::GetLabelBeforeIp(unsigned int ip)
-{
-    auto it = LabelsBeforeIp.find(ip);
-    if (it != LabelsBeforeIp.end())
-        return (*it).second;
-    auto NewLabel = Asm->CreateTempSymbol();
-    LabelsBeforeIp[ip] = NewLabel;
-    return NewLabel;
+    return DISubprogramNodes;
 }
