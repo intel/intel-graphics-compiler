@@ -25,8 +25,8 @@ IN THE SOFTWARE.
 #pragma once
 
 #include <string>
-#include "Compiler/CodeGenPublic.h"
+#include "inc/common/igfxfmid.h"
 
-void appendToShaderOverrideLogFile(std::string &binFileName, const char * message);
-void overrideShaderBinary(void *& genxbin, int & binSize, std::string &binFileName, bool &binOverride);
-void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int & binSize, std::string &binFileName, bool &binOverride);
+void appendToShaderOverrideLogFile(std::string const & binFileName, const char * message);
+void overrideShaderBinary(void *& genxbin, int & binSize, std::string const & binFileName, bool &binOverride);
+void overrideShaderIGA(PLATFORM const & platform, void *& genxbin, int & binSize, std::string const & binFileName, bool &binOverride);

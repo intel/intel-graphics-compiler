@@ -109,12 +109,13 @@ static void* loadBinFile(
     return buf;
 }
 
-iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
+iga_gen_t GetIGAPlatform(PLATFORM const & platform)
 {
-    switch(platform->GetPlatformFamily())
+    auto & ProductFamily = platform.eProductFamily;
+    switch(platform.eRenderCoreFamily)
     {
     case IGFX_GEN8_CORE:
-        if(platform->getPlatformInfo().eProductFamily == IGFX_CHERRYVIEW)
+        if(ProductFamily == IGFX_CHERRYVIEW)
         {
             return IGA_GEN8lp;
         }
@@ -124,8 +125,8 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
         }
     case IGFX_GEN9_CORE:
     case IGFX_GENNEXT_CORE:
-        if(platform->getPlatformInfo().eProductFamily == IGFX_BROXTON ||
-            platform->getPlatformInfo().eProductFamily == IGFX_GEMINILAKE)
+        if(ProductFamily == IGFX_BROXTON ||
+            ProductFamily == IGFX_GEMINILAKE)
         {
             return IGA_GEN9lp;
         }
@@ -139,10 +140,10 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
             return IGA_GEN11;
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
-        if (   platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP
-            || platform->getPlatformInfo().eProductFamily == IGFX_DG1
-            || platform->getPlatformInfo().eProductFamily == IGFX_ROCKETLAKE
-            || platform->getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_S
+        if (   ProductFamily == IGFX_TIGERLAKE_LP
+            || ProductFamily == IGFX_DG1
+            || ProductFamily == IGFX_ROCKETLAKE
+            || ProductFamily == IGFX_ALDERLAKE_S
            )
         {
             return IGA_GEN12p1;
@@ -154,7 +155,7 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
     return IGA_GEN9;
 }
 
-void appendToShaderOverrideLogFile(std::string &binFileName, const char * message)
+void appendToShaderOverrideLogFile(std::string const &binFileName, const char * message)
 {
     auto overridePath = std::string(IGC::Debug::GetShaderOverridePath());
     overridePath.append("OverrideLog.txt");
@@ -171,7 +172,7 @@ void appendToShaderOverrideLogFile(std::string &binFileName, const char * messag
     os.close();
 }
 
-void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int & binSize, std::string &binFileName, bool &binOverride)
+void overrideShaderIGA(PLATFORM const & platform, void *& genxbin, int & binSize, std::string const &binFileName, bool &binOverride)
 {
     std::ifstream is(binFileName.c_str(), std::ios::in);
     std::string asmContext;
@@ -249,7 +250,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 
     iga_context_t ctx;
 
-    iga_context_options_t ctxOpts = IGA_CONTEXT_OPTIONS_INIT(GetIGAPlatform(&(context->platform)));
+    iga_context_options_t ctxOpts = IGA_CONTEXT_OPTIONS_INIT(GetIGAPlatform(platform));
     if(fCreateContext(&ctxOpts, &ctx) != IGA_SUCCESS) {
         binOverride = false;
         appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA CONTEXT CREATION FAILURE: ");
@@ -308,7 +309,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 
 }
 
-void overrideShaderBinary(void *& genxbin, int & binSize, std::string &binFileName, bool &binOverride)
+void overrideShaderBinary(void *& genxbin, int & binSize, std::string const &binFileName, bool &binOverride)
 {
     void* loadBin = nullptr;
     int loadBinSize = 0;

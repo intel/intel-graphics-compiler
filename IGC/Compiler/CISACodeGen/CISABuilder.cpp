@@ -5321,7 +5321,7 @@ namespace IGC
             Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "asm");
             std::string binFileName = name.overridePath();
 
-            overrideShaderIGA(context, genxbin, binSize, binFileName, binOverride);
+            overrideShaderIGA(context->platform.getPlatformInfo(), genxbin, binSize, binFileName, binOverride);
 
             if (!binOverride)
             {
