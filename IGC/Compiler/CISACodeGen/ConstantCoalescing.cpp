@@ -1097,7 +1097,17 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         return;
     }
 
-    const Type* LoadEltTy = load->getType()->getScalarType();
+    const Type* LoadEltTy;
+    if (!load->getType()->isPointerTy())
+        LoadEltTy = load->getType()->getScalarType();
+    else
+    {
+        BufferType buffType = DecodeBufferType(load->getType()->getPointerAddressSpace());
+        if (IsBindless(buffType) || buffType == STATELESS_A32)
+            LoadEltTy = irBuilder->getInt32Ty();
+        else
+            return;
+    }
     const uint scalarSizeInBytes = (const uint)(LoadEltTy->getPrimitiveSizeInBits() / 8);
 
     IGC_ASSERT(isPowerOf2_32(alignment));

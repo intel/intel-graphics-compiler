@@ -210,6 +210,8 @@ namespace IGC
             return SLM;
         case ADDRESS_SPACE_GLOBAL:
             return STATELESS;
+        case ADDRESS_SPACE_A32:
+            return STATELESS_A32;
         default:
             break;
         }
