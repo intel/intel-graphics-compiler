@@ -9526,6 +9526,7 @@ void EmitPass::emitUAVSerialize()
     m_encoder->Push();
 }
 
+
 void EmitPass::emitLoadRawIndexed(GenIntrinsicInst* inst)
 {
     Value* buf_ptrv = inst->getOperand(0);
