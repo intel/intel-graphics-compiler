@@ -41,6 +41,8 @@ namespace IGC
     {
     private:
         static char ID;
+        CodeGenContext* ctx = nullptr;
+        bool RequirePayloadHeader = true;
     public:
         FoldKnownWorkGroupSizes() : FunctionPass(ID) {}
         bool runOnFunction(llvm::Function& F);
@@ -64,6 +66,8 @@ using namespace IGCMD;
 
 bool FoldKnownWorkGroupSizes::runOnFunction(Function& F)
 {
+    ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    RequirePayloadHeader = ctx->m_DriverInfo.RequirePayloadHeader();
     visit(F);
     return m_changed;
 }
@@ -78,8 +82,6 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst& I)
         return;
     }
     StringRef funcName = calledFunction->getName();
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
 
     if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET) &&
         ctx->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero)
@@ -88,8 +90,8 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst& I)
         {
             ConstantInt* IntZero = ConstantInt::get(Type::getInt32Ty(module->getContext()), 0);
             I.replaceAllUsesWith(IntZero);
-            // TODO: erase when patch token is not required
-            //I.eraseFromParent();
+            if (!RequirePayloadHeader)
+                I.eraseFromParent();
             m_changed = true;
         }
     }

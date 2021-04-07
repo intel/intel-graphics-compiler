@@ -42,6 +42,7 @@ using namespace IGC;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(WIFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(WIFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char WIFuncsAnalysis::ID = 0;
@@ -68,6 +69,7 @@ WIFuncsAnalysis::WIFuncsAnalysis() : ModulePass(ID)
 bool WIFuncsAnalysis::runOnModule(Module& M)
 {
     m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -104,11 +106,14 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     //Analyze the implicit arguments needed by this function
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
 
+    const bool RequirePayloadHeader = m_ctx->m_DriverInfo.RequirePayloadHeader();
+
     // All OpenCL kernels receive R0 and Payload Header implicitly
     if (isEntryFunc(m_pMDUtils, &F))
     {
         implicitArgs.push_back(ImplicitArg::R0);
-        implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
+        if (RequirePayloadHeader)
+            implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
     }
     else
     {
@@ -125,10 +130,14 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         {
             implicitArgs.push_back(ImplicitArg::R0);
         }
-        if (m_hasGlobalOffset)
+        if (m_hasGlobalOffset && RequirePayloadHeader)
         {
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
         }
+    }
+    if (m_hasGlobalOffset && !RequirePayloadHeader)
+    {
+        implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
     }
     if (m_hasWorkDim)
     {

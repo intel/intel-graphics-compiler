@@ -25,6 +25,7 @@ IN THE SOFTWARE.
 #pragma once
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -59,6 +60,7 @@ namespace IGC
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         /// @brief  Main entry point.
@@ -121,6 +123,8 @@ namespace IGC
         bool m_hasStackCalls = false;
         /// @brief MetaData utils used to generate LLVM metadata
         IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
+        /// @brief context for compilation
+        IGC::CodeGenContext* m_ctx = nullptr;
     };
 
 } // namespace IGC
