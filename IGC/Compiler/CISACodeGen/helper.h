@@ -109,7 +109,9 @@ namespace IGC
     bool IsGradientIntrinsic(EOPCODE opcode);
     bool IsExtendedMathInstruction(llvm::Instruction* Inst);
     bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode);
-    bool UsesTypedConstantBuffer(CodeGenContext* pContext);
+    bool UsesTypedConstantBuffer(
+        const CodeGenContext* pContext,
+        const BufferType bufType);
 
     bool ComputesGradient(llvm::Instruction* inst);
 

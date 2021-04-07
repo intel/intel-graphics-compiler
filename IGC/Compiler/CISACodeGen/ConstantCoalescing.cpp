@@ -474,8 +474,8 @@ void ConstantCoalescing::ProcessBlock(
                         maxEltPlus,
                         indcb_gathers);
 #else
-                    if (UsesTypedConstantBuffer(m_ctx) &&
-                        bufType == BINDLESS_CONSTANT_BUFFER)
+                    if (bufType == BINDLESS_CONSTANT_BUFFER &&
+                        UsesTypedConstantBuffer(m_ctx, bufType))
                     {
                         ScatterToSampler(
                             ldRaw,
@@ -585,8 +585,8 @@ void ConstantCoalescing::ProcessBlock(
 #ifdef SUPPORT_GATHER4
                             MergeScatterLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, indcb_gathers);
 #else
-                            if (UsesTypedConstantBuffer(m_ctx) &&
-                                bufType == CONSTANT_BUFFER)
+                            if (bufType == CONSTANT_BUFFER &&
+                                UsesTypedConstantBuffer(m_ctx, bufType))
                             {
                                 ScatterToSampler(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, indcb_gathers);
                             }

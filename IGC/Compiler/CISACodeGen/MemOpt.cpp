@@ -207,7 +207,8 @@ namespace {
                     bool DirectIndex;
                     unsigned BufID;
                     BufferType BufTy = DecodeAS4GFXResource(AS, DirectIndex, BufID);
-                    if (BufTy == CONSTANT_BUFFER && UsesTypedConstantBuffer(CGC))
+                    if (BufTy == CONSTANT_BUFFER &&
+                        UsesTypedConstantBuffer(CGC, BufTy))
                         return true;
                 }
                 return false;

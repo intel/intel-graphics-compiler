@@ -85,6 +85,10 @@ namespace IGC
         /// The driver uses typed or untyped constant buffers (for ld_raw vs sampler)
         virtual bool UsesTypedConstantBuffersGPGPU() const { return true; }
 
+        /// Overwrite UsesTypedConstantBuffers3D() and UsesTypedConstantBuffersGPGPU()
+        /// for bindless buffers only.
+        virtual bool ForceUntypedBindlessConstantBuffers() const { return false; }
+
         /// The driver uses sparse aliased residency
         virtual bool UsesSparseAliasedResidency() const { return false; }
 

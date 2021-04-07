@@ -182,8 +182,19 @@ namespace IGC
         return temp.u32Val;
     }
 
-    bool UsesTypedConstantBuffer(CodeGenContext* pContext)
+    bool UsesTypedConstantBuffer(
+        const CodeGenContext* pContext,
+        const BufferType bufType)
     {
+        IGC_ASSERT(bufType == CONSTANT_BUFFER ||
+            bufType == BINDLESS_CONSTANT_BUFFER);
+
+        if (pContext->m_DriverInfo.ForceUntypedBindlessConstantBuffers() &&
+            bufType == BINDLESS_CONSTANT_BUFFER)
+        {
+            return false;
+        }
+
         if (pContext->m_DriverInfo.UsesTypedConstantBuffers3D() &&
             pContext->type != ShaderType::COMPUTE_SHADER)
         {
