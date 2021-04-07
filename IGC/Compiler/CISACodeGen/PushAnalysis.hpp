@@ -42,8 +42,6 @@ IN THE SOFTWARE.
 
 namespace IGC
 {
-    void initializePushAnalysisPass(llvm::PassRegistry&);
-
     class PushAnalysis : public llvm::ModulePass
     {
         const llvm::DataLayout* m_DL;
@@ -81,17 +79,17 @@ namespace IGC
         // List of all arguments (promoted runtime values) that contain dynamic
         // buffer offsets.
         std::set <llvm::Value*> m_dynamicBufferOffsetArgs;
-        // Map of shader arguments -> runtime value index. Arguments in this map
-        // can be used in surface state offset computations and identify buffers
-        // that can be pushed.
-        std::map<llvm::Value*, unsigned int> m_bindlessPushArgs;
         FunctionUpgrader m_pFuncUpgrade;
 
         // Helper function
         /// Return true if the constant is in the range which we are allowed to push
         bool IsPushableShaderConstant(
             llvm::Instruction* inst,
-            SimplePushInfo& info);
+            unsigned int& cbIdx,
+            int& pushableAddressGrfOffset,
+            int& pushableOffsetGrfOffset,
+            unsigned int& eltId,
+            bool& isStateless);
 
         /// Checks if stateless buffer load is not under flow control.
         bool IsSafeToPushNonStaticBufferLoad(llvm::Instruction* inst) const;
@@ -105,6 +103,7 @@ namespace IGC
             int& pushableOffsetGrfOffset) const;
 
         bool GetConstantOffsetForDynamicUniformBuffer(
+            uint bufferId,
             llvm::Value* offsetValue,
             uint& relativeOffsetInBytes);
 
@@ -114,8 +113,12 @@ namespace IGC
         /// Try to push allocate space for the constant to be pushed
         unsigned int AllocatePushedConstant(
             llvm::Instruction* load,
-            const SimplePushInfo& newChunk,
-            const unsigned int maxSizeAllowed);
+            unsigned int cbIdx,
+            int pushableAddressGrfOffset,
+            int pushableOffsetGrfOffset,
+            unsigned int offset,
+            unsigned int maxSizeAllowed,
+            bool isStateless);
 
         /// promote the load to function argument
         void PromoteLoadToSimplePush(llvm::Instruction* load, SimplePushInfo& info, unsigned int offset);
@@ -130,12 +133,6 @@ namespace IGC
             llvm::Instruction* inst,
             int& pushableAddressGrfOffset,
             int& pushableOffsetGrfOffset,
-            unsigned int& offset);
-
-        bool IsPushableBindlessLoad(
-            llvm::Instruction* inst,
-            int& grfOffset,
-            unsigned int& cbIdx,
             unsigned int& offset);
 
         /// return the maximum number of inputs pushed for this kernel

@@ -589,12 +589,6 @@ unsigned getAccChNumUD() const
 {
     return 8;
 }
-
-int getBSOLocInExtDescriptor() const
-{
-    return 12;
-}
-
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
 bool WaDoNotPushConstantsForAllPulledGSTopologies() const

@@ -289,26 +289,17 @@ namespace IGC
 
     struct SSimplePushInfo
     {
-        // Constant buffer Binding Table Index or Surface State Offset.
-        // Valid only if 'isStateless' is false.
-        // If 'isBindless' is false then 'm_cbIdx' contains a Binding Table
-        // Index otherwise it contains a Surface State Offset in 64-byte units.
+        // Constant buffer BTI - valid only if isStateless is false
         uint m_cbIdx = 0;
         // m_pushableAddressGrfOffset and m_pushableOffsetGrfOffset are GRF
-        // offsets (in DWORDS) in the runtime data pushed to the shader. These
-        // fields are valid only if greater or equal to 0. If a field is valid
-        // it means that the runtime data from the GRF offset was used in
-        // the buffer address calculation.
-        // These fields must contain values provided by frontend in
-        // pushInfo.pushableAddresses metadata.
-        // m_pushableAddressGrfOffset is only valid when isStateless is true.
-        // m_pushableOffsetGrfOffset is only valid when isStateless or
-        // isBindless is true.
-        // When isStateless is true runtime data at m_pushableAddressGrfOffset
-        // contains a 64bit canonicalized address. Data starting at
-        // m_pushableOffsetGrfOffset contains 32bit offset relative to the 64bit
-        // starting address.
-        // PushAnalysiss pass matches the following pattern:
+        // offsets in the runtime data pushed to the shader. UMD uses these
+        // offsets to calculate the starting address of a simple push region.
+        // These fields are valid only if greater or equal to 0 and if
+        // isStateless is true. Offsets are in DWORDs.
+        // Runtime data starting at m_pushableAddressGrfOffset contains the
+        // 64bit stateless address, data starting at m_pushableOffsetGrfOffset
+        // contains 32bit offset relative to the 64bit starting address.
+        // pseudo-code to calculate the address:
         //   uint8_t* pShaderRuntimeData ={...}; // to be pushed
         //   uint64_t pushableAddress =
         //     *(uint64_t*)(pShaderRuntimeData + 4*pushableAddressGrfOffset);
@@ -317,11 +308,6 @@ namespace IGC
         //       *(uint32_t*)(pShaderRuntimeData + 4*pushableOffsetGrfOffset);
         //   }
         //   pushableAddress += m_offset;
-        //
-        // m_pushableOffsetGrfOffset is also used when isBindless is true and
-        // contains the GRF offset that was used to calculate the Surface State
-        // Offset of the buffer. It must contain one of the values provided by
-        // frontend in pushInfo.bindlessPushInfo metadata.
         int m_pushableAddressGrfOffset = -1;
         int m_pushableOffsetGrfOffset = -1;
         // Immediate offset in bytes add to the start of the simple push region.
@@ -329,7 +315,6 @@ namespace IGC
         // Data size in bytes, must be a multiple of GRF size
         uint m_size = 0;
         bool isStateless = false;
-        bool isBindless = false;
     };
 
     struct ConstantPayloadInfo
