@@ -945,7 +945,7 @@ template <typename T> bool isGlobalVarOperand(const Value *V) {
 
 bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
   auto SI = dyn_cast<SelectInst>(Inst);
-  IGC_ASSERT(SI && "select expected");
+  IGC_ASSERT_MESSAGE(SI, "select expected");
   VectorType *Ty = dyn_cast<VectorType>(SI->getCondition()->getType());
   if (!Ty)
     return false;
@@ -1046,11 +1046,15 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
     Decomposition.push_back(Remaining);
     Offsets.push_back(Offset);
   }
-#if _DEBUG
-  unsigned NumParts = (NumElts + Width - 1) / Width;
-  IGC_ASSERT(NumParts == Decomposition.size());
-  IGC_ASSERT(NumParts == Offsets.size());
-#endif
+
+  {
+    IGC_ASSERT(Width);
+    unsigned NumParts = 0; // it will be assigned inside assertion statament
+    IGC_ASSERT((NumParts = (NumElts + Width - 1) / Width, 1));
+    IGC_ASSERT(NumParts == Decomposition.size());
+    IGC_ASSERT(NumParts == Offsets.size());
+    (void) NumParts;
+  }
 
   return true;
 }
@@ -1173,7 +1177,7 @@ Value *SelectDecomposer::getPart(Value *Whole, unsigned PartIndex,
 
   if (Whole->getType()->getScalarType()->isIntegerTy(1)) {
     auto C = dyn_cast<Constant>(Whole);
-    IGC_ASSERT(C && "constant expected");
+    IGC_ASSERT_MESSAGE(C, "constant expected");
     if (Constant *V = C->getSplatValue())
       return ConstantVector::getSplat(IGCLLVM::getElementCount(NumElts), V);
     SmallVector<Constant *, 8> Values;
