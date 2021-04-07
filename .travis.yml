@@ -43,7 +43,7 @@ matrix:
     - os: linux
       dist: focal # Ubuntu 20.04
       compiler: clang-10
-      env: LLVM_VER=10 BUILD_TYPE=Release COMPILER_EXTRA="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 -DIGC_BUILD__VC_ENABLED=OFF"
+      env: LLVM_VER=10 BUILD_TYPE=Release COMPILER_EXTRA="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10"
 
 git:
   depth: false
