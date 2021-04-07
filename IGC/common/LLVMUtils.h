@@ -51,6 +51,10 @@ namespace IGC
         CodeGenContext* const m_pContext;
         const std::string m_name;
         std::vector<Debug::Dump *> m_irDumps;
+
+        void addPrintPass(llvm::Pass* P, bool isBefore);
+        bool isPrintBefore(llvm::Pass* P);
+        bool isPrintAfter(llvm::Pass* P);
     };
 }
 

@@ -91,6 +91,11 @@ void IGCPassManager::add(Pass *P)
         return;
     }
 
+    if (isPrintBefore(P))
+    {
+        addPrintPass(P, true);
+    }
+
     if (IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS))
     {
         PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + std::string(P->getPassName()), STATS_COUNTER_START));
@@ -103,29 +108,61 @@ void IGCPassManager::add(Pass *P)
         PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + std::string(P->getPassName()), STATS_COUNTER_END));
     }
 
-    if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+    if (isPrintAfter(P))
     {
-        std::string passName = m_name + '_' + std::string(P->getPassName());
-        auto name =
-            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-            .Type(m_pContext->type)
-            .Hash(m_pContext->hash)
-            .Pass(passName, m_pContext->m_numPasses++)
-            .StagedInfo(m_pContext)
-            .Extension("ll");
-        // The dump object needs to be on the Heap because it owns the stream, and the stream
-        // is taken by reference into the printer pass. If the Dump object had been on the
-        // stack, then that reference would go bad as soon as we exit this scope, and then
-        // the printer pass would access an invalid pointer later on when we call PassManager::run()
-        IGC::Debug::Dump* pDump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
-        PassManager::add(P->createPrinterPass(pDump->stream(), ""));
-        m_irDumps.push_back(pDump);
+        addPrintPass(P, false);
     }
+}
+
+bool IGCPassManager::isPrintBefore(Pass* P)
+{
+    if (IGC_IS_FLAG_ENABLED(PrintBefore))
+    {
+        StringRef  passName(IGC_GET_REGKEYSTRING(PrintBefore));
+        StringRef PN = P->getPassName();
+        return (passName.equals_lower("all") || passName.equals_lower(PN));
+    }
+    return false;
+}
+
+bool IGCPassManager::isPrintAfter(Pass* P)
+{
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+    {
+        return true;
+    }
+    if (IGC_IS_FLAG_ENABLED(PrintAfter))
+    {
+        StringRef  passName(IGC_GET_REGKEYSTRING(PrintAfter));
+        StringRef PN = P->getPassName();
+        return (passName.equals_lower("all") || passName.equals_lower(PN));
+    }
+    return false;
+}
+
+void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
+{
+    std::string passName =
+        m_name + (isBefore ? "_before_" : "_after_") + std::string(P->getPassName());
+    auto name =
+        IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .Type(m_pContext->type)
+        .Hash(m_pContext->hash)
+        .Pass(passName, m_pContext->m_numPasses++)
+        .StagedInfo(m_pContext)
+        .Extension("ll");
+    // The dump object needs to be on the Heap because it owns the stream, and the stream
+    // is taken by reference into the printer pass. If the Dump object had been on the
+    // stack, then that reference would go bad as soon as we exit this scope, and then
+    // the printer pass would access an invalid pointer later on when we call PassManager::run()
+    IGC::Debug::Dump* pDump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
+    PassManager::add(P->createPrinterPass(pDump->stream(), ""));
+    m_irDumps.push_back(pDump);
 }
 
 IGCPassManager::~IGCPassManager()
 {
-    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
+    if (!m_irDumps.empty())
     {
         for(auto it : m_irDumps)
         {
