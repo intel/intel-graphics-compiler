@@ -1310,9 +1310,7 @@ bool MadMatcher::emit() {
       std::tie(V1, S1) = getNarrowI16Vector(Builder, AInst, BO->getOperand(1),
                                             VTy->getNumElements());
       if (V0 && V1) {
-        GenXIntrinsic::ID IID =
-            S0 ? (S1 ? GenXIntrinsic::genx_ssmul : GenXIntrinsic::genx_sumul)
-               : (S1 ? GenXIntrinsic::genx_usmul : GenXIntrinsic::genx_uumul);
+        auto IID = GenXIntrinsic::getGenXMulIID(S0, S1);
         Module *M = AInst->getParent()->getParent()->getParent();
         Type *Tys[2] = {VTy, V0->getType()};
         Function *Fn = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);

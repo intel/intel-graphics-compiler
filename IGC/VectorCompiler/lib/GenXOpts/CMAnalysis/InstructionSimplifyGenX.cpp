@@ -179,21 +179,9 @@ static Value *simplifyMulDDQ(BinaryOperator &Mul) {
     RH = TryUpcast(Builder, RH, Ty32, RHSigned);
   }
 
-  auto GetImulIntrinsicId = [](bool Op1Signed, bool Op2Signed) {
-    if (Op1Signed && Op2Signed)
-      return GenXIntrinsic::genx_ssmul;
-    if (Op1Signed && !Op2Signed)
-      return GenXIntrinsic::genx_sumul;
-    if (!Op1Signed && Op2Signed)
-      return GenXIntrinsic::genx_usmul;
-    if (!Op1Signed && !Op2Signed)
-      return GenXIntrinsic::genx_uumul;
-    llvm_unreachable("should not happen");
-  };
-
   auto *Ty64 = Mul.getType();
   auto *OpType = LH->getType();
-  auto IID = GetImulIntrinsicId(LHSigned, RHSigned);
+  auto IID = GenXIntrinsic::getGenXMulIID(LHSigned, RHSigned);
   auto *FIMul =
       GenXIntrinsic::getGenXDeclaration(Mul.getModule(), IID, {Ty64, OpType});
   auto *Result = Builder.CreateCall(FIMul, {LH, RH}, Mul.getName() + ".imul");
