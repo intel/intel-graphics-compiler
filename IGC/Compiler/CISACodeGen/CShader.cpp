@@ -640,6 +640,7 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram* pKernelProgram)
         pKernelProgram->simplePushInfoArr[i].m_offset = pushInfo.simplePushInfoArr[i].offset;
         pKernelProgram->simplePushInfoArr[i].m_size = pushInfo.simplePushInfoArr[i].size;
         pKernelProgram->simplePushInfoArr[i].isStateless = pushInfo.simplePushInfoArr[i].isStateless;
+        pKernelProgram->simplePushInfoArr[i].isBindless = pushInfo.simplePushInfoArr[i].isBindless;
     }
 
     if (GetContext()->m_ConstantBufferReplaceShaderPatterns)
