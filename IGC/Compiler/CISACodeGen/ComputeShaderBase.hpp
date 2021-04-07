@@ -38,6 +38,7 @@ namespace IGC
             bool useLinearWalk,
             uint numberOfTypedAccess,
             uint numberOfUntypedAccess,
+            uint num1DAccesses,
             uint threadGroupSize_X,
             uint threadGroupSize_Y,
             uint threadGroupSize_Z);

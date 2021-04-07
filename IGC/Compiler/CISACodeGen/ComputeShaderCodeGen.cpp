@@ -86,6 +86,20 @@ namespace IGC
         {
             switch (intr->getIntrinsicID())
             {
+            case GenISAIntrinsic::GenISA_storerawvector_indexed:
+            case GenISAIntrinsic::GenISA_storeraw_indexed:
+            case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+            case GenISAIntrinsic::GenISA_ldraw_indexed:
+            {
+                BufferType bufType = DecodeBufferType(
+                    intr->getArgOperand(0)->getType()->getPointerAddressSpace());
+                if (bufType == BINDLESS) // UAV buffer
+                {
+                    m_num1DAccesses++;
+                }
+                break;
+            }
+
             case GenISAIntrinsic::GenISA_typedwrite:
             case GenISAIntrinsic::GenISA_typedread:
                 m_numberOfTypedAccess++;
@@ -389,6 +403,7 @@ namespace IGC
             false,
             m_numberOfTypedAccess,
             m_numberOfUntypedAccess,
+            m_num1DAccesses,
             m_threadGroupSize_X,
             m_threadGroupSize_Y,
             m_threadGroupSize_Z);
