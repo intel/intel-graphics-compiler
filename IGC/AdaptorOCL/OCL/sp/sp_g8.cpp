@@ -218,9 +218,10 @@ struct SStateProcessorContextGen8_0
 
     } Surface;
 };
-CGen8OpenCLStateProcessor::CGen8OpenCLStateProcessor(PLATFORM platform, const IProgramContext& ContextProvider)
+CGen8OpenCLStateProcessor::CGen8OpenCLStateProcessor(PLATFORM platform, const IProgramContext& ContextProvider, const WA_TABLE& WATable)
     : m_Platform(platform),
-      m_Context(ContextProvider)
+      m_Context(ContextProvider),
+      m_WATable(WATable)
 {
     G6HWC::InitializeCapsGen8( &m_HWCaps );
 }

@@ -94,7 +94,7 @@ public:
       virtual ~IProgramContext () {}
     };
 
-    explicit CGen8OpenCLStateProcessor(PLATFORM platform, const IProgramContext& Ctx);
+    explicit CGen8OpenCLStateProcessor(PLATFORM platform, const IProgramContext& Ctx, const WA_TABLE& WATable);
     virtual ~CGen8OpenCLStateProcessor( void );
 
     virtual void CreateKernelBinary(
@@ -120,6 +120,7 @@ public:
 
     const IProgramContext& m_Context;
     std::string m_oclStateDebugMessagePrintOut;
+    const WA_TABLE& m_WATable;
 
 private:
     const G6HWC::SMediaHardwareCapabilities& HWCaps() const;

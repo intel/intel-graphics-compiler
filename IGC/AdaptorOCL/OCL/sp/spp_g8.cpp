@@ -57,9 +57,9 @@ bool CGen8OpenCLProgram::CLProgramCtxProvider::hasProgrammableBorderColor() cons
 }
 
 CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform,
-                                               const CGen8OpenCLStateProcessor::IProgramContext& Ctx)
+                                               const CGen8OpenCLStateProcessor::IProgramContext& Ctx, const WA_TABLE& WATable)
     : m_Platform(platform),
-      m_StateProcessor(platform, Ctx)
+      m_StateProcessor(platform, Ctx, WATable)
 {
     m_ProgramScopePatchStream = new Util::BinaryStream;
 }
@@ -122,7 +122,7 @@ void CGen8OpenCLProgramBase::CreateProgramScopePatchStream(const IGC::SOpenCLPro
 CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext& context)
     : m_Context(context),
       m_ContextProvider(context),
-      CGen8OpenCLProgramBase(platform, m_ContextProvider)
+      CGen8OpenCLProgramBase(platform, m_ContextProvider, context.platform.getWATable())
 {
 }
 

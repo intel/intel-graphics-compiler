@@ -29,8 +29,8 @@ IN THE SOFTWARE.
 using namespace vc;
 
 // Implementation of CGen8CMProgram.
-CGen8CMProgram::CGen8CMProgram(PLATFORM platform)
-    : CGen8OpenCLProgramBase(platform, m_ContextProvider),
+CGen8CMProgram::CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable)
+    : CGen8OpenCLProgramBase(platform, m_ContextProvider, WATable),
       m_programInfo(new IGC::SOpenCLProgramInfo) {}
 
 CGen8CMProgram::~CGen8CMProgram() {

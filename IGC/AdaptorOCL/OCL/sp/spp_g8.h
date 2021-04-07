@@ -56,7 +56,8 @@ struct KernelData
 class CGen8OpenCLProgramBase : DisallowCopy {
 public:
     explicit CGen8OpenCLProgramBase(PLATFORM platform,
-                                    const CGen8OpenCLStateProcessor::IProgramContext& PI);
+                                    const CGen8OpenCLStateProcessor::IProgramContext& PI,
+                                    const WA_TABLE& WATable);
     virtual ~CGen8OpenCLProgramBase();
 
     /// GetProgramBinary - getting legacy (Patch token based) binary format

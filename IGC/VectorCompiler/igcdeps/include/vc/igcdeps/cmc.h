@@ -121,7 +121,7 @@ public:
     bool IsDebuggable = false;
   };
 
-  explicit CGen8CMProgram(PLATFORM platform);
+  explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable);
   ~CGen8CMProgram();
 
   // Produce the final ELF binary with the given CM kernels
