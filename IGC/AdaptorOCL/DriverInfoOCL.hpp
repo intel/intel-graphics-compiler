@@ -72,6 +72,8 @@ namespace TC
             return IGC_IS_FLAG_ENABLED(EnableDPEmulation);
         }
 
+        bool NeedFP64DivSqrt() const override { return true; }
+
         bool EnableIntegerMad() const override { return true; }
     };
 
