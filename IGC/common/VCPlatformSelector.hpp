@@ -38,13 +38,11 @@ IN THE SOFTWARE.
 namespace cmc {
 
 inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
-  auto Core = Platform.eDisplayCoreFamily;
+  // after some consultations with Wndows KMD folks,
+  // only render core shall be used in all cases
+  auto Core = Platform.eRenderCoreFamily;
   auto Product = Platform.eProductFamily;
   IGC_ASSERT(RevId == Platform.usRevId);
-
-  // we tend to believe eRenderFamily for display-less targets
-  if (Platform.eRenderCoreFamily > Core)
-    Core = Platform.eRenderCoreFamily;
 
   switch (Core) {
   case IGFX_GEN9_CORE:
