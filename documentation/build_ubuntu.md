@@ -102,25 +102,29 @@ cmake command.
 
 - `IGC_OPTION__LLVM_PREFERRED_VERSION` -- sets version of LLVM that
   will be used by IGC (defaults to "10.0.0").
-- `IGC_OPTION__LLVM_SOURCES` -- whether IGC uses LLVM sources in build
-  (by default OFF). This mode has suboptions:
+- `IGC_OPTION__LLVM_MODE` -- select LLVM mode for IGC to use. Possible
+values are: **Source**, **Prebuilds** or empty (that is
+default). **Source** mode uses LLVM sources to build LLVM in-tree with
+IGC. In **Prebuilds** mode IGC will search for prebuild LLVM
+package. If mode is empty then default search procedure will happen:
+IGC will try **Source** mode first, then fall back to **Prebuilds**
+mode. Each mode has suboptions to control IGC behavior.
+
+**Source** mode has the following suboptions:
   - `IGC_OPTION__LLVM_STOCK_SOURCES` -- whether non-patched LLVM will
   be used or not (by default OFF).
   - `IGC_OPTION__LLVM_SOURCES_DIR` -- path to llvm sources when
   building with LLVM sources (by default IGC takes whatever can be
   found on the same directory level like in example above).
-- `IGC_OPTION__LLVM_FROM_SYSTEM` -- whether IGC uses LLVM as a package
-  (by default OFF).
 
-As it can be noted, by default all modes are in OFF position. This
-means that IGC will start to look for LLVM in the following order:
+**Prebuilds** mode has only one suboption (that is default CMake
+  variable):
+  - `LLVM_ROOT` -- additional paths to search for LLVM -- these are
+  searched before system paths.
 
-1. Source build (see [source build](#build-from-sources));
-1. Package build (see [build with packages](#use-preinstalled-packages)).
-
-In most cases IGC will automatically detect all components. However,
-in case of any problems you can set variables listed above to help
-IGC with locating of components.
+For more detailed info about every mode see:
+1. **Source** mode (see [source build](#build-from-sources));
+1. **Prebuilds** mode (see [build with packages](#use-preinstalled-packages)).
 
 ### 3. Build and install IGC
 

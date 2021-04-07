@@ -107,7 +107,7 @@ if(DEFINED SPIRVDLL_SRC)
     message(FATAL_ERROR "[VC] Cannot find SPIRVDLL sources in ${SPIRVDLL_SRC}")
   endif()
   set(SPIRV_SOURCES ${SPIRVDLL_SRC})
-  if(${IGC_OPTION__LLVM_FROM_SYSTEM})
+  if(IGC_BUILD__LLVM_PREBUILDS)
 
     ExternalProject_Add(SPIRVDLL_EX
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
@@ -127,7 +127,7 @@ if(DEFINED SPIRVDLL_SRC)
         INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
       )
 
-  endif(${IGC_OPTION__LLVM_FROM_SYSTEM})
+  endif(IGC_BUILD__LLVM_PREBUILDS)
 
   add_dependencies(SPIRVDLL_EX VCCodeGen)
   install(FILES
@@ -185,7 +185,7 @@ else()
   ${SPRIV_BRANCH_PATCH}
   )
 
-  if(${IGC_OPTION__LLVM_FROM_SYSTEM})
+  if(IGC_BUILD__LLVM_PREBUILDS)
 
     ExternalProject_Add(SPIRVDLL_EX
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SPIRVDLL
@@ -205,7 +205,7 @@ else()
         INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/spirv-install
       )
 
-  endif(${IGC_OPTION__LLVM_FROM_SYSTEM})
+  endif(IGC_BUILD__LLVM_PREBUILDS)
 
   add_dependencies(SPIRVDLL_EX VCCodeGen)
 

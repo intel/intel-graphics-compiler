@@ -24,7 +24,7 @@
 
 #
 #
-if(NOT TARGET igc_opt OR ${IGC_OPTION__LLVM_PREBUILDS})
+if(NOT TARGET igc_opt OR IGC_BUILD__LLVM_PREBUILDS)
   message("[check-igc] LIT tests disabled. Missing igc_opt target.")
 elseif(NOT BS_ENABLE_ULT)
   message("[check-igc] LIT tests disabled. Set `BS_ENABLE_ULT` to enable.")

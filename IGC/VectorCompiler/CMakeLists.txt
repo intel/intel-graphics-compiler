@@ -42,8 +42,8 @@ message(STATUS "+++ Source/IGC/VectorCompiler +++")
 message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 
 # --- LLVM ---
-if(IGC_OPTION__LLVM_FROM_SYSTEM OR IGC_OPTION__LLVM_PREBUILDS)
-  message(STATUS "[VC] Using system or prebuilt llvm")
+if(IGC_BUILD__LLVM_PREBUILDS)
+  message(STATUS "[VC] Using prebuilt llvm")
 else()
   message(STATUS "[VC] Using llvm source build")
   # Set correct module path.

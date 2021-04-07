@@ -22,96 +22,97 @@
 #
 #============================ end_copyright_notice =============================
 
-# Order of choosing way how to take LLVM
-#1. IGC_OPTION__LLVM_SOURCES - use llvm sources to build
-#   IGC_OPTION__LLVM_STOCK_SOURCES - use LLVM stock sources or patched stock sources // By default False
+# LLVM package could be handled in two general ways: source and prebuilds.
+# To specify what mode to use `IGC_OPTION__LLVM_MODE` is used.
+# Possible values are: Source, Prebuilds or nothing (default one).
+# If nothing is specified then LLVM package will be searched starting from source
+# mode and then using prebuilds if sources are not found.
+# Additional options for modes are the following.
+# 1. Source:
+#   IGC_OPTION__LLVM_STOCK_SOURCES - use LLVM stock sources or patched stock sources (by default OFF)
 #   IGC_OPTION__LLVM_SOURCES_DIR - set path to llvm sources folder
-#2. IGC_OPTION__LLVM_PREBUILDS - use prebuilt llvm toolchain
-#   IGC_OPTION__LLVM_PREBUILDS_DIR - set path to prebuilt llvm folder
-#3. IGC_OPTION__LLVM_FROM_SYSTEM - use LLVM from system
+# 2. Prebuilds:
+#   LLVM_ROOT -- additional paths to search for LLVM (separated by ';') -- these are searched before system paths
+#
+# LLVM version can be specified using the following variable:
+# IGC_OPTION__LLVM_PREFERRED_VERSION (default is 10.0.0)
+#
+# From cmake writing perspective there will be defined the following
+# variables that can be used by IGC:
+# IGC_BUILD__LLVM_SOURCES -- ON if Source path is used
+# IGC_BUILD__LLVM_PREBUILDS -- ON if Prebuilds path is used.
 
-#   IGC_OPTION__LLVM_PREFERRED_VERSION - define which version of llvm to pick, ex. "7.1.0" // By default 10.0.0
+cmake_policy(VERSION 3.13.4)
 
+include_guard(DIRECTORY)
 
-option(IGC_OPTION__LLVM_SOURCES "Use LLVM sources for build in-tree" OFF)
-option(IGC_OPTION__LLVM_PREBUILDS "Use LLVM prebuild package" OFF)
-option(IGC_OPTION__LLVM_FROM_SYSTEM "Use LLVM from system" OFF)
+set(SOURCE_MODE_NAME "Source")
+set(PREBUILDS_MODE_NAME "Prebuilds")
 
-# Sanity check that only one mode enabled (or nothing).
-if((IGC_OPTION__LLVM_SOURCES AND IGC_OPTION__LLVM_PREBUILDS) OR
-    (IGC_OPTION__LLVM_SOURCES AND IGC_OPTION__LLVM_FROM_SYSTEM) OR
-    (IGC_OPTION__LLVM_PREBUILDS AND IGC_OPTION__LLVM_FROM_SYSTEM))
-  message(FATAL_ERROR "Only one LLVM mode can be selected explicitly for IGC!")
+set(IGC_OPTION__LLVM_MODE "" CACHE STRING
+  "LLVM mode for IGC (can be ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty)"
+  )
+
+if(IGC_OPTION__LLVM_MODE AND NOT (IGC_OPTION__LLVM_MODE MATCHES "^(${SOURCE_MODE_NAME}|${PREBUILDS_MODE_NAME})$"))
+  message(FATAL_ERROR "LLVM mode can be only ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty!")
 endif()
-
 
 set(IGC_LLVM_TOOLS_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-### Get preferred version of LLVM ###
+# Get preferred version of LLVM.
 include(${IGC_LLVM_TOOLS_DIR}/llvm_preferred_version.cmake)
 set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING "Preferred version of LLVM to use")
 
 # Get default source dir.
 include(${IGC_LLVM_TOOLS_DIR}/llvm_source_path.cmake)
-# Handle dependent options for source build.
-if(IGC_OPTION__LLVM_SOURCES)
+# Get default prebuild dirs.
+include(${IGC_LLVM_TOOLS_DIR}/llvm_prebuilt_path.cmake)
+
+# Handle dependent options for Source mode.
+if(IGC_OPTION__LLVM_MODE STREQUAL SOURCE_MODE_NAME)
   option(IGC_OPTION__LLVM_STOCK_SOURCES "Use stock or patched sources" OFF)
   set(IGC_OPTION__LLVM_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR} CACHE PATH "Path to LLVM sources")
+  # Tell the build that we are using sources.
+  set(IGC_BUILD__LLVM_SOURCES ON)
 endif()
 
-# Get default prebuild dir.
-include(${IGC_LLVM_TOOLS_DIR}/llvm_prebuilt_path.cmake)
-# Handle dependent options for prebuild build.
-if(IGC_OPTION__LLVM_PREBUILDS)
-  set(IGC_OPTION__LLVM_PREBUILDS_DIR ${DEFAULT_IGC_LLVM_PREBUILDS_DIR} CACHE PATH "Path to LLVM prebuild")
+# Handle dependent options for Prebuild mode.
+if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME)
+  set(LLVM_ROOT ${DEFAULT_IGC_LLVM_PREBUILDS_DIRS} CACHE PATH
+    "Paths to LLVM prebuild (multiple paths can be specified separated by ;")
+  # Tell the build that we are using prebuilds.
+  set(IGC_BUILD__LLVM_PREBUILDS ON)
 endif()
 
-# Nothing was specified, start searching.
-if(NOT (IGC_OPTION__LLVM_SOURCES OR IGC_OPTION__LLVM_PREBUILDS OR IGC_OPTION__LLVM_FROM_SYSTEM))
-  message(STATUS "No LLVM mode was selected explicitly")
-  message(STATUS "IGC will search for LLVM sources first, then try prebuild and after try to take system LLVM")
-  set(IGC_LOOKING_FOR_LLVM TRUE)
-endif()
+# No mode was specified, start searching.
+if(NOT IGC_OPTION__LLVM_MODE)
+  message(STATUS "[IGC] No LLVM mode was selected explicitly")
+  message(STATUS "[IGC] IGC will search for LLVM sources first, then try prebuilds (including system LLVM)")
 
-### Check by order first available way to link with LLVM ###
-if(IGC_LOOKING_FOR_LLVM)
+  # Check by order first available way to link with LLVM.
   if(EXISTS "${DEFAULT_IGC_LLVM_SOURCES_DIR}")
-    set(IGC_FOUND_SOURCES TRUE)
+    set(IGC_BUILD__LLVM_SOURCES ON)
     set(IGC_OPTION__LLVM_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR})
-  elseif(EXISTS "${DEFAULT_IGC_LLVM_PREBUILDS_DIR}")
-    set(IGC_FOUND_PREBUILDS TRUE)
-    set(IGC_OPTION__LLVM_PREBUILDS_DIR ${DEFAULT_IGC_LLVM_PREBUILDS_DIR})
   else()
-    set(IGC_USES_SYSTEM_LLVM TRUE)
+    set(IGC_BUILD__LLVM_PREBUILDS ON)
+    set(LLVM_ROOT ${DEFAULT_IGC_LLVM_PREBUILDS_DIRS})
   endif()
-endif(IGC_LOOKING_FOR_LLVM)
+endif()
 
-if(IGC_OPTION__LLVM_SOURCES OR IGC_FOUND_SOURCES)
+if(IGC_BUILD__LLVM_SOURCES)
   if(NOT EXISTS "${IGC_OPTION__LLVM_SOURCES_DIR}")
     message(FATAL_ERROR "[IGC] Cannot find LLVM sources, please provide sources path by IGC_OPTION__LLVM_SOURCES_DIR flag")
   endif()
 
   message(STATUS "[IGC] IGC will build LLVM from sources.")
-  message(STATUS "[IGC] LLVM sources folder : ${IGC_OPTION__LLVM_SOURCES_DIR}")
-  message(STATUS "[IGC] LLVM sources in stock version : ${IGC_OPTION__LLVM_STOCK_SOURCES}")
+  message(STATUS "[IGC] LLVM sources folder: ${IGC_OPTION__LLVM_SOURCES_DIR}")
+  message(STATUS "[IGC] LLVM sources in stock version: ${IGC_OPTION__LLVM_STOCK_SOURCES}")
   add_subdirectory(${IGC_LLVM_TOOLS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
-  set(IGC_OPTION__LLVM_SOURCES ON)
 endif()
 
-if(IGC_OPTION__LLVM_PREBUILDS OR IGC_FOUND_PREBUILDS)
-  if(NOT EXISTS "${IGC_OPTION__LLVM_PREBUILDS_DIR}")
-    message(FATAL_ERROR "[IGC] Cannot find LLVM prebuilts, please provide path by IGC_OPTION__LLVM_PREBUILDS_DIR flag")
-  endif()
-  message(STATUS "[IGC] IGC will take LLVM prebuilts.")
-  message(STATUS "[IGC] LLVM prebuilts folder : ${IGC_OPTION__LLVM_PREBUILDS_DIR}")
-  set(LLVM_ROOT ${IGC_OPTION__LLVM_PREBUILDS_DIR})
+if(IGC_BUILD__LLVM_PREBUILDS)
+  message(STATUS "[IGC] IGC will take prebuilt LLVM.")
+  message(STATUS "[IGC] Searching for prebuilt LLVM in: ${LLVM_ROOT} and system directories")
   find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
-  set(IGC_OPTION__LLVM_PREBUILDS ON)
+  message(STATUS "[IGC] Used prebuilt LLVM folder: ${LLVM_DIR}")
 endif()
-
-if(IGC_OPTION__LLVM_FROM_SYSTEM OR IGC_USES_SYSTEM_LLVM)
-  message(STATUS "[IGC] IGC will take LLVM from system")
-  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
-  set(IGC_OPTION__LLVM_FROM_SYSTEM ON)
-endif()
-

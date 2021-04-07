@@ -69,5 +69,5 @@ script:
   - git clone https://github.com/intel/vc-intrinsics ../vc-intrinsics
   - git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator ../llvm-project/llvm/projects/llvm-spirv
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DIGC_OPTION__LLVM_PREFERRED_VERSION=${LLVM_VER} -DCCLANG_FROM_SYSTEM=TRUE -DIGC_OPTION__LLVM_FROM_SYSTEM=True ${COMPILER_EXTRA} ../
+  - cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DIGC_OPTION__LLVM_PREFERRED_VERSION=${LLVM_VER} -DCCLANG_FROM_SYSTEM=TRUE -DIGC_OPTION__LLVM_MODE=Prebuilds ${COMPILER_EXTRA} ../
   - make -j`nproc`
