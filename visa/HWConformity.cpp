@@ -1674,8 +1674,10 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
             {
                 intHFConversion = true;
             }
-            // we allow packed destination for F to HF.
-            if (builder.getPlatform() >= GENX_CHV && !intHFConversion && inst->isMixedMode())
+            // F to packed HF operations are handled specially later
+            bool FtoHFMov = dst->getType() == Type_HF && src0->getType() == Type_F;
+            if (builder.getPlatform() >= GENX_CHV && !intHFConversion &&
+                (inst->isMixedMode() || (builder.hasFtoPackedHFMove() && FtoHFMov && inst->getExecSize() >= builder.getNativeExecSize())))
             {
                 return insertMOV;
             }
