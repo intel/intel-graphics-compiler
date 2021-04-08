@@ -28,8 +28,8 @@
 
 cmake_minimum_required(VERSION 3.13.4)
 
-find_program(PATCH NAMES patch)
-find_program(PYTHON NAMES python3 python)
+find_package(Python3 REQUIRED)
+find_package(Patch REQUIRED)
 
 include(llvm_utils.cmake)
 include(llvm_flags.cmake)

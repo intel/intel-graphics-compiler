@@ -32,7 +32,7 @@ macro(llvm_utils_python_set)
   # If cached PYTHON_EXECUTABLE already exists save it to restore.
   get_property(PYTHON_EXECUTABLE_BACKUP CACHE PYTHON_EXECUTABLE PROPERTY VALUE)
   # Set python interpreter for LLVM.
-  set(PYTHON_EXECUTABLE ${PYTHON} CACHE PATH "" FORCE)
+  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE} CACHE PATH "" FORCE)
   message(STATUS "[LLVM] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
 endmacro()
 
