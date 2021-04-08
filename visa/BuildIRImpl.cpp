@@ -751,7 +751,7 @@ IR_Builder::IR_Builder(
     Options *options,
     CISA_IR_Builder* parent,
     FINALIZER_INFO *jitInfo,
-    PWA_TABLE pWaTable)
+    const WA_TABLE *pWaTable)
     : platform(genPlatform), curFile(NULL), curLine(0), curCISAOffset(-1), immPool(*this), metaData(jitInfo),
     type(VISA_BUILD_TYPE::KERNEL), parentBuilder(parent),
     builtinSamplerHeaderInitialized(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),

@@ -53,7 +53,7 @@ class CISA_IR_Builder : public VISABuilder
 public:
 
     CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, vISABuilderMode mode, int majorVersion, int minorVersion,
-        const PWA_TABLE pWaTable) : m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
+        const WA_TABLE *pWaTable) : m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
     {
         memset(&m_header, 0, sizeof(m_header));
 
@@ -80,7 +80,7 @@ public:
         TARGET_PLATFORM platform,
         int numArgs,
         const char* flags[],
-        const PWA_TABLE pWaTable = nullptr);
+        const WA_TABLE *pWaTable = nullptr);
     static int DestroyBuilder(CISA_IR_Builder *builder);
     VISA_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName);
     VISA_BUILDER_API virtual int SetPrevKernel(VISAKernel *& prevKernel);
@@ -168,7 +168,7 @@ public:
     // holds the %DispatchSimdSize attribute
     int    m_dispatchSimdSize = -1;
 
-    const PWA_TABLE getWATable() { return m_pWaTable; }
+    const WA_TABLE *getWATable() { return m_pWaTable; }
 
     uint8_t getMajorVersion() const { return m_header.major_version; }
     uint8_t getMinorVersion() const { return m_header.minor_version; }
@@ -822,8 +822,6 @@ public:
     // getKernels - get all kernels and functions added into this builder
     std::list<VISAKernelImpl*>& getKernels() { return m_kernelsAndFunctions; }
 
-    void InitVisaWaTable(TARGET_PLATFORM platform, Stepping step);
-
     Options m_options;
     std::stringstream m_ssIsaAsm;
 
@@ -857,7 +855,7 @@ private:
 
     void emitFCPatchFile();
 
-    PWA_TABLE m_pWaTable;
+    const WA_TABLE *m_pWaTable;
     bool needsToFreeWATable = false;
 
     void* gtpin_init = nullptr;

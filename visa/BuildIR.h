@@ -387,7 +387,7 @@ private:
     // information.
     FCPatchingInfo* fcPatchInfo = nullptr;
 
-    const PWA_TABLE m_pWaTable;
+    const WA_TABLE *m_pWaTable;
     Options *m_options = nullptr;
 
     std::map<G4_INST*, G4_FCALL*> m_fcallInfo;
@@ -613,7 +613,7 @@ public:
     FCPatchingInfo* getFCPatchInfo();
     void setFCPatchInfo(FCPatchingInfo* instance) { fcPatchInfo = instance; }
 
-    const PWA_TABLE getPWaTable() const { return m_pWaTable; }
+    const WA_TABLE *getPWaTable() const { return m_pWaTable; }
 
     const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...);
 
@@ -643,7 +643,7 @@ public:
         Options *options,
         CISA_IR_Builder* parent,
         FINALIZER_INFO *jitInfo,
-        PWA_TABLE pWaTable);
+        const WA_TABLE *pWaTable);
 
     ~IR_Builder();
 

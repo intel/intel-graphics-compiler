@@ -49,7 +49,7 @@ typedef struct _VISA_StateOpndHandle  VISA_StateOpndHandle;
 
 extern "C" int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode,
     VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[],
-    PWA_TABLE pWaTable);
+    const WA_TABLE *pWaTable);
 extern "C" int DestroyVISABuilder(VISABuilder *&builder);
 
 /**

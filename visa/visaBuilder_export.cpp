@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 extern "C"
 VISA_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode,
     VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs,
-    const char* flags[], const PWA_TABLE pWaTable)
+    const char* flags[], const WA_TABLE *pWaTable)
 {
     if (builder)
     {
