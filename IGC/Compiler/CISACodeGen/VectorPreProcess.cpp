@@ -170,9 +170,7 @@ namespace
                 Value* args[4] = { ptr, offsetVal, builder.getInt32(alignment), builder.getInt1(isVolatile) };
                 Function* newLdRawFunction =
                     GenISAIntrinsic::getDeclaration(ldraw->getModule(), ldraw->getIntrinsicID(), types);
-                Instruction* newLdRaw = builder.CreateCall(newLdRawFunction, args);
-                newLdRaw->copyFastMathFlags(ldraw);
-                return newLdRaw;
+                return builder.CreateCall(newLdRawFunction, args);
             }
         }
         // Emulates a GEP on a pointer of the scalar type of returnType.
