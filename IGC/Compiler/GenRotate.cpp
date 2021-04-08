@@ -320,12 +320,15 @@ void GenRotate::matchRotate(Instruction* I)
     }
 
     // Replace I with llvm.fshl or llvm.fshr
+    IRBuilder<> Builder(I);
+    // Create zext in case Amt has smaller width than V
+    Amt = Builder.CreateZExt(Amt, V->getType());
+
     Intrinsic::ID rotateID = isROL ? Intrinsic::fshl : Intrinsic::fshr;
     Value* Args[3] = { V, V, Amt };
-    IRBuilder<> Builder(I);
 #if LLVM_VERSION_MAJOR >= 8
-    Type* Tys[3] = { V->getType(), V->getType(), Amt->getType() };
-    CallInst* rotateCall = Builder.CreateIntrinsic(rotateID, Tys, Args, nullptr, "rotate");
+    Type* Ty = V->getType();
+    CallInst* rotateCall = Builder.CreateIntrinsic(rotateID, Ty, Args, nullptr, "rotate");
 #else
     CallInst* rotateCall = Builder.CreateIntrinsic(rotateID, Args, nullptr, "rotate");
 #endif
