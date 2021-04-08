@@ -1452,11 +1452,6 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
             }
         }
 
-        if (!BBVector[bb->getId()]->hasRefInput())
-        {
-            continue;
-        }
-
         //@BB
         for (INST_LIST_RITER inst_it = bb->rbegin(), inst_rend = bb->rend();
             inst_it != inst_rend;
@@ -1470,8 +1465,8 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
             {
                 // Scan dst
                 G4_DstRegRegion* dst = curInst->getDst();
-
                 topdcl = GetTopDclFromRegRegion(dst);
+
                 if (topdcl &&
                     topdcl->getRegFile() == G4_INPUT &&
                     topdcl->getRegVar()->isGreg() &&
@@ -1555,7 +1550,6 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
         {
             continue;
         }
-
         LSLiveRange* lr = gra.getLSLR(dcl);
         if (lr &&
             l.isLiveAtEntry(bb, dcl->getRegVar()->getId()))
