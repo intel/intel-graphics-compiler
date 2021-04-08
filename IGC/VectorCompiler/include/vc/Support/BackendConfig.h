@@ -42,6 +42,7 @@ IN THE SOFTWARE.
 #define VC_SUPPORT_BACKEND_CONFIG_H
 
 #include "vc/Support/ShaderDump.h"
+#include "vc/Support/ShaderOverride.h"
 
 #include "llvmWrapper/Support/MemoryBuffer.h"
 
@@ -109,6 +110,8 @@ struct GenXBackendOptions {
 
   // Non-owning pointer to abstract shader dumper for debug dumps.
   vc::ShaderDumper *Dumper = nullptr;
+  // Non-owning pointer to ShaderOverride interface
+  vc::ShaderOverrider *ShaderOverrider = nullptr;
 
   // Whether to enable finalizer dumps.
   bool EnableAsmDumps;
@@ -201,6 +204,15 @@ public:
     IGC_ASSERT_MESSAGE(hasShaderDumper(),
                        "Attempt to query not installed dumper");
     return *Options.Dumper;
+  }
+  // Return whether shader overrider is installed.
+  bool hasShaderOverrider() const { return Options.ShaderOverrider; }
+  // Get reference to currently installed overrider.
+  // Precondition: hasShaderOverrider() == true.
+  vc::ShaderOverrider &getShaderOverrider() const {
+    IGC_ASSERT_MESSAGE(hasShaderOverrider(),
+                       "Attempt to query not installed overrider");
+    return *Options.ShaderOverrider;
   }
 
   bool asmDumpsEnabled() const { return Options.EnableAsmDumps; }

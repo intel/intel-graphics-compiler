@@ -27,6 +27,7 @@ IN THE SOFTWARE.
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/ShaderDump.h"
+#include "vc/Support/ShaderOverride.h"
 
 #include <JitterDataStruct.h>
 #include <RelocationInfo.h>
@@ -69,6 +70,8 @@ struct CompileOptions {
   std::unique_ptr<WA_TABLE> WATable = nullptr;
   // Optional shader dumper.
   std::unique_ptr<ShaderDumper> Dumper = nullptr;
+  // Optional Shader Overrider
+  std::unique_ptr<vc::ShaderOverrider> ShaderOverrider = nullptr;
 
   // Api accessible options.
   // -ze-no-vector-decomposition

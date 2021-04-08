@@ -25,6 +25,7 @@ IN THE SOFTWARE.
 #include "vc/igcdeps/TranslationInterface.h"
 
 #include "vc/igcdeps/ShaderDump.h"
+#include "vc/igcdeps/ShaderOverride.h"
 #include "vc/igcdeps/cmc.h"
 
 #include "vc/BiF/Wrapper.h"
@@ -391,9 +392,9 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   llvm::ArrayRef<char> Input{InputArgs->pInput, InputArgs->InputSize};
 
+  const ShaderHash Hash = getShaderHash(Input);
   std::unique_ptr<vc::ShaderDumper> Dumper;
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
-    const ShaderHash Hash = getShaderHash(Input);
     Dumper = vc::createVC_IGCFileDumper(Hash);
   } else {
     Dumper = vc::createDefaultShaderDumper();
@@ -417,6 +418,10 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   BuildDiag Diag;
   vc::CompileOptions &Opts = ExpOptions.get();
   adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag);
+  
+  if (IGC_IS_FLAG_ENABLED(ShaderOverride))
+    Opts.ShaderOverrider =
+        vc::createVC_IGCShaderOverrider(Hash, IGCPlatform.getPlatformInfo());
 
   Opts.Dumper = std::move(Dumper);
 

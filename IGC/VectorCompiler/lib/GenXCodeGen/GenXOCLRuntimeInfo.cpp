@@ -500,9 +500,60 @@ appendFuncBinary(genx::BinaryDataAccumulator<const Function *> &GenBinary,
   freeBlock(GenBin);
 }
 
+// Loads if it is possible external files
+static Optional<genx::BinaryDataAccumulator<const Function *>>
+loadGenBinaryFromFile(const FunctionGroup &FG,
+                      vc::ShaderOverrider const &Loader,
+                      vc::ShaderOverrider::Extensions Ext) {
+  StringRef KernelName = FG.getHead()->getName();
+
+  void *GenBin = nullptr;
+  int GenBinSize = 0;
+
+  if (!Loader.override(GenBin, GenBinSize, KernelName, Ext))
+    return None;
+
+  if (!GenBin || !GenBinSize) {
+    llvm::errs()
+        << "Unexpected null buffer or zero-sized kernel (loading failed?)\n";
+    return None;
+  }
+
+  genx::BinaryDataAccumulator<const Function *> GenBinary;
+  GenBinary.append(FG.getHead(),
+                   ArrayRef<char>{reinterpret_cast<char *>(GenBin),
+                                  static_cast<size_t>(GenBinSize)});
+  freeBlock(GenBin);
+
+  return GenBinary;
+}
+
+// Constructs gen binary for FG but loading is from injected file
+static Optional<genx::BinaryDataAccumulator<const Function *>>
+tryOverrideBinary(const FunctionGroup &FG, GenXBackendConfig const &BC) {
+  using Extensions = vc::ShaderOverrider::Extensions;
+
+  if (!BC.hasShaderOverrider())
+    return None;
+  vc::ShaderOverrider const &Loader = BC.getShaderOverrider();
+
+  // Attempts to override .asm
+  if (auto GenBinary = loadGenBinaryFromFile(FG, Loader, Extensions::ASM))
+    return GenBinary.getValue();
+
+  // If it has failed then attempts to override .dat file
+  // loadGenBinaryFromFile returns emtpy if it also failed
+  return loadGenBinaryFromFile(FG, Loader, Extensions::DAT);
+}
+
 // Constructs gen binary for provided function group \p FG.
 static genx::BinaryDataAccumulator<const Function *>
-getGenBinary(const FunctionGroup &FG, VISABuilder &VB) {
+getGenBinary(const FunctionGroup &FG, VISABuilder &VB,
+             GenXBackendConfig const &BC) {
+  // Tries to inject binary from external source
+  if (auto GenBinary = tryOverrideBinary(FG, BC))
+    return GenBinary.getValue();
+
   genx::BinaryDataAccumulator<const Function *> GenBinary;
   VISAKernel *BuiltKernel = VB.GetVISAKernel(FG.getHead()->getName().str());
   appendFuncBinary(GenBinary, *FG.getHead(), *BuiltKernel);
@@ -659,8 +710,9 @@ RuntimeInfoCollector::collectFunctionGroupInfo(
       JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
     }
   }
+
   genx::BinaryDataAccumulator<const Function *> GenBinary =
-      getGenBinary(FG, VB);
+      getGenBinary(FG, VB, BC);
 
   const auto& Dbg = DBG.getModuleDebug();
   auto DbgIt = Dbg.find(KernelFunction);
