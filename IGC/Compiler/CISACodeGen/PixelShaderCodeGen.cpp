@@ -1297,7 +1297,7 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
         return false;
     }
     if (m_hasDualBlendSource && simdMode != SIMDMode::SIMD8 &&
-        (m_phase == PSPHASE_PIXEL || (m_phase != PSPHASE_LEGACY && ctx->platform.getWATable().Wa_1409392000)))
+        (m_phase == PSPHASE_PIXEL || ((m_phase != PSPHASE_LEGACY) && (ctx->platform.getWATable().Wa_1409392000 || ctx->platform.getPlatformInfo().eProductFamily == IGFX_ICELAKE))))
     {
         // Spec restriction CPS multi-phase cannot use SIMD16 with dual source blending
         ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
