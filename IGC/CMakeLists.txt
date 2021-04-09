@@ -68,6 +68,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 # ======================================================================================================
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
 include(igc_flags_utils)
 include(igc_arch_utils)
@@ -1266,50 +1267,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
 # ==================================== SPIRV-LLVM-Translator package ===================================
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
-
-add_library(KHRONOS_SPIRV_TRANSLATOR INTERFACE)
-target_compile_definitions(KHRONOS_SPIRV_TRANSLATOR INTERFACE IGC_USE_KHRONOS_SPIRV_TRANSLATOR)
-
-# If SPIRV-LLVM-Translator is located inside LLVM projects path, we cannot consider other options,
-# because they will conflict with in-tree version.
-if(EXISTS ${SPIRV_TRANSLATOR_IN_LLVM})
-    message(STATUS "[IGC] SPIRV_TRANSLATOR_IN_LLVM was set to \"${SPIRV_TRANSLATOR_IN_LLVM}\". "
-                   "Checking for LLVMSPIRVLib target...")
-    if(NOT TARGET LLVMSPIRVLib)
-        message(FATAL_ERROR "[IGC] SPIRV_TRANSLATOR_IN_LLVM does not have LLVMSPIRVLib target!")
-    endif()
-    find_path(SPIRV_TRANSLATOR_HEADER_DIR "LLVMSPIRVLib.h" PATHS ${SPIRV_TRANSLATOR_IN_LLVM}/include REQUIRED NO_DEFAULT_PATH)
-    target_link_libraries(KHRONOS_SPIRV_TRANSLATOR INTERFACE LLVMSPIRVLib)
-    target_include_directories(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_HEADER_DIR})
-    message(STATUS "[IGC] Using LLVMSPIRVLib from: ${SPIRV_TRANSLATOR_IN_LLVM}")
-elseif(SPIRV_TRANSLATOR_DIR)
-    message(STATUS "[IGC] SPIRV_TRANSLATOR_DIR was set to \"${SPIRV_TRANSLATOR_DIR}\". "
-                   "Checking for LLVMSPIRVLib target...")
-    # search for LLVMSPIRVLib only in SPIRV_TRANSLATOR_DIR, do not consider system paths
-    find_library(SPIRV_TRANSLATOR_LIB NAMES LLVMSPIRVLib PATHS ${SPIRV_TRANSLATOR_DIR}/lib/ REQUIRED NO_DEFAULT_PATH)
-    find_path(SPIRV_TRANSLATOR_HEADER_DIR "LLVMSPIRVLib.h" PATHS ${SPIRV_TRANSLATOR_DIR}/include/LLVMSPIRVLib REQUIRED NO_DEFAULT_PATH)
-    target_link_libraries(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_LIB})
-    target_include_directories(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_HEADER_DIR})
-    message(STATUS "[IGC] Using LLVMSPIRVLib from: ${SPIRV_TRANSLATOR_LIB}")
-else()
-    # search for LLVMSPIRVLib in system paths
-    find_package(PkgConfig REQUIRED QUIET)
-    pkg_search_module(SPIRV_TRANSLATOR REQUIRED IMPORTED_TARGET LLVMSPIRVLib)
-    if(NOT SPIRV_TRANSLATOR_FOUND)
-        message(FATAL_ERROR
-                "[IGC] LLVMSPIRVLib is not installed in your system. "
-                "You can install it OR "
-                "Set path to prebuilt package with SPIRV_TRANSLATOR_DIR cmake parameter OR "
-                "Set path to directory, containing LLVMSPIRVLib.pc to PKG_CONFIG_PATH environment variable.")
-    endif()
-    message(STATUS "[IGC] SPIRV_TRANSLATOR_LINK_LIBRARIES was set to \"${SPIRV_TRANSLATOR_LINK_LIBRARIES}\". "
-                   "Checking for LLVMSPIRVLib target...")
-    find_path(SPIRV_TRANSLATOR_HEADER_DIR "LLVMSPIRVLib.h" PATHS ${SPIRV_TRANSLATOR_INCLUDE_DIRS}/LLVMSPIRVLib REQUIRED NO_DEFAULT_PATH)
-    target_link_libraries(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_LIBRARIES})
-    target_include_directories(KHRONOS_SPIRV_TRANSLATOR INTERFACE ${SPIRV_TRANSLATOR_HEADER_DIR})
-    message(STATUS "[IGC] Using LLVMSPIRVLib from: ${SPIRV_TRANSLATOR_LINK_LIBRARIES}")
-endif()
-
+  include(igc_spirv)
 endif()
 
 # ======================================== Include directories =========================================

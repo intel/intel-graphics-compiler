@@ -123,5 +123,5 @@ target_link_libraries(VCCodeGen
   )
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
-  target_link_libraries(VCCodeGen KHRONOS_SPIRV_TRANSLATOR)
+  target_link_libraries(VCCodeGen LLVMSPIRVLib)
 endif()
