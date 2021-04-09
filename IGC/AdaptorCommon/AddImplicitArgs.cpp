@@ -528,7 +528,7 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
     {
         const std::vector<CallGraphNode*>& SCCNodes = *I;
-        traveseCallGraphSCC(SCCNodes);
+        traverseCallGraphSCC(SCCNodes);
     }
 
     // Detect stack calls that use implicit args, and force inline them, since they are not supported
@@ -580,7 +580,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
     return changed;
 }
 
-void BuiltinCallGraphAnalysis::traveseCallGraphSCC(const std::vector<CallGraphNode *> &SCCNodes)
+void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphNode *> &SCCNodes)
 {
     // all functions in one scc should end up with the same result
     ImplicitArgmentDetail *argData = nullptr;

@@ -164,7 +164,7 @@ namespace IGC
 
         virtual bool runOnModule(llvm::Module &M) override;
 
-        void traveseCallGraphSCC(const std::vector<llvm::CallGraphNode *> &SCCNodes);
+        void traverseCallGraphSCC(const std::vector<llvm::CallGraphNode *> &SCCNodes);
         void combineTwoArgDetail(ImplicitArgmentDetail&, ImplicitArgmentDetail&, llvm::Value*);
         void writeBackAllIntoMetaData(ImplicitArgmentDetail&, llvm::Function*);
 

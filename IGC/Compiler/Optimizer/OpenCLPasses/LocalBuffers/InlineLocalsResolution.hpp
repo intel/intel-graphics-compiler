@@ -88,7 +88,7 @@ namespace IGC
         bool unusedGlobal(llvm::Value* V, std::unordered_set<llvm::Value*>& unusedNodes);
         void collectInfoOnSharedLocalMem(llvm::Module&);
         void computeOffsetList(llvm::Module&, std::map<llvm::Function*, unsigned int>&);
-        void traveseCGN(llvm::CallGraphNode&);
+        void traverseCGN(const llvm::CallGraphNode&);
 
     private:
 

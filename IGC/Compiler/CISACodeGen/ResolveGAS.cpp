@@ -951,13 +951,10 @@ namespace IGC
         {
             Function* oldFunc;
             GenericPointerArgs newArgs;
-            Function* newFunc;
+            Function* newFunc = nullptr;
 
-            FuncToUpdate(Function* f, GenericPointerArgs& args)
+            FuncToUpdate(Function* f, const GenericPointerArgs& args) : oldFunc(f), newArgs(args)
             {
-                oldFunc = f;
-                newArgs = args;
-                newFunc = nullptr;
             }
         };
 
