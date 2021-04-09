@@ -1286,7 +1286,7 @@ namespace IGC
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
         e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
         if (
-            mode == EINTERPOLATION_VERTEX)
+            (mode == EINTERPOLATION_VERTEX || mode == EINTERPOLATION_CONSTANT))
         {
             // inputs which get pushed are set as function arguments in order to have the correct liveness
             if (llvm::ConstantInt * pIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)))

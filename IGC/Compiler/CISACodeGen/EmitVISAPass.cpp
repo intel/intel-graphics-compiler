@@ -3788,16 +3788,16 @@ void EmitPass::emitPSInputCst(llvm::Instruction* inst)
     psProgram->MarkConstantInterpolation(setupIndex);
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
     // temp variable should be the same type as the destination
+    // This is where we have MOV for payload
+    ContextSwitchPayloadSection();
     {
         // A0 vertex data are in Rp.{3 + 4*n}
         m_encoder->SetSrcRegion(0, 0, 1, 0);
         m_encoder->SetSrcSubReg(0, 3);
+        m_encoder->Cast(m_destination, inputVar);
+        m_encoder->Push();
     }
 
-    // This is where we have MOV for payload
-    ContextSwitchPayloadSection();
-    m_encoder->Cast(m_destination, inputVar);
-    m_encoder->Push();
     ContextSwitchShaderBody();
 }
 
