@@ -300,7 +300,7 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
 
 
 // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
-void DebugInfoData::markOutputPrivateBase(CShader* pShader)
+void DebugInfoData::markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter)
 {
     IGC_ASSERT_MESSAGE(IGC_IS_FLAG_ENABLED(UseOffsetInLocation), "UseOffsetInLocation not enabled");
 
@@ -309,6 +309,9 @@ void DebugInfoData::markOutputPrivateBase(CShader* pShader)
         CVariable* pVar = pShader->GetPrivateBase();
         if (pVar)
         {
+            // cache privateBase as it may be destroyed if subroutine
+            // is emitted.
+            pDebugEmitter->getCurrentVISA()->setPrivateBaseReg(pVar);
             pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
             if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVar->visaGenVariable[1])
             {
@@ -377,7 +380,14 @@ void DebugInfoData::markOutput(llvm::Function& F, CShader* pShader, IDebugEmitte
                 // Per Thread Offset non-debug instruction must have 'Output' attribute
                 // added in the function to be called.
                 markOutputVar(pShader, pDebugEmitter, &pInst, "perThreadOffset");
-                markOutputPrivateBase(pShader); // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
+                if (F.getCallingConv() == CallingConv::SPIR_KERNEL)
+                {
+                    markOutputPrivateBase(pShader, pDebugEmitter); // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
+                }
+                else
+                {
+                    // TODO: Apply privateBase of kernel to SPIR_FUNC if its a subroutine
+                }
                 ScalarVisaModule* scVISAModule = (ScalarVisaModule*)visaModule;
                 IGC_ASSERT_MESSAGE(scVISAModule->getPerThreadOffset()==nullptr, "setPerThreadOffset was set earlier");
                 scVISAModule->setPerThreadOffset(&pInst);
