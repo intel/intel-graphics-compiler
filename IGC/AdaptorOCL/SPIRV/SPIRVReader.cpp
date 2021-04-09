@@ -1837,6 +1837,9 @@ SPIRVToLLVM::transLinkageType(const SPIRVValue* V) {
     // Definition
     return GlobalValue::AvailableExternallyLinkage;
   }
+  else if (V->getLinkageType() == LinkageTypeLinkOnceODR) {
+    return GlobalValue::LinkOnceODRLinkage;
+  }
   else {// LinkageTypeExport
     if (V->getOpCode() == OpVariable) {
       if (static_cast<const SPIRVVariable*>(V)->getInitializer() == 0 )

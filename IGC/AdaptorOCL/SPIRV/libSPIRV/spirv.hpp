@@ -333,6 +333,7 @@ enum FPRoundingMode {
 enum LinkageType {
     LinkageTypeExport = 0,
     LinkageTypeImport = 1,
+    LinkageTypeLinkOnceODR = 2,
     LinkageTypeInternal, /* internal use only */
     LinkageTypeCount /* internal use only */
 };
