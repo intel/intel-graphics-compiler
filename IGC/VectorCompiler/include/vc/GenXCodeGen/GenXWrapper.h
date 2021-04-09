@@ -68,7 +68,8 @@ struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
   int RevId;
-  std::unique_ptr<WA_TABLE> WATable = nullptr;
+  // Non-owning pointer to WA table.
+  const WA_TABLE *WATable = nullptr;
   // Optional shader dumper.
   std::unique_ptr<ShaderDumper> Dumper = nullptr;
   // Optional Shader Overrider

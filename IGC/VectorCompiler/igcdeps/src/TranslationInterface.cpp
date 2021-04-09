@@ -149,7 +149,7 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
   unsigned RevId = PlatformInfo.usRevId;
   Opts.CPUStr = cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
   Opts.RevId = RevId;
-  Opts.WATable = std::make_unique<WA_TABLE>(IGCPlatform.getWATable());
+  Opts.WATable = &IGCPlatform.getWATable();
 }
 
 static void adjustFileType(TC::TB_DATA_FORMAT DataFormat,

@@ -96,7 +96,6 @@ set(CODEGEN_SOURCES
   GenXVectorDecomposer.cpp
   GenXVisaRegAlloc.cpp
   GenXVisa.cpp
-  GenXWATable.cpp
   GenXWrapper.cpp
   SPIRVWrapper.cpp
 )

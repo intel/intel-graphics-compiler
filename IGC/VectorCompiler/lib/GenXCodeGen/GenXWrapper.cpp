@@ -22,7 +22,6 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#include "GenXWATable.h"
 #include "SPIRVWrapper.h"
 
 #include "llvmWrapper/Target/TargetMachine.h"
@@ -235,6 +234,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   if (Opts.ForceDisableNonOverlappingRegionOpt)
     BackendOpts.DisableNonOverlappingRegionOpt = true;
   BackendOpts.FCtrl = Opts.FCtrl;
+  BackendOpts.WATable = Opts.WATable;
   return BackendOpts;
 }
 
@@ -319,9 +319,6 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   PM.add(new GenXBackendConfig{createBackendOptions(Opts),
                                createBackendData(ExtData,
                                    TM.getPointerSizeInBits(0))});
-  // Non-constant pointer.
-  WA_TABLE *WaTable = Opts.WATable.get();
-  PM.add(new GenXWATable(WaTable));
 
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
   bool AddPasses =

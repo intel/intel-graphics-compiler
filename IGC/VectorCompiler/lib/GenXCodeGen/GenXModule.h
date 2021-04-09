@@ -84,7 +84,7 @@ namespace llvm {
   class GenXModule : public ModulePass {
     const GenXSubtarget *ST;
     LLVMContext *Ctx = nullptr;
-    WA_TABLE *WaTable = nullptr;
+    const WA_TABLE *WATable = nullptr;
 
     // Visa option parser contains code that just stores c-strings as
     // pointers without copying. Store all strings here.

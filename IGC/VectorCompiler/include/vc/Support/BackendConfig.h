@@ -48,6 +48,8 @@ IN THE SOFTWARE.
 
 #include "Probe/Assertion.h"
 
+#include "inc/common/sku_wa.h"
+
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
 
@@ -135,6 +137,9 @@ struct GenXBackendOptions {
   bool UseNewStackBuilder = true;
 
   FunctionControl FCtrl;
+
+  // Non-owning pointer to workaround table.
+  const WA_TABLE *WATable = nullptr;
 
   GenXBackendOptions();
 };
@@ -240,6 +245,11 @@ public:
   bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }
 
   FunctionControl getFCtrl() const { return Options.FCtrl; }
+
+  // Return pointer to WA_TABLE. Can be null.
+  const WA_TABLE *getWATable() const {
+    return Options.WATable;
+  }
 };
 } // namespace llvm
 

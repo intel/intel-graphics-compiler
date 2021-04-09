@@ -6313,7 +6313,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
                                       const bool EmitDebugInformation,
                                       const bool EmitDebuggableKernel,
                                       const bool AsmDumpsEnabled,
-                                      vISABuilderMode Mode, WA_TABLE *WaTable,
+                                      vISABuilderMode Mode, const WA_TABLE *WATable,
                                       LLVMContext &Ctx,
                                       BumpPtrAllocator &Alloc) {
   auto Platform = ST.getVisaPlatform();
@@ -6333,7 +6333,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
   VISABuilder *VB = nullptr;
   CISA_CALL_CTX(CreateVISABuilder(
                     VB, Mode, EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH,
-                    Platform, Argv.size(), Argv.data(), WaTable),
+                    Platform, Argv.size(), Argv.data(), WATable),
                 Ctx);
   IGC_ASSERT_MESSAGE(VB, "Failed to create VISABuilder!");
   return VB;
@@ -6344,7 +6344,7 @@ void GenXModule::InitCISABuilder() {
   const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_DEFAULT;
   CisaBuilder = createVISABuilder(*ST, EmitDebugInformation,
                                   EmitDebuggableKernels, AsmDumpsEnabled,
-                                  Mode, WaTable, getContext(), ArgStorage);
+                                  Mode, WATable, getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetCisaBuilder() {
@@ -6364,7 +6364,7 @@ void GenXModule::InitVISAAsmReader() {
   IGC_ASSERT(ST);
   VISAAsmTextReader =
       createVISABuilder(*ST, EmitDebugInformation, EmitDebuggableKernels,
-                        AsmDumpsEnabled, vISA_ASM_READER, WaTable,
+                        AsmDumpsEnabled, vISA_ASM_READER, WATable,
                         getContext(), ArgStorage);
 }
 
