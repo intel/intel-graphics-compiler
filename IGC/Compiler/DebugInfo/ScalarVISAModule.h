@@ -60,7 +60,7 @@ public:
       return isLineTableOnly(m_pShader);
     }
     unsigned getPrivateBaseReg() const override {
-      auto pVar = privateBase;
+      auto pVar = m_pShader->GetPrivateBase();
       unsigned privateBaseRegNum = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[0]);
       return privateBaseRegNum;
     }
@@ -141,13 +141,6 @@ public:
 
     llvm::StringRef GetVISAFuncName(llvm::StringRef OldName) const override;
 
-    void setPrivateBaseReg(void* V) override
-    {
-        privateBase = (IGC::CVariable*)V;
-    }
-
-    void* getPrivateBase() override { return privateBase; }
-
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.
@@ -162,7 +155,6 @@ private:
     CShader* m_pShader;
     CVariable* m_framePtr = nullptr;
     llvm::Instruction* m_perThreadOffset = nullptr;
-    CVariable* privateBase = nullptr;
 };
 
 }

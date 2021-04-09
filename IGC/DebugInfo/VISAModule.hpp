@@ -500,8 +500,6 @@ namespace IGC
         virtual unsigned getNumGRFs() const = 0;
         virtual unsigned getPointerSize() const = 0;
 
-        virtual void* getPrivateBase() = 0;
-        virtual void setPrivateBaseReg(void*) = 0;
         virtual bool hasPTO() const = 0;
         virtual int getPTOReg() const = 0;
         virtual int getFPReg() const = 0;

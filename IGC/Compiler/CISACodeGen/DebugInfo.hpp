@@ -64,7 +64,7 @@ namespace IGC
         CShader* m_pShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;
 
-        static void markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter);
+        static void markOutputPrivateBase(CShader* pShader);
         static void markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName);
         static void markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
 
