@@ -88,20 +88,21 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         return false;
     }
 
-    int roundDownPow2Size = (int)Round_Down_Pow2(size);
-    if (size > roundDownPow2Size)
+    if (size == 3)
     {
         for (int pos = 0, numSrc = inst[0]->getNumSrc(); pos < numSrc; ++pos)
         {
             if (srcPattern[pos] == OPND_PATTERN::CONTIGUOUS)
             {
-                // since we are rounding up esize to roundUpPow2Size, we have to make sure the source is
-                // not out of bound. To make it safe, we merge the first roundDownPow2Size insts instead.
-                while (size > roundDownPow2Size)
+                // since we are rounding up esize to 4, we have to make sure the source is
+                // not out of bound. If it is we merge the first two inst instead
+                G4_SrcRegRegion* lastSrc = inst[size - 1]->getSrc(pos)->asSrcRegRegion();
+                if (lastSrc->getLeftBound() + lastSrc->getTypeSize() >=
+                    lastSrc->getTopDcl()->getByteSize())
                 {
                     deleteLastInst();
+                    break;
                 }
-                break;
             }
         }
     }
@@ -367,7 +368,7 @@ static bool checkContiguous(
 // the conditions are:
 // -- arithmetic, logic, mov, math, or pseudo_mad instructions
 // -- simd1, NoMask, no predicates or conditional modifier
-// -- dst must be direct GRF whose declare has no alias
+// -- dst must be direct GRF whose declare is a single element without alias
 // -- all sources must be either direct GRF or immediates
 bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, bool isInSimdFlow)
 {
@@ -408,6 +409,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
     G4_Declare* dstDcl = dstBase->isRegVar() ? dstBase->asRegVar()->getDeclare() : nullptr;
     if (dstDcl != nullptr &&
         (dstDcl->getAliasDeclare() != nullptr ||
+            dstDcl->getTotalElems() != 1 ||
             inst->getDst()->getTypeSize() != dstDcl->getElemSize() ||
             !dstDcl->useGRF()))
     {
