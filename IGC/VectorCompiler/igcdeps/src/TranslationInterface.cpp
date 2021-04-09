@@ -148,6 +148,7 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
   auto &PlatformInfo = IGCPlatform.getPlatformInfo();
   unsigned RevId = PlatformInfo.usRevId;
   Opts.CPUStr = cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
+  Opts.RevId = RevId;
   Opts.WATable = std::make_unique<WA_TABLE>(IGCPlatform.getWATable());
 }
 
@@ -381,6 +382,26 @@ static llvm::Optional<vc::ExternalData> fillExternalData() {
   return std::move(ExtData);
 }
 
+static void dumpPlatform(const vc::CompileOptions &Opts, PLATFORM Platform,
+                         vc::ShaderDumper &Dumper) {
+#if defined(_DEBUG) || defined(_INTERNAL)
+  if (!IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+    return;
+
+  std::ostringstream Os;
+  auto Core = Platform.eDisplayCoreFamily;
+  auto RenderCore = Platform.eRenderCoreFamily;
+  auto Product = Platform.eProductFamily;
+  auto RevId = Platform.usRevId;
+
+  Os << "NEO passed: DisplayCore = " << Core << ", RenderCore = " << RenderCore
+     << ", Product = " << Product << ", Revision = " << RevId << "\n";
+  Os << "IGC translated into: " << Opts.CPUStr << ", " << Opts.RevId << "\n";
+
+  Dumper.dumpText(Os.str(), "platform.be.txt");
+#endif
+}
+
 std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                    TC::STB_TranslateOutputArgs *OutputArgs,
                                    TC::TB_DATA_FORMAT InputDataFormatTemp,
@@ -418,7 +439,11 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   BuildDiag Diag;
   vc::CompileOptions &Opts = ExpOptions.get();
   adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag);
-  
+
+  // here we have Opts set and can dump what we got from runtime and how
+  // we understood it
+  dumpPlatform(Opts, IGCPlatform.getPlatformInfo(), *Dumper);
+
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     Opts.ShaderOverrider =
         vc::createVC_IGCShaderOverrider(Hash, IGCPlatform.getPlatformInfo());

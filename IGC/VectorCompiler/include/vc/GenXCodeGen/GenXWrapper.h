@@ -67,6 +67,7 @@ enum class BinaryKind { CM, OpenCL, ZE };
 struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
+  int RevId;
   std::unique_ptr<WA_TABLE> WATable = nullptr;
   // Optional shader dumper.
   std::unique_ptr<ShaderDumper> Dumper = nullptr;
