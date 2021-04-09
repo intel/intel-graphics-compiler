@@ -89,25 +89,19 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
     }
 
     int roundDownPow2Size = (int)Round_Down_Pow2(size);
-    int roundUpPow2Size = (int)Round_Up_Pow2(size);
-    if (size > roundDownPow2Size && size < roundUpPow2Size)
+    if (size > roundDownPow2Size)
     {
         for (int pos = 0, numSrc = inst[0]->getNumSrc(); pos < numSrc; ++pos)
         {
             if (srcPattern[pos] == OPND_PATTERN::CONTIGUOUS)
             {
                 // since we are rounding up esize to roundUpPow2Size, we have to make sure the source is
-                // not out of bound. If it is we merge the first roundDownPow2Size insts instead.
-                G4_SrcRegRegion* lastSrc = inst[size - 1]->getSrc(pos)->asSrcRegRegion();
-                if ((lastSrc->getLeftBound() + lastSrc->getTypeSize() * (roundUpPow2Size - size)) >=
-                    lastSrc->getTopDcl()->getByteSize())
+                // not out of bound. To make it safe, we merge the first roundDownPow2Size insts instead.
+                while (size > roundDownPow2Size)
                 {
-                    while (size > roundDownPow2Size)
-                    {
-                        deleteLastInst();
-                    }
-                    break;
+                    deleteLastInst();
                 }
+                break;
             }
         }
     }
