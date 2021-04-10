@@ -114,13 +114,34 @@ void IGCPassManager::add(Pass *P)
     }
 }
 
+// List: a comma/semicolon-separated list of pass names.
+//    N: a pass name
+// return true if N is in List.
+bool IGCPassManager::isInList(const StringRef& N, const StringRef& List) const
+{
+    StringRef Separators(",;");
+    size_t startPos = 0;
+    while (startPos != StringRef::npos)
+    {
+        size_t endPos = List.find_first_of(Separators, startPos);
+        size_t len = (endPos != StringRef::npos ? endPos - startPos : endPos);
+        StringRef Name = List.substr(startPos, len);
+        if (Name.equals_lower(N))
+        {
+            return true;
+        }
+        startPos = (endPos != StringRef::npos ? endPos + 1 : StringRef::npos);
+    }
+    return false;
+}
+
 bool IGCPassManager::isPrintBefore(Pass* P)
 {
     if (IGC_IS_FLAG_ENABLED(PrintBefore))
     {
-        StringRef  passName(IGC_GET_REGKEYSTRING(PrintBefore));
+        StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintBefore));
         StringRef PN = P->getPassName();
-        return (passName.equals_lower("all") || passName.equals_lower(PN));
+        return (passNameList.equals_lower("all") || isInList(PN, passNameList));
     }
     return false;
 }
@@ -133,9 +154,10 @@ bool IGCPassManager::isPrintAfter(Pass* P)
     }
     if (IGC_IS_FLAG_ENABLED(PrintAfter))
     {
-        StringRef  passName(IGC_GET_REGKEYSTRING(PrintAfter));
+        // PrintAfter=N0,N1,N2  : comma-separate list of pass names.
+        StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintAfter));
         StringRef PN = P->getPassName();
-        return (passName.equals_lower("all") || passName.equals_lower(PN));
+        return (passNameList.equals_lower("all") || isInList(PN, passNameList));
     }
     return false;
 }

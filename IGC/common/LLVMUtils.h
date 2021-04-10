@@ -55,6 +55,10 @@ namespace IGC
         void addPrintPass(llvm::Pass* P, bool isBefore);
         bool isPrintBefore(llvm::Pass* P);
         bool isPrintAfter(llvm::Pass* P);
+
+        // List: comma/semicolon-separate list of names.
+        // Return true if N is in the list.
+        bool isInList(const llvm::StringRef& N, const llvm::StringRef& List) const;
     };
 }
 
