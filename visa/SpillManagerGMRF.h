@@ -89,7 +89,8 @@ public:
         unsigned                 spillRegSize,
         unsigned                 indrSpillRegSize,
         bool                     enableSpillSpaceCompression,
-        bool                     useScratchMsg
+        bool                     useScratchMsg,
+        bool                     avoidDstSrcOverlap
     );
 
     SpillManagerGRF(
@@ -99,7 +100,9 @@ public:
         const LivenessAnalysis* lvInfo,
         LSLR_LIST* spilledLSLRs,
         bool enableSpillSpaceCompression,
-        bool useScratchMsg);
+        bool useScratchMsg,
+        bool avoidDstSrcOverlap
+    );
 
     ~SpillManagerGRF() {}
 
@@ -638,7 +641,7 @@ private:
     int globalScratchOffset;
 
     bool useScratchMsg_;
-
+    bool avoidDstSrcOverlap_;
     // spilled declares that represent a scalar immediate (created due to encoding restrictions)
     // We rematerialize the immediate value instead of spill/fill them
     std::unordered_map<G4_Declare*, G4_Imm*> scalarImmSpill;

@@ -143,7 +143,8 @@ SpillManagerGRF::SpillManagerGRF(
     unsigned spillRegSize,
     unsigned indrSpillRegSize,
     bool enableSpillSpaceCompression,
-    bool useScratchMsg)
+    bool useScratchMsg,
+    bool avoidDstSrcOverlap)
     : gra(g)
     , builder_(g.kernel.fg.builder)
     , varIdCount_(varIdCount)
@@ -158,6 +159,7 @@ SpillManagerGRF::SpillManagerGRF(
     , spillIntf_(intf)
     , mem_(1024)
     , useScratchMsg_(useScratchMsg)
+    , avoidDstSrcOverlap_(avoidDstSrcOverlap)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);
@@ -194,7 +196,8 @@ SpillManagerGRF::SpillManagerGRF(
     const LivenessAnalysis* lvInfo,
     LSLR_LIST* spilledLSLRs,
     bool enableSpillSpaceCompression,
-    bool useScratchMsg)
+    bool useScratchMsg,
+    bool avoidDstSrcOverlap)
     : gra(g)
     , builder_(g.kernel.fg.builder)
     , varIdCount_(varIdCount)
@@ -206,6 +209,7 @@ SpillManagerGRF::SpillManagerGRF(
     , failSafeSpill_(false)
     , mem_(1024)
     , useScratchMsg_(useScratchMsg)
+    , avoidDstSrcOverlap_(avoidDstSrcOverlap)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);
@@ -2950,12 +2954,13 @@ void SpillManagerGRF::insertSpillRangeCode(
         initMWritePayload(
             spillRangeDcl, mRangeDcl, spilledRegion, execSize);
 
+
         {
             spillSendInst = createSpillSendInstr(
                 spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
         }
 
-        if (failSafeSpill_)
+        if (failSafeSpill_ && !avoidDstSrcOverlap_)
         {
             spillRegOffset_ = spillRegStart_;
         }

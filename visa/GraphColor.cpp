@@ -9763,7 +9763,8 @@ int GlobalRA::coloringRegAlloc()
                     spillRegSize,
                     indrSpillRegSize,
                     enableSpillSpaceCompression,
-                    useScratchMsgForSpill);
+                    useScratchMsgForSpill,
+                    builder.avoidDstSrcOverlap());
 
                 bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
                 nextSpillOffset = spillGRF.getNextOffset();
@@ -9887,7 +9888,6 @@ int GlobalRA::coloringRegAlloc()
     computePhyReg();
 
     stopTimer(TimerID::GRF_GLOBAL_RA);
-
     //
     // Report failure to allocate due to excessive register pressure.
     //
