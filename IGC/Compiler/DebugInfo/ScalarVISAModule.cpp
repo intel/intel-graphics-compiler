@@ -504,7 +504,9 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     if (isDbgDclInst)
     {
         if (!pType->isPointerTy()) {
-            IGC_ASSERT_MESSAGE(0, "DBG declare intrinsic must point to an address");
+            // TODO: Re-enable this assert once -O2 fixes bug where llvm.dbg.declare points
+            // to a non-address value.
+            //IGC_ASSERT_MESSAGE(0, "DBG declare intrinsic must point to an address");
             ret.push_back(VISAVariableLocation(this));
             return ret;
         }
@@ -604,7 +606,9 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     case EVARTYPE_PREDICATE:
     case EVARTYPE_SURFACE:
     case EVARTYPE_SAMPLER:
-        IGC_ASSERT_MESSAGE(0, "Unexpected VISA register type!");
+        // TODO: Handle case where variable is mapped to flag/address register
+        ret.push_back(VISAVariableLocation(this));
+        return ret;
         break;
     default:
         IGC_ASSERT_MESSAGE(0, "Unhandled VISA register type!");

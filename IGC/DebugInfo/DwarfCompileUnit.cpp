@@ -2621,7 +2621,7 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
         IGC_ASSERT_MESSAGE(VISAMod, "VISA Module is expected for LOC");
         VISAVariableLocation V(VISAMod);
 
-        if (VISAMod->hasPTO() && storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
+        if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && storageMD && (EmitSettings.EmitOffsetInDbgLoc || EmitSettings.UseOffsetInLocation))
         {
             // This is executed only when llvm.dbg.declare still exists and no stack call is supported.
             // With mem2reg run, data is stored in GRFs and this wont be

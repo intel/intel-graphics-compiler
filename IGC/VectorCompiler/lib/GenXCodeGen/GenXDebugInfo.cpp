@@ -317,6 +317,9 @@ public:
   }
   uint16_t GetSIMDSize() const override { return 1; }
 
+  void* getPrivateBase() const override { return nullptr; };
+  void setPrivateBase(void*) override {};
+
   bool hasPTO() const override { return false; }
   int getPTOReg() const override { return -1; }
   int getFPReg() const override { return -1; }
