@@ -14274,6 +14274,8 @@ void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
         : EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_SIMD16_SINGLE_SOURCE;
     msgControl |=
         m_encoder->IsSecondHalf() ? EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_SLOTGRP_HI : EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_SLOTGRP_LO;
+    msgControl |= psProgram->IsPerSample() ? EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_PER_SAMPLE_ENABLE : 0;
+
     uint Desc = DataPortRead(
         messageLength,
         responseLength,

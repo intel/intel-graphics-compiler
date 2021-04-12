@@ -342,6 +342,7 @@ namespace IGC
     {
         EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_SIMD16_SINGLE_SOURCE = 0,
         EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_SIMD8_SINGLE_SOURCE_LOW = 1,
+        EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_PER_SAMPLE_ENABLE = 32
     };
 
     /*****************************************************************************\
