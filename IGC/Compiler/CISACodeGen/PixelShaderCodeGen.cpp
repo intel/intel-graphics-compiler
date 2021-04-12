@@ -1306,7 +1306,6 @@ bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Functi
     if (m_phase != PSPHASE_LEGACY &&
         simdMode == SIMDMode::SIMD32)
     {
-        // Coarse pixel shader doesn't support SIMD32
         ctx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, EP.m_ShaderDispatchMode);
         return false;
     }
