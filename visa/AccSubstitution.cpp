@@ -36,6 +36,7 @@ struct AccInterval
     bool mustBeAcc0 = false;
     bool isPreAssigned = false;
     int assignedAcc = -1;
+    int spilledAcc = -1;
     int bundleConflictTimes = 0;
     int bankConflictTimes = 0;
     int suppressionTimes = 0;
@@ -80,14 +81,17 @@ struct AccInterval
 
     void dump()
     {
-        std::cerr << "Interval: [" << inst->getLocalId() << ", " << lastUse << "]\n";
-        std::cerr << "\t";
-        inst->dump();
+        std::cerr << "[" << inst->getLocalId() << ", " << lastUse << "] : ";
         if (assignedAcc != -1)
         {
-            std::cerr << "\tAssigned to Acc" << assignedAcc << "\n";
+            std::cerr << "\tAcc" << assignedAcc << "\n";
         }
-        std::cerr << "\n";
+        else
+        {
+            std::cerr << "\n";
+        }
+        std::cerr << "\t";
+        inst->dump();
     }
 };
 
@@ -750,9 +754,9 @@ struct AccAssignment
     std::list<AccInterval*> activeIntervals;
     IR_Builder& builder;
 
-    AccAssignment(int numGeneralAcc, IR_Builder& m_builder) : builder(m_builder)
+    AccAssignment(int numGeneralAcc, IR_Builder& m_builder, bool initToTrue) : builder(m_builder)
     {
-        freeAccs.resize(numGeneralAcc, true);
+        freeAccs.resize(numGeneralAcc, initToTrue);
     }
 
     // expire all intervals that end before the given interval
@@ -771,6 +775,10 @@ struct AccAssignment
                     freeAccs[active->assignedAcc + 1] = true;
                 }
                 iter = activeIntervals.erase(iter);
+#ifdef DEBUG_VERBOSE_ON
+                std::cerr << "Expire:     \t";
+                active->dump();
+#endif
             }
             else
             {
@@ -857,6 +865,8 @@ void AccSubPass::multiAccSub(G4_BB* bb)
     int numGeneralAcc = kernel.getNumAcc();
 
     std::vector<AccInterval*> intervals;
+    std::vector<AccInterval*> failIntervals;
+    std::vector<AccInterval*> spillIntervals;
 
     std::map<G4_INST*, unsigned int> BCInfo;
 
@@ -895,7 +905,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
     }
 
     //modified linear scan to assign free accs to intervals
-    AccAssignment accAssign(numGeneralAcc, builder);
+    AccAssignment accAssign(numGeneralAcc, builder, true);
 
     for (auto interval : intervals)
     {
@@ -946,6 +956,14 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 
                 if (accAssign.assignAcc(interval))
                 {
+#ifdef DEBUG_VERBOSE_ON
+                    std::cerr << "Kicked out:  \t";
+                    spillCandidate->dump();
+#endif
+                    spillIntervals.push_back(spillCandidate);
+                    spillCandidate->spilledAcc = spillCandidate->assignedAcc;
+                    spillCandidate->lastUse = interval->inst->getLocalId();
+
                     spillCandidate->assignedAcc = -1;
                     accAssign.activeIntervals.erase(spillIter);
                 }
@@ -957,6 +975,48 @@ void AccSubPass::multiAccSub(G4_BB* bb)
                         accAssign.freeAccs[spillCandidate->assignedAcc + 1] = tmpAssignValue[1];
                     }
                 }
+            }
+        }
+
+        if (interval->assignedAcc == -1)
+        {
+            failIntervals.push_back(interval);
+        }
+#ifdef DEBUG_VERBOSE_ON
+        if (interval->assignedAcc == -1)
+        {
+            std::cerr << "Failed:    \t";
+        }
+        else
+        {
+            std::cerr << "Assigned:   \t";
+        }
+        interval->dump();
+#endif
+    }
+
+    //Rescan the spilled and failed cases to do ACC substitution in peephole.
+    if (failIntervals.size() && spillIntervals.size())
+    {
+        for (auto spillInterval : spillIntervals)
+        {
+            AccAssignment accAssign(numGeneralAcc, builder, false);
+            accAssign.freeAccs[spillInterval->spilledAcc] = true;
+            if (spillInterval->needBothAcc(builder))
+            {
+                accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;
+            }
+
+            for (auto failInterval : failIntervals)
+            {
+                if (!((spillInterval->inst->getLocalId() <= failInterval->inst->getLocalId()) &&
+                    (failInterval->lastUse <= spillInterval->lastUse)) ||
+                    failInterval->assignedAcc != -1)
+                {
+                    continue;
+                }
+                accAssign.expireIntervals(failInterval);
+                accAssign.assignAcc(failInterval);
             }
         }
     }
