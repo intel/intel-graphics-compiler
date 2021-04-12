@@ -42,6 +42,8 @@ IN THE SOFTWARE.
 
 namespace IGC
 {
+    void initializePushAnalysisPass(llvm::PassRegistry&);
+
     class PushAnalysis : public llvm::ModulePass
     {
         const llvm::DataLayout* m_DL;
