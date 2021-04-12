@@ -574,7 +574,6 @@ void Optimizer::insertDummyMovForHWRSWA()
     {
         return;
     }
-
     bool hasNonUniformBranch = false;
     bool hasPredicatedSendOrIndirect = false;
 
@@ -613,9 +612,18 @@ void Optimizer::insertDummyMovForHWRSWA()
         G4_INST* inst = (bb->getInstList().back());
         if (inst->isRSWADivergentInst() && !inst->asCFInst()->isUniform())
         {
+            bool previousElse = false;
+
+            G4_BB* preBB = bb->getPhysicalPred();
+            if (preBB && preBB->getInstList().size())
+            {
+                G4_INST* preBBLastInst = (preBB->getInstList().back());
+                previousElse = (preBBLastInst->opcode() == G4_else);
+            }
+
             INST_LIST_ITER iter = bb->end();
             iter--;
-            if (iter != bb->begin())
+            if (iter != bb->begin() && !previousElse)
             {
                 INST_LIST_ITER preIter = iter;
                 preIter--;
