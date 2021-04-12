@@ -2709,16 +2709,17 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
   } else if (auto EVI = dyn_cast<ExtractValueInst>(Inst)) {
     if (auto *CI = dyn_cast<CallInst>(Inst->getOperand(0)))
       // translate extraction of structured type from retv
-      if (!CI->isInlineAsm() && (CI->getCalledFunction()->hasFnAttribute(
-                                     genx::FunctionMD::CMStackCall) ||
-                                 IGCLLVM::isIndirectCall(*CI)))
+      if (!UseNewStackBuilder && !CI->isInlineAsm() &&
+          (CI->getCalledFunction()->hasFnAttribute(
+               genx::FunctionMD::CMStackCall) ||
+           IGCLLVM::isIndirectCall(*CI)))
         buildExtractRetv(EVI);
     // no code generated
   } else if (auto IVI = dyn_cast<InsertValueInst>(Inst)) {
-    if (checkInsertToRetv(IVI)
+    if (!UseNewStackBuilder && checkInsertToRetv(IVI) &&
         // TODO: safely remove this tmp workaround for failed coalescing cases
         // and insert-extract-insert chains
-        && !isa<BitCastInst>(Inst->getOperand(1)))
+        !isa<BitCastInst>(Inst->getOperand(1)))
       RetvInserts.push_back(IVI);
     // no code generated
   } else if (BitCastInst *BCI = dyn_cast<BitCastInst>(Inst)) {

@@ -96,7 +96,7 @@ class GenXPrologEpilogInsertion
   const GenXSubtarget *ST = nullptr;
   const GenXBackendConfig *BEConf = nullptr;
 
-  bool HasCalls = false;
+  unsigned NumCalls = 0;
   unsigned PrivMemSize = 0;
 
   unsigned ArgRegSize = 0;
@@ -111,7 +111,13 @@ class GenXPrologEpilogInsertion
   Value *push(Value *V, IRBuilder<> &IRB, Value *InitSP);
   std::pair<Instruction *, Value*> pop(Type *T, IRBuilder<> &IRB, Value *InitSP);
 
-  // helper functions
+  // *** Helper functions ***
+  // All params should be easy to understand
+  // except for BuildTempVal. It is necessary to generate
+  // a temp copy of predef reg when we have >1 calls within a function,
+  // which copes with code motion done by baling (or other passes).
+  // Temp value is also required when instructions operating by predef
+  // regs directly have >1 uses, but it's easier to handle that in baling.
   Instruction *buildReadPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
                                   Type *Ty,
                                   bool BuildTempVal = false,
@@ -177,6 +183,25 @@ void GenXPrologEpilogInsertion::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
 }
 
+class CallsCalculator : public InstVisitor<CallsCalculator> {
+  unsigned NumCalls = 0;
+
+public:
+  void visitCallInst(CallInst &CI) {
+    if (CI.isInlineAsm())
+        return;
+    if (IGCLLVM::isIndirectCall(CI) ||
+        !GenXIntrinsic::isAnyNonTrivialIntrinsic(CI.getCalledFunction()))
+      NumCalls++;
+  }
+
+  unsigned getNumCalls(Function &F) {
+    NumCalls = 0;
+    visit(F);
+    return NumCalls;
+  }
+};
+
 bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   BEConf = &getAnalysis<GenXBackendConfig>();
   DL = &F.getParent()->getDataLayout();
@@ -189,6 +214,7 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
     return false;
   if (!F.getParent()->getModuleFlag(ModuleMD::UseSVMStack))
     return false;
+  NumCalls = CallsCalculator().getNumCalls(F);
   visit(F);
   if (isKernel(&F)) {
     generateKernelProlog(F);
@@ -207,9 +233,8 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
   bool IsIndirectCall = IGCLLVM::isIndirectCall(I);
   bool IsStackCall = IsIndirectCall || I.getCalledFunction()->hasFnAttribute(
                                            genx::FunctionMD::CMStackCall);
-  if (IsStackCall) {
+  if (IsStackCall)
     generateStackCall(&I);
-  }
   if (!IsIndirectCall) {
     auto IID = GenXIntrinsic::getAnyIntrinsicID(I.getCalledFunction());
     if (IID == GenXIntrinsic::genx_alloca)
@@ -219,7 +244,6 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
     // they're fine (i.e. they're not affected by this option) unlike CM
     else if (IID == GenXIntrinsic::genx_simdcf_goto)
       HandleMaskArgs = false;
-    HasCalls |= (IID == GenXIntrinsic::not_any_intrinsic);
   }
 }
 
@@ -286,7 +310,7 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
           ArgScalarType,
           ArgRegSize / (DL->getTypeSizeInBits(ArgScalarType) / genx::ByteBits));
       auto *ArgRead = buildReadPredefReg(PreDefined_Vars::PREDEFINED_ARG, IRB,
-                                         ArgRegType, HasCalls,
+                                         ArgRegType, NumCalls > 0,
                                          AllowScalar, Offset, NumElements);
       if (Arg.getType()->getScalarType()->isIntegerTy(1)) {
         IGC_ASSERT(isa<VectorType>(Arg.getType()));
@@ -327,7 +351,7 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
           IRB.CreateSub(RetBase, IRB.getInt64(PrivMemSize), "");
       buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, RestoredSP);
     }
-    RetSize = DL->getTypeSizeInBits(RetVal->getType());
+    RetSize = DL->getTypeSizeInBits(RetVal->getType()) / genx::ByteBits;
     std::vector<Value *> Worklist;
     if (isa<StructType>(RetVal->getType())) {
       while (auto *InsValue = dyn_cast<InsertValueInst>(RetVal)) {
@@ -341,9 +365,26 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
     IGC_ASSERT(!Worklist.empty());
     for (auto *Ins : Worklist) {
       Instruction *InstToReplaceIn = &I;
+      unsigned Offset = 0;
       if (auto *InsVal = dyn_cast<InsertValueInst>(Ins)) {
+        IRB.SetInsertPoint(InsVal);
         InstToReplaceIn = InsVal;
         Ins = InsVal->getOperand(1);
+
+        IGC_ASSERT(InsVal->getIndices().size() == 1);
+        auto IdxVal = InsVal->getIndices()[0];
+        if (auto *StructTy =
+                dyn_cast<StructType>(InsVal->getOperand(0)->getType()))
+          // FIXME: consider calculating offset manually to not waste
+          // GRF space on struct padding
+          Offset = DL->getStructLayout(StructTy)->getElementOffset(IdxVal);
+        else if (auto *SeqTy =
+                     dyn_cast<SequentialType>(InsVal->getOperand(0)->getType()))
+          Offset =
+              (DL->getTypeSizeInBits(SeqTy->getScalarType()) / genx::ByteBits) *
+              IdxVal;
+        else
+          IGC_ASSERT_MESSAGE(0, "Unsupported type to extract from stackcall");
       }
       RetBase = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                                    IRB.getInt64Ty());
@@ -359,7 +400,7 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
                  genx::ByteBits));
         auto *RetRegWrite = buildWritePredefReg(
             PreDefined_Vars::PREDEFINED_RET, IRB, Ins,
-            UndefValue::get(RetRegType), InstToReplaceIn);
+            UndefValue::get(RetRegType), InstToReplaceIn, Offset);
         InstToReplaceIn->replaceUsesOfWith(Ins, RetRegWrite);
       }
     }
@@ -436,10 +477,11 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
     OrigSp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                                 IRB.getInt64Ty(), CI, true);
   // read retvalue
-  std::vector<std::pair<Instruction *,Instruction *>> Worklist;
+  std::vector<std::pair<Instruction *, Instruction *>> Worklist;
   if (isa<StructType>(CI->getType())) {
     for (auto *U : CI->users()) {
-      IGC_ASSERT(isa<ExtractValueInst>(U));
+      auto *EV = dyn_cast<ExtractValueInst>(U);
+      IGC_ASSERT(EV && EV->getIndices().size() == 1);
       if (!U->getType()->getScalarType()->isIntegerTy(1))
         Worklist.push_back({cast<Instruction>(U), cast<Instruction>(U)});
     }
@@ -450,6 +492,7 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
     IRB.SetInsertPoint(I.second->getNextNode());
     Value *ValToReplaceWith = nullptr;
     Instruction *InstToFix = nullptr;
+    bool FixReplacement = true;
     if (UseMemForRet) {
       // from stack
       Region R(OrigSp->getType());
@@ -459,28 +502,55 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
       auto ReadVal = pop(ActualRet->getType(), IRB, SpRet);
       SpRet = ReadVal.second;
 
-      InstToFix = cast<Instruction>(OrigSp);
-      ValToReplaceWith = ReadVal.first;
-      cast<Instruction>(
+      InstToFix = cast<Instruction>(
           cast<Instruction>(cast<Instruction>(OrigSp)->getOperand(0))
-              ->getOperand(1))
-          ->replaceUsesOfWith(ReadVal.first, ActualRet);
+              ->getOperand(1));
+      ValToReplaceWith = ReadVal.first;
     } else {
       // from %RET arg
-      auto *RetRead = buildReadPredefReg(PreDefined_Vars::PREDEFINED_RET, IRB,
-                                         ActualRet->getType(), ActualRet, true);
-      InstToFix = cast<Instruction>(RetRead);
+      unsigned Offset = 0;
+      if (auto *EV = dyn_cast<ExtractValueInst>(ActualRet)) {
+        // do not fix anything as we gonna replace extractValue insts,
+        // not the call itself
+        FixReplacement = false;
+        auto IdxVal = EV->getIndices()[0];
+        if (auto *StructTy = dyn_cast<StructType>(CI->getType()))
+          // FIXME: consider calculating offset manually to not waste
+          // GRF space on struct padding
+          Offset = DL->getStructLayout(StructTy)->getElementOffset(IdxVal);
+        else if (auto *SeqTy = dyn_cast<SequentialType>(CI->getType()))
+          Offset =
+              (DL->getTypeSizeInBits(SeqTy->getScalarType()) / genx::ByteBits) *
+              IdxVal;
+        else
+          IGC_ASSERT_MESSAGE(0, "Unsupported type to extract from stackcall");
+      }
+      unsigned NumElems = 1;
+      if (auto *VT = dyn_cast<VectorType>(ActualRet->getType()))
+        NumElems = VT->getNumElements();
+      auto *RetRegType = VectorType::get(
+          ActualRet->getType()->getScalarType(),
+          RetRegSize /
+              (DL->getTypeSizeInBits(ActualRet->getType()->getScalarType()) /
+               genx::ByteBits));
+      auto *RetRead =
+          buildReadPredefReg(PreDefined_Vars::PREDEFINED_RET, IRB, RetRegType,
+                             CI, NumCalls > 1, true, Offset, NumElems);
+      // here RetRead is rdr in a sequence
+      // read_predef_reg->wrr->rdr where wrr exists iff NumCalls>1
+      // and we want InstToFix to be read_predef_reg
+      InstToFix = cast<Instruction>(RetRead->getOperand(0));
+      if (NumCalls > 1)
+        InstToFix = cast<Instruction>(InstToFix->getOperand(1));
       ValToReplaceWith = RetRead;
     }
     ActualRet->replaceAllUsesWith(ValToReplaceWith);
     // after replacing all of the uses we have to restore one of
     // in read_predef_reg to create a dependency from the call result
-    // hence prevent the calls' removal
-    // it is safe to make these casts here as we assume InstToFix
-    // to be an rdr in chain predef_reg->wrr->rdr
-    cast<Instruction>(
-        cast<Instruction>(InstToFix->getOperand(0))->getOperand(1))
-        ->replaceUsesOfWith(ValToReplaceWith, ActualRet);
+    // hence prevent its removal
+    // InstToFix has to be read_predef_reg (we guarantee that when setting it)
+    if (FixReplacement)
+      InstToFix->replaceUsesOfWith(ValToReplaceWith, ActualRet);
   }
 }
 
