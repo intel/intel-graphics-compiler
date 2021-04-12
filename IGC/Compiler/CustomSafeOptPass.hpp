@@ -40,6 +40,7 @@ namespace llvm
 {
     // Forward declare:
     class SampleIntrinsic;
+    class SamplerLoadIntrinsic;
 }
 
 namespace IGC
@@ -79,7 +80,7 @@ namespace IGC
         void visitFPToUIInst(llvm::FPToUIInst& FPUII);
         void visitFPTruncInst(llvm::FPTruncInst& I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
-        void visitLdptr(llvm::CallInst* inst);
+        void visitLdptr(llvm::SamplerLoadIntrinsic* inst);
         void visitLoadInst(llvm::LoadInst& I);
         void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
         bool isIdentityMatrix(llvm::ExtractElementInst& I);

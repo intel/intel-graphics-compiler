@@ -469,7 +469,7 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
 
         case GenISAIntrinsic::GenISA_ldptr:
         {
-            visitLdptr(inst);
+            visitLdptr(llvm::cast<llvm::SamplerLoadIntrinsic>(inst));
             break;
         }
 
@@ -1271,7 +1271,7 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
     }
 }
 
-void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
+void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic* inst)
 {
     if (!IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTextures) &&
         !IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTypedBuffers))
@@ -1313,10 +1313,10 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::CallInst* inst)
         inst->getOperand(4)->getType());
 
     SmallVector<Value*, 5> ld_FunctionArgList(5);
-    ld_FunctionArgList[0] = inst->getOperand(4);
-    ld_FunctionArgList[1] = builder.CreateAdd(inst->getOperand(0), inst->getOperand(5));
-    ld_FunctionArgList[2] = builder.CreateAdd(inst->getOperand(1), inst->getOperand(6));
-    ld_FunctionArgList[3] = builder.CreateAdd(inst->getOperand(3), inst->getOperand(7));
+    ld_FunctionArgList[0] = inst->getTextureValue();
+    ld_FunctionArgList[1] = builder.CreateAdd(inst->getOperand(0), inst->getOperand(inst->getTextureIndex() + 1));
+    ld_FunctionArgList[2] = builder.CreateAdd(inst->getOperand(1), inst->getOperand(inst->getTextureIndex() + 2));
+    ld_FunctionArgList[3] = builder.CreateAdd(inst->getOperand(3), inst->getOperand(inst->getTextureIndex() + 3));
     ld_FunctionArgList[4] = inst->getOperand(2);  // lod=zero
 
     llvm::CallInst* pNewCallInst = builder.CreateCall(
