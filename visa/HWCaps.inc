@@ -691,10 +691,6 @@
    {
         return false;
    }
-   bool useSimplifiedRA()
-   {
-       return false;
-   }
    bool hasA0WARHWissue()
    {
        return false;

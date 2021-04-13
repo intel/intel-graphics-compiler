@@ -448,12 +448,14 @@ bool LocalRA::localRA()
         std::cout << "--local RA--\n";
     }
 
+    bool doRoundRobin = builder.getOption(vISA_LocalRARoundRobin);
 
     int numGRF = kernel.getNumRegTotal();
     PhyRegsLocalRA phyRegs(&builder, numGRF);
     pregs = &phyRegs;
 
     globalLRSize = 0;
+    bool reduceBCInTAandFF = false;
     bool needGlobalRA = true;
 
     doSplitLLR = (builder.getOption(vISA_SpiltLLR) &&
@@ -462,8 +464,6 @@ bool LocalRA::localRA()
 
     preLocalRAAnalysis();
 
-    bool doRoundRobin = builder.getOption(vISA_LocalRARoundRobin) && !builder.useSimplifiedRA();
-    bool reduceBCInTAandFF = false;
     bool reduceBCInRR = false;
 
     if (builder.getOption(vISA_LocalBankConflictReduction) && builder.hasBankCollision())
@@ -693,26 +693,6 @@ void PhyRegsLocalRA::findRegisterCandiateWithAlignBackward(int &i, BankAlign ali
     }
 }
 
-bool LocalRA::getBankAlign(G4_Declare *dcl, bool twoBanksRA, bool twoDirectionsAssign, BankAlign &bankAlign)
-{
-    if (twoBanksRA &&
-        gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
-    {
-        bankAlign = getBankAlignForUniqueAssign(dcl);
-
-        if (bankAlign == BankAlign::Even || bankAlign == BankAlign::Even2GRF)
-        {
-            return true;;
-        }
-        if (twoDirectionsAssign && (bankAlign == BankAlign::Odd || bankAlign == BankAlign::Odd2GRF))
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gra, G4_Declare* dcl, BankAlign &preferBank)
 {
     unsigned short occupiedBundles = 0;
@@ -868,10 +848,21 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             int sizeInWords = dcl->getWordSize();
             int nrows = 0;
             BankAlign bankAlign = BankAlign::Either;
-            if (!builder.useSimplifiedRA())
+            if (twoBanksRA &&
+                gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
             {
-                assignFromFront = getBankAlign(dcl, twoBanksRA, twoDirectionsAssign, bankAlign);
+                bankAlign = getBankAlignForUniqueAssign(dcl);
+
+                if (bankAlign == BankAlign::Even || bankAlign == BankAlign::Even2GRF)
+                {
+                    assignFromFront = true;
+                }
+                if (twoDirectionsAssign && (bankAlign == BankAlign::Odd || bankAlign == BankAlign::Odd2GRF))
+                {
+                    assignFromFront = false;
+                }
             }
+
             auto assignAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : bankAlign;
             G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : gra.getSubRegAlign(dcl);
 

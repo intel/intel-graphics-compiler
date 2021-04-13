@@ -86,8 +86,7 @@ namespace vISA
         void resetMasks();
         void blockOutputPhyRegs();
         void removeUnrequiredLifetimeOps();
-        bool getBankAlign(G4_Declare* dcl, bool twoBanksRA, bool twoDirectionsAssign, BankAlign& bankAlign);
-        bool assignUniqueRegisters(bool twoBanksRA = false, bool twoDirectionsAssign = false);
+        bool assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign);
         bool unassignedRangeFound();
         void updateRegUsage(PhyRegSummary* summary, unsigned int& numRegsUsed);
         void localRAOptReport();
