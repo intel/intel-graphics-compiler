@@ -328,11 +328,11 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             SetAlwaysInline(F);
             continue;
         }
-
-        if (F->hasFnAttribute(llvm::Attribute::OptimizeNone))
+        // Set noinline on optnone user functions.
+        if (!F->hasFnAttribute(llvm::Attribute::Builtin) &&
+            F->hasFnAttribute(llvm::Attribute::OptimizeNone))
         {
             SetNoInline(F);
-            continue;
         }
 
         for (auto I : F->users()) {
