@@ -818,10 +818,7 @@ struct AccAssignment
 
         if (interval->needBothAcc(builder))
         {
-            if (interval->isPreAssigned)
-            {
-                assert(interval->assignedAcc == 0 && "Total 2 acc support right now");
-            }
+            assert(interval->assignedAcc == 0 && "Total 2 acc support right now");
             if (!freeAccs[interval->assignedAcc + 1]) // && activeIntervals.size()
             {
                 spillInterval(interval->assignedAcc + 1);
@@ -836,7 +833,7 @@ struct AccAssignment
     // returns true if a free acc is found, false otherwise
     bool assignAcc(AccInterval* interval)
     {
-        if (interval->isPreAssigned || interval->assignedAcc != -1)
+        if (interval->isPreAssigned)
         {
             handlePreAssignedInterval(interval);
             return true;
@@ -866,9 +863,11 @@ struct AccAssignment
 void AccSubPass::multiAccSub(G4_BB* bb)
 {
     int numGeneralAcc = kernel.getNumAcc();
-    bool accSpill = false;
 
     std::vector<AccInterval*> intervals;
+    std::vector<AccInterval*> failIntervals;
+    std::vector<AccInterval*> spillIntervals;
+
     std::map<G4_INST*, unsigned int> BCInfo;
 
     //build intervals for potential acc candidates as well as pre-existing acc uses from mac/mach/addc/etc
@@ -961,8 +960,9 @@ void AccSubPass::multiAccSub(G4_BB* bb)
                     std::cerr << "Kicked out:  \t";
                     spillCandidate->dump();
 #endif
+                    spillIntervals.push_back(spillCandidate);
                     spillCandidate->spilledAcc = spillCandidate->assignedAcc;
-                    accSpill = true;
+                    spillCandidate->lastUse = interval->inst->getLocalId();
 
                     spillCandidate->assignedAcc = -1;
                     accAssign.activeIntervals.erase(spillIter);
@@ -978,6 +978,10 @@ void AccSubPass::multiAccSub(G4_BB* bb)
             }
         }
 
+        if (interval->assignedAcc == -1)
+        {
+            failIntervals.push_back(interval);
+        }
 #ifdef DEBUG_VERBOSE_ON
         if (interval->assignedAcc == -1)
         {
@@ -991,19 +995,29 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 #endif
     }
 
-    //Rescan do ACC substitution in peepholes caused by spill.
-    if (accSpill)
+    //Rescan the spilled and failed cases to do ACC substitution in peephole.
+    if (failIntervals.size() && spillIntervals.size())
     {
-        AccAssignment accAssign(numGeneralAcc, builder, true);
-
-        for (auto interval : intervals)
+        for (auto spillInterval : spillIntervals)
         {
-            if (interval->spilledAcc != -1) //Spilled case wouldn't join the re-allocation
+            AccAssignment accAssign(numGeneralAcc, builder, false);
+            accAssign.freeAccs[spillInterval->spilledAcc] = true;
+            if (spillInterval->needBothAcc(builder))
             {
-                continue;
+                accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;
             }
-            accAssign.expireIntervals(interval);
-            accAssign.assignAcc(interval);
+
+            for (auto failInterval : failIntervals)
+            {
+                if (!((spillInterval->inst->getLocalId() <= failInterval->inst->getLocalId()) &&
+                    (failInterval->lastUse <= spillInterval->lastUse)) ||
+                    failInterval->assignedAcc != -1)
+                {
+                    continue;
+                }
+                accAssign.expireIntervals(failInterval);
+                accAssign.assignAcc(failInterval);
+            }
         }
     }
 
