@@ -1250,6 +1250,8 @@ public:
 
     void inheritSWSBFrom(const G4_INST* inst);
 
+    const IR_Builder& getBuilder() { return builder; }
+
 private:
 
     // use inheritDIFrom() instead

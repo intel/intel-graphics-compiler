@@ -8646,7 +8646,10 @@ void Optimizer::mergeScalarInst()
     }
 }
 
-static bool isMad(G4_INST *I) { return I->opcode() == G4_pseudo_mad; }
+static bool isMad(G4_INST *I)
+{
+    return I->opcode() == G4_pseudo_mad;
+}
 
 static inline bool isWBTypeAndNotNull(G4_Operand *opnd)
 {
