@@ -31,6 +31,7 @@ IN THE SOFTWARE.
 #include <vector>
 #include <array>
 #include <optional>
+#include <climits>
 
 namespace llvm
 {
