@@ -1881,7 +1881,7 @@ void LocalLiveRange::recordRef(G4_BB* bb)
     prevBBRef = bb;
 }
 
-bool LocalLiveRange::isLiveRangeLocal() const
+bool LocalLiveRange::isLiveRangeLocal()
 {
     if (isIndirectAccess == false && numRefsInFG == 1 &&
         eot == false &&

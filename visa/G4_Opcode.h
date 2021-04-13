@@ -347,6 +347,8 @@ typedef struct _G4_InstOptInfo
     const char*   optStr;
 } G4_InstOptInfo;
 
+extern G4_InstOptInfo InstOptInfo[];
+
 
 
 //various attributes for the Gen opcodes

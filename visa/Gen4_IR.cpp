@@ -47,7 +47,7 @@ static const char* const SrcModifierStr[Mod_src_undef] =
     "-"        // Mod_Not (print as -)
 };
 
-static const G4_InstOptInfo InstOptInfo[] =
+G4_InstOptInfo InstOptInfo[] =
 {
     {InstOpt_Align16, "Align16"},
     {InstOpt_M0, "M0"},

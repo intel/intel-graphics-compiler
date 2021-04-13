@@ -546,14 +546,16 @@ const char* IR_Builder::getNameString(
     va_end(args);
     return name;
 #else
-    return "";
+    const char* name = "";
+    return const_cast<char*>(name);
 #endif
 }
 
-G4_FCALL* IR_Builder::getFcallInfo(const G4_INST* inst) const {
-    auto it = m_fcallInfo.find(inst);
+G4_FCALL* IR_Builder::getFcallInfo(G4_INST* inst) const {
+    std::map<G4_INST *, G4_FCALL *>::const_iterator it;
+    it = m_fcallInfo.find(inst);
     if (m_fcallInfo.end() == it) {
-        return nullptr;
+            return nullptr;
     } else {
         return it->second;
     }

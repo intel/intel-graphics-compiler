@@ -360,7 +360,7 @@ class LivenessAnalysis
     unsigned numBBId = 0;          // the block count
     unsigned numFnId = 0;          // the function count
     const unsigned char selectedRF = 0;  // the selected reg file kind for performing liveness
-    const PointsToAnalysis& pointsToAnalysis;
+    PointsToAnalysis& pointsToAnalysis;
     std::unordered_map<G4_Declare*, BitSet> neverDefinedRows;
 
     vISA::Mem_Manager m;
@@ -369,7 +369,7 @@ class LivenessAnalysis
         BitSet& def_out,
         BitSet& use_in,
         BitSet& use_gen,
-        BitSet& use_kill) const;
+        BitSet& use_kill);
 
     bool contextFreeUseAnalyze(G4_BB* bb, bool isChanged);
     bool contextFreeDefAnalyze(G4_BB* bb, bool isChanged);
@@ -381,8 +381,8 @@ class LivenessAnalysis
 
     void updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill,
         G4_BB* entryBB, unsigned scopeID);
-    void footprintDst(const G4_BB* bb, const G4_INST* i, G4_Operand* opnd, BitSet* dstfootprint) const;
-    static void footprintSrc(const G4_INST* i, G4_Operand *opnd, BitSet* srcfootprint);
+    void footprintDst(G4_BB* bb, G4_INST* i, G4_Operand* opnd, BitSet* dstfootprint);
+    void footprintSrc(G4_INST* i, G4_Operand *opnd, BitSet* srcfootprint);
     void detectNeverDefinedVarRows();
 
 public:
@@ -427,9 +427,9 @@ public:
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}
     void dump() const;
     void dumpGlobalVarNum() const;
-    bool writeWholeRegion(const G4_BB* bb, const G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
+    bool writeWholeRegion(const G4_BB* bb, G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
 
-    bool writeWholeRegion(const G4_BB* bb, const G4_INST* prd, const G4_VarBase* flagReg) const;
+    bool writeWholeRegion(const G4_BB* bb, G4_INST* prd, G4_VarBase* flagReg) const;
 
     void performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB);
 
