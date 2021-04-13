@@ -414,7 +414,7 @@ DECLARE_IGC_REGKEY(bool, StagedCompilation,             false, "Enable staged co
 DECLARE_IGC_REGKEY(bool, EnableTrackPtr,                false, "Track Staging Context alloc/dealloc", false)
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16,              false,  "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)
 DECLARE_IGC_REGKEY(bool, SaveRestoreIR,                 true,  "Save/Restore IR for staged compilation to avoid duplicated compilations", false)
-DECLARE_IGC_REGKEY(DWORD, CodePatch,                    2,     "Enable Pixel Shader code patching to directly emit code after stitching", false)
+DECLARE_IGC_REGKEY(DWORD, CodePatch,                    0,     "Enable Pixel Shader code patching to directly emit code after stitching", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchLimit,               0,     "Debug CodePatch via limiting the number of shader been patched", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchExperiments,         0,      "Experiment with code patching when != 0", false)
 DECLARE_IGC_REGKEY(DWORD, CodePatchFilter,             0xF,     "Filter out unsupported patterns", false)
