@@ -172,7 +172,7 @@ public:
 
     // A live range is local if it is never accessed indirectly (via address taken register) and
     // only a single basic block references the range
-    bool isLiveRangeLocal();
+    bool isLiveRangeLocal() const;
 
     bool isLiveRangeGlobal();
 
@@ -196,7 +196,7 @@ public:
         lrStartIdx = idx;
     }
 
-    G4_INST* getFirstRef(unsigned int& idx)
+    G4_INST* getFirstRef(unsigned int& idx) const
     {
         idx = lrStartIdx;
         return firstRef;
