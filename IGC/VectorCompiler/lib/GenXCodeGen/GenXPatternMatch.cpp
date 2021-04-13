@@ -715,6 +715,16 @@ static bool notHasRealUse(Instruction *Inst) {
   return false;
 }
 
+static Instruction *createInverseSqrt(Value *Op, Instruction *InsertBefore) {
+  IGC_ASSERT(Op && InsertBefore);
+  Function *Decl = GenXIntrinsic::getGenXDeclaration(
+      InsertBefore->getModule(), GenXIntrinsic::genx_rsqrt, {Op->getType()});
+  auto *RSqrt =
+      CallInst::Create(Decl, {Op}, Op->getName() + "inversed", InsertBefore);
+  RSqrt->setDebugLoc(InsertBefore->getDebugLoc());
+  return RSqrt;
+}
+
 /***********************************************************************
  * GenXPatternMatch::flipBoolNot : attempt to flip (vector) bool not
  *
@@ -796,12 +806,8 @@ bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
   if (OpInst->getNumUses() > 1)
     return false;
 
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(
-      I->getModule(), GenXIntrinsic::genx_rsqrt, {I->getType()});
-  auto NewInst =
-      CallInst::Create(Decl, {OpInst->getOperand(0)},
-                       OpInst->getName() + "inversed", I->getNextNode());
-  I->replaceAllUsesWith(NewInst);
+  auto *Rsqrt = createInverseSqrt(OpInst->getOperand(0), I->getNextNode());
+  I->replaceAllUsesWith(Rsqrt);
   I->eraseFromParent();
 
   OpInst->eraseFromParent();
@@ -1750,6 +1756,24 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
     IRB.SetInsertPoint(Pos);
   else
     IRB.SetInsertPoint(BB);
+
+  // (fdiv 1., (sqrt x)) -> (rsqrt x)
+  // TODO: This can be removed if pattern match is applied
+  // incrementally: first match reciprocal, then generate rsqrt
+  // when visiting it
+  auto IID = GenXIntrinsic::getAnyIntrinsicID(Divisor);
+  if ((IID == GenXIntrinsic::genx_sqrt ||
+       (IID == Intrinsic::sqrt && Divisor->getFastMathFlags().isFast())) &&
+      match(Op0, m_FPOne()) && Divisor->hasOneUse()) {
+    auto *Rsqrt = createInverseSqrt(Divisor->getOperand(0), Pos);
+    Divisor->eraseFromParent();
+    I.replaceAllUsesWith(Rsqrt);
+    I.eraseFromParent();
+
+    Changed |= true;
+    return;
+  }
+
   auto Rcp = getReciprocal(IRB, Divisor);
   cast<Instruction>(Rcp)->setDebugLoc(I.getDebugLoc());
 
