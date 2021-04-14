@@ -24,6 +24,16 @@
 
 include_guard(DIRECTORY)
 
+if(NOT IGC_BUILD__LLVM_SOURCES)
+  message(STATUS "[IGC] IGC will take prebuilt LLVM")
+  message(STATUS "[IGC] Searching for prebuilt LLVM in ${LLVM_ROOT} and system directories")
+  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
+  message(STATUS "[IGC] Found LLVM: ${LLVM_DIR}")
+
+  # Tell the build that we are using prebuilds.
+  set(IGC_BUILD__LLVM_PREBUILDS ON)
+endif()
+
 if(LLVM_LINK_LLVM_DYLIB)
     # LLVM was built and configured in a way that tools (in our case IGC) should be linked
     # against single LLVM dynamic library.

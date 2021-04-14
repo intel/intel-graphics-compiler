@@ -80,45 +80,40 @@ endif()
 if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME)
   set(LLVM_ROOT ${DEFAULT_IGC_LLVM_PREBUILDS_DIRS} CACHE PATH
     "Paths to LLVM prebuild (multiple paths can be specified separated by ;")
-  # Tell the build that we are using prebuilds.
-  set(IGC_BUILD__LLVM_PREBUILDS ON)
+  # Return early as only source build is processed here.
+  return()
 endif()
 
 # No mode was specified, start searching.
 if(NOT IGC_OPTION__LLVM_MODE)
-  message(STATUS "[IGC] No LLVM mode was selected explicitly")
-  message(STATUS "[IGC] IGC will search for LLVM sources first, then try prebuilds (including system LLVM)")
+  message(STATUS "[LLVM] No LLVM mode was selected explicitly")
+  message(STATUS "[LLVM] Search will be performed for LLVM sources first, then for prebuilds (including system LLVM)")
 
   # Check by order first available way to link with LLVM.
   if(EXISTS "${DEFAULT_IGC_LLVM_SOURCES_DIR}")
     set(IGC_BUILD__LLVM_SOURCES ON)
     set(IGC_OPTION__LLVM_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR})
   else()
-    set(IGC_BUILD__LLVM_PREBUILDS ON)
+    # Set defaults and stop. Prebuilds will be processed later by IGC.
     set(LLVM_ROOT ${DEFAULT_IGC_LLVM_PREBUILDS_DIRS})
+    return()
   endif()
 endif()
 
-if(IGC_BUILD__LLVM_SOURCES)
-  if(NOT EXISTS "${IGC_OPTION__LLVM_SOURCES_DIR}")
-    message(FATAL_ERROR "[IGC] Cannot find LLVM sources, please provide sources path by IGC_OPTION__LLVM_SOURCES_DIR flag")
-  endif()
-
-  message(STATUS "[IGC] IGC will build LLVM from sources.")
-  message(STATUS "[IGC] LLVM sources folder: ${IGC_OPTION__LLVM_SOURCES_DIR}")
-  message(STATUS "[IGC] LLVM sources in stock version: ${IGC_OPTION__LLVM_STOCK_SOURCES}")
-  add_subdirectory(${IGC_LLVM_TOOLS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
-
-  # Some variables are lost after LLVM subdirectory left.
-  # Restore them for IGC usage.
-  set(LLVM_CMAKE_DIR "${LLVM_SOURCE_DIR}/cmake/modules")
-  # Tools binary dir is needed by lit testing.
-  get_directory_property(LLVM_TOOLS_BINARY_DIR DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_TOOLS_BINARY_DIR")
+# This definitely should exist. Either user specified mode and
+# directory explicitly, or we found directory during search process.
+if(NOT EXISTS "${IGC_OPTION__LLVM_SOURCES_DIR}")
+  message(FATAL_ERROR "[LLVM] Cannot find LLVM sources, please provide sources path by IGC_OPTION__LLVM_SOURCES_DIR flag")
 endif()
 
-if(IGC_BUILD__LLVM_PREBUILDS)
-  message(STATUS "[IGC] IGC will take prebuilt LLVM.")
-  message(STATUS "[IGC] Searching for prebuilt LLVM in: ${LLVM_ROOT} and system directories")
-  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
-  message(STATUS "[IGC] Used prebuilt LLVM folder: ${LLVM_DIR}")
-endif()
+message(STATUS "[LLVM] LLVM will be built from sources")
+message(STATUS "[LLVM] LLVM sources folder: ${IGC_OPTION__LLVM_SOURCES_DIR}")
+message(STATUS "[LLVM] LLVM sources in stock version: ${IGC_OPTION__LLVM_STOCK_SOURCES}")
+
+add_subdirectory(${IGC_LLVM_TOOLS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+
+# Some variables are lost after LLVM subdirectory left.
+# Restore them for IGC usage.
+set(LLVM_CMAKE_DIR "${LLVM_SOURCE_DIR}/cmake/modules")
+# Tools binary dir is needed by lit testing.
+get_directory_property(LLVM_TOOLS_BINARY_DIR DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_TOOLS_BINARY_DIR")
