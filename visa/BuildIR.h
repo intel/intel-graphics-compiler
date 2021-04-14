@@ -850,29 +850,29 @@ public:
 
     // ToDo: get rid of this version and use the message type specific ones below instead,
     // so we can avoid having to explicitly create extDesc bits
-    G4_SendMsgDescriptor* createGeneralMsgDesc(
+    G4_SendDescRaw * createGeneralMsgDesc(
         uint32_t desc,
         uint32_t extDesc,
         SendAccess access,
         G4_Operand* bti = nullptr,
         G4_Operand* sti = nullptr);
 
-    G4_SendMsgDescriptor* createReadMsgDesc(
+    G4_SendDescRaw * createReadMsgDesc(
         SFID sfid,
         uint32_t desc,
         G4_Operand* bti = nullptr);
 
-    G4_SendMsgDescriptor* createWriteMsgDesc(
+    G4_SendDescRaw * createWriteMsgDesc(
         SFID sfid,
         uint32_t desc,
         int src1Len,
         G4_Operand* bti = nullptr);
 
-    G4_SendMsgDescriptor* createSyncMsgDesc(
+    G4_SendDescRaw * createSyncMsgDesc(
         SFID sfid,
         uint32_t desc);
 
-    G4_SendMsgDescriptor* createSampleMsgDesc(
+    G4_SendDescRaw * createSampleMsgDesc(
         uint32_t desc,
         bool cps,
         int src1Len,
@@ -887,7 +887,7 @@ public:
         return isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY;
     }
 
-    G4_SendMsgDescriptor* createSendMsgDesc(
+    G4_SendDescRaw * createSendMsgDesc(
         SFID sfid,
         uint32_t desc,
         uint32_t extDesc,
@@ -896,7 +896,7 @@ public:
         G4_Operand *bti,
         bool isValidFuncCtrl = true);
 
-    G4_SendMsgDescriptor* createSendMsgDesc(
+    G4_SendDescRaw * createSendMsgDesc(
         unsigned funcCtrl,
         unsigned regs2rcv,
         unsigned regs2snd,
@@ -1204,7 +1204,7 @@ public:
         G4_DstRegRegion* postDst, G4_SrcRegRegion* payload,
         G4_Operand* msg,
         G4_InstOpts options, // FIXME: re-order options to follow all operands
-        G4_SendMsgDescriptor *msgDesc,
+        G4_SendDesc *msgDesc,
         bool addToInstList);
     G4_InstSend* createInternalSendInst(
         G4_Predicate* prd, G4_opcode op,
@@ -1212,14 +1212,14 @@ public:
         G4_DstRegRegion* postDst, G4_SrcRegRegion* payload,
         G4_Operand* msg,
         G4_InstOpts options, // FIXME: re-order options to follow all operands
-        G4_SendMsgDescriptor *msgDescs);
+        G4_SendDesc *msgDescs);
 
     G4_InstSend* createSplitSendInst(
         G4_Predicate* prd, G4_opcode op,
         G4_ExecSize execSize,
         G4_DstRegRegion* dst, G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
         G4_Operand* msg, G4_InstOpts options,
-        G4_SendMsgDescriptor *msgDesc,
+        G4_SendDesc* msgDesc,
         G4_Operand* src3,
         bool addToInstList);
 
@@ -1228,7 +1228,7 @@ public:
         G4_DstRegRegion* dst, G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
         // TODO: reorder parameters to put options last
         G4_Operand* msg, G4_InstOpts options,
-        G4_SendMsgDescriptor *msgDesc,
+        G4_SendDesc*msgDesc,
         G4_Operand* src3);
 
     G4_INST* createMathInst(
@@ -1321,7 +1321,7 @@ public:
         G4_Predicate *pred,
         G4_DstRegRegion *postDst, G4_SrcRegRegion *payload,
         G4_ExecSize execSize,
-        G4_SendMsgDescriptor *msgDesc,
+        G4_SendDescRaw *msgDesc,
         G4_InstOpts options,
         bool is_sendc);
 
@@ -1329,7 +1329,7 @@ public:
         G4_Predicate *pred,
         G4_DstRegRegion *dst, G4_SrcRegRegion *src1, G4_SrcRegRegion *src2,
         G4_ExecSize execSize,
-        G4_SendMsgDescriptor *msgDesc,
+        G4_SendDescRaw *msgDesc,
         G4_InstOpts options,
         bool is_sendc);
 
@@ -1341,7 +1341,7 @@ public:
         G4_SrcRegRegion *src2,
         G4_SrcRegRegion *extDesc,
         G4_ExecSize execSize,
-        G4_SendMsgDescriptor *msgDesc,
+        G4_SendDescRaw *msgDesc,
         G4_InstOpts option);
 
     G4_InstSend* Create_Send_Inst_For_CISA(
@@ -1978,7 +1978,7 @@ public:
         G4_SrcRegRegion *src1,
         G4_DstRegRegion *dst);
 
-    void applySideBandOffset(G4_Operand* sideBand, G4_SendMsgDescriptor* sendMsgDesc);
+    void applySideBandOffset(G4_Operand* sideBand, const G4_SendDescRaw * sendMsgDesc);
 
     int translateVISAGather4ScaledInst(
         G4_Predicate *pred,

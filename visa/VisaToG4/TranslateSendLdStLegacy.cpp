@@ -244,7 +244,7 @@ int IR_Builder::translateVISAOwordLoadInst(
         }
     }
 
-    SFID tf_id =  SFID::DP_DC;
+    SFID tf_id =  SFID::DP_DC0;
 
     G4_ExecSize send_exec_size = G4_ExecSize(FIX_OWORD_SEND_EXEC_SIZE(num_oword));
     bool forceSplitSend = shouldForceSplitSend(surface);
@@ -357,7 +357,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         // message length = 1, response length = 0, header present = 1
         msgDesc += (1 << getSendMsgLengthBitOffset()) + (1 << getSendHeaderPresentBitOffset());
 
-        G4_SendMsgDescriptor* desc = createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC,
+        G4_SendDescRaw* desc = createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC0,
             extMsgLength, extFuncCtrl, SendAccess::WRITE_ONLY, surface);
 
         G4_ExecSize sendSize = G4_ExecSize(FIX_OWORD_SEND_EXEC_SIZE(num_oword));
@@ -365,7 +365,8 @@ int IR_Builder::translateVISAOwordStoreInst(
         G4_SrcRegRegion* src0 = Create_Src_Opnd_From_Dcl(headerDcl, getRegionStride1());
         G4_DstRegRegion* dst = createNullDst(sendSize > 8 ? Type_UW: Type_UD);
 
-        Create_SplitSend_Inst(nullptr, dst, src0, srcOpnd, sendSize, desc, InstOpt_WriteEnable, false);
+        Create_SplitSend_Inst(
+            nullptr, dst, src0, srcOpnd, sendSize, desc, InstOpt_WriteEnable, false);
     }
     else
     {
@@ -404,7 +405,7 @@ int IR_Builder::translateVISAOwordStoreInst(
             0,
             G4_ExecSize(send_size),
             funcCtrl,
-            SFID::DP_DC,
+            SFID::DP_DC0,
             true,
             SendAccess::WRITE_ONLY,
             surface,
@@ -603,7 +604,7 @@ int IR_Builder::translateVISAGatherInst(
 
     G4_DstRegRegion* d = dstOpnd->asDstRegRegion();
 
-    SFID tf_id = SFID::DP_DC;
+    SFID tf_id = SFID::DP_DC0;
     unsigned temp = 0;
     // Set bit 9-8 for the message descriptor
     if (msgEltSize == GATHER_SCATTER_DWORD)
@@ -871,7 +872,7 @@ int IR_Builder::translateVISAScatterInst(
         0,
         G4_ExecSize(numElt),
         temp,
-        SFID::DP_DC,
+        SFID::DP_DC0,
         !headerLess,
         SendAccess::WRITE_ONLY,
         surface,
@@ -1857,7 +1858,7 @@ static void BuildMH2_A32_PSM(
 
 // apply the sideband offset (can be either imm or variable) to the message descriptor
 void IR_Builder::applySideBandOffset(
-    G4_Operand* sideBand, G4_SendMsgDescriptor* sendMsgDesc)
+    G4_Operand* sideBand, const G4_SendDescRaw* sendMsgDesc)
 {
 #define SIDEBAND_OFFSET_IN_EXDESC 12
 
@@ -2290,7 +2291,7 @@ int IR_Builder::translateByteGatherInst(
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    SFID sfid = SFID::DP_DC;
+    SFID sfid = SFID::DP_DC0;
 
     unsigned MD = 0;
     MD |= DC_BYTE_SCATTERED_READ << 14;
@@ -2404,7 +2405,7 @@ int IR_Builder::translateByteScatterInst(
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    SFID sfid = SFID::DP_DC;
+    SFID sfid = SFID::DP_DC0;
 
     unsigned MD = 0;
     // Leave sidebind scale offset 0 as it is not used now.

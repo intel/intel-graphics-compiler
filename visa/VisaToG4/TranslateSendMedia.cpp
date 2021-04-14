@@ -335,7 +335,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         unsigned extMsgLength = (obj_size - 1) / numEltPerGRF<Type_UB>() + 1;
         uint16_t extFuncCtrl = 0;
 
-        G4_SendMsgDescriptor* desc = createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC1,
+        G4_SendDescRaw * desc = createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC1,
             extMsgLength, extFuncCtrl, SendAccess::WRITE_ONLY, surface);
 
         Create_SplitSend_Inst(
