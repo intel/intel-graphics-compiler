@@ -335,6 +335,10 @@ void InitAdlsSwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
+void InitXeHPSDVHwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -406,15 +410,15 @@ void InitLkfHASWaTable(
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
 void InitEhlHASWaTable(
-        PHW_DEVICE_EXTENSION                pKchContext,
-        PWA_TABLE                           pWaTable,
-        PSKU_FEATURE_TABLE                  pSkuTable,
-        PWA_INIT_PARAM                      pWaParam);
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 void InitJslHASWaTable(
-        PHW_DEVICE_EXTENSION                pKchContext,
-        PWA_TABLE                           pWaTable,
-        PSKU_FEATURE_TABLE                  pSkuTable,
-        PWA_INIT_PARAM                      pWaParam);
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 void InitTgllpHASWaTable(
         PHW_DEVICE_EXTENSION            pKchContext,
         PWA_TABLE                       pWaTable,
@@ -431,6 +435,11 @@ void InitRklHASWaTable(
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
 void InitAdlsHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitXeHPSDVHASWaTable(
         PHW_DEVICE_EXTENSION            pKchContext,
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
