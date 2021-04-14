@@ -336,19 +336,12 @@ void CPixelShader::AllocatePSPayload()
         offset += (getGRFSize() - (offset % getGRFSize()));
     }
 
-    CVariable* prevAlias = nullptr;
     // This is the preallocation for payload live-outs.
     for (auto& var : payloadLiveOutSetup)
     {
-        auto v = var->GetAlias() ? var->GetAlias() : var;
         IGC_ASSERT(offset% getGRFSize() == 0);
-        bool skip = (prevAlias == v);
-        if (!skip)
-        {
-            AllocateInput(v, offset);
-            offset += var->GetSize();
-            prevAlias = var->GetAlias();
-        }
+        AllocateInput(var, offset);
+        offset += var->GetSize();
     }
 
     // This is the preallocation for temp variables in payload sections

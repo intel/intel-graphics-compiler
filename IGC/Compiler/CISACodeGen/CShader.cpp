@@ -463,11 +463,12 @@ void CShader::AddPatchTempSetup(CVariable* var)
 
 bool CShader::AppendPayloadSetup(CVariable* var)
 {
-    if (find(payloadLiveOutSetup.begin(), payloadLiveOutSetup.end(), var) != payloadLiveOutSetup.end())
+    auto v = var->GetAlias() ? var->GetAlias() : var;
+    if (find(payloadLiveOutSetup.begin(), payloadLiveOutSetup.end(), v) != payloadLiveOutSetup.end())
     {
         return true;
     }
-    payloadLiveOutSetup.push_back(var);
+    payloadLiveOutSetup.push_back(v);
     return false;
 }
 
