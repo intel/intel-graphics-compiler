@@ -167,7 +167,7 @@ const char* SAMPLE_OP_3D_NAME[VISA_3D_TOTAL_NUM_OPS] =
     "load_lz",     // 0x1A
     "",
     "load_2dms_w", // 0x1C
-    "load_mcs"     // 0x1D
+    "load_mcs",    // 0x1D
 };
 
 const char * va_sub_names[26] =

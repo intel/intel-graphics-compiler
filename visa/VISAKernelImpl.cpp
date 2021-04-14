@@ -5316,12 +5316,13 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     AppendVISAInstCommon();
 
     int status = VISA_SUCCESS;
-    bool isLoad = (subOpcode == VISA_3D_LD_MSC || subOpcode == VISA_3D_LD ||
+    bool isLoad = (subOpcode == VISA_3D_LD_MCS || subOpcode == VISA_3D_LD ||
         subOpcode == VISA_3D_LD2DMS_W || subOpcode == VISA_3D_LD_LZ);
     bool isSample4 = (subOpcode == VISA_3D_GATHER4 ||
-                        subOpcode == VISA_3D_GATHER4_C ||
-                        subOpcode == VISA_3D_GATHER4_PO ||
-                        subOpcode == VISA_3D_GATHER4_PO_C);
+        subOpcode == VISA_3D_GATHER4_C ||
+        subOpcode == VISA_3D_GATHER4_PO ||
+        subOpcode == VISA_3D_GATHER4_PO_C
+        );
 
     if (IS_GEN_BOTH_PATH)
     {

@@ -3442,7 +3442,7 @@ namespace IGC
         case llvm_ldmsptr16bit:
             return VISA_3D_LD2DMS_W;
         case llvm_ldmcsptr:
-            return VISA_3D_LD_MSC;
+            return VISA_3D_LD_MCS;
         case llvm_lodptr:
             return VISA_3D_LOD;
         case llvm_sample_killpix:

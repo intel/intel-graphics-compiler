@@ -422,12 +422,14 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     {
         return;
     }
-    Value* zero = m_builder->getInt32(0);
-    bool hasRef = gatherpo->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_gather4POCptr;
+    Value* const zero = m_builder->getInt32(0);
+    const bool hasRef = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4POCptr;
+    const uint extraBeginArgsNo = hasRef ? 1 : 0;
+
     unsigned int offsetArgumentIndices[] = {
-        hasRef ? 8u : 7u,
-        hasRef ? 9u : 8u,
-        hasRef ? 10u : 9u,
+        7u + extraBeginArgsNo,
+        8u + extraBeginArgsNo,
+        9u + extraBeginArgsNo
     };
     if (gatherpo->getOperand(offsetArgumentIndices[0]) != zero ||
         gatherpo->getOperand(offsetArgumentIndices[1]) != zero ||
@@ -443,13 +445,14 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     m_builder->SetInsertPoint(gatherpo);
     Value* info = m_builder->CreateCall2(resInfo, resource, m_builder->getInt32(0));
     std::vector<Value*> arg;
-    if (hasRef)
+    if (extraBeginArgsNo > 0)
     {
-        arg.push_back(gatherpo->getOperand(0)); // ref
+        IGC_ASSERT(extraBeginArgsNo == 1);
+        arg.push_back(gatherpo->getOperand(0));
     }
     arg.push_back(nullptr);                  // u
     arg.push_back(nullptr);                  // v
-    arg.push_back(gatherpo->getOperand(hasRef ? 5 : 4)); // r
+    arg.push_back(gatherpo->getOperand(4 + extraBeginArgsNo)); // r
     arg.push_back(ConstantFP::get(gatherpo->getOperand(0)->getType(), 0.0));   // ai
     arg.push_back(resource);
     arg.push_back(sampler);
@@ -460,8 +463,8 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
 
     for (unsigned int i = 0; i < 2; i++)
     {
-        Value* coord = gatherpo->getOperand(i + (hasRef ? 1 : 0));
-        Value* offset = gatherpo->getOperand(i + (hasRef ? 3 : 2));
+        Value* coord = gatherpo->getOperand(i + extraBeginArgsNo);
+        Value* offset = gatherpo->getOperand(i + 2 + extraBeginArgsNo);
 
         Value* size = m_builder->CreateExtractElement(info, m_builder->getInt32(i));
         size = m_builder->CreateUIToFP(size, coord->getType());
@@ -474,7 +477,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
         //
         Value* newCoord = m_builder->CreateFMul(offset, invSize);
         newCoord = m_builder->CreateFAdd(newCoord, coord);
-        arg[i + (hasRef ? 1 : 0)] = newCoord;
+        arg[i + extraBeginArgsNo] = newCoord;
     }
     Type* types[] =
     {

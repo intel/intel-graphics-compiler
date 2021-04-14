@@ -7488,11 +7488,11 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
     bool simd8HFRet = isHalfGRFReturn(m_destination, m_SimdMode);
-        if (simd8HFRet)
-        {
-            dst = m_currShader->GetNewVariable(
-                m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false, CName::NONE);
-        }
+    if (simd8HFRet)
+    {
+        dst = m_currShader->GetNewVariable(
+            m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false, CName::NONE);
+    }
 
     bool feedbackEnable = (m_destination->GetNumberElement() / numLanes(m_currShader->m_SIMDSize) == 5) ? true : false;
     uint label = 0;
