@@ -31,6 +31,9 @@ extern unsigned int VCBiFPrintfOCL32RawData_size;
 
 extern unsigned char VCBiFPrintfOCL64RawData[];
 extern unsigned int VCBiFPrintfOCL64RawData_size;
+
+extern unsigned char VCEmulation64RawData[];
+extern unsigned int VCEmulation64RawData_size;
 #endif // IGC_VC_DISABLE_BIF
 
 #endif

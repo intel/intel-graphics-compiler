@@ -35,6 +35,7 @@ namespace bif {
 enum class RawKind {
   PrintfOCL32,
   PrintfOCL64,
+  Emulation
 };
 
 inline llvm::StringRef getPrintfOCL32RawData() {
@@ -55,7 +56,20 @@ inline llvm::StringRef getPrintfOCL64RawData() {
 #endif // IGC_VC_DISABLE_BIF
 }
 
+inline llvm::StringRef getVCEmulationRawData() {
+#ifdef IGC_VC_DISABLE_BIF
+  return "";
+#else  // IGC_VC_DISABLE_BIF
+  return {reinterpret_cast<char *>(VCEmulation64RawData),
+          VCEmulation64RawData_size};
+#endif // IGC_VC_DISABLE_BIF
+}
+
 template <enum RawKind> llvm::StringRef getRawData();
+
+template <> llvm::StringRef getRawData<RawKind::Emulation>() {
+  return getVCEmulationRawData();
+}
 
 template<>
 llvm::StringRef getRawData<RawKind::PrintfOCL32>() {

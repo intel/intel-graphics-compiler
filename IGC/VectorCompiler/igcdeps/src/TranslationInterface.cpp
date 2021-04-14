@@ -379,6 +379,10 @@ static llvm::Optional<vc::ExternalData> fillExternalData() {
       getVCModuleBuffer<vc::bif::RawKind::PrintfOCL64>();
   if (!ExtData.VCPrintf64BIFModule)
     return {};
+  ExtData.VCEmulationBIFModule =
+      getVCModuleBuffer<vc::bif::RawKind::Emulation>();
+  if (!ExtData.VCEmulationBIFModule)
+    return {};
   return std::move(ExtData);
 }
 

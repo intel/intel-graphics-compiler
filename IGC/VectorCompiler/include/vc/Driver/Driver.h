@@ -108,6 +108,7 @@ struct ExternalData {
   std::unique_ptr<llvm::MemoryBuffer> OCLGenericBIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCPrintf32BIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCPrintf64BIFModule;
+  std::unique_ptr<llvm::MemoryBuffer> VCEmulationBIFModule;
 };
 
 llvm::Expected<CompileOutput> Compile(llvm::ArrayRef<char> Input,
