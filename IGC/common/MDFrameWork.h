@@ -352,6 +352,7 @@ namespace IGC
         unsigned int offset = 0;
         unsigned int size = 0;
         bool isStateless = false;
+        bool isBindless = false;
         // std::map<offset, argumentIndex>
         std::map<unsigned int, int> simplePushLoads;
     };
@@ -371,7 +372,6 @@ namespace IGC
         bool isStatic = false;
     };
 
-
     struct DynamicBufferInfo
     {
         // If numOffsets > 0, dynamic buffer offsets occupy a contiguous region
@@ -385,6 +385,11 @@ namespace IGC
     struct PushInfo
     {
         std::vector<StatelessPushInfo> pushableAddresses;
+
+        // Indices of RuntimeValues that can be used to compute surface state
+        // offsets for the bindless push.
+        std::vector<unsigned int> bindlessPushInfo;
+
         // Dynamic buffer offsets info.
         // Used only on with clients that support dynamic buffers.
         DynamicBufferInfo dynamicBufferInfo;

@@ -130,6 +130,76 @@ namespace IGC
         return pArgInfo;
     }
 
+    bool PushAnalysis::IsPushableBindlessLoad(
+        Instruction* inst,
+        int& grfOffset,
+        unsigned int& cbIdx,
+        unsigned int& offset)
+    {
+        LdRawIntrinsic* ldRaw = dyn_cast<LdRawIntrinsic>(inst);
+        if (!ldRaw ||
+            BINDLESS_CONSTANT_BUFFER != DecodeBufferType(
+                ldRaw->getResourceValue()->getType()->getPointerAddressSpace()))
+        {
+            return false;
+        }
+
+        std::function<bool(Value*)> isPushable;
+        isPushable = [this, &grfOffset, &cbIdx, &isPushable](Value* v)->bool
+        {
+            // Matches the following patterns:
+            // Pattern 1:
+            //   %6 = add i32 %runtime_value_0, 4096
+            //   %7 = inttoptr i32 %6 to i8 addrspace(1507328)*
+            //   %8 = call <8 x float> @llvm.genx.GenISA.ldrawvector.indexed.v8f32.p1507328i8(i8 addrspace(1507328)* %7, i32 0, i32 4, i1 false)
+            // Pattern 2:
+            //   %8 = call <8 x float> @llvm.genx.GenISA.ldrawvector.indexed.v8f32.p1507328i8(i8 addrspace(1507328)* %runtime_value_0, i32 0, i32 4, i1 false)
+            if (m_bindlessPushArgs.find(v) != m_bindlessPushArgs.end())
+            {
+                grfOffset = int_cast<int>(m_bindlessPushArgs.find(v)->second);
+                return true;
+            }
+            else if (IntToPtrInst* ptrToInt = dyn_cast<IntToPtrInst>(v))
+            {
+                return isPushable(ptrToInt->getOperand(0));
+            }
+            else if (Instruction* instr = dyn_cast<Instruction>(v))
+            {
+                if (instr->getOpcode() == Instruction::Add &&
+                    isa<ConstantInt>(instr->getOperand(1)) &&
+                    isPushable(instr->getOperand(0)))
+                {
+                    ConstantInt* src1 = cast<ConstantInt>(instr->getOperand(1));
+                    cbIdx += int_cast<unsigned int>(src1->getZExtValue()) >> m_context->platform.getBSOLocInExtDescriptor();
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (isPushable(ldRaw->getResourceValue()))
+        {
+            Value* offsetVal = ldRaw->getOffsetValue();
+            if (ConstantInt * offsetConstVal = dyn_cast<ConstantInt>(offsetVal))
+            {
+                offset = int_cast<unsigned int>(offsetConstVal->getZExtValue());
+                return true;
+            }
+
+            if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() &&
+                IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers))
+            {
+                unsigned int relativeOffsetInBytes = 0; // offset in bytes starting from dynamic buffer offset
+                if (GetConstantOffsetForDynamicUniformBuffer(offsetVal, relativeOffsetInBytes))
+                {
+                    offset = relativeOffsetInBytes;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     bool PushAnalysis::IsStatelessCBLoad(
         llvm::Instruction* inst,
         int& pushableAddressGrfOffset,
@@ -461,7 +531,6 @@ namespace IGC
     // immediate constant value.
     //
     bool PushAnalysis::GetConstantOffsetForDynamicUniformBuffer(
-        uint   bufferId, // buffer id (BTI)
         Value* offsetValue, // total buffer offset i.e. starting from 0
         uint& relativeOffsetInBytes) // offset in bytes starting from dynamic offset in buffer
     {
@@ -475,8 +544,8 @@ namespace IGC
             const Instruction* addInst = cast<Instruction>(offsetValue);
             uint offset0 = 0, offset1 = 0;
 
-            if (GetConstantOffsetForDynamicUniformBuffer(bufferId, addInst->getOperand(0), offset0) &&
-                GetConstantOffsetForDynamicUniformBuffer(bufferId, addInst->getOperand(1), offset1))
+            if (GetConstantOffsetForDynamicUniformBuffer(addInst->getOperand(0), offset0) &&
+                GetConstantOffsetForDynamicUniformBuffer(addInst->getOperand(1), offset1))
             {
                 relativeOffsetInBytes = offset0 + offset1;
                 return true;
@@ -487,8 +556,8 @@ namespace IGC
             const Instruction* mulInst = cast<Instruction>(offsetValue);
             uint a = 0, b = 0;
 
-            if (GetConstantOffsetForDynamicUniformBuffer(bufferId, mulInst->getOperand(0), a) &&
-                GetConstantOffsetForDynamicUniformBuffer(bufferId, mulInst->getOperand(1), b))
+            if (GetConstantOffsetForDynamicUniformBuffer(mulInst->getOperand(0), a) &&
+                GetConstantOffsetForDynamicUniformBuffer(mulInst->getOperand(1), b))
             {
                 relativeOffsetInBytes = a * b;
                 return true;
@@ -500,8 +569,8 @@ namespace IGC
             const Instruction* shlInst = cast<Instruction>(offsetValue);
             uint offset = 0, bitShift = 0;
 
-            if (GetConstantOffsetForDynamicUniformBuffer(bufferId, shlInst->getOperand(0), offset) &&
-                GetConstantOffsetForDynamicUniformBuffer(bufferId, shlInst->getOperand(1), bitShift))
+            if (GetConstantOffsetForDynamicUniformBuffer(shlInst->getOperand(0), offset) &&
+                GetConstantOffsetForDynamicUniformBuffer(shlInst->getOperand(1), bitShift))
             {
                 relativeOffsetInBytes = offset << bitShift;
                 return true;
@@ -516,7 +585,7 @@ namespace IGC
                  int_cast<uint>(src1->getZExtValue()) == 0xFFFFFFF0))
             {
                 uint offset = 0;
-                if (GetConstantOffsetForDynamicUniformBuffer(bufferId, andInst->getOperand(0), offset) &&
+                if (GetConstantOffsetForDynamicUniformBuffer(andInst->getOperand(0), offset) &&
                     offset == 0)
                 {
                     relativeOffsetInBytes = 0;
@@ -537,7 +606,7 @@ namespace IGC
                 uint andMask = int_cast<uint>(cast<ConstantInt>(src0->getOperand(1))->getZExtValue());
                 uint offset = 0;
                 if ((orOffset & andMask) == 0 &&
-                    GetConstantOffsetForDynamicUniformBuffer(bufferId, src0->getOperand(0), offset) &&
+                    GetConstantOffsetForDynamicUniformBuffer(src0->getOperand(0), offset) &&
                     offset == 0)
                 {
                     relativeOffsetInBytes = orOffset;
@@ -547,11 +616,11 @@ namespace IGC
         }
         else if (BitCastInst * bitCast = dyn_cast<BitCastInst>(offsetValue))
         {
-            return GetConstantOffsetForDynamicUniformBuffer(bufferId, bitCast->getOperand(0), relativeOffsetInBytes);
+            return GetConstantOffsetForDynamicUniformBuffer(bitCast->getOperand(0), relativeOffsetInBytes);
         }
         else if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(offsetValue))
         {
-            return GetConstantOffsetForDynamicUniformBuffer(bufferId, i2p->getOperand(0), relativeOffsetInBytes);
+            return GetConstantOffsetForDynamicUniformBuffer(i2p->getOperand(0), relativeOffsetInBytes);
         }
         else if (m_dynamicBufferOffsetArgs.find(offsetValue) != m_dynamicBufferOffsetArgs.end())
         {
@@ -566,14 +635,10 @@ namespace IGC
     /// in order to be added to thread-payload
     bool PushAnalysis::IsPushableShaderConstant(
         Instruction* inst,
-        unsigned int& cbIdx,
-        int& pushableAddressGrfOffset,
-        int& pushableOffsetGrfOffset,
-        unsigned int& eltId,
-        bool& isStateless)
+        SimplePushInfo& info)
     {
         Value* eltPtrVal = nullptr;
-        if (!llvm::isa<llvm::LoadInst>(inst))
+        if (!isa<LoadInst>(inst) && !isa<LdRawIntrinsic>(inst))
             return false;
 
         if (inst->getType()->isVectorTy())
@@ -588,17 +653,30 @@ namespace IGC
                 return false;
         }
 
-        // \todo, not support vector-load yet
-        if (IsLoadFromDirectCB(inst, cbIdx, eltPtrVal))
+        if (IsPushableBindlessLoad(
+            inst,
+            info.pushableOffsetGrfOffset,
+            info.cbIdx,
+            info.offset))
         {
-            isStateless = false;
-            if (cbIdx == getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->pushInfo.inlineConstantBufferSlot)
+            if ((info.offset % 4) == 0)
+            {
+                info.isBindless = true;
+                return true;
+            }
+        }
+        else if (IsLoadFromDirectCB(
+            inst,
+            info.cbIdx,
+            eltPtrVal))
+        {
+            if (info.cbIdx == getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->pushInfo.inlineConstantBufferSlot)
             {
                 return false;
             }
             if (isa<ConstantPointerNull>(eltPtrVal))
             {
-                eltId = 0;
+                info.offset = 0;
                 return true;
             }
             if (IntToPtrInst * i2p = dyn_cast<IntToPtrInst>(eltPtrVal))
@@ -606,8 +684,8 @@ namespace IGC
                 Value* eltIdxVal = i2p->getOperand(0);
                 if (ConstantInt * eltIdx = dyn_cast<ConstantInt>(eltIdxVal))
                 {
-                    eltId = int_cast<uint>(eltIdx->getZExtValue());
-                    if ((eltId % 4) == 0)
+                    info.offset = int_cast<uint>(eltIdx->getZExtValue());
+                    if ((info.offset % 4) == 0)
                     {
                         return true;
                     }
@@ -617,10 +695,10 @@ namespace IGC
             if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() && IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers))
             {
                 unsigned int relativeOffsetInBytes = 0; // offset in bytes starting from dynamic buffer offset
-                if (GetConstantOffsetForDynamicUniformBuffer(cbIdx, eltPtrVal, relativeOffsetInBytes))
+                if (GetConstantOffsetForDynamicUniformBuffer(eltPtrVal, relativeOffsetInBytes))
                 {
-                    eltId = relativeOffsetInBytes;
-                    if ((eltId % 4) == 0)
+                    info.offset = relativeOffsetInBytes;
+                    if ((info.offset % 4) == 0)
                     {
                         return true;
                     }
@@ -630,13 +708,13 @@ namespace IGC
         }
         else if (IsStatelessCBLoad(
             inst,
-            pushableAddressGrfOffset,
-            pushableOffsetGrfOffset,
-            eltId))
+            info.pushableAddressGrfOffset,
+            info.pushableOffsetGrfOffset,
+            info.offset))
         {
-            IGC_ASSERT(pushableAddressGrfOffset >= 0);
-            cbIdx = 0;
-            isStateless = true;
+            IGC_ASSERT(info.pushableAddressGrfOffset >= 0);
+            info.cbIdx = 0;
+            info.isStateless = true;
             return true;
         }
         return false;
@@ -796,19 +874,17 @@ namespace IGC
 
     unsigned int PushAnalysis::AllocatePushedConstant(
         Instruction* load,
-        unsigned int cbIdx,
-        int pushableAddressGrfOffset,
-        int pushableOffsetGrfOffset,
-        unsigned int offset,
-        unsigned int maxSizeAllowed,
-        bool isStateless)
+        const SimplePushInfo& newChunk,
+        const unsigned int maxSizeAllowed)
     {
-        if (cbIdx > m_context->m_DriverInfo.MaximumSimplePushBufferID())
+        if (!newChunk.isBindless &&
+            newChunk.cbIdx > m_context->m_DriverInfo.MaximumSimplePushBufferID())
         {
             return 0;
         }
         unsigned int size = GetSizeInBits(load->getType()) / 8;
-        IGC_ASSERT_MESSAGE(isa<LoadInst>(load), "Expected a load instruction");
+        IGC_ASSERT_MESSAGE(isa<LoadInst>(load) || isa<LdRawIntrinsic>(load),
+            "Expected a load instruction");
         PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
         bool canPromote = false;
@@ -818,23 +894,34 @@ namespace IGC
         unsigned int piIndex;
         bool regionFound = false;
 
-        //For stateless buffers, we store the GRFOffset into the simplePushInfoArr[piIndex].cbIdx
-        //For stateful buffers, we store the bufferId into the simplePushInfoArr[piIndex].cbIdx
-        //We traverse the array and identify which CB we're in based on either GFXOffset or bufferId
         for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
         {
             const SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
-            if (info.isStateless == isStateless &&
-                info.isStateless == false &&
-                info.cbIdx == cbIdx)
+            // Stateless load - GRF offsets need to match.
+            if (info.isStateless &&
+                newChunk.isStateless &&
+                info.pushableAddressGrfOffset == newChunk.pushableAddressGrfOffset &&
+                info.pushableOffsetGrfOffset == newChunk.pushableOffsetGrfOffset)
             {
                 regionFound = true;
                 break;
             }
-            else if (info.isStateless == isStateless &&
-                info.isStateless == true &&
-                info.pushableAddressGrfOffset == pushableAddressGrfOffset &&
-                info.pushableOffsetGrfOffset == pushableOffsetGrfOffset)
+            // Bindless load - GRF offsets and bindless surface state offsets
+            // need to match.
+            if (info.isBindless &&
+                newChunk.isBindless &&
+                info.pushableOffsetGrfOffset == newChunk.pushableOffsetGrfOffset &&
+                info.cbIdx == newChunk.cbIdx)
+            {
+                regionFound = true;
+                break;
+            }
+            // Bound load - binding table indices need to match.
+            if (!info.isStateless &&
+                !newChunk.isStateless &&
+                !info.isBindless &&
+                !newChunk.isBindless &&
+                info.cbIdx == newChunk.cbIdx)
             {
                 regionFound = true;
                 break;
@@ -842,17 +929,21 @@ namespace IGC
         }
         if (regionFound)
         {
-            unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getMinPushConstantBufferAlignmentInBytes());
-            unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getMinPushConstantBufferAlignmentInBytes());
+            SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
+            unsigned int newStartOffset = iSTD::RoundDown(
+                std::min(newChunk.offset, info.offset),
+                getMinPushConstantBufferAlignmentInBytes());
+            unsigned int newEndOffset = iSTD::Round(
+                std::max(newChunk.offset + size, info.offset + info.size),
+                getMinPushConstantBufferAlignmentInBytes());
             unsigned int newSize = newEndOffset - newStartOffset;
 
-            if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
+            if (newSize - info.size <= maxSizeAllowed)
             {
-                sizeGrown = newSize - pushInfo.simplePushInfoArr[piIndex].size;
+                sizeGrown = newSize - info.size;
                 canPromote = true;
-                pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
-                pushInfo.simplePushInfoArr[piIndex].size = newSize;
-                pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
+                info.offset = newStartOffset;
+                info.size = newSize;
             }
         }
 
@@ -863,8 +954,8 @@ namespace IGC
             maxSizeAllowed > 0 &&
             pushInfo.simplePushBufferUsed < maxNumberOfPushedBuffers)
         {
-            unsigned int newStartOffset = iSTD::RoundDown(offset, getMinPushConstantBufferAlignmentInBytes());
-            unsigned int newEndOffset = iSTD::Round(offset + size, getMinPushConstantBufferAlignmentInBytes());
+            unsigned int newStartOffset = iSTD::RoundDown(newChunk.offset, getMinPushConstantBufferAlignmentInBytes());
+            unsigned int newEndOffset = iSTD::Round(newChunk.offset + size, getMinPushConstantBufferAlignmentInBytes());
             unsigned int newSize = newEndOffset - newStartOffset;
 
             if (newSize <= maxSizeAllowed)
@@ -874,19 +965,14 @@ namespace IGC
 
                 piIndex = pushInfo.simplePushBufferUsed;
                 SimplePushInfo& info = pushInfo.simplePushInfoArr[piIndex];
-                if (isStateless)
-                {
-                    info.pushableAddressGrfOffset = pushableAddressGrfOffset;
-                    info.pushableOffsetGrfOffset = pushableOffsetGrfOffset;
-                }
-                else
-                {
-                    info.cbIdx = cbIdx;
-                }
-
+                info.pushableAddressGrfOffset = newChunk.pushableAddressGrfOffset;
+                info.pushableOffsetGrfOffset = newChunk.pushableOffsetGrfOffset;
+                info.cbIdx = newChunk.cbIdx;
+                info.isStateless = newChunk.isStateless;
+                info.isBindless = newChunk.isBindless;
                 info.offset = newStartOffset;
                 info.size = newSize;
-                info.isStateless = isStateless;
+
                 pushInfo.simplePushBufferUsed++;
             }
         }
@@ -894,7 +980,10 @@ namespace IGC
         if (canPromote)
         {
             // promote the load to be pushed
-            PromoteLoadToSimplePush(load, pushInfo.simplePushInfoArr[piIndex], offset);
+            PromoteLoadToSimplePush(
+                load,
+                pushInfo.simplePushInfoArr[piIndex],
+                newChunk.offset);
         }
         return sizeGrown;
     }
@@ -922,7 +1011,7 @@ namespace IGC
         }
 
         SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
-        bool allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(load), extracts);
+        bool allExtract = VectorUsedByConstExtractOnly(load, extracts);
 
         for (unsigned int i = 0; i < num_elms; ++i)
         {
@@ -1011,27 +1100,15 @@ namespace IGC
         {
             for (auto i = bb->begin(), ie = bb->end(); i != ie; ++i)
             {
-                unsigned int cbIdx = 0;
-                int pushableAddressGrfOffset = -1;
-                int pushableOffsetGrfOffset = -1;
-                unsigned int offset = 0;
-                bool isStateless = false;
-                if (IsPushableShaderConstant(
-                    &(*i),
-                    cbIdx,
-                    pushableAddressGrfOffset,
-                    pushableOffsetGrfOffset,
-                    offset,
-                    isStateless))
+                Instruction* const instr = &(*i);
+                SimplePushInfo info{};
+                bool isPushable = IsPushableShaderConstant(instr, info);
+                if(isPushable)
                 {
                     sizePushed += AllocatePushedConstant(
-                        &(*i),
-                        cbIdx,
-                        pushableAddressGrfOffset,
-                        pushableOffsetGrfOffset,
-                        offset,
-                        cthreshold - sizePushed,
-                        isStateless);
+                        instr,
+                        info,
+                        cthreshold - sizePushed); // maxSizeAllowed
                 }
             }
         }
@@ -1416,6 +1493,14 @@ namespace IGC
             {
                 m_dynamicBufferOffsetArgs.insert(arg);
             }
+
+            for (unsigned int& runtimeValueIndex : pushInfo.bindlessPushInfo)
+            {
+                if (index == runtimeValueIndex)
+                {
+                    m_bindlessPushArgs[arg] = index;
+                }
+            }
         }
         else
         {
@@ -1513,15 +1598,13 @@ namespace IGC
                     }
                 }
                 // code to push constant-buffer value into thread-payload
-                uint bufId, eltId;
-                int pushableAddressGrfOffset = -1;
-                int pushableOffsetGrfOffset = -1;
-                bool isStateless = false;
+                SimplePushInfo info{};
                 if (pushConstantMode == PushConstantMode::GATHER &&
-                    IsPushableShaderConstant(inst, bufId, pushableAddressGrfOffset, pushableOffsetGrfOffset, eltId, isStateless) &&
-                    !isStateless)
+                    IsPushableShaderConstant(inst, info) &&
+                    !info.isBindless &&
+                    !info.isStateless)
                 {
-                    processGather(inst, bufId, eltId);
+                    processGather(inst, info.cbIdx, info.offset);
                 }
                 else if (GetOpCode(inst) == llvm_input)
                 {
