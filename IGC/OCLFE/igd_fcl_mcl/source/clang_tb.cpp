@@ -1274,7 +1274,7 @@ namespace TC
 
     \**********************************************************************/
 
-    int BuildOptionsAreValid(const char *options, std::string& exceptString)
+    int BuildOptionsAreValid(const std::string& options, std::string& exceptString)
     {
         int  retVal = 0;
 
@@ -1285,14 +1285,14 @@ namespace TC
         bool    checkBinaryType = false;
         bool    isCommonOption = false;
 
-        if (options)
+        if (!options.empty())
         {
-            size_t  optionsSize = strlen(options) + 1;
+            size_t  optionsSize = options.size() + 1;
             //alocate memory for pBuffer and nextTok
             pBuffer = new char[optionsSize];
             nextTok = new char[optionsSize];
 
-            strcpy(pBuffer, options);
+            strncpy(pBuffer, options.c_str(), optionsSize);
             pParam = GetParam(pBuffer, nextTok);
 
             if (pParam)
@@ -1421,7 +1421,7 @@ namespace TC
                     {
                         ignoreNextToken = false;
                     }
-                    strcpy(pBuffer, nextTok);
+                    strncpy(pBuffer, nextTok, optionsSize);
                 } while ((pParam = GetParam(pBuffer, nextTok)) != NULL);
             }
 
@@ -1530,7 +1530,7 @@ namespace TC
             optionsEx.c_str(),
             pInputArgs->oclVersion.c_str(),
             &pResultPtr);
-        if (0 != BuildOptionsAreValid(options.c_str(), exceptString)) res = -43;
+        if (0 != BuildOptionsAreValid(options, exceptString)) res = -43;
 
         Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
         if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return.
