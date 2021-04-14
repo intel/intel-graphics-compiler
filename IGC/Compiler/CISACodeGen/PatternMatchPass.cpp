@@ -2311,9 +2311,18 @@ namespace IGC
 
         // Store3d supports only types equal or less than 128 bits.
         StoreInst* storeInst = dyn_cast<StoreInst>(&I);
-        if (storeInst && storeInst->getValueOperand()->getType()->getPrimitiveSizeInBits() > 128)
+
+        if (storeInst)
         {
-            return false;
+            // If stored value is a vector of pointers, the size must be calculated manually,
+            // because getPrimitiveSizeInBits returns 0 for pointers.
+            if ((storeInst->getValueOperand()->getType()->getPrimitiveSizeInBits() > 128) ||
+                    (storeInst->getValueOperand()->getType()->isVectorTy() &&
+                    (cast<llvm::VectorType>(storeInst->getValueOperand()->getType())->getElementType()->isPointerTy()) &&
+                    ((cast<llvm::VectorType>(storeInst->getValueOperand()->getType())->getNumElements() * m_ctx->getRegisterPointerSizeInBits(ptrVal.getType()->getPointerAddressSpace())) > 128)))
+            {
+                return false;
+            }
         }
 
         if (i2p || (ptr && ptr->getIntrinsicID() == GenISAIntrinsic::GenISA_OWordPtr))
