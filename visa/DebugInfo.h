@@ -207,6 +207,7 @@ public:
     void setVISAKernel(VISAKernelImpl* k);
 
     KernelDebugInfo();
+    ~KernelDebugInfo();
 
     void reset()
     {

@@ -1724,6 +1724,14 @@ KernelDebugInfo::KernelDebugInfo()
     missingVISAIdsComputed = false;
 }
 
+KernelDebugInfo::~KernelDebugInfo()
+{
+    for (auto& item : debugInfoLiveIntervalMap)
+    {
+        item.second->~LiveIntervalInfo();
+    }
+}
+
 void KernelDebugInfo::updateRelocOffset()
 {
     // This function updates reloc_offset field of kernel
