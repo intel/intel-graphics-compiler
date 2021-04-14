@@ -108,6 +108,12 @@ if(IGC_BUILD__LLVM_SOURCES)
   message(STATUS "[IGC] LLVM sources folder: ${IGC_OPTION__LLVM_SOURCES_DIR}")
   message(STATUS "[IGC] LLVM sources in stock version: ${IGC_OPTION__LLVM_STOCK_SOURCES}")
   add_subdirectory(${IGC_LLVM_TOOLS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+
+  # Some variables are lost after LLVM subdirectory left.
+  # Restore them for IGC usage.
+  set(LLVM_CMAKE_DIR "${LLVM_SOURCE_DIR}/cmake/modules")
+  # Tools binary dir is needed by lit testing.
+  get_directory_property(LLVM_TOOLS_BINARY_DIR DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_TOOLS_BINARY_DIR")
 endif()
 
 if(IGC_BUILD__LLVM_PREBUILDS)

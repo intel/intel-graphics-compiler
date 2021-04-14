@@ -54,3 +54,38 @@ function(igc_get_llvm_targets RET)
 
   set(${RET} ${TARGETS} PARENT_SCOPE)
 endfunction()
+
+# Simple wrapper around configure_lit_site_cfg that allows
+# generator expressions in configured lit config.
+function(igc_configure_lit_site_cfg in out)
+  set(temp_cfg ${CMAKE_CURRENT_BINARY_DIR}/temp.cfg.py)
+
+  # Generate temporary site config with LLVM variables filled.
+  configure_lit_site_cfg(
+    ${in}
+    ${temp_cfg}
+    ${ARGN}
+    )
+
+  # Need to regenerate again to use generator expressions that are not
+  # expanded in configure_file.
+  file(GENERATE
+    OUTPUT ${out}
+    INPUT ${temp_cfg}
+    )
+endfunction()
+
+# Helper macro to set LLVM_EXTERNAL_LIT variable for LLVM lit tests.
+# Variable can be overridden from command line to set custom lit tool.
+macro(igc_find_external_lit)
+  list(APPEND paths_to_lit ${LLVM_SOURCE_DIR}/utils/lit)
+  find_file(LLVM_EXTERNAL_LIT
+    NAMES llvm-lit llvm-lit.py lit.py lit
+    PATHS ${paths_to_lit}
+    DOC "Path to lit utility"
+    )
+
+  if(NOT LLVM_EXTERNAL_LIT)
+    message(FATAL_ERROR "llvm-lit is not found, please specify it with LLVM_EXTERNAL_LIT variable")
+  endif()
+endmacro()
