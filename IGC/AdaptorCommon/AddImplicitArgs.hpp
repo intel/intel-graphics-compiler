@@ -42,22 +42,6 @@ namespace IGC
 
 namespace IGC
 {
-    class ImplicitArgs;
-
-    struct ImplicitStructArgument
-    {
-        union _DW0
-        {
-            struct _All
-            {
-                unsigned int argId : 11;
-                unsigned int argOffset : 11;
-                unsigned int argExplictNum : 10;
-            } All;
-            unsigned int Value;
-        } DW0;
-    };
-
     // struct
     typedef std::map<unsigned int, llvm::Argument*> InfoToImpArgMap;
     typedef std::map<llvm::Function*, InfoToImpArgMap> FuncInfoToImpArgMap;
@@ -95,8 +79,8 @@ namespace IGC
         }
 
         /// @brief  Main entry point.
-        ///         Goes over all functions and changes their signature to contain the implict arguments
-        //          needed by each function, goes over all function calls and adds the implicit arguments
+        ///         Goes over all functions and changes their signature to contain the implicit arguments
+        ///         needed by each function, goes over all function calls and adds the implicit arguments
         ///         to the function calls
         /// @param  M The destination module.
         virtual bool runOnModule(llvm::Module &M) override;
@@ -110,20 +94,22 @@ namespace IGC
         /// @brief  Create the type of the new function,
         ///         including all explicit and needed impliict parameters
         /// @param  pFunc           The old function
-        /// @param  pImplicitArgs   The impliict arguments needed by this function
-        /// @returns    The new functuin type
-        static llvm::FunctionType* getNewFuncType(const llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
+        /// @param  pImplicitArgs   The implicit arguments needed by this function
+        /// @returns    The new function type
+        static llvm::FunctionType* getNewFuncType(const llvm::Function* pFunc, const ImplicitArgs& implicitArgs);
 
         /// @brief  Transfers uses of old arguments to new arguments, sets names of all arguments
         /// @param  pFunc           The old function
         /// @param  pNewFunc        The new function
-        /// @param  pImplicitArgs   The impliict arguments needed by this function
-        void updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs* pImplicitArgs);
+        /// @param  pImplicitArgs   The implicit arguments needed by this function
+        void updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs& implicitArgs);
 
-        //  @brief  replace old CallInst with new CallInst
-        void replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ctx, llvm::Function* old_func, llvm::Function* new_func);
+        /// @brief  Replace old CallInst with new CallInst
+        void replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function* old_func, llvm::Function* new_func);
 
-        /// @brief  Metadata API obejct.
+        static llvm::Value* coerce(llvm::Value* arg, llvm::Type* type, llvm::Instruction* insertBefore);
+
+        /// @brief  Metadata API object.
         IGC::IGCMD::MetaDataUtils *m_pMdUtils;
 
         FuncInfoToImpArgMap     m_FuncInfoToImpArgMap;
@@ -136,7 +122,7 @@ namespace IGC
 namespace IGC
 {
 
-    struct ImplicitArgmentDetail
+    struct ImplicitArgumentDetail
     {
         ImplicitArg::ArgMap     ArgsMaps;
         std::set<unsigned int>  StructArgSet;
@@ -165,15 +151,15 @@ namespace IGC
         virtual bool runOnModule(llvm::Module &M) override;
 
         void traverseCallGraphSCC(const std::vector<llvm::CallGraphNode *> &SCCNodes);
-        void combineTwoArgDetail(ImplicitArgmentDetail&, ImplicitArgmentDetail&, llvm::Value*);
-        void writeBackAllIntoMetaData(ImplicitArgmentDetail&, llvm::Function*);
+        void combineTwoArgDetail(ImplicitArgumentDetail&, const ImplicitArgumentDetail&, llvm::Value*) const;
+        void writeBackAllIntoMetaData(const ImplicitArgumentDetail&, llvm::Function*);
 
         bool pruneCallGraphForStackCalls(llvm::CallGraph& CG);
 
     private:
         IGC::IGCMD::MetaDataUtils *m_pMdUtils;
-        llvm::SmallDenseMap<llvm::Function*, ImplicitArgmentDetail *> argMap;
-        llvm::SmallVector<std::unique_ptr<ImplicitArgmentDetail>, 4> argDetails;
+        llvm::SmallDenseMap<llvm::Function*, ImplicitArgumentDetail *> argMap;
+        llvm::SmallVector<std::unique_ptr<ImplicitArgumentDetail>, 4> argDetails;
     };
 
 } // namespace IGC

@@ -576,7 +576,7 @@ bool ImplicitArgs::isImplicitStruct(ImplicitArg::ArgType argType)
 ImplicitArg::ArgType ImplicitArgs::getArgType(unsigned int index) const {
     IGC_ASSERT_MESSAGE((index < size()), "Index out of range");
     ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
-    return (ImplicitArg::ArgType)argInfo->getArgId();
+    return static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
 }
 
 int32_t ImplicitArgs::getExplicitArgNum(unsigned int index) const

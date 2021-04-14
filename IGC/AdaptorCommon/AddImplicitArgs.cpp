@@ -60,6 +60,20 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
+struct ImplicitStructArgument
+{
+    union
+    {
+        struct
+        {
+            unsigned int argId : 11;
+            unsigned int argOffset : 11;
+            unsigned int argExplicitNum : 10;
+        } All;
+        unsigned int Value;
+    } DW0;
+};
+
 char AddImplicitArgs::ID = 0;
 
 AddImplicitArgs::AddImplicitArgs() : ModulePass(ID)
@@ -101,7 +115,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         ImplicitArgs implicitArgs(func, m_pMdUtils);
 
         // Create the new function body and insert it into the module
-        FunctionType *pNewFTy = getNewFuncType(&func, &implicitArgs);
+        FunctionType *pNewFTy = getNewFuncType(&func, implicitArgs);
         Function* pNewFunc = Function::Create(pNewFTy, func.getLinkage());
         pNewFunc->copyAttributesFrom(&func);
         pNewFunc->setSubprogram(func.getSubprogram());
@@ -114,7 +128,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
         // Loop over the argument list, transferring uses of the old arguments over to
         // the new arguments
-        updateNewFuncArgs(&func, pNewFunc, &implicitArgs);
+        updateNewFuncArgs(&func, pNewFunc, implicitArgs);
 
         // Map old func to new func
         funcsMapping[&func] = pNewFunc;
@@ -129,7 +143,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     {
         for (auto I : funcsMappingForReplacement)
         {
-            replaceAllUsesWithNewOCLBuiltinFunction(ctx, I.first, I.second);
+            replaceAllUsesWithNewOCLBuiltinFunction(I.first, I.second);
         }
     }
 
@@ -155,7 +169,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
     // Update LLVM metadata based on IGC MetadataUtils
     m_pMdUtils->save(M.getContext());
 
-    //Return if any error
+    // Return if any error
     if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->HasError())
     {
         return false;
@@ -168,8 +182,8 @@ bool AddImplicitArgs::runOnModule(Module &M)
         IGC_ASSERT(nullptr != pFunc);
         IGC_ASSERT_MESSAGE(pFunc->use_empty(), "Assume all user function are inlined at this point");
 
-        // Now, after changing funciton signature,
-        // and validate there are no calls to the old function we can erase it.
+        // Now, after changing function signature
+        // and validating there are no calls to the old function, we can erase it.
         pFunc->eraseFromParent();
     }
 
@@ -190,28 +204,26 @@ bool AddImplicitArgs::hasIndirectlyCalledParent(const Function* F)
     return false;
 }
 
-FunctionType* AddImplicitArgs::getNewFuncType(const Function* pFunc, const ImplicitArgs* pImplicitArgs)
+FunctionType* AddImplicitArgs::getNewFuncType(const Function* pFunc, const ImplicitArgs& implicitArgs)
 {
     // Add all explicit parameters
     const FunctionType* pFuncType = pFunc->getFunctionType();
     std::vector<Type *> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
 
     // Add implicit arguments parameter types
-    for(unsigned int i = 0; i < pImplicitArgs->size(); ++i)
+    for (unsigned int i = 0; i < implicitArgs.size(); ++i)
     {
-        newParamTypes.push_back((*pImplicitArgs)[i].getLLVMType(pFunc->getContext()));
+        newParamTypes.push_back(implicitArgs[i].getLLVMType(pFunc->getContext()));
     }
 
     // Create new function type with explicit and implicit parameter types
     return FunctionType::get(pFunc->getReturnType(), newParamTypes, pFunc->isVarArg());
 }
 
-void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs* pImplicitArgs)
+void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc, const ImplicitArgs& implicitArgs)
 {
     // Loop over the argument list, transferring uses of the old arguments over to
     // the new arguments, also transferring over the names as well.
-    Function::arg_iterator currArg = pNewFunc->arg_begin();
-    std::map<void*, unsigned int> argMap;
     std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
     bool fullDebugInfo = false;
     IF_DEBUG_INFO(bool lineNumbersOnly = false;)
@@ -220,10 +232,10 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
 
     if (fullDebugInfo)
     {
-        unsigned int i = 0;
-
         // Create a map storing function arguments of pFunc with their position
         // of occurrence.
+        std::map<const llvm::Argument*, unsigned int> argMap;
+        unsigned int i = 0;
         for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg, ++i)
         {
             argMap.insert(std::make_pair(&(*arg), i));
@@ -239,12 +251,13 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
                 auto DIInst = dyn_cast_or_null<DbgDeclareInst>(&inst);
                 if (DIInst)
                 {
-                    auto addr = dyn_cast_or_null<Value>(DIInst->getAddress());
+                    auto addr = dyn_cast_or_null<Argument>(DIInst->getAddress());
                     if (addr)
                     {
-                        if (argMap.find(addr) != argMap.end())
+                        auto it = argMap.find(addr);
+                        if (it != argMap.end())
                         {
-                            newAddr.push_back(std::make_pair(DIInst, argMap.find(addr)->second));
+                            newAddr.push_back(std::make_pair(DIInst, it->second));
                         }
                     }
                 }
@@ -252,96 +265,66 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
         }
     }
 
+    Function::arg_iterator currArg = pNewFunc->arg_begin();
     for (Function::arg_iterator I = pFunc->arg_begin(), E = pFunc->arg_end(); I != E; ++I, ++currArg)
     {
-        llvm::Value* newArg = &(*currArg);
-        if (I->getType() != currArg->getType())
-        {
-            // fix opaque type mismatch on %opencl.image...
-            std::string str0;
-            llvm::raw_string_ostream s(str0);
-            currArg->getType()->print(s);
-
-            BasicBlock &entry = pNewFunc->getEntryBlock();
-            newArg = new llvm::BitCastInst(&(*currArg), I->getType(), "", &entry.front());
-        }
+        llvm::Value* newArg = coerce(&(*currArg), I->getType(), &pNewFunc->getEntryBlock().front());
         // Move the name and users over to the new version.
         I->replaceAllUsesWith(newArg);
         currArg->takeName(&(*I));
     }
 
-    // In following loop, fix dbg.declare nodes that reference function arguments.
+    // In the following loop, fix dbg.declare nodes that reference function arguments.
     // This occurs for example when a struct type is passed as a kernel parameter
-    // byval. Bug#GD-429 had this exact issue. If we dont do this then we lose
+    // byval. Bug#GD-429 had this exact issue. If we don't do this then we lose
     // mapping of argument to dbg.declare and elf file comes up with empty
     // storage location for the variable.
     for (auto toReplace : newAddr)
     {
-        unsigned int i = 0;
-        for (auto pNewFuncArg = pNewFunc->arg_begin(); pNewFuncArg != pNewFunc->arg_end(); ++pNewFuncArg, ++i)
-        {
-            if (i != toReplace.second)
-                continue;
+        IF_DEBUG_INFO(auto d = dyn_cast<DbgDeclareInst>(toReplace.first);)
 
-            IF_DEBUG_INFO(auto d = dyn_cast<DbgDeclareInst>(toReplace.first);)
+        IF_DEBUG_INFO(llvm::DIBuilder Builder(*pNewFunc->getParent()));
+        IF_DEBUG_INFO(auto DIVar = d->getVariable();)
+        IF_DEBUG_INFO(auto DIExpr = d->getExpression();)
 
-            llvm::DIBuilder Builder(*pNewFunc->getParent());
-            IF_DEBUG_INFO(auto DIVar = d->getVariable();)
-            IF_DEBUG_INFO(auto DIExpr = d->getExpression();)
-
-            Value* v = dyn_cast_or_null<Value>(&(*pNewFuncArg));
-            if (v)
-            {
-                IF_DEBUG_INFO(Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), d);)
-                IF_DEBUG_INFO(auto oldInst = d;)
-                IF_DEBUG_INFO(oldInst->eraseFromParent();)
-            }
-
-            break;
-        }
+        IGC_ASSERT(toReplace.second < pNewFunc->arg_size());
+        IF_DEBUG_INFO(Value* v = pNewFunc->arg_begin() + toReplace.second);
+        IF_DEBUG_INFO(Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), d);)
+        IF_DEBUG_INFO(d->eraseFromParent();)
     }
 
-    // Set implict argument names
+    // Set implicit argument names
     InfoToImpArgMap &infoToArg = m_FuncInfoToImpArgMap[pNewFunc];
     ImpArgToExpNum &argImpToExpNum = m_FuncImpToExpNumMap[pNewFunc];
-    for (unsigned int i = 0; i < pImplicitArgs->size(); ++i, ++currArg)
+    for (unsigned int i = 0; i < implicitArgs.size(); ++i, ++currArg)
     {
+        currArg->setName(implicitArgs[i].getName());
+
+        ImplicitArg::ArgType argId = implicitArgs[i].getArgType();
         ImplicitStructArgument info;
-
-        currArg->setName((*pImplicitArgs)[i].getName());
-
-        ImplicitArg::ArgType argId = (*pImplicitArgs)[i].getArgType();
         info.DW0.All.argId = argId;
-        info.DW0.All.argExplictNum = 0;
+        info.DW0.All.argExplicitNum = 0;
         info.DW0.All.argOffset = 0;
-        if (argId < ImplicitArg::ArgType::STRUCT_START)
-        {
-            infoToArg[info.DW0.Value] = &(*currArg);
-        }
-        else if (argId <= ImplicitArg::IMAGES_END || argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE)
+        if ((argId >= ImplicitArg::ArgType::STRUCT_START && argId <= ImplicitArg::IMAGES_END)
+            || argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE)
         {
             // struct, image
             FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(pFunc);
             ArgInfoMetaDataHandle argInfo = funcInfo->getImplicitArgInfoListItem(i);
             IGC_ASSERT_MESSAGE(argInfo->isExplicitArgNumHasValue(), "wrong data in MetaData");
 
-            info.DW0.All.argExplictNum = argInfo->getExplicitArgNum();
+            argImpToExpNum[&(*currArg)] = info.DW0.All.argExplicitNum = argInfo->getExplicitArgNum();
             if (argId <= ImplicitArg::ArgType::STRUCT_END)
             {
                 IGC_ASSERT_MESSAGE(argInfo->isStructArgOffsetHasValue(), "wrong data in MetaData");
                 info.DW0.All.argOffset = argInfo->getStructArgOffset();
             }
-            infoToArg[info.DW0.Value] = &(*currArg);
-            argImpToExpNum[&(*currArg)] = info.DW0.All.argExplictNum;
         }
-        else
-        {
-            infoToArg[info.DW0.Value] = &(*currArg);
-        }
+        infoToArg[info.DW0.Value] = &(*currArg);
     }
 }
 
-void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ctx, llvm::Function* old_func, llvm::Function* new_func)
+void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function* old_func, llvm::Function* new_func)
 {
     IGC_ASSERT(!old_func->use_empty());
 
@@ -372,9 +355,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
                     Constant* fncast = ConstantExpr::getBitCast(new_func, old_func->getType());
                     SmallVector<Constant*, 8> NewOps;
                     for (auto Op : OldExpr->operand_values()) {
-                        (Op == old_func) ?
-                            NewOps.push_back(fncast) :
-                            NewOps.push_back(cast<Constant>(Op));
+                        NewOps.push_back(Op == old_func ? fncast : cast<Constant>(Op));
                     }
                     auto NewExpr = OldExpr->getWithOperands(NewOps);
                     OldExpr->replaceAllUsesWith(NewExpr);
@@ -390,7 +371,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
             getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ", U);
             return;
         }
-        //Return if any error
+        // Return if any error
         if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->HasError())
         {
             return;
@@ -400,7 +381,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         Function *parent_func = cInst->getParent()->getParent();
         size_t numArgOperands = cInst->getNumArgOperands();
 
-        // let 's prepare argument list on new call function
+        // let's prepare argument list on new call function
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
         llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
 
@@ -409,16 +390,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         // basic arguments
         for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)
         {
-            llvm::Value* arg = cInst->getOperand(i);
-            if (arg->getType() != new_arg_iter->getType())
-            {
-                // fix opaque type mismatch on %opencl...
-                std::string str0;
-                llvm::raw_string_ostream s(str0);
-                arg->getType()->print(s);
-
-                arg = new llvm::BitCastInst(arg, new_arg_iter->getType(), "", cInst);
-            }
+            llvm::Value* arg = coerce(cInst->getOperand(i), new_arg_iter->getType(), cInst);
             new_args.push_back(arg);
         }
 
@@ -429,11 +401,11 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         while (new_arg_iter != new_arg_end)
         {
             ArgInfoMetaDataHandle argInfo = subFuncInfo->getImplicitArgInfoListItem(cImpCount);
-            ImplicitArg::ArgType argId = (ImplicitArg::ArgType)argInfo->getArgId();
+            ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
 
             ImplicitStructArgument info;
             info.DW0.All.argId = argId;
-            info.DW0.All.argExplictNum = 0;
+            info.DW0.All.argExplicitNum = 0;
             info.DW0.All.argOffset = 0;
 
             if (argId < ImplicitArg::ArgType::STRUCT_START)
@@ -460,7 +432,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
 
                 // build info
 
-                info.DW0.All.argExplictNum = arg->getArgNo();
+                info.DW0.All.argExplicitNum = arg->getArgNo();
                 IGC_ASSERT_MESSAGE(infoToArg.find(info.DW0.Value) != infoToArg.end(), "Can't find the implicit argument on parent function");
 
                 new_args.push_back(infoToArg[info.DW0.Value]);
@@ -496,6 +468,18 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
     }
 }
 
+llvm::Value* AddImplicitArgs::coerce(llvm::Value* arg, llvm::Type* type, llvm::Instruction* insertBefore)
+{
+    if (arg->getType() == type)
+        return arg;
+
+    // fix opaque type mismatch on %opencl...
+    std::string str0;
+    llvm::raw_string_ostream s(str0);
+    arg->getType()->print(s);
+    return new llvm::BitCastInst(arg, type, "", insertBefore);
+}
+
 // Builtin CallGraph Analysis
 #define PASS_FLAG2 "igc-callgraphscc-analysis"
 #define PASS_DESCRIPTION2 "Analyzes CallGraphSCC"
@@ -527,8 +511,7 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
     // Traverse each SCC
     for (auto I = scc_begin(&CG), IE = scc_end(&CG); I != IE; ++I)
     {
-        const std::vector<CallGraphNode*>& SCCNodes = *I;
-        traverseCallGraphSCC(SCCNodes);
+        traverseCallGraphSCC(*I);
     }
 
     // Detect stack calls that use implicit args, and force inline them, since they are not supported
@@ -583,7 +566,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
 void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphNode *> &SCCNodes)
 {
     // all functions in one scc should end up with the same result
-    ImplicitArgmentDetail *argData = nullptr;
+    ImplicitArgumentDetail *argData = nullptr;
     for (auto CGN : SCCNodes)
     {
         Function *f = CGN->getFunction();
@@ -600,12 +583,12 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
         }
         if (argData == nullptr)
         {
-            argDetails.push_back(IGCLLVM::make_unique<ImplicitArgmentDetail>());
+            argDetails.push_back(IGCLLVM::make_unique<ImplicitArgumentDetail>());
             argData = argDetails[argDetails.size() - 1].get();
         }
 
         // calculate args from sub-routine.
-        // This function have not beeen processed yet, therefore no map-entry for it yet
+        // This function have not been processed yet, therefore no map-entry for it yet
         IGC_ASSERT(argMap.count(f) == 0);
         for (auto N : (*CGN))
         {
@@ -634,11 +617,9 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
             continue;
         FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
         // calculate implicit args from function metadata
-        auto I = funcInfo->begin_ImplicitArgInfoList();
-        auto E = funcInfo->end_ImplicitArgInfoList();
 
         // build everything
-        for (; I != E; I++)
+        for (auto I = funcInfo->begin_ImplicitArgInfoList(), E = funcInfo->end_ImplicitArgInfoList(); I != E; I++)
         {
             ArgInfoMetaDataHandle argInfo = *I;
             ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
@@ -646,17 +627,16 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
             if (argId < ImplicitArg::ArgType::STRUCT_START)
             {
                 // unique implicit argument
-
-                // if not exit, the following line will add one.
-                ImplicitArg::ArgValSet * setx = &(argData->ArgsMaps[argId]);
-                setx->insert(0);
+                // if doesn't exist, the following line will add one.
+                ImplicitArg::ArgValSet &setx = argData->ArgsMaps[argId];
+                setx.insert(0);
             }
             else if (argId <= ImplicitArg::ArgType::STRUCT_END)
             {
                 // aggregate implicity argument
 
                 ImplicitStructArgument info;
-                info.DW0.All.argExplictNum = argInfo->getExplicitArgNum();
+                info.DW0.All.argExplicitNum = argInfo->getExplicitArgNum();
                 info.DW0.All.argOffset = argInfo->getStructArgOffset();
                 info.DW0.All.argId = argId;
                 argData->StructArgSet.insert(info.DW0.Value);
@@ -666,16 +646,15 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
                 // image index, project id
 
                 int argNum = argInfo->getExplicitArgNum();
-                ImplicitArg::ArgValSet * setx = &(argData->ArgsMaps[argId]);
-                setx->insert(argNum);
+                ImplicitArg::ArgValSet &setx = argData->ArgsMaps[argId];
+                setx.insert(argNum);
             }
             else
             {
                 // unique implicit argument
-
-                // if not exit, the following line will add one.
-                ImplicitArg::ArgValSet * setx = &(argData->ArgsMaps[argId]);
-                setx->insert(0);
+                // if doesn't exist, the following line will add one.
+                ImplicitArg::ArgValSet &setx = argData->ArgsMaps[argId];
+                setx.insert(0);
             }
         }
     }
@@ -691,9 +670,9 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
 }
 
 void BuiltinCallGraphAnalysis::combineTwoArgDetail(
-    ImplicitArgmentDetail &retD,
-    ImplicitArgmentDetail &argD,
-    llvm::Value* v)
+    ImplicitArgumentDetail &retD,
+    const ImplicitArgumentDetail &argD,
+    llvm::Value* v) const
 {
     for (const auto& argPair : argD.ArgsMaps)
     {
@@ -701,14 +680,13 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
         if (argId < ImplicitArg::ArgType::STRUCT_START)
         {
             // unique implicit argument
-            // if not exit, the following line will add one.
-            ImplicitArg::ArgValSet * setx = &retD.ArgsMaps[argId];
-            setx->insert(0);
+            // if doesn't exist, the following line will add one.
+            ImplicitArg::ArgValSet &setx = retD.ArgsMaps[argId];
+            setx.insert(0);
         }
         else if (argId <= ImplicitArg::ArgType::STRUCT_END)
         {
-            // aggregate implicity argument
-
+            // aggregate implicit argument
             IGC_ASSERT_MESSAGE(0, "wrong location for this kind of argument type");
 
         }
@@ -724,32 +702,31 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
                 return;
             }
 
-            ImplicitArg::ArgValSet argSet = argPair.second;
-            ImplicitArg::ArgValSet * setx = &retD.ArgsMaps[argId];
+            ImplicitArg::ArgValSet &setx = retD.ArgsMaps[argId];
 
             // loop all image arguments on the sub-funtion.
-            for (const auto& argI : argSet)
+            for (const auto& argI : argPair.second)
             {
                 // find it from calling instruction, and trace it back to parent function argument
                 Value* callArg = ValueTracker::track(cInst, argI);
-                Argument* const arg = dyn_cast<Argument>(callArg);
+                const Argument* arg = dyn_cast<Argument>(callArg);
                 IGC_ASSERT_MESSAGE(nullptr != arg, "Not supported");
-                setx->insert(arg->getArgNo());
+                setx.insert(arg->getArgNo());
             }
         }
         else
         {
             // unique implicit argument
-            // if not exit, the following line will add one.
-            ImplicitArg::ArgValSet * setx = &retD.ArgsMaps[argId];
-            setx->insert(0);
+            // if doesn't exist, the following line will add one.
+            ImplicitArg::ArgValSet &setx = retD.ArgsMaps[argId];
+            setx.insert(0);
         }
     }
 
     IGC_ASSERT_MESSAGE(0 == argD.StructArgSet.size(), "wrong argument type in user function");
 }
 
-void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(ImplicitArgmentDetail& data, Function * f)
+void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDetail& data, Function * f)
 {
     if (f->hasFnAttribute("referenced-indirectly"))
         return;
@@ -803,7 +780,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(ImplicitArgmentDetail& d
         ImplicitStructArgument info;
         info.DW0.Value = N;
 
-        argMD->setExplicitArgNum(info.DW0.All.argExplictNum);
+        argMD->setExplicitArgNum(info.DW0.All.argExplicitNum);
         argMD->setStructArgOffset(info.DW0.All.argOffset);   // offset
         argMD->setArgId(info.DW0.All.argId);  // type
         funcInfo->addImplicitArgInfoListItem(argMD);
