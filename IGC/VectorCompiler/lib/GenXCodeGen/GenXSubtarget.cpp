@@ -104,27 +104,3 @@ GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
   resetSubtargetFeatures(CPU, FS);
 }
 
-StringRef GenXSubtarget::getEmulateFunction(const Instruction *Inst) const {
-  StringRef EmuFnName;
-  if (!hasIntegerDivision()) {
-    unsigned Opcode = Inst->getOpcode();
-    switch (Opcode) {
-    default:
-      break;
-    case BinaryOperator::SDiv:
-      EmuFnName = "__cm_intrinsic_impl_sdiv";
-      break;
-    case BinaryOperator::SRem:
-      EmuFnName = "__cm_intrinsic_impl_srem";
-      break;
-    case BinaryOperator::UDiv:
-      EmuFnName = "__cm_intrinsic_impl_udiv";
-      break;
-    case BinaryOperator::URem:
-      EmuFnName = "__cm_intrinsic_impl_urem";
-      break;
-    }
-  }
-  return EmuFnName;
-}
-

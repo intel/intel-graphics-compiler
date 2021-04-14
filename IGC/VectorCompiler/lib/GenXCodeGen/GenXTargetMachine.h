@@ -161,6 +161,7 @@ void initializeGenXCoalescingPass(PassRegistry &);
 void initializeGenXDeadVectorRemovalPass(PassRegistry &);
 void initializeGenXDepressurizerPass(PassRegistry &);
 void initializeGenXEarlySimdCFConformancePass(PassRegistry &);
+void initializeGenXEmulationImportPass(PassRegistry &);
 void initializeGenXEmulatePass(PassRegistry &);
 void initializeGenXExtractVectorizerPass(PassRegistry &);
 void initializeGenXFuncBalingPass(PassRegistry &);

@@ -88,6 +88,7 @@ FunctionPass *createGenXFuncBalingPass(BalingKind Kind, GenXSubtarget *ST);
 FunctionPass *createGenXPrologEpilogInsertionPass();
 FunctionPass *createGenXLegalizationPass();
 ModulePass *createGenXEmulatePass();
+ModulePass *createGenXEmulationImportPass();
 FunctionPass *createGenXDeadVectorRemovalPass();
 FunctionPass *createGenXPatternMatchPass(const TargetOptions *Options);
 FunctionPass *createGenXPostLegalizationPass();

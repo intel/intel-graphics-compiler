@@ -36,6 +36,7 @@ inline constexpr const char DebuggableKernels[] = "VC.Debug.Enable";
 
 namespace FunctionMD {
 inline constexpr const char GenXKernelInternal[] = "genx.kernel.internal";
+inline constexpr const char VCEmulationRoutine[] = "VC.Emulation.Routine";
 }
 
 namespace InstMD {

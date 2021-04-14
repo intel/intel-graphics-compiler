@@ -81,6 +81,10 @@ IN THE SOFTWARE.
 
 using namespace llvm;
 
+static cl::opt<bool> ExperimentalEnforceLateEmulationImports(
+    "vc-experimental-emulation-late-imports", cl::init(false), cl::Hidden,
+    cl::desc("Import of some emulation BiF shall be deferred (experimental)"));
+
 static cl::opt<bool> EmitVLoadStore(
     "genx-emit-vldst", cl::init(true), cl::Hidden,
     cl::desc("Emit load/store intrinsic calls for pass-by-ref arguments"));
@@ -106,6 +110,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXDeadVectorRemovalPass(registry);
   initializeGenXDepressurizerPass(registry);
   initializeGenXEarlySimdCFConformancePass(registry);
+  initializeGenXEmulationImportPass(registry);
   initializeGenXEmulatePass(registry);
   initializeGenXExtractVectorizerPass(registry);
   initializeGenXFuncBalingPass(registry);
@@ -310,6 +315,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   PM.add(createGenXInstCombineCleanup());
 
+  if (!ExperimentalEnforceLateEmulationImports)
+    PM.add(createGenXEmulationImportPass());
+
   PM.add(createGenXLowerJmpTableSwitchPass());
   /// LowerSwitch
   /// -----------
@@ -391,6 +399,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createGenXFuncBalingPass(BalingKind::BK_Legalization, &Subtarget));
   /// .. include:: GenXLegalization.cpp
   PM.add(createGenXLegalizationPass());
+  if (ExperimentalEnforceLateEmulationImports)
+    PM.add(createGenXEmulationImportPass());
   /// .. include:: GenXEmulate.cpp
   PM.add(createGenXEmulatePass());
   /// .. include:: GenXDeadVectorRemoval.cpp

@@ -41,16 +41,24 @@ IN THE SOFTWARE.
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 
-#include "llvm/Analysis/TargetFolder.h"
-#include "llvm/CodeGen/TargetPassConfig.h"
+#include "vc/BiF/Tools.h"
+#include "vc/GenXCodeGen/GenXInternalMetadata.h"
+#include "vc/GenXOpts/Utils/BiFTools.h"
+#include "vc/Support/BackendConfig.h"
+
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstVisitor.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Pass.h"
-#include "llvm/Support/Process.h"
-#include "llvm/Support/raw_ostream.h"
+#include "llvm/GenXIntrinsics/GenXMetadata.h"
+
+#include <llvm/Analysis/TargetFolder.h>
+#include <llvm/CodeGen/TargetPassConfig.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Linker/Linker.h>
+#include <llvm/Pass.h>
+#include <llvm/Support/Process.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include "Probe/Assertion.h"
 
@@ -58,6 +66,23 @@ IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace genx;
+
+static constexpr const char *LibraryFunctionPrefix = "__cm_intrinsic_impl_";
+static constexpr const char *EmuLibSDivPrefix = "__cm_intrinsic_impl_sdiv";
+static constexpr const char *EmuLibSRemPrefix = "__cm_intrinsic_impl_srem";
+static constexpr const char *EmuLibUDivPrefix = "__cm_intrinsic_impl_udiv";
+static constexpr const char *EmuLibURemPrefix = "__cm_intrinsic_impl_urem";
+
+static constexpr const char *RoundingRtzSuffix = "__rtz_";
+static constexpr const char *RoundingRteSuffix = "__rte_";
+static constexpr const char *RoundingRtpSuffix = "__rtp_";
+static constexpr const char *RoundingRtnSuffix = "__rtn_";
+
+// TODO: move this to vc-intrinsics`
+static constexpr int VCRoundingRTE = 0;
+static constexpr int VCRoundingRTP = 1 << 4;
+static constexpr int VCRoundingRTN = 2 << 4;
+static constexpr int VCRoundingRTZ = 3 << 4;
 
 namespace {
 
@@ -268,17 +293,15 @@ public:
 
 private:
   Value *emulateInst(Instruction *Inst);
-  Function *getEmulationFunction(Instruction *Inst);
+  Function *getEmulationFunction(Instruction *Inst) const;
+  void buildDivRemCache(Module &M);
+
+  static bool isOldEmulationFunction(const Function *F) {
+    return F->getName().contains("__cm_intrinsic_impl_");
+  }
   // Check if a function is to emulate instructions.
   static bool isEmulationFunction(const Function* F) {
-    if (F->empty())
-      return false;
-    if (F->hasFnAttribute("CMBuiltin"))
-      return true;
-    // FIXME: The above attribute is lost during SPIR-V translation.
-    if (F->getName().contains("__cm_intrinsic_impl_"))
-      return true;
-    return false;
+    return F->hasFnAttribute(genx::FunctionMD::VCEmulationRoutine);
   }
 };
 
@@ -1539,18 +1562,6 @@ GenXEmulate::Emu64Expander::constructShiftInfo(IRBuilder &B, Value *RawSha) {
   return ShiftInfo{Sha, Sh32, Mask1, Mask0};
 }
 
-char GenXEmulate::ID = 0;
-namespace llvm {
-void initializeGenXEmulatePass(PassRegistry &);
-}
-INITIALIZE_PASS_BEGIN(GenXEmulate, "GenXEmulate", "GenXEmulate", false, false)
-INITIALIZE_PASS_END(GenXEmulate, "GenXEmulate", "GenXEmulate", false, false)
-
-ModulePass *llvm::createGenXEmulatePass() {
-  initializeGenXEmulatePass(*PassRegistry::getPassRegistry());
-  return new GenXEmulate;
-}
-
 void GenXEmulate::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
   AU.setPreservesCFG();
@@ -1558,16 +1569,14 @@ void GenXEmulate::getAnalysisUsage(AnalysisUsage &AU) const {
 
 bool GenXEmulate::runOnModule(Module &M) {
   bool Changed = false;
-  EmulationFuns.clear();
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-
-  // TODO: consider just an iteration over instructions
+  buildDivRemCache(M);
 
   // Process non-builtin functions.
   for (auto &F : M.getFunctionList()) {
-    if (!isEmulationFunction(&F))
+    if (!isEmulationFunction(&F) && !isOldEmulationFunction(&F))
       runOnFunction(F);
   }
   Changed |= !ToErase.empty();
@@ -1578,7 +1587,7 @@ bool GenXEmulate::runOnModule(Module &M) {
   // Delete unuse builtins or make used builtins internal.
   for (auto I = M.begin(); I != M.end();) {
     Function &F = *I++;
-    if (isEmulationFunction(&F)) {
+    if (isEmulationFunction(&F) || isOldEmulationFunction(&F)) {
       Changed = true;
       if (F.use_empty())
         F.eraseFromParent();
@@ -1611,40 +1620,60 @@ void GenXEmulate::runOnFunction(Function &F) {
   return;
 }
 
-Function *GenXEmulate::getEmulationFunction(Instruction *Inst) {
+Function *GenXEmulate::getEmulationFunction(Instruction *Inst) const {
+
   unsigned Opcode = Inst->getOpcode();
   Type *Ty = Inst->getType();
   OpType OpAndType = std::make_pair(Opcode, Ty);
 
-  // Check if this emulation function has been cached.
   auto Iter = EmulationFuns.find(OpAndType);
-  if (Iter != EmulationFuns.end())
+  if (Iter != EmulationFuns.end()) {
+    LLVM_DEBUG(dbgs() << "Emulation function: " << Iter->second->getName()
+                      << " shall be used for: " << *Inst << "\n");
     return Iter->second;
-
-  IGC_ASSERT_MESSAGE(ST, "subtarget expected");
-  StringRef EmuFnName = ST->getEmulateFunction(Inst);
-  if (EmuFnName.empty())
-    return nullptr;
-
-  Module *M = Inst->getParent()->getParent()->getParent();
-  for (auto &F : M->getFunctionList()) {
-    if (!isEmulationFunction(&F))
-      continue;
-    if (F.getReturnType() != Inst->getType())
-      continue;
-    StringRef FnName = F.getName();
-    if (FnName.contains(EmuFnName)) {
-      EmulationFuns[OpAndType] = &F;
-      return &F;
-    }
   }
 
   return nullptr;
 }
 
+void GenXEmulate::buildDivRemCache(Module &M) {
+  EmulationFuns.clear();
+
+  IGC_ASSERT(ST);
+  bool HasDivRem = ST->hasIntegerDivision();
+
+  if (HasDivRem)
+    return;
+
+  auto UpdateCacheIfMatch = [this](Function &F, StringRef PrefixToMatch,
+                                   unsigned OpCode) {
+    const auto &Name = F.getName();
+    if (!Name.startswith(PrefixToMatch))
+      return false;
+
+    Type *Ty = F.getReturnType();
+    EmulationFuns.insert({{OpCode, Ty}, &F});
+    return true;
+  };
+
+  for (Function &F : M.getFunctionList()) {
+    if (!isEmulationFunction(&F))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibSDivPrefix, BinaryOperator::SDiv))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibSRemPrefix, BinaryOperator::SRem))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibUDivPrefix, BinaryOperator::UDiv))
+      continue;
+    if (UpdateCacheIfMatch(F, EmuLibURemPrefix, BinaryOperator::URem))
+      continue;
+  }
+}
+
 Value *GenXEmulate::emulateInst(Instruction *Inst) {
   Function *EmuFn = getEmulationFunction(Inst);
   if (EmuFn) {
+    IGC_ASSERT(isEmulationFunction(EmuFn));
     IGC_ASSERT_MESSAGE(!isa<CallInst>(Inst), "call emulation not supported yet");
     llvm::IRBuilder<> Builder(Inst);
     SmallVector<Value *, 8> Args(Inst->operands());
@@ -1700,4 +1729,117 @@ Instruction *llvm::genx::emulateI64Operation(const GenXSubtarget *ST,
     break;
   }
   return NewInst;
+}
+char GenXEmulate::ID = 0;
+
+namespace llvm {
+void initializeGenXEmulatePass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXEmulate, "GenXEmulate", "GenXEmulate", false, false)
+INITIALIZE_PASS_END(GenXEmulate, "GenXEmulate", "GenXEmulate", false, false)
+
+ModulePass *llvm::createGenXEmulatePass() {
+  initializeGenXEmulatePass(*PassRegistry::getPassRegistry());
+  return new GenXEmulate;
+}
+
+namespace {
+class GenXEmulationImport : public ModulePass {
+public:
+  static char ID;
+
+  explicit GenXEmulationImport() : ModulePass(ID) {}
+  virtual StringRef getPassName() const { return "GenX Emulation BiF Import"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const {
+    AU.addRequired<TargetPassConfig>();
+    AU.addRequired<GenXBackendConfig>();
+  }
+  bool runOnModule(Module &M) {
+    const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
+                                  .getTM<GenXTargetMachine>()
+                                  .getGenXSubtarget();
+
+    if (!ST.hasIntegerDivision()) {
+      auto ModDivRem32 = LoadDivRem32Lib(M.getContext(), M.getDataLayout(),
+                                         M.getTargetTriple());
+      if (ModDivRem32 && Linker::linkModules(M, std::move(ModDivRem32)))
+        report_fatal_error("Error linking emulation routines");
+    }
+    return true;
+  }
+
+private:
+  static bool IsLibraryFunction(Function &F) {
+    const auto &Name = F.getName();
+    return Name.startswith(LibraryFunctionPrefix);
+  }
+
+  static void DeriveRoundingAttributes(Function &F) {
+
+    IGC_ASSERT(IsLibraryFunction(F));
+
+    const auto &Name = F.getName();
+    if (Name.contains(RoundingRtzSuffix)) {
+      F.addFnAttr(genx::FunctionMD::CMFloatControl,
+                  std::to_string(VCRoundingRTZ));
+      return;
+    }
+    if (Name.contains(RoundingRteSuffix)) {
+      F.addFnAttr(genx::FunctionMD::CMFloatControl,
+                  std::to_string(VCRoundingRTE));
+      return;
+    }
+    if (Name.contains(RoundingRtpSuffix)) {
+      F.addFnAttr(genx::FunctionMD::CMFloatControl,
+                  std::to_string(VCRoundingRTP));
+      return;
+    }
+    if (Name.contains(RoundingRtnSuffix)) {
+      F.addFnAttr(genx::FunctionMD::CMFloatControl,
+                  std::to_string(VCRoundingRTN));
+      return;
+    }
+  }
+
+  std::unique_ptr<Module> LoadDivRem32Lib(LLVMContext &Ctx,
+                                          const DataLayout &DL,
+                                          const std::string &Triple) {
+
+    MemoryBufferRef EmulationBiFBuffer =
+        getAnalysis<GenXBackendConfig>().getBiFModule(BiFKind::VCEmulation);
+
+    // NOTE: to simplify LIT testing it is legal to have an empty buffer
+    if (!EmulationBiFBuffer.getBufferSize())
+      return nullptr;
+
+    auto BiFModule = getBiFModuleOrReportError(EmulationBiFBuffer, Ctx);
+
+    BiFModule->setDataLayout(DL);
+    BiFModule->setTargetTriple(Triple);
+
+    for (Function &F : *BiFModule) {
+      if (!IsLibraryFunction(F))
+        continue;
+
+      F.addFnAttr(genx::FunctionMD::VCEmulationRoutine);
+      DeriveRoundingAttributes(F);
+    }
+
+    return BiFModule;
+  }
+};
+} // namespace
+
+char GenXEmulationImport::ID = 0;
+
+namespace llvm {
+void initializeGenXEmulationImportPass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXEmulationImport, "GenXEmulationImport",
+                      "GenXEmulationImport", false, false)
+INITIALIZE_PASS_END(GenXEmulationImport, "GenXEmulationImport",
+                    "GenXEmulationImport", false, false)
+ModulePass *llvm::createGenXEmulationImportPass() {
+  initializeGenXEmulationImportPass(*PassRegistry::getPassRegistry());
+  return new GenXEmulationImport;
 }

@@ -255,10 +255,6 @@ public:
     return false;
   }
 
-  /// * getEmulateFunction - return the corresponding emulation function name,
-  ///   empty string if no emulation is needed.
-  StringRef getEmulateFunction(const Instruction *Inst) const;
-
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }
 
