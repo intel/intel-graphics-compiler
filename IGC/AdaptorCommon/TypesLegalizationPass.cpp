@@ -254,8 +254,8 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
       }
   }
   else if ((isa<Argument>(val) || isa<CallInst>(val)) &&
-    val->getType()->isStructTy()) {
-    // Handle struct arguments and structs returned by function calls.
+    (val->getType()->isStructTy() || val->getType()->isArrayTy())) {
+    // Handle struct and array types of arguments or call instructions return value
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
   }
