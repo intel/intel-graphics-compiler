@@ -1570,7 +1570,7 @@ namespace //Anonymous
                                 {
                                     if (auto blockDescrStruct = StructValue::get(callInst->getArgOperand(blockArgIdx)->stripPointerCasts()))
                                     {
-                                        if (auto blockInvokeFunc = dyn_cast<llvm::Function>(blockDescrStruct->getValueStoredAtIndex(BLOCK_INDEX_INVOKE_FUNC)))
+                                        if (auto blockInvokeFunc = dyn_cast_or_null<llvm::Function>(blockDescrStruct->getValueStoredAtIndex(BLOCK_INDEX_INVOKE_FUNC)))
                                         {
                                             callInst->setCalledFunction(blockInvokeFunc);
                                             changed = true;

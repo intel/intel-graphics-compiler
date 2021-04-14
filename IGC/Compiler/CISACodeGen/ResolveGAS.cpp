@@ -1245,13 +1245,8 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             continue;
         }
 
-        if (BitCastInst* bitCastInst = dyn_cast<BitCastInst>(inst))
-        {
-            instType = dyn_cast<PointerType>(bitCastInst->getType());
-        }
-        else if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(inst))
-        {
-            instType = dyn_cast<PointerType>(gepInst->getType());
+        if (isa<BitCastInst>(inst) || isa<GetElementPtrInst>(inst) || isa<PHINode>(inst)) {
+            instType = dyn_cast<PointerType>(inst->getType());
         }
 
         if (instType && instType->getAddressSpace() == oldAS)
