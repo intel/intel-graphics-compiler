@@ -96,8 +96,6 @@ set(CODEGEN_SOURCES
   GenXVectorDecomposer.cpp
   GenXVisaRegAlloc.cpp
   GenXVisa.cpp
-  GenXWrapper.cpp
-  SPIRVWrapper.cpp
 )
 
 add_library(VCCodeGen ${CODEGEN_SOURCES})
@@ -114,13 +112,8 @@ target_link_libraries(VCCodeGen
   LLVMGenXIntrinsics
 
   VCHeaders
-  VCOptions
   VCTransforms
   VCTargetInfo
   VCSupport
   GenXDebugInfo
   )
-
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
-  target_link_libraries(VCCodeGen LLVMSPIRVLib)
-endif()

@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (c) 2020-2021 Intel Corporation
+# Copyright (c) 2021-2021 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"),
@@ -22,15 +22,30 @@
 #
 #============================ end_copyright_notice =============================
 
-add_subdirectory(GenXOpts)
-add_subdirectory(GenXCodeGen)
-add_subdirectory(Options)
-add_subdirectory(Support)
-add_subdirectory(BiF)
-add_subdirectory(Driver)
+set(DRIVER_SOURCES
+  Driver.cpp
+  SPIRVWrapper.cpp
+  )
 
-# Plugin support.
-# Only for linux.
-if(LLVM_ON_UNIX)
-  add_subdirectory(BackendPlugin)
+add_library(VCDriver ${DRIVER_SOURCES})
+igc_get_llvm_targets(LLVM_LIBS
+  Analysis
+  BitReader
+  Core
+  Support
+  CodeGen
+  ipo
+  )
+
+target_link_libraries(VCDriver
+  LLVMGenXIntrinsics
+  VCCodeGen
+  VCOptions
+  VCSupport
+
+  ${LLVM_LIBS}
+  )
+
+if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
+  target_link_libraries(VCDriver LLVMSPIRVLib)
 endif()

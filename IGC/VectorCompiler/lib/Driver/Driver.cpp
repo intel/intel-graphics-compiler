@@ -24,11 +24,10 @@ IN THE SOFTWARE.
 
 #include "SPIRVWrapper.h"
 
-#include "llvmWrapper/Target/TargetMachine.h"
+#include "vc/Driver/Driver.h"
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXCodeGen/GenXTarget.h"
-#include "vc/GenXCodeGen/GenXWrapper.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Options/Options.h"
@@ -67,6 +66,8 @@ IN THE SOFTWARE.
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Scalar.h"
+
+#include "llvmWrapper/Target/TargetMachine.h"
 
 #include "Probe/Assertion.h"
 

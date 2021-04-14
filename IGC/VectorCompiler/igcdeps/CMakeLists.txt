@@ -39,7 +39,7 @@ add_library(VCIGCDeps STATIC "")
 target_link_libraries(VCIGCDeps
   VCHeaders
 
-  VCCodeGen
+  VCDriver
   )
 
 if (NOT IGC_OPTION__VC_DISABLE_BIF)

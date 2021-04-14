@@ -29,7 +29,7 @@ IN THE SOFTWARE.
 #include "vc/igcdeps/cmc.h"
 
 #include "vc/BiF/Wrapper.h"
-#include "vc/GenXCodeGen/GenXWrapper.h"
+#include "vc/Driver/Driver.h"
 #include "vc/Support/Status.h"
 
 #include <llvm/ADT/ArrayRef.h>
