@@ -29,11 +29,9 @@ if(NOT TARGET igc_opt)
   message("[check-igc] LIT tests disabled. Missing igc_opt target.")
   return()
 endif()
-
-set(CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR} ${CMAKE_MODULE_PATH})
-include(AddLLVM)
-
-igc_find_external_lit()
+if(NOT IGC_OPTION__ENABLE_LIT_TESTS)
+  return()
+endif()
 
 # Variables set here are used by `configure_file` call and by
 # `add_lit_testsuite` later on.

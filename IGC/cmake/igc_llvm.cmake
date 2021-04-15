@@ -34,6 +34,39 @@ if(NOT IGC_BUILD__LLVM_SOURCES)
   set(IGC_BUILD__LLVM_PREBUILDS ON)
 endif()
 
+# Include commonly used modules.
+set(CMAKE_MODULE_PATH
+  ${LLVM_CMAKE_DIR}
+  ${CMAKE_MODULE_PATH}
+  )
+
+set(LLVM_TABLEGEN_EXE "llvm-tblgen")
+
+include(AddLLVM)
+include(TableGen)
+# Set LLVM_TABLEGEN_FLAGS manually based on include dirs.
+list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLAGS)
+
+# Add major version definition for llvm wrapper.
+add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
+
+# Include LLVM headers as system ones.
+# This will disable warnings on linux.
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
+# Disable warnings from LLVM headers for msvc.
+if(MSVC_IDE)
+  add_compile_options(/experimental:external)
+  foreach(INCDIR IN LISTS LLVM_INCLUDE_DIRS)
+    add_compile_options("SHELL:/external:I ${INCDIR}")
+  endforeach()
+  add_compile_options(/external:W0)
+endif()
+
+if(IGC_OPTION__ENABLE_LIT_TESTS)
+  # Lit testing infrastructure. Find lit tools for tests.
+  igc_find_external_lit()
+endif()
+
 set(IGC_LLVM_COMPONENTS
   "ipo"
   "IRReader"

@@ -24,32 +24,11 @@
 
 
 
-if(LLVM_ON_WIN32)
-  if (MSVC_IDE)
-    add_compile_options(/experimental:external)
-    foreach(INCDIR ${LLVM_INCLUDE_DIRS})
-      add_compile_options("SHELL:/external:I ${INCDIR}")
-    endforeach()
-    add_compile_options(/external:W0)
-  endif()
-
-  # disable 32/64 warnings
-  add_compile_options(/wd4244)
-
-  #  disable unary minus to unsigned type warning
-  add_compile_options(/wd4146)
-
-  # disable implicitly deleted dtor warning
-  add_compile_options(/wd4624)
-endif()
-
 add_library(AdaptorCM INTERFACE)
 
 igc_get_llvm_targets(LLVM_LIBS
   Support
 )
-
-message(STATUS "Linking CMFE with ${LLVM_LIBS}")
 
 target_link_libraries(AdaptorCM
   INTERFACE

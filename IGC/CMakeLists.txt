@@ -67,6 +67,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 # ================================================ UTILS ===============================================
 # ======================================================================================================
 
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
@@ -278,7 +279,7 @@ unset(_allowBifLink)
 # Remove this condition after transition period is over
 option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR "[Experimental] Enable link against Khronos SPIRV-LLVM-Translator, instead of legacy versions" OFF)
 
-
+option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
 
 set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"
     CACHE PATH "Built-in Functions: Root directory where sources for OpenCL builtins are located.")
@@ -361,7 +362,6 @@ message(STATUS "================================================================
 # ======================================================================================================
 
 # =========================================== Helper variables =========================================
-
 
 # We are building IGC.
 set(IGC_BUILD YES)
@@ -1308,10 +1308,6 @@ include_directories(
   "${CIF_INCLUDE_DIR}"
 )
 
-include_directories(
-    "${LLVM_INCLUDE_DIRS}"
-)
-
 if(LLVM_ON_WIN32)
   include_directories(
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d9/api"
@@ -1693,7 +1689,6 @@ list(APPEND _targetLinkLineCommon zebinlib)
         "${_targetLinkLineCommon}"
         "${CMAKE_DL_LIBS}"
       )
-    target_include_directories("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE ${LLVM_INCLUDE_DIRS})
     else()
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
         "${_targetLinkLineCommon}"

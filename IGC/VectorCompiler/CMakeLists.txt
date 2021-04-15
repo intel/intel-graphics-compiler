@@ -41,33 +41,9 @@ set(IGC_BUILD__PROJ_LABEL__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}")
 message(STATUS "+++ Source/IGC/VectorCompiler +++")
 message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 
-# --- LLVM ---
-
-set(CMAKE_MODULE_PATH
-  ${LLVM_CMAKE_DIR}
-  ${CMAKE_MODULE_PATH}
-  )
-
-set(LLVM_TABLEGEN_EXE "llvm-tblgen")
-
-include(AddLLVM)
-include(TableGen)
-# Set LLVM_TABLEGEN_FLAGS manually based on include dirs.
-list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLAGS)
-
 # --- Options ---
 
-add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
-
 if(LLVM_ON_WIN32)
-  if (MSVC_IDE)
-    add_compile_options(/experimental:external)
-    foreach(INCDIR ${LLVM_INCLUDE_DIRS})
-      add_compile_options("SHELL:/external:I ${INCDIR}")
-    endforeach()
-    add_compile_options(/external:W0)
-  endif()
-
   # disable 32/64 warnings
   add_compile_options(/wd4244)
 
