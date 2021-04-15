@@ -42,19 +42,19 @@ static bool hasSameFunctionID(const G4_INST* inst1, const G4_INST* inst2)
 {
     if (inst1->isSend() && inst2->isSend())
     {
-        G4_SendDesc* msgDesc1 = inst1->getMsgDesc();
-        G4_SendDesc* msgDesc2 = inst2->getMsgDesc();
+        G4_SendMsgDescriptor* msgDesc1 = inst1->getMsgDesc();
+        G4_SendMsgDescriptor* msgDesc2 = inst2->getMsgDesc();
 
-        if (msgDesc1->isSLM() && msgDesc2->isSLM())
+        if (msgDesc1->isSLMMessage() && msgDesc2->isSLMMessage())
         {
-            return (msgDesc1->getSFID() == msgDesc2->getSFID());
+            return (msgDesc1->getFuncId() == msgDesc2->getFuncId());
         }
-        else if (msgDesc1->isSLM() || msgDesc2->isSLM())
+        else if (msgDesc1->isSLMMessage() || msgDesc2->isSLMMessage())
         {
             return false;
         }
 
-        return (msgDesc1->getSFID() == msgDesc2->getSFID());
+        return (msgDesc1->getFuncId() == msgDesc2->getFuncId());
     }
     else if (inst1->isSend() || inst2->isSend())
     {
@@ -77,8 +77,8 @@ static bool hasSameFunctionID(const G4_INST* inst1, const G4_INST* inst2)
 static bool isSLMMsg(const G4_INST* inst)
 {
     assert(inst->isSend());
-    const G4_SendDesc* msgDesc = inst->getMsgDesc();
-    if (msgDesc->isSLM())
+    const G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+    if (msgDesc->isSLMMessage())
     {
         return true;
     }
@@ -88,7 +88,7 @@ static bool isSLMMsg(const G4_INST* inst)
 static bool isFence(const G4_INST* inst)
 {
     assert(inst->isSend());
-    const G4_SendDesc* msgDesc = inst->getMsgDesc();
+    const G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
     if (msgDesc->isFence())
     {
         return true;
@@ -230,8 +230,7 @@ static bool operandOverlap(G4_Operand* opnd1, G4_Operand* opnd2)
 }
 
 // Compute the range of registers touched by OPND.
-SBFootprint* G4_BB_SB::getFootprintForGRF(
-    G4_Operand* opnd,
+SBFootprint* G4_BB_SB::getFootprintForGRF(G4_Operand* opnd,
     Gen4_Operand_Number opnd_num,
     G4_INST* inst,
     int startingBucket,
@@ -258,18 +257,18 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
             //
             if (opnd_num == Opnd_src0)
             {
-                RB = LB + numEltPerGRF<Type_UB>() * inst->getMsgDesc()->getSrc0LenRegs() - 1;
+                RB = LB + numEltPerGRF<Type_UB>() * inst->getMsgDesc()->MessageLength() - 1;
             }
 
             if (inst->isSplitSend() &&
                 opnd_num == Opnd_src1)
             {
-                RB = LB + numEltPerGRF<Type_UB>() * inst->getMsgDesc()->getSrc1LenRegs() - 1;
+                RB = LB + numEltPerGRF<Type_UB>() * inst->getMsgDesc()->extMessageLength() - 1;
             }
 
             if (opnd_num == Opnd_dst)
             {
-                int dstSize = inst->getMsgDesc()->getDstLenRegs();
+                int dstSize = inst->getMsgDesc()->ResponseLength();
                 if ((LB / numEltPerGRF<Type_UB>()) < (unsigned short)(totalGRFNum - 1))
                 {
                     RB = LB + numEltPerGRF<Type_UB>() * dstSize - 1;
@@ -864,7 +863,7 @@ static unsigned getRegAccessPipe(G4_INST* Inst) {
     if (Inst->isSend())
     {
         Pipe = FCPatchingInfo::Pipe_Send;
-        SFID = SFIDtoInt(Inst->getMsgDesc()->getSFID()) & 0xF; // 4-bit SFID
+        SFID = SFIDtoInt(Inst->getMsgDesc()->getFuncId()) & 0xF; // 4-bit SFID
     }
     else if (Inst->isMathPipeInst())
     {
@@ -1254,8 +1253,8 @@ unsigned SWSB::getDepDelay(const SBNode* curNode) const
             return TOKEN_AFTER_READ_CYCLE;
         }
 
-        const G4_SendDesc* msgDesc = inst->getMsgDesc();
-        if (msgDesc->isSLM())
+        const G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+        if (msgDesc->isSLMMessage())
         {
             reuseDelay = tokenAfterWriteSendSlmCycle;
         }
@@ -1394,9 +1393,9 @@ bool SWSB::cycleExpired(const SBNode* node, int currentID) const
 {
     if (node->GetInstruction()->isSend())
     {
-        const G4_SendDesc* msgDesc = node->GetInstruction()->getMsgDesc();
+        const G4_SendMsgDescriptor* msgDesc = node->GetInstruction()->getMsgDesc();
 
-        if (msgDesc->isSLM())
+        if (msgDesc->isSLMMessage())
         {
             return tokenAfterWriteSendSlmCycle <= (currentID - node->getLiveStartID());
         }

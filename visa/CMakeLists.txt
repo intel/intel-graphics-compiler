@@ -199,7 +199,6 @@ set(GenX_Common_Sources_External_Other
   FlowGraph.cpp
   G4_BB.cpp
   G4_Kernel.cpp
-  G4_SendDescs.cpp
   G4_Verifier.cpp
   Gen4_IR.cpp
   GraphColor.cpp
@@ -291,7 +290,6 @@ set(GenX_Common_Headers
   G4_BB.hpp
   G4_Kernel.hpp
   G4_Opcode.h
-  G4_SendDescs.hpp
   G4_Verifier.hpp
   GTGPU_RT_ASM_Interface.h
   Gen4_IR.hpp

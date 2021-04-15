@@ -1080,7 +1080,7 @@ int IR_Builder::translateVISARTWrite3DInst(
 
     if (useSplitSend || cpsCounter)
     {
-        G4_SendDescRaw *msgDesc = NULL;
+        G4_SendMsgDescriptor *msgDesc = NULL;
         G4_SrcRegRegion *m0 = NULL;
         bool indirectExDesc = false;
         if (useHeader)
@@ -1102,8 +1102,8 @@ int IR_Builder::translateVISARTWrite3DInst(
             {
                 assert(rtIndex->isImm() && "RTIndex must be imm at this point");
                 uint8_t RTIndex = (uint8_t)rtIndex->asImm()->getImm() & 0x7;
-                uint32_t desc = G4_SendDescRaw::createDesc(fc, false, numRows, 0);
-                uint32_t extDesc = G4_SendDescRaw::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
+                uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, false, numRows, 0);
+                uint32_t extDesc = G4_SendMsgDescriptor::createMRTExtDesc(cntrls.s0aPresent, RTIndex,
                     false, 0, extFuncCtrl);
                 msgDesc = createGeneralMsgDesc(desc, extDesc, SendAccess::WRITE_ONLY, surface);
 
@@ -1463,13 +1463,13 @@ int IR_Builder::splitSampleInst(
         pixelNullMaskEnable, dst->isNullReg());
 
     uint32_t fc = createSamplerMsgDesc(actualop, execSize == getNativeExecSize(), isHalfReturn, halfInput);
-    uint32_t desc = G4_SendDescRaw::createDesc(fc, useHeader, numRows, responseLength);
+    uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, numRows, responseLength);
 
     if (cpsEnable)
     {
         checkCPSEnable(actualop, responseLength, 8);
     }
-    G4_SendDescRaw *msgDesc = createSampleMsgDesc(desc, cpsEnable, 0, surface, sampler);
+    G4_SendMsgDescriptor *msgDesc = createSampleMsgDesc(desc, cpsEnable, 0, surface, sampler);
 
     G4_InstSend* sendInst = nullptr;
     bool forceSplitSend = shouldForceSplitSend(surface);
@@ -1623,7 +1623,7 @@ int IR_Builder::splitSampleInst(
 
         G4_Predicate* pred2 = dupPredicate(pred);
 
-        G4_SendDescRaw *msgDesc2 = createSampleMsgDesc(desc, cpsEnable, 0, surface2, sampler2);
+        G4_SendMsgDescriptor *msgDesc2 = createSampleMsgDesc(desc, cpsEnable, 0, surface2, sampler2);
         msgDesc2->setHeaderPresent(useHeader);
 
         if (forceSplitSend)
@@ -1941,21 +1941,21 @@ int IR_Builder::translateVISASampler3DInst(
     }
 
     uint32_t fc = createSamplerMsgDesc(actualop, execSize == getNativeExecSize(), FP16Return, FP16Input);
-    uint32_t desc = G4_SendDescRaw::createDesc(fc, useHeader, sizes[0], responseLength);
+    uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, sizes[0], responseLength);
 
     G4_InstSend* sendInst = nullptr;
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        G4_SendDescRaw *msgDesc = createSampleMsgDesc(desc, cpsEnable, 0, surface, samplerIdx);
+        G4_SendMsgDescriptor *msgDesc = createSampleMsgDesc(desc, cpsEnable, 0, surface, samplerIdx);
 
         sendInst = Create_Send_Inst_For_CISA(pred, dst, msgs[0], execSize,
             msgDesc, instOpt, false);
     }
     else
     {
-        G4_SendDescRaw *msgDesc = createSampleMsgDesc(desc, cpsEnable, sizes[1], surface, samplerIdx);
+        G4_SendMsgDescriptor *msgDesc = createSampleMsgDesc(desc, cpsEnable, sizes[1], surface, samplerIdx);
         sendInst = Create_SplitSend_Inst(pred, dst, msgs[0], msgs[1],
             execSize, msgDesc, instOpt, false);
     }

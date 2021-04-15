@@ -63,12 +63,12 @@ int IR_Builder::translateVISARawSendInst(
     }
     else
     {
-        desc = G4_SendDescRaw::createDesc(0, false, numSrc, numDst);
+        desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
         isValidFuncCtrl = false;
     }
 
     // bit[0-3] of the exDesc (always imm) holds the SFID
-    G4_SendDescRaw *sendMsgDesc = createSendMsgDesc(
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(
         intToSFID(exDesc & 0xF), desc, exDesc, 0,
         getSendAccessType(isRead, isWrite), nullptr, isValidFuncCtrl);
 
@@ -132,7 +132,7 @@ int IR_Builder::translateVISARawSendsInst(
 
         if (exDescVal == 0)
         {
-            exDescVal = G4_SendDescRaw::createExtDesc(intToSFID(ffid), false, numSrc1);
+            exDescVal = G4_SendMsgDescriptor::createExtDesc(intToSFID(ffid), false, numSrc1);
         }
     }
 
@@ -144,11 +144,11 @@ int IR_Builder::translateVISARawSendsInst(
     }
     else
     {
-        descVal = G4_SendDescRaw::createDesc(0, false, numSrc0, numDst);
+        descVal = G4_SendMsgDescriptor::createDesc(0, false, numSrc0, numDst);
         isValidFuncCtrl = false;
     }
 
-    G4_SendDescRaw * sendMsgDesc = createSendMsgDesc(
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(
         intToSFID(ffid), descVal, exDescVal, numSrc1,
         SendAccess::READ_WRITE, nullptr, isValidFuncCtrl);
 

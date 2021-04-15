@@ -735,12 +735,12 @@ void LinearScanRA::preRAAnalysis()
                 {
                     if (inst->isSend() || inst->isSplitSend())
                     {
-                        maxSendReg = ((int)inst->getMsgDesc()->getDstLenRegs() > maxSendReg) ?
-                            ((int)inst->getMsgDesc()->getDstLenRegs()) : maxSendReg;
-                        maxSendReg = ((int)inst->getMsgDesc()->getSrc0LenRegs() > maxSendReg) ?
-                            ((int)inst->getMsgDesc()->getSrc0LenRegs()) : maxSendReg;
-                        maxSendReg = ((int)inst->getMsgDesc()->getSrc1LenRegs() > maxSendReg) ?
-                            ((int)inst->getMsgDesc()->getSrc1LenRegs()) : maxSendReg;
+                        maxSendReg = (inst->getMsgDesc()->ResponseLength() > maxSendReg) ?
+                            (inst->getMsgDesc()->ResponseLength()) : maxSendReg;
+                        maxSendReg = (inst->getMsgDesc()->MessageLength() > maxSendReg) ?
+                            (inst->getMsgDesc()->MessageLength()) : maxSendReg;
+                        maxSendReg = (inst->getMsgDesc()->extMessageLength() > maxSendReg) ?
+                            (inst->getMsgDesc()->extMessageLength()) : maxSendReg;
                     }
                 }
             }

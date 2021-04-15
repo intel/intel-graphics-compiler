@@ -1154,18 +1154,15 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                     {
                         G4_InstSend* secondToLastInst = bb->back()->asSendInst();
                         if (secondToLastInst && secondToLastInst->canBeEOT() &&
-                            !(secondToLastInst->getMsgDesc()->getSrc1LenRegs() > 2 &&
+                            !(secondToLastInst->getMsgDesc()->extMessageLength() > 2 &&
                                 VISA_WA_CHECK(builder->getPWaTable(), WaSendsSrc1SizeLimitWhenEOT)))
                         {
-                            G4_SendDescRaw *rawDesc = secondToLastInst->getMsgDescRaw();
-                            MUST_BE_TRUE(rawDesc, "expected raw descriptor");
-                            rawDesc->setEOT();
+                            secondToLastInst->getMsgDesc()->setEOT();
                             if (secondToLastInst->isSplitSend())
                             {
                                 if (secondToLastInst->getSrc(3)->isImm())
                                 {
-                                    secondToLastInst->setSrc(
-                                        builder->createImm(rawDesc->getExtendedDesc(), Type_UD), 3);
+                                    secondToLastInst->setSrc(builder->createImm(secondToLastInst->getMsgDesc()->getExtendedDesc(), Type_UD), 3);
                                 }
                             }
                             needsEOTSend = false;

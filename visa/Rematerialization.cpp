@@ -127,9 +127,8 @@ namespace vISA
 
                 if (samplerHeaderMov &&
                     inst->isSplitSend() &&
-                    inst->getMsgDesc()->isSampler() &&
-                    inst->getMsgDescRaw() &&
-                    inst->getMsgDescRaw()->isHeaderPresent())
+                    inst->getMsgDesc()->getFuncId() == SFID::SAMPLER &&
+                    inst->getMsgDesc()->isHeaderPresent())
                 {
                     MUST_BE_TRUE(samplerHeaderMov->getExecSize() == 1, "Unexpected sampler header");
                     samplerHeaderMap.insert(std::make_pair(inst, samplerHeaderMov));
@@ -171,7 +170,7 @@ namespace vISA
             auto inst = (*instIt);
 
             if (inst->isSplitSend() &&
-                inst->getMsgDesc()->isSampler())
+                inst->getMsgDesc()->getFuncId() == SFID::SAMPLER)
             {
                 auto samplerHeaderInstIt = samplerHeaderMap.find(inst);
 
@@ -326,9 +325,8 @@ namespace vISA
                 auto inst = (*instIt);
 
                 if (inst->isSplitSend() &&
-                    inst->getMsgDesc()->isSampler() &&
-                    inst->getMsgDescRaw() &&
-                    inst->getMsgDescRaw()->isHeaderPresent())
+                    inst->getMsgDesc()->getFuncId() == SFID::SAMPLER &&
+                    inst->getMsgDesc()->isHeaderPresent())
                 {
                     toErase = bb->end();
                 }
@@ -681,7 +679,7 @@ namespace vISA
 
                 // Run separate checks for sampler
                 if (uniqueDefInst->isSplitSend() &&
-                    uniqueDefInst->getMsgDesc()->isSampler() &&
+                    uniqueDefInst->getMsgDesc()->getFuncId() == SFID::SAMPLER &&
                     uniqueDefInst->getSrc(2)->isImm() &&
                     uniqueDefInst->getSrc(3)->isImm())
                 {
@@ -698,7 +696,7 @@ namespace vISA
                     // both src operands.
 
                     // Ensure resLen > extMsgLen to make rematerialization profitable.
-                    unsigned len = uniqueDefInst->getMsgDesc()->getSrc1LenRegs();
+                    unsigned int len = uniqueDefInst->getMsgDesc()->extMessageLength();
 
                     // For Sanity, just verify V53 has defs before sampler send only.
                     auto extMsgOpnd = uniqueDefInst->getSrc(1);
@@ -713,11 +711,10 @@ namespace vISA
 
                     bool samplerHeaderNotUsed = uniqueDefInst->getSrc(0)->asSrcRegRegion()->getTopDcl() != kernel.fg.builder->getBuiltinSamplerHeader();
 
-                    if (!uniqueDefInst->getMsgDescRaw() ||
-                        !uniqueDefInst->getMsgDescRaw()->isHeaderPresent() ||
+                    if (!uniqueDefInst->getMsgDesc()->isHeaderPresent() ||
                         samplerHeaderNotUsed)
                     {
-                        len += uniqueDefInst->getMsgDesc()->getSrc0LenRegs();
+                        len += uniqueDefInst->getMsgDesc()->MessageLength();
 
                         auto msgOpnd = uniqueDefInst->getSrc(0);
                         if (!areAllDefsInBB(msgOpnd->asSrcRegRegion()->getTopDcl(), uniqueDefBB, uniqueDefInst->getLexicalId()))
@@ -725,7 +722,7 @@ namespace vISA
 
                         if (liveness.isLiveAtExit(bb, msgOpnd->getTopDcl()->getRegVar()->getId()) ||
                             getLastUseLexId(msgOpnd->getTopDcl()) >= srcLexId)
-                            len -= uniqueDefInst->getMsgDesc()->getSrc0LenRegs();
+                            len -= uniqueDefInst->getMsgDesc()->MessageLength();
                     }
 
                     if (samplerHeaderNotUsed)
@@ -763,7 +760,7 @@ namespace vISA
 
                     if (liveness.isLiveAtExit(bb, extMsgOpnd->getTopDcl()->getRegVar()->getId()) ||
                         getLastUseLexId(extMsgOpnd->getTopDcl()) >= srcLexId)
-                        len -= uniqueDefInst->getMsgDesc()->getSrc1LenRegs();
+                        len -= uniqueDefInst->getMsgDesc()->extMessageLength();
 
                     if (refs.rowsUsed.size() <= len)
                         return false;
@@ -850,9 +847,7 @@ namespace vISA
         return true;
     }
 
-    G4_SrcRegRegion* Rematerialization::rematerialize(
-        G4_SrcRegRegion* src, G4_BB* bb, const Reference* uniqueDef,
-        std::list<G4_INST*>& newInst, G4_INST*& cacheInst)
+    G4_SrcRegRegion* Rematerialization::rematerialize(G4_SrcRegRegion* src, G4_BB* bb, const Reference* uniqueDef, std::list<G4_INST*>& newInst, G4_INST*& cacheInst)
     {
         // op1 (8) A   B   C
         // ...
@@ -868,7 +863,7 @@ namespace vISA
 
         auto dstInst = uniqueDef->first;
         auto dst = dstInst->getDst();
-        bool isSampler = dstInst->isSplitSend() && dstInst->getMsgDesc()->isSampler();
+        bool isSampler = dstInst->isSplitSend() && dstInst->getMsgDesc()->getFuncId() == SFID::SAMPLER;
 
         for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
         {
@@ -968,12 +963,8 @@ namespace vISA
             auto samplerDstRgn = kernel.fg.builder->createDst(samplerDst->getRegVar(), 0,
                 0, 1, samplerDst->getElemType());
 
-            auto dstMsgDesc = dstInst->getMsgDescRaw();
-            // TODO: this may not hold when we start using load/store descriptors
-            MUST_BE_TRUE(dstMsgDesc, "expected raw descriptor");
-
-            auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(
-                dstMsgDesc->getDesc(),
+            auto dstMsgDesc = dstInst->getMsgDesc();
+            auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(dstMsgDesc->getDesc(),
                 dstMsgDesc->getExtendedDesc(), dstMsgDesc->getAccess(),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getBti()),
                 kernel.fg.builder->duplicateOperand(dstMsgDesc->getSti()));
@@ -1072,7 +1063,7 @@ namespace vISA
             for (auto inst : *bb)
             {
                 if (inst->isSplitSend() &&
-                    inst->getMsgDesc()->isSampler())
+                    inst->getMsgDesc()->getFuncId() == SFID::SAMPLER)
                 {
                     numSampler++;
                 }

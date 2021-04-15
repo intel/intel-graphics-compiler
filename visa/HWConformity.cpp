@@ -4868,7 +4868,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             // we have to ensure they are all 2GRF-aligned
             G4_Declare* src0Dcl = inst->getSrc(0)->getTopDcl();
             // ToDo: check if dst/src1 may also exhibit such size mismatch
-            bool sizeMismatch = inst->getMsgDesc()->getSrc0LenRegs() == 2 &&
+            bool sizeMismatch = inst->getMsgDesc()->MessageLength() == 2 &&
                 (src0Dcl && src0Dcl->getRootDeclare()->getByteSize() < 2u * numEltPerGRF<Type_UB>());
             auto doEvenAlign = [](G4_Declare* dcl)
             {
@@ -4919,7 +4919,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
         auto fixSrc = [&](G4_INST* inst, bool isSrc0)
         {
             auto sendSrc = isSrc0 ? inst->getSrc(0)->asSrcRegRegion() : inst->getSrc(1)->asSrcRegRegion();
-            uint16_t rows = isSrc0 ? inst->getMsgDesc()->getSrc0LenRegs() : inst->getMsgDesc()->getSrc1LenRegs();
+            uint16_t rows = isSrc0 ? inst->getMsgDesc()->MessageLength() : inst->getMsgDesc()->extMessageLength();
             G4_Type type = sendSrc->getType();
             G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, GRFALIGN);
 
@@ -4983,9 +4983,9 @@ void HWConformity::fixSendInst(G4_BB* bb)
             bool src1Overlap = inst->isSplitSend() && inst->getDst()->compareOperand(inst->getSrc(1)) != Rel_disjoint;
             if (src0Overlap || src1Overlap)
             {
-                int dstSize = inst->getMsgDesc()->getDstLenRegs();
-                int src0Size = src0Overlap ? inst->getMsgDesc()->getSrc0LenRegs() : 0;
-                int src1Size = src1Overlap ? inst->getMsgDesc()->getSrc1LenRegs() : 0;
+                int dstSize = inst->getMsgDesc()->ResponseLength();
+                int src0Size = src0Overlap ? inst->getMsgDesc()->MessageLength() : 0;
+                int src1Size = src1Overlap ? inst->getMsgDesc()->extMessageLength() : 0;
                 if (inst->getPredicate() || (bb->isDivergent() && !inst->isWriteEnableInst()) || dstSize > src0Size + src1Size)
                 {
                     //copy src0/src1 if inst does not update all channels
