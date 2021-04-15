@@ -303,6 +303,22 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(G4_Operand* opnd,
     return footprint;
 }
 
+bool needBothAcc(IR_Builder& builder, G4_INST* inst, G4_Operand * opnd)
+{
+    switch (opnd->getType())
+    {
+    case Type_F:
+        return inst->getExecSize() == G4_ExecSize(builder.getNativeExecSize() * 2);
+    case Type_HF:
+        return false;
+    case Type_DF:
+        return inst->getExecSize() > G4_ExecSize(builder.getNativeExecSize() / 2);
+    default:
+        return true;
+    }
+}
+
+
 // Compute the range of registers touched by OPND.
 SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
     Gen4_Operand_Number opnd_num,
@@ -327,6 +343,13 @@ SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
         assert(0 && "Bad opnd");
     }
 
+    if (needBothAcc(builder, inst, opnd))
+    {
+        if (((RB - LB + 1) / numEltPerGRF<Type_UB>()) < 2)
+        {
+            RB = LB + numEltPerGRF<Type_UB>() * 2 - 1;
+        }
+    }
     int regNum = 0;
     if (opnd->isDstRegRegion())
         regNum += opnd->asDstRegRegion()->getRegOff();
