@@ -24,7 +24,6 @@ IN THE SOFTWARE.
 
 #pragma once
 
-#include "Compiler/CISACodeGen/DebugInfoData.hpp"
 #include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/helper.h"
@@ -71,6 +70,7 @@ uint64_t GetImmediateVal(llvm::Value* Const);
 e_alignment GetPreferredAlignment(llvm::Value* Val, WIAnalysis* WIA, CodeGenContext* pContext);
 
 class CShaderProgram;
+class DebugInfoData;
 
 ///--------------------------------------------------------------------------------------------------------
 class CShader
@@ -482,12 +482,12 @@ public:
         return symbolMapping;
     }
 
-    llvm::DenseMap<llvm::Value*, CVariable*>& GetGlobalMapping()
+    void SetDebugInfoData(DebugInfoData* DI)
     {
-        return globalSymbolMapping;
+        diData = DI;
     }
 
-    DebugInfoData& GetDebugInfoData();
+    DebugInfoData* GetDebugInfoData() { return diData; }
 
 protected:
     void GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings);
@@ -604,7 +604,7 @@ protected:
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;
 
-    DebugInfoData diData;
+    DebugInfoData* diData = nullptr;
 };
 
 /// This class contains the information for the different SIMD version

@@ -156,7 +156,6 @@ char GASResolving::ID = 0;
 #define PASS_DESC "Resolve generic address space"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-
 namespace IGC {
     IGC_INITIALIZE_PASS_BEGIN(GASResolving, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,
         PASS_ANALYSIS)
