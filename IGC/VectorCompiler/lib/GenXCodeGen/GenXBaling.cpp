@@ -78,6 +78,12 @@ static cl::opt<bool> BaleSelect("bale-select", cl::init(true), cl::Hidden,
 static cl::opt<bool> BaleFNeg("bale-fneg", cl::init(true), cl::Hidden,
                               cl::desc("Bale fneg"));
 
+static cl::opt<bool> BaleIntToPtr("bale-inttoptr", cl::init(true), cl::Hidden,
+                                  cl::desc("Bale inttoptr"));
+
+static cl::opt<bool> BalePtrToInt("bale-ptrtoint", cl::init(true), cl::Hidden,
+                                  cl::desc("Bale ptrtoint"));
+
 //----------------------------------------------------------------------
 // Administrivia for GenXFuncBaling pass
 //
@@ -367,6 +373,16 @@ static int checkModifier(Instruction *Inst)
       return BaleInfo::SEXT;
     }
     break;
+  case Instruction::IntToPtr: {
+    LLVM_DEBUG(llvm::dbgs()
+               << "Instruction " << *Inst << " detected as INTTOPTR\n");
+    return BaleInfo::INTTOPTR;
+  } break;
+  case Instruction::PtrToInt: {
+    LLVM_DEBUG(llvm::dbgs()
+               << "Instruction " << *Inst << " detected as PTRTOINT\n");
+    return BaleInfo::PTRTOINT;
+  } break;
   default:
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_absi:
@@ -433,6 +449,12 @@ bool GenXBaling::operandCanBeBaled(
         break;
     }
   }
+
+  // Always bale in IntToPtr and PtrToInt operands
+  if (Opnd->getOpcode() == Instruction::IntToPtr ||
+      Opnd->getOpcode() == Instruction::PtrToInt)
+    return true;
+
   if (GenXIntrinsic::isRdRegion(Opnd)) {
     // The operand is a rdregion. Check any restrictions.
     // (Note we call isRegionOKForIntrinsic even when Inst is not an
@@ -1316,6 +1338,10 @@ static bool acceptableMainInst(Instruction *Inst) {
   if (Inst->getOpcode() == Instruction::FNeg)
     return BaleFNeg;
 #endif
+  if (Inst->getOpcode() == Instruction::IntToPtr)
+    return BaleIntToPtr;
+  if (Inst->getOpcode() == Instruction::PtrToInt)
+    return BalePtrToInt;
   return false;
 }
 
@@ -2673,6 +2699,8 @@ const char *BaleInfo::getTypeString() const
     case BaleInfo::GSTORE: return "g_store";
     case BaleInfo::SHUFFLEPRED: return "shufflepred";
     case BaleInfo::FADDR: return "faddr";
+    case BaleInfo::INTTOPTR: return "inttoptr";
+    case BaleInfo::PTRTOINT: return "ptrtoint";
     default: return "???";
   }
 }

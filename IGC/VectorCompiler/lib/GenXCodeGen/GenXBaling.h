@@ -257,7 +257,8 @@ struct BaleInfo {
   // rdregion, wrregion, modifier, or main instruction.
   enum { MAININST, WRREGION, SATURATE, NOTMOD, NEGMOD, ABSMOD,
       RDREGION, ADDRADD, ADDROR, FADDR, RDPREDREGION, ALLANY, NOTP, ZEXT, SEXT,
-      SHUFFLEPRED, WRPREDREGION, WRPREDPREDREGION, CMPDST, GSTORE, REGINTR };
+      SHUFFLEPRED, WRPREDREGION, WRPREDPREDREGION, CMPDST, GSTORE, REGINTR, INTTOPTR, PTRTOINT};
+
   uint16_t Type;
   uint16_t Bits; // bitmap of which operands are baled in
   BaleInfo(int Type = MAININST, unsigned Bits = 0) : Type(Type), Bits(Bits) {}

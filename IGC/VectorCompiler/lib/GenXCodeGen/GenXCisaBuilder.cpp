@@ -1465,7 +1465,8 @@ bool GenXKernelBuilder::buildInstruction(Instruction *Inst) {
     Inst = cast<Instruction>(Inst->getOperand(0));
     BI = Baling->getBaleInfo(Inst);
   }
-  if (BI.Type == BaleInfo::REGINTR)
+  if (BI.Type == BaleInfo::REGINTR || BI.Type == BaleInfo::INTTOPTR ||
+      BI.Type == BaleInfo::PTRTOINT)
     return false;
   if (BI.Type == BaleInfo::WRREGION || BI.Type == BaleInfo::WRPREDREGION ||
       BI.Type == BaleInfo::WRPREDPREDREGION) {
@@ -2172,6 +2173,12 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     Signed = UNSIGNED;
     break;
   case BaleInfo::SEXT:
+    Signed = SIGNED;
+    break;
+  case BaleInfo::INTTOPTR:
+    Signed = UNSIGNED;
+    break;
+  case BaleInfo::PTRTOINT:
     Signed = SIGNED;
     break;
   default:
