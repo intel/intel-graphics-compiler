@@ -5785,8 +5785,11 @@ static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, INST_LIST_ITER
 
     if (inst->tokenHonourInstruction())
     {
-        inst->setToken(0);
-
+        inst->setSetToken(0);
+        if (builder->hasEOTWait() && inst->isEOT())
+        {
+            inst->setDistance(1);
+        }
         G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
         syncInst = builder->createSync(G4_sync_nop, src0);
         G4_Operand* opnd = inst->getOperand(Opnd_dst);
