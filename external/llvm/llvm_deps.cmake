@@ -22,32 +22,35 @@
 #
 #============================ end_copyright_notice =============================
 
+# Top level cmake script for handling LLVM and LLVM-based projects.
+# This script will add all LLVM hooks and LLVM script itself. Each of
+# these files will handle Source and Prebuilds mode.
+#
+# There are two kinds of hooks: before LLVM -- source hook -- and
+# after LLVM -- prebuilds hook. Source hook handles mode for one LLVM
+# project and, if Source mode is picked, registers external LLVM project.
+# Prebuild hook handles case when LLVM itself picked Prebuilds mode so
+# external projects were not added to build. In this case if project
+# wants to build from source it should handle build with prebuilt LLVM.
+
+cmake_policy(VERSION 3.13.4)
+
 include_guard(DIRECTORY)
 
-include(llvm_utils.cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_MODULE_PATH})
 
-# Do not build any backends.
-set_llvm_opt(LLVM_TARGETS_TO_BUILD "" CACHE STRING "desc")
+# Get useful macros for llvm hooks.
+include(llvm_utils)
 
-# Required to run LIT tests.
-set_llvm_opt(LLVM_INCLUDE_TOOLS ON CACHE BOOL "desc")
-set_llvm_opt(LLVM_BUILD_TOOLS OFF CACHE BOOL "desc")
-set_llvm_opt(LLVM_INCLUDE_UTILS ON CACHE BOOL "desc")
-set_llvm_opt(LLVM_BUILD_UTILS OFF CACHE BOOL "desc")
+# Include Source hooks.
+# Clang source hook. Currently it unconditionally sets Source mode.
+include(llvm_clang_source_hook)
 
-set_llvm_opt(LLVM_INCLUDE_EXAMPLES OFF CACHE BOOL "desc")
-set_llvm_opt(LLVM_INCLUDE_TESTS OFF CACHE BOOL "desc")
-set_llvm_opt(LLVM_APPEND_VC_REV OFF CACHE BOOL "desc")
-set_llvm_opt(LLVM_ENABLE_THREADS ON CACHE BOOL "desc")
-set_llvm_opt(LLVM_ENABLE_PIC ON CACHE BOOL "desc")
-set_llvm_opt(LLVM_ABI_BREAKING_CHECKS FORCE_OFF CACHE BOOL "desc")
-set_llvm_opt(LLVM_ENABLE_DUMP ON CACHE BOOL "desc")
-set_llvm_opt(LLVM_ENABLE_TERMINFO OFF CACHE BOOL "desc")
+# Process LLVM.
+include(llvm)
 
-set_llvm_opt(LLVM_ENABLE_EH ON CACHE BOOL "desc")
-set_llvm_opt(LLVM_ENABLE_RTTI ON CACHE BOOL "desc")
-if ("${ARCH}" STREQUAL "32")
-  set_llvm_opt(LLVM_BUILD_32_BITS ON CACHE BOOL "desc")
-else()
-  set_llvm_opt(LLVM_BUILD_32_BITS OFF CACHE BOOL "desc")
-endif()
+# Include prebuild hooks after processing LLVM.
+# Currently nothing is here...
+
+# Clean up cmake module path from these scripts.
+list(REMOVE_AT CMAKE_MODULE_PATH 0)

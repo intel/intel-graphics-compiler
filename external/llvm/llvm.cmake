@@ -57,28 +57,26 @@ if(IGC_OPTION__LLVM_MODE AND NOT (IGC_OPTION__LLVM_MODE MATCHES "^(${SOURCE_MODE
   message(FATAL_ERROR "LLVM mode can be only ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty!")
 endif()
 
-set(IGC_LLVM_TOOLS_DIR ${CMAKE_CURRENT_LIST_DIR})
-
 # Get preferred version of LLVM.
-include(${IGC_LLVM_TOOLS_DIR}/llvm_preferred_version.cmake)
+include(llvm_preferred_version)
 set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING "Preferred version of LLVM to use")
 
 # Get default source dir.
-include(${IGC_LLVM_TOOLS_DIR}/llvm_source_path.cmake)
+include(llvm_source_path)
 # Get default prebuild dirs.
-include(${IGC_LLVM_TOOLS_DIR}/llvm_prebuilt_path.cmake)
+include(llvm_prebuilt_path)
 
 # Handle dependent options for Source mode.
 if(IGC_OPTION__LLVM_MODE STREQUAL SOURCE_MODE_NAME)
   option(IGC_OPTION__LLVM_STOCK_SOURCES "Use stock or patched sources" OFF)
-  set(IGC_OPTION__LLVM_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR} CACHE PATH "Path to LLVM sources")
+  set(IGC_OPTION__LLVM_SOURCES_DIR "${DEFAULT_IGC_LLVM_SOURCES_DIR}" CACHE PATH "Path to LLVM sources")
   # Tell the build that we are using sources.
   set(IGC_BUILD__LLVM_SOURCES ON)
 endif()
 
 # Handle dependent options for Prebuild mode.
 if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME)
-  set(LLVM_ROOT ${DEFAULT_IGC_LLVM_PREBUILDS_DIRS} CACHE PATH
+  set(LLVM_ROOT "${DEFAULT_IGC_LLVM_PREBUILDS_DIRS}" CACHE PATH
     "Paths to LLVM prebuild (multiple paths can be specified separated by ;")
   # Return early as only source build is processed here.
   return()
@@ -110,7 +108,7 @@ message(STATUS "[LLVM] LLVM will be built from sources")
 message(STATUS "[LLVM] LLVM sources folder: ${IGC_OPTION__LLVM_SOURCES_DIR}")
 message(STATUS "[LLVM] LLVM sources in stock version: ${IGC_OPTION__LLVM_STOCK_SOURCES}")
 
-add_subdirectory(${IGC_LLVM_TOOLS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
 
 # Some variables are lost after LLVM subdirectory left.
 # Restore them for IGC usage.

@@ -81,3 +81,33 @@ macro(set_llvm_opt opt)
   list(APPEND LLVM_OPTIONS "-D${opt}=${${opt}}")
 endmacro()
 
+# Helper macro to register LLVM external project.
+# proj -- project to register
+# source_dir -- sources of project
+# RELATIVE_TO_LLVM -- whether project is located in LLVM-project tree
+macro(register_llvm_external_project proj source_dir)
+  cmake_parse_arguments(ARG "RELATIVE_TO_LLVM" "" "" ${ARGN})
+  if(ARG_RELATIVE_TO_LLVM)
+    set_property(GLOBAL APPEND PROPERTY IGC_LLVM_PROJECT_${proj}_RELATIVE YES)
+  endif()
+  set_property(GLOBAL APPEND PROPERTY IGC_LLVM_PROJECTS ${proj})
+  set_property(GLOBAL PROPERTY IGC_LLVM_PROJECT_${proj}_DIR ${source_dir})
+endmacro()
+
+# Get registered projects.
+macro(get_llvm_external_projects out)
+  get_property(${out} GLOBAL PROPERTY IGC_LLVM_PROJECTS)
+endmacro()
+
+# Get source dir for LLVM project.
+# proj -- project to get directory for
+# out -- output variable
+# BASE_DIR dir -- if project is RELATIVE_TO_LLVM then use "dir" as a base
+macro(get_llvm_external_project_dir proj out)
+  cmake_parse_arguments(ARG "" "BASE_DIR" "" ${ARGN})
+  get_property(${out} GLOBAL PROPERTY IGC_LLVM_PROJECT_${proj}_DIR)
+  get_property(is_rel GLOBAL PROPERTY IGC_LLVM_PROJECT_${proj}_RELATIVE)
+  if(is_rel AND ARG_BASE_DIR)
+    get_filename_component(${out} ${${out}} ABSOLUTE BASE_DIR ${ARG_BASE_DIR})
+  endif()
+endmacro()

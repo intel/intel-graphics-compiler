@@ -58,10 +58,7 @@ if(NOT DIR_WITH_PATCHES)
 endif()
 
 # Copy stock LLVM sources to IGC_LLVM_SOURCE_DIR to apply patches.
-message(STATUS "[LLVM_PATCHER] : Copying stock LLVM and CLANG sources ${LLVM_SOURCE_URL} to ${IGC_LLVM_SOURCE_DIR}/../")
-message(STATUS "[LLVM_PATCHER] : Copying stock LLVM and CLANG sources ${IGC_OPTION__LLVM_SOURCES_DIR} to ${IGC_LLVM_SOURCE_DIR}")
-execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/.git ${IGC_LLVM_SOURCE_DIR}/../.git)
-execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/clang ${IGC_LLVM_SOURCE_DIR}/../clang)
+message(STATUS "[LLVM_PATCHER] : Copying stock LLVM sources ${IGC_OPTION__LLVM_SOURCES_DIR} to ${IGC_LLVM_SOURCE_DIR}")
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/llvm ${IGC_LLVM_SOURCE_DIR})
 
 message(STATUS "[LLVM_PATCHER] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")

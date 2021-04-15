@@ -34,6 +34,15 @@ find_package(Patch REQUIRED)
 include(llvm_utils.cmake)
 include(llvm_flags.cmake)
 
+# Handle registered projects.
+get_llvm_external_projects(projects)
+set_llvm_opt(LLVM_EXTERNAL_PROJECTS "${projects}" CACHE STRING "LLVM external projects")
+foreach(p IN LISTS projects)
+  get_llvm_external_project_dir(${p} dir BASE_DIR ${IGC_OPTION__LLVM_SOURCES_DIR})
+  string(TOUPPER ${p} up)
+  set_llvm_opt(LLVM_EXTERNAL_${up}_SOURCE_DIR "${dir}" CACHE PATH "Path to ${p} project")
+endforeach()
+
 message(STATUS "[LLVM] : LLVM_SOURCE_URL   = ${IGC_OPTION__LLVM_SOURCES_DIR}")
 message(STATUS "[LLVM] : LLVM_OPTIONS      = ${LLVM_OPTIONS}")
 

@@ -1255,7 +1255,7 @@ endif()
 
 # ==================================== LLVM package ====================================================
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm/llvm.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm/llvm_deps.cmake")
 include(igc_llvm)
 
 # ==================================== WrapperLLVM package =============================================
