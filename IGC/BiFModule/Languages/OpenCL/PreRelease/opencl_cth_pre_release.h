@@ -1507,6 +1507,12 @@ uchar3  __attribute__((overloadable)) intel_bfi(uchar3  base, uchar3  insert, ui
 uchar4  __attribute__((overloadable)) intel_bfi(uchar4  base, uchar4  insert, uint4  offset, uint4  count);
 uchar8  __attribute__((overloadable)) intel_bfi(uchar8  base, uchar8  insert, uint8  offset, uint8  count);
 uchar16 __attribute__((overloadable)) intel_bfi(uchar16 base, uchar16 insert, uint16 offset, uint16 count);
+char   __attribute__((overloadable)) intel_bfi(char   base, char   insert, uint   offset, uint   count);
+char2  __attribute__((overloadable)) intel_bfi(char2  base, char2  insert, uint2  offset, uint2  count);
+char3  __attribute__((overloadable)) intel_bfi(char3  base, char3  insert, uint3  offset, uint3  count);
+char4  __attribute__((overloadable)) intel_bfi(char4  base, char4  insert, uint4  offset, uint4  count);
+char8  __attribute__((overloadable)) intel_bfi(char8  base, char8  insert, uint8  offset, uint8  count);
+char16 __attribute__((overloadable)) intel_bfi(char16 base, char16 insert, uint16 offset, uint16 count);
 
 // bfi i16
 ushort   __attribute__((overloadable)) intel_bfi(ushort   base, ushort   insert, uint   offset, uint   count);
@@ -1515,6 +1521,12 @@ ushort3  __attribute__((overloadable)) intel_bfi(ushort3  base, ushort3  insert,
 ushort4  __attribute__((overloadable)) intel_bfi(ushort4  base, ushort4  insert, uint4  offset, uint4  count);
 ushort8  __attribute__((overloadable)) intel_bfi(ushort8  base, ushort8  insert, uint8  offset, uint8  count);
 ushort16 __attribute__((overloadable)) intel_bfi(ushort16 base, ushort16 insert, uint16 offset, uint16 count);
+short   __attribute__((overloadable)) intel_bfi(short   base, short   insert, uint   offset, uint   count);
+short2  __attribute__((overloadable)) intel_bfi(short2  base, short2  insert, uint2  offset, uint2  count);
+short3  __attribute__((overloadable)) intel_bfi(short3  base, short3  insert, uint3  offset, uint3  count);
+short4  __attribute__((overloadable)) intel_bfi(short4  base, short4  insert, uint4  offset, uint4  count);
+short8  __attribute__((overloadable)) intel_bfi(short8  base, short8  insert, uint8  offset, uint8  count);
+short16 __attribute__((overloadable)) intel_bfi(short16 base, short16 insert, uint16 offset, uint16 count);
 
 // bfi i32
 uint   __attribute__((overloadable)) intel_bfi(uint   base, uint   insert, uint   offset, uint   count);
@@ -1523,6 +1535,12 @@ uint3  __attribute__((overloadable)) intel_bfi(uint3  base, uint3  insert, uint3
 uint4  __attribute__((overloadable)) intel_bfi(uint4  base, uint4  insert, uint4  offset, uint4  count);
 uint8  __attribute__((overloadable)) intel_bfi(uint8  base, uint8  insert, uint8  offset, uint8  count);
 uint16 __attribute__((overloadable)) intel_bfi(uint16 base, uint16 insert, uint16 offset, uint16 count);
+int   __attribute__((overloadable)) intel_bfi(int   base, int   insert, uint   offset, uint   count);
+int2  __attribute__((overloadable)) intel_bfi(int2  base, int2  insert, uint2  offset, uint2  count);
+int3  __attribute__((overloadable)) intel_bfi(int3  base, int3  insert, uint3  offset, uint3  count);
+int4  __attribute__((overloadable)) intel_bfi(int4  base, int4  insert, uint4  offset, uint4  count);
+int8  __attribute__((overloadable)) intel_bfi(int8  base, int8  insert, uint8  offset, uint8  count);
+int16 __attribute__((overloadable)) intel_bfi(int16 base, int16 insert, uint16 offset, uint16 count);
 
 // bfi i64
 ulong   __attribute__((overloadable)) intel_bfi(ulong   base, ulong   insert, uint   offset, uint   count);
@@ -1531,6 +1549,12 @@ ulong3  __attribute__((overloadable)) intel_bfi(ulong3  base, ulong3  insert, ui
 ulong4  __attribute__((overloadable)) intel_bfi(ulong4  base, ulong4  insert, uint4  offset, uint4  count);
 ulong8  __attribute__((overloadable)) intel_bfi(ulong8  base, ulong8  insert, uint8  offset, uint8  count);
 ulong16 __attribute__((overloadable)) intel_bfi(ulong16 base, ulong16 insert, uint16 offset, uint16 count);
+long   __attribute__((overloadable)) intel_bfi(long   base, long   insert, uint   offset, uint   count);
+long2  __attribute__((overloadable)) intel_bfi(long2  base, long2  insert, uint2  offset, uint2  count);
+long3  __attribute__((overloadable)) intel_bfi(long3  base, long3  insert, uint3  offset, uint3  count);
+long4  __attribute__((overloadable)) intel_bfi(long4  base, long4  insert, uint4  offset, uint4  count);
+long8  __attribute__((overloadable)) intel_bfi(long8  base, long8  insert, uint8  offset, uint8  count);
+long16 __attribute__((overloadable)) intel_bfi(long16 base, long16 insert, uint16 offset, uint16 count);
 
 // sbfe i8
 char   __attribute__((overloadable)) intel_sbfe(char   base, uint   offset, uint   count);

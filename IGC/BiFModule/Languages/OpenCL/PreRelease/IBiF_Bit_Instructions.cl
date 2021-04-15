@@ -58,7 +58,11 @@ IN THE SOFTWARE.
   GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, uchar, i8, char)                                                            \
   GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, ushort, i16, short)                                                         \
   GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, uint, i32, int)                                                             \
-  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, ulong, i64, long)
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, ulong, i64, long)                                                           \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, char, i8, char)                                                             \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, short, i16, short)                                                          \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, int, i32, int)                                                              \
+  GEN_DEFINITIONS_BFI_ALL_WIDTHS(FUNC, OP, long, i64, long)
 
 #define GEN_DEFINITION_BFE( FUNC, OP, TYPE1, TYPE2, ABBR_TYPE1, ABBR_TYPE2 ) \
 INLINE TYPE1 OVERLOADABLE FUNC( TYPE1 base, TYPE2 offset, TYPE2 count ) { \
