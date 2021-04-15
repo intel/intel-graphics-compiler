@@ -309,6 +309,12 @@ void CGen8OpenCLProgram::GetZEBinary(
             // IGC_IS_FLAG_ENABLED(ShaderOverride)
 
             // ... Create the debug data binary streams
+
+            if (IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary))
+            {
+                // Copy sections one by one from ELF file to zeBinary with relocations adjusted.
+                zebuilder.addElfSections(pOutput->m_debugDataVISA, pOutput->m_debugDataVISASize);
+            }
         }
     }
 

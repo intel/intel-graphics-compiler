@@ -1318,6 +1318,7 @@ void DwarfDebug::endModule()
     // Finalize the debug info for the module.
     finalizeModuleInfo();
 
+    // Emit visible names into a debug str section.
     emitDebugStr();
 
     // Emit all the DIEs into a debug info section.

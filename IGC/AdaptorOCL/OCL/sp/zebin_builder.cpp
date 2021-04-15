@@ -27,12 +27,14 @@ IN THE SOFTWARE.
 #include "../../../Compiler/CodeGenPublic.h"
 
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/BinaryFormat/ELF.h"
 #include "Probe/Assertion.h"
+#include "llvm/MC/MCELFObjectWriter.h"
 
 using namespace IGC;
 using namespace iOpenCL;
 using namespace zebin;
+using namespace CLElfLib;   // ElfReader related typedefs
+using namespace llvm;
 
 ZEBinaryBuilder::ZEBinaryBuilder(
     const PLATFORM plat, bool is64BitPointer, const IGC::SOpenCLProgramInfo& programInfo,
@@ -509,6 +511,217 @@ void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
     mZEInfoBuilder.addPerThreadPayloadArgument(
         zeinfoKernel.per_thread_payload_arguments,
         PreDefinedAttrGetter::ArgType::local_id, 0, total_size);
+}
+
+// Calculate correct (pure) size of ELF binary, because debugDataSize taken from pOutput->m_debugDataVISASize
+// contains something else.
+// If ELF is validated successfully then return a calculated size. Othwerwise, return 0.
+size_t ZEBinaryBuilder::calcElfSize(void* elfBin, size_t debugDataSize)
+{
+    SElf64Header* elf64Header = (SElf64Header*)elfBin;
+    size_t elfBinSize = 0; // Correct (pure) size of ELF binary to be calculated
+
+    if (debugDataSize == 0)
+    {
+        IGC_ASSERT_MESSAGE(false, "Empty ELF file - nothing to be transfered to zeBinary");
+        return 0; // ELF binary incorrect
+    }
+
+    if ((debugDataSize < ID_IDX_NUM_BYTES) ||
+        (elf64Header->Identity[ID_IDX_MAGIC0] != ELF_MAG0) || (elf64Header->Identity[ID_IDX_MAGIC1] != ELF_MAG1) ||
+        (elf64Header->Identity[ID_IDX_MAGIC2] != ELF_MAG2) || (elf64Header->Identity[ID_IDX_MAGIC3] != ELF_MAG3) ||
+        (elf64Header->Identity[ID_IDX_CLASS] != EH_CLASS_64))
+    {
+        IGC_ASSERT_MESSAGE(false, "ELF file header incorrect - nothing to be transfered to zeBinary");
+        return 0; // ELF binary incorrect
+    }
+
+    size_t idxSectionHdrOffset = 0; // Indexed section header offset
+    SElf64SectionHeader* sectionHeader = NULL;
+
+    // Calculate correct (pure) size of ELF binary, because debugDataSize i.e. pOutput->m_debugDataVISASize
+    // contains something else.
+    elfBinSize += elf64Header->ElfHeaderSize;
+
+    // ELF binary scanning to calculate a size of elf binary w/o alignment and additional data overhead.
+    for (unsigned int i = 0; i < elf64Header->NumSectionHeaderEntries; i++)
+    {
+        idxSectionHdrOffset = (size_t)elf64Header->SectionHeadersOffset + (i * elf64Header->SectionHeaderEntrySize);
+        sectionHeader = (SElf64SectionHeader*)((char*)elf64Header + idxSectionHdrOffset);
+
+        // Tally up the sizes
+        elfBinSize += (size_t)sectionHeader->DataSize;
+        elfBinSize += (size_t)elf64Header->SectionHeaderEntrySize;
+    }
+
+    return elfBinSize;
+}
+
+// Finds a symbol name in ELF binary and returns a symbol entry
+// that will later be transformed to ZE binary format
+void ZEBinaryBuilder::getElfSymbol(CElfReader* elfReader, const unsigned int symtabIdx, ELF::Elf64_Sym &symtabEntry,
+    char* &symName)
+{
+    IGC_ASSERT_MESSAGE(elfReader->GetElfHeader()->SectionHeaderEntrySize == 64, "ELF entry size 64 supported only");
+
+    // To find a symbol name for example for relocation first we have to do
+    // a lookup into .symtab (to find an index of the string in the .strtab)
+    // then we have to find this name in .strtab.
+
+    // Get data of .symtab and .strtab sections in ELF binary.
+    char* symtabData = NULL;
+    size_t symtabDataSize = 0;
+    elfReader->GetSectionData(".symtab", symtabData, symtabDataSize);
+    char* strtabData = NULL;
+    size_t strtabDataSize = 0;
+    elfReader->GetSectionData(".strtab", strtabData, strtabDataSize);
+
+    if (!symtabData || !strtabData)
+    {
+        return;
+    }
+
+    // Perform lookup into .symtab.
+    unsigned int symtabEntrySize = sizeof(llvm::ELF::Elf64_Sym);
+    symtabEntry = *(llvm::ELF::Elf64_Sym*)(symtabData + symtabIdx * symtabEntrySize);
+
+    // Then find the name in .strtab (String Table), where data may look as showed below:
+    //  .debug_abbrev .text.stackcall .debug_ranges .debug_str .debug_info
+    // ^NULL         ^NULL           ^NULL         ^NULL      ^NULL       ^NULL
+    //
+    // Each symtab entry contains 'st_shndx' filed, which is an index of a name (not a byte offset)
+    // located in the String Table. To find for example a symbol name indexed as 3, the 3rd NULL
+    // character must be found in the String Table, which is followed by the name of this symbol
+    // ('.debug_ranges' in the example above).
+
+    unsigned int ndx = symtabEntry.st_shndx; // No. of NULL characters to be skipped in .strtab
+    while (ndx--)              // Iterate thru names/strings from the beginning of .strtab data
+    {
+        while (*strtabData++); // Find \0 terminator at the end of a given name
+        strtabData++;          // Move a pointer to the first character of the next name
+    }
+    strtabData--;              // When a symbol name found, location of the \0 terminator is returned
+                               // (not location of a name following this)
+    symName = strtabData;
+}
+
+// Copy every section of ELF file (a buffer in memory) to zeBinary
+void ZEBinaryBuilder::addElfSections(void* elfBin, size_t debugDataSize)
+{
+    // Correct (pure) size of ELF binary to be calculated
+    size_t elfBinSize = calcElfSize(elfBin, debugDataSize);
+    if (!elfBinSize)
+    {
+        return; // ELF file incorrect
+    }
+
+    SElf64Header* elf64Header = (SElf64Header*)elfBin;
+    size_t entrySize = elf64Header->SectionHeaderEntrySize;  // Get the section header entry size
+
+    CElfReader* elfReader = CElfReader::Create((char*)elfBin, elfBinSize);
+    RAIIElf ElfObj(elfReader);
+
+    if (!elfReader || !elfReader->IsValidElf64(elfBin, elfBinSize))
+    {
+        IGC_ASSERT_MESSAGE(false, "ELF file invalid - nothing to be transfered to zeBinary");
+        return;
+    }
+
+    // Find .strtab and .symtab sections in ELF binary.
+    const SElf64SectionHeader* strtabSectionHeader = elfReader->GetSectionHeader(".strtab");
+    const SElf64SectionHeader* symtabSectionHeader = elfReader->GetSectionHeader(".symtab");
+
+    if (!strtabSectionHeader || !symtabSectionHeader)
+    {
+        IGC_ASSERT_MESSAGE(false, "Some ELF file sections not found - nothing to be transfered to zeBinary");
+        return;
+    }
+
+    ZEELFObjectBuilder::SectionID zeBinSectionID = 0;
+
+    char* secData = NULL;
+    size_t secDataSize = 0;
+
+    // ELF binary scanning sections with copying whole sections one by one to zeBinary, except:
+    // - empty sections
+    // - Text section
+    // = relocation sections
+    // Also adjusting relocations found in relocation (.rela) sections.
+    // Note:
+    // - 64-bit ELF supported only
+    // - .rel sections not supported
+
+    for (unsigned int elfSectionIdx = 1; elfSectionIdx < elf64Header->NumSectionHeaderEntries; elfSectionIdx++)
+    {
+        if (elfReader->GetSectionData(elfSectionIdx, secData, secDataSize) != SUCCESS)
+        {
+            IGC_ASSERT_MESSAGE(false, "ELF file section data not found");
+            continue;
+        }
+
+        if (secDataSize > 0) //pSectionHeader->DataSize > 0)
+        {
+            // Get section header to filter some section types.
+            const SElf64SectionHeader* sectionHeader = elfReader->GetSectionHeader(elfSectionIdx);
+
+            if (sectionHeader->Type == ELF::SHT_REL)
+            {
+                IGC_ASSERT_MESSAGE(false, "ELF file relocation sections w/o addend not supported");
+                continue;
+            }
+            else if (sectionHeader->Type == ELF::SHT_RELA)
+            {
+                int relocEntrySize = (entrySize == 64) ? sizeof(struct ELF::Elf64_Rela) : sizeof(struct ELF::Elf32_Rela);
+                IGC_ASSERT_MESSAGE((secDataSize % relocEntrySize) == 0, "Incorrect relocation section size");
+                IGC_ASSERT_MESSAGE((entrySize == 64) || (entrySize == 32), "Incorrect relocation entry size");
+
+                if (entrySize == 64)
+                {
+                    uint64_t relocEntryNum = secDataSize / relocEntrySize;
+                    struct ELF::Elf64_Rela relocEntry;
+
+                    for (uint64_t i = 0; i < relocEntryNum; i++)
+                    {
+                        relocEntry = *(struct ELF::Elf64_Rela*)(secData + i * relocEntrySize);
+                        const uint32_t symtabEntrySize = sizeof(ELF::Elf64_Sym);
+                        uint64_t symtabEntryNum = symtabSectionHeader->DataSize / symtabEntrySize;
+
+                        if ((relocEntry.r_info >> 32) < symtabEntryNum)  // index
+                        {
+                            ELF::Elf64_Sym symtabEntry;
+                            char* symName = NULL;
+                            // To find a symbol name of relocation for adding to zeBinary, first we have to do
+                            // a lookup into .symtab then we have to find this name in .strtab.
+                            getElfSymbol(elfReader, relocEntry.r_info >> 32 /*index*/, symtabEntry, symName);
+
+                            vISA::ZESymEntry zeSym(
+                                (vISA::GenSymType)symtabEntry.st_info,
+                                (uint32_t)symtabEntry.st_value,
+                                (uint32_t)symtabEntry.st_size,
+                                symName);  // Symbol's name
+
+                            // If .rela.foo is being processed then find zeBinary section ID of previously added .foo section
+                            ZEELFObjectBuilder::SectionID nonRelaSectionID =
+                                mBuilder.getSectionIDBySectionName(elfReader->GetSectionName(elfSectionIdx) + sizeof(".rela") - 1);
+
+                            mBuilder.addSymbol(zeSym.s_name, zeSym.s_offset, zeSym.s_size, getSymbolElfBinding(zeSym),
+                                getSymbolElfType(zeSym), nonRelaSectionID);
+                            mBuilder.addRelocation(relocEntry.r_offset, zeSym.s_name, R_TYPE_ZEBIN::R_ZE_SYM_ADDR, nonRelaSectionID);
+                        }
+                    }
+                }
+                else // entrySize == 32
+                {
+                    IGC_ASSERT_MESSAGE(false, "ELF 64-bit entry size supported only");
+                }
+            }
+            else if (memcmp(elfReader->GetSectionName(elfSectionIdx), ".text", sizeof(".text") - 1))
+            {
+                // Non-empty, non-relocation and non-text debug section to be copied from ELF to zeBinary.
+                zeBinSectionID = mBuilder.addSectionDebug(elfReader->GetSectionName(elfSectionIdx), (uint8_t*)secData, secDataSize); // no padding, no alignment
+            }
+        }
+    }
 }
 
 void ZEBinaryBuilder::getBinaryObject(llvm::raw_pwrite_stream& os)

@@ -80,6 +80,8 @@ $ export IGC_ShaderDumpEnable=1
 - **EnableGroupScheduleForBC** - Enable bank conflict reduction in scheduling
 - **EnableGTLocationDebugging** - Enables GT location expression emissions for GPU debugger
 - **UseOffsetInLocation** - Using offset in location limits variables available for a debugger all time
+- **ElfDumpEnable** - Dump ELF
+- **EnableElf2ZEBinary** - Enables embed debug info in zeBinary
 - **EnableLivenessDump** - Enable dumping out liveness info on stderr
 - **EnableLTODebug** - Enable debug information for LTO
 - **EnableMaxWGSizeCalculation** - Enable max work group size calculation [OCL only]

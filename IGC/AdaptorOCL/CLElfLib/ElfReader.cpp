@@ -23,6 +23,7 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ===========================*/
 
 #include "ElfReader.h"
+#include "llvm/BinaryFormat/ELF.h"
 #include <string.h>
 
 namespace CLElfLib
@@ -227,6 +228,30 @@ const SElf64SectionHeader* CElfReader::GetSectionHeader(
 
         pSectionHeader = (SElf64SectionHeader*)(
                 (char*)m_pElfHeader + indexedSectionHeaderOffset );
+    }
+
+    return pSectionHeader;
+}
+
+/******************************************************************************\
+ Member Function: GetSectionHeader
+ Description:     Returns a pointer to the requested section header
+\******************************************************************************/
+const SElf64SectionHeader* CElfReader::GetSectionHeader(
+    const char* pSectionName)
+{
+    const SElf64SectionHeader* pSectionHeader = NULL;
+    const char* pCurrentName = NULL;
+
+    for (unsigned int i = 1; i < m_pElfHeader->NumSectionHeaderEntries; i++)
+    {
+        pCurrentName = GetSectionName(i);
+
+        if (pSectionName && (strcmp(pSectionName, pCurrentName) == 0))
+        {
+            pSectionHeader = GetSectionHeader(i);
+            break;
+        }
     }
 
     return pSectionHeader;

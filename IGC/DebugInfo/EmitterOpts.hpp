@@ -38,6 +38,7 @@ namespace IGC
     bool EmitDebugLoc = false;
     bool EmitOffsetInDbgLoc = false;
     bool EnableRelocation = false;
+    bool EnableElf2ZEBinary = false;
     bool EmitPrologueEnd = true;
     bool ScratchOffsetInOW = true;
     bool EmitATLinkageName = true;

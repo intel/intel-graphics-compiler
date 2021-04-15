@@ -27,6 +27,8 @@ IN THE SOFTWARE.
 #include <vector>
 #include <ZEELFObjectBuilder.hpp>
 #include "sp_g8.h"
+#include "llvm/BinaryFormat/ELF.h"
+#include "CLElfLib/ElfReader.h"
 
 namespace IGC
 {
@@ -69,6 +71,14 @@ public:
         unsigned int rawIsaBinarySize,
         const IGC::SOpenCLKernelInfo& annotations,
         const uint32_t grfSize);
+
+    // getElfSymbol - find a symbol name in ELF binary and return a symbol entry
+    // that will later be transformed to ZE binary format
+    void getElfSymbol(CLElfLib::CElfReader* elfReader, const unsigned int symtabIdx, llvm::ELF::Elf64_Sym& symtabEntry,
+        char*& symName);
+
+    /// addElfSections - copy every section of ELF file (a buffer in memory) to zeBinary
+    void addElfSections(void* elfBin, size_t debugDataSize);
 
     /// getBinaryObject - get the final ze object
     void getBinaryObject(llvm::raw_pwrite_stream& os);
@@ -158,6 +168,11 @@ private:
         const USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput);
 
     bool hasSystemThreadSurface(const IGC::OpenCLProgramContext* clContext);
+
+    /// Calculate correct (pure) size of ELF binary, because m_debugDataVISASize in kernel output
+    /// contains something else.
+    size_t calcElfSize(void* elfBin, size_t debugDataSize);
+
 private:
     // mBuilder - Builder of a ZE ELF object
     zebin::ZEELFObjectBuilder mBuilder;

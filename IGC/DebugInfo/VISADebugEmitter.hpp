@@ -99,6 +99,8 @@ namespace IGC
         unsigned int lastGenOff = 0;
 
         void writeProgramHeaderTable(bool is64Bit, void* pBuffer, unsigned int size);
+        void prepareElfForZeBinary(bool is64Bit, char* pElfBuffer, size_t elfBufferSize, size_t kernelNameWithDotSize,
+            size_t* pEndOfDotTextNameInStrtab);
         void setElfType(bool is64Bit, void* pBuffer);
     };
 

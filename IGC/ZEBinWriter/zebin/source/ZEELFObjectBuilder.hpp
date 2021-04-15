@@ -202,6 +202,10 @@ public:
     // return number of written bytes
     uint64_t finalize(llvm::raw_pwrite_stream& os);
 
+    // get an ID of a section
+    // - name  : section name
+    SectionID getSectionIDBySectionName(const char* name);
+
 private:
     class Section {
     public:

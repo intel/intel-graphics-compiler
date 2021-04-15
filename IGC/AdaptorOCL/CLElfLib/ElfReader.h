@@ -62,6 +62,9 @@ public:
     const SElf64SectionHeader* ELF_CALL GetSectionHeader(
         unsigned int sectionIndex );
 
+    const SElf64SectionHeader* ELF_CALL GetSectionHeader(
+        const char* sectionName);
+
     const char* ELF_CALL GetSectionName(
         unsigned int sectionIndex );
 

@@ -320,6 +320,26 @@ uint64_t ZEELFObjectBuilder::finalize(llvm::raw_pwrite_stream& os)
     return w.write();
 }
 
+ZEELFObjectBuilder::SectionID
+ZEELFObjectBuilder::getSectionIDBySectionName(const char* name)
+{
+    for (StandardSection& sect : m_textSections) {
+        if (strcmp(name, sect.m_sectName.c_str()) == 0)
+            return sect.id();
+    }
+    for (StandardSection& sect : m_dataAndbssSections) {
+        if (strcmp(name, sect.m_sectName.c_str()) == 0)
+            return sect.id();
+    }
+    for (StandardSection& sect : m_otherStdSections) {
+        if (strcmp(name, sect.m_sectName.c_str()) == 0)
+            return sect.id();
+    }
+
+    IGC_ASSERT_MESSAGE(0, "getSectionIDBySectionName: section not found");
+    return 0;
+}
+
 std::string ZEELFObjectBuilder::getSectionNameBySectionID(SectionID id)
 {
     // do linear search that we assume there won't be too many sections

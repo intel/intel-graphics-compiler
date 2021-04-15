@@ -52,10 +52,13 @@ IN THE SOFTWARE.
 #include "Probe/Assertion.h"
 #include "secure_mem.h"
 
+#include "CLElfLib/CLElfTypes.h"
+
 #define DEBUG_TYPE "GENX_DEBUG_INFO"
 
 using namespace llvm;
 using namespace IGC;
+using namespace CLElfLib;   // ElfReader related typedefs
 
 IDebugEmitter* IDebugEmitter::Create()
 {
@@ -299,6 +302,7 @@ void DebugEmitter::processCurrentFunction(bool finalize, DbgDecoder* decodedDbg)
 
     m_pDwarfDebug->highPc = lastGenOff;
 }
+
 std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     const std::vector<llvm::DISubprogram*>& DISubprogramNodes)
 {
@@ -348,10 +352,42 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     if (is64Bit)
         phtSize = sizeof(llvm::ELF::Elf64_Phdr);
 
-    std::vector<char> Result(m_str.size() + phtSize);
-    std::copy(m_str.begin(), m_str.end(), Result.begin());
+    unsigned int kernelNameSizeWithDot = 0;
+    if (m_pStreamEmitter->GetEmitterSettings().EnableElf2ZEBinary)
+    {
+        kernelNameSizeWithDot = sizeof('.') + pFunc->getName().size();
+    }
+    size_t elfWithProgramHeaderSize = m_str.size() + phtSize + kernelNameSizeWithDot;
+    std::vector<char> Result(elfWithProgramHeaderSize);
 
-    writeProgramHeaderTable(is64Bit, Result.data(), m_str.size());
+    if (!m_pStreamEmitter->GetEmitterSettings().EnableElf2ZEBinary)
+    {
+        // Text section remains with its standard name .text
+        std::copy(m_str.begin(), m_str.end(), Result.begin());
+    }
+    else
+    {
+        // Text section's name to be extended by a kernel name.
+
+        // How each elf section gets its name? Find the answer in the following function.
+
+        size_t endOfDotTextNameOffset = 0;
+        std::string entryFunctionNameWithDot = "." + pFunc->getName().str();
+        unsigned int kernelNameSizeWithDot = entryFunctionNameWithDot.size();
+        prepareElfForZeBinary(is64Bit, m_str.begin(), m_str.size(), kernelNameSizeWithDot, &endOfDotTextNameOffset);
+
+        // First copy ELF binary from the beginning to the .text name (included) located in the .str.tab
+        std::copy(m_str.begin(), m_str.begin() + endOfDotTextNameOffset, Result.begin());
+        // Next concatenate .text with a kernel name (a dot joining both names also added).
+        std::copy(entryFunctionNameWithDot.data(), entryFunctionNameWithDot.data() + kernelNameSizeWithDot,
+            Result.begin() + endOfDotTextNameOffset);
+        // Finally copy remaining part of ELF binary.
+        std::copy(m_str.begin() + endOfDotTextNameOffset + 1, m_str.end(),
+            Result.begin() + endOfDotTextNameOffset + 1 + kernelNameSizeWithDot);
+    }
+
+    writeProgramHeaderTable(is64Bit, Result.data(), m_str.size() + kernelNameSizeWithDot);
+
     if (m_pVISAModule->isDirectElfInput)
         setElfType(is64Bit, Result.data());
 
@@ -359,6 +395,117 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
     Reset();
 
     return std::move(Result);
+}
+
+void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char* pElfBuffer, size_t elfBufferSize, size_t kernelNameWithDotSize,
+    size_t* pEndOfDotTextNameInStrtab)
+{
+    // ELF binary header contains 'SectionHeadersOffset' (e_shoff in ELF spec.), which is an offset
+    // to section headers placed one by one. A location (index) of the header with names (including section name)
+    // is stored in the ELF binary header at 'SectionNameTableIndex' (e_shstrndx). A section header under this index
+    // contains an offset to location of the String Table data, which may look as showed in the line below:
+    //  .debug_abbrev .text.stackcall .debug_ranges .debug_str .debug_info
+    // ^NULL         ^NULL           ^NULL         ^NULL      ^NULL       ^NULL
+    //
+    // Each section header contain 'Name' (sh_name) fields which is a byte offset to this data showed above.
+    // The String Table is a simple chunk of memory, where the names are placed one by one and separated by NULL (\0).
+    // String Table contains NULL (\0) also at the beginning (i.e. 'Name' equal 0 means no name).
+
+    if (is64Bit)
+    {
+        SElf64Header* pElf64Header = (SElf64Header*)pElfBuffer;
+
+        // First simply validate ELF binary
+        IGC_ASSERT_MESSAGE(pElf64Header &&
+            (pElf64Header->Identity[ID_IDX_MAGIC0] == ELF_MAG0) &&
+            (pElf64Header->Identity[ID_IDX_MAGIC1] == ELF_MAG1) &&
+            (pElf64Header->Identity[ID_IDX_MAGIC2] == ELF_MAG2) &&
+            (pElf64Header->Identity[ID_IDX_MAGIC3] == ELF_MAG3) &&
+            (pElf64Header->Identity[ID_IDX_CLASS] == EH_CLASS_64), "ELF file header incorrect");
+
+        // Using the Section Name Table Index, calculate the offset to the String Table (.strtab) header.
+        size_t entrySize = pElf64Header->SectionHeaderEntrySize;
+        size_t nameSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset + (pElf64Header->SectionNameTableIndex * entrySize);
+        IGC_ASSERT_MESSAGE(pElf64Header->SectionNameTableIndex < pElf64Header->NumSectionHeaderEntries, "ELF header incorrect");
+        IGC_ASSERT_MESSAGE(nameSectionHeaderOffset < elfBufferSize, "ELF header incorrect");
+
+        // Using the offset found above get a header of the String Table section
+        SElf64SectionHeader* pNamesSectionHeader = (SElf64SectionHeader*)((char*)pElf64Header + nameSectionHeaderOffset);
+
+        SElf64SectionHeader* pSectionHeader = NULL;
+        size_t indexedSectionHeaderOffset = 0;
+        Elf64_Word textSectionHeaderName = 0;
+        char* pSectionName = NULL;
+        size_t sectionNameOffset = 0;
+        size_t textSectionNameOffset = 0;
+
+        // Scan section headers to find the Text section using simple section name comparison.
+        for (unsigned int elfSectionIdx = 1; elfSectionIdx < pElf64Header->NumSectionHeaderEntries; elfSectionIdx++)
+        {
+            // Calculate a byte offset to the current section's header
+            indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset + (elfSectionIdx * entrySize);
+
+            // Get a header of the current section
+            pSectionHeader = (SElf64SectionHeader*)((char*)pElf64Header + indexedSectionHeaderOffset);
+
+            // Using the byte offset from the current section's header, find the current section's name
+            // in the String Table.
+            sectionNameOffset = (size_t)pNamesSectionHeader->DataOffset + pSectionHeader->Name;
+            pSectionName = (char*)pElf64Header + sectionNameOffset;
+
+            // Check if the Text section is found.
+            if (pSectionName && (strcmp(pSectionName, ".text") == 0))
+            {
+                textSectionHeaderName = pSectionHeader->Name;   // Remember for the next loop over sections.
+                textSectionNameOffset = sectionNameOffset;      // Remember for the next loop over sections.
+
+                pSectionHeader->DataSize += kernelNameWithDotSize;
+                // Return an offset (from the beginning of ELF binary) to the first character after '.text'
+                *pEndOfDotTextNameInStrtab = sectionNameOffset + sizeof(".text") - 1;
+                break; // Text section found, its location saved.
+            }
+        }
+
+        // Update headers of ELF sections due to a longer Text section name
+        // (i.e. in strtab .text will be replaced with .text.kernelName).
+        // - change location of each section name located after the Text section name in .strtab
+        // - change data offset of each section located after the .strtab section
+        for (unsigned int elfSectionIdx = 1; elfSectionIdx < pElf64Header->NumSectionHeaderEntries; elfSectionIdx++)
+        {
+            indexedSectionHeaderOffset = (size_t)pElf64Header->SectionHeadersOffset + (elfSectionIdx * entrySize);
+
+            pSectionHeader = (SElf64SectionHeader*)((char*)pElf64Header + indexedSectionHeaderOffset);
+            if (pSectionHeader->Name > textSectionHeaderName)
+            {
+                pSectionHeader->Name += kernelNameWithDotSize;
+            }
+            if (pSectionHeader->DataOffset > textSectionNameOffset)
+            {
+                pSectionHeader->DataOffset += kernelNameWithDotSize;
+                // This data offset update may be not enough if such a section contains elf global offsets
+                // (i.e. relative to the beginning of the elf binary).
+                // However, as long as .strtab is the last section in our ELF binary then there is no side-effects.
+                // If location of this section changes in the future, then a copy (or move) of this section content
+                // will be required. This future need must be verified if the assertion below hits (then
+                // assertion below must be changed based on results of such verification).
+                IGC_ASSERT(false);
+            }
+        }
+
+        // ELF binary header also must be updated to reflect offsets changes.
+        if (pElf64Header->SectionHeadersOffset > pSectionHeader->DataOffset)
+        {
+            pElf64Header->SectionHeadersOffset += kernelNameWithDotSize;
+        }
+        if (pElf64Header->ProgramHeadersOffset > pSectionHeader->DataOffset)
+        {
+            pElf64Header->ProgramHeadersOffset += kernelNameWithDotSize;
+        }
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(is64Bit, "64-bit ELF file only supported");
+    }
 }
 
 void DebugEmitter::setElfType(bool is64Bit, void* pBuffer)

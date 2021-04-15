@@ -26,6 +26,7 @@ IN THE SOFTWARE.
 #include "GenCodeGenModule.h"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
+#include "CLElfLib/ElfReader.h"
 
 #include "DebugInfo/ScalarVISAModule.h"
 
@@ -33,6 +34,8 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace std;
+// ElfReader related typedefs
+using namespace CLElfLib;
 
 std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
 
@@ -272,7 +275,7 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
 
     if (!buffer.empty())
     {
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) || IGC_IS_FLAG_ENABLED(ElfDumpEnable))
         {
             std::string debugFileNameStr = IGC::Debug::GetDumpName(m_currShader, "elf");
 
@@ -297,7 +300,6 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
     pOutput->m_debugDataVISA = dbgInfo;
     pOutput->m_debugDataVISASize = dbgInfo ? buffer.size() : 0;
 }
-
 
 // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging
 void DebugInfoData::markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter)
