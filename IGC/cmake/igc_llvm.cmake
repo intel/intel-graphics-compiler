@@ -34,53 +34,41 @@ if(NOT IGC_BUILD__LLVM_SOURCES)
   set(IGC_BUILD__LLVM_PREBUILDS ON)
 endif()
 
-if(LLVM_LINK_LLVM_DYLIB)
-    # LLVM was built and configured in a way that tools (in our case IGC) should be linked
-    # against single LLVM dynamic library.
-    set(IGC_BUILD__LLVM_LIBS_TO_LINK "LLVM")
-    message(STATUS "[IGC] Link against LLVM dynamic library")
-else()
-    # LLVM was built into multiple libraries (static or shared).
-    message(STATUS "[IGC] Link against LLVM static or shared component libs")
+set(IGC_LLVM_COMPONENTS
+  "ipo"
+  "IRReader"
+  "BitWriter"
+  "BinaryFormat"
+  "AsmParser"
+  "BitReader"
+  "Linker"
+  "CodeGen"
+  "ScalarOpts"
+  "TransformUtils"
+  "Analysis"
+  "Target"
+  "ObjCARCOpts"
+  "Vectorize"
+  "Instrumentation"
+  "Object"
+  "MCParser"
+  "ProfileData"
+  "MC"
+  "Core"
+  "Support"
+  "Demangle"
+  )
 
-    # Link targets/dependencies (in required link order).
-    # NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
-    #       there is no longer need to order in most dependant first manner.
-    set(IGC_BUILD__LLVM_LIBS_TO_LINK
-        "LLVMipo"
-        "LLVMIRReader"
-        "LLVMBitWriter"
-        "LLVMBinaryFormat"
-        "LLVMAsmParser"
-        "LLVMBitReader"
-        "LLVMLinker"
-        "LLVMCodeGen"
-        "LLVMScalarOpts"
-        "LLVMTransformUtils"
-        "LLVMAnalysis"
-        "LLVMTarget"
-        "LLVMObjCARCOpts"
-        "LLVMVectorize"
-        "LLVMInstrumentation"
-        "LLVMObject"
-        "LLVMMCParser"
-        "LLVMProfileData"
-        "LLVMMC"
-        "LLVMCore"
-        "LLVMSupport"
-        "LLVMDemangle"
-        )
-
-    if(LLVM_VERSION_MAJOR GREATER_EQUAL 8)
-        list(APPEND IGC_BUILD__LLVM_LIBS_TO_LINK
-          "LLVMInstCombine"
-          )
-    endif()
-
-    if(LLVM_VERSION_MAJOR GREATER_EQUAL 9)
-        list(APPEND IGC_BUILD__LLVM_LIBS_TO_LINK
-          "LLVMBitstreamReader"
-          )
-    endif()
+if(LLVM_VERSION_MAJOR GREATER_EQUAL 8)
+  list(APPEND IGC_LLVM_COMPONENTS
+    "InstCombine"
+    )
 endif()
 
+if(LLVM_VERSION_MAJOR GREATER_EQUAL 9)
+  list(APPEND IGC_LLVM_COMPONENTS
+    "BitstreamReader"
+    )
+endif()
+
+igc_get_llvm_targets(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_LLVM_COMPONENTS})
