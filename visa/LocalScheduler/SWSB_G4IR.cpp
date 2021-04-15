@@ -4013,8 +4013,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode* node,
             hasDistOneAReg = true;
         }
         isAccReg = phyReg->isAccReg();
-        //Disable flag register tracking
-        //isFlagReg = phyReg->isFlag();
+        isFlagReg = phyReg->isFlag();
         break;
     case G4_VarBase::VK_regVar:
         assert(0 && "Should not be a regvar. PhyReg is extracted from regvar.");
