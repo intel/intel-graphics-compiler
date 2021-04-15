@@ -497,8 +497,13 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
       Options.getOption(vc::options::OPT_igcmc).getPrefixedName();
-  if (HasOption(IgcmcOptName))
+  if (HasOption(IgcmcOptName)) {
+    llvm::errs()
+        << "'" << IgcmcOptName
+        << "' option is deprecated and will be removed in the future release. "
+           "Use -vc-codegen instead for compiling from SPIRV.\n";
     return parseOptions(Argv, vc::options::IgcmcApiOption, IsStrictMode);
+  }
 
   return make_error<vc::NotVCError>();
 }
