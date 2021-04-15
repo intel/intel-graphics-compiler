@@ -586,9 +586,9 @@ namespace IGC
             {
                 uint offset = 0;
                 if (GetConstantOffsetForDynamicUniformBuffer(andInst->getOperand(0), offset) &&
-                    offset == 0)
+                    (offset & int_cast<uint>(src1->getZExtValue())) == offset)
                 {
-                    relativeOffsetInBytes = 0;
+                    relativeOffsetInBytes = offset;
                     return true;
                 }
             }
