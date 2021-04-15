@@ -24,8 +24,7 @@ IN THE SOFTWARE.
 
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
-#include "Compiler/CodeGenPublic.h"
-#include "Compiler/CISACodeGen/DebugInfo.hpp"
+#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
 
@@ -105,7 +104,7 @@ namespace IGC {
     return (fullDebugInfo | lineNumbersOnly);
 }
 
-ScalarVisaModule::ScalarVisaModule(CShader* TheShader, Function *TheFunction)
+ScalarVisaModule::ScalarVisaModule(CShader* TheShader, llvm::Function *TheFunction)
   : m_pShader(TheShader), VISAModule(TheFunction) {
   UpdateVisaId();
 }
@@ -122,6 +121,13 @@ std::unique_ptr<IGC::VISAModule> ScalarVisaModule::BuildNew(CShader* S, llvm::Fu
     }
 
     return std::unique_ptr<IGC::VISAModule>(n);
+}
+
+unsigned ScalarVisaModule::getPrivateBaseReg() const
+{
+    auto pVar = privateBase;
+    unsigned privateBaseRegNum = m_pShader->GetDebugInfoData().getVISADclId(pVar, 0);
+    return privateBaseRegNum;;
 }
 
 int ScalarVisaModule::getPTOReg() const {
@@ -556,7 +562,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
     auto globalSubCVar = m_pShader->GetGlobalCVar(pValue);
 
     if (!globalSubCVar) {
-        pVar = m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
+        pVar = m_pShader->GetDebugInfoData().getMapping(*pInst->getFunction(), pValue);
         if (!pVar)
         {
             ret.push_back(VISAVariableLocation(this));
@@ -578,7 +584,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         // so that finalizer can extend their liveness to end of
         // the program. This will help debugger examine their
         // values anywhere in the code till they are in scope.
-        reg = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[0]);
+        reg = m_pShader->GetDebugInfoData().getVISADclId(pVar, 0);
         IGC_ASSERT_MESSAGE(reg < GENERAL_REGISTER_NUM, "Bad VISA general register");
 
         if (pType->isVectorTy())
@@ -598,7 +604,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
         if (GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform())
         {
-            reg2 = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[1]);
+            reg2 = m_pShader->GetDebugInfoData().getVISADclId(pVar, 1);
             ret.push_back(VISAVariableLocation(GENERAL_REGISTER_BEGIN + reg2, true, isDbgDclInst, vectorNumElements, !pVar->IsUniform(), isGlobalAddrSpace, this));
         }
         return ret;
@@ -691,6 +697,24 @@ void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
 bool ScalarVisaModule::IsIntelSymbolTableVoidProgram() const
 {
     return IGC::isIntelSymbolTableVoidProgram(const_cast<llvm::Function*>(GetEntryFunction()));
+}
+
+CVariable* ScalarVisaModule::GetSymbol(const llvm::Instruction* pInst, llvm::Value* pValue) const
+{
+    // CShader's symbols are emptied before compiling a new function.
+    // Whereas debug info emission starts after compilation of all functions.
+    return m_pShader->GetDebugInfoData().getMapping(*pInst->getFunction(), pValue);
+}
+
+int ScalarVisaModule::getDeclarationID(CVariable* pVar, bool isSecondSimd32Instruction) const
+{
+    int varId = isSecondSimd32Instruction ? 1 : 0;
+    if (isSecondSimd32Instruction) {
+        if (!((GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform()))) {
+            return -1; // Cannot get 2nd variable in SIMD32 (?) mode
+        }
+    }
+    return m_pShader->GetDebugInfoData().getVISADclId(pVar, varId);
 }
 
 } // namespace IGC

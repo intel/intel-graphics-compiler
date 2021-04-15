@@ -31,17 +31,7 @@ IN THE SOFTWARE.
 #include "DebugInfo/VISAModule.hpp"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "ShaderCodeGen.hpp"
-#include "common/allocator.h"
-#include "common/debug/Dump.hpp"
-#include "common/igc_regkeys.hpp"
-#include "common/Stats.hpp"
-#include "Compiler/CISACodeGen/helper.h"
-#include "common/secure_mem.h"
-#include "iStdLib/File.h"
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/IGCPassSupport.h"
-#include "Types.hpp"
-#include "ShaderCodeGen.hpp"
 #include "llvm/IR/DIBuilder.h"
 #include "Probe/Assertion.h"
 
@@ -53,42 +43,7 @@ using namespace std;
 namespace IGC
 {
     class DbgDecoder;
-
-    class DebugInfoData
-    {
-    public:
-        llvm::DenseMap<llvm::Function*, VISAModule*> m_VISAModules;
-        // Store mapping of llvm::Value->CVariable per llvm::Function.
-        // The mapping is obtained from CShader at end of EmitVISAPass for F.
-        llvm::DenseMap<const llvm::Function*, llvm::DenseMap<llvm::Value*, CVariable*>> m_FunctionSymbols;
-        CShader* m_pShader = nullptr;
-        IDebugEmitter* m_pDebugEmitter = nullptr;
-
-        static void markOutputPrivateBase(CShader* pShader, IDebugEmitter* pDebugEmitter);
-        static void markOutputVar(CShader* pShader, IDebugEmitter* pDebugEmitter, llvm::Instruction* pInst, const char* pMetaDataName);
-        static void markOutput(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter);
-
-        void markOutputVars(const llvm::Instruction* pInst);
-        void markOutput(llvm::Function& F, CShader* m_currShader);
-
-        void addVISAModule(llvm::Function* F, VISAModule* m)
-        {
-            IGC_ASSERT_MESSAGE(m_VISAModules.find(F) == m_VISAModules.end(), "Reinserting VISA module for function");
-
-            m_VISAModules.insert(std::make_pair(F, m));
-        }
-
-        static bool hasDebugInfo(CShader* pShader)
-        {
-            return pShader->GetContext()->m_instrTypes.hasDebugInfo;
-        }
-
-        void transferMappings(const llvm::Function& F);
-        CVariable* getMapping(const llvm::Function& F, const llvm::Value* V);
-
-    private:
-        std::unordered_set<const CVariable*> m_outputVals;
-    };
+    class CVariable;
 
     class DebugInfoPass : public llvm::ModulePass
     {

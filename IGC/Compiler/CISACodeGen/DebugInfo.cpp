@@ -22,13 +22,12 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#include "DebugInfo.hpp"
 #include "GenCodeGenModule.h"
-#include "common/Types.hpp"
 #include "Probe/Assertion.h"
 #include "CLElfLib/ElfReader.h"
 
 #include "DebugInfo/ScalarVISAModule.h"
+#include "Compiler/CISACodeGen/DebugInfo.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -72,7 +71,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
     {
         auto currShader = shaderProgram->GetShader(m, mode);
-        if (!currShader || !currShader->GetDebugInfoData())
+        if (!currShader || !currShader->GetDebugInfoData().m_pDebugEmitter)
             return (CShader*)nullptr;
 
         if (currShader->ProgramOutput()->m_programSize == 0)
@@ -116,8 +115,8 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         }
 
         bool finalize = false;
-        unsigned int size = m_currShader->GetDebugInfoData()->m_VISAModules.size();
-        m_pDebugEmitter = m_currShader->GetDebugInfoData()->m_pDebugEmitter;
+        unsigned int size = m_currShader->GetDebugInfoData().m_VISAModules.size();
+        m_pDebugEmitter = m_currShader->GetDebugInfoData().m_pDebugEmitter;
         std::vector<std::pair<unsigned int, std::pair<llvm::Function*, IGC::VISAModule*>>> sortedVISAModules;
 
         // Sort modules in order of their placement in binary
@@ -216,7 +215,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             }
         };
 
-        for (auto& m : m_currShader->GetDebugInfoData()->m_VISAModules)
+        for (auto& m : m_currShader->GetDebugInfoData().m_VISAModules)
         {
             setType(m.second);
             auto lastVISAId = getLastGenOff(m.second);
@@ -256,10 +255,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         if (finalize)
         {
             IDebugEmitter::Release(m_pDebugEmitter);
-
-            // destroy VISA builder
-            auto encoder = &(m_currShader->GetEncoder());
-            encoder->DestroyVISABuilder();
         }
     }
 
@@ -278,16 +273,11 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
         if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) || IGC_IS_FLAG_ENABLED(ElfDumpEnable))
         {
             std::string debugFileNameStr = IGC::Debug::GetDumpName(m_currShader, "elf");
-
-            // Try to create the directory for the file (it might not already exist).
-            if (iSTD::ParentDirectoryCreate(debugFileNameStr.c_str()) == 0)
+            FILE* const elfFile = fopen(debugFileNameStr.c_str(), "wb+");
+            if (nullptr != elfFile)
             {
-                void* dbgFile = iSTD::FileOpen(debugFileNameStr.c_str(), "wb+");
-                if (dbgFile != nullptr)
-                {
-                    iSTD::FileWrite(buffer.data(), buffer.size(), 1, dbgFile);
-                    iSTD::FileClose(dbgFile);
-                }
+                fwrite(buffer.data(), buffer.size(), 1, elfFile);
+                fclose(elfFile);
             }
         }
     }
@@ -499,8 +489,29 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
     }
 }
 
+bool IGC::DebugInfoData::hasDebugInfo(CShader* pShader)
+{
+    return pShader->GetContext()->m_instrTypes.hasDebugInfo;
+}
+
 void DebugInfoData::transferMappings(const llvm::Function& F)
 {
+    auto cacheMapping = [this](llvm::DenseMap<llvm::Value*, CVariable*>& Map)
+    {
+        for (auto& mapping : Map)
+        {
+            auto CVar = mapping.second;
+            if (CVar->visaGenVariable[0])
+            {
+                unsigned int lower16Channels = (unsigned int)m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(CVar->visaGenVariable[0]);
+                unsigned int higher16Channels = 0;
+                if (numLanes(m_pShader->m_dispatchSize) == 32 && !CVar->IsUniform() && CVar->visaGenVariable[1])
+                    higher16Channels = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(CVar->visaGenVariable[1]);
+                CVarToVISADclId[CVar] = std::make_pair(lower16Channels, higher16Channels);
+            }
+        }
+    };
+
     // Store llvm::Value->CVariable mappings from CShader.
     // CShader clears these mappings before compiling a new function.
     // Debug info is computed after all functions are compiled.
@@ -508,6 +519,25 @@ void DebugInfoData::transferMappings(const llvm::Function& F)
     // info generation can emit variable locations correctly.
     auto& SymbolMapping = m_pShader->GetSymbolMapping();
     m_FunctionSymbols[&F] = SymbolMapping;
+
+    // VISA builder gets destroyed at end of EmitVISAPass.
+    // Debug info pass is invoked later. We need a way to
+    // preserve mapping of CVariable -> VISA reg# so that
+    // we can emit location information in debug info. This
+    // code below iterates over all CVariable instances and
+    // retrieves and stored their VISA reg# in a map. This
+    // map is later queried by debug info pass.
+    cacheMapping(SymbolMapping);
+
+    auto& GlobalSymbolMapping = m_pShader->GetGlobalMapping();
+    cacheMapping(GlobalSymbolMapping);
+
+    if (m_pShader->hasFP())
+    {
+        auto FP = m_pShader->GetFP();
+        auto VISADclIdx = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(FP->visaGenVariable[0]);
+        CVarToVISADclId[FP] = std::make_pair(VISADclIdx, 0);
+    }
 }
 
 CVariable* DebugInfoData::getMapping(const llvm::Function& F, const llvm::Value* V)

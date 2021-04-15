@@ -22,14 +22,11 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef SCALAR_VISAMODULE_HPP_1YOTGOUE
-#define SCALAR_VISAMODULE_HPP_1YOTGOUE
+#pragma once
 
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
-#include "Compiler/CISACodeGen/DebugInfo.hpp"
-#include "common/debug/Debug.hpp"
 #include "DebugInfo/VISAModule.hpp"
+#include "llvm/IR/Function.h"
 
 namespace IGC {
 
@@ -59,11 +56,8 @@ public:
     bool isLineTableOnly() const override {
       return isLineTableOnly(m_pShader);
     }
-    unsigned getPrivateBaseReg() const override {
-      auto pVar = privateBase;
-      unsigned privateBaseRegNum = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[0]);
-      return privateBaseRegNum;
-    }
+    unsigned getPrivateBaseReg() const override;
+
     unsigned getGRFSize() const override {
       return m_pShader->getGRFSize();
     }
@@ -103,25 +97,13 @@ public:
         return m_pShader->GetGlobalCVar(pValue);
     }
 
-    CVariable* GetSymbol(const llvm::Instruction* pInst, llvm::Value* pValue) const {
-        // CShader's symbols are emptied before compiling a new function.
-        // Whereas debug info emission starts after compilation of all functions.
-        return m_pShader->GetDebugInfoData()->getMapping(*pInst->getFunction(), pValue);
-    }
+    CVariable* GetSymbol(const llvm::Instruction* pInst, llvm::Value* pValue) const;
 
     void setFramePtr(CVariable* pFP) { m_framePtr = pFP; }
 
     CVariable* getFramePtr() const { return m_framePtr; }
 
-    int getDeclarationID(CVariable* pVar, bool isSecondSimd32Instruction) const {
-        int varId = isSecondSimd32Instruction ? 1 : 0;
-        if (isSecondSimd32Instruction) {
-            if (!((GetSIMDSize() == 32 && pVar->visaGenVariable[1] && !pVar->IsUniform()))) {
-                return -1; // Cannot get 2nd variable in SIMD32 (?) mode
-            }
-        }
-        return m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[varId]);
-    }
+    int getDeclarationID(CVariable* pVar, bool isSecondSimd32Instruction) const;
 
     void setPerThreadOffset(llvm::Instruction* perThreadOffset) {
         IGC_ASSERT_MESSAGE(perThreadOffset, "Clear perThreadOffset");
@@ -151,7 +133,7 @@ public:
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the processed entry point function and generated VISA code.
-    explicit ScalarVisaModule (CShader* TheShader, Function *TheFunction);
+    explicit ScalarVisaModule (CShader* TheShader, llvm::Function *TheFunction);
     /// @brief Trace given value to its origin value, searching for LLVM Argument.
     /// @param pVal value to process.
     /// @param isAddress indecates if the value represents an address.
@@ -167,4 +149,3 @@ private:
 
 }
 
-#endif /* end of include guard: SCALAR_VISAMODULE_HPP_1YOTGOUE */

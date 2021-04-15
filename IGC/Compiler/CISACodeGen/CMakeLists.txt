@@ -137,6 +137,7 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/ConstantCoalescing.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CVariable.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DebugInfo.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/DebugInfoData.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DeSSA.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfo.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DomainShaderCodeGen.hpp"

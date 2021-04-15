@@ -39,7 +39,6 @@ IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DomainShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
-#include "DebugInfo.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
@@ -371,6 +370,11 @@ void CShader::CreateImplicitArgs()
     }
 
     CreateAliasVars();
+}
+
+DebugInfoData& IGC::CShader::GetDebugInfoData()
+{
+    return diData;
 }
 
 void CShader::GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings)
