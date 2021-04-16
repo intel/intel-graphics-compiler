@@ -1097,10 +1097,12 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
                                          CI.getType()->isIntegerTy());
   } break;
   case GenXIntrinsic::genx_suadd_sat:
-    report_fatal_error("int_emu: genx_suadd is not supported by VC backend");
+    report_fatal_error(
+        "int_emu: genx_suadd_sat is not supported by VC backend");
     break;
   case GenXIntrinsic::genx_usadd_sat:
-    report_fatal_error("int_emu: genx_usadd is not supported by VC backend");
+    report_fatal_error(
+        "int_emu: genx_usadd_sat is not supported by VC backend");
     break;
   default:
     IGC_ASSERT_MESSAGE(0, "unknown intrinsic passed to saturation add emu");
