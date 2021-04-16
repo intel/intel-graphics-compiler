@@ -53,7 +53,6 @@ namespace IGC
         }
 
         virtual bool runOnModule(llvm::Module& M) override;
-
     };
 
 } // namespace IGC

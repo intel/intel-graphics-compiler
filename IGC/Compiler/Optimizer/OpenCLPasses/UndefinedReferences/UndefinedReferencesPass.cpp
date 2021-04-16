@@ -50,6 +50,11 @@ UndefinedReferencesPass::UndefinedReferencesPass() : ModulePass(ID)
     initializeUndefinedReferencesPassPass(*PassRegistry::getPassRegistry());
 }
 
+static void ReportUndefinedReference(CodeGenContext *CGC, StringRef name, Value *ctx) {
+    llvm::Twine message = llvm::Twine("undefined reference to `") + name + "'";
+    CGC->EmitError(message.str().c_str(), ctx);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // ExistUndefinedReferencesInModule()
@@ -61,20 +66,16 @@ UndefinedReferencesPass::UndefinedReferencesPass() : ModulePass(ID)
 // undefined references and errorMessage will be appended with the appropriate
 // information.
 //
-static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorMessage)
+static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC)
 {
-    raw_string_ostream strStream(errorMessage);
     bool foundUndef = false;
-
-    std::string msg = "undefined reference to `";
-
     Module::global_iterator GVarIter = module.global_begin();
     for (; GVarIter != module.global_end();)
     {
         GlobalVariable* pGVar = &(*GVarIter);
         if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
         {
-            strStream << msg << GVarIter->getName().str() << "'\n";
+            ReportUndefinedReference(CGC, GVarIter->getName(), pGVar);
             foundUndef = true;
         }
 
@@ -107,14 +108,11 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
                 {
                     continue;
                 }
-                strStream << msg << funcName << "()'\n";
+                ReportUndefinedReference(CGC, funcName, &F);
                 foundUndef = true;
             }
         }
     }
-
-    strStream.flush();
-
     return foundUndef;
 }
 
@@ -122,14 +120,7 @@ bool UndefinedReferencesPass::runOnModule(Module& M)
 {
     // At this point all references should have been linked to definitions, any
     // undefined references should generate errors.
-    std::string errorMessage;
-    if (ExistUndefinedReferencesInModule(M, errorMessage))
-    {
-        if (!errorMessage.empty())
-        {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str(), nullptr);
-        }
-    }
-
+    CodeGenContext *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ExistUndefinedReferencesInModule(M, CGC);
     return false;
 }

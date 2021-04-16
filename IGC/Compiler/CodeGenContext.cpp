@@ -802,7 +802,7 @@ namespace IGC
     {
         std::stringstream &ss = this->oclErrorMessage;
 
-        ss << "\nerror :";
+        ss << "\nerror: ";
         ss << errorstr;
         // Try to get debug location to print out the relevant info.
         if (const llvm::Instruction *I = llvm::dyn_cast_or_null<llvm::Instruction>(context)) {
