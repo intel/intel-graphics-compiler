@@ -86,6 +86,22 @@ inline TC::TB_DATA_FORMAT toLegacyFormat(CodeType::CodeType_t format){
     }
 }
 
+struct IGC_State {
+protected:
+    bool isAlive;
+public:
+    IGC_State() {
+        isAlive = true;
+    }
+    ~IGC_State() {
+        isAlive = false;
+    }
+    static const bool isDestructed() {
+        static const IGC_State obj;
+        return !obj.isAlive;
+    }
+};
+
 CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 {
     CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(IgcOclDeviceCtx) *globalState,
@@ -115,6 +131,9 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
                               CIF::Builtins::BufferSimple *outSpecConstantsIds,
                               CIF::Builtins::BufferSimple *outSpecConstantsSizes)
     {
+        if (IGC_State::isDestructed()) {
+            return false;
+        }
         bool success = false;
         const char* pInput = src->GetMemory<char>();
         uint32_t inputSize = static_cast<uint32_t>(src->GetSizeRaw());
@@ -158,6 +177,10 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         auto outputInterface = CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
         if(outputInterface == nullptr){
             return nullptr; // OOM
+        }
+        if (IGC_State::isDestructed()) {
+            outputInterface->GetImpl()->SetError(TranslationErrorType::UnhandledInput, "IGC is destructed");
+            return outputInterface.release();
         }
 
         TC::STB_TranslateInputArgs inputArgs;
