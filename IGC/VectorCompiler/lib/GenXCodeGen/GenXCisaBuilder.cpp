@@ -109,6 +109,11 @@ static cl::opt<bool>
 
 static cl::opt<bool> SkipNoWiden("skip-widen", cl::init(false), cl::Hidden,
                                  cl::desc("Do new emit NoWiden hint"));
+static cl::opt<bool>
+    EnableOptimizedDebug("vc-experimental-finalizer-optimizes-debug",
+                         cl::init(false), cl::Hidden,
+                         cl::desc("Finalizer shall produce optimized code if "
+                                  "debug info is requested"));
 
 /// For VISA_PREDICATE_CONTROL & VISA_PREDICATE_STATE
 template <class T> T &operator^=(T &a, T b) {
@@ -6279,10 +6284,11 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
 
   if (EmitDebugInformation) {
     addArgument("-generateDebugInfo");
-    addArgument("-addKernelID");
-    addArgument("-debug");
+    if (!EnableOptimizedDebug)
+      addArgument("-debug");
   }
   if (EmitDebuggableKernels) {
+    addArgument("-addKernelID");
     addArgument("-setstartbp");
   }
   if (AsmDumpsEnabled) {
