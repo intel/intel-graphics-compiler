@@ -486,6 +486,11 @@
         return false;
     }
 
+    bool hasRegDistDepIssue() const
+    {
+        return false;
+    }
+
     bool doNotRewriteContiguousRegion() const
     {
         return false;
