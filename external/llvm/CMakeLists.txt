@@ -52,8 +52,6 @@ else()
   set(IGC_LLVM_SOURCE_DIR ${IGC_OPTION__LLVM_SOURCES_DIR}/llvm)
 endif()
 
-include(llvm_spirv.cmake)
-
 if(CMAKE_CONFIGURATION_TYPES)
     # Multi-configuration generator.
     set(CMAKE_CONFIGURATION_TYPES "Debug" "Release")

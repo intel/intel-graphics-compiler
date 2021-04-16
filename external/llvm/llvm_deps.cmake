@@ -53,6 +53,9 @@ include(llvm_utils)
 # Clang source hook. Currently it unconditionally sets Source mode.
 include(llvm_clang_source_hook)
 
+# SPIRV translator source hook.
+include(llvm_spirv_source_hook)
+
 # Process LLVM.
 include(llvm)
 
