@@ -76,6 +76,7 @@ DECLARE_IGC_REGKEY(DWORD,SWSBTokenNum,                  0,     "Total tokens use
 DECLARE_IGC_REGKEY(bool, EnableGroupScheduleForBC,      false,  "Enable bank conflict reduction in scheduling.", true)
 DECLARE_IGC_REGKEY(bool, EnableIGASWSB,                 false,  "Use IGA for SWSB", true)
 DECLARE_IGC_REGKEY(bool, EnableSWSBStitch,                 false,  "Insert dependence resolve for kernel stitching", true)
+DECLARE_IGC_REGKEY(bool, SWSBWARFlagOnly,                 true,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, DisableRegDistDep,                 false,  "distable regDist dependence", true)
 DECLARE_IGC_REGKEY(bool, EnableQuickTokenAlloc,                 false,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, SetA0toTdrForSendc,            false,  "Set A0 to tdr0 before each sendc/sendsc", true)
