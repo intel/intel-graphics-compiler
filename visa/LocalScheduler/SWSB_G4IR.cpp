@@ -4218,7 +4218,7 @@ bool G4_BB_SB::getGRFFootPrint(SBNode* node, PointsToAnalysis& p)
     for (G4_INST* inst : node->instVec)
     {
         hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_src0, Opnd_src3, p);
-        hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_pred, Opnd_implAccDst, p);
+        hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_condMod, Opnd_implAccDst, p);
         hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_dst, Opnd_dst, p);
     }
 
@@ -4563,10 +4563,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                         curBucket < totalGRFNum)
                     {//Only need track GRF RAW dependence
                         LB->killOperand(bn_it);
-                        if (curFootprint->fType != FLAG_T || !builder.getOption(vISA_WARFlag))
-                        {
-                            setDistance(curFootprint, node, liveNode, false);
-                        }
+                        setDistance(curFootprint, node, liveNode, false);
                         liveNode->setInstKilled(true);  //Instrtuction level kill
                         instKill = true;
                         continue;
@@ -4590,10 +4587,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     LB->killOperand(bn_it);
                                     killed = true;
                                 }
-                                if (curFootprint->fType != FLAG_T || !builder.getOption(vISA_WARFlag))
-                                {
-                                    setDistance(curFootprint, node, liveNode, true);
-                                }
+                                setDistance(curFootprint, node, liveNode, true);
                                 liveNode->setInstKilled(true); //Instrtuction level kill
                                 instKill = true;
                             }
