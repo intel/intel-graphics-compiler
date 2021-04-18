@@ -492,14 +492,17 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char* pElfBuffer, size_t 
             }
         }
 
-        // ELF binary header also must be updated to reflect offsets changes.
-        if (pElf64Header->SectionHeadersOffset > pSectionHeader->DataOffset)
+        if (pSectionHeader)
         {
-            pElf64Header->SectionHeadersOffset += kernelNameWithDotSize;
-        }
-        if (pElf64Header->ProgramHeadersOffset > pSectionHeader->DataOffset)
-        {
-            pElf64Header->ProgramHeadersOffset += kernelNameWithDotSize;
+            // ELF binary header also must be updated to reflect offsets changes.
+            if (pElf64Header->SectionHeadersOffset > pSectionHeader->DataOffset)
+            {
+                pElf64Header->SectionHeadersOffset += kernelNameWithDotSize;
+            }
+            if (pElf64Header->ProgramHeadersOffset > pSectionHeader->DataOffset)
+            {
+                pElf64Header->ProgramHeadersOffset += kernelNameWithDotSize;
+            }
         }
     }
     else

@@ -663,62 +663,67 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t debugDataSize)
         {
             // Get section header to filter some section types.
             const SElf64SectionHeader* sectionHeader = elfReader->GetSectionHeader(elfSectionIdx);
-
-            if (sectionHeader->Type == ELF::SHT_REL)
+            if (sectionHeader != nullptr)
             {
-                IGC_ASSERT_MESSAGE(false, "ELF file relocation sections w/o addend not supported");
-                continue;
-            }
-            else if (sectionHeader->Type == ELF::SHT_RELA)
-            {
-                int relocEntrySize = (entrySize == 64) ? sizeof(struct ELF::Elf64_Rela) : sizeof(struct ELF::Elf32_Rela);
-                IGC_ASSERT_MESSAGE((secDataSize % relocEntrySize) == 0, "Incorrect relocation section size");
-                IGC_ASSERT_MESSAGE((entrySize == 64) || (entrySize == 32), "Incorrect relocation entry size");
-
-                if (entrySize == 64)
+                if (sectionHeader->Type == ELF::SHT_REL)
                 {
-                    uint64_t relocEntryNum = secDataSize / relocEntrySize;
-                    struct ELF::Elf64_Rela relocEntry;
+                    IGC_ASSERT_MESSAGE(false, "ELF file relocation sections w/o addend not supported");
+                    continue;
+                }
+                else if (sectionHeader->Type == ELF::SHT_RELA)
+                {
+                    int relocEntrySize = (entrySize == 64) ? sizeof(struct ELF::Elf64_Rela) : sizeof(struct ELF::Elf32_Rela);
+                    IGC_ASSERT_MESSAGE((secDataSize % relocEntrySize) == 0, "Incorrect relocation section size");
+                    IGC_ASSERT_MESSAGE((entrySize == 64) || (entrySize == 32), "Incorrect relocation entry size");
 
-                    for (uint64_t i = 0; i < relocEntryNum; i++)
+                    if (entrySize == 64)
                     {
-                        relocEntry = *(struct ELF::Elf64_Rela*)(secData + i * relocEntrySize);
-                        const uint32_t symtabEntrySize = sizeof(ELF::Elf64_Sym);
-                        uint64_t symtabEntryNum = symtabSectionHeader->DataSize / symtabEntrySize;
+                        uint64_t relocEntryNum = secDataSize / relocEntrySize;
+                        struct ELF::Elf64_Rela relocEntry;
 
-                        if ((relocEntry.r_info >> 32) < symtabEntryNum)  // index
+                        for (uint64_t i = 0; i < relocEntryNum; i++)
                         {
-                            ELF::Elf64_Sym symtabEntry;
-                            char* symName = NULL;
-                            // To find a symbol name of relocation for adding to zeBinary, first we have to do
-                            // a lookup into .symtab then we have to find this name in .strtab.
-                            getElfSymbol(elfReader, relocEntry.r_info >> 32 /*index*/, symtabEntry, symName);
+                            relocEntry = *(struct ELF::Elf64_Rela*)(secData + i * relocEntrySize);
+                            const uint32_t symtabEntrySize = sizeof(ELF::Elf64_Sym);
+                            uint64_t symtabEntryNum = symtabSectionHeader->DataSize / symtabEntrySize;
 
-                            vISA::ZESymEntry zeSym(
-                                (vISA::GenSymType)symtabEntry.st_info,
-                                (uint32_t)symtabEntry.st_value,
-                                (uint32_t)symtabEntry.st_size,
-                                symName);  // Symbol's name
+                            if ((relocEntry.r_info >> 32) < symtabEntryNum)  // index
+                            {
+                                ELF::Elf64_Sym symtabEntry;
+                                char* symName = NULL;
+                                // To find a symbol name of relocation for adding to zeBinary, first we have to do
+                                // a lookup into .symtab then we have to find this name in .strtab.
+                                getElfSymbol(elfReader, relocEntry.r_info >> 32 /*index*/, symtabEntry, symName);
 
-                            // If .rela.foo is being processed then find zeBinary section ID of previously added .foo section
-                            ZEELFObjectBuilder::SectionID nonRelaSectionID =
-                                mBuilder.getSectionIDBySectionName(elfReader->GetSectionName(elfSectionIdx) + sizeof(".rela") - 1);
+                                vISA::ZESymEntry zeSym(
+                                    (vISA::GenSymType)symtabEntry.st_info,
+                                    (uint32_t)symtabEntry.st_value,
+                                    (uint32_t)symtabEntry.st_size,
+                                    symName);  // Symbol's name
 
-                            mBuilder.addSymbol(zeSym.s_name, zeSym.s_offset, zeSym.s_size, getSymbolElfBinding(zeSym),
-                                getSymbolElfType(zeSym), nonRelaSectionID);
-                            mBuilder.addRelocation(relocEntry.r_offset, zeSym.s_name, R_TYPE_ZEBIN::R_ZE_SYM_ADDR, nonRelaSectionID);
+                                // If .rela.foo is being processed then find zeBinary section ID of previously added .foo section
+                                ZEELFObjectBuilder::SectionID nonRelaSectionID =
+                                    mBuilder.getSectionIDBySectionName(elfReader->GetSectionName(elfSectionIdx) + sizeof(".rela") - 1);
+
+                                mBuilder.addSymbol(zeSym.s_name, zeSym.s_offset, zeSym.s_size, getSymbolElfBinding(zeSym),
+                                    getSymbolElfType(zeSym), nonRelaSectionID);
+                                mBuilder.addRelocation(relocEntry.r_offset, zeSym.s_name, R_TYPE_ZEBIN::R_ZE_SYM_ADDR, nonRelaSectionID);
+                            }
                         }
                     }
+                    else // entrySize == 32
+                    {
+                        IGC_ASSERT_MESSAGE(false, "ELF 64-bit entry size supported only");
+                    }
                 }
-                else // entrySize == 32
+                else if (const char* sectionName = elfReader->GetSectionName(elfSectionIdx))
                 {
-                    IGC_ASSERT_MESSAGE(false, "ELF 64-bit entry size supported only");
+                    if (memcmp(sectionName, ".text", sizeof(".text") - 1))
+                    {
+                        // Non-empty, non-relocation and non-text debug section to be copied from ELF to zeBinary.
+                        zeBinSectionID = mBuilder.addSectionDebug(sectionName, (uint8_t*)secData, secDataSize); // no padding, no alignment
+                    }
                 }
-            }
-            else if (memcmp(elfReader->GetSectionName(elfSectionIdx), ".text", sizeof(".text") - 1))
-            {
-                // Non-empty, non-relocation and non-text debug section to be copied from ELF to zeBinary.
-                zeBinSectionID = mBuilder.addSectionDebug(elfReader->GetSectionName(elfSectionIdx), (uint8_t*)secData, secDataSize); // no padding, no alignment
             }
         }
     }

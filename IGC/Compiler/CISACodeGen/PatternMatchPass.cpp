@@ -3255,9 +3255,9 @@ namespace IGC
 
             // As an heuristic we only match saturate if the instruction has one use
             // to avoid duplicating expensive instructions and increasing reg pressure
-            // without improve code quality this may be refined in the future
+            // without improve code quality this may be refined in the future.
             if (llvm::Instruction* sourceInst = llvm::cast<llvm::Instruction>(source);
-                sourceInst->hasOneUse() && SupportsSaturate(sourceInst))
+                sourceInst && sourceInst->hasOneUse() && SupportsSaturate(sourceInst))
             {
                 if (llvm::BinaryOperator* binaryOpInst = llvm::dyn_cast<llvm::BinaryOperator>(source);
                     binaryOpInst && (binaryOpInst->getOpcode() == llvm::BinaryOperator::BinaryOps::Add) && isUnsigned)

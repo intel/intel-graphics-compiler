@@ -247,7 +247,7 @@ const SElf64SectionHeader* CElfReader::GetSectionHeader(
     {
         pCurrentName = GetSectionName(i);
 
-        if (pSectionName && (strcmp(pSectionName, pCurrentName) == 0))
+        if (pSectionName && pCurrentName && (strcmp(pSectionName, pCurrentName) == 0))
         {
             pSectionHeader = GetSectionHeader(i);
             break;

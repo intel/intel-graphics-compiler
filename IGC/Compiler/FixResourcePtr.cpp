@@ -250,6 +250,7 @@ Value* FixResourcePtr::GetByteOffset(Instruction* eltPtr)
     IGC_ASSERT(eltPtr->getNumOperands() == 2);
     Value* ptrOp = eltPtr->getOperand(0);
     PointerType* ptrTy = dyn_cast<PointerType>(ptrOp->getType());
+    IGC_ASSERT(ptrTy);
     Value* eltIdx = eltPtr->getOperand(1);
 
     builder->SetInsertPoint(eltPtr);

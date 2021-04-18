@@ -253,6 +253,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
     IRBuilder<> builder(&I);
     PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
+    IGC_ASSERT( pointerType != nullptr );
     ConstantInt* privateTag = builder.getInt64(1); // tag 001
     ConstantInt* localTag = builder.getInt64(2);   // tag 010
 
@@ -378,6 +379,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 {
     IRBuilder<> builder(&I);
     PointerType* pointerType = dyn_cast<PointerType>(pointerOperand->getType());
+    IGC_ASSERT( pointerType != nullptr );
 
     Value* nonLocalLoad = nullptr;
 
@@ -418,10 +420,12 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         IGC_ASSERT(I.getNumArgOperands() == 1);
         Value* arg = I.getArgOperand(0);
         PointerType* dstType = dyn_cast<PointerType>(I.getType());
+        IGC_ASSERT( dstType != nullptr );
         const unsigned targetAS = cast<PointerType>(I.getType())->getAddressSpace();
 
         IRBuilder<> builder(&I);
         PointerType* pointerType = dyn_cast<PointerType>(arg->getType());
+        IGC_ASSERT( pointerType != nullptr );
         ConstantInt* globalTag = builder.getInt64(0);  // tag 000/111
         ConstantInt* privateTag = builder.getInt64(1); // tag 001
         ConstantInt* localTag = builder.getInt64(2);   // tag 010
