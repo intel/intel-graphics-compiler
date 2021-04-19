@@ -3436,6 +3436,16 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
                 numGRFs, EmitSettings.UseNewRegisterEncoding));
         }
     }
+    else
+    {
+        if (m->GetType() == VISAModule::ObjectType::KERNEL)
+        {
+            // set return location to be undefined in top frame
+            write(cfaOps[0], (uint8_t)llvm::dwarf::DW_CFA_undefined);
+            writeULEB128(cfaOps[0], GetEncodedRegNum<RegisterNumbering::GRFBase>(numGRFs,
+                EmitSettings.UseNewRegisterEncoding));
+        }
+    }
 
     // write callee save
     if (cfi.calleeSaveEntry.size() > 0)
