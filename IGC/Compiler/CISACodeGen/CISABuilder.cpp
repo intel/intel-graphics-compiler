@@ -3646,8 +3646,7 @@ namespace IGC
                 }
             }
         }
-
-        if (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() && IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel))
+        if ( IGC_IS_FLAG_DISABLED(ForceDisableShaderDebugHashCodeInKernel) && (context->m_DriverInfo.EnableShaderDebugHashCodeInKernel() || IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel)))
         {
             QWORD AssemblyHash = { 0 };
             AssemblyHash = context->hash.getAsmHash();

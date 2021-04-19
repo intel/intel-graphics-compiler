@@ -198,6 +198,7 @@ DECLARE_IGC_REGKEY(bool, EnableUnmaskedFunctions,    true,    "Enable unmaksed f
 DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting stateless atomic to stateful atomic.", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
+DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel,   false,  "Disable hash code addition to the binary after EOT", false)
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary", false)
 DECLARE_IGC_REGKEY(int,  ShaderDebugHashCode,           0,     "The driver will set a breakpoint in the first instruction of the shader which has the provided hash code.\
                                                                 It works only when the value is different then 0 and SystemThreadEnable is set to TRUE.\
