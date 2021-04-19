@@ -1766,9 +1766,9 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
        (IID == Intrinsic::sqrt && Divisor->getFastMathFlags().isFast())) &&
       match(Op0, m_FPOne()) && Divisor->hasOneUse()) {
     auto *Rsqrt = createInverseSqrt(Divisor->getOperand(0), Pos);
-    Divisor->eraseFromParent();
     I.replaceAllUsesWith(Rsqrt);
     I.eraseFromParent();
+    Divisor->eraseFromParent();
 
     Changed |= true;
     return;
