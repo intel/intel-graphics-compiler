@@ -1262,14 +1262,12 @@ bool TranslateBuild(
     pOutputArgs->pOutput = binaryOutput;
 
     // Prepare and set program debug data
-    Util::BinaryStream programDebugData;
-    oclContext.m_programOutput.GetProgramDebugData(programDebugData);
-
-    int debugDataSize = int_cast<int>(programDebugData.Size());
+    size_t debugDataSize = 0;
+    oclContext.m_programOutput.GetProgramDebugDataSize(debugDataSize);
     if (debugDataSize > 0)
     {
         char* debugDataOutput = new char[debugDataSize];
-        memcpy_s(debugDataOutput, debugDataSize, programDebugData.GetLinearPointer(), debugDataSize);
+        oclContext.m_programOutput.GetProgramDebugData(debugDataOutput, debugDataSize);
 
         pOutputArgs->DebugDataSize = debugDataSize;
         pOutputArgs->pDebugData = debugDataOutput;

@@ -67,10 +67,11 @@ CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform,
 CGen8OpenCLProgramBase::~CGen8OpenCLProgramBase()
 {
     delete m_ProgramScopePatchStream;
-    for (auto data : m_KernelBinaries)
+    for (auto& data : m_KernelBinaries)
     {
         delete data.kernelBinary;
         delete data.kernelDebugData;
+        delete data.dbgInfo.header;
     }
 
     if (m_pSystemThreadKernelOutput)
@@ -106,7 +107,7 @@ RETVAL CGen8OpenCLProgramBase::GetProgramBinary(
 
     programBinary.Write( *m_ProgramScopePatchStream );
 
-    for( auto data : m_KernelBinaries )
+    for( auto& data : m_KernelBinaries )
     {
         programBinary.Write( *(data.kernelBinary) );
     }
@@ -137,12 +138,91 @@ CGen8OpenCLProgram::~CGen8OpenCLProgram()
 
 RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(Util::BinaryStream& programDebugData)
 {
+    // Used by VC only
     RETVAL retValue = g_cInitRetValue;
 
     unsigned numDebugBinaries = 0;
     for (auto data : m_KernelBinaries)
     {
         if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+        {
+            numDebugBinaries++;
+        }
+    }
+
+    if (numDebugBinaries)
+    {
+        iOpenCL::SProgramDebugDataHeaderIGC header;
+
+        memset(&header, 0, sizeof(header));
+
+        header.Magic = iOpenCL::MAGIC_CL;
+        header.Version = iOpenCL::CURRENT_ICBE_VERSION;
+        header.Device = m_Platform.eRenderCoreFamily;
+        header.NumberOfKernels = numDebugBinaries;
+        header.SteppingId = m_Platform.usRevId;
+
+        programDebugData.Write(header);
+
+        for (auto data : m_KernelBinaries)
+        {
+            if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+            {
+                programDebugData.Write(*(data.kernelDebugData));
+            }
+        }
+    }
+
+    return retValue;
+}
+
+RETVAL CGen8OpenCLProgramBase::GetProgramDebugDataSize(size_t& totalDbgInfoBufferSize)
+{
+    RETVAL retValue = g_cInitRetValue;
+
+    unsigned numDebugBinaries = 0;
+    for (auto& data : m_KernelBinaries)
+    {
+        if (data.dbgInfo.header &&
+            data.dbgInfo.header->Size() > 0 &&
+            data.dbgInfo.dbgInfoBufferSize > 0)
+        {
+            numDebugBinaries++;
+        }
+    }
+
+    totalDbgInfoBufferSize = 0;
+    if (numDebugBinaries)
+    {
+        totalDbgInfoBufferSize += sizeof(iOpenCL::SProgramDebugDataHeaderIGC);
+        for (auto& data : m_KernelBinaries)
+        {
+            totalDbgInfoBufferSize += (size_t)data.dbgInfo.header->Size() +
+                (size_t)(data.dbgInfo.dbgInfoBufferSize +
+                data.dbgInfo.extraAlignBytes);
+        }
+    }
+
+    return retValue;
+}
+
+RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(char* dstBuffer, size_t dstBufferSize)
+{
+    RETVAL retValue = g_cInitRetValue;
+    size_t offset = 0;
+
+    auto Append = [&offset, dstBuffer, dstBufferSize](void* src, size_t srcSize)
+    {
+        memcpy_s(dstBuffer + offset, dstBufferSize - offset, src, srcSize);
+        offset += srcSize;
+    };
+
+    unsigned numDebugBinaries = 0;
+    for (auto& data : m_KernelBinaries)
+    {
+        if (data.dbgInfo.header &&
+            data.dbgInfo.header->Size() > 0 &&
+            data.dbgInfo.dbgInfoBufferSize > 0)
         {
             numDebugBinaries++;
         }
@@ -160,13 +240,19 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(Util::BinaryStream& programDe
         header.NumberOfKernels = numDebugBinaries;
         header.SteppingId = m_Platform.usRevId;
 
-        programDebugData.Write( header );
+        Append(&header, sizeof(header));
 
-        for (auto data : m_KernelBinaries)
+        const uint64_t zero = 0;
+        for (auto& data : m_KernelBinaries)
         {
-            if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+            if (data.dbgInfo.header &&
+                data.dbgInfo.header->Size() > 0 &&
+                data.dbgInfo.dbgInfoBufferSize > 0)
             {
-                programDebugData.Write( *(data.kernelDebugData) );
+                Append((void*)data.dbgInfo.header->GetLinearPointer(), (size_t)data.dbgInfo.header->Size());
+                Append(data.dbgInfo.dbgInfoBuffer, data.dbgInfo.dbgInfoBufferSize);
+                IGC_ASSERT(data.dbgInfo.extraAlignBytes <= sizeof(zero));
+                Append((void*)&zero, data.dbgInfo.extraAlignBytes);
             }
         }
     }
@@ -390,7 +476,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             // Create the debug data binary streams
             if (pOutput->m_debugDataVISASize > 0 || pOutput->m_debugDataGenISASize > 0)
             {
-                data.kernelDebugData = new Util::BinaryStream();
+                data.dbgInfo.header = new Util::BinaryStream();
 
                 m_StateProcessor.CreateKernelDebugData(
                     (const char*)pOutput->m_debugDataVISA,
@@ -398,7 +484,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
                     (const char*)pOutput->m_debugDataGenISA,
                     pOutput->m_debugDataGenISASize,
                     kernel->m_kernelInfo.m_kernelName,
-                    *(data.kernelDebugData));
+                    data.dbgInfo);
             }
 
             m_KernelBinaries.push_back(data);

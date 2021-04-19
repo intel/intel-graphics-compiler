@@ -45,12 +45,6 @@ namespace IGC
 namespace iOpenCL
 {
 
-struct KernelData
-{
-    Util::BinaryStream* kernelBinary = nullptr;
-    Util::BinaryStream* kernelDebugData = nullptr;
-};
-
 // This is the base class to create an OpenCL ELF binary with patch tokens.
 // It owns BinaryStreams allocated.
 class CGen8OpenCLProgramBase : DisallowCopy {
@@ -66,8 +60,12 @@ public:
     /// CGen8OpenCLProgram::CreateKernelBinaries or CGen8CMProgram::CreateKernelBinaries
     RETVAL GetProgramBinary(Util::BinaryStream& programBinary,
         unsigned pointerSizeInBytes);
+    /// GetProgramDebugDataSize - get size of debug info patch token
+    RETVAL GetProgramDebugDataSize(size_t& totalDbgInfoBufferSize);
     /// GetProgramDebugData - get debug data binary for legacy (Patch token based)
     /// binary format
+    RETVAL GetProgramDebugData(char* dstBuffer, size_t dstBufferSize);
+    /// GetProgramDebugData - get program debug data API used by VC.
     RETVAL GetProgramDebugData(Util::BinaryStream& programDebugData);
     /// CreateProgramScopePatchStream - get program scope patch token for legacy
     /// (Patch token based) binary format

@@ -2428,23 +2428,6 @@ void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& 
 
         DV.setDIE(VariableDie);
     }
-
-    if (addDecoration)
-    {
-        if (FirstLoc.IsVectorized())
-        {
-            // Add description stating whether variable was vectorized in VISA
-            addString(VariableDie, dwarf::DW_AT_description, "vectorized");
-            uint16_t simdSize = VISAModule->GetSIMDSize();
-            addString(VariableDie, dwarf::DW_AT_description,
-                simdSize == 8 ? "simd8" : simdSize == 16 ? "simd16" : simdSize == 32 ? "simd32" : "???");
-        }
-
-        if (FirstLoc.IsInGlobalAddrSpace())
-        {
-            addString(VariableDie, dwarf::DW_AT_description, "global");
-        }
-    }
 }
 
 IGC::DIEBlock* CompileUnit::buildPointer(DbgVariable& var, const VISAVariableLocation* loc)

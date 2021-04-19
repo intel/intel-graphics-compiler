@@ -60,6 +60,29 @@ namespace iOpenCL
 // Forward Declare
 struct SStateProcessorContextGen8_0;
 
+
+class KernelData
+{
+public:
+    class DbgInfoBuffer
+    {
+    public:
+        Util::BinaryStream* header = nullptr;
+        uint8_t* dbgInfoBuffer = nullptr;
+        uint32_t dbgInfoBufferSize = 0;
+        uint8_t extraAlignBytes = 0;
+    };
+
+    Util::BinaryStream* kernelBinary = nullptr;
+    // DbgInfo is stored in pieces as header, dbg buffer, alignment padding
+    // instead of storing it in a single BinaryStream. This is because
+    // BinaryStream approach requires unnecessary copies.
+    DbgInfoBuffer dbgInfo;
+
+    // kernelDebugData instance below is used only for VC
+    Util::BinaryStream* kernelDebugData = nullptr;
+};
+
 struct RETVAL
 {
     DWORD Success;
@@ -111,12 +134,20 @@ public:
         Util::BinaryStream& membuf);
 
     virtual void CreateKernelDebugData(
+        const char* rawDebugDataVISA,
+        unsigned int rawDebugDataVISASize,
+        const char* rawDebugDataGenISA,
+        unsigned int rawDebugDataGenISASize,
+        const std::string& kernelName,
+        Util::BinaryStream& kernelDebugData);
+
+    virtual void CreateKernelDebugData(
         const char*  rawDebugDataVISA,
         unsigned int rawDebugDataVISASize,
         const char*  rawDebugDataGenISA,
         unsigned int rawDebugDataGenISASize,
         const std::string& kernelName,
-        Util::BinaryStream& kernelDebugData);
+        KernelData::DbgInfoBuffer& kernelDebugData);
 
     const IProgramContext& m_Context;
     std::string m_oclStateDebugMessagePrintOut;

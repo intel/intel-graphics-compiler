@@ -420,53 +420,93 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
 }
 
 void CGen8OpenCLStateProcessor::CreateKernelDebugData(
-    const char*  rawDebugDataVISA,
+    const char* rawDebugDataVISA,
     unsigned int rawDebugDataVISASize,
-    const char*  rawDebugDataGenISA,
+    const char* rawDebugDataGenISA,
     unsigned int rawDebugDataGenISASize,
     const std::string& kernelName,
     Util::BinaryStream& kernelDebugData)
 {
+    // Used by VC
     RETVAL retValue = g_cInitRetValue;
 
     Util::BinaryStream kernelVisaDbg;
     Util::BinaryStream kernelGenIsaDbg;
 
     // Source -> VISA debug info
-    if( kernelVisaDbg.Write( rawDebugDataVISA, rawDebugDataVISASize ) == false )
+    if (kernelVisaDbg.Write(rawDebugDataVISA, rawDebugDataVISASize) == false)
     {
         IGC_ASSERT(0);
         retValue.Success = false;
     }
-    kernelVisaDbg.Align( sizeof( DWORD ) );
+    kernelVisaDbg.Align(sizeof(DWORD));
 
     // VISA -> Gen ISA debug info
-    if( kernelGenIsaDbg.Write( rawDebugDataGenISA, rawDebugDataGenISASize ) == false )
+    if (kernelGenIsaDbg.Write(rawDebugDataGenISA, rawDebugDataGenISASize) == false)
     {
         IGC_ASSERT(0);
         retValue.Success = false;
     }
-    kernelGenIsaDbg.Align( sizeof( DWORD ) );
+    kernelGenIsaDbg.Align(sizeof(DWORD));
 
-    if( retValue.Success )
+    if (retValue.Success)
     {
         iOpenCL::SKernelDebugDataHeaderIGC header;
 
 
-        memset( &header, 0, sizeof( header ) );
+        memset(&header, 0, sizeof(header));
 
         header.KernelNameSize = (uint32_t)kernelName.size() + 1;
-        header.KernelNameSize += GetAlignmentOffset( header.KernelNameSize, sizeof(DWORD) );
+        header.KernelNameSize += GetAlignmentOffset(header.KernelNameSize, sizeof(DWORD));
         header.SizeVisaDbgInBytes = (uint32_t)kernelVisaDbg.Size();
         header.SizeGenIsaDbgInBytes = (uint32_t)kernelGenIsaDbg.Size();
 
-        kernelDebugData.Write( header );
-        kernelDebugData.Write( kernelName.c_str(), kernelName.size() + 1 );
-        kernelDebugData.Align( sizeof (DWORD ) );
-        kernelDebugData.Write( kernelVisaDbg );
-        kernelDebugData.Write( kernelGenIsaDbg );
+        kernelDebugData.Write(header);
+        kernelDebugData.Write(kernelName.c_str(), kernelName.size() + 1);
+        kernelDebugData.Align(sizeof(DWORD));
+        kernelDebugData.Write(kernelVisaDbg);
+        kernelDebugData.Write(kernelGenIsaDbg);
 
         IGC_ASSERT(IsAligned(kernelDebugData.Size(), sizeof(DWORD)));
+    }
+}
+
+void CGen8OpenCLStateProcessor::CreateKernelDebugData(
+    const char* rawDebugDataVISA,
+    unsigned int rawDebugDataVISASize,
+    const char* rawDebugDataGenISA,
+    unsigned int rawDebugDataGenISASize,
+    const std::string& kernelName,
+    KernelData::DbgInfoBuffer& kernelDebugDataHeader)
+{
+    RETVAL retValue = g_cInitRetValue;
+
+    if (rawDebugDataVISA)
+    {
+        kernelDebugDataHeader.dbgInfoBuffer = (uint8_t*)rawDebugDataVISA;
+        kernelDebugDataHeader.dbgInfoBufferSize = rawDebugDataVISASize;
+        kernelDebugDataHeader.extraAlignBytes = (sizeof(DWORD) - rawDebugDataVISASize % sizeof(DWORD)) % sizeof(DWORD);
+        rawDebugDataVISASize += kernelDebugDataHeader.extraAlignBytes;
+    }
+
+    if (retValue.Success)
+    {
+        iOpenCL::SKernelDebugDataHeaderIGC header;
+
+        memset(&header, 0, sizeof(header));
+
+        header.KernelNameSize = (uint32_t)kernelName.size() + 1;
+        header.KernelNameSize += GetAlignmentOffset(header.KernelNameSize, sizeof(DWORD));
+        header.SizeVisaDbgInBytes = (uint32_t)rawDebugDataVISASize;
+        header.SizeGenIsaDbgInBytes = (uint32_t)rawDebugDataGenISASize;
+        IGC_ASSERT(rawDebugDataGenISASize == 0);
+
+        kernelDebugDataHeader.header->Write(header);
+        kernelDebugDataHeader.header->Write(kernelName.c_str(), kernelName.size() + 1);
+        kernelDebugDataHeader.header->Align(sizeof(DWORD));
+
+        IGC_ASSERT(IsAligned(kernelDebugDataHeader.header->Size(), sizeof(DWORD)));
+        IGC_ASSERT(rawDebugDataVISASize % sizeof(DWORD) == 0);
     }
 }
 
