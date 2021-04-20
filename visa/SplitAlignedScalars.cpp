@@ -32,6 +32,10 @@ bool SplitAlignedScalars::canReplaceDst(G4_INST* inst)
 {
     auto opcode = inst->opcode();
 
+    // acc has special rules, so skip optimizing instructions using acc
+    if (inst->useAcc())
+        return false;
+
     // whitelist of supported instructions
     if (inst->isMov() ||
         inst->isMath() ||
@@ -49,6 +53,9 @@ bool SplitAlignedScalars::canReplaceDst(G4_INST* inst)
 bool SplitAlignedScalars::canReplaceSrc(G4_INST* inst, unsigned int idx)
 {
     auto opcode = inst->opcode();
+
+    if (inst->useAcc())
+        return false;
 
     if (inst->isMov() ||
         inst->isMath() ||
@@ -169,8 +176,8 @@ void SplitAlignedScalars::run()
                 auto oldTopDcl = dst->getTopDcl();
                 auto newTopDcl = getNewDcl(oldTopDcl);
 
-                auto newDstRgn = kernel.fg.builder->createDst(newTopDcl->getRegVar(), dst->getType());
-                newDstRgn->setHorzStride(dst->getHorzStride());
+                auto newDstRgn = kernel.fg.builder->createDst(newTopDcl->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
+                    dst->getHorzStride(), dst->getType());
                 if (canReplaceDst(inst))
                 {
                     MUST_BE_TRUE(inst->getExecSize() == g4::SIMD1, "Expecting scalar instruction");
@@ -220,8 +227,8 @@ void SplitAlignedScalars::run()
                         newAlignedTemp->copyAlign(oldTopDcl);
                         auto newDstRgn = kernel.fg.builder->createDst(newAlignedTemp->getRegVar(), srcRgn->getType());
                         auto copy = kernel.fg.builder->createMov(g4::SIMD1, newDstRgn, newSrcRgn, InstOpt_WriteEnable, false);
-                        auto newAlignedSrc = kernel.fg.builder->createSrc(newAlignedTemp->getRegVar(), 0, 0, kernel.fg.builder->getRegionScalar(),
-                            srcRgn->getType());
+                        auto newAlignedSrc = kernel.fg.builder->createSrc(newAlignedTemp->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(),
+                            kernel.fg.builder->getRegionScalar(), srcRgn->getType());
                         inst->setSrc(newAlignedSrc, i);
                         bb->insertBefore(instIt, copy);
                     }
