@@ -1182,8 +1182,8 @@ Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHA
    {
        const bool success = pBuilder->createSample4Instruction(
           $1, $2, $3, ChannelMask::createFromAPI($4), $5.emask, $5.exec_size,
-          $6.cisa_gen_opnd, $7, $8, $9,
-          (unsigned int)$10, rawOperandArray, CISAlineno);
+          $6.cisa_gen_opnd, $7, $8,
+          $9, (unsigned int)$10, rawOperandArray, CISAlineno);
 
     ABORT_ON_FAIL(success);
    }
