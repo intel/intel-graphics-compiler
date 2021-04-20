@@ -3418,6 +3418,12 @@ bool Augmentation::markNonDefaultMaskDef()
                 nonDefaultMaskDefFound = true;
             }
 
+            if(kernel.getOption(vISA_enableBCR) && gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
+            {
+                gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
+                nonDefaultMaskDefFound = true;
+            }
+
             if (!nonDefaultMaskDefFound &&
                 gra.getAugmentationMask(dcl) != prevAugMask &&
                 prevAugMask != AugmentationMasks::Undetermined)
@@ -6084,7 +6090,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 //
                 // for GRF register assignment, if we are performing round-robin (1st pass) then abort on spill
                 //
-                if ((heuristic == ROUND_ROBIN || doBankConflict) &&
+                if ((heuristic == ROUND_ROBIN || (doBankConflict && !kernel.getOption(vISA_enableBCR))) &&
                     (lr->getRegKind() == G4_GRF || lr->getRegKind() == G4_FLAG))
                 {
                     return false;
@@ -6659,10 +6665,13 @@ bool GraphColor::regAlloc(
                     return false;
                 }
 
-                if (!success && doBankConflictReduction)
+                if (!kernel.getOption(vISA_enableBCR))
                 {
-                    resetTemporaryRegisterAssignments();
-                    assignColors(FIRST_FIT, false, false);
+                    if (!success && doBankConflictReduction)
+                    {
+                        resetTemporaryRegisterAssignments();
+                        assignColors(FIRST_FIT, false, false);
+                    }
                 }
             }
         }
@@ -9811,7 +9820,6 @@ int GlobalRA::coloringRegAlloc()
                         failSafeRAIteration++;
                     }
                 }
-
                 stopTimer(TimerID::SPILL);
             }
             // RA successfully allocates regs
