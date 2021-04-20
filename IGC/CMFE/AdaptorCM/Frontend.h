@@ -175,14 +175,13 @@ public:
   FEWrapper(FEWrapper &&) = default;
   FEWrapper(const FEWrapper &) = default;
 
-  IDriverInvocationPtr buildDriverInvocation(std::vector<const char *> &Args) {
+  IDriverInvocationPtr buildDriverInvocation(int Argc, const char **Argv) {
     auto *BuildDriverInvocation =
         CMFE_WRAPPER_GET_SYMBOL(IntelCMClangFEBuildDriverInvocation);
     auto Del = [](IDriverInvocation *Ptr) { Ptr->discard(); };
     if (!BuildDriverInvocation)
       return {nullptr, Del};
-    IDriverInvocation *Drv =
-        BuildDriverInvocation(static_cast<int>(Args.size()), Args.data());
+    IDriverInvocation *Drv = BuildDriverInvocation(Argc, Argv);
     return {Drv, Del};
   }
 

@@ -445,7 +445,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(),
                                    options, Saver, platformStr, stepping);
 
-    auto Drv = FE.buildDriverInvocation(FeArgs);
+    auto Drv = FE.buildDriverInvocation(FeArgs.size(), FeArgs.data());
     if (!Drv)
     {
         ErrFn("Null driver invocation in CMFE");
