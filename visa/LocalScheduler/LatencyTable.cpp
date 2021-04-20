@@ -28,8 +28,8 @@ uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
     if (Inst->isSend())
     {
-        G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
-        return LegacyFFLatency[SFIDtoInt(MsgDesc->getFuncId())];
+        G4_SendDesc* MsgDesc = Inst->getMsgDesc();
+        return LegacyFFLatency[SFIDtoInt(MsgDesc->getSFID())];
     } else if (Inst->isMath()) {
         if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
             Inst->asMathInst()->getMathCtrl() == MATH_POW)
@@ -104,21 +104,21 @@ uint16_t LatencyTable::getOccupancyLegacy(G4_INST* Inst) const
     return uint16_t(passes * InstLatency);
 }
 
-uint16_t LatencyTable::getLatencyG12(G4_INST* Inst) const
+uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
 {
     int Sz = Inst->getExecSize();
     int Scale = (Sz <= 8) ? 0 : (Sz == 16) ? 1 : 3;
     auto Dst = Inst->getDst();
 
     if (Inst->isSend()) {
-        G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
-        if (MsgDesc->isSLMMessage())
+        G4_SendDesc* MsgDesc = Inst->getMsgDesc();
+        if (MsgDesc->isSLM())
             return Inst->asSendInst()->isFence() ? LatenciesXe::SLM_FENCE : LatenciesXe::SLM;
         if (MsgDesc->isSampler())
             return LatenciesXe::SAMPLER_L3;
         if (MsgDesc->isHDC())
             return LatenciesXe::DP_L3;
-        if (MsgDesc->isBarrierMsg())
+        if (MsgDesc->isBarrier())
             return LatenciesXe::BARRIER;
          return LatenciesXe::SEND_OTHERS;
     }

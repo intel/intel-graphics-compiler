@@ -278,7 +278,9 @@ void VarSplitPass::findSplitCandidates()
     auto canSplit = [](G4_INST* inst)
     {
         // Insert any new split candidates here
-        return (inst->isSend() && inst->getMsgDesc()->isSampler() && inst->getMsgDesc()->ResponseLength() > 2 &&
+        return (inst->isSend() &&
+            inst->getMsgDesc()->isSampler() &&
+            inst->getMsgDesc()->getDstLenRegs() > 2 &&
             !inst->getDst()->getTopDcl()->getRegVar()->isRegVarTransient());
     };
 

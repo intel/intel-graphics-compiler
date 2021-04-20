@@ -39,17 +39,18 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
     {
         return NODEP;
     }
-
-    if (send1->getMsgDesc()->isSendBarrier() || send2->getMsgDesc()->isSendBarrier())
-    {
+    auto isBarrierOrAtomic = [](const G4_InstSend *i) {
+        return i->getMsgDesc()->isBarrier() || i->getMsgDesc()->isAtomic();
+    };
+    if (isBarrierOrAtomic(send1) || isBarrierOrAtomic(send2)) {
         return MSG_BARRIER;
     }
 
     bool isSend1HDC = send1->getMsgDesc()->isHDC();
     bool isSend2HDC = send2->getMsgDesc()->isHDC();
 
-    SFID funcId1 = send1->getMsgDesc()->getFuncId();
-    SFID funcId2 = send2->getMsgDesc()->getFuncId();
+    SFID funcId1 = send1->getMsgDesc()->getSFID();
+    SFID funcId2 = send2->getMsgDesc()->getSFID();
 
     if (funcId1 == SFID::SAMPLER || funcId2 == SFID::SAMPLER)
     {
@@ -66,12 +67,12 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
     }
     else if (isSend1HDC && isSend2HDC)
     {
-        if (send1->getMsgDesc()->isSLMMessage() ^ send2->getMsgDesc()->isSLMMessage())
+        if (send1->getMsgDesc()->isSLM() ^ send2->getMsgDesc()->isSLM())
         {
             // SLM may not conflict with other non-SLM messages
             return NODEP;
         }
-        else if (send1->getMsgDesc()->getBti() && send2->getMsgDesc()->getBti())
+        else if (send1->getMsgDesc()->getSurface() && send2->getMsgDesc()->getSurface())
         {
             G4_Operand* msgDesc1 = send1->getMsgDescOperand();
             G4_Operand* msgDesc2 = send2->getMsgDescOperand();
@@ -93,19 +94,19 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
     // (e.g., URB that have constant offset)
 
     // scratch RW may only conflict with other scratch RW
-    if (send1->getMsgDesc()->isScratchRW() != send2->getMsgDesc()->isScratchRW())
+    if (send1->getMsgDesc()->isScratch() != send2->getMsgDesc()->isScratch())
     {
         return NODEP;
     }
 
     // Determine any relevant memory interferences through data port operations.
-    if (send1->getMsgDesc()->isDataPortWrite())
+    if (send1->getMsgDesc()->isWrite())
     {
-        if (depT == RET_RAW && send2->getMsgDesc()->isDataPortRead())
+        if (depT == RET_RAW && send2->getMsgDesc()->isRead())
         {
             return RAW_MEMORY;
         }
-        else if (depT == RET_WAW && send2->getMsgDesc()->isDataPortWrite())
+        else if (depT == RET_WAW && send2->getMsgDesc()->isWrite())
         {
             return WAW_MEMORY;
         }
@@ -114,9 +115,9 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
             return NODEP;
         }
     }
-    else if (send1->getMsgDesc()->isDataPortRead())
+    else if (send1->getMsgDesc()->isRead())
     {
-        if (depT == RET_WAR && send2->getMsgDesc()->isDataPortWrite())
+        if (depT == RET_WAR && send2->getMsgDesc()->isWrite())
         {
             return WAR_MEMORY;
         }
@@ -142,13 +143,13 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
     }
 
     // scratch RW may only conflict with other scratch RW
-    if (send1->getMsgDesc()->isScratchRW() != send2->getMsgDesc()->isScratchRW())
+    if (send1->getMsgDesc()->isScratch() != send2->getMsgDesc()->isScratch())
     {
         return NODEP;
     }
 
     // check dependency between scratch block read/write
-    if (send1->getMsgDesc()->isScratchRW() && send2->getMsgDesc()->isScratchRW())
+    if (send1->getMsgDesc()->isScratch() && send2->getMsgDesc()->isScratch())
     {
         bool send1IsRead = send1->getMsgDesc()->isScratchRead(),
             send2IsRead = send2->getMsgDesc()->isScratchRead();
@@ -160,11 +161,16 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
             (depT == RET_WAW && !send1IsRead && !send2IsRead) ||
             (depT == RET_RAW && !send1IsRead && send2IsRead))
         {
-            uint16_t leftOff1, leftOff2, rightOff1, rightOff2;
-            leftOff1 = send1->getMsgDesc()->getScratchRWOffset();
-            leftOff2 = send2->getMsgDesc()->getScratchRWOffset();
-            rightOff1 = leftOff1 + send1->getMsgDesc()->getScratchRWSize() - 1;
-            rightOff2 = leftOff2 + send2->getMsgDesc()->getScratchRWSize() - 1;
+
+            uint16_t leftOff1 = send1->getMsgDesc()->getOffset();
+            uint16_t leftOff2 = send2->getMsgDesc()->getOffset();
+            auto bytesAccessed = [](const G4_INST *send) {
+                return send->getMsgDesc()->isRead() ?
+                    (uint16_t)send->getMsgDesc()->getDstLenBytes() :
+                    (uint16_t)send->getMsgDesc()->getSrc1LenBytes();
+            };
+            uint16_t rightOff1 = leftOff1 + bytesAccessed(send1) - 1;
+            uint16_t rightOff2 = leftOff2 + bytesAccessed(send2) - 1;
             if (leftOff1 > rightOff2 || leftOff2 > rightOff1)
             {
                 return NODEP;
@@ -226,12 +232,12 @@ DepType vISA::CheckBarrier(G4_INST *inst)
             // sendc may imply synchronization
             return SEND_BARRIER;
         }
-        if (inst->getMsgDesc()->isEOTInst())
+        if (inst->getMsgDesc()->isEOT())
         {
             // Send with the EOT message desciptor is a barrier.
             return SEND_BARRIER;
         }
-        else if (inst->getMsgDesc()->isThreadMessage())
+        else if (inst->getMsgDescRaw() && inst->getMsgDescRaw()->isThreadMessage())
         {
             return MSG_BARRIER;
         }

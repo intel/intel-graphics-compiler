@@ -291,7 +291,9 @@ namespace vISA
         std::unordered_map <G4_Declare*, MaskDeclares> retDeclares;
         Mem_Manager& m;
 
-        bool updateDstMaskForScatter(G4_INST* inst, unsigned char* mask);
+        bool updateDstMaskForGather(G4_INST* inst, unsigned char* mask);
+        bool updateDstMaskForGatherRaw(G4_INST* inst, unsigned char* mask, const G4_SendDescRaw *raw);
+        bool updateDstMaskForGatherLdSt(G4_INST* inst, unsigned char* mask, const G4_SendDescLdSt *ldst);
         void updateDstMask(G4_INST* inst, bool checkCmodOnly);
         static unsigned getByteSizeFromMask(AugmentationMasks type);
         bool isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, AugmentationMasks type);

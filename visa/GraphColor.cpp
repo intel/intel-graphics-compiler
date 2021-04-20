@@ -944,7 +944,8 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
 }
 
 
-void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
+void BankConflictPass::setupBankConflictsForBB(
+    G4_BB* bb,
     unsigned &threeSourceInstNum,
     unsigned &sendInstNum,
     unsigned numRegLRA,
@@ -981,7 +982,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
         if (inst->isSend() && !inst->isEOT())
         {
             //Why only data port read causes issue?
-            if (inst->getMsgDesc()->isDataPortRead())
+            if (inst->getMsgDesc()->isRead())
             {
                 sendInstNum++;
             }
@@ -2658,10 +2659,46 @@ Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis
 
 // For Scatter read, the channel is not handled as the block read.
 // Update the emask according to the definition of VISA
-bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
+bool Augmentation::updateDstMaskForGather(G4_INST* inst, unsigned char* mask)
 {
+    if (const G4_SendDescRaw *d = inst->getMsgDescRaw()) {
+        return updateDstMaskForGatherRaw(inst, mask, d);
+    } else if (const G4_SendDescLdSt *d = inst->getMsgDescLdSt()) {
+        return updateDstMaskForGatherLdSt(inst, mask, d);
+    } else {
+        ASSERT_USER(false, "unexpected descriptor");
+        return false;
+    }
+}
 
-    const G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
+static void updateMaskSIMT(
+    unsigned char curEMBit,
+    unsigned char execSize,
+    unsigned char* mask,
+    unsigned dataSizeBytes, unsigned vecElems)
+{
+    unsigned blockSize = dataSizeBytes;
+    unsigned blockNum = vecElems;
+    for (unsigned i = 0; i < execSize; i++)
+    {
+        for (unsigned j = 0; j < blockNum; j++)
+        {
+            for (unsigned k = 0; k < blockSize; k++)
+            {
+                mask[(j * execSize + i) * blockSize + k] = curEMBit;
+            }
+        }
+        if (curEMBit != NOMASK_BYTE)
+        {
+            curEMBit++;
+            ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+        }
+    }
+}
+
+bool Augmentation::updateDstMaskForGatherRaw(
+    G4_INST* inst, unsigned char* mask, const G4_SendDescRaw *msgDesc)
+{
     unsigned char execSize = inst->getExecSize();
     const G4_DstRegRegion* dst = inst->getDst();
     unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
@@ -2779,7 +2816,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         default: return false;
         }
         break;
-    case SFID::DP_DC:
+    case SFID::DP_DC0:
         switch (msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: gather(dword), handled as block read write
@@ -2825,6 +2862,20 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
     return false;
 }
 
+bool Augmentation::updateDstMaskForGatherLdSt(
+    G4_INST* inst, unsigned char* mask, const G4_SendDescLdSt *msgDesc)
+{
+    // as in the raw case only support SIMT
+    if (msgDesc->op != LdStOp::LOAD || msgDesc->order == LdStOrder::SCALAR) {
+        return false;
+    }
+    unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
+    unsigned char execSize = inst->getExecSize();
+    updateMaskSIMT(curEMBit, execSize, mask,
+        msgDesc->elemBitsReg, msgDesc->elemPerAddr);
+
+    return true;
+}
 
 // Value stored at each byte in mask determines which bits
 // of EM enable that byte for writing. When checkCmodOnly
@@ -2894,7 +2945,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
 
             if (inst->isSend() && !inst->isEOT())
             {
-                if (updateDstMaskForScatter(inst, mask))
+                if (updateDstMaskForGather(inst, mask))
                 {
                     return;
                 }
@@ -6386,18 +6437,18 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
 
             if (curInst->isSend())
             {
-                G4_SendMsgDescriptor* msgDesc = curInst->getMsgDesc();
+                G4_SendDesc* msgDesc = curInst->getMsgDesc();
 
                 unsigned dstSpillRegSize = 0;
-                dstSpillRegSize = msgDesc->ResponseLength();
+                dstSpillRegSize = msgDesc->getDstLenRegs();
 
                 unsigned src0FillRegSize = 0;
-                src0FillRegSize = msgDesc->MessageLength();
+                src0FillRegSize = msgDesc->getSrc0LenRegs();
 
                 unsigned src1FillRegSize = 0;
                 if (curInst->isSplitSend())
                 {
-                    src1FillRegSize = msgDesc->extMessageLength();
+                    src1FillRegSize = msgDesc->getSrc1LenRegs();
                 }
 
                 if (!kernel.fg.builder->useSends())
@@ -8594,7 +8645,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
             // process send destination operand
             //
             if (inst->isSend() &&
-                inst->getMsgDesc()->ResponseLength() > splitSize &&
+                inst->getMsgDesc()->getDstLenRegs() > (size_t)splitSize &&
                 inst->asSendInst()->isDirectSplittableSend())
             {
                 G4_DstRegRegion* dstrgn = dst;

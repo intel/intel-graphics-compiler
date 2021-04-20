@@ -834,7 +834,7 @@ namespace vISA
         SPAWNER    =  7, //THREAD SPAWNER
         VME        =  8, //VIDEO MOTION ESTIMATION
         DP_CC      =  9, //CONSTANT CACHE DATAPORT
-        DP_DC      = 10, //DATA CACHE DATAPORT
+        DP_DC0     = 10, //DATA CACHE DATAPORT
         DP_PI      = 11, //PIXEL INTERPOLATOR
         DP_DC1     = 12, //DATA CACHE DATAPORT1
         CRE        = 13, //CHECK & REFINEMENT ENGINE

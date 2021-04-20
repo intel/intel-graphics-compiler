@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Mem_Manager.h"
 #include "G4_Opcode.h"
+#include "G4_SendDescs.hpp"
 #include "Option.h"
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
@@ -255,251 +256,8 @@ typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR >::iterator DEF_EDGE_LIST_ITER
 
 namespace vISA
 {
-enum class SendAccess
-{
-    READ_ONLY,
-    WRITE_ONLY,
-    READ_WRITE
-};
-
-class G4_SendMsgDescriptor
-{
-private:
-    /// Structure describes a send message descriptor. Only expose
-    /// several data fields; others are unnamed.
-    struct MsgDescLayout {
-        uint32_t funcCtrl : 19;     // Function control (bit 0:18)
-        uint32_t headerPresent : 1; // Header present (bit 19)
-        uint32_t rspLength : 5;     // Response length (bit 20:24)
-        uint32_t msgLength : 4;     // Message length (bit 25:28)
-        uint32_t simdMode2 : 1;     // 16-bit input (bit 29)
-        uint32_t returnFormat : 1;  // 16-bit return (bit 30)
-        uint32_t EOT : 1;           // EOT
-    };
-
-    /// View a message descriptor in two different ways:
-    /// - as a 32-bit unsigned integer
-    /// - as a structure
-    /// This simplifies the implementation of extracting subfields.
-    union DescData {
-        uint32_t value;
-        MsgDescLayout layout;
-    } desc;
-
-    /// Structure describes an extended send message descriptor.
-    /// Only expose several data fields; others are unnamed.
-    struct ExtendedMsgDescLayout {
-        uint32_t funcID : 4;       // bit 0:3
-        uint32_t unnamed1 : 1;     // bit 4
-        uint32_t eot : 1;          // bit 5
-        uint32_t extMsgLength : 5; // bit 6:10
-        uint32_t cps : 1;          // bit 11
-        uint32_t RTIndex : 3;      // bit 12-14
-        uint32_t src0Alpha : 1;    // bit 15
-        uint32_t extFuncCtrl : 16; // bit 16:31
-    };
-
-    /// View an extended message descriptor in two different ways:
-    /// - as a 32-bit unsigned integer
-    /// - as a structure
-    /// This simplifies the implementation of extracting subfields.
-    union ExtDescData {
-        uint32_t value;
-        ExtendedMsgDescLayout layout;
-    } extDesc;
-
-    SendAccess accessType;
-
-    /// Whether funcCtrl is valid
-    bool funcCtrlValid;
-
-    G4_Operand *m_sti;
-    G4_Operand *m_bti;
-
-    SFID        sfid;
-    int         src1Len;
-    bool        eotAfterMessage = false;
-
-public:
-    static const int SLMIndex = 0xFE;
-
-    G4_SendMsgDescriptor(uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
-        SFID fID, uint16_t extMsgLength, uint32_t extFCtrl,
-        SendAccess access, G4_Operand* bti, G4_Operand* sti, IR_Builder& builder);
-
-    /// Construct a object with descriptor and extended descriptor values.
-    /// used in IR_Builder::createSendMsgDesc(uint32_t desc, uint32_t extDesc, SendAccess access)
-    G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc, SendAccess access,
-        G4_Operand* bti, G4_Operand* sti);
-
-    /// Preferred constructor takes an explicit SFID and src1 length
-    G4_SendMsgDescriptor(
-        SFID sfid,
-        uint32_t desc,
-        uint32_t extDesc,
-        int src1Len,
-        SendAccess access,
-        G4_Operand *bti,
-        bool isValidFuncCtrl);
-
-    void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
-    static uint32_t createExtDesc(SFID funcID, bool isEot = false)
-    {
-        return createExtDesc(funcID, isEot, 0, 0);
-    }
-
-    static uint32_t createMRTExtDesc(bool src0Alpha, uint8_t RTIndex, bool isEOT, uint32_t extMsgLen, uint16_t extFuncCtrl)
-    {
-        ExtDescData data;
-        data.value = 0;
-        data.layout.funcID = SFIDtoInt(SFID::DP_WRITE);
-        data.layout.RTIndex = RTIndex;
-        data.layout.src0Alpha = src0Alpha;
-        data.layout.eot = isEOT;
-        data.layout.extMsgLength = extMsgLen;
-        data.layout.extFuncCtrl = extFuncCtrl;
-        return data.value;
-    }
-
-    static uint32_t createExtDesc(SFID funcID,
-        bool isEot,
-        unsigned extMsgLen,
-        unsigned extFCtrl = 0)
-    {
-        ExtDescData data;
-        data.value = 0;
-        data.layout.funcID = SFIDtoInt(funcID);
-        data.layout.eot = isEot;
-        data.layout.extMsgLength = extMsgLen;
-        data.layout.extFuncCtrl = extFCtrl;
-        return data.value;
-    }
-
-    static uint32_t createDesc(uint32_t fc, bool headerPresent,
-        unsigned msgLength, unsigned rspLength)
-    {
-        DescData data;
-        data.value = fc;
-        data.layout.headerPresent = headerPresent;
-        data.layout.msgLength = static_cast<uint16_t>(msgLength);
-        data.layout.rspLength = static_cast<uint16_t>(rspLength);
-        return data.value;
-    }
-
-    SFID      getFuncId() const {return sfid;}
-
-    uint32_t getFuncCtrl() const {
-        return desc.layout.funcCtrl;
-    }
 
 
-    bool isEOTInst() const { return eotAfterMessage; }
-    void setEOT();
-
-    uint16_t getExtFuncCtrl() const {
-        MUST_BE_TRUE(isHDC(), "getExtFuncCtrl on non-HDC message");
-        return extDesc.layout.extFuncCtrl;
-    }
-
-    /* Info methods */
-    // common for all sends
-    uint16_t ResponseLength() const
-    {
-        return desc.layout.rspLength;
-    }
-    uint16_t MessageLength() const { return desc.layout.msgLength; }
-    uint16_t extMessageLength() const { return (uint16_t)src1Len; }
-    bool isDataPortRead() const { return accessType != SendAccess::WRITE_ONLY; }
-    bool isDataPortWrite() const { return accessType != SendAccess::READ_ONLY; }
-    SendAccess getAccess() const { return accessType; }
-    bool isValidFuncCtrl() const { return funcCtrlValid; }
-    bool isHeaderPresent() const;
-    void setHeaderPresent(bool val);
-
-    // for HDC messages only (DC0/DC1/DC2)
-    bool isHDC() const
-    {
-        auto funcID = getFuncId();
-        return
-            funcID == SFID::DP_DC ||
-            funcID == SFID::DP_DC1 ||
-            funcID == SFID::DP_DC2 ||
-            funcID == SFID::DP_CC;
-    }
-
-    uint32_t getHdcMessageType() const;
-    bool isAtomicMessage() const;
-    uint16_t getHdcAtomicOp() const;
-
-    bool isSLMMessage() const;
-
-    unsigned int getEnabledChannelNum() const;
-    unsigned int getBlockNum() const;
-    unsigned int getBlockSize() const;
-    bool isOwordLoad() const;
-
-    bool isHdcTypedSurfaceWrite() const;
-
-    // return offset in unit of GRF
-    uint16_t getScratchRWOffset() const
-    {
-        MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
-        return (getFuncCtrl() & 0xFFFu);
-    }
-
-    bool isScratchRW() const
-    {
-        // scratch msg: DC0, bit 18 = 1
-        return getFuncId() == SFID::DP_DC && ((getFuncCtrl() & 0x40000u) != 0);
-    }
-    bool isScratchRead() const
-    {
-        return isScratchRW() && (getFuncCtrl() & 0x20000u) == 0;
-    }
-    bool isScratchWrite() const
-    {
-        return isScratchRW() && (getFuncCtrl() & 0x20000u) != 0;
-    }
-    uint16_t getScratchRWSize() const
-    {
-        MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
-        uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
-        return  0x1 << bitV;
-    }
-
-    bool isA64Message() const;
-
-    // for sampler mesasges only
-    bool isSampler() const { return getFuncId() == SFID::SAMPLER; }
-    bool isCPSEnabled() const { return extDesc.layout.cps != 0; }
-    uint32_t getSamplerMessageType() const;
-    bool is16BitInput() const;
-    bool is16BitReturn() const;
-
-    bool isThreadMessage() const
-    {
-        return getFuncId() == SFID::GATEWAY || getFuncId() == SFID::SPAWNER;
-    }
-
-    bool isBarrierMsg() const;
-    bool isFence() const;
-    bool isSendBarrier() const {
-        return isAtomicMessage() || isBarrierMsg();  // atomic write or explicit barrier
-    }
-
-    const G4_Operand *getBti() const {return m_bti;}
-          G4_Operand *getBti()       {return m_bti;}
-    const G4_Operand *getSti() const {return m_sti;}
-          G4_Operand *getSti()       {return m_sti;}
-
-    uint32_t getDesc() const { return desc.value; }
-    uint32_t getExtendedDesc() const { return extDesc.value; }
-
-    const char* getDescType() const;
-private:
-    void setBindingTableIdx(unsigned idx);
-};
 
 //forward declaration for the binary of an instruction
 class BinInst;
@@ -528,7 +286,7 @@ class G4_InstSend;
 
 class G4_INST
 {
-    friend class G4_SendMsgDescriptor;
+    friend class G4_SendDesc;
     friend class IR_Builder;
 
 protected:
@@ -748,7 +506,26 @@ public:
 
     // ToDo: get rid of these functions which don't make sense for non-sends
     virtual bool isEOT() const { return false; }
-    virtual G4_SendMsgDescriptor* getMsgDesc() const { return nullptr; }
+    virtual G4_SendDesc * getMsgDesc() const { return nullptr; }
+
+    const G4_SendDescRaw * getMsgDescRaw() const {
+        const auto *msgDesc = getMsgDesc();
+        if (msgDesc == nullptr || !getMsgDesc()->isRaw())
+            return nullptr;
+        return (const G4_SendDescRaw *)msgDesc;
+    }
+    G4_SendDescRaw * getMsgDescRaw() {
+        auto *msgDesc = getMsgDesc();
+        if (msgDesc == nullptr || !getMsgDesc()->isRaw())
+            return nullptr;
+        return (G4_SendDescRaw *)msgDesc;
+    }
+    const G4_SendDescLdSt * getMsgDescLdSt() const {
+        const auto *msgDesc = getMsgDesc();
+        if (msgDesc == nullptr || !getMsgDesc()->isRaw())
+            return nullptr;
+        return (const G4_SendDescLdSt *)msgDesc;
+    }
 
     virtual bool mayExceedTwoGRF() const
     {
@@ -794,6 +571,14 @@ public:
         return (G4_InstIntrinsic*) this;
     }
 
+    const G4_InstSend* asSendInst() const
+    {
+        if (!isSend())
+        {
+            return nullptr;
+        }
+        return reinterpret_cast<const G4_InstSend*>(this);
+    }
     G4_InstSend* asSendInst()
     {
         if (!isSend())
@@ -1447,11 +1232,11 @@ public:
         assert(isReturn());
         setOpcode(G4_pseudo_fret);
     }
-};
+}; // G4_InstCF
 
 class G4_InstSend : public G4_INST
 {
-    G4_SendMsgDescriptor* msgDesc;
+    G4_SendDesc* msgDesc;
 
 public:
 
@@ -1467,7 +1252,7 @@ public:
         G4_SrcRegRegion* payload,
         G4_Operand* desc,
         G4_InstOpts opt,
-        G4_SendMsgDescriptor* md);
+        G4_SendDesc* md);
 
     // split send (two source)
     // desc is either imm or a0.0 and in src2
@@ -1483,7 +1268,7 @@ public:
         G4_Operand* desc,
         G4_Operand* extDesc,
         G4_InstOpts opt,
-        G4_SendMsgDescriptor* md);
+        G4_SendDesc* md);
 
     G4_INST* cloneInst() override;
 
@@ -1513,12 +1298,12 @@ public:
         return srcs[3];
     }
 
-    G4_SendMsgDescriptor *getMsgDesc() const override
+    G4_SendDesc *getMsgDesc() const override
     {
         return msgDesc;
     }
 
-    void setMsgDesc(G4_SendMsgDescriptor *in)
+    void setMsgDesc(G4_SendDesc *in)
     {
         assert(in && "null descriptor not expected");
         msgDesc = in;
@@ -1536,16 +1321,18 @@ public:
     //    thread should also terminate with a send to TS.
     bool canBeEOT() const
     {
-        bool canEOT = msgDesc->ResponseLength() == 0 &&
-            (msgDesc->getFuncId() != SFID::NULL_SFID &&
-                msgDesc->getFuncId() != SFID::SAMPLER);
+        if (!msgDesc->isRaw())
+            return false;
+        bool canEOT = getMsgDesc()->getDstLenRegs() == 0 &&
+            (getMsgDesc()->getSFID() != SFID::NULL_SFID &&
+                getMsgDesc()->getSFID() != SFID::SAMPLER);
 
         return canEOT;
     }
 
     bool isFence() const {return getMsgDesc()->isFence();}
 
-    bool isEOT() const override {return msgDesc->isEOTInst();}
+    bool isEOT() const override {return msgDesc->isEOT();}
 
     bool isDirectSplittableSend();
 
@@ -1557,8 +1344,7 @@ public:
 
     void setSerialize() {option = option | InstOpt_Serialize;}
     bool isSerializedInst() const { return (option & InstOpt_Serialize) != 0; }
-};
-
+}; // G4_InstSend
 
 }
 
