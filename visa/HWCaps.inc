@@ -700,4 +700,9 @@
    {
        return false;
    }
-    // end HW capabilities
+
+   bool hasFtoPackedHFMove() const
+   {
+      return false;
+   }
+   // end HW capabilities
