@@ -628,6 +628,11 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
 
             totalNumberOfInlinedInst += NumInst * Func->getNumUses();
         }
+        else
+        {
+            // Make sure original func isn't inlined accidentally.
+            Func->removeFnAttr(llvm::Attribute::AlwaysInline);
+        }
     }
 
     for (auto II = M.begin(), IE = M.end(); II != IE; )
