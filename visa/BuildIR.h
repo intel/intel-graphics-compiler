@@ -390,7 +390,7 @@ private:
     const WA_TABLE *m_pWaTable;
     Options *m_options = nullptr;
 
-    std::map<G4_INST*, G4_FCALL*> m_fcallInfo;
+    std::map<const G4_INST*, G4_FCALL*> m_fcallInfo;
 
     // Basic region descriptors.
     RegionDesc CanonicalRegionStride0, // <0; 1, 0>
@@ -615,12 +615,12 @@ public:
 
     const WA_TABLE *getPWaTable() const { return m_pWaTable; }
 
-    const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...);
+    static const char* getNameString(Mem_Manager& mem, size_t size, const char* format, ...);
 
     G4_Predicate_Control vISAPredicateToG4Predicate(
         VISA_PREDICATE_CONTROL control, G4_ExecSize execSize);
 
-    G4_FCALL* getFcallInfo(G4_INST* inst) const;
+    G4_FCALL* getFcallInfo(const G4_INST* inst) const;
 
     // If this is true (detected in TranslateInterface.cpp), we need a sampler flush before EOT
     bool getHasNullReturnSampler() const { return hasNullReturnSampler; }
