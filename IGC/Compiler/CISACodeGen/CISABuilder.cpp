@@ -4092,6 +4092,10 @@ namespace IGC
         {
             SaveOption(vISA_enableBCR, true);
         }
+        if (IGC_IS_FLAG_ENABLED(ForceBCR))
+        {
+            SaveOption(vISA_forceBCR, true);
+        }
         if (IGC_IS_FLAG_ENABLED(forceSamplerHeader))
         {
             SaveOption(vISA_forceSamplerHeader, true);

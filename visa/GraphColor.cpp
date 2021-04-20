@@ -805,7 +805,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
         if (!src || !src->isSrcRegRegion() || src->isAccReg())
         {
             // bank conflict not possible
-            return;
+            continue;
         }
 
         dcls[i] = GetTopDclFromRegRegion(src);
@@ -943,7 +943,6 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
     return;
 }
 
-
 void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
     unsigned &threeSourceInstNum,
     unsigned &sendInstNum,
@@ -968,15 +967,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
         if (inst->getNumSrc() == 3 && !inst->isSend())
         {
             threeSourceInstNum++;
-            if (gra.kernel.fg.builder->lowHighBundle())
-            {
-                setupBankConflictsOneGRFOld(inst, bank1RegNum, bank2RegNum, GRFRatio, internalConflict);
-            }
-            else
-            {
-                setupBankConflictsforTwoGRFs(inst);
-            }
-
+            setupBankConflictsOneGRFOld(inst, bank1RegNum, bank2RegNum, GRFRatio, internalConflict);
         }
         if (inst->isSend() && !inst->isEOT())
         {
@@ -985,6 +976,65 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
             {
                 sendInstNum++;
             }
+        }
+    }
+
+    if ((float)threeSourceInstNum / bb->size() > 0.1)
+    {
+        if (!gra.kernel.fg.builder->lowHighBundle() && gra.kernel.fg.builder->hasEarlyGRFRead())
+        {
+            for (G4_INST* inst : *bb)
+            {
+                if (prevInst && inst->getNumSrc() == 3 && !inst->isSend())
+                {
+                    setupBankForSrc0(inst, prevInst);
+                }
+                prevInst = inst;
+            }
+        }
+    }
+}
+
+void BankConflictPass::setupBankConflictsForBBTGL(G4_BB* bb,
+    unsigned& threeSourceInstNum,
+    unsigned& sendInstNum,
+    unsigned numRegLRA,
+    unsigned& internalConflict)
+{
+    float GRFRatio = 0;
+    G4_INST* prevInst = nullptr;
+
+    if (numRegLRA)
+    {
+        GRFRatio = ((float)(numRegLRA - SECOND_HALF_BANK_START_GRF)) / SECOND_HALF_BANK_START_GRF;
+    }
+
+    for (auto i = bb->rbegin(), rend = bb->rend();
+        i != rend;
+        i++)
+    {
+        G4_INST* inst = (*i);
+        if (inst->isSend() || inst->isCFInst() || inst->isLabel() || inst->isOptBarrier())
+        {
+            if (inst->isSend() && !inst->isEOT())
+            {
+                //Why only data port read causes issue?
+                if (inst->getMsgDesc()->isDataPortRead())
+                {
+                    sendInstNum++;
+                }
+            }
+            continue;
+        }
+        if (inst->getNumSrc() == 3)
+        {
+            threeSourceInstNum++;
+            setupBankConflictsforTwoGRFs(inst);
+        }
+        else if (gra.kernel.getOption(vISA_forceBCR) && inst->getNumSrc() == 2)
+        {
+            threeSourceInstNum++;
+            setupBankConflictsforMad(inst);
         }
     }
 
@@ -1043,7 +1093,15 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR, bool &threeSo
 
         unsigned loopNestLevel = 0;
 
-        setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum, numRegLRA, conflicts);
+        if (gra.kernel.fg.builder->lowHighBundle())
+        {
+            setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum, numRegLRA, conflicts);
+        }
+        else
+        {
+            setupBankConflictsForBBTGL(bb, threeSourceInstNum, sendInstNum, numRegLRA, conflicts);
+        }
+
         loopNestLevel = bb->getNestLevel() + 1;
 
         if (threeSourceInstNum)
@@ -3413,6 +3471,12 @@ bool Augmentation::markNonDefaultMaskDef()
         if (liveAnalysis.livenessClass(dcl->getRegFile()))
         {
             if (gra.getAugmentationMask(dcl) == AugmentationMasks::Undetermined)
+            {
+                gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
+                nonDefaultMaskDefFound = true;
+            }
+
+            if(kernel.getOption(vISA_forceBCR) && gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
             {
                 gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
                 nonDefaultMaskDefFound = true;
@@ -6084,7 +6148,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 //
                 // for GRF register assignment, if we are performing round-robin (1st pass) then abort on spill
                 //
-                if ((heuristic == ROUND_ROBIN || doBankConflict) &&
+                if ((heuristic == ROUND_ROBIN || (doBankConflict && !kernel.getOption(vISA_forceBCR))) &&
                     (lr->getRegKind() == G4_GRF || lr->getRegKind() == G4_FLAG))
                 {
                     return false;
@@ -6659,10 +6723,13 @@ bool GraphColor::regAlloc(
                     return false;
                 }
 
-                if (!success && doBankConflictReduction)
+                if (!kernel.getOption(vISA_forceBCR))
                 {
-                    resetTemporaryRegisterAssignments();
-                    assignColors(FIRST_FIT, false, false);
+                    if (!success && doBankConflictReduction)
+                    {
+                        resetTemporaryRegisterAssignments();
+                        assignColors(FIRST_FIT, false, false);
+                    }
                 }
             }
         }
@@ -9811,7 +9878,6 @@ int GlobalRA::coloringRegAlloc()
                         failSafeRAIteration++;
                     }
                 }
-
                 stopTimer(TimerID::SPILL);
             }
             // RA successfully allocates regs

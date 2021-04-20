@@ -467,7 +467,7 @@
 
     bool hasBankCollision() const
     {
-        return (getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11) ||
+        return (getPlatformGeneration(getPlatform()) <= PlatformGen::GEN11) || getOption(vISA_forceBCR) ||
         (getOption(vISA_enableBCR) && !hasEarlyGRFRead());
     }
 

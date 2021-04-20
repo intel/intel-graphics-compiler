@@ -509,13 +509,25 @@ bool LocalRA::localRA()
 
     if (!doRoundRobin)
     {
-        if (builder.getOption(vISA_RATrace))
+        if (kernel.getOption(vISA_forceBCR) && doBCR)
         {
-            std::cout << "\t--first-fit " << (doBCR ? "BCR " : "") << "RA\n";
+            if (builder.getOption(vISA_RATrace))
+            {
+                std::cout << "\t--first-fit " << "BCR " << "RA\n";
+            }
+            needGlobalRA = localRAPass(false, doSplitLLR);
         }
-        globalLRSize = 0;
-        evenAlign();
-        needGlobalRA = localRAPass(false, doSplitLLR);
+
+        if (needGlobalRA)
+        {
+            if (builder.getOption(vISA_RATrace))
+            {
+                std::cout << "\t--first-fit " << "RA\n";
+            }
+            globalLRSize = 0;
+            evenAlign();
+            needGlobalRA = localRAPass(false, doSplitLLR);
+        }
     }
 
     if (needGlobalRA == false)
