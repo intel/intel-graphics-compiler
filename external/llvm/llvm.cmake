@@ -46,20 +46,7 @@ cmake_policy(VERSION 3.13.4)
 
 include_guard(DIRECTORY)
 
-set(SOURCE_MODE_NAME "Source")
-set(PREBUILDS_MODE_NAME "Prebuilds")
-
-set(IGC_OPTION__LLVM_MODE "" CACHE STRING
-  "LLVM mode for IGC (can be ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty)"
-  )
-
-if(IGC_OPTION__LLVM_MODE AND NOT (IGC_OPTION__LLVM_MODE MATCHES "^(${SOURCE_MODE_NAME}|${PREBUILDS_MODE_NAME})$"))
-  message(FATAL_ERROR "LLVM mode can be only ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty!")
-endif()
-
-# Get preferred version of LLVM.
-include(llvm_preferred_version)
-set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING "Preferred version of LLVM to use")
+llvm_define_mode_variable(LLVM IGC_OPTION__LLVM_MODE)
 
 # Get default source dir.
 include(llvm_source_path)
@@ -108,7 +95,7 @@ message(STATUS "[LLVM] LLVM will be built from sources")
 message(STATUS "[LLVM] LLVM sources folder: ${IGC_OPTION__LLVM_SOURCES_DIR}")
 message(STATUS "[LLVM] LLVM sources in stock version: ${IGC_OPTION__LLVM_STOCK_SOURCES}")
 
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR} ${IGC_LLVM_WORKSPACE}/build)
 
 # Some variables are lost after LLVM subdirectory left.
 # Restore them for IGC usage.

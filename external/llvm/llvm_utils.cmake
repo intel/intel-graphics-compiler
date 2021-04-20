@@ -111,3 +111,19 @@ macro(get_llvm_external_project_dir proj out)
     get_filename_component(${out} ${${out}} ABSOLUTE BASE_DIR ${ARG_BASE_DIR})
   endif()
 endmacro()
+
+# Helper function to define and check build mode variable for project.
+# proj_name -- name of project to print in messages.
+# var -- output variable that should be defined.
+macro(llvm_define_mode_variable proj_name var)
+  set(SOURCE_MODE_NAME "Source")
+  set(PREBUILDS_MODE_NAME "Prebuilds")
+
+  set(${var} "" CACHE STRING
+    "${proj_name} mode for IGC (can be ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty)"
+    )
+
+  if(${var} AND NOT (${var} MATCHES "^(${SOURCE_MODE_NAME}|${PREBUILDS_MODE_NAME})$"))
+    message(FATAL_ERROR "${proj_name} mode can be only ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty!")
+  endif()
+endmacro()

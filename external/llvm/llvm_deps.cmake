@@ -39,6 +39,13 @@ include_guard(DIRECTORY)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_MODULE_PATH})
 
+# Get preferred version of LLVM.
+include(llvm_preferred_version)
+set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING "Preferred version of LLVM to use")
+
+set(IGC_LLVM_WORKSPACE ${CMAKE_CURRENT_BINARY_DIR}/llvm-deps)
+set(IGC_LLVM_WORKSPACE_SRC ${IGC_LLVM_WORKSPACE}/src)
+
 # Get useful macros for llvm hooks.
 include(llvm_utils)
 

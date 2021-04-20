@@ -26,9 +26,7 @@
 
 include_guard(DIRECTORY)
 
-if(NOT IGC_LLVM_SOURCE_DIR)
-  set(IGC_LLVM_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../src/llvm")
-endif()
+set(IGC_LLVM_SOURCE_DIR ${IGC_LLVM_WORKSPACE_SRC}/llvm)
 
 # Already copied and patched. Probably...
 # TODO: handle dependencies on patches changes.
@@ -59,6 +57,7 @@ endif()
 
 # Copy stock LLVM sources to IGC_LLVM_SOURCE_DIR to apply patches.
 message(STATUS "[LLVM_PATCHER] : Copying stock LLVM sources ${IGC_OPTION__LLVM_SOURCES_DIR} to ${IGC_LLVM_SOURCE_DIR}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/.git ${IGC_LLVM_WORKSPACE_SRC}/.git)
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/llvm ${IGC_LLVM_SOURCE_DIR})
 
 message(STATUS "[LLVM_PATCHER] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
