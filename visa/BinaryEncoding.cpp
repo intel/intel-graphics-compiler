@@ -285,8 +285,7 @@ inline void BinaryEncoding::EncodeSendMsgDesc29_30(G4_INST* inst)
     MUST_BE_TRUE(inst->isSend(), "must be a send inst");
 
     BinInst *mybin = inst->getBinInst();
-    G4_SendDescRaw* msgDesc = inst->getMsgDescRaw();
-    MUST_BE_TRUE(msgDesc, "expected raw descriptor");
+    G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
     G4_Operand* descOpnd = inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
     if (!descOpnd->isImm())
     {
@@ -2613,9 +2612,10 @@ inline
 BinaryEncoding::Status BinaryEncoding::EncodeExtMsgDescr(G4_INST* inst)
 {
     BinInst *mybin = inst->getBinInst();
-    MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
-    uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
-    SetExtMsgDescr(inst, mybin, msgDesc);
+    {
+        uint32_t msgDesc = inst->getMsgDesc()->getExtendedDesc();
+        SetExtMsgDescr(inst, mybin, msgDesc);
+    }
     return SUCCESS;
 }
 

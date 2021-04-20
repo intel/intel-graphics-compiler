@@ -490,7 +490,7 @@ bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr>& BDvec)
 
         // Sends need an additional bucket
         if (inst->isSend()) {
-            if (inst->getMsgDesc()->isScratch()) {
+            if (inst->getMsgDesc()->isScratchRW()) {
                 BDvec.push_back(BucketDescr(SCRATCH_SEND_BUCKET, Mask(), Opnd_dst));
             }
             else {
@@ -1552,8 +1552,7 @@ static bool canAvoidDepCycles(Node *firstNode, Node *secondNode, bool isFirstLev
 static bool isTypedWritePart(G4_INST* inst, int partN) {
     return inst->isSend()
         && inst->getExecSize() == g4::SIMD8
-        && inst->getMsgDescRaw()
-        && inst->getMsgDescRaw()->isHdcTypedSurfaceWrite()
+        && inst->getMsgDesc()->isHdcTypedSurfaceWrite()
         && inst->getMaskOffset() == partN * 8;
 };
 
@@ -1575,12 +1574,10 @@ union DescData {
 // leading URB write should have cache-aligned global offset
 static bool isLeadingURBWrite(G4_INST* inst)
 {
-    if (inst->isSend() &&
-        inst->getMsgDescRaw() &&
-        inst->getMsgDesc()->getSFID() == SFID::URB)
+    if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID::URB)
     {
         DescData desc;
-        desc.value = inst->getMsgDescRaw()->getDesc();
+        desc.value = inst->getMsgDesc()->getDesc();
         // ToDo: add support for per-slot offset and channel mask later if necessary
         if (desc.layout.opcode == URB_SIMD8_WRITE && !desc.layout.perSlotPresent &&
             !desc.layout.maskPresent && desc.layout.offset % 4 == 0)
@@ -1592,21 +1589,18 @@ static bool isLeadingURBWrite(G4_INST* inst)
 }
 
 // precondition: both inst are URB messages
-static bool canFuseURB(const G4_INST* secondURB, const G4_INST* firstURB)
+static bool canFuseURB(G4_INST* secondURB, G4_INST* firstURB)
 {
-    if (!firstURB->getMsgDescRaw() || !secondURB->getMsgDescRaw()) {
-        return false;
-    }
     DescData firstDesc, secondDesc;
-    firstDesc.value = firstURB->getMsgDescRaw()->getDesc();
-    secondDesc.value = secondURB->getMsgDescRaw()->getDesc();
+    firstDesc.value = firstURB->getMsgDesc()->getDesc();
+    secondDesc.value = secondURB->getMsgDesc()->getDesc();
     if (firstDesc.layout.opcode == secondDesc.layout.opcode &&
         firstDesc.layout.maskPresent == secondDesc.layout.maskPresent &&
         firstDesc.layout.perSlotPresent == secondDesc.layout.maskPresent &&
         firstDesc.layout.offset + 2 == secondDesc.layout.offset)
     {
-        if (firstURB->getMsgDescRaw()->MessageLength() == secondURB->getMsgDescRaw()->MessageLength() &&
-            firstURB->getMsgDescRaw()->extMessageLength() == secondURB->getMsgDescRaw()->extMessageLength())
+        if (firstURB->getMsgDesc()->MessageLength() == secondURB->getMsgDesc()->MessageLength() &&
+            firstURB->getMsgDesc()->extMessageLength() == secondURB->getMsgDesc()->extMessageLength())
         {
             return true;
         }
@@ -1662,7 +1656,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
         }
         else if (leadingURB)
         {
-            if (inst->isSend() && inst->getMsgDesc()->getSFID() == SFID::URB)
+            if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID::URB)
             {
                 if (canFuseURB(inst, (*leadingURB->getInstructions()).front()))
                 {
@@ -1712,7 +1706,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
             firstNode->addPairInstr(*secondNode->getInstructions()->begin());
             if (!kernel->fg.builder->getOption(vISA_NoAtomicSend) &&
                 firstInstr->isSend() &&
-                (firstInstr->getMsgDesc()->getSFID() == SFID::URB ||
+                (firstInstr->getMsgDesc()->getFuncId() == SFID::URB ||
                 (kernel->fg.builder->fuseTypedWrites() &&
                 (isTypedWritePart(firstInstr, 0) ||
                 isTypedWritePart(firstInstr, 2)))))
@@ -2435,8 +2429,8 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
     G4_INST *inst = *node->getInstructions()->begin();
     if (depT == DepType::CONTROL_FLOW_BARRIER && inst->isSend())
     {
-        G4_SendDesc *msgDesc = inst->getMsgDesc();
-        if (msgDesc->isRead())
+        G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
+        if (msgDesc->isDataPortRead())
         {
             return LT.getLatency(inst);
         }

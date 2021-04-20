@@ -130,13 +130,6 @@ constexpr G4_ExecSize SIMD32((unsigned char)32);
 constexpr G4_ExecSize SIMD_UNDEFINED((unsigned char)UNDEFINED_EXEC_SIZE);
 }
 
-namespace g4 {
-    template <typename T>
-    static inline T alignUp(T a, T n) {
-        return ((n + a - 1) - (n + a - 1) % a);
-    }
-}
-
 // saturation
 // (typesafe enum value with operators and conversions)
 //

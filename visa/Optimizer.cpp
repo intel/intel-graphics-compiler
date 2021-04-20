@@ -777,14 +777,11 @@ void Optimizer::cloneSampleInst()
         {
             auto Next = std::next(I);
             auto inst = *I;
-            if (inst->isSend() &&
-                inst->getMsgDesc()->getSFID() == SFID::SAMPLER &&
-                inst->getMsgDescRaw() != nullptr &&
-                inst->getExecSize() >= builder.getNativeExecSize())
+            if (inst->isSend() && inst->asSendInst()->getMsgDesc()->isSampler() && inst->getExecSize() >= builder.getNativeExecSize())
             {
                 G4_InstSend* sendInst = inst->asSendInst();
-                bool isEval = sendInst->getMsgDesc()->getDstLenRegs() == 0;
-                uint32_t messageType = sendInst->getMsgDescRaw()->getSamplerMessageType();
+                bool isEval = sendInst->getMsgDesc()->ResponseLength() == 0;
+                uint32_t messageType = sendInst->getMsgDesc()->getSamplerMessageType();
                 assert(!inst->getPredicate() && "do not handle predicated sampler inst for now");
                 if (!isEval && cloneSample)
                 {
@@ -800,7 +797,7 @@ void Optimizer::cloneSampleInst()
                     newInst->setPredicate(builder.createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0));
                     auto newInstIt = bb->insertAfter(I, newInst);
 
-                    uint16_t rspLen = inst->asSendInst()->getMsgDescRaw()->ResponseLength();
+                    uint16_t rspLen = inst->asSendInst()->getMsgDesc()->ResponseLength();
                     // If Pixel Null Mask feedback is requested sampler message
                     // has header, all data channels enabled and an additional
                     // GRF of writeback payload with Pixel Null Mask.
@@ -812,9 +809,9 @@ void Optimizer::cloneSampleInst()
                     // if Pixel Null Mask feedback is enabled.
                     assert(inst->getExecSize() == g4::SIMD8 || inst->getExecSize() == g4::SIMD16);
                     uint16_t pixelNullMaskRspLen =
-                        (inst->getExecSize() == g4::SIMD16 && !sendInst->getMsgDescRaw()->is16BitReturn()) ? 9 : 5;
+                        (inst->getExecSize() == g4::SIMD16 && !sendInst->getMsgDesc()->is16BitReturn()) ? 9 : 5;
 
-                    if (sendInst->getMsgDescRaw()->isHeaderPresent() &&
+                    if (sendInst->getMsgDesc()->isHeaderPresent() &&
                         rspLen == pixelNullMaskRspLen)
                     {
                         // Pixel Null Mask is in the first word of the last GRF
@@ -5751,7 +5748,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             dest->a0Dot0->markDead();
         }
 
-        payLoadSize = dest->send->getMsgDesc()->getSrc0LenRegs();
+        payLoadSize = dest->send->getMsgDesc()->MessageLength();
 
         isSameX = isHeaderOptReuse(dest->mDot0, source->mDot0)      &&
             !source->isXRedef ;
@@ -5956,15 +5953,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     *   send (1) null<1>:ud r1 0x3 0x2000004:ud{Align1}
     *   wait n0:ud {Align1}
     */
-    bool Optimizer::isBarrierPattern(
-        G4_INST *sendInst, G4_SrcRegRegion *& barrierSendSrc0)
+    bool Optimizer::isBarrierPattern(G4_INST *sendInst,
+                                     G4_SrcRegRegion *& barrierSendSrc0)
     {
         /*
          * check G4_send
          */
-        G4_SendDescRaw *desc = sendInst->getMsgDescRaw();
-        if (!desc)
-            return false;
+        G4_SendMsgDescriptor *desc = sendInst->getMsgDesc();
         uint32_t descVal = desc->getDesc();
         if ((desc->getFuncId() == SFID::GATEWAY) &&
             (descVal == (0x1 << 25) + 0x4) && // 0x2000004
@@ -6190,7 +6185,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     optMessageHeaders(msgList, bb, myA0);
                     if (msgList.front()->opt &&
-                        msgList.front()->send->getMsgDesc()->getSrc0LenRegs() == 1)
+                        msgList.front()->send->getMsgDesc()->MessageLength() == 1)
                     {
                         // keep the oldest send for subsequent read operations
                         // but the instruction to define a0.0 needs to be latest
@@ -6198,7 +6193,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         msgList.pop_front(); // delete first element
                     }
                     else if (msgList.front()->opt &&
-                        msgList.front()->send->getMsgDesc()->getSrc0LenRegs() >= 1)
+                        msgList.front()->send->getMsgDesc()->MessageLength() >= 1)
                     {
                         // keep the latest send for subsequent write operations
                         msgList.pop_back();
@@ -6946,7 +6941,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         G4_INST* inst = *ii;
         G4_InstSend* sendInst = inst->asSendInst();
         assert(sendInst);
-        if (sendInst && sendInst->getMsgDesc()->getDstLenRegs() > 0)
+        if (sendInst && sendInst->getMsgDesc()->ResponseLength() > 0)
         {
             // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
             // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
@@ -7121,7 +7116,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 }
 
                 if (VISA_WA_CHECK(builder.getPWaTable(), WaResetN0BeforeGatewayMessage) &&
-                    inst->isSend() && inst->getMsgDesc()->isBarrier())
+                    inst->isSend() && inst->getMsgDesc()->isBarrierMsg())
                 {
                     // mov (1) n0.0 0x0 {Switch}
                     G4_DstRegRegion* n0Dst = builder.createDst(
@@ -7330,7 +7325,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             uint16_t extFuncCtrl = 0;
             // both scratch and block read use DC
-            SFID funcID = SFID::DP_DC0;
+            SFID funcID = SFID::DP_DC;
 
             uint32_t headerPresent = 0x80000;
             uint32_t msgDescImm = headerPresent;
@@ -7344,7 +7339,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             msgDescImm |= (blocksizeEncoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
             msgDescImm |= i;
 
-            G4_SendDesc* desc = kernel.fg.builder->createSendMsgDesc(
+            G4_SendMsgDescriptor* desc = kernel.fg.builder->createSendMsgDesc(
                 msgDescImm, 0, 1, funcID, msgSize, extFuncCtrl, SendAccess::WRITE_ONLY);
             const RegionDesc* region = kernel.fg.builder->getRegionStride1();
             G4_SrcRegRegion* headerOpnd = kernel.fg.builder->Create_Src_Opnd_From_Dcl(kernel.fg.builder->getBuiltinR0(), region);
@@ -7372,7 +7367,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (inst->isSend())
                 {
                     numSends++;
-                    if (inst->asSendInst()->getMsgDesc()->isBarrier())
+                    if (inst->asSendInst()->getMsgDesc()->isBarrierMsg())
                     {
                         // Propagate information about barriers presence back to IGC. It's safer to
                         // depend on vISA statistics as IGC is not able to detect barriers if they are
@@ -7690,16 +7685,15 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (inst->isSend())
                 {
                     auto msgDesc = inst->asSendInst()->getMsgDesc();
-                    if (msgDesc->isWrite())
+                    if (msgDesc->isDataPortWrite())
                     {
                         if (msgDesc->isHDC())
                         {
-                            if (msgDesc->isSLM())
+                            if (msgDesc->isSLMMessage())
                             {
                                 hasSLMWrites = true;
                             }
-                            else if (msgDesc->isRaw() &&
-                                ((const G4_SendDescRaw *)msgDesc)->isHdcTypedSurfaceWrite())
+                            else if (msgDesc->isHdcTypedSurfaceWrite())
                             {
                                 hasTypedWrites = true;
                             }
@@ -7826,8 +7820,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     // an HDC fence is more efficient in this case
                     // fence with commit enable
-                    int fenceDesc = G4_SendDescRaw::createDesc((0x7 << 14) | (1 << 13), true, 1, 1);
-                    auto msgDesc = builder.createSyncMsgDesc(SFID::DP_DC0, fenceDesc);
+                    int fenceDesc = G4_SendMsgDescriptor::createDesc((0x7 << 14) | (1 << 13), true, 1, 1);
+                    auto msgDesc = builder.createSyncMsgDesc(SFID::DP_DC, fenceDesc);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
                     G4_INST* inst = builder.createSendInst(
@@ -7838,7 +7832,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 else
                 {
                     // insert a dumy scratch read
-                    auto msgDesc = builder.createReadMsgDesc(SFID::DP_DC0, desc.value);
+                    auto msgDesc = builder.createReadMsgDesc(SFID::DP_DC, desc.value);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     // We can use any dst that does not conflcit with EOT src, which must be between r112-r127
                     auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, 1, 0);

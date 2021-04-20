@@ -1262,17 +1262,17 @@ const RegionDesc* RegionPool::createRegion(
 /*
     Used in IR_Builder::translateVISARawSendInst. All the bits in des and extDesc are already set.
 */
-G4_SendDescRaw * IR_Builder::createGeneralMsgDesc(
+G4_SendMsgDescriptor* IR_Builder::createGeneralMsgDesc(
     uint32_t desc,
     uint32_t extDesc,
     SendAccess access,
     G4_Operand* bti,
     G4_Operand* sti)
 {
-    return new (mem) G4_SendDescRaw(desc, extDesc, access, bti, sti);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, access, bti, sti);
 }
 
-G4_SendDescRaw * IR_Builder::createSendMsgDesc(
+G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     SFID sfid,
     uint32_t desc,
     uint32_t extDesc,
@@ -1281,10 +1281,10 @@ G4_SendDescRaw * IR_Builder::createSendMsgDesc(
     G4_Operand *bti,
     bool isValidFuncCtrl)
 {
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, isValidFuncCtrl);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, access, bti, isValidFuncCtrl);
 }
 
-G4_SendDescRaw * IR_Builder::createSendMsgDesc(
+G4_SendMsgDescriptor* IR_Builder::createSendMsgDesc(
     unsigned funcCtrl,
     unsigned regs2rcv,
     unsigned regs2snd,
@@ -1295,7 +1295,7 @@ G4_SendDescRaw * IR_Builder::createSendMsgDesc(
     G4_Operand *bti,
     G4_Operand *sti)
 {
-    G4_SendDescRaw* msgDesc = new (mem) G4_SendDescRaw(
+    G4_SendMsgDescriptor* msgDesc = new (mem) G4_SendMsgDescriptor(
         funcCtrl, regs2rcv, regs2snd, funcID, (uint16_t) extMsgLength,
         extFuncCtrl, access, bti, sti, *this);
     return msgDesc;
@@ -1303,35 +1303,33 @@ G4_SendDescRaw * IR_Builder::createSendMsgDesc(
 
 // shorthand for read msg desc. Note that extDesc still needs to be explicitly created,
 // SendMsgDesc ctor does not program all the bits
-G4_SendDescRaw* IR_Builder::createReadMsgDesc(
-    SFID sfid,
+G4_SendMsgDescriptor* IR_Builder::createReadMsgDesc(SFID sfid,
     uint32_t desc,
     G4_Operand* bti)
 {
     //ToDo: move extDesc into SendMsgDesc ctor
-    uint32_t extDesc = G4_SendDescRaw::createExtDesc(sfid);
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, 0, SendAccess::READ_ONLY, bti, true);
+    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, SendAccess::READ_ONLY, bti, true);
 }
 
-G4_SendDescRaw* IR_Builder::createWriteMsgDesc(
-    SFID sfid,
+G4_SendMsgDescriptor* IR_Builder::createWriteMsgDesc(SFID sfid,
     uint32_t desc,
     int src1Len,
     G4_Operand* bti)
 {
     //ToDo: move extDesc into SendMsgDesc ctor
-    uint32_t extDesc = G4_SendDescRaw::createExtDesc(sfid, false, src1Len);
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, SendAccess::WRITE_ONLY, bti, true);
+    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid, false, src1Len);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, src1Len, SendAccess::WRITE_ONLY, bti, true);
 }
 
-G4_SendDescRaw* IR_Builder::createSyncMsgDesc(SFID sfid, uint32_t desc)
+G4_SendMsgDescriptor* IR_Builder::createSyncMsgDesc(SFID sfid, uint32_t desc)
 {
     //ToDo: move extDesc into SendMsgDesc ctor
-    uint32_t extDesc = G4_SendDescRaw::createExtDesc(sfid);
-    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, 0, SendAccess::READ_WRITE, nullptr, true);
+    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(sfid);
+    return new (mem) G4_SendMsgDescriptor(sfid, desc, extDesc, 0, SendAccess::READ_WRITE, nullptr, true);
 }
 
-G4_SendDescRaw* IR_Builder::createSampleMsgDesc(
+G4_SendMsgDescriptor* IR_Builder::createSampleMsgDesc(
     uint32_t desc,
     bool cps,
     int src1Len,
@@ -1340,12 +1338,12 @@ G4_SendDescRaw* IR_Builder::createSampleMsgDesc(
 {
 #define CPS_LOD_COMPENSATION_ENABLE 11
 
-    uint32_t extDesc = G4_SendDescRaw::createExtDesc(SFID::SAMPLER, false, src1Len);
+    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER, false, src1Len);
     if (cps)
     {
         extDesc |= 1 << CPS_LOD_COMPENSATION_ENABLE;
     }
-    return new (mem) G4_SendDescRaw(desc, extDesc, SendAccess::READ_ONLY, bti, sti);
+    return new (mem) G4_SendMsgDescriptor(desc, extDesc, SendAccess::READ_ONLY, bti, sti);
 }
 
 G4_Operand* IR_Builder::emitSampleIndexGE16(
@@ -1732,7 +1730,7 @@ G4_InstSend* IR_Builder::createSendInst(
     G4_SrcRegRegion* currSrc,
     G4_Operand* msg,
     G4_InstOpts options,
-    G4_SendDesc *msgDesc,
+    G4_SendMsgDescriptor *msgDesc,
     bool addToInstList)
 {
 
@@ -1765,7 +1763,7 @@ G4_InstSend* IR_Builder::createInternalSendInst(
     G4_SrcRegRegion* currSrc,
     G4_Operand* msg,
     G4_InstOpts options,
-    G4_SendDesc *msgDesc)
+    G4_SendMsgDescriptor *msgDesc)
 {
     auto ii = createSendInst(prd, op, execSize,
         postDst, currSrc,
@@ -1788,7 +1786,7 @@ G4_InstSend* IR_Builder::createSplitSendInst(
     G4_SrcRegRegion* src1,
     G4_Operand* msg,       // msg descriptor: imm or vec
     G4_InstOpts options,
-    G4_SendDesc* msgDesc,
+    G4_SendMsgDescriptor *msgDesc,
     G4_Operand* src3,      // ext msg desciptor: imm or vec
     bool addToInstList)
 {
@@ -1796,12 +1794,12 @@ G4_InstSend* IR_Builder::createSplitSendInst(
     if (!src1)
     {
         // src1 may be null if we need to force generate split send (e.g., for bindless surfaces)
-        MUST_BE_TRUE(msgDesc->getSrc1LenRegs() == 0, "src1 length must be 0 if it is null");
+        MUST_BE_TRUE(msgDesc->extMessageLength() == 0, "src1 length must be 0 if it is null");
         src1 = createNullSrc(Type_UD);
     }
-    if (!src3 && msgDesc->isRaw())
+    if (!src3)
     {
-        src3 = createImm(((G4_SendDescRaw *)msgDesc)->getExtendedDesc(), Type_UD);
+        src3 = createImm(msgDesc->getExtendedDesc(), Type_UD);
     }
     G4_InstSend* m = new (mem) G4_InstSend(
         *this, prd, op, execSize, dst, src0, src1, msg, src3, options, msgDesc);
@@ -1829,7 +1827,7 @@ G4_InstSend* IR_Builder::createInternalSplitSendInst(
     G4_SrcRegRegion* src1,
     G4_Operand* msg,       // msg descriptor: imm or vec
     G4_InstOpts options,
-    G4_SendDesc* msgDesc,
+    G4_SendMsgDescriptor *msgDesc,
     G4_Operand* src3)     // ext msg desciptor: imm or vec)
 {
     auto ii = createSplitSendInst(nullptr, G4_sends, execSize, dst, src0, src1, msg, options,
@@ -2014,7 +2012,7 @@ G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
     G4_InstOpts options,
     bool is_sendc)
 {
-    G4_SendDescRaw* msgDesc =
+    G4_SendMsgDescriptor* msgDesc =
         createSendMsgDesc(fc, regs2rcv, regs2snd, tf_id, 0, 0, access,
             bti, sti);
 
@@ -2079,7 +2077,7 @@ G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(
     G4_DstRegRegion *postDst,
     G4_SrcRegRegion *payload,
     G4_ExecSize execsize,
-    G4_SendDescRaw *msgDesc,
+    G4_SendMsgDescriptor *msgDesc,
     G4_InstOpts option,
     bool is_sendc)
 {
@@ -2198,7 +2196,7 @@ G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     G4_InstOpts options,
     bool is_sendc)
 {
-    G4_SendDescRaw *msgDesc =
+    G4_SendMsgDescriptor *msgDesc =
         createSendMsgDesc(fc, regs2rcv, regs2snd1, tf_id, regs2snd2,
                           0, access, bti, sti);
 
@@ -2215,7 +2213,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,
     G4_ExecSize execsize,
-    G4_SendDescRaw *msgDesc,
+    G4_SendMsgDescriptor *msgDesc,
     G4_InstOpts option,
     bool is_sendc)
 {
@@ -2344,7 +2342,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RT(
     G4_SrcRegRegion *src2,
     G4_SrcRegRegion *extDescOpnd,
     G4_ExecSize execSize,
-    G4_SendDescRaw *msgDesc,
+    G4_SendMsgDescriptor *msgDesc,
     G4_InstOpts option)
 {
     G4_opcode send_opcode = G4_sendsc;

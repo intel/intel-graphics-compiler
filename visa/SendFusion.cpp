@@ -127,9 +127,9 @@ namespace vISA
             G4_BB* bb, INST_LIST_ITER InsertBeforePos);
 
         G4_VarBase* getVarBase(G4_VarBase* RegVar, G4_Type Ty);
-        uint32_t getFuncCtrlWithSimd16(const G4_SendDescRaw * Desc);
+        uint32_t getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc);
         void simplifyMsg(INST_LIST_ITER SendIter);
-        bool isAtomicCandidate(const G4_SendDescRaw * msgDesc);
+        bool isAtomicCandidate(G4_SendMsgDescriptor* msgDesc);
 
         bool WAce0Read;
 
@@ -164,13 +164,14 @@ namespace vISA
 
 // Return the Function Control that is the original except SIMD Mode
 // is set to SIMD16.
-uint32_t SendFusion::getFuncCtrlWithSimd16(const G4_SendDescRaw * Desc)
+uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
 {
+
     uint32_t FC = Desc->getFuncCtrl();
     auto funcID = Desc->getFuncId();
     uint32_t msgType = Desc->getHdcMessageType();
     bool unsupported = false;
-    if (funcID == SFID::DP_DC0)
+    if (funcID == SFID::DP_DC)
     {
         switch (msgType)
         {
@@ -234,9 +235,9 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(const G4_SendDescRaw * Desc)
     return FC;
 }
 
-bool SendFusion::isAtomicCandidate(const G4_SendDescRaw* msgDesc)
+bool SendFusion::isAtomicCandidate(G4_SendMsgDescriptor* msgDesc)
 {
-    auto funcID = msgDesc->getSFID();
+    auto funcID = msgDesc->getFuncId();
     if (funcID != SFID::DP_DC1) {
         return false;
     }
@@ -341,9 +342,8 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         }
     }
 
-    const G4_SendDescRaw * msgDesc = I->getMsgDescRaw();
-    if (!msgDesc || !msgDesc->isHDC() || msgDesc->isHeaderPresent() ||
-        msgDesc->getSti() != nullptr)
+    G4_SendMsgDescriptor* msgDesc = I->getMsgDesc();
+    if (!msgDesc->isHDC() || msgDesc->isHeaderPresent() || msgDesc->getSti() != nullptr)
     {
         return false;
     }
@@ -451,9 +451,9 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     }
 
     // only enable this on a subset of the HDC messages
-    auto funcID = msgDesc->getSFID();
+    auto funcID = msgDesc->getFuncId();
     switch (funcID) {
-    case SFID::DP_DC0:
+    case SFID::DP_DC:
         switch (msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:
@@ -555,9 +555,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
     }
 
     // Sanity check
-    G4_SendDescRaw* desc = Send->getMsgDescRaw();
-    if (!desc)
-        return;
+    G4_SendMsgDescriptor* desc = Send->getMsgDesc();
     G4_Operand* bti = desc->getBti();
     if ((bti && bti->getTopDcl() != movI->getDst()->getTopDcl()) ||
         (addI->getSrc(1)->asImm()->getInt() != desc->getDesc()))
@@ -573,7 +571,7 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
     Send->removeDefUse(opn);
 
     // Need to re-create descriptor for this send
-    G4_SendDesc* newDesc = Builder->createSendMsgDesc(
+    G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
         desc->getFuncId(),
         descImm,
         desc->getExtendedDesc(),
@@ -684,10 +682,8 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
     // Atomic messages:
     //    As only no-return-value atomic can be fused, RAW will be false always.
     //
-    G4_SendDescRaw* desc0 = I0->getMsgDescRaw();
-    G4_SendDescRaw* desc1 = I1->getMsgDescRaw();
-    if (!desc0 || !desc1)
-        return false;
+    G4_SendMsgDescriptor* desc0 = I0->getMsgDesc();
+    G4_SendMsgDescriptor* desc1 = I1->getMsgDesc();
     bool fusion = I0->getOption() == I1->getOption() &&
                   (desc0->getDesc() == desc1->getDesc() &&
                    desc0->getExtendedDesc() == desc1->getExtendedDesc()) &&
@@ -895,12 +891,7 @@ void SendFusion::packPayload(
 {
     // Both Send0 and Send1 have the same MsgDesc.
     G4_ExecSize execSize = Send0->getExecSize();
-    const G4_SendDescRaw* origDesc = Send0->getMsgDescRaw();
-    assert(origDesc && "expected raw descriptor");
-    if (!origDesc) {
-        return;
-    }
-
+    G4_SendMsgDescriptor* origDesc = Send0->getMsgDesc();
     int option = Send0->getOption();
     int16_t msgLen = origDesc->MessageLength();
     int16_t extMsgLen = origDesc->extMessageLength();
@@ -1084,16 +1075,10 @@ void SendFusion::unpackPayload(
     G4_Type Ty = FusedSend->getDst()->getType();
     assert(TypeSize(Ty) == 4 && "Unexpected Type!");
 
-    const G4_SendDescRaw *desc = Send0->getMsgDescRaw();
-    assert(desc && "expected raw descriptor");
-    if (!desc) {
-        return;
-    }
-
     // Use the original option for mov instructions
     G4_ExecSize execSize = Send0->getExecSize();
     int option = Send0->getOption();
-    int32_t nMov = desc->ResponseLength();
+    int32_t nMov = Send0->getMsgDesc()->ResponseLength();
 
     // Make sure the response len = 1 for exec_size = 1|2|4
     //
@@ -1340,11 +1325,7 @@ void SendFusion::doFusion(
     INST_LIST_ITER InsertBeforePos = IsSink ? IT1 : IT0;
 
     // Use I0 as both I0 and I1 have the same properties
-    const G4_SendDescRaw * desc = I0->getMsgDescRaw();
-    assert(desc && "expected raw descriptor");
-    if (!desc)
-        return;
-
+    G4_SendMsgDescriptor* desc = I0->getMsgDesc();
     G4_ExecSize execSize = I0->getExecSize();
     bool isWrtEnable = I0->isWriteEnableInst();
     bool isSplitSend = I0->isSplitSend();
@@ -1466,7 +1447,7 @@ void SendFusion::doFusion(
         (msgLen == 1 || (msgLen == 2 && desc->isA64Message())) &&
         extMsgLen == 0)
     {
-        G4_SendDescRaw * newDesc = Builder->createSendMsgDesc(
+        G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
             newFC, newRspLen, msgLen,
             desc->getFuncId(),
             msgLen,
@@ -1515,7 +1496,7 @@ void SendFusion::doFusion(
         return;
     }
 
-    G4_SendDescRaw * newDesc = Builder->createSendMsgDesc(
+    G4_SendMsgDescriptor* newDesc = Builder->createSendMsgDesc(
         newFC, newRspLen, newMsgLen,
         desc->getFuncId(),
         newExtMsgLen,

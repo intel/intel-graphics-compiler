@@ -391,8 +391,8 @@ iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst)
 {
     ASSERT_USER(inst->isSend(), "Only send has SFID");
 
-    G4_SendDesc *msgDesc = inst->getMsgDesc();
-    auto funcID = msgDesc->getSFID();
+    G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
+    auto funcID = msgDesc->getFuncId();
 
     iga::SFID sfid = iga::SFID::INVALID;
     switch (funcID)
@@ -406,7 +406,7 @@ iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst)
     case vISA::SFID::SPAWNER:   sfid = iga::SFID::TS; break;
     case vISA::SFID::VME:       sfid = iga::SFID::VME; break;
     case vISA::SFID::DP_CC:     sfid = iga::SFID::DCRO; break;
-    case vISA::SFID::DP_DC0:    sfid = iga::SFID::DC0; break;
+    case vISA::SFID::DP_DC:     sfid = iga::SFID::DC0; break;
     case vISA::SFID::DP_PI:     sfid = iga::SFID::PIXI; break;
     case vISA::SFID::DP_DC1:    sfid = iga::SFID::DC1; break;
     case vISA::SFID::CRE:       sfid = iga::SFID::CRE; break;
@@ -1004,8 +1004,7 @@ void BinaryEncodingIGA::translateInstructionDst(
     // not all bits are copied from immediate descriptor
     if (g4inst->isSend() && platform >= GENX_SKL && platform < GENX_ICLLP)
     {
-        const G4_SendDescRaw* msgDesc = g4inst->getMsgDescRaw();
-        assert(msgDesc && "expected raw descriptor");
+        G4_SendMsgDescriptor* msgDesc = g4inst->getMsgDesc();
         G4_Operand* descOpnd = g4inst->isSplitSend() ?
             g4inst->getSrc(2) : g4inst->getSrc(1);
         if (!descOpnd->isImm() && msgDesc->is16BitReturn())
@@ -1149,8 +1148,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
             {
                 // work around for SKL bug
                 // not all bits are copied from immediate descriptor
-                G4_SendDescRaw* msgDesc = inst->getMsgDescRaw();
-                assert(msgDesc && "expected raw descriptor");
+                G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
                 G4_Operand* descOpnd = inst->isSplitSend() ?
                     inst->getSrc(2) : inst->getSrc(1);
                 if (!descOpnd->isImm() && msgDesc->is16BitInput())
@@ -1250,8 +1248,8 @@ static SendDesc encodeExDescSendUnary(
 
     // old unary packed send
     // exDesc is stored in SendMsgDesc and must be IMM
-    G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
-    assert(descG4 != nullptr && "expected raw send");
+    G4_SendMsgDescriptor* descG4 = sendInst->getMsgDesc();
+    assert(descG4 != nullptr && "null msg desc");
 
     exDescIga.type = SendDesc::Kind::IMM;
     uint32_t tVal = descG4->getExtendedDesc();
@@ -1282,8 +1280,8 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     SendDesc exDescIga;
 
     G4_Operand* exDescG4 = sendInst->getSrc(3);
-    G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
-    assert(descG4 != nullptr && "expected raw descriptor");
+    G4_SendMsgDescriptor* descG4 = sendInst->getMsgDesc();
+    assert(descG4 != nullptr && "null msg desc");
 
     xlen = (int)descG4->extMessageLength();
     //
@@ -1318,8 +1316,8 @@ iga::SendDesc BinaryEncodingIGA::encodeExDescRegA0(
     SendDesc exDescIga;
 
     G4_Operand* exDescG4 = sendInst->getSrc(3);
-    const G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
-    assert(descG4 != nullptr && "expected raw descriptor");
+    const G4_SendMsgDescriptor* descG4 = sendInst->getMsgDesc();
+    assert(descG4 != nullptr && "null msg desc");
 
     exDescIga.type = SendDesc::Kind::REG32A;
     exDescIga.reg.regNum = 0; // must be a0

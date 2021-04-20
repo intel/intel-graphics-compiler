@@ -215,6 +215,512 @@ static bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& bui
     return false;
 }
 
+G4_SendMsgDescriptor::G4_SendMsgDescriptor(
+    uint32_t fCtrl, uint32_t regs2rcv,
+    uint32_t regs2snd, SFID fID, uint16_t extMsgLen,
+    uint32_t extFCtrl, SendAccess access,
+    G4_Operand *bti, G4_Operand *sti,
+    IR_Builder& builder)
+{
+    // All unnamed bits should be passed with those control bits.
+    // Otherwise, need to be set individually.
+    desc.value = fCtrl;
+
+    desc.layout.rspLength = regs2rcv;
+    desc.layout.msgLength = regs2snd;
+
+    extDesc.value = 0;
+    extDesc.layout.funcID = SFIDtoInt(fID);
+    extDesc.layout.extMsgLength = extMsgLen;
+    extDesc.layout.extFuncCtrl = extFCtrl;
+
+    src1Len = extMsgLen; // [10:6]
+    eotAfterMessage = false; // [5]
+    sfid = fID;
+
+    accessType = access;
+    funcCtrlValid = true;
+
+    m_bti = bti;
+    m_sti = sti;
+
+    if (m_bti && m_bti->isImm())
+    {
+        setBindingTableIdx((unsigned)m_bti->asImm()->getInt());
+    }
+    if (m_sti && m_sti->isImm())
+    {
+        desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
+    }
+
+    uint32_t totalMaxLength = builder.getMaxSendMessageLength();
+    MUST_BE_TRUE(extDesc.layout.extMsgLength + desc.layout.msgLength < totalMaxLength,
+        "combined message length may not exceed the maximum");
+}
+
+G4_SendMsgDescriptor::G4_SendMsgDescriptor(
+    uint32_t descBits, uint32_t extDescBits,
+    SendAccess access,
+    G4_Operand *bti,
+    G4_Operand *sti)
+    : accessType(access), m_sti(sti), m_bti(bti), funcCtrlValid(true)
+{
+    desc.value = descBits;
+    extDesc.value = extDescBits;
+    src1Len = (extDescBits >> 6) & 0x1F; // [10:6]
+    eotAfterMessage = extDesc.layout.eot; // [5]
+    sfid = intToSFID(extDescBits & 0xF); // [3:0]
+
+    if (bti && bti->isImm())
+    {
+        setBindingTableIdx((unsigned)bti->asImm()->getInt());
+    }
+    if (sti && sti->isImm())
+    {
+        desc.value |= (((unsigned)m_sti->asImm()->getInt()) << 8); // [11:8]
+    }
+}
+
+G4_SendMsgDescriptor::G4_SendMsgDescriptor(
+    SFID _sfid,
+    uint32_t _desc,
+    uint32_t _extDesc,
+    int _src1Len,
+    SendAccess access,
+    G4_Operand *bti,
+    bool isValidFuncCtrl)
+    : accessType(access), m_sti(nullptr), m_bti(bti), sfid(_sfid), funcCtrlValid(isValidFuncCtrl)
+{
+    desc.value = _desc;
+    extDesc.value = _extDesc;
+    src1Len = _src1Len;
+    eotAfterMessage = false;
+}
+
+uint32_t G4_SendMsgDescriptor::getHdcMessageType() const
+{
+    MUST_BE_TRUE(isHDC(),"not an HDC message");
+    return (desc.value >> 14) & 0x1F;
+}
+
+void G4_SendMsgDescriptor::setEOT() {
+    eotAfterMessage = true;
+
+
+    extDesc.layout.eot = true;
+}
+
+static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType)
+{
+    if (funcID != SFID::DP_DC1)
+        return false;
+
+    if (msgType == DC1_UNTYPED_ATOMIC || msgType == DC1_A64_ATOMIC)
+    {
+        return true;
+    }
+    if (getGenxPlatform() >= GENX_SKL)
+    {
+        if (msgType == DC1_TYPED_ATOMIC)
+            return true;
+    }
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
+    {
+        if (msgType == DC1_TYPED_HALF_INTEGER_ATOMIC ||
+            msgType == DC1_TYPED_HALF_COUNTER_ATOMIC ||
+            msgType == DC1_UNTYPED_HALF_INTEGER_ATOMIC ||
+            msgType == DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC)
+            return true;
+    }
+    return false;
+}
+
+static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType)
+{
+    if (funcID != SFID::DP_DC1)
+        return false;
+
+    if (getGenxPlatform() >= GENX_SKL)
+    {
+        if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
+            msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
+            return true;
+    }
+    if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
+    {
+        if (msgType == DC1_UNTYPED_HALF_FLOAT_ATOMIC ||
+            msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC)
+            return true;
+    }
+    return false;
+}
+
+bool G4_SendMsgDescriptor::isAtomicMessage() const
+{
+
+    auto funcID = getFuncId();
+    if (!isHDC())
+        return false; // guard getMessageType() on SFID without a message type
+    uint16_t msgType = getHdcMessageType();
+    return isHdcIntAtomicMessage(funcID,msgType) ||
+        isHdcFloatAtomicMessage(funcID,msgType);
+}
+
+uint16_t G4_SendMsgDescriptor::getHdcAtomicOp() const
+{
+    MUST_BE_TRUE(isHDC(),"must be HDC message");
+    MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
+    uint32_t funcCtrl = getFuncCtrl();
+    if (isHdcIntAtomicMessage(getFuncId(), getHdcMessageType()))
+    {
+        // bits: 11:8
+        return (uint16_t)((funcCtrl >> 8) & 0xF);
+    }
+
+    // must be float Atomic
+    // bits: 10:8
+    return (int16_t)((funcCtrl >> 8) & 0x7);
+}
+
+bool G4_SendMsgDescriptor::isSLMMessage() const
+{
+    if (getFuncId() == SFID::DP_DC2)
+    {
+        uint32_t msgType = getHdcMessageType();
+        if ((msgType == DC2_UNTYPED_SURFACE_WRITE || msgType == DC2_BYTE_SCATTERED_WRITE) &&
+            (getFuncCtrl() & 0x80))
+        {
+            return true;
+        }
+    }
+
+    if (getFuncId() == SFID::DP_DC2 ||
+        getFuncId() == SFID::DP_DC1 ||
+        getFuncId() == SFID::DP_DC)
+    {
+        if ((getDesc() & 0xFF) == SLMIndex)
+        {
+            return true;
+        }
+    }
+
+    if (m_bti && m_bti->isImm() && m_bti->asImm()->getInt() == SLMIndex)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool G4_SendMsgDescriptor::isBarrierMsg() const
+{
+    auto funcID = getFuncId();
+    uint32_t funcCtrl = getFuncCtrl();
+    return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
+}
+
+bool G4_SendMsgDescriptor::isFence() const
+{
+
+    SFID sfid = getFuncId();
+    unsigned FC = getFuncCtrl();
+
+    // Memory Fence
+    if (sfid == SFID::DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE)
+    {
+        return true;
+    }
+
+    // Sampler cache flush
+    if (sfid == SFID::SAMPLER && ((FC >> 12) & 0x1F) == 0x1F)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool G4_SendMsgDescriptor::isHeaderPresent() const {
+
+    return desc.layout.headerPresent == 1;
+}
+
+void G4_SendMsgDescriptor::setHeaderPresent(bool val)
+{
+    desc.layout.headerPresent = val;
+}
+
+void G4_SendMsgDescriptor::setBindingTableIdx(unsigned idx)
+{
+    desc.value |= idx;
+}
+
+uint32_t G4_SendMsgDescriptor::getSamplerMessageType() const
+{
+    MUST_BE_TRUE(isSampler(), "wrong descriptor type for method");
+    return (getFuncCtrl() >> 12) & 0x1f;
+}
+
+bool G4_SendMsgDescriptor::is16BitInput() const
+{
+    return desc.layout.simdMode2 == 1;
+}
+
+bool G4_SendMsgDescriptor::is16BitReturn() const
+{
+    return desc.layout.returnFormat == 1;
+}
+
+bool G4_SendMsgDescriptor::isA64Message() const
+{
+    if (!isHDC()) {
+        return false;
+    }
+
+    uint32_t msgType = getHdcMessageType();
+    auto funcID = getFuncId();
+    switch (funcID) {
+    case SFID::DP_DC1:
+    {
+        switch (msgType) {
+        default:
+            break;
+        case DC1_A64_SCATTERED_READ:
+        case DC1_A64_UNTYPED_SURFACE_READ:
+        case DC1_A64_ATOMIC:
+        case DC1_A64_BLOCK_READ :
+        case DC1_A64_BLOCK_WRITE:
+        case DC1_A64_UNTYPED_SURFACE_WRITE:
+        case DC1_A64_SCATTERED_WRITE:
+        case DC1_A64_UNTYPED_FLOAT_ATOMIC:
+        case DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC:
+        case DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC:
+            return true;
+        }
+        break;
+    }
+    case SFID::DP_DC2 :
+    {
+        switch (msgType) {
+        default:
+            break;
+        case DC2_A64_SCATTERED_READ:
+        case DC2_A64_UNTYPED_SURFACE_READ:
+        case DC2_A64_UNTYPED_SURFACE_WRITE:
+        case DC2_A64_SCATTERED_WRITE:
+            return true;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return false;
+}
+
+static int getNumEnabledChannels(uint32_t chDisableBits)
+{
+    switch (chDisableBits)
+    {
+    case 0x7:
+    case 0xB:
+    case 0xD:
+    case 0xE: return 1;
+    case 0x3:
+    case 0x5:
+    case 0x6:
+    case 0x9:
+    case 0xA:
+    case 0xC: return 2;
+    case 0x1:
+    case 0x2:
+    case 0x4:
+    case 0x8: return 3;
+    case 0x0: return 4;
+    case 0xF: return 0;
+    default: MUST_BE_TRUE(false, "Illegal Channel Mask Number");
+    }
+    return 0;
+}
+
+#define MSG_BLOCK_SIZE_OFFSET   8
+unsigned int G4_SendMsgDescriptor::getEnabledChannelNum() const
+{
+    // TODO: should further scope this to typed/untyped
+    MUST_BE_TRUE(isHDC(), "message does not have field ChannelEnable");
+    uint32_t funcCtrl = getFuncCtrl();
+    return getNumEnabledChannels((funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0xF);
+}
+
+unsigned int G4_SendMsgDescriptor::getBlockNum() const
+{
+    MUST_BE_TRUE(isHDC(), "not an HDC message");
+
+    uint32_t funcCtrl = getFuncCtrl();
+
+#define MSG_BLOCK_NUMBER_OFFSET 10
+    funcCtrl =  (funcCtrl >> MSG_BLOCK_NUMBER_OFFSET) & 0x3;
+    switch (funcCtrl)
+    {
+        case SVM_BLOCK_NUM_1: return 1;
+        case SVM_BLOCK_NUM_2: return 2;
+        case SVM_BLOCK_NUM_4: return 4;
+        case SVM_BLOCK_NUM_8: return 8;
+        default: MUST_BE_TRUE(false, "Illegal SVM block number (should be 1, 2, 4, or 8).");
+    }
+
+    return 0;
+}
+
+unsigned int G4_SendMsgDescriptor::getBlockSize() const
+{
+    MUST_BE_TRUE(isHDC(), "not an HDC message");
+
+    uint32_t funcCtrl = getFuncCtrl();
+
+    funcCtrl =  (funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0x3;
+    switch (funcCtrl)
+    {
+        case SVM_BLOCK_TYPE_BYTE: return 1;
+        case SVM_BLOCK_TYPE_DWORD: return 4;
+        case SVM_BLOCK_TYPE_QWORD: return 8;
+        default: MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
+    }
+    return 0;
+}
+
+bool G4_SendMsgDescriptor::isOwordLoad() const
+{
+    if (!isHDC()) {
+        return false;
+    }
+    uint32_t funcCtrl = getFuncCtrl();
+    auto funcID = getFuncId();
+#define IVB_MSG_TYPE_OFFSET    14
+    uint16_t msgType = (funcCtrl >> IVB_MSG_TYPE_OFFSET) & 0xF;
+    //SFID = data cache, bit 14-17= 0 or 1
+    return funcID == SFID::DP_DC && (msgType == 0 || msgType == 1);
+}
+
+bool G4_SendMsgDescriptor::isHdcTypedSurfaceWrite() const
+{
+    return isHDC() &&
+        getHdcMessageType() == DC1_TYPED_SURFACE_WRITE;
+}
+
+const char* G4_SendMsgDescriptor::getDescType() const
+{
+    // Return plain text string of type of msg, ie "oword read", "oword write",
+    // "media rd", etc.
+    const G4_SendMsgDescriptor* msgDesc = this;
+    unsigned int category;
+
+    switch (msgDesc->getFuncId())
+    {
+    case SFID::SAMPLER: return "sampler";
+    case SFID::GATEWAY: return "gateway";
+    case SFID::DP_DC2:
+        switch (getHdcMessageType())
+        {
+        case DC2_UNTYPED_SURFACE_READ: return "scaled untyped surface read";
+        case DC2_A64_SCATTERED_READ: return "scaled A64 scatter read";
+        case DC2_A64_UNTYPED_SURFACE_READ: return "scaled A64 untyped surface read";
+        case DC2_BYTE_SCATTERED_READ: return "scaled byte scattered read";
+        case DC2_UNTYPED_SURFACE_WRITE: return "scaled untyped surface write";
+        case DC2_A64_UNTYPED_SURFACE_WRITE: return "scaled A64 untyped surface write";
+        case DC2_A64_SCATTERED_WRITE: return "scaled A64 scattered write";
+        case DC2_BYTE_SCATTERED_WRITE: return "scaled byte scattede write";
+        default: return "unrecognized DC2 message";
+        }
+    case SFID::DP_WRITE:
+        switch ((getFuncCtrl() >> 14) & 0x1F)
+        {
+        case 0xc: return "render target write";
+        case 0xd: return "render target read";
+        default: return "unrecognized RT message";
+        }
+        break;
+    case SFID::URB: return "urb";
+    case SFID::SPAWNER: return "thread spawner";
+    case SFID::VME: return "vme";
+    case SFID::DP_CC:
+        switch (getHdcMessageType())
+        {
+        case 0x0: return "oword block read";
+        case 0x1: return "unaligned oword block read";
+        case 0x2: return "oword dual block read";
+        case 0x3: return "dword scattered read";
+        default: return "unrecognized DCC message";
+        }
+    case SFID::DP_DC:
+        category = (msgDesc->getFuncCtrl() >> 18) & 0x1;
+        if (category == 0)
+        {
+            // legacy data port
+            bool hword = (msgDesc->getFuncCtrl() >> 13) & 0x1;
+            switch (getHdcMessageType())
+            {
+            case 0x0: return hword ? "hword block read" : "oword block read";
+            case 0x1: return hword ? "hword aligned block read" : "unaligned oword block read";
+            case 0x2: return "oword dual block read";
+            case 0x3: return "dword scattered read";
+            case 0x4: return "byte scattered read";
+            case 0x7: return "memory fence";
+            case 0x8: return hword ? "hword block write" : "oword block write";
+            case 0x9: return "hword aligned block write";
+            case 0xa: return "oword dual block write";
+            case 0xb: return "dword scattered write";
+            case 0xc: return "byte scattered write";
+            default: return "unrecognized DC0 message";
+            }
+        }
+        else
+        {
+            // scratch
+            int bits = (msgDesc->getFuncCtrl() >> 17) & 0x1;
+
+            if (bits == 0)
+                return "scratch read";
+            else
+                return "scratch write";
+        }
+        break;
+    case SFID::DP_PI: return "dp_pi";
+    case SFID::DP_DC1:
+        switch (getHdcMessageType())
+        {
+        case 0x0: return "transpose read";
+        case 0x1: return "untyped surface read";
+        case 0x2: return "untyped atomic operation";
+        case 0x3: return "untyped atomic operation simd4x2";
+        case 0x4: return "media block read";
+        case 0x5: return "typed surface read";
+        case 0x6: return "typed atomic operation";
+        case 0x7: return "typed atomic operation simd4x2";
+        case 0x8: return "untyped atomic float add";
+        case 0x9: return "untyped surface write";
+        case 0xa: return "media block write (non-iecp)";
+        case 0xb: return "atomic counter operation";
+        case 0xc: return "atomic counter operation simd4x2";
+        case 0xd: return "typed surface write";
+        case 0x10: return "a64 gathering read";
+        case 0x11: return "a64 untyped surface read";
+        case 0x12: return "a64 untyped atomic operation";
+        case 0x13: return "a64 untyped atomic operation simd4x2";
+        case 0x14: return "a64 block read";
+        case 0x15: return "a64 block write";
+        case 0x18: return "a64 untyped atomic float add";
+        case 0x19: return "a64 untyped surface write";
+        case 0x1a: return "a64 scattered write";
+        default: return "unrecognized DC1 message";
+        }
+        break;
+    case SFID::CRE: return "cre";
+    default: return "--";
+    }
+    return NULL;
+}
+
 TARGET_PLATFORM G4_INST::getPlatform() const
 {
     return builder.getPlatform();
@@ -368,7 +874,7 @@ G4_InstSend::G4_InstSend(
     G4_SrcRegRegion* payload,
     G4_Operand* desc,
     G4_InstOpts opt,
-    G4_SendDesc* md) :
+    G4_SendMsgDescriptor* md) :
     G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, desc, opt),
     msgDesc(md)
 {
@@ -385,7 +891,7 @@ G4_InstSend::G4_InstSend(
     G4_Operand* desc,
     G4_Operand* extDesc,
     G4_InstOpts opt,
-    G4_SendDesc* md) :
+    G4_SendMsgDescriptor* md) :
     G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, src1, desc, opt),
     msgDesc(md)
 {
@@ -3393,16 +3899,12 @@ bool G4_INST::isMixedMode() const
 bool G4_InstSend::isDirectSplittableSend()
 {
     unsigned short elemSize = dst->getElemSize();
-    SFID funcID = msgDesc->getSFID();
-    const G4_SendDescRaw *desc = getMsgDescRaw();
-    if (desc == nullptr) {
-        // load/store messages are unsplittable for now
-        return false;
-    }
+    SFID funcID = msgDesc->getFuncId();
+
     switch (funcID)
     {
     case SFID::DP_DC1:
-        switch (desc->getHdcMessageType())
+        switch (msgDesc->getHdcMessageType())
         {
         case DC1_A64_SCATTERED_READ:   //emask need be vertically cut.
             return false;
@@ -3423,7 +3925,7 @@ bool G4_InstSend::isDirectSplittableSend()
         default: return false;
         }
     case SFID::DP_DC2:
-        switch (desc->getHdcMessageType())
+        switch (msgDesc->getHdcMessageType())
         {
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled :  emask can be reused if the per-channel data is larger than 1 GRF
         case DC2_A64_UNTYPED_SURFACE_READ: //SVM gather 4 scaled
@@ -3442,8 +3944,8 @@ bool G4_InstSend::isDirectSplittableSend()
 
         default: return false;
         }
-    case SFID::DP_DC0:
-        switch (desc->getHdcMessageType())
+    case SFID::DP_DC:
+        switch (msgDesc->getHdcMessageType())
         {
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: emask need be vertically cut according to splitting
         case DC_BYTE_SCATTERED_READ:       //byte scattered read
@@ -3489,8 +3991,7 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
         output << ' ';
     }
 
-    // emit exDesc if srcs[3] is not null.
-    // It should always be a0.2 unless it was constant folded
+    // emit exDesc if srcs[3] is not null.  It should always be a0.2 unless it was constant folded
     if (isSplitSend() && srcs[3])
     {
         srcs[3]->emit(output, false);
@@ -3498,13 +3999,11 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
     }
     else
     {
-        if (getMsgDescRaw()) {
-            std::ios::fmtflags outFlags(output.flags());
-            output.flags(std::ios_base::hex | std::ios_base::showbase);
-            output << getMsgDescRaw()->getExtendedDesc();
-            output << ' ';
-            output.flags(outFlags);
-        }
+        std::ios::fmtflags outFlags(output.flags());
+        output.flags(std::ios_base::hex | std::ios_base::showbase);
+        output << getMsgDesc()->getExtendedDesc();
+        output << ' ';
+        output.flags(outFlags);
     }
 
     // emit msgDesc (2 for sends and 1 for send). Last operand shown in asm.
@@ -3524,26 +4023,26 @@ void G4_InstSend::emit_send_desc(std::ostream& output)
     const G4_INST* sendInst = this;
 
     // Emit a text description of the descriptor if it is available
-    G4_SendDesc* msgDesc = sendInst->getMsgDesc();
+    G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
     output << " // ";
     if (getCISAOff() != -1) {
         emitInstIds(output);
         output << "; ";
     }
 
-    auto desc = msgDesc->getDescription();
-    if (!desc.empty()) {
-        output << msgDesc->getDescription();
+    if (msgDesc->getDescType() != NULL)
+    {
+        output << msgDesc->getDescType();
     }
 
-    output << ", resLen=" << msgDesc->getDstLenRegs();
-    output << ", msgLen=" << msgDesc->getSrc0LenRegs();
+    output << ", resLen=" << msgDesc->ResponseLength();
+    output << ", msgLen=" << msgDesc->MessageLength();
     if (isSplitSend())
     {
-        output << ", extMsgLen=" << msgDesc->getSrc1LenRegs();
+        output << ", extMsgLen=" << msgDesc->extMessageLength();
     }
 
-    if (msgDesc->isBarrier())
+    if (msgDesc->isBarrierMsg())
     {
         output << ", barrier";
     }
@@ -6544,6 +7043,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
 
     if (opnd && !opnd->isImm() && !opnd->isNullReg())
     {
+
         auto computeSendOperandBound = [](G4_Operand* opnd, int numReg)
         {
             if (numReg == 0)
@@ -6568,22 +7068,25 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
         {
             // For send instruction's msg operand rightbound depends
             // on msg descriptor
-            uint16_t numReg = (srcs[0] == opnd) ?
-                getMsgDesc()->getSrc0LenRegs() : getMsgDesc()->getSrc1LenRegs();
+            uint16_t numReg = (srcs[0] == opnd) ? getMsgDesc()->MessageLength() : getMsgDesc()->extMessageLength();
             computeSendOperandBound(opnd, numReg);
         }
         else if (dst == opnd)
         {
             // Compute right bound for dst operand
-            const auto *desc = getMsgDesc();
-            uint32_t dstBytes = desc->getDstLenBytes();
-            if (dstBytes < getGRFSize()) {
-                // e.g. OWord block read x1
-                opnd->setBitVecL((1ULL << dstBytes) - 1);
-                opnd->setRightBound(opnd->left_bound + dstBytes - 1);
+            uint16_t numReg = getMsgDesc()->ResponseLength();
 
-            } else {
-                uint16_t numReg = desc->getDstLenRegs();
+            if (msgDesc->isScratchRW() == false &&
+                msgDesc->isOwordLoad() &&
+                msgDesc->isValidFuncCtrl() &&
+                (msgDesc->getFuncCtrl() & 0x700) == 0)
+            {
+                //1 oword read
+                opnd->setBitVecL(0xFFFF);
+                opnd->setRightBound(opnd->left_bound + 15);
+            }
+            else
+            {
                 computeSendOperandBound(opnd, numReg);
             }
         }
@@ -7716,7 +8219,7 @@ G4_INST* G4_InstSend::cloneInst()
         auto desc = nonConstBuilder->duplicateOperand(getSrc(2));
         auto extDesc = nonConstBuilder->duplicateOperand(getSrc(3));
         newInst = nonConstBuilder->createInternalSplitSendInst(getExecSize(), dst, src0, src1, desc,
-            getOption(), getMsgDescRaw(), extDesc);
+            getOption(), getMsgDesc(), extDesc);
         if (prd)
         {
             newInst->setPredicate(prd);

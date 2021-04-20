@@ -2392,13 +2392,13 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
     {
         // send/read, send/write
         // sends/read, sends/write
-        MUST_BE_TRUE(!inst->getMsgDesc()->isScratch(),
+        MUST_BE_TRUE(inst->getMsgDesc()->isScratchRW() == false,
             "Not expecting scratch msg in save/restore code");
-        if (inst->getMsgDesc()->isWrite())
+        if (inst->getMsgDesc()->isDataPortWrite())
         {
             uint32_t srcreg, extsrcreg = 0;
             srcreg = inst->getSrc(0)->getLinearizedStart() / numEltPerGRF<Type_UB>();
-            if (inst->getMsgDesc()->getSrc1LenRegs() > 0)
+            if (inst->getMsgDesc()->extMessageLength() > 0)
             {
                 extsrcreg = inst->getSrc(1)->getLinearizedStart()/numEltPerGRF<Type_UB>();
             }
@@ -2407,11 +2407,11 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
             MUST_BE_TRUE(regWithMemOffset == srcreg, "Send src not initialized with offset");
 
             std::vector<uint32_t> payloadRegs;
-            for (uint32_t i = 1; i < (uint32_t)inst->getMsgDesc()->getSrc0LenRegs(); i++)
+            for (uint32_t i = 1; i < inst->getMsgDesc()->MessageLength(); i++)
             {
                 payloadRegs.push_back(i + srcreg);
             }
-            for (uint32_t i = 0; i < (uint32_t)inst->getMsgDesc()->getSrc1LenRegs(); i++)
+            for (uint32_t i = 0; i < inst->getMsgDesc()->extMessageLength(); i++)
             {
                 payloadRegs.push_back(i + extsrcreg);
             }
@@ -2433,7 +2433,7 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
 #endif
             }
         }
-        else if (inst->getMsgDesc()->isRead())
+        else if (inst->getMsgDesc()->isDataPortRead())
         {
             uint32_t srcreg, dstreg;
             srcreg = inst->getSrc(0)->getLinearizedStart() / numEltPerGRF<Type_UB>();
@@ -2442,7 +2442,7 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
             MUST_BE_TRUE(memOffset != 0xffff, "Invalid mem offset");
             MUST_BE_TRUE(regWithMemOffset == srcreg, "Send src not initialized with offset");
 
-            auto responselen = inst->getMsgDesc()->getDstLenRegs();
+            auto responselen = inst->getMsgDesc()->ResponseLength();
             int32_t startoff;
             startoff = memOffset * numEltPerGRF<Type_UB>() / 2;
 

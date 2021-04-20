@@ -1528,7 +1528,7 @@ void G4_BB::addSamplerFlushBeforeEOT()
     int samplerFlushOpcode = 0x1F;
     int samplerFlushFC = (SamplerSIMDMode::SIMD32 << 17) +
         (samplerFlushOpcode << 12);
-    int desc = G4_SendDescRaw::createDesc(samplerFlushFC, true, 1, 1);
+    int desc = G4_SendMsgDescriptor::createDesc(samplerFlushFC, true, 1, 1);
     G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(),
         builder->getRegionStride1());
