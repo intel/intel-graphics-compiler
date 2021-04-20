@@ -395,7 +395,7 @@ public:
                 }
                 else if (bufType == UAV)
                 {
-                    m_uavLoaded |= (uint64_t)1 << (typeBti);
+                    m_uavLoaded |= QWBIT(typeBti);
                 }
                 else if (bufType == RENDER_TARGET)
                 {
@@ -427,8 +427,7 @@ public:
                 }
                 else if (bufType == UAV)
                 {
-                    //m_uavLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
-                    m_uavLoaded |= ((~((0xffffffffffffffff) << (m_pBtiLayout->GetUavIndexSize() + 1))) & (~((0xffffffffffffffff) << 0)));
+                    m_uavLoaded |= QWBITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
                 }
                 else if (bufType == RENDER_TARGET)
                 {
