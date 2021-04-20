@@ -430,7 +430,10 @@ void ConstantCoalescing::ProcessBlock(
             unsigned int bufId = 0;
             BufferType bufType = DecodeAS4GFXResource(
                 ldRaw->getResourceValue()->getType()->getPointerAddressSpace(), directIdx, bufId);
-            if ((bufType != BINDLESS_CONSTANT_BUFFER) && (bufType != BINDLESS_TEXTURE))
+
+            if ((bufType != BINDLESS_CONSTANT_BUFFER)
+                && (bufType != BINDLESS_TEXTURE)
+                )
             {
                 continue;
             }
@@ -1103,7 +1106,9 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     else
     {
         BufferType buffType = DecodeBufferType(load->getType()->getPointerAddressSpace());
-        if (IsBindless(buffType) || buffType == STATELESS_A32)
+        if (IsBindless(buffType)
+            || buffType == STATELESS_A32
+            )
             LoadEltTy = irBuilder->getInt32Ty();
         else
             return;
