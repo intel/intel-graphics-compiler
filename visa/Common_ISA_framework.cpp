@@ -528,7 +528,17 @@ int CisaBinary::isaDump(
                 sstr << printInstruction(&fmt, inst, kTemp->getOptions()) << "\n";
             }
 
-            writeIsaAsmFile(asmName.str(), sstr.str());
+            // from other shader dumps we sometimes get non-existent paths
+            // fallback to a default file name in the current working directory
+            // for that case
+            std::string asmFileName = asmName.str();
+            FILE *f = fopen(asmFileName.c_str(), "w");
+            if (f) {
+                fclose(f);
+            } else {
+                asmFileName = "default.visaasm";
+            }
+            writeIsaAsmFile(asmFileName, sstr.str());
         }
     }
 

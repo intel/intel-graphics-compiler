@@ -4063,6 +4063,10 @@ namespace IGC
             SaveOption(vISA_setStartBreakPoint, true);
         }
 
+        auto g4Subset = (uint32_t)IGC_GET_FLAG_VALUE(ShaderDumpEnableG4);
+        if (g4Subset != 0)
+            SaveOption(vISA_DumpPassesSubset, g4Subset);
+
         if (EnableBarrierInstCounterBits)
         {
             SaveOption(VISA_EnableBarrierInstCounterBits, true);
@@ -4261,6 +4265,11 @@ namespace IGC
             context->type == ShaderType::OPENCL_SHADER)
         {
             SaveOption(vISA_ReorderDPSendToDifferentBti, false);
+        }
+
+        if (m_program->m_Platform->WaDisableSendSrcDstOverlap())
+        {
+            SaveOption(vISA_noSendSrcDstOverlap, true);
         }
 
         if (m_program->m_Platform->WaDisableSendSrcDstOverlap())

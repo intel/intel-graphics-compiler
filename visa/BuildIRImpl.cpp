@@ -1892,15 +1892,12 @@ G4_INST* IR_Builder::createIntrinsicInst(
 {
     G4_INST* i = nullptr;
 
-    // TODO: plumb directly
-    G4_InstOpts option = (G4_InstOpts)options;
-
     if (intrinId == Intrinsic::Spill)
-        i = new (mem) G4_SpillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+        i = new (mem) G4_SpillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, options);
     else if (intrinId == Intrinsic::Fill)
-        i = new (mem) G4_FillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+        i = new (mem) G4_FillIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, options);
     else
-        i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+        i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, options);
 
     if (addToInstList)
     {

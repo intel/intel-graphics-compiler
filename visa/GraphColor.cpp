@@ -9900,7 +9900,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 std::string passName = std::string("after.Spill_GRF.") + std::to_string(iterationNo);
-                kernel.dumpDotFile(passName.c_str());
+                kernel.dumpDotFileImportant(passName.c_str());
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||

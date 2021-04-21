@@ -4150,11 +4150,11 @@ public:
         Intrinsic intrinId,
         G4_ExecSize execSize,
         G4_DstRegRegion* d,
-        G4_Operand* s0,
-        G4_Operand* s1,
+        G4_Operand* header,
+        G4_Operand* payload,
         G4_Operand* s2,
         G4_InstOpts opt) :
-        G4_InstIntrinsic(builder, prd, intrinId, execSize, d, s0, s1, s2, opt)
+        G4_InstIntrinsic(builder, prd, intrinId, execSize, d, header, payload, s2, opt)
     {
 
     }
@@ -4205,11 +4205,11 @@ public:
         Intrinsic intrinId,
         G4_ExecSize execSize,
         G4_DstRegRegion* d,
-        G4_Operand* s0,
+        G4_Operand* header,
         G4_Operand* s1,
         G4_Operand* s2,
         G4_InstOpts opt) :
-        G4_InstIntrinsic(builder, prd, intrinId, execSize, d, s0, s1, s2, opt)
+        G4_InstIntrinsic(builder, prd, intrinId, execSize, d, header, s1, s2, opt)
     {
 
     }

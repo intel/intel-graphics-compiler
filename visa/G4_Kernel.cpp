@@ -587,12 +587,20 @@ void G4_Kernel::dumptofile(const char* Filename) const
     fg.dumptofile(Filename);
 }
 
-void G4_Kernel::dumpDotFile(const char* appendix)
+void G4_Kernel::dumpDotFileImportant(const char* suffix)
 {
     if (m_options->getOption(vISA_DumpDot))
-        dumpDotFileInternal(appendix);
-    if (m_options->getOption(vISA_DumpPasses))
-        dumpPassInternal(appendix);
+        dumpDotFileInternal(suffix);
+    if (m_options->getOption(vISA_DumpPasses) || m_options->getuInt32Option(vISA_DumpPassesSubset) >= 1)
+        dumpPassInternal(suffix);
+}
+
+void G4_Kernel::dumpDotFile(const char* suffix)
+{
+    if (m_options->getOption(vISA_DumpDot))
+        dumpDotFileInternal(suffix);
+    if (m_options->getOption(vISA_DumpPasses) || m_options->getuInt32Option(vISA_DumpPassesSubset) >= 2)
+        dumpPassInternal(suffix);
 }
 
 // FIX: this needs to here because of the above static thread-local variable
@@ -1499,15 +1507,15 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
 
 
 // Dump the instructions into a file
-void G4_Kernel::dumpPassInternal(const char* appendix)
+void G4_Kernel::dumpPassInternal(const char* suffix)
 {
-    MUST_BE_TRUE(appendix != NULL, ERROR_INTERNAL_ARGUMENT);
-    if (!m_options->getOption(vISA_DumpPasses))
+    MUST_BE_TRUE(suffix != NULL, ERROR_INTERNAL_ARGUMENT);
+    if (!m_options->getOption(vISA_DumpPasses) && !m_options->getuInt32Option(vISA_DumpPassesSubset)) {
         return;
-
+    }
     std::stringstream ss;
     ss << (name ? name : "UnknownKernel") << "." << std::setfill('0') << std::setw(3) <<
-        dotDumpCount++ << "." << appendix << ".dump";
+        dotDumpCount++ << "." << suffix << ".g4";
     std::string fname = ss.str();
     fname = sanitizePathString(fname);
 

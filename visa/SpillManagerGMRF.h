@@ -652,7 +652,7 @@ private:
     void runSpillAnalysis();
 
 
-    bool headerNeeded()
+    bool headerNeeded() const
     {
         bool needed = true;
 

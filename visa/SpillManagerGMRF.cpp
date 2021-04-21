@@ -333,7 +333,7 @@ bool SpillManagerGRF::dwordAligned(unsigned offset) const
 // Get the ceil of the ratio.
 unsigned SpillManagerGRF::cdiv(unsigned dvd, unsigned dvr)
 {
-    return (dvd / dvr) + ((dvd % dvr)? 1: 0);
+    return (dvd / dvr) + ((dvd % dvr) ? 1 : 0);
 }
 
 // Get the live range corresponding to id.
@@ -1945,8 +1945,7 @@ static uint32_t getScratchBlocksizeEncoding(int numGRF)
 }
 
 std::tuple<uint32_t, G4_ExecSize>
-SpillManagerGRF::createSpillSendMsgDescOWord(
-    unsigned int height)
+SpillManagerGRF::createSpillSendMsgDescOWord(unsigned int height)
 {
     unsigned segmentByteSize = height * REG_BYTE_SIZE;
     unsigned writePayloadCount = cdiv(segmentByteSize, REG_BYTE_SIZE);
@@ -2176,7 +2175,7 @@ static int getNextSize(int height, bool useHWordMsg)
 }
 
 void
-SpillManagerGRF::sendInSpilledRegVarPortions (
+SpillManagerGRF::sendInSpilledRegVarPortions(
     G4_Declare *      fillRangeDcl,
     G4_Declare *      mRangeDcl,
     unsigned          regOff,
@@ -2195,13 +2194,13 @@ SpillManagerGRF::sendInSpilledRegVarPortions (
         getSpillOffset(offset);
 
         unsigned segmentDisp = offset / OWORD_BYTE_SIZE;
-        G4_Imm * segmentDispImm = builder_->createImm (segmentDisp, Type_UD);
+        G4_Imm * segmentDispImm = builder_->createImm(segmentDisp, Type_UD);
         G4_DstRegRegion * mHeaderOffsetDstRegion =
             createMHeaderBlockOffsetDstRegion(mRangeDcl->getRegVar());
 
         if (builder_->getIsKernel() == false)
         {
-            createAddFPInst (
+            createAddFPInst(
                 g4::SIMD1, mHeaderOffsetDstRegion, segmentDispImm);
         }
         else
@@ -2222,8 +2221,9 @@ SpillManagerGRF::sendInSpilledRegVarPortions (
 
         if (height - currentStride > 0)
         {
-            sendInSpilledRegVarPortions (
-                fillRangeDcl, mRangeDcl, regOff + currentStride, height -currentStride, srcRegOff + currentStride);
+            sendInSpilledRegVarPortions(
+                fillRangeDcl, mRangeDcl, regOff + currentStride,
+                height - currentStride, srcRegOff + currentStride);
         }
     }
 }
@@ -2268,7 +2268,7 @@ bool SpillManagerGRF::shouldPreloadSpillRange(
 
 // Create the send instruction to perform the pre-load of the spilled region's
 // segment into spill memory.
-void SpillManagerGRF::preloadSpillRange (
+void SpillManagerGRF::preloadSpillRange(
     G4_Declare *      spillRangeDcl,
     G4_Declare *      mRangeDcl,
     G4_DstRegRegion * spilledRangeRegion,
@@ -2320,8 +2320,9 @@ G4_SrcRegRegion* vISA::getSpillFillHeader(IR_Builder& builder, G4_Declare * decl
 
 // Create the send instruction to perform the spill of the spilled regvars's
 // segment into spill memory.
-// regOff - Offset of sub-spill. If one spill is splitted into more than one spill, this is the offset of them, unit in register size
-// spillOff - Offset of the original variable being spilled, unit in register size.
+// regOff - Offset of sub-spill. If one spill is split into more than one spill,
+// this is the offset of them, unit in register size
+//  spillOff - Offset of the original variable being spilled, unit in register size.
 G4_INST *SpillManagerGRF::createSpillSendInstr(
     G4_Declare *      spillRangeDcl,
     G4_Declare *      mRangeDcl,
@@ -2394,7 +2395,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr(
 
 // Create the send instruction to perform the spill of the spilled region's
 // segment into spill memory.
-G4_INST *SpillManagerGRF::createSpillSendInstr (
+G4_INST *SpillManagerGRF::createSpillSendInstr(
     G4_Declare *      spillRangeDcl,
     G4_Declare *      mRangeDcl,
     G4_DstRegRegion * spilledRangeRegion,
@@ -2459,7 +2460,7 @@ G4_INST *SpillManagerGRF::createSpillSendInstr (
 
 // Create the message description for a fill send instruction for filled
 // regvars.
-G4_Imm *SpillManagerGRF::createFillSendMsgDesc (
+G4_Imm *SpillManagerGRF::createFillSendMsgDesc(
     unsigned          regOff,
     unsigned          height,
     G4_ExecSize &     execSize,
@@ -2514,7 +2515,7 @@ G4_Imm *SpillManagerGRF::createFillSendMsgDesc (
 // Create the message description for a fill send instruction for filled
 // source regions.
 template <class REGION_TYPE>
-G4_Imm *SpillManagerGRF::createFillSendMsgDesc (
+G4_Imm *SpillManagerGRF::createFillSendMsgDesc(
     REGION_TYPE * filledRangeRegion,
     G4_ExecSize    execSize)
 {
@@ -2706,13 +2707,13 @@ void SpillManagerGRF::replaceSpilledRange(
 
 // Replace the reference to the filled region with a reference to an
 // equivalent reference to the fill range region.
-void SpillManagerGRF::replaceFilledRange (
+void SpillManagerGRF::replaceFilledRange(
     G4_Declare *      fillRangeDcl,
     G4_SrcRegRegion * filledRegion,
     G4_INST *         filledInst)
 {
     G4_ExecSize execSize =
-        isMultiRegComprSource (filledRegion, filledInst) ?
+        isMultiRegComprSource(filledRegion, filledInst) ?
             G4_ExecSize(filledInst->getExecSize() / 2):
             filledInst->getExecSize();
 
@@ -2761,8 +2762,7 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions (
 
         if (builder_->getIsKernel() == false)
         {
-            createAddFPInst (
-                g4::SIMD1, mHeaderOffsetDstRegion, segmentDispImm);
+            createAddFPInst(g4::SIMD1, mHeaderOffsetDstRegion, segmentDispImm);
         }
         else
         {
@@ -2777,14 +2777,14 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions (
 
     if (currentStride)
     {
-        initMWritePayload (spillRangeDcl, mRangeDcl, regOff, currentStride);
+        initMWritePayload(spillRangeDcl, mRangeDcl, regOff, currentStride);
 
         {
             createSpillSendInstr(spillRangeDcl, mRangeDcl, regOff, currentStride, srcRegOff);
         }
 
         if (height - currentStride > 0) {
-            sendOutSpilledRegVarPortions (
+            sendOutSpilledRegVarPortions(
                 spillRangeDcl, mRangeDcl, regOff + currentStride, height - currentStride, srcRegOff + currentStride);
         }
     }
@@ -2840,8 +2840,8 @@ void SpillManagerGRF::insertSpillRangeCode(
             splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
         }
 
-        sendOutSpilledRegVarPortions (
-            spillRangeDcl, mRangeDcl, 0, spillRangeDcl->getNumRows (),
+        sendOutSpilledRegVarPortions(
+            spillRangeDcl, mRangeDcl, 0, spillRangeDcl->getNumRows(),
             spilledRegion->getRegOff());
 
         replacementRangeDcl = spillRangeDcl;
@@ -2853,13 +2853,11 @@ void SpillManagerGRF::insertSpillRangeCode(
 
         // Create the segment aligned spill range
         G4_Declare * spillRangeDcl =
-            createSpillRangeDeclare (
-                spilledRegion, execSize,
-                *spilledInstIter);
+            createSpillRangeDeclare(spilledRegion, execSize, *spilledInstIter);
 
         // Create and initialize the message header
         G4_Declare * mRangeDcl =
-            createAndInitMHeader (spilledRegion, execSize);
+            createAndInitMHeader(spilledRegion, execSize);
 
         // Unaligned region specific handling.
         unsigned int spillSendOption = InstOpt_WriteEnable;
@@ -3081,7 +3079,7 @@ void SpillManagerGRF::insertFillGRFRangeCode(
 }
 
 // Create the code to create the GRF fill range and load it to spill memory.
-INST_LIST::iterator SpillManagerGRF::insertSendFillRangeCode (
+INST_LIST::iterator SpillManagerGRF::insertSendFillRangeCode(
     G4_SrcRegRegion *   filledRegion,
     INST_LIST::iterator filledInstIter,
     G4_BB *             bb)

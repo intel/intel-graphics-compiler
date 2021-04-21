@@ -917,10 +917,25 @@ void Optimizer::runPass(PassIndex Index)
     if (PI.Option != vISA_EnableAlways && !builder.getOption(PI.Option))
         return;
 
+    bool isImportantPass =
+        Index == PI_dce ||
+        Index == PI_regAlloc ||
+        Index == PI_preRA_Schedule ||
+        Index == PI_LVN ||
+        Index == PI_HWConformityChk ||
+        Index == PI_HWWorkaround;
+    bool shouldDumpG4 =
+        builder.getOption(vISA_DumpDotAll) ||
+        builder.getuint32Option(vISA_DumpPassesSubset) >= 2 ||
+        (builder.getuint32Option(vISA_DumpPassesSubset) == 1 && isImportantPass);
+
     std::string Name = PI.Name;
 
     if (PI.Timer != TimerID::NUM_TIMERS)
         startTimer(PI.Timer);
+
+    if (shouldDumpG4)
+        kernel.dumpDotFile(("before." + Name).c_str());
 
     // Execute pass.
     (this->*(PI.Pass))();
@@ -928,7 +943,7 @@ void Optimizer::runPass(PassIndex Index)
     if (PI.Timer != TimerID::NUM_TIMERS)
         stopTimer(PI.Timer);
 
-    if (builder.getOption(vISA_DumpDotAll))
+    if (shouldDumpG4)
         kernel.dumpDotFile(("after." + Name).c_str());
 
 #ifdef _DEBUG

@@ -3339,7 +3339,7 @@ static void recordRAStats(IR_Builder& builder,
 
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
-    kernel.dumpDotFile("before.regAlloc");
+    kernel.dumpDotFileImportant("before.regAlloc");
 
     kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.frameSizeInOWord = 0;
 

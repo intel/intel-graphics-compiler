@@ -253,7 +253,8 @@ public:
     /// dump this kernel to the standard error
     void dump() const;  // used in debugger
     void dumptofile(const char* Filename) const;  // used in debugger
-    void dumpDotFile(const char* appendix);
+    void dumpDotFile(const char* suffix);
+    void dumpDotFileImportant(const char* suffix);
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_RegInfo();
     void emit_RegInfoKernel(std::ostream& output);
