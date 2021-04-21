@@ -850,7 +850,8 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
             }
 
             LocalLiveRange* lr = gra.getLocalLR(dcls[i]);
-            if (k == 0  && !lr->isLiveRangeLocal())
+            if (!lr ||
+                (k == 0  && !lr->isLiveRangeLocal()))
             {
                 continue;
             }
@@ -6728,7 +6729,9 @@ bool GraphColor::regAlloc(
                     if (!success && doBankConflictReduction)
                     {
                         resetTemporaryRegisterAssignments();
+                        kernel.getOptions()->setOption(vISA_enableBundleCR, false);
                         assignColors(FIRST_FIT, false, false);
+                        kernel.getOptions()->setOption(vISA_enableBundleCR, true);
                     }
                 }
             }
