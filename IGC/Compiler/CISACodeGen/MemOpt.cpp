@@ -125,7 +125,7 @@ namespace {
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
 
         unsigned getNumElements(Type* Ty) const {
-            return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
+            return Ty->isVectorTy() ? (unsigned)cast<VectorType>(Ty)->getNumElements() : 1;
         }
 
         MemoryLocation getLocation(Instruction* I) const {
@@ -798,7 +798,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
 
         if (Ty->isVectorTy()) {
-            if (Pos + cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() > NumElts) {
+            if (Pos + cast<VectorType>(Ty)->getNumElements() > NumElts) {
                 // This implies we're trying to extract an element from our new load
                 // with an index > the size of the new load.  If this happens,
                 // we'll generate correct code if it does since we don't remove the
@@ -806,7 +806,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
                 continue;
             }
             Value* Val = UndefValue::get(Ty);
-            for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements(); i != e; ++i) {
+            for (unsigned i = 0, e = (unsigned)cast<VectorType>(Ty)->getNumElements(); i != e; ++i) {
                 Value* Ex = Builder.CreateExtractElement(NewLoad, Builder.getInt32(Pos + i));
                 Ex = createBitOrPointerCast(Ex, ScalarTy, Builder);
                 Val = Builder.CreateInsertElement(Val, Ex, Builder.getInt32(i));
@@ -1084,7 +1084,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         IGC_ASSERT(hasSameSize(ScalarTy, LeadingStoreScalarType));
 
         if (Ty->isVectorTy()) {
-            for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements(); i != e; ++i) {
+            for (unsigned i = 0, e = (unsigned)cast<VectorType>(Ty)->getNumElements(); i != e; ++i) {
                 Value* Ex = Builder.CreateExtractElement(Val, Builder.getInt32(i));
                 Ex = createBitOrPointerCast(Ex, LeadingStoreScalarType, Builder);
                 NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Ex,

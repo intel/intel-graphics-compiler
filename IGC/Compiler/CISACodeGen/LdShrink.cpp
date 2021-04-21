@@ -30,7 +30,6 @@ IN THE SOFTWARE.
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -80,7 +79,7 @@ IGC_INITIALIZE_PASS_BEGIN(LdShrink, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_AN
 IGC_INITIALIZE_PASS_END(LdShrink, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 unsigned LdShrink::getExtractIndexMask(LoadInst* LI) const {
-    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(LI->getType());
+    VectorType* VTy = dyn_cast<VectorType>(LI->getType());
     // Skip non-vector loads.
     if (!VTy)
         return 0;
@@ -92,12 +91,9 @@ unsigned LdShrink::getExtractIndexMask(LoadInst* LI) const {
     Type* Ty = VTy->getScalarType();
     // Skip non-BYTE addressable data types. So far, check integer types
     // only.
-    if (IntegerType * ITy = dyn_cast<IntegerType>(Ty)) {
-        // Unroll isPowerOf2ByteWidth, it was removed in LLVM 12.
-        unsigned BitWidth = ITy->getBitWidth();
-        if (!((BitWidth > 7) && isPowerOf2_32(BitWidth)))
+    if (IntegerType * ITy = dyn_cast<IntegerType>(Ty))
+        if (!ITy->isPowerOf2ByteWidth())
             return 0;
-    }
 
     unsigned Mask = 0; // Maxmimally 32 elements.
 

@@ -28,7 +28,6 @@ IN THE SOFTWARE.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -78,7 +77,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
 
     if (ValType->isVectorTy())
     {
-        auto VecCount = cast<IGCLLVM::FixedVectorType>(ValType)->getNumElements();
+        auto VecCount = cast<VectorType>(ValType)->getNumElements();
         if (VecCount == 2 || VecCount == 3 || VecCount == 4 || VecCount == 8 || VecCount == 16)
         {
             VecStr = "v" + std::to_string(VecCount);

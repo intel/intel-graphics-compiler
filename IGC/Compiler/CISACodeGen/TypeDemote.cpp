@@ -32,7 +32,6 @@ IN THE SOFTWARE.
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Pass.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
@@ -289,7 +288,7 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock* BB) const {
             CastInst* CI = dyn_cast<CastInst>(Index);
             if (CI && (CI->getOpcode() == Instruction::ZExt ||
                 CI->getOpcode() == Instruction::SExt)) {
-                unsigned VS = (unsigned)cast<IGCLLVM::FixedVectorType>(EEI->getVectorOperandType())->getNumElements();
+                unsigned VS = (unsigned)cast<VectorType>(EEI->getVectorOperandType())->getNumElements();
                 unsigned N = (unsigned int)CI->getSrcTy()->getPrimitiveSizeInBits();
                 unsigned Bound = (N < 32) ? (1U << N) : UINT32_MAX;
                 if (VS <= Bound) {

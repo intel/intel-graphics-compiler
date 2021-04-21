@@ -37,7 +37,6 @@ IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
 #include "llvm/Pass.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
@@ -80,7 +79,7 @@ namespace IGC {
         SSubVecDesc(llvm::Value* V)
             : Aliaser(V), BaseVector(V), StartElementOffset(0)
         {
-            IGCLLVM::FixedVectorType* VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
+            llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(V->getType());
             NumElts = VTy ? (short)VTy->getNumElements() : 1;
         }
 

@@ -24,7 +24,6 @@ IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Bitcode/BitcodeWriter.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "llvm/IR/DebugInfo.h"
@@ -385,7 +384,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
                     isResInfo(dyn_cast<GenIntrinsicInst>(inst,
                         GenISAIntrinsic::GenISA_resinfoptr), texId, lod, isUAV))
                 {
-                    unsigned nelems = (unsigned)cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements();
+                    unsigned nelems = (unsigned)cast<VectorType>(inst->getType())->getNumElements();
                     SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(nelems);
                     if (VectorUsedByConstExtractOnly(inst, extracts))
                     {

@@ -93,7 +93,7 @@ saveLLVMModule(Module *M, const std::string &OutputFile) {
 PointerType*
 getOrCreateOpaquePtrType(Module *M, const std::string &Name,
     unsigned AddrSpace) {
-  auto OpaqueType = IGCLLVM::getTypeByName(M, Name);
+  auto OpaqueType = M->getTypeByName(Name);
   if (!OpaqueType)
     OpaqueType = StructType::create(M->getContext(), Name);
   return PointerType::get(OpaqueType, AddrSpace);
@@ -159,7 +159,7 @@ std::string recursive_mangle(const Type* pType)
             return "i" + utostr(pType->getIntegerBitWidth());
         case IGCLLVM::VectorTyID:
         {
-            unsigned vecLen = (unsigned)cast<IGCLLVM::FixedVectorType>(pType)->getNumElements();
+            unsigned vecLen = (unsigned)cast<VectorType>(pType)->getNumElements();
             Type* pEltType = cast<VectorType>(pType)->getElementType();
             return "v" + utostr(vecLen) + recursive_mangle(pEltType);
         }

@@ -24,7 +24,6 @@ IN THE SOFTWARE.
 
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/DataLayout.h>
@@ -389,7 +388,7 @@ unsigned int KernelArg::calcAssociatedArgNo(const ImplicitArg& implicitArg, cons
 
 unsigned int KernelArg::getNumComponents() const
 {
-    if (IGCLLVM::FixedVectorType * vecType = dyn_cast<IGCLLVM::FixedVectorType>(m_arg->getType()))
+    if (VectorType * vecType = dyn_cast<VectorType>(m_arg->getType()))
     {
         // Vector
         return int_cast<unsigned int>(vecType->getNumElements());

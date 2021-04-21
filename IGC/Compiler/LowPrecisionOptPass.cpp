@@ -252,7 +252,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
         return false;
     }
 
-    IGCLLVM::FixedVectorType* oldTy = cast<IGCLLVM::FixedVectorType>(I.getType());
+    VectorType* oldTy = cast<VectorType>(I.getType());
     llvm::SmallVector<llvm::Type*, 4> overloadTys;
     auto retTy = IGCLLVM::FixedVectorType::get(newDstType, int_cast<unsigned int>(oldTy->getNumElements()));
     overloadTys.push_back(retTy);

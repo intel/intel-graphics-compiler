@@ -31,7 +31,6 @@ IN THE SOFTWARE.
 #include "DebugInfo/DebugInfoUtils.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -590,7 +589,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
 
         if (pType->isVectorTy())
         {
-            vectorNumElements = (unsigned)cast<IGCLLVM::FixedVectorType>(pType)->getNumElements();
+            vectorNumElements = (unsigned)cast<VectorType>(pType)->getNumElements();
         }
         else if (!pVar->IsUniform())
         {

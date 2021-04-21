@@ -28,7 +28,6 @@ IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Analysis/InlineCost.h"
 #include "llvmWrapper/IR/InstrTypes.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
@@ -288,7 +287,7 @@ namespace IGC {
                 if (!Ty->isVectorTy())
                     return false;
 
-                unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
+                unsigned NumElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
                 Type* EltTy = cast<VectorType>(Ty)->getElementType();
                 const auto& ProfitLengths = getProfitLoadVectorLength(EltTy);
 

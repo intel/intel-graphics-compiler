@@ -32,7 +32,6 @@ IN THE SOFTWARE.
 #include "InstScalarizer.h"
 #include "InstElementizer.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Support/Debug.h"
@@ -291,7 +290,7 @@ TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
     }
 
     Type* EltTy = cast<VectorType>(Ty)->getElementType();
-    for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements(); i != e; ++i)
+    for (unsigned i = 0, e = (unsigned)cast<VectorType>(Ty)->getNumElements(); i != e; ++i)
         TMI->second.push_back(EltTy);
 
     return &TMI->second;
