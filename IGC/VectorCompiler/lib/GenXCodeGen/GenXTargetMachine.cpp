@@ -151,6 +151,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeCMKernelArgOffsetPass(registry);
   initializeGenXPrintfResolutionPass(registry);
   initializeGenXPrintfLegalizationPass(registry);
+  initializeGenXAggregatePseudoLoweringPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }

@@ -196,6 +196,7 @@ void initializeGenXFunctionPointersLoweringPass(PassRegistry &);
 void initializeGenXImportBiFPass(PassRegistry &);
 void initializeGenXLowerJmpTableSwitchPass(PassRegistry &);
 void initializeGenXGlobalVariableLoweringPass(PassRegistry &);
+void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);
 } // End llvm namespace
 
 #endif
