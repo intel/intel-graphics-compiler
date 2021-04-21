@@ -453,7 +453,7 @@ Value* GEPLowering::getSExtOrTrunc(Value* Val, Type* NewTy) const {
 
     IGC_ASSERT_MESSAGE(OldTy->isIntOrIntVectorTy(), "Index should be Integer or vector of Integer!");
 
-    if (auto OldVecTy = dyn_cast<VectorType>(OldTy)) {
+    if (auto OldVecTy = dyn_cast<IGCLLVM::FixedVectorType>(OldTy)) {
         OldWidth = (unsigned)OldVecTy->getNumElements() * OldVecTy->getElementType()->getIntegerBitWidth();
         NewWidth = (unsigned)OldVecTy->getNumElements() * NewTy->getIntegerBitWidth();
     }
@@ -805,7 +805,7 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
                 }
                 else
                 {
-                    if (auto NewIdxVT = dyn_cast<VectorType>(NewIdx->getType())) {
+                    if (auto NewIdxVT = dyn_cast<IGCLLVM::FixedVectorType>(NewIdx->getType())) {
                         Value* result = llvm::UndefValue::get(FixedVectorType::get(PtrMathTy, (unsigned)NewIdxVT->getNumElements()));
                         for (uint32_t j = 0; j < (uint32_t)NewIdxVT->getNumElements(); j++) {
                             result = Builder->CreateInsertElement(result, PointerValue, Builder->getInt32(j));

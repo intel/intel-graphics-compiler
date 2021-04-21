@@ -438,7 +438,7 @@ void CShader::CreateAliasVars()
                         continue;
 
                     Type* Ty = V->getType();
-                    VectorType* VTy = dyn_cast<VectorType>(Ty);
+                    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
                     Type* BTy = VTy ? VTy->getElementType() : Ty;
                     int nelts = (VTy ? (int)VTy->getNumElements() : 1);
 
@@ -988,7 +988,7 @@ bool CShader::InsideDivergentCF(llvm::Instruction* inst)
 uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
 {
     llvm::Type* type = val->getType();
-    uint nbElement = int_cast<uint>(cast<VectorType>(type)->getNumElements());
+    uint nbElement = int_cast<uint>(cast<IGCLLVM::FixedVectorType>(type)->getNumElements());
     mask = 0;
     // we don't process vector bigger than 31 elements as the mask has only 32bits
     // If we want to support longer vectors we need to extend the mask size
@@ -1193,7 +1193,7 @@ uint32_t CShader::GetExtractMask(llvm::Value* vecVal)
     {
         return it->second;
     }
-    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? (unsigned)cast<VectorType>(vecVal->getType())->getNumElements() : 1;
+    const unsigned int numChannels = vecVal->getType()->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(vecVal->getType())->getNumElements() : 1;
     IGC_ASSERT_MESSAGE(numChannels <= 32, "Mask has 32 bits maximally!");
     return (1ULL << numChannels) - 1;
 }
@@ -1201,7 +1201,7 @@ uint32_t CShader::GetExtractMask(llvm::Value* vecVal)
 uint16_t CShader::AdjustExtractIndex(llvm::Value* vecVal, uint16_t index)
 {
     uint16_t result = index;
-    if (cast<VectorType>(vecVal->getType())->getNumElements() < 32)
+    if (cast<IGCLLVM::FixedVectorType>(vecVal->getType())->getNumElements() < 32)
     {
         uint32_t mask = GetExtractMask(vecVal);
         for (uint i = 0; i < index; ++i)
@@ -1618,7 +1618,7 @@ auto sizeToSIMDMode = [](uint32_t size)
 
 CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
 {
-    llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(C->getType());
+    IGCLLVM::FixedVectorType* VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
     if (C && VTy)
     {   // Vector constant
         llvm::Type* eTy = VTy->getElementType();
@@ -1843,7 +1843,7 @@ uint32_t CShader::GetNumElts(llvm::Type* type, bool isUniform)
     {
         IGC_ASSERT(type->getContainedType(0)->isIntegerTy() || type->getContainedType(0)->isFloatingPointTy());
 
-        auto VT = cast<VectorType>(type);
+        auto VT = cast<IGCLLVM::FixedVectorType>(type);
         numElts *= (uint16_t)VT->getNumElements();
     }
     return numElts;
