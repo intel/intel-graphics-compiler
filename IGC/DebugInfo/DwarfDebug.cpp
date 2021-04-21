@@ -3610,3 +3610,48 @@ std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M)
     }
     return DISubprogramNodes;
 }
+
+void gatherDISubprogramNodes(llvm::Module& M, std::unordered_map<llvm::Function*, std::vector<llvm::DISubprogram*>>& DISubprogramNodes)
+{
+    // Discover all DISubprogram nodes referenced by every llvm::Function
+    // in the module. These referenced DISubprogram nodes will be emitted
+    // to dwarf.
+    for (auto& F : M)
+    {
+        llvm::DenseSet<DISubprogram*> DISPToFunction;
+        llvm::DenseSet<MDNode*> Processed;
+        if (auto* diSubprogram = F.getSubprogram())
+        {
+            DISubprogramNodes[&F].push_back(diSubprogram);
+        }
+
+        for (auto& bb : F)
+        {
+            for (auto& inst : bb)
+            {
+                auto debugLoc = inst.getDebugLoc().get();
+                while (debugLoc)
+                {
+                    auto scope = debugLoc->getScope();
+                    if (scope &&
+                        dyn_cast_or_null<llvm::DILocalScope>(scope) &&
+                        Processed.find(scope) == Processed.end())
+                    {
+                        auto DISP = cast<llvm::DILocalScope>(scope)->getSubprogram();
+                        if (DISPToFunction.find(DISP) == DISPToFunction.end())
+                        {
+                            DISubprogramNodes[&F].push_back(DISP);
+                            DISPToFunction.insert(DISP);
+                            Processed.insert(scope);
+                        }
+                    }
+
+                    if (debugLoc->getInlinedAt())
+                        debugLoc = debugLoc->getInlinedAt();
+                    else
+                        debugLoc = nullptr;
+                }
+            }
+        }
+    }
+}

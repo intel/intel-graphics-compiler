@@ -36,7 +36,7 @@ using namespace std;
 // ElfReader related typedefs
 using namespace CLElfLib;
 
-std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
+void gatherDISubprogramNodes(llvm::Module& M, std::unordered_map<llvm::Function*, std::vector<llvm::DISubprogram*>>& DISubprogramNodes);
 
 char DebugInfoPass::ID = 0;
 char CatchAllLineNumber::ID = 0;
@@ -92,7 +92,43 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         if (simd32) units.push_back(simd32);
     }
 
-    std::vector<llvm::DISubprogram*> DISubprogramNodes = gatherDISubprogramNodes(M);
+    std::unordered_map<llvm::Function*, std::vector<llvm::DISubprogram*>> DISubprogramNodes;
+    gatherDISubprogramNodes(M, DISubprogramNodes);
+
+    auto getSPDiesCollection = [&DISubprogramNodes](std::vector<llvm::Function*>& functions)
+    {
+        // Function argument is list of all functions for elf.
+        // Each function may require emission of one or more DISubprogram nodes.
+        // Return value should be a stable vector of collection of all DISubprogram nodes
+        // but without duplicates.
+        std::vector<llvm::DISubprogram*> retUniqueFuncVec;
+        std::unordered_set<llvm::DISubprogram*> uniqueDISP;
+        for (auto& f : functions)
+        {
+            // iterate over all DISubprogram nodes references by llvm::Function f
+            auto& DISPNodesForF = DISubprogramNodes[f];
+            for (auto& SP : DISPNodesForF)
+            {
+                if (uniqueDISP.find(SP) == uniqueDISP.end())
+                {
+                    retUniqueFuncVec.push_back(SP);
+                    uniqueDISP.insert(SP);
+                }
+            }
+        }
+        // This vector contains DISubprogram node pointers for which DIEs will be emitted elf
+        // for current kernel.
+        //
+        // Input to IGC may have 100s of kernels. When emitting to dwarf, we can emit subprogram
+        // DIEs defined in current kernel (+ it's recursive callees) as well as declarations of
+        // other kernels and functions in input. These declarations quickly add up and cause
+        // bloat of elf size without adding much benefit. This function is responsible to filter
+        // and return only those DISubprogram nodes for which we want DIE emitted to elf. This
+        // only includes DIEs for subprograms ever referenced in this kernel (+ it's recursive
+        // callees). We skip emitting declaration DIEs for which no code is emitted in current
+        // kernel.
+        return retUniqueFuncVec;
+    };
 
     for (auto& currShader : units)
     {
@@ -234,6 +270,10 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             m_pDebugEmitter->registerVISA(m.second.second);
         }
 
+        std::vector<llvm::Function*> functions;
+        std::for_each(sortedVISAModules.begin(), sortedVISAModules.end(),
+            [&functions](auto& item) { functions.push_back(item.second.first); });
+        auto SPDiesToBuild = getSPDiesCollection(functions);
         for (auto& m : sortedVISAModules)
         {
             isOneStepElf |= m.second.second->isDirectElfInput;
@@ -242,7 +282,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             if (--size == 0)
                 finalize = true;
 
-            EmitDebugInfo(finalize, &decodedDbg, DISubprogramNodes);
+            EmitDebugInfo(finalize, &decodedDbg, SPDiesToBuild);
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
