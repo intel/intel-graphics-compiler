@@ -448,7 +448,7 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
       PrepareEmitter(RA, ST, DebugOpts, CWs, PI);
   for (auto *GF : GenXFunctions) {
     LLVM_DEBUG(dbgs() << "--- Processing GenXFunction:  "
-                      << GF->getFunction()->getName() << " ---\n");
+                      << GF->getFunction()->getName().str() << " ---\n");
     processGenXFunction(Emitter.get(), GF);
     bool ExpectMore = GF != GenXFunctions.back();
     LLVM_DEBUG(dbgs() << "--- Starting Debug Info Finalization (final:  "
@@ -464,7 +464,7 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
   }
 
   const auto &KernelName = KF.getName();
-  LLVM_DEBUG(dbgs() << "got Debug Info for <" << KernelName << "> "
+  LLVM_DEBUG(dbgs() << "got Debug Info for <" << KernelName.str() << "> "
                     << "- " << ElfBin.size() << " bytes\n");
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
@@ -529,9 +529,9 @@ void GenXDebugInfo::processFunctionGroup(GenXModule &GM, VISABuilder &VB,
         return F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
       });
   for (auto *F : IndirectlyCalledFunctions) {
-    LLVM_DEBUG(dbgs() << "  F: " << F->getName() << " called indirectly!\n");
+    LLVM_DEBUG(dbgs() << "  F: " << F->getName().str() << " called indirectly!\n");
     // Each indirectly-called function is compiled into a separate vISA kernel
-    auto *VF = VB.GetVISAKernel(F->getName());
+    auto *VF = VB.GetVISAKernel(F->getName().str());
     processKernel(ProgramInfo{{BuildFunctionInfo(VF, F)}});
   }
   std::vector<ProgramInfo::FunctionInfo> PrimaryFIs;

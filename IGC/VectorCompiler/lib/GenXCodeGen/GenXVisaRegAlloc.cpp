@@ -119,21 +119,21 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
 
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_ARG,
-      VectorType::get(Type::getInt8Ty(FGArg.getContext()),
+      IGCLLVM::FixedVectorType::get(Type::getInt8Ty(FGArg.getContext()),
                       visa::ArgRegSizeInGRFs * ST->getGRFWidth()));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_RET,
-      VectorType::get(Type::getInt8Ty(FGArg.getContext()),
+      IGCLLVM::FixedVectorType::get(Type::getInt8Ty(FGArg.getContext()),
                       visa::RetRegSizeInGRFs * ST->getGRFWidth()));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_SP,
-      VectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
+      IGCLLVM::FixedVectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
   RegStorage.emplace_back(
       RegCategory::GENERAL, PreDefined_Vars::PREDEFINED_FE_FP,
-      VectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
+      IGCLLVM::FixedVectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
 
   for (auto &F : *FG) {
@@ -642,7 +642,7 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
   }
   OverrideType = &fixDegenerateVectorType(*OverrideType);
   if (R->Num < VISA_NUM_RESERVED_REGS) {
-    OverrideType = VectorType::get(
+    OverrideType = IGCLLVM::FixedVectorType::get(
         OverrideType->getScalarType(),
         R->Ty->getPrimitiveSizeInBits() /
             OverrideType->getScalarType()->getPrimitiveSizeInBits());

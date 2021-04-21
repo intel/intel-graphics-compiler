@@ -90,10 +90,10 @@ IN THE SOFTWARE.
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/Transforms/Utils/Local.h"
 
 #include <functional>
 #include <limits>
@@ -2266,13 +2266,14 @@ bool GenXPatternMatch::simplifySelect(Function *F) {
 
 bool GenXPatternMatch::clearDeadInstructions(Function &F) {
   bool Changed = false;
-  SmallVector<Instruction *, 8> ToErase;
+  SmallVector<WeakTrackingVH, 8> ToErase;
   for (auto &Inst : instructions(F))
     if (isInstructionTriviallyDead(&Inst))
-      ToErase.push_back(&Inst);
+      ToErase.push_back(WeakTrackingVH(&Inst));
   if (!ToErase.empty()) {
     Changed = true;
-    RecursivelyDeleteTriviallyDeadInstructions(ToErase);
+    
+    IGCLLVM::RecursivelyDeleteTriviallyDeadInstructions(ToErase);
   }
   return Changed;
 }

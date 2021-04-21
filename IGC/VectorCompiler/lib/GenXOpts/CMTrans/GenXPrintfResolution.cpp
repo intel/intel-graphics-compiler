@@ -239,10 +239,10 @@ using PrintfImplTypeStorage = std::array<FunctionType *, PrintfImplFunc::Size>;
 
 static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
   auto *TransferDataTy =
-      VectorType::get(Type::getInt32Ty(Ctx), TransferDataSize);
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), TransferDataSize);
   auto *ArgsInfoTy =
-      VectorType::get(Type::getInt32Ty(Ctx), ArgsInfoVector::Size);
-  auto *ArgDataTy = VectorType::get(Type::getInt32Ty(Ctx), ArgData::Size);
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), ArgsInfoVector::Size);
+  auto *ArgDataTy = IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), ArgData::Size);
   constexpr bool IsVarArg = false;
 
   PrintfImplTypeStorage FuncTys;
