@@ -4710,6 +4710,7 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
     }
 }
 
+
 void GlobalRA::expandFillIntrinsic(G4_BB* bb)
 {
     // fill (1) fill_var:ud     bitmask:ud     offset:ud

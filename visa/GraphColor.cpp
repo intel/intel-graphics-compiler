@@ -1782,6 +1782,45 @@ void Interference::addCalleeSaveBias(const BitSet& live)
     }
 }
 
+void Interference::buildInterferenceAmongLiveOuts()
+{
+    // Mark interference between dcls marked as Output.
+    //
+    // Interference computation marks interference for a
+    // variable only when definition for that variable is
+    // seen, not otherwise.
+    //
+    // This method is useful when definition of such
+    // "Output" variables are emitted to program post RA.
+    //
+    // It is safe to mark interference between all "Output"
+    // dcls even when their definition is present in the program.
+
+    // First gather all Output dcls in a vector to avoid an O(N^2)
+    // lookup. Number of OutputDcls should be small.
+    std::vector<G4_Declare*> OutputDcls;
+    for (auto dcl : kernel.Declares)
+    {
+        if (!dcl->getRegVar()->isRegAllocPartaker() ||
+            !dcl->isOutput())
+            continue;
+
+        OutputDcls.push_back(dcl);
+    }
+
+    for (auto dcl1 : OutputDcls)
+    {
+        // dcl1 is RA partaker iter and is marked as Output
+        for (auto dcl2 : OutputDcls)
+        {
+            if (dcl1 == dcl2)
+                continue;
+
+            checkAndSetIntf(dcl1->getRegVar()->getId(), dcl2->getRegVar()->getId());
+        }
+    }
+}
+
 void Interference::buildInterferenceAmongLiveIns()
 {
     //
@@ -2447,6 +2486,8 @@ void Interference::computeInterference()
     // create bool vector, live, to track live ranges that are currently live
     //
     BitSet live(maxId, false);
+
+    buildInterferenceAmongLiveOuts();
 
     for (G4_BB *bb : kernel.fg)
     {

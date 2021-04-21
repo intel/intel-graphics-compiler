@@ -446,6 +446,7 @@ namespace vISA
 
         void buildInterferenceWithLocalRA(G4_BB* bb);
 
+        void buildInterferenceAmongLiveOuts();
         void buildInterferenceAmongLiveIns();
 
         void markInterferenceToAvoidDstSrcOverlap(G4_BB* bb, G4_INST* inst);
