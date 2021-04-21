@@ -286,6 +286,9 @@ namespace IGC
         /// Check if integer mad is enabled
         virtual bool EnableIntegerMad() const { return false; }
 
+        /// Respect per instruction 'contract' Fast-Math flag
+        virtual bool RespectPerInstructionContractFlag() const { return false; }
+
         /// add shader hash code after EOT for debug purposes
         virtual bool EnableShaderDebugHashCodeInKernel() const { return false; }
 

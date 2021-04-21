@@ -2030,9 +2030,18 @@ namespace IGC
         {
             return false;
         }
+
+        bool isFpMadWithContractionOverride = false;
         if (isFpMad(I) && m_AllowContractions == false)
         {
-            return false;
+            if (I.hasAllowContract() && m_ctx->m_DriverInfo.RespectPerInstructionContractFlag())
+            {
+                isFpMadWithContractionOverride = true;
+            }
+            else
+            {
+                return false;
+            }
         }
         if (!isFpMad(I) && !(m_Platform.doIntegerMad() && m_ctx->m_DriverInfo.EnableIntegerMad()))
         {
@@ -2072,6 +2081,10 @@ namespace IGC
                     // in case we know we won't be able to remove the mul we don't merge it
                     if (!m_PosDep->PositionDependsOnInst(mul) && NeedInstruction(*mul))
                         continue;
+
+                    if (isFpMadWithContractionOverride && !mul->hasAllowContract())
+                        continue;
+
                     sources[2] = I.getOperand(1 - i);
                     sources[1] = mul->getOperand(0);
                     sources[0] = mul->getOperand(1);
