@@ -390,10 +390,10 @@ void GeometryShaderLowering::lowerOutputGS(
             offsetInst[offset.Count()] = inst;
             immediateAccess = true;
         }
-        else if (auto pConstAttrIdx = llvm::dyn_cast<llvm::ConstantInt>(pAttributeIndex))
+        else if (llvm::isa<llvm::ConstantInt>(pAttributeIndex) || llvm::isa<llvm::UndefValue>(pAttributeIndex))
         {
             // Vertex index is a runtime value and attribute index is a constant.
-            const uint attributeIndex = int_cast<uint>(pConstAttrIdx->getZExtValue());
+            const uint attributeIndex = llvm::isa<llvm::ConstantInt>(pAttributeIndex) ? int_cast<uint>(llvm::cast<llvm::ConstantInt>(pAttributeIndex)->getZExtValue()) : 0u;
             // Depending on the usage and attribute index, find the exact position where to write.
             const QuadEltUnit usageOffset = GetURBWriteOffset(usage, attributeIndex);
             const QuadEltUnit staticOffset = globalOffset + usageOffset;
