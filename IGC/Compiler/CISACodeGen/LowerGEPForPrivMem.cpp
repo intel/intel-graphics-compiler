@@ -526,6 +526,7 @@ public:
         StoreInst* pStore,
         Value* pScalarizedIdx);
     AllocaInst* pVecAlloca;
+    std::set<BasicBlock*> StoreBBs;   // location of all stores
     TransposeHelperPromote(AllocaInst* pAI) : TransposeHelper(false) { pVecAlloca = pAI; }
 };
 
@@ -551,7 +552,16 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     // to keep the promoted vector as uniform in the next round of WIAnalysis
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
     if (isUniformAlloca && pAlloca->getAllocatedType()->isArrayTy()) {
-        IRBuilder<> IRB1(pAlloca);
+        BasicBlock* CommonDomBB = nullptr;
+        for (auto* SB : helper.StoreBBs)
+        {
+            if (!CommonDomBB)
+                CommonDomBB = SB;
+            else
+                CommonDomBB = m_DT->findNearestCommonDominator(CommonDomBB, SB);
+        }
+        assert(CommonDomBB);
+        IRBuilder<> IRB1(CommonDomBB->getFirstNonPHI());
         auto pVecF = GenISAIntrinsic::getDeclaration(m_pFunc->getParent(),
             GenISAIntrinsic::GenISA_vectorUniform, pVecAlloca->getAllocatedType());
         auto pVecInit = IRB1.CreateCall(pVecF);
@@ -710,10 +720,11 @@ void TransposeHelperPromote::handleStoreInst(
     llvm::StoreInst* pStore,
     llvm::Value* pScalarizedIdx)
 {
-    // Add Store instruction to remove list
     IGC_ASSERT(nullptr != pStore);
     IGC_ASSERT(pStore->isSimple());
-
+    // remember the location of the stores in order to
+    // compute the nearest dominator
+    StoreBBs.insert(pStore->getParent());
     IRBuilder<> IRB(pStore);
     llvm::Value* pStoreVal = pStore->getValueOperand();
     llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
