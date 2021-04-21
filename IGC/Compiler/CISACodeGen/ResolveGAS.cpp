@@ -1222,6 +1222,19 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
         Instruction* inst = dyn_cast<Instruction>(*UI);
         PointerType* instType = nullptr;
 
+        if (auto* asc = dyn_cast<AddrSpaceCastInst>(inst))
+        {
+            // When mutating AS cast and another AS cast is using mutated one,
+            // it may result in same space AS cast which is invalid,
+            // so we replace all uses of invalid cast with its operand as they have same AS
+            if (asc->getDestTy() == asc->getSrcTy())
+            {
+                asc->replaceAllUsesWith(ptr);
+                asc->eraseFromParent();
+                continue;
+            }
+        }
+
         if (StoreInst* storeInst = dyn_cast<StoreInst>(inst))
         {
             // We cannot propagate the non-generic AS to the value operand of a store.
