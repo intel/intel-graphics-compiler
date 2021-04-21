@@ -4888,8 +4888,13 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         if (!cv || cv->getZExtValue() == 0)
         {
             pMaskOpnd = GetSymbol(pMask);
-            m_encoder->SetPredicate(pMaskOpnd);
         }
+    }
+
+
+    if (pMaskOpnd)
+    {
+        m_encoder->SetPredicate(pMaskOpnd);
     }
 
     bool isHeaderMaskFromCe0 =
