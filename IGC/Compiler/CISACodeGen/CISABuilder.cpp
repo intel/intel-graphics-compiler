@@ -4036,7 +4036,14 @@ namespace IGC
             SaveOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
         }
 
-        SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
+        if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
+        {
+            SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum));
+        }
+        else
+        {
+            SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
+        }
 
 
 
