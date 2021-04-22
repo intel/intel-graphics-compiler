@@ -3432,8 +3432,11 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
             writeULEB128(cfaOps[item.start], GetEncodedRegNum<RegisterNumbering::GRFBase>(
                 numGRFs, EmitSettings.UseNewRegisterEncoding));
             writeLR(cfaOps[item.start], item, false, false);
-            writeSameValue(cfaOps[item.end], GetEncodedRegNum<RegisterNumbering::GRFBase>(
+            write(cfaOps[item.end], (uint8_t)llvm::dwarf::DW_CFA_register);
+            writeULEB128(cfaOps[item.end], GetEncodedRegNum<RegisterNumbering::GRFBase>(
                 numGRFs, EmitSettings.UseNewRegisterEncoding));
+            writeULEB128(cfaOps[item.end], GetEncodedRegNum<RegisterNumbering::GRFBase>(
+                GetSpecialGRF(), EmitSettings.UseNewRegisterEncoding));
         }
     }
     else
