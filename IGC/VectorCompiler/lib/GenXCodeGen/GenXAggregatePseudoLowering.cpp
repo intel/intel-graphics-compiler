@@ -83,15 +83,18 @@ IN THE SOFTWARE.
 
 #include "GenX.h"
 #include "GenXModule.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Pass.h"
+
+#include "Probe/Assertion.h"
+
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Pass.h>
 
 #include <unordered_map>
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace genx;
@@ -274,6 +277,48 @@ std::vector<Value *> createSplitInstOperands(int elemIdx, OpRange OrigOps,
   return NewOps;
 }
 
+class SplitInstCreator : public InstVisitor<SplitInstCreator, Instruction *> {
+  const std::vector<Value *> &NewOps;
+
+public:
+  SplitInstCreator(const std::vector<Value *> &NewOpsIn) : NewOps{NewOpsIn} {}
+
+  Instruction *visitInstruction(Instruction &I) const {
+    IGC_ASSERT_MESSAGE(0, "yet unsupported instruction");
+    return nullptr;
+  }
+
+  // Just an alias to visit with a bit more suitable name.
+  Instruction *create(Instruction &I) { return visit(I); }
+
+  Instruction *visitSelectInst(SelectInst &Inst) const {
+    IGC_ASSERT_MESSAGE(NewOps.size() == 3, "select must have 3 operands");
+    auto *NewSelect =
+        SelectInst::Create(NewOps[0], NewOps[1], NewOps[2],
+                           Inst.getName() + ".split.aggr", &Inst, &Inst);
+    NewSelect->setDebugLoc(Inst.getDebugLoc());
+    return NewSelect;
+  }
+
+  Instruction *visitPHINode(PHINode &OldPHI) const {
+    IGC_ASSERT(OldPHI.getNumOperands() == NewOps.size());
+    auto *NewPHI = PHINode::Create(NewOps[0]->getType(), NewOps.size(),
+                                   OldPHI.getName() + ".split.aggr", &OldPHI);
+
+    for (auto &&Incoming : zip(NewOps, OldPHI.blocks())) {
+      Value *OpVal = std::get<0>(Incoming);
+      BasicBlock *OpBB = std::get<1>(Incoming);
+      IGC_ASSERT_MESSAGE(isa<ExtractValueInst>(OpVal),
+                         "phi operands must be previously in this pass created "
+                         "extractvalue insts");
+      auto *OpInst = cast<Instruction>(OpVal);
+      NewPHI->addIncoming(OpInst, OpBB);
+    }
+    NewPHI->setDebugLoc(OldPHI.getDebugLoc());
+    return NewPHI;
+  }
+};
+
 // Arguments:
 //    \p Inst - original instruction
 //    \p NewOps - operands for split instruction
@@ -283,30 +328,7 @@ std::vector<Value *> createSplitInstOperands(int elemIdx, OpRange OrigOps,
 // Split instruction is returned.
 static Instruction *createSplitInst(Instruction &Inst,
                                     const std::vector<Value *> &NewOps) {
-  if (isa<SelectInst>(Inst)) {
-    IGC_ASSERT_MESSAGE(NewOps.size() == 3, "select must have 3 operands");
-    auto *NewSelect =
-        SelectInst::Create(NewOps[0], NewOps[1], NewOps[2],
-                           Inst.getName() + ".split.aggr", &Inst, &Inst);
-    NewSelect->setDebugLoc(Inst.getDebugLoc());
-    return NewSelect;
-  }
-  IGC_ASSERT_MESSAGE(isa<PHINode>(Inst), "unsupported instruction");
-  IGC_ASSERT(Inst.getNumOperands() == NewOps.size());
-  auto *NewPHI = PHINode::Create(NewOps[0]->getType(), NewOps.size(),
-                                 Inst.getName() + ".split.aggr", &Inst);
-
-  auto &OldPHI = cast<PHINode>(Inst);
-  for (auto &&Incoming : zip(NewOps, OldPHI.blocks())) {
-    Value *OpVal = std::get<0>(Incoming);
-    BasicBlock *OpBB = std::get<1>(Incoming);
-    IGC_ASSERT_MESSAGE(isa<ExtractValueInst>(OpVal),
-      "phi operands must be previously in this pass created extractvalue insts");
-    auto *OpInst = cast<Instruction>(OpVal);
-    NewPHI->addIncoming(OpInst, OpBB);
-  }
-  NewPHI->setDebugLoc(Inst.getDebugLoc());
-  return NewPHI;
+  return SplitInstCreator{NewOps}.create(Inst);
 }
 
 // Arguments:
@@ -323,8 +345,8 @@ createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps) {
   int NumNewInsts = InstTy.getNumElements();
   std::vector<Instruction *> NewInsts;
   NewInsts.reserve(NumNewInsts);
-  for (int i = 0; i < NumNewInsts; ++i) {
-    auto NewOps = createSplitInstOperands(i, Inst.operands(), SplitOps);
+  for (int Idx = 0; Idx < NumNewInsts; ++Idx) {
+    auto NewOps = createSplitInstOperands(Idx, Inst.operands(), SplitOps);
     NewInsts.push_back(createSplitInst(Inst, NewOps));
   }
   return NewInsts;
@@ -361,5 +383,6 @@ void GenXAggregatePseudoLowering::processInst(Instruction &Inst) {
   auto *JoinInst =
       joinSplitInsts(NewInsts, Inst.getType(), getFirstInsertionPtAfter(Inst));
   Inst.replaceAllUsesWith(JoinInst);
+  JoinInst->takeName(&Inst);
   ToErase.push_back(&Inst);
 }
