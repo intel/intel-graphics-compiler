@@ -4425,24 +4425,27 @@ bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
   std::unique_ptr<SPIRVModule> BM( SPIRVModule::createSPIRVModule() );
   BM->setSpecConstantMap(specConstants);
   IS >> *BM;
-  BM->resolveUnknownStructFields();
-  M = new Module( "",C );
-  SPIRVToLLVM BTL( M,BM.get() );
-  bool Succeed = true;
-  if(!BTL.translate()) {
-    BM->getError( ErrMsg );
-    Succeed = false;
-  }
+  bool Succeed = BM->getError(ErrMsg) == SPIRVEC_Success;
+  if (Succeed) {
+    BM->resolveUnknownStructFields();
+    M = new Module("", C);
+    SPIRVToLLVM BTL(M, BM.get());
 
-  llvm::legacy::PassManager PM;
-  PM.add( new TypesLegalizationPass() );
-  PM.add( createDeadCodeEliminationPass() );
-  PM.run( *M );
+    if (!BTL.translate()) {
+      BM->getError(ErrMsg);
+      Succeed = false;
+    }
+
+    llvm::legacy::PassManager PM;
+    PM.add(new TypesLegalizationPass());
+    PM.add(createDeadCodeEliminationPass());
+    PM.run(*M);
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-  if (DbgSaveTmpLLVM)
-    dumpLLVM(M, DbgTmpLLVMFileName);
+    if (DbgSaveTmpLLVM)
+      dumpLLVM(M, DbgTmpLLVMFileName);
 #endif
+  }
   if (!Succeed) {
     delete M;
     M = nullptr;

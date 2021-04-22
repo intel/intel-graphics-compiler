@@ -777,8 +777,12 @@ operator>> (std::istream &I, SPIRVModule &M) {
   Decoder >> MI.InstSchema;
   IGC_ASSERT_MESSAGE(MI.InstSchema == SPIRVISCH_Default, "Unsupported instruction schema");
 
-  while(Decoder.getWordCountAndOpCode())
-    Decoder.getEntry();
+  while (Decoder.getWordCountAndOpCode()) {
+    if (!Decoder.getEntry()){
+      if(M.getErrorLog().getErrorCode() == SPIRVEC_UnsupportedSPIRVOpcode)
+        break;
+    }
+  }
 
   return I;
 }

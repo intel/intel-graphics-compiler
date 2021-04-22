@@ -107,6 +107,9 @@ public:
     ErrMsg = ErrorMsg;
     return ErrorCode;
   }
+  SPIRVErrorCode getErrorCode() {
+    return ErrorCode;
+  }
   void setError(SPIRVErrorCode ErrCode, const std::string& ErrMsg) {
     ErrorCode = ErrCode;
     ErrorMsg = ErrMsg;

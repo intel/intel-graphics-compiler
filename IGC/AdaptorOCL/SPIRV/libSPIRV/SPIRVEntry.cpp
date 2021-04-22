@@ -81,7 +81,6 @@ SPIRVEntry::create(Op OpCode) {
 #include "SPIRVOpCodeEnum.h"
 #undef _SPIRV_OP
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "No factory the OpCode ");
     break;
   }
   return 0;

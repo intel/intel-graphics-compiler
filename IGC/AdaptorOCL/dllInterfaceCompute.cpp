@@ -717,17 +717,20 @@ bool ParseInput(
                                                                             pInputArgs->SpecConstantsSize);
         bool success = igc_spv::ReadSPIRV(oclContext, IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
         // handle OpenCL Compiler Options
-        GenerateCompilerOptionsMD(
-            oclContext,
-            *pKernelModule,
-            llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize));
+        if (success) {
+            GenerateCompilerOptionsMD(
+                oclContext,
+                *pKernelModule,
+                llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize));
+        }
 #else
         std::string stringErrMsg{"SPIRV consumption not enabled for the TARGET."};
         bool success = false;
 #endif
         if (!success)
         {
-            IGC_ASSERT(false && stringErrMsg.c_str());
+            SetErrorMessage(stringErrMsg, *pOutputArgs);
+            return false;
         }
     }
     else

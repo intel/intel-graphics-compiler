@@ -192,20 +192,26 @@ SPIRVDecoder::getEntry() {
   if (WordCount == 0 || OpCode == OpNop)
     return NULL;
   SPIRVEntry *Entry = SPIRVEntry::create(OpCode);
-  Entry->setModule(&M);
-  Entry->setWordCount(WordCount);
-  IS >> *Entry;
+  if (Entry) {
+    Entry->setModule(&M);
+    Entry->setWordCount(WordCount);
+    IS >> *Entry;
 
-  if ((isModuleScopeAllowedOpCode(OpCode) && !Scope) ||
+    if ((isModuleScopeAllowedOpCode(OpCode) && !Scope) ||
       // No need to attach scope to debug info extension operations
       (Entry->hasNoScope()))
-  {}
-  else
+    {}
+    else
       Entry->setScope(Scope);
 
-  IGC_ASSERT_MESSAGE(false == IS.bad(), "SPIRV stream fails");
-  IGC_ASSERT_MESSAGE(false == IS.fail(), "SPIRV stream fails");
-  M.add(Entry);
+    IGC_ASSERT_MESSAGE(false == IS.bad(), "SPIRV stream fails");
+    IGC_ASSERT_MESSAGE(false == IS.fail(), "SPIRV stream fails");
+    M.add(Entry);
+  }
+  else {
+    M.getErrorLog().setError(SPIRVEC_UnsupportedSPIRVOpcode,
+      "IGC SPIRV Consumer does not support the following opcode: " + std::to_string(OpCode) + "\n");
+  }
   return Entry;
 }
 
