@@ -136,14 +136,23 @@ bool BinaryStream::Align( std::streamsize alignment )
 bool BinaryStream::AddPadding( std::streamsize padding )
 {
     bool retValue = true;
-
-    while( padding-- )
+    if (padding > 0)
     {
-        // Always pad with 0x0 to make external tools that parse
-        // OpenCL program binaries easier to maintain
-        retValue &= Write( (char)0x0 );
-    }
+        std::streamsize prevSize = Size();
+        // Writes zeros to the width of "padding"
+        m_membuf.width(padding);
+        m_membuf.fill((char)0x0);
+        m_membuf << '\0';
 
+        if ((Size() - prevSize) != padding)
+        {
+            retValue = false;
+        }
+        else if (m_membuf.fail())
+        {
+            retValue = false;
+        }
+    }
     return retValue;
 }
 
