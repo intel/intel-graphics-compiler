@@ -1732,6 +1732,13 @@ namespace IGC
         m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
 
         CreateInlineSamplerAnnotations();
+        // Currently we can't support inline sampler in zebin
+        // assertion tests if we force to EnableZEBinary but encounter inline sampler
+        IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary) || !m_kernelInfo.m_HasInlineVmeSamplers,
+            "ZEBin: Inline sampler unsupported");
+        // fall back to patch-token if ZEBinary is enabled by CodeGenContext::CompOptions
+        if (m_Context->getCompilerOption().EnableZEBinary && m_kernelInfo.m_HasInlineVmeSamplers)
+            m_Context->getCompilerOption().EnableZEBinary = false;
 
         // Handle kernel reflection
         CreateKernelArgInfo();
