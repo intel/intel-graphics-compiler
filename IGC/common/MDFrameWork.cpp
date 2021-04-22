@@ -194,7 +194,14 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
                 + " elements. Including first " + std::to_string(MAX_VECTOR_SIZE_TO_PRINT_IN_SHADER_DUMPS)
                 + " items in ShaderDumps. To print all elements set ShowFullVectorsInShaderDumps register flag to True. "
                 + "ShaderOverride flag may not work properly without ShowFullVectorsInShaderDumps enabled.";
-            printf("%s\n\n", warningMessage.c_str());
+
+            //Print warning once in console, print every time in LLVM ShaderDump
+            static bool printWarningFirstTime = true;
+            if (printWarningFirstTime)
+            {
+                printf("\n%s\n\n", warningMessage.c_str());
+                printWarningFirstTime = false;
+            }
             nodes.push_back(CreateNode(false, module, warningMessage + " ShowFullVectorsInShaderDumps currently equals"));
             break;
         }
