@@ -8561,7 +8561,7 @@ void Optimizer::recomputeBound(std::unordered_set<G4_Declare*>& declares)
 }
 
 //
-// Given a sequence of simd1 instructions (max 8), try to merge them into a single instruction
+// Given a sequence of simd1 instructions (max 4), try to merge them into a single instruction
 // e.g.,
 // mul (1) r0.4<1>:f r0.0<0;1,0>:f r6.5<0;1,0>:f {NoMask}
 // mul (1) r0.5<1>:f r0.1<0;1,0>:f r6.5<0;1,0>:f {NoMask}
@@ -8579,7 +8579,7 @@ void Optimizer::mergeScalarInst()
     int bundleSizeLimit = BUNDLE_INFO::maxBundleSize;
     if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D)
     {
-        bundleSizeLimit = 8;
+        bundleSizeLimit = 4;
     }
 
     Mem_Manager mergeManager(1024);
