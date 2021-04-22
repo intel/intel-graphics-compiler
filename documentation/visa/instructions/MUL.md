@@ -30,8 +30,8 @@ IN THE SOFTWARE.
 
 ## Format
 
-| | | | | |
-| --- | --- | --- | --- | --- |
+| | | | | | |
+| --- | --- | --- | --- | --- | --- |
 | 0x10(MUL) | Exec_size | Pred | Dst | Src0 | Src1 |
 
 
