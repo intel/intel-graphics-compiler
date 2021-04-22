@@ -284,12 +284,6 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // need this before WIAnalysis:
     // insert phi to prevent changing of WIAnalysis result by later code-motion
     mpm.add(llvm::createLCSSAPass());
-        if (!isOptDisabled)
-    {
-        // If you want to clean up the dead-code after push optimization
-        // and IOCoalescing
-        //Passes.add(llvm::createDeadCodeEliminationPass());
-    }
     // Fixup extract value pairs.
     mpm.add(createExtractValuePairFixupPass());
 

@@ -16942,14 +16942,17 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
     ResourceDescriptor resource;
     BufferType bufType = BUFFER_TYPE_UNKNOWN;
     uint as = 0;
-    if (isa<GenIntrinsicInst>(resourcePtr) &&
-        cast<GenIntrinsicInst>(resourcePtr)->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
+    if (auto *GII = dyn_cast<GenIntrinsicInst>(resourcePtr); GII && (
+        GII->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr))
     {
-        // from GetBufferPtr
-        Value* bufTyVal = cast<GenIntrinsicInst>(resourcePtr)->getOperand(1);
-        IGC_ASSERT(isa<ConstantInt>(bufTyVal));
-        bufType = (BufferType)(cast<ConstantInt>(bufTyVal)->getZExtValue());
-        resource.m_resource = GetSymbol(resourcePtr);
+        if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
+        {
+            // from GetBufferPtr
+            Value* bufTyVal = GII->getOperand(1);
+            IGC_ASSERT(isa<ConstantInt>(bufTyVal));
+            bufType = (BufferType)(cast<ConstantInt>(bufTyVal)->getZExtValue());
+            resource.m_resource = GetSymbol(resourcePtr);
+        }
     }
     else
     {
