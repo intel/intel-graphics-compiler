@@ -184,22 +184,17 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
     G4_INST* inst = nullptr;
     G4_ExecSize instExecSize = toExecSize(executionSize);
-    G4_ExecSize exsize = g4::SIMD4;
+    G4_ExecSize exsize = (G4_ExecSize)(getNativeExecSize() / 2);
     const RegionDesc *srcRegionDesc = getRegionStride1();
     const RegionDesc *rdAlign16 = getRegionStride1();
-    uint8_t element_size;       // element_size is set according to instExecSize
-    unsigned int loopCount;
+    uint8_t element_size = exsize;       // element_size is set according to instExecSize
+    unsigned int loopCount = 1;
 
     G4_Imm *dbl_constant_0 = createDFImm(0.0);
     G4_Imm *dbl_constant_1 = createDFImm(1.0);
 
     {
-        if (instExecSize == 1 || instExecSize == 2 || instExecSize == 4)
-        {
-            element_size = 4;
-            loopCount = 1;
-        }
-        else
+        if (instExecSize > exsize)
         {
             element_size = instExecSize;
             exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));
@@ -1045,14 +1040,14 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    G4_INST* inst;
+    G4_INST* inst = nullptr;
     G4_ExecSize instExecSize = toExecSize(executionSize);
-    G4_ExecSize exsize = g4::SIMD4;
+    G4_ExecSize exsize = (G4_ExecSize)(getNativeExecSize() / 2);
 
     const RegionDesc *srcRegionDesc = getRegionStride1();
     const RegionDesc *rdAlign16 = getRegionStride1();
-    unsigned int loopCount;
-    G4_ExecSize element_size {0};   // element_size is set according to instExecSize
+    unsigned int loopCount = 1;
+    G4_ExecSize element_size = exsize;   // element_size is set according to instExecSize
 
     G4_DstRegRegion *dst0 = nullptr;
     G4_SrcRegRegion *src0 = nullptr;
@@ -1061,12 +1056,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion *neg_src1 = nullptr;
 
     {
-        if (instExecSize == 1 || instExecSize == 2 || instExecSize == 4)
-        {
-            element_size = g4::SIMD4;
-            loopCount = 1;
-        }
-        else
+        if (instExecSize > exsize)
         {
             element_size = instExecSize;
             exsize = std::min(instExecSize, G4_ExecSize(getFP64MadmExecSize()));

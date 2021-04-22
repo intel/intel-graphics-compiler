@@ -820,6 +820,12 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                     }
                 }
             }
+
+            // check if the oprands with mme are GRF-aligned.
+            if (opnd->getAccRegSel() != ACC_UNDEFINED)
+            {
+                assert(opnd->getLinearizedStart() % numEltPerGRF<Type_UB>() == 0 && "operand with mme must be GRF-aligned");
+            }
         }
     }
 }
