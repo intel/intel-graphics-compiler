@@ -26,11 +26,11 @@ IN THE SOFTWARE.
 
 #include "vc/Driver/Driver.h"
 
+#include "igc/Options/Options.h"
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/GenXCodeGen/GenXTarget.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/Options/Options.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/Status.h"
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
@@ -451,10 +451,10 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
 
 static Expected<opt::InputArgList>
 parseOptions(const SmallVectorImpl<const char *> &Argv,
-             vc::options::Flags FlagsToInclude, bool IsStrictMode) {
-  const opt::OptTable &Options = vc::getOptTable();
+             IGC::options::Flags FlagsToInclude, bool IsStrictMode) {
+  const opt::OptTable &Options = IGC::getOptTable();
 
-  const bool IsInternal = FlagsToInclude == vc::options::InternalOption;
+  const bool IsInternal = FlagsToInclude == IGC::options::InternalOption;
 
   unsigned MissingArgIndex = 0;
   unsigned MissingArgCount = 0;
@@ -466,8 +466,8 @@ parseOptions(const SmallVectorImpl<const char *> &Argv,
   // ocloc uncoditionally passes opencl options to internal options.
   // Skip checking of internal options for now.
   if (IsStrictMode) {
-    if (opt::Arg *A = InputArgs.getLastArg(vc::options::OPT_UNKNOWN,
-                                           vc::options::OPT_INPUT)) {
+    if (opt::Arg *A = InputArgs.getLastArg(IGC::options::OPT_UNKNOWN,
+                                           IGC::options::OPT_INPUT)) {
       std::string BadOpt = A->getAsString(InputArgs);
       return make_error<vc::OptionError>(BadOpt, IsInternal);
     }
@@ -481,7 +481,7 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
   SmallVector<const char *, 8> Argv;
   cl::TokenizeGNUCommandLine(ApiOptions, Saver, Argv);
 
-  const opt::OptTable &Options = vc::getOptTable();
+  const opt::OptTable &Options = IGC::getOptTable();
   // This can be rewritten to parse options and then check for
   // OPT_vc_codegen, but it would be better to manually check for
   // this option before any real parsing. If it is missing,
@@ -491,18 +491,18 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
                        [&Opt](const char *ArgStr) { return Opt == ArgStr; });
   };
   const std::string VCCodeGenOptName =
-      Options.getOption(vc::options::OPT_vc_codegen).getPrefixedName();
+      Options.getOption(IGC::options::OPT_vc_codegen).getPrefixedName();
   if (HasOption(VCCodeGenOptName))
-    return parseOptions(Argv, vc::options::ApiOption, IsStrictMode);
+    return parseOptions(Argv, IGC::options::ApiOption, IsStrictMode);
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
-      Options.getOption(vc::options::OPT_igcmc).getPrefixedName();
+      Options.getOption(IGC::options::OPT_igcmc).getPrefixedName();
   if (HasOption(IgcmcOptName)) {
     llvm::errs()
         << "'" << IgcmcOptName
         << "' option is deprecated and will be removed in the future release. "
            "Use -vc-codegen instead for compiling from SPIRV.\n";
-    return parseOptions(Argv, vc::options::IgcmcApiOption, IsStrictMode);
+    return parseOptions(Argv, IGC::options::IgcmcApiOption, IsStrictMode);
   }
 
   return make_error<vc::NotVCError>();
@@ -514,7 +514,7 @@ parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
   cl::TokenizeGNUCommandLine(InternalOptions, Saver, Argv);
   // Internal options are always unchecked.
   constexpr bool IsStrictMode = false;
-  return parseOptions(Argv, vc::options::InternalOption, IsStrictMode);
+  return parseOptions(Argv, IGC::options::InternalOption, IsStrictMode);
 }
 
 static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
@@ -525,19 +525,19 @@ static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
 
 static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             vc::CompileOptions &Opts) {
-  if (ApiOptions.hasArg(vc::options::OPT_no_vector_decomposition))
+  if (ApiOptions.hasArg(IGC::options::OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
 
-  if (ApiOptions.hasArg(vc::options::OPT_vc_emit_debug)) {
+  if (ApiOptions.hasArg(IGC::options::OPT_vc_emit_debug)) {
     Opts.EmitDebugInformation = true;
     Opts.EmitDebuggableKernels = true;
   }
-  if (ApiOptions.hasArg(vc::options::OPT_fno_jump_tables))
+  if (ApiOptions.hasArg(IGC::options::OPT_fno_jump_tables))
     Opts.NoJumpTables = true;
-  if (ApiOptions.hasArg(vc::options::OPT_ftranslate_legacy_memory_intrinsics))
+  if (ApiOptions.hasArg(IGC::options::OPT_ftranslate_legacy_memory_intrinsics))
     Opts.TranslateLegacyMemoryIntrinsics = true;
 
-  if (opt::Arg *A = ApiOptions.getLastArg(vc::options::OPT_optimize)) {
+  if (opt::Arg *A = ApiOptions.getLastArg(IGC::options::OPT_optimize)) {
     StringRef Val = A->getValue();
     auto MaybeLevel = StringSwitch<Optional<vc::OptimizerLevel>>(Val)
                           .Case("none", vc::OptimizerLevel::None)
@@ -548,7 +548,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.OptLevel = MaybeLevel.getValue();
   }
 
-  if (opt::Arg *A = ApiOptions.getLastArg(vc::options::OPT_igcmc_stack_size)) {
+  if (opt::Arg *A = ApiOptions.getLastArg(IGC::options::OPT_igcmc_stack_size)) {
     StringRef Val = A->getValue();
     unsigned Result;
     if (Val.getAsInteger(/*Radix=*/0, Result))
@@ -561,17 +561,17 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
 static Error fillInternalOptions(const opt::ArgList &InternalOptions,
                                  vc::CompileOptions &Opts) {
-  if (InternalOptions.hasArg(vc::options::OPT_dump_isa_binary))
+  if (InternalOptions.hasArg(IGC::options::OPT_dump_isa_binary))
     Opts.DumpIsa = true;
-  if (InternalOptions.hasArg(vc::options::OPT_dump_llvm_ir))
+  if (InternalOptions.hasArg(IGC::options::OPT_dump_llvm_ir))
     Opts.DumpIR = true;
-  if (InternalOptions.hasArg(vc::options::OPT_dump_asm))
+  if (InternalOptions.hasArg(IGC::options::OPT_dump_asm))
     Opts.DumpAsm = true;
-  if (InternalOptions.hasArg(vc::options::OPT_ftime_report))
+  if (InternalOptions.hasArg(IGC::options::OPT_ftime_report))
     Opts.TimePasses = true;
 
   if (opt::Arg *A =
-          InternalOptions.getLastArg(vc::options::OPT_binary_format)) {
+          InternalOptions.getLastArg(IGC::options::OPT_binary_format)) {
     StringRef Val = A->getValue();
     auto MaybeBinary = StringSwitch<Optional<vc::BinaryKind>>(Val)
                            .Case("cm", vc::BinaryKind::CM)
@@ -584,26 +584,26 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   }
 
   Opts.FeaturesString = llvm::join(
-    InternalOptions.getAllArgValues(vc::options::OPT_target_features), ",");
+      InternalOptions.getAllArgValues(IGC::options::OPT_target_features), ",");
 
-  if (InternalOptions.hasArg(vc::options::OPT_help)) {
+  if (InternalOptions.hasArg(IGC::options::OPT_help)) {
     constexpr const char *Usage = "-options \"-vc-codegen [options]\"";
     constexpr const char *Title = "Vector compiler options";
-    constexpr unsigned FlagsToInclude = vc::options::ApiOption;
+    constexpr unsigned FlagsToInclude = IGC::options::ApiOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
-    vc::getOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
-                                FlagsToExclude, ShowAllAliases);
+    IGC::getOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
+                                 FlagsToExclude, ShowAllAliases);
   }
-  if (InternalOptions.hasArg(vc::options::OPT_help_internal)) {
+  if (InternalOptions.hasArg(IGC::options::OPT_help_internal)) {
     constexpr const char *Usage =
         "-options \"-vc-codegen\" -internal_options \"[options]\"";
     constexpr const char *Title = "Vector compiler internal options";
-    constexpr unsigned FlagsToInclude = vc::options::InternalOption;
+    constexpr unsigned FlagsToInclude = IGC::options::InternalOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
-    vc::getOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
-                                FlagsToExclude, ShowAllAliases);
+    IGC::getOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
+                                 FlagsToExclude, ShowAllAliases);
   }
 
   return Error::success();
@@ -634,7 +634,7 @@ static void parseLLVMOptions(const opt::ArgList &Args) {
   StringSaver Saver{Alloc};
   SmallVector<const char *, 8> Argv{"vc-codegen"};
   for (const std::string &ArgPart :
-       Args.getAllArgValues(vc::options::OPT_llvm_options))
+       Args.getAllArgValues(IGC::options::OPT_llvm_options))
     cl::TokenizeGNUCommandLine(ArgPart, Saver, Argv);
   cl::ParseCommandLineOptions(Argv.size(), Argv.data());
 }
@@ -644,18 +644,18 @@ static opt::DerivedArgList
 composeLLVMArgs(const opt::InputArgList &ApiArgs,
                 const opt::InputArgList &InternalArgs,
                 llvm::StringSaver &Saver) {
-  const opt::OptTable &Options = vc::getOptTable();
-  const opt::Option LLVMOpt = Options.getOption(vc::options::OPT_llvm_options);
+  const opt::OptTable &Options = IGC::getOptTable();
+  const opt::Option LLVMOpt = Options.getOption(IGC::options::OPT_llvm_options);
 
   // Pass through old value.
   opt::DerivedArgList UpdatedArgs{InternalArgs};
   if (const opt::Arg *BaseArg =
-          InternalArgs.getLastArg(vc::options::OPT_llvm_options))
+          InternalArgs.getLastArg(IGC::options::OPT_llvm_options))
     UpdatedArgs.AddSeparateArg(BaseArg, LLVMOpt, BaseArg->getValue());
 
   // Add visaopts if any.
   for (auto OptID :
-       {vc::options::OPT_igcmc_visaopts, vc::options::OPT_Xfinalizer}) {
+       {IGC::options::OPT_igcmc_visaopts, IGC::options::OPT_Xfinalizer}) {
     if (!ApiArgs.hasArg(OptID))
       continue;
 
@@ -666,17 +666,17 @@ composeLLVMArgs(const opt::InputArgList &ApiArgs,
     UpdatedArgs.AddSeparateArg(ApiArgs.getLastArg(OptID), LLVMOpt, WrappedOpts);
   }
 
-  if (opt::Arg *GTPinReRa = ApiArgs.getLastArg(vc::options::OPT_gtpin_rera)) {
+  if (opt::Arg *GTPinReRa = ApiArgs.getLastArg(IGC::options::OPT_gtpin_rera)) {
     UpdatedArgs.AddSeparateArg(GTPinReRa, LLVMOpt,
                                "-finalizer-opts='-GTPinReRA'");
   }
   if (opt::Arg *GTPinFreeGRFInfo =
-          ApiArgs.getLastArg(vc::options::OPT_gtpin_grf_info)) {
+          ApiArgs.getLastArg(IGC::options::OPT_gtpin_grf_info)) {
     UpdatedArgs.AddSeparateArg(GTPinFreeGRFInfo, LLVMOpt,
                                "-finalizer-opts='-getfreegrfinfo -rerapostschedule'");
   }
   if (opt::Arg *GTPinScratchAreaSize =
-          ApiArgs.getLastArg(vc::options::OPT_gtpin_scratch_area_size)) {
+          ApiArgs.getLastArg(IGC::options::OPT_gtpin_scratch_area_size)) {
     StringRef ScratchRef =
         Saver.save(GTPinScratchAreaSize->getAsString(ApiArgs));
     auto s = "-finalizer-opts='-GTPinScratchAreaSize " +

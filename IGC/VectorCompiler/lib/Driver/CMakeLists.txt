@@ -39,8 +39,8 @@ igc_get_llvm_targets(LLVM_LIBS
 
 target_link_libraries(VCDriver
   LLVMGenXIntrinsics
+  IGCOptions
   VCCodeGen
-  VCOptions
   VCSupport
 
   ${LLVM_LIBS}

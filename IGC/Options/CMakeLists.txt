@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (c) 2020-2021 Intel Corporation
+# Copyright (c) 2021-2021 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"),
@@ -22,16 +22,22 @@
 #
 #============================ end_copyright_notice =============================
 
-set(SUPPORT_SOURCES
-  Options.cpp
-  )
+add_library(IGCOptions "")
 
-add_library(VCOptions ${SUPPORT_SOURCES})
-igc_get_llvm_targets(LLVM_LIBS
-  Option
-  )
-target_link_libraries(VCOptions
-  VCHeaders
+add_subdirectory(src)
+add_subdirectory(include/igc/Options)
 
+igc_get_llvm_targets(LLVM_LIBS Option)
+
+target_link_libraries(IGCOptions PUBLIC
   ${LLVM_LIBS}
+  )
+
+target_include_directories(IGCOptions PUBLIC
+  include
+  ${CMAKE_CURRENT_BINARY_DIR}/include
+  )
+
+add_dependencies(IGCOptions
+  IGCOptionsTablegen
   )

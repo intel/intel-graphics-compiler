@@ -34,8 +34,4 @@ target_include_directories(VCHeaders
 
 add_dependencies(VCHeaders
   intrinsics_gen
-  VectorCompilerOptions
   )
-
-# Additional things like header generators.
-add_subdirectory(vc)

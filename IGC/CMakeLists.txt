@@ -1369,6 +1369,8 @@ endif()
 
 add_subdirectory(GenISAIntrinsics)
 
+add_subdirectory(Options)
+
 if(LLVM_ON_WIN32)
   add_subdirectory(AdaptorOCL)
   igc_sg_define(IGC__AdaptorOCL)

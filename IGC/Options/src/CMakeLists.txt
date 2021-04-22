@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (c) 2020-2021 Intel Corporation
+# Copyright (c) 2021-2021 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"),
@@ -22,6 +22,7 @@
 #
 #============================ end_copyright_notice =============================
 
-set(LLVM_TARGET_DEFINITIONS Options.td)
-tablegen(LLVM Options.inc -gen-opt-parser-defs)
-add_public_tablegen_target(VectorCompilerOptions)
+target_sources(IGCOptions
+  PRIVATE
+  Options.cpp
+  )

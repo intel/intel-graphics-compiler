@@ -22,12 +22,12 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef VC_SUPPORT_OPTIONS_H
-#define VC_SUPPORT_OPTIONS_H
+#ifndef IGC_OPTIONS_H
+#define IGC_OPTIONS_H
 
 #include <llvm/Option/OptTable.h>
 
-namespace vc {
+namespace IGC {
 namespace options {
 // Flags should not overlap with llvm::opt::DriverFlag.
 constexpr unsigned FirstNonBuiltinFlagNum = 4;
@@ -43,7 +43,7 @@ enum ID {
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
                HELPTEXT, METAVAR, VALUES)                                      \
   OPT_##ID,
-#include "vc/Options/Options.inc"
+#include "igc/Options/Options.inc"
   LastOption
 #undef OPTION
 };
@@ -51,6 +51,6 @@ enum ID {
 } // namespace options
 
 const llvm::opt::OptTable &getOptTable();
-} // namespace vc
+} // namespace IGC
 
 #endif

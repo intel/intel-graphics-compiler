@@ -22,15 +22,15 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#include "vc/Options/Options.h"
+#include "igc/Options/Options.h"
 
 #include <llvm/Option/Option.h>
 
-using namespace vc::options;
+using namespace IGC::options;
 using namespace llvm::opt;
 
 #define PREFIX(NAME, VALUE) static const char *const NAME[] = VALUE;
-#include "vc/Options/Options.inc"
+#include "igc/Options/Options.inc"
 #undef PREFIX
 
 static const OptTable::Info InfoTable[] = {
@@ -38,23 +38,23 @@ static const OptTable::Info InfoTable[] = {
                HELPTEXT, METAVAR, VALUES)                                      \
   {PREFIX, NAME,  HELPTEXT,    METAVAR,     OPT_##ID,  Option::KIND##Class,    \
    PARAM,  FLAGS, OPT_##GROUP, OPT_##ALIAS, ALIASARGS, VALUES},
-#include "vc/Options/Options.inc"
+#include "igc/Options/Options.inc"
 #undef OPTION
 };
 
 namespace {
-class VCOptTable : public OptTable {
+class IGCOptTable : public OptTable {
 public:
-  VCOptTable() : OptTable(InfoTable) {
+  IGCOptTable() : OptTable(InfoTable) {
     OptTable &Opt = *this;
     (void)Opt;
 #define OPTTABLE_ARG_INIT
-#include "vc/Options/Options.inc"
+#include "igc/Options/Options.inc"
 #undef OPTTABLE_ARG_INIT
   }
 };
 } // namespace
 
-static const VCOptTable OptionsTable;
+static const IGCOptTable OptionsTable;
 
-const OptTable &vc::getOptTable() { return OptionsTable; }
+const OptTable &IGC::getOptTable() { return OptionsTable; }
