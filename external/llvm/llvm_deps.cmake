@@ -38,7 +38,6 @@ cmake_policy(VERSION 3.13.4)
 include_guard(DIRECTORY)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_MODULE_PATH})
-set(IGC_OPTION__LLVM_LLD OFF)
 
 # Get preferred version of LLVM.
 include(llvm_preferred_version)
@@ -56,11 +55,6 @@ include(llvm_clang_source_hook)
 
 # SPIRV translator source hook.
 include(llvm_spirv_source_hook)
-
-# LLD source hook.
-if(IGC_OPTION__LLVM_LLD)
-  include(llvm_lld_source_hook)
-endif()
 
 # Process LLVM.
 include(llvm)
