@@ -139,9 +139,18 @@ bool IGCPassManager::isPrintBefore(Pass* P)
 {
     if (IGC_IS_FLAG_ENABLED(PrintBefore))
     {
+        // PrintBefore=N0,N1,N2  : comma-separate list of pass names
+        //                         or pass command args registered in passInfo.
         StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintBefore));
         StringRef PN = P->getPassName();
-        return (passNameList.equals_lower("all") || isInList(PN, passNameList));
+        if (passNameList.equals_lower("all") || isInList(PN, passNameList))
+            return true;
+
+        // further check passInfo
+        if (const PassInfo* PI = Pass::lookupPassInfo(P->getPassID()))
+        {
+            return isInList(PI->getPassArgument(), passNameList);
+        }
     }
     return false;
 }
@@ -154,10 +163,18 @@ bool IGCPassManager::isPrintAfter(Pass* P)
     }
     if (IGC_IS_FLAG_ENABLED(PrintAfter))
     {
-        // PrintAfter=N0,N1,N2  : comma-separate list of pass names.
+        // PrintAfter=N0,N1,N2  : comma-separate list of pass names or
+        //                         or pass command args registered in passInfo.
         StringRef  passNameList(IGC_GET_REGKEYSTRING(PrintAfter));
         StringRef PN = P->getPassName();
-        return (passNameList.equals_lower("all") || isInList(PN, passNameList));
+        if (passNameList.equals_lower("all") || isInList(PN, passNameList))
+            return true;
+
+        // further check passInfo
+        if (const PassInfo* PI = Pass::lookupPassInfo(P->getPassID()))
+        {
+            return isInList(PI->getPassArgument(), passNameList);
+        }
     }
     return false;
 }
