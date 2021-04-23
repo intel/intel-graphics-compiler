@@ -1031,11 +1031,18 @@ bool GenXLiveness::checkIfOverlappingSegmentsInterfere(
   // S1 is phicpy. If its corresponding phi cpy insertion point is for a phi
   // node in LR1 and an incoming in LR2, then this does not cause interference.
   auto PhiIncoming = Numbering->getPhiIncomingFromNumber(S1->getStart());
-  IGC_ASSERT_MESSAGE(PhiIncoming.first, "phi incoming not found");
-  if (getLiveRange(PhiIncoming.first) != LR1)
+  auto PhiFound = std::find_if(
+      PhiIncoming.begin(), PhiIncoming.end(), [LR1, this](auto It) {
+        PHINode *Phi = It.first;
+        IGC_ASSERT_MESSAGE(Phi, "phi incoming not found");
+        return getLiveRange(Phi) == LR1;
+      });
+  if (PhiFound == PhiIncoming.end())
     return true; // phi not in LR1, interferes
-  if (getLiveRangeOrNull(
-        PhiIncoming.first->getIncomingValue(PhiIncoming.second)) != LR2)
+
+  PHINode *Phi = PhiFound->first;
+  unsigned IncomingBBIndex = PhiFound->second;
+  if (getLiveRangeOrNull(Phi->getIncomingValue(IncomingBBIndex)) != LR2)
     return true; // phi incoming not in LR2, interferes
   // Conditions met -- does not cause interference.
   return false;

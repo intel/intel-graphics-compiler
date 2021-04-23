@@ -103,10 +103,12 @@ class GenXNumbering : public FunctionGroupPass {
   // happens in GenXArgIndirection.
   ValueMap<const Value *, unsigned,
           IgnoreRAUWValueMapConfig<const Value *>> StartNumbers;
-  // NumberToPhiIncomingMap : map from instruction number to the phi incoming (phi
-  //  node plus incoming index) it represents. We assume that a phi node is
-  //  never deleted after GenXNumbering.
-  std::map<unsigned, std::pair<PHINode *, unsigned>> NumberToPhiIncomingMap;
+  // NumberToPhiIncomingMap : map from instruction number to the phi incoming
+  // (phi node plus incoming index) it represents. We assume that a phi node is
+  //  never deleted after GenXNumbering. It is implemented as multimap because
+  //  several Phis may refer to the same PHYCPY segment.
+  std::unordered_multimap<unsigned, std::pair<PHINode *, unsigned>>
+      NumberToPhiIncomingMap;
 
   // The number for the entire fucntion group. All live ranges are included in
   // live-range [0, LastNum].
@@ -140,7 +142,8 @@ public:
   unsigned getPhiNumber(PHINode *Phi, BasicBlock *BB) const;
   unsigned getPhiNumber(PHINode *Phi, BasicBlock *BB);
   // getPhiIncomingFromNumber : get the phi incoming for a number returned from getPhiNumber
-  std::pair<PHINode *, unsigned> getPhiIncomingFromNumber(unsigned Number);
+  std::unordered_map<PHINode *, unsigned>
+  getPhiIncomingFromNumber(unsigned Number);
   // createPrinterPass : get a pass to print the IR, together with the GenX
   // specific analyses
   virtual Pass *createPrinterPass(raw_ostream &O,

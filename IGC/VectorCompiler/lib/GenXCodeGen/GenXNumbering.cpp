@@ -309,8 +309,8 @@ unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB) const
 unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB)
 {
   unsigned Number = ((const GenXNumbering *)this)->getPhiNumber(Phi, BB);
-  NumberToPhiIncomingMap[Number]
-      = std::pair<PHINode *, unsigned>(Phi, Phi->getBasicBlockIndex(BB));
+  NumberToPhiIncomingMap.emplace(
+      Number, std::make_pair(Phi, Phi->getBasicBlockIndex(BB)));
   return Number;
 }
 
@@ -321,13 +321,14 @@ unsigned GenXNumbering::getPhiNumber(PHINode *Phi, BasicBlock *BB)
  * This returns the phi node and incoming index corresponding to the supplied
  * instruction number.
  */
-std::pair<PHINode *, unsigned> GenXNumbering::getPhiIncomingFromNumber(
-    unsigned Number)
-{
-  auto i = NumberToPhiIncomingMap.find(Number);
-  if (i == NumberToPhiIncomingMap.end())
-    return std::pair<PHINode *, unsigned>(nullptr, 0);
-  return i->second;
+std::unordered_map<PHINode *, unsigned>
+GenXNumbering::getPhiIncomingFromNumber(unsigned Number) {
+  auto Range = NumberToPhiIncomingMap.equal_range(Number);
+  std::unordered_map<PHINode *, unsigned> PHIs;
+  PHIs.reserve(std::distance(Range.first, Range.second));
+  std::transform(Range.first, Range.second, std::inserter(PHIs, PHIs.begin()),
+                 [](auto It) { return It.second; });
+  return PHIs;
 }
 
 /***********************************************************************
