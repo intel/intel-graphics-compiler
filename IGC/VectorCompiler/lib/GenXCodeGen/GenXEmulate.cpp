@@ -42,8 +42,8 @@ IN THE SOFTWARE.
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "vc/BiF/Tools.h"
-#include "vc/GenXCodeGen/GenXInternalMetadata.h"
 #include "vc/GenXOpts/Utils/BiFTools.h"
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Support/BackendConfig.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"

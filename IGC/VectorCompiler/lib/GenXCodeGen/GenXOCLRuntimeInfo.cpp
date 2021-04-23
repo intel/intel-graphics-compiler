@@ -23,7 +23,6 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
-#include "vc/GenXCodeGen/GenXInternalMetadata.h"
 
 #include "ConstantEncoder.h"
 #include "GenX.h"
@@ -31,6 +30,8 @@ IN THE SOFTWARE.
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 

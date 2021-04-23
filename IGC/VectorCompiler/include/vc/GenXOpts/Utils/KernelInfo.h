@@ -25,7 +25,7 @@ IN THE SOFTWARE.
 #ifndef GENX_KERNEL_INFO_H
 #define GENX_KERNEL_INFO_H
 
-#include "vc/GenXCodeGen/GenXInternalMetadata.h"
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/GenXOpts/Utils/RegCategory.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"

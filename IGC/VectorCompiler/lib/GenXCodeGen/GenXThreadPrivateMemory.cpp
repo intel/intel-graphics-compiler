@@ -35,7 +35,8 @@ IN THE SOFTWARE.
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
-#include "vc/GenXCodeGen/GenXInternalMetadata.h"
+
+#include "vc/GenXOpts/Utils/InternalMetadata.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
