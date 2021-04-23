@@ -60,7 +60,8 @@ include(llvm_spirv_source_hook)
 include(llvm)
 
 # Include prebuild hooks after processing LLVM.
-# Currently nothing is here...
+# SPIRV translator prebuilds hook.
+include(llvm_spirv_prebuilds_hook)
 
 # Clean up cmake module path from these scripts.
 list(REMOVE_AT CMAKE_MODULE_PATH 0)

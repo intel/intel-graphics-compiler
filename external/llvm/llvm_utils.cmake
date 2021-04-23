@@ -28,12 +28,12 @@ include_guard(DIRECTORY)
 #
 # Macro to set python interpreter for LLVM
 #
-macro(llvm_utils_python_set)
+macro(llvm_utils_python_set proj_name)
   # If cached PYTHON_EXECUTABLE already exists save it to restore.
   get_property(PYTHON_EXECUTABLE_BACKUP CACHE PYTHON_EXECUTABLE PROPERTY VALUE)
   # Set python interpreter for LLVM.
   set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE} CACHE PATH "" FORCE)
-  message(STATUS "[LLVM] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
+  message(STATUS "[${proj_name}] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
 endmacro()
 
 #
@@ -52,8 +52,8 @@ endmacro()
 #
 # Macro to clear build flags that already set
 #
-macro(llvm_utils_push_build_flags)
-    message(STATUS "[LLVM] Clearing build system compilation flags")
+macro(llvm_utils_push_build_flags proj_name)
+    message(STATUS "[${proj_name}] Clearing build system compilation flags")
 
     unset(CMAKE_C_FLAGS)
     unset(CMAKE_CXX_FLAGS)
@@ -73,6 +73,20 @@ macro(llvm_utils_push_build_flags)
         unset(CMAKE_STATIC_LINKER_FLAGS_${capitalized_configuration_type})
         unset(CMAKE_MODULE_LINKER_FLAGS_${capitalized_configuration_type})
     endforeach()
+endmacro()
+
+# Helper macro to be called from project preparation cmakes.
+# It will set correct flags and other variables for LLVM-based projects.
+# Parameters:
+#  proj_name -- project name
+#  src_dir -- source directory that contains project
+#  bin_dir -- binary directory for project
+macro(build_llvm_project proj_name src_dir bin_dir)
+  # Do not alter LLVM compilation flags -- clear them all.
+  llvm_utils_push_build_flags(${proj_name})
+  llvm_utils_python_set(${proj_name})
+  add_subdirectory(${src_dir} ${bin_dir} EXCLUDE_FROM_ALL)
+  llvm_utils_python_restore()
 endmacro()
 
 # Convenience macro to set option and record its value in list.
