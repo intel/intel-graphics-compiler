@@ -85,9 +85,11 @@ IN THE SOFTWARE.
 #include "GenXModule.h"
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
@@ -279,9 +281,16 @@ std::vector<Value *> createSplitInstOperands(int elemIdx, OpRange OrigOps,
 
 class SplitInstCreator : public InstVisitor<SplitInstCreator, Instruction *> {
   const std::vector<Value *> &NewOps;
+  // Index of the currently considered element of aggregate.
+  int Idx;
 
 public:
-  SplitInstCreator(const std::vector<Value *> &NewOpsIn) : NewOps{NewOpsIn} {}
+  SplitInstCreator(const std::vector<Value *> &NewOpsIn, int IdxIn)
+      : NewOps{NewOpsIn}, Idx{IdxIn} {
+    IGC_ASSERT_MESSAGE(
+        Idx >= 0,
+        "aggregate element index is expected to be non-negative number");
+  }
 
   Instruction *visitInstruction(Instruction &I) const {
     IGC_ASSERT_MESSAGE(0, "yet unsupported instruction");
@@ -317,6 +326,19 @@ public:
     NewPHI->setDebugLoc(OldPHI.getDebugLoc());
     return NewPHI;
   }
+
+  Instruction *visitLoadInst(LoadInst &OrigLoad) const {
+    IGC_ASSERT_MESSAGE(NewOps.size() == 1, "load has only one operand");
+    IGC_ASSERT_MESSAGE(OrigLoad.getPointerOperand() == NewOps[0],
+                       "should take the operand from the original load");
+    IRBuilder<> IRB{&OrigLoad};
+    auto *GEP = IRB.CreateInBoundsGEP(OrigLoad.getPointerOperand(),
+                                      {IRB.getInt32(0), IRB.getInt32(Idx)},
+                                      OrigLoad.getName() + "aggr.gep");
+    return IRB.CreateAlignedLoad(GEP, IGCLLVM::getAlign(OrigLoad),
+                                 OrigLoad.isVolatile(),
+                                 OrigLoad.getName() + ".split.aggr");
+  }
 };
 
 // Arguments:
@@ -327,8 +349,9 @@ public:
 // New instruction is inserted right before \p Inst.
 // Split instruction is returned.
 static Instruction *createSplitInst(Instruction &Inst,
-                                    const std::vector<Value *> &NewOps) {
-  return SplitInstCreator{NewOps}.create(Inst);
+                                    const std::vector<Value *> &NewOps,
+                                    int Idx) {
+  return SplitInstCreator{NewOps, Idx}.create(Inst);
 }
 
 // Arguments:
@@ -347,7 +370,7 @@ createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps) {
   NewInsts.reserve(NumNewInsts);
   for (int Idx = 0; Idx < NumNewInsts; ++Idx) {
     auto NewOps = createSplitInstOperands(Idx, Inst.operands(), SplitOps);
-    NewInsts.push_back(createSplitInst(Inst, NewOps));
+    NewInsts.push_back(createSplitInst(Inst, NewOps, Idx));
   }
   return NewInsts;
 }
