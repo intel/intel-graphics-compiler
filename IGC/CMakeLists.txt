@@ -1259,6 +1259,12 @@ endif()
 include("${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm/llvm_deps.cmake")
 include(igc_llvm)
 
+# ==================================== LLD package ====================================================
+
+if(IGC_OPTION__LLVM_LLD)
+  include(igc_find_liblldELF)
+endif()
+
 # ==================================== WrapperLLVM package =============================================
 
 add_subdirectory(WrapperLLVM)
@@ -1841,6 +1847,13 @@ if(UNIX)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
 
+  if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
+    # For now lld could be included only via building from LLVM sources
+    if(NOT (${CMAKE_BUILD_TYPE} EQUAL "Release"))
+      install(TARGETS lld RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
+    endif()
+  endif()
+
   install(
     CODE "file( WRITE ${CMAKE_CURRENT_BINARY_DIR}/tmp/postinst \"/sbin/ldconfig\n\" )"
     CODE "file( WRITE ${CMAKE_CURRENT_BINARY_DIR}/tmp/postrm \"/sbin/ldconfig\n\" )"
@@ -1868,6 +1881,15 @@ elseif (WIN32)
           DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
+
+    if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
+      # For now lld could be included only via building from LLVM sources
+      install(TARGETS lld RUNTIME
+              DESTINATION ../Test_Tools/Release/x64/Standalones CONFIGURATIONS Release)
+      install(TARGETS lld RUNTIME
+              DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+    endif()
+
     install(TARGETS ${IGC_BUILD__PROJ__igc_dll} RUNTIME
             DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
     install(TARGETS ${IGC_BUILD__PROJ__igc_dll} RUNTIME
