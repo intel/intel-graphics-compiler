@@ -107,6 +107,11 @@ static cl::opt<bool>
                           cl::desc("Use prolog/epilog insertion pass"),
                           cl::init(true));
 
+static cl::opt<unsigned>
+    StatelessPrivateMemSizeOpt("dbgonly-enforce-privmem-stateless",
+                               cl::desc("Enforce stateless privmem size"),
+                               cl::init(16 * 8192));
+
 static cl::opt<FunctionControl> FunctionControlOpt(
     "vc-function-control", cl::desc("Force special calls (see supported enum)"),
     cl::init(FunctionControl::Default),
@@ -132,7 +137,8 @@ GenXBackendOptions::GenXBackendOptions()
                           GlobalsLocalizationLimitOpt.getValue()},
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
-      FCtrl(FunctionControlOpt) {}
+      FCtrl(FunctionControlOpt),
+      StatelessPrivateMemSize(StatelessPrivateMemSizeOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
 readBiFModuleFromFile(const cl::opt<std::string> &File) {

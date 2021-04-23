@@ -158,7 +158,7 @@ public:
 
     unsigned SLMSize = 0;
     unsigned ThreadPrivateMemSize = 0;
-    unsigned StatelessPrivateMemSize = 0;
+    unsigned StatelessPrivateMemSize;
 
     unsigned GRFSizeInBytes;
 

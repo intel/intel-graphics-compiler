@@ -141,6 +141,9 @@ struct GenXBackendOptions {
   // Non-owning pointer to workaround table.
   const WA_TABLE *WATable = nullptr;
 
+  // max private stateless memory size per thread
+  unsigned StatelessPrivateMemSize;
+
   GenXBackendOptions();
 };
 
@@ -244,6 +247,10 @@ public:
   }
 
   bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }
+
+  unsigned getStatelessPrivateMemSize() const {
+    return Options.StatelessPrivateMemSize;
+  }
 
   FunctionControl getFCtrl() const { return Options.FCtrl; }
 
