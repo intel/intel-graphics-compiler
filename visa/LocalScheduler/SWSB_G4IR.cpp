@@ -4220,7 +4220,7 @@ bool G4_BB_SB::getGRFFootPrint(SBNode* node, PointsToAnalysis& p)
     for (G4_INST* inst : node->instVec)
     {
         hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_src0, Opnd_src3, p);
-        hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_condMod, Opnd_implAccDst, p);
+        hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_pred, Opnd_implAccDst, p);
         hasDistOneAReg |= getGRFFootPrintOperands(node, inst, Opnd_dst, Opnd_dst, p);
     }
 
@@ -4233,7 +4233,7 @@ void G4_BB_SB::getGRFBucketDescrs(SBNode* node, std::vector<SBBucketDescr>& BDve
     getGRFBucketsForOperands(node, Opnd_src0, Opnd_src3, BDvec, GRFOnly);
     if (!GRFOnly)
     {
-        getGRFBucketsForOperands(node, Opnd_condMod, Opnd_implAccDst, BDvec, GRFOnly);
+        getGRFBucketsForOperands(node, Opnd_pred, Opnd_implAccDst, BDvec, GRFOnly);
     }
     getGRFBucketsForOperands(node, Opnd_dst, Opnd_dst, BDvec, GRFOnly);
 
