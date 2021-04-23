@@ -33,8 +33,7 @@ IN THE SOFTWARE.
 
 namespace vc {
 std::unique_ptr<ShaderOverrider>
-createVC_IGCShaderOverrider(const ShaderHash &Hash,
-                            PLATFORM const &Platform);
+createVC_IGCShaderOverrider(ShaderHash const &Hash, PLATFORM const &Platform);
 } // namespace vc
 
 #endif

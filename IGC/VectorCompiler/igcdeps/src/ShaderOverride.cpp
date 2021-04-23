@@ -43,11 +43,11 @@ class VC_IGCShaderOverrider final : public vc::ShaderOverrider {
 
   // Gets full kernel name:
   // VC_<HASH>_<ShaderName>
-  IGC::Debug::DumpName composeShaderName(llvm::StringRef ShaderName) const;
+  IGC::Debug::DumpName composeShaderName(std::string const &ShaderName) const;
 
   // Gets full path to file with extension:
   // "/path/to/shaderOverride/VC_<HASH>_<ShaderName>.Ext"
-  std::string path(llvm::StringRef ShaderName,
+  std::string path(std::string const &ShaderName,
                    vc::ShaderOverrider::Extensions Ext) const;
 
 public:
@@ -60,15 +60,26 @@ public:
 
 } // namespace
 
-VC_IGCShaderOverrider::VC_IGCShaderOverrider(const ShaderHash &InHash,
+VC_IGCShaderOverrider::VC_IGCShaderOverrider(ShaderHash const &InHash,
                                              PLATFORM const &InPlatform)
     : NamePrefix{IGC::Debug::DumpName("VC").Hash(InHash)}, Platform{InPlatform},
       Folder{IGC::Debug::GetShaderOverridePath()} {}
 
+// Returns appropriate Name with no special symbols. They are replaced with
+// '_'.
+// Name = gjdn&85Lg -> return =  gjdn_85Lg
+static std::string legalizeName(std::string Name) {
+  std::replace_if(Name.begin(), Name.end(),
+                  [](unsigned char c) { return (!isalnum(c) && c != '_'); },
+                  '_');
+  return Name;
+}
+
 bool VC_IGCShaderOverrider::override(void *&GenXBin, int &GenXBinSize,
                                      llvm::StringRef ShaderName,
                                      Extensions Ext) const {
-  std::string const FullPath = path(ShaderName, Ext);
+  std::string const LegalizedShaderName = legalizeName(ShaderName);
+  std::string const FullPath = path(LegalizedShaderName, Ext);
   bool Status = false;
 
   switch (Ext) {
@@ -84,18 +95,19 @@ bool VC_IGCShaderOverrider::override(void *&GenXBin, int &GenXBinSize,
   return Status;
 }
 
-IGC::Debug::DumpName addPostfix(const IGC::Debug::DumpName &Name,
-                                llvm::StringRef Postfix) {
-  return Name.PostFix(Postfix.str());
+// Returns name with added postfix
+static IGC::Debug::DumpName addPostfix(IGC::Debug::DumpName const &Name,
+                                       std::string const &Postfix) {
+  return Name.PostFix(Postfix);
 }
 
 IGC::Debug::DumpName
-VC_IGCShaderOverrider::composeShaderName(llvm::StringRef ShaderName) const {
+VC_IGCShaderOverrider::composeShaderName(std::string const &ShaderName) const {
   return addPostfix(NamePrefix, ShaderName);
 }
 
 std::string
-VC_IGCShaderOverrider::path(llvm::StringRef ShaderName,
+VC_IGCShaderOverrider::path(std::string const &ShaderName,
                             vc::ShaderOverrider::Extensions Ext) const {
   IGC::Debug::DumpName FullPath{composeShaderName(ShaderName)};
 
@@ -121,7 +133,7 @@ VC_IGCShaderOverrider::path(llvm::StringRef ShaderName,
 
 namespace vc {
 std::unique_ptr<ShaderOverrider>
-createVC_IGCShaderOverrider(const ShaderHash &Hash, PLATFORM const &Platform) {
+createVC_IGCShaderOverrider(ShaderHash const &Hash, PLATFORM const &Platform) {
   return std::make_unique<VC_IGCShaderOverrider>(Hash, Platform);
 }
 } // namespace vc
