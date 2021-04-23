@@ -1519,7 +1519,9 @@ void G4_BB::removeIntrinsics(Intrinsic intrinId) {
 }
 
 
-// Add a sampler cache flush with null return before the EOT send
+// Add two sampler cache flushes before the EOT send.
+// sampler cache flush 1 must have null return
+// sampler cache flush 2 must have valid return
 // bb must end with an EOT send
 void G4_BB::addSamplerFlushBeforeEOT()
 {
@@ -1528,19 +1530,40 @@ void G4_BB::addSamplerFlushBeforeEOT()
     int samplerFlushOpcode = 0x1F;
     int samplerFlushFC = (SamplerSIMDMode::SIMD32 << 17) +
         (samplerFlushOpcode << 12);
-    int desc = G4_SendMsgDescriptor::createDesc(samplerFlushFC, true, 1, 1);
-    G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
-        builder->getBuiltinR0(),
-        builder->getRegionStride1());
-    G4_Declare *tmpDest = builder->createTempVar(g4::SIMD8, Type_UD, GRFALIGN);
-    tmpDest->setDoNotSpill();
-    G4_DstRegRegion* sendMsgDst = builder->Create_Dst_Opnd_From_Dcl(tmpDest, 1);
-    auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);
-    G4_INST* samplerFlushInst = builder->createSendInst(
-        nullptr, G4_send, g4::SIMD8,
-        sendMsgDst, sendMsgOpnd,
-        builder->createImm(desc, Type_UD),
-        0, msgDesc, true);
-    auto iter = std::prev(end());
-    insert(iter, samplerFlushInst);
+
+    // null return version
+    {
+        int desc = G4_SendMsgDescriptor::createDesc(samplerFlushFC, true, 1, 0);
+        G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
+            builder->getBuiltinR0(),
+            builder->getRegionStride1());
+
+        auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);
+        G4_INST* samplerFlushInst = builder->createSendInst(
+            nullptr, G4_send, g4::SIMD8,
+            builder->createNullDst(Type_UD), sendMsgOpnd,
+            builder->createImm(desc, Type_UD),
+            0, msgDesc, true);
+        auto iter = std::prev(end());
+        insert(iter, samplerFlushInst);
+    }
+
+    // valid return version
+    {
+        int desc = G4_SendMsgDescriptor::createDesc(samplerFlushFC, true, 1, 1);
+        G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
+            builder->getBuiltinR0(),
+            builder->getRegionStride1());
+        G4_Declare *tmpDest = builder->createTempVar(g4::SIMD8, Type_UD, GRFALIGN);
+        tmpDest->setDoNotSpill();
+        G4_DstRegRegion* sendMsgDst = builder->Create_Dst_Opnd_From_Dcl(tmpDest, 1);
+        auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);
+        G4_INST* samplerFlushInst = builder->createSendInst(
+            nullptr, G4_send, g4::SIMD8,
+            sendMsgDst, sendMsgOpnd,
+            builder->createImm(desc, Type_UD),
+            0, msgDesc, true);
+        auto iter = std::prev(end());
+        insert(iter, samplerFlushInst);
+    }
 }
