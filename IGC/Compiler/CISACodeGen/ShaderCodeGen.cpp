@@ -295,8 +295,17 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(createReplaceUnsupportedIntrinsicsPass());
         // Split complex constant expression into 2 simple ones
         mpm.add(new BreakConstantExpr());
-        // Some clean up passes
+        // Expand newly created allocas
         mpm.add(createSROAPass());
+        // Run legalization pass to expand non-supported instructions
+        // like shufflevector. The code below is just copied and
+        // pasted as is.
+        bool preserveNan = !ctx.getCompilerOption().NoNaNs;
+        mpm.add(new Legalization(preserveNan));
+        //mpm.add(createConstantPropagationPass());
+        // Some clean up passes.
+        mpm.add(llvm::createEarlyCSEPass());
+        mpm.add(llvm::createCFGSimplificationPass());
         mpm.add(createDeadCodeEliminationPass());
         // Create functions groups after unmasked functions inlining
         mpm.add(createGenXCodeGenModulePass());
