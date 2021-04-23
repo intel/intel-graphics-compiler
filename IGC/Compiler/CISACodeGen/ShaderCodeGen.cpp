@@ -1425,6 +1425,11 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
         pContext->m_instrTypes.hasCmp ||
         pContext->m_instrTypes.hasSwitch ||
             pContext->m_instrTypes.hasLoadStore));
+
+    if (IGC_IS_FLAG_ENABLED(StripDebugInfo))
+    {
+        StripDebugInfo(*pContext->getModule());
+    }
 }
 
 static bool extensiveShader(CodeGenContext* pContext)

@@ -465,6 +465,7 @@ DECLARE_IGC_REGKEY(DWORD, AllocaRAPressureThreshold, 500, "The threshold for the
 DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Use the old subroutine augmentation code which is slower", false)
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
+DECLARE_IGC_REGKEY(bool, StripDebugInfo, false, "Strip debug info from llvm IR lowered from input to IGC", false)
 
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, false,  "Allocate zero initialized global variables in .bss section in ZEBinary", true)
