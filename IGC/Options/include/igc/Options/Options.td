@@ -169,5 +169,14 @@ def runtime_eq : Joined<["-"], "runtime=">,
 def ftime_report : Flag<["-"], "ftime-report">,
   HelpText<"Print timing summary of each stage of compilation">;
 
+def globals_localization : Separate<["-"], "globals-localization">,
+  HelpText<"globals localization optimization configuration; values:\n"
+           "\t'all' - localize all globals,\n\t'no' - don't localize globals,\n"
+           "\t'vector' - localize all vector globals the rest is partially "
+           "localized,\n\t'partial' - compiler may localize some globals "
+           "according to its heuristics">;
+def globals_localization_eq : Joined<["-"], "globals-localization=">,
+  Alias<globals_localization>, HelpText<"Alias for -globals-localization <value>">;
+
 }
 // }} Internal options

@@ -64,6 +64,8 @@ enum class OptimizerLevel { None, Full };
 
 enum class BinaryKind { CM, OpenCL, ZE };
 
+enum class GlobalsLocalizationMode { All, No, Vector, Partial };
+
 struct CompileOptions {
   FileType FType = FileType::SPIRV;
   std::string CPUStr;
@@ -99,6 +101,8 @@ struct CompileOptions {
   bool DumpAsm = false;
   bool DumpDebugInfo = false;
   bool TimePasses = false;
+  GlobalsLocalizationMode GlobalsLocalization =
+      GlobalsLocalizationMode::Partial;
 
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;

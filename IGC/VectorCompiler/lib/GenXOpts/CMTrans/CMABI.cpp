@@ -81,6 +81,7 @@ IN THE SOFTWARE.
 #include "llvm/Transforms/Scalar.h"
 
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <numeric>
 #include <stack>
@@ -248,6 +249,7 @@ class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
   std::vector<LocalizationInfo *> LocalizationInfoObjs;
   GlobalsLocalizationConfig::LimitT GlobalsLocalizationLimit = 0;
+  bool LocalizeVectorGlobals = false;
 
 public:
   static char ID;
@@ -377,6 +379,7 @@ defineGlobalsLocalizationLimit(const GenXBackendConfig &Config) {
 bool CMABIAnalysis::runOnModule(Module &M) {
   auto &&BCfg = getAnalysis<GenXBackendConfig>();
   GlobalsLocalizationLimit = defineGlobalsLocalizationLimit(BCfg);
+  LocalizeVectorGlobals = BCfg.isVectorGlobalsLocalizationForced();
   FCtrl = BCfg.getFCtrl();
 
   runOnCallGraph(getAnalysis<CallGraphWrapperPass>().getCallGraph());
@@ -394,69 +397,82 @@ static int calcGVWeight(const GlobalVariable &GV, const DataLayout &DL) {
   return alignTo(DL.getTypeStoreSize(GV.getValueType()), 32);
 }
 
-/* selectGlobalsToLocalize - chooses which globals to localize
- * Returns vector of pointers to such globals.
- *
- * Algorithm: exclude globals that definitely should not be localized
- * sort globals by weight, choose first smallest ones, sum of which is under \p
- * Bound
- *
- * \p Globals - range of globals to choose from
- * \p Bound - bound not to overcome
- * \p ExcludePred - functor : GVRef -> bool, true if global should not be
- * localized \p WeightCalculator - functor : GVRef -> decltype(Bound), returns
- * weight of global
- */
-template <typename ForwardRange, typename ExcludePredT, typename T,
-          typename WeightCalculatorT>
+// selectGlobalsToLocalize - chooses which globals to localize.
+// Returns std::vector of std::reference_wrapper to such globals.
+//
+// Algorithm: exclude globals that definitely should not be localized, include
+// those that definitely should. If the total weight of the already chosen
+// globals doesn't exceed \p Bound, sort the remaining globals by weight,
+// choose first lightest ones, so the total weight is under \p Bound.
+//
+// \p Globals - range of globals to choose from
+// \p Bound - bound not to overcome
+// \p ExcludePred - functor : GVRef -> bool, true if global should not be
+//                  localized
+// \p InlcudePred - functor : GVRef -> bool, true if the provided global must
+//                  be localized
+// \p WeightCalculator - functor : GVRef -> decltype(Bound), returns
+// weight of global
+template <typename ForwardRange, typename ExcludePredT, typename IncludePredT,
+          typename T, typename WeightCalculatorT>
 auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
-                             ExcludePredT ExcludePred,
-                             WeightCalculatorT WeightCalculator)
-    -> std::vector<genx::ranges::range_pointer_t<ForwardRange>> {
+                             ExcludePredT ExcludePred, IncludePredT IncludePred,
+                             WeightCalculatorT WeightCalculator) {
   IGC_ASSERT_MESSAGE(Bound >= 0, "bound must be nonnegative");
-  using GVPtr = genx::ranges::range_pointer_t<ForwardRange>;
   using GVRef = genx::ranges::range_reference_t<ForwardRange>;
-  if (Bound == 0)
-    return std::vector<GVPtr>();
+  using GVT = std::remove_reference_t<GVRef>;
+  using GVRefWrapper = std::reference_wrapper<GVT>;
 
-  // filter out those, that we must exclude
-  auto Unexcluded = make_filter_range(
-      Globals, [ExcludePred](GVRef GV) { return !ExcludePred(GV); });
-  using GVWithWeightT = std::pair<GVPtr, int>;
+  IGC_ASSERT_MESSAGE(std::none_of(Globals.begin(), Globals.end(),
+                                  [ExcludePred, IncludePred](GVRef GV) {
+                                    return ExcludePred(GV) && IncludePred(GV);
+                                  }),
+                     "'must include' and 'must exclude' sets must be disjoint");
 
   if (Bound == GlobalsLocalizationConfig::NoLimit) {
-    std::vector<GVPtr> ToLocalize;
-    transform(Unexcluded, std::back_inserter(ToLocalize),
-              [](GVRef GV) { return &GV; });
+    std::vector<GVRefWrapper> ToLocalize;
+    // filter out those, that we must exclude
+    std::copy_if(Globals.begin(), Globals.end(), std::back_inserter(ToLocalize),
+                 [ExcludePred](GVRef GV) { return !ExcludePred(GV); });
     return ToLocalize;
   }
 
-  std::vector<GVWithWeightT> ToLocalizeWithWeight;
-  transform(Unexcluded, std::back_inserter(ToLocalizeWithWeight),
-            [WeightCalculator](GVRef GV) {
-              return std::make_pair(&GV, WeightCalculator(GV));
+  std::vector<GVRefWrapper> ToLocalize;
+  // Adding those that we must include.
+  std::copy_if(Globals.begin(), Globals.end(), std::back_inserter(ToLocalize),
+               IncludePred);
+  if (Bound == 0)
+    return ToLocalize;
+
+  T IncludeWeight =
+      std::accumulate(ToLocalize.begin(), ToLocalize.end(), static_cast<T>(0),
+                      [WeightCalculator](T Prev, GVRef GV) {
+                        return Prev + WeightCalculator(GV);
+                      });
+  if (IncludeWeight >= Bound)
+    return ToLocalize;
+
+  std::vector<GVRefWrapper> Remainder;
+  std::copy_if(Globals.begin(), Globals.end(), std::back_inserter(Remainder),
+               [IncludePred, ExcludePred](GVRef GV) {
+                 return !IncludePred(GV) && !ExcludePred(GV);
+               });
+  // Sorting remaining globals by weight.
+  std::sort(Remainder.begin(), Remainder.end(),
+            [WeightCalculator](GVRef LHS, GVRef RHS) {
+              return WeightCalculator(LHS) < WeightCalculator(RHS);
             });
 
-  // sort globals by weight
-  std::sort(ToLocalizeWithWeight.begin(), ToLocalizeWithWeight.end(),
-            [](GVWithWeightT LHS, GVWithWeightT RHS) {
-              return LHS.second < RHS.second;
-            });
-
+  T RemainderBound = Bound - IncludeWeight;
   // filter max number of lightest ones, which weight sum is under the bound
   auto FirstNotToLocalize = genx::upper_partial_sum_bound(
-      ToLocalizeWithWeight.begin(), ToLocalizeWithWeight.end(), Bound,
-      [](decltype(Bound) Base, GVWithWeightT Inc) {
-        return Base + Inc.second;
+      Remainder.begin(), Remainder.end(), RemainderBound,
+      [WeightCalculator](T Base, GVRef Inc) {
+        return Base + WeightCalculator(Inc);
       });
 
-  // collect them back to ToLocalize
-  std::vector<GVPtr> ToLocalize;
-  ToLocalize.reserve(FirstNotToLocalize - ToLocalizeWithWeight.begin());
-  std::transform(ToLocalizeWithWeight.begin(), FirstNotToLocalize,
-                 std::back_inserter(ToLocalize),
-                 [](GVWithWeightT GV) { return GV.first; });
-
+  std::copy(Remainder.begin(), FirstNotToLocalize,
+            std::back_inserter(ToLocalize));
   return ToLocalize;
 }
 
@@ -1960,7 +1976,7 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
     return std::any_of(User->use_begin(), User->use_end(), PrintIndexChecker);
   };
   const auto &DL = M.getDataLayout();
-  std::vector<GlobalVariable *> ToLocalize = selectGlobalsToLocalize(
+  auto ToLocalize = selectGlobalsToLocalize(
       M.globals(), GlobalsLocalizationLimit,
       [UsesPrintChecker](const GlobalVariable &GV) {
         // don't localize global constant format string if it's used by print_index intrinsic
@@ -1968,12 +1984,16 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
         return (GV.hasAttribute(genx::FunctionMD::GenXVolatile) ||
                 UsesPrintIndex);
       },
+      [IncludeVectors = LocalizeVectorGlobals](const GlobalVariable &GV) {
+        return IncludeVectors && GV.getValueType()->isVectorTy() &&
+               !GV.hasAttribute(genx::FunctionMD::GenXVolatile);
+      },
       [&DL](const GlobalVariable &GV) { return calcGVWeight(GV, DL); });
 
   // Collect direct and indirect (GV is used in a called function)
   // uses of globals.
-  for (GlobalVariable *GV : ToLocalize)
-    defineGVDirectUsers(*GV);
+  for (GlobalVariable &GV : ToLocalize)
+    defineGVDirectUsers(GV);
   for (const std::vector<CallGraphNode *> &SCCNodes :
        make_range(scc_begin(&CG), scc_end(&CG)))
     for (const CallGraphNode *Caller : SCCNodes)

@@ -95,6 +95,10 @@ static cl::opt<bool> ForceGlobalsLocalizationOpt(
     "vc-force-globals-localization",
     cl::desc("all global variables must be localized"), cl::init(true));
 
+static cl::opt<bool> ForceVectorGlobalsLocalizationOpt(
+    "vc-force-vector-globals-localization",
+    cl::desc("vector global variables must be localized"), cl::init(true));
+
 static cl::opt<GlobalsLocalizationConfig::LimitT> GlobalsLocalizationLimitOpt(
     "vc-globals-localization-limit",
     cl::desc("maximum size (in bytes) used to localize global variables"),
@@ -140,6 +144,7 @@ GenXBackendOptions::GenXBackendOptions()
       DebugInfoDumpsNameOverride(DebugInfoDumpNameOverride),
       UseNewStackBuilder(UseNewStackBuilderOpt),
       GlobalsLocalization{ForceGlobalsLocalizationOpt.getValue(),
+                          ForceVectorGlobalsLocalizationOpt.getValue(),
                           GlobalsLocalizationLimitOpt.getValue()},
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
