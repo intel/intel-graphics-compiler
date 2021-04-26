@@ -1390,6 +1390,11 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
         pContext->getModuleMetaData()->compOpt.OptDisable = true;
     }
 
+    if (IGC_IS_FLAG_ENABLED(StripDebugInfo))
+    {
+        StripDebugInfo(*pContext->getModule());
+    }
+
     IGCPassManager mpm(pContext, "OPTPre");
     mpm.add(new CheckInstrTypes(&(pContext->m_instrTypes)));
 
@@ -1425,11 +1430,6 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
         pContext->m_instrTypes.hasCmp ||
         pContext->m_instrTypes.hasSwitch ||
             pContext->m_instrTypes.hasLoadStore));
-
-    if (IGC_IS_FLAG_ENABLED(StripDebugInfo))
-    {
-        StripDebugInfo(*pContext->getModule());
-    }
 }
 
 static bool extensiveShader(CodeGenContext* pContext)
