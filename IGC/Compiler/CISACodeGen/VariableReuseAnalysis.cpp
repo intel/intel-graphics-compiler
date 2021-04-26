@@ -28,7 +28,6 @@ IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/Debug.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <algorithm>
 #include "Probe/Assertion.h"
@@ -41,13 +40,13 @@ namespace
     // If V is scalar, return 1.
     // if V is vector, return the number of elements.
     inline int getNumElts(Value* V) {
-        IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
+        VectorType* VTy = dyn_cast<VectorType>(V->getType());
         return VTy ? (int)VTy->getNumElements() : 1;
     }
 
     inline int getTypeSizeInBits(Type* Ty) {
         int scalarBits = Ty->getScalarSizeInBits();
-        IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+        VectorType* VTy = dyn_cast<VectorType>(Ty);
         return scalarBits * (VTy ? (int)VTy->getNumElements() : 1);
     }
 }

@@ -130,7 +130,7 @@ bool InstScalarizer::visitLoadInst(LoadInst& I) {
         // otherwise, it's broken.
         IGC_ASSERT(TL->getTypeSizeInBits(EltTy) == TL->getTypeStoreSizeInBits(EltTy));
 
-        unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(OrigTy)->getNumElements();
+        unsigned NumElts = (unsigned)cast<VectorType>(OrigTy)->getNumElements();
         unsigned Elt = 0;
 
         Type* NewPtrTy = PointerType::get(EltTy, AS);
@@ -268,7 +268,7 @@ bool InstScalarizer::visitStoreInst(StoreInst& I) {
         // otherwise, it's broken.
         IGC_ASSERT(TL->getTypeSizeInBits(EltTy) == TL->getTypeStoreSizeInBits(EltTy));
 
-        unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(OrigTy)->getNumElements();
+        unsigned NumElts = (unsigned)cast<VectorType>(OrigTy)->getNumElements();
         unsigned Elt = 0;
 
         Type* NewPtrTy = PointerType::get(EltTy, AS);
@@ -498,7 +498,7 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
     IGC_ASSERT(EltSeq->size());
     IGC_ASSERT(VecSeqCopy.size() % EltSeq->size() == 0);
 
-    unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(I.getOperand(0)->getType())->getNumElements();
+    unsigned NumElts = (unsigned)cast<VectorType>(I.getOperand(0)->getType())->getNumElements();
     unsigned i = 0;
     for (unsigned Elt = 0; Elt != NumElts; ++Elt) {
         if (Elt == Idx) {

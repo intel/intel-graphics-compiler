@@ -25,7 +25,6 @@ IN THE SOFTWARE.
 #define DEBUG_TYPE "type-legalizer"
 #include "TypeLegalizer.h"
 #include "InstPromoter.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
@@ -395,10 +394,10 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
         unsigned N =
             Val->getType()->getScalarSizeInBits() / DestTy->getScalarSizeInBits();
         Value* BC =
-            IRB->CreateBitCast(Val, IGCLLVM::FixedVectorType::get(DestTy->getScalarType(), N));
+            IRB->CreateBitCast(Val, VectorType::get(DestTy->getScalarType(), N));
 
         std::vector<Constant*> Vals;
-        for (unsigned i = 0; i < cast<IGCLLVM::FixedVectorType>(DestTy)->getNumElements(); i++)
+        for (unsigned i = 0; i < DestTy->getVectorNumElements(); i++)
             Vals.push_back(IRB->getInt32(i));
 
         Value* Mask = ConstantVector::get(Vals);

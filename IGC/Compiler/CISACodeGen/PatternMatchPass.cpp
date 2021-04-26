@@ -2959,8 +2959,8 @@ namespace IGC
                 llvm::Type* srcTy = bTInst->getOperand(0)->getType();
                 llvm::Type* dstTy = bTInst->getType();
 
-                srcNElts = (srcTy->isVectorTy()) ? (uint32_t)cast<IGCLLVM::FixedVectorType>(srcTy)->getNumElements() : 1;
-                dstNElts = (dstTy->isVectorTy()) ? (uint32_t)cast<IGCLLVM::FixedVectorType>(dstTy)->getNumElements() : 1;
+                srcNElts = (srcTy->isVectorTy()) ? (uint32_t)cast<VectorType>(srcTy)->getNumElements() : 1;
+                dstNElts = (dstTy->isVectorTy()) ? (uint32_t)cast<VectorType>(dstTy)->getNumElements() : 1;
 
                 if (srcNElts < dstNElts && srcTy->getScalarSizeInBits() < 64)
                 {

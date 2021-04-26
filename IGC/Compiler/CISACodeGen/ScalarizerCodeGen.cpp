@@ -66,7 +66,7 @@ void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator& I)
         {
             bool isNewTypeVector = false;
 
-            IGCLLVM::FixedVectorType* instType = cast<IGCLLVM::FixedVectorType>(I.getType());
+            VectorType* instType = cast<VectorType>(I.getType());
             unsigned numElements = int_cast<unsigned>(instType->getNumElements());
             unsigned scalarSize = instType->getScalarSizeInBits();
             unsigned newScalarBits = numElements * scalarSize;
@@ -111,7 +111,7 @@ void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator& I)
                 }
                 else
                 {
-                    IGCLLVM::FixedVectorType* newVecType = cast<IGCLLVM::FixedVectorType>(newType);
+                    VectorType* newVecType = cast<VectorType>(newType);
                     unsigned newVecTypeNumEle = int_cast<unsigned>(newVecType->getNumElements());
                     Value* ieLogicOp = UndefValue::get(newType);
                     for (unsigned i = 0; i < newVecTypeNumEle; i++)

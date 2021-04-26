@@ -1372,7 +1372,7 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
 bool CustomSafeOptPass::isIdentityMatrix(ExtractElementInst& I)
 {
     bool found = false;
-    auto extractType = cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
+    auto extractType = cast<VectorType>(I.getVectorOperandType());
     auto extractTypeVecSize = (uint32_t)extractType->getNumElements();
     if (extractTypeVecSize == 20 ||
         extractTypeVecSize == 16)
@@ -1601,7 +1601,7 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
                     int elOffset = (int)(bitShift / eltSize);
                     elOffset = rightShift ? elOffset : -elOffset;
                     unsigned int newIndex = (unsigned int)((int)cstIndex->getZExtValue() + elOffset);
-                    if (newIndex < cast<IGCLLVM::FixedVectorType>(vecType)->getNumElements())
+                    if (newIndex < cast<VectorType>(vecType)->getNumElements())
                     {
                         IRBuilder<> builder(&I);
                         Value* newBitCast = builder.CreateBitCast(binOp->getOperand(0), vecType);
@@ -2001,7 +2001,7 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
         else if (auto IEIInst = dyn_cast<InsertElementInst>(Op))
         {
             auto opType = IEIInst->getType();
-            if (opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<IGCLLVM::FixedVectorType>(opType)->getNumElements() == 2)
+            if (opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<VectorType>(opType)->getNumElements() == 2)
             {
                 elem = IEIInst->getOperand(1);
             }
@@ -2064,7 +2064,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
         else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
         {
             ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
-            IGCLLVM::FixedVectorType* vector_type = dyn_cast<IGCLLVM::FixedVectorType>(VecOp->getType());
+            VectorType* vector_type = dyn_cast<VectorType>(VecOp->getType());
             if (cVec && vector_type &&
                 isa<ConstantInt>(cVec->getOperand(0)) &&
                 cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
@@ -2210,7 +2210,7 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
             BitCastInst* opBC = cast<BitCastInst>(op);
 
             auto opType = opBC->getType();
-            if (!(opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<IGCLLVM::FixedVectorType>(opType)->getNumElements() == 2))
+            if (!(opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<VectorType>(opType)->getNumElements() == 2))
                 return nullptr;
 
             if (opBC->getSrcTy()->isDoubleTy())
@@ -2630,8 +2630,8 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst& I)
                 if (zExtInst->getOperand(0)->getType()->isIntegerTy(32) &&
                     isa<InsertElementInst>(bitCastInst->getOperand(0)) &&
                     bitCastInst->getOperand(0)->getType()->isVectorTy() &&
-                    cast<IGCLLVM::FixedVectorType>(bitCastInst->getOperand(0)->getType())->getElementType()->isIntegerTy(32) &&
-                    cast<IGCLLVM::FixedVectorType>(bitCastInst->getOperand(0)->getType())->getNumElements() == 2)
+                    cast<VectorType>(bitCastInst->getOperand(0)->getType())->getElementType()->isIntegerTy(32) &&
+                    cast<VectorType>(bitCastInst->getOperand(0)->getType())->getNumElements() == 2)
                 {
                     InsertElementInst* insertElementInst = cast<InsertElementInst>(bitCastInst->getOperand(0));
 
@@ -2731,7 +2731,7 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
     }
     else
     {
-        uint32_t vectorSize = cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements();
+        uint32_t vectorSize = cast<VectorType>(I.getType())->getNumElements();
         fsub = llvm::UndefValue::get(I.getType());
 
         for (uint32_t i = 0; i < vectorSize; ++i)
@@ -2808,7 +2808,7 @@ Constant* IGCConstProp::replaceShaderConstant(Instruction* inst)
                 if (inst->getType()->isVectorTy())
                 {
                     Type* srcEltTy = cast<VectorType>(inst->getType())->getElementType();
-                    uint32_t srcNElts = (uint32_t)cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements();
+                    uint32_t srcNElts = (uint32_t)cast<VectorType>(inst->getType())->getNumElements();
                     uint32_t eltSize_in_bytes = (unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8;
                     IRBuilder<> builder(inst);
                     Value* vectorValue = UndefValue::get(inst->getType());
@@ -3093,7 +3093,7 @@ Constant* IGCConstProp::ConstantFoldCmpInst(CmpInst* CI)
     {
         bool AllTrue = true, AllFalse = true;
         auto VecOpnd = cast<Constant>(EEI->getVectorOperand());
-        unsigned N = (unsigned)cast<IGCLLVM::FixedVectorType>(VecOpnd->getType())->getNumElements();
+        unsigned N = (unsigned)cast<VectorType>(VecOpnd->getType())->getNumElements();
         for (unsigned i = 0; i < N; ++i)
         {
             Constant* const Opnd = VecOpnd->getAggregateElement(i);
@@ -3889,8 +3889,8 @@ namespace IGC
                 BitCastInst* BC = dyn_cast<BitCastInst>(&*BI++);
                 if (!BC) continue;
                 // Skip non-element-wise bitcast.
-                IGCLLVM::FixedVectorType* DstVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getType());
-                IGCLLVM::FixedVectorType* SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getOperand(0)->getType());
+                VectorType* DstVTy = dyn_cast<VectorType>(BC->getType());
+                VectorType* SrcVTy = dyn_cast<VectorType>(BC->getOperand(0)->getType());
                 if (!DstVTy || !SrcVTy || DstVTy->getNumElements() != SrcVTy->getNumElements())
                     continue;
                 // Skip if it's not used only all extractelement.
@@ -4660,7 +4660,7 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
 {
     using namespace llvm::PatternMatch;
 
-    IGCLLVM::FixedVectorType* vecTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
+    VectorType* vecTy = I.getVectorOperandType();
     uint64_t num = vecTy->getNumElements();
     Type* eleType = vecTy->getElementType();
 

@@ -1737,7 +1737,7 @@ namespace IGC
             {
                 instList[i] = builder.CreateExtractElement(val, static_cast<uint64_t>(0));
                 size_t iOld = i;
-                for (unsigned j = 1; j < cast<IGCLLVM::FixedVectorType>(val->getType())->getNumElements(); j++)
+                for (unsigned j = 1; j < cast<VectorType>(val->getType())->getNumElements(); j++)
                 {
                     instList.insert(instList.begin()+ iOld +j, builder.CreateExtractElement(val, j));
                     i++;
@@ -1770,7 +1770,7 @@ namespace IGC
             }
             break;
         case IGCLLVM::VectorTyID:
-            num = (unsigned)cast<IGCLLVM::FixedVectorType>(type)->getNumElements();
+            num = (unsigned)cast<VectorType>(type)->getNumElements();
             for (unsigned i = 0; i < num; i++)
             {
                 ScalarizeAggregateMembers(builder, builder.CreateExtractElement(val, i), instList);
@@ -1810,7 +1810,7 @@ namespace IGC
             }
             break;
         case IGCLLVM::VectorTyID:
-            num = (unsigned)cast<IGCLLVM::FixedVectorType>(type)->getNumElements();
+            num = (unsigned)cast<VectorType>(type)->getNumElements();
             for (unsigned i = 0; i < num; i++)
             {
                 indices.push_back(builder.getInt32(i));
@@ -2075,8 +2075,8 @@ namespace IGC
                 return false;
             }
 
-            IGCLLVM::FixedVectorType* dVTy = dyn_cast<IGCLLVM::FixedVectorType>(dTy);
-            IGCLLVM::FixedVectorType* sVTy = dyn_cast<IGCLLVM::FixedVectorType>(sTy);
+            VectorType* dVTy = dyn_cast<VectorType>(dTy);
+            VectorType* sVTy = dyn_cast<VectorType>(sTy);
             int d_nelts = dVTy ? (int)dVTy->getNumElements() : 1;
             int s_nelts = sVTy ? (int)sVTy->getNumElements() : 1;
             if (d_nelts != s_nelts) {

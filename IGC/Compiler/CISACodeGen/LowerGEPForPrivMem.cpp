@@ -624,7 +624,7 @@ void TransposeHelper::handleGEPInst(
             }
             else
             {
-                arr_sz = (unsigned)cast<IGCLLVM::FixedVectorType>(T)->getNumElements();
+                arr_sz = (unsigned)cast<VectorType>(T)->getNumElements();
             }
             T = cast<VectorType>(T)->getElementType();
         }
@@ -646,7 +646,7 @@ void TransposeHelper::handleGEPInst(
         }
         else if (T->isVectorTy())
         {
-            arr_sz = (unsigned)cast<IGCLLVM::FixedVectorType>(T)->getNumElements();
+            arr_sz = (unsigned)cast<VectorType>(T)->getNumElements();
             T = cast<VectorType>(T)->getElementType();
         }
         else
@@ -706,7 +706,7 @@ void TransposeHelperPromote::handleLoadInst(
     IRBuilder<> IRB(pLoad);
     IGC_ASSERT(nullptr != pLoad->getType());
     unsigned N = pLoad->getType()->isVectorTy()
-        ? (unsigned)cast<IGCLLVM::FixedVectorType>(pLoad->getType())->getNumElements()
+        ? (unsigned)cast<VectorType>(pLoad->getType())->getNumElements()
         : 1;
     Value* Val = loadEltsFromVecAlloca(N, pVecAlloca, pScalarizedIdx, IRB, pLoad->getType()->getScalarType());
     pLoad->replaceAllUsesWith(Val);
@@ -739,7 +739,7 @@ void TransposeHelperPromote::handleStoreInst(
         // %v1 = extractelement <2 x float> %v, i32 1
         // %w1 = insertelement <32 x float> %w0, float %v1, i32 %idx+1
         // store <32 x float> %w1, <32 x float>* %ptr1
-        for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(pStoreVal->getType())->getNumElements(); i < e; ++i)
+        for (unsigned i = 0, e = (unsigned)cast<VectorType>(pStoreVal->getType())->getNumElements(); i < e; ++i)
         {
             Value* VectorIdx = ConstantInt::get(pScalarizedIdx->getType(), i);
             auto Val = IRB.CreateExtractElement(pStoreVal, VectorIdx);
