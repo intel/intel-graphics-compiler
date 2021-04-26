@@ -1424,10 +1424,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
         builder->createImm(desc, Type_UD),
         InstOpt_WriteEnable,
         msgDesc,
-        true);
-    // need to make sure builder list is empty since later phases do a splice on the entire list
-    builder->instList.pop_back();
-    // createSendInst incorrectly sets its cisa offset to the last value of the counter.
+        false);
     sendInst->inheritDIFrom(movInst);
     instList.push_back(sendInst);
 
