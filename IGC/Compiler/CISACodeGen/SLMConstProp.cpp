@@ -39,6 +39,7 @@ IN THE SOFTWARE.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <vector>
 #include "Probe/Assertion.h"
@@ -629,7 +630,7 @@ bool SLMConstProp::isEqual(Constant* C0, Constant* C1)
 
 bool SLMConstProp::isFloatType(Type* Ty)
 {
-    if (VectorType * vTy = dyn_cast<VectorType>(Ty))
+    if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
     {
         if (vTy->getNumElements() > 1)
         {

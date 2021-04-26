@@ -53,6 +53,7 @@ IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
@@ -1229,7 +1230,7 @@ bool EmitPass::canRelocatePhiMov(
                 if (dst != src)
                 {
                     int numElt = 1;
-                    if (VectorType * vTy = dyn_cast<VectorType>(PN->getType()))
+                    if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(PN->getType()))
                     {
                         numElt = int_cast<int>(vTy->getNumElements());
                     }
@@ -1366,7 +1367,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                         phiSrcDstList.push_back(phiInfo);
 
                         int numElt = 0;
-                        if (VectorType * vTy = dyn_cast<VectorType>(PN->getType()))
+                        if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(PN->getType()))
                         {
                             numElt = int_cast<int>(vTy->getNumElements());
                         }
@@ -5455,7 +5456,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
     Type* Ty = dataPtr->getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
@@ -5701,7 +5702,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
     Type* Ty = inst->getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
@@ -5993,7 +5994,7 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         };
 
         uint nElts = isa<VectorType>(pDataType) ?
-            (uint)cast<VectorType>(pDataType)->getNumElements() :
+            (uint)cast<IGCLLVM::FixedVectorType>(pDataType)->getNumElements() :
             1;
 
         // Now, do the copies.
@@ -6083,7 +6084,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     uint32_t nbElements = 1;
     if (inst->getType()->isVectorTy())
     {
-        nbElements = (uint32_t)cast<VectorType>(inst->getType())->getNumElements();
+        nbElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements();
     }
     IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
@@ -6327,7 +6328,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     uint32_t nbElements = 1;
     if (dataPtr->getType()->isVectorTy())
     {
-        nbElements = (uint32_t)cast<VectorType>(dataPtr->getType())->getNumElements();
+        nbElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(dataPtr->getType())->getNumElements();
     }
     IGC_ASSERT_MESSAGE(nbElements <= 8, "InValid Vector Size");
 
@@ -9139,8 +9140,8 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
 {
     Type* srcType = btCst->getOperand(0)->getType();
     Type* dstType = btCst->getType();
-    unsigned int numSrcElement = srcType->isVectorTy() ? (unsigned)cast<VectorType>(srcType)->getNumElements() : 1;
-    unsigned int numDstElement = dstType->isVectorTy() ? (unsigned)cast<VectorType>(dstType)->getNumElements() : 1;
+    unsigned int numSrcElement = srcType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(srcType)->getNumElements() : 1;
+    unsigned int numDstElement = dstType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(dstType)->getNumElements() : 1;
 
     if (srcType->isPointerTy())
     {
@@ -9587,7 +9588,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
     {
         IGC_ASSERT_MESSAGE(predDefSurface != ESURFACE_STATELESS, "scratch cannot be uniform");
         Type* loadType = inst->getType();
-        uint numElement = loadType->isVectorTy() ? (uint)cast<VectorType>(loadType)->getNumElements() : 1;
+        uint numElement = loadType->isVectorTy() ? (uint)cast<IGCLLVM::FixedVectorType>(loadType)->getNumElements() : 1;
         if (predDefSurface == ESURFACE_SLM)
         {
             IGC_ASSERT(numElement <= 4);
@@ -10919,7 +10920,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             pVecVar = GetSymbol(pVec);
             if (pVecVar != pInstVar)
             {
-                emitVectorCopy(pInstVar, pVecVar, int_cast<unsigned>(dyn_cast<VectorType>(pVecType)->getNumElements()));
+                emitVectorCopy(pInstVar, pVecVar, int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(pVecType)->getNumElements()));
             }
         }
     }
@@ -14753,7 +14754,7 @@ bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
 
     Value* storeVal = SI->getValueOperand();
     Type* Ty = storeVal->getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
 
@@ -14783,7 +14784,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     if (srcTy->isVectorTy())
     {
         srcEltTy = cast<VectorType>(srcTy)->getElementType();
-        srcNElts = (uint32_t)cast<VectorType>(srcTy)->getNumElements();
+        srcNElts = (uint32_t)cast<IGCLLVM::FixedVectorType>(srcTy)->getNumElements();
     }
     else
     {
@@ -14793,7 +14794,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     if (dstTy->isVectorTy())
     {
         dstEltTy = cast<VectorType>(dstTy)->getElementType();
-        dstNElts = (uint32_t)cast<VectorType>(dstTy)->getNumElements();
+        dstNElts = (uint32_t)cast<IGCLLVM::FixedVectorType>(dstTy)->getNumElements();
     }
     else
     {
@@ -15372,7 +15373,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     }
 
     Type* Ty = inst->getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
     IGC_ASSERT_MESSAGE((eltBytes == 1) || (eltBytes == 2) || (eltBytes == 4) || (eltBytes == 8),
@@ -15824,7 +15825,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
     Value* storedVal = inst->getValueOperand();
     Type* Ty = storedVal->getType();
-    VectorType* VTy = dyn_cast<VectorType>(Ty);
+    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     Type* eltTy = VTy ? VTy->getElementType() : Ty;
     uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
 
@@ -16628,7 +16629,7 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     }
     else if (Ty->isVectorTy())
     {
-        unsigned NElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
+        unsigned NElts = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements();
         emitVectorCopy(Dst, Src, NElts);
     }
     else

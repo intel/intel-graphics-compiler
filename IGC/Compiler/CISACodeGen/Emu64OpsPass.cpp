@@ -1961,7 +1961,7 @@ bool InstExpander::visitExtractElement(ExtractElementInst& EEI) {
     // later.
 
     Value* V = EEI.getVectorOperand();
-    unsigned NumElts = (unsigned)cast<VectorType>(V->getType())->getNumElements();
+    unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements();
     V = IRB->CreateBitCast(V, Emu->getV2Int32Ty(NumElts));
     // Re-calculate indices to Lo and Hi parts.
     Value* Idx = EEI.getIndexOperand();
@@ -1998,7 +1998,7 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
 
     // Create the emulated vector.
     Value* NewVal = IEI.getOperand(0);
-    unsigned NumElts = (unsigned)cast<VectorType>(NewVal->getType())->getNumElements();
+    unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(NewVal->getType())->getNumElements();
     NewVal = IRB->CreateBitCast(NewVal, Emu->getV2Int32Ty(NumElts));
     // Re-calculate indices to Lo and Hi parts.
     Value* Idx = IEI.getOperand(2);

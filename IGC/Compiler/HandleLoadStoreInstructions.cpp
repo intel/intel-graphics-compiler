@@ -77,7 +77,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
 
         if (I.getType()->isVectorTy())
         {
-            numVectorElements = (uint32_t)cast<VectorType>(I.getType())->getNumElements();
+            numVectorElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(I.getType())->getNumElements();
             doubleDstType = IGCLLVM::FixedVectorType::get(builder.getDoubleTy(), numVectorElements);
         }
         uint as = ptrv->getType()->getPointerAddressSpace();
@@ -163,7 +163,7 @@ void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
 
         if (I.getValueOperand()->getType()->isVectorTy())
         {
-            numVectorElements = (uint32_t)cast<VectorType>(I.getValueOperand()->getType())->getNumElements();
+            numVectorElements = (uint32_t)cast<IGCLLVM::FixedVectorType>(I.getValueOperand()->getType())->getNumElements();
         }
 
 

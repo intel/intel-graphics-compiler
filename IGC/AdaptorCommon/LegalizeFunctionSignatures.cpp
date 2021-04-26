@@ -140,7 +140,7 @@ inline Type* LegalizedIntVectorType(Module& M, const Type* const oldTy)
     else if (size <= 64) newSize = 64;
     else IGC_ASSERT_MESSAGE(0, "Currently don't support upscaling int sizes > 64 bits");
 
-    return IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<VectorType>(oldTy)->getNumElements());
+    return IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<IGCLLVM::FixedVectorType>(oldTy)->getNumElements());
 }
 
 void LegalizeFunctionSignatures::FixFunctionSignatures()

@@ -4989,7 +4989,7 @@ void LLVM3DBuilder<preserveNames, T, Inserter>::VectorToScalars(
     IGC_ASSERT(nullptr != vector->getType());
     IGC_ASSERT(vector->getType()->isVectorTy());
 
-    const unsigned count = (unsigned)llvm::cast<llvm::VectorType>(vector->getType())->getNumElements();
+    const unsigned count = (unsigned)llvm::cast<IGCLLVM::FixedVectorType>(vector->getType())->getNumElements();
     IGC_ASSERT(1 < count);
     IGC_ASSERT(count <= 4);
     IGC_ASSERT(count <= maxSize);

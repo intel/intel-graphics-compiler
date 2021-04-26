@@ -85,6 +85,7 @@ IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InlineAsm.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <algorithm>
 #include "Probe/Assertion.h"
@@ -1319,7 +1320,7 @@ int DeSSA::checkInsertElementAlias(
     //
     // If found, return the actual vector size;
     // otherwise, return 0.
-    VectorType* VTy = cast<VectorType>(IEI->getType());
+    IGCLLVM::FixedVectorType* VTy = cast<IGCLLVM::FixedVectorType>(IEI->getType());
     IGC_ASSERT(nullptr != VTy);
     int nelts = (int)VTy->getNumElements();
     AllIEIs.resize(nelts, nullptr);
