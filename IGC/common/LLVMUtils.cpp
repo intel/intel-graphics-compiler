@@ -194,9 +194,20 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
     // is taken by reference into the printer pass. If the Dump object had been on the
     // stack, then that reference would go bad as soon as we exit this scope, and then
     // the printer pass would access an invalid pointer later on when we call PassManager::run()
-    m_irDumps.emplace_front(name, IGC::Debug::DumpType::PASS_IR_TEXT);
-    PassManager::add(P->createPrinterPass(m_irDumps.front().stream(), ""));
-    PassManager::add(new FlushDumpPass(m_irDumps.front()));
+    IGC::Debug::Dump* pDump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
+    PassManager::add(P->createPrinterPass(pDump->stream(), ""));
+    m_irDumps.push_back(pDump);
+}
+
+IGCPassManager::~IGCPassManager()
+{
+    if (!m_irDumps.empty())
+    {
+        for(auto it : m_irDumps)
+        {
+            delete it;
+        }
+    }
 }
 
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)

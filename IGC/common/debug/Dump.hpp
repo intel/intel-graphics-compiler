@@ -35,7 +35,6 @@ IN THE SOFTWARE.
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Optional.h>
-#include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/API/igc.h"
 
@@ -133,8 +132,6 @@ public:
 
     llvm::raw_ostream& stream() const;
 
-    void flush();
-
     template<typename T>
     llvm::raw_ostream& operator<< ( T const& val ) const
     {
@@ -143,32 +140,10 @@ public:
     }
 
 private:
-    std::string                        m_string;
-    DumpName                           m_name;
-    std::unique_ptr<llvm::raw_ostream> m_pStream;
-    DumpType                           m_type;
-};
-
-class FlushDumpPass : public llvm::ModulePass
-{
-public:
-    static char ID;
-
-    FlushDumpPass(Dump& pDump) : ModulePass(ID), m_pDump(pDump) {}
-
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "Flush Dump";
-    }
-
-    bool runOnModule(llvm::Module& module) override
-    {
-        m_pDump.flush();
-        return false;
-    }
-
-private:
-    Dump& m_pDump;
+    std::string                m_string;
+    DumpName                   m_name;
+    llvm::raw_ostream*         m_pStream;
+    DumpType                   m_type;
 };
 
 void DumpLLVMIRText(

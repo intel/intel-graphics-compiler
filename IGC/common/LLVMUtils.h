@@ -27,7 +27,7 @@ IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/LegacyPassManager.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <list>
+#include <vector>
 #include "Stats.hpp"
 #include <string.h>
 
@@ -42,6 +42,7 @@ namespace IGC
     class IGCPassManager : public llvm::legacy::PassManager
     {
     public:
+        ~IGCPassManager();
         IGCPassManager(CodeGenContext* ctx, const char* name = "") : m_pContext(ctx), m_name(name)
         {
         }
@@ -49,7 +50,7 @@ namespace IGC
     private:
         CodeGenContext* const m_pContext;
         const std::string m_name;
-        std::list<Debug::Dump> m_irDumps;
+        std::vector<Debug::Dump *> m_irDumps;
 
         void addPrintPass(llvm::Pass* P, bool isBefore);
         bool isPrintBefore(llvm::Pass* P);
