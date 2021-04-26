@@ -62,6 +62,9 @@ namespace vISA
         bool isDclCandidate(G4_Declare* dcl);
         void gatherCandidates();
 
+        template<class T>
+        G4_Declare* getDclForRgn(T* rgn, G4_Declare* newTopDcl);
+
     public:
         SplitAlignedScalars(GlobalRA& g) : gra(g), kernel(g.kernel)
         {

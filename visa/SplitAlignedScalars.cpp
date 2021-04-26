@@ -133,6 +133,27 @@ bool SplitAlignedScalars::heuristic(G4_Declare* dcl, Data& d)
     return true;
 }
 
+// T is either G4_SrcRegRegion or G4_DstRegRegion
+template<class T>
+G4_Declare* SplitAlignedScalars::getDclForRgn(T* rgn, G4_Declare* newTopDcl)
+{
+    // newTopDcl is the replacement dcl computed by this pass to replace rgn
+    // If rgn's dcl is not aliased then return newTopDcl as new rgn can
+    // directly use this.
+    // If rgn's dcl is aliased, create a new alias dcl based off newTopDcl
+    // with correct offset and return it.
+    auto rgnDcl = rgn->getBase()->asRegVar()->getDeclare();
+
+    if (rgn->getTopDcl() == rgnDcl)
+        return newTopDcl;
+
+    auto newAliasDcl = kernel.fg.builder->createTempVar(rgnDcl->getNumElems(),
+        rgnDcl->getElemType(), rgnDcl->getSubRegAlign());
+    newAliasDcl->setAliasDeclare(newTopDcl, rgnDcl->getOffsetFromBase());
+
+    return newAliasDcl;
+}
+
 void SplitAlignedScalars::run()
 {
     auto getNewDcl = [&](G4_Declare* oldDcl)
@@ -175,26 +196,40 @@ void SplitAlignedScalars::run()
             {
                 auto oldTopDcl = dst->getTopDcl();
                 auto newTopDcl = getNewDcl(oldTopDcl);
+                auto newDcl = getDclForRgn(dst, newTopDcl);
 
-                auto newDstRgn = kernel.fg.builder->createDst(newTopDcl->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
-                    dst->getHorzStride(), dst->getType());
                 if (canReplaceDst(inst))
                 {
-                    MUST_BE_TRUE(inst->getExecSize() == g4::SIMD1, "Expecting scalar instruction");
+                    auto newDstRgn = kernel.fg.builder->createDst(newDcl->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
+                        dst->getHorzStride(), dst->getType());
                     inst->setDest(newDstRgn);
                 }
                 else
                 {
                     // found an instruction where dst has to be GRF aligned,
                     // so we keep old dst but we insert a copy in new dcl
-                    auto newAlignedVar = kernel.fg.builder->createTempVar(1, oldTopDcl->getElemType(), oldTopDcl->getSubRegAlign());
-                    newAlignedVar->copyAlign(oldTopDcl);
-                    auto dstRgn = kernel.fg.builder->createDst(newAlignedVar->getRegVar(), dst->getType());
+                    auto newAlignedTmpTopDcl = kernel.fg.builder->createTempVar(oldTopDcl->getNumElems(), oldTopDcl->getElemType(),
+                        oldTopDcl->getSubRegAlign());
+                    newAlignedTmpTopDcl->copyAlign(oldTopDcl);
+                    auto newAlignedVar = getDclForRgn(dst, newAlignedTmpTopDcl);
+                    auto dstRgn = kernel.fg.builder->createDst(newAlignedVar->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
+                        dst->getHorzStride(), dst->getType());
                     inst->setDest(dstRgn);
-                    auto src = kernel.fg.builder->createSrc(inst->getDst()->getBase(), inst->getDst()->getRegOff(),
-                        inst->getDst()->getSubRegOff(), kernel.fg.builder->getRegionScalar(), inst->getDst()->getType());
-                    auto newInst = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, g4::NOSAT, g4::SIMD1,
-                        newDstRgn, src, nullptr, InstOpt_WriteEnable);
+
+                    // emit copy to store data to original non-aligned scalar
+                    auto src = kernel.fg.builder->createSrc(dstRgn->getBase(), dstRgn->getRegOff(),
+                        dstRgn->getSubRegOff(), inst->getExecSize() == g4::SIMD1 ? kernel.fg.builder->getRegionScalar() :
+                        kernel.fg.builder->createRegionDesc(dstRgn->getHorzStride() * inst->getExecSize(),
+                            dstRgn->getHorzStride(), inst->getExecSize()),
+                        dstRgn->getType());
+                    auto dstRgnOfCopy = kernel.fg.builder->createDst(newDcl->getRegVar(),
+                        dst->getRegOff(), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
+
+                    G4_Predicate* dupPred = nullptr;
+                    if(inst->getPredicate())
+                        dupPred = kernel.fg.builder->createPredicate(*inst->getPredicate());
+                    auto newInst = kernel.fg.builder->createInternalInst(dupPred, G4_mov, nullptr,
+                        g4::NOSAT, inst->getExecSize(), dstRgnOfCopy, src, nullptr, InstOpt_WriteEnable);
                     newInstIt = bb->insertAfter(instIt, newInst);
                 }
             }
@@ -202,7 +237,7 @@ void SplitAlignedScalars::run()
             for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
             {
                 auto src = inst->getSrc(i);
-                if (!src || !src->isSrcRegRegion() || !src->asSrcRegRegion()->isScalar())
+                if (!src || !src->isSrcRegRegion())
                     continue;
 
                 auto srcRgn = src->asSrcRegRegion();
@@ -211,24 +246,33 @@ void SplitAlignedScalars::run()
                 {
                     auto oldTopDcl = srcRgn->getTopDcl();
                     auto newTopDcl = getNewDcl(oldTopDcl);
+                    auto newDcl = getDclForRgn(srcRgn, newTopDcl);
 
-                    auto newSrcRgn = kernel.fg.builder->createSrcRegRegion(G4_SrcModifier::Mod_src_undef, srcRgn->getRegAccess(), newTopDcl->getRegVar(),
-                        srcRgn->getRegOff(), srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
                     if (canReplaceSrc(inst, i))
                     {
-                        MUST_BE_TRUE(inst->getExecSize() == g4::SIMD1 ||
-                            srcRgn->isScalar(), "Expecting a scalar");
+                        auto newSrcRgn = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(),
+                            srcRgn->getRegAccess(), newDcl->getRegVar(),
+                            srcRgn->getRegOff(), srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
                         inst->setSrc(newSrcRgn, i);
                     }
                     else
                     {
                         // create a new aligned tmp
-                        auto newAlignedTemp = kernel.fg.builder->createTempVar(1, srcRgn->getType(), oldTopDcl->getSubRegAlign());
-                        newAlignedTemp->copyAlign(oldTopDcl);
-                        auto newDstRgn = kernel.fg.builder->createDst(newAlignedTemp->getRegVar(), srcRgn->getType());
-                        auto copy = kernel.fg.builder->createMov(g4::SIMD1, newDstRgn, newSrcRgn, InstOpt_WriteEnable, false);
-                        auto newAlignedSrc = kernel.fg.builder->createSrc(newAlignedTemp->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(),
-                            kernel.fg.builder->getRegionScalar(), srcRgn->getType());
+                        auto newAlignedTmpTopDcl = kernel.fg.builder->createTempVar(oldTopDcl->getNumElems(), oldTopDcl->getElemType(),
+                            oldTopDcl->getSubRegAlign());
+                        newAlignedTmpTopDcl->copyAlign(oldTopDcl);
+
+                        // copy oldDcl in to newAlignedTmpTopDcl
+                        auto tmpDst = kernel.fg.builder->createDst(newAlignedTmpTopDcl->getRegVar(), oldTopDcl->getElemType());
+                        auto src = kernel.fg.builder->createSrc(newTopDcl->getRegVar(), 0, 0, kernel.fg.builder->getRegionScalar(),
+                            oldTopDcl->getElemType());
+                        auto copy = kernel.fg.builder->createMov(g4::SIMD1, tmpDst, src, InstOpt_WriteEnable, false);
+
+                        // now create src out of tmpDst
+                        auto dclToUse = getDclForRgn(srcRgn, newAlignedTmpTopDcl);
+
+                        auto newAlignedSrc = kernel.fg.builder->createSrc(dclToUse->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(),
+                            srcRgn->getRegion(), srcRgn->getType());
                         inst->setSrc(newAlignedSrc, i);
                         bb->insertBefore(instIt, copy);
                     }
