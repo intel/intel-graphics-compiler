@@ -1163,8 +1163,7 @@ void Legalization::visitStoreInst(StoreInst& I)
             }
         }
 
-        IGC::cloneStore(&I, newVec, I.getPointerOperand());
-        I.eraseFromParent();
+        I.setOperand(0, newVec);
     }
     else if (ConstantVector * vec = dyn_cast<ConstantVector>(I.getOperand(0)))
     {
@@ -1184,8 +1183,7 @@ void Legalization::visitStoreInst(StoreInst& I)
             }
         }
 
-        IGC::cloneStore(&I, newVec, I.getPointerOperand());
-        I.eraseFromParent();
+        I.setOperand(0, newVec);
     }
     else if (ConstantAggregateZero * vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0)))
     {
@@ -1205,8 +1203,7 @@ void Legalization::visitStoreInst(StoreInst& I)
             }
         }
 
-        IGC::cloneStore(&I, newVec, I.getPointerOperand());
-        I.eraseFromParent();
+        I.setOperand(0, newVec);
     }
     else if (I.getOperand(0)->getType()->isIntegerTy(1))
     {
