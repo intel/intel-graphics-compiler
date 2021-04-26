@@ -102,6 +102,7 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_SavedFP = nullptr;
     m_ARGV = nullptr;
     m_RETV = nullptr;
+    m_SavedSRetPtr = nullptr;
 
     // SIMD32 is a SIMD16 shader with 2 instance of each instruction
     m_SIMDSize = (simdSize == SIMDMode::SIMD8 ? SIMDMode::SIMD8 : SIMDMode::SIMD16);
@@ -830,6 +831,19 @@ CVariable* CShader::GetRETV()
 CEncoder& CShader::GetEncoder()
 {
     return encoder;
+}
+
+void CShader::SaveSRet(CVariable* sretPtr)
+{
+    IGC_ASSERT(m_SavedSRetPtr == nullptr);
+    m_SavedSRetPtr = sretPtr;
+}
+
+CVariable* CShader::GetAndResetSRet()
+{
+    CVariable* temp = m_SavedSRetPtr;
+    m_SavedSRetPtr = nullptr;
+    return temp;
 }
 
 CShader::~CShader()

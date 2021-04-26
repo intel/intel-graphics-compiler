@@ -410,8 +410,9 @@ void LegalizeFunctionSignatures::FixCallInstruction(CallInst* callInst)
         unsigned opIdx = 0;
         if (returnPtr)
         {
-            // Add "noalias" to return argument at callsite
+            // Add "noalias" and "sret" to return argument at callsite
             NewArgAttrs[opIdx] = AttributeSet().addAttribute(callInst->getContext(), llvm::Attribute::AttrKind::NoAlias);
+            NewArgAttrs[opIdx] = AttributeSet().addAttribute(callInst->getContext(), llvm::Attribute::AttrKind::StructRet);
             opIdx++;
         }
         for (unsigned i = 0; i < callInst->getNumArgOperands(); i++, opIdx++)
@@ -462,8 +463,9 @@ Function* LegalizeFunctionSignatures::CloneFunctionSignature(Type* ReturnType,
     if (changedRetVal)
     {
         newIter->setName("retval");
-        // Add "noalias" to the return argument
+        // Add "noalias" and "sret" to the return argument
         NewArgAttrs[newIter->getArgNo()] = AttributeSet().addAttribute(pNewFunc->getContext(), llvm::Attribute::AttrKind::NoAlias);
+        NewArgAttrs[newIter->getArgNo()] = AttributeSet().addAttribute(pNewFunc->getContext(), llvm::Attribute::AttrKind::StructRet);
         newIter++;
     }
     for (auto ai = pOldFunc->arg_begin(), ae = pOldFunc->arg_end(); ai != ae; ai++, newIter++)
