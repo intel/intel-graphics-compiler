@@ -30,6 +30,7 @@ IN THE SOFTWARE.
 //
 
 OCL_BC                      BC           "OCLBiFImpl.bc"
+OCL_BC_FP64                 BC           "IBiF_Impl_int_spirv_fp64.bc"
 OCL_BC_32                   BC           "IGCsize_t_32.bc"
 OCL_BC_64                   BC           "IGCsize_t_64.bc"
 /////////////////////////////////////////////////////////////////////////////

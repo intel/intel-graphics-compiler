@@ -42,28 +42,6 @@ INLINE float4 __builtin_spirv_OpenCL_cross_v4f32_v4f32(float4 p0, float4 p1 ){
     return result;
 }
 
-#if defined(cl_khr_fp64)
-
-INLINE double3 __builtin_spirv_OpenCL_cross_v3f64_v3f64(double3 p0, double3 p1 ){
-    double3 result;
-    result.x = __builtin_spirv_OpenCL_fma_f64_f64_f64(p0.y, p1.z, -p0.z * p1.y );
-    result.y = __builtin_spirv_OpenCL_fma_f64_f64_f64(p0.z, p1.x, -p0.x * p1.z );
-    result.z = __builtin_spirv_OpenCL_fma_f64_f64_f64(p0.x, p1.y, -p0.y * p1.x );
-
-    return result;
-}
-
-INLINE double4 __builtin_spirv_OpenCL_cross_v4f64_v4f64(double4 p0, double4 p1 ){
-    double4 result;
-    result.xyz = __builtin_spirv_OpenCL_cross_v3f64_v3f64( p0.xyz, p1.xyz );
-
-    result.w = (half) 0.0;
-
-    return result;
-}
-
-#endif // defined(cl_khr_fp64)
-
 #if defined(cl_khr_fp16)
 
 INLINE half3 __builtin_spirv_OpenCL_cross_v3f16_v3f16(half3 p0, half3 p1 ){

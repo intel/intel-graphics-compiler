@@ -22,7 +22,7 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
- extern __constant int __UseNative64BitSubgroupBuiltin;
+extern __constant int __UseNative64BitSubgroupBuiltin;
 
 // Group Instructions
 
@@ -36,9 +36,6 @@ uint OVERLOADABLE intel_sub_group_shuffle( uint X, uint c );
 ulong OVERLOADABLE intel_sub_group_shuffle( ulong X, uint c );
 half OVERLOADABLE intel_sub_group_shuffle( half X, uint c );
 float OVERLOADABLE intel_sub_group_shuffle( float X, uint c );
-#if defined(cl_khr_fp64)
-double OVERLOADABLE intel_sub_group_shuffle( double X, uint c );
-#endif
 
 int OVERLOADABLE intel_sub_group_shuffle_up( int identity, int X, uint c );
 long OVERLOADABLE intel_sub_group_shuffle_up( long identity, long X, uint c );
@@ -46,41 +43,9 @@ uint OVERLOADABLE intel_sub_group_shuffle_up( uint identity, uint X, uint c );
 ulong OVERLOADABLE intel_sub_group_shuffle_up( ulong identity, ulong X, uint c );
 half OVERLOADABLE intel_sub_group_shuffle_up( half identity, half X, uint c );
 float OVERLOADABLE intel_sub_group_shuffle_up( float identity, float X, uint c );
-#if defined(cl_khr_fp64)
-double OVERLOADABLE intel_sub_group_shuffle_up( double identity, double X, uint c );
-#endif
 
 
-#define ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, type)                         \
-{                                                                                                    \
-    if ( Stride == 0 )                                                                                \
-    {                                                                                                \
-        ASYNC_WORK_GROUP_COPY(Destination, Source, NumElements, Event, type)                        \
-        return Event;                                                                                \
-    }                                                                                                \
-    else                                                                                            \
-    {                                                                                                \
-        ASYNC_WORK_GROUP_STRIDED_COPY_L2G(Destination, Source, NumElements, Stride, Event, type)    \
-        return Event;                                                                                \
-    }                                                                                                \
-}
-
-#define ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, type)                         \
-{                                                                                                    \
-    if ( Stride == 0 )                                                                                \
-    {                                                                                                \
-        ASYNC_WORK_GROUP_COPY(Destination, Source, NumElements, Event, type)                        \
-        return Event;                                                                                \
-    }                                                                                                \
-    else                                                                                            \
-    {                                                                                                \
-        ASYNC_WORK_GROUP_STRIDED_COPY_G2L(Destination, Source, NumElements, Stride, Event, type)    \
-        return Event;                                                                                \
-    }                                                                                                \
-}
-
-
-//L2G
+// L2G
 
 Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1i8_p3i8_i64_i64_i64(uint Execution, global uchar *Destination, const local uchar *Source, ulong NumElements, ulong Stride, Event_t Event)
 {
@@ -141,20 +106,6 @@ Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1f32_p3f32_i32_i32_i64(uint Execut
 {
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
-
-#if defined(cl_khr_fp64)
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1f64_p3f64_i64_i64_i64(uint Execution, global double *Destination, const local double *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1f64_p3f64_i32_i32_i64(uint Execution, global double *Destination, const local double *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-#endif
 
 Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v2i8_p3v2i8_i64_i64_i64(uint Execution, global uchar2 *Destination, const local uchar2 *Source, ulong NumElements, ulong Stride, Event_t Event)
 {
@@ -456,62 +407,8 @@ Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v16f32_p3v16f32_i32_i32_i64(uint 
     ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-#if defined(cl_khr_fp64)
 
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v2f64_p3v2f64_i64_i64_i64(uint Execution, global double2 *Destination, const local double2 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v2f64_p3v2f64_i32_i32_i64(uint Execution, global double2 *Destination, const local double2 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v3f64_p3v3f64_i64_i64_i64(uint Execution, global double3 *Destination, const local double3 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v3f64_p3v3f64_i32_i32_i64(uint Execution, global double3 *Destination, const local double3 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v4f64_p3v4f64_i64_i64_i64(uint Execution, global double4 *Destination, const local double4 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v4f64_p3v4f64_i32_i32_i64(uint Execution, global double4 *Destination, const local double4 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v8f64_p3v8f64_i64_i64_i64(uint Execution, global double8 *Destination, const local double8 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v8f64_p3v8f64_i32_i32_i64(uint Execution, global double8 *Destination, const local double8 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v16f64_p3v16f64_i64_i64_i64(uint Execution, global double16 *Destination, const local double16 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p1v16f64_p3v16f64_i32_i32_i64(uint Execution, global double16 *Destination, const local double16 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_L2G(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-#endif //defined(cl_khr_fp64)
-
-//G2L
-
+// G2L
 
 Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3i8_p1i8_i64_i64_i64(uint Execution, local uchar *Destination, const global uchar *Source, ulong NumElements, ulong Stride, Event_t Event)
 {
@@ -572,20 +469,6 @@ Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3f32_p1f32_i32_i32_i64(uint Execut
 {
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
-
-#if defined(cl_khr_fp64)
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3f64_p1f64_i64_i64_i64(uint Execution, local double *Destination, const global double *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3f64_p1f64_i32_i32_i64(uint Execution, local double *Destination, const global double *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-#endif
 
 Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v2i8_p1v2i8_i64_i64_i64(uint Execution, local uchar2 *Destination, const global uchar2 *Source, ulong NumElements, ulong Stride, Event_t Event)
 {
@@ -887,61 +770,6 @@ Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v16f32_p1v16f32_i32_i32_i64(uint 
     ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
 }
 
-#if defined(cl_khr_fp64)
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v2f64_p1v2f64_i64_i64_i64(uint Execution, local double2 *Destination, const global double2 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v2f64_p1v2f64_i32_i32_i64(uint Execution, local double2 *Destination, const global double2 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v3f64_p1v3f64_i64_i64_i64(uint Execution, local double3 *Destination, const global double3 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v3f64_p1v3f64_i32_i32_i64(uint Execution, local double3 *Destination, const global double3 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v4f64_p1v4f64_i64_i64_i64(uint Execution, local double4 *Destination, const global double4 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v4f64_p1v4f64_i32_i32_i64(uint Execution, local double4 *Destination, const global double4 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v8f64_p1v8f64_i64_i64_i64(uint Execution, local double8 *Destination, const global double8 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v8f64_p1v8f64_i32_i32_i64(uint Execution, local double8 *Destination, const global double8 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v16f64_p1v16f64_i64_i64_i64(uint Execution, local double16 *Destination, const global double16 *Source, ulong NumElements, ulong Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, ulong)
-}
-
-Event_t __builtin_spirv_OpGroupAsyncCopy_i32_p3v16f64_p1v16f64_i32_i32_i64(uint Execution, local double16 *Destination, const global double16 *Source, uint NumElements, uint Stride, Event_t Event)
-{
-    ASYNC_COPY_G2L(Destination, Source, NumElements, Stride, Event, uint)
-}
-
-#endif // defined(cl_khr_fp64)
-
-
 void __builtin_spirv_OpGroupWaitEvents_i32_i32_p0i64(uint Execution, uint NumEvents, private Event_t *EventsList)
 {
     if (Execution == Workgroup)
@@ -1053,36 +881,12 @@ bool __builtin_spirv_OpGroupNonUniformAny_i32_i1(uint Execution, bool Predicate)
         return false;
 }
 
-#define DEFN_NON_UNIFORM_ALL_EQUAL(TYPE, TYPE_ABBR)                                                                         \
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_##TYPE_ABBR(uint Execution, TYPE Value)                                  \
-{                                                                                                                           \
-    if (Execution == Subgroup)                                                                                              \
-    {                                                                                                                       \
-        uint activeChannels = __builtin_IB_WaveBallot(true);                                                                \
-        uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                                  \
-                                                                                                                            \
-        TYPE firstLaneValue = __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, firstActive);        \
-        bool isSame = firstLaneValue == Value;                                                                              \
-                                                                                                                            \
-        uint4 equalChannels = __builtin_spirv_OpGroupNonUniformBallot_i32_i1(Execution, isSame);                            \
-                                                                                                                            \
-        if (equalChannels.x == activeChannels)                                                                              \
-            return true;                                                                                                    \
-        else                                                                                                                \
-            return false;                                                                                                   \
-    }                                                                                                                       \
-    else                                                                                                                    \
-        return false;                                                                                                       \
-}
 
 DEFN_NON_UNIFORM_ALL_EQUAL(uchar,  i8)
 DEFN_NON_UNIFORM_ALL_EQUAL(ushort, i16)
 DEFN_NON_UNIFORM_ALL_EQUAL(uint,   i32)
 DEFN_NON_UNIFORM_ALL_EQUAL(ulong,  i64)
 DEFN_NON_UNIFORM_ALL_EQUAL(float,  f32)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_ALL_EQUAL(double, f64)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
 #endif // defined(cl_khr_fp16)
@@ -1092,30 +896,6 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
 
 // ***Note that technically the spec allows for 64 bit local Id's but currently our hardware cannot support
 // this in which case we cast all ulong local Id's to uint's at this time.
-
-
-#define BROADCAST_WORKGROUP(type)                                                       \
-{                                                                                       \
-    GET_MEMPOOL_PTR(tmp, type, false, 1)                                                       \
-    if( (__intel_LocalInvocationId(0) == LocalId.s0) &                                            \
-        (__intel_LocalInvocationId(1) == LocalId.s1) &                                            \
-        (__intel_LocalInvocationId(2) == LocalId.s2) )                                            \
-    {                                                                                   \
-        *tmp = Value;                                                                   \
-    }                                                                                   \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
-    type ret = *tmp;                                                                    \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
-    return ret;                                                                         \
-}
-
-#define DEFN_SUB_GROUP_BROADCAST_VEC(__vargtype, __abbrvargtype)                                                                          \
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint3, i32, __abbrvargtype, v3i32)    \
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong3, i32, __abbrvargtype, v3i64)   \
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint2, i32, __abbrvargtype, v2i32)    \
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong2, i32, __abbrvargtype, v2i64)   \
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, uint, i32, __abbrvargtype, i32)       \
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(__builtin_spirv_OpGroupBroadcast, __vargtype, uint, __vargtype, ulong, i32, __abbrvargtype, i64)
 
 bool __builtin_spirv_OpGroupBroadcast_i32_i1_v3i32(uint Execution, bool Value, uint3 LocalId)
 {
@@ -1341,43 +1121,6 @@ float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i64(uint Execution, float Value
     }
 }
 
-#if defined(cl_khr_fp64)
-
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(uint Execution, double Value, uint3 LocalId)
-{
-    if (Execution == Workgroup)
-    {
-        BROADCAST_WORKGROUP(double)
-    }
-    else if (Execution == Subgroup)
-    {
-        return __builtin_IB_simd_shuffle_df( Value, LocalId.s0 );
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Value, ulong3 LocalId)
-{
-    if (Execution == Workgroup)
-    {
-        BROADCAST_WORKGROUP(double)
-    }
-    else if (Execution == Subgroup)
-    {
-        return __builtin_IB_simd_shuffle_df( Value, (uint) LocalId.s0 );
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-#endif // defined(cl_khr_fp64)
-
 bool __builtin_spirv_OpGroupBroadcast_i32_i1_v2i32(uint Execution, bool Value, uint2 LocalId)
 {
     return __builtin_spirv_OpGroupBroadcast_i32_i1_v3i32(Execution, Value, (uint3)(LocalId.s0, LocalId.s1, 0));
@@ -1447,20 +1190,6 @@ float __builtin_spirv_OpGroupBroadcast_i32_f32_v2i64(uint Execution, float Value
 {
     return __builtin_spirv_OpGroupBroadcast_i32_f32_v3i64(Execution,Value,(ulong3)(LocalId.s0,LocalId.s1,0));
 }
-
-#if defined(cl_khr_fp64)
-
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v2i32(uint Execution, double Value, uint2 LocalId)
-{
-    return __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(Execution,Value,(uint3)(LocalId.s0,LocalId.s1,0));
-}
-
-double __builtin_spirv_OpGroupBroadcast_i32_f64_v2i64(uint Execution, double Value, ulong2 LocalId)
-{
-    return __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(Execution,Value,(ulong3)(LocalId.s0,LocalId.s1,0));
-}
-
-#endif
 
 bool __builtin_spirv_OpGroupBroadcast_i32_i1_i32(uint Execution, bool Value, uint LocalId)
 {
@@ -1532,20 +1261,6 @@ float __builtin_spirv_OpGroupBroadcast_i32_f32_i64(uint Execution, float Value, 
     return __builtin_spirv_OpGroupBroadcast_i32_f32_v3i64(Execution,Value,(ulong3)(LocalId,0,0));
 }
 
-#if defined(cl_khr_fp64)
-
-double __builtin_spirv_OpGroupBroadcast_i32_f64_i32(uint Execution, double Value, uint LocalId)
-{
-    return __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(Execution,Value,(uint3)(LocalId,0,0));
-}
-
-double __builtin_spirv_OpGroupBroadcast_i32_f64_i64(uint Execution, double Value, ulong LocalId)
-{
-    return __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(Execution,Value,(ulong3)(LocalId,0,0));
-}
-
-#endif
-
 DEFN_SUB_GROUP_BROADCAST_VEC(uchar, i8)
 DEFN_SUB_GROUP_BROADCAST_VEC(ushort, i16)
 DEFN_SUB_GROUP_BROADCAST_VEC(uint, i32)
@@ -1554,9 +1269,6 @@ DEFN_SUB_GROUP_BROADCAST_VEC(float, f32)
 #if defined(cl_khr_fp16)
 DEFN_SUB_GROUP_BROADCAST_VEC(half, f16)
 #endif // defined(cl_khr_fp16)
-#if defined(cl_khr_fp64)
-DEFN_SUB_GROUP_BROADCAST_VEC(double, f64)
-#endif // defined(cl_khr_fp64)
 
 // Ballot Functions
 
@@ -1637,34 +1349,12 @@ float __builtin_spirv_OpSubgroupFirstInvocationKHR_f32(float Value)
 }
 
 #if defined(cl_khr_subgroup_ballot)
-#define DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)                                                             \
-TYPE __builtin_spirv_OpGroupNonUniformBroadcast_i32_##TYPE_ABBR##_i32(uint Execution, TYPE Value, uint Id)           \
-{                                                                                                                    \
-    return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, Id);                             \
-}                                                                                                                    \
-TYPE __builtin_spirv_OpGroupNonUniformBroadcastFirst_i32_##TYPE_ABBR(uint Execution, TYPE Value)                     \
-{                                                                                                                    \
-    uint activeChannels = __builtin_IB_WaveBallot(true);                                                             \
-    uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                               \
-    return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(Execution, Value, firstActive);                    \
-}
-
-#define DEFN_NON_UNIFORM_BROADCAST(TYPE, TYPE_ABBR)             \
-    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)            \
-    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##2, v2##TYPE_ABBR)     \
-    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##3, v3##TYPE_ABBR)     \
-    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##4, v4##TYPE_ABBR)     \
-    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##8, v8##TYPE_ABBR)     \
-    DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##16, v16##TYPE_ABBR)
 
 DEFN_NON_UNIFORM_BROADCAST(uchar,  i8)
 DEFN_NON_UNIFORM_BROADCAST(ushort, i16)
 DEFN_NON_UNIFORM_BROADCAST(uint,   i32)
 DEFN_NON_UNIFORM_BROADCAST(ulong,  i64)
 DEFN_NON_UNIFORM_BROADCAST(float,  f32)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_BROADCAST(double, f64)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_BROADCAST(half,   f16)
 #endif // defined(cl_khr_fp16)
@@ -1766,294 +1456,20 @@ uint4 __builtin_spirv_BuiltInSubgroupLtMask()
 }
 #endif // defined(cl_khr_subgroup_ballot)
 
-#define DEFN_SUPPORTED_OPERATION(op_name, op, type) \
-static type    OVERLOADABLE __intel_##op_name(type lhs, type rhs) { return lhs op rhs; }
-
-#define DEFN_BINARY_OPERATIONS(type)    \
-DEFN_SUPPORTED_OPERATION(and, &, type)  \
-DEFN_SUPPORTED_OPERATION(or,  |, type)  \
-DEFN_SUPPORTED_OPERATION(xor, ^, type)
-
 DEFN_BINARY_OPERATIONS(bool)
 DEFN_BINARY_OPERATIONS(uchar)
 DEFN_BINARY_OPERATIONS(ushort)
 DEFN_BINARY_OPERATIONS(uint)
 DEFN_BINARY_OPERATIONS(ulong)
 
-#define DEFN_ARITH_OPERATIONS(type)    \
-DEFN_SUPPORTED_OPERATION(mul, *, type) \
-DEFN_SUPPORTED_OPERATION(add, +, type)
-
 DEFN_ARITH_OPERATIONS(uchar)
 DEFN_ARITH_OPERATIONS(ushort)
 DEFN_ARITH_OPERATIONS(uint)
 DEFN_ARITH_OPERATIONS(ulong)
 DEFN_ARITH_OPERATIONS(float)
-#if defined(cl_khr_fp64)
-DEFN_ARITH_OPERATIONS(double)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_ARITH_OPERATIONS(half)
 #endif // defined(cl_khr_fp16)
-
-#define DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                       \
-type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                                       \
-{                                                                                          \
-    GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
-    uint lid = __intel_LocalInvocationIndex();                                        \
-    uint lsize = __intel_WorkgroupSize();                                                 \
-    data[lid] = X;                                                                       \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-    uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(lsize - 1)) - 1) ;  \
-    while( mask > 0 )                                                                    \
-    {                                                                                    \
-        uint c = lid ^ mask;                                                             \
-        type other = ( c < lsize ) ? data[ c ] : identity;                                  \
-        X = op( other, X );                                                                 \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-        data[lid] = X;                                                              \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-        mask >>= 1;                                                                      \
-    }                                                                                    \
-    type ret = data[0];                                                                  \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-    return ret;                                                                           \
-}
-
-
-#define DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                   \
-type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)                      \
-{                                                                                          \
-    GET_MEMPOOL_PTR(data, type, true, 0)                                                     \
-    uint lid = __intel_LocalInvocationIndex();                                         \
-    uint lsize = __intel_WorkgroupSize();                                                 \
-    data[lid] = X;                                                                       \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0,AcquireRelease |  WorkgroupMemory);         \
-    uint offset = 1;                                                                      \
-    while( offset < lsize )                                                              \
-    {                                                                                    \
-        type other = ( lid >= offset ) ?                                                  \
-                     data[ lid - offset ] :                                               \
-                     identity;                                                            \
-        X = op( X, other );                                                              \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-        data[lid] = X;                                                                   \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-        offset <<= 1;                                                                     \
-    }                                                                                    \
-    return X;                                                                            \
-}
-
-
-#define DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                   \
-type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)                      \
-{                                                                                         \
-    GET_MEMPOOL_PTR(data, type, true, 1)                                                 \
-    uint lid = __intel_LocalInvocationIndex();                                         \
-    uint lsize = __intel_WorkgroupSize();                                                 \
-    data[0] = identity;                                                                  \
-    data[lid + 1] = X;                                                                   \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-    X = data[lid];                                                                       \
-    uint offset = 1;                                                                      \
-    while( offset < lsize )                                                              \
-    {                                                                                    \
-        type other = ( lid >= offset ) ?                                                  \
-                     data[ lid - offset ] :                                               \
-                     identity;                                                            \
-        X = op( X, other );                                                              \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);       \
-        data[lid] = X;                                                                   \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);       \
-        offset <<= 1;                                                                    \
-    }                                                                                    \
-    return X;                                                                            \
-}
-
-#define DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity)                                  \
-type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                                       \
-{                                                                                                   \
-    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                   \
-    if(sgsize == 8)                                                                                 \
-    {                                                                                               \
-        X = op((type)intel_sub_group_shuffle( X, 0 ),                                               \
-                op((type)intel_sub_group_shuffle( X, 1 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 2 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 3 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 4 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 5 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 6 ),(type)intel_sub_group_shuffle( X, 7 )      \
-                )))))));                                                                            \
-    }                                                                                               \
-    else if(sgsize == 16)                                                                           \
-    {                                                                                               \
-        X = op((type)intel_sub_group_shuffle( X, 0 ),                                               \
-                op((type)intel_sub_group_shuffle( X, 1 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 2 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 3 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 4 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 5 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 6 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 7 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 8 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 9 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 10 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 11 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 12 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 13 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 14 ),(type)intel_sub_group_shuffle( X, 15 )    \
-                )))))))))))))));                                                                    \
-    }                                                                                               \
-    else if(sgsize == 32)                                                                           \
-    {                                                                                               \
-        X = op((type)intel_sub_group_shuffle( X, 0 ),                                               \
-                op((type)intel_sub_group_shuffle( X, 1 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 2 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 3 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 4 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 5 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 6 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 7 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 8 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 9 ),                                           \
-                op((type)intel_sub_group_shuffle( X, 10 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 11 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 12 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 13 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 14 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 15 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 16 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 17 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 18 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 19 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 20 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 21 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 22 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 23 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 24 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 25 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 26 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 27 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 28 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 29 ),                                          \
-                op((type)intel_sub_group_shuffle( X, 30 ),(type)intel_sub_group_shuffle( X, 31 )    \
-                )))))))))))))))))))))))))))))));                                                    \
-    }                                                                                               \
-    else                                                                                            \
-    {                                                                                               \
-        uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                   \
-        uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(sgsize - 1)) - 1 ); \
-        while( mask > 0 )                                                                           \
-        {                                                                                           \
-            uint c = sglid ^ mask;                                                                  \
-            type other = ( c < sgsize ) ?                                                           \
-                            intel_sub_group_shuffle( X, c ):                                        \
-                            identity;                                                               \
-            X = op( other, X );                                                                     \
-            mask >>= 1;                                                                             \
-        }                                                                                           \
-    }                                                                                               \
-    uint3 vec3;                                                                                     \
-    vec3.s0 = 0;                                                                                    \
-    return __builtin_spirv_OpGroupBroadcast_i32_##type_abbr##_v3i32(Subgroup, X, vec3 );            \
-}
-
-
-#define DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                    \
-type __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(type X)                     \
-{                                                                                        \
-    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                        \
-    uint offset = 1;                                                                     \
-    while( offset < sgsize )                                                             \
-    {                                                                                    \
-        type other = intel_sub_group_shuffle_up( (type)identity, X, offset );            \
-        X = op( X, other );                                                              \
-        offset <<= 1;                                                                    \
-    }                                                                                    \
-    return X;                                                                            \
-}
-
-#define DEFN_SUB_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                    \
-type __builtin_IB_SubGroupScanExclusive_##func##_##type_abbr(type X)                     \
-{                                                                                        \
-    uint sgsize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                        \
-    X = intel_sub_group_shuffle_up( (type)identity, X, 1 );                              \
-    uint offset = 1;                                                                     \
-    while( offset < sgsize )                                                             \
-    {                                                                                    \
-        type other = intel_sub_group_shuffle_up( (type)identity, X, offset );            \
-        X = op( X, other );                                                              \
-        offset <<= 1;                                                                    \
-    }                                                                                    \
-    return X;                                                                            \
-}
-
-#define DEFN_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                              \
-                                                                                                  \
-DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity)                                        \
-DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                     \
-DEFN_SUB_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                     \
-                                                                                                  \
-DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                                 \
-DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                              \
-DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                    \
-                                                                                                  \
-type  __builtin_spirv_OpGroup##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X) \
-{                                                                                                 \
-    if (Execution == Workgroup)                                                                   \
-    {                                                                                             \
-        switch(Operation){                                                                        \
-            case GroupOperationReduce:                                                            \
-                return __builtin_IB_WorkGroupReduce_##func##_##type_abbr(X);                      \
-                break;                                                                            \
-            case GroupOperationInclusiveScan:                                                     \
-                return __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(X);               \
-                break;                                                                            \
-            case GroupOperationExclusiveScan:                                                     \
-                return __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(X);               \
-                break;                                                                            \
-            default:                                                                              \
-                break;                                                                            \
-        }                                                                                         \
-    }                                                                                             \
-    else if (Execution == Subgroup)                                                               \
-    {                                                                                             \
-        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                     \
-        {                                                                                         \
-            switch(Operation){                                                                    \
-            case GroupOperationReduce:                                                            \
-                return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);                     \
-                break;                                                                            \
-            case GroupOperationInclusiveScan:                                                     \
-                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                \
-                break;                                                                            \
-            case GroupOperationExclusiveScan:                                                     \
-                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                       \
-                break;                                                                            \
-            default:                                                                              \
-                break;                                                                            \
-            }                                                                                     \
-        }                                                                                         \
-        else                                                                                      \
-        {                                                                                         \
-            switch(Operation){                                                                    \
-            case GroupOperationReduce:                                                            \
-                return __builtin_IB_SubGroupReduce_##func##_##type_abbr(X);                       \
-                break;                                                                            \
-            case GroupOperationInclusiveScan:                                                     \
-                return __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(X);                \
-                break;                                                                            \
-            case GroupOperationExclusiveScan:                                                     \
-                return __builtin_IB_SubGroupScanExclusive_##func##_##type_abbr(X);                \
-                break;                                                                            \
-            default:                                                                              \
-                break;                                                                            \
-            }                                                                                     \
-        }                                                                                         \
-    }                                                                                             \
-                                                                                                  \
-    return 0;                                                                                     \
-}
 
 // ---- Add ----
 DEFN_UNIFORM_GROUP_FUNC(IAdd, uchar,  i8,  __intel_add, 0)
@@ -2062,15 +1478,10 @@ DEFN_UNIFORM_GROUP_FUNC(IAdd, uint,   i32, __intel_add, 0)
 DEFN_UNIFORM_GROUP_FUNC(IAdd, ulong,  i64, __intel_add, 0)
 DEFN_UNIFORM_GROUP_FUNC(FAdd, half,   f16, __intel_add, 0)
 DEFN_UNIFORM_GROUP_FUNC(FAdd, float,  f32, __intel_add, 0)
-#if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FAdd, double, f64, __intel_add, 0)
-#endif
+
 // ---- Min ----
 DEFN_UNIFORM_GROUP_FUNC(FMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16, INFINITY)
 DEFN_UNIFORM_GROUP_FUNC(FMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32, INFINITY)
-#if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64, INFINITY)
-#endif
 DEFN_UNIFORM_GROUP_FUNC(UMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
 DEFN_UNIFORM_GROUP_FUNC(UMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
 DEFN_UNIFORM_GROUP_FUNC(UMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
@@ -2079,12 +1490,10 @@ DEFN_UNIFORM_GROUP_FUNC(SMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,  
 DEFN_UNIFORM_GROUP_FUNC(SMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
 DEFN_UNIFORM_GROUP_FUNC(SMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
 DEFN_UNIFORM_GROUP_FUNC(SMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
+
 // ---- Max ----
 DEFN_UNIFORM_GROUP_FUNC(FMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
 DEFN_UNIFORM_GROUP_FUNC(FMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
-#if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
-#endif
 DEFN_UNIFORM_GROUP_FUNC(UMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
 DEFN_UNIFORM_GROUP_FUNC(UMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
 DEFN_UNIFORM_GROUP_FUNC(UMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
@@ -2095,151 +1504,6 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32,
 DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
 
 #if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
-#define DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X)                         \
-{                                                                                                   \
-    uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
-    uint firstActive = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                              \
-                                                                                                    \
-    type result = identity;                                                                         \
-    while (activeChannels)                                                                          \
-    {                                                                                               \
-        uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                             \
-                                                                                                    \
-        type value = intel_sub_group_shuffle(X, activeId);                                          \
-        result = op(value, result);                                                                 \
-                                                                                                    \
-        uint disable = 1 << activeId;                                                               \
-        activeChannels ^= disable;                                                                  \
-    }                                                                                               \
-                                                                                                    \
-    uint3 vec3;                                                                                     \
-    vec3.s0 = firstActive;                                                                          \
-    X = __builtin_spirv_OpGroupBroadcast_i32_##type_abbr##_v3i32(Subgroup, result, vec3);           \
-}
-
-#define DEFN_SUB_GROUP_SCAN_INCL_NON_UNIFORM(type, type_abbr, op, identity, X)                      \
-{                                                                                                   \
-    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                \
-    uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
-    uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                 \
-    activeChannels ^= 1 << activeId;                                                                \
-    while (activeChannels)                                                                          \
-    {                                                                                               \
-        type value = intel_sub_group_shuffle(X, activeId);                                          \
-        activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                  \
-        if (sglid == activeId)                                                                      \
-            X = op(value, X);                                                                       \
-        activeChannels ^= 1 << activeId;                                                            \
-    }                                                                                               \
-}
-
-#define DEFN_SUB_GROUP_SCAN_EXCL_NON_UNIFORM(type, type_abbr, op, identity, X)                       \
-{                                                                                                    \
-    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                 \
-    uint activeChannels = __builtin_IB_WaveBallot(true);                                             \
-    type result = identity;                                                                          \
-    while (activeChannels)                                                                           \
-    {                                                                                                \
-        uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                              \
-        if (sglid == activeId)                                                                       \
-        {                                                                                            \
-            type value = X;                                                                          \
-            X = result;                                                                              \
-            result = op(result, value);                                                              \
-        }                                                                                            \
-        result = sub_group_shuffle(result, activeId);                                                \
-        activeChannels ^= 1 << activeId;                                                             \
-    }                                                                                                \
-}
-
-#define DEFN_SUB_GROUP_CLUSTERED_REDUCE(type, type_abbr, op, identity, X, ClusterSize)                         \
-{                                                                                                              \
-    uint clusterIndex = 0;                                                                                     \
-    uint activeChannels = __builtin_IB_WaveBallot(true);                                                       \
-    uint numActive = __builtin_spirv_OpenCL_popcount_i32(activeChannels);                                      \
-    uint numClusters = numActive / ClusterSize;                                                                \
-                                                                                                               \
-    for (uint clusterIndex = 0; clusterIndex < numClusters; clusterIndex++)                                    \
-    {                                                                                                          \
-        uint Counter = ClusterSize;                                                                            \
-        uint Ballot = activeChannels;                                                                          \
-        uint clusterBallot = 0;                                                                                \
-        while (Counter--)                                                                                      \
-        {                                                                                                      \
-            uint trailingOne = 1 << __builtin_spirv_OpenCL_ctz_i32(Ballot);                                    \
-            clusterBallot |= trailingOne;                                                                      \
-            Ballot ^= trailingOne;                                                                             \
-        }                                                                                                      \
-        uint active = __builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(Subgroup, clusterBallot);       \
-        if (active)                                                                                            \
-        {                                                                                                      \
-            DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X)                                \
-        }                                                                                                      \
-        activeChannels ^= clusterBallot;                                                                       \
-    }                                                                                                          \
-}
-
-#define SUB_GROUP_SWITCH_NON_UNIFORM(type, type_abbr, op, identity, X, Operation, ClusterSize) \
-{                                                                                              \
-    switch (Operation){                                                                        \
-        case GroupOperationReduce:                                                             \
-            DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X)                \
-            break;                                                                             \
-        case GroupOperationInclusiveScan:                                                      \
-            DEFN_SUB_GROUP_SCAN_INCL_NON_UNIFORM(type, type_abbr, op, identity, X)             \
-            break;                                                                             \
-        case GroupOperationExclusiveScan:                                                      \
-            DEFN_SUB_GROUP_SCAN_EXCL_NON_UNIFORM(type, type_abbr, op, identity, X)             \
-            break;                                                                             \
-        case GroupOperationClusteredReduce:                                                    \
-            DEFN_SUB_GROUP_CLUSTERED_REDUCE(type, type_abbr, op, identity, X, ClusterSize)     \
-            break;                                                                             \
-        default:                                                                               \
-            return 0;                                                                          \
-            break;                                                                             \
-    }                                                                                          \
-}
-
-// ClusterSize is an optional parameter
-#define DEFN_NON_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                                                             \
-type  __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr##_i32(uint Execution, uint Operation, type X, uint ClusterSize)  \
-{                                                                                                                                    \
-    if (Execution == Subgroup)                                                                                                       \
-    {                                                                                                                                \
-        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                                                        \
-        {                                                                                                                            \
-            if (Operation == GroupOperationReduce)                                                                                   \
-            {                                                                                                                        \
-                return __builtin_IB_sub_group_reduce_##func##_##type_abbr(X);                                                        \
-            }                                                                                                                        \
-            else if (Operation == GroupOperationInclusiveScan)                                                                       \
-            {                                                                                                                        \
-                return op(X, __builtin_IB_sub_group_scan_##func##_##type_abbr(X));                                                   \
-            }                                                                                                                        \
-            else if (Operation == GroupOperationExclusiveScan)                                                                       \
-            {                                                                                                                        \
-                return __builtin_IB_sub_group_scan_##func##_##type_abbr(X);                                                          \
-            }                                                                                                                        \
-            else if (Operation == GroupOperationClusteredReduce)                                                                     \
-            {                                                                                                                        \
-                return __builtin_IB_sub_group_clustered_reduce_##func##_##type_abbr(X, ClusterSize);                                 \
-            }                                                                                                                        \
-        }                                                                                                                            \
-        else {                                                                                                                       \
-            SUB_GROUP_SWITCH_NON_UNIFORM(type, type_abbr, op, identity, X, Operation, ClusterSize)                                   \
-            return X;                                                                                                                \
-        }                                                                                                                            \
-        return 0;                                                                                                                    \
-    }                                                                                                                                \
-    else                                                                                                                             \
-    {                                                                                                                                \
-        return 0;                                                                                                                    \
-    }                                                                                                                                \
-}                                                                                                                                    \
-type  __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr(uint Execution, uint Operation, type X)                          \
-{                                                                                                                                    \
-    return __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr##_i32(Execution, Operation, X, 0);                          \
-}
 
 // OpGroupNonUniformIAdd, OpGroupNonUniformFAdd
 DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uchar,  i8,  __intel_add, 0)
@@ -2247,9 +1511,6 @@ DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ushort, i16, __intel_add, 0)
 DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uint,   i32, __intel_add, 0)
 DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ulong,  i64, __intel_add, 0)
 DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, float,  f32, __intel_add, 0)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, double, f64, __intel_add, 0)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, half,   f16, __intel_add, 0)
 #endif // defined(cl_khr_fp16)
@@ -2264,9 +1525,6 @@ DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_
 DEFN_NON_UNIFORM_GROUP_FUNC(SMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
 DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32,  INFINITY)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64,  INFINITY)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16,  INFINITY)
 #endif // defined(cl_khr_fp16)
@@ -2281,9 +1539,6 @@ DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_
 DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
 DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
 #endif // defined(cl_khr_fp16)
@@ -2294,9 +1549,6 @@ DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ushort, i16, __intel_mul, 1)
 DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uint,   i32, __intel_mul, 1)
 DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ulong,  i64, __intel_mul, 1)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMul, float,  f32, __intel_mul, 1)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMul, double, f64, __intel_mul, 1)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_GROUP_FUNC(FMul, half,   f16, __intel_mul, 1)
 #endif // defined(cl_khr_fp16)
@@ -2372,17 +1624,6 @@ float __builtin_spirv_OpGroupNonUniformShuffle_i32_f32_i32(uint Execution, float
     return 0;
 }
 
-#if defined(cl_khr_fp64)
-double __builtin_spirv_OpGroupNonUniformShuffle_i32_f64_i32(uint Execution, double x, uint c)
-{
-    if (Execution == Subgroup)
-    {
-        return __builtin_IB_simd_shuffle_df(x, c);
-    }
-    return 0;
-}
-#endif // defined(cl_khr_fp64)
-
 #if defined(cl_khr_fp16)
 half __builtin_spirv_OpGroupNonUniformShuffle_i32_f16_i32(uint Execution, half x, uint c)
 {
@@ -2394,21 +1635,11 @@ half __builtin_spirv_OpGroupNonUniformShuffle_i32_f16_i32(uint Execution, half x
 }
 #endif // defined(cl_khr_fp16)
 
-#define DEFN_SUB_GROUP_SHUFFLE_XOR(TYPE, TYPE_ABBR)                                                             \
-TYPE __builtin_spirv_OpGroupNonUniformShuffleXor_i32_##TYPE_ABBR##_i32(uint Execution, TYPE x, uint c)          \
-{                                                                                                               \
-    c = get_sub_group_local_id() ^ c;                                                                           \
-    return __builtin_spirv_OpGroupNonUniformShuffle_i32_##TYPE_ABBR##_i32(Execution, x, c);                     \
-}
-
 DEFN_SUB_GROUP_SHUFFLE_XOR(uchar, i8)
 DEFN_SUB_GROUP_SHUFFLE_XOR(ushort, i16)
 DEFN_SUB_GROUP_SHUFFLE_XOR(uint, i32)
 DEFN_SUB_GROUP_SHUFFLE_XOR(ulong, i64)
 DEFN_SUB_GROUP_SHUFFLE_XOR(float, f32)
-#if defined(cl_khr_fp64)
-DEFN_SUB_GROUP_SHUFFLE_XOR(double, f64)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_SUB_GROUP_SHUFFLE_XOR(half, f16)
 #endif // defined(cl_khr_fp16)
@@ -2464,20 +1695,6 @@ float __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f32_i32(uint Execution, f
     return 0;
 }
 
-#if defined(cl_khr_fp64)
-double __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f64_i32(uint Execution, double x, uint c)
-{
-    if (Execution == Subgroup)
-    {
-        uint2 X = as_uint2(x);
-        uint2 result = (uint2)(__builtin_IB_simd_shuffle_down(X.s0, 0, c),
-            __builtin_IB_simd_shuffle_down(X.s1, 0, c));
-        return as_double(result);
-    }
-    return 0;
-}
-#endif // defined(cl_khr_fp64)
-
 #if defined(cl_khr_fp16)
 half __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f16_i32(uint Execution, half x, uint c)
 {
@@ -2490,24 +1707,12 @@ half __builtin_spirv_OpGroupNonUniformShuffleDown_i32_f16_i32(uint Execution, ha
 #endif // defined(cl_khr_fp16)
 
 // Shuffle up functions
-#define DEFN_NON_UNIFORM_SHUFFLE_UP(TYPE, TYPE_ABBR)                                                                        \
-TYPE __builtin_spirv_OpGroupNonUniformShuffleUp_i32_##TYPE_ABBR##_i32(uint Execution, TYPE x, uint c)                       \
-{                                                                                                                           \
-    if (Execution == Subgroup)                                                                                              \
-    {                                                                                                                       \
-        return intel_sub_group_shuffle_up((TYPE) 0, x, c);                                                                  \
-    }                                                                                                                       \
-    return 0;                                                                                                               \
-}
 
 DEFN_NON_UNIFORM_SHUFFLE_UP(uchar, i8)
 DEFN_NON_UNIFORM_SHUFFLE_UP(ushort, i16)
 DEFN_NON_UNIFORM_SHUFFLE_UP(uint, i32)
 DEFN_NON_UNIFORM_SHUFFLE_UP(ulong, i64)
 DEFN_NON_UNIFORM_SHUFFLE_UP(float, f32)
-#if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_SHUFFLE_UP(double, f64)
-#endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
 DEFN_NON_UNIFORM_SHUFFLE_UP(half, f16)
 #endif // defined(cl_khr_fp16)
