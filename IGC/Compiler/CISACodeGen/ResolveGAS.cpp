@@ -754,12 +754,9 @@ bool GASResolving::resolveMemoryFromHost(Function& F) const {
 
                 // currently recognize only these ones
                 // in fact intrinsics should be marked as read-only
-                // in general we should not get stacksave/restore intrinsics in input IR so they are rather a WA
                 if (auto II = dyn_cast<IntrinsicInst>(CI)) {
                     if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
-                        II->getIntrinsicID() == Intrinsic::lifetime_end ||
-                        II->getIntrinsicID() == Intrinsic::stacksave ||
-                        II->getIntrinsicID() == Intrinsic::stackrestore)
+                        II->getIntrinsicID() == Intrinsic::lifetime_end)
                         continue;
                 }
 
