@@ -44,7 +44,6 @@ IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPop.hpp"
 
-#include "CleanupInputIR.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "AdaptorCommon/LegalizeFunctionSignatures.h"
@@ -287,13 +286,6 @@ static void CommonOCLBasedPasses(
     mpmSPIR.run(*pContext->getModule());
 
     bool isOptDisabled = CompilerOpts.OptDisable;
-    if (IGC_IS_FLAG_ENABLED(EnableCleanupInputIR) && isOptDisabled)
-    {
-        // Do input IR cleanup under -O0 for now.
-        CleanupInputIR(pContext);
-        //DumpLLVMIR(pContext, "AfterCleanupInputIR");
-    }
-
     IGCPassManager mpm(pContext, "Unify");
 
     // right now we don't support any standard function in the code gen
