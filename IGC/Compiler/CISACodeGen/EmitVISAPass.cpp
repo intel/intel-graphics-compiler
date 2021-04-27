@@ -36,7 +36,6 @@ IN THE SOFTWARE.
 #include "messageEncoding.hpp"
 #include "PayloadMapping.hpp"
 #include "VectorProcess.hpp"
-#include "DebugInfo.hpp"
 #include "ShaderCodeGen.hpp"
 #include "common/allocator.h"
 #include "common/debug/Dump.hpp"
@@ -46,7 +45,6 @@ IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "common/secure_mem.h"
-#include "iStdLib/File.h"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/EmitterOpts.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -795,11 +793,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
-        if (!m_currShader->GetDebugInfoData())
-            m_currShader->SetDebugInfoData(new ::DebugInfoData);
-
-        m_currShader->GetDebugInfoData()->m_pShader = m_currShader;
-        m_currShader->GetDebugInfoData()->m_pDebugEmitter = m_pDebugEmitter;
+        m_currShader->GetDebugInfoData().m_pShader = m_currShader;
+        m_currShader->GetDebugInfoData().m_pDebugEmitter = m_pDebugEmitter;
 
         IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->resetModule(
                         IGC::ScalarVisaModule::BuildNew(m_currShader, &F));)
@@ -1004,7 +999,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (m_currShader->GetDebugInfoData())
+    if (m_currShader->GetDebugInfoData().m_pDebugEmitter)
     {
         if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
         {
@@ -1023,11 +1018,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
         else
         {
-            m_currShader->GetDebugInfoData()->markOutput(F, m_currShader);
+            m_currShader->GetDebugInfoData().markOutput(F, m_currShader);
         }
 
-        m_currShader->GetDebugInfoData()->addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
-        m_currShader->GetDebugInfoData()->transferMappings(F);
+        m_currShader->GetDebugInfoData().addVISAModule(&F, m_pDebugEmitter->getCurrentVISA());
+        m_currShader->GetDebugInfoData().transferMappings(F);
     }
 
     // Compile only when this is the last function for this kernel.
@@ -1060,21 +1055,21 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (destroyVISABuilder)
     {
-        if (!m_currShader->GetDebugInfoData())
+        if (!m_currShader->GetDebugInfoData().m_pDebugEmitter)
         {
             IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
+        }
 
-            if(!m_encoder->IsCodePatchCandidate() || m_encoder->HasPrevKernel())
-            {
-                m_pCtx->m_prevShader = nullptr;
-                // Postpone destroying VISA builder to
-                // after emitting debug info and passing context for code patching
-                m_encoder->DestroyVISABuilder();
-            }
-            if (m_encoder->IsCodePatchCandidate() && m_encoder->HasPrevKernel())
-            {
-                prevShader->GetEncoder().DestroyVISABuilder();
-            }
+        if (!m_encoder->IsCodePatchCandidate() || m_encoder->HasPrevKernel())
+        {
+            m_pCtx->m_prevShader = nullptr;
+            // Postpone destroying VISA builder to
+            // after emitting debug info and passing context for code patching
+            m_encoder->DestroyVISABuilder();
+        }
+        if (m_encoder->IsCodePatchCandidate() && m_encoder->HasPrevKernel())
+        {
+            prevShader->GetEncoder().DestroyVISABuilder();
         }
     }
 
