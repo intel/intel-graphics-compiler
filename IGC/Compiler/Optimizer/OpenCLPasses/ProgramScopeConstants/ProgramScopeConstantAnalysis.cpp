@@ -469,7 +469,8 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                     if (Constant * C = dyn_cast<Constant>(&Op))
                         addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
             }
-            else if (ce->getOpcode() == Instruction::AddrSpaceCast)
+            else if (ce->getOpcode() == Instruction::AddrSpaceCast ||
+                ce->getOpcode() == Instruction::BitCast)
             {
                 if (Constant * C = dyn_cast<Constant>(ce->getOperand(0)))
                     addData(C, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
