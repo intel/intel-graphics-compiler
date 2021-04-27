@@ -171,10 +171,11 @@ void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
         llvm::Type* floatDatType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
         llvm::PointerType* floatPtrType = llvm::PointerType::get(floatDatType, ptrv->getType()->getPointerAddressSpace());
         ptrv = mutatePtrType(ptrv, floatPtrType, builder);
+        I.setOperand(I.getPointerOperandIndex(), ptrv);
 
         // %10 = bitcast double %4 to <2 x float>
         llvm::Value* srcFloatInst = builder.CreateBitCast(I.getValueOperand(), floatDatType);
-        llvm::cast<llvm::StoreInst>(I).setOperand(0, srcFloatInst);
+        I.setOperand(0, srcFloatInst);
         m_changed = true;
     }
 }
