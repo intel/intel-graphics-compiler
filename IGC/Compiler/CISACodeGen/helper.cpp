@@ -718,13 +718,18 @@ namespace IGC
         return false;
     }
 
-    bool EvalConstantAddress(Value* address, int& offset, const llvm::DataLayout* pDL, Value* ptrSrc)
+    bool EvalConstantAddress(Value* address, unsigned int& offset, const llvm::DataLayout* pDL, Value* ptrSrc)
     {
 
         if ((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
             (ptrSrc == address))
         {
             offset = 0;
+            return true;
+        }
+        else if(ConstantInt* eltIdx = dyn_cast<ConstantInt>(address))
+        {
+            offset = int_cast<int>(eltIdx->getZExtValue());
             return true;
         }
         else if (ConstantExpr * ptrExpr = dyn_cast<ConstantExpr>(address))
@@ -753,6 +758,15 @@ namespace IGC
                 if (!eltIdx)
                     return false;
                 offset = int_cast<int>(eltIdx->getZExtValue());
+                return true;
+            }
+            if (ptrExpr->getOpcode() == Instruction::PtrToInt)
+            {
+                offset = 0;
+                if (!EvalConstantAddress(ptrExpr->getOperand(0), offset, pDL, ptrSrc))
+                {
+                    return false;
+                }
                 return true;
             }
             else if (ptrExpr->getOpcode() == Instruction::GetElementPtr)
@@ -790,6 +804,82 @@ namespace IGC
             }
         }
         return false;
+    }
+
+    // Get constant address from load/ldraw instruction
+    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf)
+    {
+        // Check if the load instruction is with constant buffer address
+        unsigned as;
+        Value* ptrVal;
+        Value* offsetVal;
+        directBuf = false;
+        statelessBuf = false;
+        bindlessBuf = false;
+        bool isPushableAddr = false;
+        unsigned int& bufIdOrGRFOffset = cl.bufId;
+        unsigned int& eltId = cl.eltId;
+        unsigned int& size_in_bytes = cl.size;
+        const llvm::DataLayout DL = pContext->getModule()->getDataLayout();
+
+        // Only load and ldRaw instructions handled, rest should return
+        if (LoadInst* load = llvm::dyn_cast<LoadInst> (&I))
+        {
+            as = load->getPointerAddressSpace();
+            ptrVal = load->getPointerOperand();
+            offsetVal = ptrVal;
+            statelessBuf = (as == ADDRESS_SPACE_CONSTANT);
+        }
+        else
+            return false;
+
+        size_in_bytes = 0;
+        BufferType bufType;
+        Value* pointerSrc = nullptr;
+
+        if (statelessBuf || bindlessBuf)
+        {
+            // If the buffer info is not encoded in the address space, we can still find it by
+            // tracing the pointer to where it's created.
+            if (!GetStatelessBufferInfo(ptrVal, bufIdOrGRFOffset, bufType, pointerSrc, directBuf))
+            {
+                return false;
+            }
+            if (!directBuf)
+            {
+                // Make sure constant folding is safe by looking up in pushableAddresses
+                PushInfo& pushInfo = pContext->getModuleMetaData()->pushInfo;
+
+                for (auto it : pushInfo.pushableAddresses)
+                {
+                    if ((bufIdOrGRFOffset * 4 == it.addressOffset) && (IGC_IS_FLAG_ENABLED(DisableStaticCheckForConstantFolding) || it.isStatic))
+                    {
+                        isPushableAddr = true;
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufIdOrGRFOffset);
+        }
+        // If it is statelessBuf, we made sure it is a constant buffer by finding it in pushableAddresses
+        if ((directBuf && (bufType == CONSTANT_BUFFER)) ||
+            (isPushableAddr && (statelessBuf || bindlessBuf)))
+        {
+            eltId = 0;
+            if (!EvalConstantAddress(offsetVal, eltId, &DL, pointerSrc))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+        size_in_bytes = (unsigned int)I.getType()->getPrimitiveSizeInBits() / 8;
+        return true;
     }
 
 

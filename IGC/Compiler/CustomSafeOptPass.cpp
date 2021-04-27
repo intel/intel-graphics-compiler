@@ -2784,57 +2784,20 @@ static Constant* GetConstantValue(Type* type, char* rawData)
 }
 
 
-Constant* IGCConstProp::replaceShaderConstant(LoadInst* inst)
+Constant* IGCConstProp::replaceShaderConstant(Instruction* inst)
 {
-    unsigned as = inst->getPointerAddressSpace();
-    bool directBuf = false;
-    bool statelessBuf = false;
-    unsigned bufIdOrGRFOffset = 0;
-    unsigned int size_in_bytes = 0;
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     ModuleMetaData* modMD = ctx->getModuleMetaData();
+    ConstantAddress cl;
+    unsigned int& bufIdOrGRFOffset = cl.bufId;
+    unsigned int& eltId = cl.eltId;
+    unsigned int& size_in_bytes = cl.size;
+    bool directBuf = false;
+    bool statelessBuf = false;
+    bool bindlessBuf = false;
 
-    BufferType bufType;
-    Value* pointerSrc = nullptr;
-
-    if (as == ADDRESS_SPACE_CONSTANT)
+    if (getConstantAddress(*inst, cl, ctx, directBuf, statelessBuf, bindlessBuf))
     {
-        if (!GetStatelessBufferInfo(inst->getPointerOperand(), bufIdOrGRFOffset, bufType, pointerSrc, directBuf))
-        {
-            return nullptr;
-        }
-        if (!directBuf)
-        {
-            // Make sure constant folding is safe by looking up in pushableAddresses
-            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            PushInfo& pushInfo = ctx->getModuleMetaData()->pushInfo;
-
-            for (auto it : pushInfo.pushableAddresses)
-            {
-                if (bufIdOrGRFOffset * 4 == it.addressOffset)
-                {
-                    statelessBuf = true;
-                    break;
-                }
-            }
-        }
-    }
-    else
-    {
-        bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufIdOrGRFOffset);
-    }
-
-    // If it is statelessBuf, we made sure it is a constant buffer by finding it in pushableAddresses
-    if (modMD && ((directBuf && (bufType == CONSTANT_BUFFER)) || statelessBuf))
-    {
-        Value* ptrVal = inst->getPointerOperand();
-        int eltId = 0;
-        size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
-        if (!EvalConstantAddress(ptrVal, eltId, m_TD, pointerSrc))
-        {
-            return nullptr;
-        }
-
         if (size_in_bytes)
         {
             if (modMD->immConstant.data.size() &&
