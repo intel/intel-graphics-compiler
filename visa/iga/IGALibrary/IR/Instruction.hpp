@@ -83,7 +83,7 @@ namespace iga
             , m_instId(0xFFFFFFFF)
             , m_pc(0)
             , m_sendDstLength(-1)
-            , m_sendSrc0Len(-1)
+            , m_sendSrc0Length(-1)
             , m_sendSrc1Length(-1)
         {
         }
@@ -166,10 +166,11 @@ namespace iga
         // e.g. pass Operand::NULL_UD_SRC
         void setSource(SourceIndex srcIx, const Operand &op);
 
-        void setMsgDesc(const SendDesc &msg) {m_desc = msg;}
         void setExtMsgDesc(const SendDesc &msg) {m_exDesc = msg;}
+        void setMsgDesc(const SendDesc &msg) {m_desc = msg;}
+
         void setDstLength(int dstLength) {m_sendDstLength = dstLength;}
-        void setSrc0Length(int src0Length) {m_sendSrc0Len = src0Length;}
+        void setSrc0Length(int src0Length) {m_sendSrc0Length = src0Length;}
         void setSrc1Length(int src1Length) {m_sendSrc1Length = src1Length;}
 
         void setSWSB(SWSB swsb) {m_depInfo = swsb;}
@@ -184,6 +185,7 @@ namespace iga
         // name lacks get*** for consistency with other classes that all use
         // just "platform()"
         Platform          platform() const {return m_opSpec.platform;}
+        const Model      &model() const;
 
         ///////////////////////////////////////////////////////////////////////
         // operations that get instruction state
@@ -239,8 +241,14 @@ namespace iga
 
         SendDesc           getExtMsgDescriptor() const {return m_exDesc;}
         SendDesc           getMsgDescriptor()    const {return m_desc;}
+        // (For send messages) this returns the dst payload length in registers
+        // as encoded by the descriptors (if known).
         int                getDstLength() const {return m_sendDstLength;}
-        int                getSrc0Length() const {return m_sendSrc0Len;}
+        // (For send messages) this returns the src0 payload length in registers
+        // as encoded by the descriptors (if known).
+        int                getSrc0Length() const {return m_sendSrc0Length;}
+        // (For send messages) this returns the src1 payload length in registers
+        // as encoded by the descriptors (if known).
         int                getSrc1Length() const {return m_sendSrc1Length;}
 
         const InstOptSet&  getInstOpts() const {return m_instOpts;}
@@ -276,14 +284,20 @@ namespace iga
 
         SendDesc         m_exDesc;
         SendDesc         m_desc;
+        // These fields are best-effort decodes of the message lengths
+        // E.g. if the fields are buried in an immediate send descriptor,
+        // extract them here.  In some cases (e.g. reg descriptors), we can't
+        // help you.  Oppose architects that propose instruction definitions
+        // that are taken form registers.
         int              m_sendDstLength; // -1 if unknown
-        int              m_sendSrc0Len; // -1 if unknown
+        int              m_sendSrc0Length; // -1 if unknown
         int              m_sendSrc1Length; // -1 if unknown
 
         InstOptSet       m_instOpts; // miscellaneous instruction attributes
         SWSB             m_depInfo;
 
-        int              m_instId; // unique id for this instruction (unique in the kernel)
+        int              m_instId; // unique id for this instruction
+                                   // (unique in the kernel)
 
         int32_t          m_pc; // the encode/decode PC for this instruction
         Loc              m_instLoc; // source location info we keep this

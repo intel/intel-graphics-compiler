@@ -32,8 +32,8 @@ IN THE SOFTWARE.
 
 #include <algorithm>
 #include <bitset>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -50,10 +50,14 @@ static std::string disassembleInst(
 {
     ErrorHandler eh;
     std::stringstream ss;
-    FormatOpts fopts(platform);
+    const Model *model = Model::LookupModel(platform);
+    if (!model) {
+        return "invalid model???";
+    }
+    FormatOpts fopts(*model);
     fopts.addApiOpts(fmtOpts);
     fopts.setSWSBEncodingMode(
-        iga::Model::LookupModel(platform)->getSWSBEncodeMode());
+        Model::LookupModel(platform)->getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopts, fromPc, bits, useNativeDecoder);
 
     return ss.str();

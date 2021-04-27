@@ -56,7 +56,7 @@ class Formatter : public BasicFormatter
 {
 protected:
     ErrorHandler&                errorHandler;
-    const Model                 *model;
+    const Model&                 model;
     const FormatOpts&            opts;
     struct ColumnPreferences     cols;
     const Instruction           *currInst;
@@ -84,6 +84,7 @@ protected:
         bool emitSubReg = true,
         bool isSIMT = false);
     void formatDstType(const OpSpec &os, Type type);
+    void formatSrcBare(const Operand &src);
 
 public:
     Formatter(
@@ -93,12 +94,11 @@ public:
         const ColumnPreferences &colPrefs = ColumnPreferences())
         : BasicFormatter(fopts.printAnsi, out)
         , errorHandler(err)
+        , model(fopts.model)
         , opts(fopts)
         , cols(colPrefs)
         , currInst(nullptr)
     {
-        model = Model::LookupModel(platform());
-        IGA_ASSERT(model, "invalid model");
         // TODO: could make these mappable via environment variable
         //
         // export IGA_FormatAnsiRegisterArf="\033[38;2;138;43;211m"
@@ -119,9 +119,7 @@ public:
     }
 
 
-    Platform platform() const {
-        return opts.platform;
-    }
+    Platform platform() const {return model.platform;}
 
 
     // labels are of the form "L" + off, but we prefix a
@@ -167,6 +165,28 @@ public:
         const void *vbits)
     {
         currInstBits = (const uint8_t *)vbits;
+        if (opts.printInstDefs && opts.liveAnalysis) {
+            std::stringstream ss;
+            ss << "// itrs: " << opts.liveAnalysis->iterations << "\n";
+            ss << "// live-in:\n";
+            std::vector<const Dep*> liveIn;
+            for (const Dep &d : opts.liveAnalysis->liveIn) {
+                liveIn.push_back(&d);
+            }
+            std::sort(liveIn.begin(), liveIn.end(),
+                [&](const Dep *d1, const Dep *d2) {
+                    if (d1->use->getID() < d2->use->getID())
+                        return true;
+                    else if (d1->def && d2->def && d1->def->getID() < d2->def->getID())
+                        return true;
+                    else
+                        return false;
+                });
+            for (const Dep *d : liveIn) {
+                ss << "//   "; d->str(ss); ss << "\n";
+            }
+            emitAnsi(ANSI_FADED, ss.str());
+        }
 
         for (const Block *b : k.getBlockList()) {
             if (!opts.numericLabels) {
@@ -202,7 +222,7 @@ public:
 
         const uint32_t *bits = (const uint32_t *)vbits;
         emit(ANSI_COMMENT);
-        emit("/*");
+        emit("/* ");
         bool first = true;
         if (printInstId) {
             std::stringstream ss;
@@ -234,14 +254,14 @@ public:
                 emit("        ");
                 emit(' ');
             } else {
-                o << std::setw(8) << std::setfill('0') << bits[3];
+                emitHexDigits<uint32_t>(bits[3], 8);
                 emit('`');
-                o << std::setw(8) << std::setfill('0') << bits[2];
+                emitHexDigits<uint32_t>(bits[2], 8);
                 emit('`');
             }
-            o << std::setw(8) << std::setfill('0') << bits[1];
+            emitHexDigits<uint32_t>(bits[1], 8);
             emit('`');
-            o << std::setw(8) << std::setfill('0') << bits[0];
+            emitHexDigits<uint32_t>(bits[0], 8);
         }
         emit(" */ ");
         o << std::setfill(' ');
@@ -286,37 +306,37 @@ public:
                 emitAnsi(ANSI_FADED, what, ":", rs.str());
             }
         };
-        RegSet rsDst(*model);
-        rsDst.addDestinationOutputs(i);
+        RegSet rsDst(model);
+        rsDst.addExplicitDestinationOutputs(i);
         emitSet("d", rsDst);
 
-        RegSet rsDfl(*model);
+        RegSet rsDfl(model);
         rsDfl.addFlagModifierOutputs(i);
         emitSet("d-fl", rsDfl);
 
-        RegSet rsAcc(*model);
-        rsAcc.addDestinationImplicitAccumulator(i);
-        emitSet("d-acc", rsAcc);
+        RegSet rsAcc(model);
+        rsAcc.addDestinationImplicit(i);
+        emitSet("d-impl", rsAcc);
 
         if (!first) {
             newline();
             first = true;
         }
         for (int ix = 0; ix < (int)i.getSourceCount(); ix++) {
-            RegSet rs(*model);
+            RegSet rs(model);
             rs.addSourceOperandInput(i, ix);
             std::stringstream ss;
             ss << "s" << ix;
             emitSet(ss.str(), rs);
         }
 
-        RegSet rsPrS(*model);
+        RegSet rsPrS(model);
         rsPrS.addPredicationInputs(i);
         emitSet("s-pr", rsPrS);
 
-        RegSet rsAccS(*model);
-        rsAccS.addSourceImplicitAccumulator(i);
-        emitSet("s-acc", rsAccS);
+        RegSet rsAccS(model);
+        rsAccS.addSourceImplicit(i);
+        emitSet("s-impl", rsAccS);
 
         if (!first)
             newline();
@@ -440,7 +460,7 @@ private:
     // e.g. "sync.nop" may not be shortened to "nop" because then it would
     // parse back as the wrong thing
     bool shortOpWouldBeAmbiguous(const OpSpec &us) const {
-        for (const OpSpec *them : model->ops()) {
+        for (const OpSpec *them : model.ops()) {
             if (us.op != them->op &&
                 us.mnemonic.str() == them->mnemonic.str())
             {
@@ -605,7 +625,7 @@ private:
         const OpSpec& os,
         const Operand &op)
     {
-        if ((os.isBranching() && model->supportsSimplifiedBranches())) {
+        if ((os.isBranching() && model.supportsSimplifiedBranches())) {
             // doesn't support types
             return;
         }
@@ -685,22 +705,35 @@ private:
         // separate all comments with a semicolon
         Intercalator semiColon(ss, "; ");
 
-        if (opts.liveAnalysis) {
-            // -Xprint-deps
-            semiColon.insert();
+        if (opts.printInstDefs && opts.liveAnalysis) {
+            // -Xprint-defs
             // emit all live ranges where this instruction is the use
             // this will indicate the source instruction
-            intercalate(ss, ",", opts.liveAnalysis->deps,
+            std::stringstream ss2;
+            intercalate(ss2, ",", opts.liveAnalysis->deps,
                 [&](const Dep &d) {return d.use == &i;},
                 [&](const Dep &d) {
                     if (d.def) {
-                        ss << " #" << d.def->getID();
+                        ss2 << " #" << d.def->getID();
                     } else {
-                        ss << " IN";
+                        ss2 << " IN";
                     }
-                    d.values.str(ss);
-                    // ss << " @" << d.minInOrderDist;
+                    d.values.str(ss2);
                 });
+            if (ss2.tellp() > 0) {
+                semiColon.insert();
+                ss << ss2.str();
+            }
+
+#if 0
+            // for debugging (normally used by JSON only)
+            const auto &live = opts.liveAnalysis->sums[i.getID()];
+            semiColon.insert();
+            ss << "r=" << live.grfBytes;
+            ss << ",acc=" << live.accBytes;
+            ss << ",f=" << live.flagBytes;
+            ss << ",a=" << live.indexBytes;
+#endif
         }
 
         const std::string &comment = i.getComment();
@@ -718,14 +751,16 @@ private:
             //
             if (decodeSendDesc) {
                 // ld/st syntax not enabled
-                RegRef indDesc {0, 0};
+                if (ss.tellp() != 0) {
+                    semiColon.insert();
+                }
                 EmitSendDescriptorInfo(
                     platform(),
                     i.getSendFc(),
                     i.getExecSize(),
                     !i.getDestination().isNull(),
                     i.getDstLength(), i.getSrc0Length(), i.getSrc1Length(),
-                    exDesc, desc, indDesc,
+                    exDesc, desc,
                     ss);
             } else if (opts.printLdSt) {
                 // tried to format with ld/st syntax and ...
@@ -785,7 +820,7 @@ private:
         formatScalarRegRead(rnm, rr);
     }
     void formatScalarRegRead(RegName rnm, RegRef rr) {
-        const auto *rinfo = model->lookupRegInfoByRegName(rnm);
+        const auto *rinfo = model.lookupRegInfoByRegName(rnm);
         if (rinfo) {
             emit(ANSI_REGISTER(rnm));
             emit(rinfo->syntax);
@@ -802,9 +837,27 @@ private:
 }; //end: class Formatter
 
 
+void Formatter::formatSrcBare(const Operand &src)
+{
+    emit(ANSI_REGISTER(src.getDirRegName()));
+
+    const RegInfo *ri = model.lookupRegInfoByRegName(src.getDirRegName());
+    if (ri == nullptr) {
+        emit("???");
+        return;
+    }
+    emit(ri->syntax);
+    int regNum = (int)src.getDirRegRef().regNum;
+    if (regNum != 0 || ri->hasRegNum()) {
+        emit(regNum);
+    }
+    emit(ANSI_RESET);
+}
+
+
 void Formatter::formatDstType(const OpSpec &os, Type type)
 {
-    if (os.isBranching() && model->supportsSimplifiedBranches()) {
+    if (os.isBranching() && model.supportsSimplifiedBranches()) {
         return; // doesn't support types
     }
     if (os.hasImplicitDstType()) {
@@ -822,9 +875,9 @@ void Formatter::formatDstType(const OpSpec &os, Type type)
 
 void Formatter::formatBareRegisterUnescaped(RegName regName, int regNum)
 {
-    const RegInfo *ri = model->lookupRegInfoByRegName(regName);
+    const RegInfo *ri = model.lookupRegInfoByRegName(regName);
     if (ri == nullptr) {
-        emit("RegName::???");
+        emit("???");
         return;
     }
 
@@ -849,7 +902,7 @@ void Formatter::formatRegister(
     //  - caller demands it (e.g. it's a nonsend) AND
     //       the register chosen has subregisters (e.g. not ce and null)
     //  - OR it's non-zero (either bad IR or something's there)
-    const RegInfo *ri = model->lookupRegInfoByRegName(regName);
+    const RegInfo *ri = model.lookupRegInfoByRegName(regName);
     if (ri == nullptr) {
         emit("RegName::???");
         return;
@@ -1041,7 +1094,7 @@ void Formatter::formatSrcOp(
     default: emit("???");
     }
 
-    if (!model->supportsSimplifiedBranches() ||
+    if (!model.supportsSimplifiedBranches() ||
         src.getKind() != Operand::Kind::LABEL)
     {
         formatSourceType(static_cast<int>(srcIx), os, src);
@@ -1125,12 +1178,11 @@ bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
         return false;
     }
     const auto exDesc = i.getExtMsgDescriptor();
-    RegRef indDesc = REGREF_INVALID;
 
     const auto sfid = i.getSendFc();
     const auto di =
         tryDecode(platform(), sfid, i.getExecSize(),
-            exDesc, desc, indDesc, nullptr);
+            exDesc, desc, nullptr);
     if (!di) {
         // if decode failed fallback to the canonical send syntax
         return false;
@@ -1286,7 +1338,7 @@ void FormatKernel(
     const Kernel& k,
     const void *bits)
 {
-    IGA_ASSERT(k.getModel().platform == opts.platform,
+    IGA_ASSERT(k.getModel().platform == opts.model.platform,
         "kernel and options must have same platform");
     if (!opts.printJson) {
         Formatter f(e, o, opts);
@@ -1330,17 +1382,17 @@ void FormatInstruction(
     const void *bits,
     bool useNativeDecoder)
 {
-    const iga::Model *model = iga::Model::LookupModel(opts.platform);
-
     size_t instLen = ((const MInst *)bits)->isCompact() ? 8 : 16;
 
     DecoderOpts dopts;
     dopts.useNumericLabels = true;
     iga::Kernel *k = nullptr;
-    if (useNativeDecoder && iga::native::IsDecodeSupported(*model, dopts)) {
-        k = iga::native::Decode(*model, dopts, e, bits, instLen);
+    if (useNativeDecoder &&
+        iga::native::IsDecodeSupported(opts.model, dopts))
+    {
+        k = iga::native::Decode(opts.model, dopts, e, bits, instLen);
     } else {
-        k = iga::ged::Decode(*model, dopts, e, bits, instLen);
+        k = iga::ged::Decode(opts.model, dopts, e, bits, instLen);
     }
     if (e.hasErrors()) {
         for (const auto &err : e.getErrors()) {

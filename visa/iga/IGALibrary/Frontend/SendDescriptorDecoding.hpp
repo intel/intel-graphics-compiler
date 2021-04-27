@@ -42,7 +42,6 @@ namespace iga
         int src1Len,
         const SendDesc &exDesc,
         const SendDesc &desc,
-        RegRef indDesc,
         std::stringstream &ss);
 } // iga::
 

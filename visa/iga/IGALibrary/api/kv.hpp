@@ -95,6 +95,12 @@ public:
     }
 
 
+    // Returns a raw handle to the underlying interface object.
+    const kv_t *getHandle() const {return m_kv;}
+    // Returns a raw handle to the underlying interface object.
+    kv_t *getHandle() {return m_kv;}
+
+
     // If the kernel bits are malformed, m_kv is a valid instance of kernel View
     // If user proceeds to use it to retrieve information per instructiong we do not gurantee
     // that information is correct

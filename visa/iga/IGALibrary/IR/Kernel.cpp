@@ -123,8 +123,7 @@ Instruction *Kernel::createSendInstruction(
     ChannelOffset chOff,
     MaskCtrl ectr,
     const SendDesc &exDesc,
-    const SendDesc &desc
-    )
+    const SendDesc &desc)
 {
     Instruction *inst = new(&m_mem)Instruction(
         op,
@@ -136,8 +135,8 @@ Instruction *Kernel::createSendInstruction(
     inst->setPredication(predOpnd);
     inst->setFlagReg(flagReg);
 
-    inst->setMsgDesc(desc);
     inst->setExtMsgDesc(exDesc);
+    inst->setMsgDesc(desc);
 
     ///////////////////////////////////////////////////////////////////////////
     // make a best effort to set payload lengths
@@ -145,11 +144,9 @@ Instruction *Kernel::createSendInstruction(
     //
     Platform p = inst->getOpSpec().platform;
     bool immDescsHaveLens = desc.isImm();
-    bool attemptLenDeduction = !immDescsHaveLens;
-    //
     if (immDescsHaveLens) {
         dstLen = (int)((desc.imm >> 20) & 0x1F);
-    } else if (desc.isImm() && attemptLenDeduction) {
+    } else if (desc.isImm()) {
         // if we at least have the SFID and an immediate descriptor
         // try and deduce it from descriptor details we make a
         // best-effort for exDesc, but may not need it specifically

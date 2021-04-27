@@ -339,6 +339,10 @@ namespace iga
 
 
         static const Model  *LookupModel(Platform platform);
+        //
+        // same as above, but asserts if nullptr
+        // useful in cases where we know the platform is valid
+        static const Model  &LookupModelRef(Platform platform);
 
 
         bool supportsHwDeps() const

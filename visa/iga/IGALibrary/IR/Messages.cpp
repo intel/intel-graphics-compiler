@@ -39,8 +39,7 @@ static void deducePayloadSizes(
 {
     SendDesc desc(_desc), exDesc(0);
 
-    const auto result =
-        tryDecode(p, sfid, execSize, exDesc, desc, REGREF_INVALID, nullptr);
+    const auto result = tryDecode(p, sfid, execSize, exDesc, desc, nullptr);
     if (!result) {
         return;
     }
@@ -388,8 +387,7 @@ static void postProcessDecode(
     if (fields) {
         std::sort(result.fields.begin(), result.fields.end(),
             [&] (const auto &f1, const auto &f2) {
-                return std::get<0>(f1).offset >
-                    std::get<0>(f2).offset;
+                return std::get<0>(f1).offset > std::get<0>(f2).offset;
             });
         *fields = result.fields;
         //
@@ -462,21 +460,21 @@ static void postProcessDecode(
 
 DecodeResult iga::tryDecode(
     Platform platform, SFID sfid, ExecSize execSize,
-    SendDesc exDesc, SendDesc desc, RegRef indDesc,
+    SendDesc exDesc, SendDesc desc,
     DecodedDescFields *fields)
 {
     DecodeResult result;
 
     if (isHDC(sfid)) {
         decodeDescriptorsHDC(
-            platform, sfid,
-            exDesc, desc, indDesc,
+            platform, sfid, execSize,
+            exDesc, desc,
             result);
     }
     else {
         decodeDescriptorsOther(
-            platform, sfid,
-            exDesc, desc, indDesc,
+            platform, sfid, execSize,
+            exDesc, desc,
             result);
     }
 
@@ -568,7 +566,8 @@ const SendOpInfo &iga::lookupSendOpInfo(const char *mnemonic)
     }
 
     static constexpr SendOpInfo INVALID(SendOp::INVALID, "?");
-    return INVALID;}
+    return INVALID;
+}
 
 
 bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
@@ -595,6 +594,10 @@ bool iga::encodeDescriptors(
     SendDesc &desc,
     std::string &err)
 {
+    if (desc.isReg()) {
+        err = "cannot encode with register desc";
+        return false;
+    }
     // TODO: support HDC here
     // encodeVectorMessageHDC(p, vma, exDesc, desc);
     err = "unsupported message for SFID";

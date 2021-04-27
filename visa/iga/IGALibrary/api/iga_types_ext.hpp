@@ -210,10 +210,10 @@ namespace iga
                    // Reserved <= 7
         OV = 8,    // overflow
         UN,        // unordered (NaN)
-        EO = 0xFF, // special implicit flag modifier for math.invm and math.rsqrtm
-                   // [trb] from Balakumar Rajendran (Apr 2016)
+        EO = 0xFF, // special implicit flag modifier for math macros
+                   // math.invm and math.rsqrtm.
                    // "The .eo means early out.  It doesn't have bits in the
-                   // instruction when a macro is executed.  The flag is set
+                   // instruction due to overlap with MathFC.  The flag is set
                    // for early out conditions including division by
                    // 0, infinity, etc"
     };

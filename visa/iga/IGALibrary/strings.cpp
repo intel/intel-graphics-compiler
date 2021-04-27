@@ -129,6 +129,18 @@ std::string iga::trimTrailingWs(const std::string &s)
     return s.substr(0, (size_t)i + 1);
 }
 
+std::vector<std::string> iga::toLines(const std::string &s)
+{
+    std::vector<std::string> ls;
+    std::stringstream ss(s);
+    std::string to;
+
+    while (std::getline(ss,to,'\n'))
+        ls.emplace_back(to);
+
+    return ls;
+}
+
 size_t iga::copyOut(char *buf, size_t bufCap, std::iostream &ios)
 {
     size_t sslen = (size_t)ios.tellp();
@@ -190,4 +202,21 @@ std::string iga::fmtHex(uint64_t val, int w)
     std::stringstream ss;
     fmtHex(ss, val, w);
     return ss.str();
+}
+
+std::string iga::fmtHexSigned(int64_t val, int w)
+{
+    std::stringstream ss;
+    fmtHexSigned(ss, val, w);
+    return ss.str();
+}
+
+void iga::fmtHexSigned(std::ostream &os, int64_t val, int w)
+{
+    if (val < 0) {
+        os << "-";
+        fmtHex(os, -val);
+    } else {
+        fmtHex(os, val);
+    }
 }
