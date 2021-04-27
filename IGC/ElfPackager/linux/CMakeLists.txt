@@ -87,8 +87,6 @@ set(bifDepend ${IGC_BUILD__PROJ__BiFModule_OCL})
 igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BC_120 "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" ${bifDepend})
 igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BC_121 "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" ${bifDepend})
 igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BC_122 "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc"   ${bifDepend})
-igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BC_123 "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv_fp64.bc"   ${bifDepend})
-
 # =========================================== Custom targets ============================================
 
 set(IGC_BUILD__PROJ__BiFLib_OCL       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFLibOcl")

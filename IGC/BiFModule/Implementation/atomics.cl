@@ -29,12 +29,109 @@ IN THE SOFTWARE.
 #define ATOMIC_FLAG_TRUE 1
 #define ATOMIC_FLAG_FALSE 0
 
+#define SEMANTICS_PRE_OP_NEED_FENCE ( Release | AcquireRelease | SequentiallyConsistent)
+
+#define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent)
+
 
 
   __local uint* __builtin_IB_get_local_lock();
   __global uint* __builtin_IB_get_global_lock();
   void __builtin_IB_eu_thread_pause(uint value);
   void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1);
+
+#define SPINLOCK_START(addr_space) \
+  { \
+  volatile bool done = false; \
+  while(!done) { \
+       __builtin_IB_eu_thread_pause(32); \
+       if(atomic_cmpxchg(__builtin_IB_get_##addr_space##_lock(), 0, 1) == 0) {
+
+#define SPINLOCK_END(addr_space) \
+            done = true; \
+            atomic_store(__builtin_IB_get_##addr_space##_lock(), 0); \
+  }}}
+
+#define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                      \
+  if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                         \
+  {                                                                                   \
+      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
+      __intel_memfence_handler(flushL3, isGlobal, false);                             \
+  }
+
+#define FENCE_POST_OP(Scope, Semantics, isGlobal)                                     \
+  if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                       \
+  {                                                                                   \
+      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
+      __intel_memfence_handler(flushL3, isGlobal, false);                             \
+  }
+
+// This fencing scheme allows us to obey the memory model when coherency is
+// enabled or disabled.  Because the L3$ has 2 pipelines (cohereny&atomics and
+// non-coherant) the fences guarentee the memory model is followed when coherency
+// is disabled.
+//
+// When coherency is enabled, though, all HDC traffic uses the same L3$ pipe so
+// these fences would not be needed.  The compiler is agnostic to coherency
+// being enabled or disbled so we asume the worst case.
+
+
+#define atomic_operation_1op( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )   \
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = INTRINSIC( (Pointer), (Value) );                                            \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_operation_1op_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = as_float(INTRINSIC( (Pointer), (Value) ));                                  \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_operation_1op_as_double( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = as_double(INTRINSIC( (Pointer), (Value) ));                                  \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_operation_1op_as_half( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = as_half(INTRINSIC( (Pointer), (Value) ));                                  \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_operation_0op( INTRINSIC, TYPE, Pointer, Scope, Semantics, isGlobal )          \
+{                                                                                             \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
+    TYPE result = INTRINSIC( (Pointer) );                                                     \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
+    return result;                                                                            \
+}
+
+#define atomic_cmpxhg( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp, isGlobal )\
+{                                                                                         \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                          \
+    TYPE result = INTRINSIC( (Pointer), (Comp), (Value) );                                \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                         \
+    return result;                                                                        \
+}
+
+#define atomic_cmpxhg_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp, isGlobal )\
+{                                                                                         \
+    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                          \
+    TYPE result = as_float(INTRINSIC( (Pointer), (Comp), (Value) ));                      \
+    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                         \
+    return result;                                                                        \
+}
+
 
 // Atomic loads/stores must be implemented with an atomic operation - While our HDC has an in-order
 // pipeline the L3$ has 2 pipelines - coherant and non-coherant.  Even when coherency is disabled atomics
@@ -123,7 +220,38 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f32_i32_i32, )( __generic 
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+#if defined(cl_khr_fp64)
+#if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0f64_i32_i32, )( __private double *Pointer, int Scope, int Semantics )
+{
+    return *Pointer;
+}
+
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p1f64_i32_i32, )( __global double *Pointer, int Scope, int Semantics )
+{
+    return as_double( SPIRV_BUILTIN(AtomicOr, _p1i64_i32_i32_i64, )( (__global long*)Pointer, Scope, Semantics, 0 ) );
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p3f64_i32_i32, )( __local double *Pointer, int Scope, int Semantics )
+{
+    return as_double( SPIRV_BUILTIN(AtomicOr, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, 0 ) );
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f64_i32_i32, )( __generic double *Pointer, int Scope, int Semantics )
+{
+    return as_double( SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( (__generic long*)Pointer, Scope, Semantics, 0 ) );
+}
+
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+#endif // defined(cl_khr_fp64)
+
+
 // Atomic Stores
+
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
 {
@@ -209,7 +337,41 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f32_i32_i32_f32, )( __gene
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+#if defined(cl_khr_fp64)
+#if defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p0f64_i32_i32_f64, )( __private double *Pointer, int Scope, int Semantics, double Value )
+{
+    SPIRV_BUILTIN(AtomicExchange, _p0f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+}
+
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value )
+{
+    SPIRV_BUILTIN(AtomicExchange, _p1f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+}
+
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value )
+{
+    SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicStore, _p4f64_i32_i32_f64, )( __generic double *Pointer, int Scope, int Semantics, double Value )
+{
+    SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )( Pointer, Scope, Semantics, Value );
+}
+
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+#endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+#endif // defined(cl_khr_fp64)
+
+
 // Atomic Exchange
+
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Semantics, int Value )
 {
@@ -395,7 +557,47 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f32_i32_i32_f32, )( __
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+#if defined(cl_khr_fp64)
+#if defined(cl_khr_int64_base_atomics)
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p0f64_i32_i32_f64, )( __private double *Pointer, int Scope, int Semantics, double Value)
+{
+    return as_double(SPIRV_BUILTIN(AtomicExchange, _p0i64_i32_i32_i64, )((__private long*) Pointer, Scope, Semantics, as_long(Value)));
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
+{
+    return as_double(SPIRV_BUILTIN(AtomicExchange, _p1i64_i32_i32_i64, )((__global long*) Pointer, Scope, Semantics, as_long(Value)));
+}
+
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value)
+{
+    return as_double(SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )((__local long*) Pointer, Scope, Semantics, as_long(Value)));
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )( __generic double *Pointer, int Scope, int Semantics, double Value)
+{
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )((__local double*) Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p1f64_i32_i32_f64, )((__global double*) Pointer, Scope, Semantics, Value);
+    }
+}
+
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+#endif // defined(cl_khr_int64_base_atomics)
+#endif // defined(cl_khr_fp64)
+
+
 // Atomic Compare Exchange
+
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
@@ -1494,7 +1696,50 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f32_i32_i32_f32, )( __g
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )( __private double *Pointer, int Scope, int Semantics, double Value)
+{
+    double orig = *Pointer;
+    *Pointer += Value;
+    return orig;
+}
 
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = orig + Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = orig + Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f64_i32_i32_f64, )( __generic double *Pointer, int Scope, int Semantics, double Value)
+{
+    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )((local double*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )((global double*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f16_i32_i32_f16, )( private half* Pointer, int Scope, int Semantics, half Value)
 {
@@ -1572,6 +1817,51 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f32_i32_i32_f32, )( gen
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f64_i32_i32_f64, )( private double* Pointer, int Scope, int Semantics, double Value)
+{
+    double orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    return orig;
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )( local double* Pointer, int Scope, int Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = (orig < Value) ? orig : Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f64_i32_i32_f64, )( generic double* Pointer, int Scope, int Semantics, double Value)
+{
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )((__local double*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )((__global double*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f16_i32_i32_f16, )( private half* Pointer, int Scope, int Semantics, half Value)
 {
     half orig = *Pointer;
@@ -1644,6 +1934,51 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f32_i32_i32_f32, )( gen
     else
     {
         return SPIRV_BUILTIN(AtomicFMaxEXT, _p1f32_i32_i32_f32, )((__global float*)Pointer, Scope, Semantics, Value);
+    }
+}
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f64_i32_i32_f64, )( private double* Pointer, int Scope, int Semantics, double Value)
+{
+    double orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    return orig;
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, true)
+    SPINLOCK_START(global)
+    orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    SPINLOCK_END(global)
+    FENCE_POST_OP(Scope, Semantics, true)
+    return orig;
+}
+
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )( local double* Pointer, int Scope, int Semantics, double Value)
+{
+    double orig;
+    FENCE_PRE_OP(Scope, Semantics, false)
+    SPINLOCK_START(local)
+    orig = *Pointer;
+    *Pointer = (orig > Value) ? orig : Value;
+    SPINLOCK_END(local)
+    FENCE_POST_OP(Scope, Semantics, false)
+    return orig;
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f64_i32_i32_f64, )( generic double* Pointer, int Scope, int Semantics, double Value)
+{
+    if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )((__local double*)Pointer, Scope, Semantics, Value);
+    }
+    else
+    {
+        return SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )((__global double*)Pointer, Scope, Semantics, Value);
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)

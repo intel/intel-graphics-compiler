@@ -370,10 +370,6 @@ static llvm::Optional<vc::ExternalData> fillExternalData() {
       getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
     return {};
-  ExtData.OCLFP64BIFModule =
-      getGenericModuleBuffer(OCL_BC_FP64);
-  if (!ExtData.OCLFP64BIFModule)
-    return {};
   // FIXME: consider other binary kinds besides ocl.
   ExtData.VCPrintf32BIFModule =
       getVCModuleBuffer<vc::bif::RawKind::PrintfOCL32>();
@@ -462,7 +458,6 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   if (!ExtData)
     return getError(vc::make_error_code(vc::errc::bif_load_fail),
                     OutputArgs);
-
   llvm::ArrayRef<uint32_t> SpecConstIds{InputArgs->pSpecConstantsIds,
                                         InputArgs->SpecConstantsSize};
   llvm::ArrayRef<uint64_t> SpecConstValues{InputArgs->pSpecConstantsValues,

@@ -74,12 +74,6 @@ static cl::opt<std::string>
                       cl::init(""));
 
 static cl::opt<std::string>
-    OCLFP64BiFPath("vc-ocl-fp64-bif-path",
-                  cl::desc("full name (with path) of a BiF file with "
-                            "precompiled OpenCL fp64 builtins"),
-                  cl::init(""));
-
-static cl::opt<std::string>
     VCEmulationBiFPath("vc-emulation-bif-path",
                        cl::desc("full name (with path) of a BiF file with "
                                 "precompiled divrem emulation routines"),
@@ -166,8 +160,6 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
 GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
   setOwningBiFModuleIf(BiFKind::OCLGeneric,
                        readBiFModuleFromFile(OCLGenericBiFPath));
-  setOwningBiFModuleIf(BiFKind::OCLFP64,
-                       readBiFModuleFromFile(OCLFP64BiFPath));
   setOwningBiFModuleIf(BiFKind::VCEmulation,
                        readBiFModuleFromFile(VCEmulationBiFPath));
   setOwningBiFModuleIf(BiFKind::VCPrintf, readBiFModuleFromFile(VCPrintfBiFPath));
