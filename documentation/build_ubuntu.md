@@ -92,7 +92,7 @@ All dependencies will be build in the next step.
 If you have problems with LLVM patching during IGC build, you can try listed steps:
 ```shell
 $ cd llvm-project
-$ git checkout -b tag llvmorg-10.0.0
+$ git checkout llvmorg-10.0.0
 ```
 
 #### Additional notes on build modes
