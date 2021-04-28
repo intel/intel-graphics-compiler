@@ -52,7 +52,7 @@ enum class DEP_PIPE
     // TGL
     SHORT,
     LONG,
-    CONTROL_FLOW, // TGL only
+    CONTROL_FLOW,
     SEND,
     MATH,
 };

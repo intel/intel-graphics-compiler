@@ -138,16 +138,16 @@ void Encoder::encodeKernel(
         }
 
         for (auto blk : k.getBlockList()) {
-            START_ENCODER_TIMER();
+            START_ENCODER_TIMER()
             encodeBlock(blk);
             STOP_ENCODER_TIMER();
             if (hasFatalError()) {
                 return;
             }
         }
-        START_ENCODER_TIMER();
+        START_ENCODER_TIMER()
         patchJumpOffsets();
-        STOP_ENCODER_TIMER();
+        STOP_ENCODER_TIMER()
 
         // setting actual size
         bitsLen = currentPc();
@@ -761,92 +761,82 @@ void Encoder::encodeBranchingInstructionSimplified(const Instruction& inst)
     }
 }
 
-void Encoder::encodeSendInstruction(const Instruction& i)
+void Encoder::encodeSendInstruction(const Instruction& inst)
 {
-    ////////////////////////////////////////////
-    // send operands
-    const OpSpec& os = i.getOpSpec();
+    const OpSpec& os = inst.getOpSpec();
     if (os.isSendFamily()) {
-        encodeSendDestination(i.getDestination());
-        encodeSendSource0(i.getSource(0));
+        encodeSendDestination(inst.getDestination());
+        encodeSendSource0(inst.getSource(0));
         if (m_model.supportsUnifiedSend()) {
-            encodeSendsSource1(i.getSource(1));
+            encodeSendsSource1(inst.getSource(1));
         }
     } else if (os.isSendsFamily()) {
-        encodeSendDestination(i.getDestination());
-        encodeSendsSource0(i.getSource(0));
-        encodeSendsSource1(i.getSource(1));
+        encodeSendDestination(inst.getDestination());
+        encodeSendsSource0(inst.getSource(0));
+        encodeSendsSource1(inst.getSource(1));
     }
 
-    ////////////////////////////////////////////
-    // send descriptors and other gunk
-    encodeSendDescs(i);
+    const bool supportsExDescReg =
+        os.isSendsFamily() ||
+        m_model.supportsUnifiedSend();
 
-    ////////////////////////////////////////////
-    // send options
-    bool hasFusion = platform() >= Platform::XE;
-    if (hasFusion) {
-        GED_ENCODE(FusionCtrl,
-            i.hasInstOpt(InstOpt::SERIALIZE) ?
-                GED_FUSION_CTRL_Serialized : GED_FUSION_CTRL_Normal);
-    }
-
-    if (i.hasInstOpt(InstOpt::EOT)) {
-        GED_ENCODE(EOT, GED_EOT_EOT);
-    }
-} //end: encodeSendInstruction
-
-
-void Encoder::encodeSendDescs(const Instruction& i)
-{
-    if (platform() < Platform::XE) {
-        encodeSendDescsPreXe(i);
-    } else if (platform() == Platform::XE) {
-        encodeSendDescsXe(i);
-    } else {
-        errorT("unsupported platform");
-    }
-}
-void Encoder::encodeSendDescsPreXe(const Instruction& i)
-{
-    SendDesc exDesc = i.getExtMsgDescriptor();
-    const OpSpec& os = i.getOpSpec();
-    if (exDesc.isReg()) {
-        if (os.isSendFamily()) {
-            errorT("unary send forbids register ExDesc");
+    // ex_desc
+    SendDesc extMsgDesc = inst.getExtMsgDescriptor();
+    if (extMsgDesc.isImm()) { // Exdesc.IsReg == false
+        if (supportsExDescReg) {
+            GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
         }
+        bool stripEOT = m_model.supportsUnifiedSend();
+        if (stripEOT) {
+            extMsgDesc.imm = extMsgDesc.imm & ~(1 << 5);
+        }
+
+        GED_ENCODE(ExMsgDesc, extMsgDesc.imm);
+
+    } else {  // ExDesc.IsReg == true
+        if (!supportsExDescReg) {
+            errorT("ex_desc register not supported on this platform for "
+                "this instruction");
+        }
+
+        // Underneath GED API converts ExDescRegFile to
+        // SetSelReg32ExDesc for sends
         GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
-        GED_ENCODE(ExDescAddrSubRegNum, 2 * exDesc.reg.subRegNum);
-    } else {
-        GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
-        GED_ENCODE(ExMsgDesc, exDesc.imm);
+        // double the subregister because it's encoded as [3:1]
+        GED_ENCODE(ExDescAddrSubRegNum, 2 * extMsgDesc.reg.subRegNum);
+
     }
 
-    SendDesc desc = i.getMsgDescriptor();
-    if (desc.isReg()) {
+    // desc
+    bool hasImmDescRegFile = true;
+    SendDesc msgDesc = inst.getMsgDescriptor();
+    if (msgDesc.isImm()) {
+        if (hasImmDescRegFile)
+            GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
+        GED_ENCODE(MsgDesc, msgDesc.imm);
+    } else {
         if (platform() == Platform::GEN9) {
             uint32_t msgDescriptor = 0;
-            // There is a HW bug on SKL where HW will only copy bits 0-28 from
-            // the address register (descriptor register) and will miss bit 30
-            // of the descriptor.  Hence, even in the case of an register
-            // descriptor we must program bit 30 as immediate (it will be
-            // taken from the encoding and OR'd in correctly)
-            //
+            // There is a HW bug on SKL where HW will only copy bits 0-28 from the
+            // address register (descriptor register) and will miss bit 30 of
+            // the descriptor.  Hence, even in the case of an register descriptor
+            // we must program bit 30 as immediate (it will be taken from the
+            // encoding and OR'd in correctly)
             // E.g. (old syntax)
             //   sends (8) r74:hf r16 r73 0x42:ud a0.0 {Align1, Q1, NoMask}
-            //       // sampler, resLen=3, msgLen=1, extMsgLen=1
-            // On SKL, HW will copy bits 29-31 from the actual immediate
-            // descriptor bits.  Hence, we must set immediate descriptor
-            // bit 30 even in the case of a register descriptor. (For SKL).
+            //   // #??:$10:%13 // sampler, resLen=3, msgLen=1, extMsgLen=1
+            // On SKL, HW will copy bits 29-31 from the actual immediate descriptor
+            // Bits.  Hence, we must set immediate descriptor bit 30 even in the case
+            // of a register descriptor! (For SKL).
             //
             // For 3D sampler bit 30 indicates HF/F return format.
             // For render target write bit 30 indicates HF/F input...
-            // Thankfully for SKL the 3D sampler doesn't support HF input.
+            // "Thankfully" for SKL 3D sampler doesn't support HF input.
             // For CNL it does, and that will be bit 29.
             // But this bug should be fixed in CNL.
-            if (platform() == Platform::GEN9 && desc.isReg()) {
-                if (i.getDestination().getType() == Type::HF ||
-                    i.getSource(0).getType() == Type::HF)
+            if (platform() == Platform::GEN9 && msgDesc.isReg()) {
+                if (inst.getDestination().getType() == Type::HF ||
+                    inst.getSource(0).getType() == Type::HF)
                 {
                     msgDescriptor |= (1 << 30);
                 }
@@ -854,45 +844,27 @@ void Encoder::encodeSendDescsPreXe(const Instruction& i)
             GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
             GED_ENCODE(MsgDesc, msgDescriptor);
         }
-        GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
-        uint8_t regNumBits;
-        const RegInfo *ri = m_model.lookupRegInfoByRegName(RegName::ARF_A);
-        IGA_ASSERT(ri, "failed to find a0 register");
-        ri->encode((int)desc.reg.regNum, regNumBits);
-        GED_ENCODE(DescRegNum, regNumBits);
-    } else if (desc.isImm()) {
-        GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
-        GED_ENCODE(MsgDesc, desc.imm);
-    }
-}
-void Encoder::encodeSendDescsXe(const Instruction& i)
-{
-    SendDesc exDesc = i.getExtMsgDescriptor();
-    if (exDesc.isReg()) {
-        GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
-        GED_ENCODE(ExDescAddrSubRegNum, 2 * exDesc.reg.subRegNum);
-    } else {
-        GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
-        GED_ENCODE(ExMsgDesc, exDesc.imm);
-    }
-
-    SendDesc desc = i.getMsgDescriptor();
-    if (desc.isReg()) {
-        GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
-        // a0.0 is implied (there's no field)
-        if (desc.reg.subRegNum != 0) {
-            errorT("send with reg desc must be a0.0");
+        // underneath GED API converts this to SetSelReg32Desc for sends
+        if (hasImmDescRegFile)
+            GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
+        // only send/sendc support a register here
+        if (m_model.supportsUnarySend()) {
+            uint8_t regNumBits;
+            const RegInfo *ri = m_model.lookupRegInfoByRegName(RegName::ARF_A);
+            IGA_ASSERT(ri, "failed to find a0 register");
+            ri->encode((int)msgDesc.reg.regNum, regNumBits);
+            GED_ENCODE(DescRegNum, regNumBits);
         }
-    } else {
-        GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
-        GED_ENCODE(MsgDesc, desc.imm);
+    } // end else: desc
+
+
+    bool hasFusion = platform() >= Platform::XE;
+    if (hasFusion) {
+        GED_ENCODE(FusionCtrl,
+            inst.hasInstOpt(InstOpt::SERIALIZE) ?
+                GED_FUSION_CTRL_Serialized : GED_FUSION_CTRL_Normal);
     }
-}
-
-
-
-
-
+} //end: encodeSendInstruction
 
 void Encoder::encodeSyncInstruction(const Instruction& inst)
 {
@@ -1691,6 +1663,11 @@ void Encoder::encodeOptions(const Instruction& inst)
         inst.hasInstOpt(InstOpt::BREAKPOINT) ?
             GED_DEBUG_CTRL_Breakpoint : GED_DEBUG_CTRL_Normal);
 
+    if (inst.hasInstOpt(InstOpt::EOT))
+    {
+        GED_ENCODE(EOT, GED_EOT_EOT);
+    }
+
     auto &os = inst.getOpSpec();
     if (os.supportsDepCtrl()) {
         if (inst.hasInstOpt(InstOpt::NODDCHK) &&
@@ -1830,12 +1807,12 @@ void Encoder::patchJumpOffsets()
         }
 
         // re-encode branch
-        START_GED_TIMER();
+        START_GED_TIMER()
         GED_RETURN_VALUE status = GED_EncodeIns(&jp.gedInst,
             inst->hasInstOpt(InstOpt::COMPACTED) ?
                 GED_INS_TYPE_COMPACT : GED_INS_TYPE_NATIVE,
             jp.bits);
-        STOP_GED_TIMER();
+        STOP_GED_TIMER()
         if (status != GED_RETURN_VALUE_SUCCESS) {
             fatalAtT(inst->getLoc(),
                 "GED_EncodeIns failed: ", gedReturnValueToString(status));

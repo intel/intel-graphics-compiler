@@ -250,15 +250,6 @@ namespace iga
         SendDesc decodeSendExDesc();
         SendDesc decodeSendDesc();
 
-        // facilitates internal decoding logic
-        struct SendDescodeInfo {
-            SFID sfid = SFID::INVALID;
-            int dstLen = -1, src0Len = -1, src1Len = -1;
-            SendDesc desc, exDesc;
-        };
-        void decodeSendInfoPreXe(SendDescodeInfo &sdi);
-        void decodeSendInfoXe(SendDescodeInfo &sdi);
-
         ///////////////////////////////////////////////////////////////////////
         // BRANCH INSTRUCTIONS
         ///////////////////////////////////////////////////////////////////////

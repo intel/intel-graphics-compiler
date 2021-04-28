@@ -45,7 +45,7 @@ namespace iga {
 
     // Formatter options
     struct FormatOpts {
-        const Model      &model;
+        Platform          platform;
         LabelerFunction   labeler = nullptr;
         void             *labelerContext = nullptr;
         bool              numericLabels = false;
@@ -64,22 +64,22 @@ namespace iga {
         DepAnalysis      *liveAnalysis = nullptr;
 
         // format with default labels
-        FormatOpts(const Model &m)
-            : model(m)
+        FormatOpts(Platform _platform)
+            : platform(_platform)
         {
         }
 
         // format with all parameters settable
         // requires at least a context
         FormatOpts(
-            const Model &m,
+            Platform _platform,
             LabelerFunction _labeler,
             void *_labelerCtx = nullptr,
             bool _numericLabels = false,
             bool _printInstPc = false,
             bool _hexFloats = true,
             bool _syntaxExtensions = false)
-            : model(m)
+            : platform(_platform)
             , labeler(_labeler)
             , labelerContext(_labelerCtx)
             , numericLabels(_numericLabels)

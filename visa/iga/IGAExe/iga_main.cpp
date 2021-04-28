@@ -324,8 +324,8 @@ extern "C" int iga_main(int argc, const char **argv)
         nullptr,
         "auto compacts unmarked instructions",
         "This automatically attempts to compact instructions lacking a "
-        "'Compacted' or 'NoCompact' instruction option.  If the instruction "
-        "has a Compacted or NoCompact annotation, IGA respects that unless "
+        "'Compacted' or 'NoCompact' instruction option.  If the instruction"
+        "has a Compacted or NoCompact annotation, IGA respects that unless"
         "the compacted form does not exist.",
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.autoCompact);
@@ -333,8 +333,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "dcmp",
         nullptr,
         "debug compaction",
-        "This mode debugs an instruction's compaction.  The input format "
-        "is the same as -Xifs\n"
+        "This mode debugs an instruction's compaction.  The input format is the same as -Xifs\n"
         "See that option for more information\n",
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
