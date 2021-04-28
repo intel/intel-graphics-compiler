@@ -43,6 +43,8 @@ namespace IGC
 namespace Debug
 {
 
+char ModuleFlushDumpPass::ID = 0;
+char FunctionFlushDumpPass::ID = 0;
 
 /*************************************************************************************************\
  *  Generic
@@ -572,42 +574,58 @@ namespace
 Dump::Dump( DumpName const& dumpName, DumpType type )
     : m_name( dumpName )
     , m_pStream( nullptr )
-    , m_type( type )
+    , m_pStringStream( nullptr )
+    , m_type(type)
+    , m_ClearFile(true)
 {
-    m_pStream = new llvm::raw_string_ostream(m_string); // buffered stream!
+    m_pStream.reset(new llvm::raw_string_ostream(m_string)); // buffered stream!
+    m_pStringStream = m_pStream.get();
     if(IGC_IS_FLAG_ENABLED(PrintToConsole) && isConsolePrintable(m_type))
     {
         m_pStream->SetUnbuffered();
-        m_pStream = new TeeOutputStream(&ods(), false, m_pStream, true);
+        m_pStream.reset(new TeeOutputStream(&ods(), false, m_pStream.release(), true));
     }
-    if (isText(m_type) && m_type != DumpType::TIME_STATS_CSV )
+    if (isConsolePrintable(m_type))
     {
         std::stringstream ss;
         ss << commentPrefix(m_type) << "------------------------------------------------\n";
         ss << commentPrefix(m_type) << dumpName.RelativePath() << "\n";
         ss << commentPrefix(m_type) << "------------------------------------------------\n";
-        m_pStream =
+        m_pStream.reset(
             new PrefixStream(
-            ss.str(),
-            llvm::raw_ostream::Colors::YELLOW,
-            m_pStream,
-            true );
+                ss.str(),
+                llvm::raw_ostream::Colors::YELLOW,
+                m_pStream.release(),
+                true));
+    }
+}
+
+void Dump::flush()
+{
+    if (m_string.empty() == false)
+    {
+        m_pStringStream->flush();
+        std::ios_base::openmode mode = std::ios_base::out;
+        if (m_ClearFile)
+        {
+            m_ClearFile = false;
+        }
+        else
+        {
+            mode |= std::ios_base::app;
+        }
+        if (!isText(m_type))
+            mode |= std::ios_base::binary;
+        std::ofstream asmFile(m_name.str(), mode);
+        asmFile << m_string;
+        asmFile.close();
+        m_string.clear();
     }
 }
 
 Dump::~Dump()
 {
-    std::ios_base::openmode mode = std::ios_base::out;
-    if (!isText(m_type))
-        mode |= std::ios_base::binary;
-    std::ofstream asmFile(m_name.str(), mode);
-
-    // Delete the stream first to flush all data to the underlying m_string.
-    delete m_pStream;
-    m_pStream = nullptr;
-
-    asmFile << m_string;
-    asmFile.close();
+    flush();
 }
 
 llvm::raw_ostream& Dump::stream() const

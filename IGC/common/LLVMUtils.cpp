@@ -49,6 +49,28 @@ bool getPassToggles(std::bitset<1024>& toggles)
     return false;
 }
 
+llvm::Pass* createFlushPass(llvm::Pass* pass, Dump& dump)
+{
+    // Choose an appropriate pass to preserve the original order of pass execution in the pass manager
+    switch (pass->getPassKind())
+    {
+    case PT_Function:
+        return new FunctionFlushDumpPass(dump);
+    case PT_Module:
+        return new ModuleFlushDumpPass(dump);
+    case PT_Region:
+    case PT_Loop:
+    case PT_CallGraphSCC:
+        // flushing for analysis passes is not required
+        break;
+    case PT_PassManager:
+    default:
+        // internal pass managers are not considered in the context
+        break;
+    }
+    return nullptr;
+}
+
 void IGCPassManager::add(Pass *P)
 {
     //check only once
@@ -178,19 +200,13 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
     // is taken by reference into the printer pass. If the Dump object had been on the
     // stack, then that reference would go bad as soon as we exit this scope, and then
     // the printer pass would access an invalid pointer later on when we call PassManager::run()
-    IGC::Debug::Dump* pDump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
-    PassManager::add(P->createPrinterPass(pDump->stream(), ""));
-    m_irDumps.push_back(pDump);
-}
+    m_irDumps.emplace_front(name, IGC::Debug::DumpType::PASS_IR_TEXT);
+    PassManager::add(P->createPrinterPass(m_irDumps.front().stream(), ""));
 
-IGCPassManager::~IGCPassManager()
-{
-    if (!m_irDumps.empty())
+    llvm::Pass* flushPass = createFlushPass(P, m_irDumps.front());
+    if (nullptr != flushPass)
     {
-        for(auto it : m_irDumps)
-        {
-            delete it;
-        }
+        PassManager::add(flushPass);
     }
 }
 
