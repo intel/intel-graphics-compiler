@@ -1488,7 +1488,7 @@ namespace IGC
             VISA_VectorOpnd* srcImmLo = nullptr;
             VISA_VectorOpnd* srcImmHi = nullptr;
             if (Need64BitEmu) {
-                if (Is64BitDst)
+                if (Is64BitDst && dst->GetVarType() == EVARTYPE_GENERAL)
                     dstAlias = m_program->GetNewAlias(dst, ISA_TYPE_UD, 0, 0);
                 else
                     dstAlias = dst;
@@ -1500,7 +1500,7 @@ namespace IGC
                     V(vKernel->CreateVISAImmediate(srcImmHi, &ImmHi, ISA_TYPE_UD));
                 }
                 else {
-                    if (Is64BitSrc)
+                    if (Is64BitSrc && src->GetVarType() == EVARTYPE_GENERAL)
                         srcAlias = m_program->GetNewAlias(src, ISA_TYPE_UD, 0, 0);
                     else
                         srcAlias = src;
