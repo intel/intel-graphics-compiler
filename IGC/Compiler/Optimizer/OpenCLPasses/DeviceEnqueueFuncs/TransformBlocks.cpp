@@ -1634,6 +1634,25 @@ namespace //Anonymous
                     changed = true;
                 }
             }
+
+            // remove function pointers
+            auto nullPtrConst = llvm::ConstantPointerNull::get(Type::getInt8PtrTy(M.getContext()));
+            for (auto& func : M.functions())
+            {
+                for (auto user : func.users())
+                {
+                    if (!isa<llvm::CallInst>(user))
+                    {
+                        if (!isa<llvm::Constant>(user)) {
+                            user->replaceUsesOfWith(&func, nullPtrConst);
+                        }
+                        else {
+                            user->replaceAllUsesWith(llvm::Constant::getNullValue(user->getType()));
+                        }
+                        changed = true;
+                    }
+                }
+            }
             return changed;
         }
     };
@@ -2133,10 +2152,6 @@ namespace //Anonymous
         else if (isa<llvm::ConstantPointerNull>(sourceValue))
         {
             return std::unique_ptr<StructValue>(new NullStructValue(sourceValue));
-        }
-        else if (isa<llvm::Argument>(sourceValue))
-        {
-            return nullptr;
         }
         IGC_ASSERT_MESSAGE(0, "should not be here");
         return nullptr;
