@@ -3560,8 +3560,8 @@ void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], cons
 
     e_predicate predicate = GetPredicate(pred);
 
-    CVariable* src0 = GetSrcVariable(sources[0]);
-    CVariable* src1 = GetSrcVariable(sources[1]);
+    CVariable* src0 = GetSrcVariable(sources[0], sources[0].fromConstantPool);
+    CVariable* src1 = GetSrcVariable(sources[1], sources[1].fromConstantPool);
 
     if (IsUnsignedCmp(pred))
     {
