@@ -239,23 +239,6 @@ namespace IGC
         unsigned m_flushToZero = 0;
 
         llvm::SmallVector<llvm::CallInst*, 16> m_CallRemDiv;
-
-        // Calling convention:
-        //    LLVM requires a call and its callee have the same calling convention;
-        //    otherwise, the call would be deleted (for example, instcombine would
-        //    delete it).
-        //
-        // The functions in lib could have a dfferent calling conventions than default
-        // (for example, spirv_func or default). Before linking lib functions, we do
-        // not know which calling convention to use. We first create a call with default
-        // calling convention, then link libs (So far, LLVM linking does not check mismatch
-        // of calling convention). To make sure a call and its callee have the same calling
-        // convention, we will set the call's calling convention to its callee's once we
-        // finish linking.
-        //
-        // This vector keeps all new calls whose calling convention will need to be set.
-        llvm::SmallVector<llvm::CallInst*, 32> m_allNewCallInsts;
-        void addCallInst(llvm::CallInst* CI) { m_allNewCallInsts.push_back(CI); }
     };
 
 } // namespace IGC

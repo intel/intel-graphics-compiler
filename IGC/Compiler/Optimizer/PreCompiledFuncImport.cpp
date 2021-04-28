@@ -425,7 +425,6 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         m_libModuleToBeImported[i] = false;
         m_libModuleAlreadyImported[i] = false;
     }
-    m_allNewCallInsts.clear();
 
     SmallSet<Function*, 32> origFunctions;
     for (auto II = M.begin(), IE = M.end(); II != IE; ++II)
@@ -553,7 +552,6 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                                 pFunc = GenISAIntrinsic::getDeclaration(&M, GISAIntr, types);
                                 CallInst* pCall = builder.CreateCall(pFunc, args);
                                 replaceInsts.insert(std::make_pair(CI, pCall));
-                                addCallInst(pCall);
                             }
                         }
                     }
@@ -564,15 +562,6 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         {
             p.first->replaceAllUsesWith(p.second);
             p.first->eraseFromParent();
-        }
-    }
-
-    // Set new call inst's calling convention to its callee's
-    for (auto VI : m_allNewCallInsts)
-    {
-        CallInst* callInst = VI;
-        if (Function* callee = callInst->getCalledFunction()) {
-            callInst->setCallingConv(callee->getCallingConv());
         }
     }
 
@@ -931,8 +920,6 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
     builder.SetInsertPoint(&inst);
     args[2] = pRem;
     CallInst* funcCall = CallInst::Create(func, args, inst.getName(), &inst);
-    addCallInst(funcCall);
-    funcCall->setDebugLoc(inst.getDebugLoc());
 
     if (inst.getOpcode() == Instruction::UDiv || inst.getOpcode() == Instruction::URem)
     {
@@ -1041,7 +1028,6 @@ void PreCompiledFuncImport::processDivide(BinaryOperator& inst, EmulatedFunction
     args[1] = inst.getOperand(1);
 
     CallInst* funcCall = CallInst::Create(func, args, inst.getName(), &inst);
-    addCallInst(funcCall);
     funcCall->setDebugLoc(inst.getDebugLoc());
 
     inst.replaceAllUsesWith(funcCall);
@@ -1082,7 +1068,6 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
         }
 
         CallInst* funcCall = CallInst::Create(func, inst.getOperand(0), inst.getName(), &inst);
-        addCallInst(funcCall);
         funcCall->setDebugLoc(inst.getDebugLoc());
 
         inst.replaceAllUsesWith(funcCall);
@@ -1107,7 +1092,6 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
         args[4] = createFlagValue(CurrFunc);   // ignored
 
         CallInst* funcCall = CallInst::Create(newFunc, args, inst.getName(), &inst);
-        addCallInst(funcCall);
         funcCall->setDebugLoc(inst.getDebugLoc());
 
         inst.replaceAllUsesWith(funcCall);
@@ -1176,7 +1160,6 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
         args[5] = createFlagValue(CurrFunc);   // FP flag, ignored
 
         CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
-        addCallInst(funcCall);
         funcCall->setDebugLoc(I.getDebugLoc());
 
         I.replaceAllUsesWith(funcCall);
@@ -1382,7 +1365,6 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
         args[1] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
         args[2] = createFlagValue(CurrFunc);   // FP flags, ignored
         CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
-        addCallInst(funcCall);
         funcCall->setDebugLoc(I.getDebugLoc());
 
         I.replaceAllUsesWith(funcCall);
@@ -1464,11 +1446,9 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst& I)
         args.push_back(createFlagValue(CurrFunc));  // FP flags, ignored
     }
 
-    CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
-    addCallInst(funcCall);
-    funcCall->setDebugLoc(I.getDebugLoc());
+    Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+    newVal->setDebugLoc(I.getDebugLoc());
 
-    Instruction* newVal = funcCall;
     if ((intBits < 32) &&
         (opc == Instruction::FPToSI || opc == Instruction::FPToUI))
     {
@@ -1575,7 +1555,6 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst& I)
 
     CallInst* funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
     funcCall->setDebugLoc(I.getDebugLoc());
-    addCallInst(funcCall);
 
     //
     // 'mask' indicates that if any of bits is set, the condition is true.
@@ -1654,9 +1633,9 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
                     m_libModuleToBeImported[finfo.LibModID] = true;
                     m_changed = true;
 
-                    // Make sure to keep this call so that its calling convention
-                    // will be adjusted later.
-                    addCallInst(&I);
+                    // Make sure to use the default calling Convention
+                    // as emulation functions uses the default!
+                    I.setCallingConv(0);
                     break;
                 }
             }
@@ -1681,8 +1660,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         args[2] = ConstantInt::get(Type::getInt32Ty(I.getContext()), ftz);
         args[3] = ConstantInt::get(Type::getInt32Ty(I.getContext()), daz);
 
-        CallInst* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
-        addCallInst(newVal);
+        Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
         newVal->setDebugLoc(I.getDebugLoc());
 
         I.replaceAllUsesWith(newVal);
@@ -1759,8 +1737,7 @@ As a result, we reduce 2x necessary work
         args[3] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
         args[4] = createFlagValue(CurrFunc);  // FP Flag, ignored
 
-        CallInst* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
-        addCallInst(newVal);
+        Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
         newVal->setDebugLoc(I.getDebugLoc());
 
         I.replaceAllUsesWith(newVal);
@@ -1788,8 +1765,7 @@ As a result, we reduce 2x necessary work
         args[5] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
         args[6] = createFlagValue(CurrFunc);  // FP Flag, ignored
 
-        CallInst* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
-        addCallInst(newVal);
+        Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
         newVal->setDebugLoc(I.getDebugLoc());
 
         I.replaceAllUsesWith(newVal);
