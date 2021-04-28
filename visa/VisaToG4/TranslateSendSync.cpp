@@ -78,7 +78,7 @@ G4_INST* IR_Builder::createFenceInstruction(
     // commitEnable = true: msg length = 1, response length = 1, dst == src
     // commitEnable = false: msg length = 1, response length = 0, dst == null
     return Create_Send_Inst_For_CISA(nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), g4::SIMD8,
-        desc, SFID::DP_DC, true, SendAccess::READ_WRITE, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
+        desc, SFID::DP_DC0, true, SendAccess::READ_WRITE, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
 }
 
 // create a default SLM fence (no flush)

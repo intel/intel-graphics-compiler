@@ -586,10 +586,10 @@ bool preRA_Scheduler::run()
             unsigned NumOfHighLatencyInsts = 0;
             for (auto Inst : *bb) {
                 if (Inst->isSend()) {
-                    G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
-                    if (MsgDesc->isDataPortRead() ||
+                    G4_SendDesc* MsgDesc = Inst->getMsgDesc();
+                    if (MsgDesc->isRead() ||
                         MsgDesc->isSampler() ||
-                        MsgDesc->isAtomicMessage())
+                        MsgDesc->isAtomic())
                         NumOfHighLatencyInsts++;
                 }
             }
@@ -1732,7 +1732,7 @@ void preDDD::addNodeToGraph(preNode *N)
     // Update live nodes on sends.
     G4_INST* Inst = N->getInst();
     if (Inst && Inst->isSend()) {
-        assert(!Inst->getMsgDesc()->isScratchRW());
+        assert(!Inst->getMsgDesc()->isScratch());
         LiveSends.push_back(N);
     }
 
@@ -1961,7 +1961,7 @@ void preDDD::processSend(preNode* curNode)
     if (!Inst->isSend())
         return;
 
-    assert(!Inst->getMsgDesc()->isScratchRW() && "not expected");
+    assert(!Inst->getMsgDesc()->isScratch() && "not expected");
     for (auto Iter = LiveSends.begin(); Iter != LiveSends.end(); /*empty*/) {
         preNode* liveN = *Iter;
         DepType Dep = getDepSend(Inst, liveN->getInst(), BTIIsRestrict);

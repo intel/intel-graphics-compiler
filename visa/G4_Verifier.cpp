@@ -342,9 +342,9 @@ void G4Verifier::verifySend(G4_INST* inst)
             if (src0->getBase()->isGreg() && src1 && src1->getBase()->isGreg())
             {
                 int src0Start = src0->getLinearizedStart() / numEltPerGRF<Type_UB>();
-                int src0End = src0Start + inst->getMsgDesc()->MessageLength() - 1;
+                int src0End = src0Start + inst->getMsgDesc()->getSrc0LenRegs() - 1;
                 int src1Start = src1->getLinearizedStart() / numEltPerGRF<Type_UB>();
-                int src1End = src1Start + inst->getMsgDesc()->extMessageLength() - 1;
+                int src1End = src1Start + inst->getMsgDesc()->getSrc1LenRegs() - 1;
                 bool noOverlap = src0End < src1Start ||
                     src1End < src0Start;
                 MUST_BE_TRUE(noOverlap, "split send src0 and src1 overlap");
@@ -436,17 +436,12 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         {
             if (opnd->isRightBoundSet() && !opnd->isNullReg())
             {
-                unsigned int correctRB = ((inst->getMsgDesc()->ResponseLength() + opnd->asDstRegRegion()->getRegOff()) * numEltPerGRF<Type_UB>()) - 1;
-
-                if (inst->getMsgDesc()->isScratchRW() == false &&
-                    inst->getMsgDesc()->isOwordLoad() &&
-                    inst->getMsgDesc()->isValidFuncCtrl() &&
-                    (inst->getMsgDesc()->getFuncCtrl() & 0x700) == 0)
-                {
-                    correctRB = opnd->getLeftBound() + 15;
-                }
-                else if (opnd->getTopDcl()->getByteSize() < numEltPerGRF<Type_UB>())
-                {
+                unsigned int correctRB =
+                    ((inst->getMsgDesc()->getDstLenRegs() + opnd->asDstRegRegion()->getRegOff()) * numEltPerGRF<Type_UB>()) - 1;
+                uint32_t dstLenBytes = inst->getMsgDesc()->getDstLenBytes();
+                if (dstLenBytes < getGRFSize()) {
+                    correctRB = opnd->getLeftBound() + dstLenBytes - 1;
+                } else if (opnd->getTopDcl()->getByteSize() < numEltPerGRF<Type_UB>()) {
                     correctRB = opnd->getLeftBound() + opnd->getTopDcl()->getByteSize() - 1;
                 }
 
@@ -474,7 +469,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         {
             if (opnd->isRightBoundSet())
             {
-                int msgLength = (opnd == inst->getSrc(0)) ? inst->getMsgDesc()->MessageLength() : inst->getMsgDesc()->extMessageLength();
+                int msgLength = (opnd == inst->getSrc(0)) ? inst->getMsgDesc()->getSrc0LenRegs() : inst->getMsgDesc()->getSrc1LenRegs();
                 unsigned int numBytes = opnd->getTopDcl()->getByteSize();
                 unsigned int correctRB = 0;
                 if (numBytes < numEltPerGRF<Type_UB>())

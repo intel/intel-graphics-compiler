@@ -915,7 +915,8 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
 ///
 void PatchSend(G4_INST* inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* twoSrc)
 {
-    uint32_t msgDesc = inst->getMsgDesc()->getExtendedDesc();
+    MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
+    uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
     EncExtMsgDescriptor emd;
     emd.ulData = msgDesc;
 
@@ -1921,7 +1922,8 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::EncodeSplitSend(G4_INST* inst, G9HD
 
     //Patch SFID and EOT
     {
-        uint32_t msgDesc = inst->getMsgDesc()->getExtendedDesc();
+        MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
+        uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
         EncExtMsgDescriptor emd;
         emd.ulData = msgDesc;
 

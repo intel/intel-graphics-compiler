@@ -109,7 +109,9 @@ void CoalesceSpillFills::copyToOldFills(
             unsigned int off = oldFill.second.first;
             unsigned int size = oldFill.second.second;
 
-            unsigned int scratchOff = coalescedFillDst->getInst()->getMsgDesc()->getScratchRWOffset();
+            static const int BYTES_PER_HEXWORD = 32;
+            unsigned int scratchOff =
+                coalescedFillDst->getInst()->getMsgDesc()->getOffset() / BYTES_PER_HEXWORD;
 
             // Scratch msg offset is always equal or lower than individual fills
             unsigned int offToUse = off - scratchOff + rowOff;
@@ -1153,7 +1155,7 @@ void CoalesceSpillFills::populateSendDstDcl()
             {
                 if (!inst->getDst()->isNullReg())
                 {
-                    if (!inst->getMsgDesc()->isScratchRW())
+                    if (!inst->getMsgDesc()->isScratch())
                     {
                         auto topdcl = inst->getDst()->getTopDcl();
 
