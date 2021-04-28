@@ -359,14 +359,19 @@
         return getPlatform() >= GENX_TGLLP;
     }
 
+    bool hasRSForSpecificPlatform() const
+    {
+        return true;
+    }
+
     bool hasReadSuppression() const
     {
-        return getPlatform() >= GENX_TGLLP;
+        return getPlatform() >= GENX_TGLLP && hasRSForSpecificPlatform();
     }
 
     bool hasScalarReadSuppression() const
     {
-        return getPlatform() > GENX_TGLLP;
+        return getPlatform() > GENX_TGLLP && hasRSForSpecificPlatform();
     }
 
     bool alignBindlessSampler() const
