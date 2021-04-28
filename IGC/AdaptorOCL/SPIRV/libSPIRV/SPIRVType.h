@@ -791,6 +791,36 @@ public:
     SPIRVSubgroupAvcINTELType() : SPIRVTypeSubgroupAvcINTEL(TheOpCode) {}
 };
 
+class SPIRVTypeBufferSurfaceINTEL : public SPIRVType {
+public:
+  const static Op OC = OpTypeBufferSurfaceINTEL;
+  const static SPIRVWord FixedWC = 2;
+  SPIRVTypeBufferSurfaceINTEL(SPIRVModule *M, SPIRVId TheId,
+                              SPIRVAccessQualifierKind TheAccess)
+      : SPIRVType(M, FixedWC + 1, OC, TheId), AccessKind(1, TheAccess) {
+    validate();
+  }
+  SPIRVTypeBufferSurfaceINTEL(SPIRVModule *M, SPIRVId TheId)
+      : SPIRVType(M, FixedWC, OC, TheId) {
+    validate();
+  }
+  SPIRVTypeBufferSurfaceINTEL() : SPIRVType(OC) {}
+
+  bool hasAccessQualifier() const { return AccessKind.size() > 0; }
+  SPIRVAccessQualifierKind getAccessQualifier() const { return AccessKind[0]; }
+
+protected:
+  _SPIRV_DEF_DEC2(Id, AccessKind)
+  void setWordCount(SPIRVWord TheWC) override {
+    if (TheWC > FixedWC)
+      AccessKind.push_back(SPIRVAccessQualifierKind::AccessQualifierReadWrite);
+    WordCount = TheWC;
+  }
+
+private:
+  std::vector<SPIRVAccessQualifierKind> AccessKind;
+};
+
 #define _SPIRV_OP(x) \
   typedef SPIRVSubgroupAvcINTELType<OpType##x##INTEL> SPIRVType##x##INTEL;
 _SPIRV_OP(AvcMcePayload)

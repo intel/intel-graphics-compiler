@@ -207,6 +207,8 @@ public:
   // Type creation functions
   template<class T> T * addType(T *Ty);
   virtual SPIRVTypeInt *addIntegerType(unsigned BitWidth) override;
+  virtual SPIRVTypeBufferSurfaceINTEL *
+  addBufferSurfaceINTELType(SPIRVAccessQualifierKind Access) override;
 
   // Constant creation functions
   virtual SPIRVValue *addConstant(SPIRVValue *) override;
@@ -568,6 +570,11 @@ SPIRVModuleImpl::addIntegerType(unsigned BitWidth) {
   auto Ty = new SPIRVTypeInt(this, getId(), BitWidth, false);
   IntTypeMap[BitWidth] = Ty;
   return addType(Ty);
+}
+
+SPIRVTypeBufferSurfaceINTEL *
+SPIRVModuleImpl::addBufferSurfaceINTELType(SPIRVAccessQualifierKind Access) {
+  return addType(new SPIRVTypeBufferSurfaceINTEL(this, getId(), Access));
 }
 
 SPIRVFunction *

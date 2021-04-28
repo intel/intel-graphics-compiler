@@ -1921,6 +1921,11 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   {
     return mapType(T, getNamedBarrierType());
   }
+  case OpTypeBufferSurfaceINTEL: {
+    return mapType(T,
+                   getOrCreateOpaquePtrType(M, "intel.buffer_rw_t",
+                                            SPIRAddressSpace::SPIRAS_Global));
+  }
   default: {
     auto OC = T->getOpCode();
     if (isOpaqueGenericTypeOpCode(OC) ||

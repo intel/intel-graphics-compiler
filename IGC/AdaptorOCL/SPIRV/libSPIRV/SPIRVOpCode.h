@@ -205,10 +205,13 @@ inline unsigned getSubgroupAvcINTELTypeVectorWidth(Op Opcode) {
   }
 }
 
+inline bool isVCOpCode(Op OpCode) { return OpCode == OpTypeBufferSurfaceINTEL; }
+
 inline bool isTypeOpCode(Op OpCode) {
   unsigned OC = OpCode;
   return (OpTypeVoid <= OC && OC <= OpTypePipe) ||
-    isSubgroupAvcINTELTypeOpCode(OpCode) || OC == OpTypeVmeImageINTEL;
+         isSubgroupAvcINTELTypeOpCode(OpCode) || OC == OpTypeVmeImageINTEL ||
+         isVCOpCode(OpCode);
 }
 
 inline bool isConstantOpCode(Op OpCode) {
