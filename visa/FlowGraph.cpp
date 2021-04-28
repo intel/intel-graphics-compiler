@@ -4424,8 +4424,13 @@ static uint32_t getFlagMask(G4_Predicate_Control pCtrl)
 // Given a predicate ctrl for jmpi, return the adjusted predicate ctrl in a new
 // simd size.
 static G4_Predicate_Control getPredCtrl(unsigned simdSize,
-    G4_Predicate_Control pCtrl)
+    G4_Predicate_Control pCtrl, bool predCtrlHasWidth)
 {
+    if (!predCtrlHasWidth)
+    {
+        return G4_Predicate::isAllH(pCtrl) ? PRED_ALL_WHOLE : PRED_ANY_WHOLE;
+    }
+
     if (G4_Predicate::isAllH(pCtrl))
         return (simdSize == 8)
         ? PRED_ALL8H
@@ -4541,7 +4546,7 @@ bool FlowGraph::convertJmpiToGoto()
 
                     // Adjust pred control to the new execution size and build the
                     // new predicate.
-                    pCtrl = getPredCtrl(predSize, pCtrl);
+                    pCtrl = getPredCtrl(predSize, pCtrl, builder->predCtrlHasWidth());
                     newPred = builder->createPredicate(
                         pred->getState(), newDcl->getRegVar(), 0, pCtrl);
                 }
