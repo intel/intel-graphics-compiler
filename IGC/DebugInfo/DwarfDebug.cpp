@@ -3401,6 +3401,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
     write(data, ptrSize == 4 ? (uint32_t)(genOffEnd - genOffStart) :
         (uint64_t)(genOffEnd - genOffStart));
 
+    const unsigned int MovGenInstSizeInBytes = 16;
+
     // write CFA
     if (cfi.callerbefpValid)
     {
@@ -3418,7 +3420,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
         writeULEB128(cfaOps[ip], GetEncodedRegNum<RegisterNumbering::GRFBase>(
             specialGRF, EmitSettings.UseNewRegisterEncoding));
         writeOffBEFP(cfaOps[ip], 0, false, false);
-        writeSameValue(cfaOps[callerFP.back().end], GetEncodedRegNum<RegisterNumbering::GRFBase>(
+        writeSameValue(cfaOps[callerFP.back().end + MovGenInstSizeInBytes], GetEncodedRegNum<RegisterNumbering::GRFBase>(
             specialGRF, EmitSettings.UseNewRegisterEncoding));
     }
 
@@ -3428,14 +3430,32 @@ void DwarfDebug::writeFDEStackCall(VISAModule* m)
         auto& retAddr = cfi.retAddr;
         for (auto& item : retAddr)
         {
+            // start live-range
             write(cfaOps[item.start], (uint8_t)llvm::dwarf::DW_CFA_expression);
             writeULEB128(cfaOps[item.start], GetEncodedRegNum<RegisterNumbering::GRFBase>(
                 numGRFs, EmitSettings.UseNewRegisterEncoding));
             writeLR(cfaOps[item.start], item, false, false);
-            write(cfaOps[item.end], (uint8_t)llvm::dwarf::DW_CFA_register);
-            writeULEB128(cfaOps[item.end], GetEncodedRegNum<RegisterNumbering::GRFBase>(
+
+            // end live-range
+            // VISA emits following:
+            // 624: ...
+            // 640: (W) mov (4|M0) r125.0<1>:ud  r59.4<4;4,1>:ud <-- restore ret %ip, and caller
+            // 656: ret (8|M0) r125.0:ud
+
+            // VISA dbg:
+            // Return addr saved at:
+            // Live intervals :
+            // (64, 640) @ Spilled(offset = 0 bytes) (off be_fp)
+
+            // As per VISA debug info, return %ip restore instruction is at offset 640 above.
+            // But when we stop at 640, we still want ret %ip to be read from frame descriptor
+            // in memory as current frame is still value. Only from offset 656 should we read
+            // ret %ip from r125 directly. This is achieved by taking offset 640 reported by
+            // VISA debug info and adding 16 to it which is size of the mov instruction.
+            write(cfaOps[item.end + MovGenInstSizeInBytes], (uint8_t)llvm::dwarf::DW_CFA_register);
+            writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes], GetEncodedRegNum<RegisterNumbering::GRFBase>(
                 numGRFs, EmitSettings.UseNewRegisterEncoding));
-            writeULEB128(cfaOps[item.end], GetEncodedRegNum<RegisterNumbering::GRFBase>(
+            writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes], GetEncodedRegNum<RegisterNumbering::GRFBase>(
                 GetSpecialGRF(), EmitSettings.UseNewRegisterEncoding));
         }
     }
