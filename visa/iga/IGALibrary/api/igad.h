@@ -33,6 +33,8 @@ IN THE SOFTWARE.
 #elif __GNUC__
     #ifdef __x86_64__
         #define CDECLATTRIBUTE
+    #elif defined(__ARM_ARCH)
+        #define CDECLATTRIBUTE
     #else
         #define CDECLATTRIBUTE                 __attribute__((__cdecl__))
     #endif
