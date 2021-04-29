@@ -504,6 +504,11 @@ static void CommonOCLBasedPasses(
     // TODO: Run CheckInstrTypes after builtin import to determine if builtins have allocas.
     mpm.add(createSROAPass());
     mpm.add(createIGCInstructionCombiningPass());
+    // See the comment above (it's copied as is).
+    // Instcombine can create constant expressions, which are not handled by the program scope constant resolution pass.
+    // For example, in InsertDummyKernelForSymbolTablePass addresses of indirectly called functions
+    // should be processed and without BreakConstantExpr the addresses are not found.
+    mpm.add(new BreakConstantExpr());
 
     // true means selective scalarization
     mpm.add(createScalarizerPass(IGC_IS_FLAG_ENABLED(EnableSelectiveScalarizer)));
