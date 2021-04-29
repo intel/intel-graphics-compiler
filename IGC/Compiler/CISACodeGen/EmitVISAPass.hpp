@@ -444,7 +444,7 @@ public:
 
     void emitUnmaskedRegionBoundary(bool start);
     // Debug Built-Ins
-    void emitStateRegID(uint32_t and_imm, uint32_t shr_imm);
+    void emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     void emitThreadPause(llvm::GenIntrinsicInst* inst);
 
     void MovPhiSources(llvm::BasicBlock* bb);

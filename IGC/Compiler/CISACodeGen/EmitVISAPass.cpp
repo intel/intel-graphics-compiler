@@ -8565,27 +8565,27 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
-            emitStateRegID(0x0000C000, 0x0000000E);
+            emitStateRegID(14, 15);
         else
-            emitStateRegID(0x00007000, 0x0000000C);
+            emitStateRegID(12, 14);
         break;
     }
     case GenISAIntrinsic::GenISA_subslice_id:
     {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
-            emitStateRegID(0x00003000, 0x0000000C);
+            emitStateRegID(12, 13);
         else
-            emitStateRegID(0x00000100, 0x00000008);
+            emitStateRegID(8, 8);
         break;
     }
     case GenISAIntrinsic::GenISA_eu_id:
     {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
-            emitStateRegID(0x00000F00, 0x00000008);
+            emitStateRegID(8, 11);
         else
-            emitStateRegID(0x000000F0, 0x00000004);
+            emitStateRegID(4, 7);
         break;
     }
     case GenISAIntrinsic::GenISA_getSR0:
@@ -8603,7 +8603,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     }
     case GenISAIntrinsic::GenISA_eu_thread_id:
-        emitStateRegID(0x00000007, 0x00000000);
+        emitStateRegID(0, 2);
         break;
     case GenISAIntrinsic::GenISA_eu_thread_pause:
         emitThreadPause(inst);
@@ -17215,8 +17215,12 @@ void EmitPass::ResourceLoop(bool needLoop, CVariable* flag, uint label)
     }
 }
 
-void EmitPass::emitStateRegID(uint32_t and_imm, uint32_t shr_imm)
+void EmitPass::emitStateRegID(uint32_t BitStart, uint32_t BitEnd)
 {
+    // For example, emitStateRegID(14, 18) would return the value in the
+    // range [18:14].
+    uint32_t and_imm = BITMASK_RANGE(BitStart, BitEnd);
+    uint32_t shr_imm = BitStart;
     m_encoder->And(m_destination, m_currShader->GetSR0(), m_currShader->ImmToVariable(and_imm, ISA_TYPE_UD));
     m_encoder->Shr(m_destination, m_destination, m_currShader->ImmToVariable(shr_imm, ISA_TYPE_UD));
     m_encoder->Push();
