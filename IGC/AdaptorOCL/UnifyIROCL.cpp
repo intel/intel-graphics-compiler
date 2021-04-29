@@ -340,7 +340,6 @@ static void CommonOCLBasedPasses(
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
-    mpm.add(new UndefinedReferencesPass());
 
     if (IGC_GET_FLAG_VALUE(AllowMem2Reg))
     {
@@ -349,12 +348,14 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new CatchAllLineNumber());
 
-
     // OCL has built-ins so it always need to run inlining
     {
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
+
+        // Check for undefined references before inlining
+        mpm.add(new UndefinedReferencesPass());
 
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
