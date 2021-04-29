@@ -103,6 +103,7 @@ namespace IGC
         void alignBuffer(DataVector& buffer, unsigned int alignment);
 
         const llvm::DataLayout* m_DL;
+        ModuleMetaData* m_pModuleMd;
     };
 
 } // namespace IGC

@@ -429,6 +429,13 @@ namespace IGC
         int PointeeBufferIndex;
     };
 
+    struct FunctionAddressRelocInfo
+    {
+        unsigned BufferOffset;
+        unsigned PointerSize;
+        std::string FunctionSymbol;
+    };
+
     struct ShaderData
     {
         unsigned int numReplicas = 0;
@@ -459,6 +466,8 @@ namespace IGC
         std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
         std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
         std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
+        std::vector<FunctionAddressRelocInfo> GlobalBufferFunctionAddressRelocInfo;
+        std::vector<FunctionAddressRelocInfo> ConstantBufferFunctionAddressRelocInfo;
         unsigned int MinNOSPushConstantSize = 0;
         std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
