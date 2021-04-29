@@ -1335,6 +1335,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             Function* newLdRawFunction =
                 GenISAIntrinsic::getDeclaration(ldrawvec->getModule(), GenISAIntrinsic::GenISA_ldraw_indexed, types);
             NewLI = Builder.CreateCall(newLdRawFunction, args);
+            NewLI->setDebugLoc(EE_user->getDebugLoc());
             EE_user->replaceAllUsesWith(NewLI);
             EE_user->eraseFromParent();
         };
@@ -1365,6 +1366,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 {
                     NewEEI[Idx] = Builder.CreateExtractElement(NewLI, CI);
                 }
+                dyn_cast<ExtractElementInst>(NewEEI[Idx])->setDebugLoc(EEI->getDebugLoc());
                 EEI->replaceAllUsesWith(NewEEI[Idx]);
                 EEI->eraseFromParent();
             }
