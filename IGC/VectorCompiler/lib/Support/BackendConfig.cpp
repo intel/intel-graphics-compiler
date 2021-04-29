@@ -114,7 +114,7 @@ static cl::opt<bool>
 static cl::opt<unsigned>
     StatelessPrivateMemSizeOpt("dbgonly-enforce-privmem-stateless",
                                cl::desc("Enforce stateless privmem size"),
-                               cl::init(16 * 8192));
+                               cl::init(8192));
 
 static cl::opt<FunctionControl> FunctionControlOpt(
     "vc-function-control", cl::desc("Force special calls (see supported enum)"),
