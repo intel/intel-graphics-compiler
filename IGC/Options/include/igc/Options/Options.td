@@ -97,6 +97,11 @@ def fno_jump_tables : Flag<["-"], "fno-jump-tables">,
 def ftranslate_legacy_memory_intrinsics : Flag<["-"], "ftranslate-legacy-memory-intrinsics">,
   HelpText<"Legalize old memory intrinsics">;
 
+// this option controls stateless memory per thread
+// also alias stack-mem-size= is available (see below)
+def fstateless_private_size : Flag<["-"], "stateless-stack-mem-size=">,
+  HelpText<"Stateless memory amount per thread">;
+
 def Xfinalizer : Separate<["-"], "Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
 
@@ -124,8 +129,8 @@ def igcmc_visaopts : Joined<["-"], "visaopts=">,
   HelpText<"Options for finalizer in form \"opt1 opt2 opt3...\"">;
 
 def igcmc_stack_size : Joined<["-"], "stack-mem-size=">,
+  Alias<fstateless_private_size>,
   HelpText<"Control stack memory size (in bytes)">;
-
 }
 // }} Igcmc compatibility
 

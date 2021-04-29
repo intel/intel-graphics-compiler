@@ -237,8 +237,10 @@ defineGlobalsLocalizationConfig(vc::GlobalsLocalizationMode GLMode,
 // values with provided ones.
 static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
-  if (Opts.StackMemSize)
+  if (Opts.StackMemSize) {
     BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
+    BackendOpts.StatelessPrivateMemSize = Opts.StackMemSize.getValue();
+  }
   BackendOpts.EmitDebugInformation = Opts.EmitDebugInformation;
   BackendOpts.EmitDebuggableKernels = Opts.EmitDebuggableKernels;
   BackendOpts.EnableAsmDumps = Opts.DumpAsm;
