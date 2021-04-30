@@ -1075,7 +1075,7 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         // Generate a DRL: dummy values, which will be resolved after all scalarization is complete.
         V_PRINT(scalarizer, "\t\t\t*** Not found. Setting DRL. \n");
         Type* dummyType = origType->getElementType();
-        Function* dummy_function = getOrCreateDummyFunc(dummyType, origInst->getModule());
+        Function* dummy_function = getOrCreateDummyFunc(dummyType);
         DRLEntry newDRLEntry;
         newDRLEntry.unresolvedInst = origValue;
         newDRLEntry.dummyVals.resize(width);
@@ -1289,7 +1289,6 @@ void ScalarizeFunction::resolveDeferredInstructions()
             if (call->getCalledFunction() == function.second)
                 return true;
         }
-
         return false;
     };
 

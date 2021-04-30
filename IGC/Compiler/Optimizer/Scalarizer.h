@@ -179,10 +179,10 @@ namespace IGC
         void releaseAllSCMEntries();
 
         /// @brief create the dummy function which is called to signify a dummy value
-        inline llvm::Function* getOrCreateDummyFunc(llvm::Type* dummyType, llvm::Module* module) {
+        inline llvm::Function* getOrCreateDummyFunc(llvm::Type* dummyType) {
             if (createdDummyFunctions.find(dummyType) == createdDummyFunctions.end()) {
                 llvm::FunctionType* funcType = llvm::FunctionType::get(dummyType, false);
-                llvm::Function* function = llvm::Function::Create(funcType, llvm::Function::InternalLinkage, "", module);
+                llvm::Function* function = llvm::Function::Create(funcType, llvm::Function::InternalLinkage);
                 createdDummyFunctions[dummyType] = function;
                 return function;
             }
@@ -193,10 +193,8 @@ namespace IGC
         /// @brief deletes the memory associated with all the created dynamic Function objects in the map
         inline void destroyDummyFunc() {
             for (auto& function : createdDummyFunctions) {
-                if (function.second) {
-                    function.second->eraseFromParent();
-                    function.second = nullptr;
-                }
+                function.second->deleteValue();
+                function.second = nullptr;
             }
         }
 
