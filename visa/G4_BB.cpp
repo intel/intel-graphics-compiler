@@ -90,7 +90,6 @@ void G4_BB::removePredEdge(G4_BB* pred)
         if (*it != pred) continue;
         // found
         Preds.erase(it);
-        getParent().markStale();
         return;
     }
     MUST_BE_TRUE(false, ERROR_FLOWGRAPH); // edge is not found
@@ -103,7 +102,6 @@ void G4_BB::removeSuccEdge(G4_BB* succ)
         if (*it != succ) continue;
         // found
         Succs.erase(it);
-        getParent().markStale();
         return;
     }
     MUST_BE_TRUE(false, ERROR_FLOWGRAPH); // edge is not found

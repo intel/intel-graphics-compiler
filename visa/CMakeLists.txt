@@ -209,7 +209,6 @@ set(GenX_Common_Sources_External_Other
   LinearScanRA.cpp
   LocalDataflow.cpp
   LocalRA.cpp
-  LoopAnalysis.cpp
   Lowered_IR.cpp
   MergeScalar.cpp
   Optimizer.cpp
