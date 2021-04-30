@@ -89,3 +89,13 @@ macro(igc_find_external_lit)
     message(FATAL_ERROR "llvm-lit is not found, please specify it with LLVM_EXTERNAL_LIT variable")
   endif()
 endmacro()
+
+# Helper macro to add tablegenning and set
+# include flags for current directories.
+macro(igc_tablegen)
+  set(_old_flags ${LLVM_TABLEGEN_FLAGS})
+  list(APPEND LLVM_TABLEGEN_FLAGS "-I=${CMAKE_CURRENT_SOURCE_DIR}" "-I=${CMAKE_CURRENT_BINARY_DIR}")
+  tablegen(${ARGN})
+  set(LLVM_TABLEGEN_FLAGS ${_old_flags})
+  unset(_old_flags)
+endmacro()
