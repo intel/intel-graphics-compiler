@@ -72,6 +72,11 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
     for (; GVarIter != module.global_end();)
     {
         GlobalVariable* pGVar = &(*GVarIter);
+        if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
+        {
+            strStream << msg << GVarIter->getName().str() << "'\n";
+            foundUndef = true;
+        }
 
         // Increment the iterator before attempting to remove a global variable
         GVarIter++;
@@ -80,12 +85,6 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
             (pGVar->hasExternalLinkage() || pGVar->hasCommonLinkage()))
         {
             continue;
-        }
-
-        if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
-        {
-            strStream << msg << GVarIter->getName().str() << "'\n";
-            foundUndef = true;
         }
 
         if (!pGVar->isDeclaration() && pGVar->use_empty())
@@ -102,9 +101,12 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
             StringRef funcName = F.getName();
             if (!funcName.startswith("__builtin_IB") && funcName != "printf" &&
                 !funcName.startswith("__igcbuiltin_") &&
-                !funcName.startswith("__translate_sampler_initializer") &&
-                !F.hasFnAttribute("referenced-indirectly"))
+                !funcName.startswith("__translate_sampler_initializer"))
             {
+                if (F.hasFnAttribute("referenced-indirectly"))
+                {
+                    continue;
+                }
                 strStream << msg << funcName << "()'\n";
                 foundUndef = true;
             }
