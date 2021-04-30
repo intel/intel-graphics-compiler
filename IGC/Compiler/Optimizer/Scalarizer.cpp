@@ -88,7 +88,6 @@ ScalarizeFunction::~ScalarizeFunction()
 {
     releaseAllSCMEntries();
     delete[] m_SCMAllocationArray;
-    destroyDummyFunc();
     V_PRINT(scalarizer, "ScalarizeFunction destructor\n");
 }
 
@@ -171,6 +170,8 @@ bool ScalarizeFunction::runOnFunction(Function& F)
         IGC_ASSERT_MESSAGE((*index)->use_empty(), "Unable to remove used instruction");
         (*index)->eraseFromParent();
     }
+
+    destroyDummyFunc();
 
     V_PRINT(scalarizer, "\nCompleted scalarizing function: " << m_currFunc->getName() << "\n");
     return true;
@@ -1091,7 +1092,7 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         // Generate a DRL: dummy values, which will be resolved after all scalarization is complete.
         V_PRINT(scalarizer, "\t\t\t*** Not found. Setting DRL. \n");
         Type* dummyType = origType->getElementType();
-        Function* dummy_function = getOrCreateDummyFunc(dummyType);
+        Function* dummy_function = getOrCreateDummyFunc(dummyType, origInst->getModule());
         DRLEntry newDRLEntry;
         newDRLEntry.unresolvedInst = origValue;
         newDRLEntry.dummyVals.resize(width);
@@ -1305,6 +1306,7 @@ void ScalarizeFunction::resolveDeferredInstructions()
             if (call->getCalledFunction() == function.second)
                 return true;
         }
+
         return false;
     };
 
