@@ -31,12 +31,15 @@ IN THE SOFTWARE.
 using namespace vc::bif::printf;
 using namespace cm;
 
+// Currently the max format string length supported by runtime.
+constexpr int MaxFormatStrSize = 16 * 1024;
+
 namespace TransferDataLayout {
 enum Enum {
   // Indices:
   CurAddressLow,
   CurAddressHigh,
-  AllocatedSize,
+  ReturnValue,
   // Number of vector elements for current address storage. Address is always
   // stored as 64-bit value split into 2 parts (32-bit pointers are zext).
   AddressSize = 2
@@ -99,10 +102,10 @@ getCurAddress(vector<BufferElementTy, TransferDataSize> TransferData) {
 }
 
 static inline vector<BufferElementTy, TransferDataSize>
-generateTransferData(uintptr_t InitPtr, BufferElementTy AllocatedSize) {
+generateTransferData(uintptr_t InitPtr, BufferElementTy ReturnValue) {
   vector<BufferElementTy, TransferDataSize> TransferData;
   setCurAddress(TransferData, InitPtr);
-  TransferData[TransferDataLayout::AllocatedSize] = AllocatedSize;
+  TransferData[TransferDataLayout::ReturnValue] = ReturnValue;
   return TransferData;
 }
 
@@ -110,10 +113,13 @@ generateTransferData(uintptr_t InitPtr, BufferElementTy AllocatedSize) {
 // space in it. It needs some info about args to allocate enough space.
 static vector<BufferElementTy, TransferDataSize>
 printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
+  auto FmtStrSize = ArgsInfo[ArgsInfoVector::FormatStrSize];
+  if (FmtStrSize > MaxFormatStrSize)
+    return generateTransferData(/* BufferPtr */ 0, /* ReturnValue */ -1);
   auto BufferSize = calcRequiredBufferSize(ArgsInfo);
   auto BufferPtr = reinterpret_cast<uintptr_t>(cm::detail::printf_buffer());
   auto Offset = getInitialBufferOffset(BufferPtr, BufferSize);
-  return generateTransferData(BufferPtr + Offset, BufferSize);
+  return generateTransferData(BufferPtr + Offset, /* ReturnValue */ 0);
 }
 
 // Writes \p Data to printf buffer via \p CurAddress pointer.
@@ -132,6 +138,9 @@ template <typename T>
 vector<BufferElementTy, TransferDataSize>
 printf_fmt_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                 T *FormatString) {
+  if (TransferData[TransferDataLayout::ReturnValue])
+    // Just skip.
+    return TransferData;
   uintptr_t CurAddress = getCurAddress(TransferData);
   BufferElementTy Index = detail::printf_format_index(FormatString);
   CurAddress = writeElementToBuffer(CurAddress, Index);
@@ -192,6 +201,9 @@ static vector<BufferElementTy, TransferDataSize>
 printf_arg_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                 ArgKind::Enum Kind,
                 vector<BufferElementTy, ArgData::Size> Arg) {
+  if (TransferData[TransferDataLayout::ReturnValue])
+    // Just skip.
+    return TransferData;
   vector<BufferElementTy, ArgInfo::Size> Info = getArgInfo(Kind);
   uintptr_t CurAddress = getCurAddress(TransferData);
   CurAddress = writeElementToBuffer(CurAddress, Info[ArgInfo::Code]);
@@ -212,6 +224,9 @@ template <typename T>
 vector<BufferElementTy, TransferDataSize>
 printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                     T *String) {
+  if (TransferData[TransferDataLayout::ReturnValue])
+    // Just skip.
+    return TransferData;
   uintptr_t CurAddress = getCurAddress(TransferData);
   BufferElementTy Index = detail::printf_format_index(String);
   CurAddress = writeElementToBuffer(CurAddress, ArgCode::String);
@@ -223,7 +238,7 @@ printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
 // Getting printf return value here.
 static int
 printf_ret_impl(vector<BufferElementTy, TransferDataSize> TransferData) {
-  return TransferData[TransferDataLayout::AllocatedSize];
+  return TransferData[TransferDataLayout::ReturnValue];
 }
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>

@@ -100,7 +100,7 @@ private:
   void addPrintfImplDeclarations(Module &M);
   void updatePrintfImplDeclarations(Module &M);
   void setAlwaysInlineForPrintfImpl();
-  CallInst &createPrintfInitCall(CallInst &OrigPrintf,
+  CallInst &createPrintfInitCall(CallInst &OrigPrintf, int FmtStrSize,
                                  const PrintfArgInfoSeq &ArgsInfo);
   CallInst &createPrintfFmtCall(CallInst &OrigPrintf, CallInst &InitCall);
   CallInst &createPrintfArgCall(CallInst &OrigPrintf, CallInst &PrevCall,
@@ -201,21 +201,24 @@ static void assertPrintfCall(const CallInst &CI) {
   (void)CI;
 }
 
-static PrintfArgInfoSeq analyzeFormatString(const Value &FmtStrOp) {
+// Returns pair of format string size (including '\0') and argument information.
+static std::pair<int, PrintfArgInfoSeq>
+analyzeFormatString(const Value &FmtStrOp) {
   auto FmtStr = getConstStringFromOperandOptional(FmtStrOp);
   if (!FmtStr)
     report_fatal_error(
         "printf resolution cannot access format string during compile time");
-  return parseFormatString(FmtStr.getValue());
+  return {FmtStr.getValue().size() + 1, parseFormatString(FmtStr.getValue())};
 }
 
 void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   assertPrintfCall(OrigPrintf);
-  auto ArgsInfo = analyzeFormatString(*OrigPrintf.getArgOperand(0));
+  auto [FmtStrSize, ArgsInfo] =
+      analyzeFormatString(*OrigPrintf.getArgOperand(0));
   if (ArgsInfo.size() != OrigPrintf.getNumArgOperands() - 1)
     report_fatal_error("printf format string and arguments don't correspond");
 
-  auto &InitCall = createPrintfInitCall(OrigPrintf, ArgsInfo);
+  auto &InitCall = createPrintfInitCall(OrigPrintf, FmtStrSize, ArgsInfo);
   auto &FmtCall = createPrintfFmtCall(OrigPrintf, InitCall);
 
   // FIXME: combine LLVM call args type and format string info in more
@@ -296,7 +299,7 @@ using ArgsInfoStorage = std::array<unsigned, ArgsInfoVector::Size>;
 // Returns arguments information required by init implementation function.
 // FIXME: combine LLVM call args type and format string info before this
 // function.
-static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf,
+static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf, int FmtStrSize,
                                        const PrintfArgInfoSeq &FmtArgsInfo) {
   assertPrintfCall(OrigPrintf);
 
@@ -318,13 +321,14 @@ static ArgsInfoStorage collectArgsInfo(CallInst &OrigPrintf,
       llvm::count_if(FmtArgsInfo, [](PrintfArgInfo Info) {
         return Info.Type == PrintfArgInfo::String;
       });
+  ArgsInfo[ArgsInfoVector::FormatStrSize] = FmtStrSize;
   return ArgsInfo;
 }
 
 CallInst &GenXPrintfResolution::createPrintfInitCall(
-    CallInst &OrigPrintf, const PrintfArgInfoSeq &FmtArgsInfo) {
+    CallInst &OrigPrintf, int FmtStrSize, const PrintfArgInfoSeq &FmtArgsInfo) {
   assertPrintfCall(OrigPrintf);
-  auto ImplArgsInfo = collectArgsInfo(OrigPrintf, FmtArgsInfo);
+  auto ImplArgsInfo = collectArgsInfo(OrigPrintf, FmtStrSize, FmtArgsInfo);
 
   IRBuilder<> IRB{&OrigPrintf};
   auto *ArgsInfoV =

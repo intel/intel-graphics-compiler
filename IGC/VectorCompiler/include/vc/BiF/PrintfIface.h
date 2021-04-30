@@ -35,7 +35,15 @@ inline constexpr int TransferDataSize = 4;
 
 // Vector to pass some information about args to the init function.
 namespace ArgsInfoVector {
-enum Enum { NumTotal, Num64Bit, NumPtr, NumStr, Size };
+enum Enum {
+  NumTotal, // the number of args pssed to printf (except format string)
+  Num64Bit, // the number of 64 bit and not pointer printf args (except format
+            // string)
+  NumPtr,   // the number of pointer args (those that are for "%p" specifier)
+  NumStr,   // the number of string args (those that are for "%s" specifier)
+  FormatStrSize, // the size of format string
+  Size
+};
 } // namespace ArgsInfoVector
 
 namespace ArgKind {
