@@ -397,8 +397,7 @@ public:
                     m_chOff,
                     m_maskCtrl,
                     m_exDesc,
-                    m_desc
-                );
+                    m_desc);
             if (m_sendSrc0Len >= 0)
                 inst->setSrc0Length(m_sendSrc0Len);
             if (m_sendSrc1Len >= 0)
@@ -904,7 +903,6 @@ public:
         m_exDesc = exDesc;
         m_desc = desc;
     }
-
 
     void InstSendSrc0Length(int src0Length) {
         m_sendSrc0Len = src0Length;

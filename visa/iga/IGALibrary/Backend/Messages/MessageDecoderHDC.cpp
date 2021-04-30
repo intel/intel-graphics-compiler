@@ -108,11 +108,12 @@ enum DC1 : uint32_t {
 
 struct MessageDecoderHDC : MessageDecoderLegacy {
     MessageDecoderHDC(
-        Platform _platform, SFID _sfid,
-        SendDesc _exDesc, SendDesc _desc, RegRef _indDesc,
+        Platform _platform, SFID _sfid, ExecSize execSize,
+        SendDesc _exDesc, SendDesc _desc,
         DecodeResult &_result)
         : MessageDecoderLegacy(
-            _platform, _sfid, _exDesc, _desc, _indDesc, _result)
+            _platform, _sfid, execSize,
+            _exDesc, _desc, _result)
     {
     }
 
@@ -294,7 +295,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         int bitsPerElemReg,
         int bitsPerElemMem,
         int elemsPerAddr,
-        int simd,
+        int execSize,
         int extraAttrs)
     {
         CacheOpt caching = CacheOpt::DEFAULT;
@@ -302,8 +303,13 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         std::stringstream ss;
         ss << "hdc_";
         ss << msgSym; // e.g. "load"
-        if (simd == 8 || simd == 16)
-            ss << "_simd" << simd;
+        if (execSize == 8 || execSize == 16)
+            ss << "_simd" << execSize;
+
+        if (instExecSize != ExecSize::INVALID) {
+            // e.g. a SIMD4 message will mask out the top bits
+            execSize = std::min(execSize, int(instExecSize));
+        }
 
         ss << ".";
         int bti = 0;
@@ -391,7 +397,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
             addrSizeBits,
             bitsPerElemReg, bitsPerElemMem,
             elemsPerAddr,
-            simd,
+            execSize,
             extraAttrs);
         result.info.channelsEnabled = chEnMask;
     }
@@ -424,20 +430,26 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
         int addrSize,
         int extraAttrs)
     {
+        enum MDC_A64_DB_OW {
+            OW1L = 0x0,
+            OW1H = 0x1,
+            OW2  = 0x2,
+            OW4  = 0x3,
+            OW8  = 0x4,
+        };
+
         auto owBits = getDescBits(8, 3);
-        // if there's only one OW, we pad up to 1 GRF (since it's LO or HI)
-        // otherwise, we'll have 2, 4, ... all GRF multiples
-        int regBlockSize = owBits < 2 ? 256 : 128;
-        extraAttrs |= MessageInfo::TRANSPOSED;
-        if (owBits == 1)
+        if (owBits == OW1H) {
             extraAttrs |= MessageInfo::EXPAND_HIGH;
+        }
+        extraAttrs |= MessageInfo::TRANSPOSED;
 
         int elems = addrSize == 64 ?
             decodeMDC_A64_DB_OW(8) :
             decodeMDC_DB_OW(8);
         std::stringstream ss;
         ss << msgDesc << " x" << elems;
-        if (owBits == 1)
+        if (owBits == OW1H)
             ss << "H";
         msgDesc = ss.str();
 
@@ -446,7 +458,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
             msgDesc,
             op,
             addrSize,
-            regBlockSize, 128,
+            128, 128,
             elems,
             1, // SIMD
             extraAttrs);
@@ -1321,7 +1333,7 @@ static constexpr Format DC0_OPS[] {
     DC0_OP(SendOp::STORE, "qword scattered write", "MSD0W_QWS",
         0x0D, D64, A32, "33653", "44753"),
 }
-#endif
+#endif // end experimental work
 
 void MessageDecoderHDC::tryDecodeDC1() {
     const int msgType = getDescBits(14, 5);
@@ -1794,11 +1806,13 @@ void MessageDecoderHDC::tryDecodeDC1() {
 
 
 void iga::decodeDescriptorsHDC(
-    Platform platform, SFID sfid,
-    SendDesc exDesc, SendDesc desc, RegRef indDesc,
+    Platform platform, SFID sfid, ExecSize execSize,
+    SendDesc exDesc, SendDesc desc,
     DecodeResult &result)
 {
-    MessageDecoderHDC mdo(platform, sfid, exDesc, desc, indDesc, result);
+    MessageDecoderHDC mdo(
+        platform, sfid, execSize,
+        exDesc, desc, result);
     mdo.tryDecode();
 }
 

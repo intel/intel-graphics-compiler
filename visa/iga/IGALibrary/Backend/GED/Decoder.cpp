@@ -1041,7 +1041,7 @@ SendDesc Decoder::decodeSendExDesc()
         GED_DECODE_RAW_TO(ExDescRegFile, exDescRegFile);
     }
 
-    SendDesc exDesc {};
+    SendDesc exDesc;
     if (exDescRegFile == GED_REG_FILE_IMM) {
         exDesc.type = SendDesc::Kind::IMM;
         GED_DECODE_RAW_TO(ExMsgDesc, exDesc.imm);
@@ -1057,16 +1057,14 @@ SendDesc Decoder::decodeSendExDesc()
 
 SendDesc Decoder::decodeSendDesc()
 {
-    bool descIsAlwaysImm = false;
     GED_REG_FILE descRegFile = GED_REG_FILE_IMM;
-    if (!descIsAlwaysImm)
-        GED_DECODE_RAW_TO(DescRegFile, descRegFile);
-    SendDesc desc {};
+    GED_DECODE_RAW_TO(DescRegFile, descRegFile);
+    SendDesc desc;
     if (descRegFile == GED_REG_FILE_IMM) {
         desc.type = SendDesc::Kind::IMM;
         GED_DECODE_RAW_TO(MsgDesc, desc.imm);
     } else {
-        // desc register is hardwired to a0.0 (ex-desc below can vary)
+        // desc register is hardwired to a0.0 (ex-desc can vary)
         desc.type = SendDesc::Kind::REG32A;
         desc.reg.regNum = 0;
         desc.reg.subRegNum = 0;
@@ -1074,57 +1072,79 @@ SendDesc Decoder::decodeSendDesc()
     return desc;
 }
 
-Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
+static void decodeMLenRlenFromDesc(
+    const SendDesc &desc, int &src0Len, int &dstLen)
 {
-    // Kernel instruction builder will attempt to set these if we can't
-    // figure them out here
-    int src0Len = -1, src1Len = -1;
-
-    const SendDesc desc = decodeSendDesc();
-
-    const SendDesc exDesc = decodeSendExDesc();
-    if (exDesc.isImm()) {
-        src1Len = (int)((exDesc.imm >> 6) & 0x1F);
-    } else {
-        //
+    if (desc.isImm()) {
+        src0Len = (int)(desc.imm >> 25) & 0xF;
+        dstLen = (int)(desc.imm >> 20) & 0x1F;
     }
+}
 
-    SFID sfid = SFID::INVALID;
-    if (platform() >= Platform::XE) {
-        // dig the SFID out of it's encoding location
-        sfid = m_subfunc.send;
-    } else if (exDesc.isImm()) {
+void Decoder::decodeSendInfoPreXe(SendDescodeInfo &sdi)
+{
+    if (sdi.exDesc.isImm()) {
         // in <=GEN11, it's ExDesc[3:0]
         // if the extended descriptor is immediate, we can extract it
         // from that
-        sfid = sfidFromEncoding(platform(), exDesc.imm);
-    } else if (exDesc.isReg()) {
+        sdi.sfid = sfidFromEncoding(platform(), sdi.exDesc.imm);
+    } else if (sdi.exDesc.isReg()) {
         // given <=GEN11 and reg exdesc
-        sfid = SFID::A0REG;
+        sdi.sfid = SFID::A0REG;
     }
+    if (sdi.exDesc.isImm()) {
+        sdi.src1Len = (int)(sdi.exDesc.imm >> 6) & 0x1F;
+    }
+    decodeMLenRlenFromDesc(sdi.desc, sdi.src0Len, sdi.dstLen);
+}
+void Decoder::decodeSendInfoXe(SendDescodeInfo &sdi)
+{
+    sdi.sfid = m_subfunc.send;
+    if (sdi.exDesc.isImm()) {
+        sdi.src1Len = (int)(sdi.exDesc.imm >> 6) & 0x1F;
+    }
+    decodeMLenRlenFromDesc(sdi.desc, sdi.src0Len, sdi.dstLen);
+}
 
+
+
+
+Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
+{
+    SendDescodeInfo sdi;
+    sdi.desc = decodeSendDesc();
+    sdi.exDesc = decodeSendExDesc();
+    if (platform() < Platform::XE) {
+        decodeSendInfoPreXe(sdi);
+    } else if (platform() == Platform::XE) {
+        decodeSendInfoXe(sdi);
+    } else {
+        IGA_ASSERT_FALSE("unsupported platform");
+    }
 
     FlagRegInfo fri = decodeFlagRegInfo();
     Instruction *inst = kernel.createSendInstruction(
         *m_opSpec,
-        sfid,
+        sdi.sfid,
         fri.pred,
         fri.reg,
         decodeExecSize(),
         decodeChannelOffset(),
         decodeMaskCtrl(),
-        exDesc,
-        desc
+        sdi.exDesc,
+        sdi.desc
     );
 
-    if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) == OpSpec::Format::SEND_BINARY) { // send is binary
+    if ((m_opSpec->format & OpSpec::Format::SEND_BINARY) ==
+        OpSpec::Format::SEND_BINARY)
+    { // send is binary
         decodeSendDestination(inst);
         decodeSendSource0(inst);
         decodeSendSource1(inst);
-        if (src1Len < 0 && inst->getSource(SourceIndex::SRC1).isNull()) {
+        if (sdi.src1Len < 0 && inst->getSource(SourceIndex::SRC1).isNull()) {
             // if src1Len comes from a0.#[24:20], but src1 is null, then
             // we can still assume it's 0.
-            src1Len = 0;
+            sdi.src1Len = 0;
         }
     } else { // if (m_opSpec->isSendFamily()) {
         decodeSendDestination(inst);
@@ -1144,9 +1164,9 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
 
     // in case the operand lengths come from a seprate source
     if (inst->getSrc0Length() < 0)
-        inst->setSrc0Length(src0Len);
+        inst->setSrc0Length(sdi.src0Len);
     if (inst->getSrc1Length() < 0)
-        inst->setSrc1Length(src1Len);
+        inst->setSrc1Length(sdi.src1Len);
 
     return inst;
 }

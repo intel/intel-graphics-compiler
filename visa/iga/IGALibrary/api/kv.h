@@ -301,21 +301,21 @@ IGA_API kv_status_t kv_get_message_sfid(
 /*
  * Gets message length, extended message length, and response length in
  * units of registers.  The count of lengths successfully set is returned.
- * If any of the parameters is NULL, it returns 0. Invalid lengths are set
+ * If any of the parameters is NULL, it returns 0.  Invalid lengths are set
  * to KV_INVALID_LEN.
  */
 IGA_API uint32_t kv_get_message_len(
     const kv_t *kv, int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
 
 /*
- * Gets message length, extended message length, and response length in
- * units of registers.  The count of lengths successfully set is returned.
- * Alternative version of kv_get_message_len when desc and/or exDesc is indirect.
- * If any of the parameters is NULL, it returns 0. Invalid lengths are set
- * to KV_INVALID_LEN.
+ * Alternative version of kv_get_message_len when desc or exDesc are
+ * indirect.  If any of the parameters is NULL, it returns 0.  Invalid lengths
+ * are set to KV_INVALID_LEN.
  */
 IGA_API uint32_t kv_get_message_len_ext(
-    const kv_t *kv, int32_t pc, uint32_t desc, uint32_t exDesc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
+    const kv_t *kv, int32_t pc, uint32_t desc, uint32_t exDesc,
+    uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
+
 /*
  * Returns the ExecSize of the instruction (SIMD width)
  * 0 - INVALID

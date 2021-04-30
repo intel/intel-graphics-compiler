@@ -43,18 +43,27 @@ namespace iga
     //
     class RegSet
     {
-        BitSet<> *bitSetForPtr(RegName rn);
-        BitSet<> &bitSetFor(RegName rn);
-        const BitSet<> &bitSetFor(RegName rn) const;
+    public:
+        using Bits = BitSet<>;
+        // TODO:
+        // using Bits = FlexibleBitSet
+    private:
+        Bits *bitSetForPtr(RegName rn);
+    public:
+              Bits &bitSetFor(RegName rn);
+        const Bits &bitSetFor(RegName rn) const;
 
+    private:
         size_t offsetOf(RegName rn, int reg) const;
         size_t offsetOf(RegName rn, RegRef rr, size_t typeSize) const;
         size_t offsetOf(RegName rn, RegRef rr, Type t) const;
         bool isTrackedReg(RegName rn) const;
     public:
         RegSet(const Model &m);
-        // RegSet(const RegSet &) = default;
-        // RegSet &operator=(const RegSet &) = default;
+        RegSet(const RegSet &rs);
+        RegSet &operator=(const RegSet &);
+
+        const Model &getModel() const {return model;}
 
         bool  operator==(const RegSet &rs) const;
         bool  operator!=(const RegSet &rs) const { return !(*this == rs); }
@@ -64,6 +73,7 @@ namespace iga
         bool  empty() const;
         void  reset();
         bool  intersects(const RegSet &rhs) const;
+        // bool  containsAll(const RegSet &rhs) const;
         bool  destructiveUnion(const RegSet &inp);
         bool  destructiveSubtract(const RegSet &rhs);
         bool  intersectInto(const RegSet &rhs, RegSet &into) const;
@@ -79,25 +89,45 @@ namespace iga
         bool addFlagRegArf(RegRef fr, ExecSize es, ChannelOffset co);
 
         ///////////////////////////////////////////////////////////////////////
-        // specialized add functions
+        // specialized add functions for full instructions
+        //
+        // all the source inputs (including implicit acc), excluding predicate
         bool addSourceInputs(const Instruction &i);
+        //
+        // just the predicate
         bool addPredicationInputs(const Instruction &i);
+        //
+        // just operand 'srcIx'
         bool addSourceOperandInput(const Instruction &i, int srcIx);
-        bool addSourceImplicitAccumulator(const Instruction &i);
-        bool addDestinationInputs(const Instruction &i); // reg ind
         //
+        // implicit sources such as acc or flag register in a select
+        bool addSourceImplicit(const Instruction &i);
+        //
+        // just uses of a0 as part of an indirect register access
+        bool addDestinationInputs(const Instruction &i); // register indirect
+        //
+        //////////////////////
+        // destination outputs including acc, but excluding predicate (flagmod)
         bool addDestinationOutputs(const Instruction &i);
-        bool addFlagModifierOutputs(const Instruction &i);
-        bool addDestinationImplicitAccumulator(const Instruction &i);
         //
+        // just the destination operand omitting acc
+        bool addExplicitDestinationOutputs(const Instruction &i);
+        //
+        // just the conditional modifier
+        bool addFlagModifierOutputs(const Instruction &i);
+        //
+        // implicit destinations such as acc
+        bool addDestinationImplicit(const Instruction &i);
 
-        static RegSet unionOf(const RegSet &r1, const RegSet &r2) {
-            RegSet r12(*r1.model);
-            (void)r12.destructiveUnion(r1);
-            (void)r12.destructiveUnion(r2);
-            return r12;
-        }
+        //////////////////////////////////////
+        // both source and destination can cover to this
+        bool addImplicitAccumulatorAccess(const Instruction &i, bool isDst);
 
+        // both predicates and flag modifiers can cover to this
+        bool addFlagAccess(const Instruction &i);
+
+       ///////////////////////////////////////
+        // helpers for operand regions
         bool setDstRegion(
             RegName rn,
             RegRef rr,
@@ -114,14 +144,31 @@ namespace iga
         void        str(std::ostream &os) const;
         std::string str() const;
 
+        static std::string str(
+            const Model &m, RegName rn, const RegSet::Bits &bs);
+
+        static RegSet unionOf(const RegSet &r1, const RegSet &r2) {
+            RegSet r12(r1.model);
+            (void)r12.destructiveUnion(r1);
+            (void)r12.destructiveUnion(r2);
+            return r12;
+        }
+        static RegSet::Bits emptyPredSet(const Model &model);
+        static RegSet intersection(const RegSet &rs1, const RegSet &rs2) {
+            IGA_ASSERT(&rs1.model == &rs2.model, "model mismatch");
+            RegSet rsI(rs1.model);
+            rs1.intersectInto(rs2, rsI);
+            return rsI;
+        }
     private:
+        bool addSendOperand(const Instruction &i, int srcIx);
 
     private:
-        const Model *model;
-        BitSet<> bitsR;
-        BitSet<> bitsA;
-        BitSet<> bitsAcc;
-        BitSet<> bitsF;
+        const Model &model;
+        Bits bitsR;
+        Bits bitsA;
+        Bits bitsAcc;
+        Bits bitsF;
     };
 
 
@@ -161,17 +208,16 @@ namespace iga
         static InstDsts compute(const Instruction &i);
     };
 
-
     inline InstSrcs InstSrcs::compute(const Instruction &i)
     {
-        InstSrcs iss(*Model::LookupModel(i.platform()));
+        InstSrcs iss(Model::LookupModelRef(i.platform()));
         iss.predication.addPredicationInputs(i);
         iss.sources.addSourceInputs(i);
         return iss;
     }
     inline InstDsts InstDsts::compute(const Instruction &i)
     {
-        InstDsts ids(*Model::LookupModel(i.platform()));
+        InstDsts ids(Model::LookupModelRef(i.platform()));
         ids.destinations.reset();
         ids.flagModifier.addFlagModifierOutputs(i);
         ids.destinations.addDestinationOutputs(i);
