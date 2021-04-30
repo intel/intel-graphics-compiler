@@ -1635,7 +1635,10 @@ namespace //Anonymous
                 }
             }
 
-            // remove function pointers
+            // Remove function pointer from instructions
+            // FIXME: Allowing function pointer calls directly passed by FE will cause regressions due to implicit args
+            // not being supported by indirect calls. When runtime turns on support, we should remove the following code
+            // to allow function pointer usage in all cases.
             auto nullPtrConst = llvm::ConstantPointerNull::get(Type::getInt8PtrTy(M.getContext()));
             for (auto& func : M.functions())
             {
@@ -1645,11 +1648,8 @@ namespace //Anonymous
                     {
                         if (!isa<llvm::Constant>(user)) {
                             user->replaceUsesOfWith(&func, nullPtrConst);
+                            changed = true;
                         }
-                        else {
-                            user->replaceAllUsesWith(llvm::Constant::getNullValue(user->getType()));
-                        }
-                        changed = true;
                     }
                 }
             }
@@ -2153,7 +2153,7 @@ namespace //Anonymous
         {
             return std::unique_ptr<StructValue>(new NullStructValue(sourceValue));
         }
-        IGC_ASSERT_MESSAGE(0, "should not be here");
+        // Not a block description struct
         return nullptr;
     }
 

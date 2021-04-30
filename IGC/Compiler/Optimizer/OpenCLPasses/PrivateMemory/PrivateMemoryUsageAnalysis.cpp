@@ -146,15 +146,14 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
         }
     }
 
-    //Add private memory implicit arg
-    SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
-    implicitArgs.push_back(ImplicitArg::R0);
-
     if (m_hasPrivateMem)
     {
+        //Add private memory implicit arg
+        SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
+        implicitArgs.push_back(ImplicitArg::R0);
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
+        ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
     }
-    ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
 
     return true;
 }
