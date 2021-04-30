@@ -123,238 +123,77 @@ endif()
 #                           "DEFAULT" will add options to all lanuages).
 # @param option             Additional compilation option (multiple can be specified).
 function(igc_bif_build_bc)
-  set(__allowedLanguages "DEFAULT" "CL" "LL" "BC")
-  set(__allowedOptLanguages ${__allowedLanguages} "OPT")
-
-  set(_srcLanguage "DEFAULT")
-  set(_pchFilePath)
-  set(_pchFilePathSet NO)
-  set(_incFilePaths)
-  set(_includeDirs)
-  set(_defines)
-  set(_dependencies)
-  set(_useOpt NO)
-  foreach(_allowedOptLang ${__allowedOptLanguages})
-    set("_options_${_allowedOptLang}")
-  endforeach()
-
-  set(_parseState 0)
-  foreach(_compileArg ${ARGN})
-    string(REPLACE ";" "\;" _compileArg "${_compileArg}")
-
-    # States: [0] "OUTPUT" [1] <param> [2] "TRIPLE" [3] <param> [4] "SOURCES" [5] <param> [6] *<param> [6]
-    #         *1( "LANGUAGE" [7] <param> [8] ) *1( "PRECOMPILED" [9] <param> [10] ) *1( "FORCE_INCLUDE" [11] <param> [12] *<param> [12] )
-    #         *1( "INCLUDE_DIRECTORIES" [13] <param> [14] *<param> [14] ) *1( "DEFINES" [15] <param> [16] *<param> [16] ) *1( "DEPENDS" [17] <param> [18] *<param> [18] )
-    #         *1( "OPTIMIZE" [19] <param> [20] ) *( "OPTIONS" [21] <param> [22] *<param> [22] )
-    # Transitions: 0 (OUTPUT) -> 1 -> 2 (TRIPLE) -> 3 -> 4 (SOURCES) -> 5 -> 6
-    #              6 (LANGUAGE) -> 7 -> 8
-    #              6 (PRECOMPILED) -> 9 -> 10
-    #              6 (FORCE_INCLUDE) -> 11 -> 12
-    #              6 (INCLUDE_DIRECTORIES) -> 13 -> 14
-    #              6 (DEFINES) -> 15 -> 16
-    #              6 (DEPENDS) -> 17 -> 18
-    #              6 (OPTIMIZE) -> 19 -> 20
-    #              6 (OPTIONS) -> 21 -> 22
-    #              6 -> 6
-    #              8 (PRECOMPILED) -> 9 -> 10
-    #              8 (FORCE_INCLUDE) -> 11 -> 12
-    #              8 (INCLUDE_DIRECTORIES) -> 13 -> 14
-    #              8 (DEFINES) -> 15 -> 16
-    #              8 (DEPENDS) -> 17 -> 18
-    #              8 (OPTIMIZE) -> 19 -> 20
-    #              8 (OPTIONS) -> 21 -> 22
-    #              10 (FORCE_INCLUDE) -> 11 -> 12
-    #              10 (INCLUDE_DIRECTORIES) -> 13 -> 14
-    #              10 (DEFINES) -> 15 -> 16
-    #              10 (DEPENDS) -> 17 -> 18
-    #              10 (OPTIMIZE) -> 19 -> 20
-    #              10 (OPTIONS) -> 21 -> 22
-    #              12 (INCLUDE_DIRECTORIES) -> 13 -> 14
-    #              12 (DEFINES) -> 15 -> 16
-    #              12 (DEPENDS) -> 17 -> 18
-    #              12 (OPTIMIZE) -> 19 -> 20
-    #              12 (OPTIONS) -> 21 -> 22
-    #              12 -> 12
-    #              14 (DEFINES) -> 15 -> 16
-    #              14 (DEPENDS) -> 17 -> 18
-    #              14 (OPTIMIZE) -> 19 -> 20
-    #              14 (OPTIONS) -> 21 -> 22
-    #              14 -> 14
-    #              16 (DEPENDS) -> 17 -> 18
-    #              16 (OPTIMIZE) -> 19 -> 20
-    #              16 (OPTIONS) -> 21 -> 22
-    #              16 -> 16
-    #              18 (OPTIMIZE) -> 19 -> 20
-    #              18 (OPTIONS) -> 21 -> 22
-    #              18 -> 18
-    #              20 (OPTIONS) -> 21 -> 22
-    #              22 (OPTIONS) -> 21 -> 22
-    #              22 -> 22
-    # Stop States: 6, 8, 10, 12, 14, 16, 18, 20, 22
-    if((_parseState EQUAL 0) AND (_compileArg MATCHES "^OUTPUT$"))
-      set(_parseState 1)
-    elseif(_parseState EQUAL 1)
-      set(_outBcFilePath "${_compileArg}")
-      set(_parseState 2)
-    elseif((_parseState EQUAL 2) AND (_compileArg MATCHES "^TRIPLE$"))
-      set(_parseState 3)
-    elseif(_parseState EQUAL 3)
-      set(_archTriple "${_compileArg}")
-      set(_parseState 4)
-    elseif((_parseState EQUAL 4) AND (_compileArg MATCHES "^SOURCES$"))
-      set(_parseState 5)
-    elseif(_parseState EQUAL 5)
-      set(_srcFilePaths "${_compileArg}")
-      set(_parseState 6)
-    elseif(_parseState EQUAL 6)
-      if(_compileArg MATCHES "^LANGUAGE$")
-        set(_parseState 7)
-      elseif(_compileArg MATCHES "^PRECOMPILED$")
-        set(_parseState 9)
-      elseif(_compileArg MATCHES "^FORCE_INCLUDE$")
-        set(_parseState 11)
-      elseif(_compileArg MATCHES "^INCLUDE_DIRECTORIES$")
-        set(_parseState 13)
-      elseif(_compileArg MATCHES "^DEFINES$")
-        set(_parseState 15)
-      elseif(_compileArg MATCHES "^DEPENDS$")
-        set(_parseState 17)
-      elseif(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        list(APPEND _srcFilePaths "${_compileArg}")
-      endif()
-    elseif(_parseState EQUAL 7)
-      list(FIND __allowedLanguages "${_compileArg}" _foundLanguageIdx)
-      if(_foundLanguageIdx LESS 0)
-        message(FATAL_ERROR "Language \"${_compileArg}\" is not supported. Supported languages: ${__allowedLanguages}")
-      endif()
-      set(_srcLanguage "${_compileArg}")
-      set(_parseState 8)
-    elseif(_parseState EQUAL 8)
-      if(_compileArg MATCHES "^PRECOMPILED$")
-        set(_parseState 9)
-      elseif(_compileArg MATCHES "^FORCE_INCLUDE$")
-        set(_parseState 11)
-      elseif(_compileArg MATCHES "^INCLUDE_DIRECTORIES$")
-        set(_parseState 13)
-      elseif(_compileArg MATCHES "^DEFINES$")
-        set(_parseState 15)
-      elseif(_compileArg MATCHES "^DEPENDS$")
-        set(_parseState 17)
-      elseif(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        message(FATAL_ERROR "Invalid parameter token near \"${_compileArg}\".")
-      endif()
-    elseif(_parseState EQUAL 9)
-      set(_pchFilePath "${_compileArg}")
-      set(_pchFilePathSet YES)
-      set(_parseState 10)
-    elseif(_parseState EQUAL 10)
-      if(_compileArg MATCHES "^FORCE_INCLUDE$")
-        set(_parseState 11)
-      elseif(_compileArg MATCHES "^INCLUDE_DIRECTORIES$")
-        set(_parseState 13)
-      elseif(_compileArg MATCHES "^DEFINES$")
-        set(_parseState 15)
-      elseif(_compileArg MATCHES "^DEPENDS$")
-        set(_parseState 17)
-      elseif(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        message(FATAL_ERROR "Invalid parameter token near \"${_compileArg}\".")
-      endif()
-    elseif(_parseState EQUAL 11)
-      set(_incFilePaths "${_compileArg}")
-      set(_parseState 12)
-    elseif(_parseState EQUAL 12)
-      if(_compileArg MATCHES "^INCLUDE_DIRECTORIES$")
-        set(_parseState 13)
-      elseif(_compileArg MATCHES "^DEFINES$")
-        set(_parseState 15)
-      elseif(_compileArg MATCHES "^DEPENDS$")
-        set(_parseState 17)
-      elseif(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        list(APPEND _incFilePaths "${_compileArg}")
-      endif()
-    elseif(_parseState EQUAL 13)
-      set(_includeDirs "${_compileArg}")
-      set(_parseState 14)
-    elseif(_parseState EQUAL 14)
-      if(_compileArg MATCHES "^DEFINES$")
-        set(_parseState 15)
-      elseif(_compileArg MATCHES "^DEPENDS$")
-        set(_parseState 17)
-      elseif(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        list(APPEND _includeDirs "${_compileArg}")
-      endif()
-    elseif(_parseState EQUAL 15)
-      set(_defines "${_compileArg}")
-      set(_parseState 16)
-    elseif(_parseState EQUAL 16)
-      if(_compileArg MATCHES "^DEPENDS$")
-        set(_parseState 17)
-      elseif(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        list(APPEND _defines "${_compileArg}")
-      endif()
-    elseif(_parseState EQUAL 17)
-      set(_dependencies "${_compileArg}")
-      set(_parseState 18)
-    elseif(_parseState EQUAL 18)
-      if(_compileArg MATCHES "^OPTIMIZE$")
-        set(_parseState 19)
-      elseif(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      else()
-        list(APPEND _dependencies "${_compileArg}")
-      endif()
-    elseif(_parseState EQUAL 19)
-      set(_useOpt "${_compileArg}")
-      set(_parseState 20)
-    elseif((_parseState EQUAL 20) AND (_compileArg MATCHES "^OPTIONS$"))
-      set(_parseState 21)
-    elseif(_parseState EQUAL 21)
-      list(FIND __allowedOptLanguages "${_compileArg}" _foundLanguageIdx)
-      if(_foundLanguageIdx LESS 0)
-        message(WARNING "Options language \"${_compileArg}\" is not supported. These options will be omitted. Supported languages: ${__allowedOptLanguages}")
-        set(_optionsLang)
-      else()
-        set(_optionsLang "${_compileArg}")
-      endif()
-      set(_parseState 22)
-    elseif(_parseState EQUAL 22)
-      if(_compileArg MATCHES "^OPTIONS$")
-        set(_parseState 21)
-      elseif(DEFINED _optionsLang)
-        list(APPEND "_options_${_optionsLang}" "${_compileArg}")
-      endif()
-    else()
-      message(FATAL_ERROR "Invalid parameter token near \"${_compileArg}\".")
-    endif()
-  endforeach()
-  if(NOT ((_parseState EQUAL 6) OR (_parseState EQUAL 8) OR (_parseState EQUAL 10) OR (_parseState EQUAL 12) OR (_parseState EQUAL 14) OR (_parseState EQUAL 16) OR (_parseState EQUAL 18) OR (_parseState EQUAL 20) OR (_parseState EQUAL 22)))
-    message(FATAL_ERROR "Invalid number of parameters.")
+  set(_mainOpts
+    OPTIMIZE
+    )
+  set(_mainSingleKw
+    OUTPUT
+    TRIPLE
+    LANGUAGE
+    )
+  set(_mainMultiKw
+    SOURCES
+    PRECOMPILED
+    FORCE_INCLUDE
+    INCLUDE_DIRECTORIES
+    DEFINES
+    DEPENDS
+    OPTIONS
+    )
+  cmake_parse_arguments(ARG
+    "${_mainOpts}"
+    "${_mainSingleKw}"
+    "${_mainMultiKw}"
+    ${ARGN}
+    )
+  if(ARG_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown arguments: ${ARG_UNPARSED_ARGUMENTS}")
   endif()
 
+  set(__allowedLanguages DEFAULT CL LL BC)
+  set(_optionsMultiKw ${__allowedLanguages} OPT)
+  # OPTIMIZE lang suboptions.
+  cmake_parse_arguments(OPTIONS
+    ""
+    ""
+    "${_optionsMultiKw}"
+    ${ARG_OPTIONS}
+    )
+  if(OPTIONS_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "Unknown options arguments: ${OPTIONS_UNPARSED_ARGUMENTS}")
+  endif()
+
+
+  # Required arguments.
+  if(NOT ARG_OUTPUT)
+    message(FATAL_ERROR "Output is not specified for igc_bif_build_bc")
+  endif()
+  set(_outBcFilePath ${ARG_OUTPUT})
+  if(NOT ARG_TRIPLE)
+    message(FATAL_ERROR "Triple is not specified for igc_bif_build_bc")
+  endif()
+  set(_archTriple ${ARG_TRIPLE})
+  if(NOT ARG_SOURCES)
+    message(FATAL_ERROR "Sources are not specified for igc_bif_build_bc")
+  endif()
+  set(_srcFilePaths ${ARG_SOURCES})
+
+  # Optional arguments.
+  set(_srcLanguage "DEFAULT")
+  if(ARG_LANGUAGE)
+    if(NOT (ARG_LANGUAGE IN_LIST __allowedLanguages))
+      message(FATAL_ERROR "Language '${ARG_LANGUAGE}' is not supported. Supported languages: ${__allowedLanguages}")
+    endif()
+    set(_srcLanguage ${ARG_LANGUAGE})
+  endif()
+  set(_incFilePaths ${ARG_FORCE_INCLUDE})
+  set(_includeDirs ${ARG_INCLUDE_DIRECTORIES})
+  set(_defines ${ARG_DEFINES})
+  set(_dependencies ${ARG_DEPENDS})
+  set(_useOpt ${ARG_OPTIMIZE})
+  foreach(optLang IN LISTS _optionsMultiKw)
+    set(_options_${optLang} ${OPTIONS_${optLang}})
+  endforeach()
 
   get_filename_component(_outBcFileName "${_outBcFilePath}" NAME)
   get_filename_component(_outBcFileDir  "${_outBcFilePath}" PATH)
