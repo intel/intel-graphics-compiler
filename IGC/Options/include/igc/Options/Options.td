@@ -99,7 +99,7 @@ def ftranslate_legacy_memory_intrinsics : Flag<["-"], "ftranslate-legacy-memory-
 
 // this option controls stateless memory per thread
 // also alias stack-mem-size= is available (see below)
-def fstateless_private_size : Flag<["-"], "stateless-stack-mem-size=">,
+def fstateless_private_size : Joined<["-"], "stateless-stack-mem-size=">,
   HelpText<"Stateless memory amount per thread">;
 
 def Xfinalizer : Separate<["-"], "Xfinalizer">,
