@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "G4_BB.hpp"
 #include "Gen4_IR.hpp"
 #include "RelocationInfo.h"
+#include "LoopAnalysis.h"
 
 #include <list>
 #include <map>
@@ -230,6 +231,9 @@ class FlowGraph
     // label to subroutine BB's map. This is used to add edges between subroutine caller/callee
     // ToDo: We should use FuncInfo instead, but at the time it was needed FuncInfo was not constructed yet..
     std::unordered_map<G4_Label*, std::vector<G4_BB*>> subroutines;
+
+    vISA::Dominator dom;
+    vISA::PostDom pDom;
 
 public:
     typedef std::pair<G4_BB*, G4_BB*> Edge;
@@ -459,7 +463,8 @@ public:
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
-      stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL) {}
+      stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL),
+      dom(*kernel), pDom(*kernel) {}
 
     ~FlowGraph();
 
@@ -467,6 +472,8 @@ public:
 
     void addPredSuccEdges(G4_BB* pred, G4_BB* succ, bool tofront=true)
     {
+        markStale();
+
         if (tofront)
             pred->Succs.push_front(succ);
         else
@@ -645,6 +652,11 @@ public:
     void print(std::ostream& OS) const;
     void dump() const;  // used in debugger
     void dumptofile(const char* Filename) const; // used in debugger
+
+    Dominator& getDominator() { return dom; }
+    PostDom& getPostDominator() { return pDom; }
+    void markStale();
+
 private:
     // Use normalized region descriptors for each source operand if possible.
     void normalizeRegionDescriptors();
@@ -658,26 +670,8 @@ private:
     void decoupleReturnBlock(G4_BB*);
     void decoupleInitBlock(G4_BB*, FuncInfoHashTable& funcInfoTable);
     void DFSTraverse(G4_BB* bb, unsigned& preId, unsigned& postId, FuncInfo* fn);
+
 }; // FlowGraph
 
-
-class PostDom
-{
-public:
-    PostDom(G4_Kernel&);
-    std::unordered_set<G4_BB*>& getPostDom(G4_BB*);
-    std::vector<G4_BB*>& getImmPostDom(G4_BB*);
-    void run();
-    void dumpImmDom();
-    G4_BB* getCommonImmDom(std::unordered_set<G4_BB*>&);
-
-private:
-    G4_Kernel& kernel;
-    G4_BB* exitBB = nullptr;
-    std::vector<std::unordered_set<G4_BB*>> postDoms;
-    std::vector<std::vector<G4_BB*>> immPostDoms;
-
-    void updateImmPostDom();
-};
 } // vISA::
 #endif // FLOWGRAPH_H
