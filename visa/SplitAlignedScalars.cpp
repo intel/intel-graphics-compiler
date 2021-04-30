@@ -30,8 +30,6 @@ using namespace vISA;
 
 bool SplitAlignedScalars::canReplaceDst(G4_INST* inst)
 {
-    auto opcode = inst->opcode();
-
     // acc has special rules, so skip optimizing instructions using acc
     if (inst->useAcc())
         return false;
@@ -41,8 +39,7 @@ bool SplitAlignedScalars::canReplaceDst(G4_INST* inst)
         inst->isMath() ||
         inst->isArithmetic() ||
         inst->isLogic() ||
-        inst->isCompare() ||
-        opcode == G4_mad)
+        inst->isCompare())
     {
         return true;
     }
@@ -271,8 +268,8 @@ void SplitAlignedScalars::run()
                         // now create src out of tmpDst
                         auto dclToUse = getDclForRgn(srcRgn, newAlignedTmpTopDcl);
 
-                        auto newAlignedSrc = kernel.fg.builder->createSrc(dclToUse->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(),
-                            srcRgn->getRegion(), srcRgn->getType());
+                        auto newAlignedSrc = kernel.fg.builder->createSrcRegRegion(srcRgn->getModifier(), srcRgn->getRegAccess(),
+                            dclToUse->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
                         inst->setSrc(newAlignedSrc, i);
                         bb->insertBefore(instIt, copy);
                     }
