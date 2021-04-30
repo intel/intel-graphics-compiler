@@ -28,6 +28,7 @@ IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Allocator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include <cstdint>
