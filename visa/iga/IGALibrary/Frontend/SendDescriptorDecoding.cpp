@@ -97,6 +97,7 @@ void iga::EmitSendDescriptorInfo(
     bool dstNonNull,
     int dstLen, int src0Len, int src1Len,
     const SendDesc &exDesc, const SendDesc &desc,
+    RegRef indDesc,
     std::stringstream &ss)
 {
     DiagnosticList ws, es;
@@ -161,8 +162,7 @@ void iga::EmitSendDescriptorInfo(
 
     if (desc.isImm()) {
         const DecodeResult dr =
-            tryDecode(p, sfid, execSize,
-                exDesc, desc, nullptr);
+            tryDecode(p, sfid, execSize, exDesc, desc, indDesc, nullptr);
         if (dr.syntax.isValid()) {
             ss << "; " << dr.syntax.sym();
         } else if (!dr.info.description.empty()) {
@@ -176,9 +176,7 @@ void iga::EmitSendDescriptorInfo(
             // skip unsupported SFIDs
         }
 
-        bool appendUvrLod =
-            dr.info.hasAttr(MessageInfo::HAS_UVRLOD) && src0Len > 0;
-        if (appendUvrLod) {
+        if (dr.info.hasAttr(MessageInfo::HAS_UVRLOD) && src0Len > 0) {
             // Deduce the number of typed coordinates included
             // (e.g. U, V, R, LOD)
             const int BITS_PER_REG =

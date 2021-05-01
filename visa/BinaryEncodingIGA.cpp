@@ -1264,9 +1264,6 @@ static SendDesc encodeExDescSendUnary(
     }
     exDescIga.imm = tVal;
 
-    // clear the EOT bit which is not part of exDesc
-    exDescIga.imm &= ~(1 << 5);
-
     // non-split send implies Src1.Length == 0
     xlen = 0;
 
@@ -1310,9 +1307,6 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     {
         exDescIga.imm &= 0xFFFFFFC0;
     }
-
-    // clear the EOT bit which is not part of exDesc
-    exDescIga.imm &= ~(1 << 5);
 
     return exDescIga;
 }

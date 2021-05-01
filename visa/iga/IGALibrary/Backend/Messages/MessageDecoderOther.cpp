@@ -29,12 +29,11 @@ using namespace iga;
 struct MessageDecoderOther : MessageDecoderLegacy
 {
     MessageDecoderOther(
-        Platform _platform, SFID _sfid, ExecSize _execSize,
-        SendDesc _exDesc, SendDesc _desc,
+        Platform _platform, SFID _sfid,
+        SendDesc _exDesc, SendDesc _desc, RegRef _indDesc,
         DecodeResult &_result)
         : MessageDecoderLegacy(
-            _platform, _sfid, _execSize,
-            _exDesc, _desc, _result)
+            _platform, _sfid, _exDesc, _desc, _indDesc, _result)
     {
     }
 
@@ -58,8 +57,8 @@ struct MessageDecoderOther : MessageDecoderLegacy
 
 
 void MessageDecoderOther::tryDecodeGTWY() {
-    auto choosePage = [&](const char *xe, const char *_ = nullptr) {
-        return xe;
+    auto choosePage = [&](const char *xe, const char *xe3 = nullptr) {
+        return xe ? xe : xe3;
     };
     std::stringstream sym, descs;
     int opBits = getDescBits(0, 3); // [2:0]
@@ -699,12 +698,10 @@ void MessageDecoderOther::tryDecodeURB()
 
 ///////////////////////////////////////////////////////////////////////////////
 void iga::decodeDescriptorsOther(
-    Platform platform, SFID sfid, ExecSize _execSize,
-    SendDesc exDesc, SendDesc desc,
+    Platform platform, SFID sfid,
+    SendDesc exDesc, SendDesc desc, RegRef indDesc,
     DecodeResult &result)
 {
-    MessageDecoderOther mdo(
-        platform, sfid, _execSize,
-        exDesc, desc, result);
+    MessageDecoderOther mdo(platform, sfid, exDesc, desc, indDesc, result);
     mdo.tryDecodeOther();
 }

@@ -38,7 +38,6 @@ IN THE SOFTWARE.
 #include "bxml/ModelGen10.hpp"
 #include "bxml/ModelGen11.hpp"
 #include "bxml/ModelXe.hpp"
-#include "../asserts.hpp"
 #include "../bits.hpp"
 #include "../Backend/Native/MInst.hpp"
 
@@ -468,11 +467,3 @@ const Model *Model::LookupModel(Platform p)
         return nullptr;
     }
 }
-
-const Model &Model::LookupModelRef(Platform platform)
-{
-    const Model *m = Model::LookupModel(platform);
-    IGA_ASSERT(m, "invalid platform");
-    return *m;
-}
-

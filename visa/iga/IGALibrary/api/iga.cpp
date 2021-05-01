@@ -455,7 +455,7 @@ public:
         SWSB_ENCODE_MODE swsbEnMod = SWSB_ENCODE_MODE::SWSBInvalidMode)
     {
         FormatOpts fopts(
-            m_model,
+            m_model.platform,
             formatLabel,
             formatLabelEnv);
         fopts.addApiOpts(dopts.formatting_opts);

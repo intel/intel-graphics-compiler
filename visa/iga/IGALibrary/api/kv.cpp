@@ -57,15 +57,16 @@ public:
     DepAnalysis                       *m_liveAnalysis = nullptr;
 
     KernelViewImpl(
-        const Model &model,
+        Platform p,
         const void *bytes,
         size_t bytesLength,
         SWSB_ENCODE_MODE swsb_enc_mode)
-        : m_model(model)
+        : m_model(*Model::LookupModel(p))
 
     {
-        Decoder decoder(model, m_errHandler);
+        Decoder decoder(*Model::LookupModel(p), m_errHandler);
         decoder.setSWSBEncodingMode(swsb_enc_mode);
+        IGA_ASSERT(Model::LookupModel(p) != nullptr, "unsupported platform");
         m_kernel = decoder.decodeKernelBlocks(bytes, bytesLength);
 
         for (const Block *b : m_kernel->getBlockList()) {
@@ -121,8 +122,7 @@ kv_t *kv_create(
         *errbuf = 0;
 
     Platform p = ToPlatform(gen_platf);
-    const Model *model = Model::LookupModel(p);
-    if (model == nullptr) {
+    if (p == Platform::INVALID) {
         if (status)
             *status = IGA_UNSUPPORTED_PLATFORM;
         if (errbuf) {
@@ -133,7 +133,7 @@ kv_t *kv_create(
 
     KernelViewImpl *kvImpl = nullptr;
     try {
-        kvImpl = new (std::nothrow)KernelViewImpl(*model, bytes, bytes_len, swsb_enc_mode);
+        kvImpl = new (std::nothrow)KernelViewImpl(p, bytes, bytes_len, swsb_enc_mode);
         if (!kvImpl) {
             if (errbuf)
                 formatToF(errbuf, errbuf_cap, "%s", "failed to allocate");
@@ -282,7 +282,7 @@ size_t kv_get_inst_syntax(
     }
 
     std::stringstream ss;
-    FormatOpts fopts(kvImpl->m_model, labeler, labeler_env);
+    FormatOpts fopts(kvImpl->m_model.platform, labeler, labeler_env);
     if (fopts.printInstDefs) {
         static std::mutex m;
         const std::lock_guard<std::mutex> g(m);

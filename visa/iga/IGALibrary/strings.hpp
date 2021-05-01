@@ -129,10 +129,6 @@ namespace iga {
     // trim trailing whitespace
     std::string trimTrailingWs(const std::string &s);
 
-    // converts a string to lines
-    std::vector<std::string> toLines(const std::string &s);
-
-
     // copies the contents of 'os' into buf (safely)
     // returns the required string size
     size_t copyOut(char *buf, size_t bufCap, std::iostream &ios);
@@ -159,10 +155,6 @@ namespace iga {
     void fmtHex(std::ostream &os, uint64_t val, int w = 0);
     // a helper that returns a string version
     std::string fmtHex(uint64_t val, int w = 0);
-    //
-    // e.g. -0x4 rather than 0xFFF....FC
-    std::string fmtHexSigned(int64_t val, int w = 0);
-    void fmtHexSigned(std::ostream &os, int64_t val, int w = 0);
 
     // This class simplifies formatting loops by dropping the first comma.
     // One calls insert *before* each element being formatted.

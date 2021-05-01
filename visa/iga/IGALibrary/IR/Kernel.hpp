@@ -96,7 +96,8 @@ namespace iga {
             ChannelOffset choff,
             MaskCtrl ectr,
             const SendDesc &extDesc,
-            const SendDesc &msgDesc);
+            const SendDesc &msgDesc
+        );
 
         Instruction *createNopInstruction();
         Instruction *createIllegalInstruction();

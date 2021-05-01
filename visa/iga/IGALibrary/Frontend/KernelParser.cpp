@@ -157,7 +157,111 @@ GenParser::GenParser(
 {
     initSymbolMaps();
 }
+// ExecInfo = '(' ExecSize EmOffNm? ')'
+//   where EmOffNm = '|' EmOff  (',' 'NM')?
+//                 | '|' 'NM'
+//         EmOff = 'M0' | 'M4' | ...
+//         ExecSize = '1' | '2' | ... | '32'
+void GenParser::ParseExecInfo(
+    ExecSize dftExecSize,
+    ExecSize &execSize,
+    ChannelOffset &chOff)
+{
+    Loc execSizeLoc = m_execSizeLoc = NextLoc(0);
+    Loc execOffsetLoc = NextLoc(0);
+    // we are careful here since we might have things like:
+    //    jmpi        (1*16)
+    //    jmpi (1|M0) ...
+    //    jmpi (1)    ...
+    // We resolve that by looking ahead two symbols
+    int execSizeVal = 1;
+    if (LookingAt(LPAREN) && (LookingAtFrom(2,RPAREN) || LookingAtFrom(2,PIPE))) {
+        Skip();
+        execSizeLoc = NextLoc();
+        ConsumeIntLitOrFail(execSizeVal, "expected SIMD width");
 
+        if (Consume(PIPE)) {
+            static const IdentMap<ChannelOffset> EM_OFFS {
+                  {"M0", ChannelOffset::M0}
+                , {"M4", ChannelOffset::M4}
+                , {"M8", ChannelOffset::M8}
+                , {"M12", ChannelOffset::M12}
+                , {"M16", ChannelOffset::M16}
+                , {"M20", ChannelOffset::M20}
+                , {"M24", ChannelOffset::M24}
+                , {"M28", ChannelOffset::M28}
+            };
+            execOffsetLoc = NextLoc();
+            ConsumeIdentOneOfOrFail(
+                EM_OFFS,
+                chOff,
+                "expected ChOff",
+                "invalid ChOff");
+            //if (m_chOff % m_execSize != 0) {
+            //    Fail(execOffsetLoc,
+            //        "invalid execution mask offset for execution size");
+            //} else if (m_chOff + m_execSize > 32) {
+            //    Fail(execOffsetLoc,
+            //        "invalid execution mask offset for execution size");
+            //}
+        } else {
+            chOff = ChannelOffset::M0;
+        }
+        ConsumeOrFail(RPAREN,"expected )");
+    } else {
+        if (m_opSpec && m_opSpec->hasImpicitEm()) {
+            chOff = ChannelOffset::M0;
+            execSizeVal = 1;
+        } else if (m_opts.supportLegacyDirectives) {
+            chOff = ChannelOffset::M0;
+            execSizeVal = (int)dftExecSize;
+        } else {
+            FailT("expected '(' (start of execution size info)");
+        }
+    }
+
+    switch (execSizeVal) {
+    case 1: execSize = ExecSize::SIMD1; break;
+    case 2: execSize = ExecSize::SIMD2; break;
+    case 4: execSize = ExecSize::SIMD4; break;
+    case 8: execSize = ExecSize::SIMD8; break;
+    case 16: execSize = ExecSize::SIMD16; break;
+    case 32: execSize = ExecSize::SIMD32; break;
+    default: FailT("invalid SIMD width");
+    }
+
+    m_builder.InstExecInfo(
+        execSizeLoc, execSize, execOffsetLoc, chOff);
+}
+
+Type GenParser::SendOperandDefaultType(int srcIx) const {
+    auto t = srcIx == 1 ? Type::INVALID : Type::UD;
+    if (srcIx < 0) {
+        if (m_opSpec->hasImplicitDstType())
+            t = m_opSpec->implicitDstType();
+    } else {
+        if (m_opSpec->hasImplicitSrcType(srcIx, false))
+            t = m_opSpec->implicitSrcType(srcIx, false);
+    }
+    return t;
+}
+
+Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
+    // sends's second parameter doesn't have a valid type
+    Type t = Type::INVALID;
+    if (Consume(COLON)) {
+        if (!LookingAt(IDENT)) {
+            FailT("expected a send operand type");
+        }
+        if (!IdentLookupFrom(0, DST_TYPES, t)) {
+            FailT("unexpected operand type for send");
+        }
+        Skip();
+    } else {
+        t = SendOperandDefaultType(srcIx);
+    }
+    return t;
+}
 
 bool GenParser::LookupReg(
     const std::string &str,
@@ -291,27 +395,18 @@ static bool isIntegral(const ImmVal &v) {
 // +,-
 // *,/,%
 // -(unary neg)
-bool GenParser::TryParseConstExpr(ImmVal &v)
-{
-    return TryParseConstExpr(ExprParseOpts(), v);
+bool GenParser::TryParseConstExpr(ImmVal &v, int srcOpIx) {
+    if (parseBitwiseExpr(false, v)) {
+        if (srcOpIx >= 0) {
+            m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
+        }
+        return true;
+    }
+    return false;
 }
-bool GenParser::TryParseConstExpr(
-    const ExprParseOpts &pos, ImmVal &v)
-{
-    return parseBitwiseExpr(pos, false, v);
-}
-//
-bool GenParser::TryParseIntConstExpr(ImmVal &v, const char *forWhat)
-{
-    return TryParseIntConstExpr(ExprParseOpts(), v, forWhat);
-}
-bool GenParser::TryParseIntConstExpr(
-    const ExprParseOpts &pos, ImmVal &v, const char *forWhat) {
-    // allow floats in the parse, but check the result (better error)
+bool GenParser::TryParseIntConstExpr(ImmVal &v, const char *forWhat) {
     Loc loc = NextLoc();
-    ExprParseOpts epos = pos; // allow floats, throw tantrum at end
-    epos.allowFloat = true;
-    bool z = TryParseConstExpr(epos, v);
+    bool z = TryParseConstExpr(v);
     if (!z) {
         return false;
     } else if (!isIntegral(v)) {
@@ -321,88 +416,9 @@ bool GenParser::TryParseIntConstExpr(
         } else {
             ss << "expected constant integer expression";
         }
-        FailS(loc, ss.str());
+        FailS(loc,ss.str());
     }
     return true;
-}
-bool GenParser::TryParseIntConstExprAdd(ImmVal &v, const char *forWhat)
-{
-    return TryParseIntConstExprPrimary(ExprParseOpts(), v, forWhat);
-}
-bool GenParser::TryParseIntConstExprAdd(
-    const ExprParseOpts &pos, ImmVal &v, const char *forWhat)
-{
-    Loc loc = NextLoc();
-    ExprParseOpts epos = pos; // allow floats, throw tantrum at end
-    epos.allowFloat = true;
-    bool z = parseAddExpr(epos, false, v);
-    if (!z) {
-        return false;
-    } else if (!isIntegral(v)) {
-        std::stringstream ss;
-        if (forWhat) {
-            ss << forWhat << " must be a constant integer expression";
-        } else {
-            ss << "expected constant integer expression";
-        }
-        FailS(loc, ss.str());
-    }
-    return true;
-}
-bool GenParser::TryParseIntConstExprPrimary(ImmVal &v, const char *forWhat)
-{
-    return TryParseIntConstExprPrimary(ExprParseOpts(), v, forWhat);
-}
-bool GenParser::TryParseIntConstExprPrimary(
-    const ExprParseOpts &pos, ImmVal &v, const char *forWhat)
-{
-    Loc loc = NextLoc();
-    ExprParseOpts epos = pos; // allow floats, throw tantrum at end
-    epos.allowFloat = true;
-    bool z = parsePrimaryExpr(epos, false, v);
-    if (!z) {
-        return false;
-    } else if (!isIntegral(v)) {
-        std::stringstream ss;
-        if (forWhat) {
-            ss << forWhat << " must be a constant integer expression";
-        } else {
-            ss << "expected constant integer expression";
-        }
-        FailS(loc, ss.str());
-    }
-    return true;
-}
-bool GenParser::TryParseIntConstExprAddChain(
-    const ExprParseOpts &pos, ImmVal &v, const char *forWhat)
-{
-    Loc loc = NextLoc();
-    ExprParseOpts epos = pos; // allow floats, throw tantrum at end
-    epos.allowFloat = true;
-
-    // treat this as
-    // 0 + .... (or 0 - ...)
-    v = (int64_t)0;
-    while (LookingAtAnyOf(ADD, SUB)) {
-        Token t = Next(); Skip();
-        ImmVal r;
-        parseMulExpr(pos, true, r);
-        v = evalBinExpr(v, t, r);
-    }
-    if (!isIntegral(v)) {
-        std::stringstream ss;
-        if (forWhat) {
-            ss << forWhat << " must be a constant integer expression";
-        } else {
-            ss << "expected constant integer expression";
-        }
-        FailS(loc, ss.str());
-    }
-    return true;
-}
-bool GenParser::TryParseIntConstExprAddChain(ImmVal &v, const char *forWhat)
-{
-    return TryParseIntConstExprAddChain(ExprParseOpts(), v, forWhat);
 }
 
 void GenParser::ensureIntegral(const Token &t, const ImmVal &v) {
@@ -555,77 +571,68 @@ ImmVal GenParser::evalBinExpr(
 
 
 // E -> E (('&'|'|') E)*
-bool GenParser::parseBitwiseExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v) {
-    if (!parseShiftExpr(pos, consumed, v)) {
+bool GenParser::parseBitwiseExpr(bool consumed, ImmVal &v) {
+    if (!parseShiftExpr(consumed,v)) {
         return false;
     }
     while (LookingAtAnyOf(AMP, PIPE)) {
         Token t = Next(); Skip();
         ImmVal r;
-        parseBitwiseExpr(pos, true, r);
+        parseBitwiseExpr(true, r);
         v = evalBinExpr(v, t, r);
     }
     return true;
 }
 // E -> E (('<<'|'>>') E)*
-bool GenParser::parseShiftExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v)
-{
-    if (!parseAddExpr(pos, consumed, v)) {
+bool GenParser::parseShiftExpr(bool consumed, ImmVal &v) {
+    if (!parseAddExpr(consumed, v)) {
         return false;
     }
     while (LookingAtAnyOf(LSH, RSH)) {
         Token t = Next(); Skip();
         ImmVal r;
-        parseAddExpr(pos, true, r);
+        parseAddExpr(true, r);
         v = evalBinExpr(v, t, r);
     }
     return true;
 }
 // E -> E (('+'|'-') E)*
-bool GenParser::parseAddExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v)
-{
-    if (!parseMulExpr(pos, consumed, v)) {
+bool GenParser::parseAddExpr(bool consumed, ImmVal &v) {
+    if (!parseMulExpr(consumed, v)) {
         return false;
     }
     while (LookingAtAnyOf(ADD, SUB)) {
         Token t = Next(); Skip();
         ImmVal r;
-        parseMulExpr(pos, true, r);
+        parseMulExpr(true, r);
         v = evalBinExpr(v, t, r);
     }
     return true;
 }
 
 // E -> E (('*'|'/'|'%') E)*
-bool GenParser::parseMulExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v)
-{
-    if (!parseUnExpr(pos, consumed, v)) {
+bool GenParser::parseMulExpr(bool consumed, ImmVal &v) {
+    if (!parseUnExpr(consumed, v)) {
         return false;
     }
     while (LookingAtAnyOf({MUL, DIV, MOD})) {
         Token t = Next(); Skip();
         ImmVal r;
-        parseUnExpr(pos, true, r);
+        parseUnExpr(true, r);
         v = evalBinExpr(v, t, r);
     }
     return true;
 }
 
 // E -> ('-'|'~') E
-bool GenParser::parseUnExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v)
-{
+bool GenParser::parseUnExpr(bool consumed, ImmVal &v) {
     if (!LookingAtAnyOf(SUB, TILDE)) {
-        if (!parsePrimaryExpr(pos, consumed, v)) {
+        if (!parsePrimary(consumed, v)) {
             return false;
         }
     } else {
         Token t = Next(); Skip();
-        parsePrimaryExpr(pos, true, v);
+        parsePrimary(true, v);
         switch (t.lexeme) {
         case SUB:
             v.Negate();
@@ -644,19 +651,16 @@ bool GenParser::parseUnExpr(
 // special symbol (e.g. nan, inf, ...)
 // grouped expression (E)
 // literal
-bool GenParser::parsePrimaryExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v)
-{
+bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
     Token t = Next();
     bool isQuietNaN = false;
-    if (pos.allowFloat && LookingAtIdentEq(t, "nan")) {
+    if (LookingAtIdentEq(t, "nan")) {
         WarningT("nan is deprecated, us snan(...) or qnan(...)");
         v.kind = ImmVal::Kind::F64;
         v.f64 = std::numeric_limits<double>::signaling_NaN();
         Skip();
-    } else if (pos.allowFloat &&
-        ((isQuietNaN = LookingAtIdentEq(t, "qnan")) ||
-            LookingAtIdentEq(t, "snan")))
+    } else if ((isQuietNaN = LookingAtIdentEq(t, "qnan")) ||
+        LookingAtIdentEq(t, "snan"))
     {
         auto nanSymLoc = NextLoc();
         Skip();
@@ -664,7 +668,7 @@ bool GenParser::parsePrimaryExpr(
             auto payloadLoc = NextLoc();
             ImmVal payload;
             payload.u64 = 0;
-            parseBitwiseExpr(pos, true, payload);
+            parseBitwiseExpr(true, payload);
             if (payload.u64 >= F64_QNAN_BIT) {
                 FailS(payloadLoc, "NaN payload overflows");
             } else if (payload.u64 == 0 && !isQuietNaN) {
@@ -692,11 +696,11 @@ bool GenParser::parsePrimaryExpr(
             }
         }
         v.kind = ImmVal::Kind::F64;
-    } else if (pos.allowFloat && LookingAtIdentEq(t, "inf")) {
+    } else if (LookingAtIdentEq(t, "inf")) {
         v.f64 = std::numeric_limits<double>::infinity();
         v.kind = ImmVal::Kind::F64;
         Skip();
-    } else if (pos.allowFloat && LookingAt(FLTLIT)) {
+    } else if (LookingAt(FLTLIT)) {
         ParseFltFrom(t.loc, v.f64);
         v.kind = ImmVal::Kind::F64;
         Skip();
@@ -707,7 +711,7 @@ bool GenParser::parsePrimaryExpr(
         Skip();
     } else if (Consume(LPAREN)) {
         // (E)
-        parseBitwiseExpr(pos, true, v);
+        parseBitwiseExpr(true, v);
         Consume(RPAREN);
     } else if (LookingAt(IDENT)) {
         // TEST CASES
@@ -718,17 +722,46 @@ bool GenParser::parsePrimaryExpr(
         // // join (16) LABEL                // passes
         // // mov (1) r65:ud LABEL:ud        // fails
         // // mov (1) r65:ud (2 + LABEL):ud  // fails (poor diagnostic)
-        if (!pos.symbols.empty()) {
-            std::string str = GetTokenAsString();
-            auto itr = pos.symbols.find(str);
-            if (itr != pos.symbols.end()) {
-                v = itr->second;
-                return true;
+        if (m_opSpec && (m_opSpec->isBranching() || m_opSpec->is(Op::MOV))) {
+            if (consumed) {
+                //   jmpi (LABEL + 2)
+                //         ^^^^^ already consumed LPAREN
+                FailT("branching operands may not perform arithmetic on labels");
+            } else {
+                // e.g. jmpi  LABEL64
+                //            ^^^^^^
+                // This backs out so caller can cleanly treat this as
+                // a branch label cleanly
+                return false;
+            }
+        } else {
+            // non branching op
+            if (!consumed) {
+                // e.g. mov (1) r13:ud   SYMBOL
+                //                       ^^^^^^
+                // we fail here since we don't know if we should treat SYMBOL
+                // as relative or absolute
+                FailT("non-branching operations may not reference symbols");
+            } else {
+                // end of a term where FOLLOW contains IDENT
+                //   X + Y*Z  IDENT
+                //            ^
+                // this allows caller to back off and accept
+                //  X + Y*Z as the total expression with lookahead IDENT
+                return false;
+                // FIXME: mov (1) r65:ud (LABEL + 2):ud
+                //   Bad diagnostic "expected source type"
+                // Either we cannot allow IDENT in any const expr's
+                // follow set, or we must track more state through the
+                // expression parse...
+                // Maybe pass a bool, canFail around.
+                //
+                // NOTE: we could also keep a list of backpatches and
+                // apply it after the parse.  But this would require
+                // building a full expression tree and walking it after
+                // all labels have been seen.
             }
         }
-        if (consumed)
-            FailT("unbound identifier");
-        return false;
     } else {
         // something else: error unless we haven't consumed anything
         if (consumed) {
@@ -765,16 +798,14 @@ class KernelParser : GenParser
     Type                  m_defaultRegisterType;
 
     // instruction state
-    const OpSpec         *m_opSpec;
     bool                  m_hasWrEn;
     Type                  m_unifType;
     const Token          *m_unifTypeTk;
     RegRef                m_flagReg;
     ExecSize              m_execSize;
     ChannelOffset         m_chOff;
-    Loc                   m_execSizeLoc;
+
     Loc                   m_mnemonicLoc;
-    Operand::Kind         m_srcKinds[3];
     Loc                   m_srcLocs[3];
     int                   m_sendSrcLens[2]; // send message lengths
     Loc                   m_sendSrcLenLocs[2]; // locations so we can referee
@@ -955,7 +986,6 @@ public:
         m_builder.InstStart(startLoc);
 
         m_flagReg = REGREF_INVALID;
-        m_execSizeLoc = Loc::INVALID;
         m_opSpec = nullptr;
         m_unifType = Type::INVALID;
         m_unifTypeTk = nullptr;
@@ -1004,116 +1034,6 @@ public:
 
         m_builder.InstEnd(ExtentToPrevEnd(startLoc));
     }
-
-
-    // ExecInfo = '(' ExecSize EmOffNm? ')'
-    //   where EmOffNm = '|' EmOff  (',' 'NM')?
-    //                 | '|' 'NM'
-    //         EmOff = 'M0' | 'M4' | ...
-    //         ExecSize = '1' | '2' | ... | '32'
-    void ParseExecInfo(
-        ExecSize dftExecSize,
-        ExecSize &execSize,
-        ChannelOffset &chOff)
-    {
-        Loc execSizeLoc = m_execSizeLoc = NextLoc(0);
-        Loc execOffsetLoc = NextLoc(0);
-        // we are careful here since we might have things like:
-        //    jmpi        (1*16)
-        //    jmpi (1|M0) ...
-        //    jmpi (1)    ...
-        // We resolve that by looking ahead two symbols
-        int execSizeVal = 1;
-        if (LookingAt(LPAREN) && (LookingAtFrom(2,RPAREN) || LookingAtFrom(2,PIPE))) {
-            Skip();
-            execSizeLoc = NextLoc();
-            ConsumeIntLitOrFail(execSizeVal, "expected SIMD width");
-
-            if (Consume(PIPE)) {
-                static const IdentMap<ChannelOffset> EM_OFFS {
-                    {"M0", ChannelOffset::M0}
-                    , {"M4", ChannelOffset::M4}
-                    , {"M8", ChannelOffset::M8}
-                    , {"M12", ChannelOffset::M12}
-                    , {"M16", ChannelOffset::M16}
-                    , {"M20", ChannelOffset::M20}
-                    , {"M24", ChannelOffset::M24}
-                    , {"M28", ChannelOffset::M28}
-                };
-                execOffsetLoc = NextLoc();
-                ConsumeIdentOneOfOrFail(
-                    EM_OFFS,
-                    chOff,
-                    "expected ChOff",
-                    "invalid ChOff");
-                //if (m_chOff % m_execSize != 0) {
-                //    Fail(execOffsetLoc,
-                //        "invalid execution mask offset for execution size");
-                //} else if (m_chOff + m_execSize > 32) {
-                //    Fail(execOffsetLoc,
-                //        "invalid execution mask offset for execution size");
-                //}
-            } else {
-                chOff = ChannelOffset::M0;
-            }
-            ConsumeOrFail(RPAREN,"expected )");
-        } else {
-            if (m_opSpec && m_opSpec->hasImpicitEm()) {
-                chOff = ChannelOffset::M0;
-                execSizeVal = 1;
-            } else if (m_opts.supportLegacyDirectives) {
-                chOff = ChannelOffset::M0;
-                execSizeVal = (int)dftExecSize;
-            } else {
-                FailT("expected '(' (start of execution size info)");
-            }
-        }
-
-        switch (execSizeVal) {
-        case 1: execSize = ExecSize::SIMD1; break;
-        case 2: execSize = ExecSize::SIMD2; break;
-        case 4: execSize = ExecSize::SIMD4; break;
-        case 8: execSize = ExecSize::SIMD8; break;
-        case 16: execSize = ExecSize::SIMD16; break;
-        case 32: execSize = ExecSize::SIMD32; break;
-        default: FailT("invalid SIMD width");
-        }
-
-        m_builder.InstExecInfo(
-            execSizeLoc, execSize, execOffsetLoc, chOff);
-    }
-
-
-    Type SendOperandDefaultType(int srcIx) const {
-        auto t = srcIx == 1 ? Type::INVALID : Type::UD;
-        if (srcIx < 0) {
-            if (m_opSpec->hasImplicitDstType())
-                t = m_opSpec->implicitDstType();
-        } else {
-            if (m_opSpec->hasImplicitSrcType(srcIx, false))
-                t = m_opSpec->implicitSrcType(srcIx, false);
-        }
-        return t;
-    }
-
-
-    Type ParseSendOperandTypeWithDefault(int srcIx) {
-        // sends's second parameter doesn't have a valid type
-        Type t = Type::INVALID;
-        if (Consume(COLON)) {
-            if (!LookingAt(IDENT)) {
-                FailT("expected a send operand type");
-            }
-            if (!IdentLookupFrom(0, DST_TYPES, t)) {
-                FailT("unexpected operand type for send");
-            }
-            Skip();
-        } else {
-            t = SendOperandDefaultType(srcIx);
-        }
-        return t;
-    }
-
 
 
     // e.g.  add (8|M8) ...
@@ -1276,6 +1196,8 @@ public:
             m_opts.supportLegacyDirectives);
         ParseSendDescsLegacy();
     }
+
+
 
 
     // Predication = ('(' WrEnPred ')')?
@@ -1997,47 +1919,49 @@ public:
                 Skip(1);
             }
 
-            // try as raw label first
-            if ((m_opSpec->isBranching() || m_opSpec->op == Op::MOV) &&
-                LookingAt(IDENT) &&
-                !LookingAtIdentEq("snan") &&
-                !LookingAtIdentEq("qnan") &&
-                !LookingAtIdentEq("nan") &&
-                !LookingAtIdentEq("inf"))
-            {
+            // try as constant expression
+            ImmVal immVal;
+            if (TryParseConstExpr(immVal, srcOpIx)) {
+                // does not match labels
+                m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
+                if (pipeAbs) {
+                    immVal.Abs();
+                }
+                FinishSrcOpImmValue(
+                    srcOpIx,
+                    m_srcLocs[srcOpIx],
+                    regnameTk,
+                    immVal);
+                if (pipeAbs) {
+                    ConsumeOrFailAfterPrev(PIPE, "expected |");
+                }
+            } else {
                 if (pipeAbs) {
                     FailS(regnameTk.loc, "unexpected |");
                 }
-                // e.g. LABEL64 (mustn't be an expression)
-                m_srcKinds[srcOpIx] = Operand::Kind::LABEL;
-                std::string str = GetTokenAsString();
-                Skip(1);
-                FinishSrcOpImmLabel(
-                    srcOpIx,
-                    m_srcLocs[srcOpIx],
-                    regnameTk.loc,
-                    str);
-            } else {
-                ImmVal immVal;
-                if (TryParseConstExpr(immVal))
-                {
-                    // (does not match labels)
-                    m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
-                    if (pipeAbs) {
-                        immVal.Abs();
+                // failed constant expression without consuming any input
+                if (LookingAt(IDENT)) {
+                    // e.g. LABEL64
+                    if (m_opSpec->isBranching() || m_opSpec->op == Op::MOV) {
+                        m_srcKinds[srcOpIx] = Operand::Kind::LABEL;
+                        std::string str = GetTokenAsString();
+                        Skip(1);
+                        FinishSrcOpImmLabel(
+                            srcOpIx,
+                            m_srcLocs[srcOpIx],
+                            regnameTk.loc,
+                            str);
+                    } else {
+                        // okay, we're out of ideas now
+                        FailT("unbound identifier");
                     }
-                    FinishSrcOpImmValue(
-                        srcOpIx,
-                        m_srcLocs[srcOpIx],
-                        regnameTk,
-                        immVal);
-                    if (pipeAbs) {
-                        ConsumeOrFailAfterPrev(PIPE, "expected |");
-                    }
+                } else {
+                    // the token is not in the FIRST(srcop)
+                    FailT("expected source operand");
                 }
             }
         }
-    } // ParseSrcOp
+    }
 
 
     void ParseSrcOpInd(
@@ -2675,50 +2599,6 @@ public:
     }
 
 
-    int ParseSendSrc1OpWithLen() {
-        const Token regnameTk = Next();
-        const RegInfo *regInfo;
-        int regNum = 0;
-        if (!ConsumeReg(regInfo, regNum)) {
-            FailT("expected Src1 register");
-        }
-        // send src1 must not have region and subreg
-        m_srcKinds[1] = Operand::Kind::DIRECT;
-
-        if (!Consume(COLON) && !Consume(HASH)) {
-            FailT("expected ':' (Src1Length must suffix Src1 payload)");
-        }
-        const auto src1LenLoc = Next().loc;
-        ImmVal v;
-        if (!TryParseIntConstExprPrimary(v, "src1 length")) {
-            FailT("failed to parse src1 length");
-        } else if (v.s64 < 0 || v.s64 > 32) {
-            FailAtT(src1LenLoc, "invalid src1 length");
-        }
-        int src1Len = (int)v.s64;
-        m_sendSrcLens[1] = src1Len;
-        if (regInfo->regName == RegName::ARF_NULL && src1Len != 0) {
-            FailAtT(src1LenLoc, "Src1Len must be 0 for null register");
-        } else if (regInfo->regName == RegName::GRF_R &&
-            regNum + src1Len > regInfo->getNumReg())
-        {
-            FailAtT(src1LenLoc,
-                "Src1Len: ending register must be <= ", regInfo->getNumReg());
-        }
-
-        // construct the op directly
-        Type t = SendOperandDefaultType(1);
-        m_builder.InstSrcOpRegDirect(
-            1,
-            m_srcLocs[1],
-            SrcModifier::NONE,
-            regInfo->regName,
-            RegRef(regNum, 0),
-            Region::SRC010, // set the default region
-            t);
-
-        return src1Len;
-    }
 
     // e.g. "r13" or "r13:f"
     void ParseSendSrcOp(int srcOpIx, bool enableImplicitOperand) {
@@ -2871,27 +2751,6 @@ public:
             Skip(2);
         }
         return type;
-    }
-
-
-
-
-    SendDesc ParseDesc(const char *which) {
-        SendDesc sd;
-        if (ParseAddrRegRefOpt(sd.reg)) { // ExDesc is register
-            sd.type = SendDesc::Kind::REG32A;
-
-        } else { // ExDesc is imm
-            sd.type = SendDesc::Kind::IMM;
-
-            // constant integral expression
-            ImmVal v;
-            if (!TryParseIntConstExprPrimary(ExprParseOpts(), v, which)) {
-                FailT("expected ", which);
-            }
-            sd.imm = (uint32_t)v.s64;
-        }
-        return sd;
     }
 
 

@@ -29,12 +29,9 @@ IN THE SOFTWARE.
 #include "common/secure_mem.h"
 
 #include <algorithm>
-#include <bitset>
 #include <cstdint>
 #include <cstring>
 #include <ostream>
-#include <sstream>
-#include <string>
 #include <utility>
 
 // Align N up to the nearest multiple of A
@@ -105,15 +102,11 @@ public:
         }
     }
 
-    // TODO: remove
-    void reset() { clear(); }
-
-    void clear() { memset(words, 0, wordsSize * sizeof(I)); }
+    void reset() { memset(words, 0, wordsSize * sizeof(I)); }
     bool set(size_t off, size_t len = 1, bool val = true); // sets/clears range
     bool test(size_t off) const { return testAny(off, 1); }
     bool testAny(size_t off, size_t len) const;
     bool testAll(size_t off, size_t len) const;
-    void containsAll(const BitSet<I> &rhs) const;
     bool empty() const {return !testAny(0, N);}
 
     bool intersects(const BitSet<I> &rhs) const;
@@ -137,17 +130,10 @@ public:
     bool intersectInto(const BitSet<I> &rhs, BitSet<I> &into) const; // set intersection (returns true if result non-empty)
 
     bool operator [](const size_t &ix) const { return test(ix); }
-    bool operator ==(const BitSet<I> &bs) const;
-    bool operator !=(const BitSet<I> &bs) const { return !(*this == bs); }
-    std::string str() const {std::stringstream ss; str(ss); return ss.str();}
-    void str(std::ostream &os) const;
-    size_t cardinality() const;
-
-    static BitSet<I> intersection(const BitSet<I> &bs1, const BitSet<I> &bs2) {
-        BitSet<I> bsI(bs1.N);
-        bs1.intersectInto(bs2, bsI);
-        return bsI;
-    }
+    bool operator ==(const BitSet &bs) const;
+    bool operator !=(const BitSet &bs) const { return !(*this == bs); }
+    //    std::string str() const;
+//    std::string str(std::ostream &os) const;
 private:
     size_t N;
     size_t wordsSize;
@@ -204,7 +190,6 @@ inline bool BitSet<I>::set(size_t off, size_t len, bool val)
 
     return changed;
 }
-
 
 template <typename I>
 inline bool BitSet<I>::intersects(const BitSet<I> &rhs) const {
@@ -339,7 +324,6 @@ inline bool BitSet<I>::testAny(size_t off, size_t len) const
     return false;
 }
 
-
 template <typename I>
 inline bool BitSet<I>::testAll(size_t off, size_t len) const
 {
@@ -383,63 +367,6 @@ bool BitSet<I>::operator==(const BitSet<I> &bs) const
     }
     return memcmp(&words[0], &bs.words[0], wordsSize * sizeof(I)) == 0;
 }
-
-// C++20 gets std::popcount
-// until then, provide a couple instances of likely uses and call it a day
-static inline size_t bsPopcount(uint32_t i) {
-    // this should end up as __popcountsi2
-    return std::bitset<32>(i).count();
-}
-static inline size_t bsPopcount(uint64_t i) {
-    if (sizeof(unsigned long) == 8) {
-        // __popcountti2
-        return std::bitset<64>(i).count();
-    } else {
-        // __popcountsi2; __popcountsi2
-        return
-            bsPopcount((uint32_t)i) +
-            bsPopcount((uint32_t)(i >> 32));
-    }
-}
-static inline size_t bsPopcount(uint16_t i) {
-    return bsPopcount((uint32_t)i);
-}
-
-template <typename I>
-inline size_t BitSet<I>::cardinality() const {
-    size_t n = 0;
-    for (size_t i = 0; i < wordsSize; i++) {
-        n += bsPopcount(words[i]);
-    }
-    return n;
-}
-
-
-template <typename I>
-inline void BitSet<I>::str(std::ostream &os) const {
-    int i = 0;
-    bool first = false;
-    os << "{";
-    while (i < N) {
-        if (test(i)) {
-            if (first) first = false;
-            else os << ",";
-            int start = i + 1;
-            while (i < N && test(i)) {
-                i++;
-            }
-            os << start;
-            if (i != start + 1) {
-                os << "-";
-                os << i + start - 1;
-            }
-        } else {
-            i++;
-        }
-    }
-    os << "}";
-}
-
 
 } // namespace iga
 

@@ -41,15 +41,12 @@ protected:
     using DUMap = std::unordered_map<int,std::vector<const Dep*>>;
     DUMap                                depDefs;
     DUMap                                depUses;
-
-    const RegSet                         EMPTY_SET;
 public:
     JSONFormatter(std::ostream &o, const FormatOpts &os, const void *bs)
         : BasicFormatter(false, o)
         , opts(os)
-        , model(os.model)
+        , model(*Model::LookupModel(os.platform))
         , bits((const uint8_t *)bs)
-        , EMPTY_SET(os.model)
     {
         o << std::boolalpha;
         if (opts.liveAnalysis) {
@@ -167,12 +164,6 @@ public:
             emitNormalInst(i);
         }
 
-        if (platform() >= Platform::XE) {
-            emitRegDist(i.getSWSB());
-            emitSbid(i.getSWSB());
-        } else {
-            emit(", \"regDist\":null, \"sbid\":null");
-        }
         emitInstOpts(i);
 
         bool printBits = opts.printInstBits && bits != nullptr;
@@ -190,19 +181,6 @@ public:
             emit('`');
             emitHex(instBits[0], 8);
             emit('\"');
-        }
-
-        if (opts.printInstDefs &&
-            opts.liveAnalysis &&
-            !opts.liveAnalysis->sums.empty())
-        {
-            emit(", \"liveTotals\":{");
-            const auto &totals = opts.liveAnalysis->sums[i.getID()];
-            emit("\"r\":", totals.grfBytes, ",");
-            emit("\"acc\":", totals.accBytes, ",");
-            emit("\"f\":", totals.flagBytes, ",");
-            emit("\"a\":", totals.indexBytes);
-            emit("}");
         }
 
         emit(", \"comment\":");
@@ -233,11 +211,11 @@ public:
         emitPredOpSubfuncExecInfoFlagReg(
             i, i.getOpSpec().mnemonic.str(), subfunc);
         // implicit accumulator def/uses
-        emit(", \"other\":");
+        emit(", \"acc\":");
         if (opts.liveAnalysis) {
             emit("{");
             RegSet accIn(model);
-            accIn.addSourceImplicit(i);
+            accIn.addSourceImplicitAccumulator(i);
             emitDepInputs(i, accIn);
             // RegSet accOu(model);
             // accOu.addDestinationImplicitAccumulator(i);
@@ -300,10 +278,12 @@ public:
             return false;
         }
         const auto exDesc = i.getExtMsgDescriptor();
+        RegRef indDesc = REGREF_INVALID;
+
         const auto sfid = i.getSendFc();
         const auto di =
             tryDecode(platform(), sfid, i.getExecSize(),
-                exDesc, desc, nullptr);
+                exDesc, desc, indDesc, nullptr);
         if (!di) {
             // if message decode failed fallback to the canonical send syntax
             return false;
@@ -348,7 +328,13 @@ public:
                     emitSendPayloadSrc(i, 0);
 
                 emit(", \"offset\":");
-                emit(di.info.immediateOffset);
+                if (di.info.immediateOffset.isImm()) {
+                    emit(di.info.immediateOffset.imm);
+                } else {
+                    // register is not permissable for offset right now but we
+                    // plumb it to fit the IR
+                    emitReg(RegName::ARF_A, di.info.immediateOffset.reg);
+                }
                 emit("},\n");
 
                 //////////////////////////////////////
@@ -653,10 +639,10 @@ public:
 
         if (srcIx == 0 && i.getSrc0Length() >= 0) {
             emit("{");
+            RegRef dummy;
             const auto di =
                 tryDecode(platform(), i.getSubfunction().send, i.getExecSize(),
-                    i.getExtMsgDescriptor(), i.getMsgDescriptor(),
-                    nullptr);
+                    i.getExtMsgDescriptor(), i.getMsgDescriptor(), dummy, nullptr);
             emit("\"kind\":\"AD\"");
             emit(", \"surf\":");
             if (di) {
@@ -668,9 +654,9 @@ public:
             emit(", \"scale\":1");
             emit(", \"addr\":");
             emitSendPayloadSrc(i, 0);
-            if (di) {
+            if (di && di.info.immediateOffset.isImm()) {
                 // e.g. legacy scratch
-                emit(", \"offset\":", di.info.immediateOffset);
+                emit(", \"offset\":", di.info.immediateOffset.imm);
             } else {
                 // shouldn't be a reg, but we emit something
                 emit(", \"offset\":0");
@@ -686,10 +672,7 @@ public:
             emit(", \"rgn\":null");
             emit(", \"type\":null");
             // the best we can do is guess it's 1 without decoding the message
-            RegSet rs(model);
-            rs.addSourceOperandInput(i, srcIx);
             emitSendPayloadDeps(i,
-                rs,
                 src.getDirRegName(),
                 src.getDirRegRef().regNum, 1, true);
         }
@@ -732,9 +715,7 @@ public:
         emit("\"reg\":");
         emitReg(regName, regStart);
         emit(", \"len\":", regCount);
-        RegSet rs(model);
-        rs.addSourceOperandInput(i, srcIx);
-        emitSendPayloadDeps(i, rs, regName, regCount, regCount, true);
+        emitSendPayloadDeps(i, regName, regCount, regCount, true);
         emit("}");
     }
 
@@ -743,7 +724,7 @@ public:
     {
         emit("\"kind\":\"DA\"");
         emitSendPayloadFields(dataReg, regNum, regLen);
-        emitSendPayloadDeps(i, EMPTY_SET, dataReg, regNum, regLen, false);
+        emitSendPayloadDeps(i, dataReg, regNum, regLen, false);
     }
 
     void emitSendPayloadFields(RegName reg, int regNum, int numRegs)
@@ -754,12 +735,13 @@ public:
     }
     void emitSendPayloadDeps(
         const Instruction &i,
-        const RegSet &regStats,
         RegName reg, int regNum, int numRegs, bool isRead)
     {
+        RegSet rs(model);
+        rs.addRegs(reg, regNum, numRegs);
         if (isRead) {
             emit(", ");
-            emitDepInputs(i, regStats);
+            emitDepInputs(i, rs);
         } else {
             // emit(", ");
             // emitDepOutputs(i, rs);
@@ -869,30 +851,6 @@ public:
 #endif
     }
 
-    void emitRegDist(const SWSB &di) {
-        emit(", \"regDist\":");
-        auto emitPipeDist = [&] (const char *pfx) {
-            emit("\"", pfx, "@", (int)di.minDist, "\"");
-        };
-        switch (di.distType) {
-        case SWSB::DistType::REG_DIST:        emitPipeDist(""); break;
-        default: emit("null"); break;
-        }
-    }
-
-    void emitSbid(const SWSB &di) {
-        emit(", \"sbid\":");
-        auto emitSwsbEvent = [&] (const char *sfx) {
-            emit("\"$", (int)di.sbid, sfx, "\"");
-        };
-        switch (di.tokenType) {
-        case SWSB::TokenType::DST:  emitSwsbEvent(".dst"); break;
-        case SWSB::TokenType::SRC:  emitSwsbEvent(".src"); break;
-        case SWSB::TokenType::SET:  emitSwsbEvent(""); break;
-        default: emit("null"); break;
-        }
-    }
-
     void emitInstOpts(const Instruction &i) {
         static const InstOpt ALL_INST_OPTS[] {
             InstOpt::ACCWREN,
@@ -930,6 +888,29 @@ public:
         }
 
         const auto &di = i.getSWSB();
+        if (di.hasDist() || di.hasToken()) {
+            auto emitPipeDist = [&] (const char *pfx) {
+                emitSeparator();
+                emit("\"", pfx, "@", (int)di.minDist, "\"");
+            };
+            switch (di.distType) {
+            case SWSB::DistType::REG_DIST:        emitPipeDist(""); break;
+            default:
+                break;
+            }
+
+            auto emitSwsbEvent = [&] (const char *sfx) {
+                emitSeparator();
+                emit("\"$", (int)di.sbid, sfx, "\"");
+            };
+            switch (di.tokenType) {
+            case SWSB::TokenType::DST:  emitSwsbEvent(".dst"); break;
+            case SWSB::TokenType::SRC:  emitSwsbEvent(".src"); break;
+            case SWSB::TokenType::SET:  emitSwsbEvent(""); break;
+            default:
+                break;
+            }
+        }
         emit("]");
     }
 

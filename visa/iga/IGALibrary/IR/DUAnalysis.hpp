@@ -39,6 +39,14 @@ namespace iga
     // to be able to track WAW dependencies).
     struct Dep
     {
+        // If the use is a read, this will be READ.
+        // WRITE indicates that bytes are being redefined.
+        // E.g.
+        //  mov r0 ...
+        //  mul r1:q ..  r0 // RAW dependency (on the add)
+        //  add r0 ...   // WAR dependency
+        //  add r1:d ... // WAW
+        enum Type {RAW, WAR, WAW}  useType = RAW;
         //
         // The producer instruction;
         // this can be nullptr if the value is a program input
@@ -46,18 +54,14 @@ namespace iga
         //
         // The consumer instruction;
         // this can be nullptr if the value is a program output
-        Instruction             *use = nullptr;
+        Instruction             *use = nullptr; // or write (redef)
         //
         // The register values that are live in this path
         RegSet                   values;
         //
-        // The minimum number of instructions this path covers
-        int                      minInsts = 0;
-        //
-        // The minimum number of instructions this path covers in the same
-        // pipe as the def pipe (or 0 if there is no def).
-        //   int                      minInstsDefPipe = 0;
-        // Need to account syncs in between
+        // This is number of in-order instructions this path covers
+        // We determine in-orderness via OpSpec::isFixedLatency
+        int                      minInOrderDist = 0;
         //
         // indicates if the dependency crosses a branch (JEU)
         // N.b. this will false for fallthrough since that isn't a branch
@@ -67,15 +71,15 @@ namespace iga
         // TARGET:
         //        mul ...  r1 // crossesBranch = true here
         bool                     crossesBranch = false;
-        // Similar to the above but includes fallthrough
-        bool                     crossesBlock = false;
 
-        // Dep(const Model &m) : values(m) { }
-
-        Dep(Instruction *_def, const RegSet &_values, Instruction *_use)
-            : def(_def)
+        Dep(const Model &m) : values(m) { }
+        Dep(Type t, Instruction *_use)
+            : useType(t)
+            , def(nullptr)
             , use(_use)
-            , values(_values)
+            , values(*Model::LookupModel(_use->platform()))
+            , minInOrderDist(0)
+            , crossesBranch(false)
         {
         }
         Dep(const Dep &) = default;
@@ -89,35 +93,27 @@ namespace iga
         std::string str() const;
     };
 
+    struct BlockInfo
+    {
+        Block                   *block;
+        std::vector<Dep>         liveDefsIn;
+        std::vector<Dep>         liveDefsOut;
 
-    struct LiveCount {
-        unsigned grfBytes = 0; // r*
-        unsigned flagBytes = 0; // f*
-        unsigned accBytes = 0; // acc*
-        unsigned indexBytes = 0; // a0*
+        BlockInfo(Block *blk) : block(blk) { }
+        BlockInfo(const BlockInfo &) = default;
+        // BlockInfo(BlockInfo &&) = default;
     };
 
     struct DepAnalysis
     {
+        // information on each block
+        std::vector<BlockInfo>   blockInfo;
         //
         // relation of definitions and uses
         std::vector<Dep>         deps;
-
-        //
-        // uses without any definition
-        std::vector<Dep>         liveIn;
-
-        // directly maps instruction ID to the live counts there;
-        // the counts are for the live sets *before* the instruction is
-        // executed
-        std::vector<LiveCount>   sums;
-
-        // number of iterations until reaching the fixed-point
-        int                      iterations = 0;
     };
 
-    // The primary entry point for the live analysis
-    // The counts are counts *going into* this instruction
+    // the primary entry point for the live analysis
     DepAnalysis ComputeDepAnalysis(Kernel *k);
 } // namespace IGA
 
