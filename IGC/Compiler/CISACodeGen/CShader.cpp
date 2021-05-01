@@ -994,9 +994,14 @@ bool CShader::GetIsUniform(llvm::Value* v) const
     return m_WI ? (m_WI->isUniform(v)) : false;
 }
 
-bool CShader::InsideDivergentCF(llvm::Instruction* inst)
+bool CShader::InsideDivergentCF(const llvm::Instruction* inst) const
 {
     return m_WI ? m_WI->insideDivergentCF(inst) : true;
+}
+
+bool CShader::InsideThreadDivergentCF(const llvm::Instruction* inst) const
+{
+    return m_WI ? m_WI->insideThreadDivergentCF(inst) : true;
 }
 
 uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)

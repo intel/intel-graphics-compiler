@@ -181,7 +181,8 @@ public:
     uint16_t    AdjustExtractIndex(llvm::Value* value, uint16_t elemIndex);
     WIBaseClass::WIDependancy GetDependency(llvm::Value* v) const;
     bool        GetIsUniform(llvm::Value* v) const;
-    bool        InsideDivergentCF(llvm::Instruction* inst);
+    bool        InsideDivergentCF(const llvm::Instruction* inst) const;
+    bool        InsideThreadDivergentCF(const llvm::Instruction* inst) const;
     CEncoder& GetEncoder();
     CVariable* GetR0();
     CVariable* GetNULL();

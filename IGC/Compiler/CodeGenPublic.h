@@ -998,6 +998,7 @@ namespace IGC
         virtual void InitVarMetaData();
         virtual ~CodeGenContext();
         void clear();
+        void EmitError(std::ostream &OS, const char* errorstr, const llvm::Value *context) const;
         void EmitError(const char* errorstr, const llvm::Value *context);
         void EmitWarning(const char* warningstr);
         inline bool HasError() const { return !this->oclErrorMessage.str().empty(); }

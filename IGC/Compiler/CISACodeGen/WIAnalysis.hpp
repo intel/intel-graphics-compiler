@@ -125,8 +125,8 @@ namespace IGC
         /// @brief Returns True if 'val' is uniform
         /// @param val llvm::Value to test
         bool isUniform(const llvm::Value* val) const;
-        bool isWorkGroupOrGlobalUniform(const llvm::Value* val);
-        bool isGlobalUniform(const llvm::Value* val);
+        bool isWorkGroupOrGlobalUniform(const llvm::Value* val) const;
+        bool isGlobalUniform(const llvm::Value* val) const;
 
         /// incremental update of the dep-map on individual value
         /// without propagation. Exposed for later pass.
@@ -136,10 +136,31 @@ namespace IGC
         }
 
         /// check if a value is defined inside divergent control-flow
-        bool insideDivergentCF(const llvm::Value* val)
+        bool insideDivergentCF(const llvm::Value* val) const
         {
             return(llvm::isa<llvm::Instruction>(val) &&
                 m_ctrlBranches.find(llvm::cast<llvm::Instruction>(val)->getParent()) != m_ctrlBranches.end());
+        }
+
+        /// check if a value is defined inside thread divergent control-flow.
+        /// This will return false if the value is in the influence region
+        /// of only global and workgroup uniform branches.
+        bool insideThreadDivergentCF(const llvm::Value* val) const
+        {
+            if (auto* I = llvm::dyn_cast<llvm::Instruction>(val))
+            {
+                auto II = m_ctrlBranches.find(I->getParent());
+                if (II == m_ctrlBranches.end())
+                    return false;
+
+                for (auto* BI : II->second)
+                {
+                    if (!isWorkGroupOrGlobalUniform(BI))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         void releaseMemory()
@@ -363,7 +384,12 @@ namespace IGC
         void incUpdateDepend(const llvm::Value* val, WIDependancy dep);
 
         /// check if a value is defined inside divergent control-flow
-        bool insideDivergentCF(const llvm::Value* val);
+        bool insideDivergentCF(const llvm::Value* val) const;
+
+        /// check if a value is defined inside thread divergent control-flow
+        /// This will return false if the value is in the influence region
+        /// of only global and workgroup uniform branches.
+        bool insideThreadDivergentCF(const llvm::Value* val) const;
 
         void releaseMemory() override
         {

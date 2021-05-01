@@ -598,9 +598,14 @@ bool WIAnalysis::isWorkGroupOrGlobalUniform(const Value* val)
     return Runner.isWorkGroupOrGlobalUniform(val);
 }
 
-bool WIAnalysis::insideDivergentCF(const llvm::Value* val)
+bool WIAnalysis::insideDivergentCF(const Value* val) const
 {
     return Runner.insideDivergentCF(val);
+}
+
+bool WIAnalysis::insideThreadDivergentCF(const Value* val) const
+{
+    return Runner.insideThreadDivergentCF(val);
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
@@ -631,15 +636,16 @@ bool WIAnalysisRunner::isUniform(const Value* val) const
     return WIAnalysis::isDepUniform(whichDepend(val));
 }
 
-bool WIAnalysisRunner::isWorkGroupOrGlobalUniform(const Value* val)
+bool WIAnalysisRunner::isWorkGroupOrGlobalUniform(const Value* val) const
 {
     if (!hasDependency(val))
         return false;
     WIAnalysis::WIDependancy dep = whichDepend(val);
-    return dep == WIAnalysis::UNIFORM_GLOBAL || WIAnalysis::UNIFORM_WORKGROUP;
+    return dep == WIAnalysis::UNIFORM_GLOBAL ||
+           dep == WIAnalysis::UNIFORM_WORKGROUP;
 }
 
-bool WIAnalysisRunner::isGlobalUniform(const Value* val)
+bool WIAnalysisRunner::isGlobalUniform(const Value* val) const
 {
     if (!hasDependency(val))
         return false;

@@ -58,6 +58,8 @@ IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <fstream>
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -13686,6 +13688,30 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
+static void divergentBarrierCheck(
+    const CShader* Shader, const CodeGenContext &Ctx, const Instruction* I)
+{
+    if (IGC_IS_FLAG_DISABLED(EnableDivergentBarrierCheck))
+        return;
+
+    if (Shader->InsideThreadDivergentCF(I))
+    {
+        Debug::DumpName name =
+            IGC::Debug::GetDumpNameObj(Shader, "divergent_barrier.log");
+        std::string Path = name.str();
+        std::ofstream OS(Path, std::ios::app);
+        if (OS.is_open())
+        {
+            std::string Repr;
+            raw_string_ostream SS(Repr);
+            I->print(SS, true);
+            SS.flush();
+            OS << '\n' << Repr;
+            Ctx.EmitError(OS, "Possible divergent barrier found", I);
+        }
+    }
+}
+
 void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
 {
     if (m_currShader->GetShaderType() == ShaderType::HULL_SHADER)
@@ -13763,7 +13789,9 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         m_encoder->Push();
 
         // Set if barrier was used for this function
-        m_encoder->SetFunctionHasBarrier(inst->getParent()->getParent());
+        m_encoder->SetFunctionHasBarrier(inst->getFunction());
+
+        divergentBarrierCheck(m_currShader, *m_pCtx, inst);
     }
 }
 
