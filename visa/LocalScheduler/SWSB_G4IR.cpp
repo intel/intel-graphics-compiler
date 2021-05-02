@@ -282,6 +282,7 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
 
             assert(RB < (numEltPerGRF<Type_UB>() * aregOffset) && "Out of register bound");
         }
+
         break;
     default:
         assert(0 && "Bad opnd");

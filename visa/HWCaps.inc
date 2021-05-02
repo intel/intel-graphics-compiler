@@ -369,6 +369,11 @@
         return getPlatform() >= GENX_TGLLP && hasRSForSpecificPlatform();
     }
 
+    bool hasEOTReadSuppressionIssue() const
+    {
+        return false;
+    }
+
     bool hasScalarReadSuppression() const
     {
         return getPlatform() > GENX_TGLLP && hasRSForSpecificPlatform();
@@ -693,6 +698,7 @@
     {
         return (getPlatform() == GENX_TGLLP);
     }
+
    bool hasEOTWait() const
    {
         return true;

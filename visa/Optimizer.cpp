@@ -605,6 +605,11 @@ void Optimizer::insertDummyMovForHWRSWA()
                 }
             }
 
+            if (builder.hasEOTReadSuppressionIssue() && inst->isEOT())
+            {
+                insertDummyCsel(bb, curr_iter, false);
+            }
+
             ++curr_iter;
         }
 
