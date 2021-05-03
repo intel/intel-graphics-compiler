@@ -7670,26 +7670,40 @@ void EmitPass::emitCSSGV(GenIntrinsicInst* inst)
 }
 
 // Store Coarse Pixel (Actual) size in the destination variable
-void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component)
+void EmitPass::getCoarsePixelSize(CVariable* destination, const uint component, bool isCodePatchCandidate)
 {
     IGC_ASSERT(component < 2);
 
     CPixelShader* const psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* r;
+    bool isR1Lo = false;
     // Coarse pixel sizes are in R1 for both simd32 halves.
     {
         r = psProgram->GetPhase() == PSPHASE_PIXEL ? psProgram->GetCoarseR1() : psProgram->GetR1();
+        isR1Lo = true;
     }
     r = m_currShader->GetVarHalf(r, 0);
     CVariable* const coarsePixelSize = m_currShader->BitCast(r, ISA_TYPE_UB);
+    if (isR1Lo && isCodePatchCandidate)
+    {
+        psProgram->SetR1Lo(coarsePixelSize);
+    }
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     uint subReg;
     {
         subReg = (component == 0) ? 0 : 1;
     }
     m_encoder->SetSrcSubReg(0, subReg);
+    if (isCodePatchCandidate)
+    {
+        m_encoder->SetPayloadSectionAsPrimary();
+    }
     m_encoder->Cast(destination, coarsePixelSize);
     m_encoder->Push();
+    if (isCodePatchCandidate)
+    {
+        m_encoder->SetPayloadSectionAsSecondary();
+    }
 }
 
 void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
@@ -7733,28 +7747,54 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 CVariable* uintPixelPosition =
                     m_currShader->GetNewVariable(
                         numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
-                getPixelPosition(uintPixelPosition, component);
+                getPixelPosition(uintPixelPosition, component, m_encoder->IsCodePatchCandidate());
 
                 CVariable* floatPixelPosition =
                     m_currShader->GetNewVariable(
                         numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, CName::NONE);
+                if (m_encoder->IsCodePatchCandidate())
+                {
+                    m_encoder->SetPayloadSectionAsPrimary();
+                }
                 m_encoder->Cast(floatPixelPosition, uintPixelPosition);
                 m_encoder->Push();
+                if (m_encoder->IsCodePatchCandidate())
+                {
+                    m_encoder->SetPayloadSectionAsSecondary();
+                }
 
                 // Pixel location is center in all APIs that use CPS.
                 {
-                    CVariable* pixelCenter = m_currShader->ImmToVariable(0x3f000000, ISA_TYPE_F); // 0.5f
+                    CVariable* pixelCenter = m_currShader->ImmToVariable(0x3f000000, ISA_TYPE_F, m_encoder->IsCodePatchCandidate()); // 0.5f
                     if (psProgram->GetPhase() == PSPHASE_COARSE)
                     {
                         CVariable* coarsePixelSize = m_currShader->GetNewVariable(
                             numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF, CName::NONE);
-                        getCoarsePixelSize(coarsePixelSize, component);
+                        getCoarsePixelSize(coarsePixelSize, component, m_encoder->IsCodePatchCandidate());
+                        if (m_encoder->IsCodePatchCandidate())
+                        {
+                            m_encoder->SetPayloadSectionAsPrimary();
+                            m_currShader->AddPatchTempSetup(coarsePixelSize);
+                        }
                         m_encoder->Mul(coarsePixelSize, coarsePixelSize, pixelCenter);
                         m_encoder->Push();
+                        if (m_encoder->IsCodePatchCandidate())
+                        {
+                            m_encoder->SetPayloadSectionAsSecondary();
+                        }
                         pixelCenter = coarsePixelSize;
+                    }
+                    if (m_encoder->IsCodePatchCandidate())
+                    {
+                        m_encoder->SetPayloadSectionAsPrimary();
+                        m_currShader->AddPatchTempSetup(floatPixelPosition);
                     }
                     m_encoder->Add(floatPixelPosition, floatPixelPosition, pixelCenter);
                     m_encoder->Push();
+                    if (m_encoder->IsCodePatchCandidate())
+                    {
+                        m_encoder->SetPayloadSectionAsSecondary();
+                    }
                 }
 
                 CVariable* floatPixelPositionDelta = floatPixelPosition; //reuse the same variable for the final delta
@@ -7771,8 +7811,16 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 }
                 m_encoder->SetSrcSubReg(1, topLeftVertexStartSubReg);
                 m_encoder->SetSrcModifier(1, EMOD_NEG);
+                if (m_encoder->IsCodePatchCandidate())
+                {
+                    m_encoder->SetPayloadSectionAsPrimary();
+                }
                 m_encoder->Add(floatPixelPositionDelta, floatPixelPosition, startCoordinate);
                 m_encoder->Push();
+                if (m_encoder->IsCodePatchCandidate())
+                {
+                    m_encoder->SetPayloadSectionAsSecondary();
+                }
 
                 return floatPixelPositionDelta;
             };
@@ -7792,6 +7840,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 m_encoder->SetSrcSubReg(1, 0);
                 m_encoder->SetSrcSubReg(2, 3);
             }
+            ContextSwitchPayloadSection();
             m_encoder->Mad(floatPixelPositionDeltaY, floatPixelPositionDeltaY, delta, delta);
             m_encoder->Push();
 
@@ -7804,6 +7853,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             }
             m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
             m_encoder->Push();
+            ContextSwitchShaderBody();
         }
         else
         {
@@ -8053,7 +8103,7 @@ void EmitPass::emitHSSGV(llvm::GenIntrinsicInst* pInst)
 
 // Store integer pixel position in the destination variable.
 // Only X and Y components are handled here!
-void EmitPass::getPixelPosition(CVariable* destination, const uint component)
+void EmitPass::getPixelPosition(CVariable* destination, const uint component, bool isCodePatchCandidate)
 {
     IGC_ASSERT(component < 2);
     IGC_ASSERT(nullptr != destination);
@@ -8064,16 +8114,22 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component)
 
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* imm = m_currShader->ImmToVariable(
-        getX ? 0x10101010 : 0x11001100, ISA_TYPE_V);
+        getX ? 0x10101010 : 0x11001100, ISA_TYPE_V, isCodePatchCandidate);
     CVariable* pixelSize = nullptr;
     if (psProgram->GetPhase() == PSPHASE_COARSE)
     {
         // Coarse pixel sizes are in R1 for both simd32 halves.
         CVariable* r;
+        bool isR1Lo = false;
         {
             r = m_currShader->GetVarHalf(psProgram->GetR1(), 0);
+            isR1Lo = true;
         }
         CVariable* CPSize = m_currShader->BitCast(r, ISA_TYPE_UB);
+        if (isR1Lo && isCodePatchCandidate)
+        {
+            psProgram->SetR1Lo(CPSize);
+        }
         pixelSize =
             m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, CName::NONE);
@@ -8083,8 +8139,17 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component)
             subReg = getX ? 0 : 1;
         }
         m_encoder->SetSrcSubReg(0, subReg);
+        if (isCodePatchCandidate)
+        {
+            m_encoder->SetPayloadSectionAsPrimary();
+            m_currShader->AddPatchTempSetup(pixelSize);
+        }
         m_encoder->Mul(pixelSize, CPSize, imm);
         m_encoder->Push();
+        if (isCodePatchCandidate)
+        {
+            m_encoder->SetPayloadSectionAsSecondary();
+        }
     }
     else
     {
@@ -8096,8 +8161,17 @@ void EmitPass::getPixelPosition(CVariable* destination, const uint component)
         // subreg 4 as position_x and subreg 5 as position_y
         m_encoder->SetSrcSubReg(0, getX ? 4 : 5);
         m_encoder->SetSrcRegion(0, 2, 4, 0);
+        if (isCodePatchCandidate)
+        {
+            m_encoder->SetPayloadSectionAsPrimary();
+            m_currShader->AddPatchTempSetup(destination);
+        }
         m_encoder->Add(destination, position, pixelSize);
         m_encoder->Push();
+        if (isCodePatchCandidate)
+        {
+            m_encoder->SetPayloadSectionAsSecondary();
+        }
     }
 }
 

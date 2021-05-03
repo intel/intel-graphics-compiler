@@ -330,8 +330,8 @@ public:
     void emitSGV(llvm::SGVIntrinsic* inst);
     void emitPSSGV(llvm::GenIntrinsicInst* inst);
     void emitCSSGV(llvm::GenIntrinsicInst* inst);
-    void getCoarsePixelSize(CVariable* destination, const uint component);
-    void getPixelPosition(CVariable* destination, const uint component);
+    void getCoarsePixelSize(CVariable* destination, const uint component, bool isCodePatchCandidate = false);
+    void getPixelPosition(CVariable* destination, const uint component, bool isCodePatchCandidate = false);
     void emitPixelPosition(llvm::GenIntrinsicInst* inst);
     void emitPhaseOutput(llvm::GenIntrinsicInst* inst);
     void emitPhaseInput(llvm::GenIntrinsicInst* inst);
