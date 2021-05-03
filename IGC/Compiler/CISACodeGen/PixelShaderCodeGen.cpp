@@ -324,7 +324,7 @@ void CPixelShader::AllocatePSPayload()
     for (auto& var : payloadLiveOutSetup)
     {
         IGC_ASSERT(offset% getGRFSize() == 0);
-        AllocateInput(var, offset);
+        AllocateInput(var, offset, 0, true);
         offset += var->GetSize();
     }
 
