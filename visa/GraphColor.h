@@ -53,6 +53,7 @@ namespace vISA
     {
     private:
         GlobalRA& gra;
+        bool forGlobal;
 
         BankConflict setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned offset, bool oneGRFBank);
         void setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2, unsigned offset1, unsigned offset2,
@@ -73,7 +74,7 @@ namespace vISA
     public:
         bool setupBankConflictsForKernel(bool doLocalRR, bool &threeSourceCandidate, unsigned numRegLRA, bool &highInternalConflict);
 
-        BankConflictPass(GlobalRA& g) : gra(g)
+        BankConflictPass(GlobalRA& g, bool global) : gra(g), forGlobal(global)
         {
 
         }

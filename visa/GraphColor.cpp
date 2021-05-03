@@ -1034,7 +1034,7 @@ void BankConflictPass::setupBankConflictsForBBTGL(
             threeSourceInstNum++;
             setupBankConflictsforTwoGRFs(inst);
         }
-        else if (gra.kernel.getOption(vISA_forceBCR) && inst->getNumSrc() == 2)
+        else if (gra.kernel.getOption(vISA_forceBCR) && !forGlobal && inst->getNumSrc() == 2)
         {
             threeSourceInstNum++;
             setupBankConflictsforMad(inst);
@@ -9558,7 +9558,7 @@ int GlobalRA::coloringRegAlloc()
         if (builder.getOption(vISA_LinearScan))
         {
             copyMissingAlignment();
-            BankConflictPass bc(*this);
+            BankConflictPass bc(*this, false);
             LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
             liveAnalysis.computeLiveness();
 
@@ -9601,7 +9601,7 @@ int GlobalRA::coloringRegAlloc()
         else if (builder.getOption(vISA_LocalRA) && !hasStackCall)
         {
             copyMissingAlignment();
-            BankConflictPass bc(*this);
+            BankConflictPass bc(*this, false);
             LocalRA lra(bc, *this);
             bool success = lra.localRA();
             if (!success && !builder.getOption(vISA_HybridRAWithSpill))
@@ -9722,7 +9722,7 @@ int GlobalRA::coloringRegAlloc()
         {
             bool reduceBCInRR = false;
             bool reduceBCInTAandFF = false;
-            BankConflictPass bc(*this);
+            BankConflictPass bc(*this, true);
 
             reduceBCInRR = bc.setupBankConflictsForKernel(true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2, highInternalConflict);
             doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
