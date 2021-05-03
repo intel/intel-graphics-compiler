@@ -80,6 +80,7 @@ void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument
     io.mapOptional("addrmode", info.addrmode, std::string());
     io.mapOptional("addrspace", info.addrspace, std::string());
     io.mapOptional("access_type", info.access_type, std::string());
+    io.mapOptional("sampler_index", info.sampler_index, -1);
 }
 void MappingTraits<zeInfoPerThreadPayloadArgument>::mapping(IO& io, zeInfoPerThreadPayloadArgument& info)
 {

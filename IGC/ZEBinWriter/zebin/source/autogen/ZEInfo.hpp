@@ -74,6 +74,7 @@ struct zeInfoPayloadArgument
     zeinfo_str_t addrmode;
     zeinfo_str_t addrspace;
     zeinfo_str_t access_type;
+    zeinfo_int32_t sampler_index = -1;
 };
 struct zeInfoPerThreadPayloadArgument
 {
@@ -122,7 +123,7 @@ struct zeInfoContainer
     KernelsTy kernels;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.3"; }
+    static zeinfo_str_t getVersionNumber() { return "1.4"; }
 
     enum class ArgType {
         packed_local_ids,

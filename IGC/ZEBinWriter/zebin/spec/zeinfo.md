@@ -23,7 +23,7 @@ IN THE SOFTWARE.
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.3
+Version 1.4
 
 ## Grammar
 
@@ -130,7 +130,7 @@ The Payload arguments defined here include explicit user arguments of a kernel, 
 and implicit arguments inserted by the compiler, such as arguments with local_size arg_type.
 
 ### Supported attributes in payload arguments:
-If an attribute is **Required**, it must be present in payload arguments. If it's **Optional** and it's not present, the **Default** value is used.
+If an attribute is **Required**, it must be present in payload arguments. If it's **Optional** and it's not present, it's either not applicable to the specific argument_type, or the **Default** value is used.
 
 | Attribute | Type | Required/Optional | Default | Description |
 | ------ | ------ | ------ | ------ | ----- |
@@ -141,6 +141,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | addrmode | <memory_addressing_mode> | Optional | | Present when arg_type is "arg_bypointer" |
 | addrspace | <address_space> | Optional | | Present when arg_type is "arg_bypointer" |
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
+| sampler_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer" and address_space is "sampler" |
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:
@@ -266,10 +267,11 @@ They must not affect the kernel execution correctness and are subject to be chag
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
-- Major number: Increase when non-backward-compatible features are added. For example, rename attributes or remove attribute.
+- Major number: Increase when non-backward-compatible features are added. For example, rename attributes or remove attributes.
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.4**: Add sampler_index to payload arguments.
 - **Version 1.3**: Add printf_buffer to argument_type.
 - **Version 1.2**: Add buffer_offset to argument_type.
 - **Version 1.1**: Add experimental_properties to kernel.
