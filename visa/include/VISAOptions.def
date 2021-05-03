@@ -140,7 +140,7 @@ DEF_VISA_OPTION(vISA_forceBCR, ET_BOOL, "-forceBCR",   UNUSED, false)
 DEF_VISA_OPTION(vISA_enableBundleCR, ET_BOOL, "-enableBundleCR",   UNUSED, true)
 DEF_VISA_OPTION(vISA_IntrinsicSplit,       ET_BOOL, "-doSplit", UNUSED, false)
 DEF_VISA_OPTION(vISA_LraFFWindowSize,       ET_INT32, "-lraFFWindowSize", UNUSED, 12)
-DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar", UNUSED, true)
+DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-splitGRFalignedscalar", UNUSED, false)
 
 DEF_VISA_OPTION(vISA_VerifyAugmentation,    ET_BOOL, "-verifyaugmentation", UNUSED, false)
 DEF_VISA_OPTION(vISA_VerifyExplicitSplit,   ET_BOOL, "-verifysplit", UNUSED, false)
