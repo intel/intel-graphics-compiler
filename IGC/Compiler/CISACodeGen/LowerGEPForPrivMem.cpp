@@ -521,7 +521,6 @@ public:
         StoreInst* pStore,
         Value* pScalarizedIdx);
     AllocaInst* pVecAlloca;
-    std::set<BasicBlock*> UseBBs;   // location of all loads/stores
     TransposeHelperPromote(AllocaInst* pAI) : TransposeHelper(false) { pVecAlloca = pAI; }
 };
 
@@ -547,18 +546,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     // to keep the promoted vector as uniform in the next round of WIAnalysis
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
     if (isUniformAlloca && pAlloca->getAllocatedType()->isArrayTy()) {
-        BasicBlock* CommonDomBB = nullptr;
-        for (auto* SB : helper.UseBBs)
-        {
-            if (!CommonDomBB)
-                CommonDomBB = SB;
-            else
-                CommonDomBB = m_DT->findNearestCommonDominator(CommonDomBB, SB);
-        }
-        Instruction* InsertionPoint =
-            (CommonDomBB && CommonDomBB != pAlloca->getParent()) ?
-            CommonDomBB->getFirstNonPHI() : pAlloca;
-        IRBuilder<> IRB1(InsertionPoint);
+        IRBuilder<> IRB1(pAlloca);
         auto pVecF = GenISAIntrinsic::getDeclaration(m_pFunc->getParent(),
             GenISAIntrinsic::GenISA_vectorUniform, pVecAlloca->getAllocatedType());
         auto pVecInit = IRB1.CreateCall(pVecF);
@@ -703,9 +691,6 @@ void TransposeHelperPromote::handleLoadInst(
 {
     IGC_ASSERT(nullptr != pLoad);
     IGC_ASSERT(pLoad->isSimple());
-    // remember the location of the loads in order to
-    // compute the nearest dominator
-    UseBBs.insert(pLoad->getParent());
     IRBuilder<> IRB(pLoad);
     IGC_ASSERT(nullptr != pLoad->getType());
     unsigned N = pLoad->getType()->isVectorTy()
@@ -720,11 +705,10 @@ void TransposeHelperPromote::handleStoreInst(
     llvm::StoreInst* pStore,
     llvm::Value* pScalarizedIdx)
 {
+    // Add Store instruction to remove list
     IGC_ASSERT(nullptr != pStore);
     IGC_ASSERT(pStore->isSimple());
-    // remember the location of the stores in order to
-    // compute the nearest dominator
-    UseBBs.insert(pStore->getParent());
+
     IRBuilder<> IRB(pStore);
     llvm::Value* pStoreVal = pStore->getValueOperand();
     llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
