@@ -6658,7 +6658,14 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                     }
                 }
 
-                currentSpillRegSize = srcFillRegSize > dstSpillRegSize ? srcFillRegSize : dstSpillRegSize;
+                if (builder.avoidDstSrcOverlap())
+                {
+                    currentSpillRegSize = srcFillRegSize + dstSpillRegSize;
+                }
+                else
+                {
+                    currentSpillRegSize = srcFillRegSize > dstSpillRegSize ? srcFillRegSize : dstSpillRegSize;
+                }
                 currentIndrSpillRegSize = indrDstSpillRegSize + indirSrcFillRegSize;
             }
 
