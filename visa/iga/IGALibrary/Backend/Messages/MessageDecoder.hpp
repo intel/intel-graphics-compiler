@@ -29,6 +29,7 @@ IN THE SOFTWARE.
 #include "../../Frontend/IRToString.hpp"
 #include "../../asserts.hpp"
 #include "../Native/Field.hpp"
+#include "../../Models/Models.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -44,10 +45,10 @@ namespace iga {
 
     struct MessageDecoder {
         // inputs
-        const Platform         platf;
+        const Model           &decodeModel;
         const SFID             sfid;
+        ExecSize               instExecSize;
         const SendDesc         desc, exDesc;
-        const RegRef           indDesc;
 
         // outputs
         DecodeResult          &result;
@@ -57,16 +58,16 @@ namespace iga {
         MessageDecoder(
             Platform _platform,
             SFID _sfid,
+            ExecSize _instExecSize,
             SendDesc _exDesc,
             SendDesc _desc,
-            RegRef _indDesc,
             DecodeResult &_result)
-            : platf(_platform)
+            : decodeModel(Model::LookupModelRef(_platform))
             , sfid(_sfid)
+            , instExecSize(_instExecSize)
             //
             , desc(_desc)
             , exDesc(_exDesc)
-            , indDesc(_indDesc)
             //
             , result(_result)
             //
@@ -77,7 +78,8 @@ namespace iga {
             result.info.cachingL3 = result.info.cachingL1 = CacheOpt::DEFAULT;
             result.info.elemSizeBitsRegFile = result.info.elemSizeBitsMemory = 0;
             result.info.channelsEnabled = result.info.elemsPerAddr = 0;
-            result.info.execWidth = 0;
+            result.info.execWidth =
+                _instExecSize != ExecSize::INVALID ? int(_instExecSize) : 0;
             result.info.attributeSet = 0;
             result.info.addrType = AddrType::FLAT;
             result.info.surfaceId = 0;
@@ -91,7 +93,11 @@ namespace iga {
         }
 
         Platform platform() const {
-            return platf;
+            return model().platform;
+        }
+
+        const Model &model() const {
+            return decodeModel;
         }
 
         bool platformInRange(Platform lo, Platform hi) const {
@@ -157,10 +163,10 @@ namespace iga {
             int len,
             DescFieldFormatter fmtMeaning = NO_DECODE)
         {
-            auto val = getDescBits(off+32, len);
+            auto val = getDescBits(off + 32, len);
             std::stringstream ss;
             fmtMeaning(ss, val);
-            addField(fieldName, off+32, len, val, ss.str());
+            addField(fieldName, off + 32, len, val, ss.str());
             return val;
         }
         uint32_t decodeDescField(
@@ -337,16 +343,16 @@ namespace iga {
         static const int SLM_BTI = 0xFE;
         static const int COHERENT_BTI = 0xFF;
         static const int NONCOHERENT_BTI = 0xFD;
-
         MessageDecoderLegacy(
             Platform _platform,
             SFID _sfid,
+            ExecSize _instExecSize,
             SendDesc _exDesc,
             SendDesc _desc,
-            RegRef _indDesc,
             DecodeResult &_result)
             : MessageDecoder(
-                _platform, _sfid, _exDesc, _desc, _indDesc, _result)
+                _platform, _sfid, _instExecSize,
+                _exDesc, _desc, _result)
         {
         }
 
@@ -413,14 +419,14 @@ namespace iga {
 
     // MessageDecoderHDC.cpp
     void decodeDescriptorsHDC(
-        Platform platform, SFID sfid,
-        SendDesc exDesc, SendDesc desc, RegRef indDesc,
+        Platform platform, SFID sfid, ExecSize execSize,
+        SendDesc exDesc, SendDesc desc,
         DecodeResult &result);
 
     // MessageDecoderOther.cpp
     void decodeDescriptorsOther(
-        Platform platform, SFID sfid,
-        SendDesc exDesc, SendDesc desc, RegRef indDesc,
+        Platform platform, SFID sfid, ExecSize execSize,
+        SendDesc exDesc, SendDesc desc,
         DecodeResult &result);
 
 

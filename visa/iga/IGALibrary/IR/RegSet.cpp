@@ -22,8 +22,9 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-#include "RegSet.hpp"
 #include "../asserts.hpp"
+#include "Messages.hpp"
+#include "RegSet.hpp"
 
 #include <sstream>
 
@@ -74,11 +75,22 @@ bool RegSet::isTrackedReg(RegName rn) const {
     return const_cast<RegSet *>(this)->bitSetForPtr(rn) != nullptr;
 }
 
+
+static size_t OffsetOf(const Model &m, RegName rn, int reg) {
+    return (size_t)reg * m.getBytesPerReg(rn) * 8;
+}
+
+static size_t offsetOf(
+    const Model &m, RegName rn, RegRef rr, size_t typeSizeBits)
+{
+    return OffsetOf(m, rn, rr.regNum) + rr.subRegNum * typeSizeBits;
+}
+
 size_t RegSet::offsetOf(RegName rn, int reg)  const {
-    return (size_t)reg * model->getBytesPerReg(rn) * 8;
+    return OffsetOf(model, rn, reg);
 }
 size_t RegSet::offsetOf(RegName rn, RegRef rr, size_t typeSizeBits) const {
-    return offsetOf(rn, rr.regNum) + rr.subRegNum * typeSizeBits;
+    return OffsetOf(model, rn, rr.regNum) + rr.subRegNum * typeSizeBits;
 }
 size_t RegSet::offsetOf(RegName rn, RegRef rr, Type t)  const {
     size_t typeSizeBits = TypeSizeInBitsWithDefault(t, 8);
@@ -87,12 +99,27 @@ size_t RegSet::offsetOf(RegName rn, RegRef rr, Type t)  const {
 
 
 RegSet::RegSet(const Model &m)
-    : model(&m)
+    : model(m)
     , bitsR(BytesForRegSet(RegName::GRF_R, m))
     , bitsA(BytesForRegSet(RegName::ARF_A, m))
     , bitsAcc(BytesForRegSet(RegName::ARF_ACC, m))
     , bitsF(BytesForRegSet(RegName::ARF_F, m))
 { }
+RegSet::RegSet(const RegSet &rs)
+    : model(rs.model)
+    , bitsR(rs.bitsR)
+    , bitsA(rs.bitsA)
+    , bitsAcc(rs.bitsAcc)
+    , bitsF(rs.bitsF)
+{ }
+RegSet &RegSet::operator=(const RegSet &rhs) {
+    IGA_ASSERT(&model == &rhs.model, "model mismatch");
+    for (RegName rn : TRACKED) {
+        bitSetFor(rn) = rhs.bitSetFor(rn);
+    }
+    return *this;
+}
+
 
 bool RegSet::operator==(const RegSet &rs) const {
     for (RegName rn : TRACKED) {
@@ -148,7 +175,7 @@ bool RegSet::addReg(RegName rn, int reg) {
 }
 
 bool RegSet::addRegs(RegName rn, int reg, int n) {
-    size_t bitsPerReg = 8 * (size_t)model->getBytesPerReg(rn);
+    size_t bitsPerReg = 8 * (size_t)model.getBytesPerReg(rn);
     return add(rn, bitsPerReg * reg, bitsPerReg * n);
 }
 
@@ -161,7 +188,7 @@ bool RegSet::add(RegName rn, size_t regFileOffBits, size_t numBits) {
     size_t offBytes = regFileOffBits / 8;
     size_t lenBytes = std::max<size_t>(numBits / 8, 1);
     BitSet<> &bs = bitSetFor(rn);
-    if (offBytes + lenBytes <= BytesForRegSet(rn, *model)) {
+    if (offBytes + lenBytes <= BytesForRegSet(rn, model)) {
         return bs.set(offBytes, lenBytes);
     } else {
         IGA_ASSERT_FALSE("access is out of bounds for register");
@@ -193,22 +220,14 @@ bool RegSet::addFlagRegArf(RegRef fr, ExecSize es, ChannelOffset co) {
 
 bool RegSet::addPredicationInputs(const Instruction &i)
 {
-
     // does it read the flag register
     //  predication does this
     //  conditional modifier on 'sel' does this
     const Predication &pred = i.getPredication();
-    const FlagModifier fm = i.getFlagModifier();
     bool readsFlagRegister =
-        pred.function != PredCtrl::NONE ||
-        i.getOp() == Op::SEL && fm != FlagModifier::NONE;
+        pred.function != PredCtrl::NONE && i.getOp() != Op::SEL;
     if (readsFlagRegister) {
-        // add the ARF offset from ExecMaskOffset
-        // E.g.
-        // (f1.0) op (16|M16) ...
-        // is touching f1.1
-        const RegRef &fr = i.getFlagReg();
-        return addFlagRegArf(fr, i.getExecSize(), i.getChannelOffset());
+        return addFlagAccess(i);
     }
     return false;
 }
@@ -236,7 +255,7 @@ bool RegSet::addSourceInputs(const Instruction &i)
         }
     }
 
-    added |= addSourceImplicitAccumulator(i);
+    added |= addSourceImplicit(i);
 
     added |= addDestinationInputs(i); // e.g. indirect access uses a0
 
@@ -245,6 +264,89 @@ bool RegSet::addSourceInputs(const Instruction &i)
         added |= addSourceOperandInput(i, srcIx);
     }
     return added;
+}
+
+
+bool RegSet::addSendOperand(const Instruction &i, int opIx)
+{
+    bool changed = false;
+    const Operand &op = opIx < 0 ? i.getDestination() : i.getSource(opIx);
+    // add special handling for send messages
+    //  e.g.
+    //   send (4) r10:1  ... untyped 32b read of X
+    //  reads only 4 dwords
+    //   send (1) r10:1 OWORD block read
+    //  reads 128b ...
+    const auto desc = i.getMsgDescriptor();
+    if (op.getDirRegName() == RegName::GRF_R && desc.isImm()) {
+        const auto sfid = i.getSendFc();
+        const DecodeResult di =
+            tryDecode(model.platform, sfid, i.getExecSize(),
+                i.getExtMsgDescriptor(), desc, nullptr);
+        if (di &&
+            (di.info.isLoad() || di.info.isStore() || di.info.isAtomic()))
+        {
+            // the compiler won't necesssarily generate a correct exec size
+            // when it's ignored (part of the descriptor)
+            auto regOff = offsetOf(RegName::GRF_R, op.getDirRegRef().regNum);
+            if (opIx == 0) {
+                size_t bitsAccessed =
+                    (size_t)(di.info.execWidth * di.info.addrSizeBits);
+                changed |= add(RegName::GRF_R, regOff, bitsAccessed);
+            } else {
+                // data type
+                if (di.info.isTransposed()) {
+                    // transpose packs into GRF
+                    size_t bitsAccessed =
+                        (size_t)(di.info.elemsPerAddr *
+                            di.info.execWidth * di.info.elemSizeBitsRegFile);
+                    changed |= add(RegName::GRF_R, regOff, bitsAccessed);
+                } else {
+                    // non-transpose places elements in successive registers
+                    size_t bitsAccessed =
+                        (size_t)(di.info.execWidth *
+                            di.info.elemSizeBitsRegFile);
+                    int elemsPerAddr = di.info.elemsPerAddr;
+                    if (opIx == 1 &&
+                        (di.info.op == SendOp::ATOMIC_ICAS ||
+                            di.info.op == SendOp::ATOMIC_FCAS))
+                    {
+                        // ICAS packs src2 in to src1's payload
+                        elemsPerAddr *= 2;
+                    }
+                    for (int ei = 0; ei < elemsPerAddr; ei++) {
+                        // each vector element starts at a new GRF
+                        // vector elements might be <GRF (small SIMD) or
+                        // multiple GRF (e.g. SIMD32 D64V2)
+                        changed |= add(RegName::GRF_R, regOff, bitsAccessed);
+                        regOff += ALIGN_UP_TO(
+                            8 * model.getGRFByteSize(), bitsAccessed);
+                    }
+                }
+            }
+            return changed; // bail out early
+        }
+    }
+    // else: fallthrough on the full register counts
+
+    // send source GRF (not null reg)
+    int nregs = 0;
+    if (opIx < 0) {
+        nregs = i.getDstLength();
+        if (nregs < 0)
+            nregs = 8; // assume the worst
+    } else if (opIx == 0) { // mlen
+        nregs = i.getSrc0Length();
+        if (nregs < 0)
+            nregs = 4; // assume the worst
+    } else { // xlen
+        nregs = i.getSrc1Length();
+        if (nregs < 0)
+            nregs = 8; // assume the worst
+    }
+    int regNum = (int)op.getDirRegRef().regNum;
+    changed |= addRegs(RegName::GRF_R, regNum, nregs);
+    return changed;
 }
 
 
@@ -313,19 +415,7 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
         added = true;
         if (i.getOpSpec().isSendOrSendsFamily()) {
             if (op.getDirRegName() == RegName::GRF_R) {
-                // send source GRF (not null reg)
-                int nregs = 0;
-                if (srcIx == 0) { // mlen
-                    nregs = i.getSrc0Length();
-                    if (nregs < 0)
-                        nregs = 4; // assume the worst
-                } else { // xlen
-                    nregs = i.getSrc1Length();
-                    if (nregs < 0)
-                        nregs = 8; // assume the worst
-                }
-                int regNum = (int)op.getDirRegRef().regNum;
-                addRegs(RegName::GRF_R, regNum, nregs);
+                addSendOperand(i, srcIx);
             }
         } else {
             setSrcRegion(
@@ -336,7 +426,7 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
                 typeSizeBits);
         }
         break;
-    case Operand::Kind::MACRO: {
+    case Operand::Kind::MACRO:
         added = true;
         setSrcRegion(
             op.getDirRegName(),
@@ -360,7 +450,6 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
         //         typeSizeBits);
         // }
         break;
-    }
     case Operand::Kind::INDIRECT: {
         added = true;
         auto rgn = op.getRegion();
@@ -394,31 +483,14 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
 }
 
 
-bool RegSet::addSourceImplicitAccumulator(const Instruction &i)
+bool RegSet::addSourceImplicit(const Instruction &i)
 {
-    Type type = i.getDestination().getType();
-    bool added = false;
-    bool readsAcc = i.is(Op::MACH) ||  i.is(Op::MAC);
-    bool readsAcc64 = i.is(Op::MACH);
-    if (readsAcc) {
-        if (readsAcc64) {
-            type = Type::Q;
-        }
-        auto typeSizeBits = TypeSizeInBitsWithDefault(type, 32);
-        auto execOff = 4 * int(i.getChannelOffset());
-        auto elemsPerAccReg =
-            8 * model->getBytesPerReg(RegName::ARF_ACC) / typeSizeBits;
-        RegRef ar( // e.g. on SKL (8|M8) ... acc0 ... really means acc1
-            execOff / elemsPerAccReg,
-            execOff % elemsPerAccReg);
-        added |= setSrcRegion(
-            RegName::ARF_ACC,
-            ar,
-            Region::SRC110,
-            size_t(i.getExecSize()),
-            typeSizeBits);
+    bool changed = false;
+    changed |= addImplicitAccumulatorAccess(i, false);
+    if (i.getOp() == Op::SEL && i.hasPredication()) {
+        changed |= addFlagAccess(i);
     }
-    return added;
+    return changed;
 }
 
 bool RegSet::addDestinationInputs(const Instruction &i)
@@ -439,7 +511,7 @@ bool RegSet::addDestinationInputs(const Instruction &i)
     return added;
 }
 
-bool RegSet::addDestinationOutputs(const Instruction &i)
+bool RegSet::addExplicitDestinationOutputs(const Instruction &i)
 {
     if (!i.getOpSpec().supportsDestination()) {
         return false;
@@ -450,8 +522,6 @@ bool RegSet::addDestinationOutputs(const Instruction &i)
     const auto &op = i.getDestination();
     auto typeSizeBits = TypeSizeInBitsWithDefault(op.getType(), 32);
 
-    added |= addDestinationImplicitAccumulator(i);
-
     Region rgn = op.getRegion();
     switch (op.getKind()) {
     case Operand::Kind::DIRECT:
@@ -459,13 +529,21 @@ bool RegSet::addDestinationOutputs(const Instruction &i)
         if (i.getOpSpec().isSendOrSendsFamily() &&
             op.getDirRegName() == RegName::GRF_R)
         {
-            int nregs = i.getDstLength();
-            if (nregs < 0) {
-                nregs = 8; // assume the worst
-                // NOTE: some special messages allow 32;
-                // we won't handle those cases
-            }
-            added |= addRegs(RegName::GRF_R, op.getDirRegRef().regNum, nregs);
+            addSendOperand(i, -1);
+        } else if (op.getDirRegName() == RegName::ARF_ACC &&
+            i.is(Op::MUL) &&
+            (op.getType() == Type::D || op.getType() == Type::UD))
+        {
+            // special case:
+            //   mul (..) acc0:d ... // writes acc0[63:0]
+            //   mach (..) ....      // reads acc0[63:0]
+            // technically I think mul only writes the bottom 48b
+            added |= setDstRegion(
+                op.getDirRegName(),
+                op.getDirRegRef(),
+                op.getRegion(),
+                execSize,
+                64);
         } else {
             // normal GRF target
             added |= setDstRegion(
@@ -519,6 +597,14 @@ bool RegSet::addDestinationOutputs(const Instruction &i)
     return added;
 }
 
+bool RegSet::addDestinationOutputs(const Instruction &i)
+{
+    bool changed = false;
+    changed |= addDestinationImplicit(i);
+    changed |= addExplicitDestinationOutputs(i);
+    return changed;
+}
+
 
 bool RegSet::addFlagModifierOutputs(const Instruction &i)
 {
@@ -526,37 +612,52 @@ bool RegSet::addFlagModifierOutputs(const Instruction &i)
     bool writesFlagRegister = // sel uses flag modifier as input
         fm != FlagModifier::NONE && i.getOp() != Op::SEL;
     if (writesFlagRegister) {
-        const RegRef &fr = i.getFlagReg();
-        return addFlagRegArf(fr, i.getExecSize(), i.getChannelOffset());
+        return addFlagAccess(i);
     }
     return false;
 }
 
 
-bool RegSet::addDestinationImplicitAccumulator(const Instruction &i)
+bool RegSet::addDestinationImplicit(const Instruction &i)
+{
+    // other special instructions that write things
+    return addImplicitAccumulatorAccess(i, true);
+}
+
+
+bool RegSet::addImplicitAccumulatorAccess(const Instruction &i, bool isDst)
 {
     bool added = false;
-    bool writesAcc =
-        i.hasInstOpt(InstOpt::ACCWREN) || i.is(Op::MACH) ||
-        i.is(Op::ADDC) || i.is(Op::SUBB);
-    if (writesAcc) {
+
+    bool accessesAcc = false;
+    accessesAcc |= i.is(Op::MACH); // mac and mach uses both input and output
+    accessesAcc |= isDst && i.hasInstOpt(InstOpt::ACCWREN);
+    accessesAcc |= isDst && i.is(Op::ADDC) || i.is(Op::SUBB);
+    accessesAcc |= !isDst && i.is(Op::MAC);
+
+    if (accessesAcc) {
         Type type = i.getDestination().getType();
         if (i.is(Op::MACH)) {
-            type = Type::Q;
+            type = Type::Q; // acc0[63:0] is written
         }
         auto typeSizeBytes = TypeSizeInBitsWithDefault(type, 32);
-        auto execOff = 4 * int(i.getChannelOffset());
-        auto elemsPerAccReg =
-            8 * model->getBytesPerReg(RegName::ARF_ACC) / typeSizeBytes;
-        RegRef ar(execOff / elemsPerAccReg, execOff % elemsPerAccReg);
+        // unlike flag modifier and predicates the channel offset does not
+        // impact accumulator
         added |= setDstRegion(
             RegName::ARF_ACC,
-            ar,
+            RegRef(0, 0), // acc0
             Region::DST1,
             size_t(i.getExecSize()),
             typeSizeBytes);
     }
     return added;
+}
+
+
+bool RegSet::addFlagAccess(const Instruction &i)
+{
+    const RegRef &fr = i.getFlagReg();
+    return addFlagRegArf(fr, i.getExecSize(), i.getChannelOffset());
 }
 
 
@@ -578,7 +679,7 @@ bool RegSet::setDstRegion(
 
     bool added = false;
     size_t baseOffBits =
-        rr.regNum * model->getBytesPerReg(rn) * 8 +
+        rr.regNum * model.getBytesPerReg(rn) * 8 +
             rr.subRegNum * typeSizeBits;
     for (size_t ch = 0; ch < execSize; ch++) {
         size_t offsetBits = ch * hz * typeSizeBits;
@@ -622,6 +723,87 @@ bool RegSet::setSrcRegion(
     return changed;
 }
 
+static void strForReg(
+    const Model &model,
+    RegName rn,
+    const RegSet::Bits &bs,
+    bool &first,
+    std::ostream &os)
+{
+    const size_t bytesPerReg = model.getBytesPerReg(rn);
+    const RegInfo *ri = model.lookupRegInfoByRegName(rn);
+    IGA_ASSERT(ri, "invalid register");
+    auto emitReg = [&](size_t i) {
+        if (first)
+            first = false;
+        else
+            os << ",";
+        os << ri->syntax;
+        if (ri->hasRegNum()) {
+            os << (int)i;
+        }
+    };
+
+    for (size_t ri = 0; ri < model.getRegCount(rn); ri++) {
+        size_t regOff = OffsetOf(model, rn, (int)ri) / 8;
+        if (bs.testAll(regOff, bytesPerReg)) {
+            // full reg: e.g. "r13" or "r13:8"
+            emitReg(ri);
+            size_t len = 1;
+            if (rn == RegName::GRF_R || rn == RegName::ARF_ACC) {
+                // for GRF and ACC permit payload-form syntax
+                // r10:8, acc0:2
+                while (ri + len < model.getRegCount(rn) &&
+                    bs.testAll(
+                        OffsetOf(model, rn,
+                            (int)ri + (int)len) / 8, bytesPerReg))
+                {
+                    len++;
+                }
+            }
+            if (len > 1) {
+                os << ":" << len;
+                ri += len - 1;
+            }
+        } else if (bs.testAny(regOff, bytesPerReg)) {
+            // partial register
+            //    r13[7]   (e.g. r13.7<0;1,0>:b)
+            //    r13[0-3,8-11,..]  (e.g. r13.0<2;1,0>:d)
+            emitReg(ri);
+            os << '[';
+            bool firstSubreg = true;
+            for (size_t byte = 0; byte < bytesPerReg; byte++) {
+                if (!bs.test(regOff + byte)) {
+                    continue;
+                }
+                if (firstSubreg) {
+                    firstSubreg = false;
+                } else {
+                    os << ',';
+                }
+                os << byte;
+                // find the end
+                size_t len = 1;
+                while (byte + len < bytesPerReg &&
+                    bs.test(regOff + byte + len))
+                    len++;
+                if (len > 1) {
+                    os << '-' << byte + len - 1;
+                    byte += len - 1;
+                }
+            }
+            os << ']';
+        }
+    } // for
+}
+
+std::string RegSet::str(const Model &m, RegName rn, const RegSet::Bits &bs)
+{
+    bool first = true;
+    std::stringstream ss;
+    strForReg(m, rn, bs, first, ss);
+    return ss.str();
+}
 
 // emits a shorter description... something like
 //   {r0,r1[0-3],r2[16],r4[0-3,8-11,16-19,24-27]}
@@ -630,70 +812,8 @@ void RegSet::str(std::ostream &os) const
     bool first = true;
     os << "{";
     for (RegName rn : TRACKED) {
-        const RegInfo *ri = model->lookupRegInfoByRegName(rn);
-        auto emitReg = [&](size_t i) {
-            if (first)
-                first = false;
-            else
-                os << ",";
-            os << ri->syntax;
-            if (ri->hasRegNum()) {
-                os << (int)i;
-            }
-        };
-
-        size_t bytesPerReg = model->getBytesPerReg(rn);
         const BitSet<> &bs = bitSetFor(rn);
-        for (size_t ri = 0; ri < model->getRegCount(rn); ri++) {
-            size_t regOff = offsetOf(rn, (int)ri) / 8;
-            if (bs.testAll(regOff, bytesPerReg)) {
-                // full reg: e.g. "r13" or "r13:8"
-                emitReg(ri);
-                size_t len = 1;
-                if (rn == RegName::GRF_R || rn == RegName::ARF_ACC) {
-                    // for GRF and ACC permit payload-form syntax
-                    // r10:8, acc0:2
-                    while (ri + len < model->getRegCount(rn) &&
-                        bs.testAll(
-                            offsetOf(rn, (int)ri + (int)len) / 8, bytesPerReg))
-                    {
-                        len++;
-                    }
-                }
-                if (len > 1) {
-                    os << ":" << len;
-                    ri += len - 1;
-                }
-            } else if (bs.testAny(regOff, bytesPerReg)) {
-                // partial register
-                //    r13[7]   (e.g. r13.7<0;1,0>:b)
-                //    r13[0-3,8-11,..]  (e.g. r13.0<2;1,0>:d)
-                emitReg(ri);
-                os << '[';
-                bool firstSubreg = true;
-                for (size_t byte = 0; byte < bytesPerReg; byte++) {
-                    if (!bs.test(regOff + byte)) {
-                        continue;
-                    }
-                    if (firstSubreg) {
-                        firstSubreg = false;
-                    } else {
-                        os << ',';
-                    }
-                    os << byte;
-                    // find the end
-                    size_t len = 1;
-                    while (byte + len < bytesPerReg &&
-                        bs.test(regOff + byte + len))
-                        len++;
-                    if (len > 1) {
-                        os << '-' << byte + len - 1;
-                        byte += len - 1;
-                    }
-                }
-                os << ']';
-            }
-        }
+        strForReg(model, rn, bs, first, os);
     }
     os << "}";
 }
@@ -703,3 +823,8 @@ std::string RegSet::str() const {
     return ss.str();
 }
 
+
+RegSet::Bits RegSet::emptyPredSet(const Model &model)
+{
+    return RegSet::Bits(BytesForRegSet(RegName::ARF_F, model));
+}

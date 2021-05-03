@@ -162,6 +162,26 @@ bool decodeSendDescriptor(const Opts &opts)
             fatalExitWithMessage("-Xdsd: for this platform expects: "
                 "SFID ExecSize? ExDesc Desc");
     }
+
+    auto parseInt = [&] (const char *which, std::string inp) {
+        uint32_t val = 0;
+        try {
+            int base = 10;
+            if (inp.find("0x") == 0 || inp.find("0X") == 0) {
+                inp = inp.substr(2);
+                base = 16;
+            }
+            val = std::stoul(inp, nullptr, base);
+        } catch (std::invalid_argument i) {
+            fatalExitWithMessage(
+                "-Xdsd: ", which, ": ", inp, ": parse error");
+        } catch (std::out_of_range i) {
+            fatalExitWithMessage(
+                "-Xdsd: ", which, ": ", inp, ": value out of range");
+        }
+        return val;
+    };
+
     auto parseSendDescArg =
         [&] (const char *which, std::string inp) {
             if (inp.find("a0.") == 0) {
@@ -176,21 +196,7 @@ bool decodeSendDescriptor(const Opts &opts)
                 }
                 return iga::SendDesc(a0rr);
             }
-            uint32_t val = 0;
-            try {
-                int base = 10;
-                if (inp.find("0x") == 0 || inp.find("0X") == 0) {
-                    inp = inp.substr(2);
-                    base = 16;
-                }
-                val = std::stoul(inp, nullptr, base);
-            } catch (std::invalid_argument i) {
-                fatalExitWithMessage(
-                    "-Xdsd: ", which, ": ", inp, ": parse error");
-            } catch (std::out_of_range i) {
-                fatalExitWithMessage(
-                    "-Xdsd: ", which, ": ", inp, ": value out of range");
-            }
+            uint32_t val = parseInt(which, inp);
             return iga::SendDesc(val);
         };
     auto tryParseSFID = [&](std::string sfidSym) {
@@ -263,9 +269,11 @@ bool decodeSendDescriptor(const Opts &opts)
         argOff++;
     }
 
+    std::string exDescStr = opts.inputFiles[argOff];
+
     // ExDesc
     const iga::SendDesc exDesc =
-        parseSendDescArg("ExDesc", opts.inputFiles[argOff]);
+        parseSendDescArg("ExDesc", exDescStr);
     if (opts.platform < IGA_XE && sfid == iga::SFID::INVALID) {
         // decode it from ex_desc[3:0]
         if (exDesc.isImm())
@@ -280,7 +288,7 @@ bool decodeSendDescriptor(const Opts &opts)
                 ": invalid or unsupported SFID for this platform");
         }
     }
-    auto desc = parseSendDescArg("Desc", opts.inputFiles[argOff+1]);
+    auto desc = parseSendDescArg("Desc", opts.inputFiles[argOff + 1]);
 
     auto emitDiagnostics =
         [&](const iga::DiagnosticList &ds, bool errors) {
@@ -321,7 +329,7 @@ bool decodeSendDescriptor(const Opts &opts)
     iga::DecodedDescFields decodedFields;
     const auto dr = iga::tryDecode(
         p, sfid, execSize,
-        exDesc, desc, iga::REGREF_INVALID,
+        exDesc, desc,
         &decodedFields);
     emitDiagnostics(dr.warnings, false);
     emitDiagnostics(dr.errors, true);

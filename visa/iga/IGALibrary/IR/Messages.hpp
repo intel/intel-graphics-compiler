@@ -249,7 +249,7 @@ namespace iga
         SendDesc     surfaceId;
         //
         // possible immediate offset if the encoding supports it
-        SendDesc     immediateOffset;
+        int immediateOffset = 0;
         //
         // A symbol value for this message (syntax).
         // The syntax is not complete and IGA will not consume it directly
@@ -410,7 +410,7 @@ namespace iga
     // Attempts to decode the descriptor for
     DecodeResult tryDecode(
         Platform p, SFID sfid, ExecSize execSize,
-        SendDesc exDesc, SendDesc desc, RegRef indDesc,
+        SendDesc exDesc, SendDesc desc,
         DecodedDescFields *fields);
 
     //
@@ -431,12 +431,10 @@ namespace iga
         SendDesc       addrSurface = 0; // a0 or imm
         int            addrScale = 1; // must be 1x, V*D, 2*V*2, or 4*V*D
         int            addrSize = 0;
-        SendDesc       addrOffset = 0; // a0 or imm
-        //
+        int            addrOffset = 0; // imm only
         int            dataSizeReg = 0;
         int            dataSizeMem = 0;
         bool           dataSizeExpandHigh = 0; // d8u32h
-        // bool        dataSizeSignExtend; // d8s16 (someday)
         union {
             struct {
                 short  dataVectorSize;

@@ -65,6 +65,16 @@ namespace iga {
     // using SymbolTableFunc =
     //     std::function<bool(const std::string &, ImmVal &)>;
 
+    struct ExprParseOpts {
+        bool allowFloat = true; // (vs int)
+        std::map<std::string,ImmVal> symbols;
+
+        ExprParseOpts(bool allowFlts = true)
+            : allowFloat(allowFlts)
+        {
+        }
+    };
+
     // Generic GEN parser that can:
     //   - parse constant expressions and knows it's model
     //   - etc...
@@ -75,10 +85,6 @@ namespace iga {
         InstBuilder&                   m_builder;
         const ParseOpts                m_opts;
 
-        // TODO: sink to KernelParser
-        const OpSpec                  *m_opSpec;
-        Operand::Kind                  m_srcKinds[3];
-        Loc                            m_execSizeLoc;
 
         GenParser(
             const Model &model,
@@ -89,13 +95,6 @@ namespace iga {
 
         Platform platform() const {return m_model.platform;}
 
-        void ParseExecInfo(
-            ExecSize dftExecSize,
-            ExecSize &execSize,
-            ChannelOffset &chOff);
-        Type SendOperandDefaultType(int srcIx) const;
-        Type ParseSendOperandTypeWithDefault(int srcIx);
-
         bool LookupReg(
             const std::string &str,
             const RegInfo *&regInfo,
@@ -103,14 +102,53 @@ namespace iga {
         bool PeekReg(const RegInfo*& regInfo, int& regNum);
         bool ConsumeReg(const RegInfo*& regInfo, int &regNum);
 
+        //////////////////////////////////////////////////////////////////////
         // expression parsing
         // &,|
         // <<,>>
         // +,-
         // *,/,%
         // -(unary neg)
-        bool TryParseConstExpr(ImmVal &v,int srcOpIx = -1);
-        bool TryParseIntConstExpr(ImmVal &v, const char *forWhat);
+        // literals
+        //
+        // attempts to parse;
+        //   * returns false if parsing failed with no progress was made
+        bool TryParseConstExpr(ImmVal &v);
+        bool TryParseConstExpr(const ExprParseOpts &pos, ImmVal &v);
+        //
+        // parses something, but requires it evaluate to an int
+        bool TryParseIntConstExpr(ImmVal &v,
+            const char *forWhat = nullptr);
+        bool TryParseIntConstExpr(
+            const ExprParseOpts &pos, ImmVal &v,
+            const char *forWhat = nullptr);
+        //
+        // same as above, but starts at additive level
+        bool TryParseIntConstExprAdd(ImmVal &v,
+            const char *forWhat = nullptr);
+        bool TryParseIntConstExprAdd(
+            const ExprParseOpts &pos, ImmVal &v,
+            const char *forWhat = nullptr);
+        // assumes you are here
+        //  X + E1 - E2
+        //    ^ (starts here with 0)
+        // don't want to negate the whole term
+        //  X - 1 - 1
+        //    ^^^^^^^ == -2
+        // if nothing showing then we return 0 and success (true)
+        bool TryParseIntConstExprAddChain(
+            const ExprParseOpts &pos, ImmVal &v,
+            const char *forWhat = nullptr);
+        bool TryParseIntConstExprAddChain(ImmVal &v,
+                const char *forWhat = nullptr);
+        //
+        // same as above, but starts at the primary level
+        // so operators require grouping parentheses to start e.g. (1 + 2)
+        bool TryParseIntConstExprPrimary(ImmVal &v,
+            const char *forWhat = nullptr);
+        bool TryParseIntConstExprPrimary(
+            const ExprParseOpts &pos, ImmVal &v,
+            const char *forWhat = nullptr);
 
     protected:
         void ensureIntegral(const Token &t, const ImmVal &v);
@@ -118,12 +156,12 @@ namespace iga {
         void checkIntTypes(const ImmVal &v1, const Token &t, const ImmVal &v2);
 
         ImmVal evalBinExpr(const ImmVal &v1, const Token &t, const ImmVal &v2);
-        bool parseBitwiseExpr(bool consumed, ImmVal &v);
-        bool parseShiftExpr(bool consumed, ImmVal &v);
-        bool parseAddExpr(bool consumed, ImmVal &v);
-        bool parseMulExpr(bool consumed, ImmVal &v);
-        bool parseUnExpr(bool consumed, ImmVal &v);
-        bool parsePrimary(bool consumed, ImmVal &v);
+        bool parseBitwiseExpr(const ExprParseOpts &po, bool consumed, ImmVal &v);
+        bool parseShiftExpr(const ExprParseOpts &po, bool consumed, ImmVal &v);
+        bool parseAddExpr(const ExprParseOpts &po, bool consumed, ImmVal &v);
+        bool parseMulExpr(const ExprParseOpts &po, bool consumed, ImmVal &v);
+        bool parseUnExpr(const ExprParseOpts &po, bool consumed, ImmVal &v);
+        bool parsePrimaryExpr(const ExprParseOpts &po, bool consumed, ImmVal &v);
     private:
         void initSymbolMaps();
         std::map<std::string,const RegInfo*>  m_regmap;

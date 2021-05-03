@@ -95,8 +95,8 @@ void Instruction::setDirectSource(
         // send with a null operand must have a 0 length
         // we only check this if we didn't get the length via the
         // descriptor
-        if (ix == 0 && m_sendSrc0Len < 0)
-            m_sendSrc0Len = 0;
+        if (ix == 0 && m_sendSrc0Length < 0)
+            m_sendSrc0Length = 0;
         else if (ix == 1 && m_sendSrc1Length < 0)
             m_sendSrc1Length = 0;
     }
@@ -160,12 +160,16 @@ void Instruction::setSource(SourceIndex srcIx, const Operand &op)
         // send with a null operand must have a 0 length
         // we only check this if we didn't get the length via the
         // descriptor
-        if (ix == 0 && m_sendSrc0Len < 0)
-            m_sendSrc0Len = 0;
+        if (ix == 0 && m_sendSrc0Length < 0)
+            m_sendSrc0Length = 0;
         else if (ix == 1 && m_sendSrc1Length < 0)
             m_sendSrc1Length = 0;
     }
     m_srcs[ix] = op;
+}
+
+const Model &Instruction::model() const {
+    return Model::LookupModelRef(platform());
 }
 
 SWSB::InstType Instruction::getSWSBInstType(SWSB_ENCODE_MODE mode) const {
@@ -202,10 +206,9 @@ std::string Instruction::str() const
 {
     ErrorHandler eh;
     std::stringstream ss;
-    FormatOpts fopt(getOpSpec().platform);
-    IGA_ASSERT(Model::LookupModel(getOpSpec().platform) != nullptr, "Unsupported platform");
+    FormatOpts fopt(model());
     fopt.setSWSBEncodingMode(
-        Model::LookupModel(getOpSpec().platform)->getSWSBEncodeMode());
+        Model::LookupModelRef(getOpSpec().platform).getSWSBEncodeMode());
     FormatInstruction(eh, ss, fopt, *this);
     return ss.str();
 }
