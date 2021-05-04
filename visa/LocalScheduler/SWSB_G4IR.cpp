@@ -96,9 +96,6 @@ static bool isFence(const G4_INST* inst)
     return false;
 }
 
-
-
-
 static bool hasSamePredicator(const G4_INST* inst1, const G4_INST* inst2)
 {
     G4_Predicate* pred1 = inst1->getPredicate();
@@ -4280,6 +4277,7 @@ void G4_BB_SB::clearKilledBucketNodeXeLP(LiveGRFBuckets* LB, int ALUID)
 }
 
 
+
 void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* liveNode, bool dstDep)
 {
     {
@@ -4498,7 +4496,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     continue;
                 }
 
-
                 if (tokenHonourInstruction(liveInst))
                 {
                     if (dep == RAW || dep == WAW) {
@@ -4662,6 +4659,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 clearKilledBucketNodeXeLP(LB, ALUID);
             }
         }
+
 
         // Add buckets of current instruction to bucket list
         std::vector<SBBucketNode*>  bucketNodes(Opnd_total_num, nullptr);  //The coarse grained footprint of operands
@@ -5182,7 +5180,6 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                     DepType dep = DEPTYPE_MAX;
                     dep = getDepForOpnd(liveOpnd, curOpnd);
 
-
                     //RAW:                     R kill W    R-->live       explict dependence
                     //WAW:                     W2 kill W1  W2-->live      explict dependence
                     //WAW: same pipeline/inorder W2 kill W1  W2-->live      implicit dependence
@@ -5483,7 +5480,6 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 
                     //Find DEP type
                     DepType dep = getDepForOpnd(liveOpnd, curOpnd);
-
 
                     //RAW:                     R kill W    R-->live       explict dependence
                     //WAW:                     W2 kill W1  W2-->live      explict dependence

@@ -1007,6 +1007,7 @@ namespace vISA
             std::vector<SBBucketDescr>& BDvec,
             bool GRFOnly);
 
+
         void setDistance(const SBFootprint * footprint, SBNode *node, SBNode *liveNode, bool dstDep);
         void setSpecialDistance(SBNode* node);
         static void footprintMerge(SBNode * node, const SBNode * nextNode);
