@@ -22,35 +22,18 @@
 #
 #============================ end_copyright_notice =============================
 
-# Enable only for make or ninja generators to use RULE_LAUNCH_LINK.
-if(NOT (CMAKE_GENERATOR MATCHES "^(Unix Makefiles|Ninja)"))
-  return()
-endif()
+# Wrapper around linker command that filters out LLVM libraries
+# for plugin linking.
 
-set(BACKEND_PLUGIN_SOURCES
-  BackendPlugin.cpp
-  )
+from sys import argv
+from subprocess import check_call
 
-add_library(VCBackendPlugin
-  MODULE
-  ${BACKEND_PLUGIN_SOURCES}
-  )
+def is_llvm_library(arg):
+    if 'LLVMGenXIntrinsics' in arg:
+        return False
+    if 'LLVM' in arg:
+        return True
+    return False
 
-set(VCLinkBEPluginScript
-  ${CMAKE_CURRENT_SOURCE_DIR}/LinkBackendPlugin.py
-  )
-
-set_target_properties(VCBackendPlugin
-  PROPERTIES LINK_DEPENDS ${VCLinkBEPluginScript}
-  )
-
-set_target_properties(VCBackendPlugin PROPERTIES
-  RULE_LAUNCH_LINK "${PYTHON_EXECUTABLE} ${VCLinkBEPluginScript}"
-  )
-
-target_link_libraries(VCBackendPlugin
-  PRIVATE
-  VCCodeGen
-  # GenX_IR actually should be linked to LLVMGenXCodeGen.
-  GenX_IR
-  )
+args = [arg for arg in argv[1:] if not is_llvm_library(arg)]
+check_call(args)
