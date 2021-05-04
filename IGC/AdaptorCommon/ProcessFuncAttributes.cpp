@@ -322,8 +322,10 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
                 // Go through call sites and remove NoInline atrributes.
+                // Verifier fails if a call has optnone but not noinline, so if we remove noinline, we must also remove optnone
                 if (callInst->hasFnAttr(llvm::Attribute::NoInline)) {
                     callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::NoInline);
+                    callInst->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::OptimizeNone);
                 }
                 // Remove AlwaysInline at callsites
                 if (isOptDisable && callInst->hasFnAttr(llvm::Attribute::AlwaysInline)) {
