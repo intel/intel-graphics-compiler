@@ -563,22 +563,36 @@ void GenXPacketize::findUniformInsts(Function &F) {
       }
     }
   }
-  // first find out all the uniform alloca to store those uniform arguments
-  std::stack<Value *> uvset;
-  for (const Argument &I : F.args()) {
+  std::set<const Value*> argDefs;
+  std::stack<Value*> uvset;
+  for (const Argument& I : F.args()) {
     if (!UniformArgs.count(&I))
       continue;
+    argDefs.insert(&I);
     for (auto UI = I.user_begin(), E = I.user_end(); UI != E; ++UI) {
-      const Value *use = (*UI);
+      const Value* use = (*UI);
+      if (auto CastI = dyn_cast<CastInst>(use)) {
+        argDefs.insert(CastI);
+        UniformInsts.insert(CastI);
+        uvset.push((Value*)CastI);
+      }
+    }
+  }
+  // first find out all the uniform alloca to store those uniform arguments
+  for (auto def : argDefs) {
+    for (auto UI = def->user_begin(), E = def->user_end(); UI != E; ++UI) {
+      const Value* use = (*UI);
       if (auto LI = dyn_cast<LoadInst>(use)) {
         UniformInsts.insert(LI);
-      } else if (auto GEP = dyn_cast<GetElementPtrInst>(use)) {
-        if (GEP->getPointerOperand() == &I) {
+      }
+      else if (auto GEP = dyn_cast<GetElementPtrInst>(use)) {
+        if (GEP->getPointerOperand() == def) {
           UniformInsts.insert(GEP);
           uvset.push((Value *)GEP);
         }
-      } else if (auto SI = dyn_cast<StoreInst>(use)) {
-        if (SI->getPointerOperand() == &I)
+      }
+      else if (auto SI = dyn_cast<StoreInst>(use)) {
+        if (SI->getPointerOperand() == def)
           UniformInsts.insert(SI);
         else {
           auto PI = SI->getPointerOperand();
@@ -587,7 +601,8 @@ void GenXPacketize::findUniformInsts(Function &F) {
             uvset.push((Value *)AI);
           }
         }
-      } else if (auto CI = dyn_cast<CallInst>(use)) {
+      }
+      else if (auto CI = dyn_cast<CallInst>(use)) {
         if (Function *Callee = CI->getCalledFunction()) {
           if (GenXIntrinsic::isVLoadStore(Callee)) {
             UniformInsts.insert(CI);
@@ -606,11 +621,13 @@ void GenXPacketize::findUniformInsts(Function &F) {
       if (auto UseI = dyn_cast<Instruction>(use)) {
         if (isa<StoreInst>(UseI)) {
           UniformInsts.insert(UseI);
-        } else if (auto LI = dyn_cast<LoadInst>(UseI)) {
+        }
+        else if (auto LI = dyn_cast<LoadInst>(UseI)) {
           UniformInsts.insert(UseI);
           if (LI->getType()->isPointerTy())
             uvset.push(UseI);
-        } else if (auto GEP = dyn_cast<GetElementPtrInst>(UseI)) {
+        }
+        else if (auto GEP = dyn_cast<GetElementPtrInst>(UseI)) {
           if (GEP->hasAllConstantIndices()) {
             uvset.push(UseI);
             UniformInsts.insert(UseI);
