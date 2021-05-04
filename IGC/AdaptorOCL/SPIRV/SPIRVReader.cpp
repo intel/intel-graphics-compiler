@@ -463,6 +463,8 @@ public:
           flags |= llvm::DINode::FlagPrivate;
       if (spirvFlags & SPIRVDebug::FlagIsObjectPointer)
           flags |= llvm::DINode::FlagObjectPointer;
+      if (spirvFlags & SPIRVDebug::FlagIsStaticMember)
+          flags |= llvm::DINode::FlagStaticMember;
 
       return flags;
   }
@@ -746,8 +748,14 @@ public:
       }
       else if (tag == SPIRVDebug::CompositeTypeTag::Class)
       {
-          newNode = addMDNode(inst, Builder.createClassType(scope, name,
-              file, line, size, 0, 0, flags, derivedFrom, DINodeArray()));
+          // TODO: should be replaced with createClassType, when bug with creating
+          // ClassType with llvm::dwarf::DW_TAG_struct_type tag will be fixed
+          auto CT = Builder.createReplaceableCompositeType(
+              llvm::dwarf::DW_TAG_class_type, name, scope, file, line, 0,
+              size, 0, flags);
+          CT = llvm::MDNode::replaceWithDistinct(llvm::TempDICompositeType(CT));
+
+          newNode = addMDNode(inst, CT);
       }
 
       SmallVector<Metadata*, 6> elements;
