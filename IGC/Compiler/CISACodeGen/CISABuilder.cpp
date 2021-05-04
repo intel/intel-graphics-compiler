@@ -3883,7 +3883,7 @@ namespace IGC
         }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
-            m_program->m_Platform->preemptionSupported() && IGC_IS_FLAG_ENABLED(EnablePreemption))
+            VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption))
         {
             SaveOption(vISA_enablePreemption, true);
         }
