@@ -244,5 +244,5 @@ public:
         return "Lower Discard";
     }
 };
-
+  void initializeDiscardLoweringPass(llvm::PassRegistry&);
 }//namespace IGC

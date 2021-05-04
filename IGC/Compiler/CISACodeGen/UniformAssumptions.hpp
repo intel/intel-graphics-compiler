@@ -66,6 +66,7 @@ namespace IGC {
         bool m_collectingAssumptions = false;
         llvm::SmallVector<llvm::GenIntrinsicInst*, 8> m_assumptions;
     };
+  void initializeUniformAssumptionsPass(llvm::PassRegistry&);
 
 }
 
