@@ -34,7 +34,6 @@ IN THE SOFTWARE.
 
 #include "FunctionGroup.h"
 #include "GenX.h"
-#include "vc/Support/BackendConfig.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
@@ -100,14 +99,7 @@ bool GenXModule::runOnModule(Module &M) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
   Ctx = &M.getContext();
-
-  // Remember required config variables here. Getting other analysis
-  // after runOnModule looks dangerous.
-  const auto &BC = getAnalysis<GenXBackendConfig>();
-  WATable = BC.getWATable();
-  AsmDumpsEnabled = BC.asmDumpsEnabled();
-  EmitDebugInformation = BC.emitDebugInformation();
-  EmitDebuggableKernels = BC.emitDebuggableKernels();
+  BC = &getAnalysis<GenXBackendConfig>();
 
   InlineAsm = CheckForInlineAsm(M);
 

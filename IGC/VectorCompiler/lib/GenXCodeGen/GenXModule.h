@@ -60,6 +60,8 @@ IN THE SOFTWARE.
 #include "GenXBaling.h"
 #include "GenXDebugInfo.h"
 
+#include "vc/Support/BackendConfig.h"
+
 #include "llvm/ADT/Twine.h"
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
@@ -84,14 +86,11 @@ namespace llvm {
   class GenXModule : public ModulePass {
     const GenXSubtarget *ST;
     LLVMContext *Ctx = nullptr;
-    const WA_TABLE *WATable = nullptr;
+    const GenXBackendConfig *BC = nullptr;
 
     // Visa option parser contains code that just stores c-strings as
     // pointers without copying. Store all strings here.
     BumpPtrAllocator ArgStorage;
-    bool AsmDumpsEnabled = false;
-    bool EmitDebugInformation = false;
-    bool EmitDebuggableKernels = false;
 
     VISABuilder *CisaBuilder = nullptr;
     void InitCISABuilder();

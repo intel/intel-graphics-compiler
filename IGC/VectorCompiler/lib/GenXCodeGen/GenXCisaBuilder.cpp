@@ -6269,9 +6269,7 @@ ModulePass *llvm::createGenXFinalizerPass(raw_pwrite_stream &o) {
 
 static SmallVector<const char *, 8>
 collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
-                     const bool EmitDebugInformation,
-                     const bool EmitDebuggableKernels,
-                     const bool AsmDumpsEnabled) {
+                     const GenXBackendConfig &BC) {
   SmallVector<const char *, 8> Argv;
   auto addArgument = [&Argv, &Saver](StringRef Arg) {
     // String saver guarantees that string is null-terminated.
@@ -6282,16 +6280,16 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
 
-  if (EmitDebugInformation) {
+  if (BC.emitDebugInformation()) {
     addArgument("-generateDebugInfo");
     if (!EnableOptimizedDebug)
       addArgument("-debug");
   }
-  if (EmitDebuggableKernels) {
+  if (BC.emitDebuggableKernels()) {
     addArgument("-addKernelID");
     addArgument("-setstartbp");
   }
-  if (AsmDumpsEnabled) {
+  if (BC.asmDumpsEnabled()) {
     addArgument("-dumpcommonisa");
     addArgument("-output");
     addArgument("-binary");
@@ -6316,11 +6314,8 @@ LLVMContext &GenXModule::getContext() {
 }
 
 static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
-                                      const bool EmitDebugInformation,
-                                      const bool EmitDebuggableKernel,
-                                      const bool AsmDumpsEnabled,
-                                      vISABuilderMode Mode, const WA_TABLE *WATable,
-                                      LLVMContext &Ctx,
+                                      const GenXBackendConfig &BC,
+                                      vISABuilderMode Mode, LLVMContext &Ctx,
                                       BumpPtrAllocator &Alloc) {
   auto Platform = ST.getVisaPlatform();
   // Use SKL for unknown platforms
@@ -6329,9 +6324,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
 
   // Prepare array of arguments for Builder API.
   StringSaver Saver{Alloc};
-  SmallVector<const char *, 8> Argv =
-      collectFinalizerArgs(Saver, ST, EmitDebugInformation,
-                           EmitDebuggableKernel, AsmDumpsEnabled);
+  SmallVector<const char *, 8> Argv = collectFinalizerArgs(Saver, ST, BC);
 
   if (PrintFinalizerOptions)
     dumpFinalizerArgs(Argv, ST.getCPU());
@@ -6339,7 +6332,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
   VISABuilder *VB = nullptr;
   CISA_CALL_CTX(CreateVISABuilder(
                     VB, Mode, EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH,
-                    Platform, Argv.size(), Argv.data(), WATable),
+                    Platform, Argv.size(), Argv.data(), BC.getWATable()),
                 Ctx);
   IGC_ASSERT_MESSAGE(VB, "Failed to create VISABuilder!");
   return VB;
@@ -6348,9 +6341,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
 void GenXModule::InitCISABuilder() {
   IGC_ASSERT(ST);
   const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_DEFAULT;
-  CisaBuilder = createVISABuilder(*ST, EmitDebugInformation,
-                                  EmitDebuggableKernels, AsmDumpsEnabled,
-                                  Mode, WATable, getContext(), ArgStorage);
+  CisaBuilder = createVISABuilder(*ST, *BC, Mode, getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetCisaBuilder() {
@@ -6369,9 +6360,7 @@ void GenXModule::DestroyCISABuilder() {
 void GenXModule::InitVISAAsmReader() {
   IGC_ASSERT(ST);
   VISAAsmTextReader =
-      createVISABuilder(*ST, EmitDebugInformation, EmitDebuggableKernels,
-                        AsmDumpsEnabled, vISA_ASM_READER, WATable,
-                        getContext(), ArgStorage);
+      createVISABuilder(*ST, *BC, vISA_ASM_READER, getContext(), ArgStorage);
 }
 
 VISABuilder *GenXModule::GetVISAAsmReader() {
