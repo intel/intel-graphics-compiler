@@ -105,7 +105,6 @@ add_dependencies(VCCodeGen
   )
 target_include_directories(VCCodeGen
   PRIVATE
-  ${VISA_INCLUDE_DIRS}
   ${CMAKE_CURRENT_BINARY_DIR}
   )
 target_link_libraries(VCCodeGen
@@ -116,4 +115,5 @@ target_link_libraries(VCCodeGen
   VCTargetInfo
   VCSupport
   GenXDebugInfo
+  GenX_IR
   )

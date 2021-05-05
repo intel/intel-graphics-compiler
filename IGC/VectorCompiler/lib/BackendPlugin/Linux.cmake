@@ -51,6 +51,4 @@ set_target_properties(VCBackendPlugin PROPERTIES
 target_link_libraries(VCBackendPlugin
   PRIVATE
   VCCodeGen
-  # GenX_IR actually should be linked to LLVMGenXCodeGen.
-  GenX_IR
   )
