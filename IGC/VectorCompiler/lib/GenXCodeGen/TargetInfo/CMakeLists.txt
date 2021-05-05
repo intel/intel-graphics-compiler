@@ -27,3 +27,7 @@ set(INFO_SOURCES
 )
 
 add_library(VCTargetInfo ${INFO_SOURCES})
+
+igc_get_llvm_targets(LLVM_LIBS Support)
+
+target_link_libraries(VCTargetInfo ${LLVM_LIBS})

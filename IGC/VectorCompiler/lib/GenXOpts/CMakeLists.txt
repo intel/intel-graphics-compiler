@@ -43,7 +43,20 @@ set(OPT_SOURCES
 )
 
 add_library(VCTransforms ${OPT_SOURCES})
+
+igc_get_llvm_targets(LLVM_LIBS
+  Analysis
+  BitReader
+  Core
+  Linker
+  Support
+  TransformUtils
+  ScalarOpts
+  )
+
 target_link_libraries(VCTransforms
+  ${LLVM_LIBS}
+
   VCHeaders
   VCSupport
   LLVMGenXIntrinsics
