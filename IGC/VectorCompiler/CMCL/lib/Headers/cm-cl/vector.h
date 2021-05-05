@@ -107,6 +107,14 @@ public:
     return ~impl;
   }
 
+  vector operator-() const {
+    return -impl;
+  }
+
+  vector operator+() const {
+    return impl;
+  }
+
   vector operator&=(vector rhs) {
     impl &= rhs.impl;
     return *this;
