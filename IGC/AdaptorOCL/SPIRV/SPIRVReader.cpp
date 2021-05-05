@@ -590,6 +590,8 @@ public:
       return 0;
   }
 
+  DIType* createMember(SPIRVExtInst* inst);
+
   DIType* createTypeArray(SPIRVExtInst* inst)
   {
       if (auto n = getExistingNode<DIType*>(inst))
@@ -673,28 +675,6 @@ public:
       auto nodeArray = Builder.getOrCreateArray(llvm::makeArrayRef(elements));
 
       return addMDNode(inst, Builder.createEnumerationType(scope, name, file, line, size, 0, nodeArray, type));
-  }
-
-  DIType* createMember(SPIRVExtInst* inst)
-  {
-      if (auto n = getExistingNode<DIType*>(inst))
-          return n;
-
-      OpDebugTypeMember typeMember(inst);
-
-      // scope is not clear from SPIRV spec
-      auto scope = getCompileUnit();
-      auto& name = typeMember.getName()->getStr();
-      auto file = getDIFile(BM->get<SPIRVExtInst>(typeMember.getSource()));
-      auto line = typeMember.getLine();
-      auto size = typeMember.getSize();
-      auto offset = typeMember.getOffset();
-      auto flagRaw = typeMember.getFlags();
-      auto type = createType(BM->get<SPIRVExtInst>(typeMember.getType()));
-
-      auto flags = decodeFlag(flagRaw);
-
-      return addMDNode(inst, Builder.createMemberType(scope, name, file, line, size, 0, offset, flags, type));
   }
 
   DIType* createCompositeType(SPIRVExtInst* inst)
@@ -1588,6 +1568,35 @@ void SPIRVToLLVMDbgTran::transDbgInfo(SPIRVValue *SV, Value *V) {
             I->setDebugLoc(DebugLoc::get(Line->getLine(), Line->getColumn(),
                 scope, iat));
     }
+}
+
+DIType* SPIRVToLLVMDbgTran::createMember(SPIRVExtInst* inst)
+{
+    if (auto n = getExistingNode<DIType*>(inst))
+        return n;
+
+    OpDebugTypeMember typeMember(inst);
+
+    auto scope = createType(BM->get<SPIRVExtInst>(typeMember.getParent()));
+    auto& name = typeMember.getName()->getStr();
+    auto file = getDIFile(BM->get<SPIRVExtInst>(typeMember.getSource()));
+    auto line = typeMember.getLine();
+    auto size = typeMember.getSize();
+    auto offset = typeMember.getOffset();
+    auto flagRaw = typeMember.getFlags();
+    auto type = createType(BM->get<SPIRVExtInst>(typeMember.getType()));
+
+    auto flags = decodeFlag(flagRaw);
+
+    if (flags & DINode::FlagStaticMember && typeMember.hasInitConst())
+    {
+        SPIRVValue* constVal = (SPIRVValue*)BM->getEntry(typeMember.getInitConstId());
+        auto val = SPIRVTranslator->transValue(constVal, nullptr, nullptr);
+        return addMDNode(inst, Builder.createStaticMemberType(scope, name, file, line, type, flags,
+            llvm::cast<llvm::Constant>(val)));
+    }
+
+    return addMDNode(inst, Builder.createMemberType(scope, name, file, line, size, 0, offset, flags, type));
 }
 
 Type *

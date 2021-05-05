@@ -1062,6 +1062,7 @@ namespace igc_spv {
         uint64_t getSize() { return const_val(SPIRVDebug::Operand::TypeMember::SizeIdx); }
         SPIRVWord getFlags() { return arg<SPIRVWord>(SPIRVDebug::Operand::TypeMember::FlagsIdx); }
         uint64_t getInitConst() { return const_val(SPIRVDebug::Operand::TypeMember::ValueIdx); }
+        SPIRVId getInitConstId() { return arg<SPIRVId>(SPIRVDebug::Operand::TypeMember::ValueIdx); }
         bool hasInitConst() { return getNumArgs() > SPIRVDebug::Operand::TypeMember::MinOperandCount; }
     };
 
