@@ -302,9 +302,9 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         // pasted as is.
         bool preserveNan = !ctx.getCompilerOption().NoNaNs;
         mpm.add(new Legalization(preserveNan));
-        //mpm.add(createConstantPropagationPass());
         // Some clean up passes.
         mpm.add(llvm::createEarlyCSEPass());
+        mpm.add(new BreakConstantExpr());
         mpm.add(llvm::createCFGSimplificationPass());
         mpm.add(createDeadCodeEliminationPass());
         // Create functions groups after unmasked functions inlining
