@@ -46,6 +46,10 @@ target_link_libraries(VCDriver
   ${LLVM_LIBS}
   )
 
+if(LLVM_ON_UNIX)
+  target_link_libraries(VCDriver dl)
+endif()
+
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
   target_link_libraries(VCDriver LLVMSPIRVLib)
 endif()
