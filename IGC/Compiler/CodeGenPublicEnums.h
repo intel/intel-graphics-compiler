@@ -109,7 +109,7 @@ namespace IGC
         STATELESS,
         STATELESS_READONLY,
         STATELESS_A32,
-        BUFFER_TYPE_UNKNOWN = 15,
+        BUFFER_TYPE_UNKNOWN = 31
     };
 
     enum BufferAccessType : short
