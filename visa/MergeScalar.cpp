@@ -88,23 +88,11 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         return false;
     }
 
-    if (size == 3)
+    // Round down esize to power of 2 to make sure it wouldn't be out of bound.
+    int roundDownPow2Size = (int)Round_Down_Pow2(size);
+    while (size > roundDownPow2Size)
     {
-        for (int pos = 0, numSrc = inst[0]->getNumSrc(); pos < numSrc; ++pos)
-        {
-            if (srcPattern[pos] == OPND_PATTERN::CONTIGUOUS)
-            {
-                // since we are rounding up esize to 4, we have to make sure the source is
-                // not out of bound. If it is we merge the first two inst instead
-                G4_SrcRegRegion* lastSrc = inst[size - 1]->getSrc(pos)->asSrcRegRegion();
-                if (lastSrc->getLeftBound() + lastSrc->getTypeSize() >=
-                    lastSrc->getTopDcl()->getByteSize())
-                {
-                    deleteLastInst();
-                    break;
-                }
-            }
-        }
+        deleteLastInst();
     }
 
     if (!builder.hasAlign1Ternary() && size == 2 && inst[0]->getNumSrc() == 3)
@@ -178,7 +166,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         }
     }
 
-    G4_ExecSize execSize = (G4_ExecSize)Round_Up_Pow2(size);
+    G4_ExecSize execSize = (G4_ExecSize)size;
     G4_INST* newInst = inst[0]; //reuse inst[0] as the new merged inst
 
     // at this point merge will definitely succeed
@@ -368,11 +356,12 @@ static bool checkContiguous(
 // the conditions are:
 // -- arithmetic, logic, mov, math, or pseudo_mad instructions
 // -- simd1, NoMask, no predicates or conditional modifier
-// -- dst must be direct GRF whose declare is a single element without alias
+// -- dst must be direct GRF whose declare has no alias
 // -- all sources must be either direct GRF or immediates
 bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, bool isInSimdFlow)
 {
-    if (inst->isMixedMode() && builder.getOption(vISA_DisableleHFOpt))
+    // Don't merge mixed mode instructions as SIMD2/4 mixed mode instructions with packed HF is not allowed by HW.
+    if (inst->isMixedMode())
         return false;
 
     if (!inst->isArithmetic() && !inst->isLogic() && !inst->isMath() && !inst->isMov() &&
@@ -409,7 +398,6 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
     G4_Declare* dstDcl = dstBase->isRegVar() ? dstBase->asRegVar()->getDeclare() : nullptr;
     if (dstDcl != nullptr &&
         (dstDcl->getAliasDeclare() != nullptr ||
-            dstDcl->getTotalElems() != 1 ||
             inst->getDst()->getTypeSize() != dstDcl->getElemSize() ||
             !dstDcl->useGRF()))
     {
