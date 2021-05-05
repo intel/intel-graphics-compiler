@@ -68,7 +68,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   UseMulDDQ = false;
   OCLRuntime = false;
   HasSwitchjmp = false;
-  HasIntegerDivision = false;
+  HasIntDivRem32 = false;
 
   if (StackScratchMem)
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_T255;

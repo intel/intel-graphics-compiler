@@ -280,6 +280,52 @@ __impl_udivrem(vector<uint32_t, N> la, vector<uint32_t, N> lb,
   return lQ;
 }
 
+template <int N>
+CM_NODEBUG CM_INLINE vector<uint64_t, N>
+__impl_udivrem(vector<uint64_t, N> divider, vector<uint64_t, N> dividend,
+               vector<uint64_t, N> &rem) {
+
+  vector<uint64_t, N> one = 1ull;
+  vector<uint64_t, N> negone = ~one;
+
+  vector<uint64_t, N> quotient = 0ull;
+  rem = 0ull;
+
+  for (int i = 63; i != -1; --i) {
+    uint64_t vi = i;
+
+    rem = rem << one;
+    auto andedRem = rem & negone;
+    auto shDivider = (divider >> vi) & one;
+    rem = andedRem | shDivider;
+
+    auto remGreaterEqDiv = rem >= dividend;
+    rem = merge(rem - dividend, rem, remGreaterEqDiv);
+    quotient = merge(quotient | (one << vi), quotient, remGreaterEqDiv);
+  }
+  return quotient;
+}
+
+template <int N>
+CM_NODEBUG CM_INLINE vector<int64_t, N>
+__impl_divrem(vector<int64_t, N> divider, vector<int64_t, N> dividend,
+              vector<uint64_t, N> &ir) {
+
+  vector<int64_t, N> zero = 0;
+  vector<uint64_t, N> msbMask = 1ull << 63;
+
+  vector<uint64_t, N> absDivider = merge(-divider, divider, divider < zero);
+  vector<uint64_t, N> absDividend = merge(-dividend, dividend, dividend < zero);
+
+  vector<uint64_t, N> uquotient = __impl_udivrem(absDivider, absDividend, ir);
+  vector<int64_t, N> signBit = (divider ^ dividend) & msbMask;
+
+  vector<int64_t, N> quotient = merge(-uquotient, uquotient, signBit != zero);
+  ir = merge(-ir, ir, divider < zero);
+
+  return quotient;
+}
+
 } // namespace details
 
 #define __IDIV_SCALAR_IMPL(TYPE, REM_TYPE, N, RND)                             \
@@ -306,7 +352,7 @@ __impl_udivrem(vector<uint32_t, N> la, vector<uint32_t, N> lb,
 
 #define __UDIV_SCALAR_IMPL(TYPE, REM_TYPE, N, RND)                             \
   CM_NODEBUG CM_NOINLINE extern "C" TYPE                                       \
-      __cm_intrinsic_impl_udiv__##RND##__s_##TYPE##_##REM_TYPE(TYPE a,         \
+      __cm_intrinsic_impl_udiv__##RND##__s_##REM_TYPE##_##TYPE(TYPE a,         \
                                                                TYPE b) {       \
     vector<TYPE, N> _a = a;                                                    \
     vector<TYPE, N> _b = b;                                                    \
@@ -328,7 +374,7 @@ __impl_udivrem(vector<uint32_t, N> la, vector<uint32_t, N> lb,
 
 #define __IDIV_VECTOR_IMPL(TYPE, REM_TYPE, N, RND)                             \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<TYPE, N>                         \
-      __cm_intrinsic_impl_sdiv__##RND##__v##N##_##TYPE##_##REM_TYPE(           \
+      __cm_intrinsic_impl_sdiv__##RND##__v##N##_##REM_TYPE##_##TYPE(           \
           cl_vector<TYPE, N> a, cl_vector<TYPE, N> b) {                        \
     vector<REM_TYPE, N> r;                                                     \
     vector<TYPE, N> q = details::__impl_divrem<N>(a, b, r);                    \
@@ -346,7 +392,7 @@ __impl_udivrem(vector<uint32_t, N> la, vector<uint32_t, N> lb,
 
 #define __UDIV_VECTOR_IMPL(TYPE, REM_TYPE, N, RND)                             \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<TYPE, N>                         \
-      __cm_intrinsic_impl_udiv__##RND##__v##N##_##TYPE##_##REM_TYPE(           \
+      __cm_intrinsic_impl_udiv__##RND##__v##N##_##REM_TYPE##_##TYPE(           \
           cl_vector<TYPE, N> a, cl_vector<TYPE, N> b) {                        \
     vector<REM_TYPE, N> r;                                                     \
     vector<TYPE, N> q = details::__impl_udivrem<N>(a, b, r);                   \

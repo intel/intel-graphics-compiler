@@ -293,12 +293,9 @@ public:
 
 private:
   Value *emulateInst(Instruction *Inst);
-  Function *getEmulationFunction(Instruction *Inst) const;
+  Function *getEmulationFunction(const Instruction *Inst) const;
   void buildDivRemCache(Module &M);
 
-  static bool isOldEmulationFunction(const Function *F) {
-    return F->getName().contains("__cm_intrinsic_impl_");
-  }
   // Check if a function is to emulate instructions.
   static bool isEmulationFunction(const Function* F) {
     return F->hasFnAttribute(genx::FunctionMD::VCEmulationRoutine);
@@ -1576,20 +1573,18 @@ bool GenXEmulate::runOnModule(Module &M) {
             .getGenXSubtarget();
   buildDivRemCache(M);
 
-  // Process non-builtin functions.
-  for (auto &F : M.getFunctionList()) {
-    if (!isEmulationFunction(&F) && !isOldEmulationFunction(&F))
-      runOnFunction(F);
-  }
+  for (auto &F : M.getFunctionList())
+    runOnFunction(F);
+
   Changed |= !ToErase.empty();
   for (auto *I : ToErase)
     I->eraseFromParent();
   ToErase.clear();
 
-  // Delete unuse builtins or make used builtins internal.
+  // Delete unused builtins, make used ones internal.
   for (auto I = M.begin(); I != M.end();) {
     Function &F = *I++;
-    if (isEmulationFunction(&F) || isOldEmulationFunction(&F)) {
+    if (isEmulationFunction(&F)) {
       Changed = true;
       if (F.use_empty())
         F.eraseFromParent();
@@ -1622,7 +1617,7 @@ void GenXEmulate::runOnFunction(Function &F) {
   return;
 }
 
-Function *GenXEmulate::getEmulationFunction(Instruction *Inst) const {
+Function *GenXEmulate::getEmulationFunction(const Instruction *Inst) const {
 
   unsigned Opcode = Inst->getOpcode();
   Type *Ty = Inst->getType();
@@ -1640,12 +1635,6 @@ Function *GenXEmulate::getEmulationFunction(Instruction *Inst) const {
 
 void GenXEmulate::buildDivRemCache(Module &M) {
   EmulationFuns.clear();
-
-  IGC_ASSERT(ST);
-  bool HasDivRem = ST->hasIntegerDivision();
-
-  if (HasDivRem)
-    return;
 
   auto UpdateCacheIfMatch = [this](Function &F, StringRef PrefixToMatch,
                                    unsigned OpCode) {
@@ -1761,19 +1750,34 @@ public:
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
 
-    if (!ST.hasIntegerDivision()) {
-      auto ModDivRem32 = LoadDivRem32Lib(M.getContext(), M.getDataLayout(),
-                                         M.getTargetTriple());
-      if (ModDivRem32 && Linker::linkModules(M, std::move(ModDivRem32)))
-        report_fatal_error("Error linking emulation routines");
-    }
+    auto ModDivRem =
+        LoadDivRemLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
+    if (!ModDivRem)
+      return false;
+
+    if (ST.hasIntDivRem32())
+      Purge32BitFunctions(*ModDivRem);
+
+    if (Linker::linkModules(M, std::move(ModDivRem)))
+      report_fatal_error("Error linking emulation routines");
+
     return true;
   }
 
 private:
-  static bool IsLibraryFunction(Function &F) {
+  static bool IsLibraryFunction(const Function &F) {
     const auto &Name = F.getName();
     return Name.startswith(LibraryFunctionPrefix);
+  }
+
+  static void Purge32BitFunctions(Module &M) {
+    // We should remove 32-bit emulation routines if they are not used
+    for (auto I = M.begin(), E = M.end(); I != E;) {
+      Function &F = *I++;
+      if (IsLibraryFunction(F))
+        if (!F.getReturnType()->getScalarType()->isIntegerTy(64))
+          F.eraseFromParent();
+    }
   }
 
   static void DeriveRoundingAttributes(Function &F) {
@@ -1803,9 +1807,8 @@ private:
     }
   }
 
-  std::unique_ptr<Module> LoadDivRem32Lib(LLVMContext &Ctx,
-                                          const DataLayout &DL,
-                                          const std::string &Triple) {
+  std::unique_ptr<Module> LoadDivRemLib(LLVMContext &Ctx, const DataLayout &DL,
+                                        const std::string &Triple) {
 
     MemoryBufferRef EmulationBiFBuffer =
         getAnalysis<GenXBackendConfig>().getBiFModule(BiFKind::VCEmulation);

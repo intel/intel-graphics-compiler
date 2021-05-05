@@ -68,10 +68,10 @@ def FeatureNoJumpTables : SubtargetFeature<"disable_jump_tables", "DisableJumpTa
 
 def FeatureSwitchjmp : SubtargetFeature<"switchjmp", "HasSwitchjmp", "true",
                                         "supports switchjmp visa instruction">;
-def FeatureIntegerDivision: SubtargetFeature<"int_division",
-                                             "HasIntegerDivision",
-                                             "true",
-                                             "supports integer division">;
+def FeatureIntDivRem32: SubtargetFeature<"divrem32",
+                                         "HasIntDivRem32",
+                                         "true",
+                                         "supports 32-bit integer division">;
 def FeatureInstrAdd64: SubtargetFeature<"add64",
                                        "HasAdd64",
                                        "true",
@@ -93,40 +93,40 @@ class Proc<string Name, list<SubtargetFeature> Features>
 
 def : Proc<"generic",         []>;
 def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
+                               FeatureIntDivRem32]>;
 def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureInstrAdd64]>;
 def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureInstrAdd64]>;
 def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64]>;
 def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64]>;
 def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64]>;
 def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64]>;
 def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64]>;
 def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntegerDivision,
+                               FeatureIntDivRem32,
                                FeatureUseMulDDQ,
                                FeatureInstrAdd64]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
-                               FeatureIntegerDivision]>;
-def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntegerDivision]>;
+                               FeatureIntDivRem32]>;
+def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32]>;
 
 def GenX : Target {
   // Nothing here (yet?)

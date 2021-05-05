@@ -28,7 +28,8 @@ from itertools import product
 SignedDivSmall = {
     'types' : [
         { 'src1' : 'int8_t', 'src2' : 'int8_t'},
-        { 'src1' : 'int16_t', 'src2' : 'int16_t'}
+        { 'src1' : 'int16_t', 'src2' : 'int16_t'},
+        { 'src1' : 'int64_t', 'src2' : 'uint64_t'}
     ],
     'size' : [0] + [2 ** x for x in range(6)],
     'rounding' : ['rte'],
@@ -52,6 +53,14 @@ UnsignedDiv = {
     'rounding' : ['rtz'],
     'items' : ['__UREM', '__UDIV']
 }
+Unsigned64Div = {
+    'types' : [
+        { 'src1' : 'uint64_t', 'src2' : 'uint64_t'}
+    ],
+    'size' : [0] + [2 ** x for x in range(6)],
+    'rounding' : ['rte'],
+    'items' : ['__UREM', '__UDIV']
+}
 
 arg_num = len(sys.argv)
 if arg_num > 1:
@@ -59,7 +68,7 @@ if arg_num > 1:
   f = open(output, 'w')
   sys.stdout = f
 
-for desc in [SignedDivSmall, SignedDiv32, UnsignedDiv]:
+for desc in [SignedDivSmall, SignedDiv32, UnsignedDiv, Unsigned64Div]:
   for fname, size, rounding, types in product(desc['items'], desc['size'],
                                               desc['rounding'], desc['types']):
     if size == 0:

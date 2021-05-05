@@ -120,8 +120,8 @@ private:
   // True if subtarget supports switchjmp visa instruction
   bool HasSwitchjmp;
 
-  // True if subtarget supports integer division
-  bool HasIntegerDivision;
+  // True if subtarget supports 32-bit integer division
+  bool HasIntDivRem32;
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -219,7 +219,7 @@ public:
   bool hasSwitchjmp() const { return HasSwitchjmp; }
 
   /// * has integer div/rem instruction
-  bool hasIntegerDivision() const { return HasIntegerDivision; }
+  bool hasIntDivRem32() const { return HasIntDivRem32; }
 
   /// * warnCallable() - true if compiler only generate warning for
   ///   callable in the middle

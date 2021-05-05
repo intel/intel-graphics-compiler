@@ -500,7 +500,7 @@ unsigned GenXLegalization::getExecSizeAllowedBits(Instruction *Inst) {
     // If integer division IS NOT supported.
     //   The expectation is for GenXEmulate pass to replace such operations
     //   with emulation routines (which has no restriction on SIMD width)
-    return ST->hasIntegerDivision() ? 0x1f : 0x3f;
+    return ST->hasIntDivRem32() ? 0x1f : 0x3f;
   }
 
   unsigned ID = GenXIntrinsic::getAnyIntrinsicID(Inst);
