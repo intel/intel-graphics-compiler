@@ -425,7 +425,7 @@ namespace iga
         uint64_t val = (uint64_t)rr.subRegNum;
         // branches have implicit :d
         val = ty == Type::INVALID ? 4*val :
-            SubRegToBytesOffset((int)val, reg, ty);
+            SubRegToBinaryOffset((int)val, reg, ty, model.platform);
         encodeFieldBits(f, val);
     }
 

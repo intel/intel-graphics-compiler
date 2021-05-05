@@ -652,9 +652,9 @@ namespace iga
             std::string typeSyntax)
         {
             auto srb = (int)bits.getField(fSUBREG);
-            auto scaled = BytesOffsetToSubReg(srb, opInfo.regOpName, type);
+            auto scaled = BinaryOffsetToSubReg(srb, opInfo.regOpName, type, model.platform);
             auto unscaled =
-                SubRegToBytesOffset((int)scaled, opInfo.regOpName, type);
+                SubRegToBinaryOffset((int)scaled, opInfo.regOpName, type, model.platform);
             if ((int)unscaled != srb) {
                 reportFieldError(fSUBREG,
                     "subregister offset is misaligned for type size");

@@ -175,9 +175,9 @@ namespace iga
         }
     }
 
-    // helper function to translate byte offset to subReg Num
-    static inline uint8_t BytesOffsetToSubReg(
-        uint32_t offset, RegName regName, Type type)
+    // helper function to translate offset in binary to subReg Num
+    static inline uint8_t BinaryOffsetToSubReg(
+        uint32_t offset, RegName regName, Type type, const Platform platform)
     {
         if (!IsRegisterScaled(regName) || type == Type::INVALID) {
             return (uint8_t)offset;
@@ -187,8 +187,10 @@ namespace iga
     }
 
     // helper functions to translate subReg number to Offset in binary
-    static inline uint32_t SubRegToBytesOffset(
-        int subRegNum, RegName regName, Type type)
+    // for regular cases (grf, flag, ...), the offset in binary is the byte offst of the sub-reg
+    // for the special cases (fc), the offset depends.
+    static inline uint32_t SubRegToBinaryOffset(
+        int subRegNum, RegName regName, Type type, const Platform platform)
     {
         if (!IsRegisterScaled(regName) || type == Type::INVALID) {
             return subRegNum;
@@ -196,31 +198,6 @@ namespace iga
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);
         // NOTE: flipped tuple access (1 <-> 0) since we are unscaling
         return (subRegNum << std::get<1>(tsh)) >> std::get<0>(tsh);
-    }
-
-    static inline uint8_t WordsOffsetToSubReg(
-        uint32_t offset, RegName regName, Type type)
-    {
-        // for the non-scaled registers (e.g. fc), the sub-register in binary
-        // and in asm is the same value
-        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
-            return (uint8_t)offset;
-        }
-        return BytesOffsetToSubReg(offset * 2, regName, type);
-    }
-
-    // reutrn if the given subreg num is Word aligned or not and
-    // the corresponding word offset
-    static inline std::pair<bool,uint32_t> SubRegToWordsOffset(
-        int subRegNum, RegName regName, Type type)
-    {
-        // for the non-scaled registers (e.g. fc), the sub-register in binary
-        // and in asm is the same value
-        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
-            return std::make_pair(true, subRegNum);;
-        }
-        uint32_t byteoff = SubRegToBytesOffset(subRegNum, regName, type);
-        return std::make_pair((byteoff % 2 == 0), byteoff / 2);
     }
 
     // enables abstract iteration of all OpSpecs in the Model

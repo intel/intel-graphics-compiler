@@ -565,7 +565,6 @@ void Decoder::decodeBasicDestinationAlign16(Instruction *inst)
         }
 
         GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
-
         GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
         RegRef a0(0u, subRegNum);
         inst->setInidirectDestination(
@@ -801,7 +800,7 @@ void Decoder::decodeTernaryDestinationAlign16(Instruction *inst)
         GED_DECODE_RAW(uint32_t, subRegNumBytes, DstSubRegNum);
         uint16_t subRegNumber =
             type == Type::INVALID ? 0 :
-                (uint16_t)binNumToSubRegNum(subRegNumBytes, regName, type);
+                (uint16_t)BinaryOffsetToSubReg(subRegNumBytes, regName, type, m_model.platform);
         regRef.subRegNum = (uint16_t)(subRegNumber + subregOffAlign16Elems);
         inst->setDirectDestination(
             dstMod,
@@ -857,7 +856,7 @@ void Decoder::decodeTernarySourceAlign16(Instruction *inst)
             type);
     } else {
         int subReg = type == Type::INVALID ?
-            0 : binNumToSubRegNum(decodeSrcSubRegNum<S>(), RegName::GRF_R, type);
+            0 : BinaryOffsetToSubReg(decodeSrcSubRegNum<S>(), RegName::GRF_R, type, m_model.platform);
         RegRef reg = RegRef(regNum, (uint32_t)subReg);
         Region rgn;
         if (decodeSrcRepCtrl<S>() == GED_REP_CTRL_NoRep) {
@@ -1668,7 +1667,7 @@ void Decoder::decodeDstDirSubRegNum(DirRegOpInfo& dri)
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
         dri.regRef.subRegNum =
-            (uint16_t)binNumToSubRegNum(subRegNum, dri.regName, scalingType);
+            (uint16_t)BinaryOffsetToSubReg(subRegNum, dri.regName, scalingType, m_model.platform);
     }
 }
 
@@ -2005,13 +2004,6 @@ Decoder::decodeTernarySrcImmVal(Type t)
     setImmValKind(t, val);
 
     return val;
-}
-
-uint32_t Decoder::binNumToSubRegNum(
-    uint32_t binNum, RegName regName, Type type)
-{
-
-    return BytesOffsetToSubReg(binNum, regName, type);
 }
 
 void Decoder::decodeOptions(Instruction *inst)

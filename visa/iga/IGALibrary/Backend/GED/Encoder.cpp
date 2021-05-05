@@ -445,8 +445,8 @@ void Encoder::encodeTernaryDestinationAlign1(const Instruction& inst)
         GED_ENCODE(DstMathMacroExt, lowerMathMacroReg(dst.getMathMacroExt()));
         // GED_ENCODE(DstHorzStride, 1);
     } else {
-        encodeDstSubRegNum(subRegNumToBinNum(
-            dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()), true);
+        GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
+            dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
         bool hasDstRgnHz = true;
         if (hasDstRgnHz) {
             GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
@@ -516,9 +516,9 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
             encodeSrcRegionHorz<S>(Region::Horz::HZ_1);
 
         } else {
-            auto subReg = subRegNumToBinNum(
-                src.getDirRegRef().subRegNum, src.getDirRegName(), src.getType());
-            encodeSrcSubRegNum<S>(subReg, true);
+            auto subReg = SubRegToBinaryOffset(
+                src.getDirRegRef().subRegNum, src.getDirRegName(), src.getType(), m_model.platform);
+            encodeSrcSubRegNum<S>(subReg);
         }
         break;
     }
@@ -806,7 +806,14 @@ void Encoder::encodeSendDescs(const Instruction& i)
     } else {
         errorT("unsupported platform");
     }
+
+    bool noEOTinExDesc = m_model.supportsUnifiedSend();
+    if (noEOTinExDesc &&
+        i.getExtMsgDescriptor().isImm() &&
+        (i.getExtMsgDescriptor().imm & 1 << 5))
+        errorT("Encoder: Send exDesc[5] must not be set (the legacy EOT bit)");
 }
+
 void Encoder::encodeSendDescsPreXe(const Instruction& i)
 {
     SendDesc exDesc = i.getExtMsgDescriptor();
@@ -913,11 +920,8 @@ void Encoder::encodeBranchDestination(const Operand& dst) {
     GED_ENCODE(DstRegFile,
         lowerRegFile(dst.getDirRegName()));
     encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
-    encodeDstSubRegNum(subRegNumToBinNum(
-                         dst.getDirRegRef().subRegNum,
-                         dst.getDirRegName(),
-                         dst.getType()),
-                       true);
+    GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
+        dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
 }
 
 void Encoder::encodeBasicDestination(
@@ -983,14 +987,12 @@ void Encoder::encodeBasicDestination(
                 encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
                 GED_ENCODE(DstChanEn, GED_DST_CHAN_EN_xyzw);
             }
-            encodeDstSubRegNum(
-                subRegNumToBinNum(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()),
-                inst.getOpSpec().isTernary() || inst.getOpSpec().isBranching());
+            GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
+                dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
         } else { // Align1
             encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
-            encodeDstSubRegNum(
-                subRegNumToBinNum(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()),
-                inst.getOpSpec().isTernary() || inst.getOpSpec().isBranching());
+            GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
+                dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
         }
         break;
     case Operand::Kind::MACRO:
@@ -1012,6 +1014,7 @@ void Encoder::encodeBasicDestination(
             GED_ENCODE(Saturate,
                 lowerSaturate(dst.getDstModifier()));
         }
+
         GED_ENCODE(DstAddrImm, dst.getIndImmAddr());
         GED_ENCODE(DstAddrSubRegNum, dst.getIndAddrReg().subRegNum);
         break;
@@ -1048,9 +1051,9 @@ void Encoder::encodeBranchSource(const Operand& src)
 {
     encodeSrcRegFile<SourceIndex::SRC0>(lowerRegFile(src.getDirRegName()));
     encodeSrcReg<SourceIndex::SRC0>(src.getDirRegName(),src.getDirRegRef().regNum);
-    auto subReg = subRegNumToBinNum(
-        src.getDirRegRef().subRegNum, src.getDirRegName(), Type::D);
-    encodeSrcSubRegNum<SourceIndex::SRC0>(subReg, true);
+    auto subReg = SubRegToBinaryOffset(
+        src.getDirRegRef().subRegNum, src.getDirRegName(), Type::D, m_model.platform);
+    encodeSrcSubRegNum<SourceIndex::SRC0>(subReg);
 }
 
 template <SourceIndex S>
@@ -1094,12 +1097,12 @@ void Encoder::encodeBasicSource(
                 encodeSrcReg<S>(RegName::ARF_MME, 0);
             } else {
                 encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
-                auto subReg = subRegNumToBinNum(
+                auto subReg = SubRegToBinaryOffset(
                     src.getDirRegRef().subRegNum,
                     src.getDirRegName(),
-                    src.getType());
-                encodeSrcSubRegNum<S>(subReg,
-                    inst.getOpSpec().isTernary() || inst.getOpSpec().isBranching());
+                    src.getType(),
+                    m_model.platform);
+                encodeSrcSubRegNum<S>(subReg);
             }
         } else { // (src.getKind() == Operand::Kind::MACRO)
             encodeSrcReg<S>(RegName::GRF_R,src.getDirRegRef().regNum);
@@ -1232,7 +1235,7 @@ void Encoder::encodeSendDirectDestination(const Operand& dst)
 
         GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
         // GED_ENCODE(DstSubRegNum,
-        //    SubRegToBytesOffset(dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType()));
+        //    SubRegToBinaryOffset(dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType(), m_model.platform));
     }
 }
 
@@ -1378,9 +1381,8 @@ void Encoder::encodeSendsDestination(const Operand& dst)
 
     GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
     // TODO: set correct regType
-    encodeDstSubRegNum(
-        subRegNumToBinNum(
-            dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType()), true);
+    GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
+        dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType(), m_model.platform));
 }
 
 template <SourceIndex S>
@@ -1471,9 +1473,8 @@ void Encoder::encodeTernarySourceAlign16(const Instruction& inst)
         }
         uint32_t regNum = reg.regNum;
         encodeSrcReg<S>(RegName::GRF_R, (uint16_t)regNum);
-        auto subReg =
-            subRegNumToBinNum(subRegNumber, src.getDirRegName(), src.getType());
-        encodeSrcSubRegNum<S>(subReg, true);
+        auto subReg = SubRegToBinaryOffset(subRegNumber, src.getDirRegName(), src.getType(), m_model.platform);
+        encodeSrcSubRegNum<S>(subReg);
     } else {
         // implicit operand accumulator
         // e.g. madm (4) ... -r14.acc3
@@ -1551,8 +1552,8 @@ void Encoder::encodeTernaryDestinationAlign16(const Instruction& inst)
             }
         }
         GED_ENCODE(DstChanEn, chanEn);
-        encodeDstSubRegNum(subRegNumToBinNum(
-            reg.subRegNum, dst.getDirRegName(), dst.getType()), true);
+        GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
+            reg.subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
     }
 }
 
@@ -1670,19 +1671,6 @@ void Encoder::encodeOptionsThreadControl(const Instruction& inst)
             warningT("NoPreempt not supported on this platform (dropping)");
         }
     }
-}
-
-// Translate from subRegNum to num represented in binary encoding
-std::pair<bool, uint32_t> Encoder::subRegNumToBinNum(
-    int subRegNum, RegName regName, Type type)
-{
-    return std::make_pair(true, SubRegToBytesOffset(subRegNum, regName, type));
-}
-
-void Encoder::encodeDstSubRegNum(
-    std::pair<bool, uint32_t> subReg, bool isTernaryOrBranch)
-{
-    GED_ENCODE(DstSubRegNum, subReg.second);
 }
 
 void Encoder::encodeOptions(const Instruction& inst)
