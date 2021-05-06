@@ -371,10 +371,6 @@
 
     bool hasEOTReadSuppressionIssue() const
     {
-        if(getPlatform() == GENX_TGLLP)
-        {
-            return true;
-        }
         return false;
     }
 
