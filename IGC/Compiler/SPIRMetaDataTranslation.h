@@ -30,7 +30,6 @@ namespace IGC
         ~SPIRMetaDataTranslation() {}
 
         void WarpFunctionMetadata(llvm::Module& M);
-        bool isDoubleMathFunctionUsed(llvm::Module& M);
         bool runOnModule(llvm::Module& M) override;
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override

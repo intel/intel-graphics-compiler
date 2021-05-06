@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/Support/raw_ostream.h>
@@ -220,6 +221,19 @@ static DenseSet<Function*> collectMemPoolUsage(const Module &M)
     return FuncsToInline;
 }
 
+void addFnAttrRecursive(Function* F, StringRef Attr, StringRef Val)
+{
+    F->addFnAttr(Attr, Val);
+    for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+        if (CallInst* CI = dyn_cast<CallInst>(&*i)) {
+            Function* Callee = CI->getCalledFunction();
+            if (Callee != nullptr) {
+                addFnAttrRecursive(Callee, Attr, Val);
+            }
+        }
+    }
+}
+
 bool ProcessFuncAttributes::runOnModule(Module& M)
 {
     MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
@@ -270,6 +284,35 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 || F->getName().startswith("__igcbuiltin_")
                 || F->getName().startswith("llvm.")
                 || F->getName().equals("printf"));
+        }
+        return false;
+    };
+
+    // Returns true if a function is built-in double math function
+    // Our implementations of double math built-in functions are precise only
+    // if we don't make any fast relaxed math optimizations.
+    auto IsBuiltinFP64 = [](Function* F)->bool
+    {
+        StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
+        if (F->getName().startswith(buildinPrefixOpenCL))
+        {
+            if (F->getReturnType()->isDoubleTy() ||
+                (F->getReturnType()->isVectorTy() && F->getReturnType()->getContainedType(0)->isDoubleTy()))
+            {
+                auto functionName = F->getName();
+                functionName = functionName.drop_front(buildinPrefixOpenCL.size());
+                functionName = functionName.take_front(functionName.find("_", 0));
+
+                static std::set<StringRef> mathFunctionNames = {
+#define _OCL_EXT_OP(name, num) #name,
+#include "SPIRV/libSPIRV/OpenCL.stdfuncs.h"
+#undef _OCL_EXT_OP
+                };
+
+                if (mathFunctionNames.find(functionName) != mathFunctionNames.end()) {
+                    return true;
+                }
+            }
         }
         return false;
     };
@@ -341,13 +384,19 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (opts.MadEnable)
             F->addFnAttr("less-precise-fpmad", "true");
 
+        // Fast relaxed math implies all other flags.
         if (opts.UnsafeMathOptimizations || opts.FastRelaxedMath)
             F->addFnAttr("unsafe-fp-math", "true");
 
-        if (opts.FiniteMathOnly || opts.FastRelaxedMath)
-        {
+        // Finite math implies no infs and nans.
+        if (opts.FiniteMathOnly || opts.FastRelaxedMath) {
             F->addFnAttr("no-infs-fp-math", "true");
             F->addFnAttr("no-nans-fp-math", "true");
+        }
+
+        // Unsafe math implies no signed zeros.
+        if (opts.NoSignedZeros || opts.UnsafeMathOptimizations || opts.FastRelaxedMath) {
+            F->addFnAttr("no-signed-zeros-fp-math", "true");
         }
 
         // Add Optnone to user functions but not on builtins. This allows to run
@@ -583,6 +632,19 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     F->addFnAttr("referenced-indirectly");
                     F->addFnAttr("visaStackCall");
                 }
+            }
+        }
+    }
+
+    // Process through all functions and reset the *-fp-math attributes
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+        Function* F = &(*I);
+        if (!F->isDeclaration()) {
+            if (IsBuiltinFP64(F)) {
+                addFnAttrRecursive(F, "unsafe-fp-math", "false");
+                addFnAttrRecursive(F, "no-infs-fp-math", "false");
+                addFnAttrRecursive(F, "no-nans-fp-math", "false");
+                addFnAttrRecursive(F, "no-signed-zeros-fp-math", "false");
             }
         }
     }

@@ -58,6 +58,11 @@ void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type*>
 {
     Function* func = getFunctionDeclaration(intrinsicName, Tys);
     Instruction* newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
+
+    if (auto II = dyn_cast<IntrinsicInst>(newCall)) {
+        II->copyFastMathFlags(m_pCallInst->getFastMathFlags());
+    }
+
     newCall->setDebugLoc(m_DL);
     m_pCallInst->replaceAllUsesWith(newCall);
 }

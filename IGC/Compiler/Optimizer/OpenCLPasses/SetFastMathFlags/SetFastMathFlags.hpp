@@ -46,10 +46,10 @@ namespace IGC
 
     private:
         /// @brief  sets the given flags to all instruction supporting fast math flags in the given module.
-        /// @param  M - the module
+        /// @param  F - the function
         /// @param  fmfs - the fast math flags
         /// @return true if made any changes to the module.
-        static bool setFlags(llvm::Module& M, llvm::FastMathFlags fmfs);
+        static bool setFlags(llvm::Function& F, llvm::FastMathFlags fmfs);
     };
 
 } // namespace IGC

@@ -339,6 +339,7 @@ static void CommonOCLBasedPasses(
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
+        mpm.add(new SetFastMathFlags());
 
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
@@ -501,10 +502,6 @@ static void CommonOCLBasedPasses(
     // Only needed if function pointers, externally linked functions, or relocatable global variables are present
     mpm.add(createInsertDummyKernelForSymbolTablePass());
 
-    // Add SetFastMathFalgs pass at the end so that we don't need to worry about previous passes that
-    // forget setting math flags. We expect the generic llvm optimizations after the unification
-    // (optimizeIR()) will fully take advantage of the flags.
-    mpm.add(new SetFastMathFlags());
     mpm.add(new FixResourcePtr());
 
     if(isOptDisabled)

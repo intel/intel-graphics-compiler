@@ -14,8 +14,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/StringSwitch.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "llvm/IR/InstIterator.h"
-#include <set>
 
 using namespace llvm;
 using namespace IGC;
@@ -97,44 +95,6 @@ void SPIRMetaDataTranslation::WarpFunctionMetadata(Module& M)
             opencl_kernels->addOperand(MDTuple::get(M.getContext(), Args));
         }
     }
-}
-
-bool SPIRMetaDataTranslation::isDoubleMathFunctionUsed(Module& M)
-{
-    StringRef mathFunctionNamePrefix = "__builtin_spirv_OpenCL_";
-    std::set<StringRef> mathFunctionNames = {
-        "acos", "acosh", "acospi", "asin", "asinh", "asinpi", "atan", "atan2",
-        "atanh", "atanpi", "cbrt", "cos", "cosh", "cospi", "erf", "erfc",
-        "exp", "exp10", "exp2", "expm1", "ln", "log10", "log1p", "log2",
-        "pow", "pown", "powr", "rootn", "sin", "sincos", "sinh", "sinpi",
-        "tan", "tanh", "tanpi"
-    };
-
-    for (Function& F : M)
-    {
-        for (inst_iterator i = inst_begin(&F), e = inst_end(&F); i != e; ++i)
-        {
-            if (auto CI = dyn_cast<CallInst>(&*i)) {
-
-                if (CI->getType()->isDoubleTy() ||
-                    (CI->getType()->isVectorTy() && CI->getType()->getContainedType(0)->isDoubleTy()))
-                {
-                    StringRef functionName = CI->getCalledFunction()->getName();
-
-                    if (functionName.startswith(mathFunctionNamePrefix))
-                    {
-                        functionName = functionName.ltrim(mathFunctionNamePrefix);
-                        functionName = functionName.take_front(functionName.find("_", 0));
-
-                        if (mathFunctionNames.find(functionName) != mathFunctionNames.end()) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return false;
 }
 
 bool SPIRMetaDataTranslation::runOnModule(Module& M)
@@ -380,20 +340,13 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                 break;
             case FAST_RELAXED_MATH:
             case RELAXED_BUILTINS:
-                // Our implementations of double math built-in functions are precise only
-                // if we don't make any fast relaxed math optimizations.
-                // If there is any double-type math function call present in a module, we disable fast relaxed math,
-                // even if "-cl-fast-relaxed-math" build option is specified by the user.
-                if (!isDoubleMathFunctionUsed(M))
-                {
-                    modMD->compOpt.FastRelaxedMath = true;
-                    modMD->compOpt.RelaxedBuiltins = true;
-                }
+                modMD->compOpt.FastRelaxedMath = true;
+                modMD->compOpt.RelaxedBuiltins = true;
                 break;
             case DASH_G: modMD->compOpt.DashGSpecified = true;
                 break;
             case MATCH_SINCOSPI: modMD->compOpt.MatchSinCosPi = true;
-              break;
+                break;
             default:
                 break;
             }
