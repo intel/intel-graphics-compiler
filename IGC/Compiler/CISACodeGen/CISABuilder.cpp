@@ -3867,7 +3867,7 @@ namespace IGC
         }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
-            m_program->m_Platform->preemptionSupported() && IGC_IS_FLAG_ENABLED(EnablePreemption))
+            VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption))
         {
             SaveOption(vISA_enablePreemption, true);
         }
@@ -4272,7 +4272,7 @@ namespace IGC
             {
                 SaveOption( vISA_LocalScheduling, false );
                 // temporarily enabling preRA_schedule due to the ACOdyssey regression in IGC-4149.  May be re-disenabled later
-                // SaveOption( vISA_preRA_Schedule, false );
+                // SaveOption( vISA_preRA_Schedule, false ); 
                 SaveOption( vISA_SpillSpaceCompression, false );
                 SaveOption( vISA_LVN, false );
                 SaveOption( vISA_QuickTokenAllocation, true );
