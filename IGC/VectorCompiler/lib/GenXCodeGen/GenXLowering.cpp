@@ -120,7 +120,10 @@ IN THE SOFTWARE.
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -147,6 +150,55 @@ static cl::opt<bool>
     EnableGenXByteWidening("enable-genx-byte-widening", cl::init(true),
                            cl::Hidden, cl::desc("Enable GenX byte widening."));
 namespace {
+
+// Diagnostic for lowering problems
+class DiagnosticInfoLowering : public DiagnosticInfo {
+private:
+  std::string Description;
+  StringRef Filename;
+  unsigned Line;
+  unsigned Col;
+  static int KindID;
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
+
+public:
+  DiagnosticInfoLowering(Instruction *Inst, const Twine &Desc,
+                         DiagnosticSeverity Severity = DS_Error);
+  void print(DiagnosticPrinter &DP) const override;
+  static bool classof(const DiagnosticInfo *DI) {
+    return DI->getKind() == getKindID();
+  }
+};
+int DiagnosticInfoLowering::KindID = 0;
+
+DiagnosticInfoLowering::DiagnosticInfoLowering(Instruction *Inst,
+                                               const Twine &Desc,
+                                               DiagnosticSeverity Severity)
+    : DiagnosticInfo(getKindID(), Severity), Line(0), Col(0) {
+  auto DL = Inst->getDebugLoc();
+  if (DL) {
+    Filename = DL->getFilename();
+    Line = DL.getLine();
+    Col = DL.getCol();
+  }
+  std::string str;
+  llvm::raw_string_ostream(str) << *Inst;
+
+  Description =
+      (Twine("GenXLowering failed for instruction ") + str + ": " + Desc).str();
+}
+
+void DiagnosticInfoLowering::print(DiagnosticPrinter &DP) const {
+  std::string Loc((Twine(!Filename.empty() ? Filename : "<unknown>") + ":" +
+                   Twine(Line) + (!Col ? Twine() : Twine(":") + Twine(Col)) +
+                   ": ")
+                      .str());
+  DP << Loc << Description;
+}
 
 // GenXLowering : legalize execution widths and GRF crossing
 class GenXLowering : public FunctionPass {
