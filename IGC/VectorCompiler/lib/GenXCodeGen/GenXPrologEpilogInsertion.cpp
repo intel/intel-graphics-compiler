@@ -49,6 +49,8 @@ IN THE SOFTWARE.
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -88,6 +90,23 @@ inline unsigned calcPadding(unsigned Val, unsigned Align) {
   return Align - Val % Align;
 }
 
+// Diagnostic information for error/warning relating prolog/epilog insertion.
+class DiagnosticInfoPrologEpilogInsertion : public DiagnosticInfo {
+private:
+  std::string Description;
+
+public:
+  // Initialize from description
+  DiagnosticInfoPrologEpilogInsertion(const Twine &Desc,
+                                      DiagnosticSeverity Severity = DS_Error)
+      : DiagnosticInfo(llvm::getNextAvailablePluginDiagnosticKind(), Severity),
+        Description(Desc.str()) {}
+
+  void print(DiagnosticPrinter &DP) const override {
+    DP << "GenXPrologEpilogInsertion: " << Description;
+  }
+};
+
 class GenXPrologEpilogInsertion
     : public FunctionPass,
       public InstVisitor<GenXPrologEpilogInsertion> {
@@ -101,6 +120,8 @@ class GenXPrologEpilogInsertion
 
   unsigned ArgRegSize = 0;
   unsigned RetRegSize = 0;
+
+  bool UseGlobalMem = true;
 
   void generateKernelProlog(Function &F);
   void generateFunctionProlog(Function &F);
@@ -212,9 +233,9 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   RetRegSize = visa::RetRegSizeInGRFs * ST->getGRFWidth();
   if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime()))
     return false;
-  if (!F.getParent()->getModuleFlag(ModuleMD::UseSVMStack))
-    return false;
   NumCalls = CallsCalculator().getNumCalls(F);
+  UseGlobalMem =
+      F.getParent()->getModuleFlag(ModuleMD::UseSVMStack) != nullptr;
   visit(F);
   if (isKernel(&F)) {
     generateKernelProlog(F);
@@ -252,13 +273,16 @@ void GenXPrologEpilogInsertion::visitReturnInst(ReturnInst &I) {
     generateFunctionEpilog(*I.getFunction(), I);
 }
 
-// FE_SP = PrivateBase + HWTID * StackPerThread
+// FE_SP = PrivateBase + HWTID * PrivMemPerThread
 void GenXPrologEpilogInsertion::generateKernelProlog(Function &F) {
   IRBuilder<> IRB(&F.getEntryBlock().front());
   Function *HWID = GenXIntrinsic::getGenXDeclaration(
       F.getParent(), llvm::GenXIntrinsic::genx_get_hwid, {});
   auto *HWIDCall = IRB.CreateCall(HWID);
-  auto *ThreadOffset = IRB.getInt32(visa::StackPerThreadSVM);
+  // TODO: revisit offset for scratch if it will be needed.
+  auto *ThreadOffset =
+      IRB.getInt32(UseGlobalMem ? BEConf->getStatelessPrivateMemSize()
+                                : visa::StackPerThreadScratch);
   auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
   auto *MulCasted = IRB.CreateZExt(Mul, IRB.getInt64Ty());
 
@@ -586,6 +610,15 @@ void GenXPrologEpilogInsertion::generateAlloca(CallInst *CI) {
       IRB.CreateAdd(AllocaBase, ConstantInt::get(CI->getType(), AllocaOffset));
   IGC_ASSERT(AllocaOffset % visa::BytesPerSVMPtr == 0);
   PrivMemSize += AllocaOffset;
+
+  if (PrivMemSize > (UseGlobalMem ? BEConf->getStatelessPrivateMemSize()
+                                  : visa::StackPerThreadScratch)) {
+    DiagnosticInfoPrologEpilogInsertion Warn{
+        CI->getFunction()->getName() +
+            " frame allocation size is too big for TPM",
+        DS_Warning};
+    CI->getContext().diagnose(Warn);
+  }
 
   buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, Add);
   CI->replaceAllUsesWith(AllocaBase);
