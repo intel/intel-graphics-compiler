@@ -40,10 +40,18 @@ matrix:
       dist: focal # Ubuntu 20.04
       compiler: gcc
       env: LLVM_VER=10 BUILD_TYPE=Release
+      addons:
+        apt:
+          packages:
+            - libc6=2.31-0ubuntu9.2
     - os: linux
       dist: focal # Ubuntu 20.04
       compiler: clang-10
       env: LLVM_VER=10 BUILD_TYPE=Release COMPILER_EXTRA="-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10"
+      addons:
+        apt:
+          packages:
+            - libc6=2.31-0ubuntu9.2
 
 git:
   depth: false
@@ -53,8 +61,12 @@ branches:
     - master
 
 script:
+  - wget https://apt.llvm.org/llvm.sh
+  - chmod +x llvm.sh
+  - sudo ./llvm.sh ${LLVM_VER}
+
   - sudo apt-get update
-  - sudo apt-get install flex bison libz-dev cmake
+  - sudo apt-get install flex bison libz-dev cmake build-essential
 
   - mkdir Old_IGC
   - cd Old_IGC
@@ -62,9 +74,6 @@ script:
   - sudo dpkg -i *.deb
   - cd ..
 
-  - wget https://apt.llvm.org/llvm.sh
-  - chmod +x llvm.sh
-  - sudo ./llvm.sh ${LLVM_VER}
 
   - git clone https://github.com/intel/vc-intrinsics ../vc-intrinsics
   - git clone -b llvm_release_100 https://github.com/KhronosGroup/SPIRV-LLVM-Translator ../llvm-project/llvm/projects/llvm-spirv
