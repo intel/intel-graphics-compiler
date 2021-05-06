@@ -298,7 +298,6 @@ void LocalRA::preLocalRAAnalysis()
         const Options *opt = builder.getOptions();
         if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
             opt->getOption(vISA_enablePreemption) ||
-            stackCallRegSize > 0 ||
             opt->getOption(vISA_ReserveR0))
         {
             pregs->setR0Forbidden();

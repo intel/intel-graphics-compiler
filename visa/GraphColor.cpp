@@ -9548,11 +9548,8 @@ int GlobalRA::coloringRegAlloc()
 
         // bind builtinR0 to the reserved stack call ABI GRF so that caller and
         // callee can agree on which GRF to use for r0
-        if (builder.getOption(vISA_enablePreemption))
-        {
-            builder.getBuiltinR0()->getRegVar()->setPhyReg(
-                builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
-        }
+        builder.getBuiltinR0()->getRegVar()->setPhyReg(
+            builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
     }
 
     if (!isReRAPass())

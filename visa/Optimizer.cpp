@@ -168,6 +168,16 @@ void Optimizer::regAlloc()
 
     fg.prepareTraversal();
 
+    // realR0 and BuiltInR0 are 2 different dcls.
+    // realR0 is always tied to physical r0.
+    // if copy of r0 isnt needed then set latter to r0 as well.
+    // if copy of r0 is required, then let RA decide allocation of BuiltInR0.
+    if (!R0CopyNeeded())
+    {
+        // when no copy is needed, make BuiltInR0 an alias of realR0
+        builder.getBuiltinR0()->setAliasDeclare(builder.getRealR0(), 0);
+    }
+
     //
     // assign registers
     //
@@ -1009,7 +1019,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(dumpPayload,             vISA_dumpPayload,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(normalizeRegion,         vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(collectStats,            vISA_EnableAlways,            TimerID::MISC_OPTS);
-    INITIALIZE_PASS(createR0Copy,            vISA_enablePreemption,        TimerID::MISC_OPTS);
+    INITIALIZE_PASS(createR0Copy,            vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(initializePayload,       vISA_InitPayload,             TimerID::NUM_TIMERS);
     INITIALIZE_PASS(cleanupBindless,         vISA_enableCleanupBindless,   TimerID::OPTIMIZER);
     INITIALIZE_PASS(countGRFUsage,           vISA_PrintRegUsage,           TimerID::MISC_OPTS);
@@ -1401,6 +1411,23 @@ void Optimizer::accSubPostSchedule()
 
     AccSubPass accSub(builder, kernel);
     accSub.run();
+}
+
+bool Optimizer::R0CopyNeeded()
+{
+    if (kernel.getOption(vISA_enablePreemption))
+    {
+        return true;
+    }
+
+    if (builder.getIsKernel() && kernel.fg.getHasStackCalls())
+    {
+        // As per VISA ABI, last register in GRF file should
+        // contain copy of r0.
+        return true;
+    }
+
+    return false;
 }
 
 int Optimizer::optimization()
@@ -7414,6 +7441,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             return;
         }
+
+        // r0 copy is needed only if:
+        // a. pre-emption VISA option is enabled OR
+        // b. current object is kernel with stack calls since VISA ABI requires r0 copy to be available in a pre-defined register
+        if (!R0CopyNeeded())
+            return;
 
         // Skip copying of ``copy of R0'' if it's never assigned, a case where
         // ``copy of R0'' is never used. As EOT always use ``copy of R0'', that

@@ -1290,7 +1290,6 @@ void getForbiddenGRFs(
     if (kernel.getKernelType() != VISA_3D ||
         kernel.getOption(vISA_enablePreemption) ||
         reserveSpillSize > 0 ||
-        stackCallRegSize > 0 ||
         kernel.getOption(vISA_ReserveR0))
     {
         regNum.push_back(0);

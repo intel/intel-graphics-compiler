@@ -711,6 +711,13 @@ bool supportHeaderRTW() const
 {
     return true;
 }
+
+bool preemptionSupported() const
+{
+
+    return GetPlatformFamily() >= IGFX_GEN9_CORE;
+};
+
 };
 
 }//namespace IGC
