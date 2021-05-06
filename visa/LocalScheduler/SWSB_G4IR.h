@@ -1053,37 +1053,6 @@ namespace vISA
 
     typedef std::vector<G4_BB_SB *> BB_SWSB_VECTOR;
 
-    class Dom
-    {
-    public:
-        std::vector<G4_BB*> iDoms;
-
-        Dom(G4_Kernel& k, vISA::Mem_Manager& m) : kernel(k), mem(m)
-        {
-        }
-
-        ~Dom()
-        {
-        }
-
-        std::unordered_set<G4_BB*>& getDom(G4_BB*);
-        std::vector<G4_BB*>& getImmDom(G4_BB*);
-        G4_BB* getCommonImmDom(const std::unordered_set<G4_BB*>& bbs);
-        void runDOM();
-        G4_BB* InterSect(G4_BB* bb, int i, int k);
-        void runIDOM();
-        void dumpImmDom();
-
-    private:
-        vISA::Mem_Manager& mem;
-        G4_Kernel& kernel;
-        G4_BB* entryBB = nullptr;
-        std::vector<std::unordered_set<G4_BB*>> Doms;
-        std::vector<std::vector<G4_BB*>> immDoms;
-
-        void updateImmDom();
-    };
-
     class SWSB_TOKEN_PROFILE {
         uint32_t tokenInstructionCount = 0;
         uint32_t tokenReuseCount = 0;
@@ -1217,7 +1186,7 @@ namespace vISA
 
         void removePredsEdges(SBNode * node, SBNode * pred);
 
-        void dumpImmDom(Dom* dom) const;
+        void dumpImmDom(Dominator* dom) const;
 
         void setDefaultDistanceAtFirstInstruction();
 
@@ -1295,7 +1264,7 @@ namespace vISA
         // Fast-composite support.
         void genSWSBPatchInfo();
 
-        void getDominators(Dom* dom);
+        void getDominators(Dominator* dom);
 
 
     public:

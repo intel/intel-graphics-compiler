@@ -241,6 +241,7 @@ BB_LIST_ITER FlowGraph::insert(BB_LIST_ITER iter, G4_BB* bb)
     G4_BB* next = iter != BBs.end() ? *iter : nullptr;
     setPhysicalLink(prev, bb);
     setPhysicalLink(bb, next);
+    markStale();
     return BBs.insert(iter, bb);
 }
 
@@ -250,6 +251,7 @@ void FlowGraph::erase(BB_LIST_ITER iter)
     G4_BB* next = (std::next(iter) != BBs.end()) ? *std::next(iter) : nullptr;
     setPhysicalLink(prev, next);
     BBs.erase(iter);
+    markStale();
 }
 
 void FlowGraph::addPrologBB(G4_BB* BB)
@@ -261,6 +263,8 @@ void FlowGraph::addPrologBB(G4_BB* BB)
 
 void FlowGraph::append(const FlowGraph& otherFG)
 {
+    markStale();
+
     for (auto I = otherFG.cbegin(), E = otherFG.cend(); I != E; ++I)
     {
         auto bb = *I;
@@ -325,6 +329,8 @@ void FlowGraph::removePredSuccEdges(G4_BB* pred, G4_BB* succ)
             break;
         }
     }
+
+    markStale();
 }
 
 G4_BB* FlowGraph::createNewBB(bool insertInFG)
@@ -1003,6 +1009,8 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     builder->materializeGlobalImm(getEntryBB());
     normalizeRegionDescriptors();
     localDataFlowAnalysis();
+
+    markStale();
 }
 
 void FlowGraph::normalizeRegionDescriptors()
@@ -3947,6 +3955,19 @@ void FlowGraph::DFSTraverse(G4_BB* startBB, unsigned &preId, unsigned &postId, F
     }
 }
 
+void vISA::FlowGraph::markStale()
+{
+    // invoked whenever CFG structures changes.
+    // structural changes include addition/removal of BB or edge.
+    // mark analysis passes as stale so getters lazily re-run
+    // analysis when queried.
+    dom.setStale();
+    pDom.setStale();
+
+    // any other analysis that becomes stale when FlowGraph changes
+    // should be marked as stale here.
+}
+
 void FlowGraph::markRPOTraversal()
 {
     MUST_BE_TRUE(numBBId == BBs.size(), ERROR_FLOWGRAPH);
@@ -4796,193 +4817,4 @@ void FuncInfo::dump() const
         std::cerr << bb->getId() << " ";
     }
     std::cerr << "\n";
-}
-
-PostDom::PostDom(G4_Kernel& k) : kernel(k)
-{
-    auto numBBs = k.fg.size();
-    postDoms.resize(numBBs);
-    immPostDoms.resize(numBBs);
-}
-
-void PostDom::run()
-{
-    exitBB = nullptr;
-    for (auto bb_rit = kernel.fg.rbegin(); bb_rit != kernel.fg.rend(); bb_rit++)
-    {
-        auto bb = *bb_rit;
-        if (bb->size() > 0)
-        {
-            auto lastInst = bb->back();
-            if (lastInst->isEOT())
-            {
-                exitBB = bb;
-                break;
-            }
-        }
-    }
-
-    MUST_BE_TRUE(exitBB != nullptr, "Exit BB not found!");
-
-    postDoms[exitBB->getId()] = { exitBB };
-    std::unordered_set<G4_BB*> allBBs(kernel.fg.cbegin(), kernel.fg.cend());
-
-    for (auto bb : kernel.fg)
-    {
-        if (bb != exitBB)
-        {
-            postDoms[bb->getId()] = allBBs;
-        }
-    }
-
-    // Actual post dom computation
-    bool change = true;
-    while (change)
-    {
-        change = false;
-        for (auto bb : kernel.fg)
-        {
-            if (bb == exitBB)
-                continue;
-
-            std::unordered_set<G4_BB*> tmp = { bb };
-            // Compute intersection of pdom of successors
-            std::unordered_map<G4_BB*, unsigned> numInstances;
-            for (auto succs : bb->Succs)
-            {
-                auto& pdomSucc = postDoms[succs->getId()];
-                for (auto pdomSuccBB : pdomSucc)
-                {
-                    auto it = numInstances.find(pdomSuccBB);
-                    if (it == numInstances.end())
-                        numInstances.insert(std::make_pair(pdomSuccBB, 1));
-                    else
-                        it->second = it->second + 1;
-                }
-            }
-
-            // Common BBs appear in numInstances map with second value == bb->Succs count
-            for (auto commonBBs : numInstances)
-            {
-                if (commonBBs.second == bb->Succs.size())
-                    tmp.insert(commonBBs.first);
-            }
-
-            // Check if postDom set changed for bb in current iter
-            if (tmp.size() != postDoms[bb->getId()].size())
-            {
-                postDoms[bb->getId()] = tmp;
-                change = true;
-                continue;
-            }
-            else
-            {
-                auto& pdomBB = postDoms[bb->getId()];
-                for (auto tmpBB : tmp)
-                {
-                    if (pdomBB.find(tmpBB) == pdomBB.end())
-                    {
-                        postDoms[bb->getId()] = tmp;
-                        change = true;
-                        break;
-                    }
-                    if (change)
-                        break;
-                }
-            }
-        }
-    }
-
-    updateImmPostDom();
-}
-
-std::unordered_set<G4_BB*>& PostDom::getPostDom(G4_BB* bb)
-{
-    return postDoms[bb->getId()];
-}
-
-void PostDom::dumpImmDom()
-{
-    for (auto bb : kernel.fg)
-    {
-        printf("BB%d - ", bb->getId());
-        auto& pdomBBs = immPostDoms[bb->getId()];
-        for (auto pdomBB : pdomBBs)
-        {
-            printf("BB%d", pdomBB->getId());
-            if (pdomBB->getLabel())
-            {
-                printf(" (%s)", pdomBB->getLabel()->getLabel());
-            }
-            printf(", ");
-        }
-        printf("\n");
-    }
-}
-
-std::vector<G4_BB*>& PostDom::getImmPostDom(G4_BB* bb)
-{
-    return immPostDoms[bb->getId()];
-}
-
-void PostDom::updateImmPostDom()
-{
-    // Update immPostDom vector with correct ordering
-    for (auto bb : kernel.fg)
-    {
-        auto& postDomBBs = postDoms[bb->getId()];
-        auto& immPostDomBB = immPostDoms[bb->getId()];
-        immPostDomBB.resize(postDomBBs.size());
-        immPostDomBB[0] = bb;
-
-        for (auto pdomBB : postDomBBs)
-        {
-            if (pdomBB == bb)
-                continue;
-
-            immPostDomBB[postDomBBs.size() - postDoms[pdomBB->getId()].size()] = pdomBB;
-        }
-    }
-}
-
-G4_BB* PostDom::getCommonImmDom(std::unordered_set<G4_BB*>& bbs)
-{
-    if (bbs.size() == 0)
-        return nullptr;
-
-    unsigned maxId = (*bbs.begin())->getId();
-
-    auto commonImmDoms = getImmPostDom(*bbs.begin());
-    for (auto bb : bbs)
-    {
-        if (bb->getId() > maxId)
-            maxId = bb->getId();
-
-        auto& postDomBB = postDoms[bb->getId()];
-        for (unsigned i = 0, size = commonImmDoms.size(); i != size; i++)
-        {
-            if (commonImmDoms[i])
-            {
-                if (postDomBB.find(commonImmDoms[i]) == postDomBB.end())
-                {
-                    commonImmDoms[i] = nullptr;
-                }
-            }
-        }
-    }
-
-    // Return first imm dom that is not a BB from bbs set
-    for (G4_BB* commonImmDom : commonImmDoms)
-    {
-        if (commonImmDom &&
-            // Common imm pdom must be lexically last BB
-            commonImmDom->getId() >= maxId &&
-            ((commonImmDom->size() > 1 && commonImmDom->front()->isLabel()) ||
-            (commonImmDom->size() > 0 && !commonImmDom->front()->isLabel())))
-        {
-            return commonImmDom;
-        }
-    }
-
-    return exitBB;
 }
