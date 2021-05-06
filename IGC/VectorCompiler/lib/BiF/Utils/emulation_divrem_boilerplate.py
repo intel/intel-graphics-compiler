@@ -27,9 +27,9 @@ from itertools import product
 
 SignedDivSmall = {
     'types' : [
-        { 'src1' : 'int8_t', 'src2' : 'int8_t'},
-        { 'src1' : 'int16_t', 'src2' : 'int16_t'},
-        { 'src1' : 'int64_t', 'src2' : 'uint64_t'}
+        { 'src_t' : 'int8_t', 'rem_t' : 'int8_t'},
+        { 'src_t' : 'int16_t', 'rem_t' : 'int16_t'},
+        { 'src_t' : 'int64_t', 'rem_t' : 'uint64_t'}
     ],
     'size' : [0] + [2 ** x for x in range(6)],
     'rounding' : ['rte'],
@@ -37,7 +37,7 @@ SignedDivSmall = {
 }
 SignedDiv32 = {
     'types' : [
-        { 'src1' : 'int32_t', 'src2' : 'uint32_t'},
+        { 'src_t' : 'int32_t', 'rem_t' : 'uint32_t'},
     ],
     'size' : [0] + [2 ** x for x in range(6)],
     'rounding' : ['rtz'],
@@ -45,9 +45,9 @@ SignedDiv32 = {
 }
 UnsignedDiv = {
     'types' : [
-        { 'src1' : 'uint8_t', 'src2' : 'uint8_t'},
-        { 'src1' : 'uint16_t', 'src2' : 'uint16_t'},
-        { 'src1' : 'uint32_t', 'src2' : 'uint32_t'},
+        { 'src_t' : 'uint8_t', 'rem_t' : 'uint8_t'},
+        { 'src_t' : 'uint16_t', 'rem_t' : 'uint16_t'},
+        { 'src_t' : 'uint32_t', 'rem_t' : 'uint32_t'},
     ],
     'size' : [0] + [2 ** x for x in range(6)],
     'rounding' : ['rtz'],
@@ -55,7 +55,7 @@ UnsignedDiv = {
 }
 Unsigned64Div = {
     'types' : [
-        { 'src1' : 'uint64_t', 'src2' : 'uint64_t'}
+        { 'src_t' : 'uint64_t', 'rem_t' : 'uint64_t'}
     ],
     'size' : [0] + [2 ** x for x in range(6)],
     'rounding' : ['rte'],
@@ -73,7 +73,7 @@ for desc in [SignedDivSmall, SignedDiv32, UnsignedDiv, Unsigned64Div]:
                                               desc['rounding'], desc['types']):
     if size == 0:
       print("{}_SCALAR_IMPL({}, {}, {}, {})".format(
-        fname, types['src1'], types['src2'], 1, rounding))
+        fname, types['src_t'], types['rem_t'], 1, rounding))
     else:
       print("{}_VECTOR_IMPL({}, {}, {}, {})".format(
-        fname, types['src1'], types['src2'], size, rounding))
+        fname, types['src_t'], types['rem_t'], size, rounding))
