@@ -6772,15 +6772,9 @@ void EmitPass::emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit
 {
     TODO("Have VISA define the URBRead interface instead of using a raw send");
 
-    const EltUnit payloadSize(perSlotOffset ? 2 : 1);
-    const Unit<Element> messageLength = payloadSize;
-    CVariable* const payload = m_currShader->GetNewVariable(payloadSize.Count() * numLanes(SIMDMode::SIMD8),
-        ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
-    IGC_ASSERT(numLanes(SIMDMode::SIMD8));
-    Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(SIMDMode::SIMD8));
 
+    auto GetURBInputHandle = [&]()->CVariable*
     {
-        // Get the register with URBHandles and update certain per-opcode data.
         CVariable* urbInputHandle = nullptr;
         switch (inst->getIntrinsicID())
         {
@@ -6801,6 +6795,20 @@ void EmitPass::emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit
             IGC_ASSERT(0);
         }
         IGC_ASSERT(urbInputHandle);
+        return urbInputHandle;
+    };
+
+    const EltUnit payloadSize(perSlotOffset ? 2 : 1);
+    const Unit<Element> messageLength = payloadSize;
+    CVariable* const payload = m_currShader->GetNewVariable(payloadSize.Count() * numLanes(SIMDMode::SIMD8),
+        ISA_TYPE_UD, EALIGN_GRF, "URBPayload");
+    IGC_ASSERT(numLanes(SIMDMode::SIMD8));
+
+
+    Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(SIMDMode::SIMD8));
+    {
+        // Get the register with URBHandles and update certain per-opcode data.
+        CVariable* urbInputHandle = GetURBInputHandle();
         m_encoder->Copy(payload, urbInputHandle);
         m_encoder->Push();
 
