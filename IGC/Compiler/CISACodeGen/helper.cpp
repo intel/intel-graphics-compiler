@@ -59,9 +59,9 @@ namespace IGC
         struct _bits
         {
             unsigned int       bufId : 16;
-            unsigned int       bufType : 5;
+            unsigned int       bufType : 4;
             unsigned int       indirect : 1;     // bool
-            unsigned int       reserved : 10;
+            unsigned int       reserved : 11;
         } bits;
         uint32_t u32Val;
     } GFXResourceAddrSpace;
@@ -77,9 +77,8 @@ namespace IGC
         GFXResourceAddrSpace temp;
         static_assert(sizeof(temp) == 4, "Code below may need and update.");
         temp.u32Val = 0;
-        IGC_ASSERT((bufType + 1) < BUFFER_TYPE_UNKNOWN + 1);
+        IGC_ASSERT((bufType + 1) < 16);
         temp.bits.bufType = bufType + 1;
-
         if (bufType == SLM)
         {
             return ADDRESS_SPACE_LOCAL;

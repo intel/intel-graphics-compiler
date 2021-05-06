@@ -39,9 +39,9 @@ typedef union _gfxResourceAddressSpace
     struct _bits
     {
         unsigned int  bufId    : 16;
-        unsigned int  bufType  : 5;
+        unsigned int  bufType  : 4;
         unsigned int  indirect : 1;     // bool
-        unsigned int  reserved : 10;
+        unsigned int  reserved : 11;
     } bits;
     unsigned int   u32Val;
 } GFXResourceAddressSpace;
@@ -67,7 +67,7 @@ unsigned LLVM3DBuilder<preserveNames, T, Inserter>::EncodeASForGFXResource(
     static_assert(sizeof(temp) == 4, "Code below may need and update.");
 
     temp.u32Val = 0;
-    IGC_ASSERT((bufType + 1) < IGC::BUFFER_TYPE_UNKNOWN + 1);
+    IGC_ASSERT((bufType + 1) < 16);
     temp.bits.bufType = bufType + 1;
     if (bufType == IGC::BufferType::SLM)
     {
