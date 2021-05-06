@@ -348,7 +348,7 @@ namespace IGC
             else
             {
                 // Eight Patch
-                pConst = ImmToVariable(0x05, ISA_TYPE_UW);
+                pConst = ImmToVariable(iSTD::Log2(getGRFSize()), ISA_TYPE_UW);
             }
 
             encoder.Shl(pPerLaneOffsetsReg, pVertexIndexWord, pConst);
