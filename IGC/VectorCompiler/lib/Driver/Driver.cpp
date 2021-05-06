@@ -568,7 +568,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.OptLevel = MaybeLevel.getValue();
   }
 
-  if (opt::Arg *A = ApiOptions.getLastArg(IGC::options::OPT_igcmc_stack_size)) {
+  if (opt::Arg *A =
+          ApiOptions.getLastArg(IGC::options::OPT_fstateless_private_size)) {
     StringRef Val = A->getValue();
     unsigned Result;
     if (Val.getAsInteger(/*Radix=*/0, Result))
