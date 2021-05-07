@@ -444,15 +444,17 @@ namespace IGC
         VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
         VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
 
-        // As uniform maybe thread-uniform, it will not work for scalar jump
-        // for two threads whose flags are different. Once we improve uniform
-        // analysis to have global (uniform among all threads), not just local
-        // uniform (within a thread), we can still generate scalar jump when flag
-        // is a global uniform.
-        //
-        // For now, just disable uniform goto if EU fusion is on.
+        // visa and igc agreement.
+        //    goto (1) is used to tell visa the goto is uniform.
+        // Goto(1) is generated if
+        //   1. jump is unconditional, or
+        //   2. jump is uniform (thread uniform or above) and no EU fusion, or
+        //   3. jump is either workgroup or global uniform under EU fusion
+        //      (it is temporarily under key control for ease of debugging)
         if (flag == nullptr ||
-            (!m_program->m_Platform->hasFusedEU() && flag->IsUniform()))
+            (!m_program->m_Platform->hasFusedEU() && flag->IsUniform()) ||
+            (IGC_IS_FLAG_ENABLED(EnableWorkGroupUniformGoto) &&
+             m_program->m_Platform->hasFusedEU() && flag->IsWorkGroupOrGlobalUniform()))
         {
             execSize = EXEC_SIZE_1;
         }
@@ -4272,7 +4274,7 @@ namespace IGC
             {
                 SaveOption( vISA_LocalScheduling, false );
                 // temporarily enabling preRA_schedule due to the ACOdyssey regression in IGC-4149.  May be re-disenabled later
-                // SaveOption( vISA_preRA_Schedule, false ); 
+                // SaveOption( vISA_preRA_Schedule, false );
                 SaveOption( vISA_SpillSpaceCompression, false );
                 SaveOption( vISA_LVN, false );
                 SaveOption( vISA_QuickTokenAllocation, true );
