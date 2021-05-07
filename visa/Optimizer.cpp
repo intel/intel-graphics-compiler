@@ -589,6 +589,7 @@ void Optimizer::insertDummyMovForHWRSWA()
         }
 
         INST_LIST_ITER curr_iter = bb->begin();
+        INST_LIST_ITER pre_iter = curr_iter;
         while (curr_iter != bb->end())
         {
             G4_INST* inst = (*curr_iter);
@@ -607,9 +608,21 @@ void Optimizer::insertDummyMovForHWRSWA()
 
             if (builder.hasEOTReadSuppressionIssue() && inst->isEOT())
             {
-                insertDummyCsel(bb, curr_iter, false);
+                if (pre_iter != curr_iter)
+                {
+                    G4_INST* pre_inst = (*pre_iter);
+                    if (pre_inst->isAtomicInst())
+                    {
+                         insertDummyCsel(bb, pre_iter, false);
+                    }
+                    else
+                    {
+                         insertDummyCsel(bb, curr_iter, false);
+                    }
+                }
             }
 
+            pre_iter = curr_iter;
             ++curr_iter;
         }
 
