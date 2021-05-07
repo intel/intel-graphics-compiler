@@ -1250,79 +1250,6 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     }
 }
 
-uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
-{
-    GenIntrinsicInst* intr = dyn_cast<llvm::GenIntrinsicInst>(val);
-    if (m_ctx->m_DriverInfo.SupportsDynamicUniformBuffers() &&
-        intr &&
-        intr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue &&
-        isa<ConstantInt>(intr->getOperand(0)))
-    {
-        const PushInfo& pushInfo = m_ctx->getModuleMetaData()->pushInfo;
-        const uint index = int_cast<uint>(
-            cast<ConstantInt>(intr->getOperand(0))->getZExtValue());
-        if (index >= pushInfo.dynamicBufferInfo.firstIndex &&
-            index < pushInfo.dynamicBufferInfo.firstIndex + pushInfo.dynamicBufferInfo.numOffsets)
-        {
-            const uint minDynamicBufferOffsetAlignment =
-                m_ctx->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD);
-            return minDynamicBufferOffsetAlignment; // 32 bytes
-        }
-    }
-
-    Instruction* inst = dyn_cast<Instruction>(val);
-    if (inst &&
-        inst->getNumOperands() == 2 &&
-        isa<Instruction>(inst->getOperand(0)))
-    {
-        Value* src0 = inst->getOperand(0);
-        Value* src1 = inst->getOperand(1);
-        ConstantInt* cSrc1 = dyn_cast<ConstantInt>(src1);
-        uint imm1 = cSrc1 ? int_cast<uint>(cSrc1->getZExtValue()) : 0;
-        uint align0 = GetOffsetAlignment(src0);
-        uint align1 = (!cSrc1) ? GetOffsetAlignment(src1) : 1;
-        switch (inst->getOpcode())
-        {
-        case Instruction::Add:
-        case Instruction::Or:
-        {
-            if (cSrc1)
-            {
-                align1 = (1 << iSTD::bsf(imm1));
-            }
-            return std::min(align0, align1);
-        }
-        case Instruction::And:
-        {
-            if (cSrc1)
-            {
-                align1 = (1 << iSTD::bsf(imm1));
-            }
-            return std::max(align0, align1);
-        }
-        case Instruction::Mul:
-        {
-            if (cSrc1)
-            {
-                align1 = (1 << iSTD::bsf(imm1));
-            }
-            return align0 * align1;
-        }
-        case Instruction::Shl:
-        {
-            if (cSrc1)
-            {
-                align1 = imm1;
-            }
-            return align0 << align1;
-        }
-        default:
-            break;
-        }
-    }
-    return 1;
-}
-
 Value* ConstantCoalescing::SimpleBaseOffset(Value* elt_idxv, uint& offset)
 {
     // in case expression comes from a smaller type arithmetic
@@ -1350,16 +1277,16 @@ Value* ConstantCoalescing::SimpleBaseOffset(Value* elt_idxv, uint& offset)
     if (expr->getOpcode() == Instruction::Add)
     {
         Value* src0 = expr->getOperand(0);
-        ConstantInt* csrc1 = dyn_cast<ConstantInt>(expr->getOperand(1));
-        if (csrc1)
+        Value* src1 = expr->getOperand(1);
+        if (isa<ConstantInt>(src1))
         {
-            // Matches or+add pattern, e.g.:
-            //    %535 = or i32 %519, 12
-            //    %537 = add i32 %535, 16
-            uint offset1 = 0;
-            Value* base = SimpleBaseOffset(src0, offset1);
-            offset = offset1 + int_cast<uint>(csrc1->getZExtValue());
-            return base;
+            offset = (uint)cast<ConstantInt>(src1)->getZExtValue();
+            return src0;
+        }
+        else if (isa<ConstantInt>(src0))
+        {
+            offset = (uint)cast<ConstantInt>(src0)->getZExtValue();
+            return src1;
         }
     }
     else if (expr->getOpcode() == Instruction::Or)
@@ -1408,9 +1335,49 @@ Value* ConstantCoalescing::SimpleBaseOffset(Value* elt_idxv, uint& offset)
                 }
             }
 
-            if (or_offset < GetOffsetAlignment(inst0))
+            if (inst0_op == Instruction::And ||
+                inst0_op == Instruction::Mul)
             {
-                return src0;
+                Value* ptr_adj = inst0->getOperand(1);
+                if (ConstantInt * adj_val = cast<ConstantInt>(ptr_adj))
+                {
+                    uint imm = (uint)adj_val->getZExtValue();
+                    if ((inst0_op == Instruction::And && or_offset < int_cast<unsigned int>(1 << iSTD::bsf(imm))) ||
+                        (inst0_op == Instruction::Mul && or_offset < imm))
+                    {
+                        return src0;
+                    }
+                }
+            }
+            else if (inst0_op == Instruction::Shl)
+            {
+                Value* ptr_adj = inst0->getOperand(1);
+                if (ConstantInt * adj_val = dyn_cast<ConstantInt>(ptr_adj))
+                {
+                    uint imm = (uint)adj_val->getZExtValue();
+                    uint shl_base = 1;
+                    if (Instruction * shl_inst0 = dyn_cast<Instruction>(inst0->getOperand(0)))
+                    {
+                        uint shl_inst0_op = shl_inst0->getOpcode();
+                        if (shl_inst0_op == Instruction::And && isa<ConstantInt>(shl_inst0->getOperand(1)))
+                        {
+                            ConstantInt* and_mask_val = cast<ConstantInt>(shl_inst0->getOperand(1));
+                            uint and_mask = (uint)and_mask_val->getZExtValue();
+                            shl_base = (1 << iSTD::bsf(and_mask));
+                        }
+                        else if (shl_inst0_op == Instruction::Mul && isa<ConstantInt>(shl_inst0->getOperand(1)))
+                        {
+                            ConstantInt* mul_multiplier_val = cast<ConstantInt>(shl_inst0->getOperand(1));
+                            uint mul_multiplier = (uint)mul_multiplier_val->getZExtValue();
+                            shl_base = (1 << iSTD::bsf(mul_multiplier));
+                        }
+                    }
+
+                    if (or_offset < int_cast<unsigned int>(shl_base << imm))
+                    {
+                        return src0;
+                    }
+                }
             }
         }
     }
