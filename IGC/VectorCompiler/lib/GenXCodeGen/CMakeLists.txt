@@ -113,6 +113,7 @@ igc_get_llvm_targets(LLVM_LIBS
   BitReader
   Core
   CodeGen
+  Demangle
   InstCombine
   Linker
   Support
