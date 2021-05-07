@@ -33,14 +33,14 @@ CVariable* CPixelShader::GetR1()
     return m_R1;
 }
 
-CVariable* CPixelShader::GetR1Lo()
+std::vector<CVariable*>& CPixelShader::GetR1Lo()
 {
     return m_R1Lo;
 }
 
-void CPixelShader::SetR1Lo(CVariable* var)
+void CPixelShader::AppendR1Lo(CVariable* var)
 {
-    m_R1Lo = var;
+    m_R1Lo.push_back(var);
 }
 
 CVariable* CPixelShader::GetCoarseR1()
@@ -145,10 +145,10 @@ void CPixelShader::AllocatePSPayload()
         for (uint i = 0; i < GetR1()->GetNumberInstance(); i++)
         {
             AllocateInput(GetR1(), offset, i, forceLiveOut);
-            if (GetR1Lo())
-            {
-                AllocateInput(GetR1Lo(), offset, i, forceLiveOut);
+            for (auto R1Lo: GetR1Lo()) {
+                AllocateInput(R1Lo, offset, i, forceLiveOut);
             }
+
             offset += getGRFSize();
         }
     }
@@ -744,7 +744,6 @@ CPixelShader::~CPixelShader()
 void CPixelShader::InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
 {
     m_R1 = NULL;
-    m_R1Lo = NULL;
     m_PerspectiveBaryPlanes = nullptr;
     m_NonPerspectiveBaryPlanes = nullptr;
     m_PerspectivePixel = NULL;
