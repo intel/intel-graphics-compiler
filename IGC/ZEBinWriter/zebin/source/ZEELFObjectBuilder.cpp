@@ -88,8 +88,8 @@ private:
     uint64_t writeSectionData(const uint8_t* data, uint64_t size, uint32_t padding);
     // write symbol table section, return section size
     uint64_t writeSymTab();
-    // write relocation table section
-    uint64_t writeRelocTab(const RelocationListTy& relocs);
+    // write rel or rela relocation table section
+    uint64_t writeRelocTab(const RelocationListTy& relocs, bool isRelFormat);
     // write ze info section
     uint64_t writeZEInfo();
     // write string table
@@ -118,13 +118,14 @@ private:
     SectionHdrEntry& createNullSectionHdrEntry();
 
     uint32_t getSymTabEntSize();
-    uint32_t getRelocTabEntSize();
+    uint32_t getRelocTabEntSize(bool isRelFormat);
 
     // name is the string table index of the symbol name
     void writeSymbol(uint32_t name, uint64_t value, uint64_t size,
         uint8_t binding, uint8_t type, uint8_t other, uint16_t shndx);
 
-    void writeRelocation(uint64_t offset, uint64_t type, uint64_t symIdx);
+    void writeRelRelocation(uint64_t offset, uint64_t type, uint64_t symIdx);
+    void writeRelaRelocation(uint64_t offset, uint64_t type, uint64_t symIdx, uint64_t addend);
 
     void writeSecHdrEntry(uint32_t name, uint32_t type, uint64_t flags,
         uint64_t address, uint64_t offset,
@@ -171,8 +172,8 @@ ZEELFObjectBuilder::addStandardSection(
     // total required padding is (padding + need_padding_for_align)
     sections.emplace_back(
         ZEELFObjectBuilder::StandardSection(sectName, data, size, type,
-            (need_padding_for_align + padding), m_sectionId));
-    ++m_sectionId;
+            (need_padding_for_align + padding), m_sectionIdCount));
+    ++m_sectionIdCount;
     return sections.back();
 }
 
@@ -263,8 +264,8 @@ ZEELFObjectBuilder::addSectionZEInfo(zeInfoContainer& zeInfo)
 {
     // every object should have exactly one ze_info section
     IGC_ASSERT(nullptr == m_zeInfoSection);
-    m_zeInfoSection = new ZEInfoSection(zeInfo, m_sectionId);
-    ++m_sectionId;
+    m_zeInfoSection = new ZEInfoSection(zeInfo, m_sectionIdCount);
+    ++m_sectionIdCount;
 }
 
 void ZEELFObjectBuilder::addSymbol(
@@ -280,38 +281,47 @@ void ZEELFObjectBuilder::addSymbol(
 }
 
 ZEELFObjectBuilder::RelocSection&
-ZEELFObjectBuilder::getOrCreateRelocSection(SectionID targetSectId)
+ZEELFObjectBuilder::getOrCreateRelocSection(SectionID targetSectId, bool isRelFormat)
 {
-    // linear search to see if there's existed reloc section with given target id
+    // linear search to see if there's existed reloc section with given target id and rel format
     // reversly iterate that the latest added might hit first
     for (RelocSectionListTy::reverse_iterator it = m_relocSections.rbegin();
          it != m_relocSections.rend(); ++it) {
-        if ((*it).m_TargetID == targetSectId)
+        if ((*it).m_TargetID == targetSectId && (*it).isRelFormat() == isRelFormat)
             return *it;
     }
     // if not found, create one
-    // adjust the section name to be .rel.applyTergetName
-    // If the targt name is empty, we use the defualt name .rel as the section name
+    // adjust the section name to be .rel.applyTargetName or .rela.applyTargetName
+    // If the targt name is empty, we use the defualt name .rel/.rela as the section name
     // though in our case this should not happen
     std::string sectName;
     std::string targetName = getSectionNameBySectionID(targetSectId);
     if (!targetName.empty())
-        sectName = m_RelName + targetName;
+        sectName = (isRelFormat? m_RelName : m_RelaName) + targetName;
     else
-        sectName = m_RelName;
+        sectName = isRelFormat? m_RelName : m_RelaName;
 
-    m_relocSections.emplace_back(m_sectionId, targetSectId, sectName);
-    ++m_sectionId;
+    m_relocSections.emplace_back(RelocSection(m_sectionIdCount, targetSectId, sectName, isRelFormat));
+    ++m_sectionIdCount;
     return m_relocSections.back();
 }
 
-void ZEELFObjectBuilder::addRelocation(
+void ZEELFObjectBuilder::addRelRelocation(
     uint64_t offset, std::string symName, R_TYPE_ZEBIN type, SectionID sectionId)
 {
-    RelocSection& reloc_sect = getOrCreateRelocSection(sectionId);
+    RelocSection& reloc_sect = getOrCreateRelocSection(sectionId, true);
     // create the relocation
     reloc_sect.m_Relocations.emplace_back(
         ZEELFObjectBuilder::Relocation(offset, symName, type));
+}
+
+void ZEELFObjectBuilder::addRelaRelocation(
+    uint64_t offset, std::string symName, R_TYPE_ZEBIN type, uint64_t addend, SectionID sectionId)
+{
+    RelocSection& reloc_sect = getOrCreateRelocSection(sectionId, false);
+    // create the relocation
+    reloc_sect.m_Relocations.emplace_back(
+        ZEELFObjectBuilder::Relocation(offset, symName, type, addend));
 }
 
 uint64_t ZEELFObjectBuilder::finalize(llvm::raw_pwrite_stream& os)
@@ -387,12 +397,12 @@ uint32_t ELFWriter::getSymTabEntSize()
         return sizeof(ELF::Elf32_Sym);
 }
 
-uint32_t ELFWriter::getRelocTabEntSize()
+uint32_t ELFWriter::getRelocTabEntSize(bool isRelFormat)
 {
     if (is64Bit())
-        return sizeof(ELF::Elf64_Rel);
+        return isRelFormat ? sizeof(ELF::Elf64_Rel) : sizeof(ELF::Elf64_Rela);
     else
-        return sizeof(ELF::Elf32_Rel);
+        return isRelFormat ? sizeof(ELF::Elf32_Rel) : sizeof(ELF::Elf32_Rela);
 }
 
 void ELFWriter::writeSymbol(uint32_t name, uint64_t value, uint64_t size,
@@ -416,7 +426,7 @@ void ELFWriter::writeSymbol(uint32_t name, uint64_t value, uint64_t size,
     }
 }
 
-void ELFWriter::writeRelocation(uint64_t offset, uint64_t type, uint64_t symIdx)
+void ELFWriter::writeRelRelocation(uint64_t offset, uint64_t type, uint64_t symIdx)
 {
     if (is64Bit()) {
         uint64_t info = (symIdx << 32) | (type & 0xffffffffL);
@@ -429,15 +439,30 @@ void ELFWriter::writeRelocation(uint64_t offset, uint64_t type, uint64_t symIdx)
     }
 }
 
-uint64_t ELFWriter::writeRelocTab(const RelocationListTy& relocs)
+void ELFWriter::writeRelaRelocation(uint64_t offset, uint64_t type, uint64_t symIdx, uint64_t addend)
+{
+    writeRelRelocation(offset, type, symIdx);
+    if (is64Bit()) {
+        m_W.write(addend);
+    } else {
+        m_W.write(uint32_t(addend));
+    }
+}
+
+uint64_t ELFWriter::writeRelocTab(const RelocationListTy& relocs, bool isRelFormat)
 {
     uint64_t start_off = m_W.OS.tell();
 
     for (const ZEELFObjectBuilder::Relocation& reloc : relocs) {
         // the target symbol's name must have been added into symbol table
         IGC_ASSERT(m_SymNameIdxMap.find(reloc.symName()) != m_SymNameIdxMap.end());
-        writeRelocation(
-            reloc.offset(), reloc.type(), m_SymNameIdxMap[reloc.symName()]);
+
+        if (isRelFormat)
+            writeRelRelocation(
+                reloc.offset(), reloc.type(), m_SymNameIdxMap[reloc.symName()]);
+        else
+            writeRelaRelocation(
+                reloc.offset(), reloc.type(), m_SymNameIdxMap[reloc.symName()], reloc.addend());
     }
 
     return m_W.OS.tell() - start_off;
@@ -576,14 +601,15 @@ void ELFWriter::writeSections()
             entry.info = m_ObjBuilder.m_localSymbols.size() + 1;
             break;
 
-        case ELF::SHT_REL: {
+        case ELF::SHT_REL:
+        case ELF::SHT_RELA: {
             IGC_ASSERT(nullptr != entry.section);
             IGC_ASSERT(entry.section->getKind() == Section::RELOC);
             const RelocSection* const relocSec =
                 static_cast<const RelocSection*>(entry.section);
             IGC_ASSERT(nullptr != relocSec);
-            entry.size = writeRelocTab(relocSec->m_Relocations);
-            entry.entsize = getRelocTabEntSize();
+            entry.size = writeRelocTab(relocSec->m_Relocations, relocSec->isRelFormat());
+            entry.entsize = getRelocTabEntSize(relocSec->isRelFormat());
             break;
         }
         case SHT_ZEBIN_ZEINFO:
@@ -737,7 +763,7 @@ void ELFWriter::createSectionHdrEntries()
     // .data
     // .symtab
     // all other standard sections follow the order of being added (spv, debug)
-    // .rel
+    // .rel and .rela
     // .ze_info
     // .strtab
 
@@ -774,12 +800,14 @@ void ELFWriter::createSectionHdrEntries()
         createSectionHdrEntry(sect.m_sectName, sect.m_type, &sect);
     }
 
-    // .rel
+    // .rel and .rela
     if (!m_ObjBuilder.m_relocSections.empty()) {
         // go through relocation sections
         for (RelocSection& sect : m_ObjBuilder.m_relocSections) {
             SectionHdrEntry& entry =
-                createSectionHdrEntry(sect.m_sectName, ELF::SHT_REL, &sect);
+                sect.isRelFormat() ?
+                  createSectionHdrEntry(sect.m_sectName, ELF::SHT_REL, &sect) :
+                  createSectionHdrEntry(sect.m_sectName, ELF::SHT_RELA, &sect);
             // set apply target's section index
             // relocations could only apply to standard sections. At this point,
             // all standard section's section index should be adjusted

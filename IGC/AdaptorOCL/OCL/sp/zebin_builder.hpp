@@ -62,7 +62,7 @@ public:
         char*& symName);
 
     /// addElfSections - copy every section of ELF file (a buffer in memory) to zeBinary
-    void addElfSections(void* elfBin, size_t debugDataSize);
+    void addElfSections(void* elfBin, size_t elfSize);
 
     /// getBinaryObject - get the final ze object
     void getBinaryObject(llvm::raw_pwrite_stream& os);
@@ -106,7 +106,7 @@ private:
     void addKernelExperimentalProperties(const IGC::SOpenCLKernelInfo& annotations,
         zebin::zeInfoKernel& zeinfoKernel);
 
-    /// add symbols of this kernel corresponding to kernek binary
+    /// add symbols of this kernel corresponding to kernel binary
     /// added by addKernelBinary
     void addSymbols(
         zebin::ZEELFObjectBuilder::SectionID kernelSectId,
@@ -155,7 +155,7 @@ private:
 
     /// Calculate correct (pure) size of ELF binary, because m_debugDataVISASize in kernel output
     /// contains something else.
-    size_t calcElfSize(void* elfBin, size_t debugDataSize);
+    size_t calcElfSize(void* elfBin, size_t elfSize);
 
 private:
     // mBuilder - Builder of a ZE ELF object

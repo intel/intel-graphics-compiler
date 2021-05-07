@@ -187,16 +187,28 @@ public:
     void addSymbol(std::string name, uint64_t addr, uint64_t size,
         uint8_t binding, uint8_t type, SectionID sectionId);
 
-    // add a relocation
+    // add a relocation with rel format
+    // This function will create a corresponding .rel.{targetSectionName} section if
+    // not exist
     // - offset    : the binary offset of the section where the relocation
     //               will apply to. The section is denoted by sectionId
     // - symName   : the target symbol's name
     // - type      : the relocation name
     // - sectionId : the section id where the relocation is apply to
-    // Note that currently we assume there's only one text section. So the
-    // target section will be the one added by addSectionText
-    void addRelocation(
+    void addRelRelocation(
         uint64_t offset, std::string symName, R_TYPE_ZEBIN type, SectionID sectionId);
+
+    // add a relocation with rela format
+    // This function will create a corresponding .rela.{targetSectionName} section if
+    // not exist
+    // - offset    : the binary offset of the section where the relocation
+    //               will apply to. The section is denoted by sectionId
+    // - symName   : the target symbol's name
+    // - type      : the relocation name
+    // - addend    : the addend value
+    // - sectionId : the section id where the relocation is apply to
+    void addRelaRelocation(
+        uint64_t offset, std::string symName, R_TYPE_ZEBIN type, uint64_t addend, SectionID sectionId);
 
     // finalize - Finalize the ELF Object, write ELF file into given os
     // return number of written bytes
@@ -218,7 +230,7 @@ private:
         Section(uint32_t id) : m_id(id) {}
         virtual ~Section() {}
         Section(const Section&) = default;
-        Section& operator=(const Section &) = default;
+        Section& operator=(const Section&) = default;
 
     protected:
         SectionID m_id;
@@ -283,20 +295,25 @@ private:
         SectionID m_sectionId;
     };
 
+    /// Relocation - present the relocation information of each entry.
+    /// The relocation itself doesn't know if it's in rel or rela format.
+    /// It's rel or rela depends on it's in RelocSection or RelaRelocSection
     class Relocation {
     public:
-        Relocation(uint64_t offset, std::string symName, R_TYPE_ZEBIN type)
-            : m_offset(offset), m_symName(symName), m_type(type)
+        Relocation(uint64_t offset, std::string symName, R_TYPE_ZEBIN type, uint64_t addend = 0)
+            : m_offset(offset), m_symName(symName), m_type(type), m_addend(addend)
         {}
 
         uint64_t            offset()  const { return m_offset;  }
         const std::string&  symName() const { return m_symName; }
         R_TYPE_ZEBIN        type()    const { return m_type;    }
+        uint64_t            addend()  const { return m_addend;  }
 
     private:
         uint64_t m_offset;
         std::string m_symName;
         R_TYPE_ZEBIN m_type;
+        uint64_t m_addend;
     };
 
     typedef std::vector<StandardSection> StandardSectionListTy;
@@ -305,16 +322,21 @@ private:
 
     class RelocSection : public Section {
     public:
-        RelocSection(SectionID myID, SectionID targetID, std::string sectName)
-            : Section(myID), m_TargetID(targetID), m_sectName(sectName)
+        RelocSection(SectionID myID, SectionID targetID, std::string sectName, bool isRelFormat) :
+            Section(myID), m_TargetID(targetID), m_sectName(sectName), m_isRelFormat (isRelFormat)
         {}
 
         Kind getKind() const { return RELOC; }
+        bool isRelFormat() const { return m_isRelFormat; }
 
+    public:
         // target section's id that this relocation section apply to
         SectionID m_TargetID;
         std::string m_sectName;
         RelocationListTy m_Relocations;
+
+        // This is a rel or rela relocation format
+        bool m_isRelFormat;
     };
     typedef std::vector<RelocSection> RelocSectionListTy;
 
@@ -323,7 +345,8 @@ private:
         std::string sectName, const uint8_t* data, uint64_t size,
         unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections);
 
-    RelocSection& getOrCreateRelocSection(SectionID targetSectId);
+    // isRelFormat - rel or rela relocation format
+    RelocSection& getOrCreateRelocSection(SectionID targetSectId, bool isRelFormat);
 
     std::string getSectionNameBySectionID(SectionID id);
 
@@ -334,6 +357,7 @@ private:
     const std::string m_BssName       = ".bss";
     const std::string m_SymTabName    = ".symtab";
     const std::string m_RelName       = ".rel";
+    const std::string m_RelaName      = ".rela";
     const std::string m_SpvName       = ".spv";
     const std::string m_DebugName     = ".debug_info";
     const std::string m_ZEInfoName    = ".ze_info";
@@ -352,10 +376,10 @@ private:
     StandardSectionListTy m_textSections;
     StandardSectionListTy m_dataAndbssSections; // data and bss sections
     StandardSectionListTy m_otherStdSections;
-    RelocSectionListTy    m_relocSections;
+    RelocSectionListTy    m_relocSections; // rel and rela reloc sections
 
     // current section id
-    SectionID m_sectionId = 0;
+    SectionID m_sectionIdCount = 0;
 
     // every ze object contains only one ze_info section
     ZEInfoSection* m_zeInfoSection = nullptr;
