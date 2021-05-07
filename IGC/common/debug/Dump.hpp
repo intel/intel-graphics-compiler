@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Optional.h>
+#include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/API/igc.h"
 
@@ -116,6 +117,8 @@ public:
 
     llvm::raw_ostream& stream() const;
 
+    void flush();
+
     template<typename T>
     llvm::raw_ostream& operator<< ( T const& val ) const
     {
@@ -124,10 +127,62 @@ public:
     }
 
 private:
-    std::string                m_string;
-    DumpName                   m_name;
-    llvm::raw_ostream*         m_pStream;
-    DumpType                   m_type;
+    std::string                        m_string;
+    DumpName                           m_name;
+    std::unique_ptr<llvm::raw_ostream> m_pStream;
+    llvm::raw_ostream*                 m_pStringStream;
+    DumpType                           m_type;
+    bool                               m_ClearFile;
+};
+
+// Common implementation of the flush pass
+template<typename PassT>
+class CommonFlushDumpPass : public PassT
+{
+public:
+
+    CommonFlushDumpPass(Dump& dump, char& pid) : PassT(pid), m_Dump(dump) {}
+
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
+        AU.setPreservesAll();
+    }
+
+    llvm::StringRef getPassName() const override
+    {
+        return "Flush Dump";
+    }
+
+protected:
+    Dump& m_Dump;
+};
+
+class ModuleFlushDumpPass : public CommonFlushDumpPass<llvm::ModulePass>
+{
+public:
+    static char ID;
+
+    ModuleFlushDumpPass(Dump& dump) : CommonFlushDumpPass(dump, ID) {}
+
+    bool runOnModule(llvm::Module&) override
+    {
+        m_Dump.flush();
+        return false;
+    }
+};
+
+class FunctionFlushDumpPass : public CommonFlushDumpPass<llvm::FunctionPass>
+{
+public:
+    static char ID;
+
+    FunctionFlushDumpPass(Dump& dump) : CommonFlushDumpPass(dump, ID) {}
+
+    bool runOnFunction(llvm::Function&) override
+    {
+        m_Dump.flush();
+        return false;
+    }
 };
 
 void DumpLLVMIRText(
