@@ -36,52 +36,152 @@ IN THE SOFTWARE.
 include "llvm/Option/OptParser.td"
 
 // Option kinds {{
-// VC options accessible using public API.
-def VCApiOption : OptionFlag;
+// Options accessible using API.
+def ApiOption : OptionFlag;
 
 // Api options compatible with igcmc.
 // These are used only when -cmc is present in api options.
 def IgcmcApiOption : OptionFlag;
 
-// VC internal options.
-def VCInternalOption : OptionFlag;
+// Internal options.
+def InternalOption : OptionFlag;
 // }} Option kinds
 
-// Helpers {{
-def OptHelper {
-  list<OptionFlag> VCBackwardCompatFlags = [VCApiOption, IgcmcApiOption];
+// Api options {{
+let Flags = [ApiOption] in {
 
-  list<string> ZePrefixes = ["-ze-"];
-  list<string> ClPrefixes = ["-cl-"];
-  list<string> CommonPrefixes = !listconcat(ZePrefixes, ClPrefixes);
+// Main dispatch option.
+def vc_codegen : Flag<["-"], "vc-codegen">,
+  HelpText<"Enable vector codegenerator">;
+
+// Generate debug info
+def vc_emit_debug : Flag<["-"], "g">,
+  HelpText<"Enable generation of debug information and enables kernel debug">;
+def ze_kernel_debug_enable : Flag<["-"], "ze-kernel-debug-enable">,
+  Alias<vc_emit_debug>, HelpText<"Alias for -g">;
+// these are coming from NEO when run under debugger
+def cl_opt_disable : Flag<["-"], "cl-opt-disable">,
+  Alias<vc_emit_debug>, HelpText<"Alias for -g">;
+def ze_opt_disable : Flag<["-"], "ze-opt-disable">,
+  Alias<vc_emit_debug>, HelpText<"Alias for -g">;
+
+def optimize : Separate<["-"], "optimize">,
+  HelpText<"Set optimization level to either 'none' or 'full'">,
+  MetaVarName<"<level>">;
+def optimize_eq : Joined<["-"], "optimize=">,
+  Alias<optimize>, HelpText<"Alias for -optimize">;
+def no_optimize : Flag<["-"], "no-optimize">,
+  Alias<optimize>, AliasArgs<["none"]>, HelpText<"Alias for -optimize=none">;
+
+// This option switches off vector splitting in parts to better fit into GRF
+// It may have both positive and negative consequences for performance
+// so shall be used with extreme caution
+def no_vector_decomposition : Flag<["-"], "ze-no-vector-decomposition">,
+  HelpText<"Disable vector decomposition pass">;
+// Compatibility aliases
+def no_vector_decomposition_old : Flag<["-"], "no_vector_decomposition">,
+  Alias<no_vector_decomposition>, HelpText<"Alias for -ze-no-vector-decomposition"> {
+  let Flags = [ApiOption, IgcmcApiOption];
+}
+def no_vector_decomposition_old_2 : Flag<["-"], "no-vector-decomposition">,
+  Alias<no_vector_decomposition>, HelpText<"Alias for -ze-no-vector-decomposition"> {
+  let Flags = [ApiOption, IgcmcApiOption];
 }
 
-// Level zero related option classes.
-class ZeFlag<string name> : Flag<OptHelper.ZePrefixes, name>;
-class ZeJoined<string name> : Joined<OptHelper.ZePrefixes, name>;
-class ZeSeparate<string name> : Separate<OptHelper.ZePrefixes, name>;
-class ZeCommaJoined<string name> : CommaJoined<OptHelper.ZePrefixes, name>;
-class ZeMultiArg<string name, int numargs> : MultiArg<OptHelper.ZePrefixes, name, numargs>;
-class ZeJoinedOrSeparate<string name> : JoinedOrSeparate<OptHelper.ZePrefixes, name>;
-class ZeJoinedAndSeparate<string name> : JoinedAndSeparate<OptHelper.ZePrefixes, name>;
+// this option disables jump table generation
+// TODO: we shall add this to L0 extension spec
+def fno_jump_tables : Flag<["-"], "fno-jump-tables">,
+  HelpText<"Disable the use of jump tables for lowering switches">;
 
-// OpenCL related option classes.
-class ClFlag<string name> : Flag<OptHelper.ClPrefixes, name>;
-class ClJoined<string name> : Joined<OptHelper.ClPrefixes, name>;
-class ClSeparate<string name> : Separate<OptHelper.ClPrefixes, name>;
-class ClCommaJoined<string name> : CommaJoined<OptHelper.ClPrefixes, name>;
-class ClMultiArg<string name, int numargs> : MultiArg<OptHelper.ClPrefixes, name, numargs>;
-class ClJoinedOrSeparate<string name> : JoinedOrSeparate<OptHelper.ClPrefixes, name>;
-class ClJoinedAndSeparate<string name> : JoinedAndSeparate<OptHelper.ClPrefixes, name>;
+// this option enables legacy dataport legalization
+def ftranslate_legacy_memory_intrinsics : Flag<["-"], "ftranslate-legacy-memory-intrinsics">,
+  HelpText<"Legalize old memory intrinsics">;
 
-// Common for two runtimes option helpers.
-class CommonFlag<string name> : Flag<OptHelper.CommonPrefixes, name>;
-class CommonJoined<string name> : Joined<OptHelper.CommonPrefixes, name>;
-class CommonSeparate<string name> : Separate<OptHelper.CommonPrefixes, name>;
-class CommonCommaJoined<string name> : CommaJoined<OptHelper.CommonPrefixes, name>;
-class CommonMultiArg<string name, int numargs> : MultiArg<OptHelper.CommonPrefixes, name, numargs>;
-class CommonJoinedOrSeparate<string name> : JoinedOrSeparate<OptHelper.CommonPrefixes, name>;
-class CommonJoinedAndSeparate<string name> : JoinedAndSeparate<OptHelper.CommonPrefixes, name>;
-// }} Helpers
+// this option controls stateless memory per thread
+// also alias stack-mem-size= is available (see below)
+def fstateless_private_size : Joined<["-"], "stateless-stack-mem-size=">,
+  HelpText<"Stateless memory amount per thread">;
 
-include "VCOptions.td"
+def Xfinalizer : Separate<["-"], "Xfinalizer">,
+  HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
+
+def gtpin_rera : Flag<["-"], "ze-gtpin-rera">,
+  HelpText<"Enables vISA re_ra interface for gtpin structure generation">;
+
+def gtpin_grf_info : Flag<["-"], "ze-gtpin-grf-info">,
+  HelpText<"Enable vISA grf-info interface for gtpin structure generation">;
+
+def gtpin_scratch_area_size : Separate<["-"], "ze-gtpin-scratch-area-size">,
+  HelpText<"Set gtpin scratch area size">;
+
+def gtpin_scratch_area_size_eq : Joined<["-"], "ze-gtpin-scratch-area-size=">,
+  Alias<gtpin_scratch_area_size>, HelpText<"Alias for -ze-gtpin-scratch-area-size">;
+}
+// }} Api options
+
+// Igcmc compatibility {{
+let Flags = [IgcmcApiOption] in {
+
+def igcmc : Flag<["-"], "cmc">,
+  HelpText<"Enable igcmc compatible mode; incompatible with -vc-codegen; implies -optimize=none.">;
+
+def igcmc_visaopts : Joined<["-"], "visaopts=">,
+  HelpText<"Options for finalizer in form \"opt1 opt2 opt3...\"">;
+
+def igcmc_stack_size : Joined<["-"], "stack-mem-size=">,
+  Alias<fstateless_private_size>,
+  HelpText<"Control stack memory size (in bytes)">;
+}
+// }} Igcmc compatibility
+
+// Internal options {{
+let Flags = [InternalOption] in {
+
+def dump_llvm_ir : Flag<["-"], "dump-llvm-ir">,
+  HelpText<"Dump llvm IR after SPIRV reading, optimizations and codegen">;
+def dump_isa_binary : Flag<["-"], "dump-isa-binary">,
+  HelpText<"Dump isa binary after finalization pass">;
+def dump_asm : Flag<["-"], "dump-asm">,
+  HelpText<"Dump assembly (visaasm, asm, etc.)">;
+def mdump_asm : Flag<["-"], "mdump_asm">,
+  Alias<dump_asm>, HelpText<"Alias for -dump-asm">;
+
+def help : Flag<["-"], "help">,
+  HelpText<"Display available API options">;
+def help_internal : Flag<["-"], "help-internal">,
+  HelpText<"Display available internal options">;
+
+def llvm_options : Separate<["-"], "llvm-options">,
+  HelpText<"Additional options forwarded to llvm CommandLine global option parser">;
+def llvm_options_eq : Joined<["-"], "llvm-options=">,
+  Alias<llvm_options>, HelpText<"Alias for -llvm-options">;
+
+def target_features : Separate<["-"], "target-features">,
+  HelpText<"Auxilirary target features">;
+def target_features_eq : Joined<["-"], "target-features=">,
+  Alias<target_features>, HelpText<"Alias for -target_features">;
+
+def binary_format : Separate<["-"], "binary-format">,
+  HelpText<"Set in which format should be generated binary; values: 'cm', 'ocl' or 'ze'">;
+def binary_format_eq : Joined<["-"], "binary-format=">,
+  Alias<binary_format>, HelpText<"Alias for -binary-format <value>">;
+
+def runtime : Separate<["-"], "runtime">, Alias<binary_format>,
+  HelpText<"Set runtime for which binary should be generated; values: 'ocl' or 'cm'">;
+def runtime_eq : Joined<["-"], "runtime=">,
+  Alias<binary_format>, HelpText<"Alias for -runtime <value>">;
+
+def ftime_report : Flag<["-"], "ftime-report">,
+  HelpText<"Print timing summary of each stage of compilation">;
+
+def globals_localization : Separate<["-"], "globals-localization">,
+  HelpText<"globals localization optimization configuration; values:\n"
+           "\t'all' - localize all globals,\n\t'no' - don't localize globals,\n"
+           "\t'vector' - localize all vector globals the rest is partially "
+           "localized,\n\t'partial' - compiler may localize some globals "
+           "according to its heuristics">;
+def globals_localization_eq : Joined<["-"], "globals-localization=">,
+  Alias<globals_localization>, HelpText<"Alias for -globals-localization <value>">;
+
+}
+// }} Internal options

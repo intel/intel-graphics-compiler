@@ -33,10 +33,9 @@ namespace options {
 constexpr unsigned FirstNonBuiltinFlagNum = 4;
 
 enum Flags {
-  // VC backend specific options.
-  VCApiOption = (1 << FirstNonBuiltinFlagNum),
-  VCInternalOption = (VCApiOption << 1),
-  IgcmcApiOption = (VCInternalOption << 1),
+  ApiOption = (1 << FirstNonBuiltinFlagNum),
+  InternalOption = (ApiOption << 1),
+  IgcmcApiOption = (InternalOption << 1),
 };
 
 enum ID {
