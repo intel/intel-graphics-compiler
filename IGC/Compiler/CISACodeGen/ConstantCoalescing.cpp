@@ -799,8 +799,24 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
                 (ub - lb) <= MAX_VECTOR_NUM_ELEMENTS &&
                 (isDwordAligned || eltid >= cur_chunk->chunkStart))
             {
-                cov_chunk = cur_chunk;
-                break;
+                // Since the algorithm allows changing chunk's starting point as
+                // well as the size it is possible that a load "matches"
+                // multiple chunks, e.g., a load at offset 1 (in elements) would
+                // potentially "match" a chunk at offset 0 and a chunk at offset
+                // 4. Compare chunks' starting points and avoid creating
+                // potentially overlapping chunks. The condition assumes that
+                // in most cases shaders read constant buffer data pieces that
+                // are OWORD aligned.
+
+                // TODO: we need to consider reworking this code to first gather
+                // information about loaded data (starting offsets and sizes)
+                // and then split loaded data into chunks.
+                const uint owordSizeInElems = SIZE_OWORD / scalarSizeInBytes;
+                if (!cov_chunk ||
+                    (eltid / owordSizeInElems == cur_chunk->chunkStart / owordSizeInElems))
+                {
+                    cov_chunk = cur_chunk;
+                }
             }
         }
     }
