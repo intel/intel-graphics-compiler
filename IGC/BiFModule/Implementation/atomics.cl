@@ -1644,13 +1644,15 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f32_i32_i32_f32, )( __p
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
 {
+    // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     float orig;
-    FENCE_PRE_OP(Scope, Semantics, true)
-    SPINLOCK_START(global)
-    orig = *Pointer;
-    *Pointer = orig + Value;
-    SPINLOCK_END(global)
-    FENCE_POST_OP(Scope, Semantics, true)
+    float desired;
+    do {
+        orig = as_float(SPIRV_BUILTIN(AtomicLoad, _p1i32_i32_i32, )((__global int*)Pointer, Scope, Semantics));
+        desired = orig + Value;
+    } while(as_int(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i32_i32_i32_i32_i32_i32, )(
+                                (__global int*)Pointer, Scope, Semantics, Semantics,
+                                as_int(desired), as_int(orig)));
     return orig;
 }
 
@@ -1689,13 +1691,15 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )( __
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
 {
+    // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     double orig;
-    FENCE_PRE_OP(Scope, Semantics, true)
-    SPINLOCK_START(global)
-    orig = *Pointer;
-    *Pointer = orig + Value;
-    SPINLOCK_END(global)
-    FENCE_POST_OP(Scope, Semantics, true)
+    double desired;
+    do {
+        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics));
+        desired = orig + Value;
+    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )(
+                                (__global long*)Pointer, Scope, Semantics, Semantics,
+                                as_long(desired), as_long(orig)));
     return orig;
 }
 
@@ -1810,13 +1814,15 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f64_i32_i32_f64, )( pr
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
 {
+    // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     double orig;
-    FENCE_PRE_OP(Scope, Semantics, true)
-    SPINLOCK_START(global)
-    orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
-    SPINLOCK_END(global)
-    FENCE_POST_OP(Scope, Semantics, true)
+    double desired;
+    do {
+        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics));
+        desired = ( orig < Value ) ? orig : Value;
+    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )(
+                                (__global long*)Pointer, Scope, Semantics, Semantics,
+                                as_long(desired), as_long(orig)));
     return orig;
 }
 
@@ -1931,13 +1937,15 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f64_i32_i32_f64, )( pr
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
 {
+    // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     double orig;
-    FENCE_PRE_OP(Scope, Semantics, true)
-    SPINLOCK_START(global)
-    orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
-    SPINLOCK_END(global)
-    FENCE_POST_OP(Scope, Semantics, true)
+    double desired;
+    do {
+        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p1i64_i32_i32, )((__global long*)Pointer, Scope, Semantics));
+        desired = ( orig > Value ) ? orig : Value;
+    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )(
+                                (__global long*)Pointer, Scope, Semantics, Semantics,
+                                as_long(desired), as_long(orig)));
     return orig;
 }
 
