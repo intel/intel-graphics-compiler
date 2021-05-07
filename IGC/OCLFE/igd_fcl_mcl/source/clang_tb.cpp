@@ -1498,6 +1498,12 @@ namespace TC
 
         optionsEx += " -D__ENDIAN_LITTLE__";
 
+        // Workaround for Clang issue.
+        // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.
+        if (optionsEx.find("__IMAGE_SUPPORT__") == std::string::npos) {
+            optionsEx += " -U__IMAGE_SUPPORT__";
+        }
+
         IOCLFEBinaryResult *pResultPtr = NULL;
 #ifdef _WIN32
         int res = m_CCModule.pCompile(
