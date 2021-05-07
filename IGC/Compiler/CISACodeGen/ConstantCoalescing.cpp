@@ -435,11 +435,13 @@ void ConstantCoalescing::ProcessBlock(
             if ((int32_t)offsetInBytes >= 0)
             {
                 uint maxEltPlus = 1;
+                if (!isProfitableLoad(ldRaw, maxEltPlus))
+                {
+                    continue;
+                }
                 uint addrSpace = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
                 if (wiAns->isUniform(ldRaw))
                 {
-                    if (!isProfitableLoad(ldRaw, maxEltPlus))
-                        continue;
                     MergeUniformLoad(
                         ldRaw,
                         ldRaw->getResourceValue(),
@@ -449,20 +451,10 @@ void ConstantCoalescing::ProcessBlock(
                         maxEltPlus,
                         baseOffsetInBytes ? indcb_owloads : dircb_owloads);
                 }
-                else
+                else if (bufType == BINDLESS_CONSTANT_BUFFER
+                         )
                 {
-#ifdef SUPPORT_GATHER4
-                    MergeScatterLoad(
-                        ldRaw,
-                        ldRaw->getResourceValue(),
-                        addrSpace,
-                        baseOffsetInBytes,
-                        offsetInBytes,
-                        maxEltPlus,
-                        indcb_gathers);
-#else
-                    if (bufType == BINDLESS_CONSTANT_BUFFER &&
-                        UsesTypedConstantBuffer(m_ctx, bufType))
+                    if (UsesTypedConstantBuffer(m_ctx, bufType))
                     {
                         ScatterToSampler(
                             ldRaw,
@@ -472,7 +464,17 @@ void ConstantCoalescing::ProcessBlock(
                             offsetInBytes,
                             indcb_gathers);
                     }
-#endif
+                    else if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOfStatefulNonUniformLoads))
+                    {
+                        MergeScatterLoad(
+                            ldRaw,
+                            ldRaw->getResourceValue(),
+                            addrSpace,
+                            baseOffsetInBytes,
+                            offsetInBytes,
+                            maxEltPlus,
+                            indcb_gathers);
+                    }
                 }
             }
             continue;
@@ -567,17 +569,23 @@ void ConstantCoalescing::ProcessBlock(
                         {   // uniform
                             MergeUniformLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, indcb_owloads);
                         }
-                        else
+                        else if (bufType == CONSTANT_BUFFER)
                         {   // not uniform
-#ifdef SUPPORT_GATHER4
-                            MergeScatterLoad(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, maxEltPlus, indcb_gathers);
-#else
-                            if (bufType == CONSTANT_BUFFER &&
-                                UsesTypedConstantBuffer(m_ctx, bufType))
+                            if (UsesTypedConstantBuffer(m_ctx, bufType))
                             {
                                 ScatterToSampler(LI, nullptr, addrSpace, elt_idxv, offsetInBytes, indcb_gathers);
                             }
-#endif
+                            else if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOfStatefulNonUniformLoads))
+                            {
+                                MergeScatterLoad(
+                                    LI,
+                                    nullptr,
+                                    addrSpace,
+                                    elt_idxv,
+                                    offsetInBytes,
+                                    maxEltPlus,
+                                    indcb_gathers);
+                            }
                         }
                     }
                 }
@@ -1030,8 +1038,57 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk* cov_chunk, Instruction* load,
     }
     else
     {
-        // bindless case
-        IGC_ASSERT_MESSAGE(0, "TODO");
+        IGC_ASSERT(isa<LdRawIntrinsic>(load0));
+        IGC_ASSERT(isa<LdRawIntrinsic>(load));
+        LdRawIntrinsic* ldRaw0 = cast<LdRawIntrinsic>(load0);
+        LdRawIntrinsic* ldRaw1 = cast<LdRawIntrinsic>(load);
+        IGC_ASSERT(ldRaw0->getResourceValue()->getType() == ldRaw1->getResourceValue()->getType());
+        Type* types[] =
+        {
+            vty,
+            ldRaw0->getResourceValue()->getType(),
+        };
+        Function* ldRawFn = GenISAIntrinsic::getDeclaration(
+            curFunc->getParent(),
+            GenISAIntrinsic::GenISA_ldrawvector_indexed,
+            types);
+
+        Value* offsetInBuffer = ldRaw0->getOffsetValue();
+        if (eltid0 != cov_chunk->chunkStart)
+        {
+            // Chunk start was updated, need to create new offset in buffer.
+            Value* chunkStartOffset = irBuilder->getInt32(
+                cov_chunk->chunkStart * cov_chunk->elementSize);
+            Instruction* offsetInBufferInst = dyn_cast<Instruction>(offsetInBuffer);
+            if (cov_chunk->baseIdxV == nullptr)
+            {
+                offsetInBuffer = chunkStartOffset;
+            }
+            else if (offsetInBufferInst &&
+                offsetInBufferInst->hasOneUse() &&
+                (offsetInBufferInst->getOpcode() == Instruction::Add || offsetInBufferInst->getOpcode() == Instruction::Or) &&
+                offsetInBufferInst->getOperand(0) == cov_chunk->baseIdxV &&
+                isa<ConstantInt>(offsetInBufferInst->getOperand(0)))
+            {
+                offsetInBufferInst->setOperand(1, chunkStartOffset);
+            }
+            else
+            {
+                offsetInBuffer = irBuilder->CreateAdd(
+                    cov_chunk->baseIdxV, chunkStartOffset);
+                wiAns->incUpdateDepend(offsetInBuffer, wiAns->whichDepend(cov_chunk->baseIdxV));
+            }
+        }
+        IGC_ASSERT(!ldRaw0->isVolatile() && !ldRaw1->isVolatile());
+        Value* args[] =
+        {
+            ldRaw0->getResourceValue(),
+            offsetInBuffer,
+            ldRaw0->getAlignmentValue(),
+            irBuilder->getFalse()
+        };
+        cov_chunk->chunkIO = irBuilder->CreateCall(ldRawFn, args, ldRaw0->getName());
+        wiAns->incUpdateDepend(cov_chunk->chunkIO, wiAns->whichDepend(ldRaw0));
     }
 
     // add two splitters
