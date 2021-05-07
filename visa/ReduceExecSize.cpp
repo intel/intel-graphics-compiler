@@ -162,7 +162,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
 
     if (extypesize == numEltPerGRF<Type_UB>()/2 && inst->opcode() != G4_mov)
     {
-        fixPackedSource(i, bb, extype);
+        fixPackedSource(i, bb);
         extype = inst->getOpExecType(extypesize);
     }
 

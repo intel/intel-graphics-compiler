@@ -106,7 +106,7 @@ namespace vISA
         G4_SubReg_Align getDclAlignment(int opndBytes, G4_INST *inst, bool isScalar);
 
         // HW conformity check functions
-        void fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype);
+        void fixPackedSource(INST_LIST_ITER it, G4_BB *bb);
         bool fixMathInst(INST_LIST_ITER it, G4_BB *bb);
         bool fixMULInst(INST_LIST_ITER &it, G4_BB *bb);
         void fixMULHInst(INST_LIST_ITER &i, G4_BB *bb);

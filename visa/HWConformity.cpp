@@ -442,7 +442,7 @@ G4_Operand* HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum, G4
         dcl->getElemType());
 }
 
-void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB* bb, G4_Type extype)
+void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* inst = *it;
 
@@ -450,32 +450,29 @@ void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB* bb, G4_Type extype)
 
     for (int i = 0; i < inst->getNumSrc(); i++)
     {
-        G4_Operand* src = inst->getSrc(i);
-        if (!src || !(IS_VTYPE(src->getType())))
+        auto src = inst->getSrc(i);
+        if (!src)
+        {
+            continue;
+        }
+        if (!IS_VTYPE(src->getType()))
         {
             // Make sure other src operands are of word type only as this is a HW requirement
-            if (src &&
-                (src->getType() != Type_W &&
-                    src->getType() != Type_UW))
+            if (src->getType() != Type_W && src->getType() != Type_UW)
             {
                 nonTypeWFound = true;
             }
-            if (src &&
-                (src->getType() != Type_F))
+            if (src->getType() != Type_F)
             {
                 nonTypeFFound = true;
             }
             continue;
         }
-        G4_Type target_type = Type_W;
-        if (src->getType() == Type_VF)
-        {
-            target_type = Type_F;
-        }
-
-        if (target_type == Type_W && nonTypeWFound == true)
+        G4_Type target_type = src->getType() == Type_VF ? Type_F : Type_W;
+        if (target_type == Type_W && (nonTypeWFound || !builder.hasByteALU()))
         {
             // non-word type src is not allowed to co-exist with :v src
+            // also if platform lacks byte regioning :v src may be incompatible with later legalization
             incompatibleTypeFound = true;
         }
         else if (target_type == Type_F && nonTypeFFound == true)
@@ -484,10 +481,8 @@ void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB* bb, G4_Type extype)
             incompatibleTypeFound = true;
         }
 
-        // Insert a move only if immediate operand is not
-        // last src operand
-        if (i != inst->getNumSrc() - 1 ||
-            incompatibleTypeFound == true)
+        // Insert a move only if immediate operand is not last src operand
+        if (i != inst->getNumSrc() - 1 || incompatibleTypeFound == true)
         {
             inst->setSrc(insertMovBefore(it, i, target_type, bb), i);
         }

@@ -122,11 +122,10 @@ int IR_Builder::translateVISASampleInfoInst(
     else
     {
         useHeader = false;
-        msg = createTempVar(8, Type_UD, Any);
+        msg = createTempVar(getNativeExecSize(), Type_UD, GRFALIGN);
         G4_DstRegRegion *dst = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm* src0Imm = createImm(0, Type_UD);
-        auto temp = createMov(g4::SIMD8, dst, src0Imm, InstOpt_NoOpt, true);
-        temp->setOptionOn(InstOpt_WriteEnable);
+        (void) createMov(getNativeExecSize(), dst, src0Imm, InstOpt_WriteEnable, true);
         m0 = createSrc(msg->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
     }
     // Now create message descriptor
