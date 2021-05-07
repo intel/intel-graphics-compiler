@@ -571,7 +571,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // list.
 
     // Two edges of the region where loads are merged into.
-    int64_t HighestOffset = LdSize, HighestOffset4NonSeq = 0;
+    int64_t HighestOffset = LdSize, HighestOffset4Transpose = 0;
     int64_t LowestOffset = 0;
 
     bool bCheckNext = true;
@@ -651,7 +651,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
         unsigned NextLoadSize = unsigned(DL->getTypeStoreSize(NextLoadType));
 
-        bool enableNonSeqMerge = false;
+        bool enableTransposeSLM = false;
         uint32_t LeadInt2PtrOffset = 0;
 
         // detect if we can merge non-sequential SLM loads
@@ -665,46 +665,41 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         //   %1190 = load float, float addrspace(3) * %1185, align 4
         //   %1191 = load float, float addrspace(3) * %1187, align 4
         //   %1192 = load float, float addrspace(3) * %1189, align 4
-        if (IGC_IS_FLAG_ENABLED(MergeSLMLoad)) {
+        if (IGC_IS_FLAG_ENABLED(EnableMergeTransposeSLM)) {
             unsigned int resourceIndex = 0;
             bool direct = false;
             BufferType bufType = IGC::DecodeAS4GFXResource(
                 LeadingLoad->getPointerAddressSpace(), direct, resourceIndex);
 
             // initialize for first check in the loop
-            if (!HighestOffset4NonSeq)
-                HighestOffset4NonSeq = NextLoadSize * ArrayElem;
+            if (!HighestOffset4Transpose)
+                HighestOffset4Transpose = NextLoadSize * ArrayElem;
 
             if (SLM == bufType &&
-                (Off > ArrayElem) && !(Off % ArrayElem) &&
-                LeadingLoad->getPointerAddressSpace() == NextLoad->getPointerAddressSpace()) {
-
+                (Off > ArrayElem) && !(Off % ArrayElem))
+            {
                 GetElementPtrInst* LeadGEP = dyn_cast<GetElementPtrInst>(LeadingLoad->getOperand(0));
                 GetElementPtrInst* NextGEP = dyn_cast<GetElementPtrInst>(NextLoad->getOperand(0));
 
-                if (!LeadGEP || !NextGEP)
-                    continue;
-
-                if ((LeadGEP->getOperand(1) != NextGEP->getOperand(1)) ||
-                    (LeadGEP->getOperand(2) != NextGEP->getOperand(2)))
-                    continue;
-
-                if (!isa<IntToPtrInst>(LeadGEP->getPointerOperand()))
-                    continue;
-
-                if (IntToPtrInst* Int2Ptr =
-                    dyn_cast<IntToPtrInst>(LeadGEP->getPointerOperand())) {
-
+                if (LeadGEP && NextGEP &&
+                    (LeadGEP->getOperand(1) == NextGEP->getOperand(1)) &&
+                    (LeadGEP->getOperand(2) == NextGEP->getOperand(2)) &&
+                    isa<IntToPtrInst>(LeadGEP->getPointerOperand()))
+                {
+                    IntToPtrInst* Int2Ptr = dyn_cast<IntToPtrInst>(LeadGEP->getPointerOperand());
                     if (const ConstantInt* CI =
-                        dyn_cast<ConstantInt>(Int2Ptr->getOperand(0))) {
-                        if (CI->getType()->isIntegerTy()) {
+                        dyn_cast<ConstantInt>(Int2Ptr->getOperand(0)))
+                    {
+                        if (CI->getType()->isIntegerTy())
+                        {
                             LeadInt2PtrOffset = (uint32_t)CI->getZExtValue();
-                            enableNonSeqMerge = true;
+                            enableTransposeSLM = true;
                         }
-                    }
-                } // if (IntToPtrInst* Int2Ptr
-            } //if (SLM == bufType&& ..
-        } // if (IGC_IS_FLAG_ENABLED(MergeSLMLoad)
+                    } //  if (const ConstantInt* CI = ..
+                } // if (LeadGEP && NextGEP ...
+
+            } //if (SLM == bufType && ..
+        } // if (IGC_IS_FLAG_ENABLED(EnableMergeTransposeSLM)
 
         // By assuming dead load elimination always works correctly, if the load on
         // the same location is observed again, that is probably because there is
@@ -716,23 +711,23 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         int64_t newLowestOffset;
         uint64_t newNumElts;
 
-        if (IGC_IS_FLAG_ENABLED(MergeSLMLoad) && enableNonSeqMerge) {
+        if (IGC_IS_FLAG_ENABLED(EnableMergeTransposeSLM) && enableTransposeSLM) {
             if (!bCheckNext)
                 continue;
 
-            newHighestOffset = std::max(Off + ArrayElem * NextLoadSize, HighestOffset4NonSeq);
+            newHighestOffset = std::max(Off + ArrayElem * NextLoadSize, HighestOffset4Transpose);
             newLowestOffset = std::min(Off, LowestOffset);
             newNumElts = uint64_t((newHighestOffset - newLowestOffset) /
                 LdScalarSize) / ArrayElem;
 
-            // Update HighestOffset4NonSeq for each iteration and
+            // Update HighestOffset4Transpose for each iteration and
             // check against the next expected in the sequence
             // Example: Off = 576 when checking 'i32 5184' entry
             //   (Offset   0)  %1184 = inttoptr i32 4608 to[144 x float] addrspace(3) *
             //                 %1185 = getelementptr[144 x float], [144 x float] addrspace(3) * %1184, i32 0, i32 % 1179
             //   (Offset 576)  %1186 = inttoptr i32 5184 to[144 x float] addrspace(3) *
-            if (Off != HighestOffset4NonSeq) {
-                bCheckNext = false; // abort enableNonSeqMerge checking
+            if (Off != HighestOffset4Transpose) {
+                bCheckNext = false; // abort enableTransposeSLM checking
                 continue;
             }
 
@@ -741,6 +736,10 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             // would compute a size of 20 but, without this guard, would set
             // 'NumElts' to 2 as if the i32 wasn't present.
             if (uint64_t(newHighestOffset - newLowestOffset) % (LdScalarSize * ArrayElem) != 0)
+                continue;
+
+            // Limit to 3 entries for merging
+            if (newNumElts > 3)
                 continue;
         }
         else {
@@ -755,14 +754,14 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             // 'NumElts' to 2 as if the i32 wasn't present.
             if (uint64_t(newHighestOffset - newLowestOffset) % LdScalarSize != 0)
                 continue;
+
+            // Bail out if the resulting vector load is already not profitable.
+            if (newNumElts > profitVec[0])
+                continue;
         }
 
-        // Bail out if the resulting vector load is already not profitable.
-        if (newNumElts > profitVec[0])
-            continue;
-
-        if (enableNonSeqMerge) {
-            HighestOffset4NonSeq = newHighestOffset;
+        if (enableTransposeSLM) {
+            HighestOffset4Transpose = newHighestOffset;
         }
         else {
             HighestOffset = newHighestOffset;
@@ -861,36 +860,40 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     }
 
     uint32_t ArrayElem = 1;
-    if (IGC_IS_FLAG_ENABLED(MergeSLMLoad)) {
-        uint32_t newInt2PtrOffset = std::get<3>(LoadsToMerge.back());
+    uint32_t newInt2PtrOffset = std::get<3>(LoadsToMerge.back());
 
-        // lookup 144
-        //   %55 = getelementptr [144 x float], [144 x float] addrspace(3)* %54, i32 0, i32 %36
-        if (GetElementPtrInst* GEP =
-            dyn_cast<GetElementPtrInst>(FirstLoad->getPointerOperand())) {
-            Value* GEPptr = GEP->getPointerOperand();
-            if (GEPptr->getType()->isPointerTy()) {
-                Type* GEPElemType = GEPptr->getType()->getPointerElementType();
-                if (GEPElemType->isArrayTy())
-                    ArrayElem = (uint32_t)GEPElemType->getArrayNumElements();
-            }
+    // lookup 144
+    //   %55 = getelementptr [144 x float], [144 x float] addrspace(3)* %54, i32 0, i32 %36
+    if (GetElementPtrInst* GEP =
+        dyn_cast<GetElementPtrInst>(FirstLoad->getPointerOperand())) {
+        Value* GEPptr = GEP->getPointerOperand();
+        if (GEPptr->getType()->isPointerTy()) {
+            Type* GEPElemType = GEPptr->getType()->getPointerElementType();
+            if (GEPElemType->isArrayTy())
+                ArrayElem = (uint32_t)GEPElemType->getArrayNumElements();
         }
-        if (newInt2PtrOffset && ArrayElem) {
-            Type* newArrayType = PointerType::get(
-                ArrayType::get(LeadingLoadScalarType, ArrayElem * NumElts),
-                LeadingLoad->getPointerAddressSpace());
+    }
+    // If newInt2PtrOffset is non-zero, that means enableTransposeSLM is set
+    // Prepare new instructions
+    if (newInt2PtrOffset && ArrayElem) {
+        Type* newArrayType = PointerType::get(
+            ArrayType::get(LeadingLoadScalarType, ArrayElem * NumElts),
+            LeadingLoad->getPointerAddressSpace());
 
-            Value* NewInt2Ptr = Builder.getInt32(std::get<3>(LoadsToMerge.back()));
+        Value* NewInt2Ptr = Builder.getInt32(std::get<3>(LoadsToMerge.back()));
 
-            NewInt2Ptr = createBitOrPointerCast(NewInt2Ptr, newArrayType, Builder);
-            GetElementPtrInst* LeadGEP =
-                dyn_cast<GetElementPtrInst>(FirstLoad->getPointerOperand());
+        NewInt2Ptr = createBitOrPointerCast(NewInt2Ptr, newArrayType, Builder);
+        GetElementPtrInst* LeadGEP =
+            dyn_cast<GetElementPtrInst>(FirstLoad->getPointerOperand());
 
-            Value* GEPArg[] = { LeadGEP->getOperand(1), LeadGEP->getOperand(2) };
-
-            Ptr = Builder.CreateGEP(NewInt2Ptr, GEPArg);
-        } // if (newInt2PtrOffset && ArrayElem)
-    } // if (IGC_IS_FLAG_ENABLED(MergeSLMLoad)
+        // We need to adjust the buffer index by multiply by 3
+        // From x0, x1, ... y0, y1, ... z0, z1, ...
+        // To   x0, y0, z0, x1, y1, z1, ....
+        Value* NewGEPOffset =
+            Builder.CreateMul(LeadGEP->getOperand(2), Builder.getInt32(3));
+        Value* GEPArg[] = { LeadGEP->getOperand(1), NewGEPOffset };
+        Ptr = Builder.CreateGEP(NewInt2Ptr, GEPArg);
+    } // if (newInt2PtrOffset && ArrayElem)
 
     Type* NewLoadType = IGCLLVM::FixedVectorType::get(LeadingLoadScalarType, NumElts);
     Type* NewPointerType =
@@ -919,7 +922,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
             allInvariantLoads = false;
         }
 
-        if (IGC_IS_FLAG_ENABLED(MergeSLMLoad) && newInt2PtrOffset)
+        if (IGC_IS_FLAG_ENABLED(EnableMergeTransposeSLM) && newInt2PtrOffset)
             Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize / ArrayElem);
         else
             Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
@@ -1041,7 +1044,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     // be merged into the "previous" tailing store.
 
     // Two edges of the region where stores are merged into.
-    int64_t LastToLeading = StSize, LastToLeading4NonSeq = 0;
+    int64_t LastToLeading = StSize, LastToLeading4Transpose = 0;
     int64_t LeadingToFirst = 0;
 
     // List of instructions need dependency check.
@@ -1119,8 +1122,8 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
         unsigned NextStoreSize = unsigned(DL->getTypeStoreSize(NextStoreType));
 
-        bool enableNonSeqMerge = false;
-        // LeadInt2PtrOffset is non-zero for enableNonSeqMerge case so we can re-create
+        bool enableTransposeSLM = false;
+        // LeadInt2PtrOffset is non-zero for enableTransposeSLM case so we can re-create
         // new inttoptr inst.
         uint32_t LeadInt2PtrOffset = 0;
 
@@ -1135,19 +1138,17 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         //   store float% 51, float addrspace(3)*% 55, align 4
         //   store float% 52, float addrspace(3)*% 57, align 4
         //   store float% 53, float addrspace(3)*% 59, align 4
-        if (IGC_IS_FLAG_ENABLED(MergeSLMStore)) {
+        if (IGC_IS_FLAG_ENABLED(EnableMergeTransposeSLM)) {
             unsigned int resourceIndex = 0;
             bool direct = false;
             BufferType bufType = IGC::DecodeAS4GFXResource(
                 LeadingStore->getPointerAddressSpace(), direct, resourceIndex);
-            if (SLM == bufType &&
-                (abs(Off) > ArrayElem) &&
-                LeadingStore->getPointerAddressSpace() == NextStore->getPointerAddressSpace()) {
+            if (SLM == bufType && (abs(Off) > ArrayElem)) {
 
-                if ((Off > 0 && Off != LastToLeading4NonSeq + ArrayElem * NextStoreSize) ||
+                if ((Off > 0 && Off != LastToLeading4Transpose + ArrayElem * NextStoreSize) ||
                     (Off < 0 && (-Off) != (LeadingToFirst + ArrayElem * NextStoreSize)))
                     continue;
-                else {
+                else { // check if it matches the pattern for enableTransposeSLM
                     GetElementPtrInst* LeadGEP = dyn_cast<GetElementPtrInst>(LeadingStore->getOperand(1));
                     GetElementPtrInst* NextGEP = dyn_cast<GetElementPtrInst>(NextStore->getOperand(1));
                     if (!LeadGEP || !NextGEP)
@@ -1166,21 +1167,31 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
                             dyn_cast<ConstantInt>(Int2Ptr->getOperand(0))) {
                             if (CI->getType()->isIntegerTy()) {
                                 LeadInt2PtrOffset = (uint32_t)CI->getZExtValue();
-                                enableNonSeqMerge = true;
+                                enableTransposeSLM = true;
                             }
                         }
-                    }
-                }
+                    } //  if (IntToPtrInst* Int2Ptr
+
+                    if (!enableTransposeSLM)
+                        continue;
+
+                    NumElts += getNumElements(NextStoreType);
+
+                    // Limit to 3 entries for merging
+                    if (NumElts > 3)
+                        break;
+                } // else { // check if it matches the pattern for enableTransposeSLM
             } // if (SLM == bufType && ...
         } else if ((Off > 0 && Off != LastToLeading) ||
                    (Off < 0 && (-Off) != (LeadingToFirst + NextStoreSize)))
             // Check it's consecutive to the current stores to be merged.
             continue;
-
-        NumElts += getNumElements(NextStoreType);
-        // Bail out if the resulting vector store is already not profitable.
-        if (NumElts > profitVec[0])
-            break;
+        else {
+            NumElts += getNumElements(NextStoreType);
+            // Bail out if the resulting vector store is already not profitable.
+            if (NumElts > profitVec[0])
+                break;
+        }
 
         // This store is to be merged. Remove it from check list.
         CheckList.pop_back();
@@ -1197,7 +1208,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
 
         if (Off > 0) {
             LastToLeading = Off + NextStoreSize;
-            LastToLeading4NonSeq = Off;
+            LastToLeading4Transpose = Off;
         }
         else
             LeadingToFirst = (-Off);
@@ -1279,7 +1290,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         }
     }
 
-    // If newInt2PtrOffset is non-zero, that means enableNonSeqMerge is set
+    // If newInt2PtrOffset is non-zero, that means enableTransposeSLM is set
     // Prepare new instructions
     if (newInt2PtrOffset && ArrayElem) {
         Type* newArrayType = PointerType::get(
@@ -1291,10 +1302,13 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         GetElementPtrInst* LeadGEP =
             dyn_cast<GetElementPtrInst>(FirstStore->getOperand(1));
 
-        Value* GEPArg[] = { LeadGEP->getOperand(1), LeadGEP->getOperand(2) };
-
-        BitCastPtr = Builder.CreateGEP(
-            NewInt2Ptr, GEPArg);
+        // We need to adjust the buffer index by multiply by 3
+        // From x0, x1, ... y0, y1, ... z0, z1, ...
+        // To   x0, y0, z0, x1, y1, z1, ....
+        Value* NewGEPOffset =
+            Builder.CreateMul(LeadGEP->getOperand(2), Builder.getInt32(3));
+        Value* GEPArg[] = { LeadGEP->getOperand(1), NewGEPOffset };
+        BitCastPtr = Builder.CreateGEP(NewInt2Ptr, GEPArg);
     }
 
     for (auto& I : StoresToMerge) {
