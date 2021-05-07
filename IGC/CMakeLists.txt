@@ -1474,6 +1474,16 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
 
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
 
+if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
+  if(UNIX)
+    if(NOT ${CMAKE_BUILD_TYPE} EQUAL "Release")
+      add_dependencies("${IGC_BUILD__PROJ__igc_dll}" lld)
+    endif()
+  else()
+    add_dependencies("${IGC_BUILD__PROJ__igc_dll}" lld)
+  endif()
+endif()
+
 
 target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared"
@@ -1833,7 +1843,7 @@ if(UNIX)
 
   if(IGC_BUILD__LLVM_SOURCES AND IGC_OPTION__LLVM_LLD)
     # For now lld could be included only via building from LLVM sources
-    if(NOT (${CMAKE_BUILD_TYPE} EQUAL "Release"))
+    if(NOT ${CMAKE_BUILD_TYPE} EQUAL "Release")
       install(TARGETS lld RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
     endif()
   endif()
