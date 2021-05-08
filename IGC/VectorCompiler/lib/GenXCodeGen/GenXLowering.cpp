@@ -215,6 +215,7 @@ public:
   bool runOnFunction(Function &F);
 
 private:
+  bool translateSLMOWord(CallInst* CI, unsigned IID);
   bool splitGatherScatter(CallInst *CI, unsigned IID);
   bool processTwoAddressOpnd(CallInst *CI);
   bool processInst(Instruction *Inst);
@@ -1059,6 +1060,218 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   return true;
 }
 
+static Constant* getConstVector(Type* ITy, unsigned int n, unsigned int step) {
+    std::vector<Constant*> vConsts;
+    unsigned v = 0;
+    for (unsigned i = 0; i < n; i++) {
+        vConsts.push_back(ConstantInt::get(ITy, v));
+        v += step;
+    }
+    return ConstantVector::get(vConsts);
+}
+
+
+/***********************************************************************
+ * translateSLMOWord : lower SLM OWord load/store to gathers/scatters
+ * on legacy platform such as SKL.
+ *
+ * We only support the cases of 1,2,4,8 oword cases
+ */
+bool GenXLowering::translateSLMOWord(CallInst* CI, unsigned IID) {
+  LLVMContext& CTX = CI->getContext();
+  auto CIntTy = IntegerType::getInt32Ty(CTX);
+  const DebugLoc& DL = CI->getDebugLoc();
+  switch (IID) {
+  case GenXIntrinsic::genx_oword_ld:
+  case GenXIntrinsic::genx_oword_ld_unaligned: {
+    constexpr unsigned BtiIdx = 1;
+    constexpr unsigned AddrIdx = 2;
+    Value* BtiV = CI->getArgOperand(BtiIdx);
+    // only slm need this lowering
+    if (!isa<ConstantInt>(BtiV))
+      return false;
+    if (cast<ConstantInt>(BtiV)->getZExtValue() !=
+        visa::ReservedSurfaceIndex::RSI_Slm)
+      return false;
+
+    IRBuilder<> Builder(CI);
+    Value* AddrV = CI->getArgOperand(AddrIdx);
+    if (IID == GenXIntrinsic::genx_oword_ld) {
+      AddrV = Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
+    }
+    auto OrigVT = cast<VectorType>(CI->getType());
+    unsigned EltSize = OrigVT->getScalarSizeInBits();
+    unsigned EltCount = OrigVT->getNumElements();
+    // 1-oword is 16 bytes, using simd4 dword gather-scaled
+    // 2-oword is 32 bytes, using simd8 dword gather-scaled
+    // 4-oword is 64 bytes, using simd16 dword gather-scaled
+    // 8-oword is 128 bytes, using 2*simd16 dword gather-scaled
+    unsigned DWordCnt = (EltSize * EltCount) / 32;
+    assert(DWordCnt == 4 || DWordCnt == 8 || DWordCnt == 16 || DWordCnt == 32);
+    unsigned SimdWidth = (DWordCnt == 32) ? 16 : DWordCnt;
+    auto NewVT = IGCLLVM::FixedVectorType::get(CIntTy, DWordCnt);
+    auto GatherVT = IGCLLVM::FixedVectorType::get(CIntTy, SimdWidth);
+    // generate gather-scaled
+    auto VOffset = getConstVector(CIntTy, SimdWidth, 4);
+    // create constant for predicate
+    auto PredVTy = IGCLLVM::FixedVectorType::get(IntegerType::getInt1Ty(CTX), SimdWidth);
+    auto OnePredV = Constant::getAllOnesValue(PredVTy);
+    auto ScaleC = ConstantInt::get(Type::getInt16Ty(CTX), 0);
+    std::string IntrName =
+      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) + "gather.scaled";
+    auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+    // crease constant for num-blocks, 2 means 4-bytes
+    auto NumBlksC = ConstantInt::get(CIntTy, 2);
+    // create the intrinsic call
+    Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), ID, { GatherVT, PredVTy, VOffset->getType() });
+    Instruction* NewInst = nullptr;
+    if (DWordCnt == SimdWidth) {
+      NewInst = IntrinsicInst::Create(NewFDecl,
+          { OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+            VOffset, UndefValue::get(GatherVT) },
+          CI->getName() + ".gather", CI);
+      NewInst->setDebugLoc(DL);
+      LLVM_DEBUG(dbgs() << "SLM OWord Load:\n");
+      LLVM_DEBUG(CI->dump());
+      LLVM_DEBUG(dbgs() << "Translated to gather:\n");
+      LLVM_DEBUG(NewInst->dump());
+    }
+    else {  // need to two gathers for 8 owords
+      // 1st gather
+      auto New1st = IntrinsicInst::Create(NewFDecl,
+           { OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+             VOffset, UndefValue::get(GatherVT) },
+           CI->getName() + ".gather1", CI);
+      New1st->setDebugLoc(DL);
+      // 2nd gather
+      AddrV = Builder.CreateAdd(AddrV, llvm::ConstantInt::get(AddrV->getType(), 64));
+      auto New2nd = IntrinsicInst::Create(NewFDecl,
+           { OnePredV, NumBlksC, ScaleC, BtiV, AddrV,
+             VOffset, UndefValue::get(GatherVT) },
+           CI->getName() + ".gather2", CI);
+      New2nd->setDebugLoc(DL);
+      // write region, 1st half
+      Region R(NewVT);
+      R.Width = SimdWidth;
+      R.NumElements = SimdWidth;
+      R.Stride = 1;
+      R.VStride = 0;
+      R.Offset = 0;
+      auto PartialV = R.createWrRegion(UndefValue::get(NewVT), New1st, "", CI, CI->getDebugLoc());
+      // write region, 2nd half
+      R.Offset = 64;
+      NewInst = R.createWrRegion(PartialV, New2nd, "", CI, CI->getDebugLoc());
+      LLVM_DEBUG(dbgs() << "SLM OWord Load:\n");
+      LLVM_DEBUG(CI->dump());
+      LLVM_DEBUG(dbgs() << "Translated to gather:\n");
+      LLVM_DEBUG(New1st->dump());
+      LLVM_DEBUG(New2nd->dump());
+    }
+    // cast back if required
+    Value* Casted = NewInst;
+    if (NewVT != OrigVT)
+      Casted = CastInst::CreateBitOrPointerCast(
+          Casted, OrigVT, Casted->getName() + VALUE_NAME(".cast"), CI);
+    CI->replaceAllUsesWith(Casted);
+    ToErase.push_back(CI);
+    return true;
+  }
+  case GenXIntrinsic::genx_oword_st: {
+    constexpr unsigned DataIdx = 2;
+    constexpr unsigned AddrIdx = 1;
+    constexpr unsigned BtiIdx = 0;
+    Value* BtiV = CI->getArgOperand(BtiIdx);
+    // Only slm need this lowering
+    if (!isa<ConstantInt>(BtiV))
+      return false;
+    if (cast<ConstantInt>(BtiV)->getZExtValue() !=
+        visa::ReservedSurfaceIndex::RSI_Slm)
+      return false;
+
+    IRBuilder<> Builder(CI);
+    Value* AddrV = CI->getArgOperand(AddrIdx);
+    AddrV = Builder.CreateShl(AddrV, llvm::ConstantInt::get(AddrV->getType(), 4));
+
+    Value* Datum = CI->getArgOperand(DataIdx);
+    auto OrigVT = cast<VectorType>(Datum->getType());
+    unsigned EltSize = OrigVT->getScalarSizeInBits();
+    unsigned EltCount = OrigVT->getNumElements();
+    // 1-oword is 16 bytes, using simd4 dword scatter-scaled
+    // 2-oword is 32 bytes, using simd8 dword scatter-scaled
+    // 4-oword is 64 bytes, using simd16 dword scatter-scaled
+    // 8-oword is 128 bytes, using 2*simd16 dword scatter-scaled
+    unsigned DWordCnt = (EltSize * EltCount) / 32;
+    assert(DWordCnt == 4 || DWordCnt == 8 || DWordCnt == 16 || DWordCnt == 32);
+    auto NewVT = IGCLLVM::FixedVectorType::get(CIntTy, DWordCnt);
+    IGC_ASSERT_MESSAGE(CastInst::isBitCastable(NewVT, OrigVT),
+        "We expect resulting vectors to be bitcastable");
+    if (NewVT != OrigVT)
+      Datum = CastInst::CreateBitOrPointerCast(
+          Datum, NewVT, Datum->getName() + VALUE_NAME(".cast"), CI);
+    unsigned SimdWidth = (DWordCnt == 32) ? 16 : DWordCnt;
+
+    // generate scatter-scaled
+    auto VOffset = getConstVector(CIntTy, SimdWidth, 4);
+    // create constant for predicate
+    auto PredVTy = IGCLLVM::FixedVectorType::get(IntegerType::getInt1Ty(CTX), SimdWidth);
+    auto OnePredV = Constant::getAllOnesValue(PredVTy);
+    auto ScaleC = ConstantInt::get(Type::getInt16Ty(CTX), 0);
+    // create constant for num-blocks
+    auto NumBlksC = ConstantInt::get(CIntTy, 2);
+    std::string IntrName =
+        std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) + "scatter.scaled";
+    auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+    // create the intrinsic call
+    auto ScatterVT = IGCLLVM::FixedVectorType::get(CIntTy, SimdWidth);
+    Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
+              CI->getModule(), ID, { PredVTy, VOffset->getType(), ScatterVT });
+    if (DWordCnt == SimdWidth) {
+      // create one scatter
+      auto NewInst = Builder.CreateCall(
+               NewFDecl, { OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum });
+      NewInst->setDebugLoc(DL);
+      LLVM_DEBUG(dbgs() << "SLM OWord Store:\n");
+      LLVM_DEBUG(CI->dump());
+      LLVM_DEBUG(dbgs() << "Translated to scatter:\n");
+      LLVM_DEBUG(NewInst->dump());
+    }
+    else {  // 8-oword (i.e 32 dword) case
+      // scatter the 1st 16 dwords
+      // read region then scatter
+      Region R(ScatterVT);
+      R.Width = SimdWidth;
+      R.NumElements = SimdWidth;
+      R.Stride = 1;
+      R.VStride = 0;
+      R.Offset = 0;
+      auto Datum1st = R.createRdRegion(Datum, "", CI, CI->getDebugLoc());
+      auto New1st = Builder.CreateCall(
+          NewFDecl, { OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum1st });
+      New1st->setDebugLoc(DL);
+      // scatter the 2nd 16 dwords
+      // read region then scatter
+      AddrV = Builder.CreateAdd(AddrV, llvm::ConstantInt::get(AddrV->getType(), 64));
+      R.Offset = 64;
+      auto Datum2nd = R.createRdRegion(Datum, "", CI, CI->getDebugLoc());
+      auto New2nd = Builder.CreateCall(
+               NewFDecl, { OnePredV, NumBlksC, ScaleC, BtiV, AddrV, VOffset, Datum2nd });
+      New2nd->setDebugLoc(DL);
+      LLVM_DEBUG(dbgs() << "SLM OWord Store:\n");
+      LLVM_DEBUG(CI->dump());
+      LLVM_DEBUG(dbgs() << "Translated to scatter:\n");
+      LLVM_DEBUG(New1st->dump());
+      LLVM_DEBUG(New2nd->dump());
+    }
+    ToErase.push_back(CI);
+    return true;
+  }
+  default:
+    break;
+  }
+  return false;
+}
+
 
 /***********************************************************************
  * generatePrecicatedWrrForNewLoad : Generate predicated wrr if result
@@ -1133,6 +1346,14 @@ bool GenXLowering::processInst(Instruction *Inst) {
     if (Function *Callee = CI->getCalledFunction()) {
       IntrinsicID = GenXIntrinsic::getAnyIntrinsicID(Callee);
       IGC_ASSERT(CI->getNumArgOperands() < GenXIntrinsicInfo::OPNDMASK);
+    }
+    if (ST) {
+      // use gather/scatter to implement SLM oword load/store on
+      // legacy platforms
+      if (!ST->isCNLplus()) {
+        if (translateSLMOWord(CI, IntrinsicID))
+          return true;
+      }
     }
        // split gather/scatter/atomic into the width legal to the target
     if (splitGatherScatter(CI, IntrinsicID))
