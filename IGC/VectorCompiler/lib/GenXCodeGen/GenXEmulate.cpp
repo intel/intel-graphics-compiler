@@ -1581,10 +1581,13 @@ bool GenXEmulate::runOnModule(Module &M) {
     I->eraseFromParent();
   ToErase.clear();
 
+  auto IsOldEmulationFunction = [](const Function *F) {
+    return F->getName().contains("__cm_intrinsic_impl_");
+  };
   // Delete unused builtins, make used ones internal.
   for (auto I = M.begin(); I != M.end();) {
     Function &F = *I++;
-    if (isEmulationFunction(&F)) {
+    if (isEmulationFunction(&F) || IsOldEmulationFunction(&F)) {
       Changed = true;
       if (F.use_empty())
         F.eraseFromParent();
