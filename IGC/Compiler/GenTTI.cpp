@@ -152,13 +152,6 @@ namespace llvm {
         if (ExitingBlock)
             TripCount = IGCLLVM::getref(SE).getSmallConstantTripCount(L, ExitingBlock);
 
-        if (TripCount >= 128 && !L->empty())
-        {
-            uint32_t NewThreshold = (TripCount >= 512) ? 300 : 1200;
-            UP.Threshold        = MIN(LoopUnrollThreshold, NewThreshold);
-            UP.PartialThreshold = UP.Threshold;
-        }
-
         // Do not enable partial unrolling if the loop counter is float. It can cause precision issue.
         if (ExitingBlock) {
             if (UP.Partial) {
