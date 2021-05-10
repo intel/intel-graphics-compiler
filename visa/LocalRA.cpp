@@ -298,6 +298,7 @@ void LocalRA::preLocalRAAnalysis()
         const Options *opt = builder.getOptions();
         if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
             opt->getOption(vISA_enablePreemption) ||
+            stackCallRegSize > 0 ||
             opt->getOption(vISA_ReserveR0))
         {
             pregs->setR0Forbidden();
@@ -997,7 +998,8 @@ void GlobalRA::removeUnreferencedDcls()
         return (dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
             getNumRefs(dcl) == 0 &&
             dcl->getRegVar()->isPhyRegAssigned() == false &&
-            dcl != kernel.fg.builder->getBuiltinR0()
+            !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
+                dcl == kernel.fg.builder->getBuiltinR0())
             ;
     };
 
