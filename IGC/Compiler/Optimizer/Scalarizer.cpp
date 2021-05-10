@@ -72,7 +72,6 @@ ScalarizeFunction::~ScalarizeFunction()
 {
     releaseAllSCMEntries();
     delete[] m_SCMAllocationArray;
-    destroyDummyFunc();
     V_PRINT(scalarizer, "ScalarizeFunction destructor\n");
 }
 
@@ -155,6 +154,8 @@ bool ScalarizeFunction::runOnFunction(Function& F)
         IGC_ASSERT_MESSAGE((*index)->use_empty(), "Unable to remove used instruction");
         (*index)->eraseFromParent();
     }
+
+    destroyDummyFunc();
 
     V_PRINT(scalarizer, "\nCompleted scalarizing function: " << m_currFunc->getName() << "\n");
     return true;
