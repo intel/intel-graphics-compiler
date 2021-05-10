@@ -675,23 +675,20 @@ void IR_Builder::createPreDefinedVars()
 
 void IR_Builder::createBuiltinDecls()
 {
-
+    // realR0 is always tied to physical r0
     auto numR0DW = numEltPerGRF<Type_UD>();
-    builtinR0 = createDeclareNoLookup(
-        "BuiltinR0",
+    realR0 = createDeclareNoLookup(
+        "BuiltInR0",
         G4_INPUT,
         numR0DW,
         1,
         Type_UD);
-    builtinR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
-    realR0 = builtinR0;
+    realR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
 
-    if (m_options->getOption(vISA_enablePreemption))
-    {
-        G4_Declare *R0CopyDcl = createTempVar(numR0DW, Type_UD, GRFALIGN);
-        builtinR0 = R0CopyDcl;
-        R0CopyDcl->setDoNotSpill();
-    }
+    // builtinR0 either gets allocated to r0 or to a different
+    // register depending on conditions in RA.
+    builtinR0 = createTempVar(numR0DW, Type_UD, GRFALIGN, "R0_Copy");
+    builtinR0->setDoNotSpill();
 
     builtinA0 = createDeclareNoLookup(
         "BuiltinA0",

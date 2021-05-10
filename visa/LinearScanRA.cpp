@@ -785,7 +785,6 @@ void LinearScanRA::preRAAnalysis()
         const Options* opt = builder.getOptions();
         if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
             opt->getOption(vISA_enablePreemption) ||
-            (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()) ||
             opt->getOption(vISA_ReserveR0))
         {
             pregs->setR0Forbidden();
