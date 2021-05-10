@@ -87,6 +87,8 @@ void SplitAlignedScalars::gatherCandidates()
                     Data.numDefs++;
                     if (Data.firstDef == 0)
                         Data.firstDef = lexId;
+                    if (inst->isSend())
+                        Data.isSendDst = true;
                 }
             }
 
@@ -127,6 +129,12 @@ bool SplitAlignedScalars::heuristic(G4_Declare* dcl, Data& d)
     if (d.getDUMaxDist() < MinOptDist)
         return false;
 
+    //if (d.isSendDst)
+    //{
+        // disallow send dst to be replaced as a mov immediately after it in small BBs can cause latency problems
+        //return false;
+    //}
+
     return true;
 }
 
@@ -145,7 +153,7 @@ G4_Declare* SplitAlignedScalars::getDclForRgn(T* rgn, G4_Declare* newTopDcl)
         return newTopDcl;
 
     auto newAliasDcl = kernel.fg.builder->createTempVar(rgnDcl->getNumElems(),
-        rgnDcl->getElemType(), rgnDcl->getSubRegAlign());
+        rgnDcl->getElemType(), rgnDcl->getSubRegAlign(), "SPLITSCALAR");
     newAliasDcl->setAliasDeclare(newTopDcl, rgnDcl->getOffsetFromBase());
 
     return newAliasDcl;
@@ -159,7 +167,7 @@ void SplitAlignedScalars::run()
         if (newTopDcl == nullptr)
         {
             newTopDcl = kernel.fg.builder->createTempVar(oldDcl->getNumElems(),
-                oldDcl->getElemType(), G4_SubReg_Align::Any);
+                oldDcl->getElemType(), G4_SubReg_Align::Any, "SPLITSCALAR");
             oldNewDcls[oldDcl] = newTopDcl;
         }
         return newTopDcl;
