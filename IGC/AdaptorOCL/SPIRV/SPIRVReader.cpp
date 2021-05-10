@@ -3238,17 +3238,17 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     }
     break;
 
-  case OpAssumeTrueINTEL: {
+  case OpAssumeTrueKHR: {
     IRBuilder<> Builder(BB);
-    SPIRVAssumeTrueINTEL* BC = static_cast<SPIRVAssumeTrueINTEL*>(BV);
+    SPIRVAssumeTrueKHR* BC = static_cast<SPIRVAssumeTrueKHR*>(BV);
     Value* Condition = transValue(BC->getCondition(), F, BB);
     Condition = Builder.CreateTrunc(Condition, Type::getInt1Ty(*Context));
     return mapValue(BV, Builder.CreateAssumption(Condition));
   }
 
-  case OpExpectINTEL: {
+  case OpExpectKHR: {
     IRBuilder<> Builder(BB);
-    SPIRVExpectINTELInstBase* BC = static_cast<SPIRVExpectINTELInstBase*>(BV);
+    SPIRVExpectKHRInstBase* BC = static_cast<SPIRVExpectKHRInstBase*>(BV);
     Value* Val = transValue(BC->getOperand(0), F, BB);
     Value* ExpVal = transValue(BC->getOperand(1), F, BB);
     Function* ExpectFn = Intrinsic::getDeclaration(M, Intrinsic::expect, Val->getType());

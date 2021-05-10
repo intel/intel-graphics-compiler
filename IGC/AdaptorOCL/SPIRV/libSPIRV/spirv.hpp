@@ -611,7 +611,7 @@ enum Capability {
     CapabilityFunctionPointersINTEL = 5603,
     CapabilityIndirectReferencesINTEL = 5604,
     CapabilityAsmINTEL = 5606,
-    CapabilityOptimizationHintsINTEL = 5629,
+    CapabilityExpectAssumeKHR = 5629,
     CapabilitySubgroupAvcMotionEstimationINTEL = 5696,
     CapabilitySubgroupAvcMotionEstimationIntraINTEL = 5697,
     CapabilitySubgroupAvcMotionEstimationChromaINTEL = 5698,

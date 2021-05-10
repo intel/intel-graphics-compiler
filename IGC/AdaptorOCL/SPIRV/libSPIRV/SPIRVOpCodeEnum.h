@@ -381,8 +381,8 @@ _SPIRV_OP(AsmCallINTEL, 5611)
 _SPIRV_OP(AtomicFMinEXT, 5614)
 _SPIRV_OP(AtomicFMaxEXT, 5615)
 // optimization_hints
-_SPIRV_OP(AssumeTrueINTEL, 5630)
-_SPIRV_OP(ExpectINTEL, 5631)
+_SPIRV_OP(AssumeTrueKHR, 5630)
+_SPIRV_OP(ExpectKHR, 5631)
 // Function pointers
 _SPIRV_OP(ConstFunctionPointerINTEL, 5600)
 _SPIRV_OP(FunctionPointerCallINTEL, 5601)
