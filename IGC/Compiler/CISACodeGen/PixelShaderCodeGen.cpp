@@ -456,12 +456,7 @@ CVariable* CPixelShader::GetBaryReg(e_interpolation mode)
 
 CVariable* CPixelShader::GetBaryRegLoweredHalf(e_interpolation mode)
 {
-    IGC_ASSERT(mode == EINTERPOLATION_LINEAR ||
-        mode == EINTERPOLATION_LINEARCENTROID ||
-        mode == EINTERPOLATION_LINEARSAMPLE ||
-        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ||
-        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ||
-        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE);
+    IGC_ASSERT(IsInterpolationLinear(mode));
 
     const char* const name =
         mode == EINTERPOLATION_LINEAR ? "PerspectivePixelLoweredHalf" :
@@ -487,12 +482,7 @@ CVariable* CPixelShader::GetBaryRegLoweredHalf(e_interpolation mode)
 
 CVariable* CPixelShader::GetBaryRegLoweredFloat(e_interpolation mode)
 {
-    IGC_ASSERT(mode == EINTERPOLATION_LINEAR ||
-        mode == EINTERPOLATION_LINEARCENTROID ||
-        mode == EINTERPOLATION_LINEARSAMPLE ||
-        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ||
-        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ||
-        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE);
+    IGC_ASSERT(IsInterpolationLinear(mode));
 
     const char* const name =
         mode == EINTERPOLATION_LINEAR ? "PerspectivePixelLoweredFloat" :
@@ -893,6 +883,7 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
     pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
 
+
     CreateGatherMap();
     CreateConstantBufferOutput(pKernelProgram);
 
@@ -997,14 +988,16 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
             e_interpolation mode = static_cast<e_interpolation>(llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
             if (mode != EINTERPOLATION_CONSTANT)
             {
-                if (inst->getType()->isHalfTy())
                 {
-                    loweredSetupIndexes.insert(setupIndex);
-                    m_ModeUsedHalf.set(mode);
-                }
-                else
-                {
-                    m_ModeUsedFloat.set(mode);
+                    if (inst->getType()->isHalfTy())
+                    {
+                        loweredSetupIndexes.insert(setupIndex);
+                        m_ModeUsedHalf.set(mode);
+                    }
+                    else
+                    {
+                        m_ModeUsedFloat.set(mode);
+                    }
                 }
             }
             break;
@@ -1652,6 +1645,16 @@ bool CPixelShader::IsLastRTWrite(llvm::GenIntrinsicInst* inst)
 bool CPixelShader::LowerPSInput()
 {
     return (m_SIMDSize == SIMDMode::SIMD16 || !m_Platform->supportMixMode());
+}
+
+bool CPixelShader::IsInterpolationLinear(e_interpolation mode)
+{
+    return mode == EINTERPOLATION_LINEAR ||
+        mode == EINTERPOLATION_LINEARCENTROID ||
+        mode == EINTERPOLATION_LINEARSAMPLE ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVE ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVECENTROID ||
+        mode == EINTERPOLATION_LINEARNOPERSPECTIVESAMPLE;
 }
 
 void CPixelShader::emitPSInputLowering()

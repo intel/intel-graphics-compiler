@@ -8054,10 +8054,12 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
         m_encoder->Push();
     }
     break;
+
     default:
         IGC_ASSERT(0);
         break;
     }
+
     psProgram->DeclareSGV(usage);
 }
 

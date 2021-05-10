@@ -113,6 +113,8 @@ public:
     std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedHalf;
     std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedFloat;
     bool LowerPSInput();
+    static bool IsInterpolationLinear(e_interpolation mode);
+
 protected:
     void CreatePassThroughVar();
     bool IsReturnBlock(llvm::BasicBlock* bb);

@@ -790,7 +790,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     mpm.add(new LowPrecisionOpt());
 
-
     // 3D input/output lowering
     switch (ctx.type)
     {
