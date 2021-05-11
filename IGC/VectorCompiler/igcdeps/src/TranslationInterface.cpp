@@ -435,11 +435,6 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   if (!ExpOptions)
     return getError(ExpOptions.takeError(), OutputArgs);
 
-  // Reset options when everything is done here.
-  // This is needed to not interfere with subsequent translations.
-  const auto ClOptGuard =
-      llvm::make_scope_exit([]() { llvm::cl::ResetAllOptionOccurrences(); });
-
   BuildDiag Diag;
   vc::CompileOptions &Opts = ExpOptions.get();
   adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag);

@@ -37,6 +37,7 @@ IN THE SOFTWARE.
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
@@ -398,11 +399,31 @@ static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown runtime kind");
 }
 
+// Parse global llvm cl options.
+// Parsing of cl options should not fail under any circumstances.
+static void parseLLVMOptions(const std::string &Args) {
+  BumpPtrAllocator Alloc;
+  StringSaver Saver{Alloc};
+  SmallVector<const char *, 8> Argv{"vc-codegen"};
+  cl::TokenizeGNUCommandLine(Args, Saver, Argv);
+
+  // Reset all options to ensure that scalar part does not affect
+  // vector compilation.
+  cl::ResetAllOptionOccurrences();
+  cl::ParseCommandLineOptions(Argv.size(), Argv.data());
+}
+
 Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
                                         const vc::CompileOptions &Opts,
                                         const vc::ExternalData &ExtData,
                                         ArrayRef<uint32_t> SpecConstIds,
                                         ArrayRef<uint64_t> SpecConstValues) {
+  parseLLVMOptions(Opts.LLVMOptions);
+  // Reset options when everything is done here. This is needed to not
+  // interfere with subsequent translations (including scalar part).
+  const auto ClOptGuard =
+      llvm::make_scope_exit([]() { cl::ResetAllOptionOccurrences(); });
+
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpBinary(Input, "input.spv");
 
@@ -638,6 +659,41 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   return Error::success();
 }
 
+// Prepare llvm options string using different API and internal options.
+static std::string composeLLVMArgs(const opt::ArgList &ApiArgs,
+                                   const opt::ArgList &InternalArgs) {
+  std::string Result;
+
+  // Handle input llvm options.
+  if (const opt::Arg *BaseArg =
+          InternalArgs.getLastArg(IGC::options::OPT_llvm_options))
+    Result += BaseArg->getValue();
+
+  // Add visaopts if any.
+  for (auto OptID :
+       {IGC::options::OPT_igcmc_visaopts, IGC::options::OPT_Xfinalizer}) {
+    if (!ApiArgs.hasArg(OptID))
+      continue;
+    Result += " -finalizer-opts='";
+    Result += join(ApiArgs.getAllArgValues(OptID), " ");
+    Result += "'";
+  }
+
+  // Add gtpin options if any.
+  if (ApiArgs.hasArg(IGC::options::OPT_gtpin_rera))
+    Result += " -finalizer-opts='-GTPinReRA'";
+  if (ApiArgs.hasArg(IGC::options::OPT_gtpin_grf_info))
+    Result += " -finalizer-opts='-getfreegrfinfo -rerapostschedule'";
+  if (opt::Arg *A =
+          ApiArgs.getLastArg(IGC::options::OPT_gtpin_scratch_area_size)) {
+    Result += " -finalizer-opts='-GTPinScratchAreaSize ";
+    Result += A->getValue();
+    Result += "'";
+  }
+
+  return Result;
+}
+
 static Expected<vc::CompileOptions>
 fillOptions(const opt::ArgList &ApiOptions,
             const opt::ArgList &InternalOptions) {
@@ -650,70 +706,10 @@ fillOptions(const opt::ArgList &ApiOptions,
   if (Status)
     return {std::move(Status)};
 
+  // Prepare additional llvm options (like finalizer args).
+  Opts.LLVMOptions = composeLLVMArgs(ApiOptions, InternalOptions);
+
   return {std::move(Opts)};
-}
-
-// Parse global llvm cl options.
-// Parsing of cl codegen options should not fail under any circumstances.
-static void parseLLVMOptions(const opt::ArgList &Args) {
-  // Need to control cl options as vector compiler still uses these ones
-  // to control compilation process. This will be addressed later.
-  llvm::cl::ResetAllOptionOccurrences();
-  BumpPtrAllocator Alloc;
-  StringSaver Saver{Alloc};
-  SmallVector<const char *, 8> Argv{"vc-codegen"};
-  for (const std::string &ArgPart :
-       Args.getAllArgValues(IGC::options::OPT_llvm_options))
-    cl::TokenizeGNUCommandLine(ArgPart, Saver, Argv);
-  cl::ParseCommandLineOptions(Argv.size(), Argv.data());
-}
-
-// Derive llvm options from different API and internal options.
-static opt::DerivedArgList
-composeLLVMArgs(const opt::InputArgList &ApiArgs,
-                const opt::InputArgList &InternalArgs,
-                llvm::StringSaver &Saver) {
-  const opt::OptTable &Options = IGC::getOptTable();
-  const opt::Option LLVMOpt = Options.getOption(IGC::options::OPT_llvm_options);
-
-  // Pass through old value.
-  opt::DerivedArgList UpdatedArgs{InternalArgs};
-  if (const opt::Arg *BaseArg =
-          InternalArgs.getLastArg(IGC::options::OPT_llvm_options))
-    UpdatedArgs.AddSeparateArg(BaseArg, LLVMOpt, BaseArg->getValue());
-
-  // Add visaopts if any.
-  for (auto OptID :
-       {IGC::options::OPT_igcmc_visaopts, IGC::options::OPT_Xfinalizer}) {
-    if (!ApiArgs.hasArg(OptID))
-      continue;
-
-    const std::string FinalizerOpts =
-        llvm::join(ApiArgs.getAllArgValues(OptID), " ");
-    StringRef WrappedOpts =
-        Saver.save(Twine{"-finalizer-opts='"} + FinalizerOpts + "'");
-    UpdatedArgs.AddSeparateArg(ApiArgs.getLastArg(OptID), LLVMOpt, WrappedOpts);
-  }
-
-  if (opt::Arg *GTPinReRa = ApiArgs.getLastArg(IGC::options::OPT_gtpin_rera)) {
-    UpdatedArgs.AddSeparateArg(GTPinReRa, LLVMOpt,
-                               "-finalizer-opts='-GTPinReRA'");
-  }
-  if (opt::Arg *GTPinFreeGRFInfo =
-          ApiArgs.getLastArg(IGC::options::OPT_gtpin_grf_info)) {
-    UpdatedArgs.AddSeparateArg(GTPinFreeGRFInfo, LLVMOpt,
-                               "-finalizer-opts='-getfreegrfinfo -rerapostschedule'");
-  }
-  if (opt::Arg *GTPinScratchAreaSize =
-          ApiArgs.getLastArg(IGC::options::OPT_gtpin_scratch_area_size)) {
-    StringRef ScratchRef =
-        Saver.save(GTPinScratchAreaSize->getAsString(ApiArgs));
-    auto s = "-finalizer-opts='-GTPinScratchAreaSize " +
-             std::string(GTPinScratchAreaSize->getValue()) + "'";
-    UpdatedArgs.AddSeparateArg(GTPinScratchAreaSize, LLVMOpt, s);
-  }
-
-  return UpdatedArgs;
 }
 
 llvm::Expected<vc::CompileOptions>
@@ -730,13 +726,6 @@ vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions,
   if (!ExpInternalArgList)
     return ExpInternalArgList.takeError();
   const opt::InputArgList &InternalArgs = ExpInternalArgList.get();
-
-  // Prepare additional llvm options (like finalizer args).
-  opt::DerivedArgList LLVMArgs = composeLLVMArgs(ApiArgs, InternalArgs, Saver);
-
-  // This is a temporary solution until we remove all cl options that
-  // are accesible by user and affect compilation.
-  parseLLVMOptions(LLVMArgs);
 
   return fillOptions(ApiArgs, InternalArgs);
 }

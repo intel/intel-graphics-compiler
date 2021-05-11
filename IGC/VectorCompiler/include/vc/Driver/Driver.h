@@ -102,6 +102,7 @@ struct CompileOptions {
   bool DumpDebugInfo = false;
   bool TimePasses = false;
   GlobalsLocalizationMode GlobalsLocalization = GlobalsLocalizationMode::Vector;
+  std::string LLVMOptions;
 
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
