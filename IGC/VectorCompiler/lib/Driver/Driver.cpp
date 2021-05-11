@@ -403,14 +403,6 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
                                         const vc::ExternalData &ExtData,
                                         ArrayRef<uint32_t> SpecConstIds,
                                         ArrayRef<uint64_t> SpecConstValues) {
-  // Environment variable for additional options for debug purposes.
-  // This will exit with error if options is incorrect and should not
-  // be used to pass meaningful options required for compilation.
-#ifndef NDEBUG
-  constexpr const char *DebugEnvVarName = "IGC_VCCodeGenDebugOpts";
-  cl::ParseEnvironmentOptions("vc-codegen", DebugEnvVarName);
-#endif
-
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpBinary(Input, "input.spv");
 
