@@ -316,7 +316,35 @@ class IVSplitter {
   size_t Len = 0;
 
   enum class RegionType { LoRegion, HiRegion, FirstHalf, SecondHalf };
-  Region createSplitRegion(Type *Ty, RegionType RT);
+
+  // Description of a RegionType in terms of initial offset and stride.
+  // Both ELOffset and ElStride are in elements.
+  struct RegionTrait {
+    size_t ElOffset = 0;
+    size_t ElStride = 0;
+  };
+
+  // describeSplit: given a requested RegionType and a number of source elements
+  // returns the detailed descripton of how to form such a split (in terms of
+  // an initial offset and stride).
+  // Example:
+  //    describeSplit(SecondHalf, 10) should return RegionTrait{ 5, 1 }
+  static RegionTrait describeSplit(RegionType RT, size_t ElNum);
+
+  // splitConstantVector: given a vector of constant values create
+  // a new constant vector containing only values corresponding to the
+  // desired RegionType
+  // Example:
+  //    splitConstantVector({ 1, 2, 3, 4}, HiRegion) -> {2, 4}
+  // Note: since every RegionType needs half of the original elements, the
+  // size of the input vector is expected to be even.
+  static Constant *splitConstantVector(const SmallVectorImpl<Constant *> &KV,
+                                       RegionType RT);
+  // createSplitRegion: given a type of the source vector (expected to be
+  // vector of i32 with even number of elements) and the desired RegionType
+  // returns genx::Region that can be used to construct an equivalent
+  // rdregion intrinsic
+  static genx::Region createSplitRegion(Type *SrcTy, RegionType RT);
 
   std::pair<Value*, Value*> splitValue(Value& Val, RegionType RT1,
                                        const Twine& Name1, RegionType RT2,

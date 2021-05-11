@@ -1058,28 +1058,94 @@ IVSplitter::IVSplitter(Instruction &Inst, const unsigned *BaseOpIdx)
                                          Len * 2);
 }
 
-Region IVSplitter::createSplitRegion(Type *Ty, IVSplitter::RegionType RT) {
-  Region R(Ty);
+IVSplitter::RegionTrait IVSplitter::describeSplit(RegionType RT, size_t ElNum) {
+  RegionTrait Result;
+  if (RT == RegionType::LoRegion || RT == RegionType::HiRegion) {
+    // take every second element;
+    Result.ElStride = 2;
+    Result.ElOffset = (RT == RegionType::LoRegion) ? 0 : 1;
+  }
+  else if (RT == RegionType::FirstHalf || RT == RegionType::SecondHalf) {
+    // take every element, sequentially
+    Result.ElStride = 1;
+    Result.ElOffset = (RT == RegionType::FirstHalf) ? 0 : ElNum;
+  } else {
+    IGC_ASSERT_EXIT_MESSAGE(0, "incorrect region type");
+  }
+  return Result;
+}
+
+Constant *
+IVSplitter::splitConstantVector(const SmallVectorImpl<Constant *> &KV32,
+                                RegionType RT) {
+  IGC_ASSERT(KV32.size() % 2 == 0);
+  SmallVector<Constant *, 16> Result;
+  size_t ElNum = KV32.size() / 2;
+  Result.reserve(ElNum);
+  auto Split = describeSplit(RT, ElNum);
+  for (size_t i = 0; i < ElNum; ++i) {
+    size_t Offset = Split.ElOffset + i * Split.ElStride;
+    IGC_ASSERT(Offset < KV32.size());
+    Result.push_back(KV32[Offset]);
+  }
+  return ConstantVector::get(Result);
+}
+
+Region IVSplitter::createSplitRegion(Type *SrcTy, IVSplitter::RegionType RT) {
+  IGC_ASSERT(SrcTy->isVectorTy());
+  IGC_ASSERT(SrcTy->getScalarType()->isIntegerTy(32));
+  IGC_ASSERT(cast<VectorType>(SrcTy)->getNumElements() % 2 == 0);
+
+  size_t Len = cast<VectorType>(SrcTy)->getNumElements() / 2;
+
+  auto Split = describeSplit(RT, Len);
+
+  Region R(SrcTy);
   R.Width = Len;
   R.NumElements = Len;
   R.VStride = 0;
+  R.Stride = Split.ElStride;
+  // offset is encoded in bytes
+  R.Offset = Split.ElOffset * 4;
 
-  if (RT == RegionType::LoRegion || RT == RegionType::HiRegion) {
-    // take every second element;
-    R.Stride = 2;
-    // offset is encoded in bytes
-    R.Offset = (RT == RegionType::LoRegion) ? 0 : 4;
-  }
-  else if (RT == RegionType::FirstHalf || RT == RegionType::SecondHalf) {
-    // take every element
-    R.Stride = 1;
-    // offset is encoded in bytes
-    R.Offset = (RT == RegionType::FirstHalf) ? 0 : 4 * Len;
-  }
-  else {
-    IGC_ASSERT_EXIT_MESSAGE(0, "incorrect region type");
-  }
   return R;
+}
+
+// function takes 64-bit constant value (vector or scalar) and splits it
+// into an equivalent vector of 32-bit constant (as if it was Bitcast-ed)
+static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
+  auto I64To32 = [](const Constant &K) {
+    // we expect only scalar types here
+    IGC_ASSERT(!isa<VectorType>(K.getType()));
+    IGC_ASSERT(K.getType()->isIntegerTy(64));
+    auto *Ty32 = K.getType()->getInt32Ty(K.getContext());
+    if (isa<UndefValue>(K)) {
+      Constant *Undef = UndefValue::get(Ty32);
+      return std::make_pair(Undef, Undef);
+    }
+    auto *KI = cast<ConstantInt>(&K);
+    uint64_t Val64 = KI->getZExtValue();
+    const auto UI32ValueMask = std::numeric_limits<uint32_t>::max();
+    Constant *VLo =
+        ConstantInt::get(Ty32, static_cast<uint32_t>(Val64 & UI32ValueMask));
+    Constant *VHi = ConstantInt::get(Ty32, static_cast<uint32_t>(Val64 >> 32));
+    return std::make_pair(VLo, VHi);
+  };
+
+  IGC_ASSERT(K32.empty());
+  if (!isa<VectorType>(K.getType())) {
+    auto V32 = I64To32(K);
+    K32.push_back(V32.first);
+    K32.push_back(V32.second);
+    return;
+  }
+  unsigned ElNum = cast<VectorType>(K.getType())->getNumElements();
+  K32.reserve(2 * ElNum);
+  for (unsigned i = 0; i < ElNum; ++i) {
+    auto V32 = I64To32(*K.getAggregateElement(i));
+    K32.push_back(V32.first);
+    K32.push_back(V32.second);
+  }
 }
 
 std::pair<Value*, Value*> IVSplitter::splitValue(Value& Val, RegionType RT1,
@@ -1090,6 +1156,14 @@ std::pair<Value*, Value*> IVSplitter::splitValue(Value& Val, RegionType RT1,
   auto BaseName = Inst.getName();
 
   IGC_ASSERT(Val.getType()->getScalarType()->isIntegerTy(64));
+
+  if (isa<Constant>(Val)) {
+    SmallVector<Constant *, 32> KV32;
+    convertI64ToI32(cast<Constant>(Val), KV32);
+    Value *V1 = splitConstantVector(KV32, RT1);
+    Value *V2 = splitConstantVector(KV32, RT2);
+    return {V1, V2};
+  }
   auto *ShreddedVal = new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast", &Inst);
   ShreddedVal->setDebugLoc(DL);
 
