@@ -670,11 +670,19 @@ namespace IGC
 
     struct SOpenCLProgramInfo
     {
+        struct ZEBinRelocTable
+        {
+            std::vector<vISA::ZERelocEntry> globalReloc;
+            std::vector<vISA::ZERelocEntry> globalConstReloc;
+        };
+
         std::vector<std::unique_ptr<iOpenCL::InitConstantAnnotation> > m_initConstantAnnotation;
         std::vector<std::unique_ptr<iOpenCL::InitGlobalAnnotation> > m_initGlobalAnnotation;
         std::vector<std::unique_ptr<iOpenCL::ConstantPointerAnnotation> > m_initConstantPointerAnnotation;
         std::vector<std::unique_ptr<iOpenCL::GlobalPointerAnnotation> > m_initGlobalPointerAnnotation;
         std::vector<std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> > m_initKernelTypeAnnotation;
+
+        ZEBinRelocTable m_GlobalPointerAddressRelocAnnotation;
     };
 
     class CBTILayout

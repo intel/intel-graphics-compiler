@@ -2037,6 +2037,23 @@ namespace IGC
 
             ctx->m_programInfo.m_initConstantPointerAnnotation.push_back(std::move(initConstantPointer));
         }
+
+        // Pointer address relocation table data for GLOBAL buffer
+        for (const auto& globalRelocEntry : modMD->GlobalBufferAddressRelocInfo)
+        {
+            ctx->m_programInfo.m_GlobalPointerAddressRelocAnnotation.globalReloc.emplace_back(
+                (globalRelocEntry.PointerSize == 8) ? vISA::GenRelocType::R_SYM_ADDR : vISA::GenRelocType::R_SYM_ADDR_32,
+                (uint32_t)globalRelocEntry.BufferOffset,
+                globalRelocEntry.Symbol);
+        }
+        // Pointer address relocation table data for CONST buffer
+        for (const auto& constRelocEntry : modMD->ConstantBufferAddressRelocInfo)
+        {
+            ctx->m_programInfo.m_GlobalPointerAddressRelocAnnotation.globalConstReloc.emplace_back(
+                (constRelocEntry.PointerSize == 8) ? vISA::GenRelocType::R_SYM_ADDR : vISA::GenRelocType::R_SYM_ADDR_32,
+                (uint32_t)constRelocEntry.BufferOffset,
+                constRelocEntry.Symbol);
+        }
     }
 
     void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CShaderProgram* pKernel, Function* pFunc, MetaDataUtils* pMdUtils)
