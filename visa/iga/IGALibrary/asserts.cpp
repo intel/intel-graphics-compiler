@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -31,39 +15,29 @@ IN THE SOFTWARE.
 #include <cstdarg>
 #include <cstdlib>
 #include <cstdio>
-#include <string.h>
+#include <cstring>
+#include <iostream>
 
 #include "asserts.hpp"
 #include "strings.hpp"
 
 using namespace iga;
 
-static void OutputDebugConsoleImplVA(const char *pat, va_list &ap)
+
+void iga::OutputDebugConsoleImpl(const char *msg)
 {
 #ifdef _WIN32
-    OutputDebugStringA(formatF(pat, ap).c_str());
+    OutputDebugStringA(msg);
 #else
-//    TODO: gcc hooks or MAC semantics?
-//    fprintf(stderr, "%s", msg);
+    //    TODO: gcc hooks or other system log semantics?
+    //    std::cerr << msg;
 #endif
 }
 
 
-void iga::OutputDebugConsoleImpl(const char *pat, ...)
+void iga::FatalMessage(const char *msg)
 {
-    va_list ap;
-    va_start(ap, pat);
-    OutputDebugConsoleImplVA(pat,ap);
-    va_end(ap);
-}
-
-
-void iga::FatalMessage(const char *pat, ...)
-{
-    va_list ap;
-    va_start(ap, pat);
-    vfprintf(stderr, pat, ap);
-    va_end(ap);
+    std::cerr << msg;
 }
 
 
@@ -78,41 +52,36 @@ NORETURN_DECLSPEC void NORETURN_ATTRIBUTE iga::FatalExitProgram()
 }
 
 
-void iga::DebugTrace(const char *pat, ...)
+void iga::DebugTrace(const char *msg)
 {
-    va_list ap;
-    va_start(ap, pat);
-    OutputDebugConsoleImplVA(pat,ap);
-    vfprintf(stderr, pat, ap);
-    va_end(ap);
+    OutputDebugConsoleImpl(msg);
+    std::cerr << msg;
 }
 
 void iga::AssertFail(
     const char *file,
-    int line,
+    int         line,
     const char *expr,
     const char *msg)
 {
 
-    // prune ....\gfx_Development\Tools\IGAToolChain\IGA\Models\Models.cpp
+    // prune ....\IGALibrary\Models\Models.cpp
     // down to
-    //   IGA\Models\Models.cpp
+    //   IGALibrary\Models\Models.cpp
     const char *filesfx = file + strlen(file) - 1;
     while (filesfx > file) {
-        if (strncmp(filesfx,"IGA/",4) == 0 ||
-            strncmp(filesfx,"IGA\\",4) == 0)
+        if (strncmp(filesfx, "IGA/", 4) == 0 ||
+            strncmp(filesfx, "IGA\\", 4) == 0)
         {
             break;
         }
         filesfx--;
     }
-    if (expr) {
-        iga::FatalMessage("%s:%d: IGA_ASSERT(%s, %s)\n", filesfx, line, expr, msg);
-    } else {
-        iga::FatalMessage("%s:%d: IGA_ASSERT_FALSE(%s)\n", filesfx, line, msg);
-    }
-    // va_list va;
-    // va_start(va,&pat);
-    // va_end(va);
-    // assert(false && (M));
+    auto fmtdMsg =
+        expr ?
+            iga::format(filesfx, ":", line,
+                ": IGA_ASSERT(", expr, ", ", msg, ")\n") :
+            iga::format(filesfx, ":", line,
+                ": IGA_ASSERT_FALSE(", msg, ")\n");
+    FatalMessage(fmtdMsg.c_str());
 }

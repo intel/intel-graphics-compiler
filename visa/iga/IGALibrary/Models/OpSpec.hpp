@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -252,22 +236,6 @@ namespace iga
         bool implicitDstRegion(Region &rgn, bool isMacro) const;
 
 
-        Type defaultDstType() const {
-            Type type = Type::INVALID;
-            if (isSendOrSendsFamily()) {
-                type = Type::UD;
-                if (platform >= Platform::XE)
-                    type = Type::UB;
-            }
-            return type;
-        }
-        Type defaultSrcType() const {
-            Type type = Type::INVALID;
-            if (isSendOrSendsFamily()) {
-                return defaultDstType();
-            }
-            return type;
-        }
         bool hasImplicitDstType() const {
             Type type;
             return implicitDstTypeVal(type);
@@ -401,6 +369,12 @@ namespace iga
                 platform < Platform::XE &&
                 !is(Op::NOP) &&
                 !is(Op::ILLEGAL);
+        }
+
+
+        bool isDpasFamily() const {
+            return isOneOf(Op::DPAS, Op::DPASW
+            );
         }
     }; // struct OpSpec
 } // namespace iga::*

@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2020-2021 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -43,6 +27,8 @@ bool OpSpec::hasImpicitEm() const {
 
 
 bool OpSpec::hasDstSubregister(bool isMacro) const {
+    if (isDpasFamily())
+        return false;
     return !isMacro && !isSendOrSendsFamily();
 }
 
@@ -69,6 +55,9 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
         // e.g. madm and math.invm/sqrtm
         rgn = Region::DST1;
         return true;
+    } else if (isDpasFamily()) {
+        rgn = Region::DST1;
+        return true;
     } else {
         rgn = Region::INVALID;
         return false;
@@ -83,17 +72,28 @@ bool OpSpec::implicitDstTypeVal(Type &type) const {
             type = Type::UB;
         }
         return true;
+    } else if (isTypedBranch()) {
+        type = Type::D;
+        return true;
     }
     type = Type::INVALID;
     return false;
 }
 
+
 bool OpSpec::hasSrcSubregister(int srcOpIx, bool isMacro) const
 {
+    // only src2 of dpas has a subregister
+    if (isDpasFamily() && srcOpIx < 2)
+        return false;
+    // from the formatter used to use:
+    //   emitSubReg = !os.isSendOrSendsFamily() && (os.op != Op::BRC || srcIx != 1)
+    // => why BRC?
     // send instructions and math macros (including madm) don't emit
     // subregisters
     return !isSendOrSendsFamily() && !isMacro;
 }
+
 
 bool OpSpec::hasImplicitSrcRegion(
     int srcOpIx, ExecSize es, bool isMacro) const
@@ -137,6 +137,14 @@ Region OpSpec::implicitSrcRegion(
     } else if (isSendFamily() || isSendsFamily()) {
         // no regions on send's
         return Region::SRC010;
+    } else if (isDpasFamily()) {
+        if (srcOpIx == 2) {
+            // only an implicit region on src1
+            return Region::SRCXX1;
+        } else {
+            return Region::SRC1X0;
+        }
+        // return &Region::INVALID;
     }
     else {
         if (platform >= Platform::XE && isBranching())
@@ -211,6 +219,8 @@ bool OpSpec::supportsSubfunction() const {
         || op == Op::SENDS || op == Op::SENDSC
         || op == Op::SEND
         || op == Op::SYNC
+        || op == Op::BFN
+        || isDpasFamily()
         ;
 }
 
@@ -233,7 +243,7 @@ unsigned OpSpec::getSourceCount(Subfunction sf) const {
 bool OpSpec::isVariableLatency() const {
     return isSendOrSendsFamily()
         || is(Op::MATH)
-        ;
+        || isDpasFamily();
 }
 
 

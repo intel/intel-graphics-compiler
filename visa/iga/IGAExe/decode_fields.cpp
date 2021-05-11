@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2019-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -201,16 +185,17 @@ static void parseBitsAsHex(
           consume('_');
         }
         parseWord(2);
-        if (!consumeIf(sep)) {
-            addWord(ws[2]);
-            addWord(ws[3]);
-        } else {
+        if (consumeIf(sep)) {
             parseWord(1);
             consume(sep);
             parseWord(0);
 
             addWord(ws[0]);
             addWord(ws[1]);
+            addWord(ws[2]);
+            addWord(ws[3]);
+        } else {
+            // compacted
             addWord(ws[2]);
             addWord(ws[3]);
         }
@@ -222,7 +207,7 @@ static void parseBitsAsHex(
         isxdigit(inp[off + 1]) &&
         isspace(inp[off + 2]))
     {
-        // unpacked bytes
+        // unpacked spaced bytes (e.g. from hex dump)
         // 31 00 13 14 54 ...
         int b;
         while ((b = parseByte()) != -1) {
@@ -245,12 +230,17 @@ static igax::Bits parseBits(const std::string &inp, Opts &opts)
         parseBitsFromFile(inp, opts, bits);
     } else {
         bool allHexDigits = true, hasSeps = false;
-        for (size_t i = 0; i < inp.size(); i++) {
+        // strip leading 0x if it's present
+        size_t i = 0;
+        if (inp.size() >= 2 && inp[0] == '0' && (inp[1] == 'x' || inp[1] == 'X'))
+            i += 2;
+        for (; i < inp.size(); i++) {
             hasSeps |= inp[i] == '`' || inp[i] == '_';
             if (!isxdigit(inp[i]) && !isspace(inp[i]) &&
                 inp[i] != '`' && inp[i] != '_')
             {
                 allHexDigits = false;
+                break;
             }
         }
         if (allHexDigits) {

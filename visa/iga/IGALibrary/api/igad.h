@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2019-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -301,8 +285,8 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetIsSrcVector)(const kv_t *kv, int32_t pc
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetChannelOffset)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_MASK_CONTROL_STR "kv_get_mask_control"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetMaskControl)(const kv_t *kv, int32_t pc);
-
-
+#define IGA_KV_GET_SEND_EXBSO_STR "kv_get_send_exbso"
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetSendExBso)(const kv_t *kv, int32_t pc, int32_t *exbso);
 #define IGA_KV_GET_MESSAGE_TYPE_STR "kv_get_message_type"
 typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetMessageType)(const kv_t *kv, int32_t pc, int32_t *message_type_enum);
 #define IGA_KV_GET_MESSAGE_SFID_STR "kv_get_message_sfid"
@@ -396,6 +380,7 @@ typedef struct
     pIGAKVGetOpgroup           kv_get_opgroup;
     pIGAKVGetSendDescs         kv_get_send_descs;
     pIGAKVGetSendIndirectDescs kv_get_send_indirect_descs;
+    pIGAKVGetSendExBso         kv_get_send_exbso;
     pIGAKVGetExecutionSize     kv_get_execution_size;
     pIGAKVGetNumberSources     kv_get_number_sources;
     pIGAKVGetOpcode            kv_get_opcode;

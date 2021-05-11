@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -83,6 +67,7 @@ protected:
         RegRef reg,
         bool emitSubReg = true,
         bool isSIMT = false);
+    void formatSendSrcWithLength(const Operand &src, int srcLen);
     void formatDstType(const OpSpec &os, Type type);
     void formatSrcBare(const Operand &src);
 
@@ -515,6 +500,26 @@ private:
             } // else part of ex_desc
             break;
         case Op::SYNC:   subfunc = ToSyntax(i.getSyncFc()); break;
+        case Op::BFN:
+            if (opts.syntaxBfnSymbolicFunctions) {
+                // decode binary function names to symbolic
+                // bfn.(s0&s1|~s2)
+                subfunc += "(";
+                subfunc += i.getBfnFc().c_str();
+                subfunc += ")";
+            } else {
+                // use a raw value
+                // emit<uint32_t>(i.getBfnFc().value);
+                std::stringstream ss;
+                ss << "0x" << std::hex << std::setw(2) << std::setfill('0') <<
+                    std::uppercase << i.getBfnFc().value;
+                subfunc = ss.str();
+            }
+            break;
+        case Op::DPAS:
+        case Op::DPASW:
+            subfunc = ToSyntax(i.getDpasFc());
+            break;
         default:
             if (os.supportsBranchCtrl() &&
                 i.getBranchCtrl() == BranchCntrl::ON)
@@ -784,6 +789,9 @@ private:
                 semiColon.insert();
                 ss << debugSendDecode;
             }
+        } else if (i.is(Op::BFN) && !opts.syntaxBfnSymbolicFunctions) {
+            semiColon.insert();
+            ss << i.getBfnFc().c_str();
         }
 
         if (ss.tellp() > 0) {
@@ -870,8 +878,26 @@ void Formatter::formatDstType(const OpSpec &os, Type type)
     }
 }
 
+void Formatter::formatSendSrcWithLength(const Operand &src, int srcLen)
+{
+    emit(ANSI_REGISTER(src.getDirRegName()));
 
+    const RegInfo *ri = model.lookupRegInfoByRegName(src.getDirRegName());
+    if (ri == nullptr) {
+        emit("???");
+        return;
+    }
+    emit(ri->syntax);
+    int regNum = (int)src.getDirRegRef().regNum;
+    if (regNum != 0 || ri->hasRegNum()) {
+        emit(regNum);
+    }
 
+    // src register format: r10:4 means r10-r13 (used to be r10#4)
+    emit(":"); emit(srcLen);
+
+    emit(ANSI_RESET);
+}
 
 void Formatter::formatBareRegisterUnescaped(RegName regName, int regNum)
 {
@@ -984,7 +1010,23 @@ void Formatter::formatSrcOp(
 
     switch (src.getKind()) {
     case Operand::Kind::DIRECT: {
+        // If Src1.Length is not encoded in the ExDesc (but rather in EU ISA)
+        // then we need to emit Src1.Length somewhere else.  We've chosen
+        // to the suffix the source register.
+        //   e.g. r1:4
+        // This holds for XeHP with ExBSO
+        auto exDesc = i.getExtMsgDescriptor();
+        const bool isSendSrc1 = srcIx == SourceIndex::SRC1 &&
+            os.isSendOrSendsFamily();
+        auto src1NeedsLenSuffix =
+            isSendSrc1 && i.hasInstOpt(InstOpt::EXBSO);
         //
+        if (src1NeedsLenSuffix) {
+            formatSendSrcWithLength(
+                src,
+                i.getSrc1Length());
+            break;
+        }
         bool hasSubreg =
             os.hasSrcSubregister(static_cast<int>(srcIx), i.isMacro());
         bool isSimt =
@@ -1043,6 +1085,9 @@ void Formatter::formatSrcOp(
             break;
         case Type::UQ:
             emitHex(src.getImmediateValue().u64);
+            break;
+        case Type::BF:
+            emitHex(src.getImmediateValue().u16);
             break;
         case Type::HF:
             if (opts.hexFloats) {
@@ -1141,6 +1186,22 @@ void Formatter::formatInstOpts(
             emit("@");
             emit((int)di.minDist);
             break;
+        case SWSB::DistType::REG_DIST_ALL:
+            emit("A@");
+            emit((int)di.minDist);
+            break;
+        case SWSB::DistType::REG_DIST_FLOAT:
+            emit("F@");
+            emit((int)di.minDist);
+            break;
+        case SWSB::DistType::REG_DIST_INT:
+            emit("I@");
+            emit((int)di.minDist);
+            break;
+        case SWSB::DistType::REG_DIST_LONG:
+            emit("L@");
+            emit((int)di.minDist);
+            break;
         default:
             break;
         }
@@ -1169,7 +1230,6 @@ void Formatter::formatInstOpts(
     }
     emit('}');
 } // end formatInstOpts
-
 
 bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
     const auto desc = i.getMsgDescriptor();
@@ -1325,6 +1385,8 @@ void FormatOpts::addApiOpts(uint32_t fmtOpts)
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_DEPS) != 0;
     printLdSt =
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_LDST) != 0;
+    syntaxBfnSymbolicFunctions =
+        (fmtOpts & IGA_FORMATTING_OPT_PRINT_BFNEXPRS) != 0;
     printAnsi =
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_ANSI) != 0;
     printJson =

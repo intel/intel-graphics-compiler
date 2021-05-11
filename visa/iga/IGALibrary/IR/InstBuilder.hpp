@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -983,6 +967,38 @@ public:
         m_depInfo.distType = swsb.distType;
         if (swsb.distType != SWSB::DistType::NO_DIST)
             m_depInfo.regDist = swsb.minDist;
+    }
+
+    void InstDpasDstOp(
+        const Loc &,
+        RegName rnm,
+        RegRef reg,
+        Type ty)
+    {
+        m_dst.kind = Operand::Kind::DIRECT;
+        m_dst.regOpDstMod = DstModifier::NONE;
+        m_dst.regOpName = rnm;
+        m_dst.regOpReg = reg;
+        m_dst.regOpRgn = m_opSpec->implicitDstRegion(false);
+        m_dst.type = ty;
+    }
+    void InstDpasSrcOp(
+        int srcOpIx,
+        const Loc &loc,
+        RegName rnm,
+        RegRef reg,
+        Type ty)
+    {
+        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
+
+        m_srcs[srcOpIx].loc = loc;
+        m_srcs[srcOpIx].kind = Operand::Kind::DIRECT;
+        m_srcs[srcOpIx].regOpSrcMod = SrcModifier::NONE;
+        m_srcs[srcOpIx].regOpName = rnm;
+        m_srcs[srcOpIx].regOpReg = reg;
+        m_srcs[srcOpIx].regOpRgn =
+            m_opSpec->implicitSrcRegion(srcOpIx, m_execSize, false);
+        m_srcs[srcOpIx].type = ty;
     }
 
 

@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -51,8 +35,8 @@ IN THE SOFTWARE.
 // *   DEBUG_TRACE enabled via #define DEBUG_TRACE_ENABLED before including
 //   asserts.hpp.  Sends tracing statements to the output console and stderr
 //
-#if (defined(_DEBUG) || defined(_INTERNAL_ASSERTS)) && !defined(BUILD_FOR_GTX)
-#define IGA_ASSERT(C,M) \
+#if defined(_DEBUG) || defined(_INTERNAL_ASSERTS)
+#define IGA_ASSERT(C, M) \
     do { \
         if (!(C)) { \
             ::iga::AssertFail(__FILE__, __LINE__, #C, M); \
@@ -67,8 +51,8 @@ IN THE SOFTWARE.
     } while(0)
 // outputs a formatted message to the Windows debugger log
 // (see OutputDebugString(MSDN)).
-#define OUTPUT_DEBUG_CONSOLE(...) \
-    ::iga::OutputDebugConsoleImpl(__VA_ARGS__)
+#define OUTPUT_DEBUG_CONSOLE(M) \
+    ::iga::OutputDebugConsoleImpl(M)
 
 
 #else
@@ -77,12 +61,12 @@ IN THE SOFTWARE.
 //      IGA_ASSERT(var > 0, "...");
 // Typically we use var elsewhere, but if we don't MSVC warning W4189
 // pops in IGC and MDF.
-#define IGA_ASSERT(C,M) \
+#define IGA_ASSERT(C, M) \
     (void)(C)
 // A short hand for IGA_ASSERT(false, M)
 #define IGA_ASSERT_FALSE(M) \
     IGA_ASSERT(false, M)
-#define OUTPUT_DEBUG_CONSOLE(...)
+#define OUTPUT_DEBUG_CONSOLE(M)
 #endif
 
 
@@ -105,28 +89,29 @@ IN THE SOFTWARE.
 #endif
 
 // Similar to IGA_ASSERT_FALSE, but terminates the program in both debug
-// and rease mode
-#define IGA_FATAL(...) \
+// and release mode
+#define IGA_FATAL(M) \
     do { \
-       iga::FatalMessage(__VA_ARGS__); \
+       iga::FatalMessage(M); \
        iga::FatalExitProgram(); \
     } while (0)
 
 namespace iga {
     NORETURN_DECLSPEC void NORETURN_ATTRIBUTE FatalExitProgram(); // IGA_FATAL
-    void FatalMessage(const char *pat,...); // IGA_FATAL, IGA_ASSERT
-    void DebugTrace(const char *pat,...); // for DEBUG_TRACE
-    void OutputDebugConsoleImpl(const char *patt,...); // IGA_FATAL, DEBUG_TRACE
-    void AssertFail(const char *file, int line, const char *expr, const char *msg);
+    void FatalMessage(const char *msg); // IGA_FATAL, IGA_ASSERT
+    void DebugTrace(const char *msg); // for DEBUG_TRACE
+    void OutputDebugConsoleImpl(const char *msg); // IGA_FATAL, DEBUG_TRACE
+    void AssertFail(
+        const char *file, int line, const char *expr, const char *msg);
 }
 
 // A trace routine used for debugging to stderr and the debug console.
 // before including asserts.hpp, define DEBUG_TRACE_ENABLED
 #ifdef DEBUG_TRACE_ENABLED
-#define DEBUG_TRACE(...) \
-    DebugTrace(__VA_ARGS__)
+#define DEBUG_TRACE(M) \
+    DebugTrace(M)
 #else
-#define DEBUG_TRACE(...)
+#define DEBUG_TRACE(M)
 #endif
 
 

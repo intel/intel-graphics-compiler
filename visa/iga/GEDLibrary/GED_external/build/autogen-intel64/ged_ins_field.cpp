@@ -33,14 +33,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_enumerations_internal.h"
 #include "ged_ins_field_internal.h"
 #include "ged_ins_field.h"
-GED_FIELD_TYPE fieldTypesByField[116] =
+GED_FIELD_TYPE fieldTypesByField[127] =
 {
     0x3, // 0
     0x0, // 1
-    0x8000, // 2
-    0x0, // 3
+    0x0, // 2
+    0x8000, // 3
     0x0, // 4
-    0x103, // 5
+    0x0, // 5
     0x103, // 6
     0x103, // 7
     0x103, // 8
@@ -48,8 +48,8 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x103, // 10
     0x103, // 11
     0x103, // 12
-    0x102, // 13
-    0x103, // 14
+    0x103, // 13
+    0x102, // 14
     0x103, // 15
     0x103, // 16
     0x103, // 17
@@ -60,218 +60,240 @@ GED_FIELD_TYPE fieldTypesByField[116] =
     0x103, // 22
     0x103, // 23
     0x103, // 24
-    0x100, // 25
-    0x108, // 26
-    0x100, // 27
+    0x103, // 25
+    0x100, // 26
+    0x108, // 27
     0x100, // 28
-    0x102, // 29
-    0x103, // 30
-    0x100, // 31
+    0x100, // 29
+    0x102, // 30
+    0x103, // 31
     0x100, // 32
-    0x108, // 33
-    0x100, // 34
+    0x100, // 33
+    0x108, // 34
     0x100, // 35
-    0x103, // 36
+    0x100, // 36
     0x103, // 37
-    0x102, // 38
+    0x103, // 38
     0x102, // 39
     0x102, // 40
-    0x100, // 41
+    0x102, // 41
     0x100, // 42
     0x100, // 43
     0x100, // 44
-    0x108, // 45
-    0x100, // 46
+    0x100, // 45
+    0x108, // 46
     0x100, // 47
-    0x103, // 48
+    0x100, // 48
     0x103, // 49
-    0x102, // 50
+    0x103, // 50
     0x102, // 51
     0x102, // 52
-    0x104, // 53
-    0x103, // 54
+    0x102, // 53
+    0x104, // 54
     0x103, // 55
     0x103, // 56
     0x103, // 57
     0x103, // 58
-    0x100, // 59
+    0x103, // 59
     0x100, // 60
     0x100, // 61
-    0x103, // 62
+    0x100, // 62
     0x103, // 63
-    0x102, // 64
-    0x103, // 65
+    0x103, // 64
+    0x102, // 65
     0x103, // 66
     0x103, // 67
-    0x100, // 68
+    0x103, // 68
     0x100, // 69
-    0x102, // 70
+    0x100, // 70
     0x102, // 71
     0x102, // 72
-    0x100, // 73
+    0x102, // 73
     0x100, // 74
-    0x103, // 75
+    0x100, // 75
     0x103, // 76
-    0x108, // 77
+    0x103, // 77
     0x108, // 78
-    0x100, // 79
+    0x108, // 79
     0x100, // 80
     0x100, // 81
     0x100, // 82
     0x100, // 83
     0x100, // 84
-    0x103, // 85
+    0x100, // 85
     0x103, // 86
     0x103, // 87
     0x103, // 88
     0x103, // 89
     0x103, // 90
-    0x100, // 91
-    0x103, // 92
+    0x103, // 91
+    0x100, // 92
     0x103, // 93
-    0x100, // 94
+    0x103, // 94
     0x100, // 95
     0x100, // 96
     0x100, // 97
     0x100, // 98
     0x100, // 99
-    0x102, // 100
-    0x100, // 101
-    0x103, // 102
+    0x100, // 100
+    0x102, // 101
+    0x100, // 102
     0x103, // 103
     0x103, // 104
-    0x104, // 105
+    0x103, // 105
     0x104, // 106
-    0x102, // 107
-    0x100, // 108
+    0x104, // 107
+    0x102, // 108
     0x100, // 109
     0x100, // 110
     0x100, // 111
-    0x103, // 112
+    0x100, // 112
     0x103, // 113
-    0x100, // 114
-    0x100 // 115
+    0x103, // 114
+    0x100, // 115
+    0x100, // 116
+    0x102, // 117
+    0x102, // 118
+    0x103, // 119
+    0x103, // 120
+    0x103, // 121
+    0x103, // 122
+    0x100, // 123
+    0x100, // 124
+    0x100, // 125
+    0x100 // 126
 }; // fieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByField[116] =
+const char* fieldNameByField[127] =
 {
     "Opcode", // 0
     "CmptCtrl", // 1
-    "Reserved", // 2
-    "NumOfSourceOperands", // 3
-    "HasDestinationOperand", // 4
-    "AccessMode", // 5
-    "MaskCtrl", // 6
-    "DepCtrl", // 7
-    "ExecMaskOffsetCtrl", // 8
-    "ChannelOffset", // 9
-    "ThreadCtrl", // 10
-    "PredCtrl", // 11
-    "PredInv", // 12
-    "ExecSize", // 13
-    "CondModifier", // 14
-    "AccWrCtrl", // 15
-    "DebugCtrl", // 16
-    "Saturate", // 17
-    "DstRegFile", // 18
-    "DstDataType", // 19
-    "Src0RegFile", // 20
-    "Src0DataType", // 21
-    "Src1RegFile", // 22
-    "Src1DataType", // 23
-    "DstChanEn", // 24
-    "DstSubRegNum", // 25
-    "DstAddrImm", // 26
-    "DstRegNum", // 27
-    "DstAddrSubRegNum", // 28
-    "DstHorzStride", // 29
-    "DstAddrMode", // 30
-    "Src0ChanSel", // 31
-    "Src0SubRegNum", // 32
-    "Src0AddrImm", // 33
-    "Src0RegNum", // 34
-    "Src0AddrSubRegNum", // 35
-    "Src0SrcMod", // 36
-    "Src0AddrMode", // 37
-    "Src0HorzStride", // 38
-    "Src0Width", // 39
-    "Src0VertStride", // 40
-    "FlagSubRegNum", // 41
-    "FlagRegNum", // 42
-    "Src1ChanSel", // 43
-    "Src1SubRegNum", // 44
-    "Src1AddrImm", // 45
-    "Src1RegNum", // 46
-    "Src1AddrSubRegNum", // 47
-    "Src1SrcMod", // 48
-    "Src1AddrMode", // 49
-    "Src1HorzStride", // 50
-    "Src1Width", // 51
-    "Src1VertStride", // 52
-    "Imm", // 53
-    "Src2SrcMod", // 54
-    "SrcDataType", // 55
-    "Src0RepCtrl", // 56
-    "Src1RepCtrl", // 57
-    "Src2RepCtrl", // 58
-    "Src2ChanSel", // 59
-    "Src2SubRegNum", // 60
-    "Src2RegNum", // 61
-    "Src2RegFile", // 62
-    "Src2AddrMode", // 63
-    "Src2VertStride", // 64
-    "SFID", // 65
-    "DescRegFile", // 66
-    "DescDataType", // 67
-    "DescAddrSubRegNum", // 68
-    "DescRegNum", // 69
-    "DescHorzStride", // 70
-    "DescWidth", // 71
-    "DescVertStride", // 72
-    "MsgDesc", // 73
-    "ExMsgDesc", // 74
-    "EOT", // 75
-    "MathFC", // 76
-    "JIP", // 77
-    "UIP", // 78
-    "ControlIndex", // 79
-    "DataTypeIndex", // 80
-    "SubRegIndex", // 81
-    "Src0Index", // 82
-    "Src1Index", // 83
-    "DescIndex", // 84
-    "ExDescRegFile", // 85
-    "DstMathMacroExt", // 86
-    "Src0MathMacroExt", // 87
-    "Src1MathMacroExt", // 88
-    "Src2MathMacroExt", // 89
-    "BranchCtrl", // 90
-    "SourceIndex", // 91
-    "Src2DataType", // 92
-    "NoSrcDepSet", // 93
-    "ExFuncCtrl", // 94
-    "ExMsgLength", // 95
-    "ExDescAddrSubRegNum", // 96
-    "ExDescRegNum", // 97
-    "MsgDescCategory", // 98
-    "MsgDescScratchAddrOffset", // 99
-    "MsgDescScratchBlockSize", // 100
-    "MsgDescScratchInvalidateAfterRead", // 101
-    "MsgDescScratchChannelMode", // 102
-    "MsgDescScratchMessageType", // 103
-    "ExecutionDataType", // 104
-    "Src0TernaryImm", // 105
-    "Src2TernaryImm", // 106
-    "Src2HorzStride", // 107
-    "SWSB", // 108
-    "Src1IsImm", // 109
-    "Src0IsImm", // 110
-    "Src0SubRegNumByte", // 111
-    "SyncFC", // 112
-    "FusionCtrl", // 113
-    "DataTypeIndexNoDep", // 114
-    "CompactedImm" // 115
+    "", // 2
+    "Reserved", // 3
+    "NumOfSourceOperands", // 4
+    "HasDestinationOperand", // 5
+    "AccessMode", // 6
+    "MaskCtrl", // 7
+    "DepCtrl", // 8
+    "ExecMaskOffsetCtrl", // 9
+    "ChannelOffset", // 10
+    "ThreadCtrl", // 11
+    "PredCtrl", // 12
+    "PredInv", // 13
+    "ExecSize", // 14
+    "CondModifier", // 15
+    "AccWrCtrl", // 16
+    "DebugCtrl", // 17
+    "Saturate", // 18
+    "DstRegFile", // 19
+    "DstDataType", // 20
+    "Src0RegFile", // 21
+    "Src0DataType", // 22
+    "Src1RegFile", // 23
+    "Src1DataType", // 24
+    "DstChanEn", // 25
+    "DstSubRegNum", // 26
+    "DstAddrImm", // 27
+    "DstRegNum", // 28
+    "DstAddrSubRegNum", // 29
+    "DstHorzStride", // 30
+    "DstAddrMode", // 31
+    "Src0ChanSel", // 32
+    "Src0SubRegNum", // 33
+    "Src0AddrImm", // 34
+    "Src0RegNum", // 35
+    "Src0AddrSubRegNum", // 36
+    "Src0SrcMod", // 37
+    "Src0AddrMode", // 38
+    "Src0HorzStride", // 39
+    "Src0Width", // 40
+    "Src0VertStride", // 41
+    "FlagSubRegNum", // 42
+    "FlagRegNum", // 43
+    "Src1ChanSel", // 44
+    "Src1SubRegNum", // 45
+    "Src1AddrImm", // 46
+    "Src1RegNum", // 47
+    "Src1AddrSubRegNum", // 48
+    "Src1SrcMod", // 49
+    "Src1AddrMode", // 50
+    "Src1HorzStride", // 51
+    "Src1Width", // 52
+    "Src1VertStride", // 53
+    "Imm", // 54
+    "Src2SrcMod", // 55
+    "SrcDataType", // 56
+    "Src0RepCtrl", // 57
+    "Src1RepCtrl", // 58
+    "Src2RepCtrl", // 59
+    "Src2ChanSel", // 60
+    "Src2SubRegNum", // 61
+    "Src2RegNum", // 62
+    "Src2RegFile", // 63
+    "Src2AddrMode", // 64
+    "Src2VertStride", // 65
+    "SFID", // 66
+    "DescRegFile", // 67
+    "DescDataType", // 68
+    "DescAddrSubRegNum", // 69
+    "DescRegNum", // 70
+    "DescHorzStride", // 71
+    "DescWidth", // 72
+    "DescVertStride", // 73
+    "MsgDesc", // 74
+    "ExMsgDesc", // 75
+    "EOT", // 76
+    "MathFC", // 77
+    "JIP", // 78
+    "UIP", // 79
+    "ControlIndex", // 80
+    "DataTypeIndex", // 81
+    "SubRegIndex", // 82
+    "Src0Index", // 83
+    "Src1Index", // 84
+    "DescIndex", // 85
+    "ExDescRegFile", // 86
+    "DstMathMacroExt", // 87
+    "Src0MathMacroExt", // 88
+    "Src1MathMacroExt", // 89
+    "Src2MathMacroExt", // 90
+    "BranchCtrl", // 91
+    "SourceIndex", // 92
+    "Src2DataType", // 93
+    "NoSrcDepSet", // 94
+    "ExFuncCtrl", // 95
+    "ExMsgLength", // 96
+    "ExDescAddrSubRegNum", // 97
+    "ExDescRegNum", // 98
+    "MsgDescCategory", // 99
+    "MsgDescScratchAddrOffset", // 100
+    "MsgDescScratchBlockSize", // 101
+    "MsgDescScratchInvalidateAfterRead", // 102
+    "MsgDescScratchChannelMode", // 103
+    "MsgDescScratchMessageType", // 104
+    "ExecutionDataType", // 105
+    "Src0TernaryImm", // 106
+    "Src2TernaryImm", // 107
+    "Src2HorzStride", // 108
+    "SWSB", // 109
+    "Src1IsImm", // 110
+    "Src0IsImm", // 111
+    "Src0SubRegNumByte", // 112
+    "SyncFC", // 113
+    "FusionCtrl", // 114
+    "DataTypeIndexNoDep", // 115
+    "CompactedImm", // 116
+    "RepeatCount", // 117
+    "SystolicDepth", // 118
+    "Src2Precision", // 119
+    "Src2SubBytePrecision", // 120
+    "Src1Precision", // 121
+    "Src1SubBytePrecision", // 122
+    "BfnFC", // 123
+    "ExBSO", // 124
+    "CPS", // 125
+    "Src1Length" // 126
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
 GED_FIELD_TYPE pseudoFieldTypesByField[36] =

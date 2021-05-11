@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -36,6 +20,7 @@ namespace iga
         switch (opcode)
         {
         case Op::ADD:   op = GED_OPCODE_add;   break;
+        case Op::ADD3:  op = GED_OPCODE_add3;  break;
         case Op::ADDC:  op = GED_OPCODE_addc;  break;
         case Op::AND:   op = GED_OPCODE_and;   break;
         case Op::ASR:   op = GED_OPCODE_asr;   break;
@@ -44,6 +29,7 @@ namespace iga
         case Op::BFE:   op = GED_OPCODE_bfe;   break;
         case Op::BFI1:  op = GED_OPCODE_bfi1;  break;
         case Op::BFI2:  op = GED_OPCODE_bfi2;  break;
+        case Op::BFN:    op = GED_OPCODE_bfn;  break;
         case Op::BRC:   op = GED_OPCODE_brc;   break;
         case Op::BRD:   op = GED_OPCODE_brd;   break;
         case Op::BREAK: op = GED_OPCODE_break; break;
@@ -54,6 +40,8 @@ namespace iga
         case Op::CMPN:  op = GED_OPCODE_cmpn;  break;
         case Op::CONT:  op = GED_OPCODE_cont;  break;
         case Op::CSEL:  op = GED_OPCODE_csel;  break;
+        case Op::DPAS:  op = GED_OPCODE_dpas;  break;
+        case Op::DPASW: op = GED_OPCODE_dpasw; break;
         case Op::DP2:   op = GED_OPCODE_dp2;   break;
         case Op::DP3:   op = GED_OPCODE_dp3;   break;
         case Op::DP4:   op = GED_OPCODE_dp4;   break;
@@ -125,16 +113,17 @@ namespace iga
         GED_MODEL pltf = GED_MODEL_INVALID;
         switch (platform)
         {
-        case Platform::GEN7:   pltf = GED_MODEL_GEN_7;   break;
-        case Platform::GEN7P5: pltf = GED_MODEL_GEN_7_5; break;
-        case Platform::GEN8:   pltf = GED_MODEL_GEN_8;   break;
-        case Platform::GEN8LP: pltf = GED_MODEL_GEN_8_1; break;
-        case Platform::GEN9:   pltf = GED_MODEL_GEN_9;   break;
-        case Platform::GEN9LP: pltf = GED_MODEL_GEN_9;   break;
-        case Platform::GEN9P5: pltf = GED_MODEL_GEN_9;   break;
-        case Platform::GEN10:  pltf = GED_MODEL_GEN_10;  break;
-        case Platform::GEN11:  pltf = GED_MODEL_GEN_11;  break;
-        case Platform::XE: pltf = GED_MODEL_GEN_TGL; break;
+        case Platform::GEN7:   pltf = GED_MODEL_7;   break;
+        case Platform::GEN7P5: pltf = GED_MODEL_7_5; break;
+        case Platform::GEN8:   pltf = GED_MODEL_8;   break;
+        case Platform::GEN8LP: pltf = GED_MODEL_8_1; break;
+        case Platform::GEN9:   pltf = GED_MODEL_9;   break;
+        case Platform::GEN9LP: pltf = GED_MODEL_9;   break;
+        case Platform::GEN9P5: pltf = GED_MODEL_9;   break;
+        case Platform::GEN10:  pltf = GED_MODEL_10;  break;
+        case Platform::GEN11:  pltf = GED_MODEL_11;  break;
+        case Platform::XE: pltf = GED_MODEL_TGL; break;
+        case Platform::XE_HP:  pltf = GED_MODEL_XE_HP;  break;
         default:
             break;
         }
@@ -304,12 +293,40 @@ namespace iga
         case Type::V:  dataType = GED_DATA_TYPE_v; break;
         case Type::VF: dataType = GED_DATA_TYPE_vf; break;
         case Type::W:  dataType = GED_DATA_TYPE_w; break;
+        case Type::BF: dataType = GED_DATA_TYPE_bf; break;
+        case Type::S2:
+        case Type::S4:
+            dataType = GED_DATA_TYPE_b;
+            break;
+            // case Type::U1: no mapping as of today
+        case Type::U2:
+        case Type::U4:
+            dataType = GED_DATA_TYPE_ub;
+            break;
         default:
             break;
         }
         return dataType;
     }
 
+    static inline GED_PRECISION lowerSubBytePrecision(Type t)
+    {
+        GED_PRECISION precision = GED_PRECISION_INVALID;
+        switch (t) {
+        case Type::U1: precision = GED_PRECISION_u1; break;
+        case Type::U2: precision = GED_PRECISION_u2; break;
+        case Type::U4: precision = GED_PRECISION_u4; break;
+        case Type::UB: precision = GED_PRECISION_u8; break;
+        case Type::S2: precision = GED_PRECISION_s2; break;
+        case Type::S4: precision = GED_PRECISION_s4; break;
+        case Type::B:  precision = GED_PRECISION_s8; break;
+        case Type::BF: precision = GED_PRECISION_bf16; break;
+        case Type::HF: precision = GED_PRECISION_f16; break;
+        default:
+            break;
+        }
+        return precision;
+    }
 
 
     static inline GED_MATH_MACRO_EXT lowerSpecialAcc(MathMacroExt mme)

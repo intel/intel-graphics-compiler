@@ -1,28 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// #define DEBUG_TRACE_ENABLED
+// #define DEBUG_BLOCKS
+#define TRACE_BLOCK(...) \
+    DebugTrace(iga::format(__VA_ARGS__).c_str())
 
 #include "../Frontend/IRToString.hpp"
 #include "../asserts.hpp"
@@ -171,42 +157,42 @@ struct BlockInference
     }
 }; // class BlockInference
 
-#ifdef DEBUG_TRACE_ENABLED
+#ifdef DEBUG_BLOCKS
 static void traceOperand(const Operand &op) {
+    TRACE_BLOCK("  ");
     switch (op.getKind()) {
     case Operand::Kind::DIRECT:
-        DEBUG_TRACE(
-            "%s%d.%d",
-            ToString(op.getRegName()).c_str(),
-            (int)op.getReg().regNum,
-            (int)op.getReg().subRegNum);
+        TRACE_BLOCK(
+            ToSyntax(op.getDirRegName()),
+            (int)op.getDirRegRef().regNum, ".",
+            (int)op.getDirRegRef().subRegNum);
         break;
     case Operand::Kind::INDIRECT:
-        DEBUG_TRACE("%6s", "IND");
+        TRACE_BLOCK("IND");
         break;
     case Operand::Kind::IMMEDIATE:
-        DEBUG_TRACE("0x%llx", op.getImmediateValue().u64);
+        TRACE_BLOCK("0x", hex(op.getImmediateValue().u64));
         if (op.getType() == Type::F) {
-            DEBUG_TRACE("(=%f)", op.getImmediateValue().f32);
+            TRACE_BLOCK("(=", op.getImmediateValue().f32, ")");
         } else if (op.getType() == Type::DF) {
-            DEBUG_TRACE("(=%lf)", op.getImmediateValue().f64);
+            TRACE_BLOCK("(=", op.getImmediateValue().f64, ")");
         }
         break;
     case Operand::Kind::LABEL:
-        DEBUG_TRACE("@%8p:%d", op.getTargetBlock(), op.getImmediateValue().s32);
+        TRACE_BLOCK("@", op.getTargetBlock(),":", op.getImmediateValue().s32);
         break;
     case Operand::Kind::INVALID:
-        DEBUG_TRACE("%6s", "INV");
+        TRACE_BLOCK("INV");
         break;
     default:
-        DEBUG_TRACE("%6s", "??");
+        TRACE_BLOCK("??");
         break;
     }
-    if (op.getType() != Type::RESERVED) {
-        DEBUG_TRACE("%s", ToString(op.getType()).c_str());
+    if (op.getType() != Type::INVALID) {
+        TRACE_BLOCK(ToSyntax(op.getType()).c_str());
     }
 }
-#endif
+#endif // DEBUG_BLOCKS
 
 std::map<int32_t, Block *> Block::inferBlocks(
     ErrorHandler &errHandler,
@@ -222,31 +208,30 @@ std::map<int32_t, Block *> Block::inferBlocks(
         binaryLength += i->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
     }
     bi.run(errHandler, binaryLength, insts);
-
-#ifdef DEBUG_TRACE_ENABLED
+#ifdef DEBUG_BLOCKS
+    TRACE_BLOCK("**********************************************\n");
     for (auto bitr : blockStarts) {
         auto instList = bitr.second->getInstList();
-        DEBUG_TRACE(
-            "BLOCK %5d (%d) => %d instrs   \n",
-            (int)bitr.first,
-            (int)bitr.second->getOffset(),
-            (int)instList.size());
+        TRACE_BLOCK(
+            "BLOCK ",(int)bitr.first, " (", bitr.second, ") => ",
+            (int)instList.size(), " instrs\n");
         for (auto inst : instList) {
-            DEBUG_TRACE(
-                "  ID%3d => PC%3d  %-10s",
-                inst->getID(),
-                inst->getDecodePC(),
-                inst->getOpSpec()->mnemonic);
+            auto mne = inst->getOpSpec().mnemonic.str();
+            TRACE_BLOCK(
+                "  ID", inst->getID(), " => PC", inst->getPC(), "  ", mne);
             traceOperand(inst->getDestination());
 
             for (int srcIx = 0; srcIx < (int)inst->getSourceCount(); srcIx++) {
-                DEBUG_TRACE(",  ");
+                TRACE_BLOCK(",  ");
                 traceOperand(inst->getSource(srcIx));
             }
-            DEBUG_TRACE("\n");
+            if (inst->hasInstOpt(InstOpt::EOT)) {
+                TRACE_BLOCK(" {EOT}");
+            }
+            TRACE_BLOCK("\n");
         }
     }
-#endif
+#endif // DEBUG_BLOCKS
 
     return blockStarts;
 }

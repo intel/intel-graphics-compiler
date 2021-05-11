@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -111,6 +95,10 @@ namespace iga
         case GED_OPCODE_wait: opcode = Op::WAIT; break;
         case GED_OPCODE_while: opcode = Op::WHILE; break;
         case GED_OPCODE_xor: opcode = Op::XOR; break;
+        case GED_OPCODE_add3:  opcode = Op::ADD3;  break;
+        case GED_OPCODE_bfn:   opcode = Op::BFN;   break;
+        case GED_OPCODE_dpas:  opcode = Op::DPAS;  break;
+        case GED_OPCODE_dpasw: opcode = Op::DPASW; break;
         default:
             opcode = Op::ILLEGAL;
             break;
@@ -118,6 +106,23 @@ namespace iga
 
         return opcode;
     }
+
+    static inline Type translate(GED_PRECISION p)
+    {
+        switch (p) {
+        case GED_PRECISION_u1:   return Type::U1;
+        case GED_PRECISION_u2:   return Type::U2;
+        case GED_PRECISION_u4:   return Type::U4;
+        case GED_PRECISION_u8:   return Type::UB;
+        case GED_PRECISION_s2:   return Type::S2;
+        case GED_PRECISION_s4:   return Type::S4;
+        case GED_PRECISION_s8:   return Type::B;
+        case GED_PRECISION_f16:  return Type::HF;
+        case GED_PRECISION_bf16: return Type::BF;
+        default:                 return Type::INVALID;
+        }
+    }
+
 
     static inline PredCtrl translate(GED_PRED_CTRL pred)
     {
@@ -232,6 +237,9 @@ namespace iga
         case GED_DATA_TYPE_vf: opndType = Type::VF; break;
         case GED_DATA_TYPE_v:  opndType = Type::V;  break;
         case GED_DATA_TYPE_nf: opndType = Type::NF; break;
+
+
+        case GED_DATA_TYPE_bf:   opndType = Type::BF;   break;
 
         case GED_DATA_TYPE_INVALID:
         default:

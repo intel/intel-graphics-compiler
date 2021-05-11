@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -377,12 +361,13 @@ extern "C" int iga_main(int argc, const char **argv)
         "This mode decodes instruction field\n"
         "\n"
         "EXAMPLES:\n"
-        "  % iga -Xifs foo.krn9\n"
-        "    decodes kernel from foo.krn9 (-p=9 inferred)\n"
-        "  % iga -p=9 -Xifs \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
-        "    decodes the hex bits above into ISA\n"
-        "  % iga -p=9 -Xifs foo.krn9 \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
-        "    decodes and compares the fields\n"
+        "  % iga -Xifs foo.krn12p1\n"
+        "    decodes kernel from foo.krn12p1 (-p=12p1 inferred)\n"
+        "  % iga -p=12p1 -Xifs \"00000000`80000124`00050AA0`00430064\"\n"
+        "  % iga -p=12p1 -Xifs \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
+        "    both examples decode the hex bits above into ISA\n"
+        "  % iga -p=12p1 -Xifs foo.krn12p1 \"00000000`80000124`00050AA0`00430064\"\n"
+        "    decodes and compares the fields between foo.krn12p1 and the given bits\n"
         " The diff version exits non-zero if a difference is encountered or "
           "there is some decoding error.\n",
         opts::OptAttrs::ALLOW_UNSET,
@@ -429,6 +414,15 @@ extern "C" int iga_main(int argc, const char **argv)
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler&, Opts &baseOpts) {
             baseOpts.autoCompact = false;
+        });
+    xGrp.defineFlag(
+        "no-print-bfnexprs",
+        nullptr,
+        "the inverse (default) of -Xprint-bfnexprs",
+        nullptr,
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
+            baseOpts.printBfnExprs = false;
         });
     xGrp.defineFlag(
         "no-print-ldst",

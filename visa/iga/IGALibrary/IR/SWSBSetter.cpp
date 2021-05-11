@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -243,6 +227,8 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                     distanceDependency.minDist = 1;
                     if (getNumOfDistPipe() == 1)
                         distanceDependency.distType = SWSB::DistType::REG_DIST;
+                    else
+                        distanceDependency.distType = SWSB::DistType::REG_DIST_ALL;
                     bucket->clearDepSet(index);
                 }
             }
@@ -368,7 +354,71 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                                 distanceDependency.minDist = std::min(distanceDependency.minDist, (uint32_t)MAX_VALID_DISTANCE);
                                 distanceDependency.distType = SWSB::DistType::REG_DIST;
                             }
-                        }
+                        } else {
+                            // For multiple in-order pipeline architecuture, all cases should be considered
+                            // The distance is depended on the previous instruction's pipeline
+                            uint32_t newDistance = 0;
+                            SWSB::DistType newDepPipe = SWSB::DistType::NO_DIST;
+                            switch (prevDepPipe) {
+                            case DEP_PIPE::FLOAT:
+                                newDistance = m_InstIdCounter.floatPipe - dep->getInstIDs().floatPipe;
+                                newDepPipe = SWSB::DistType::REG_DIST_FLOAT;
+                                break;
+                            case DEP_PIPE::INTEGER:
+                                newDistance = m_InstIdCounter.intPipe - dep->getInstIDs().intPipe;
+                                newDepPipe = SWSB::DistType::REG_DIST_INT;
+                                break;
+                            case DEP_PIPE::LONG64:
+                                newDistance = m_InstIdCounter.longPipe - dep->getInstIDs().longPipe;
+                                newDepPipe = SWSB::DistType::REG_DIST_LONG;
+                                break;
+                            default:
+                                IGA_ASSERT(0, "Unsupported DEP_PIPE for in-order instructions");
+                                break;
+                            }
+
+                            // the instruction already has dependency to others
+                            if (distanceDependency.minDist) {
+                                newDistance = std::min(distanceDependency.minDist, newDistance);
+                                // if the type is REG_DIST_ALL or is the same with the new pipe type,
+                                // then remains it. Otherwise update the swsb type
+                                if ((distanceDependency.distType != newDepPipe) && (distanceDependency.distType != SWSB::DistType::REG_DIST_ALL)) {
+                                    // get the pipe_type from opnd type
+                                    auto op_pipe_type = [](Type op_type) {
+                                        if (TypeIs64b(op_type))
+                                            return SWSB::DistType::REG_DIST_LONG;
+                                        if (TypeIsFloating(op_type))
+                                            return SWSB::DistType::REG_DIST_FLOAT;
+                                        return SWSB::DistType::REG_DIST_INT;
+                                    };
+                                    // check if the given pipe type is the same with one of the src type
+                                    auto haveTypeInSrc = [&](SWSB::DistType swsb_type) {
+                                        for (size_t i = 0; i < currInst.getSourceCount(); ++i) {
+                                            if (op_pipe_type(currInst.getSource(i).getType()) == swsb_type)
+                                                return true;
+                                        }
+                                        return false;
+                                    };
+                                    if ((distanceDependency.distType != SWSB::DistType::REG_DIST)) {
+                                        // check if both previous and current dep pipe can be satisfied by currInst src type
+                                        if (haveTypeInSrc(distanceDependency.distType) && haveTypeInSrc(newDepPipe))
+                                            distanceDependency.distType = SWSB::DistType::REG_DIST;
+                                        else
+                                            distanceDependency.distType = SWSB::DistType::REG_DIST_ALL;
+                                    } else {
+                                        // if previous one is REG_DIST, set the type to REG_DIST_ALL if
+                                        // current one cannot be satisfied by src type
+                                        if (!haveTypeInSrc(newDepPipe))
+                                            distanceDependency.distType = SWSB::DistType::REG_DIST_ALL;
+                                    }
+                                }
+                            } else {
+                                distanceDependency.distType = newDepPipe;
+                            }
+                            assert(distanceDependency.distType != SWSB::DistType::NO_DIST);
+                            // clamp the distance to max distance
+                            distanceDependency.minDist = std::min(newDistance, (uint32_t)MAX_VALID_DISTANCE);
+                        } // end of if (m_enableMultiDistPipe)
                         // clear this instruction's dependency since it is satisfied
                         clearDepBuckets(*dep);
 
@@ -538,10 +588,23 @@ void SWSBAnalyzer::clearBuckets(DepSet* input, DepSet* output) {
         auto get_depset_id = [&](DEP_PIPE pipe_type, DepSet& dep_set) {
             if (getNumOfDistPipe() == 1)
                 return dep_set.getInstIDs().inOrder;
+            switch(pipe_type) {
+            case DEP_PIPE::FLOAT:
+                return dep_set.getInstIDs().floatPipe;
+            case DEP_PIPE::INTEGER:
+                return dep_set.getInstIDs().intPipe;
+            case DEP_PIPE::LONG64:
+                return dep_set.getInstIDs().longPipe;
+            default:
+                IGA_ASSERT(0, "SWSB: unhandled in-order DEP_PIPE for XeHP+ encoding");
+                break;
+            }
             return (uint32_t)0;
         };
 
         auto get_latency = [&](DEP_PIPE pipe_type) {
+            if (pipe_type == DEP_PIPE::LONG64)
+                return m_LatencyLong64Pipe;
             return m_LatencyInOrderPipe;
         };
 
@@ -649,6 +712,8 @@ uint32_t SWSBAnalyzer::getNumOfDistPipe()
     switch(m_swsbMode) {
     case SWSB_ENCODE_MODE::SingleDistPipe:
         return 1;
+    case SWSB_ENCODE_MODE::ThreeDistPipe:
+        return 3;
     default:
         break;
     }
@@ -658,7 +723,23 @@ uint32_t SWSBAnalyzer::getNumOfDistPipe()
 void SWSBAnalyzer::advanceInorderInstCounter(DEP_PIPE dep_pipe)
 {
     ++m_InstIdCounter.inOrder;
+    if (getNumOfDistPipe() == 1)
+        return;
 
+    switch (dep_pipe) {
+    case DEP_PIPE::FLOAT:
+        ++m_InstIdCounter.floatPipe;
+        break;
+    case DEP_PIPE::INTEGER:
+        ++m_InstIdCounter.intPipe;
+        break;
+    case DEP_PIPE::LONG64:
+        ++m_InstIdCounter.longPipe;
+        break;
+    default:
+        IGA_ASSERT(0, "unhandled in-order DEP_PIPE for XE_HP encoding");
+        break;
+    }
 }
 
 
@@ -803,6 +884,9 @@ void SWSBAnalyzer::run()
 
     // init in order pipe id counters
     m_InstIdCounter.inOrder = 1;
+    m_InstIdCounter.floatPipe = 1;
+    m_InstIdCounter.intPipe = 1;
+    m_InstIdCounter.longPipe = 1;
 
     // init the math WA struct
     // When there is a math instruction, when the following instruction has different
@@ -839,6 +923,7 @@ void SWSBAnalyzer::run()
             inst = *instIter;
             DepSet* input = nullptr;
             DepSet* output = nullptr;
+            size_t dpas_cnt_in_macro = 0;
 
             if (math_wa_info.math_inst != nullptr)
                 math_wa_info.previous_is_math = true;
@@ -849,8 +934,26 @@ void SWSBAnalyzer::run()
                 math_wa_info.previous_is_math = false;
             }
 
+            // recored the first instruction of a dpas macro, in case that inserting instructions (e.g. sync)
+            // before the macro, those instructions have to be insert before first_inst_in_dpas_macro
+            InstListIterator first_inst_in_dpas_macro = instList.end();
+            if (inst->getOpSpec().isDpasFamily()) {
+                std::pair<DepSet*, DepSet*> dep_set_pair =
+                    m_DB->createDPASSrcDstDepSet(
+                        instList, instIter, m_InstIdCounter, dpas_cnt_in_macro, m_swsbMode);
+                input = dep_set_pair.first;
+                output = dep_set_pair.second;
+
+                first_inst_in_dpas_macro = instIter;
+                // bypass dpas insturctions in the macro, the last dpas represents the macro
+                for (size_t i = 0; i < dpas_cnt_in_macro - 1; ++i) {
+                    ++instIter;
+                }
+                inst = *instIter;
+            } else {
                 input = m_DB->createSrcDepSet(*inst, m_InstIdCounter, m_swsbMode);
                 output = m_DB->createDstDepSet(*inst, m_InstIdCounter, m_swsbMode);
+            }
             input->setCompanion(output);
             output->setCompanion(input);
 
@@ -868,6 +971,8 @@ void SWSBAnalyzer::run()
                 // if this instruction itself is an out-of-order instruction, insert
                 // sync.all anyway.
                 InstListIterator insert_point = instIter;
+                if (first_inst_in_dpas_macro != instList.end())
+                    insert_point = first_inst_in_dpas_macro;
                 if (input->getDepClass() == DEP_CLASS::OUT_OF_ORDER)
                     insertSyncAllRdWr(insert_point, bb);
                 else
@@ -890,6 +995,8 @@ void SWSBAnalyzer::run()
                 // set to check all dist pipes
                 if (getNumOfDistPipe() == 1)
                     distanceDependency.distType = SWSB::DistType::REG_DIST;
+                else
+                    distanceDependency.distType = SWSB::DistType::REG_DIST_ALL;
 
                 distanceDependency.minDist = 1;
                 // input and output must have the same dep class and in the same pipe
@@ -940,6 +1047,9 @@ void SWSBAnalyzer::run()
                 math_wa_info.reset();
             }
 
+            if (first_inst_in_dpas_macro != instList.end())
+                processActiveSBID(distanceDependency, input, bb, first_inst_in_dpas_macro, activeSBID);
+            else
                 processActiveSBID(distanceDependency, input, bb, instIter, activeSBID);
 
             // Need to set SBID
@@ -947,6 +1057,8 @@ void SWSBAnalyzer::run()
                 !(inst->getOpSpec().isSendFamily() && inst->hasInstOpt(InstOpt::EOT)))
             {
                 InstList::iterator insertPoint = instIter;
+                if (first_inst_in_dpas_macro != instList.end())
+                    insertPoint = first_inst_in_dpas_macro;
                 SBID& assigned_id = assignSBID(input, output, *inst, distanceDependency,
                     insertPoint, bb, needSyncForShootDown);
 
@@ -1001,8 +1113,16 @@ void SWSBAnalyzer::run()
                 advanceInorderInstCounter(input->getDepPipe());
             }
 
+            // for dpas block, set the distance at the first inst in the block, and set the
+            // swsb id at the last inst in the block.
+            if ((first_inst_in_dpas_macro != instList.end()) && (*first_inst_in_dpas_macro != inst)) {
+                (*first_inst_in_dpas_macro)->setSWSB(
+                    SWSB(distanceDependency.distType, SWSB::TokenType::NOTOKEN, distanceDependency.minDist, 0));
+                inst->setSWSB(
+                    SWSB(SWSB::DistType::NO_DIST, distanceDependency.tokenType, 0, distanceDependency.sbid));
+            } else {
                 inst->setSWSB(distanceDependency);
-
+            }
             assert(distanceDependency.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
 
             if (inst->isBranching())
@@ -1035,6 +1155,8 @@ void SWSBAnalyzer::run()
         SWSB swsb;
         if (getNumOfDistPipe() == 1)
             swsb.distType = SWSB::DistType::REG_DIST;
+        else
+            swsb.distType = SWSB::DistType::REG_DIST_ALL;
         swsb.minDist = 1;
         Instruction *syncInst = m_kernel.createSyncNopInstruction(swsb);
         lastBB->getInstList().push_back(syncInst);

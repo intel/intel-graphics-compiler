@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -47,6 +31,13 @@ static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec& opspec)
         case DEP_PIPE::MATH:
             return DEP_CLASS::OUT_OF_ORDER;
 
+        case DEP_PIPE::FLOAT:
+        case DEP_PIPE::INTEGER:
+        case DEP_PIPE::LONG64:
+            return DEP_CLASS::IN_ORDER;
+
+        case DEP_PIPE::DPAS:
+            return DEP_CLASS::OUT_OF_ORDER;
     }
     return DEP_CLASS::NONE;
 }
@@ -95,12 +86,94 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
     dep.setDepClass(getClassFromPipeType(dep.getDepPipe(), opsec));
 }
 
+// XeHP+
+static void setSendPipeType(
+    DEP_PIPE& pipe_type,
+    const Instruction &inst,
+    const Model &model)
+{
+    assert(inst.getOpSpec().isSendOrSendsFamily());
+    pipe_type = DEP_PIPE::SEND;
+}
+
+
+// XeHP
+static void setDEPPipeClass_ThreeDistPipe(
+    DepSet &dep, const Instruction &inst, const Model &model)
+{
+    auto opsec = inst.getOpSpec();
+
+    DEP_PIPE pipe_type = DEP_PIPE::NONE;
+    if (opsec.is(Op::MATH))
+    {
+        pipe_type = DEP_PIPE::MATH;
+    }
+    else if (opsec.isSendOrSendsFamily())
+    {
+        setSendPipeType(pipe_type, inst, model);
+    }
+    else if (opsec.isDpasFamily())
+    {
+        pipe_type = DEP_PIPE::DPAS;
+    }
+    else if (opsec.isBranching())
+    {
+        pipe_type = DEP_PIPE::INTEGER;
+    }
+    else
+    {
+        // In order instruction:
+        // if destination type is FP32/FP16/BF16 then it goes to float pipe,
+        // if destination type is int32 / 16 / 8 it goes to integer pipe and
+        // if destination or source type is int64/FP64 then it goes to long pipe
+
+        // for conversion instructions float2int goes to integer pipe and int2float goes to float pipe,
+        // anything2doublefloat goes to long pipe and doublefloat2anything goes to long pipe
+
+        // If destination type is null then source0 data type will determine the pipe
+        Type inst_type = Type::INVALID;
+        if (opsec.supportsDestination())
+            inst_type = inst.getDestination().getType();
+        else if (inst.getSourceCount())
+            inst_type = inst.getSource(0).getType();
+
+        if (inst_type != Type::INVALID) {
+            if (TypeIs64b(inst_type))
+                pipe_type = DEP_PIPE::LONG64;
+            else if (TypeIsFloating(inst_type))
+                pipe_type = DEP_PIPE::FLOAT;
+            else
+                pipe_type = DEP_PIPE::INTEGER;
+        }
+
+        for (uint32_t i = 0; i < inst.getSourceCount(); ++i)
+        {
+            const auto & src = inst.getSource(i);
+            if (TypeIs64b(src.getType()))
+            {
+                pipe_type = DEP_PIPE::LONG64;
+                break;
+            }
+        }
+    }
+
+    // default set to Integer pipe (e.g. NOP)
+    if (pipe_type == DEP_PIPE::NONE)
+        pipe_type = DEP_PIPE::INTEGER;
+
+    dep.setDepClass(getClassFromPipeType(pipe_type, opsec));
+    dep.setDepPipe(pipe_type);
+}
+
+
 
 static void setDEPPipeClass(
     SWSB_ENCODE_MODE enc_mode, DepSet &dep, const Instruction &inst, const Model& model)
 {
     if (enc_mode == SWSB_ENCODE_MODE::SingleDistPipe)
         setDEPPipeClass_SingleDistPipe(dep, inst);
+    else if (enc_mode == SWSB_ENCODE_MODE::ThreeDistPipe)
+        setDEPPipeClass_ThreeDistPipe(dep, inst, model);
 }
 
 DepSet::DepSet(const InstIDs& inst_id_counter, const DepSetBuilder& dsb)
@@ -111,7 +184,10 @@ DepSet::DepSet(const InstIDs& inst_id_counter, const DepSetBuilder& dsb)
       m_dPipe(DEP_PIPE::NONE),
       m_dClass(DEP_CLASS::NONE),
       m_InstIDs(inst_id_counter.global,
-                inst_id_counter.inOrder
+                inst_id_counter.inOrder,
+                inst_id_counter.floatPipe,
+                inst_id_counter.intPipe,
+                inst_id_counter.longPipe
       ),
       m_DB(dsb)
 {
@@ -119,6 +195,338 @@ DepSet::DepSet(const InstIDs& inst_id_counter, const DepSetBuilder& dsb)
     bits = new BitSet<>(dsb.getTOTAL_BITS());
 }
 
+uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty)
+{
+    // get OPS_PER_CHAN, the number of dot product operations per dword channel, depending on element type
+    // for src1, src2 region calculation, only hf, bf, ub, b, u4, s4, u2, s2 should be given
+    // mixed mode of int and float at src1/src2 are not allowed
+    if (src1_ty == Type::HF || src1_ty == Type::BF) {
+        IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
+        return 2;
+    }
+    else {
+        // if both src1 and src2 are int2 or int4, than ops_per_chan will be 8
+        int src1_size = TypeSizeInBits(src1_ty);
+        int src2_size = TypeSizeInBits(src2_ty);
+        // Type: ub, b, u4, s4, u2, s2
+        IGA_ASSERT((src1_size <= 8), "OPS_PER_CHAN: unsupported type of src1");
+        IGA_ASSERT((src2_size <= 8), "OPS_PER_CHAN: unsupported type of src2");
+        if ((src1_size == 2 || src1_size == 4) && (src2_size == 2 || src2_size == 4))
+            return 8;
+        return 4;
+    }
+}
+
+// lowBound - start register address offset in byte
+// UpBound - upper register address offset in byte
+uint32_t DepSet::getDPASSrcDepUpBound(unsigned idx, Type srcType, uint32_t execSize,
+    uint32_t lowBound, uint32_t systolicDepth, uint32_t repeatCount, uint32_t opsPerChan)
+{
+    auto typeSizeInBits = TypeSizeInBitsWithDefault(srcType, 32);
+    // elements_size is the size of total elements to be calculated in one operation
+    uint32_t elements_size = execSize * typeSizeInBits / 8;
+
+    uint32_t upBound = lowBound;
+    if (idx == 0)
+        upBound += elements_size * repeatCount;
+    else if (idx == 1)
+        upBound += elements_size * opsPerChan * systolicDepth;
+    else
+        upBound +=
+            (repeatCount - 1) * opsPerChan * 8 * typeSizeInBits / 8 +  /* start offset of the last repeated block */
+            opsPerChan * systolicDepth * typeSizeInBits / 8;           /* size of used register in last repeated block */
+
+    return upBound;
+}
+
+void DepSet::getDpasSrcDependency(
+    const Instruction &inst, RegRangeListType &reg_range, RegRangeListType& extra_regs, const Model& model)
+{
+    uint32_t execSize = static_cast<uint32_t>(inst.getExecSize());
+
+    IGA_ASSERT(execSize == (m_DB.getGRF_BYTES_PER_REG() / 4),
+        "Invalid ExecSize for this op");
+
+    // check src operand and add the dependency
+    uint32_t repeatCount = GetDpasRepeatCount(inst.getDpasFc());
+    uint32_t systolicDepth = GetDpasSystolicDepth(inst.getDpasFc());
+    uint32_t ops_per_chan = getDPASOpsPerChan(inst.getSource(1).getType(), inst.getSource(2).getType());
+
+    for (unsigned srcIx = 0; srcIx < inst.getSourceCount(); ++srcIx) {
+        const Operand &op = inst.getSource(srcIx);
+        // the src0 could be null, in that case no need to set the dependency
+        if (srcIx == 0 && op.getDirRegName() == RegName::ARF_NULL) {
+            // if src0 is null, set the reg range to max() to specify its actually empty
+            reg_range.push_back(std::make_pair(
+                std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()));
+            continue;
+        }
+        IGA_ASSERT(op.getDirRegName() == RegName::GRF_R, "GRF or null required on this op");
+
+        // calculate register region
+        auto tType = op.getType();
+        auto typeSizeInBits = TypeSizeInBitsWithDefault(tType, 32);
+        uint32_t lowBound = addressOf(op.getDirRegName(), op.getDirRegRef(), typeSizeInBits);
+        uint32_t upBound = getDPASSrcDepUpBound(srcIx, tType, execSize, lowBound, systolicDepth, repeatCount, ops_per_chan);
+        IGA_ASSERT(upBound >= lowBound,
+            "source region footprint computation got it wrong: upBound is less than lowBound");
+
+        uint32_t startRegNum = lowBound / m_DB.getGRF_BYTES_PER_REG();
+        uint32_t upperRegNum = (upBound - 1) / m_DB.getGRF_BYTES_PER_REG();
+        reg_range.push_back(std::make_pair(startRegNum, upperRegNum));
+        // calculate extra_regs for HW workaround: src1 always have 8 register footpring
+        if (model.platform == Platform::XE_HP
+            ) {
+            if (srcIx == 1) {
+                uint32_t extraUpBound = lowBound + m_DB.getGRF_BYTES_PER_REG() * 8;
+                uint32_t extraUpRegNum = (extraUpBound - 1) / m_DB.getGRF_BYTES_PER_REG();
+                if (extraUpRegNum >= m_DB.getGRF_REGS())
+                    IGA_FATAL("IGA RegDeps: DPAS src1 out of bounds due to HW WA");
+                extra_regs.push_back(std::make_pair(startRegNum, extraUpRegNum));
+            }
+        }
+    }
+}
+
+void DepSet::addDependency(const RegRangeType& reg_range)
+{
+    for (uint32_t regNum = reg_range.first; regNum <= reg_range.second; regNum++)
+    {
+        addGrf(regNum);
+        addToBucket(regNum);
+    }
+
+    //Using one of the special registers to add write dependency in to special bucket
+    //This way it will always check that implicit dependency
+    m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
+}
+
+void DepSet::addDependency(const RegRangeListType& reg_range)
+{
+    for (auto pair : reg_range) {
+        // when range is max(), which means it's null, skip it
+        if (pair.first == std::numeric_limits<uint32_t>::max())
+            continue;
+        for (uint32_t regNum = pair.first; regNum <= pair.second; regNum++) {
+            addGrf(regNum);
+            addToBucket(regNum);
+        }
+    }
+
+    //Using one of the special registers to add read dependency in to special bucket
+    //This way it will always check that implicit dependency
+    m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
+}
+
+static bool helper_isLastDpas(const Instruction &dpas, const Instruction &next_inst)
+{
+    if (!next_inst.getOpSpec().isDpasFamily())
+        return true;
+
+    // DPAS and DPASW should not be in the same macro
+    if (next_inst.getOp() != dpas.getOp())
+        return true;
+
+    // DPAS with different CtrlMask (NoMask and no NoMask) cannot be in the same macro
+    if (next_inst.getMaskCtrl() != dpas.getMaskCtrl())
+        return true;
+
+    // DPAS with different execution mask cannot be in the same macro
+    if (next_inst.getChannelOffset() != dpas.getChannelOffset())
+        return true;
+
+    // dpas with different depth should not be in the same macro
+    // Note that different repeat count is allowed in the same macro
+    uint32_t dpasSystolicDepth = GetDpasSystolicDepth(dpas.getDpasFc());
+    uint32_t nextSystolicDepth = GetDpasSystolicDepth(next_inst.getDpasFc());
+    if (dpasSystolicDepth != nextSystolicDepth)
+        return true;
+
+    // dpas in the same macro must have the same datatypes in all src and dst
+    assert(dpas.getSourceCount() == next_inst.getSourceCount());
+    for (size_t i = 0; i < dpas.getSourceCount(); ++i) {
+        if (dpas.getSource(i).getType() != next_inst.getSource(i).getType())
+            return true;
+    }
+    if (dpas.getDestination().getType() != next_inst.getDestination().getType())
+        return true;
+
+    // dpas in the same macro must have the same src1 register
+    if (dpas.getSource(1).getDirRegRef() != next_inst.getSource(1).getDirRegRef())
+        return true;
+
+    return false;
+}
+
+std::pair<DepSet*, DepSet*> DepSetBuilder::createDPASSrcDstDepSet(
+    const InstList& insList, InstListIterator instIt, const InstIDs& inst_id_counter,
+    size_t& dpasCnt, SWSB_ENCODE_MODE enc_mode) {
+
+    // create DepSet for input
+    DepSet* inps = new DepSet(inst_id_counter, *this);
+    mAllDepSet.push_back(inps);
+    inps->setDepType(DEP_TYPE::READ);
+    setDEPPipeClass(enc_mode, *inps, **instIt, mPlatformModel);
+
+    // create DepSet for output
+    DepSet *oups = new DepSet(inst_id_counter, *this);
+    mAllDepSet.push_back(oups);
+    oups->setDepType(DEP_TYPE::WRITE);
+    setDEPPipeClass(enc_mode, *oups, **instIt, mPlatformModel);
+
+    // identify dpas macro
+    dpasCnt = 1;
+    Instruction* cur_inst = *instIt;
+
+    typedef DepSet::RegRangeListType SrcRegRangeType;
+    typedef DepSet::RegRangeType DstRegRangeType;
+
+    // do the first instruction
+    SrcRegRangeType src_range;
+    SrcRegRangeType extra_src_range;
+    inps->getDpasSrcDependency(*cur_inst, src_range, extra_src_range, mPlatformModel);
+    inps->addDependency(src_range);
+    inps->addDependency(extra_src_range);
+
+    DstRegRangeType dst_range;
+    oups->getDpasDstDependency(*cur_inst, dst_range);
+    oups->addDependency(dst_range);
+
+    // Track the used registers of src and dst by two BitSet. Dependency in the
+    // macro is not allowed, if there is dependency then cannot be in the same macro
+    // dpas only use grf so consider the grf only
+    BitSet<> srcbits(getGRF_LEN());
+    BitSet<> dstbits(getGRF_LEN());
+    auto setBits = [this](BitSet<>& bit_set, uint32_t start_reg, uint32_t upper_reg) {
+        // if the given register is max(), which means it's no register,
+        // then no need to do anything
+        if (start_reg == std::numeric_limits<uint32_t>::max() ||
+            upper_reg == std::numeric_limits<uint32_t>::max())
+            return;
+        for (uint32_t i = start_reg; i <= upper_reg; ++i) {
+            uint32_t grf_addr = i * getGRF_BYTES_PER_REG();
+            bit_set.set(grf_addr, getGRF_BYTES_PER_REG());
+        }
+    };
+    // set the bits for future check the dependency
+    for (auto regs : src_range) {
+        setBits(srcbits, regs.first, regs.second);
+    }
+    setBits(dstbits, dst_range.first, dst_range.second);
+
+    // check if the given register ranges having intersection
+    auto hasIntersect = [&setBits, this]
+            (const DepSet::RegRangeType& rr1, const DepSet::RegRangeType& rr2) {
+        BitSet<> rr1bits(getGRF_LEN());
+        BitSet<> rr2bits(getGRF_LEN());
+        setBits(rr1bits, rr1.first, rr1.second);
+        setBits(rr2bits, rr2.first, rr2.second);
+
+        return rr1bits.intersects(rr2bits);
+    };
+
+    // check if the having overlap on given register range.
+    // If rr1 and rr2 footprint are all the same, then return true.
+    // If rr1 and rr2 has overlap but not entirely the same, then return false.
+    // If no dependency, return true
+    auto hasEntireOverlapOrNoOverlap = [&setBits, &hasIntersect, this]
+            (const DepSet::RegRangeType& rr1, const DepSet::RegRangeType& rr2) {
+        BitSet<> rr1bits(getGRF_LEN());
+        BitSet<> rr2bits(getGRF_LEN());
+        setBits(rr1bits, rr1.first, rr1.second);
+        setBits(rr2bits, rr2.first, rr2.second);
+
+        if (hasIntersect(rr1, rr2))
+            return rr1bits.equal(rr2bits);
+        else
+            return true;
+    };
+
+    // check if the instruction having internal dependency
+    // Instruction having internal dependency on dst to src is not allowed to be
+    // in a macro.
+    // Only for dpas8x8, insternal dep on dst and src0 is allowed, but only when src0 and
+    // dst memory footprin is entirely the same
+    auto hasInternalDep = [&hasEntireOverlapOrNoOverlap, &hasIntersect](
+                                const DstRegRangeType& dst_range,
+                                const SrcRegRangeType& src_range,
+                                bool isDepth8) {
+        if (hasIntersect(dst_range, src_range[1]))
+            return true;
+
+        if (hasIntersect(dst_range, src_range[2]))
+            return true;
+
+        // if src0 is null, then must not have dependency between dst and src0, skip it
+        if (src_range[0].first != std::numeric_limits<uint32_t>::max()) {
+            if (!isDepth8 && hasIntersect(dst_range, src_range[0]))
+                return true;
+
+            // for depth 8 dpas, sr0 and dst having the same foot print is treated
+            // as no internal dependency for other rep_count, having intersect is
+            // internal dependency
+            if (isDepth8 && !hasEntireOverlapOrNoOverlap(dst_range, src_range[0]))
+                return true;
+        }
+        return false;
+    };
+    // if the first dpas has internal dependency, then itself form
+    // a macro, otherwise keep checking until lastDpas
+    if (!hasInternalDep(dst_range, src_range,
+        GetDpasSystolicDepth(cur_inst->getDpasFc()) == 8))
+    {
+
+        // do the following instruction until the end of macro
+        while (1) {
+            ++instIt;
+            if (instIt == insList.end())
+                break;
+            if (helper_isLastDpas(*cur_inst, **instIt))
+                break;
+            SrcRegRangeType new_src_range, new_extra_regs;
+            DstRegRangeType new_dst_range;
+            inps->getDpasSrcDependency(**instIt, new_src_range, new_extra_regs, mPlatformModel);
+            oups->getDpasDstDependency(**instIt, new_dst_range);
+            BitSet<> new_srcbits(getGRF_LEN());
+            BitSet<> new_dstbits(getGRF_LEN());
+            for (auto regs : new_src_range) {
+                setBits(new_srcbits, regs.first, regs.second);
+            }
+            setBits(new_dstbits, new_dst_range.first, new_dst_range.second);
+
+            // if the new instruction having internal dependency, then
+            // cannot be part of this macro
+            if (hasInternalDep(new_dst_range, new_src_range,
+                GetDpasSystolicDepth(cur_inst->getDpasFc()) == 8))
+                break;
+
+            // if the new instruction having WAR/RAW/WAW to previous, then cannot be part of this macro
+            if (srcbits.intersects(new_dstbits) ||
+                dstbits.intersects(new_srcbits) ||
+                dstbits.intersects(new_dstbits))
+                break;
+
+            // Add ATOMIC to dpas inside the macro, except for the last dpas
+            cur_inst->addInstOpt(InstOpt::ATOMIC);
+
+            cur_inst = *instIt;
+
+            // add the new dependency
+            inps->addDependency(new_src_range);
+            inps->addDependency(new_extra_regs);
+            oups->addDependency(new_dst_range);
+            srcbits.add(new_srcbits);
+            dstbits.add(new_dstbits);
+
+            ++dpasCnt;
+        }
+    }
+    // let the last instruciton in the macro represent this DepSet
+    inps->m_instruction = cur_inst;
+    oups->m_instruction = cur_inst;
+
+    return std::make_pair(inps, oups);
+}
 
 DepSet* DepSetBuilder::createSrcDepSet(const Instruction &i,
                                        const InstIDs& inst_id_counter,
@@ -604,6 +1012,29 @@ void DepSet::setMathWAOutputsDstcDep()
     }
 }
 
+void DepSet::getDpasDstDependency(const Instruction &inst, RegRangeType& reg_range) {
+    uint32_t execSize = static_cast<uint32_t>(inst.getExecSize());
+
+    const auto & op = inst.getDestination();
+    auto tType = op.getType();
+    uint32_t typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
+    IGA_ASSERT(op.getDirRegName() == RegName::GRF_R, "DPAS with non-GRF");
+
+    // calculated used register region low and upper bound
+    uint32_t lowBound = addressOf(op.getDirRegName(), op.getDirRegRef(), typeSizeBits);
+    // elements_size is the size of total elements to be calculated in one operation
+    uint32_t elements_size = execSize * typeSizeBits / 8;
+
+    // For dpas, the destination region depends on Reapeat count
+    uint32_t repeatCount = GetDpasRepeatCount(inst.getDpasFc());
+    uint32_t upperBound = lowBound + elements_size * repeatCount;
+
+    uint32_t startRegNum = lowBound / m_DB.getGRF_BYTES_PER_REG();
+    uint32_t upperRegNum = (upperBound - 1) / m_DB.getGRF_BYTES_PER_REG();
+
+    reg_range.first = startRegNum;
+    reg_range.second = upperRegNum;
+}
 
 bool static const isSpecial(RegName rn)
 {

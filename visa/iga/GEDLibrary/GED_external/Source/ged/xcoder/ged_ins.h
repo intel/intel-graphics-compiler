@@ -65,7 +65,7 @@ public:
     /*!
      * Initialize an empty instruction with a new opcode.
      *
-     * @param[in]   modelId     GEN version as specified by @ref GED_MODEL.
+     * @param[in]   modelId     GED model version as specified by @ref GED_MODEL.
      * @param[in]   opcode      The enumerator representing the new opcode.
      *
      * @return      GED_RETURN_VALUE indicating success or invalid opcode.
@@ -76,7 +76,7 @@ public:
     /*!
      * Assign raw (undecoded) bytes to the GEDIns object. If the instruction is compact, it is mapped to the native format.
      *
-     * @param[in]   modelId     GEN version as specified by @ref GED_MODEL.
+     * @param[in]   modelId     GED model version as specified by @ref GED_MODEL.
      * @param[in]   rawBytes    An array of size "size" containing the raw bytes.
      * @param[in]   size        The size of the array.
      *
@@ -160,7 +160,7 @@ public:
     GED_RETURN_VALUE QueryFieldBitLocation(const /* GED_INS_FIELD */ uint32_t field, uint32_t *fragments, uint32_t *length) const;
 
     /*!
-     * Get the GED_MODEL Id for the GEN version by which this instruction is decoded.
+     * Get the GED_MODEL Id for the GED model version by which this instruction is decoded.
      *
      * @return      The requested GED_MODEL Id.
      */
@@ -169,7 +169,7 @@ public:
 
     /*!
      * Get the instruction's opcode in the form of a GED_OPCODE enumerator. Use @ref GetRawOpcode for obtaining the raw encoding of
-     * the opcode in the GEN instruction.
+     * the opcode in the GED model instruction.
      *
      * @return      The enumerator representing the instruction's opcode.
      *
@@ -179,7 +179,7 @@ public:
 
 
     /*!
-     * Get the instruction raw opcode as it is encoded in the GEN instruction. Use @ref GetOpcode for obtaining the GED_OPCODE for
+     * Get the instruction raw opcode as it is encoded in the GED model instruction. Use @ref GetOpcode for obtaining the GED_OPCODE for
      * this opcode.
      *
      * @return      The opcode encoding.

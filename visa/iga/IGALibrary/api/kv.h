@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2018-2021 Intel Corporation
+Copyright (C) 2018-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -149,14 +133,20 @@ IGA_API uint32_t kv_get_inst_targets(
 /*
  * This function returns the syntax for a given instruction.
  * The user passes the buffer 'sbuf' (along with its capacity) to hold
- * the output.  The formatting options are the same as those in
+ * the output.  The output may be truncated if the passed buffer is too
+ * small, but it will always be suffixed with a NUL byte.
+ *
+ * The formatting options 'fmt_opts' are the same as those in
  * iga_disassemble_options_t::formatting_opts.
  *
- * The optional 'get_label_name' callback converts a PC into a label.
- * The caller can provide NULL and internal label names will be used.
- * The 'env' context parameter is passed to 'get_label_name'.
- * Memory returned by the callback is only read.  If the callback allocates,
- * then the caller of this function must cleanup.
+ * The optional 'get_label_name' callback may be called to converts
+ * a PC into a label.  The caller can provide NULL and internal label names
+ * will be used.  The 'env' context parameter is passed to 'get_label_name'.
+ * Memory returned by the callback is only read by IGA.
+ *
+ * This function returns the number of characters written to sbuf
+ * (including NUL byte).  If the PC is out of bounds or 'kv' NULL or
+ * something else is wrong, then 0 is returned.
  */
 IGA_API size_t kv_get_inst_syntax(
     const kv_t *kv,
@@ -165,8 +155,7 @@ IGA_API size_t kv_get_inst_syntax(
     size_t sbuf_cap,
     uint32_t fmt_opts,
     const char *(*get_label_name)(int32_t, void *),
-    void *env
-);
+    void *env);
 
 /*
  * This function returns the default label name if custom labeler is not used.
@@ -231,6 +220,23 @@ IGA_API void kv_get_send_indirect_descs(
     uint8_t *desc_reg,
     uint8_t *desc_subreg);
 
+/*
+* Determines if the given send instruction is on ExBSO mode.
+* exbso = 1 if true, 0 if fales.
+* exbso = -1 if not success.
+* exbso mode is introduces since XeHP.
+*
+* RETURNS:
+*  KV_SUCCESS               on success
+*  KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
+*  KV_INVALID_PC            if passed an invalid PC
+*  KV_INVALID_ARGUMENT      if given a null parameter
+*  KV_INCAPABLE_PLATFORM    if it's not XeHP+ platform
+*/
+IGA_API kv_status_t kv_get_send_exbso(
+    const kv_t *kv,
+    int32_t pc,
+    int32_t *exbso);
 
 /*
  * A symbol to indicate an invalid send descriptor value.

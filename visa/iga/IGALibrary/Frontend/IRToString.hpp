@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -215,6 +199,13 @@ static inline std::string ToSymbol(Type x)
     MAKE_CASE(Type, V);
     MAKE_CASE(Type, VF);
 
+    MAKE_CASE(Type, U1);
+    MAKE_CASE(Type, U2);
+    MAKE_CASE(Type, U4);
+    MAKE_CASE(Type, S2);
+    MAKE_CASE(Type, S4);
+    MAKE_CASE(Type, BF);
+
     MAKE_DEFAULT_CASE(Type);
     }
 }
@@ -384,6 +375,12 @@ static inline std::string ToSyntax(Type ot) {
     case Type::HF: return ":hf";
     case Type::DF: return ":df";
 
+    case Type::U1: return ":u1";
+    case Type::U2: return ":u2";
+    case Type::U4: return ":u4";
+    case Type::S2: return ":s2";
+    case Type::S4: return ":s4";
+    case Type::BF: return ":bf";
 
     case Type::INVALID: return ":Type::INVALID";
     default: return MakeErrorString("Type", (int)ot);
@@ -476,6 +473,7 @@ static inline bool IsBitwise(Op op) {
     case Op::OR:
     case Op::XOR:
     case Op::NOT:
+    case Op::BFN:
     // what about these?
     // case Op::CBIT:
     // case Op::LZD:
@@ -594,6 +592,8 @@ static inline std::string ToSyntax(const InstOpt &i) {
     case InstOpt::NOSRCDEPSET: return "NoSrcDepSet";
     case InstOpt::SWITCH:      return "Switch";
     case InstOpt::SERIALIZE:   return "Serialize";
+    case InstOpt::EXBSO:       return "ExBSO";
+    case InstOpt::CPS:         return "CPS";
     default: return MakeErrorString("InstOpt",(int)i);
     }
 }
@@ -616,8 +616,9 @@ static inline void ToSyntaxNoBraces(
         InstOpt::NOSRCDEPSET,
         InstOpt::SWITCH,
         InstOpt::SERIALIZE,
+        InstOpt::EXBSO,
+        InstOpt::CPS
       };
-
 
     bool first = true;
     for (size_t i = 0;
@@ -663,7 +664,8 @@ template <> SyncFC FromSyntax<SyncFC>(std::string str);
 
 
 
-
+std::string ToSyntax(DpasFC sfc);
+template <> DpasFC FromSyntax<DpasFC>(std::string str);
 
 } // iga::
 

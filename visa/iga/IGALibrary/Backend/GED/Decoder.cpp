@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -199,6 +183,7 @@ Kernel *Decoder::decodeKernel(
     if (numericLabels) {
         Block *block = kernel->createBlock();
         block->setPC(0);
+        block->setID(1);
         for (Instruction *inst : insts) {
             block->appendInstruction(inst);
         }
@@ -240,6 +225,22 @@ Subfunction Decoder::decodeSubfunction()
         if (mathFc == MathFC::INVALID) {
             errorT("invalid MathFC");
         }
+        break;
+    }
+    case Op::BFN: {
+        GED_DECODE_RAW(uint32_t, lut8, BfnFC);
+        sf = BfnFC((uint8_t)lut8);
+        break;
+    }
+    case Op::DPAS:
+    case Op::DPASW:
+    {
+        // GED splits this field up; we fuse it as a single subfunction
+        uint32_t systolicDepth;
+        GED_DECODE_RAW_TO_SRC(systolicDepth, uint32_t, SystolicDepth);
+        uint32_t repeatCount;
+        GED_DECODE_RAW_TO_SRC(repeatCount, uint32_t, RepeatCount);
+        sf = GetDpasFC(systolicDepth, repeatCount);
         break;
     }
     case Op::SYNC: {
@@ -914,7 +915,11 @@ void Decoder::decodeTernarySourceAlign16(Instruction *inst)
     }
 }
 
-static bool ternaryDstOmitsHzStride(const OpSpec &os) {
+static bool ternaryDstOmitsHzStride(const OpSpec &os)
+{
+    if (os.isDpasFamily())
+        return true;
+
     return false;
 }
 
@@ -978,6 +983,44 @@ void Decoder::decodeTernarySourceAlign1(Instruction *inst)
     }
 
     GED_REG_FILE regFile = decodeSrcRegFile<S>();
+    const OpSpec &os = inst->getOpSpec();
+    if (os.isDpasFamily()) {
+        // DPAS specific
+        // DPAS allowed src0 as null:
+        // When Src0 is specified as null, it is treated as an immediate value of +0
+        if (!(S == SourceIndex::SRC0 && regFile == GED_REG_FILE_ARF)) {
+            if (regFile != GED_REG_FILE_GRF) {
+                fatalT("invalid register file in src", (int)S);
+            }
+        }
+
+        RegRef   regRef;
+        RegName  regName = decodeSourceReg<S>(regRef);
+
+        // only ARF_NULL is allowed at src0 if it's not GRF
+        if (S == SourceIndex::SRC0 && regFile == GED_REG_FILE_ARF)
+            if (regName != RegName::ARF_NULL)
+                fatalT("non grf src0 register file must be null for this op");
+
+        Type ty = decodeSrcType<S>();
+        if (S == SourceIndex::SRC1) {
+            GED_DECODE_TO(Src1Precision, translate, ty);
+        } else if (S == SourceIndex::SRC2) {
+            GED_DECODE_TO(Src2Precision, translate, ty);
+        } // else ty is valid already for dst/src0
+        regRef.subRegNum =
+            (uint16_t)BinaryOffsetToSubReg(regRef.subRegNum, regName, ty, m_model.platform);
+        Region dftRgn = os.implicitSrcRegion(
+            (int)S, inst->getExecSize(), isMacro());
+        inst->setDirectSource(
+            S,
+            decodeSrcModifier<S>(),
+            regName,
+            regRef,
+            dftRgn,
+            ty);
+        return;
+    } // DPAS
 
     // regular ternary align1 source operand
     if (regFile == GED_REG_FILE_IMM) {
@@ -1105,6 +1148,25 @@ void Decoder::decodeSendInfoXe(SendDescodeInfo &sdi)
     decodeMLenRlenFromDesc(sdi.desc, sdi.src0Len, sdi.dstLen);
 }
 
+void Decoder::decodeSendInfoXeHP(SendDescodeInfo &sdi)
+{
+    sdi.sfid = m_subfunc.send;
+    if (sdi.exDesc.isImm()) {
+        sdi.src1Len = (int)(sdi.exDesc.imm >> 6) & 0x1F;
+    }
+    decodeMLenRlenFromDesc(sdi.desc, sdi.src0Len, sdi.dstLen);
+
+    if (sdi.exDesc.isReg()) {
+        // if ExBSO is set, decode Src1Length and CPS
+        GED_DECODE_RAW(uint32_t, exBSO, ExBSO);
+        sdi.hasExBSO = exBSO != 0;
+        if (sdi.hasExBSO) {
+            GED_DECODE_RAW(uint32_t, cps, CPS);
+            sdi.hasCps = cps != 0;
+            GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
+        }
+    }
+}
 
 
 
@@ -1117,6 +1179,8 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
         decodeSendInfoPreXe(sdi);
     } else if (platform() == Platform::XE) {
         decodeSendInfoXe(sdi);
+    } else if (platform() == Platform::XE_HP) {
+        decodeSendInfoXeHP(sdi);
     } else {
         IGA_ASSERT_FALSE("unsupported platform");
     }
@@ -1159,7 +1223,10 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
         }
     }
 
-
+    if (sdi.hasExBSO)
+        inst->addInstOpt(InstOpt::EXBSO);
+    if (sdi.hasCps)
+        inst->addInstOpt(InstOpt::CPS);
 
     // in case the operand lengths come from a seprate source
     if (inst->getSrc0Length() < 0)
@@ -1443,8 +1510,12 @@ Instruction *Decoder::decodeBranchSimplifiedInstruction(Kernel& kernel)
 void Decoder::decodeBranchDestination(Instruction *inst)
 {
     DirRegOpInfo dri = decodeDstDirRegInfo();
+    Type dty = Type::UD;
+    if (inst->getOpSpec().hasImplicitDstType()) {
+        dty = m_opSpec->implicitDstType();
+    }
     inst->setDirectDestination(
-        DstModifier::NONE, dri.regName, dri.regRef, Region::Horz::HZ_1, Type::UD);
+        DstModifier::NONE, dri.regName, dri.regRef, Region::Horz::HZ_1, dty);
 }
 
 ///////////////////////////////////////////////////////////////////////

@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2019-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -38,6 +22,7 @@ IN THE SOFTWARE.
 #include "bxml/ModelGen10.hpp"
 #include "bxml/ModelGen11.hpp"
 #include "bxml/ModelXe.hpp"
+#include "bxml/ModelXeHP.hpp"
 #include "../asserts.hpp"
 #include "../bits.hpp"
 #include "../Backend/Native/MInst.hpp"
@@ -107,6 +92,11 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 0,
         1,
         8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC(Platform::XE_HP, Platform::XE_HP,
+        RegName::ARF_ACC, "acc", "Accumulator",
+        0x2, 0,
+        1,
+        8, (32,32,32,32,32,32,32,32)),
     IGA_REGISTER_SPEC_LE(
         Platform::GEN11,
         RegName::ARF_MME, "mme", "Math Macro",
@@ -114,6 +104,11 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         4,
         8, (32,32,32,32,32,32,32,32)),
     IGA_REGISTER_SPEC(Platform::XE, Platform::XE,
+        RegName::ARF_MME, "mme", "Math Macro",
+        0x2, 8, // offset by 8 "acc8-15"
+        4,
+        8, (32,32,32,32,32,32,32,32)),
+    IGA_REGISTER_SPEC(Platform::XE_HP, Platform::XE_HP,
         RegName::ARF_MME, "mme", "Math Macro",
         0x2, 8, // offset by 8 "acc8-15"
         4,
@@ -435,6 +430,9 @@ static constexpr Model MODEL_GEN11(
 static constexpr Model MODEL_XE(
     Platform::XE, &MODEL_XE_OPSPECS[0], "12p1",
     "xe", "xelp", "tgl", "tgllp", "dg1");
+static constexpr Model MODEL_XE_HP(
+    Platform::XE_HP, &MODEL_XE_HP_OPSPECS[0], "12p5", "xehp"
+    );
 
 const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN7P5,
@@ -443,6 +441,7 @@ const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN10,
     &MODEL_GEN11,
     &MODEL_XE,
+    &MODEL_XE_HP,
 };
 const size_t iga::ALL_MODELS_LEN = sizeof(ALL_MODELS)/sizeof(ALL_MODELS[0]);
 
@@ -464,6 +463,8 @@ const Model *Model::LookupModel(Platform p)
         return &MODEL_GEN11;
     case Platform::XE:
         return &MODEL_XE;
+    case Platform::XE_HP:
+        return &MODEL_XE_HP;
     default:
         return nullptr;
     }

@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -55,6 +39,11 @@ enum class DEP_PIPE
     CONTROL_FLOW, // TGL only
     SEND,
     MATH,
+    // XeHP+
+    FLOAT,
+    INTEGER,
+    LONG64,
+    DPAS,
 };
 
 enum class DEP_CLASS
@@ -102,11 +91,29 @@ public:
               inOrder(in_order_id)
         {}
 
+        InstIDs(uint32_t global_id,
+                uint32_t in_order_id,
+                uint32_t float_pipe_id,
+                uint32_t int_pipe_id,
+                uint32_t long_pipe_id
+        )
+          : global(global_id),
+            inOrder(in_order_id),
+            floatPipe(float_pipe_id),
+            intPipe(int_pipe_id),
+            longPipe(long_pipe_id)
+        {}
 
         // unique id for all instructions
         uint32_t global = 0;
         // id counter for all in-order instructions
         uint32_t inOrder = 0;
+        // id coutner for float pipe
+        uint32_t floatPipe = 0;
+        // id counter for short pipe
+        uint32_t intPipe = 0;
+        // id counter for Long pipe
+        uint32_t longPipe = 0;
     };
 
 private:
@@ -192,7 +199,23 @@ private:
     void addDependency(const RegRangeType& reg_range);
     void addDependency(const RegRangeListType& reg_range);
 
+    // get the used src registers of given dpas inst
+    // Return: in reg_range each pair denotes start and upper grf reg number of each src
+    // extra_regs - the extra register footprint required by HW workaround: treat Src2 as dpas.8x8
+    //              when calculating register footpring. extra_regs only affect external dependency
+    //              and will not apply to calculating dpas/macro internal dependency
+    void getDpasSrcDependency(const Instruction &inst, RegRangeListType& reg_range,
+        RegRangeListType& extra_regs, const Model& model);
 
+    // get the used dst registers of given dpas inst
+    // Return: in reg_range denotes the start and upper grf reg number
+    void getDpasDstDependency(const Instruction &inst, RegRangeType& reg_range);
+
+    // helper function to get dpas src register footpring upper bound
+    uint32_t getDPASSrcDepUpBound(unsigned idx, Type srcType, uint32_t execSize, uint32_t lowBound,
+        uint32_t systolicDepth, uint32_t repeatCount, uint32_t opsPerChan);
+    // helper function to get dpas OPS_PER_CHAN
+    uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty);
 private:
     const Instruction* m_instruction;
 
@@ -254,6 +277,11 @@ public:
     DepSet* createDstDepSet(const Instruction &i, const InstIDs& inst_id_counter,
         SWSB_ENCODE_MODE enc_mode);
 
+    /// createSrcDstDepSetForDpas - Find the DPAS macro and set the dependency for input and output
+    /// return the created DepSets for input(src) and output(dst)
+    std::pair<DepSet*, DepSet*> createDPASSrcDstDepSet(
+        const InstList& insList, InstListIterator instIt, const InstIDs& inst_id_counter,
+        size_t& dpasCnt, SWSB_ENCODE_MODE enc_mode);
 
     /// mathDstWA - this will return the DepSet with math's dst region, and force to occupy the
     /// entire registers no matter what the region and channel are. e.g. if dst is r1.3, it'll

@@ -52,7 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_enumerations.h"
 
 /*!
- * This is an opaque type for holding a GEN instruction. The data should be accessed using the APIs supplied in this header. Before
+ * This is an opaque type for holding a GED instruction. The data should be accessed using the APIs supplied in this header. Before
  * using a ged_ins_t object, one of @ref GED_DecodeIns or @ref GED_InitEmptyIns must be called. Calling any other function will result
  * in undefined behavior.
  */
@@ -68,60 +68,66 @@ typedef enum
 {
 
     /*!
-     * GEN Version: 7
+     * GED Model Version: 7
      * Supported CPUs: ivb
      */
-    GED_MODEL_GEN_7,
+    GED_MODEL_7,
 
     /*!
-     * GEN Version: 7.5
+     * GED Model Version: 7.5
      * Supported CPUs: hsw
      */
-    GED_MODEL_GEN_7_5,
+    GED_MODEL_7_5,
 
     /*!
-     * GEN Version: 8
+     * GED Model Version: 8
      * Supported CPUs: bdw
      */
-    GED_MODEL_GEN_8,
+    GED_MODEL_8,
 
     /*!
-     * GEN Version: 8.1
+     * GED Model Version: 8.1
      * Supported CPUs: chv
      */
-    GED_MODEL_GEN_8_1,
+    GED_MODEL_8_1,
 
     /*!
-     * GEN Version: 9
+     * GED Model Version: 9
      * Supported CPUs: skl
      */
-    GED_MODEL_GEN_9,
+    GED_MODEL_9,
 
     /*!
-     * GEN Version: 10
+     * GED Model Version: 10
      * Supported CPUs: cnl
      */
-    GED_MODEL_GEN_10,
+    GED_MODEL_10,
 
     /*!
-     * GEN Version: 11
+     * GED Model Version: 11
      * Supported CPUs: icl
      */
-    GED_MODEL_GEN_11,
+    GED_MODEL_11,
 
     /*!
-     * GEN Version: tgl
+     * GED Model Version: tgl
      * Supported CPUs: DashG
      */
-    GED_MODEL_GEN_TGL,
+    GED_MODEL_TGL,
+
+    /*!
+     * GED Model Version: xe.hp
+     * Supported CPUs: XeHP
+     */
+    GED_MODEL_XE_HP,
     GED_MODEL_INVALID
 } GED_MODEL;
 
 /*!
- * Get the Gen model version (in string form) for the given GED_MODEL Id.
+ * Get the GED model version (in string form) for the given GED_MODEL Id.
  * If the Id is not valid, return an empty string
  *
- * @param[in]       model  The GEN model.
+ * @param[in]       model  The GED model.
  *
  * @return      The requested string, otherwise an empty string.
  */
@@ -157,7 +163,7 @@ extern const char* GED_CALLCONV GED_GetReturnValuePad(GED_RETURN_VALUE returnVal
  * existing one. Typically, this function is used for encoding instructions from scratch. For decoding, one may call @ref
  * GED_DecodeIns directly without calling this function first.
  *
- * @param[in]       modelId    The GEN model for the instruction.
+ * @param[in]       modelId    The GED model for the instruction.
  * @param[in,out]   ins        Pointer to the ged_ins_t object to be initialized.
  * @param[in]       opcode     The new opcode.
  *
@@ -169,7 +175,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_InitEmptyIns(const GED_MODEL modelId, g
  * Decode a single instruction. If the array of raw bytes includes several instructions, only one instruction will be decoded and the
  * remaining bytes will be ignored.
  *
- * @param[in]       modelId    The GEN model for the instruction.
+ * @param[in]       modelId    The GED model for the instruction.
  * @param[in]       rawBytes   An array of size "size" with the raw bytes of the instruction to decode.
  * @param[in]       size       The number of bytes in the "rawBytes" array.
  * @param[out]      ins        Pointer in which to store the decoded instruction (must be preallocated by the calling function).
@@ -322,6 +328,15 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetOpcode(ged_ins_t* ins, const GED_OPC
  * @return      TRUE if the instruction is compacted i.e. in its compact form, FALSE, otherwise.
  */
 extern bool GED_CALLCONV GED_IsCompact(const ged_ins_t* ins);
+
+/*!
+ * The function returns GED model of the specified instruction.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ *
+ * @return      Model ID
+ */
+extern GED_MODEL GED_CALLCONV GED_GetModel(const ged_ins_t* ins);
 
 /*!
  * Get the value of the NumOfSourceOperands field in the given instruction. See @ref GED_INS_FIELD_NumOfSourceOperands for the field's
@@ -3119,6 +3134,258 @@ extern uint32_t GED_CALLCONV GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALU
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
+ * Get the value of the RepeatCount field in the given instruction. See @ref GED_INS_FIELD_RepeatCount for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value upon success. If the encoded value is not valid, i.e. does not map to any valid enumerated value
+ *              for this instruction, the (invalid) encoded value is returned. If the field is not valid for the instruction, the
+ *              uint32_t equivalent of -1 is returned. If -1 is a valid value for this field, it is important to check the
+ *              GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetRepeatCount(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the RepeatCount field in the given instruction. See @ref GED_INS_FIELD_RepeatCount for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetRepeatCount(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the SystolicDepth field in the given instruction. See @ref GED_INS_FIELD_SystolicDepth for the field's
+ * description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value upon success. If the encoded value is not valid, i.e. does not map to any valid enumerated value
+ *              for this instruction, the (invalid) encoded value is returned. If the field is not valid for the instruction, the
+ *              uint32_t equivalent of -1 is returned. If -1 is a valid value for this field, it is important to check the
+ *              GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetSystolicDepth(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the SystolicDepth field in the given instruction. See @ref GED_INS_FIELD_SystolicDepth for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSystolicDepth(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the Src2Precision field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetPrecisionString. See @ref GED_INS_FIELD_Src2Precision for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      Src2Precision's enumeration if the field is valid, GED_PRECISION_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_PRECISION GED_CALLCONV GED_GetSrc2Precision(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src2Precision field in the given instruction. See @ref GED_INS_FIELD_Src2Precision for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2Precision(ged_ins_t* ins, const GED_PRECISION value);
+
+/*!
+ * Get the value of the Src2SubBytePrecision field in the given instruction. The function returns an enumeration value. To obtain the
+ * enum entry's string representation, use @ref GED_GetSubBytePrecisionString. See @ref GED_INS_FIELD_Src2SubBytePrecision for the
+ * field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      Src2SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_SUB_BYTE_PRECISION GED_CALLCONV GED_GetSrc2SubBytePrecision(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src2SubBytePrecision field in the given instruction. See @ref GED_INS_FIELD_Src2SubBytePrecision for the
+ * field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2SubBytePrecision(ged_ins_t* ins, const GED_SUB_BYTE_PRECISION value);
+
+/*!
+ * Get the value of the Src1Precision field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetPrecisionString. See @ref GED_INS_FIELD_Src1Precision for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      Src1Precision's enumeration if the field is valid, GED_PRECISION_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_PRECISION GED_CALLCONV GED_GetSrc1Precision(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src1Precision field in the given instruction. See @ref GED_INS_FIELD_Src1Precision for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Precision(ged_ins_t* ins, const GED_PRECISION value);
+
+/*!
+ * Get the value of the Src1SubBytePrecision field in the given instruction. The function returns an enumeration value. To obtain the
+ * enum entry's string representation, use @ref GED_GetSubBytePrecisionString. See @ref GED_INS_FIELD_Src1SubBytePrecision for the
+ * field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_SUB_BYTE_PRECISION GED_CALLCONV GED_GetSrc1SubBytePrecision(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src1SubBytePrecision field in the given instruction. See @ref GED_INS_FIELD_Src1SubBytePrecision for the
+ * field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1SubBytePrecision(ged_ins_t* ins, const GED_SUB_BYTE_PRECISION value);
+
+/*!
+ * Get the value of the BfnFC field in the given instruction. See @ref GED_INS_FIELD_BfnFC for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetBfnFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the BfnFC field in the given instruction. See @ref GED_INS_FIELD_BfnFC for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetBfnFC(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the ExBSO field in the given instruction. See @ref GED_INS_FIELD_ExBSO for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetExBSO(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the ExBSO field in the given instruction. See @ref GED_INS_FIELD_ExBSO for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExBSO(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the CPS field in the given instruction. See @ref GED_INS_FIELD_CPS for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetCPS(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the CPS field in the given instruction. See @ref GED_INS_FIELD_CPS for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetCPS(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the Src1Length field in the given instruction. See @ref GED_INS_FIELD_Src1Length for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetSrc1Length(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src1Length field in the given instruction. See @ref GED_INS_FIELD_Src1Length for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value);
+
+/*!
  * Get the value of the AddrImm field which corresponds to an indexed Src operand in the given instruction. See @ref
  * GED_INS_FIELD_Src0AddrImm, @ref GED_INS_FIELD_Src1AddrImm for the fields' description.
  *
@@ -3155,7 +3422,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrImm(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3238,7 +3505,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcChanSel(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3324,7 +3591,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIndex(ged_ins_t* ins, cons
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3353,7 +3620,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcMathMacroExt(ged_ins_t* in
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3408,7 +3675,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRegNum(ged_ins_t* ins, con
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3435,7 +3702,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3575,7 +3842,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcWidth(ged_ins_t* ins, cons
  * GED_GetArchRegString. See @ref GED_PSEUDO_FIELD_ArchReg for the field's description.
  *
  * @param[in]       regNum     The register number.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3588,7 +3855,7 @@ extern GED_ARCH_REG GED_CALLCONV GED_GetArchReg(const uint32_t regNum, const GED
  * GED_SetDstRegNum, @ref GED_SetSrc0RegNum or @ref GED_SetSrc1RegNum). See @ref GED_PSEUDO_FIELD_ArchReg for the field's description.
  *
  * @param[in,out]   regNum     The register number.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       archReg    The architectural register.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3600,7 +3867,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetArchReg(uint32_t* regNum, const GED_
  * or @ref GED_GetSrc1RegNum). See @ref GED_PSEUDO_FIELD_ArchRegNum for the field's description.
  *
  * @param[in]       regNum     The register number.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3614,7 +3881,7 @@ extern uint32_t GED_CALLCONV GED_GetArchRegNum(const uint32_t regNum, const GED_
  * description.
  *
  * @param[in,out]   regNum     The register number.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       archRegNum The architectural register number.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3627,7 +3894,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetArchRegNum(uint32_t* regNum, const G
  * GED_GetSwizzleString. See @ref GED_PSEUDO_FIELD_SwizzleX for the field's description.
  *
  * @param[in]       chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3641,7 +3908,7 @@ extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleX(const uint32_t chanSel, const GE
  * description.
  *
  * @param[in,out]   chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       swizzle    The swizzle value.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3654,7 +3921,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleX(uint32_t* chanSel, const GE
  * GED_GetSwizzleString. See @ref GED_PSEUDO_FIELD_SwizzleY for the field's description.
  *
  * @param[in]       chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3668,7 +3935,7 @@ extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleY(const uint32_t chanSel, const GE
  * description.
  *
  * @param[in,out]   chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       swizzle    The swizzle value.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3681,7 +3948,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleY(uint32_t* chanSel, const GE
  * GED_GetSwizzleString. See @ref GED_PSEUDO_FIELD_SwizzleZ for the field's description.
  *
  * @param[in]       chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3695,7 +3962,7 @@ extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleZ(const uint32_t chanSel, const GE
  * description.
  *
  * @param[in,out]   chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       swizzle    The swizzle value.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3708,7 +3975,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleZ(uint32_t* chanSel, const GE
  * GED_GetSwizzleString. See @ref GED_PSEUDO_FIELD_SwizzleW for the field's description.
  *
  * @param[in]       chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3722,7 +3989,7 @@ extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleW(const uint32_t chanSel, const GE
  * description.
  *
  * @param[in,out]   chanSel    The channel select.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       swizzle    The swizzle value.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3734,7 +4001,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleW(uint32_t* chanSel, const GE
  * GED_PSEUDO_FIELD_MessageLength for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3747,7 +4014,7 @@ extern uint32_t GED_CALLCONV GED_GetMessageLength(const uint32_t msgDesc, const 
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageLength for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       length     The message length.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3759,7 +4026,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageLength(uint32_t* msgDesc, con
  * GED_PSEUDO_FIELD_ResponseLength for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3772,7 +4039,7 @@ extern uint32_t GED_CALLCONV GED_GetResponseLength(const uint32_t msgDesc, const
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_ResponseLength for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       length     The response length.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3785,7 +4052,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetResponseLength(uint32_t* msgDesc, co
  * GED_PSEUDO_FIELD_HeaderPresent for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3799,7 +4066,7 @@ extern GED_HEADER_PRESENT GED_CALLCONV GED_GetHeaderPresent(const uint32_t msgDe
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_HeaderPresent for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       headerPresent  The header present.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3813,7 +4080,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetHeaderPresent(uint32_t* msgDesc, con
  * @ref GED_PSEUDO_FIELD_MessageTypeDP_SAMPLER for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3827,7 +4094,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_SAMPLER(const uint32_t
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_SAMPLER for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port sampler message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3841,7 +4108,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_SAMPLER(uint32_t* msgD
  * GED_PSEUDO_FIELD_MessageTypeDP_RC for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3855,7 +4122,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_RC(const uint32_t msgD
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_RC for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port render cache message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3869,7 +4136,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_RC(uint32_t* msgDesc, 
  * GED_PSEUDO_FIELD_MessageTypeDP_CC for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3883,7 +4150,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_CC(const uint32_t msgD
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_CC for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port constant cache message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3897,7 +4164,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_CC(uint32_t* msgDesc, 
  * GED_PSEUDO_FIELD_MessageTypeDP_DC0 for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3911,7 +4178,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0(const uint32_t msg
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_DC0 for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port data cache 0 message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3925,7 +4192,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC0(uint32_t* msgDesc,
  * GED_PSEUDO_FIELD_TypedSurfaceSlotGroup for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3939,7 +4206,7 @@ extern GED_SLOT_GROUP GED_CALLCONV GED_GetTypedSurfaceSlotGroup(const uint32_t m
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_TypedSurfaceSlotGroup for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       slotGroup  The typed surface slot group.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3953,7 +4220,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetTypedSurfaceSlotGroup(uint32_t* msgD
  * GED_PSEUDO_FIELD_TypedAtomicSlotGroup for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3967,7 +4234,7 @@ extern GED_SLOT_GROUP GED_CALLCONV GED_GetTypedAtomicSlotGroup(const uint32_t ms
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_TypedAtomicSlotGroup for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       slotGroup  The typed atomic slot group.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -3981,7 +4248,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetTypedAtomicSlotGroup(uint32_t* msgDe
  * GED_PSEUDO_FIELD_UntypedSurfaceSIMDMode for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -3995,7 +4262,7 @@ extern GED_SIMDMODE GED_CALLCONV GED_GetUntypedSurfaceSIMDMode(const uint32_t ms
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_UntypedSurfaceSIMDMode for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       simdMode   The untyped surface SIMD mode.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4009,7 +4276,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetUntypedSurfaceSIMDMode(uint32_t* msg
  * GED_PSEUDO_FIELD_UntypedAtomicSIMDMode for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4023,7 +4290,7 @@ extern GED_SIMDMODE GED_CALLCONV GED_GetUntypedAtomicSIMDMode(const uint32_t msg
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_UntypedAtomicSIMDMode for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       simdMode   The untyped atomic SIMD mode.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4036,7 +4303,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetUntypedAtomicSIMDMode(uint32_t* msgD
  * GED_PSEUDO_FIELD_InvalidateAfterRead for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4049,7 +4316,7 @@ extern uint32_t GED_CALLCONV GED_GetInvalidateAfterRead(const uint32_t msgDesc, 
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_InvalidateAfterRead for the field's description.
  *
  * @param[in,out]   msgDesc                    The message descriptor.
- * @param[in]       modelId                    The GEN model by which to interpret.
+ * @param[in]       modelId                    The GED model by which to interpret.
  * @param[in]       invalidateAfterReadEnable  The invalidate after read enable.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4063,7 +4330,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetInvalidateAfterRead(uint32_t* msgDes
  * GED_PSEUDO_FIELD_BlockSize for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4076,7 +4343,7 @@ extern GED_BLOCK_SIZE GED_CALLCONV GED_GetBlockSize(const uint32_t msgDesc, cons
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_BlockSize for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       blockSize  The block size.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4089,7 +4356,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetBlockSize(uint32_t* msgDesc, const G
  * GED_PSEUDO_FIELD_RedChannel for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4102,7 +4369,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV GED_GetRedChannel(const uint32_t msgDesc, c
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_RedChannel for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       channel    The red channel.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4115,7 +4382,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetRedChannel(uint32_t* msgDesc, const 
  * GED_PSEUDO_FIELD_GreenChannel for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4128,7 +4395,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV GED_GetGreenChannel(const uint32_t msgDesc,
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_GreenChannel for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       channel    The green channel.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4141,7 +4408,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetGreenChannel(uint32_t* msgDesc, cons
  * GED_PSEUDO_FIELD_BlueChannel for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4154,7 +4421,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV GED_GetBlueChannel(const uint32_t msgDesc, 
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_BlueChannel for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       channel    The blue channel.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4167,7 +4434,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetBlueChannel(uint32_t* msgDesc, const
  * GED_PSEUDO_FIELD_AlphaChannel for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4180,7 +4447,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV GED_GetAlphaChannel(const uint32_t msgDesc,
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_AlphaChannel for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       channel    The alpha channel.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4193,7 +4460,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetAlphaChannel(uint32_t* msgDesc, cons
  * GED_PSEUDO_FIELD_ReturnDataControl for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4207,7 +4474,7 @@ extern GED_RETURN_DATA_CONTROL GED_CALLCONV GED_GetReturnDataControl(const uint3
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_ReturnDataControl for the field's description.
  *
  * @param[in,out]   msgDesc            The message descriptor.
- * @param[in]       modelId            The GEN model by which to interpret.
+ * @param[in]       modelId            The GED model by which to interpret.
  * @param[in]       returnDataControl  The return data control.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4221,7 +4488,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetReturnDataControl(uint32_t* msgDesc,
  * GED_PSEUDO_FIELD_AtomicOperationType for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4235,7 +4502,7 @@ extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV GED_GetAtomicOperationType(const u
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_AtomicOperationType for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       operationType  The atomic operation type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4249,7 +4516,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetAtomicOperationType(uint32_t* msgDes
  * See @ref GED_PSEUDO_FIELD_AtomicCounterOperationType for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4263,7 +4530,7 @@ extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV GED_GetAtomicCounterOperationType(
  * appropriate field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_AtomicCounterOperationType for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       operationType  The atomic counter operation type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4277,7 +4544,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetAtomicCounterOperationType(uint32_t*
  * GED_PSEUDO_FIELD_SubFuncID for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4290,7 +4557,7 @@ extern GED_SUB_FUNC_ID GED_CALLCONV GED_GetSubFuncID(const uint32_t msgDesc, con
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_SubFuncID for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       subFuncID  The sub function.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4302,7 +4569,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSubFuncID(uint32_t* msgDesc, const G
  * GED_PSEUDO_FIELD_BindingTableIndex for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4315,7 +4582,7 @@ extern uint32_t GED_CALLCONV GED_GetBindingTableIndex(const uint32_t msgDesc, co
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_BindingTableIndex for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       bti        The binding table index.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4327,7 +4594,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetBindingTableIndex(uint32_t* msgDesc,
  * GED_PSEUDO_FIELD_FuncControl for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4340,7 +4607,7 @@ extern uint32_t GED_CALLCONV GED_GetFuncControl(const uint32_t msgDesc, const GE
  * GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_FuncControl for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       fc         The function control.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4353,7 +4620,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetFuncControl(uint32_t* msgDesc, const
  * GED_PSEUDO_FIELD_MessageTypeDP_DC1 for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4367,7 +4634,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC1(const uint32_t msg
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_DC1 for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port data cache 1 message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4380,7 +4647,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC1(uint32_t* msgDesc,
  * GED_PSEUDO_FIELD_MessageTypeDP0Category for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4393,7 +4660,7 @@ extern uint32_t GED_CALLCONV GED_GetMessageTypeDP0Category(const uint32_t msgDes
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP0Category for the field's description.
  *
  * @param[in,out]   msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       category   The category of the data cache data port 0 message.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4407,7 +4674,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP0Category(uint32_t* msg
  * @ref GED_PSEUDO_FIELD_MessageTypeDP_DC0Legacy for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4421,7 +4688,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0Legacy(const uint32
  * field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_DC0Legacy for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port data cache 0 message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4435,7 +4702,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC0Legacy(uint32_t* ms
  * @ref GED_PSEUDO_FIELD_MessageTypeDP_DC0ScratchBlock for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4449,7 +4716,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0ScratchBlock(const 
  * appropriate field (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_DC0ScratchBlock for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port data cache 0 message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4463,7 +4730,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC0ScratchBlock(uint32
  * GED_PSEUDO_FIELD_MessageTypeDP_DC2 for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4477,7 +4744,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC2(const uint32_t msg
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_DC2 for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port data cache 2 message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4491,7 +4758,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC2(uint32_t* msgDesc,
  * GED_PSEUDO_FIELD_MessageTypeDP_DCRO for the field's description.
  *
  * @param[in]       msgDesc    The message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4505,7 +4772,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DCRO(const uint32_t ms
  * (@ref GED_SetMsgDesc). See @ref GED_PSEUDO_FIELD_MessageTypeDP_DCRO for the field's description.
  *
  * @param[in,out]   msgDesc        The message descriptor.
- * @param[in]       modelId        The GEN model by which to interpret.
+ * @param[in]       modelId        The GED model by which to interpret.
  * @param[in]       messageType    The data port read only message type.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4518,7 +4785,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc
  * @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
  *
  * @param[in]       exMsgDesc  The extended message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4531,7 +4798,7 @@ extern uint32_t GED_CALLCONV GED_GetExMessageLength(const uint32_t exMsgDesc, co
  * field (@ref GED_SetExMsgDesc). See @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
  *
  * @param[in,out]   exMsgDesc  The extended message descriptor.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[in]       length     The exmessage length.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
@@ -4811,6 +5078,16 @@ extern const char* GED_CALLCONV GED_GetNoSrcDepSetString(GED_NO_SRC_DEP_SET NoSr
 extern const char* GED_CALLCONV GED_GetOpcodeString(GED_OPCODE OpcodeValue);
 
 /*!
+ * Get the string representation for the given GED_PRECISION enumerator. The function returns a NULL pointer for
+ * GED_PRECISION_INVALID.
+ *
+ * @param[in]       PrecisionValue The given GED_PRECISION enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetPrecisionString(GED_PRECISION PrecisionValue);
+
+/*!
  * Get the string representation for the given GED_PRED_CTRL enumerator. The function returns a NULL pointer for
  * GED_PRED_CTRL_INVALID.
  *
@@ -4904,6 +5181,16 @@ extern const char* GED_CALLCONV GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupV
 extern const char* GED_CALLCONV GED_GetSrcModString(GED_SRC_MOD SrcModValue);
 
 /*!
+ * Get the string representation for the given GED_SUB_BYTE_PRECISION enumerator. The function returns a NULL pointer for
+ * GED_SUB_BYTE_PRECISION_INVALID.
+ *
+ * @param[in]       SubBytePrecisionValue  The given GED_SUB_BYTE_PRECISION enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetSubBytePrecisionString(GED_SUB_BYTE_PRECISION SubBytePrecisionValue);
+
+/*!
  * Get the string representation for the given GED_SUB_FUNC_ID enumerator. The function returns a NULL pointer for
  * GED_SUB_FUNC_ID_INVALID.
  *
@@ -4957,7 +5244,7 @@ GED_INLINE bool GED_CALLCONV GED_IsVx1VxH(uint32_t vertstride)
  * The operand width, based on its data type.
  *
  * @param[in]       datatype   The @ref GED_DATA_TYPE enumerator to interpret.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4969,7 +5256,7 @@ extern uint32_t GED_CALLCONV GED_GetOperandWidth(const GED_DATA_TYPE datatype, c
  * The numeric type in which to display an operand, based on its data type. Relevant only for immediate operands.
  *
  * @param[in]       datatype   The @ref GED_DATA_TYPE enumerator to interpret.
- * @param[in]       modelId    The GEN model by which to interpret.
+ * @param[in]       modelId    The GED model by which to interpret.
  * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
  *                             error which caused the failure.
  *
@@ -4986,7 +5273,7 @@ extern uint32_t GED_CALLCONV GED_GetOperandNumericType(const GED_DATA_TYPE datat
  *
  *
  * @param[in]       execmaskoffsetctrl The @ref GED_EXEC_MASK_OFFSET_CTRL enumerator to interpret.
- * @param[in]       modelId            The GEN model by which to interpret.
+ * @param[in]       modelId            The GED model by which to interpret.
  * @param[out]      result             If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the
  *                                     specific error which caused the failure.
  *

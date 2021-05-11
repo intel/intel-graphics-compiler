@@ -35,14 +35,15 @@ set(GED_autogenia32_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen10.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen11.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7_5.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8_1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen9.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gentgl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_10.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_11.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_7.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_7_5.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8_1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp
   PARENT_SCOPE
@@ -63,14 +64,15 @@ set(GED_autogenia32_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen10.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen11.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen7_5.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen8_1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gen9.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_gentgl.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_10.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_11.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_7.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_7_5.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_8_1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_9.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.h
   PARENT_SCOPE
 )

@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -63,6 +47,7 @@ enum class Platform
     GEN11       = IGA_GEN_VER_ORDINAL(11, 0 ),
     // XE version
     XE          = IGA_XE_VER_ORDINAL(1, 0), // TGL
+    XE_HP       = IGA_XE_VER_ORDINAL(1, 1), // XE_HP
     FUTURE      = 0x7FFFFFFF
 #undef IGA_GEN_VER_ORDINAL
 };
@@ -116,7 +101,18 @@ static inline std::tuple<uint32_t, uint32_t>
     uint32_t shl = 0, shr = 0; // by default no scaling
 
     switch (type) {
-
+    // subbyte types
+    case Type::U1:
+        shl = 3;
+        break;
+    case Type::U2:
+    case Type::S2:
+        shl = 2;
+        break;
+    case Type::U4:
+    case Type::S4:
+        shl = 1;
+        break;
 
 
     // 1-byte types
@@ -127,6 +123,7 @@ static inline std::tuple<uint32_t, uint32_t>
     case Type::UW:
     case Type::W:
     case Type::HF:
+    case Type::BF:
         shr = 1;
         break;
     // 4-byte types
@@ -166,6 +163,7 @@ static inline bool TypeIsFloating(Type t)
     switch (t)
     {
     case Type::F:
+    case Type::BF:
     case Type::HF:
     case Type::DF:
     case Type::VF:

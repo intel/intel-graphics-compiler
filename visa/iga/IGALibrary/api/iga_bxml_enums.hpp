@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2020-2021 Intel Corporation
+Copyright (C) 2018-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -31,6 +15,11 @@ IN THE SOFTWARE.
 
 namespace iga
 {
+    struct BfnFC {
+        uint32_t value;
+        constexpr explicit BfnFC(uint8_t val) : value(val) { }
+        const char *c_str() const;
+    };
 
     // used for if, else, and goto
     enum class BranchCtrl
@@ -128,8 +117,85 @@ namespace iga
         SyncFC::HOST,
     };
 
-
-
+    // The DpasFC function control fuses the systolic count and repeat counts
+    // into a single subfunction.
+    enum class DpasFC
+    {
+        // ordinal values are now (SystolicCount << 8) | (RepeatCount)
+        // encoding has to do something special because it's platform specific
+        INVALID = -1,
+        //
+        F_1X1  =  (1 << 8) | 1,
+        F_1X2  =  (1 << 8) | 2,
+        F_1X3  =  (1 << 8) | 3,
+        F_1X4  =  (1 << 8) | 4,
+        F_1X5  =  (1 << 8) | 5,
+        F_1X6  =  (1 << 8) | 6,
+        F_1X7  =  (1 << 8) | 7,
+        F_1X8  =  (1 << 8) | 8,
+        F_2X1  =  (2 << 8) | 1,
+        F_2X2  =  (2 << 8) | 2,
+        F_2X3  =  (2 << 8) | 3,
+        F_2X4  =  (2 << 8) | 4,
+        F_2X5  =  (2 << 8) | 5,
+        F_2X6  =  (2 << 8) | 6,
+        F_2X7  =  (2 << 8) | 7,
+        F_2X8  =  (2 << 8) | 8,
+        F_4X1  =  (4 << 8) | 1,
+        F_4X2  =  (4 << 8) | 2,
+        F_4X3  =  (4 << 8) | 3,
+        F_4X4  =  (4 << 8) | 4,
+        F_4X5  =  (4 << 8) | 5,
+        F_4X6  =  (4 << 8) | 6,
+        F_4X7  =  (4 << 8) | 7,
+        F_4X8  =  (4 << 8) | 8,
+        F_8X1  =  (8 << 8) | 1,
+        F_8X2  =  (8 << 8) | 2,
+        F_8X3  =  (8 << 8) | 3,
+        F_8X4  =  (8 << 8) | 4,
+        F_8X5  =  (8 << 8) | 5,
+        F_8X6  =  (8 << 8) | 6,
+        F_8X7  =  (8 << 8) | 7,
+        F_8X8  =  (8 << 8) | 8,
+    };
+    // static const DpasFC ALL_DpasFCs[] ...
+    static const std::array<DpasFC,48> ALL_DpasFCs {
+        DpasFC::F_1X1, DpasFC::F_1X2, DpasFC::F_1X3,
+        DpasFC::F_1X4, DpasFC::F_1X5, DpasFC::F_1X6,
+        DpasFC::F_1X7, DpasFC::F_1X8,
+        DpasFC::F_2X1, DpasFC::F_2X2, DpasFC::F_2X3,
+        DpasFC::F_2X4, DpasFC::F_2X5, DpasFC::F_2X6,
+        DpasFC::F_2X7, DpasFC::F_2X8,
+        DpasFC::F_4X1, DpasFC::F_4X2, DpasFC::F_4X3,
+        DpasFC::F_4X4, DpasFC::F_4X5, DpasFC::F_4X6,
+        DpasFC::F_4X7, DpasFC::F_4X8,
+        DpasFC::F_8X1, DpasFC::F_8X2, DpasFC::F_8X3,
+        DpasFC::F_8X4, DpasFC::F_8X5, DpasFC::F_8X6,
+        DpasFC::F_8X7, DpasFC::F_8X8,
+    };
+    static inline uint32_t GetDpasSystolicDepth(DpasFC sf) {
+        return uint32_t(sf) >> 8;
+    }
+    static inline uint32_t GetDpasRepeatCount(DpasFC sf) {
+        return uint32_t(sf) & 0xFF;
+    }
+    static inline uint32_t GetDpasSystolicDepthEncoding(
+        DpasFC sf, uint32_t divisor)
+    {
+        switch (GetDpasSystolicDepth(sf)/divisor) {
+        case 1: return 0;
+        case 2: return 1;
+        case 4: return 2;
+        case 8: return 3;
+        default: return 0xFFFFFFFF; // unreachable
+        }
+    }
+    static inline uint32_t GetDpasRepeatCountEncoding(DpasFC sf) {
+        return GetDpasRepeatCount(sf) - 1;
+    }
+    static inline DpasFC GetDpasFC(uint32_t sysD, uint32_t repC) {
+        return DpasFC((sysD << 8) | repC);
+    }
 
     // An instruction subfunction is a set of immediate-encoded control bits
     // that control the behavior of some EU instruction.  We permit an
@@ -148,6 +214,9 @@ namespace iga
     // For instructions that contain multiple paramters pair the two
     // together into a single value via a pairing function
     // (search for "Pairing Function" if unfamiliar).
+    // E.g. DPAS has both a systolic depth and repeat count.
+    // One way to pair that is to use the high half of the integer
+    // to hold one, and the low half to hold the other.
     //
     // NOTE: it's fine to use struct pair{uint16_t x; uint16_t y;};
     // so long as the structure fits in 4B (we could make this wider, but
@@ -163,6 +232,8 @@ namespace iga
             MathFC      math; // op == Op::MATH
             SFID        send; // op == Op::SEND*  (**)
             SyncFC      sync; // op == Op::SYNC
+            BfnFC       bfn; // BFN subfunction index (low 8 bits are relevent)
+            DpasFC      dpas; // op == Op::DPAS || op == Op::DPASW
             // NOTE: this does *not* correspond to any direct encoding
             // since that can vary from platform to platform.
             uint32_t    bits;
@@ -173,6 +244,8 @@ namespace iga
         constexpr Subfunction(MathFC sf) : math(sf) { }
         constexpr Subfunction(SFID sf) : send(sf) { }
         constexpr Subfunction(SyncFC sf) : sync(sf) { }
+        constexpr Subfunction(BfnFC bf) : bfn(bf) { }
+        constexpr Subfunction(DpasFC sf) : dpas(sf) { }
 
         bool isValid() const {return invalid != InvalidFC::INVALID;}
     };

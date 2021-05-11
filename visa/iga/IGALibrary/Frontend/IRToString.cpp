@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2020-2021 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -46,6 +30,7 @@ std::string iga::ToSymbol(Platform x) {
     MAKE_CASE(Platform, GEN10);
     MAKE_CASE(Platform, GEN11);
     MAKE_CASE(Platform, XE);
+    MAKE_CASE(Platform, XE_HP);
     MAKE_CASE(Platform, FUTURE);
     MAKE_DEFAULT_CASE(Platform);
     }
@@ -140,3 +125,53 @@ template <> SyncFC iga::FromSyntax<SyncFC>(std::string syn)
     return SyncFC::INVALID;
 }
 
+std::string iga::ToSyntax(DpasFC sfc)
+{
+    switch (sfc) {
+    case DpasFC::F_1X1: return "1x1";
+    case DpasFC::F_1X2: return "1x2";
+    case DpasFC::F_1X3: return "1x3";
+    case DpasFC::F_1X4: return "1x4";
+    case DpasFC::F_1X5: return "1x5";
+    case DpasFC::F_1X6: return "1x6";
+    case DpasFC::F_1X7: return "1x7";
+    case DpasFC::F_1X8: return "1x8";
+    //
+    case DpasFC::F_2X1: return "2x1";
+    case DpasFC::F_2X2: return "2x2";
+    case DpasFC::F_2X3: return "2x3";
+    case DpasFC::F_2X4: return "2x4";
+    case DpasFC::F_2X5: return "2x5";
+    case DpasFC::F_2X6: return "2x6";
+    case DpasFC::F_2X7: return "2x7";
+    case DpasFC::F_2X8: return "2x8";
+    //
+    case DpasFC::F_4X1: return "4x1";
+    case DpasFC::F_4X2: return "4x2";
+    case DpasFC::F_4X3: return "4x3";
+    case DpasFC::F_4X4: return "4x4";
+    case DpasFC::F_4X5: return "4x5";
+    case DpasFC::F_4X6: return "4x6";
+    case DpasFC::F_4X7: return "4x7";
+    case DpasFC::F_4X8: return "4x8";
+    //
+    case DpasFC::F_8X1: return "8x1";
+    case DpasFC::F_8X2: return "8x2";
+    case DpasFC::F_8X3: return "8x3";
+    case DpasFC::F_8X4: return "8x4";
+    case DpasFC::F_8X5: return "8x5";
+    case DpasFC::F_8X6: return "8x6";
+    case DpasFC::F_8X7: return "8x7";
+    case DpasFC::F_8X8: return "8x8";
+    default:
+        return fmtHex(static_cast<uint32_t>(sfc)) + "?";
+    }
+}
+template <> DpasFC iga::FromSyntax<DpasFC>(std::string syn)
+{
+    for (auto sf : ALL_DpasFCs) {
+        if (syn == ToSyntax(sf))
+            return sf;
+    }
+    return DpasFC::INVALID;
+}

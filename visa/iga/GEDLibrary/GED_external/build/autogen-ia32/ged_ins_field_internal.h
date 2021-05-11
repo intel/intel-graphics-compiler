@@ -39,12 +39,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*!
  * Table mapping a GED_INS_FIELD to its GED_FIELD_TYPE.
  */
-extern GED_FIELD_TYPE fieldTypesByField[116];
+extern GED_FIELD_TYPE fieldTypesByField[127];
 
 /*!
  * Table mapping GED_INS_FIELD to its name (string representation).
  */
-extern const char* fieldNameByField[116];
+extern const char* fieldNameByField[127];
 
 /*!
  * Table mapping a GED_PSEUDO_FIELD to its GED_FIELD_TYPE.

@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -117,6 +101,7 @@ typedef enum {
   , IGA_GEN11     = GEN_VER(11,0)
   // XE versions
   , IGA_XE        = XE_VER(1, 0) // TGL
+  , IGA_XE_HP     = XE_VER(1, 1) // XE_HP
 
   // TO BE DEPRECATED
   // Preserve the old values to maintain the binary compatibility
@@ -440,6 +425,8 @@ static_assert(sizeof(iga_disassemble_options_t) == 5*4,
 #define IGA_FORMATTING_OPT_PRINT_DEPS       0x00000020u
 /* print load/store pseduo instructions where possible */
 #define IGA_FORMATTING_OPT_PRINT_LDST       0x00000040u
+/* print bfn symbolic instructions */
+#define IGA_FORMATTING_OPT_PRINT_BFNEXPRS   0x00000080u
 /* use ansi_span escapes when possible */
 #define IGA_FORMATTING_OPT_PRINT_ANSI       0x00000100u
 /* emit JSON instead of asm */

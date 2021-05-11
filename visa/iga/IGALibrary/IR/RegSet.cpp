@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -349,6 +333,43 @@ bool RegSet::addSendOperand(const Instruction &i, int opIx)
     return changed;
 }
 
+// c.f. DepSet::getDPASSrcDepUpBound
+bool RegSet::addDpasOperand(const Instruction &i, int opIx)
+{
+    const Operand &op = opIx < 0 ? i.getDestination() : i.getSource(opIx);
+    if (op.getDirRegName() != RegName::GRF_R) {
+        return false; // e.g. null
+    }
+
+    // The operand sizes of the multiplicands dictate how many ops per
+    // channel we process.
+    size_t mulSize =
+        std::max(TypeSizeInBitsWithDefault(i.getSource(1).getType(), 8),
+                 TypeSizeInBitsWithDefault(i.getSource(2).getType(), 8));
+    size_t opsPerChannel = 32 / mulSize; // e.g. hf is 2 ...
+    size_t execSize = size_t(i.getExecSize());
+    size_t R = GetDpasRepeatCount(i.getDpasFc());
+    size_t S = GetDpasSystolicDepth(i.getDpasFc());
+    size_t typeSizeBits = TypeSizeInBitsWithDefault(op.getType(), 32);
+
+    size_t startOff =
+        offsetOf(RegName::GRF_R, op.getDirRegRef(), op.getType());
+    bool changed = false;
+    if (opIx <= 0) { // dst/src0
+        size_t bitsAccessed = execSize * typeSizeBits * R;
+        changed |= add(RegName::GRF_R, startOff, bitsAccessed);
+    } else if (opIx == 1) { // src1
+        size_t bitsAccessed = execSize * typeSizeBits * opsPerChannel * S;
+        changed |= add(RegName::GRF_R, startOff, bitsAccessed);
+    } else { // src2
+        for (size_t r = 0; r < R; r++) {
+            size_t startSubReg = r * opsPerChannel * typeSizeBits * 8;
+            size_t repReads = S * opsPerChannel * typeSizeBits;
+            changed |= add(RegName::GRF_R, startOff + startSubReg, repReads);
+        }
+    }
+    return changed;
+}
 
 bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
 {
@@ -417,6 +438,8 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
             if (op.getDirRegName() == RegName::GRF_R) {
                 addSendOperand(i, srcIx);
             }
+        } else if (i.getOpSpec().isDpasFamily()) {
+            added |= addDpasOperand(i, srcIx);
         } else {
             setSrcRegion(
                 op.getDirRegName(),
@@ -530,6 +553,9 @@ bool RegSet::addExplicitDestinationOutputs(const Instruction &i)
             op.getDirRegName() == RegName::GRF_R)
         {
             addSendOperand(i, -1);
+        } else if (i.getOpSpec().isDpasFamily()) {
+            // destination is mirror of src0
+            added |= addDpasOperand(i, -1);
         } else if (op.getDirRegName() == RegName::ARF_ACC &&
             i.is(Op::MUL) &&
             (op.getType() == Type::D || op.getType() == Type::UD))

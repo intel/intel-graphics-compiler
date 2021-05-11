@@ -191,4 +191,17 @@ extern const ged_field_restriction_t* RestrictionTable152[2];
 extern const ged_field_restriction_t* RestrictionTable153[2];
 extern const ged_field_restriction_t* RestrictionTable154[2];
 extern const ged_field_restriction_t* RestrictionTable155[2];
+extern const ged_field_restriction_t* RestrictionTable156[2];
+extern const ged_field_restriction_t* RestrictionTable157[2];
+extern const ged_field_restriction_t* RestrictionTable158[2];
+extern const ged_field_restriction_t* RestrictionTable159[2];
+extern const ged_field_restriction_t* RestrictionTable160[2];
+extern const ged_field_restriction_t* RestrictionTable161[2];
+extern const ged_field_restriction_t* RestrictionTable162[2];
+extern const ged_field_restriction_t* RestrictionTable163[2];
+extern const ged_field_restriction_t* RestrictionTable164[2];
+extern const ged_field_restriction_t* RestrictionTable165[2];
+extern const ged_field_restriction_t* RestrictionTable166[2];
+extern const ged_field_restriction_t* RestrictionTable167[2];
+extern const ged_field_restriction_t* RestrictionTable168[2];
 #endif // GED_RESTRICTIONS_H

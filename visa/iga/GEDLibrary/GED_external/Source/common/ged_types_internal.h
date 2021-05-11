@@ -183,7 +183,7 @@ const uintptr_t GED_QWORD_BITS = sizeof(uint64_t) * 8;                          
 const uintptr_t GED_NATIVE_INS_SIZE_BITS = GED_NATIVE_INS_SIZE * 8;                      // 128
 const uintptr_t GED_COMPACT_INS_SIZE_BITS = GED_COMPACT_INS_SIZE * 8;                    // 64
 const uintptr_t GED_MAX_ENTRIES_IN_COMPACT_TABLE = 128;                                  // this is an arbitrary limit, may be changed
-const uintptr_t GED_MAX_ENTRIES_IN_OPCODE_TABLE = 1 << 7;                                // 7 bits used for GEN opcodes, 128 total
+const uintptr_t GED_MAX_ENTRIES_IN_OPCODE_TABLE = 1 << 7;                                // 7 bits used for opcodes, 128 total
 
 
 const uint8_t dwordLow[GED_NUM_OF_NATIVE_INS_DWORDS] =  {  0, 32, 64,  96 };

@@ -1,26 +1,11 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
 #include "FormatterJSON.hpp"
 #include "IRToString.hpp"
 #include "../IR/Messages.hpp"
@@ -227,6 +212,23 @@ public:
         case Op::SEND: subfunc = ToSyntax(i.getSubfunction().send); break;
         case Op::SENDC: subfunc = ToSyntax(i.getSubfunction().send); break;
         case Op::SYNC: subfunc = ToSyntax(i.getSubfunction().sync); break;
+        case Op::BFN:
+            if (opts.syntaxBfnSymbolicFunctions) {
+                // decode binary function names to symbolic
+                // bfn.(s0&s1|~s2)
+                subfunc += "(";
+                subfunc += i.getBfnFc().c_str();
+                subfunc += ")";
+            } else {
+                // use a raw value
+                // emit<uint32_t>(i.getBfnFc().value);
+                subfunc = fmtHex((int)i.getBfnFc().value, 2);
+            }
+            break;
+        case Op::DPASW:
+        case Op::DPAS:
+            subfunc = ToSyntax(i.getDpasFc());
+            break;
         default: break;
         }
 
@@ -540,6 +542,7 @@ public:
             case Type::W:   emitDecimal(imm.s16); break;
             case Type::D:   emitDecimal(imm.s32); break;
             case Type::Q:   emitDecimal(imm.s64); break;
+            case Type::BF:  emitHex(imm.u16); break;
             case Type::HF:
                 if (opts.hexFloats) {
                     emitHex(imm.u16);
@@ -876,6 +879,10 @@ public:
         };
         switch (di.distType) {
         case SWSB::DistType::REG_DIST:        emitPipeDist(""); break;
+        case SWSB::DistType::REG_DIST_ALL:    emitPipeDist("A"); break;
+        case SWSB::DistType::REG_DIST_FLOAT:  emitPipeDist("F"); break;
+        case SWSB::DistType::REG_DIST_INT:    emitPipeDist("I"); break;
+        case SWSB::DistType::REG_DIST_LONG:   emitPipeDist("L"); break;
         default: emit("null"); break;
         }
     }
@@ -907,6 +914,8 @@ public:
             InstOpt::NOSRCDEPSET,
             InstOpt::SWITCH,
             InstOpt::SERIALIZE,
+            InstOpt::EXBSO,
+            InstOpt::CPS,
         };
 
         InstOptSet ios = i.getInstOpts();
@@ -929,7 +938,6 @@ public:
             }
         }
 
-        const auto &di = i.getSWSB();
         emit("]");
     }
 

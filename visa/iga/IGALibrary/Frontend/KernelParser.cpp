@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -63,6 +47,12 @@ static const IdentMap<FlagModifier> FLAGMODS_LEGACY {
     {"z", FlagModifier::EQ},
 };
 static const IdentMap<Type> SRC_TYPES {
+    // dpas types
+    {"u1", Type::U1},
+    {"u2", Type::U2},
+    {"u4", Type::U4},
+    {"s2", Type::S2},
+    {"s4", Type::S4},
     {"b",  Type::B},
     {"ub", Type::UB},
     {"w",  Type::W},
@@ -78,6 +68,8 @@ static const IdentMap<Type> SRC_TYPES {
     {"uv", Type::UV},
     {"vf", Type::VF},
     {"nf", Type::NF},
+    {"bf", Type::BF},
+    {"bf16", Type::BF},
     ///////////////////////////////////////////
     // non-standard names
     {"u8",  Type::UB},
@@ -103,6 +95,8 @@ static const IdentMap<Type> DST_TYPES {
     {"uq", Type::UQ},
     //
     {"hf", Type::HF},
+    {"bf", Type::BF},
+    {"bf16", Type::BF},
     {"f",  Type::F},
     {"df", Type::DF},
     {"nf", Type::NF},
@@ -553,21 +547,57 @@ ImmVal GenParser::evalBinExpr(
     return result;
 }
 
-
-// E -> E (('&'|'|') E)*
 bool GenParser::parseBitwiseExpr(
-    const ExprParseOpts &pos, bool consumed, ImmVal &v) {
-    if (!parseShiftExpr(pos, consumed, v)) {
+    const ExprParseOpts &pos, bool consumed, ImmVal &v)
+{
+    return parseBitwiseORExpr(pos, consumed, v);
+}
+// E -> E ('|' E)*
+bool GenParser::parseBitwiseORExpr(
+    const ExprParseOpts &pos, bool consumed, ImmVal &v)
+{
+    if (!parseBitwiseXORExpr(pos, consumed, v)) {
         return false;
     }
-    while (LookingAtAnyOf(AMP, PIPE)) {
+    while (LookingAt(PIPE)) {
         Token t = Next(); Skip();
         ImmVal r;
-        parseBitwiseExpr(pos, true, r);
+        parseBitwiseXORExpr(pos, true, r);
         v = evalBinExpr(v, t, r);
     }
     return true;
 }
+// E -> E ('^' E)*
+bool GenParser::parseBitwiseXORExpr(
+    const ExprParseOpts &pos, bool consumed, ImmVal &v)
+{
+    if (!parseBitwiseANDExpr(pos, consumed, v)) {
+        return false;
+    }
+    while (LookingAt(CIRC)) {
+        Token t = Next(); Skip();
+        ImmVal r;
+        parseBitwiseANDExpr(pos, true, r);
+        v = evalBinExpr(v, t, r);
+    }
+    return true;
+}
+// E -> E ('&' E)*
+bool GenParser::parseBitwiseANDExpr(
+    const ExprParseOpts &pos, bool consumed, ImmVal &v)
+{
+    if (!parseShiftExpr(pos, consumed, v)) {
+        return false;
+    }
+    while (LookingAt(AMP)) {
+        Token t = Next(); Skip();
+        ImmVal r;
+        parseShiftExpr(pos, true, r);
+        v = evalBinExpr(v, t, r);
+    }
+    return true;
+}
+
 // E -> E (('<<'|'>>') E)*
 bool GenParser::parseShiftExpr(
     const ExprParseOpts &pos, bool consumed, ImmVal &v)
@@ -778,6 +808,7 @@ class KernelParser : GenParser
     Loc                   m_srcLocs[3];
     int                   m_sendSrcLens[2]; // send message lengths
     Loc                   m_sendSrcLenLocs[2]; // locations so we can referee
+    bool                  m_implicitExBSO; // send src1 suffixed with length implies exBSO, but ensure the inst opt is given
 public:
     KernelParser(
         const Model &model,
@@ -971,6 +1002,7 @@ public:
             m_sendSrcLens[i] = -1;
             m_sendSrcLenLocs[i] = Loc::INVALID;
         }
+        m_implicitExBSO = false;
 
         // (W&~f0) mov (8|M0) r1 r2
         // ^
@@ -1154,7 +1186,7 @@ public:
             break;
         case OpSpec::SYNC_UNARY:
             // implicit destination
-            ParseSrcOp(0);
+            ParseSyncSrc0Op();
             if (m_model.supportsWait() &&
                 m_srcKinds[0] != Operand::Kind::DIRECT)
             {
@@ -1170,6 +1202,8 @@ public:
         case OpSpec::SEND_BINARY:
             if (platform() <= Platform::XE) {
                 ParseSendInstructionLegacy();
+            } else if (platform() >= Platform::XE_HP) {
+                ParseSendInstructionXeHP();
             } else {
                 IGA_ASSERT_FALSE("invalid format for platform");
             }
@@ -1190,6 +1224,13 @@ public:
             }
             break;
         case OpSpec::TERNARY_REGIMM_REG_REGIMM:
+            if (m_opSpec->isDpasFamily()) {
+                ParseDpasOp(-1, true);    // dst
+                ParseDpasOp(0, false);    // src0
+                ParseDpasOp(1, false);    // src1
+                ParseDpasOp(2, false);    // src2
+                break;
+            }
             ParseDstOp();
             ParseSrcOp(0);
             ParseSrcOp(1);
@@ -1277,6 +1318,15 @@ public:
         ParseSendDescsLegacy();
     }
 
+    //   We are flexible here and permit src1Len to come out of the immediate
+    //   descriptor for certain cases (with a warning).
+    void ParseSendInstructionXeHP() {
+        ParseSendDstOp();
+        ParseSendSrcOp(0, false);
+        int src1Len = -1;
+        ParseSendSrc1OpWithOptLen(src1Len);
+        ParseSendDescsWithOptSrc1Len(src1Len);
+    }
 
     // Predication = ('(' WrEnPred ')')?
     //   where WrEnPred = WrEn
@@ -1446,17 +1496,91 @@ public:
 #endif
     }
 
-
+    // Parse BFN expressions.
+    //
+    //   BFNExpr = BFNBinExpr
+    //     where BFNBinExpr = (BFNUnExpr ('&'|'^'|'|') BFNUnExpr)*
+    //                          regular boolean precedence: & > ^ > |
+    //           BFNUnExpr = '~'? BFNPrimExpr
+    //           BFNPrimExpr = '(' BFNExpr ')' | 's0' | 's1' | 's2'
+    //
+    // E.g.
+    // bfn.(s0^(s1|~s2)) ...
+    //     ^
+    uint8_t ParseBfnMnemonicSubfuncExpr() {
+        Skip(1); // skip LPAREN
+        uint32_t val = ParseBfnMnemonicSubfuncExprOR();
+        ConsumeOrFail(RPAREN, "expected )");
+        return (uint8_t)val;
+    }
+    uint32_t ParseBfnMnemonicSubfuncExprOR() {
+        uint32_t val = ParseBfnMnemonicSubfuncExprXOR();
+        while (Consume(PIPE)) {
+            val |= ParseBfnMnemonicSubfuncExprXOR();
+        }
+        return val;
+    }
+    uint32_t ParseBfnMnemonicSubfuncExprXOR() {
+        uint32_t val = ParseBfnMnemonicSubfuncExprAND();
+        while (Consume(CIRC)) {
+            val ^= ParseBfnMnemonicSubfuncExprAND();
+        }
+        return val;
+    }
+    uint32_t ParseBfnMnemonicSubfuncExprAND() {
+        uint32_t val = ParseBfnMnemonicSubfuncExprNEG();
+        while (Consume(AMP)) {
+            val &= ParseBfnMnemonicSubfuncExprNEG();
+        }
+        return val;
+    }
+    uint32_t ParseBfnMnemonicSubfuncExprNEG() {
+        bool c = Consume(TILDE);
+        uint32_t val = ParseBfnMnemonicSubfuncExprATOM();
+        if (c) {
+            val = (~val & 0xFF);
+        }
+        return val;
+    }
+    uint32_t ParseBfnMnemonicSubfuncExprATOM() {
+        if (Consume(LPAREN)) {
+            uint32_t val = ParseBfnMnemonicSubfuncExprOR();
+            ConsumeOrFail(RPAREN, "expected )");
+            return val;
+        } else if (LookingAt(IDENT) || LookingAt(INTLIT10)) {
+            auto symTkn = Next();
+            auto sfIdent = GetTokenAsString(symTkn);
+            Skip();
+            if (sfIdent == "s0") {
+                return 0xAA;
+            } else if (sfIdent == "s1") {
+                return 0xCC;
+            } else if (sfIdent == "s2") {
+                return 0xF0;
+            } else if (sfIdent == "zeros" || sfIdent == "0") {
+                return 0x00;
+            } else if (sfIdent == "ones" || sfIdent == "1") {
+                return 0xFF;
+            } else {
+                FailAtT(symTkn.loc, "syntax error in symbolic expression");
+            }
+        } else {
+            FailT("syntax error in symbolic expression");
+        }
+        return 0;
+    }
 
     //
     // Mnemoninc
     //     = Ident SubMnemonic?
     //     | Ident BrCtl
+    //     | Ident '(' BFNExpr ')'
     //   SubMnemoninc
     //     = '.' SfIdent
     //     | '.' HEX_INT | '.' DEC_INT
     //
     //   SfIdent =
+    //     | BFNExpr = see above
     //     | BrnchCtl
     //     | SFID
     //     | SyncFc
@@ -1498,6 +1622,10 @@ public:
                 m_builder.InstSubfunction(
                     ParseSubfunctionFromBxmlEnum<SFID>());
             // else: it's part of ExDesc
+        } else if (pOs->is(Op::BFN)) {
+            m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnumBfnFC());
+        } else if (pOs->isOneOf(Op::DPAS, Op::DPASW)) {
+            m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<DpasFC>());
         } else {
             // isOldSend: pre XE will have a subfunction,
             // but we pull it from ExDesc
@@ -1553,6 +1681,31 @@ public:
         return (T)-1;
     }
 
+    // we treat BFN a little different since we permit a BFN expression
+    // e.g.  bfn.(s0&~s1^s2)
+    //
+    // template <> BfnFC ParseSubfunctionFromBxmlEnum()
+    // gcc: doesn't permit this specialization
+    BfnFC ParseSubfunctionFromBxmlEnumBfnFC() {
+        if (!Consume(DOT)) {
+            FailAfterPrev("expected subfunction");
+        }
+        uint8_t fc = 0;
+        if (LookingAt(LPAREN)) {
+            fc = ParseBfnMnemonicSubfuncExpr();
+        } else if (LookingAtAnyOf(INTLIT10, INTLIT16)) {
+            auto loc = NextLoc();
+            uint32_t val = 0;
+            (void)ConsumeIntLit(val);
+            if (val > 0xFF) {
+                FailAtT(loc, "subfunction value is out of bounds");
+            }
+            fc = (uint8_t)val;
+        } else {
+            FailT("invalid subexpression");
+        }
+        return BfnFC(fc);
+    }
 
     // FlagModifierOpt = '(' FlagModif ')' FlagReg
     void ParseFlagModOpt() {
@@ -2039,6 +2192,42 @@ public:
         }
     } // ParseSrcOp
 
+    // .allrd/.allwr SBID set first
+    //   "($11,$2,$7)" means ((1 << 11) | (1 << 2) | (1 << 7))
+    void ParseSyncSrc0Op() {
+        auto sf = m_builder.getSubfunction().sync;
+        if ((sf != SyncFC::ALLRD && sf != SyncFC::ALLWR) ||
+            !LookingAtSeq(LPAREN, DOLLAR))
+        {
+            // e.g. other sync op, or immediate literal, or null
+            ParseSrcOp(0);
+            return;
+        }
+        m_srcLocs[0] = NextLoc();
+        Skip(); // LPAREN
+        uint32_t sbidSet = 0x0;
+        auto parseSbid = [&] () {
+            uint32_t sbid = 0;
+            ConsumeOrFail(DOLLAR, "expected SBID");
+            auto nxt = NextLoc();
+            ConsumeIntLitOrFail(sbid, "expected SBID");
+            if (sbid >= 32)
+                FailAtT(nxt, "SBID out of bounds");
+            sbidSet |= 1 << sbid;
+            return true;
+        };
+        while (LookingAt(DOLLAR)) {
+            parseSbid();
+            if (!Consume(COMMA)) {
+                break;
+            }
+        }
+        ConsumeOrFail(RPAREN, "expected )");
+        ImmVal val;
+        val = sbidSet;
+        auto srcTy = ParseSrcOpTypeWithoutDefault(0, true);
+        m_builder.InstSrcOpImmValue(0, m_srcLocs[0], val, srcTy);
+    }
 
     void ParseSrcOpInd(
         int srcOpIx,
@@ -2048,7 +2237,7 @@ public:
     {
         m_srcKinds[srcOpIx] = Operand::Kind::INDIRECT;
 
-        // [a0.4,16]
+        // [a0.4 + 16]
         int addrOff;
         RegRef addrRegRef;
         ParseIndOpArgs(addrRegRef, addrOff);
@@ -2442,6 +2631,10 @@ public:
         // convert to the underlying data type
         Type sty = ParseSrcOpTypeWithoutDefault(srcOpIx, true);
 
+        if (sty == Type::BF) {
+            // ensure there's no BF type imm value
+            ErrorAtT(opStart, "Imm operand with BF type is not allowed");
+        }
 
         switch (sty) {
         case Type::B:
@@ -2674,6 +2867,116 @@ public:
         return srcMod;
     }
 
+    // Special handling for >=XE_HP src1 op, we rely on the src1 op format
+    // to determine if this is the new XE_HP encoding.  If the format is
+    // r2:4 then should set ExBSO to true later on.
+    //
+    // In XeHP: only ExBSO descriptors take Src1.Length out of the descriptor
+    //         and only if the descriptor is a register (e.g. a0.2)
+    //
+    // The syntax:
+    //   REG
+    //      bare register: "r13" or "null"
+    //      given a reg ExDesc means to not use ExBSO
+    //      NOTE: users are encouraged to use the explicit InstOpt {ExBSO}
+    //
+    //   REG (COLON|HASH) INT
+    //      src one length
+    //      given a reg ExDesc, this means to use ExBSO
+    //      NOTE: users are encouraged to use the explicit InstOpt {ExBSO}
+    //
+    //   REG COLON TYPE
+    //      r13:ud or null:ud
+    //
+    //   REG COLON TYPE (COLON|HASH) INT
+    //   REG (COLON|HASH) INT COLON TYPE
+    //      compatibility with old asm
+    //      r13:ud:1 or null:ud:0
+    void ParseSendSrc1OpWithOptLen(int &src1Len) {
+        m_srcLocs[1] = NextLoc();
+        src1Len = -1;
+
+        const Token regnameTk = Next();
+        const RegInfo *regInfo;
+        int regNum;
+        bool parsedType = false;
+
+        if (ConsumeReg(regInfo, regNum)) {
+            // send src1 must not have region and subreg
+            m_srcKinds[1] = Operand::Kind::DIRECT;
+            //
+            // parse the type
+            Type sty = Type::INVALID;
+            if (LookingAtSeq(COLON, IDENT)) {
+                // this disables expressions for the length sizes
+                //   send ... null:(2*0)
+                sty = ParseSendOperandTypeWithDefault(1);
+                parsedType = true;
+            } else {
+                sty = SendOperandDefaultType(1);
+            }
+
+            const Token &tk = Next();
+            if (Consume(COLON) || Consume(HASH)) {
+                // e.g. r12:4 or r12#4 (the latter is legacy only)
+                // (we added COLON so we could use this with a preproecssor)
+                if (platform() < Platform::XE_HP) {
+                    FailAtT(tk.loc,
+                      "Send with Imm ExDesc should not have Src1.Length "
+                      "given on src1 (e.g. r0#4); Src1.Length should be "
+                      "in ExDesc[10:6]");
+                }
+                m_sendSrcLenLocs[1] = NextLoc();
+                //
+                ImmVal v;
+                if (!TryParseIntConstExpr(v, "extended descriptor")) {
+                    FailT("expected extended send descriptor");
+                }
+                src1Len = (int)v.s64;
+                m_sendSrcLens[1] = src1Len;
+                if (src1Len < 0 || src1Len > 0x1F) {
+                    FailAtT(tk.loc, "Src1.Length is out of range");
+                }
+                if (regNum + src1Len - 1 > 255) {
+                    FailAtT(tk.loc, "Src1.Length extends past GRF end");
+                }
+            } else if (
+                regInfo->regName == RegName::GRF_R &&
+                LookingAtSeq(SUB, INTLIT10))
+            {
+                // enabling a range based syntax as well for src1Len
+                //   r12-14 => r12#3
+                // users that require the C-preprocessor get tripped up using
+                // # as a decorator (e.g. since it's a cpp operator)
+                Skip();
+                int lastReg = 0;
+                ConsumeIntLit(lastReg);
+                if (lastReg < regNum)
+                    FailAtT(tk.loc,
+                        "Src1Len: ending register must be >= start reg");
+                else if (lastReg > 255)
+                    FailAtT(tk.loc,
+                        "Src1Len: ending register must be <= 255");
+                src1Len = lastReg - regNum + 1;
+            }
+
+            // null#0:ud
+            if (!parsedType)
+                sty = ParseSendOperandTypeWithDefault(1);
+
+            // construct the op directly
+            m_builder.InstSrcOpRegDirect(
+                1,
+                m_srcLocs[1],
+                SrcModifier::NONE,
+                regInfo->regName,
+                RegRef(regNum, 0),
+                Region::SRC010, // set the default region
+                sty);
+        } else {
+            FailT("syntax error in send src1");
+        }
+    }
 
     int ParseSendSrc1OpWithLen() {
         const Token regnameTk = Next();
@@ -2759,10 +3062,7 @@ public:
                 Warning(dotLoc, "send instructions may not have subregisters");
             }
         }
-        RegRef reg = {
-            static_cast<uint16_t>(regNum),
-            0
-        };
+        RegRef reg {uint16_t(regNum), 0};
         // gets the implicit region and warns against using explicit regioning
         Region rgn = ParseSrcOpRegionVWH(*regInfo, srcOpIx, false);
         // because we are trying to phase out source operands on send
@@ -2840,7 +3140,7 @@ public:
         return t;
     }
     Type ParseOpTypeWithDefault(
-        const IdentMap<Type> types, const char *expected_err)
+        const IdentMap<Type> types, const char *expectedErr)
     {
         auto t = TryParseOpType(types);
         if (t == Type::INVALID) {
@@ -2857,7 +3157,7 @@ public:
                 // we allow implicit type for sync reg32 (grf or null)
                 t = Type::UB;
             } else {
-                FailT(expected_err);
+                FailT(expectedErr);
             }
         }
         return t;
@@ -2873,7 +3173,75 @@ public:
         return type;
     }
 
+    // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
+    // This function is the same as ParseSendDescs, except for it's handling
+    // of exBSO and src1Length
+    void ParseSendDescsWithOptSrc1Len(int src1Length) {
+        const Loc exDescLoc = NextLoc();
+        SendDesc exDesc;
+        if (ParseAddrRegRefOpt(exDesc.reg)) { // ExDesc is register
+            exDesc.type = SendDesc::Kind::REG32A;
+            if (src1Length >= 0) {
+                m_implicitExBSO = true;
+                m_builder.InstOptAdd(InstOpt::EXBSO);
+            }
+        } else { // ExDesc is imm
+            exDesc.type = SendDesc::Kind::IMM;
 
+            // constant integral expression
+            ImmVal v;
+            if (!TryParseIntConstExpr(v, "extended descriptor")) {
+                FailT("expected extended send descriptor");
+            }
+            exDesc.imm = (uint32_t)v.s64;
+
+            if (src1Length >= 0) {
+                // In XeHP, immediate descriptors still treat Src1.Length as
+                // ExDesc[10:6]
+                if (platform() == Platform::XE_HP) {
+                    WarningT(
+                        "Send with immediate ExDesc should not have "
+                        "Src1.Length given on src1 (e.g. r10:4) "
+                        "on this platform");
+                    exDesc.imm |= ((uint32_t)src1Length << 6) & 0x1F;
+                }
+            }
+
+            if (platform() >= Platform::XE && (exDesc.imm & 0xF)) {
+                FailAtT(exDescLoc,
+                    "ExDesc[3:0] must be 0's; SFID is expressed "
+                    "as a function control value (e.g. send.dc0 ...)");
+            }
+        }
+        if (LookingAt(COLON)) {
+            FailAtT(NextLoc(), "extended message descriptor is typeless");
+        }
+        //
+        const Loc descLoc = NextLoc();
+        SendDesc desc;
+        if (ParseAddrRegRefOpt(desc.reg)) {
+            desc.type = SendDesc::Kind::REG32A;
+        } else {
+            // constant integral expression
+            ImmVal v;
+            if (!TryParseConstExpr(v)) {
+                FailT("expected extended send descriptor");
+            }
+            if (!v.isI64()) {
+                FailAtT(descLoc,
+                    "immediate descriptor expression must be integral");
+            }
+            desc.imm = (uint32_t)v.s64;
+            desc.type = SendDesc::Kind::IMM;
+        }
+        if (LookingAt(COLON)) {
+            FailT("Message Descriptor should not have a type");
+        }
+        //
+        m_builder.InstSendDescs(exDescLoc, exDesc, descLoc, desc);
+        //
+        m_builder.InstSendSrc1Length(src1Length);
+    }
 
 
     SendDesc ParseDesc(const char *which) {
@@ -2979,8 +3347,40 @@ public:
             ConsumeOrFail(RBRACE, "expected }");
         }
 
+        // TODO: sink this into the instop parsing once we remerge
+        // that with KernelParser... (after we rip out the legacy ld/st tables)
+        bool src1LengthSuffixSet = m_sendSrcLens[1] != -1;
+        if (instOpts.contains(InstOpt::EXBSO) && !src1LengthSuffixSet) {
+            // GOOD:  send ... r10:2  a0.# ... {ExBSO}
+            // ERROR: send ... r10    a0.# ... {ExBSO}
+            //   Src1.Length comes from EU bits a0.# holds 26b offset
+            //   We throw a tantrum if length is absent
+            auto loc = m_srcLocs[1].isValid() ? m_srcLocs[1] : m_mnemonicLoc;
+            FailAtT(loc, "send with ExBSO option should have "
+                "Src1.Length suffixing parameter (e.g. r10:4)");
+        ////////////////////////////
+        //  else if:
+        //    platform() >= Platform::XE_HPG
+        //    m_builder.getExDesc().isImm() &&
+        //    src1LengthSuffixSet
+        // GOOD:  send ... r10:2  IMM ... {}
+        // GOOD:  send ... r10    a0.# ... {}
+        // this is already checked in ExDesc parser
+        //
+        } else if (instOpts.contains(InstOpt::EXBSO) &&
+            m_builder.getExDesc().isImm())
+        {
+            // ERROR: send ... r10    IMM ... {ExBSO}
+            // ExBSO only makes sense when using a0.#
+            auto loc = m_srcLocs[1].isValid() ? m_srcLocs[1] : m_mnemonicLoc;
+            FailAtT(loc, "send with immediate exdesc forbids ExBSO");
+        }
 
         m_builder.InstOptsAdd(instOpts);
+        if (m_implicitExBSO && !instOpts.contains(InstOpt::EXBSO)) {
+            WarningAtT(m_mnemonicLoc, "send src1 length implicitly added "
+                "(include {ExBSO})");
+        }
     }
 
     void ParseInstOptOrFail(InstOptSet &instOpts) {
@@ -3121,6 +3521,56 @@ public:
                     WarningAtT(loc,
                         "ignoring unsupported instruction option {Switch}");
                 }
+            } else if (ConsumeIdentEq("ExBSO")) {
+                if (platform() < Platform::XE_HP) {
+                    FailAtT(loc, "ExBSO not supported on this platform");
+                } else if (!m_opSpec->isSendOrSendsFamily()) {
+                    FailAtT(loc, "ExBSO is not allowed for non-send instructions");
+                }
+                newOpt = InstOpt::EXBSO;
+            } else if (ConsumeIdentEq("CPS")) {
+                if (platform() < Platform::XE_HP
+                    )
+                {
+                    FailAtT(loc, "CPS not supported on this platform");
+                } else if (!m_opSpec->isSendOrSendsFamily()) {
+                    FailAtT(loc, "CPS is not allowed for non-send instructions");
+                }
+                newOpt = InstOpt::CPS;
+            } else if (m_opts.swsbEncodeMode >= SWSB_ENCODE_MODE::ThreeDistPipe) {
+                // swsb XE encoding: the distance could be A@, F@, L@, I@, M@
+                // same pipe dist (e.g. @4) will parse further down
+                auto tryParsePipe = [&] (
+                    const char *distPipeSymbol, SWSB::DistType distPipe)
+                {
+                    if (LookingAtSeq(IDENT, AT) &&
+                        ConsumeIdentEq(distPipeSymbol) && Consume(AT))
+                    {
+                        int32_t regDist = 0;
+                        Loc distLoc = NextLoc();
+                        ConsumeIntLitOrFail(
+                            regDist, "expected register distance value");
+                        m_builder.InstDepInfoDist(distLoc, distPipe, regDist);
+                        return true;
+                    } else {
+                        return false;
+                    }
+                };
+                //
+                bool parsedNamedPipe =
+                    tryParsePipe("F", SWSB::DistType::REG_DIST_FLOAT)
+                    || tryParsePipe("I", SWSB::DistType::REG_DIST_INT)
+                    || tryParsePipe("L", SWSB::DistType::REG_DIST_LONG)
+                    || tryParsePipe("A", SWSB::DistType::REG_DIST_ALL)
+                    ;
+                if (parsedNamedPipe && m_model.supportsHwDeps()) {
+                    FailAtT(loc,
+                        "software dependencies not supported on this platform");
+                }
+
+                isSwsbOpt = true;
+                if (!parsedNamedPipe)
+                    return false; // unrecognized swsb setting
             } else {
                 return false; // unrecognized option
             }
@@ -3248,6 +3698,90 @@ public:
         return false;
     }
 
+    //
+    // DPAS-specific parsing functions (XE+)
+    //
+    // common function for non-standard operands such as
+    //   r13:d (type) or r13:u1 (OperandPrecision)
+    // Both dst & src uses this function. 'isDst' tells if
+    // it is a dst or src.
+    void ParseDpasOp(int opIx, bool isDst) {
+        const Loc regStart = NextLoc(0);
+        if (!isDst) {
+            m_srcLocs[opIx] = regStart;
+        }
+
+        if (isDst) {
+            // ParseSatOpt increments m_offset.
+            if (ParseSatOpt()) {
+                m_builder.InstDstOpSaturate();
+            }
+        }
+
+        // make sure indirect reg addressing is not allowed.
+        if (LookingAtIdentEq("r")) {
+            FailT("Indirect register addressing not allowed");
+        }
+
+        // Match grf such as r10
+        const RegInfo *ri = nullptr;
+        int regNum = 0;
+        if (!ConsumeReg(ri, regNum)) {
+            if (isDst)
+                FailT("invalid dst");
+            else
+                FailT("invalid src", opIx);
+        }
+        if (ri->regName != RegName::GRF_R) {
+            // dpas must be GRF except src0, which can be null (meaning +0)
+            if (opIx != 0 || ri->regName != RegName::ARF_NULL)
+                FailT("src", opIx, ": invalid register",
+                    opIx == 0 ? " (must be GRF or null)" :  " (must be GRF)");
+        } else if (!ri->isRegNumberValid(regNum)) {
+            FailT("src", opIx, "register number too large",
+                " (", ri->syntax, " only has ", ri->numRegs,
+                " on this platform)");
+        }
+
+        Loc subRegLoc = NextLoc();
+        int subregNum = 0;
+        // parse subreg for src2
+        //
+        // all operands except src2 have an implicit subreg 0.  No explicit
+        // subreg is allowed.  For src2, its subreg can be either implicit
+        // or explicit.  If it is explicit, the subreg must be half-grf
+        // aligned.
+        if (LookingAt(DOT)) {
+            Skip();
+            ConsumeIntLitOrFail(subregNum, "expected subregister");
+        }
+
+        // check for reg region, which is not forbidden.
+        if (LookingAt(LANGLE)) {
+            FailT("instruction does not support regioning");
+        }
+
+        // match :<Type> or :<SubBytePrecision>
+        Loc colonLoc = NextLoc();
+        Type ty = TryParseOpType(SRC_TYPES);
+        if (ty == Type::INVALID) {
+            FailT("invalid type");
+        }
+        if (opIx == 1 && subregNum != 0) {
+            // dpas  src1 subreg must be 0
+            WarningAtT(subRegLoc,
+                "src1 subregister must be GRF aligned for this op");
+        }
+        // TODO: we could ensure src2 is half-grf aligned
+        // int byteOff = SubRegToBytesOffset(subregNum, RegName::GRF_R, ty);
+
+        RegRef reg(regNum, subregNum);
+        if (isDst) {
+            m_builder.InstDpasDstOp(regStart, ri->regName, reg, ty);
+        } else {
+            m_builder.InstDpasSrcOp(opIx, regStart, ri->regName, reg, ty);
+        }
+    }
 
 }; // class KernelParser
 

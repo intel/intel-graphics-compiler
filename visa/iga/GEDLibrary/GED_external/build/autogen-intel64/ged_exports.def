@@ -49,6 +49,7 @@ EXPORTS
   GED_GetMnemonic
   GED_SetOpcode
   GED_IsCompact
+  GED_GetModel
   GED_GetNumOfSourceOperands
   GED_GetHasDestinationOperand
   GED_GetAccessMode
@@ -273,6 +274,26 @@ EXPORTS
   GED_SetDataTypeIndexNoDep
   GED_GetCompactedImm
   GED_SetCompactedImm
+  GED_GetRepeatCount
+  GED_SetRepeatCount
+  GED_GetSystolicDepth
+  GED_SetSystolicDepth
+  GED_GetSrc2Precision
+  GED_SetSrc2Precision
+  GED_GetSrc2SubBytePrecision
+  GED_SetSrc2SubBytePrecision
+  GED_GetSrc1Precision
+  GED_SetSrc1Precision
+  GED_GetSrc1SubBytePrecision
+  GED_SetSrc1SubBytePrecision
+  GED_GetBfnFC
+  GED_SetBfnFC
+  GED_GetExBSO
+  GED_SetExBSO
+  GED_GetCPS
+  GED_SetCPS
+  GED_GetSrc1Length
+  GED_SetSrc1Length
   GED_GetIndexedSrcAddrImm
   GED_SetIndexedSrcAddrImm
   GED_GetIndexedSrcAddrMode
@@ -404,6 +425,7 @@ EXPORTS
   GED_GetMessageTypeString
   GED_GetNoSrcDepSetString
   GED_GetOpcodeString
+  GED_GetPrecisionString
   GED_GetPredCtrlString
   GED_GetPredInvString
   GED_GetRegFileString
@@ -414,6 +436,7 @@ EXPORTS
   GED_GetSIMDModeString
   GED_GetSlotGroupString
   GED_GetSrcModString
+  GED_GetSubBytePrecisionString
   GED_GetSubFuncIDString
   GED_GetSwizzleString
   GED_GetSyncFCString

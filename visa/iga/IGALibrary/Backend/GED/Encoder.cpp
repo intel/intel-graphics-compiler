@@ -1,24 +1,8 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2017-2021 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom
-the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-IN THE SOFTWARE.
+SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
@@ -257,6 +241,12 @@ void Encoder::encodeFC(const Instruction &i)
     if (os.is(Op::MATH)) {
         GED_MATH_FC mfc = lowerMathFC(i.getMathFc());
         GED_ENCODE(MathFC, mfc);
+    } else if (os.is(Op::BFN)) {
+        GED_ENCODE(BfnFC, i.getBfnFc().value);
+    } else if (os.isDpasFamily()) {
+        auto sf = i.getDpasFc();
+        GED_ENCODE(SystolicDepth, GetDpasSystolicDepth(sf));
+        GED_ENCODE(RepeatCount, GetDpasRepeatCount(sf));
     } else if (os.isSendOrSendsFamily()) {
         if (platform() >= Platform::XE) {
             // on earlier platforms this is stowed in ExDesc
@@ -349,7 +339,23 @@ void Encoder::encodeInstruction(Instruction& inst)
         TypeIs64b(inst.getSource(0).getType());
 
     if (!isImm64Src0Overlap && inst.getOpSpec().supportsFlagModifier()) {
+        if (os.op == Op::BFN) {
+            switch (inst.getFlagModifier()) {
+            case FlagModifier::NONE:
+            case FlagModifier::EQ:
+            case FlagModifier::GT:
+            case FlagModifier::LT:
+                // GED does the special mapping to CondMod2
+                // only a subset of cond modifiers are supported on this op
+                GED_ENCODE(CondModifier, lowerCondModifier(inst.getFlagModifier()));
+                break;
+            default:
+                errorT("this instruction format only supports "
+                    "(eq), (gt), and (lt) conditional modifiers");
+            }
+        } else {
             GED_ENCODE(CondModifier, lowerCondModifier(inst.getFlagModifier()));
+        }
     }
 
     bool hasFlagRegField = true;
@@ -448,6 +454,8 @@ void Encoder::encodeTernaryDestinationAlign1(const Instruction& inst)
         GED_ENCODE(DstSubRegNum, SubRegToBinaryOffset(
             dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
         bool hasDstRgnHz = true;
+        // dpas does not have a dst region
+        hasDstRgnHz = !inst.getOpSpec().isDpasFamily();
         if (hasDstRgnHz) {
             GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
         }
@@ -466,7 +474,31 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
 
     const Operand& src = inst.getSource(S);
     Type srcType = src.getType();
+    // DPAS
+    if (inst.getOpSpec().isDpasFamily()) {
+        // src0's type is the type for all sources
 
+        if (S == SourceIndex::SRC0) {
+            GED_ENCODE(Src0DataType, lowerDataType(srcType));
+            // GED: src0 HS = 0, VS=3
+        } else if (S == SourceIndex::SRC1) {
+            GED_ENCODE(Src1Precision, lowerSubBytePrecision(srcType));
+            // GED sets both the type and the precision at the same time for us
+            // GED: src1 HS = 1, VS=3
+            // via this higher-level API
+        } else if (S == SourceIndex::SRC2) {
+            GED_ENCODE(Src2Precision, lowerSubBytePrecision(srcType));
+            // GED: src2 HS = 3
+            // GED sets both the type and the precision at the same time for us
+            // via this higher-level API
+        }
+        encodeSrcRegFile<S>(lowerRegFile(src.getDirRegName()));
+        encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
+        encodeSrcSubRegNum<S>(SubRegToBinaryOffset(
+            src.getDirRegRef().subRegNum, src.getDirRegName(), srcType, m_model.platform));
+
+        return;
+    }
 
     // GED will catch any mismatch between float and int (illegal mixed mode)
     encodeSrcType<S>(srcType); // GED dependency requires type before reg file
@@ -803,6 +835,8 @@ void Encoder::encodeSendDescs(const Instruction& i)
         encodeSendDescsPreXe(i);
     } else if (platform() == Platform::XE) {
         encodeSendDescsXe(i);
+    } else if (platform() == Platform::XE_HP) {
+        encodeSendDescsXeHP(i);
     } else {
         errorT("unsupported platform");
     }
@@ -896,6 +930,36 @@ void Encoder::encodeSendDescsXe(const Instruction& i)
     }
 }
 
+// A bit harder than Xe
+//   * If ExBSO is set then Src1Length holds xlen
+//   * CPS has it's own field (ExDesc[11])
+void Encoder::encodeSendDescsXeHP(const Instruction& i)
+{
+    SendDesc exDesc = i.getExtMsgDescriptor();
+    if (exDesc.isReg()) {
+        GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
+        GED_ENCODE(ExDescAddrSubRegNum, 2 * exDesc.reg.subRegNum);
+        GED_ENCODE(ExBSO, i.hasInstOpt(InstOpt::EXBSO) ? 1 : 0);
+        if (i.hasInstOpt(InstOpt::EXBSO)) {
+            GED_ENCODE(CPS, i.hasInstOpt(InstOpt::CPS) ? 1 : 0);
+            GED_ENCODE(Src1Length, (uint32_t)i.getSrc1Length());
+        }
+    } else {
+        GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
+        GED_ENCODE(ExMsgDesc, exDesc.imm);
+    }
+
+    SendDesc desc = i.getMsgDescriptor();
+    if (desc.isReg()) {
+        GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
+        if (desc.reg.subRegNum != 0) { // a0.0 is implied (there's no field)
+            errorT("send with reg desc must be a0.0");
+        }
+    } else {
+        GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
+        GED_ENCODE(MsgDesc, desc.imm);
+    }
+}
 
 
 

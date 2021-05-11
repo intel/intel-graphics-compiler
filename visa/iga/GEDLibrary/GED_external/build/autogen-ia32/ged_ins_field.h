@@ -62,6 +62,13 @@ typedef enum
     GED_INS_FIELD_CmptCtrl,
 
     /*!
+     *
+     *
+     * @par     Models:     all
+     */
+    GED_INS_FIELD_,
+
+    /*!
      * Reserved. Not intended for use.
      *
      * @par     Models:     all
@@ -88,7 +95,7 @@ typedef enum
     /*!
      * Access Mode. This field determines the operand access for the instruction. It applies to all source and destination operands.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_AccessMode,
 
@@ -103,7 +110,7 @@ typedef enum
     /*!
      * Destination Dependency Control. This field selectively disables destination dependency check and clear for this instruction.
      *
-     * @par     Models:     GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DepCtrl,
 
@@ -114,7 +121,7 @@ typedef enum
      *
      * Sets NibCtrl implicitly according to the selected QtrCtrl value.
      *
-     * @par     Models:     GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ExecMaskOffsetCtrl,
 
@@ -225,13 +232,14 @@ typedef enum
     GED_INS_FIELD_Src0DataType,
 
     /*!
-     *  Note that ARF cannot be a src1 operand
      *
-     * @par GENTGL
-     * tifies the register file of the second source operand (src1).
      *
-     * @par GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
-     * tifies the register file of the second source operand (src1). Note that ARF cannot be a src1 operand
+     * @par TGL, XE.HP
+     * Source 1 Register File. This field identifies the register file of the second source operand (src1).
+     *
+     * @par 10, 11, 7, 7.5, 8, 8.1, 9
+     * Source 1 Register File. This field identifies the register file of the second source operand (src1). Note that ARF cannot be a
+     * src1 operand
      *
      * @par     Models:     all
      */
@@ -256,7 +264,7 @@ typedef enum
      *
      * For a send instruction, this field applies to the CurrDst.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DstChanEn,
 
@@ -329,7 +337,7 @@ typedef enum
      * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1 ("y"), 2
      * ("z"), and 3 ("w") in the group, respectively.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0ChanSel,
 
@@ -413,13 +421,13 @@ typedef enum
     /*!
      * Flag Subregister Number.
      *
-     * @par GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
      * This field contains the 16-bit flag subregister number (.0 or .1) for instructions with a non-zero Conditional Modifier. The
      * specified flag subregister is the source for any predication and the destination for new flag values produced by any enabled
      * conditional modifier. A flag subregister can be both a predication source and a conditional modifier destination in the same
      * instruction. The number of flag bits used or updated depends on the execution size.
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * This field contains the flag subregister number for instructions with a non-zero Conditional Modifier.
      *
      * @par     Models:     all
@@ -429,10 +437,10 @@ typedef enum
     /*!
      * Flag Register Number.
      *
-     * @par GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
      * This field contains the 32-bit flag register number (f0 or f1) for instructions with a non-zero Conditional Modifier.
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * This field contains the flag register number for instructions with a non-zero Conditional Modifier.
      *
      * @par     Models:     all
@@ -445,7 +453,7 @@ typedef enum
      * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1 ("y"), 2
      * ("z"), and 3 ("w") in the group, respectively.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1ChanSel,
 
@@ -550,41 +558,41 @@ typedef enum
     /*!
      * Source Data Type.
      *
-     * @par GEN10
+     * @par 10
      * In Align16, this field is valid only for three-source instructions and contains the data type for all three source operands.
      * Three source instructions can use operands with mixed-mode precision. When the SrcDataType field is set to :f or :hf it defines
      * precision for source 0 only, and fields Src1DataType and Src2DataType define precision for other source operands.
      *
-     * @par GEN7, GEN7.5, GEN8
+     * @par 7, 7.5, 8
      * This field is valid only for three-source instructions and contains the data type for all three source operands.
      *
-     * @par GEN8.1, GEN9
+     * @par 8.1, 9
      * This field is valid only for three-source instructions and contains the data type for all three source operands. Three source
      * instructions can use operands with mixed-mode precision. When the SrcDataType field is set to :f or :hf it defines precision
      * for source 0 only, and fields Src1DataType and Src2DataType define precision for other source operands.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_SrcDataType,
 
     /*!
      * Replicate Control. This field controls the replication of the starting channel to all channels in the execution size.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0RepCtrl,
 
     /*!
      * Replicate Control. This field controls the replication of the starting channel to all channels in the execution size.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1RepCtrl,
 
     /*!
      * Replicate Control. This field controls the replication of the starting channel to all channels in the execution size.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2RepCtrl,
 
@@ -594,35 +602,37 @@ typedef enum
      * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1 ("y"), 2
      * ("z"), and 3 ("w") in the group, respectively.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2ChanSel,
 
     /*!
-     *  For an ARF register operand, this field also provides the sub-register number according to the encoding defined for the given
-     * architecture register.
      *
-     * @par GENTGL
-     * e address within a 256-bit register.
      *
-     * @par GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
-     * e address within a 256-bit register. For an ARF register operand, this field also provides the sub-register number according to
-     * the encoding defined for the given architecture register.
+     * @par TGL, XE.HP
+     * Sub-Register Number. This field provides the sub-register number for the third source operand (src2). For a GRF register
+     * operand, it provides the byte address within a 256-bit register.
+     *
+     * @par 10, 11, 7, 7.5, 8, 8.1, 9
+     * Sub-Register Number. This field provides the sub-register number for the third source operand (src2). For a GRF register
+     * operand, it provides the byte address within a 256-bit register. For an ARF register operand, this field also provides the
+     * sub-register number according to the encoding defined for the given architecture register.
      *
      * @par     Models:     all
      */
     GED_INS_FIELD_Src2SubRegNum,
 
     /*!
-     *  For an ARF register operand, this field is encoded such that MSBs identify the architecture register type and LSBs provide its
-     * register number.
      *
-     * @par GENTGL
-     * n of register address aligning to 256-bit.
      *
-     * @par GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
-     * n of register address aligning to 256-bit. For an ARF register operand, this field is encoded such that MSBs identify the
-     * architecture register type and LSBs provide its register number.
+     * @par TGL, XE.HP
+     * Register Number. This field provides the register number for the third source operand (src2). For a GRF register operand, it
+     * provides the portion of register address aligning to 256-bit.
+     *
+     * @par 10, 11, 7, 7.5, 8, 8.1, 9
+     * Register Number. This field provides the register number for the third source operand (src2). For a GRF register operand, it
+     * provides the portion of register address aligning to 256-bit. For an ARF register operand, this field is encoded such that MSBs
+     * identify the architecture register type and LSBs provide its register number.
      *
      * @par     Models:     all
      */
@@ -648,7 +658,7 @@ typedef enum
      *
      * GED uses a (dummy) vertical stride to denote the special values Vx1 or VxH.
      *
-     * @par     Models:     GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2VertStride,
 
@@ -662,10 +672,10 @@ typedef enum
     /*!
      *
      *
-     * @par GENTGL, GEN7, GEN7.5
+     * @par TGL, XE.HP, 7, 7.5
      * Message Descriptor Register File. This field describes the message descriptor of the send instruction.
      *
-     * @par GEN10, GEN11, GEN8, GEN8.1, GEN9
+     * @par 10, 11, 8, 8.1, 9
      * Message descriptor Register File. This field describes the message descriptor of the send instruction.
      *
      * @par     Models:     all
@@ -675,19 +685,19 @@ typedef enum
     /*!
      *
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * Message Descriptor Data Type. This field specifies the numeric data type of the message descriptor. The bits of a source
      * operand are interpreted as the identified numeric data type, rather than coerced into a type implied by the operator. Depending
      * on DescRegFile, there are two different encodings for this field. If a source is a register operand, this field follows the
      * Source Register Type Encoding. If a source is an immediate operand, this field follows the Source Immediate Type Encoding.
      *
-     * @par GEN8, GEN8.1
+     * @par 8, 8.1
      * Message descriptor Data Type. This field specifies the numeric data type of the message descriptor. The bits of a source
      * operand are interpreted as the identified numeric data type, rather than coerced into a type implied by the operator. Depending
      * on Src1RegFile, there are two different encodings for this field. If a source is a register operand, this field follows the
      * Source Register Type Encoding. If a source is an immediate operand, this field follows the Source Immediate Type Encoding.
      *
-     * @par     Models:     GEN7, GEN7.5, GEN8, GEN8.1
+     * @par     Models:     7, 7.5, 8, 8.1
      */
     GED_INS_FIELD_DescDataType,
 
@@ -696,7 +706,7 @@ typedef enum
      * provides the byte address within a 256-bit register. For an ARF register operand, this field also provides the sub-register
      * number according to the encoding defined for the given architecture register.
      *
-     * @par     Models:     GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DescAddrSubRegNum,
 
@@ -705,7 +715,7 @@ typedef enum
      * the portion of register address aligning to 256-bit. For an ARF register operand, this field is encoded such that MSBs identify
      * the architecture register type and LSBs provide its register number.
      *
-     * @par     Models:     GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, 7, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_DescRegNum,
 
@@ -713,7 +723,7 @@ typedef enum
      * Horizontal Stride. This field provides the distance in unit of data elements between two adjacent data elements within a row
      * (horizontal) in the register region for the message descriptor.
      *
-     * @par     Models:     GEN7
+     * @par     Models:     7
      */
     GED_INS_FIELD_DescHorzStride,
 
@@ -721,7 +731,7 @@ typedef enum
      * Width. This field specifies the number of elements in the horizontal dimension of the region for the message descriptor. This
      * field cannot exceed the ExecSize field of the instruction.
      *
-     * @par     Models:     GEN7
+     * @par     Models:     7
      */
     GED_INS_FIELD_DescWidth,
 
@@ -731,7 +741,7 @@ typedef enum
      *
      * GED uses a (dummy) vertical stride to denote the special values Vx1 or VxH.
      *
-     * @par     Models:     GEN7
+     * @par     Models:     7
      */
     GED_INS_FIELD_DescVertStride,
 
@@ -769,11 +779,11 @@ typedef enum
     /*!
      *
      *
-     * @par GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
      * Jump Instruction Pointer. The byte aligned jump distance if a jump is taken for the instruction. JIP should reference the end
      * of the innermost conditional block.
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * Jump Target Offset. The jump distance in number of eight-byte units if a jump is taken for the instruction.
      *
      * @par     Models:     all
@@ -783,10 +793,10 @@ typedef enum
     /*!
      *
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * The jump distance in number of eight-byte units if a jump is taken for the channel.
      *
-     * @par GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
      * Update Instruction Pointer. The byte aligned jump distance if a jump is taken for the instruction. UIP should reference the
      * instruction where all channels are expected to come together.
      *
@@ -797,11 +807,11 @@ typedef enum
     /*!
      *
      *
-     * @par GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par 10, 11, 7, 7.5, 8, 8.1, 9
      * Lookup one of 32 19-bit values. That value is used (from MSB to LSB) for the FlagRegNum, FlagSubRegNum, Saturate, ExecSize,
      * PredInv, PredCtrl, ThreadCtrl, QtrCtrl, DepCtrl, MaskCtrl, and AccessMode bit fields.
      *
-     * @par GENTGL
+     * @par TGL, XE.HP
      * Lookup one of 32 21-bit values. That value is used (from MSB to LSB) for the CondCtrl[3:0], Saturate, AccWrCtrl, AtomicCtrl,
      * MaskCtrl, PredInv, PredCtrl[3:0], FlagRegNum, FlagSubRegNum, ChOff[2:0], ExecSize[2:0] bit fields.
      *
@@ -812,16 +822,16 @@ typedef enum
     /*!
      *
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * Lookup one of 32 18-bit values. That value is used (from MSB to LSB) for the Dst.AddrMode, Dst.HorzStride, Dst.DstType,
      * Dst.RegFile, Src0.SrcType, Src0.RegFile, Src1.SrcType, and Src1.RegType bit fields.
      *
-     * @par GENTGL
+     * @par TGL, XE.HP
      * Lookup one of 32 20-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
      * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
      * bit fields.
      *
-     * @par GEN10, GEN11, GEN8, GEN8.1, GEN9
+     * @par 10, 11, 8, 8.1, 9
      * Lookup one of 32 21-bit values. That value is used (from MSB to LSB) for the Dst.AddrMode, Dst.HorzStride, Src1.SrcType,
      * Src1.RegFile, Src0.SrcType, Src0.RegFile, Dst.DstType, and Dst.RegFile bit fields.
      *
@@ -832,10 +842,10 @@ typedef enum
     /*!
      * Lookup one of 32 15-bit values.
      *
-     * @par GENTGL
+     * @par TGL, XE.HP
      * That value is used (from MSB to LSB) for .
      *
-     * @par GEN10, GEN11, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par 10, 11, 7, 7.5, 8, 8.1, 9
      * That value is used (from MSB to LSB) for various fields for Src1, Src0, and Dst, including ChanEn/ChanSel, SubRegNum, and
      * AddrImm[4] or AddrImm[4:0], depending on AddrMode and AccessMode.
      *
@@ -846,17 +856,17 @@ typedef enum
     /*!
      *
      *
-     * @par GENTGL
+     * @par TGL, XE.HP
      * Lookup one of 16 12-bit values. That value is used (from MSB to LSB) for the Src0.VertStride, various Src0 bit fields based on
      * AccessMode (Src0.ChanSel[7:4], Src0.Width, Src0.HorzStride), Src0.AddrMode, and Src0.SrcMod bit fields. Note that this field
      * spans a DWord boundary within the QWord compacted instruction.
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * Lookup one of 32 12-bit values. That value is used (from MSB to LSB) for the Src0.AddrMode, Src0.ChanSel[7:4], Src0.HorzStride,
      * Src0.SrcMod, Src0.VertStride, and Src0.Width bit fields. Note that this field spans a DWord boundary within the QWord compacted
      * instruction.
      *
-     * @par GEN10, GEN11, GEN8, GEN8.1, GEN9
+     * @par 10, 11, 8, 8.1, 9
      * Lookup one of 32 12-bit values. That value is used (from MSB to LSB) for the Src0.VertStride, various Src0 bit fields based on
      * AccessMode (Src0.ChanSel[7:4], Src0.Width, Src0.HorzStride), Src0.AddrMode, and Src0.SrcMod bit fields. Note that this field
      * spans a DWord boundary within the QWord compacted instruction.
@@ -868,7 +878,7 @@ typedef enum
     /*!
      *
      *
-     * @par GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par 10, 11, TGL, XE.HP, 8, 8.1, 9
      * If not an immediate operand, lookup one of 32 12-bit values that maps to bits 120:109. That value is used (from MSB to LSB) for
      * the Src1.VertStride, various Src1 bit fields based on AccessMode (Src1.ChanSel[7:4], Src1.Width, Src1.HorzStride),
      * Src1.AddrMode, and Src1.SrcMod bit fields.
@@ -877,7 +887,7 @@ typedef enum
      * 108:104. Sign extend to fill bits 127:109. Compact format bit 39 is thus copied to all of bits 127:108 for an immediate
      * operand.
      *
-     * @par GEN7, GEN7.5
+     * @par 7, 7.5
      * Lookup one of 32 12-bit values. If not an immediate operand, maps to bits 120:109, covering the Src1.AddrMode,
      * Src1.ChanSel[7:4], Src1.HorzStride, Src1.SrcMod, Src1.VertStride, and Src1.Width bit fields. If an immediate operand, does not
      * do any lookup. The 5-bit value directly maps to bits 108:104 (Imm[12:8]) and the upper bit (bit 39 in the compact format, bit
@@ -890,7 +900,7 @@ typedef enum
     /*!
      *
      *
-     * @par GEN8, GEN8.1
+     * @par 8, 8.1
      * If not an immediate operand, lookup one of 32 12-bit values that maps to bits 120:109. That value is used (from MSB to LSB) for
      * various Desc bit fields.
      *
@@ -898,53 +908,53 @@ typedef enum
      * 108:104. Sign extend to fill bits 127:109. Compact format bit 39 is thus copied to all of bits 127:108 for an immediate
      * operand.
      *
-     * @par GEN7
+     * @par 7
      * Lookup one of 32 12-bit values. If not an immediate operand, maps to bits 120:109, covering the Src1.AddrMode,
      * Src1.ChanSel[7:4], Src1.HorzStride, Src1.SrcMod, Src1.VertStride, and Src1.Width bit fields. If an immediate operand, does not
      * do any lookup. The 5-bit value directly maps to bits 108:104 (Imm[12:8]) and the upper bit (bit 39 in the compact format, bit
      * 108 in the native format) is replicated to provide bits 127:109 (Imm[31:13]) in the native format.
      *
-     * @par GEN7.5
+     * @par 7.5
      * Lookup one of 32 12-bit values. If not an immediate operand, maps to bits 120:109, for various Desc bit fields. If an immediate
      * operand, does not do any lookup. The 5-bit value directly maps to bits 108:104 (Imm[12:8]) and the upper bit (bit 39 in the
      * compact format, bit 108 in the native format) is replicated to provide bits 127:109 (Imm[31:13]) in the native format.
      *
-     * @par     Models:     GEN7, GEN7.5, GEN8, GEN8.1
+     * @par     Models:     7, 7.5, 8, 8.1
      */
     GED_INS_FIELD_DescIndex,
 
     /*!
      * Extended Message Descriptor Register File. This field describes the extended message descriptor of the send instruction.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
      */
     GED_INS_FIELD_ExDescRegFile,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_INS_FIELD_DstMathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_INS_FIELD_Src0MathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_INS_FIELD_Src1MathMacroExt,
 
     /*!
      * Specifies the extra registers used by the math macro instructions (formerly SpecialAcc).
      *
-     * @par     Models:     GEN10, GEN11, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, XE.HP, 8, 8.1, 9
      */
     GED_INS_FIELD_Src2MathMacroExt,
 
@@ -955,48 +965,48 @@ typedef enum
      * will be made inactive and waiting to be joined at the join IP. The join IP is IP + UIP when BranchCtrl is clear else it is the
      * next IP.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_INS_FIELD_BranchCtrl,
 
     /*!
      *
      *
-     * @par GENTGL
+     * @par TGL, XE.HP
      * Lookup one of 32 20-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
      * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
      * bit fields.
      *
-     * @par GEN8, GEN8.1
+     * @par 8, 8.1
      * Lookup one of four 46-bit values. That value is used (from MSB to LSB) for the Src2.RegNum[7], Src1.RegNum[7], Src0.RegNum[7],
      * Src2.ChanSel, Src1.ChanSel, Src0.ChanSel, Dst.SubRegNum, Dst.ChanEnable, Dst.DstType, SrcType, Src2.Modifier, Src1.Modifier,
      * and Src0.Modifier bit fields.
      *
-     * @par GEN10, GEN9
+     * @par 10, 9
      * Lookup one of four 49-bit values. That value is used (from MSB to LSB) for the Src2.SubRegNum, Src2.RegNum[7], Src1.RegNum,
      * Src1.RegNum[7], Src0.SubRegNum, Src0.RegNum[7], Src2.ChanSel, Src1.ChanSel, Src0.ChanSel, Dst.SubRegNum, Dst.ChanEnable,
      * Dst.DstType, SrcType, Src2.Modifier, Src1.Modifier, and Src0.Modifier bit fields.
      *
-     * @par     Models:     GEN10, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, TGL, XE.HP, 8, 8.1, 9
      */
     GED_INS_FIELD_SourceIndex,
 
     /*!
      * Source 2 Data Type.
      *
-     * @par GEN10
+     * @par 10
      * In Align16 this field is only valid when the SrcDataType is :f or :hf and in which case it defines the data type for the third
      * source operand (src2), otherwise it is reserved and MBZ. In Align1 this field is always valid and it defines the data type for
      * the third source operand (src2).
      *
-     * @par GEN8.1, GEN9
+     * @par 8.1, 9
      * This field is only valid when the SrcDataType is :f or :hf and in which case it defines the data type for the third source
      * operand (src2). Otherwise it is reserved and MBZ.
      *
-     * @par GEN11, GENTGL
+     * @par 11, TGL, XE.HP
      * This field specifies the numeric data type of the third source operand (src2).
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8.1, 9
      */
     GED_INS_FIELD_Src2DataType,
 
@@ -1004,7 +1014,7 @@ typedef enum
      * No Source Dependency Set. In send, sendc, sends and sendsc instruction, this bit controls the setting of GRF source dependency.
      * The source dependencies of both sources are considered together.
      *
-     * @par     Models:     GEN10, GEN11, GEN9
+     * @par     Models:     10, 11, 9
      */
     GED_INS_FIELD_NoSrcDepSet,
 
@@ -1015,21 +1025,21 @@ typedef enum
      *
      * Refer to the section on the specific target function unit for details on the contents of this field.
      *
-     * @par     Models:     GEN10, GEN11, GEN9
+     * @par     Models:     10, 11, 9
      */
     GED_INS_FIELD_ExFuncCtrl,
 
     /*!
      * Specify the extended message length.
      *
-     * @par     Models:     GEN10, GEN11, GEN9
+     * @par     Models:     10, 11, 9
      */
     GED_INS_FIELD_ExMsgLength,
 
     /*!
      * Sub-Register Number. This field provides the sub-register number for the extended message descriptor.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 9
      */
     GED_INS_FIELD_ExDescAddrSubRegNum,
 
@@ -1037,35 +1047,35 @@ typedef enum
      * Register Number. This field provides the register number for the extended message descriptor. For an ARF register operand, this
      * field is encoded such that MSBs identify the architecture register type and LSBs provide its register number.
      *
-     * @par     Models:     GEN10, GEN11, GEN9
+     * @par     Models:     10, 11, 9
      */
     GED_INS_FIELD_ExDescRegNum,
 
     /*!
      *
      *
-     * @par     Models:     GEN9
+     * @par     Models:     9
      */
     GED_INS_FIELD_MsgDescCategory,
 
     /*!
      * Address offset (Hword based)
      *
-     * @par     Models:     GEN9
+     * @par     Models:     9
      */
     GED_INS_FIELD_MsgDescScratchAddrOffset,
 
     /*!
      *
      *
-     * @par     Models:     GEN9
+     * @par     Models:     9
      */
     GED_INS_FIELD_MsgDescScratchBlockSize,
 
     /*!
      *
      *
-     * @par     Models:     GEN9
+     * @par     Models:     9
      */
     GED_INS_FIELD_MsgDescScratchInvalidateAfterRead,
 
@@ -1073,77 +1083,77 @@ typedef enum
      * Two modes of channel-enable are provided: a SIMD8 or SIMD16 Dword channel serial view of a register, and a SIMD4x2 view of a
      * register.
      *
-     * @par     Models:     GEN9
+     * @par     Models:     9
      */
     GED_INS_FIELD_MsgDescScratchChannelMode,
 
     /*!
      * Operation Type
      *
-     * @par     Models:     GEN9
+     * @par     Models:     9
      */
     GED_INS_FIELD_MsgDescScratchMessageType,
 
     /*!
      *
      *
-     * @par     Models:     GEN10, GEN11, GENTGL
+     * @par     Models:     10, 11, TGL, XE.HP
      */
     GED_INS_FIELD_ExecutionDataType,
 
     /*!
      * 16-bit Immediate.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL
+     * @par     Models:     10, 11, TGL, XE.HP
      */
     GED_INS_FIELD_Src0TernaryImm,
 
     /*!
      * 16-bit Immediate.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL
+     * @par     Models:     10, 11, TGL, XE.HP
      */
     GED_INS_FIELD_Src2TernaryImm,
 
     /*!
      *
      *
-     * @par     Models:     GEN10, GEN11, GENTGL
+     * @par     Models:     10, 11, TGL, XE.HP
      */
     GED_INS_FIELD_Src2HorzStride,
 
     /*!
      * SWSB.
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_SWSB,
 
     /*!
      * Src1IsImm
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_Src1IsImm,
 
     /*!
      * Src0IsImm
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_Src0IsImm,
 
     /*!
      * TBD
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_Src0SubRegNumByte,
 
     /*!
      * Sync FC.
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_SyncFC,
 
@@ -1151,7 +1161,7 @@ typedef enum
      * Fusion Control. For send and sendc instruction, this field provides explicit control for EU fusion lock-step execution. When
      * this bit is set , the instruction is executed serially starting from the first EU to the last EU in the fused set.
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_FusionCtrl,
 
@@ -1160,16 +1170,87 @@ typedef enum
      * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
      * bit fields.
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
     GED_INS_FIELD_DataTypeIndexNoDep,
 
     /*!
      * Compacted immediate
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL, XE.HP
      */
-    GED_INS_FIELD_CompactedImm
+    GED_INS_FIELD_CompactedImm,
+
+    /*!
+     * This field indicate the number of instructions to be created from a single macro instruction
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_RepeatCount,
+
+    /*!
+     * This field describes the systolic depth of the operation
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_SystolicDepth,
+
+    /*!
+     * Source 2 Operand Precision. This field specifies the number of bits per element of the third source operand (src2).
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_Src2Precision,
+
+    /*!
+     * Source 2 Operand Precision. This field specifies the number of bits per element of the second source operand (src1).
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_Src2SubBytePrecision,
+
+    /*!
+     * Source 1 Operand Precision. This field specifies the number of bits per element of the third source operand (src2).
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_Src1Precision,
+
+    /*!
+     * Source 1 Operand Precision. This field specifies the number of bits per element of the second source operand (src1).
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_Src1SubBytePrecision,
+
+    /*!
+     * Index of the lut8 lookup table for the bfn instruction
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_BfnFC,
+
+    /*!
+     * This field indicates the Extended Bindless Surface Offset (ExBSO) mode.
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_ExBSO,
+
+    /*!
+     * CPS LOD Compensation.
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_CPS,
+
+    /*!
+     * This field specifies the number of 256-bit GRF registers starting from Src1RegNum to be sent out on the request message
+     * payload.
+     *
+     * @par     Models:     XE.HP
+     */
+    GED_INS_FIELD_Src1Length
 } GED_INS_FIELD;
 
 /*!
@@ -1198,28 +1279,28 @@ typedef enum
     /*!
      * Get the swizzle target for the X channel.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_SwizzleX,
 
     /*!
      * Get the swizzle target for the Y channel.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_SwizzleY,
 
     /*!
      * Get the swizzle target for the Z channel.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_SwizzleZ,
 
     /*!
      * Get the swizzle target for the W channel.
      *
-     * @par     Models:     GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 7, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_SwizzleW,
 
@@ -1248,7 +1329,7 @@ typedef enum
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     GEN7, GEN7.5, GEN8, GEN8.1
+     * @par     Models:     7, 7.5, 8, 8.1
      */
     GED_PSEUDO_FIELD_MessageTypeDP_SAMPLER,
 
@@ -1262,14 +1343,14 @@ typedef enum
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     GEN7, GEN7.5, GEN8, GEN8.1
+     * @par     Models:     7, 7.5, 8, 8.1
      */
     GED_PSEUDO_FIELD_MessageTypeDP_CC,
 
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     GEN7, GEN7.5
+     * @par     Models:     7, 7.5
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC0,
 
@@ -1311,7 +1392,7 @@ typedef enum
      * Enabling this field is intended for scratch and spill/fill, where the memory is used only by a single thread and thus does not
      * need to be maintained after the thread completes.
      *
-     * @par     Models:     GEN7, GEN7.5
+     * @par     Models:     7, 7.5
      */
     GED_PSEUDO_FIELD_InvalidateAfterRead,
 
@@ -1398,49 +1479,49 @@ typedef enum
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN7.5, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 7.5, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC1,
 
     /*!
      * Category of the Data Cache Data Port 0.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP0Category,
 
     /*!
      * Message type of the send instruction, legacy message.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC0Legacy,
 
     /*!
      * Message type of the send instruction, scratch block message.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN8, GEN8.1, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 8, 8.1, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC0ScratchBlock,
 
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DC2,
 
     /*!
      * Message type of the send instruction.
      *
-     * @par     Models:     GEN10, GEN11, GENTGL, GEN9
+     * @par     Models:     10, 11, TGL, XE.HP, 9
      */
     GED_PSEUDO_FIELD_MessageTypeDP_DCRO,
 
     /*!
      * This field specifies the number of 256-bit GRF registers starting from src1 to be sent out on the request message payload.
      *
-     * @par     Models:     GENTGL
+     * @par     Models:     TGL
      */
     GED_PSEUDO_FIELD_ExMessageLength
 } GED_PSEUDO_FIELD;
