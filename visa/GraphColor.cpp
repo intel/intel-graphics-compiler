@@ -10767,6 +10767,12 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(
             }
             FlagLineraizedStartAndEnd(topDcl_1, scratchAccess->linearizedStart, scratchAccess->linearizedEnd);
             scratchAccess->flagOpnd = dst;
+            if (inst->getPredicate())
+            {
+                scratchAccess->removeable = false; //Partil spill/fill cannot be removed
+                scratchAccess->instKilled = true; //Not really killed, mark so that the instruction depends on current one will not be removed.
+            }
+
             return true;
         }
     }
@@ -10791,6 +10797,12 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(
             scratchAccess->isSpill = true;
             FlagLineraizedStartAndEnd(topDcl_2, scratchAccess->linearizedStart, scratchAccess->linearizedEnd);
             scratchAccess->flagOpnd = src;
+            if (inst->getPredicate())
+            {
+                scratchAccess->removeable = false; //Partil spill/fill cannot be removed
+                scratchAccess->instKilled = true; //Not really killed, mark so that the instruction depends on current one will not be removed.
+            }
+
             return true;
         }
     }
@@ -11129,7 +11141,7 @@ void FlagSpillCleanup::regFillClean(
         // Since the reuse happens from front to end.
         // If the pre scratchAccess is killed, current candidate can not reuse previous register any more
         if (!scratchAccess->instKilled &&
-            (scratchAccess->removeable || scratchAccess->directKill))
+            (scratchAccess->removeable && scratchAccess->directKill))
         {
             if (scratchAccess->prePreScratchAccess)
             {
@@ -11251,9 +11263,7 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(
     SCRATCH_PTR_VEC candidateList;
     FlowGraph& fg = kernel.fg;
 
-//#ifdef _DEBUG
     int candidate_size = 0;
-//#endif
     for (auto bb : fg)
     {
         INST_LIST_ITER inst_it = bb->begin();
