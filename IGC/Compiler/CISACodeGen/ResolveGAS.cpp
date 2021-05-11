@@ -31,10 +31,12 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
+#include <llvm/IR/PatternMatch.h>
 
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
+using namespace llvm::PatternMatch;
 
 namespace {
 
@@ -946,6 +948,7 @@ namespace IGC
         void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
         void updateAllUsesWithNewFunction(FuncToUpdate& f);
         void FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC);
+        void checkLocalToGenericCast(llvm::Module& M);
     };
 } // End anonymous namespace
 
@@ -964,6 +967,43 @@ namespace IGC
     IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
     IGC_INITIALIZE_PASS_END(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
+}
+
+void LowerGPCallArg::checkLocalToGenericCast(llvm::Module& M)
+{
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    {
+        Function* func = &(*I);
+        // ToDo: replace with generic checks for extern functions
+        if (func->hasFnAttribute("IndirectlyCalled"))
+        {
+            for (auto& arg : func->args())
+            {
+                PointerType* argPointerType = dyn_cast<PointerType>(arg.getType());
+                if (argPointerType && argPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
+                {
+                    return;
+                }
+            }
+        }
+        for (auto FI = inst_begin(func), FE = inst_end(func); FI != FE; ++FI)
+        {
+            auto addrCast = dyn_cast<AddrSpaceCastInst>(&(*FI));
+            if (addrCast && addrCast->getDestAddressSpace() == ADDRESS_SPACE_GENERIC &&
+                addrCast->getSrcAddressSpace() == ADDRESS_SPACE_LOCAL)
+            {
+                return;
+            }
+            Value *Ptr = nullptr;
+            if (match(&(*FI), m_PtrToInt(m_Value(Ptr))) && Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+            {
+                return;
+            }
+        }
+    }
+
+    // ToDo: enable in separate check-in
+    //ctx->getModuleMetaData()->hasNoLocalToGenericCast = true;
 }
 
 
@@ -1026,7 +1066,10 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
 
     // If there are no functions to update, finish
     if (funcsToUpdate.empty())
+    {
+        checkLocalToGenericCast(M);
         return false;
+    }
 
     // Step 2: update functions and lower their generic pointer arguments
     // to their non-generic address space.
@@ -1155,6 +1198,7 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
         }
     }
 
+    checkLocalToGenericCast(M);
     return true;
 }
 
