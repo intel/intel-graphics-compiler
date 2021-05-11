@@ -89,35 +89,6 @@ bool FixResourcePtr::runOnFunction(llvm::Function& F)
     return m_changed;
 }
 
-
-// Function modifies address space in all BitCast or GEP uses input pointer.
-void FixResourcePtr::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS)
-{
-    IGC_ASSERT(newAS != oldAS);
-
-    for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
-    {
-        Instruction* inst = dyn_cast<Instruction>(*UI);
-        PointerType* instType = nullptr;
-        if (BitCastInst * bitCastInst = dyn_cast<BitCastInst>(inst))
-        {
-            instType = dyn_cast<PointerType>(bitCastInst->getType());
-        }
-        else if (GetElementPtrInst * gepInst = dyn_cast<GetElementPtrInst>(inst))
-        {
-            instType = dyn_cast<PointerType>(gepInst->getType());
-        }
-
-        if (instType && instType->getAddressSpace() == oldAS)
-        {
-            Type* eltType = instType->getElementType();
-            PointerType* ptrType = PointerType::get(eltType, newAS);
-            inst->mutateType(ptrType);
-            FixAddressSpaceInAllUses(inst, newAS, oldAS);
-        }
-    }
-}
-
 void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
 {
     uint outAS = bufPtr->getType()->getPointerAddressSpace();

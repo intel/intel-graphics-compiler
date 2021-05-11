@@ -471,4 +471,7 @@ namespace IGC
 
     // Return base type of complex type or nullptr if it cannot be processed
     llvm::Type* GetBaseType(llvm::Type* ProcessedType);
+
+    // Function modifies address space in selected uses of given input value
+    void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);
 } // namespace IGC

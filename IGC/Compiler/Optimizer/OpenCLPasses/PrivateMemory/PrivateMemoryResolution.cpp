@@ -943,7 +943,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
             totalOffset = builder.CreateZExt(totalOffset, privateBase->getType());
             Value* threadOffset = builder.CreateAdd(privateBase, totalOffset, VALUE_NAME(pAI->getName() + ".threadOffset"));
-            Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, Type::getInt8Ty(C)->getPointerTo(scratchMemoryAddressSpace), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
+            Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
             Value* privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
             if (TransposeMemLayout)
@@ -957,6 +957,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // Replace all uses of original alloca with the bitcast
             pAI->replaceAllUsesWith(privateBuffer);
             pAI->eraseFromParent();
+
         }
 
         return true;

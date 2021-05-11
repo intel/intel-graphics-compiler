@@ -63,8 +63,6 @@ namespace IGC
 
         llvm::Value* CreateStoreIntrinsic(llvm::StoreInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
 
-        void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);
-
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
         /// Function we are processing

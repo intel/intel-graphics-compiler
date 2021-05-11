@@ -2454,4 +2454,30 @@ namespace IGC
 
         return ProcessedType;
     }
+
+    // Function modifies address space in selected uses of given input value
+    void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS)
+    {
+        IGC_ASSERT(newAS != oldAS);
+
+        for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
+        {
+            Instruction* inst = dyn_cast<Instruction>(*UI);
+            PointerType* instType = nullptr;
+            if (isa<BitCastInst>(inst) || isa<GetElementPtrInst>(inst) ||
+                isa<AddrSpaceCastInst>(inst) || isa<PHINode>(inst))
+            {
+                instType = dyn_cast<PointerType>(inst->getType());
+            }
+
+            if (instType && instType->getAddressSpace() == oldAS)
+            {
+                Type* eltType = instType->getElementType();
+                PointerType* ptrType = PointerType::get(eltType, newAS);
+                inst->mutateType(ptrType);
+                FixAddressSpaceInAllUses(inst, newAS, oldAS);
+            }
+        }
+    }
+
 } // namespace IGC
