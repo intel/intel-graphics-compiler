@@ -522,7 +522,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     // Vulkan encodes address space differently, with the reserve bits set.
     // TODO: Investigate how addrspace is encoded in Vulkan,
     // for now skip promoting if it's an address space we dont recognize.
-    if ((addrSpace & 0xFFE00000) != 0x0)
+    if ((addrSpace & 0xFFC00000) != 0x0)
     {
         return;
     }
