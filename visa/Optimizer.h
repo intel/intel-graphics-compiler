@@ -196,6 +196,9 @@ class Optimizer
 
     void accSubPostSchedule();
 
+    // return true if BuiltInR0 gets a different allocation than r0
+    bool R0CopyNeeded();
+
 private:
     /* below member functions are used for message header opt */
     bool isHeaderOptCandidate(G4_INST *, G4_INST *);
