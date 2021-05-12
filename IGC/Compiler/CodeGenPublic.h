@@ -269,6 +269,8 @@ namespace IGC
         unsigned int numAllocaInsts;
         unsigned int numPsInputs;
         bool hasDynamicGenericLoadStore;
+        unsigned int numGlobalInsts;
+        unsigned int numLocalInsts;
     };
 
     struct SSimplePushInfo

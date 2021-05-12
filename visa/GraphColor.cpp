@@ -9658,12 +9658,13 @@ int GlobalRA::coloringRegAlloc()
     bool fastCompile =
         (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
         !hasStackCall;
+
     if (fastCompile)
     {
         fastCompileIter = 0;
     }
-    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
 
+    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
     bool rematDone = false;
     VarSplit splitPass(*this);
     if (kernel.getOption(vISA_SplitGRFAlignedScalar))
