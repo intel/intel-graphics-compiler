@@ -487,7 +487,7 @@ parseOptions(const SmallVectorImpl<const char *> &Argv,
              IGC::options::Flags FlagsToInclude, bool IsStrictMode) {
   const opt::OptTable &Options = IGC::getOptTable();
 
-  const bool IsInternal = FlagsToInclude == IGC::options::InternalOption;
+  const bool IsInternal = FlagsToInclude == IGC::options::VCInternalOption;
 
   unsigned MissingArgIndex = 0;
   unsigned MissingArgCount = 0;
@@ -526,7 +526,7 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
   const std::string VCCodeGenOptName =
       Options.getOption(IGC::options::OPT_vc_codegen).getPrefixedName();
   if (HasOption(VCCodeGenOptName))
-    return parseOptions(Argv, IGC::options::ApiOption, IsStrictMode);
+    return parseOptions(Argv, IGC::options::VCApiOption, IsStrictMode);
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
       Options.getOption(IGC::options::OPT_igcmc).getPrefixedName();
@@ -547,7 +547,7 @@ parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
   cl::TokenizeGNUCommandLine(InternalOptions, Saver, Argv);
   // Internal options are always unchecked.
   constexpr bool IsStrictMode = false;
-  return parseOptions(Argv, IGC::options::InternalOption, IsStrictMode);
+  return parseOptions(Argv, IGC::options::VCInternalOption, IsStrictMode);
 }
 
 static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
@@ -561,16 +561,16 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   if (ApiOptions.hasArg(IGC::options::OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
 
-  if (ApiOptions.hasArg(IGC::options::OPT_vc_emit_debug)) {
+  if (ApiOptions.hasArg(IGC::options::OPT_emit_debug)) {
     Opts.EmitDebugInformation = true;
     Opts.EmitDebuggableKernels = true;
   }
-  if (ApiOptions.hasArg(IGC::options::OPT_fno_jump_tables))
+  if (ApiOptions.hasArg(IGC::options::OPT_vc_fno_jump_tables))
     Opts.NoJumpTables = true;
-  if (ApiOptions.hasArg(IGC::options::OPT_ftranslate_legacy_memory_intrinsics))
+  if (ApiOptions.hasArg(IGC::options::OPT_vc_ftranslate_legacy_memory_intrinsics))
     Opts.TranslateLegacyMemoryIntrinsics = true;
 
-  if (opt::Arg *A = ApiOptions.getLastArg(IGC::options::OPT_optimize)) {
+  if (opt::Arg *A = ApiOptions.getLastArg(IGC::options::OPT_vc_optimize)) {
     StringRef Val = A->getValue();
     auto MaybeLevel = StringSwitch<Optional<vc::OptimizerLevel>>(Val)
                           .Case("none", vc::OptimizerLevel::None)
@@ -582,7 +582,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(IGC::options::OPT_fstateless_private_size)) {
+          ApiOptions.getLastArg(IGC::options::OPT_vc_stateless_private_size)) {
     StringRef Val = A->getValue();
     unsigned Result;
     if (Val.getAsInteger(/*Radix=*/0, Result))
@@ -618,7 +618,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   }
 
   if (opt::Arg *A =
-          InternalOptions.getLastArg(IGC::options::OPT_globals_localization)) {
+          InternalOptions.getLastArg(IGC::options::OPT_vc_globals_localization)) {
     StringRef Val = A->getValue();
     auto MaybeGLM = StringSwitch<Optional<vc::GlobalsLocalizationMode>>(Val)
                         .Case("all", vc::GlobalsLocalizationMode::All)
@@ -639,7 +639,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   if (InternalOptions.hasArg(IGC::options::OPT_help)) {
     constexpr const char *Usage = "-options \"-vc-codegen [options]\"";
     constexpr const char *Title = "Vector compiler options";
-    constexpr unsigned FlagsToInclude = IGC::options::ApiOption;
+    constexpr unsigned FlagsToInclude = IGC::options::VCApiOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
     IGC::getOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
@@ -649,7 +649,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     constexpr const char *Usage =
         "-options \"-vc-codegen\" -internal_options \"[options]\"";
     constexpr const char *Title = "Vector compiler internal options";
-    constexpr unsigned FlagsToInclude = IGC::options::InternalOption;
+    constexpr unsigned FlagsToInclude = IGC::options::VCInternalOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
     IGC::getOptTable().PrintHelp(llvm::errs(), Usage, Title, FlagsToInclude,
