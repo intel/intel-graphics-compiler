@@ -10685,6 +10685,7 @@ void Optimizer::doNoMaskWA()
                 G4_Predicate* flag = builder.createPredicate(
                     PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
                 I0->setPredicate(flag);
+                flag->setSameAsNoMask(true);
                 currBB->insertBefore(nextII, I0);
 
                 flagVarDefInst->addDefUse(I0, Opnd_pred);
