@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 
 #include "G4_Kernel.hpp"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "InstSplit.h"
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"

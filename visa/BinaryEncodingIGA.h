@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _BINARYENCODINGIGA_H_
 #define _BINARYENCODINGIGA_H_
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "FlowGraph.h"
 #include "iga/IGALibrary/IR/Types.hpp"
 

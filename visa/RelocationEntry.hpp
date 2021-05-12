@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RELOCATION_ENTRY_HPP
 #define RELOCATION_ENTRY_HPP
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "include/RelocationInfo.h"
 
 namespace vISA

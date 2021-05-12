@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "VISADefines.h"
 #include "G4_BB.hpp"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "RelocationInfo.h"
 #include "LoopAnalysis.h"
 

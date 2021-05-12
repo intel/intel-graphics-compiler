@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __GRAPHCOLOR_H__
 
 #include "BitSet.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "RegAlloc.h"
 #include "RPE.h"
 #include "SpillManagerGMRF.h"

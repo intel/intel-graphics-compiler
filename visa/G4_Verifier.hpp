@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _G4_VERIFIER_H_
 
 #include "FlowGraph.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "Optimizer.h"
 
 #include <ostream>

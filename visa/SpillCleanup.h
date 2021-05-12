@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef __SPILLCLEANUP_H__
 #define __SPILLCLEANUP_H__
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "FlowGraph.h"
 #include "RPE.h"
 

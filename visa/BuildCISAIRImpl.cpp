@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BinaryEncoding.h"
 #include "IsaDisassembly.h"
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "FlowGraph.h"
 #include "DebugInfo.h"
 #include "IsaVerification.h"

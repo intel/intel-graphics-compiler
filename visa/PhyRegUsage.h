@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BuildIR.h"
 #include "G4_Opcode.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 
 enum ColorHeuristic {FIRST_FIT, ROUND_ROBIN};
 

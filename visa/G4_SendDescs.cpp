@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "IGC/common/StringMacros.hpp"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "BuildIR.h"
 
 #include <sstream>

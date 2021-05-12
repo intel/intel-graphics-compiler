@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_wa.h"
 #include "Mem_Manager.h"
 #include "JitterDataStruct.h"
-//#include "Gen4_IR.hpp"  // for PhyRegPool
+//#include "G4_IR.hpp"  // for PhyRegPool
 #include "Attributes.hpp"
 #include "CompilerStats.h"
 

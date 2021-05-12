@@ -198,10 +198,10 @@ set(GenX_Common_Sources_External_Other
   DebugInfo.cpp
   FlowGraph.cpp
   G4_BB.cpp
+  G4_IR.cpp
   G4_Kernel.cpp
   G4_SendDescs.cpp
   G4_Verifier.cpp
-  Gen4_IR.cpp
   GraphColor.cpp
   HWConformity.cpp
   InstSplit.cpp
@@ -290,12 +290,12 @@ set(GenX_Common_Headers
   DebugInfo.h
   FlowGraph.h
   G4_BB.hpp
+  G4_IR.hpp
   G4_Kernel.hpp
   G4_Opcode.h
   G4_SendDescs.hpp
   G4_Verifier.hpp
   GTGPU_RT_ASM_Interface.h
-  Gen4_IR.hpp
   GraphColor.h
   HWConformity.h
   IGfxHwEuIsaCNL.h

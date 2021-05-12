@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Mem_Manager.h"
 #include "../FlowGraph.h"
 #include "../BuildIR.h" // add IR_Builder and G4_Kernel objects to support the exit code patch and combined kernel
-#include "../Gen4_IR.hpp"
+#include "../G4_IR.hpp"
 #include "../Timer.h"
 #include "../BitSet.h"
 #include "LatencyTable.h"

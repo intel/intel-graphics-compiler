@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <bitset>
 #include "../Mem_Manager.h"
 #include "../FlowGraph.h"
-#include "../Gen4_IR.hpp"
+#include "../G4_IR.hpp"
 #include "../Timer.h"
 #include "../RegAlloc.h"
 #include <vector>

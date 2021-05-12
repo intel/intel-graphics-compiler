@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PreDefinedVars.h"
 #include "Attributes.hpp"
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 /* stdio.h portability code start */
 #ifdef _WIN32
 #else

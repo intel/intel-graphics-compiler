@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SendFusion.h"
 #include "BuildIR.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 
 #include <map>
 #include <algorithm>

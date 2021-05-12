@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef G4_KERNEL_HPP
 #define G4_KERNEL_HPP
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "FlowGraph.h"
 #include "RelocationEntry.hpp"
 #include "include/gtpin_IGC_interface.h"

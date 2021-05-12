@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_framework.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "BuildIR.h"
 #include "BinaryEncodingIGA.h"
 

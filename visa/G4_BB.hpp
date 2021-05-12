@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef G4_BB_H
 #define G4_BB_H
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 
 #include <list>
 #include <unordered_map>

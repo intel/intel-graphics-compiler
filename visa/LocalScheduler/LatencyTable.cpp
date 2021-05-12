@@ -1,6 +1,6 @@
 #include "LatencyTable.h"
 #include "LocalScheduler_G4IR.h"
-#include "../Gen4_IR.hpp"
+#include "../G4_IR.hpp"
 
 using namespace vISA;
 

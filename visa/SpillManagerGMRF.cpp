@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "SpillManagerGMRF.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "Mem_Manager.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"

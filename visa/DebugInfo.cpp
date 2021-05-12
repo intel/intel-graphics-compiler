@@ -26,13 +26,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "DebugInfo.h"
 #include "Common_ISA.h"
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "FlowGraph.h"
 #include "BuildIR.h"
-#include <map>
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
 #include "BitSet.h"
+
+#include <map>
+
 using namespace vISA;
 
 using std::fclose;

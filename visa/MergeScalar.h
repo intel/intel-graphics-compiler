@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _MERGESCALAR_H
 #define _MERGESCALAR_H
 
-#include "Gen4_IR.hpp"
+#include "G4_IR.hpp"
 #include "BuildIR.h"
 #include "FlowGraph.h"
 
