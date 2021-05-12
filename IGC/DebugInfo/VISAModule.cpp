@@ -387,8 +387,8 @@ void VISAModule::coalesceRanges(std::vector<std::pair<unsigned int, unsigned int
 {
     // Treat 2 sub-intervals as coalesceable as long %ip end of first interval
     // and %ip start of second interval is within a threshold.
-    // 0x20 is equivalent to 2 asm instructions.
-    const unsigned int CoalescingThreshold = 0x20;
+    // 0x10 is equivalent to 1 asm instruction.
+    const unsigned int CoalescingThreshold = 0x10;
 
     class Comp
     {
