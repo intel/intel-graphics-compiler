@@ -160,7 +160,7 @@ class Optimizer
     void collectStats();
     void createR0Copy();
 
-    void insertInstLabels();
+    void fixEndIfWhileLabels();
     void mergeScalarInst();
     void HWConformityChk() { ::HWConformityChk(builder, kernel, mem); }
     void removeRedundMov() { fg.removeRedundMov(); }
@@ -328,7 +328,7 @@ public:
         PI_FoldAddrImmediate,
         PI_localSchedule,
         PI_HWWorkaround,               // always
-        PI_insertInstLabels,           // always
+        PI_fixEndIfWhileLabels,           // always
         PI_insertHashMovs,
         PI_insertDummyMovForHWRSWA,
         PI_insertDummyCompactInst,

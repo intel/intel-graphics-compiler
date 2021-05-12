@@ -1011,7 +1011,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(FoldAddrImmediate,       vISA_FoldAddrImmed,           TimerID::MISC_OPTS);
     INITIALIZE_PASS(localSchedule,           vISA_LocalScheduling,         TimerID::SCHEDULING);
     INITIALIZE_PASS(HWWorkaround,            vISA_EnableAlways,            TimerID::MISC_OPTS);
-    INITIALIZE_PASS(insertInstLabels,        vISA_EnableAlways,            TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(fixEndIfWhileLabels,        vISA_EnableAlways,            TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertHashMovs,          vISA_InsertHashMovs,          TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertDummyMovForHWRSWA, vISA_InsertDummyMovForHWRSWA, TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertDummyCompactInst,  vISA_InsertDummyCompactInst,  TimerID::NUM_TIMERS);
@@ -1534,7 +1534,7 @@ int Optimizer::optimization()
 
     // this must be the last step of the optimization so as to not violate
     // the CFG assumption
-    runPass(PI_insertInstLabels);
+    runPass(PI_fixEndIfWhileLabels);
 
     runPass(PI_insertHashMovs);
 
@@ -1608,7 +1608,7 @@ int Optimizer::optimization()
 //  (P) WHILE
 //  L2
 //
-void Optimizer::insertInstLabels()
+void Optimizer::fixEndIfWhileLabels()
 {
     for (BB_LIST_CITER iter = fg.cbegin(), bend = fg.cend(); iter != bend; ++iter)
     {
