@@ -297,8 +297,26 @@ G4_BB* FlowGraph::getLabelBB(Label_BB_Map& map, G4_Label* label)
 G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
 {
     if (first == NULL) return NULL;
-    G4_BB* bb = (first->isLabel()) ? getLabelBB(map, first->getSrc(0)->asLabel()) : createNewBB();
+    G4_INST* labelInst;
+    bool newLabelInst = false;
+    if (first->isLabel())
+    {
+        labelInst = first;
+    }
+    else
+    {
+        // no label for this BB, create one!
+        std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
+        G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
+        labelInst = createNewLabelInst(label);
+        newLabelInst = true;
+    }
+    G4_BB* bb = getLabelBB(map, labelInst->getLabel());
     push_back(bb); // append to BBs list
+    if (newLabelInst)
+    {
+        bb->push_front(labelInst);
+    }
     return bb;
 }
 
@@ -775,6 +793,10 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         // and only remove the link when it is not a conditional call
                         //
                         addPredSuccEdges(curr_BB, next_BB);
+                        if (i->getSrc(0)->isLabel())
+                        {
+                            i->getSrc(0)->asLabel()->setFuncLabel(true);
+                        }
                     }
                     else if (i->getPredicate())
                     {
@@ -912,22 +934,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     removeRedundantLabels();
 
     pKernel->dumpDotFile("after.RemoveRedundantLabels");
-
-    // Ensure each block starts with a label.
-    for (auto bb : BBs)
-    {
-        if (!bb->empty())
-        {
-            G4_INST *inst = bb->front();
-            if (inst->isLabel())
-                continue;
-
-            std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
-            G4_Label *label = builder->createLabel(name, LABEL_BLOCK);
-            auto labelInst = createNewLabelInst(label);
-            bb->push_front(labelInst);
-        }
-    }
 
     handleExit(subroutineStartBB.size() > 1 ? subroutineStartBB[1] : nullptr);
 
@@ -1892,36 +1898,8 @@ void FlowGraph::removeRedundantLabels()
             continue;
         }
 
-        // Remove empty blocks
-        if (bb->size() == 0)
-        {
-            // Handle this case by connecting Pred to Succ and delete bb!
-            //   Pred:
-            //   bb:
-            //     <empty>
-            //   Succ:
-            assert(bb->Preds.size() < 2 && "Empty BB has at most 1 pred!");
-            assert(bb->Succs.size() < 2 && "Empty BB has at most 1 succ!");
-            G4_BB* Pred = bb->Preds.size() == 1 ? bb->Preds.back() : nullptr;
-            G4_BB* Succ = bb->Succs.size() == 1 ? bb->Succs.back() : nullptr;
-            if (Pred)
-            {
-                removePredSuccEdges(Pred, bb);
-            }
-            if (Succ)
-            {
-                removePredSuccEdges(bb, Succ);
-            }
-            if (Pred && Succ)
-            {
-                addPredSuccEdges(Pred, Succ);
-            }
+        assert(bb->size() > 0 && "Every BB should at least have a label inst!");
 
-            BB_LIST_ITER rt = it++;
-            erase(rt);
-
-            continue;
-        }
         //
         // The removal candidates will have a single successor and a single inst
         //
@@ -1929,57 +1907,10 @@ void FlowGraph::removeRedundantLabels()
         {
             G4_INST* removedBlockInst = bb->front();
             if (removedBlockInst->isLabel() == false ||
+                removedBlockInst->getLabel()->isFuncLabel() ||
                 strncmp(removedBlockInst->getLabelStr(), "LABEL__EMPTYBB", 14) == 0 ||
                 strncmp(removedBlockInst->getLabelStr(), "__AUTO_GENERATED_DUMMY_LAST_BB", 30) == 0)
             {
-                ++it;
-                continue;
-            }
-
-            // check if the label is a function label
-            unsigned numNonCallerPreds = 0;
-            bool isFuncLabel = true;
-            G4_BB* pred_bb = NULL;
-            for (auto pred : bb->Preds)
-            {
-                if (!pred->isEndWithCall())
-                {
-                    if (numNonCallerPreds > 0)
-                    {
-                        isFuncLabel = false;
-                        break;
-                    }
-                    numNonCallerPreds++;
-                    pred_bb = pred;
-                }
-                else
-                {
-                    G4_INST *i = pred->back();
-                    if (i->getSrc(0)->isLabel())
-                    {
-                        if (i->getSrc(0) != removedBlockInst->getLabel())
-                        {
-                            if (numNonCallerPreds > 0)
-                            {
-                                isFuncLabel = false;
-                                break;
-                            }
-                            numNonCallerPreds++;
-                            pred_bb = pred;
-                        }
-                    }
-                }
-            }
-
-            // keep the function label there such that we have an empty init BB for this subroutine.
-            if (isFuncLabel && numNonCallerPreds < bb->Preds.size())
-            {
-                // remove fall through edge.
-                if (pred_bb)
-                {
-                    removePredSuccEdges(pred_bb, bb);
-                }
-                removedBlockInst->getLabel()->setFuncLabel(true);
                 ++it;
                 continue;
             }
