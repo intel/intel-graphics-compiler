@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_igc_common_header.h"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
+#include "BuildCISAIR.h"
 
 #ifdef _MSC_VER
 #pragma warning(default: 4005)
@@ -44,11 +45,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "CISA.tab.hpp"
 
-#ifdef _DEBUG
-#define TRACE(str) fprintf(yyout, str); ECHO; fprintf(yyout, "\n")
-#else
-#define TRACE(str)
-#endif
+#define TRACE(S) \
+    do { \
+      if (CISAout && pBuilder->debugParse()) \
+          fprintf(CISAout, "line %d: %-32s \"%s\"\n", CISAlineno, S, yytext); \
+    } while (0)
+
 static VISA_Type               str2type(const char *str, int str_len);
 static VISA_Cond_Mod           str2cond(const char *str);
 static VISAAtomicOps           str2atomic_opcode(const char *op_str);
@@ -83,7 +85,7 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 [ \t] { /*drop non-newline spaces*/}
 "//"[^\n]* {
         // drop comments
-        // TRACE("\n** COMMENT ");
+        // TRACE("** COMMENT\n");
         // CISAlval.string = strdup(yytext);
         // return COMMENT_LINE;
     }
@@ -136,139 +138,139 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 }
 
 
-"*" {TRACE("\n** TIMES ");  return TIMES;}
-"+" {TRACE("\n** PLUS ");   return PLUS;}
-"-" {TRACE("\n** MINUS ");  return MINUS;}
-"=" {TRACE("\n** EQUALS "); return EQUALS;}
-"&" {TRACE("\n** AMP ");    return AMP;}
-"^" {TRACE("\n** CIRC ");   return CIRC;}
-"|" {TRACE("\n** PIPE ");   return PIPE;}
-"~" {TRACE("\n** TILDE ");  return TILDE;}
-"!" {TRACE("\n** BANG ");   return BANG;}
+"*" {TRACE("** TIMES");  return TIMES;}
+"+" {TRACE("** PLUS");   return PLUS;}
+"-" {TRACE("** MINUS");  return MINUS;}
+"=" {TRACE("** EQUALS"); return EQUALS;}
+"&" {TRACE("** AMP");    return AMP;}
+"^" {TRACE("** CIRC");   return CIRC;}
+"|" {TRACE("** PIPE");   return PIPE;}
+"~" {TRACE("** TILDE");  return TILDE;}
+"!" {TRACE("** BANG");   return BANG;}
 
-"<=" {TRACE("\n** LEQ "); return LEQ;}
-">=" {TRACE("\n** GEQ "); return GEQ;}
-"==" {TRACE("\n** EQ ");  return  EQ;}
-"!=" {TRACE("\n** NEQ "); return NEQ;}
-
-
-"." {TRACE("\n** DOT ");     return DOT;}
-"," {TRACE("\n** COMMA ");   return COMMA;}
-";" {TRACE("\n** SEMI ");    return SEMI;}
-":" {TRACE("\n** COLON ");   return COLON;}
-"/" {TRACE("\n** SLASH");    return SLASH;}
-"%" {TRACE("\n** PERCENT");  return PERCENT;}
-"?" {TRACE("\n** QUESTION"); return QUESTION;}
-
-"(" {TRACE("\n** LPAREN "); return LPAREN;}
-")" {TRACE("\n** RPAREN "); return RPAREN;}
-"{" {TRACE("\n** LBRACE "); return LBRACE;}
-"}" {TRACE("\n** RBRACE "); return RBRACE;}
-"<" {TRACE("\n** LANGLE "); return LANGLE;}
-">" {TRACE("\n** RANGLE "); return RANGLE;}
-"<<"  {TRACE("\n** SHL ");  return SHL;}
-">>"  {TRACE("\n** SHRS "); return SHRS;}
-">>>" {TRACE("\n** SHRZ "); return SHRZ;}
-
-"r[" {TRACE("\n** IND_LBRACK"); return IND_LBRACK;}
-"["  {TRACE("\n** LBRACK"); return LBRACK;}
-"]"  {TRACE("\n** RBRACK"); return RBRACK;}
+"<=" {TRACE("** LEQ"); return LEQ;}
+">=" {TRACE("** GEQ"); return GEQ;}
+"==" {TRACE("** EQ");  return  EQ;}
+"!=" {TRACE("** NEQ"); return NEQ;}
 
 
-".version"          {TRACE("\n** VERSION "); return DIRECTIVE_VERSION;}
-".decl"             {TRACE("\n** DECLARE "); return DIRECTIVE_DECL;}
-".funcdecl"         {TRACE("\n** FUNCTION DECLARE "); return DIRECTIVE_FUNCDECL;}
-".kernel_attr"      {TRACE("\n** KERNEL ATTR "); return DIRECTIVE_KERNEL_ATTR;}
-".input"            {TRACE("\n** INPUT "); return DIRECTIVE_INPUT;}
+"." {TRACE("** DOT");     return DOT;}
+"," {TRACE("** COMMA");   return COMMA;}
+";" {TRACE("** SEMI");    return SEMI;}
+":" {TRACE("** COLON");   return COLON;}
+"/" {TRACE("** SLASH");    return SLASH;}
+"%" {TRACE("** PERCENT");  return PERCENT;}
+"?" {TRACE("** QUESTION"); return QUESTION;}
+
+"(" {TRACE("** LPAREN"); return LPAREN;}
+")" {TRACE("** RPAREN"); return RPAREN;}
+"{" {TRACE("** LBRACE"); return LBRACE;}
+"}" {TRACE("** RBRACE"); return RBRACE;}
+"<" {TRACE("** LANGLE"); return LANGLE;}
+">" {TRACE("** RANGLE"); return RANGLE;}
+"<<"  {TRACE("** SHL");  return SHL;}
+">>"  {TRACE("** SHRS"); return SHRS;}
+">>>" {TRACE("** SHRZ"); return SHRZ;}
+
+"r[" {TRACE("** IND_LBRACK"); return IND_LBRACK;}
+"["  {TRACE("** LBRACK"); return LBRACK;}
+"]"  {TRACE("** RBRACK"); return RBRACK;}
+
+
+".version"          {TRACE("** VERSION"); return DIRECTIVE_VERSION;}
+".decl"             {TRACE("** DECLARE"); return DIRECTIVE_DECL;}
+".funcdecl"         {TRACE("** FUNCTION DECLARE"); return DIRECTIVE_FUNCDECL;}
+".kernel_attr"      {TRACE("** KERNEL ATTR"); return DIRECTIVE_KERNEL_ATTR;}
+".input"            {TRACE("** INPUT"); return DIRECTIVE_INPUT;}
 "."implicit[a-zA-Z0-9_\-$@?]* {
-        TRACE("\n**  DIRECTIVE_IMPLICIT ");
+        TRACE("**  DIRECTIVE_IMPLICIT");
         CISAlval.string = strdup(yytext);
         CISAlval.string[yyleng] = '\0';
         return DIRECTIVE_IMPLICIT;
     }
-".parameter"        {TRACE("\n** PARAMETER "); return DIRECTIVE_PARAMETER;}
-".function"         {TRACE("\n** FUNCTION "); return DIRECTIVE_FUNC;}
-".global_function"  {TRACE("\n** GLOBAL FUNCTION "); return DIRECTIVE_GLOBAL_FUNC;}
-".kernel"           {TRACE("\n** KERNEL NAME DIRECTIVE "); return DIRECTIVE_KERNEL;}
+".parameter"        {TRACE("** PARAMETER"); return DIRECTIVE_PARAMETER;}
+".function"         {TRACE("** FUNCTION"); return DIRECTIVE_FUNC;}
+".global_function"  {TRACE("** GLOBAL FUNCTION"); return DIRECTIVE_GLOBAL_FUNC;}
+".kernel"           {TRACE("** KERNEL NAME DIRECTIVE"); return DIRECTIVE_KERNEL;}
 
-num_elts[ ]*= {TRACE("\n** NUM_ELTS_EQ "); return NUM_ELTS_EQ;}
-align[ ]*=    {TRACE("\n** ALIGN_EQ ");    return ALIGN_EQ;}
-offset[ ]*=   {TRACE("\n** OFFSET_EQ ");   return OFFSET_EQ;}
-size[ ]*=     {TRACE("\n** SIZE_EQ ");     return SIZE_EQ;}
-alias[ ]*=    {TRACE("\n** ALIAS_EQ ");    return ALIAS_EQ;}
-attrs[ ]*=     {TRACE("\n** ATTR_EQ ");     return ATTR_EQ;}
-v_name[ ]*=   {TRACE("\n** V_NAME_EQ ");   return V_NAME_EQ;}
+num_elts[ ]*= {TRACE("** NUM_ELTS_EQ"); return NUM_ELTS_EQ;}
+align[ ]*=    {TRACE("** ALIGN_EQ");    return ALIGN_EQ;}
+offset[ ]*=   {TRACE("** OFFSET_EQ");   return OFFSET_EQ;}
+size[ ]*=     {TRACE("** SIZE_EQ");     return SIZE_EQ;}
+alias[ ]*=    {TRACE("** ALIAS_EQ");    return ALIAS_EQ;}
+attrs[ ]*=     {TRACE("** ATTR_EQ");     return ATTR_EQ;}
+v_name[ ]*=   {TRACE("** V_NAME_EQ");   return V_NAME_EQ;}
 
-v_type[ ]*=[ ]*G {TRACE("\n** V_TYPE_EQ_G "); return V_TYPE_EQ_G;}
-v_type[ ]*=[ ]*A {TRACE("\n** V_TYPE_EQ_A "); return V_TYPE_EQ_A;}
-v_type[ ]*=[ ]*P {TRACE("\n** V_TYPE_EQ_P "); return V_TYPE_EQ_P;}
-v_type[ ]*=[ ]*S {TRACE("\n** V_TYPE_EQ_S "); return V_TYPE_EQ_S;}
-v_type[ ]*=[ ]*T {TRACE("\n** V_TYPE_EQ_T "); return V_TYPE_EQ_T;}
+v_type[ ]*=[ ]*G {TRACE("** V_TYPE_EQ_G"); return V_TYPE_EQ_G;}
+v_type[ ]*=[ ]*A {TRACE("** V_TYPE_EQ_A"); return V_TYPE_EQ_A;}
+v_type[ ]*=[ ]*P {TRACE("** V_TYPE_EQ_P"); return V_TYPE_EQ_P;}
+v_type[ ]*=[ ]*S {TRACE("** V_TYPE_EQ_S"); return V_TYPE_EQ_S;}
+v_type[ ]*=[ ]*T {TRACE("** V_TYPE_EQ_T"); return V_TYPE_EQ_T;}
 
 
 "."(add|sub|inc|dec|min|max|xchg|cmpxchg|and|or|xor|minsint|maxsint|fmax|fmin|fcmpwr)   {
-        TRACE("\n** Atomic Operations ");
+        TRACE("** Atomic Operations");
         CISAlval.atomic_op = str2atomic_opcode(yytext + 1);
         return ATOMIC_SUB_OP;
     }
 
 not|cbit|fbh|fbl|bfrev {
-        TRACE("\n** Unary Logic INST ");
+        TRACE("** Unary Logic INST");
         CISAlval.opcode = str2opcode(yytext);
         return UNARY_LOGIC_OP;
     }
 
 bfe {
-      TRACE("\n** Ternary Logic INST ");
+      TRACE("** Ternary Logic INST");
       CISAlval.opcode = str2opcode(yytext);
       return TERNARY_LOGIC_OP;
   }
 
 bfi {
-      TRACE("\n** Quaternary Logic INST ");
+      TRACE("** Quaternary Logic INST");
       CISAlval.opcode = str2opcode(yytext);
       return QUATERNARY_LOGIC_OP;
 }
 
 
 inv|log|exp|sqrt|rsqrt|sin|cos|sqrtm {
-         TRACE("\n** 2 operand math INST ");
+         TRACE("** 2 operand math INST");
          CISAlval.opcode = str2opcode(yytext);
          return MATH2_OP;
     }
 
 div|mod|pow|divm {
-        TRACE("\n** 3 operand math INST ");
+        TRACE("** 3 operand math INST");
         CISAlval.opcode = str2opcode(yytext);
         return MATH3_OP;
     }
 
 frc|lzd|rndd|rndu|rnde|rndz {
-        TRACE("\n** ARITH2_OP ");
+        TRACE("** ARITH2_OP");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH2_OP;
     }
 
 add|avg|dp2|dp3|dp4|dph|line|mul|pow|mulh|sad2|plane {
-        TRACE("\n** ARITH3_OP ");
+        TRACE("** ARITH3_OP");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH3_OP;
     }
 
 mad|lrp|sad2add {
-        TRACE("\n** ARITH4_OP ");
+        TRACE("** ARITH4_OP");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH4_OP;
     }
 
 and|or|xor|shl|shr|asr {
-        TRACE("\n** BINARY_LOGIC_OP ");
+        TRACE("** BINARY_LOGIC_OP");
         CISAlval.opcode = str2opcode(yytext);
         return BINARY_LOGIC_OP;
     }
 
 rol|ror {
-        TRACE("\n** BINARY_LOGIC_OP ");
+        TRACE("** BINARY_LOGIC_OP");
         CISAlval.opcode = str2opcode(yytext);
         return BINARY_LOGIC_OP;
     }
@@ -278,67 +280,67 @@ rol|ror {
 
 
 addc|subb {
-        TRACE("\n** MATH INST ");
+        TRACE("** MATH INST");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH4_OP2;
     }
 
 asin|acos|atan {
-        TRACE("\n** ANTI TRIGONOMETRIC INST ");
+        TRACE("** ANTI TRIGONOMETRIC INST");
         CISAlval.opcode = str2opcode(yytext);
         return ANTI_TRIG_OP;
     }
 
 addr_add   {
-        TRACE("\n** Addr add INST ");
+        TRACE("** Addr add INST");
         CISAlval.opcode = str2opcode(yytext);
         return ADDR_ADD_OP;
     }
 
 sel {
-        TRACE("\n** Mod INST ");
+        TRACE("** Mod INST");
         CISAlval.opcode = str2opcode(yytext);
         return SEL_OP;
     }
 
 min {
-        TRACE("\n** MIN INST ");
+        TRACE("** MIN INST");
         CISAlval.opcode = ISA_FMINMAX;
         return MIN_OP;
     }
 
 max {
-        TRACE("\n** MAX INST ");
+        TRACE("** MAX INST");
         CISAlval.opcode = ISA_FMINMAX;
         return MAX_OP;
     }
 
 mov {
-        TRACE("\n** MOV INST ");
+        TRACE("** MOV INST");
         CISAlval.opcode = str2opcode(yytext);
         return MOV_OP;
     }
 
 movs {
-        TRACE("\n** MOVS INST ");
+        TRACE("** MOVS INST");
         CISAlval.opcode = str2opcode(yytext);
         return MOVS_OP;
     }
 
 setp {
-        TRACE("\n** SETP INST ");
+        TRACE("** SETP INST");
         CISAlval.opcode = str2opcode(yytext);
         return SETP_OP;
     }
 
 cmp {
-        TRACE("\n** compare INST ");
+        TRACE("** compare INST");
         CISAlval.opcode = str2opcode(yytext);
         return CMP_OP;
     }
 
 svm_block_ld|svm_block_st|svm_scatter|svm_gather|svm_gather4scaled|svm_scatter4scaled|svm_atomic {
-        TRACE("\n** svm INST ");
+        TRACE("** svm INST");
         /// XXX: Piggyback svm sub-opcode as an opcode.
         if (!strcmp(yytext, "svm_gather4scaled")) {CISAlval.opcode = (ISA_Opcode)SVM_GATHER4SCALED; return SVM_GATHER4SCALED_OP;}
         if (!strcmp(yytext, "svm_scatter4scaled")) {CISAlval.opcode = (ISA_Opcode)SVM_SCATTER4SCALED; return SVM_SCATTER4SCALED_OP;}
@@ -353,208 +355,208 @@ svm_block_ld|svm_block_st|svm_scatter|svm_gather|svm_gather4scaled|svm_scatter4s
 
 
 oword_ld|oword_st|oword_ld_unaligned {
-        TRACE("\n** oword_load INST ");
+        TRACE("** oword_load INST");
         CISAlval.opcode = str2opcode(yytext);
         return OWORD_OP;
     }
 
 media_ld|media_st {
-        TRACE("\n** media INST ");
+        TRACE("** media INST");
         CISAlval.opcode = str2opcode(yytext);
         return MEDIA_OP;
     }
 
 gather|scatter {
-        TRACE("\n** gather/scatter INST ");
+        TRACE("** gather/scatter INST");
         CISAlval.opcode = str2opcode(yytext);
         return SCATTER_OP;
     }
 
 gather4_typed|scatter4_typed {
-        TRACE("\n** gather/scatter typed INST ");
+        TRACE("** gather/scatter typed INST");
         CISAlval.opcode = str2opcode(yytext);
         return SCATTER_TYPED_OP;
     }
 
 gather_scaled|scatter_scaled {
-        TRACE("\n** scaled gather/scatter INST ");
+        TRACE("** scaled gather/scatter INST");
         CISAlval.opcode = str2opcode(yytext);
         return SCATTER_SCALED_OP;
     }
 
 gather4_scaled|scatter4_scaled {
-        TRACE("\n** scaled gather/scatter INST ");
+        TRACE("** scaled gather/scatter INST");
         CISAlval.opcode = str2opcode(yytext);
         return SCATTER4_SCALED_OP;
     }
 
 barrier {
-        TRACE("\n** barrier INST ");
+        TRACE("** barrier INST");
         CISAlval.opcode = str2opcode(yytext);
         return BARRIER_OP;
     }
 
 sbarrier\.signal {
-        TRACE("\n** sbarrier.signal INST ");
+        TRACE("** sbarrier.signal INST");
         CISAlval.opcode = ISA_SBARRIER;
         return SBARRIER_SIGNAL;
     }
 
 sbarrier\.wait {
-        TRACE("\n** sbarrier.wait INST ");
+        TRACE("** sbarrier.wait INST");
         CISAlval.opcode = ISA_SBARRIER;
         return SBARRIER_WAIT;
     }
 
 sampler_cache_flush {
-        TRACE("\n** sampler_cache_flush INST ");
+        TRACE("** sampler_cache_flush INST");
         CISAlval.opcode = str2opcode(yytext);
         return CACHE_FLUSH_OP;
     }
 
 wait {
-        TRACE("\n** wait INST ");
+        TRACE("** wait INST");
         CISAlval.opcode = str2opcode(yytext);
         return WAIT_OP;
     }
 
 fence_global {
-        TRACE("\n** fence global INST ");
+        TRACE("** fence global INST");
         CISAlval.opcode = str2opcode("fence");
         return FENCE_GLOBAL_OP;
     }
 fence_local {
-        TRACE("\n** fence local INST ");
+        TRACE("** fence local INST");
         CISAlval.opcode = str2opcode("fence");
         return FENCE_LOCAL_OP;
     }
 
 fence_sw {
-        TRACE("\n** fence SW INST ");
+        TRACE("** fence SW INST");
         CISAlval.opcode = str2opcode("fence");
         return FENCE_SW_OP;
     }
 
 yield {
-        TRACE("\n** yield INST ");
+        TRACE("** yield INST");
         CISAlval.opcode = str2opcode(yytext);
         return YIELD_OP;
     }
 
 dword_atomic {
-        TRACE("\n** atomic INST ");
+        TRACE("** atomic INST");
         CISAlval.opcode = str2opcode(yytext);
         return DWORD_ATOMIC_OP;
     }
 
 typed_atomic {
-        TRACE("\n** typed atomic INST ");
+        TRACE("** typed atomic INST");
         CISAlval.opcode = str2opcode(yytext);
         return TYPED_ATOMIC_OP;
     }
 
 sample|load {
-        TRACE("\n** sample INST ");
+        TRACE("** sample INST");
         CISAlval.opcode = str2opcode(yytext);
         return SAMPLE_OP;
     }
 sample_unorm {
-        TRACE("\n** sample INST ");
+        TRACE("** sample INST");
         CISAlval.opcode = str2opcode(yytext);
         return SAMPLE_UNORM_OP;
     }
 
 vme_ime {
-        TRACE("\n** VME_IME INST ");
+        TRACE("** VME_IME INST");
         CISAlval.opcode = str2opcode(yytext);
         return VME_IME_OP;
     }
 vme_sic {
-        TRACE("\n** VME_SIC INST ");
+        TRACE("** VME_SIC INST");
         CISAlval.opcode = str2opcode(yytext);
         return VME_SIC_OP;
     }
 vme_fbr {
-        TRACE("\n** VME_FBR INST ");
+        TRACE("** VME_FBR INST");
         CISAlval.opcode = str2opcode(yytext);
         return VME_FBR_OP;
     }
 
 jmp|call|goto {
-        TRACE("\n** branch INST ");
+        TRACE("** branch INST");
         CISAlval.opcode = str2opcode(yytext);
         return BRANCH_OP;
     }
 
 ret|fret {
-        TRACE("\n** return INST ");
+        TRACE("** return INST");
         CISAlval.opcode = str2opcode(yytext);
         return RET_OP;
 }
 
 fcall {
-   TRACE("\n** function call INST ");
+   TRACE("** function call INST");
         CISAlval.opcode = ISA_FCALL;
         return FCALL;
 }
 
 ifcall {
-        TRACE("\n** indirect call INST ");
+        TRACE("** indirect call INST");
         CISAlval.opcode = ISA_IFCALL;
         return IFCALL;
     }
 
 faddr {
-        TRACE("\n** function address INST ");
+        TRACE("** function address INST");
         CISAlval.opcode = ISA_FADDR;
         return FADDR;
     }
 
 switchjmp {
-        TRACE("\n** branch INST ");
+        TRACE("** branch INST");
         CISAlval.opcode = str2opcode(yytext);
         return SWITCHJMP_OP;
     }
 
 raw_send {
-       TRACE("\n** RAW_SEND ");
+       TRACE("** RAW_SEND");
        CISAlval.opcode = ISA_RAW_SEND;
        return RAW_SEND_STRING;
     }
 
 raw_sendc {
-        TRACE("\n** RAW_SENDC ");
+        TRACE("** RAW_SENDC");
         CISAlval.opcode = ISA_RAW_SEND;
         return RAW_SENDC_STRING;
     }
 
 raw_sends {
-        TRACE("\n** RAW_SENDS ");
+        TRACE("** RAW_SENDS");
         CISAlval.opcode = ISA_RAW_SENDS;
         return RAW_SENDS_STRING;
     }
 
 raw_sends_eot {
-        TRACE("\n** RAW_SENDS_EOT ");
+        TRACE("** RAW_SENDS_EOT");
         CISAlval.opcode = ISA_RAW_SENDS;
         return RAW_SENDS_EOT_STRING;
     }
 
 raw_sendsc {
-        TRACE("\n** RAW_SENDSC ");
+        TRACE("** RAW_SENDSC");
         CISAlval.opcode = ISA_RAW_SENDS;
         return RAW_SENDSC_STRING;
     }
 
 raw_sendsc_eot {
-        TRACE("\n** RAW_SENDSC_EOT ");
+        TRACE("** RAW_SENDSC_EOT");
         CISAlval.opcode = ISA_RAW_SENDS;
         return RAW_SENDSC_EOT_STRING;
     }
 
 
 avs {
-        TRACE("\n** AVS INST ");
+        TRACE("** AVS INST");
         CISAlval.opcode = str2opcode(yytext);
         return AVS_OP;
     }
@@ -563,74 +565,74 @@ avs {
         // FIXME: need to retire FILE and LOC because
         // they will confict with identifiers
         // retain .file and migrate to that
-        TRACE("\n** FILE ");
+        TRACE("** FILE");
         CISAlval.opcode = str2opcode("file");
         return FILE_OP;
     }
 
 (LOC|\.loc) {
         // FIXME: same as FILE above...
-        TRACE("\n** LOC ");
+        TRACE("** LOC");
         CISAlval.opcode = str2opcode("loc");
         return LOC_OP;
     }
 
 sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|sample_lz|sample_c_lz {
-        TRACE("\n** SAMPLE_3D ");
+        TRACE("** SAMPLE_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext);
         return SAMPLE_3D_OP;
     }
 
 load_3d|load_mcs|load_2dms_w|load_lz {
-        TRACE("\n** LOAD_3D ");
+        TRACE("** LOAD_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext);
         return LOAD_3D_OP;
     }
 
 sample4|sample4_c|sample4_po|sample4_po_c {
-        TRACE("\n** SAMPLE4_3D ");
+        TRACE("** SAMPLE4_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext);
         return SAMPLE4_3D_OP;
     }
 
 resinfo {
-        TRACE("\n** RESINFO_3D ");
+        TRACE("** RESINFO_3D");
         CISAlval.opcode = str2opcode("info_3d");
         return RESINFO_OP_3D;
     }
 
 sampleinfo {
-        TRACE("\n** SAMPLEINFO_3D ");
+        TRACE("** SAMPLEINFO_3D");
         CISAlval.opcode = str2opcode("info_3d");
         return SAMPLEINFO_OP_3D;
     }
 
 rt_write_3d {
-        TRACE("\n** RTWRITE_3D ");
+        TRACE("** RTWRITE_3D");
         CISAlval.opcode = str2opcode("rt_write_3d");
         return RTWRITE_OP_3D;
     }
 
 urb_write_3d {
-        TRACE("\n** URBWRITE_3D ");
+        TRACE("** URBWRITE_3D");
         CISAlval.opcode = str2opcode("urb_write_3d");
         return URBWRITE_OP_3D;
     }
 
 lifetime"."start {
-        TRACE("\n** Lifetime.start ");
+        TRACE("** Lifetime.start");
         CISAlval.opcode = str2opcode("lifetime");
         return LIFETIME_START_OP;
     }
 
 lifetime"."end {
-        TRACE("\n** Lifetime.end ");
+        TRACE("** Lifetime.end");
         CISAlval.opcode = str2opcode("lifetime");
         return LIFETIME_END_OP;
     }
 
 ^[a-zA-Z_$@?][a-zA-Z0-9_\-$@?]*: {
-        TRACE("\n**  LABEL ");
+        TRACE("**  LABEL");
         CISAlval.string = strdup(yytext);
         CISAlval.string[yyleng - 1] = '\0';
         return LABEL;
@@ -639,61 +641,61 @@ lifetime"."end {
 
 
 "."(nomod|modified|top|bottom|top_mod|bottom_mod) {
-        TRACE("\n** MEDIA MODE :");
+        TRACE("** MEDIA MODE :");
         CISAlval.media_mode = mediaMode(yytext+1);
         return MEDIA_MODE;
     }
 
 AVS_(16|8)_(FULL|DOWN_SAMPLE) {
-      TRACE("\n** Output Format Control ");
+      TRACE("** Output Format Control");
       CISAlval.cntrl = avs_control(yytext);
       return CNTRL;
     }
 
 AVS_(4|8|16)x(4|8) {
-      TRACE("\n** AVS Exec Mode ");
+      TRACE("** AVS Exec Mode");
       CISAlval.execMode = avsExecMode(yytext);
       return EXECMODE;
     }
 
 "."mod {
-        TRACE("\n** O MODE :");
+        TRACE("** O MODE :");
         CISAlval.oword_mod = true;
         return OWORD_MODIFIER;
     }
 
 [0-9]+         {
-        TRACE("\n** DEC_LIT ");
+        TRACE("** DEC_LIT");
         CISAlval.intval = atoi(yytext);
         return DEC_LIT;
     }
 
 0[xX][[:xdigit:]]+ {
-        TRACE("\n** HEX_LIT ");
+        TRACE("** HEX_LIT");
         CISAlval.intval = hexToInt(yytext+2, yyleng-2);
         return HEX_LIT;
     }
 
 [0-9]+"."[0-9]+":f" {
-        TRACE("\n** F32_LIT ");
+        TRACE("** F32_LIT");
         CISAlval.fltval = (float)atof(yytext);
         return F32_LIT;
     }
 
 ([0-9]+|[0-9]+"."[0-9]+)[eE]("+"|"-")[0-9]+":f" {
-        TRACE("\n** F32_LIT ");
+        TRACE("** F32_LIT");
         CISAlval.fltval = (float)atof(yytext);
         return F32_LIT;
     }
 
 [0-9]+"."[0-9]+":df" {
-        TRACE("\n** F64_LIT ");
+        TRACE("** F64_LIT");
         CISAlval.fltval = atof(yytext);
         return F64_LIT;
     }
 
 ([0-9]+|[0-9]+"."[0-9]+)[eE]("+"|"-")[0-9]+":df" {
-        TRACE("\n** F64_LIT ");
+        TRACE("** F64_LIT");
         CISAlval.fltval = atof(yytext);
         return F64_LIT;
     }
@@ -701,14 +703,14 @@ AVS_(4|8|16)x(4|8) {
 
 
 type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF) {
-        TRACE("\n** TYPE ");
+        TRACE("** TYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return DECL_DATA_TYPE;
     }
 
 2GRF {
         /* other cases are handled as VAR */
-        TRACE("\n** AlignType - 2GRF ");
+        TRACE("** AlignType - 2GRF");
         CISAlval.align = ALIGN_2_GRF;
         // fprintf(stderr, "%s", "2GRF symbol is deprecated; please use GRFx2");
         return ALIGN_KEYWORD;
@@ -716,72 +718,72 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 
 32word {
         /* other cases are handled as VAR */
-        TRACE("\n** AlignType - 32word ");
+        TRACE("** AlignType - 32word");
         CISAlval.align = ALIGN_32WORD;
         return ALIGN_KEYWORD;
 }
 64word {
         /* other cases are handled as VAR */
-        TRACE("\n** AlignType - 64word ");
+        TRACE("** AlignType - 64word");
         CISAlval.align = ALIGN_64WORD;
         return ALIGN_KEYWORD;
 }
 
-"(-)"    {TRACE("\n** SRCMOD_NEG "); return SRCMOD_NEG;}
-"(abs)"  {TRACE("\n** SRCMOD_ABS "); return SRCMOD_ABS;}
-"(-abs)" {TRACE("\n** SRCMOD_NEGABS "); return SRCMOD_NEGABS;}
-"(~)"    {TRACE("\n** SRCMOD_NOT "); return SRCMOD_NOT;}
+"(-)"    {TRACE("** SRCMOD_NEG"); return SRCMOD_NEG;}
+"(abs)"  {TRACE("** SRCMOD_ABS"); return SRCMOD_ABS;}
+"(-abs)" {TRACE("** SRCMOD_NEGABS"); return SRCMOD_NEGABS;}
+"(~)"    {TRACE("** SRCMOD_NOT"); return SRCMOD_NOT;}
 
-".sat"   {TRACE("\n** SAT ");  return SAT;}
+".sat"   {TRACE("** SAT");  return SAT;}
 
 ".pixel_null_mask" {
-        TRACE("\n** PIXEL_NULL_MASK");
+        TRACE("** PIXEL_NULL_MASK");
         return PIXEL_NULL_MASK;
     }
 
 ".cps" {
-        TRACE("\n** CPS LOD Compensation enable");
+        TRACE("** CPS LOD Compensation enable");
         return CPS;
     }
 
 ".divS" {
-        TRACE("\n** non-uniform Sampler State");
+        TRACE("** non-uniform Sampler State");
         return NON_UNIFORM_SAMPLER;
     }
 
 
 "."(eq|ne|gt|ge|lt|le|EQ|NE|GT|GE|LT|LE) {
-        TRACE("\n** COND_MOD ");
+        TRACE("** COND_MOD");
         CISAlval.cond_mod = str2cond(yytext+1);
         return COND_MOD;
     }
 
 :(df|DF)  {
-        TRACE("\n** DFTYPE ");
+        TRACE("** DFTYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return DFTYPE;
     }
 
 :(f|F)      {
-        TRACE("\n** FTYPE ");
+        TRACE("** FTYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return FTYPE;
     }
 
 :(hf|HF)  {
-        TRACE("\n** HFTYPE ");
+        TRACE("** HFTYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return HFTYPE;
     }
 
 :(ud|d|uw|w|ub|b|bool|UD|D|UW|W|UB|B|BOOL|Bool|q|uq|Q|UQ|hf|HF)  {
-        TRACE("\n** DATA TYPE ");
+        TRACE("** DATA TYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return ITYPE;
     }
 
 :(v|vf|V|VF|uv)  {
-        TRACE("\n** VTYPE ");
+        TRACE("** VTYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return VTYPE;
     }
@@ -791,61 +793,61 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 
 
 "."((R|r)((G|g)?(B|b)?(A|a)?)|(G|g)((B|b)?(A|a)?)|(B|b)((A|a)?)|(A|a))  {
-        TRACE("\n** CHANNEL MASK ");
+        TRACE("** CHANNEL MASK");
         CISAlval.s_channel = ChannelMask::createFromString(yytext+1).getAPI();
         return SAMPLER_CHANNEL;
     }
 
 "."(16-full|16-downsampled|8-full|8-downsampled) {
-        TRACE("\n** OUTPUT_FORMAT ");
+        TRACE("** OUTPUT_FORMAT");
         CISAlval.s_channel_output = Get_Channel_Output(yytext+1);
         return CHANNEL_OUTPUT;
     }
 
 "."("<"[a-zA-Z]+">")+ {
-        TRACE("\n** RTWRITE OPTION ");
+        TRACE("** RTWRITE OPTION");
         CISAlval.string = strdup(yytext+1);
         return RTWRITE_OPTION;
     }
 
 ".any" {
-        TRACE("\n** PRED_CNTL (.any) ");
+        TRACE("** PRED_CNTL (.any)");
         CISAlval.pred_ctrl = PRED_CTRL_ANY;
         return PRED_CNTL;
     }
 ".all" {
-        TRACE("\n** PRED_CNTL (.all) ");
+        TRACE("** PRED_CNTL (.all)");
         CISAlval.pred_ctrl = PRED_CTRL_ALL;
         return PRED_CNTL;
     }
 
 
 %null {
-        TRACE("\n** Built-in %%null ");
+        TRACE("** Built-in %%null");
         CISAlval.string = strdup(yytext);
         return BUILTIN_NULL;
     }
 
 %sizeof {
-        TRACE("\n** Built-in %%sizeof ");
+        TRACE("** Built-in %%sizeof");
         return BUILTIN_SIZEOF;
     }
 
 %DispatchSimd {
-        TRACE("\n** Built-in %%DispatchSimd ");
+        TRACE("** Built-in %%DispatchSimd");
         return BUILTIN_DISPATCH_SIMD_SIZE;
     }
 
 
 %[[:alpha:]_][[:alnum:]_]* {
         // this matches %null, but lex prefers the first pattern
-        TRACE("\n** Builtin-in variable ");
+        TRACE("** Builtin-in variable");
         CISAlval.string = strdup(yytext);
         return BUILTIN;
     }
 
 [[:alpha:]_][[:alnum:]_]* {
-        TRACE("\n** IDENTIFIER ");
+        TRACE("** IDENTIFIER");
         CISAlval.string = strdup(yytext);
         return IDENT;
     }
@@ -854,16 +856,16 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 
 
 
-[^ \t\n]       {TRACE("\n** SPACE END"); return *yytext;}
+[^ \t\n]       {TRACE("** SPACE END"); return *yytext;}
 
 "."(E?I?S?C?R?(L1)?)     {
-        TRACE("\n** FENCE Options ");
+        TRACE("** FENCE Options");
 
         CISAlval.fence_options = FENCEOptions(yytext+1);
         return FENCE_OPTIONS;
     }
 
-[ \n\t]+"\\"\n {TRACE("\n** Multiple instructions in a line");}
+[ \n\t]+"\\"\n {TRACE("** Multiple instructions in a line");}
 
 
 %%
@@ -1080,7 +1082,7 @@ static CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)
         }
     }
 
-    YY_FATAL_ERROR("Invalid channel output format ");
+    YY_FATAL_ERROR("Invalid channel output format\n");
     YY_FATAL_ERROR(str);
     return CHANNEL_16_BIT_FULL;
 }

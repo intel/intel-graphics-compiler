@@ -39,6 +39,8 @@ class CisaBinary;
 class VISAKernelImpl;
 class VISAFunction;
 
+#define YY_DECL int yylex(CISA_IR_Builder *pBuilder)
+
 extern FILE *CISAin;
 extern FILE *CISAout;
 extern int CISAdebug;
@@ -51,9 +53,10 @@ class Options;
 class CISA_IR_Builder : public VISABuilder
 {
 public:
-
-    CISA_IR_Builder(VISA_BUILDER_OPTION buildOption, vISABuilderMode mode, int majorVersion, int minorVersion,
-        const WA_TABLE *pWaTable) : m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
+    CISA_IR_Builder(
+        VISA_BUILDER_OPTION buildOption, vISABuilderMode mode,
+        int majorVersion, int minorVersion, const WA_TABLE *pWaTable)
+        : m_builderMode(mode), m_mem(4096), m_pWaTable(pWaTable)
     {
         memset(&m_header, 0, sizeof(m_header));
 
@@ -119,6 +122,8 @@ public:
     {
         return criticalMsg.str();
     }
+
+    bool debugParse() const {return m_options.getOption(vISA_DebugParse);}
 
     int verifyVISAIR();
 

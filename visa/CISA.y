@@ -40,7 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //VISA_Type variable_declaration_and_type_check(char *var, Common_ISA_Var_Class type);
 void CISAerror(CISA_IR_Builder* builder, char const* msg);
-int  yylex();
+int yylex(CISA_IR_Builder *pBuilder);
 extern int CISAlineno;
 
 
@@ -69,11 +69,11 @@ static bool ParseEMask(CISA_IR_Builder* pBuilder, const char* sym, VISA_EMask_Ct
         if (!(X)) \
             YYABORT;\
     while (0)
-#ifdef _DEBUG
-#define TRACE(str) fprintf(CISAout, str)
-#else
-#define TRACE(str)
-#endif
+#define TRACE(S) \
+    do { \
+      if (CISAout && pBuilder->debugParse()) \
+          fprintf(CISAout, "line %d: %s", CISAlineno, S); \
+    } while (0)
 
 std::deque<const char*> switchLabels;
 char * switch_label_array[32];
@@ -92,7 +92,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 
 %}
 
-%parse-param {CISA_IR_Builder* pBuilder}
+%param {CISA_IR_Builder* pBuilder}
 
 //////////////////////////////////////////////////////////////////////////
 // This asserts that the parser is (nearly?) free of shift-reduce and reduce-reduce
@@ -100,7 +100,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 //   FIXME: c.f. CmpInstruction:
 %expect 1
 
-%error-verbose
+%define parse.error verbose
 
 %union
 {
@@ -511,7 +511,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 
 %%
 Listing: NewlinesOpt ListingHeader NewlinesOpt Statements NewlinesOpt {
-        TRACE("\n** Listing Complete\n");
+        TRACE("** Listing Complete\n");
         pBuilder->CISA_post_file_parse();
     }
 

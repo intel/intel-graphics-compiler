@@ -27,7 +27,8 @@ DEF_VISA_OPTION(vISA_dumpVISAOptions,       ET_BOOL, "-dumpVisaOptions", UNUSED,
 // dump all options after we have finished parsing
 DEF_VISA_OPTION(vISA_dumpVISAOptionsAll,    ET_BOOL, "-dumpVisaOptionsAll", UNUSED, false)
 DEF_VISA_OPTION(vISA_Debug,                 ET_BOOL, "-debug",           UNUSED, false)
-DEF_VISA_OPTION(vISA_DebugConsoleDump,      ET_BOOL,  "-dumpDebugConsoleOutput", UNUSED, false)
+DEF_VISA_OPTION(vISA_DebugParse,            ET_BOOL, "-debugParse",      UNUSED, false)
+DEF_VISA_OPTION(vISA_DebugConsoleDump,      ET_BOOL, "-dumpDebugConsoleOutput", UNUSED, false)
 DEF_VISA_OPTION(vISA_EmitLocation,          ET_BOOL, "-emitLocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpRPE,               ET_BOOL, "-dumpRPE",         UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpLiveness,               ET_BOOL, "-dumpLiveness",         UNUSED, false)
