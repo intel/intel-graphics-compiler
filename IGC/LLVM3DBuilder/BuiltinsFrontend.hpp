@@ -186,6 +186,7 @@ public:
     llvm::Value* CreateCos(llvm::Value* V);
     llvm::Value* CreateIsNan(llvm::Value *V);
     llvm::Value* CreateCtpop(llvm::Value* V);
+    llvm::Value* CreateFrc(llvm::Value* V);
 
     llvm::Value* CreateCPSRqstCoarseSize(
                     llvm::Value* pSrcVal);

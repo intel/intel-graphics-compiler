@@ -3591,6 +3591,16 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::createGroupId(uns
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFrc(llvm::Value* V)
+{
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    
+    llvm::Function* frc = 
+        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_frc, V->getType());
+    return this->CreateCall(frc, V);
+}
+
+template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateSin(llvm::Value* V)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();

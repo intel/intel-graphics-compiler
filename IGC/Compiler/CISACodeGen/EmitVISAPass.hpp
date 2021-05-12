@@ -417,6 +417,7 @@ public:
     void emitSqrt(llvm::Instruction* inst);
     void emitCanonicalize(llvm::Instruction* inst);
     void emitRsq(llvm::Instruction* inst);
+    void emitFrc(llvm::GenIntrinsicInst* inst);
 
     void emitLLVMbswap(llvm::IntrinsicInst* inst);
     void emitDP4A(llvm::GenIntrinsicInst* GII,

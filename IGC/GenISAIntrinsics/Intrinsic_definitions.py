@@ -1961,5 +1961,10 @@ Imported_Intrinsics = \
 "GenISA_wavebarrier": ["",
     [("void",                          ""),
     [],
-    "Convergent"]]
+    "Convergent"]],
+####################################################################################################
+"GenISA_frc": ["GENISA_frc for emitting HW Frc",
+    [("float",                        "output"),
+    [("float",                        "src0")],
+    "NoMem"]]
 }

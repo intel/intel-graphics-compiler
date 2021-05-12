@@ -8325,6 +8325,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
         emitSimdMediaBlockWrite(inst);
         break;
+    case GenISAIntrinsic::GenISA_frc:
+        emitFrc(inst);
+        break;
     case GenISAIntrinsic::GenISA_RenderTargetRead:
     case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
         emitRenderTargetRead(inst);
@@ -16766,6 +16769,14 @@ void EmitPass::emitSqrt(Instruction* inst)
     src0 = BroadcastIfUniform(src0);
 
     m_encoder->Sqrt(m_destination, src0);
+}
+
+void EmitPass::emitFrc(llvm::GenIntrinsicInst* inst)
+{
+    CVariable* src0 = GetSymbol(inst->getArgOperand(0));
+    src0 = BroadcastIfUniform(src0);
+
+    m_encoder->Frc(m_destination, src0);
 }
 
 void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst)
