@@ -111,8 +111,8 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
             // double to <floatx2> ; <doublex2> to <floatx4>
             llvm::Type* dataType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
             llvm::PointerType* ptrType = llvm::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
-            ptrv = mutatePtrType(ptrv, ptrType, builder);
-            Value* newLoad = builder.CreateLoad(ptrv);
+            llvm::Value* newPtrv = builder.CreateBitCast(ptrv, ptrType);
+            Value* newLoad = builder.CreateLoad(newPtrv);
             newInst = builder.CreateBitCast(newLoad, doubleDstType);
         }
         I.replaceAllUsesWith(newInst);
@@ -154,8 +154,8 @@ void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
         // %9 = bitcast double addrspace(8519681)* %8 to <2 x float> addrspace(8519681)*
         llvm::Type* floatDatType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
         llvm::PointerType* floatPtrType = llvm::PointerType::get(floatDatType, ptrv->getType()->getPointerAddressSpace());
-        ptrv = mutatePtrType(ptrv, floatPtrType, builder);
-        I.setOperand(I.getPointerOperandIndex(), ptrv);
+        llvm::Value* newPtrv = builder.CreateBitCast(ptrv, floatPtrType);
+        I.setOperand(I.getPointerOperandIndex(), newPtrv);
 
         // %10 = bitcast double %4 to <2 x float>
         llvm::Value* srcFloatInst = builder.CreateBitCast(I.getValueOperand(), floatDatType);
