@@ -1386,9 +1386,7 @@ igc_sg_define(IGC__DriverInterface)
 # Built-in Functions (and resources).
 if(IGC_OPTION__BIF_LINK_BC)
   add_subdirectory(BiFModule)
-if(NOT CMAKE_WDDM_LINUX)
   add_subdirectory(ElfPackager)
-endif()
 endif()
 
 add_subdirectory(OCLFE)
