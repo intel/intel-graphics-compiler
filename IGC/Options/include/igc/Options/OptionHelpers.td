@@ -6,35 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// This file defines the options accepted by vector compiler.
-//
-// There are two kinds of options: api options and internal options.
-//
-// Api options are exposed to user via, e.g., openCL clBuildProgram.
-//
-// Internal options are for passing of additional info of various purposes.
-// Among these can be: debug, things that are not exposed to user directly.
-//
-//===----------------------------------------------------------------------===//
-
-include "llvm/Option/OptParser.td"
-
-// Option kinds {{
-// VC options accessible using public API.
-def VCApiOption : OptionFlag;
-
-// Api options compatible with igcmc.
-// These are used only when -cmc is present in api options.
-def IgcmcApiOption : OptionFlag;
-
-// VC internal options.
-def VCInternalOption : OptionFlag;
-// }} Option kinds
-
-// Helpers {{
-def OptHelper {
-  list<OptionFlag> VCBackwardCompatFlags = [VCApiOption, IgcmcApiOption];
-}
+// This file defines helper object with common for all options utilities
+// and common option types (ze, ocl or common options)
 
 class ZeOption<string name> {
   string Name = !strconcat("ze-", name);
@@ -105,6 +78,3 @@ multiclass CommonJoinedAndSeparate<string name> {
 def _ze : ZeJoinedAndSeparate<name>;
 def : ClJoinedAndSeparate<name>, CommonClAlias<NAME>;
 }
-// }} Helpers
-
-include "VCOptions.td"

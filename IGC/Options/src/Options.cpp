@@ -13,32 +13,69 @@ SPDX-License-Identifier: MIT
 using namespace IGC::options;
 using namespace llvm::opt;
 
-#define PREFIX(NAME, VALUE) static const char *const NAME[] = VALUE;
-#include "igc/Options/Options.inc"
+#define PREFIX(NAME, VALUE) static const char *const API_##NAME[] = VALUE;
+#include "igc/Options/ApiOptions.inc"
 #undef PREFIX
 
-static const OptTable::Info InfoTable[] = {
+#define PREFIX(NAME, VALUE) static const char *const INTERNAL_##NAME[] = VALUE;
+#include "igc/Options/InternalOptions.inc"
+#undef PREFIX
+
+static const OptTable::Info ApiInfoTable[] = {
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
                HELPTEXT, METAVAR, VALUES)                                      \
-  {PREFIX, NAME,  HELPTEXT,    METAVAR,     OPT_##ID,  Option::KIND##Class,    \
-   PARAM,  FLAGS, OPT_##GROUP, OPT_##ALIAS, ALIASARGS, VALUES},
-#include "igc/Options/Options.inc"
+  {API_##PREFIX,        NAME,  HELPTEXT, METAVAR,          api::OPT_##ID,      \
+   Option::KIND##Class, PARAM, FLAGS,    api::OPT_##GROUP, api::OPT_##ALIAS,   \
+   ALIASARGS,           VALUES},
+#include "igc/Options/ApiOptions.inc"
+#undef OPTION
+};
+
+static const OptTable::Info InternalInfoTable[] = {
+#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
+               HELPTEXT, METAVAR, VALUES)                                      \
+  {INTERNAL_##PREFIX,                                                          \
+   NAME,                                                                       \
+   HELPTEXT,                                                                   \
+   METAVAR,                                                                    \
+   internal::OPT_##ID,                                                         \
+   Option::KIND##Class,                                                        \
+   PARAM,                                                                      \
+   FLAGS,                                                                      \
+   internal::OPT_##GROUP,                                                      \
+   internal::OPT_##ALIAS,                                                      \
+   ALIASARGS,                                                                  \
+   VALUES},
+#include "igc/Options/InternalOptions.inc"
 #undef OPTION
 };
 
 namespace {
-class IGCOptTable : public OptTable {
+class IGCApiOptTable : public OptTable {
 public:
-  IGCOptTable() : OptTable(InfoTable) {
+  IGCApiOptTable() : OptTable(ApiInfoTable) {
     OptTable &Opt = *this;
     (void)Opt;
 #define OPTTABLE_ARG_INIT
-#include "igc/Options/Options.inc"
+#include "igc/Options/ApiOptions.inc"
+#undef OPTTABLE_ARG_INIT
+  }
+};
+
+class IGCInternalOptTable : public OptTable {
+public:
+  IGCInternalOptTable() : OptTable(InternalInfoTable) {
+    OptTable &Opt = *this;
+    (void)Opt;
+#define OPTTABLE_ARG_INIT
+#include "igc/Options/InternalOptions.inc"
 #undef OPTTABLE_ARG_INIT
   }
 };
 } // namespace
 
-static const IGCOptTable OptionsTable;
+static const IGCApiOptTable ApiOptionsTable;
+static const IGCInternalOptTable InternalOptionsTable;
 
-const OptTable &IGC::getOptTable() { return OptionsTable; }
+const OptTable &IGC::getApiOptTable() { return ApiOptionsTable; }
+const OptTable &IGC::getInternalOptTable() { return InternalOptionsTable; }

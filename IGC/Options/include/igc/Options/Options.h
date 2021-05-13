@@ -23,19 +23,34 @@ enum Flags {
   IgcmcApiOption = (VCInternalOption << 1),
 };
 
+namespace api {
 enum ID {
   OPT_INVALID = 0,
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
                HELPTEXT, METAVAR, VALUES)                                      \
   OPT_##ID,
-#include "igc/Options/Options.inc"
+#include "igc/Options/ApiOptions.inc"
   LastOption
 #undef OPTION
 };
+} // namespace api
+
+namespace internal {
+enum ID {
+  OPT_INVALID = 0,
+#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
+               HELPTEXT, METAVAR, VALUES)                                      \
+  OPT_##ID,
+#include "igc/Options/InternalOptions.inc"
+  LastOption
+#undef OPTION
+};
+} // namespace internal
 
 } // namespace options
 
-const llvm::opt::OptTable &getOptTable();
+const llvm::opt::OptTable &getApiOptTable();
+const llvm::opt::OptTable &getInternalOptTable();
 } // namespace IGC
 
 #endif
