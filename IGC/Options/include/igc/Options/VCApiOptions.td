@@ -33,13 +33,7 @@ let Flags = [VCApiOption] in {
 def vc_codegen : PlainFlag<"vc-codegen">,
   HelpText<"Enable vector codegenerator">;
 
-// Generate debug info.
-def emit_debug : PlainFlag<"g">,
-  HelpText<"Enable generation of debug information and enables kernel debug">;
 def : ZeFlag<"kernel-debug-enable">,
-  Alias<emit_debug>, HelpText<"Alias for -g">;
-// These are coming from NEO when run under debugger.
-defm : CommonFlag<"opt-disable">,
   Alias<emit_debug>, HelpText<"Alias for -g">;
 
 def vc_optimize : PlainSeparate<"optimize">,
@@ -76,18 +70,6 @@ def vc_stateless_private_size : PlainJoined<"stateless-stack-mem-size=">,
 
 def Xfinalizer : PlainSeparate<"Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
-
-def gtpin_rera : ZeFlag<"gtpin-rera">,
-  HelpText<"Enables vISA re_ra interface for gtpin structure generation">;
-
-def gtpin_grf_info : ZeFlag<"gtpin-grf-info">,
-  HelpText<"Enable vISA grf-info interface for gtpin structure generation">;
-
-def gtpin_scratch_area_size : ZeSeparate<"gtpin-scratch-area-size">,
-  HelpText<"Set gtpin scratch area size">;
-
-def : ZeJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size>,
-  HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 }
 // }} VC API options
 

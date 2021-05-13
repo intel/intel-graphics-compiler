@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2021-2021 Intel Corporation
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"),
@@ -22,24 +22,30 @@ IN THE SOFTWARE.
 
 ============================= end_copyright_notice ===========================*/
 
-// This file defines internal options accepted by scalar and vector compilers.
-//
-// Internal options are for passing of additional info of various purposes.
-// Among these can be: debug, things that are not exposed to user directly.
+// This file defines the common options accepted both by scalar and vector
+// compiler.
 //
 //===----------------------------------------------------------------------===//
 
-include "llvm/Option/OptParser.td"
+// Common API options {{
+let Flags = ApiHelper.CommonApiFlags in {
 
-// Option kinds {{
-// VC internal options.
-def VCInternalOption : OptionFlag;
+def gtpin_rera : ZeFlag<"gtpin-rera">,
+  HelpText<"Enables vISA re_ra interface for gtpin structure generation">;
 
-// IGC internal options.
-def IGCInternalOption : OptionFlag;
-// }} Option kinds
+def gtpin_grf_info : ZeFlag<"gtpin-grf-info">,
+  HelpText<"Enable vISA grf-info interface for gtpin structure generation">;
 
-include "OptionHelpers.td"
+def gtpin_scratch_area_size : ZeSeparate<"gtpin-scratch-area-size">,
+  HelpText<"Set gtpin scratch area size">;
+def : ZeJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size>,
+  HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 
-include "VCInternalOptions.td"
-include "IGCInternalOptions.td"
+def emit_debug : PlainFlag<"g">,
+  HelpText<"Enable generation of debug information and enables kernel debug">;
+// These are coming from NEO when run under debugger.
+defm : CommonFlag<"opt-disable">,
+  Alias<emit_debug>, HelpText<"Alias for -g">;
+
+}
+// }} Common API options

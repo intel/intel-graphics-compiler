@@ -21,6 +21,10 @@ enum Flags {
   VCApiOption = (1 << FirstNonBuiltinFlagNum),
   VCInternalOption = (VCApiOption << 1),
   IgcmcApiOption = (VCInternalOption << 1),
+
+  // Scalar IGC backend specific options.
+  IGCApiOption = (IgcmcApiOption << 1),
+  IGCInternalOption = (IGCApiOption << 1),
 };
 
 namespace api {
