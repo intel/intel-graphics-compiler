@@ -291,7 +291,7 @@ __impl_udivrem(vector<uint64_t, N> divider, vector<uint64_t, N> dividend,
   vector<uint64_t, N> quotient = 0ull;
   rem = 0ull;
 
-  for (int i = 63; i != -1; --i) {
+  for (int64_t i = 63; i != -1; --i) {
     uint64_t vi = i;
 
     rem = rem << one;
