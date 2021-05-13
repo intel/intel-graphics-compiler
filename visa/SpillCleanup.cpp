@@ -2040,11 +2040,7 @@ void CoalesceSpillFills::run()
 
     fixSendsSrcOverlap();
 
-    if (kernel.fg.builder->getOption(vISA_DumpDotAll))
-    {
-        std::string passName = "after.spillCleanup." + std::to_string(iterNo);
-        kernel.dumpDotFile(passName.c_str());
-    }
+    kernel.dumpToFile("after.spillCleanup." + std::to_string(iterNo));
 }
 
 void CoalesceSpillFills::dumpKernel()

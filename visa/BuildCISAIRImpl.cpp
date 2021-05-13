@@ -573,7 +573,7 @@ static void Stitch_Compiled_Units(
         }
     }
 
-    mainFunc->dumpDotFileImportant("after.stitched");
+    mainFunc->dumpToFile("after.stitched");
 }
 
 

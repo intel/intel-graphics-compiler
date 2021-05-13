@@ -645,6 +645,15 @@ void G4_INST::setComments(const std::string& str)
     setMetadata(Metadata::InstComment, node);
 }
 
+void G4_INST::addComment(const std::string& comment) {
+    std::string comments = getComments();
+    if (!comments.empty()) { // add a separator
+        comments += "; ";
+    }
+    comments += comment;
+    setComments(comments);
+}
+
 void G4_INST::setTokenLoc(unsigned short token, unsigned globalID)
 {
     if (!builder.getOption(vISA_SBIDDepLoc))

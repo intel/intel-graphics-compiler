@@ -1149,7 +1149,7 @@ void LivenessAnalysis::computeLiveness()
             }
         }
 
-        fg.getKernel()->emit_asm(std::cerr, true, nullptr, 0);
+        fg.getKernel()->emitGenAsm(std::cerr, true, nullptr, 0);
 
         auto printLive = [this, &idToDecl](int id)
         {
@@ -3339,8 +3339,6 @@ static void recordRAStats(IR_Builder& builder,
 
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
-    kernel.dumpDotFileImportant("before.regAlloc");
-
     kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset = kernel.fg.frameSizeInOWord = 0;
 
     // This must be done before Points-to analysis as it may modify CFG and add new BB!

@@ -4037,8 +4037,8 @@ bool SpillManagerGRF::insertSpillFillCode (
     fname << "spill_code_" << iterationNo_++ << "_" << kernel->getName()
           << ends;
     std::ofstream sout;
-    sout.open (fname.str ().c_str ());
-    kernel->emit_asm (sout, true, 0);
+    sout.open(fname.str());
+    kernel->emitGenAsm(sout, true, 0);
     sout.close ();
 #endif
 #endif
@@ -4425,7 +4425,7 @@ void GlobalRA::expandSpillNonStackcall(
 
             std::stringstream comments;
             comments << "scratch space spill: " << payloadToUse->getTopDcl()->getName() << " from offset[" << offset << "x32]";
-            sendInst->setComments(comments.str());
+            sendInst->addComment(comments.str());
 
             instIt = bb->insertBefore(instIt, sendInst);
 
@@ -4507,7 +4507,7 @@ void GlobalRA::expandSpillStackcall(
         auto spillSends = createOwordSpill(payloadSizeInOwords, payloadToUse);
         std::stringstream comments;
         comments <<  "stack spill: " << payload->getTopDcl()->getName() << " to FP[" << inst->asSpillIntrinsic()->getOffset() << "x32]";
-        spillSends->setComments(comments.str());
+        spillSends->addComment(comments.str());
 
         bb->insertBefore(spillIt, spillSends);
 
@@ -4614,7 +4614,7 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
 
              std::stringstream comments;
              comments << "scratch space fill: " << inst->getDst()->getTopDcl()->getName() << " from offset[" << offset << "x32]";
-             sendInst->setComments(comments.str());
+             sendInst->addComment(comments.str());
 
              instIt = bb->insertBefore(instIt, sendInst);
 
@@ -4693,7 +4693,7 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
 
         std::stringstream comments;
         comments << "stack fill: " << resultRgn->getTopDcl()->getName() << " from FP[" << inst->asFillIntrinsic()->getOffset() << "x32]";
-        fillSends->setComments(comments.str());
+        fillSends->addComment(comments.str());
 
         bb->insertBefore(fillIt, fillSends);
 

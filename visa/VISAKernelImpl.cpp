@@ -340,7 +340,7 @@ void VISAKernelImpl::compilePostOptimize()
     if (getOptions()->getOption(vISA_DumpRegInfo))
     {
         m_kernel->dump();
-        m_kernel->emit_RegInfo();
+        m_kernel->emitRegInfo();
     }
 
     if (getOptions()->getOption(vISA_setStartBreakPoint))
@@ -495,7 +495,7 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
 
     if (m_options->getOption(vISA_PrintASMCount))
     {
-        m_builder->criticalMsgStream() << "\tKernel " << m_kernel->getName() << " : " <<
+        m_builder->criticalMsgStream() << "  Kernel " << m_kernel->getName() << " : " <<
             m_kernel->getAsmCount() << " asm instructions\n";
     }
     stopTimer(TimerID::ENCODE_AND_EMIT);
@@ -503,7 +503,7 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
 #if defined(_DEBUG) && (defined(_WIN32) || defined(_WIN64))
     if (m_options->getOption(vISA_DebugConsoleDump)) {
         std::basic_ostringstream<char> debugBuff;
-        m_kernel->emit_asm(debugBuff, false, nullptr, binarySize);
+        m_kernel->emitGenAsm(debugBuff, nullptr, 0);
         debugBuff.flush();
         OutputDebugStringA(debugBuff.str().c_str());
     }
@@ -512,12 +512,12 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
     if (m_options->getOption(vISA_outputToFile))
     {
         std::stringstream ss;
-        ss << m_asmName.c_str() << ".asm";
+        ss << m_asmName << ".asm";
         std::ofstream krnlOutput(ss.str().c_str(), std::ofstream::out);
         if (!krnlOutput) {
             std::cerr << ss.str() << ": fail to open\n";
         }
-        m_kernel->emit_asm(krnlOutput, false, binary, binarySize);
+        m_kernel->emitGenAsm(krnlOutput, binary, binarySize);
         krnlOutput.close();
     }
 

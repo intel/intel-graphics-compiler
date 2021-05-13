@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <random>
 #include <sstream>
+#include <iomanip>
 #include <tuple>
 #include <vector>
 
@@ -272,7 +273,6 @@ void Optimizer::addSWSBInfo()
     {
         forceDebugSWSB(&kernel);
     }
-    kernel.dumpDotFile("after.SWSB");
 
     if (builder.getOptions()->getuInt32Option(vISA_SWSBTokenBarrier) != 0)
     {
@@ -949,25 +949,12 @@ void Optimizer::runPass(PassIndex Index)
     if (PI.Option != vISA_EnableAlways && !builder.getOption(PI.Option))
         return;
 
-    bool isImportantPass =
-        Index == PI_dce ||
-        Index == PI_regAlloc ||
-        Index == PI_preRA_Schedule ||
-        Index == PI_LVN ||
-        Index == PI_HWConformityChk ||
-        Index == PI_HWWorkaround;
-    bool shouldDumpG4 =
-        builder.getOption(vISA_DumpDotAll) ||
-        builder.getuint32Option(vISA_DumpPassesSubset) >= 2 ||
-        (builder.getuint32Option(vISA_DumpPassesSubset) == 1 && isImportantPass);
-
     std::string Name = PI.Name;
 
     if (PI.Timer != TimerID::NUM_TIMERS)
         startTimer(PI.Timer);
 
-    if (shouldDumpG4)
-        kernel.dumpDotFile(("before." + Name).c_str());
+    kernel.dumpToFile("before." + Name);
 
     // Execute pass.
     (this->*(PI.Pass))();
@@ -975,8 +962,7 @@ void Optimizer::runPass(PassIndex Index)
     if (PI.Timer != TimerID::NUM_TIMERS)
         stopTimer(PI.Timer);
 
-    if (shouldDumpG4)
-        kernel.dumpDotFile(("after." + Name).c_str());
+    kernel.dumpToFile("after." + Name);
 
 #ifdef _DEBUG
     bool skipVerify = Index == PI_regAlloc && RAFail == true;
@@ -7027,7 +7013,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
             G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8, 8, 1));
             G4_INST* movInst = builder.createMov(g4::SIMD8, movDst, movSrc, InstOpt_WriteEnable, false);
-            movInst->setComments("memory fence commit");
+            movInst->addComment("memory fence commit");
             bb->insertBefore(nextIter, movInst);
         }
         return true;
@@ -10033,6 +10019,14 @@ void Optimizer::changeMoveType()
         {
             uint32_t mask = TypeSize(newTy) == 4 ? 0xFFFFFFFF : 0xFFFF;
             movInst->setSrc(fg.builder->createImm(src0->asImm()->getImm() & mask, newTy), 0);
+            if (newTy == Type_F) {
+                uint32_t value = src0->asImm()->getImm() & mask;
+                std::stringstream ss;
+                ss << "(";
+                ss << "0x" << std::setfill('0') << std::hex << std::setw(8) << value;
+                ss << ":f)";
+                movInst->addComment(ss.str());
+            }
         }
         else
         {

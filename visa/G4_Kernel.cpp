@@ -399,6 +399,56 @@ unsigned gtPinData::getPerThreadNextOff() const
 
 
 
+G4_Kernel::G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
+    Mem_Manager& m, Options* options, Attributes* anAttr,
+    unsigned char major, unsigned char minor)
+    : m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
+    asmInstCount(0), kernelID(0), fg(alloc, this, m),
+    major_version(major), minor_version(minor)
+{
+    ASSERT_USER(
+        major < COMMON_ISA_MAJOR_VER ||
+        (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
+        "CISA version not supported by this JIT-compiler");
+
+
+    name = NULL;
+    numThreads = 0;
+    hasAddrTaken = false;
+    kernelDbgInfo = nullptr;
+    if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
+        options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
+        options->getuInt32Option(vISAOptions::vISA_GTPinScratchAreaSize))
+    {
+        allocGTPinData();
+    } else {
+        gtPinInfo = nullptr;
+    }
+
+    setKernelParameters();
+}
+
+G4_Kernel::~G4_Kernel()
+{
+    if (kernelDbgInfo)
+    {
+        kernelDbgInfo->~KernelDebugInfo();
+    }
+
+    if (gtPinInfo)
+    {
+        gtPinInfo->~gtPinData();
+    }
+
+    if (varSplitPass)
+    {
+        delete varSplitPass;
+        varSplitPass = nullptr;
+    }
+
+    Declares.clear();
+}
+
 void G4_Kernel::computeChannelSlicing()
 {
     G4_ExecSize simdSize = getSimdSize();
@@ -577,32 +627,6 @@ void G4_Kernel::evalAddrExp()
     }
 }
 
-void G4_Kernel::dump() const
-{
-    fg.print(std::cerr);
-}
-
-void G4_Kernel::dumptofile(const char* Filename) const
-{
-    fg.dumptofile(Filename);
-}
-
-void G4_Kernel::dumpDotFileImportant(const char* suffix)
-{
-    if (m_options->getOption(vISA_DumpDot))
-        dumpDotFileInternal(suffix);
-    if (m_options->getOption(vISA_DumpPasses) || m_options->getuInt32Option(vISA_DumpPassesSubset) >= 1)
-        dumpPassInternal(suffix);
-}
-
-void G4_Kernel::dumpDotFile(const char* suffix)
-{
-    if (m_options->getOption(vISA_DumpDot))
-        dumpDotFileInternal(suffix);
-    if (m_options->getOption(vISA_DumpPasses) || m_options->getuInt32Option(vISA_DumpPassesSubset) >= 2)
-        dumpPassInternal(suffix);
-}
-
 // FIX: this needs to here because of the above static thread-local variable
 extern _THREAD const char* g4_prevFilename;
 extern _THREAD int g4_prevSrcLineNo;
@@ -646,9 +670,252 @@ static iga_gen_t getIGAPlatform()
     return platform;
 }
 
-void G4_Kernel::emit_asm(
-    std::ostream& output, bool beforeRegAlloc,
-    void * binary, uint32_t binarySize)
+KernelDebugInfo* G4_Kernel::getKernelDebugInfo()
+{
+    if (kernelDbgInfo == nullptr)
+    {
+        kernelDbgInfo = new(fg.mem)KernelDebugInfo();
+    }
+
+    return kernelDbgInfo;
+}
+
+unsigned G4_Kernel::getStackCallStartReg() const
+{
+    // Last 3 GRFs to be used as scratch
+    unsigned totalGRFs = getNumRegTotal();
+    unsigned startReg = totalGRFs - numReservedABIGRF();
+    return startReg;
+}
+unsigned G4_Kernel::calleeSaveStart() const
+{
+    return getCallerSaveLastGRF() + 1;
+}
+unsigned G4_Kernel::getNumCalleeSaveRegs() const
+{
+    unsigned totalGRFs = getNumRegTotal();
+    return totalGRFs - calleeSaveStart() - numReservedABIGRF();
+}
+
+//
+// rename non-root declares to their root decl name to make
+// it easier to read IR dump
+//
+void G4_Kernel::renameAliasDeclares()
+{
+#if _DEBUG
+    for (auto dcl : Declares)
+    {
+        if (dcl->getAliasDeclare())
+        {
+            uint32_t offset = 0;
+            G4_Declare* rootDcl = dcl->getRootDeclare(offset);
+            std::string newName(rootDcl->getName());
+            if (rootDcl->getElemType() != dcl->getElemType())
+            {
+                newName += "_";
+                newName += TypeSymbol(dcl->getElemType());
+            }
+            if (offset != 0)
+            {
+                newName += "_" + std::to_string(offset);
+            }
+            dcl->setName(fg.builder->getNameString(fg.mem, 64, "%s", newName.c_str()));
+        }
+    }
+#endif
+}
+
+//
+// perform relocation for every entry in the allocation table
+//
+void G4_Kernel::doRelocation(void* binary, uint32_t binarySize)
+{
+    for (auto&& entry : relocationTable)
+    {
+        entry.doRelocation(*this, binary, binarySize);
+    }
+}
+
+G4_INST* G4_Kernel::getFirstNonLabelInst() const
+{
+    for (auto I = fg.cbegin(), E = fg.cend(); I != E; ++I)
+    {
+        auto bb = *I;
+        G4_INST* firstInst = bb->getFirstInst();
+        if (firstInst)
+        {
+            return firstInst;
+        }
+    }
+    // empty kernel
+    return nullptr;
+}
+
+std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
+{
+    auto iter = debugSrcLineMap.find(fileName);
+    if (iter == debugSrcLineMap.end())
+    {
+        std::ifstream ifs(fileName);
+        if (!ifs)
+        {
+            // file doesnt exist
+            debugSrcLineMap[fileName] = std::make_pair<bool, std::vector<std::string>>(false, {});
+            return "can't find src file";
+        }
+        std::string line;
+        std::vector<std::string> srcLines;
+        while (std::getline(ifs, line))
+        {
+            srcLines.push_back(line);
+        }
+        debugSrcLineMap[fileName] = std::make_pair(true, std::move(srcLines));
+    }
+    iter = debugSrcLineMap.find(fileName);
+    if (iter == debugSrcLineMap.end() ||
+        !iter->second.first)
+    {
+        return "can't find src file";
+    }
+    auto& lines = iter->second.second;
+    if (srcLine > (int) lines.size() || srcLine <= 0)
+    {
+        return "invalid line number";
+    }
+    return lines[srcLine - 1];
+}
+
+VarSplitPass* G4_Kernel::getVarSplitPass()
+{
+    if (varSplitPass)
+        return varSplitPass;
+
+    varSplitPass = new VarSplitPass(*this);
+
+    return varSplitPass;
+}
+
+void G4_Kernel::setKernelParameters()
+{
+    unsigned overrideGRFNum = 0;
+    unsigned overrideNumThreads = 0;
+
+    TARGET_PLATFORM platform = getGenxPlatform();
+    overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
+
+
+    // Set the number of GRFs
+    if (overrideGRFNum > 0)
+    {
+        // User-provided number of GRFs
+        unsigned Val = m_options->getuInt32Option(vISA_GRFNumToUse);
+        if (Val > 0)
+        {
+            numRegTotal = std::min(Val, overrideGRFNum);
+        }
+        else
+        {
+            numRegTotal = overrideGRFNum;
+        }
+        callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
+    }
+    else
+    {
+        // Default value for all other platforms
+        numRegTotal = 128;
+        callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
+    }
+    // For safety update TotalGRFNum, there may be some uses for this vISA option
+    m_options->setOption(vISA_TotalGRFNum, numRegTotal);
+
+    // Set the number of SWSB tokens
+    unsigned overrideNumSWSB = m_options->getuInt32Option(vISA_SWSBTokenNum);
+    if (overrideNumSWSB > 0)
+    {
+        // User-provided number of SWSB tokens
+        numSWSBTokens = overrideNumSWSB;
+    }
+    else
+    {
+        // Default value based on platform
+        switch (platform)
+        {
+        default:
+            numSWSBTokens = 16;
+        }
+    }
+
+
+    // Set the number of Acc. They are in the unit of GRFs (i.e., 1 accumulator is the same size as 1 GRF)
+    unsigned overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
+    if (overrideNumAcc > 0)
+    {
+        // User-provided number of Acc
+        numAcc = overrideNumAcc;
+    }
+    else
+    {
+        // Default value based on platform
+        switch (platform)
+        {
+        default:
+            numAcc = 2;
+        }
+    }
+
+    // Set number of threads if it was not defined before
+    if (numThreads == 0)
+    {
+        if (overrideNumThreads > 0)
+        {
+            numThreads = overrideNumThreads;
+        }
+        else
+        {
+            switch (platform)
+            {
+            default:
+                numThreads = 7;
+            }
+        }
+    }
+}
+
+void G4_Kernel::dump(std::ostream &os) const
+{
+    fg.print(os);
+}
+
+void G4_Kernel::dumpToFile(const std::string &suffixIn)
+{
+    bool dumpDot = m_options->getOption(vISA_DumpDot);
+    bool dumpG4 =
+        m_options->getOption(vISA_DumpPasses) ||
+        m_options->getuInt32Option(vISA_DumpPassesSubset) >= 1;
+    if (!dumpDot && !dumpG4)
+        return;
+
+    // calls to this will produce a sequence of dumps
+    // [kernel-name].000.[suffix].{dot,g4}
+    // [kernel-name].001.[suffix].{dot,g4}
+    // ...
+    // If vISA_DumpPassesSubset == 1 then we omit any files that don't change
+    // the string representation of the kernel (i.e. skip passes that don't do anything).
+    std::stringstream ss;
+    ss << (name ? name : "UnknownKernel");
+    ss << "." << std::setfill('0') << std::setw(3) << nextDumpIndex++ << "." << suffixIn;
+    std::string baseName = sanitizePathString(ss.str());
+
+    if (dumpDot)
+        dumpDotFileInternal(baseName);
+
+    if (dumpG4)
+        dumpG4Internal(baseName);
+}
+
+void G4_Kernel::emitGenAsm(
+    std::ostream& output, const void * binary, uint32_t binarySize)
 {
     static const char* const RATypeString[] {
         RA_TYPE(STRINGIFY)
@@ -891,7 +1158,7 @@ void G4_Kernel::emit_asm(
         std::map<int, std::string> errorToStringMap;
         if (dissasemblyFailed)
         {
-            std::cerr << "Failed to decode binary for asm output. Please report the issue and try disabling IGA disassembler for now." << std::endl;
+            std::cerr << "failed to decode binary for asm output";
             igaErrMsgs = std::string(errBuf);
             igaErrMsgsVector = split(igaErrMsgs, "\n");
             for (auto msg : igaErrMsgsVector)
@@ -1024,7 +1291,7 @@ void G4_Kernel::emit_asm(
                     continue;
                 }
 
-                if (!(getOptions()->getOption(vISA_disableInstDebugInfo)))
+                if (!getOptions()->getOption(vISA_disableInstDebugInfo))
                 {
                     (*itBB)->emitInstructionInfo(output, itInst);
                 }
@@ -1076,11 +1343,13 @@ void G4_Kernel::emit_asm(
     {
         if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::XE)
         {
-            output << "\n\n//.BankConflicts: " <<  fg.XeBCStats.BCNum << "\n";
-            output << "//.sameBankConflicts: " <<  fg.XeBCStats.sameBankConflicts << "\n";
-            output << "//.simd16ReadSuppression: " <<  fg.XeBCStats.simd16ReadSuppression << "\n";
-            output << "//.twoSrcBankConflicts: " <<  fg.XeBCStats.twoSrcBC << "\n";
-            output << "//.SIMD8s: " <<  fg.XeBCStats.simd8 << "\n//\n";
+            output << "\n\n";
+            output << "//.BankConflicts: " <<  fg.XeBCStats.BCNum << "\n";
+            output << "//.BankConflicts.SameBank: " <<  fg.XeBCStats.sameBankConflicts << "\n";
+            output << "//.BankConflicts.TwoSrc: " <<  fg.XeBCStats.twoSrcBC << "\n";
+            int nativeSimdSize = 8;
+            output << "//.SIMD" << 2*nativeSimdSize << "ReadSuppressions: " <<  fg.XeBCStats.simd16ReadSuppression << "\n";
+            output << "//.SIMD" << nativeSimdSize << "s: " <<  fg.XeBCStats.simd8 << "\n//\n";
             output << "//.RMWs: " << fg.numRMWs << "\n//\n";
         }
         else
@@ -1093,12 +1362,12 @@ void G4_Kernel::emit_asm(
     }
 }
 
-void G4_Kernel::emit_RegInfo()
+void G4_Kernel::emitRegInfo()
 {
     const char* asmName = nullptr;
     getOptions()->getOption(VISA_AsmFileName, asmName);
     const char* asmNameEmpty = "";
-    if( !asmName )
+    if (!asmName)
     {
         asmName = asmNameEmpty;
     }
@@ -1106,12 +1375,12 @@ void G4_Kernel::emit_RegInfo()
     std::string dumpFileName = std::string(asmName) + ".reginfo";
     std::fstream ofile(dumpFileName, std::ios::out);
 
-    emit_RegInfoKernel(ofile);
+    emitRegInfoKernel(ofile);
 
     ofile.close();
 }
 
-void G4_Kernel::emit_RegInfoKernel(std::ostream& output)
+void G4_Kernel::emitRegInfoKernel(std::ostream& output)
 {
     output << "//.platform " << getGenxPlatformString(fg.builder->getPlatform());
     output << "\n" << "//.kernel ID 0x" << std::hex << getKernelID() << "\n";
@@ -1139,242 +1408,14 @@ void G4_Kernel::emit_RegInfoKernel(std::ostream& output)
     return;
 }
 
-KernelDebugInfo* G4_Kernel::getKernelDebugInfo()
-{
-    if (kernelDbgInfo == nullptr)
-    {
-        kernelDbgInfo = new(fg.mem)KernelDebugInfo();
-    }
-
-    return kernelDbgInfo;
-}
-
-unsigned G4_Kernel::getStackCallStartReg() const
-{
-    // Last 3 GRFs to be used as scratch
-    unsigned totalGRFs = getNumRegTotal();
-    unsigned startReg = totalGRFs - numReservedABIGRF();
-    return startReg;
-}
-unsigned G4_Kernel::calleeSaveStart() const
-{
-    return getCallerSaveLastGRF() + 1;
-}
-unsigned G4_Kernel::getNumCalleeSaveRegs() const
-{
-    unsigned totalGRFs = getNumRegTotal();
-    return totalGRFs - calleeSaveStart() - numReservedABIGRF();
-}
-
-//
-// rename non-root declares to their root decl name to make
-// it easier to read IR dump
-//
-void G4_Kernel::renameAliasDeclares()
-{
-#if _DEBUG
-    for (auto dcl : Declares)
-    {
-        if (dcl->getAliasDeclare())
-        {
-            uint32_t offset = 0;
-            G4_Declare* rootDcl = dcl->getRootDeclare(offset);
-            std::string newName(rootDcl->getName());
-            if (rootDcl->getElemType() != dcl->getElemType())
-            {
-                newName += "_";
-                newName += TypeSymbol(dcl->getElemType());
-            }
-            if (offset != 0)
-            {
-                newName += "_" + std::to_string(offset);
-            }
-            dcl->setName(fg.builder->getNameString(fg.mem, 64, "%s", newName.c_str()));
-        }
-    }
-#endif
-}
-
-//
-// perform relocation for every entry in the allocation table
-//
-void G4_Kernel::doRelocation(void* binary, uint32_t binarySize)
-{
-    for (auto&& entry : relocationTable)
-    {
-        entry.doRelocation(*this, binary, binarySize);
-    }
-}
-
-G4_INST* G4_Kernel::getFirstNonLabelInst() const
-{
-    for (auto I = fg.cbegin(), E = fg.cend(); I != E; ++I)
-    {
-        auto bb = *I;
-        G4_INST* firstInst = bb->getFirstInst();
-        if (firstInst)
-        {
-            return firstInst;
-        }
-    }
-    // empty kernel
-    return nullptr;
-}
-
-VarSplitPass* G4_Kernel::getVarSplitPass()
-{
-    if (varSplitPass)
-        return varSplitPass;
-
-    varSplitPass = new VarSplitPass(*this);
-
-    return varSplitPass;
-}
-
-void G4_Kernel::setKernelParameters()
-{
-    unsigned overrideGRFNum = 0;
-    unsigned overrideNumThreads = 0;
-
-    TARGET_PLATFORM platform = getGenxPlatform();
-    overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
-
-
-    // Set the number of GRFs
-    if (overrideGRFNum > 0)
-    {
-        // User-provided number of GRFs
-        unsigned Val = m_options->getuInt32Option(vISA_GRFNumToUse);
-        if (Val > 0)
-        {
-            numRegTotal = std::min(Val, overrideGRFNum);
-        }
-        else
-        {
-            numRegTotal = overrideGRFNum;
-        }
-        callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
-    }
-    else
-    {
-        // Default value for all other platforms
-        numRegTotal = 128;
-        callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
-    }
-    // For safety update TotalGRFNum, there may be some uses for this vISA option
-    m_options->setOption(vISA_TotalGRFNum, numRegTotal);
-
-    // Set the number of SWSB tokens
-    unsigned overrideNumSWSB = m_options->getuInt32Option(vISA_SWSBTokenNum);
-    if (overrideNumSWSB > 0)
-    {
-        // User-provided number of SWSB tokens
-        numSWSBTokens = overrideNumSWSB;
-    }
-    else
-    {
-        // Default value based on platform
-        switch (platform)
-        {
-        default:
-            numSWSBTokens = 16;
-        }
-    }
-
-
-    // Set the number of Acc. They are in the unit of GRFs (i.e., 1 accumulator is the same size as 1 GRF)
-    unsigned overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
-    if (overrideNumAcc > 0)
-    {
-        // User-provided number of Acc
-        numAcc = overrideNumAcc;
-    }
-    else
-    {
-        // Default value based on platform
-        switch (platform)
-        {
-        default:
-            numAcc = 2;
-        }
-    }
-
-    // Set number of threads if it was not defined before
-    if (numThreads == 0)
-    {
-        if (overrideNumThreads > 0)
-        {
-            numThreads = overrideNumThreads;
-        }
-        else
-        {
-            switch (platform)
-            {
-            default:
-                numThreads = 7;
-            }
-        }
-    }
-}
-
-G4_Kernel::G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
-    Mem_Manager& m, Options* options, Attributes* anAttr,
-    unsigned char major, unsigned char minor)
-    : m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
-    asmInstCount(0), kernelID(0), fg(alloc, this, m),
-    major_version(major), minor_version(minor)
-{
-    ASSERT_USER(
-        major < COMMON_ISA_MAJOR_VER ||
-        (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
-        "CISA version not supported by this JIT-compiler");
-
-
-    name = NULL;
-    numThreads = 0;
-    hasAddrTaken = false;
-    kernelDbgInfo = nullptr;
-    if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
-        options->getOption(vISAOptions::vISA_GetFreeGRFInfo) ||
-        options->getuInt32Option(vISAOptions::vISA_GTPinScratchAreaSize))
-    {
-        allocGTPinData();
-    } else {
-        gtPinInfo = nullptr;
-    }
-
-    setKernelParameters();
-}
-
-
-
-// prevent overwriting dump file and indicate compilation order with dump serial number
-static _THREAD int dotDumpCount = 0;
-
 //
 // This routine dumps out the dot file of the control flow graph along with instructions.
 // dot is drawing graph tool from AT&T.
 //
-void G4_Kernel::dumpDotFileInternal(const char* appendix)
+void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
 {
-
-    MUST_BE_TRUE(appendix != NULL, ERROR_INTERNAL_ARGUMENT);
-    if (!m_options->getOption(vISA_DumpDot))  // skip dumping dot files
-        return;
-
-    std::stringstream ss;
-    ss << (name ? name : "UnknownKernel") <<
-        "." << std::setfill('0') << std::setw(3) <<
-        dotDumpCount++ << "." << appendix << ".dot";
-
-    std::string fname(ss.str());
-    fname = sanitizePathString(fname);
-
-    std::fstream ofile(fname, std::ios::out);
-    if (!ofile)
-    {
-        MUST_BE_TRUE(false, ERROR_FILE_READ(fname));
-    }
+    std::fstream ofile(baseName + ".dot", std::ios::out);
+    assert(ofile);
     //
     // write digraph KernelName {"
     //          size = "8, 10";
@@ -1505,36 +1546,33 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
     ofile.close();
 }
 
-
-// Dump the instructions into a file
-void G4_Kernel::dumpPassInternal(const char* suffix)
+// Dump the instructions into a .g4 file
+void G4_Kernel::dumpG4Internal(const std::string &file)
 {
-    MUST_BE_TRUE(suffix != NULL, ERROR_INTERNAL_ARGUMENT);
-    if (!m_options->getOption(vISA_DumpPasses) && !m_options->getuInt32Option(vISA_DumpPassesSubset)) {
+    std::stringstream g4asm;
+    dumpG4InternalTo(g4asm);
+    std::string g4asms = g4asm.str();
+    if (m_options->getuInt32Option(vISA_DumpPassesSubset) == 1 && g4asms == lastG4Asm) {
         return;
     }
-    std::stringstream ss;
-    ss << (name ? name : "UnknownKernel") << "." << std::setfill('0') << std::setw(3) <<
-        dotDumpCount++ << "." << suffix << ".g4";
-    std::string fname = ss.str();
-    fname = sanitizePathString(fname);
+    lastG4Asm = std::move(g4asms);
 
-    std::fstream ofile(fname, std::ios::out);
+    std::fstream ofile(file + ".g4", std::ios::out);
     assert(ofile);
+    dumpG4InternalTo(ofile);
+}
 
+void G4_Kernel::dumpG4InternalTo(std::ostream &os)
+{
     const char* asmFileName = nullptr;
     m_options->getOption(VISA_AsmFileName, asmFileName);
-    if (!asmFileName)
-        ofile << "UnknownKernel" << std::endl << std::endl;
-    else
-        ofile << asmFileName << std::endl << std::endl;
+    os << ".kernel " << name << "\n";
 
     for (const G4_Declare *d : Declares) {
-        // stuff below this is usually builtin-type stuff?
-        static const int MIN_DECL = 34;
+        static const int MIN_DECL = 34; // skip the built-in decls
         if (d->getDeclId() > MIN_DECL) {
-            // ofile << d->getDeclId() << "\n";
-            d->emit(ofile);
+            // os << d->getDeclId() << "\n";
+            d->emit(os);
         }
     }
 
@@ -1543,31 +1581,29 @@ void G4_Kernel::dumpPassInternal(const char* suffix)
     {
         // Emit BB number
         G4_BB* bb = (*it);
-        bb->writeBBId(ofile);
+        bb->writeBBId(os);
 
         // Emit BB type
         if (bb->getBBType())
         {
-            ofile << " [" << bb->getBBTypeStr() << "] ";
+            os << " [" << bb->getBBTypeStr() << "] ";
         }
 
-        ofile << "\tPreds: ";
+        os << "\tPreds: ";
         for (auto pred : bb->Preds)
         {
-            pred->writeBBId(ofile);
-            ofile << " ";
+            pred->writeBBId(os);
+            os << " ";
         }
-        ofile << "\tSuccs: ";
+        os << "\tSuccs: ";
         for (auto succ : bb->Succs)
         {
-            succ->writeBBId(ofile);
-            ofile << " ";
+            succ->writeBBId(os);
+            os << " ";
         }
-        ofile << "\n";
+        os << "\n";
 
-        bb->emit(ofile);
-        ofile << "\n\n";
+        bb->emit(os);
+        os << "\n\n";
     } // bbs
-
-    ofile.close();
 }

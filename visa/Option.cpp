@@ -102,7 +102,7 @@ bool Options::parseOptions(int argc, const char* argv[])
         // If arg not defined in the .def file, exit with an error
         auto it = argToOption.find(argv[i]);
         if (it == argToOption.end()) {
-            COUT_ERROR << "USAGE: Unrecognized option \"" << argv[i] << "\"!" << std::endl;
+            COUT_ERROR << argv[i] << ": unrecognized option\n";
             showUsage(COUT_ERROR);
             return false;
         }

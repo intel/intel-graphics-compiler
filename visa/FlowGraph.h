@@ -651,7 +651,6 @@ public:
 
     void print(std::ostream& OS) const;
     void dump() const;  // used in debugger
-    void dumptofile(const char* Filename) const; // used in debugger
 
     Dominator& getDominator() { return dom; }
     PostDom& getPostDominator() { return pDom; }

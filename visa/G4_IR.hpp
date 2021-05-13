@@ -1003,9 +1003,16 @@ public:
         }
     }
 
-    void setComments(const std::string& comments);
-
     void setTokenLoc(unsigned short token, unsigned globalID);
+
+    // adds a comment to this instruction
+    // this appends the comment to any existing comment separating it with
+    // some separator e.g. "foo; bar"
+    void addComment(const std::string& comment);
+
+    // replaces any old comments with this
+    // prefer addComment if so you don't stomp someone else's message
+    void setComments(const std::string& comments);
 
     std::string getComments() const
     {

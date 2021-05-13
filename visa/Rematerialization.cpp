@@ -1209,6 +1209,6 @@ namespace vISA
 
         cleanRedundantSamplerHeaders();
 
-        kernel.dumpDotFile("after.remat");
+        kernel.dumpToFile("after.remat");
     }
 }

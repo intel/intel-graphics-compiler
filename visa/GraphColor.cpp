@@ -7781,10 +7781,10 @@ void GlobalRA::addCalleeStackSetupCode()
         G4_Operand* sp_src = builder.createSrc(stackPtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_Imm * src1 = builder.createImm(frameSize*factor, Type_UD);
         auto createBEFP = builder.createMov(g4::SIMD1, fp_dst, sp_src, InstOpt_WriteEnable, false);
-        createBEFP->setComments("vISA_FP = vISA_SP");
+        createBEFP->addComment("vISA_FP = vISA_SP");
         auto addInst = builder.createBinOp(G4_add, g4::SIMD1,
             dst, src0, src1, InstOpt_WriteEnable, false);
-        addInst->setComments("vISA_SP += vISA_frameSize");
+        addInst->addComment("vISA_SP += vISA_frameSize");
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
         auto insertIt = std::find(entryBB->begin(), entryBB->end(), getSaveBE_FPInst());
         MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
@@ -8101,7 +8101,7 @@ void GlobalRA::addStoreRestoreToReturn()
     G4_Operand* FPsrc = builder.createSrc(SRDecl->getRegVar(), 0, 0, rd, Type_UD);
 
     saveBE_FPInst = builder.createMov(g4::SIMD4, oldFPDst, FPsrc, InstOpt_WriteEnable, false);
-    saveBE_FPInst->setComments("save vISA SP/FP to temp");
+    saveBE_FPInst->addComment("save vISA SP/FP to temp");
     builder.setPartFDSaveInst(saveBE_FPInst);
 
     auto entryBB = builder.kernel.fg.getEntryBB();
@@ -8109,7 +8109,7 @@ void GlobalRA::addStoreRestoreToReturn()
     entryBB->insertBefore(insertIt, saveBE_FPInst);
 
     restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc, InstOpt_WriteEnable, false);
-    restoreBE_FPInst->setComments("restore vISA SP/FP from temp");
+    restoreBE_FPInst->addComment("restore vISA SP/FP from temp");
     auto fretBB = builder.kernel.fg.getUniqueReturnBlock();
     auto iter = std::prev(fretBB->end());
     assert((*iter)->isFReturn() && "fret BB must end with fret");
@@ -9220,8 +9220,7 @@ void GlobalRA::addrRegAlloc()
         else {
             break; // no ARF allocation needed
         }
-        std::string passName = std::string("after.Address_RA.") + std::to_string(iterationNo);
-        kernel.dumpDotFile(passName.c_str());
+        kernel.dumpToFile("after.Address_RA." + std::to_string(iterationNo));
         iterationNo++;
 
 
@@ -9321,8 +9320,7 @@ void GlobalRA::flagRegAlloc()
         else {
             break; // no FLAG allocation needed
         }
-        std::string passName = std::string("after.Flag_RA.") + std::to_string(iterationNo);
-        kernel.dumpDotFile(passName.c_str());
+        kernel.dumpToFile("after.Flag_RA." + std::to_string(iterationNo));
         iterationNo++;
     }
 
@@ -9953,8 +9951,7 @@ int GlobalRA::coloringRegAlloc()
                     break;
                 }
 
-                std::string passName = std::string("after.Spill_GRF.") + std::to_string(iterationNo);
-                kernel.dumpDotFileImportant(passName.c_str());
+                kernel.dumpToFile("after.Spill_GRF." + std::to_string(iterationNo));
                 scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
                 bool disableSpillCoalecse = builder.getOption(vISA_DisableSpillCoalescing) ||

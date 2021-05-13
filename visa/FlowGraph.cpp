@@ -929,11 +929,11 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         hasGoto |= convertJmpiToGoto();
     }
 
-    pKernel->dumpDotFile("after.CFGConstruction");
+    pKernel->dumpToFile("after.CFGConstruction");
 
     removeRedundantLabels();
 
-    pKernel->dumpDotFile("after.RemoveRedundantLabels");
+    pKernel->dumpToFile("after.RemoveRedundantLabels");
 
     handleExit(subroutineStartBB.size() > 1 ? subroutineStartBB[1] : nullptr);
 
@@ -951,7 +951,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     setPhysicalPredSucc();
     removeUnreachableBlocks(funcInfoHashTable);
 
-    pKernel->dumpDotFile("after.RemoveUnreachableBlocks");
+    pKernel->dumpToFile("after.RemoveUnreachableBlocks");
 
     //
     // build the table of function info nodes
@@ -972,12 +972,12 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
             !endWithGotoInLastBB())
         {
             doCFGStructurize(this);
-            pKernel->dumpDotFile("after.CFGStructurizer");
+            pKernel->dumpToFile("after.CFGStructurizer");
         }
         else
         {
             processGoto(hasSIMDCF);
-            pKernel->dumpDotFile("after.ProcessGoto");
+            pKernel->dumpToFile("after.ProcessGoto");
         }
     }
 
@@ -4545,12 +4545,6 @@ void FlowGraph::dump() const
     print(std::cerr);
 }
 
-void FlowGraph::dumptofile(const char* Filename) const
-{
-    std::fstream ofile(Filename, std::ios::out);
-    print(ofile);
-}
-
 FlowGraph::~FlowGraph()
 {
     // even though G4_BBs are allocated in a mem pool and freed in one shot,
@@ -4584,62 +4578,6 @@ RelocationEntry& RelocationEntry::createRelocation(
     kernel.getRelocationTable().emplace_back(
         RelocationEntry(&inst, opndPos, type, symbolName));
     return kernel.getRelocationTable().back();
-}
-
-
-G4_Kernel::~G4_Kernel()
-{
-    if (kernelDbgInfo)
-    {
-        kernelDbgInfo->~KernelDebugInfo();
-    }
-
-    if (gtPinInfo)
-    {
-        gtPinInfo->~gtPinData();
-    }
-
-    if (varSplitPass)
-    {
-        delete varSplitPass;
-        varSplitPass = nullptr;
-    }
-
-    Declares.clear();
-}
-
-std::string G4_Kernel::getDebugSrcLine(const std::string& fileName, int srcLine)
-{
-    auto iter = debugSrcLineMap.find(fileName);
-    if (iter == debugSrcLineMap.end())
-    {
-        std::ifstream ifs(fileName);
-        if (!ifs)
-        {
-            // file doesnt exist
-            debugSrcLineMap[fileName] = std::make_pair<bool, std::vector<std::string>>(false, {});
-            return "can't find src file";
-        }
-        std::string line;
-        std::vector<std::string> srcLines;
-        while (std::getline(ifs, line))
-        {
-            srcLines.push_back(line);
-        }
-        debugSrcLineMap[fileName] = std::make_pair(true, std::move(srcLines));
-    }
-    iter = debugSrcLineMap.find(fileName);
-    if (iter == debugSrcLineMap.end() ||
-        !iter->second.first)
-    {
-        return "can't find src file";
-    }
-    auto& lines = iter->second.second;
-    if (srcLine > (int) lines.size() || srcLine <= 0)
-    {
-        return "invalid line number";
-    }
-    return lines[srcLine - 1];
 }
 
 void RelocationEntry::doRelocation(

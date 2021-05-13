@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cstdint>
 #include <map>
+#include <iostream>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -192,6 +193,10 @@ private:
     // stores all relocations to be performed after binary encoding
     RelocationTableTy relocationTable;
 
+    // the last output we dumped for this kernel and index of next dump
+    std::string            lastG4Asm;
+    int                    nextDumpIndex = 0;
+
 public:
     FlowGraph              fg;
     DECLARE_LIST           Declares;
@@ -249,15 +254,6 @@ public:
     void updateKernelByNumThreads(int nThreads);
 
     void evalAddrExp();
-
-    /// dump this kernel to the standard error
-    void dump() const;  // used in debugger
-    void dumptofile(const char* Filename) const;  // used in debugger
-    void dumpDotFile(const char* suffix);
-    void dumpDotFileImportant(const char* suffix);
-    void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
-    void emit_RegInfo();
-    void emit_RegInfoKernel(std::ostream& output);
 
     void setRAType(RA_Type type) { RAType = type; }
     RA_Type getRAType() { return RAType; }
@@ -329,10 +325,23 @@ public:
     VISATarget getKernelType() const { return kernelType; }
     void setKernelType(VISATarget t) { kernelType = t; }
 
+
+    /// dump this kernel to the standard error
+    void dump(std::ostream &os = std::cerr) const;  // used in debugger
+
+    // dumps .dot files (if enabled) and .g4 (if enabled)
+    void dumpToFile(const std::string &suffix);
+
+    void emitGenAsm(std::ostream& output, const void * binary, uint32_t binarySize);
+    void emitRegInfo();
+    void emitRegInfoKernel(std::ostream& output);
+
 private:
     void setKernelParameters();
-    void dumpDotFileInternal(const char* appendix);
-    void dumpPassInternal(const char *appendix);
+
+    void dumpDotFileInternal(const std::string &baseName);
+    void dumpG4Internal(const std::string &baseName);
+    void dumpG4InternalTo(std::ostream &os);
 
 }; // G4_Kernel
 }
