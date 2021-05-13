@@ -195,6 +195,14 @@ bool GenXPacketize::runOnModule(Module &Module) {
     findUniformArgs(*F);
   }
 
+  // perform reg-to-mem to remove phi before packetization
+  // because we need to generate simd-control-flow after packetization
+  // we then perform mem-to-reg after generating simd-control-flow.
+  std::unique_ptr<FunctionPass> DemotePass(createDemoteRegisterToMemoryPass());
+  for (auto &F : M->getFunctionList()) {
+    DemotePass->runOnFunction(F);
+  }
+
   UniformInsts.clear();
 
   DL = &(M->getDataLayout());
@@ -225,12 +233,6 @@ bool GenXPacketize::runOnModule(Module &Module) {
 
   delete B;
 
-  // perform reg-to-mem in order to generate simd-control-flow without phi
-  // we then perform mem-to-reg after generating simd-control-flow.
-  std::unique_ptr<FunctionPass> DemotePass(createDemoteRegisterToMemoryPass());
-  for (auto F : SIMTFuncs) {
-    DemotePass->runOnFunction(*F);
-  }
   // lower the SIMD control-flow
   lowerControlFlowAfter(SIMTFuncs);
 
@@ -938,14 +940,10 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       R.Indirect = nullptr;
     } else {
       R.Offset = 0;
-      auto MulCType = IntegerType::getInt16Ty(M->getContext());
+      auto NBits = Idx->getType()->getIntegerBitWidth() / 8;
+      auto MulCType = IntegerType::getIntNTy(M->getContext(), NBits);
       auto MulC =
           ConstantInt::get(MulCType, ElemType->getPrimitiveSizeInBits() / 8);
-      auto NBits = Idx->getType()->getIntegerBitWidth();
-      if (NBits > 16)
-          Idx = B->TRUNC(Idx, MulCType);
-      else if (NBits < 16)
-          Idx = B->S_EXT(Idx, MulCType);
       R.Indirect = B->MUL(Idx, MulC);
     }
     R.NumElements = B->mVWidth;
@@ -972,14 +970,10 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       R.Indirect = nullptr;
     } else {
       R.Offset = 0;
-      auto MulCType = IntegerType::getInt16Ty(M->getContext());
+      auto NBits = Idx->getType()->getIntegerBitWidth() / 8;
+      auto MulCType = IntegerType::getIntNTy(M->getContext(), NBits);
       auto MulC =
           ConstantInt::get(MulCType, ElemType->getPrimitiveSizeInBits() / 8);
-      auto NBits = Idx->getType()->getIntegerBitWidth();
-      if (NBits > 16)
-          Idx = B->TRUNC(Idx, MulCType);
-      else if (NBits < 16)
-          Idx = B->S_EXT(Idx, MulCType);
       R.Indirect = B->MUL(Idx, MulC);
     }
     R.NumElements = B->mVWidth;
@@ -1007,6 +1001,13 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       pBranch->setCondition(NewTest);
     }
     pReplacedInst = pBranch;
+    break;
+  }
+
+  case Instruction::PHI: {
+    Type *vecType = B->GetVectorType(pInst->getType());
+    pInst->mutateType(vecType);
+    pReplacedInst = pInst;
     break;
   }
 
@@ -1089,14 +1090,13 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
   }
 
   default: {
-    // for the rest of the instructions includingi phi, vectorize
-    // the instruction type as well as its args
+    // for the rest of the instructions, vectorize the instruction type as
+    // well as its args
     Type *vecType = B->GetVectorType(pInst->getType());
     pInst->mutateType(vecType);
+
     for (Use &op : pInst->operands()) {
-      auto v = getPacketizeValue(op.get());
-      if (v)
-        op.set(v);
+      op.set(getPacketizeValue(op.get()));
     }
     pReplacedInst = pInst;
   }
