@@ -730,29 +730,17 @@ Value *GenXEmulate::Emu64Expander::visitSIToFP(SIToFPInst &Op) {
   auto *VOprnd = toVector(Builder, Op.getOperand(0)).V;
   // This would be a 64-bit operation on a vector types
   auto *NegatedOpnd = Builder.CreateNeg(VOprnd);
-  // this could be a constexpr - in this case, no emulation necessary
-  if (auto *NegOp64 = dyn_cast<Instruction>(NegatedOpnd)) {
-    Value *NewInst = Emu64Expander(ST, *NegOp64).tryExpand();
-    IGC_ASSERT(NewInst);
-    NegOp64->eraseFromParent();
-    NegatedOpnd = NewInst;
-  }
+  NegatedOpnd = ensureEmulated(NegatedOpnd);
 
-  auto *AbsOp64 =
-      cast<Instruction>(Builder.CreateSelect(PredSigned, NegatedOpnd, VOprnd));
-  auto *AbsVal = Emu64Expander(ST, *AbsOp64).tryExpand();
-  IGC_ASSERT(AbsVal);
-  AbsOp64->eraseFromParent();
+  auto *AbsVal = Builder.CreateSelect(PredSigned, NegatedOpnd, VOprnd);
+  AbsVal = ensureEmulated(AbsVal);
 
   Type *CnvType = Op.getType();
   if (!Op.getType()->isVectorTy()) {
     CnvType = IGCLLVM::FixedVectorType::get(Builder.getFloatTy(), 1);
   }
-  auto *Cnv64 = cast<Instruction>(Builder.CreateUIToFP(AbsVal, CnvType));
-  // Now the convert holds the <N x float> vector
-  auto *Cnv = Emu64Expander(ST, *Cnv64).tryExpand();
-  IGC_ASSERT(Cnv);
-  Cnv64->eraseFromParent();
+  auto *Cnv = Builder.CreateUIToFP(AbsVal, CnvType);
+  Cnv = ensureEmulated(Cnv);
 
   // we want to set a proper sign, so we cast it to <N x int>,
   // set sign bit and cast-away to the final result
@@ -1016,13 +1004,8 @@ Value *GenXEmulate::Emu64Expander::visitGenxAbsi(CallInst &CI) {
   auto *VOprnd = toVector(Builder, CI.getOperand(0)).V;
   // This would be a 64-bit operation on a vector types
   auto *NegatedOpnd = Builder.CreateNeg(VOprnd);
-  // this could be a constexpr - in this case, no emulation necessary
-  if (auto *NegOp64 = dyn_cast<Instruction>(NegatedOpnd)) {
-    Value *NewInst = Emu64Expander(ST, *NegOp64).tryExpand();
-    IGC_ASSERT(NewInst);
-    NegOp64->eraseFromParent();
-    NegatedOpnd = NewInst;
-  }
+  NegatedOpnd = ensureEmulated(NegatedOpnd);
+
   auto NegSplit = SplitBuilder.splitValueLoHi(*NegatedOpnd);
 
   auto *FlagSignSet = Builder.CreateICmpSLT(Src.Hi, K.getZero());
