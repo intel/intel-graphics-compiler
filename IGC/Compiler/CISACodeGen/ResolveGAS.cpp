@@ -971,6 +971,11 @@ namespace IGC
 
 void LowerGPCallArg::checkLocalToGenericCast(llvm::Module& M)
 {
+    if (IGC_IS_FLAG_DISABLED(DetectLocalToGenericCast))
+    {
+        return;
+    }
+
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* func = &(*I);
@@ -1002,8 +1007,7 @@ void LowerGPCallArg::checkLocalToGenericCast(llvm::Module& M)
         }
     }
 
-    // ToDo: enable in separate check-in
-    //ctx->getModuleMetaData()->hasNoLocalToGenericCast = true;
+    ctx->getModuleMetaData()->hasNoLocalToGenericCast = true;
 }
 
 
