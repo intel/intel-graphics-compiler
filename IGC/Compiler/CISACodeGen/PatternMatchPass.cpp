@@ -2306,12 +2306,14 @@ namespace IGC
 
         if (storeInst)
         {
+            llvm::VectorType* vectorToStore = dyn_cast<llvm::VectorType>(storeInst->getValueOperand()->getType());
+
             // If stored value is a vector of pointers, the size must be calculated manually,
             // because getPrimitiveSizeInBits returns 0 for pointers.
             if ((storeInst->getValueOperand()->getType()->getPrimitiveSizeInBits() > 128) ||
-                    (storeInst->getValueOperand()->getType()->isVectorTy() &&
-                    (cast<llvm::VectorType>(storeInst->getValueOperand()->getType())->getElementType()->isPointerTy()) &&
-                    ((cast<llvm::VectorType>(storeInst->getValueOperand()->getType())->getNumElements() * m_ctx->getRegisterPointerSizeInBits(ptrVal.getType()->getPointerAddressSpace())) > 128)))
+                    (vectorToStore &&
+                    (vectorToStore->getElementType()->isPointerTy()) &&
+                    ((vectorToStore->getNumElements() * m_ctx->getModule()->getDataLayout().getPointerSizeInBits(cast<llvm::PointerType>(vectorToStore->getElementType())->getAddressSpace())) > 128)))
             {
                 return false;
             }
