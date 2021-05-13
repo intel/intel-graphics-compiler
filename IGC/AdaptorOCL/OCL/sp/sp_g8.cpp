@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "../../../visa/include/visaBuilder_interface.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include "Probe/Assertion.h"
 
@@ -293,6 +294,32 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
     }
 }
 
+static bool CreateSymbolTable(void* buffer, uint32_t size, uint32_t entries, Util::BinaryStream& membuf,
+                              std::string &debugOut)
+{
+    IGC_ASSERT_MESSAGE(buffer && size != 0 && entries != 0, "wrong arguments");
+    iOpenCL::SPatchFunctionTableInfo patch;
+    memset(&patch, 0, sizeof(patch));
+
+    patch.Token = PATCH_TOKEN_PROGRAM_SYMBOL_TABLE;
+
+    patch.Size = sizeof(patch) + size;
+    patch.NumEntries = entries;
+
+    std::streamsize tokenStart = membuf.Size();
+    if (!membuf.Write(patch))
+        return false;
+    if (!membuf.Write((const char*)buffer, size))
+        return false;
+    free(buffer);
+
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
+    DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, debugOut);
+#endif
+    (void)debugOut;
+    return true;
+}
+
 void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& annotations,
                                                               Util::BinaryStream& membuf)
 {
@@ -401,6 +428,11 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
             patch,
             membuf );
     }
+
+    auto &SymbolTable = annotations.m_legacySymbolTable;
+    if (SymbolTable.m_size != 0)
+        CreateSymbolTable(SymbolTable.m_buffer, SymbolTable.m_size, SymbolTable.m_entries,
+                          membuf, m_oclStateDebugMessagePrintOut);
 }
 
 void CGen8OpenCLStateProcessor::CreateKernelDebugData(
@@ -2062,10 +2094,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for symbol table
     if (retValue.Success)
     {
-        iOpenCL::SPatchFunctionTableInfo patch;
-        memset(&patch, 0, sizeof(patch));
-
-        patch.Token = PATCH_TOKEN_PROGRAM_SYMBOL_TABLE;
         uint32_t size = 0;
         uint32_t entries = 0;
         void* buffer = nullptr;
@@ -2097,25 +2125,12 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         if (size > 0)
         {
-            patch.Size = sizeof(patch) + size;
-            patch.NumEntries = entries;
-
-            std::streamsize tokenStart = membuf.Size();
-            if (!membuf.Write(patch))
+            bool isOK = CreateSymbolTable(buffer, size, entries, membuf, m_oclStateDebugMessagePrintOut);
+            if (!isOK)
             {
                 retValue.Success = false;
                 return retValue;
             }
-            if (!membuf.Write((const char*)buffer, size))
-            {
-                retValue.Success = false;
-                return retValue;
-            }
-            free(buffer);
-
-#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
-            DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
-#endif
         }
     }
 

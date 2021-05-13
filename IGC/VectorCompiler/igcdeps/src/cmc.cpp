@@ -460,8 +460,6 @@ static void setSymbolsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     KernelProgram.m_funcSymbolTableEntries = Info.getSymbolTable().Entries;
     // EnableZEBinary: ZEBinary related code
     KernelProgram.m_symbols.function = Info.ZEBinInfo.Symbols.Functions;
-    KernelProgram.m_symbols.global = Info.ZEBinInfo.Symbols.Globals;
-    KernelProgram.m_symbols.globalConst = Info.ZEBinInfo.Symbols.Constants;
   }
   // EnableZEBinary: ZEBinary related code
   KernelProgram.m_symbols.local = Info.ZEBinInfo.Symbols.Local;
@@ -764,6 +762,15 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
       getDataAnnotation<iOpenCL::InitGlobalAnnotation>(ModuleInfo.GlobalData);
   if (GlobalAnnotation)
     ProgramInfo.m_initGlobalAnnotation.push_back(std::move(GlobalAnnotation));
+
+  // Symbols.
+  if (ModuleInfo.SymbolTable.Size != 0) {
+    ProgramInfo.m_legacySymbolTable.m_buffer = ModuleInfo.SymbolTable.Buffer;
+    ProgramInfo.m_legacySymbolTable.m_size = ModuleInfo.SymbolTable.Size;
+    ProgramInfo.m_legacySymbolTable.m_entries = ModuleInfo.SymbolTable.Entries;
+  }
+  ProgramInfo.m_zebinSymbolTable.global = ModuleInfo.ZEBinInfo.Symbols.Globals;
+  ProgramInfo.m_zebinSymbolTable.globalConst = ModuleInfo.ZEBinInfo.Symbols.Constants;
 };
 
 void vc::createBinary(

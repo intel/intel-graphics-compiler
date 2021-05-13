@@ -125,24 +125,30 @@ public:
 
   // This data partially duplicates KernelInfo data.
   // It exists due to OCLBinary to ZEBinary transition period.
-  struct ZEBinaryInfo {
+  struct ZEBinKernelInfo {
     struct SymbolsInfo {
       using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
       ZESymEntrySeq Functions;
-      ZESymEntrySeq Globals;
-      ZESymEntrySeq Constants;
       ZESymEntrySeq Local;
-      // for now only function and local symbols are used
     };
     using ZERelocEntrySeq = std::vector<vISA::ZERelocEntry>;
     ZERelocEntrySeq Relocations;
     SymbolsInfo Symbols;
   };
 
+  struct ZEBinModuleInfo {
+    struct SymbolsInfo {
+      using ZESymEntrySeq = std::vector<vISA::ZESymEntry>;
+      ZESymEntrySeq Globals;
+      ZESymEntrySeq Constants;
+    };
+    SymbolsInfo Symbols;
+  };
+
   // Additional kernel info that are not provided by finalizer
   // but still required for runtime.
   struct KernelInfo {
-    ZEBinaryInfo ZEBinInfo;
+    ZEBinKernelInfo ZEBinInfo;
 
   private:
     std::string Name;
@@ -279,10 +285,15 @@ public:
   struct ModuleInfoT {
     DataInfoT ConstantData;
     DataInfoT GlobalData;
+    ZEBinModuleInfo ZEBinInfo;
+    // This table must contain only global and constant symbols.
+    TableInfo SymbolTable;
 
     void clear() {
       ConstantData.clear();
       GlobalData.clear();
+      ZEBinInfo.Symbols.Constants.clear();
+      ZEBinInfo.Symbols.Globals.clear();
     }
   };
 

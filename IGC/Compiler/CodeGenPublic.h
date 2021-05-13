@@ -677,6 +677,18 @@ namespace IGC
             std::vector<vISA::ZERelocEntry> globalReloc;
             std::vector<vISA::ZERelocEntry> globalConstReloc;
         };
+        struct ZEBinSymbolTable
+        {
+            using SymbolSeq = std::vector<vISA::ZESymEntry>;
+            SymbolSeq global;            // global symbols
+            SymbolSeq globalConst;       // global constant symbols
+        };
+        struct LegacySymbolTable
+        {
+            void* m_buffer = nullptr;
+            unsigned int m_size = 0;
+            unsigned int m_entries = 0;
+        };
 
         std::vector<std::unique_ptr<iOpenCL::InitConstantAnnotation> > m_initConstantAnnotation;
         std::vector<std::unique_ptr<iOpenCL::InitGlobalAnnotation> > m_initGlobalAnnotation;
@@ -685,6 +697,8 @@ namespace IGC
         std::vector<std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> > m_initKernelTypeAnnotation;
 
         ZEBinRelocTable m_GlobalPointerAddressRelocAnnotation;
+        ZEBinSymbolTable m_zebinSymbolTable;
+        LegacySymbolTable m_legacySymbolTable;
     };
 
     class CBTILayout
