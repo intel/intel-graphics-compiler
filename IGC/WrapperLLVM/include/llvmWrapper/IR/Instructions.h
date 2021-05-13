@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Casting.h"
 #endif
 
+#include "Probe/Assertion.h"
+
 namespace IGCLLVM
 {
 
@@ -78,6 +80,14 @@ namespace IGCLLVM
 #endif
     }
 
+    inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
+#if LLVM_VERSION_MAJOR < 10
+      IGC_ASSERT_MESSAGE(CI.isArgOperand(U), "Arg operand # out of range!");
+      return (unsigned)(U - CI.arg_begin());
+#else
+      return CI.getArgOperandNo(U);
+#endif
+    }
 
     inline llvm::Constant* getShuffleMaskForBitcode(llvm::ShuffleVectorInst* SVI)
     {
