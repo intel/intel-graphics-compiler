@@ -772,6 +772,7 @@ CVariable* CShader::GetPrivateBase()
     ImplicitArgs implicitArgs(*entry, m_pMdUtils);
     unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numImplicitArgs = implicitArgs.size();
+    IGC_ASSERT_MESSAGE(entry->arg_size() >= (numImplicitArgs + numPushArgs), "Function arg size does not match meta data and push args.");
     unsigned numFuncArgs = entry->arg_size() - numImplicitArgs - numPushArgs;
 
     Argument* kerArg = nullptr;
@@ -2205,6 +2206,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(
         unsigned numImplicitArgs = implicitArgs.size();
         unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
         unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) && !isNonEntryMultirateShader(F) ? numPushArgsEntry : 0);
+        IGC_ASSERT_MESSAGE(F->arg_size() >= (numImplicitArgs + numPushArgs), "Function arg size does not match meta data and push args.");
         unsigned numFuncArgs = F->arg_size() - numImplicitArgs - numPushArgs;
 
         llvm::Function::arg_iterator arg = F->arg_begin();

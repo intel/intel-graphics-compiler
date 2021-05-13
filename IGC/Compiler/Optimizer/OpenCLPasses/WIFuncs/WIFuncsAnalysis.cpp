@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -101,11 +102,14 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     }
     else
     {
+        // Skip functions called from function marked with IndirectlyCalled attribute
+        // and functions that are doing stack call.
         if (F.hasFnAttribute("referenced-indirectly") ||
+            AddImplicitArgs::hasIndirectlyCalledParent(&F) ||
             (F.hasFnAttribute("visaStackCall") &&
-            (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL ||
-            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL) &&
-            IGC_GET_FLAG_VALUE(ForceInlineStackCallWithImplArg) == 0))
+             (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL ||
+              IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL) &&
+             IGC_GET_FLAG_VALUE(ForceInlineStackCallWithImplArg) == 0))
         {
             return false;
         }

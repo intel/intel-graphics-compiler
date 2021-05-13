@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
@@ -162,6 +163,9 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             // Don't have implicit arg if doing relocation
             if (userFunc->hasFnAttribute("visaStackCall"))
                 continue;
+            // Skip functions called from function marked with IndirectlyCalled attribute
+            if (AddImplicitArgs::hasIndirectlyCalledParent(userFunc))
+                continue;
 
             // Skip unused internal functions.
             if (mdUtils->findFunctionsInfoItem(userFunc) == mdUtils->end_FunctionsInfo())
@@ -173,6 +177,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             ImplicitArgs implicitArgs(*userFunc, mdUtils);
 
             // Find the implicit argument representing this constant.
+            IGC_ASSERT_MESSAGE(userFunc->arg_size() >= implicitArgs.size(), "Function arg size does not match meta data args.");
             unsigned int ImplicitArgsBaseIndex = userFunc->arg_size() - implicitArgs.size();
             unsigned int implicitArgIndex = implicitArgs.getArgIndex(argType);
             unsigned int implicitArgIndexInFunc = ImplicitArgsBaseIndex + implicitArgIndex;

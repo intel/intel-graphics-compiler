@@ -1046,12 +1046,13 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     ImplicitArgs implicitArgs(F, pMdUtils);
     const unsigned int numImplicitArgs = implicitArgs.size();
     const unsigned int numRuntimeValue = moduleMD ? moduleMD->pushInfo.constantReg.size() : 0;
+    IGC_ASSERT_MESSAGE(F.arg_size() >= (numImplicitArgs + numRuntimeValue), "Function arg size does not match meta data args.");
     const unsigned int numExplicitArgs = F.arg_size() - numImplicitArgs - numRuntimeValue;
     llvm::Function::const_arg_iterator funcArg = F.arg_begin();
 
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&F));
     // Explicit function args
-    for (int i = 0, e = numExplicitArgs; i < e; ++i, ++funcArg)
+    for (unsigned int i = 0, e = numExplicitArgs; i < e; ++i, ++funcArg)
     {
         bool needAllocation = false;
         if (moduleMD && moduleMD->UseBindlessImage)

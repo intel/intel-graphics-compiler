@@ -603,7 +603,7 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
         return nullptr;
     unsigned int numImplicitArgs = this->size();
     unsigned int implicitArgIndex = this->getArgIndex(argType);
-
+    IGC_ASSERT_MESSAGE(F.arg_size() >= numImplicitArgs, "Function arg size does not match meta data args.");
     unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
     return F.arg_begin() + implicitArgIndexInFunc;
@@ -617,7 +617,7 @@ Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::A
     unsigned int implicitArgIndex = this->getNumberedArgIndex(argType, argNum);
     if (implicitArgIndex == numImplicitArgs)
       return nullptr;
-
+    IGC_ASSERT_MESSAGE(F.arg_size() >= numImplicitArgs, "Function arg size does not match meta data args.");
     unsigned int implicitArgIndexInFunc = F.arg_size() - numImplicitArgs + implicitArgIndex;
 
     return F.arg_begin() + implicitArgIndexInFunc;

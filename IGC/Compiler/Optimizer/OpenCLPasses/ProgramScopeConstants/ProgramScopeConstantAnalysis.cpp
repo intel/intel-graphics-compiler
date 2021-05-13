@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -239,6 +240,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 if (pFunc.isDeclaration()) continue;
                 // Don't add implicit arg if doing relocation
                 if (pFunc.hasFnAttribute("visaStackCall")) continue;
+                // Skip functions called from function marked with IndirectlyCalled attribute
+                if (AddImplicitArgs::hasIndirectlyCalledParent(&pFunc)) continue;
 
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
@@ -253,6 +256,8 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 if (pFunc.isDeclaration()) continue;
                 // Don't add implicit arg if doing relocation
                 if (pFunc.hasFnAttribute("visaStackCall")) continue;
+                // Skip functions called from function marked with IndirectlyCalled attribute
+                if (AddImplicitArgs::hasIndirectlyCalledParent(&pFunc)) continue;
 
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);

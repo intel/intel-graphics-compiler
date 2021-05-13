@@ -321,6 +321,7 @@ Argument* ImageFuncResolution::getImplicitImageArg(CallInst& CI, ImplicitArg::Ar
     unsigned int implicitArgIndex = m_implicitArgs.getImageArgIndex(argType, image);
 
     Function* pFunc = CI.getParent()->getParent();
+    IGC_ASSERT_MESSAGE(pFunc->arg_size() >= numImplicitArgs, "Function arg size does not match meta data args.");
     unsigned int implicitArgIndexInFunc = pFunc->arg_size() - numImplicitArgs + implicitArgIndex;
 
     Function::arg_iterator arg = pFunc->arg_begin();

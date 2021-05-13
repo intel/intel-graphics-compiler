@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 
@@ -45,12 +46,16 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* pFunc = &(*I);
+        // Don't have implicit arg if doing relocation
         if (pFunc->hasFnAttribute("visaStackCall"))
         {
             hasStackCall = true;
             continue;
         }
         if (pFunc->isDeclaration())
+            continue;
+        // Skip functions called from function marked with IndirectlyCalled attribute
+        if (AddImplicitArgs::hasIndirectlyCalledParent(pFunc))
             continue;
         if (m_pMDUtils->findFunctionsInfoItem(pFunc) == m_pMDUtils->end_FunctionsInfo())
             continue;
