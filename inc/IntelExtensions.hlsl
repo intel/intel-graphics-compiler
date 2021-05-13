@@ -63,7 +63,16 @@ struct IntelExtensionStruct
 
 // Define RW buffer for Intel extensions.
 // Application should bind null resource, operations will be ignored.
+// If application needs to use slot other than u63, it needs to
+// define INTEL_SHADER_EXT_UAV_SLOT as a unused slot. This should be
+// defined before including this file in shader as:
+// #define INTEL_SHADER_EXT_UAV_SLOT u8
+
+#ifdef INTEL_SHADER_EXT_UAV_SLOT
+RWStructuredBuffer<IntelExtensionStruct> g_IntelExt : register( INTEL_SHADER_EXT_UAV_SLOT );
+#else
 RWStructuredBuffer<IntelExtensionStruct> g_IntelExt : register( u63 );
+#endif
 
 
 //
