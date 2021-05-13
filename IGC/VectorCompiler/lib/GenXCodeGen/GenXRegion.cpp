@@ -938,19 +938,11 @@ static Value *simplifyRegionRead(Instruction *Inst) {
             Splat);
       return Splat;
     }
-  } else if (GenXIntrinsic::isWrRegion(Input)) {
+  } else if (GenXIntrinsic::isWrRegion(Input) && Input->hasOneUse()) {
     // W = wrr(A, B, R)
     // C = rdr(W, R)
     // =>
     // replace C by B
-    //
-    // OR
-    //
-    // W = wrr(A, B, R1)
-    // C = rdr(W, R2)
-    // if R1 does not overlap R2 =>
-    // replace use of W by A
-
     Instruction *WI = cast<Instruction>(Input);
     Region R1(WI, BaleInfo());
     Region R2(Inst, BaleInfo());
@@ -958,10 +950,6 @@ static Value *simplifyRegionRead(Instruction *Inst) {
       Value *B = WI->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
       if (B->getType() == Inst->getType())
         return B;
-    } else if(!R1.overlap(R2)) {
-       Value *A = WI->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-       if(A->getType() == WI->getType())
-          Inst->setOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum, A);
     }
   }
   return nullptr;
