@@ -245,7 +245,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   }
   else if (PHINode* phi = dyn_cast<PHINode>(val))
   {
-      IRBuilder<> builder(&(*ip->getParent()->getFirstInsertionPt()));
+      IRBuilder<> builder(phi);
       PHINode* newPhi = builder.CreatePHI(ip->getType(), phi->getNumIncomingValues());
       for (unsigned i = 0; i < phi->getNumIncomingValues(); i++)
       {
