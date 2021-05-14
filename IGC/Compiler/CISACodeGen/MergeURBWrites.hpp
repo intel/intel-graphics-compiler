@@ -5,20 +5,16 @@ Copyright (C) 2017-2021 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+#pragma once
 
-#ifndef _MERGEURBWRITES_H_
-#define _MERGEURBWRITES_H_
-
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/Pass.h>
-#include "common/LLVMWarningsPop.hpp"
+namespace llvm
+{
+    class PassRegistry;
+    class FunctionPass;
+}
 
 namespace IGC
 {
-
-    class CShader;
+    void initializeMergeURBWritesPass(llvm::PassRegistry&);
     llvm::FunctionPass* createMergeURBWritesPass();
-
 }
-
-#endif // _MERGEURBWRITES_H_

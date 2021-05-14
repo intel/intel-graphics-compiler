@@ -18,89 +18,89 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
+#include "IGCPassSupport.h"
 
-namespace
+namespace IGC
 {
-    using namespace llvm;
-    using namespace IGC;
+using namespace llvm;
 
-    /// Used to store information about instructions and their positions in the current BB.
-    class InstWithIndex
+/// Used to store information about instructions and their positions in the current BB.
+class InstWithIndex
+{
+public:
+    // Initialize pointer to null and place to -1 to recognize "empty" entries
+    InstWithIndex() : m_inst(nullptr), m_place(-1)
     {
-    public:
-        // Initialize pointer to null and place to -1 to recognize "empty" entries
-        InstWithIndex() : m_inst(nullptr), m_place(-1)
-        {
-        }
-
-        InstWithIndex(CallInst* inst, int place) :
-            m_inst(inst),
-            m_place(place)
-        {
-        }
-
-        int GetPlace() const { return m_place; }
-        CallInst* GetInst() const { return m_inst; }
-
-    private:
-        CallInst* m_inst;
-        int m_place;
-    };
-
-    class MergeURBWrites : public FunctionPass
-    {
-    public:
-        MergeURBWrites() :
-            FunctionPass(ID)
-        { }
-
-        virtual bool runOnFunction(Function& F);
-
-        virtual void getAnalysisUsage(AnalysisUsage& AU) const
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<CodeGenContextWrapper>();
-        }
-
-        virtual llvm::StringRef getPassName() const { return "MergeURBWrites"; }
-
-    private:
-        /// Stores all URB write instructions in a vector.
-        /// Also merges partial (channel granularity) writes to the same offset.
-        void FillWriteList(BasicBlock& BB);
-
-        // Tries to merge two writes to adjacent offsets into a single instruction.
-        // Does this by going through write list containing stored write instructions
-        // in order of offsets and merging adjacent writes.
-        void MergeInstructions();
-
-        // Returns the dynamic URB base offset and an immediate const offset
-        // from the dynamic base. The function calculates the result by walking
-        // the use-def chain of pUrbOffset.
-        // If pUrbOffset is an immediate constant (==offset) then
-        // <nullptr, offset> is returned.
-        // In all other cases <pUrbOffset, 0> is returned.
-        std::pair<Value*, unsigned int> GetBaseAndOffset(Value* pUrbOffset);
-
-        // represents the map (urb index) --> (instruction, instruction index in BB)
-        // The key consists of a dynamic URB base offset (key.first) and
-        // an immediate offset from this dynamic base
-        // Dynamic URB base offset is null if URB offset is constant.
-        std::map<std::pair<Value*, unsigned int>, InstWithIndex> m_writeList;
-
-        bool m_bbModified;
-        static char ID;
-    };
-
-    char MergeURBWrites::ID = 0;
-
-    unsigned int GetChannelMask(CallInst* inst)
-    {
-        return int_cast<unsigned int>(cast<ConstantInt>(inst->getOperand(1))->getZExtValue());
     }
 
-} // end of unnamed namespace to contain class definition and auxiliary functions
+    InstWithIndex(CallInst* inst, int place) :
+        m_inst(inst),
+        m_place(place)
+    {
+    }
 
+    int GetPlace() const { return m_place; }
+    CallInst* GetInst() const { return m_inst; }
+
+private:
+    CallInst* m_inst;
+    int m_place;
+};
+
+class MergeURBWrites : public FunctionPass
+{
+public:
+    static char ID;
+
+    MergeURBWrites() :
+        FunctionPass(ID)
+    {
+        initializeMergeURBWritesPass(*PassRegistry::getPassRegistry());
+    }
+
+    virtual bool runOnFunction(Function& F);
+
+    virtual void getAnalysisUsage(AnalysisUsage& AU) const
+    {
+        AU.setPreservesCFG();
+        AU.addRequired<CodeGenContextWrapper>();
+    }
+
+    virtual llvm::StringRef getPassName() const { return "MergeURBWrites"; }
+
+private:
+    /// Stores all URB write instructions in a vector.
+    /// Also merges partial (channel granularity) writes to the same offset.
+    void FillWriteList(BasicBlock& BB);
+
+    // Tries to merge two writes to adjacent offsets into a single instruction.
+    // Does this by going through write list containing stored write instructions
+    // in order of offsets and merging adjacent writes.
+    void MergeInstructions();
+
+    // Returns the dynamic URB base offset and an immediate const offset
+    // from the dynamic base. The function calculates the result by walking
+    // the use-def chain of pUrbOffset.
+    // If pUrbOffset is an immediate constant (==offset) then
+    // <nullptr, offset> is returned.
+    // In all other cases <pUrbOffset, 0> is returned.
+    std::pair<Value*, unsigned int> GetBaseAndOffset(Value* pUrbOffset);
+
+    // represents the map (urb index) --> (instruction, instruction index in BB)
+    // The key consists of a dynamic URB base offset (key.first) and
+    // an immediate offset from this dynamic base
+    // Dynamic URB base offset is null if URB offset is constant.
+    std::map<std::pair<Value*, unsigned int>, InstWithIndex> m_writeList;
+
+    bool m_bbModified;
+};
+
+char MergeURBWrites::ID = 0;
+
+static unsigned int GetChannelMask(CallInst* inst)
+{
+    return int_cast<unsigned int>(cast<ConstantInt>(inst->getOperand(1))->getZExtValue());
+}
 
 /// This optimization merges shorter writes to URB to get a smaller number of longer writes
 /// which is more efficient.
@@ -447,7 +447,16 @@ std::pair<Value*, unsigned int> MergeURBWrites::GetBaseAndOffset(Value* pUrbOffs
     return std::make_pair(pBase, offset);
 }
 
-llvm::FunctionPass* IGC::createMergeURBWritesPass()
+#define PASS_FLAG "igc-merge-urb-writes"
+#define PASS_DESCRIPTION "merges urb writes"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(MergeURBWrites, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(MergeURBWrites, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+llvm::FunctionPass* createMergeURBWritesPass()
 {
     return new MergeURBWrites();
 }
+
+} // namespace IGC
