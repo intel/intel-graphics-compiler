@@ -484,9 +484,8 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
 
 template <typename ID, ID... UnknownIDs>
 static Expected<opt::InputArgList>
-parseOptions(const SmallVectorImpl<const char *> &Argv,
-             IGC::options::Flags FlagsToInclude, const opt::OptTable &Options,
-             bool IsStrictMode) {
+parseOptions(const SmallVectorImpl<const char *> &Argv, unsigned FlagsToInclude,
+             const opt::OptTable &Options, bool IsStrictMode) {
   const bool IsInternal = FlagsToInclude == IGC::options::VCInternalOption;
 
   unsigned MissingArgIndex = 0;
@@ -526,9 +525,12 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
   };
   const std::string VCCodeGenOptName =
       Options.getOption(OPT_vc_codegen).getPrefixedName();
-  if (HasOption(VCCodeGenOptName))
-    return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(
-        Argv, IGC::options::VCApiOption, Options, IsStrictMode);
+  if (HasOption(VCCodeGenOptName)) {
+    const unsigned FlagsToInclude =
+        IGC::options::VCApiOption | IGC::options::IGCApiOption;
+    return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude,
+                                                    Options, IsStrictMode);
+  }
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
       Options.getOption(OPT_igcmc).getPrefixedName();
@@ -537,8 +539,10 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
         << "'" << IgcmcOptName
         << "' option is deprecated and will be removed in the future release. "
            "Use -vc-codegen instead for compiling from SPIRV.\n";
-    return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(
-        Argv, IGC::options::IgcmcApiOption, Options, IsStrictMode);
+    const unsigned FlagsToInclude =
+        IGC::options::IgcmcApiOption | IGC::options::IGCApiOption;
+    return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude,
+                                                    Options, IsStrictMode);
   }
 
   return make_error<vc::NotVCError>();
@@ -721,6 +725,43 @@ fillOptions(const opt::ArgList &ApiOptions,
   return {std::move(Opts)};
 }
 
+// Filter input argument list to derive options that will contribute
+// to subsequent translation.
+// InputArgs -- argument list to filter, should outlive resulting
+// derived option list.
+// IncludeFlag -- options with that flag will be included in result.
+static opt::DerivedArgList filterUsedOptions(opt::InputArgList &InputArgs,
+                                             IGC::options::Flags IncludeFlag) {
+  opt::DerivedArgList FilteredArgs(InputArgs);
+
+  // InputArg is not a constant. This is required to pass it to append
+  // function of derived argument list. Derived argument list will not
+  // own added argument so it will not try to free this memory.
+  // Additionally note that InputArgs are used in derived arg list as
+  // a constant so added arguments should not be modified through
+  // derived list to avoid unexpected results.
+  for (opt::Arg *InputArg : InputArgs) {
+    const opt::Arg *Arg = InputArg;
+    // Get alias as unaliased form can belong to used flags
+    // (see cl intel gtpin options).
+    if (const opt::Arg *AliasArg = InputArg->getAlias())
+      Arg = AliasArg;
+    // Ignore options without required flag.
+    if (!Arg->getOption().hasFlag(IncludeFlag))
+      continue;
+    FilteredArgs.append(InputArg);
+  }
+
+  return FilteredArgs;
+}
+
+opt::DerivedArgList filterApiOptions(opt::InputArgList &InputArgs) {
+  if (InputArgs.hasArg(IGC::options::api::OPT_igcmc))
+    return filterUsedOptions(InputArgs, IGC::options::IgcmcApiOption);
+
+  return filterUsedOptions(InputArgs, IGC::options::VCApiOption);
+}
+
 llvm::Expected<vc::CompileOptions>
 vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions,
                  bool IsStrictMode) {
@@ -729,12 +770,13 @@ vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions,
   auto ExpApiArgList = parseApiOptions(Saver, ApiOptions, IsStrictMode);
   if (!ExpApiArgList)
     return ExpApiArgList.takeError();
-  const opt::InputArgList &ApiArgs = ExpApiArgList.get();
+  opt::InputArgList &ApiArgs = ExpApiArgList.get();
+  const opt::DerivedArgList VCApiArgs = filterApiOptions(ApiArgs);
 
   auto ExpInternalArgList = parseInternalOptions(Saver, InternalOptions);
   if (!ExpInternalArgList)
     return ExpInternalArgList.takeError();
   const opt::InputArgList &InternalArgs = ExpInternalArgList.get();
 
-  return fillOptions(ApiArgs, InternalArgs);
+  return fillOptions(VCApiArgs, InternalArgs);
 }
