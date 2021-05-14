@@ -474,7 +474,7 @@ DECLARE_IGC_GROUP("OGL Frontend")
 
 DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCOptimizeNone, false, "Same as -optimize=none in vector compiler options", true)
-    DECLARE_IGC_REGKEY(bool, VCStrictOptionParser, false, "Produce error on unknown API options in vector compiler", true)
+    DECLARE_IGC_REGKEY(bool, VCStrictOptionParser, true, "Produce error on unknown API options in vector compiler", true)
     DECLARE_IGC_REGKEY(debugString, VCApiOptions, 0, "Extra API options for VC", true)
     DECLARE_IGC_REGKEY(debugString, VCInternalOptions, 0, "Extra Internal options to pass to VC", true)
     DECLARE_IGC_REGKEY(bool, VCLocalizeAccUsage, false, "Localization of possible accumulator usages for vISA RA", true)
