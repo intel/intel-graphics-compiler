@@ -88,10 +88,6 @@ namespace IGC
 
         const llvm::DataLayout* m_DL;
         ModuleMetaData* m_pModuleMd;
-
-        // Used to patch offsets for zero initialized globals
-        typedef std::tuple<char*, unsigned, llvm::GlobalVariable*, uint64_t> ZeroInitPatchInfo;
-        std::vector<ZeroInitPatchInfo> m_PatchLaterDataVector;
     };
 
 } // namespace IGC
