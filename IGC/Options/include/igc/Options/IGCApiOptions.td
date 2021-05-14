@@ -94,7 +94,7 @@ def oclfe_gline_tables_only : PlainFlag<"gline-tables-only">;
 
 def oclfe_triple : PlainSeparate<"triple">;
 
-def oclfe_dwarf_column_info : PlainSeparate<"dwarf-column-info">;
+def oclfe_dwarf_column_info : PlainFlag<"dwarf-column-info">;
 
 def no_prera_scheduling : ClFlag<"intel-no-prera-scheduling">;
 
