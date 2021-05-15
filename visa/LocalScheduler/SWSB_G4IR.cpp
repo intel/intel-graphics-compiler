@@ -267,13 +267,10 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
             if (opnd_num == Opnd_dst)
             {
                 int dstSize = inst->getMsgDesc()->getDstLenRegs();
-                if (inst->getMsgDescRaw() == nullptr ||
-                    !inst->getMsgDescRaw()->isOwordLoad())
+
+                if ((LB / numEltPerGRF<Type_UB>()) < (unsigned short)(totalGRFNum - 1))
                 {
-                    if ((LB / numEltPerGRF<Type_UB>()) < (unsigned short)(totalGRFNum - 1))
-                    {
-                        RB = LB + numEltPerGRF<Type_UB>() * dstSize - 1;
-                    }
+                    RB = LB + numEltPerGRF<Type_UB>() * dstSize - 1;
                 }
             }
 
