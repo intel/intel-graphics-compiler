@@ -536,6 +536,11 @@ namespace IGC
         return m_InternalOptions.IntelForceGlobalMemoryAllocation;
     }
 
+    bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
+    {
+        return forceGlobalMemoryAllocation() || (m_instrTypes.hasDynamicGenericLoadStore && platform.canForcePrivateToGlobal());
+    }
+
     bool OpenCLProgramContext::hasNoLocalToGenericCast() const
     {
         return m_InternalOptions.hasNoLocalToGeneric || getModuleMetaData()->hasNoLocalToGenericCast;
@@ -899,6 +904,11 @@ namespace IGC
     }
 
     bool CodeGenContext::forceGlobalMemoryAllocation() const
+    {
+        return false;
+    }
+
+    bool CodeGenContext::allocatePrivateAsGlobalBuffer() const
     {
         return false;
     }

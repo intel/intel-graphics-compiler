@@ -9364,7 +9364,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
 
-    if (m_pCtx->forceGlobalMemoryAllocation() && m_pCtx->hasNoLocalToGenericCast())
+    if (m_pCtx->allocatePrivateAsGlobalBuffer() && m_pCtx->hasNoLocalToGenericCast())
     {
         // If forcing global memory allocacion and there are no generic pointers to local AS,
         // there is no need to tag generic pointers.
@@ -9397,8 +9397,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
             return;
         }
 
-
-        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE)
+        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE && !m_pCtx->allocatePrivateAsGlobalBuffer())
         {
             emitAddrSpaceToGenericCast(addrSpaceCast, srcV, 1);
         }

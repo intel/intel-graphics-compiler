@@ -1018,6 +1018,7 @@ namespace IGC
         virtual uint32_t getNumThreadsPerEU() const;
         virtual uint32_t getNumGRFPerThread() const;
         virtual bool forceGlobalMemoryAllocation() const;
+        virtual bool allocatePrivateAsGlobalBuffer() const;
         virtual bool hasNoLocalToGenericCast() const;
         virtual int16_t getVectorCoalescingControl() const;
         bool isPOSH() const;
@@ -1535,6 +1536,7 @@ namespace IGC
         uint32_t getNumGRFPerThread() const override;
         uint32_t getNumThreadsPerEU() const override;
         bool forceGlobalMemoryAllocation() const override;
+        bool allocatePrivateAsGlobalBuffer() const override;
         bool hasNoLocalToGenericCast() const override;
         int16_t getVectorCoalescingControl() const override;
     private:
