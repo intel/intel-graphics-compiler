@@ -254,6 +254,10 @@ private:
   bool lowerMul64(Instruction *Inst);
   bool lowerLzd(Instruction *Inst);
   bool lowerTrap(CallInst *CI);
+  bool lowerLLVMMaskedLoad(CallInst *CI);
+  bool lowerLLVMMaskedStore(CallInst* CI);
+  bool lowerLLVMMaskedGather(CallInst *CI);
+  bool lowerLLVMMaskedScatter(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -1415,6 +1419,14 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerGenXMulSat(CI, IntrinsicID);
     case GenXIntrinsic::genx_lzd:
       return lowerLzd(Inst);
+    case Intrinsic::masked_load:
+      return lowerLLVMMaskedLoad(CI);
+    case Intrinsic::masked_store:
+      return lowerLLVMMaskedStore(CI);
+    case Intrinsic::masked_gather:
+      return lowerLLVMMaskedGather(CI);
+    case Intrinsic::masked_scatter:
+      return lowerLLVMMaskedScatter(CI);
     case Intrinsic::trap:
       return lowerTrap(CI);
     case Intrinsic::ctpop:
@@ -2976,6 +2988,162 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
   ToErase.push_back(Inst);
   return true;
 }
+
+#define SYCL_SLM_AS  3
+bool GenXLowering::lowerLLVMMaskedLoad(CallInst* CallOp) {
+  auto PtrV = CallOp->getArgOperand(0);
+  assert(PtrV->getType()->isPointerTy());
+  auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
+  assert(AS != SYCL_SLM_AS && "do not expect masked load from SLM");
+  auto DTy = CallOp->getType();
+  // convert to unaligned-block-load then select
+  std::string IntrName =
+      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) +
+      "svm.block.ld.unaligned";
+  auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+  Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
+      CallOp->getModule(), ID, { DTy, PtrV->getType() });
+  auto VecDT = CallInst::Create(NewFDecl, { PtrV },
+      "svm.block.ld.unaligned", CallOp);
+  IRBuilder<> Builder(CallOp);
+  auto RepI = Builder.CreateSelect(CallOp->getArgOperand(2), VecDT,
+      CallOp->getArgOperand(3), CallOp->getName());
+  CallOp->replaceAllUsesWith(RepI);
+  ToErase.push_back(CallOp);
+  return true;
+}
+
+bool GenXLowering::lowerLLVMMaskedStore(CallInst* CallOp) {
+  auto PtrV = CallOp->getArgOperand(1);
+  assert(PtrV->getType()->isPointerTy());
+  auto AS = cast<PointerType>(PtrV->getType())->getAddressSpace();
+  assert(AS != SYCL_SLM_AS && "do not expected masked store to SLM");
+  auto DTV = CallOp->getArgOperand(0);
+  // convert to unaligned-block-load then select
+  // then block-store
+  std::string IntrName =
+      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) +
+      "svm.block.ld.unaligned";
+  auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+  Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
+      CallOp->getModule(), ID, { DTV->getType(), PtrV->getType() });
+  auto VecDT = CallInst::Create(NewFDecl, { PtrV },
+      "svm.block.ld.unaligned", CallOp);
+  IRBuilder<> Builder(CallOp);
+  auto SelI = Builder.CreateSelect(CallOp->getArgOperand(3), DTV, VecDT);
+
+  IntrName = std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) +
+       "svm.block.st";
+  ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+  NewFDecl = GenXIntrinsic::getGenXDeclaration(
+      CallOp->getModule(), ID, { PtrV->getType(), DTV->getType() });
+  CallInst::Create(
+      NewFDecl, { PtrV, SelI },
+      NewFDecl->getReturnType()->isVoidTy() ? "" : "svm.block.st",
+      CallOp);
+  ToErase.push_back(CallOp);
+  return true;
+}
+
+bool GenXLowering::lowerLLVMMaskedGather(CallInst* CallOp) {
+  auto PtrV = CallOp->getArgOperand(0);
+  auto MaskV = CallOp->getArgOperand(2);
+  auto OldV = CallOp->getArgOperand(3);
+  auto DTy = CallOp->getType();
+  assert(PtrV->getType()->isVectorTy() && DTy->isVectorTy());
+  auto PtrETy = cast<VectorType>(PtrV->getType())->getElementType();
+  assert(PtrETy->isPointerTy());
+  auto AS = cast<PointerType>(PtrETy)->getAddressSpace();
+  assert(AS != SYCL_SLM_AS && "do not expect masked gather from SLM");
+  auto EltTy = cast<VectorType>(DTy)->getElementType();
+  auto NumElts = cast<VectorType>(DTy)->getNumElements();
+  auto EltBytes = EltTy->getPrimitiveSizeInBits() / 8;
+  int EltsPerLane = 1;
+  // for short or byte type, load-data is 4 bytes per lane
+  if (EltBytes < 4) {
+    EltTy = Type::getInt8Ty(EltTy->getContext());
+    EltsPerLane = 4;
+  }
+  auto VDTy = IGCLLVM::FixedVectorType::get(EltTy, NumElts * EltsPerLane);
+  auto CIntTy = Type::getInt32Ty(EltTy->getContext());
+  int nb = (EltBytes == 2) ? 1 : 0; // 0/1/2/3 means 1/2/4/8 blks
+  auto NumBlksC = ConstantInt::get(CIntTy, nb);
+  Value* RepI = nullptr;
+  IRBuilder<> Builder(CallOp);
+  // need write-region for old-data in byte or short type
+  if (EltBytes < 4) {
+    if (isa<UndefValue>(OldV))
+      OldV = UndefValue::get(VDTy);
+    else {
+      // zext to i32 type
+      auto VInt32 = IGCLLVM::FixedVectorType::get(CIntTy, NumElts);
+      auto ExtI = Builder.CreateZExt(OldV, VInt32, OldV->getName());
+      // bitcast to 4xi8
+      OldV = Builder.CreateBitCast(ExtI, VDTy, ExtI->getName());
+    }
+  }
+  std::string IntrName =
+      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) + "svm.gather";
+  auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+  Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
+      CallOp->getModule(), ID, { VDTy, MaskV->getType(), PtrV->getType() });
+  RepI = CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, OldV },
+      CallOp->getName(), CallOp);
+  if (EltBytes < 4) {
+    // bitcast to i32 type
+    auto VInt32 = IGCLLVM::FixedVectorType::get(CIntTy, NumElts);
+    auto CastI = Builder.CreateBitCast(RepI, VInt32, RepI->getName());
+    // trunc to the dst type
+    RepI = Builder.CreateTrunc(CastI, DTy, CastI->getName());
+  }
+  CallOp->replaceAllUsesWith(RepI);
+  ToErase.push_back(CallOp);
+  return true;
+}
+
+bool GenXLowering::lowerLLVMMaskedScatter(CallInst* CallOp) {
+  auto DataV = CallOp->getArgOperand(0);
+  auto PtrV = CallOp->getArgOperand(1);
+  auto MaskV = CallOp->getArgOperand(3);
+  auto DTy = DataV->getType();
+  assert(PtrV->getType()->isVectorTy() && DTy->isVectorTy());
+  auto PtrETy = cast<VectorType>(PtrV->getType())->getElementType();
+  assert(PtrETy->isPointerTy());
+  auto AS = cast<PointerType>(PtrETy)->getAddressSpace();
+  assert(AS != SYCL_SLM_AS && "do not expect masked scatter to SLM");
+  auto EltTy = cast<VectorType>(DTy)->getElementType();
+  auto NumElts = cast<VectorType>(DTy)->getNumElements();
+  auto EltBytes = EltTy->getPrimitiveSizeInBits() / 8;
+  int EltsPerLane = 1;
+  // for short or byte type, store-data is 4 bytes per lane
+  if (EltBytes < 4) {
+    EltTy = Type::getInt8Ty(EltTy->getContext());
+    EltsPerLane = 4;
+  }
+  auto VDTy = IGCLLVM::FixedVectorType::get(EltTy, NumElts * EltsPerLane);
+  auto CIntTy = Type::getInt32Ty(EltTy->getContext());
+  int nb = (EltBytes == 2) ? 1 : 0; // 0/1/2/3 means 1/2/4/8 blks
+  auto NumBlksC = ConstantInt::get(CIntTy, nb);
+  // need write-region for old-data in byte or short type
+  IRBuilder<> Builder(CallOp);
+  if (EltBytes < 4) {
+    // zext to i32 type
+    auto VInt32 = IGCLLVM::FixedVectorType::get(CIntTy, NumElts);
+    auto ExtI = Builder.CreateZExt(DataV, VInt32, DataV->getName());
+    // bitcast to 4xi8
+    DataV = Builder.CreateBitCast(ExtI, VDTy, ExtI->getName());
+  }
+  std::string IntrName =
+      std::string(GenXIntrinsic::getGenXIntrinsicPrefix()) + "svm.scatter";
+  auto ID = GenXIntrinsic::lookupGenXIntrinsicID(IntrName);
+  Function* NewFDecl = GenXIntrinsic::getGenXDeclaration(
+      CallOp->getModule(), ID, { MaskV->getType(), PtrV->getType(), VDTy });
+  CallInst::Create(NewFDecl, { MaskV, NumBlksC, PtrV, DataV },
+      CallOp->getName(), CallOp);
+  ToErase.push_back(CallOp);
+  return true;
+}
+
 /***********************************************************************
  * widenByteOp : widen a vector byte operation to short if that might
  *               improve code
