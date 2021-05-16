@@ -50,7 +50,6 @@ namespace vISA
             {
                 return std::abs((int)lastUse - (int)firstDef);
             };
-            bool isSendDst = false;
         };
 
         std::unordered_map<G4_Declare*, Data> dclData;
