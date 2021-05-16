@@ -760,7 +760,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // experience is more important than extra spills.
     if (!modMD->compOpt.OptDisable)
     {
-        if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold) || IGC_GET_FLAG_VALUE(HPCFastCompilation))
+        if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold))
         {
             sinkAllocaSingleUse(allocaInsts);
         }
