@@ -536,17 +536,19 @@ Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
     return ensureEmulated(NewICMP);
   }
 
-  unsigned BaseOperand = 0;
-  IVSplitter Splitter(Cmp, &BaseOperand);
-  auto Src0 = Splitter.splitOperandLoHi(0);
-  auto Src1 = Splitter.splitOperandLoHi(1);
-
-  bool PartialPredicate =
+  const bool PartialPredicate =
       std::any_of(Cmp.user_begin(), Cmp.user_end(), [](const User *U) {
         auto IID = GenXIntrinsic::getAnyIntrinsicID(U);
         return IID == GenXIntrinsic::genx_wrpredregion ||
                IID == GenXIntrinsic::genx_wrpredpredregion;
       });
+
+  unsigned BaseOperand = 0;
+  const bool FoldConstants = !(PartialPredicate && OptConvertPartialPredicates);
+  IVSplitter Splitter(Cmp, &BaseOperand);
+  auto Src0 = Splitter.splitOperandLoHi(0, FoldConstants);
+  auto Src1 = Splitter.splitOperandLoHi(1, FoldConstants);
+
   Value *Result = buildGeneralICmp(Builder, Cmp.getPredicate(),
                                    PartialPredicate, Src0, Src1);
 
