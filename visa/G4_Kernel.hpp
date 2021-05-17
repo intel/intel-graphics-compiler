@@ -332,7 +332,8 @@ public:
     // dumps .dot files (if enabled) and .g4 (if enabled)
     void dumpToFile(const std::string &suffix);
 
-    void emitGenAsm(std::ostream& output, const void * binary, uint32_t binarySize);
+    void emitDeviceAsm(std::ostream& output, const void * binary, uint32_t binarySize);
+
     void emitRegInfo();
     void emitRegInfoKernel(std::ostream& output);
 
@@ -342,6 +343,11 @@ private:
     void dumpDotFileInternal(const std::string &baseName);
     void dumpG4Internal(const std::string &baseName);
     void dumpG4InternalTo(std::ostream &os);
+
+    // stuff pertaining to emitDeviceAsm
+    void emitDeviceAsmHeaderComment(std::ostream& os);
+    void emitDeviceAsmInstructionsIga(std::ostream& os, const void * binary, uint32_t binarySize);
+    void emitDeviceAsmInstructionsOldAsm(std::ostream& os);
 
 }; // G4_Kernel
 }

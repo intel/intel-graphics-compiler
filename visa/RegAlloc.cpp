@@ -1149,7 +1149,7 @@ void LivenessAnalysis::computeLiveness()
             }
         }
 
-        fg.getKernel()->emitGenAsm(std::cerr, true, nullptr, 0);
+        fg.getKernel()->dump(std::cerr);
 
         auto printLive = [this, &idToDecl](int id)
         {

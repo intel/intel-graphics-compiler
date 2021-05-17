@@ -244,6 +244,7 @@ typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR
 
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>           INST_LIST;
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>::iterator INST_LIST_ITER;
+typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>::const_iterator INST_LIST_CITER;
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>::reverse_iterator INST_LIST_RITER;
 
 typedef std::pair<vISA::G4_INST*, Gen4_Operand_Number> USE_DEF_NODE;

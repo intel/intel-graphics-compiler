@@ -202,9 +202,9 @@ void G4_BB::emit(std::ostream& output)
 void G4_BB::emitInstruction(std::ostream& output, INST_LIST_ITER &it)
 {
     // prints out instruction line
-    if (!(parent->getKernel()->getOptions()->getOption(vISA_disableInstDebugInfo)))
+    if (!parent->getKernel()->getOptions()->getOption(vISA_disableInstDebugInfo))
     {
-        emitInstructionInfo(output, it);
+        emitInstructionSourceLineMapping(output, it);
     }
 
     emitBasicInstruction(output, it);
@@ -221,8 +221,8 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         G4_InstSend* SendInst = (*it)->asSendInst();
         if( SendInst )
         {
-            SendInst->emit_send( output );
-            SendInst->emit_send_desc( output );
+            SendInst->emit_send(output);
+            SendInst->emit_send_desc(output);
         }
     }
     else
@@ -239,8 +239,7 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
     }
 
 }
-void G4_BB::emitBasicInstructionIga(
-    char* instSyntax,
+void G4_BB::emitBasicInstructionComment(
     std::ostream& output,
     INST_LIST_ITER &it,
     int *suppressRegs, int *lastRegs)
@@ -249,16 +248,18 @@ void G4_BB::emitBasicInstructionIga(
 
     auto platform = inst->getPlatform();
 
-    output << instSyntax;
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
         output << " // ";
 
         auto comments = inst->getComments();
         if (!comments.empty()) {
-            output << " " << comments << ", ";
+            output << " " << comments << "; ";
         }
-        inst->emitInstIds(output);
+        int vISAId = inst->getCISAOff();
+        if (vISAId != -1) {
+            output << "$" << vISAId;
+        }
 
         if (getPlatformGeneration(platform) < PlatformGen::XE)
         {
@@ -295,7 +296,7 @@ void G4_BB::emitBasicInstructionIga(
 _THREAD const char* g4_prevFilename;
 _THREAD int g4_prevSrcLineNo;
 
-void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
+void G4_BB::emitInstructionSourceLineMapping(std::ostream& output, INST_LIST_ITER &it)
 {
     bool emitFile = false, emitLineNo = false;
     const char* curFilename = (*it)->getSrcFilename();
@@ -1458,27 +1459,48 @@ void G4_BB::dump() const
     print(std::cerr);
 }
 
-void G4_BB::print(std::ostream& OS) const
-{
-    OS << "BB" << getId() << ":";
+void G4_BB::emitBbInfo(std::ostream& os) const {
+    // mustn't exceed a single line because it could be in asm output
+    auto fmtBbId = [&](int bb) {
+        std::stringstream ss;
+        ss << "B" << std::setw(3) << std::setfill('0') << bb;
+        return ss.str();
+    };
+    os << fmtBbId(getId()) << ":";
+    bool first = true;
+    auto maybeComma = [&]() {
+        if (first)
+            first = false;
+        else
+            os << ", ";
+    };
     if (getBBType())
     {
-        OS << " [" << getBBTypeStr() << "], ";
+        maybeComma();
+        os << " [" << getBBTypeStr() << "]";
     }
     if (isDivergent())
     {
-        OS << " [inDivergent],";
+        maybeComma();
+        os << " [inDivergent]";
     }
-    OS << "        Pred: ";
-    for (auto pred : Preds)
-    {
-        OS << pred->getId() << " ";
-    }
-    OS << "  Succ: ";
-    for (auto succ : Succs)
-    {
-        OS << succ->getId() << " ";
-    }
+    auto emitBbSet = [&](const char *name, const BB_LIST &bbl) {
+        maybeComma();
+        os << " " << name << ":{";
+        bool first = true;
+        for (const auto &bb : bbl) {
+            if (first) first = false; else os << ", ";
+            os << fmtBbId(bb->getId());
+        }
+        os << "}";
+    };
+    emitBbSet("Preds", Preds);
+    emitBbSet("Succs", Succs);
+}
+
+void G4_BB::print(std::ostream& OS) const
+{
+    emitBbInfo(OS);
     OS << "\n";
     for (auto& x : instList)
         x->print(OS);

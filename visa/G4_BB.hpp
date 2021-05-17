@@ -288,8 +288,8 @@ public:
     void emit(std::ostream& output);
     void emitInstruction(std::ostream& output, INST_LIST_ITER &it);
     void emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it);
-    void emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs);
-    void emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it);
+    void emitBasicInstructionComment(std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs);
+    void emitInstructionSourceLineMapping(std::ostream& output, INST_LIST_ITER &it);
     void emitBankConflict(std::ostream& output, const G4_INST *inst);
 
     uint32_t emitBankConflictXe(
@@ -324,6 +324,8 @@ public:
     void print(std::ostream& os = std::cerr) const;
     void dump() const;  // used in debugger
     void dumpDefUse(std::ostream& os = std::cerr) const;
+
+    void emitBbInfo(std::ostream& os) const;
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]
     void resetLocalId();

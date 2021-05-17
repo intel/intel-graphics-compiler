@@ -503,7 +503,7 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
 #if defined(_DEBUG) && (defined(_WIN32) || defined(_WIN64))
     if (m_options->getOption(vISA_DebugConsoleDump)) {
         std::basic_ostringstream<char> debugBuff;
-        m_kernel->emitGenAsm(debugBuff, nullptr, 0);
+        m_kernel->emitDeviceAsm(debugBuff, nullptr, 0);
         debugBuff.flush();
         OutputDebugStringA(debugBuff.str().c_str());
     }
@@ -515,9 +515,9 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
         ss << m_asmName << ".asm";
         std::ofstream krnlOutput(ss.str().c_str(), std::ofstream::out);
         if (!krnlOutput) {
-            std::cerr << ss.str() << ": fail to open\n";
+            std::cerr << ss.str() << ": failed to open file\n";
         }
-        m_kernel->emitGenAsm(krnlOutput, binary, binarySize);
+        m_kernel->emitDeviceAsm(krnlOutput, binary, binarySize);
         krnlOutput.close();
     }
 

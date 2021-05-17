@@ -306,7 +306,7 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
     else
     {
         // no label for this BB, create one!
-        std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
+        std::string name = "_auto_" + std::to_string(autoLabelId++);
         G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
         labelInst = createNewLabelInst(label);
         newLabelInst = true;
@@ -3065,7 +3065,7 @@ G4_Label* FlowGraph::insertEndif(G4_BB* bb, G4_ExecSize execSize, bool createLab
     // endifs a new label will be created for each of them.
     if (createLabel)
     {
-        std::string name = "_AUTO_LABEL_%d" + std::to_string(autoLabelId++);
+        std::string name = "_auto" + std::to_string(autoLabelId++);
         G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
         endifWithLabels.emplace(endifInst, label);
         return label;
@@ -3118,7 +3118,7 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
 
         if (label == NULL)
         {
-            std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
+            std::string name = "_auto" + std::to_string(autoLabelId++);
             label = builder->createLabel(name, LABEL_BLOCK);
             endifWithLabels.emplace(target, label);
         }

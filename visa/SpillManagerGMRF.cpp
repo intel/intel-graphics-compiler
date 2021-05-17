@@ -3883,7 +3883,7 @@ void SpillManagerGRF::runSpillAnalysis()
 // physical registers in the current iteration of the graph coloring
 // allocator.
 // returns false if spill fails somehow
-bool SpillManagerGRF::insertSpillFillCode (
+bool SpillManagerGRF::insertSpillFillCode(
     G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis)
 {
     //runSpillAnalysis();
@@ -4038,7 +4038,7 @@ bool SpillManagerGRF::insertSpillFillCode (
           << ends;
     std::ofstream sout;
     sout.open(fname.str());
-    kernel->emitGenAsm(sout, true, 0);
+    kernel->emitDeviceAsm(sout, true, 0);
     sout.close ();
 #endif
 #endif

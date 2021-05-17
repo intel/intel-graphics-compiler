@@ -1008,7 +1008,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(FoldAddrImmediate,       vISA_FoldAddrImmed,           TimerID::MISC_OPTS);
     INITIALIZE_PASS(localSchedule,           vISA_LocalScheduling,         TimerID::SCHEDULING);
     INITIALIZE_PASS(HWWorkaround,            vISA_EnableAlways,            TimerID::MISC_OPTS);
-    INITIALIZE_PASS(fixEndIfWhileLabels,        vISA_EnableAlways,            TimerID::NUM_TIMERS);
+    INITIALIZE_PASS(fixEndIfWhileLabels,     vISA_EnableAlways,            TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertHashMovs,          vISA_InsertHashMovs,          TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertDummyMovForHWRSWA, vISA_InsertDummyMovForHWRSWA, TimerID::NUM_TIMERS);
     INITIALIZE_PASS(insertDummyCompactInst,  vISA_InsertDummyCompactInst,  TimerID::NUM_TIMERS);
