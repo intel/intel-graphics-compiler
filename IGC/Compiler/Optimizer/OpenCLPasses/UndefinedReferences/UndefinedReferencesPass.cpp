@@ -34,6 +34,13 @@ UndefinedReferencesPass::UndefinedReferencesPass() : ModulePass(ID)
     initializeUndefinedReferencesPassPass(*PassRegistry::getPassRegistry());
 }
 
+static void ReportUndefinedReference(CodeGenContext *CGC, StringRef name, Value *ctx)
+{
+    std::string message;
+    message += "undefined reference to `" + name.str() + "'";
+    CGC->EmitError(message.c_str(), ctx);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 // ExistUndefinedReferencesInModule()
@@ -42,12 +49,11 @@ UndefinedReferencesPass::UndefinedReferencesPass() : ModulePass(ID)
 // for LLVM since a declaration in LLVM IR is perfectly valid, it does not make
 // sense to check for any remaining undefined references.  Call this function
 // after linking to determine this.  A true return value indicates there are
-// undefined references and errorMessage will be appended with the appropriate
-// information.
+// undefined references, the errors will be reported to CodeGenContext as they
+// are detected.
 //
-static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorMessage)
+static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC)
 {
-    raw_string_ostream strStream(errorMessage);
     bool foundUndef = false;
 
     std::string msg = "undefined reference to `";
@@ -58,7 +64,7 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
         GlobalVariable* pGVar = &(*GVarIter);
         if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
         {
-            strStream << msg << GVarIter->getName().str() << "'\n";
+            ReportUndefinedReference(CGC, GVarIter->getName(), pGVar);
             foundUndef = true;
         }
 
@@ -91,14 +97,11 @@ static bool ExistUndefinedReferencesInModule(Module& module, std::string& errorM
                 {
                     continue;
                 }
-                strStream << msg << funcName << "()'\n";
+                ReportUndefinedReference(CGC, funcName, &F);
                 foundUndef = true;
             }
         }
     }
-
-    strStream.flush();
-
     return foundUndef;
 }
 
@@ -106,14 +109,7 @@ bool UndefinedReferencesPass::runOnModule(Module& M)
 {
     // At this point all references should have been linked to definitions, any
     // undefined references should generate errors.
-    std::string errorMessage;
-    if (ExistUndefinedReferencesInModule(M, errorMessage))
-    {
-        if (!errorMessage.empty())
-        {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str(), nullptr);
-        }
-    }
-
+    CodeGenContext *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ExistUndefinedReferencesInModule(M, CGC);
     return false;
 }

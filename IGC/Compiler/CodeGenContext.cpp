@@ -760,9 +760,45 @@ namespace IGC
         }
     }
 
-    // TODO: remove this wrapper once we move to LLVM 11
-    static std::string demangle_wrapper(const std::string &name) {
-#if LLVM_VERSION_MAJOR >= 11
+    static bool handleOpenMPDemangling(const std::string &name, std::string *strippedName) {
+        // OpenMP mangled names have following structure:
+        //
+        // __omp_offloading_DD_FFFF_PP_lBB
+        //
+        // where DD_FFFF is an ID unique to the file (device and file IDs), PP is the
+        // mangled name of the function that encloses the target region and BB is the
+        // line number of the target region.
+        if (name.rfind("__omp_offloading_", 0) != 0) {
+            return false;
+        }
+        size_t offset = sizeof "__omp_offloading_";
+        offset = name.find('_', offset + 1); // Find end of DD.
+        if (offset == std::string::npos)
+            return false;
+        offset = name.find('_', offset + 1); // Find end of FFFF.
+        if (offset == std::string::npos)
+            return false;
+
+        const size_t start = offset + 1;
+        const size_t end = name.rfind('_'); // Find beginning of lBB.
+        if (end == std::string::npos)
+            return false;
+
+        *strippedName = name.substr(start, end - start);
+        return true;
+    }
+
+
+    static std::string demangleFuncName(const std::string &rawName) {
+        // OpenMP adds additional prefix and suffix to the mangling scheme,
+        // remove it if present.
+        std::string name;
+        if (!handleOpenMPDemangling(rawName, &name)) {
+            // If OpenMP demangling didn't succeed just proceed with received
+            // symbol name
+            name = rawName;
+        }
+#if LLVM_VERSION_MAJOR >= 10
         return llvm::demangle(name);
 #else
         char *demangled = nullptr;
@@ -797,7 +833,7 @@ namespace IGC
         if (const llvm::Function *F = getRelatedFunction(context)) {
             // If the function is a kernel just print the kernel name.
             if (isEntryPoint(this, F)) {
-                OS << "\nin kernel: '" << demangle_wrapper(std::string(F->getName())) << "'";
+                OS << "\nin kernel: '" << demangleFuncName(std::string(F->getName())) << "'";
             // If the function is not a kernel try to print all kernels that
             // might be using this function.
             } else {
@@ -805,16 +841,16 @@ namespace IGC
                 findCallingKernels(this, F, kernels);
 
                 const size_t kernelsCount = kernels.size();
-                OS << "\nin function: '" << demangle_wrapper(std::string(F->getName())) << "' ";
+                OS << "\nin function: '" << demangleFuncName(std::string(F->getName())) << "' ";
                 if (kernelsCount == 0) {
                     OS << "called indirectly by at least one of the kernels.\n";
                 } else if (kernelsCount == 1) {
                     const llvm::Function *kernel = *kernels.begin();
-                    OS << "called by kernel: '" << demangle_wrapper(std::string(kernel->getName())) << "'\n";
+                    OS << "called by kernel: '" << demangleFuncName(std::string(kernel->getName())) << "'\n";
                 } else {
                     OS << "called by kernels:\n";
                     for (const llvm::Function *kernel : kernels) {
-                        OS << "  - '" << demangle_wrapper(std::string(kernel->getName())) << "'\n";
+                        OS << "  - '" << demangleFuncName(std::string(kernel->getName())) << "'\n";
                     }
                 }
             }
