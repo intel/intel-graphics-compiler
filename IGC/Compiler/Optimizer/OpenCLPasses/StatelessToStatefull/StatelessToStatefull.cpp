@@ -512,6 +512,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
     if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
     {
         GenISAIntrinsic::ID const intrinID = Inst->getIntrinsicID();
+        Instruction* finalInst = Inst;
 
         if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead ||
             intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
@@ -556,6 +557,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                     simdMediaBlockRead->setDebugLoc(DL);
                     Inst->replaceAllUsesWith(simdMediaBlockRead);
                     Inst->eraseFromParent();
+                    finalInst = simdMediaBlockRead;
                 }
                 else if (isUntypedAtomics(intrinID))
                 {
@@ -584,6 +586,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                     pIntrinInst->setDebugLoc(DL);
                     Inst->replaceAllUsesWith(pIntrinInst);
                     Inst->eraseFromParent();
+                    finalInst = pIntrinInst;
                 }
                 else
                 {
@@ -600,6 +603,7 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                     pIntrinInst->setDebugLoc(DL);
                     Inst->replaceAllUsesWith(pIntrinInst);
                     Inst->eraseFromParent();
+                    finalInst = pIntrinInst;
                 }
 
                 m_changed = true;
@@ -639,10 +643,10 @@ void StatelessToStatefull::visitCallInst(CallInst& I)
                 isStoreIntrinsic(intrinID)  ||
                 isAtomicsIntrinsic(intrinID)) {
 
-                Value* ptr = Inst->getOperand(0);
+                Value* ptr = finalInst->getOperand(0);
                 if (!pointerIsFromKernelArgument(*ptr)) {
                     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                    FunctionMetaData* funcMD = &modMD->FuncMD[Inst->getParent()->getParent()];
+                    FunctionMetaData* funcMD = &modMD->FuncMD[finalInst->getParent()->getParent()];
                     if (isStoreIntrinsic(intrinID))
                         funcMD->hasNonKernelArgStore = true;
                     else if (isLoadIntrinsic(intrinID))
