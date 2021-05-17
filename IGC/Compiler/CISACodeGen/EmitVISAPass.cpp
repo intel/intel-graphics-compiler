@@ -3709,33 +3709,6 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
     }
 }
 
-int EmitPass::getSetupIndex(uint inputIndex)
-{
-    // attribute "packing"
-    // Non continuous "input indexes" may be received and they are allocated one after another.
-    // We need to map them to "setup indexes".
-    CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-    const std::set<unsigned int>& indices = psProgram->m_SetupIndicesUsed;
-    IGC_ASSERT(indices.find(inputIndex) != indices.end());
-    uint setupIndex = inputIndex % 4; // start with the component of current active attribute
-    // and check the last active component for all preceding, active attributes
-    uint currentAttr = inputIndex / 4;
-    for (auto it = indices.find(inputIndex);
-        currentAttr != (*indices.begin() / 4); // stop at first attribute
-        --it) // continue to the preceding active component
-    {
-        if (currentAttr != (*it / 4))
-        {
-            // found the last component in preceding, active attribute
-            const uint comp = *it % 4;
-            // SBE attribute component packing allows to pass XY, XYZ, XYZW
-            // or no components at all (disabled attribute).
-            setupIndex += comp == 0 ? 2 : comp + 1;
-            currentAttr = (*it / 4);
-        }
-    }
-    return setupIndex;
-}
 
 void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
 {
@@ -3793,7 +3766,7 @@ void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
 void EmitPass::emitPSInputCst(llvm::Instruction* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-    unsigned int setupIndex = getSetupIndex((uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
+    unsigned int setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
     psProgram->MarkConstantInterpolation(setupIndex);
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
     // temp variable should be the same type as the destination

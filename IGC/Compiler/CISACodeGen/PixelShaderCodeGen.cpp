@@ -274,6 +274,7 @@ void CPixelShader::AllocatePSPayload()
     unsigned int payloadEnd = offset;
     for (uint i = 0; i < setup.size(); i++)
     {
+
         if (setup[i] && setup[i]->GetAlias() == NULL)
         {
             uint subRegOffset = 0;
@@ -890,8 +891,10 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     pKernelProgram->BindingTableEntryBitmap = this->GetBindingTableEntryBitmap();
 
     // PS packed attributes
-    for (uint attribute = 0; attribute <= m_MaxSetupIndex / 4; ++attribute)
+    for (uint i = 0; i < setup.size(); i = i + 4)
     {
+        const uint attribute = i / 4;
+
         pKernelProgram->attributeActiveComponent[attribute] = GetActiveComponents(attribute);
 
         const bool useComponent = pKernelProgram->attributeActiveComponent[attribute] !=
@@ -981,8 +984,6 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
             IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(1)));
             uint setupIndex = int_cast<uint>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
             m_MaxSetupIndex = std::max(setupIndex, m_MaxSetupIndex);
-            // attribute "packing"
-            m_SetupIndicesUsed.insert(setupIndex);
 
             e_interpolation mode = static_cast<e_interpolation>(llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
             if (mode != EINTERPOLATION_CONSTANT)
@@ -1771,30 +1772,23 @@ void CPixelShader::MarkConstantInterpolation(unsigned int index)
 // Take PS attribute and return active components within, encoded as HW expects.
 USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT CPixelShader::GetActiveComponents(uint attribute) const
 {
-    USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT result =
-        USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
-    for (auto it = m_SetupIndicesUsed.lower_bound(attribute * 4);
-        it != m_SetupIndicesUsed.end(); ++it)
+    // First component in the attrib
+    const uint component = 4 * attribute;
+    IGC_ASSERT(component < setup.size());
+
+    if (((component + 3) < setup.size()) && setup[component + 3])
     {
-        if (attribute != (*it / 4))
-        {
-            break;
-        }
-        switch (*it % 4)
-        {
-        case 0:
-        case 1:
-            result = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY;
-            break;
-        case 2:
-            result = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ;
-            break;
-        case 3:
-            result = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW;
-            break;
-        }
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW;
     }
-    return result;
+    else if (((component + 2) < setup.size()) && setup[component + 2])
+    {
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ;
+    }
+    else if ((((component + 1) < setup.size()) && setup[component + 1]) || setup[component])
+    {
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY;
+    }
+    return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
 }
 
 } // namespace IGC
