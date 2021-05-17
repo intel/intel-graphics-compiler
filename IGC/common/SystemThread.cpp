@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/Gen12LPSIPCSR.h"
 #include "common/SIPKernels/Gen12LPSIPCSRDebug.h"
 #include "common/SIPKernels/Gen12LPSIPCSRDebugBindless.h"
+#include "common/SIPKernels/Gen12LPSIPCSRDebugBindlessDebugHeader.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -94,6 +95,7 @@ bool CSystemThread::CreateSystemThreadKernel(
             pKernelProgram->Create( platform, mode, bindlessMode );
 
             pSystemThreadKernelOutput->m_KernelProgramSize = pKernelProgram->GetProgramSize();
+            pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize = pKernelProgram->GetStateSaveHeaderSize();
 
             const IGC::SCompilerHwCaps& Caps = const_cast<IGC::CPlatform&>( platform ).GetCaps();
 
@@ -106,14 +108,22 @@ bool CSystemThread::CreateSystemThreadKernel(
             pSystemThreadKernelOutput->m_pKernelProgram =
                 IGC::aligned_malloc( pSystemThreadKernelOutput->m_KernelProgramSize, DQWORD_SIZE );
 
+	    if (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize)
+                pSystemThreadKernelOutput->m_pStateSaveAreaHeader =
+                    IGC::aligned_malloc( pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize, DQWORD_SIZE );
+
             success = ( pSystemThreadKernelOutput->m_pKernelProgram != nullptr );
+            if (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize)
+                success &= ( pSystemThreadKernelOutput->m_pStateSaveAreaHeader != nullptr );
         }
 
         if( success )
         {
-            void* pStartAddress = pKernelProgram->GetLinearAddress();
+            const void *pStartAddress = pKernelProgram->GetLinearAddress();
+            const void *pStateSaveAddress = pKernelProgram->GetStateSaveHeaderAddress();
 
-            if( !pStartAddress )
+            if( !pStartAddress ||
+		  (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize && !pStateSaveAddress))
             {
                 IGC_ASSERT(0);
                 success = false;
@@ -126,6 +136,15 @@ bool CSystemThread::CreateSystemThreadKernel(
                     pSystemThreadKernelOutput->m_KernelProgramSize,
                     pStartAddress,
                     pSystemThreadKernelOutput->m_KernelProgramSize );
+
+
+	        if (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize)
+                    memcpy_s(
+                        pSystemThreadKernelOutput->m_pStateSaveAreaHeader,
+			pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize,
+			pStateSaveAddress,
+			pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize);
+
             }
         }
         else
@@ -148,50 +167,64 @@ void CSystemThread::DeleteSystemThreadKernel(
     USC::SSystemThreadKernelOutput* &pSystemThreadKernelOutput )
 {
     IGC::aligned_free(pSystemThreadKernelOutput->m_pKernelProgram);
+    if (pSystemThreadKernelOutput->m_pStateSaveAreaHeader)
+        IGC::aligned_free(pSystemThreadKernelOutput->m_pStateSaveAreaHeader);
     delete pSystemThreadKernelOutput;
     pSystemThreadKernelOutput = nullptr;
 }
 
 //populate the SIPKernelInfo map with starting address and size of every SIP kernels
-void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned int> > &SIPKernelInfo)
+void populateSIPKernelInfo(const IGC::CPlatform &platform,
+		std::map< unsigned char, std::tuple<void*, unsigned int, void*, unsigned int> > &SIPKernelInfo)
 {
     //LLVM_UPGRADE_TODO
     // check if (int)sizeof(T) is ok or change the pair def for SIPKernelInfo
-    SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_pair((void*)&Gen9SIPDebug, (int)sizeof(Gen9SIPDebug));
+    SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_tuple((void*)&Gen9SIPDebug, (int)sizeof(Gen9SIPDebug), nullptr, 0);
 
-    SIPKernelInfo[GEN9_SIP_CSR] = std::make_pair((void*)&Gen9SIPCSR, (int)sizeof(Gen9SIPCSR));
+    SIPKernelInfo[GEN9_SIP_CSR] = std::make_tuple((void*)&Gen9SIPCSR, (int)sizeof(Gen9SIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN9_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen9SIPCSRDebug, (int)sizeof(Gen9SIPCSRDebug));
+    SIPKernelInfo[GEN9_SIP_CSR_DEBUG] = std::make_tuple((void*)&Gen9SIPCSRDebug, (int)sizeof(Gen9SIPCSRDebug), nullptr, 0);
 
-    SIPKernelInfo[GEN10_SIP_DEBUG] = std::make_pair((void*)&Gen10SIPDebug, (int)sizeof(Gen10SIPDebug));
+    SIPKernelInfo[GEN10_SIP_DEBUG] = std::make_tuple((void*)&Gen10SIPDebug, (int)sizeof(Gen10SIPDebug), nullptr, 0);
 
-    SIPKernelInfo[GEN10_SIP_CSR] = std::make_pair((void*)&Gen10SIPCSR, (int)sizeof(Gen10SIPCSR));
+    SIPKernelInfo[GEN10_SIP_CSR] = std::make_tuple((void*)&Gen10SIPCSR, (int)sizeof(Gen10SIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN10_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen10SIPCSRDebug, (int)sizeof(Gen10SIPCSRDebug));
+    SIPKernelInfo[GEN10_SIP_CSR_DEBUG] = std::make_tuple((void*)&Gen10SIPCSRDebug, (int)sizeof(Gen10SIPCSRDebug), nullptr, 0);
 
-    SIPKernelInfo[GEN9_SIP_DEBUG_BINDLESS] = std::make_pair((void*)&Gen9SIPDebugBindless, (int)sizeof(Gen9SIPDebugBindless));
+    SIPKernelInfo[GEN9_SIP_DEBUG_BINDLESS] = std::make_tuple((void*)&Gen9SIPDebugBindless, (int)sizeof(Gen9SIPDebugBindless), nullptr, 0);
 
-    SIPKernelInfo[GEN10_SIP_DEBUG_BINDLESS] = std::make_pair((void*)&Gen10SIPDebugBindless, (int)sizeof(Gen10SIPDebugBindless));
+    SIPKernelInfo[GEN10_SIP_DEBUG_BINDLESS] = std::make_tuple((void*)&Gen10SIPDebugBindless, (int)sizeof(Gen10SIPDebugBindless), nullptr, 0);
 
-    SIPKernelInfo[GEN9_BXT_SIP_CSR] = std::make_pair((void*)&Gen9BXTSIPCSR, (int)sizeof(Gen9BXTSIPCSR));
+    SIPKernelInfo[GEN9_BXT_SIP_CSR] = std::make_tuple((void*)&Gen9BXTSIPCSR, (int)sizeof(Gen9BXTSIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN9_SIP_CSR_DEBUG_LOCAL] = std::make_pair((void*)&Gen9SIPCSRDebugLocal, (int)sizeof(Gen9SIPCSRDebugLocal));
+    SIPKernelInfo[GEN9_SIP_CSR_DEBUG_LOCAL] = std::make_tuple((void*)&Gen9SIPCSRDebugLocal, (int)sizeof(Gen9SIPCSRDebugLocal), nullptr, 0);
 
-    SIPKernelInfo[GEN9_GLV_SIP_CSR] = std::make_pair((void*)&Gen9GLVSIPCSR, (int)sizeof(Gen9GLVSIPCSR));
+    SIPKernelInfo[GEN9_GLV_SIP_CSR] = std::make_tuple((void*)&Gen9GLVSIPCSR, (int)sizeof(Gen9GLVSIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN11_SIP_CSR] = std::make_pair((void*)&Gen11SIPCSR, (int)sizeof(Gen11SIPCSR));
+    SIPKernelInfo[GEN11_SIP_CSR] = std::make_tuple((void*)&Gen11SIPCSR, (int)sizeof(Gen11SIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN11_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen11SIPCSRDebug, (int)sizeof(Gen11SIPCSRDebug));
+    SIPKernelInfo[GEN11_SIP_CSR_DEBUG] = std::make_tuple((void*)&Gen11SIPCSRDebug, (int)sizeof(Gen11SIPCSRDebug), nullptr, 0);
 
-    SIPKernelInfo[GEN11_SIP_CSR_DEBUG_BINDLESS] = std::make_pair((void*)&Gen11SIPCSRDebugBindless, (int)sizeof(Gen11SIPCSRDebugBindless));
+    SIPKernelInfo[GEN11_SIP_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&Gen11SIPCSRDebugBindless, (int)sizeof(Gen11SIPCSRDebugBindless), nullptr, 0);
 
-    SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR));
+    SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_tuple((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN12_LP_CSR] = std::make_pair((void*)&Gen12LPSIPCSR, (int)sizeof(Gen12LPSIPCSR));
+    SIPKernelInfo[GEN12_LP_CSR] = std::make_tuple((void*)&Gen12LPSIPCSR, (int)sizeof(Gen12LPSIPCSR), nullptr, 0);
 
-    SIPKernelInfo[GEN12_LP_CSR_DEBUG] = std::make_pair((void*)&Gen12LPSIPCSRDebug, (int)sizeof(Gen12LPSIPCSRDebug));
+    SIPKernelInfo[GEN12_LP_CSR_DEBUG] = std::make_tuple((void*)&Gen12LPSIPCSRDebug, (int)sizeof(Gen12LPSIPCSRDebug), nullptr, 0);
 
-    SIPKernelInfo[GEN12_LP_CSR_DEBUG_BINDLESS] = std::make_pair((void*)&Gen12LPSIPCSRDebugBindless, (int)sizeof(Gen12LPSIPCSRDebugBindless));
+    SIPKernelInfo[GEN12_LP_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&Gen12LPSIPCSRDebugBindless,
+		    (int)sizeof(Gen12LPSIPCSRDebugBindless),
+		    (void*)&Gen12LPSIPCSRDebugBindlessDebugHeader,
+		    (int)sizeof(Gen12LPSIPCSRDebugBindlessDebugHeader));
+
+    GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
+    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
+    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice = sysInfo.MaxSubSlicesSupported;
+    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
+    Gen12LPSIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu =
+	    sysInfo.ThreadCount / (sysInfo.MaxEuPerSubSlice * sysInfo.MaxSubSlicesSupported * sysInfo.MaxSlicesSupported);
+
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -201,8 +234,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
 {
     llvm::MemoryBuffer* pBuffer = nullptr;
     unsigned char SIPIndex = 0;
-    std::map< unsigned char, std::pair<void*, unsigned int> > SIPKernelInfo;
-    populateSIPKernelInfo(SIPKernelInfo);
+    std::map< unsigned char, std::tuple<void*, unsigned int, void*, unsigned int> > SIPKernelInfo;
+    populateSIPKernelInfo(platform, SIPKernelInfo);
 
     switch( platform.getPlatformInfo().eRenderCoreFamily )
     {
@@ -334,8 +367,10 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     else
     {
         IGC_ASSERT_MESSAGE((SIPIndex < SIPKernelInfo.size()), "Invalid SIPIndex while loading");
-        m_LinearAddress = SIPKernelInfo[SIPIndex].first;
-        m_ProgramSize = SIPKernelInfo[SIPIndex].second;
+        m_LinearAddress = std::get<0>(SIPKernelInfo[SIPIndex]);
+        m_ProgramSize   = std::get<1>(SIPKernelInfo[SIPIndex]);
+        m_StateSaveHeaderAddress = std::get<2>(SIPKernelInfo[SIPIndex]);
+        m_StateSaveHeaderSize = std::get<3>(SIPKernelInfo[SIPIndex]);
     }
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && m_LinearAddress && (m_ProgramSize > 0))
@@ -368,6 +403,8 @@ CGenSystemInstructionKernelProgram::CGenSystemInstructionKernelProgram(
 {
     m_LinearAddress = NULL;
     m_ProgramSize = 0 ;
+    m_StateSaveHeaderAddress = NULL;
+    m_StateSaveHeaderSize = 0;
 }
 
 }
