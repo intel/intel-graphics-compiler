@@ -78,6 +78,9 @@ private:
   // HasLongLong - True if subtarget supports long long type
   bool HasLongLong;
 
+  // HasFP64 - True if subtarget supports double type
+  bool HasFP64;
+
   // DisableJmpi - True if jmpi is disabled.
   bool DisableJmpi;
 
@@ -179,6 +182,9 @@ public:
 
   /// * hasLongLong - true if target supports long long
   bool hasLongLong() const { return HasLongLong; }
+
+  /// * hasFP64 - true if target supports double fp
+  bool hasFP64() const { return HasFP64; }
 
   /// * hasAdd64 - true if target supports native 64-bit add/sub
   bool hasAdd64() const { return HasAdd64; }

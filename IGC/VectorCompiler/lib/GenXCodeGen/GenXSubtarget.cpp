@@ -43,6 +43,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   DumpRegAlloc = false;
   EmitCisa = false;
   HasLongLong = false;
+  HasFP64 = false;
   DisableJmpi = false;
   DisableVectorDecomposition = false;
   DisableJumpTables = false;

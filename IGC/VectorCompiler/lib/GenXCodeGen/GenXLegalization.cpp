@@ -589,12 +589,16 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     return false;
   // Sanity check for illegal operand type
   const auto *ScalarType = Inst->getType()->getScalarType();
-  if ((ScalarType->getPrimitiveSizeInBits() == 64) && !ST->hasLongLong()) {
-    if (!ScalarType->isIntegerTy())
-      report_fatal_error("'double' type is not supported by this target");
-    if (!ST->emulateLongLong() && checkIfLongLongSupportNeeded(Inst))
+
+  if (ScalarType->isIntegerTy(64) && !ST->hasLongLong()) {
+    if (!ST->emulateLongLong() && checkIfLongLongSupportNeeded(Inst)) {
       report_fatal_error("'long long' type is not supported by this target");
+    }
   }
+
+  if (ScalarType->isDoubleTy() && !ST->hasFP64())
+    report_fatal_error("'double' type is not supported by this target");
+
   if (!ST->hasSad2Support()) {
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_ssad2:

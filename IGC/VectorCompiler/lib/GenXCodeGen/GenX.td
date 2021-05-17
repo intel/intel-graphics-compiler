@@ -28,6 +28,8 @@ def DumpRegAlloc: SubtargetFeature<"dump_regalloc", "DumpRegAlloc",
 
 def FeatureLongLong : SubtargetFeature<"longlong", "HasLongLong", "true",
                                        "supports long long">;
+def FeatureFP64: SubtargetFeature<"fp64", "HasFP64", "true",
+                                  "support for double types">;
 
 def FeatureUseMulDDQ : SubtargetFeature<"mul_ddq",
                                         "UseMulDDQ",
@@ -80,34 +82,42 @@ def : Proc<"HSW",             [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32]>;
 def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"CHV",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"CNL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
                                FeatureUseMulDDQ,
-                               FeatureInstrAdd64]>;
+                               FeatureInstrAdd64,
+                               FeatureFP64]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32]>;
