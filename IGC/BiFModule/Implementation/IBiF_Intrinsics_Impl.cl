@@ -113,7 +113,7 @@ INLINE char __builtin_spirv_OpenCL_s_mad_sat_i8_i8_i8(
     char c)
 {
     short res = (short)a * (short)b + (short)c;
-    return SPIRV_BUILTIN(SConvert, _Sat_i8_i16, _sat_Rchar)(res);
+    return SPIRV_BUILTIN(SConvert, _Sat_i8_i16, _Rchar_sat)(res);
 }
 
 INLINE uchar __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8(
@@ -122,7 +122,7 @@ INLINE uchar __builtin_spirv_OpenCL_u_mad_sat_i8_i8_i8(
     uchar c)
 {
     ushort res = (ushort)a * (ushort)b + (ushort)c;
-    return SPIRV_BUILTIN(UConvert, _Sat_i8_i16, _sat_Ruchar)(res);
+    return SPIRV_BUILTIN(UConvert, _Sat_i8_i16, _Ruchar_sat)(res);
 }
 
 INLINE short __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16(
@@ -131,7 +131,7 @@ INLINE short __builtin_spirv_OpenCL_s_mad_sat_i16_i16_i16(
     short c)
 {
     int res = (int)a * (int)b + (int)c;
-    return SPIRV_BUILTIN(SConvert, _Sat_i16_i32, _sat_Rshort)(res);
+    return SPIRV_BUILTIN(SConvert, _Sat_i16_i32, _Rshort_sat)(res);
 }
 
 INLINE ushort __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16(
@@ -140,7 +140,7 @@ INLINE ushort __builtin_spirv_OpenCL_u_mad_sat_i16_i16_i16(
     ushort c)
 {
     uint res = (uint)a * (uint)b + (uint)c;
-    return SPIRV_BUILTIN(UConvert, _Sat_i16_i32, _sat_Rushort)(res);
+    return SPIRV_BUILTIN(UConvert, _Sat_i16_i32, _Rushort_sat)(res);
 }
 
 INLINE int __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32(
@@ -149,7 +149,7 @@ INLINE int __builtin_spirv_OpenCL_s_mad_sat_i32_i32_i32(
     int c)
 {
     long res = (long)a * (long)b + (long)c;
-    return SPIRV_BUILTIN(SConvert, _Sat_i32_i64, _sat_Rint)(res);
+    return SPIRV_BUILTIN(SConvert, _Sat_i32_i64, _Rint_sat)(res);
 }
 
 INLINE
@@ -158,7 +158,7 @@ uint __builtin_spirv_OpenCL_u_mad_sat_i32_i32_i32( uint a,
                                             uint c )
 {
     ulong res = (ulong)a * (ulong)b + (ulong)c;
-    return SPIRV_BUILTIN(UConvert, _Sat_i32_i64, _sat_Ruint)(res);
+    return SPIRV_BUILTIN(UConvert, _Sat_i32_i64, _Ruint_sat)(res);
 }
 
 INLINE

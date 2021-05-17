@@ -27,15 +27,15 @@ float OVERLOADABLE convert_float(long _T) {
 }
 
 float OVERLOADABLE convert_float_rtn(long _T) {
-    return SPIRV_BUILTIN(ConvertSToF, _RTN_f32_i64, _rtn_Rfloat)( _T );
+    return SPIRV_BUILTIN(ConvertSToF, _RTN_f32_i64, _Rfloat_rtn)( _T );
 }
 
 float OVERLOADABLE convert_float_rtp(long _T) {
-    return SPIRV_BUILTIN(ConvertSToF, _RTP_f32_i64, _rtp_Rfloat)( _T );
+    return SPIRV_BUILTIN(ConvertSToF, _RTP_f32_i64, _Rfloat_rtp)( _T );
 }
 
 float OVERLOADABLE convert_float_rtz(long _T) {
-    return SPIRV_BUILTIN(ConvertSToF, _RTZ_f32_i64, _rtz_Rfloat)( _T );
+    return SPIRV_BUILTIN(ConvertSToF, _RTZ_f32_i64, _Rfloat_rtz)( _T );
 }
 
 float OVERLOADABLE convert_float(ulong _T) {
@@ -43,39 +43,39 @@ float OVERLOADABLE convert_float(ulong _T) {
 }
 
 float OVERLOADABLE convert_float_rtn(ulong _T) {
-    return SPIRV_BUILTIN(ConvertUToF, _RTN_f32_i64, _rtn_Rfloat)( _T );
+    return SPIRV_BUILTIN(ConvertUToF, _RTN_f32_i64, _Rfloat_rtn)( _T );
 }
 
 float OVERLOADABLE convert_float_rtp(ulong _T) {
-    return SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i64, _rtp_Rfloat)( _T );
+    return SPIRV_BUILTIN(ConvertUToF, _RTP_f32_i64, _Rfloat_rtp)( _T );
 }
 
 float OVERLOADABLE convert_float_rtz(ulong _T) {
-    return SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i64, _rtz_Rfloat)( _T );
+    return SPIRV_BUILTIN(ConvertUToF, _RTZ_f32_i64, _Rfloat_rtz)( _T );
 }
 
 #if defined(cl_khr_fp64)
 double OVERLOADABLE convert_double_rtn(long _T) {
-    return SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i64, _rtn_Rdouble)( _T );
+    return SPIRV_BUILTIN(ConvertSToF, _RTN_f64_i64, _Rdouble_rtn)( _T );
 }
 
 double OVERLOADABLE convert_double_rtp(long _T) {
-    return SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _rtp_Rdouble)( _T );
+    return SPIRV_BUILTIN(ConvertSToF, _RTP_f64_i64, _Rdouble_rtp)( _T );
 }
 
 double OVERLOADABLE convert_double_rtz(long _T) {
-    return SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _rtz_Rdouble)( _T );
+    return SPIRV_BUILTIN(ConvertSToF, _RTZ_f64_i64, _Rdouble_rtz)( _T );
 }
 
 double OVERLOADABLE convert_double_rtn(ulong _T) {
-    return SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i64, _rtn_Rdouble)( _T );
+    return SPIRV_BUILTIN(ConvertUToF, _RTN_f64_i64, _Rdouble_rtn)( _T );
 }
 
 double OVERLOADABLE convert_double_rtp(ulong _T) {
-    return SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _rtp_Rdouble)( _T );
+    return SPIRV_BUILTIN(ConvertUToF, _RTP_f64_i64, _Rdouble_rtp)( _T );
 }
 
 double OVERLOADABLE convert_double_rtz(ulong _T) {
-    return SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _rtz_Rdouble)( _T );
+    return SPIRV_BUILTIN(ConvertUToF, _RTZ_f64_i64, _Rdouble_rtz)( _T );
 }
 #endif // defined(cl_khr_fp64)

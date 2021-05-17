@@ -222,22 +222,22 @@ __CLFN_DEF_F_VLOADA_HALFX_AS(__private,  0)
 // These helper functions are used to macro-ize the rounding mode built-ins.
 static OVERLOADABLE half __intel_spirv_float2half_rtz(float f)
 {
-    return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _rtz_Rhalf)(f);
+    return SPIRV_BUILTIN(FConvert, _RTZ_f16_f32, _Rhalf_rtz)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half_rte(float f)
 {
-    return SPIRV_BUILTIN(FConvert, _RTE_f16_f32, _rte_Rhalf)(f);
+    return SPIRV_BUILTIN(FConvert, _RTE_f16_f32, _Rhalf_rte)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half_rtp(float f)
 {
-    return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _rtp_Rhalf)(f);
+    return SPIRV_BUILTIN(FConvert, _RTP_f16_f32, _Rhalf_rtp)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half_rtn(float f)
 {
-    return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _rtn_Rhalf)(f);
+    return SPIRV_BUILTIN(FConvert, _RTN_f16_f32, _Rhalf_rtn)(f);
 }
 
 static OVERLOADABLE half __intel_spirv_float2half(float f)
@@ -249,22 +249,22 @@ static OVERLOADABLE half __intel_spirv_float2half(float f)
 
 static OVERLOADABLE half __intel_spirv_double2half_rtz(double a)
 {
-    return SPIRV_BUILTIN(FConvert, _RTZ_f16_f64, _rtz_Rhalf)(a);
+    return SPIRV_BUILTIN(FConvert, _RTZ_f16_f64, _Rhalf_rtz)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half_rte(double a)
 {
-    return SPIRV_BUILTIN(FConvert, _RTE_f16_f64, _rte_Rhalf)(a);
+    return SPIRV_BUILTIN(FConvert, _RTE_f16_f64, _Rhalf_rte)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half_rtp(double a)
 {
-    return SPIRV_BUILTIN(FConvert, _RTP_f16_f64, _rtp_Rhalf)(a);
+    return SPIRV_BUILTIN(FConvert, _RTP_f16_f64, _Rhalf_rtp)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half_rtn(double a)
 {
-    return SPIRV_BUILTIN(FConvert, _RTN_f16_f64, _rtn_Rhalf)(a);
+    return SPIRV_BUILTIN(FConvert, _RTN_f16_f64, _Rhalf_rtn)(a);
 }
 
 static OVERLOADABLE half __intel_spirv_double2half(double a)
