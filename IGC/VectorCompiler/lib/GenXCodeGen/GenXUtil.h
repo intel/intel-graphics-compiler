@@ -346,9 +346,10 @@ class IVSplitter {
   // rdregion intrinsic
   static genx::Region createSplitRegion(Type *SrcTy, RegionType RT);
 
-  std::pair<Value*, Value*> splitValue(Value& Val, RegionType RT1,
-                                       const Twine& Name1, RegionType RT2,
-                                       const Twine& Name2);
+  std::pair<Value *, Value *> splitValue(Value &Val, RegionType RT1,
+                                         const Twine &Name1, RegionType RT2,
+                                         const Twine &Name2,
+                                         bool FoldConstants);
   Value* combineSplit(Value &V1, Value &V2, RegionType RT1, RegionType RT2,
                       const Twine& Name, bool Scalarize);
 
@@ -371,11 +372,11 @@ public:
   IVSplitter(Instruction &Inst, const unsigned *BaseOpIdx = nullptr);
 
   // Splitted Operand is expected to be a scalar/vector of i64 type
-  LoHiSplit splitOperandLoHi(unsigned SourceIdx);
-  HalfSplit splitOperandHalf(unsigned SourceIdx);
+  LoHiSplit splitOperandLoHi(unsigned SourceIdx, bool FoldConstants = true);
+  HalfSplit splitOperandHalf(unsigned SourceIdx, bool FoldConstants = true);
 
-  LoHiSplit splitValueLoHi(Value &V);
-  HalfSplit splitValueHalf(Value &V);
+  LoHiSplit splitValueLoHi(Value &V, bool FoldConstants = true);
+  HalfSplit splitValueHalf(Value &V, bool FoldConstants = true);
 
   // Combined values are expected to be a vector of i32 of the same size
   Value *combineLoHiSplit(const LoHiSplit &Split, const Twine &Name,

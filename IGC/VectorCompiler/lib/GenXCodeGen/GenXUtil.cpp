@@ -1148,16 +1148,15 @@ static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
   }
 }
 
-std::pair<Value*, Value*> IVSplitter::splitValue(Value& Val, RegionType RT1,
-                                                 const Twine& Name1,
-                                                 RegionType RT2,
-                                                 const Twine& Name2) {
+std::pair<Value *, Value *>
+IVSplitter::splitValue(Value &Val, RegionType RT1, const Twine &Name1,
+                       RegionType RT2, const Twine &Name2, bool FoldConstants) {
   const auto &DL = Inst.getDebugLoc();
   auto BaseName = Inst.getName();
 
   IGC_ASSERT(Val.getType()->getScalarType()->isIntegerTy(64));
 
-  if (isa<Constant>(Val)) {
+  if (FoldConstants && isa<Constant>(Val)) {
     SmallVector<Constant *, 32> KV32;
     convertI64ToI32(cast<Constant>(Val), KV32);
     Value *V1 = splitConstantVector(KV32, RT1);
@@ -1175,25 +1174,28 @@ std::pair<Value*, Value*> IVSplitter::splitValue(Value& Val, RegionType RT1,
   return { V1, V2 };
 }
 
-IVSplitter::LoHiSplit IVSplitter::splitOperandLoHi(unsigned SourceIdx) {
+IVSplitter::LoHiSplit IVSplitter::splitOperandLoHi(unsigned SourceIdx,
+                                                   bool FoldConstants) {
 
   IGC_ASSERT(Inst.getNumOperands() > SourceIdx);
-  return splitValueLoHi(*Inst.getOperand(SourceIdx));
+  return splitValueLoHi(*Inst.getOperand(SourceIdx), FoldConstants);
 }
-IVSplitter::HalfSplit IVSplitter::splitOperandHalf(unsigned SourceIdx) {
+IVSplitter::HalfSplit IVSplitter::splitOperandHalf(unsigned SourceIdx,
+                                                   bool FoldConstants) {
 
   IGC_ASSERT(Inst.getNumOperands() > SourceIdx);
-  return splitValueHalf(*Inst.getOperand(SourceIdx));
+  return splitValueHalf(*Inst.getOperand(SourceIdx), FoldConstants);
 }
 
-IVSplitter::LoHiSplit IVSplitter::splitValueLoHi(Value &V) {
+IVSplitter::LoHiSplit IVSplitter::splitValueLoHi(Value &V, bool FoldConstants) {
   auto Splitted = splitValue(V, RegionType::LoRegion, ".LoSplit",
-                             RegionType::HiRegion, ".HiSplit");
+                             RegionType::HiRegion, ".HiSplit", FoldConstants);
   return {Splitted.first, Splitted.second};
 }
-IVSplitter::HalfSplit IVSplitter::splitValueHalf(Value &V) {
-  auto Splitted = splitValue(V, RegionType::FirstHalf, ".FirstHalf",
-                             RegionType::SecondHalf, ".SecondHalf");
+IVSplitter::HalfSplit IVSplitter::splitValueHalf(Value &V, bool FoldConstants) {
+  auto Splitted =
+      splitValue(V, RegionType::FirstHalf, ".FirstHalf", RegionType::SecondHalf,
+                 ".SecondHalf", FoldConstants);
   return {Splitted.first, Splitted.second};
 }
 
