@@ -383,6 +383,34 @@ void GenXVisaRegAlloc::getLiveRangesForValue(
   }
 }
 
+// Coalesce surface registers to avoid state registers limit violation.
+// Args:
+//    \p ToCoalesce - potential instruction to coalesce, must have surface
+//                    category.
+//    \p CommonLR - single LR used for constant surfaces, equals null if not
+//                  yet selected.
+//    \p Liveness - GenX liveness analysis.
+// Returns old common LR value if \p ToCoalesce wasn't coalesced, updated common
+// LR value otherwise.
+static LiveRange *coalesceConstSurface(Instruction &ToCoalesce,
+                                       LiveRange *CommonLR,
+                                       GenXLiveness &Liveness) {
+  auto *LR = Liveness.getLiveRange(&ToCoalesce);
+  IGC_ASSERT_MESSAGE(LR->Category == RegCategory::SURFACE,
+                     "wrong argument: ToCoalesce should have surface category");
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&ToCoalesce);
+  if (IID != GenXIntrinsic::genx_convert &&
+      IID != GenXIntrinsic::genx_constanti)
+    return CommonLR;
+  if (!isa<Constant>(ToCoalesce.getOperand(0)))
+    return CommonLR;
+  if (!CommonLR)
+    return LR;
+  if (Liveness.interfere(CommonLR, LR))
+    return CommonLR;
+  return Liveness.coalesce(CommonLR, LR, /*DisalowCASC=*/true);
+}
+
 /***********************************************************************
  * extraCoalescing : do some extra coalescing over and above what
  *    GenXCoalescing does
@@ -411,24 +439,14 @@ void GenXVisaRegAlloc::extraCoalescing()
         if (GenXIntrinsic::isWrRegion(Inst))
           continue;
         auto LR = Liveness->getLiveRangeOrNull(Inst);
-        if (!LR || LR->Category != RegCategory::GENERAL)
+        if (!LR)
           continue;
-        // Check for convert of constant ot surface.
-        switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-          case GenXIntrinsic::genx_convert:
-          case GenXIntrinsic::genx_constanti:
-            if (LR->Category == RegCategory::SURFACE
-                && isa<Constant>(Inst->getOperand(0))) {
-              // See if we can coalesce it with CommonSurface.
-              if (!CommonSurface)
-                CommonSurface = LR;
-              else if (!Liveness->interfere(CommonSurface, LR))
-                CommonSurface = Liveness->coalesce(CommonSurface, LR, /*DisalowCASC=*/true);
-            }
-            break;
-          default:
-            break;
+        if (LR->Category == RegCategory::SURFACE) {
+          CommonSurface = coalesceConstSurface(*Inst, CommonSurface, *Liveness);
+          continue;
         }
+        if (LR->Category != RegCategory::GENERAL)
+          continue;
         // We have a non-struct non-wrregion instruction whose result has a
         // live range (it is not baled into anything else).
         // Check all uses to see if there is one in a non-alu intrinsic. We
