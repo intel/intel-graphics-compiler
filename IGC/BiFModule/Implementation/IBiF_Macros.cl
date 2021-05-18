@@ -110,8 +110,58 @@ SPDX-License-Identifier: MIT
 
 // Use this macro if the vector functions have the same behavior as the
 // scalar function.
-#define GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG( __func, __rettype, __argtype )      \
-    GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT_NO_MANG( __func, __func, __rettype, __argtype )
+#define GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG( __func, __rettype, __vargtype )      \
+    GENERATE_VECTOR_FUNCTIONS_1ARG_EXPLICIT_NO_MANG( __func, __func, __rettype, __vargtype )
+
+#define GENERATE_VECTOR_FUNCTIONS_2ARGS_VS_EXPLICIT_NO_MANG( __func, __sfunc, __rettype, __vargtype, __sargtype ) \
+    __rettype##2 OVERLOADABLE __func( __vargtype##2 x, __sargtype y ) {     \
+        return (__rettype##2)( __sfunc(x.s0, y),                            \
+                               __sfunc(x.s1, y) );                          \
+    }                                                                       \
+    __rettype##3 OVERLOADABLE __func( __vargtype##3 x, __sargtype y ) {     \
+        return (__rettype##3)( __sfunc(x.s0, y),                            \
+                               __sfunc(x.s1, y),                            \
+                               __sfunc(x.s2, y) );                          \
+    }                                                                       \
+    __rettype##4 OVERLOADABLE __func( __vargtype##4 x, __sargtype y ) {     \
+        return (__rettype##4)( __sfunc(x.s0, y),                            \
+                               __sfunc(x.s1, y),                            \
+                               __sfunc(x.s2, y),                            \
+                               __sfunc(x.s3, y) );                          \
+    }                                                                       \
+    __rettype##8 OVERLOADABLE __func( __vargtype##8 x, __sargtype y ) {     \
+        return (__rettype##8)( __sfunc(x.s0, y),                            \
+                               __sfunc(x.s1, y),                            \
+                               __sfunc(x.s2, y),                            \
+                               __sfunc(x.s3, y),                            \
+                               __sfunc(x.s4, y),                            \
+                               __sfunc(x.s5, y),                            \
+                               __sfunc(x.s6, y),                            \
+                               __sfunc(x.s7, y) );                          \
+    }                                                                       \
+    __rettype##16 OVERLOADABLE __func( __vargtype##16 x, __sargtype y ) {   \
+        return (__rettype##16)( __sfunc(x.s0, y),                           \
+                                __sfunc(x.s1, y),                           \
+                                __sfunc(x.s2, y),                           \
+                                __sfunc(x.s3, y),                           \
+                                __sfunc(x.s4, y),                           \
+                                __sfunc(x.s5, y),                           \
+                                __sfunc(x.s6, y),                           \
+                                __sfunc(x.s7, y),                           \
+                                __sfunc(x.s8, y),                           \
+                                __sfunc(x.s9, y),                           \
+                                __sfunc(x.sa, y),                           \
+                                __sfunc(x.sb, y),                           \
+                                __sfunc(x.sc, y),                           \
+                                __sfunc(x.sd, y),                           \
+                                __sfunc(x.se, y),                           \
+                                __sfunc(x.sf, y) );                         \
+    }
+
+// Use this macro if the vector functions have the same behavior as the
+// scalar function.
+#define GENERATE_VECTOR_FUNCTIONS_2ARGS_VS_NO_MANG( __func, __rettype, __vargtype, __sargtype )   \
+    GENERATE_VECTOR_FUNCTIONS_2ARGS_VS_EXPLICIT_NO_MANG( __func, __func, __rettype, __vargtype, __sargtype )
 
 // Use this macro if the vector functions have different behavior than the
 // scalar functions.

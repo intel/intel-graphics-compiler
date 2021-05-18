@@ -85,6 +85,14 @@ typedef enum
     GroupOperationClusteredReduce = 3
 } GroupOperations_t;
 
+typedef enum
+{
+    rte = 0,
+    rtz = 1,
+    rtp = 2,
+    rtn = 3
+} RoundingMode_t;
+
 // Note: Unify these defines in a common header that this and
 // the cth include.
 

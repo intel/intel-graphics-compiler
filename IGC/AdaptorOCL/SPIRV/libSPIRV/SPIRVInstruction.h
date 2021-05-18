@@ -1284,6 +1284,17 @@ public:
       return false;
   }
 
+  std::vector<SPIRVValue*> getValues(const std::vector<SPIRVId>& Args) {
+      std::vector<SPIRVValue*> VArgs;
+      for (size_t I = 0; I < Args.size(); ++I) {
+          if (isOperandLiteral(I))
+              VArgs.push_back(Module->getLiteralAsConstant(Args[I]));
+          else
+              VArgs.push_back(getValue(Args[I]));
+      }
+      return VArgs;
+  }
+
 protected:
   SPIRVId ExtSetId;
   union {

@@ -4224,7 +4224,6 @@ SPIRVToLLVM::transOCLVectorLoadStore(std::string& UnmangledName,
     } else {
       UnmangledName.erase(UnmangledName.find("n"), 1);
     }
-    BArgs.pop_back();
   } else if (UnmangledName.find("vstore") == 0) {
     if (UnmangledName.find("n") != std::string::npos) {
       auto T = BM->getValueType(BArgs[0]);
@@ -4236,12 +4235,6 @@ SPIRVToLLVM::transOCLVectorLoadStore(std::string& UnmangledName,
       } else {
         UnmangledName.erase(UnmangledName.find("n"), 1);
       }
-    }
-    if (UnmangledName.find("_r") != std::string::npos) {
-      UnmangledName.replace(UnmangledName.find("_r"), 2, std::string("_") +
-          SPIRSPIRVFPRoundingModeMap::rmap(static_cast<SPIRVFPRoundingModeKind>(
-              BArgs.back())));
-      BArgs.pop_back();
     }
    }
 }
