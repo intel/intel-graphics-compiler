@@ -1272,7 +1272,8 @@ bool G4_INST::hasACCOpnd() const
         (dst && dst->isAccReg()) ||
         (srcs[0] && srcs[0]->isAccReg()) ||
         (srcs[1] && srcs[1]->isAccReg()) ||
-        (srcs[2] && srcs[2]->isAccReg()));
+        (srcs[2] && srcs[2]->isAccReg()) ||
+        op == G4_madw);
 }
 
 G4_Type G4_INST::getOpExecType(int& extypesize)
@@ -1640,6 +1641,7 @@ bool G4_INST::isSignSensitive(Gen4_Operand_Number opndNum) const
     case G4_sel:
     case G4_cmp:
     case G4_cmpn:
+    case G4_madw:
         return true;
     case G4_mov:
         // inttofp is sign sensitive
@@ -1827,7 +1829,7 @@ bool G4_INST::canPropagateTo(
             return false;
         }
     }
-    else if (srcType != useType && useInst->opcode() == G4_mulh)
+    else if (srcType != useType && (useInst->opcode() == G4_mulh || useInst->opcode() == G4_madw))
     {
         // don't propagate widening ops into a mul/mach
         //   mov  T:d  SRC:w
@@ -6791,7 +6793,7 @@ bool G4_INST::canSupportSaturate() const
         return true;
     }
 
-    if (isIntrinsic() || op == G4_mulh)
+    if (isIntrinsic() || op == G4_mulh || op == G4_madw)
     {
         return false;
     }
@@ -7330,6 +7332,7 @@ bool G4_INST::mayExpandToAccMacro() const
 
     return opcode() == G4_mach ||
            opcode() == G4_mulh ||
+           opcode() == G4_madw ||
            isDMul(this) ||
            mayBeMAC(this) ||
            (opcode() == G4_pln && !builder.doPlane());

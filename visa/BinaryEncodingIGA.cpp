@@ -583,9 +583,6 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_do:
         ASSERT_USER(!allowUnknownOp, "G4_do is not GEN ISA OPCODE.");
         break;
-    case G4_mulh:
-        ASSERT_USER(!allowUnknownOp, "G4_mulh is not GEN ISA OPCODE.");
-        break;
     case G4_pseudo_and:   igaOp = iga::Op::AND; break;
     case G4_pseudo_or:    igaOp = iga::Op::OR; break;
     case G4_pseudo_xor:   igaOp = iga::Op::XOR; break;
@@ -615,6 +612,12 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
         break;
     case G4_NUM_OPCODE:
         assert(false);
+        break;
+    case G4_mulh:
+        ASSERT_USER(!allowUnknownOp, "G4_mulh is not GEN ISA OPCODE.");
+        break;
+    case G4_madw:
+        ASSERT_USER(!allowUnknownOp, "G4_madw not GEN ISA OPCODE.");
         break;
     default:
         ASSERT_USER(!allowUnknownOp, "INVALID opcode.");

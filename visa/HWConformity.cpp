@@ -2622,10 +2622,6 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul + Macl expanding will
         // be done in expandMulPostSchedule pass.
 
-        // sat cannot be used at all in the macro sequence
-        // this effectivly means sat is broken for mul D D D
-        inst->setSaturate(g4::NOSAT);
-
         if (src1->isImm() && src0->getType() != src1->getType())
         {
             G4_Imm* oldImm = src1->asImm();
@@ -2661,6 +2657,10 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
             inst->setDest(insertMovAfter(i, dst, dst->getType(), bb, GRFALIGN));
             end_iter++;
         }
+
+        // sat cannot be used at all in the macro sequence
+        // this effectivly means sat is broken for mul D D D
+        inst->setSaturate(g4::NOSAT);
 
         if (execSize > builder.getNativeExecSize())
         {
@@ -5345,6 +5345,16 @@ void HWConformity::conformBB(G4_BB* bb)
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
+        if (inst->opcode() == G4_madw)
+        {
+            next_iter = fixMadwInst(i, bb);
+            continue;
+        }
+
+#ifdef _DEBUG
+        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
+
         // HW check #6: indirect operand spilling
         fixIndirectOpnd(i, bb);
 
@@ -7232,4 +7242,63 @@ void HWConformity::fixSrc1Region(INST_LIST_ITER it, G4_BB* bb)
         G4_Operand* new_src1 = insertMovBefore(it, 1, src1->getType(), bb);
         inst->setSrc(new_src1, 1);
     }
+}
+
+
+// This function just creates tmp variables to fix srcMod, cond modifier, saturate, etc. And Madw->Mul+Mach+Addc+Add expanding
+// will be done in expandMadwPostSchedule pass.
+INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* madwInst = *it;
+    auto execSize = madwInst->getExecSize();
+    MUST_BE_TRUE(madwInst->opcode() == G4_madw, "expect madw instruction");
+
+    MUST_BE_TRUE(execSize != g4::SIMD32, "SIMD32 is not supported for madw");
+
+    auto dst = madwInst->getDst();
+    MUST_BE_TRUE(IS_DTYPE(dst->getType()), "dst only supports DW type");
+
+    auto src0 = madwInst->getSrc(0);
+    auto src1 = madwInst->getSrc(1);
+    auto src2 = madwInst->getSrc(2);
+    MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) && (src2->isImm() || IS_DTYPE(src2->getType())), "only DW-type sources are supported");
+
+    // src1 does not support modifier
+    checkSrcMod(it, bb, 1);
+
+    // fix src1 region: stride can't exceed 4, otherwise the stride of src1 in the expanded mul will be invalid
+    fixSrc1Region(it, bb);
+    src1 = madwInst->getSrc(1);
+
+    // fix modifier for src0
+    if (!builder.supportSrcModforMul())
+    {
+        checkSrcMod(it, bb, 0);
+        src0 = madwInst->getSrc(0);
+    }
+
+    // need extra mov if dst is acc and src0 is indirect
+    if (!builder.accDstforIndirectSrc())
+    {
+        if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() == IndirGRF)
+        {
+            madwInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
+        }
+    }
+
+    // make the dst GRF-aligned before expanding to macro
+    if (madwInst->getSaturate() ||
+        isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
+        !builder.isOpndAligned(dst, getGRFSize()))
+    {
+        // add a tmp mov
+        madwInst->setDest(insertMovAfter(it, dst, dst->getType(), bb, GRFALIGN));
+        dst = madwInst->getDst();
+    }
+
+    // sat cannot be used at all in the macro sequence
+    // this effectivly means sat is broken for mul D D D
+    madwInst->setSaturate(g4::NOSAT);
+
+    return std::next(it);
 }

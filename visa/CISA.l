@@ -257,7 +257,7 @@ add|avg|dp2|dp3|dp4|dph|line|mul|pow|mulh|sad2|plane {
         return ARITH3_OP;
     }
 
-mad|lrp|sad2add {
+mad|lrp|sad2add|madw {
         TRACE("** ARITH4_OP");
         CISAlval.opcode = str2opcode(yytext);
         return ARITH4_OP;

@@ -278,6 +278,9 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode)
             break;
         case ISA_GOTO:
             return G4_goto;
+        case ISA_MADW:
+            return G4_madw;
+            break;
         default:
             MUST_BE_TRUE(0, "Invalid opcode in common ISA.");
             break;

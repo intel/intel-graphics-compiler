@@ -110,8 +110,6 @@ namespace vISA
         bool fixMathInst(INST_LIST_ITER it, G4_BB *bb);
         bool fixMULInst(INST_LIST_ITER &it, G4_BB *bb);
         void fixMULHInst(INST_LIST_ITER &i, G4_BB *bb);
-        void fixMulSrc1(INST_LIST_ITER i, G4_BB* bb);
-        void splitDWMULInst(INST_LIST_ITER &start, INST_LIST_ITER &end, G4_BB *bb);
         void fixOpnds(INST_LIST_ITER it, G4_BB *bb, G4_Type& exType);
         bool fixLine(INST_LIST_ITER it, G4_BB *bb);
         bool fixOpndType(INST_LIST_ITER it, G4_BB *bb);
@@ -235,6 +233,8 @@ namespace vISA
 
         void fixSrc1Region(INST_LIST_ITER it, G4_BB* bb);
 
+        INST_LIST_ITER fixMadwInst(INST_LIST_ITER i, G4_BB* bb);
+
     public:
         HWConformity(IR_Builder& b, G4_Kernel &k, vISA::Mem_Manager& m) :
             builder(b), kernel(k), mem(m)
@@ -243,6 +243,8 @@ namespace vISA
         void chkHWConformity();
         static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst);
         void localizeForAcc(G4_BB* bb);
+        void splitDWMULInst(INST_LIST_ITER& start, INST_LIST_ITER& end, G4_BB* bb);
+        void fixMulSrc1(INST_LIST_ITER i, G4_BB* bb);
     };
 }
 //single entry point for HW conformity checks

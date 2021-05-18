@@ -1389,6 +1389,7 @@ void vISAVerifier::verifyInstructionArith(
         case ISA_LZD:
         case ISA_MOD:
         case ISA_MULH:
+        case ISA_MADW:
             REPORT_INSTRUCTION(options, false,
                 "%s does not support saturation",
                 ISA_Inst_Table[opcode].str);
@@ -1461,6 +1462,7 @@ void vISAVerifier::verifyInstructionArith(
         break;
     case ISA_MULH:
     case ISA_DP4A:
+    case ISA_MADW:
         /// U or UD only
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_D || dstType == ISA_TYPE_UD,
             "%s only support D/UD dst type", ISA_Inst_Table[opcode].str);

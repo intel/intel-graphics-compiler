@@ -109,6 +109,7 @@ HANDLE_INST(madm,   3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
   // Following are pseudo instructions
   //
 HANDLE_INST(mulh,   2, 1, InstTypeArith, GENX_BDW, ATTR_COMMUTATIVE)
+HANDLE_INST(madw,   3, 1, InstTypeArith, GENX_BDW, ATTR_COMMUTATIVE)
 
 //
 // InstTypeCompare

@@ -169,6 +169,21 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_ROL,                ISA_Inst_Logic,      "rol",                 2, 1 },
     { ISA_ROR,                ISA_Inst_Logic,      "ror",                 2, 1 },
     { ISA_DP4A,               ISA_Inst_Arith,      "dp4a",                3, 1 },
+    { ISA_RESERVED_83,        ISA_Inst_Reserved,   "reserved83",          0, 0 },
+    { ISA_RESERVED_84,        ISA_Inst_Reserved,   "reserved84",          0, 0 },
+    { ISA_RESERVED_85,        ISA_Inst_Reserved,   "reserved85",          0, 0 },
+    { ISA_RESERVED_86,        ISA_Inst_Reserved,   "reserved86",          0, 0 },
+    { ISA_RESERVED_87,        ISA_Inst_Reserved,   "reserved87",          0, 0 },
+    { ISA_RESERVED_88,        ISA_Inst_Reserved,   "reserved88",          0, 0 },
+    { ISA_RESERVED_89,        ISA_Inst_Reserved,   "reserved89",          0, 0 },
+    { ISA_RESERVED_8A,        ISA_Inst_Reserved,   "reserved8a",          0, 0 },
+    { ISA_RESERVED_8B,        ISA_Inst_Reserved,   "reserved8b",          0, 0 },
+    { ISA_RESERVED_8C,        ISA_Inst_Reserved,   IGC_MANGLE("reserved8c"),        0, 0 },
+    { ISA_RESERVED_8D,        ISA_Inst_Reserved,   IGC_MANGLE("reserved8d"),        0, 0 },
+    { ISA_RESERVED_8E,        ISA_Inst_Reserved,   IGC_MANGLE("reserved8e"),        0, 0 },
+    { ISA_RESERVED_8F,        ISA_Inst_Reserved,   "reserved8f",          0, 0 },
+    { ISA_RESERVED_90,        ISA_Inst_Reserved,   "reserved90",          0, 0 },
+    { ISA_MADW,               ISA_Inst_Arith,      "madw",                3, 1 }
 };
 
 
@@ -1656,6 +1671,98 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
     },
 
+    /// 131 (0x83)
+    { ALL, ISA_RESERVED_83, ISA_Inst_Reserved, "reserved_83", 0, 0,
+        {
+        },
+    },
+
+    /// 132 (0x84)
+    { ALL, ISA_RESERVED_84, ISA_Inst_Reserved, "reserved_84", 0, 0,
+        {
+        },
+    },
+
+    /// 133 (0x85)
+    { ALL, ISA_RESERVED_85, ISA_Inst_Reserved, "reserved_85", 0, 0,
+        {
+        },
+    },
+
+    /// 134 (0x86)
+    { ALL, ISA_RESERVED_86, ISA_Inst_Reserved, "reserved_86", 0, 0,
+        {
+        },
+    },
+
+    /// 135 (0x87)
+    { ALL, ISA_RESERVED_87, ISA_Inst_Reserved, "reserved_87", 0, 0,
+        {
+        },
+    },
+
+    /// 136 (0x88)
+    { ALL, ISA_RESERVED_88, ISA_Inst_Reserved, "reserved_88", 0, 0,
+        {
+        },
+    },
+    /// 137 (0x89)
+    { ALL, ISA_RESERVED_89, ISA_Inst_Reserved, "reserved_89", 0, 0,
+        {
+        },
+    },
+
+    /// 138 (0x8A)
+    { ALL, ISA_RESERVED_8A, ISA_Inst_Reserved, "reserved_8a", 0, 0,
+        {
+        },
+    },
+
+    /// 139 (0x8B)
+    { ALL, ISA_RESERVED_8B, ISA_Inst_Reserved, "reserved_8b", 0, 0,
+        {
+        },
+    },
+    /// 140 (0x8C)
+    { ALL, ISA_RESERVED_8C, ISA_Inst_Reserved, IGC_MANGLE("reserved_8c"), 0, 0,
+        {
+        },
+    },
+
+    /// 141 (0x8D)
+    { ALL, ISA_RESERVED_8D, ISA_Inst_Reserved, IGC_MANGLE("reserved_8d"), 0, 0,
+        {
+        },
+    },
+
+    /// 142 (0x8E)
+    { ALL, ISA_RESERVED_8E, ISA_Inst_Reserved, IGC_MANGLE("reserved_8e"), 0, 0,
+        {
+        },
+    },
+    /// 143 (0x8F)
+    { ALL, ISA_RESERVED_8F, ISA_Inst_Reserved, IGC_MANGLE("reserved_8f"), 0, 0,
+        {
+        },
+    },
+
+    /// 144 (0x90)
+    { ALL, ISA_RESERVED_90, ISA_Inst_Reserved, IGC_MANGLE("reserved_90"), 0, 0,
+        {
+        },
+    },
+
+    /// 145 (0x91)
+    { ALL, ISA_MADW, ISA_Inst_Arith, "madw", 6, SAME_DATA_TYPE,
+    {
+        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+        {OPND_PRED, ISA_TYPE_UW, 0},
+        {OPND_VECTOR_DST_G_I, ISA_TYPE_UD | ISA_TYPE_D, 0},
+        {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
+        {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
+        {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
+    },
+    },
 };
 
 static const ISA_SubInst_Desc VASubOpcodeDesc[] =

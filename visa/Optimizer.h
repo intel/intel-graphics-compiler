@@ -250,6 +250,7 @@ private:
     void doNoMaskWA();
     void insertFenceAtEntry();
     void expandMulPostSchedule();
+    void expandMadwPostSchedule();
 
     typedef std::vector<vISA::G4_INST*> InstListType;
     void expandIndirectCallWithRegTarget();
@@ -363,6 +364,7 @@ public:
         PI_removeInstrinsics,
         PI_expandMulPostSchedule,
         PI_addSWSBInfo,
+        PI_expandMadwPostSchedule,
         PI_NUM_PASSES
     };
 

@@ -1677,6 +1677,11 @@ G4_INST* IR_Builder::createInst(
     MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
         "IR_Builder::createInst should not be used to create math/CF instructions");
 
+    if (op == G4_madw)
+    {
+        MUST_BE_TRUE(execSize != g4::SIMD32, "SIMD32 is not supported for madw");
+    }
+
     G4_INST* i = NULL;
 
     i = new (mem)G4_INST(*this, prd, op, mod, sat, execSize, dst, src0, src1, src2, options);
