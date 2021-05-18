@@ -662,9 +662,10 @@ static std::string composeLLVMArgs(const opt::ArgList &ApiArgs,
   std::string Result;
 
   // Handle input llvm options.
-  if (const opt::Arg *BaseArg =
-          InternalArgs.getLastArg(IGC::options::internal::OPT_llvm_options))
-    Result += BaseArg->getValue();
+  if (InternalArgs.hasArg(IGC::options::internal::OPT_llvm_options))
+    Result += join(
+        InternalArgs.getAllArgValues(IGC::options::internal::OPT_llvm_options),
+        " ");
 
   // Add visaopts if any.
   for (auto OptID : {IGC::options::api::OPT_igcmc_visaopts,
