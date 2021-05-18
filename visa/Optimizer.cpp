@@ -6585,6 +6585,12 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             for (auto inst : *bb)
             {
+                if (inst->isEOT())
+                {
+                    // EOT should be the last inst in BB.
+                    continue;
+                }
+
                 // check predicate source
                 if (inst->getPredicate())
                 {
@@ -6595,19 +6601,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         unusedFlagLocal[flagToInt(areg)] = false;
                     }
                 }
-                else
+
+                // check explicit source
+                for (int i = 0; i < inst->getNumSrc(); ++i)
                 {
-                    // check explicit source
-                    for (int i = 0; i < inst->getNumSrc(); ++i)
+                    if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() && inst->getSrc(i)->isFlag())
                     {
-                        if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() && inst->getSrc(i)->isFlag())
+                        G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
+                        if (src->getBase()->isRegVar())
                         {
-                            G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
-                            if (src->getBase()->isRegVar())
-                            {
-                                G4_Areg* flag = src->getBase()->asRegVar()->getPhyReg()->asAreg();
-                                unusedFlagLocal[flagToInt(flag)] = false;
-                            }
+                            G4_Areg* flag = src->getBase()->asRegVar()->getPhyReg()->asAreg();
+                            unusedFlagLocal[flagToInt(flag)] = false;
                         }
                     }
                 }
