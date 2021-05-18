@@ -1718,10 +1718,11 @@ namespace IGC
         CreateInlineSamplerAnnotations();
         // Currently we can't support inline sampler in zebin
         // assertion tests if we force to EnableZEBinary but encounter inline sampler
-        IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary) || !m_kernelInfo.m_HasInlineVmeSamplers,
+        bool hasInlineSampler = m_kernelInfo.m_HasInlineVmeSamplers || !m_kernelInfo.m_samplerInput.empty();
+        IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary) || !hasInlineSampler,
             "ZEBin: Inline sampler unsupported");
         // fall back to patch-token if ZEBinary is enabled by CodeGenContext::CompOptions
-        if (m_Context->getCompilerOption().EnableZEBinary && m_kernelInfo.m_HasInlineVmeSamplers)
+        if (m_Context->getCompilerOption().EnableZEBinary && hasInlineSampler)
             m_Context->getCompilerOption().EnableZEBinary = false;
 
         // Handle kernel reflection
