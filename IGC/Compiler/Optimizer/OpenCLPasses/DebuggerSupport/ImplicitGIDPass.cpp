@@ -84,6 +84,18 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
 {
     IGC_ASSERT_MESSAGE(!F.isDeclaration(), "Expect kernel functions, which must be defined");
 
+    // When stack calls are enabled, default behavior is to skip these in all functions
+    if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL &&
+        IGC_GET_FLAG_VALUE(FunctionControl) == 3 &&
+        IGC_GET_FLAG_VALUE(ForceInlineStackCallWithImplArg) == 1)
+    {
+        // Insert in functions only when reg key is set
+        if (IGC_IS_FLAG_DISABLED(EmitPreDefinedForAllFunctions))
+        {
+            return false;
+        }
+    }
+
     insertComputeIds(&F);
     return true;
 }

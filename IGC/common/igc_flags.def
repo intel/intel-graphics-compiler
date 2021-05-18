@@ -454,6 +454,7 @@ DECLARE_IGC_REGKEY(bool, UseOldSubRoutineAugIntf, false, "Use the old subroutine
 DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin path for RA, fail safe at first iteration", false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
 DECLARE_IGC_REGKEY(bool, StripDebugInfo, false, "Strip debug info from llvm IR lowered from input to IGC", false)
+DECLARE_IGC_REGKEY(bool, EmitPreDefinedForAllFunctions, false, "When enabled, pre-defined variables for gid, grid, lid are emitted for all functions. This causes those functions to be inlined even when stack calls is enabled.", true)
 
 DECLARE_IGC_REGKEY(bool, EnableZEBinary, false,  "Enable output in ZE binary format", true)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, false,  "Allocate zero initialized global variables in .bss section in ZEBinary", true)
