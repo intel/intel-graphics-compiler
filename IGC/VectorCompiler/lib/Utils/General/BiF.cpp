@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "vc/GenXOpts/Utils/BiFTools.h"
+#include "vc/Utils/General/BiF.h"
 
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Support/Error.h>
@@ -36,8 +36,8 @@ getBiFModuleOrReportErrorImpl(MemoryBufferRef BiFModuleBuffer, LLVMContext &Ctx,
 }
 
 std::unique_ptr<Module>
-llvm::getBiFModuleOrReportError(MemoryBufferRef BiFModuleBuffer,
-                                LLVMContext &Ctx) {
+vc::getBiFModuleOrReportError(MemoryBufferRef BiFModuleBuffer,
+                              LLVMContext &Ctx) {
   return getBiFModuleOrReportErrorImpl(
       BiFModuleBuffer, Ctx,
       [](MemoryBufferRef BiFModuleBufferIn, LLVMContext &CtxIn) {
@@ -46,8 +46,8 @@ llvm::getBiFModuleOrReportError(MemoryBufferRef BiFModuleBuffer,
 }
 
 std::unique_ptr<Module>
-llvm::getLazyBiFModuleOrReportError(MemoryBufferRef BiFModuleBuffer,
-                                    LLVMContext &Ctx) {
+vc::getLazyBiFModuleOrReportError(MemoryBufferRef BiFModuleBuffer,
+                                  LLVMContext &Ctx) {
   return getBiFModuleOrReportErrorImpl(
       BiFModuleBuffer, Ctx,
       [](MemoryBufferRef BiFModuleBufferIn, LLVMContext &CtxIn) {

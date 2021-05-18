@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXRegion.h"
 
-#include "vc/GenXOpts/Utils/Printf.h"
+#include "vc/Utils/GenX/Printf.h"
 
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -2119,12 +2119,13 @@ bool genx::isRealGlobalVariable(const GlobalVariable &GV) {
     return false;
   bool IsIndexedString =
       std::any_of(GV.user_begin(), GV.user_end(), [](const User *Usr) {
-        return isLegalPrintFormatIndexGEP(*Usr);
+        return vc::isLegalPrintFormatIndexGEP(*Usr);
       });
   if (IsIndexedString) {
     IGC_ASSERT_MESSAGE(std::all_of(GV.user_begin(), GV.user_end(),
                                    [](const User *Usr) {
-                                     return isLegalPrintFormatIndexGEP(*Usr);
+                                     return vc::isLegalPrintFormatIndexGEP(
+                                         *Usr);
                                    }),
                        "when global is an indexed string, its users can only "
                        "be print format index GEPs");

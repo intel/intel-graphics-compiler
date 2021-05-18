@@ -23,8 +23,8 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisa.h"
 
-#include "vc/GenXOpts/Utils/GenXSTLExtras.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/STLExtras.h"
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -602,7 +602,7 @@ void TransformPrivMem::selectAllocasToHandle() {
               return LHS->getAllocationSizeInBits(*m_pDL).getValue() <
                      RHS->getAllocationSizeInBits(*m_pDL).getValue();
             });
-  auto LastIt = genx::upper_partial_sum_bound(
+  auto LastIt = vc::upper_partial_sum_bound(
       m_allocasToPrivMem.begin(), m_allocasToPrivMem.end(),
       TotalAllocaLimitOpt.getValue(),
       [this](std::size_t PrevSum, const AllocaInst *CurAlloca) {

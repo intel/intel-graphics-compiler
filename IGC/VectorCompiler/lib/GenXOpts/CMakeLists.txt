@@ -22,8 +22,6 @@ set(OPT_SOURCES
   CMPacketize/PacketBuilder_mem.cpp
   CMPacketize/PacketBuilder_misc.cpp
   CMPacketize/WIAnalysis.cpp
-  Utils/BiFTools.cpp
-  Utils/Printf.cpp
 )
 
 add_library(VCTransforms ${OPT_SOURCES})
@@ -43,5 +41,7 @@ target_link_libraries(VCTransforms
 
   VCHeaders
   VCSupport
+  VCGeneralUtils
+  VCGenXUtils
   LLVMGenXIntrinsics
   )

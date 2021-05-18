@@ -21,8 +21,8 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "cmimportbif"
 
 #include "GenX.h"
-#include "vc/GenXOpts/Utils/BiFTools.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/BiF.h"
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallPtrSet.h>
@@ -761,5 +761,5 @@ GenXImportBiF::getBiFModule(BiFKind Kind,
                             LLVMContext &Ctx) {
   MemoryBufferRef BiFModuleBuffer =
       getAnalysis<GenXBackendConfig>().getBiFModule(Kind);
-  return getLazyBiFModuleOrReportError(BiFModuleBuffer, Ctx);
+  return vc::getLazyBiFModuleOrReportError(BiFModuleBuffer, Ctx);
 }

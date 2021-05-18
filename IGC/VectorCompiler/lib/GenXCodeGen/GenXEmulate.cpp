@@ -26,9 +26,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "vc/BiF/Tools.h"
-#include "vc/GenXOpts/Utils/BiFTools.h"
 #include "vc/GenXOpts/Utils/InternalMetadata.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/BiF.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -1789,7 +1789,7 @@ private:
     if (!EmulationBiFBuffer.getBufferSize())
       return nullptr;
 
-    auto BiFModule = getBiFModuleOrReportError(EmulationBiFBuffer, Ctx);
+    auto BiFModule = vc::getBiFModuleOrReportError(EmulationBiFBuffer, Ctx);
 
     BiFModule->setDataLayout(DL);
     BiFModule->setTargetTriple(Triple);

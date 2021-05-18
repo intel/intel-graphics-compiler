@@ -6,18 +6,17 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef LLVM_GENXOPTS_UTILS_GENXSTLEXTRAS_H
-#define LLVM_GENXOPTS_UTILS_GENXSTLEXTRAS_H
+#ifndef VC_UTILS_GENERAL_STL_EXTRAS_H
+#define VC_UTILS_GENERAL_STL_EXTRAS_H
 
 #include <iterator>
 
-namespace llvm {
-namespace genx {
+namespace vc {
 
 namespace ranges {
 
 template <typename Range>
-using iterator_t = decltype(std::begin(std::declval<Range&>()));
+using iterator_t = decltype(std::begin(std::declval<Range &>()));
 
 template <typename Range>
 using range_pointer_t =
@@ -56,7 +55,6 @@ ForwardIt upper_partial_sum_bound(ForwardIt First, ForwardIt Last, T Bound,
   return Last;
 }
 
-} // namespace genx
-} // namespace llvm
+} // namespace vc
 
-#endif // LLVM_GENXOPTS_UTILS_GENXSTLEXTRAS_H
+#endif // VC_UTILS_GENERAL_STL_EXTRAS_H

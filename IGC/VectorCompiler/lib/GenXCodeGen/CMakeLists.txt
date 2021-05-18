@@ -116,6 +116,8 @@ target_link_libraries(VCCodeGen
   VCTransforms
   VCTargetInfo
   VCSupport
+  VCGeneralUtils
+  VCGenXUtils
   GenXDebugInfo
   GenX_IR
   )

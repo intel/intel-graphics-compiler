@@ -32,9 +32,9 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/GenXSTLExtras.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/STLExtras.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -403,7 +403,7 @@ auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
                              ExcludePredT ExcludePred, IncludePredT IncludePred,
                              WeightCalculatorT WeightCalculator) {
   IGC_ASSERT_MESSAGE(Bound >= 0, "bound must be nonnegative");
-  using GVRef = genx::ranges::range_reference_t<ForwardRange>;
+  using GVRef = vc::ranges::range_reference_t<ForwardRange>;
   using GVT = std::remove_reference_t<GVRef>;
   using GVRefWrapper = std::reference_wrapper<GVT>;
 
@@ -449,7 +449,7 @@ auto selectGlobalsToLocalize(ForwardRange Globals, T Bound,
 
   T RemainderBound = Bound - IncludeWeight;
   // filter max number of lightest ones, which weight sum is under the bound
-  auto FirstNotToLocalize = genx::upper_partial_sum_bound(
+  auto FirstNotToLocalize = vc::upper_partial_sum_bound(
       Remainder.begin(), Remainder.end(), RemainderBound,
       [WeightCalculator](T Base, GVRef Inc) {
         return Base + WeightCalculator(Inc);

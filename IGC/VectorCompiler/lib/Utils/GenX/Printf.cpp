@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "vc/GenXOpts/Utils/Printf.h"
+#include "vc/Utils/GenX/Printf.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 using namespace llvm;
+using namespace vc;
 
 // extracts underlying c-string from provided constant
 static StringRef extractCStr(const Constant &CStrConst) {
@@ -36,7 +37,7 @@ static StringRef extractCStr(const Constant &CStrConst) {
   return "";
 }
 
-Optional<StringRef> llvm::getConstStringFromOperandOptional(const Value &Op) {
+Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
   IGC_ASSERT_MESSAGE(Op.getType()->getPointerElementType()->isIntegerTy(8),
@@ -49,7 +50,7 @@ Optional<StringRef> llvm::getConstStringFromOperandOptional(const Value &Op) {
   return extractCStr(*cast<GlobalVariable>(StrConst)->getInitializer());
 }
 
-StringRef llvm::getConstStringFromOperand(const Value &Op) {
+StringRef vc::getConstStringFromOperand(const Value &Op) {
   auto FmtStr = getConstStringFromOperandOptional(Op);
   IGC_ASSERT_MESSAGE(FmtStr.hasValue(),
                      "couldn't reach constexpr string through pointer operand");
@@ -103,7 +104,7 @@ static PrintfArgInfo parseArgDesc(SRefMatch ArgDescMatch) {
   return {PrintfArgInfo::Pointer, /* IsSigned */ false};
 }
 
-PrintfArgInfoSeq llvm::parseFormatString(StringRef FmtStr) {
+PrintfArgInfoSeq vc::parseFormatString(StringRef FmtStr) {
   PrintfArgInfoSeq Args;
   std::regex ArgDescRegEx{"%(?:%|.*?[csdioxXufFeEaAgGp])"};
   auto &&ArgDescs = make_filter_range(
@@ -115,7 +116,7 @@ PrintfArgInfoSeq llvm::parseFormatString(StringRef FmtStr) {
   return Args;
 }
 
-bool llvm::isPrintFormatIndex(const User &Usr) {
+bool vc::isPrintFormatIndex(const User &Usr) {
   return GenXIntrinsic::getGenXIntrinsicID(&Usr) ==
          GenXIntrinsic::genx_print_format_index;
 }
@@ -130,11 +131,11 @@ static bool isLegalPrintFormatIndexGEPImpl(const User &GEP) {
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool llvm::isLegalPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
+bool vc::isLegalPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
   return isLegalPrintFormatIndexGEPImpl(GEP);
 }
 
-bool llvm::isLegalPrintFormatIndexGEP(const Value &V) {
+bool vc::isLegalPrintFormatIndexGEP(const Value &V) {
   if (isa<GetElementPtrInst>(V))
     return isLegalPrintFormatIndexGEPImpl(cast<User>(V));
   if (isa<ConstantExpr>(V) &&
@@ -143,12 +144,12 @@ bool llvm::isLegalPrintFormatIndexGEP(const Value &V) {
   return false;
 }
 
-bool llvm::isPrintFormatIndexGEP(const GEPOperator &GEP) {
+bool vc::isPrintFormatIndexGEP(const GEPOperator &GEP) {
   return std::any_of(GEP.user_begin(), GEP.user_end(),
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool llvm::isPrintFormatIndexGEP(const User &Usr) {
+bool vc::isPrintFormatIndexGEP(const User &Usr) {
   if (!isa<GEPOperator>(Usr))
     return false;
   return isPrintFormatIndexGEP(cast<GEPOperator>(Usr));

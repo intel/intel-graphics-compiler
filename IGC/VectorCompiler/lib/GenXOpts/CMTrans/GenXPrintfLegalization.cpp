@@ -25,7 +25,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/Printf.h"
+#include "vc/Utils/GenX/Printf.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -45,6 +45,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 using namespace llvm;
+using namespace vc;
 using CallInstRef = std::reference_wrapper<CallInst>;
 
 namespace {

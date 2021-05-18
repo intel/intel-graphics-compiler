@@ -25,8 +25,8 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "vc/GenXOpts/GenXOpts.h"
-#include "vc/GenXOpts/Utils/BiFTools.h"
-#include "vc/GenXOpts/Utils/Printf.h"
+#include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/General/BiF.h"
 
 #include "vc/BiF/PrintfIface.h"
 #include "vc/BiF/Tools.h"
@@ -53,6 +53,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 using namespace llvm;
+using namespace vc;
 using namespace vc::bif::printf;
 
 namespace PrintfImplFunc {
@@ -175,7 +176,7 @@ std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
         "printf bif module can be empty only if vc bif was disabled");
     report_fatal_error("printf is not supported when VC BiF is disabled");
   }
-  return getBiFModuleOrReportError(PrintfBiFModuleBuffer, Ctx);
+  return vc::getBiFModuleOrReportError(PrintfBiFModuleBuffer, Ctx);
 }
 
 static void assertPrintfCall(const CallInst &CI) {

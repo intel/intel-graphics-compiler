@@ -38,7 +38,7 @@ SPDX-License-Identifier: MIT
 #include "GenXVisaRegAlloc.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
-#include "vc/GenXOpts/Utils/Printf.h"
+#include "vc/Utils/GenX/Printf.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
@@ -2721,7 +2721,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     (void)LI; // no code generated
   } else if (auto GEPI = dyn_cast<GetElementPtrInst>(Inst)) {
     // Skip genx.print.format.index GEP here.
-    IGC_ASSERT_MESSAGE(isLegalPrintFormatIndexGEP(*GEPI),
+    IGC_ASSERT_MESSAGE(vc::isLegalPrintFormatIndexGEP(*GEPI),
                        "only genx.print.format.index src GEP can still be "
                        "present at this stage");
 #if (LLVM_VERSION_MAJOR > 8)
@@ -4641,7 +4641,8 @@ void GenXKernelBuilder::buildPrintIndex(CallInst *CI, unsigned IntrinID,
             EXEC_SIZE_1, Dst, Imm));
 
   // access string
-  StringRef UnderlyingCStr = getConstStringFromOperand(*CI->getArgOperand(0));
+  StringRef UnderlyingCStr =
+      vc::getConstStringFromOperand(*CI->getArgOperand(0));
 
   // store metadata
   LLVMContext &Context = CI->getContext();
