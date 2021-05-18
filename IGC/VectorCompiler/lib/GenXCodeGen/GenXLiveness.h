@@ -475,12 +475,12 @@ public:
 } // end namespace genx
 
 class GenXLiveness : public FunctionGroupPass {
-  FunctionGroup *FG;
+  FunctionGroup *FG = nullptr;
   using LiveRangeMap_t = std::map<genx::SimpleValue, genx::LiveRange *>;
   LiveRangeMap_t LiveRangeMap;
-  genx::CallGraph *CG;
-  GenXBaling *Baling;
-  GenXNumbering *Numbering;
+  std::unique_ptr<genx::CallGraph> CG;
+  GenXBaling *Baling = nullptr;
+  GenXNumbering *Numbering = nullptr;
   const GenXSubtarget *Subtarget = nullptr;
   const DataLayout *DL = nullptr;
   std::map<Function *, Value *> UnifiedRets;

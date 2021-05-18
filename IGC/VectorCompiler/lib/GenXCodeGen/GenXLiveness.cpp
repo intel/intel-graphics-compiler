@@ -97,8 +97,7 @@ void GenXLiveness::clear()
     delete LR;
   }
   FG = 0;
-  delete CG;
-  CG = 0;
+  CG.reset();
   for (auto i = UnifiedRets.begin(), e = UnifiedRets.end(); i != e; ++i)
     i->second->deleteValue();
   UnifiedRets.clear();
@@ -144,8 +143,7 @@ void LiveRange::setAlignmentFromValue(const DataLayout &DL, const SimpleValue V,
  */
 void GenXLiveness::rebuildCallGraph()
 {
-  delete CG;
-  CG = new genx::CallGraph(FG);
+  CG = std::make_unique<genx::CallGraph>(FG);
   CG->build(this);
 }
 
