@@ -676,6 +676,40 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
         mov_dst = true;
         replaceDst(it, extype);
     }
+
+    if (builder.hasHFMathGRFAlign())
+    {
+        auto src0 = inst->getSrc(0);
+        auto src1 = inst->getSrc(1);
+        auto dst = inst->getDst();
+
+        if (dst && !dst->isNullReg() && dst->getType() == Type_HF && dst->getHorzStride() == 1)
+        {
+            if (!builder.isOpndAligned(dst, numEltPerGRF<Type_UB>()))
+            {
+                mov_dst = true;
+                replaceDst(it, dst->getType(), GRFALIGN);
+            }
+            if (src0 && !src0->isNullReg() && src0->getType() == Type_HF)
+            {
+                if (!builder.isOpndAligned(src0, numEltPerGRF<Type_UB>()))
+                {
+                    G4_Operand* newSrc0 = insertMovBefore(it, 0, src0->getType(), bb, GRFALIGN);
+                    inst->setSrc(newSrc0, 0);
+                }
+            }
+
+            if (src1 && !src1->isNullReg() && src1->getType() == Type_HF)
+            {
+                if (!builder.isOpndAligned(src0, numEltPerGRF<Type_UB>()))
+                {
+                    G4_Operand* newSrc0 = insertMovBefore(it, 1, src0->getType(), bb, GRFALIGN);
+                    inst->setSrc(newSrc0, 1);
+                }
+            }
+        }
+    }
+
     return mov_dst;
 }
 

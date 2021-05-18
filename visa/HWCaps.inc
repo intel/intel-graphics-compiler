@@ -663,6 +663,11 @@
         return getOption(vISA_src2AccSub);
     }
 
+    bool hasHFMathGRFAlign() const
+    {
+        return false;
+    }
+
     bool hasFixedCycleMathPipeline() const
     {
         return false;
