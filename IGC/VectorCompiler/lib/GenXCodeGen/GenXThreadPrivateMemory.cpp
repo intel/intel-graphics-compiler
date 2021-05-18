@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/IRBuilder.h"
@@ -55,20 +56,40 @@ static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(true), cl::Hidden,
 
 namespace {
 
+// Diagnostic information for errors/warnings in the TPM
 class DiagnosticInfoTPM : public DiagnosticInfo {
 private:
   std::string Description;
+  static int KindID;
+
+  static int getKindID() {
+    if (KindID == 0)
+      KindID = llvm::getNextAvailablePluginDiagnosticKind();
+    return KindID;
+  }
 
 public:
   // Initialize from description
   DiagnosticInfoTPM(const Twine &Desc, DiagnosticSeverity Severity = DS_Error)
       : DiagnosticInfo(llvm::getNextAvailablePluginDiagnosticKind(), Severity),
-        Description(Desc.str()) {}
+        Description("GenXTPM: " + Desc.str()) {}
 
-  void print(DiagnosticPrinter &DP) const override {
-    DP << "GenXTPM: " << Description;
+  // Initialize with Value
+  DiagnosticInfoTPM(Value *Val, const Twine &Desc, DiagnosticSeverity Severity)
+      : DiagnosticInfo(getKindID(), Severity) {
+    std::string Str;
+    llvm::raw_string_ostream(Str) << *Val;
+    Description = (Twine("TPM failed for: <") + Str + ">: " + Desc).str();
+  }
+
+  void print(DiagnosticPrinter &DP) const override { DP << Description; }
+
+  static bool classof(const DiagnosticInfo *DI) {
+    return DI->getKind() == getKindID();
   }
 };
+
+int DiagnosticInfoTPM::KindID = 0;
 
 struct FunctionInfo {
   std::unordered_set<Value *> Calls;
@@ -448,7 +469,9 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(MemTy, 0);
 
-  report_fatal_error("Cannot find pointer replacement");
+  DiagnosticInfoTPM Err{Ptr, "Cannot find pointer replacement", DS_Error};
+  Ptr->getContext().diagnose(Err);
+  return nullptr; // to suppress warnings
 }
 
 static std::pair<Value *, Value *>
@@ -1535,9 +1558,12 @@ bool GenXThreadPrivateMemory::processUsers() {
       }
     }
     if (m_AIUsers.empty()) {
-      if (!Changed && ChangeRequired)
-        report_fatal_error(
-            "Thread private memory: cannot resolve all alloca uses");
+      if (!Changed && ChangeRequired) {
+        DiagnosticInfoTPM Err{
+            I, "Thread private memory: cannot resolve all alloca uses",
+            DS_Error};
+        I->getContext().diagnose(Err);
+      }
       Changed = false;
       collectEachPossibleTPMUsers();
     }

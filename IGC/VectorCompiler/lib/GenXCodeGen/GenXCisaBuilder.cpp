@@ -143,6 +143,16 @@ public:
     Description = (Twine("GENX IR generation error: ") + Desc).str();
   }
 
+  DiagnosticInfoCisaBuild(Instruction *Inst, const Twine &Desc,
+                          DiagnosticSeverity Severity)
+      : DiagnosticInfo(getKindID(), Severity) {
+    std::string Str;
+    llvm::raw_string_ostream(Str) << *Inst;
+    Description =
+        (Twine("CISA builder failed for intruction <") + Str + ">: " + Desc)
+            .str();
+  }
+
   void print(DiagnosticPrinter &DP) const override { DP << Description; }
 
   static bool classof(const DiagnosticInfo *DI) {
@@ -2003,7 +2013,9 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   // Destination is address register.
   int ExecSize = 1;
   if (VectorType *VT = dyn_cast<VectorType>(CI->getType())) {
-    report_fatal_error("vector of addresses not implemented");
+    DiagnosticInfoCisaBuild Err{CI, "vector of addresses not implemented",
+                                DS_Error};
+    getContext().diagnose(Err);
   }
 
   auto ISAExecSize = static_cast<VISA_Exec_Size>(genx::log2(ExecSize));
@@ -2802,8 +2814,10 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
     }
   } else if (isa<UnreachableInst>(Inst))
     ; // no code generated
-  else
-    report_fatal_error("main inst not implemented");
+  else {
+    DiagnosticInfoCisaBuild Err{Inst, "main inst not implemented", DS_Error};
+    getContext().diagnose(Err);
+  }
 
   return false;
 }
@@ -3321,8 +3335,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   auto GetUnsignedValue = [&](II::ArgInfo AI) {
     ConstantInt *Const =
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
-    if (!Const)
-      report_fatal_error("Incorrect args to intrinsic call");
+    if (!Const) {
+      DiagnosticInfoCisaBuild Err{CI, "Incorrect args to intrinsic call",
+                                  DS_Error};
+      getContext().diagnose(Err);
+    }
     unsigned val = Const->getSExtValue();
     LLVM_DEBUG(dbgs() << "GetUnsignedValue from op #" << AI.getArgIdx()
                       << " yields: " << val << "\n");
@@ -3555,13 +3572,20 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     LLVM_DEBUG(dbgs() << "GetExecSizeFromByte\n");
     ConstantInt *Const =
       dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
-    if (!Const)
-      report_fatal_error("Incorrect args to intrinsic call");
+    if (!Const) {
+      DiagnosticInfoCisaBuild Err{CI, "Incorrect args to intrinsic call",
+                                  DS_Error};
+      getContext().diagnose(Err);
+    }
     unsigned Byte = Const->getSExtValue() & 15;
     *Mask = (VISA_EMask_Ctrl)(Byte >> 4);
     unsigned Res = Byte & 0xF;
-    IGC_ASSERT_MESSAGE(Res <= 5,
-        "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32).");
+    if (Res > 5) {
+      DiagnosticInfoCisaBuild Err{
+          CI, "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32)",
+          DS_Error};
+      getContext().diagnose(Err);
+    }
     return (VISA_Exec_Size)Res;
   };
 
@@ -3654,8 +3678,10 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     if (!AI.isRet())
       Arg = CI->getOperand(AI.getArgIdx());
     VectorType *VT = dyn_cast<VectorType>(Arg->getType());
-    if (!VT)
-      report_fatal_error("Invalid number of GRFs");
+    if (!VT) {
+      DiagnosticInfoCisaBuild Err{CI, "Invalid number of GRFs", DS_Error};
+      getContext().diagnose(Err);
+    }
     int DataSize = VT->getNumElements() *
                    VT->getElementType()->getPrimitiveSizeInBits() / 8;
     return (uint8_t)((DataSize + (GrfByteSize - 1)) / GrfByteSize);
@@ -3665,8 +3691,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     LLVM_DEBUG(dbgs() << "GetSampleChMask\n");
     ConstantInt *Const =
         dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
-    if (!Const)
-      report_fatal_error("Incorrect args to intrinsic call");
+    if (!Const) {
+      DiagnosticInfoCisaBuild Err{CI, "Incorrect args to intrinsic call",
+                                  DS_Error};
+      getContext().diagnose(Err);
+    }
     unsigned Byte = Const->getSExtValue() & 15;
     // Find the U_offset arg. It is the first vector arg after this one.
     VectorType *VT;
@@ -3674,8 +3703,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
          !(VT = dyn_cast<VectorType>(CI->getOperand(Idx)->getType())); ++Idx)
       ;
     unsigned Width = VT->getNumElements();
-    if (Width != 8 && Width != 16)
-      report_fatal_error("Invalid execution size for load/sample");
+    if (Width != 8 && Width != 16) {
+      DiagnosticInfoCisaBuild Err{CI, "Invalid execution size for load/sample",
+                                  DS_Error};
+      getContext().diagnose(Err);
+    }
     Byte |= Width & 16;
     return Byte;
   };
@@ -3705,7 +3737,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       ElBytes = 2;
       break;
     default:
-      report_fatal_error("Bad element type for SVM scatter/gather");
+      DiagnosticInfoCisaBuild Err{CI, "Bad element type for SVM scatter/gather",
+                                  DS_Error};
+      getContext().diagnose(Err);
     }
     return ElBytes;
   };
@@ -4325,8 +4359,9 @@ void GenXKernelBuilder::buildCastInst(CastInst *CI, BaleInfo BI, unsigned Mod,
   case Instruction::Trunc:
     break;
   default:
-    report_fatal_error("buildCastInst: unimplemented cast");
-    break;
+    DiagnosticInfoCisaBuild Err{CI, "buildCastInst: unimplemented cast",
+                                DS_Error};
+    getContext().diagnose(Err);
   }
 
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
@@ -4426,9 +4461,8 @@ void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
     Signed = SIGNED;
     break;
   default:
-    report_fatal_error("unknown predicate");
-    opSpec = ISA_CMP_E;
-    break;
+    DiagnosticInfoCisaBuild Err{Cmp, "unknown predicate", DS_Error};
+    getContext().diagnose(Err);
   }
 
   // Check if this is to write to a predicate desination or a GRF desination.
@@ -4525,9 +4559,12 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
       break;
     }
     default:
-      report_fatal_error("Invalid state operand class: only surface, vme, and "
-                         "sampler are supported.");
-      break;
+      DiagnosticInfoCisaBuild Err{
+          CI,
+          "Invalid state operand class: only surface, vme, and "
+          "sampler are supported.",
+          DS_Error};
+      getContext().diagnose(Err);
     }
   } else {
     uint8_t rowOffset = Offset >> genx::log2(GrfByteSize);
