@@ -462,7 +462,6 @@ Function* LegalizeFunctionSignatures::CloneFunctionSignature(Type* ReturnType,
     auto newIter = pNewFunc->arg_begin();
     if (changedRetVal)
     {
-        newIter->setName("retval");
         // Add "noalias" and "sret" to the return argument
         NewArgAttrs[newIter->getArgNo()] = AttributeSet().addAttribute(pNewFunc->getContext(), llvm::Attribute::AttrKind::NoAlias);
         NewArgAttrs[newIter->getArgNo()] = AttributeSet().addAttribute(pNewFunc->getContext(), llvm::Attribute::AttrKind::StructRet);

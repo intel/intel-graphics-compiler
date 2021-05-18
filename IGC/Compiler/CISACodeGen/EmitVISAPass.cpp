@@ -10548,6 +10548,15 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     }
 }
 
+static inline bool isFuncSRetArg(Argument * arg)
+{
+    Function * F = arg->getParent();
+    return (arg == F->arg_begin() &&
+        arg != F->arg_end() &&
+        arg->hasStructRetAttr() &&
+        F->getReturnType()->isVoidTy());
+}
+
 void EmitPass::emitStackFuncEntry(Function* F)
 {
     m_encoder->SetDispatchSimdSize();
@@ -10564,15 +10573,6 @@ void EmitPass::emitStackFuncEntry(Function* F)
     std::vector<CVariable*> argsOnStack;
     for (auto& Arg : F->args())
     {
-        CVariable* Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, false, true);
-
-        // Get the symbol for arg0 if it has the "sret" attribute and save it.
-        if (&Arg == F->arg_begin() && Arg.hasStructRetAttr())
-        {
-            IGC_ASSERT(F->getReturnType()->isVoidTy());
-            m_currShader->SaveSRet(Dst);
-        }
-
         if (!F->hasFnAttribute("referenced-indirectly"))
         {
             // Skip unused arguments if any for direct call
@@ -10580,6 +10580,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
         }
 
         // adjust offset for alignment
+        CVariable* Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, false, true);
         uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
         uint argSize = Dst->GetSize();
@@ -10621,6 +10622,9 @@ void EmitPass::emitStackFuncEntry(Function* F)
         {
             argsOnStack.push_back(Dst);
         }
+
+        // Get the symbol for arg0 if it has the "sret" attribute and save it.
+        if (isFuncSRetArg(&Arg)) m_currShader->SaveSRet(Dst);
     }
     m_encoder->SetStackFunctionArgSize((offsetA + getGRFSize() - 1) / getGRFSize());
 
@@ -10691,11 +10695,11 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
         // Here we write the saved arg0 value back into arg0. Since arg0 has the "sret" attribute, the function is guaranteed to be void,
         // thus writing to %arg0 is the same as writing to %retval.
         // We still set the retSize to 0 to match the LLVM IR function signature, so we avoid writing to vISA's return reg directly.
+        // Note: For leaf functions, we don't need to copy since we are guaranteed that %arg0 will not be overwritten.
         CVariable* sretPtr = m_currShader->GetAndResetSRet();
-        if (sretPtr)
+        if (sretPtr && isFuncSRetArg(F->arg_begin()) && !m_FGA->isLeafFunc(F))
         {
             // If the sret value is saved, copy it back into arg0
-            IGC_ASSERT(F->arg_begin() && F->arg_begin()->hasStructRetAttr());
             CVariable* ArgBlk = m_currShader->GetARGV();
             CVariable* Arg0 = m_currShader->GetNewAlias(ArgBlk, sretPtr->GetType(), 0, sretPtr->GetNumberElement(), sretPtr->IsUniform());
             m_encoder->Copy(Arg0, sretPtr);
