@@ -117,10 +117,8 @@ namespace IGC
         FuncAttrListTy  m_funcAttrs;               // duplicated information of m_funcAttributeTable, for zebin
         unsigned int    m_offsetToSkipPerThreadDataLoad = 0;
         uint32_t        m_offsetToSkipSetFFIDGP = 0;
-        //true means we separate pvtmem and spillfill. pvtmem could go into stateless.
-        //false means all of them are together
-        bool            m_separatePvtSpill = false;
         bool            m_roundPower2KBytes = false;
+        bool            m_UseScratchSpacePrivateMemory = true;
         unsigned int m_scratchSpaceSizeLimit = 0;
         unsigned int m_numGRFTotal = 128;
 
@@ -151,34 +149,33 @@ namespace IGC
             }
         }
 
-        void init(bool setSeparatePvtSpillT, bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT)
+        void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory)
         {
-            m_separatePvtSpill = setSeparatePvtSpillT;
             m_roundPower2KBytes = roundPower2KBytes;
             m_scratchSpaceSizeLimit = scratchSpaceSizeLimitT;
+            m_UseScratchSpacePrivateMemory = useScratchSpacePrivateMemory;
         }
 
         //InSlot0
         //Todo: rename later
         unsigned int getScratchSpaceUsageInSlot0() const
         {
-            //FIXME: temporarily disable slot1, enable it again when IGC is ready to handle r0.5+1
-            //return roundSize(m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + (m_separatePvtSpill ? 0 : m_scratchSpaceUsedByShader));
-            return roundSize(m_scratchSpaceUsedBySpills
-                            + m_scratchSpaceUsedByGtpin
-                            + ((m_separatePvtSpill && m_scratchSpaceUsedByShader > m_scratchSpaceSizeLimit) ? 0 : m_scratchSpaceUsedByShader));
+            unsigned int privateMemoryScratchSpaceSize =
+                getScratchSpaceUsageInSlot1() > 0 || getScratchSpaceUsageInStateless() > 0 ? 0 : m_scratchSpaceUsedByShader;
+            unsigned int result = roundSize(m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByGtpin + privateMemoryScratchSpaceSize);
+            IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
+            return result;
         }
 
         unsigned int getScratchSpaceUsageInSlot1() const
         {
-            //FIXME: temporarily disable slot1, enable it again when IGC is ready to handle r0.5+1
-            return 0;
-            //return roundSize((m_separatePvtSpill && m_scratchSpaceUsedByShader <= m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0);
+            unsigned int result = 0;
+            return result;
         }
 
         unsigned int getScratchSpaceUsageInStateless() const
         {
-            return roundSize(((m_separatePvtSpill && m_scratchSpaceUsedByShader > m_scratchSpaceSizeLimit) ? m_scratchSpaceUsedByShader : 0));
+            return roundSize(!m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
         }
 
         void setScratchSpaceUsedByShader(unsigned int scratchSpaceUsedByShader)
