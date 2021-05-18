@@ -98,7 +98,6 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     ConstantPool.clear();
     setup.clear();
     patchConstantSetup.clear();
-    kernelArgToPayloadOffsetMap.clear();
     encoder.SetProgram(this);
 }
 
@@ -488,7 +487,6 @@ void CShader::AllocateInput(CVariable* var, uint offset, uint instance, bool for
     IGC_ASSERT(nullptr != var);
     IGC_ASSERT(offset % (1u << var->GetAlign()) == 0);
     encoder.DeclareInput(var, offset, instance);
-    kernelArgToPayloadOffsetMap[var] = offset;
     // For the payload section, we need to mark inputs to be outputs
     // so that inputs will be alive across the entire payload section
     if (forceLiveOut)
@@ -974,11 +972,6 @@ CVariable* CShader::GetNewAddressVariable(
 WIBaseClass::WIDependancy CShader::GetDependency(Value* v) const
 {
     return m_WI ? (m_WI->whichDepend(v)) : WIBaseClass::RANDOM;
-}
-
-void CShader::SetDependency(llvm::Value* v, WIBaseClass::WIDependancy dep)
-{
-    if (m_WI) m_WI->incUpdateDepend(v, dep);
 }
 
 bool CShader::GetIsUniform(llvm::Value* v) const

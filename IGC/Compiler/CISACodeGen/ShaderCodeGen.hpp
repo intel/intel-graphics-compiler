@@ -164,7 +164,6 @@ public:
     uint32_t    GetExtractMask(llvm::Value* value);
     uint16_t    AdjustExtractIndex(llvm::Value* value, uint16_t elemIndex);
     WIBaseClass::WIDependancy GetDependency(llvm::Value* v) const;
-    void        SetDependency(llvm::Value* v, WIBaseClass::WIDependancy dep);
     bool        GetIsUniform(llvm::Value* v) const;
     bool        InsideDivergentCF(const llvm::Instruction* inst) const;
     bool        InsideThreadDivergentCF(const llvm::Instruction* inst) const;
@@ -476,12 +475,6 @@ public:
         return globalSymbolMapping;
     }
 
-    int64_t GetKernelArgOffset(CVariable* argV)
-    {
-        auto it = kernelArgToPayloadOffsetMap.find(argV);
-        return it != kernelArgToPayloadOffsetMap.end() ? (int64_t) it->second : -1;
-    }
-
     DebugInfoData& GetDebugInfoData();
 
 protected:
@@ -536,9 +529,6 @@ protected:
     // keep a map when we generate accurate mask for vector value
     // in order to reduce register usage
     llvm::DenseMap<llvm::Value*, uint32_t> extractMasks;
-
-    // keep a map for each kernel argument to its allocated payload offset
-    llvm::DenseMap<CVariable*, uint32_t> kernelArgToPayloadOffsetMap;
 
     CEncoder encoder;
     std::vector<CVariable*> setup;
