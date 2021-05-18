@@ -58,28 +58,41 @@ public:
         uint64_t sizeBits;
         uint64_t offsetBits;
     };
-    PieceBuilder(uint64_t RegSizeBits, uint64_t VarSizeBits, uint64_t SubRegOffsetBits)
-        : RegSizeBits(RegSizeBits),
+    PieceBuilder(size_t NumGRFs, uint64_t RegSizeBits, uint64_t VarSizeBits, uint64_t SubRegOffsetBits)
+        : NumGRFs(NumGRFs),
+          RegSizeBits(RegSizeBits),
           VariableSizeInBits(VarSizeBits),
           SubRegOffsetInBits(SubRegOffsetBits) {
         IGC_ASSERT(SubRegOffsetInBits < RegSizeBits);
         IGC_ASSERT(RegSizeBits > 0);
+        IGC_ASSERT(NumGRFs > 0);
     }
     bool needsPieces () const {
         if (VariableSizeInBits == 0)
             return false;
         if (pieceCount() == 1 && SubRegOffsetInBits != 0)
             return true;
+        bool NoGRFOverflow = pieceCount() <= NumGRFs;
+        IGC_ASSERT_MESSAGE(NoGRFOverflow,
+                           "required number of pieces is greater than available GRF");
+        if (!NoGRFOverflow)
+            return false; // fallback
         if (pieceCount() > 1)
             return true;
         return false;
     }
-    uint64_t pieceCount () const {
+    unsigned pieceCount () const {
         auto AlignedSize = SubRegOffsetInBits + VariableSizeInBits;
         auto Count = AlignedSize / RegSizeBits;
         if (AlignedSize % RegSizeBits)
             ++Count;
-        return Count;
+        const auto MaxUint = std::numeric_limits<unsigned>::max();
+        bool NoOverflow = Count <= MaxUint;
+        IGC_ASSERT_MESSAGE(NoOverflow,
+                           "number of required pieces does not fit unsigned int");
+        if (!NoOverflow)
+          return 0; // fallback if overflow is detected
+        return static_cast<unsigned>(Count);
     }
     PieceInfo get(uint64_t index) const {
         assert(index < pieceCount());
@@ -100,6 +113,7 @@ public:
         return PieceInfo{AlignedSize - LastChunk, 0};
     }
 private:
+    size_t   NumGRFs;
     uint64_t RegSizeBits;
     uint64_t VariableSizeInBits;
     uint64_t SubRegOffsetInBits;
@@ -1452,6 +1466,26 @@ void CompileUnit::addSimdLane(IGC::DIEBlock* Block, DbgVariable& DV, const VISAV
     }
 }
 
+
+bool CompileUnit::emitBitPiecesForRegVal(IGC::DIEBlock* Block, const VISAModule& VM,
+                                         DbgVariable& DV,
+                                         const DbgDecoder::LiveIntervalsVISA& lr,
+                                         uint64_t varSizeInBits, uint64_t offsetInBits)
+{
+    const auto registerSizeInBits = VM.getGRFSize() * 8;
+    const auto numGRFs = VM.getNumGRFs();
+
+    PieceBuilder PieceBuilder(numGRFs, registerSizeInBits, varSizeInBits, offsetInBits);
+    if (!PieceBuilder.needsPieces())
+        return false;
+    for (unsigned i = 0, e = PieceBuilder.pieceCount(); i < e; ++i) {
+        auto Piece = PieceBuilder.get(i);
+        if (i != 0) // RegisterLoc is already emitted for the first Piece
+            addRegisterLoc(Block, lr.getGRF().regNum + i, 0, DV.getDbgInst());
+        addBitPiece(Block, Piece.sizeBits, Piece.offsetBits);
+    }
+    return true;
+}
 // addSimdLaneScalar - add a sequence of attributes to calculate location of scalar variable
 // e.g. a GRF subregister.
 void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes)
@@ -1478,16 +1512,7 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock* Block, DbgVariable& DV, const
         }
         else
         {
-            const auto* VISAMod = Loc->GetVISAModule();
-            const auto registerSizeInBits = VISAMod->getGRFSize() * 8;
-
-            PieceBuilder PieceBuilder(registerSizeInBits, varSizeInBits, offsetInBits);
-            for (unsigned i = 0; i < PieceBuilder.pieceCount(); ++i) {
-                auto Piece = PieceBuilder.get(i);
-                if (i != 0) // RegisterLoc is already emitted for the first Piece
-                    addRegisterLoc(Block, lr->getGRF().regNum + i, 0, DV.getDbgInst());
-                addBitPiece(Block, Piece.sizeBits, Piece.offsetBits);
-            }
+            emitBitPiecesForRegVal(Block, *Loc->GetVISAModule(), DV, *lr, varSizeInBits, offsetInBits);
         }
     }
 }
@@ -2832,23 +2857,16 @@ IGC::DIEBlock* CompileUnit::buildGeneral(DbgVariable& var, std::vector<VISAVaria
 
                     addRegisterLoc(Block, lrToUse.getGRF().regNum, offset, var.getDbgInst());
 
-                    if (HasImplicitLocation(var)) {
+                    if (HasImplicitLocation(var))
+                    {
                         addConstantUValue(Block, offsetInBits);
                         addConstantUValue(Block, varSizeInBits);
                         IGC_ASSERT_MESSAGE(varSizeInBits <= 64, "Entries pushed onto DWARF stack are limited to 8 bytes");
                         addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
-                    } else {
-                        const auto registerSizeInBits = VISAMod->getGRFSize() * 8;
-                        PieceBuilder PieceBuilder(registerSizeInBits, varSizeInBits, offsetInBits);
-                        // Note: if no pieces are required - we are done, since RegisterLoc was emitted
-                        if (PieceBuilder.needsPieces()) {
-                            for (unsigned i = 0; i < PieceBuilder.pieceCount(); ++i) {
-                                auto Piece = PieceBuilder.get(i);
-                                if (i != 0) // RegisterLoc is already emitted for the first Piece
-                                    addRegisterLoc(Block, lrToUse.getGRF().regNum + i, offset, var.getDbgInst());
-                                addBitPiece(Block, Piece.sizeBits, Piece.offsetBits);
-                            }
-                        }
+                    }
+                    else
+                    {
+                        emitBitPiecesForRegVal(Block, *VISAMod, var, lrToUse, varSizeInBits, offsetInBits);
                     }
                 }
                 else

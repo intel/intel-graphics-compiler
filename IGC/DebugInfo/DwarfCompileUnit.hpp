@@ -290,6 +290,11 @@ namespace IGC
         // e.g. a GRF subregister.
         void addSimdLaneScalar(DIEBlock* Block, DbgVariable& DV, const VISAVariableLocation* Loc, DbgDecoder::LiveIntervalsVISA* lr, uint16_t subRegInBytes);
 
+        bool emitBitPiecesForRegVal(IGC::DIEBlock* Block, const VISAModule& VM,
+                                    DbgVariable& DV,
+                                    const DbgDecoder::LiveIntervalsVISA& lr,
+                                    uint64_t varSizeInBits, uint64_t offsetInBits);
+
         /// getOrCreateNameSpace - Create a DIE for DINameSpace.
         DIE* getOrCreateNameSpace(llvm::DINamespace* NS);
 
