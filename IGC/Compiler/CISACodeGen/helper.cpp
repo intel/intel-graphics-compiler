@@ -1162,6 +1162,7 @@ namespace IGC
                 isa<IntToPtrInst>(ptrVal) ||
                 isa<GetElementPtrInst>(ptrVal) ||
                 isa<ConstantExpr>(ptrVal) ||
+                isa<LoadInst>(ptrVal) ||
                 isa<Argument>(ptrVal))
             {
                 eltPtrVal = ptrVal;
