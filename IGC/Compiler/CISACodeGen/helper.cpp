@@ -1023,6 +1023,7 @@ namespace IGC
             overloadedTys);
 
         llvm::CallInst* pNewCall = llvm::CallInst::Create(pNewIntr, args, "", pIntr);
+        pNewCall->setDebugLoc(pIntr->getDebugLoc());
 
         pIntr->replaceAllUsesWith(pNewCall);
         pIntr->eraseFromParent();

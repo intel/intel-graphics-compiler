@@ -352,11 +352,20 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
                 patchedInst = GetElementPtrInst::CreateInBounds(nullptr, patchedInst, gepArgs, "", gepInst);
             else
                 patchedInst = GetElementPtrInst::Create(nullptr, patchedInst, gepArgs, "", gepInst);
+
+            if (GetElementPtrInst* gepPatchedInst = dyn_cast<GetElementPtrInst>(patchedInst))
+            {
+                gepPatchedInst->setDebugLoc(gepInst->getDebugLoc());
+            }
         }
         else if (BitCastInst * cast = dyn_cast<BitCastInst>(inst))
         {
             PointerType* newptrType = PointerType::get(cast->getType()->getPointerElementType(), directAS);
             patchedInst = BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", cast);
+            if (BitCastInst* castPathedInst = dyn_cast<BitCastInst>(patchedInst))
+            {
+                castPathedInst->setDebugLoc(cast->getDebugLoc());
+            }
         }
         else
         {
