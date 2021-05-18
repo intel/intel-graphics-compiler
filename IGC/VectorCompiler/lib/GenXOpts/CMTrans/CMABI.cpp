@@ -34,7 +34,9 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/STLExtras.h"
+#include "vc/Utils/General/Types.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -534,349 +536,6 @@ bool CMABI::runOnSCC(CallGraphSCC &SCC) {
   return Changed;
 }
 
-namespace {
-
-// This structure defines a use with \p User instruction and \p OperandNo of its
-// operand. And there's new value \p NewOperand for this operand.
-struct UseToRebuild {
-  Instruction *User = nullptr;
-  int OperandNo;
-  Value *NewOperand;
-  bool IsTerminal = false;
-};
-
-// This structure defines which \p OperandNos of \p User instruction should be
-// rebuilt. Corresponding new values are provided in \p NewOperands.
-// (OperandNos.size() == NewOperands.size())
-struct InstToRebuild {
-  Instruction *User = nullptr;
-  std::vector<int> OperandNos;
-  std::vector<Value *> NewOperands;
-  bool IsTerminal = false;
-};
-} // namespace
-
-// The info required to rebuild the instructions.
-// If element's NewOperand is equal to nullptr, it means that this operand/use
-// should be replaced with previously build instruction.
-using RebuildInfo = std::vector<UseToRebuild>;
-
-// A helper class to generate RebuildInfo.
-// Abstract:
-// One does not simply change an operand of an instruction with a value with a
-// different type. In this case instruction changes its type and must be
-// rebuild. That causes a chain reaction as instruction's users now has to be
-// rebuild to.
-//
-// Usage:
-// A user should provide instructions into this builder in reverse post-order.
-// An instruction must be defined as entry (the one that causes chain reaction)
-// or as a potential node inside the chain(user can pass all instructions that
-// are not entries - that's fine, if user knows for sure that this instruction
-// isn't in the chain, user is able to not pass this instruction).
-// A user must provide a functor (const Instruction &)-> bool that will define
-// whether an instruction is a terminal - the last instruction in the chain
-// reaction. For all other instructions it is considered that they are
-// continuing the reaction.
-template <typename IsTerminalFunc> class RebuildInfoBuilder {
-  IsTerminalFunc IsTerminal;
-  RebuildInfo Info;
-  std::unordered_set<Value *> ChangedOperands;
-
-public:
-  RebuildInfoBuilder(IsTerminalFunc IsTerminalIn) : IsTerminal{IsTerminalIn} {}
-
-  void addEntry(Instruction &Inst, int OperandNo, Value &NewOperand) {
-    addNode(Inst, OperandNo, &NewOperand);
-  }
-
-  void addNodeIfRequired(Instruction &Inst, int OperandNo) {
-    if (ChangedOperands.count(Inst.getOperand(OperandNo)))
-      addNode(Inst, OperandNo, nullptr);
-  }
-
-  // Emit the gathered data.
-  RebuildInfo emit() && { return std::move(Info); }
-
-private:
-  void addNode(Instruction &Inst, int OperandNo, Value *NewOperand) {
-    // Users are covered here too as phi use can be back edge, so RPO won't help
-    // and it won't be covered.
-    IGC_ASSERT_MESSAGE(!isa<PHINode>(Inst),
-      "phi-nodes aren't yet supported");
-    IGC_ASSERT_MESSAGE(IsTerminal(Inst) ||
-      std::all_of(Inst.user_begin(), Inst.user_end(),
-        [](const User *U) { return !isa<PHINode>(U); }),
-      "phi-nodes aren't yet supported");
-    auto InstIsTerminal = IsTerminal(Inst);
-    Info.push_back({&Inst, OperandNo, NewOperand, InstIsTerminal});
-    if (!InstIsTerminal)
-      ChangedOperands.insert(&Inst);
-  }
-};
-
-template <typename IsTerminalFunc>
-RebuildInfoBuilder<IsTerminalFunc>
-MakeRebuildInfoBuilder(IsTerminalFunc IsTerminator) {
-  return RebuildInfoBuilder{IsTerminator};
-}
-
-// Takes arguments of the original instruction (OrigInst.User) and rewrites
-// the required ones with new values according to info in \p OrigInst
-static std::vector<Value *> createNewOperands(const InstToRebuild &OrigInst) {
-  std::vector<Value *> NewOperands{OrigInst.User->value_op_begin(),
-                                   OrigInst.User->value_op_end()};
-  for (auto &&OpReplacement : zip(OrigInst.OperandNos, OrigInst.NewOperands)) {
-    int OperandNo = std::get<0>(OpReplacement);
-    Value *NewOperand = std::get<1>(OpReplacement);
-    IGC_ASSERT_MESSAGE(OperandNo >= 0, "no such operand");
-    IGC_ASSERT_MESSAGE(OperandNo < static_cast<int>(NewOperands.size()),
-      "no such operand");
-    NewOperands[OperandNo] = NewOperand;
-  }
-  return std::move(NewOperands);
-}
-
-// Returns potentially new pointer type with the provided \p AddrSpace
-// and the original pointee type.
-static PointerType *changeAddrSpace(PointerType *OrigTy, int AddrSpace) {
-  return PointerType::get(OrigTy->getElementType(), AddrSpace);
-}
-
-class cloneInstWithNewOpsImpl
-    : public InstVisitor<cloneInstWithNewOpsImpl, Instruction *> {
-  ArrayRef<Value *> NewOperands;
-
-public:
-  cloneInstWithNewOpsImpl(ArrayRef<Value *> NewOperandsIn)
-      : NewOperands{NewOperandsIn} {}
-
-  Instruction *visitInstruction(Instruction &I) const {
-    IGC_ASSERT_MESSAGE(0, "yet unsupported instruction");
-    return nullptr;
-  }
-
-  Instruction *visitGetElementPtrInst(GetElementPtrInst &OrigGEP) const {
-    return GetElementPtrInst::Create(OrigGEP.getSourceElementType(),
-                                     NewOperands.front(),
-                                     NewOperands.drop_front());
-  }
-
-  Instruction *visitLoadInst(LoadInst &OrigLoad) {
-    Value &Ptr = getSingleNewOperand();
-    auto *NewLoad =
-        new LoadInst{cast<PointerType>(Ptr.getType())->getElementType(),
-                     &Ptr,
-                     "",
-                     OrigLoad.isVolatile(),
-                     IGCLLVM::getAlign(OrigLoad),
-                     OrigLoad.getOrdering(),
-                     OrigLoad.getSyncScopeID()};
-    return NewLoad;
-  }
-
-  StoreInst *visitStoreInst(StoreInst &OrigStore) {
-    IGC_ASSERT_MESSAGE(NewOperands.size() == 2, "store has 2 operands");
-    return new StoreInst{NewOperands[0],          NewOperands[1],
-                         OrigStore.isVolatile(),  IGCLLVM::getAlign(OrigStore),
-                         OrigStore.getOrdering(), OrigStore.getSyncScopeID()};
-  }
-
-  // Rebuilds bitcast \p OrigInst so it now has \p NewOp as operand and result
-  // type addrspace corresponds with this operand.
-  CastInst *visitBitCastInst(BitCastInst &OrigCast) {
-    Value &NewOp = getSingleNewOperand();
-    if (isa<PointerType>(OrigCast.getType()))
-      return visitPointerBitCastInst(OrigCast);
-    return new BitCastInst{&NewOp, OrigCast.getType()};
-  }
-
-  CastInst *visitPointerBitCastInst(BitCastInst &OrigCast) {
-    Value &NewOp = getSingleNewOperand();
-    auto NewOpAS = cast<PointerType>(NewOp.getType())->getAddressSpace();
-    // If the operand changed addrspace the bitcast type should change it too.
-    return new BitCastInst{
-        &NewOp,
-        changeAddrSpace(cast<PointerType>(OrigCast.getType()), NewOpAS)};
-  }
-
-  CastInst *visitAddrSpaceCastInst(AddrSpaceCastInst &OrigCast) {
-    Value &NewOp = getSingleNewOperand();
-    auto *NewOpTy = cast<PointerType>(NewOp.getType());
-    auto *CastTy = cast<PointerType>(OrigCast.getType());
-    if (NewOpTy->getAddressSpace() == CastTy->getAddressSpace())
-      return nullptr;
-    return new AddrSpaceCastInst{&NewOp, CastTy};
-  }
-
-private:
-  Value &getSingleNewOperand() {
-    IGC_ASSERT_MESSAGE(NewOperands.size() == 1,
-      "it should've been called only for instructions with a single operand");
-    return *NewOperands.front();
-  }
-};
-
-// Creates new instruction with all the properties taken from the \p OrigInst
-// except for operands that are taken from \p NewOps.
-// nullptr is returned when clonning is imposible.
-static Instruction *cloneInstWithNewOps(Instruction &OrigInst,
-                                        ArrayRef<Value *> NewOps) {
-  Instruction *NewInst = cloneInstWithNewOpsImpl{NewOps}.visit(OrigInst);
-  if (NewInst) {
-    NewInst->copyIRFlags(&OrigInst);
-    NewInst->copyMetadata(OrigInst);
-  }
-  return NewInst;
-}
-
-// covers cases when \p OrigInst cannot be cloned by cloneInstWithNewOps
-// with the provided \p NewOps.
-// Peplacement for the \p OrigInst is returned.
-static Value *coverNonCloneCase(Instruction &OrigInst,
-                                ArrayRef<Value *> NewOps) {
-  IGC_ASSERT_MESSAGE(isa<AddrSpaceCastInst>(OrigInst),
-                     "only addr space cast case is yet considered");
-  IGC_ASSERT_MESSAGE(NewOps.size() == 1, "cast has only one operand");
-  Value *NewOp = NewOps.front();
-  auto *NewOpTy = cast<PointerType>(NewOp->getType());
-  auto *CastTy = cast<PointerType>(OrigInst.getType());
-  IGC_ASSERT_MESSAGE(NewOpTy->getAddressSpace() == CastTy->getAddressSpace(),
-                     "when addrspaces different clonnig helps and it should've "
-                     "been covered before");
-  return NewOp;
-}
-
-// Rebuilds instructions according to info provided in RebuildInfo.
-// New instructions inherit all properties of original ones, only
-// operands change. User can customize this behaviour with two functors:
-//    IsSpecialInst: (const InstToRebuild&) -> bool - returns whether inst
-//      should be processed with a custom handler
-//    CreateSpecialInst: (const InstToRebuild&) -> Instruction* - custom handler
-//      to rebuild provided instruction.
-template <typename IsSpecialInstFunc, typename CreateSpecialInstFunc>
-class InstructionRebuilder {
-  // Pop should be called only in getNextInstToRebuild.
-  std::vector<UseToRebuild> ToRebuild;
-  IsSpecialInstFunc IsSpecialInst;
-  CreateSpecialInstFunc CreateSpecialInst;
-  // Map between original inst and its replacement.
-  std::unordered_map<Instruction *, Value *> Replacement;
-  std::vector<Instruction *> ToErase;
-
-public:
-  InstructionRebuilder(RebuildInfo ToRebuildIn,
-                       IsSpecialInstFunc IsSpecialInstIn,
-                       CreateSpecialInstFunc CreateSpecialInstIn)
-      : ToRebuild{ToRebuildIn}, IsSpecialInst{IsSpecialInstIn},
-        CreateSpecialInst{CreateSpecialInstIn} {}
-
-  void rebuild() && {
-    std::vector<Instruction *> Terminals;
-    for (auto First = ToRebuild.begin(), Last = ToRebuild.end();
-         First != Last;) {
-      InstToRebuild InstInfo;
-      std::tie(InstInfo, First) = getNextInstToRebuild(First, Last);
-      IGC_ASSERT_MESSAGE(!isa<PHINode>(InstInfo.User),
-                         "phi-nodes aren't yet supported");
-      rebuildNonPhiInst(InstInfo);
-      if (InstInfo.IsTerminal)
-        Terminals.push_back(InstInfo.User);
-    }
-    for (auto *Terminal : Terminals)
-      Terminal->replaceAllUsesWith(Replacement[Terminal]);
-    // Instructions must be deleted in post-order - uses first, than defs.
-    // As ToErase is in RPO, reverse is required.
-    for (auto *Inst : reverse(ToErase))
-      Inst->eraseFromParent();
-  }
-
-private:
-  // Takes a range of UseToRebuild - [\p First, \p Last).
-  // Aggregates first uses with the same user from the range and adds collected
-  // Replacement info to produce info for the next inst to rebuild. Returns
-  // collected inst info and the first use with a different to returned user
-  // (next user) or \p Last when there's no more users.
-  template <typename InputIter>
-  std::pair<InstToRebuild, InputIter> getNextInstToRebuild(InputIter First,
-                                                           InputIter Last) {
-    IGC_ASSERT_MESSAGE(First != Last,
-                       "this method shouldn't be called when list of uses to "
-                       "rebuild is already empty");
-    InstToRebuild CurInst;
-    CurInst.User = First->User;
-    CurInst.IsTerminal = First->IsTerminal;
-    auto LastUse = std::adjacent_find(
-        First, Last, [](const UseToRebuild &LHS, const UseToRebuild &RHS) {
-          return LHS.User != RHS.User;
-        });
-    if (LastUse != Last)
-      ++LastUse;
-    // Filling operand related fields.
-    CurInst =
-        std::accumulate(First, LastUse, std::move(CurInst),
-                        [this](InstToRebuild Inst, const UseToRebuild &Use) {
-                          return appendOperand(Inst, Use);
-                        });
-    return {CurInst, LastUse};
-  }
-
-  // Appends operand/use from \p CurUse to \p InstInfo.
-  // Returns updated \p InstInfo.
-  InstToRebuild appendOperand(InstToRebuild InstInfo,
-                              const UseToRebuild &CurUse) {
-    IGC_ASSERT_MESSAGE(InstInfo.User == CurUse.User,
-                       "trying to append a wrong use with wrong user");
-    IGC_ASSERT_MESSAGE(InstInfo.IsTerminal == CurUse.IsTerminal,
-        "two uses don't agree on the instruction being terminal");
-    InstInfo.OperandNos.push_back(CurUse.OperandNo);
-    auto *NewOperand = CurUse.NewOperand;
-    if (!NewOperand) {
-      NewOperand = Replacement.at(
-          cast<Instruction>(CurUse.User->getOperand(CurUse.OperandNo)));
-    }
-    InstInfo.NewOperands.push_back(NewOperand);
-    return std::move(InstInfo);
-  }
-
-  void rebuildNonPhiInst(InstToRebuild &OrigInst) {
-    auto *Replace = createNonPhiInst(OrigInst);
-    Replacement[OrigInst.User] = Replace;
-    ToErase.push_back(OrigInst.User);
-  }
-
-  // Unlike rebuildNonPhiInst method just creates instruction, doesn't
-  // update the class state.
-  Value *createNonPhiInst(InstToRebuild &OrigInst) const {
-    Instruction *Replace;
-    if (IsSpecialInst(OrigInst))
-      Replace = CreateSpecialInst(OrigInst);
-    else
-      Replace =
-          cloneInstWithNewOps(*OrigInst.User, createNewOperands(OrigInst));
-    if (!Replace)
-      return coverNonCloneCase(*OrigInst.User, createNewOperands(OrigInst));
-    Replace->takeName(OrigInst.User);
-    Replace->insertBefore(OrigInst.User);
-    Replace->setDebugLoc(OrigInst.User->getDebugLoc());
-    return Replace;
-  }
-};
-
-template <typename IsSpecialInstFunc, typename CreateSpecialInstFunc>
-InstructionRebuilder<IsSpecialInstFunc, CreateSpecialInstFunc>
-MakeInstructionRebuilder(RebuildInfo Info, IsSpecialInstFunc IsSpecialInst,
-                         CreateSpecialInstFunc CreateSpecialInst) {
-  return {std::move(Info), std::move(IsSpecialInst),
-          std::move(CreateSpecialInst)};
-}
-
-auto MakeInstructionRebuilder(RebuildInfo Info) {
-  return MakeInstructionRebuilder(
-      std::move(Info), [](const InstToRebuild &Inst) { return false; },
-      [](const InstToRebuild &Inst) { return nullptr; });
-}
-
 // Whether \p Inst is an instruction on which IR rebuild caused by addrspace
 // change will stop.
 static bool isRebuildTerminal(const Instruction &Inst) {
@@ -890,7 +549,7 @@ static bool isRebuildTerminal(const Instruction &Inst) {
 // wasn't private.
 static void replaceUsesWithinFunction(
     const SmallDenseMap<Value *, Value *> &GlobalsToReplace, Function *F) {
-  auto ToRebuild = MakeRebuildInfoBuilder(
+  auto ToRebuild = vc::MakeRebuildInfoBuilder(
       [](const Instruction &Inst) { return isRebuildTerminal(Inst); });
   ReversePostOrderTraversal<Function *> RPOT(F);
   for (auto *BB : RPOT) {
@@ -910,7 +569,7 @@ static void replaceUsesWithinFunction(
       }
     }
   }
-  MakeInstructionRebuilder(std::move(ToRebuild).emit()).rebuild();
+  vc::MakeInstructionRebuilder(std::move(ToRebuild).emit()).rebuild();
 }
 
 // \brief Create allocas for globals directly used in this kernel and
@@ -1264,7 +923,7 @@ public:
     GlobalArgs.FirstGlobalArgIdx = NewFuncType.Args.size();
     for (auto *GV : LI.getGlobals()) {
       if (passLocalizedGlobalByPointer(*GV)) {
-        NewFuncType.Args.push_back(changeAddrSpace(
+        NewFuncType.Args.push_back(vc::changeAddrSpace(
             cast<PointerType>(GV->getType()), PrivateAddrSpace));
         GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByPointer});
       } else {
@@ -1548,7 +1207,8 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
     return GAI.GV;
   // Need to add a temprorary cast inst to match types.
   // When this switch to the caller, it'll remove this cast.
-  return new AddrSpaceCastInst{GAI.GV, changeAddrSpace(GVTy, PrivateAddrSpace),
+  return new AddrSpaceCastInst{GAI.GV,
+                               vc::changeAddrSpace(GVTy, PrivateAddrSpace),
                                GAI.GV->getName() + ".tmp", &OrigCall};
 }
 

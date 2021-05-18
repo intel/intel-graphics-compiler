@@ -8,6 +8,7 @@
 
 set(GENERAL_UTILS_SOURCES
   BiF.cpp
+  InstRebuilder.cpp
   )
 
 add_library(VCGeneralUtils ${GENERAL_UTILS_SOURCES})
