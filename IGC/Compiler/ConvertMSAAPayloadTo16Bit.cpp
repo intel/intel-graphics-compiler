@@ -150,8 +150,9 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
 
                 // if ldmcs has fewer elements than new ldmcs, extend vector
                 Value* ldmcsInt32CorrectlySized;
-                if (newLdmcsNumOfElements < ldmcsNumOfElements)
+                if (newLdmcsNumOfElements != ldmcsNumOfElements)
                 {
+                    IGC_ASSERT(newLdmcsNumOfElements * 2 >= ldmcsNumOfElements);
                     SmallVector<uint32_t, 4> maskVals;
                     for (uint i = 0; i < ldmcsNumOfElements; i++)
                     {
@@ -159,7 +160,7 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
                     }
                     auto* pMask = ConstantDataVector::get(I.getContext(), maskVals);
 
-                    ldmcsInt32CorrectlySized = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(VectorType::get(m_builder->getInt32Ty(), ldmcsNumOfElements)), pMask);
+                    ldmcsInt32CorrectlySized = m_builder->CreateShuffleVector(ldmcsExtendedToInt32, UndefValue::get(ldmcsExtendedToInt32->getType()), pMask);
                 }
                 else
                 {
