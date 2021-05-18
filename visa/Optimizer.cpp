@@ -6944,7 +6944,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //              1 - simple insertion of "emask flag". A new flag is created
         //                  each time it is needed, that is, created per each inst.
         //  (See comments for more details at doNoMaskWA().
-        if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&
+        if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
             ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
              builder.getOption(vISA_forceNoMaskWA)))
         {
