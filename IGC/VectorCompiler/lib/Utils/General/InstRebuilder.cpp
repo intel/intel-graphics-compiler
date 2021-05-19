@@ -84,6 +84,11 @@ public:
     return new AddrSpaceCastInst{&NewOp, CastTy};
   }
 
+  SelectInst *visitSelectInst(SelectInst &OrigSelect) {
+    IGC_ASSERT_MESSAGE(NewOperands.size() == 3, "select has 3 operands");
+    return SelectInst::Create(NewOperands[0], NewOperands[1], NewOperands[2]);
+  }
+
 private:
   Value &getSingleNewOperand() {
     IGC_ASSERT_MESSAGE(
