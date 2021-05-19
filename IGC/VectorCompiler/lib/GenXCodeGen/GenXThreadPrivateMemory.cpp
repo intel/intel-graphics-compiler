@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "GenXVisa.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Utils/General/BreakConst.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -224,7 +225,7 @@ static int getNumBlocksForType(Type *Ty, const DataLayout &DL) {
 
 // Wipe all internal ConstantExprs out of V if it's a ConstantVector of function pointers
 Value *GenXThreadPrivateMemory::NormalizeFuncPtrVec(Value *V, Instruction *InsPoint) {
-  V = breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint);
+  V = vc::breakConstantVector(cast<ConstantVector>(V), InsPoint, InsPoint);
   auto *Inst = dyn_cast<InsertElementInst>(V);
   if (!Inst)
     return V;

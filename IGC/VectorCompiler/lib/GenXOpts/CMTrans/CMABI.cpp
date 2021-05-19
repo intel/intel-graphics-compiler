@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/BreakConst.h"
 #include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/STLExtras.h"
 #include "vc/Utils/General/Types.h"
@@ -603,8 +604,6 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
   replaceUsesWithinFunction(GlobalsToReplace, Fn);
 }
 
-static void breakConstantExprs(Function *F);
-
 CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   Function *F = CGN->getFunction();
 
@@ -612,7 +611,7 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   if (!F || F->isDeclaration() || AlreadyVisited.count(F))
     return 0;
 
-  breakConstantExprs(F);
+  vc::breakConstantExprs(F);
 
   // Variables to be localized.
   LocalizationInfo &LI = Info->getLocalizationInfo(F);
@@ -1485,74 +1484,6 @@ CallGraphNode *CMABI::TransformNode(Function &OrigFunc,
     OrigFunc.setLinkage(Function::ExternalLinkage);
 
   return NewFuncCGN;
-}
-
-static void breakConstantVector(unsigned i, Instruction *CurInst,
-                                Instruction *InsertPt) {
-  ConstantVector *CV = cast<ConstantVector>(CurInst->getOperand(i));
-
-  // Splat case.
-  if (auto S = dyn_cast_or_null<ConstantExpr>(CV->getSplatValue())) {
-    // Turn element into an instruction
-    auto Inst = S->getAsInstruction();
-    Inst->setDebugLoc(CurInst->getDebugLoc());
-    Inst->insertBefore(InsertPt);
-
-    // Splat this value.
-    IRBuilder<> Builder(InsertPt);
-    Value *NewVal = Builder.CreateVectorSplat(CV->getNumOperands(), Inst);
-
-    // Update i-th operand with newly created splat.
-    CurInst->setOperand(i, NewVal);
-  }
-
-  SmallVector<Value *, 8> Vals;
-  bool HasConstExpr = false;
-  for (unsigned j = 0, N = CV->getNumOperands(); j < N; ++j) {
-    Value *Elt = CV->getOperand(j);
-    if (auto CE = dyn_cast<ConstantExpr>(Elt)) {
-      auto Inst = CE->getAsInstruction();
-      Inst->setDebugLoc(CurInst->getDebugLoc());
-      Inst->insertBefore(InsertPt);
-      Vals.push_back(Inst);
-      HasConstExpr = true;
-    } else
-      Vals.push_back(Elt);
-  }
-
-  if (HasConstExpr) {
-    Value *Val = UndefValue::get(CV->getType());
-    IRBuilder<> Builder(InsertPt);
-    for (unsigned j = 0, N = CV->getNumOperands(); j < N; ++j)
-      Val = Builder.CreateInsertElement(Val, Vals[j], j);
-    CurInst->setOperand(i, Val);
-  }
-}
-
-static void breakConstantExprs(Function *F) {
-  for (po_iterator<BasicBlock *> i = po_begin(&F->getEntryBlock()),
-                                 e = po_end(&F->getEntryBlock());
-       i != e; ++i) {
-    BasicBlock *BB = *i;
-    // The effect of this loop is that we process the instructions in reverse
-    // order, and we re-process anything inserted before the instruction
-    // being processed.
-    for (Instruction *CurInst = BB->getTerminator(); CurInst;) {
-      PHINode *PN = dyn_cast<PHINode>(CurInst);
-      for (unsigned i = 0, e = CurInst->getNumOperands(); i < e; ++i) {
-        auto InsertPt = PN ? PN->getIncomingBlock(i)->getTerminator() : CurInst;
-        Value *Op = CurInst->getOperand(i);
-        if (ConstantExpr *CE = dyn_cast<ConstantExpr>(Op)) {
-          Instruction *NewInst = CE->getAsInstruction();
-          NewInst->setDebugLoc(CurInst->getDebugLoc());
-          NewInst->insertBefore(CurInst);
-          CurInst->setOperand(i, NewInst);
-        } else if (isa<ConstantVector>(Op))
-          breakConstantVector(i, CurInst, InsertPt);
-      }
-      CurInst = CurInst == &BB->front() ? nullptr : CurInst->getPrevNode();
-    }
-  }
 }
 
 static void fillStackWithUsers(std::stack<User *> &Stack, User &CurUser) {

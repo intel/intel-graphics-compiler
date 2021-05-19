@@ -36,6 +36,8 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVectorDecomposer.h"
+#include "vc/Utils/General/BreakConst.h"
+
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
@@ -103,7 +105,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   bool Modified = false;
-  Modified |= breakConstantExprs(&F);
+  Modified |= vc::breakConstantExprs(&F);
 
   for (Function::iterator fi = F.begin(), fe = F.end(); fi != fe; ++fi) {
     BasicBlock *BB = &*fi;

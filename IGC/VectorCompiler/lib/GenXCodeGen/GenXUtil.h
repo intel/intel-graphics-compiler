@@ -567,21 +567,6 @@ bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);
 // nullptr otherwise.
 CallInst *checkFunctionCall(Value *V, Function *F);
 
-// breakConstantVector : break vector of constexprs into a sequence of
-//                       InsertElementInsts.
-// CV - vector to break
-// CurInst - Instruction CV is a part of
-// InsertPt - point to insert new instructions at
-// Return the last InsertElementInst in the resulting chain,
-// or nullptr if there're no constexprs in CV.
-Value *breakConstantVector(ConstantVector *CV, Instruction *CurInst,
-                           Instruction *InsertPt);
-// breakConstantExprs : break constant expressions in instruction I.
-// Return true if any modifications have been made, false otherwise.
-bool breakConstantExprs(Instruction *I);
-// breakConstantExprs : break constant expressions in function F.
-// Return true if any modifications have been made, false otherwise.
-bool breakConstantExprs(Function *F);
 // Get possible number of GRFs for indirect region
 unsigned getNumGRFsPerIndirectForRegion(const genx::Region &R,
                                         const GenXSubtarget *ST, bool Allow2D);

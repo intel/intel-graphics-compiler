@@ -38,6 +38,8 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
+#include "vc/Utils/General/BreakConst.h"
+
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -253,7 +255,7 @@ void GenXFunctionPointersLowering::replaceAllUsersCommon(Instruction *Old,
 void GenXFunctionPointersLowering::reconstructGenXIntrinsic(CallInst *CI) {
   IGC_ASSERT_MESSAGE(GenXIntrinsic::isGenXIntrinsic(CI->getCalledFunction()),
                      "Unsupported call to process");
-  genx::breakConstantExprs(CI);
+  vc::breakConstantExprs(CI);
   unsigned OpIdx = 0;
   switch (GenXIntrinsic::getGenXIntrinsicID(CI->getCalledFunction())) {
   case GenXIntrinsic::genx_rdregioni:
@@ -276,7 +278,7 @@ void GenXFunctionPointersLowering::reconstructGenXIntrinsic(CallInst *CI) {
 }
 
 void GenXFunctionPointersLowering::reconstructSelect(SelectInst *SI) {
-  genx::breakConstantExprs(SI);
+  vc::breakConstantExprs(SI);
   auto *OrigTy = SI->getType();
   auto *TV = reconstructValue(SI->getTrueValue(), SI);
   auto *FV = reconstructValue(SI->getFalseValue(), SI);
@@ -292,7 +294,7 @@ void GenXFunctionPointersLowering::reconstructSelect(SelectInst *SI) {
 }
 
 void GenXFunctionPointersLowering::reconstructPhi(PHINode *Phi) {
-  genx::breakConstantExprs(Phi);
+  vc::breakConstantExprs(Phi);
   for (unsigned i = 0; i < Phi->getNumIncomingValues(); i++) {
     auto *Op = Phi->getIncomingValue(i);
     auto *OpTr = reconstructValue(Op, &Phi->getIncomingBlock(i)->back());

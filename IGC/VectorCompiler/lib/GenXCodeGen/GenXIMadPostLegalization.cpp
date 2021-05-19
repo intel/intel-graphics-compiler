@@ -22,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include "GenXModule.h"
 #include "GenXRegion.h"
 #include "GenXUtil.h"
+#include "vc/Utils/General/BreakConst.h"
+
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/InitializePasses.h"
@@ -146,7 +148,7 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
   bool Changed = false;
 
   // After this point, we should not do constant folding.
-  Changed |= breakConstantExprs(&F);
+  Changed |= vc::breakConstantExprs(&F);
 
   // The following alorithm runs very slowly on large blocks.
   if (skipOptWithLargeBlock(F))
