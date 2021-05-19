@@ -293,8 +293,6 @@ void GenXPrologEpilogInsertion::generateFunctionProlog(Function &F) {
   Value *Sp = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                                  IRB.getInt64Ty(), true);
   for (auto &Arg : F.args()) {
-    if (Arg.use_empty())
-      continue;
     auto *ArgScalarType = Arg.getType()->getScalarType();
     auto NumElements = 1;
     bool AllowScalar = true;
