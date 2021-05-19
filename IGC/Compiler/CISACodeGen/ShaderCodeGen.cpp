@@ -1532,7 +1532,8 @@ void OptimizeIR(CodeGenContext* const pContext)
              IGC_IS_FLAG_ENABLED(EnableForceGroupSize)) &&
             (pContext->type == ShaderType::COMPUTE_SHADER) &&
             !pContext->platform.supportPooledEU() &&
-            pContext->platform.supportsThreadCombining())
+            pContext->platform.supportsThreadCombining()&&
+            SimdEarlyCheck(pContext))
         {
             initializePostDominatorTreeWrapperPassPass(*PassRegistry::getPassRegistry());
             mpm.add(new ThreadCombining());
