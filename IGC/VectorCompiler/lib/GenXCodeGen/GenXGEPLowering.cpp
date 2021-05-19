@@ -168,9 +168,9 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   auto *PtrMathTy = IntegerType::get(Builder->getContext(), PtrMathSizeInBits);
 
   auto GEPTy = GEP->getType();
-  if (GEPTy->isVectorTy()) {
+  if (auto GEPVecTy = dyn_cast<VectorType>(GEPTy)) {
     PointerValue = Builder->CreateVectorSplat(
-        GEPTy->getVectorNumElements(),
+        GEPVecTy->getNumElements(),
         PointerValue,
         PtrOp->getName() + ".splat");
   }
@@ -287,9 +287,9 @@ Value *GenXGEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
   IGC_ASSERT(Builder);
   unsigned NewWidth = NewTy->getIntegerBitWidth();
   Type* OldTy = Val->getType();
-  if (OldTy->isVectorTy()) {
-    NewTy = IGCLLVM::FixedVectorType::get(NewTy, OldTy->getVectorNumElements());
-    OldTy = OldTy->getVectorElementType();
+  if (auto OldVecTy = dyn_cast<VectorType>(OldTy)) {
+    NewTy = IGCLLVM::FixedVectorType::get(NewTy, OldVecTy->getNumElements());
+    OldTy = OldVecTy->getElementType();
   }
   unsigned OldWidth = OldTy->getIntegerBitWidth();
 

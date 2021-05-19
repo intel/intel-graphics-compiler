@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -378,10 +379,10 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
         unsigned N =
             Val->getType()->getScalarSizeInBits() / DestTy->getScalarSizeInBits();
         Value* BC =
-            IRB->CreateBitCast(Val, VectorType::get(DestTy->getScalarType(), N));
+            IRB->CreateBitCast(Val, IGCLLVM::FixedVectorType::get(DestTy->getScalarType(), N));
 
         std::vector<Constant*> Vals;
-        for (unsigned i = 0; i < DestTy->getVectorNumElements(); i++)
+        for (unsigned i = 0; i < (unsigned)cast<VectorType>(DestTy)->getNumElements(); i++)
             Vals.push_back(IRB->getInt32(i));
 
         Value* Mask = ConstantVector::get(Vals);
