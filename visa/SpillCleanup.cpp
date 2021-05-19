@@ -1731,8 +1731,15 @@ void CoalesceSpillFills::spillFillCleanup()
                         auto pSrc1Dcl = pInst->getSrc(1)->getTopDcl();
                         if (defs.find(pSrc1Dcl) != defs.end())
                         {
+                            // When a WAR is detected, punt out because
+                            // any older spill is going to be stale.
+                            // An optimization here is to detect variable
+                            // row on which WAR occurs. If the row is
+                            // different from current fill, then it
+                            // should be safe to ignore pInst and continue
+                            // till end of window.
                             pInstIt--;
-                            continue;
+                            break;
                         }
 
                         for (unsigned int pRow = pRowStart;
