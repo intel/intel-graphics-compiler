@@ -470,7 +470,7 @@ template <typename ID, ID... UnknownIDs>
 static Expected<opt::InputArgList>
 parseOptions(const SmallVectorImpl<const char *> &Argv, unsigned FlagsToInclude,
              const opt::OptTable &Options, bool IsStrictMode) {
-  const bool IsInternal = FlagsToInclude == IGC::options::VCInternalOption;
+  const bool IsInternal = FlagsToInclude & IGC::options::VCInternalOption;
 
   unsigned MissingArgIndex = 0;
   unsigned MissingArgCount = 0;
@@ -541,8 +541,10 @@ parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
   // Internal options are always unchecked.
   constexpr bool IsStrictMode = false;
   const opt::OptTable &Options = IGC::getInternalOptTable();
-  return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(
-      Argv, IGC::options::VCInternalOption, Options, IsStrictMode);
+  const unsigned FlagsToInclude =
+      IGC::options::VCInternalOption | IGC::options::IGCInternalOption;
+  return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude, Options,
+                                                  IsStrictMode);
 }
 
 static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
@@ -761,7 +763,9 @@ vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions,
   auto ExpInternalArgList = parseInternalOptions(Saver, InternalOptions);
   if (!ExpInternalArgList)
     return ExpInternalArgList.takeError();
-  const opt::InputArgList &InternalArgs = ExpInternalArgList.get();
+  opt::InputArgList &InternalArgs = ExpInternalArgList.get();
+  const opt::DerivedArgList VCInternalArgs =
+      filterUsedOptions(InternalArgs, IGC::options::VCInternalOption);
 
-  return fillOptions(VCApiArgs, InternalArgs);
+  return fillOptions(VCApiArgs, VCInternalArgs);
 }
