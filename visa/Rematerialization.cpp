@@ -938,21 +938,29 @@ namespace vISA
                 MUST_BE_TRUE(ops != operations.end(), "Didnt find record in map");
                 MUST_BE_TRUE((*ops).second.numUses == 1, "Expecting src0 to be used only in sampler");
 
-                auto newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getTotalElems(),
-                    src0TopDcl->getElemType(), gra.getSubRegAlign(src0TopDcl));
-
-                // Clone all defining instructions for sampler's msg header
-                for (unsigned int i = 0; i != (*ops).second.def.size(); i++)
+                G4_Declare* newSrc0Dcl = nullptr;
+                if (src0TopDcl->getRegVar()->isPhyRegAssigned())
                 {
-                    auto& headerDefInst = (*ops).second.def[i].first;
+                    newSrc0Dcl = src0TopDcl;
+                }
+                else
+                {
+                    newSrc0Dcl = kernel.fg.builder->createTempVar(src0TopDcl->getTotalElems(),
+                        src0TopDcl->getElemType(), gra.getSubRegAlign(src0TopDcl));
 
-                    auto dupOp = headerDefInst->cloneInst();
-                    auto headerDefDst = headerDefInst->getDst();
-                    assert(!headerDefDst->isIndirect()); // we dont allow send header to be defined indirectly
-                    dupOp->setDest(kernel.fg.builder->createDst(
-                        newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(), headerDefDst->getSubRegOff(),
-                        headerDefDst->getHorzStride(), headerDefDst->getType()));
-                    newInst.push_back(dupOp);
+                    // Clone all defining instructions for sampler's msg header
+                    for (unsigned int i = 0; i != (*ops).second.def.size(); i++)
+                    {
+                        auto& headerDefInst = (*ops).second.def[i].first;
+
+                        auto dupOp = headerDefInst->cloneInst();
+                        auto headerDefDst = headerDefInst->getDst();
+                        assert(!headerDefDst->isIndirect()); // we dont allow send header to be defined indirectly
+                        dupOp->setDest(kernel.fg.builder->createDst(
+                            newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(), headerDefDst->getSubRegOff(),
+                            headerDefDst->getHorzStride(), headerDefDst->getType()));
+                        newInst.push_back(dupOp);
+                    }
                 }
 
                 auto rd = kernel.fg.builder->createRegionDesc(src0Rgn->getRegion()->vertStride,
