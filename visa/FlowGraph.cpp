@@ -973,9 +973,6 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         {
             doCFGStructurize(this);
             pKernel->dumpToFile("after.CFGStructurizer");
-
-            removeRedundantLabels();
-            pKernel->dumpToFile("after.PostStructurizerRedundantLabels");
         }
         else
         {
@@ -1875,13 +1872,13 @@ void FlowGraph::removeRedundantLabels()
         }
     }
 
-    for (BB_LIST_ITER nextit = BBs.begin(), ite = BBs.end(); nextit != ite; )
-    {
-        BB_LIST_ITER it = nextit++;
-        G4_BB* bb = *it;
 
+    for (BB_LIST_ITER it = BBs.begin(); it != BBs.end();)
+    {
+        G4_BB* bb = *it;
         if (bb == getEntryBB())
         {
+            it++;
             continue;
         }
         if (bb->Succs.size() == 0 && bb->Preds.size() == 0) {
@@ -1890,30 +1887,18 @@ void FlowGraph::removeRedundantLabels()
             //for example return after infinite loop.
             if (bb->isEndWithFRet() || (bb->size() > 0 && ((G4_INST*)bb->back())->isReturn()))
             {
+                it++;
                 continue;
             }
 
             bb->clear();
-            erase(it);
+            BB_LIST_ITER rt = it++;
+            erase(rt);
 
             continue;
         }
 
-        assert(bb->size() > 0 && bb->front()->isLabel() &&
-               "Every BB should at least have a label inst!");
-
-        // Possible kernel's entry, don't delete.
-        if (strcmp(bb->front()->getLabelStr(), "per-thread-prolog") == 0)
-        {
-            continue;
-        }
-
-        if (bb->getBBType() &
-            (G4_BB_CALL_TYPE | G4_BB_EXIT_TYPE | G4_BB_INIT_TYPE | G4_BB_RETURN_TYPE))
-        {
-            // Keep those BBs
-            continue;
-        }
+        assert(bb->size() > 0 && "Every BB should at least have a label inst!");
 
         //
         // The removal candidates will have a single successor and a single inst
@@ -1921,10 +1906,12 @@ void FlowGraph::removeRedundantLabels()
         if (bb->Succs.size() == 1 && bb->size() == 1)
         {
             G4_INST* removedBlockInst = bb->front();
-            if (removedBlockInst->getLabel()->isFuncLabel() ||
+            if (removedBlockInst->isLabel() == false ||
+                removedBlockInst->getLabel()->isFuncLabel() ||
                 strncmp(removedBlockInst->getLabelStr(), "LABEL__EMPTYBB", 14) == 0 ||
                 strncmp(removedBlockInst->getLabelStr(), "__AUTO_GENERATED_DUMMY_LAST_BB", 30) == 0)
             {
+                ++it;
                 continue;
             }
 
@@ -2082,74 +2069,12 @@ void FlowGraph::removeRedundantLabels()
             bb->Preds.clear();
             bb->clear();
 
-            erase(it);
+            BB_LIST_ITER rt = it++;
+            erase(rt);
         }
-        else if (bb->Preds.size() == 1 && bb->Preds.front()->Succs.size() == 1)
+        else
         {
-            // Merge bb into singlePred and delete bb if all the following are true:
-            //   1. singlePred has no control-flow inst (at the end),
-            //   2. bb's label is not used at all.
-            //
-            //     singlePred:
-            //        ....
-            //     bb:
-            //        ....
-            //
-            // If singlePred does not end with a control-flow inst, bb's label is not used except
-            // bb ends with while. For while bb, we need further to check if any break uses label.
-            // As break should jump to while bb's fall-thru (not while bb), we need to follow all
-            // preds of while's fall-thru BB to see if any pred has a break.
-            //
-            G4_BB* singlePred = bb->Preds.front();
-            G4_INST* labelInst = bb->front();
-            assert(labelInst->isLabel());
-            if (!singlePred->back()->isFlowControl() &&
-                singlePred->getPhysicalSucc() == bb /* sanity */ &&
-                !labelInst->getLabel()->isFuncLabel() /* skip special bb */ &&
-                bb != singlePred /* [special] skip dead single-BB loop */)
-            {
-                bool doMerging = true;
-                G4_INST* whileInst = bb->back();
-                if (whileInst->opcode() == G4_while)
-                {
-                    // If there is any break inst for this while, the break uses the label. No merging.
-                    // Note that any break inst of this while will jump to the BB right after while BB
-                    // (this BB is the fall-thru BB of while if while BB has fall-thru, or just its physical
-                    // succ if it has no fall-thru).
-                    G4_BB* whilePhySucc = bb->getPhysicalSucc();
-                    if (whilePhySucc)
-                    {
-                        for (auto breakPred : whilePhySucc->Preds)
-                        {
-                            if (breakPred->getLastOpcode() == G4_break) {
-                                doMerging = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (doMerging)
-                {
-                    removePredSuccEdges(singlePred, bb);
-                    assert(singlePred->Succs.size() == 0);
-                    std::vector<G4_BB*> allSuccBBs(bb->Succs.begin(), bb->Succs.end());
-                    for (auto S : allSuccBBs)
-                    {
-                        removePredSuccEdges(bb, S);
-                        addPredSuccEdges(singlePred, S, false);
-                    }
-
-                    // remove bb's label before splice
-                    bb->remove(labelInst);
-                    singlePred->getInstList().splice(singlePred->end(), bb->getInstList());
-
-                    bb->Succs.clear();
-                    bb->Preds.clear();
-
-                    erase(it);
-                }
-            }
+            ++it;
         }
     }
 
