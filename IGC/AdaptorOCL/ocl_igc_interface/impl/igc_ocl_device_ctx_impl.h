@@ -88,8 +88,6 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
 
         outSystemRoutineBuffer->Clear();
         outSystemRoutineBuffer->PushBackRawBytes(systemKernel->m_pKernelProgram, systemKernel->m_KernelProgramSize);
-        stateSaveAreaHeaderInit->Clear();
-        stateSaveAreaHeaderInit->PushBackRawBytes(systemKernel->m_pStateSaveAreaHeader, systemKernel->m_StateSaveAreaHeaderSize);
         SIP::CSystemThread::DeleteSystemThreadKernel(systemKernel);
         return true;
     }

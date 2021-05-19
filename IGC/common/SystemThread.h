@@ -89,15 +89,11 @@ namespace SIP
             void Delete(CGenSystemInstructionKernelProgram* &pKernelProgram );
 
             CGenSystemInstructionKernelProgram(const USC::SYSTEM_THREAD_MODE mode);
-            const unsigned int  GetProgramSize() const { IGC_ASSERT(m_ProgramSize) ; return m_ProgramSize;}
-            const void * GetLinearAddress() const { IGC_ASSERT(m_LinearAddress); return m_LinearAddress;}
-            const unsigned int  GetStateSaveHeaderSize() const { return m_StateSaveHeaderSize; }
-            const void * GetStateSaveHeaderAddress() const { return m_StateSaveHeaderAddress; }
+            unsigned int  GetProgramSize(){ IGC_ASSERT(m_ProgramSize) ; return m_ProgramSize;}
+            void * GetLinearAddress(){ IGC_ASSERT(m_LinearAddress); return m_LinearAddress;}
 
     protected:
 
-         unsigned int m_StateSaveHeaderSize;
-         void* m_StateSaveHeaderAddress;
          unsigned int m_ProgramSize;
          void* m_LinearAddress;
 

@@ -715,8 +715,6 @@ struct SSystemThreadKernelOutput
     unsigned int                    m_KernelProgramSize;
     unsigned int                    m_SystemThreadScratchSpace; // Scratch Space size in bytes
     unsigned int                    m_SystemThreadResourceSize; // Resource size in bytes
-    void*                           m_pStateSaveAreaHeader;     // State save area header
-    unsigned int                    m_StateSaveAreaHeaderSize;  // State save aread header size in bytes
 };
 
 /*****************************************************************************\
