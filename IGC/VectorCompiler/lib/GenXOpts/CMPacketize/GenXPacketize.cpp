@@ -150,6 +150,52 @@ private:
   const DataLayout *DL = nullptr;
 };
 
+// Adapted from llvm::UnifyFunctionExitNodes.cpp
+// Loop over all of the blocks in a function, tracking all of the blocks
+// that return.
+static bool GenXUnifyReturnBlocks(Function& F) {
+  std::vector<BasicBlock*> ReturningBlocks;
+
+  for (BasicBlock& I : F)
+    if (isa<ReturnInst>(I.getTerminator()))
+      ReturningBlocks.push_back(&I);
+
+  if (ReturningBlocks.size() <= 1)
+    return false;
+
+  // Insert a new basic block into the function, add PHI nodes (if the function
+  // returns values), and convert all of the return instructions into
+  // unconditional branches.
+  BasicBlock* NewRetBlock = BasicBlock::Create(F.getContext(),
+                                               "UnifiedReturnBlock", &F);
+
+  PHINode* PN = nullptr;
+  if (F.getReturnType()->isVoidTy()) {
+    ReturnInst::Create(F.getContext(), nullptr, NewRetBlock);
+  }
+  else {
+    // If the function doesn't return void... add a PHI node to the block...
+    PN = PHINode::Create(F.getReturnType(), ReturningBlocks.size(),
+                         "UnifiedRetVal");
+    NewRetBlock->getInstList().push_back(PN);
+        ReturnInst::Create(F.getContext(), PN, NewRetBlock);
+  }
+
+  // Loop over all of the blocks, replacing the return instruction with an
+  // unconditional branch.
+  for (BasicBlock* BB : ReturningBlocks) {
+    // Add an incoming element to the PHI node for every return instruction that
+    // is merging into this new block...
+    if (PN)
+      PN->addIncoming(BB->getTerminator()->getOperand(0), BB);
+
+    BB->getInstList().pop_back();  // Remove the return insn
+    BranchInst::Create(NewRetBlock, BB);
+  }
+
+  return true;
+}
+
 bool GenXPacketize::runOnModule(Module &Module) {
   M = &Module;
   // find all the SIMT enntry-functions
@@ -213,6 +259,7 @@ bool GenXPacketize::runOnModule(Module &Module) {
   // we then perform mem-to-reg after generating simd-control-flow.
   std::unique_ptr<FunctionPass> DemotePass(createDemoteRegisterToMemoryPass());
   for (auto F : SIMTFuncs) {
+    GenXUnifyReturnBlocks(*F);
     DemotePass->runOnFunction(*F);
   }
   // lower the SIMD control-flow
@@ -904,9 +951,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     Value *pSrc = pLoadInst->getPointerOperand();
     Value *pVecSrc = getPacketizeValue(pSrc);
     auto LI = cast<LoadInst>(pInst);
-    if (pVecSrc == pSrc)
-      pReplacedInst = pInst;
-    else if (pVecSrc->getType()->isVectorTy()) {
+    if (pVecSrc->getType()->isVectorTy()) {
       IGC_ASSERT(cast<VectorType>(pVecSrc->getType())
                      ->getElementType()
                      ->isPointerTy());
