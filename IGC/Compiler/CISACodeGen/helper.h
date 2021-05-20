@@ -133,8 +133,8 @@ namespace IGC
     llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Value* Ptr);
     llvm::StoreInst* cloneStore(llvm::StoreInst* Orig, llvm::Value* Val, llvm::Value* Ptr);
 
-    llvm::Value* CreateLoadRawIntrinsic(llvm::LoadInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
-    llvm::Value* CreateStoreRawIntrinsic(llvm::StoreInst* inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
+    llvm::LdRawIntrinsic* CreateLoadRawIntrinsic(llvm::LoadInst* inst, llvm::Value* bufPtr, llvm::Value* offsetVal);
+    llvm::StoreRawIntrinsic* CreateStoreRawIntrinsic(llvm::StoreInst* inst, llvm::Value* bufPtr, llvm::Value* offsetVal);
 
     void getTextureAndSamplerOperands(llvm::GenIntrinsicInst* pIntr, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue);
     void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst*& pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
