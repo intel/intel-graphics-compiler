@@ -121,27 +121,17 @@ bool vc::isPrintFormatIndex(const User &Usr) {
          GenXIntrinsic::genx_print_format_index;
 }
 
-static bool isLegalPrintFormatIndexGEPImpl(const User &GEP) {
-  IGC_ASSERT_MESSAGE(
-      isa<GEPOperator>(GEP),
-      "wrong argument: gep instruction or gep constexpr are expected");
+bool vc::isLegalPrintFormatIndexGEP(const GEPOperator &GEP) {
   if (GEP.user_empty())
     return false;
   return std::all_of(GEP.user_begin(), GEP.user_end(),
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool vc::isLegalPrintFormatIndexGEP(const GetElementPtrInst &GEP) {
-  return isLegalPrintFormatIndexGEPImpl(GEP);
-}
-
 bool vc::isLegalPrintFormatIndexGEP(const Value &V) {
-  if (isa<GetElementPtrInst>(V))
-    return isLegalPrintFormatIndexGEPImpl(cast<User>(V));
-  if (isa<ConstantExpr>(V) &&
-      cast<ConstantExpr>(V).getOpcode() == Instruction::GetElementPtr)
-    return isLegalPrintFormatIndexGEPImpl(cast<User>(V));
-  return false;
+  if (!isa<GEPOperator>(V))
+    return false;
+  return isLegalPrintFormatIndexGEP(cast<GEPOperator>(V));
 }
 
 bool vc::isPrintFormatIndexGEP(const GEPOperator &GEP) {
@@ -149,8 +139,8 @@ bool vc::isPrintFormatIndexGEP(const GEPOperator &GEP) {
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool vc::isPrintFormatIndexGEP(const User &Usr) {
-  if (!isa<GEPOperator>(Usr))
+bool vc::isPrintFormatIndexGEP(const Value &V) {
+  if (!isa<GEPOperator>(V))
     return false;
-  return isPrintFormatIndexGEP(cast<GEPOperator>(Usr));
+  return isPrintFormatIndexGEP(cast<GEPOperator>(V));
 }

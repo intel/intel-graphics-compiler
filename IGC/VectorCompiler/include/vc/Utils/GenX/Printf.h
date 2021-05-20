@@ -43,13 +43,13 @@ bool isPrintFormatIndex(const llvm::User &Usr);
 // intrinsics. Such GEPs live until CisaBuilder and then handled as part of
 // genx.print.format.index intrinsic.
 // This function checks whether \p GEP is a such GEP.
-bool isLegalPrintFormatIndexGEP(const llvm::GetElementPtrInst &GEP);
+bool isLegalPrintFormatIndexGEP(const llvm::GEPOperator &GEP);
 bool isLegalPrintFormatIndexGEP(const llvm::Value &V);
 
 // Checks whether GEP with some format index users is provided.
 // Unlike isLegalPrintFormatIndexGEP this function doesn't require all users to
 // be format indices.
-bool isPrintFormatIndexGEP(const llvm::User &V);
+bool isPrintFormatIndexGEP(const llvm::Value &V);
 bool isPrintFormatIndexGEP(const llvm::GEPOperator &V);
 
 } // namespace vc
