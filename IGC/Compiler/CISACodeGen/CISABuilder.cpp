@@ -1980,12 +1980,13 @@ namespace IGC
         CVariable* urbHandle,
         CVariable* mask)
     {
+
         IGC_ASSERT(nullptr != offset);
 
         VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
         VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        VISA_RawOpnd* urbhandle = GetRawSource(urbHandle);
+        VISA_RawOpnd* handle = GetRawSource(urbHandle);
         // Two possible cases: offset may be constant (immediate) or runtime value.
         unsigned short immOffset = 0;
         VISA_RawOpnd* perSlotOffset = nullptr;
@@ -1996,9 +1997,6 @@ namespace IGC
         }
         else
         {
-            // per-slot offset cannot be a uniform variable even if the value is since
-            // we need the data in each lane
-            IGC_ASSERT_MESSAGE(!offset->IsUniform(), "Per slot offset cannot be a uniform variable");
             perSlotOffset = GetRawSource(offset);
         }
 
@@ -2049,7 +2047,7 @@ namespace IGC
             payloadSize,
             channelMask,
             immOffset,
-            urbhandle,
+            handle,
             perSlotOffset,
             vertexData));
     }

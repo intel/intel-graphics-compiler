@@ -1248,7 +1248,8 @@ void vISAVerifier::verifyInstructionMisc(
 
             REPORT_INSTRUCTION(options,!(numOut < 1 || numOut > 8) , "Valid range for num_out parameter of URB write is [1,8]");
             REPORT_INSTRUCTION(options,globalOff <= 2047, "Valid range for global_offset parameter of URB write is [0,2047]");
-            REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_8, "Only execution size of 8 is supported for URB write");
+            REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_1 || inst->getExecSize() == EXEC_SIZE_8,
+                "Only execution size of 1 or 8 is supported for URB write");
 
             break;
         }

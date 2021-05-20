@@ -6900,23 +6900,25 @@ void EmitPass::emitURBWrite(llvm::GenIntrinsicInst* inst)
 {
     // input: GenISA_URBWrite(%offset, %mask, %data0, ..., %data7)
 
+    CVariable* channelMask = m_currShader->GetSymbol(inst->getOperand(1));
+    CVariable* offset = m_currShader->GetSymbol(inst->getOperand(0));
+    CVariable* URBHandle = m_currShader->GetURBOutputHandle();
+
+
     // If the offset or channel mask is not immediate value we need per-slot offsets and/or channel mask
     // to contain data in all the channels however,
     // if the variable is uniform, uniform analysis makes it a scalar value
     // we need to copy to simd form then.
-    CVariable* channelMask = m_currShader->GetSymbol(inst->getOperand(1));
     if (!channelMask->IsImmediate())
     {
         channelMask = BroadcastIfUniform(channelMask);
     }
 
-    CVariable* offset = m_currShader->GetSymbol(inst->getOperand(0));
     if (!offset->IsImmediate())
     {
         offset = BroadcastIfUniform(offset);
     }
 
-    CVariable* URBHandle = m_currShader->GetURBOutputHandle();
 
     {
         int payloadElementOffset = 0;
