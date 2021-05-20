@@ -344,6 +344,7 @@ public:
     void emitInterpolate(llvm::GenIntrinsicInst* inst);
     void emitInterpolate2(llvm::GenIntrinsicInst* inst);
     void emitInterpolant(llvm::GenIntrinsicInst* inst);
+    int getSetupIndex(uint inputIndex);
 
     void emitGradientX(const SSource& source, const DstModifier& modifier);
     void emitGradientY(const SSource& source, const DstModifier& modifier);
