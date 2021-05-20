@@ -235,9 +235,9 @@ CVariable* CGeometryShader::GetURBInputHandle(CVariable* pVertexIndex)
 
         if (!m_properties.Input().HasInstancing())
         {
-            // offset = vertexIndex * 32 since offset needs to be in bytes, not grf numbers
+            // offset = vertexIndex * 32 or 64(based on simdsize) since offset needs to be in bytes, not grf numbers
             CVariable* pTemp = GetNewVariable(pOffset);
-            encoder.Shl(pTemp, pVertexIndexWord, ImmToVariable(5, ISA_TYPE_UW));
+            encoder.Shl(pTemp, pVertexIndexWord, ImmToVariable(iSTD::Log2(getGRFSize()), ISA_TYPE_UW));
             encoder.Push();
 
             // offset = temp + perLaneOffsets
