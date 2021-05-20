@@ -13751,11 +13751,10 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 instWidth == SIMDMode::SIMD16);
             IGC_ASSERT(m_currShader->m_SIMDSize > instWidth);
             const uint numInst = numLanes(m_currShader->m_SIMDSize) / numLanes(instWidth);
+            std::vector<CVariable*> pPayload(numInst);
             for (uint i = 0; i < numInst; ++i)
             {
-                CVariable* pPayload = nullptr;
-
-                pPayload = m_currShader->GetNewVariable(
+                pPayload[i] = m_currShader->GetNewVariable(
                     parameterLength * numLanes(instWidth),
                     ISA_TYPE_F,
                     EALIGN_GRF, CName::NONE);
@@ -13765,7 +13764,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(0, i);
                 }
                 m_encoder->SetDstSubVar(0);
-                m_encoder->Copy(pPayload, pSrc_X);
+                m_encoder->Copy(pPayload[i], pSrc_X);
                 m_encoder->Push();
 
                 setSIMDSizeMask(m_encoder, m_currShader, i);
@@ -13774,7 +13773,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(0, i);
                 }
                 m_encoder->SetDstSubVar(1);
-                m_encoder->Copy(pPayload, pSrc_Y);
+                m_encoder->Copy(pPayload[i], pSrc_Y);
                 m_encoder->Push();
 
                 setSIMDSizeMask(m_encoder, m_currShader, i);
@@ -13783,7 +13782,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(0, i);
                 }
                 m_encoder->SetDstSubVar(2);
-                m_encoder->Copy(pPayload, pSrc_Z);
+                m_encoder->Copy(pPayload[i], pSrc_Z);
                 m_encoder->Push();
 
                 setSIMDSizeMask(m_encoder, m_currShader, i);
@@ -13792,17 +13791,33 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(0, i);
                 }
                 m_encoder->SetDstSubVar(3);
-                m_encoder->Copy(pPayload, pSrc_W);
+                m_encoder->Copy(pPayload[i], pSrc_W);
                 m_encoder->Push();
-
-                setSIMDSizeMask(m_encoder, m_currShader, i);
-                m_encoder->SetSrcSubVar(0, i);
-                m_encoder->SetSrcSubVar(1, i);
-                m_encoder->SetSrcSubVar(2, i);
-                m_encoder->SetSrcSubVar(3, i);
-                m_encoder->SetPredicate(flag);
-                m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload);
-                m_encoder->Push();
+                if (IGC_IS_FLAG_DISABLED(FuseTypedWriteInIGC))
+                {
+                    setSIMDSizeMask(m_encoder, m_currShader, i);
+                    m_encoder->SetSrcSubVar(0, i);
+                    m_encoder->SetSrcSubVar(1, i);
+                    m_encoder->SetSrcSubVar(2, i);
+                    m_encoder->SetSrcSubVar(3, i);
+                    m_encoder->SetPredicate(flag);
+                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i]);
+                    m_encoder->Push();
+                }
+            }
+            if (IGC_IS_FLAG_ENABLED(FuseTypedWriteInIGC))
+            {
+                for (uint i = 0; i < numInst; ++i)
+                {
+                    setSIMDSizeMask(m_encoder, m_currShader, i);
+                    m_encoder->SetSrcSubVar(0, i);
+                    m_encoder->SetSrcSubVar(1, i);
+                    m_encoder->SetSrcSubVar(2, i);
+                    m_encoder->SetSrcSubVar(3, i);
+                    m_encoder->SetPredicate(flag);
+                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i]);
+                    m_encoder->Push();
+                }
             }
         }
         ResourceLoop(needLoop, flag, label);
