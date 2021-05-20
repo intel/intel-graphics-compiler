@@ -413,8 +413,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
       break;
     case Instruction::And: {
         auto ThisNewVal = NewVal;
-        unsigned AndBits = getAndNumBits(user);
-        if (AndBits != TruncBits) {
+        if (ThisTruncBits != TruncBits) {
           // We need a replacement "and" instruction with a different type.
           auto NewAnd = BinaryOperator::Create(Instruction::And, NewVal,
               truncValue(user->getOperand(1), TruncBits,
@@ -424,8 +423,7 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
           NewAnd->setDebugLoc(user->getDebugLoc());
           LLVM_DEBUG(dbgs() << "GenXReduceIntSize::reverse: NewAnd: " << *NewAnd << "\n");
           ThisNewVal = NewAnd;
-        }
-        if (ThisTruncBits != TruncBits) {
+
           // Need to trunc or extend our new instruction's result to match
           // the result of the "and".
           IGC_ASSERT(ThisNewVal);
