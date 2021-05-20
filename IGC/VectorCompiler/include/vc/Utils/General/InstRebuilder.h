@@ -121,7 +121,7 @@ MakeRebuildInfoBuilder(IsTerminalFunc IsTerminator) {
 // operands change. User can customize this behaviour with two functors:
 //    IsSpecialInst: (const InstToRebuild&) -> bool - returns whether inst
 //      should be processed with a custom handler
-//    CreateSpecialInst: (const InstToRebuild&) -> Instruction* - custom handler
+//    CreateSpecialInst: (const InstToRebuild&) -> Value* - custom handler
 //      to rebuild provided instruction.
 template <typename IsSpecialInstFunc, typename CreateSpecialInstFunc>
 class InstructionRebuilder {
@@ -218,12 +218,10 @@ private:
   // Unlike rebuildNonPhiInst method just creates instruction, doesn't
   // update the class state.
   llvm::Value *createNonPhiInst(InstToRebuild &OrigInst) const {
-    llvm::Instruction *Replace;
     if (IsSpecialInst(OrigInst))
-      Replace = CreateSpecialInst(OrigInst);
-    else
-      Replace =
-          vc::cloneInstWithNewOps(*OrigInst.User, createNewOperands(OrigInst));
+      return CreateSpecialInst(OrigInst);
+    llvm::Instruction *Replace =
+        vc::cloneInstWithNewOps(*OrigInst.User, createNewOperands(OrigInst));
     if (!Replace)
       return coverNonCloneCase(*OrigInst.User, createNewOperands(OrigInst));
     Replace->takeName(OrigInst.User);
