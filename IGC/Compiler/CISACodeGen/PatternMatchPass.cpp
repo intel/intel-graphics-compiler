@@ -954,7 +954,8 @@ namespace IGC
         switch (I.getOpcode())
         {
         case Instruction::FSub:
-            match = MatchFrc(I) ||
+            match = MatchFloor(I) || 
+                MatchFrc(I) ||
                 MatchLrp(I) ||
                 MatchPredAdd(I) ||
                 MatchMad(I) ||
@@ -998,7 +999,8 @@ namespace IGC
                 MatchModifier(I);
             break;
         case Instruction::FAdd:
-            match = MatchLrp(I) ||
+            match = 
+                MatchLrp(I) ||
                 MatchPredAdd(I) ||
                 MatchMad(I) ||
                 MatchSimpleAdd(I) ||
@@ -1622,6 +1624,48 @@ namespace IGC
         if (found)
         {
             FrcPattern* pattern = new (m_allocator) FrcPattern();
+            pattern->source = GetSource(source0, true, false);
+            AddPattern(pattern);
+        }
+        return found;
+    }
+    
+    /*
+    below pass handles x - frac(x) = floor(x) pattern. Refer below : 
+
+    frc (8|M0) r20.0<1>:f r19.0<8;8,1>:f {Compacted, @1}
+    add (8|M0) (ge)f0.1 r19.0<1>:f r19.0<8;8,1>:f -r20.0<8;8,1>:f {@1}
+    rndd (8|M0) r21.0<1>:f (abs)r19.0<8;8,1>:f {Compacted, @1}
+   */
+
+    bool CodeGenPatternMatch::MatchFloor(llvm::BinaryOperator& I)
+    {
+        if (IGC_IS_FLAG_ENABLED(DisableMatchFloor))
+        {
+            return false;
+        }
+        struct FloorPattern : public Pattern
+        {
+            SSource source;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->Floor(source, modifier);
+            }
+        };
+        IGC_ASSERT(I.getOpcode() == Instruction::FSub);
+        llvm::Value* source0 = I.getOperand(0);
+        GenIntrinsicInst* source1 = dyn_cast<GenIntrinsicInst>(I.getOperand(1));
+        bool found = false;
+        if (source1 && source1->getIntrinsicID() == GenISAIntrinsic::GenISA_frc)
+        {
+            if (source1->getOperand(0) == source0)
+            {
+                found = true;
+            }
+        }
+        if (found)
+        {
+            FloorPattern* pattern = new (m_allocator) FloorPattern();
             pattern->source = GetSource(source0, true, false);
             AddPattern(pattern);
         }

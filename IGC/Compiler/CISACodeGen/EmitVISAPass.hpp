@@ -69,6 +69,7 @@ public:
     void CreateKernelShaderMap(CodeGenContext* ctx, IGC::IGCMD::MetaDataUtils* pMdUtils, llvm::Function& F);
 
     void Frc(const SSource& source, const DstModifier& modifier);
+    void Floor(const SSource& source, const DstModifier& modifier);
     void Mad(const SSource sources[3], const DstModifier& modifier);
     void Lrp(const SSource sources[3], const DstModifier& modifier);
     void Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier& modifier);

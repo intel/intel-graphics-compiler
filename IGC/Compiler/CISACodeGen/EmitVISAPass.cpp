@@ -3611,6 +3611,11 @@ void EmitPass::Frc(const SSource& source, const DstModifier& modifier)
     Unary(EOPCODE_FRC, &source, modifier);
 }
 
+void EmitPass::Floor(const SSource& source, const DstModifier& modifier)
+{
+    Unary(EOPCODE_RNDD, &source, modifier);
+}
+
 void EmitPass::Mov(const SSource& source, const DstModifier& modifier)
 {
     Unary(EOPCODE_MOV, &source, modifier);
