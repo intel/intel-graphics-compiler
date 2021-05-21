@@ -91,7 +91,8 @@ typedef enum
     rtz = 1,
     rtp = 2,
     rtn = 3
-} RoundingMode_t;
+};
+typedef int RoundingMode_t;
 
 // Note: Unify these defines in a common header that this and
 // the cth include.
