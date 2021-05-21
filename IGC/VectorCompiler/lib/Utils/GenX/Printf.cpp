@@ -37,6 +37,35 @@ static StringRef extractCStr(const Constant &CStrConst) {
   return "";
 }
 
+bool vc::isConstantString(const GlobalVariable &GV) {
+  if (!GV.isConstant())
+    return false;
+  if (!GV.getValueType()->isArrayTy())
+    return false;
+  return GV.getValueType()->getArrayElementType()->isIntegerTy(8);
+}
+
+bool vc::isConstantString(const Value &V) {
+  if (!isa<GlobalVariable>(V))
+    return false;
+  return isConstantString(cast<GlobalVariable>(V));
+}
+
+bool vc::isConstantStringFirstElementGEP(const GEPOperator &GEP) {
+  auto *Ptr = GEP.getPointerOperand();
+  if (!isConstantString(*Ptr))
+    return false;
+  if (GEP.getNumIndices() != 2)
+    return false;
+  return GEP.hasAllZeroIndices();
+}
+
+bool vc::isConstantStringFirstElementGEP(const Value &V) {
+  if (!isa<GEPOperator>(V))
+    return false;
+  return isConstantStringFirstElementGEP(cast<GEPOperator>(V));
+}
+
 Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
@@ -45,7 +74,7 @@ Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
   if (!isa<GEPOperator>(Op))
     return {};
   auto *StrConst = cast<GEPOperator>(Op).getPointerOperand();
-  if (!isa<GlobalVariable>(StrConst))
+  if (!isConstantString(*StrConst))
     return {};
   return extractCStr(*cast<GlobalVariable>(StrConst)->getInitializer());
 }
@@ -122,6 +151,8 @@ bool vc::isPrintFormatIndex(const User &Usr) {
 }
 
 bool vc::isLegalPrintFormatIndexGEP(const GEPOperator &GEP) {
+  if (!isConstantStringFirstElementGEP(GEP))
+    return false;
   if (GEP.user_empty())
     return false;
   return std::all_of(GEP.user_begin(), GEP.user_end(),
@@ -135,6 +166,8 @@ bool vc::isLegalPrintFormatIndexGEP(const Value &V) {
 }
 
 bool vc::isPrintFormatIndexGEP(const GEPOperator &GEP) {
+  if (!isConstantStringFirstElementGEP(GEP))
+    return false;
   return std::any_of(GEP.user_begin(), GEP.user_end(),
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }

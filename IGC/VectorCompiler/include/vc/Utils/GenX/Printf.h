@@ -19,6 +19,14 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
+// Checks whether global variable is constant and has [N x i8] type.
+bool isConstantString(const llvm::GlobalVariable &GV);
+bool isConstantString(const llvm::Value &V);
+
+// Checks whether GEP takes pointer to the first element of a constant string.
+bool isConstantStringFirstElementGEP(const llvm::GEPOperator &GEP);
+bool isConstantStringFirstElementGEP(const llvm::Value &V);
+
 llvm::Optional<llvm::StringRef>
 getConstStringFromOperandOptional(const llvm::Value &Op);
 llvm::StringRef getConstStringFromOperand(const llvm::Value &Op);
