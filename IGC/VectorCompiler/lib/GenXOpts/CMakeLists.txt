@@ -21,7 +21,6 @@ set(OPT_SOURCES
   CMPacketize/PacketBuilder_math.cpp
   CMPacketize/PacketBuilder_mem.cpp
   CMPacketize/PacketBuilder_misc.cpp
-  CMPacketize/WIAnalysis.cpp
 )
 
 add_library(VCTransforms ${OPT_SOURCES})
