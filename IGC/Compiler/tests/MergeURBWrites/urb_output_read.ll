@@ -5,6 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
+
 ; RUN:          igc_opt -S --inpuths --platformskl --igc-merge-urb-writes %s | FileCheck %s
 ;
 ; CHECK:        call void @llvm.genx.GenISA.URBWrite

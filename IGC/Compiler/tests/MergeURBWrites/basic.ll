@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+
 ; RUN:          igc_opt -S --inpuths --platformskl --igc-merge-urb-writes %s | FileCheck %s -check-prefix=SKL
 ;
 ; SKL:          call void @llvm.genx.GenISA.URBWrite
