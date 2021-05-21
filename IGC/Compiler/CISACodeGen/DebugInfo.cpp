@@ -49,7 +49,6 @@ bool DebugInfoPass::doFinalization(llvm::Module& M)
 bool DebugInfoPass::runOnModule(llvm::Module& M)
 {
     std::vector<CShader*> units;
-    auto moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     bool isOneStepElf = false;
 
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE)
@@ -122,17 +121,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         MetaDataUtils* pMdUtils = m_currShader->GetMetaDataUtils();
         if (!isEntryFunc(pMdUtils, m_currShader->entry))
             continue;
-
-        bool isCloned = false;
-        if (DebugInfoData::hasDebugInfo(m_currShader))
-        {
-            auto fIT = moduleMD->FuncMD.find(m_currShader->entry);
-            if (fIT != moduleMD->FuncMD.end() &&
-                (*fIT).second.isCloned)
-            {
-                isCloned = true;
-            }
-        }
 
         bool finalize = false;
         unsigned int size = m_currShader->GetDebugInfoData().m_VISAModules.size();

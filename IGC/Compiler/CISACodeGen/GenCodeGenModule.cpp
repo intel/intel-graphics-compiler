@@ -118,45 +118,6 @@ Function* GenXCodeGenModule::cloneFunc(Function* F)
         F->getParent()->getFunctionList().push_back(ClonedFunc);
     CloneFuncMetadata(pMdUtils, ClonedFunc, F);
 
-    // record function is cloned in debug-info
-    {
-        IF_DEBUG_INFO(bool full;)
-            IF_DEBUG_INFO(bool lineOnly;)
-            IF_DEBUG_INFO(CodeGenContext * ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();)
-            bool anyDebugInfo;
-        anyDebugInfo = false;
-        IF_DEBUG_INFO(anyDebugInfo = DebugMetadataInfo::hasAnyDebugInfo(ctx, full, lineOnly);)
-
-
-            if (anyDebugInfo)
-            {
-                auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                if (modMD)
-                {
-                    auto funcIt = modMD->FuncMD.find(ClonedFunc);
-                    if (funcIt != modMD->FuncMD.end())
-                    {
-                        funcIt->second.isCloned = true;
-                    }
-                    else
-                    {
-                        // copy metadata from original function.
-                        auto orgFuncMetadataIt = modMD->FuncMD.find(F);
-                        if (orgFuncMetadataIt != modMD->FuncMD.end()) {
-                            IGC::FunctionMetaData fMD = orgFuncMetadataIt->second;
-                            fMD.isCloned = true;
-                            modMD->FuncMD.insert(std::make_pair(ClonedFunc, fMD));
-                        }
-                        else
-                        {
-                            // If this assertion is failing, it probably means that ProcessBuiltinMetaData pass
-                            // needs to be changed to recognize duplicate functions and run before DebugInfo pass.
-                            IGC_ASSERT_MESSAGE(false, "Couldn't find metadata for cloned function!");
-                        }
-                    }
-                }
-            }
-    }
     return ClonedFunc;
 }
 

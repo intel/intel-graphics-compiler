@@ -559,17 +559,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    bool isCloned = false;
-    if (DebugInfoData::hasDebugInfo(m_currShader))
-    {
-        auto fIT = m_moduleMD->FuncMD.find(&F);
-        if (fIT != m_moduleMD->FuncMD.end() &&
-            fIT->second.isCloned)
-        {
-            isCloned = true;
-        }
-    }
-
     m_DL = &F.getParent()->getDataLayout();
     m_pattern = &getAnalysis<CodeGenPatternMatch>();
     m_deSSA = &getAnalysis<DeSSA>();

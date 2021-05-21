@@ -186,7 +186,6 @@ namespace IGC
         bool IsInitializer = false;
         bool IsFinalizer = false;
         unsigned CompiledSubGroupsNumber = 0;
-        bool isCloned = false;
         bool hasInlineVmeSamplers = false;
         int localSize = 0;
         bool localIDPresent = false;
