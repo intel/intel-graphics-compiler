@@ -4500,7 +4500,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         }
         else if (llvm::RTDualBlendSourceIntrinsic * dsrtwi = llvm::dyn_cast<llvm::RTDualBlendSourceIntrinsic>(ccTuple->GetRoot()))
         {
-            IGC_ASSERT_MESSAGE(!RTWriteHasSource0Alpha(rtwi, m_moduleMD), "dual-source doesn't support Source0Alpha");
+            IGC_ASSERT_MESSAGE(!RTWriteHasSource0Alpha(dsrtwi, m_moduleMD), "dual-source doesn't support Source0Alpha");
         }
     }
 

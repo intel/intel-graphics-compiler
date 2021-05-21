@@ -453,7 +453,47 @@ namespace IGC
         bool interferes = false;
         if (ccTuple->HasNonHomogeneousElements())
         {
-            if (offsetDiff == 0 && ccTuple->GetNumElements() == numOperands)
+            // Finding a supremum instruction for a homogeneous part is implemented
+            // only for render target write instructions (RTWritIntrinsic).
+            // An only other possible combination for non-homogeneous instructions comprises
+            // RTWritIntrinsic and RTDualBlendSourceIntrinsic.
+            // In some cases there is an opportunity to coalesce their payloads but there exists
+            // a danger that they are compiled in different SIMD modes so there is a safe assumption
+            // that they cannot be coalesced.
+            // A comparison of the payload of RTWritIntrinsic and RTDualBlendSourceIntrinsic:
+            // +----------------------------+----------------------------+
+            // | RTWritIntrinsic            | RTDualBlendSourceIntrinsic |
+            // +----------------------------+----------------------------+
+            // | src0 Alpha (optional)      | src0 Alpha (unavailable)*  |
+            // +----------------------------+----------------------------+
+            // | output mask (optional)     | output mask (optional)     |
+            // +----------------------------+----------------------------+
+            // | -                          | R0 channel                 |
+            // +----------------------------+----------------------------+
+            // | -                          | G0 channel                 |
+            // +----------------------------+----------------------------+
+            // | -                          | B0 channel                 |
+            // +----------------------------+----------------------------+
+            // | -                          | A0 channel                 |
+            // +----------------------------+----------------------------+
+            // | R0 channel                 | R1 channel                 |
+            // +----------------------------+----------------------------+
+            // | G0 channel                 | G1 channel                 |
+            // +----------------------------+----------------------------+
+            // | B0 channel                 | B1 channel                 |
+            // +----------------------------+----------------------------+
+            // | A0 channel                 | A1 channel                 |
+            // +----------------------------+----------------------------+
+            // | Depth (optional)           | Depth (optional)           |
+            // +----------------------------+----------------------------+
+            // | Stencil (optional)         | Stencil (optional)         |
+            // +----------------------------+----------------------------+
+            // All optional fields except for src0 Alpha are consistent for both instruction called in a fragment shader.
+            // * RTDualBlendSourceIntrinsic doesn't have such an argument but it is defined in its payload.
+            if (offsetDiff == 0 &&
+                ccTuple->GetNumElements() == numOperands &&
+                llvm::isa<llvm::RTWritIntrinsic>(ccTuple->GetRoot()) &&
+                llvm::isa<llvm::RTWritIntrinsic>(tupleGeneratingInstruction))
             {
                 if (m_PayloadMapping.HasNonHomogeneousPayloadElements(tupleGeneratingInstruction))
                 {
