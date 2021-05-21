@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 #include "GenX.h"
 #include "GenXModule.h"
+#include "Probe/Assertion.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Constants.h"
@@ -26,7 +27,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
-#include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -64,16 +64,19 @@ private:
                               BasicBlock::iterator &BBI) const;
   Value *truncExpr(Value *Val, Type *NewTy) const;
   Value *getSExtOrTrunc(Value *, Type *) const;
-  Value *getInitialPointerValue(Value &Ptr) const;
 };
 
 } // namespace
 
 char GenXGEPLowering::ID = 0;
-namespace llvm { void initializeGenXGEPLoweringPass(PassRegistry &); }
-INITIALIZE_PASS_BEGIN(GenXGEPLowering, "GenXGEPLowering", "GenXGEPLowering", false, false)
+namespace llvm {
+void initializeGenXGEPLoweringPass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXGEPLowering, "GenXGEPLowering", "GenXGEPLowering",
+                      false, false)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-INITIALIZE_PASS_END(GenXGEPLowering, "GenXGEPLowering", "GenXGEPLowering", false, false)
+INITIALIZE_PASS_END(GenXGEPLowering, "GenXGEPLowering", "GenXGEPLowering",
+                    false, false)
 
 FunctionPass *llvm::createGenXGEPLoweringPass() {
   initializeGenXGEPLoweringPass(*PassRegistry::getPassRegistry());
@@ -86,7 +89,7 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
   DL = &M->getDataLayout();
 
   const TargetTransformInfo &TTI =
-    getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+      getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
   auto FlatAddrSpace = TTI.getFlatAddressSpace();
 
   IGC_ASSERT_MESSAGE(DL, "null datalayout");
@@ -120,7 +123,8 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
             // this is no-op AddrSpaceCast, should be removed
             // create a new PtrToInt from the original pointer
             // bypass the AddrSpaceCast and PtrToInt
-            auto P2I = Builder->CreatePtrToInt(PtrCast->getOperand(0), Inst->getType());
+            auto P2I = Builder->CreatePtrToInt(PtrCast->getOperand(0),
+                                               Inst->getType());
             Inst->replaceAllUsesWith(P2I);
             Inst->eraseFromParent();
             if (PtrCast->use_empty()) {
@@ -137,83 +141,79 @@ bool GenXGEPLowering::runOnFunction(Function &F) {
   return Changed;
 }
 
-Value *GenXGEPLowering::getInitialPointerValue(Value &Ptr) const {
-  auto *PtrTy = cast<PointerType>(Ptr.getType());
-  auto *IntPtrTy =
-      DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
-
-  // Check if the pointer itself is created from IntToPtr. If it is, and if
-  // the int is the same size, we can use the int directly. Otherwise, we
-  // need to add PtrToInt.
-  if (auto *I2PI = dyn_cast<IntToPtrInst>(&Ptr)) {
-    Value *IntOp = I2PI->getOperand(0);
-    if (IntOp->getType() == IntPtrTy)
-      return IntOp;
-  }
-  return Builder->CreatePtrToInt(&Ptr, IntPtrTy);
-}
-
 bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
                                              BasicBlock::iterator &BBI) const {
   IGC_ASSERT(Builder);
   Value *PtrOp = GEP->getPointerOperand();
-  PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
-  IGC_ASSERT_MESSAGE(PtrTy, "Only accept scalar pointer!");
 
-  // This is the value of the pointer, which will ultimately replace gep.
-  Value *PointerValue = getInitialPointerValue(*PtrOp);
+  Value *PointerValue;
+  PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
+  Type *IntPtrTy;
+  if (PtrTy) {
+    IntPtrTy =
+        DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
+  } else {
+    IGC_ASSERT(PtrOp->getType()->isVectorTy());
+    PtrTy = cast<PointerType>(PtrOp->getType()->getVectorElementType());
+    IntPtrTy =
+        DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
+    IntPtrTy =
+        VectorType::get(IntPtrTy, PtrOp->getType()->getVectorNumElements());
+  }
+  // Check if the pointer itself is created from IntToPtr. If it is, and if
+  // the int is the same size, we can use the int directly. Otherwise, we
+  // need to add PtrToInt.
+  if (auto *I2PI = dyn_cast<IntToPtrInst>(PtrOp)) {
+    Value *IntOp = I2PI->getOperand(0);
+    if (IntOp->getType() == IntPtrTy)
+      PointerValue = IntOp;
+  }
+  PointerValue = Builder->CreatePtrToInt(PtrOp, IntPtrTy);
 
   unsigned PtrMathSizeInBits =
       DL->getPointerSizeInBits(PtrTy->getAddressSpace());
   auto *PtrMathTy = IntegerType::get(Builder->getContext(), PtrMathSizeInBits);
 
-  auto GEPTy = GEP->getType();
-  if (auto GEPVecTy = dyn_cast<VectorType>(GEPTy)) {
+  auto *GEPVecTy = dyn_cast<VectorType>(GEP->getType());
+  if (GEPVecTy && isa<PointerType>(PtrOp->getType())) {
     PointerValue = Builder->CreateVectorSplat(
-        GEPVecTy->getNumElements(),
-        PointerValue,
-        PtrOp->getName() + ".splat");
+        GEPVecTy->getNumElements(), PointerValue, PtrOp->getName() + ".splat");
   }
 
-  Type *Ty = PtrTy;
+  Type *Ty = PtrOp->getType();
   gep_type_iterator GTI = gep_type_begin(GEP);
   for (auto OI = GEP->op_begin() + 1, E = GEP->op_end(); OI != E; ++OI, ++GTI) {
     Value *Idx = *OI;
     if (StructType *StTy = GTI.getStructTypeOrNull()) {
-      if (const ConstantInt* CI = dyn_cast<ConstantInt>(Idx)) {
+      if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
         auto Field = CI->getSExtValue();
         if (Field) {
           uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-          Value* OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
+          Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
           PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
         }
         Ty = StTy->getElementType(Field);
-      }
-      else if (isa<ConstantAggregateZero>(Idx)) {
+      } else if (isa<ConstantAggregateZero>(Idx)) {
         Ty = StTy->getElementType(0);
-      }
-      else if (const ConstantVector* CV = dyn_cast<ConstantVector>(Idx)) {
+      } else if (const ConstantVector *CV = dyn_cast<ConstantVector>(Idx)) {
         auto CE = CV->getSplatValue();
         assert(CE && dyn_cast<ConstantInt>(CE));
         auto Field = cast<ConstantInt>(CE)->getSExtValue();
         if (Field) {
           uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-          Value* OffsetVal =
-              Constant::getIntegerValue(
-                  PointerValue->getType(),
-                  APInt(PtrMathSizeInBits, Offset));
+          Value *OffsetVal = Constant::getIntegerValue(
+              PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
           PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
         }
         Ty = StTy->getElementType(Field);
-      }
-      else
+      } else
         assert(false);
     } else {
       Ty = GTI.getIndexedType();
-      if (const ConstantInt* CI = dyn_cast<ConstantInt>(Idx)) {
+      if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
         if (!CI->isZero()) {
           uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
-          Value* OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
+          Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
           PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
         }
       } else if (!isa<ConstantAggregateZero>(Idx)) {
@@ -234,15 +234,12 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
                 InvVal = A;
               else if (ElementSize.isPowerOf2())
                 InvVal = Builder->CreateShl(
-                    A,
-                    Constant::getIntegerValue(A->getType(),
-                        APInt(PtrMathSizeInBits, ElementSize.logBase2()))
-                );
+                    A, Constant::getIntegerValue(
+                           A->getType(),
+                           APInt(PtrMathSizeInBits, ElementSize.logBase2())));
               else
                 InvVal = Builder->CreateMul(
-                    A,
-                    Constant::getIntegerValue(A->getType(), ElementSize)
-                );
+                    A, Constant::getIntegerValue(A->getType(), ElementSize));
               PointerValue = Builder->CreateAdd(PointerValue, InvVal);
               NewIdx = B;
             };
@@ -261,10 +258,12 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
           // DO NOTHING.
         } else if (ElementSize.isPowerOf2()) {
           APInt ShiftAmount = APInt(PtrMathSizeInBits, ElementSize.logBase2());
-          NewIdx = Builder->CreateShl(NewIdx,
+          NewIdx = Builder->CreateShl(
+              NewIdx,
               Constant::getIntegerValue(NewIdx->getType(), ShiftAmount));
         } else
-          NewIdx = Builder->CreateMul(NewIdx,
+          NewIdx = Builder->CreateMul(
+              NewIdx,
               Constant::getIntegerValue(NewIdx->getType(), ElementSize));
 
         PointerValue = Builder->CreateAdd(PointerValue, NewIdx);
@@ -286,7 +285,7 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
 Value *GenXGEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
   IGC_ASSERT(Builder);
   unsigned NewWidth = NewTy->getIntegerBitWidth();
-  Type* OldTy = Val->getType();
+  Type *OldTy = Val->getType();
   if (auto OldVecTy = dyn_cast<VectorType>(OldTy)) {
     NewTy = IGCLLVM::FixedVectorType::get(NewTy, OldVecTy->getNumElements());
     OldTy = OldVecTy->getElementType();

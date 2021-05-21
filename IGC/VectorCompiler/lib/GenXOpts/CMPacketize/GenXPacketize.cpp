@@ -287,7 +287,8 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
           B->GetVectorType(I.getType()->getPointerElementType()),
           I.getType()->getPointerAddressSpace());
       ArgTypes.push_back(VTy);
-    } else {
+    }
+    else {
       ArgTypes.push_back(B->GetVectorType(I.getType()));
     }
   }
@@ -876,11 +877,26 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
         uint32_t numElems =
             cast<VectorType>(pPacketizedSrcTy)->getNumElements();
         pReturnTy = IGCLLVM::FixedVectorType::get(pDstPtrTy, numElems);
-      } else {
+      }
+      else {
         // <N x Ty>*
-        pReturnTy =
-            PointerType::get(B->GetVectorType(pDstScalarTy),
-                             pInst->getType()->getPointerAddressSpace());
+        if (VectorType::isValidElementType(pDstScalarTy))
+          // Map <N x OldTy>* to <N x NewTy>*
+          pReturnTy = PointerType::get(B->GetVectorType(pDstScalarTy),
+                          pInst->getType()->getPointerAddressSpace());
+        else {
+          // Map <N x OldTy>* to <N x NewTy*> using cast then GEP
+          auto* pTmpTy = PointerType::get(
+                            llvm::ArrayType::get(pDstScalarTy, B->mVWidth),
+                            pInst->getType()->getPointerAddressSpace());
+          auto* pTmpInst =
+              B->CAST((Instruction::CastOps)opcode, pPacketizedSrc, pTmpTy);
+          SmallVector<Value*, 2> vecIndices;
+          vecIndices.push_back(B->C(0));
+          vecIndices.push_back(B->CInc<uint32_t>(0, B->mVWidth));
+          pReplacedInst = B->GEPA(pTmpInst, vecIndices);
+          break;
+        }
       }
     } else {
       pReturnTy = B->GetVectorType(pInst->getType());
@@ -929,17 +945,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
         for (uint32_t i = 0; i < pGepInst->getNumIndices(); ++i) {
           vecIndices.push_back(getPacketizeValue(pGepInst->getOperand(1 + i)));
         }
-
         // Step to the SIMD lane
-        if (B->mVWidth == 8) {
-          vecIndices.push_back(B->C({0, 1, 2, 3, 4, 5, 6, 7}));
-        } else if (B->mVWidth == 16) {
-          vecIndices.push_back(
-              B->C({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}));
-        } else {
-          report_fatal_error("Unsupported SIMD width.");
-        }
-
+        vecIndices.push_back(B->CInc<uint32_t>(0, B->mVWidth));
         pReplacedInst = B->GEPA(pVecSrc, vecIndices);
       }
     }
@@ -1475,20 +1482,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_lane_id: {
         IGC_ASSERT_MESSAGE((CI->getType()->getIntegerBitWidth() == 32),
           "Expected to return 32-bit integer.");
-        if (B->mVWidth == 8) {
-          std::initializer_list<uint32_t> l = {0, 1, 2, 3, 4, 5, 6, 7};
-          replacement = B->C(l);
-        } else if (B->mVWidth == 16) {
-          std::initializer_list<uint32_t> l = {0, 1, 2,  3,  4,  5,  6,  7,
-                                               8, 9, 10, 11, 12, 13, 14, 15};
-          replacement = B->C(l);
-        } else if (B->mVWidth == 32) {
-          std::initializer_list<uint32_t> l = {
-              0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-              16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
-          replacement = B->C(l);
-        } else
-          IGC_ASSERT(0);
+        replacement = B->CInc<uint32_t>(0, B->mVWidth);
         return replacement;
       } break;
       case GenXIntrinsic::genx_rdregionf:

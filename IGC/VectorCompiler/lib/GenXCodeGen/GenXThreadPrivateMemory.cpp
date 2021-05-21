@@ -203,6 +203,13 @@ Value *GenXThreadPrivateMemory::ZExtOrTruncIfNeeded(Value *From, Type *To,
         Res, cast<VectorType>(FromTy)->getElementType(), "", InsertBefore);
     Res = TmpRes;
   }
+  if (To->isVectorTy()) {
+    IRBuilder<> Builder(InsertBefore);
+    Res = Builder.CreateVectorSplat(
+        To->getVectorNumElements(),
+        Res,
+        Res->getName() + ".splat");
+  }
   if (FromTySz < ToTySz)
     Res = CastInst::CreateZExtOrBitCast(Res, To, "", InsertBefore);
   else if (FromTySz > ToTySz)
@@ -440,15 +447,22 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return PTI;
     } else
       return Ptr;
-  } else if (isa<ExtractElementInst>(Ptr) &&
-             lookForPtrReplacement(
-                 cast<ExtractElementInst>(Ptr)->getVectorOperand())) {
+  }
+  else if (isa<ExtractElementInst>(Ptr) &&
+           lookForPtrReplacement(
+               cast<ExtractElementInst>(Ptr)->getVectorOperand())) {
     if (PtrTy->isPointerTy()) {
-      auto *PTI = CastInst::Create(Instruction::PtrToInt, Ptr, MemTy);
+      auto* PTI = CastInst::Create(Instruction::PtrToInt, Ptr, MemTy);
       PTI->insertAfter(cast<Instruction>(Ptr));
       return PTI;
-    } else
+    }
+    else
       return Ptr;
+  } else if (auto *SHI = dyn_cast<ShuffleVectorInst>(Ptr)) {
+    auto Splat = ShuffleVectorAnalyzer(SHI).getAsSplat();
+    if (Splat.Input) {
+      return lookForPtrReplacement(Splat.Input);
+    }
   } else if (auto *CI = dyn_cast<CallInst>(Ptr)) {
     if (!IGCLLVM::isIndirectCall(*CI) &&
         (GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction()) ==
