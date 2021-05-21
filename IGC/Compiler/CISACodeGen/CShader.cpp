@@ -1651,7 +1651,7 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
             }
             else
             {
-                auto input_size = eTy->getScalarSizeInBits() / 8;
+                auto input_size = GetScalarTypeSizeInRegister(eTy);
                 Var = GetNewAlias(Var, Var->GetType(), k * input_size * numLanes(m_SIMDSize), 0);
             }
             GetEncoder().Copy(Var, eVal);
@@ -2448,8 +2448,8 @@ CVariable* CShader::GetSymbolFromSource(Instruction* UseInst,
         //
         if (CI->getOpcode() == Instruction::BitCast)
         {
-            if (CI->getSrcTy()->getScalarSizeInBits() !=
-                CI->getDestTy()->getScalarSizeInBits())
+            if (GetScalarTypeSizeInRegisterInBits(CI->getSrcTy()) !=
+                GetScalarTypeSizeInRegisterInBits(CI->getDestTy()))
                 return nullptr;
         }
 
@@ -3441,3 +3441,40 @@ CShaderProgram::~CShaderProgram()
     }
     m_context = nullptr;
 }
+
+unsigned int CShader::GetPrimitiveTypeSizeInRegisterInBits(const Type* Ty) const
+{
+    unsigned int sizeInBits = Ty->getPrimitiveSizeInBits();
+    if (Ty->isPtrOrPtrVectorTy())
+    {
+        sizeInBits =
+            GetContext()->getRegisterPointerSizeInBits(Ty->getPointerAddressSpace());
+        if (auto* VTy = dyn_cast<VectorType>(Ty))
+        {
+            sizeInBits *= (unsigned)VTy->getNumElements();
+        }
+    }
+    return sizeInBits;
+}
+
+unsigned int CShader::GetPrimitiveTypeSizeInRegister(const Type* Ty) const
+{
+    return GetPrimitiveTypeSizeInRegisterInBits(Ty) / 8;
+}
+
+unsigned int CShader::GetScalarTypeSizeInRegisterInBits(const Type* Ty) const
+{
+    unsigned int sizeInBits = Ty->getScalarSizeInBits();
+    if (Ty->isPtrOrPtrVectorTy())
+    {
+        sizeInBits =
+            GetContext()->getRegisterPointerSizeInBits(Ty->getPointerAddressSpace());
+    }
+    return sizeInBits;
+}
+
+unsigned int CShader::GetScalarTypeSizeInRegister(const Type* Ty) const
+{
+    return GetScalarTypeSizeInRegisterInBits(Ty) / 8;
+}
+

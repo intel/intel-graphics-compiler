@@ -9746,7 +9746,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             }
             else
             {
-                IGC_ASSERT(inst->getType()->getPrimitiveSizeInBits() < SIZE_DWORD * 8 * 4);
+                IGC_ASSERT(GetPrimitiveTypeSizeInRegisterInBits(loadType) < SIZE_DWORD * 8 * 4);
                 uint elemSize = m_destination->GetElemSize();
 
                 if (elemSize > 0)
@@ -9816,7 +9816,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
-        uint sizeInBits = (unsigned int)inst->getType()->getPrimitiveSizeInBits();
+        uint sizeInBits = GetPrimitiveTypeSizeInRegisterInBits(inst->getType());
         IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
             "load type must be 1/2/4/8/12/16 bytes long");
         IGC::CVariable* visaOffset = BroadcastIfUniform(src_offset);
@@ -10836,10 +10836,7 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
 
     ResourceDescriptor resource = GetResourceVariable(pllDstPtr);
 
-    uint sizeInBits = (unsigned int)pllValToStore->getType()->getPrimitiveSizeInBits();
-    if (0 == sizeInBits && pllValToStore->getType()->isPointerTy()){
-        sizeInBits = m_currShader->GetContext()->getRegisterPointerSizeInBits(pllValToStore->getType()->getPointerAddressSpace());
-    }
+    uint sizeInBits = GetPrimitiveTypeSizeInRegisterInBits(pllValToStore->getType());
 
     IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
         "Stored type must be 1/2/4/8/12/16 bytes long");
@@ -11071,7 +11068,8 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         const uint vectorEntrySimdWidth = pInstVar->IsUniform() ?
             1 : numLanes(m_currShader->m_SIMDSize);
 
-        const uint vecTypeSize = (unsigned int)cast<VectorType>(pVecType)->getElementType()->getPrimitiveSizeInBits() / 8;
+        const uint vecTypeSize =
+            GetPrimitiveTypeSizeInRegister(cast<VectorType>(pVecType)->getElementType());
 
         const uint offset = vectorEntrySimdWidth * vecTypeSize;
 
@@ -11128,7 +11126,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             bool bWAMultiGRF = false;
             if (!pInstVar->IsUniform() && m_currShader->m_Platform->enableMultiGRFAccessWA())
             {
-                uint32_t dataTypeSize = pElement->getType()->getScalarSizeInBits();
+                uint32_t dataTypeSize = GetScalarTypeSizeInRegisterInBits(pElement->getType());
                 uint32_t memSizeToUse = numLanes(simdMode) * dataTypeSize / 8;
                 uint32_t memSizeMinDisp = numLanes(minDispatchMode) * SIZE_DWORD;
                 bWAMultiGRF = (memSizeToUse > memSizeMinDisp);
@@ -14956,8 +14954,8 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     }
 
     uint32_t width = numLanes(m_currShader->m_SIMDSize);
-    uint32_t dstEltBytes = int_cast<uint32_t>((unsigned int)dstEltTy->getPrimitiveSizeInBits() / 8);
-    uint32_t srcEltBytes = int_cast<uint32_t>((unsigned int)srcEltTy->getPrimitiveSizeInBits() / 8);
+    uint32_t dstEltBytes = GetPrimitiveTypeSizeInRegister(dstEltTy);
+    uint32_t srcEltBytes = GetPrimitiveTypeSizeInRegister(srcEltTy);
     bool srcUniform = src->IsUniform();
     bool dstUniform = m_destination->IsUniform();
     if (srcUniform && dstUniform &&
@@ -15291,15 +15289,24 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     }
 }
 
-unsigned int EmitPass::GetScalarTypeSizeInRegister(Type* Ty) const
+unsigned int EmitPass::GetPrimitiveTypeSizeInRegisterInBits(const Type* Ty) const
 {
-    unsigned int sizeInBites = Ty->getScalarSizeInBits();
-    if (Ty->isPointerTy())
-    {
-        sizeInBites =
-            m_currShader->GetContext()->getRegisterPointerSizeInBits(Ty->getPointerAddressSpace());
-    }
-    return sizeInBites / 8;
+    return m_currShader->GetPrimitiveTypeSizeInRegisterInBits(Ty);
+}
+
+unsigned int EmitPass::GetPrimitiveTypeSizeInRegister(const Type* Ty) const
+{
+    return m_currShader->GetPrimitiveTypeSizeInRegister(Ty);
+}
+
+unsigned int EmitPass::GetScalarTypeSizeInRegisterInBits(const Type* Ty) const
+{
+    return m_currShader->GetScalarTypeSizeInRegisterInBits(Ty);
+}
+
+unsigned int EmitPass::GetScalarTypeSizeInRegister(const Type* Ty) const
+{
+    return m_currShader->GetScalarTypeSizeInRegister(Ty);
 }
 
 

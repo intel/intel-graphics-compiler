@@ -524,7 +524,10 @@ public:
     void setPredicateForDiscard(CVariable* pPredicate = nullptr);
 
     void PackSIMD8HFRet(CVariable* dst);
-    unsigned int GetScalarTypeSizeInRegister(llvm::Type* Ty) const;
+    unsigned int GetPrimitiveTypeSizeInRegisterInBits(const llvm::Type* Ty) const;
+    unsigned int GetPrimitiveTypeSizeInRegister(const llvm::Type* Ty) const;
+    unsigned int GetScalarTypeSizeInRegisterInBits(const llvm::Type* Ty) const;
+    unsigned int GetScalarTypeSizeInRegister(const llvm::Type* Ty) const;
 
     /// return true if succeeds, false otherwise.
     bool setCurrentShader(llvm::Function* F);
