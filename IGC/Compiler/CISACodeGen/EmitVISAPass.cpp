@@ -586,8 +586,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
 
     CShader* prevShader = m_pCtx->m_prevShader;
+    bool isFuncGroupHead = !m_FGA || m_FGA->isGroupHead(&F);
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
-    if (!m_FGA || m_FGA->isGroupHead(&F))
+    if (isFuncGroupHead)
     {
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
@@ -722,6 +723,51 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    // Only apply WA to OCL shaders with stackcall enabled
+    // TODO: Remove this WA once vISA handles the register copy
+    bool needKernelArgOverrideWA = isFuncGroupHead && hasStackCall && m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER;
+    if (needKernelArgOverrideWA)
+    {
+        // Requires early payload allocation to know the kernel arg offsets
+        m_currShader->CacheArgumentsList();
+        m_currShader->MapPushedInputs();
+        m_currShader->AllocatePayload();
+
+        // This WA copies all kernel args > r26.0 into a temp register when stackcalls are enabled.
+        // Since vISA stackcall ABI predefine the argument register to r26.0, if the payload is larger than
+        // 26GRFs then doing a stackcall will overwrite the payload registers.
+        const int visaStackCallArgRegStart = 26;
+        static const int64_t maxGRFOffset = visaStackCallArgRegStart * m_currShader->getGRFSize();
+        llvm::IRBuilder<> builder(&*F.getEntryBlock().getFirstInsertionPt());
+        for (auto& arg : F.args())
+        {
+            // Skip unused arguments
+            if (arg.user_empty()) continue;
+
+            Argument* kernArg = &arg;
+            CVariable* kernArgV = m_currShader->GetSymbol(kernArg);
+            // Get the allocated payload offset for this kernel arg
+            int64_t offset = m_currShader->GetKernelArgOffset(kernArgV);
+            // If kernel payload size exceeds maxGRFOffset, we must copy the kernel args into another register.
+            if (offset >= maxGRFOffset)
+            {
+                // Create a dummy instruction using RTV, just so we can use the LLVM replaceAllUsesWith to replace the kernelArg usages.
+                Function* pFunc = GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue, kernArg->getType());
+                Value* tempCall = builder.CreateCall(pFunc, builder.getInt32(kernArg->getArgNo()), "kernArgCopy");
+                kernArg->replaceAllUsesWith(tempCall);
+
+                // Create another CVar to hold the copied kernelArg, and map it to the dummy instruction.
+                // When doing vISA codegen, all usages of the dummy instruction will get the value of the copied kernelArg.
+                CVariable* copiedArg = m_currShader->GetNewVariable(kernArgV);
+                emitCopyAll(copiedArg, kernArgV, kernArg->getType());
+                m_currShader->UpdateSymbolMap(tempCall, copiedArg);
+                // Temp instruction needs the same uniform analysis attribute as kernel arg
+                m_currShader->SetDependency(tempCall, m_currShader->GetDependency(kernArg));
+            }
+        }
+    }
+
+
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[&F];
@@ -744,7 +790,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     emitSymbolRelocation(F);
 
     m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
-    if (!m_FGA || m_FGA->isGroupHead(&F))
+    if (isFuncGroupHead)
     {
         Function* Entry = m_currShader->entry;
         // owned by m_pDebugEmitter
@@ -937,14 +983,17 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (!m_FGA || m_FGA->isGroupHead(&F))
+    if (isFuncGroupHead)
     {
-        // Cache the arguments list into a vector for faster access
-        m_currShader->CacheArgumentsList();
-        // Associates values pushed to CVariable
-        m_currShader->MapPushedInputs();
-        // Allocate the thread payload
-        m_currShader->AllocatePayload();
+        if (!needKernelArgOverrideWA)
+        {
+            // Cache the arguments list into a vector for faster access
+            m_currShader->CacheArgumentsList();
+            // Associates values pushed to CVariable
+            m_currShader->MapPushedInputs();
+            // Allocate the thread payload
+            m_currShader->AllocatePayload();
+        }
 
         if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills)
         {
