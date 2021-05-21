@@ -670,6 +670,7 @@ void IR_Builder::createPreDefinedVars()
             }
         }
         preDefVars.setPredefinedVar(i, dcl);
+        dcl->setPreDefinedVar(true);
     }
 }
 

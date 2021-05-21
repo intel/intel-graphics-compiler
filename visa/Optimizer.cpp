@@ -10132,6 +10132,9 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
                 return false;
             if (Base->asRegVar()->isPhyRegAssigned())
                 return false;
+            G4_Declare* Dcl = Opnd->getTopDcl();
+            if (Dcl->isPreDefinedVar())
+                return false;
             return true;
         };
 
@@ -10159,6 +10162,10 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
 
 void Optimizer::dce()
 {
+    // make sure dataflow is up to date
+    kernel.fg.resetLocalDataFlowData();
+    kernel.fg.localDataFlowAnalysis();
+
     for (auto bb : fg) {
         for (auto I = bb->rbegin(), E = bb->rend(); I != E; ++I) {
             G4_INST* Inst = *I;

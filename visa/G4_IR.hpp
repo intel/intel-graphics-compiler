@@ -1673,6 +1673,7 @@ class G4_Declare
     uint16_t isSplittedDcl : 1;
     uint16_t isPartialDcl : 1;
     uint16_t refInSend : 1;
+    uint16_t PreDefinedVar : 1;  // indicate if this dcl is created from preDefinedVars.
 
     unsigned int   decl_id;     // global decl id for this builder
 
@@ -1710,7 +1711,7 @@ public:
                std::vector<G4_Declare*>& dcllist) :
       name(n), regFile(k), elemType(ty), addressed(false), liveIn(false),
       liveOut(false), payloadLiveOut(false), noWidening(false), isSplittedDcl(false), isPartialDcl(false),
-      refInSend(false), numElements(numElems), offsetFromBase(-1)
+      refInSend(false), PreDefinedVar(false), numElements(numElems), offsetFromBase(-1)
     {
         //
         // set the rest values to default uninitialized values
@@ -1976,6 +1977,9 @@ public:
             return false;
         }
     }
+
+    void setPreDefinedVar(bool b) { PreDefinedVar = b; }
+    bool isPreDefinedVar() const { return PreDefinedVar; }
 
     void emit(std::ostream& output) const;
 
