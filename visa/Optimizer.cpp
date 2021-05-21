@@ -1523,11 +1523,11 @@ int Optimizer::optimization()
 
     runPass(PI_accSubPostSchedule);
 
+    runPass(PI_reRAPostSchedule);
+
     runPass(PI_legalizeType);
 
     runPass(PI_changeMoveType);
-
-    runPass(PI_reRAPostSchedule);
 
     // No pass after this should expect def-use to be preserved as this pass
     // removes raw movs with identical src/dst physical GRFs.
