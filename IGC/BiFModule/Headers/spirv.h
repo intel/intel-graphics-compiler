@@ -4655,13 +4655,13 @@ uint __builtin_spirv_OpGetKernelWorkGroupSize_fp0i32_p0i8_i32_i32(uchar* Invoke,
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-void __builtin_spirv_OpRetainEvent_i64(ClkEvent_t Event);
-void __builtin_spirv_OpReleaseEvent_i64(ClkEvent_t Event);
-ClkEvent_t __builtin_spirv_OpCreateUserEvent(void);
-bool __builtin_spirv_OpIsValidEvent_i64(ClkEvent_t Event);
-void __builtin_spirv_OpSetUserEventStatus_i64_i32(ClkEvent_t Event, uint Status);
-void __builtin_spirv_OpCaptureEventProfilingInfo_i64_i32_p1i8(ClkEvent_t Event, uint ProfilingInfo, global uchar *Value);
-Queue_t __builtin_spirv_OpGetDefaultQueue(void);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(RetainEvent, _i64, )(ClkEvent_t Event);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReleaseEvent, _i64, )(ClkEvent_t Event);
+ClkEvent_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(CreateUserEvent, , )(void);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsValidEvent, _i64, )(ClkEvent_t Event);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(ClkEvent_t Event, int Status);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(ClkEvent_t Event, int ProfilingInfo, global char *Value);
+Queue_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetDefaultQueue, , )(void);
 
 Ndrange_t __builtin_spirv_OpBuildNDRange_i32_i32_i32(uint GlobalWorkSize, uint LocalWorkSize, uint GlobalWorkOffset);
 Ndrange_t __builtin_spirv_OpBuildNDRange_i64_i64_i64(ulong GlobalWorkSize, ulong LocalWorkSize, ulong GlobalWorkOffset);

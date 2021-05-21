@@ -45,41 +45,41 @@ uint __get_kernel_work_group_size_impl(uchar* Block, uchar* Params)
 }
 
 int OVERLOADABLE IGIL_RetainEvent( clk_event_t in_event );
-void __builtin_spirv_OpRetainEvent_i64(ClkEvent_t Event)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(RetainEvent, _i64, )(ClkEvent_t Event)
 {
   IGIL_RetainEvent(Event);
 }
 
 int OVERLOADABLE IGIL_ReleaseEvent( clk_event_t in_event );
-void __builtin_spirv_OpReleaseEvent_i64(ClkEvent_t Event)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ReleaseEvent, _i64, )(ClkEvent_t Event)
 {
   IGIL_ReleaseEvent(Event);
 }
 
 clk_event_t IGIL_CreateUserEvent();
 
-ClkEvent_t __builtin_spirv_OpCreateUserEvent()
+ClkEvent_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(CreateUserEvent, , )()
 {
   return IGIL_CreateUserEvent();
 }
 
 bool OVERLOADABLE IGIL_Valid_Event( clk_event_t in_event );
 
-bool __builtin_spirv_OpIsValidEvent_i64(ClkEvent_t Event)
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(IsValidEvent, _i64, )(ClkEvent_t Event)
 {
   return IGIL_Valid_Event(Event);
 }
 
 void OVERLOADABLE IGIL_SetUserEventStatus( clk_event_t event, int state );
 
-void __builtin_spirv_OpSetUserEventStatus_i64_i32(ClkEvent_t Event, uint Status)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SetUserEventStatus, _i64_i32, )(ClkEvent_t Event, int Status)
 {
     IGIL_SetUserEventStatus( Event, Status );
 }
 
 void OVERLOADABLE IGIL_CaptureEventProfilingInfo( clk_event_t event, clk_profiling_info name,  __global void *value );
 
-void __builtin_spirv_OpCaptureEventProfilingInfo_i64_i32_p1i8(ClkEvent_t Event, uint ProfilingInfo, global uchar *Value)
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(CaptureEventProfilingInfo, _i64_i32_p1i8, )(ClkEvent_t Event, int ProfilingInfo, global char *Value)
 {
     // SPIR-V CmdExecTime has a different enum value than CLK_PROFILING_COMMAND_EXEC_TIME.
     // Perform the mapping from SPIR-V enum to our internal/Clang enum before calling
@@ -106,7 +106,7 @@ INLINE uint __intel_calc_kernel_max_num_subgroups(uint simdSize)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-Queue_t __builtin_spirv_OpGetDefaultQueue()
+Queue_t SPIRV_OVERLOADABLE SPIRV_BUILTIN(GetDefaultQueue, , )()
 {
     //return get_default_queue();
     __global void* deviceQ = __builtin_IB_get_default_device_queue();
