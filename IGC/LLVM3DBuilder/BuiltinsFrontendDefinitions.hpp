@@ -3594,8 +3594,8 @@ template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFrc(llvm::Value* V)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-    
-    llvm::Function* frc = 
+
+    llvm::Function* frc =
         llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_frc, V->getType());
     return this->CreateCall(frc, V);
 }
@@ -4437,11 +4437,21 @@ template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveshuffleIndex(llvm::Value* src, llvm::Value* index, llvm::Value* helperLaneMode)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Type* srcType = src->getType();
+    if (srcType == this->getInt1Ty())
+    {
+        src = this->CreateZExt(src, this->getInt32Ty());
+    }
     llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
         module,
         llvm::GenISAIntrinsic::GenISA_WaveShuffleIndex,
         src->getType());
-    return this->CreateCall3(pFunc, src, index, (helperLaneMode ? helperLaneMode : this->getInt32(0)));
+    llvm::Value* retVal = this->CreateCall3(pFunc, src, index, (helperLaneMode ? helperLaneMode : this->getInt32(0)));
+    if (srcType == this->getInt1Ty())
+    {
+        retVal = this->CreateTrunc(retVal, srcType);
+    }
+    return retVal;
 }
 
 template<bool preserveNames, typename T, typename Inserter>
