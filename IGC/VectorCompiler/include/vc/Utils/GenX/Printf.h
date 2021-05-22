@@ -47,11 +47,6 @@ PrintfArgInfoSeq parseFormatString(llvm::StringRef FmtStr);
 // Whether \p Usr is @genx.print.format.index inrinsic call.
 bool isPrintFormatIndex(const llvm::User &Usr);
 
-// Creates @genx.print.format.index inrinsic call with \p Pointer as an operand.
-// The call is inserted before \p InsertionPt.
-llvm::CallInst &createPrintFormatIndex(llvm::Value &Pointer,
-                                       llvm::Instruction &InsertionPt);
-
 // There's a special case of GEP when all its users are genx.print.format.index
 // intrinsics. Such GEPs live until CisaBuilder and then handled as part of
 // genx.print.format.index intrinsic.

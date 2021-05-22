@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Support/Casting.h>
@@ -149,17 +148,6 @@ PrintfArgInfoSeq vc::parseFormatString(StringRef FmtStr) {
 bool vc::isPrintFormatIndex(const User &Usr) {
   return GenXIntrinsic::getGenXIntrinsicID(&Usr) ==
          GenXIntrinsic::genx_print_format_index;
-}
-
-CallInst &vc::createPrintFormatIndex(Value &Pointer, Instruction &InsertionPt) {
-  IGC_ASSERT_MESSAGE(
-      Pointer.getType()->isPointerTy(),
-      "wrong argument: genx.print.format.index operand must be a pointer");
-  IRBuilder<> IRB{&InsertionPt};
-  auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      IRB.GetInsertBlock()->getParent()->getParent(),
-      GenXIntrinsic::genx_print_format_index, Pointer.getType());
-  return *IRB.CreateCall(Decl, &Pointer);
 }
 
 bool vc::isLegalPrintFormatIndexGEP(const GEPOperator &GEP) {
