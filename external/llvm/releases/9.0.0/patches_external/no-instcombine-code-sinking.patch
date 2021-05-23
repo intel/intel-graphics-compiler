@@ -1,3 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2020-2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
 diff --git a/llvm/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
 index 385f4926b84..bc322c76b8c 100644
 --- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
