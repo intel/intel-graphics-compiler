@@ -510,7 +510,10 @@ public:
     void handleStoreInst(
         StoreInst* pStore,
         Value* pScalarizedIdx);
+    void handleLifetimeMark(IntrinsicInst* inst);
     AllocaInst* pVecAlloca;
+    // location of lifetime starts
+    llvm::SmallPtrSet<Instruction*, 4> pStartPoints;
     TransposeHelperPromote(AllocaInst* pAI) : TransposeHelper(false) { pVecAlloca = pAI; }
 };
 
@@ -530,31 +533,30 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     Value* idx = IRB.getInt32(0);
     TransposeHelperPromote helper(pVecAlloca);
     helper.HandleAllocaSources(pAlloca, idx);
-    helper.EraseDeadCode();
     IGC_ASSERT(nullptr != pAlloca);
     // for uniform alloca, we need to insert an initial definition
     // to keep the promoted vector as uniform in the next round of WIAnalysis
     bool isUniformAlloca = pAlloca->getMetadata("uniform") != nullptr;
-    if (isUniformAlloca && pAlloca->getAllocatedType()->isArrayTy()) {
-        IRBuilder<> IRB1(pAlloca);
-        auto pVecF = GenISAIntrinsic::getDeclaration(m_pFunc->getParent(),
-            GenISAIntrinsic::GenISA_vectorUniform, pVecAlloca->getAllocatedType());
-        auto pVecInit = IRB1.CreateCall(pVecF);
-        // create a store of pVecInit into pVecAlloca
-        IRB1.CreateStore(pVecInit, pVecAlloca);
+    if (isUniformAlloca && pAlloca->getAllocatedType()->isArrayTy())
+    {
+        if (helper.pStartPoints.empty())
+            helper.pStartPoints.insert(pAlloca);
+        for (auto InsertionPoint : helper.pStartPoints)
+        {
+            IRBuilder<> IRB1(InsertionPoint);
+            auto pVecF = GenISAIntrinsic::getDeclaration(m_pFunc->getParent(),
+                GenISAIntrinsic::GenISA_vectorUniform, pVecAlloca->getAllocatedType());
+            auto pVecInit = IRB1.CreateCall(pVecF);
+            // create a store of pVecInit into pVecAlloca
+            IRB1.CreateStore(pVecInit, pVecAlloca);
+        }
     }
-    if (pAlloca->use_empty()) {
-      IGC_ASSERT(m_DT);
-      replaceAllDbgUsesWith(*pAlloca, *pVecAlloca, *pVecAlloca, *m_DT);
+    helper.EraseDeadCode();
+    if (pAlloca->use_empty())
+    {
+        IGC_ASSERT(m_DT);
+        replaceAllDbgUsesWith(*pAlloca, *pVecAlloca, *pVecAlloca, *m_DT);
     }
-}
-
-void TransposeHelper::handleLifetimeMark(IntrinsicInst* inst)
-{
-    IGC_ASSERT(nullptr != inst);
-    IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
-        (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
-    inst->eraseFromParent();
 }
 
 void TransposeHelper::handleGEPInst(
@@ -732,4 +734,16 @@ void TransposeHelperPromote::handleStoreInst(
     }
     IRB.CreateStore(pIns, pVecAlloca);
     pStore->eraseFromParent();
+}
+
+void TransposeHelperPromote::handleLifetimeMark(IntrinsicInst* inst)
+{
+    IGC_ASSERT(nullptr != inst);
+    IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
+        (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
+    if (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start)
+    {
+        pStartPoints.insert(inst);
+    }
+    m_toBeRemovedGEP.push_back(inst);
 }

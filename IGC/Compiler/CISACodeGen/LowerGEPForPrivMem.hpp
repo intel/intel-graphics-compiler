@@ -47,10 +47,11 @@ namespace IGC
         virtual void handleStoreInst(
             llvm::StoreInst* pStore,
             llvm::Value* pScalarizedIdx) = 0;
-        void handleLifetimeMark(llvm::IntrinsicInst* inst);
+        virtual void handleLifetimeMark(llvm::IntrinsicInst* inst) = 0;
         void EraseDeadCode();
+    protected:
+        std::vector<llvm::Instruction*> m_toBeRemovedGEP;
     private:
         bool m_vectorIndex;
-        std::vector<llvm::Instruction*> m_toBeRemovedGEP;
     };
 }

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/DenseMap.h>
@@ -171,6 +172,7 @@ namespace IGC
         struct AllocaDep
         {
             std::vector<const llvm::StoreInst*> stores;
+            std::vector<const llvm::IntrinsicInst*> lifetimes;
             bool assume_uniform;
         };
 

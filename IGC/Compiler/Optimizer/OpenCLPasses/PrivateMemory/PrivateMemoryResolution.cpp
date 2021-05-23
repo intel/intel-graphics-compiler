@@ -652,6 +652,13 @@ public:
             pStore->setOperand(1, ptr);
         }
     }
+    void handleLifetimeMark(IntrinsicInst* inst)
+    {
+        IGC_ASSERT(nullptr != inst);
+        IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
+            (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
+        inst->eraseFromParent();
+    }
 };
 
 bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const Type* const pTypeOfAccessedObject, uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit)
