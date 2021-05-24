@@ -68,6 +68,8 @@ public:
     void AddEpilogue(llvm::ReturnInst* ret) override;
     bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F) override;
     void ExtractGlobalVariables() override;
+    void MapPushedInputs() override;
+    int getSetupIndex(uint inputIndex);
 
     void        AllocatePSPayload();
     void        AllocatePixelPhasePayload();
@@ -114,6 +116,10 @@ public:
     std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedFloat;
     bool LowerPSInput();
     static bool IsInterpolationLinear(e_interpolation mode);
+    // attribute "packing"
+    // Non continuous "input indexes" may be received and they are allocated one after another.
+    // We need to map them to "setup indexes".
+    std::set<unsigned int> m_SetupIndicesUsed;
 
 protected:
     void CreatePassThroughVar();

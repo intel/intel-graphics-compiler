@@ -3809,8 +3809,9 @@ void EmitPass::emitPSInputMADHalf(llvm::Instruction* inst)
 void EmitPass::emitPSInputCst(llvm::Instruction* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-    unsigned int setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
-    psProgram->MarkConstantInterpolation(setupIndex);
+    unsigned int inputIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+    psProgram->MarkConstantInterpolation(inputIndex);
+    unsigned int setupIndex = psProgram->getSetupIndex(inputIndex);
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
     // temp variable should be the same type as the destination
     // This is where we have MOV for payload
