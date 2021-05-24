@@ -185,7 +185,6 @@ bool Options::parseOptions(int argc, const char* argv[])
         m_vISAOptions.setBool(vISA_RoundRobin, false);
         m_vISAOptions.setBool(vISA_SpiltLLR, false);
         m_vISAOptions.setBool(vISA_preRA_Schedule, false);
-        m_vISAOptions.setBool(vISA_SplitGRFAlignedScalar, false);
         m_vISAOptions.setBool(vISA_Debug, true);
     }
     if (m_vISAOptions.isArgSetByUser(vISA_Stepping)) {
