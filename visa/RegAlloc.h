@@ -427,6 +427,7 @@ public:
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}
     void dump() const;
     void dumpGlobalVarNum() const;
+    bool isEmptyLiveness() const;
     bool writeWholeRegion(const G4_BB* bb, const G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
 
     bool writeWholeRegion(const G4_BB* bb, const G4_INST* prd, const G4_VarBase* flagReg) const;

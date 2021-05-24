@@ -601,7 +601,8 @@ void LinearScanRA::linearScanMarkReferences(unsigned int& numRowsEOT)
                     continue;
                 }
 
-                if (l.isLiveAtEntry(curBB, dcl->getRegVar()->getId()))
+                if (!l.isEmptyLiveness() &&
+                    l.isLiveAtEntry(curBB, dcl->getRegVar()->getId()))
                 {
                     lr->recordRef(curBB, true);
                 }
@@ -1551,7 +1552,7 @@ void LinearScanRA::calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>
             continue;
         }
         LSLiveRange* lr = gra.getLSLR(dcl);
-        if (lr &&
+        if (lr && !l.isEmptyLiveness() &&
             l.isLiveAtEntry(bb, dcl->getRegVar()->getId()))
         {
             if (lr->getRegionID() != regionID)

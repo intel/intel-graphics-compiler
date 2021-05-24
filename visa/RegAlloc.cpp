@@ -2433,6 +2433,11 @@ void LivenessAnalysis::dumpGlobalVarNum() const
     std::cerr << "total var num: " << numVarId << " global var num: " << global_var_num << "\n";
 }
 
+bool LivenessAnalysis::isEmptyLiveness() const
+{
+    return numBBId == 0;
+}
+
 //
 // return true if var is live at the entry of bb
 // check both use_in and def_in, if one condition fails then var is not in the live range
