@@ -538,8 +538,7 @@ parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
 
   SmallVector<const char *, 8> Argv;
   cl::TokenizeGNUCommandLine(InternalOptions, Saver, Argv);
-  // Internal options are always unchecked.
-  constexpr bool IsStrictMode = false;
+  constexpr bool IsStrictMode = true;
   const opt::OptTable &Options = IGC::getInternalOptTable();
   const unsigned FlagsToInclude =
       IGC::options::VCInternalOption | IGC::options::IGCInternalOption;
