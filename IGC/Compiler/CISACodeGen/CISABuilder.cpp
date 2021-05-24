@@ -4358,7 +4358,11 @@ namespace IGC
 #ifndef IGC_MAP_LLVM_NAMES_TO_VISA
         return CreateShortLabel(labelCounter++);
 #else // IGC_MAP_LLVM_NAMES_TO_VISA
-        static const size_t MAX_VISA_LABEL = 254;
+        static const size_t MAX_LLVM_NAME = 250;
+
+        auto sanitizeChar = [](char c) {
+            return isalnum(c) || c == '_' ? c : '_';
+        };
 
         // The vISA backend constrains this to around 256 characters.
         // (1) Function names can be extremely long (currFunctionName).
@@ -4372,16 +4376,19 @@ namespace IGC
         //     the LLVM label on as possible.
         std::stringstream lbl;
         lbl << GetCompilerLabelPrefix();
-        if (!currFunctionName.empty() && currFunctionName.size() < 64) {
-            lbl << currFunctionName.getVisaCString();
+        if (!currFunctionName.empty() && currFunctionName.size() < 128) {
+            const char *s = currFunctionName.getVisaCString();
+            while (*s)
+                lbl << sanitizeChar(*s++);
         } else {
-            lbl << labelFunctionIndex;
+            lbl << std::setw(2) << std::setfill('0') << labelFunctionIndex;
         }
         // since the label name could be the empty string, and to keep things
-        // simple, we unconditionally use the label counter
-        lbl << "_" << labelCounter++;
+        // simple, we unconditionally use the label counter (and increment it)
+        lbl << "_" << std::setw(3) << std::setfill('0') <<
+            labelCounter++;
 
-        size_t charsLeft = MAX_VISA_LABEL - (size_t)lbl.tellp();
+        size_t charsLeft = MAX_LLVM_NAME - (size_t)lbl.tellp();
         size_t nLeft = std::min(charsLeft, L.size());
         if (L.size() > 0 && nLeft > 0) {
             // if not the empty string then add a separator
@@ -4390,13 +4397,9 @@ namespace IGC
         }
         // suffix as many characters of the label as we can
         for (size_t i = 0; i < nLeft; i++) {
-            if (isalnum(L[i]) || L[i] == '_')
-                lbl << L[i];
-            else
-                lbl << '_';
+            lbl << sanitizeChar(L[i]);
         }
 
-        labelCounter++;
         return lbl.str();
 #endif // IGC_MAP_LLVM_NAMES_TO_VISA
     }
