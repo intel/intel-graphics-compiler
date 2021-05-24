@@ -19,7 +19,7 @@ class ClOption<string name> {
 
 // Helper for multiclasses to define aliasing with ze variant.
 class CommonClAlias<string name> {
-  Option Alias = !cast<Option>(name ## _ze);
+  Option Alias = !cast<Option>(name # _ze);
 }
 
 // Options without runtime prefixes.
