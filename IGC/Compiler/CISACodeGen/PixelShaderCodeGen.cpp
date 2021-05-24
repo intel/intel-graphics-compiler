@@ -274,6 +274,7 @@ void CPixelShader::AllocatePSPayload()
     unsigned int payloadEnd = offset;
     for (uint i = 0; i < setup.size(); i++)
     {
+
         if (setup[i] && setup[i]->GetAlias() == NULL)
         {
             uint subRegOffset = 0;
@@ -890,8 +891,10 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     pKernelProgram->BindingTableEntryBitmap = this->GetBindingTableEntryBitmap();
 
     // PS packed attributes
-    for (uint attribute = 0; attribute <= m_MaxSetupIndex / 4; ++attribute)
+    for (uint i = 0; i < setup.size(); i = i + 4)
     {
+        const uint attribute = i / 4;
+
         pKernelProgram->attributeActiveComponent[attribute] = GetActiveComponents(attribute);
 
         const bool useComponent = pKernelProgram->attributeActiveComponent[attribute] !=
@@ -981,8 +984,6 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
             IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(1)));
             uint setupIndex = int_cast<uint>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
             m_MaxSetupIndex = std::max(setupIndex, m_MaxSetupIndex);
-            // attribute "packing"
-            m_SetupIndicesUsed.insert(setupIndex);
 
             e_interpolation mode = static_cast<e_interpolation>(llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
             if (mode != EINTERPOLATION_CONSTANT)
@@ -1771,76 +1772,23 @@ void CPixelShader::MarkConstantInterpolation(unsigned int index)
 // Take PS attribute and return active components within, encoded as HW expects.
 USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT CPixelShader::GetActiveComponents(uint attribute) const
 {
-    USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT result =
-        USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
-    for (auto it = m_SetupIndicesUsed.lower_bound(attribute * 4);
-        it != m_SetupIndicesUsed.end(); ++it)
-    {
-        if (attribute != (*it / 4)) break;
-        switch (*it % 4)
-        {
-        case 0:
-        case 1:
-            result = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY;
-            break;
-        case 2:
-            result = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ;
-            break;
-        case 3:
-            result = USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW;
-            break;
-        }
-    }
-    return result;
-}
+    // First component in the attrib
+    const uint component = 4 * attribute;
+    IGC_ASSERT(component < setup.size());
 
-// this method must be run only after CShader::PreAnalysisPass() was run
-void CPixelShader::MapPushedInputs()
-{
-    // first gather setup index info
-    for (auto I = pushInfo.inputs.begin(), E = pushInfo.inputs.end(); I != E; I++)
+    if (((component + 3) < setup.size()) && setup[component + 3])
     {
-        m_SetupIndicesUsed.insert(I->second.index);
-        m_MaxSetupIndex = std::max(I->second.index, m_MaxSetupIndex);
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW;
     }
-    // then map using proper indexing
-    for (auto I = pushInfo.inputs.begin(), E = pushInfo.inputs.end(); I != E; I++)
+    else if (((component + 2) < setup.size()) && setup[component + 2])
     {
-        // We need to map the value associated with the value pushed to a physical register
-        if (I->second.interpolationMode == EINTERPOLATION_CONSTANT)
-        {
-                this->MarkConstantInterpolation(I->second.index);
-        }
-        CVariable* var = GetSymbol(m_argListCache[I->second.argIndex]);
-        AddSetup(getSetupIndex(I->second.index), var);
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ;
     }
-}
-
-int CPixelShader::getSetupIndex(uint inputIndex)
-{
-    // attribute "packing"
-    // Non continuous "input indexes" may be received and they are allocated one after another.
-    // We need to map them to "setup indexes".
-    const std::set<unsigned int>& indices = m_SetupIndicesUsed;
-    IGC_ASSERT(indices.find(inputIndex) != indices.end());
-    uint setupIndex = inputIndex % 4; // start with the component of current active attribute
-    // and check the last active component for all preceding, active attributes
-    uint currentAttr = inputIndex / 4;
-    for (auto it = indices.find(inputIndex);
-        currentAttr != (*indices.begin() / 4); // stop at first attribute
-        --it) // continue to the preceding active component
+    else if ((((component + 1) < setup.size()) && setup[component + 1]) || setup[component])
     {
-        if (currentAttr != (*it / 4))
-        {
-            // found the last component in preceding, active attribute
-            const uint comp = *it % 4;
-            // SBE attribute component packing allows to pass XY, XYZ, XYZW
-            // or no components at all (disabled attribute).
-            setupIndex += comp == 0 ? 2 : comp + 1;
-            currentAttr = (*it / 4);
-        }
+        return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY;
     }
-    return setupIndex;
+    return USC::GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED;
 }
 
 } // namespace IGC
