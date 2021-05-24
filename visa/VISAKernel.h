@@ -104,8 +104,6 @@ public:
 
         m_inputSize = 0;
         m_opndCounter = 0;
-        // give it some default name in case AsmName is not set
-        m_asmName = "test";
 
         varNameCount = COMMON_ISA_NUM_PREDEFINED_VAR_VER_3;
         addressNameCount = 0;
@@ -128,7 +126,6 @@ public:
 
         InitializeKernel(name);
         SetGTPinInit(m_CISABuilder->getGtpinInit());
-
     }
 
     void* alloc(size_t sz) { return m_mem.alloc(sz); }
@@ -762,6 +759,7 @@ public:
     void setJitInfo(FINALIZER_INFO* jitInfo) { m_jitInfo = jitInfo; }
 
     std::string getOutputAsmPath() const { return m_asmName; }
+    void setOutputAsmPath(std::string val) { m_asmName = val; }
 
     int compileFastPath();
 

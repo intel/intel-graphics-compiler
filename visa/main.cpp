@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 
 #include "visa_igc_common_header.h"
@@ -53,7 +54,9 @@ extern bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
                             unsigned int minorVersion);
 
 #ifndef DLL_MODE
-void parseWrapper(const char *fileName, int argc, const char *argv[], Options &opt);
+void parseText(
+    std::string fileName,
+    int argc, const char *argv[], Options &opt);
 #endif
 
 // default size of the physical reg pool mem manager in bytes
@@ -68,7 +71,9 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 #define JIT_INVALID_PLATFORM            5
 
 #ifndef DLL_MODE
-void parse(const char *fileName, std::string testName, int argc, const char *argv[], Options &opt)
+void parseBinary(
+    std::string fileName,
+    int argc, const char *argv[], Options &opt)
 {
     // read in common isa binary file
     int c;
@@ -80,10 +85,10 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
     vISA::Mem_Manager globalMem(KERNEL_MEM_SIZE);
 
     // open common isa file
-    if ((commonISAInput = fopen(fileName, "rb")) == NULL)
+    if ((commonISAInput = fopen(fileName.c_str(), "rb")) == NULL)
     {
-        fprintf(stderr, "Cannot open file %s\n", fileName);
-        exit(1);
+        std::cerr << fileName << ": cannot open file\n";
+        exit(EXIT_FAILURE);
     }
 
     fseek(commonISAInput, 0, SEEK_END);
@@ -102,9 +107,9 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
     vISA::Mem_Manager mem(4096);
 
     /// Try opening the file.
-    FILE* isafile = fopen(fileName, "rb");
+    FILE* isafile = fopen(fileName.c_str(), "rb");
     if (!isafile) {
-        cerr << "Failure, unable to be opened." << endl;
+        std::cerr << fileName << ": cannot open file\n";
         exit(EXIT_FAILURE);
     }
 
@@ -293,13 +298,13 @@ static bool endsWith(const std::string &str, const std::string &suf)
 int main(int argc, const char *argv[])
 {
     char fileName[256];
-    std::string testName = "F5";
     cout << argv[0];
-    for (int i = 1; i < argc; i++) cout << " " << argv[i];
-    cout << endl;
+    for (int i = 1; i < argc; i++)
+        cout << " " << argv[i];
+    cout << std::endl;
 
 #if 0
-    _CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
     //_crtBreakAlloc = 4763;
 #endif
 
@@ -350,7 +355,7 @@ int main(int argc, const char *argv[])
     opt.getOption(vISA_GenerateBinary, generateBinary);
     if (!platformIsSet && ((!dumpCommonIsa && !parserMode) || generateBinary))
     {
-        std::cout << "USAGE: must specify platform" << std::endl;
+        std::cerr << "USAGE: must specify platform\n";
         Options::showUsage(COUT_ERROR);
         return 1;
     }
@@ -374,10 +379,11 @@ int main(int argc, const char *argv[])
         //
         std::string cmdLine = argv[1];
         if (!PrepareInput(cmdLine, filesList)) {
-            std::cout << "ERROR: Unable to open input file(s)." << std::endl;
+            std::cerr << "ERROR: Unable to open input file(s)." << std::endl;
             return 1;
         }
         std::string::size_type testNameEnd = cmdLine.find_last_of(".");
+        std::string testName;
         if (testNameEnd != std::string::npos)
             testName = cmdLine.substr(0, testNameEnd);
         else
@@ -387,15 +393,43 @@ int main(int argc, const char *argv[])
         fileName[numChars] = '\0';
     }
 
+    // holds storage for file names that we automatically deduce in the loop
+    // below; memory can be deallocated later
+    std::vector<std::string> asmFileRoots;
+
     for (auto fName : filesList)
     {
+        // If the file name is not set by the user, then use the same
+        // file name (drop path)
+        // we do not include an extension as other logic suffixes that later
+        // depending on the desired
+        //   e.g. foo/bar.visaasm ==> ./bar
+        if (!opt.isOptionSetByUser(VISA_AsmFileName)) {
+            auto extOff = fName.rfind('.');
+            if (extOff == std::string::npos) {
+                std::cerr << fName << ": cannot find file extension";
+                return 1;
+            }
+            size_t fileStartOff = 0;
+            for (int i = (int)extOff; i >= 0; i--) {
+                if (fName[i] == '\\' || fName[i] == '/') {
+                    fileStartOff = (size_t)i + 1;
+                    break;
+                }
+            }
+            auto baseRoot = fName.substr(fileStartOff, extOff - fileStartOff);
+            asmFileRoots.emplace_back(baseRoot);
+            opt.setOptionInternally(VISA_AsmFileName,
+                asmFileRoots.back().c_str());
+        }
+
         if (parserMode)
         {
-            parseWrapper(fName.c_str(), argc - startPos, &argv[startPos], opt);
+            parseText(fName, argc - startPos, &argv[startPos], opt);
         }
         else
         {
-            parse(fName.c_str(), testName, argc - startPos, &argv[startPos], opt);
+            parseBinary(fName, argc - startPos, &argv[startPos], opt);
         }
     }
 
@@ -437,7 +471,7 @@ void* allocCodeBlock(size_t sz)
 
 extern int CISAparse(CISA_IR_Builder* builder);
 
-void parseWrapper(const char *fileName, int argc, const char *argv[], Options &opt)
+void parseText(std::string fileName, int argc, const char *argv[], Options &opt)
 {
     int num_kernels = 0;
     std::string testName;
@@ -450,7 +484,7 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
         std::ifstream os;
         os.open(fileName, std::ios::in);
         if (!os.is_open()) {
-            printf("Could not open an isaasm names input file.\n");
+            std::cerr << "could not open an isaasm names input file.\n";
             exit(1);
         }
 
@@ -496,7 +530,7 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
         CISAin = fopen(vISAFileName.c_str(), "r");
         if (!CISAin)
         {
-            std::cerr <<  "Cannot open vISA assembly file: " << vISAFileName;
+            std::cerr <<  vISAFileName << ": cannot open vISA assembly file\n";
             exit(1);
         }
 
@@ -521,16 +555,23 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
             if (cisa_builder->HasParseError()) {
                 std::cerr << cisa_builder->GetParseError() << "\n";
             } else {
-                std::cerr << "Error during parsing: CISAparse() returned " << fail << "\n";
+                std::cerr << "error during parsing: CISAparse() returned " << fail << "\n";
             }
             exit(1);
+        }
+
+        // If the input text lacks "OutputAsmPath" (and it should),
+        // then we can override it with the implied name here.
+        auto k = cisa_builder->get_kernel();
+        if (k->getOutputAsmPath().empty()) {
+            const char *outputPrefix = opt.getOptionCstr(VISA_AsmFileName);
+            k->setOutputAsmPath(outputPrefix);
         }
 
         file_names.pop_front();
     }
 
-    std::string binFileName = testName;
-    binFileName.append(".isa");
+    std::string binFileName = testName + ".isa";
 
     bool outputCISABinaryName = false;
     opt.getOption(vISA_OutputvISABinaryName, outputCISABinaryName);

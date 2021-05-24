@@ -139,8 +139,7 @@ std::string printVariableDeclName(
         {   case STATE_OPND_SURFACE : sstr << printSurfaceName(declID); break;
             case STATE_OPND_SAMPLER : sstr << "S"   << declID; break;
             default                 :
-                if (options->getOption(vISA_easyIsaasm) == false ||
-                    options->getOption(vISA_PlatformIsSet) == false)
+                if (!options->getOption(vISA_PlatformIsSet))
                 {
                     // If platform is not set then dcl instances are
                     // not created causing a crash. So print dcl name
@@ -394,7 +393,8 @@ static void encodeStringLiteral(std::stringstream &ss, const char *str) {
           if (std::isprint((unsigned char)str[i])) {
               ss << str[i];
           } else {
-              ss << "\\x" << std::hex << (unsigned)((unsigned char)str[i]);
+              ss << "\\x" << std::setw(2) << std::setfill('0') << std::hex <<
+                  (unsigned)((unsigned char)str[i]);
           }
       }
   }
@@ -2494,71 +2494,77 @@ std::string VISAKernel_format_provider::printKernelHeader(
     sstr << "\n" << "/// VISA Predefined Variables";
     for (unsigned i = 0; i < Get_CISA_PreDefined_Var_Count(); i++)
     {
-        const var_info_t* predefVar = this->getPredefVar(i);
+        const var_info_t* predefVar = getPredefVar(i);
         if (predefVar->name_index != -1)
         {
             sstr << "\n" << "// .decl V" << i
                 << " v_type=G"
-                << " v_name=" << this->getString(predefVar->name_index);
+                << " v_name=" << getString(predefVar->name_index);
         }
     }
     for (unsigned i = 0; i < Get_CISA_PreDefined_Surf_Count(); i++)
     {
-        const state_info_t* predefSurface = this->getPredefSurface(i);
+        const state_info_t* predefSurface = getPredefSurface(i);
         if (predefSurface->name_index != -1)
         {
             sstr << "\n" << "// .decl T" << i
                 << " v_type=T"
-                << " v_name=" << this->getString(predefSurface->name_index);
+                << " v_name=" << getString(predefSurface->name_index);
         }
     }
     sstr << "\n";
 
     // emit var decls
     //.decl  V<#> name=<name> type=<type> num_elts=<num_elements> [align=<align>] [alias=(<alias_index>,<alias_offset>)]
-    for (unsigned i = 0; i < this->getVarCount(); i++)
+    for (unsigned i = 0; i < getVarCount(); i++)
     {
         sstr << "\n" << printVariableDecl(this, i, options);
     }
     // address decls
-    for (unsigned i = 0; i < this->getAddrCount(); i++)
+    for (unsigned i = 0; i < getAddrCount(); i++)
     {
         sstr << "\n" << printAddressDecl(isaHeader, this, i);
     }
     // pred decls
-    for (unsigned i = 0; i < this->getPredCount(); i++)
+    for (unsigned i = 0; i < getPredCount(); i++)
     {
         // P0 is reserved; starting from P1 if there is predicate decl
         sstr << "\n" << printPredicateDecl(this, i);
     }
     // sampler
-    for (unsigned i = 0; i < this->getSamplerCount(); i++)
+    for (unsigned i = 0; i < getSamplerCount(); i++)
     {
         sstr << "\n" << printSamplerDecl(this, i);
     }
     // surface
     unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-    for (unsigned i = 0; i < this->getSurfaceCount(); i++)
+    for (unsigned i = 0; i < getSurfaceCount(); i++)
     {
         sstr << "\n" << printSurfaceDecl(this, i, numPreDefinedSurfs);
     }
     // inputs to kernel
-    for (unsigned i = 0; i < this->getInputCount(); i++)
+    for (unsigned i = 0; i < getInputCount(); i++)
     {
         sstr << "\n" << printFuncInput(this, i, isKernel, options);
     }
 
     bool isTargetSet = false;
-    for (unsigned i = 0; i < this->getAttrCount(); i++)
+    for (unsigned i = 0; i < getAttrCount(); i++)
     {
-        sstr << "\n.kernel_attr " << printOneAttribute(this, this->getAttr(i));
-        const char* attrName = this->getString(this->getAttr(i)->nameIndex);
-        if (Attributes::isAttribute(Attributes::ATTR_Target, attrName))
-        {
+        const char* attrName = getString(getAttr(i)->nameIndex);
+        if (Attributes::isAttribute(Attributes::ATTR_OutputAsmPath, attrName)) {
+            // treat this as a transient property and skip it
+            // this simplifies diffs in shader dump debugging
+            // if you want to set an explicit name from the command line,
+            // then use the appropriate option to set this attribute
+            continue;
+        }
+        if (Attributes::isAttribute(Attributes::ATTR_Target, attrName)) {
             isTargetSet = true;
         }
+        sstr << "\n.kernel_attr " << printOneAttribute(this, getAttr(i));
     }
-    if (isTargetSet == false)
+    if (!isTargetSet)
     {
         const char* attrName = Attributes::getAttributeName(Attributes::ATTR_Target);
         sstr << "\n" << ".kernel_attr " << attrName << "=";

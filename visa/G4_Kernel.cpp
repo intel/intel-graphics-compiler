@@ -1482,8 +1482,7 @@ static BlockOffsets precomputeBlockOffsets(
 }
 
 
-// very temporary until we can confirm odd stuff like global label prefixes
-// are not used any more
+// needs further cleanup (confirm label prefixes are gone, newAsm == true)
 void G4_Kernel::emitDeviceAsmInstructionsIga(
     std::ostream& os, const void * binary, uint32_t binarySize)
 {

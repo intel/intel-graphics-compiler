@@ -513,12 +513,12 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
     {
         std::stringstream ss;
         ss << m_asmName << ".asm";
-        std::ofstream krnlOutput(ss.str().c_str(), std::ofstream::out);
+        std::ofstream krnlOutput(ss.str(), std::ofstream::out);
         if (!krnlOutput) {
             std::cerr << ss.str() << ": failed to open file\n";
+        } else {
+            m_kernel->emitDeviceAsm(krnlOutput, binary, binarySize);
         }
-        m_kernel->emitDeviceAsm(krnlOutput, binary, binarySize);
-        krnlOutput.close();
     }
 
     recordFinalizerInfo();
@@ -1290,13 +1290,9 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
 
     ASSERT_USER(Attributes::isKernelAttr(attrID), "Not a kernel attribute");
 
-    /*
-    if set through NG path it stores wrong name .isa file
-    so in CMRT in simulation mode it fails to look up the name
-    */
     if (attrID == Attributes::ATTR_OutputAsmPath)
     {
-        if (m_options->getOption(VISA_AsmFileNameUser))
+        if (m_options->getOption(vISA_AsmFileNameOverridden))
         {
             const char *asmName = nullptr;
             m_options->getOption(VISA_AsmFileName, asmName);
@@ -1364,7 +1360,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         if (size > 0)
         {
             char *tmp = (char*)m_mem.alloc(size + 1);
-            memcpy_s(tmp, size+1, valueBuffer, size+1);
+            memcpy_s(tmp, size + 1, valueBuffer, size + 1);
             attr->value.stringVal = tmp;
         }
         else

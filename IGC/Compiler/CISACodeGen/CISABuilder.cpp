@@ -5145,7 +5145,7 @@ namespace IGC
                     asmName = asmPreName + asmPostName;
                     size_t asmNamed = asmName.find_last_of(".");
                     asmName = asmName.substr(0, asmNamed);
-                    vAsmTextBuilder->SetOption(VISA_AsmFileNameUser, true);
+                    vAsmTextBuilder->SetOption(vISA_AsmFileNameOverridden, true);
                     vAsmTextBuilder->SetOption(VISA_AsmFileName, asmName.c_str());
                     auto result = vAsmTextBuilder->ParseVISAText(tmpVisaFile.c_str());
                     asmName = asmName + ".visaasm";

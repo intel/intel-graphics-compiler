@@ -48,11 +48,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // reset to the default value after the builder is destroyed.  We will move these options to be
 // part of the builder in the near future.
 
-bool Options::get_isaasm(int argc, const char *argv[])
-{
-    return true;
-}
-
 static std::string makePlatformsString()
 {
     int n = 0;
@@ -279,7 +274,7 @@ bool Options::parseOptions(int argc, const char* argv[])
         m_vISAOptions.setBool(vISA_UniqueLabels, true);         //uniqueLabels = true;
     }
     if (m_vISAOptions.isArgSetByUser(VISA_AsmFileName)) {
-        m_vISAOptions.setBool(VISA_AsmFileNameUser, true);
+        m_vISAOptions.setBool(vISA_AsmFileNameOverridden, true);
     }
 
     if (m_vISAOptions.isArgSetByUser(vISA_DisableSpillCoalescing))
@@ -587,8 +582,4 @@ Options::Options() {
     initialize_vISAOptionsToStr();
     initializeArgToOption();
     initialize_m_vISAOptions();
-}
-
-Options::~Options() {
-    ;
 }

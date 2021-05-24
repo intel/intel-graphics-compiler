@@ -130,9 +130,7 @@ class Options {
 
 public:
     Options();
-    ~Options();
 
-public:
     const char *get_vISAOptionsToStr(vISAOptions opt) {
         return vISAOptionsToStr[opt];
     }
@@ -141,12 +139,14 @@ public:
     // It is useful for Cstr or Int arguments because getOption() will give us
     // the value, not whether they are set or not.
     bool isOptionSetByUser(vISAOptions option) const;
+
     void getOption(vISAOptions option, bool &value) const;
     bool getOption(vISAOptions option) const;
     void getOption(vISAOptions option, const char*& buf) const;
     const char *getOptionCstr(vISAOptions option) const;
     uint32_t getuInt32Option(vISAOptions option) const;
     uint64_t getuInt64Option(vISAOptions option) const;
+
     void setTarget(VISATarget tTarget) { target = tTarget;}
     VISATarget getTarget() const { return target; }
 
@@ -165,13 +165,13 @@ public:
     std::stringstream& getUserArgString();
     std::string getFullArgString();
     std::string getEncoderOutputFile();
-    void dump(void) const;
 
     Stepping GetStepping() const { return stepping; }
 
+    void dump() const;
+
 private:
     void setGTPin();
-    bool get_isaasm(int argc, const char *argv[]);
 
     // This holds the data of a single vISAOptions entry
     struct VISAOptionsLine {

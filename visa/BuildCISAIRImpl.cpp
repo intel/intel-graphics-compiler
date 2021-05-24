@@ -1406,7 +1406,7 @@ bool CISA_IR_Builder::CISA_attr_directive(
     const char* input_name, const char* input_var, int lineNum)
 {
     Attributes::ID attrID = Attributes::getAttributeID(input_name);
-    if (!m_options.getOption(VISA_AsmFileNameUser) &&
+    if (!m_options.getOption(vISA_AsmFileNameOverridden) &&
         attrID == Attributes::ATTR_OutputAsmPath)
     {
         if (strcmp(input_name, "AsmName") == 0) {
@@ -1417,7 +1417,8 @@ bool CISA_IR_Builder::CISA_attr_directive(
 
         char asmFileName[MAX_OPTION_STR_LENGTH];
 
-        strncpy_s(asmFileName, MAX_OPTION_STR_LENGTH, input_var, MAX_OPTION_STR_LENGTH-1);
+        strncpy_s(asmFileName,
+            MAX_OPTION_STR_LENGTH, input_var, MAX_OPTION_STR_LENGTH - 1);
         char *pos = strstr(asmFileName, ".asm");
         if (pos != NULL)
         {
@@ -1430,18 +1431,14 @@ bool CISA_IR_Builder::CISA_attr_directive(
         unsigned char visa_target;
         if (input_var == nullptr) {
             RecordParseError(lineNum,
-                ".kernel_attr Target=.. must be \"cm\", \"3d\", or \"cs\"");
+                ".kernel_attr Target=.. must be \"cm\" or \"3d\"");
             return false;
         }
         if (strcmp(input_var, "cm") == 0) {
             visa_target = VISA_CM;
-        }
-        else if (strcmp(input_var, "3d") == 0)
-        {
+        } else if (strcmp(input_var, "3d") == 0) {
             visa_target = VISA_3D;
-        }
-        else
-        {
+        } else {
             RecordParseError(lineNum, "invalid kernel target attribute");
             return false;
         }
