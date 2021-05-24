@@ -10134,6 +10134,11 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
                 return false;
             G4_Declare* Dcl = Opnd->getTopDcl();
             if (Dcl->isPreDefinedVar())
+            {
+                // This can be improved by checking each preDefinedVar
+                return false;
+            }
+            if (Dcl->isOutput() || Dcl->isPayloadLiveOut())
                 return false;
             return true;
         };
