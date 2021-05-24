@@ -261,6 +261,12 @@ void G4_BB::emitBasicInstructionComment(
             output << "$" << vISAId;
         }
 
+        if (getParent().getKernel()->getOption(vISA_DumpGenOffset) &&
+            inst->getBinInst())
+        {
+            output << ":%" << inst->getGenOffset();
+        }
+
         if (getPlatformGeneration(platform) < PlatformGen::XE)
         {
             emitBankConflict(output, inst);
