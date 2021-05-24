@@ -145,11 +145,13 @@ INLINE float##numElements SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(                 
 }
 
 #define VLOADA_HALFX_AS(addressSpace, ASNUM)              \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 1,  )    \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 2,  2)   \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 4,  3)   \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 4,  4)   \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 8,  8)   \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 16, 16)  \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  1,  )    \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  2,  2)   \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  4,  3)   \
 VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  4,  4)   \
