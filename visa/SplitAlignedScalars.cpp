@@ -87,6 +87,31 @@ void SplitAlignedScalars::gatherCandidates()
                     Data.numDefs++;
                     if (Data.firstDef == 0)
                         Data.firstDef = lexId;
+
+                    // disallow cases where scalar def has predicate
+                    if (inst->getPredicate())
+                    {
+                        Data.allowed = false;
+                    }
+
+                    // send dst is scalar. disallow it's replacement
+                    // if bb has few instructions than threshold as
+                    // a copy after the send will cause stalls that
+                    // cannot be hidden by scheduler.
+                    if (inst->isSend() && bb->size() <= MinBBSize)
+                    {
+                        Data.allowed = false;
+                    }
+
+                    auto dstDcl = dst->asDstRegRegion()->getBase()->asRegVar()->getDeclare();
+                    if (dstDcl->getAliasDeclare())
+                    {
+                        // disallow case where topdcl is scalar, but alias dcl
+                        // is not a scalar as it may be smaller in size. for eg,
+                        // topdcl may be :uq and alias may be of type :ud.
+                        if (dstDcl->getByteSize() != dstTopDcl->getByteSize())
+                            Data.allowed = false;
+                    }
                 }
             }
 
@@ -112,11 +137,16 @@ void SplitAlignedScalars::gatherCandidates()
 
 bool SplitAlignedScalars::isDclCandidate(G4_Declare* dcl)
 {
-    if (dcl->getNumElems() == 1 &&
+    if (dcl->getRegFile() == G4_RegFileKind::G4_GRF &&
+        dcl->getNumElems() == 1 &&
         !dcl->getAddressed() &&
         !dcl->getIsPartialDcl() &&
         !dcl->getRegVar()->isPhyRegAssigned() &&
         !dcl->getAliasDeclare() &&
+        !dcl->isInput() &&
+        !dcl->isOutput() &&
+        !dcl->isPayloadLiveOut() &&
+        !dcl->isDoNotSpill() &&
         gra.getSubRegAlign(dcl) == GRFALIGN)
         return true;
     return false;
@@ -126,6 +156,11 @@ bool SplitAlignedScalars::heuristic(G4_Declare* dcl, Data& d)
 {
     if (d.getDUMaxDist() < MinOptDist)
         return false;
+
+    if (!d.allowed)
+    {
+        return false;
+    }
 
     return true;
 }

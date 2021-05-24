@@ -35,6 +35,8 @@ namespace vISA
     {
     private:
         const unsigned int MinOptDist = 200;
+        const unsigned int MinBBSize = 5;
+
         unsigned int numDclsReplaced = 0;
         GlobalRA& gra;
         G4_Kernel& kernel;
@@ -46,6 +48,7 @@ namespace vISA
             unsigned int lastUse = 0;
             unsigned int numDefs = 0;
             unsigned int numSrcs = 0;
+            bool allowed = true;
             unsigned int getDUMaxDist()
             {
                 return std::abs((int)lastUse - (int)firstDef);
