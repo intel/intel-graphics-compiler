@@ -70,6 +70,7 @@ namespace IGC
         void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
         bool isIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
+        void visitXor(llvm::Instruction& XorInstr);
 
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
