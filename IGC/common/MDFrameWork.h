@@ -16,6 +16,9 @@ SPDX-License-Identifier: MIT
 #include <array>
 #include <optional>
 #include <climits>
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/MapVector.h>
+#include "common/LLVMWarningsPop.hpp"
 
 namespace llvm
 {
@@ -436,7 +439,7 @@ namespace IGC
     {
         bool isPrecise = false;
         CompOptions compOpt;
-        std::map<llvm::Function*, IGC::FunctionMetaData>   FuncMD;
+        llvm::MapVector<llvm::Function*, IGC::FunctionMetaData> FuncMD;
         PushInfo pushInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
@@ -452,7 +455,7 @@ namespace IGC
         std::vector<PointerAddressRelocInfo> GlobalBufferAddressRelocInfo;
         std::vector<PointerAddressRelocInfo> ConstantBufferAddressRelocInfo;
         unsigned int MinNOSPushConstantSize = 0;
-        std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
+        llvm::MapVector<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
         URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/ADT/StringSwitch.h>
+#include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "StringMacros.hpp"
@@ -39,7 +40,9 @@ MDNode* CreateNode(const std::optional<val>& option, Module* module, StringRef n
 MDNode* CreateNode(Value* val, Module* module, StringRef name);
 MDNode* CreateNode(StructType* Ty, Module* module, StringRef name);
 template<typename Key, typename Value>
-MDNode* CreateNode(const std::map < Key, Value> &FuncMD, Module* module, StringRef name);
+MDNode* CreateNode(const std::map<Key, Value> &FuncMD, Module* module, StringRef name);
+template<typename Key, typename Value>
+MDNode* CreateNode(const MapVector<Key, Value> &FuncMD, Module* module, StringRef name);
 MDNode* CreateNode(const std::string &s, Module* module, StringRef name);
 MDNode* CreateNode(char* i, Module* module, StringRef name);
 
@@ -64,6 +67,8 @@ void readNode(StructType* &Ty, MDNode* node);
 
 template<typename Key, typename Value>
 void readNode(std::map<Key, Value> &funcMD, MDNode* node);
+template<typename Key, typename Value>
+void readNode(MapVector<Key, Value> &funcMD, MDNode* node);
 
 template<typename T>
 void readNode(T &t, MDNode* node, StringRef name);
@@ -245,7 +250,22 @@ MDNode* CreateNode(StructType* Ty, Module* module, StringRef name)
 }
 
 template<typename Key, typename Value>
-MDNode* CreateNode(const std::map < Key, Value> &FuncMD, Module* module, StringRef name)
+MDNode* CreateNode(const std::map<Key, Value> &FuncMD, Module* module, StringRef name)
+{
+    std::vector<Metadata*> nodes;
+    nodes.push_back(MDString::get(module->getContext(), name));
+    int i = 0;
+    for ( auto it = FuncMD.begin(); it != FuncMD.end(); ++it)
+    {
+        nodes.push_back(CreateNode(it->first, module, name.str() + "Map[" + std::to_string(i) + "]"));
+        nodes.push_back(CreateNode(it->second, module, name.str() + "Value[" +std::to_string(i++) + "]"));
+    }
+    MDNode* node = MDNode::get(module->getContext(), nodes);
+    return node;
+}
+
+template<typename Key, typename Value>
+MDNode* CreateNode(const MapVector<Key, Value> &FuncMD, Module* module, StringRef name)
 {
     std::vector<Metadata*> nodes;
     nodes.push_back(MDString::get(module->getContext(), name));
@@ -384,6 +404,19 @@ void readNode(StructType*& Ty, MDNode* node)
 
 template<typename Key, typename Value>
 void readNode(std::map<Key, Value> &keyMD, MDNode* node)
+{
+    for (unsigned k = 1; k < node->getNumOperands(); k++)
+    {
+        std::pair<Key, Value> p;
+        readNode(p.first, cast<MDNode>(node->getOperand(k++)));
+        readNode(p.second, cast<MDNode>(node->getOperand(k)));
+        keyMD.insert(p);
+    }
+    return;
+}
+
+template<typename Key, typename Value>
+void readNode(MapVector<Key, Value> &keyMD, MDNode* node)
 {
     for (unsigned k = 1; k < node->getNumOperands(); k++)
     {

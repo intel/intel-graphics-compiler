@@ -76,7 +76,7 @@ def storeVars(line, declHeader):
 
 def extractVars(line, declHeader):
     vars = line.split()
-    if(line.find("std::vector") != -1 or line.find("std::map") != -1 or line.find("std::array") != -1):
+    if any(ty in line for ty in ("std::vector", "std::map", "std::array", "MapVector")):
         declHeader.fields.append(vars[len(vars)-1])
         return
     if line.find("=") != -1:
