@@ -10,18 +10,20 @@
 #   IGC_OPTION__LLDELF_H_DIR - Specify additional directories for searching lldELF headers
 
 if(IGC_BUILD__LLVM_SOURCES)
+  set(LLD_ELF_LIB lldELF)
   get_target_property(lldELF_SRC_DIR lldELF SOURCE_DIR)
   set(LLD_INCLUDE_DIR "${lldELF_SRC_DIR}/../include")
 elseif(IGC_BUILD__LLVM_PREBUILDS)
-  find_library(lldELF
+  find_library(LLD_ELF_LIB_TMP
     lldELF
     PATHS "${IGC_OPTION__LLDELF_LIB_DIR}"
     PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
 
-  if(lldELF-NOTFOUND)
+  if(LLD_ELF_LIB_TMP-NOTFOUND)
     message(FATAL_ERROR
     "Cannot find lldELF library, please install missing library or provide the path by IGC_OPTION__LLDELF_LIB_DIR")
   endif()
+  set(LLD_ELF_LIB ${LLD_ELF_LIB_TMP})
 
   find_path(
     LLD_INCLUDE_DIR
@@ -38,6 +40,6 @@ elseif(IGC_BUILD__LLVM_PREBUILDS)
 endif()
 
 list(APPEND IGC_BUILD__LLVM_LIBS_TO_LINK
-  lldELF)
+  ${LLD_ELF_LIB})
 
 include_directories(${LLD_INCLUDE_DIR})
