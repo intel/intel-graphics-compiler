@@ -85,6 +85,21 @@ static bool isSLMMsg(const G4_INST* inst)
     return false;
 }
 
+static bool isPrefetch(const G4_INST* inst)
+{
+    if(!inst->isSend())
+    {
+        return false;
+    }
+
+    const G4_SendDesc* msgDesc = inst->getMsgDesc();
+    if (msgDesc->isRead() && (inst->getDst() == nullptr || inst->getDst()->isNullReg()))
+    {
+        return true;
+    }
+    return false;
+}
+
 static bool isFence(const G4_INST* inst)
 {
     assert(inst->isSend());
@@ -2551,8 +2566,10 @@ void SWSB::allocateToken(G4_BB* bb)
         for (size_t k = 0; k < SBSendNodes.size(); k++)
         {
             SBNode* liveNode = SBSendNodes[k];
-            if (send_live.isDstSet(k) &&
-                (liveNode->getLastInstruction()->getSetToken() != (unsigned short)UNKNOWN_TOKEN))
+            if ((liveNode->getLastInstruction()->getSetToken() != (unsigned short)UNKNOWN_TOKEN) &&
+                (send_live.isDstSet(k) ||
+                (send_live.isSrcSet(k) &&
+                 isPrefetch(liveNode->getLastInstruction()))))
             {
                 reachTokenArray[liveNode->getLastInstruction()->getSetToken()]->push_back(liveNode);
             }
@@ -5406,12 +5423,19 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 
                     node->setLiveEarliesID(node->getNodeID());
                     node->setLiveLatestID(node->getNodeID());
-                    for (int k = 0; k < (int)(node->succs.size()); k++)
+                    if (node->succs.size())
                     {
-                        SBDEP_ITEM& curSucc = node->succs[k];
-                        SBNode* succ = curSucc.node;
+                        for (int k = 0; k < (int)(node->succs.size()); k++)
+                        {
+                            SBDEP_ITEM& curSucc = node->succs[k];
+                            SBNode* succ = curSucc.node;
 
-                        node->setLiveLatestID(succ->getNodeID(), succ->getBBID());
+                            node->setLiveLatestID(succ->getNodeID(), succ->getBBID());
+                        }
+                    }
+                    else
+                    {
+                        node->setLiveLatestID(BBVector[i]->last_node);
                     }
                 }
                 else
@@ -5444,7 +5468,8 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                 node->reachingSends |= send_reach_all;
 
                 expireLocalIntervals(node->getNodeID(), i);
-                if (node->GetInstruction()->getDst() != nullptr)
+                if (node->GetInstruction()->getDst() != nullptr &&
+                    !node->GetInstruction()->getDst()->isNullReg())
                 {
                     BBVector[i]->localReachingSends.setDst(node->sendID, true);
                 }

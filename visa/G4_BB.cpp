@@ -261,6 +261,14 @@ void G4_BB::emitBasicInstructionComment(
             output << "$" << vISAId;
         }
 
+        if (getParent().getKernel()->getOption(vISA_DumpSBID))
+        {
+            int lexicalId = inst->getLexicalId();
+            if (lexicalId != -1) {
+                output << "&" << lexicalId;
+            }
+        }
+
         if (getParent().getKernel()->getOption(vISA_DumpGenOffset) &&
             inst->getBinInst())
         {
