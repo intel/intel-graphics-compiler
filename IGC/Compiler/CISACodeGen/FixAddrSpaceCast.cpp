@@ -120,6 +120,10 @@ bool AddrSpaceCastFixing::fixCase1(Instruction* I, BasicBlock::iterator& BI) con
             I->getName() + ".fix1.bitcast", I);
 
     // Remove the short sequence of `ptrtoint` followed by `inttoptr`.
+    if (Instruction* VInst = dyn_cast<Instruction>(V))
+    {
+        VInst->setDebugLoc(I2P->getDebugLoc());
+    }
     I2P->replaceAllUsesWith(V);
     I2P->eraseFromParent();
     P2I->eraseFromParent();
