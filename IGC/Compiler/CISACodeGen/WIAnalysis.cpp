@@ -1254,22 +1254,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_mul_rtz  ||
         GII_id == GenISAIntrinsic::GenISA_fma_rtz  ||
         GII_id == GenISAIntrinsic::GenISA_add_rtz  ||
-        GII_id == GenISAIntrinsic::GenISA_uitof_rtz ||
-        GII_id == GenISAIntrinsic::GenISA_uitof_rtp ||
-        GII_id == GenISAIntrinsic::GenISA_uitof_rtn ||
-        GII_id == GenISAIntrinsic::GenISA_itof_rtz ||
-        GII_id == GenISAIntrinsic::GenISA_itof_rtp ||
-        GII_id == GenISAIntrinsic::GenISA_itof_rtn ||
-        GII_id == GenISAIntrinsic::GenISA_ftof_rtz ||
-        GII_id == GenISAIntrinsic::GenISA_ftof_rtp ||
-        GII_id == GenISAIntrinsic::GenISA_ftof_rtn ||
-        GII_id == GenISAIntrinsic::GenISA_ftof_rte ||
-        GII_id == GenISAIntrinsic::GenISA_ftoi_rtp ||
-        GII_id == GenISAIntrinsic::GenISA_ftoi_rtn ||
-        GII_id == GenISAIntrinsic::GenISA_ftoi_rte ||
-        GII_id == GenISAIntrinsic::GenISA_ftoui_rtp ||
-        GII_id == GenISAIntrinsic::GenISA_ftoui_rtn ||
-        GII_id == GenISAIntrinsic::GenISA_ftoui_rte ||
         GII_id == GenISAIntrinsic::GenISA_slice_id ||
         GII_id == GenISAIntrinsic::GenISA_subslice_id  ||
         GII_id == GenISAIntrinsic::GenISA_eu_id        ||
