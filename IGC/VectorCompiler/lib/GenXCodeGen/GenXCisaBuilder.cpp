@@ -238,14 +238,8 @@ std::string cutString(std::string Str) {
 }
 
 void handleCisaCallError(const Twine &Call, LLVMContext &Ctx) {
-  StringRef ErrorType = "general failure";
-#ifndef NDEBUG
   DiagnosticInfoCisaBuild Err(
-      "VISA builder API call failed (" + Call + "): " + ErrorType, DS_Error);
-#else
-  DiagnosticInfoCisaBuild Err("VISA builder API call failed: " + ErrorType,
-                              DS_Error);
-#endif
+      "VISA builder API call failed: " + Call, DS_Error);
   Ctx.diagnose(Err);
 }
 
