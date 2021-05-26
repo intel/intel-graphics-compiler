@@ -3523,8 +3523,6 @@ namespace IGC
         VISA_LabelOpnd* functionLabel = nullptr;
         V(vPayloadSection->CreateVISALabelVar(functionLabel, "payload", LABEL_SUBROUTINE));
         V(vPayloadSection->AppendVISACFLabelInst(functionLabel));
-        V(vPayloadSection->CreateVISASurfaceVar(dummySurface, "", 1));
-        V(vPayloadSection->CreateVISASamplerVar(samplervar, "", 1));
         vMainKernel = vPayloadSection;
     }
 
