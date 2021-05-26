@@ -404,7 +404,6 @@ bool RectListOptimizationPass::runOnFunction(Function& F)
         IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
         {
-            IGC_ASSERT_MESSAGE(0, "failed to find the function in metadata\n");
             break;
         }
         IGC::CodeGenContext* ctx = getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext();
