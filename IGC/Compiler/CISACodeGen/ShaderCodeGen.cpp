@@ -499,9 +499,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         if (!isOptDisabled &&
             IGC_IS_FLAG_ENABLED(EnableGASResolver))
         {
+            mpm.add(createSROAPass());
             mpm.add(createFixAddrSpaceCastPass());
             mpm.add(createResolveGASPass());
-            mpm.add(createSROAPass());
         }
         mpm.add(createGenericAddressDynamicResolutionPass());
     }
@@ -1598,9 +1598,9 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (pContext->m_instrTypes.hasGenericAddressSpacePointers &&
             IGC_IS_FLAG_ENABLED(EnableGASResolver))
         {
+            mpm.add(createSROAPass());
             mpm.add(createFixAddrSpaceCastPass());
             mpm.add(createResolveGASPass());
-            mpm.add(createSROAPass());
         }
 
         if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) || pContext->m_enableSampleMultiversioning)
