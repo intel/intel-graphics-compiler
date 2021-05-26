@@ -45,6 +45,20 @@ struct InstToRebuild {
   std::vector<int> OperandNos;
   std::vector<llvm::Value *> NewOperands;
   bool IsTerminal = false;
+
+  // Returns whether the structure represents a valid info to rebuild an
+  // instruction.
+  bool validate() const {
+    if (!User)
+      return false;
+    if (OperandNos.size() != NewOperands.size())
+      return false;
+    int NumOperands = User->getNumOperands();
+    return std::all_of(OperandNos.begin(), OperandNos.end(),
+                       [NumOperands](auto OperandNo) {
+                         return OperandNo >= 0 && OperandNo < NumOperands;
+                       });
+  }
 };
 
 // The info required to rebuild the instructions.
@@ -148,6 +162,8 @@ public:
       std::tie(InstInfo, First) = getNextInstToRebuild(First, Last);
       IGC_ASSERT_MESSAGE(!llvm::isa<llvm::PHINode>(InstInfo.User),
                          "phi-nodes aren't yet supported");
+      IGC_ASSERT_MESSAGE(InstInfo.validate(),
+                         "an illegal rebuild info is generated");
       rebuildNonPhiInst(InstInfo);
       if (InstInfo.IsTerminal)
         Terminals.push_back(InstInfo.User);
