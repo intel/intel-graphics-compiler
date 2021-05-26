@@ -12,10 +12,10 @@ a single-element vector of pointer.
  test/Transforms/InstCombine/bitcast.ll          | 6 ++++++
  2 files changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/lib/Transforms/InstCombine/InstCombineCasts.cpp b/lib/Transforms/InstCombine/InstCombineCasts.cpp
+diff --git a/llvm/lib/Transforms/InstCombine/InstCombineCasts.cpp b/llvm/lib/Transforms/InstCombine/InstCombineCasts.cpp
 index 3750f31e3cf..a8c87ea3558 100644
---- a/lib/Transforms/InstCombine/InstCombineCasts.cpp
-+++ b/lib/Transforms/InstCombine/InstCombineCasts.cpp
+--- a/llvm/lib/Transforms/InstCombine/InstCombineCasts.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstCombineCasts.cpp
 @@ -2471,8 +2471,9 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
    if (DestTy == Src->getType())
      return replaceInstUsesWith(CI, Src);
@@ -27,10 +27,10 @@ index 3750f31e3cf..a8c87ea3558 100644
      Type *DstElTy = DstPTy->getElementType();
      Type *SrcElTy = SrcPTy->getElementType();
 
-diff --git a/test/Transforms/InstCombine/bitcast.ll b/test/Transforms/InstCombine/bitcast.ll
+diff --git a/llvm/test/Transforms/InstCombine/bitcast.ll b/llvm/test/Transforms/InstCombine/bitcast.ll
 index 0f0cbdb364a..c4ee52f27a8 100644
---- a/test/Transforms/InstCombine/bitcast.ll
-+++ b/test/Transforms/InstCombine/bitcast.ll
+--- a/llvm/test/Transforms/InstCombine/bitcast.ll
++++ b/llvm/test/Transforms/InstCombine/bitcast.ll
 @@ -561,3 +561,9 @@ define void @constant_fold_vector_to_half() {
    store volatile half bitcast (<4 x i4> <i4 0, i4 0, i4 0, i4 4> to half), half* undef
    ret void

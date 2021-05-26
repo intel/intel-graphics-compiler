@@ -1,7 +1,7 @@
-diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+diff --git a/llvm/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
 index 385f4926b84..bc322c76b8c 100644
---- a/lib/Transforms/InstCombine/InstructionCombining.cpp
-+++ b/lib/Transforms/InstCombine/InstructionCombining.cpp
+--- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
 @@ -123,7 +123,7 @@ DEBUG_COUNTER(VisitCounter, "instcombine-visit",
 
  static cl::opt<bool>

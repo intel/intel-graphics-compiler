@@ -69,9 +69,12 @@ list(SORT LLVM_PATCH_FILES)
 # Apply customization patches if any.
 foreach(patch_file ${LLVM_PATCH_FILES})
   message(STATUS "[LLVM_PATCHER] : Apply ${patch_file} file")
-  execute_process(COMMAND ${Patch_EXECUTABLE} -d ${IGC_LLVM_SOURCE_DIR} -p1 -i ${patch_file} RESULT_VARIABLE rv)
+  execute_process(COMMAND ${Patch_EXECUTABLE} -d ${IGC_LLVM_WORKSPACE_SRC} -p1 -i ${patch_file}
+  RESULT_VARIABLE rv
+  OUTPUT_VARIABLE ov
+  ERROR_VARIABLE ev)
   if(NOT rv EQUAL 0)
-    message(FATAL_ERROR "[LLVM_PATCHER] : error: applying patch '${patch_file}' failed.\n"
+    message(FATAL_ERROR "[LLVM_PATCHER] : error: applying patch '${patch_file}' failed.\nstdout:\n${ov}\nstderr:${ev}"
       "Probably you set incorrent version of LLVM (use IGC_OPTION__LLVM_PREFERRED_VERSION option),\n"
       "or passed incorrect sources with different version (use IGC_OPTION__LLVM_SOURCES_DIR option)."
       )

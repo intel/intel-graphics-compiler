@@ -1,7 +1,7 @@
 #    Description                  : Fix build break for building opt
 
---- a/tools/opt/CMakeLists.txt
-+++ b/tools/opt/CMakeLists.txt
+--- a/llvm/tools/opt/CMakeLists.txt
++++ b/llvm/tools/opt/CMakeLists.txt
 @@ -9,6 +9,7 @@ set(LLVM_LINK_COMPONENTS
    CodeGen
    Core

@@ -1,7 +1,7 @@
 #    Description                  : Fix build break for building llvm-as
 
---- a/tools/llvm-as/CMakeLists.txt
-+++ b/tools/llvm-as/CMakeLists.txt
+--- a/llvm/tools/llvm-as/CMakeLists.txt
++++ b/llvm/tools/llvm-as/CMakeLists.txt
 @@ -2,6 +2,7 @@ set(LLVM_LINK_COMPONENTS
    AsmParser
    BitWriter

@@ -1,8 +1,8 @@
 #    Description                  : Add possibility to use ChooseMSVCCRT-script, when
 #                                   include LLVM library. 
 
---- a/cmake/modules/LLVMConfig.cmake.in
-+++ b/cmake/modules/LLVMConfig.cmake.in
+--- a/llvm/cmake/modules/LLVMConfig.cmake.in
++++ b/llvm/cmake/modules/LLVMConfig.cmake.in
 @@ -10,6 +10,11 @@ set(LLVM_PACKAGE_VERSION @PACKAGE_VERSION@)
 
  set(LLVM_BUILD_TYPE @CMAKE_BUILD_TYPE@)

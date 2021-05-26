@@ -22,10 +22,10 @@ Differential Revision: https://reviews.llvm.org/D85670
  unittests/IR/InstructionsTest.cpp        | 72 +++++++++++++++++++
  8 files changed, 125 insertions(+), 14 deletions(-)
 
-diff --git a/include/llvm/IR/Instruction.h b/include/llvm/IR/Instruction.h
+diff --git a/llvm/include/llvm/IR/Instruction.h b/llvm/include/llvm/IR/Instruction.h
 index ceec001dccf4..24f8e0d6a4b1 100644
---- a/include/llvm/IR/Instruction.h
-+++ b/include/llvm/IR/Instruction.h
+--- a/llvm/include/llvm/IR/Instruction.h
++++ b/llvm/include/llvm/IR/Instruction.h
 @@ -492,6 +492,20 @@ public:
    /// merged DebugLoc.
    void applyMergedLocation(const DILocation *LocA, const DILocation *LocB);
@@ -47,10 +47,10 @@ index ceec001dccf4..24f8e0d6a4b1 100644
  private:
    /// Return true if we have an entry in the on-the-side metadata hash.
    bool hasMetadataHashEntry() const {
-diff --git a/lib/IR/DebugInfo.cpp b/lib/IR/DebugInfo.cpp
+diff --git a/llvm/lib/IR/DebugInfo.cpp b/llvm/lib/IR/DebugInfo.cpp
 index 190b220dc9aa..603b88200001 100644
---- a/lib/IR/DebugInfo.cpp
-+++ b/lib/IR/DebugInfo.cpp
+--- a/llvm/lib/IR/DebugInfo.cpp
++++ b/llvm/lib/IR/DebugInfo.cpp
 @@ -696,6 +696,38 @@ void Instruction::applyMergedLocation(const DILocation *LocA,
    setDebugLoc(DILocation::getMergedLocation(LocA, LocB));
  }
@@ -90,10 +90,10 @@ index 190b220dc9aa..603b88200001 100644
  //===----------------------------------------------------------------------===//
  // LLVM C API implementations.
  //===----------------------------------------------------------------------===//
-diff --git a/lib/Transforms/Scalar/GVN.cpp b/lib/Transforms/Scalar/GVN.cpp
+diff --git a/llvm/lib/Transforms/Scalar/GVN.cpp b/llvm/lib/Transforms/Scalar/GVN.cpp
 index f8e8e2c773f9..c25fdd44dcf9 100644
---- a/lib/Transforms/Scalar/GVN.cpp
-+++ b/lib/Transforms/Scalar/GVN.cpp
+--- a/llvm/lib/Transforms/Scalar/GVN.cpp
++++ b/llvm/lib/Transforms/Scalar/GVN.cpp
 @@ -48,7 +48,6 @@
  #include "llvm/IR/Constant.h"
  #include "llvm/IR/Constants.h"
@@ -112,10 +112,10 @@ index f8e8e2c773f9..c25fdd44dcf9 100644
  
      // FIXME: We really _ought_ to insert these value numbers into their
      // parent's availability map.  However, in doing so, we risk getting into
-diff --git a/lib/Transforms/Scalar/LICM.cpp b/lib/Transforms/Scalar/LICM.cpp
+diff --git a/llvm/lib/Transforms/Scalar/LICM.cpp b/llvm/lib/Transforms/Scalar/LICM.cpp
 index 1b1679e1b03d..631fa2f27c5b 100644
---- a/lib/Transforms/Scalar/LICM.cpp
-+++ b/lib/Transforms/Scalar/LICM.cpp
+--- a/llvm/lib/Transforms/Scalar/LICM.cpp
++++ b/llvm/lib/Transforms/Scalar/LICM.cpp
 @@ -1736,10 +1736,7 @@ static void hoist(Instruction &I, const DominatorTree *DT, const Loop *CurLoop,
      // Move the new node to the destination block, before its terminator.
      moveInstructionBefore(I, *Dest->getTerminator(), *SafetyInfo, MSSAU, SE);
@@ -128,10 +128,10 @@ index 1b1679e1b03d..631fa2f27c5b 100644
  
    if (isa<LoadInst>(I))
      ++NumMovedLoads;
-diff --git a/test/DebugInfo/Generic/licm-hoist-debug-loc.ll b/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
+diff --git a/llvm/test/DebugInfo/Generic/licm-hoist-debug-loc.ll b/llvm/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
 index 0a13e9604f0c..37c642170aa3 100644
---- a/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
-+++ b/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
+--- a/llvm/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
++++ b/llvm/test/DebugInfo/Generic/licm-hoist-debug-loc.ll
 @@ -18,9 +18,8 @@
  ; We make sure that the instruction that is hoisted into the preheader
  ; does not have a debug location.
@@ -143,10 +143,10 @@ index 0a13e9604f0c..37c642170aa3 100644
  ;
  ; ModuleID = 't.ll'
  source_filename = "test.c"
-diff --git a/test/Transforms/GVN/PRE/phi-translate.ll b/test/Transforms/GVN/PRE/phi-translate.ll
+diff --git a/llvm/test/Transforms/GVN/PRE/phi-translate.ll b/llvm/test/Transforms/GVN/PRE/phi-translate.ll
 index f80e002eab0a..2b6a577d6678 100644
---- a/test/Transforms/GVN/PRE/phi-translate.ll
-+++ b/test/Transforms/GVN/PRE/phi-translate.ll
+--- a/llvm/test/Transforms/GVN/PRE/phi-translate.ll
++++ b/llvm/test/Transforms/GVN/PRE/phi-translate.ll
 @@ -4,8 +4,8 @@ target datalayout = "e-p:64:64:64"
  
  ; CHECK-LABEL: @foo(
@@ -168,10 +168,10 @@ index f80e002eab0a..2b6a577d6678 100644
  
  @G = external global [100 x i32]
  define i32 @foo(i32 %x, i32 %z) !dbg !6 {
-diff --git a/test/Transforms/LICM/hoisting-preheader-debugloc.ll b/test/Transforms/LICM/hoisting-preheader-debugloc.ll
+diff --git a/llvm/test/Transforms/LICM/hoisting-preheader-debugloc.ll b/llvm/test/Transforms/LICM/hoisting-preheader-debugloc.ll
 index 3721f09eef8f..381d9c77ecd8 100644
---- a/test/Transforms/LICM/hoisting-preheader-debugloc.ll
-+++ b/test/Transforms/LICM/hoisting-preheader-debugloc.ll
+--- a/llvm/test/Transforms/LICM/hoisting-preheader-debugloc.ll
++++ b/llvm/test/Transforms/LICM/hoisting-preheader-debugloc.ll
 @@ -1,6 +1,6 @@
  ; RUN: opt -S -licm < %s | FileCheck %s
  
@@ -180,10 +180,10 @@ index 3721f09eef8f..381d9c77ecd8 100644
  
  target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
  target triple = "x86_64-unknown-linux-gnu"
-diff --git a/unittests/IR/InstructionsTest.cpp b/unittests/IR/InstructionsTest.cpp
+diff --git a/llvm/unittests/IR/InstructionsTest.cpp b/llvm/unittests/IR/InstructionsTest.cpp
 index b25eee7279af..1324fe2d1dd7 100644
---- a/unittests/IR/InstructionsTest.cpp
-+++ b/unittests/IR/InstructionsTest.cpp
+--- a/llvm/unittests/IR/InstructionsTest.cpp
++++ b/llvm/unittests/IR/InstructionsTest.cpp
 @@ -13,6 +13,7 @@
  #include "llvm/IR/BasicBlock.h"
  #include "llvm/IR/Constants.h"

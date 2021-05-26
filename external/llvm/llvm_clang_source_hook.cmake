@@ -60,7 +60,10 @@ set(IGC_COPIED_CLANG_DIR ${IGC_LLVM_WORKSPACE_SRC}/clang)
 
 message(STATUS "[Clang] Clang will be built from sources")
 message(STATUS "[Clang] Copying stock Clang sources ${IGC_OPTION__CLANG_SOURCES_DIR} to ${IGC_COPIED_CLANG_DIR}")
-execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__CLANG_SOURCES_DIR} ${IGC_COPIED_CLANG_DIR})
+
+if(NOT EXISTS "${IGC_COPIED_CLANG_DIR}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__CLANG_SOURCES_DIR} ${IGC_COPIED_CLANG_DIR})
+endif()
 
 # Just register clang as external llvm project.
 register_llvm_external_project(clang ${IGC_COPIED_CLANG_DIR})

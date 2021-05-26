@@ -13,10 +13,10 @@ This led to loss of loop metadata for other passes.
  2 files changed, 52 insertions(+), 7 deletions(-)
  create mode 100644 test/Transforms/LoopSimplify/loop_metadata.ll
 
-diff --git a/lib/Transforms/Utils/BasicBlockUtils.cpp b/lib/Transforms/Utils/BasicBlockUtils.cpp
+diff --git a/llvm/lib/Transforms/Utils/BasicBlockUtils.cpp b/llvm/lib/Transforms/Utils/BasicBlockUtils.cpp
 index 5fa371377c8..3a90ae061fb 100644
---- a/lib/Transforms/Utils/BasicBlockUtils.cpp
-+++ b/lib/Transforms/Utils/BasicBlockUtils.cpp
+--- a/llvm/lib/Transforms/Utils/BasicBlockUtils.cpp
++++ b/llvm/lib/Transforms/Utils/BasicBlockUtils.cpp
 @@ -579,24 +579,33 @@ BasicBlock *llvm::SplitBlockPredecessors(BasicBlock *BB,
  
    // The new block unconditionally branches to the old block.
@@ -58,11 +58,11 @@ index 5fa371377c8..3a90ae061fb 100644
    }
  
    // Insert a new PHI node into NewBB for every PHI node in BB and that new PHI
-diff --git a/test/Transforms/LoopSimplify/loop_metadata.ll b/test/Transforms/LoopSimplify/loop_metadata.ll
+diff --git a/llvm/test/Transforms/LoopSimplify/loop_metadata.ll b/llvm/test/Transforms/LoopSimplify/loop_metadata.ll
 new file mode 100644
 index 00000000000..c15c92fe3ae
 --- /dev/null
-+++ b/test/Transforms/LoopSimplify/loop_metadata.ll
++++ b/llvm/test/Transforms/LoopSimplify/loop_metadata.ll
 @@ -0,0 +1,36 @@
 +; RUN: opt -S -loop-simplify < %s | FileCheck %s
 +
