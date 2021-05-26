@@ -3576,14 +3576,15 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                                   DS_Error};
       getContext().diagnose(Err);
     }
-    unsigned Byte = Const->getSExtValue() & 15;
-    *Mask = (VISA_EMask_Ctrl)(Byte >> 4);
-    unsigned Res = Byte & 0xF;
+    unsigned Res = Const->getSExtValue();
+    *Mask = VISA_EMask_Ctrl::vISA_EMASK_M1;
     if (Res > 5) {
-      DiagnosticInfoCisaBuild Err{
-          CI, "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32)",
-          DS_Error};
+      DiagnosticInfoCisaBuild Err{CI,
+                                  "illegal common ISA execsize "
+                                  "(expected log2 from 1, 2, 4, 8, 16 or 32)",
+                                  DS_Error};
       getContext().diagnose(Err);
+      report_fatal_error("wrong execsize");
     }
     return (VISA_Exec_Size)Res;
   };
