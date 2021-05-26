@@ -3894,6 +3894,7 @@ void vISA::FlowGraph::markStale()
     // analysis when queried.
     dom.setStale();
     pDom.setStale();
+    loops.setStale();
 
     // any other analysis that becomes stale when FlowGraph changes
     // should be marked as stale here.

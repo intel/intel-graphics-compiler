@@ -233,7 +233,7 @@ public:
     G4_opcode  getLastOpcode() const;
 
     unsigned   getId() const {return id;}
-    void       setId(unsigned i) {id = i;}
+    void       setId(unsigned i);
 
     unsigned getPreId() const      {return preId;}
     void     setPreId(unsigned i)  {preId = i;}

@@ -234,6 +234,7 @@ class FlowGraph
 
     vISA::Dominator dom;
     vISA::PostDom pDom;
+    vISA::LoopDetection loops;
 
 public:
     typedef std::pair<G4_BB*, G4_BB*> Edge;
@@ -464,7 +465,7 @@ public:
       pKernel(kernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
       stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL),
-      dom(*kernel), pDom(*kernel) {}
+      dom(*kernel), pDom(*kernel), loops(*kernel) {}
 
     ~FlowGraph();
 
@@ -654,6 +655,7 @@ public:
 
     Dominator& getDominator() { return dom; }
     PostDom& getPostDominator() { return pDom; }
+    LoopDetection& getLoops() { return loops; }
     void markStale();
 
 private:

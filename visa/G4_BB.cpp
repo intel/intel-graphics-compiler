@@ -82,6 +82,15 @@ G4_opcode G4_BB::getLastOpcode() const
     }
 }
 
+void G4_BB::setId(unsigned i)
+{
+    // some analysis passes rely on G4_BB id
+    if (id != i)
+        getParent().markStale();
+    id = i;
+}
+
+
 void G4_BB::removePredEdge(G4_BB* pred)
 {
     for (std::list<G4_BB*>::iterator it = Preds.begin(), bbEnd = Preds.end();
