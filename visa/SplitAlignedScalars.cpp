@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "SplitAlignedScalars.h"
+#include "G4_Opcode.h"
 
 using namespace vISA;
 
@@ -200,6 +201,17 @@ void SplitAlignedScalars::run()
         return newTopDcl;
     };
 
+    auto getTypeExecSize = [&](G4_Type type)
+    {
+        if (TypeSize(type) < 8)
+            return std::make_tuple(1, type);
+
+        if (kernel.fg.builder->noInt64())
+            return std::make_tuple(2, Type_UD);
+
+        return std::make_tuple(1, Type_UQ);
+    };
+
     gatherCandidates();
 
     for (auto dcl : kernel.Declares)
@@ -249,20 +261,26 @@ void SplitAlignedScalars::run()
                     inst->setDest(dstRgn);
 
                     // emit copy to store data to original non-aligned scalar
+                    unsigned int execSize = 1;
+                    G4_Type typeToUse = Type_UD;
+                    std::tie(execSize, typeToUse) = getTypeExecSize(dst->getType());
+
                     auto src = kernel.fg.builder->createSrc(dstRgn->getBase(), dstRgn->getRegOff(),
-                        dstRgn->getSubRegOff(), inst->getExecSize() == g4::SIMD1 ? kernel.fg.builder->getRegionScalar() :
-                        kernel.fg.builder->createRegionDesc(dstRgn->getHorzStride() * inst->getExecSize(),
-                            dstRgn->getHorzStride(), inst->getExecSize()),
-                        dstRgn->getType());
+                        dstRgn->getSubRegOff(), execSize == g4::SIMD1 ? kernel.fg.builder->getRegionScalar() :
+                        kernel.fg.builder->getRegionStride1(), typeToUse);
                     auto dstRgnOfCopy = kernel.fg.builder->createDst(newDcl->getRegVar(),
-                        dst->getRegOff(), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
+                        dst->getRegOff(), dst->getSubRegOff(), dst->getHorzStride(), typeToUse);
 
                     G4_Predicate* dupPred = nullptr;
                     if(inst->getPredicate())
                         dupPred = kernel.fg.builder->createPredicate(*inst->getPredicate());
                     auto newInst = kernel.fg.builder->createInternalInst(dupPred, G4_mov, nullptr,
-                        g4::NOSAT, inst->getExecSize(), dstRgnOfCopy, src, nullptr, InstOpt_WriteEnable);
+                        g4::NOSAT, G4_ExecSize(execSize), dstRgnOfCopy, src, nullptr, InstOpt_WriteEnable);
                     newInstIt = bb->insertAfter(instIt, newInst);
+
+                    gra.addNoRemat(newInst);
+
+                    numMovsAdded++;
                 }
             }
 
@@ -294,11 +312,16 @@ void SplitAlignedScalars::run()
                             oldTopDcl->getSubRegAlign());
                         newAlignedTmpTopDcl->copyAlign(oldTopDcl);
 
+                        unsigned int execSize = 1;
+                        G4_Type typeToUse = Type_UD;
+                        std::tie(execSize, typeToUse) = getTypeExecSize(srcRgn->getType());
+
                         // copy oldDcl in to newAlignedTmpTopDcl
-                        auto tmpDst = kernel.fg.builder->createDst(newAlignedTmpTopDcl->getRegVar(), oldTopDcl->getElemType());
-                        auto src = kernel.fg.builder->createSrc(newTopDcl->getRegVar(), 0, 0, kernel.fg.builder->getRegionScalar(),
-                            oldTopDcl->getElemType());
-                        auto copy = kernel.fg.builder->createMov(g4::SIMD1, tmpDst, src, InstOpt_WriteEnable, false);
+                        auto tmpDst = kernel.fg.builder->createDst(newAlignedTmpTopDcl->getRegVar(), typeToUse);
+                        auto src = kernel.fg.builder->createSrc(newTopDcl->getRegVar(), 0, 0,
+                            execSize == 1 ? kernel.fg.builder->getRegionScalar() : kernel.fg.builder->getRegionStride1(),
+                            typeToUse);
+                        auto copy = kernel.fg.builder->createMov(G4_ExecSize(execSize), tmpDst, src, InstOpt_WriteEnable, false);
 
                         // now create src out of tmpDst
                         auto dclToUse = getDclForRgn(srcRgn, newAlignedTmpTopDcl);
@@ -307,6 +330,11 @@ void SplitAlignedScalars::run()
                             dclToUse->getRegVar(), srcRgn->getRegOff(), srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
                         inst->setSrc(newAlignedSrc, i);
                         bb->insertBefore(instIt, copy);
+
+                        // this copy shouldnt be rematerialized
+                        gra.addNoRemat(copy);
+
+                        numMovsAdded++;
                     }
                 }
             }
@@ -319,4 +347,5 @@ void SplitAlignedScalars::run()
 void SplitAlignedScalars::dump(std::ostream& os)
 {
     os << "# GRF aligned scalar dcls replaced: " << numDclsReplaced << std::endl;
+    os << "# movs added: " << numMovsAdded << std::endl;
 }

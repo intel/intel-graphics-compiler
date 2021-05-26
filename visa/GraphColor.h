@@ -751,6 +751,9 @@ namespace vISA
         // map ret location to declare for call/ret
         std::map<uint32_t, G4_Declare*> retDecls;
 
+        // store instructions that shouldnt be rematerialized.
+        std::unordered_set<G4_INST*> dontRemat;
+
         RAVarInfo &allocVar(const G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
@@ -1243,6 +1246,16 @@ namespace vISA
                 setSubRegAlign(dcl, dcl->getSubRegAlign());
                 setEvenAligned(dcl, dcl->isEvenAlign());
             }
+        }
+
+        bool isNoRemat(G4_INST* inst)
+        {
+            return dontRemat.find(inst) != dontRemat.end();
+        }
+
+        void addNoRemat(G4_INST* inst)
+        {
+            dontRemat.insert(inst);
         }
     };
 

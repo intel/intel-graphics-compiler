@@ -495,6 +495,9 @@ namespace vISA
         if (!uniqueDef)
             return false;
 
+        if (gra.isNoRemat(uniqueDef->first))
+            return false;
+
         // Def has a lot of uses so we will need lots of remat to make this profitable
         if (refs.numUses > MAX_USES_REMAT)
             return false;

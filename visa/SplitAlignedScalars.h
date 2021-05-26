@@ -38,6 +38,7 @@ namespace vISA
         const unsigned int MinBBSize = 5;
 
         unsigned int numDclsReplaced = 0;
+        unsigned int numMovsAdded = 0;
         GlobalRA& gra;
         G4_Kernel& kernel;
 
