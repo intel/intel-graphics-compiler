@@ -92,6 +92,12 @@ private:
     /// add spir-v section
     void addSPIRV(const uint8_t* data, uint32_t size);
 
+    /// add program scope symbols (e.g. symbols defined in global/const buffer)
+    void addProgramSymbols(const IGC::SOpenCLProgramInfo& annotations);
+
+    /// add program scope relocations (e.g. relocations for global/const buffer)
+    void addProgramRelocations(const IGC::SOpenCLProgramInfo& annotations);
+
     /// ------------ kernel scope helper functions ------------
     /// add gen binary
     zebin::ZEELFObjectBuilder::SectionID addKernelBinary(
@@ -108,18 +114,20 @@ private:
 
     /// add symbols of this kernel corresponding to kernel binary
     /// added by addKernelBinary
-    void addSymbols(
+    void addKernelSymbols(
         zebin::ZEELFObjectBuilder::SectionID kernelSectId,
         const IGC::SOpenCLKernelInfo& annotations);
 
     /// get symbol type and binding
     /// FIXME: this should be decided when symbol being created
-    uint8_t getSymbolElfType(vISA::ZESymEntry& sym);
-    uint8_t getSymbolElfBinding(vISA::ZESymEntry& sym);
+    uint8_t getSymbolElfType(const vISA::ZESymEntry& sym);
+    uint8_t getSymbolElfBinding(const vISA::ZESymEntry& sym);
+
+    /// addSymbol - a helper function to add a symbol which is defined in targetSect
+    void addSymbol(const vISA::ZESymEntry& sym, zebin::ZEELFObjectBuilder::SectionID targetSect);
 
     /// add relocations of this kernel corresponding to binary added by
-    /// addKernelBinary. Assume that all relocations' target section is
-    /// the added text section
+    /// addKernelBinary.
     void addKernelRelocations(
         zebin::ZEELFObjectBuilder::SectionID targetId,
         const IGC::SOpenCLKernelInfo& annotations);

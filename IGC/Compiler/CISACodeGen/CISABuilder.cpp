@@ -4811,13 +4811,16 @@ namespace IGC
             context->m_retryManager.IsFirstTry();
     }
 
-    void CEncoder::CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel, SProgramOutput::SymbolLists& symbols)
+    void CEncoder::CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel,
+        SProgramOutput::ZEBinFuncSymbolTable& symbols)
     {
         // kernel symbols are local symbols, and point to the offset 0 of this kernel binary
         symbols.local.emplace_back(vISA::GenSymType::S_KERNEL, 0, visaKernel.getGenSize(), kernelName);
     }
 
-    void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::SymbolLists& symbols)
+    void CEncoder::CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
+        SProgramOutput::ZEBinFuncSymbolTable& funcSyms,
+        SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms)
     {
         buffer = nullptr;
         bufferSize = 0;
@@ -4856,7 +4859,7 @@ namespace IGC
                     // symbols for patch token
                     symbolTable.push_back(fEntry);
                     // symbols for ZEBinary
-                    symbols.function.emplace_back((vISA::GenSymType)fEntry.s_type, fEntry.s_offset, fEntry.s_size, F.getName().str());
+                    funcSyms.function.emplace_back((vISA::GenSymType)fEntry.s_type, fEntry.s_offset, fEntry.s_size, F.getName().str());
                 }
             }
             // Ignore variant function definitions
@@ -4894,7 +4897,7 @@ namespace IGC
                 symbolTable.push_back(fEntry);
 
                 // symbols for ZEBinary
-                symbols.function.emplace_back((vISA::GenSymType)fEntry.s_type,
+                funcSyms.function.emplace_back((vISA::GenSymType)fEntry.s_type,
                     fEntry.s_offset, fEntry.s_size, F.getName().str());
             }
         }
@@ -4926,7 +4929,7 @@ namespace IGC
                     sEntry.s_size = 0;
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
                     // symbols for ZEBinary
-                    symbols.sampler.emplace_back((vISA::GenSymType)sEntry.s_type,
+                    funcSyms.sampler.emplace_back((vISA::GenSymType)sEntry.s_type,
                         sEntry.s_offset, sEntry.s_size, name.str());
                 }
                 else
@@ -4936,17 +4939,17 @@ namespace IGC
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
                     // symbols for ZEBinary
                     if (sEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR) {
-                        symbols.global.emplace_back((vISA::GenSymType)sEntry.s_type,
+                        programSyms.global.emplace_back((vISA::GenSymType)sEntry.s_type,
                             sEntry.s_offset, sEntry.s_size, name.str());
                     } else {
                         // Global constants and string literals
                         Constant * initializer = pGlobal->getInitializer();
                         ConstantDataSequential * cds = dyn_cast<ConstantDataSequential>(initializer);
                         if (cds && (cds->isCString() || cds->isString()))
-                            symbols.globalStringConst.emplace_back((vISA::GenSymType)sEntry.s_type,
+                            programSyms.globalStringConst.emplace_back((vISA::GenSymType)sEntry.s_type,
                                 sEntry.s_offset, sEntry.s_size, name.str());
                         else
-                            symbols.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
+                            programSyms.globalConst.emplace_back((vISA::GenSymType)sEntry.s_type,
                                 sEntry.s_offset, sEntry.s_size, name.str());
                     }
                 }
@@ -5430,13 +5433,18 @@ namespace IGC
 
         if (hasSymbolTable)
         {
+            // we can only support symbols for OPENCL_SHADER for now
+            IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
+            auto cl_context = static_cast<OpenCLProgramContext*>(context);
+
             CreateSymbolTable(pOutput->m_funcSymbolTable,
                 pOutput->m_funcSymbolTableSize,
                 pOutput->m_funcSymbolTableEntries,
-                pOutput->m_symbols);
+                pOutput->m_symbols,
+                cl_context->m_programInfo.m_zebinSymbolTable);
         }
         if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
-            m_program->GetContext()->getCompilerOption().EnableZEBinary)
+            context->getCompilerOption().EnableZEBinary)
         {
             // cretae symbols for kernel. Symbols have name the same as the kernels, and offset to the
             // start of that kernel

@@ -78,11 +78,9 @@ namespace IGC
         typedef std::vector<vISA::ZESymEntry> SymbolListTy;
         typedef std::vector<vISA::ZERelocEntry> RelocListTy;
         typedef std::vector<vISA::ZEFuncAttribEntry> FuncAttrListTy;
-        struct SymbolLists {
+        // function scope symbols
+        struct ZEBinFuncSymbolTable {
             SymbolListTy function;          // function symbols
-            SymbolListTy global;            // global symbols
-            SymbolListTy globalConst;       // global constant symbols
-            SymbolListTy globalStringConst; // global string constant symbols
             SymbolListTy sampler;           // sampler symbols
             SymbolListTy local;             // local symbols
         };
@@ -106,7 +104,7 @@ namespace IGC
         void* m_funcSymbolTable = nullptr;
         unsigned int    m_funcSymbolTableSize = 0;
         unsigned int    m_funcSymbolTableEntries = 0;
-        SymbolLists     m_symbols;                 // duplicated information of m_funcSymbolTable, for zebin
+        ZEBinFuncSymbolTable m_symbols;           // duplicated information of m_funcSymbolTable, for zebin
         void* m_funcRelocationTable = nullptr;
         unsigned int    m_funcRelocationTableSize = 0;
         unsigned int    m_funcRelocationTableEntries = 0;
@@ -672,11 +670,13 @@ namespace IGC
             std::vector<vISA::ZERelocEntry> globalReloc;
             std::vector<vISA::ZERelocEntry> globalConstReloc;
         };
-        struct ZEBinSymbolTable
+        // program scope symbols
+        struct ZEBinProgramSymbolTable
         {
             using SymbolSeq = std::vector<vISA::ZESymEntry>;
             SymbolSeq global;            // global symbols
             SymbolSeq globalConst;       // global constant symbols
+            SymbolSeq globalStringConst; // global string constant symbols
         };
         struct LegacySymbolTable
         {
@@ -692,7 +692,7 @@ namespace IGC
         std::vector<std::unique_ptr<iOpenCL::KernelTypeProgramBinaryInfo> > m_initKernelTypeAnnotation;
 
         ZEBinRelocTable m_GlobalPointerAddressRelocAnnotation;
-        ZEBinSymbolTable m_zebinSymbolTable;
+        ZEBinProgramSymbolTable m_zebinSymbolTable;
         LegacySymbolTable m_legacySymbolTable;
     };
 

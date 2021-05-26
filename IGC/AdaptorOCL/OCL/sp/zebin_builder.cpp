@@ -62,7 +62,7 @@ void ZEBinaryBuilder::createKernel(
 {
     ZEELFObjectBuilder::SectionID textID =
         addKernelBinary(annotations.m_kernelName, rawIsaBinary, rawIsaBinarySize);
-    addSymbols(textID, annotations);
+    addKernelSymbols(textID, annotations);
     addKernelRelocations(textID, annotations);
 
     zeInfoKernel& zeKernel = mZEInfoBuilder.createKernel(annotations.m_kernelName);
@@ -115,6 +115,8 @@ void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& program
 {
     addGlobalConstants(programInfo);
     addGlobals(programInfo);
+    addProgramSymbols(programInfo);
+    addProgramRelocations(programInfo);
 }
 
 void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotations)
@@ -298,7 +300,7 @@ void ZEBinaryBuilder::addMemoryBuffer(
     }
 }
 
-uint8_t ZEBinaryBuilder::getSymbolElfType(vISA::ZESymEntry& sym)
+uint8_t ZEBinaryBuilder::getSymbolElfType(const vISA::ZESymEntry& sym)
 {
     switch (sym.s_type) {
     case vISA::GenSymType::S_NOTYPE:
@@ -321,7 +323,7 @@ uint8_t ZEBinaryBuilder::getSymbolElfType(vISA::ZESymEntry& sym)
     return llvm::ELF::STT_NOTYPE;
 }
 
-uint8_t ZEBinaryBuilder::getSymbolElfBinding(vISA::ZESymEntry& sym)
+uint8_t ZEBinaryBuilder::getSymbolElfBinding(const vISA::ZESymEntry& sym)
 {
     // all symbols we have now that could be exposed must have
     // global binding
@@ -343,7 +345,35 @@ uint8_t ZEBinaryBuilder::getSymbolElfBinding(vISA::ZESymEntry& sym)
     return llvm::ELF::STB_GLOBAL;
 }
 
-void ZEBinaryBuilder::addSymbols(
+void ZEBinaryBuilder::addSymbol(const vISA::ZESymEntry& sym, ZEELFObjectBuilder::SectionID targetSect)
+{
+    mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
+        getSymbolElfBinding(sym), getSymbolElfType(sym),
+        (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : targetSect);
+}
+
+void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo& annotations)
+{
+    const IGC::SOpenCLProgramInfo::ZEBinProgramSymbolTable& symbols = annotations.m_zebinSymbolTable;
+
+    // add symbols defined in global constant section
+    IGC_ASSERT(symbols.globalConst.empty() || mGlobalConstSectID != -1);
+    for (auto sym : symbols.globalConst)
+        addSymbol(sym, mGlobalConstSectID);
+
+    // add symbols defined in global string constant section
+    IGC_ASSERT(symbols.globalStringConst.empty() || mConstStringSectID != -1);
+    for (auto sym : symbols.globalStringConst)
+        addSymbol(sym, mConstStringSectID);
+
+    // add symbols defined in global section
+    IGC_ASSERT(symbols.global.empty() || mGlobalSectID != -1);
+    for (auto sym : symbols.global)
+        addSymbol(sym, mGlobalSectID);
+
+}
+
+void ZEBinaryBuilder::addKernelSymbols(
     ZEELFObjectBuilder::SectionID kernelSectId,
     const IGC::SOpenCLKernelInfo& annotations)
 {
@@ -363,37 +393,30 @@ void ZEBinaryBuilder::addSymbols(
     // add local symbols of this kernel binary
     for (auto sym : symbols.local) {
         IGC_ASSERT(sym.s_type != vISA::GenSymType::S_UNDEF);
-        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-            getSymbolElfBinding(sym), getSymbolElfType(sym), kernelSectId);
+        addSymbol(sym, kernelSectId);
     }
 
-    // If the symbol has UNDEF type, set its sectionId to -1
     // add function symbols defined in kernel text
     for (auto sym : symbols.function)
-        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-            getSymbolElfBinding(sym), getSymbolElfType(sym),
-            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : kernelSectId);
-
-    // add symbols defined in global constant section
-    for (auto sym : symbols.globalConst)
-        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-            getSymbolElfBinding(sym), getSymbolElfType(sym),
-            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalConstSectID);
-
-    // add symbols defined in global string constant section
-    for (auto sym : symbols.globalStringConst)
-        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-            getSymbolElfBinding(sym), getSymbolElfType(sym),
-            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mConstStringSectID);
-
-    // add symbols defined in global section
-    for (auto sym : symbols.global)
-        mBuilder.addSymbol(sym.s_name, sym.s_offset, sym.s_size,
-            getSymbolElfBinding(sym), getSymbolElfType(sym),
-            (sym.s_type == vISA::GenSymType::S_UNDEF) ? -1 : mGlobalSectID);
+        addSymbol(sym, kernelSectId);
 
     // we do not support sampler symbols now
     IGC_ASSERT(symbols.sampler.empty());
+}
+
+void ZEBinaryBuilder::addProgramRelocations(const IGC::SOpenCLProgramInfo& annotations)
+{
+    const IGC::SOpenCLProgramInfo::ZEBinRelocTable& relocs = annotations.m_GlobalPointerAddressRelocAnnotation;
+
+    // FIXME: For r_type, zebin::R_TYPE_ZEBIN should have the same enum value as visa::GenRelocType.
+    // Take the value directly
+    IGC_ASSERT(relocs.globalConstReloc.empty() || mGlobalConstSectID != -1);
+    for (auto reloc : relocs.globalConstReloc)
+        mBuilder.addRelRelocation(reloc.r_offset, reloc.r_symbol, static_cast<zebin::R_TYPE_ZEBIN>(reloc.r_type), mGlobalConstSectID);
+
+    IGC_ASSERT(relocs.globalReloc.empty() || mGlobalSectID != -1);
+    for (auto reloc : relocs.globalReloc)
+        mBuilder.addRelRelocation(reloc.r_offset, reloc.r_symbol, static_cast<zebin::R_TYPE_ZEBIN>(reloc.r_type), mGlobalSectID);
 }
 
 void ZEBinaryBuilder::addKernelRelocations(

@@ -533,9 +533,12 @@ namespace IGC
         // input/output: symbols: for ZEBinary foramt
         // FIXME: Currently we will fill both structures for patch-token-based and ZEBinary format. Can refactor the code
         // to do only one based on produced binary format (regkey: EnableZEBinary)
-        void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::SymbolLists& symbols);
+        // Note that this function should be called only once even if there are multiple kernels in a program. Current IGC
+        // flow will create all symbols in the first kernel and all the other kernels won't contain symbols
+        void CreateSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries,
+            SProgramOutput::ZEBinFuncSymbolTable& funcSyms, SOpenCLProgramInfo::ZEBinProgramSymbolTable& programSyms);
         // Create function symbols for kernels. This is ZEBinary foramt only.
-        void CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel, SProgramOutput::SymbolLists& symbols);
+        void CreateKernelSymbol(const std::string& kernelName, const VISAKernel& visaKernel, SProgramOutput::ZEBinFuncSymbolTable& symbols);
 
         // CreateRelocationTable
         // input/output: buffer, bufferSize, tableEntries: for patch-token-based format.
