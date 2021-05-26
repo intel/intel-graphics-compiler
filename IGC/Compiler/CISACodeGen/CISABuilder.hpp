@@ -1005,6 +1005,7 @@ namespace IGC
     inline void CEncoder::BeginForcedNoMaskRegion()
     {
         ++m_nestLevelForcedNoMaskRegion;
+        // Start submitting insts with NoMask control
         m_encoderState.m_noMask = true;
     }
 
@@ -1012,6 +1013,10 @@ namespace IGC
     {
         --m_nestLevelForcedNoMaskRegion;
         IGC_ASSERT_MESSAGE(m_nestLevelForcedNoMaskRegion >= 0, "Invalid nesting of Unmasked regions");
+        // Out of unmasked region, return to submitting insts
+        // with Mask control
+        if (m_nestLevelForcedNoMaskRegion == 0)
+            m_encoderState.m_noMask = false;
     }
 
     inline void CEncoder::SetNoMask()
