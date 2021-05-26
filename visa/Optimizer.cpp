@@ -10127,19 +10127,23 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
                 return false;
             if (Opnd->isDstRegRegion() && Opnd->asDstRegRegion()->isIndirect())
                 return false;
-            G4_VarBase *Base = Opnd->getBase();
-            if (!Base->isRegVar())
-                return false;
-            if (Base->asRegVar()->isPhyRegAssigned())
-                return false;
-            G4_Declare* Dcl = Opnd->getTopDcl();
-            if (Dcl->isPreDefinedVar())
+            if (G4_VarBase* Base = Opnd->getBase())
             {
-                // This can be improved by checking each preDefinedVar
-                return false;
+                if (!Base->isRegVar())
+                    return false;
+                if (Base->asRegVar()->isPhyRegAssigned())
+                    return false;
             }
-            if (Dcl->isOutput() || Dcl->isPayloadLiveOut())
-                return false;
+            if (G4_Declare* Dcl = Opnd->getTopDcl())
+            {
+                if (Dcl->isPreDefinedVar())
+                {
+                    // This can be improved by checking each preDefinedVar
+                    return false;
+                }
+                if (Dcl->isOutput() || Dcl->isPayloadLiveOut())
+                    return false;
+            }
             return true;
         };
 
