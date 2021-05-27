@@ -97,6 +97,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXEmulationImportPass(registry);
   initializeGenXEmulatePass(registry);
   initializeGenXExtractVectorizerPass(registry);
+  initializeGenXVectorCombinerPass(registry);
   initializeGenXFuncBalingPass(registry);
   initializeGenXGEPLoweringPass(registry);
   initializeGenXGroupBalingPass(registry);
@@ -371,6 +372,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   if (!DisableVerify) PM.add(createVerifierPass());
   /// .. include:: GenXExtractVectorizer.cpp
   PM.add(createGenXExtractVectorizerPass());
+  /// .. include:: GenXVectorCombiner.cpp
+  PM.add(createGenXVectorCombinerPass());
   /// .. include:: GenXRawSendRipper.cpp
   PM.add(createGenXRawSendRipperPass());
   /// DeadCodeElimination

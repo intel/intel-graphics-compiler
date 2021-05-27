@@ -55,6 +55,7 @@ set(CODEGEN_SOURCES
   GenXEmulate.cpp
   GenXModule.cpp
   GenXNumbering.cpp
+  GenXVectorCombiner.cpp
   GenXOCLInfoExtractor.cpp
   GenXOCLRuntimeInfo.cpp
   GenXPatternMatch.cpp

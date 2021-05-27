@@ -62,6 +62,7 @@ FunctionPass *createGenXReduceIntSizePass();
 FunctionPass *createGenXInstCombineCleanup();
 FunctionPass *createGenXInlineAsmLoweringPass();
 FunctionPass *createGenXLoweringPass();
+FunctionPass *createGenXVectorCombinerPass();
 FunctionPass *createGenXLowerAggrCopiesPass();
 FunctionPass *createGenXLowerJmpTableSwitchPass();
 FunctionPass *createGenXGEPLoweringPass();
