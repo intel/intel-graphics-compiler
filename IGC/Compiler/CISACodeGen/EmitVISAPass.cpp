@@ -8836,6 +8836,10 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
         emitSqrt(inst);
         break;
 
+    case Intrinsic::canonicalize:
+        emitCanonicalize(inst);
+        break;
+
     default:
         inst->print(IGC::Debug::ods());
         IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
@@ -16830,7 +16834,7 @@ void EmitPass::emitFrc(llvm::GenIntrinsicInst* inst)
     m_encoder->Frc(m_destination, src0);
 }
 
-void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst, const DstModifier& modifier)
+void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst)
 {
     // Force to flush denormal fp value to zero. Select one of two possible solutions:
     // 1. add inputVal, -0.0
@@ -16842,11 +16846,10 @@ void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst, const DstModifier&
     bool flushVal = pCodeGenContext->m_floatDenormMode16 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isHalfTy();
     flushVal = flushVal || (pCodeGenContext->m_floatDenormMode32 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isFloatTy());
     flushVal = flushVal || (pCodeGenContext->m_floatDenormMode64 == ::IGC::FLOAT_DENORM_FLUSH_TO_ZERO && inst->getType()->isDoubleTy());
-    if (flushVal || modifier.sat)
+    if (flushVal)
     {
         CVariable* inputVal = GetSymbol(inst->getOperand(0));
         CVariable* negativeZero = m_currShader->GetScalarConstant(llvm::ConstantFP::get(inst->getType(), -0.0));
-        m_encoder->SetDstModifier(modifier);
         m_encoder->Add(m_destination, inputVal, negativeZero);
     }
 }
