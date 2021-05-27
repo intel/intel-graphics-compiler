@@ -41,6 +41,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   case IGFX_GEN12LP_CORE:
     if (Product == IGFX_TIGERLAKE_LP)
       return "TGLLP";
+    if (Product == IGFX_DG1)
+      return IGC_MANGLE("DG1");
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
