@@ -74,8 +74,7 @@ namespace {
         typedef DenseMap<unsigned int, SmallVector<unsigned, 4> > ProfitVectorLengthsMap;
         ProfitVectorLengthsMap ProfitVectorLengths;
 
-        // A list of memory references (within a BB) with the distance to a
-        // previous memory reference in this list.
+        // A list of memory references (within a BB) with the distance to the begining of the BB.
         typedef std::vector<std::pair<Instruction*, unsigned> > MemRefListTy;
         typedef std::vector<Instruction*> TrivialMemRefListTy;
 
@@ -447,16 +446,12 @@ bool MemOpt::runOnFunction(Function& F) {
         MemRefListTy MemRefs;
         TrivialMemRefListTy MemRefsToOptimize;
         unsigned Distance = 0;
-        bool FirstMemRef = true;
-        for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+        for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI, ++Distance) {
             Instruction* I = &(*BI);
-            Distance += FirstMemRef ? 0 : 1;
             // Skip irrelevant instructions.
             if (shouldSkip(I))
                 continue;
             MemRefs.push_back(std::make_pair(I, Distance));
-            Distance = 0;
-            FirstMemRef = false;
         }
 
         // Skip BB with no more than 2 loads/stores.
@@ -579,15 +574,13 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // List of instructions need dependency check.
     SmallVector<Instruction*, 8> CheckList;
 
-    unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    const unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    // Given the Start position of the Window is MI->second,
+    // the End postion of the Window is "limit + Windows' start".
+    const unsigned windowEnd = Limit + MI->second;
     auto ME = MemRefs.end();
-    for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
-        // Bail out if the limit is reached.
-        if (Limit < MI->second)
-            break;
-
+    for (++MI; MI != ME && MI->second <= windowEnd; ++MI) {
         Instruction* NextMemRef = MI->first;
-
         // Skip already merged one.
         if (!NextMemRef)
             continue;
@@ -1050,15 +1043,13 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     // List of instructions need dependency check.
     SmallVector<Instruction*, 8> CheckList;
 
-    unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    const unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    // Given the Start position of the Window is MI->second,
+    // the End postion of the Window is "limit + Windows' start".
+    const unsigned windowEnd = Limit + MI->second;
     auto ME = MemRefs.end();
-    for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
-        // Bail out if the limit is reached.
-        if (Limit < MI->second)
-            break;
-
+    for (++MI; MI != ME && MI->second <= windowEnd; ++MI) {
         Instruction* NextMemRef = MI->first;
-
         // Skip already merged one.
         if (!NextMemRef)
             continue;

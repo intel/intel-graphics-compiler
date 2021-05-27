@@ -441,7 +441,7 @@ DECLARE_IGC_REGKEY(bool, EnableSubroutineForEmulation,  true,  "Enable subroutin
 DECLARE_IGC_REGKEY(bool, ForceSubroutineForEmulation,   false,  "Force subroutine call for all emulation functions if emulation(double) is on.", false)
 DECLARE_IGC_REGKEY(DWORD, InlinedEmulationThreshold,    125000, "Inlined instruction threshold for enabling subroutines", false)
 DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to pass the pressure heuristic until the given size", false)
-DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Change the size of the window in which we allow load/stores to be coalesced. We keep it limited in order to avoid creating long liveranges. Default value is 150", false)
+DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Size of the window in unit of instructions in which load/stores are allowed to be coalesced. Keep it limited in order to avoid creating long liveranges. Default value is 150", false)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableOneStepElf, true, "Enable generation of direct elf mapping src->Gen ISA", false)
 DECLARE_IGC_REGKEY(bool, EmitDebugRanges, true, "Emit .debug_ranges section when instructions in a block are non-consecutive", false)
