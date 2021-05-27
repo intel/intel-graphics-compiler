@@ -270,6 +270,16 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
             }
         }
 
+        if (hs != 1)
+        {
+            auto relation = defInst->getDst()->compareOperand(use);
+            if (!(relation == Rel_eq || relation == Rel_gt))
+            {
+                canReplace = false;
+                break;
+            }
+        }
+
         if (useInst->isSend())
         {
             // send operand doesn't take subreg, so the operand has to be GRF-aligned
