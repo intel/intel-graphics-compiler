@@ -85,10 +85,6 @@ static cl::opt<bool> OptConvertPartialPredicates(
     "vc-i64emu-icmp-ppred-lowering", cl::init(true), cl::Hidden,
     cl::desc("if \"partial predicates\" shall be converted to icmp"));
 
-static cl::opt<bool> OptWaNoCFoldOnSelect(
-    "vc-i64emu-select-cfold-wa", cl::init(true), cl::Hidden,
-    cl::desc("avoid constant folding on select operands"));
-
 using IRBuilder = IRBuilder<TargetFolder>;
 
 class GenXEmulate : public ModulePass {
@@ -483,9 +479,8 @@ bool GenXEmulate::Emu64Expander::getConstantUI32Values(
   return true;
 }
 Value *GenXEmulate::Emu64Expander::visitSelectInst(SelectInst &I) {
-  bool DoConstantFolding = !OptWaNoCFoldOnSelect;
-  auto SrcTrue = SplitBuilder.splitOperandLoHi(1, DoConstantFolding);
-  auto SrcFalse = SplitBuilder.splitOperandLoHi(2, DoConstantFolding);
+  auto SrcTrue = SplitBuilder.splitOperandLoHi(1);
+  auto SrcFalse = SplitBuilder.splitOperandLoHi(2);
   auto *Cond = I.getCondition();
 
   auto Builder = getIRBuilder();
