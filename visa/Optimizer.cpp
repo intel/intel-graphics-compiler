@@ -10654,7 +10654,7 @@ void Optimizer::doNoMaskWA()
     //           I1: (W&flagVar)   mov (1|M0)  P<1>:uw  nP<0;1,0>:uw
     //      (3) otherwise(less common)
     //           I0: (W)           mov (1|M0) save:ud  P<0;1,0>:ud
-    //           I1: (W)           mov (16|M16) (nz)P  null flagVar
+    //           I1: (W)           mov (16|M16) (nz)P  null save
     //           I:  (W&P)         cmp (16|M16) (ne)P  D ...
     //           I2: (W&-flagVar)  mov (1|M0)  P   save:ud
     //
@@ -10803,7 +10803,7 @@ void Optimizer::doNoMaskWA()
         currBB->insertBefore(currII, I0);
 
         G4_DstRegRegion* D1 = builder.createNullDst(Ty);
-        G4_SrcRegRegion* I1S0 = builder.createSrc(flagVar,
+        G4_SrcRegRegion* I1S0 = builder.createSrc(saveVar,
             0, 0, builder.getRegionScalar(), Ty);
         G4_INST* I1 = builder.createMov(I->getExecSize(),
             D1, I1S0, (InstOpt_WriteEnable | I->getMaskOption()), false);
@@ -10828,7 +10828,7 @@ void Optimizer::doNoMaskWA()
         I2->setPredicate(flag2);
         currBB->insertBefore(nextII, I2);
 
-        flagVarDefInst->addDefUse(I1, Opnd_src0);
+        I0->addDefUse(I1, Opnd_src0);
         flagVarDefInst->addDefUse(I2, Opnd_pred);
         I0->addDefUse(I2, Opnd_src0);
 

@@ -668,12 +668,18 @@ void CShader::CacheArgumentsList()
         m_argListCache.push_back(&(*arg));
 }
 
-// Pixel shader has dedicated implementation of this function
 void CShader::MapPushedInputs()
 {
     for (auto I = pushInfo.inputs.begin(), E = pushInfo.inputs.end(); I != E; I++)
     {
         // We need to map the value associated with the value pushed to a physical register
+        if (I->second.interpolationMode == EINTERPOLATION_CONSTANT)
+        {
+            if (GetShaderType() == ShaderType::PIXEL_SHADER)
+            {
+                static_cast<CPixelShader*>(this)->MarkConstantInterpolation(I->second.index);
+            }
+        }
         CVariable* var = GetSymbol(m_argListCache[I->second.argIndex]);
         AddSetup(I->second.index, var);
     }
