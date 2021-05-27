@@ -28,7 +28,9 @@ include_guard(DIRECTORY)
 llvm_define_mode_variable(LLD IGC_OPTION__LLD_MODE)
 
 # Reuse LLVM source search module. lld should be located in the same place.
-include(llvm_source_path)
+if(NOT DEFAULT_IGC_LLVM_SOURCES_DIR)
+  include(llvm_source_path)
+endif()
 if(DEFAULT_IGC_LLVM_SOURCES_DIR)
   set(DEFAULT_IGC_lld_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR}/lld)
 endif()

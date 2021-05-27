@@ -32,7 +32,9 @@ include_guard(DIRECTORY)
 llvm_define_mode_variable(Clang IGC_OPTION__CLANG_MODE)
 
 # Reuse LLVM source search module. Clang should be located in the same place.
-include(llvm_source_path)
+if(NOT DEFAULT_IGC_LLVM_SOURCES_DIR)
+  include(llvm_source_path)
+endif()
 if(DEFAULT_IGC_LLVM_SOURCES_DIR)
   set(DEFAULT_IGC_CLANG_SOURCES_DIR ${DEFAULT_IGC_LLVM_SOURCES_DIR}/clang)
 endif()
