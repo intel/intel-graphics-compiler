@@ -32,6 +32,7 @@ public:
     {
         AU.addRequired<IGC::CodeGenContextWrapper>();
         AU.addRequired<IGC::MetaDataUtilsWrapper>();
+        AU.setPreservesCFG();
     }
 
     virtual bool runOnModule(llvm::Module& M);
@@ -39,6 +40,11 @@ public:
     void FixFunctionSignatures();
     void FixFunctionUsers();
     void FixCallInstruction(llvm::CallInst* callInst);
+
+    llvm::Function* CloneFunctionSignature(llvm::Type* ReturnType,
+        std::vector<llvm::Type*>& argTypes,
+        llvm::Function* pOldFunc,
+        bool changedRetVal);
 
     virtual llvm::StringRef getPassName() const
     {
@@ -48,6 +54,7 @@ public:
 private:
     IGC::CodeGenContext* m_pContext;
     IGC::IGCMD::MetaDataUtils* m_pMdUtils;
+    IGCLLVM::IRBuilder<>* m_pBuilder;
     llvm::Module* m_pModule;
 
     bool m_funcSignatureChanged;
