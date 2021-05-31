@@ -415,7 +415,6 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char* pElfBuffer, size_t 
 
         // Using the offset found above get a header of the String Table section
         SElf64SectionHeader* pNamesSectionHeader = (SElf64SectionHeader*)((char*)pElf64Header + nameSectionHeaderOffset);
-
         SElf64SectionHeader* pSectionHeader = NULL;
         size_t indexedSectionHeaderOffset = 0;
         Elf64_Word textSectionHeaderName = 0;
@@ -442,8 +441,8 @@ void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char* pElfBuffer, size_t 
             {
                 textSectionHeaderName = pSectionHeader->Name;   // Remember for the next loop over sections.
                 textSectionNameOffset = sectionNameOffset;      // Remember for the next loop over sections.
+                pNamesSectionHeader->DataSize += kernelNameWithDotSize; //.strtab size increases not .text section
 
-                pSectionHeader->DataSize += kernelNameWithDotSize;
                 // Return an offset (from the beginning of ELF binary) to the first character after '.text'
                 *pEndOfDotTextNameInStrtab = sectionNameOffset + sizeof(".text") - 1;
                 break; // Text section found, its location saved.

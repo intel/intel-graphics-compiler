@@ -138,7 +138,8 @@ bool CElfReader::IsValidElf64(
 
             if( ( (char*)pBinary + indexedSectionHeaderOffset ) <= pEnd )
             {
-                pNameTable = (char*)pBinary + indexedSectionHeaderOffset;
+                SElf64SectionHeader* pNameTableSectionHeader = (SElf64SectionHeader*)((char*)pBinary + indexedSectionHeaderOffset);
+                pNameTable = (char*)pBinary + pNameTableSectionHeader->DataOffset;
             }
         }
 
