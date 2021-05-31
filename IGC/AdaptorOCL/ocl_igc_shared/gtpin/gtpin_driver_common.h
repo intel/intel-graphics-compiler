@@ -64,6 +64,7 @@ typedef enum
     GTPIN_GEN_10,
     GTPIN_GEN_11,
     GTPIN_GEN_12_1,
+    GTPIN_XEHP_CORE,
 } GTPIN_GEN_VERSION;
 
 
