@@ -722,6 +722,7 @@ G4_Declare* IR_Builder::getSpillFillHeader()
     {
         spillFillHeader = createTempVar(1, Type_UD, GRFALIGN, "spillHeader");
         spillFillHeader->setLiveOut();
+        spillFillHeader->setLiveIn();
         spillFillHeader->setDoNotSpill();
     }
     return spillFillHeader;

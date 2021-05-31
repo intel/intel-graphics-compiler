@@ -2507,13 +2507,7 @@ void Interference::computeInterference()
         buildInterferenceWithinBB(bb, live);
     }
 
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D ||
-        kernel.fg.builder->getOption(vISA_enablePreemption) ||
-        kernel.fg.getHasStackCalls() ||
-        kernel.fg.getIsStackCallFunc())
-    {
-        buildInterferenceAmongLiveIns();
-    }
+    buildInterferenceAmongLiveIns();
 
     //
     // Build interference with physical registers assigned by local RA
