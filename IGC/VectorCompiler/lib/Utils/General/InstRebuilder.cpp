@@ -12,10 +12,51 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
 
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/IntrinsicInst.h>
+
+#include <algorithm>
+#include <iterator>
 
 using namespace llvm;
 using namespace vc;
+
+// Define intrinsic return type based on its arguments types.
+static Type *getIntrinsicRetTypeBasedOnArgs(Intrinsic::ID IID,
+                                            ArrayRef<Type *> ArgTys,
+                                            LLVMContext &C) {
+  switch (IID) {
+  case Intrinsic::masked_gather:
+    // "Pass through" operand.
+    return ArgTys[3];
+  case Intrinsic::masked_scatter:
+    return Type::getVoidTy(C);
+  default:
+    IGC_ASSERT_MESSAGE(0, "unsupported intrinsic");
+    return nullptr;
+  }
+}
+
+// Emits list of overloaded types for the provided intrinsic. Takes all the
+// types that may take part in overloading: return type, types of arguments.
+static std::vector<Type *>
+getIntrinsicOverloadedTypes(Intrinsic::ID IID, Type *RetTy,
+                            ArrayRef<Type *> ArgTys) {
+  IGC_ASSERT_MESSAGE(RetTy, "wrong argument");
+  // FIXME: generalize for any ID using IntrinsicInfoTable.
+  switch (IID) {
+  case Intrinsic::masked_gather:
+    // Loaded value type and pointer operand type.
+    return {RetTy, ArgTys[0]};
+  case Intrinsic::masked_scatter:
+    // Value and pointer types.
+    return {ArgTys[0], ArgTys[1]};
+  default:
+    IGC_ASSERT_MESSAGE(0, "unsupported intrinsic");
+    return {};
+  }
+}
 
 namespace {
 class cloneInstWithNewOpsImpl
@@ -61,18 +102,17 @@ public:
   // type addrspace corresponds with this operand.
   CastInst *visitBitCastInst(BitCastInst &OrigCast) {
     Value &NewOp = getSingleNewOperand();
-    if (isa<PointerType>(OrigCast.getType()))
-      return visitPointerBitCastInst(OrigCast);
+    // If the operand changed addrspace the bitcast type should change it too.
+    if (OrigCast.getType()->isPtrOrPtrVectorTy())
+      return visitPtrOrPtrVectorBitCastInst(OrigCast);
     return new BitCastInst{&NewOp, OrigCast.getType()};
   }
 
-  CastInst *visitPointerBitCastInst(BitCastInst &OrigCast) {
+  CastInst *visitPtrOrPtrVectorBitCastInst(BitCastInst &OrigCast) {
     Value &NewOp = getSingleNewOperand();
-    auto NewOpAS = cast<PointerType>(NewOp.getType())->getAddressSpace();
-    // If the operand changed addrspace the bitcast type should change it too.
-    return new BitCastInst{
-        &NewOp,
-        changeAddrSpace(cast<PointerType>(OrigCast.getType()), NewOpAS)};
+    auto NewOpAS = getAddrSpace(NewOp.getType());
+    return new BitCastInst{&NewOp,
+                           changeAddrSpace(OrigCast.getType(), NewOpAS)};
   }
 
   CastInst *visitAddrSpaceCastInst(AddrSpaceCastInst &OrigCast) {
@@ -87,6 +127,24 @@ public:
   SelectInst *visitSelectInst(SelectInst &OrigSelect) {
     IGC_ASSERT_MESSAGE(NewOperands.size() == 3, "select has 3 operands");
     return SelectInst::Create(NewOperands[0], NewOperands[1], NewOperands[2]);
+  }
+
+  IntrinsicInst *visitIntrinsicInst(IntrinsicInst &OrigIntrinsic) {
+    auto IID = OrigIntrinsic.getIntrinsicID();
+    if (IID != Intrinsic::masked_gather && IID != Intrinsic::masked_scatter) {
+      IGC_ASSERT_MESSAGE(0, "yet unsupported instruction");
+      return nullptr;
+    }
+    std::vector<Type *> ArgTys;
+    std::transform(NewOperands.begin(), NewOperands.end(),
+                   std::back_inserter(ArgTys),
+                   [](Value *Operand) { return Operand->getType(); });
+    auto *RetTy =
+        getIntrinsicRetTypeBasedOnArgs(IID, ArgTys, OrigIntrinsic.getContext());
+    auto OverloadedTys = getIntrinsicOverloadedTypes(IID, RetTy, ArgTys);
+    auto *Decl = Intrinsic::getDeclaration(OrigIntrinsic.getModule(), IID,
+                                           OverloadedTys);
+    return cast<IntrinsicInst>(CallInst::Create(Decl, NewOperands));
   }
 
 private:

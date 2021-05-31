@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Use.h>
 #include <llvm/Support/Casting.h>
 
@@ -246,12 +247,20 @@ private:
     return Replace;
   }
 
+  static std::vector<llvm::Value *>
+  getOrigOperands(llvm::Instruction &OrigInst) {
+    if (llvm::isa<llvm::IntrinsicInst>(OrigInst)) {
+      auto &OrigIntr = llvm::cast<llvm::IntrinsicInst>(OrigInst);
+      return {OrigIntr.arg_begin(), OrigIntr.arg_end()};
+    }
+    return {OrigInst.value_op_begin(), OrigInst.value_op_end()};
+  }
+
   // Takes arguments of the original instruction (OrigInst.User) and rewrites
   // the required ones with new values according to info in \p OrigInst
   static std::vector<llvm::Value *>
   createNewOperands(const InstToRebuild &OrigInst) {
-    std::vector<llvm::Value *> NewOperands{OrigInst.User->value_op_begin(),
-                                           OrigInst.User->value_op_end()};
+    auto NewOperands = getOrigOperands(*OrigInst.User);
     for (auto &&OpReplacement :
          zip(OrigInst.OperandNos, OrigInst.NewOperands)) {
       int OperandNo = std::get<0>(OpReplacement);

@@ -58,6 +58,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
@@ -541,8 +542,13 @@ bool CMABI::runOnSCC(CallGraphSCC &SCC) {
 // change will stop.
 static bool isRebuildTerminal(const Instruction &Inst) {
   // Result of a load inst is no longer a pointer so here propogation will stop.
-  return isa<LoadInst>(Inst) || isa<AddrSpaceCastInst>(Inst) ||
-         isa<StoreInst>(Inst);
+  if (isa<LoadInst>(Inst) || isa<AddrSpaceCastInst>(Inst) ||
+      isa<StoreInst>(Inst))
+    return true;
+  if (!isa<IntrinsicInst>(Inst))
+    return false;
+  auto IID = cast<IntrinsicInst>(Inst).getIntrinsicID();
+  return IID == Intrinsic::masked_gather || IID == Intrinsic::masked_scatter;
 }
 
 // Replaces uses of global variables with the corresponding allocas inside a

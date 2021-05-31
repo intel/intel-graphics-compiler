@@ -10,6 +10,7 @@ set(GENERAL_UTILS_SOURCES
   BiF.cpp
   InstRebuilder.cpp
   BreakConst.cpp
+  Types.cpp
   )
 
 add_library(VCGeneralUtils ${GENERAL_UTILS_SOURCES})
