@@ -2125,8 +2125,16 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
  */
 bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
                                   unsigned Idx) {
-  unsigned Width = cast<VectorType>(SI->getType())->getNumElements();
-  if (isa<VectorType>(In->getType())) {
+  auto IsFixedVectorOfWidth = [](const Type *Ty, unsigned Width) {
+    IGC_ASSERT(Ty);
+    const auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    if (!VTy)
+      return false;
+    return VTy->getNumElements() == Width;
+  };
+
+  unsigned Width = cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
+  if (IsFixedVectorOfWidth(In->getType(), Width)) {
     IRBuilder<> B(SI);
     Constant *C1 = ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
                                             B.getInt16(1));
