@@ -1869,6 +1869,8 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   case OpTypeArray:
     return mapType(T, ArrayType::get(transType(T->getArrayElementType()),
         T->getArrayLength()));
+  case OpTypeTokenINTEL:
+    return mapType(T, Type::getTokenTy(*Context));
   case OpTypePointer:
     return mapType(T, PointerType::get(transType(T->getPointerElementType()),
       SPIRSPIRVAddrSpaceMap::rmap(T->getPointerStorageClass())));

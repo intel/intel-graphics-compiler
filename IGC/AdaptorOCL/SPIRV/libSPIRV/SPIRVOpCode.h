@@ -194,7 +194,7 @@ inline bool isTypeOpCode(Op OpCode) {
   unsigned OC = OpCode;
   return (OpTypeVoid <= OC && OC <= OpTypePipe) ||
          isSubgroupAvcINTELTypeOpCode(OpCode) || OC == OpTypeVmeImageINTEL ||
-         isVCOpCode(OpCode);
+         isVCOpCode(OpCode) || OC == OpTypeTokenINTEL;
 }
 
 inline bool isConstantOpCode(Op OpCode) {

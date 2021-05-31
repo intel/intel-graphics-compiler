@@ -819,5 +819,21 @@ _SPIRV_OP(AvcRefResult)
 _SPIRV_OP(AvcSicResult)
 #undef _SPIRV_OP
 
+class SPIRVTypeTokenINTEL : public SPIRVType {
+public:
+    // Complete constructor
+    SPIRVTypeTokenINTEL(SPIRVModule* M, SPIRVId TheId)
+        : SPIRVType(M, 2, OpTypeTokenINTEL, TheId) {}
+    // Incomplete constructor
+    SPIRVTypeTokenINTEL() : SPIRVType(OpTypeTokenINTEL) {}
+
+    CapVec getRequiredCapability() const {
+        return getVec(CapabilityTokenTypeINTEL);
+    }
+
+protected:
+    _SPIRV_DEF_DEC1(Id)
+};
+
 }
 #endif // SPIRVTYPE_HPP_

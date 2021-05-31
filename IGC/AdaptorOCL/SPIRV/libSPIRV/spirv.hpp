@@ -607,7 +607,8 @@ enum Capability {
     CapabilityFPFastMathModeINTEL = 5837,
     CapabilityUnstructuredLoopControlsINTEL = 5886,
     CapabilityLongConstantCompositeINTEL = 6089,
-    CapabilityOptNoneINTEL = 6094
+    CapabilityOptNoneINTEL = 6094,
+    CapabilityTokenTypeINTEL = 6112
 };
 
 enum Op {
