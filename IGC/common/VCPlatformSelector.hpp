@@ -42,7 +42,7 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     if (Product == IGFX_TIGERLAKE_LP)
       return "TGLLP";
     if (Product == IGFX_DG1)
-      return IGC_MANGLE("DG1");
+      return "DG1";
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
