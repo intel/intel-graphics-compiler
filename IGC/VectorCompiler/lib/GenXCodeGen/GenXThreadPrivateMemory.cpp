@@ -268,15 +268,11 @@ Value *GenXThreadPrivateMemory::NormalizeFuncPtrVec(Value *V, Instruction *InsPo
 std::pair<Value *, unsigned>
 GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
                                          Instruction *Inst) {
-  Type *I8Ty = Type::getInt8Ty(Inst->getContext());
   Type *I32Ty = Type::getInt32Ty(Inst->getContext());
   Type *I64Ty = Type::getInt64Ty(Inst->getContext());
   Value *Res = From;
   Type *FromTy = From->getType();
   IGC_ASSERT(isa<VectorType>(FromTy));
-  IGC_ASSERT(isa<VectorType>(To));
-  Type *ToEltTy = cast<VectorType>(To)->getElementType();
-  unsigned ToEltSz = m_DL->getTypeSizeInBits(ToEltTy);
   unsigned NumElts = cast<VectorType>(FromTy)->getNumElements();
   static_assert(genx::ByteBits);
   unsigned EltSz =
@@ -299,24 +295,12 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     Res = CastInst::Create(Instruction::BitCast, Res, To, "", Inst);
-  } else if (ToEltSz < genx::DWordBits) {
-    if (!m_useGlobalMem) {
-      // this is legcay case, not fix now, as no tests, just output warning
-      // to be fixed after we will return to scratch if we will
-      To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
-      Res = CastInst::CreateZExtOrBitCast(From, To, "", Inst);
-      DiagnosticInfoTPM Warn("32-bit widening of store may be incorrect!",
-                             DS_Warning);
-      From->getContext().diagnose(Warn);
-    } else if (ToEltSz == genx::WordBits) {
-      // we need to process case i16 -> 2xi18
-      NumElts *= 2;
-      EltSz = 1;
-      To = IGCLLVM::FixedVectorType::get(I8Ty, NumElts);
-      Res = CastInst::CreateBitOrPointerCast(From, To, "", Inst);
-    }
-    // in general i8 is correct for scatters, do nothing
-  } else if (ToEltSz == genx::QWordBits) {
+  } else if (m_DL->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) <
+             genx::DWordBits) {
+    To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
+    Res = CastInst::CreateZExtOrBitCast(From, To, "", Inst);
+  } else if (m_DL->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) ==
+             genx::QWordBits) {
     if (From->getType()->getScalarType()->isPointerTy()) {
       auto *NewType = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
       From = CastInst::Create(CastInst::PtrToInt, From, NewType, "", Inst);
@@ -636,8 +620,11 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
 
   Value *EltsOffset = FormEltsOffsetVector(NumEltsToLoad, ValueEltSz, LdI);
 
-  // we always want one block per address
-  Value *logNumBlocks = ConstantInt::get(I32Ty, 0);
+  unsigned NumBlocks = m_DL->getTypeSizeInBits(LdEltTy) / genx::ByteBits;
+  // This logic is aligned with the on in CisaBuilder and GenXLowering
+  // The reason behind check for == 2 is that svm intrinsics don't support
+  // BlockSize of 2, so for ops with i16s we have to use BlockSize == 1 and NumBlocks == 2
+  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks == 2 ? NumBlocks : 1));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
@@ -690,7 +677,7 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
 }
 
 bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
-  LLVM_DEBUG(dbgs() << "Replacing store " << *StI << "\n");
+  LLVM_DEBUG(dbgs() << "Replacing store " << *StI << " ===>\n");
   IRBuilder<> Builder(StI);
   Value *ValueOp = StI->getValueOperand();
   Type *ValueOpTy = ValueOp->getType();
@@ -701,13 +688,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
   IGC_ASSERT(ValueOpTy->isVectorTy());
 
   unsigned ValueEltSz = 0;
-  Value *NewValue;
-  std::tie(NewValue, ValueEltSz) = NormalizeVector(ValueOp, ValueOpTy, StI);
-  if (NewValue->getType() != ValueOp->getType()) {
-    LLVM_DEBUG(dbgs() << "Normalized from: " << *ValueOp << "\n");
-    LLVM_DEBUG(dbgs() << "             to: " << *NewValue << "\n");
-    ValueOp = NewValue;
-  }
+  std::tie(ValueOp, ValueEltSz) = NormalizeVector(ValueOp, ValueOpTy, StI);
   unsigned ValueNumElts =
       cast<VectorType>(ValueOp->getType())->getNumElements();
 
@@ -734,9 +715,9 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
       {Pred->getType(),
        (m_useGlobalMem ? Offset : EltsOffset)->getType(),
        ValueOp->getType()});
-
-  // we always want one block per address
-  Value *logNumBlocks = ConstantInt::get(I32Ty, 0);
+  unsigned NumBlocks = m_DL->getTypeSizeInBits(ValueOpTy->getScalarType()) / genx::ByteBits;
+  // see the comment in replaceLoad above
+  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks == 2 ? NumBlocks : 1));
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
@@ -756,7 +737,7 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
       MDNode::get(*m_ctx, llvm::ValueAsMetadata::get(
                               UndefValue::get(ValueOpTy->getScalarType()))));
 
-  LLVM_DEBUG(dbgs() << "Generated scatter: " << *Scatter << "\n");
+  LLVM_DEBUG(dbgs() << *Scatter << "\n");
   m_scatter.push_back(Scatter);
 
   return true;
