@@ -10653,10 +10653,11 @@ void Optimizer::doNoMaskWA()
     //           I:  (W&nP)        cmp (16|M0) (ne)nP  ....
     //           I1: (W&flagVar)   mov (1|M0)  P<1>:uw  nP<0;1,0>:uw
     //      (3) otherwise(less common)
-    //           I0: (W)           mov (1|M0) save:ud  P<0;1,0>:ud
-    //           I1: (W)           mov (16|M16) (nz)P  null save
-    //           I:  (W&P)         cmp (16|M16) (ne)P  D ...
-    //           I2: (W&-flagVar)  mov (1|M0)  P   save:ud
+    //           I0: (W)               mov (1|M0) save:ud  P<0;1,0>:ud
+    //           I1: (W)               mov (1|M0) P 0x:ud
+    //           I2: (W&flagVar.anyh)  mov (1|M0) P 0xFFFFFFFF:ud
+    //           I:  (W&P)             cmp (16|M16) (ne)P  D ...
+    //           I3: (W&-flagVar.anyh) mov (1|M0)  P   save:ud
     //
     auto doFlagModifierInstWA = [&](
         G4_INST* flagVarDefInst,  // inst that defines flagVar
@@ -10802,14 +10803,19 @@ void Optimizer::doNoMaskWA()
         G4_INST* I0 = builder.createMov(g4::SIMD1, D0, I0S0, InstOpt_WriteEnable, false);
         currBB->insertBefore(currII, I0);
 
-        G4_DstRegRegion* D1 = builder.createNullDst(Ty);
-        G4_SrcRegRegion* I1S0 = builder.createSrc(saveVar,
-            0, 0, builder.getRegionScalar(), Ty);
-        G4_INST* I1 = builder.createMov(I->getExecSize(),
-            D1, I1S0, (InstOpt_WriteEnable | I->getMaskOption()), false);
-        G4_CondMod* nM0 = builder.createCondMod(Mod_nz, modDcl->getRegVar(), 0);
-        I1->setCondMod(nM0);
+        G4_DstRegRegion* D1 = builder.createDst(modDcl->getRegVar(), 0, 0, 1, Ty);
+        G4_INST* I1 = builder.createMov(g4::SIMD1, D1,
+            builder.createImm(0, Ty), InstOpt_WriteEnable, false);
         currBB->insertBefore(currII, I1);
+
+        G4_DstRegRegion* D2 = builder.createDst(modDcl->getRegVar(), 0, 0, 1, Ty);
+        G4_Imm* I2S0 = builder.createImm(0xFFFFFFFF, Ty);
+        G4_INST* I2 = builder.createMov(g4::SIMD1,
+            D2, I2S0, (InstOpt_WriteEnable | I->getMaskOption()), false);
+        G4_Predicate* flag2 = builder.createPredicate(
+            PredState_Plus, flagVar, 0, getPredCtrl(useAnyh));
+        I2->setPredicate(flag2);
+        currBB->insertBefore(currII, I2);
 
         G4_Predicate* nP = builder.createPredicate(
             PredState_Plus, modDcl->getRegVar(), 0, PRED_DEFAULT);
@@ -10818,26 +10824,27 @@ void Optimizer::doNoMaskWA()
 
         auto nextII = currII;
         ++nextII;
-        G4_SrcRegRegion* I2S0 = builder.createSrc(saveVar,
+        G4_SrcRegRegion* I3S0 = builder.createSrc(saveVar,
             0, 0, builder.getRegionScalar(), Ty);
-        G4_DstRegRegion* D2 = builder.createDst(
+        G4_DstRegRegion* D3 = builder.createDst(
             modDcl->getRegVar(), 0, 0, 1, Ty);
-        G4_INST* I2 = builder.createMov(g4::SIMD1, D2, I2S0, InstOpt_WriteEnable, false);
-        G4_Predicate* flag2 = builder.createPredicate(
+        G4_INST* I3 = builder.createMov(g4::SIMD1, D3, I3S0, InstOpt_WriteEnable, false);
+        G4_Predicate* flag3 = builder.createPredicate(
             PredState_Minus, flagVar, 0, getPredCtrl(useAnyh));
-        I2->setPredicate(flag2);
-        currBB->insertBefore(nextII, I2);
+        I3->setPredicate(flag3);
+        currBB->insertBefore(nextII, I3);
 
-        I0->addDefUse(I1, Opnd_src0);
         flagVarDefInst->addDefUse(I2, Opnd_pred);
-        I0->addDefUse(I2, Opnd_src0);
+        flagVarDefInst->addDefUse(I3, Opnd_pred);
+        I0->addDefUse(I3, Opnd_src0);
 
         if (!condModGlb)
         {
             I1->addDefUse(I, Opnd_pred);
-            // Need to copy uses of I's condMod to I2 only, here
+            I2->addDefUse(I, Opnd_pred);
+            // Need to copy uses of I's condMod to I3 only, here
             // conservatively use copyUsesTo().
-            I->copyUsesTo(I2, false);
+            I->copyUsesTo(I3, false);
         }
     };
 
