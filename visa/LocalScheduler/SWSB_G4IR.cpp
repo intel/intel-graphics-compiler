@@ -4496,9 +4496,9 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
                 if (!hasOverlap &&
                     dep == RAW &&
-                    liveInst->isMath() &&
+                    liveInst->isMath() && !curInst->isMath() &&
                     builder.hasRSForSpecificPlatform() &&
-                    (!hasSamePredicator(liveInst, curInst)))
+                    (!hasSamePredicator(liveInst, curInst) || builder.hasMathRSIsuue()))
                 {
                     hasOverlap = curFootprint->hasGRFGrainOverlap(liveFootprint);
                 }

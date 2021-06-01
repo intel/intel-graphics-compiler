@@ -683,6 +683,11 @@
         return getPlatform() == GENX_TGLLP;
     }
 
+    bool hasMathRSIsuue() const
+    {
+        return getPlatform() == GENX_TGLLP;
+    }
+
     bool supportsSampler() const
     {
         return true;
