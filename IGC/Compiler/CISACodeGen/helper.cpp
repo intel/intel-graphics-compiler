@@ -957,6 +957,11 @@ namespace IGC
         }
         case llvm::GenISAIntrinsic::GenISA_typedread:
         case llvm::GenISAIntrinsic::GenISA_typedwrite:
+        case llvm::GenISAIntrinsic::GenISA_ldstructured:
+        case llvm::GenISAIntrinsic::GenISA_storestructured1:
+        case llvm::GenISAIntrinsic::GenISA_storestructured2:
+        case llvm::GenISAIntrinsic::GenISA_storestructured3:
+        case llvm::GenISAIntrinsic::GenISA_storestructured4:
             overloadedTys.push_back(newPtr->getType());
             break;
         case llvm::GenISAIntrinsic::GenISA_intatomicraw:
@@ -1011,11 +1016,12 @@ namespace IGC
             overloadedTys.push_back(pIntr->getType());
             overloadedTys.push_back(args[0]->getType());
             break;
-            //case llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        case llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed:
         case llvm::GenISAIntrinsic::GenISA_ldraw_indexed:
             overloadedTys.push_back(pCalledFunc->getReturnType());
             overloadedTys.push_back(newPtr->getType());
             break;
+        case llvm::GenISAIntrinsic::GenISA_storerawvector_indexed:
         case llvm::GenISAIntrinsic::GenISA_storeraw_indexed:
             overloadedTys.push_back(newPtr->getType());
             overloadedTys.push_back(args[2]->getType());
