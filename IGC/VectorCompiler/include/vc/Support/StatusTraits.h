@@ -68,10 +68,6 @@ template <> struct ErrorTraits<errc::bif_load_fail> {
   }
 };
 
-template <> struct ErrorTraits<errc::compilation_aborted> {
-  static llvm::StringRef getMessage() { return "compilation aborted"; }
-};
-
 } // namespace vc
 
 #endif

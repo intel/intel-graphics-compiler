@@ -179,7 +179,7 @@ static std::vector<const char*>
                      const std::string& inputFile,
                      CIF::Builtins::BufferSimple* options,
                      llvm::StringSaver& stringSaver,
-                     const std::string& platform,
+                     const char *platform,
                      unsigned stepping) {
 
     llvm::SmallVector<const char*, 20> userArgs;
@@ -216,12 +216,11 @@ static std::vector<const char*>
           return S.startswith("-march=") || S.startswith("-mcpu=");
         });
     if (!CmArchPresent) {
-      // Prefer user-specified architecture. If none specified -
-      // pass the runtime-selected architecture.
-      if (platform.empty())
-        result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
+      // Pass the runtime-specified architecture if user hasn't specified one
+      if (platform)
+        result.push_back(stringSaver.save("-march=" + std::string(platform)).data());
       else
-        result.push_back(stringSaver.save("-march=" + platform).data());
+        result.push_back(stringSaver.save("-march=" + cmfeDefaultArch).data());
     }
 
     result.insert(result.end(), userArgs.begin(), userArgs.end());
@@ -304,15 +303,15 @@ static std::string getCMFEWrapperDir() {
 #endif
 }
 
+#endif // defined(IGC_VC_ENABLED)
+
 // This essentialy duplicates existing DumpShaderFile in dllInterfaceCompute
 // but now I see no way to reuse it. To be converged later
-static void DumpInputs(const PLATFORM *Platform,
-                       const std::string& SelectedPlatform,
+static void DumpInputs(PLATFORM *Platform, const char *Selected,
                        int Stepping, CIF::Builtins::BufferSimple* src,
                        CIF::Builtins::BufferSimple* options,
                        CIF::Builtins::BufferSimple* internalOptions,
-                       CIF::Builtins::BufferSimple* tracingOptions)
-{
+                       CIF::Builtins::BufferSimple* tracingOptions) {
 #if defined( _DEBUG ) || defined( _INTERNAL )
   // check for shader dumps enabled
   if (!FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
@@ -336,7 +335,7 @@ static void DumpInputs(const PLATFORM *Platform,
     Os << "NEO passed: DisplayCore = " << Core
        << ", RenderCore = " << RenderCore << ", Product = " << Product
        << ", Revision = " << RevId << "\n";
-    Os << "IGC translated into: <" << SelectedPlatform << ">, " << Stepping << "\n";
+    Os << "IGC translated into: " << Selected << ", " << Stepping << "\n";
   } else {
     Os << "Nothing came from NEO\n";
   }
@@ -379,40 +378,6 @@ static void DumpInputs(const PLATFORM *Platform,
 #endif // defined( _DEBUG ) || defined( _INTERNAL )
 }
 
-struct CMFEPlatform {
-    std::string PlatformStr;
-    unsigned Stepping;
-};
-
-template <typename T>
-static llvm::Optional<CMFEPlatform> describeCMFEPlatform(
-    const T *platformImpl,
-    CIF::Builtins::BufferSimple* src,
-    CIF::Builtins::BufferSimple* options,
-    CIF::Builtins::BufferSimple* internalOptions,
-    CIF::Builtins::BufferSimple* tracingOptions)
-{
-    bool Error = false;
-    const PLATFORM *platformDescr = nullptr;
-    unsigned stepping = 0;
-    std::string platformStr;
-
-    if (platformImpl)
-    {
-        platformDescr = &platformImpl->p;
-        stepping = platformDescr->usRevId;
-        platformStr = cmc::getPlatformStr(*platformDescr, /* inout */ stepping);
-        Error = platformStr.empty();
-    }
-    DumpInputs(platformDescr, platformStr, stepping,
-               src, options, internalOptions, tracingOptions);
-
-    if (Error)
-        return {};
-    return CMFEPlatform { platformStr, stepping };
-}
-#endif // defined(IGC_VC_ENABLED)
-
 OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     CIF::Version_t outVersion,
     CIF::Builtins::BufferSimple* src,
@@ -428,22 +393,27 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     if (outputInterface == nullptr)
         return nullptr;
 
+    PLATFORM *platformDescr = nullptr;
+    const char *platformStr = nullptr;
+    unsigned stepping       = 0U;
+
+    if(globalState.GetPlatformImpl()){
+      // NEO supports platform interface
+      auto *PlatformImpl = globalState.GetPlatformImpl();
+      platformDescr = &PlatformImpl->p;
+      stepping = PlatformImpl->p.usRevId;
+      platformStr = cmc::getPlatformStr(PlatformImpl->p, /* inout */ stepping);
+    }
+
+    DumpInputs(platformDescr, platformStr, stepping,
+               src, options, internalOptions, tracingOptions);
+
     OclTranslationOutputBase& Out = *outputInterface;
 
 #if defined(IGC_VC_ENABLED)
     auto ErrFn = [&Out](const std::string& Err) {
         Out.GetImpl()->SetError(TranslationErrorType::Internal, Err.c_str());
     };
-
-    auto MaybePlatform = describeCMFEPlatform(globalState.GetPlatformImpl(),
-                                              src, options, internalOptions,
-                                              tracingOptions);
-    if (!MaybePlatform)
-    {
-        ErrFn("could not derive platform string and stepping");
-        return outputInterface;
-    }
-
     auto MaybeFE =
         IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn, getCMFEWrapperDir());
     if (!MaybeFE)
@@ -456,8 +426,8 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
     auto& FE = MaybeFE.getValue();
-    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(), options, Saver,
-                                   MaybePlatform->PlatformStr, MaybePlatform->Stepping);
+    auto FeArgs = processFeOptions(FE.LibInfo(), OptSrc.getValue(),
+                                   options, Saver, platformStr, stepping);
 
     auto Drv = FE.buildDriverInvocation(FeArgs.size(), FeArgs.data());
     if (!Drv)

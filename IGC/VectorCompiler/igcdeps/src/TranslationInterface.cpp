@@ -50,16 +50,13 @@ public:
   void addWarning(const std::string &Str) {
     BuildLog << "warning: " << Str << "\n";
   }
-  void addError(const std::string &Str) {
-    BuildLog << "error: " << Str << "\n";
-    HasError = true;
-  }
   std::string getLog() const { return BuildLog.str(); }
-  bool hasError() const { return HasError; }
 
 private:
+  // for now, we don't differentiate between warnings and errors
+  // the expectation is that a marker indicating an error shall be
+  // reported by other means
   std::ostringstream BuildLog;
-  bool HasError = false;
 };
 
 } // namespace
@@ -131,14 +128,12 @@ std::unique_ptr<llvm::MemoryBuffer> getVCModuleBuffer() {
 }
 
 static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
-                           vc::CompileOptions &Opts, BuildDiag &Diag) {
+                           vc::CompileOptions &Opts) {
   auto &PlatformInfo = IGCPlatform.getPlatformInfo();
   unsigned RevId = PlatformInfo.usRevId;
   Opts.CPUStr = cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
   Opts.RevId = RevId;
   Opts.WATable = &IGCPlatform.getWATable();
-  if (Opts.CPUStr.empty())
-    Diag.addError("could not determine target Platform");
 }
 
 static void adjustFileType(TC::TB_DATA_FORMAT DataFormat,
@@ -210,7 +205,7 @@ static void adjustDumpOptions(vc::CompileOptions &Opts) {
 static void adjustOptions(const IGC::CPlatform &IGCPlatform,
                           TC::TB_DATA_FORMAT DataFormat,
                           vc::CompileOptions &Opts, BuildDiag &Diag) {
-  adjustPlatform(IGCPlatform, Opts, Diag);
+  adjustPlatform(IGCPlatform, Opts);
   adjustFileType(DataFormat, Opts);
   adjustOptLevel(Opts);
   adjustBinaryFormat(Opts.Binary);
@@ -430,14 +425,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   // here we have Opts set and can dump what we got from runtime and how
   // we understood it
-  // we intentionally query Diag object after Platform dumps
   dumpPlatform(Opts, IGCPlatform.getPlatformInfo(), *Dumper);
-
-  // Note: we intentionally query Diag object after Platform dumps
-  if (Diag.hasError())
-    return getError(
-        llvm::make_error<vc::CompilationAbortedError>(Diag.getLog()),
-        OutputArgs);
 
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     Opts.ShaderOverrider =

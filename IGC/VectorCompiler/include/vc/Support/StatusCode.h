@@ -41,11 +41,8 @@ enum class errc {
   // Bad option in internal options.
   invalid_internal_option,
 
-  // Loading of OCL BiF module failed.
+  // loading OCL BiF module failed
   bif_load_fail,
-
-  // Compilation was aborted.
-  compilation_aborted
 };
 
 const std::error_category &err_category() noexcept;
