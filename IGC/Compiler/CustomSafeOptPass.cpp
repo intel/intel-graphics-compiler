@@ -2616,6 +2616,12 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 void GenSpecificPattern::visitCastInst(CastInst& I)
 {
     Instruction* srcVal = nullptr;
+    // Intrinsic::trunc call is handled by 'rndz' hardware instruction which
+    // does not support double precision floating point type
+    if (I.getType()->isDoubleTy())
+    {
+        return;
+    }
     if (isa<SIToFPInst>(&I))
     {
         srcVal = dyn_cast<FPToSIInst>(I.getOperand(0));
