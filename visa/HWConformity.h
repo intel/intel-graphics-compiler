@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BuildIR.h"
 #include "FlowGraph.h"
 #include "Common_ISA_util.h"
+#include "RegAlloc.h"
 
 #include <map>
 
@@ -208,7 +209,9 @@ namespace vISA
 
         void fixSelCsel(INST_LIST_ITER it, G4_BB *bb);
 
-        void avoidDstSrcOverlap(INST_LIST_ITER i, G4_BB* bb);
+        void avoidDstSrcOverlap(PointsToAnalysis& p);
+        void avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsToAnalysis& p);
+
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
         bool checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos);

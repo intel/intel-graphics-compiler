@@ -5129,29 +5129,46 @@ void HWConformity::fixSelCsel(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
+void HWConformity::avoidDstSrcOverlap(PointsToAnalysis& p)
+{
+    for (auto& bb : kernel.fg)
+    {
+        INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
+        INST_LIST_ITER next_iter = i;
+        for (; i != iEnd; i = next_iter)
+        {
+            ++next_iter;
+            avoidInstDstSrcOverlap(i, bb, p);
+        }
+    }
+}
+
 //
 //  Avoid the dst and src overlap when they are using the same variable by inserting a mov instruction
 //  add(8)  var1<2>, var2, var1<0, 1, 0>
 //
-void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
+void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsToAnalysis& p)
 {
     G4_INST* inst = *it;
 
     if (inst->mayExceedTwoGRF() ||
         inst->opcode() == G4_nop ||
+        inst->opcode() == G4_madm ||
         inst->isLabel())
     {
         return;
     }
 
     auto dst = inst->getDst();
-
-    if (!dst || !dst->getBase()->isRegVar())
+    if (!dst ||
+        dst->isNullReg() ||
+        !dst->getBase()->isRegVar())
     {
         return;
     }
 
     auto dstSize = inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride();
+    //Handle VxH
     if (dstSize > getGRFSize())
     {
         // special check for 2-GRF instruction with VxH operands
@@ -5168,7 +5185,6 @@ void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
     }
 
     G4_Declare* dstDcl = dst->getTopDcl();
-
     if (dstDcl)
     {
         G4_DstRegRegion* dstRgn = dst;
@@ -5181,33 +5197,55 @@ void HWConformity::avoidDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb)
         {
             G4_Operand* src = inst->getSrc(i);
 
-            if (!src || !src->getTopDcl())
+            if (!src || src->isNullReg() || !src->getTopDcl())
             {
                 continue;
             }
-
             G4_Declare* srcDcl = src->getTopDcl();
             G4_CmpRelation rel = dst->compareOperand(src);
-            if ((rel != Rel_disjoint && rel != Rel_undef) &&
-                src->isSrcRegRegion() &&
-                src->asSrcRegRegion()->getBase()->isRegVar() &&
-                srcDcl == dstDcl)
+            if (src->isSrcRegRegion())
             {
-                G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-                int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
-                int srcLeft = srcRgn->getLinearizedStart();
-                int srcRight = srcRgn->getLinearizedEnd();
-
-                if (!srcRgn->isScalar() && srcOpndNumRows > 1)
+                G4_SrcRegRegion* srcRg = src->asSrcRegRegion();
+                if (srcDcl == dstDcl &&
+                    srcRg->getRegAccess() == Direct &&
+                    srcRg->getBase()->isRegVar())
                 {
-                    srcLeft = (srcRgn->getLinearizedStart() / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB);
-                }
-
-                if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
-                {
-                    if (!(srcLeft > dstRight || dstLeft > srcRight))
+                    if (rel != Rel_disjoint && rel != Rel_undef) //Overlap
                     {
-                        inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
+                        G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+                        int srcOpndNumRows = ((srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) / numEltPerGRF(Type_UB)) + 1;
+                        int srcLeft = srcRgn->getLinearizedStart();
+                        int srcRight = srcRgn->getLinearizedEnd();
+
+                        if (!srcRgn->isScalar() && srcOpndNumRows > 1)
+                        {
+                            srcLeft = (srcRgn->getLinearizedStart() / numEltPerGRF(Type_UB) + 1) * numEltPerGRF(Type_UB);
+                        }
+
+                        if (dstOpndNumRows > 1 || srcOpndNumRows > 1)
+                        {
+                            if (!(srcLeft > dstRight || dstLeft > srcRight))
+                            {
+                                inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
+                            }
+                        }
+                    }
+                }
+                else if (srcRg->isIndirect())
+                {
+                    G4_RegVar* ptvar = NULL;
+                    int vid = 0;
+                    while ((ptvar = p.getPointsTo(srcDcl->getRegVar(), vid++)) != NULL)
+                    {
+                        G4_Declare* dcl = ptvar->getDeclare();
+                        if (dstDcl == dcl)
+                        {
+                            G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
+                            G4_DstRegRegion* newDst = insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb);
+                            newDst->setAccRegSel(accSel);
+                            inst->setDest(newDst);
+                            return;
+                        }
                     }
                 }
             }
@@ -5254,11 +5292,6 @@ void HWConformity::conformBB(G4_BB* bb)
             opcode == G4_label)
         {
             continue;
-        }
-
-        if (builder.avoidDstSrcOverlap() && inst->getDst())
-        {
-            avoidDstSrcOverlap(i, bb);
         }
 
         if (builder.getOption(vISA_InsertDummyMovForHWRSWA) &&
@@ -5645,6 +5678,14 @@ void HWConformity::chkHWConformity()
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
+    }
+
+    if (builder.avoidDstSrcOverlap())
+    {
+        PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
+        p.doPointsToAnalysis(kernel.fg);
+
+        avoidDstSrcOverlap(p);
     }
 }
 
