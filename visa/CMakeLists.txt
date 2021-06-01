@@ -1,3 +1,11 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2017-2021 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
 
 # This file sets up the following libraries and executables:
 # Target name                |     CMake project name             |   Supported Platforms

@@ -1,3 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2017-2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
 #include "visa_igc_common_header.h"
 #include "VISADefines.h"
 #include "PreDefinedVars.h"

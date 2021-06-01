@@ -1,3 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2017-2021 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
 #ifndef _PREDEFINEDVARS_H_
 #define _PREDEFINEDVARS_H_
 #include <array>

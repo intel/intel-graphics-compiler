@@ -1,3 +1,11 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2017-2021 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
 # Macros to set the runtime to /MT under windows (statically link to runtime.
 # Suitable for multi-threaded as well)
 macro(  win_static_runtime )
