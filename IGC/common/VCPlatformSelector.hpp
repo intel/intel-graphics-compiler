@@ -21,7 +21,15 @@ SPDX-License-Identifier: MIT
 
 namespace cmc {
 
-inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
+// getPlatformStr:
+//      given a PLATFORM data structure and "revision ID" returns
+//      "Platform String" - the string identifier for the targeted platform.
+// Note: the interpretation of RevId ("revision ID") depends on the target
+//      platform. RevID is considered an input/output parameter and may be
+//      changed during the invocation.
+// If the target platform can not be derived - an empty string is returned,
+// in this case the client code is expected to report an error.
+inline std::string getPlatformStr(const PLATFORM &Platform, unsigned &RevId) {
   // after some consultations with Wndows KMD folks,
   // only render core shall be used in all cases
   auto Core = Platform.eRenderCoreFamily;
@@ -44,10 +52,9 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     if (Product == IGFX_DG1)
       return "DG1";
   default:
-    IGC_ASSERT_MESSAGE(0, "unsupported platform");
-    break;
+    // Return an empty platform string to indicate an error.
+    return "";
   }
-  return IGC_MANGLE("SKL");
 }
 
 } // namespace cmc

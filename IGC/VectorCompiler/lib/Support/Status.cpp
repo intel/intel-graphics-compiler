@@ -49,6 +49,8 @@ std::string vc_error_category::message(int condition) const {
     return std::string(ErrorTraits<errc::invalid_internal_option>::getMessage());
   case errc::bif_load_fail:
     return std::string(ErrorTraits<errc::bif_load_fail>::getMessage());
+  case errc::compilation_aborted:
+    return std::string(ErrorTraits<errc::compilation_aborted>::getMessage());
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown error code");
 }
@@ -125,6 +127,14 @@ void OptionError::log(llvm::raw_ostream &OS) const {
   else
     OS << ErrorTraits<errc::invalid_api_option>::getMessage();
   OS << ": " << BadOption;
+}
+// }}
+
+// CompilationAbortedError {{
+char CompilationAbortedError::ID = 0;
+
+void CompilationAbortedError::log(llvm::raw_ostream &OS) const {
+  OS << ErrorTraits<errc::compilation_aborted>::getMessage() << ": " << Message;
 }
 // }}
 
