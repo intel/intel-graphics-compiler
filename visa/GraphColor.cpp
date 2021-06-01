@@ -9869,8 +9869,13 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 if (iterationNo == 0 &&
-                    (rematChange || globalSplitChange))
+                    (rematChange || globalSplitChange || kernel.getOption(vISA_forceBCR)))
                 {
+                    if (kernel.getOption(vISA_forceBCR))
+                    {
+                        kernel.getOptions()->setOption(vISA_forceBCR, false);
+                    }
+
                     continue;
                 }
 
