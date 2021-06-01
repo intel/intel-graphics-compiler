@@ -53,6 +53,7 @@ void GenXSubtarget::resetSubtargetFeatures(StringRef CPU, StringRef FS) {
   UseMulDDQ = false;
   OCLRuntime = false;
   HasSwitchjmp = false;
+  WaNoMaskFusedEU = false;
   HasIntDivRem32 = false;
 
   if (StackScratchMem)

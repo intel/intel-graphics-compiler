@@ -107,6 +107,10 @@ private:
   // True if subtarget supports switchjmp visa instruction
   bool HasSwitchjmp;
 
+  // True if subtarget requires WA for nomask instructions under divergent
+  // control flow
+  bool WaNoMaskFusedEU;
+
   // True if subtarget supports 32-bit integer division
   bool HasIntDivRem32;
 
@@ -207,6 +211,9 @@ public:
 
   /// * has switchjmp instruction
   bool hasSwitchjmp() const { return HasSwitchjmp; }
+
+  /// * needsWANoMaskFusedEU() - true if we need to apply WA for NoMask ops
+  bool needsWANoMaskFusedEU() const { return WaNoMaskFusedEU; }
 
   /// * has integer div/rem instruction
   bool hasIntDivRem32() const { return HasIntDivRem32; }

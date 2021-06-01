@@ -93,6 +93,11 @@ static cl::opt<bool>
 
 static cl::opt<bool> SkipNoWiden("skip-widen", cl::init(false), cl::Hidden,
                                  cl::desc("Do new emit NoWiden hint"));
+
+static cl::opt<bool> DisableNoMaskWA(
+    "vc-cg-disable-no-mask-wa", cl::init(false), cl::Hidden,
+    cl::desc("do not apply noMask WA (fusedEU)"));
+
 static cl::opt<bool>
     EnableOptimizedDebug("vc-experimental-finalizer-optimizes-debug",
                          cl::init(false), cl::Hidden,
@@ -6309,6 +6314,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-dumpcommonisa");
     addArgument("-output");
     addArgument("-binary");
+  }
+  if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA) {
+    addArgument("-noMaskWA");
+    addArgument("2");
   }
   return Argv;
 }

@@ -54,6 +54,11 @@ def FeatureNoJumpTables : SubtargetFeature<"disable_jump_tables", "DisableJumpTa
 
 def FeatureSwitchjmp : SubtargetFeature<"switchjmp", "HasSwitchjmp", "true",
                                         "supports switchjmp visa instruction">;
+
+def FeatureWAFusedEUNoMask : SubtargetFeature<
+    "wa_nomask_fusedEU", "WaNoMaskFusedEU", "true",
+    "needs workaround for nomask operations under divergent control-flow">;
+
 def FeatureIntDivRem32: SubtargetFeature<"divrem32",
                                          "HasIntDivRem32",
                                          "true",
@@ -120,7 +125,8 @@ def : Proc<"ICL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureFP64]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32]>;
-def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32]>;
+def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
+                               FeatureWAFusedEUNoMask]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32]>;
 
 def GenX : Target {
