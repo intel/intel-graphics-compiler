@@ -159,7 +159,7 @@ class GenXEmulate : public ModulePass {
 
     struct VectorInfo {
       Value *V;
-      VectorType *VTy;
+      IGCLLVM::FixedVectorType *VTy;
     };
     static VectorInfo toVector(IRBuilder &Builder, Value *In);
     static bool getConstantUI32Values(Value *V,
@@ -189,7 +189,8 @@ class GenXEmulate : public ModulePass {
     class ConstantEmitter {
     public:
       ConstantEmitter(Value *V)
-          : ElNum(cast<VectorType>(V->getType())->getNumElements()),
+          : ElNum(
+                cast<IGCLLVM::FixedVectorType>(V->getType())->getNumElements()),
             Ty32(Type::getInt32Ty(V->getContext())) {}
       Constant *getSplat(unsigned Val) const {
         auto *KV = Constant::getIntegerValue(Ty32, APInt(32, Val));
@@ -434,12 +435,13 @@ Value *GenXEmulate::Emu64Expander::visitXor(BinaryOperator &Op) {
 GenXEmulate::Emu64Expander::VectorInfo
 GenXEmulate::Emu64Expander::toVector(IRBuilder &Builder, Value *In) {
   if (In->getType()->isVectorTy())
-    return {In, cast<VectorType>(In->getType())};
+    return {In, cast<IGCLLVM::FixedVectorType>(In->getType())};
 
   if (auto *CIn = dyn_cast<ConstantInt>(In)) {
     uint64_t CVals[] = {CIn->getZExtValue()};
     auto *VectorValue = ConstantDataVector::get(In->getContext(), CVals);
-    return {VectorValue, cast<VectorType>(VectorValue->getType())};
+    return {VectorValue,
+            cast<IGCLLVM::FixedVectorType>(VectorValue->getType())};
   }
   auto *VTy = IGCLLVM::FixedVectorType::get(In->getType(), 1);
   auto *VectorValue = Builder.CreateBitCast(In, VTy);
@@ -510,7 +512,8 @@ Value *GenXEmulate::Emu64Expander::visitICmp(ICmpInst &Cmp) {
 
     Type *Ty64 = Builder.getInt64Ty();
     if (Cmp.getType()->isVectorTy()) {
-      auto NumElements = cast<VectorType>(Cmp.getType())->getNumElements();
+      auto NumElements =
+          cast<IGCLLVM::FixedVectorType>(Cmp.getType())->getNumElements();
       Ty64 = IGCLLVM::FixedVectorType::get(Ty64, NumElements);
     }
     auto *IL = Builder.CreatePtrToInt(Cmp.getOperand(0), Ty64);
@@ -739,8 +742,8 @@ Value *GenXEmulate::Emu64Expander::visitZExtInst(ZExtInst &I) {
   auto VOp = toVector(Builder, I.getOperand(0));
   Value *LoPart = VOp.V;
   if (VOp.VTy->getScalarType()->getPrimitiveSizeInBits() < 32) {
-    auto *ExtendedType =
-        IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), VOp.VTy->getNumElements());
+    auto *ExtendedType = IGCLLVM::FixedVectorType::get(
+        Builder.getInt32Ty(), VOp.VTy->getNumElements());
     LoPart = Builder.CreateZExt(LoPart, ExtendedType, ".zext32");
   }
   auto *ZeroValue = Constant::getNullValue(LoPart->getType());
@@ -752,8 +755,8 @@ Value *GenXEmulate::Emu64Expander::visitSExtInst(SExtInst &I) {
   auto VOp = toVector(Builder, I.getOperand(0));
   auto *LoPart = VOp.V;
   if (VOp.VTy->getScalarType()->getPrimitiveSizeInBits() < 32) {
-    auto *ExtendedType =
-        IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), VOp.VTy->getNumElements());
+    auto *ExtendedType = IGCLLVM::FixedVectorType::get(
+        Builder.getInt32Ty(), VOp.VTy->getNumElements());
     LoPart = Builder.CreateSExt(LoPart, ExtendedType, ".sext32");
   }
   auto *HiPart = Builder.CreateAShr(LoPart, 31u, ".sign_hi");
@@ -866,9 +869,10 @@ Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
   auto Builder = getIRBuilder();
   auto VOp = toVector(Builder, CI.getOperand(0));
 
-  auto MakeConstantSplat64 = [](IRBuilder &B, VectorType *VTy, uint64_t Value) {
-     auto* KV = Constant::getIntegerValue(B.getInt64Ty(), APInt(64, Value));
-     return ConstantDataVector::getSplat(VTy->getNumElements(), KV);
+  auto MakeConstantSplat64 = [](IRBuilder &B, IGCLLVM::FixedVectorType *VTy,
+                                uint64_t Value) {
+    auto *KV = Constant::getIntegerValue(B.getInt64Ty(), APInt(64, Value));
+    return ConstantDataVector::getSplat(VTy->getNumElements(), KV);
   };
   auto MaxDstSigned   = [&](unsigned DstSize) {
      uint64_t MaxVal = (1ull << (DstSize - 1)) - 1;
