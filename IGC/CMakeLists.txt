@@ -1684,6 +1684,7 @@ list(APPEND _targetLinkLineCommon zebinlib)
   else()
     if(CMAKE_WDDM_LINUX)
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
+        pthread
         "${}"
         "${_targetLinkLineCommon}"
         "${CMAKE_DL_LIBS}"
