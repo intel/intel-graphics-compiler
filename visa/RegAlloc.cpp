@@ -537,6 +537,7 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
     bool phyRegAssigned = areAllPhyRegAssigned;
     for (G4_Declare* decl : gra.kernel.Declares)
     {
+
         if (livenessCandidate(decl, verifyRA) && decl->getAliasDeclare() == NULL)
         {
             if (decl->getIsSplittedDcl())
@@ -1057,14 +1058,12 @@ void LivenessAnalysis::computeLiveness()
     // analysis results in uses being propgated along paths that are not feasible
     // in the actual program.
     //
-
     if (performIPA())
     {
         hierarchicalIPA(inputDefs, outputUses);
         stopTimer(TimerID::LIVENESS);
         return;
     }
-
 
 
     if (fg.getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
@@ -1549,11 +1548,11 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
     //  -- At each call site:
     //       add def_out[call-BB] to all of callee's BBs
     def_in[fg.getEntryBB()->getId()] = kernelInput;
-
     for (auto subroutine : fg.sortedFuncTable)
     {
         defAnalysis(subroutine);
     }
+
 
     // FIXME: I assume we consider all caller's defs to be callee's defs too?
     for (auto FI = fg.sortedFuncTable.rbegin(), FE = fg.sortedFuncTable.rend(); FI != FE; ++FI)
@@ -1699,12 +1698,11 @@ bool LivenessAnalysis::writeWholeRegion(const G4_BB* bb,
         return true;
     }
 
-       //
+    //
     // If the region does not cover the whole declare then it does not write the whole region.
-       //
-
-    if (dst->getTypeSize() * execSize !=
-        primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows()) {
+    //
+    if (!primaryDcl->getRegVar()->isRegVarTransient() && (dst->getTypeSize() * execSize !=
+        primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows())) {
            return false;
     }
 
@@ -2401,6 +2399,80 @@ void LivenessAnalysis::dump() const
     }
 }
 
+void LivenessAnalysis::dumpBB(G4_BB *bb) const
+{
+    std::cerr << "\n\nBB" << bb->getId() << "'s live in: ";
+    unsigned total_size = 0;
+    auto dumpVar = [&total_size](G4_RegVar* var)
+    {
+        int size = var->getDeclare()->getTotalElems() * var->getDeclare()->getElemSize();
+        std::cerr << var->getName() << "(" << size << ")" << "[" << var->getRegAllocPartaker() << "], ";
+        total_size += size;
+    };
+
+    unsigned count = 0;
+    for (auto var : vars)
+    {
+        if (var->isRegAllocPartaker() && isLiveAtEntry(bb, var->getId()))
+        {
+            if (count++ % 10 == 0) std::cerr << "\n";
+            dumpVar(var);
+        }
+    }
+    std::cerr << "\n\nBB" << bb->getId() << "'s live out: ";
+    total_size = 0;
+    count = 0;
+    for (auto var : vars)
+    {
+        if (var->isRegAllocPartaker() && isLiveAtExit(bb, var->getId()))
+        {
+            if (count++ % 10 == 0) std::cerr << "\n";
+            dumpVar(var);
+        }
+    }
+    std::cerr << "\n\nBB" << bb->getId() << "'s use through: ";
+    total_size = 0;
+    count = 0;
+    for (auto var : vars)
+    {
+        if (var->isRegAllocPartaker() && isUseThrough(bb, var->getId()))
+        {
+            if (count++ % 10 == 0) std::cerr << "\n";
+            dumpVar(var);
+        }
+    }
+    std::cerr << "\n\nBB" << bb->getId() << "'s def through: ";
+    total_size = 0;
+    count = 0;
+    for (auto var : vars)
+    {
+        if (var->isRegAllocPartaker() && isDefThrough(bb, var->getId()))
+        {
+            if (count++ % 10 == 0) std::cerr << "\n";
+            dumpVar(var);
+        }
+    }
+}
+
+void LivenessAnalysis::dumpLive(BitSet& live) const
+{
+    auto dumpVar = [](G4_RegVar* var)
+    {
+        int size = var->getDeclare()->getTotalElems() * var->getDeclare()->getElemSize();
+        std::cerr << var->getName() << "(" << size << ")" << "[" << var->getRegAllocPartaker() << "], ";
+    };
+
+    unsigned count = 0;
+    for (auto var : vars)
+    {
+        if (live.isSet(var->getId()))
+        {
+            if (count++ % 10 == 0) std::cerr << "\n";
+            dumpVar(var);
+        }
+    }
+}
+
 //
 // dump which vars are live at the entry of BB
 //
@@ -2452,6 +2524,37 @@ bool LivenessAnalysis::isLiveAtEntry(const G4_BB* bb, unsigned var_id) const
 bool LivenessAnalysis::isLiveAtExit(const G4_BB* bb, unsigned var_id) const
 {
     return use_out[bb->getId()].isSet(var_id) && def_out[bb->getId()].isSet(var_id);
+}
+
+//
+// return true if var is user through the bb
+//
+bool LivenessAnalysis::isUseOut(const G4_BB* bb, unsigned var_id) const
+{
+    return use_out[bb->getId()].isSet(var_id);
+}
+
+//
+// return true if var is user through the bb
+//
+bool LivenessAnalysis::isUseIn(const G4_BB* bb, unsigned var_id) const
+{
+    return use_in[bb->getId()].isSet(var_id);
+}
+
+//
+// return true if var is user through the bb
+//
+bool LivenessAnalysis::isUseThrough(const G4_BB* bb, unsigned var_id) const
+{
+    return use_in[bb->getId()].isSet(var_id) && use_out[bb->getId()].isSet(var_id);
+}
+//
+// return true if var is live at the exit of bb
+//
+bool LivenessAnalysis::isDefThrough(const G4_BB* bb, unsigned var_id) const
+{
+    return def_in[bb->getId()].isSet(var_id) && def_out[bb->getId()].isSet(var_id);
 }
 
 
@@ -2804,7 +2907,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             }
                             else
                             {
-                                MUST_BE_TRUE(false, "RA verification error: Found conflicting live-in variables: " << dcl->getName()
+                                DEBUG_MSG("RA verification warning: Found conflicting live-in variables: " << dcl->getName()
                                     << " and " << LiveInRegMapIt->second->getName() << " assigned to r" <<
                                     regNum << "." << regOff << "!\n");
                             }
@@ -2831,7 +2934,6 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         {
             if (dcl->getAliasDeclare() != NULL)
                 continue;
-
             if (dcl->getRegVar()->isRegAllocPartaker())
             {
                 G4_RegVar* var = dcl->getRegVar();
@@ -2861,7 +2963,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             }
                             else
                             {
-                                MUST_BE_TRUE(false, "RA verification error: Found conflicting live-out variables: " << dcl->getName()
+                                DEBUG_MSG("RA verification warning: Found conflicting live-out variables: " << dcl->getName()
                                     << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
                                     regNum << "." << regOff << "!\n");
                             }

@@ -35,6 +35,8 @@ namespace IGC
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
+        void checkGlobalLocal(llvm::Instruction& I);
+
         virtual llvm::StringRef getPassName() const override
         {
             return "CheckInstrTypes";

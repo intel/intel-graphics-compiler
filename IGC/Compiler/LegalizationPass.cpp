@@ -159,6 +159,19 @@ void Legalization::visitInstruction(llvm::Instruction& I)
 {
     if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
         m_ctx->m_instrTypes.numInsts++;
+
+    BasicBlock* dBB = I.getParent();
+
+    for (auto U : I.users()) {
+        auto UI = dyn_cast<Instruction>(U);
+        BasicBlock* uBB = UI->getParent();
+        if (uBB != dBB)
+        {
+            m_ctx->m_instrTypes.numGlobalInsts++;
+            return;
+        }
+    }
+    m_ctx->m_instrTypes.numLocalInsts++;
 }
 
 void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)

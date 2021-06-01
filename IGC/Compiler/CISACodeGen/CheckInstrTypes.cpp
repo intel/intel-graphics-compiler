@@ -84,6 +84,8 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->numOfLoop = 0;
     instrList->numInsts = 0;
     instrList->numAllocaInsts = 0;
+    instrList->numGlobalInsts = 0;
+    instrList->numLocalInsts = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
     instrList->hasPullBary = false;
@@ -122,11 +124,28 @@ bool CheckInstrTypes::runOnFunction(Function& F)
     return false;
 }
 
+void CheckInstrTypes::checkGlobalLocal(llvm::Instruction& I)
+{
+    BasicBlock* dBB = I.getParent();
+
+    for (auto U : I.users()) {
+        auto UI = dyn_cast<Instruction>(U);
+        BasicBlock* uBB = UI->getParent();
+        if (uBB != dBB)
+        {
+            g_InstrTypes->numGlobalInsts++;
+            return;
+        }
+    }
+    g_InstrTypes->numLocalInsts++;
+}
+
 void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
 {
     if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
     {
         g_InstrTypes->numInsts++;
+        checkGlobalLocal(I);
     }
 
     if (I.getOpcode() == Instruction::FRem)
@@ -144,6 +163,7 @@ void CheckInstrTypes::visitInstruction(llvm::Instruction& I)
 void CheckInstrTypes::visitCallInst(CallInst& C)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(C);
     g_InstrTypes->hasCall = true;
 
     Function* calledFunc = C.getCalledFunction();
@@ -298,35 +318,41 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
 void CheckInstrTypes::visitBranchInst(BranchInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
 }
 
 void CheckInstrTypes::visitSwitchInst(SwitchInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasSwitch = true;
 }
 
 void CheckInstrTypes::visitIndirectBrInst(IndirectBrInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasIndirectBranch = true;
 }
 
 void CheckInstrTypes::visitICmpInst(ICmpInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasCmp = true;
 }
 
 void CheckInstrTypes::visitFCmpInst(FCmpInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasCmp = true;
 }
 
 void CheckInstrTypes::visitAllocaInst(AllocaInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->numAllocaInsts++;
     if (I.isArrayAllocation() ||
         I.getAllocatedType()->isArrayTy() ||
@@ -355,6 +381,7 @@ void CheckInstrTypes::visitAllocaInst(AllocaInst& I)
 void CheckInstrTypes::visitLoadInst(LoadInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasLoadStore = true;
     uint as = I.getPointerAddressSpace();
     switch (as)
@@ -387,6 +414,7 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
 void CheckInstrTypes::visitStoreInst(StoreInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasLoadStore = true;
     uint as = I.getPointerAddressSpace();
     if (as != ADDRESS_SPACE_PRIVATE)
@@ -423,18 +451,21 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
 void CheckInstrTypes::visitPHINode(PHINode& PN)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(PN);
     g_InstrTypes->hasPhi = true;
 }
 
 void CheckInstrTypes::visitSelectInst(SelectInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     g_InstrTypes->hasSel = true;
 }
 
 void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst& I)
 {
     g_InstrTypes->numInsts++;
+    checkGlobalLocal(I);
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
     {
         g_InstrTypes->hasGenericAddressSpacePointers = true;
