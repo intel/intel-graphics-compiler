@@ -6345,12 +6345,26 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
   if (PrintFinalizerOptions)
     dumpFinalizerArgs(Argv, ST.getCPU());
 
+  // Special error processing here related to strange case where on Windows
+  // machines only we had failures, reproducible only when shader dumps are
+  // off. This code is to diagnose such cases simpler.
   VISABuilder *VB = nullptr;
-  CISA_CALL_CTX(CreateVISABuilder(
-                    VB, Mode, EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH,
-                    Platform, Argv.size(), Argv.data(), BC.getWATable()),
-                Ctx);
-  IGC_ASSERT_MESSAGE(VB, "Failed to create VISABuilder!");
+  int Result = CreateVISABuilder(
+      VB, Mode, EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH, Platform,
+      Argv.size(), Argv.data(), BC.getWATable());
+  if (Result != 0 || VB == nullptr) {
+    std::string Str;
+    llvm::raw_string_ostream Os(Str);
+    Os << "VISA builder creation failed\n";
+    Os << "Mode: " << Mode << "\n";
+    Os << "Args:\n";
+    for (const char *Arg : Argv)
+      Os << Arg << " ";
+    Os << "Visa only: " << (EmitVisa ? "yes" : "no") << "\n";
+    Os << "Platform: " << ST.getVisaPlatform() << "\n";
+    DiagnosticInfoCisaBuild Err(Str, DS_Error);
+    Ctx.diagnose(Err);
+  }
   return VB;
 }
 
