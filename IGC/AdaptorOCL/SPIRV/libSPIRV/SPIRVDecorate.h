@@ -214,6 +214,40 @@ public:
   virtual void decorateTargets();
 };
 
+class SPIRVDecorateId : public SPIRVDecorateGeneric {
+public:
+    static const Op OC = OpDecorateId;
+    static const SPIRVWord FixedWC = 3;
+    // Complete constructor for decorations with one id operand
+    SPIRVDecorateId(Decoration TheDec, SPIRVEntry* TheTarget, SPIRVId V)
+        : SPIRVDecorateGeneric(OC, 4, TheDec, TheTarget, V) {}
+    // Incomplete constructor
+    SPIRVDecorateId() : SPIRVDecorateGeneric(OC) {}
+
+    _SPIRV_DCL_DEC_OVERRIDE
+    void setWordCount(SPIRVWord) override;
+    void validate() const override {
+        SPIRVDecorateGeneric::validate();
+        IGC_ASSERT(WordCount == Literals.size() + FixedWC);
+    }
+};
+
+class SPIRVDecorateAliasScopeINTEL : public SPIRVDecorateId {
+public:
+    // Complete constructor for SPIRVDecorateAliasScopeINTEL
+    SPIRVDecorateAliasScopeINTEL(SPIRVEntry* TheTarget, SPIRVId AliasList)
+        : SPIRVDecorateId(DecorationAliasScopeINTEL, TheTarget,
+            AliasList) {};
+};
+
+class SPIRVDecorateNoAliasINTEL : public SPIRVDecorateId {
+public:
+    // Complete constructor for SPIRVDecorateNoAliasINTEL
+    SPIRVDecorateNoAliasINTEL(SPIRVEntry* TheTarget, SPIRVId AliasList)
+        : SPIRVDecorateId(DecorationNoAliasINTEL, TheTarget,
+            AliasList) {};
+};
+
 }
 
 

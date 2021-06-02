@@ -395,6 +395,8 @@ enum Decoration {
     DecorationReferencedIndirectlyINTEL = 5602,
     DecorationSideEffectsINTEL = 5608,
     DecorationUserSemantic = 5635,
+    DecorationAliasScopeINTEL = 5914,
+    DecorationNoAliasINTEL = 5915,
 };
 
 enum BuiltIn {
@@ -492,6 +494,8 @@ enum MemoryAccessMask {
     MemoryAccessVolatileMask = 0x00000001,
     MemoryAccessAlignedMask = 0x00000002,
     MemoryAccessNontemporalMask = 0x00000004,
+    MemoryAccessAliasScopeINTELMask = 0x10000,
+    MemoryAccessNoAliasINTELMask = 0x20000,
 };
 
 enum Scope {
@@ -606,6 +610,7 @@ enum Capability {
     CapabilityVariableLengthArrayINTEL = 5817,
     CapabilityFPFastMathModeINTEL = 5837,
     CapabilityUnstructuredLoopControlsINTEL = 5886,
+    CapabilityMemoryAccessAliasingINTEL = 5910,
     CapabilityLongConstantCompositeINTEL = 6089,
     CapabilityOptNoneINTEL = 6094,
     CapabilityTokenTypeINTEL = 6112

@@ -47,6 +47,7 @@ THE SOFTWARE.
 #include "SPIRVEntry.h"
 #include "SPIRVFunction.h"
 #include "SPIRVInstruction.h"
+#include "SPIRVMemAliasingINTEL.h"
 #include "SPIRVAsm.h"
 #include "Probe/Assertion.h"
 
@@ -192,7 +193,21 @@ SPIRVEntry::addDecorate(Decoration Kind) {
 
 void
 SPIRVEntry::addDecorate(Decoration Kind, SPIRVWord Literal) {
-  addDecorate(new SPIRVDecorate(Kind, this, Literal));
+    switch (static_cast<int>(Kind)) {
+    case DecorationAliasScopeINTEL:
+    case DecorationNoAliasINTEL:
+        addDecorate(new SPIRVDecorateId(Kind, this, Literal));
+        return;
+    default:
+        addDecorate(new SPIRVDecorate(Kind, this, Literal));
+    }
+}
+
+void
+SPIRVEntry::addDecorate(SPIRVDecorateId* Dec) {
+    DecorateIds.insert(std::make_pair(Dec->getDecorateKind(), Dec));
+    Module->addDecorate(Dec);
+    SPIRVDBG(spvdbgs() << "[addDecorateId] " << *Dec << '\n';)
 }
 
 void
@@ -203,6 +218,12 @@ SPIRVEntry::eraseDecorate(Decoration Dec){
 void
 SPIRVEntry::takeDecorates(SPIRVEntry *E){
   Decorates = std::move(E->Decorates);
+}
+
+void
+SPIRVEntry::takeDecorateIds(SPIRVEntry* E) {
+    DecorateIds = std::move(E->DecorateIds);
+    SPIRVDBG(spvdbgs() << "[takeDecorateIds] " << Id << '\n';)
 }
 
 void
@@ -259,6 +280,7 @@ void
 SPIRVEntry::takeAnnotations(SPIRVForward *E){
   Module->setName(this, E->getName());
   takeDecorates(E);
+  takeDecorateIds(E);
   takeMemberDecorates(E);
   takeLine(E);
   if (OpCode == OpFunction)
@@ -281,6 +303,16 @@ SPIRVEntry::hasDecorate(Decoration Kind, size_t Index, SPIRVWord *Result)const {
   return true;
 }
 
+bool SPIRVEntry::hasDecorateId(Decoration Kind, size_t Index,
+    SPIRVId* Result) const {
+    auto Loc = DecorateIds.find(Kind);
+    if (Loc == DecorateIds.end())
+        return false;
+    if (Result)
+        *Result = Loc->second->getLiteral(Index);
+    return true;
+}
+
 // Get literals of all decorations of Kind at Index.
 std::set<SPIRVWord>
 SPIRVEntry::getDecorate(Decoration Kind, size_t Index) const {
@@ -291,6 +323,37 @@ SPIRVEntry::getDecorate(Decoration Kind, size_t Index) const {
     Value.insert(I->second->getLiteral(Index));
   }
   return Value;
+}
+
+std::vector<SPIRVId>
+SPIRVEntry::getDecorationIdLiterals(Decoration Kind) const {
+    auto Loc = DecorateIds.find(Kind);
+    if (Loc == DecorateIds.end())
+        return {};
+
+    return (Loc->second->getVecLiteral());
+}
+
+std::set<SPIRVId> SPIRVEntry::getDecorateId(Decoration Kind,
+    size_t Index) const {
+    auto Range = DecorateIds.equal_range(Kind);
+    std::set<SPIRVId> Value;
+    for (auto I = Range.first, E = Range.second; I != E; ++I) {
+        assert(Index < I->second->getLiteralCount() && "Invalid index");
+        Value.insert(I->second->getLiteral(Index));
+    }
+    return Value;
+}
+
+std::vector<SPIRVDecorateId const*>
+SPIRVEntry::getDecorationIds(Decoration Kind) const {
+    auto Range = DecorateIds.equal_range(Kind);
+    std::vector<SPIRVDecorateId const*> Decors;
+    Decors.reserve(DecorateIds.count(Kind));
+    for (auto I = Range.first, E = Range.second; I != E; ++I) {
+        Decors.push_back(I->second);
+    }
+    return Decors;
 }
 
 std::vector<std::string>

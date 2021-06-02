@@ -51,6 +51,7 @@ THE SOFTWARE.
 #include "SPIRVValue.h"
 #include "SPIRVFunction.h"
 #include "SPIRVInstruction.h"
+#include "SPIRVMemAliasingINTEL.h"
 #include "SPIRVAsm.h"
 #include "Probe/Assertion.h"
 
@@ -287,6 +288,8 @@ private:
   typedef std::map<SPIRVId, SPIRVEntry *> SPIRVIdToEntryMap;
   typedef std::map<SPIRVTypeStruct*,
       std::vector<std::pair<unsigned, SPIRVId> > > SPIRVUnknownStructFieldMap;
+  typedef std::vector<SPIRVEntry*> SPIRVAliasInstMDVec;
+  typedef std::unordered_map<llvm::MDNode*, SPIRVEntry*> SPIRVAliasInstMDMap;
   typedef std::unordered_set<SPIRVEntry *> SPIRVEntrySet;
   typedef std::set<SPIRVId> SPIRVIdSet;
   typedef std::vector<SPIRVId> SPIRVIdVec;
@@ -322,6 +325,8 @@ private:
   SPIRVSpecConstantMap *SCMap;
   std::map<unsigned, SPIRVTypeInt*> IntTypeMap;
   std::map<unsigned, SPIRVConstant*> LiteralMap;
+  SPIRVAliasInstMDVec AliasInstMDVec;
+  SPIRVAliasInstMDMap AliasInstMDMap;
 
   void layoutEntry(SPIRVEntry* Entry);
 };
@@ -361,7 +366,8 @@ SPIRVModuleImpl::getLiteralAsConstant(unsigned Literal) {
 void
 SPIRVModuleImpl::layoutEntry(SPIRVEntry* E) {
   auto OC = E->getOpCode();
-  switch (OC) {
+  int IntOC = static_cast<int>(OC);
+  switch (IntOC) {
   case OpString:
     addTo(StringVec, E);
     break;
@@ -373,6 +379,12 @@ SPIRVModuleImpl::layoutEntry(SPIRVEntry* E) {
     if (!BV->getParent())
       addTo(VariableVec, E);
     }
+  case OpAliasDomainDeclINTEL:
+  case OpAliasScopeDeclINTEL:
+  case OpAliasScopeListDeclINTEL: {
+      addTo(AliasInstMDVec, E);
+      break;
+  }
     break;
   default:
     break;

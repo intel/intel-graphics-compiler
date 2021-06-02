@@ -308,6 +308,7 @@ _SPIRV_OP(TypeNamedBarrier, 327)
 _SPIRV_OP(NamedBarrierInitialize, 328)
 _SPIRV_OP(MemoryNamedBarrier, 329)
 _SPIRV_OP(ModuleProcessed, 330)
+_SPIRV_OP(DecorateId, 332)
 // SPIR-V 1.3 non uniform subgroup builtins
 _SPIRV_OP(GroupNonUniformElect, 333)
 _SPIRV_OP(GroupNonUniformAll, 334)
@@ -493,6 +494,9 @@ _SPIRV_OP(VariableLengthArrayINTEL, 5818)
 _SPIRV_OP(SaveMemoryINTEL, 5819)
 _SPIRV_OP(RestoreMemoryINTEL, 5820)
 _SPIRV_OP(LoopControlINTEL, 5887)
+_SPIRV_OP(AliasDomainDeclINTEL, 5911)
+_SPIRV_OP(AliasScopeDeclINTEL, 5912)
+_SPIRV_OP(AliasScopeListDeclINTEL, 5913)
 // SPV_EXT_shader_atomic_float_add
 _SPIRV_OP(AtomicFAddEXT, 6035)
 // SPV_INTEL_long_constant_composite

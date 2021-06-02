@@ -177,5 +177,17 @@ bool operator==(const SPIRVDecorateGeneric &A, const SPIRVDecorateGeneric &B) {
   }
   return true;
 }
+
+void SPIRVDecorateId::setWordCount(SPIRVWord Count) {
+    WordCount = Count;
+    Literals.resize(WordCount - FixedWC);
+}
+
+void SPIRVDecorateId::decode(std::istream& I) {
+    SPIRVDecoder Decoder = getDecoder(I);
+    Decoder >> Target >> Dec >> Literals;
+    getOrCreateTarget()->addDecorate(this);
+}
+
 }
 

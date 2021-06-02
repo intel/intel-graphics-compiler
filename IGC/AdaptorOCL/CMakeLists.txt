@@ -34,6 +34,7 @@ if(IGC_BUILD__SPIRV_ENABLED)
       SPIRV/libSPIRV/SPIRVExtInst.h
       SPIRV/libSPIRV/SPIRVFunction.h
       SPIRV/libSPIRV/SPIRVInstruction.h
+      SPIRV/libSPIRV/SPIRVMemAliasingINTEL.h
       SPIRV/libSPIRV/SPIRVModule.h
       SPIRV/libSPIRV/SPIRVOpCode.h
       SPIRV/libSPIRV/SPIRVOpCodeEnum.h

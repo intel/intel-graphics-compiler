@@ -65,6 +65,7 @@ class SPIRVDecoder;
 class SPIRVType;
 class SPIRVValue;
 class SPIRVDecorate;
+class SPIRVDecorateId;
 class SPIRVForward;
 class SPIRVMemberDecorate;
 class SPIRVLine;
@@ -224,8 +225,13 @@ public:
   const std::string& getName() const { return Name;}
   bool hasDecorate(Decoration Kind, size_t Index = 0,
       SPIRVWord *Result=0)const;
+  bool hasDecorateId(Decoration Kind, size_t Index = 0,
+      SPIRVId* Result = 0) const;
   std::set<SPIRVWord> getDecorate(Decoration Kind, size_t Index = 0)const;
+  std::set<SPIRVId> getDecorateId(Decoration Kind, size_t Index = 0) const;
+  std::vector<SPIRVDecorateId const*> getDecorationIds(Decoration Kind) const;
   std::vector<std::string> getDecorationStringLiteral(Decoration Kind) const;
+  std::vector<SPIRVId> getDecorationIdLiterals(Decoration Kind) const;
   bool hasId() const { return !(Attrib & SPIRVEA_NOID);}
   bool hasLine() const { return Line != nullptr;}
   bool hasLinkageType() const;
@@ -233,6 +239,7 @@ public:
   bool isBasicBlock() const { return isLabel();}
   bool isBuiltinCall() const { return OpCode == OpExtInst;}
   bool isDecorate()const { return OpCode == OpDecorate;}
+  bool isDecorateId() const { return OpCode == OpDecorateId; }
   bool isMemberDecorate()const { return OpCode == OpMemberDecorate;}
   bool isForward() const { return OpCode == OpForward;}
   bool isLabel() const { return OpCode == OpLabel;}
@@ -243,9 +250,11 @@ public:
   virtual bool isInst() const { return false;}
 
   void addDecorate(const SPIRVDecorate *);
+  void addDecorate(SPIRVDecorateId*);
   void addDecorate(Decoration Kind);
   void addDecorate(Decoration Kind, SPIRVWord Literal);
   void eraseDecorate(Decoration);
+  void eraseDecorateId(Decoration);
   void addMemberDecorate(const SPIRVMemberDecorate *);
   void addMemberDecorate(SPIRVWord MemberNumber, Decoration Kind);
   void addMemberDecorate(SPIRVWord MemberNumber, Decoration Kind,
@@ -262,6 +271,7 @@ public:
   virtual void setScope(SPIRVEntry *Scope){};
   void takeAnnotations(SPIRVForward *);
   void takeDecorates(SPIRVEntry *);
+  void takeDecorateIds(SPIRVEntry*);
   void takeMemberDecorates(SPIRVEntry *);
   void takeLine(SPIRVEntry *);
 
@@ -301,6 +311,7 @@ public:
 protected:
   /// An entry may have multiple FuncParamAttr decorations.
   typedef std::multimap<Decoration, const SPIRVDecorate*> DecorateMapType;
+  typedef std::multimap<Decoration, const SPIRVDecorateId*> DecorateIdMapType;
   typedef std::map<std::pair<SPIRVWord, Decoration>,
       const SPIRVMemberDecorate*> MemberDecorateMapType;
 
@@ -321,6 +332,7 @@ protected:
   SPIRVWord WordCount;
 
   DecorateMapType Decorates;
+  DecorateIdMapType DecorateIds;
   MemberDecorateMapType MemberDecorates;
   SPIRVLine *Line;
   SPIRVExtInst* diScope = nullptr;
