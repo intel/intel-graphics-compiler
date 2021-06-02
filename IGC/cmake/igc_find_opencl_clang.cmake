@@ -110,6 +110,11 @@ elseif(${CCLANG_BUILD_PREBUILDS})
   string(REGEX MATCH "clang version ([0-9]*\\.[0-9]*\\.[0-9]*[a-zA-Z0-9]*)" CLANG_TOOL_VERSION "${CLANG_TOOL_V_CALL}")
   set(CLANG_TOOL_VERSION "${CMAKE_MATCH_1}")
 
+  # Check if we parse clang tool version correctly
+  if(NOT CLANG_TOOL_VERSION)
+    message(FATAL_ERROR "[IGC] : Cannot read version of clang tool, please check the output of execution `clang -v` : ${CLANG_TOOL_V_CALL}")
+  endif()
+
   # Check if llvm version for IGC is newer or equal with the clang-tool version
   if(${LLVM_PACKAGE_VERSION} VERSION_GREATER ${CLANG_TOOL_VERSION} OR
      ${LLVM_PACKAGE_VERSION} EQUAL ${CLANG_TOOL_VERSION})
