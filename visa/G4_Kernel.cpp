@@ -645,6 +645,7 @@ static iga_gen_t getIGAPlatform()
     case GENX_BXT: platform = IGA_GEN9lp; break;
     case GENX_ICLLP: platform = IGA_GEN11; break;
     case GENX_TGLLP:platform = IGA_GEN12p1; break;
+    case GENX_XE_HP: platform = IGA_XE_HP; break;
     default:
         break;
     }
@@ -786,6 +787,29 @@ void G4_Kernel::setKernelParameters()
     TARGET_PLATFORM platform = getGenxPlatform();
     overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
 
+    overrideNumThreads = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
+
+    //
+    // Number of threads/GRF can currently be set by:
+    // 1.- IGC flag (reg key)
+    // 2.- Compiler option entered by user for
+    //      2.1 entire module
+    //      2.2 kernel function
+    // 3.- Compiler heuristics
+    //
+    if (m_options->getuInt32Option(vISA_ForceHWThreadNumberPerEU))
+    {
+        numThreads = m_options->getuInt32Option(vISA_ForceHWThreadNumberPerEU);
+    }
+    regSharingHeuristics = m_options->getOption(vISA_RegSharingHeuristics);
+    if (overrideNumThreads || regSharingHeuristics)
+    {
+        overrideGRFNum = 0;
+        if (numThreads > 0)
+        {
+            overrideNumThreads = numThreads;
+        }
+    }
 
     // Set the number of GRFs
     if (overrideGRFNum > 0)
@@ -801,6 +825,25 @@ void G4_Kernel::setKernelParameters()
             numRegTotal = overrideGRFNum;
         }
         callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
+    }
+    else if (overrideNumThreads > 0)
+    {
+        switch (platform)
+        {
+        case GENX_XE_HP:
+            switch (overrideNumThreads)
+            {
+            case 4:
+                numRegTotal = 256;
+                break;
+            default:
+                numRegTotal = 128;
+            }
+            break;
+        default:
+            numRegTotal = 128;
+        }
+        callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
     }
     else
     {
@@ -837,11 +880,36 @@ void G4_Kernel::setKernelParameters()
         // User-provided number of Acc
         numAcc = overrideNumAcc;
     }
+    else if (overrideNumThreads > 0)
+    {
+        switch (platform)
+        {
+        case GENX_XE_HP:
+            switch (overrideNumThreads)
+            {
+            case 4:
+                numAcc = 8;
+                break;
+            default:
+                numAcc = 4;
+            }
+            break;
+        default:
+            numAcc = 4;
+        }
+    }
     else
     {
         // Default value based on platform
         switch (platform)
         {
+        case GENX_XE_HP:
+            numAcc = 4;
+            if (numRegTotal == 256)
+            {
+                numAcc *= 2;
+            }
+            break;
         default:
             numAcc = 2;
         }
@@ -858,6 +926,16 @@ void G4_Kernel::setKernelParameters()
         {
             switch (platform)
             {
+            case GENX_XE_HP:
+                switch (numRegTotal)
+                {
+                case 256:
+                    numThreads = 4;
+                    break;
+                default:
+                    numThreads = 8;
+                }
+                break;
             default:
                 numThreads = 7;
             }
@@ -1337,6 +1415,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
             case Type_HF: sstype << ":hf"; break;
             case Type_DF: sstype << ":df"; break;
             case Type_NF: sstype << ":nf"; break;
+            case Type_BF: sstype << ":bf"; break;
             default:
                 sstype << fmtHex((int)dcl->getElemType()) << "?";
                 break;
@@ -1617,7 +1696,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
 
             static const uint32_t IGA_FMT_OPTS =
                 IGA_FORMATTING_OPT_PRINT_LDST
-                ;
+                | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
             while (true) {
                 size_t nw = kv.getInstSyntax(
                     pc,

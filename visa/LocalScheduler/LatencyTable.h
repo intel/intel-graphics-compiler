@@ -64,6 +64,9 @@ namespace vISA
         DELTA                   = 1,    // Extra cycles for wider SIMD sizes, compute only.
         DELTA_MATH              = 4,
         ARF                     = 16,   // latency for ARF dependencies (flag, address, etc.)
+        // Latency for dpas 8x1
+        // Latency for dpas 8x8 is 21 + 7 = 28
+        DPAS = 21,
 
         //
         // Message latencies

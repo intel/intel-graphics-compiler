@@ -358,6 +358,9 @@ void G4_BB::emitBankConflict(std::ostream& output, const G4_INST *inst)
     int execSize[G4_MAX_SRCS];
     int regSrcNum = 0;
 
+    if (inst->isDpas()) {
+        return;
+    }
 
     if (inst->getNumSrc() == 3 && !inst->isSend())
     {
@@ -1350,7 +1353,7 @@ uint32_t G4_BB::emitBankConflictXeLP(
 uint32_t G4_BB::countReadModifyWrite(std::ostream& output, const G4_INST *inst)
 {
     if (!inst->getDst() || inst->getDst()->isNullReg() ||
-        inst->isSend())
+        inst->isSend() || inst->isDpas())
     {
         return 0;
     }

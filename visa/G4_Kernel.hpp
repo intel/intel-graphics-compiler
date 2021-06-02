@@ -148,6 +148,7 @@ private:
     G4_ExecSize simdSize {0u}; // must start as 0
     bool channelSliced = true;
     bool hasAddrTaken;
+    bool regSharingHeuristics;
     Options *m_options;
     const Attributes* m_kernelAttrs;
 
@@ -196,6 +197,11 @@ public:
 
     void setBuilder(IR_Builder *pBuilder) {fg.setBuilder(pBuilder);}
 
+    bool useRegSharingHeuristics() const {
+        // Register sharing not enabled in presence of stack calls
+        return regSharingHeuristics && !m_hasIndirectCall &&
+            !fg.getIsStackCallFunc() && !fg.getHasStackCalls();
+    }
 
     void     setNumThreads(int nThreads) { numThreads = nThreads; }
     uint32_t getNumThreads() const { return numThreads; }

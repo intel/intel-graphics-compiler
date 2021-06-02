@@ -694,6 +694,7 @@ void IR_Builder::createBuiltinDecls()
 
     builtinSamplerHeader = createDeclareNoLookup("samplerHeader", G4_GRF, numEltPerGRF<Type_UD>(), 1, Type_UD);
 
+    builtinScratchSurface = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_SCRATCH].name, G4_GRF, 1, 1, Type_UD);
 }
 
 
@@ -842,6 +843,40 @@ uint32_t IR_Builder::getSplitEMask(unsigned execSize, uint32_t eMask, bool isLo)
     return ~0U;
 }
 
+void IR_Builder::initScratchSurfaceOffset()
+{
+    // (W) and (1) sso r0.5 0xFFFFC00, placed at kernel entry
+    if (!scratchSurfaceOffset)
+    {
+        G4_SrcRegRegion* R0_5 = createSrc(builtinR0->getRegVar(), 0, 5,
+            getRegionScalar(), Type_UD);
+        scratchSurfaceOffset = createTempVar(1, Type_UD, Any, "SSO");
+        scratchSurfaceOffset->setLiveOut();
+        scratchSurfaceOffset->setDoNotSpill();
+        if (kernel.getBoolKernelAttr(Attributes::ATTR_SepSpillPvtSS))
+        {
+            G4_Declare* slot0SSO = createTempVar(1, Type_UD, Any, "Slot0SSO");
+            G4_DstRegRegion* andDst = Create_Dst_Opnd_From_Dcl(slot0SSO, 1);
+            auto andInst = createBinOp(G4_and, g4::SIMD1, andDst, R0_5, createImm(0xFFFFFC00, Type_UD), InstOpt_WriteEnable, true);
+            instList.pop_back();
+            auto iter = std::find_if(instList.begin(), instList.end(), [](G4_INST* inst) { return !inst->isLabel(); });
+            instList.insert(iter, andInst);
+
+            //scratchSurfaceOffset is reserved for spillfill, pvtmem should use r0.5+1
+            G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(scratchSurfaceOffset, 1);
+            createBinOp(G4_add, g4::SIMD1, dst, Create_Src_Opnd_From_Dcl(slot0SSO, getRegionScalar()),
+                createImm(0x400, Type_UD), InstOpt_WriteEnable, true);
+        }
+        else
+        {
+            G4_DstRegRegion* andDst = Create_Dst_Opnd_From_Dcl(scratchSurfaceOffset, 1);
+            auto andInst = createBinOp(G4_and, g4::SIMD1, andDst, R0_5, createImm(0xFFFFFC00, Type_UD), InstOpt_WriteEnable, true);
+            instList.pop_back();
+            auto iter = std::find_if(instList.begin(), instList.end(), [](G4_INST* inst) { return !inst->isLabel(); });
+            instList.insert(iter, andInst);
+        }
+    }
+}
 
 
 G4_Declare* IR_Builder::createTempVar(
@@ -1643,6 +1678,144 @@ G4_INST* IR_Builder::createCFInst(
     return ii;
 }
 
+G4_INST* IR_Builder::createDpasInst(
+    G4_opcode opc, G4_ExecSize execSize,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
+    G4_Operand* src3,
+    G4_InstOpts options,
+    GenPrecision A,
+    GenPrecision W,
+    uint8_t      D,
+    uint8_t      C,
+    bool addToInstList)
+{
+    G4_INST* i = new (mem)G4_InstDpas(*this,
+        opc, execSize, dst, src0, src1, src2, src3, options, A, W, D, C);
+
+    if (addToInstList)
+    {
+        i->setCISAOff(curCISAOffset);
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(allocateMDLocation(curLine, curFile));
+        }
+        instList.push_back(i);
+    }
+
+    instAllocList.push_back(i);
+
+
+    return i;
+}
+
+G4_INST* IR_Builder::createInternalDpasInst(
+    G4_opcode opc,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    G4_Operand* src3,
+    G4_InstOpts options,
+    GenPrecision A,
+    GenPrecision W,
+    uint8_t D,
+    uint8_t C)
+{
+    auto ii = createDpasInst(opc, execSize, dst, src0, src1, src2,
+        nullptr, options, A, W, D, C, false);
+
+    return ii;
+}
+
+G4_INST* IR_Builder::createBfnInst(
+    uint8_t booleanFuncCtrl,
+    G4_Predicate* prd,
+    G4_CondMod* mod,
+    G4_Sat sat,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    G4_InstOpts options,
+    bool addToInstList)
+{
+    G4_INST* i = new (mem)G4_InstBfn(*this,
+        prd, mod, sat, execSize, dst, src0, src1, src2, options, booleanFuncCtrl);
+
+    if (addToInstList)
+    {
+        i->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(allocateMDLocation(curLine, curFile));
+        }
+        instList.push_back(i);
+    }
+
+    instAllocList.push_back(i);
+
+    return i;
+}
+
+G4_INST* IR_Builder::createInternalBfnInst(
+    uint8_t booleanFuncCtrl,
+    G4_Predicate* prd,
+    G4_CondMod* mod,
+    G4_Sat sat,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_Operand* src2,
+    G4_InstOpts options)
+{
+    auto ii = createBfnInst(
+        booleanFuncCtrl, prd, mod, sat, execSize, dst, src0, src1, src2, options, false);
+
+    return ii;
+}
+
+//scratch surfaces, write r0.5 to message descriptor
+//exdesc holds the value of the extended message descriptor for bit [0:11]
+// kernel entry:
+//      and (1) tmp<1>:ud r0.5<0;1,0>:ud 0xFFFFFC00:ud {NoMask}
+// before send message:
+//  shl (1) a0.0<1>:ud tmp<1>:ud 0x2 {NoMask}
+//  (for old exDesc format) add (1) a0.0<1>:ud tmp<1>:ud exDesc:ud {NoMask}
+// returns a0.0<0;1,0>:ud
+G4_SrcRegRegion* IR_Builder::createScratchExDesc(uint32_t exdesc)
+{
+    const char* buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
+    G4_Declare* exDescDecl = createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
+    exDescDecl->setSubRegAlign(Four_Word);
+
+    // copy r0.5[10:31] to a0[12:31] or a0[6:31] for the new format
+    initScratchSurfaceOffset();
+
+    if (!useNewExtDescFormat())
+    {
+
+        // (W) shl (1) a0.0 sso 0x2
+        auto shlSrc0 = Create_Src_Opnd_From_Dcl(scratchSurfaceOffset, getRegionScalar());
+        auto shlDst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
+        createBinOp(G4_shl, g4::SIMD1, shlDst, shlSrc0, createImm(0x2, Type_UW), InstOpt_WriteEnable, true);
+
+        G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
+        createBinOp(G4_add, g4::SIMD1, dst, Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar()),
+            createImm(exdesc, Type_UD), InstOpt_WriteEnable, true);
+    }
+    else
+    {
+        // (W) shr (1) a0.0 ss0 0x4
+        auto shrSrc0 = Create_Src_Opnd_From_Dcl(scratchSurfaceOffset, getRegionScalar());
+        auto shrDst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
+        createBinOp(G4_shr, g4::SIMD1, shrDst, shrSrc0, createImm(0x4, Type_UW), InstOpt_WriteEnable, true);
+    }
+    return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
+}
 
 G4_INST* IR_Builder::createInst(
     G4_Predicate* prd,
@@ -2228,6 +2401,12 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
                 desc = (desc & ~0xFF) | PREDEF_SURF_252;
             }
         }
+        else if (isScratchSpace(bti))
+        {
+            // use BTI 251
+            needsA0ExDesc = true;
+            desc = (desc & ~0xFF) | 251;
+        }
         else
         {
             needsSurfaceMove = true;
@@ -2299,7 +2478,7 @@ G4_InstSend *IR_Builder::Create_SplitSend_Inst(
 
     if (needsA0ExDesc)
     {
-        extDescOpnd = createBindlessExDesc(exdesc);
+        extDescOpnd = isBindlessSurface(bti) ? createBindlessExDesc(exdesc) : createScratchExDesc(exdesc);
     }
     else
     {

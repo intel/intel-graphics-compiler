@@ -121,7 +121,8 @@ public:
     enum RegAccessPipe : unsigned char {
       Pipe_ALU = 0,
       Pipe_Math = 1,
-      Pipe_Send = 2
+      Pipe_Send = 2,
+      Pipe_Dpas = 3
     };
 
     struct RegAccess {
@@ -341,6 +342,8 @@ private:
 
     G4_Declare* oldA0Dot2Temp = nullptr;
 
+    G4_Declare* builtinScratchSurface = nullptr;
+    G4_Declare* scratchSurfaceOffset = nullptr; // if scratch surface is used, this will be initialized once at entry
 
     // Indicates that sampler header cache (builtinSamplerHeader) is correctly
     // initialized with r0 contents.
@@ -565,6 +568,11 @@ public:
         return kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
     }
 
+    int32_t getCrossThreadInputSize() const
+    {
+        return kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
+    }
+
     bool getHasPerThreadProlog() const { return hasPerThreadProlog; }
     void setHasPerThreadProlog() { hasPerThreadProlog = true; }
 
@@ -699,7 +707,8 @@ public:
     bool shouldForceSplitSend(const G4_Operand* surface) const
     {
         return surface->isSrcRegRegion() &&
-            surface->asSrcRegRegion()->getBase()->asRegVar()->getDeclare() == getBuiltinT252();
+            (surface->getTopDcl() == getBuiltinT252() ||
+                surface->getTopDcl() == getBuiltinScratchSurface());
     }
 
     /// getSplitEMask() calculates the new mask after splitting from the current
@@ -714,6 +723,18 @@ public:
         return getSplitEMask(execSize, eMask, false);
     }
 
+    bool isScratchSpace(G4_Operand* bti) const {
+        return bti->isSrcRegRegion() && bti->getTopDcl() == builtinScratchSurface;
+    }
+    G4_Declare* getBuiltinScratchSurface() const {
+        return builtinScratchSurface;
+    }
+
+    G4_SrcRegRegion* createScratchExDesc(uint32_t exdesc);
+
+    void initScratchSurfaceOffset();
+
+    G4_Declare* getSpillSurfaceOffset() {return scratchSurfaceOffset;}
 
     // create a new temp GRF with the specified type/size and undefined regions
     G4_Declare* createTempVar(
@@ -1405,6 +1426,59 @@ public:
     G4_DstRegRegion* Check_Send_Dst(G4_DstRegRegion *dst_opnd);
 
 
+    G4_INST* createDpasInst(
+        G4_opcode opc,
+        G4_ExecSize execSize,
+        G4_DstRegRegion* dst,
+        G4_Operand* src0,
+        G4_Operand* src1,
+        G4_Operand* src2,
+        G4_Operand* src3,
+        G4_InstOpts options,
+        GenPrecision A,
+        GenPrecision W,
+        uint8_t D,
+        uint8_t C,
+        bool addToInstList);
+
+    G4_INST* createInternalDpasInst(
+        G4_opcode opc,
+        G4_ExecSize execSize,
+        G4_DstRegRegion* dst,
+        G4_Operand* src0,
+        G4_Operand* src1,
+        G4_Operand* src2,
+        G4_Operand* src3,
+        G4_InstOpts options,
+        GenPrecision A,
+        GenPrecision W,
+        uint8_t D,
+        uint8_t C);
+
+    G4_INST* createBfnInst(
+        uint8_t booleanFuncCtrl,
+        G4_Predicate* prd,
+        G4_CondMod* mod,
+        G4_Sat sat,
+        G4_ExecSize execSize,
+        G4_DstRegRegion* dst,
+        G4_Operand* src0,
+        G4_Operand* src1,
+        G4_Operand* src2,
+        G4_InstOpts options,
+        bool addToInstLis);
+
+    G4_INST* createInternalBfnInst(
+        uint8_t booleanFuncCtrl,
+        G4_Predicate* prd,
+        G4_CondMod* mod,
+        G4_Sat sat,
+        G4_ExecSize execSize,
+        G4_DstRegRegion* dst,
+        G4_Operand* src0,
+        G4_Operand* src1,
+        G4_Operand* src2,
+        G4_InstOpts options);
 
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1449,6 +1523,28 @@ public:
         G4_Operand *src2Opnd,
         G4_DstRegRegion *carryBorrow);
 
+    int translateVISADpasInst(
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_opcode opc,
+        G4_DstRegRegion *dstOpnd,
+        G4_SrcRegRegion *src0Opnd,
+        G4_SrcRegRegion *src1Opnd,
+        G4_SrcRegRegion *src2Opnd,
+        G4_SrcRegRegion* src3Opnd,
+        GenPrecision A, GenPrecision W,
+        uint8_t D, uint8_t C);
+    int translateVISABfnInst(
+        uint8_t booleanFuncCtrl,
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        G4_Sat saturate,
+        G4_CondMod* condMod,
+        G4_DstRegRegion *dstOpnd,
+        G4_Operand *src0Opnd,
+        G4_Operand *src1Opnd,
+        G4_Operand *src2Opnd);
 
     int translateVISACompareInst(
         ISA_Opcode opcode,
@@ -1850,6 +1946,23 @@ public:
             (surface->asImm()->getImm() == PREDEF_SURF_255 || surface->asImm()->getImm() == PREDEF_SURF_253);
     }
 
+    int translateVISAQWGatherInst(
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_Predicate* pred,
+        VISA_SVM_Block_Num numBlocks,
+        G4_SrcRegRegion* surface,
+        G4_SrcRegRegion* addresses,
+        G4_DstRegRegion* dst);
+
+    int translateVISAQWScatterInst(
+        VISA_Exec_Size executionSize,
+        VISA_EMask_Ctrl emask,
+        G4_Predicate* pred,
+        VISA_SVM_Block_Num numBlocks,
+        G4_SrcRegRegion* surface,
+        G4_SrcRegRegion* addresses,
+        G4_SrcRegRegion* src);
 
     uint32_t setOwordForDesc(uint32_t desc, int numOword, bool isSLM = false) const;
     int translateVISAOwordLoadInst(

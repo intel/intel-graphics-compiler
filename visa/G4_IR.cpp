@@ -991,7 +991,11 @@ bool G4_INST::isMathPipeInst() const
 
 bool G4_INST::distanceHonourInstruction() const
 {
-    if (isSend() || op == G4_nop || isWait() || isMath() || op == G4_halt)
+    if (isSend() || op == G4_nop || isWait() || isDpas())
+    {
+        return false;
+    }
+    if (isMathPipeInst())
     {
         return false;
     }
@@ -1000,7 +1004,18 @@ bool G4_INST::distanceHonourInstruction() const
 
 bool G4_INST::tokenHonourInstruction() const
 {
-    return isSend() || isMath();
+    if (isSend() || isDpas())
+    {
+        return true;
+    }
+    else
+    {
+        if (isMathPipeInst())
+        {
+            return true;
+        }
+        return false;
+    }
 }
 
 bool G4_INST::hasNoPipe()
@@ -1012,6 +1027,262 @@ bool G4_INST::hasNoPipe()
     return false;
 }
 
+
+bool G4_INST::isLongPipeType(G4_Type type) const
+{
+    if (builder.hasPartialInt64Support())
+    {
+        return type == Type_DF;
+    }
+    return IS_TYPE_LONG(type);
+}
+
+bool G4_INST::isIntegerPipeType(G4_Type type) const
+{
+    if (IS_TYPE_INTEGER(type))
+    {
+        return true;
+    }
+
+    if (builder.hasPartialInt64Support())
+    {
+        return type == Type_UQ || type == Type_Q;
+    }
+
+    return false;
+}
+
+bool G4_INST::isJEUPipeInstructionXe() const
+{
+    if (op == G4_jmpi ||
+        op == G4_if ||
+        op == G4_else ||
+        op == G4_endif ||
+        op == G4_break ||
+        op == G4_join ||
+        op == G4_cont ||
+        op == G4_while ||
+        op == G4_brc ||
+        op == G4_brd ||
+        op == G4_goto ||
+        op == G4_call ||
+        op == G4_return)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool G4_INST::isLongPipeInstructionXe() const
+{
+    if (isJEUPipeInstructionXe())
+    {
+        return false;
+    }
+
+    if (!distanceHonourInstruction())
+    {
+        return false;
+    }
+
+    if (builder.hasFixedCycleMathPipeline() &&
+        isMath())
+    {
+        return false;
+    }
+
+    const G4_Operand* dst = getDst();
+    if (dst && isLongPipeType(dst->getType()))
+    {
+        return true;
+    }
+
+    if (!builder.hasPartialInt64Support())
+    {
+        for (int i = 0; i < G4_MAX_SRCS; i++)
+        {
+            const G4_Operand* src = getSrc(i);
+            if (src && isLongPipeType(src->getType()))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool G4_INST::isIntegerPipeInstructionXe() const
+{
+    if (isJEUPipeInstructionXe())
+    {
+        return true;
+    }
+
+    if (!distanceHonourInstruction())
+    {
+        return false;
+    }
+
+    if (isLongPipeInstructionXe())
+    {
+        return false;
+    }
+
+    if (builder.hasFixedCycleMathPipeline() &&
+        isMath())
+    {
+        return false;
+    }
+
+    G4_Operand* dst = getDst();
+    if (dst && isIntegerPipeType(dst->getType()))
+    {
+        return true;
+    }
+
+    if (!dst)
+    {
+        const G4_Operand* src = getSrc(0);
+        if (src && isIntegerPipeType(src->getType()))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool G4_INST::isFloatPipeInstructionXe() const
+{
+    if (isJEUPipeInstructionXe())
+    {
+        return false;
+    }
+
+    if (!distanceHonourInstruction())
+    {
+        return false;
+    }
+
+    if (isLongPipeInstructionXe())
+    {
+        return false;
+    }
+
+    if (builder.hasFixedCycleMathPipeline() &&
+        isMath())
+    {
+        return false;
+    }
+
+    const G4_Operand* dst = getDst();
+    if (dst &&
+        (dst->getType() == Type_F ||
+            dst->getType() == Type_HF ||
+            dst->getType() == Type_BF))
+    {
+        return true;
+    }
+
+    if (!dst)
+    {
+        const G4_Operand* src = getSrc(0);
+        if (src &&
+            (src->getType() == Type_F ||
+                src->getType() == Type_HF ||
+                src->getType() == Type_BF))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+SB_INST_PIPE G4_INST::getDataTypePipeXe(G4_Type type)
+{
+    switch (type)
+    {
+    case Type_UB:
+    case Type_B:
+    case Type_UW:
+    case Type_W:
+    case Type_UD:
+    case Type_D:
+    case Type_UV:
+    case Type_V:
+        return PIPE_INT;
+
+    case Type_Q:
+    case Type_UQ:
+        if (builder.hasPartialInt64Support())
+        {
+            return PIPE_INT;
+        }
+        return PIPE_LONG;
+
+    case Type_DF:
+        return PIPE_LONG;
+
+    case Type_HF:
+    case Type_F:
+    case Type_VF:
+    case Type_NF:
+    case Type_BF:
+        return PIPE_FLOAT;
+
+    default:
+        return PIPE_NONE;
+    }
+
+    return PIPE_NONE;
+}
+
+SB_INST_PIPE G4_INST::getInstructionPipeXe()
+{
+    if (isLongPipeInstructionXe())
+    {
+        return PIPE_LONG;
+    }
+
+    if (isIntegerPipeInstructionXe())
+    {
+        return PIPE_INT;
+    }
+
+    if (isFloatPipeInstructionXe())
+    {
+        return PIPE_FLOAT;
+    }
+
+    if (builder.hasFixedCycleMathPipeline() &&
+        isMath())
+    {
+        return PIPE_MATH;
+    }
+
+    if (tokenHonourInstruction())
+    {
+        if (isDpas())
+        {
+            return PIPE_DPAS;
+        }
+        if (isMathPipeInst())
+        {
+            return PIPE_MATH;
+        }
+        if (isSend())
+        {
+            return PIPE_SEND;
+        }
+
+        ASSERT_USER(0, "Wrong token pipe instruction!");
+    }
+
+    ASSERT_USER(hasNoPipe(), "No pipe instruction");
+    return PIPE_NONE;
+}
 
 
 
@@ -1573,6 +1844,15 @@ bool G4_INST::isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const
             return false;
         }
         return true;
+    case G4_bfn:
+        // do not allow copy propagation to change BFN operand type
+        if (isSrc && type != getOperand(opndNum)->getType())
+        {
+            return false;
+        }
+        // fall through
+    case G4_add3:
+        return type == Type_W || type == Type_UW || type == Type_D || type == Type_UD;
     }
 }
 
@@ -1740,6 +2020,7 @@ G4_Type G4_INST::getPropType(
 
 static bool isLegalImmType(G4_Type type)
 {
+    return type != Type_BF;
     return true;
 }
 
@@ -1779,6 +2060,11 @@ bool G4_INST::canPropagateTo(
         return false;
     }
 
+    // Skip dpas as it has no region (maybe too conservative)
+    if (useInst->isDpas())
+    {
+        return false;
+    }
 
     // skip the instruction has no dst. e.g. G4_pseudo_fcall
     if (useInst->getDst() == nullptr)
@@ -1979,6 +2265,27 @@ bool G4_INST::canPropagateTo(
     if (propType == Type_UNDEF || (src->isImm() && !isLegalImmType(propType)))
     {
         return false;
+    }
+
+    if (propType == Type_BF)
+    {
+        // bfloat specific checks
+        if (use->asSrcRegRegion()->hasModifier() && useInst->isMov())
+        {
+            // BF_CVT does not like source modifier
+            return false;
+        }
+        if (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() &&
+            useInst->opcode() != G4_mov)
+        {
+            // HW has bug with scalar bfloat in mix mode instructions
+            return false;
+        }
+        if (useInst->getDst()->getType() != Type_F)
+        {
+            // we currently don't handle BF->HF or BF->DF conversion
+            return false;
+        }
     }
 
     // Don't propagate unsupported propType.
@@ -2267,6 +2574,12 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
             {
                 return false;
             }
+        }
+        if (!builder.getOption(vISA_ignoreBFRounding) && dstType == Type_BF && defOp != G4_mov)
+        {
+            // F->BF move has RNE mode while mix mode BF uses RTZ due to HW bug
+            // so we have to disallow the def-hoisting
+            return false;
         }
     }
 
@@ -3261,6 +3574,15 @@ void G4_INST::emit_options(std::ostream& output) const
     // SWSB options
     if (distanceHonourInstruction() && getDistance() != 0) {
         std::stringstream dists;
+        switch (getDistanceTypeXe()) {
+        case DistanceType::DIST:                    break;
+        case DistanceType::DISTALL:   dists << 'A'; break;
+        case DistanceType::DISTINT:   dists << 'I'; break;
+        case DistanceType::DISTFLOAT: dists << 'F'; break;
+        case DistanceType::DISTLONG:  dists << 'L'; break;
+        case DistanceType::DISTMATH:  dists << 'M'; break;
+        default:                      dists << "?"; break;
+        }
         dists << '@' << (int)getDistance();
         emitOption(dists.str());
     }
@@ -6822,6 +7144,10 @@ bool G4_INST::canSupportCondMod() const
         return true;
     }
 
+    if (op == G4_mov)
+    {
+        return dst->getType() != Type_BF && getSrc(0)->getType() != Type_BF;
+    }
 
     // ToDo: replace with IGA model
     return ((op == G4_add) ||
@@ -6861,6 +7187,13 @@ bool G4_INST::canSupportCondMod() const
 
 bool G4_INST::canSupportSrcModifier() const
 {
+    if (opcode() == G4_mov)
+    {
+        if (getDst()->getType() == Type_BF)
+        {
+            return false;
+        }
+    }
 
     if (opcode() == G4_pseudo_mad)
     {
@@ -7325,6 +7658,7 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
     switch (dst->getType())
     {
     case Type_HF:
+    case Type_BF:
         if (builder.relaxedACCRestrictions())
         {
             if (!((isMixedMode() && getExecSize() == g4::SIMD8) ||
@@ -7489,6 +7823,19 @@ bool G4_INST::canDstBeAcc() const
         // disable for now since it's causing some SKL tests to fail
         return false;
     case G4_mov:
+        if (builder.hasFormatConversionACCRestrictions())
+        {
+            const bool allowedICombination = (IS_DTYPE(getSrc(0)->getType()) || getSrc(0)->getType() == Type_W || getSrc(0)->getType() == Type_UW) &&
+                (IS_DTYPE(dst->getType()) || dst->getType() == Type_W || dst->getType() == Type_UW);
+            const bool allowedFCombination = (getSrc(0)->getType() == Type_F || getSrc(0)->getType() == Type_HF) &&
+                (dst->getType() == Type_F || dst->getType() == Type_HF);
+            const bool allowedDFCombination = getSrc(0)->getType() == Type_DF &&
+                dst->getType() == Type_DF;
+            if (!allowedICombination && !allowedFCombination && !allowedDFCombination)
+            {
+                return false;
+            }
+        }
         return builder.relaxedACCRestrictions() || !getSrc(0)->isAccReg();
     case G4_pln:
         // we can't use acc if plane will be expanded
@@ -7500,6 +7847,9 @@ bool G4_INST::canDstBeAcc() const
         return builder.canMadHaveAcc();
     case G4_dp4a:
         return builder.relaxedACCRestrictions2();
+    case G4_bfn:
+    case G4_add3:
+        return true;
     default:
         return false;
     }
@@ -7553,6 +7903,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     // dst must be GRF-aligned
     if ((getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
     {
+        if (!(isMixedMode() && builder.getPlatform() == GENX_XE_HP))
             return false;
     }
 
@@ -7623,6 +7974,19 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     case G4_ror:
         return true;
     case G4_mov:
+        if (builder.hasFormatConversionACCRestrictions())
+        {
+            const bool allowedICombination = (IS_DTYPE(src->getType()) || src->getType() == Type_W || src->getType() == Type_UW) &&
+                (IS_DTYPE(dst->getType()) || dst->getType() == Type_W || dst->getType() == Type_UW);
+            const bool allowedFCombination = (src->getType() == Type_F || src->getType() == Type_HF) &&
+                (dst->getType() == Type_F || dst->getType() == Type_HF);
+            const bool allowedDFCombination = src->getType() == Type_DF &&
+                dst->getType() == Type_DF;
+            if (!allowedICombination && !allowedFCombination && !allowedDFCombination)
+            {
+                return false;
+            }
+        }
         return builder.relaxedACCRestrictions() || !getDst()->isAccReg();
     case G4_madm:
         return builder.useAccForMadm();
@@ -7646,6 +8010,9 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
         return builder.doPlane() && src->getModifier() == Mod_src_undef;
     case G4_dp4a:
         return builder.relaxedACCRestrictions2();
+    case G4_bfn:
+    case G4_add3:
+        return true;
     default:
         return false;
     }
@@ -7849,6 +8216,121 @@ G4_INST* G4_InstMath::cloneInst()
         dst, src0, src1, getMathCtrl(), option);
 }
 
+G4_INST* G4_InstBfn::cloneInst()
+{
+    auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
+    auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+    auto condMod = nonConstBuilder->duplicateOperand(getCondMod());
+    auto dst = nonConstBuilder->duplicateOperand(getDst());
+    auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+    auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+    auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
+    return nonConstBuilder->createInternalBfnInst(
+        getBooleanFuncCtrl(), prd, condMod, getSaturate(), getExecSize(),
+        dst, src0, src1, src2, option);
+}
+
+G4_INST* G4_InstDpas::cloneInst()
+{
+    auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
+    auto dst = nonConstBuilder->duplicateOperand(getDst());
+    auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+    auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+    auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
+    auto src3 = nonConstBuilder->duplicateOperand(getSrc(3));
+    return nonConstBuilder->createInternalDpasInst(
+        op, getExecSize(),
+        dst, src0, src1, src2, src3, option,
+        getSrc2Precision(), getSrc1Precision(), getSystolicDepth(), getRepeatCount());
+}
+
+bool G4_InstDpas::isInt() const
+{
+    // Check Src1 is enough.
+    switch (Src1Precision)
+    {
+    case GenPrecision::S8:
+    case GenPrecision::U8:
+    case GenPrecision::S4:
+    case GenPrecision::U4:
+    case GenPrecision::S2:
+    case GenPrecision::U2:
+        return true;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool G4_InstDpas::is2xInt8() const
+{
+    if ((Src1Precision == GenPrecision::S4 || Src1Precision == GenPrecision::U4 ||
+         Src1Precision == GenPrecision::S2 || Src1Precision == GenPrecision::U2)
+        &&
+        (Src2Precision == GenPrecision::S4 || Src2Precision == GenPrecision::U4 ||
+         Src2Precision == GenPrecision::S2 || Src2Precision == GenPrecision::U2))
+    {
+        return true;
+    }
+    return false;
+}
+
+uint8_t G4_InstDpas::getOpsPerChan() const
+{
+    if (isBF16() || isFP16())
+        return OPS_PER_CHAN_2;
+    else if (is2xInt8())
+        return OPS_PER_CHAN_8;
+    // int8
+    return OPS_PER_CHAN_4;
+}
+
+void G4_InstDpas::computeRightBound(G4_Operand* opnd)
+{
+    associateOpndWithInst(opnd, this);
+    if (opnd && !opnd->isImm() && !opnd->isNullReg())
+    {
+        G4_InstDpas* dpasInst = asDpasInst();
+        uint8_t D = dpasInst->getSystolicDepth();
+        uint8_t C = dpasInst->getRepeatCount();
+
+        auto computeDpasOperandBound = [](G4_Operand* opnd, unsigned leftBound, unsigned rightBound)
+        {
+            unsigned NBytes = rightBound - leftBound + 1;
+            opnd->setBitVecFromSize(NBytes);
+            opnd->setRightBound(rightBound);
+        };
+
+        if (opnd == dst || (opnd == srcs[0] && !opnd->isNullReg()))
+        {
+            // dst and src0 are always packed, and RB is exec_size * type_size * rep_count
+            auto opndSize = builder.getNativeExecSize() * opnd->getTypeSize() * C;
+            computeDpasOperandBound(opnd, opnd->left_bound, opnd->left_bound + opndSize - 1);
+        }
+        else if (opnd == srcs[1])
+        {
+            uint32_t bytesPerLane = dpasInst->getSrc1SizePerLaneInByte();
+            uint8_t src1_D = D;
+
+            // Each lanes needs (src1_D * bytesPerLane) bytes, and it's multiple of DW!
+            uint32_t bytesPerLaneForAllDepth = bytesPerLane * src1_D;
+            bytesPerLaneForAllDepth = ((bytesPerLaneForAllDepth + 3) / 4) * 4;
+
+            uint32_t bytes = bytesPerLaneForAllDepth * builder.getNativeExecSize();
+            computeDpasOperandBound(opnd, opnd->left_bound, opnd->left_bound + bytes - 1);
+        }
+        else if (opnd == srcs[2])
+        {
+            // src2 is uniform.
+            uint32_t bytesPerLane = dpasInst->getSrc2SizePerLaneInByte();
+            uint32_t bytes = bytesPerLane * D * C;
+            if (op == G4_dpasw) {
+                bytes = bytesPerLane * D * ((C + 1) / 2);
+            }
+            computeDpasOperandBound(opnd, opnd->left_bound, opnd->left_bound + bytes - 1);
+        }
+    }
+}
 
 void G4_INST::inheritDIFrom(const G4_INST* inst)
 {
@@ -7863,6 +8345,7 @@ void G4_INST::inheritSWSBFrom(const G4_INST* inst)
     setDistance(inst->getDistance());
     setLexicalId(inst->getLexicalId());
 
+    setDistanceTypeXe(inst->getDistanceTypeXe());
     unsigned short token = inst->getToken();
     setToken(token);
     SWSBTokenType type = inst->getTokenType();

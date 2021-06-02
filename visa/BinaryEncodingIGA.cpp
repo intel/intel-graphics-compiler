@@ -234,6 +234,77 @@ private:
         }
     }
 
+    // get IGA type from GenPrecision
+    iga::Type getIGAPrecisionType(GenPrecision p) const
+    {
+        switch (p)
+        {
+        case GenPrecision::U1:   return iga::Type::U1;
+        case GenPrecision::U2:   return iga::Type::U2;
+        case GenPrecision::U4:   return iga::Type::U4;
+        case GenPrecision::U8:   return iga::Type::UB;
+        case GenPrecision::S2:   return iga::Type::S2;
+        case GenPrecision::S4:   return iga::Type::S4;
+        case GenPrecision::S8:   return iga::Type::B;
+        case GenPrecision::FP16: return iga::Type::HF;
+        case GenPrecision::BF16: return iga::Type::BF;
+        default:
+            assert(false && "illegal Operand Precision");
+            return iga::Type::INVALID;
+        }
+    }
+
+    iga::Type getIGADpasType(G4_InstDpas* DpasInst, int SrcOprdIx) const
+    {
+        iga::Type ty;
+        switch (SrcOprdIx) {
+        default:
+            MUST_BE_TRUE(false, "Invalid SrcOprdIx!");
+            break;
+        case 0:
+        {
+            G4_Operand* src0 = DpasInst->getSrc(0);
+            if (src0->isNullReg()) {
+                ty = getIGAType(DpasInst->getDst()->getType(), platform);
+            }
+            else
+            {
+                ty = getIGAType(src0->getType(), platform);
+            }
+            break;
+        }
+        case 1:
+            ty = getIGAPrecisionType(DpasInst->getSrc1Precision());
+            break;
+        case 2:
+            ty = getIGAPrecisionType(DpasInst->getSrc2Precision());
+            break;
+        }
+        return ty;
+    }
+
+    iga::RegRef getIGADpasRegRef(G4_InstDpas* DpasInst, int SrcOprdIx) const
+    {
+        G4_Operand* src = DpasInst->getSrc(SrcOprdIx);
+        iga::RegRef regref = getIGARegRef(src);
+        if (SrcOprdIx == 2) {
+            // By default, subRegNum is in terms of operand's type (D/UD for
+            // dpas's src1/2). IGA needs it to be in terms of precision type.
+            // Note that no need to do it for src1 as it must be grf-aligned!
+            assert((regref.subRegNum % 2) == 0 &&
+                "Minimum alignemnt of dpas's src2 must be QW");
+            uint32_t bitOffsets = regref.subRegNum * src->getTypeSize() * 8;
+            uint32_t PBits = G4_InstDpas::GetPrecisionSizeInBits(DpasInst->getSrc2Precision());
+            regref.subRegNum = bitOffsets / PBits;
+        }
+        return regref;
+    }
+
+    static iga::BfnFC getBfnFC(const G4_INST *inst)
+    {
+        uint8_t funcCtrl = inst->asBfnInst()->getBooleanFuncCtrl();
+        return iga::BfnFC(funcCtrl);
+    }
     static iga::SFID getSFID(const G4_INST* inst);
     static iga::MathFC getMathFC(const G4_INST *inst);
     iga::Type getIGAType(const G4_INST* I, Gen4_Operand_Number O, TARGET_PLATFORM P);
@@ -263,6 +334,9 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
         break;
     case GENX_TGLLP:
         platform = Platform::XE;
+        break;
+    case GENX_XE_HP:
+        platform = Platform::XE_HP;
         break;
     default:
         break;
@@ -553,6 +627,21 @@ std::pair<const iga::OpSpec *,iga::Subfunction> BinaryEncodingIGA::getIgaOpInfo(
     case G4_dp3:     igaOp = iga::Op::DP3; break;
     case G4_dp2:     igaOp = iga::Op::DP2; break;
     case G4_dp4a:    igaOp = iga::Op::DP4A; break;
+    case G4_dpas:
+    case G4_dpasw:
+    {
+        igaOp = inst->opcode() == G4_dpasw ? iga::Op::DPASW : iga::Op::DPAS;
+        G4_InstDpas* dpasInst = inst->asDpasInst();
+        uint8_t D = dpasInst->getSystolicDepth();
+        uint8_t C = dpasInst->getRepeatCount();
+        sf = iga::GetDpasFC(D, C);
+        break;
+    }
+    case G4_add3:    igaOp = iga::Op::ADD3; break;
+    case G4_bfn:
+        igaOp = iga::Op::BFN;
+        sf = getBfnFC(inst);
+        break;
     case G4_line:    igaOp = iga::Op::LINE; break;
     case G4_pln:     igaOp = iga::Op::PLN; break;
     case G4_mad:     igaOp = iga::Op::MAD; break;
@@ -619,8 +708,35 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, iga::SWSB &sw)
         sw.sbid = inst->getToken();
     }
 
+    // Set distance, e.g. A@1
+    using DistanceType = vISA::G4_INST::DistanceType;
     if ((unsigned)inst->getDistance())
     {
+        // check the distance type for multi-dist-pipes
+        if (kernel.fg.builder->hasThreeALUPipes() ||
+            kernel.fg.builder->hasFourALUPipes()) {
+            switch (inst->getDistanceTypeXe())
+            {
+            case DistanceType::DIST:
+                sw.distType = SWSB::DistType::REG_DIST;
+                break;
+            case DistanceType::DISTALL:
+                sw.distType = SWSB::DistType::REG_DIST_ALL;
+                break;
+            case DistanceType::DISTINT:
+                sw.distType = SWSB::DistType::REG_DIST_INT;
+                break;
+            case DistanceType::DISTFLOAT:
+                sw.distType = SWSB::DistType::REG_DIST_FLOAT;
+                break;
+            case DistanceType::DISTLONG:
+                sw.distType = SWSB::DistType::REG_DIST_LONG;
+                break;
+            default:
+                break;
+            }
+        }
+        else
         {
             // there is only one pipe on single-dist-pipe platform,
             // must be REG_DIST
@@ -765,6 +881,8 @@ void BinaryEncodingIGA::Encode()
                 SWSB::InstType instTy = SWSB::InstType::UNKNOWN;
                 if (inst->isMath())
                     instTy = SWSB::InstType::MATH;
+                else if (inst->isDpas())
+                    instTy = SWSB::InstType::DPAS;
                 else if (inst->isSend())
                     instTy = SWSB::InstType::SEND;
                 else
@@ -1157,6 +1275,22 @@ void BinaryEncodingIGA::translateInstructionSrcs(
                     region,
                     type);
             }
+            else if (inst->isDpas())
+            {
+                assert(srcRegion->getRegAccess() == Direct &&
+                    "dpas does not support indirect GRF operands");
+                G4_InstDpas* dpasInst = inst->asDpasInst();
+                RegRef regRef = getIGADpasRegRef(dpasInst, i);
+                type = getIGADpasType(dpasInst, i);
+
+                igaInst->setDirectSource(
+                    opIx,
+                    srcMod,
+                    getIGARegName(srcRegion),
+                    regRef,
+                    region,
+                    type);
+            }
             else if (srcRegion->getRegAccess() == Direct)
             {
                 igaInst->setDirectSource(
@@ -1200,7 +1334,6 @@ void BinaryEncodingIGA::translateInstructionSrcs(
         }
     } // for
 }
-
 
 SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST* sendInst) const
 {
@@ -1319,8 +1452,19 @@ iga::SendDesc BinaryEncodingIGA::encodeExDescRegA0(
         (uint16_t)exDescG4->asSrcRegRegion()->ExSubRegNum(valid);
     assert(valid && "invalid subreg");
 
+    if (kernel.fg.builder->useNewExtDescFormat() && descG4->isCPSEnabled()) {
+        // CPS is an instruction option if using RegDesc+ExBSO
+        extraOpts.add(InstOpt::CPS);
+    }
+
+    // By default all RegDesc in the new descriptor format will use
+    // the ExBSO model if at all possible
+    bool encodeExBso = kernel.fg.builder->useNewExtDescFormat();
+    if (encodeExBso)
+        extraOpts.add(InstOpt::EXBSO);
 
     // G4 IR keeps Src1.Length (xlen) separate.  So it's known,
+    // (even with a reg desc in nonExBSO mode)
     xlen = (int)descG4->extMessageLength();
 
     return exDescIga;
@@ -1463,6 +1607,7 @@ iga::Type BinaryEncodingIGA::getIGAType(G4_Type type, TARGET_PLATFORM genxPlatfo
     case Type_V:    return iga::Type::V;
     case Type_VF:   return iga::Type::VF;
     case Type_NF:   return iga::Type::NF;
+    case Type_BF:   return iga::Type::BF;
     default:
         assert(false && "illegal type");
         return iga::Type::INVALID;

@@ -151,8 +151,16 @@ class Optimizer
     void evalAddrExp() { kernel.evalAddrExp(); }
     void preRA_Schedule()
     {
-        preRA_Scheduler Sched(kernel, mem, /*rpe*/ nullptr);
-        Sched.run();
+        if (kernel.useRegSharingHeuristics())
+        {
+            preRA_RegSharing Sched(kernel, mem, /*rpe*/ nullptr);
+            Sched.run();
+        }
+        else
+        {
+            preRA_Scheduler Sched(kernel, mem, /*rpe*/ nullptr);
+            Sched.run();
+        }
     }
     void localSchedule()
     {
@@ -247,6 +255,7 @@ private:
     void insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it, bool newBB);
 
     void insertDummyMov(G4_BB* bb, INST_LIST_ITER inst_it, G4_Operand* opnd);
+    void insertDummyMovForHWRSWADPAS(G4_BB* bb);
     void insertDummyMovForHWRSWA();
     void insertHashMovs();
     void insertDummyCompactInst();

@@ -693,6 +693,10 @@ inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gr
     unsigned int evenBankNum = 0;
     unsigned int oddBankNum = 0;
 
+    if (!builder.hasDPAS() || !builder.getOption(vISA_EnableDPASBundleConflictReduction))
+    {
+        return 0;
+    }
 
     for (const BundleConflict& conflict : gra.getBundleConflicts(dcl))
     {
@@ -980,7 +984,7 @@ void GlobalRA::removeUnreferencedDcls()
             getNumRefs(dcl) == 0 &&
             dcl->getRegVar()->isPhyRegAssigned() == false &&
             dcl != kernel.fg.builder->getBuiltinR0()
-            ;
+            && dcl != kernel.fg.builder->getSpillSurfaceOffset();
     };
 
     kernel.Declares.erase(
@@ -1627,6 +1631,7 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
                         if ((builder.WaDisableSendSrcDstOverlap() &&
                             ((curInst->isSend() && i == 0) ||
                             (curInst->isSplitSend() && i == 1)))
+                            || (curInst->isDpas() && i == 1)  //For DPAS, as part of same instruction, src1 should not have overlap with dst. Src0 and src2 are okay to have overlap
                             || (builder.avoidDstSrcOverlap() &&  curInst->getDst() != NULL && hasDstSrcOverlapPotential(curInst->getDst(), src->asSrcRegRegion()))
                             )
                         {

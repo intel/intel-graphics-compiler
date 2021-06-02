@@ -1192,6 +1192,124 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
     return suppressionSrcs > 1;
 }
 
+bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst, BitSet &liveSrc)
+{
+    G4_Type curTypes[4];
+    G4_Type nextTypes[4];
+
+    //Get Types
+    for(int i = 0; i < 4; i++)
+    {
+        curTypes[i] = Type_UNDEF;
+        nextTypes[i] = Type_UNDEF;
+    }
+    curTypes[0] = curInst->getDst()->getType();
+    nextTypes[0] = nextInst->getDst()->getType();
+    for (int i = 0; i < 3; i++)
+    {
+        curTypes[i + 1] = curInst->getSrc(i)->getType();
+        nextTypes[i + 1] = nextInst->getSrc(i)->getType();
+    }
+
+    //Same type for all operands
+    for(int i = 0; i < 4; i++)
+    {
+        if (curTypes[i] != nextTypes[i])
+        {
+            return false;
+        }
+    }
+
+    G4_InstDpas* curDpasInst = curInst->asDpasInst();
+    G4_InstDpas* nextDpasInst = nextInst->asDpasInst();
+    uint8_t curr_D = curDpasInst->getSystolicDepth();
+    uint8_t next_D = nextDpasInst->getSystolicDepth();
+
+    //Same depth
+    if (curr_D == next_D)
+    {
+        G4_Operand * c_dst = curInst->getDst();
+        G4_Operand *n_dst = nextInst->getDst();
+        unsigned short c_dstLB = c_dst->getLinearizedStart();
+        unsigned short c_dstRB = c_dst->getLinearizedEnd();
+        unsigned short n_dstLB = n_dst->getLinearizedStart();
+        unsigned short n_dstRB = n_dst->getLinearizedEnd();
+        int c_dstReg = c_dstLB /numEltPerGRF<Type_UB>();
+        int n_dstReg = n_dstLB /numEltPerGRF<Type_UB>();
+
+        //Set destination live for current instruction
+        while (c_dstReg * numEltPerGRF<Type_UB>() < c_dstRB)
+        {
+            liveDst.set(c_dstReg, true);
+            c_dstReg++;
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            G4_Operand *c_src = curInst->getSrc(i);
+            G4_Operand *n_src = nextInst->getSrc(i);
+            unsigned short c_srcLB = c_src->getLinearizedStart();
+            unsigned short c_srcRB = c_src->getLinearizedEnd();
+            unsigned short n_srcLB = n_src->getLinearizedStart();
+
+            //Set source live for current instruction
+            int srcReg = c_srcLB / numEltPerGRF<Type_UB>();
+            while (srcReg * numEltPerGRF<Type_UB>() < c_srcRB)
+            {
+                liveSrc.set(srcReg, true);
+                srcReg++;
+            }
+
+            //Not same src1 register
+            if (i == 1 && c_srcLB != n_srcLB)
+            {
+                return false;
+            }
+        }
+
+        //If there is RAW, WAW dependence
+        while (n_dstReg * numEltPerGRF<Type_UB>() < n_dstRB)
+        {
+            if (liveDst.isSet(n_dstReg) || liveSrc.isSet(n_dstReg))
+            {
+                return false;
+            }
+            n_dstReg++;
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            G4_Operand *n_src = nextInst->getSrc(i);
+            unsigned short n_srcLB = n_src->getLinearizedStart();
+            unsigned short n_srcRB = n_src->getLinearizedEnd();
+#if 0
+            //There is overlap between source and destitation
+            if (!(n_dstLB > n_srcRB || n_dstRB < n_srcLB))
+            {
+                if (i == 1)
+                {
+                    assert(0);
+                }
+                return false;
+            }
+#endif
+            //If there is WAR dependence
+            int srcReg = n_srcLB / numEltPerGRF<Type_UB>();
+            while (srcReg * numEltPerGRF<Type_UB>() < n_srcRB)
+            {
+                if (liveDst.isSet(srcReg))
+                {
+                    return false;
+                }
+                srcReg++;
+            }
+        }
+
+        return true;
+    }
+
+    return false;
+}
 
 // Construct data dependencey DAG. The function constructs
 // DAG using a bucket-based algorithm. The idea is to setup
@@ -1278,6 +1396,35 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
             }
         }
 
+        if (curInst->isDpas())
+        {
+             std::list<G4_INST*>::reverse_iterator iNextInst = iInst;
+             iNextInst ++;
+             if (iNextInst != iInstEnd)
+             {
+                 G4_INST *nextInst = *iNextInst;
+                 BitSet liveSrc(totalGRFNum, false);
+                 BitSet liveDst(totalGRFNum, false);
+                 liveSrc.clear();
+                 liveDst.clear();
+
+                 while (nextInst->isDpas() &&
+                        hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc))
+                 {
+                     //Pushed to the same node
+                     node->instVec.insert(node->instVec.begin(), nextInst);
+                     nodeId--;
+                     curInst = nextInst;
+                     iInst = iNextInst;
+                     iNextInst++;
+                     if (iNextInst == iInstEnd)
+                     {
+                         break;
+                     }
+                     nextInst = *iNextInst;
+                 }
+             }
+        }
         // Get buckets for all physical registers assigned in curInst
         hasIndir = getBucketDescrs(node, BDvec);
         if (hasIndir || (curInst->isSend() && curInst->asSendInst()->isFence()))

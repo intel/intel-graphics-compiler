@@ -76,6 +76,10 @@ Attributes::ID Attributes::getAttributeID(const char* AttrName)
     {   // start with a lower case 'p'
         return ATTR_PerThreadInputSize;
     }
+    if (aName == "crossThreadInputSize")
+    {   // start with a lower case 'c'
+        return ATTR_CrossThreadInputSize;
+    }
     if (aName == "perThreadInputSize")
     {   // start with a lower case 'p'
         return ATTR_PerThreadInputSize;

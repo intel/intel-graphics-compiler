@@ -3323,6 +3323,37 @@ static void recordRAStats(IR_Builder& builder,
 #endif // COMPILER_STATS_ENABLE
 }
 
+static void replaceSSO(G4_Kernel& kernel)
+{
+    // Invoke function only for Xe_HP+
+    // Replace SSO with r126.7 (scratch reg)
+
+    auto dst = kernel.fg.builder->createDst(
+        kernel.fg.getScratchRegDcl()->getRegVar(), 0, 7, 1, Type_UD);
+    for (auto bb : kernel.fg)
+    {
+        for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
+        {
+            auto inst = (*instIt);
+            if (inst->getDst() &&
+                inst->getDst()->getTopDcl() == kernel.fg.builder->getSpillSurfaceOffset())
+            {
+                if (kernel.fg.getIsStackCallFunc())
+                {
+                    bb->erase(instIt);
+                }
+                else
+                    inst->setDest(dst);
+
+                // Also update scratch msg dcl to be an alias
+                kernel.fg.builder->getSpillSurfaceOffset()->setAliasDeclare(
+                    kernel.fg.getScratchRegDcl(), 7 * TypeSize(Type_UD));
+
+                return;
+            }
+        }
+    }
+}
 
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
@@ -3334,6 +3365,8 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.fg.setABIForStackCallFunctionCalls();
         kernel.fg.addFrameSetupDeclares(builder, regPool);
         kernel.fg.normalizeFlowGraph();
+        if (builder.getPlatform() >= GENX_XE_HP)
+            replaceSSO(kernel);
     }
 
     kernel.fg.reassignBlockIDs();

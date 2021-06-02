@@ -19,6 +19,43 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+static uint8_t getDPASPipelineCycle(uint8_t repc)
+{
+    switch (repc)
+    {
+    case REP_1:
+        return DPAS_8x1_CYCLE;
+    case REP_2:
+        return DPAS_8x2_CYCLE;
+    case REP_4:
+        return DPAS_8x4_CYCLE;
+    case REP_8:
+        return DPAS_8x8_CYCLE;
+    default:
+        assert(0 && "Unexpected DPAS repeat count");
+    }
+
+    return 0;
+}
+
+static uint8_t getDPASGRFReadCycle(uint8_t repc)
+{
+    switch (repc)
+    {
+    case REP_1:
+        return DPAS_8x1_GRFREAD_CYCLE;
+    case REP_2:
+        return DPAS_8x2_GRFREAD_CYCLE;
+    case REP_4:
+        return DPAS_8x4_GRFREAD_CYCLE;
+    case REP_8:
+        return DPAS_8x8_GRFREAD_CYCLE;
+    default:
+        assert(0 && "Unexpected DPAS repeat count");
+    }
+
+    return 0;
+}
 
 static bool hasSameFunctionID(const G4_INST* inst1, const G4_INST* inst2)
 {
@@ -45,6 +82,14 @@ static bool hasSameFunctionID(const G4_INST* inst1, const G4_INST* inst2)
     else if (inst1->isMathPipeInst() && inst2->isMathPipeInst())
     {
         return true;
+    }
+    else if (inst1->isDpas() && inst2->isDpas())
+    {
+        return true;
+    }
+    else if (inst1->isDpas() || inst2->isDpas())
+    {
+        return false;
     }
     else if (inst1->isMathPipeInst() || inst2->isMathPipeInst())
     {
@@ -223,6 +268,25 @@ static bool operandOverlap(G4_Operand* opnd1, G4_Operand* opnd2)
             opnd2->getLinearizedEnd() > opnd1->getLinearizedStart());
 }
 
+static G4_Type getDPASDataType(GenPrecision p)
+{
+    switch (p)
+    {
+    case GenPrecision::U1:
+    case GenPrecision::U2:
+    case GenPrecision::U4:
+    case GenPrecision::U8:   return Type_UB;
+    case GenPrecision::S2:
+    case GenPrecision::S4:
+    case GenPrecision::S8:   return Type_B;
+    case GenPrecision::FP16: return Type_HF;
+    case GenPrecision::BF16: return Type_BF;
+    default:
+        assert(false && "illegal Operand Precision");
+        return Type_UD;
+    }
+}
+
 // Compute the range of registers touched by OPND.
 SBFootprint* G4_BB_SB::getFootprintForGRF(
     G4_Operand* opnd,
@@ -235,6 +299,18 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
     unsigned short RB = 0;
     int aregOffset = totalGRFNum;
     G4_Type type = opnd->getType();
+
+    if (inst->isDpas() && (opnd_num == Opnd_src1 || opnd_num == Opnd_src2))
+    {
+        if (opnd_num == Opnd_src1)
+        {
+            type = getDPASDataType(inst->asDpasInst()->getSrc1Precision());
+        }
+        if (opnd_num == Opnd_src2)
+        {
+            type = getDPASDataType(inst->asDpasInst()->getSrc2Precision());
+        }
+    }
 
     switch (opnd_num) {
     case Opnd_src0:
@@ -274,6 +350,13 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
             assert(RB < (numEltPerGRF<Type_UB>() * aregOffset) && "Out of register bound");
         }
 
+        //HW WA for DPAS src1, treat all source 1 8GRF size
+        if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013341720) &&
+            inst->opcode() == G4_dpas && opnd_num == Opnd_src1)
+        {
+            uint32_t bytes = getGRFSize() * 8;
+            RB = LB + bytes - 1;
+        }
         break;
     default:
         assert(0 && "Bad opnd");
@@ -306,6 +389,7 @@ bool needBothAcc(IR_Builder& builder, G4_INST* inst, G4_Operand * opnd)
     case Type_F:
         return inst->getExecSize() == G4_ExecSize(builder.getNativeExecSize() * 2);
     case Type_HF:
+    case Type_BF:
         return false;
     case Type_DF:
         return inst->getExecSize() > G4_ExecSize(builder.getNativeExecSize() / 2);
@@ -458,6 +542,15 @@ void SWSB::setDefaultDistanceAtFirstInstruction()
             if (!(*it)->isLabel())
             {
                 (*it)->setDistance(1);
+                if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+                {
+                    (*it)->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                }
+                if (fg.builder->getFCPatchInfo()->getFCComposableKernel() && fg.builder->hasFourALUPipes())
+                {
+                    insertSyncAllWRInstruction(bb, 0, it, (*it)->getCISAOff(), (*it)->getLineNo());
+                    insertSyncAllRDInstruction(bb, 0, it, (*it)->getCISAOff(), (*it)->getLineNo());
+                }
 
                 return;
             }
@@ -686,6 +779,10 @@ void SWSB::handleFuncCall()
             node->GetInstruction()->isFReturn())
         {
             node->GetInstruction()->setDistance(1);
+            if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+            {
+                node->GetInstruction()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            }
         }
     }
 }
@@ -864,6 +961,10 @@ static unsigned getRegAccessPipe(G4_INST* Inst) {
     else if (Inst->isMathPipeInst())
     {
         Pipe = FCPatchingInfo::Pipe_Math;
+    }
+    else if (Inst->isDpas())
+    {
+        Pipe = FCPatchingInfo::Pipe_Dpas;
     }
 
     // Pipe ID is encoded as (SFID[3:0] | P[3:0]), where P is ALU, Math, or Send.
@@ -1267,6 +1368,10 @@ unsigned SWSB::getDepDelay(const SBNode* curNode) const
 
         reuseDelay = tokenAfterWriteMathCycle;
     }
+    else if (inst->isDpas())
+    {
+        reuseDelay = TOKEN_AFTER_WRITE_DPAS_CYCLE;
+    }
     else
     {
         assert(0 && "unexpected token reuse instruction");
@@ -1406,6 +1511,10 @@ bool SWSB::cycleExpired(const SBNode* node, int currentID) const
     else if (node->GetInstruction()->isMathPipeInst())
     {
         return tokenAfterWriteMathCycle <= (currentID - node->getLiveStartID());
+    }
+    else if (node->GetInstruction()->isDpas())
+    {
+        return TOKEN_AFTER_WRITE_DPAS_CYCLE <= (currentID - node->getLiveStartID());
     }
     else
     {
@@ -1809,6 +1918,20 @@ void SWSB::assignToken(SBNode* node,
                 if ((curSucc.type == RAW || curSucc.type == WAW) &&
                     succ->getLastInstruction()->getSetToken() == (unsigned short)UNKNOWN_TOKEN)
                 {
+                    if (fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction))
+                    {
+                        //  If no instruction depends on DPAS, no SBID
+                        if (!(succ->GetInstruction()->isDpas() && succ->succs.size() == 0))
+                        {
+                            succ->getLastInstruction()->setSetToken(token);
+                            node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
+                            allTokenNodesMap[token].set(node->sendID, true);
+                            succ->setTokenReuseNode(node);
+
+                            continue;
+                        }
+                    }
+                    else
                     {
                         succ->getLastInstruction()->setSetToken(token);
                         node->setLiveLatestID(succ->getLiveEndID(), succ->getLiveEndBBID());
@@ -2220,6 +2343,20 @@ void SWSB::tokenAllocation()
             continue;
         }
 
+        if (fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction))
+        {
+            //If there is no instruction depends on a DPAS instruction, no SBID
+            if (inst->isDpas() && node->succs.size() == 0)
+            {
+                continue;
+            }
+        }
+
+        if (inst->isDpas() && node->succs.size() == 0 &&
+            fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction))
+        {
+            continue;
+        }
 
         if (inst->isMathPipeInst())
         {
@@ -2536,6 +2673,11 @@ void SWSB::allocateToken(G4_BB* bb)
             continue;
         }
 
+        if (node->getLastInstruction()->isDpas() && node->succs.size() == 0 &&
+            fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction))
+        {
+            continue;
+        }
 
         send_live = node->reachingSends; //The tokens will reach current node
 
@@ -3190,6 +3332,140 @@ bool SWSB::insertSyncToken(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITE
     return insertedSync;
 }
 
+/*
+ *  For Xe, sync can be used for distance and token at the same time.
+ *  The encoding limitations for instruction attached dependence info
+ *  a. has to attached with instruction
+ *      1. memSet
+ *  b. Others
+ *      1. Only regDst can be used when there is memSet for DPAS/math
+ *      2. Only regDstAll can be used when there is memSet for send
+ *      3. Only regDist can be used when there is mem.dst for ALU instructions
+ *  c. To be consistent with the previous version (TGLLP)
+ *      1. Tried to attach the distance with the original instructions.
+ *      2. The only exception is the memSet for out-of-order instructions
+ *
+ *   SWSB format - non DPAS/send/math (in-order)
+ *   7    6    5    4    3    2    1    0
+ *   0    0    0    0    0    0    0    0
+ *   0    0    0    0    0    regDist
+ *   0    0    0    0    1    regDistAll
+ *   0    0    0    1    0    regDistFloat
+ *   0    0    0    1    1    regDistInt
+ *   0    0    1    0    memSBid dst
+ *   0    0    1    1    memSBid src
+ *   0    1    0    0    R    R    R    R
+ *   0    1    0    1    R    regDistLong
+ *   0    1    1    R    R    R    R    R
+ *   1    regDist           memSBid dst
+ *
+ *   SWSB format - DPAS/math (out-of-order)
+ *   0    0    0    0    0    0    0    0
+ *   0    0    0    0    0    regDist
+ *   0    0    0    0    1    regDistAll
+ *   0    0    0    1    0    regDistFloat
+ *   0    0    0    1    1    regDistInt
+ *   0    0    1    0    memSBid dst
+ *   0    0    1    1    memSBid src
+ *   0    1    0    0    memSBid set
+ *   0    1    0    1    R    regDistLong
+ *   0    1    1    R    R    R    R    R
+ *   1    regDist           memSBid set
+ *
+ *   SWSB format -send (out-of-order)
+ *   0    0    0    0    0    0    0    0
+ *   0    0    0    0    0    regDist
+ *   0    0    0    0    1    regDistAll
+ *   0    0    0    1    0    regDistFloat
+ *   0    0    0    1    1    regDistInt
+ *   0    0    1    0    memSBid dst
+ *   0    0    1    1    memSBid src
+ *   0    1    0    0    memSBid set
+ *   0    1    0    1    R    regDistLong
+ *   0    1    1    R    R    R    R    R
+ *   1    regDistAll           memSBid set
+ */
+bool SWSB::insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens)
+{
+    G4_INST::DistanceType distType = node->GetInstruction()->getDistanceTypeXe();
+    bool insertedSync = false;
+    bool keepDst = false;
+    bool isCloseALUType = node->GetInstruction()->isClosestALUType();
+
+    if (tokenHonourInstruction(inst))
+    {
+        //regDist $.set
+        if (inst->isDpas())
+        {
+            if (distType != G4_INST::DistanceType::DIST_NONE &&
+                distType != G4_INST::DistanceType::DIST)
+            {
+                G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                synInst->setDistance(inst->getDistance());
+                synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                inst->setDistance(0);
+                insertedSync = true;
+            }
+        }
+
+        if (inst->isMathPipeInst())
+        {
+            if (isCloseALUType && distType != G4_INST::DistanceType::DIST_NONE)
+            {
+                node->GetInstruction()->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                distType = G4_INST::DistanceType::DIST;
+            }
+            if (distType != G4_INST::DistanceType::DIST_NONE &&
+                distType != G4_INST::DistanceType::DIST)
+            {
+                G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                synInst->setDistance(inst->getDistance());
+                synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                inst->setDistance(0);
+                insertedSync = true;
+            }
+        }
+
+        // regDistAll $.set
+        if (inst->isSend())
+        {
+            if (isCloseALUType && distType != G4_INST::DistanceType::DIST_NONE && (*inst_it) == inst)
+            {
+                node->GetInstruction()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                distType = G4_INST::DistanceType::DISTALL;
+            }
+            if ((distType != G4_INST::DistanceType::DIST_NONE &&
+                distType != G4_INST::DistanceType::DISTALL) || ((*inst_it) != inst))
+            {
+                G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+                synInst->setDistance(inst->getDistance());
+                synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
+                inst->setDistance(0);
+                insertedSync = true;
+            }
+        }
+        //For out-of-order instruction, all dependence token will be moved out to sync
+        insertedSync |= insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, keepDst, true);
+    }
+    else
+    {
+        // regDist $.dst
+        //For in-order instruction, trying to keep distance in the original instruction
+        if (distType == G4_INST::DistanceType::DIST ||
+            distType == G4_INST::DistanceType::DIST_NONE)
+        {
+            insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, keepDst, false);
+        }
+        else
+        {
+            //Move all token dependence out
+            insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, keepDst, true);
+        }
+    }
+
+    return insertedSync;
+}
+
 
 void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens)
 {
@@ -3219,6 +3495,11 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
         }
     }
 
+    if (fg.builder->hasThreeALUPipes()) //Xe_HP
+    {
+        insertedSync = insertSyncXe(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens);
+    }
+    else //TGLLP
     {
         insertedSync = insertSyncToken(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, keepDst, false);
     }
@@ -3227,12 +3508,20 @@ void SWSB::insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER ins
     {
         G4_INST* syncInst = insertSyncInstructionAfter(bb, prevIt, inst->getCISAOff(), inst->getLineNo());
         syncInst->setDistance(1);
+        if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+        {
+            syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+        }
     }
 
     if (node->hasDistOneAreg() && !hasValidNextInst)
     {
         G4_INST* syncInst = insertSyncInstructionAfter(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
         syncInst->setDistance(1);
+        if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+        {
+            syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+        }
     }
 }
 
@@ -3477,6 +3766,12 @@ void SWSB::buildLiveIntervals()
         for (SBDEP_ITEM& curSucc : node->succs)
         {
             const SBNode* succ = curSucc.node;
+            if (fg.builder->getOptions()->getOption(vISA_TrueDepOnly) &&
+                node->GetInstruction()->isDpas() && node->getBBID() != succ->getBBID())
+            {
+                node->setLiveLatestID(BBVector[node->getBBID()]->last_node, node->getBBID());
+            }
+            else
             {
                 node->setLiveLatestID(succ->getNodeID(), succ->getBBID());
             }
@@ -3510,6 +3805,10 @@ void SWSB::buildLiveIntervals()
             SBNode* node = globalSendOpndList[i]->node;
             int globalID = node->globalID;
 
+            if (fg.builder->getOptions()->getOption(vISA_TrueDepOnly) && node->GetInstruction()->isDpas())
+            {
+                continue;
+            }
 
             if (globalSendOpndList[i]->opndNum == Opnd_dst)
             {
@@ -3532,7 +3831,7 @@ void SWSB::buildLiveIntervals()
                     }
                 }
             }
-            else
+            else if (!fg.builder->getOptions()->getOption(vISA_TrueDepOnly))
             {
                 if ((send_live_in->isSrcSet((unsigned)globalID)) &&
                     BBVector[bbID]->first_node != -1)
@@ -4027,6 +4326,19 @@ bool G4_BB_SB::getFootprintForOperand(SBNode* node,
         node->setFootprint(footprint, opndNum);
     }
 
+    if ((builder.hasThreeALUPipes() || builder.hasFourALUPipes()))
+    {
+        if (isAccReg)
+        {
+            footprint = getFootprintForACC(opnd, opndNum, inst);
+            node->setFootprint(footprint, opndNum);
+        }
+        if (isFlagReg)
+        {
+            footprint = getFootprintForFlag(opnd, opndNum, inst);
+            node->setFootprint(footprint, opndNum);
+        }
+    }
 
     return hasDistOneAReg;
 }
@@ -4271,10 +4583,128 @@ void G4_BB_SB::clearKilledBucketNodeXeLP(LiveGRFBuckets* LB, int ALUID)
     }
 }
 
+void G4_BB_SB::clearKilledBucketNodeXeHP(LiveGRFBuckets* LB, int integerID, int floatID, int longID, int mathID)
+{
+    for (int curBucket = 0; curBucket < LB->getNumOfBuckets(); curBucket++)
+    {
+        for (LiveGRFBuckets::BN_iterator it = LB->begin(curBucket); it != LB->end(curBucket);)
+        {
+            SBBucketNode* liveBN = (*it);
+            SBNode* curLiveNode = liveBN->node;
+
+            if (curLiveNode->isInstKilled() ||
+                (curLiveNode->isSourceKilled() &&
+                    liveBN->opndNum >= Opnd_src0 &&
+                    liveBN->opndNum <= Opnd_src3))
+            {
+                LB->killOperand(it);
+                continue;
+            }
+
+            //Long pipeline must be checked first because it's definition is different with Integer and Float
+            if (curLiveNode->GetInstruction()->isLongPipeInstructionXe() &&
+                ((longID - curLiveNode->getLongID()) > SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT))
+            {
+                LB->killOperand(it);
+                continue;
+            }
+
+            if (curLiveNode->GetInstruction()->isIntegerPipeInstructionXe() &&
+                ((integerID - curLiveNode->getIntegerID()) > SWSB_MAX_ALU_DEPENDENCE_DISTANCE))
+            {
+                LB->killOperand(it);
+                continue;
+            }
+
+            if (curLiveNode->GetInstruction()->isFloatPipeInstructionXe() &&
+                ((floatID - curLiveNode->getFloatID()) > SWSB_MAX_ALU_DEPENDENCE_DISTANCE))
+            {
+                LB->killOperand(it);
+                continue;
+            }
+
+            if (curLiveNode->GetInstruction()->isMath() &&
+                builder.hasFixedCycleMathPipe() &&
+                (mathID - curLiveNode->getMathID() > SWSB_MAX_MATH_DEPENDENCE_DISTANCE))
+            {
+                LB->killOperand(it);
+                continue;
+            }
+
+            ++it;
+        }
+    }
+}
 
 
 void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* liveNode, bool dstDep)
 {
+    if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+    {
+        unsigned prevID = 0;
+        unsigned currentID = 0;
+        switch (liveNode->ALUPipe)
+        {
+        case PIPE_INT:
+            prevID = liveNode->getIntegerID();
+            if (prevID < latestDepALUID[PIPE_INT])
+            {
+                return;
+            }
+            latestDepALUID[PIPE_INT] = prevID;
+            currentID = node->ALUPipe == PIPE_INT ? node->getIntegerID() : integerID;
+            //We may have integer block as a result, we need change the distance to the first instruction of the block.
+            //But for other block like DPAS, the instruction itself has no integerID, so there is no need.
+            if (node->ALUPipe == PIPE_INT)
+            {
+                currentID = currentID - (node->instVec.size() - 1);
+            }
+            break;
+        case PIPE_FLOAT:
+            prevID = liveNode->getFloatID();
+            if (prevID < latestDepALUID[PIPE_FLOAT])
+            {
+                return;
+            }
+            latestDepALUID[PIPE_FLOAT] = prevID;
+            currentID = node->ALUPipe == PIPE_FLOAT ? node->getFloatID() : floatID;
+            break;
+        case PIPE_LONG:
+            prevID = liveNode->getLongID();
+            if (prevID < latestDepALUID[PIPE_LONG])
+            {
+                return;
+            }
+            latestDepALUID[PIPE_LONG] = prevID;
+            currentID = node->ALUPipe == PIPE_LONG ? node->getLongID() : longID;
+            break;
+        case PIPE_MATH:
+            prevID = liveNode->getMathID();
+            if (prevID < latestDepALUID[PIPE_MATH])
+            {
+                return;
+            }
+            latestDepALUID[PIPE_MATH] = prevID;
+            currentID = node->ALUPipe == PIPE_MATH ? node->getMathID() : mathID;
+            break;
+        default:
+            assert(0 && "None ALU pipe");
+            return;
+        }
+        SBDISTDEP_ITEM depItem;
+        depItem.liveNodePipe = liveNode->ALUPipe;
+        depItem.nodePipe = node->ALUPipe;
+        depItem.operandType = node->GetInstruction()->getDataTypePipeXe(footprint->type);
+        depItem.dstDep = dstDep;
+        if (node->GetInstruction()->isSend())
+        {
+            depItem.operandType = PIPE_SEND;
+        }
+        assert(currentID > prevID && "Wrong node ALU ID");
+        node->setDistance(currentID - prevID);
+        node->distDep.push_back(depItem);
+    }
+    else
     {
         auto dist = node->getALUID() - liveNode->getALUID();
         assert(dist <= liveNode->getMaxDepDistance() && "dist should not exceed the max dep distance");
@@ -4282,6 +4712,27 @@ void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* l
     }
 }
 
+void G4_BB_SB::setSpecialDistance(SBNode* node)
+{
+    G4_INST* inst = node->GetInstruction();
+    if (!inst->getDst())
+    {
+        return;
+    }
+
+    if (inst->getDst()->isA0())
+    {
+        SBDISTDEP_ITEM depItem;
+        depItem.liveNodePipe = PIPE_FLOAT;
+        depItem.nodePipe = node->ALUPipe;
+        depItem.operandType = PIPE_INT;
+        depItem.dstDep = false;
+        node->setDistance(1);
+        node->distDep.push_back(depItem);
+    }
+
+    return;
+}
 //The merged footprint is ordered from back to front instructions in the macro
 //As a result if killed, is the back instruction killed, which means front instructions are killed as well.
 void G4_BB_SB::footprintMerge(SBNode* node, const SBNode* nextNode)
@@ -4293,6 +4744,10 @@ void G4_BB_SB::footprintMerge(SBNode* node, const SBNode* nextNode)
 
         if (nextfp != nullptr)
         {
+            if (node->GetInstruction()->isDpas())
+            {
+                nextfp->setOffset(node->getDPASSize());
+            }
             node->setFootprint(nextfp, opndNum);
         }
     }
@@ -4300,6 +4755,199 @@ void G4_BB_SB::footprintMerge(SBNode* node, const SBNode* nextNode)
     return;
 }
 
+bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node)
+{
+    const SBFootprint* dstfp = node->getFirstFootprint(Opnd_dst);
+
+    for (Gen4_Operand_Number opndNum
+        : {Opnd_src0, Opnd_src1, Opnd_src2})
+    {
+        const SBFootprint* srcfp = node->getFirstFootprint(opndNum);
+        unsigned short internalOffset = 0;
+        if (dstfp->hasOverlap(srcfp, internalOffset))
+        {
+            if (opndNum == Opnd_src1)
+            {
+                assert(0);
+            }
+            //For 8X8, it's allowed that dst and src0 share same registsers (not internal dep). But not including partial overlap.
+            if (opndNum == Opnd_src0)
+            {
+                const G4_INST* curInst = node->getLastInstruction();
+                const G4_InstDpas* dpasInst = curInst->asDpasInst();
+                uint8_t D = dpasInst->getSystolicDepth();
+
+                if (D == 8) //Works only for 8x8
+                {
+                    if ((dstfp->LeftB == srcfp->LeftB) && (dstfp->RightB == srcfp->RightB))
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//No WAR/RAW/WAW dependence within a DPAS macro
+bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
+{
+    for (Gen4_Operand_Number opndNum
+        : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+    {
+        const SBFootprint* fp = node->getFirstFootprint(opndNum);
+        if (opndNum == Opnd_dst)
+        {
+            for (Gen4_Operand_Number opndNum2
+                : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+            {
+                const SBFootprint* nextfp = nextNode->getFirstFootprint(opndNum2);
+                unsigned short internalOffset = 0;
+                if (fp->hasOverlap(nextfp, internalOffset))
+                {
+                    return true;
+                }
+
+                if (opndNum2 == Opnd_dst && nextfp->hasOverlap(fp, internalOffset))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+
+bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) const
+{
+    unsigned short GRFSize = getGRFSize();
+
+    for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
+    {
+        unsigned short leftB = fp->LeftB / GRFSize;
+        unsigned short rightB = fp->RightB / GRFSize;
+        G4_Type type = fp->type;
+
+        for (const SBFootprint* nextfp = nextNode->getFirstFootprint(Opnd_src2); nextfp; nextfp = nextfp->next)
+        {
+            unsigned short nextLeftB = nextfp->LeftB / GRFSize;
+            unsigned short nextRightB = nextfp->RightB / GRFSize;
+            G4_Type nextType = nextfp->type;
+
+            if (!(nextLeftB > rightB || nextRightB < leftB))
+            {
+                if (type != nextType)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+//restrict a macro to :
+//    1. Consecutive instructions of same opcode, same datatype in all sources and dest and same register for Src1.
+//  2. Allow having variable repcount
+bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
+{
+    G4_INST* curInst = curNode->getLastInstruction();
+    G4_INST* nextInst = nextNode->GetInstruction();
+    if (nextInst == nullptr || !nextInst->isDpas())
+    {
+        return true;
+    }
+
+    if (!hasSameExecMask(curInst, nextInst))
+    {
+        return true;
+    }
+    //All types should be same for all operands.
+    for (Gen4_Operand_Number opndNum
+        : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+    {
+        if (curNode->getFirstFootprint(opndNum) && nextNode->getFirstFootprint(opndNum) &&
+            curNode->getFirstFootprint(opndNum)->type != nextNode->getFirstFootprint(opndNum)->type)
+        {
+            return true;
+        }
+    }
+
+    G4_InstDpas* dpasInst = curInst->asDpasInst();
+    G4_Operand* srcOpnd1 = curInst->getSrc(1);
+    G4_Operand* srcOpnd2 = curInst->getSrc(2);
+    unsigned short leftBound1 = srcOpnd1->getLinearizedStart();
+    unsigned short leftBound2 = srcOpnd2->getLinearizedStart();
+    uint8_t curD = dpasInst->getSystolicDepth();
+    uint8_t curC = dpasInst->getRepeatCount();
+    int curSrc1Reg = leftBound1 / numEltPerGRF<Type_UB>();
+    int curSrc2Reg = leftBound2 / numEltPerGRF<Type_UB>();
+
+    G4_InstDpas* nextDpasInst = nextInst->asDpasInst();
+    uint8_t nextD = nextDpasInst->getSystolicDepth();
+    uint8_t nextC = nextDpasInst->getRepeatCount();
+
+    //Same depth
+    if (curD != nextD)
+    {
+        return true;
+    }
+
+    if (
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_16011859583) ||
+        builder.getOption(vISA_NoDPASMacro))
+    {
+        if (curD != 8 || nextD != 8 || curC != 8 || nextC != 8)
+        {
+            return true;
+        }
+    }
+
+    srcOpnd1 = nextDpasInst->getSrc(1);
+    srcOpnd2 = nextDpasInst->getSrc(2);
+    leftBound1 = srcOpnd1->getLinearizedStart();
+    leftBound2 = srcOpnd2->getLinearizedStart();
+    int nextSrc1Reg = leftBound1 / numEltPerGRF<Type_UB>();
+    int nextSrc2Reg = leftBound2 / numEltPerGRF<Type_UB>();
+
+    if (builder.hasSrc2ReadSupression() &&
+        builder.hasSrc2ReadSupressionSameRegSameType() &&
+        src2SameFootPrintDiffType(curNode, nextNode))
+    {
+        return true;
+    }
+
+    //Same src1 or src2
+    if (curSrc1Reg == nextSrc1Reg ||
+        (builder.hasSrc2ReadSupression() &&  (curSrc2Reg == nextSrc2Reg &&
+            curC == nextC &&
+            curC == 8)))
+    {
+        return false;
+    }
+
+    // Using {Atomic} in the last line of a macro (such as in the lines I highlighted) has some implications in the hardware implementation:
+    //1. In 8x8 macros (such as the one you pasted) is fine.
+    //2. In other repetitions, it will cause that the src1 of the next macro will be ignored.
+    // Hardware uses {Atomic} to indicate that the next instruction will reuse the src1. In an 8x8, they always verify
+
+    if (builder.hasSrc2ReadSupression() &&
+        curC == nextC &&
+        curC == 8 &&
+        curNode->getFirstFootprint(Opnd_src2)->isWholeOverlap(nextNode->getFirstFootprint(Opnd_src2)))
+    {
+        return false;
+    }
+
+    return true;
+}
 
 void G4_BB_SB::pushItemToQueue(std::vector<unsigned> *nodeIDQueue, unsigned nodeID)
 {
@@ -4325,6 +4973,18 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 {
     nodeID = indexes->instIndex;
     ALUID = indexes->ALUIndex;
+    integerID = indexes->integerIndex;
+    floatID = indexes->floatIndex;
+    longID = indexes->longIndex;
+    DPASID = indexes->DPASIndex;
+    mathID = indexes->mathIndex;
+    first_DPASID = indexes->DPASIndex;
+
+    for (int i = 0; i < PIPE_DPAS; i++)
+    {
+        latestDepALUID[i] = indexes->latestDepALUID[i];
+        latestInstID[i] = &indexes->latestInstID[i];
+    }
     SBNODE_LIST tmpSBSendNodes;
     bool hasFollowDistOneAReg = false;
 
@@ -4352,6 +5012,10 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         SBNodes->emplace_back(node);
         curInst->setLocalId(0);
 
+        if (builder.hasA0WARHWissue() && builder.hasThreeALUPipes())
+        {
+            setSpecialDistance(node);
+        }
         //Record the node IDs of the instrucrtions in BB
         if (first_node == -1)
         {
@@ -4366,6 +5030,10 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             node->setDistance(1);
             node->setFollowDistOneAReg();
             hasFollowDistOneAReg = false;
+            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            {
+                node->instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            }
         }
 
         hasFollowDistOneAReg = getGRFFootPrint(node, p);
@@ -4375,8 +5043,90 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         {
             node->setDistance(1);
             node->setDistOneAReg();
+            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            {
+                node->instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            }
         }
 
+
+        //Support for DPAS
+        //To fully provide the efficency of DPAS pipeline
+        //We'd like to promote the dependence to or before the first instruction of a DPAS block
+        //At the same time, push all dependence BD to the last instruction.
+        //Keeping the dependence within a DPAS block will drop performance a lot.
+        if (curInst->isDpas())
+        {
+            unsigned dpas_count = 0;
+            if (nextInst && nextInst->isDpas())
+            {
+                SBNode nextNode;
+                bool sameSrcDst = false;
+                while (curInst != nullptr && curInst->isDpas())
+                {
+                    //following instructions, first instruction is in node already
+                    if (dpas_count != 0)
+                    {
+                        if (nextNode.getNodeID() != -1)
+                        {
+                            footprintMerge(node, &nextNode);
+                        }
+                        node->addInstruction(curInst);
+                        const G4_InstDpas* dpasInst = curInst->asDpasInst();
+                        node->addDPASSize(dpasInst->getRepeatCount());
+                    }
+                    else  //If the first node has internal dependence, break immedidatly
+                    {
+                        if (hasInternalDependenceWithinDPAS(node))
+                        {
+                            break;
+                        }
+                    }
+
+                    nextNode = SBNode(nodeID, ALUID, bb->getId(), nextInst);
+                    getGRFFootPrint(&nextNode, p);
+
+                    //Has dependence cannot be merged into same node.
+                    //Different Depth, src1 and type cannot be merged
+                    //Same register reuse in dest and src cannot be a part of a macro, even the last one.
+                    if (sameSrcDst ||
+                        isLastDpas(node, &nextNode) ||
+                        hasDependenceBetweenDPASNodes(node, &nextNode))
+                    {
+                        break;
+                    }
+
+                    if (hasInternalDependenceWithinDPAS(&nextNode))
+                    {
+                        sameSrcDst = true;
+                    }
+
+                    curInst->setOptionOn(InstOpt_Atomic);
+                    dpas_count++;
+
+                    curInst = nextInst;
+                    iInst = iInstNext;
+                    iInstNext++;
+                    if (iInstNext == iInstEnd)
+                    {
+                        if (nextNode.getNodeID() != -1)
+                        {
+                            footprintMerge(node, &nextNode);
+                        }
+                        node->addInstruction(curInst);
+                        nextInst = nullptr;
+                        break;
+                    }
+                    nextInst = *iInstNext;
+                }
+                curInst = node->GetInstruction();
+            }
+        }
+        if (node->getLastInstruction()->isDpas())
+        {
+            node->setDPASID(DPASID);
+            DPASID += node->getDPASSize();
+        }
 
         //Get buckets for all GRF registers which are used in curInst
         std::vector<SBBucketDescr> BDvec;
@@ -4390,17 +5140,54 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             getGRFBucketDescrs(node, liveBDvec, false);
         }
 
+        if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+        {
+            node->ALUPipe = curInst->getInstructionPipeXe();
+        }
 
         // For ALU instructions without GRF usage
         if (distanceHonourInstruction(curInst))
         {
             ALUID++;
 
+            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            {
+                switch (node->ALUPipe)
+                {
+                case PIPE_INT:
+                    node->setIntegerID(integerID);
+                    pushItemToQueue(latestInstID[PIPE_INT], node->getNodeID());
+                    integerID++;
+                    break;
+                case PIPE_FLOAT:
+                    node->setFloatID(floatID);
+                    pushItemToQueue(latestInstID[PIPE_FLOAT], node->getNodeID());
+                    floatID++;
+                    break;
+                case PIPE_LONG:
+                    node->setLongID(longID);
+                    pushItemToQueue(latestInstID[PIPE_LONG], node->getNodeID());
+                    longID++;
+                    break;
+                case PIPE_MATH:
+                    node->setMathID(mathID);
+                    pushItemToQueue(latestInstID[PIPE_MATH], node->getNodeID());
+                    mathID++;
+                    break;
+                default:
+                    ASSERT_USER(curInst->hasNoPipe(), "Unexpected instruction found in distance ");
+                }
+            }
 
             if (!BDvec.size())
             {
                 if (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE && ALUID != node->getALUID())
                 {
+                    if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+                    {
+                        clearKilledBucketNodeXeHP(LB, integerID, floatID, longID, mathID);
+                    }
+                    else
                     {
                         clearKilledBucketNodeXeLP(LB, ALUID);
                     }
@@ -4458,6 +5245,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 const SBFootprint* liveFootprint = liveNode->getFootprint(liveBN->opndNum, liveInst);
 
                 bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
+                bool hasRMWOverlap = false;
 
                 //RAW:                     R kill W    R-->live       explict dependence
                 //WAW: same pipeline and inorder   W2 kill W1  W2-->live      implicit dependence
@@ -4494,6 +5282,26 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 if (tokenHonourInstruction(liveInst))
                 {
                     if (dep == RAW || dep == WAW) {
+                        if (builder.getOption(vISA_EnableDPASTokenReduction) &&
+                            node->getLastInstruction()->isDpas() &&
+                            liveNode->getLastInstruction()->isDpas() &&
+                            curFootprint->isWholeOverlap(liveFootprint))
+                        {
+                            if ((node->getDPASID() + curFootprint->offset - (liveNode->getDPASID() + internalOffset) < TOKEN_AFTER_WRITE_DPAS_CYCLE))
+                            {
+                                LB->killOperand(bn_it);
+                                createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
+                                liveNode->setInstKilled(true);  //Instrtuction level kill
+                                instKill = true;
+                                continue;
+                            }
+                            else if (dep == WAW)  //For RAW, we cannot
+                            {
+                                LB->killOperand(bn_it);
+                                continue;
+                            }
+                        }
+                        else
                         {
                             LB->killOperand(bn_it);
                             createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
@@ -4530,6 +5338,39 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                 killed = true;
                             }
 
+                            if (builder.getOption(vISA_EnableDPASTokenReduction) &&
+                                node->getLastInstruction()->isDpas() &&
+                                liveNode->getLastInstruction()->isDpas() &&
+                                curFootprint->isWholeOverlap(liveFootprint))
+                            {
+                                //
+                                //  dpasw.8x7(8 | M0)         r84 : f         r84 : f             r52 : bf            r14.0 : bf{ Atomic }
+                                //  dpasw.8x7(8 | M0)         r92 : f         r92 : f             r52 : bf            r22.0 : bf{ Atomic }
+                                //  dpasw.8x7(8 | M0)         r100 : f        r100 : f            r52 : bf            r30.0 : bf{ Atomic }
+                                //  dpasw.8x7(8 | M0)         r108 : f        r108 : f            r52 : bf            r38.0 : bf{ Atomic }
+                                //  dpasw.8x7(8 | M0)         r116 : f        r116 : f            r52 : bf            r46.0 : bf{ $5 }
+                                //  sync.nop                      null{ Compacted, $5.src }
+                                //  (W)send.dc0(16 | M0)         r52      r6      null    0x0         0x28805FE  {$0}
+                                //
+                                //  Although there is WAR dependence because of r52. However, due to the read suppression, the sync.nop is not required.
+                                //  The DPAS in-order GRF read cycles can cover the GRF read of r52 to r58.
+
+                                if (liveOpnd == Opnd_src1)
+                                {
+                                    if (node->getDPASID() + curFootprint->offset - liveNode->getDPASID() <= TOKEN_AFTER_READ_DPAS_CYCLE)
+                                    {
+                                        createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
+                                    } //else do nothing, previous whole region check kill the bucket node already.
+                                }
+                                else  //src0, src2
+                                {
+                                    if (node->getDPASID() + curFootprint->offset - (liveNode->getDPASID() + internalOffset) <= TOKEN_AFTER_READ_DPAS_CYCLE)
+                                    {
+                                        createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
+                                    } //else do nothing
+                                }
+                            }
+                            else
                             {
                                 createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
                             }
@@ -4576,9 +5417,38 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                             killed = true;
                         }
 
-                            if (!curInst->distanceHonourInstruction()
-                                )
+                        if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+                        {
+                            if (!distanceHonourInstruction(curInst) ||
+                                node->ALUPipe != liveNode->ALUPipe ||
+                                (node->ALUPipe == liveNode->ALUPipe && hasRMWOverlap))
+                            {
+                                if (!killed)
+                                {
+                                    LB->killOperand(bn_it);
+                                    killed = true;
+                                }
 
+                                /*
+                                 *   Following case will cause dead lock
+                                 *   (W)      mov (32|M0)              r13.0<2>:ub   r11.0<1;1,0>:uw      {Atomic}
+                                 *   (W)      mov (32|M0)              r13.1<2>:ub   r10.0<1;1,0>:uw      {I@1}
+                                 */
+                                if (!(hasRMWOverlap && builder.hasFourALUPipes() &&
+                                    distanceHonourInstruction(node->GetInstruction()) &&
+                                    node->GetInstruction()->isAtomicInst() &&
+                                    (node->getNodeID() - liveNode->getNodeID() == 1)))
+                                {
+                                    setDistance(curFootprint, node, liveNode, true);
+                                }
+
+                                liveNode->setInstKilled(true); //Instrtuction level kill
+                                instKill = true;
+                            }
+                        }
+                        else if (!curInst->distanceHonourInstruction()
+                                || (liveInst->isLongPipeInstructionXe() && !curInst->isLongPipeInstructionXe())
+                                )
                             {
                                 if (!killed)
                                 {
@@ -4605,7 +5475,9 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                             killed = true;
                         }
 
-                            if (!hasSameFunctionID(liveInst, curInst))
+                        if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+                        {
+                            if (!curInst->distanceHonourInstruction() || node->ALUPipe != liveNode->ALUPipe)
                             {
                                 if (!killed)
                                 {
@@ -4613,8 +5485,20 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                                     killed = true;
                                 }
                                 setDistance(curFootprint, node, liveNode, true);
-                                liveNode->setSourceKilled(true);
+                                liveNode->setInstKilled(true); //Instrtuction level kill
                             }
+                        }
+                        else if (!hasSameFunctionID(liveInst, curInst))
+                        {
+                            if (!killed)
+                            {
+                                LB->killOperand(bn_it);
+                                killed = true;
+                            }
+                            setDistance(curFootprint, node, liveNode, true);
+                            liveNode->setSourceKilled(true);
+                        }
+
                         if (killed)
                         {
                             continue;
@@ -4625,6 +5509,15 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     {
                         if (curFootprint->isWholeOverlap(liveFootprint))
                         {
+                            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+                            {
+                                if (node->ALUPipe == liveNode->ALUPipe)
+                                {
+                                    LB->killOperand(bn_it);
+                                    continue;
+                                }
+                            }
+                            else
                             {
                                 LB->killOperand(bn_it);
                                 continue;
@@ -4638,18 +5531,34 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
         }
 
+        if (node->distDep.size())
+        {
+            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            {
+                node->finalizeDistanceType1(builder, latestInstID);
+            }
+        }
 
         if ((builder.getOption(vISA_EnableSwitch) && node->GetInstruction()->isYieldInst()) ||
             (node->GetInstruction()->isCall() || node->GetInstruction()->isFCall()) ||
             (builder.hasEOTWait() && node->GetInstruction()->isEOT()))
         {
             node->setDistance(1);
+            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            {
+                node->instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            }
         }
 
         //Simplify the LB according to the distance, and if the node is killed
         if (instKill ||
             (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE && ALUID != node->getALUID()))
         {
+            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
+            {
+                clearKilledBucketNodeXeHP(LB, integerID, floatID, longID, mathID);
+            }
+            else
             {
                 clearKilledBucketNodeXeLP(LB, ALUID);
             }
@@ -4669,7 +5578,17 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     bucketNodes[BD.opndNum] = newNode;
                 }
 
-                LB->add(bucketNodes[BD.opndNum], BD.bucket);
+                if (bucketNodes[BD.opndNum] != nullptr &&
+                    node->ALUPipe == PIPE_INT && bucketNodes[BD.opndNum]->inst != BD.inst)
+                {
+                    void* allocedMem = mem.alloc(sizeof(SBBucketNode));
+                    SBBucketNode* newNode = new (allocedMem)SBBucketNode(node, BD.opndNum, BD.inst);
+                    LB->add(newNode, BD.bucket);
+                }
+                else
+                {
+                    LB->add(bucketNodes[BD.opndNum], BD.bucket);
+                }
             }
         }
         else
@@ -4748,6 +5667,17 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
     //return the node ID and ALU ID for following BB
     indexes->ALUIndex = ALUID;
     indexes->instIndex = nodeID;
+    indexes->integerIndex = integerID;
+    indexes->floatIndex = floatID;
+    indexes->longIndex = longID;
+    indexes->DPASIndex = DPASID;
+    indexes->mathIndex = mathID;
+    last_DPASID = DPASID;
+
+    for (int i = 0; i < PIPE_DPAS; i++)
+    {
+        indexes->latestDepALUID[i] = latestDepALUID[i];
+    }
 
 #ifdef DEBUG_VERBOSE_ON
     std::cerr << "\nLIVE OUT: \n";
@@ -5211,6 +6141,63 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
                             //Scalar CFG cannot capture the dependence v1-->v2 when they are assigned with same registers.
                             if (afterWrite || dep == WAW)  //There is no RAW kill for SIMDCF
                             {
+                                if (fg.builder->getOption(vISA_EnableDPASTokenReduction) &&
+                                    node->getLastInstruction()->isDpas() &&
+                                    curLiveNode->getLastInstruction()->isDpas() &&
+                                    curFootprint->isWholeOverlap(liveFootprint))
+                                {
+                                    if (node->getDPASID() > curLiveNode->getDPASID())
+                                    {
+                                        if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < TOKEN_AFTER_WRITE_DPAS_CYCLE))
+                                        {
+                                            send_use_kills.killOperand(bn_it);
+                                            BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                            curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                            instKill = true;
+                                            continue;
+                                        }
+                                        else if (dep == WAW)
+                                        {
+                                            send_use_kills.killOperand(bn_it);
+                                            continue;
+                                        }
+                                    }
+
+                                    if (node->getDPASID() <= curLiveNode->getDPASID())
+                                    {
+                                        unsigned loopStartBB = BBVector[node->getBBID()]->getLoopStartBBID();
+                                        unsigned loopEndBB = BBVector[curLiveNode->getBBID()]->getLoopEndBBID();
+                                        if (loopStartBB != -1 && loopEndBB != -1)
+                                        {
+                                            unsigned frontDist = node->getDPASID() - BBVector[loopStartBB]->first_DPASID;
+                                            unsigned endDist = BBVector[loopEndBB]->last_DPASID - curLiveNode->getDPASID();
+
+                                            //Note that if node and live node are in different but nest loop, the caculation will be conservative
+                                            if (frontDist + endDist + curFootprint->offset - internalOffset < TOKEN_AFTER_WRITE_DPAS_CYCLE)
+                                            {
+                                                send_use_kills.killOperand(bn_it);
+                                                BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                                instKill = true;
+                                                continue;
+                                            }
+                                            else if (dep == WAW)
+                                            {
+                                                send_use_kills.killOperand(bn_it);
+                                                continue;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            send_use_kills.killOperand(bn_it);
+                                            BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                            curLiveNode->setInstKilled(true);
+                                            instKill = true;
+                                            continue;
+                                        }
+                                    }
+                                }
+                                else
                                 {
                                     send_use_kills.killOperand(bn_it);
                                     BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
@@ -5286,6 +6273,11 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
 
             if (instKill)
             {
+                if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+                {
+                    BBVector[i]->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0);
+                }
+                else
                 {
                     BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
@@ -5522,6 +6514,63 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
                             //Scalar CFG cannot capture the dependence v1-->v2 when they are assigned with same registers.
                             if (afterWrite || dep == WAW)  //There is no RAW kill for SIMDCF
                             {
+                                if (fg.builder->getOption(vISA_EnableDPASTokenReduction) &&
+                                    node->getLastInstruction()->isDpas() &&
+                                    curLiveNode->getLastInstruction()->isDpas() &&
+                                    curFootprint->isWholeOverlap(liveFootprint))
+                                {
+                                    if (node->getDPASID() > curLiveNode->getDPASID())
+                                    {
+                                        if ((node->getDPASID() + curFootprint->offset - (curLiveNode->getDPASID() + internalOffset) < TOKEN_AFTER_WRITE_DPAS_CYCLE))
+                                        {
+                                            send_use_kills.killOperand(bn_it);
+                                            BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                            curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                            instKill = true;
+                                            continue;
+                                        }
+                                        else if (dep == WAW)
+                                        {
+                                            send_use_kills.killOperand(bn_it);
+                                            continue;
+                                        }
+                                    }
+
+                                    if (node->getDPASID() <= curLiveNode->getDPASID())
+                                    {
+                                        unsigned loopStartBB = BBVector[node->getBBID()]->getLoopStartBBID();
+                                        unsigned loopEndBB = BBVector[curLiveNode->getBBID()]->getLoopEndBBID();
+
+                                        if (loopStartBB != -1 && loopEndBB != -1)
+                                        {
+                                            unsigned frontDist = node->getDPASID() - BBVector[loopStartBB]->first_DPASID;
+                                            unsigned endDist = BBVector[loopEndBB]->last_DPASID - curLiveNode->getDPASID();
+
+                                            if (frontDist + endDist + curFootprint->offset - internalOffset < TOKEN_AFTER_WRITE_DPAS_CYCLE)
+                                            {
+                                                send_use_kills.killOperand(bn_it);
+                                                BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                                curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                                instKill = true;
+                                                continue;
+                                            }
+                                            else if (dep == WAW)
+                                            {
+                                                send_use_kills.killOperand(bn_it);
+                                                continue;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            send_use_kills.killOperand(bn_it);
+                                            BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
+                                            curLiveNode->setInstKilled(true);  //Instrtuction level kill
+                                            instKill = true;
+                                            continue;
+                                        }
+                                    }
+                                }
+                                else
                                 {
                                     send_use_kills.killOperand(bn_it);
                                     BBVector[i]->createAddGRFEdge(curLiveNode, node, dep, DEP_EXPLICT);
@@ -5610,6 +6659,11 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 
             if (instKill)
             {
+                if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes())
+                {
+                    BBVector[i]->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0);
+                }
+                else
                 {
                     BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
                 }
@@ -5791,6 +6845,10 @@ static bool isSWSBRequired(IR_Builder* builder, G4_INST* inst)
             {
                 return true;
             }
+            if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
+            {
+                return true;
+            }
         }
 
     }
@@ -5808,7 +6866,26 @@ static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, INST_LIST_ITER
         return nullptr;
     }
 
-    inst->setDistance(1);
+    if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
+    {
+        if (!inst->tokenHonourInstruction())
+        {
+            inst->setDistance(1);
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+        }
+        else
+        {
+            G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
+            G4_INST* extraSyncInst = builder->createSync(G4_sync_nop, src0);
+            extraSyncInst->setDistance(1);
+            extraSyncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            bb->insertBefore(inst_it, extraSyncInst);
+        }
+    }
+    else
+    {
+        inst->setDistance(1);
+    }
 
     if (inst->tokenHonourInstruction())
     {
@@ -5816,6 +6893,10 @@ static G4_INST* setForceDebugSWSB(IR_Builder* builder, G4_BB* bb, INST_LIST_ITER
         if (builder->hasEOTWait() && inst->isEOT())
         {
             inst->setDistance(1);
+            if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
+            {
+                inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            }
         }
         G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
         syncInst = builder->createSync(G4_sync_nop, src0);
@@ -5895,6 +6976,10 @@ static void setInstructionStallSWSB(IR_Builder* builder,
     if (inst->distanceHonourInstruction())
     {
         inst->setDistance(1);
+        if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
+        {
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+        }
         return;
     }
 
@@ -5933,6 +7018,10 @@ static void setInstructionBarrierSWSB(IR_Builder* builder,
     G4_SrcRegRegion* src0 = builder->createNullSrc(Type_UD);
     syncAllRdInst = builder->createSync(G4_sync_allrd, src0);
     syncAllRdInst->setDistance(1);
+    if (builder->hasThreeALUPipes() || builder->hasFourALUPipes())
+    {
+        syncAllRdInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+    }
     INST_LIST_ITER next_it = inst_it;
     next_it++;
     inst_it = bb->insertBefore(next_it, syncAllRdInst);

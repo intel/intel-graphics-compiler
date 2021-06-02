@@ -154,6 +154,25 @@ inline uint32_t getvISAMaskOffset(VISA_EMask_Ctrl emask)
     }
 }
 
+const char* toString(GenPrecision P);
+
+inline uint32_t DpasInfoToUI32(GenPrecision A, GenPrecision W, uint8_t D, uint8_t C)
+{
+    uint32_t info = (C & 0xFF);
+    info = (info << 8) | ((uint32_t)D & 0xFF);
+    info = (info << 8) | ((uint32_t)A & 0xFF);
+    info = (info << 8) | ((uint32_t)W & 0xFF);
+    return info;
+}
+
+inline void UI32ToDpasInfo(const uint32_t dpasInfo,
+    GenPrecision& A, GenPrecision& W, uint8_t& D, uint8_t& C)
+{
+    W = (GenPrecision)(dpasInfo & 0xFF);
+    A = (GenPrecision)((dpasInfo >> 8) & 0xFF);
+    D = ((dpasInfo >> 16) & 0xFF);
+    C = ((dpasInfo >> 24) & 0xFF);
+}
 
 inline bool isPerSampleSet(uint16_t mode)
 {

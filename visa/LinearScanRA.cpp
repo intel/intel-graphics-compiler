@@ -1349,6 +1349,7 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
     if ((builder.WaDisableSendSrcDstOverlap() &&
         ((curInst->isSend() && srcIdx == 0) ||
             (curInst->isSplitSend() && srcIdx == 1)))
+        || (curInst->isDpas() && srcIdx == 1)  //For DPAS, as part of same instruction, src1 should not have overlap with dst.
         || (builder.avoidDstSrcOverlap() && curInst->getDst() != NULL && hasDstSrcOverlapPotential(curInst->getDst(), curInst->getSrc(srcIdx)->asSrcRegRegion()))
         )
     {

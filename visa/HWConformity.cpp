@@ -1071,6 +1071,26 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB* bb)
             }
         }
     }
+    if (inst->opcode() == G4_bfn)
+    {
+        // BFN requires its operands to be UD/UW
+        // ToDo: anyway to generalize this to all instructions requiring signed/unsigned int type? IGA doesn't seem to have API to query supported types
+        auto dst = inst->getDst();
+        if (dst->getType() == Type_D || dst->getType() == Type_W)
+        {
+            dst->setType(dst->getType() == Type_D ? Type_UD : Type_UW);
+        }
+        auto changeSrcToUnsigned = [](G4_Operand* opnd)
+        {
+            if (opnd->isSrcRegRegion() && (opnd->getType() == Type_D || opnd->getType() == Type_W))
+            {
+                opnd->asSrcRegRegion()->setType(opnd->getType() == Type_D ? Type_UD : Type_UW);
+            }
+        };
+        changeSrcToUnsigned(inst->getSrc(0));
+        changeSrcToUnsigned(inst->getSrc(1));
+        changeSrcToUnsigned(inst->getSrc(2));
+    }
     return changed;
 }
 
@@ -3626,6 +3646,7 @@ static bool isGoodMadType(G4_Type type)
     case Type_F:
     case Type_HF:
     case Type_DF:
+    case Type_BF:
         return true;
     default:
         return false;
@@ -4355,6 +4376,7 @@ void HWConformity::fixMADInst(G4_BB* bb)
             case Type_F:
             case Type_HF:
             case Type_DF:
+            case Type_BF:
                 break;
             case Type_W:
             case Type_UW:
@@ -5252,6 +5274,64 @@ void HWConformity::fixCalla(INST_LIST_ITER it, G4_BB *bb)
     replaceSrc(it, 0, src0->getType(), bb, GRFALIGN);
 }
 
+void HWConformity::replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB* bb)
+{
+    auto* inst = *it;
+    auto* dst = inst->getDst();
+    auto* src0 = inst->getSrc(0);
+    assert(src0->getType() == Type_BF || src0->getType() == Type_HF);
+
+    G4_InstDpas* dpasInst = inst->asDpasInst();
+    uint8_t C = dpasInst->getRepeatCount();
+
+    unsigned int src_l = src0->getLinearizedStart();
+    unsigned int src_r = src0->getLinearizedEnd();
+    unsigned int dstGRFSize = (src_r - src_l + 1) * (TypeSize(Type_F) / src0->getTypeSize());
+    unsigned movInstNum = (((dstGRFSize + getGRFSize() - 1) / getGRFSize()) + 1) / 2; //2 GRFs per instruction
+
+    G4_Declare* dcl = builder.createTempVar(builder.getNativeExecSize() * C, Type_F, ThirtyTwo_Word);
+
+    // Copy HF/BF data to float with mov instructions.
+    // If the new destination is more than 2 GRFs, multiple moves required.
+    for (unsigned i = 0; i < movInstNum; i++)
+    {
+        G4_DstRegRegion* newDst = builder.createDst(
+            dcl->getRegVar(),
+            2 * i,
+            0,
+            dst->getHorzStride(),
+            Type_F);
+
+        G4_Operand* newSrc = builder.createSrc(
+            src0->getBase(),
+            src0->asSrcRegRegion()->getRegOff() + i,
+            src0->asSrcRegRegion()->getSubRegOff(),
+            builder.getRegionStride1(),
+            src0->asSrcRegRegion()->getType());
+
+        G4_ExecSize numOfF {(2 * getGRFSize()) / TypeSize(Type_F)};
+        if (i == movInstNum - 1)
+        {
+            numOfF = G4_ExecSize((dstGRFSize / TypeSize(Type_F)) - i * numOfF);
+        }
+        G4_INST* newInst = builder.createMov(numOfF, newDst, newSrc, InstOpt_WriteEnable, false);
+
+        bb->insertBefore(it, newInst);
+    }
+
+    //Replace the original source with the float type operand
+    G4_Operand* newSrc0 = builder.createSrc(
+        dcl->getRegVar(),
+        0,
+        0,
+        builder.getRegionStride1(),
+        dcl->getElemType());
+    inst->setSrc(newSrc0, 0);
+
+    return;
+}
+
+
 void HWConformity::conformBB(G4_BB* bb)
 {
     INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
@@ -5462,10 +5542,31 @@ void HWConformity::conformBB(G4_BB* bb)
 #endif
         fixImm64(i, bb); // fixed immediates for DF4 in fixImm64()
 
+        if ((*i)->opcode() == G4_mov)
+        {
+            if (fixBFMove(i, bb))
+            {
+                continue;
+            }
+        }
 
         if (builder.getPlatform() == GENX_BDW)
         {
             fixPackedHFConversions(i, bb);
+        }
+    }
+
+    if (!builder.supportFloatOr64bRegioning())
+    {
+        for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; /* empty */)
+        {
+            // pre-compute nextIter as the call may destroy iter
+            auto nextIter = std::next(iter);
+            // since insertMovBefore/After and similar helper instructions do not
+            // understand Xe_HP regioning restrictions, they may produce illegal moves
+            // We do a catch call pass here to catch them
+            fixUnalignedRegions(iter, bb);
+            iter = nextIter;
         }
     }
 
@@ -5534,7 +5635,7 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
 
                 bool opPossibleConsumer =
                     op == G4_mov || op == G4_add || op == G4_addc ||
-                    op == G4_mad || op == G4_pseudo_mad;
+                    op == G4_mad || op == G4_pseudo_mad || op == G4_add3;
 
                 // only check for a handful of user instructions
                 // this list could be extended
@@ -6893,6 +6994,24 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
 
         if (builder.hasPartialMixMode() && inst->getNumSrc() > 1)
         {
+            bool isPureBF = true;
+            if (inst->getDst()->getType() != Type_BF)
+            {
+                isPureBF = false;
+            }
+            for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+            {
+                if (inst->getSrc(i)->getType() != Type_BF)
+                {
+                    isPureBF = false;
+                    break;
+                }
+            }
+            if (isPureBF)
+            {
+                // pure BF arithmetic instruction is not supported, we make src0 F
+                replaceSrc(instIter, 0, Type_F, bb);
+            }
 
             // no HF on mad src2 or mul src1
             if (inst->isMixedMode())
@@ -7240,6 +7359,523 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
+// emulate mov F BF
+// with
+// shl UD UW 16
+bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB* bb)
+{
+    G4_INST* inst = *i;
+    if (inst->opcode() != G4_mov)
+    {
+        return false;
+    }
+    G4_Operand* src0 = inst->getSrc(0);
+
+    if (inst->getDst()->getType() == Type_BF)
+    {
+        // allow BF->BF moves as they may be introduced during HW conformity
+        // we will change their type to HF later
+        assert((src0->getType() == Type_F || src0->getType() == Type_BF) &&
+            "Only F->BF conversion is supported");
+        assert(!inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate() &&
+            "F->BF move does not support pred/cond mod/sat");
+        if (src0->isSrcRegRegion())
+        {
+            assert(src0->asSrcRegRegion()->getModifier() == Mod_src_undef &&
+                "F->BF move does not support source modifier");
+        }
+        if (src0->getType() == Type_BF)
+        {
+            // change type of copy move to uw
+            inst->getDst()->setType(Type_UW);
+            src0->asSrcRegRegion()->setType(Type_UW);
+        }
+        return false;
+    }
+
+    if (src0->getType() == Type_BF)
+    {
+        assert(inst->getDst()->getType() == Type_F && "Only BF->F conversion is supported");
+        assert(!inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate() &&
+            "BF->F move does not support pred/cond mod/sat");
+        // don't support BF imm for now
+        assert(src0->isSrcRegRegion() &&
+            src0->asSrcRegRegion()->getModifier() == Mod_src_undef &&
+            "F->BF move does not support source modifier");
+
+        auto src0RR = src0->asSrcRegRegion();
+
+        src0RR->setType(Type_UW);
+        G4_SrcRegRegion* newSrc0 = src0RR;
+
+        inst->getDst()->setType(Type_UD);
+        auto newDst = inst->getDst();
+
+        auto shlInst = builder.createBinOp(G4_shl,
+            inst->getExecSize(), newDst, newSrc0, builder.createImm(16, Type_UW), inst->getOption(), false);
+        bb->insertBefore(i, shlInst);
+        bb->erase(i);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool HWConformity::isFloatOr64b(G4_INST* inst)
+{
+    auto dst = inst->getDst();
+    auto dstTy = dst->getType();
+
+    bool goFloatPipe = IS_TYPE_FLOAT_ALL(dstTy) || TypeSize(dstTy) >= 8;
+
+    if (!goFloatPipe)
+    {
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+        {
+            auto src = inst->getSrc(i);
+            if (src)
+            {
+                bool nonScalarFloat = IS_TYPE_FLOAT_ALL(src->getType()) &&
+                    src->isSrcRegRegion() && !src->asSrcRegRegion()->isScalar();
+                // Q type may be mixed with other int (e.g., D = Q + D), so always needs checking as we may need
+                // to fix the other operands.
+                // float type only needs checking if it's non-scalar
+                // ToDo: consider skipping all mixed mode as they should already confirm to region rules
+                if (IS_QTYPE(src->getType()) || nonScalarFloat)
+                {
+                    goFloatPipe = true;
+                    break;
+                }
+            }
+        }
+    }
+    return goFloatPipe;
+}
+
+uint16_t HWConformity::getSrcStride(G4_SrcRegRegion* src)
+{
+    uint16_t srcStride = 0;
+    src->getRegion()->isSingleStride(src->getInst()->getExecSize(), srcStride);
+    srcStride *= src->getTypeSize();
+    return srcStride;
+};
+
+void HWConformity::change64bStride2CopyToUD(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* inst = *it;
+    G4_Operand* src = inst->getSrc(0);
+    MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(), "source must be a SrcRegRegion");
+    G4_SrcRegRegion* origSrc = src->asSrcRegRegion();
+    G4_Type execType = inst->getDst()->getType();
+    uint16_t stride = inst->getDst()->getHorzStride();
+    short dstRegOff = inst->getDst()->getRegOff();
+    short dstSubRegOff = inst->getDst()->getSubRegOff();
+
+    assert((execType == Type_Q || execType == Type_DF) && "Only 64b data type support");
+    execType = Type_UD;
+    dstSubRegOff *= 2;
+
+    G4_DstRegRegion* newDst = builder.createDst(
+        inst->getDst()->getBase(),
+        dstRegOff,
+        dstSubRegOff + 1,
+        stride * 2,
+        execType);
+    G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(origSrc->getModifier(), Direct, origSrc->getBase(),
+        origSrc->getRegOff(), origSrc->getSubRegOff() * 2 + 1, builder.createRegionDesc(2, 1, 0), Type_UD);
+    inst->setSrc(newSrc, 0);
+    inst->setDest(newDst);
+
+    G4_DstRegRegion* newDst1 = builder.createDst(
+        inst->getDst()->getBase(),
+        dstRegOff,
+        dstSubRegOff,
+        stride * 2,
+        execType);
+    G4_SrcRegRegion* newSrc1 = builder.createSrcRegRegion(origSrc->getModifier(), Direct, origSrc->getBase(),
+        origSrc->getRegOff(), origSrc->getSubRegOff() * 2, builder.createRegionDesc(2, 1, 0), Type_UD);
+
+    G4_INST* movInst = builder.createMov(inst->getExecSize(), newDst1, newSrc1, inst->getOption(), false);
+
+    INST_LIST_ITER iter = it;
+    iter++;
+    bb->insertBefore(it, movInst);
+}
+
+// on Xe_HP we have to make sure each source element is alignd to each dst element
+// for all float/64b inst (packed HF is ok in mixed mode inst)
+// For all violating instructions, we align each operand to the execution type
+// for float copy moves we could directly convert their type to int
+void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
+{
+    G4_INST* inst = *it;
+    if (!inst->getDst() || inst->isSend() || inst->isDpas() ||
+        hasDedicateAlignRegionConformity(it) ||
+        inst->getExecSize() == g4::SIMD1)
+    {
+        // only check non-scalar ALU instructions
+        return;
+    }
+
+    if (!isFloatOr64b(inst))
+    {
+        return;
+    }
+    auto dst = inst->getDst();
+    auto dstTy = dst->getType();
+    G4_Type execTy = inst->getExecType();
+    if (TypeSize(dstTy) > TypeSize(execTy))
+    {
+        // getExecType() does not take dst ty into account, while we have to consider the widest type
+        // in all operands here
+        execTy = dstTy;
+    }
+    auto execTyWidth = TypeSize(execTy);
+
+    // input must be a 64b copy move with packed dst and singly-strided src
+    // this works for both direct and indirect dst and src
+    auto change64bCopyToUD = [this](G4_INST* movInst, uint16_t srcStride)
+    {
+        auto oldSrc = movInst->getSrc(0)->asSrcRegRegion();
+        G4_SrcRegRegion* movSrc = nullptr;
+        if (oldSrc->getRegAccess() == Direct)
+        {
+            // change region, type, and subreg offset
+            movSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct, oldSrc->getBase(),
+                oldSrc->getRegOff(), oldSrc->getSubRegOff() * 2, builder.createRegionDesc(srcStride * 2, 2, 1), Type_UD);
+        }
+        else
+        {
+            // change region and type
+            movSrc = builder.createIndirectSrc(oldSrc->getModifier(), oldSrc->getBase(), oldSrc->getRegOff(),
+                oldSrc->getSubRegOff(), builder.createRegionDesc(srcStride * 2, 2, 1), Type_UD, oldSrc->getAddrImm());
+        }
+        movInst->setSrc(movSrc, 0);
+
+        auto oldDst = movInst->getDst();
+        G4_DstRegRegion* movDst = nullptr;
+        if (oldDst->getRegAccess() == Direct)
+        {
+            movDst = builder.createDst(oldDst->getBase(), oldDst->getRegOff(), oldDst->getSubRegOff() * 2, oldDst->getHorzStride(), Type_UD, oldDst->getAccRegSel());
+        }
+        else
+        {
+            movDst = builder.createIndirectDst(oldDst->getBase(), oldDst->getSubRegOff(), oldDst->getHorzStride(), Type_UD, oldDst->getAddrImm());
+        }
+        movInst->setDest(movDst);
+        movInst->setExecSize(G4_ExecSize(movInst->getExecSize() * 2u));
+        movInst->setOptionOn(InstOpt_WriteEnable);
+        // caller guarantees movInst is not predicated, so we can reset its mask offset to 0
+        // this is to avoid a bug where changing
+        // mov (8|M24) r2.0<1>:q
+        // -->
+        // mov (16|M24) r2.0<1>:ud
+        // would result in illegal mask offset for SIMD16
+        movInst->setMaskOption(InstOpt_M0);
+    };
+
+    if (inst->isRawMov())
+    {
+        // we can do better for float/64b copy moves by directly changing their type
+        bool done = true;
+        if (inst->getSrc(0)->isSrcRegRegion() && !inst->getSrc(0)->asSrcRegRegion()->isScalar())
+        {
+            auto src0RR = inst->getSrc(0)->asSrcRegRegion();
+            int dstStride = TypeSize(dstTy) * inst->getDst()->getHorzStride();
+            int srcStride = getSrcStride(src0RR);
+            if (dstStride != srcStride || !builder.isOpndAligned(inst->getSrc(0), getGRFSize()) ||
+                !builder.isOpndAligned(inst->getDst(), getGRFSize()))
+            {
+                bool isNoMaskInst = !inst->getPredicate() && (inst->isWriteEnableInst() || bb->isAllLaneActive());
+                if (execTyWidth < 8)
+                {
+                    auto intType = TypeSize(dstTy) == 4 ? Type_UD : Type_UW;
+                    inst->getDst()->setType(intType);
+                    src0RR->setType(intType);
+                }
+                else if (isNoMaskInst && inst->getDst()->getHorzStride() == 1 && srcStride != 0)
+                {
+                    // for packed 64b copy moves that are not under divergent CF, we can
+                    // change its type to UD
+                    change64bCopyToUD(inst, srcStride / inst->getSrc(0)->getTypeSize());
+                }
+                else if (isNoMaskInst && inst->getDst()->getHorzStride() == 2 && execTyWidth == 8 &&
+                    src0RR->getRegion()->isContiguous(inst->getExecSize()))
+                {
+                    change64bStride2CopyToUD(it, bb);
+                }
+                else if (execTyWidth == 8 && IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0RR->getType()) && srcStride != 0 && !src0RR->isIndirect())
+                {
+                    // we can split 64b moves with single source stride into 2UD moves
+                    // ToDo: check if this subsumes the previous else if
+                    emulate64bMov(it, bb);
+                }
+                else
+                {
+                    // a move we don't know how to handle without inserting more moves
+                    done = false;
+                }
+            }
+        }
+        if (done)
+        {
+            // the move is ok at this point
+            return;
+        }
+    }
+
+    // some operands may have fixed offset (e.g., input), and we can directly check if all operands have the same sub-reg
+    // for simplicity we require all operands to have same type and are packed.
+    {
+        bool goodOperand = true;
+        if (inst->getDst()->getHorzStride() != 1)
+        {
+            goodOperand = false;
+        }
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+        {
+            if (inst->getSrc(i)->isSrcRegRegion())
+            {
+                auto srcRR = inst->getSrc(i)->asSrcRegRegion();
+                if (srcRR->getType() != inst->getDst()->getType() ||
+                    (!srcRR->isScalar() && !srcRR->getRegion()->isContiguous(inst->getExecSize())))
+                {
+                    goodOperand = false;
+                    break;
+                }
+            }
+        }
+        uint32_t commonOffset = 0;
+        if (goodOperand && hasSameSubregOffset(inst, commonOffset) && commonOffset != 0)
+        {
+            //for some strange reason HW requires null operands to have the same subreg offset as other operands as well
+            if (inst->getDst()->isNullReg())
+            {
+                inst->setDest(builder.createDst(builder.phyregpool.getNullReg(), 0, commonOffset / dst->getTypeSize(), 1, dst->getType()));
+            }
+            return;
+        }
+    }
+
+    if (inst->getExecSize() == g4::SIMD2 && inst->getNumSrc() != 3)
+    {
+        if (inst->getDst()->getAccRegSel() != ACC_UNDEFINED)
+        {
+            // this instruction is internally generated, no need to check
+            return;
+        }
+
+        // split currently can't handle packed imm
+        // Also don't split src byte type since scalar byte to float conversion is not allowed
+        auto canSplit = [](G4_INST* inst)
+        {
+            if (inst->getPredicate() || inst->getCondMod())
+            {
+                return false;
+            }
+            for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+            {
+                auto ty = inst->getSrc(i)->getType();
+                if (IS_VINTTYPE(ty) || ty == Type_VF || IS_BTYPE(ty))
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (canSplit(inst))
+        {
+            auto prevIt = it == bb->begin() ? it : std::prev(it);
+            if (evenlySplitInst(it, bb))
+            {
+                // split introduces new moves which may need fixing
+                // after splitting it points to the second instruction
+                INST_LIST_ITER splitIt = std::prev(it);
+                INST_LIST_ITER insertIt = prevIt == bb->begin() ? prevIt : std::next(prevIt);
+                while (insertIt != splitIt)
+                {
+                    fixUnalignedRegions(insertIt, bb);
+                    insertIt++;
+                }
+            }
+            return;
+        }
+    }
+
+    // fix Dst if necessary
+    // some special mix mode dst are allowed provided the instruction has F type:
+    // r1.0<2>:bf
+    // r1.1<2>:bf
+    // r1.0<1>:bf
+    // r1.8<1>:bf
+    bool isSpecialMixModeDst = false;
+    bool canDoPackedFtoHFMove = builder.hasFtoPackedHFMove() && inst->opcode() == G4_mov && inst->getExecSize() >= builder.getNativeExecSize() &&
+        dstTy == Type_HF && !dst->isIndirect();
+    if ((builder.getMixModeType() == dstTy || canDoPackedFtoHFMove) && IS_FTYPE(execTy))
+    {
+        uint16_t offset = 0;
+        bool isAligned = builder.isOpndAligned(dst, offset, getGRFSize() / 2);
+        if (dst->getHorzStride() == 1)
+        {
+            isSpecialMixModeDst = isAligned;
+        }
+        else if (dst->getHorzStride() == 2)
+        {
+            isSpecialMixModeDst = isAligned || (offset % 32) == 2;
+        }
+    }
+
+    if (canDoPackedFtoHFMove && isSpecialMixModeDst)
+    {
+        if (inst->getExecSize() > builder.getNativeExecSize())
+        {
+            evenlySplitInst(it, bb);
+        }
+        return;
+    }
+
+    auto dstStride = TypeSize(dstTy) * dst->getHorzStride();
+    uint16_t dstAlign = inst->getSrc(0)->getType() == Type_VF ? 16 : getGRFSize();
+    if (dst->getRegAccess() == Direct && !isSpecialMixModeDst &&
+        (!builder.isOpndAligned(dst, dstAlign) || dstStride != execTyWidth))
+    {
+        inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, GRFALIGN));
+        if (IS_TYPE_FLOAT_ALL(dst->getType()) || dst->getTypeSize() == 8)
+        {
+            // the move may need more fixing
+            fixUnalignedRegions(std::next(it), bb);
+        }
+    }
+    else if (dst->getRegAccess() == IndirGRF && dst->getType() == Type_F)
+    {
+        // Since we can't know if an indirect dst is aligned or not,
+        // The proper fix is to insert a move then change its type to int.
+        // FIXME: not sure how to handle fp64 yet
+        inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, GRFALIGN));
+        // the move may need more fixing
+        fixUnalignedRegions(std::next(it), bb);
+    }
+
+    auto getUnsignedType = [](int numByte)
+    {
+        switch (numByte)
+        {
+        case 1:
+            return Type_UB;
+        case 2:
+            return Type_UW;
+        case 4:
+            return Type_UD;
+        case 8:
+            return Type_UQ;
+        default:
+            assert(false && "illegal type width");
+            return Type_UD;
+        }
+    };
+
+    // generate a move where each element is aligned to execTyWidth
+    // e.g.,
+    // mov (8) V1<1>:q V2<1;1,0>:ud
+    // becomes
+    // mov (8) tmp<2>:ud V2<1;1,0>:ud
+    // mov (8) V1<1>:q tmp<2;1,0>:ud
+    // or
+    // add (8) V1<1>:f V2<2;1,0>:f V3<1;1,0>:f
+    // becomes
+    // mov (8) tmp<1>:ud V2<2;1,0>:ud
+    // add (8) V1<1>:f tmp<1;1,0>:f V3<1;1,0>:f
+    // note that for float types we have to do the move in int since the move may be illegal otherwise
+    auto doAlignMove = [&](G4_INST* inst, int srcPos, int stride)
+    {
+        // caller must ensure src is a srcregregion
+        bool movNeedsFix = false;
+        auto src = inst->getSrc(srcPos)->asSrcRegRegion();
+        auto srcTy = src->getType();
+        auto tmpTy = getUnsignedType((int)TypeSize(srcTy));
+        auto movSrcTy = tmpTy;
+        auto newSrcTy = srcTy;
+        if (stride == 8 || (tmpTy == Type_UB &&
+            builder.getNativeExecSize() > g4::SIMD8 &&
+            (stride == 2 || stride == 4)))
+        {
+            // use UW as the tmp, and divide the stride by 2
+            // there are two reasons for this transform,
+            // 1) stride 8 is not supported
+            // 2) avoid read-modify-write on bytes
+            // mov (4) V1<4>:uw V2:ub
+            // then use <4;1,0>:uw in the original inst
+            tmpTy = (srcTy == Type_UB) ? Type_UW : Type_W;
+            movSrcTy = srcTy;
+            stride = stride / 2;
+            newSrcTy = tmpTy;
+        }
+        auto tmp = builder.createTempVar(inst->getExecSize() * stride, tmpTy, GRFALIGN);
+        auto movSrc = builder.createSrcRegRegion(*src);
+        movSrc->setModifier(Mod_src_undef);
+        movSrc->setType(movSrcTy);
+        auto movInst = builder.createMov(inst->getExecSize(),
+            builder.Create_Dst_Opnd_From_Dcl(tmp, stride), movSrc, inst->getOption(), false);
+        if (movSrc->getTypeSize() == 8)
+        {
+            assert(stride == 1 && "expect dst stride to be 1 here");
+            // the move instruction is itself illegal due to the source region being non-contiguous/not GRF-aligned
+            // if the region is singly-strided, we can change it into a UD move, e.g.,
+            // mov (8) V1<1>:q V2<2;1,0>:q
+            // becomes
+            // (W) mov (16) V1<1>:ud V2<4;2,1>:ud
+            uint16_t srcStride = 0;
+            if (movSrc->getRegion()->isSingleStride(inst->getExecSize(), srcStride))
+            {
+                change64bCopyToUD(movInst, srcStride);
+            }
+            else
+            {
+                movNeedsFix = true;
+            }
+        }
+        bb->insertBefore(it, movInst);
+        if (movNeedsFix)
+        {
+            // try splitting the move as last resort
+            // it may be successful if we are not in SIMD CF
+            evenlySplitInst(std::prev(it), bb);
+        }
+        auto newSrc = builder.createSrcRegRegion(src->getModifier(), Direct, tmp->getRegVar(), 0, 0,
+            builder.createRegionDesc(stride, 1, 0), newSrcTy);
+        inst->setSrc(newSrc, srcPos);
+    };
+
+    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+    {
+        G4_SrcRegRegion* src = inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() ?
+            inst->getSrc(i)->asSrcRegRegion() : nullptr;
+        if (src)
+        {
+            if (IS_BTYPE(src->getType()) && (src->getRegion()->isRegionWH() || src->getRegion()->isScalar()))
+            {
+                // no scalar byte when dst is float
+                // byte src with DF dst is handled by fixMov
+                inst->setSrc(insertMovBefore(it, 0, inst->getDst()->getTypeSize() == 4 ? Type_D : Type_W, bb), 0);
+            }
+            else if (!src->getRegion()->isRegionWH() && !src->getRegion()->isScalar())
+            {
+                // indirect VxH operands are handled elsewhere
+                auto srcStride = getSrcStride(src);
+                bool isMixModeSrc = isLowPrecisionFloatTy(src->getType()) && IS_FTYPE(execTy);
+                bool isMixModePackedSrc = isMixModeSrc && srcStride == 2;
+                uint16_t alignment = isMixModePackedSrc ? (getGRFSize() / 2) : getGRFSize();
+                // for mix mode the source must be packed, otherwise srcStride shoudl be == sizeof(exec type)
+                if (!builder.isOpndAligned(src, alignment) || (isMixModeSrc ? !isMixModePackedSrc : srcStride != execTyWidth))
+                {
+                    int stride = (int)(isMixModeSrc ? 1 : execTyWidth / src->getTypeSize());
+                    doAlignMove(inst, i, stride);
+                }
+            }
+        }
+    }
+}
 
 
 

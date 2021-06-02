@@ -37,6 +37,7 @@ DEF_ATTR_BOOL(ATTR_PayloadLiveOut,         "PayloadLiveOut",AK_VAR,    false, "T
 DEF_ATTR_BOOL(ATTR_Input_Output,           "Input_Output",  AK_VAR,    false, "True if var is both input and output var")
 DEF_ATTR_BOOL(ATTR_NoWidening,             "NoWidening",    AK_VAR,    false, "")
 DEF_ATTR_BOOL(ATTR_DoNotSpill,             "DoNotSpill",    AK_VAR,    false, "True if var should not be spilled")
+DEF_ATTR_BOOL(ATTR_SepSpillPvtSS,          "SepSpillPvtSS", AK_KERNEL, false, "")
 
 
 // int32 attributes
@@ -51,6 +52,7 @@ DEF_ATTR_INT32(ATTR_PerThreadInputSize,    "PerThreadInputSize",  AK_KERNEL, 0, 
 DEF_ATTR_INT32(ATTR_SimdSize,              "SimdSize",      AK_KERNEL, 0, "Dispatch simd size. 0 if not provided.")
 DEF_ATTR_INT32(ATTR_Scope,                 "Scope",         AK_VAR,    0, "")
 DEF_ATTR_INT32(ATTR_SurfaceUsage,          "SurfaceUsage",  AK_VAR,    0, "")
+DEF_ATTR_INT32(ATTR_CrossThreadInputSize,  "CrossThreadInputSize",AK_KERNEL, -1, "cross-thread payload size in bytes")
 
 
 // C String Attributes

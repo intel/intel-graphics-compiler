@@ -21,6 +21,8 @@ static const unsigned LARGE_BLOCK_SIZE = 20000;
 static const unsigned LARGE_BLOCK_SIZE_RPE = 32000;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
+static const unsigned PRESSURE_HIGH_THRESHOLD = 120;
+static const unsigned PRESSURE_LOW_THRESHOLD = 60;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
 static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
 
@@ -510,6 +512,24 @@ static unsigned getRPReductionThreshold(unsigned NumGrfs, unsigned simdSize)
     return unsigned(PRESSURE_REDUCTION_THRESHOLD * Ratio);
 }
 
+// Register pressure threshold to move to a larger GRF mode
+static unsigned getRPThresholdHigh(unsigned NumGrfs, unsigned simdSize)
+{
+    float Ratio = NumGrfs / 128.0f;
+
+    // For all other kernels, use the default threshold.
+    return unsigned(PRESSURE_HIGH_THRESHOLD * Ratio);
+}
+
+// Register pressure threshold to move to a smaller GRF mode
+static unsigned getRPThresholdLow(unsigned NumGrfs, unsigned simdSize)
+{
+    float Ratio = NumGrfs / 128.0f;
+
+    // For all other kernels, use the default threshold.
+    return unsigned(PRESSURE_LOW_THRESHOLD * Ratio);
+}
+
 static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
 {
     unsigned NumGrfs = kernel.getNumRegTotal();
@@ -618,6 +638,169 @@ bool preRA_Scheduler::run()
     }
 
     return Changed;
+}
+
+// Automatic selection of GRF mode
+GRFMode::GRFMode()
+{
+    switch (getGenxPlatform())
+    {
+    default:
+        configurations.resize(1);
+        configurations[0] = std::make_pair(128, 8);
+        defaultMode = 0; // default GRF mode
+    }
+    currentMode = 0;
+}
+
+preRA_RegSharing::preRA_RegSharing(G4_Kernel& k, Mem_Manager& m, RPE* rpe)
+    : kernel(k)
+    , mem(m)
+    , rpe(rpe)
+{
+}
+
+preRA_RegSharing::~preRA_RegSharing() {}
+
+bool preRA_RegSharing::run()
+{
+    // General algorithm:
+    //  1. Schedule for pressure
+    //      - If RP is low (e.g. < 64, based on platform), set maximum number of threads
+    //  2. Estimate number of threads [4 .. 12] based on initial RP
+    //  3. Schedule for latency (obtain ILP, stalls, throughput)
+    //  4. Compute cost of schedule
+    //  5. Based on schedule cost:
+    //      - Return ok (keep best schedule)
+    //      - Goto 3
+
+    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D)
+    {
+        // Do not run pre-RA scheduler for CM unless user forces it.
+        if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleForce))
+            return false;
+    }
+
+    bool changed = false;
+
+    unsigned SchedCtrl = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleCtrl);
+    SchedConfig config(SchedCtrl);
+
+    GRFMode GrfMode;
+    RegisterPressure rp(kernel, mem, rpe);
+
+    std::unordered_map<G4_BB*, unsigned int> rpBB;
+    unsigned maxPressure = 0;
+
+    // Obtain register pressure estimate of every BB
+    for (auto bb : kernel.fg)
+    {
+        if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE_RPE)
+        {
+            SCHED_DUMP(std::cerr << "Skip block with instructions "
+                << bb->size() << "\n");
+            continue;
+        }
+
+        unsigned pressure = rp.getPressure(bb);
+        rpBB[bb] = pressure;
+
+        if (pressure > maxPressure)
+        {
+            maxPressure = pressure;
+        }
+    }
+
+    if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
+        (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal(), kernel.getSimdSize())))
+    {
+        // Update number of threads, GRF, Acc and SWSB
+        kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
+    }
+
+    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), kernel.getSimdSize());
+    LatencyTable LT(kernel.fg.builder);
+
+    for (auto bb : kernel.fg)
+    {
+        if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE)
+        {
+            SCHED_DUMP(std::cerr << "Skip block with instructions "
+                << bb->size() << "\n");
+            continue;
+        }
+
+        unsigned MaxPressure = rpBB.find(bb) == rpBB.end() ? 0 : rpBB[bb];
+        if (MaxPressure <= Threshold && !config.UseLatency)
+        {
+            SCHED_DUMP(std::cerr << "Skip block with rp " << MaxPressure << "\n");
+            continue;
+        }
+
+        SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
+        preDDD ddd(mem, kernel, bb);
+        BB_Scheduler S(kernel, ddd, rp, config, LT);
+
+        auto tryRPReduction = [=]()
+        {
+            if (!config.UseSethiUllman)
+                return false;
+            return MaxPressure >= Threshold;
+        };
+
+        if (tryRPReduction())
+        {
+            ddd.buildGraph();
+            S.scheduleBlockForPressure();
+            if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
+            {
+                SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
+                changed = true;
+                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
+                    this->kernel.getSimdSize());
+            }
+        }
+
+        auto tryLatencyHiding = [=]()
+        {
+            if (!config.UseLatency)
+                return false;
+
+            if (MaxPressure >= getLatencyHidingThreshold(kernel))
+                return false;
+
+            // simple ROI check.
+            unsigned NumOfHighLatencyInsts = 0;
+            for (auto Inst : *bb)
+            {
+                if (Inst->isSend())
+                {
+                    G4_SendDesc* MsgDesc = Inst->getMsgDesc();
+                    if (MsgDesc->isRead() ||
+                        MsgDesc->isSampler() ||
+                        MsgDesc->isAtomic())
+                        NumOfHighLatencyInsts++;
+                }
+            }
+
+            return NumOfHighLatencyInsts >= 2;
+        };
+
+        if (tryLatencyHiding())
+        {
+            ddd.reset(changed);
+            S.scheduleBlockForLatency();
+            if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true))
+            {
+                SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
+                changed = true;
+                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                    this->kernel.getSimdSize());
+            }
+        }
+    }
+
+    return changed;
 }
 
 bool BB_Scheduler::verifyScheduling()
@@ -1633,6 +1816,8 @@ DepType preNode::checkBarrier(G4_INST* Inst)
     else if (Inst->isSend() && Inst->asSendInst()->isFence())
         return DepType::OPT_BARRIER;
     else if (Inst->opcode() == G4_madm)
+        return DepType::OPT_BARRIER;
+    else if (Inst->isDpas())
         return DepType::OPT_BARRIER;
     else
         return CheckBarrier(Inst);

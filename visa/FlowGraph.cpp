@@ -657,6 +657,12 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 {
     MUST_BE_TRUE(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
 
+    if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls))
+    {
+        // unfortunately we can't put this in stack call prolog since this has to be done before RA
+        // ToDo: just hard-wire the scratch-surface offset register?
+        builder->initScratchSurfaceOffset();
+    }
     if (builder->hasFusedEU() &&
         getKernel()->getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
     {

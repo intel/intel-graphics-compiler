@@ -819,6 +819,8 @@ std::string G4_SendDescRaw::getDescription() const
             case 0xa: return "oword dual block write";
             case 0xb: return "dword scattered write";
             case 0xc: return "byte scattered write";
+            case 0x5: return "qword gather";
+            case 0xd: return "qword scatter";
             default: return "unrecognized DC0 message";
             }
         }

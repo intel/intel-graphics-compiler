@@ -819,6 +819,49 @@ public:
     VISA_BUILDER_OPTION getBuilderOption() const { return mBuildOption; }
     vISABuilderMode getBuilderMode() const { return m_builderMode; }
 
+    bool CISA_create_dpas_instruction(
+        ISA_Opcode opcode,
+        VISA_EMask_Ctrl emask,
+        unsigned exec_size,
+        VISA_opnd * dst_cisa,
+        VISA_opnd * src0_cisa,
+        VISA_opnd * src1_cisa,
+        VISA_opnd * src2_cisa,
+        GenPrecision A,
+        GenPrecision W,
+        uint8_t D,
+        uint8_t C,
+        int lineNum);
+
+    bool CISA_create_bfn_instruction(
+        VISA_opnd * pred,
+        uint8_t func_ctrl,
+        bool sat,
+        VISA_EMask_Ctrl emask,
+        unsigned exec_size,
+        VISA_opnd * dst_cisa,
+        VISA_opnd * src0_cisa,
+        VISA_opnd * src1_cisa,
+        VISA_opnd * src2_cisa,
+        int lineNum);
+
+    bool CISA_create_qword_scatter_instruction(
+        ISA_Opcode opcode,
+        VISA_opnd *pred,
+        VISA_EMask_Ctrl eMask,
+        unsigned execSize,
+        unsigned numBlocks,
+        const char* surfaceName,
+        VISA_opnd *offsets,
+        VISA_opnd *dstSrc,
+        int lineNum);
+
+    bool CISA_create_bf_cvt_instruction(
+        VISA_EMask_Ctrl emask,
+        unsigned exec_size,
+        VISA_opnd *dst,
+        VISA_opnd *src0,
+        int lineNum);
 
 
 

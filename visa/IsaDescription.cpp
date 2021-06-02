@@ -48,7 +48,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_SQRT,               ISA_Inst_Arith,      "sqrt",                1, 1 },
     { ISA_RSQRT,              ISA_Inst_Arith,      "rsqrt",               1, 1 },
     { ISA_INV,                ISA_Inst_Arith,      "inv",                 1, 1 },
-    { ISA_RESERVED_1C,        ISA_Inst_Reserved,   "reserved1C",          0, 0 },
+    { ISA_DPASW,              ISA_Inst_Misc,       "dpasw",               3, 1 },
     { ISA_RESERVED_1D,        ISA_Inst_Reserved,   "reserved1D",          0, 0 },
     { ISA_RESERVED_1E,        ISA_Inst_Reserved,   "reserved1E",          0, 0 },
     { ISA_LZD,                ISA_Inst_Arith,      "lzd",                 1, 1 },
@@ -151,18 +151,18 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_ROL,                ISA_Inst_Logic,      "rol",                 2, 1 },
     { ISA_ROR,                ISA_Inst_Logic,      "ror",                 2, 1 },
     { ISA_DP4A,               ISA_Inst_Arith,      "dp4a",                3, 1 },
-    { ISA_RESERVED_83,        ISA_Inst_Reserved,   "reserved83",          0, 0 },
-    { ISA_RESERVED_84,        ISA_Inst_Reserved,   "reserved84",          0, 0 },
-    { ISA_RESERVED_85,        ISA_Inst_Reserved,   "reserved85",          0, 0 },
-    { ISA_RESERVED_86,        ISA_Inst_Reserved,   "reserved86",          0, 0 },
-    { ISA_RESERVED_87,        ISA_Inst_Reserved,   "reserved87",          0, 0 },
-    { ISA_RESERVED_88,        ISA_Inst_Reserved,   "reserved88",          0, 0 },
+    { ISA_DPAS,               ISA_Inst_Misc,       "dpas",                3, 1 },
+    { ISA_ADD3,               ISA_Inst_Arith,      "add3",                3, 1 },
+    { ISA_BFN,                ISA_Inst_Logic,      "bfn",                 3, 1 },
+    { ISA_QW_GATHER,          ISA_Inst_Data_Port,  "qw_gather",           3, 1 },
+    { ISA_QW_SCATTER,         ISA_Inst_Data_Port,  "qw_scatter",          4, 0 },
+    { ISA_BF_CVT,             ISA_Inst_Mov,        "bf_cvt",              1, 1 },
     { ISA_RESERVED_89,        ISA_Inst_Reserved,   "reserved89",          0, 0 },
     { ISA_RESERVED_8A,        ISA_Inst_Reserved,   "reserved8a",          0, 0 },
     { ISA_RESERVED_8B,        ISA_Inst_Reserved,   "reserved8b",          0, 0 },
-    { ISA_RESERVED_8C,        ISA_Inst_Reserved,   IGC_MANGLE("reserved8c"),        0, 0 },
-    { ISA_RESERVED_8D,        ISA_Inst_Reserved,   IGC_MANGLE("reserved8d"),        0, 0 },
-    { ISA_RESERVED_8E,        ISA_Inst_Reserved,   IGC_MANGLE("reserved8e"),        0, 0 },
+    { ISA_RESERVED_8C,        ISA_Inst_Reserved,   "reserved8c",          0, 0 },
+    { ISA_RESERVED_8D,        ISA_Inst_Reserved,   "reserved8d",          0, 0 },
+    { ISA_RESERVED_8E,        ISA_Inst_Reserved,   "reserved8e",          0, 0 },
     { ISA_RESERVED_8F,        ISA_Inst_Reserved,   "reserved8f",          0, 0 },
     { ISA_RESERVED_90,        ISA_Inst_Reserved,   "reserved90",          0, 0 },
     { ISA_MADW,               ISA_Inst_Arith,      "madw",                3, 1 }
@@ -492,8 +492,16 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 
     },
 
-    /// 28
-    { ALL, ISA_RESERVED_1C, ISA_Inst_Reserved, "reserved_1c", 0, 0, {},
+    /// 28 (0x1C)
+    { GENX_XE_HP, ISA_DPASW, ISA_Inst_Misc, "dpasw", 6, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_DST_GEN, ISA_TYPE_D | ISA_TYPE_UD | ISA_TYPE_F, GRF_ALIGNED },
+        { OPND_SRC_GEN, ISA_TYPE_D | ISA_TYPE_UD | ISA_TYPE_F, GRF_ALIGNED },
+        { OPND_SRC_GEN, ISA_TYPE_D | ISA_TYPE_UD, GRF_ALIGNED },
+        { OPND_SRC_GEN, ISA_TYPE_D | ISA_TYPE_UD, GRF_ALIGNED },
+        { OPND_OTHER,   ISA_TYPE_UD, 0 }
+    },
     },
 
     /// 29
@@ -1654,39 +1662,73 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 131 (0x83)
-    { ALL, ISA_RESERVED_83, ISA_Inst_Reserved, "reserved_83", 0, 0,
-        {
-        },
+    { GENX_XE_HP, ISA_DPAS, ISA_Inst_Misc, "dpas", 6, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_DST_GEN, ISA_TYPE_D | ISA_TYPE_UD | ISA_TYPE_F, GRF_ALIGNED },
+        { OPND_SRC_GEN, ISA_TYPE_D | ISA_TYPE_UD | ISA_TYPE_F, GRF_ALIGNED },
+        { OPND_SRC_GEN, ISA_TYPE_D | ISA_TYPE_UD, GRF_ALIGNED },
+        { OPND_SRC_GEN, ISA_TYPE_D | ISA_TYPE_UD, GRF_ALIGNED },
+        { OPND_OTHER,   ISA_TYPE_UD, 0}
+    },
     },
 
     /// 132 (0x84)
-    { ALL, ISA_RESERVED_84, ISA_Inst_Reserved, "reserved_84", 0, 0,
-        {
-        },
+    { ALL, ISA_ADD3, ISA_Inst_Arith, "add3", 6, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+    },
     },
 
-    /// 133 (0x85)
-    { ALL, ISA_RESERVED_85, ISA_Inst_Reserved, "reserved_85", 0, 0,
-        {
-        },
+    // 133 (0x85)
+    { ALL, ISA_BFN, ISA_Inst_Logic, "bfn", 7, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },      // dst
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },  // src0: reg | imm16
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },  // src1: reg
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },  // src2: reg | imm16
+        { OPND_OTHER, ISA_TYPE_UB, 0 }  // BooleanFuncCtrl, must be the last opend
+    },
     },
 
     /// 134 (0x86)
-    { ALL, ISA_RESERVED_86, ISA_Inst_Reserved, "reserved_86", 0, 0,
-        {
-        },
+    { GENX_XE_HP, ISA_QW_GATHER, ISA_Inst_Data_Port, "qw_gather", 6, 0,
+    {
+        { OPND_EXECSIZE,           ISA_TYPE_UB, 0 },             /// execution size
+        { OPND_PRED,               ISA_TYPE_UW, 0 },             /// predicate
+        { OPND_OTHER,              ISA_TYPE_UB, 0 },             /// numBlocks
+        { OPND_SURFACE,            ISA_TYPE_UB, 0 },             /// surface
+        { OPND_RAW,                ISA_TYPE_UD, GRF_ALIGNED },   /// offsets
+        { OPND_RAW,                ISA_TYPE_DF | ISA_TYPE_UQ, GRF_ALIGNED }    /// dst
+    },
     },
 
     /// 135 (0x87)
-    { ALL, ISA_RESERVED_87, ISA_Inst_Reserved, "reserved_87", 0, 0,
-        {
-        },
+    { GENX_XE_HP, ISA_QW_SCATTER, ISA_Inst_Data_Port, "qw_scatter", 6, 0,
+    {
+        { OPND_EXECSIZE,           ISA_TYPE_UB, 0 },             /// execution size
+        { OPND_PRED,               ISA_TYPE_UW, 0 },             /// predicate
+        { OPND_OTHER,              ISA_TYPE_UB, 0 },             /// numBlocks
+        { OPND_SURFACE,            ISA_TYPE_UB, 0 },             /// surface
+        { OPND_RAW,                ISA_TYPE_UD, GRF_ALIGNED },   /// offsets
+        { OPND_RAW,                ISA_TYPE_DF | ISA_TYPE_UQ, GRF_ALIGNED }    /// src
+    },
     },
 
     /// 136 (0x88)
-    { ALL, ISA_RESERVED_88, ISA_Inst_Reserved, "reserved_88", 0, 0,
-        {
-        },
+    { GENX_XE_HP, ISA_BF_CVT, ISA_Inst_Mov, "bf_cvt", 3, SAME_SPECIAL_KIND,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_DST_GEN, ISA_TYPE_F, 0 },
+        { OPND_SRC_GEN, ISA_TYPE_HF, 0 },
+    },
     },
     /// 137 (0x89)
     { ALL, ISA_RESERVED_89, ISA_Inst_Reserved, "reserved_89", 0, 0,
@@ -1706,19 +1748,19 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         },
     },
     /// 140 (0x8C)
-    { ALL, ISA_RESERVED_8C, ISA_Inst_Reserved, IGC_MANGLE("reserved_8c"), 0, 0,
+    { ALL, ISA_RESERVED_8C, ISA_Inst_Reserved, "reserved_8c", 0, 0,
         {
         },
     },
 
     /// 141 (0x8D)
-    { ALL, ISA_RESERVED_8D, ISA_Inst_Reserved, IGC_MANGLE("reserved_8d"), 0, 0,
+    { ALL, ISA_RESERVED_8D, ISA_Inst_Reserved, "reserved_8d", 0, 0,
         {
         },
     },
 
     /// 142 (0x8E)
-    { ALL, ISA_RESERVED_8E, ISA_Inst_Reserved, IGC_MANGLE("reserved_8e"), 0, 0,
+    { ALL, ISA_RESERVED_8E, ISA_Inst_Reserved, "reserved_8e", 0, 0,
         {
         },
     },

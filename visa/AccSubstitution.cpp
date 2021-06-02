@@ -42,7 +42,8 @@ struct AccInterval
         }
         int dist = lastUse - inst->getLocalId();
 
-        return std::pow((double)inst->use_size(), 3) / dist;
+        //Bundle conflict has higher priority than bank conflict. Because bundle conflict means bank conflict at the same time.
+        return (std::pow((double)(bundleConflictTimes + 1), 3) + std::pow((double)(bankConflictTimes + 1), 2) + std::pow((double)inst->use_size(), 3) / dist) / (suppressionTimes + 1);
     }
 
     // see if this interval needs both halves of the acc
@@ -53,6 +54,7 @@ struct AccInterval
         case Type_F:
             return inst->getExecSize() == G4_ExecSize(builder.getNativeExecSize() * 2);
         case Type_HF:
+        case Type_BF:
             return false;
         case Type_DF:
             return inst->getExecSize() > G4_ExecSize(builder.getNativeExecSize() / 2);
@@ -851,6 +853,23 @@ void AccSubPass::multiAccSub(G4_BB* bb)
     std::vector<AccInterval*> spillIntervals;
 
     std::map<G4_INST*, unsigned int> BCInfo;
+
+    if (builder.getPlatform() == GENX_XE_HP)
+    {
+        int suppressRegs[4];
+        for (int i = 0; i < 3; i++)
+        {
+            suppressRegs[i] = -1;
+        }
+        suppressRegs[3] = -1;
+
+        //Do bank conflict analysis for the BB
+        for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
+        {
+            G4_INST* inst = *instIter;
+            bankConflictAnalysisTGL(inst, suppressRegs, &BCInfo);
+        }
+    }
 
     //build intervals for potential acc candidates as well as pre-existing acc uses from mac/mach/addc/etc
     for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)

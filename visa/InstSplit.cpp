@@ -22,6 +22,7 @@ InstSplitPass::InstSplitPass(IR_Builder* builder) : m_builder(builder)
 //      - Send messages
 //      - Plane
 //      - Control flow, labels and return
+//      - Dpas
 //      - Instructions with indirect addressing other than 1x1 indirect region
 void InstSplitPass::run()
 {
@@ -37,6 +38,10 @@ void InstSplitPass::run()
         if (inst->isSend() || inst->opcode() == G4_label ||
             inst->opcode() == G4_pln || inst->opcode() == G4_return ||
             inst->isFlowControl() || inst->isPseudoLogic())
+        {
+            continue;
+        }
+        if (inst->isDpas())
         {
             continue;
         }
@@ -59,6 +64,10 @@ void InstSplitPass::runOnBB(G4_BB* bb)
         if (inst->isSend() || inst->opcode() == G4_label ||
             inst->opcode() == G4_pln || inst->opcode() == G4_return ||
             inst->isFlowControl() || inst->isPseudoLogic())
+        {
+            continue;
+        }
+        if (inst->isDpas())
         {
             continue;
         }
@@ -108,6 +117,18 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it, INST_LIST& ins
         {
             doSplit = true;
             break;
+        }
+        if (m_builder->getPlatform() >= GENX_XE_HP)
+        {
+            // Instructions whose operands are 64b and have 2D regioning need to be split
+            // up front to help fixUnalignedRegions(..) covering 2D cases.
+            G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
+            if ((src->getType() == Type_DF || IS_QTYPE(src->getType())) &&
+                !src->getRegion()->isSingleStride(execSize))
+            {
+                doSplit = true;
+                break;
+            }
         }
     }
 

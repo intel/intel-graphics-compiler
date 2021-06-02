@@ -218,6 +218,32 @@ public:
     VISA_BUILDER_API virtual int AppendVISATwoDstArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                                           VISA_Exec_Size executionSize, VISA_VectorOpnd *dst1, VISA_VectorOpnd *carry_borrow, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
+    /// AppendVISADpasInst -- append a DPAS instruction to this kernel.
+    ///    op (execSize) dst src0 src1 src2
+    /// Precision, depth, repeat count are constant and considered as fields
+    /// of the inst (not operands.). Note that src0 could be null operand.
+    VISA_BUILDER_API virtual int AppendVISADpasInst(ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_VectorOpnd *src2,
+        GenPrecision A, GenPrecision W, uint8_t D, uint8_t C) = 0;
+
+    /// AppendVISABfnInst -- append a BFN instruction to this kernel.
+    ///    [pred] op.booleanFuncCtrl[.sat] (emask, execSize) dst src0 src1 src2
+    /// <booleanFuncCtrl> is constant and is considered as a field of the inst,
+    /// not as an operand.
+    VISA_BUILDER_API virtual int AppendVISABfnInst(uint8_t booleanFuncCtrl, VISA_PredOpnd *pred, bool satMode, VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize, VISA_VectorOpnd *tmpDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1, VISA_VectorOpnd *sdrc2) = 0;
+
+    /// AppendVISAQwordGatherInst -- append a qword scattered read instruction to this kernel
+    VISA_BUILDER_API virtual int AppendVISAQwordGatherInst(VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_SVM_Block_Num numBlocks, VISA_StateOpndHandle *surface,
+        VISA_RawOpnd* address, VISA_RawOpnd *src) = 0;
+
+    /// AppendVISAQwordScatterInst -- append a qword scattered write instruction to this kernel
+    VISA_BUILDER_API virtual int AppendVISAQwordScatterInst(VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_SVM_Block_Num numBlocks, VISA_StateOpndHandle *surface,
+        VISA_RawOpnd* address, VISA_RawOpnd *dst) = 0;
 
 
 

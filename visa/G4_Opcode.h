@@ -34,7 +34,7 @@ SPDX-License-Identifier: MIT
 #define IS_INT(x) (IS_SIGNED_INT(x) || IS_UNSIGNED_INT(x))
 #define IS_TYPE_INT(type)        (IS_SIGNED_INT(type) || IS_UNSIGNED_INT(type))
 #define IS_TYPE_F32_F64(type)         (type == Type_F ||type == Type_DF || type == Type_NF)
-#define IS_TYPE_FLOAT_ALL(type)     (type == Type_F ||type == Type_DF || type == Type_HF || type == Type_NF)
+#define IS_TYPE_FLOAT_ALL(type)     (type == Type_F ||type == Type_DF || type == Type_HF || type == Type_NF || type == Type_BF)
 #define IS_TYPE_LONG(type)            (type == Type_DF || type == Type_UQ || type == Type_Q)
 #define IS_TYPE_INTEGER(type)         (type == Type_UW ||type == Type_W ||type == Type_B ||type == Type_UB ||type == Type_V ||type == Type_UV ||type == Type_UD ||type == Type_D)
 
@@ -206,6 +206,7 @@ enum G4_Type
     Type_UQ,    // 64-bit unsigned integer
     Type_HF,    // half float
     Type_NF,    // native float (only used by plane macro)
+    Type_BF,    // bfloat16 (used in mov only)
     Type_UNDEF
 };
 
@@ -235,6 +236,7 @@ constexpr G4_Type_Info G4_Type_Table[Type_UNDEF + 1] {
     {Type_UQ,  64, 8, 0xFF, "uq"},
     {Type_HF,  16, 2, 0x03, "hf"},
     {Type_NF,  64, 8, 0xFF, "nf"},
+    {Type_BF,  16, 2, 0x03, "bf"},
     {Type_UNDEF, 0, 0, 0x0, "???"}
 };
 static inline constexpr G4_Type_Info TypeInfo(G4_Type t) {
@@ -455,7 +457,7 @@ uint8_t roundDownPow2(uint8_t n);
 // G4_type related global functions
 inline bool isLowPrecisionFloatTy(G4_Type ty)
 {
-    return ty == Type_HF;
+    return ty == Type_HF || ty == Type_BF;
 }
 
 inline G4_Type floatToSameWidthIntType(G4_Type floatTy)

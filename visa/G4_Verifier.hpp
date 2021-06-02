@@ -82,6 +82,8 @@ private:
 
     void verifyDstSrcOverlap(G4_INST* inst);
 
+    void verifyDpas(G4_INST* inst);
+    void verifyAccMov(G4_INST* inst);
 
 };
 }

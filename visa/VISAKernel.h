@@ -545,7 +545,25 @@ public:
 
     VISA_BUILDER_API int AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOpnd *varId);
 
+    VISA_BUILDER_API int AppendVISADpasInst(
+        ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_VectorOpnd *src2,
+        GenPrecision src2Precision, GenPrecision src1Precision,
+        uint8_t Depth, uint8_t Count);
 
+    VISA_BUILDER_API int AppendVISABfnInst(
+        uint8_t booleanFuncCtrl, VISA_PredOpnd *pred, bool satMode, VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize, VISA_VectorOpnd *tmpDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1, VISA_VectorOpnd *src2);
+
+    VISA_BUILDER_API virtual int AppendVISAQwordGatherInst(VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_SVM_Block_Num numBlocks, VISA_StateOpndHandle *surface,
+        VISA_RawOpnd* address, VISA_RawOpnd *src);
+
+    VISA_BUILDER_API virtual int AppendVISAQwordScatterInst(VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_SVM_Block_Num numBlocks, VISA_StateOpndHandle *surface,
+        VISA_RawOpnd* address, VISA_RawOpnd *dst);
 
 
 
@@ -887,6 +905,12 @@ private:
     VISA_opnd * getOpndFromPool();
 
     void AppendVISAInstCommon();
+    int AppendVISADpasInstCommon(
+        ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+        VISA_RawOpnd* tmpDst, VISA_RawOpnd* src0, VISA_RawOpnd* src1,
+        VISA_VectorOpnd* src2, VISA_VectorOpnd* src3,
+        GenPrecision src2Precision, GenPrecision src1Precision,
+        uint8_t Depth, uint8_t Count);
 
     void createBindlessSampler();
 

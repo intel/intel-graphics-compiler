@@ -716,6 +716,10 @@ bool BUNDLE_INFO::canMerge(G4_INST* inst)
     {
         return false;
     }
+    if (firstInst->isBfn() && firstInst->asBfnInst()->getBooleanFuncCtrl() != inst->asBfnInst()->getBooleanFuncCtrl())
+    {
+        return false;
+    }
 
     if (inst->isMath())
     {

@@ -42,6 +42,8 @@ namespace vISA
             BankConflict &srcBC1, BankConflict &srcBC2);
         void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned &internalConflict);
         bool isOddOffset(unsigned offset) const;
+        void setupBankConflictsforDPAS(G4_INST* inst);
+        bool hasDpasInst = false;
 
         void setupBankConflictsforTwoGRFs(G4_INST* inst);
         void setupBankConflictsforMad(G4_INST* inst);
@@ -712,6 +714,7 @@ namespace vISA
         void expandSpillIntrinsic(G4_BB*);
         void expandFillIntrinsic(G4_BB*);
         void expandSpillFillIntrinsics(unsigned);
+        void saveRestoreA0(G4_BB*);
 
         static const RAVarInfo defaultValues;
         std::vector<RAVarInfo> vars;

@@ -311,6 +311,8 @@ const char* CISAAtomicOpNames[] = {
     "fmax",     // ATOMIC_FMAX      = 0x10,
     "fmin",     // ATOMIC_FMIN      = 0x11,
     "fcmpwr",   // ATOMIC_FCMPWR    = 0x12,
+    "fadd",     // ATOMIC_FADD      = 0x13,
+    "fsub",     // ATOMIC_FSUB      = 0x14
 };
 
 CISATypeInfo CISATypeTable[ISA_TYPE_NUM] =

@@ -183,6 +183,8 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(const G4_SendDescRaw * Desc)
             break;
         case DC1_UNTYPED_ATOMIC:
         case DC1_UNTYPED_FLOAT_ATOMIC:
+        case DC1_UNTYPED_HALF_FLOAT_ATOMIC:
+        case DC1_UNTYPED_HALF_INTEGER_ATOMIC:
             // bit12: SM2R
             FC = ((FC & ~0x1000) | (MDC_SM2R_SIMD16 << 12));
             break;
@@ -234,6 +236,22 @@ bool SendFusion::isAtomicCandidate(const G4_SendDescRaw* msgDesc)
     case DC1_UNTYPED_FLOAT_ATOMIC:
         intAtomic = false;
         break;
+    case DC1_UNTYPED_HALF_INTEGER_ATOMIC:
+        break;
+    case DC1_UNTYPED_HALF_FLOAT_ATOMIC:
+        intAtomic = false;
+        break;
+    case DC1_A64_ATOMIC:
+    case DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC:
+        if (Builder->getPlatform() != GENX_XE_HP)
+            return false;
+        break;
+    case DC1_A64_UNTYPED_FLOAT_ATOMIC:
+    case DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC:
+        if (Builder->getPlatform() != GENX_XE_HP)
+            return false;
+        intAtomic = false;
+        break;
     }
 
     // Had right atomic type, now check AtomicOp
@@ -268,6 +286,8 @@ bool SendFusion::isAtomicCandidate(const G4_SendDescRaw* msgDesc)
             return false;
         case GEN_ATOMIC_FMAX:
         case GEN_ATOMIC_FMIN:
+        case GEN_ATOMIC_FADD:
+        case GEN_ATOMIC_FSUB:
             break;
         }
     }

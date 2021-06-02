@@ -80,6 +80,32 @@ VISA_Align getCISAAlign(uint32_t AlignInBytes)
     return ALIGN_BYTE;
 }
 
+GenPrecision_Info_t GenPrecisionTable[] = {
+    /*  0 */ { GenPrecision::INVALID, 0, nullptr },
+    /*  1 */ { GenPrecision::U1,      1, "u1"    },
+    /*  2 */ { GenPrecision::S1,      1, "s1"    },
+    /*  3 */ { GenPrecision::U2,      2, "u2"    },
+    /*  4 */ { GenPrecision::S2,      2, "s2"    },
+    /*  5 */ { GenPrecision::U4,      4, "u4"    },
+    /*  6 */ { GenPrecision::S4,      4, "s4"    },
+    /*  7 */ { GenPrecision::U8,      8, "u8"    },
+    /*  8 */ { GenPrecision::S8,      8, "s8"    },
+    /*  9 */ { GenPrecision::BF16,   16, "bf"    },
+    /* 10 */ { GenPrecision::FP16,   16, "hf"    },
+};
+static_assert((int)GenPrecision::INVALID == 0);
+static_assert((int)GenPrecision::U1 == 1);
+static_assert((int)GenPrecision::S1 == 2);
+static_assert((int)GenPrecision::U2 == 3);
+static_assert((int)GenPrecision::S2 == 4);
+static_assert((int)GenPrecision::U4 == 5);
+static_assert((int)GenPrecision::S4 == 6);
+static_assert((int)GenPrecision::U8 == 7);
+static_assert((int)GenPrecision::S8 == 8);
+static_assert((int)GenPrecision::BF16 == 9);
+static_assert((int)GenPrecision::FP16 == 10);
+static_assert((int)GenPrecision::TOTAL_NUM == 11);
+
 
 const char* Common_ISA_Get_Modifier_Name(VISA_Modifier modifier)
 {
@@ -144,6 +170,15 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode)
             return G4_dph;
         case ISA_DP4A:
             return G4_dp4a;
+        case ISA_DPAS:
+            return G4_dpas;
+        case ISA_DPASW:
+            return G4_dpasw;
+        case ISA_ADD3:
+            return G4_add3;
+        case ISA_BFN:
+            return G4_bfn;
+        case ISA_BF_CVT:
         case ISA_EXP:
             return G4_math;
         case ISA_FRC:
@@ -396,7 +431,7 @@ bool hasPredicate(ISA_Opcode op)
     switch (ISA_Inst_Table[op].type)
     {
     case ISA_Inst_Mov:
-        return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX);
+        return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX || op == ISA_BF_CVT);
     case ISA_Inst_Arith:
     case ISA_Inst_Logic:
     {
@@ -414,7 +449,8 @@ bool hasPredicate(ISA_Opcode op)
                 op == ISA_RAW_SENDS || op == ISA_3D_SAMPLE ||
                 op == ISA_3D_LOAD || op == ISA_3D_GATHER4 ||
                 op == ISA_3D_RT_WRITE || op == ISA_3D_URB_WRITE ||
-                op == ISA_3D_TYPED_ATOMIC
+                op == ISA_3D_TYPED_ATOMIC || op == ISA_QW_GATHER || op == ISA_QW_SCATTER
+
                 );
     case ISA_Inst_Flow:
         return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
@@ -450,6 +486,10 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp)
             if (op == ISA_RAW_SEND || op == ISA_RAW_SENDS || op == ISA_3D_SAMPLE ||
                 op == ISA_3D_LOAD || op == ISA_3D_GATHER4 || op == ISA_3D_URB_WRITE ||
                 op == ISA_3D_INFO)
+            {
+                return true;
+            }
+            else if (op == ISA_DPAS || op == ISA_DPASW)
             {
                 return true;
             }
@@ -921,6 +961,8 @@ unsigned Get_Atomic_Op(VISAAtomicOps op) {
     case ATOMIC_FMIN:       return GEN_ATOMIC_FMIN;
     case ATOMIC_FMAX:       return GEN_ATOMIC_FMAX;
     case ATOMIC_FCMPWR:     return GEN_ATOMIC_FCMPWR;
+    case ATOMIC_FADD:       return GEN_ATOMIC_FADD;
+    case ATOMIC_FSUB:       return GEN_ATOMIC_FSUB;
     }
     return ~0U;
 }
@@ -1512,4 +1554,13 @@ std::string sanitizePathString(std::string str)
     return str;
 }
 
+const char* toString(GenPrecision P)
+{
+    int ix = (int)P;
+    if (ix > (int)GenPrecision::INVALID && ix < (int)GenPrecision::TOTAL_NUM)
+    {
+        return GenPrecisionTable[ix].Name;
+    }
+    return "?";
+}
 

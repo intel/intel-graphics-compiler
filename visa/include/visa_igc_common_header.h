@@ -45,6 +45,7 @@ typedef enum
     // FIXME: why not expose PREDEF_SURF_0 etc. directly?
     PREDEFINED_SURFACE_SLM = 0,
     PREDEFINED_SURFACE_STACK = 1,
+    PREDEFINED_SURFACE_SCRATCH = 3,
     PREDEFINED_SURFACE_T252 = 4,
     PREDEFINED_SURFACE_T255 = 5,
     PREDEFINED_SURFACE_LAST = PREDEFINED_SURFACE_T255
@@ -68,6 +69,8 @@ typedef enum {
     ATOMIC_FMAX                    = 0x10,
     ATOMIC_FMIN                    = 0x11,
     ATOMIC_FCMPWR                  = 0x12,
+    ATOMIC_FADD                    = 0x13,
+    ATOMIC_FSUB                    = 0x14,
     ATOMIC_UNDEF
 } VISAAtomicOps;
 
@@ -272,7 +275,7 @@ typedef enum {
     ISA_SQRT               = 0x19,
     ISA_RSQRT              = 0x1A,
     ISA_INV                = 0x1B,
-    ISA_RESERVED_1C        = 0x1C,
+    ISA_DPASW              = 0x1C,
     ISA_RESERVED_1D        = 0x1D,
     ISA_RESERVED_1E        = 0x1E,
     ISA_LZD                = 0x1F,
@@ -375,12 +378,12 @@ typedef enum {
     ISA_ROL                = 0x80,
     ISA_ROR                = 0x81,
     ISA_DP4A               = 0x82,
-    ISA_RESERVED_83        = 0x83,
-    ISA_RESERVED_84        = 0x84,
-    ISA_RESERVED_85        = 0x85,
-    ISA_RESERVED_86        = 0x86,
-    ISA_RESERVED_87        = 0x87,
-    ISA_RESERVED_88        = 0x88,
+    ISA_DPAS               = 0x83,
+    ISA_ADD3               = 0x84,
+    ISA_BFN                = 0x85,
+    ISA_QW_GATHER          = 0x86,
+    ISA_QW_SCATTER         = 0x87,
+    ISA_BF_CVT             = 0x88,
     ISA_RESERVED_89        = 0x89,
     ISA_RESERVED_8A        = 0x8A,
     ISA_RESERVED_8B        = 0x8B,
@@ -466,6 +469,7 @@ typedef enum {
     GENX_CNL,
     GENX_ICLLP,
     GENX_TGLLP,
+    GENX_XE_HP,
     ALL
 } TARGET_PLATFORM;
 
@@ -619,6 +623,22 @@ typedef enum
     LIFETIME_END = 1
 } VISAVarLifetime;
 
+enum class GenPrecision : unsigned char
+{
+    INVALID = 0,
+
+    U1 = 1,
+    S1 = 2,
+    U2 = 3,
+    S2 = 4,
+    U4 = 5,
+    S4 = 6,
+    U8 = 7,
+    S8 = 8,
+    BF16 = 9,   // bfloat16 (1, 8, 7)
+    FP16 = 10,  // half (1, 5, 10)
+    TOTAL_NUM
+};
 
 
 // FixedFunctionID: these are hardware FFID values

@@ -611,6 +611,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                 opSpec = readPrimitiveOperandNG<uint8_t>(bytePos, buf); /// rel_Op or opext
                 opnd_skip++;
             }
+            uint8_t bfn_func_ctrl = 0;
 
             uint32_t exSize = Get_VISA_Exec_Size(esize);
             uint8_t tag = 0;
@@ -650,6 +651,15 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                     //for first source of address add instruction.
                     opnds[i] = readVectorOperandNGAddressOf(bytePos, buf, container);
                 }
+                else if (i == 4 && opcode == ISA_BFN)
+                {
+                    // read bfn booleanFuncCtrl from the last opnd
+                    int opnd_ix = i + opnd_skip;
+                    assert(inst_desc->opnd_desc[opnd_ix].opnd_type == OPND_OTHER &&
+                           "BFN: FuncCtrl opnd_desc's type should be OPND_OTHER!");
+                    VISA_Type visatype = (VISA_Type)inst_desc->opnd_desc[opnd_ix].data_type;
+                    bfn_func_ctrl = readOtherOperandNG(bytePos, buf, visatype);
+                }
                 else
                 {
                     opnds[i] = readVectorOperandNG(bytePos, buf, container, exSize);
@@ -659,6 +669,9 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
             opnd_count -= opnd_skip;
 
+            // skip booleanFuncCtrl, which is the last opnd
+            if (opcode == ISA_BFN)
+                --opnd_count;
 
             bool             saturate = (((VISA_Modifier)((tag >> 3) & 0x7)) == MODIFIER_SAT);
             VISA_VectorOpnd*      dst = opnds[0];
@@ -686,6 +699,9 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                 }
                 break;
             case ISA_Inst_Logic:
+                if (opcode == ISA_BFN)
+                    kernelBuilder->AppendVISABfnInst(bfn_func_ctrl, pred, saturate, emask, esize, dst, src0, src1, src2);
+                else
                     kernelBuilder->AppendVISALogicOrShiftInst(opcode, pred, saturate, emask, esize, dst, src0, src1, src2, src3);
                 break;
             case ISA_Inst_Address:
@@ -1077,6 +1093,36 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
                                                    lod, src0, src1, dst);
         break;
     }
+    case ISA_QW_GATHER:
+    case ISA_QW_SCATTER:
+    {
+        VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
+        VISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
+        readExecSizeNG(bytePos, buf, exSize, eMask, container);
+
+        VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
+        VISA_SVM_Block_Num  numBlocks =
+            VISA_SVM_Block_Num(readPrimitiveOperandNG<uint8_t>(bytePos, buf));
+        uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+        VISA_RawOpnd* offsets = readRawOperandNG(bytePos, buf, container);
+        VISA_RawOpnd* dstOrSrc = readRawOperandNG(bytePos, buf, container);
+
+        VISA_StateOpndHandle* surfaceHnd = nullptr;
+        kernelBuilderImpl->CreateVISAStateOperandHandle(surfaceHnd,
+                container.surfaceVarDecls[surface]);
+
+        if (opcode == ISA_QW_GATHER)
+        {
+            kernelBuilderImpl->AppendVISAQwordGatherInst(pred, eMask, exSize, numBlocks,
+                surfaceHnd, offsets, dstOrSrc);
+        }
+        else
+        {
+            kernelBuilderImpl->AppendVISAQwordScatterInst(pred, eMask, exSize, numBlocks,
+                surfaceHnd, offsets, dstOrSrc);
+        }
+        break;
+    }
     default:
         {
             MUST_BE_TRUE(false, "Unimplemented or Illegal DataPort Opcode.");
@@ -1333,6 +1379,39 @@ static void readInstructionMisc(unsigned& bytePos, const char* buf, ISA_Opcode o
             kernelBuilder->AppendVISA3dURBWrite(pred, emask, esize, numOut, channelMask, globalOffset, urbHandle, perSlotOffset, vertexData);
             break;
         }
+    case ISA_DPAS:
+    case ISA_DPASW:
+    {
+        GenPrecision A = GenPrecision::INVALID, W = GenPrecision::INVALID;
+        uint8_t D = 0;
+        uint8_t C = 0;
+
+        VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+        VISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;
+        readExecSizeNG(bytePos, buf, esize, emask, container);
+
+        VISA_RawOpnd* dst = readRawOperandNG(bytePos, buf, container);
+        VISA_RawOpnd* src0 = readRawOperandNG(bytePos, buf, container);
+        VISA_RawOpnd* src1 = readRawOperandNG(bytePos, buf, container);
+
+        uint8_t tag = 0;
+        VISA_VectorOpnd* src2 = readVectorOperandNG(
+            bytePos, buf, tag, container,
+            Get_VISA_Exec_Size(esize), false);
+
+        VISA_INST_Desc* inst_desc = &CISA_INST_table[opcode];
+
+        // sanity check
+        assert(inst_desc->opnd_desc[5].opnd_type == OPND_OTHER &&
+            "opnd_desc's type at index = 5 should be OPND_OTHER!");
+
+        VISA_Type visatype = (VISA_Type)inst_desc->opnd_desc[5].data_type;
+        uint32_t dpasOtherOpnd = readOtherOperandNG(bytePos, buf, visatype);
+        UI32ToDpasInfo(dpasOtherOpnd, A, W, D, C);
+
+        kernelBuilder->AppendVISADpasInst(opcode, emask, esize, dst, src0, src1, src2, A, W, D, C);
+        break;
+    }
     case ISA_LIFETIME:
     {
         VISA_VectorOpnd* opnd = NULL;

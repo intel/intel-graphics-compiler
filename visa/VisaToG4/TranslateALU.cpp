@@ -162,7 +162,73 @@ int IR_Builder::translateVISAArithmeticInst(
     return VISA_SUCCESS;
 }
 
+int IR_Builder::translateVISADpasInst(
+    VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, G4_opcode opc,
+    G4_DstRegRegion *dstOpnd, G4_SrcRegRegion *src0Opnd, G4_SrcRegRegion *src1Opnd, G4_SrcRegRegion *src2Opnd,
+    G4_SrcRegRegion* src3Opnd, GenPrecision A, GenPrecision W, uint8_t D, uint8_t C)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
+    G4_ExecSize exsize = toExecSize(executionSize);
+    G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
+    if (hasBFDstforDPAS() && A == GenPrecision::BF16)
+    {
+        if (dstOpnd->getType() == Type_W || dstOpnd->getType() == Type_UW)
+        {
+            dstOpnd->setType(Type_BF);
+        }
+        if (src0Opnd->getType() == Type_W || src0Opnd->getType() == Type_UW)
+        {
+            src0Opnd->setType(Type_BF);
+        }
+    }
+
+    if (src0Opnd->isNullReg())
+    {
+        src0Opnd->setType(dstOpnd->getType());
+    }
+
+    createDpasInst(
+        opc,
+        exsize,
+        dstOpnd,
+        src0Opnd,
+        src1Opnd,
+        src2Opnd,
+        src3Opnd,
+        instOpt,
+        A, W, D, C,
+        true);
+
+    return VISA_SUCCESS;
+}
+
+int IR_Builder::translateVISABfnInst(
+    uint8_t booleanFuncCtrl, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+    G4_Predicate *predOpnd, G4_Sat saturate, G4_CondMod* condMod,
+    G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd, G4_Operand *src2Opnd)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+    unsigned int instOpt = 0;
+    G4_ExecSize exsize = toExecSize(executionSize);
+    instOpt |= Get_Gen4_Emask(emask, exsize);
+
+    createBfnInst(
+        booleanFuncCtrl,
+        predOpnd,
+        condMod,
+        saturate,
+        exsize,
+        dstOpnd,
+        src0Opnd,
+        src1Opnd,
+        src2Opnd,
+        instOpt,
+        true);
+
+    return VISA_SUCCESS;
+}
 
 static bool needs32BitFlag(uint32_t opt)
 {
@@ -509,6 +575,24 @@ int IR_Builder::translateVISADataMovementInst(
         {
             return VISA_FAILURE;
         }
+    }
+    else if (opcode == ISA_BF_CVT)
+    {
+        // translate UW to BF
+        if (dstOpnd->getType() == Type_UW ||
+            dstOpnd->getType() == Type_HF)    // Temp compatibility (toBeRemovedSoon)
+        {
+            dstOpnd->setType(Type_BF);
+        }
+        else
+        {
+            assert(src0Opnd->isSrcRegRegion() &&
+                (src0Opnd->getType() == Type_UW || src0Opnd->getType() == Type_HF) &&
+                "src0Opnd must be a src region with HF type");
+            src0Opnd->asSrcRegRegion()->setType(Type_BF);
+        }
+
+        createMov(exsize, dstOpnd, src0Opnd, inst_opt, true);
     }
     else
     {

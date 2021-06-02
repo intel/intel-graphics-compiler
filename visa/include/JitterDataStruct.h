@@ -64,6 +64,8 @@ typedef struct {
     bool hasStackcalls = false;
 
     uint32_t numGRFTotal = 0;
+    uint32_t numThreads = 0;
+
 } FINALIZER_INFO;
 
 #endif // JITTERDATASTRUCT_

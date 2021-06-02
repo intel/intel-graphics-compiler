@@ -456,6 +456,13 @@ typedef struct {
 } kernel_format_t;
 typedef kernel_format_t function_format_t;
 
+typedef struct
+{
+    GenPrecision   Prec;
+    unsigned int   BitSize;
+    const char*    Name;
+} GenPrecision_Info_t;
+extern GenPrecision_Info_t GenPrecisionTable[(unsigned int)GenPrecision::TOTAL_NUM];
 
 class print_format_provider_t {
 public:
@@ -752,6 +759,8 @@ typedef enum {
     GEN_ATOMIC_FMAX                    = 0x1,  // FOP_FMAX
     GEN_ATOMIC_FMIN                    = 0x2,  // FOP_FMIN
     GEN_ATOMIC_FCMPWR                  = 0x3,  // FOP_FCMPWR
+    GEN_ATOMIC_FADD                    = 0x4,  // FOP_FADD
+    GEN_ATOMIC_FSUB                    = 0x5,  // FOP_FSUB
     GEN7_ATOMIC_UNDEF                   = 0xFF
 } GenAtomicOp;
 

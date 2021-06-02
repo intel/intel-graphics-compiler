@@ -35,6 +35,9 @@ namespace vISA
 #define SWSB_MAX_MATH_DEPENDENCE_DISTANCE 18
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE 7u
 
+#define TOKEN_AFTER_WRITE_DPAS_CYCLE 28
+#define TOKEN_AFTER_READ_DPAS_CYCLE 8
+#define SWSB_MAX_DPAS_DEPENDENCE_DISTANCE 4
 
 #define DEPENCENCE_ATTR(DO) \
     DO(DEP_EXPLICT) \
@@ -45,6 +48,25 @@ enum SBDependenceAttr
     DEPENCENCE_ATTR(MAKE_ENUM)
 };
 
+#define DPAS_BLOCK_SIZE 8
+#define DPAS_8x8_CYCLE 28
+#define DPAS_8x4_CYCLE 24
+#define DPAS_8x2_CYCLE 22
+#define DPAS_8x1_CYCLE 21
+
+#define DPAS_CYCLES_BEFORE_GRF_READ 8
+#define DPAS_8x8_GRFREAD_CYCLE 8
+#define DPAS_8x4_GRFREAD_CYCLE 4
+#define DPAS_8x2_GRFREAD_CYCLE 2
+#define DPAS_8x1_GRFREAD_CYCLE 1
+
+typedef enum  _DPAS_DEP
+{
+    REP_1 = 1,
+    REP_2 = 2,
+    REP_4 = 4,
+    REP_8 = 8
+} DPAS_DEP;
 
 #define UNKNOWN_TOKEN         -1
 #define UNINIT_BUCKET         -1
@@ -63,6 +85,12 @@ namespace vISA {
         std::vector<vISA::SBNode*> exclusiveNodes;
     };
 
+   struct SBDISTDep {
+       SB_INST_PIPE liveNodePipe;
+       SB_INST_PIPE nodePipe;
+       SB_INST_PIPE operandType;
+       bool dstDep;
+   };
 
     using SWSBTokenType = G4_INST::SWSBTokenType;
     void singleInstStallSWSB(G4_Kernel *kernel, uint32_t instID, uint32_t endInstID, bool is_barrier);
@@ -74,6 +102,8 @@ typedef vISA::SBDep SBDEP_ITEM;
 typedef std::vector< SBDEP_ITEM> SBDEP_VECTOR;
 typedef SBDEP_VECTOR::iterator SBDEP_VECTOR_ITER;
 
+typedef vISA::SBDISTDep SBDISTDEP_ITEM;
+typedef std::vector< SBDISTDEP_ITEM> SBDISTDEP_VECTOR;
 
 namespace vISA
 {
@@ -311,6 +341,12 @@ namespace vISA
         unsigned      liveEndID = 0;   // The end ID of live range
         unsigned      liveStartBBID = -1; // The start BB ID of live range
         unsigned      liveEndBBID = -1; // The start BB ID of live range
+        int      integerID = -1;
+        int      floatID = -1;
+        int      longID = -1;
+        int      mathID = -1;
+        int      DPASID = -1;
+        unsigned short DPASSize = 0;
         bool          instKilled = false; // Used for global analysis, if the node generated dependencies have all been resolved.
         bool          sourceKilled = false; // If the dependencies caused by source operands have all been resolved.
         bool          hasAW = false;      // Used for global analysis, if has AW (RAW or WAW) dependencies from the node
@@ -333,6 +369,8 @@ namespace vISA
         int            sendID = -1;
         int            sendUseID = -1;
         SBNode *       tokenReusedNode = nullptr;  // For global token reuse optimization, the node whose token is reused by current one.
+        SB_INST_PIPE   ALUPipe;
+        SBDISTDEP_VECTOR  distDep;
         SBBitSets reachingSends;
         SBBitSets reachedUses;
         unsigned reuseOverhead = 0;
@@ -347,6 +385,12 @@ namespace vISA
             : nodeID(id), ALUID(ALUId), BBID(BBId),
             footprints(Opnd_total_num, nullptr)
         {
+            ALUPipe = PIPE_NONE;
+            if (i->isDpas())
+            {
+                G4_InstDpas* dpasInst = i->asDpasInst();
+                DPASSize = dpasInst->getRepeatCount(); //Set the size of the current dpas inst, if there is a macro, following will be added.
+            }
 
             instVec.push_back(i);
         }
@@ -387,7 +431,19 @@ namespace vISA
         int getALUID() const { return ALUID; }
         unsigned getNodeID() const { return nodeID; };
         unsigned getBBID() const { return BBID; };
+        int getIntegerID() const { return integerID; }
+        int getFloatID() const { return floatID; }
+        int getLongID() const { return longID; }
+        int getMathID() const {return mathID;}
+        int getDPASID() const { return DPASID; }
+        unsigned short getDPASSize() const { return DPASSize; }
 
+        void setIntegerID(int id) { integerID = id; }
+        void setFloatID(int id) { floatID = id; }
+        void setLongID(int id) { longID = id; }
+        void setMathID(int id) { mathID = id; }
+        void setDPASID(int id) { DPASID = id; }
+        void addDPASSize(unsigned short size) { DPASSize += size; }
 
         unsigned getLiveStartID() const { return liveStartID; }
         unsigned getLiveEndID() const { return liveEndID; }
@@ -525,6 +581,267 @@ namespace vISA
             }
         }
 
+        void setAccurateDistType(SB_INST_PIPE depPipe)
+        {
+            switch (depPipe)
+            {
+            case PIPE_INT:
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTINT);
+                break;
+            case PIPE_FLOAT:
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTFLOAT);
+                break;
+            case PIPE_LONG:
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTLONG);
+                break;
+            case PIPE_MATH:
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTMATH);
+                break;
+            case PIPE_SEND:
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                break;
+            default:
+                assert(0 && "Wrong ALU PIPE");
+                break;
+            }
+        }
+
+        //If depends on multiple different ALU pipelines
+        //    If all operands type matching the ALU pipelines --> regDist
+        //    otherwise --> regDistAll
+        //If depends on single different ALU pipeline and other same ALU pipelines.
+        //    If all operands type matching the ALU pipelines --> regDist
+        //    otherwise --> regDistAll
+        //If depends on multiple same ALU pipelines
+        //    If all operands type matching the ALU pipeline --> accurate/regDist
+        //    otherwise--> accurate
+        //If depends on single ALU pipeline
+        //    If operands type matching the ALU pipeline --> accurate/regDist
+        //    otherwise--> accurate
+        //
+        //Note that:
+        // 1. one instruction can have multiple operands.
+        // 2. instruction belongs to single pipeline
+        void finalizeDistanceType(IR_Builder& builder)
+        {
+            if (instVec.front()->getDistanceTypeXe() != G4_INST::DistanceType::DIST_NONE)
+            {  //Forced to a type already
+                return;
+            }
+
+            if (builder.loadThreadPayload() && nodeID <= 8 &&
+                  GetInstruction()->isSend() && distDep.size())
+            {
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                return;
+            }
+            if (distDep.size())
+            {
+                 SB_INST_PIPE depPipe = PIPE_NONE;
+                 bool sameOperandType = true;
+                 int diffPipes = 0;
+
+                 //Check if there is type conversion
+                 for (const SBDISTDEP_ITEM& it : distDep)
+                 {
+                     if (it.operandType != it.liveNodePipe)
+                     {
+                         sameOperandType = false;
+                     }
+                     if (it.liveNodePipe != it.nodePipe) //different pipe instructions
+                     {
+                         diffPipes++;
+                         depPipe = it.liveNodePipe;
+                     }
+                 }
+
+                 instVec.front()->setOperandTypeIndicated(sameOperandType);
+
+                 if (distDep.size() > 1)
+                 {
+                     if (diffPipes) //has different dependent pipeline
+                     {
+                         if (sameOperandType)
+                         {
+                             assert(!GetInstruction()->isSend());
+                             if (GetInstruction()->isDpas())
+                             {
+                                 setAccurateDistType(depPipe);
+                                 instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
+                             }
+                             else //For math and other ALU instructions
+                             {
+                                 instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                             }
+                         }
+                         else
+                         {
+                             instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                             instVec.front()->setOperandTypeIndicated(false);
+                         }
+                     }
+                     else
+                     {
+                         setAccurateDistType(ALUPipe);
+                     }
+                 }
+                 else
+                 {
+                     if (depPipe != PIPE_NONE)
+                     {
+                         setAccurateDistType(depPipe);
+                     }
+                     else
+                     {
+                         setAccurateDistType(ALUPipe);
+                     }
+                 }
+            }
+        }
+
+        bool isClosedALUType(std::vector<unsigned>** latestInstID, unsigned distance, SB_INST_PIPE type)
+        {
+            int instDist = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+            SB_INST_PIPE curType = PIPE_NONE;
+
+            for (int i = 1; i < PIPE_DPAS; i++)
+            {
+                int dist = SWSB_MAX_MATH_DEPENDENCE_DISTANCE + 1;
+                if (i == PIPE_INT || i == PIPE_FLOAT)
+                {
+                    if (latestInstID[i]->size() >= distance)
+                    {
+                        dist = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
+                    }
+                }
+                if (i == PIPE_MATH)
+                {
+                    if (latestInstID[i]->size() >= distance)
+                    {
+                        dist = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+                    }
+                }
+                if (i == PIPE_LONG)
+                {
+                    if (latestInstID[i]->size() >= distance)
+                    {
+                        dist = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
+                    }
+                }
+
+                if (dist < instDist)
+                {
+                    instDist = dist;
+                    curType = (SB_INST_PIPE)i;
+                }
+            }
+
+            return type == curType;
+        }
+
+        void finalizeDistanceType1(IR_Builder& builder, std::vector<unsigned> **latestInstID)
+        {
+            if (instVec.front()->getDistanceTypeXe() != G4_INST::DistanceType::DIST_NONE)
+            {  //Forced to a type already
+                return;
+            }
+
+            if (builder.loadThreadPayload() && nodeID <= 8 &&
+                GetInstruction()->isSend() && distDep.size())
+            {
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                return;
+            }
+
+            unsigned curDistance = (unsigned)instVec.front()->getDistance();
+            if (distDep.size())
+            {
+                SB_INST_PIPE depPipe = PIPE_NONE;
+                bool sameOperandType = true;
+                int diffPipes = 0;
+
+                //Check if there is type conversion
+                for (int i = 0; i < (int)(distDep.size()); i++)
+                {
+                    SBDISTDEP_ITEM& it = distDep[i];
+
+                    if (it.operandType != it.liveNodePipe || it.dstDep)
+                    {
+                        sameOperandType = false;
+                    }
+                }
+
+                //If the dependent instructions belong to different pipelines
+                for (int i = 0; i < (int)(distDep.size()); i++)
+                {
+                    SBDISTDEP_ITEM& it = distDep[i];
+
+                    if (it.liveNodePipe != it.nodePipe)
+                    {
+                        diffPipes++;
+                        depPipe = it.liveNodePipe;
+                    }
+                }
+
+
+                if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
+                    !builder.hasRegDistDepIssue())
+                {
+                instVec.front()->setOperandTypeIndicated(sameOperandType);
+                }
+
+                //Multiple dependences
+                if (distDep.size() > 1)
+                {
+                    if (diffPipes) //Dependence instructions belong to different ALU pipelines.
+                    {
+                        if (sameOperandType) //But the operand type is from same instruction pipeline.
+                        {
+                            assert(!GetInstruction()->isSend()); //Send operand has no type, sameOperandType is always false
+
+                            if (GetInstruction()->isDpas()) //For DPAS, we also put the distance dependence into a sync instruction.
+                            {
+                                setAccurateDistType(depPipe);
+                                instVec.front()->setOperandTypeIndicated(false); //DPAS distance will be in sync inst
+                            }
+                            else //For math and other ALU instructions
+                            {
+                                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DIST);
+                            }
+                        }
+                        else // For send, we will set it to DISTALL if there are multiple dependences. For non-send, DIST
+                        {
+                            instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                            instVec.front()->setOperandTypeIndicated(false);
+                        }
+                    }
+                    else //From same pipeline
+                    {
+                        setAccurateDistType(ALUPipe);
+                        instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, ALUPipe));
+                    }
+                }
+                else //Only one dependency
+                {
+                    if (depPipe != PIPE_NONE) // From different pipeline
+                    {
+                        setAccurateDistType(depPipe);
+                        if (sameOperandType || GetInstruction()->isSend())
+                        {
+                            instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, depPipe));
+                        }
+                    }
+                    else // From same pipeline
+                    {
+                        setAccurateDistType(ALUPipe);
+                        if (sameOperandType)
+                        {
+                            instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, ALUPipe));
+                        }
+                    }
+                }
+            }
+        }
 
         int getMaxDepDistance() const
         {
@@ -867,6 +1184,13 @@ namespace vISA
     typedef struct _SWSB_INDEXES {
         int instIndex = 0;
         int ALUIndex = 0;
+        int integerIndex = 0;
+        int floatIndex = 0;
+        int longIndex = 0;
+        int DPASIndex = 0;
+        int mathIndex = 0;
+        unsigned latestDepALUID[PIPE_DPAS] = {0};
+        std::vector<unsigned> latestInstID[PIPE_DPAS];
     } SWSB_INDEXES;
 
     typedef struct _SWSB_LOOP {
@@ -883,6 +1207,15 @@ namespace vISA
         int nodeID;
         int ALUID;
 
+        SBNode*           dpasNode = nullptr;
+        SBNode*           lastDpasNode = nullptr;
+        int integerID;
+        int floatID;
+        int longID;
+        int mathID;
+        int DPASID;
+        unsigned latestDepALUID[PIPE_DPAS];
+        std::vector<unsigned> *latestInstID[PIPE_DPAS];
 
         int totalGRFNum;
 
@@ -924,6 +1257,8 @@ namespace vISA
         BitSet   liveOutTokenNodes;
         BitSet   killedTokens;
         std::vector<BitSet> tokeNodesMap;
+        int first_DPASID = 0;
+        int last_DPASID = 0;
         unsigned    *tokenLiveInDist;
         unsigned    *tokenLiveOutDist;
         SBBitSets localReachingSends;
@@ -934,6 +1269,11 @@ namespace vISA
             LiveGRFBuckets *globalLB, PointsToAnalysis& p,
             std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap) : builder(b), mem(m), bb(block)
         {
+            for (int i = 0; i < PIPE_DPAS; i++)
+            {
+                latestDepALUID[i] = 0;
+                latestInstID[i] = nullptr;
+            }
             first_send_node = -1;
             last_send_node = -1;
             totalGRFNum = block->getKernel().getNumRegTotal();
@@ -950,6 +1290,7 @@ namespace vISA
         static bool isGRFEdgeAdded(const SBNode* pred, const SBNode* succ, DepType d, SBDependenceAttr a);
         void createAddGRFEdge(SBNode* pred, SBNode* succ, DepType d, SBDependenceAttr a);
 
+        SB_INST_PIPE getDataTypePipeXe(G4_Type type);
         //Bucket and range analysis
         SBFootprint* getFootprintForGRF(G4_Operand * opnd,
             Gen4_Operand_Number opnd_num,
@@ -962,6 +1303,12 @@ namespace vISA
         SBFootprint* getFootprintForFlag(G4_Operand* opnd,
             Gen4_Operand_Number opnd_num,
             G4_INST* inst);
+        bool isLongPipeType(G4_Type type) const;
+        bool isIntegerPipeType(G4_Type type) const;
+        bool isLongPipeInstructionXe(const G4_INST* inst) const;
+        bool isIntegerPipeInstructionXe(const G4_INST* inst) const;
+        bool isFloatPipeInstructionXe(const G4_INST* inst) const;
+        SB_INST_PIPE getInstructionPipeXe(const G4_INST* inst);
         bool getFootprintForOperand(SBNode *node,
             G4_INST *inst,
             G4_Operand* opnd,
@@ -1017,6 +1364,11 @@ namespace vISA
         void addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR *globalSendOpndList, SBNODE_VECT *SBNodes, PointsToAnalysis &p, bool afterWrite);
         void clearKilledBucketNodeXeLP(LiveGRFBuckets * LB, int ALUID);
 
+        void clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID, int floatID, int longID, int mathID);
+        bool hasInternalDependenceWithinDPAS(SBNode *node);
+        bool hasDependenceBetweenDPASNodes(SBNode * node, SBNode * nextNode);
+        bool src2SameFootPrintDiffType(SBNode* curNode, SBNode* nextNode) const;
+        bool isLastDpas(SBNode * curNode, SBNode * nextNode);
 
 
         void getLiveOutToken(unsigned allSendNum, const SBNODE_VECT *SBNodes);
@@ -1205,6 +1557,7 @@ namespace vISA
         void assignToken(SBNode *node, unsigned short token, uint32_t &AWTokenReuseCount, uint32_t &ARTokenReuseCount, uint32_t &AATokenReuseCount);
         void assignDepToken(SBNode *node);
         void assignDepTokens();
+        bool insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertTest();
 
@@ -1264,6 +1617,11 @@ namespace vISA
         {
             indexes.instIndex = 0;
             indexes.ALUIndex = 0;
+            indexes.integerIndex = 0;
+            indexes.floatIndex = 0;
+            indexes.longIndex = 0;
+            indexes.DPASIndex = 0;
+            indexes.mathIndex = 0;
 
         }
         ~SWSB()

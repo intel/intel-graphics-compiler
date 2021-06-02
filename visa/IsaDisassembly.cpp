@@ -784,7 +784,13 @@ static std::string printInstructionCommon(
             sstr << (((relOp >> 7) & 0x1) ? "n" : ""); /// INFO: cmpn opcode print support here.
             sstr << "." << Rel_op_str[(unsigned)(relOp & 0x7)];
         }
-
+        else if (opcode == ISA_BFN)
+        {
+            // print BooleanFuncCtrl right after op name
+            sstr << ".x" << std::hex << (uint32_t)(getPrimitiveOperand<uint8_t>(inst, Count-1)) << std::dec;
+            // The following shall skip booleanFuncCtrl opnd
+            --Count;
+        }
 
         if (ISA_Inst_Arith   == ISA_Inst_Table[opcode].type ||
             ISA_Inst_Mov     == ISA_Inst_Table[opcode].type ||
@@ -1300,6 +1306,34 @@ static std::string printInstructionMisc(
 
             // vertex data
             sstr << printOperand(header, inst, i++, opt);
+
+            break;
+        }
+        case ISA_DPAS:
+        case ISA_DPASW:
+        {
+            const VISA_opnd* dpasOpnd = inst->opnd_array[inst->opnd_count-1];
+            GenPrecision A, W;
+            uint8_t D, C;
+            UI32ToDpasInfo(dpasOpnd->_opnd.other_opnd, A, W, D, C);
+
+            sstr << ISA_Inst_Table[opcode].str
+                 << "." << toString(W) << "." << toString(A) << "."
+                 << (int)D << "." << (int)C;
+
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
+
+            // dst
+            sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
+
+            // src0
+            sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
+
+            // src1
+            sstr << printRawOperand(header, getRawOperand(inst, i++), opt);
+
+            // src2
+            sstr << printVectorOperand(header, inst->opnd_array[i++], opt, false);
 
             break;
         }
@@ -2124,6 +2158,8 @@ static std::string printInstructionDataport(
     case ISA_SCATTER_SCALED:
     case ISA_DWORD_ATOMIC:
     case ISA_3D_TYPED_ATOMIC:
+    case ISA_QW_GATHER:
+    case ISA_QW_SCATTER:
         sstr << printPredicate(inst->opcode, inst->pred);
         break;
     }
@@ -2436,6 +2472,28 @@ static std::string printInstructionDataport(
             sstr << printOperand(header, inst, i++, opt);
 
             /// dst
+            sstr << printOperand(header, inst, i++, opt);
+            break;
+        }
+        case ISA_QW_GATHER:
+        case ISA_QW_SCATTER:
+        {
+            //QW_GATHER/SCATTER.<num_blocks> (<exec_size>) <surface> <offset> <dst>
+            VISA_SVM_Block_Num numBlocks;
+
+            numBlocks = static_cast<VISA_SVM_Block_Num>(getPrimitiveOperand<uint8_t>(inst, i++));
+            sstr << "." << Get_Common_ISA_SVM_Block_Num(numBlocks);
+
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
+
+            /// surface
+            surface = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << " " << printSurfaceName(surface);
+
+            /// offsets
+            sstr << printOperand(header, inst, i++, opt);
+
+            /// src/dst
             sstr << printOperand(header, inst, i++, opt);
             break;
         }

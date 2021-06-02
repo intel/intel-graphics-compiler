@@ -330,6 +330,10 @@ void VISAKernelImpl::compilePostOptimize()
         auto getFirstNonLabelInst = [this]()
         {
             unsigned int skip = 0, skipCount = 0;
+            if (m_kernel->fg.builder->getHasPerThreadProlog())
+                ++skip;
+            if (m_kernel->fg.builder->needsToLoadCrossThreadConstantData())
+                ++skip;
             for (auto bb : m_kernel->fg)
             {
                 if (skipCount++ < skip)
@@ -514,6 +518,7 @@ void VISAKernelImpl::recordFinalizerInfo()
     {
         m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
         m_builder->getJitInfo()->numGRFTotal = m_kernel->getNumRegTotal();
+        m_builder->getJitInfo()->numThreads = m_kernel->getNumThreads();
     }
 }
 
@@ -658,6 +663,10 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
             if (i == PREDEFINED_SURFACE_T252)
             {
                 decl->stateVar.dcl = m_builder->getBuiltinT252();
+            }
+            else if (i == PREDEFINED_SURFACE_SCRATCH)
+            {
+                decl->stateVar.dcl = m_builder->getBuiltinScratchSurface();
             }
             else
             {
@@ -2526,6 +2535,11 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
             if (dcl == m_builder->getBuiltinT252())
             {
                 cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinT252(),
+                    m_builder->getRegionScalar());
+            }
+            else if (dcl == m_builder->getBuiltinScratchSurface())
+            {
+                cisa_opnd->g4opnd = m_builder->Create_Src_Opnd_From_Dcl(m_builder->getBuiltinScratchSurface(),
                     m_builder->getRegionScalar());
             }
             else
@@ -7325,7 +7339,289 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
     return status;
 }
 
+int VISAKernelImpl::AppendVISADpasInstCommon(
+    ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size executionSize, VISA_RawOpnd* tmpDst, VISA_RawOpnd* src0, VISA_RawOpnd* src1,
+    VISA_VectorOpnd* src2, VISA_VectorOpnd* src3,
+    GenPrecision src2Precision, GenPrecision src1Precision,
+    uint8_t Depth, uint8_t Count)
+{
+    TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
+    AppendVISAInstCommon();
+
+    int status = VISA_SUCCESS;
+
+    auto setAlignIfLarger = [](var_info_t* varinfo, VISA_Align A) {
+        VISA_Align oldA = varinfo->getAlignment();
+        if (getAlignInBytes(A) > getAlignInBytes(oldA))
+        {
+            varinfo->bit_properties = ((varinfo->bit_properties & ~0xF0) | (A << 4));
+        }
+    };
+
+    // Make sure alignment is set correctly.
+    // dst : grf aligned
+    var_info_t* dcl = &tmpDst->decl->genVar;
+    uint32_t alignBytes = CISATypeTable[dcl->getType()].typeSize * Get_VISA_Exec_Size(executionSize);
+    setAlignIfLarger(dcl, getCISAAlign(alignBytes));
+
+    // src0 : grf aligned (it could be null)
+    if (src0->index != 0)
+    {
+        dcl = &src0->decl->genVar;
+        alignBytes = CISATypeTable[dcl->getType()].typeSize * Get_VISA_Exec_Size(executionSize);
+        setAlignIfLarger(dcl, getCISAAlign(alignBytes));
+    }
+
+    // src1 : grf aligned
+    dcl = &src1->decl->genVar;
+    setAlignIfLarger(dcl, getCISAAlign(getGRFSize()));
+
+    if (IS_GEN_BOTH_PATH)
+    {
+        MUST_BE_TRUE(Get_VISA_Exec_Size(executionSize) == m_builder->getNativeExecSize(),
+                     "execution size of DPAS must be equal to native execution size!");
+
+        // src2 : QW/OW/half-grf/GRF-aligned (vectorOpnd, g4opnd has been created)
+        G4_RegVar* src2RegVar = src2->g4opnd->getTopDcl()->getRegVar();
+        uint32_t src1Bits = GenPrecisionTable[(int)src1Precision].BitSize;
+        uint32_t src2Bits = GenPrecisionTable[(int)src2Precision].BitSize;
+        if (src2Precision == GenPrecision::FP16 || src2Precision == GenPrecision::BF16 ||
+            src2Bits == 8 || (src1Bits <= 4 && src2Bits == 4))
+        {
+            G4_SubReg_Align srAlign = GRFALIGN;
+            src2RegVar->getDeclare()->setSubRegAlign(srAlign);
+        }
+        else if ((src1Bits == 8 && src2Bits == 4) || (src1Bits <= 4 && src2Bits == 2))
+        {
+            // OWORD aligned
+            src2RegVar->getDeclare()->setSubRegAlign(Eight_Word);
+        }
+        else
+        {
+            // OPS_PER_CHAN=4, U2/S2;  QWORD aligned
+            src2RegVar->getDeclare()->setSubRegAlign(Four_Word);
+        }
+
+
+        CreateGenRawDstOperand(tmpDst);
+        CreateGenRawSrcOperand(src0);
+        CreateGenRawSrcOperand(src1);
+        status = m_builder->translateVISADpasInst(executionSize, emask, GetGenOpcodeFromVISAOpcode(opcode),
+            tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd->asSrcRegRegion(), src1->g4opnd->asSrcRegRegion(),
+            src2->g4opnd->asSrcRegRegion(),
+            src3 ? src3->g4opnd->asSrcRegRegion() : nullptr,
+            src2Precision, src1Precision, Depth, Count);
+    }
+    if (IS_VISA_BOTH_PATH)
+    {
+        int num_pred_desc_operands = 2; //accounting for exec_size and pred_id in descriptor
+        int num_operands = 0;
+        VISA_INST_Desc *inst_desc = NULL;
+        VISA_opnd *opnd[6];
+        VISA_opnd *dst = tmpDst;
+
+        // Precision, depth, and count are saved as VISA_opnd
+        uint32_t info = DpasInfoToUI32(src2Precision, src1Precision, Depth, Count);
+        VISA_opnd* dpasInfo = CreateOtherOpnd(info, ISA_TYPE_UD);
+
+        inst_desc = &CISA_INST_table[opcode];
+        GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
+
+        ADD_OPND(num_operands, opnd, dst);
+
+        ADD_OPND(num_operands, opnd, src0);
+
+        ADD_OPND(num_operands, opnd, src1);
+
+        ADD_OPND(num_operands, opnd, src2);
+
+
+        ADD_OPND(num_operands, opnd, dpasInfo);
+
+        CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
+
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+
+        unsigned char size = executionSize;
+        size += (emask << 4);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        addInstructionToEnd(inst);
+    }
+
+    return status;
+}
+
+int VISAKernelImpl::AppendVISADpasInst(
+    ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size executionSize, VISA_RawOpnd* tmpDst, VISA_RawOpnd* src0, VISA_RawOpnd* src1,
+    VISA_VectorOpnd* src2, GenPrecision src2Precision, GenPrecision src1Precision,
+    uint8_t Depth, uint8_t Count)
+{
+    return AppendVISADpasInstCommon(opcode, emask, executionSize, tmpDst, src0, src1,
+        src2, nullptr, src2Precision, src1Precision, Depth, Count);
+}
+
+
+int VISAKernelImpl::AppendVISABfnInst(
+    uint8_t booleanFuncCtrl, VISA_PredOpnd *pred, bool satMode,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISA_VectorOpnd *tmpDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1, VISA_VectorOpnd *src2)
+{
+    TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+    AppendVISAInstCommon();
+
+    int status = VISA_SUCCESS;
+    if (IS_GEN_BOTH_PATH)
+    {
+        G4_Predicate * g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
+        status = m_builder->translateVISABfnInst(
+            booleanFuncCtrl, executionSize, emask, g4Pred,
+            satMode ? g4::SAT : g4::NOSAT, nullptr,
+            tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2));
+    }
+    if (IS_VISA_BOTH_PATH)
+    {
+        int num_pred_desc_operands = 2; //accounting for exec_size and pred_id in descriptor
+        int num_operands = 0;
+        VISA_INST_Desc *inst_desc = NULL;
+        VISA_opnd *opnd[5]; // dst, src0, src1, src2, BooleanFuncCtrl
+        VISA_opnd *dst = tmpDst;
+
+        inst_desc = &CISA_INST_table[ISA_BFN];
+        GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
+        VISA_Modifier mod = MODIFIER_NONE;
+
+        if (satMode)
+        {
+#if START_ASSERT_CHECK
+            if (tmpDst == NULL)
+            {
+                ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
+                assert(0);
+                return VISA_FAILURE;
+            }
+#endif
+            mod = MODIFIER_SAT;
+            dst = (VISA_opnd *)m_mem.alloc(sizeof(VISA_opnd));
+            *dst = *tmpDst;
+            dst->_opnd.v_opnd.tag += mod << 3;
+        }
+
+        ADD_OPND(num_operands, opnd, dst);
+        ADD_OPND(num_operands, opnd, src0);
+        ADD_OPND(num_operands, opnd, src1);
+        ADD_OPND(num_operands, opnd, src2);
+        ADD_OPND(num_operands, opnd, CreateOtherOpnd(booleanFuncCtrl, ISA_TYPE_UB));
+        CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
+
+        PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
+
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+
+        unsigned char size = executionSize;
+        size += emask << 4;
+        inst->createCisaInstruction(ISA_BFN, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        addInstructionToEnd(inst);
+    }
+
+    return status;
+}
+
+int VISAKernelImpl::AppendVISAQwordGatherInst(
+    VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISA_SVM_Block_Num numBlocks, VISA_StateOpndHandle *surface,
+    VISA_RawOpnd* address, VISA_RawOpnd *dst)
+{
+    TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+    AppendVISAInstCommon();
+
+    int status = VISA_SUCCESS;
+
+    if (IS_GEN_BOTH_PATH)
+    {
+        G4_Predicate * g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
+        CreateGenRawSrcOperand(address);
+        CreateGenRawDstOperand(dst);
+        status = m_builder->translateVISAQWGatherInst(executionSize, emask, g4Pred, numBlocks,
+            surface->g4opnd->asSrcRegRegion(), address->g4opnd->asSrcRegRegion(), dst->g4opnd->asDstRegRegion());
+    }
+    if (IS_VISA_BOTH_PATH)
+    {
+        VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_QW_GATHER];
+        VISA_opnd *opnd[10];
+
+        int num_operands = 0;
+        unsigned char size = executionSize;
+        size += emask << 4;
+
+        PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
+
+
+        ADD_OPND(num_operands, opnd, CreateOtherOpnd(numBlocks, ISA_TYPE_UB));
+
+        ADD_OPND(num_operands, opnd, surface);
+        ADD_OPND(num_operands, opnd, address);
+        ADD_OPND(num_operands, opnd, dst);
+
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+
+        inst->createCisaInstruction(ISA_QW_GATHER, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        addInstructionToEnd(inst);
+    }
+
+    return status;
+}
+
+int VISAKernelImpl::AppendVISAQwordScatterInst(
+    VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISA_SVM_Block_Num numBlocks, VISA_StateOpndHandle *surface,
+    VISA_RawOpnd* address, VISA_RawOpnd *src)
+{
+    TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+    AppendVISAInstCommon();
+
+    int status = VISA_SUCCESS;
+
+    if (IS_GEN_BOTH_PATH)
+    {
+        G4_Predicate * g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
+        CreateGenRawSrcOperand(address);
+        CreateGenRawSrcOperand(src);
+        status = m_builder->translateVISAQWScatterInst(executionSize, emask, g4Pred, numBlocks,
+            surface->g4opnd->asSrcRegRegion(), address->g4opnd->asSrcRegRegion(), src->g4opnd->asSrcRegRegion());
+    }
+    if (IS_VISA_BOTH_PATH)
+    {
+        VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_QW_SCATTER];
+        VISA_opnd *opnd[10];
+
+        int num_operands = 0;
+        unsigned char size = executionSize;
+        size += emask << 4;
+
+        PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
+
+        ADD_OPND(num_operands, opnd, CreateOtherOpnd(numBlocks, ISA_TYPE_UB));
+
+        ADD_OPND(num_operands, opnd, surface);
+        ADD_OPND(num_operands, opnd, address);
+        ADD_OPND(num_operands, opnd, src);
+
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+
+        inst->createCisaInstruction(ISA_QW_SCATTER, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        addInstructionToEnd(inst);
+    }
+
+    return status;
+}
 
 
 

@@ -169,6 +169,13 @@ SpillManagerGRF::SpillManagerGRF(
     curInst = nullptr;
     globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
     spilledLSLRs_ = nullptr;
+    if (builder_->hasScratchSurface())
+    {
+        builder_->initScratchSurfaceOffset();
+        auto entryBB = builder_->kernel.fg.getEntryBB();
+        auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+        splice(entryBB, iter, builder_->instList, UNMAPPABLE_VISA_INDEX);
+    }
 
 }
 
@@ -213,6 +220,13 @@ SpillManagerGRF::SpillManagerGRF(
     curInst = NULL;
     globalScratchOffset = gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 
+    if (builder_->hasScratchSurface())
+    {
+        builder_->initScratchSurfaceOffset();
+        auto entryBB = builder_->kernel.fg.getEntryBB();
+        auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+        splice(entryBB, iter, builder_->instList, UNMAPPABLE_VISA_INDEX);
+    }
 }
 
 // Get the base regvar for the source or destination region.
@@ -4074,6 +4088,7 @@ bool SpillManagerGRF::insertSpillFillCode(
                             break;
                         }
                         bool mayExceedTwoGRF = (inst->isSend() && i == 0) ||
+                            inst->isDpas() ||
                             (inst->isSplitSend() && i == 1);
 
                         if (mayExceedTwoGRF)
@@ -4312,6 +4327,7 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel * kernel)
                             break;
                         }
                         bool mayExceedTwoGRF = (inst->isSend() && i == 0) ||
+                            inst->isDpas() ||
                             (inst->isSplitSend() && i == 1);
 
                         if (mayExceedTwoGRF)
@@ -4349,6 +4365,134 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel * kernel)
     return true;
 }
 
+//
+// For Xe_HP+ scratch surface is used for the vISA stack.  This means when
+// the scratch message cannot be used for spill/fill (e.g., stack call),
+// a0.2 will be used as the message descriptor for the spill/fill.
+// As address RA is done before GRF, we don't know if a0.2 is live at the
+// point of the spill/fill inst and thus may need to preserve its value.
+// The good news is that all spill/fill may share the same A0, so we only
+// need to save/restore A0 when it's actually referenced in the BB.
+//
+void GlobalRA::saveRestoreA0(G4_BB * bb)
+{
+    G4_Declare* tmpDcl = nullptr;
+    unsigned int subReg = 0;
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+    {
+        // Use r126.6:ud for storing old a0.2 as it isn't caller/callee save
+        tmpDcl = builder.kernel.fg.getScratchRegDcl();
+        subReg = 6;
+    }
+    else
+    {
+        MUST_BE_TRUE(builder.hasValidOldA0Dot2(), "old a0.2 not saved");
+        tmpDcl = builder.getOldA0Dot2Temp();
+        subReg = 0;
+    }
+
+    auto usesAddr = [](G4_INST* inst)
+    {
+        // ToDo: handle send with A0 msg desc better.
+        if (inst->isSpillIntrinsic() || inst->isFillIntrinsic())
+        {
+            return false;
+        }
+        if (inst->getDst() && inst->getDst()->isAddress())
+        {
+            return true;
+        }
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+        {
+            if (inst->getSrc(i)->isAddress() || (inst->getSrc(i)->isSrcRegRegion() && inst->getSrc(i)->asSrcRegRegion()->isIndirect()))
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // a0.2 is spilled to r126.6 (r126 is scratch reg reserved for stack call)
+    auto a0SaveMov = [this, tmpDcl, subReg]()
+    {
+        auto dstSave = builder.createDst(tmpDcl->getRegVar(), 0, subReg, 1, Type_UD);
+        auto srcSave = builder.createSrc(builder.getBuiltinA0Dot2()->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
+        auto saveInst = builder.createMov(g4::SIMD1, dstSave, srcSave, InstOpt_WriteEnable, false);
+        return saveInst;
+    };
+
+    auto a0RestoreMov = [this, tmpDcl, subReg]()
+    {
+        auto dstRestore = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinA0Dot2(), 1);
+        auto srcRestore = builder.createSrc(tmpDcl->getRegVar(), 0, subReg, builder.getRegionScalar(), Type_UD);
+        auto restoreInst = builder.createMov(g4::SIMD1, dstRestore, srcRestore, InstOpt_WriteEnable, false);
+        return restoreInst;
+    };
+
+    auto a0SSOMove = [this]()
+    {
+        // shr (1) a0.2   SSO   0x4 {NM}
+        // SSO is stored in r126.7
+        auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinA0Dot2(), 1);
+        auto SSOsrc = builder.createSrc(builder.getSpillSurfaceOffset()->getRegVar(),
+            0, 0, builder.getRegionScalar(), Type_UD);
+        auto imm4 = builder.createImm(4, Type_UD);
+
+        return builder.createBinOp(G4_shr, g4::SIMD1, dst, SSOsrc, imm4, InstOpt_WriteEnable, false);
+    };
+
+    auto isPrologOrEpilog = [this](G4_INST* inst)
+    {
+        // a0 is a caller save register. Dont save/restore it if it is used in callee save/restore sequence or
+        // for frame descriptor spill instruction.
+        if (inst == kernel.fg.builder->getFDSpillInst())
+            return false;
+
+        if (calleeSaveInsts.find(inst) != calleeSaveInsts.end() ||
+            calleeRestoreInsts.find(inst) != calleeRestoreInsts.end())
+            return false;
+
+        return true;
+    };
+
+    bool hasActiveSpillFill = false;
+
+    for (auto instIt = bb->begin(); instIt != bb->end(); ++instIt)
+    {
+        auto inst = (*instIt);
+
+        if (inst->isSpillIntrinsic() || inst->isFillIntrinsic())
+        {
+            if (!hasActiveSpillFill)
+            {
+                // save a0.2 to addrSpillLoc, then overwrite it with the scratch surface offset
+                if (isPrologOrEpilog(inst))
+                {
+                    auto addrSpill = a0SaveMov();
+                    bb->insertBefore(instIt, addrSpill);
+                }
+               auto a0SSO = a0SSOMove();
+               bb->insertBefore(instIt, a0SSO);
+               hasActiveSpillFill = true;
+            }
+        }
+        else if (hasActiveSpillFill && usesAddr(inst))
+        {
+            // restore A0
+            auto addrFill = a0RestoreMov();
+            bb->insertBefore(instIt, addrFill);
+            hasActiveSpillFill = false;
+        }
+    }
+
+    if (hasActiveSpillFill && !bb->isLastInstEOT() && !bb->isEndWithFRet())
+    {
+        // restore A0 before BB exit. BB is guaranteed to be non-empty as there's at least one spill/fill
+        // If last inst is branch, insert restore before it. Otherwise insert it as last inst
+        auto endIt = bb->back()->isCFInst() ? std::prev(bb->end()) : bb->end();
+        bb->insertBefore(endIt, a0RestoreMov());
+    }
+}
 
 uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUnits)
 {
@@ -4472,6 +4616,24 @@ void GlobalRA::expandSpillNonStackcall(
         auto payloadToUse = builder->createSrcRegRegion(*payload);
         auto [spillMsgDesc, execSize] = SpillManagerGRF::createSpillSendMsgDescOWord(numRows);
         G4_INST* sendInst = nullptr;
+        // Use bindless for Xe_HP+
+        if (builder->hasScratchSurface())
+        {
+            G4_Imm* descImm = createMsgDesc(GRFSizeToOwords(numRows), true, true);
+            // Update BTI to 251
+            auto spillMsgDesc = descImm->getInt();
+            spillMsgDesc = spillMsgDesc & 0xffffff00;
+            spillMsgDesc |= 251;
+
+            auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC0, (uint32_t)spillMsgDesc, numRows);
+            G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
+
+            // a0 is set by saveRestoreA0()
+            auto a0Src = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinA0Dot2(), builder->getRegionScalar());
+            sendInst = builder->createInternalSplitSendInst(execSize, inst->getDst(),
+                header, payloadToUse, msgDescImm, inst->getOption(), msgDesc, a0Src);
+        }
+        else
         {
             G4_SendDescRaw * msgDesc =
                 kernel.fg.builder->createSendMsgDesc(
@@ -4550,6 +4712,23 @@ void GlobalRA::expandSpillStackcall(
             unsigned messageLength = owordToGRFSize(owordSize);
             G4_Imm* descImm = createMsgDesc(owordSize, true, true);
             G4_INST* sendInst = nullptr;
+            // Use bindless for Xe_HP+
+            if (builder->getPlatform() >= GENX_XE_HP)
+            {
+                // Update BTI to 251
+                auto spillMsgDesc = descImm->getInt();
+                spillMsgDesc = spillMsgDesc & 0xffffff00;
+                spillMsgDesc |= 251;
+
+                auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC0, (uint32_t)spillMsgDesc, messageLength);
+                G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
+
+                // a0 is set by saveRestoreA0()
+                auto a0Src = builder->Create_Src_Opnd_From_Dcl(builder->getBuiltinA0Dot2(), builder->getRegionScalar());
+                sendInst = builder->createInternalSplitSendInst(execSize, inst->getDst(),
+                    sendSrc0, payloadToUse, msgDescImm, inst->getOption(), msgDesc, a0Src);
+            }
+            else
             {
                 auto msgDesc = builder->createWriteMsgDesc(SFID::DP_DC0, (uint32_t)descImm->getInt(), messageLength);
                 G4_Imm* msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
@@ -4664,6 +4843,26 @@ void GlobalRA::expandSpillIntrinsic(G4_BB* bb)
          G4_Imm* desc = createMsgDesc(numRowsOword, false, false);
          G4_INST* sendInst = nullptr;
          auto sfId = SFID::DP_DC0;
+
+         // Use bindless for Xe_HP+
+         if (builder->hasScratchSurface())
+         {
+             // Update BTI to 251
+             auto newDesc = desc->getInt() & 0xffffff00;
+             newDesc |= 251;
+             desc = builder->createImm(newDesc, Type_UD);
+
+             auto msgDesc = builder->createReadMsgDesc(sfId, (uint32_t)desc->getInt());
+             G4_Operand* msgDescOpnd = builder->createImm(msgDesc->getDesc(), Type_UD);
+
+             // a0 is set by saveRestoreA0()
+             auto src1 = builder->createSrc(builder->getBuiltinA0Dot2()->getRegVar(), 0, 0,
+                 builder->getRegionScalar(), Type_UD);
+
+             sendInst = builder->createInternalSplitSendInst(execSize, fillDst, sendSrc0,
+                 nullptr, msgDescOpnd, InstOpt_WriteEnable, msgDesc, src1);
+         }
+         else
          {
              auto msgDesc = builder->createReadMsgDesc(sfId, (uint32_t)desc->getInt());
              G4_Operand* msgDescOpnd = builder->createImm(msgDesc->getDesc(), Type_UD);
@@ -4735,6 +4934,27 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
             G4_Imm* desc = createMsgDesc(owordSize, false, false);
             G4_INST* sendInst = nullptr;
             auto sfId = SFID::DP_DC0;
+
+            // Use bindless for Xe_HP+
+            if (builder->getPlatform() >= GENX_XE_HP)
+            {
+                // Update BTI to 251
+                auto newDesc = desc->getInt() & 0xffffff00;
+                newDesc |= 251;
+                desc = builder->createImm(newDesc, Type_UD);
+
+                auto msgDesc = builder->createReadMsgDesc(sfId, (uint32_t)desc->getInt());
+                G4_Operand* msgDescOpnd = builder->createImm(msgDesc->getDesc(), Type_UD);
+
+                // a0 is set by saveRestoreA0()
+                auto src1 = builder->createSrc(builder->getBuiltinA0Dot2()->getRegVar(), 0, 0,
+                    builder->getRegionScalar(), Type_UD);
+
+                sendInst = builder->createInternalSplitSendInst(
+                    execSize, fillVar, sendSrc0,
+                    nullptr, msgDescOpnd, InstOpt_WriteEnable, msgDesc, src1);
+            }
+            else
             {
                 auto msgDesc = builder->createReadMsgDesc(SFID::DP_DC0, (uint32_t)desc->getInt());
                 auto msgDescImm = builder->createImm(msgDesc->getDesc(), Type_UD);
@@ -4833,6 +5053,12 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes)
 
     for (auto bb : kernel.fg)
     {
+        if (builder.hasScratchSurface() &&
+            (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc() || kernel.fg.builder->hasValidOldA0Dot2()
+        ))
+        {
+            saveRestoreA0(bb);
+        }
         expandSpillIntrinsic(bb);
         expandFillIntrinsic(bb);
     }

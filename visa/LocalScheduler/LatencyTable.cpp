@@ -138,6 +138,10 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
     {
         return LatenciesXe::BRANCH;
     }
+    if (Inst->isDpas()) {
+        G4_InstDpas *dpas = Inst->asDpasInst();
+        return uint16_t(LatenciesXe::DPAS + dpas->getRepeatCount() - 1);
+    }
     if (Inst->writesFlag() || (Dst && Dst->isA0()))
     {
         return LatenciesXe::ARF;

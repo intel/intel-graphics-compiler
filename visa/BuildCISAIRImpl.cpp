@@ -205,6 +205,9 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
         case GENX_TGLLP:
             VISA_WA_ENABLE(pWaTable, Wa_1406950495);
             break;
+        case GENX_XE_HP:
+            VISA_WA_ENABLE(pWaTable, Wa_1406950495);
+            break;
         default:
             break;
     }
@@ -3274,6 +3277,103 @@ void CISA_IR_Builder::CISA_post_file_parse()
 std::stringstream& IR_Builder::criticalMsgStream()
 {
     return const_cast<CISA_IR_Builder*>(parentBuilder)->criticalMsgStream();
+}
+
+bool CISA_IR_Builder::CISA_create_dpas_instruction(
+    ISA_Opcode opcode,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd * dst_cisa,
+    VISA_opnd * src0_cisa,
+    VISA_opnd * src1_cisa,
+    VISA_opnd * src2_cisa,
+    GenPrecision  A,
+    GenPrecision  W,
+    uint8_t D,
+    uint8_t C,
+    int lineNum)
+{
+    // rcount !
+    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+    VISA_CALL_TO_BOOL(AppendVISADpasInst,
+        opcode, emask, executionSize,
+        (VISA_RawOpnd *)dst_cisa, (VISA_RawOpnd *)src0_cisa,
+        (VISA_RawOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa,
+        A, W, D, C);
+    return true;
+}
+
+
+bool CISA_IR_Builder::CISA_create_bfn_instruction(
+    VISA_opnd * pred,
+    uint8_t func_ctrl,
+    bool  sat,
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd * dst_cisa,
+    VISA_opnd * src0_cisa,
+    VISA_opnd * src1_cisa,
+    VISA_opnd * src2_cisa,
+    int lineNum)
+{
+    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+    VISA_CALL_TO_BOOL(AppendVISABfnInst,
+        func_ctrl, (VISA_PredOpnd *)pred, sat, emask, executionSize,
+        (VISA_VectorOpnd *)dst_cisa, (VISA_VectorOpnd *)src0_cisa,
+        (VISA_VectorOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa);
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_qword_scatter_instruction(
+    ISA_Opcode             opcode,
+    VISA_opnd             *pred,
+    VISA_EMask_Ctrl        eMask,
+    unsigned               execSize,
+    unsigned               numBlocks,
+    const char            *surfaceName,
+    VISA_opnd             *offsets,
+    VISA_opnd             *dstSrc,
+    int                    lineNum)
+{
+    VISA_StateOpndHandle * surface = CISA_get_surface_variable(surfaceName, lineNum);
+    if (!surface)
+        return false; // error recorded
+
+    if (opcode == ISA_QW_GATHER)
+    {
+        VISA_CALL_TO_BOOL(AppendVISAQwordGatherInst,
+            static_cast<VISA_PredOpnd *>(pred),
+            eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
+            valueToVISASVMBlockNum(numBlocks),
+            surface,
+            static_cast<VISA_RawOpnd *>(offsets),
+            static_cast<VISA_RawOpnd *>(dstSrc));
+    }
+    else
+    {
+        VISA_CALL_TO_BOOL(AppendVISAQwordScatterInst,
+            static_cast<VISA_PredOpnd *>(pred),
+            eMask, Get_VISA_Exec_Size_From_Raw_Size(execSize),
+            valueToVISASVMBlockNum(numBlocks),
+            surface,
+            static_cast<VISA_RawOpnd *>(offsets),
+            static_cast<VISA_RawOpnd *>(dstSrc));
+    }
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_bf_cvt_instruction(
+    VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd *dst,
+    VISA_opnd *src0,
+    int lineNum)
+{
+    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+    VISA_CALL_TO_BOOL(AppendVISADataMovementInst,
+        ISA_BF_CVT, nullptr, false, emask, executionSize,
+        (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0);
+    return true;
 }
 
 

@@ -43,8 +43,107 @@ bool IR_Builder::isMessageHeaderOptional(
     return Offset->isImm() && Offset->asImm()->isZero();
 }
 
+int IR_Builder::translateVISAQWGatherInst(
+    VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl eMask,
+    G4_Predicate* pred,
+    VISA_SVM_Block_Num numBlocks,
+    G4_SrcRegRegion* surface,
+    G4_SrcRegRegion* addresses,
+    G4_DstRegRegion* dst)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
+    VISA_Exec_Size instExecSize = execSize;
+    execSize = roundUpExecSize(execSize);
 
+    unsigned exSize = Get_VISA_Exec_Size(execSize);
+    G4_ExecSize instExSize = G4_ExecSize(Get_VISA_Exec_Size(instExecSize));
+    unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
+    uint32_t messageLength = (exSize / 8);
+    uint32_t responseLength = Get_Common_ISA_SVM_Block_Num(numBlocks) * 2 * (exSize / 8);
+
+    uint32_t desc = buildDescForScatter(DC_QWORD_SCATTERED_READ, numBlocks,
+        (execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16));
+
+    Create_Send_Inst_For_CISA(
+        pred, dst, addresses, messageLength, responseLength, instExSize, desc,
+        SFID::DP_DC0, false, SendAccess::READ_ONLY, surface, nullptr, instOpt, false);
+
+    return VISA_SUCCESS;
+}
+
+int IR_Builder::translateVISAQWScatterInst(
+    VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl eMask,
+    G4_Predicate* pred,
+    VISA_SVM_Block_Num numBlocks,
+    G4_SrcRegRegion* surface,
+    G4_SrcRegRegion* addresses,
+    G4_SrcRegRegion* src)
+{
+    TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+    VISA_Exec_Size instExecSize = execSize;
+    execSize = roundUpExecSize(execSize);
+
+    G4_ExecSize exSize = toExecSize(execSize);
+    G4_ExecSize instExSize = toExecSize(instExecSize);
+    unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
+    bool useSplitSend = useSends();
+
+    PayloadSource sources[2]; // Maximal 2 sources, optional header + offsets
+    unsigned len = 0;
+
+    sources[len].opnd = addresses;
+    sources[len].execSize = exSize;
+    sources[len].instOpt = instOpt;
+    ++len;
+
+    unsigned numElems = Get_Common_ISA_SVM_Block_Num(numBlocks);
+
+    sources[len].opnd = src;
+    sources[len].execSize = G4_ExecSize(exSize * numElems);
+    sources[len].instOpt = instOpt;
+    ++len;
+
+    G4_SrcRegRegion *msgs[2] {0, 0};
+    unsigned sizes[2] {0, 0};
+    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+
+    uint32_t desc = buildDescForScatter(DC_QWORD_SCATTERED_WRITE, numBlocks,
+        execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16);
+
+    G4_DstRegRegion* dst = createNullDst(Type_UD);
+    if (msgs[1] == 0)
+    {
+        ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
+        Create_Send_Inst_For_CISA(
+            pred, dst,
+            msgs[0], sizes[0],
+            0, instExSize,
+            desc, SFID::DP_DC0,
+            false,
+            SendAccess::WRITE_ONLY,
+            surface, nullptr,
+            instOpt, false);
+    }
+    else
+    {
+        Create_SplitSend_Inst_For_CISA(
+            pred, dst,
+            msgs[0], sizes[0],
+            msgs[1], sizes[1],
+            0, instExSize,
+            desc, SFID::DP_DC0,
+            false,
+            SendAccess::WRITE_ONLY,
+            surface, nullptr,
+            instOpt, false);
+    }
+
+    return VISA_SUCCESS;
+}
 
 // if surface is PRED_SURF_255, lower it to PRED_SURF_253 so that it's non IA-coherent
 // the surface is not changed otherwise
@@ -65,6 +164,17 @@ static G4_Operand* lowerSurface255To253(G4_Operand* surface, IR_Builder& builder
 
 static void BuildStatelessSurfaceMessageHeader(IR_Builder *IRB, G4_Declare *Header)
 {
+    // No need to mask fft id when scratch surface is bindless as
+    // A32 accesses are guaranteed to not be scratch accesses.
+    if (IRB->hasScratchSurface())
+    {
+        // Clear header
+        // Rx (8) = 0
+        auto DstOpnd = IRB->createDst(Header->getRegVar(), 0, 0, 1, Type_UD);
+        auto SrcImm0 = IRB->createImm(0, Type_UD);
+        IRB->createMov(g4::SIMD8, DstOpnd, SrcImm0, InstOpt_WriteEnable, true);
+        return;
+    }
     // For A32, clearing off scratch space offset or Buffer Base Address is
     // always required once header is present.
     G4_Type ElemTy = Header->getElemType();
@@ -1289,7 +1399,8 @@ int IR_Builder::translateVISAScatter4Inst(
 
 static bool IsFloatAtomicOps(VISAAtomicOps op)
 {
-    return op == ATOMIC_FMAX || op == ATOMIC_FMIN || op == ATOMIC_FCMPWR;
+    return op == ATOMIC_FMAX || op == ATOMIC_FMIN || op == ATOMIC_FCMPWR ||
+        op == ATOMIC_FADD || op == ATOMIC_FSUB;
 }
 
 static void BuildMH1_A32_PSM(IR_Builder *IRB, G4_Declare *header) {
@@ -1337,6 +1448,8 @@ int IR_Builder::translateVISADwordAtomicInst(
     ASSERT_USER(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
         "Float atomic operations are only supported on SKL+ devices");
 
+    ASSERT_USER(getPlatform() >= GENX_XE_HP || ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
+        "FADD/FSUB atomic operations are only supported on Xe_HP+ devices");
 
     surface = lowerSurface255To253(surface, *this);
 
@@ -2835,6 +2948,8 @@ int IR_Builder::translateVISASVMAtomicInst(
     MUST_BE_TRUE(bitwidth == 16 || bitwidth == 32 || bitwidth == 64,
         "bitwidth must be 16/32/64");
 
+    ASSERT_USER(getPlatform() >= GENX_XE_HP || ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
+        "FADD/FSUB atomic operations are only supported on Xe_HP+ devices");
 
     VISA_Exec_Size instExecSize = execSize;
     execSize = roundUpExecSize(execSize);

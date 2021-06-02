@@ -559,6 +559,33 @@ void Optimizer::insertDummyMov(G4_BB *bb, INST_LIST_ITER inst_it, G4_Operand *op
     return;
 }
 
+void Optimizer::insertDummyMovForHWRSWADPAS(G4_BB *bb)
+{
+    INST_LIST_ITER curr_iter = bb->begin();
+    bool PreDPAS = false;
+    while (curr_iter != bb->end())
+    {
+        G4_INST* inst = (*curr_iter);
+
+        if (inst->isDpas() && !PreDPAS) //Within a BB, only first one need invalid DPAS suppresion
+        {
+            insertDummyMov(bb, curr_iter, inst->getSrc(1));
+            PreDPAS = true;
+        }
+
+        if (inst->getPredicate() &&
+            inst->getDst() &&
+            !inst->getDst()->isNullReg())
+        {
+            if (inst->isSend())
+            {
+                PreDPAS = false;
+            }
+        }
+
+        ++curr_iter;
+    }
+}
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
@@ -569,6 +596,7 @@ void Optimizer::insertDummyMovForHWRSWA()
     }
     bool hasNonUniformBranch = false;
     bool hasPredicatedSendOrIndirect = false;
+    BB_LIST dpasBBs;
 
     for (BB_LIST_ITER bb_it = kernel.fg.begin();
         bb_it != kernel.fg.end();
@@ -583,10 +611,16 @@ void Optimizer::insertDummyMovForHWRSWA()
 
         INST_LIST_ITER curr_iter = bb->begin();
         INST_LIST_ITER pre_iter = curr_iter;
+        bool insertDPASBB = false;
         while (curr_iter != bb->end())
         {
             G4_INST* inst = (*curr_iter);
 
+            if (inst->isDpas() && !insertDPASBB)
+            {
+                dpasBBs.push_back(bb);
+                insertDPASBB = true;
+            }
 
             if (inst->getPredicate() &&
                 inst->getDst() &&
@@ -699,6 +733,17 @@ void Optimizer::insertDummyMovForHWRSWA()
         }
     }
 
+    if (dpasBBs.size() &&
+        builder.getOptions()->getOption(vISA_InsertDummyMovForDPASRSWA) &&
+        (hasPredicatedSendOrIndirect || hasNonUniformBranch))
+    {
+        for (BB_LIST_ITER bb_it = kernel.fg.begin();
+            bb_it != kernel.fg.end();
+            bb_it++)
+        {
+            insertDummyMovForHWRSWADPAS(*bb_it);
+        }
+    }
 }
 
 void Optimizer::insertHashMovs()
@@ -2234,6 +2279,13 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
         auto defInst = I->first;
         if (fg.globalOpndHT.isOpndGlobal(defInst->getDst()))
         {
+            return false;
+        }
+
+        if (inst->getDst()->getType() == Type_BF &&
+            defInst->getSrc(0)->getType() != Type_F)
+        {
+            // we currently don't handle conversion to BF from other type than float
             return false;
         }
 
@@ -7041,6 +7093,20 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     addFenceCommit(ii, bb, scheduleFenceCommit);
                 }
+                //To solve truncation issue in compaction table implementation
+                if (VISA_WA_CHECK(builder.getPWaTable(), Wa_22010811838) &&
+                    inst->isDpas())
+                {
+                    G4_InstDpas* dpasInst = inst->asDpasInst();
+                    GenPrecision p = dpasInst->getSrc1Precision();
+                    if (p == GenPrecision::S8 ||
+                        p == GenPrecision::S4 ||
+                        p == GenPrecision::S2 ||
+                        p == GenPrecision::BF16)
+                    {
+                        dpasInst->setOptionOn(InstOpt_NoCompact);
+                    }
+                }
                 if (inst->isCall() || inst->isFCall())
                 {
                     if (VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall))
@@ -7240,6 +7306,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 if (inst->isCall() ||
                     inst->isFCall() ||
+                    inst->isDpas() ||
                     inst->isReturn() ||
                     inst->isFReturn())
                 {
@@ -7697,6 +7764,324 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     void Optimizer::loadThreadPayload()
     {
+        if (!builder.loadThreadPayload() || !builder.getIsKernel())
+        {
+            return;
+        }
+        // indirect data address is at r0.0[5:31]
+        // local thread id is at r0.2[0:7]
+        // use r127 as the header for each oword load
+        uint32_t startGRF =
+            kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
+        uint32_t inputEnd = 32;
+        uint32_t inputCount = kernel.fg.builder->getInputCount();
+        for (unsigned int id = 0; id < inputCount; id++)
+        {
+            input_info_t* input_info = kernel.fg.builder->getInputArg(id);
+            // skip pseudo input for register bindings.
+            if (input_info->isPseudoInput())
+            {
+                continue;
+            }
+            if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel())
+            {
+              vISA::G4_Declare* dcl = input_info->dcl;
+              if (INPUT_GENERAL == input_info->getInputClass() && !(dcl->isLiveIn()))
+              {
+                  break;
+              }
+            }
+            if (inputEnd < (unsigned)(input_info->size + input_info->offset))
+            {
+                inputEnd = input_info->size + input_info->offset;
+            }
+        }
+        int numGRF = ((inputEnd + getGRFSize() - 1) / getGRFSize()) - startGRF;
+        std::vector<G4_INST*> instBuffer;
+
+        G4_Declare* r0 = builder.createHardwiredDeclare(8, Type_UD, 0, 0);
+        auto totalGRF = kernel.getNumRegTotal();
+
+        G4_Declare* rtail = builder.createHardwiredDeclare(8, Type_UD, totalGRF - 1, 0);
+
+        auto getHWordBlockEncoding = [](uint32_t numHW)
+        {
+            switch (numHW)
+            {
+            case 1: return 0x0;
+            case 2: return 0x1;
+            case 4: return 0x2;
+            case 8: return 0x3;
+            default:
+                assert(false && "unexpected number of HW");
+                return 0x0;
+            }
+        };
+
+        // load <numGRF> GRFs from the address "loadAddress", starting from <startGRF>
+        auto loadFromMemory = [this, &instBuffer, getHWordBlockEncoding](
+            G4_Declare* loadAddress, uint32_t startGRF, uint32_t numGRF)
+        {
+            bool useHword = builder.hasHWordBlockLoad();
+            for (int numRemaining = numGRF, nextGRF = startGRF; numRemaining > 0; /* updated in body */)
+            {
+                int numGRFToLoad = numRemaining > 2 ? 4 : numRemaining;
+                if (numRemaining == 3)
+                {
+                    // we can't do 4GRF load since it may overwrite values pushed from inline data,
+                    // break load to 2+1 instead
+                    numGRFToLoad = 2;
+                }
+                uint32_t numElts = (numGRFToLoad * getGRFSize()) / (useHword ? 32 : 16);
+                uint32_t dataBlocks = useHword ? getHWordBlockEncoding(numElts) :
+                    (numElts == 2 ? 2 : (numElts == 4 ? 3 : 4));
+
+                //A32 unaligned hword/oword block read
+                uint32_t msgDescVal = (1 << 25) | (numGRFToLoad << 20) | (1 << 19) |
+                    (DC_ALIGNED_OWORD_BLOCK_READ << 14) | ((useHword ? 1 : 0) << 13) | (dataBlocks << 8) | 253;
+                auto desc = builder.createReadMsgDesc(SFID::DP_DC0, msgDescVal);
+                auto sendSrc = builder.Create_Src_Opnd_From_Dcl(loadAddress, builder.getRegionStride1());
+                auto sendDstDcl = builder.createHardwiredDeclare(numGRFToLoad * 8, Type_UD, nextGRF, 0);
+                auto sendDst = builder.Create_Dst_Opnd_From_Dcl(sendDstDcl, 1);
+                auto sendInst = builder.createSendInst(nullptr, G4_send, g4::SIMD8, sendDst, sendSrc,
+                    builder.createImm(msgDescVal, Type_UD), InstOpt_WriteEnable, desc, true);
+                instBuffer.push_back(sendInst);
+                numRemaining -= numGRFToLoad;
+                nextGRF += numGRFToLoad;
+                if (numRemaining > 0)
+                {
+                    // advance the address offset
+                    // (W) add (1) loadAddress.2 loadAddress.2 numGRFToLoad*32
+                    auto addSrc0 = builder.createSrc(loadAddress->getRegVar(),
+                        0, 2, builder.getRegionScalar(), Type_UD);
+                    auto addSrc1 = builder.createImm(numGRFToLoad * numEltPerGRF<Type_UB>(), Type_UW);
+                    auto addDst = builder.createDst(loadAddress->getRegVar(), 0, 2, 1, Type_UD);
+                    auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0,
+                        addSrc1, InstOpt_WriteEnable, false);
+                    instBuffer.push_back(addInst);
+                }
+            }
+        };
+
+        // add (1) r127.2<1>:ud r127.2<0;1,0>:ud <reloc imm>
+        auto emitRelocAddInst = [this, &instBuffer, rtail](int subreg)
+        {
+            auto dst = builder.createDst(rtail->getRegVar(), 0, subreg, 1, Type_UD);
+            auto src0 = builder.createSrc(rtail->getRegVar(), 0, subreg,
+                builder.getRegionScalar(), Type_UD);
+            auto src1 = builder.createRelocImm(0, Type_UD);
+            auto addInst = builder.createBinOp(G4_add, g4::SIMD1, dst, src0, src1,
+                InstOpt_WriteEnable | InstOpt_NoCompact, false);
+            RelocationEntry::createRelocation(builder.kernel, *addInst,
+                1, "INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0", GenRelocType::R_SYM_ADDR_32);
+            instBuffer.push_back(addInst);
+        };
+
+        // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFE0
+        auto getStartAddrInst = [this, &instBuffer, r0, rtail](int subreg)
+        {
+            // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFE0
+            uint32_t GRFMask = 0x1F;
+            auto src0 = builder.createSrc(r0->getRegVar(), 0, 0,
+                builder.getRegionScalar(), Type_UD);
+            auto src1 = builder.createImm(~GRFMask, Type_UD);
+            auto dst = builder.createDst(rtail->getRegVar(), 0, subreg, 1, Type_UD);
+            auto andInst = builder.createBinOp(G4_and, g4::SIMD1,
+                dst, src0, src1, InstOpt_WriteEnable, false);
+            instBuffer.push_back(andInst);
+        };
+
+        // (W) mov (8) r127.0:ud 0x0
+        auto clearRegister = [this, &instBuffer, rtail]()
+        {
+            auto src0 = builder.createImm(0, Type_UD);
+            auto dst = builder.Create_Dst_Opnd_From_Dcl(rtail, 1);
+            auto movInst = builder.createMov(g4::SIMD8, dst, src0, InstOpt_WriteEnable, false);
+            instBuffer.push_back(movInst);
+        };
+
+        // (W) mov (8) dstGRF:ud srcGRF:ud
+        auto moveGRF = [this, &instBuffer](int dstGRF, int srcGRF)
+        {
+            if (dstGRF == srcGRF)
+            {
+                return;
+            }
+            uint32_t numDWord = getGRFSize() / 4;
+            G4_Declare* srcDcl = builder.createHardwiredDeclare(numDWord, Type_UD, srcGRF, 0);
+            G4_Declare* dstDcl = builder.createHardwiredDeclare(numDWord, Type_UD, dstGRF, 0);
+            auto movInst = builder.createMov(
+                G4_ExecSize(numDWord),
+                builder.Create_Dst_Opnd_From_Dcl(dstDcl, 1),
+                builder.Create_Src_Opnd_From_Dcl(srcDcl, builder.getRegionStride1()),
+                InstOpt_WriteEnable, false);
+            instBuffer.push_back(movInst);
+        };
+
+        auto getLabel = [this](std::string label)
+        {
+            return kernel.fg.createNewLabelInst(builder.createLabel(label, LABEL_BLOCK));
+        };
+
+        bool useInlineData = builder.getOption(vISA_useInlineData);
+
+        int addrSubreg = 2;
+
+        G4_BB* perThreadBB = nullptr;
+        // load per-thread data, if any. per-thread data always start from r1
+        // this is a fixed size 8 inst (nop padded as necessary), which may be skipped
+        // by runtime if the local_id are auto-generated by HW
+        if (builder.needsToLoadLocalID())
+        {
+            int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+            int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
+            uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
+            uint32_t numCrossThreadGRF = (CTIS < 0) ? numGRF - numPerThreadGRF : CTIS / numEltPerGRF<Type_UB>();
+
+            if (useInlineData)
+            {
+                numCrossThreadGRF--;
+            }
+            instBuffer.push_back(getLabel("per_thread_prolog"));
+
+            // compute per-thread starting address (r127.2)
+            // (W) mov (8) r127.0:ud 0x0
+            // (W) and (1) r127.2<1>:ud r0.0<0;1,0>:ud 0xFFFFFFE0   // start address
+            // (W) and (1) r127.0:uw r0.4:uw(tid) 0xFF  // tid
+            // (W) add (1) r127.2 r127.2 cross_thread_size
+            // (W) mad (1) r127.2 r127.2 r127.0 per_thread_size
+
+            clearRegister();
+
+            getStartAddrInst(2);
+
+            // (W) and (1) r127.0:uw r0.4:uw(tid) 0xFF  // tid
+            auto andSrc0 = builder.createSrc(r0->getRegVar(), 0, 4,
+                builder.getRegionScalar(), Type_UW);
+            auto andSrc1 = builder.createImm(0xFF, Type_UW);
+            auto andDst = builder.createDst(rtail->getRegVar(), 0, 0, 1, Type_UW);
+            auto andInst = builder.createBinOp(G4_and, g4::SIMD1, andDst, andSrc0,
+                andSrc1, InstOpt_WriteEnable, false);
+            instBuffer.push_back(andInst);
+
+            // (W) add (1) r127.2 r127.2 cross_thread_size
+            auto addSrc0 = builder.createSrc(rtail->getRegVar(), 0, 2,
+                builder.getRegionScalar(), Type_UD);
+            // create a relocation for cross_thread_size (per_thread_payload_offset). In case of the
+            // cross_thread_size is changed after compilation (e.g. gtpin inserted argument), the relocation
+            // need to be resolved to the new cross_thread_size.
+            G4_Operand* addSrc1 = builder.createRelocImm(numCrossThreadGRF * numEltPerGRF<Type_UB>(), Type_UW);
+            auto addDst = builder.createDst(rtail->getRegVar(), 0, 2, 1, Type_UD);
+            // instruction has relocation must not be compacted
+            auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0,
+                addSrc1, InstOpt_WriteEnable | InstOpt_NoCompact, false);
+
+            // FIXME: before RT supports the R_PER_THREAD_PAYLOAD_OFFSET_32 relocation, we create
+            // relocation only when GTPin option is given to avoid the test failure. We can remove this
+            // option check once RT supports it.
+            if (kernel.getOption(vISA_GetFreeGRFInfo)) {
+                // Relocation with the target symbol set to kernel symbol. Note that currently only
+                // ZEBinary will produce kernel symbols
+                RelocationEntry::createRelocation(kernel, *addInst, 1,
+                    kernel.getName(), GenRelocType::R_PER_THREAD_PAYLOAD_OFFSET_32);
+            }
+            instBuffer.push_back(addInst);
+
+            // (W) mad (1) r127.2 r127.2 r127.0 per_thread_size
+            auto madSrc0 = builder.createSrc(rtail->getRegVar(), 0, 2,
+                builder.getRegionScalar(), Type_UD);
+            auto madSrc1 = builder.createSrc(rtail->getRegVar(), 0, 0,
+                builder.getRegionScalar(), Type_UW);
+            auto madSrc2 = builder.createImm(numPerThreadGRF * numEltPerGRF<Type_UB>(), Type_UW);
+            auto madDst = builder.createDst(rtail->getRegVar(), 0, addrSubreg, 1, Type_UD);
+            auto madInst = builder.createInternalInst(
+                nullptr, G4_mad, nullptr, g4::NOSAT, g4::SIMD1,
+                madDst, madSrc0, madSrc1, madSrc2,
+                InstOpt_WriteEnable);
+            instBuffer.push_back(madInst);
+
+            if (useInlineData)
+            {
+                // copy inline data GRF
+                // (W) mov (8) r4.0:ud r1.0
+                moveGRF((startGRF + numPerThreadGRF), startGRF);
+            }
+
+            {
+                loadFromMemory(rtail, startGRF, numPerThreadGRF);
+            }
+            perThreadBB = kernel.fg.createNewBB();
+            perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(), instBuffer.end());
+            instBuffer.clear();
+            builder.setHasPerThreadProlog();
+
+            kernel.getGTPinData()->setPerThreadPayloadBB(perThreadBB);
+        }
+
+        // code for loading the cross-thread data
+        if (builder.needsToLoadCrossThreadConstantData())
+        {
+            G4_BB* crossThreadBB = kernel.fg.createNewBB();
+
+            instBuffer.push_back(getLabel("cross_thread_prolog"));
+            {
+                // we must clear r127 again as the per-thread loading code may not be executed
+                clearRegister();
+            }
+
+            getStartAddrInst(addrSubreg);
+
+            if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc))
+            {
+                // emit add with relocatable imm operand.
+                // when this is true, runtime loads global
+                // state buffer in r0.0[5:31]. kernel cross
+                // thread data is written in some other
+                // memory location. runtime is required to
+                // patch this relocatable immediate operand
+                // to allow correct loading of cross thread
+                // data.
+                emitRelocAddInst(addrSubreg);
+            }
+
+            // based on discussions with OCL runtime team, the first GRF
+            // of the cross-thread data will be loaded automatically as the inline data,
+            // and it will be either at R1 (if local id is not auto-generated) or
+            // R1 + sizeof(local id) (if local id is auto-generated).
+            {
+                int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+                int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
+
+                uint32_t numPerThreadGRF = PTIS / numEltPerGRF<Type_UB>();
+                uint32_t numCrossThreadGRF = (CTIS < 0) ? numGRF - numPerThreadGRF : CTIS / numEltPerGRF<Type_UB>();
+                uint32_t crossThreadStart = startGRF + numPerThreadGRF;
+
+                if (useInlineData)
+                {
+                    // first GRF of cross-thread data is already loaded
+                    crossThreadStart++;
+                    numCrossThreadGRF--;
+                }
+                {
+                    loadFromMemory(rtail, crossThreadStart, numCrossThreadGRF);
+                }
+            }
+
+            // create separate blocks instead of directly inserting to the old entryBB
+            // This is for the situation where the entry BB is part of a loop, as we don't
+            // want the prolog to be executed multiple times
+            crossThreadBB->insert(crossThreadBB->begin(), instBuffer.begin(), instBuffer.end());
+            instBuffer.clear();
+
+            kernel.fg.addPrologBB(crossThreadBB);
+
+            kernel.getGTPinData()->setCrossThreadPayloadBB(crossThreadBB);
+        }
+
+        if (perThreadBB)
+        {
+            kernel.fg.addPrologBB(perThreadBB);
+        }
     }
 
     // some platform/shaders require a memory fence before the end of thread
@@ -10027,8 +10412,420 @@ void Optimizer::changeMoveType()
         }
     };
 
+    auto isCandidateMov = [](G4_INST* inst)
+    {
+        if (inst->opcode() != G4_mov || inst->getSaturate() || inst->getCondMod())
+        {
+            return false;
+        }
+        auto src0 = inst->getSrc(0);
+        G4_Type dstTy = inst->getDst()->getType();
+        G4_Type src0Ty = src0->getType();
+        if (!inst->getDst()->isGreg())
+        {
+            // don't apply it on ARFs (both dst and src)
+            return false;
+        }
+        // Used only for splitting QW->2xUD
+        if (TypeSize(dstTy) == 8)
+        {
+            if (dstTy != src0Ty)
+            {
+                // allow UD->(Q|UQ) as we zext, but not D->Q
+                if (!(IS_TYPE_INT(dstTy) && src0Ty == Type_UD))
+                {
+                    return false;
+                }
+            }
+            // we can split: scalar, contigous, stride2  w/out SrcMod
+            if (src0->isSrcRegRegion() && src0->isGreg())
+            {
+                auto srcReg= src0->asSrcRegRegion();
+                bool modifier = srcReg->hasModifier();
+                uint16_t stride = 0;
+                bool singleStrideMax2 = srcReg->getRegion()->isSingleStride(inst->getExecSize(), stride) && (stride <= 2);
 
+                return !modifier && singleStrideMax2;
+            }
+            else // or immediates
+                return src0->isImm();
+        }
+        if (dstTy != src0Ty)
+        {
+            // allow D <-> UD and W <-> UW moves
+            if (!(IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0Ty) && TypeSize(dstTy) == TypeSize(src0Ty)))
+            {
+                return false;
+            }
+        }
+        auto isLegalType = [](G4_Type ty) { return TypeSize(ty) == 2 || TypeSize(ty) == 4;};
+        if (!isLegalType(dstTy) || !isLegalType(src0Ty))
+        {
+            return false;
+        }
 
+        if (src0->isRelocImm())
+        {
+            return false;
+        }
+
+        if (src0->isSrcRegRegion() && src0->isGreg())
+        {
+            auto src0R = src0->asSrcRegRegion();
+            bool hasNoModifier = src0R->getModifier() == Mod_src_undef;
+            bool hasSimpleRegion = src0R->isScalar() ||
+                (src0R->getRegion()->isContiguous(inst->getExecSize()) &&
+                    inst->getDst()->getHorzStride() == 1);
+            bool dstSrcAligned = src0R->getLinearizedStart() % numEltPerGRF<Type_UB>() ==
+                inst->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>();
+            return hasNoModifier && hasSimpleRegion && dstSrcAligned;
+        }
+        else if (src0->isImm())
+        {
+            // allow sext and zext imm moves
+            // float imm can always be converted to int imm
+            int64_t immVal = src0->asImm()->getImm();
+            bool isIntImmMove = IS_TYPE_INT(dstTy) && IS_TYPE_INT(src0Ty) &&
+                G4_Imm::isInTypeRange(immVal, dstTy);
+            return isIntImmMove || IS_FTYPE(dstTy) || IS_HFTYPE(dstTy);
+        }
+        return false;
+    };
+    auto splitMov64Imm = [this](INST_LIST_ITER curInst, G4_BB* BB)
+    {
+        auto firstMovInst = *curInst;
+        auto src0 = firstMovInst->getSrc(0);
+        auto dst = firstMovInst->getDst();
+        auto srcType = src0->getType();
+        auto dstType = dst->getType();
+
+        // Saturate, CondMod, SrcMod, regioning are covered when adding to input list, so no need for check now
+        bool isSrcReg = src0->isSrcRegRegion();
+
+        bool isSrcImm = src0->isImm();
+        bool is64to64 = isSrcReg && (srcType == dstType) && (IS_QTYPE(dstType) || dstType == Type_DF);
+        bool isU32to64 = isSrcReg && (srcType == Type_UD) && IS_QTYPE(dstType); // can zero extend it
+
+        if (!(isSrcImm || isU32to64 || is64to64 ))
+            return;
+
+        // common for each variant
+        auto newTy = Type_UD;
+        unsigned char execSize = firstMovInst->getExecSize();
+        unsigned char secondMovExecSize = firstMovInst->getExecSize();
+
+        dst = builder.createDst(dst->getBase(),
+            dst->getRegOff(),
+            2 * dst->getSubRegOff(),
+            dst->getHorzStride(), newTy);
+
+        G4_Operand* firstMovSrc0 = src0;
+        G4_Operand* secondMovSrc0 = nullptr;
+
+        bool canDoubleExecSize = false;
+        if (isSrcImm)
+        {
+            uint64_t original = src0->asImm()->getImm();
+            uint64_t lopart = original & 0xFFFFFFFF;
+            uint64_t hipart = (original >> 32);
+
+            // original mov takes low part
+            firstMovSrc0 = fg.builder->createImm(lopart, newTy);
+
+            // second mov, with high part and offset
+            secondMovSrc0 = fg.builder->createImm(hipart, newTy);
+
+            /*
+                from :
+                (W)      mov (8|M0)               r2.0<1>:df    0x0:df
+
+                make:
+                (W)      mov (16|M0)              r2.0<1>:ud    0x0:ud
+            */
+            if (lopart == hipart)
+                canDoubleExecSize = true;
+        }
+        else if (isU32to64)
+        {
+            // original move src0 stays the same (will have different dst)
+            // second mov zero extends type
+            // TODO(?):  mov r1:uq 0:ud
+            secondMovSrc0 = fg.builder->createImm(0, newTy);
+        }
+        else if (is64to64)
+        {
+            auto src0ASR = src0->asSrcRegRegion();
+            auto prevReg = src0ASR->getRegion();
+
+            src0ASR = builder.createSrcRegRegion(
+                src0ASR->getModifier(),
+                src0ASR->getRegAccess(),
+                src0ASR->getBase(),
+                src0ASR->getRegOff(),
+                src0ASR->getSubRegOff() * 2,
+                src0ASR->getRegion(), newTy);
+
+            if (prevReg->vertStride <= 1)
+            {
+                // from:
+                //       mov (4|M0)               r14.0<1>:q    r24.0<1;1,0>:q
+                //       mov (1|M0)               r94.2<1>:q    r14.2<0;1,0>:q
+                // to:
+                //       mov (8|M0)               r14.0<1>:ud   r24.0<1;1,0>:ud
+                //       mov (2|M0)               r94.4<1>:ud   r14.4<1;1,0>:ud
+                canDoubleExecSize = true;
+
+                // convert both <0;1,0> and <1;1,0>
+                src0ASR->setRegion(fg.builder->getRegionStride1());
+
+                // just create copy of src region to second mov
+                secondMovSrc0 = fg.builder->createSubSrcOperand(src0ASR, 0, 2 * execSize, 1, prevReg->width);
+            }
+            else
+            {
+                /* some weird stuff like
+                       mov (2|M0)               r14.0<1>:q    r24.1<2;1,0>:q
+
+                we should split into 2 (can't double exec).
+                       mov (2|M0)               r14.0<1>:ud   r24.2<2;1,0>:ud
+                       mov (2|M0)               r14.1<1>:ud   r24.3<2;1,0>:ud
+                */
+
+                // calculate offset on original regioning at lower type
+                secondMovSrc0 = fg.builder->createSubSrcOperand(src0ASR, 1, execSize, prevReg->vertStride, prevReg->width);
+
+                // change to stride2 now
+                auto newReg = fg.builder->createRegionDesc(execSize, prevReg->vertStride * 2, prevReg->width, prevReg->horzStride);
+
+                src0ASR->setRegion(newReg);
+                secondMovSrc0->asSrcRegRegion()->setRegion(newReg);
+            }
+
+        }
+        firstMovInst->setSrc(firstMovSrc0, 0);
+
+        // common offset for all paths
+        G4_DstRegRegion* secondMovDst;
+
+        if (canDoubleExecSize)
+        {
+            secondMovExecSize *= 2;
+            secondMovDst = fg.builder->createSubDstOperand(dst, 0, secondMovExecSize);
+        }
+        else
+        {
+            secondMovDst = fg.builder->createSubDstOperand(dst, 1, secondMovExecSize);
+
+            // set HzStride for both dst if it matters
+            if (execSize > 1)
+            {
+                dst->setHorzStride(2);
+                secondMovDst->setHorzStride(2);
+            }
+        }
+
+        G4_Predicate* pred = firstMovInst->getPredicate() ? builder.duplicateOperand(firstMovInst->getPredicate()) : nullptr;
+
+        //Create second mov, with different only src/dst, rest the same
+        G4_INST* secondMovInst = builder.createInternalInst(pred, G4_mov,
+            nullptr, g4::NOSAT, G4_ExecSize(secondMovExecSize),
+            secondMovDst, secondMovSrc0, nullptr, firstMovInst->getOption());
+
+        BB->insertBefore(curInst, secondMovInst);
+
+        // we can't alter execSize of first mov, so newMov will take it's place, and remove original
+        // TODO: we don't estimate cost of this doubledExec correctly need to fix
+        if (canDoubleExecSize)
+        {
+            BB->erase(curInst);
+        }
+
+        /*
+        TODO: currently we do this
+        (W)      mov (1|M0)               r66.0<1>:df   0x37F0000000000000:df            //$176:&231:%3784
+        (W)      mov (1|M0)               r66.1<1>:df   0x47F0000000000000:df            //$175:&230:%3768
+        (W)      mov (1|M0)               r66.2<1>:df   0x7FF0000000000000:df            //$178:&232:%3800
+        ->
+        (W)      mov (1|M0)               r66.1<1>:ud   0x37F00000:ud                    //$176:&251:%4104
+        (W)      mov (1|M0)               r66.0<1>:ud   0x0:ud                           //$176:&252:%4120
+        (W)      mov (1|M0)               r66.3<1>:ud   0x47F00000:ud                    //$175:&249:%4072
+        (W)      mov (1|M0)               r66.2<1>:ud   0x0:ud                           //$175:&250:%4088
+        (W)      mov (1|M0)               r66.5<1>:ud   0x7FF00000:ud                    //$178:&253:%4136
+        (W)      mov (1|M0)               r66.4<1>:ud   0x0:ud                           //$178:&254:%4152
+
+        but we could do this ?
+        ->
+        (W)      mov (1|M0)               r66.1<1>:ud   0x37F00000:ud                    //$176:&251:%4104
+        (W)      mov (1|M0)               r66.3<1>:ud   0x47F00000:ud                    //$175:&249:%4072
+        (W)      mov (1|M0)               r66.5<1>:ud   0x7FF00000:ud                    //$178:&253:%4136
+        (W)      mov (2|M0)               r66.0<2>:ud   0x0:ud                           //$176:&252:%4120
+        (W)      mov (1|M0)               r66.4<1>:ud   0x0:ud                           //$176:&252:%4120
+        */
+    };
+
+    /*
+    0 - don't convert.
+    1 - per BB balance. <default>
+    2 - all suitable 64bit mov (experimental)
+    */
+    unsigned SplitMov64Mode = fg.builder->getOptions()->getuInt32Option(vISA_SplitMov64);
+
+    if (builder.balanceIntFloatMoves())
+    {
+        auto dstOrAnySrcIs2GRF = [](G4_INST *inst)
+        {
+            auto dst = inst->getDst();
+            bool dstIs2GRF = dst && !dst->isNullReg() && dst->isCrossGRFDst();
+            if (dstIs2GRF)
+                return true;
+
+            for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+            {
+                auto curSrc = inst->getSrc(i);
+                if (inst->getSrc(i) == nullptr)
+                    continue;
+                if (curSrc->isGreg() && curSrc->asSrcRegRegion()->crossGRF())
+                    return true;
+            }
+            return false;
+        };
+
+        // attempt to balance the number of float v. int instructions in each BB
+        // by changing the types of int or float copy moves
+        for (auto bb : fg)
+        {
+            // candidate int and float moves
+            std::vector<G4_INST*> intMovs, floatMovs;
+            std::vector<INST_LIST_ITER> QWInstructions;
+            // int/math/send share one decoder, float and 64b share the other decoder
+            int numIntCost = 0, numFloatCost = 0;
+            for (auto I = bb->begin(); I != bb->end(); /*empty*/)
+            {
+                auto CurI = I++;
+                G4_INST* inst = *CurI;
+                if (inst->getDst() && !inst->isDpas())
+                {
+                    auto execSize = inst->getExecSize();
+                    G4_Type dstTy = inst->getDst()->getType();
+                    uint32_t dstTySize = TypeSize(dstTy);
+
+                    uint32_t affectedGRFsCost = dstOrAnySrcIs2GRF(inst) ? 2 : 1;
+
+                    // Assumption:
+                    // FPU0 : FLT16/FLT32/FLT64/INT64
+                    // FPU1 : INT16 / INT32 / EM
+                    if (inst->isMath())
+                    {
+                        // native simd1 for :DF, simd2 for :F
+                        numIntCost += (dstTySize == 8) ? execSize : execSize / 2;
+                    }
+                    else if (inst->isSend())
+                    {
+                        numIntCost++;
+                    }
+                    else if (dstTySize == 8)
+                    {
+                        numFloatCost += affectedGRFsCost;
+                        if (isCandidateMov(inst))
+                        {
+                            QWInstructions.push_back(CurI);
+                        }
+                    }
+                    else
+                    {
+                        if (IS_TYPE_INT(dstTy))
+                        {
+                            numIntCost += affectedGRFsCost;
+                            if (isCandidateMov(inst))
+                            {
+                                intMovs.push_back(inst);
+                            }
+                        }
+                        else if (IS_TYPE_FLOAT_ALL(dstTy))
+                        {
+                            numFloatCost += affectedGRFsCost;
+                            if (isCandidateMov(inst))
+                            {
+                                floatMovs.push_back(inst);
+                            }
+                        }
+                    }
+
+                }
+            }
+            //std::cout << "num int cost/mov: " << numIntCost << "/" << intMovs.size() << " "
+            //          << "num float cost/mov: " << numFloatCost << "/" << floatMovs.size() << " "
+            //          << "QW movs: " << QWInstructions.size() << "\n";
+            int diff = std::abs(numIntCost - numFloatCost) / 2;
+
+            auto changeMovsFromVector = [&](std::vector<G4_INST*> & table, G4_Type newType32, G4_Type newType16)
+            {
+                for (int i = 0, numInt = table.size(); diff > 0 && i < numInt; ++i)
+                {
+                    auto inst = table[i];
+                    auto typeSize = inst->getDst()->getTypeSize();
+                    G4_Type floatTy = typeSize == 4 ? newType32 : newType16;
+
+                    changeType(inst, floatTy);
+
+                    auto estimatedClockCount = dstOrAnySrcIs2GRF(inst) ? 2 : 1;
+                    diff -= estimatedClockCount;
+                }
+            };
+
+            bool forceSplitAllMov64 = (SplitMov64Mode == 2);
+
+            if (numIntCost > numFloatCost && !forceSplitAllMov64)
+            {
+                // change int move to float move
+                changeMovsFromVector(intMovs, Type_F, Type_HF);
+            }
+            else
+            {
+                // change float move to int move
+                changeMovsFromVector(floatMovs, Type_UD, Type_UW);
+
+                // if there's still unbalance
+                // split `mov <imm64>` (or `mov 64to64` or mov `u32to64`) into 2x `mov <imm32>`
+                // TODO: or maybe split "and", "or" as well
+
+                // Above changeMovsFromVector() had always same added and decreased values
+                // so it operated on halfDiff but now we might have different values
+                // so let's operate on full diff, not half
+                diff = diff * 2;
+
+                int rep = 0;
+                if (!SplitMov64Mode)
+                    diff = 0;
+
+                for (int i = 0, numInt = QWInstructions.size(); ((diff > 0) || forceSplitAllMov64) && i < numInt; ++i)
+                {
+                    auto inst = *QWInstructions[i];
+                    auto execSize = inst->getExecSize();
+                    auto estimatedSrcCost = dstOrAnySrcIs2GRF(inst) ? 2 : 1; // cost of mov before change
+
+                    auto dstTypeSize = TypeSize(Type_UD);
+                    auto estimatedDstCost = (execSize * dstTypeSize * /*HzStride*/ 2) > 32 ? 2 : 1; // cost of new mov
+
+                    // it might be that we remove 1 cycle mov (1) :df, and add 2x 1cycle mov(1) :ud => 3 cycles diff.
+                    auto new_diff = diff - (2 * estimatedDstCost + estimatedSrcCost);
+
+                    if (abs(new_diff) >= abs(diff) && !forceSplitAllMov64)
+                    {
+                        break;
+                    }
+
+                    splitMov64Imm(QWInstructions[i], bb);
+
+                    diff = new_diff;
+                    rep++;
+                }
+                //std::cout << "diff before " << diff_prev << " after " << diff <<" reps done " << rep << "\n";
+            }
+
+        }
+        return;
+    }
 
     for (auto bb : fg)
     {

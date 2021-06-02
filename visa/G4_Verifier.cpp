@@ -82,6 +82,11 @@ bool G4Verifier::verifyInst(G4_INST *inst)
         {
             verifySend( inst );
         }
+        else if( inst->isDpas() )
+        {
+            verifyDpas( inst );
+        }
+        verifyAccMov( inst );
 
         verifyDstSrcOverlap( inst );
 
@@ -357,6 +362,11 @@ void G4Verifier::verifySend(G4_INST* inst)
 
 void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
 {
+    if (inst->isDpas())
+    {
+        // Temporarily skip for now
+        return;
+    }
 
     uint8_t execSize = inst->getExecSize();
 
@@ -992,3 +1002,202 @@ void G4Verifier::verifyOpcode(G4_INST* inst)
 
 }
 
+void G4Verifier::verifyDpas(G4_INST* inst)
+{
+    // Verify region and size of each operands
+    G4_InstDpas* dpasInst = inst->asDpasInst();
+
+    if (dpasInst->getPredicate() || dpasInst->getCondMod())
+    {
+        DEBUG_VERBOSE("dpas: should not have predicate nor condMod");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "dpas: may not have predicate/condMod");
+    }
+
+    G4_DstRegRegion* dst = dpasInst->getDst();
+    G4_Type dTy = dst->getType();
+    G4_SrcRegRegion* src0 = dpasInst->getSrc(0)->asSrcRegRegion();
+    G4_Type s0Ty = src0->getType();
+    G4_SrcRegRegion* src1 = dpasInst->getSrc(1)->asSrcRegRegion();
+    G4_Type s1Ty = src1->getType();
+    G4_SrcRegRegion* src2 = dpasInst->getSrc(2)->asSrcRegRegion();
+    G4_Type s2Ty = src2->getType();
+    G4_Operand* opnd3 = dpasInst->getSrc(3);
+    G4_SrcRegRegion* src3 = opnd3 ? opnd3->asSrcRegRegion() : nullptr;
+    G4_Type s3Ty = src3 ? src3->getType() : Type_UNDEF;
+
+    // No source modifier
+    if (src0->hasModifier() || src1->hasModifier() || src2->hasModifier() ||
+        (src3 && src3->hasModifier()))
+    {
+        DEBUG_VERBOSE("dpas: should not have source modifier");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "dpas: may not have source modifier");
+    }
+
+    // No indirect register access
+    if (src0->isIndirect() || src1->isIndirect() || src2->isIndirect() || dst->isIndirect() ||
+        (src3 && src3->isIndirect()))
+    {
+        DEBUG_VERBOSE("dpas: no indirect register access supported!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "dpas: no indirect register access supported!");
+    }
+
+    if (!(s1Ty == Type_UD || s1Ty == Type_D) || !(s2Ty == Type_UD || s2Ty == Type_D))
+    {
+        DEBUG_VERBOSE("dpas: incorrect type for src1 or src2!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "dpas: wrong type for src1 or src2");
+    }
+
+    if (dpasInst->isInt())
+    {
+        if (!(s0Ty == Type_UD || s0Ty == Type_D) || !(dTy == Type_UD || dTy == Type_D))
+        {
+            DEBUG_VERBOSE("dpas: incorrect int type for src0 or dst!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: wrong int type for src0 or dst");
+        }
+    }
+    else if (dpasInst->isFP16() || dpasInst->isBF16())
+    {
+        G4_Type prec = Type_UNDEF;
+        if (!(dTy == Type_F || dTy == prec) || !(s0Ty == Type_F || s0Ty == prec))
+        {
+            DEBUG_VERBOSE("dpas: incorrect float type for dst or src0!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: wrong float type for dst or src0");
+        }
+    }
+    else
+    {
+        DEBUG_VERBOSE("dpas: invalid!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "dpas: invalid");
+    }
+
+    // region check, enforce <1;1,0> for source region, <1> for dst
+    auto isSrcRegion110 = [](const RegionDesc* RD) -> bool {
+        return RD->vertStride == 1 && RD->width == 1 && RD->horzStride == 0;
+    };
+
+    if (dst->getHorzStride() != 1 ||
+        (!src0->isNullReg() && !isSrcRegion110(src0->getRegion())) ||
+        !isSrcRegion110(src1->getRegion()) ||
+        !isSrcRegion110(src2->getRegion()) ||
+        (src3 && !isSrcRegion110(src3->getRegion())))
+    {
+        DEBUG_VERBOSE("dpas: src region should be <1;1,0> and dst region <1>!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE(std::endl);
+        MUST_BE_TRUE(false, "dpas: src region should be <1;1,0> and dst region <1>!");
+    }
+
+    // register alignment & size
+    //   dst & src0 : aligned on execsize
+    //   src1 : aligned on grf
+    //   src2 : aligned on systolic depth * OPS_PER_CHAN
+    if (passIndex == Optimizer::PI_regAlloc)
+    {
+        uint32_t D = dpasInst->getSystolicDepth();
+        uint32_t ES = dpasInst->getExecSize();
+        uint32_t RC = dpasInst->getRepeatCount();
+        uint32_t Src1_D = D;
+
+        uint32_t dAlignBytes = TypeSize(dTy) * ES;
+        uint32_t s0AlignBytes = TypeSize(s0Ty) * ES;
+        if ((dst->getLinearizedStart() % dAlignBytes) != 0 ||
+            (src0->getLinearizedStart() % s0AlignBytes) != 0)
+        {
+            DEBUG_VERBOSE("dpas: dst/src0's subreg offset should be multiple of execsize!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: dst/src0's subreg offset should be multiple of execsize!");
+        }
+
+        uint32_t dBytes = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1;
+        uint32_t s0Bytes = src0->getLinearizedEnd() - src0->getLinearizedStart() + 1;
+        if (dBytes != (dAlignBytes * RC) || (!src0->isNullReg() && s0Bytes != s0AlignBytes * RC))
+        {
+            DEBUG_VERBOSE("dpas: dst/src0's size is wrong!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: dst/src0's size is wrong!");
+        }
+
+        if ((src1->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
+        {
+            DEBUG_VERBOSE("dpas: src1's subreg offset should be 0!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: src1's subreg offset should be 0!");
+        }
+
+
+        // bytes per lane per depth
+        uint32_t bytes1PerLD = dpasInst->getSrc1SizePerLaneInByte();
+        uint32_t s1Bytes = src1->getLinearizedEnd() - src1->getLinearizedStart() + 1;
+        if (s1Bytes != (bytes1PerLD * Src1_D * ES))
+        {
+            DEBUG_VERBOSE("dpas: src1's size is wrong!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: src1's size is wrong!");
+        }
+
+        uint32_t s2AlignBytes = dpasInst->getSrc2SizePerLaneInByte() * D;
+        if ((src2->getLinearizedStart() % s2AlignBytes) != 0)
+        {
+            DEBUG_VERBOSE("dpas: src2's subreg offset is incorrec!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: src2's subreg offset is incorrect!");
+        }
+
+        uint32_t s2Bytes = src2->getLinearizedEnd() - src2->getLinearizedStart() + 1;
+        uint32_t correctBytes = s2AlignBytes * RC;
+        if (dpasInst->opcode() == G4_dpasw) {
+            correctBytes = s2AlignBytes * ((RC + 1) / 2);
+        }
+        if (s2Bytes != correctBytes)
+        {
+            DEBUG_VERBOSE("dpas: src2's size is wrong!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "dpas: src2's size is wrong!");
+        }
+
+    }
+}
+
+void G4Verifier::verifyAccMov(G4_INST* inst)
+{
+    const G4_Operand* src = inst->getSrc(0);
+    const G4_Operand* dst = inst->getDst();
+    if (kernel.fg.builder->hasFormatConversionACCRestrictions() &&
+        inst->opcode() == G4_mov &&
+        (src->isAccReg() || dst->isAccReg()))
+    {
+        const bool allowedICombination = (IS_DTYPE(src->getType()) || src->getType() == Type_W || src->getType() == Type_UW) &&
+            (IS_DTYPE(dst->getType()) || dst->getType() == Type_W || dst->getType() == Type_UW);
+        const bool allowedFCombination = (src->getType() == Type_F || src->getType() == Type_HF) &&
+            (dst->getType() == Type_F || dst->getType() == Type_HF);
+        const bool allowedDFCombination = src->getType() == Type_DF &&
+            dst->getType() == Type_DF;
+        if (!allowedICombination && !allowedFCombination && !allowedDFCombination)
+        {
+            DEBUG_VERBOSE("Invalid type combination during mov format conversion when accumulator is used as src or dst!");
+            inst->emit(std::cerr);
+            DEBUG_VERBOSE(std::endl);
+            MUST_BE_TRUE(false, "Invalid type combination during mov format conversion when accumulator is used as src or dst!");
+        }
+    }
+}

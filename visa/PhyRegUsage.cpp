@@ -200,7 +200,10 @@ unsigned short PhyRegUsage::getOccupiedBundle(const G4_Declare* dcl) const
 {
     unsigned short occupiedBundles = 0;
     unsigned bundleNum = 0;
-
+    if (!builder.hasDPAS() || !builder.getOption(vISA_EnableDPASBundleConflictReduction))
+    {
+        return 0;
+    }
 
     for (const BundleConflict& conflict : gra.getBundleConflicts(dcl))
     {

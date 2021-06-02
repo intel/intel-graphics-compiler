@@ -220,6 +220,16 @@ inline const char* const MathOpNames[16] =
     "rsqrtm"
 };
 
+typedef enum  _SB_INST_PIPE
+{
+    PIPE_NONE = 0,
+    PIPE_INT = 1,
+    PIPE_FLOAT = 2,
+    PIPE_LONG = 3,
+    PIPE_MATH = 4,
+    PIPE_DPAS = 5,
+    PIPE_SEND = 6
+} SB_INST_PIPE;
 
 
 typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR;
@@ -265,7 +275,8 @@ class G4_InstMath;
 class G4_InstCF;
 class G4_InstIntrinsic;
 class G4_InstSend;
-
+class G4_InstBfn;
+class G4_InstDpas;
 
 class G4_INST
 {
@@ -328,6 +339,15 @@ public:
         WRITE_ALL,
     };
 
+    enum DistanceType {
+        DIST_NONE,
+        DIST,
+        DISTALL,
+        DISTINT,
+        DISTFLOAT,
+        DISTLONG,
+        DISTMATH
+    };
 typedef struct _SWSBInfo
 {
     unsigned short depDistance : 3;
@@ -337,6 +357,7 @@ typedef struct _SWSBInfo
     _SWSBInfo()
     {
         depDistance = 0;
+        distType = DIST_NONE;
         SBToken = 0;
         tokenType = TOKEN_NONE;
     }
@@ -361,6 +382,8 @@ public:
     }
     unsigned char getDistance() const { return swsb.depDistance; }
 
+    void setDistanceTypeXe(DistanceType type) { swsb.distType = type; }
+    DistanceType getDistanceTypeXe() const { return (DistanceType)swsb.distType; }
 
     void setToken(unsigned short token) {swsb.SBToken = token;}
     unsigned short getToken() const { return swsb.SBToken; }
@@ -377,6 +400,12 @@ public:
     bool isOperandTypeIndicated() const {return operandTypeIndicated;}
     bool isClosestALUType() const { return isClosestALUType_; }
 
+    bool isDpas() const { return (op == G4_dpas || op == G4_dpasw); }
+    G4_InstDpas* asDpasInst() const
+    {
+        MUST_BE_TRUE(isDpas(), ERROR_UNKNOWN);
+        return (G4_InstDpas*) this;
+    }
 
 public:
     G4_INST(
@@ -486,6 +515,7 @@ public:
     bool isSend() const { return op == G4_send || op == G4_sendc || op == G4_sends || op == G4_sendsc; }
     bool isSplitSend() const { return op == G4_sends || op == G4_sendsc; }
     bool isRSWADivergentInst() const { return op == G4_goto || op == G4_while || op == G4_if || op == G4_break; }
+    bool isBfn() const { return op == G4_bfn; }
 
     // ToDo: get rid of these functions which don't make sense for non-sends
     virtual bool isEOT() const { return false; }
@@ -571,6 +601,11 @@ public:
         return reinterpret_cast<G4_InstSend*>(this);
     }
 
+    G4_InstBfn* asBfnInst() const
+    {
+        MUST_BE_TRUE(isBfn(), ERROR_UNKNOWN);
+        return (G4_InstBfn*) this;
+    }
 
     bool isPseudoUse() const;
     G4_Type getExecType() const;
@@ -809,6 +844,14 @@ public:
     bool distanceHonourInstruction() const;
     bool tokenHonourInstruction() const;
     bool hasNoPipe();
+    bool isLongPipeType(G4_Type type) const;
+    bool isIntegerPipeType(G4_Type type) const;
+    bool isJEUPipeInstructionXe() const;
+    bool isLongPipeInstructionXe() const;
+    bool isIntegerPipeInstructionXe() const;
+    bool isFloatPipeInstructionXe() const;
+    SB_INST_PIPE getDataTypePipeXe(G4_Type type);
+    SB_INST_PIPE getInstructionPipeXe();
 
     void swapDefUse();
     void addDefUse(G4_INST* use, Gen4_Operand_Number usePos);
@@ -1044,6 +1087,103 @@ std::ostream& operator<<(std::ostream& os, vISA::G4_INST& inst);
 
 namespace vISA
 {
+
+class G4_InstBfn : public G4_INST
+{
+    uint8_t funcCtrl;
+public:
+    G4_InstBfn(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        G4_CondMod* m,
+        G4_Sat sat,
+        G4_ExecSize size,
+        G4_DstRegRegion* d,
+        G4_Operand* s0,
+        G4_Operand* s1,
+        G4_Operand* s2,
+        unsigned int opt,
+        uint8_t mBooleanFuncCtrl) :
+        G4_INST(builder, prd, G4_bfn, m, sat, size, d, s0, s1, s2, opt),
+        funcCtrl(mBooleanFuncCtrl)
+    {
+    }
+
+    G4_INST* cloneInst() override;
+
+    uint8_t getBooleanFuncCtrl() const { return funcCtrl; }
+};
+
+
+class G4_InstDpas : public G4_INST
+{
+    GenPrecision Src1Precision;   // Weights
+    GenPrecision Src2Precision;   // Activation
+    uint8_t      SystolicDepth;   // 1|2|4|8
+    uint8_t      RepeatCount;     // 1-8
+
+    enum {
+        OPS_PER_CHAN_1 = 1,
+        OPS_PER_CHAN_2 = 2,
+        OPS_PER_CHAN_4 = 4,
+        OPS_PER_CHAN_8 = 8
+    };
+
+    public:
+        static uint32_t GetPrecisionSizeInBits(GenPrecision P)
+        {
+            return GenPrecisionTable[(int)P].BitSize;
+        }
+
+        G4_InstDpas(
+            const IR_Builder& builder,
+            G4_opcode o,
+            G4_ExecSize size,
+            G4_DstRegRegion* d,
+            G4_Operand* s0,
+            G4_Operand* s1,
+            G4_Operand* s2,
+            G4_Operand* s3,
+            unsigned int opt,
+            GenPrecision a,
+            GenPrecision w,
+            uint8_t      sd,
+            uint8_t      rc) :
+            G4_INST(builder, nullptr, o, nullptr, g4::NOSAT, size, d, s0, s1, s2, s3, opt),
+            Src2Precision(a), Src1Precision(w), SystolicDepth(sd), RepeatCount(rc)
+        {
+        }
+
+        G4_INST* cloneInst() override;
+
+        // Check if this is int dpas or half-float dpas
+        bool isBF16() const { return Src1Precision == GenPrecision::BF16; }
+        bool isFP16() const { return Src1Precision == GenPrecision::FP16; }
+        bool isInt() const;
+        bool is2xInt8() const; // true if it is 2xint8 dpas
+
+        uint8_t getOpsPerChan() const;
+        uint8_t getSystolicDepth() const { return SystolicDepth; }
+        uint8_t getRepeatCount() const { return RepeatCount; }
+        GenPrecision getSrc1Precision() const { return Src1Precision; }
+        GenPrecision getSrc2Precision() const { return Src2Precision; }
+
+        void setRepeatCount(uint8_t rc) { RepeatCount = rc; }
+        // data size per lane (data size per each systolic depth)
+        uint32_t getPrecisionSizePerLaneInByte(GenPrecision P) const {
+            uint32_t PBits = G4_InstDpas::GetPrecisionSizeInBits(P);
+            return (PBits * getOpsPerChan() / 8);
+        }
+        uint32_t getSrc1SizePerLaneInByte() const {
+            return getPrecisionSizePerLaneInByte(Src1Precision);
+        }
+        uint32_t getSrc2SizePerLaneInByte() const {
+            return getPrecisionSizePerLaneInByte(Src2Precision);
+        }
+
+        bool mayExceedTwoGRF() const override { return true; }
+        void computeRightBound(G4_Operand* opnd) override;
+};
 
 class G4_InstMath : public G4_INST
 {
@@ -1617,6 +1757,7 @@ template unsigned int numEltPerGRF<Type_Q>();
 template unsigned int numEltPerGRF<Type_UQ>();
 template unsigned int numEltPerGRF<Type_HF>();
 template unsigned int numEltPerGRF<Type_NF>();
+template unsigned int numEltPerGRF<Type_BF>();
 
 inline unsigned int numEltPerGRF(G4_Type t)
 {
@@ -1983,7 +2124,7 @@ class G4_Operand
     friend class G4_InstSend;
     friend class G4_FillIntrinsic;
     friend class G4_SpillIntrinsic;
-
+    friend class G4_InstDpas;
 
 public:
     enum Kind {
