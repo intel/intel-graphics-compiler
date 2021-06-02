@@ -426,8 +426,8 @@ bool Dominator::dominates(G4_BB* bb1, G4_BB* bb2)
 {
     recomputeIfStale();
 
-    auto& dom = getDom(bb1);
-    if (dom.find(bb2) != dom.end())
+    auto& dom = getDom(bb2);
+    if (dom.find(bb1) != dom.end())
         return true;
 
     return false;
@@ -661,6 +661,32 @@ std::vector<Loop*> vISA::LoopDetection::getTopLoops()
     recomputeIfStale();
 
     return topLoops;
+}
+
+Loop* Loop::getInnerMostLoop(const G4_BB* bb)
+{
+    // if current loop contains bb, recurse loop tree and return
+    // most nested loop containing it.
+    // if current loop doesnt contain bb then return nullptr.
+    if (!contains(bb))
+        return nullptr;
+
+    for (auto& nested : immNested)
+        if(auto innerMost = nested->getInnerMostLoop(bb))
+            return innerMost;
+
+    return this;
+}
+
+Loop* LoopDetection::getInnerMostLoop(const G4_BB* bb)
+{
+    recomputeIfStale();
+
+    for (auto& loop : topLoops)
+        if (auto innerMost = loop->getInnerMostLoop(bb))
+            return innerMost;
+
+    return nullptr;
 }
 
 void LoopDetection::reset()
@@ -1016,7 +1042,126 @@ void Loop::dump(std::ostream& os)
     }
 }
 
-bool vISA::Loop::contains(const G4_BB* bb)
+bool Loop::contains(const G4_BB* bb)
 {
     return BBsLookup.find(bb) != BBsLookup.end();
+}
+
+bool VarReferences::isUniqueDef(G4_DstRegRegion* dst)
+{
+    recomputeIfStale();
+
+    auto dcl = dst->getTopDcl();
+
+    // return true if spilled variable has a single static def
+    // and it is not live-in to current bb (eg, loop, sub).
+    if (getDefCount(dcl) != 1)
+    {
+        // check whether multiple defs exist in program for current
+        // lb, rb
+        auto lb = dst->getLeftBound();
+        auto rb = dst->getRightBound();
+
+        unsigned int count = 0;
+        const auto& defs = getDefs(dcl);
+        for (auto& def : *defs)
+        {
+            if (std::get<2>(def) <= rb &&
+                std::get<3>(def) >= lb)
+                ++count;
+        }
+
+        if (count > 1)
+            return false;
+    }
+
+    return true;
+}
+
+unsigned int VarReferences::getDefCount(G4_Declare* dcl)
+{
+    auto defs = getDefs(dcl);
+    if (defs)
+        return defs->size();
+    return 0;
+}
+
+const VarReferences::Defs* VarReferences::getDefs(G4_Declare* dcl)
+{
+    recomputeIfStale();
+
+    auto it = VarRefs.find(dcl);
+    if (it != VarRefs.end())
+        return &(it->second.first);
+
+    return nullptr;
+}
+
+const VarReferences::Uses* VarReferences::getUses(G4_Declare* dcl)
+{
+    recomputeIfStale();
+
+    auto it = VarRefs.find(dcl);
+    if (it != VarRefs.end())
+        return &(it->second.second);
+
+    return nullptr;
+}
+
+void VarReferences::reset()
+{
+    VarRefs.clear();
+
+    setStale();
+}
+
+void VarReferences::run()
+{
+    for (auto bb : kernel.fg)
+    {
+        for (auto inst : *bb)
+        {
+            if (inst->isPseudoKill())
+                continue;
+
+            auto dst = inst->getDst();
+
+            if (dst && !dst->isNullReg())
+            {
+                auto topdcl = dst->getTopDcl();
+
+                if (topdcl)
+                {
+                    auto lb = dst->getLeftBound();
+                    auto rb = dst->getRightBound();
+                    auto& Defs = VarRefs[topdcl].first;
+                    Defs.push_back(std::make_tuple(inst, bb, lb, rb));
+                }
+            }
+
+            for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+            {
+                auto src = inst->getSrc(i);
+                if (src && src->isSrcRegRegion())
+                {
+                    auto topdcl = src->asSrcRegRegion()->getTopDcl();
+                    if (topdcl)
+                    {
+                        auto& Uses = VarRefs[topdcl].second;
+                        Uses.push_back(std::make_tuple(inst, bb));
+                    }
+                }
+            }
+        }
+    }
+
+    setValid();
+}
+
+void VarReferences::dump(std::ostream& os)
+{
+    if (isStale())
+        os << "Data is stale.\n";
+
+    os << "#Dcls with defs/uses: " << VarRefs.size();
 }

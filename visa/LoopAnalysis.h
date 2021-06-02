@@ -100,6 +100,36 @@ namespace vISA
         void dump(std::ostream& os = std::cerr) override { dumpImmDom(os); }
     };
 
+    // Computes and stores direct references of variables.
+    // Indirects references are not computed here.
+    // Doesnt include predicates/condition modifiers.
+    class VarReferences : public Analysis
+    {
+    public:
+        VarReferences(G4_Kernel& k) : kernel(k) {}
+
+        // Defs -> vector[tuple<inst, bb, lb, rb>]
+        // Uses -> vector[tuple<inst, bb>]
+        using Defs = std::vector<std::tuple<G4_INST*, G4_BB*, unsigned int, unsigned int>>;
+        using Uses = std::vector<std::tuple<G4_INST*, G4_BB*>>;
+
+        bool isUniqueDef(G4_DstRegRegion* dst);
+        unsigned int getDefCount(G4_Declare* dcl);
+        const Defs* getDefs(G4_Declare* dcl);
+        const Uses* getUses(G4_Declare* dcl);
+
+    private:
+        // Dcl -> vector[<inst, bb, lb, rb>]
+        // this data structure helps check whether a definition or part of it
+        // has multiple definitions in the program.
+        std::unordered_map<G4_Declare*, std::pair<Defs, Uses>> VarRefs;
+        G4_Kernel& kernel;
+
+        void reset() override;
+        void run() override;
+        void dump(std::ostream& os = std::cerr) override;
+    };
+
     using BackEdge = std::pair<G4_BB*, G4_BB*>;
     using BackEdges = std::vector<BackEdge>;
 
@@ -134,6 +164,8 @@ namespace vISA
         bool fullSubset(Loop* other);
         bool fullSuperset(Loop* other);
 
+        Loop* getInnerMostLoop(const G4_BB* bb);
+
     private:
         std::vector<G4_BB*> BBs;
         std::unordered_set<const G4_BB*> BBsLookup;
@@ -148,6 +180,7 @@ namespace vISA
         LoopDetection(G4_Kernel&);
 
         std::vector<Loop*> getTopLoops();
+        Loop* getInnerMostLoop(const G4_BB*);
 
     private:
         std::vector<Loop*> topLoops;

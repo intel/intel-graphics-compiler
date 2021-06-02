@@ -41,6 +41,7 @@ struct RegionDesc;
 // Class definitions
 namespace vISA
 {
+
 class SpillManagerGRF
 {
 public:
@@ -628,10 +629,14 @@ private:
     // We rematerialize the immediate value instead of spill/fill them
     std::unordered_map<G4_Declare*, G4_Imm*> scalarImmSpill;
 
+    VarReferences refs;
+
     // analysis pass to assist in spill/fill code gen
     // currently it identifies scalar imm variables that should be re-mat
     // later on we can add detection to avoid unncessary read-modify-write for spills
     void runSpillAnalysis();
+
+    bool checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* bb);
 
 
     bool headerNeeded() const

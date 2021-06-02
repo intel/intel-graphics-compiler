@@ -142,6 +142,7 @@ SpillManagerGRF::SpillManagerGRF(
     , mem_(1024)
     , useScratchMsg_(useScratchMsg)
     , avoidDstSrcOverlap_(avoidDstSrcOverlap)
+    , refs(g.kernel)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);
@@ -192,6 +193,7 @@ SpillManagerGRF::SpillManagerGRF(
     , mem_(1024)
     , useScratchMsg_(useScratchMsg)
     , avoidDstSrcOverlap_(avoidDstSrcOverlap)
+    , refs(g.kernel)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);
@@ -2772,6 +2774,55 @@ void SpillManagerGRF::sendOutSpilledRegVarPortions (
     }
 }
 
+bool SpillManagerGRF::checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* defBB)
+{
+    if (!refs.isUniqueDef(dst))
+        return false;
+
+    auto dcl = dst->getTopDcl();
+
+    // check whether this def dominates all its uses
+    auto uses = refs.getUses(dcl);
+
+    for (auto& use : *uses)
+    {
+        auto useBB = std::get<1>(use);
+
+        // check if def dominates use
+        if (!gra.kernel.fg.getDominator().dominates(defBB, useBB))
+            return false;
+
+        if (defBB == useBB)
+        {
+            // defBB dominates useBB since its the same BB.
+            // ensure def instruction appears lexically before use BB.
+            auto useInst = std::get<0>(use);
+            if (dst->getInst()->getLexicalId() > useInst->getLexicalId())
+                return false;
+        }
+    }
+
+    // if def is in loop then ensure all uses are in same loop level
+    // or inner loop nest of def's closest loop.
+    auto defLoop = gra.kernel.fg.getLoops().getInnerMostLoop(defBB);
+    if (defLoop)
+    {
+        // since def is in loop, check whether uses are also in same loop.
+        for (auto& use : *uses)
+        {
+            auto useBB = std::get<1>(use);
+            auto useLoop = gra.kernel.fg.getLoops().getInnerMostLoop(useBB);
+            if (!useLoop)
+                return false;
+
+            if (!useLoop->fullSubset(defLoop))
+                return false;
+        }
+    }
+
+    return true;
+}
+
 // Create the code to create the spill range and save it to spill memory.
 void SpillManagerGRF::insertSpillRangeCode(
     INST_LIST::iterator spilledInstIter, G4_BB* bb)
@@ -2793,6 +2844,30 @@ void SpillManagerGRF::insertSpillRangeCode(
         return;
     }
 
+    auto isUniqueDef = gra.kernel.getOption(vISA_SkipRedundantFillInRMW) &&
+        refs.isUniqueDef(spilledRegion);
+
+    auto checkRMWNeeded = [this, bb, spilledRegion, isUniqueDef]()
+    {
+        // Check0 : Def is NoMask, -- checked in isPartialWriteForSpill()
+        // Check1 : Def is unique def,
+        // Check2 : Def is in loop L and all use(s) of dcl are in loop L or it?s inner loop nest,
+        // Check3 : Flowgraph is reducible
+        // RMW_Not_Needed = Check0 || (Check1 && Check2 && Check3)
+        // return !RMW_Not_Needed
+
+        if (!gra.kernel.getOption(vISA_SkipRedundantFillInRMW))
+            return true;
+
+        bool RMW_Needed = true;
+
+        if (builder_->kernel.fg.isReducible() && isUniqueDef && checkDefUseDomRel(spilledRegion, bb))
+        {
+            RMW_Needed = false;
+        }
+        return RMW_Needed;
+    };
+
     //subreg offset for new dst that replaces the spilled dst
     auto newSubregOff = 0;
 
@@ -2810,7 +2885,8 @@ void SpillManagerGRF::insertSpillRangeCode(
             createAndInitMHeader (
                 (G4_RegVarTransient *) spillRangeDcl->getRegVar());
 
-        bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive());
+        bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive()) &&
+            checkRMWNeeded();
         if (needRMW)
         {
             sendInSpilledRegVarPortions(
@@ -2843,7 +2919,9 @@ void SpillManagerGRF::insertSpillRangeCode(
 
         // Unaligned region specific handling.
         unsigned int spillSendOption = InstOpt_WriteEnable;
-        if (shouldPreloadSpillRange(*spilledInstIter, bb)) {
+        auto preloadNeeded = shouldPreloadSpillRange(*spilledInstIter, bb);
+        if (preloadNeeded &&
+            checkRMWNeeded()) {
 
             // Preload the segment aligned spill range from memory to use
             // as an overlay
@@ -2891,6 +2969,24 @@ void SpillManagerGRF::insertSpillRangeCode(
             replacementRangeDcl = tmpRangeDcl;
             // newSubRegOff is 0 here since the move above already takes the spilled dst's subreg into account.
         } else {
+            // We're here because:
+            // 1. preloadNeeded = false AND checkRMWNeeded = true OR
+            // 2. preloadNeeded = true AND checkRMWNeeded = false OR
+            // 3. both are false
+            //
+            // Case (1) occurs when:
+            // Def uses dword type and writes entire row. But def doesnt define
+            // complete variable, ie it isnt a kill. For such cases, we need to
+            // use def's EM on spill msg.
+            //
+            // Case (2) occurs when:
+            // Def is partial but it is unique in the program. For such cases,
+            // we should use WriteEnable msg.
+            //
+            // Case (3) occurs when:
+            // Def uses dword type and write entire row. Def defines complete
+            // variable. We can use either EM.
+
             // Aligned regions do not need a temporary range.
             LocalLiveRange* spilledLLR = gra.getLocalLR(spilledRegion->getBase()->asRegVar()->getDeclare());
             if (spilledLLR && spilledLLR->getSplit())
@@ -2923,7 +3019,8 @@ void SpillManagerGRF::insertSpillRangeCode(
             replacementRangeDcl = spillRangeDcl;
             // maintain the spilled dst's subreg since the spill is done on a per-GRF basis
             newSubregOff = spilledRegion->getSubRegOff();
-            if (!bb->isAllLaneActive())
+            if (!bb->isAllLaneActive() &&
+                !preloadNeeded)
             {
                 spillSendOption = (*spilledInstIter)->getMaskOption();
             }
@@ -3905,6 +4002,7 @@ bool SpillManagerGRF::insertSpillFillCode(
 
     FlowGraph& fg = kernel->fg;
 
+    unsigned int id = 0;
     for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++)
     {
         bbId_ = (*it)->getId();
@@ -3916,6 +4014,7 @@ bool SpillManagerGRF::insertSpillFillCode(
             G4_INST* inst = *jt;
 
             curInst = inst;
+            curInst->setLexicalId(id++);
 
             if (failSafeSpill_)
             {
