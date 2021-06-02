@@ -1420,7 +1420,7 @@ Value* ConstantCoalescing::SimpleBaseOffset(Value* elt_idxv, uint& offset)
             //    %537 = add i32 %535, 16
             uint offset1 = 0;
             Value* base = SimpleBaseOffset(src0, offset1);
-            offset = offset1 + int_cast<uint>(csrc1->getZExtValue());
+            offset = offset1 + static_cast<uint>(csrc1->getZExtValue());
             return base;
         }
     }
