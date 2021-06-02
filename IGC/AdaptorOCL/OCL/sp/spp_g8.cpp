@@ -23,10 +23,6 @@ SPDX-License-Identifier: MIT
 #include "lld/Common/Driver.h"
 #include "llvm/Support/Path.h"
 
-#if LLVM_VERSION_MAJOR >= 11
-#include "llvm/Support/FileSystem.h"
-#endif
-
 #if !defined(_MSC_VER) && !defined(__MINGW32__)
 #include <unistd.h>
 #else

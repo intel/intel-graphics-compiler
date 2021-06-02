@@ -64,7 +64,6 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_HasGlobalStatelessMemoryAccess = false;
     m_HasConstantStatelessMemoryAccess = false;
 
-    m_simdProgram.init(true, m_ctx->platform.maxPerThreadScratchSpace(), GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory);
 }
 
 void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
