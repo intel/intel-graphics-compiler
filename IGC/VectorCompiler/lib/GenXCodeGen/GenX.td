@@ -127,7 +127,8 @@ def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureWAFusedEUNoMask]>;
-def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32]>;
+def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
+                               FeatureWAFusedEUNoMask]>;
 
 def GenX : Target {
   // Nothing here (yet?)
