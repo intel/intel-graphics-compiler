@@ -179,9 +179,19 @@ static inline ElemsPerAddr::Chs operator|(
 
 class G4_Operand;
 
-// Base class for all send descriptors
+// Base class for all send descriptors.
+// (Note that G4_SendDesc could be reused by more than one instruction.)
 class G4_SendDesc
 {
+    friend class G4_InstSend;
+
+protected:
+    // The execution size for this message.
+    G4_ExecSize execSize;
+
+    // Limit access to G4_InstSend and any derived classes.
+    void setExecSize(G4_ExecSize v) { execSize = v; }
+
 public:
     enum class Kind {INVALID, RAW, LDST};
 
@@ -189,9 +199,17 @@ public:
 
     SFID        sfid;
 
-    G4_SendDesc(Kind k, SFID _sfid) : kind(k), sfid(_sfid) { }
+    G4_SendDesc(Kind k, SFID _sfid) : kind(k), sfid(_sfid), execSize(g4::SIMD_UNDEFINED) { }
+    G4_SendDesc(Kind k, SFID _sfid, G4_ExecSize _execSize)
+        : kind(k),
+          sfid(_sfid),
+          execSize(_execSize)
+    {}
 
     SFID getSFID() const {return sfid;}
+
+    // execSize: need to set it in the ctor
+    G4_ExecSize getExecSize() const { return execSize; }
 
     bool isRaw() const {return kind == Kind::RAW;}
     bool isLdSt() const {return kind == Kind::LDST;}
@@ -273,9 +291,6 @@ public:
 struct G4_SendDescLdSt : G4_SendDesc {
     // The message op
     LdStOp op;
-
-    // The execution size for this message.
-    G4_ExecSize execSize;
 
     // E.g. flat, bti, ...
     AddrType addrType;
@@ -609,6 +624,10 @@ public:
         uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
         return  0x1 << bitV;
     }
+    bool isByteScatterRW() const;
+    bool isDWScatterRW() const;
+    bool isQWScatterRW() const;
+    bool isUntypedRW() const;
 
     bool isA64Message() const;
 
