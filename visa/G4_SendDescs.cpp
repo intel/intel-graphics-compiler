@@ -168,8 +168,9 @@ G4_SendDescLdSt::G4_SendDescLdSt(
     G4_Operand *surf,
     ImmOff _immOff,
     LdStAttrs _attrs)
-    : G4_SendDesc(G4_SendDesc::Kind::LDST, sfid, _execSize),
+    : G4_SendDesc(G4_SendDesc::Kind::LDST, sfid),
     op(_op),
+    execSize(_execSize),
     //
     addrType(at), addrBits(_addrBits), addrDims(_addrDims),
     //
@@ -184,7 +185,7 @@ G4_SendDescLdSt::G4_SendDescLdSt(
 static size_t toExecSlots(const G4_SendDescLdSt &d)
 {
     int minExecSize = 8;
-    int execSlots = std::max((int)d.getExecSize(), minExecSize);
+    int execSlots = std::max((int)d.execSize, minExecSize);
     return (size_t)execSlots;
 }
 
@@ -585,149 +586,6 @@ bool G4_SendDescRaw::is16BitReturn() const
     return desc.layout.returnFormat == 1;
 }
 
-bool G4_SendDescRaw::isByteScatterRW() const
-{
-    auto funcID = getSFID();
-    switch (funcID) {
-    case SFID::DP_DC0:
-        switch (getHdcMessageType()) {
-        case DC_BYTE_SCATTERED_READ:
-        case DC_BYTE_SCATTERED_WRITE:
-            return true;
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC1:
-        switch (getHdcMessageType()) {
-        case DC1_A64_SCATTERED_READ:
-        case DC1_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 1);
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC2:
-        switch (getHdcMessageType()) {
-        case DC2_A64_SCATTERED_READ:
-        case DC2_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 1);
-        case DC2_BYTE_SCATTERED_READ:
-        case DC2_BYTE_SCATTERED_WRITE:
-            return true;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return false;
-}
-
-bool G4_SendDescRaw::isDWScatterRW() const
-{
-    auto funcID = getSFID();
-    switch (funcID) {
-    case SFID::DP_DC0:
-        switch (getHdcMessageType()) {
-        case DC_DWORD_SCATTERED_READ:
-        case DC_DWORD_SCATTERED_WRITE:
-            return true;
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC1:
-        switch (getHdcMessageType()) {
-        case DC1_A64_SCATTERED_READ:
-        case DC1_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 4);
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC2:
-        switch (getHdcMessageType()) {
-        case DC2_A64_SCATTERED_READ:
-        case DC2_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 4);
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return false;
-}
-
-bool G4_SendDescRaw::isQWScatterRW() const
-{
-    auto funcID = getSFID();
-    switch (funcID) {
-    case SFID::DP_DC0:
-        switch (getHdcMessageType()) {
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC1:
-        switch (getHdcMessageType()) {
-        case DC1_A64_SCATTERED_READ:
-        case DC1_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 8);
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC2:
-        switch (getHdcMessageType()) {
-        case DC2_A64_SCATTERED_READ:
-        case DC2_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 4);
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return false;
-}
-
-bool G4_SendDescRaw::isUntypedRW() const
-{
-    auto funcID = getSFID();
-    switch (funcID) {
-    case SFID::DP_DC1:
-        switch (getHdcMessageType()) {
-        case DC1_UNTYPED_SURFACE_READ:
-        case DC1_UNTYPED_SURFACE_WRITE:
-        case DC1_A64_UNTYPED_SURFACE_READ:
-        case DC1_A64_UNTYPED_SURFACE_WRITE:
-            return true;
-        default:
-            break;
-        }
-        break;
-    case SFID::DP_DC2:
-        switch (getHdcMessageType()) {
-        case DC2_UNTYPED_SURFACE_READ:
-        case DC2_UNTYPED_SURFACE_WRITE:
-        case DC2_A64_UNTYPED_SURFACE_READ:
-        case DC2_A64_UNTYPED_SURFACE_WRITE:
-            return true;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return false;
-}
-
 bool G4_SendDescRaw::isA64Message() const
 {
     if (!isHDC()) {
@@ -1022,17 +880,6 @@ size_t G4_SendDescRaw::getDstLenBytes() const
         return 32 * getScratchRWSize(); // HWords
     } else if (isOwordLoad()) {
         return 16 * getOwordsAccessed(); // OWords
-    } else if (isByteScatterRW()) {
-        uint16_t nbytes = getBlockNum();
-        // assume 4 at least
-        nbytes = (nbytes >= 4 ? nbytes : 4);
-        return nbytes * getExecSize();
-    } else if (isDWScatterRW()) {
-        return 4 * getBlockNum() * getExecSize();
-    } else if (isQWScatterRW()) {
-        return 8 * getBlockNum() * getExecSize();
-    } else if (isUntypedRW()) {
-        return 4 * getEnabledChannelNum() * getExecSize();
     } else {
         // fallback to the raw GRF count
         return ResponseLength() * (size_t)getGRFSize();

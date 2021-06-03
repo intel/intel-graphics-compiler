@@ -354,7 +354,6 @@ G4_InstSend::G4_InstSend(
     G4_INST(builder, prd, o, nullptr, g4::NOSAT, size, dst, payload, desc, opt),
     msgDesc(md)
 {
-    md->setExecSize(size);
 }
 
 G4_InstSend::G4_InstSend(
@@ -373,7 +372,6 @@ G4_InstSend::G4_InstSend(
     msgDesc(md)
 {
     setSrc(extDesc, 3);
-    md->setExecSize(size);
 }
 
 void G4_INST::setOpcode(G4_opcode opcd)
