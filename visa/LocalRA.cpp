@@ -506,14 +506,6 @@ bool LocalRA::localRA()
                 std::cout << "\t--first-fit " << "RA\n";
             }
             globalLRSize = 0;
-            if (builder.getOption(vISA_HybridRAWithSpill))
-            {
-                countLiveIntervals();
-            }
-            else
-            {
-                globalLRSize = 0;
-            }
             evenAlign();
             needGlobalRA = localRAPass(false, doSplitLLR);
         }

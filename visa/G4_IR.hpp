@@ -2692,7 +2692,6 @@ namespace vISA
         bool        isSpReg()   const { return (reg.phyReg != NULL) && (reg.phyReg->isSpReg()); }
 
         bool        isRegAllocPartaker() const { return id != UNDEFINED_VAL; }
-        unsigned    getRegAllocPartaker() const { return id;  }
         bool        isAddress()  const { return decl->getRegFile() == G4_ADDRESS; }
         const G4_VarBase* getPhyReg() const { return reg.phyReg; }
               G4_VarBase* getPhyReg()       { return reg.phyReg; }
