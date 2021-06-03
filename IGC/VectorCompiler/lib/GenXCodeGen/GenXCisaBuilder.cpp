@@ -529,7 +529,6 @@ class GenXKernelBuilder {
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFWidth;
 
-  int LastLabel = 0;
   unsigned LastLine = 0;
   unsigned PendingLine = 0;
   StringRef LastFilename;
@@ -4948,9 +4947,6 @@ void GenXKernelBuilder::addLifetimeStartInst(Instruction *Inst) {
  * addDebugInfo : add debug infromation
  */
 void GenXKernelBuilder::addDebugInfo() {
-  // Ensure that the last label does not get merged with the next one now we
-  // know that there is code in between.
-  LastLabel = -1;
   // Check if we have a pending debug location.
   if (PendingLine) {
     // Do the source location debug info with vISA FILE and LOC instructions.
@@ -5013,16 +5009,9 @@ void GenXKernelBuilder::emitOptimizationHints() {
  */
 void GenXKernelBuilder::addLabelInst(Value *BB) {
   GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(), "LBL");
-  // Skip this for now, because we don't know how to patch labels of branches.
-  if (0) { // LastLabel >= 0) {
-    // There has been no code since the last label, so use the same label
-    // for this basic block.
-    setLabel(BB, LastLabel);
-  } else {
-    // Need a new label.
-    LastLabel = getOrCreateLabel(BB, LABEL_BLOCK);
-    CISA_CALL(Kernel->AppendVISACFLabelInst(Labels[LastLabel]));
-  }
+  auto LabelID = getOrCreateLabel(BB, LABEL_BLOCK);
+  IGC_ASSERT(LabelID < Labels.size());
+  CISA_CALL(Kernel->AppendVISACFLabelInst(Labels[LabelID]));
 }
 
 /***********************************************************************
