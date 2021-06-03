@@ -805,7 +805,8 @@ void G4_Kernel::setKernelParameters()
     else
     {
         // Default value for all other platforms
-        numRegTotal = 128;
+        unsigned Val = m_options->getuInt32Option(vISA_GRFNumToUse);
+        numRegTotal = Val ? Val : 128;
         callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
     }
     // For safety update TotalGRFNum, there may be some uses for this vISA option
