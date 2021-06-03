@@ -79,6 +79,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Transforms/Utils/Local.h"
 
+#include "vc/Utils/General/InstRebuilder.h"
+
 #include <functional>
 #include <limits>
 #include "Probe/Assertion.h"
@@ -2937,10 +2939,13 @@ bool GenXPatternMatch::extendMask(BinaryOperator *BO) {
       Builder.CreateBitCast(BO->getOperand(0), NewTy, Name + ".extend.mask.op");
   Value *Op1 =
       Builder.CreateBitCast(BO->getOperand(1), NewTy, Name + ".extend.mask.op");
-  Value *NewAnd = Builder.CreateAnd(Op0, Op1, Name + ".extend.mask");
-  NewAnd = Builder.CreateBitCast(NewAnd, InstTy, Name + ".extend.mask.trunc");
 
-  BO->replaceAllUsesWith(NewAnd);
+  Instruction *NewInst = vc::cloneInstWithNewOps(*BO, {Op0, Op1});
+  NewInst->insertBefore(BO);
+  NewInst->takeName(BO);
+
+  Value *Inst = Builder.CreateBitCast(NewInst, InstTy, Name + ".extend.mask.trunc");
+  BO->replaceAllUsesWith(Inst);
 
   return true;
 }
