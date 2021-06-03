@@ -217,17 +217,25 @@ namespace iga
 
         // returns false for reserved opcodes
         bool isValid() const {return !is(Op::INVALID);}
+        // generic check of attributes the bits are 'Attr'
         bool hasAttrs(int a) const {return (a & attrs) != 0;}
-        //////////////////////////////////////////////////////////////////////
-        // DESTINATION IMPLICIT VALUES FOR SYNTAX
-        //////////////////////////////////////////////////////////////////////
+
+        // compare the opcode more in a more readable manner than comparison
         bool is(Op _op) const {return op == _op;}
+        // also disjunctive comparison
         bool isOneOf(Op op1, Op op2) const {return is(op1) || is(op2);}
         bool isOneOf(Op op1, Op op2, Op op3) const {
             return is(op1) || is(op2) || is(op3);
         }
 
+        //////////////////////////////////////////////////////////////////////
+        // INSTRUCTION LEVEL IMPLICIT SYNTAX
+        // e.g. 'nop' lacks an execution size and offset
         bool hasImpicitEm() const;
+
+        //////////////////////////////////////////////////////////////////////
+        // DESTINATION IMPLICIT VALUES FOR SYNTAX
+        //////////////////////////////////////////////////////////////////////
         bool hasDstSubregister(bool isMacro) const;
         bool hasImplicitDstRegion(bool isMacro) const {
             Region rgn; return implicitDstRegion(rgn, isMacro);

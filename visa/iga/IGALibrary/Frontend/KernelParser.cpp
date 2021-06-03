@@ -2194,11 +2194,14 @@ public:
 
     // .allrd/.allwr SBID set first
     //   "($11,$2,$7)" means ((1 << 11) | (1 << 2) | (1 << 7))
+    // we do also permit
+    //   "()" as the empty set
     void ParseSyncSrc0Op() {
         auto sf = m_builder.getSubfunction().sync;
-        if ((sf != SyncFC::ALLRD && sf != SyncFC::ALLWR) ||
-            !LookingAtSeq(LPAREN, DOLLAR))
-        {
+        bool isSyncSetOp = sf == SyncFC::ALLRD || sf == SyncFC::ALLWR;
+        bool lookingAtPfx =
+            LookingAtSeq(LPAREN, DOLLAR) || LookingAtSeq(LPAREN, RPAREN);
+        if (!isSyncSetOp || !lookingAtPfx) {
             // e.g. other sync op, or immediate literal, or null
             ParseSrcOp(0);
             return;
@@ -3174,8 +3177,9 @@ public:
     }
 
     // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
+    //
     // This function is the same as ParseSendDescs, except for it's handling
-    // of exBSO and src1Length
+    // of ExBSO and Src1Len.
     void ParseSendDescsWithOptSrc1Len(int src1Length) {
         const Loc exDescLoc = NextLoc();
         SendDesc exDesc;

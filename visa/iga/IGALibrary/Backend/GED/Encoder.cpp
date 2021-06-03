@@ -932,7 +932,7 @@ void Encoder::encodeSendDescsXe(const Instruction& i)
 
 // A bit harder than Xe
 //   * If ExBSO is set then Src1Length holds xlen
-//   * CPS has it's own field (ExDesc[11])
+//   * CPS has it's own field (ExDesc[11]) only if ExDesc.IsReg
 void Encoder::encodeSendDescsXeHP(const Instruction& i)
 {
     SendDesc exDesc = i.getExtMsgDescriptor();
@@ -943,8 +943,14 @@ void Encoder::encodeSendDescsXeHP(const Instruction& i)
         if (i.hasInstOpt(InstOpt::EXBSO)) {
             GED_ENCODE(CPS, i.hasInstOpt(InstOpt::CPS) ? 1 : 0);
             GED_ENCODE(Src1Length, (uint32_t)i.getSrc1Length());
+        } else if (i.hasInstOpt(InstOpt::CPS)) {
+            errorT("{CPS} requires {ExBSO}");
         }
     } else {
+        if (i.hasInstOpt(InstOpt::CPS)) {
+            warningT("when ExDesc is immediate use ExDesc[11] rather than {CPS}");
+            exDesc.imm |= 1 << 11;
+        }
         GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
         GED_ENCODE(ExMsgDesc, exDesc.imm);
     }
