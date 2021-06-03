@@ -3927,6 +3927,11 @@ namespace IGC
             SaveOption(vISA_EnableScalarJmp, false);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableVISADCE))
+        {
+            SaveOption(vISA_EnableDCE, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(DisableCSEL))
         {
             SaveOption(vISA_enableCSEL, false);
