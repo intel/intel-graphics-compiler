@@ -519,6 +519,9 @@ public:
     inline Value* getResourceValue() const {
         return getOperand(0);
     }
+    inline Value* getStoreValue() const {
+        return getOperand(2);
+    }
     inline unsigned int getAlignment() const {
         IGC_ASSERT(isa<ConstantInt>(getAlignmentValue()));
         ConstantInt* val = dyn_cast<ConstantInt>(getAlignmentValue());

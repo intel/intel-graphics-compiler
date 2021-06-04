@@ -143,15 +143,15 @@ public:
 
     // TODO: unify the functions below and clean up
     void emitStore(llvm::StoreInst* inst, llvm::Value* offset = nullptr, llvm::ConstantInt* immOffset = nullptr);
-    void emitStore3D(llvm::StoreInst* inst, llvm::Value* elemIdxV = nullptr);
+    void emitStore3D(llvm::StoreInst* inst, llvm::Value* elemIdxV);
     void emitStore3DInner(llvm::Value* pllValToStore, llvm::Value* pllDstPtr, llvm::Value* pllElmIdx);
 
     void emitLoad(llvm::LoadInst* inst, llvm::Value* offset = nullptr, llvm::ConstantInt* immOffset = nullptr);   // single load, no pattern
     void emitLoad3DInner(llvm::LdRawIntrinsic* inst, ResourceDescriptor& resource, llvm::Value* elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
-    void emitLoadRawIndexed(llvm::GenIntrinsicInst* inst);
-    void emitStoreRawIndexed(llvm::GenIntrinsicInst* inst);
+    void emitLoadRawIndexed(llvm::LdRawIntrinsic* inst);
+    void emitStoreRawIndexed(llvm::StoreRawIntrinsic* inst);
     void emitGetBufferPtr(llvm::GenIntrinsicInst* inst);
     // \todo, remove this function after we lower all GEP to IntToPtr before CodeGen.
     // Only remaining GEPs are for scratch in GFX path
@@ -400,6 +400,7 @@ public:
     // Those three "vector" version shall be combined with
     // non-vector version.
     bool isUniformStoreOCL(llvm::StoreInst* SI);
+    bool isUniformStoreOCL(llvm::Value* ptr, llvm::Value* storeVal);
     void emitVectorBitCast(llvm::BitCastInst* BCI);
     void emitVectorLoad(llvm::LoadInst* LI, llvm::Value* offset, llvm::ConstantInt* immOffset);
     void emitVectorStore(llvm::StoreInst* SI, llvm::Value* offset, llvm::ConstantInt* immOffset);
@@ -507,6 +508,7 @@ public:
     CVariable* GetDispatchMask();
     CVariable* UniformCopy(CVariable* var);
     CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr, bool doSub = false);
+
     // generate loop header to process sample instruction with varying resource/sampler
     bool ResourceLoopHeader(
         ResourceDescriptor& resource,
@@ -517,7 +519,29 @@ public:
         ResourceDescriptor& resource,
         CVariable*& flag,
         uint& label);
-    void ResourceLoop(bool needLoop, CVariable* flag, uint label);
+    void ResourceLoopBackEdge(bool needLoop, CVariable* flag, uint label);
+    template<typename Func>
+    void ResourceLoop(ResourceDescriptor& resource, Func Fn)
+    {
+        uint label = 0;
+        CVariable* flag = nullptr;
+        bool needLoop = ResourceLoopHeader(resource, flag, label);
+
+        Fn(flag);
+
+        ResourceLoopBackEdge(needLoop, flag, label);
+    }
+    template<typename Func>
+    void ResourceLoop(ResourceDescriptor& resource, SamplerDescriptor& sampler, Func Fn)
+    {
+        uint label = 0;
+        CVariable* flag = nullptr;
+        bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
+
+        Fn(flag);
+
+        ResourceLoopBackEdge(needLoop, flag, label);
+    }
 
     void ForceDMask(bool createJmpForDiscard = true);
     void ResetVMask(bool createJmpForDiscard = true);

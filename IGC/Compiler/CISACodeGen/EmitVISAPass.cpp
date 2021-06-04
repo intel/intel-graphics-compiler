@@ -3946,7 +3946,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
             m_encoder->Send(m_destination, payload, exDesc, messDesc, false);
             m_encoder->Push();
 
-            ResourceLoop(needLoop, flag, label);
+            ResourceLoopBackEdge(needLoop, flag, label);
         }
     }
     break;
@@ -4368,7 +4368,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
     }
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
 
     {
         if (m_destination->IsUniform())
@@ -7202,7 +7202,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
     }
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
 
     {
         if (simd8HFRet)
@@ -7359,7 +7359,7 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     m_encoder->Info(opCode, writeMask, resource, lod, tempDest);
     m_encoder->Push();
 
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
 
     if (tempDest != m_destination)
     {
@@ -7441,7 +7441,7 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     m_encoder->Push();
 
     IGC_ASSERT(m_destination->IsUniform());
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
     ResetVMask(false);
 }
 
@@ -7557,7 +7557,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
     }
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
 
     {
         if (simd8HFRet)
@@ -7637,7 +7637,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
         m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
         m_encoder->Push();
     }
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
 
     if (simd8HFRet)
     {
@@ -8638,11 +8638,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_ldrawvector_indexed:
     case GenISAIntrinsic::GenISA_ldraw_indexed:
-        emitLoadRawIndexed(inst);
+        emitLoadRawIndexed(cast<LdRawIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_storerawvector_indexed:
     case GenISAIntrinsic::GenISA_storeraw_indexed:
-        emitStoreRawIndexed(inst);
+        emitStoreRawIndexed(cast<StoreRawIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_GetBufferPtr:
         emitGetBufferPtr(inst);
@@ -9676,14 +9676,14 @@ void EmitPass::emitUAVSerialize()
 }
 
 
-void EmitPass::emitLoadRawIndexed(GenIntrinsicInst* inst)
+void EmitPass::emitLoadRawIndexed(LdRawIntrinsic * inst)
 {
-    Value* buf_ptrv = inst->getOperand(0);
-    Value* elem_idxv = inst->getOperand(1);
+    Value* buf_ptrv = inst->getResourceValue();
+    Value* elem_idxv = inst->getOffsetValue();
 
     ResourceDescriptor resource = GetResourceVariable(buf_ptrv);
     m_currShader->isMessageTargetDataCacheDataPort = true;
-    emitLoad3DInner(cast<LdRawIntrinsic>(inst), resource, elem_idxv);
+    emitLoad3DInner(inst, resource, elem_idxv);
 
 }
 
@@ -9901,7 +9901,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             m_encoder->Cast(m_destination, gatherDest);
             m_encoder->Push();
         }
-        ResourceLoop(needLoop, flag, label);
+        ResourceLoopBackEdge(needLoop, flag, label);
     }
 }
 
@@ -10818,41 +10818,26 @@ void EmitPass::emitSymbolRelocation(Function& F)
     }
 }
 
-void EmitPass::emitStoreRawIndexed(GenIntrinsicInst* inst)
+void EmitPass::emitStoreRawIndexed(StoreRawIntrinsic* inst)
 {
-    Value* pBufPtr = inst->getOperand(0);
-    Value* pElmIdx = inst->getOperand(1);
-    Value* pValToStore = inst->getOperand(2);
+    Value* pBufPtr = inst->getResourceValue();
+    Value* pOffset = inst->getOffsetValue();
+    Value* pValToStore = inst->getStoreValue();
 
     m_currShader->isMessageTargetDataCacheDataPort = true;
 
-    emitStore3DInner(pValToStore, pBufPtr, pElmIdx);
+    emitStore3DInner(pValToStore, pBufPtr, pOffset);
 
 }
 
 void EmitPass::emitStore3D(StoreInst* inst, Value* elmIdxV)
 {
-    Value* ptrVal = inst->getPointerOperand();
-    Value* pllElmIdx = nullptr;
-    if (elmIdxV)
-    {
-        pllElmIdx = elmIdxV;
-    }
-    else if (isa<ConstantPointerNull>(ptrVal))
-    {
-        pllElmIdx = ConstantInt::get(Type::getInt32Ty(inst->getContext()), 0);
-    }
-    else
-    {
-        pllElmIdx = inst->getPointerOperand();
-    }
-
     // Only support for scratch space added currently during emitStore
     Value* pllValToStore = inst->getValueOperand();
     Value* pllDstPtr = inst->getPointerOperand();
 
 
-    emitStore3DInner(pllValToStore, pllDstPtr, pllElmIdx);
+    emitStore3DInner(pllValToStore, pllDstPtr, elmIdxV);
 }
 
 void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* pllElmIdx)
@@ -10955,7 +10940,7 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
         m_encoder->Scatter4Scaled(storedVal, resource, ptr);
         m_encoder->Push();
     }
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
     if (!isPrivateMem)
     {
         ResetVMask(false);
@@ -13357,8 +13342,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                     pDst);
                 m_encoder->Push();
             }
-            ResourceLoop(needLoop, flag, label);
-            }
+            ResourceLoopBackEdge(needLoop, flag, label);
+        }
 
 
     }
@@ -13553,7 +13538,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
                 EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exDesc, pMessDesc);
             m_encoder->Push();
         }
-        ResourceLoop(needLoop, flag, label);
+        ResourceLoopBackEdge(needLoop, flag, label);
 
         if (returnsImmValue)
         {
@@ -13670,7 +13655,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
                 m_encoder->Push();
             }
         }
-        ResourceLoop(needLoop, flag, label);
+        ResourceLoopBackEdge(needLoop, flag, label);
 
         if (m_currShader->m_SIMDSize != instWidth)
         {
@@ -13818,7 +13803,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 }
             }
         }
-        ResourceLoop(needLoop, flag, label);
+        ResourceLoopBackEdge(needLoop, flag, label);
     }
     ResetVMask();
     m_currShader->isMessageTargetDataCacheDataPort = true;
@@ -14329,7 +14314,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         }
     }
 
-    ResourceLoop(needLoop, flag, label);
+    ResourceLoopBackEdge(needLoop, flag, label);
     ResetVMask();
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
@@ -14925,16 +14910,14 @@ void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)
     ResetRoundingMode(inst);
 }
 
-// Return true if this store will be emit as uniform store
-bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
+bool EmitPass::isUniformStoreOCL(Value* ptr, Value* storeVal)
 {
     if (m_currShader->GetShaderType() != ShaderType::OPENCL_SHADER ||
-        !m_currShader->GetIsUniform(SI->getPointerOperand()))
+        !m_currShader->GetIsUniform(ptr))
     {
         return false;
     }
 
-    Value* storeVal = SI->getValueOperand();
     Type* Ty = storeVal->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
@@ -14947,8 +14930,14 @@ bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
     // size must be 4 or 8. Also, note that if totalBytes = 4, elts must be 1.
     bool doUniformStore = (elts == 1 ||
         (m_currShader->GetIsUniform(storeVal) &&
-         (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
+            (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
     return doUniformStore;
+}
+
+// Return true if this store will be emit as uniform store
+bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
+{
+    return isUniformStoreOCL(SI->getPointerOperand(), SI->getValueOperand());
 }
 
 void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
@@ -15555,7 +15544,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
-    // eOffset is in bytes as 2/19/14
+    // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
     if (useA32)
@@ -16001,7 +15990,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
     {
         ForceDMask(false);
     }
-    // As 2/19/14, eOffset is in bytes !
+    // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
@@ -17318,7 +17307,8 @@ bool EmitPass::ResourceLoopHeader(
     CVariable*& flag,
     uint& label)
 {
-    if (resource.m_surfaceType != ESURFACE_BINDLESS && resource.m_surfaceType != ESURFACE_NORMAL)
+    if (resource.m_surfaceType != ESURFACE_BINDLESS &&
+        resource.m_surfaceType != ESURFACE_NORMAL)
     {
         // Loop only needed for access with surface state
         return false;
@@ -17379,7 +17369,7 @@ bool EmitPass::ResourceLoopHeader(
     return true;
 }
 
-void EmitPass::ResourceLoop(bool needLoop, CVariable* flag, uint label)
+void EmitPass::ResourceLoopBackEdge(bool needLoop, CVariable* flag, uint label)
 {
     if (needLoop)
     {
