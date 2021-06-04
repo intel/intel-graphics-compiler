@@ -83,7 +83,7 @@ bool LegalizeFunctionSignatures::runOnModule(Module& M)
 inline bool isLegalReturnType(Type* ty, bool isStackCall)
 {
     // for functions, check return type and stackcall attribute
-    if (ty->getPrimitiveSizeInBits() && isStackCall)
+    if (ty->getPrimitiveSizeInBits() > 64 && isStackCall)
     {
         return false;
     }
