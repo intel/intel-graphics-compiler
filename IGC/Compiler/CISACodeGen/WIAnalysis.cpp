@@ -1248,6 +1248,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_ptr_to_pair ||
         intrinsic_name == llvm_pair_to_ptr ||
         intrinsic_name == llvm_fma ||
+        GII_id == GenISAIntrinsic::GenISA_uitof_rtz ||
         GII_id == GenISAIntrinsic::GenISA_getSR0   ||
         GII_id == GenISAIntrinsic::GenISA_getSR0_0 ||
         GII_id == GenISAIntrinsic::GenISA_mul_rtz  ||
