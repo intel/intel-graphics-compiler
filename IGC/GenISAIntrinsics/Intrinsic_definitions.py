@@ -362,11 +362,6 @@ Imported_Intrinsics = \
      ("int",                           "emitCount")],
     "None"]],
 ####################################################################################################
-"GenISA_OWordPtr": ["",
-    [("anyptr",                        "result"),
-    [("int",                           "oword index")],
-    "NoMem"]],
-####################################################################################################
 "GenISA_OuterScalarTessFactors": ["",
     [("void",                          ""),
     [("int",                           "enum for the type of Tess factor"),

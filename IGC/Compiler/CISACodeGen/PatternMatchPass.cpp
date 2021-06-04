@@ -954,7 +954,7 @@ namespace IGC
         switch (I.getOpcode())
         {
         case Instruction::FSub:
-            match = MatchFloor(I) || 
+            match = MatchFloor(I) ||
                 MatchFrc(I) ||
                 MatchLrp(I) ||
                 MatchPredAdd(I) ||
@@ -999,7 +999,7 @@ namespace IGC
                 MatchModifier(I);
             break;
         case Instruction::FAdd:
-            match = 
+            match =
                 MatchLrp(I) ||
                 MatchPredAdd(I) ||
                 MatchMad(I) ||
@@ -1626,9 +1626,9 @@ namespace IGC
         }
         return found;
     }
-    
+
     /*
-    below pass handles x - frac(x) = floor(x) pattern. Refer below : 
+    below pass handles x - frac(x) = floor(x) pattern. Refer below :
 
     frc (8|M0) r20.0<1>:f r19.0<8;8,1>:f {Compacted, @1}
     add (8|M0) (ge)f0.1 r19.0<1>:f r19.0<8;8,1>:f -r20.0<8;8,1>:f {@1}
@@ -2337,8 +2337,6 @@ namespace IGC
                 }
             }
         };
-        GenIntrinsicInst* ptr = dyn_cast<GenIntrinsicInst>(&ptrVal);
-        IntToPtrInst* i2p = dyn_cast<IntToPtrInst>(&ptrVal);
         if (ptrVal.getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL ||
             ptrVal.getType()->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
         {
@@ -2346,9 +2344,7 @@ namespace IGC
         }
 
         // Store3d supports only types equal or less than 128 bits.
-        StoreInst* storeInst = dyn_cast<StoreInst>(&I);
-
-        if (storeInst)
+        if (auto* storeInst = dyn_cast<StoreInst>(&I))
         {
             llvm::VectorType* vectorToStore = dyn_cast<llvm::VectorType>(storeInst->getValueOperand()->getType());
 
@@ -2363,19 +2359,19 @@ namespace IGC
             }
         }
 
-        if (i2p || (ptr && ptr->getIntrinsicID() == GenISAIntrinsic::GenISA_OWordPtr))
+        if (auto* i2p = dyn_cast<IntToPtrInst>(&ptrVal))
         {
             LoadStorePointerPattern* pattern = new (m_allocator) LoadStorePointerPattern();
             pattern->inst = &I;
             uint numSources = GetNbSources(I);
             for (uint i = 0; i < numSources; i++)
             {
-                if (I.getOperand(i) != &ptrVal)
+                if (I.getOperand(i) != i2p)
                 {
                     MarkAsSource(I.getOperand(i));
                 }
             }
-            pattern->offset = cast<Instruction>(&ptrVal)->getOperand(0);
+            pattern->offset = i2p->getOperand(0);
             pattern->immOffset = ConstantInt::get(Type::getInt32Ty(I.getContext()), 0);
             MarkAsSource(pattern->offset);
             AddPattern(pattern);

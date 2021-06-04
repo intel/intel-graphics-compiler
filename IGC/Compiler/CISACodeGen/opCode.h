@@ -163,7 +163,6 @@ DECLARE_OPCODE(GenISA_icmpxchgatomictyped, GenISAIntrinsic, llvm_icmpxchg_atomic
 DECLARE_OPCODE(GenISA_atomiccounterinc, GenISAIntrinsic, llvm_atomic_counter_inc, false, false, false, false, false, true, false)
 DECLARE_OPCODE(GenISA_atomiccounterpredec, GenISAIntrinsic, llvm_atomic_counter_predec, false, false, false, false, false, true, false)
 
-DECLARE_OPCODE(GenISA_OWordPtr, GenISAIntrinsic, llvm_owordptr, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_ldraw_indexed, GenISAIntrinsic, llvm_ldraw_indexed, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_ldrawvector_indexed, GenISAIntrinsic, llvm_ldrawvector_indexed, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_storeraw_indexed, GenISAIntrinsic, llvm_storeraw_indexed, false, false, false, false, false, false, false)

@@ -136,7 +136,6 @@ void ConstantCoalescing::ProcessFunction(Function* function)
             BasicBlock* top_blk = top_chunk->chunkIO->getParent();
             if (dom_tree.dominates(top_blk, cur_blk))
                 break;
-            //ChangePTRtoOWordBased(top_chunk);
             indcb_owloads.pop_back();
             delete top_chunk;
         }
@@ -166,7 +165,6 @@ void ConstantCoalescing::ProcessFunction(Function* function)
     {
         BufChunk* top_chunk = indcb_owloads.back();
         indcb_owloads.pop_back();
-        //ChangePTRtoOWordBased(top_chunk);
         delete top_chunk;
     }
     while (!indcb_gathers.empty())
@@ -2517,74 +2515,6 @@ void ConstantCoalescing::ReplaceLoadWithSamplerLoad(
     }
 
     loadToReplace->replaceAllUsesWith(result);
-}
-
-
-/// change GEP to oword-based for oword-aligned load in order to avoid SHL
-void ConstantCoalescing::ChangePTRtoOWordBased(BufChunk* chunk)
-{
-    IGC_ASSERT(nullptr != chunk);
-    IGC_ASSERT(nullptr != chunk->chunkIO);
-    LoadInst* const load = dyn_cast<LoadInst>(chunk->chunkIO);
-    IGC_ASSERT(nullptr != load);
-
-    // has to be a 3d-load for now.
-    // Argument pointer coming from OCL may not be oword-aligned
-    uint addrSpace = load->getPointerAddressSpace();
-    if (addrSpace == ADDRESS_SPACE_CONSTANT)
-    {
-        return;
-    }
-    // element index must be a SHL-by-4
-    // chunk-start must be oword-aligned
-    if (!(chunk->baseIdxV) || chunk->chunkStart % 4)
-    {
-        return;
-    }
-    Instruction* ishl = dyn_cast<Instruction>(chunk->baseIdxV);
-    if (!ishl ||
-        ishl->getOpcode() != Instruction::Shl ||
-        !isa<ConstantInt>(ishl->getOperand(1)))
-    {
-        return;
-    }
-    unsigned int constant = int_cast<unsigned int>(cast<ConstantInt>(ishl->getOperand(1))->getZExtValue());
-    if (constant != 4)
-    {
-        return;
-    }
-    Value* owordIndex = ishl->getOperand(0);
-    // want the exact pattern
-    Value* ptrV = load->getPointerOperand();
-    if (!(isa<IntToPtrInst>(ptrV) && ptrV->hasOneUse()))
-    {
-        return;
-    }
-    // do different add, owordIndex + chunkStart/4;
-    if (chunk->chunkStart != 0)
-    {
-        Instruction* pInsert = dyn_cast<Instruction>(cast<IntToPtrInst>(ptrV)->getOperand(0));
-        if (!pInsert)
-        {
-            pInsert = cast<IntToPtrInst>(ptrV);
-        }
-        irBuilder->SetInsertPoint(pInsert);
-        owordIndex = irBuilder->CreateAdd(owordIndex, ConstantInt::get(irBuilder->getInt32Ty(), chunk->chunkStart / 4));
-        wiAns->incUpdateDepend(owordIndex, wiAns->whichDepend(load));
-    }
-    Type* vty = IGCLLVM::FixedVectorType::get(load->getType()->getScalarType(), 4);
-    Function* l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
-        llvm::GenISAIntrinsic::GenISA_OWordPtr,
-        PointerType::get(vty, addrSpace));
-    Value* attr[] =
-    {
-        owordIndex
-    };
-    irBuilder->SetInsertPoint(load);
-    Instruction* owordPtr = irBuilder->CreateCall(l, attr);
-    wiAns->incUpdateDepend(owordPtr, wiAns->whichDepend(load));
-    load->setOperand(0, owordPtr);
-    load->setAlignment(getAlign(16));
 }
 
 char IGC::ConstantCoalescing::ID = 0;

@@ -274,8 +274,6 @@ namespace IGC
             llvm::Value* bufIdxV, uint bufid,
             llvm::Value* eltIdxV, uint eltid,
             std::vector<BufChunk*>& chunk_vec);
-        /// change IntToPtr to oword-ptr for oword-aligned load in order to avoid SHL
-        void ChangePTRtoOWordBased(BufChunk* chunk);
 
         bool CleanupExtract(llvm::BasicBlock* bb);
         void VectorizePrep(llvm::BasicBlock* bb);
