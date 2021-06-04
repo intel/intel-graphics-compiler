@@ -549,11 +549,6 @@ VISA_Align getVISA_Align(unsigned LogAlignment, unsigned GRFWidth);
 // chooses suitable log alignment which is convertible to VISA_Align.
 unsigned ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth);
 
-// If \p Ty is degenerate vector type <1 x ElTy>,
-// ElTy is returned, otherwise original type \p Ty is returned.
-const Type &fixDegenerateVectorType(const Type &Ty);
-Type &fixDegenerateVectorType(Type &Ty);
-
 // Checks whether provided wrpredregion intrinsic can be encoded
 // as legal SETP instruction.
 bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);

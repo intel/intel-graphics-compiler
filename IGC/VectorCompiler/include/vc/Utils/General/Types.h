@@ -32,6 +32,11 @@ llvm::Type *changeAddrSpace(llvm::Type *OrigTy, int AddrSpace);
 // Get addrspace of a pointer or a vector of pointers type.
 int getAddrSpace(llvm::Type *PtrOrPtrVec);
 
+// If \p Ty is degenerate vector type <1 x ElTy>,
+// ElTy is returned, otherwise original type \p Ty is returned.
+const llvm::Type &fixDegenerateVectorType(const llvm::Type &Ty);
+llvm::Type &fixDegenerateVectorType(llvm::Type &Ty);
+
 } // namespace vc
 
 #endif // VC_UTILS_GENERAL_TYPES_H

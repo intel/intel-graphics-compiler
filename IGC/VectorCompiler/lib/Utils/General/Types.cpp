@@ -42,3 +42,17 @@ int vc::getAddrSpace(Type *PtrOrPtrVec) {
     return PtrOrPtrVec->getPointerAddressSpace();
   return PtrOrPtrVec->getVectorElementType()->getPointerAddressSpace();
 }
+
+const Type &vc::fixDegenerateVectorType(const Type &Ty) {
+  if (!isa<IGCLLVM::FixedVectorType>(Ty))
+    return Ty;
+  auto &VecTy = cast<IGCLLVM::FixedVectorType>(Ty);
+  if (VecTy.getNumElements() != 1)
+    return Ty;
+  return *VecTy.getElementType();
+}
+
+Type &vc::fixDegenerateVectorType(Type &Ty) {
+  return const_cast<Type &>(
+      fixDegenerateVectorType(static_cast<const Type &>(Ty)));
+}

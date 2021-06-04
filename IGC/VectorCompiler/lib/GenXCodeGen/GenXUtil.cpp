@@ -1880,20 +1880,6 @@ CastInst *genx::scalarizeOrVectorizeIfNeeded(Instruction *Inst,
   return scalarizeOrVectorizeIfNeeded(Inst, &InstToReplace, std::next(&InstToReplace));
 }
 
-const Type &genx::fixDegenerateVectorType(const Type &Ty) {
-  if (!isa<VectorType>(Ty))
-    return Ty;
-  auto &VecTy = cast<VectorType>(Ty);
-  if (VecTy.getNumElements() != 1)
-    return Ty;
-  return *VecTy.getElementType();
-}
-
-Type &genx::fixDegenerateVectorType(Type &Ty) {
-  return const_cast<Type &>(
-      fixDegenerateVectorType(static_cast<const Type &>(Ty)));
-}
-
 Function *genx::getFunctionPointerFunc(Value *V) {
   Instruction *I = nullptr;
   for (; (I = dyn_cast<CastInst>(V)); V = I->getOperand(0))

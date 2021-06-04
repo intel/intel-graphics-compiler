@@ -21,7 +21,9 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/General/Types.h"
 #include "visa_igc_common_header.h"
+
 #include "llvm/ADT/MapVector.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -642,7 +644,7 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
     if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile))
       OverrideType = OverrideType->getPointerElementType();
   }
-  OverrideType = &fixDegenerateVectorType(*OverrideType);
+  OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
   if (R->Num < VISA_NUM_RESERVED_REGS) {
     OverrideType = IGCLLVM::FixedVectorType::get(
         OverrideType->getScalarType(),
@@ -655,7 +657,7 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
   for (Reg *CurAlias = R; CurAlias; CurAlias = CurAlias->NextAlias[kernel]) {
     LastAlias = CurAlias;
     Type *ExistingType = CurAlias->Ty;
-    ExistingType = &fixDegenerateVectorType(*ExistingType);
+    ExistingType = &vc::fixDegenerateVectorType(*ExistingType);
     if (ExistingType == OverrideType &&
         CurAlias->Num >= VISA_NUM_RESERVED_REGS &&
         (CurAlias->Signed == Signed || Signed == DONTCARESIGNED)) {
