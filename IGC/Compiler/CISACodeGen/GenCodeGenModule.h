@@ -241,6 +241,10 @@ namespace IGC {
             return FG != nullptr && FG == IndirectCallGroup;
         }
 
+        FunctionGroup* getIndirectCallGroup() {
+            return IndirectCallGroup;
+        }
+
         /// \brief Check whether this is a group header.
         bool isGroupHead(llvm::Function* F) {
             return getGroupForHead(F) != nullptr;

@@ -885,27 +885,10 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
     ModuleMetaData* modMD = mduw.getModuleMetaData();
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    bool needDummyKernel = false;
-
-    // Creates an empty dummy kernel.
-    // This kernel will only be used for creating the symbol table.
-    // All indirectly called functions will also be attached to this kernel's binary.
-    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
-        pCtx->type == ShaderType::OPENCL_SHADER)
-    {
-        if (pCtx->m_enableFunctionPointer)
-        {
-            // Symbols are needed for external functions and function pointers
-            needDummyKernel = true;
-        }
-        else if (!modMD->inlineProgramScopeOffsets.empty())
-        {
-            // Create one also if global variables are present and require symbols
-            needDummyKernel = true;
-        }
-    }
-
-    if (needDummyKernel)
+    // Conservatively create a dummy kernel as long as there are function calls
+    // Later (in EmitVISAPass.cpp) we can skip compiling this kernel if no
+    // symbol table is created for it.
+    if (pCtx->enableFunctionCall())
     {
         // Create empty kernel function
         IGC_ASSERT(IGC::getIntelSymbolTableVoidProgram(&M) == nullptr);
@@ -925,7 +908,7 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
 
         // Promote SIMD size information from kernels, which has indirectly called
         // functions. All such functions will be connected to the default kernel in
-        // GenCodeGenModule.cpp (addIndirectFuncsToKernelGroup)
+        // GenCodeGenModule.cpp
         for (auto I = M.begin(), E = M.end(); I != E; ++I)
         {
             Function* F = &(*I);
