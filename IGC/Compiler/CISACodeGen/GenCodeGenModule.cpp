@@ -149,25 +149,6 @@ void GenXCodeGenModule::processFunction(Function& F)
     }
 
     IGC_ASSERT(CallerFGs.size() >= 1);
-
-    // Get the cloning threshold. If the number of function groups a function belongs to
-    // exceeds the threshold, instead of cloning the function N times, make it an indirect call
-    // and use relocation instead. The function will only be compiled once and runtime must relocate
-    // its address for each caller. This greatly saves on compile time when there are many function
-    // groups that all call the same function.
-    auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    if (cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
-    {
-        auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        auto IFG = FGA->getIndirectCallGroup();
-        IGC_ASSERT(IFG);
-        F.addFnAttr("referenced-indirectly");
-        F.addFnAttr("visaStackCall");
-        pCtx->m_enableFunctionPointer = true;
-        FGA->addToFunctionGroup(&F, IFG, &F);
-        return;
-    }
-
     bool FirstPair = true;
     for (auto FGPair : CallerFGs)
     {
@@ -228,25 +209,6 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
         }
     }
     IGC_ASSERT(CallerFGs.size() >= 1);
-
-    // Use the same cloning threshold for single function SCCs, but making every stack function
-    // in the SCC indirect calls to prevent cloning the entire SCC N times.
-    auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    if (cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
-    {
-        auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        for (CallGraphNode* Node : (*SCCNodes))
-        {
-            Function* F = Node->getFunction();
-            auto IFG = FGA->getIndirectCallGroup();
-            IGC_ASSERT(IFG && F->hasFnAttribute("visaStackCall"));
-            F->addFnAttr("referenced-indirectly");
-            pCtx->m_enableFunctionPointer = true;
-            FGA->addToFunctionGroup(F, IFG, F);
-        }
-        return;
-    }
-
     bool FirstPair = true;
     for (auto FG : CallerFGs)
     {
@@ -640,6 +602,7 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         Function* F = &(*I);
         if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
+        // Add non-used function to default group
         if (F->hasFnAttribute("referenced-indirectly") || F->getNumUses() == 0)
         {
             IGC_ASSERT(getGroup(F) == nullptr);
