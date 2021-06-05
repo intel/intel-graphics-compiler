@@ -4519,15 +4519,11 @@ bool Optimizer::foldPseudoNot(G4_BB* bb, INST_LIST_ITER& iter)
         auto&& use = *uses;
         G4_INST* useInst = use.first;
         Gen4_Operand_Number opndPos = use.second;
-        if (!useInst->isLogic() || !G4_INST::isSrcNum(opndPos) ||
-            useInst->getSingleDef(opndPos) == nullptr /* not single def */)
+        if (!useInst->isLogic() || !G4_INST::isSrcNum(opndPos))
         {
             canFold = false;
             break;
         }
-
-        // sanity check
-        assert(useInst->getSingleDef(opndPos) == notInst);
 
         // check the case where flag is partially used
         G4_SrcRegRegion* opnd = useInst->getSrc(G4_INST::getSrcNum(opndPos))->asSrcRegRegion();
