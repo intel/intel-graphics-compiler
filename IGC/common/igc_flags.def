@@ -34,7 +34,7 @@ DECLARE_IGC_REGKEY(bool, EnableVISADotAll,              false, "Enable VISA DotA
 DECLARE_IGC_REGKEY(bool, EnableVISADebug,               false, "Runs VISA in debug mode, all optimizations disabled", false)
 DECLARE_IGC_REGKEY(DWORD, EnableVISAStructurizer,       1,     "Enable/Disable VISA structurizer. See value defs in igc_flags.hpp.", false)
 DECLARE_IGC_REGKEY(bool, EnableVISAJmpi,                true,  "Enable/Disable VISA generating jmpi (scalar jump).", false)
-DECLARE_IGC_REGKEY(bool, EnableVISADCE,                 true,  "Enable/Disable VISA DCE.", false)
+DECLARE_IGC_REGKEY(bool, EnableVISADCE,                 false, "Enable/Disable VISA DCE.", false)
 DECLARE_IGC_REGKEY(bool, ForceVISAStructurizer,         false, "Force VISA structurizer for testing. Used on platforms in which we turns off SCF and use UCF by default", false)
 DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     2,     "Add NoMask WA using software-computed emask flag. Valid value: (two groups) \
                                                                    valid value:  bit[1:0] : which BB to insert - 0(off), 1(divergent BB), \
