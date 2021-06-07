@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/Instruction.h>
 #include <llvm/IR/IntrinsicInst.h>
 
 #include <algorithm>
@@ -84,6 +85,13 @@ public:
                                      NewOperands.drop_front());
   }
 
+  Instruction *visitTrunc(TruncInst &Trunc) {
+    Value &NewOp = getSingleNewOperand();
+    Type *NewOutType = vc::getNewTypeForCast(
+        Trunc.getType(), Trunc.getOperand(0)->getType(), NewOp.getType());
+    return new TruncInst{&NewOp, NewOutType};
+  }
+
   Instruction *visitLoadInst(LoadInst &OrigLoad) {
     Value &Ptr = getSingleNewOperand();
     auto *NewLoad =
@@ -108,17 +116,9 @@ public:
   // type addrspace corresponds with this operand.
   CastInst *visitBitCastInst(BitCastInst &OrigCast) {
     Value &NewOp = getSingleNewOperand();
-    // If the operand changed addrspace the bitcast type should change it too.
-    if (OrigCast.getType()->isPtrOrPtrVectorTy())
-      return visitPtrOrPtrVectorBitCastInst(OrigCast);
-    return new BitCastInst{&NewOp, OrigCast.getType()};
-  }
-
-  CastInst *visitPtrOrPtrVectorBitCastInst(BitCastInst &OrigCast) {
-    Value &NewOp = getSingleNewOperand();
-    auto NewOpAS = getAddrSpace(NewOp.getType());
-    return new BitCastInst{&NewOp,
-                           changeAddrSpace(OrigCast.getType(), NewOpAS)};
+    Type *NewOutType = vc::getNewTypeForCast(
+        OrigCast.getType(), OrigCast.getOperand(0)->getType(), NewOp.getType());
+    return new BitCastInst{&NewOp, NewOutType};
   }
 
   CastInst *visitAddrSpaceCastInst(AddrSpaceCastInst &OrigCast) {

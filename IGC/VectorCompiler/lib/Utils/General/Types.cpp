@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/General/Types.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 #include "Probe/Assertion.h"
 
@@ -56,4 +57,64 @@ const Type &vc::fixDegenerateVectorType(const Type &Ty) {
 Type &vc::fixDegenerateVectorType(Type &Ty) {
   return const_cast<Type &>(
       fixDegenerateVectorType(static_cast<const Type &>(Ty)));
+}
+
+// calculates new return type for cast instructions
+// * trunc
+// * bitcast
+// Expect that scalar type of instruction not changed and previous
+// combination of OldOutType & OldInType is valid
+Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
+                            Type *NewInType) {
+  IGC_ASSERT_MESSAGE(OldOutType && NewInType && OldInType,
+                     "Error: nullptr input");
+
+  bool NewInIsVec = isa<IGCLLVM::FixedVectorType>(NewInType);
+  bool OldOutIsVec = isa<IGCLLVM::FixedVectorType>(OldOutType);
+  bool OldInIsVec = isa<IGCLLVM::FixedVectorType>(OldInType);
+
+  bool NewInIsPtrOrVecPtr = NewInType->isPtrOrPtrVectorTy();
+  bool OldOutIsPtrOrVecPtr = OldOutType->isPtrOrPtrVectorTy();
+  bool OldInIsPtrOrVecPtr = OldInType->isPtrOrPtrVectorTy();
+
+  // only  pointer to pointer
+  IGC_ASSERT(NewInIsPtrOrVecPtr == OldOutIsPtrOrVecPtr &&
+             NewInIsPtrOrVecPtr == OldInIsPtrOrVecPtr);
+  // <2 x char> -> int : < 4 x char> -> ? forbidden
+  IGC_ASSERT(OldOutIsVec == OldInIsVec && OldOutIsVec == NewInIsVec);
+  Type *NewOutType = OldOutType;
+  if (OldOutIsVec) {
+    // <4 x char> -> <2 x int> : <8 x char> -> <4 x int>
+    // <4 x char> -> <2 x int> : <2 x char> -> <1 x int>
+    auto NewInEC = cast<IGCLLVM::FixedVectorType>(NewInType)->getNumElements();
+    auto OldOutEC =
+        cast<IGCLLVM::FixedVectorType>(OldOutType)->getNumElements();
+    auto OldInEC = cast<IGCLLVM::FixedVectorType>(OldInType)->getNumElements();
+    auto NewOutEC = OldOutEC * NewInEC / OldInEC;
+    // <4 x char> -> <2 x int> : <5 x char> -> ? forbidden
+    IGC_ASSERT_MESSAGE((OldOutEC * NewInEC) % OldInEC == 0,
+                       "Error: wrong combination of input/output");
+    // element count changed, scalar type as previous
+    NewOutType = IGCLLVM::FixedVectorType::get(
+        OldOutType->getVectorElementType(), IGCLLVM::getElementCount(NewOutEC));
+  }
+
+  IGC_ASSERT(NewOutType);
+
+  if (NewInIsPtrOrVecPtr) {
+    // <4 x char*> -> <2 x half*> : < 2 x int*> - ? forbidden
+    // char* -> half* : int* -> ? forbidden
+    IGC_ASSERT_MESSAGE(OldInType->getScalarType()->getPointerElementType() ==
+                           NewInType->getScalarType()->getPointerElementType(),
+                       "Error: unexpected type change");
+    // address space from new
+    // element count calculated as for vector
+    // element type expect address space similar
+    auto AddressSpace = getAddrSpace(NewInType);
+    return changeAddrSpace(NewOutType, AddressSpace);
+  }
+  // <4 x char> -> <2 x half> : < 2 x int> - ? forbiddeb
+  IGC_ASSERT_MESSAGE(OldInType->getScalarType() == NewInType->getScalarType(),
+                     "Error: unexpected type change");
+  return NewOutType;
 }

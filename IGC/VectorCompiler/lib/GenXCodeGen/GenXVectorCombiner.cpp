@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXModule.h"
 #include "vc/GenXOpts/Utils/CMRegion.h"
+#include "vc/Utils/General/InstRebuilder.h"
 
 #include "IGC/common/debug/DebugMacros.hpp"
 
@@ -321,9 +322,9 @@ void GenXVectorCombiner::filterWorkList() {
 void GenXVectorCombiner::createNewInstruction(
     Instruction *InsteadOf, Instruction *Operation,
     const SmallVectorImpl<Value *> &Vals) {
-  IGC_ASSERT_MESSAGE(InsteadOf && Operation, "Error: nullptr");
-  IRBuilder<> Builder{InsteadOf};
+  IGC_ASSERT_MESSAGE(InsteadOf && Operation, "Error: nullptr input");
   if (GenXIntrinsic::isGenXIntrinsic(Operation)) {
+    IRBuilder<> Builder{InsteadOf};
     Function *Fn = nullptr;
     GenXIntrinsic::ID IdCode = GenXIntrinsic::getGenXIntrinsicID(Operation);
     Module *M = Operation->getParent()->getParent()->getParent();
@@ -341,26 +342,10 @@ void GenXVectorCombiner::createNewInstruction(
     InsteadOf->replaceAllUsesWith(CI);
     return;
   }
-  unsigned OpCode = Operation->getOpcode();
-  Value *NewInst = nullptr;
-  switch (OpCode) {
-  default:
-    IGC_ASSERT_MESSAGE(false, "get unknown opcode");
-  case Instruction::Add:
-    NewInst = Builder.CreateAdd(Vals[0], Vals[1], VALUE_NAME("widenedAdd"));
-    break;
-  case Instruction::FAdd:
-    NewInst = Builder.CreateFAdd(Vals[0], Vals[1], VALUE_NAME("widenedFAdd"));
-    break;
-  case Instruction::BitCast:
-    NewInst = Builder.CreateBitCast(Vals[0], InsteadOf->getType(),
-                                    VALUE_NAME("widenedBitcast"));
-    break;
-  case Instruction::Trunc:
-    NewInst = Builder.CreateTrunc(Vals[0], InsteadOf->getType(),
-                                  VALUE_NAME("widenedTrunc"));
-    break;
-  }
+  Instruction *NewInst = vc::cloneInstWithNewOps(*Operation, Vals);
+  NewInst->insertBefore(InsteadOf);
+  NewInst->setDebugLoc(InsteadOf->getDebugLoc());
+  NewInst->takeName(Operation);
   InsteadOf->replaceAllUsesWith(NewInst);
 }
 
