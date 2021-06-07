@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/Operator.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -33,6 +32,13 @@ char SetFastMathFlags::ID = 0;
 
 SetFastMathFlags::SetFastMathFlags() : ModulePass(ID)
 {
+    m_Mask.setFast();
+    initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+}
+
+SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask) : ModulePass(ID)
+{
+    m_Mask = Mask;
     initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
@@ -50,6 +56,7 @@ bool SetFastMathFlags::runOnModule(Module& M)
         // Fast relaxed math implies all other flags.
         if (modMD.compOpt.FastRelaxedMath && hasFnAttributeSet(F, "unsafe-fp-math")) {
             fmfs.setFast();
+            fmfs &= m_Mask;
             changed |= setFlags(F, fmfs);
             continue;
         }
@@ -66,6 +73,7 @@ bool SetFastMathFlags::runOnModule(Module& M)
                 fmfs.setNoNaNs();
             }
         }
+        fmfs &= m_Mask;
         changed |= setFlags(F, fmfs);
     }
     return changed;

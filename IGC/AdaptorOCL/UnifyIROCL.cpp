@@ -339,7 +339,10 @@ static void CommonOCLBasedPasses(
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
-        mpm.add(new SetFastMathFlags());
+        FastMathFlags Mask;
+        Mask.setFast();
+        Mask.setNoSignedZeros(false);
+        mpm.add(new SetFastMathFlags(Mask));
 
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
@@ -502,6 +505,9 @@ static void CommonOCLBasedPasses(
     // Only needed if function pointers, externally linked functions, or relocatable global variables are present
     mpm.add(createInsertDummyKernelForSymbolTablePass());
 
+    FastMathFlags Mask;
+    Mask.setNoSignedZeros(true);
+    mpm.add(new SetFastMathFlags(Mask));
     mpm.add(new FixResourcePtr());
 
     if(isOptDisabled)
