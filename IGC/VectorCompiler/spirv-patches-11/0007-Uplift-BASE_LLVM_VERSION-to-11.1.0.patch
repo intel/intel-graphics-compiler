@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Nikita Rudenko <nikita.rudenko@intel.com>
+Date: Mon, 7 Jun 2021 16:42:53 +0300
+Subject: [PATCH] Uplift BASE_LLVM_VERSION to 11.1.0
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ecebb4cb..79c792ce 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,6 @@
+ cmake_minimum_required(VERSION 3.3)
+ 
+-set (BASE_LLVM_VERSION 11.0.0)
++set (BASE_LLVM_VERSION 11.1.0)
+ set(LLVM_SPIRV_VERSION ${BASE_LLVM_VERSION}.0)
+ 
+ option(LLVM_SPIRV_INCLUDE_TESTS
+-- 
+2.31.0
+
