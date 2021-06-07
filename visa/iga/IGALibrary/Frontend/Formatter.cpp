@@ -58,9 +58,9 @@ protected:
     ansi_esc ANSI_SUBFUNCTION;
     ansi_esc ANSI_COMMENT;
 
-
     void formatDstOp(const Instruction &i);
     void formatSrcOp(SourceIndex ix, const Instruction &i);
+    void formatSyncAllSrc0(const Instruction &i);
     void formatBareRegisterUnescaped(RegName regName, int regNum);
     void formatRegister(
         RegName rnm,
@@ -329,6 +329,13 @@ public:
 
     bool formatLoadStoreSyntax(const Instruction& i);
 
+    static bool useSyncAllSetSyntax(const Instruction &i)
+    {
+        return i.is(Op::SYNC) &&
+            (i.getSubfunction().sync == SyncFC::ALLRD ||
+                i.getSubfunction().sync == SyncFC::ALLWR);
+    }
+
     void formatNormalInstructionBody(
         const Instruction& i,
         const std::string& debugSendDecode)
@@ -362,7 +369,11 @@ public:
         } else {
             if (nSrcs >= 1) {
                 emit("  ");
-                formatSrcOp(SourceIndex::SRC0, i);
+                if (useSyncAllSetSyntax(i)) {
+                    formatSyncAllSrc0(i);
+                } else {
+                    formatSrcOp(SourceIndex::SRC0, i);
+                }
             }
             if (nSrcs >= 2) {
                 emit("  ");
@@ -945,6 +956,7 @@ void Formatter::formatRegister(
     emit(ANSI_RESET);
 }
 
+
 void Formatter::formatDstOp(const Instruction &i)
 {
     const OpSpec &os = i.getOpSpec();
@@ -1142,11 +1154,37 @@ void Formatter::formatSrcOp(
     if (!model.supportsSimplifiedBranches() ||
         src.getKind() != Operand::Kind::LABEL)
     {
-        formatSourceType(static_cast<int>(srcIx), os, src);
+        formatSourceType(int(srcIx), os, src);
     }
     finishColumn();
 } // end formatSrcOp()
 
+// e.g. formats: sync.allrd ($1,$3,$7)
+void Formatter::formatSyncAllSrc0(const Instruction &i)
+{
+    const auto &src0 = i.getSource(0);
+    if (src0.getKind() != Operand::Kind::IMMEDIATE) {
+        // e.g.  sync.allrd  null
+        formatSrcOp(SourceIndex::SRC0, i);
+    } else {
+        // e.g.  sync.allrd  ($1,$3,$7,$13)
+        emit(ANSI_IMMEDIATE);
+        auto sbids = src0.getImmediateValue().u32;
+        bool first = true;
+        emit("(");
+        for (int i = 0; i < 32; i++) {
+            if ((1 << i) & sbids) {
+                if (first)
+                    first = false;
+                else
+                    emit(",");
+                emit("$", i);
+            }
+        }
+        emit(")");
+        emit(ANSI_RESET);
+    }
+}
 
 void Formatter::formatInstOpts(
     const Instruction &i,

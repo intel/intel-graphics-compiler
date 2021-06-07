@@ -37,13 +37,13 @@ static void emitDataElem(
 {
     static const char *CHANNELS = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
     int zeroPadding =
-        (mi.elemSizeBitsRegFile - mi.elemSizeBitsMemory)/8;
-    if (mi.hasAttr(iga::MessageInfo::EXPAND_HIGH)) {
-        emitSpan(os, CHANNELS[chIx], mi.elemSizeBitsMemory/8);
-        emitSpan(os, '-',zeroPadding);
+        (mi.elemSizeBitsRegFile - mi.elemSizeBitsMemory) / 8;
+    if (mi.hasAttr(iga::MessageInfo::Attr::EXPAND_HIGH)) {
+        emitSpan(os, CHANNELS[chIx], mi.elemSizeBitsMemory / 8);
+        emitSpan(os, '-', zeroPadding);
     } else {
-        emitSpan(os, '-',zeroPadding);
-        emitSpan(os, CHANNELS[chIx], mi.elemSizeBitsMemory/8);
+        emitSpan(os, '-', zeroPadding);
+        emitSpan(os, CHANNELS[chIx], mi.elemSizeBitsMemory / 8);
     }
 }
 static void emitRegName(std::ostream &os, int grfNum) {
@@ -388,7 +388,7 @@ bool decodeSendDescriptor(const Opts &opts)
         emitYellowText(os, ToSymbol(dr.info.addrType));
         os << "\n";
         if (dr.info.addrType == iga::AddrType::FLAT) {
-            if (dr.info.hasAttr(iga::MessageInfo::SLM)) {
+            if (dr.info.hasAttr(iga::MessageInfo::Attr::SLM)) {
                 os << "  Surface:                    ";
                 emitYellowText(os, "SLM");
                 os << "\n";
@@ -420,7 +420,7 @@ bool decodeSendDescriptor(const Opts &opts)
         os << "  Data Elements Per Address:  ";
         emitYellowText(os, dr.info.elemsPerAddr);
         os << " element" << (dr.info.elemsPerAddr != 1 ? "s" : "");
-        const iga::SendOpInfo &opInfo = iga::lookupSendOpInfo(dr.info.op);
+        const iga::SendOpDefinition &opInfo = iga::lookupSendOp(dr.info.op);
         if (opInfo.hasChMask()) {
             os << "  (";
             emitYellowText(os, ".");
@@ -471,17 +471,23 @@ bool decodeSendDescriptor(const Opts &opts)
                 os << "\n";
             };
         auto checkAttr =
-            [&] (int attr, const char *attrDesc) {
+            [&] (iga::MessageInfo::Attr attr, const char *attrDesc) {
                 if (dr.info.hasAttr(attr)) {
                     emitAttr(attrDesc);
                 }
             };
-        checkAttr(iga::MessageInfo::ATOMIC_RETURNS, "atomic returns result");
-        checkAttr(iga::MessageInfo::HAS_CHMASK,  "uses channel mask");
-        checkAttr(iga::MessageInfo::SCRATCH,     "scratch");
-        checkAttr(iga::MessageInfo::SLM,         "slm");
-        checkAttr(iga::MessageInfo::TRANSPOSED,  "transposed");
-        checkAttr(iga::MessageInfo::TYPED,       "typed");
+        checkAttr(iga::MessageInfo::Attr::ATOMIC_RETURNS,
+            "atomic returns result");
+        checkAttr(iga::MessageInfo::Attr::HAS_CHMASK,
+            "uses channel mask");
+        checkAttr(iga::MessageInfo::Attr::SCRATCH,
+            "scratch");
+        checkAttr(iga::MessageInfo::Attr::SLM,
+            "slm");
+        checkAttr(iga::MessageInfo::Attr::TRANSPOSED,
+            "transposed");
+        checkAttr(iga::MessageInfo::Attr::TYPED,
+            "typed");
 
         bool isZeroRlen = desc.isImm() && ((desc.imm >> 20) & 0x1F) == 0;
         if (dr.info.isLoad() && isZeroRlen) {
@@ -503,7 +509,7 @@ bool decodeSendDescriptor(const Opts &opts)
         if (showDataPayload) {
             os << "DATA PAYLOAD\n";
             int grfSize = 32;
-            if (mi.hasAttr(iga::MessageInfo::TRANSPOSED)) {
+            if (mi.hasAttr(iga::MessageInfo::Attr::TRANSPOSED)) {
                 // formatSIMD(opts, os, msgInfo, grfSize);
                 formatSIMD(opts, os, mi, grfSize);
             } else {

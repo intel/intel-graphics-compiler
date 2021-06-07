@@ -161,7 +161,7 @@ void iga::EmitSendDescriptorInfo(
         }
 
         bool appendUvrLod =
-            dr.info.hasAttr(MessageInfo::HAS_UVRLOD) && src0Len > 0;
+            dr.info.hasAttr(MessageInfo::Attr::HAS_UVRLOD) && src0Len > 0;
         if (appendUvrLod) {
             // Deduce the number of typed coordinates included
             // (e.g. U, V, R, LOD)

@@ -82,7 +82,7 @@ static void deducePayloadSizes(
             dlen *= mi.elemsPerAddr;
         }
         //
-        const auto &opInfo = lookupSendOpInfo(mi.op);
+        const auto &opInfo = lookupSendOp(mi.op);
         lens.src0Len = numAddrRegsForVector();
         if (opInfo.isLoad()) {
             lens.dstLen = dlen;
@@ -97,7 +97,7 @@ static void deducePayloadSizes(
             IGA_ASSERT_FALSE("invalid message type");
         }
     };
-    lens.uvrlod = mi.hasAttr(MessageInfo::TYPED);
+    lens.uvrlod = mi.hasAttr(MessageInfo::Attr::TYPED);
 
     switch (mi.op) {
     ///////////////////////////////////////////////////////////////////////
@@ -153,11 +153,14 @@ static void deducePayloadSizes(
         handleVectorMessage(2);
         break;
     ///////////////////////////////////////////////////////////////////////
-    // control messages that are 0, 1, 0
+    // barrier is 1, 1, 0 until XeHP
     case SendOp::BARRIER:
+        message(p < Platform::XE_HP ? 1 : 0, 1, 0);
+        break;
+    // other control messages that are 0, 1, 0
     case SendOp::MONITOR:
     case SendOp::UNMONITOR:
-    case SendOp::SIGNAL_EVENT:
+    case SendOp::SIGNAL:
     case SendOp::EOT:
         message();
         break;
@@ -295,16 +298,16 @@ std::string MessageSyntax::sym() const
 }
 
 
-static constexpr SendOpInfo SEND_OPS[] {
-#define DEFINE_SEND_OP(ENUM, MNE, ATTRS) \
-    SendOpInfo(SendOp::ENUM, MNE, ATTRS),
+static constexpr SendOpDefinition SEND_OPS[] {
+#define DEFINE_SEND_OP(ENUM, MNE, DESC, ATTRS) \
+    {SendOp::ENUM, MNE, DESC, ATTRS},
 #include "EnumSendOpInfo.hpp"
 #undef DEFINE_SEND_OP
 };
 
 std::string iga::ToSyntax(SendOp op)
 {
-    const auto &opInfo = lookupSendOpInfo(op);
+    const auto &opInfo = lookupSendOp(op);
     if (opInfo.isValid()) {
         return opInfo.mnemonic;
     } else {
@@ -316,6 +319,7 @@ std::string iga::ToSymbol(CacheOpt op)
 {
 #define MK_CASE(X) case CacheOpt::X: return #X
     switch (op) {
+    MK_CASE(INVALID);
     MK_CASE(DEFAULT);
     MK_CASE(READINVALIDATE);
     MK_CASE(CACHED);
@@ -332,6 +336,7 @@ std::string iga::ToSymbol(AddrType op)
 {
 #define MK_CASE(X) case AddrType::X: return #X
     switch (op) {
+    MK_CASE(INVALID);
     MK_CASE(FLAT);
     MK_CASE(BTI);
     default:
@@ -367,7 +372,7 @@ static void postProcessDecode(
     DecodeResult &result, DecodedDescFields *fields)
 {
     if (!result.errors.empty())
-        result.info.attributeSet |= MessageInfo::VALID;
+        result.info.attributeSet |= MessageInfo::Attr::VALID;
     if (fields) {
         std::sort(result.fields.begin(), result.fields.end(),
             [&] (const auto &f1, const auto &f2) {
@@ -467,7 +472,7 @@ DecodeResult iga::tryDecode(
     return result;
 }
 
-const SendOpInfo &iga::lookupSendOpInfo(SendOp op)
+const SendOpDefinition &iga::lookupSendOp(SendOp op)
 {
     for (int i = 0; i < sizeof(SEND_OPS)/sizeof(SEND_OPS[0]); i++) {
         if (op == SEND_OPS[i].op) {
@@ -475,10 +480,10 @@ const SendOpInfo &iga::lookupSendOpInfo(SendOp op)
         }
     }
 
-    static constexpr SendOpInfo INVALID(SendOp::INVALID, "?");
+    static constexpr SendOpDefinition INVALID(SendOp::INVALID, "?", "?");
     return INVALID;
 /*
-    SendOpInfo soi {false, -1, false};
+    SendOpDefinition soi {false, -1, false};
 
     switch (op) {
     case SendOp::LOAD_STRIDED:
@@ -540,7 +545,7 @@ const SendOpInfo &iga::lookupSendOpInfo(SendOp op)
 */
 }
 
-const SendOpInfo &iga::lookupSendOpInfo(const char *mnemonic)
+const SendOpDefinition &iga::lookupSendOp(const char *mnemonic)
 {
     std::string mne = mnemonic;
     for (int i = 0; i < sizeof(SEND_OPS)/sizeof(SEND_OPS[0]); i++) {
@@ -549,7 +554,7 @@ const SendOpInfo &iga::lookupSendOpInfo(const char *mnemonic)
         }
     }
 
-    static constexpr SendOpInfo INVALID(SendOp::INVALID, "?");
+    static constexpr SendOpDefinition INVALID(SendOp::INVALID, "?", "?");
     return INVALID;
 }
 
@@ -564,7 +569,7 @@ bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid)
         op == SendOp::STORE ||
         op == SendOp::STORE_STRIDED ||
         op == SendOp::STORE_QUAD ||
-        lookupSendOpInfo(op).isAtomic();
+        lookupSendOp(op).isAtomic();
     return supported;
 }
 

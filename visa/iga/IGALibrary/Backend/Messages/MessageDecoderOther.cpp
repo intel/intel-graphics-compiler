@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "MessageDecoder.hpp"
 
+#include <tuple>
+
 using namespace iga;
 
 struct MessageDecoderOther : MessageDecoderLegacy
@@ -42,61 +44,73 @@ struct MessageDecoderOther : MessageDecoderLegacy
 
 
 void MessageDecoderOther::tryDecodeGTWY() {
-    auto choosePage = [&](const char *xe, const char *_ = nullptr) {
-        return xe;
+
+    //
+    using GatewayElement = std::tuple<uint32_t,SendOp,const char *,const char *,const char *>;
+    static constexpr GatewayElement GATEWAY_MESSAGES[] = {
+        {0x1, SendOp::SIGNAL, "33508", "47927", "57492"}, // MSD_SIGNAL_EVENT
+        {0x2, SendOp::MONITOR, "33512", "47925", "57490"}, // MSD_MONITOR_EVENT
+        {0x3, SendOp::UNMONITOR, "33513", "47926", "57491"}, // MSD_MONITOR_NO_EVENT
+        // no 0x5
+        {0x4, SendOp::BARRIER, "33524", "47924", "57489"}, // MSD_BARRIER
+        {0x6, SendOp::WAIT, "33514", "47928", "57493"}, // MSD_WAIT_FOR_EVENT
     };
-    std::stringstream sym, descs;
-    int opBits = getDescBits(0, 3); // [2:0]
-    int expectMlen = 0;
-    const char *doc = nullptr;
-    SendOp sendOp = SendOp::INVALID;
-    switch (opBits) {
-    case 1:
-        sym << "signal_event";
-        descs << "signal event";
-        expectMlen = 1; //
-        sendOp = SendOp::SIGNAL_EVENT;
-        doc = choosePage("54036", "57494");
-        break;
-    case 2:
-        sym << "monitor";
-        descs << "monitor event";
-        expectMlen = 1; // C.f. MDP_EVENT
-        sendOp = SendOp::MONITOR;
-        doc = choosePage("47925", "57490");
-        break;
-    case 3:
-        sym << "unmonitor";
-        descs << "unmonitor event";
-        expectMlen = 1; // C.f. MDP_NO_EVENT
-        sendOp = SendOp::UNMONITOR;
-        doc = choosePage("47926", "57491");
-        break;
-    case 4:
-        sym << "barrier";
-        descs << "barrier";
-        expectMlen = 1; // C.f. MDP_Barrier
-        sendOp = SendOp::BARRIER;
-        doc = choosePage("47924", "57489");
-        break;
-    case 6:
-        sym << "wait";
-        descs << "wait for event";
-        sendOp = SendOp::WAIT;
-        expectMlen = 1; // C.f. MDP_Timeout
-        doc = choosePage("47928", "57493");
-        break;
-    default:
-        error(0, 2, "unsupported GTWY op");
+
+    const GatewayElement *ge = nullptr;
+    uint32_t opBits = getDescBits(0, 3); // [2:0]
+    for (const auto &g: GATEWAY_MESSAGES) {
+        if (std::get<0>(g) == opBits) {
+            ge = &g;
+            break;
+        }
     }
-    addField("GatewayOpcode", 0, 3, opBits, descs.str());
+    if (ge == nullptr) {
+        error(0, 2, "unsupported GTWY op");
+        return;
+    }
+    std::stringstream sym, desc;
+    const SendOpDefinition &sod = lookupSendOp(std::get<1>(*ge));
+    if (!sod.isValid()) {
+        // should be in the table
+        error(0, 2, "INTERNAL ERROR: cannot find GTWY op");
+        return;
+    }
+
+    sym << sod.mnemonic;
+    desc << sod.description;
+    int expectMlen = 0, expectRlen = 0;
+    switch (sod.op) {
+    case SendOp::SIGNAL:
+    case SendOp::MONITOR: // C.f. MDP_EVENT
+    case SendOp::UNMONITOR: // C.f. MDP_NO_EVENT
+    case SendOp::BARRIER: // C.f. MDP_Barrier
+    case SendOp::WAIT: // C.f. MDP_Timeout
+        expectMlen = 1;
+        break;
+    default: break;
+    }
+    switch (sod.op) {
+    case SendOp::BARRIER:
+        // XeHP+ no register is returned
+        expectRlen = platform() >= Platform::XE_HP ? 0 : 1;
+        if (platform() >= Platform::XE) {
+            decodeDescBitField("ActiveThreadsOnly", 11,
+                "only active threads participate");
+        }
+        break;
+    default: break;
+    }
+
+    addField("GatewayOpcode", 0, 3, opBits, desc.str());
     setSpecialOpX(
-        sym.str(), descs.str(), sendOp,
-        AddrType::FLAT, SendDesc(0),
-        1, // mlen
-        0, // rlen
-        0);
+        sym.str(), desc.str(), sod.op,
+        AddrType::INVALID, SendDesc(0),
+        expectMlen, // mlen
+        expectRlen, // rlen
+        MessageInfo::Attr::NONE);
     decodeMDC_HF(); // all gateway messages forbid a header
+    const char *doc =
+        chooseDoc(std::get<2>(*ge), std::get<3>(*ge), std::get<4>(*ge));
     setDoc(doc);
 }
 
@@ -255,7 +269,7 @@ void MessageDecoderOther::tryDecodeRC()
     mi.elemSizeBitsMemory = mi.elemSizeBitsRegFile = bitSize;
     mi.addrSizeBits = 0;
     mi.surfaceId = surfaceIndex;
-    mi.attributeSet = 0;
+    mi.attributeSet = MessageInfo::Attr::NONE;
 
     decodeMDC_H2(); // all render target messages permit a dual-header
 }
@@ -577,8 +591,7 @@ void MessageDecoderOther::tryDecodeSMPL()
         is16bData ? 16 : 32,
         params,
         simdSize,
-        0
-    );
+        MessageInfo::Attr::NONE);
     decodeMDC_H(); // header is optional in the sampler
 }
 
@@ -590,7 +603,7 @@ void MessageDecoderOther::tryDecodeTS()
             AddrType::FLAT, 0,
             1, // mlen
             0, // rlen
-            0);
+            MessageInfo::Attr::NONE);
     } else {
         error(0, 32, "unsupported TS op");
     }
@@ -675,7 +688,7 @@ void MessageDecoderOther::tryDecodeURB()
         dataSize,
         elemsPerAddr,
         simd,
-        0);
+        MessageInfo::Attr::NONE);
     if (opBits == 7 || opBits == 8)
         result.info.immediateOffset = off;
 }

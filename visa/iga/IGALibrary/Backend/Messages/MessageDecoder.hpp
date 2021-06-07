@@ -64,7 +64,7 @@ namespace iga {
             result.info.channelsEnabled = result.info.elemsPerAddr = 0;
             result.info.execWidth =
                 _instExecSize != ExecSize::INVALID ? int(_instExecSize) : 0;
-            result.info.attributeSet = 0;
+            result.info.attributeSet = MessageInfo::Attr::NONE;
             result.info.addrType = AddrType::FLAT;
             result.info.surfaceId = 0;
             result.info.immediateOffset = 0;
@@ -89,11 +89,17 @@ namespace iga {
         }
 
         void setDoc(const char *doc) {
-            setDoc(doc, doc);
+            setDoc(doc, doc, doc);
         }
-        void setDoc(const char *preXE, const char *pstXE) {
-            result.info.docs = platform() < Platform::XE ?
-                preXE : pstXE;
+        void setDoc(const char *preXe, const char *xe, const char *) {
+            result.info.docs = chooseDoc(preXe, xe, "?");
+        }
+        const char *chooseDoc(
+            const char *preXe, const char *xe, const char *) const
+        {
+            preXe = preXe ? preXe : "?";
+            xe = xe ? xe : "?";
+            return platform() < Platform::XE ? preXe : xe;
         }
 
         /////////////////////////////////////////////////////////////
@@ -124,8 +130,8 @@ namespace iga {
             addDiag(result.errors, off, len, t1, t2, t3);
         }
 
-        // TODO: phase out
-        // offsets 32 to 64 fetch exDesc
+        // offset +32 to 64 fetch from exDesc
+        // peeks at a field without adding it
         uint32_t getDescBits(int off, int len) const {
             uint32_t bits = desc.imm;
             if (off >= 32) {
@@ -136,7 +142,6 @@ namespace iga {
             return (int)((bits >> off) & mask);
         }
 
-        // TODO: phase out
         uint32_t getDescBit(int off) const {
             return getDescBits(off, 1) != 0;
         }
@@ -241,7 +246,7 @@ namespace iga {
             int bitsPerElemReg, int bitsPerElemMem,
             int elemsPerAddr,
             int simd,
-            int extraAttrs = 0)
+            MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE)
         {
             MessageInfo &mi = result.info;
             mi.symbol = msgSym;
@@ -270,7 +275,7 @@ namespace iga {
             int bitsPerElem,
             int elemsPerAddr,
             int simd,
-            int extraAttrs = 0)
+            MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE)
         {
             setScatterGatherOpX(
                 msgSym,
@@ -298,7 +303,7 @@ namespace iga {
             SendDesc surfaceId,
             int mlen,
             int rlen,
-            int extraAttrs = 0)
+            MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE)
         {
             MessageInfo &mi = result.info;
             mi.symbol = msgSym;
@@ -315,7 +320,7 @@ namespace iga {
             mi.channelsEnabled = 0;
             mi.elemsPerAddr = 1;
             mi.execWidth = 1;
-            mi.attributeSet = extraAttrs | MessageInfo::VALID;
+            mi.attributeSet = extraAttrs | MessageInfo::Attr::VALID;
         }
 
     }; // MessageDecoder
@@ -401,13 +406,13 @@ namespace iga {
         }
     }; // MessageDecoderLegacy
 
-    // MessageDecoderHDC.cpp
+    // see MessageDecoderHDC.cpp
     void decodeDescriptorsHDC(
         Platform platform, SFID sfid, ExecSize execSize,
         SendDesc exDesc, SendDesc desc,
         DecodeResult &result);
 
-    // MessageDecoderOther.cpp
+    // see MessageDecoderOther.cpp
     void decodeDescriptorsOther(
         Platform platform, SFID sfid, ExecSize execSize,
         SendDesc exDesc, SendDesc desc,

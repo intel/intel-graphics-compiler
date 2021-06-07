@@ -35,14 +35,15 @@ namespace iga
     // different units (maybe different hardware generate the same message).
     enum class SendOp {
         INVALID,
-#define DEFINE_SEND_OP(E, M, A) E,
+#define DEFINE_SEND_OP(E, M, D, A) E,
 #include "EnumSendOpInfo.hpp"
 #undef DEFINE_SEND_OP
     };
 
-    struct SendOpInfo {
+    struct SendOpDefinition {
         SendOp op;
         const char *mnemonic; // e.g. "load" for SendOp::LOAD
+        const char *description; // a longer freer description
 
         // typesafe bitset of send op attributes
         enum class Attr {
@@ -71,11 +72,14 @@ namespace iga
         };
         Attr attrs;
 
-        constexpr SendOpInfo(
+        constexpr SendOpDefinition(
             SendOp o,
             const char *mne,
+            const char *desc,
             Attr _attrs = Attr::NONE)
-            : op(o), mnemonic(mne), attrs(_attrs) { }
+            : op(o), mnemonic(mne), description(desc), attrs(_attrs) { }
+        constexpr SendOpDefinition(const SendOpDefinition&) = delete;
+        constexpr SendOpDefinition& operator=(const SendOpDefinition&) = delete;
 
         bool isValid() const {return op != SendOp::INVALID;}
         bool hasAttr(Attr a) const {return (((int)attrs & (int)a)) != 0;}
@@ -95,21 +99,24 @@ namespace iga
                 hasAttr(Attr::ATOMIC_TERNARY) ? 2 :
                 -1;
         }
-    }; // SendOpInfo
-    static inline constexpr SendOpInfo::Attr operator|(
-        SendOpInfo::Attr a1,
-        SendOpInfo::Attr a2)
+    }; // SendOpDefinition
+    static inline constexpr SendOpDefinition::Attr operator|(
+        SendOpDefinition::Attr a1,
+        SendOpDefinition::Attr a2)
     {
-        return SendOpInfo::Attr(int(a1) | int(a2));
+        return SendOpDefinition::Attr(int(a1) | int(a2));
     }
 
 
-    const SendOpInfo &lookupSendOpInfo(SendOp op);
-    const SendOpInfo &lookupSendOpInfo(const char *mnemonic);
+    const SendOpDefinition &lookupSendOp(SendOp op);
+    const SendOpDefinition &lookupSendOp(const char *mnemonic);
 
     std::string ToSyntax(SendOp op);
 
     enum class CacheOpt {
+        // Invalid value (not invalidate or anything)
+        INVALID = 0,
+        //
         // the default caching state from MOCS or wherever
         DEFAULT,
         //
@@ -131,6 +138,8 @@ namespace iga
     std::string ToSymbol(CacheOpt op);
 
     enum class AddrType {
+        // the invalid value
+        INVALID = 0,
         // stateless
         FLAT,
         // stateful: binding table interface
@@ -144,8 +153,8 @@ namespace iga
     // certain obscure or legacy operations that are unsupported.
     //
     struct MessageInfo {
-        enum Attr {
-            VALID = 0x80000000,
+        enum class Attr : uint32_t {
+            NONE = 0x0,
             //
             // Set on atomic operations that return data
             ATOMIC_RETURNS  = 1 << 0,
@@ -173,22 +182,27 @@ namespace iga
             //
             // Indicates the message is a typed operation
             TYPED           = 1 << 7,
+            //
+            VALID = 0x80000000,
         };
+
         //
         // Queries a boolean property of this message.
-        bool hasAttr(int attr) const{return (attributeSet & attr) != 0;}
+        bool hasAttr(Attr attr) const;
+        // Adds attributes to the attribute set.
+        void addAttr(Attr attr);
 
         // The specific operation
-        SendOp       op;
+        SendOp       op = SendOp::INVALID;
 
         // A bitset of the above attributes
-        int          attributeSet;
+        Attr         attributeSet = MessageInfo::Attr::NONE;
 
         // Size (in bits) of one address
-        int          addrSizeBits;
+        int          addrSizeBits = 0;
         //
         // The size (in bits) of each element once stored in the register file.
-        int          elemSizeBitsRegFile;
+        int          elemSizeBitsRegFile = 0;
         //
         // The size (in bits) of each element in memory.
         //
@@ -197,7 +211,7 @@ namespace iga
         // four bytes into each 32b slot leaving the upper bits for the one-
         // and two-byte case.
         //
-        int          elemSizeBitsMemory;
+        int          elemSizeBitsMemory = 0;
         //
         // The number of vector elems or active channels in the cmask.
         // This is the number of elements each address loads.
@@ -205,29 +219,29 @@ namespace iga
         // For example a legacy untyped load with a channel mask of XYZ
         // would be 3.  Some scatter/gather messages have a SIMT vector
         // component similar in function.
-        int          elemsPerAddr;
+        int          elemsPerAddr = 0;
         //
         // For LOAD_QUAD and STORE_QUAD, this holds a bit mask of up to four
         // bits with which channels are *enabled* (not disabled).
         //
         // The elemsPerAddr field will still be set
         // (with the set cardinality here).
-        int          channelsEnabled;
+        int          channelsEnabled = 0;
         //
         // The number of channels in the size of the operation.
         // (The "SIMD" size.)
-        int          execWidth;
+        int          execWidth = 0;
 
         // Caching options for the L1 cache (if supported)
-        CacheOpt     cachingL1;
+        CacheOpt     cachingL1 = CacheOpt::INVALID;
         //
         // Caching options for the L3 cache (if supported)
         // In some HDC messages this is bit 13.  Some parts don't
         // implement it though.
-        CacheOpt     cachingL3;
+        CacheOpt     cachingL3 = CacheOpt::INVALID;
         //
         // The surface addressing model
-        AddrType     addrType;
+        AddrType     addrType = AddrType::INVALID;
         //
         // The surface identifier (if applicable).  E.g. BTI.
         SendDesc     surfaceId;
@@ -254,38 +268,41 @@ namespace iga
             return execWidth == 1 && (isLoad() || isStore());
         }
         //
-        bool isLoad() const {return lookupSendOpInfo(op).isLoad();}
-        bool isStore() const {return lookupSendOpInfo(op).isStore();}
-        bool isAtomic() const {return lookupSendOpInfo(op).isAtomic();}
+        bool isLoad() const {return lookupSendOp(op).isLoad();}
+        bool isStore() const {return lookupSendOp(op).isStore();}
+        bool isAtomic() const {return lookupSendOp(op).isAtomic();}
         //
         // An atomic that returns a value
-        bool isAtomicLoad() const {return hasAttr(ATOMIC_RETURNS);}
+        bool isAtomicLoad() const {return hasAttr(Attr::ATOMIC_RETURNS);}
         //
         // A transpose data layout
-        bool isTransposed() const {return hasAttr(TRANSPOSED);}
+        bool isTransposed() const {return hasAttr(Attr::TRANSPOSED);}
 
         // Enables the operation to be used within a predicate assignment.
-        operator bool() const {return hasAttr(VALID);}
-        //
-        // Do we enable abstract encoding?
-        //
-        // A problem is that as messages are refactored the function output
-        // may be ambiguous (e.g. two messages with the same meaning).
-        // E.g. An OW block read of 4 OWs == a HW block read with 2 HWs
-        //
-        //   E.g. SendFusion could flip SIMD for example
-        //   MessageInfo mi = ...get from IR...;
-        //   mi.simdSize = 16;
-        //   if (tryEncode(mi)) {
-        //       a SIMD16 version of the message exists!
-        //   }
-        //
-        // std::vector<MessageEncoding> tryEncode(
-        //     const MessageInfo &mi,
-        //     SFID sfid,
-        //     std::string *err = nullptr);
+        operator bool() const {return hasAttr(Attr::VALID);}
     }; // class MessageInfo
 
+    static inline MessageInfo::Attr operator |(
+        MessageInfo::Attr a, MessageInfo::Attr b)
+    {
+        return MessageInfo::Attr(int(a) | int(b));
+    }
+    static inline MessageInfo::Attr &operator |=(
+        MessageInfo::Attr &a, MessageInfo::Attr b)
+    {
+        return (a = a | b);
+    }
+    static inline bool operator &(MessageInfo::Attr a, MessageInfo::Attr b) {
+        return (int(a) & int(b)) != 0;
+    }
+    inline bool MessageInfo::hasAttr(Attr attr) const {
+        return attributeSet & attr;
+    }
+    inline void MessageInfo::addAttr(Attr attr) {
+        attributeSet = attributeSet | attr;
+    }
+
+    // for legacy encodings where the SFID comes from bits
     SFID sfidFromEncoding(Platform p, uint32_t sfidBits);
 
     // The payload lengths for a given message.
@@ -438,7 +455,7 @@ namespace iga
         // for simple vector messages, it's dataVectorSize, but for
         // messages with a component mask, it's the number of enabled channels
         int elementsPerAddress() const {
-            if (lookupSendOpInfo(op).hasChMask()) {
+            if (lookupSendOp(op).hasChMask()) {
                 int n = 0;
                 for (int i = 0; i < 4; i++)
                     n += (((1 << i) & dataComponentMask) ? 1 : 0);
@@ -448,10 +465,10 @@ namespace iga
             }
         }
 
-        bool isLoad() const {return lookupSendOpInfo(op).isLoad();}
-        bool isStore() const {return lookupSendOpInfo(op).isStore();}
-        bool isAtomic() const {return lookupSendOpInfo(op).isAtomic();}
-        bool hasCMask() const {return lookupSendOpInfo(op).hasChMask();}
+        bool isLoad() const {return lookupSendOp(op).isLoad();}
+        bool isStore() const {return lookupSendOp(op).isStore();}
+        bool isAtomic() const {return lookupSendOp(op).isAtomic();}
+        bool hasCMask() const {return lookupSendOp(op).hasChMask();}
     }; // VectorMessageArgs
 
     bool encodeDescriptors(
@@ -460,7 +477,6 @@ namespace iga
         SendDesc &exDesc,
         SendDesc &desc,
         std::string &err);
-
 } // iga::
 
 #endif
