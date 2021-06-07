@@ -2308,7 +2308,6 @@
       "sub_opc": [ "LITERAL", "SVM_GATHER" ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
-      "block_size_inferred_from_dst": [ "SVMGATHERBLOCKSIZE", 0 ],
       "log2_num_blocks": [ "BYTE", 2 ],
       "address": [ "URAW", 3 ],
       "twoaddr": [ "TWOADDR", 4 ],
@@ -2333,7 +2332,6 @@
       "sub_opc": [ "LITERAL", "SVM_SCATTER" ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
-      "block_size_inferred_from_dst": [ "SVMGATHERBLOCKSIZE", 4 ],
       "log2_num_blocks": [ "BYTE", 2 ],
       "address": [ "URAW", 3 ],
       "src": [ "RAW", 4 ]
@@ -3809,13 +3807,15 @@
       ]
     ],
     "ISA_SVM_SVM_GATHER": [
+      "unsigned BlockType, BlockNum",
+      "std::tie(BlockType, BlockNum) = GetSvmBlockSizeNum(II::ArgInfo(II::GENERAL | 0), II::ArgInfo(II::GENERAL | 2))",
       [ "CISA_CALL",
         [ "Kernel->AppendVISASvmGatherInst",
           "pred",
           "exec_mask",
           "exec_size",
-          "(VISA_SVM_Block_Type)block_size_inferred_from_dst",
-          "(VISA_SVM_Block_Num)log2_num_blocks",
+          "(VISA_SVM_Block_Type)BlockType",
+          "(VISA_SVM_Block_Num)BlockNum",
           "address",
           "dst"
         ]
@@ -3835,13 +3835,15 @@
       ]
     ],
     "ISA_SVM_SVM_SCATTER": [
+      "unsigned BlockType, BlockNum",
+      "std::tie(BlockType, BlockNum) = GetSvmBlockSizeNum(II::ArgInfo(II::GENERAL | 4), II::ArgInfo(II::GENERAL | 2))",
       [ "CISA_CALL",
         [ "Kernel->AppendVISASvmScatterInst",
           "pred",
           "exec_mask",
           "exec_size",
-          "(VISA_SVM_Block_Type)block_size_inferred_from_dst",
-          "(VISA_SVM_Block_Num)log2_num_blocks",
+          "(VISA_SVM_Block_Type)BlockType",
+          "(VISA_SVM_Block_Num)BlockNum",
           "address",
           "src"
         ]
@@ -3901,7 +3903,6 @@
     "INT":          "GetUnsignedValue(II::ArgInfo({args}))",
     "LOG2OWORDS":   "GetOwords(II::ArgInfo({args}))",
     "LOG2OWORDS_PLUS_8": "GetOwords(II::ArgInfo({args})) + 8",
-    "SVMGATHERBLOCKSIZE": "GetSvmGatherBlockSize(II::ArgInfo({args}))",
     "TWOADDR":      "ProcessTwoAddr(II::ArgInfo({args}))",
     "CONSTVI1ASI32": "ConstVi1Asi32(II::ArgInfo({args}))",
     "ARGCOUNT":     "GetArgCount(II::ArgInfo({args}))",

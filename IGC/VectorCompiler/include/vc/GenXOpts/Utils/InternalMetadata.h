@@ -24,7 +24,13 @@ inline constexpr const char VCEmulationRoutine[] = "VC.Emulation.Routine";
 }
 
 namespace InstMD {
+// SVMBlockType metadata serves interesting purpose:
+//   Finalizer now don't support properly SVM gathers/scatters less then dword
+//   So we are extending everything to 32 but preserving real type in metadata
+//   To use it later in CISA builder when we are creating gather/scatter
 inline constexpr const char SVMBlockType[] = "SVMBlockType";
+
+// These two are used in prologue/epilogue insertion
 inline constexpr const char FuncArgSize[] = "FuncArgSize";
 inline constexpr const char FuncRetSize[] = "FuncRetSize";
 }

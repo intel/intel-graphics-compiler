@@ -620,11 +620,8 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
 
   Value *EltsOffset = FormEltsOffsetVector(NumEltsToLoad, ValueEltSz, LdI);
 
-  unsigned NumBlocks = m_DL->getTypeSizeInBits(LdEltTy) / genx::ByteBits;
-  // This logic is aligned with the on in CisaBuilder and GenXLowering
-  // The reason behind check for == 2 is that svm intrinsics don't support
-  // BlockSize of 2, so for ops with i16s we have to use BlockSize == 1 and NumBlocks == 2
-  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks == 2 ? NumBlocks : 1));
+  // always one element for one channel
+  Value *logNumBlocks = ConstantInt::get(I32Ty, 0);
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));
@@ -715,9 +712,9 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
       {Pred->getType(),
        (m_useGlobalMem ? Offset : EltsOffset)->getType(),
        ValueOp->getType()});
-  unsigned NumBlocks = m_DL->getTypeSizeInBits(ValueOpTy->getScalarType()) / genx::ByteBits;
-  // see the comment in replaceLoad above
-  Value *logNumBlocks = ConstantInt::get(I32Ty, genx::log2(NumBlocks == 2 ? NumBlocks : 1));
+
+  // always one element for one channel
+  Value *logNumBlocks = ConstantInt::get(I32Ty, 0);
   Value *Scale = ConstantInt::get(Type::getInt16Ty(*m_ctx), 0);
   Value *Surface = ConstantInt::get(I32Ty,
                                     visa::getReservedSurfaceIndex(m_stack));

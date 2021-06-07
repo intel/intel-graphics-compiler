@@ -3710,21 +3710,31 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return Byte;
   };
 
-  auto GetSvmGatherBlockSize = [&](II::ArgInfo AI) {
-    LLVM_DEBUG(dbgs() << "GetSvmGatherBlockSize\n");
+  auto GetSvmBlockSizeNum = [&](II::ArgInfo Sz, II::ArgInfo Num) {
+    LLVM_DEBUG(dbgs() << "SVM gather/scatter element size and num blocks\n");
     // svm gather/scatter "block size" field, set to reflect the element
     // type of the data
     Value *V = CI;
-    if (!AI.isRet())
-      V = CI->getArgOperand(AI.getArgIdx());
+    if (!Sz.isRet())
+      V = CI->getArgOperand(Sz.getArgIdx());
     auto *EltType = V->getType()->getScalarType();
     if (auto *MDType = CI->getMetadata(InstMD::SVMBlockType))
       EltType = cast<ValueAsMetadata>(MDType->getOperand(0).get())->getType();
+    ConstantInt *LogOp = cast<ConstantInt>(CI->getArgOperand(Num.getArgIdx()));
+    unsigned LogNum = LogOp->getZExtValue();
     unsigned ElBytes = getResultedTypeSize(EltType, DL);
     switch (ElBytes) {
-      // For N = 2 byte data type, use block size 1 and block count 2.
-      // Otherwise, use block size N and block count 1.
+      // For N = 2 byte data type, use block size 1 and block count x2
+      // Otherwise, use block size N and original block count.
     case 2:
+      ElBytes = 0;
+      IGC_ASSERT(LogNum < 4);
+      // This is correct but I can not merge this in while ISPC not fixed
+      // LogNum += 1;
+
+      // this is incorrect temporary solution
+      LogNum = 1;
+      break;
     case 1:
       ElBytes = 0;
       break;
@@ -3739,7 +3749,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                                   DS_Error};
       getContext().diagnose(Err);
     }
-    return ElBytes;
+    return std::make_pair(ElBytes, LogNum);
   };
 
   auto CreateOpndPredefinedSrc = [&](PreDefined_Vars RegId, unsigned ROffset,
