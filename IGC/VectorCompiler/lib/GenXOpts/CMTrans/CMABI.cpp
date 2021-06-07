@@ -613,7 +613,7 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
 CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   Function *F = CGN->getFunction();
 
-  // nothing to do for declarations or already visited functions.
+  // Nothing to do for declarations or already visited functions.
   if (!F || F->isDeclaration() || AlreadyVisited.count(F))
     return 0;
 
@@ -647,6 +647,10 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   // Non-kernels, only transforms module locals.
   if (!F->hasLocalLinkage())
     return 0;
+
+  // Indirectly called functions cannot be transformed in general case.
+  if (F->hasAddressTaken())
+    return nullptr;
 
   SmallVector<Argument*, 16> PointerArgs;
   for (auto &Arg: F->args())
@@ -1234,22 +1238,12 @@ public:
 
   void run() {
     std::vector<CallInst *> DirectUsers;
-    std::vector<User *> IndirectUsers;
 
     for (auto *U : OrigFunc.users()) {
-      if (isa<CallInst>(U))
-        DirectUsers.push_back(cast<CallInst>(U));
-      else
-        IndirectUsers.push_back(U);
-    }
-
-    for (auto *U : IndirectUsers) {
-      // ignore old constexprs as
-      // they may still be hanging around
-      // but are irrelevant as we called breakConstantExprs earlier
-      // in this pass
-      if (!isa<ConstantExpr>(U))
-        U->replaceUsesOfWith(&OrigFunc, &NewFunc);
+      IGC_ASSERT_MESSAGE(
+          isa<CallInst>(U),
+          "the transformation is not applied to indirectly called functions");
+      DirectUsers.push_back(cast<CallInst>(U));
     }
 
     std::vector<CallInst *> NewDirectUsers;
