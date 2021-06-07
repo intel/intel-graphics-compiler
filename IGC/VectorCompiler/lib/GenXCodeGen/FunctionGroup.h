@@ -112,12 +112,17 @@ private:
   SmallVector<FunctionGroup *, 8> NonMainGroups;
 
   class FGMap {
-    using ElementType = std::map<Function *, FunctionGroup *>;
-    ElementType data[static_cast<size_t>(FGType::MAX)];
-
+    using ElementType = std::map<const Function *, FunctionGroup *>;
+    std::array<ElementType, static_cast<size_t>(FGType::MAX)> data = {};
   public:
     ElementType &operator[](FGType type) {
       auto index = static_cast<size_t>(type);
+      IGC_ASSERT(index < data.size());
+      return data[index];
+    }
+    const ElementType &operator[](FGType type) const {
+      auto index = static_cast<size_t>(type);
+      IGC_ASSERT(index < data.size());
       return data[index];
     }
   };
@@ -145,12 +150,12 @@ public:
   // clear : clear out the FunctionGroupAnalysis
   void clear();
   // getGroup : get the FunctionGroup containing Function F, else 0
-  FunctionGroup *getGroup(Function *F, FGType Type);
-  FunctionGroup *getGroup(Function *F);
-  FunctionGroup *getSubGroup(Function *F);
+  FunctionGroup *getGroup(const Function *F, FGType Type) const;
+  FunctionGroup *getGroup(const Function *F) const;
+  FunctionGroup *getSubGroup(const Function *F) const;
   // getGroupForHead : get the FunctionGroup for which Function F is the
   // head, else 0
-  FunctionGroup *getGroupForHead(Function *F);
+  FunctionGroup *getGroupForHead(const Function *F) const;
   // replaceFunction : replace a Function in a FunctionGroup
   void replaceFunction(Function *OldF, Function *NewF);
   // iterator for FunctionGroups in the analysis

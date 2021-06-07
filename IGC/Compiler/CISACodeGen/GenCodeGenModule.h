@@ -170,13 +170,13 @@ namespace IGC {
         llvm::SmallVector<FunctionGroup*, 8> Groups;
 
         /// \brief Each function belongs to a uniquely defined function group.
-        llvm::DenseMap<llvm::Function*, FunctionGroup*> GroupMap;
+        llvm::DenseMap<const llvm::Function*, FunctionGroup*> GroupMap;
 
         /// \brief Each function also belongs to a uniquely defined sub-group of a stack-call entry
-        llvm::DenseMap<llvm::Function*, llvm::Function*> SubGroupMap;
+        llvm::DenseMap<const llvm::Function*, llvm::Function*> SubGroupMap;
 
         /// \brief Properties for each function
-        llvm::DenseMap<llvm::Function*, uint32_t> FuncProperties;
+        llvm::DenseMap<const llvm::Function*, uint32_t> FuncProperties;
 
         /// \brief Special group that contains indirect call functions and the dummy kernel
         FunctionGroup* IndirectCallGroup = nullptr;
@@ -212,14 +212,14 @@ namespace IGC {
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
 
         /// \brief Get the FunctionGroup containing Function F, else nullptr.
-        FunctionGroup* getGroup(llvm::Function* F);
+        FunctionGroup* getGroup(const llvm::Function* F);
 
         /// \brief Get the FunctionGroup for which Function F is the head, else
         /// nullptr.
-        FunctionGroup* getGroupForHead(llvm::Function* F);
+        FunctionGroup* getGroupForHead(const llvm::Function* F);
 
         /// \brief Get the group head for the group to which F belongs.
-        llvm::Function* getGroupHead(llvm::Function* F) {
+        llvm::Function* getGroupHead(const llvm::Function* F) {
             auto FG = getGroup(F);
             IGC_ASSERT(nullptr != FG);
             return FG->getHead();
@@ -236,7 +236,7 @@ namespace IGC {
             SubGroupMap[F] = SubGroupHead;
         }
 
-        bool isIndirectCallGroup(llvm::Function* F) {
+        bool isIndirectCallGroup(const llvm::Function* F) {
             FunctionGroup* FG = getGroup(F);
             return FG != nullptr && FG == IndirectCallGroup;
         }
@@ -246,31 +246,31 @@ namespace IGC {
         }
 
         /// \brief Check whether this is a group header.
-        bool isGroupHead(llvm::Function* F) {
+        bool isGroupHead(const llvm::Function* F) {
             return getGroupForHead(F) != nullptr;
         }
 
         /// \brief Check whether this is the last function in a function group. This
         /// order is also reflected in the module function list.
-        bool isGroupTail(llvm::Function* F) {
+        bool isGroupTail(const llvm::Function* F) {
             FunctionGroup* FG = getGroup(F);
             IGC_ASSERT_MESSAGE(nullptr != FG, "not in function group");
             return F == FG->back();
         }
 
-        bool isLeafFunc(llvm::Function* F) {
+        bool isLeafFunc(const llvm::Function* F) {
             auto FI = FuncProperties.find(F);
             if (FI != FuncProperties.end()) {
                 return (FI->second & (uint32_t)FuncPropertyInfo::FPI_LEAF);
             }
             return false;
         }
-        void setLeafFunc(llvm::Function* F) {
+        void setLeafFunc(const llvm::Function* F) {
             auto II = FuncProperties.find(F);
             uint32_t P = (II != FuncProperties.end()) ? II->second : 0;
             FuncProperties[F] = (P | (uint32_t)FuncPropertyInfo::FPI_LEAF);
         }
-        void copyFuncProperties(llvm::Function* To, llvm::Function* From) {
+        void copyFuncProperties(const llvm::Function* To, const llvm::Function* From) {
             auto II = FuncProperties.find(From);
             if (II != FuncProperties.end()) {
                 FuncProperties[To] = II->second;

@@ -66,7 +66,8 @@ void FunctionGroupAnalysis::clear() {
   M = nullptr;
 }
 
-FunctionGroup *FunctionGroupAnalysis::getGroup(Function *F, FGType Type) {
+FunctionGroup *FunctionGroupAnalysis::getGroup(const Function *F,
+                                               FGType Type) const {
   auto i = GroupMap[Type].find(F);
   if (i == GroupMap[Type].end())
     return nullptr;
@@ -74,18 +75,18 @@ FunctionGroup *FunctionGroupAnalysis::getGroup(Function *F, FGType Type) {
 }
 
 // getGroup : get the FunctionGroup containing Function F, else 0
-FunctionGroup *FunctionGroupAnalysis::getGroup(Function *F) {
+FunctionGroup *FunctionGroupAnalysis::getGroup(const Function *F) const {
   return getGroup(F, FGType::GROUP);
 }
 
-FunctionGroup *FunctionGroupAnalysis::getSubGroup(Function *F) {
+FunctionGroup *FunctionGroupAnalysis::getSubGroup(const Function *F) const {
   return getGroup(F, FGType::SUBGROUP);
 }
 
 // getGroupForHead : get the FunctionGroup for which Function F is the
 // head, else 0
-FunctionGroup *FunctionGroupAnalysis::getGroupForHead(Function *F) {
-  auto FG = getGroup(F);
+FunctionGroup *FunctionGroupAnalysis::getGroupForHead(const Function *F) const {
+  auto *FG = getGroup(F);
   IGC_ASSERT(FG->size());
   if (*FG->begin() == F)
     return FG;

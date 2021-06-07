@@ -730,7 +730,7 @@ void GenXFunctionGroupAnalysis::replaceEntryFunc(Function* OF, Function* NF)
         SubGroupMap.erase(SGIter);
         SubGroupMap.insert(std::make_pair(NF, NF));
     }
-    DenseMap<Function*, Function*>::iterator SGII, SGIE;
+    DenseMap<const Function*, Function*>::iterator SGII, SGIE;
     for (SGII = SubGroupMap.begin(), SGIE = SubGroupMap.end();
         SGII != SGIE; ++SGII)
     {
@@ -753,7 +753,7 @@ void GenXFunctionGroupAnalysis::clear()
     M = nullptr;
 }
 
-FunctionGroup* GenXFunctionGroupAnalysis::getGroup(Function* F)
+FunctionGroup* GenXFunctionGroupAnalysis::getGroup(const Function* F)
 {
     auto I = GroupMap.find(F);
     if (I == GroupMap.end())
@@ -761,13 +761,11 @@ FunctionGroup* GenXFunctionGroupAnalysis::getGroup(Function* F)
     return I->second;
 }
 
-FunctionGroup* GenXFunctionGroupAnalysis::getGroupForHead(Function* F)
+FunctionGroup* GenXFunctionGroupAnalysis::getGroupForHead(const Function* F)
 {
     auto FG = getGroup(F);
     if (FG->getHead() == F)
-    {
         return FG;
-    }
     return nullptr;
 }
 
