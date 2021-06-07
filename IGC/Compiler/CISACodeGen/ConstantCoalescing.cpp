@@ -1853,25 +1853,32 @@ void ConstantCoalescing::AdjustChunk(BufChunk* cov_chunk, uint start_adj, uint s
         else
         {
             // gfx path
-            IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
+            IGC_ASSERT(isa<IntToPtrInst>(addr_ptr) || isa<BitCastInst>(addr_ptr));
             addr_ptr->mutateType(PointerType::get(vty, addrSpace));
+            Instruction* intToPtrInst = cast<Instruction>(addr_ptr);
+            while (isa<IntToPtrInst>(intToPtrInst->getOperand(0)) ||
+                isa<BitCastInst>(intToPtrInst->getOperand(0)))
+            {
+                intToPtrInst = cast<Instruction>(intToPtrInst->getOperand(0));
+            }
+            IGC_ASSERT(isa<IntToPtrInst>(intToPtrInst));
             if (cov_chunk->baseIdxV == nullptr)
             {
                 Value* cv_start = ConstantInt::get(irBuilder->getInt32Ty(), cov_chunk->chunkStart * cov_chunk->elementSize);
-                cast<Instruction>(addr_ptr)->setOperand(0, cv_start);
+                intToPtrInst->setOperand(0, cv_start);
             }
             else
             {
-                Value* op = cast<Instruction>(addr_ptr)->getOperand(0);
-                IGC_ASSERT(isa<Instruction>(op));
-                Instruction* eac = cast<Instruction>(op);
+                IGC_ASSERT(isa<Instruction>(intToPtrInst->getOperand(0)));
+                Instruction* eac = cast<Instruction>(intToPtrInst->getOperand(0));
                 IGC_ASSERT(nullptr != eac);
+                // Has to be `Add` or `Or` instruction, see SimpleBaseOffset().
                 IGC_ASSERT((eac->getOpcode() == Instruction::Add) || (eac->getOpcode() == Instruction::Or));
                 ConstantInt* cv_start = ConstantInt::get(irBuilder->getInt32Ty(), cov_chunk->chunkStart * cov_chunk->elementSize);
                 IGC_ASSERT(nullptr != cv_start);
                 if (cv_start->isZero())
                 {
-                    cast<Instruction>(addr_ptr)->setOperand(0, eac->getOperand(0));
+                    intToPtrInst->setOperand(0, eac->getOperand(0));
                 }
                 else
                 {
