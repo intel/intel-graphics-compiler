@@ -393,7 +393,11 @@ public:
     ~LivenessAnalysis();
     void computeLiveness();
     bool isLiveAtEntry(const G4_BB* bb, unsigned var_id) const;
+    bool isUseThrough(const G4_BB* bb, unsigned var_id) const;
+    bool isDefThrough(const G4_BB* bb, unsigned var_id) const;
     bool isLiveAtExit(const G4_BB* bb, unsigned var_id) const;
+    bool isUseOut(const G4_BB* bb, unsigned var_id) const;
+    bool isUseIn(const G4_BB* bb, unsigned var_id) const;
     bool isAddressSensitive (unsigned num) const  // returns true if the variable is address taken and also has indirect access
     {
         return addr_taken.isSet(num);
@@ -408,6 +412,8 @@ public:
     unsigned getNumSplitStartID() const {return numSplitStartID;}
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}
     void dump() const;
+    void dumpBB(G4_BB* bb) const;
+    void dumpLive(BitSet& live) const;
     void dumpGlobalVarNum() const;
     bool isEmptyLiveness() const;
     bool writeWholeRegion(const G4_BB* bb, const G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;

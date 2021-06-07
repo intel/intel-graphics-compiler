@@ -358,7 +358,13 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     bool isOptDisabled = ctx.getModuleMetaData()->compOpt.OptDisable;
     bool fastCompile = ctx.getModuleMetaData()->compOpt.FastCompilation;
     bool highAllocaPressure = ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold);
-
+    bool isPotentialHPCKernel = (ctx.m_instrTypes.numInsts > IGC_GET_FLAG_VALUE(HPCInstNumThreshold)) ||
+        (ctx.m_instrTypes.numGlobalInsts > IGC_GET_FLAG_VALUE(HPCGlobalInstNumThreshold)) || IGC_GET_FLAG_VALUE(HPCFastCompilation);
+    if (highAllocaPressure || isPotentialHPCKernel)
+    {
+        IGC_SET_FLAG_VALUE(FastCompileRA, 1);
+        IGC_SET_FLAG_VALUE(HybridRAWithSpill, 1);
+    }
 
     if (IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
         IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers))
@@ -677,16 +683,21 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (!isOptDisabled)
     {
         // Optimize lower-level IR
-        if (!fastCompile && !highAllocaPressure)
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
         {
             mpm.add(createIGCInstructionCombiningPass());
         }
         mpm.add(new GenSpecificPattern());
-        if (!fastCompile && !highAllocaPressure)
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
         {
             mpm.add(createEarlyCSEPass());
         }
-        if (!fastCompile && !highAllocaPressure && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
+        else if (highAllocaPressure || isPotentialHPCKernel)
+        {
+            mpm.add(createSinkingPass());
+        }
+        if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel &&
+            IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(createLICMPass());
         }

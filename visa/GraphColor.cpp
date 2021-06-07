@@ -9855,12 +9855,13 @@ int GlobalRA::coloringRegAlloc()
     bool fastCompile =
         (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
         !hasStackCall;
+
     if (fastCompile)
     {
         fastCompileIter = 0;
     }
-    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
 
+    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
     bool rematDone = false;
     VarSplit splitPass(*this);
     if (kernel.getOption(vISA_SplitGRFAlignedScalar))
@@ -9868,7 +9869,6 @@ int GlobalRA::coloringRegAlloc()
         SplitAlignedScalars split(*this);
         split.run();
     }
-
     while (iterationNo < maxRAIterations)
     {
         if (builder.getOption(vISA_RATrace))
@@ -10210,7 +10210,6 @@ int GlobalRA::coloringRegAlloc()
                     // it modifies IR
                     regChart->dumpRegChart(std::cerr);
                 }
-
                 expandSpillFillIntrinsics(nextSpillOffset);
                 if (builder.getOption(vISA_OptReport))
                 {
@@ -10253,7 +10252,6 @@ int GlobalRA::coloringRegAlloc()
             break;
         }
     }
-
     assignRegForAliasDcl();
     computePhyReg();
 
