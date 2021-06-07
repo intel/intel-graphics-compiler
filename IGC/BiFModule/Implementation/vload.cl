@@ -74,6 +74,29 @@ VLOADN_TYPE(float,  f32)
 VLOADN_TYPE(double, f64)
 #endif
 
+// "When extended by the cl_khr_fp16 extension, the generic type gentypen is extended to include half"
+#define VLOADN_SCALAR_HALF_DEF(addressSpace, offsetType, mangle)                                 \
+INLINE half SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(vload, _##mangle##_i32, n_Rhalf)(               \
+    offsetType offset, addressSpace half * p, int n) {                                           \
+  const addressSpace half *pOffset = p + offset;                                                 \
+  half ret;                                                                                      \
+  __builtin_IB_memcpy_##addressSpace##_to_private(                                               \
+      (private uchar *)&ret, (addressSpace uchar *)pOffset, sizeof(half), sizeof(half));         \
+  return ret;                                                                                    \
+}
+
+#define VLOADN_SCALAR_HALF_AS(addressSpace, mang)            \
+VLOADN_SCALAR_HALF_DEF(addressSpace, long, i64_##mang##f16)  \
+VLOADN_SCALAR_HALF_DEF(addressSpace, int,  i32_##mang##f16)  \
+
+VLOADN_SCALAR_HALF_AS(private,  p0)
+VLOADN_SCALAR_HALF_AS(global,   p1)
+VLOADN_SCALAR_HALF_AS(constant, p2)
+VLOADN_SCALAR_HALF_AS(local,    p3)
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+VLOADN_SCALAR_HALF_AS(generic,  p4)
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
 //*****************************************************************************/
 // vload_half
 // "Reads a half value from the address computed as (p + (offset)) and converts it to a float result value."
