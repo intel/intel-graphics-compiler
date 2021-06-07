@@ -110,11 +110,11 @@ void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const {
     OS << "<VISADebugInfo>\n";
     OS << "Kernel: " << kernelName << "\n";
     OS << "RelocOffset: " << relocOffset << "\n";
-    OS << "NumSubroutines: " << numSubRoutines << "\n";
+    OS << "NumSubroutines: " << subs.size() << "\n";
 
-    IGC_ASSERT(numSubRoutines == subs.size());
-    OS << "Subroutines:\n    ";
+    OS << "Subroutines: [\n    ";
     PrintItems(OS, subs, "\n    ");
+    OS << "  ]\n";
     OS << "CFI: {\n";
     cfi.print(OS);
     OS << "  }\n";
