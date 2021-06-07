@@ -887,20 +887,21 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
 
     bool needDummyKernel = false;
 
-    // Creates an empty dummy kernel.
-    // This kernel will only be used for creating the symbol table.
-    // All indirectly called functions will also be attached to this kernel's binary.
-    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
-        pCtx->type == ShaderType::OPENCL_SHADER)
+    // Check when we need to generate a dummy kernel. This is only useful for attaching
+    // the symbol table to its program output for indirect calls and global variable relocation.
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && pCtx->type == ShaderType::OPENCL_SHADER)
     {
-        if (pCtx->m_enableFunctionPointer)
-        {
+        if (pCtx->m_enableFunctionPointer) {
             // Symbols are needed for external functions and function pointers
             needDummyKernel = true;
         }
-        else if (!modMD->inlineProgramScopeOffsets.empty())
-        {
+        else if (!modMD->inlineProgramScopeOffsets.empty()) {
             // Create one also if global variables are present and require symbols
+            needDummyKernel = true;
+        }
+        else if (IGC_GET_FLAG_VALUE(FunctionCloningThreshold) > 0 && pCtx->enableFunctionCall()) {
+            // If this flag is enabled and there are any function calls, conservatively create a dummy kernel
+            // in case we need to transform normal calls into indirect calls to avoid cloning in GenCodeGenModule.cpp
             needDummyKernel = true;
         }
     }
@@ -925,7 +926,7 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
 
         // Promote SIMD size information from kernels, which has indirectly called
         // functions. All such functions will be connected to the default kernel in
-        // GenCodeGenModule.cpp (addIndirectFuncsToKernelGroup)
+        // GenCodeGenModule.cpp
         for (auto I = M.begin(), E = M.end(); I != E; ++I)
         {
             Function* F = &(*I);

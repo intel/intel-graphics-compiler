@@ -360,6 +360,10 @@ DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug inf
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.", true)
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, false, "If enabled, stack calls that uses implicit args will be force inlined.", true)
+DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,    0,
+    "Limits how many times functions can be cloned when called from multiple function groups." \
+    "If exceeding the cloning threshold, compile the function only once and use address relocation instead." \
+    "A value of '0' means no limit on times it can be cloned", true)
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,  "Setting OCL inline thershold", true)
 DECLARE_IGC_REGKEY(bool, DisableAddingAlwaysAttribute,  false, "Disable adding always attribute", true)
 DECLARE_IGC_REGKEY(bool, EnableForceGroupSize,          false, "Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY", false)
