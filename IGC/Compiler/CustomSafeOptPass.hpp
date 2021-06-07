@@ -65,7 +65,6 @@ namespace IGC
         void visitFPTruncInst(llvm::FPTruncInst& I);
         void visitExtractElementInst(llvm::ExtractElementInst& I);
         void visitLdptr(llvm::SamplerLoadIntrinsic* inst);
-        void visitLdRawVec(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
         void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
         bool isIdentityMatrix(llvm::ExtractElementInst& I);

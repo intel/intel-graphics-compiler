@@ -455,12 +455,6 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             break;
         }
 
-        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-        {
-            visitLdRawVec(inst);
-            break;
-        }
-
         default:
             break;
         }
@@ -1324,56 +1318,6 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic* inst)
     else
     {
         inst->replaceAllUsesWith(pNewCallInst);
-    }
-}
-
-
-void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst* inst)
-{
-    //Try to optimize and remove vector ld raw and change to scalar ld raw
-
-    //%a = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p1441792f32(
-    //.....float addrspace(1441792) * %243, i32 %offset, i32 4, i1 false), !dbg !216
-    //%b = extractelement <4 x float> % 245, i32 0, !dbg !216
-
-    //into
-
-    //%new_offset = add i32 %offset, 0, !dbg !216
-    //%b = call float @llvm.genx.GenISA.ldraw.indexed.f32.p1441792f32.i32.i32.i1(
-    //.....float addrspace(1441792) * %251, i32 %new_offset, i32 4, i1 false)
-
-    if (inst->hasOneUse() &&
-        isa<ExtractElementInst>(inst->user_back()))
-    {
-        auto EE = cast<ExtractElementInst>(inst->user_back());
-        if (auto constIndex = dyn_cast<ConstantInt>(EE->getIndexOperand()))
-        {
-            llvm::IRBuilder<> builder(inst);
-
-            llvm::SmallVector<llvm::Type*, 2> ovldtypes{
-                EE->getType(), //float type
-                inst->getOperand(0)->getType(),
-            };
-
-            // For new_offset we need to take into acount the index of the Extract
-            // and convert it to bytes and add it to the existing offset
-            auto new_offset = constIndex->getZExtValue() * 4;
-
-            llvm::SmallVector<llvm::Value*, 4> new_args{
-                inst->getOperand(0),
-                builder.CreateAdd(inst->getOperand(1),builder.getInt32((unsigned)new_offset)),
-                inst->getOperand(2),
-                inst->getOperand(3)
-            };
-
-            Function* pLdraw_indexed_intrinsic = llvm::GenISAIntrinsic::getDeclaration(
-                inst->getModule(),
-                GenISAIntrinsic::GenISA_ldraw_indexed,
-                ovldtypes);
-
-            llvm::Value* ldraw_indexed = builder.CreateCall(pLdraw_indexed_intrinsic, new_args, "");
-            EE->replaceAllUsesWith(ldraw_indexed);
-        }
     }
 }
 
