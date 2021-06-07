@@ -34,6 +34,186 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+//
+/// GenXDebugInfo
+/// -------------
+///
+/// The goal of the pass is to provide debug information for each generated
+/// genisa instruction (if such information is available).  The debug
+/// information is encoded in DWARF format.
+///
+/// Ultimately, the pass gets data from 2 sources:
+///
+///   1. LLVM debug information encoded in LLVM IR itself. It captures the
+///   important pieces of the source language's Abstract Syntax Tree and
+///   maps it onto LLVM code.
+///   LLVM framework should maintain it automatically, given that we follow
+///   relatively simple rules while designing IR transformations:
+///      https://llvm.org/docs/HowToUpdateDebugInfo.html
+///
+///   2. Debug information obtained from the finalizer. This information is
+///   encoded in some proprietary format (blob) and contains the following:
+///     a. mapping between vISA and genISA instructions
+///     b. live intervals of the virtual registers, information about spilled
+///     values, etc.
+///     c. call frame information
+///
+/// The pass feeds the above information to the DebugInfo library which in turn
+/// produces the final DWARF.
+///
+/// Operation of the pass
+/// ^^^^^^^^^^^^^^^^^^^^^
+///
+/// The pass assumes that some data is already being made available by other
+/// passes/analysis.
+///
+/// * FunctionGroupAnalysis:
+///     provides information about the overall "structure"
+///     of the program: functions, stack calls, indirect calls, subroutines and
+///     relationships.
+///
+/// * GenXModule:
+///     1. for each LLVM Function provides information about
+///        LLVM instruction -> vISA instructions mapping. This information is
+///        produced/maintained during operation of CISABuilder pass.
+///     2. for each LLVM Function provides access to a corresponding
+///      *VISAKernel* object.
+///
+/// * GenXVisaRegAlloc:
+///     provides the mapping between LLVM values and virtual registers.
+///
+/// * GenXCisaBuilder:
+///     provides access to VISABuilder, which allows us to have access to
+///     VISAKernel objects (some Functions from LLVM IR, like the ones
+///     representing kernel spawns these) that contain:
+///         a. debug information maintained by finalizer (see above)
+///         b. the respected gen binaries
+///
+/// Data Structures
+/// ^^^^^^^^^^^^^^^
+///
+/// Since data is aggregated from different sources, some extra data structures
+/// are used to simplify bookkeeping.
+///
+/// - *genx::di::VisaMapping*
+///   provides the mapping from LLMV IR instruction to vISA instruction index,
+///   that represents the first vISA instruction spawned by the LLVM IR
+///   instruction. A single LLVM IR instruction can spawn several
+///   vISA instructions - currently the number of spawned instructions is
+///   derived implicitly (which is not always correct but works in most of the
+///   cases).
+///
+/// - *ProgramInfo*
+///   A transient object that groups several llvm Functions that are eventually
+///   get compiled into a single gen entity. A separate elf file with the
+///   debug information is generated for each gen entity.
+///
+///   The grouping is done as follows:
+///   - We piggyback on FunctionGroup analysis. Each kernel function becomes the
+///   head of the group. Different FunctionGroups always result in different
+///   *ProgramInfo* objects. However, a single FunctionGroup can be split even
+///   further. This can happen if we have an indirect call to some function. In
+///   this case, this function shall is compiled into a separate gen object
+///   (and a separate VISAKernel is produced aswell).
+///
+///   The above approach does not work correctly in all cases. See
+///   *KNOWN ISSUES* section.
+///
+/// - *CompiledVisaWrapper*
+///  For an arbitrary pair of llvm IR Function and VISAKernel objects,
+///  does the following:
+///     + Validates that IR Function and VISAKernel object are related (that is
+///       the vISA spawned by IR Function is owned by the VISAKernel.
+///     + Extracts Gen Binary.
+///     + Extracts Debug Info Blob from finalizer and decodes it.
+///
+/// *GenXFunction*
+///  An object that loosely resembles MachineFunctoin from the LLVM Machine IR.
+///  This is an object that for a given LLVM IR Function can access to:
+///     - LLVM IR Function
+///     - VisaMapping
+///     - Subtarget
+///     - CompiledVisaWrapper
+///     - GenXVisaRegAlloc
+///  GenXFunctoin serves as a primary method to communicate with the DebugInfo
+///  library. The data these objects hold allow us to reason about the debug
+///  information for any Gen construct (instruction, variable, etc).
+///
+/// Examples
+/// ^^^^^^^^
+///
+/// Examples below use the following naming conventions:
+///     K* - kernel function
+///     L* - subroutine (non-inlined function)
+///     S* - simple stack call
+///     I* - indirectly-called function
+///
+/// FunctionGroup construction peculiarities.
+///
+///   When function groups are constructed, we do some peculiar transformations.
+///
+///    Case_1 (FG):
+///         Source Code: { K1 calls L1, K2 calls L1 }
+///         IR after function groups: { G1 = {K1, L1}, G2 = { K2, L1'} },
+///             where L1' is a clone of L1.
+///    Case_2 (FG):
+///         Source Code: { K1 calls S_1, both call L1 }.
+///         IR after function groups: { G1 = {K1, L1, S1, L1' } }.
+///    Case_3 (FG):
+///         Source Code: { K1 calls I1 and I2 }.
+///         IR after function grups { G1 = {K1}, G2 = {I1}, G3={I2} }.
+///
+/// VISA/genISA  construction peculiarities.
+///
+///   Case 1:
+///     Source code: K1, K1.
+///     Compilation phase:
+///         two function groups are created, K1 and K2 are heads.
+///         two different VISAKernel produced.
+///     DebugInfoGeneration:
+///         Decoded Debug info for each VISAKernel contains:
+///           one compiled object description.
+///           two "*.elf" files are created.
+///
+///   Case 2:
+///     Source code: K1, S1. K1 calls S1.
+///     Compilation phase:
+///         1 function group is created, K1 is the head.
+///         1 VISAKernel and 1 VISAFunction are created.
+///     DebugInfoGeneratation:
+///         Decoded debug info contains *2* compiled objects.
+///         Each object has separate vISA indexes - visa instructions are
+///         counted separately. Still, both are compiled into the same gen
+///         object, so only one "*.elf" file is emitted.
+///
+///   Case 3:
+///     Source code: K1, I1. K1 calls I1
+///     Compilation phase:
+///         1 function group is created, K1 is the head.
+///         Somehow 2 VISAKernels are created.
+///     DebugInfoGeneratation:
+///         Decoded debug info contains *1* compiled objects (but we have 2
+///         VISAKernel).
+///         In the end, we emit two "*.elf" files.
+///
+/// KNOWN ISSUES
+/// ^^^^^^^^^^^^
+///
+/// Note: see the "Examples" section for the description of the used naming
+/// convention.
+///
+///   Case 1: (debug info can't be emitted)
+///     Source code: *K1*, *L1* *K1* calls *L1*.
+///     Compilation phase:
+///         1 function group is created.
+///         1 VISAKernel produced.
+///     DebugInfoGeneration:
+///       1 *ProgramInfo* created { K1, L1}.
+///       Decoded Debug info contains 1 compiled object, that has 1 subroutines.
+///
+///   Problem: way to map LLVM Function onto subroutine is not implemented.
+//===----------------------------------------------------------------------===//
+
 #define DEBUG_TYPE "GENX_DEBUG_INFO"
 
 using namespace llvm;
