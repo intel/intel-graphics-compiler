@@ -36,13 +36,6 @@ namespace IGC
         // Constructs a wrapper to the given CodeGenContext instance.
         CodeGenContextWrapper(CodeGenContext* pCtx);
         CodeGenContextWrapper();
-        // param ShaderType _type
-        // param CBTILayout* _bitLayout
-        // param CPlatform* _platform
-        //             all of the above params are needed in order to create new CodeGenContext.
-        // param bool _owner - true if the pass is the owner of the context and responsible to delete it.
-        CodeGenContextWrapper(ShaderType _type, const CBTILayout* _bitLayout, const CPlatform* _platform,
-            const CDriverInfo* driverInfo, bool _owner);
         ~CodeGenContextWrapper();
 
         // return the Context
@@ -55,8 +48,6 @@ namespace IGC
 
     private:
         CodeGenContext* m_ctx;
-        bool m_ctxOwner;
-
     };
 
 } // namespace IGC
