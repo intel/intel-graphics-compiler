@@ -86,23 +86,23 @@ void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream& OS) const {
   OS << "    callerbefpValid: " << callerbefpValid << "\n";
   OS << "    retAddrValid: " << retAddrValid << "\n";
 
-  OS << "    befp list: [\n";
+  OS << "    befp list: [\n    ";
   PrintItems(OS, befp, "\n        ");
   OS << "    ]\n";
 
-  OS << "    callerbefp list: [\n";
+  OS << "    callerbefp list: [\n    ";
   PrintItems(OS, callerbefp, "\n        ");
   OS << "    ]\n";
 
-  OS << "    retaddr list: [\n";
+  OS << "    retaddr list: [\n    ";
   PrintItems(OS, retAddr, "\n        ");
   OS << "    ]\n";
 
-  OS << "    callee save entry list: [\n";
+  OS << "    callee save entry list: [\n    ";
   PrintItems(OS, calleeSaveEntry, "\n        ");
   OS << "    ]\n";
 
-  OS << "    caller save entry list: [\n";
+  OS << "    caller save entry list: [\n    ";
   PrintItems(OS, callerSaveEntry, "\n        ");
   OS << "    ]\n";
 }
