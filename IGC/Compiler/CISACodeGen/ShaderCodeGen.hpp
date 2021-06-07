@@ -206,7 +206,7 @@ public:
     CVariable* BitCast(CVariable* var, VISA_Type newType);
     void        ResolveAlias(CVariable* var);
     void        CacheArgumentsList();
-    void        MapPushedInputs();
+    virtual void MapPushedInputs();
     void        CreateGatherMap();
     void        CreateConstantBufferOutput(SKernelProgram* pKernelProgram);
     void        CreateFunctionSymbol(llvm::Function* pFunc);

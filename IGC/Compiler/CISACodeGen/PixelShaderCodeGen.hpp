@@ -71,6 +71,8 @@ public:
 
     void        AllocatePSPayload();
     void        AllocatePixelPhasePayload();
+    void        MapPushedInputs() override;
+    int         getSetupIndex(uint inputIndex);
 
     void        FillProgram(SPixelShaderKernelProgram* pKernelProgram);
     void        AddRenderTarget(uint index);
@@ -114,6 +116,10 @@ public:
     std::bitset<NUMBER_EINTERPOLATION> m_ModeUsedFloat;
     bool LowerPSInput();
     static bool IsInterpolationLinear(e_interpolation mode);
+    // attribute "packing"
+    // Non continuous "input indexes" may be received and they are allocated one after another.
+    // We need to map them to "setup indexes".
+    std::set<unsigned int> m_SetupIndicesUsed;
 
 protected:
     void CreatePassThroughVar();
