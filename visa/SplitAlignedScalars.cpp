@@ -264,6 +264,7 @@ void SplitAlignedScalars::run()
 
                     numMovsAdded++;
                 }
+                changesMade = true;
             }
 
             for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
@@ -318,6 +319,7 @@ void SplitAlignedScalars::run()
 
                         numMovsAdded++;
                     }
+                    changesMade = true;
                 }
             }
 

@@ -9862,13 +9862,8 @@ int GlobalRA::coloringRegAlloc()
     }
 
     unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
-    bool rematDone = false;
+    bool rematDone = false, alignedScalarSplitDone = false;
     VarSplit splitPass(*this);
-    if (kernel.getOption(vISA_SplitGRFAlignedScalar))
-    {
-        SplitAlignedScalars split(*this);
-        split.run();
-    }
     while (iterationNo < maxRAIterations)
     {
         if (builder.getOption(vISA_RATrace))
@@ -9991,7 +9986,7 @@ int GlobalRA::coloringRegAlloc()
                     !kernel.getOption(vISA_FastSpill) &&
                     !fastCompile &&
                     (kernel.getOption(vISA_ForceRemat) || runRemat);
-                bool rematChange = false;
+                bool rerunGRA = false;
                 bool globalSplitChange = false;
 
                 if (!rematDone &&
@@ -10006,10 +10001,20 @@ int GlobalRA::coloringRegAlloc()
                     rematDone = true;
 
                     // Re-run GRA loop only if remat caused changes to IR
-                    if (remat.getChangesMade())
-                    {
-                        rematChange = true;
-                    }
+                    rerunGRA |= remat.getChangesMade();
+                }
+
+                if (kernel.getOption(vISA_SplitGRFAlignedScalar) &&
+                    !fastCompile &&
+                    !kernel.getOption(vISA_FastSpill) &&
+                    !alignedScalarSplitDone)
+                {
+                    SplitAlignedScalars split(*this);
+                    split.run();
+                    alignedScalarSplitDone = true;
+
+                    // Re-run GRA loop if changes were made to IR
+                    rerunGRA |= split.getChangesMade();
                 }
 
                 //Calculate the spill caused by send to decide if global splitting is required or not
@@ -10042,7 +10047,7 @@ int GlobalRA::coloringRegAlloc()
                 }
 
                 if (iterationNo == 0 &&
-                    (rematChange || globalSplitChange || kernel.getOption(vISA_forceBCR)))
+                    (rerunGRA || globalSplitChange || kernel.getOption(vISA_forceBCR)))
                 {
                     if (kernel.getOption(vISA_forceBCR))
                     {

@@ -23,6 +23,7 @@ namespace vISA
         unsigned int numMovsAdded = 0;
         GlobalRA& gra;
         G4_Kernel& kernel;
+        bool changesMade = false;
 
         class Data
         {
@@ -57,6 +58,8 @@ namespace vISA
         }
 
         void run();
+
+        bool getChangesMade() { return changesMade; }
 
         void dump(std::ostream& of = std::cerr);
     };
