@@ -375,6 +375,23 @@ void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
         iOpenCL::DATA_PARAMETER_DATA_SIZE * 3);
 }
 
+void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
+                                               unsigned Size,
+                                               unsigned ArgOffset) {
+  m_kernelInfo.m_printfBufferAnnotation =
+      std::make_unique<iOpenCL::PrintfBufferAnnotation>();
+  m_kernelInfo.m_argIndexMap[Index] = BTI;
+  m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber = Index;
+  m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = ArgOffset;
+  m_kernelInfo.m_printfBufferAnnotation->Index = 0;
+  m_kernelInfo.m_printfBufferAnnotation->DataSize = Size;
+
+  // EnableZEBinary: ZEBinary related code
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs,
+      zebin::PreDefinedAttrGetter::ArgType::printf_buffer, ArgOffset, Size);
+}
+
 // TODO: refactor this function with the OCL part.
 void CMKernel::RecomputeBTLayout(int numUAVs, int numResources)
 {
@@ -555,14 +572,8 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::PrintBuffer:
-      Kernel.m_kernelInfo.m_printfBufferAnnotation =
-          std::make_unique<iOpenCL::PrintfBufferAnnotation>();
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-      Kernel.m_kernelInfo.m_printfBufferAnnotation->ArgumentNumber =
-          Arg.getIndex();
-      Kernel.m_kernelInfo.m_printfBufferAnnotation->PayloadPosition = ArgOffset;
-      Kernel.m_kernelInfo.m_printfBufferAnnotation->Index = 0;
-      Kernel.m_kernelInfo.m_printfBufferAnnotation->DataSize = 8;
+      Kernel.createPrintfBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),
+                                             Arg.getSizeInBytes(), ArgOffset);
       break;
     case ArgKind::PrivateBase:
       if (Info.getStatelessPrivMemSize() != 0) {

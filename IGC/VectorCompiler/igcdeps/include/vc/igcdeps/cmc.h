@@ -84,6 +84,9 @@ public:
   // Sampler
   void createSamplerAnnotation(unsigned argNo);
 
+  void createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
+                                       unsigned Size, unsigned ArgOffset);
+
   void RecomputeBTLayout(int numUAVs, int numResources);
 };
 
