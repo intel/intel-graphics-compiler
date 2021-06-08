@@ -125,6 +125,7 @@ namespace IGC
         std::optional<uint64_t> m_NumGRFFill;
         std::optional<uint64_t> m_NumSends;
         std::optional<uint64_t> m_NumCycles;
+        std::optional<uint64_t> m_NumSendStallCycles;
 
 
         void Destroy()

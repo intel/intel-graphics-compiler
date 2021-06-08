@@ -5430,7 +5430,10 @@ namespace IGC
         pOutput->m_debugDataGenISASize = dbgSize;
         pOutput->m_InstructionCount = jitInfo->numAsmCount;
         pOutput->m_BasicBlockCount = jitInfo->BBNum;
-        ReportCompilerStatistics(pMainKernel, pOutput);
+        if (context->getModuleMetaData()->compOpt.CaptureCompilerStats)
+        {
+            ReportCompilerStatistics(pMainKernel, pOutput);
+        }
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
@@ -6523,6 +6526,16 @@ namespace IGC
         if (compilerStats.Find(CompilerStats::numSendStr()))
         {
             pOutput->m_NumSends.emplace(compilerStats.GetI64(CompilerStats::numSendStr(), simdsize));
+        }
+        FINALIZER_INFO* jitInfo = nullptr;
+        if (0 == pMainKernel->GetJitInfo(jitInfo))
+        {
+            uint sendStallCycle = 0;
+            for (uint i = 0; i < jitInfo->BBNum; i++)
+            {
+                sendStallCycle += jitInfo->BBInfo[i].sendStallCycle;
+            }
+            pOutput->m_NumSendStallCycles.emplace(sendStallCycle);
         }
     }
 
