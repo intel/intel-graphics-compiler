@@ -602,6 +602,13 @@ static void appendGlobalVariableData(
   Accumulator.append(GVInfo.GV, Data.begin(), Data.end());
 }
 
+static unsigned getAlignment(const GlobalVariable &GV) {
+  unsigned Align = GV.getAlignment();
+  if (Align)
+    return Align;
+  return GV.getParent()->getDataLayout().getABITypeAlignment(GV.getValueType());
+}
+
 template <typename GlobalsRangeT>
 std::vector<GVEncodingInfo>
 prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
@@ -614,7 +621,7 @@ prepareGlobalInfosForEncoding(GlobalsRangeT &&Globals) {
   std::transform(RealGlobals.begin(), std::prev(RealGlobals.end()),
                  std::next(RealGlobals.begin()), std::back_inserter(Infos),
                  [](const GlobalVariable &GV, const GlobalVariable &NextGV) {
-                   return GVEncodingInfo{&GV, NextGV.getAlignment()};
+                   return GVEncodingInfo{&GV, getAlignment(NextGV)};
                  });
   Infos.push_back({&*std::prev(RealGlobals.end()), 1u});
   return std::move(Infos);
