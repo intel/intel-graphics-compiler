@@ -1366,6 +1366,7 @@ public:
 
 class G4_InstSend : public G4_INST
 {
+    // Once initialized, remain unchanged as it could be shared among several sends.
     G4_SendDesc* msgDesc;
 
 public:
@@ -1436,6 +1437,12 @@ public:
     void setMsgDesc(G4_SendDesc *in)
     {
         assert(in && "null descriptor not expected");
+#if defined(_DEBUG)
+        if (in && in->getExecSize() == g4::SIMD_UNDEFINED)
+        {
+            DEBUG_MSG("Msg Desc has execSize undefined!\n");
+        }
+#endif
         msgDesc = in;
         resetRightBound((G4_Operand*)dst);
         resetRightBound(srcs[0]);

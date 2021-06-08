@@ -1292,6 +1292,19 @@ G4_SendDescRaw * IR_Builder::createSendMsgDesc(
     int src1Len,
     SendAccess access,
     G4_Operand *bti,
+    G4_ExecSize execSize,
+    bool isValidFuncCtrl)
+{
+    return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, execSize, isValidFuncCtrl);
+}
+
+G4_SendDescRaw* IR_Builder::createSendMsgDesc(
+    SFID sfid,
+    uint32_t desc,
+    uint32_t extDesc,
+    int src1Len,
+    SendAccess access,
+    G4_Operand* bti,
     bool isValidFuncCtrl)
 {
     return new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, isValidFuncCtrl);

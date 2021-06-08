@@ -889,6 +889,16 @@ public:
         return isRead ? SendAccess::READ_ONLY : SendAccess::WRITE_ONLY;
     }
 
+    G4_SendDescRaw* createSendMsgDesc(
+        SFID sfid,
+        uint32_t desc,
+        uint32_t extDesc,
+        int src1Len,
+        SendAccess access,
+        G4_Operand* bti,
+        G4_ExecSize execSize,
+        bool isValidFuncCtrl = true);
+
     G4_SendDescRaw * createSendMsgDesc(
         SFID sfid,
         uint32_t desc,

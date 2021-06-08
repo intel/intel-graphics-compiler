@@ -581,7 +581,8 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
         desc->getExtendedDesc(),
         desc->extMessageLength(),
         desc->getAccess(),
-        desc->getBti());
+        desc->getBti(),
+        desc->getExecSize());
     Send->setMsgDesc(newDesc);
 
     // If addI or movI is dead, remove them.
