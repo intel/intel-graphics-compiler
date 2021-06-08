@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
@@ -203,10 +204,10 @@ Value *GenXThreadPrivateMemory::ZExtOrTruncIfNeeded(Value *From, Type *To,
         Res, cast<VectorType>(FromTy)->getElementType(), "", InsertBefore);
     Res = TmpRes;
   }
-  if (To->isVectorTy()) {
+  if (auto ToVTy = dyn_cast<VectorType>(To)) {
     IRBuilder<> Builder(InsertBefore);
     Res = Builder.CreateVectorSplat(
-        To->getVectorNumElements(),
+        ToVTy->getNumElements(),
         Res,
         Res->getName() + ".splat");
   }

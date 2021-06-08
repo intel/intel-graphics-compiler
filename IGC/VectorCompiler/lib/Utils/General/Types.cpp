@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <llvm/Support/Casting.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 
@@ -18,7 +19,7 @@ IGCLLVM::FixedVectorType *vc::changeAddrSpace(IGCLLVM::FixedVectorType *OrigTy,
                                               int AddrSpace) {
   IGC_ASSERT_MESSAGE(OrigTy, "wrong argument");
   auto *PointeeTy = OrigTy->getElementType()->getPointerElementType();
-  auto EC = OrigTy->getElementCount();
+  auto EC = OrigTy->getNumElements();
   return IGCLLVM::FixedVectorType::get(
       llvm::PointerType::get(PointeeTy, AddrSpace), EC);
 }
@@ -40,7 +41,7 @@ int vc::getAddrSpace(Type *PtrOrPtrVec) {
       "wrong argument: pointer or vector of pointers type is expected");
   if (PtrOrPtrVec->isPointerTy())
     return PtrOrPtrVec->getPointerAddressSpace();
-  return PtrOrPtrVec->getVectorElementType()->getPointerAddressSpace();
+  return cast<VectorType>(PtrOrPtrVec)->getElementType()->getPointerAddressSpace();
 }
 
 const Type &vc::fixDegenerateVectorType(const Type &Ty) {

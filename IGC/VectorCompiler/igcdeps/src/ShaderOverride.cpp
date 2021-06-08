@@ -62,7 +62,7 @@ static std::string legalizeName(std::string Name) {
 bool VC_IGCShaderOverrider::override(void *&GenXBin, int &GenXBinSize,
                                      llvm::StringRef ShaderName,
                                      Extensions Ext) const {
-  std::string const LegalizedShaderName = legalizeName(ShaderName);
+  std::string const LegalizedShaderName = legalizeName(ShaderName.str());
   std::string const FullPath = path(LegalizedShaderName, Ext);
   bool Status = false;
 

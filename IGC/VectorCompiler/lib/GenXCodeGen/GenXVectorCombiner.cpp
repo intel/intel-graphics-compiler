@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Statistic.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
+#include "llvmWrapper/Support/TypeSize.h"
 
 #include "GenX.h"
 #include "GenXIntrinsics.h"
@@ -381,8 +382,9 @@ bool GenXVectorCombiner::processWorkList() {
       Constant *ScalarSecondOperand =
           cast<Constant>(RefAnyInstPack.Operation->getOperand(1))
               ->getSplatValue();
-      int Width = cast<IGCLLVM::FixedVectorType>(OriginalSrc->getType())
+      unsigned NumericWidth = cast<IGCLLVM::FixedVectorType>(OriginalSrc->getType())
                       ->getNumElements();
+	  auto Width = IGCLLVM::getElementCount(NumericWidth);
       Constant *WideConstant =
           ConstantVector::getSplat(Width, ScalarSecondOperand);
       Vals.push_back(WideConstant);

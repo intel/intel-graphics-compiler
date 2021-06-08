@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/ArrayRef.h"
 #include "lld/Common/Driver.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/FileSystem.h"
 
 #if !defined(_MSC_VER) && !defined(__MINGW32__)
 #include <unistd.h>

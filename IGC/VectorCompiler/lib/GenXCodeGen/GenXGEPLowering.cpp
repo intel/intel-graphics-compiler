@@ -154,11 +154,12 @@ bool GenXGEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
         DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
   } else {
     IGC_ASSERT(PtrOp->getType()->isVectorTy());
-    PtrTy = cast<PointerType>(PtrOp->getType()->getVectorElementType());
+    auto PtrOpVTy = cast<IGCLLVM::FixedVectorType>(PtrOp->getType());
+    PtrTy = cast<PointerType>(PtrOpVTy->getElementType());
     IntPtrTy =
         DL->getIntPtrType(Builder->getContext(), PtrTy->getAddressSpace());
     IntPtrTy =
-        VectorType::get(IntPtrTy, PtrOp->getType()->getVectorNumElements());
+        IGCLLVM::FixedVectorType::get(IntPtrTy, PtrOpVTy->getNumElements());
   }
   // Check if the pointer itself is created from IntToPtr. If it is, and if
   // the int is the same size, we can use the int directly. Otherwise, we
