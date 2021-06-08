@@ -1037,7 +1037,7 @@ size_t G4_SendDescRaw::getDstLenBytes() const
         return 32 * getScratchRWSize(); // HWords
     } else if (isOwordLoad()) {
         return 16 * getOwordsAccessed(); // OWords
-#if 0
+#if 1
     // Use macro fo easy testing.
     } else if (isByteScatterRW()) {
         uint16_t nbytes = getBlockNum();
