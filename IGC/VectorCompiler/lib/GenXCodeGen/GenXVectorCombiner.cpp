@@ -327,13 +327,14 @@ void GenXVectorCombiner::createNewInstruction(
     GenXIntrinsic::ID IdCode = GenXIntrinsic::getGenXIntrinsicID(Operation);
     Module *M = Operation->getParent()->getParent()->getParent();
     switch (IdCode) {
-    default:
-      IGC_ASSERT_MESSAGE(false, "get unsupported intrinsic");
     case GenXIntrinsic::genx_absf:
     case GenXIntrinsic::genx_absi:
       Fn = GenXIntrinsic::getAnyDeclaration(M, IdCode, {InsteadOf->getType()});
       break;
-      }
+    default:
+      IGC_ASSERT_MESSAGE(false, "unsupported intrinsic");
+      return;
+    }
     IGC_ASSERT(Fn);
     CallInst *CI = Builder.CreateCall(Fn, Vals, VALUE_NAME("widened"));
     InsteadOf->replaceAllUsesWith(CI);
