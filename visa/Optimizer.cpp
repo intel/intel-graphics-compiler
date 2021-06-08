@@ -172,15 +172,41 @@ void Optimizer::regAlloc()
     }
 }
 
-void Optimizer::adjustIndirectCallOffset()
+void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
 {
     // the call code sequence done at Optimizer::expandIndirectCallWithRegTarget
     // is:
-    //       add  r2.0  -IP   call_target
-    //       add  r2.0  r2.0  -32
-    //       call r1.0  r2.0
-    // -32 is hardcoded. But SWSB could've inserted sync instructions between
-    // call and add. So we need to re-adjust the offset
+
+    // if has IP WA, more instructions are added:
+    //        call   dst     _label_ip_wa
+    //      _label_ip_wa:
+    //        add    dst     dst     32     // 3rd add  // 32 is hardcoded  // sync_off_2
+    //        ret    dst
+    // else it'll be :
+    //        add  r2.0  -IP   call_target  // 2nd add
+    //        add  r2.0  r2.0  -32          // 1st add  // -32 is hardcoded // sync_off_1
+    //        call r1.0  r2.0
+    // SWSB could've inserted sync instructions between offset-hardcoded instructions.
+    // We need to re-adjust the offset
+
+    // update the offset if the given inst is a sync
+    // return true if inst is sync
+    auto update_sync_off = [](G4_INST& inst, uint64_t& sync_offset) {
+        G4_opcode op = inst.opcode();
+        if (op == G4_sync_allrd || op == G4_sync_allwr)
+        {
+            inst.setNoCompacted();
+            sync_offset += 16;
+            return true;
+        }
+        else if (op == G4_sync_nop)
+        {
+            inst.setCompacted();
+            sync_offset += 8;
+            return true;
+        }
+        return false;
+    };
 
     for (auto bb : kernel.fg)
     {
@@ -195,45 +221,65 @@ void Optimizer::adjustIndirectCallOffset()
             {
                 // for every indirect call, count # of instructions inserted
                 // between call and the first add
-                uint64_t sync_offset = 0;
+                uint64_t sync_off_1 = 0;
                 G4_INST* first_add = nullptr;
                 INST_LIST::reverse_iterator it = bb->rbegin();
                 // skip call itself
                 ++it;
+                // calculate sync_off_1
                 for (; it != bb->rend(); ++it)
                 {
-                    G4_INST* inst = *it;
-                    G4_opcode op = inst->opcode();
-                    if (op == G4_sync_allrd || op == G4_sync_allwr)
-                    {
-                        inst->setNoCompacted();
-                        sync_offset += 16;
+                    G4_INST& inst = **it;
+                    if (update_sync_off(inst, sync_off_1))
                         continue;
-                    }
-                    else if (op == G4_sync_nop) {
-                        inst->setCompacted();
-                        sync_offset += 8;
-                        continue;
-                    }
-                    else if (op == G4_add)
+                    else if (inst.opcode() == G4_add)
                     {
                         if (first_add == nullptr)
                         {
-                            first_add = inst;
+                            first_add = &inst;
                             continue;
                         }
                         else
                         {
+                            // found 2nd add
                             break;
                         }
                     }
-                    // instructions between call and add could only be
+                    // instructions between pattern sequence could only be
                     // sync.nop, sync.allrd or sync.allwr
                     assert(0);
                 }
                 assert(first_add->getSrc(1)->isImm());
-                int64_t adjust_off = first_add->getSrc(1)->asImm()->getInt() - sync_offset;
+                int64_t adjust_off = first_add->getSrc(1)->asImm()->getInt() - sync_off_1;
                 first_add->setSrc(builder.createImm(adjust_off, Type_D), 1);
+
+                // calculate sync_off_2
+                if (builder.needIPWA()) {
+                    // at this point, it should point to 2nd add, skip it
+                    ++it;
+                    uint64_t sync_off_2 = 0;
+                    G4_INST* third_add = nullptr;
+                    for (; it != bb->rend(); ++it)
+                    {
+                        G4_INST& inst = **it;
+                        if (update_sync_off(inst, sync_off_2))
+                            continue;
+                        else if (inst.opcode() == G4_return)
+                            continue;
+                        else if (inst.opcode() == G4_add) {
+                            assert(third_add == nullptr);
+                            third_add = &inst;
+                            break;
+                        }
+                        // instructions between pattern sequence could only be
+                        // sync.nop, sync.allrd or sync.allwr
+                        assert(0);
+                    }
+                    assert(third_add->getSrc(1)->isImm());
+                    int64_t adjust_off_2 = third_add->getSrc(1)->asImm()->getInt() + sync_off_2;
+                    third_add->setSrc(builder.createImm(adjust_off_2, third_add->getSrc(1)->getType()), 1);
+                }
+
             }
         }
     }
@@ -271,7 +317,7 @@ void Optimizer::addSWSBInfo()
 
     if (kernel.hasIndirectCall() && !builder.supportCallaRegSrc())
     {
-        adjustIndirectCallOffset();
+        adjustIndirectCallOffsetAfterSWSBSet();
     }
     return;
 }
@@ -8352,6 +8398,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 builder.getRegionScalar(), Type_UD),
             fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact, false);
 
+        if (builder.needIPWA())
+            replaceIPWithCall(insts, add_inst);
+
         // create the second add to add the -ip to adjust_off, adjust_off dependes
         // on how many instructions from the fist add to the jmp instruction, and
         // if it's post-increment (jmpi) or pre-increment (call)
@@ -8368,6 +8417,60 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         insts.push_back(add_inst2);
 
         return add_dst_decl;
+    }
+
+    void Optimizer::replaceIPWithCall(InstListType& insts, G4_INST* add_with_ip)
+    {
+        // Expand
+        //    add    dst      -IP   call_target
+        // To
+        //    call   dst     _label_ip_wa          // jump to the next instruction
+        //  _label_ip_wa:
+        //    add    dst     dst     32            // adjust dst to the next 2 instruction's ip
+        //    ret    dst                           // jump to the next instruction
+        //    add    dst     -dst    call_target   // at this intruction dst is the ip value
+
+        uint32_t reg_num = add_with_ip->getDst()->getLinearizedStart() / numEltPerGRF<Type_UB>();
+        uint32_t reg_off = add_with_ip->getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()
+            / add_with_ip->getDst()->getTypeSize();
+        // call's dst must have sub-reg num 0 (HW restriction)
+        assert(reg_off == 0);
+        G4_Declare* dst_decl =
+            builder.createHardwiredDeclare(1, add_with_ip->getDst()->getType(), reg_num, reg_off);
+
+        // call   dst     _label_ip_wa
+        // NOTE: create the call and label instructions directly without forming a BB to skip the
+        // BB end with call checking (e.g. in SWSB setting) that this is just a fall-throug call and
+        // is a temporarily WA
+        G4_Label *label = builder.createLabel(std::string("_label_ip_wa"), LABEL_BLOCK);
+        insts.push_back(builder.createInternalInst(
+            nullptr, G4_call, nullptr, g4::NOSAT, g4::SIMD1,
+            builder.Create_Dst_Opnd_From_Dcl(dst_decl, 1),
+            label,
+            nullptr, InstOpt_WriteEnable));
+        // _label_ip_wa:
+        insts.push_back(builder.createLabelInst(label, false));
+
+        // add    dst     dst     32
+        insts.push_back(builder.createBinOp(
+            G4_add, g4::SIMD1,
+            builder.Create_Dst_Opnd_From_Dcl(dst_decl, 1),
+            builder.Create_Src_Opnd_From_Dcl(dst_decl, builder.getRegionScalar()),
+            builder.createImm(32, Type_D),
+            InstOpt_WriteEnable | InstOpt_NoCompact, false));
+
+        // ret    dst
+        insts.push_back(builder.createInternalInst(
+            nullptr, G4_return, nullptr, g4::NOSAT, g4::SIMD1,
+            nullptr,
+            builder.Create_Src_Opnd_From_Dcl(dst_decl, builder.getRegionScalar()),
+            nullptr, InstOpt_WriteEnable | InstOpt_NoCompact));
+
+        // update given add instruction's src0
+        G4_SrcRegRegion* new_src = builder.Create_Src_Opnd_From_Dcl(
+            dst_decl, builder.getRegionScalar());
+        new_src->setModifier(Mod_Minus);
+        add_with_ip->setSrc(new_src, 0);
     }
 
     void Optimizer::createInstForJmpiSequence(InstListType& insts, G4_INST* fcall)

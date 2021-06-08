@@ -168,7 +168,7 @@ class Optimizer
         lSched.localScheduling();
     }
 
-    void adjustIndirectCallOffset();
+    void adjustIndirectCallOffsetAfterSWSBSet();
 
     void addSWSBInfo();
 
@@ -243,12 +243,18 @@ private:
     void expandMadwPostSchedule();
 
     typedef std::vector<vISA::G4_INST*> InstListType;
+    // create instruction sequence to calculate call offset from ip
     void expandIndirectCallWithRegTarget();
+    // a helper function to create instruction sequence to replace indirect call with jmpi
     void createInstForJmpiSequence(InstListType& insts, G4_INST* fcall);
-    // create the instructions to calculate the jump target offset, return G4_Declare of the
-    // new created jmp target
+    // a hlper function to create the instructions to calculate the jump target offset,
+    // return G4_Declare of the new created jmp target
     G4_Declare* createInstsForCallTargetOffset(
         InstListType& insts, G4_INST* fcall, int64_t adjust_off);
+    // a helper function to create the instructions to get ip from call's dst
+    // This is a WA for platforms can't support ip register
+    // The give add_with_ip must be an add instruction with ip register as its src0
+    void replaceIPWithCall(InstListType& insts, G4_INST* add_with_ip);
 
     void insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it);
 

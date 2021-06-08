@@ -434,6 +434,11 @@ SPDX-License-Identifier: MIT
                getOption(vISA_replaceIndirectCallWithJmpi);
     }
 
+    bool needIPWA() const
+    {
+        return getPlatform() == GENX_XE_HP;
+    }
+
     bool canEncodeFullExtDesc() const
     {
         return getPlatform() >= GENX_TGLLP;
