@@ -6370,7 +6370,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
       Os << Arg << " ";
     Os << "Visa only: " << (EmitVisa ? "yes" : "no") << "\n";
     Os << "Platform: " << ST.getVisaPlatform() << "\n";
-    DiagnosticInfoCisaBuild Err(Str, DS_Error);
+    DiagnosticInfoCisaBuild Err(Os.str(), DS_Error);
     Ctx.diagnose(Err);
   }
   return VB;
