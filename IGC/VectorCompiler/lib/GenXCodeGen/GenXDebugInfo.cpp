@@ -166,7 +166,7 @@ SPDX-License-Identifier: MIT
 /// VISA/genISA  construction peculiarities.
 ///
 ///   Case 1:
-///     Source code: K1, K1.
+///     Source code: K1, K2.
 ///     Compilation phase:
 ///         two function groups are created, K1 and K2 are heads.
 ///         two different VISAKernel produced.
