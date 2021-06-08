@@ -63,6 +63,9 @@ endif()
 # target_compile_definitions to unify imported and simple library usage
 # because command will fail on imported library (this is cmake deficiency
 # that was fixed in later versions).
-set_target_properties(LLVMSPIRVLib PROPERTIES
-  INTERFACE_COMPILE_DEFINITIONS IGC_USE_KHRONOS_SPIRV_TRANSLATOR
-  )
+if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+    set_property(TARGET LLVMSPIRVLib PROPERTY INTERFACE_COMPILE_DEFINITIONS IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
+endif()
+if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_VC)
+    set_property(TARGET LLVMSPIRVLib APPEND PROPERTY INTERFACE_COMPILE_DEFINITIONS IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR)
+endif()

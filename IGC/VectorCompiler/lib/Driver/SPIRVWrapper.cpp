@@ -24,10 +24,10 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/Status.h"
 #include "llvm/IR/Verifier.h"
 
-#ifdef IGC_USE_KHRONOS_SPIRV_TRANSLATOR
+#ifdef IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LLVMSPIRVLib.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#else // IGC_USE_KHRONOS_SPIRV_TRANSLATOR
+#else // IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Process.h"
@@ -38,7 +38,7 @@ SPDX-License-Identifier: MIT
 #include <Windows.h>
 #include "inc/common/DriverStore.h"
 #endif // _WIN32
-#endif // IGC_USE_KHRONOS_SPIRV_TRANSLATOR
+#endif // IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR
 
 using namespace llvm;
 
@@ -51,7 +51,7 @@ using SpirvReadVerifyType = int(
     void *OutUserData, void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
     void *ErrUserData);
 
-#ifdef IGC_USE_KHRONOS_SPIRV_TRANSLATOR
+#ifdef IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR
 
 int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
                     const uint64_t *SpecConstVals, unsigned SpecConstSz,
@@ -117,7 +117,7 @@ Expected<SpirvReadVerifyType *> getSpirvReadVerifyFunction() {
   return &spirvReadVerify;
 }
 
-#else // IGC_USE_KHRONOS_SPIRV_TRANSLATOR
+#else // IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR
 
 // Get appropriate path to SPIRV DLL library for subsequent loading.
 std::string findSpirvDLL() {
@@ -174,7 +174,7 @@ Expected<SpirvReadVerifyType *> getSpirvReadVerifyFunction() {
   return SpirvReadVerify;
 }
 
-#endif // IGC_USE_KHRONOS_SPIRV_TRANSLATOR
+#endif // IGC_VECTOR_USE_KHRONOS_SPIRV_TRANSLATOR
 
 } // namespace
 

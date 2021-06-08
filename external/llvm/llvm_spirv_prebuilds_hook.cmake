@@ -10,7 +10,7 @@
 
 include_guard(DIRECTORY)
 
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
+if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
 
 # If we are using prebuilds then nothing to do here.
 if(NOT IGC_BUILD__SPIRV_TRANSLATOR_SOURCES)

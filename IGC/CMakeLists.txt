@@ -258,9 +258,11 @@ unset(_allowBifLink)
 # Second one is taken as prebuilt shared library called SPIRVDLL
 # These translators will be replaced with vanilla Khronos translator.
 # The following cmake code perfoms search for the such translator.
-# But, until the transition is not completed, this code is under IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR condition
+# But, until the transition is not completed, this code is under IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR condition
 # Remove this condition after transition period is over
-option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR "[Experimental] Enable link against Khronos SPIRV-LLVM-Translator, instead of legacy versions" OFF)
+option(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR "[Experimental] Enable link against Khronos SPIRV-LLVM-Translator, instead of legacy versions" OFF)
+option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_VC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Vector Compiler" OFF)
+option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" OFF)
 
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
 
@@ -1256,7 +1258,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
 
 # ==================================== SPIRV-LLVM-Translator package ===================================
 
-if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR)
+if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
   include(igc_spirv)
 endif()
 
