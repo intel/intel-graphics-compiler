@@ -104,11 +104,14 @@ if (IGC_OPTION__VC_DISABLE_BIF)
   add_custom_target(VCBiFPreparation)
 else()
 
+  set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common.h)
   set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
   set(EMU_DIVREM_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_divrem.cpp)
 
-  vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32)
-  vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64)
+  vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32
+               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+  vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64
+               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
 
   get_target_property(DIVREM_EXTRA_SOURCES VCEmuDivremBoilerplate SOURCES)
   vc_embed_bif(EMU_DIVREM_CPP_PATH ${EMU_DIVREM_SRC_PATH} VCEmulation 64
