@@ -1959,7 +1959,7 @@ Imported_Intrinsics = \
     "Convergent"]],
 ####################################################################################################
 "GenISA_frc": ["GENISA_frc for emitting HW Frc",
-    [("anyfloat",                        "output"),
-    [("anyfloat",                        "src0")],
+    [("float",                        "output"),
+    [("float",                        "src0")],
     "NoMem"]]
 }
