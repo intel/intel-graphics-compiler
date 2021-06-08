@@ -849,7 +849,7 @@ void LoopDetection::populateLoop(BackEdge& backEdge)
                 if (pred == dst)
                     continue;
 
-                if (fg.getDominator().dominates(pred, dst) &&
+                if (dst->dominates(pred) &&
                     !newLoop.contains(pred))
                 {
                     // pred is part of loop
@@ -974,8 +974,11 @@ void Loop::addBBToLoopHierarchy(G4_BB* bb)
 
 void vISA::Loop::addBBToLoop(G4_BB* bb)
 {
-    BBs.push_back(bb);
-    BBsLookup.insert(bb);
+    if (!contains(bb))
+    {
+        BBs.push_back(bb);
+        BBsLookup.insert(bb);
+    }
 }
 
 bool Loop::fullSubset(Loop* other)

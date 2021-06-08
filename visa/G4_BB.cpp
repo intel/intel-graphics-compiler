@@ -1596,3 +1596,8 @@ void G4_BB::addSamplerFlushBeforeEOT()
         insert(iter, samplerFlushInst);
     }
 }
+
+bool G4_BB::dominates(G4_BB* other)
+{
+    return getParent().getDominator().dominates(this, other);
+}

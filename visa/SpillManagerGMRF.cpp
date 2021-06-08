@@ -2803,7 +2803,7 @@ bool SpillManagerGRF::checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* defBB)
         auto useBB = std::get<1>(use);
 
         // check if def dominates use
-        if (!gra.kernel.fg.getDominator().dominates(defBB, useBB))
+        if (!defBB->dominates(useBB))
             return false;
 
         if (defBB == useBB)

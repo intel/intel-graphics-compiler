@@ -316,6 +316,8 @@ public:
     void removeIntrinsics(Intrinsic intrinId);
 
     void addSamplerFlushBeforeEOT();
+
+    bool dominates(G4_BB* other);
 }; // class G4_BB
 } // vISA::
 
