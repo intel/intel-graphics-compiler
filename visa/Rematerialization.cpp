@@ -55,6 +55,7 @@ namespace vISA
                                     r.rowsUsed.insert(k);
                                 }
                                 //r.uses.push_back(std::make_pair(inst, bb));
+                                r.lastUseLexId = inst->getLexicalId();
                                 operations.insert(std::make_pair(topdcl, r));
                             }
                             else
@@ -653,8 +654,7 @@ namespace vISA
                             return false;
                     }
 
-                    if (uniqueDefInst->getExecSize() == 1 &&
-                        (*opIt).second.lastUseLexId < srcLexId)
+                    if ((*opIt).second.lastUseLexId < srcLexId)
                     {
                         // Skip remat if src is an input and exec size is 1.
                         // Inputs are pre-assigned and extending such ranges
