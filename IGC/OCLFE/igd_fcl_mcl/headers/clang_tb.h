@@ -101,6 +101,8 @@ namespace TC
           m_OCL_Ver = std::to_string(oclVersion);
       }
 
+      static void SetErrorString(const char* pErrorString, STB_TranslateOutputArgs* pOutputArgs);
+
   private:
     // Is assigned the value of the OpenCL API version that corresponds to the
     // current OCL runtime driver.  The values are defined in the OpenCL spec
@@ -116,8 +118,6 @@ namespace TC
 
     // Using auto pointer to get CTH MemoryBuffer from LoadBuffer
     char *m_cthBuffer;
-
-    static void SetErrorString( const char *pErrorString, STB_TranslateOutputArgs* pOutputArgs );
 
   protected:
       CClangTranslationBlock( void );

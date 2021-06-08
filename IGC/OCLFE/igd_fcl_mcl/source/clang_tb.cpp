@@ -496,11 +496,7 @@ namespace TC
             pOutputArgs->ErrorStringSize = (uint32_t)strlen(pFEBinaryResult->GetErrorLog());
             if (pOutputArgs->ErrorStringSize > 0)
             {
-#ifdef WIN32
-                pOutputArgs->pErrorString = _strdup(pFEBinaryResult->GetErrorLog());
-#else
-                pOutputArgs->pErrorString = strdup(pFEBinaryResult->GetErrorLog());
-#endif
+                TC::CClangTranslationBlock::SetErrorString(pFEBinaryResult->GetErrorLog(), pOutputArgs);
             }
             else
             {
@@ -691,11 +687,9 @@ namespace TC
         IGC_ASSERT(pOutputArgs != NULL);
         size_t strSize = strlen(pErrorString) + 1;
         pOutputArgs->ErrorStringSize = strSize;
-#ifdef WIN32
-        pOutputArgs->pErrorString = _strdup(pErrorString);
-#else
-        pOutputArgs->pErrorString = strdup(pErrorString);
-#endif
+        pOutputArgs->pErrorString = (char*)malloc(strSize);
+        memcpy_s(pOutputArgs->pErrorString, strSize - 1, pErrorString, strSize - 1);
+        pOutputArgs->pErrorString[strSize - 1] = '\0';
     }
 
     /*****************************************************************************\
@@ -1549,13 +1543,7 @@ namespace TC
             }
             else
             {
-                std::string errorString = "\nWarning: File name not specified with the -dump-opt-llvm option.\n";
-#ifdef WIN32
-                pOutputArgs->pErrorString = _strdup(errorString.c_str());
-#else
-                pOutputArgs->pErrorString = strdup(errorString.c_str());
-#endif
-                pOutputArgs->ErrorStringSize = errorString.length() + 1;
+                SetErrorString("\nWarning: File name not specified with the -dump-opt-llvm option.\n", pOutputArgs);
             }
         }
 
