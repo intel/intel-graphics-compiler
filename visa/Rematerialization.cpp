@@ -308,12 +308,21 @@ namespace vISA
             {
                 auto inst = (*instIt);
 
-                if (inst->isSplitSend() &&
-                    inst->getMsgDesc()->isSampler() &&
-                    inst->getMsgDescRaw() &&
-                    inst->getMsgDescRaw()->isHeaderPresent())
+                if (toErase != bb->end())
                 {
-                    toErase = bb->end();
+                    for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+                    {
+                        auto src = inst->getSrc(i);
+                        if (src && src->isSrcRegRegion())
+                        {
+                            auto topdcl = src->getTopDcl();
+                            if (topdcl == samplerHeader)
+                            {
+                                // samplerHeader is used, so can't erase it
+                                toErase = bb->end();
+                            }
+                        }
+                    }
                 }
 
                 if (inst->isMov() && inst->getDst() && inst->getExecSize() == 1)
@@ -976,6 +985,7 @@ namespace vISA
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
                 newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), true);
+            dupOp->setCISAOff(dstInst->getCISAOff());
             dupOp->inheritDIFrom(dstInst);
 
             newInst.push_back(dupOp);
