@@ -164,9 +164,7 @@ typedef size_t uintptr_t;
 #define M_SQRT2       0x1.6a09e667f3bcdp+0
 #define M_SQRT1_2     0x1.6a09e667f3bcdp-1
 
-#define OLD_SPIRV_BUILTINS
-
-#if defined(OLD_SPIRV_BUILTINS)
+#if !defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 #define SPIRV_OVERLOADABLE
 #define SPIRV_BUILTIN(opcode, old_mangling, new_mangling) \
     __builtin_spirv_Op##opcode##old_mangling
@@ -262,7 +260,7 @@ typedef enum
 
 // Work-item functions
 
-#if defined(OLD_SPIRV_BUILTINS)
+#if !defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 size_t3 __builtin_spirv_BuiltInNumWorkgroups(void);
 size_t3 __builtin_spirv_BuiltInWorkgroupSize(void);
 size_t3 __builtin_spirv_BuiltInWorkgroupId(void);
@@ -271,7 +269,7 @@ size_t3 __builtin_spirv_BuiltInGlobalInvocationId(void);
 size_t3 __builtin_spirv_BuiltInGlobalSize(void);
 size_t3 __builtin_spirv_BuiltInEnqueuedWorkgroupSize(void);
 size_t3 __builtin_spirv_BuiltInGlobalOffset(void);
-#else
+#else // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 size_t __attribute__((overloadable)) __spirv_BuiltInNumWorkgroups(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInWorkgroupSize(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInWorkgroupId(int dimindx);
@@ -280,7 +278,7 @@ size_t __attribute__((overloadable)) __spirv_BuiltInGlobalInvocationId(int dimin
 size_t __attribute__((overloadable)) __spirv_BuiltInGlobalSize(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInEnqueuedWorkgroupSize(int dimindx);
 size_t __attribute__((overloadable)) __spirv_BuiltInGlobalOffset(int dimindx);
-#endif // defined(OLD_SPIRV_BUILTINS)
+#endif
 
 size_t  SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )(void);
 size_t  SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )(void);

@@ -133,7 +133,7 @@ uint __intel_LocalInvocationIndex()
 
 ////////////////////////
 
-#if defined(OLD_SPIRV_BUILTINS)
+#if !defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 
 size_t3 __builtin_spirv_BuiltInNumWorkgroups()
 {
@@ -183,7 +183,7 @@ size_t3 __builtin_spirv_BuiltInGlobalOffset()
     return BuiltinVector(__builtin_IB_get_global_offset);
 }
 
-#else // not defined(OLD_SPIRV_BUILTINS)
+#else // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 
 size_t OVERLOADABLE __spirv_BuiltInNumWorkgroups(int dimindx)
 {
@@ -235,7 +235,7 @@ size_t OVERLOADABLE __spirv_BuiltInGlobalOffset(int dimindx)
     return __builtin_IB_get_global_offset(dimindx);
 }
 
-#endif // defined(OLD_SPIRV_BUILTINS)
+#endif
 
 size_t SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInGlobalLinearId, , )()
 {
