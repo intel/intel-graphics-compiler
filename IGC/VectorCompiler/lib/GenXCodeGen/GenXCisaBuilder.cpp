@@ -234,12 +234,14 @@ CHANNEL_OUTPUT_FORMAT getChannelOutputFormat(uint8_t ChannelOutput) {
   return (CHANNEL_OUTPUT_FORMAT)((ChannelOutput >> 4) & 0x3);
 }
 
-std::string cutString(std::string Str) {
+static std::string cutString(const Twine &Str) {
   // vISA is limited to 64 byte strings. But old fe-compiler seems to ignore
   // that for source filenames.
-  if (Str.size() > 64)
-    Str.erase(64);
-  return Str;
+  constexpr size_t MaxVisaLabelLength = 64;
+  auto Result = Str.str();
+  if (Result.size() > MaxVisaLabelLength)
+    Result.erase(MaxVisaLabelLength);
+  return Result;
 }
 
 void handleCisaCallError(const Twine &Call, LLVMContext &Ctx) {
@@ -513,7 +515,7 @@ class GenXKernelBuilder {
 
   std::map<std::string, unsigned> StringPool;
   std::vector<VISA_LabelOpnd *> Labels;
-  std::map<Value *, unsigned> LabelMap;
+  std::map<const Value *, unsigned> LabelMap;
 
   // loop info for each function
   std::map<Function *, LoopInfoBase<BasicBlock, Loop> *> Loops;
@@ -609,9 +611,9 @@ private:
                                                      bool IsNoMask);
   VISA_EMask_Ctrl getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
                                                  bool IsNoMask = false);
-  unsigned getOrCreateLabel(Value *V, int Kind);
-  int getLabel(Value *V);
-  void setLabel(Value *V, unsigned Num);
+  unsigned getOrCreateLabel(const Value *V, int Kind);
+  int getLabel(const Value *V) const;
+  void setLabel(const Value *V, unsigned Num);
 
   void emitOptimizationHints();
 
@@ -621,7 +623,7 @@ private:
                              VISA_EMask_Ctrl *MaskCtrl);
   bool isInLoop(BasicBlock *BB);
 
-  void addLabelInst(Value *BB);
+  void addLabelInst(const Value *BB);
   void buildPhiNode(PHINode *Phi);
   void buildGoto(CallInst *Goto, BranchInst *Branch);
   void buildCall(CallInst *CI, const DstOpndDesc &DstDesc);
@@ -1324,8 +1326,7 @@ static bool setNoMaskByDefault(Function *F) {
 void GenXKernelBuilder::buildInstructions() {
   for (auto It = FG->begin(), E = FG->end(); It != E; ++It) {
     Func = *It;
-    LLVM_DEBUG(dbgs() << "Building IR for func " << Func->getName().data()
-                      << "\n");
+    LLVM_DEBUG(dbgs() << "Building IR for func " << Func->getName() << "\n");
     NoMask = setNoMaskByDefault(Func);
 
     LastUsedAliasMap.clear();
@@ -5016,7 +5017,7 @@ void GenXKernelBuilder::emitOptimizationHints() {
 /***********************************************************************
  * addLabelInst : add a label instruction for a basic block or join
  */
-void GenXKernelBuilder::addLabelInst(Value *BB) {
+void GenXKernelBuilder::addLabelInst(const Value *BB) {
   GM->updateVisaMapping(KernFunc, nullptr, Kernel->getvIsaInstCount(), "LBL");
   auto LabelID = getOrCreateLabel(BB, LABEL_BLOCK);
   IGC_ASSERT(LabelID < Labels.size());
@@ -5026,7 +5027,7 @@ void GenXKernelBuilder::addLabelInst(Value *BB) {
 /***********************************************************************
  * getOrCreateLabel : get/create label number for a Function or BasicBlock
  */
-unsigned GenXKernelBuilder::getOrCreateLabel(Value *V, int Kind) {
+unsigned GenXKernelBuilder::getOrCreateLabel(const Value *V, int Kind) {
   int Num = getLabel(V);
   if (Num >= 0)
     return Num;
@@ -5052,35 +5053,35 @@ unsigned GenXKernelBuilder::getOrCreateLabel(Value *V, int Kind) {
       NameBuf = legalizeName(N.str());
       N = NameBuf;
     }
-    CISA_CALL(Kernel->CreateVISALabelVar(
-        Decl,
-        cutString((Twine(N) + Twine("_BB_") + Twine(Labels.size())).str())
-            .c_str(),
-        VISA_Label_Kind(Kind)));
-    Labels.push_back(Decl);
+    auto SubroutineLabel =
+        cutString(Twine(N) + Twine("_BB_") + Twine(Labels.size()));
+    LLVM_DEBUG(dbgs() << "creating SubroutineLabel: " << SubroutineLabel
+                      << "\n");
+    CISA_CALL(Kernel->CreateVISALabelVar(Decl, SubroutineLabel.c_str(),
+                                         VISA_Label_Kind(Kind)));
   } else if (Kind == LABEL_BLOCK) {
-    CISA_CALL(Kernel->CreateVISALabelVar(
-        Decl, cutString((Twine("BB_") + Twine(Labels.size())).str()).c_str(),
-        VISA_Label_Kind(Kind)));
-    Labels.push_back(Decl);
+    auto BlockLabel = cutString(Twine("BB_") + Twine(Labels.size()));
+    LLVM_DEBUG(dbgs() << "creating BlockLabel: " << BlockLabel << "\n");
+    CISA_CALL(Kernel->CreateVISALabelVar(Decl, BlockLabel.c_str(),
+                                         VISA_Label_Kind(Kind)));
   } else if (Kind == LABEL_FC) {
-    IGC_ASSERT(isa<Function>(V));
-    auto F = cast<Function>(V);
+    const auto *F = cast<Function>(V);
     IGC_ASSERT(F->hasFnAttribute("CMCallable"));
     StringRef N(F->getName());
-    CISA_CALL(Kernel->CreateVISALabelVar(
-        Decl, cutString(Twine(N).str()).c_str(), VISA_Label_Kind(Kind)));
-    Labels.push_back(Decl);
+    auto FCLabel = cutString(Twine(N));
+    LLVM_DEBUG(dbgs() << "creating FCLabel: " << FCLabel << "\n");
+    CISA_CALL(Kernel->CreateVISALabelVar(Decl, FCLabel.c_str(),
+                                         VISA_Label_Kind(Kind)));
   } else {
     StringRef N = V->getName();
-    CISA_CALL(Kernel->CreateVISALabelVar(
-        Decl,
-        cutString(
-            (Twine("_") + Twine(N) + Twine("_") + Twine(Labels.size())).str())
-            .c_str(),
-        VISA_Label_Kind(Kind)));
-    Labels.push_back(Decl);
+    auto Label =
+        cutString(Twine("_") + Twine(N) + Twine("_") + Twine(Labels.size()));
+    LLVM_DEBUG(dbgs() << "creating Label: " << Label << "\n");
+    CISA_CALL(
+        Kernel->CreateVISALabelVar(Decl, Label.c_str(), VISA_Label_Kind(Kind)));
   }
+  IGC_ASSERT(Decl);
+  Labels.push_back(Decl);
   return Num;
 }
 
@@ -5348,17 +5349,19 @@ GenXKernelBuilder::createRawDestination(Value *V, const DstOpndDesc &DstDesc,
  *
  * Return:  label number, -1 if none found
  */
-int GenXKernelBuilder::getLabel(Value *V) {
-  std::map<Value *, unsigned>::iterator i = LabelMap.find(V);
-  if (i != LabelMap.end())
-    return i->second;
+int GenXKernelBuilder::getLabel(const Value *V) const {
+  auto It = LabelMap.find(V);
+  if (It != LabelMap.end())
+    return It->second;
   return -1;
 }
 
 /***********************************************************************
  * setLabel : set the label number for a Function or BasicBlock
  */
-void GenXKernelBuilder::setLabel(Value *V, unsigned Num) { LabelMap[V] = Num; }
+void GenXKernelBuilder::setLabel(const Value *V, unsigned Num) {
+  LabelMap[V] = Num;
+}
 
 unsigned GenXKernelBuilder::addStringToPool(StringRef Str) {
   auto val = std::pair<std::string, unsigned>(Str.begin(), StringPool.size());
