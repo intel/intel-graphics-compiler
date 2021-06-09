@@ -95,6 +95,28 @@ void SplitAlignedScalars::gatherCandidates()
                         if (dstDcl->getByteSize() != dstTopDcl->getByteSize())
                             Data.allowed = false;
                     }
+
+                    if (dst->getHorzStride() != 1)
+                    {
+                        // dst hstride != 1 to accommodate some alignment restriction
+                        Data.allowed = false;
+                    }
+
+                    if (!inst->isSend())
+                    {
+                        // check whether dst type size >= src type size
+                        // disallow optimization if dst type is smaller
+                        // than src as that entails alignmment requirements
+                        // that this pass may not honor.
+                        for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
+                        {
+                            auto src = inst->getSrc(i);
+                            if (!src->isSrcRegRegion())
+                                continue;
+                            if (dst->getTypeSize() < src->getTypeSize())
+                                Data.allowed = false;
+                        }
+                    }
                 }
             }
 
