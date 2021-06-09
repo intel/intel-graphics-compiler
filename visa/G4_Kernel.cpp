@@ -1619,14 +1619,13 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
 
 
     // initialize register suppression info
-    int suppressRegs[5];
-    int lastRegs[3];
+    int suppressRegs[5] = {};
+    int lastRegs[3] = {};
     for (int i = 0; i < 3; i++)
     {
         suppressRegs[i] = -1;
         lastRegs[i] = -1;
     }
-    suppressRegs[4] = 0;
 
     ////////////////////////////////////////
     // emit the program text (instructions) iteratively
