@@ -31,6 +31,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/Support/TypeSize.h"
 
+#define DEBUG_TYPE "GENX_REGION"
+
 using namespace llvm;
 using namespace genx;
 
@@ -1000,7 +1002,17 @@ bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL) {
       Instruction *Inst = &*I++;
       if (auto V = simplifyRegionInst(Inst, DL)) {
         Inst->replaceAllUsesWith(V);
+
+        Instruction *RdR = nullptr;
+        if (GenXIntrinsic::isWrRegion(Inst)) {
+          Value *NewValueOp =
+              Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
+          if (GenXIntrinsic::isRdRegion(NewValueOp))
+            RdR = cast<Instruction>(NewValueOp);
+        }
         Inst->eraseFromParent();
+        if (RdR && RdR->use_empty())
+          RdR->eraseFromParent();
         Changed = true;
       }
     }
@@ -1096,4 +1108,33 @@ llvm::genx::IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride
     start = val0;
     stride = diff;
     return true;
+}
+
+namespace {
+
+class GenXSimplifyRegion : public FunctionPass {
+public:
+  static char ID;
+
+  GenXSimplifyRegion() : FunctionPass(ID) {}
+  StringRef getPassName() const override { return "GenXSimplifyRegion"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {}
+  bool runOnFunction(Function &F) override {
+    return genx::simplifyRegionInsts(&F, nullptr);
+  }
+};
+} // namespace
+
+char GenXSimplifyRegion::ID = 0;
+namespace llvm {
+void initializeGenXSimplifyRegionPass(PassRegistry &);
+}
+INITIALIZE_PASS_BEGIN(GenXSimplifyRegion, "GenXSimplifyRegion",
+                      "GenXSimplifyRegion", false, false)
+INITIALIZE_PASS_END(GenXSimplifyRegion, "GenXSimplifyRegion",
+                    "GenXSimplifyRegion", false, false)
+
+FunctionPass *llvm::createGenXSimplifyRegionPass() {
+  initializeGenXSimplifyRegionPass(*PassRegistry::getPassRegistry());
+  return new GenXSimplifyRegion();
 }

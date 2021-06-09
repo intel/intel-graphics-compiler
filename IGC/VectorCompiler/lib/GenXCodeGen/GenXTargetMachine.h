@@ -182,6 +182,7 @@ void initializeGenXLowerJmpTableSwitchPass(PassRegistry &);
 void initializeGenXGlobalVariableLoweringPass(PassRegistry &);
 void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);
 void initializeGenXVectorCombinerPass(PassRegistry &);
+void initializeGenXSimplifyRegionPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

@@ -104,6 +104,7 @@ ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
 ModulePass *createGenXImportBiFPass();
 ModulePass *createGenXGlobalVariableLoweringPass();
+FunctionPass *createGenXSimplifyRegionPass();
 
 namespace genx {
 
