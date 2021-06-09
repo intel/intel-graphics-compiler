@@ -348,21 +348,37 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
   return std::move(ExpOptions);
 }
 
-static llvm::Optional<vc::ExternalData> fillExternalData() {
+static llvm::Optional<vc::ExternalData>
+fillExternalData(vc::BinaryKind Binary) {
   vc::ExternalData ExtData;
   ExtData.OCLGenericBIFModule =
       getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
     return {};
-  // FIXME: consider other binary kinds besides ocl.
-  ExtData.VCPrintf32BIFModule =
-      getVCModuleBuffer<vc::bif::RawKind::PrintfOCL32>();
-  if (!ExtData.VCPrintf32BIFModule)
-    return {};
-  ExtData.VCPrintf64BIFModule =
-      getVCModuleBuffer<vc::bif::RawKind::PrintfOCL64>();
-  if (!ExtData.VCPrintf64BIFModule)
-    return {};
+  // FIXME: use a separate module for cm binary.
+  switch (Binary) {
+  case vc::BinaryKind::CM:
+  case vc::BinaryKind::OpenCL:
+    ExtData.VCPrintf32BIFModule =
+        getVCModuleBuffer<vc::bif::RawKind::PrintfOCL32>();
+    if (!ExtData.VCPrintf32BIFModule)
+      return {};
+    ExtData.VCPrintf64BIFModule =
+        getVCModuleBuffer<vc::bif::RawKind::PrintfOCL64>();
+    if (!ExtData.VCPrintf64BIFModule)
+      return {};
+    break;
+  case vc::BinaryKind::ZE:
+    ExtData.VCPrintf32BIFModule =
+        getVCModuleBuffer<vc::bif::RawKind::PrintfZE32>();
+    if (!ExtData.VCPrintf32BIFModule)
+      return {};
+    ExtData.VCPrintf64BIFModule =
+        getVCModuleBuffer<vc::bif::RawKind::PrintfZE64>();
+    if (!ExtData.VCPrintf64BIFModule)
+      return {};
+    break;
+  }
   ExtData.VCEmulationBIFModule =
       getVCModuleBuffer<vc::bif::RawKind::Emulation>();
   if (!ExtData.VCEmulationBIFModule)
@@ -433,7 +449,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   Opts.Dumper = std::move(Dumper);
 
-  auto ExtData = fillExternalData();
+  auto ExtData = fillExternalData(Opts.Binary);
   if (!ExtData)
     return getError(vc::make_error_code(vc::errc::bif_load_fail),
                     OutputArgs);

@@ -19,6 +19,8 @@ namespace bif {
 enum class RawKind {
   PrintfOCL32,
   PrintfOCL64,
+  PrintfZE32,
+  PrintfZE64,
   Emulation
 };
 
@@ -37,6 +39,24 @@ inline llvm::StringRef getPrintfOCL64RawData() {
 #else  // IGC_VC_DISABLE_BIF
   return {reinterpret_cast<char *>(VCBiFPrintfOCL64RawData),
           VCBiFPrintfOCL64RawData_size};
+#endif // IGC_VC_DISABLE_BIF
+}
+
+inline llvm::StringRef getPrintfZE32RawData() {
+#ifdef IGC_VC_DISABLE_BIF
+  return "";
+#else  // IGC_VC_DISABLE_BIF
+  return {reinterpret_cast<char *>(VCBiFPrintfZE32RawData),
+          VCBiFPrintfZE32RawData_size};
+#endif // IGC_VC_DISABLE_BIF
+}
+
+inline llvm::StringRef getPrintfZE64RawData() {
+#ifdef IGC_VC_DISABLE_BIF
+  return "";
+#else  // IGC_VC_DISABLE_BIF
+  return {reinterpret_cast<char *>(VCBiFPrintfZE64RawData),
+          VCBiFPrintfZE64RawData_size};
 #endif // IGC_VC_DISABLE_BIF
 }
 
@@ -63,6 +83,14 @@ llvm::StringRef getRawData<RawKind::PrintfOCL32>() {
 template<>
 llvm::StringRef getRawData<RawKind::PrintfOCL64>() {
   return getPrintfOCL64RawData();
+}
+
+template <> llvm::StringRef getRawData<RawKind::PrintfZE32>() {
+  return getPrintfZE32RawData();
+}
+
+template <> llvm::StringRef getRawData<RawKind::PrintfZE64>() {
+  return getPrintfZE64RawData();
 }
 
 } // namespace bif

@@ -20,6 +20,9 @@ using namespace cm;
 
 // Currently the max format string length supported by runtime.
 static inline constexpr int MaxFormatStrSize = 16 * 1024;
+// Number of vector elements for current address storage. Address is always
+// stored as 64-bit value split into 2 parts (32-bit pointers are zext).
+static inline constexpr int AddressVectorWidth = 2;
 
 namespace TransferDataLayout {
 enum Enum {
@@ -27,23 +30,18 @@ enum Enum {
   CurAddressLow,
   CurAddressHigh,
   ReturnValue,
-  // Number of vector elements for current address storage. Address is always
-  // stored as 64-bit value split into 2 parts (32-bit pointers are zext).
-  AddressSize = 2
 };
 } // namespace TransferDataLayout
 
 using BufferElementTy = unsigned;
 static inline constexpr int ArgHeaderSize = sizeof(BufferElementTy);
-static inline constexpr int FormatStringAnnotationSize =
-    sizeof(BufferElementTy);
 
-static inline int
-calcRequiredBufferSize(vector<int, ArgsInfoVector::Size> ArgsInfo) {
+template <int FormatStringAnnotationSize>
+inline int calcRequiredBufferSize(vector<int, ArgsInfoVector::Size> ArgsInfo) {
   int Num32BitArgs = ArgsInfo[ArgsInfoVector::NumTotal] -
                      ArgsInfo[ArgsInfoVector::Num64Bit] -
                      ArgsInfo[ArgsInfoVector::NumPtr];
-  // Note that pointers is always passed as 64-bit values
+  // Note that pointers are always passed as 64-bit values
   // (32-bit ones are zext).
   int Num64BitArgs =
       ArgsInfo[ArgsInfoVector::Num64Bit] + ArgsInfo[ArgsInfoVector::NumPtr];
@@ -69,21 +67,26 @@ static inline BufferElementTy getInitialBufferOffset(uintptr_t BufferPtr,
   return Result[0];
 }
 
+static inline vector<BufferElementTy, AddressVectorWidth>
+castPointerToVector(uintptr_t Ptr) {
+  vector<uint64_t, 1> Tmp = Ptr;
+  return Tmp.format<BufferElementTy>();
+}
+
 // A helper function to properly set CurAddressLow and CurAddressHigh
 // elements of \p TransferData vector by the provided \p Ptr.
 static inline void
 setCurAddress(vector<BufferElementTy, TransferDataSize> &TransferData,
               uintptr_t Ptr) {
-  vector<uint64_t, 1> Tmp = Ptr;
-  TransferData.select<TransferDataLayout::AddressSize, 1>(
-      TransferDataLayout::CurAddressLow) = Tmp.format<BufferElementTy>();
+  TransferData.select<AddressVectorWidth, 1>(
+      TransferDataLayout::CurAddressLow) = castPointerToVector(Ptr);
 }
 
 // A helper function to properly extract current address from \p TransferData.
 static inline uintptr_t
 getCurAddress(vector<BufferElementTy, TransferDataSize> TransferData) {
-  vector<BufferElementTy, TransferDataLayout::AddressSize> Address =
-      TransferData.select<TransferDataLayout::AddressSize, 1>(
+  vector<BufferElementTy, AddressVectorWidth> Address =
+      TransferData.select<AddressVectorWidth, 1>(
           TransferDataLayout::CurAddressLow);
   // Bit-casting to 64-bit int and then truncating if necessary.
   return Address.format<uint64_t>();
@@ -99,12 +102,14 @@ generateTransferData(uintptr_t InitPtr, BufferElementTy ReturnValue) {
 
 // Printf initial routines. The function gets printf buffer and allocates
 // space in it. It needs some info about args to allocate enough space.
-static inline vector<BufferElementTy, TransferDataSize>
+template <int FormatStringAnnotationSize>
+vector<BufferElementTy, TransferDataSize>
 printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
   auto FmtStrSize = ArgsInfo[ArgsInfoVector::FormatStrSize];
   if (FmtStrSize > MaxFormatStrSize)
     return generateTransferData(/* BufferPtr */ 0, /* ReturnValue */ -1);
-  auto BufferSize = calcRequiredBufferSize(ArgsInfo);
+  auto BufferSize =
+      calcRequiredBufferSize<FormatStringAnnotationSize>(ArgsInfo);
   auto BufferPtr = reinterpret_cast<uintptr_t>(cm::detail::printf_buffer());
   auto Offset = getInitialBufferOffset(BufferPtr, BufferSize);
   return generateTransferData(BufferPtr + Offset, /* ReturnValue */ 0);
@@ -146,8 +151,9 @@ namespace ArgInfo {
 enum Enum { Code, NumDWords, Size };
 } // namespace ArgInfo
 
-static inline vector<BufferElementTy, ArgInfo::Size>
-getArgInfo(ArgKind::Enum Kind) {
+// StringArgSize is in DWords.
+template <int StringArgSize>
+inline vector<BufferElementTy, ArgInfo::Size> getArgInfo(ArgKind::Enum Kind) {
   using RetInitT = cl_vector<BufferElementTy, ArgInfo::Size>;
   switch (Kind) {
   case ArgKind::Char:
@@ -163,21 +169,23 @@ getArgInfo(ArgKind::Enum Kind) {
   case ArgKind::Pointer:
     return RetInitT{ArgCode::Pointer, 2};
   case ArgKind::String:
-    return RetInitT{ArgCode::String, 1};
+    return RetInitT{ArgCode::String, StringArgSize};
   default:
     return RetInitT{ArgCode::Invalid, 0};
   }
 }
 
 // Single printf arg handling (those that are after format string).
-static inline vector<BufferElementTy, TransferDataSize>
+// StringArgSize is in DWords.
+template <int StringArgSize>
+inline vector<BufferElementTy, TransferDataSize>
 printf_arg_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                 ArgKind::Enum Kind,
                 vector<BufferElementTy, ArgData::Size> Arg) {
   if (TransferData[TransferDataLayout::ReturnValue])
     // Just skip.
     return TransferData;
-  vector<BufferElementTy, ArgInfo::Size> Info = getArgInfo(Kind);
+  vector<BufferElementTy, ArgInfo::Size> Info = getArgInfo<StringArgSize>(Kind);
   uintptr_t CurAddress = getCurAddress(TransferData);
   CurAddress = writeElementToBuffer(CurAddress, Info[ArgInfo::Code]);
   for (int Idx = 0; Idx != Info[ArgInfo::NumDWords]; ++Idx)

@@ -106,11 +106,16 @@ else()
 
   set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common.h)
   set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
+  set(PRINTF_ZE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ze_genx.cpp)
   set(EMU_DIVREM_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_divrem.cpp)
 
   vc_embed_bif(PRINTF_OCL_32_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 32
                DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
   vc_embed_bif(PRINTF_OCL_64_CPP_PATH ${PRINTF_OCL_SRC_PATH} VCBiFPrintfOCL 64
+               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+  vc_embed_bif(PRINTF_ZE_32_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 32
+               DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+  vc_embed_bif(PRINTF_ZE_64_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 64
                DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
 
   get_target_property(DIVREM_EXTRA_SOURCES VCEmuDivremBoilerplate SOURCES)
@@ -120,13 +125,17 @@ else()
   add_custom_target(VCBiFPreparation
     DEPENDS ${PRINTF_OCL_32_CPP_PATH}
             ${PRINTF_OCL_64_CPP_PATH}
+            ${PRINTF_ZE_32_CPP_PATH}
+            ${PRINTF_ZE_64_CPP_PATH}
             ${EMU_DIVREM_CPP_PATH}
     SOURCES ${PRINTF_OCL_SRC_PATH}
             ${EMU_DIVREM_SRC_PATH})
 
-  add_library(VCEmbeddedBiF STATIC
+  add_library(VCEmbeddedBiF
     ${PRINTF_OCL_32_CPP_PATH}
     ${PRINTF_OCL_64_CPP_PATH}
+    ${PRINTF_ZE_32_CPP_PATH}
+    ${PRINTF_ZE_64_CPP_PATH}
     ${EMU_DIVREM_CPP_PATH})
 
   add_dependencies(VCBiFPreparation VCBifUtils)
