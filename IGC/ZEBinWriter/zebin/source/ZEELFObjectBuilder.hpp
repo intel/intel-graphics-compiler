@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 //===- ZEELFObjectBuilder.hpp -----------------------------------*- C++ -*-===//
-// ZE Binary Utilitis
+// ZE Binary Utilities
 //
 // \file
 // This file declares ZEELFObjectBuilder for building an ZE Binary object
@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -65,10 +66,7 @@ public:
         m_flags.packed = 0;
     }
 
-    ~ZEELFObjectBuilder() {
-        if (m_zeInfoSection != nullptr)
-            delete m_zeInfoSection;
-    }
+    ~ZEELFObjectBuilder() {}
 
     /// Set elfFileHeader::e_type value
     void setFileType(ELF_TYPE_ZEBIN fileType)
@@ -137,7 +135,7 @@ public:
     // add .gtpin_info section
     // - name: section name. Do not includes leading .gtpin_info in the given
     //         name. For example, giving "func", the section name will be
-    //         ".gtpin_info.func". The defualt name is .gtpin_fino. It'll be apply
+    //         ".gtpin_info.func". The default name is .gtpin_fino. It'll be apply
     //         if the given name is empty.
     // - size in byte
     // - Note that the alignment requirement of the section should be satisfied
@@ -366,7 +364,7 @@ private:
     SectionID m_sectionIdCount = 0;
 
     // every ze object contains only one ze_info section
-    ZEInfoSection* m_zeInfoSection = nullptr;
+    std::unique_ptr<ZEInfoSection> m_zeInfoSection;
     SymbolListTy m_localSymbols;
     SymbolListTy m_globalSymbols;
 
@@ -461,9 +459,9 @@ public:
     // addExpPropertiesHasNonKernelArgLdSt - add experimental_properties for has-non-kernel-arg-load-store analysis
     // add experimental_properties::has_non_kernel_arg_load, experimental_properties::has_non_kernel_arg_store
     // and experimental_properties::has_non_kernel_arg_atomic
-    // Note that zeInfoExperimentalProperties is made as a vector under kernel in the spec, becuase we want it only
+    // Note that zeInfoExperimentalProperties is made as a vector under kernel in the spec, because we want it only
     // present when needed. If it's not a vector, the attribute name will always present in final output even if
-    // all of its sub-attributes are defualt and are not shown.
+    // all of its sub-attributes are default and are not shown.
     static void addExpPropertiesHasNonKernelArgLdSt(zeInfoKernel& zekernel,
         bool hasNonKernelArgLoad, bool hasNonKernelArgStore, bool hasNonKernelArgAtomic);
 

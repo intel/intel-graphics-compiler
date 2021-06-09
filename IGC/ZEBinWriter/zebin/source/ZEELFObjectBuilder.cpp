@@ -61,7 +61,7 @@ private:
     typedef std::vector<SectionHdrEntry> SectionHdrListTy;
 
 private:
-    // set m_SectionHdrEntries and adjust the section index, also creaet
+    // set m_SectionHdrEntries and adjust the section index, also create
     // strings for sections' name in StringTableBuilder
     void createSectionHdrEntries();
     // write elf header
@@ -106,7 +106,7 @@ private:
 
     // name is the string table index of the symbol name
     void writeSymbol(uint32_t name, uint64_t value, uint64_t size,
-        uint8_t binding, uint8_t type, uint8_t other, uint16_t shndx);
+    uint8_t binding, uint8_t type, uint8_t other, uint16_t shndx);
 
     void writeRelRelocation(uint64_t offset, uint64_t type, uint64_t symIdx);
     void writeRelaRelocation(uint64_t offset, uint64_t type, uint64_t symIdx, uint64_t addend);
@@ -146,8 +146,8 @@ ZEELFObjectBuilder::addStandardSection(
     unsigned type, uint32_t padding, uint32_t align, StandardSectionListTy& sections)
 {
     IGC_ASSERT(type != ELF::SHT_NULL);
-    // calcaulate the required padding to satisfy alignment requirement
-    // The orignal data size is (size + padding)
+    // calculate the required padding to satisfy alignment requirement
+    // The origanl data size is (size + padding)
     uint32_t need_padding_for_align = (align == 0) ?
         0 : align - ((size + padding) % align);
     if (need_padding_for_align == align)
@@ -247,8 +247,8 @@ void
 ZEELFObjectBuilder::addSectionZEInfo(zeInfoContainer& zeInfo)
 {
     // every object should have exactly one ze_info section
-    IGC_ASSERT(nullptr == m_zeInfoSection);
-    m_zeInfoSection = new ZEInfoSection(zeInfo, m_sectionIdCount);
+    IGC_ASSERT(!m_zeInfoSection);
+    m_zeInfoSection.reset(new ZEInfoSection(zeInfo, m_sectionIdCount));
     ++m_sectionIdCount;
 }
 
@@ -268,7 +268,7 @@ ZEELFObjectBuilder::RelocSection&
 ZEELFObjectBuilder::getOrCreateRelocSection(SectionID targetSectId, bool isRelFormat)
 {
     // linear search to see if there's existed reloc section with given target id and rel format
-    // reversly iterate that the latest added might hit first
+    // reversely iterate that the latest added might hit first
     for (RelocSectionListTy::reverse_iterator it = m_relocSections.rbegin();
          it != m_relocSections.rend(); ++it) {
         if ((*it).m_TargetID == targetSectId && (*it).isRelFormat() == isRelFormat)
@@ -503,7 +503,7 @@ uint64_t ELFWriter::writeZEInfo()
     uint64_t start_off = m_W.OS.tell();
     // serialize ze_info contents
     llvm::yaml::Output yout(m_W.OS);
-    IGC_ASSERT(nullptr != m_ObjBuilder.m_zeInfoSection);
+    IGC_ASSERT(m_ObjBuilder.m_zeInfoSection);
     yout << m_ObjBuilder.m_zeInfoSection->getZeInfo();
 
     return m_W.OS.tell() - start_off;
@@ -515,7 +515,7 @@ uint64_t ELFWriter::writeStrTab()
 
     // at this point, all strings should be added. Finalized the string table
     // and write it to OS
-    // must finlized it in order, that we take the offset of
+    // must finalize it in order, that we take the offset of
     // section and symbols' name when added
     m_StrTabBuilder.finalizeInOrder();
     m_StrTabBuilder.write(m_W.OS);
@@ -804,9 +804,9 @@ void ELFWriter::createSectionHdrEntries()
 
     // .ze_info
     // every object must have exactly one ze_info section
-    if (m_ObjBuilder.m_zeInfoSection != nullptr) {
+    if (m_ObjBuilder.m_zeInfoSection) {
         createSectionHdrEntry(m_ObjBuilder.m_ZEInfoName, SHT_ZEBIN_ZEINFO,
-            m_ObjBuilder.m_zeInfoSection);
+            m_ObjBuilder.m_zeInfoSection.get());
         ++index;
     }
     else

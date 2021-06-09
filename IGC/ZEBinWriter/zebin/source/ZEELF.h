@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 //===- ZEELF.hpp ------------------------------------------------*- C++ -*-===//
-// ZE Binary Utilitis
+// ZE Binary Utilities
 //
 // \file
 // The file define the special enum value for ZE binary
@@ -78,7 +78,7 @@ struct TargetFlags {
             // 0 - elfFileHeader::machine is PRODUCT_FAMILY
             // 1 - elfFileHeader::machine is GFXCORE_FAMILY
             bool machineEntryUsesGfxCoreInsteadOfProductFamily : 1;
-            // bit[20:16]:  max compatbile device revision Id (stepping)
+            // bit[20:16]:  max compatible device revision Id (stepping)
             uint8_t maxHwRevisionId : 5;
             // bit[23:21]: generator of this device binary. Value defined in above GeneratorId
             uint8_t generatorId : 3;
