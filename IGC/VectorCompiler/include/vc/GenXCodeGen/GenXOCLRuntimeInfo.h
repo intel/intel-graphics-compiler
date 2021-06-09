@@ -138,7 +138,7 @@ public:
     std::string Name;
 
     bool UsesGroupId = false;
-
+    bool UsesDPAS = false;
 
     // Jitter info contains similar field.
     // Whom should we believe?
@@ -200,6 +200,8 @@ public:
 
     unsigned getGRFSizeInBytes() const { return GRFSizeInBytes; }
 
+    // Deduced from actual function instructions.
+    bool usesDPAS() const { return UsesDPAS; }
 
     bool usesBarriers() const { return UsesBarriers; }
     bool usesReadWriteImages() const { return UsesReadWriteImages; }

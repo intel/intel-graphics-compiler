@@ -634,6 +634,14 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     if (!isa<StoreInst>(Inst))
       return false; // no splitting needed for other scalar op.
   }
+  auto ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+  if ((ID == GenXIntrinsic::genx_dpas) ||
+      (ID == GenXIntrinsic::genx_dpas2) ||
+      (ID == GenXIntrinsic::genx_dpasw) ||
+      (ID == GenXIntrinsic::genx_dpas_nosrc0) ||
+      (ID == GenXIntrinsic::genx_dpasw_nosrc0)) {
+    return false;
+  }
   if (isa<ExtractValueInst>(Inst))
     return false;
   if (isa<BitCastInst>(Inst)) {
@@ -674,6 +682,12 @@ bool GenXLegalization::processInst(Instruction *Inst) {
         return false; // non-intrinsic call, ignore
       case GenXIntrinsic::genx_constantpred:
         break; // these intrinsics can be split
+      case GenXIntrinsic::genx_dpas:
+      case GenXIntrinsic::genx_dpas2:
+      case GenXIntrinsic::genx_dpasw:
+      case GenXIntrinsic::genx_dpas_nosrc0:
+      case GenXIntrinsic::genx_dpasw_nosrc0:
+        return false;
       default:
         if (GenXIntrinsicInfo(IntrinID).getRetInfo().getCategory() !=
             GenXIntrinsicInfo::GENERAL) {

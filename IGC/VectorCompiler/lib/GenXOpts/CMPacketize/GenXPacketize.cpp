@@ -1190,6 +1190,11 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_sudp4a_sat:
       case GenXIntrinsic::genx_usdp4a_sat:
       case GenXIntrinsic::genx_uudp4a_sat:
+      case GenXIntrinsic::genx_dpas:
+      case GenXIntrinsic::genx_dpas2:
+      case GenXIntrinsic::genx_dpasw:
+      case GenXIntrinsic::genx_dpas_nosrc0:
+      case GenXIntrinsic::genx_dpasw_nosrc0:
       case GenXIntrinsic::genx_dph:
       case GenXIntrinsic::genx_transpose_ld:
       case GenXIntrinsic::genx_oword_ld:
@@ -1308,6 +1313,19 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         Value *Src4 = getPacketizeValue(CI->getOperand(4));
         Value *Src5 = getPacketizeValue(CI->getOperand(5));
         Value *Args[] = {Src0, BTI, Src2, Src3, Src4, Src5};
+        auto RetTy = B->GetVectorType(CI->getType());
+        Type *Tys[] = {RetTy, Src0->getType()};
+        auto Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
+        replacement = CallInst::Create(Decl, Args, CI->getName(), CI);
+        cast<CallInst>(replacement)->setDebugLoc(CI->getDebugLoc());
+        return replacement;
+      } break;
+      case GenXIntrinsic::genx_bfn: {
+        Value *Src0 = getPacketizeValue(CI->getOperand(0));
+        Value *Src1 = getPacketizeValue(CI->getOperand(1));
+        Value *Src2 = getPacketizeValue(CI->getOperand(2));
+        Value *BFN = getUniformValue(CI->getOperand(4));
+        Value *Args[] = {Src0, Src1, Src2, BFN};
         auto RetTy = B->GetVectorType(CI->getType());
         Type *Tys[] = {RetTy, Src0->getType()};
         auto Decl = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);

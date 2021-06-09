@@ -192,9 +192,9 @@ struct SPatchExecutionEnvironment :
     uint32_t    NumGRFRequired;
     uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
     uint32_t    HasGlobalAtomics;
+    uint32_t    HasDPAS;
     uint32_t    reserved1;
     uint32_t    reserved2;
-    uint32_t    reserved3;
     uint32_t    StatelessWritesCount;
     uint32_t    IndirectStatelessCount;
     uint32_t    UseBindlessMode;

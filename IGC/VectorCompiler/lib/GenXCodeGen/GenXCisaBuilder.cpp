@@ -3441,6 +3441,13 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         // execution size.
         MaxWidth = cast<VectorType>(CI->getType())->getNumElements();
       }
+      if ((IntrinID == GenXIntrinsic::genx_dpas) ||
+          (IntrinID == GenXIntrinsic::genx_dpas2) ||
+          (IntrinID == GenXIntrinsic::genx_dpasw) ||
+          (IntrinID == GenXIntrinsic::genx_dpas_nosrc0) ||
+          (IntrinID == GenXIntrinsic::genx_dpasw_nosrc0)) {
+        MaxWidth = Subtarget->dpasWidth();
+      }
       ResultOperand = createSourceOperand(CI, Signed, AI.getArgIdx(), BI, 0,
                                           nullptr, MaxWidth);
     }
@@ -6320,6 +6327,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA) {
     addArgument("-noMaskWA");
     addArgument("2");
+  }
+  if (BC.isLargeGRFMode()) {
+    addArgument("-TotalGRFNum");
+    addArgument("256");
   }
   return Argv;
 }

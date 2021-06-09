@@ -100,6 +100,13 @@ static cl::opt<bool> EnableMadMatcher("enable-mad", cl::init(true), cl::Hidden,
 static cl::opt<bool> EnableMinMaxMatcher("enable-minmax", cl::init(true),
                                          cl::Hidden,
                                          cl::desc("Enable min/max matching."));
+STATISTIC(NumOfAdd3Matched, "Number of add3 instructions matched");
+static cl::opt<bool> EnableAdd3Matcher(IGC_STRDEBUG("enable-add3"), cl::init(true),
+                                       cl::Hidden,
+                                       cl::desc("Enable add3 matching."));
+STATISTIC(NumOfBfnMatched, "Number of BFN instructions matched");
+static cl::opt<bool> EnableBfnMatcher("enable-bfn", cl::init(true), cl::Hidden,
+                                      cl::desc("Enable bfn matching."));
 
 namespace {
 
@@ -295,7 +302,96 @@ private:
   int NegIndex;
 };
 
+class Add3Matcher {
+public:
+  explicit Add3Matcher(Instruction *I)
+      : AInst(I), A2Inst(nullptr), ID(GenXIntrinsic::not_any_intrinsic) {
+    IGC_ASSERT_MESSAGE(I, "null instruction");
+    Srcs[0] = Srcs[1] = Srcs[2] = nullptr;
+    Negs[0] = Negs[1] = Negs[2] = false;
+  }
 
+  // Match integer mads that starts with binary operators.
+  bool matchIntegerAdd3();
+
+  // Match integer mads that starts with genx_*add intrinsic calls.
+  bool matchIntegerAdd3(unsigned IID);
+
+  bool isProfitable(Instruction *A2) const;
+
+private:
+  // Return true if changes are made.
+  bool emit();
+
+  void setA2Inst(Instruction *I) { A2Inst = I; }
+
+private:
+  // The instruction starts the add3 matching:
+  // * add/sub
+  // * genx_*add
+  Instruction *AInst;
+
+  // The instruction being sinked into:
+  // * add/sub
+  Instruction *A2Inst;
+
+  // The add3 intrinsic ID.
+  unsigned ID;
+
+  // Source operands for the add3 intrinsic call, representing add3 as
+  // srcs[0] + srcs[1] + srcs[2].
+  std::array<Value *, 3> Srcs;
+
+  // Indicates whether Srcs[i] needs to be negated.
+  std::array<bool, 3> Negs;
+};
+
+class BfnMatcher {
+public:
+  explicit BfnMatcher(Instruction *I) {
+    IGC_ASSERT_MESSAGE(I, "null instruction");
+    MainBfnInst = I;
+    PrevBfnInst = nullptr;
+    // in prevBfnInst operands are Srcs[0] and Srcs[1]
+    // MainBfnInst is prevInst operands are result of prevInst and Srcs[2]
+    Srcs[1] = I->getOperand(0);
+    Srcs[2] = I->getOperand(1);
+    Srcs[0] = nullptr;
+    IGC_ASSERT_MESSAGE(Srcs[1] && Srcs[2], "null operands");
+  }
+
+  bool match();
+
+private:
+  static bool checkBfnTypes(const Value *V) {
+    IGC_ASSERT_MESSAGE(V, "Error: nullptr input");
+    if (!V->getType()->isIntOrIntVectorTy())
+      return false;
+    unsigned BitSize = V->getType()->getScalarSizeInBits();
+    if (BitSize != 32 && BitSize != 16)
+      return false;
+    return true;
+  }
+  // These constants are from VISA docs for calculating bfn constant.
+  // Combine these constants with any logical operations to get the function
+  // index for that logical combination
+  using FunctionIndexT = unsigned char;
+  static constexpr std::array<FunctionIndexT, 3> BfnIndex = {0xaa, 0xcc, 0xf0};
+  FunctionIndexT getFunctionIndex() const;
+
+  void growPattern(const Use *U);
+
+  // Return true if changes are made.
+  bool emit();
+
+  // The instructions in the bfn matching:
+  // and/or/xor
+  Instruction *MainBfnInst;
+  Instruction *PrevBfnInst;
+
+  // Source operands for the bfn intrinsic call
+  std::array<Value *, 3> Srcs;
+};
 
 // Class to identify cases where a comparison and select are equivalent to a
 // min or max operation. These are replaced by a min/max intrinsic which allows
@@ -362,6 +458,8 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
     case Instruction::Sub:
       if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad())
         Changed = true;
+      else if (ST && (ST->hasAdd3Bfn()))
+        Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3();
       break;
     case Instruction::And:
       if (I.getType()->getScalarType()->isIntegerTy(1)) {
@@ -369,9 +467,15 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
           Changed = true;
       } else if (extendMask(&I))
         Changed = true;
+      else if (ST && (ST->hasAdd3Bfn()))
+        Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
       break;
     case Instruction::Or:
     case Instruction::Xor:
+      if (!I.getType()->getScalarType()->isIntegerTy(1) &&
+          (ST && ST->hasAdd3Bfn())) {
+        Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
+      } else
       if (extendMask(&I))
         Changed = true;
       break;
@@ -394,6 +498,8 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_uuadd_sat:
     if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad(ID))
       Changed = true;
+    else if (ST && (ST->hasAdd3Bfn()))
+      Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3(ID);
     break;
   case GenXIntrinsic::genx_rdpredregion:
     Changed |= simplifyPredRegion(&I);
@@ -1401,7 +1507,352 @@ bool MadMatcher::emit() {
   return true;
 }
 
+/// The beginning of the Add3Matcher
+bool Add3Matcher::isProfitable(Instruction *A2) const {
+  // Do not match unused instructions.
+  if (AInst->use_empty())
+    return false;
 
+  if (!A2->hasOneUse())
+    return false;
+
+  auto nb1 = AInst->getType()->getScalarSizeInBits();
+  if (nb1 != 16 && nb1 != 32)
+    return false;
+
+  int nc = 0;
+  for (int i = 0; i < 3; ++i) {
+    // all sources must be 16-bit or 32-bit
+    auto Ext = dyn_cast<ExtOperator>(Srcs[i]);
+    if (Ext) {
+      Value *RV = Ext->getOperand(0);
+      auto nb3 = RV->getType()->getScalarSizeInBits();
+      if (nb3 != 16 && nb3 != 32)
+        return false;
+    }
+    if (auto C = dyn_cast<Constant>(Srcs[i])) {
+      nc++;
+      // less than two immediates
+      if (nc > 1)
+        return false;
+      // the immediate must be less than 16-bits
+      if (!C->getType()->isVectorTy() || C->getSplatValue()) {
+        if (C->getUniqueInteger().uge(1 << 16))
+          return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool Add3Matcher::matchIntegerAdd3() {
+  const bool isAdd = AInst->getOpcode() == Instruction::Add;
+  const bool isSub = AInst->getOpcode() == Instruction::Sub;
+  IGC_ASSERT(isAdd || isSub);
+  (void) isAdd;
+
+  Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
+
+  if (Instruction *BI = dyn_cast<Instruction>(Ops[0])) {
+    if (BI->getOpcode() == Instruction::Add ||
+        BI->getOpcode() == Instruction::Sub) {
+      // Case X +/- Y +/- Z
+      Srcs[2] = Ops[1];
+      Srcs[1] = BI->getOperand(1);
+      Srcs[0] = BI->getOperand(0);
+      if (isProfitable(BI)) {
+        setA2Inst(BI);
+        Negs[2] = (isSub);
+        Negs[1] = (A2Inst->getOpcode() == Instruction::Sub);
+      }
+    }
+  }
+
+  if (!A2Inst) {
+    if (Instruction *BI = dyn_cast<Instruction>(Ops[1])) {
+      if (BI->getOpcode() == Instruction::Add ||
+          BI->getOpcode() == Instruction::Sub) {
+        // Case Z +/- (X +/- Y)
+        Srcs[0] = Ops[0];
+        Srcs[1] = BI->getOperand(0);
+        Srcs[2] = BI->getOperand(1);
+        if (isProfitable(BI)) {
+          setA2Inst(BI);
+          Negs[1] = (isSub);
+          Negs[2] = (AInst->getOpcode() != A2Inst->getOpcode());
+        }
+      }
+    }
+  }
+  if (!A2Inst) { // Check if operand 0 is broadcasted from scalar.
+    if (auto S = getBroadcastFromScalar(Ops[0])) {
+      if (Instruction *BI = dyn_cast<Instruction>(S)) {
+        if (BI->getOpcode() == Instruction::Add ||
+            BI->getOpcode() == Instruction::Sub) {
+          // Case X +/- Y +/- Z
+          Srcs[2] = Ops[1];
+          Srcs[1] = BI->getOperand(1);
+          Srcs[0] = BI->getOperand(0);
+          if (isProfitable(BI)) {
+            setA2Inst(BI);
+            Negs[2] = (isSub);
+            Negs[1] = (A2Inst->getOpcode() == Instruction::Sub);
+          }
+        }
+      }
+    }
+  }
+
+  if (!A2Inst) { // Check if operand 1 is broadcasted from scalar.
+    if (auto S = getBroadcastFromScalar(Ops[1])) {
+      if (Instruction *BI = dyn_cast<Instruction>(S)) {
+        if (BI->getOpcode() == Instruction::Add ||
+            BI->getOpcode() == Instruction::Sub) {
+          // Case Z +/- (X +/- Y)
+          Srcs[0] = Ops[0];
+          Srcs[1] = BI->getOperand(0);
+          Srcs[2] = BI->getOperand(1);
+          if (isProfitable(BI)) {
+            setA2Inst(BI);
+            Negs[1] = (isSub);
+            Negs[2] = (AInst->getOpcode() != A2Inst->getOpcode());
+          }
+        }
+      }
+    }
+  }
+
+  // Always use add3.
+  ID = GenXIntrinsic::genx_add3;
+
+  // Emit add3 if matched and profitable.
+  return emit();
+}
+
+bool Add3Matcher::matchIntegerAdd3(unsigned IID) {
+  IGC_ASSERT_MESSAGE(GenXIntrinsic::getAnyIntrinsicID(AInst) == IID,
+    "input out of sync");
+  Value *Ops[2] = {AInst->getOperand(0), AInst->getOperand(1)};
+
+  if (Instruction *BI = dyn_cast<Instruction>(Ops[0])) {
+    if (BI->getOpcode() == Instruction::Add ||
+        BI->getOpcode() == Instruction::Sub) {
+      // Case X +/- Y + Z
+      Srcs[2] = Ops[1];
+      Srcs[1] = BI->getOperand(1);
+      Srcs[0] = BI->getOperand(0);
+      if (isProfitable(BI)) {
+        setA2Inst(BI);
+        Negs[1] = (A2Inst->getOpcode() == Instruction::Sub);
+      }
+    }
+  }
+
+  if (!A2Inst) {
+    if (Instruction *BI = dyn_cast<Instruction>(Ops[1])) {
+      if (BI->getOpcode() == Instruction::Add ||
+          BI->getOpcode() == Instruction::Sub) {
+        // Case Z + (X +/- Y)
+        Srcs[0] = Ops[0];
+        Srcs[1] = BI->getOperand(0);
+        Srcs[2] = BI->getOperand(1);
+        if (isProfitable(BI)) {
+          setA2Inst(BI);
+          Negs[2] = (A2Inst->getOpcode() == Instruction::Sub);
+        }
+      }
+    }
+  }
+
+  switch (IID) {
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected intrinsic ID");
+  case GenXIntrinsic::genx_ssadd_sat:
+    ID = GenXIntrinsic::genx_ssadd3_sat;
+    break;
+  case GenXIntrinsic::genx_suadd_sat:
+    ID = GenXIntrinsic::genx_suadd3_sat;
+    break;
+  case GenXIntrinsic::genx_usadd_sat:
+    ID = GenXIntrinsic::genx_usadd3_sat;
+    break;
+  case GenXIntrinsic::genx_uuadd_sat:
+    ID = GenXIntrinsic::genx_uuadd3_sat;
+    break;
+  }
+
+  // Emit mad if matched and profitable.
+  return emit();
+}
+
+// If Value *V is scalar type, return new Value* - splat of a specific type
+// for example, if VTy is <2 x i32>, and V is i32 type constant i32 7, we return
+// pointer to new Value <7, 7>
+Value *SplatValueIfNecessary(Value *V, VectorType *VTy, IRBuilder<> &Builder) {
+  IGC_ASSERT_MESSAGE(V && VTy, "Error: get nullptr input");
+  IGC_ASSERT_MESSAGE(V->getType()->isIntOrIntVectorTy() &&
+                         VTy->isIntOrIntVectorTy(),
+                     "Error: expect integer types");
+  // currenty zext is after add, so types should be the same
+  IGC_ASSERT_MESSAGE(V->getType()->getScalarType() == VTy->getScalarType(),
+                     "Error: not corresponding types");
+  if (V->getType()->isVectorTy())
+    return V;
+  if (auto C = dyn_cast<Constant>(V)) {
+    return ConstantVector::getSplat(
+        IGCLLVM::getElementCount(VTy->getNumElements()), C);
+  }
+  auto* Ext = dyn_cast<ExtOperator>(V);
+  if (Ext)
+    V = Ext->getOperand(0);
+  Type *NewTy = IGCLLVM::FixedVectorType::get(V->getType(), 1);
+  V = Builder.CreateBitCast(V, NewTy);
+  // Broadcast through rdregin.
+  Region R(V);
+  R.Offset = 0;
+  R.Width = 1;
+  R.Stride = R.VStride = 0;
+  R.NumElements = VTy->getNumElements();
+  Instruction *InsertionPt = &(*Builder.GetInsertPoint());
+  V = R.createRdRegion(V, ".splat", InsertionPt, InsertionPt->getDebugLoc());
+  if (Ext)
+    V = Builder.CreateCast(Instruction::CastOps(Ext->getOpcode()), V, VTy);
+  return V;
+};
+
+bool Add3Matcher::emit() {
+  if (A2Inst == nullptr)
+    return false;
+
+  IRBuilder<> Builder(AInst);
+
+  std::array<Value *, 3> Vals(Srcs);
+
+  if (auto* VTy = dyn_cast<VectorType>(AInst->getType())) {
+    // Splat scalar sources if necessary.
+    std::transform(Vals.begin(), Vals.end(), Vals.begin(),
+                   [&Builder, VTy](Value *V) {
+                     return SplatValueIfNecessary(V, VTy, Builder);
+                   });
+  }
+  // Perform source operand negation if necessary.
+  for (int i = 0; i < 3; ++i)
+    if (Negs[i]) {
+      Vals[i] = Builder.CreateNeg(Vals[i], "neg");
+    }
+
+  Function *Fn = nullptr;
+  {
+    Module *M = AInst->getParent()->getParent()->getParent();
+    Type *Tys[2] = {AInst->getType(), Vals[0]->getType()};
+    Fn = GenXIntrinsic::getAnyDeclaration(M, ID, Tys);
+  }
+  IGC_ASSERT_MESSAGE(Fn, "not found currect intrinsic");
+  IGC_ASSERT_MESSAGE(Vals[0]->getType() == Vals[1]->getType() &&
+                         Vals[1]->getType() == Vals[2]->getType(),
+                     "add3 should have the same type Operands");
+  CallInst *CI = Builder.CreateCall(Fn, Vals, VALUE_NAME("add3"));
+  CI->setDebugLoc(AInst->getDebugLoc());
+  AInst->replaceAllUsesWith(CI);
+
+  NumOfAdd3Matched++;
+  return true;
+}
+
+/// the Beginning of the BfnMatcher
+bool BfnMatcher::match() {
+  if (MainBfnInst->use_empty())
+    return false;
+  if (!checkBfnTypes(MainBfnInst))
+    return false;
+
+  Use *U = std::find_if(
+      MainBfnInst->op_begin(), MainBfnInst->op_end(), [](const Use &U) {
+        Instruction *I = dyn_cast<Instruction>(U.get());
+        if (!I)
+          return false;
+        if (!I->hasOneUse())
+          return false;
+        unsigned Opcode = I->getOpcode();
+        if (Opcode == Instruction::And || Opcode == Instruction::Xor ||
+            Opcode == Instruction::Or)
+          return true;
+        return false;
+      });
+  if (U == MainBfnInst->op_end())
+    return false;
+
+  growPattern(U);
+  return emit();
+}
+
+void BfnMatcher::growPattern(const Use *U) {
+  IGC_ASSERT(U);
+  Instruction *I = cast<Instruction>(U->get());
+  IGC_ASSERT(I);
+  IGC_ASSERT(I->getOpcode() == Instruction::And ||
+             I->getOpcode() == Instruction::Xor ||
+             I->getOpcode() == Instruction::Or);
+
+  unsigned SrcIdx = U->getOperandNo();
+  // we do not work with this operand
+  Value *BfnOtherOperand = MainBfnInst->getOperand((SrcIdx + 1) % 2);
+
+  Srcs[0] = I->getOperand(0);
+  Srcs[1] = I->getOperand(1);
+  Srcs[2] = BfnOtherOperand;
+  PrevBfnInst = I;
+}
+
+BfnMatcher::FunctionIndexT BfnMatcher::getFunctionIndex() const {
+  // calculation left to right, with no brackets,
+  // so first calculation for PrevBfnInst, next MainBfnInst
+
+  auto calculateOperation = [](unsigned Opcode, FunctionIndexT Op0,
+                               FunctionIndexT Op1) {
+    switch (Opcode) {
+    case Instruction::And:
+      return Op0 & Op1;
+    case Instruction::Or:
+      return Op0 | Op1;
+    case Instruction::Xor:
+      return Op0 ^ Op1;
+    default:
+      IGC_ASSERT_MESSAGE(false, "Wrong Opcode");
+      return 0;
+    }
+  };
+  FunctionIndexT result =
+      calculateOperation(PrevBfnInst->getOpcode(), BfnIndex[0], BfnIndex[1]);
+  return calculateOperation(MainBfnInst->getOpcode(), result, BfnIndex[2]);
+}
+
+// Return true if changes are made.
+bool BfnMatcher::emit() {
+  IGC_ASSERT_MESSAGE(Srcs[0] && Srcs[1] && Srcs[2] && MainBfnInst &&
+                         PrevBfnInst,
+                     "Error: wrong class structure");
+  FunctionIndexT Index = getFunctionIndex();
+
+  IRBuilder<> Builder{MainBfnInst};
+  // create the BFN call
+  Function *Fn = nullptr;
+  {
+    Module *M = MainBfnInst->getParent()->getParent()->getParent();
+    Type *Tys[2] = {MainBfnInst->getType(), Srcs[0]->getType()};
+    Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_bfn, Tys);
+  }
+  std::array<Value *, 4> Args;
+
+  std::copy(Srcs.begin(), Srcs.end(), Args.begin());
+  Args.back() = Builder.getInt8(Index);
+
+  CallInst *CI = Builder.CreateCall(Fn, Args, IGC_MANGLE("bfn"));
+  MainBfnInst->replaceAllUsesWith(CI);
+
+  NumOfBfnMatched++;
+  return true;
+}
 
 bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
   // Handle casts for instructions.

@@ -63,6 +63,7 @@ protected:
     GENX_ICLLP,
     GENX_TGLLP,
     GENX_DG1,
+    XE_HP_SDV,
   };
 
   // GenXVariant - GenX Tag identifying the variant to compile for
@@ -177,6 +178,18 @@ public:
   bool isTGLLP() const { return GenXVariant == GENX_TGLLP; }
   /// * isDG1 - true if target is DG1
   bool isDG1() const { return GenXVariant == GENX_DG1; }
+  /// * isXEHP - true if target is XEHP
+  bool isXEHP() const {
+    return GenXVariant == XE_HP_SDV;
+  }
+  /// * translateMediaWalker - true if translate media walker APIs
+  bool translateMediaWalker() const { return GenXVariant >= XE_HP_SDV; }
+  // TODO: consider implementing 2 different getters
+  /// * has add3 and bfn instructions
+  bool hasAdd3Bfn() const { return GenXVariant >= XE_HP_SDV; }
+  int dpasWidth() const {
+    return 8;
+  }
 
   /// * emulateLongLong - true if i64 emulation is requested
   bool emulateLongLong() const { return EmulateLongLong; }
@@ -228,10 +241,14 @@ public:
 
   /// * getMaxSlmSize - returns maximum allowed SLM size (in KB)
   unsigned getMaxSlmSize() const {
+    if (isXEHP())
+      return 128;
     return 64;
   }
 
   bool hasThreadPayloadInMemory() const {
+    if (isXEHP())
+      return true;
     return false;
   }
 
@@ -241,6 +258,8 @@ public:
       return false;
     if (isDG1())
       return false;
+    if (isXEHP())
+      return false;
     return true;
   }
 
@@ -249,6 +268,8 @@ public:
   bool needsArgPatching() const {
     if (isOCLRuntime())
       return false;
+    if (isXEHP())
+      return true;
     return false;
   }
 
@@ -296,6 +317,8 @@ public:
       return TARGET_PLATFORM::GENX_TGLLP;
     case GENX_DG1:
       return TARGET_PLATFORM::GENX_TGLLP;
+    case XE_HP_SDV:
+      return TARGET_PLATFORM::XE_HP;
     case GENX_KBL:
       return TARGET_PLATFORM::GENX_SKL;
     case GENX_GLK:

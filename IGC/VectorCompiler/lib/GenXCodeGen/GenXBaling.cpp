@@ -423,6 +423,12 @@ bool GenXBaling::operandCanBeBaled(
     // intrinsic, since in that case AI is initialized to a state
     // where there are no region restrictions.)
     bool CanSplitBale = true;
+    auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+    CanSplitBale = ((IID != GenXIntrinsic::genx_dpas) &&
+                    (IID != GenXIntrinsic::genx_dpas2) &&
+                    (IID != GenXIntrinsic::genx_dpasw) &&
+                    (IID != GenXIntrinsic::genx_dpas_nosrc0) &&
+                    (IID != GenXIntrinsic::genx_dpasw_nosrc0));
     Region RdR(Opnd, BaleInfo());
     if (!isRegionOKForIntrinsic(AI.Info, RdR, CanSplitBale))
       return false;
@@ -1161,6 +1167,10 @@ bool GenXBaling::isBalableNewValueIntoWrr(Value *V, const Region &WrrR) {
       switch (AI.getCategory()) {
       case GenXIntrinsicInfo::GENERAL: {
         bool CanSplitBale = true;
+        CanSplitBale = ((ValIntrinID != GenXIntrinsic::genx_dpas) &&
+                        (ValIntrinID != GenXIntrinsic::genx_dpasw) &&
+                        (ValIntrinID != GenXIntrinsic::genx_dpas_nosrc0) &&
+                        (ValIntrinID != GenXIntrinsic::genx_dpasw_nosrc0));
         if (isRegionOKForIntrinsic(AI.Info, WrrR, CanSplitBale))
           return true;
       } break;

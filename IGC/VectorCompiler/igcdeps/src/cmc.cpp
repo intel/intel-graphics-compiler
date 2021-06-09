@@ -619,6 +619,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   // SLM size in bytes, align to 1KB.
   ExecEnv.SumFixedTGSMSizes = iSTD::Align(BackendInfo.getSLMSize(), 1024);
   ExecEnv.HasBarriers = BackendInfo.usesBarriers();
+  ExecEnv.HasDPAS = BackendInfo.usesDPAS();
   ExecEnv.HasReadWriteImages = BackendInfo.usesReadWriteImages();
   ExecEnv.SubgroupIndependentForwardProgressRequired = true;
   ExecEnv.NumGRFRequired = JitterInfo.numGRFTotal;

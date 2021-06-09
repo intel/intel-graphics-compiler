@@ -76,6 +76,7 @@ struct CompileOptions {
   llvm::Optional<unsigned> StackMemSize;
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
+  bool IsLargeGRFMode = false;
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...

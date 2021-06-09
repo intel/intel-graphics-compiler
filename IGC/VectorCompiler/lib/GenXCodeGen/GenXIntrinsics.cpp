@@ -188,6 +188,12 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
     if (auto *VT = dyn_cast<VectorType>(CI->getOperand(0)->getType()))
       return VT->getNumElements();
     return 1;
+  case GenXIntrinsic::genx_dpas:
+  case GenXIntrinsic::genx_dpas2:
+  case GenXIntrinsic::genx_dpas_nosrc0:
+  case GenXIntrinsic::genx_dpasw:
+  case GenXIntrinsic::genx_dpasw_nosrc0:
+    return ST ? ST->dpasWidth() : 8;
   }
 
   return 0;

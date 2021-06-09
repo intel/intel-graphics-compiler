@@ -23,6 +23,9 @@ def gtpin_scratch_area_size : ZeSeparate<"gtpin-scratch-area-size">,
 def : ZeJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size>,
   HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 
+def large_GRF : ZeFlag<"opt-large-register-file">,
+  HelpText<"Increase number of available GRF">;
+
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
 // These are coming from NEO when run under debugger.

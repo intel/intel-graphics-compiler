@@ -52,6 +52,7 @@ namespace {
 // trunc
 // llvm.genx.absi
 // llvm.genx.absf
+// llvm.genx.bf.cvt
 class GenXVectorCombiner final : public FunctionPass {
   struct InstructionPack {
     Instruction *RdRegion;

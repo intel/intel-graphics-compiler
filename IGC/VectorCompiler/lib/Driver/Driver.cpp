@@ -241,6 +241,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.DisableNonOverlappingRegionOpt = true;
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
+  BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
   return BackendOpts;
 }
 
@@ -568,6 +569,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.NoJumpTables = true;
   if (ApiOptions.hasArg(OPT_vc_ftranslate_legacy_memory_intrinsics))
     Opts.TranslateLegacyMemoryIntrinsics = true;
+  if (ApiOptions.hasArg(OPT_large_GRF))
+    Opts.IsLargeGRFMode = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_optimize)) {
     StringRef Val = A->getValue();

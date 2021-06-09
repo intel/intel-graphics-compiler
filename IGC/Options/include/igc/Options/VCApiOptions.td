@@ -52,6 +52,14 @@ def vc_stateless_private_size : PlainJoined<"stateless-stack-mem-size=">,
 
 def Xfinalizer : PlainSeparate<"Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
+
+// Compatibility alias.
+def : PlainFlag<"doubleGRF">, Alias<large_GRF>,
+  HelpText<"Alias for -ze-opt-large-register-file"> {
+  let Flags = ApiHelper.VCBackwardCompatFlags;
+}
+def : PlainFlag<"double-GRF">, Alias<large_GRF>,
+  HelpText<"Alias for -ze-opt-large-register-file">;
 }
 // }} VC API options
 

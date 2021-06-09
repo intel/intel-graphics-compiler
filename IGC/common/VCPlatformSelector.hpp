@@ -43,6 +43,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
       return "TGLLP";
     if (Product == IGFX_DG1)
       return "DG1";
+    else if (Product == IGFX_XE_HP_SDV)
+      return "XEHP";
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;

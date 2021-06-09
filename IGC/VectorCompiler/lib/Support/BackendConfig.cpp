@@ -106,6 +106,10 @@ static cl::opt<FunctionControl> FunctionControlOpt(
     cl::values(clEnumValN(FunctionControl::Default, "default", "Default"),
                clEnumValN(FunctionControl::StackCall, "stackcall", "Default")));
 
+static cl::opt<bool> LargeGRFModeOpt("vc-large-grf",
+                                     cl::desc("Enable large GRF mode"),
+                                     cl::init(false));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -127,6 +131,7 @@ GenXBackendOptions::GenXBackendOptions()
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
       FCtrl(FunctionControlOpt),
+      IsLargeGRFMode(LargeGRFModeOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt) {}
 
 static std::unique_ptr<MemoryBuffer>

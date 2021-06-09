@@ -138,6 +138,8 @@ struct GenXBackendOptions {
   // Non-owning pointer to workaround table.
   const WA_TABLE *WATable = nullptr;
 
+  bool IsLargeGRFMode = false;
+
   // max private stateless memory size per thread
   unsigned StatelessPrivateMemSize;
 
@@ -253,6 +255,8 @@ public:
   }
 
   FunctionControl getFCtrl() const { return Options.FCtrl; }
+
+  bool isLargeGRFMode() const { return Options.IsLargeGRFMode; }
 
   // Return pointer to WA_TABLE. Can be null.
   const WA_TABLE *getWATable() const {

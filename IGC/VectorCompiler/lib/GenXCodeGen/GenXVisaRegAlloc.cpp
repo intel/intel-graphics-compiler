@@ -505,6 +505,22 @@ void GenXVisaRegAlloc::extraCoalescing()
         if (skipTwoAddrCoalesce(Inst))
           continue;
 
+        // if intrinsic have restrictions on combination for input/output
+        // registers return true
+        auto isRestrictedByVisa = [](unsigned ID, unsigned operandNum) {
+          switch (ID) {
+            // dpas - src1 and src2 should not overlap with dst
+          case GenXIntrinsic::genx_dpas2:
+          case GenXIntrinsic::genx_dpas:
+          case GenXIntrinsic::genx_dpasw:
+            return operandNum == 1 || operandNum == 2;
+          case GenXIntrinsic::genx_dpas_nosrc0:
+          case GenXIntrinsic::genx_dpasw_nosrc0:
+            return operandNum == 0 || operandNum == 1;
+          default:
+            return false;
+          }
+        };
         // See if we can coalesce with any operand.
         for (unsigned oi = 0, oe = Inst->getNumOperands(); oi != oe; ++oi) {
           Value *Operand = Inst->getOperand(oi);
@@ -514,6 +530,8 @@ void GenXVisaRegAlloc::extraCoalescing()
             continue;
           // Do not coalesce with kernel arguments as they are input variables.
           if (FG->getHead() == F && isa<Argument>(Operand))
+            continue;
+          if (isRestrictedByVisa(GenXIntrinsic::getGenXIntrinsicID(Inst), oi))
             continue;
           auto OperandLR = Liveness->getLiveRangeOrNull(Operand);
           if (!OperandLR || OperandLR->Category != RegCategory::GENERAL)

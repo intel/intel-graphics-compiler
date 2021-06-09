@@ -77,6 +77,12 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
         case GenXIntrinsic::genx_sudp4a_sat:
         case GenXIntrinsic::genx_usdp4a_sat:
         case GenXIntrinsic::genx_uudp4a_sat:
+        case GenXIntrinsic::genx_dpas:
+        case GenXIntrinsic::genx_dpas2:
+        case GenXIntrinsic::genx_dpasw:
+        case GenXIntrinsic::genx_dpas_nosrc0:
+        case GenXIntrinsic::genx_dpasw_nosrc0:
+          UsesDPAS = true;
           break;
 #if 0
         // ThreadPrivateMemSize was not copied to igcmc structures
