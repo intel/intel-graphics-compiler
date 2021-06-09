@@ -38,6 +38,8 @@ CMKernel::CMKernel(const PLATFORM& platform)
 
 CMKernel::~CMKernel()
 {
+    // TODO: refactor memory managment.
+    m_kernelInfo.m_kernelProgram.simd1.Destroy();
     delete m_btiLayout.getModifiableLayout();
 }
 
