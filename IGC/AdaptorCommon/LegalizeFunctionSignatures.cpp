@@ -92,9 +92,9 @@ inline bool isLegalReturnType(Type* ty, bool isStackCall)
 
 inline bool isLegalIntVectorType(Module& M, Type* ty)
 {
-    if (ty->isVectorTy() && cast<VectorType>(ty)->getElementType()->isIntegerTy())
+    if (ty->isIntOrIntVectorTy())
     {
-        unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(cast<VectorType>(ty)->getElementType());
+        unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(ty->isIntegerTy() ? ty : cast<VectorType>(ty)->getElementType());
         switch (size)
         {
         case 8:
@@ -109,14 +109,11 @@ inline bool isLegalIntVectorType(Module& M, Type* ty)
     return true;
 }
 
-inline Type* LegalizedIntVectorType(Module& M, const Type* const oldTy)
+inline Type* LegalizedIntVectorType(Module& M, Type* ty)
 {
-    IGC_ASSERT(nullptr != oldTy);
-    IGC_ASSERT(oldTy->isVectorTy());
-    IGC_ASSERT(nullptr != cast<VectorType>(oldTy)->getElementType());
-    IGC_ASSERT(cast<VectorType>(oldTy)->getElementType()->isIntegerTy());
+    IGC_ASSERT(ty && ty->isIntOrIntVectorTy());
 
-    const unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(cast<VectorType>(oldTy)->getElementType());
+    unsigned size = (unsigned)M.getDataLayout().getTypeSizeInBits(ty->isIntegerTy() ? ty : cast<VectorType>(ty)->getElementType());
     unsigned newSize = 0;
 
     // Upscale the size to the next supported legal size
@@ -126,7 +123,9 @@ inline Type* LegalizedIntVectorType(Module& M, const Type* const oldTy)
     else if (size <= 64) newSize = 64;
     else IGC_ASSERT_MESSAGE(0, "Currently don't support upscaling int sizes > 64 bits");
 
-    return IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<VectorType>(oldTy)->getNumElements());
+    return ty->isIntegerTy() ?
+        cast<Type>(IntegerType::get(M.getContext(), newSize)) :
+        IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<VectorType>(ty)->getNumElements());
 }
 
 void LegalizeFunctionSignatures::FixFunctionSignatures()
