@@ -386,7 +386,7 @@ public:
     zeInfoKernel& createKernel(const std::string& name);
 
     // addPayloadArgumentByPointer - add explicit kernel argument with pointer
-    // type into given zeKernel
+    // type into given arg_list
     static zeInfoPayloadArgument& addPayloadArgumentByPointer(
         PayloadArgumentsTy& arg_list,
         int32_t offset,
@@ -397,15 +397,27 @@ public:
         PreDefinedAttrGetter::ArgAccessType access_type);
 
     // addPayloadArgumentByValue - add explicit kernel argument with pass by
-    // value type into given zeKernel
+    // value type into given arg_list
     static zeInfoPayloadArgument& addPayloadArgumentByValue(
         PayloadArgumentsTy& arg_list,
         int32_t offset,
         int32_t size,
         int32_t arg_index);
 
+    // addPayloadArgumentSampler - add explicit kernel argument for sampler
+    // into given arg_list
+    // The argument type will be set to by_pointer, and addr_space will be set to sampler
+    static zeInfoPayloadArgument& addPayloadArgumentSampler(
+        PayloadArgumentsTy& arg_list,
+        int32_t offset,
+        int32_t size,
+        int32_t arg_index,
+        int32_t sampler_index,
+        PreDefinedAttrGetter::ArgAddrMode addrmode,
+        PreDefinedAttrGetter::ArgAccessType access_type);
+
     // addPayloadArgumentImplicit - add non-user argument (implicit argument)
-    // into given zeKernel. The type must be local_size, group_size,
+    // into given arg_list. The type must be local_size, group_size,
     // global_id_offset or private_base_stateless
     static zeInfoPayloadArgument& addPayloadArgumentImplicit(
         PayloadArgumentsTy& arg_list,
@@ -414,7 +426,7 @@ public:
         int32_t size);
 
     // addPerThreadPayloadArgument - add a per-thread payload argument into
-    // given kernel. Currently we only support local id as per-thread argument.
+    // arg_list. Currently we only support local id as per-thread argument.
     // The given type must be packed_local_ids or local_id
     static zeInfoPerThreadPayloadArgument& addPerThreadPayloadArgument(
         PerThreadPayloadArgumentsTy& arg_list,
@@ -422,7 +434,7 @@ public:
         int32_t offset,
         int32_t size);
 
-    // addBindingTableIndex - add a binding table index into kernel, with
+    // addBindingTableIndex - add a binding table index into given bti_list, with
     // corresponding kernel argument index
     static zeInfoBindingTableIndex& addBindingTableIndex(
         BindingTableIndicesTy& bti_list,

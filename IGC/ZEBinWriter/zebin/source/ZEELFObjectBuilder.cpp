@@ -827,7 +827,7 @@ zeInfoKernel& ZEInfoBuilder::createKernel(const std::string& name)
 }
 
 // addPayloadArgumentByPointer - add explicit kernel argument with pointer
-// type into given zeKernel
+// type into given arg_list
 zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByPointer(
     PayloadArgumentsTy& arg_list,
     int32_t offset,
@@ -849,8 +849,26 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByPointer(
     return arg;
 }
 
+// addPayloadArgumentSampler - add explicit kernel argument for sampler
+// into given arg_list
+// The argument type will be set to by_pointer, and addr_space will be set to sampler
+zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentSampler(
+    PayloadArgumentsTy& arg_list,
+    int32_t offset,
+    int32_t size,
+    int32_t arg_index,
+    int32_t sampler_index,
+    PreDefinedAttrGetter::ArgAddrMode addrmode,
+    PreDefinedAttrGetter::ArgAccessType access_type)
+{
+    zeInfoPayloadArgument& arg = addPayloadArgumentByPointer(arg_list, offset, size, arg_index, addrmode,
+        PreDefinedAttrGetter::ArgAddrSpace::sampler, access_type);
+    arg.sampler_index = sampler_index;
+    return arg;
+}
+
 // addPayloadArgumentByValue - add explicit kernel argument with pass by
-// value type into given zeKernel
+// value type into given arg_list
 zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     PayloadArgumentsTy& arg_list,
     int32_t offset,

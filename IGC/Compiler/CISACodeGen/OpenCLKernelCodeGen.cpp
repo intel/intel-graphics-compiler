@@ -660,7 +660,7 @@ namespace IGC
             IGC_ASSERT_MESSAGE(resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_UAV ||
                 resInfo.Type == SOpenCLKernelInfo::SResourceInfo::RES_SRV, "Unknown resource type");
 
-            // the image arg is either bindless of stateful. check from "kernelArg->needsAllocation()"
+            // the image arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
             // For statefull image argument, the arg has 0 offset and 0 size
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
                 zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
@@ -690,6 +690,34 @@ namespace IGC
         }
         break;
 
+        // sampler
+        case KernelArg::ArgType::SAMPLER:
+        case KernelArg::ArgType::BINDLESS_SAMPLER:
+        {
+            // the sampler arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
+            // For statefull image argument, the arg has 0 offset and 0 size
+            // NOTE: we only have statefull sampler now
+            zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
+                zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+            uint arg_off = 0;
+            uint arg_size = 0;
+            if (kernelArg->needsAllocation()) {
+                // set to bindless
+                arg_addrmode =
+                    zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
+                arg_off = payloadPosition;
+                arg_size = kernelArg->getAllocateSize();
+            }
+
+            int arg_idx = kernelArg->getAssociatedArgNo();
+            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
+            // add the payload argument
+            zebin::ZEInfoBuilder::addPayloadArgumentSampler(m_kernelInfo.m_zePayloadArgs,
+                arg_off, arg_size, arg_idx, resInfo.Index, arg_addrmode,
+                zebin::PreDefinedAttrGetter::ArgAccessType::readwrite);
+        }
+        break;
+
         case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:
         {
             zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
@@ -712,6 +740,8 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
         case KernelArg::ArgType::STRUCT:
+        // FIXME: this implicit arg is not used nowadays, should remove it completely
+        case KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA:
             break;
 
         // FIXME: should these be supported?
