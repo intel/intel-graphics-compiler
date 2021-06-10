@@ -108,6 +108,8 @@ class GenXEmulate : public ModulePass {
     Instruction &Inst;
 
     Value *expandBitwiseOp(BinaryOperator &);
+    Value *expandBitLogicOp(BinaryOperator &);
+
     Value *visitAdd(BinaryOperator &);
     Value *visitSub(BinaryOperator &);
     Value *visitAnd(BinaryOperator &);
@@ -357,6 +359,63 @@ Value *GenXEmulate::Emu64Expander::detectBitwiseNot(BinaryOperator &Op) {
 
   return nullptr;
 }
+
+// changes vector/scalar i64 type so it now uses scalar type i32
+// <2 x i64> -> <4 x i32>
+// i64 -> <2 x i32>
+static Type *convertI64TypeToI32(const Type *OldType) {
+  IGC_ASSERT_MESSAGE(OldType, "Error: nullptr input");
+  IGC_ASSERT_MESSAGE(OldType->isIntOrIntVectorTy(),
+                     "Error: OldType not int or int vector type");
+  IGC_ASSERT_MESSAGE(OldType->getScalarType()->isIntegerTy(64),
+                     "Error: OldType Scalar type not i64");
+
+  bool OldTypeIsVec = isa<IGCLLVM::FixedVectorType>(OldType);
+
+  Type *Int32Ty = Type::getInt32Ty(OldType->getContext());
+
+  unsigned OldWidth =
+      OldTypeIsVec ? cast<IGCLLVM::FixedVectorType>(OldType)->getNumElements()
+                   : 1;
+
+  constexpr unsigned Multiplier = 2;
+  unsigned NewWidth = OldWidth * Multiplier;
+  return IGCLLVM::FixedVectorType::get(Int32Ty, NewWidth);
+}
+
+// Change type and exec size, like
+// or <2 x i64> -> or <4 x i32>
+// or i64 -> or < 2 x i32>
+//
+// So, resulted llvm IR:
+// From:
+// %res = or <2 x i64> %val1, %val2
+// To:
+// %val1.cast = bitcast %val1 to <4 x i32>
+// %val2.cast = bitcast %val2 to <4 x i32>
+// %res.tmp = or <4 x i32> %val1.cast, %val2.cast
+// %res = bitcast %res.tmp to <2 x i64>
+Value *GenXEmulate::Emu64Expander::expandBitLogicOp(BinaryOperator &Op) {
+  auto Builder = getIRBuilder();
+
+  Type *PrevBinOpTy = Op.getType();
+  Type *NextBinOpTy = convertI64TypeToI32(PrevBinOpTy);
+  IGC_ASSERT(NextBinOpTy);
+
+  Value *Op0 = Op.getOperand(0);
+  Value *Op1 = Op.getOperand(1);
+
+  Value *Op0Cast =
+      Builder.CreateBitCast(Op0, NextBinOpTy, Op0->getName() + ".cast");
+  Value *Op1Cast =
+      Builder.CreateBitCast(Op1, NextBinOpTy, Op1->getName() + ".cast");
+
+  Value *BinOp = Builder.CreateBinOp(Op.getOpcode(), Op0Cast, Op1Cast,
+                                     Twine("int_emu.") + Inst.getName());
+
+  return Builder.CreateBitCast(BinOp, PrevBinOpTy, Op.getName() + ".cast");
+}
+
 Value *GenXEmulate::Emu64Expander::expandBitwiseOp(BinaryOperator &Op) {
   auto Src0 = SplitBuilder.splitOperandHalf(0);
   auto Src1 = SplitBuilder.splitOperandHalf(1);
@@ -416,10 +475,10 @@ Value *GenXEmulate::Emu64Expander::visitSub(BinaryOperator &Op) {
       Inst.getType()->isIntegerTy());
 }
 Value *GenXEmulate::Emu64Expander::visitAnd(BinaryOperator &Op) {
-  return expandBitwiseOp(Op);
+  return expandBitLogicOp(Op);
 }
 Value *GenXEmulate::Emu64Expander::visitOr(BinaryOperator &Op) {
-  return expandBitwiseOp(Op);
+  return expandBitLogicOp(Op);
 }
 Value *GenXEmulate::Emu64Expander::visitXor(BinaryOperator &Op) {
   if (auto *NotOperand = detectBitwiseNot(Op)) {
@@ -430,7 +489,7 @@ Value *GenXEmulate::Emu64Expander::visitXor(BinaryOperator &Op) {
     return SplitBuilder.combineHalfSplit({Part1, Part2}, "int_emu.not.",
                                          Op.getType()->isIntegerTy());
   }
-  return expandBitwiseOp(Op);
+  return expandBitLogicOp(Op);
 }
 GenXEmulate::Emu64Expander::VectorInfo
 GenXEmulate::Emu64Expander::toVector(IRBuilder &Builder, Value *In) {
