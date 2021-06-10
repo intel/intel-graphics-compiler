@@ -45,6 +45,7 @@ protected:
     IGC::ModuleMetaData* m_modMD;
     CodeGenContext* m_cgCtx;
 };
+void initializePixelShaderAddMaskPass(llvm::PassRegistry&);
 
 class PixelShaderLowering : public llvm::FunctionPass
 {
@@ -195,6 +196,7 @@ private:
     bool m_isPerSample;
     bool uavPixelSync;
 };
+void initializePixelShaderLoweringPass(llvm::PassRegistry&);
 
 class DiscardLowering : public llvm::FunctionPass
 {

@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 using namespace llvm;
 using namespace IGC;
@@ -38,6 +39,13 @@ private:
 };
 
 char SampleCmpToDiscard::ID = 0;
+
+#define PASS_FLAG "igc-discard-samplecmp"
+#define PASS_DESCRIPTION "Checks possibility of SampleCmpToDiscard optimization"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(SampleCmpToDiscard, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SampleCmpToDiscard, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 FunctionPass* IGC::CreateSampleCmpToDiscardPass()
 {

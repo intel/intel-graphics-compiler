@@ -109,5 +109,5 @@ namespace IGC
         bool m_inputUsed[MaxNumOfInputs * 4]; // used vertex elements and SGV slots
         bool m_isHeaderPresent;
     };
-
+    void initializeVertexShaderLoweringPass(llvm::PassRegistry&);
 }//namespace IGC

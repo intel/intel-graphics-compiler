@@ -51,13 +51,6 @@ namespace
 
     char ClearTessFactors::ID = 0;
 
-#define PASS_FLAG     "igc-cleartessfactors"
-#define PASS_DESC     "Clear tessellation factors"
-#define PASS_CFG_ONLY false
-#define PASS_ANALYSIS false
-    IGC_INITIALIZE_PASS_BEGIN(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-        IGC_INITIALIZE_PASS_END(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-
         bool isReturnBlock(BasicBlock* BB)
     {
         // Check whether current BB has only 'ret' instruction.
@@ -104,6 +97,13 @@ namespace
         return retCondition;
     }
 } // end of unnamed namespace to contain class definition and auxiliary functions
+
+#define PASS_FLAG     "igc-cleartessfactors"
+#define PASS_DESC     "Clear tessellation factors"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ClearTessFactors, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 ClearTessFactors::ClearTessFactors() : FunctionPass(ID), m_changed(false)
 {

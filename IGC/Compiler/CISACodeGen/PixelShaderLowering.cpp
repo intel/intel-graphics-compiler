@@ -115,7 +115,7 @@ bool PixelShaderAddMask::runOnFunction(llvm::Function& F)
                 else
                     if ((drt = dyn_cast<RTDualBlendSourceIntrinsic>(II)))
                     {
-                        IGC_ASSERT(isa<ConstantInt>(rtw->getPMask()));
+                        IGC_ASSERT(isa<ConstantInt>(drt->getPMask()));
                         if (!mask)
                         {
                             mask = BinaryOperator::CreateNot(discardCond, "", drt);

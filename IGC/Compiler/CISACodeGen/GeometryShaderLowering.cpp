@@ -38,6 +38,7 @@ namespace {
     public:
         GeometryShaderLowering();
 
+        static char         ID;
         virtual bool runOnFunction(llvm::Function& function) override;
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
@@ -120,7 +121,6 @@ namespace {
         /// Returns channel number (0..3) which keeps data with the given SGV usage.
         Unit<Element> GetChannel(SGVUsage usage);
 
-        static char         ID;
         /// Pointer to the module the processed function is a part of.
         IGCLLVM::Module* m_pModule;
         /// Convenience shorthand for floating point zero value.
@@ -136,6 +136,14 @@ namespace {
 
 } // end of unnamed namespace
 
+
+#define PASS_FLAG "igc-geometry-shader-lowering"
+#define PASS_DESCRIPTION "Lower inputs outputs for geometry shader"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(GeometryShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CollectGeometryShaderProperties)
+IGC_INITIALIZE_PASS_END(GeometryShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 /// Constructor
 GeometryShaderLowering::GeometryShaderLowering()

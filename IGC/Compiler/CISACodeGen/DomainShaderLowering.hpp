@@ -50,5 +50,5 @@ namespace IGC
     };
     /// Creates a function pass that lowers input/output intrinsics to URB read/write
     llvm::FunctionPass* createDomainShaderLoweringPass();
-
+    void initializeDomainShaderLoweringPass(llvm::PassRegistry&);
 } // namespace IGC

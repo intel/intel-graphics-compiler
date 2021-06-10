@@ -56,4 +56,5 @@ namespace IGC
     };
 
     llvm::FunctionPass* createHullShaderLoweringPass();
+    void initializeHullShaderLoweringPass(llvm::PassRegistry&);
 } // namespace IGC
