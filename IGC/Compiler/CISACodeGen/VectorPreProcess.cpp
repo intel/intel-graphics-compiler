@@ -1292,10 +1292,8 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         auto ldrawvec = dyn_cast<LdRawIntrinsic>(Inst);
         bool canSimplifyOneUse = ldrawvec && isa<VectorType>(ldrawvec->getType()) &&
             ldrawvec->hasOneUse() &&
-            isa<ConstantInt>(ldrawvec->getOffsetValue()) &&
             !ConstEEIUses.empty();
 
-        bool canSimplifyOneUseConstantOffset = canSimplifyOneUse && isa<ConstantInt>(ldrawvec->getOffsetValue());
         bool canSimplifyOneUseZeroIndex = canSimplifyOneUse &&
             cast<ConstantInt>(ConstEEIUses.front()->getIndexOperand())->getZExtValue() == 0;
 
@@ -1308,10 +1306,19 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             auto alloc_size = (unsigned)m_DL->getTypeAllocSize(return_type);
             if (calc_offset)
             {
-                auto offset = (unsigned)cast<ConstantInt>(OffsetVal)->getZExtValue();
                 auto EE_index = (unsigned)cast<ConstantInt>(EE_user->getIndexOperand())->getZExtValue();
-                auto new_offset = offset + (EE_index * alloc_size); //Calculate new offset
-                OffsetVal = Builder.getInt32(new_offset);
+                if (isa<ConstantInt>(OffsetVal))
+                {
+                    // Calculate static offset
+                    auto offset = (unsigned)cast<ConstantInt>(OffsetVal)->getZExtValue();
+                    auto new_offset = offset + (EE_index * alloc_size);
+                    OffsetVal = Builder.getInt32(new_offset);
+                }
+                else
+                {
+                    // Calculate runtime offset
+                    OffsetVal = Builder.CreateAdd(OffsetVal, Builder.getInt32(EE_index * alloc_size));
+                }
             }
             Type* types[2] = { return_type , buffer_ptr->getType() };
             Value* args[4] = { buffer_ptr, OffsetVal,
@@ -1329,7 +1336,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             simplifyLDVecToLDRaw(false);
             return NewLI;
         }
-        else if (canSimplifyOneUseConstantOffset)
+        else if (canSimplifyOneUse)
         {
             simplifyLDVecToLDRaw(true);
             return NewLI;
