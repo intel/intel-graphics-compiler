@@ -30,7 +30,11 @@ MACRO: ICBE_DPF_STR
         #if defined(ICBE_LHDM) || defined(_WIN32)
             #define ICBE_DPF_STR(output, format, args, ...)
         #else
-            #define ICBE_DPF_STR(output, format, args...)
+            #if defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
+                #define ICBE_DPF_STR iOpenCL::DebugMessageStr
+            #else
+                #define ICBE_DPF_STR(output, format, args...)
+            #endif
         #endif
     #endif // _DEBUG
 #endif // ICBE_DPF_STR

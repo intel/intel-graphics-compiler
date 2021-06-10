@@ -58,7 +58,7 @@ void DebugSurfaceStateCommand(
       const PLATFORM productID,
       std::string &output )
 {
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL )   || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX))
     if (IGC_IS_FLAG_ENABLED(DumpPatchTokens)) {
         SSharedStateSurfaceState* p3DStateSurfaceState =
             (SSharedStateSurfaceState*)pLinearAddress;
@@ -482,7 +482,7 @@ void DebugInterfaceDescriptorDataCommand(
     const PLATFORM productID,
     std::string &output )
 {
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL )   || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX))
     SMediaStateInterfaceDescriptorData* pInterfaceDescriptorData =
         (SMediaStateInterfaceDescriptorData*)pLinearAddress;
 
@@ -921,7 +921,7 @@ void DebugBindingTableStateCommand(
     const PLATFORM productID,
     std::string &output)
 {
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL )   || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX))
     SSharedStateBindingTableState* pBindingTableState =
         (SSharedStateBindingTableState*)pLinearAddress;
 

@@ -313,7 +313,7 @@ static bool CreateSymbolTable(void* buffer, uint32_t size, uint32_t entries, Uti
         return false;
     free(buffer);
 
-#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
     DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, debugOut);
 #endif
     (void)debugOut;
@@ -2039,7 +2039,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Size += alignedStringSize;
             membuf.WriteAt( patch, tokenStart );
 
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL )  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX) )
             DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
         }
@@ -2191,7 +2191,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             }
             freeBlock(buffer);
 
-#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)   || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
             DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
         }
@@ -2290,7 +2290,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
         return retValue;
     }
 
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL )  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX) )
     DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
 
@@ -2382,7 +2382,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
             return retValue;
         }
 
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL )  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX) )
         DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
          index++;

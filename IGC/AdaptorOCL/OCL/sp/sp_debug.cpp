@@ -21,6 +21,7 @@ namespace iOpenCL
 
 void __cdecl DebugMessageStr(std::string& output, unsigned int ulDebugLevel, const char* fmt, ...)
 {
+    if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(EnableCosDump))
     //if( str && ( ( g_DebugControl.MsgLevel & ulDebugLevel ) != GFXDBG_OFF ) )
     {
         va_list args;

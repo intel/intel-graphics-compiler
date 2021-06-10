@@ -199,7 +199,7 @@ private:
             retValue.Success = false;
         }
 
-#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)
+#if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
         DebugPatchList(&patch, patch.Size, m_oclStateDebugMessagePrintOut);
 #endif
 
