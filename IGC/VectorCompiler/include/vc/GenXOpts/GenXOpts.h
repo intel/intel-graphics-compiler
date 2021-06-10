@@ -65,6 +65,9 @@ void initializeGenXPrintfResolutionPass(PassRegistry &);
 ModulePass *createGenXPrintfLegalizationPass();
 void initializeGenXPrintfLegalizationPass(PassRegistry &);
 
+ModulePass *createGenXImportOCLBiFPass();
+void initializeGenXImportOCLBiFPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif

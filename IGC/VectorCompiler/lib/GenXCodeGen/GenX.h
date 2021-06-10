@@ -102,7 +102,6 @@ FunctionGroupPass *createGenXVisaRegAllocPass();
 FunctionGroupPass *createGenXCisaBuilderPass();
 ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
-ModulePass *createGenXImportBiFPass();
 ModulePass *createGenXGlobalVariableLoweringPass();
 FunctionPass *createGenXSimplifyRegionPass();
 

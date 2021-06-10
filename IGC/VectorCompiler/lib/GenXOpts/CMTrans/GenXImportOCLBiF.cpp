@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 //
-/// GenXImportBiF
+/// GenXImportOCLBiF
 /// -----------
 ///
 /// This pass import Builtin Function library compiled into bitcode
@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 
 #define DEBUG_TYPE "cmimportbif"
 
-#include "GenX.h"
+#include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/BiF.h"
 
@@ -48,8 +48,8 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include <vector>
 
-#include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 #include "Probe/Assertion.h"
+#include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
 
 using namespace llvm;
 
@@ -181,8 +181,7 @@ void BIConvert::runOnModule(Module &M) {
         if (id == Intrinsic::lifetime_start || id == Intrinsic::lifetime_end) {
           ListDelete.push_back(InstCall);
           continue;
-        }
-        else if (id == Intrinsic::ctlz) {
+        } else if (id == Intrinsic::ctlz) {
           // convert this to genx_ldz, but genx_lzd only support 32-bit input
           auto Src = InstCall->getOperand(0);
           auto SrcTy = Src->getType();
@@ -194,9 +193,10 @@ void BIConvert::runOnModule(Module &M) {
           tys[0] = SrcTy;
           // build argument list for the 1st intrinsic
           args.push_back(Src);
-          Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(&M, GenXIntrinsic::genx_lzd, tys);
-          Instruction *IntrinCall = CallInst::Create(
-            IntrinFunc, args, InstCall->getName(), InstCall);
+          Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(
+              &M, GenXIntrinsic::genx_lzd, tys);
+          Instruction *IntrinCall =
+              CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);
@@ -290,8 +290,8 @@ void BIConvert::runOnModule(Module &M) {
           tys[0] = InstCall->getArgOperand(0)->getType();
           // build argument list for the 1st intrinsic
           args.push_back(Mul);
-          Function *IntrinFunc =
-              GenXIntrinsic::getAnyDeclaration(&M, GenXIntrinsic::genx_rndz, tys);
+          Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(
+              &M, GenXIntrinsic::genx_rndz, tys);
           Instruction *IntrinCall =
               CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
@@ -308,8 +308,8 @@ void BIConvert::runOnModule(Module &M) {
           tys[0] = InstCall->getArgOperand(0)->getType();
           // build argument list for the 1st intrinsic
           args.push_back(Add);
-          Function *IntrinFunc =
-              GenXIntrinsic::getAnyDeclaration(&M, GenXIntrinsic::genx_rndz, tys);
+          Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(
+              &M, GenXIntrinsic::genx_rndz, tys);
           Instruction *IntrinCall =
               CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
@@ -366,8 +366,8 @@ static void removeFunctionBitcasts(llvm::Module &M) {
         CallInst *pInstCall = dyn_cast<CallInst>(I);
         if (!pInstCall || pInstCall->getCalledFunction())
           continue;
-        if (auto constExpr =
-                dyn_cast<llvm::ConstantExpr>(IGCLLVM::getCalledValue(pInstCall))) {
+        if (auto constExpr = dyn_cast<llvm::ConstantExpr>(
+                IGCLLVM::getCalledValue(pInstCall))) {
           if (auto funcTobeChanged =
                   dyn_cast<llvm::Function>(constExpr->stripPointerCasts())) {
             if (funcTobeChanged->isDeclaration())
@@ -660,37 +660,33 @@ void BiFImporter::run() {
   }
 }
 
-class GenXImportBiF final : public ModulePass {
+class GenXImportOCLBiF final : public ModulePass {
 
 public:
   static char ID;
-  GenXImportBiF() : ModulePass(ID) {}
-  StringRef getPassName() const override { return "GenX import BiF"; }
+  GenXImportOCLBiF() : ModulePass(ID) {}
+  StringRef getPassName() const override { return "GenX import OCL BiF"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
 
 private:
-  std::unique_ptr<Module> getBiFModule(BiFKind Kind,
-                                       LLVMContext &Ctx);
+  std::unique_ptr<Module> getBiFModule(BiFKind Kind, LLVMContext &Ctx);
 };
 
-char GenXImportBiF::ID = 0;
-namespace llvm {
-void initializeGenXImportBiFPass(PassRegistry &);
-}
+char GenXImportOCLBiF::ID = 0;
 
-INITIALIZE_PASS_BEGIN(GenXImportBiF, "GenXImportBiF", "GenXImportBiF", false,
-                      false)
+INITIALIZE_PASS_BEGIN(GenXImportOCLBiF, "GenXImportOCLBiF", "GenXImportOCLBiF",
+                      false, false)
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
-INITIALIZE_PASS_END(GenXImportBiF, "GenXImportBiF", "GenXImportBiF", false,
-                    false)
+INITIALIZE_PASS_END(GenXImportOCLBiF, "GenXImportOCLBiF", "GenXImportOCLBiF",
+                    false, false)
 
-ModulePass *llvm::createGenXImportBiFPass() {
-  initializeGenXImportBiFPass(*PassRegistry::getPassRegistry());
-  return new GenXImportBiF;
+ModulePass *llvm::createGenXImportOCLBiFPass() {
+  initializeGenXImportOCLBiFPass(*PassRegistry::getPassRegistry());
+  return new GenXImportOCLBiF;
 }
 
-void GenXImportBiF::getAnalysisUsage(AnalysisUsage &AU) const {
+void GenXImportOCLBiF::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();
 }
 
@@ -742,7 +738,7 @@ static void translateSPIRVOCLBuiltins(Module &M) {
   llvm::for_each(Worklist, [](Function &F) { translateSPIRVOCLBuiltin(F); });
 }
 
-bool GenXImportBiF::runOnModule(Module &M) {
+bool GenXImportOCLBiF::runOnModule(Module &M) {
   if (!OCLBuiltinsRequired(M))
     return false;
 
@@ -756,9 +752,8 @@ bool GenXImportBiF::runOnModule(Module &M) {
   return true;
 }
 
-std::unique_ptr<Module>
-GenXImportBiF::getBiFModule(BiFKind Kind,
-                            LLVMContext &Ctx) {
+std::unique_ptr<Module> GenXImportOCLBiF::getBiFModule(BiFKind Kind,
+                                                       LLVMContext &Ctx) {
   MemoryBufferRef BiFModuleBuffer =
       getAnalysis<GenXBackendConfig>().getBiFModule(Kind);
   return vc::getLazyBiFModuleOrReportError(BiFModuleBuffer, Ctx);

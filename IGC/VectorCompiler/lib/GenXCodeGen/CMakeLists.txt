@@ -42,7 +42,6 @@ set(CODEGEN_SOURCES
   GenXGEPLowering.cpp
   GenXGlobalVariableLowering.cpp
   GenXIMadPostLegalization.cpp
-  GenXImportBiF.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
   GenXLayoutBlocks.cpp

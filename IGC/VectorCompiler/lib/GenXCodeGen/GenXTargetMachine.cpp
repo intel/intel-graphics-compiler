@@ -128,7 +128,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeTransformPrivMemPass(registry);
   initializeGenXFunctionPointersLoweringPass(registry);
   initializeGenXBackendConfigPass(registry);
-  initializeGenXImportBiFPass(registry);
+  initializeGenXImportOCLBiFPass(registry);
   initializeGenXSimplifyPass(registry);
   initializeCMABIPass(registry);
   initializeGenXLowerJmpTableSwitchPass(registry);
@@ -517,7 +517,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
     PM.add(createGenXPrintfResolutionPass());
-    PM.add(createGenXImportBiFPass());
+    PM.add(createGenXImportOCLBiFPass());
     PM.add(createGenXPacketizePass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfLegalizationPass());
