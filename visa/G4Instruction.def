@@ -57,7 +57,7 @@ HANDLE_INST(bfi2,  3, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(fbh,   1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(fbl,   1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(cbit,  1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
-HANDLE_INST(bfn,  3, 1, InstTypeLogic, GENX_XE_HP, ATTR_NONE)
+HANDLE_INST(bfn,  3, 1, InstTypeLogic, XE_HP, ATTR_NONE)
 
 //
 // InstTypeArith
@@ -85,9 +85,9 @@ HANDLE_INST(addc, 2, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
 HANDLE_INST(subb, 2, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
 
 HANDLE_INST(dp4a, 3, 1, InstTypeArith, GENX_TGLLP, ATTR_NONE)
-HANDLE_INST(dpas,  3, 1, InstTypeArith, GENX_XE_HP, ATTR_NONE)
-HANDLE_INST(dpasw, 3, 1, InstTypeArith, GENX_XE_HP, ATTR_NONE)
-HANDLE_INST(add3,  3, 1, InstTypeArith, GENX_XE_HP, ATTR_NONE)
+HANDLE_INST(dpas,  3, 1, InstTypeArith, XE_HP, ATTR_NONE)
+HANDLE_INST(dpasw, 3, 1, InstTypeArith, XE_HP, ATTR_NONE)
+HANDLE_INST(add3,  3, 1, InstTypeArith, XE_HP, ATTR_NONE)
 
 
 HANDLE_INST(madm,   3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)

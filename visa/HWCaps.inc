@@ -491,7 +491,7 @@ SPDX-License-Identifier: MIT
 
     bool oneGRFBankDivision() const
     {
-        return getPlatform() != GENX_XE_HP;
+        return getPlatform() != XE_HP;
     }
 
     bool hasMadm() const
@@ -501,7 +501,7 @@ SPDX-License-Identifier: MIT
 
     bool hasSIMD16TypedRW() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool hasRegDistDepIssue() const
@@ -511,7 +511,7 @@ SPDX-License-Identifier: MIT
 
     bool doNotRewriteContiguousRegion() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     // acc restrictions that are relaxed for Xe HP
@@ -520,7 +520,7 @@ SPDX-License-Identifier: MIT
     // -- acc can be packed HF dst of a mix mode inst
     bool relaxedACCRestrictions() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool relaxedACCRestrictions_1() const
@@ -530,22 +530,22 @@ SPDX-License-Identifier: MIT
 
     bool loadThreadPayload() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool needFenceBeforeEOT() const
     {
-        return getPlatform() == GENX_XE_HP;
+        return getPlatform() == XE_HP;
     }
 
     bool hasSrc0ReadSuppression() const
     {
-        return getPlatform() >= GENX_XE_HP && hasRSForSpecificPlatform();
+        return getPlatform() >= XE_HP && hasRSForSpecificPlatform();
     }
 
     bool needToClearScratchWrites() const
     {
-        return getPlatform() < GENX_XE_HP;
+        return getPlatform() < XE_HP;
     }
 
     bool needsToLoadLocalID() const
@@ -555,43 +555,43 @@ SPDX-License-Identifier: MIT
 
     bool noDwDstForDwordMul() const
     {
-        return noInt64() || getPlatform() >= GENX_XE_HP;
+        return noInt64() || getPlatform() >= XE_HP;
     }
 
     bool useNewExtDescFormat() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool has16OWordSLMBlockRW() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool hasVxHFloat64b() const
     {
-        return getPlatform() < GENX_XE_HP;
+        return getPlatform() < XE_HP;
     }
 
     bool supportFloatOr64bRegioning() const
     {
-        return getPlatform() < GENX_XE_HP && !getOption(vISA_forceNoFP64bRegioning);
+        return getPlatform() < XE_HP && !getOption(vISA_forceNoFP64bRegioning);
     }
 
     int getFP64MadmExecSize() const
     {
         auto plat = getPlatform();
-        return (plat == GENX_XE_HP) ? 8 : 4;
+        return (plat == XE_HP) ? 8 : 4;
     }
 
     bool balanceIntFloatMoves() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     G4_Type getMixModeType() const
     {
-        return getPlatform() >= GENX_XE_HP ? Type_BF : Type_HF;
+        return getPlatform() >= XE_HP ? Type_BF : Type_HF;
     }
 
     // each flag register is 16-bit
@@ -618,17 +618,17 @@ SPDX-License-Identifier: MIT
 
     bool noScalarByteToFloat() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool useAccForDF() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool useAccForMadm() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool hasUnifiedBarrier() const
@@ -709,7 +709,7 @@ SPDX-License-Identifier: MIT
 
     int get3SrcDstAlign() const
     {
-        return getPlatform() >= GENX_XE_HP ? 2 : 8;
+        return getPlatform() >= XE_HP ? 2 : 8;
     }
 
     bool supportCallaRegSrc() const
@@ -720,17 +720,17 @@ SPDX-License-Identifier: MIT
 
     bool hasTwoGRFBank16Bundles() const
     {
-        return getPlatform() == GENX_XE_HP;
+        return getPlatform() == XE_HP;
     }
 
     bool hasOneGRFBank16Bundles() const
     {
-        return getPlatform() != GENX_XE_HP;
+        return getPlatform() != XE_HP;
     }
 
     bool hasDPASSrc0Src1BankConflict() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool needsToLoadCrossThreadConstantData() const
@@ -740,12 +740,12 @@ SPDX-License-Identifier: MIT
 
     bool hasDPAS() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool hasAMFSFastClear() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     // only valid type combinations during format mov conversion if acc is used:
@@ -755,23 +755,23 @@ SPDX-License-Identifier: MIT
     // Src Type DF   - Dst Type DF
     bool hasFormatConversionACCRestrictions() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     bool hasScratchSurface() const
     {
-        return getPlatform() >= GENX_XE_HP;
+        return getPlatform() >= XE_HP;
     }
 
     // Note that this function is intentionally omitted from HWCapsOpen.inc to avoid IP leak
     bool hasThreeALUPipes() const
     {
-        return (getPlatform() == GENX_XE_HP);
+        return (getPlatform() == XE_HP);
     }
 
     bool hasFusedEU() const
     {
-        return (getPlatform() == GENX_TGLLP || getPlatform() == GENX_XE_HP);
+        return (getPlatform() == GENX_TGLLP || getPlatform() == XE_HP);
     }
 
     bool hasFourALUPipes() const
@@ -819,7 +819,7 @@ SPDX-License-Identifier: MIT
    }
    bool hasA0WARHWissue()
    {
-       return (getPlatform() == GENX_XE_HP);
+       return (getPlatform() == XE_HP);
    }
 
    bool hasFtoPackedHFMove() const

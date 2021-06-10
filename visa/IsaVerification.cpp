@@ -928,7 +928,7 @@ void vISAVerifier::verifyInstructionMove(
         }
         case ISA_BF_CVT:
         {
-            REPORT_INSTRUCTION(options, getGenxPlatform() >= GENX_XE_HP,
+            REPORT_INSTRUCTION(options, getGenxPlatform() >= XE_HP,
                 "BF_CVT is only supported on Xe_HP+");
             REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
                 "Destination operand of BF_CVT instruction only "
@@ -1489,7 +1489,7 @@ void vISAVerifier::verifyInstructionArith(
 
     if ((opcode == ISA_DIV && IsIntType(dstType)) || opcode == ISA_MOD)
     {
-        REPORT_INSTRUCTION(options, platform < GENX_XE_HP, "int divide/remainder is not supported for this platform");
+        REPORT_INSTRUCTION(options, platform < XE_HP, "int divide/remainder is not supported for this platform");
     }
 
     /// check dst type is supported by the instruction

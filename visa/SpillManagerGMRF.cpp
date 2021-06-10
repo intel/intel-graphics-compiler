@@ -4713,7 +4713,7 @@ void GlobalRA::expandSpillStackcall(
             G4_Imm* descImm = createMsgDesc(owordSize, true, true);
             G4_INST* sendInst = nullptr;
             // Use bindless for Xe_HP+
-            if (builder->getPlatform() >= GENX_XE_HP)
+            if (builder->getPlatform() >= XE_HP)
             {
                 // Update BTI to 251
                 auto spillMsgDesc = descImm->getInt();
@@ -4936,7 +4936,7 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset, short rowO
             auto sfId = SFID::DP_DC0;
 
             // Use bindless for Xe_HP+
-            if (builder->getPlatform() >= GENX_XE_HP)
+            if (builder->getPlatform() >= XE_HP)
             {
                 // Update BTI to 251
                 auto newDesc = desc->getInt() & 0xffffff00;

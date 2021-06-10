@@ -3467,7 +3467,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.fg.setABIForStackCallFunctionCalls();
         kernel.fg.addFrameSetupDeclares(builder, regPool);
         kernel.fg.normalizeFlowGraph();
-        if (builder.getPlatform() >= GENX_XE_HP)
+        if (builder.getPlatform() >= XE_HP)
             replaceSSO(kernel);
     }
 

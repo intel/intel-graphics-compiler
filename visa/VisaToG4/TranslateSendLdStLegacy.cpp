@@ -1448,7 +1448,7 @@ int IR_Builder::translateVISADwordAtomicInst(
     ASSERT_USER(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
         "Float atomic operations are only supported on SKL+ devices");
 
-    ASSERT_USER(getPlatform() >= GENX_XE_HP || ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
+    ASSERT_USER(getPlatform() >= XE_HP || ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
         "FADD/FSUB atomic operations are only supported on Xe_HP+ devices");
 
     surface = lowerSurface255To253(surface, *this);
@@ -2948,7 +2948,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     MUST_BE_TRUE(bitwidth == 16 || bitwidth == 32 || bitwidth == 64,
         "bitwidth must be 16/32/64");
 
-    ASSERT_USER(getPlatform() >= GENX_XE_HP || ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
+    ASSERT_USER(getPlatform() >= XE_HP || ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
         "FADD/FSUB atomic operations are only supported on Xe_HP+ devices");
 
     VISA_Exec_Size instExecSize = execSize;

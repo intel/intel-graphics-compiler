@@ -335,7 +335,7 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     case GENX_TGLLP:
         platform = Platform::XE;
         break;
-    case GENX_XE_HP:
+    case XE_HP:
         platform = Platform::XE_HP;
         break;
     default:

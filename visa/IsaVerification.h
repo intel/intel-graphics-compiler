@@ -47,7 +47,7 @@ public:
 
      bool hasFusedEU() const
      {
-         bool hasFusedEU = (getGenxPlatform() == GENX_TGLLP || getGenxPlatform() == GENX_XE_HP);
+         bool hasFusedEU = (getGenxPlatform() == GENX_TGLLP || getGenxPlatform() == XE_HP);
          return hasFusedEU;
      }
 

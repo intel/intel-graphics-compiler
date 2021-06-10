@@ -243,12 +243,12 @@ bool SendFusion::isAtomicCandidate(const G4_SendDescRaw* msgDesc)
         break;
     case DC1_A64_ATOMIC:
     case DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC:
-        if (Builder->getPlatform() != GENX_XE_HP)
+        if (Builder->getPlatform() != XE_HP)
             return false;
         break;
     case DC1_A64_UNTYPED_FLOAT_ATOMIC:
     case DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC:
-        if (Builder->getPlatform() != GENX_XE_HP)
+        if (Builder->getPlatform() != XE_HP)
             return false;
         intAtomic = false;
         break;

@@ -7905,7 +7905,7 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     // dst must be GRF-aligned
     if ((getDst()->getLinearizedStart() % numEltPerGRF<Type_UB>()) != 0)
     {
-        if (!(isMixedMode() && builder.getPlatform() == GENX_XE_HP))
+        if (!(isMixedMode() && builder.getPlatform() == XE_HP))
             return false;
     }
 
