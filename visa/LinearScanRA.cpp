@@ -702,65 +702,6 @@ void LinearScanRA::preRAAnalysis()
             unsigned int regNum = forbiddenRegs[i];
             pregs->setGRFUnavailable(regNum); //un-available will always be there, if it's conflict with input or pre-assigned, it's still un-available.
         }
-
-        if (builder.getOption(vISA_Debug))
-        {
-            // Since LinearScanRA is not undone when debug info generation is required,
-            // for keeping compile time low, we allow fewer physical registers
-            // as assignable candidates. Without this, we could run in to a
-            // situation where very few physical registers are available for GRA
-            // and it is unable to assign registers even with spilling.
-#define USABLE_GRFS_WITH_DEBUG_INFO 80
-            int maxSendReg = 0;
-            for (auto bb : kernel.fg)
-            {
-                for (auto inst : *bb)
-                {
-                    if (inst->isSend() || inst->isSplitSend())
-                    {
-                        maxSendReg = ((int)inst->getMsgDesc()->getDstLenRegs() > maxSendReg) ?
-                            ((int)inst->getMsgDesc()->getDstLenRegs()) : maxSendReg;
-                        maxSendReg = ((int)inst->getMsgDesc()->getSrc0LenRegs() > maxSendReg) ?
-                            ((int)inst->getMsgDesc()->getSrc0LenRegs()) : maxSendReg;
-                        maxSendReg = ((int)inst->getMsgDesc()->getSrc1LenRegs() > maxSendReg) ?
-                            ((int)inst->getMsgDesc()->getSrc1LenRegs()) : maxSendReg;
-                    }
-                }
-            }
-
-            int maxRegsToUse = USABLE_GRFS_WITH_DEBUG_INFO;
-            if (maxSendReg > (numGRF - USABLE_GRFS_WITH_DEBUG_INFO))
-            {
-                maxRegsToUse = (numGRF - maxSendReg) - 10;
-            }
-
-            // Also check max size of addressed GRF
-            unsigned int maxAddressedRows = 0;
-            for (auto dcl : kernel.Declares)
-            {
-                if (dcl->getAddressed() &&
-                    maxAddressedRows < dcl->getNumRows())
-                {
-                    maxAddressedRows = dcl->getNumRows();
-                }
-            }
-
-            // Assume indirect operand of maxAddressedRows exists
-            // on dst, src0, src1. This is overly conservative but
-            // should work for general cases.
-            if ((numGRF - maxRegsToUse) / 3 < (int)maxAddressedRows)
-            {
-                maxRegsToUse = (numGRF - (maxAddressedRows * 3));
-
-                if (maxRegsToUse < 0)
-                    maxRegsToUse = 0;
-            }
-
-            for (int i = maxRegsToUse; i < numGRF; i++)
-            {
-                pregs->setGRFUnavailable(i);
-            }
-        }
     }
     else
     {
@@ -2293,7 +2234,7 @@ bool globalLinearScan::insertLiveRange(std::list<LSLiveRange*>* liveIntervals, L
     return false;
 }
 
-bool globalLinearScan::canBeSpilledLR(LSLiveRange* tlr, LSLiveRange* lr, int GRFNum)
+bool globalLinearScan::canBeSpilledLR(LSLiveRange* lr)
 {
     if (lr->isUseUnAvailableReg())
     {
@@ -2352,13 +2293,6 @@ bool globalLinearScan::canBeSpilledLR(LSLiveRange* tlr, LSLiveRange* lr, int GRF
         return false;
     }
 
-    //GRF spill is forbidden for current lr
-    const bool* forbidden = lr->getForbidden();
-    if (forbidden[GRFNum])
-    {
-        return false;
-    }
-
     return true;
 }
 
@@ -2404,7 +2338,7 @@ int globalLinearScan::findSpillCandidate(LSLiveRange* tlr)
 
                     analyzedLV = lr;
 
-                    if (!canBeSpilledLR(tlr, lr, k))
+                    if (!canBeSpilledLR(lr) || lr->getForbidden()[k])
                     {
                         int startsregnum = 0;
                         G4_VarBase* op = lr->getPhyReg(startsregnum);

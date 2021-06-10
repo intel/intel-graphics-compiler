@@ -349,7 +349,7 @@ namespace vISA
         void freeAllocedRegs(LSLiveRange*, bool);
         void updateGlobalActiveList(LSLiveRange* lr);
         bool insertLiveRange(std::list<LSLiveRange*>* liveIntervals, LSLiveRange* lr);
-        bool canBeSpilledLR(LSLiveRange* tlr, LSLiveRange* lr, int GRFNum);
+        bool canBeSpilledLR(LSLiveRange* lr);
         int findSpillCandidate(LSLiveRange* tlr);
         void freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, std::list<LSLiveRange*>& spillLRs);
         bool spillFromActiveList(LSLiveRange* tlr, std::list<LSLiveRange*>& spillLRs);
