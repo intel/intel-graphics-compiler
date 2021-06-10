@@ -68,7 +68,7 @@ namespace vISA
         void resetMasks();
         void blockOutputPhyRegs();
         void removeUnrequiredLifetimeOps();
-        bool assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign);
+        bool assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, bool hybridWithSpill);
         bool unassignedRangeFound();
         void updateRegUsage(PhyRegSummary* summary, unsigned int& numRegsUsed);
         void localRAOptReport();

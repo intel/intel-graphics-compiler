@@ -166,7 +166,6 @@ void LocalRA::preLocalRAAnalysis()
         unsigned reserveSpillSize = 0;
         unsigned int spillRegSize = 0;
         unsigned int indrSpillRegSize = 0;
-        LivenessAnalysis liveAnalysis(gra, G4_GRF | G4_INPUT);
         gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
 
         reserveSpillSize = spillRegSize + indrSpillRegSize;
@@ -178,7 +177,7 @@ void LocalRA::preLocalRAAnalysis()
         }
         else
         {
-            numRegLRA = numGRF - numRowsReserved - reserveSpillSize - 1;
+            numRegLRA = numGRF - numRowsReserved - reserveSpillSize - 3; // spill Header, scratch offset, a0.2
         }
     }
     else
@@ -301,7 +300,7 @@ void LocalRA::trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate)
         std::cout << "\t--trivial RA\n";
     }
 
-    needGlobalRA = assignUniqueRegisters(threeSourceCandidate, builder.lowHighBundle());
+    needGlobalRA = assignUniqueRegisters(threeSourceCandidate, builder.lowHighBundle(), false);
 
     if (!needGlobalRA)
     {
@@ -403,7 +402,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
             twoBanksAssign = highInternalConflict;
         }
 
-        needGlobalRA = assignUniqueRegisters(doBCR, twoBanksAssign);
+        needGlobalRA = assignUniqueRegisters(doBCR, twoBanksAssign, builder.getOption(vISA_HybridRAWithSpill) && !doRoundRobin);
     }
 
     if (needGlobalRA && doRoundRobin)
@@ -748,7 +747,7 @@ inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gr
     return occupiedBundles;
 }
 
-bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
+bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, bool hybridWithSpill)
 {
     // Iterate over all dcls and calculate number of rows
     // required if each unallocated dcl had its own physical
@@ -814,12 +813,22 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                     return true;
                 }
                 numRows += dcl->getNumRows();
-                unallocatedRanges.push_back(dcl);
+                if (hybridWithSpill)
+                {
+                    if (dcl->isDoNotSpill())
+                    {
+                        unallocatedRanges.push_back(dcl);
+                    }
+                }
+                else
+                {
+                    unallocatedRanges.push_back(dcl);
+                }
             }
         }
     }
 
-    if (numRows < numRegLRA)
+    if (numRows < numRegLRA || hybridWithSpill)
     {
         // Get superset of registers used by local RA
         // in all basic blocks.
@@ -841,7 +850,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
         }
 
 
-        needGlobalRA = false;
+        needGlobalRA = hybridWithSpill;
         bool assignFromFront = true;
 #ifdef DEBUG_VERBOSE_ON
         COUT_ERROR << "Trival RA: " << std::endl;
@@ -914,7 +923,14 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
         {
             for (auto dcl : unallocatedRanges)
             {
-                dcl->getRegVar()->resetPhyReg();
+                if (!hybridWithSpill)
+                {
+                    dcl->getRegVar()->resetPhyReg();
+                }
+                else if (!dcl->isDoNotSpill())
+                {
+                    dcl->getRegVar()->resetPhyReg();
+                }
             }
         }
         else
