@@ -39,7 +39,7 @@ namespace TC
 
         bool NeedWAToTransformA32MessagesToA64() const override{ return true; }
         bool WALoadStorePatternMatch() const override { return true; }
-        bool WADisableCustomPass() const override { return false; }
+        bool WADisableCustomPass() const override { return true; }
         bool WAEnableMemOpt2ForOCL() const override { return true; }
 
         unsigned int GetLoopUnrollThreshold() const override { return  1280; }
