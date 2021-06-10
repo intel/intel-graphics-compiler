@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/GenXOpts/Utils/KernelInfo.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/BreakConst.h"
 #include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/STLExtras.h"
@@ -1529,28 +1530,15 @@ void CMABIAnalysis::analyzeGlobals(CallGraph &CG) {
   if (M.global_empty())
     return;
 
-  auto PrintIndexChecker = [](Use &IUI) {
-    CallInst *CI = dyn_cast<CallInst>(IUI.getUser());
-    if (!CI)
-      return false;
-    Function *Callee = CI->getCalledFunction();
-    if (!Callee)
-      return false;
-    unsigned IntrinID = GenXIntrinsic::getAnyIntrinsicID(Callee);
-    return (IntrinID == GenXIntrinsic::genx_print_format_index);
-  };
-  auto UsesPrintChecker =  [PrintIndexChecker](const Use &UI) {
-    auto *User = UI.getUser();
-    return std::any_of(User->use_begin(), User->use_end(), PrintIndexChecker);
-  };
   const auto &DL = M.getDataLayout();
   auto ToLocalize = selectGlobalsToLocalize(
       M.globals(), GlobalsLocalizationLimit,
-      [UsesPrintChecker](const GlobalVariable &GV) {
-        // don't localize global constant format string if it's used by print_index intrinsic
-        bool UsesPrintIndex = std::any_of(GV.use_begin(), GV.use_end(), UsesPrintChecker);
-        return (GV.hasAttribute(genx::FunctionMD::GenXVolatile) ||
-                UsesPrintIndex);
+      [](const GlobalVariable &GV) {
+        // Don't localize global constant format string, as it must be
+        // relocated in case of zebin printf.
+        // FIXME: what if we force localization.
+        return GV.hasAttribute(genx::FunctionMD::GenXVolatile) ||
+               vc::isConstantString(GV);
       },
       [IncludeVectors = LocalizeVectorGlobals](const GlobalVariable &GV) {
         return IncludeVectors && GV.getValueType()->isVectorTy() &&
