@@ -34,6 +34,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include <unordered_set>
+
 //
 /// GenXDebugInfo
 /// -------------
@@ -220,7 +222,10 @@ using namespace llvm;
 
 std::vector<llvm::DISubprogram*> gatherDISubprogramNodes(llvm::Module& M);
 
-namespace {
+
+static cl::opt<std::string> DbgOpt_VisaTransformInfoPath(
+    "vc-dump-module-to-visa-transform-info-path", cl::init(""), cl::Hidden,
+    cl::desc("filename into which MVTI is dumped"));
 
 static void debugDump(const Twine &Name, const char *Content, size_t Size) {
   std::error_code EC;
@@ -228,6 +233,357 @@ static void debugDump(const Twine &Name, const char *Content, size_t Size) {
   raw_fd_ostream OS(Name.str(), EC);
   OS << StringRef(Content, Size);
 }
+
+static bool isReferencedIndirectly(const Function *F) {
+  IGC_ASSERT(F);
+  return F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
+}
+
+template <typename ContainerT, class... ArgsT>
+static void checkedEmplace(ContainerT &Container, ArgsT &&... Args) {
+  auto Result = Container.emplace(std::forward<ArgsT>(Args)...);
+  IGC_ASSERT_MESSAGE(Result.second, "unexpected insertion failure");
+  (void)Result;
+  return;
+}
+
+static bool compareFunctionNames(const Function *LF, const Function *RF) {
+  IGC_ASSERT(LF && RF);
+  return LF->getName() > RF->getName();
+}
+
+template <typename ContainerT>
+static std::vector<const Function *>
+extractSortedFunctions(const ContainerT &C) {
+  std::vector<const Function *> Result;
+  std::transform(C.begin(), C.end(), std::back_inserter(Result),
+                 [](const auto &It) { return It.first; });
+  std::sort(Result.begin(), Result.end(), compareFunctionNames);
+  return Result;
+}
+
+//
+// ModuleToVisaTransformInfo
+// Proides information about how LLVM IR functions are mapped onto various
+// vISA (and genISA) objects.
+class ModuleToVisaTransformInfo {
+  using FunctionMapping =
+      std::unordered_map<const Function *, const Function *>;
+  // Note: pointer to VISAKernel can represent either a true kernel or
+  // VISAFunction, depending on the context (this is vISA API limitation)
+  using FunctionToVisaMapping =
+      std::unordered_map<const Function *, VISAKernel *>;
+
+  // Records information about a subroutine and its "owner". The "owner" of
+  // a subroutine is LLVM IR function that spawned *VISAFunction* that contains
+  // vISA for the subroutine
+  FunctionMapping SubroutineOwnersInfo;
+  // "VisaSpanwer" is LLVM IR function that produce *VISAFunction*.
+  // Different "VISAFunctions" have their own vISA instructions enumerated
+  // separately, but they still can be compiled into a single gen object.
+  // does not allow to distiguish those easily).
+  FunctionToVisaMapping VisaSpawnerInfo;
+  // A separate gen object is usually produced by KernelFunctions -
+  // the relationsip between VisaFunction and KernelFunctions is
+  // captured by the FunctionOnwers
+  FunctionMapping FunctionOwnersInfo;
+  // "Kernel functions" are functions that produce genISA object
+  // Usually these are FuntionGroup heads, but indirectly-called functions
+  // also spawn there own genISA object files
+  FunctionToVisaMapping KernelFunctionsInfo;
+  std::unordered_set<const Function *> SourceLevelKernels;
+
+  void extractSubroutineInfo(const Function &F, VISABuilder &VB,
+                             const FunctionGroupAnalysis &FGA);
+  bool tryToProcessCallToVisaEmitter(const CallInst &CI, const Function &F,
+                                     VISABuilder &VB);
+  bool tryToProcessVisaEmitter(const Function &F, VISABuilder &VB);
+  void extractVisaFunctionsEmitters(VISABuilder &VB,
+                                    const FunctionGroupAnalysis &FGA);
+  void extractKernelFunctions(VISABuilder &VB,
+                              const FunctionGroupAnalysis &FGA);
+
+public:
+  void print(raw_ostream &OS) const;
+  void dump() const;
+
+  bool isSourceLevelKernel(const Function *F) const {
+    return SourceLevelKernels.find(F) != SourceLevelKernels.end();
+  }
+  bool isKernelFunction(const Function *F) const {
+    return KernelFunctionsInfo.find(F) != KernelFunctionsInfo.end();
+  }
+  bool isSubroutine(const Function *F) const {
+    return SubroutineOwnersInfo.find(F) != SubroutineOwnersInfo.end();
+  }
+  bool isVisaFunctionSpawner(const Function *F) const {
+    return VisaSpawnerInfo.find(F) != VisaSpawnerInfo.end();
+  }
+  // For a provided function returns visa object spawned by this function
+  // visa object can represent either VISAKernel or VISAFunction
+  VISAKernel *getSpawnedVISAFunction(const Function *F) const {
+    IGC_ASSERT(!isSubroutine(F));
+    auto SpawnedInfoIt = VisaSpawnerInfo.find(F);
+    IGC_ASSERT(SpawnedInfoIt != VisaSpawnerInfo.end());
+    return SpawnedInfoIt->second;
+  }
+  // PrimaryKernel is VISA object representing true *VISAKernel*
+  VISAKernel *getPrimaryKernel(const Function *F) const {
+    const auto *PrimaryFunction = getPrimaryEmitterForVisa(F);
+    IGC_ASSERT(PrimaryFunction);
+    return getSpawnedVISAFunction(PrimaryFunction);
+  }
+  // return an "owner" (on vISA level) of the function representing a
+  // subroutine
+  const Function *getSubroutineOwner(const Function *F) const {
+    IGC_ASSERT(isSubroutine(F));
+    auto SubInfoIt = SubroutineOwnersInfo.find(F);
+    IGC_ASSERT(SubInfoIt != SubroutineOwnersInfo.end());
+    return SubInfoIt->second;
+  }
+  // PrimaryEmitter is the function spawning gen object, that
+  // contains the vISA object emitted by the specified function
+  const Function *getPrimaryEmitterForVisa(const Function *F,
+                                           bool Strict = true) const;
+
+  std::vector<const Function *> getPrimaryFunctions() const {
+    return extractSortedFunctions(KernelFunctionsInfo);
+  }
+
+  std::vector<const Function *>
+    getSecondaryFunctions(const Function *PrimaryFunction) const;
+
+  ModuleToVisaTransformInfo(VISABuilder &VB, const FunctionGroupAnalysis &FGA);
+};
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+void ModuleToVisaTransformInfo::dump() const {
+  print(errs());
+  errs() << "\n";
+}
+#endif
+
+void ModuleToVisaTransformInfo::print(raw_ostream &OS) const {
+
+  auto KernelFunctions = extractSortedFunctions(KernelFunctionsInfo);
+  auto Subroutines = extractSortedFunctions(SubroutineOwnersInfo);
+  auto VisaProducers = extractSortedFunctions(VisaSpawnerInfo);
+
+  // filter-out kernel functions
+  VisaProducers.erase(
+      std::remove_if(VisaProducers.begin(), VisaProducers.end(),
+                     [this](const auto *F) { return isKernelFunction(F); }),
+      VisaProducers.end());
+
+  auto PrintFunctionSubroutines = [this, &OS, &Subroutines](const Function *F,
+                                                            StringRef Prefix) {
+    unsigned Counter = 0;
+    for (const auto *LF : Subroutines) {
+      if (getSubroutineOwner(LF) != F)
+        continue;
+      OS << Prefix << "l." << Counter << " " << LF->getName() << "\n";
+      ++Counter;
+    }
+  };
+
+  for (size_t i = 0, NumKF = KernelFunctions.size(); i < NumKF; ++i) {
+    const auto *KF = KernelFunctions[i];
+    OS << "[" << i << "] " << KF->getName() << " "
+       << (SourceLevelKernels.count(KF) != 0 ? "(K)" : "(I)") << "\n";
+
+    PrintFunctionSubroutines(KF, "    ");
+
+    unsigned SubIdx = 0;
+    for (const auto *VF : VisaProducers) {
+      if (getPrimaryEmitterForVisa(VF) != KF)
+        continue;
+      OS << "    v." << SubIdx << " " << VF->getName() << "\n";
+      PrintFunctionSubroutines(VF, "        ");
+      ++SubIdx;
+    }
+  }
+}
+std::vector<const Function *> ModuleToVisaTransformInfo::getSecondaryFunctions(
+    const Function *PrimaryFunction) const {
+  auto IsSecondaryFunction = [PrimaryFunction, this](const Function *F) {
+    if (F == PrimaryFunction)
+      return false;
+    return getPrimaryEmitterForVisa(F) == PrimaryFunction;
+  };
+  IGC_ASSERT(isKernelFunction(PrimaryFunction));
+  std::vector<const Function *> Result;
+  for (const auto &[F, VF] : SubroutineOwnersInfo) {
+    (void)VF;
+    if (IsSecondaryFunction(F))
+      Result.push_back(F);
+  }
+  for (const auto &[F, VF] : VisaSpawnerInfo) {
+    (void)VF;
+    if (IsSecondaryFunction(F))
+      Result.push_back(F);
+  }
+  std::sort(Result.begin(), Result.end(), compareFunctionNames);
+  return Result;
+}
+
+void ModuleToVisaTransformInfo::extractSubroutineInfo(
+    const Function &F, VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
+  IGC_ASSERT(isVisaFunctionSpawner(&F));
+  const auto *SubGr = FGA.getSubGroup(&F);
+  IGC_ASSERT(SubGr);
+  for (const Function *SF : *SubGr) {
+    if (isKernelFunction(SF))
+      continue;
+    if (SF->hasFnAttribute(genx::FunctionMD::CMStackCall))
+      continue;
+    checkedEmplace(SubroutineOwnersInfo, SF, &F);
+  }
+}
+
+const Function *
+ModuleToVisaTransformInfo::getPrimaryEmitterForVisa(const Function *F,
+                                                    bool Strict) const {
+  if (isSubroutine(F)) {
+    auto SubrInfoIt = SubroutineOwnersInfo.find(F);
+    IGC_ASSERT(SubrInfoIt != SubroutineOwnersInfo.end());
+    const Function *SubrOwner = SubrInfoIt->second;
+    IGC_ASSERT(SubrOwner);
+    IGC_ASSERT(!isSubroutine(SubrOwner));
+    return getPrimaryEmitterForVisa(SubrOwner);
+  }
+  auto InfoIt = FunctionOwnersInfo.find(F);
+  if (InfoIt != FunctionOwnersInfo.end()) {
+    return InfoIt->second;
+  }
+  if (Strict)
+    IGC_ASSERT_MESSAGE(false, "could not get primary emitter");
+  return nullptr;
+}
+
+bool ModuleToVisaTransformInfo::tryToProcessCallToVisaEmitter(
+    const CallInst &CI, const Function &F, VISABuilder &VB) {
+  const Function *Callee = CI.getCalledFunction();
+  IGC_ASSERT(Callee == &F);
+  IGC_ASSERT(F.hasFnAttribute(genx::FunctionMD::CMStackCall));
+
+  const Function *Caller = CI.getCaller();
+  IGC_ASSERT(Caller);
+  LLVM_DEBUG(dbgs() << "  detected Caller <" << Caller->getName() << ">\n");
+
+  VISAKernel *VF = VB.GetVISAKernel(Callee->getName().str());
+
+  if (isKernelFunction(Caller)) {
+    checkedEmplace(VisaSpawnerInfo, Callee, VF);
+    checkedEmplace(FunctionOwnersInfo, Callee, Caller);
+    LLVM_DEBUG(dbgs() << "  caller is a kernel function!\n");
+    return true;
+  }
+
+  const bool DisableStrictChecks = false;
+  const auto *PrimaryEmitter =
+      getPrimaryEmitterForVisa(Caller, DisableStrictChecks);
+  if (!PrimaryEmitter)
+    return false;
+
+  checkedEmplace(VisaSpawnerInfo, Callee, VF);
+  checkedEmplace(FunctionOwnersInfo, Callee, PrimaryEmitter);
+  LLVM_DEBUG(dbgs() << "  caller is a function <" << Caller->getName()
+                    << "> owned by <" << PrimaryEmitter->getName() << ">\n");
+  return true;
+}
+
+bool ModuleToVisaTransformInfo::tryToProcessVisaEmitter(const Function &F,
+                                                        VISABuilder &VB) {
+  // Only stack-callee are accepted for now
+  IGC_ASSERT(F.hasFnAttribute(genx::FunctionMD::CMStackCall));
+
+  LLVM_DEBUG(dbgs() << "searching for the host of a stack-callee "
+                    << "<" << F.getName() << ">\n");
+  for (const auto *U : F.users()) {
+
+    const auto *CI = dyn_cast<CallInst>(U);
+    if (!CI)
+      continue;
+    if (CI->getCalledFunction() != &F)
+      continue;
+
+    if (tryToProcessCallToVisaEmitter(*CI, F, VB))
+      return true;
+  }
+  return false;
+}
+
+void ModuleToVisaTransformInfo::extractVisaFunctionsEmitters(
+    VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
+  std::unordered_set<const Function *> ToProcess;
+  for (const auto *FG : FGA) {
+    for (const Function *F : *FG) {
+      if (F->hasFnAttribute(genx::FunctionMD::CMStackCall) &&
+          !isReferencedIndirectly(F)) {
+        checkedEmplace(ToProcess, F);
+      }
+    }
+  }
+
+  while (!ToProcess.empty()) {
+    std::vector<const Function *> Processed;
+    std::copy_if(ToProcess.begin(), ToProcess.end(),
+                 std::back_inserter(Processed), [&VB, this](const Function *F) {
+                   return tryToProcessVisaEmitter(*F, VB);
+                 });
+    for (const auto *F : Processed)
+      extractSubroutineInfo(*F, VB, FGA);
+
+    IGC_ASSERT(!Processed.empty());
+    while (!Processed.empty()) {
+      ToProcess.erase(Processed.back());
+      Processed.pop_back();
+    }
+  }
+}
+
+void ModuleToVisaTransformInfo::extractKernelFunctions(
+    VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
+  for (const auto *FG : FGA) {
+    const Function *KF = FG->getHead();
+
+    for (const Function *F : *FG) {
+      bool TrueKernel = (F == KF);
+      if (isReferencedIndirectly(F) || TrueKernel) {
+        VISAKernel *VF = VB.GetVISAKernel(F->getName().str());
+        if (TrueKernel)
+          checkedEmplace(SourceLevelKernels, F);
+        checkedEmplace(KernelFunctionsInfo, F, VF);
+        checkedEmplace(VisaSpawnerInfo, F, VF);
+        checkedEmplace(FunctionOwnersInfo, F, F);
+
+        extractSubroutineInfo(*F, VB, FGA);
+      }
+    }
+  }
+}
+
+ModuleToVisaTransformInfo::ModuleToVisaTransformInfo(
+    VISABuilder &VB, const FunctionGroupAnalysis &FGA) {
+  extractKernelFunctions(VB, FGA);
+  extractVisaFunctionsEmitters(VB, FGA);
+
+  for (const auto *FG : FGA) {
+    for (const Function *F : *FG) {
+      if (isSourceLevelKernel(F))
+        IGC_ASSERT(isKernelFunction(F) && isVisaFunctionSpawner(F) &&
+                   !isSubroutine(F));
+      if (isKernelFunction(F))
+        IGC_ASSERT(isVisaFunctionSpawner(F) && !isSubroutine(F));
+      if (isVisaFunctionSpawner(F))
+        IGC_ASSERT(!isSubroutine(F));
+      if (isSubroutine(F))
+        IGC_ASSERT(!isVisaFunctionSpawner(F) && !isKernelFunction(F));
+    }
+  }
+}
+
+namespace {
 
 class CompiledVisaWrapper {
 
@@ -504,7 +860,7 @@ private:
   const GenXVisaRegAlloc &RA;
 };
 
-void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
+static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
   Emitter->setCurrentVISA(GF);
   const auto &V2I = GF->getVisaMapping().V2I;
   const auto &FDI = GF->getFinalizerDI();
@@ -573,6 +929,7 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
                  });
   auto FaultyCwIt = std::find_if(
       CWs.begin(), CWs.end(), [](const auto &CW) { return CW->hasErrors(); });
+
   if (FaultyCwIt != CWs.end())
     report_fatal_error((*FaultyCwIt)->getError(), false);
 
@@ -666,7 +1023,10 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
   return;
 }
 
-void GenXDebugInfo::cleanup() { ElfOutputs.clear(); }
+void GenXDebugInfo::cleanup() {
+  DISubprogramNodes.clear();
+  ElfOutputs.clear();
+}
 
 void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<FunctionGroupAnalysis>();
@@ -696,9 +1056,7 @@ void GenXDebugInfo::processFunctionGroup(GenXModule &GM, VISABuilder &VB,
   std::vector<Function *> PrimaryFunctions, IndirectlyCalledFunctions;
   std::partition_copy(
       FG.begin(), FG.end(), std::back_inserter(IndirectlyCalledFunctions),
-      std::back_inserter(PrimaryFunctions), [](Function *F) {
-        return F->hasFnAttribute(genx::FunctionMD::ReferencedIndirectly);
-      });
+      std::back_inserter(PrimaryFunctions), isReferencedIndirectly);
   for (auto *F : IndirectlyCalledFunctions) {
     LLVM_DEBUG(dbgs() << "  F: " << F->getName().str() << " called indirectly!\n");
     // Each indirectly-called function is compiled into a separate vISA kernel
@@ -719,6 +1077,7 @@ void GenXDebugInfo::processFunctionGroup(GenXModule &GM, VISABuilder &VB,
   });
   processKernel(ProgramInfo{std::move(PrimaryFIs)});
 }
+
 bool GenXDebugInfo::runOnModule(Module &M) {
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
@@ -733,7 +1092,17 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   VISABuilder *VB = GM.GetCisaBuilder();
   if (GM.HasInlineAsm())
     VB = GM.GetVISAAsmReader();
+  IGC_ASSERT(VB);
 
+  ModuleToVisaTransformInfo MVTI(*VB, FGA);
+
+  if (!DbgOpt_VisaTransformInfoPath.empty()) {
+    std::error_code IgnoredEC;
+    raw_fd_ostream DumpStream(DbgOpt_VisaTransformInfoPath, IgnoredEC);
+    MVTI.print(DumpStream);
+  }
+
+  LLVM_DEBUG(MVTI.print(dbgs()); dbgs() << "\n");
   for (const auto *FG : FGA)
     processFunctionGroup(GM, *VB, *FG);
 
