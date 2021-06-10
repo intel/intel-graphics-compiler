@@ -7875,26 +7875,26 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 m_encoder->SetSrcRegion(1, 0, 1, 0);
                 CVariable* startCoordinate = floatR1;
                 uint topLeftVertexStartSubReg = (component == 0 ? 1 : 6); // R1.1 for XStart and R1.6 for YStart
-                if (psProgram->m_Platform->hasStartCoordinatesDeliveredWithDeltas())
+
                 {
-                    startCoordinate = delta;
+                    if (psProgram->m_Platform->hasStartCoordinatesDeliveredWithDeltas())
                     {
+                        startCoordinate = delta;
                         topLeftVertexStartSubReg = (component == 0 ? 2 : 6);
                     }
+                    m_encoder->SetSrcSubReg(1, topLeftVertexStartSubReg);
+                    m_encoder->SetSrcModifier(1, EMOD_NEG);
+                    if (m_encoder->IsCodePatchCandidate())
+                    {
+                        m_encoder->SetPayloadSectionAsPrimary();
+                    }
+                    m_encoder->Add(floatPixelPositionDelta, floatPixelPosition, startCoordinate);
+                    m_encoder->Push();
+                    if (m_encoder->IsCodePatchCandidate())
+                    {
+                        m_encoder->SetPayloadSectionAsSecondary();
+                    }
                 }
-                m_encoder->SetSrcSubReg(1, topLeftVertexStartSubReg);
-                m_encoder->SetSrcModifier(1, EMOD_NEG);
-                if (m_encoder->IsCodePatchCandidate())
-                {
-                    m_encoder->SetPayloadSectionAsPrimary();
-                }
-                m_encoder->Add(floatPixelPositionDelta, floatPixelPosition, startCoordinate);
-                m_encoder->Push();
-                if (m_encoder->IsCodePatchCandidate())
-                {
-                    m_encoder->SetPayloadSectionAsSecondary();
-                }
-
                 return floatPixelPositionDelta;
             };
             const uint componentX = 0;
@@ -7906,26 +7906,25 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
 
             // (y - ystart)*z_cy + z_c0
             {
-                m_encoder->SetSrcRegion(1, 0, 1, 0);
-                m_encoder->SetSrcRegion(2, 0, 1, 0);
-            }
-            {
+                {
+                    m_encoder->SetSrcRegion(1, 0, 1, 0);
+                    m_encoder->SetSrcRegion(2, 0, 1, 0);
+                }
                 m_encoder->SetSrcSubReg(1, 0);
                 m_encoder->SetSrcSubReg(2, 3);
+                ContextSwitchPayloadSection();
+                m_encoder->Mad(floatPixelPositionDeltaY, floatPixelPositionDeltaY, delta, delta);
+                m_encoder->Push();
             }
-            ContextSwitchPayloadSection();
-            m_encoder->Mad(floatPixelPositionDeltaY, floatPixelPositionDeltaY, delta, delta);
-            m_encoder->Push();
-
             // (x - xstart)*z_cx + (y - ystart)*z_cy + z_c0
             {
-                m_encoder->SetSrcRegion(1, 0, 1, 0);
-            }
-            {
+                {
+                    m_encoder->SetSrcRegion(1, 0, 1, 0);
+                }
                 m_encoder->SetSrcSubReg(1, 1);
+                m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
+                m_encoder->Push();
             }
-            m_encoder->Mad(m_destination, floatPixelPositionDeltaX, delta, floatPixelPositionDeltaY);
-            m_encoder->Push();
             ContextSwitchShaderBody();
         }
         else
