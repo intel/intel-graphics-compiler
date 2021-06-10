@@ -645,11 +645,12 @@ GenXVisaRegAlloc::Reg* GenXVisaRegAlloc::getRegForValueOrNull(
       OverrideType = OverrideType->getPointerElementType();
   }
   OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
+  auto &DL = kernel->getParent()->getDataLayout();
   if (R->Num < VISA_NUM_RESERVED_REGS) {
     OverrideType = IGCLLVM::FixedVectorType::get(
         OverrideType->getScalarType(),
         R->Ty->getPrimitiveSizeInBits() /
-            OverrideType->getScalarType()->getPrimitiveSizeInBits());
+            DL.getTypeSizeInBits(OverrideType->getScalarType()));
   }
 
   Reg *LastAlias = R;
