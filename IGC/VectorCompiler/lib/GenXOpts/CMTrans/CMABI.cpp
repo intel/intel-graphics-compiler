@@ -717,35 +717,28 @@ static bool IsPtrArgModified(const Value &Arg) {
 
 bool CMABI::OnlyUsedBySimpleValueLoadStore(Value *Arg) {
   for (const auto &U : Arg->users()) {
-    if (auto I = dyn_cast<Instruction>(U)) {
-      if (auto LI = dyn_cast<LoadInst>(U)) {
-        if (Arg != LI->getPointerOperand())
-          return false;
-      }
-      if (auto SI = dyn_cast<LoadInst>(U)) {
-        if (Arg != SI->getPointerOperand())
-          return false;
-      }
-      else if (auto GEP = dyn_cast<GetElementPtrInst>(U)) {
-        if (Arg != GEP->getPointerOperand())
-          return false;
-        else if (!GEP->hasAllZeroIndices())
-          return false;
-        if (!OnlyUsedBySimpleValueLoadStore(U))
-          return false;
-      }
-      else if (isa<AddrSpaceCastInst>(U) || isa<PtrToIntInst>(U)) {
-        if (!OnlyUsedBySimpleValueLoadStore(U))
-          return false;
-      }
-      else if (auto CI = dyn_cast<CallInst>(U)) {
-        auto Callee = CI->getCalledFunction();
-        if (Callee && !Callee->isIntrinsic()) {
-          //if (GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst))
-          return false;
-        }
-      }
-      else
+    auto *I = dyn_cast<Instruction>(U);
+    if (!I)
+      return false;
+
+    if (auto LI = dyn_cast<LoadInst>(U)) {
+      if (Arg != LI->getPointerOperand())
+        return false;
+    }
+    else if (auto SI = dyn_cast<StoreInst>(U)) {
+      if (Arg != SI->getPointerOperand())
+        return false;
+    }
+    else if (auto GEP = dyn_cast<GetElementPtrInst>(U)) {
+      if (Arg != GEP->getPointerOperand())
+        return false;
+      else if (!GEP->hasAllZeroIndices())
+        return false;
+      if (!OnlyUsedBySimpleValueLoadStore(U))
+        return false;
+    }
+    else if (isa<AddrSpaceCastInst>(U) || isa<PtrToIntInst>(U)) {
+      if (!OnlyUsedBySimpleValueLoadStore(U))
         return false;
     }
     else
