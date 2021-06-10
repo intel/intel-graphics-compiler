@@ -119,19 +119,6 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
         I.eraseFromParent();
         m_changed = true;
     }
-    else if (I.getType()->isIntegerTy(1))
-    {
-        if (isa<Constant>(ptrv) || isa<IntToPtrInst>(ptrv))
-        {
-            llvm::PointerType* int32ptr = llvm::PointerType::get(builder.getInt32Ty(), ptrv->getType()->getPointerAddressSpace());
-            ptrv = mutatePtrType(ptrv, int32ptr, builder);
-            Value* newLoad = builder.CreateLoad(ptrv);
-            Value* newInst = builder.CreateTrunc(newLoad, builder.getInt1Ty());
-            I.replaceAllUsesWith(newInst);
-            I.eraseFromParent();
-            m_changed = true;
-        }
-    }
 }
 
 void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst& I)
