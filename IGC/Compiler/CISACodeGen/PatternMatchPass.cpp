@@ -1220,6 +1220,9 @@ namespace IGC
         case Intrinsic::fshr:
             match = MatchFunnelShiftRotate(I);
             break;
+        case Intrinsic::canonicalize:
+            match = MatchCanonicalizeInstruction(I);
+            break;
         default:
             match = MatchSingleInstruction(I);
             // no pattern for the rest of the intrinsics
@@ -3097,43 +3100,120 @@ namespace IGC
     {
         struct CanonicalizeInstPattern : Pattern
         {
-            CanonicalizeInstPattern(llvm::Instruction* pInst, bool isNeeded) : m_pInst(pInst), m_IsNeeded(isNeeded) {}
+            CanonicalizeInstPattern(llvm::Instruction* pInst) : m_pInst(pInst) {}
 
             llvm::Instruction* m_pInst;
-            bool m_IsNeeded;
+            Pattern* m_pPattern = nullptr;
 
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                IGC_ASSERT(modifier.sat == false && modifier.flag == nullptr);
-                if (m_IsNeeded)
+                if (m_pPattern)
                 {
-                    pass->emitCanonicalize(m_pInst);
+                    m_pPattern->Emit(pass, modifier);
+                }
+                else
+                {
+                    pass->emitCanonicalize(m_pInst, modifier);
                 }
             }
         };
 
-        IGC_ASSERT(I.getNumOperands() == 1);
-        bool isNeeded = true;
 
         // FAdd, FSub, FMul, FDiv instructions flush subnormals to zero.
         // However, mix mode and math instructions preserve subnormals.
         // Other instructions also preserve subnormals.
-        if (llvm::BinaryOperator * pBianaryOperator = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(0)))
+        // FSat intrinsic instruction can be emitted i.e. as FAdd so such an
+        // instruction should be inspected recursively.
+        std::function<bool(llvm::Value*)> DetermineIfMixMode;
+        DetermineIfMixMode = [&DetermineIfMixMode, this](llvm::Value* operand) -> bool
         {
-            switch (pBianaryOperator->getOpcode())
+            bool isMixModePossible = false;
+            if (m_Platform.supportMixMode())
             {
-            case llvm::BinaryOperator::BinaryOps::FAdd:
-            case llvm::BinaryOperator::BinaryOps::FMul:
-            case llvm::BinaryOperator::BinaryOps::FSub:
-            case llvm::BinaryOperator::BinaryOps::FDiv:
-                isNeeded = false;
-            default:
-                break;
+                if (llvm::BinaryOperator* pBianaryOperator = llvm::dyn_cast<llvm::BinaryOperator>(operand))
+                {
+                    // the switch instruction is executed to break the recursion if it is unneeded.
+                    // The cause for this recursion is a possibility of constructing mad instructions.
+                    switch (pBianaryOperator->getOpcode())
+                    {
+                    case llvm::BinaryOperator::BinaryOps::FAdd:
+                    case llvm::BinaryOperator::BinaryOps::FMul:
+                    case llvm::BinaryOperator::BinaryOps::FSub:
+                        isMixModePossible = pBianaryOperator->getType()->isDoubleTy() == false &&
+                            (DetermineIfMixMode(pBianaryOperator->getOperand(0)) || DetermineIfMixMode(pBianaryOperator->getOperand(1)));
+                        break;
+                    default:
+                        break;
+                    }
+                }
+                else if (isa<FPTruncInst>(operand))
+                {
+                    FPTruncInst* fptruncInst = llvm::cast<FPTruncInst>(operand);
+                    isMixModePossible = fptruncInst->getSrcTy()->isDoubleTy() == false;
+                }
+                else if (isa<FPExtInst>(operand))
+                {
+                    FPExtInst* fpextInst = llvm::cast<FPExtInst>(operand);
+                    isMixModePossible = fpextInst->getDestTy()->isDoubleTy() == false;
+                }
             }
-        }
+            return isMixModePossible;
+        };
 
-        CanonicalizeInstPattern* pattern = new (m_allocator) CanonicalizeInstPattern(&I, isNeeded);
-        MarkAsSource(I.getOperand(0));
+        std::function<bool(llvm::Value*)> DetermineIfNeeded;
+        DetermineIfNeeded = [&DetermineIfNeeded, &DetermineIfMixMode](llvm::Value* operand) -> bool
+        {
+            bool isNeeded = true;
+            if (llvm::BinaryOperator* pBianaryOperator = llvm::dyn_cast<llvm::BinaryOperator>(operand))
+            {
+                // the switch instruction is to consider only the operations
+                // which support flushing denorms to zero.
+                switch (pBianaryOperator->getOpcode())
+                {
+                case llvm::BinaryOperator::BinaryOps::FAdd:
+                case llvm::BinaryOperator::BinaryOps::FMul:
+                case llvm::BinaryOperator::BinaryOps::FSub:
+                case llvm::BinaryOperator::BinaryOps::FDiv:
+                    isNeeded = DetermineIfMixMode(pBianaryOperator);
+                    break;
+                default:
+                    break;
+                }
+            }
+            else if(GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(operand))
+            {
+                switch (intrin->getIntrinsicID())
+                {
+                case GenISAIntrinsic::GenISA_fsat:
+                    isNeeded = DetermineIfNeeded(intrin->getOperand(0));
+                    break;
+                default:
+                    break;
+                }
+            }
+            else if (IntrinsicInst* intrin = dyn_cast<IntrinsicInst>(operand))
+            {
+                switch (intrin->getIntrinsicID())
+                {
+                case Intrinsic::canonicalize:
+                    isNeeded = DetermineIfNeeded(intrin->getOperand(0));
+                    break;
+                default:
+                    break;
+                }
+            }
+            return isNeeded;
+        };
+
+        CanonicalizeInstPattern* pattern = new (m_allocator) CanonicalizeInstPattern(&I);
+        if (DetermineIfNeeded(I.getOperand(0)))
+        {
+            MarkAsSource(I.getOperand(0));
+        }
+        else
+        {
+            pattern->m_pPattern = Match(*llvm::cast<llvm::Instruction>(I.getOperand(0)));
+        }
 
         AddPattern(pattern);
         return true;
