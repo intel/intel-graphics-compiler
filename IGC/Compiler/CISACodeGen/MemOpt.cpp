@@ -238,7 +238,8 @@ namespace {
                     else
                         accessSize = int64_t(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
                     mergedSize = cur_offset - firstOffset + accessSize;
-                    if (mergedSize > 4)
+                    // limit the size of merge when alignment < 4
+                    if (mergedSize > 8)
                         AccessIntrs.pop_back();
                     else
                         break;
