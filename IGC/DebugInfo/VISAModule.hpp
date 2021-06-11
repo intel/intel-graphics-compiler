@@ -463,7 +463,6 @@ namespace IGC
 
         bool hasOrIsStackCall(const IGC::DbgDecoder& VD) const;
         const std::vector<DbgDecoder::SubroutineInfo>* getSubroutines(const IGC::DbgDecoder& VD) const;
-        const DbgDecoder::DbgInfoFormat* getCompileUnit(const IGC::DbgDecoder& VD) const;
 
         void buildDirectElfMaps(const IGC::DbgDecoder& VD);
 
@@ -476,6 +475,9 @@ namespace IGC
         std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> getAllCallerSave(
             const IGC::DbgDecoder& VD, uint64_t startRange, uint64_t endRange,
             DbgDecoder::LiveIntervalsVISA& Locs);
+
+        virtual const DbgDecoder::DbgInfoFormat*
+            getCompileUnit(const IGC::DbgDecoder& VD) const;
 
         virtual unsigned getUnpaddedProgramSize() const = 0;
         virtual bool isLineTableOnly() const = 0;

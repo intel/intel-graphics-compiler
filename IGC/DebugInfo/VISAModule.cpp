@@ -241,6 +241,7 @@ bool VISAModule::IsExecutableInst(const llvm::Instruction& inst)
 void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder& VD)
 {
     const auto* co = getCompileUnit(VD);
+    IGC_ASSERT(co);
     VISAIndexToInst.clear();
     VISAIndexToSize.clear();
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
