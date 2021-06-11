@@ -436,7 +436,7 @@ SPDX-License-Identifier: MIT
 
     bool needIPWA() const
     {
-        return getPlatform() == GENX_XE_HP;
+        return getPlatform() == XE_HP;
     }
 
     bool canEncodeFullExtDesc() const
