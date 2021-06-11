@@ -789,6 +789,10 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(llvm::createDeadCodeEliminationPass());
         mpm.add(createEmu64OpsPass());
         ctx.m_hasEmu64BitInsts = true;
+        if(!isOptDisabled)
+        {
+            mpm.add(new GenSpecificPattern());
+        }
     }
 
     mpm.add(createInstSimplifyLegacyPass());

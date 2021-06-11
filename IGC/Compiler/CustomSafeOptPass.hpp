@@ -168,6 +168,7 @@ namespace IGC
         void visitSDiv(llvm::BinaryOperator& I);
         void visitTruncInst(llvm::TruncInst& I);
         void visitBitCastInst(llvm::BitCastInst& I);
+        void visitLoadInst(llvm::LoadInst& I);
 #if LLVM_VERSION_MAJOR >= 10
         void visitFNeg(llvm::UnaryOperator& I);
 #endif

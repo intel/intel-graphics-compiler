@@ -2705,6 +2705,76 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst& I)
     }
 }
 
+/*
+    Matches a pattern where pointer to load instruction is fetched by other load instruction.
+    On targets that do not support 64 bit operations, Emu64OpsPass will insert pair_to_ptr intrinsic
+    between the loads and InstructionCombining will not optimize this case.
+
+    This function changes following pattern:
+    %3 = load <2 x i32>, <2 x i32> addrspace(1)* %2, align 64
+    %4 = extractelement <2 x i32> %3, i32 0
+    %5 = extractelement <2 x i32> %3, i32 1
+    %6 = call %union._XReq addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* @llvm.genx.GenISA.pair.to.ptr.p1p1p1p1p1p1p1p1union._XReq(i32 %4, i32 %5)
+    %7 = bitcast %union._XReq addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* addrspace(1)* %6 to i64 addrspace(1)*
+    %8 = bitcast i64 addrspace(1)* %7 to <2 x i32> addrspace(1)*
+    %9 = load <2 x i32>, <2 x i32> addrspace(1)* %8, align 64
+
+    to:
+    %3 = bitcast <2 x i32> addrspace(1)* %2 to <2 x i32> addrspace(1)* addrspace(1)*
+    %4 = load <2 x i32> addrspace(1)*, <2 x i32> addrspace(1)* addrspace(1)* %3, align 64
+    ... dead code
+    %11 = load <2 x i32>, <2 x i32> addrspace(1)* %4, align 64
+*/
+void GenSpecificPattern::visitLoadInst(LoadInst &LI) {
+    Value* PO = LI.getPointerOperand();
+    std::vector<Value*> OneUseValues = { PO };
+    while (isa<BitCastInst>(PO)) {
+        PO = cast<BitCastInst>(PO)->getOperand(0);
+        OneUseValues.push_back(PO);
+    }
+
+    bool IsPairToPtrInst = (isa<GenIntrinsicInst>(PO) &&
+        cast<GenIntrinsicInst>(PO)->getIntrinsicID() ==
+        GenISAIntrinsic::GenISA_pair_to_ptr);
+
+    if (!IsPairToPtrInst)
+        return;
+
+    // check if this pointer comes from a load.
+    auto CallInst = cast<GenIntrinsicInst>(PO);
+    auto Op0 = dyn_cast<ExtractElementInst>(CallInst->getArgOperand(0));
+    auto Op1 = dyn_cast<ExtractElementInst>(CallInst->getArgOperand(1));
+    bool PointerComesFromALoad = (Op0 && Op1 && isa<ConstantInt>(Op0->getIndexOperand()) &&
+        isa<ConstantInt>(Op1->getIndexOperand()) &&
+        cast<ConstantInt>(Op0->getIndexOperand())->getZExtValue() == 0 &&
+        cast<ConstantInt>(Op1->getIndexOperand())->getZExtValue() == 1 &&
+        isa<LoadInst>(Op0->getVectorOperand()) &&
+        isa<LoadInst>(Op1->getVectorOperand()) &&
+        Op0->getVectorOperand() == Op1->getVectorOperand());
+
+    if (!PointerComesFromALoad)
+        return;
+
+    OneUseValues.insert(OneUseValues.end(), { Op0, Op1 });
+
+    if (!std::all_of(OneUseValues.begin(), OneUseValues.end(), [](auto v) { return v->hasOneUse(); }))
+        return;
+
+    auto VectorLoadInst = cast<LoadInst>(Op0->getVectorOperand());
+    if (VectorLoadInst->getNumUses() != 2)
+        return;
+
+    auto PointerOperand = VectorLoadInst->getPointerOperand();
+    PointerType* newLoadPointerType = PointerType::get(
+        LI.getPointerOperand()->getType(), PointerOperand->getType()->getPointerAddressSpace());
+    IRBuilder<> builder(VectorLoadInst);
+    auto CastedPointer =
+        builder.CreateBitCast(PointerOperand, newLoadPointerType);
+    auto NewLoadInst = IGC::cloneLoad(VectorLoadInst, CastedPointer);
+
+    LI.setOperand(0, NewLoadInst);
+}
+
 void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
 {
     CmpInst* Cmp = dyn_cast<CmpInst>(ZEI.getOperand(0));
