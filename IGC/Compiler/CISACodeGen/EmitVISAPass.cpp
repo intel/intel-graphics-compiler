@@ -397,11 +397,12 @@ bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
 {
     IGC_ASSERT(IGC::isIntelSymbolTableVoidProgram(F));
 
-    // Has external functions attached
+    // Check has external functions attached
     if ((m_FGA && m_FGA->getGroup(F) && !m_FGA->getGroup(F)->isSingle()))
     {
         return true;
     }
+    // Checl has global symbols attached
     else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
     {
         for (auto it : m_moduleMD->inlineProgramScopeOffsets)
@@ -423,6 +424,19 @@ bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
                 {
                     return true;
                 }
+            }
+        }
+    }
+    // Check if requiring symbol for imported function calls
+    else
+    {
+        for (auto& FI : F->getParent()->getFunctionList())
+        {
+            if (FI.isDeclaration() &&
+                FI.hasFnAttribute("referenced-indirectly") &&
+                FI.getNumUses() > 0)
+            {
+                return true;
             }
         }
     }
