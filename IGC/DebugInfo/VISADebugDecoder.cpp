@@ -108,24 +108,53 @@ void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream& OS) const {
 }
 void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream& OS) const {
     OS << "<VISADebugInfo>\n";
-    OS << "Kernel: " << kernelName << "\n";
-    OS << "RelocOffset: " << relocOffset << "\n";
-    OS << "NumSubroutines: " << subs.size() << "\n";
+    OS << "  Kernel: " << kernelName << "\n";
+    OS << "  RelocOffset: " << relocOffset << "\n";
+    OS << "  NumSubroutines: " << subs.size() << "\n";
 
-    OS << "Subroutines: [\n    ";
+    OS << "  Subroutines: [\n    ";
     PrintItems(OS, subs, "\n    ");
     OS << "  ]\n";
-    OS << "CFI: {\n";
+    OS << "  CFI: {\n";
     cfi.print(OS);
     OS << "  }\n";
 
-    OS << "Vars:\n  ";
+    OS << "  Vars:\n  ";
     PrintItems(OS, Vars, "\n  ");
-    OS << "\nCisaIndex:\n";
+    OS << "\n  CisaIndex:\n";
     std::for_each(CISAIndexMap.begin(), CISAIndexMap.end(), [&OS](const auto& V) {
             auto VisaIndex = V.first;
             auto GenOff = V.second;
             OS << "  GI: " << GenOff << " -> VI: " << VisaIndex << "\n";
         });
     OS << "</VISADebugInfo>";
+}
+
+void IGC::DbgDecoder::print(llvm::raw_ostream& OS) const
+{
+    OS << "=====================================\n";
+    OS << "***Compiled Kernel Debug Info Dump***\n";
+    OS << "=====================================\n";
+    size_t i = 0;
+    for (const auto& k : compiledObjs)
+    {
+        OS << "CO[" << i << "] = " << k.kernelName << "\n";
+        OS << "    ";
+        if (k.subs.empty())
+        {
+            OS << "- no subroutines\n";
+        }
+        else
+        {
+            for (const auto& Sub : k.subs)
+                OS << "    " << Sub.name << "\n";
+        }
+        ++i;
+    }
+    for (const auto& k : compiledObjs)
+    {
+        k.print(OS);
+        OS << "\n";
+    }
+    OS << "-------------------------------------\n";
 }
