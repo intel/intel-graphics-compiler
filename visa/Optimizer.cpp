@@ -1378,6 +1378,10 @@ void Optimizer::reRAPostSchedule()
     if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
         return;
 
+    // No rera for the payload section
+    if (builder.getIsPayload())
+        return;
+
     std::vector<Assignment> assignments;
     auto finalizerInfo = *builder.getJitInfo();
     auto oldRAType = kernel.getRAType();
