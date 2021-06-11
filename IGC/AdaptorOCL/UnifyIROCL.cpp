@@ -330,7 +330,6 @@ static void CommonOCLBasedPasses(
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
-    mpm.add(new UndefinedReferencesPass());
 
     if (IGC_GET_FLAG_VALUE(AllowMem2Reg))
     {
@@ -349,6 +348,9 @@ static void CommonOCLBasedPasses(
         Mask.setFast();
         Mask.setNoSignedZeros(false);
         mpm.add(new SetFastMathFlags(Mask));
+
+        // Report undef references after setting func attribs for import linking
+        mpm.add(new UndefinedReferencesPass());
 
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {

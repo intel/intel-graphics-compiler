@@ -62,11 +62,6 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
     for (; GVarIter != module.global_end();)
     {
         GlobalVariable* pGVar = &(*GVarIter);
-        if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
-        {
-            ReportUndefinedReference(CGC, GVarIter->getName(), pGVar);
-            foundUndef = true;
-        }
 
         // Increment the iterator before attempting to remove a global variable
         GVarIter++;
@@ -75,6 +70,12 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
             (pGVar->hasExternalLinkage() || pGVar->hasCommonLinkage()))
         {
             continue;
+        }
+
+        if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
+        {
+            ReportUndefinedReference(CGC, GVarIter->getName(), pGVar);
+            foundUndef = true;
         }
 
         if (!pGVar->isDeclaration() && pGVar->use_empty())
@@ -91,12 +92,9 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
             StringRef funcName = F.getName();
             if (!funcName.startswith("__builtin_IB") && funcName != "printf" &&
                 !funcName.startswith("__igcbuiltin_") &&
-                !funcName.startswith("__translate_sampler_initializer"))
+                !funcName.startswith("__translate_sampler_initializer") &&
+                !F.hasFnAttribute("referenced-indirectly"))
             {
-                if (F.hasFnAttribute("referenced-indirectly"))
-                {
-                    continue;
-                }
                 ReportUndefinedReference(CGC, funcName, &F);
                 foundUndef = true;
             }
