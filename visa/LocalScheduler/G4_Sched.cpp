@@ -712,7 +712,7 @@ bool preRA_RegSharing::run()
     }
 
     if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
-        (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal(), kernel.getSimdSize())))
+        (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum), kernel.getSimdSize())))
     {
         // Update number of threads, GRF, Acc and SWSB
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
