@@ -109,7 +109,6 @@ public:
   };
 
   explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable);
-  ~CGen8CMProgram();
 
   // Produce the final ELF binary with the given CM kernels
   // in OpenCL format.
@@ -118,7 +117,7 @@ public:
                    unsigned pointerSizeInBytes) override;
 
   // CM kernel list.
-  std::vector<CMKernel *> m_kernels;
+  std::vector<std::unique_ptr<CMKernel>> m_kernels;
 
   // Data structure to create patch token based binaries.
   std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;

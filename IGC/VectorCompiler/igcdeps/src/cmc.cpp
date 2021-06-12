@@ -778,10 +778,10 @@ void vc::createBinary(
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo);
   for (const GenXOCLRuntimeInfo::CompiledKernel &CompKernel :
        CompiledModule.Kernels) {
-    CMKernel *K = new CMKernel(CMProgram.getPlatform());
-    CMProgram.m_kernels.push_back(K);
+    auto K = std::make_unique<CMKernel>(CMProgram.getPlatform());
     fillKernelInfo(CompKernel, *K);
     ProgramIsDebuggable |= !CompKernel.getDebugInfo().empty();
+    CMProgram.m_kernels.push_back(std::move(K));
   }
   CMProgram.m_ContextProvider.updateDebuggableStatus(ProgramIsDebuggable);
 }

@@ -17,14 +17,9 @@ CGen8CMProgram::CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable)
     : CGen8OpenCLProgramBase(platform, m_ContextProvider, WATable),
       m_programInfo(new IGC::SOpenCLProgramInfo) {}
 
-CGen8CMProgram::~CGen8CMProgram() {
-  for (auto kernel : m_kernels)
-    delete kernel;
-}
-
 void CGen8CMProgram::CreateKernelBinaries() {
   CreateProgramScopePatchStream(*m_programInfo);
-  for (auto *kernel : m_kernels) {
+  for (const auto &kernel : m_kernels) {
     // Create the kernel binary streams.
     iOpenCL::KernelData data;
     data.kernelBinary = std::make_unique<Util::BinaryStream>();
@@ -57,7 +52,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                                      *m_programInfo, nullptr, 0};
   zebuilder.setGfxCoreFamilyToELFMachine(m_Platform.eRenderCoreFamily);
 
-  for (auto *kernel : m_kernels) {
+  for (const auto &kernel : m_kernels) {
     zebuilder.createKernel(
         reinterpret_cast<const char *>(kernel->getProgramOutput().m_programBin),
         kernel->getProgramOutput().m_programSize, kernel->m_kernelInfo,
