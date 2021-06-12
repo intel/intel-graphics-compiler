@@ -3596,7 +3596,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFrc(llvm::Value* V
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Function* frc =
-        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_frc, V->getType());
+        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_frc);
     return this->CreateCall(frc, V);
 }
 
