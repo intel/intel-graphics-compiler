@@ -433,19 +433,26 @@ public:
     LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst
                       << "\n");
     const Value *DbgValue = nullptr;
-    DIVariable *VarDescr = nullptr;
-    if (auto *pDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
+    const DIVariable *VarDescr = nullptr;
+    if (const auto *pDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
       DbgValue = pDbgAddrInst->getAddress();
       VarDescr = pDbgAddrInst->getVariable();
       return EmptyLoc("llvm.dbg.declare is not supported");
-    } else if (auto *pDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
+    } else if (const auto *pDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
       DbgValue = pDbgValInst->getValue();
       VarDescr = pDbgValInst->getVariable();
     } else {
-      return EmptyLoc("Unsupported Debug Intrinsic");
+      return EmptyLoc("unsupported Debug Intrinsic");
+    }
+
+    IGC_ASSERT(VarDescr);
+    if (!DbgValue) {
+      if (const auto *LocalVar = dyn_cast<DILocalVariable>(VarDescr))
+        if (LocalVar->isParameter())
+          return EmptyLoc("unsupported parameter description");
+      return EmptyLoc("unsupported DbgInst");
     }
     IGC_ASSERT(DbgValue);
-    IGC_ASSERT(VarDescr);
     LLVM_DEBUG(dbgs() << "   Value:" << *DbgValue << "\n");
     LLVM_DEBUG(dbgs() << "   Var: " << VarDescr->getName()
                       << "/Type:" << *VarDescr->getType() << "\n");
@@ -457,7 +464,7 @@ public:
     }
     auto *Reg = RA.getRegForValueUntyped(&F, const_cast<Value *>(DbgValue));
     if (!Reg) {
-      return EmptyLoc("   could not find virtual register");
+      return EmptyLoc("could not find virtual register");
     }
     const bool IsRegister = true;
     const bool IsMemory = false;
