@@ -64,12 +64,6 @@ CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform,
 CGen8OpenCLProgramBase::~CGen8OpenCLProgramBase()
 {
     delete m_ProgramScopePatchStream;
-    for (auto& data : m_KernelBinaries)
-    {
-        delete data.kernelBinary;
-        delete data.kernelDebugData;
-        delete data.dbgInfo.header;
-    }
 
     if (m_pSystemThreadKernelOutput)
     {
@@ -139,9 +133,9 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(Util::BinaryStream& programDe
     RETVAL retValue = g_cInitRetValue;
 
     unsigned numDebugBinaries = 0;
-    for (auto data : m_KernelBinaries)
+    for (const auto& data : m_KernelBinaries)
     {
-        if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+        if (data.vcKernelDebugData && data.vcKernelDebugData->Size() > 0)
         {
             numDebugBinaries++;
         }
@@ -161,11 +155,11 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(Util::BinaryStream& programDe
 
         programDebugData.Write(header);
 
-        for (auto data : m_KernelBinaries)
+        for (const auto& data : m_KernelBinaries)
         {
-            if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+            if (data.vcKernelDebugData && data.vcKernelDebugData->Size() > 0)
             {
-                programDebugData.Write(*(data.kernelDebugData));
+                programDebugData.Write(*data.vcKernelDebugData.get());
             }
         }
     }
@@ -208,7 +202,7 @@ RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(char* dstBuffer, size_t dstBu
     RETVAL retValue = g_cInitRetValue;
     size_t offset = 0;
 
-    auto Append = [&offset, dstBuffer, dstBufferSize](void* src, size_t srcSize)
+    auto Append = [&offset, dstBuffer, dstBufferSize](const void* src, size_t srcSize)
     {
         memcpy_s(dstBuffer + offset, dstBufferSize - offset, src, srcSize);
         offset += srcSize;
@@ -275,7 +269,8 @@ void dumpOCLKernelBinary(
         .PostFix(kernelName)
         .Extension("kernbin");
 
-    auto *KernBin = data.kernelBinary;
+    const auto &KernBin = data.kernelBinary;
+    IGC_ASSERT(KernBin);
 
     std::error_code EC;
     llvm::raw_fd_ostream f(name.str(), EC);
@@ -313,10 +308,10 @@ void overrideOCLKernelBinary(
     int newBinarySize = (int)f.tellg();
     f.seekg(0, f.beg);
 
-    auto *&KernBin = data.kernelBinary;
+    auto &KernBin = data.kernelBinary;
+    KernBin.reset();
 
-    delete KernBin;
-    KernBin = new Util::BinaryStream();
+    KernBin = std::make_unique<Util::BinaryStream>();
 
     std::unique_ptr<char[]> Buf(new char[newBinarySize]);
     f.read(Buf.get(), newBinarySize);
@@ -754,13 +749,13 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
                 kernelVec.push_back(simd8Shader);
         }
 
-        for (auto kernel : kernelVec)
+        for (const auto& kernel : kernelVec)
         {
             IGC::SProgramOutput* pOutput = kernel->ProgramOutput();
 
             // Create the kernel binary streams
             KernelData data;
-            data.kernelBinary = new Util::BinaryStream();
+            data.kernelBinary = std::make_unique<Util::BinaryStream>();
 
             m_StateProcessor.CreateKernelBinary(
                 (const char*)pOutput->m_programBin,
@@ -787,7 +782,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             // Create the debug data binary streams
             if (pOutput->m_debugDataVISASize > 0 || pOutput->m_debugDataGenISASize > 0)
             {
-                data.dbgInfo.header = new Util::BinaryStream();
+                data.dbgInfo.header = std::make_unique<Util::BinaryStream>();
 
                 m_StateProcessor.CreateKernelDebugData(
                     (const char*)pOutput->m_debugDataVISA,
@@ -798,8 +793,8 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
                     data.dbgInfo);
             }
 
-            m_KernelBinaries.push_back(data);
             m_StateProcessor.m_oclStateDebugMessagePrintOut.clear();
+            m_KernelBinaries.push_back(std::move(data));
         }
     }
 }

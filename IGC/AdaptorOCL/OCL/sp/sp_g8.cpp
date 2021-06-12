@@ -499,7 +499,7 @@ void CGen8OpenCLStateProcessor::CreateKernelDebugData(
 
     if (rawDebugDataVISA)
     {
-        kernelDebugDataHeader.dbgInfoBuffer = (uint8_t*)rawDebugDataVISA;
+        kernelDebugDataHeader.dbgInfoBuffer = (const uint8_t*)rawDebugDataVISA;
         kernelDebugDataHeader.dbgInfoBufferSize = rawDebugDataVISASize;
         kernelDebugDataHeader.extraAlignBytes = (sizeof(DWORD) - rawDebugDataVISASize % sizeof(DWORD)) % sizeof(DWORD);
         rawDebugDataVISASize += kernelDebugDataHeader.extraAlignBytes;

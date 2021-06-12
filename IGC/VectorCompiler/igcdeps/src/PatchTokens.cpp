@@ -27,7 +27,7 @@ void CGen8CMProgram::CreateKernelBinaries() {
   for (auto *kernel : m_kernels) {
     // Create the kernel binary streams.
     iOpenCL::KernelData data;
-    data.kernelBinary = new Util::BinaryStream;
+    data.kernelBinary = std::make_unique<Util::BinaryStream>();
 
     m_StateProcessor.CreateKernelBinary(
         reinterpret_cast<const char *>(kernel->getProgramOutput().m_programBin),
@@ -37,7 +37,7 @@ void CGen8CMProgram::CreateKernelBinaries() {
         kernel->getProgramOutput().m_unpaddedProgramSize);
 
     if (kernel->getProgramOutput().m_debugDataVISASize) {
-      data.kernelDebugData = new Util::BinaryStream();
+      data.vcKernelDebugData = std::make_unique<Util::BinaryStream>();
       m_StateProcessor.CreateKernelDebugData(
           reinterpret_cast<const char *>(
               kernel->getProgramOutput().m_debugDataVISA),
@@ -45,9 +45,9 @@ void CGen8CMProgram::CreateKernelBinaries() {
           reinterpret_cast<const char *>(
               kernel->getProgramOutput().m_debugDataGenISA),
           kernel->getProgramOutput().m_debugDataGenISASize,
-          kernel->m_kernelInfo.m_kernelName, *(data.kernelDebugData));
+          kernel->m_kernelInfo.m_kernelName, *data.vcKernelDebugData);
     }
-    m_KernelBinaries.push_back(data);
+    m_KernelBinaries.push_back(std::move(data));
   }
 }
 
