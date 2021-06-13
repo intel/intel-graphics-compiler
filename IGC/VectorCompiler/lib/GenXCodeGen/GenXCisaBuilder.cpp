@@ -1259,7 +1259,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     Register *Reg = getRegForValueUntypedAndSaveAlias(F, Arg);
     IGC_ASSERT(Reg);
     uint8_t Kind = TheKernelMetadata.getArgKind(Idx);
-    uint16_t Offset;
+    uint16_t Offset = 0;
     if (!PatchImpArgOff) {
       Offset = TheKernelMetadata.getArgOffset(Idx);
     }
