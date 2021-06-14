@@ -11184,10 +11184,13 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             int loopCount = (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_currShader->m_numberInstance == 1) ? 2 : 1;
             for (int i = 0; i < loopCount; ++i)
             {
+                CVariable* pOffsetInGRFs = pOffset2;
                 if (i == 1)
                 {
                     // explicitly set second half as we are manually splitting
                     m_encoder->SetSecondHalf(true);
+                    pOffsetInGRFs = m_currShader->GetNewAlias(
+                        pOffset2, ISA_TYPE_UW, numLanes(simdMode) * SIZE_WORD, 0);
                 }
                 CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
                     numLanes(simdMode),
@@ -11197,7 +11200,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     m_destination->getName());
 
                 m_encoder->SetSimdSize(simdMode);
-                m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2);
+                m_encoder->AddrAdd(pDstArrElm, m_destination, pOffsetInGRFs);
                 m_encoder->Push();
 
                 // Handle the case when the index is non-uniform - we need to lookup a different value
