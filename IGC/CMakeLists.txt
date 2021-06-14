@@ -1527,6 +1527,9 @@ if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
       ${IGC_BUILD__SRC__IGC__igc_lib}
       ${IGC_BUILD__HDR__IGC__igc_lib}
     )
+  if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
+    target_link_libraries("${IGC_BUILD__PROJ__igc_lib}" PRIVATE LLVMSPIRVLib)
+  endif()
   if(MSVC)
     bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
     windows_libs_props_universal(${IGC_BUILD__PROJ__igc_lib})
