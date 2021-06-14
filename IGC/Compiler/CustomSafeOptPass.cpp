@@ -1245,14 +1245,6 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
                             if (nextInst->getOperand(i) == &I)
                             {
                                 Value* newAdd = BinaryOperator::CreateAdd(src0imm ? I.getOperand(1) : I.getOperand(0), nextInst->getOperand(1 - i), "", nextInst);
-
-                                // Conservatively clear the NSW NUW flags, since they may not be
-                                // preserved by the reassociation.
-                                bool IsNUW = I.hasNoUnsignedWrap() && nextInst->hasNoUnsignedWrap();
-                                cast<BinaryOperator>(newAdd)->setHasNoUnsignedWrap(IsNUW);
-                                nextInst->setHasNoUnsignedWrap(IsNUW);
-                                nextInst->setHasNoSignedWrap(false);
-
                                 nextInst->setOperand(0, newAdd);
                                 nextInst->setOperand(1, I.getOperand(src0imm ? 0 : 1));
                                 break;
