@@ -1039,21 +1039,25 @@ size_t G4_SendDescRaw::getDstLenBytes() const
         return 16 * getOwordsAccessed(); // OWords
 #if 1
     // Use macro fo easy testing.
-    } else if (isByteScatterRW()) {
+    } else if (isByteScatterRW() && isDataPortRead()) {
+        assert(getExecSize() != g4::SIMD_UNDEFINED);
         uint16_t nbytes = getBlockNum();
         // assume 4 at least
         nbytes = (nbytes >= 4 ? nbytes : 4);
+        size_t sz = nbytes * getExecSize();
+        return sz;
+    } else if (isDWScatterRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
-        return nbytes * getExecSize();
-    } else if (isDWScatterRW()) {
+        size_t sz = 4 * getBlockNum() * getExecSize();
+        return sz;
+    } else if (isQWScatterRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
-        return 4 * getBlockNum() * getExecSize();
-    } else if (isQWScatterRW()) {
+        size_t sz = 8 * getBlockNum() * getExecSize();
+        return sz;
+    } else if (isUntypedRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
-        return 8 * getBlockNum() * getExecSize();
-    } else if (isUntypedRW()) {
-        assert(getExecSize() != g4::SIMD_UNDEFINED);
-        return 4 * getEnabledChannelNum() * getExecSize();
+        size_t sz = 4 * getEnabledChannelNum() * getExecSize();
+        return sz;
 #endif
     } else {
         // fallback to the raw GRF count
