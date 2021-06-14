@@ -571,9 +571,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             return false;
         }
-
-        // Try enable ZEBinary for cases having global symbols
-        m_pCtx->getCompilerOption().EnableZEBinary = true;
     }
 
     m_DL = &F.getParent()->getDataLayout();
