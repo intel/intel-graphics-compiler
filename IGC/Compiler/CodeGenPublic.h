@@ -1355,6 +1355,10 @@ namespace IGC
                 {
                     UseBindlessPrintf = true;
                 }
+                if (strstr(options, "-intel-use-bindless-legacy-mode"))
+                {
+                    UseBindlessLegacyMode = true;
+                }
                 if (strstr(options, "-intel-force-global-mem-allocation"))
                 {
                     IntelForceGlobalMemoryAllocation = true;
@@ -1418,6 +1422,7 @@ namespace IGC
             bool PreferBindlessImages = false;
             bool UseBindlessMode = false;
             bool UseBindlessPrintf = false;
+            bool UseBindlessLegacyMode = false;
             bool IntelForceGlobalMemoryAllocation = false;
             bool hasNoLocalToGeneric = false;
             bool EnableZEBinary = false;

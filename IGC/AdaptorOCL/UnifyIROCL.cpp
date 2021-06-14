@@ -242,6 +242,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.UseBindlessMode =
         pContext->m_InternalOptions.UseBindlessMode;
 
+    CompilerOpts.UseLegacyBindlessMode =
+        pContext->m_InternalOptions.UseBindlessLegacyMode;
+
     CompilerOpts.PreferBindlessImages =
         pContext->m_InternalOptions.PreferBindlessImages ||
         pContext->m_InternalOptions.UseBindlessMode;
