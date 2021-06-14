@@ -29,7 +29,7 @@ namespace IGC
         NUM_RESOURCE_DIMENSION_TYPES
     };
 
-    const std::string ResourceDimensionTypeName[RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES] =
+    const char * const ResourceDimensionTypeName[RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES] =
     { "__Buffer_Typed_DIM_Resource",
       "__1D_DIM_Resource", "__1D_ARRAY_DIM_Resource",
       "__2D_DIM_Resource", "__2D_ARRAY_DIM_Resource",

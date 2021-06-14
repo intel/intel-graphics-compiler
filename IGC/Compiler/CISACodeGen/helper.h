@@ -48,7 +48,7 @@ namespace IGC
     class CodeGenContext;
     struct SProgramOutput;
 
-    static const std::string INTEL_SYMBOL_TABLE_VOID_PROGRAM = "Intel_Symbol_Table_Void_Program";
+    static const char * const INTEL_SYMBOL_TABLE_VOID_PROGRAM = "Intel_Symbol_Table_Void_Program";
 
 #ifdef _DEBUG
     template<typename T, size_t N>
