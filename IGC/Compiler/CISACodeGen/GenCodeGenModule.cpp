@@ -156,13 +156,13 @@ void GenXCodeGenModule::processFunction(Function& F)
     // its address for each caller. This greatly saves on compile time when there are many function
     // groups that all call the same function.
     auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    if (cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
+    if (F.hasFnAttribute("visaStackCall") &&
+        cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto IFG = FGA->getIndirectCallGroup();
         IGC_ASSERT(IFG);
         F.addFnAttr("referenced-indirectly");
-        F.addFnAttr("visaStackCall");
         pCtx->m_enableFunctionPointer = true;
         FGA->addToFunctionGroup(&F, IFG, &F);
         return;
