@@ -54,7 +54,6 @@ THE SOFTWARE.
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include <llvm/Support/ScaledNumber.h>
-#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include "libSPIRV/SPIRVDebugInfoExt.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -68,7 +67,6 @@ THE SOFTWARE.
 #include "libSPIRV/SPIRVMemAliasingINTEL.h"
 #include "SPIRVInternal.h"
 #include "common/MDFrameWork.h"
-#include "../../AdaptorCommon/TypesLegalizationPass.hpp"
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/IR/MDBuilder.h>
 
@@ -4533,11 +4531,6 @@ bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
       BM->getError(ErrMsg);
       Succeed = false;
     }
-
-    llvm::legacy::PassManager PM;
-    PM.add(new TypesLegalizationPass());
-    PM.add(createDeadCodeEliminationPass());
-    PM.run(*M);
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
     if (DbgSaveTmpLLVM)

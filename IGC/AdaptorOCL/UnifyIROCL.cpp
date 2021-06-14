@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "AdaptorCommon/LegalizeFunctionSignatures.h"
+#include "AdaptorCommon/TypesLegalizationPass.hpp"
 #include "common/LLVMUtils.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -259,6 +260,8 @@ static void CommonOCLBasedPasses(
         pContext->m_InternalOptions.EnableZEBinary;
 
     IGCPassManager mpmSPIR(pContext, "Unify");
+    mpmSPIR.add(new TypesLegalizationPass());
+    mpmSPIR.add(createDeadCodeEliminationPass());
     mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpmSPIR.add(new CodeGenContextWrapper(pContext));
     mpmSPIR.add(new SPIRMetaDataTranslation());
