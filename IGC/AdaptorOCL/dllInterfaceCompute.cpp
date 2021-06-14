@@ -388,6 +388,56 @@ spv_result_t DisassembleSPIRV(const char* pBuffer, UINT bufferSize, spv_text* ou
 }
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
 
+#if defined(IGC_SPIRV_ENABLED)
+// Translate SPIR-V binary to LLVM Module
+bool TranslateSPIRVToLLVM(
+    const STB_TranslateInputArgs& InputArgs,
+    llvm::LLVMContext& Context,
+    llvm::StringRef SPIRVBinary,
+    llvm::Module*& LLVMModule,
+    std::string& stringErrMsg)
+{
+    bool success = true;
+    std::istringstream IS(SPIRVBinary);
+    std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
+        InputArgs.pSpecConstantsIds,
+        InputArgs.pSpecConstantsValues,
+        InputArgs.SpecConstantsSize);
+
+#if defined(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+    // Set SPIRV-LLVM-Translator translation options
+    SPIRV::TranslatorOpts Opts;
+    Opts.enableGenArgNameMD();
+    Opts.enableAllExtensions();
+    Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
+
+    // Unpack specialization constants passed from OCL Runtime (Acquired from
+    // clSetProgramSpecializationConstant API call). It is also passed as a
+    // translation options.
+    if (InputArgs.SpecConstantsSize)
+    {
+        for (auto SC : specIDToSpecValueMap)
+            Opts.setSpecConst(SC.first, SC.second);
+    }
+
+    // Actual translation from SPIR-V to LLLVM
+    success = llvm::readSpirv(Context, Opts, IS, LLVMModule, stringErrMsg);
+#else // IGC Legacy SPIRV Translator
+    success = igc_spv::ReadSPIRV(Context, IS, LLVMModule, stringErrMsg, &specIDToSpecValueMap);
+#endif
+
+    // Handle OpenCL Compiler Options
+    if (success) {
+        GenerateCompilerOptionsMD(
+            Context,
+            *LLVMModule,
+            llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize));
+    }
+
+    return success;
+}
+#endif // defined(IGC_SPIRV_ENABLED)
+
 bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
@@ -446,18 +496,8 @@ bool ProcessElfInput(
               llvm::Module* pKernelModule = nullptr;
 #if defined(IGC_SPIRV_ENABLED)
               Context.setAsSPIRV();
-              std::istringstream IS(buf.str());
               std::string stringErrMsg;
-              std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
-                                                                                  InputArgs.pSpecConstantsIds,
-                                                                                  InputArgs.pSpecConstantsValues,
-                                                                                  InputArgs.SpecConstantsSize);
-              bool success = igc_spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
-              // handle OpenCL Compiler Options
-              GenerateCompilerOptionsMD(
-                  *Context.getLLVMContext(),
-                  *pKernelModule,
-                  llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize));
+              bool success = TranslateSPIRVToLLVM(InputArgs, *Context.getLLVMContext(), buf, pKernelModule, stringErrMsg);
 #else
               std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
               bool success = false;
@@ -693,20 +733,8 @@ bool ParseInput(
     else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V) {
 #if defined(IGC_SPIRV_ENABLED)
         //convert SPIR-V binary to LLVM module
-        std::istringstream IS(strInput.str());
         std::string stringErrMsg;
-        std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
-                                                                            pInputArgs->pSpecConstantsIds,
-                                                                            pInputArgs->pSpecConstantsValues,
-                                                                            pInputArgs->SpecConstantsSize);
-        bool success = igc_spv::ReadSPIRV(oclContext, IS, pKernelModule, stringErrMsg, &specIDToSpecValueMap);
-        // handle OpenCL Compiler Options
-        if (success) {
-            GenerateCompilerOptionsMD(
-                oclContext,
-                *pKernelModule,
-                llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize));
-        }
+        bool success = TranslateSPIRVToLLVM(*pInputArgs, oclContext, strInput, pKernelModule, stringErrMsg);
 #else
         std::string stringErrMsg{"SPIRV consumption not enabled for the TARGET."};
         bool success = false;
@@ -743,6 +771,12 @@ bool ParseInput(
 #if defined(IGC_SPIRV_ENABLED)
 bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo)
 {
+#if defined(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+    // Parse SPIRV Module and add all decorated specialization constants to OutSCInfo vector
+    // as a pair of <spec-const-id, spec-const-size-in-bytes>. It's crucial for OCL Runtime to
+    // properly validate clSetProgramSpecializationConstant API call.
+    return llvm::getSpecConstInfo(IS, OutSCInfo);
+#else // IGC Legacy SPIRV Translator
     using namespace igc_spv;
 
     std::unique_ptr<SPIRVModule> BM(SPIRVModule::createSPIRVModule());
@@ -773,6 +807,7 @@ bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t
         }
     }
     return true;
+#endif
 }
 #endif
 
