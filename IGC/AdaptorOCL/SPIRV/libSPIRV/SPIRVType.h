@@ -541,31 +541,36 @@ public:
   SPIRVTypeFunction(SPIRVModule *M, SPIRVId TheId, SPIRVType *TheReturnType,
       const std::vector<SPIRVType *> &TheParameterTypes)
     :SPIRVType(M, 3 + TheParameterTypes.size(), OpTypeFunction, TheId),
-     ReturnType(TheReturnType), ParamTypeVec(TheParameterTypes){
+     ReturnType(TheReturnType) {
+     for (const SPIRVType *T : TheParameterTypes) {
+       ParamTypeIdVec.push_back(T->getId());
+     }
      validate();
   }
   // Incomplete constructor
   SPIRVTypeFunction():SPIRVType(OpTypeFunction), ReturnType(NULL){}
 
   SPIRVType *getReturnType() const { return ReturnType;}
-  SPIRVWord getNumParameters() const { return ParamTypeVec.size();}
-  SPIRVType *getParameterType(unsigned I) const { return ParamTypeVec[I];}
+  SPIRVWord getNumParameters() const { return ParamTypeIdVec.size();}
+  SPIRVType *getParameterType(unsigned I) const {
+    return static_cast<SPIRVType *>(getEntry(ParamTypeIdVec[I]));
+  }
 
 protected:
-  _SPIRV_DEF_DEC3(Id, ReturnType, ParamTypeVec)
+  _SPIRV_DEF_DEC3(Id, ReturnType, ParamTypeIdVec)
   void setWordCount(SPIRVWord WordCount) {
     SPIRVType::setWordCount(WordCount);
-    ParamTypeVec.resize(WordCount - 3);
+    ParamTypeIdVec.resize(WordCount - 3);
   }
   void validate()const {
     SPIRVEntry::validate();
     ReturnType->validate();
-    for (auto T:ParamTypeVec)
-      T->validate();
+    for (auto I : ParamTypeIdVec)
+      getEntry(I)->validate();
   }
 private:
   SPIRVType *ReturnType;                      // Return Type
-  std::vector<SPIRVType *> ParamTypeVec;      // Parameter Types
+  std::vector<SPIRVId> ParamTypeIdVec;        // Parameter Type Ids
 };
 
 class SPIRVTypeOpaqueGeneric:public SPIRVType {
