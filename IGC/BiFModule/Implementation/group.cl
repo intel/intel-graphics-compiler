@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
- extern __constant int __UseNative64BitSubgroupBuiltin;
+ extern __constant int __UseNative64BitIntSubgroupBuiltin;
+ extern __constant int __UseNative64BitFloatSubgroupBuiltin;
 
 // Group Instructions
 
@@ -2001,7 +2002,7 @@ type __builtin_IB_SubGroupScanExclusive_##func##_##type_abbr(type X)            
     return X;                                                                            \
 }
 
-#define DEFN_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                              \
+#define DEFN_UNIFORM_GROUP_FUNC(func, type, type_gen, type_abbr, op, identity)                    \
                                                                                                   \
 DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity)                                        \
 DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                     \
@@ -2031,7 +2032,7 @@ type  __builtin_spirv_OpGroup##func##_i32_i32_##type_abbr(uint Execution, uint O
     }                                                                                             \
     else if (Execution == Subgroup)                                                               \
     {                                                                                             \
-        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                     \
+        if (sizeof(X) < 8 || __UseNative64Bit##type_gen##SubgroupBuiltin)                         \
         {                                                                                         \
             switch(Operation){                                                                    \
             case GroupOperationReduce:                                                            \
@@ -2069,43 +2070,43 @@ type  __builtin_spirv_OpGroup##func##_i32_i32_##type_abbr(uint Execution, uint O
 }
 
 // ---- Add ----
-DEFN_UNIFORM_GROUP_FUNC(IAdd, uchar,  i8,  __intel_add, 0)
-DEFN_UNIFORM_GROUP_FUNC(IAdd, ushort, i16, __intel_add, 0)
-DEFN_UNIFORM_GROUP_FUNC(IAdd, uint,   i32, __intel_add, 0)
-DEFN_UNIFORM_GROUP_FUNC(IAdd, ulong,  i64, __intel_add, 0)
-DEFN_UNIFORM_GROUP_FUNC(FAdd, half,   f16, __intel_add, 0)
-DEFN_UNIFORM_GROUP_FUNC(FAdd, float,  f32, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, uchar,  Int,   i8,  __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, ushort, Int,   i16, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, uint,   Int,   i32, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(IAdd, ulong,  Int,   i64, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(FAdd, half,   Float, f16, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(FAdd, float,  Float, f32, __intel_add, 0)
 #if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FAdd, double, f64, __intel_add, 0)
+DEFN_UNIFORM_GROUP_FUNC(FAdd, double, Float, f64, __intel_add, 0)
 #endif
 // ---- Min ----
-DEFN_UNIFORM_GROUP_FUNC(FMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16, INFINITY)
-DEFN_UNIFORM_GROUP_FUNC(FMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, __builtin_spirv_OpenCL_fmin_f16_f16, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, float,  Float, f32, __builtin_spirv_OpenCL_fmin_f32_f32, INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64, INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMin, double, Float, f64, __builtin_spirv_OpenCL_fmin_f64_f64, INFINITY)
 #endif
-DEFN_UNIFORM_GROUP_FUNC(UMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
-DEFN_UNIFORM_GROUP_FUNC(UMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
-DEFN_UNIFORM_GROUP_FUNC(UMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
-DEFN_UNIFORM_GROUP_FUNC(UMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
-DEFN_UNIFORM_GROUP_FUNC(SMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, uchar,  Int,   i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, ushort, Int,   i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, uint,   Int,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(UMin, ulong,  Int,   i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, char,   Int,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, short,  Int,   i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, int,    Int,   i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
+DEFN_UNIFORM_GROUP_FUNC(SMin, long,   Int,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
 // ---- Max ----
-DEFN_UNIFORM_GROUP_FUNC(FMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
-DEFN_UNIFORM_GROUP_FUNC(FMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, half,   Float, f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_UNIFORM_GROUP_FUNC(FMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
+DEFN_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
 #endif
-DEFN_UNIFORM_GROUP_FUNC(UMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
-DEFN_UNIFORM_GROUP_FUNC(UMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
-DEFN_UNIFORM_GROUP_FUNC(UMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
-DEFN_UNIFORM_GROUP_FUNC(UMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
-DEFN_UNIFORM_GROUP_FUNC(SMax, char,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, short,  i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
-DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
+DEFN_UNIFORM_GROUP_FUNC(UMax, uchar,  Int,   i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
+DEFN_UNIFORM_GROUP_FUNC(UMax, ushort, Int,   i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
+DEFN_UNIFORM_GROUP_FUNC(UMax, uint,   Int,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
+DEFN_UNIFORM_GROUP_FUNC(UMax, ulong,  Int,   i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
+DEFN_UNIFORM_GROUP_FUNC(SMax, char,   Int,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, short,  Int,   i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, int,    Int,   i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
+DEFN_UNIFORM_GROUP_FUNC(SMax, long,   Int,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
 
 #if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X)                         \
@@ -2132,7 +2133,7 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 
 #define DEFN_SUB_GROUP_SCAN_INCL_NON_UNIFORM(type, type_abbr, op, identity, X)                      \
 {                                                                                                   \
-    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                \
+    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                       \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                            \
     uint activeId = __builtin_spirv_OpenCL_ctz_i32(activeChannels);                                 \
     activeChannels ^= 1 << activeId;                                                                \
@@ -2148,7 +2149,7 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 
 #define DEFN_SUB_GROUP_SCAN_EXCL_NON_UNIFORM(type, type_abbr, op, identity, X)                       \
 {                                                                                                    \
-    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                 \
+    uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                        \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                             \
     type result = identity;                                                                          \
     while (activeChannels)                                                                           \
@@ -2214,12 +2215,12 @@ DEFN_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64,
 }
 
 // ClusterSize is an optional parameter
-#define DEFN_NON_UNIFORM_GROUP_FUNC(func, type, type_abbr, op, identity)                                                             \
+#define DEFN_NON_UNIFORM_GROUP_FUNC(func, type, type_gen, type_abbr, op, identity)                                                   \
 type  __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr##_i32(uint Execution, uint Operation, type X, uint ClusterSize)  \
 {                                                                                                                                    \
     if (Execution == Subgroup)                                                                                                       \
     {                                                                                                                                \
-        if (sizeof(X) < 8 || __UseNative64BitSubgroupBuiltin)                                                                        \
+        if (sizeof(X) < 8 || __UseNative64Bit##type_gen##SubgroupBuiltin)                                                            \
         {                                                                                                                            \
             if (Operation == GroupOperationReduce)                                                                                   \
             {                                                                                                                        \
@@ -2255,85 +2256,85 @@ type  __builtin_spirv_OpGroupNonUniform##func##_i32_i32_##type_abbr(uint Executi
 }
 
 // OpGroupNonUniformIAdd, OpGroupNonUniformFAdd
-DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uchar,  i8,  __intel_add, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ushort, i16, __intel_add, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uint,   i32, __intel_add, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ulong,  i64, __intel_add, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, float,  f32, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uchar,  Int,   i8,  __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ushort, Int,   i16, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, uint,   Int,   i32, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(IAdd, ulong,  Int,   i64, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, float,  Float, f32, __intel_add, 0)
 #if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, double, f64, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, double, Float, f64, __intel_add, 0)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, half,   f16, __intel_add, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FAdd, half,   Float, f16, __intel_add, 0)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformSMin, OpGroupNonUniformUMin, OpGroupNonUniformFMin
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, char,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uchar,  i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, short,  i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ushort, i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, int,    i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uint,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMin, long,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ulong,  i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, float,  f32, __builtin_spirv_OpenCL_fmin_f32_f32,  INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, char,   Int,   i8,  __builtin_spirv_OpenCL_s_min_i8_i8,   CHAR_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uchar,  Int,   i8,  __builtin_spirv_OpenCL_u_min_i8_i8,   UCHAR_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, short,  Int,   i16, __builtin_spirv_OpenCL_s_min_i16_i16, SHRT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ushort, Int,   i16, __builtin_spirv_OpenCL_u_min_i16_i16, USHRT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, int,    Int,   i32, __builtin_spirv_OpenCL_s_min_i32_i32, INT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, uint,   Int,   i32, __builtin_spirv_OpenCL_u_min_i32_i32, UINT_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMin, long,   Int,   i64, __builtin_spirv_OpenCL_s_min_i64_i64, LONG_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMin, ulong,  Int,   i64, __builtin_spirv_OpenCL_u_min_i64_i64, ULONG_MAX)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, float,  Float, f32, __builtin_spirv_OpenCL_fmin_f32_f32,  INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, double, f64, __builtin_spirv_OpenCL_fmin_f64_f64,  INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, double, Float, f64, __builtin_spirv_OpenCL_fmin_f64_f64,  INFINITY)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   f16, __builtin_spirv_OpenCL_fmin_f16_f16,  INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMin, half,   Float, f16, __builtin_spirv_OpenCL_fmin_f16_f16,  INFINITY)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformSMax, OpGroupNonUniformUMax, OpGroupNonUniformFMax
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uchar,  i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ushort, i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uint,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
-DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ulong,  i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, char,   Int,   i8,  __builtin_spirv_OpenCL_s_max_i8_i8,   CHAR_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uchar,  Int,   i8,  __builtin_spirv_OpenCL_u_max_i8_i8,   0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, short,  Int,   i16, __builtin_spirv_OpenCL_s_max_i16_i16, SHRT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ushort, Int,   i16, __builtin_spirv_OpenCL_u_max_i16_i16, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, int,    Int,   i32, __builtin_spirv_OpenCL_s_max_i32_i32, INT_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, uint,   Int,   i32, __builtin_spirv_OpenCL_u_max_i32_i32, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(SMax, long,   Int,   i64, __builtin_spirv_OpenCL_s_max_i64_i64, LONG_MIN)
+DEFN_NON_UNIFORM_GROUP_FUNC(UMax, ulong,  Int,   i64, __builtin_spirv_OpenCL_u_max_i64_i64, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, float,  Float, f32, __builtin_spirv_OpenCL_fmax_f32_f32, -INFINITY)
 #if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, double, Float, f64, __builtin_spirv_OpenCL_fmax_f64_f64, -INFINITY)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMax, half,   f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMax, half,   Float, f16, __builtin_spirv_OpenCL_fmax_f16_f16, -INFINITY)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformIMul, OpGroupNonUniformFMul
-DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uchar,  i8,  __intel_mul, 1)
-DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ushort, i16, __intel_mul, 1)
-DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uint,   i32, __intel_mul, 1)
-DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ulong,  i64, __intel_mul, 1)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMul, float,  f32, __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uchar,  Int,   i8,  __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ushort, Int,   i16, __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, uint,   Int,   i32, __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(IMul, ulong,  Int,   i64, __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMul, float,  Float, f32, __intel_mul, 1)
 #if defined(cl_khr_fp64)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMul, double, f64, __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMul, double, Float, f64, __intel_mul, 1)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_NON_UNIFORM_GROUP_FUNC(FMul, half,   f16, __intel_mul, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(FMul, half,   Float, f16, __intel_mul, 1)
 #endif // defined(cl_khr_fp16)
 
 // OpGroupNonUniformBitwiseAnd, OpGroupNonUniformBitwiseOr, OpGroupNonUniformBitwiseXor
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, uchar,  i8,  __intel_and, 0xFF)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, ushort, i16, __intel_and, 0xFFFF)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, uint,   i32, __intel_and, 0xFFFFFFFF)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, ulong,  i64, __intel_and, 0xFFFFFFFFFFFFFFFF)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, uchar,  Int, i8,  __intel_and, 0xFF)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, ushort, Int, i16, __intel_and, 0xFFFF)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, uint,   Int, i32, __intel_and, 0xFFFFFFFF)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseAnd, ulong,  Int, i64, __intel_and, 0xFFFFFFFFFFFFFFFF)
 
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, uchar,  i8,  __intel_or, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, ushort, i16, __intel_or, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, uint,   i32, __intel_or, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, ulong,  i64, __intel_or, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, uchar,  Int, i8,  __intel_or, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, ushort, Int, i16, __intel_or, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, uint,   Int, i32, __intel_or, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseOr, ulong,  Int, i64, __intel_or, 0)
 
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, uchar,  i8,  __intel_xor, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, ushort, i16, __intel_xor, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, uint,   i32, __intel_xor, 0)
-DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, ulong,  i64, __intel_xor, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, uchar,  Int, i8,  __intel_xor, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, ushort, Int, i16, __intel_xor, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, uint,   Int, i32, __intel_xor, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(BitwiseXor, ulong,  Int, i64, __intel_xor, 0)
 
 // OpGroupNonUniformLogicalAnd, OpGroupNonUniformLogicalOr, OpGroupNonUniformLogicalXor
-DEFN_NON_UNIFORM_GROUP_FUNC(LogicalAnd, bool, i1, __intel_and, 1)
-DEFN_NON_UNIFORM_GROUP_FUNC(LogicalOr,  bool, i1, __intel_or,  0)
-DEFN_NON_UNIFORM_GROUP_FUNC(LogicalXor, bool, i1, __intel_xor, 0)
+DEFN_NON_UNIFORM_GROUP_FUNC(LogicalAnd, bool, Int, i1, __intel_and, 1)
+DEFN_NON_UNIFORM_GROUP_FUNC(LogicalOr,  bool, Int, i1, __intel_or,  0)
+DEFN_NON_UNIFORM_GROUP_FUNC(LogicalXor, bool, Int, i1, __intel_xor, 0)
 #endif // defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 
 #if defined(cl_khr_subgroup_shuffle)

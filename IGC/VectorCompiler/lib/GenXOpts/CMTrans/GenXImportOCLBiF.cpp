@@ -461,7 +461,8 @@ static void InitializeBIFlags(llvm::Module &M) {
   initializeVarWithValue("__FlushDenormals", 1);
   initializeVarWithValue("__DashGSpecified", 0);
   initializeVarWithValue("__FastRelaxedMath", 0);
-  initializeVarWithValue("__UseNative64BitSubgroupBuiltin", 1);
+  initializeVarWithValue("__UseNative64BitIntSubgroupBuiltin", 1);
+  initializeVarWithValue("__UseNative64BitFloatSubgroupBuiltin", 1);
   initializeVarWithValue("__CRMacros", 1);
 
   initializeVarWithValue("__IsSPIRV", 0);
