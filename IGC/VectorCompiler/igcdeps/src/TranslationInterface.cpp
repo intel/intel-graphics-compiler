@@ -348,6 +348,16 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
   return std::move(ExpOptions);
 }
 
+// Returns whether the modules were successfully obtained.
+template <enum vc::bif::RawKind Printf32, enum vc::bif::RawKind Printf64>
+bool fillPrintfData(vc::ExternalData &ExtData) {
+  ExtData.VCPrintf32BIFModule = getVCModuleBuffer<Printf32>();
+  if (!ExtData.VCPrintf32BIFModule)
+    return false;
+  ExtData.VCPrintf64BIFModule = getVCModuleBuffer<Printf64>();
+  return static_cast<bool>(ExtData.VCPrintf64BIFModule);
+}
+
 static llvm::Optional<vc::ExternalData>
 fillExternalData(vc::BinaryKind Binary) {
   vc::ExternalData ExtData;
@@ -355,27 +365,20 @@ fillExternalData(vc::BinaryKind Binary) {
       getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
     return {};
-  // FIXME: use a separate module for cm binary.
   switch (Binary) {
   case vc::BinaryKind::CM:
-  case vc::BinaryKind::OpenCL:
-    ExtData.VCPrintf32BIFModule =
-        getVCModuleBuffer<vc::bif::RawKind::PrintfOCL32>();
-    if (!ExtData.VCPrintf32BIFModule)
+    if (!fillPrintfData<vc::bif::RawKind::PrintfCM32,
+                        vc::bif::RawKind::PrintfCM64>(ExtData))
       return {};
-    ExtData.VCPrintf64BIFModule =
-        getVCModuleBuffer<vc::bif::RawKind::PrintfOCL64>();
-    if (!ExtData.VCPrintf64BIFModule)
+    break;
+  case vc::BinaryKind::OpenCL:
+    if (!fillPrintfData<vc::bif::RawKind::PrintfOCL32,
+                        vc::bif::RawKind::PrintfOCL64>(ExtData))
       return {};
     break;
   case vc::BinaryKind::ZE:
-    ExtData.VCPrintf32BIFModule =
-        getVCModuleBuffer<vc::bif::RawKind::PrintfZE32>();
-    if (!ExtData.VCPrintf32BIFModule)
-      return {};
-    ExtData.VCPrintf64BIFModule =
-        getVCModuleBuffer<vc::bif::RawKind::PrintfZE64>();
-    if (!ExtData.VCPrintf64BIFModule)
+    if (!fillPrintfData<vc::bif::RawKind::PrintfZE32,
+                        vc::bif::RawKind::PrintfZE64>(ExtData))
       return {};
     break;
   }

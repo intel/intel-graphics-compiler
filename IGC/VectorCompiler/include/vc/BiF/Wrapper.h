@@ -17,12 +17,24 @@ namespace vc {
 namespace bif {
 
 enum class RawKind {
+  PrintfCM32,
+  PrintfCM64,
   PrintfOCL32,
   PrintfOCL64,
   PrintfZE32,
   PrintfZE64,
   Emulation
 };
+
+inline llvm::StringRef getPrintfCM32RawData() {
+  // FIXME: write a module for cmrt printf.
+  return "";
+}
+
+inline llvm::StringRef getPrintfCM64RawData() {
+  // FIXME: write a module for cmrt printf.
+  return "";
+}
 
 inline llvm::StringRef getPrintfOCL32RawData() {
 #ifdef IGC_VC_DISABLE_BIF
@@ -91,6 +103,14 @@ template <> llvm::StringRef getRawData<RawKind::PrintfZE32>() {
 
 template <> llvm::StringRef getRawData<RawKind::PrintfZE64>() {
   return getPrintfZE64RawData();
+}
+
+template <> llvm::StringRef getRawData<RawKind::PrintfCM32>() {
+  return getPrintfCM32RawData();
+}
+
+template <> llvm::StringRef getRawData<RawKind::PrintfCM64>() {
+  return getPrintfCM64RawData();
 }
 
 } // namespace bif

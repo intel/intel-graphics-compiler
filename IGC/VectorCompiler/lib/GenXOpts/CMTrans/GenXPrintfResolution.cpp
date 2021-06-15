@@ -174,7 +174,7 @@ std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
     IGC_ASSERT_MESSAGE(
         vc::bif::disabled(),
         "printf bif module can be empty only if vc bif was disabled");
-    report_fatal_error("printf is not supported when VC BiF is disabled");
+    report_fatal_error("printf implementation module is absent");
   }
   return vc::getBiFModuleOrReportError(PrintfBiFModuleBuffer, Ctx);
 }
