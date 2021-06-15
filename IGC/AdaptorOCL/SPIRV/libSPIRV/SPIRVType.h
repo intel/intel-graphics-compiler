@@ -191,34 +191,35 @@ public:
   SPIRVTypePointer(SPIRVModule *M, SPIRVId TheId,
       SPIRVStorageClassKind TheStorageClass,
       SPIRVType *ElementType)
-    :SPIRVType(M, 4, OpTypePointer, TheId), StorageClass(TheStorageClass),
-     ElemType(ElementType){
+    :SPIRVType(M, 4, OpTypePointer, TheId), ElemStorageClass(TheStorageClass),
+     ElemTypeId(0){
     validate();
   }
   // Incomplete constructor
   SPIRVTypePointer():SPIRVType(OpTypePointer),
-      StorageClass(SPIRVStorageClassKind::StorageClassPrivateGlobal),
-      ElemType(NULL){}
+      ElemStorageClass(SPIRVStorageClassKind::StorageClassPrivateGlobal),
+      ElemTypeId(0){}
 
-  SPIRVType *getElementType() const { return ElemType;}
-  SPIRVStorageClassKind getStorageClass() const { return StorageClass;}
+  SPIRVType *getElementType() const {
+    return static_cast<SPIRVType*>(getEntry(ElemTypeId));
+  }
+  SPIRVStorageClassKind getStorageClass() const { return ElemStorageClass;}
   CapVec getRequiredCapability() const {
     auto Cap = getVec(SPIRVCapabilityKind::CapabilityAddresses);
-    if (ElemType->isTypeFloat(16))
+    if (getElementType()->isTypeFloat(16))
        Cap.push_back(SPIRVCapabilityKind::CapabilityFloat16Buffer);
-    Cap.push_back(getCapability(StorageClass));
+    Cap.push_back(getCapability(ElemStorageClass));
     return Cap;
   }
 protected:
-  _SPIRV_DEF_DEC3(Id, StorageClass, ElemType)
+  _SPIRV_DEF_DEC3(Id, ElemStorageClass, ElemTypeId)
   void validate()const {
     SPIRVEntry::validate();
-    ElemType->validate();
-    IGC_ASSERT(isValid(StorageClass));
+    IGC_ASSERT(isValid(ElemStorageClass));
   }
 private:
-  SPIRVStorageClassKind StorageClass;     // Storage Class
-  SPIRVType *ElemType;                    // Element Type
+  SPIRVStorageClassKind ElemStorageClass;   // Storage Class
+  SPIRVId ElemTypeId;                       // Element Type
 };
 
 class SPIRVTypeForwardPointer : public SPIRVEntryNoId<OpTypeForwardPointer> {
