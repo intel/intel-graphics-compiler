@@ -58,6 +58,12 @@ namespace IGC
     using smallvector = llvm::SmallVector<T, N>;
 #endif
 
+    // This is used to return true/false/dunno results.
+    enum class Tristate
+    {
+        Unknown = -1, False = 0, True = 1
+    };
+
     enum e_llvmType
     {
         e_Instruction = 0,

@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
