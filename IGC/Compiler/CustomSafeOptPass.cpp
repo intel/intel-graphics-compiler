@@ -120,6 +120,79 @@ void CustomSafeOptPass::visitInstruction(Instruction& I)
     // nothing
 }
 
+//  Searches the following pattern
+//      %1 = icmp eq i32 %cmpop1, %cmpop2
+//      %2 = xor i1 %1, true
+//      ...
+//      %3 = select i1 %1, i8 0, i8 1
+//
+//  And changes it to:
+//      %1 = icmp ne i32 %cmpop1, %cmpop2
+//      ...
+//      %3 = select i1 %1, i8 1, i8 0
+//
+//  and
+//
+//  Searches the following pattern
+//      %1 = icmp ule i32 %cmpop1, %cmpop2
+//      %2 = xor i1 %1, true
+//      br i1 %1, label %3, label %4
+//
+//  And changes it to:
+//      %1 = icmp ugt i32 %cmpop1, %cmpop2
+//      br i1 %1, label %4, label %3
+//
+//  This optimization combines statements regardless of the predicate.
+//  It will also work if the icmp instruction does not have users, except for the xor, select or branch instruction.
+void CustomSafeOptPass::visitXor(Instruction& XorInstr) {
+    using namespace llvm::PatternMatch;
+
+    CmpInst::Predicate Pred;
+    auto XorPattern = m_c_Xor(m_ICmp(Pred, m_Value(), m_Value()), m_SpecificInt(1));
+    if (!match(&XorInstr, XorPattern)) {
+        return;
+    }
+
+    Value* XorOp0 = XorInstr.getOperand(0);
+    Value* XorOp1 = XorInstr.getOperand(1);
+    auto ICmpInstr = cast<Instruction>(isa<ICmpInst>(XorOp0) ? XorOp0 : XorOp1);
+
+    llvm::SmallVector<Instruction*, 4> UsersList;
+
+    for (auto U : ICmpInstr->users()) {
+        if (isa<SelectInst>(U) || isa<BranchInst>(U)) {
+            UsersList.push_back(cast<Instruction>(U));
+        }
+        else if (U != &XorInstr) {
+            return;
+        }
+    }
+
+    IRBuilder<> builder(ICmpInstr);
+    auto NegatedCmpPred = cast<ICmpInst>(ICmpInstr)->getInversePredicate();
+    auto NewCmp = cast<ICmpInst>(builder.CreateICmp(NegatedCmpPred, ICmpInstr->getOperand(0), ICmpInstr->getOperand(1)));
+
+    for (auto I : UsersList) {
+        if (SelectInst* S = dyn_cast<SelectInst>(I)) {
+            S->swapProfMetadata();
+            Value* TrueVal = S->getTrueValue();
+            Value* FalseVal = S->getFalseValue();
+            S->setTrueValue(FalseVal);
+            S->setFalseValue(TrueVal);
+        }
+        else {
+            IGC_ASSERT(isa<BranchInst>(I));
+            BranchInst* B = cast<BranchInst>(I);
+            B->swapSuccessors();
+        }
+    }
+
+    XorInstr.replaceAllUsesWith(NewCmp);
+    ICmpInstr->replaceAllUsesWith(NewCmp);
+    XorInstr.eraseFromParent();
+    ICmpInstr->eraseFromParent();
+}
+
 //  Searches for following pattern:
 //    %cmp = icmp slt i32 %x, %y
 //    %cond.not = xor i1 %cond, true
