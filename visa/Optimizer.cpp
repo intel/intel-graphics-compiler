@@ -1517,6 +1517,7 @@ int Optimizer::optimization()
 
     runPass(PI_newLocalDefHoisting);
 
+
     // remove redundant movs
     runPass(PI_newLocalCopyPropagation);
 
@@ -3264,6 +3265,26 @@ static bool propagateType(IR_Builder &Builder, G4_BB *BB, G4_INST *Mov, G4_INST:
     }
     return true;
 }
+
+static unsigned getMaskSize(G4_INST* Inst, Gen4_Operand_Number OpNum)
+{
+    G4_Operand* Opnd = Inst->getOperand(OpNum);
+    assert(Opnd && "null opnd");
+
+    if (Opnd)
+    {
+        G4_Declare* Dcl = Opnd->getTopDcl();
+        if (Dcl == nullptr) {
+            // There is no top declaration for this operand, so this is ARF.
+            return 32;
+        }
+        return Dcl->getRegVar()->isFlag() ? Dcl->getNumberFlagElements()
+            : Dcl->getByteSize();
+    }
+
+    return 0;
+}
+
 
 void Optimizer::newLocalCopyPropagation()
 {

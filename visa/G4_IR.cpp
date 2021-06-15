@@ -2036,7 +2036,7 @@ static bool isLegalImmType(G4_Type type)
 // 6. When useinst is lifetime.end
 // 7. use inst does not have dst
 bool G4_INST::canPropagateTo(
-    G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow)
+    G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow, bool statelessAddr)
 {
     G4_Operand *src = srcs[0];
     bool indirectSrc = src->isSrcRegRegion() &&
@@ -2131,7 +2131,7 @@ bool G4_INST::canPropagateTo(
 
     // The following are copied from local dataflow analysis.
     // TODO: re-examine..
-    if ((opndNum == Opnd_src0 && useInst->isSend()) ||
+    if (((opndNum == Opnd_src0 && useInst->isSend()) && !statelessAddr) ||
         (opndNum == Opnd_src1 && useInst->isSplitSend()))
     {
         return false;
@@ -2225,7 +2225,7 @@ bool G4_INST::canPropagateTo(
     // Check T1 and T2 has the same bit/byte size. Otherwise, it's not legal to
     // be propagated.
     // TODO: Revisit later if exection mask is guaranteed to be NoMask.
-    if (TypeSize(dstType) != TypeSize(useType)) {
+    if (TypeSize(dstType) != TypeSize(useType) && !statelessAddr) {
         return false;
     }
 
@@ -2320,7 +2320,7 @@ bool G4_INST::canPropagateTo(
     const RegionDesc *rd =
         src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : nullptr;
     G4_ExecSize newExecSize = useInst->getExecSize();
-    if (useElSize != dstElSize &&
+    if ((useElSize != dstElSize && !statelessAddr) &&
         (!src->isSrcRegRegion()
          || rd->isRepeatRegion(execSize)
          || !(rd->isFlatRegion() && rd->isPackedRegion())))
@@ -2345,7 +2345,7 @@ bool G4_INST::canPropagateTo(
     bool repeatUseRegion = useRd && useRd->isRepeatRegion(newExecSize);
     bool scalarUse = useRd && useRd->isScalar();
     bool repeatSrcRegion = (rd && rd->isRepeatRegion(execSize));
-    if (!sameExecSize &&
+    if (!sameExecSize && !statelessAddr &&
         !((sameDefUseELSize && scalarUse) ||
           (!repeatUseRegion && rd && rd->isFlatRegion() && rd->isPackedRegion()) ||
           (repeatUseRegion && sameDefUseELSize && (src->isImm() || !repeatSrcRegion))))

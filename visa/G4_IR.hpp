@@ -920,9 +920,9 @@ public:
         SuperMov        = 9,        // MOV is a mov with other effects.
     };
     MovType canPropagate() const;
-    bool canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow); /* not const */
     G4_Type getPropType(Gen4_Operand_Number opndNum, MovType MT, const G4_INST *mov) const;
     bool isSignSensitive(Gen4_Operand_Number opndNum) const;
+    bool canPropagateTo(G4_INST* useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow, bool statelessAddrss = false);
     bool canHoist(bool simdBB, const Options *opt) const;
     bool isCommutative() const;
 
