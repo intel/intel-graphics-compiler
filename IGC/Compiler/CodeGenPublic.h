@@ -93,8 +93,10 @@ namespace IGC
         unsigned int    m_scratchSpaceUsedBySpills = 0; //<! amount of scratch space needed for shader spilling
         unsigned int    m_scratchSpaceUsedByShader = 0; //<! amount of scratch space needed by shader
         unsigned int    m_scratchSpaceUsedByGtpin = 0; //<! amount of scratch space used by gtpin
-        void* m_debugDataVISA = nullptr;            //<! VISA debug data (source -> VISA)
-        unsigned int    m_debugDataVISASize = 0;        //<! Number of bytes of VISA debug data
+        void*           m_debugData = nullptr;      //<! elf file containing debug information for the kernel (source->genIsa)
+        unsigned int    m_debugDataSize = 0;        //<! size of the elf file containing debug information
+        // TODO: m_debugDataGenISA and m_debugDataGenISASize
+        // are not really needed, consider removal
         void* m_debugDataGenISA = nullptr;          //<! GenISA debug data (VISA -> GenISA)
         unsigned int    m_debugDataGenISASize = 0;      //<! Number of bytes of GenISA debug data
         unsigned int    m_InstructionCount = 0;
@@ -134,9 +136,9 @@ namespace IGC
             {
                 IGC::aligned_free(m_programBin);
             }
-            if (m_debugDataVISA)
+            if (m_debugData)
             {
-                IGC::aligned_free(m_debugDataVISA);
+                IGC::aligned_free(m_debugData);
             }
             if (m_debugDataGenISA)
             {

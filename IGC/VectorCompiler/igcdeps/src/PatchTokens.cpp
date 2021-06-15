@@ -31,12 +31,12 @@ void CGen8CMProgram::CreateKernelBinaries() {
         m_pSystemThreadKernelOutput,
         kernel->getProgramOutput().m_unpaddedProgramSize);
 
-    if (kernel->getProgramOutput().m_debugDataVISASize) {
+    if (kernel->getProgramOutput().m_debugDataSize) {
       data.vcKernelDebugData = std::make_unique<Util::BinaryStream>();
       m_StateProcessor.CreateKernelDebugData(
           reinterpret_cast<const char *>(
-              kernel->getProgramOutput().m_debugDataVISA),
-          kernel->getProgramOutput().m_debugDataVISASize,
+              kernel->getProgramOutput().m_debugData),
+          kernel->getProgramOutput().m_debugDataSize,
           reinterpret_cast<const char *>(
               kernel->getProgramOutput().m_debugDataGenISA),
           kernel->getProgramOutput().m_debugDataGenISASize,

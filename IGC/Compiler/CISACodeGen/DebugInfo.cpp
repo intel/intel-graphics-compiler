@@ -299,8 +299,8 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg,
         memcpy_s(dbgInfo, buffer.size(), buffer.data(), buffer.size());
 
     SProgramOutput* pOutput = m_currShader->ProgramOutput();
-    pOutput->m_debugDataVISA = dbgInfo;
-    pOutput->m_debugDataVISASize = dbgInfo ? buffer.size() : 0;
+    pOutput->m_debugData = dbgInfo;
+    pOutput->m_debugDataSize = dbgInfo ? buffer.size() : 0;
 }
 
 // Mark privateBase aka ImplicitArg::PRIVATE_BASE as Output for debugging

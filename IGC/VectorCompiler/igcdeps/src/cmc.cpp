@@ -692,8 +692,8 @@ static void setDebugInfo(const std::vector<char> &DebugInfo, CMKernel &Kernel) {
   const size_t DebugInfoSize = DebugInfo.size();
   void *DebugInfoBuf = IGC::aligned_malloc(DebugInfoSize, sizeof(void *));
   memcpy_s(DebugInfoBuf, DebugInfoSize, DebugInfo.data(), DebugInfoSize);
-  Kernel.getProgramOutput().m_debugDataVISA = DebugInfoBuf;
-  Kernel.getProgramOutput().m_debugDataVISASize = DebugInfoSize;
+  Kernel.getProgramOutput().m_debugData = DebugInfoBuf;
+  Kernel.getProgramOutput().m_debugDataSize = DebugInfoSize;
 }
 
 static void setGtpinInfo(const FINALIZER_INFO &JitterInfo,

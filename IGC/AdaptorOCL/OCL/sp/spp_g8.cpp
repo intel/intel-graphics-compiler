@@ -431,7 +431,7 @@ void CGen8OpenCLProgram::GetZEBinary(
     bool elfTmpFilesError = false;                   // Set if something goes wrong with temporary files or the linker.
 
     // If a single kernel in a program then neither temporary files are created nor the linker is in use,
-    // hence ELF data is taken directly from the first found kernel's output (i.e. from m_debugDataVISA).
+    // hence ELF data is taken directly from the first found kernel's output (i.e. from m_debugData).
     IGC::SProgramOutput* pFirstKernelOutput = nullptr;
     IGC::CodeGenContext* ctx = nullptr;
 
@@ -555,7 +555,7 @@ void CGen8OpenCLProgram::GetZEBinary(
                     if (!EC)
                     {
                         raw_fd_ostream OS(writeFD, true, true); // shouldClose=true, unbuffered=true
-                        OS << StringRef((const char*)pOutput->m_debugDataVISA, pOutput->m_debugDataVISASize);
+                        OS << StringRef((const char*)pOutput->m_debugData, pOutput->m_debugDataSize);
                         // close(writeFD) is not required due to shouldClose parameter in ostream
 
                         // A temporary input ELF file filled, so its name can be added to a vector of parameters for the linker
@@ -581,7 +581,7 @@ void CGen8OpenCLProgram::GetZEBinary(
             {
                 // Single kernel in a program, no ELF linking required
                 // Copy sections one by one from ELF file to zeBinary with relocations adjusted.
-                zebuilder.addElfSections(pFirstKernelOutput->m_debugDataVISA, pFirstKernelOutput->m_debugDataVISASize);
+                zebuilder.addElfSections(pFirstKernelOutput->m_debugData, pFirstKernelOutput->m_debugDataSize);
             }
             else
             {
@@ -780,13 +780,13 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             IGC_ASSERT(data.kernelBinary && data.kernelBinary->Size() > 0);
 
             // Create the debug data binary streams
-            if (pOutput->m_debugDataVISASize > 0 || pOutput->m_debugDataGenISASize > 0)
+            if (pOutput->m_debugDataSize > 0 || pOutput->m_debugDataGenISASize > 0)
             {
                 data.dbgInfo.header = std::make_unique<Util::BinaryStream>();
 
                 m_StateProcessor.CreateKernelDebugData(
-                    (const char*)pOutput->m_debugDataVISA,
-                    pOutput->m_debugDataVISASize,
+                    (const char*)pOutput->m_debugData,
+                    pOutput->m_debugDataSize,
                     (const char*)pOutput->m_debugDataGenISA,
                     pOutput->m_debugDataGenISASize,
                     kernel->m_kernelInfo.m_kernelName,

@@ -161,7 +161,7 @@ private:
 
     bool hasSystemThreadSurface(const IGC::OpenCLProgramContext* clContext);
 
-    /// Calculate correct (pure) size of ELF binary, because m_debugDataVISASize in kernel output
+    /// Calculate correct (pure) size of ELF binary, because m_debugDataSize in kernel output
     /// contains something else.
     size_t calcElfSize(void* elfBin, size_t elfSize);
 
