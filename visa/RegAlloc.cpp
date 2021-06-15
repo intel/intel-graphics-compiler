@@ -1799,7 +1799,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             {
                 G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
                 unsigned id = topdcl->getRegVar()->getId();
-
                 if (i->isPseudoKill())
                 {
                     // Mark kill, reset gen
@@ -1905,7 +1904,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 G4_Declare* topdcl = GetTopDclFromRegRegion(src);
                 const G4_VarBase* base = (topdcl != nullptr ? topdcl->getRegVar() :
                     src->asSrcRegRegion()->getBase());
-
                 if (base->isRegAllocPartaker())
                 {
                     unsigned id = topdcl->getRegVar()->getId();
@@ -2965,8 +2963,25 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
         {
             G4_INST* inst = (*rit);
+            INST_LIST_RITER ritNext = rit;
+            ritNext++;
+            G4_INST* rNInst = nullptr;
+            if (ritNext != bb->rend())
+            {
+                rNInst = (*ritNext);
+            }
 
+            if (inst->isPseudoKill())
+            {
+                continue;
+            }
             G4_DstRegRegion* dst = inst->getDst();
+            G4_DstRegRegion* rNDst = nullptr;
+
+            if (rNInst && rNInst->isPseudoKill())
+            {
+                rNDst = rNInst->getDst();
+            }
 
             //
             // verify dst operand
@@ -2979,6 +2994,11 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     G4_RegVar* var = dstrgn->getBase()->asRegVar();
                     uint32_t varID = var->getId();
                     G4_Declare* dcl = GetTopDclFromRegRegion(dstrgn);
+                    G4_Declare* rNDcl = nullptr;
+                    if (rNDst != nullptr)
+                    {
+                        rNDcl = GetTopDclFromRegRegion(rNDst);
+                    }
                     MUST_BE_TRUE(dcl != nullptr, "Null declare found");
                     var = dcl->getRegVar();
 
@@ -2995,8 +3015,11 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         liveOutRegMapIt = liveOutRegMap.find(idx);
                         if (liveOutRegVec[idx] == UINT_MAX)
                         {
-                            MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
-                            DEBUG_MSG("RA verification warning: Found unused variable " << dcl->getName() << "!\n");
+                            if (!inst->isPseudoKill())
+                            {
+                                MUST_BE_TRUE(liveOutRegMapIt == liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
+                                DEBUG_MSG("RA verification warning: Found unused variable " << dcl->getName() << "!\n");
+                            }
                         }
                         else
                         {
@@ -3019,14 +3042,17 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                 }
                                 else
                                 {
-                                    MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
-                                        << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                        regNum << "." << regOff << "!\n");
+                                    if (!inst->isPseudoKill())
+                                    {
+                                        DEBUG_MSG("RA verification error: Found conflicting variables: " << dcl->getName()
+                                            << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
+                                            regNum << "." << regOff << "!\n");
+                                    }
                                 }
                             }
 
                             if (liveAnalysis.writeWholeRegion(bb, inst, dstrgn, kernel.getOptions()) ||
-                                inst->isPseudoKill()) {
+                                inst->isPseudoKill() || rNDcl == dcl) {
                                 liveOutRegVec[idx] = UINT_MAX;
                                 MUST_BE_TRUE(liveOutRegMapIt != liveOutRegMap.end(), "RA verification error: Invalid entry in liveOutRegMap!");
                                 liveOutRegMap.erase(liveOutRegMapIt);
@@ -3216,7 +3242,6 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     uint32_t varID = var->getId();
                     G4_Declare* dcl = GetTopDclFromRegRegion(srcrgn);
                     var = dcl->getRegVar();
-
                     MUST_BE_TRUE(var->getId() == varID, "RA verification error: Invalid regVar ID!");
                     MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid dst reg!");
 
@@ -3278,7 +3303,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                             (*succ)->getDst() == NULL ||
                                             idMismatch)
                                         {
-                                            MUST_BE_TRUE(false, "RA verification error: Found conflicting variables: " << dcl->getName()
+                                            DEBUG_MSG("RA verification error: Found conflicting variables: " << dcl->getName()
                                                 << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
                                                 regNum << "." << regOff << "!\n");
                                         }
@@ -3556,13 +3581,11 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     {
         sp->replaceIntrinsics();
     }
-
     if (builder.getOption(vISA_VerifyRA))
     {
         LivenessAnalysis liveAnalysis(gra,
             G4_GRF | G4_INPUT, true);
         liveAnalysis.computeLiveness();
-
         gra.verifyRA(liveAnalysis);
     }
 

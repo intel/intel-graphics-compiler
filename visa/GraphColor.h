@@ -960,6 +960,14 @@ namespace vISA
             }
         }
 
+        void clearLocalLiveRanges()
+        {
+            for (auto dcl : kernel.Declares)
+            {
+                resetLocalLR(dcl);
+            }
+        }
+
         void recordRef(const G4_Declare* dcl)
         {
             allocVar(dcl).numRefs++;

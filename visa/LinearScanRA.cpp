@@ -674,7 +674,7 @@ void LinearScanRA::preRAAnalysis()
     int numGRF = kernel.getNumRegTotal();
 
     // Clear LSLiveRange* computed preRA
-    gra.clearStaleLiveRanges();
+    gra.clearLocalLiveRanges();
 
     createLiveIntervals();
 
@@ -1001,7 +1001,6 @@ int LinearScanRA::linearScanRA()
                 }
                 jitInfo->numGRFSpillFill = GRFSpillFillCount;
             }
-
             undoLinearScanRAAssignments();
         }
 
@@ -1038,7 +1037,6 @@ int LinearScanRA::linearScanRA()
             // spending time inserting spill code and then aborting.
             return VISA_SPILL;
         }
-
         iterator++;
     } while (spillLRs.size() && iterator < MAXIMAL_ITERATIONS);
 
@@ -1349,6 +1347,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
 {
     int numGRF = kernel.getNumRegTotal();
     std::vector<uint32_t> inputRegLastRef(numGRF * numEltPerGRF<Type_UW>(), UINT_MAX);
+    G4_INST* lastInst = nullptr;
 
     for (BB_LIST_RITER bb_it = bbList.rbegin(), bb_rend = bbList.rend();
         bb_it != bb_rend;
@@ -1385,6 +1384,10 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
             G4_INST* curInst = (*inst_it);
             G4_Declare* topdcl = NULL;
 
+            if (lastInst == nullptr)
+            {
+                lastInst = curInst;
+            }
             // scan dst operand (may be unnecessary but added for safety)
             if (curInst->getDst() != NULL)
             {
@@ -1430,7 +1433,14 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs, std:
                         }
                         else
                         {
-                            generateInputIntervals(topdcl, curInst, inputRegLastRef, initPregs, false);
+                            if (l.isLiveAtEntry(bb, topdcl->getRegVar()->getId()))
+                            {
+                                generateInputIntervals(topdcl, curInst, inputRegLastRef, initPregs, false);
+                            }
+                            else //Not capture by liveness analysis
+                            {
+                                generateInputIntervals(topdcl, lastInst, inputRegLastRef, initPregs, false);
+                            }
                         }
                     }
                 }
@@ -1973,6 +1983,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
     for (auto lr : liveIntervals)
     {
         G4_Declare* dcl = lr->getTopDcl();
+
         lr->getFirstRef(idx);
         if (!lr->isEOT() && !lr->getAssigned())
         {
