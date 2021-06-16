@@ -23,6 +23,7 @@ namespace IGC
     bool EmitOffsetInDbgLoc = false;
     bool EnableRelocation = false;
     bool EnableElf2ZEBinary = false;
+    bool EnforceAMD64Machine = false;
     bool EmitPrologueEnd = true;
     bool ScratchOffsetInOW = true;
     bool EmitATLinkageName = true;

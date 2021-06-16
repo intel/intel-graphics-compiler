@@ -821,6 +821,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations) || IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary);
         DebugOpts.EnableElf2ZEBinary = IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary);
+        DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary);
         DebugOpts.EmitPrologueEnd = IGC_IS_FLAG_ENABLED(EmitPrologueEnd);
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
         IF_DEBUG_INFO(m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);)

@@ -490,6 +490,8 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream,
     uint16_t eMachine =
         StreamOptions.isDirectElf ? EM_INTEL_GEN :
         is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+    if (StreamOptions.EnforceAMD64Machine)
+        eMachine = ELF::EM_X86_64;
     bool hasRelocationAddend = is64Bit;
     std::unique_ptr<MCAsmBackend> pAsmBackend
         = IGCLLVM::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
