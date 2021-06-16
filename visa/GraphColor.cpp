@@ -10321,11 +10321,14 @@ int GlobalRA::coloringRegAlloc()
             //  callerSaveAreaOffset    -> ---------------------
             //                             |  caller save      |
             //  paramOverflowAreaOffset -> ---------------------
-            jitInfo->spillMemUsed =
-                builder.kernel.fg.frameSizeInOWord * 16;
 
-            // reserve spillMemUsed #bytes before 8kb boundary
-            kernel.getGTPinData()->setScratchNextFree(8*1024 - kernel.getGTPinData()->getNumBytesScratchUse());
+            // Since it is difficult to predict amount of space needed to store stack, we
+            // reserve maximum possible PTSS supported by platform.
+            auto maxPTSS = kernel.fg.builder->getMaxPTSS();
+            jitInfo->spillMemUsed = maxPTSS;
+
+            // reserve spillMemUsed #bytes at upper end of PTSS
+            kernel.getGTPinData()->setScratchNextFree(maxPTSS - kernel.getGTPinData()->getNumBytesScratchUse());
         } else {
             jitInfo->spillMemUsed = spillMemUsed;
             kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
