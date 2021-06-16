@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include <string>
 #include <set>
+#include <regex>
 
 using namespace llvm;
 using namespace IGC;
@@ -278,12 +279,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // Check all "ExternalLinkage" functions. Func declarations = Import, Func definition = Export
         if (F->hasExternalLinkage() && F->getCallingConv() == CallingConv::SPIR_FUNC)
         {
+            bool isKhronosSPVIRBuiltin = std::regex_match(F->getName().str(), std::regex("_Z[0-9]+__spirv_.*"));
             // builtins should not be externally linked, they will always be resolved by IGC
             return !(F->hasFnAttribute(llvm::Attribute::Builtin)
                 || F->getName().startswith("__builtin_")
                 || F->getName().startswith("__igcbuiltin_")
                 || F->getName().startswith("llvm.")
-                || F->getName().equals("printf"));
+                || F->getName().equals("printf")
+                || isKhronosSPVIRBuiltin);
         }
         return false;
     };

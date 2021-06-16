@@ -98,6 +98,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
 #include "MoveStaticAllocas.h"
+#include "PreprocessSPVIR.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 
 #include "common/debug/Debug.hpp"
@@ -263,6 +264,9 @@ static void CommonOCLBasedPasses(
         pContext->m_InternalOptions.EnableZEBinary;
 
     IGCPassManager mpmSPIR(pContext, "Unify");
+#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+    mpmSPIR.add(new PreprocessSPVIR());
+#endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new TypesLegalizationPass());
     mpmSPIR.add(createDeadCodeEliminationPass());
     mpmSPIR.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
