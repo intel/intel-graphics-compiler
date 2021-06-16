@@ -884,6 +884,7 @@ bool GASResolving::checkGenericArguments(Function& F) const {
 namespace IGC
 {
     //
+    // (1)
     // Optimization pass to lower generic pointers in function arguments.
     // If all call sites have the same origin address space, address space
     // casts with the form of non-generic->generic can safely removed and
@@ -901,7 +902,11 @@ namespace IGC
     // - only arguments of non-extern functions can be lowered
     // - no recursive functions supported
     //
-    class LowerGPCallArg : public llvm::ModulePass
+    // (2)
+    //   Once (1) is done. Do further check if there is a cast from local to GAS or
+    //   a cast from private to GAS. If there is no such cast, GAS inst (such as
+    //   ld/st, etc, can be converted safely to ld/st on globals.
+    class LowerGPCallArg : public ModulePass
     {
     public:
         static char ID;
@@ -942,13 +947,19 @@ namespace IGC
             }
         };
 
-        IGCMD::MetaDataUtils* mdUtils = nullptr;
-        CodeGenContext* ctx = nullptr;
+        IGCMD::MetaDataUtils* m_mdUtils = nullptr;
+        CodeGenContext* m_ctx = nullptr;
+        bool m_hasPrivateToGAS = false;
+        bool m_hasLocalToGAS = false;
+
         bool hasSameOriginAddressSpace(Function* func, unsigned argNo, unsigned& addrSpaceCallSite);
         void updateFunctionArgs(Function* oldFunc, Function* newFunc, GenericPointerArgs& newArgs);
         void updateAllUsesWithNewFunction(FuncToUpdate& f);
         void FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS, AddrSpaceCastInst* recoverASC);
-        void checkLocalToGenericCast(llvm::Module& M);
+        bool processCallArg(Module& M);
+
+        void checkCastToGAS(Module& M);
+        bool processGASInst(Module& M);
     };
 } // End anonymous namespace
 
@@ -969,13 +980,15 @@ namespace IGC
     IGC_INITIALIZE_PASS_END(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
 }
 
-void LowerGPCallArg::checkLocalToGenericCast(llvm::Module& M)
+void LowerGPCallArg::checkCastToGAS(llvm::Module& M)
 {
     if (IGC_IS_FLAG_DISABLED(DetectLocalToGenericCast))
     {
         return;
     }
 
+    bool hasPrivateCast = false; // true if there is a cast from private to GAS
+    bool hasLocalCast = false; // true if there is a cast from local to GAS.
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function* func = &(*I);
@@ -991,30 +1004,56 @@ void LowerGPCallArg::checkLocalToGenericCast(llvm::Module& M)
                 }
             }
         }
-        for (auto FI = inst_begin(func), FE = inst_end(func); FI != FE; ++FI)
+
+        for (auto FI = inst_begin(func), FE = inst_end(func);
+            (FI != FE) && !(hasPrivateCast && hasLocalCast); ++FI)
         {
             auto addrCast = dyn_cast<AddrSpaceCastInst>(&(*FI));
-            if (addrCast && addrCast->getDestAddressSpace() == ADDRESS_SPACE_GENERIC &&
-                addrCast->getSrcAddressSpace() == ADDRESS_SPACE_LOCAL)
+            if (addrCast && addrCast->getDestAddressSpace() == ADDRESS_SPACE_GENERIC)
             {
-                return;
+                if (addrCast->getSrcAddressSpace() == ADDRESS_SPACE_LOCAL)
+                    hasLocalCast = true;
+                else if (addrCast->getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE)
+                    hasPrivateCast = true;
             }
-            Value *Ptr = nullptr;
-            if (match(&(*FI), m_PtrToInt(m_Value(Ptr))) && Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+            else
             {
-                return;
+                Value* Ptr = nullptr;
+                if (match(&(*FI), m_PtrToInt(m_Value(Ptr))))
+                {
+                    if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+                        hasLocalCast = true;
+                    else if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE)
+                        hasLocalCast = true;
+                }
             }
         }
     }
 
-    ctx->getModuleMetaData()->hasNoLocalToGenericCast = true;
+    m_hasLocalToGAS = hasLocalCast;
+    m_hasPrivateToGAS = hasPrivateCast;
+
+    // keep this for now
+    m_ctx->getModuleMetaData()->hasNoLocalToGenericCast = true;
 }
 
 
 bool LowerGPCallArg::runOnModule(llvm::Module& M)
 {
-    ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    bool changed = false;
+    if (processCallArg(M))
+        changed = true;
+
+    if (processGASInst(M))
+        changed = true;
+    return changed;
+}
+
+bool LowerGPCallArg::processCallArg(Module& M)
+{
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
     std::vector<FuncToUpdate> funcsToUpdate;
@@ -1071,7 +1110,6 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
     // If there are no functions to update, finish
     if (funcsToUpdate.empty())
     {
-        checkLocalToGenericCast(M);
         return false;
     }
 
@@ -1133,12 +1171,12 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
     // Step 4: Update IGC Metadata. Function declarations have changed, so this needs
     // to be reflected in the metadata.
     MetadataBuilder mbuilder(&M);
-    auto& FuncMD = ctx->getModuleMetaData()->FuncMD;
+    auto& FuncMD = m_ctx->getModuleMetaData()->FuncMD;
     for (auto &I : funcsToUpdate)
     {
-        auto oldFuncIter = mdUtils->findFunctionsInfoItem(I.oldFunc);
-        mdUtils->setFunctionsInfoItem(I.newFunc, oldFuncIter->second);
-        mdUtils->eraseFunctionsInfoItem(oldFuncIter);
+        auto oldFuncIter = m_mdUtils->findFunctionsInfoItem(I.oldFunc);
+        m_mdUtils->setFunctionsInfoItem(I.newFunc, oldFuncIter->second);
+        m_mdUtils->eraseFunctionsInfoItem(oldFuncIter);
         mbuilder.UpdateShadingRate(I.oldFunc, I.newFunc);
         auto loc = FuncMD.find(I.oldFunc);
         if (loc != FuncMD.end())
@@ -1149,7 +1187,7 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
         }
     }
     // Update LLVM metadata based on IGC MetadataUtils
-    mdUtils->save(M.getContext());
+    m_mdUtils->save(M.getContext());
 
 
     // It's safe now to remove old functions
@@ -1201,8 +1239,82 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
             }
         }
     }
+    return true;
+}
 
-    checkLocalToGenericCast(M);
+bool LowerGPCallArg::processGASInst(Module& M)
+{
+    checkCastToGAS(M);
+
+    if (m_hasPrivateToGAS || m_hasLocalToGAS)
+        return false;
+
+    // As AddrSpaceCast has been proessed already in GASResolving,
+    // here only handle non-addrspacecast ptr
+    auto toSkip = [](Value* P) {
+        if (PointerType* PtrTy = dyn_cast<PointerType>(P->getType()))
+        {
+            if (PtrTy->getAddressSpace() == ADDRESS_SPACE_GENERIC && !isa<AddrSpaceCastInst>(P))
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    bool changed = false;
+    IRBuilder<> IRB(M.getContext());
+    // Change GAS inst, such as ld/st, etc to global ld/st, etc.
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    {
+        Function* F = &(*I);
+        auto NI = inst_begin(F);
+        for (auto FI = NI, FE = inst_end(F); FI != FE; FI = NI)
+        {
+            ++NI;
+
+            Instruction* I = &(*FI);
+            LoadInst* LI = dyn_cast<LoadInst>(I);
+            StoreInst* SI = dyn_cast<StoreInst>(I);
+            if (LI || SI)
+            {
+                Value* Ptr = LI ? LI->getPointerOperand() : SI->getPointerOperand();
+                if (!toSkip(Ptr))
+                {
+                    PointerType* PtrTy = cast<PointerType>(Ptr->getType());
+                    Type* eltTy = PtrTy->getPointerElementType();
+                    PointerType* glbPtrTy = PointerType::get(eltTy, ADDRESS_SPACE_GLOBAL);
+
+                    IRB.SetInsertPoint(I);
+                    Value* NewPtr = IRB.CreateAddrSpaceCast(Ptr, glbPtrTy);
+                    I->setOperand(LI ? 0 : 1, NewPtr);
+                    if (Instruction* tI = dyn_cast<Instruction>(NewPtr))
+                    {
+                        tI->setDebugLoc(I->getDebugLoc());
+                    }
+
+                    changed = true;
+                }
+            }
+            else if (CallInst* CallI = dyn_cast<CallInst>(I))
+            {
+                Function* Callee = CallI->getCalledFunction();
+                if (Callee &&
+                    (Callee->getName().equals("__builtin_IB_to_local") ||
+                     Callee->getName().equals("__builtin_IB_to_private")) &&
+                    !toSkip(Callee->getOperand(0)))
+                {
+                    Type* DstTy = I->getType();
+                    Value* NewPtr = Constant::getNullValue(DstTy);
+                    I->replaceAllUsesWith(NewPtr);
+                    I->eraseFromParent();
+
+                    changed = true;
+                }
+            }
+        }
+    }
+
     return true;
 }
 
