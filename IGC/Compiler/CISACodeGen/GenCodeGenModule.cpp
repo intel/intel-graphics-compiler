@@ -105,7 +105,6 @@ static inline void CloneFuncMetadata(IGCMD::MetaDataUtils* pM,
     }
 
     pM->setFunctionsInfoItem(ClonedF, Info);
-    pM->save(F->getContext());
 }
 
 Function* GenXCodeGenModule::cloneFunc(Function* F)
@@ -422,6 +421,8 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         }
         delete SCCNodes;
     }
+
+    this->pMdUtils->save(M.getContext());
 
     // Check and set stack call flag for each group
     FGA->setGroupStackCall();

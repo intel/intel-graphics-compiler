@@ -503,6 +503,7 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
     {
         traverseCallGraphSCC(*I);
     }
+    m_pMdUtils->save(M.getContext());
 
     // Detect stack calls that use implicit args, and force inline them, since they are not supported
     if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
@@ -776,6 +777,5 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
         funcInfo->addImplicitArgInfoListItem(argMD);
     }
 
-    m_pMdUtils->save(f->getParent()->getContext());
 }
 
