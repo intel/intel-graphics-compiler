@@ -36,10 +36,9 @@ public:
 
     virtual bool runOnModule(llvm::Module& M);
 
-    void FixFunctionSignatures(llvm::Module& M);
-    void FixFunctionBody(llvm::Module& M);
-    void FixFunctionUsers(llvm::Module& M);
-    void FixCallInstruction(llvm::Module& M, llvm::CallInst* callInst);
+    void FixFunctionSignatures();
+    void FixFunctionUsers();
+    void FixCallInstruction(llvm::CallInst* callInst);
 
     virtual llvm::StringRef getPassName() const
     {
@@ -47,5 +46,14 @@ public:
     }
 
 private:
+    IGC::CodeGenContext* m_pContext;
+    IGC::IGCMD::MetaDataUtils* m_pMdUtils;
+    llvm::Module* m_pModule;
+
+    bool m_funcSignatureChanged;
+    bool m_localAllocaCreated;
+
+    std::vector<llvm::Instruction*> instsToErase;
     std::map<llvm::Function*, llvm::Function*> oldToNewFuncMap;
 };
+
