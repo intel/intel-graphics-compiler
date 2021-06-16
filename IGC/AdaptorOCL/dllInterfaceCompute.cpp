@@ -52,6 +52,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorOCL/SPIRV/libSPIRV/SPIRVModule.h"
 #include "AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.h"
+#if defined(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+#include "LLVMSPIRVLib.h"
+#endif
 #endif
 
 #ifdef IGC_SPIRV_TOOLS_ENABLED
