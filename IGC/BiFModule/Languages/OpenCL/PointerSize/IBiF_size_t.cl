@@ -42,57 +42,57 @@ SPDX-License-Identifier: MIT
 // Work-group functions
 //*****************************************************************************/
 
-#define WG_BROADCAST_1D_DEFN(type,abbr)                                         \
-INLINE type OVERLOADABLE work_group_broadcast(type a, size_t local_id) {        \
-    if (sizeof(local_id) == 32) {                                               \
-        uint3 LocalID = (uint3)(local_id,0,0);                                      \
-        return __builtin_spirv_OpGroupBroadcast_i32_##abbr##_v3i32(Workgroup,a,LocalID);   \
-    }                                                                           \
-    else{                                                                       \
-        ulong3 LocalID = (ulong3)(local_id,0,0);                                    \
-        return __builtin_spirv_OpGroupBroadcast_i32_##abbr##_v3i64(Workgroup,a,LocalID);   \
-    }                                                                           \
+#define WG_BROADCAST_1D_DEFN(type, spv_type, abbr)                                                          \
+INLINE type OVERLOADABLE work_group_broadcast(type a, size_t local_id) {                                    \
+    if (sizeof(local_id) == 32) {                                                                           \
+        int3 LocalID = (int3)(local_id,0,0);                                                                \
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i32, )(Workgroup, as_##spv_type(a),LocalID);   \
+    }                                                                                                       \
+    else{                                                                                                   \
+        long3 LocalID = (long3)(local_id,0,0);                                                              \
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i64, )(Workgroup, as_##spv_type(a),LocalID);   \
+    }                                                                                                       \
 }
 
-#define WG_BROADCAST_2D_DEFN(type,abbr)                                         \
-INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y) {     \
-    if (sizeof(x) == 32) {                                                      \
-        uint3 LocalID = (uint3)(x,y,0);                                             \
-        return __builtin_spirv_OpGroupBroadcast_i32_##abbr##_v3i32(Workgroup,a,LocalID);   \
-    }                                                                           \
-    else{                                                                       \
-        ulong3 LocalID = (ulong3)(x,y,0);                                           \
-        return __builtin_spirv_OpGroupBroadcast_i32_##abbr##_v3i64(Workgroup,a,LocalID);   \
-    }                                                                           \
+#define WG_BROADCAST_2D_DEFN(type, spv_type, abbr)                                                          \
+INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y) {                                 \
+    if (sizeof(x) == 32) {                                                                                  \
+        int3 LocalID = (int3)(x,y,0);                                                                       \
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i32, )(Workgroup, as_##spv_type(a),LocalID);   \
+    }                                                                                                       \
+    else{                                                                                                   \
+        long3 LocalID = (long3)(x,y,0);                                                                     \
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i64, )(Workgroup, as_##spv_type(a),LocalID);   \
+    }                                                                                                       \
 }
 
-#define WG_BROADCAST_3D_DEFN(type,abbr)                                         \
-INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y, size_t z) { \
-    if (sizeof(x) == 32) {                                                      \
-        uint3 LocalID = (uint3)(x,y,z);                                             \
-        return __builtin_spirv_OpGroupBroadcast_i32_##abbr##_v3i32(Workgroup,a,LocalID);   \
-    }                                                                           \
-    else{                                                                       \
-        ulong3 LocalID = (ulong3)(x,y,z);                                           \
-        return __builtin_spirv_OpGroupBroadcast_i32_##abbr##_v3i64(Workgroup,a,LocalID);   \
-    }                                                                           \
+#define WG_BROADCAST_3D_DEFN(type, spv_type, abbr)                                                          \
+INLINE type OVERLOADABLE work_group_broadcast(type a, size_t x, size_t y, size_t z) {                       \
+    if (sizeof(x) == 32) {                                                                                  \
+        int3 LocalID = (int3)(x,y,z);                                                                       \
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i32, )(Workgroup, as_##spv_type(a),LocalID);   \
+    }                                                                                                       \
+    else{                                                                                                   \
+        long3 LocalID = (long3)(x,y,z);                                                                     \
+        return SPIRV_BUILTIN(GroupBroadcast, _i32_##abbr##_v3i64, )(Workgroup, as_##spv_type(a),LocalID);   \
+    }                                                                                                       \
 }
 
-#define WG_BROADCAST_ALL_DEFN(type,abbr) \
-WG_BROADCAST_1D_DEFN(type,abbr) \
-WG_BROADCAST_2D_DEFN(type,abbr) \
-WG_BROADCAST_3D_DEFN(type,abbr)
+#define WG_BROADCAST_ALL_DEFN(type, spv_type, abbr) \
+WG_BROADCAST_1D_DEFN(type, spv_type, abbr) \
+WG_BROADCAST_2D_DEFN(type, spv_type, abbr) \
+WG_BROADCAST_3D_DEFN(type, spv_type, abbr)
 
-WG_BROADCAST_ALL_DEFN(int,i32)
-WG_BROADCAST_ALL_DEFN(uint,i32)
-WG_BROADCAST_ALL_DEFN(long,i64)
-WG_BROADCAST_ALL_DEFN(ulong,i64)
-WG_BROADCAST_ALL_DEFN(float,f32)
+WG_BROADCAST_ALL_DEFN(int,    int,    i32)
+WG_BROADCAST_ALL_DEFN(uint,   int,    i32)
+WG_BROADCAST_ALL_DEFN(long,   long,   i64)
+WG_BROADCAST_ALL_DEFN(ulong,  long,   i64)
+WG_BROADCAST_ALL_DEFN(float,  float,  f32)
 #ifdef cl_khr_fp16
-WG_BROADCAST_ALL_DEFN(half,f16)
+WG_BROADCAST_ALL_DEFN(half,   half,   f16)
 #endif
 #if defined(cl_khr_fp64)
-WG_BROADCAST_ALL_DEFN(double,f64)
+WG_BROADCAST_ALL_DEFN(double, double, f64)
 #endif
 
 //*****************************************************************************/

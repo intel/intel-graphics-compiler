@@ -189,7 +189,7 @@ uint AtomicInc(local uint *Pointer, uint Scope, uint Semantics)
 static INLINE
 uint Broadcast(uint Execution, uint Value, uint3 LocalId)
 {
-    return __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(Execution, Value, LocalId);
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Execution, as_int(Value), as_int3(LocalId));
 }
 
 static INLINE OVERLOADABLE

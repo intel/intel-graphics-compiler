@@ -358,21 +358,21 @@ INLINE double OVERLOADABLE intel_sub_group_shuffle_xor( double x, uint c )
 #define  DEFN_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                                         \
 INLINE TYPE OVERLOADABLE  sub_group_broadcast( TYPE x, uint sub_group_local_id )                                     \
 {                                                                                                                    \
-    uint3 local_id = (uint3)(sub_group_local_id,0,0);                                                                \
-    return as_##TYPE(__builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(Subgroup,as_##SPV_TYPE(x),local_id));  \
+    int3 local_id = (int3)(sub_group_local_id,0,0);                                                                  \
+    return as_##TYPE(SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v3i32, )(Subgroup,as_##SPV_TYPE(x),local_id)); \
 }
 
-#define  DEFN_INTEL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)                                   \
-INLINE TYPE OVERLOADABLE  intel_sub_group_broadcast( TYPE x, uint sub_group_local_id )     \
-{                                                                                          \
-    uint3 local_id = (uint3)(sub_group_local_id,0,0);                                      \
-    return __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(Subgroup,x,local_id);  \
+#define  DEFN_INTEL_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                        \
+INLINE TYPE OVERLOADABLE  intel_sub_group_broadcast( TYPE x, uint sub_group_local_id )                    \
+{                                                                                                         \
+    int3 local_id = (int3)(sub_group_local_id,0,0);                                                       \
+    return SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v3i32, )(Subgroup,as_##SPV_TYPE(x),local_id); \
 }
 
-DEFN_SUB_GROUP_BROADCAST(int,   uint,  i32)
-DEFN_SUB_GROUP_BROADCAST(uint,  uint,  i32)
-DEFN_SUB_GROUP_BROADCAST(long,  ulong,  i64)
-DEFN_SUB_GROUP_BROADCAST(ulong, ulong,  i64)
+DEFN_SUB_GROUP_BROADCAST(int,   int,  i32)
+DEFN_SUB_GROUP_BROADCAST(uint,  int,  i32)
+DEFN_SUB_GROUP_BROADCAST(long,  long,  i64)
+DEFN_SUB_GROUP_BROADCAST(ulong, long,  i64)
 DEFN_SUB_GROUP_BROADCAST(float, float, f32)
 #if defined(cl_khr_fp16)
 DEFN_SUB_GROUP_BROADCAST(half,  half, f16)
@@ -382,29 +382,29 @@ DEFN_SUB_GROUP_BROADCAST(double, double, f64)
 #endif // cl_khr_fp64
 
 #if defined(cl_khr_subgroup_extended_types)
-DEFN_SUB_GROUP_BROADCAST(char,   uchar, i8)
-DEFN_SUB_GROUP_BROADCAST(uchar,  uchar, i8)
-DEFN_SUB_GROUP_BROADCAST(short,  ushort, i16)
-DEFN_SUB_GROUP_BROADCAST(ushort, ushort, i16)
+DEFN_SUB_GROUP_BROADCAST(char,   char, i8)
+DEFN_SUB_GROUP_BROADCAST(uchar,  char, i8)
+DEFN_SUB_GROUP_BROADCAST(short,  short, i16)
+DEFN_SUB_GROUP_BROADCAST(ushort, short, i16)
 
-#define DEFN_SUB_GROUP_BROADCAST_VEC(TYPE, SPV_TYPE, TYPE_ABBR)  \
+#define DEFN_SUB_GROUP_BROADCAST_VEC(TYPE, SPV_TYPE, TYPE_ABBR) \
 DEFN_SUB_GROUP_BROADCAST(TYPE##2,  SPV_TYPE##2,  v2##TYPE_ABBR) \
 DEFN_SUB_GROUP_BROADCAST(TYPE##3,  SPV_TYPE##3,  v3##TYPE_ABBR) \
 DEFN_SUB_GROUP_BROADCAST(TYPE##4,  SPV_TYPE##4,  v4##TYPE_ABBR) \
 DEFN_SUB_GROUP_BROADCAST(TYPE##8,  SPV_TYPE##8,  v8##TYPE_ABBR) \
 DEFN_SUB_GROUP_BROADCAST(TYPE##16, SPV_TYPE##16, v16##TYPE_ABBR)
 
-DEFN_SUB_GROUP_BROADCAST_VEC(char, uchar, i8)
-DEFN_SUB_GROUP_BROADCAST_VEC(uchar, uchar, i8)
-DEFN_SUB_GROUP_BROADCAST_VEC(short, ushort, i16)
-DEFN_SUB_GROUP_BROADCAST_VEC(ushort, ushort, i16)
-DEFN_SUB_GROUP_BROADCAST_VEC(int, uint, i32)
-DEFN_SUB_GROUP_BROADCAST_VEC(uint, uint, i32)
-DEFN_SUB_GROUP_BROADCAST_VEC(long, ulong, i64)
-DEFN_SUB_GROUP_BROADCAST_VEC(ulong, ulong, i64)
-DEFN_SUB_GROUP_BROADCAST_VEC(float, float, f32)
+DEFN_SUB_GROUP_BROADCAST_VEC(char,   char,   i8)
+DEFN_SUB_GROUP_BROADCAST_VEC(uchar,  char,   i8)
+DEFN_SUB_GROUP_BROADCAST_VEC(short,  short,  i16)
+DEFN_SUB_GROUP_BROADCAST_VEC(ushort, short,  i16)
+DEFN_SUB_GROUP_BROADCAST_VEC(int,    int,    i32)
+DEFN_SUB_GROUP_BROADCAST_VEC(uint,   int,    i32)
+DEFN_SUB_GROUP_BROADCAST_VEC(long,   long,   i64)
+DEFN_SUB_GROUP_BROADCAST_VEC(ulong,  long,   i64)
+DEFN_SUB_GROUP_BROADCAST_VEC(float,  float,  f32)
 #if defined(cl_khr_fp16)
-DEFN_SUB_GROUP_BROADCAST_VEC(half, half, f16)
+DEFN_SUB_GROUP_BROADCAST_VEC(half,   half,   f16)
 #endif // defined(cl_khr_fp16)
 #if defined(cl_khr_fp64)
 DEFN_SUB_GROUP_BROADCAST_VEC(double, double, f64)
@@ -412,61 +412,61 @@ DEFN_SUB_GROUP_BROADCAST_VEC(double, double, f64)
 #endif
 
 #if defined(cl_intel_subgroups_short)
-DEFN_INTEL_SUB_GROUP_BROADCAST(short,  i16)
-DEFN_INTEL_SUB_GROUP_BROADCAST(ushort, i16)
+DEFN_INTEL_SUB_GROUP_BROADCAST(short,  short, i16)
+DEFN_INTEL_SUB_GROUP_BROADCAST(ushort, short, i16)
 #endif // cl_intel_subgroups_short
 
 #ifdef cl_intel_subgroups_char
-DEFN_INTEL_SUB_GROUP_BROADCAST(char,  i8)
-DEFN_INTEL_SUB_GROUP_BROADCAST(uchar, i8)
+DEFN_INTEL_SUB_GROUP_BROADCAST(char,  char, i8)
+DEFN_INTEL_SUB_GROUP_BROADCAST(uchar, char, i8)
 #endif // cl_intel_subgroups_char
 
 INLINE int OVERLOADABLE sub_group_all( int predicate )
 {
-    return __builtin_spirv_OpGroupAll_i32_i1(Subgroup, predicate);
+    return SPIRV_BUILTIN(GroupAll, _i32_i1, )(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_any( int predicate )
 {
-    return __builtin_spirv_OpGroupAny_i32_i1(Subgroup, predicate);
+    return SPIRV_BUILTIN(GroupAny, _i32_i1, )(Subgroup, predicate);
 }
 
 #if defined(cl_khr_subgroup_non_uniform_vote)
 INLINE int OVERLOADABLE sub_group_elect()
 {
-    return __builtin_spirv_OpGroupNonUniformElect_i32(Subgroup);
+    return SPIRV_BUILTIN(GroupNonUniformElect, _i32, )(Subgroup);
 }
 
 INLINE int OVERLOADABLE sub_group_non_uniform_all(int predicate)
 {
-    return __builtin_spirv_OpGroupNonUniformAll_i32_i1(Subgroup, predicate);
+    return SPIRV_BUILTIN(GroupNonUniformAll, _i32_i1, )(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_non_uniform_any(int predicate)
 {
-    return __builtin_spirv_OpGroupNonUniformAny_i32_i1(Subgroup, predicate);
+    return SPIRV_BUILTIN(GroupNonUniformAny, _i32_i1, )(Subgroup, predicate);
 }
 
-#define DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(TYPE, TYPE_ABBR)                               \
-INLINE int OVERLOADABLE sub_group_non_uniform_all_equal(TYPE value)                         \
-{                                                                                           \
-    return __builtin_spirv_OpGroupNonUniformAllEqual_i32_##TYPE_ABBR(Subgroup, value);      \
+#define DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(TYPE, SPV_TYPE, TYPE_ABBR)                                \
+INLINE int OVERLOADABLE sub_group_non_uniform_all_equal(TYPE value)                                    \
+{                                                                                                      \
+    return SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_##TYPE_ABBR, )(Subgroup, as_##SPV_TYPE(value)); \
 }
 
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(char,   i8)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(uchar,  i8)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(short,  i16)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(ushort, i16)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(int,    i32)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(uint,   i32)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(long,   i64)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(ulong,  i64)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(float,  f32)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(char,   char, i8)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(uchar,  char, i8)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(short,  short, i16)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(ushort, short, i16)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(int,    int, i32)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(uint,   int, i32)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(long,   long, i64)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(ulong,  long, i64)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(float,  float, f32)
 #if defined(cl_khr_fp64)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(double, f64)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(double, double, f64)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(half,   f16)
+DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(half,   half, f16)
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_non_uniform_vote)
 
@@ -475,11 +475,11 @@ DEFN_SUB_GROUP_NON_UNIFORM_ALL_EQUAL(half,   f16)
 #define DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE, SPV_TYPE, TYPE_ABBR)                                                              \
 INLINE TYPE OVERLOADABLE sub_group_non_uniform_broadcast(TYPE value, uint index)                                                \
 {                                                                                                                               \
-    return as_##TYPE(__builtin_spirv_OpGroupNonUniformBroadcast_i32_##TYPE_ABBR##_i32(Subgroup, as_##SPV_TYPE(value), index));  \
+    return as_##TYPE(SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), index)); \
 }                                                                                                                               \
 INLINE TYPE OVERLOADABLE sub_group_broadcast_first(TYPE value)                                                                  \
 {                                                                                                                               \
-    return as_##TYPE(__builtin_spirv_OpGroupNonUniformBroadcastFirst_i32_##TYPE_ABBR(Subgroup, as_##SPV_TYPE(value)));          \
+    return as_##TYPE(SPIRV_BUILTIN(GroupNonUniformBroadcastFirst, _i32_##TYPE_ABBR, )(Subgroup, as_##SPV_TYPE(value)));         \
 }
 
 #define DEFN_NON_UNIFORM_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)            \
@@ -490,14 +490,14 @@ DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##4, SPV_TYPE##4, v4##TYPE_ABBR)     \
 DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##8, SPV_TYPE##8, v8##TYPE_ABBR)     \
 DEFN_NON_UNIFORM_BROADCAST_BASE(TYPE##16, SPV_TYPE##16, v16##TYPE_ABBR)
 
-DEFN_NON_UNIFORM_BROADCAST(char,   uchar,  i8)
-DEFN_NON_UNIFORM_BROADCAST(uchar,  uchar,  i8)
-DEFN_NON_UNIFORM_BROADCAST(short,  ushort, i16)
-DEFN_NON_UNIFORM_BROADCAST(ushort, ushort, i16)
-DEFN_NON_UNIFORM_BROADCAST(int,    uint,   i32)
-DEFN_NON_UNIFORM_BROADCAST(uint,   uint,   i32)
-DEFN_NON_UNIFORM_BROADCAST(long,   ulong,  i64)
-DEFN_NON_UNIFORM_BROADCAST(ulong,  ulong,  i64)
+DEFN_NON_UNIFORM_BROADCAST(char,   char,   i8)
+DEFN_NON_UNIFORM_BROADCAST(uchar,  char,   i8)
+DEFN_NON_UNIFORM_BROADCAST(short,  short,  i16)
+DEFN_NON_UNIFORM_BROADCAST(ushort, short,  i16)
+DEFN_NON_UNIFORM_BROADCAST(int,    int,    i32)
+DEFN_NON_UNIFORM_BROADCAST(uint,   int,    i32)
+DEFN_NON_UNIFORM_BROADCAST(long,   long,   i64)
+DEFN_NON_UNIFORM_BROADCAST(ulong,  long,   i64)
 DEFN_NON_UNIFORM_BROADCAST(float,  float,  f32)
 #if defined(cl_khr_fp64)
 DEFN_NON_UNIFORM_BROADCAST(double, double, f64)
@@ -508,67 +508,67 @@ DEFN_NON_UNIFORM_BROADCAST(half,   half,   f16)
 
 INLINE uint4 OVERLOADABLE sub_group_ballot(int predicate)
 {
-    return __builtin_spirv_OpGroupNonUniformBallot_i32_i1(Subgroup, predicate);
+    return SPIRV_BUILTIN(GroupNonUniformBallot, _i32_i1, )(Subgroup, predicate);
 }
 
 INLINE int OVERLOADABLE sub_group_inverse_ballot(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(Subgroup, value);
+    return SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(Subgroup, value);
 }
 
 INLINE int OVERLOADABLE sub_group_ballot_bit_extract(uint4 value, uint index)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotBitExtract_i32_v4i32_i32(Subgroup, value, index);
+    return SPIRV_BUILTIN(GroupNonUniformBallotBitExtract, _i32_v4i32_i32, )(Subgroup, value, index);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_bit_count(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(Subgroup, GroupOperationReduce, value);
+    return SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(Subgroup, GroupOperationReduce, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_inclusive_scan(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(Subgroup, GroupOperationInclusiveScan, value);
+    return SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(Subgroup, GroupOperationInclusiveScan, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_exclusive_scan(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(Subgroup, GroupOperationExclusiveScan, value);
+    return SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(Subgroup, GroupOperationExclusiveScan, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_find_lsb(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(Subgroup, value);
+    return SPIRV_BUILTIN(GroupNonUniformBallotFindLSB, _i32_v4i32, )(Subgroup, value);
 }
 
 INLINE uint OVERLOADABLE sub_group_ballot_find_msb(uint4 value)
 {
-    return __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(Subgroup, value);
+    return SPIRV_BUILTIN(GroupNonUniformBallotFindMSB, _i32_v4i32, )(Subgroup, value);
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_eq_mask()
 {
-    return __builtin_spirv_BuiltInSubgroupEqMask();
+    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupEqMask, , )());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_ge_mask()
 {
-    return __builtin_spirv_BuiltInSubgroupGeMask();
+    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGeMask, , )());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_gt_mask()
 {
-    return __builtin_spirv_BuiltInSubgroupGtMask();
+    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGtMask, , )());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_le_mask()
 {
-    return __builtin_spirv_BuiltInSubgroupLeMask();
+    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMask, , )());
 }
 
 INLINE uint4 OVERLOADABLE get_sub_group_lt_mask()
 {
-    return __builtin_spirv_BuiltInSubgroupLtMask();
+    return as_uint4(SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLtMask, , )());
 }
 
 #endif // defined(cl_khr_subgroup_ballot)
@@ -1012,57 +1012,57 @@ DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f64, double)
 #endif
 
 #if defined(cl_khr_subgroup_shuffle)
-#define DEFN_SUB_GROUP_SHUFFLE(TYPE, TYPE_ABBR)                                                         \
-INLINE TYPE OVERLOADABLE sub_group_shuffle(TYPE value, uint index)                                      \
-{                                                                                                       \
-    return __builtin_spirv_OpGroupNonUniformShuffle_i32_##TYPE_ABBR##_i32(Subgroup, value, index);      \
-}                                                                                                       \
-INLINE TYPE OVERLOADABLE sub_group_shuffle_xor(TYPE value, uint mask)                                   \
-{                                                                                                       \
-    return __builtin_spirv_OpGroupNonUniformShuffleXor_i32_##TYPE_ABBR##_i32(Subgroup, value, mask);    \
+#define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \
+INLINE TYPE OVERLOADABLE sub_group_shuffle(TYPE value, uint index)                                                    \
+{                                                                                                                     \
+    return SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), index);    \
+}                                                                                                                     \
+INLINE TYPE OVERLOADABLE sub_group_shuffle_xor(TYPE value, uint mask)                                                 \
+{                                                                                                                     \
+    return SPIRV_BUILTIN(GroupNonUniformShuffleXor, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), mask);  \
 }
 
-DEFN_SUB_GROUP_SHUFFLE(char,   i8)
-DEFN_SUB_GROUP_SHUFFLE(uchar,  i8)
-DEFN_SUB_GROUP_SHUFFLE(short,  i16)
-DEFN_SUB_GROUP_SHUFFLE(ushort, i16)
-DEFN_SUB_GROUP_SHUFFLE(int,    i32)
-DEFN_SUB_GROUP_SHUFFLE(uint,   i32)
-DEFN_SUB_GROUP_SHUFFLE(long,   i64)
-DEFN_SUB_GROUP_SHUFFLE(ulong,  i64)
-DEFN_SUB_GROUP_SHUFFLE(float,  f32)
+DEFN_SUB_GROUP_SHUFFLE(char,   char,   i8)
+DEFN_SUB_GROUP_SHUFFLE(uchar,  char,   i8)
+DEFN_SUB_GROUP_SHUFFLE(short,  short,  i16)
+DEFN_SUB_GROUP_SHUFFLE(ushort, short,  i16)
+DEFN_SUB_GROUP_SHUFFLE(int,    int,    i32)
+DEFN_SUB_GROUP_SHUFFLE(uint,   int,    i32)
+DEFN_SUB_GROUP_SHUFFLE(long,   long,   i64)
+DEFN_SUB_GROUP_SHUFFLE(ulong,  long,   i64)
+DEFN_SUB_GROUP_SHUFFLE(float,  float,  f32)
 #if defined(cl_khr_fp64)
-DEFN_SUB_GROUP_SHUFFLE(double, f64)
+DEFN_SUB_GROUP_SHUFFLE(double, double, f64)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_SUB_GROUP_SHUFFLE(half,   f16)
+DEFN_SUB_GROUP_SHUFFLE(half,   half,   f16)
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_shuffle)
 
 #if defined(cl_khr_subgroup_shuffle_relative)
-#define DEFN_SUB_GROUP_SHUFFLE_RELATIVE(TYPE, TYPE_ABBR)                                                \
-INLINE TYPE OVERLOADABLE sub_group_shuffle_up(TYPE value, uint delta)                                   \
-{                                                                                                       \
-    return __builtin_spirv_OpGroupNonUniformShuffleUp_i32_##TYPE_ABBR##_i32(Subgroup, value, delta);    \
-}                                                                                                       \
-INLINE TYPE OVERLOADABLE sub_group_shuffle_down(TYPE value, uint delta)                                 \
-{                                                                                                       \
-    return __builtin_spirv_OpGroupNonUniformShuffleDown_i32_##TYPE_ABBR##_i32(Subgroup, value, delta);  \
+#define DEFN_SUB_GROUP_SHUFFLE_RELATIVE(TYPE, SPV_TYPE, TYPE_ABBR)                                                      \
+INLINE TYPE OVERLOADABLE sub_group_shuffle_up(TYPE value, uint delta)                                                   \
+{                                                                                                                       \
+    return SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), delta);    \
+}                                                                                                                       \
+INLINE TYPE OVERLOADABLE sub_group_shuffle_down(TYPE value, uint delta)                                                 \
+{                                                                                                                       \
+    return SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_##TYPE_ABBR##_i32, )(Subgroup, as_##SPV_TYPE(value), delta);  \
 }
 
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(char,   i8)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(uchar,  i8)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(short,  i16)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(ushort, i16)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(int,    i32)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(uint,   i32)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(long,   i64)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(ulong,  i64)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(float,  f32)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(char,   char,   i8)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(uchar,  char,   i8)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(short,  short,  i16)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(ushort, short,  i16)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(int,    int,    i32)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(uint,   int,    i32)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(long,   long,   i64)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(ulong,  long,   i64)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(float,  float,  f32)
 #if defined(cl_khr_fp64)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(double, f64)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(double, double, f64)
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-DEFN_SUB_GROUP_SHUFFLE_RELATIVE(half,   f16)
+DEFN_SUB_GROUP_SHUFFLE_RELATIVE(half,   half,   f16)
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_shuffle_relative)

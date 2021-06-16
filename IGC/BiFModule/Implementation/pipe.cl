@@ -632,7 +632,7 @@ uint __builtin_spirv_OpGetMaxPipePackets_i64_i32( Pipe_t Pipe, uint PacketSize/*
 
 static uint __intel_pipe_broadcast(uint val)
 {
-  return __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(Workgroup, val, (uint3)0);
+  return SPIRV_BUILTIN(GroupBroadcast, _i32_i32_v3i32, )(Workgroup, as_int(val), 0);
 }
 
 ReserveId_t __builtin_spirv_OpGroupReserveReadPipePackets_i32_i64_i32_i32( uint Execution, Pipe_t Pipe, uint NumPackets, uint PacketSize/*, uint PacketAlignment */)
@@ -646,7 +646,7 @@ ReserveId_t __builtin_spirv_OpGroupReserveReadPipePackets_i32_i64_i32_i32( uint 
             rid = __builtin_spirv_OpReserveReadPipePackets_i64_i32_i32( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
-        ReserveId_t result = stor(__builtin_spirv_OpGroupBroadcast_i32_i32_i32(Subgroup, rtos(rid), 0));
+        ReserveId_t result = stor(SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i32, )(Subgroup, as_int(rtos(rid)), 0));
         return result;
     }
     else
@@ -673,7 +673,7 @@ ReserveId_t __builtin_spirv_OpGroupReserveWritePipePackets_i32_i64_i32_i32( uint
             rid = __builtin_spirv_OpReserveWritePipePackets_i64_i32_i32( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
-        ReserveId_t result = stor(__builtin_spirv_OpGroupBroadcast_i32_i32_i32(Subgroup, rtos(rid), 0));
+        ReserveId_t result = stor(SPIRV_BUILTIN(GroupBroadcast, _i32_i32_i32, )(Subgroup, as_int(rtos(rid)), 0));
         return result;
     }
     else

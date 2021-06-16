@@ -4378,31 +4378,31 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupWaitEvents, _i32_i32_p4i64, )(int Exe
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 #if defined(cl_khr_subgroup_non_uniform_vote)
-bool __builtin_spirv_OpGroupNonUniformElect_i32(uint Execution);
-bool __builtin_spirv_OpGroupNonUniformAll_i32_i1(uint Execution, bool Predicate);
-bool __builtin_spirv_OpGroupNonUniformAny_i32_i1(uint Execution, bool Predicate);
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_i8(uint Execution, uchar Value);
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_i16(uint Execution, ushort Value);
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_i32(uint Execution, uint Value);
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_i64(uint Execution, ulong Value);
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_f32(uint Execution, float Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformElect, _i32, )(int Execution);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAll, _i32_i1, )(int Execution, bool Predicate);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAny, _i32_i1, )(int Execution, bool Predicate);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_i8, )(int Execution, char Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_i16, )(int Execution, short Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_i32, )(int Execution, int Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_i64, )(int Execution, long Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_f32, )(int Execution, float Value);
 #if defined(cl_khr_fp64)
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_f64(uint Execution, double Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_f64, )(int Execution, double Value);
 #endif // defined(cl_khr_fp64)
 #if defined(cl_khr_fp16)
-bool __builtin_spirv_OpGroupNonUniformAllEqual_i32_f16(uint Execution, half Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformAllEqual, _i32_f16, )(int Execution, half Value);
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_non_uniform_vote)
 
-bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate);
-bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool Predicate);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool Predicate);
 #define DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)                                                      \
-TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i32(uint Execution, TYPE Value, uint3 LocalId);   \
-TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v3i64(uint Execution, TYPE Value, ulong3 LocalId);  \
-TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v2i32(uint Execution, TYPE Value, uint2 LocalId);   \
-TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_v2i64(uint Execution, TYPE Value, ulong2 LocalId);  \
-TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i32(uint Execution, TYPE Value, uint LocalId);      \
-TYPE __builtin_spirv_OpGroupBroadcast_i32_##TYPE_ABBR##_i64(uint Execution, TYPE Value, ulong LocalId);
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v3i32, )(int Execution, TYPE Value, int3 LocalId);   \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v3i64, )(int Execution, TYPE Value, long3 LocalId);  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v2i32, )(int Execution, TYPE Value, int2 LocalId);   \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_v2i64, )(int Execution, TYPE Value, long2 LocalId);  \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE Value, int LocalId);      \
+TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBroadcast, _i32_##TYPE_ABBR##_i64, )(int Execution, TYPE Value, long LocalId);
 
 #define DECL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)       \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)          \
@@ -4412,23 +4412,23 @@ DECL_SUB_GROUP_BROADCAST_BASE(TYPE##4, v4##TYPE_ABBR)   \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE##8, v8##TYPE_ABBR)   \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE##16, v16##TYPE_ABBR)
 
-DECL_SUB_GROUP_BROADCAST(uchar, i8)
-DECL_SUB_GROUP_BROADCAST(ushort, i16)
-DECL_SUB_GROUP_BROADCAST(uint, i32)
-DECL_SUB_GROUP_BROADCAST(ulong, i64)
-DECL_SUB_GROUP_BROADCAST(float, f32)
+DECL_SUB_GROUP_BROADCAST(char,   i8)
+DECL_SUB_GROUP_BROADCAST(short,  i16)
+DECL_SUB_GROUP_BROADCAST(int,    i32)
+DECL_SUB_GROUP_BROADCAST(long,   i64)
+DECL_SUB_GROUP_BROADCAST(float,  f32)
 #if defined(cl_khr_fp16)
-DECL_SUB_GROUP_BROADCAST(half, f16)
+DECL_SUB_GROUP_BROADCAST(half,   f16)
 #endif // defined(cl_khr_fp16)
 #if defined(cl_khr_fp64)
 DECL_SUB_GROUP_BROADCAST(double, f64)
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_subgroup_ballot)
-#define DECL_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)                        \
-    TYPE __builtin_spirv_OpGroupNonUniformBroadcast_i32_##TYPE_ABBR##_i32(      \
-        uint Execution, TYPE Value, uint Id);                                   \
-    TYPE __builtin_spirv_OpGroupNonUniformBroadcastFirst_i32_##TYPE_ABBR(uint Execution, TYPE Value);
+#define DECL_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)                                            \
+    TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_##TYPE_ABBR##_i32, )(      \
+        int Execution, TYPE Value, uint Id);                                                        \
+    TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcastFirst, _i32_##TYPE_ABBR, )(int Execution, TYPE Value);
 
 #define DECL_NON_UNIFORM_BROADCAST(TYPE, TYPE_ABBR)         \
     DECL_NON_UNIFORM_BROADCAST_BASE(TYPE, TYPE_ABBR)        \
@@ -4438,10 +4438,10 @@ DECL_SUB_GROUP_BROADCAST(double, f64)
     DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##8, v8##TYPE_ABBR) \
     DECL_NON_UNIFORM_BROADCAST_BASE(TYPE##16, v16##TYPE_ABBR)
 
-DECL_NON_UNIFORM_BROADCAST(uchar,  i8)
-DECL_NON_UNIFORM_BROADCAST(ushort, i16)
-DECL_NON_UNIFORM_BROADCAST(uint,   i32)
-DECL_NON_UNIFORM_BROADCAST(ulong,  i64)
+DECL_NON_UNIFORM_BROADCAST(char,   i8)
+DECL_NON_UNIFORM_BROADCAST(short,  i16)
+DECL_NON_UNIFORM_BROADCAST(int,    i32)
+DECL_NON_UNIFORM_BROADCAST(long,   i64)
 DECL_NON_UNIFORM_BROADCAST(float,  f32)
 #if defined(cl_khr_fp64)
 DECL_NON_UNIFORM_BROADCAST(double, f64)
@@ -4450,29 +4450,29 @@ DECL_NON_UNIFORM_BROADCAST(double, f64)
 DECL_NON_UNIFORM_BROADCAST(half,   f16)
 #endif // defined(cl_khr_fp16)
 
-uint4 __builtin_spirv_OpGroupNonUniformBallot_i32_i1(uint Execution, bool Predicate);
-bool __builtin_spirv_OpGroupNonUniformInverseBallot_i32_v4i32(uint Execution, uint4 Value);
-bool __builtin_spirv_OpGroupNonUniformBallotBitExtract_i32_v4i32_i32(uint Execution, uint4 Value, uint Index);
-uint __builtin_spirv_OpGroupNonUniformBallotBitCount_i32_i32_v4i32(uint Execution, uint Operation, uint4 Value);
-uint __builtin_spirv_OpGroupNonUniformBallotFindLSB_i32_v4i32(uint Execution, uint4 Value);
-uint __builtin_spirv_OpGroupNonUniformBallotFindMSB_i32_v4i32(uint Execution, uint4 Value);
-uint4 __builtin_spirv_BuiltInSubgroupEqMask();
-uint4 __builtin_spirv_BuiltInSubgroupGeMask();
-uint4 __builtin_spirv_BuiltInSubgroupGtMask();
-uint4 __builtin_spirv_BuiltInSubgroupLeMask();
-uint4 __builtin_spirv_BuiltInSubgroupLtMask();
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallot, _i32_i1, )(int Execution, bool Predicate);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(int Execution, uint4 Value);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotBitExtract, _i32_v4i32_i32, )(int Execution, uint4 Value, uint Index);
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotBitCount, _i32_i32_v4i32, )(int Execution, int Operation, uint4 Value);
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindLSB, _i32_v4i32, )(int Execution, uint4 Value);
+uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBallotFindMSB, _i32_v4i32, )(int Execution, uint4 Value);
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupEqMask, , )(void);
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGeMask, , )(void);
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupGtMask, , )(void);
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLeMask, , )(void);
+uint4 SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLtMask, , )(void);
 #endif // defined(cl_khr_subgroup_ballot)
 
 #if defined(cl_khr_subgroup_shuffle)
-#define DECL_NON_UNIFORM_SHUFFLE(TYPE, TYPE_ABBR)                           \
-    TYPE __builtin_spirv_OpGroupNonUniformShuffle_i32_##TYPE_ABBR##_i32(    \
-        uint Execution, TYPE Value, uint Id);                               \
-    TYPE __builtin_spirv_OpGroupNonUniformShuffleXor_i32_##TYPE_ABBR##_i32(uint Execution, TYPE Value, uint Mask);
+#define DECL_NON_UNIFORM_SHUFFLE(TYPE, TYPE_ABBR)                                               \
+    TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_##TYPE_ABBR##_i32, )(    \
+        int Execution, TYPE Value, uint Id);                                                    \
+    TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleXor, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE Value, uint Mask);
 
-DECL_NON_UNIFORM_SHUFFLE(uchar,  i8)
-DECL_NON_UNIFORM_SHUFFLE(ushort, i16)
-DECL_NON_UNIFORM_SHUFFLE(uint,   i32)
-DECL_NON_UNIFORM_SHUFFLE(ulong,  i64)
+DECL_NON_UNIFORM_SHUFFLE(char,  i8)
+DECL_NON_UNIFORM_SHUFFLE(short, i16)
+DECL_NON_UNIFORM_SHUFFLE(int,   i32)
+DECL_NON_UNIFORM_SHUFFLE(long,  i64)
 DECL_NON_UNIFORM_SHUFFLE(float,  f32)
 #if defined(cl_khr_fp64)
 DECL_NON_UNIFORM_SHUFFLE(double, f64)
@@ -4483,15 +4483,15 @@ DECL_NON_UNIFORM_SHUFFLE(half,   f16)
 #endif // defined(cl_khr_subgroup_shuffle)
 
 #if defined(cl_khr_subgroup_shuffle_relative)
-#define DECL_NON_UNIFORM_SHUFFLE_RELATIVE(TYPE, TYPE_ABBR)                   \
-    TYPE __builtin_spirv_OpGroupNonUniformShuffleUp_i32_##TYPE_ABBR##_i32(   \
-        uint Execution, TYPE Value, uint Delta);                             \
-    TYPE __builtin_spirv_OpGroupNonUniformShuffleDown_i32_##TYPE_ABBR##_i32(uint Execution, TYPE Value, uint Delta);
+#define DECL_NON_UNIFORM_SHUFFLE_RELATIVE(TYPE, TYPE_ABBR)                                       \
+    TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR##_i32, )(   \
+        int Execution, TYPE Value, uint Delta);                                                  \
+    TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_##TYPE_ABBR##_i32, )(int Execution, TYPE Value, uint Delta);
 
-DECL_NON_UNIFORM_SHUFFLE_RELATIVE(uchar,  i8)
-DECL_NON_UNIFORM_SHUFFLE_RELATIVE(ushort, i16)
-DECL_NON_UNIFORM_SHUFFLE_RELATIVE(uint,   i32)
-DECL_NON_UNIFORM_SHUFFLE_RELATIVE(ulong,  i64)
+DECL_NON_UNIFORM_SHUFFLE_RELATIVE(char,  i8)
+DECL_NON_UNIFORM_SHUFFLE_RELATIVE(short, i16)
+DECL_NON_UNIFORM_SHUFFLE_RELATIVE(int,   i32)
+DECL_NON_UNIFORM_SHUFFLE_RELATIVE(long,  i64)
 DECL_NON_UNIFORM_SHUFFLE_RELATIVE(float,  f32)
 #if defined(cl_khr_fp64)
 DECL_NON_UNIFORM_SHUFFLE_RELATIVE(double, f64)
@@ -4507,12 +4507,12 @@ DECL_NON_UNIFORM_SHUFFLE_RELATIVE(half,   f16)
 
 #if defined(cl_khr_subgroup_non_uniform_arithmetic)
 #define DEFN_NON_UNIFORM_OPERATION_BASE(TYPE, OPERATION, TYPE_ABBR)   \
-TYPE  __builtin_spirv_OpGroupNonUniform##OPERATION##_i32_i32_##TYPE_ABBR(uint Execution, uint Operation, TYPE X);
+TYPE  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniform##OPERATION, _i32_i32_##TYPE_ABBR, )(int Execution, int Operation, TYPE X);
 #endif // defined(cl_khr_subgroup_non_uniform_arithmetic)
 
 #if defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, OPERATION, TYPE_ABBR)   \
-TYPE  __builtin_spirv_OpGroupNonUniform##OPERATION##_i32_i32_##TYPE_ABBR##_i32(uint Execution, uint Operation, TYPE X, uint ClusterSize);
+TYPE  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniform##OPERATION, _i32_i32_##TYPE_ABBR##_i32, )(int Execution, int Operation, TYPE X, uint ClusterSize);
 #endif // defined(cl_khr_subgroup_clustered_reduce)
 
 #define DEFN_NON_UNIFORM_OPERATION(TYPE, OPERATION, TYPE_ABBR)     \
@@ -4527,10 +4527,10 @@ DEFN_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, OPERATION, TYPE_ABBR)
 DEFN_NON_UNIFORM_OPERATION(TYPE, TYPE_SIGN##Add, TYPE_ABBR)    \
 DEFN_NON_UNIFORM_OPERATION(TYPE, TYPE_SIGN##Mul, TYPE_ABBR)
 
-DEFN_NON_UNIFORM_ADD_MUL(uchar,  I, i8)
-DEFN_NON_UNIFORM_ADD_MUL(ushort, I, i16)
-DEFN_NON_UNIFORM_ADD_MUL(uint,   I, i32)
-DEFN_NON_UNIFORM_ADD_MUL(ulong,  I, i64)
+DEFN_NON_UNIFORM_ADD_MUL(char,  I, i8)
+DEFN_NON_UNIFORM_ADD_MUL(short, I, i16)
+DEFN_NON_UNIFORM_ADD_MUL(int,   I, i32)
+DEFN_NON_UNIFORM_ADD_MUL(long,  I, i64)
 DEFN_NON_UNIFORM_ADD_MUL(float,  F, f32)
 #if defined(cl_khr_fp64)
 DEFN_NON_UNIFORM_ADD_MUL(double, F, f64)
@@ -4571,10 +4571,10 @@ DEFN_NON_UNIFORM_OPERATION(TYPE, BitwiseAnd, TYPE_ABBR)       \
 DEFN_NON_UNIFORM_OPERATION(TYPE, BitwiseOr, TYPE_ABBR)        \
 DEFN_NON_UNIFORM_OPERATION(TYPE, BitwiseXor, TYPE_ABBR)
 
-DEFN_NON_UNIFORM_BITWISE_OPERATIONS(uchar,  i8)
-DEFN_NON_UNIFORM_BITWISE_OPERATIONS(ushort, i16)
-DEFN_NON_UNIFORM_BITWISE_OPERATIONS(uint,   i32)
-DEFN_NON_UNIFORM_BITWISE_OPERATIONS(ulong,  i64)
+DEFN_NON_UNIFORM_BITWISE_OPERATIONS(char,  i8)
+DEFN_NON_UNIFORM_BITWISE_OPERATIONS(short, i16)
+DEFN_NON_UNIFORM_BITWISE_OPERATIONS(int,   i32)
+DEFN_NON_UNIFORM_BITWISE_OPERATIONS(long,  i64)
 
 // LOGICAL OPERATIONS
 
@@ -4589,48 +4589,48 @@ DEFN_NON_UNIFORM_OPERATION(TYPE, LogicalXor, TYPE_ABBR)
 DEFN_NON_UNIFORM_LOGICAL_OPERATIONS(bool, i1)
 #endif // defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 
-uchar  __builtin_spirv_OpGroupIAdd_i32_i32_i8(uint Execution, uint Operation, uchar X);
-ushort __builtin_spirv_OpGroupIAdd_i32_i32_i16(uint Execution, uint Operation, ushort X);
-uint   __builtin_spirv_OpGroupIAdd_i32_i32_i32(uint Execution, uint Operation, uint X);
-ulong  __builtin_spirv_OpGroupIAdd_i32_i32_i64(uint Execution, uint Operation, ulong X);
+char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIAdd, _i32_i32_i8, )(int Execution, int Operation, char X);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIAdd, _i32_i32_i16, )(int Execution, int Operation, short X);
+int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIAdd, _i32_i32_i32, )(int Execution, int Operation, int X);
+long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIAdd, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-half   __builtin_spirv_OpGroupFAdd_i32_i32_f16(uint Execution, uint Operation, half X);
-float  __builtin_spirv_OpGroupFAdd_i32_i32_f32(uint Execution, uint Operation, float X);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFAdd, _i32_i32_f16, )(int Execution, int Operation, half X);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFAdd, _i32_i32_f32, )(int Execution, int Operation, float X);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpGroupFAdd_i32_i32_f64(uint Execution, uint Operation, double X);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFAdd, _i32_i32_f64, )(int Execution, int Operation, double X);
 #endif // defined(cl_khr_fp64)
 
-uchar  __builtin_spirv_OpGroupUMin_i32_i32_i8(uint Execution, uint Operation, uchar X);
-ushort __builtin_spirv_OpGroupUMin_i32_i32_i16(uint Execution, uint Operation, ushort X);
-uint   __builtin_spirv_OpGroupUMin_i32_i32_i32(uint Execution, uint Operation, uint X);
-ulong  __builtin_spirv_OpGroupUMin_i32_i32_i64(uint Execution, uint Operation, ulong X);
+uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMin, _i32_i32_i8, )(int Execution, int Operation, uchar X);
+ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMin, _i32_i32_i16, )(int Execution, int Operation, ushort X);
+uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(int Execution, int Operation, uint X);
+ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMin, _i32_i32_i64, )(int Execution, int Operation, ulong X);
 
-half   __builtin_spirv_OpGroupFMin_i32_i32_f16(uint Execution, uint Operation, half X);
-float  __builtin_spirv_OpGroupFMin_i32_i32_f32(uint Execution, uint Operation, float X);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMin, _i32_i32_f16, )(int Execution, int Operation, half X);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMin, _i32_i32_f32, )(int Execution, int Operation, float X);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpGroupFMin_i32_i32_f64(uint Execution, uint Operation, double X);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMin, _i32_i32_f64, )(int Execution, int Operation, double X);
 #endif // defined(cl_khr_fp64)
 
-char   __builtin_spirv_OpGroupSMin_i32_i32_i8(uint Execution, uint Operation, char X);
-short  __builtin_spirv_OpGroupSMin_i32_i32_i16(uint Execution, uint Operation, short X);
-int    __builtin_spirv_OpGroupSMin_i32_i32_i32(uint Execution, uint Operation, int X);
-long   __builtin_spirv_OpGroupSMin_i32_i32_i64(uint Execution, uint Operation, long X);
+char   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMin, _i32_i32_i8, )(int Execution, int Operation, char X);
+short  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMin, _i32_i32_i16, )(int Execution, int Operation, short X);
+int    SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMin, _i32_i32_i32, )(int Execution, int Operation, int X);
+long   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMin, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-half   __builtin_spirv_OpGroupFMax_i32_i32_f16(uint Execution, uint Operation, half X);
-float  __builtin_spirv_OpGroupFMax_i32_i32_f32(uint Execution, uint Operation, float X);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMax, _i32_i32_f16, )(int Execution, int Operation, half X);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMax, _i32_i32_f32, )(int Execution, int Operation, float X);
 #if defined(cl_khr_fp64)
-double __builtin_spirv_OpGroupFMax_i32_i32_f64(uint Execution, uint Operation, double X);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMax, _i32_i32_f64, )(int Execution, int Operation, double X);
 #endif // defined(cl_khr_fp64)
 
-uchar  __builtin_spirv_OpGroupUMax_i32_i32_i8(uint Execution, uint Operation, uchar X);
-ushort __builtin_spirv_OpGroupUMax_i32_i32_i16(uint Execution, uint Operation, ushort X);
-uint   __builtin_spirv_OpGroupUMax_i32_i32_i32(uint Execution, uint Operation, uint X);
-ulong  __builtin_spirv_OpGroupUMax_i32_i32_i64(uint Execution, uint Operation, ulong X);
+uchar  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMax, _i32_i32_i8, )(int Execution, int Operation, uchar X);
+ushort SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMax, _i32_i32_i16, )(int Execution, int Operation, ushort X);
+uint   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(int Execution, int Operation, uint X);
+ulong  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupUMax, _i32_i32_i64, )(int Execution, int Operation, ulong X);
 
-char  __builtin_spirv_OpGroupSMax_i32_i32_i8(uint Execution, uint Operation, char X);
-short __builtin_spirv_OpGroupSMax_i32_i32_i16(uint Execution, uint Operation, short X);
-int   __builtin_spirv_OpGroupSMax_i32_i32_i32(uint Execution, uint Operation, int X);
-long  __builtin_spirv_OpGroupSMax_i32_i32_i64(uint Execution, uint Operation, long X);
+char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i8, )(int Execution, int Operation, char X);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i16, )(int Execution, int Operation, short X);
+int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i32, )(int Execution, int Operation, int X);
+long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i64, )(int Execution, int Operation, long X);
 
 // Device-Side Enqueue Instructions
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
