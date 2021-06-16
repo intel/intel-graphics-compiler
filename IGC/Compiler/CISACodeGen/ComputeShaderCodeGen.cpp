@@ -294,7 +294,7 @@ namespace IGC
 
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
 
-        pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();
+        pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads() / GetShaderThreadUsageRate();
         pKernelProgram->FloatingPointMode = USC::GFX3DSTATE_FLOATING_POINT_IEEE_754;
         pKernelProgram->SingleProgramFlow = USC::GFX3DSTATE_PROGRAM_FLOW_MULTIPLE;
         pKernelProgram->CurbeReadOffset = 0;

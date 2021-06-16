@@ -1807,7 +1807,7 @@ namespace IGC
         m_kernelInfo.m_executionEnivronment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
         m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
         m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in 256 bits
-        m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();
+        m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads() / GetShaderThreadUsageRate();
 
         m_kernelInfo.m_executionEnivronment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
         m_kernelInfo.m_executionEnivronment.HasBarriers = this->GetHasBarrier();

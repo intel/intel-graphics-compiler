@@ -349,7 +349,7 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
 
     pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
 
-    pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGeometryShaderThreads();
+    pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGeometryShaderThreads() / GetShaderThreadUsageRate();
     pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
 
     // Gen 7 specific Compiler Output

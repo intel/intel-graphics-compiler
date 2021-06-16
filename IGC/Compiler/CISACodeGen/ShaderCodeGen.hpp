@@ -492,6 +492,7 @@ public:
 protected:
     void GetPrintfStrings(std::vector<std::pair<unsigned int, std::string>>& printfStrings);
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
+    uint32_t GetShaderThreadUsageRate();
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.

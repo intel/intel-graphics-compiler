@@ -849,7 +849,7 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     pKernelProgram->RenderTargetLoaded = m_renderTargetLoaded;
 
     pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
-    pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxPixelShaderThreads();
+    pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxPixelShaderThreads() / GetShaderThreadUsageRate();
     pKernelProgram->needPerspectiveBary = m_PerspectivePixel ? true : false;
     pKernelProgram->needPerspectiveCentroidBary = m_PerspectiveCentroid ? true : false;
     pKernelProgram->needPerspectiveSampleBary = m_PerspectiveSample ? true : false;

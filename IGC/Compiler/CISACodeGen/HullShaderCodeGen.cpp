@@ -270,7 +270,7 @@ namespace IGC
 
         pKernelProgram->NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes();
 
-        pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxHullShaderThreads();
+        pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxHullShaderThreads() / GetShaderThreadUsageRate();
         pKernelProgram->IncludeVertexHandles = NeedVertexHandle();
         pKernelProgram->URBAllocationSize = GetURBAllocationSize();
         pKernelProgram->PatchConstantURBSize = GetPatchConstantURBSize();

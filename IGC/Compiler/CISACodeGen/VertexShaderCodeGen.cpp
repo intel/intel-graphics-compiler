@@ -156,7 +156,7 @@ namespace IGC
         pKernelProgram->SBEURBReadOffset = GetVertexURBEntryOutputReadOffset();
         pKernelProgram->URBAllocationSize = GetURBAllocationSize();
         pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
-        pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxVertexShaderThreads(isPositionOnlyShader);
+        pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxVertexShaderThreads(isPositionOnlyShader) / GetShaderThreadUsageRate();
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
         pKernelProgram->UavLoaded = m_uavLoaded;
         for (unsigned int i = 0; i < 4; i++)
