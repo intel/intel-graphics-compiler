@@ -417,7 +417,7 @@ public:
     void emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1);
 
     void emitSqrt(llvm::Instruction* inst);
-    void emitCanonicalize(llvm::Instruction* inst);
+    void emitCanonicalize(llvm::Instruction* inst, const DstModifier& modifier);
     void emitRsq(llvm::Instruction* inst);
     void emitFrc(llvm::GenIntrinsicInst* inst);
 
