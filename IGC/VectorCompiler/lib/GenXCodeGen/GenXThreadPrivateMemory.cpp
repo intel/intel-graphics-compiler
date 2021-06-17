@@ -141,6 +141,7 @@ private:
   void collectAllocaUsers();
   void collectArgUsers(bool ProcessCalls = true);
   bool processUsers();
+  void processUnchangedCall(CallInst &CI);
   void addUsersIfNeeded(Value *V, bool ProcessCalls = true);
   Value *NormalizeFuncPtrVec(Value *V, Instruction *InsPoint);
   std::pair<Value *, unsigned> NormalizeVector(Value *From, Type *To,
@@ -1557,6 +1558,9 @@ bool GenXThreadPrivateMemory::processUsers() {
                   lookForPtrReplacement(CI->getArgOperand(i)));
           }
           Changed = true;
+        } else {
+          processUnchangedCall(*CI);
+          Changed = true;
         }
       }
     } else if (PHINode *Phi = dyn_cast<PHINode>(I)) {
@@ -1582,6 +1586,28 @@ bool GenXThreadPrivateMemory::processUsers() {
     }
   }
   return Changed;
+}
+
+// TPM tries to rewrite function declaration. It not always can do this.
+// This method fixes call site for such functions. Otherwise TPM may delete
+// call as PotentiallyDeadInst.
+void GenXThreadPrivateMemory::processUnchangedCall(CallInst &CI) {
+  auto &&PointerArgs = make_filter_range(CI.args(), [](const Use &U) {
+    return U.get()->getType()->isPointerTy();
+  });
+  for (Use &Arg : PointerArgs) {
+    Value *Replacement = lookForPtrReplacement(Arg.get());
+    // FIXME: Currently TPM presumes that it can replace all pointers with
+    //        integers. Case where pointer call arg has no replace is possible,
+    //        but lookForPtrReplacement won't return nullptr in this case it
+    //        will report an error.
+    if (!Replacement)
+      continue;
+    Value *BackToPtr =
+        new IntToPtrInst{Replacement, Arg.get()->getType(),
+                         Replacement->getName() + ".cast.back", &CI};
+    Arg = BackToPtr;
+  }
 }
 
 bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
