@@ -5622,8 +5622,22 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
         iter != iterEnd; ++iter)
     {
         G4_INST* inst = *iter;
-        if ((inst->opcode() == G4_addc || inst->opcode() == G4_subb) &&
-            inst->getExecSize() != builder.getNativeExecSize())
+
+        if (inst->opcode() != G4_addc && inst->opcode() != G4_subb)
+        {
+            continue;
+        }
+
+        // Fix the src1 if it's a immediate operand whose type can only be :ud
+        G4_Operand* src1 = inst->getSrc(1);
+        if (src1 && src1->isImm() && src1->getType() == Type_UW)
+        {
+            // just change the immediate's type to :ud
+            uint32_t immVal = (uint32_t)src1->asImm()->getImm();
+            inst->setSrc(builder.createImm(immVal, Type_UD), 1);
+        }
+
+        if (inst->getExecSize() != builder.getNativeExecSize())
         {
             // find the matching carry move
             G4_INST* carryUse = nullptr;
