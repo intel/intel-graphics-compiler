@@ -505,6 +505,14 @@ static void Stitch_Compiled_Units(
                 mainFunc->fg.addPredSuccEdges(cur, callee->fg.getEntryBB());
                 mainFunc->fg.addPredSuccEdges(callee->fg.getUniqueReturnBlock(), retBlock);
 
+                // propagate properties of callee to mainFunc
+                // usesBarrier property is propagated to IGC and onwards in to NEO patch
+                // token. we need this logic here to propagate barrier usage to IGC and
+                // further to NEO so it can setup WG size appropriately. without this
+                // setting barrier would cause machine to hang.
+                // TODO: How to set usesBarrier when callee is indirect?
+                mainFunc->fg.builder->getJitInfo()->usesBarrier |= callee->fg.builder->getJitInfo()->usesBarrier;
+
                 G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
                 ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
 
