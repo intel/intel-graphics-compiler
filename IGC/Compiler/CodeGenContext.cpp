@@ -546,6 +546,11 @@ namespace IGC
         return m_InternalOptions.hasNoLocalToGeneric || getModuleMetaData()->hasNoLocalToGenericCast;
     }
 
+    bool OpenCLProgramContext::hasNoPrivateToGenericCast() const
+    {
+        return getModuleMetaData()->hasNoPrivateToGenericCast;
+    }
+
     int16_t OpenCLProgramContext::getVectorCoalescingControl() const
     {
         // cmdline option > registry key
@@ -914,6 +919,11 @@ namespace IGC
     }
 
     bool CodeGenContext::hasNoLocalToGenericCast() const
+    {
+        return false;
+    }
+
+    bool CodeGenContext::hasNoPrivateToGenericCast() const
     {
         return false;
     }
