@@ -330,15 +330,18 @@ void G4_BB::emitInstructionSourceLineMapping(std::ostream& output, INST_LIST_ITE
 
     if (emitLineNo)
     {
-        output << "\n// Line " << curSrcLineNo << ":\t";
+        output << "\n// Line " << curSrcLineNo;
         if (curFilename)
         {
-            std::string curLine = parent->getKernel()->getDebugSrcLine(std::string(curFilename), curSrcLineNo);
-            auto isNotSpace = [](int ch) { return !std::isspace(ch); };
-            curLine.erase(curLine.begin(), std::find_if(curLine.begin(), curLine.end(), isNotSpace));
-            curLine.erase(std::find_if(curLine.rbegin(), curLine.rend(), isNotSpace).base(), curLine.end());
-            output << curLine << "\n";
+            std::string curLine = parent->getKernel()->getDebugSrcLine(curFilename, curSrcLineNo);
+            if (!curLine.empty()) {
+                auto isNotSpace = [](int ch) { return !std::isspace(ch); };
+                curLine.erase(curLine.begin(), std::find_if(curLine.begin(), curLine.end(), isNotSpace));
+                curLine.erase(std::find_if(curLine.rbegin(), curLine.rend(), isNotSpace).base(), curLine.end());
+                output << ":  " << curLine;
+            }
         }
+        output << "\n";
     }
 
     if (emitFile)
