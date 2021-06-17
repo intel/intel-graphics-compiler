@@ -710,6 +710,10 @@ inline static unsigned short getOccupiedBundle(IR_Builder& builder, GlobalRA& gr
         LocalLiveRange* lr = gra.getLocalLR(conflict.dcl);
         int  subregnum;
         G4_VarBase* preg = lr->getPhyReg(subregnum);
+        if (preg == NULL)
+        {
+            preg = lr->getTopDcl()->getRegVar()->getPhyReg();
+        }
 
         if (preg != NULL)
         {
@@ -884,7 +888,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
             {
                 BankAlign preferBank = BankAlign::Either;
                 unsigned short occupiedBundles = getOccupiedBundle(builder, gra, dcl, preferBank);
-
                 nrows = phyRegMgr.findFreeRegs(sizeInWords, assignAlign,
                     subAlign, regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false, emptyForbidden, false, 0);
             }
