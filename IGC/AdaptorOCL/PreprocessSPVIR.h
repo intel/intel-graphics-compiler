@@ -34,6 +34,7 @@ namespace IGC
         virtual bool runOnModule(llvm::Module& F) override;
         void visitCallInst(llvm::CallInst& CI);
         void visitImageSampleExplicitLod(llvm::CallInst& CI);
+        void visitOpenCLEISPrintf(llvm::CallInst& CI);
     private:
         llvm::Value* getWidenImageCoordsArg(llvm::Value* Coords);
         void createCallAndReplace(llvm::CallInst& oldCallInst, llvm::StringRef newFuncName, std::vector<llvm::Value*>& args);

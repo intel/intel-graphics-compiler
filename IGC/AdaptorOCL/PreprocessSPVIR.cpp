@@ -241,6 +241,24 @@ void PreprocessSPVIR::visitImageSampleExplicitLod(CallInst& CI)
     m_changed = true;
 }
 
+// Replace functions like:
+//  i32 @_Z18__spirv_ocl_printfPU3AS2c(i8 addrspace(2)*)
+//  i32 @_Z18__spirv_ocl_printfPU3AS2ci(i8 addrspace(2)*, i32)
+// With:
+//  i32 @printf(i8 addrspace(2)*, ...)
+//
+// Khronos SPV-IR represents printf function as a non-variadic one. Since
+// IGC supports clang-consistent representation of printf (which is unmangled,
+// variadic function), all printf calls must get replaced.
+void PreprocessSPVIR::visitOpenCLEISPrintf(llvm::CallInst& CI)
+{
+    FunctionType* FT = FunctionType::get(CI.getType(), Type::getInt8PtrTy(m_Module->getContext(), 2), true);
+    FunctionCallee newPrintf = m_Module->getOrInsertFunction("printf", FT);
+    CI.setCalledFunction(newPrintf);
+
+    m_changed = true;
+}
+
 bool PreprocessSPVIR::isSPVIR(StringRef funcName)
 {
     std::regex patternRegular("_Z[0-9]+__spirv_[A-Z].*");
@@ -262,6 +280,10 @@ void PreprocessSPVIR::visitCallInst(CallInst& CI)
     if (Name.contains("ImageSampleExplicitLod"))
     {
         visitImageSampleExplicitLod(CI);
+    }
+    else if (Name.contains("printf"))
+    {
+        visitOpenCLEISPrintf(CI);
     }
 }
 
