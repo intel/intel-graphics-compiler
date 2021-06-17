@@ -12,7 +12,7 @@ Subject: [PATCH 2/6] Add SPIRVDLL and VCExport
  create mode 100755 lib/SPIRV/VCExport.h
 
 diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
-index 0000000..0000000 100644
+index 00000000..00000000 100644
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
 @@ -1,4 +1,5 @@
@@ -80,7 +80,7 @@ index 0000000..0000000 100644
 +)
 diff --git a/lib/SPIRV/VCExport.cpp b/lib/SPIRV/VCExport.cpp
 new file mode 100755
-index 0000000..0000000
+index 00000000..00000000
 --- /dev/null
 +++ b/lib/SPIRV/VCExport.cpp
 @@ -0,0 +1,89 @@
@@ -175,7 +175,7 @@ index 0000000..0000000
 +}
 diff --git a/lib/SPIRV/VCExport.h b/lib/SPIRV/VCExport.h
 new file mode 100755
-index 0000000..0000000
+index 00000000..00000000
 --- /dev/null
 +++ b/lib/SPIRV/VCExport.h
 @@ -0,0 +1,28 @@
@@ -208,5 +208,5 @@ index 0000000..0000000
 +
 +#endif // SPIRV_VCEXPORT_H
 -- 
-2.17.1
+2.31.0
 

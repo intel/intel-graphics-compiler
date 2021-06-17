@@ -9,7 +9,7 @@ Subject: [PATCH 6/6] Add specialization constant support to VC backend
  2 files changed, 15 insertions(+), 4 deletions(-)
 
 diff --git a/lib/SPIRV/VCExport.cpp b/lib/SPIRV/VCExport.cpp
-index 0000000..0000000 100755
+index 00000000..00000000 100755
 --- a/lib/SPIRV/VCExport.cpp
 +++ b/lib/SPIRV/VCExport.cpp
 @@ -22,16 +22,25 @@
@@ -51,7 +51,7 @@ index 0000000..0000000 100755
      bool Status = llvm::readSpirv(Context, Opts, IS, SpirM, ErrMsg);
      if (!Status) {
 diff --git a/lib/SPIRV/VCExport.h b/lib/SPIRV/VCExport.h
-index 0000000..0000000 100755
+index 00000000..00000000 100755
 --- a/lib/SPIRV/VCExport.h
 +++ b/lib/SPIRV/VCExport.h
 @@ -20,7 +20,8 @@
@@ -65,5 +65,5 @@ index 0000000..0000000 100755
      void *OutUserData, void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
      void *ErrUserData);
 -- 
-2.17.1
+2.31.0
 

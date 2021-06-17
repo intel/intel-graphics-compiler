@@ -8,7 +8,7 @@ Subject: [PATCH 4/6] Simplify VCExport opts
  1 file changed, 1 insertion(+), 18 deletions(-)
 
 diff --git a/lib/SPIRV/VCExport.cpp b/lib/SPIRV/VCExport.cpp
-index 0000000..0000000 100755
+index 00000000..00000000 100755
 --- a/lib/SPIRV/VCExport.cpp
 +++ b/lib/SPIRV/VCExport.cpp
 @@ -23,24 +23,7 @@
@@ -38,5 +38,5 @@ index 0000000..0000000 100755
    Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
    return Opts;
 -- 
-2.17.1
+2.31.0
 

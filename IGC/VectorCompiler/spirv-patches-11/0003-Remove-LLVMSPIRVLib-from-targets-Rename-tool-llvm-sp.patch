@@ -11,7 +11,7 @@ Subject: [PATCH 3/6] Remove LLVMSPIRVLib from targets Rename tool llvm-spirv
  3 files changed, 2 insertions(+), 41 deletions(-)
 
 diff --git a/lib/SPIRV/CMakeLists.txt b/lib/SPIRV/CMakeLists.txt
-index 0000000..0000000 100755
+index 00000000..00000000 100755
 --- a/lib/SPIRV/CMakeLists.txt
 +++ b/lib/SPIRV/CMakeLists.txt
 @@ -38,20 +38,6 @@ set(SPIRV_SOURCES
@@ -52,10 +52,10 @@ index 0000000..0000000 100755
    PRIVATE
      ${LLVM_INCLUDE_DIRS}
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 0000000..0000000 100644
+index 00000000..00000000 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
-@@ -66,14 +66,6 @@ if(NOT LLVM_SPIRV_BUILD_EXTERNAL)
+@@ -76,14 +76,6 @@ if(NOT LLVM_SPIRV_BUILD_EXTERNAL)
  endif(NOT LLVM_SPIRV_BUILD_EXTERNAL)
  
  
@@ -70,7 +70,7 @@ index 0000000..0000000 100644
  
  # to enable a custom test target on cmake below 3.11
  # starting with 3.11 "test" is only reserved if ENABLE_TESTING(ON)
-@@ -82,9 +74,5 @@ if(LLVM_SPIRV_BUILD_EXTERNAL)
+@@ -92,9 +84,5 @@ if(LLVM_SPIRV_BUILD_EXTERNAL)
    if(POLICY CMP0037 AND ${CMAKE_VERSION} VERSION_LESS "3.11.0")
      cmake_policy(SET CMP0037 OLD)
    endif(POLICY CMP0037 AND ${CMAKE_VERSION} VERSION_LESS "3.11.0")
@@ -81,7 +81,7 @@ index 0000000..0000000 100644
    cmake_policy(POP)
  endif(LLVM_SPIRV_BUILD_EXTERNAL)
 diff --git a/tools/llvm-spirv/CMakeLists.txt b/tools/llvm-spirv/CMakeLists.txt
-index 0000000..0000000 100644
+index 00000000..00000000 100644
 --- a/tools/llvm-spirv/CMakeLists.txt
 +++ b/tools/llvm-spirv/CMakeLists.txt
 @@ -8,17 +8,13 @@ set(LLVM_LINK_COMPONENTS
@@ -105,5 +105,5 @@ index 0000000..0000000 100644
      ${LLVM_INCLUDE_DIRS}
      ${LLVM_SPIRV_INCLUDE_DIRS}
 -- 
-2.17.1
+2.31.0
 

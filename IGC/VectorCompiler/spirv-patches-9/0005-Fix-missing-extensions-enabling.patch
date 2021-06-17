@@ -8,7 +8,7 @@ Subject: [PATCH 5/6] Fix missing extensions enabling
  1 file changed, 1 insertion(+)
 
 diff --git a/lib/SPIRV/VCExport.cpp b/lib/SPIRV/VCExport.cpp
-index 0000000..0000000 100755
+index 00000000..00000000 100755
 --- a/lib/SPIRV/VCExport.cpp
 +++ b/lib/SPIRV/VCExport.cpp
 @@ -24,6 +24,7 @@
@@ -20,5 +20,5 @@ index 0000000..0000000 100755
    Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
    return Opts;
 -- 
-2.17.1
+2.31.0
 
