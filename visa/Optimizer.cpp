@@ -9517,6 +9517,12 @@ bool MadSequenceInfo::checkMadSequence()
         if (!src0 || !src1 || !src2)
             return false;
 
+        if (builder.noDFTypeMac()) {
+            if (IS_DFTYPE(src0->getType()) || IS_DFTYPE(src1->getType()) || IS_DFTYPE(src2->getType()) ||
+                IS_DFTYPE(inst->getDst()->getType()))
+                return false;
+        }
+
         if (IS_FTYPE(src0->getType()) && IS_FTYPE(src1->getType()) &&
             IS_FTYPE(src2->getType()))
         {

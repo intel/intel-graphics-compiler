@@ -96,6 +96,11 @@ SPDX-License-Identifier: MIT
         return getOption(vISA_noSrc1Byte) || getPlatform() >= GENX_ICLLP;
     }
 
+    bool noDFTypeMac() const
+    {
+        return false;
+    }
+
     bool needsFenceCommitEnable() const
     {
         if (m_options->getTarget() == VISA_CM)

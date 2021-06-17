@@ -682,7 +682,18 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
         G4_SrcRegRegion* accSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct,
             accReg, (short)accNum, 0, builder.getRegionStride1(), dst->getType());
         accSrc->setAccRegSel(oldSrc->getAccRegSel());
-        if (useInst->opcode() == G4_mad && srcId == 0 && !builder.canMadHaveSrc0Acc())
+
+        bool canReplaceToMac = useInst->opcode() == G4_mad && srcId == 0 && !builder.canMadHaveSrc0Acc();
+        if (canReplaceToMac && builder.noDFTypeMac()) {
+            // dst and all src cannot be DF
+            if ((useInst->getDst() && IS_DFTYPE(useInst->getDst()->getType())) ||
+                (useInst->getSrc(0) && IS_DFTYPE(useInst->getSrc(0)->getType())) ||
+                (useInst->getSrc(1) && IS_DFTYPE(useInst->getSrc(1)->getType())) ||
+                (useInst->getSrc(2) && IS_DFTYPE(useInst->getSrc(2)->getType())))
+                canReplaceToMac = false;
+        }
+
+        if (canReplaceToMac)
         {
             // change mad to mac as src0 of 3-src does not support acc
             auto updateDefSrcPos = [](G4_INST* useInst, Gen4_Operand_Number origPos)
