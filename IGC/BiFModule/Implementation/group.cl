@@ -1956,22 +1956,18 @@ type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                   
     else                                                                                                \
     {                                                                                                   \
         uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                       \
-        uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(sgsize - 1)) - 1 );     \
-        while( mask > 0 )                                                                               \
-        {                                                                                               \
-            uint c = sglid ^ mask;                                                                      \
-            type other = ( c < sgsize ) ?                                                               \
-                            intel_sub_group_shuffle( X, c ):                                            \
-                            identity;                                                                   \
-            X = op( other, X );                                                                         \
-            mask >>= 1;                                                                                 \
+        uint sgMaxSize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                             \
+                                                                                                        \
+        for (uint i = 1; i < sgMaxSize; i <<= 1) {                                                      \
+            type contribution = (sglid < i) ? identity :                                                \
+                                              intel_sub_group_shuffle_up((type)identity, X, i);         \
+            X = op(X, contribution);                                                                    \
         }                                                                                               \
     }                                                                                                   \
     int3 vec3;                                                                                          \
     vec3.s0 = 0;                                                                                        \
     return SPIRV_BUILTIN(GroupBroadcast, _i32_##type_abbr##_v3i32, )(Subgroup, signed_cast(X), vec3 );  \
 }
-
 
 #define DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                    \
 type __builtin_IB_SubGroupScanInclusive_##func##_##type_abbr(type X)                     \
