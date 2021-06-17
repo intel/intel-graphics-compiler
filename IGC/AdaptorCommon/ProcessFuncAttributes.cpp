@@ -631,6 +631,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     pCtx->m_enableFunctionPointer = true;
                     F->addFnAttr("referenced-indirectly");
                     F->addFnAttr("visaStackCall");
+                    F->setLinkage(GlobalValue::ExternalLinkage);
                 }
             }
         }
