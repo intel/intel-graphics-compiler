@@ -52,7 +52,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorOCL/SPIRV/libSPIRV/SPIRVModule.h"
 #include "AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.h"
-#if defined(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
 #include "LLVMSPIRVLib.h"
 #endif
 #endif
@@ -407,7 +407,7 @@ bool TranslateSPIRVToLLVM(
         InputArgs.pSpecConstantsValues,
         InputArgs.SpecConstantsSize);
 
-#if defined(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     // Set SPIRV-LLVM-Translator translation options
     SPIRV::TranslatorOpts Opts;
     Opts.enableGenArgNameMD();
@@ -774,7 +774,7 @@ bool ParseInput(
 #if defined(IGC_SPIRV_ENABLED)
 bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo)
 {
-#if defined(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     // Parse SPIRV Module and add all decorated specialization constants to OutSCInfo vector
     // as a pair of <spec-const-id, spec-const-size-in-bytes>. It's crucial for OCL Runtime to
     // properly validate clSetProgramSpecializationConstant API call.
