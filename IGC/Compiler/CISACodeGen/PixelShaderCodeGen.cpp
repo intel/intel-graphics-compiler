@@ -519,9 +519,6 @@ CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
             {
                 inputVar = GetNewVariable(8, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
                 setup[index + 1] = GetNewAlias(inputVar, ISA_TYPE_F, 16, 4);
-                // attribute packing
-                m_SetupIndicesUsed.insert(index + 1);
-                m_MaxSetupIndex = std::max(index + 1, m_MaxSetupIndex);
             }
             else
             {
@@ -533,9 +530,6 @@ CVariable* CPixelShader::GetInputDelta(uint index, bool loweredInput)
             inputVar = GetNewVariable(4, ISA_TYPE_F, EALIGN_OWORD, true, CName::NONE);
         }
         setup[index] = inputVar;
-        // attribute packing
-        m_SetupIndicesUsed.insert(index);
-        m_MaxSetupIndex = std::max(index, m_MaxSetupIndex);
     }
     return inputVar;
 }
@@ -950,6 +944,7 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
     }
     if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(inst))
     {
+        uint setupIndex;
         switch (genIntr->getIntrinsicID())
         {
         case GenISAIntrinsic::GenISA_RenderTargetRead:
@@ -986,7 +981,7 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
         {
             IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(0)));
             IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(1)));
-            uint setupIndex = int_cast<uint>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
+            setupIndex = int_cast<uint>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
             m_MaxSetupIndex = std::max(setupIndex, m_MaxSetupIndex);
             // attribute packing
             m_SetupIndicesUsed.insert(setupIndex);
@@ -1012,6 +1007,13 @@ void CPixelShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
         case GenISAIntrinsic::GenISA_PullSnappedBarys:
         case GenISAIntrinsic::GenISA_PullCentroidBarys:
             m_HasPullBary = true;
+            break;
+        case GenISAIntrinsic::GenISA_Interpolate:
+            IGC_ASSERT(llvm::isa<llvm::ConstantInt>(inst->getOperand(0)));
+            setupIndex = int_cast<uint>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
+            m_MaxSetupIndex = std::max(setupIndex, m_MaxSetupIndex);
+            // attribute packing
+            m_SetupIndicesUsed.insert(setupIndex);
             break;
         default:
             break;
