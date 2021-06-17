@@ -168,12 +168,25 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
         return false;
     }
 
-    Type* eltTy = cast<VectorType>(I.getType())->getElementType();
+    Type* eltTy = NULL;
+    bool isFloatType = false;
+
+    if (I.getType()->isVectorTy())
+    {
+        eltTy = cast<VectorType>(I.getType())->getElementType();
+        isFloatType = cast<VectorType>(I.getType())->getElementType()->isFloatTy();
+    }
+    else
+    {
+        eltTy = I.getType();
+        isFloatType = I.getType()->isFloatTy();
+    }
+
     Type* newDstType = nullptr;
     if (eltTy->isFloatingPointTy())
     {
         // check that all uses are extractelement followed by fpext
-        newDstType = cast<VectorType>(I.getType())->getElementType()->isFloatTy() ?
+        newDstType = isFloatType ?
             m_builder->getHalfTy() : m_builder->getFloatTy();
         for (auto use = I.user_begin(); use != I.user_end(); ++use)
         {
@@ -236,9 +249,15 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
         return false;
     }
 
-    VectorType* oldTy = cast<VectorType>(I.getType());
+    unsigned int numberOfElements = 1;
+
+    if (I.getType()->isVectorTy())
+    {
+        numberOfElements = int_cast<unsigned int>(cast<VectorType>(I.getType())->getNumElements());
+    }
+
     llvm::SmallVector<llvm::Type*, 4> overloadTys;
-    auto retTy = IGCLLVM::FixedVectorType::get(newDstType, int_cast<unsigned int>(oldTy->getNumElements()));
+    auto retTy = IGCLLVM::FixedVectorType::get(newDstType, numberOfElements);
     overloadTys.push_back(retTy);
     auto ID = I.getIntrinsicID();
     switch (ID)
