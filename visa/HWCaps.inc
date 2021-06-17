@@ -678,7 +678,7 @@ SPDX-License-Identifier: MIT
 
     bool hasSrc2Acc() const
     {
-        return false;
+        return getOption(vISA_src2AccSub);
     }
 
     bool hasHFMathGRFAlign() const
