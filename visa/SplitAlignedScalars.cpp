@@ -22,7 +22,8 @@ bool SplitAlignedScalars::canReplaceDst(G4_INST* inst)
         inst->isMath() ||
         inst->isArithmetic() ||
         inst->isLogic() ||
-        inst->isCompare())
+        inst->isCompare() ||
+        inst->isPseudoKill())
     {
         return true;
     }
@@ -42,7 +43,8 @@ bool SplitAlignedScalars::canReplaceSrc(G4_INST* inst, unsigned int idx)
         inst->isArithmetic() ||
         inst->isLogic() ||
         inst->isCompare() ||
-        opcode == G4_mad)
+        opcode == G4_mad ||
+        inst->isPseudoUse())
     {
         return true;
     }
@@ -238,6 +240,7 @@ void SplitAlignedScalars::run()
         {
             auto newInstIt = instIt;
             auto inst = (*instIt);
+
             auto dst = inst->getDst();
             if (dst &&
                 oldNewDcls.find(dst->getTopDcl()) != oldNewDcls.end())
