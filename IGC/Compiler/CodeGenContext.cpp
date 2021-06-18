@@ -533,7 +533,7 @@ namespace IGC
 
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
-        return m_InternalOptions.IntelForceGlobalMemoryAllocation;
+        return m_Options.ForceGlobalMemoryAllocation;
     }
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
@@ -543,7 +543,7 @@ namespace IGC
 
     bool OpenCLProgramContext::hasNoLocalToGenericCast() const
     {
-        return m_InternalOptions.hasNoLocalToGeneric || getModuleMetaData()->hasNoLocalToGenericCast;
+        return m_Options.HasNoLocalToGeneric || getModuleMetaData()->hasNoLocalToGenericCast;
     }
 
     bool OpenCLProgramContext::hasNoPrivateToGenericCast() const

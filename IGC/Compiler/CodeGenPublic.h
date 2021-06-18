@@ -1362,14 +1362,6 @@ namespace IGC
                 {
                     UseBindlessLegacyMode = true;
                 }
-                if (strstr(options, "-intel-force-global-mem-allocation"))
-                {
-                    IntelForceGlobalMemoryAllocation = true;
-                }
-                if (strstr(options, "-intel-no-local-to-generic"))
-                {
-                    hasNoLocalToGeneric = true;
-                }
                 if (const char* O = strstr(options, "-intel-vector-coalesing"))
                 {
                     // -cl-intel-vector-coalescing=<0-5>.
@@ -1426,8 +1418,6 @@ namespace IGC
             bool UseBindlessMode = false;
             bool UseBindlessPrintf = false;
             bool UseBindlessLegacyMode = false;
-            bool IntelForceGlobalMemoryAllocation = false;
-            bool hasNoLocalToGeneric = false;
             bool EnableZEBinary = false;
             bool NoSpill = false;
 
@@ -1480,6 +1470,14 @@ namespace IGC
                 {
                     IsLibraryCompilation = true;
                 }
+                if (strstr(options, "-no-local-to-generic"))
+                {
+                    HasNoLocalToGeneric = true;
+                }
+                if (strstr(options, "-force-global-mem-allocation"))
+                {
+                    ForceGlobalMemoryAllocation = true;
+                }
 
                 // GTPin flags used by L0 driver runtime
                 if (strstr(options, "-gtpin-rera"))
@@ -1507,6 +1505,8 @@ namespace IGC
             bool UniformWGS;
             bool EnableTakeGlobalAddress = false;
             bool IsLibraryCompilation = false;
+            bool HasNoLocalToGeneric = false;
+            bool ForceGlobalMemoryAllocation = false;
             bool GTPinReRA = false;
             bool GTPinGRFInfo = false;
             bool GTPinScratchAreaSize = false;
