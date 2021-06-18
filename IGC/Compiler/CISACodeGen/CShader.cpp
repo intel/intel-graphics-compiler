@@ -3309,9 +3309,7 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 
 uint32_t CShader::GetShaderThreadUsageRate()
 {
-    uint32_t grfNum = GRF_TOTAL_NUM;
-
-    return grfNum / GRF_TOTAL_NUM;
+    return 1;
 }
 
 CShader* CShaderProgram::GetShader(SIMDMode simd, ShaderDispatchMode mode)
