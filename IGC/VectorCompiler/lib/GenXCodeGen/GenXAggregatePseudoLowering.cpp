@@ -190,8 +190,7 @@ static Instruction *getInsertionPtForSplitOp(Use &Op, Instruction &Inst) {
   auto &OpVal = *Op.get();
   if (isa<Instruction>(OpVal))
     return getFirstInsertionPtAfter(cast<Instruction>(OpVal));
-  IGC_ASSERT_MESSAGE(isa<Constant>(OpVal) || isa<Argument>(OpVal),
-    "only instruction, constant or argument are expected");
+  IGC_ASSERT_MESSAGE(isa<Constant>(OpVal), "only instruction or constant are expected");
   return getFirstInsertionPtBefore(Op, Inst);
 }
 
@@ -320,20 +319,9 @@ public:
     auto *GEP = IRB.CreateInBoundsGEP(OrigLoad.getPointerOperand(),
                                       {IRB.getInt32(0), IRB.getInt32(Idx)},
                                       OrigLoad.getName() + "aggr.gep");
-    // FIXME: replace a structure alignment with an element alignment
     return IRB.CreateAlignedLoad(GEP, IGCLLVM::getAlign(OrigLoad),
                                  OrigLoad.isVolatile(),
                                  OrigLoad.getName() + ".split.aggr");
-  }
-
-  Instruction *visitStoreInst(StoreInst &OrigStore) const {
-    IRBuilder<> IRB{&OrigStore};
-    auto *GEP = IRB.CreateInBoundsGEP(OrigStore.getPointerOperand(),
-                                      {IRB.getInt32(0), IRB.getInt32(Idx)},
-                                      OrigStore.getName() + "aggr.gep");
-    // FIXME: replace a structure alignment with an element alignment
-    return IRB.CreateAlignedStore(NewOps[0], GEP, IGCLLVM::getAlign(OrigStore),
-                                  OrigStore.isVolatile());
   }
 };
 
@@ -352,25 +340,6 @@ static Instruction *createSplitInst(Instruction &Inst,
 
 // Arguments:
 //    \p Inst - original instruction
-//
-// Returns the aggregate's elements number.
-// An aggregate can be an operand or a return value.
-static int getAggregateElementsNum(const Instruction &Inst) {
-  if (Inst.getType()->isAggregateType()) {
-    auto &InstTy = *cast<StructType>(Inst.getType());
-    return InstTy.getNumElements();
-  }
-  IGC_ASSERT_MESSAGE(hasAggregateOperand(Inst),
-    "expected an aggregate as either an operand, or a return value");
-  auto AggrOperandIt = llvm::find_if(Inst.operand_values(), [](const Value *V) {
-    return V->getType()->isAggregateType();
-  });
-  auto &AggrOperandTy = *cast<StructType>(AggrOperandIt->getType());
-  return AggrOperandTy.getNumElements();
-}
-
-// Arguments:
-//    \p Inst - original instruction
 //    \p SplitOps - map between original aggregate operands and corresponding
 //                  elementary operands
 //
@@ -379,8 +348,9 @@ static int getAggregateElementsNum(const Instruction &Inst) {
 static std::vector<Instruction *>
 createSplitInsts(Instruction &Inst, const SplitOpsMap &SplitOps) {
   // TODO: support ArrayType
+  auto &InstTy = *cast<StructType>(Inst.getType());
+  int NumNewInsts = InstTy.getNumElements();
   std::vector<Instruction *> NewInsts;
-  int NumNewInsts = getAggregateElementsNum(Inst);
   NewInsts.reserve(NumNewInsts);
   for (int Idx = 0; Idx < NumNewInsts; ++Idx) {
     auto NewOps = createSplitInstOperands(Idx, Inst.operands(), SplitOps);
@@ -417,11 +387,9 @@ void GenXAggregatePseudoLowering::processInst(Instruction &Inst) {
   if (hasAggregateOperand(Inst))
     NewOperands = createSplitOperands(Inst);
   auto NewInsts = createSplitInsts(Inst, NewOperands);
-  if (Inst.getType()->isAggregateType()) {
-    auto *JoinInst =
-        joinSplitInsts(NewInsts, Inst.getType(), getFirstInsertionPtAfter(Inst));
-    Inst.replaceAllUsesWith(JoinInst);
-    JoinInst->takeName(&Inst);
-  }
+  auto *JoinInst =
+      joinSplitInsts(NewInsts, Inst.getType(), getFirstInsertionPtAfter(Inst));
+  Inst.replaceAllUsesWith(JoinInst);
+  JoinInst->takeName(&Inst);
   ToErase.push_back(&Inst);
 }
