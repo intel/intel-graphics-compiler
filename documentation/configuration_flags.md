@@ -66,7 +66,7 @@ $ export IGC_ShaderDumpEnable=1
 - **UseOffsetInLocation** - Using offset in location limits variables available for a debugger all time
 - **ElfDumpEnable** - Dump ELF
 - **ElfTempDumpEnable** - Dump temporary ELF files
-- **EnableElf2ZEBinary** - Enables embed debug info in zeBinary
+- **ZeBinCompatibleDebugging** - Enables embed debug info in zeBinary
 - **EnableLivenessDump** - Enable dumping out liveness info on stderr
 - **EnableLTODebug** - Enable debug information for LTO
 - **EnableMaxWGSizeCalculation** - Enable max work group size calculation [OCL only]

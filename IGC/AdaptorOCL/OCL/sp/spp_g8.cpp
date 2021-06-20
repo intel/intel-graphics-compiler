@@ -456,7 +456,7 @@ void CGen8OpenCLProgram::GetZEBinary(
             if (isValidShader(simd8Shader))
                 kernelVec.push_back(simd8Shader);
 
-            if (IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary))
+            if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging))
             {
                 IGC_ASSERT_MESSAGE(false, "Missing ELF linking support for multiple SIMD modes");
             }
@@ -496,7 +496,7 @@ void CGen8OpenCLProgram::GetZEBinary(
 
             // ... Create the debug data binary streams
 
-            if (IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary))
+            if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging))
             {
                 const unsigned int rsrvdForAllButFullName = 64;  // characters will be used for temporary ELF file names.
                 unsigned int spaceAvailableForKernelName = maxElfFileNameLength - rsrvdForAllButFullName - tempDir.size();
@@ -573,7 +573,7 @@ void CGen8OpenCLProgram::GetZEBinary(
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableElf2ZEBinary))
+    if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging))
     {
         if (!elfTmpFilesError)
         {

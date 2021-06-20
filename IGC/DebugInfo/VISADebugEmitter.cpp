@@ -337,14 +337,14 @@ std::vector<char> DebugEmitter::Finalize(bool finalize, DbgDecoder* decodedDbg,
         phtSize = sizeof(llvm::ELF::Elf64_Phdr);
 
     unsigned int kernelNameSizeWithDot = 0;
-    if (m_pStreamEmitter->GetEmitterSettings().EnableElf2ZEBinary)
+    if (m_pStreamEmitter->GetEmitterSettings().ZeBinCompatible)
     {
         kernelNameSizeWithDot = sizeof('.') + pFunc->getName().size();
     }
     size_t elfWithProgramHeaderSize = m_str.size() + phtSize + kernelNameSizeWithDot;
     std::vector<char> Result(elfWithProgramHeaderSize);
 
-    if (!m_pStreamEmitter->GetEmitterSettings().EnableElf2ZEBinary)
+    if (!m_pStreamEmitter->GetEmitterSettings().ZeBinCompatible)
     {
         // Text section remains with its standard name .text
         std::copy(m_str.begin(), m_str.end(), Result.begin());
