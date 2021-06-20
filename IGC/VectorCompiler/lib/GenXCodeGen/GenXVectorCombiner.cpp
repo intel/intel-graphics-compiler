@@ -343,6 +343,7 @@ void GenXVectorCombiner::createNewInstruction(
     return;
   }
   Instruction *NewInst = vc::cloneInstWithNewOps(*Operation, Vals);
+  IGC_ASSERT(NewInst);
   NewInst->insertBefore(InsteadOf);
   NewInst->setDebugLoc(InsteadOf->getDebugLoc());
   NewInst->takeName(Operation);

@@ -3392,6 +3392,7 @@ bool GenXPatternMatch::extendMask(BinaryOperator *BO) {
       Builder.CreateBitCast(BO->getOperand(1), NewTy, Name + ".extend.mask.op");
 
   Instruction *NewInst = vc::cloneInstWithNewOps(*BO, {Op0, Op1});
+  IGC_ASSERT(NewInst);
   NewInst->insertBefore(BO);
   NewInst->takeName(BO);
 
