@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/Regex.h>
 #include <llvm/Analysis/CallGraph.h>
 #include "llvm/ADT/SCCIterator.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -284,7 +285,8 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 || F->getName().startswith("__builtin_")
                 || F->getName().startswith("__igcbuiltin_")
                 || F->getName().startswith("llvm.")
-                || F->getName().equals("printf"));
+                || F->getName().equals("printf")
+                || Regex("^_Z[0-9]+__spirv_").match(F->getName()));
         }
         return false;
     };
