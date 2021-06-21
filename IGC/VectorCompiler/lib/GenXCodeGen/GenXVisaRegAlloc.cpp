@@ -385,20 +385,21 @@ void GenXVisaRegAlloc::getLiveRangesForValue(
   }
 }
 
-// Coalesce surface registers to avoid state registers limit violation.
+// Coalesce state registers to avoid state registers limit violation.
 // Args:
 //    \p ToCoalesce - potential instruction to coalesce, must have surface
-//                    category.
-//    \p CommonLR - single LR used for constant surfaces, equals null if not
-//                  yet selected.
+//                    or sampler category.
+//    \p CommonLR - single LR used for constant state of given type, equals
+//                  null if not yet selected.
 //    \p Liveness - GenX liveness analysis.
 // Returns old common LR value if \p ToCoalesce wasn't coalesced, updated common
 // LR value otherwise.
-static LiveRange *coalesceConstSurface(Instruction &ToCoalesce,
-                                       LiveRange *CommonLR,
-                                       GenXLiveness &Liveness) {
+static LiveRange *coalesceConstState(Instruction &ToCoalesce,
+                                     LiveRange *CommonLR,
+                                     GenXLiveness &Liveness) {
   auto *LR = Liveness.getLiveRange(&ToCoalesce);
-  IGC_ASSERT_MESSAGE(LR->Category == RegCategory::SURFACE,
+  IGC_ASSERT_MESSAGE(LR->Category == RegCategory::SURFACE ||
+                         LR->Category == RegCategory::SAMPLER,
                      "wrong argument: ToCoalesce should have surface category");
   auto IID = GenXIntrinsic::getGenXIntrinsicID(&ToCoalesce);
   if (IID != GenXIntrinsic::genx_convert &&
@@ -430,6 +431,7 @@ static LiveRange *coalesceConstSurface(Instruction &ToCoalesce,
 void GenXVisaRegAlloc::extraCoalescing()
 {
   LiveRange *CommonSurface = nullptr;
+  LiveRange *CommonSampler = nullptr;
   for (auto fgi = FG->begin(), fge = FG->end(); fgi != fge; ++fgi) {
     Function *F = *fgi;
     for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
@@ -444,7 +446,11 @@ void GenXVisaRegAlloc::extraCoalescing()
         if (!LR)
           continue;
         if (LR->Category == RegCategory::SURFACE) {
-          CommonSurface = coalesceConstSurface(*Inst, CommonSurface, *Liveness);
+          CommonSurface = coalesceConstState(*Inst, CommonSurface, *Liveness);
+          continue;
+        }
+        if (LR->Category == RegCategory::SAMPLER) {
+          CommonSampler = coalesceConstState(*Inst, CommonSampler, *Liveness);
           continue;
         }
         if (LR->Category != RegCategory::GENERAL)
