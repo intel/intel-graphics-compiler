@@ -3649,6 +3649,15 @@ void FlowGraph::findNestedDivergentBBs(std::unordered_map<G4_BB*, int>& nestedDi
         assert((!cfs.isInDivergentBranch()) &&
                "ICE(vISA): there is an error in divergence tracking!");
     }
+
+    for (auto MI : nestedDivergentBBs)
+    {
+        G4_BB* bb = MI.first;
+        if (MI.second >= 2)
+        {
+            bb->setBBType(G4_BB_NM_WA_TYPE);
+        }
+    }
     return;
 }
 
@@ -3709,9 +3718,9 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     unsigned i = 0;
     for (auto callSite : callSites)
     {
-        const char* nameBase = "VCA_SAVE";
+        const char* nameBase = "VCA_SAVE";  // sizeof(nameBase) = 9, including ending 0
         const int maxIdLen = 3;
-        const char* name = builder.getNameString(mem, strlen(nameBase) + maxIdLen + 1, "%s_%d", nameBase, i);
+        const char* name = builder.getNameString(mem, sizeof(nameBase) + maxIdLen, "%s_%d", nameBase, i);
         G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, numEltPerGRF<Type_UD>(), builder.kernel.getCallerSaveLastGRF(), Type_UD);
         name = builder.getNameString(mem, 50, "SA0_%d", i);
         G4_Declare* saveA0 = builder.createDeclareNoLookup(name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);

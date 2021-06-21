@@ -1462,6 +1462,8 @@ const char* G4_BB::getBBTypeStr() const
         return "INIT";
     case G4_BB_EXIT_TYPE:
         return "EXIT";
+    case G4_BB_NM_WA_TYPE:
+        return "NoMaskWA";
     }
     return " ";
 }

@@ -24,7 +24,7 @@ typedef BB_LIST::const_iterator           BB_LIST_CITER;
 typedef BB_LIST::reverse_iterator         BB_LIST_RITER;
 
 //
-// Block types (relevant for inter-procedural analysis).
+// Block types
 //
 enum G4_BB_TYPE
 {
@@ -32,7 +32,8 @@ enum G4_BB_TYPE
     G4_BB_CALL_TYPE   = 0x01,
     G4_BB_RETURN_TYPE = 0x02,
     G4_BB_INIT_TYPE   = 0x04,
-    G4_BB_EXIT_TYPE   = 0x08
+    G4_BB_EXIT_TYPE   = 0x08,
+    G4_BB_NM_WA_TYPE  = 0x10
 };
 
 class FuncInfo;
