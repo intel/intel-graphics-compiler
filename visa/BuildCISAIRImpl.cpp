@@ -449,6 +449,63 @@ void restoreFCallState(
     }
 }
 
+static void TransformToSubroutineCalls(
+    G4_Kernel* mainFunc, std::map<std::string, G4_Kernel*>& subFuncs)
+{
+    // append instructions from callee to caller
+    for (auto& [name, func]: subFuncs) {
+        auto& i1 = mainFunc->fg.builder->instList;
+        auto i2 = func->fg.builder->instList;
+        i1.insert(i1.end(), i2.begin(), i2.end());
+    }
+
+    auto builder = mainFunc->fg.builder;
+    // Change fcall to call
+    for (G4_INST* fcall : builder->instList)
+    {
+        if (fcall->opcode() != G4_pseudo_fcall)
+            continue;
+        if (!fcall->asCFInst()->isIndirectCall())
+        {
+            // direct call
+            std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+
+            auto iter = subFuncs.find(funcName);
+            assert(iter != subFuncs.end() && "can't find function with given name");
+            G4_Kernel* callee = iter->second;
+
+            G4_INST* calleeLabel = *callee->fg.builder->instList.begin();
+            ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
+
+            fcall->setOpcode(G4_call);
+            fcall->setSrc(calleeLabel->getSrc(0), 0);
+        }
+        else
+        {
+            assert(0 && "Not supported yet for indirect calls");
+        }
+    }
+
+    // Change fret to ret
+    for (G4_INST* fret : builder->instList)
+    {
+        if (fret->opcode() != G4_pseudo_fret)
+            continue;
+        fret->setOpcode(G4_return);
+    }
+
+    // Append declarations from callee to caller
+    for (auto iter : subFuncs)
+    {
+        G4_Kernel* callee = iter.second;
+        for (auto curDcl : callee->Declares)
+        {
+            mainFunc->Declares.push_back(curDcl);
+        }
+    }
+
+}
+
 // Stitch the FG of subFunctions to mainFunc
 // mainFunc could be a kernel or a non-kernel function.
 // It also modifies pseudo_fcall/fret in to call/ret opcodes.
@@ -740,6 +797,51 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     {
         return m_cisaBinary->dumpToStream(os);
     }
+
+    if (m_options.getOption(vISA_Linker))
+    {
+        VISAKernelImpl::VISAKernelImplListTy mainFunctions;
+        std::map<std::string, G4_Kernel*> subFunctionsNameMap;
+        // For functions those will be stitch to others, create table to map their name to G4_Kernel
+        std::list<VISAKernelImpl*>::iterator i = m_kernelsAndFunctions.begin();
+        while (i != m_kernelsAndFunctions.end())
+        {
+            auto func = *i;
+            if (func->getIsKernel()) {
+                // kernels must be stitched
+                mainFunctions.push_back(func);
+                ++i;
+            } else {
+                if (!m_options.getOption(vISA_noStitchExternFunc)) {
+                    // Policy 1: all functions will stitch to kernels
+                    subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
+                    m_kernelsAndFunctions.erase(i++);
+                } else {
+                    // Policy 2: external functions will be stitched, non-external functions will stitch to others
+                    if (func->getKernel()->getBoolKernelAttr(Attributes::ATTR_Extern))
+                    {
+                        mainFunctions.push_back(func);
+                        ++i;
+                    }
+                    else
+                    {
+                        subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
+                        m_kernelsAndFunctions.erase(i++);
+                    }
+                }
+            }
+        }
+
+        // Copy callees' context to callers and convert to subroutine calls
+        for (auto func : mainFunctions)
+        {
+            G4_Kernel* mainFunc = func->getKernel();
+            TransformToSubroutineCalls(mainFunc, subFunctionsNameMap);
+
+        }
+    }
+
+
 
     VISAKernelImpl* oldMainKernel = nullptr;
     if (IS_GEN_BOTH_PATH)

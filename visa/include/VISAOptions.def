@@ -121,6 +121,7 @@ DEF_VISA_OPTION(vISA_useInlineData,         ET_BOOL, (IGC_MANGLE("-useInlineData
 DEF_VISA_OPTION(vISA_loadThreadPayloadStartReg, ET_INT32, (IGC_MANGLE("-setStartReg")),UNUSED, 1)
 DEF_VISA_OPTION(vISA_emitCrossThreadOffR0Reloc,  ET_BOOL, "-emitCrossThreadOffR0Reloc",    UNUSED, false)
 DEF_VISA_OPTION(vISA_CodePatch,   ET_INT32, (IGC_MANGLE("-codePatch")),        UNUSED, 0)
+DEF_VISA_OPTION(vISA_Linker,      ET_BOOL, (IGC_MANGLE("-linker")),        UNUSED, false)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin,            ET_BOOL, "-noroundrobin",    UNUSED, true)
