@@ -88,18 +88,14 @@ SampledImage_t __builtin_spirv_OpSampledImage_i64_i64_i64( Image_t Image, ImageT
     return sampledImage;
 }
 
-
-
 #define INT_SAMPLE_L( INTRINSIC, TYPE, image_id, sampler_id, coordinate, lod )      \
 {                                                                                   \
     TYPE floatCoords = convert_##TYPE( (coordinate) );                              \
     return as_uint4( INTRINSIC( (image_id), (sampler_id), floatCoords, lod ) );     \
 }
 
-
-uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+uint4 __intel_sample_image_lod_icoords_Ruint4( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod )
 {
-
     Image_t image = getImage( SampledImage );
     Sampler_t sampler = getSampler( SampledImage );
 
@@ -180,8 +176,7 @@ uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64( Sa
     }
 }
 
-
-uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+uint4 __intel_sample_image_lod_fcoords_Ruint4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod )
 {
     Image_t image = getImage( SampledImage );
     Sampler_t sampler = getSampler( SampledImage );
@@ -332,15 +327,7 @@ uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( S
     }
 }
 
-
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA)
-{
-    float4 floatCoords = convert_float4( Coordinate );
-    return __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64( SampledImage, floatCoords, ImageOperands, Lod, NULL );
-}
-
-
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+float4 __intel_sample_image_lod_fcoords_Rfloat4(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod)
 {
     Image_t image = getImage( SampledImage );
     Sampler_t sampler = getSampler( SampledImage );
@@ -385,11 +372,61 @@ float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64( S
     {
         return __builtin_IB_OCL_3d_sample_l( image_id, sampler_id, snappedCoords, Lod );
     }
-
 }
 
-// Gradient overloads
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float dx, float dy, INLINEWA )
+float4 __intel_sample_image_lod_icoords_Rfloat4(SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod)
+{
+    float4 floatCoords = convert_float4( Coordinate );
+    return __intel_sample_image_lod_fcoords_Rfloat4( SampledImage, floatCoords, ImageOperands, Lod );
+}
+
+#ifdef cl_khr_fp16
+half4 __intel_sample_image_lod_icoords_Rhalf4( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod )
+{
+    return SPIRV_BUILTIN( FConvert, _v4f16_v4f32, _Rhalf4 )( __intel_sample_image_lod_icoords_Rfloat4( SampledImage, Coordinate, ImageOperands, Lod ) );
+}
+
+half4 __intel_sample_image_lod_fcoords_Rhalf4(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod)
+{
+    return SPIRV_BUILTIN( FConvert, _v4f16_v4f32, _Rhalf4 )( __intel_sample_image_lod_fcoords_Rfloat4( SampledImage, Coordinate, ImageOperands, Lod ) );
+}
+#endif //cl_khr_fp16
+
+// Lod overloads
+
+uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+{
+    return __intel_sample_image_lod_icoords_Ruint4( SampledImage, Coordinate, ImageOperands, Lod );
+}
+
+uint4  __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+{
+    return __intel_sample_image_lod_fcoords_Ruint4( SampledImage, Coordinate, ImageOperands, Lod );
+}
+
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA)
+{
+    return __intel_sample_image_lod_icoords_Rfloat4( SampledImage, Coordinate, ImageOperands, Lod );
+}
+
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+{
+    return __intel_sample_image_lod_fcoords_Rfloat4(SampledImage, Coordinate, ImageOperands, Lod);
+}
+
+#ifdef cl_khr_fp16
+half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+{
+    return __intel_sample_image_lod_icoords_Rhalf4( SampledImage, Coordinate, ImageOperands, Lod );
+}
+
+half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+{
+    return __intel_sample_image_lod_fcoords_Rhalf4( SampledImage, Coordinate, ImageOperands, Lod );
+}
+#endif //cl_khr_fp16
+
+float4 __intel_sample_image_grad_float_Rfloat4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float dx, float dy )
 {
     Image_t image = getImage( SampledImage );
     Sampler_t sampler = getSampler( SampledImage );
@@ -415,7 +452,7 @@ float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_f32_i6
     }
 }
 
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v2f32_v2f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float2 dx, float2 dy, INLINEWA )
+float4 __intel_sample_image_grad_float2_Rfloat4(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float2 dx, float2 dy)
 {
     Image_t image = getImage( SampledImage );
     Sampler_t sampler = getSampler( SampledImage );
@@ -442,7 +479,7 @@ float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v2f32_v2f3
     }
 }
 
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v4f32_v4f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float4 dx, float4 dy, INLINEWA )
+float4 __intel_sample_image_grad_float4_Rfloat4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float4 dx, float4 dy )
 {
     Image_t image = getImage( SampledImage );
     Sampler_t sampler = getSampler( SampledImage );
@@ -463,43 +500,72 @@ float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v4f32_v4f3
     }
 }
 
-float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v3f32_v3f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float3 dx, float3 dy, INLINEWA )
+float4 __intel_sample_image_grad_float3_Rfloat4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float3 dx, float3 dy )
 {
-    return __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v4f32_v4f32_i64(SampledImage, Coordinate, ImageOperands, (float4)(dx, 0.f), (float4)(dy, 0.f), NULL);
+    return __intel_sample_image_grad_float4_Rfloat4 (SampledImage, Coordinate, ImageOperands, (float4)(dx, 0.f), (float4)(dy, 0.f) );
 }
+
+uint4 __intel_sample_image_grad_float_Ruint4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float dx, float dy )
+{
+    return as_uint4(__intel_sample_image_grad_float_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy ) );
+}
+
+uint4 __intel_sample_image_grad_float2_Ruint4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float2 dx, float2 dy )
+{
+    return as_uint4(__intel_sample_image_grad_float2_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy ) );
+}
+
+uint4 __intel_sample_image_grad_float3_Ruint4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float3 dx, float3 dy )
+{
+    return as_uint4(__intel_sample_image_grad_float3_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy ) );
+}
+
+uint4 __intel_sample_image_grad_float4_Ruint4( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float4 dx, float4 dy )
+{
+    return as_uint4(__intel_sample_image_grad_float4_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy ) );
+}
+
+// Gradient overloads
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float dx, float dy, INLINEWA )
+{
+    return __intel_sample_image_grad_float_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy );
+}
+
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v2f32_v2f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float2 dx, float2 dy, INLINEWA )
+{
+    return __intel_sample_image_grad_float2_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy );
+}
+
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v3f32_v3f32_i64(SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float3 dx, float3 dy, INLINEWA)
+{
+    return __intel_sample_image_grad_float3_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy );
+}
+
+float4 __builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v4f32_v4f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float4 dx, float4 dy, INLINEWA )
+{
+    return __intel_sample_image_grad_float4_Rfloat4( SampledImage, Coordinate, ImageOperands, dx, dy );
+}
+
 
 uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_f32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float dx, float dy, INLINEWA )
 {
-    return as_uint4(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_f32_i64( SampledImage, Coordinate, ImageOperands, dx, dy, NULL ));
+    return __intel_sample_image_grad_float_Ruint4( SampledImage, Coordinate, ImageOperands, dx, dy );
 }
 
 uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_v2f32_v2f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float2 dx, float2 dy, INLINEWA )
 {
-    return as_uint4(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v2f32_v2f32_i64( SampledImage, Coordinate, ImageOperands, dx, dy, NULL ));
-}
-
-uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_v4f32_v4f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float4 dx, float4 dy, INLINEWA )
-{
-    return as_uint4(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v4f32_v4f32_i64( SampledImage, Coordinate, ImageOperands, dx, dy, NULL ));
+    return __intel_sample_image_grad_float2_Ruint4( SampledImage, Coordinate, ImageOperands, dx, dy );
 }
 
 uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_v3f32_v3f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float3 dx, float3 dy, INLINEWA )
 {
-    return as_uint4(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_v3f32_v3f32_i64( SampledImage, Coordinate, ImageOperands, dx, dy, NULL ));
+    return __intel_sample_image_grad_float3_Ruint4( SampledImage, Coordinate, ImageOperands, dx, dy );
 }
 
-#ifdef cl_khr_fp16
-half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4i32_i32_f32_i64( SampledImage_t SampledImage, int4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
+uint4 __builtin_spirv_OpImageSampleExplicitLod_v4i32_v3i64_v4f32_i32_v4f32_v4f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float4 dx, float4 dy, INLINEWA )
 {
-    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4i32_i32_f32_i64(SampledImage, Coordinate, ImageOperands, Lod, NULL));
+    return __intel_sample_image_grad_float4_Ruint4( SampledImage, Coordinate, ImageOperands, dx, dy );
 }
-
-half4 __builtin_spirv_OpImageSampleExplicitLod_v4f16_v3i64_v4f32_i32_f32_i64( SampledImage_t SampledImage, float4 Coordinate, uint ImageOperands, float Lod, INLINEWA )
-{
-    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(__builtin_spirv_OpImageSampleExplicitLod_v4f32_v3i64_v4f32_i32_f32_i64(SampledImage, Coordinate, ImageOperands, Lod, NULL));
-}
-#endif //cl_khr_fp16
-
 
 // Image Read
 
