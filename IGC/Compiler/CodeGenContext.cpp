@@ -523,11 +523,31 @@ namespace IGC
 
     uint32_t OpenCLProgramContext::getNumThreadsPerEU() const
     {
+        if (m_Options.IntelRequiredEUThreadCount)
+        {
+            return m_Options.requiredEUThreadCount;
+        }
+        if (m_InternalOptions.IntelNumThreadPerEU || m_InternalOptions.Intel256GRFPerThread)
+        {
+            return m_InternalOptions.numThreadsPerEU;
+        }
+
         return 0;
     }
 
     uint32_t OpenCLProgramContext::getNumGRFPerThread() const
     {
+        if (platform.supportsStaticRegSharing())
+        {
+            if (m_InternalOptions.Intel128GRFPerThread)
+            {
+                return 128;
+            }
+            else if (m_InternalOptions.Intel256GRFPerThread)
+            {
+                return 256;
+            }
+        }
         return CodeGenContext::getNumGRFPerThread();
     }
 

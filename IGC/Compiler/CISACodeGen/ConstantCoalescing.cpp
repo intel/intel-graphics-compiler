@@ -415,6 +415,7 @@ void ConstantCoalescing::ProcessBlock(
 
             if ((bufType != BINDLESS_CONSTANT_BUFFER)
                 && (bufType != BINDLESS_TEXTURE)
+                && (bufType != SSH_BINDLESS_CONSTANT_BUFFER)
                 )
             {
                 continue;
@@ -450,6 +451,7 @@ void ConstantCoalescing::ProcessBlock(
                         baseOffsetInBytes ? indcb_owloads : dircb_owloads);
                 }
                 else if (bufType == BINDLESS_CONSTANT_BUFFER
+                         || bufType == SSH_BINDLESS_CONSTANT_BUFFER
                          )
                 {
                     if (UsesTypedConstantBuffer(m_ctx, bufType))
@@ -1163,6 +1165,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         BufferType buffType = DecodeBufferType(load->getType()->getPointerAddressSpace());
         if (IsBindless(buffType)
             || buffType == STATELESS_A32
+            || buffType == SSH_BINDLESS_CONSTANT_BUFFER
             )
             LoadEltTy = irBuilder->getInt32Ty();
         else

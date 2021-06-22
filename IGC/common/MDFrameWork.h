@@ -262,6 +262,10 @@ namespace IGC
         bool UseBindlessMode                            = false;
         bool UseLegacyBindlessMode                      = false;
         bool disableMathRefactoring                     = false;
+        //if PTSS is enabled and if PrivateData is too large (>256k in XeHP_SDV+),
+        //we might use stateless memory to hold privatedata instead of using PTSS.
+        //this flag is for this scenario.
+        bool UseStatelessforPrivateMemory               = false;
         bool EnableTakeGlobalAddress                    = false;
         bool IsLibraryCompilation                       = false;
         bool FastVISACompile                            = false;

@@ -378,6 +378,13 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
     // in order to use scratch-space, we change data-layout for the module,
     // change pointer-size of AS-private to 32-bit.
     bool bRet = safeToUseScratchSpace(M);
+    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (Ctx.platform.hasScratchSurface() && !bRet && Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory())
+    {
+        //MinNOSPushConstantSize is only increased ONCE
+        const uint32_t dwordSizeInBits = 32;
+        modMD.MinNOSPushConstantSize += Ctx.getRegisterPointerSizeInBits(ADDRESS_SPACE_GLOBAL) / dwordSizeInBits;
+    }
     modMD.compOpt.UseScratchSpacePrivateMemory = bRet;
 
     for (Function& F : M)
@@ -394,6 +401,18 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         }
         bool hasStackCall = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasStackCall()) || m_currFunction->hasFnAttribute("visaStackCall");
         bool hasVLA = (FGA && FGA->getGroup(m_currFunction) && FGA->getGroup(m_currFunction)->hasVariableLengthAlloca()) || m_currFunction->hasFnAttribute("hasVLA");
+        if (Ctx.platform.hasScratchSurface() &&
+            modMD.compOpt.UseScratchSpacePrivateMemory)
+        {
+            // In this case, we could be generating 0-byte offsets for uniform
+            // allocas which would manifest as null pointers.  This is because
+            // we represent the r0.5 access later on so the pointer appears
+            // to be null for downstream passes.  This attribute says that it's
+            // okay so those passes wouldn't optimize away null pointer
+            // dereferences because they would have otherwise been undefined
+            // behavior.
+            F.addFnAttr("null-pointer-is-valid", "true");
+        }
         // Resolve collected alloca instructions for current function
         changed |= resolveAllocaInstructions(hasStackCall || hasVLA);
     }
@@ -748,6 +767,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // This change is only till the FuncMD is ported to new MD framework
     ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     IGC_ASSERT(nullptr != modMD);
+    if (modMD->compOpt.UseScratchSpacePrivateMemory == false &&
+        Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory() &&
+        Ctx.m_DriverInfo.requiresPowerOfTwoStatelessSpacePrivateMemorySize())
+    {
+        totalPrivateMemPerWI = iSTD::RoundPower2(static_cast<DWORD>(totalPrivateMemPerWI));
+    }
     modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;
     modMD->privateMemoryPerWI = totalPrivateMemPerWI;//redundant ?
 
@@ -909,6 +934,45 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         }
 
         ADDRESS_SPACE scratchMemoryAddressSpace = ADDRESS_SPACE_PRIVATE;
+        if (Ctx.platform.hasScratchSurface())
+        {
+            if (modMD->compOpt.UseScratchSpacePrivateMemory)
+            {
+                privateBase = entryBuilder.getInt32(0);
+            }
+            else if (nullptr == privateBase)
+            {
+                scratchMemoryAddressSpace = ADDRESS_SPACE_GLOBAL;
+                modMD->compOpt.UseStatelessforPrivateMemory = true;
+
+                const uint32_t dwordSizeInBits = 32;
+                const uint32_t pointerSizeInDwords = Ctx.getRegisterPointerSizeInBits(scratchMemoryAddressSpace) / dwordSizeInBits;
+                IGC_ASSERT(pointerSizeInDwords <= 2);
+                llvm::Type* resultType = entryBuilder.getInt32Ty();
+                if (pointerSizeInDwords > 1)
+                {
+                    resultType = llvm::VectorType::get(resultType, 2);
+                }
+                Function* pFunc = GenISAIntrinsic::getDeclaration(
+                    m_currFunction->getParent(),
+                    GenISAIntrinsic::GenISA_RuntimeValue,
+                    resultType);
+                privateBase = entryBuilder.CreateCall(pFunc, entryBuilder.getInt32(modMD->MinNOSPushConstantSize - pointerSizeInDwords));
+                if (privateBase->getType()->isVectorTy())
+                {
+                    privateBase = entryBuilder.CreateBitCast(privateBase, entryBuilder.getInt64Ty());
+                }
+
+                ConstantInt* totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
+                Value* totalPrivateMemPerThread = entryBuilder.CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"));
+
+                Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
+                llvm::Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
+                llvm::Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
+                perThreadOffset = entryBuilder.CreateZExt(perThreadOffset, privateBase->getType());
+                privateBase = entryBuilder.CreateAdd(privateBase, perThreadOffset);
+            }
+        }
 
         for (auto pAI : allocaInsts)
         {
@@ -929,7 +993,10 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
 
+            // TransposeMemLayout is not prepared to work on 64-bit pointers (originally, the private address space is expressed by 32-bit pointers).
+            // Address space casting
             bool TransposeMemLayout =
+                ADDRESS_SPACE_PRIVATE == scratchMemoryAddressSpace &&
                 CanUseSOALayout(pAI, pTypeOfAccessedObject);
 
             unsigned int bufferSize = 0;
@@ -965,6 +1032,16 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             pAI->replaceAllUsesWith(privateBuffer);
             pAI->eraseFromParent();
 
+            if (scratchMemoryAddressSpace == ADDRESS_SPACE_GLOBAL)
+            {
+                // Fix address space in uses of privateBufferPTR, ADDRESS_SPACE_PRIVATE => ADDRESS_SPACE_GLOBAL
+                FixAddressSpaceInAllUses(privateBufferPTR, ADDRESS_SPACE_GLOBAL, ADDRESS_SPACE_PRIVATE);
+                privateBuffer->replaceAllUsesWith(privateBufferPTR);
+                if (Instruction* inst = dyn_cast<Instruction>(privateBuffer))
+                {
+                    inst->eraseFromParent();
+                }
+            }
         }
 
         return true;

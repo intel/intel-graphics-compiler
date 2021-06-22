@@ -196,6 +196,10 @@ namespace IGC
     {
         return t == BINDLESS || t == BINDLESS_CONSTANT_BUFFER || t == BINDLESS_TEXTURE;
     }
+    inline bool IsSSHbindless(BufferType t)
+    {
+        return t == SSH_BINDLESS || t == SSH_BINDLESS_CONSTANT_BUFFER;
+    }
 
     bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred);
     bool IsSignedCmp(const llvm::CmpInst::Predicate Pred);

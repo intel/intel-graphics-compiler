@@ -71,6 +71,11 @@ namespace IGC
         /// @param  CI The call instruction.
         /// @return A value representing the group id
         llvm::Value* getGroupId(llvm::CallInst& CI);
+        /// @brief  Resolves get_local_thread_id(dim).
+        ///         Adds the appropriate sequence of code before the given call instruction
+        /// @param  CI The call instruction.
+        /// @return A value representing the local thread id
+        llvm::Value* getLocalThreadId(llvm::CallInst &CI);
 
         /// @brief  Resolves get_global_size(dim).
         ///         Adds the appropriate sequence of code before the given call instruction

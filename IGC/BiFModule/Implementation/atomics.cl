@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 
 #define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent)
 
+extern __constant int __UseNativeFP32GlobalAtomicAdd;
+extern __constant int __UseNativeFP16AtomicMinMax;
 
 
   __local uint* __builtin_IB_get_local_lock();
@@ -1644,6 +1646,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f32_i32_i32_f32, )( __p
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
 {
+    if(__UseNativeFP32GlobalAtomicAdd)
+    {
+        atomic_operation_1op_as_float( __builtin_IB_atomic_add_global_f32, float, Pointer, Scope, Semantics, Value, true );
+    }
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
     float orig;
     float desired;
@@ -1692,6 +1698,12 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )( __
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
 {
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
+    // Another important reason of using do-while loop emulation is to avoid HW Bug on XeHP SDV:
+    // "NodeDSS works in fixed arbitration mode where writes are always prioritized over reads.
+    //  This is causing the IC read request to stall behind other pending write requests.
+    //  Since IC read is not progressing, the thread which acquired the lock is not proceeding
+    //  further to clear the lock and thus causing hang."
+    // do-while loop emulation doesn't expose the HW issue since it reads 'Pointer' value inside a loop.
     double orig;
     double desired;
     do {
@@ -1738,6 +1750,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f16_i32_i32_f16, )( priv
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )( global half* Pointer, int Scope, int Semantics, half Value)
 {
+    if(__UseNativeFP16AtomicMinMax)
+    {
+        atomic_operation_1op_as_half( __builtin_IB_atomic_min_global_f16, half, Pointer, Scope, Semantics, Value, true );
+    }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, true)
     SPINLOCK_START(global)
@@ -1750,6 +1766,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )( glob
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f16_i32_i32_f16, )( local half* Pointer, int Scope, int Semantics, half Value)
 {
+    if(__UseNativeFP16AtomicMinMax)
+    {
+        atomic_operation_1op_as_half( __builtin_IB_atomic_min_local_f16, half, Pointer, Scope, Semantics, Value, false );
+    }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START(local)
@@ -1815,6 +1835,12 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p0f64_i32_i32_f64, )( pr
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
 {
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
+    // Another important reason of using do-while loop emulation is to avoid HW Bug on XeHP SDV:
+    // "NodeDSS works in fixed arbitration mode where writes are always prioritized over reads.
+    //  This is causing the IC read request to stall behind other pending write requests.
+    //  Since IC read is not progressing, the thread which acquired the lock is not proceeding
+    //  further to clear the lock and thus causing hang."
+    // do-while loop emulation doesn't expose the HW issue since it reads 'Pointer' value inside a loop.
     double orig;
     double desired;
     do {
@@ -1861,6 +1887,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f16_i32_i32_f16, )( priv
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )( global half* Pointer, int Scope, int Semantics, half Value)
 {
+    if(__UseNativeFP16AtomicMinMax)
+    {
+        atomic_operation_1op_as_half( __builtin_IB_atomic_max_global_f16, half, Pointer, Scope, Semantics, Value, true );
+    }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, true)
     SPINLOCK_START(global)
@@ -1873,6 +1903,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )( glob
 
 half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f16_i32_i32_f16, )( local half* Pointer, int Scope, int Semantics, half Value)
 {
+    if(__UseNativeFP16AtomicMinMax)
+    {
+        atomic_operation_1op_as_half( __builtin_IB_atomic_max_local_f16, half, Pointer, Scope, Semantics, Value, false );
+    }
     half orig;
     FENCE_PRE_OP(Scope, Semantics, false)
     SPINLOCK_START(local)
@@ -1938,6 +1972,12 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p0f64_i32_i32_f64, )( pr
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )( global double* Pointer, int Scope, int Semantics, double Value)
 {
     // We don't use SPINLOCK_START and SPINLOCK_END emulation here, since do-while loop is more efficient for global atomics.
+    // Another important reason of using do-while loop emulation is to avoid HW Bug on XeHP SDV:
+    // "NodeDSS works in fixed arbitration mode where writes are always prioritized over reads.
+    //  This is causing the IC read request to stall behind other pending write requests.
+    //  Since IC read is not progressing, the thread which acquired the lock is not proceeding
+    //  further to clear the lock and thus causing hang."
+    // do-while loop emulation doesn't expose the HW issue since it reads 'Pointer' value inside a loop.
     double orig;
     double desired;
     do {

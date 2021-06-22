@@ -36,6 +36,7 @@ const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_ID_X = "__builtin_IB_get_local_
 const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_ID_Y = "__builtin_IB_get_local_id_y";
 const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_ID_Z = "__builtin_IB_get_local_id_z";
 const llvm::StringRef WIFuncsAnalysis::GET_GROUP_ID = "__builtin_IB_get_group_id";
+const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_THREAD_ID = "__builtin_IB_get_local_thread_id";
 const llvm::StringRef WIFuncsAnalysis::GET_GLOBAL_SIZE = "__builtin_IB_get_global_size";
 const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_SIZE = "__builtin_IB_get_local_size";
 const llvm::StringRef WIFuncsAnalysis::GET_GLOBAL_OFFSET = "__builtin_IB_get_global_offset";
@@ -73,6 +74,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
 {
     // Processing new function
     m_hasGroupID = false;
+    m_hasLocalThreadID = false;
     m_hasGlobalOffset = false;
     m_hasLocalID = false;
     m_hasGlobalSize = false;
@@ -115,6 +117,10 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         }
 
         if (m_hasGroupID)
+        {
+            implicitArgs.push_back(ImplicitArg::R0);
+        }
+        else if (m_hasLocalThreadID)
         {
             implicitArgs.push_back(ImplicitArg::R0);
         }
@@ -190,6 +196,10 @@ void WIFuncsAnalysis::visitCallInst(CallInst& CI)
     else if (funcName.equals(GET_GROUP_ID))
     {
         m_hasGroupID = true;
+    }
+    else if (funcName.equals(GET_LOCAL_THREAD_ID))
+    {
+        m_hasLocalThreadID = true;
     }
     else if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET))
     {

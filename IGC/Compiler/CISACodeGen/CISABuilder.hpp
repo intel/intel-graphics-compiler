@@ -314,6 +314,14 @@ namespace IGC
         void SubPair(CVariable* Lo, CVariable* Hi, CVariable* L0, CVariable* H0, CVariable* L1, CVariable* H1);
         inline void dp4a(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
         void Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst);
+        void dpas(CVariable* dst, CVariable* input, CVariable* weight, PrecisionType weight_precision,
+            CVariable* actication, PrecisionType activation_precision, uint8_t systolicDepth,
+            uint8_t repeatCount, bool IsDpasw);
+        void bf_cvt(CVariable* dst, CVariable* src);
+        void fcvt(CVariable* dst, CVariable* src);
+        void Bfn(uint8_t booleanFuncCtrl, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
+        void QWGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
+        void QWScatter(CVariable* src, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
         // VME
         void SendVmeIme(
             CVariable* bindingTableIndex,
@@ -1080,4 +1088,6 @@ namespace IGC
     VISAChannelMask ConvertChannelMaskToVisaType(uint mask);
     VISASourceSingleChannel ConvertSingleSourceChannel(uint srcChannel);
 
+
+    GenPrecision ConvertPrecisionToVisaType(PrecisionType P);
 }

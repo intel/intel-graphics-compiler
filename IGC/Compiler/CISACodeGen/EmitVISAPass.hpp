@@ -87,6 +87,9 @@ public:
     void Unary(e_opcode opCode, const SSource sources[1], const DstModifier& modifier);
     void Binary(e_opcode opCode, const SSource sources[2], const DstModifier& modifier);
     void Tenary(e_opcode opCode, const SSource sources[3], const DstModifier& modifier);
+    void Bfn(uint8_t booleanFuncCtrl, const SSource sources[3], const DstModifier& modifier);
+    void CmpBfn(llvm::CmpInst::Predicate predicate, const SSource cmpSources[2], uint8_t booleanFuncCtrl,
+        const SSource bfnSources[3], const DstModifier& modifier);
 
     void Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool noMask = false) const;
 
@@ -430,6 +433,10 @@ public:
     void emitLLVMStackRestore(llvm::IntrinsicInst* inst);
 
     void emitUnmaskedRegionBoundary(bool start);
+    void emitDpas(llvm::GenIntrinsicInst *GII,
+                  const SSource* source,
+                  const DstModifier& modifier);
+    void emitfcvt(llvm::GenIntrinsicInst *GII);
     // Debug Built-Ins
     void emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     void emitThreadPause(llvm::GenIntrinsicInst* inst);

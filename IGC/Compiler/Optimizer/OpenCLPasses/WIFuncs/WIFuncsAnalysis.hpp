@@ -63,6 +63,7 @@ namespace IGC
         static const llvm::StringRef GET_LOCAL_ID_Y;
         static const llvm::StringRef GET_LOCAL_ID_Z;
         static const llvm::StringRef GET_GROUP_ID;
+        static const llvm::StringRef GET_LOCAL_THREAD_ID;
         static const llvm::StringRef GET_GLOBAL_SIZE;
         static const llvm::StringRef GET_LOCAL_SIZE;
         static const llvm::StringRef GET_GLOBAL_OFFSET;
@@ -83,6 +84,8 @@ namespace IGC
 
         /// @brief  Marks whether group id is needed by the current function
         bool m_hasGroupID = false;
+        /// @brief  Marks whether local thread id is needed by the current function
+        bool m_hasLocalThreadID = false;
         /// @brief  Marks whether global offset is needed by the current function
         bool m_hasGlobalOffset = false;
         /// @brief  Marks whether local id is needed by the current function

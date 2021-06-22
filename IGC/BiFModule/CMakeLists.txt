@@ -458,7 +458,7 @@ set(KHR_DEFINES "cl_khr_f16" "cl_khr_fp64" "cl_khr_gl_msaa_sharing" "cl_khr_mipm
                 "cl_intel_subgroups_char" "cl_intel_subgroups_long" "cl_intel_subgroup_local_block_io" "cl_intel_64bit_global_atomics_placeholder"
                 "cl_khr_subgroup_extended_types" "cl_khr_subgroup_non_uniform_vote" "cl_khr_subgroup_ballot" "cl_khr_subgroup_shuffle"
                 "cl_khr_subgroup_shuffle_relative" "cl_khr_subgroup_non_uniform_arithmetic" "cl_khr_subgroup_clustered_reduce"
-                "cl_intel_bit_instructions")
+                "cl_intel_bit_instructions" "cl_intel_global_float_atomics")
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"

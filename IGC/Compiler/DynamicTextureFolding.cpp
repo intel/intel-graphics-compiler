@@ -182,6 +182,7 @@ void DynamicTextureFolding::FoldResInfoValue(llvm::GenIntrinsicInst* pCall)
             }
             case GFXSURFACESTATE_SURFACETYPE_BUFFER:
             case GFXSURFACESTATE_SURFACETYPE_STRBUF:
+            case GFXSURFACESTATE_SURFACETYPE_SCRATCH:
 
             {
                 r = (modMD->inlineResInfoData[i].WidthOrBufferSize != UINT_MAX) ? ConstantInt::get(I32Ty, modMD->inlineResInfoData[i].WidthOrBufferSize) : 0;

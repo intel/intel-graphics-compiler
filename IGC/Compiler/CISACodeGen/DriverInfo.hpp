@@ -54,6 +54,17 @@ namespace IGC
         /// and by default, driver only supports one of them.
         virtual bool supportsStatelessSpacePrivateMemory() const { return !supportsScratchSpacePrivateMemory(); }
 
+        /// The driver requires to align each entry (a workgroup item) of private scratch memory in a stateless
+        /// buffer.
+        virtual bool requiresPowerOfTwoStatelessSpacePrivateMemorySize() const { return false; }
+
+        /// The driver supports splitting up scratch memory space into two areas:
+        /// - private scratch memory space: non-promoted alloca instructions (early allocated scratch
+        ///   memory space based on llvm IR)
+        /// - spill/fill and Gtpin scratch memory space: (late allocated scratch memory space based
+        ///   registry allocation)
+        virtual bool supportsSeparatingSpillAndPrivateScratchMemorySpace() const { return IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace); }
+
         /// The max size in bytes of the scratch space per thread.
         unsigned int maxPerThreadScratchSpace() const { return 2 * 1024 * 1024; }
 
@@ -258,6 +269,9 @@ namespace IGC
 
         // Maximum id that can be used by simple push constant buffers. The default is maximum unsigned int (no restriction)
         virtual unsigned int MaximumSimplePushBufferID() const { return std::numeric_limits<unsigned int>::max(); }
+
+        /// Enables the use of inline data on XeHP_SDV+
+        virtual bool UseInlineData() const { return false; }
 
         /// Use first VB to send vertex&base instance and second for draw index
         virtual bool UsesVertexBuffersToSendShaderDrawParameters() const { return false; }

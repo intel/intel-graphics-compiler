@@ -450,6 +450,118 @@ bool canForcePrivateToGlobal() const
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE && IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToGlobalOnGeneric);
 }
 
+bool getHWTIDFromSR0() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool supportAdd3Instruction() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool supportBfnInstruction() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool supportDpasInstruction() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool supportLoadThreadPayloadForCompute() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool Enable32BitIntDivRemEmu() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool support16DWURBWrite() const
+{
+    return IGC_IS_FLAG_ENABLED(Enable16DWURBWrite) && isXeHPSDVPlus();
+}
+
+bool hasScratchSurface() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool hasAtomicPreDec() const
+{
+    return !isXeHPSDVPlus();
+}
+
+bool support26BitBSOFormat() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool needsHeaderForAtomicCounter() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool doScalar64bScan() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool hasHWLocalThreadID() const
+{
+    return isXeHPSDVPlus();
+}
+
+unsigned int getOfflineCompilerMaxWorkGroupSize() const
+{
+    if (isXeHPSDVPlus())
+        return 1024;
+    return 448;
+}
+
+bool hasFP16AtomicMinMax() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool hasFP32GlobalAtomicAdd() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool has16OWSLMBlockRW() const
+{
+    return IGC_IS_FLAG_ENABLED(Enable16OWSLMBlockRW) && isXeHPSDVPlus();
+}
+
+bool supportInlineData() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool supportsAutoGRFSelection() const
+{
+    return m_platformInfo.eProductFamily == IGFX_XE_HP_SDV;
+}
+
+bool isXeHPSDVPlus() const
+{
+    return m_platformInfo.eProductFamily >= IGFX_XE_HP_SDV;
+}
+
+bool supportInlineDataOCL() const
+{
+    return isXeHPSDVPlus();
+}
+
+bool has64BMediaBlockRW() const
+{
+    return IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isXeHPSDVPlus();
+}
+
 bool hasNoFullI64Support() const
 {
     return hasNoInt64Inst();
@@ -463,6 +575,15 @@ bool hasNoInt64AddInst() const
 bool supportsSIMD16TypedRW() const
 {
     return false;
+}
+
+bool supportsStaticRegSharing() const
+{
+    return isXeHPSDVPlus();
+}
+bool emulateByteScraterMsgForSS() const
+{
+    return isXeHPSDVPlus() && (m_platformInfo.usRevId == 0 || IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS));
 }
 
 //all the platforms which DONOT support 64 bit int operations
@@ -509,12 +630,6 @@ bool supportMixMode() const {
             m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
 }
 bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
-bool hasAtomicPreDec() const { return true; }
-bool needsHeaderForAtomicCounter() const { return false; }
-bool doScalar64bScan() const
-{
-    return false;
-}
 bool useScratchSpaceForOCL() const
 {
     return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);

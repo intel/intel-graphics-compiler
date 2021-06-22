@@ -36,10 +36,22 @@
 Imported_Intrinsics = \
 {
 ####################################################################################################
+"GenISA_2fto2bf": ["",
+    [("anyint",                        ""),
+    [("anyfloat",                      ""),
+     (1,                               ""),
+     ("int",                           "")],
+    "NoMem"]],
+####################################################################################################
 "GenISA_assume_uniform": ["used by compiler to mark a uniform private array",
     [("void",                          "return nothing"),
     [("anyptr",                        "ptr")],
     "None"]],
+####################################################################################################
+"GenISA_bftof": ["Convert bf16 to float",
+    [("anyfloat",                      "float result"),
+    [("anyint",                        "bf16 source")],
+    "NoMem"]],
 ####################################################################################################
 "GenISA_CatchAllDebugLine": ["",
     [("void",                          ""),
@@ -119,10 +131,28 @@ Imported_Intrinsics = \
      ("int",                           "interpolation mode")],
     "NoMem"]],
 ####################################################################################################
+"GenISA_dpas": ["",
+    [("anyvector",                     ""),
+    [("anyvector",                     ""),
+     ("anyvector",                     ""),
+     ("anyvector",                     ""),
+     ("int",                           ""),
+     ("int",                           ""),
+     ("int",                           ""),
+     ("int",                           ""),
+     ("bool",                          "")],
+    "Convergent","NoMem"]],
+####################################################################################################
 "GenISA_EndPrimitive": ["",
     [("void",                          ""),
     [("int",                           "emitCount")],
     "None"]],
+####################################################################################################
+"GenISA_ftobf": ["Convert from float to bf16",
+    [("anyint",                        "bf16 result"),
+    [("anyfloat",                      "float source"),
+     ("int",                           "Rounding mode (ERoundingMode)")],
+    "NoMem"]],
 ####################################################################################################
 "GenISA_GetBufferPtr": ["",
     [("anyptr",                        "result"),
@@ -1701,6 +1731,18 @@ Imported_Intrinsics = \
      ("float",                         "src3 value to be stored")],
     "None"]],
 ####################################################################################################
+"GenISA_sub_group_dpas": ["XeHP SDV: dot product accumulate systolic",
+    [("anyvector",                     "dst"),
+    [("anyvector",                     "src0(acc)"),
+     ("anyvector",                     "src1"),
+     ("anyvector",                     "src2"),
+     ("int",                           "src1's precision"),
+     ("int",                           "src2's precision"),
+     ("int",                           "systolic depth"),
+     ("int",                           "repeat count"),
+     ("bool",                          "isDpasw")],
+    "Convergent","NoMem"]],
+####################################################################################################
 "GenISA_sub_pair": ["",
     [[("int",                          ""),
       ("int",                          "")],
@@ -1712,6 +1754,11 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_subslice_id": ["returns the subslice id defined in the state register 'PREDEFINED_SR0'",
     [("int",                           "result"),
+    [],
+    "NoMem"]],
+####################################################################################################
+"GenISA_dual_subslice_id": ["",
+    [("int",                           ""),
     [],
     "NoMem"]],
 ####################################################################################################

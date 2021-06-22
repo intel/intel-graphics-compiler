@@ -596,6 +596,28 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
     {
         bytes = (uint32_t)VPConst::SPLIT_SIZE;
     }
+    if ((isa<LoadInst>(I) || isa<StoreInst>(I)) && WI.isUniform(I))
+    {
+        auto Alignment = isa<LoadInst>(I) ? cast<LoadInst>(I)->getAlignment()
+                                          : cast<StoreInst>(I)->getAlignment();
+        if (Alignment >= 16) {
+            Type* ETy = (isa<LoadInst>(I)) ?
+                cast<VectorType>(I->getType())->getElementType() :
+                cast<VectorType>(cast<StoreInst>(I)->getValueOperand()->getType())->getElementType();
+
+            bool SLM = getLoadStorePointerOperand(I)->getType()->getPointerAddressSpace()
+                == ADDRESS_SPACE_LOCAL;
+            uint32_t ebytes = (unsigned int)ETy->getPrimitiveSizeInBits() / 8;
+            if (ETy->isPointerTy())
+                ebytes = m_DL->getPointerTypeSize(ETy);
+            // Limit to DW and QW element types to avoid generating vectors that
+            // are too large (ideally, should be <= 32 elements currently).
+            if (ebytes == 4 || ebytes == 8)
+            {
+                bytes = std::max(bytes, m_CGCtx->platform.getMaxBlockMsgSize(SLM));
+            }
+        }
+    }
     return bytes;
 }
 

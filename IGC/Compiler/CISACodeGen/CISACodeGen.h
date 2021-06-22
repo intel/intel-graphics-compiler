@@ -137,6 +137,8 @@ namespace IGC
         ESURFACE_SLM,
         ESURFACE_STATELESS,
         ESURFACE_BINDLESS,
+        ESURFACE_SSHBINDLESS,
+        ESURFACE_SCRATCH
     };
 
     enum e_predefSampler : unsigned char

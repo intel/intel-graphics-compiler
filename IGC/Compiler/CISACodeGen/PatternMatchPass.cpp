@@ -943,6 +943,7 @@ namespace IGC
             MatchFPToIntegerWithSaturation(I) ||
             MatchMinMax(I) ||
             /*MatchPredicate(I)   ||*/
+            MatchCmpSelect(I) ||
             MatchSelectModifier(I);
         IGC_ASSERT_MESSAGE(match, "Pattern Match failed");
     }
@@ -1129,6 +1130,10 @@ namespace IGC
                 break;
             case GenISAIntrinsic::GenISA_UnmaskedRegionEnd:
                 match = MatchUnmaskedRegionBoundary(I, false);
+                break;
+            case GenISAIntrinsic::GenISA_sub_group_dpas:
+            case GenISAIntrinsic::GenISA_dpas:
+                match = MatchDpas(*GII);
                 break;
             case GenISAIntrinsic::GenISA_dp4a_ss:
             case GenISAIntrinsic::GenISA_dp4a_su:
@@ -3765,6 +3770,539 @@ namespace IGC
         return true;
     }
 
+    bool CodeGenPatternMatch::MatchAdd3(Instruction& I)
+    {
+        using namespace llvm::PatternMatch;
+
+        struct Add3Pattern : public Pattern
+        {
+            SSource sources[3];
+            Instruction* instruction;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->Tenary(EOPCODE_ADD3, sources, modifier);
+            }
+        };
+
+        if (IGC_IS_FLAG_DISABLED(EnableAdd3) ||
+            !m_Platform.supportAdd3Instruction())
+        {
+            return false;
+        }
+
+        // Only handle D & W integer types.
+        Type* Ty = I.getType();
+        if (!(Ty->isIntegerTy(16) || Ty->isIntegerTy(32)))
+        {
+            return false;
+        }
+
+        Value* s0 = I.getOperand(0);
+        Value* s1 = nullptr, * s2 = nullptr;
+        e_modifier Mod1 = EMOD_NONE, Mod2 = EMOD_NONE;
+        Instruction* I0 = dyn_cast<Instruction>(s0);
+        if (I0)
+        {
+            if (I0->getOpcode() == Instruction::Sub)
+            {
+                s0 = I0->getOperand(0);
+                s1 = I0->getOperand(1);
+                Mod1 = EMOD_NEG;
+            }
+            else if (I0->getOpcode() == Instruction::Add)
+            {
+                s0 = I0->getOperand(0);
+                s1 = I0->getOperand(1);
+            }
+        }
+
+        bool isNeg = (I.getOpcode() == Instruction::Sub);
+        if (s1 == nullptr)
+        {
+            s1 = I.getOperand(1);
+            Instruction* I1 = dyn_cast<Instruction>(s1);
+            if (I1)
+            {
+                if (I1->getOpcode() == Instruction::Sub)
+                {
+                    s1 = I1->getOperand(0);
+                    s2 = I1->getOperand(1);
+                    if (isNeg) {
+                        Mod1 = EMOD_NEG;
+                    }
+                    else {
+                        Mod2 = EMOD_NEG;
+                    }
+                }
+                else if (I1->getOpcode() == Instruction::Add)
+                {
+                    s1 = I1->getOperand(0);
+                    s2 = I1->getOperand(1);
+                    if (isNeg) {
+                        Mod1 = EMOD_NEG;
+                        Mod2 = EMOD_NEG;
+                    }
+                }
+            }
+        }
+        else
+        {
+            s2 = I.getOperand(1);
+            if (isNeg) {
+                Mod2 = EMOD_NEG;
+            }
+        }
+
+        if (s2 == nullptr)
+        {
+            return false;
+        }
+
+        // Found the pattern.
+        // Make sure that the middle one is not constant
+        if (isa<ConstantInt>(s1))
+        {
+            std::swap(s1, s2);
+            std::swap(Mod1, Mod2);
+        }
+
+        Add3Pattern* pattern = new (m_allocator) Add3Pattern();
+        pattern->instruction = &I;
+        pattern->sources[0] = GetSource(s0, true, false);
+        pattern->sources[1] = GetSource(s1, true, false);
+        pattern->sources[2] = GetSource(s2, true, false);
+        if (Mod1 != EMOD_NONE) {
+            pattern->sources[1].mod = CombineModifier(Mod1, pattern->sources[1].mod);
+        }
+        if (Mod2 != EMOD_NONE) {
+            pattern->sources[2].mod = CombineModifier(Mod2, pattern->sources[2].mod);
+        }
+        AddPattern(pattern);
+        return true;
+    }
+
+    bool CodeGenPatternMatch::MatchBfn(Instruction& I)
+    {
+        using namespace llvm::PatternMatch;
+
+        struct BfnPattern : public Pattern
+        {
+            uint8_t booleanFuncCtrl = 0;
+            SSource sources[3];
+            Instruction* instruction;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->Bfn(booleanFuncCtrl, sources, modifier);
+            }
+        };
+
+        if (IGC_IS_FLAG_DISABLED(EnableBfn) ||
+            !m_Platform.supportBfnInstruction())
+        {
+            return false;
+        }
+
+        // Only handle D & W integer types.
+        Type* Ty = I.getType();
+        if (!(Ty->isIntegerTy(16) || Ty->isIntegerTy(32)))
+        {
+            return false;
+        }
+
+        struct CtrlCalculator {
+            enum OP { NONE, AND, OR, XOR };
+            enum SOURCE { S0 = 0, S1 = 1, S2 = 2 };
+            // Value of the three sources for calculating BooleanFuncCtrl
+            const uint8_t s[3] = { 0xAA, 0xCC, 0xF0 };
+
+            typedef std::vector<OP> OpVecType;
+            typedef std::vector<SOURCE> SourceVecType;
+
+            // The sequence of matched operators, follow the calculation order
+            OpVecType ops;
+            // The sequence of matched sources, follow the calculation order
+            SourceVecType source_idx;
+
+            void addSource(SOURCE src) { source_idx.push_back(src); }
+            void addOPFromLLVMOp(unsigned llvmOp)
+            {
+                if (llvmOp == Instruction::And)
+                    ops.push_back(AND);
+                else if (llvmOp == Instruction::Or)
+                    ops.push_back(OR);
+                else if (llvmOp == Instruction::Xor)
+                    ops.push_back(XOR);
+                else
+                {
+                    IGC_ASSERT_MESSAGE(0, "MatchBfn: inccorect opcode");
+                    return;
+                }
+            }
+
+            uint8_t getBooleanFuncCtrl()
+            {
+                IGC_ASSERT_MESSAGE((source_idx.size() == (ops.size() + 1)), "MatchBfn: OPs and Sources length missmatched");
+                SourceVecType::iterator s_it = source_idx.begin(), s_end = source_idx.end();
+                // start from the first source
+                uint8_t result = s[*s_it];
+                ++s_it;
+
+                // iterate through the matched sequence and compute the BooleanFuncCtrl
+                OpVecType::iterator op_it = ops.begin();
+                for (; s_it != s_end; ++s_it, ++op_it)
+                {
+                    switch (*op_it)
+                    {
+                    case AND:
+                        result = result & s[*s_it];
+                        break;
+                    case OR:
+                        result = result | s[*s_it];
+                        break;
+                    case XOR:
+                        result = result ^ s[*s_it];
+                        break;
+                    default:
+                        IGC_ASSERT_MESSAGE(0, "MatchBfn:CtrlCalculator: inccorect OP");
+                        break;
+                    }
+                }
+                return result;
+            }
+        };
+
+        auto isBinaryLogic = [](Instruction::BinaryOps op) { return op == Instruction::Or || op == Instruction::And || op == Instruction::Xor; };
+        // Find BFN patterns. Matched patterns: (op0 and op1 are boolean operations)
+        // s0   s1                   s1  s2
+        //   \ /                      \  /
+        //    op    s2     OR    s0   op1
+        //     \   /              \   /
+        //      op0                op0   <-- match to BFN
+        //
+        // TODO: Match NOT pattern on source
+
+        // if source operand has many uses the bfn pattern match is unlikely to be profitable,
+        // as it increases register pressure and makes register bank conflicts more likely
+        // ToDo: tune the value of N
+        const int useThreshold = 4;
+        // if both operands of the root is binary logic op, use simple heuristics
+        // to fold one of them
+        if (isa<BinaryOperator>(I.getOperand(0)) && isa<BinaryOperator>(I.getOperand(1)))
+        {
+            auto I0 = cast<BinaryOperator>(I.getOperand(0));
+            auto I1 = cast<BinaryOperator>(I.getOperand(1));
+            if (I0->hasNUsesOrMore(useThreshold) && I1->hasNUsesOrMore(useThreshold))
+            {
+                // bfn is unlikely to be profitable.
+                return false;
+            }
+            else if (I0->getNumUses() > I1->getNumUses())
+            {
+                I.setOperand(0, I1);
+                I.setOperand(1, I0);
+            }
+        }
+
+        CtrlCalculator ctrlcal;
+        Value* s0 = I.getOperand(0);
+        Value* s1 = nullptr, * s2 = nullptr;
+        BinaryOperator* I0 = dyn_cast<BinaryOperator>(s0);
+        if (I0)
+        {
+            if (isBinaryLogic(I0->getOpcode()) && !I0->hasNUsesOrMore(useThreshold))
+            {
+                s0 = I0->getOperand(0);
+                s1 = I0->getOperand(1);
+            }
+        }
+
+        if (s1 == nullptr)
+        {
+            s1 = I.getOperand(1);
+            BinaryOperator* I1 = dyn_cast<BinaryOperator>(s1);
+            if (I1)
+            {
+                if (isBinaryLogic(I1->getOpcode()) && !I1->hasNUsesOrMore(useThreshold))
+                {
+                    s1 = I1->getOperand(0);
+                    s2 = I1->getOperand(1);
+
+                    // add ops and sources by execution order
+                    ctrlcal.addSource(CtrlCalculator::S1);
+                    ctrlcal.addOPFromLLVMOp(I1->getOpcode());
+                    ctrlcal.addSource(CtrlCalculator::S2);
+                    ctrlcal.addOPFromLLVMOp(I.getOpcode());
+                    ctrlcal.addSource(CtrlCalculator::S0);
+                }
+            }
+        }
+        else
+        {
+            s2 = I.getOperand(1);
+
+            // add ops and sources by execution order
+            ctrlcal.addSource(CtrlCalculator::S0);
+            ctrlcal.addOPFromLLVMOp(I0->getOpcode());
+            ctrlcal.addSource(CtrlCalculator::S1);
+            ctrlcal.addOPFromLLVMOp(I.getOpcode());
+            ctrlcal.addSource(CtrlCalculator::S2);
+        }
+
+        if (s2 == nullptr)
+            return false;
+
+        BfnPattern* pattern = new (m_allocator) BfnPattern();
+        pattern->booleanFuncCtrl = ctrlcal.getBooleanFuncCtrl();
+        pattern->instruction = &I;
+        pattern->sources[0] = GetSource(s0, false, false);
+        pattern->sources[1] = GetSource(s1, false, false);
+        pattern->sources[2] = GetSource(s2, false, false);
+
+        // BFN can use imm16 in src0 and src2, check for those;
+        // otherwise try to add to constant pool even int32.
+        if (dyn_cast<ConstantInt>(s0) && !s0->getType()->isIntegerTy(16) )
+        {
+            AddToConstantPool(I.getParent(), s0); pattern->sources[0].fromConstantPool = true;
+        }
+        if (dyn_cast<ConstantInt>(s1))
+        {
+            AddToConstantPool(I.getParent(), s1); pattern->sources[1].fromConstantPool = true;
+        }
+        if (dyn_cast<ConstantInt>(s2) && !s2->getType()->isIntegerTy(16))
+        {
+            AddToConstantPool(I.getParent(), s2); pattern->sources[2].fromConstantPool = true;
+        }
+
+        AddPattern(pattern);
+        return true;
+    }
+
+    // Match this pattern
+    // %1 = cmp %2 %3
+    // %6 = select %1 $4 %5
+    // to
+    // %1 = cmp %2 %3
+    // %6  = bfn %1 %4 %5
+    //
+    // For the original cmp-sel sequence, a flag-based sequence is generated.
+    // We instead want to generate a non-flag cmp-bfn sequence which has shorter latency.
+    bool CodeGenPatternMatch::MatchCmpSelect(llvm::SelectInst& I)
+    {
+        struct CmpSelectPattern : public Pattern
+        {
+            uint8_t execSize;
+            llvm::CmpInst::Predicate predicate;
+            SSource cmpSources[2];
+            uint8_t booleanFuncCtrl = 0xD8; // represents s0&s1|~s0&s2
+            SSource bfnSources[3];
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->CmpBfn(predicate, cmpSources, booleanFuncCtrl, bfnSources, modifier);
+            }
+        };
+
+        if (IGC_IS_FLAG_DISABLED(EnableBfn) ||
+            !m_Platform.supportBfnInstruction())
+        {
+            return false;
+        }
+
+        if (llvm::CmpInst* cmp = llvm::dyn_cast<llvm::CmpInst>(I.getOperand(0)))
+        {
+            // handle one use for now
+            if (!cmp->hasOneUse())
+            {
+                return false;
+            }
+
+            // BFN only supports D & W types.
+            Type* selTy = I.getType();
+            if (!(selTy->isIntegerTy(16) || selTy->isIntegerTy(32)))
+            {
+                return false;
+            }
+
+            Type* cmpS0Ty = cmp->getOperand(0)->getType();
+            if (selTy->getPrimitiveSizeInBits() != cmpS0Ty->getPrimitiveSizeInBits())
+            {
+                return false;
+            }
+
+            llvm::Value* selSources[2];
+            e_modifier   selMod[2];
+            selSources[0] = I.getOperand(1);
+            selSources[1] = I.getOperand(2);
+
+            // BFN only supports 16bit immediate
+            if ((isa<Constant>(selSources[0]) && selSources[0]->getType()->isIntegerTy(32)) ||
+                (isa<Constant>(selSources[1]) && selSources[1]->getType()->isIntegerTy(32)))
+            {
+                return false;
+            }
+
+            // As BFN doesn't support src modifier, it is not worth to generate the cmp-bfn
+            // sequence if one of its sources will need an extra move.
+            if (GetModifier(*selSources[0], selMod[0], selSources[0]) ||
+                GetModifier(*selSources[1], selMod[1], selSources[1]))
+            {
+                return false;
+            }
+
+            CmpSelectPattern* pattern = new (m_allocator) CmpSelectPattern();
+            pattern->predicate = cmp->getPredicate();
+            bool supportsModifer = SupportsModifier(cmp);
+            pattern->cmpSources[0] = GetSource(cmp->getOperand(0), supportsModifer, false);
+            pattern->cmpSources[1] = GetSource(cmp->getOperand(1), supportsModifer, false);
+
+            pattern->bfnSources[1] = GetSource(selSources[0], false, false);
+            pattern->bfnSources[2] = GetSource(selSources[1], false, false);
+            AddPattern(pattern);
+
+            return true;
+        }
+        return false;
+    }
+
+    bool CodeGenPatternMatch::MatchDpas(GenIntrinsicInst& I)
+    {
+        struct DpasPattern : public Pattern
+        {
+            SSource source[3];
+            GenIntrinsicInst* instruction;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->emitDpas(instruction, source, modifier);
+                //pass->BinaryUnary(instruction, source, modifier);
+            }
+        };
+
+        GenISAIntrinsic::ID dpasID = I.getIntrinsicID();
+        IGC_ASSERT_MESSAGE((dpasID == GenISAIntrinsic::GenISA_dpas || dpasID == GenISAIntrinsic::GenISA_sub_group_dpas), "Unexpected DPAS intrinsic!");
+
+        Value* src0 = I.getOperand(0); // input
+        Value* src1 = I.getOperand(1); // activation. operand(3) is its precision
+        Value* src2 = I.getOperand(2); // weight. operand(4) is its precision
+        //ConstantInt* pa = dyn_cast<ConstantInt>(I.getOperand(3));
+        //ConstantInt* pb = dyn_cast<ConstantInt>(I.getOperand(4));
+        ConstantInt* sdepth = dyn_cast<ConstantInt>(I.getOperand(5));
+        ConstantInt* rcount = dyn_cast<ConstantInt>(I.getOperand(6));
+        int SD = (int)sdepth->getZExtValue();
+        int RC = (int)rcount->getZExtValue();
+
+        if (dpasID == GenISAIntrinsic::GenISA_dpas && RC == 1 && SD == 8)
+        {
+            // Special-handling of activation (src1 - uniform). The case handled is:
+            //
+            // %s0 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 0)
+            // %s1 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 1)
+            // %s2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 2)
+            // %s3 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 3)
+            // %s4 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 4)
+            // %s5 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 5)
+            // %s6 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 6)
+            // %s7 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %5, i32 7)
+            // %a0 = insertelement <8 x i32> undef, i32 %s0, i32 0
+            // %a1 = insertelement <8 x i32> %a0,   i32 %s1, i32 1
+            // %a2 = insertelement <8 x i32> %a1,   i32 %s2, i32 2
+            // %a3 = insertelement <8 x i32> %a2,   i32 %s3, i32 3
+            // %a4 = insertelement <8 x i32> %a3,   i32 %s4, i32 4
+            // %a5 = insertelement <8 x i32> %a4,   i32 %s5, i32 5
+            // %a6 = insertelement <8 x i32> %a5,   i32 %s6, i32 6
+            // %a7 = insertelement <8 x i32> %a6,   i32 %s7, i32 7
+            //
+            // %c0 = call i32 @llvm.genx.GenISA.dpas.8(i32 %9, <8 x i32> %a7, i32 7, <8 x i32> %14, i32 7)
+            //
+            // %a7 will be replaced with %5 in vISA.
+            //
+
+            InsertElementInst* rootIEI = dyn_cast<InsertElementInst>(src1);
+            if (rootIEI)
+            {
+                // Currently, the src1 can be at most int8.
+                Value* srcVec[8];
+                Value* WSVal = nullptr;
+                for (int i = 0; i < 8; srcVec[i] = nullptr, ++i);
+                InsertElementInst* IEI = rootIEI;
+                while (IEI)
+                {
+                    Value* elem = IEI->getOperand(1);
+                    ConstantInt* CI = dyn_cast<ConstantInt>(IEI->getOperand(2));
+                    if (!CI)
+                    {
+                        // Only handle constant index
+                        WSVal = nullptr;
+                        break;
+                    }
+                    uint32_t ix = (uint32_t)CI->getZExtValue();
+                    if (ix > 7 || srcVec[ix])
+                    {
+                        // Assume each element is inserted once.
+                        WSVal = nullptr;
+                        break;
+                    }
+
+                    // Check if the inserted element is created
+                    // by WaveShuffleIndex intrinsic
+                    GenIntrinsicInst* WSI = dyn_cast<GenIntrinsicInst>(elem);
+                    if (!WSI ||
+                        WSI->getIntrinsicID() != GenISAIntrinsic::GenISA_WaveShuffleIndex)
+                    {
+                        WSVal = nullptr;
+                        break;
+                    }
+                    Value* shuffleVal = WSI->getOperand(0);
+                    Value* ixVal = WSI->getOperand(1);
+                    if (WSVal == nullptr)
+                    {
+                        WSVal = shuffleVal;
+                    }
+                    else if (WSVal != shuffleVal)
+                    {
+                        WSVal = nullptr;
+                        break;
+                    }
+                    if (ConstantInt * CIX = dyn_cast<ConstantInt>(ixVal))
+                    {
+                        if ((uint32_t)CIX->getZExtValue() != ix)
+                        {
+                            WSVal = nullptr;
+                            break;
+                        }
+                    }
+                    srcVec[ix] = elem;
+                    IEI = dyn_cast<InsertElementInst>(IEI->getOperand(0));
+                }
+
+                if (WSVal)
+                {
+                    for (int i = 0; i < SD; ++i)
+                    {
+                        if (srcVec[i] == nullptr)
+                        {
+                            WSVal = nullptr;
+                            break;
+                        }
+                    }
+                }
+
+                // If WSVal is set at this point, it is one that will
+                // replace src1.
+                if (WSVal)
+                {
+                    src1 = WSVal;
+                }
+            }
+        }
+
+        DpasPattern* pattern = new (m_allocator) DpasPattern();
+        pattern->instruction = &I;
+        pattern->source[0] = GetSource(src0, false, false);
+        pattern->source[1] = GetSource(src1, false, false);
+        pattern->source[2] = GetSource(src2, false, false);
+        AddPattern(pattern);
+
+        return true;
+    }
 
     bool CodeGenPatternMatch::MatchDp4a(GenIntrinsicInst& I)
     {

@@ -1516,6 +1516,10 @@ namespace IGC
                 {
                 default:
                     break;
+                case GenISAIntrinsic::GenISA_dpas:
+                case GenISAIntrinsic::GenISA_sub_group_dpas:
+                    SetHasDPAS();
+                    break;
                 case GenISAIntrinsic::GenISA_ptr_to_pair:
                 case GenISAIntrinsic::GenISA_pair_to_ptr:
                     mayHasMemoryAccess = false;
@@ -1553,6 +1557,7 @@ namespace IGC
 
         bool loadThreadPayload = false;
 
+        loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
 
         // SKL defaults to indirect thread payload storage.
         // BDW needs CURBE payload. Spec says:

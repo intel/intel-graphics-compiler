@@ -53,6 +53,14 @@ defm intel_gtpin_rera : CommonFlag<"intel-gtpin-rera">;
 
 defm intel_enable_prera_scheduling : CommonFlag<"intel-no-prera-scheduling">;
 
+defm intel_128_grf_per_thread : CommonFlag<"intel-128-GRF-per-thread">;
+
+defm opt_large_register_file : CommonFlag<"opt-large-register-file">;
+defm : CommonFlag<"intel-256-GRF-per-thread">,
+  Alias<opt_large_register_file_ze>;
+
+defm intel_num_thread_per_eu : CommonSeparate<"intel-num-thread-per-eu">;
+
 defm intel_use_bindless_buffers : CommonFlag<"intel-use-bindless-buffers">;
 
 defm intel_use_bindless_images : CommonFlag<"intel-use-bindless-images">;

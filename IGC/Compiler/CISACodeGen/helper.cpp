@@ -823,6 +823,13 @@ namespace IGC
             offsetVal = ptrVal;
             statelessBuf = (as == ADDRESS_SPACE_CONSTANT);
         }
+        else if (LdRawIntrinsic* ldRaw = dyn_cast<LdRawIntrinsic>(&I))
+        {
+            as = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
+            ptrVal = ldRaw->getResourceValue();
+            offsetVal = ldRaw->getOffsetValue();
+            bindlessBuf = (DecodeBufferType(as) == SSH_BINDLESS_CONSTANT_BUFFER);
+        }
         else
             return false;
 

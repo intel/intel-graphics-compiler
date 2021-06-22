@@ -1249,6 +1249,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_pair_to_ptr ||
         intrinsic_name == llvm_fma ||
         GII_id == GenISAIntrinsic::GenISA_uitof_rtz ||
+        GII_id == GenISAIntrinsic::GenISA_ftobf ||
+        GII_id == GenISAIntrinsic::GenISA_bftof ||
+        GII_id == GenISAIntrinsic::GenISA_2fto2bf ||
+        GII_id == GenISAIntrinsic::GenISA_dual_subslice_id ||
         GII_id == GenISAIntrinsic::GenISA_getSR0   ||
         GII_id == GenISAIntrinsic::GenISA_getSR0_0 ||
         GII_id == GenISAIntrinsic::GenISA_mul_rtz  ||
@@ -1280,6 +1284,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             return WIAnalysis::UNIFORM_THREAD;
         case GenISAIntrinsic::GenISA_slice_id:
         case GenISAIntrinsic::GenISA_subslice_id:
+        case GenISAIntrinsic::GenISA_dual_subslice_id:
             // Make sure they are UNIFORM_WORKGROUP
             //return WIAnalysis::UNIFORM_WORKGROUP;
             return WIAnalysis::UNIFORM_THREAD;

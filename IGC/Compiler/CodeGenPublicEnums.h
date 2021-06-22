@@ -93,6 +93,8 @@ namespace IGC
         STATELESS,
         STATELESS_READONLY,
         STATELESS_A32,
+        SSH_BINDLESS,
+        SSH_BINDLESS_CONSTANT_BUFFER,
         BUFFER_TYPE_UNKNOWN = 31
     };
 
@@ -140,6 +142,9 @@ namespace IGC
         EATOMIC_FMIN,
         EATOMIC_FMAX,
         EATOMIC_FCMPWR,
+        EATOMIC_FADD,
+        EATOMIC_FSUB,
+        EATOMIC_FADD64,
         //64 bit
         EATOMIC_IADD64,
         EATOMIC_SUB64,

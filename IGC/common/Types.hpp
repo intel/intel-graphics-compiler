@@ -30,6 +30,36 @@ namespace USC
     struct ShaderD3D;
 }
 
+namespace IGC
+{
+    enum PrecisionType : uint8_t
+    {
+        PRECISION_UNUSED, U8, U4, U2, S8, S4, S2,
+        BF16, FP16
+    };
+
+    inline uint32_t getPrecisionInBits(PrecisionType P)
+    {
+        switch (P)
+        {
+        default:
+            break;
+        case BF16:
+        case FP16:
+            return 16;
+        case U8:
+        case S8:
+            return 8;
+        case U4:
+        case S4:
+            return 4;
+        case U2:
+        case S2:
+            return 2;
+        }
+        return 0;
+    }
+}
 
 enum class SIMDMode : unsigned char
 {

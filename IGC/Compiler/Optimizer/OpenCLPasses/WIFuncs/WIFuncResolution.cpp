@@ -93,6 +93,10 @@ void WIFuncResolution::visitCallInst(CallInst& CI)
     {
         wiRes = getGroupId(CI);
     }
+    else if (funcName.equals(WIFuncsAnalysis::GET_LOCAL_THREAD_ID))
+    {
+        wiRes = getLocalThreadId(CI);
+    }
     else if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_SIZE))
     {
         wiRes = getGlobalSize(CI);
@@ -320,6 +324,75 @@ Value* WIFuncResolution::getLocalId(CallInst& CI, ImplicitArg::ArgType argType)
     auto F = CI.getFunction();
     if (hasStackCallAttr(*F))
     {
+        // LocalIDBase = oword_ld
+        // LocalThreadId = r0.2
+        // ThreadBaseOffset = LocalIDBase + LocalThreadId * (SimdSize * 3 * 2)
+        // BaseOffset_X = ThreadBaseOffset + 0 * (SimdSize * 2) + (SimdLaneId * 2) OR
+        // BaseOffset_Y = ThreadBaseOffset + 1 * (SimdSize * 2) + (SimdLaneId * 2) OR
+        // BaseOffset_Z = ThreadBaseOffset + 2 * (SimdSize * 2) + (SimdLaneId * 2)
+        // Load from BaseOffset_[X|Y|Z]
+        llvm::IRBuilder<> Builder(&CI);
+
+        // Get Local ID Base Ptr
+        auto DataTypeI64 = Type::getInt64Ty(F->getParent()->getContext());
+        unsigned int Offset = GLOBAL_STATE_FIELD_OFFSETS::LOCAL_IDS;
+        auto LocalIDBase = BuildLoadInst(CI, Offset, DataTypeI64);
+
+        // Get SIMD Size
+        auto DataTypeI32 = Type::getInt32Ty(F->getParent()->getContext());
+        auto GetSimdSize = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_simdSize, DataTypeI32);
+        llvm::Value* SimdSize = Builder.CreateCall(GetSimdSize);
+
+        // SimdSize = max(SimdSize, 16)
+        auto CmpInst = Builder.CreateICmpSGT(SimdSize, ConstantInt::get(SimdSize->getType(), (uint64_t)16));
+        SimdSize = Builder.CreateSelect(CmpInst, SimdSize, ConstantInt::get(SimdSize->getType(), (uint64_t)16));
+
+        // Get local thread id
+        auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        VectorType* Tys = IGCLLVM::FixedVectorType::get(DataTypeI32, Ctx->platform.getGRFSize() / SIZE_DWORD);
+        Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
+        auto IntCall = Builder.CreateCall(R0Dcl);
+        auto LocalThreadId = Builder.CreateExtractElement(IntCall, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2));
+
+        // Get SIMD lane id
+        auto DataTypeI16 = Type::getInt16Ty(F->getParent()->getContext());
+        auto GetSimdLaneId = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_simdLaneId, DataTypeI16);
+        llvm::Value* SimdLaneId = Builder.CreateCall(GetSimdLaneId);
+
+        // Compute thread base offset where local ids for current thread are stored
+        // ThreadBaseOffset = LocalIDBasePtr + LocalThreadId * (simd size * 3 * 2)
+        auto ThreadBaseOffset = Builder.CreateMul(SimdSize, ConstantInt::get(SimdSize->getType(), (uint64_t)6));
+        ThreadBaseOffset = Builder.CreateMul(Builder.CreateZExt(ThreadBaseOffset, LocalThreadId->getType()), LocalThreadId);
+        ThreadBaseOffset = Builder.CreateAdd(Builder.CreateZExt(ThreadBaseOffset, LocalIDBase->getType()), LocalIDBase);
+
+        // Compute offset per lane
+        uint8_t Factor = 0;
+        if (argType == ImplicitArg::ArgType::LOCAL_ID_Y)
+        {
+            Factor = 2;
+        }
+        else if (argType == ImplicitArg::ArgType::LOCAL_ID_Z)
+        {
+            Factor = 4;
+        }
+
+        // Compute Factor*(simd size) * 2 to arrive at base of local id for current thread
+        auto Expr1 = Builder.CreateMul(SimdSize, ConstantInt::get(SimdSize->getType(), Factor));
+
+        // Compute offset to current lane
+        auto Expr2 = Builder.CreateMul(SimdLaneId, ConstantInt::get(SimdLaneId->getType(), 2));
+
+        auto Result = Builder.CreateAdd(Builder.CreateZExt(Expr1, LocalIDBase->getType()),
+            Builder.CreateZExt(Expr2, LocalIDBase->getType()));
+
+        Result = Builder.CreateAdd(Result, ThreadBaseOffset);
+
+        // Load data
+        auto Int16Ptr = Type::getInt16PtrTy(F->getContext(), 0);
+        auto Addr = Builder.CreateIntToPtr(Result, Int16Ptr);
+        auto LoadInst = Builder.CreateLoad(Addr);
+        auto Trunc = Builder.CreateZExtOrBitCast(LoadInst, CI.getType());
+        V = Trunc;
     }
     else
     {
@@ -375,6 +448,42 @@ Value* WIFuncResolution::getGroupId(CallInst& CI)
     updateDebugLoc(&CI, groupId);
 
     return groupId;
+}
+Value* WIFuncResolution::getLocalThreadId(CallInst &CI)
+{
+    // Receives:
+    // call spir_func i32 @__builtin_IB_get_local_thread_id()
+
+    // Creates:
+    // %r0second = extractelement <8 x i32> %r0, i32 2
+    // %localThreadId = trunc i32 %r0second to i8
+
+    // we need to access R0.2 bits 0 to 7, which contain HW local thread ID on XeHP_SDV+
+
+    Value* V = nullptr;
+    auto F = CI.getFunction();
+    if (hasStackCallAttr(*F))
+    {
+        auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        llvm::IRBuilder<> Builder(&CI);
+        Type* Int32Ty = Type::getInt32Ty(F->getParent()->getContext());
+        VectorType* Tys = IGCLLVM::FixedVectorType::get(Int32Ty, Ctx->platform.getGRFSize() / SIZE_DWORD);
+        Function* R0Dcl = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_getR0, Tys);
+        auto IntCall = Builder.CreateCall(R0Dcl);
+        V = IntCall;
+    }
+    else
+    {
+        Argument* arg = getImplicitArg(CI, ImplicitArg::R0);
+        V = arg;
+    }
+
+    Instruction* r0second = ExtractElementInst::Create(V, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2), "r0second", &CI);
+    Instruction* localThreadId = TruncInst::Create(Instruction::CastOps::Trunc, r0second, Type::getInt8Ty(CI.getContext()), "localThreadId", &CI);
+    updateDebugLoc(&CI, r0second);
+    updateDebugLoc(&CI, localThreadId);
+
+    return localThreadId;
 }
 
 Value* WIFuncResolution::getGlobalSize(CallInst& CI)

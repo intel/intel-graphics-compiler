@@ -71,6 +71,8 @@ namespace TC
         unsigned getVISAPreRASchedulerCtrl() const override { return 6; }
         bool SupportStatefulToken() const override { return true; }
         bool SupportInlineAssembly() const override { return true; }
+        /// Enables the use of inline data on XeHP_SDV+
+        virtual bool UseInlineData() const override { return true; }
     };
 
 }//namespace TC

@@ -236,6 +236,11 @@ float    __builtin_IB_atomic_cmpxchg_global_f32(__global float*, float, float);
 int      __builtin_IB_atomic_cmpxchg_local_i32(__local int*, int, int);
 float    __builtin_IB_atomic_cmpxchg_local_f32(__local float*, float, float);
 
+// Float Atomics
+#if defined(cl_intel_global_float_atomics)
+float    __builtin_IB_atomic_add_global_f32(__global float*, float);
+float    __builtin_IB_atomic_sub_global_f32(__global float*, float);
+#endif // defined(cl_intel_global_float_atomics)
 // 64bit Atomic operations
 #if defined(cl_intel_64bit_global_atomics_placeholder)
 long     __builtin_IB_atomic_add_global_i64(__global long*, long);
@@ -817,6 +822,7 @@ float __builtin_IB_add_rtz_f32(float x, float y) __attribute__((const));
 
 
 
+#include "IGCBiF_Intrinsics_Dpas.cl"
 
 
 

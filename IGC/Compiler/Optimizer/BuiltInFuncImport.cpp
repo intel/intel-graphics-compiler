@@ -943,6 +943,8 @@ void BIImport::InitializeBIFlags(Module& M)
         isUseMathWithLUTEnabled = true;
     }
     initializeVarWithValue("__UseMathWithLUT", isUseMathWithLUTEnabled ? 1 : 0);
+    initializeVarWithValue("__UseNativeFP32GlobalAtomicAdd", pCtx->platform.hasFP32GlobalAtomicAdd() ? 1 : 0);
+    initializeVarWithValue("__UseNativeFP16AtomicMinMax", pCtx->platform.hasFP16AtomicMinMax() ? 1 : 0);
     //those are the same for now, condition separation in another commit
     initializeVarWithValue("__UseNative64BitIntSubgroupBuiltin",
         (pCtx->platform.hasNoFullI64Support() || pCtx->platform.hasNoFP64Inst()) ? 0 : 1);

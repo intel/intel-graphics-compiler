@@ -115,6 +115,30 @@ typedef struct GT_VDBOX_INFO
 
 } GT_VDBOX_INFO;
 
+typedef struct GT_MULTI_TILE_ARCH_INFO
+{
+    // Total Count of Tiles enabled
+    uint8_t     TileCount;
+
+    // Mask of all enabled Tiles
+    union
+    {
+        struct
+        {
+            uint8_t     Tile0       : 1;
+            uint8_t     Tile1       : 1;
+            uint8_t     Tile2       : 1;
+            uint8_t     Tile3       : 1;
+            uint8_t     Reserved    : 4;
+        };
+
+        uint8_t TileMask;
+    };
+
+    // flag to check if MultiTileArchInfo has valid data or not
+    bool        IsValid;
+
+} GT_MULTI_TILE_ARCH_INFO;
 typedef struct GT_SQIDI_INFO
 {
     uint32_t        NumberofSQIDI;                        // Total no. of enabled SQIDIs

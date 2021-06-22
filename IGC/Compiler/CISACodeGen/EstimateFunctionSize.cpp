@@ -219,6 +219,10 @@ bool EstimateFunctionSize::matchImplicitArg( CallInst& CI )
     {
         matched = true;
     }
+    else if( funcName.equals( GET_LOCAL_THREAD_ID ) )
+    {
+        matched = true;
+    }
     else if( funcName.equals( GET_GLOBAL_OFFSET ) )
     {
         matched = true;

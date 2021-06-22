@@ -113,6 +113,7 @@ void CShader::PreAnalysisPass()
         if (funcMDItr->second.privateMemoryPerWI != 0)
         {
             if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory
+                || GetContext()->getModuleMetaData()->compOpt.UseStatelessforPrivateMemory
                 )
             {
                 const uint32_t GRFSize = getGRFSize();
@@ -755,6 +756,49 @@ CVariable* CShader::GetHWTID()
 {
     if (!m_HW_TID)
     {
+        if (m_Platform->getHWTIDFromSR0())
+        {
+            auto RemoveBitRange = [this](CVariable* &src, unsigned removebit, unsigned range)->void
+            {
+                CVariable* leftHalf = GetNewVariable(src);
+                CVariable* rightHalf = GetNewVariable(src);
+                uint32_t mask = BITMASK(removebit);
+                // src = (src & mask) | ((src >> range) & ~mask)
+                encoder.And(rightHalf, src, ImmToVariable(mask, ISA_TYPE_D));
+                encoder.Push();
+                encoder.IShr(leftHalf, src, ImmToVariable(range, ISA_TYPE_D));
+                encoder.Push();
+                encoder.And(leftHalf, leftHalf, ImmToVariable(~mask, ISA_TYPE_D));
+                encoder.Push();
+                encoder.Or(src, rightHalf, leftHalf);
+                encoder.Push();
+            };
+
+            // XeHP_SDV
+            // [13:11] Slice ID.
+            // [10:9] Dual - SubSlice ID
+            // [8] SubSlice ID.
+            // [7] : EUID[2]
+            // [6] : Reserved
+            // [5:4] EUID[1:0]
+            // [3] : Reserved MBZ
+            // [2:0] : TID
+            //
+            // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
+
+            uint32_t bitmask = BITMASK(14);
+            m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
+            encoder.SetNoMask();
+            encoder.SetSrcSubReg(0, 0);
+            encoder.And(m_HW_TID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_D));
+            encoder.Push();
+
+            // Remove bit [6]
+            RemoveBitRange(m_HW_TID, 6, 1);
+            // Remove bit [3]
+            RemoveBitRange(m_HW_TID, 3, 1);
+        }
+        else
         {
             m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
             encoder.GetVISAPredefinedVar(m_HW_TID, PREDEFINED_HW_TID);
@@ -3302,6 +3346,10 @@ void CShader::PackAndCopyVariable(
 bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 {
     bool ret = (m_ScratchSpaceSize <= m_ctx->platform.maxPerThreadScratchSpace());
+    m_simdProgram.setScratchSpaceUsedByShader(m_ScratchSpaceSize);
+    if (m_ctx->platform.hasScratchSurface() && m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace()) {
+        ret = (m_simdProgram.getScratchSpaceUsageInSlot0() <= m_ctx->platform.maxPerThreadScratchSpace());
+    }
 
 
     return ret;

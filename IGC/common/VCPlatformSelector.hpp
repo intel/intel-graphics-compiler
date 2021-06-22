@@ -45,6 +45,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
       return "DG1";
     else if (Product == IGFX_XE_HP_SDV)
       return "XEHP";
+    else if (Product == IGFX_XE_HP_SDV)
+      return IGC_MANGLE("TGL"); // alias to XeHP_SDV
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;

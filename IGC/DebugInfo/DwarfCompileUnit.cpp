@@ -874,6 +874,15 @@ void CompileUnit::addGTRelativeLocation(IGC::DIEBlock* Block, const VISAVariable
                 addBindlessSurfaceLocation(Block, Loc);
             }
         }
+        else if (bti == 251) // Missing define for 251
+        {
+            // On XeHP_SDV, the Scratch Buffer is a bindless surface specified in the message header payload,
+            // with the base address calculated using the physical thread ID and the Pitch in the surface state.
+            // The bindless surface is relative to the Surface State Base Address heap (BTS 251).
+            // The HWord offset into the Scratch Buffer memory is provided in the message descriptor and
+            // communicated to the data port on the Sideband.
+            addBindlessScratchSpaceLocation(Block, Loc);
+        }
         else if ((bti >= 0) && (bti <= 240))
         {
             // BTI surface
@@ -1102,6 +1111,102 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock* Block, const VISAVar
     }
 }
 
+// addBindlessScratchSpaceLocation - add a sequence of attributes to calculate bindless scratch space location of variable
+void CompileUnit::addBindlessScratchSpaceLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)
+{
+    if (EmitSettings.EnableGTLocationDebugging)
+    {
+        IGC_ASSERT(EmitSettings.UseNewRegisterEncoding);
+        // Use virtual debug register with Surface State Base Address
+        uint32_t surfStateBaseAddrEncoded = GetEncodedRegNum<RegisterNumbering::SurfStateBase>(
+            dwarf::DW_OP_breg0, EmitSettings.UseNewRegisterEncoding);
+
+        IGC_ASSERT_MESSAGE(Loc->HasSurface(), "Missing surface for variable location");
+
+        // Note: Bindless scratch space offset aka Scratch Space Pointer is located in preserved r0 GRF register,
+        // on bits 31:10 of r0.5 subregister.
+        //
+        // Bindless Surface addressing using bindless offset stored in a register r0,
+        // while surface offset is literal:
+        // 1 DW_OP_reg16
+        // 2 DW_OP_const1u 5*32          , Offset in bits to r0.5
+        // 3 DW_OP_const1u 32            , 32-bit long bindless offset
+        // 4 DW_OP_const4u 0xffffffc0    , which is 1K-byte aligned
+        // 5 DW_OP_and
+        // 6 DW_OP_push_bit_piece_stack
+        // 7 DW_OP_breg8 32              , we add the surface state base address plus the field offset
+        // 8 DW_OP_plus                  , to fetch the surface base address inside the RENDER_SURFACE_STATE object
+        // 9 DW_OP_deref
+        // 10 DW_OP_plus_uconst <offset>
+        // or
+        // Bindless Surface addressing using bindless offset (r0.5 [31:10]) and surface offset both stored in a register
+        // while r1 (for example) contains surface offset.
+        // 1 DW_OP_reg16
+        // 2 DW_OP_const1u 5*32          , Offset in bits to r0.5
+        // 3 DW_OP_const1u 32            , 32-bit long bindless offset
+        // 4 DW_OP_const4u 0xffffffc0    , which is 1K-byte aligned
+        // 5 DW_OP_and
+        // 6 DW_OP_push_bit_piece_stack
+        // 7 DW_OP_breg8 32
+        // 8 DW_OP_plus
+        // 9 DW_OP_deref
+        // 10 DW_OP_reg17
+        // 11 DW_OP_const1u <bit-offset to reg1>
+        // 12 DW_OP_const1u 32
+        // 13 DW_OP_push_bit_piece_stack
+
+        uint16_t regNumWithBindlessOffset = 0;  // TBD Bindless offset in GRF
+
+        addRegisterOp(Block, regNumWithBindlessOffset);  // Bindless offset to base address
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+        addUInt(Block, dwarf::DW_FORM_data1, 5*32);   // bit offset to Scratch Space Pointer in r0.5
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+        addUInt(Block, dwarf::DW_FORM_data1, 32);
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const4u);
+        addUInt(Block, dwarf::DW_FORM_data4, 0xffffffc0);
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
+        addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+        addUInt(Block, dwarf::DW_FORM_data1, surfStateBaseAddrEncoded);  // Bindless Surface Base Address
+        addUInt(Block, dwarf::DW_FORM_udata, 32);
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+
+        if (Loc->HasLocation())  // Is surface offset available as literal?
+        {
+            uint32_t offset = Loc->GetOffset();     // Surface offset
+
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);
+            addUInt(Block, dwarf::DW_FORM_udata, offset);
+        }
+        else if (Loc->IsRegister())  // Is surface offset available as register?
+        {
+            auto regNum = Loc->GetRegister();
+            const auto* VISAMod = Loc->GetVISAModule();
+
+            DbgDecoder::VarInfo varInfo;
+            if (!VISAMod->getVarInfo(*DD->getDecodedDbg(), "V", regNum, varInfo)) {
+                LLVM_DEBUG(dbgs() << "warning: could not build bindless scratch offset (V" << regNum << ")");
+                return;
+            }
+
+            uint16_t regNumWithSurfOffset = varInfo.lrs.front().getGRF().regNum;
+            unsigned int subReg = varInfo.lrs.front().getGRF().subRegNum;
+            auto bitOffsetToSurfReg = subReg * 8;  // Bit-offset to GRF with surface offset
+            // auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
+
+            addRegisterOp(Block, regNumWithSurfOffset);  // Surface offset (in GRF) to base address
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+            addUInt(Block, dwarf::DW_FORM_data1, bitOffsetToSurfReg);
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+            addUInt(Block, dwarf::DW_FORM_data1, 32);
+            addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Unexpected bindless variable - offset neither literal nor in register");
+        }
+    }
+}
 
 // addBindlessSamplerLocation - add a sequence of attributes to calculate bindless sampler location of variable
 void CompileUnit::addBindlessSamplerLocation(IGC::DIEBlock* Block, const VISAVariableLocation* Loc)

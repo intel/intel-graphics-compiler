@@ -66,6 +66,18 @@ DECLARE_IGC_REGKEY(bool, DisableRegDistDep,                 false,  "distable re
 DECLARE_IGC_REGKEY(bool, EnableQuickTokenAlloc,                 false,  "Insert dependence resolve for kernel stitching", true)
 DECLARE_IGC_REGKEY(bool, SetA0toTdrForSendc,            false,  "Set A0 to tdr0 before each sendc/sendsc", true)
 DECLARE_IGC_REGKEY(bool, ReplaceIndirectCallWithJmpi,   false,  "Replace indirect call with jmpi instruction (HW WA)", true)
+DECLARE_IGC_REGKEY(bool, DPASTokenReduction,            false, "optimization to reduce the tokens used for DPAS instruction.", true)
+DECLARE_IGC_REGKEY(bool, EnableAdd3,                    true,  "Enable Add3 (temporary for testing). XeHP only", true)
+DECLARE_IGC_REGKEY(bool, EnableBfn,                     true,  "Enable Bfn (temporary for testing). XeHP only", true)
+DECLARE_IGC_REGKEY(bool, SeparateSpillPvtScratchSpace,  false,  "Separate scratch spaces for spillfill and privatememory. XeHP and above only. Test only. Remove it once stabalized.", true)
+DECLARE_IGC_REGKEY(bool, DisableThreeALUPipes,          false,  "Disable three ALU Pipelines. XeHP only", true)
+DECLARE_IGC_REGKEY(bool, Enable16DWURBWrite,            false, "Enable 16 Dword URB Write messages", true)
+DECLARE_IGC_REGKEY(bool, Enable16OWSLMBlockRW,          true,  "Enable 16 OWord (8 GRF) SLM block read/write message", true)
+DECLARE_IGC_REGKEY(bool, Enable64BMediaBlockRW,         false,  "Enable 64 byte wide media block read/write message", true)
+DECLARE_IGC_REGKEY(bool, DisableRegSharingHeuristics,   false,  "Disable compiler heuristics to decide number of threads per EU.", false)
+DECLARE_IGC_REGKEY(bool, EnableUntypedSurfRWofSS,       true,   "Enable untyped surface RW to scratch space. XeHP A0 only.", true)
+
+DECLARE_IGC_REGKEY(DWORD, ForceHWThreadNumberPerEU,                   0,     "Total HW thread number per-EU.", false)
 DECLARE_IGC_REGKEY(bool, UseMathWithLUT,                false,  "Use the implementations of cos, cospi, log, sin, sincos, and sinpi with Look-Up Tables (LUT).", false)
 DECLARE_IGC_REGKEY(bool, GlobalSendVarSplit, false, "Enable global send variable splitting when we are about to spill", false)
 DECLARE_IGC_REGKEY(DWORD,EnableSendFusion,              1,     "Enable(!=0)/disable(0)/force(2) send fusion. Valid for simd8 shader/kernel only.", false)
@@ -225,6 +237,7 @@ DECLARE_IGC_REGKEY(bool, ForceMemoryFenceBeforeEOT,     false, "Forces inserting
 DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               true,  "Enable render target mask optimization in PSO opt", false)
 DECLARE_IGC_REGKEY(DWORD, MSAAClearedKernel,            0,     "Insert the discard code for MSAA_MSC_Cleared kernels. 2/4/8/16", false)
 DECLARE_IGC_REGKEY(bool, EnablerReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
+DECLARE_IGC_REGKEY(bool, DPASReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(DWORD, RSWARegNum,    0, "dummy register used for EnablerReadSuppressionWA", false)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false,  "Uses WIAnalysis to find barriers in divergent flow control. May have false positives.", false)
 
@@ -346,6 +359,7 @@ DECLARE_IGC_REGKEY(DWORD, OverrideProductFamilyForWA,     0,   "Enable this to o
 
 
 
+DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,              false, "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.", true)
 DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlining of Unmasked functions till end of CG to avoid code movement inside/outside of unmasked region", false)
 
 DECLARE_IGC_GROUP("Performance experiments")

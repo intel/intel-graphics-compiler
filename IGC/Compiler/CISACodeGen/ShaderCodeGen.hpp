@@ -86,6 +86,9 @@ public:
         IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
+    virtual bool passNOSInlineData() { return false; }
+    virtual bool loadThreadPayload() { return false; }
+    virtual unsigned getAnnotatedNumThreads() { return 0; }
     virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
     virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
@@ -453,6 +456,8 @@ public:
     bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
     void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
+    bool GetHasDPAS() const { return m_HasDPAS; }
+    void SetHasDPAS() { m_HasDPAS = true; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
     void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
     uint32_t GetStatelessWritesCount() const { return m_StatelessWritesCount; }
@@ -605,6 +610,7 @@ protected:
 
     bool m_HasGlobalAtomics = false;
 
+    bool m_HasDPAS = false;
 
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;

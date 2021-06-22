@@ -93,6 +93,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | grf_count | int32 | Required | | |
 | has_4gb_buffers | bool | Optional | false | Compiled for greater than 4GB buffers |
 | has_device_enqueue| bool | Optional | false | |
+| has_dpas | bool | Optional | false | |
 | has_fence_for_image_access | bool | Optional | false | |
 | has_global_atomics | bool | Optional | false | |
 | has_multi_scratch_spaces | bool | Optional | false | |

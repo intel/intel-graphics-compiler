@@ -83,6 +83,7 @@ namespace IGC {
         const llvm::StringRef GET_LOCAL_ID_Y = "__builtin_IB_get_local_id_y";
         const llvm::StringRef GET_LOCAL_ID_Z = "__builtin_IB_get_local_id_z";
         const llvm::StringRef GET_GROUP_ID = "__builtin_IB_get_group_id";
+        const llvm::StringRef GET_LOCAL_THREAD_ID = "__builtin_IB_get_local_thread_id";
         const llvm::StringRef GET_GLOBAL_SIZE = "__builtin_IB_get_global_size";
         const llvm::StringRef GET_LOCAL_SIZE = "__builtin_IB_get_local_size";
         const llvm::StringRef GET_GLOBAL_OFFSET = "__builtin_IB_get_global_offset";

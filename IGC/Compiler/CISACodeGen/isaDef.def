@@ -42,6 +42,8 @@ DECLARE_CISA_OPCODE(EOPCODE_SHL,            "shl",                              
 DECLARE_CISA_OPCODE(EOPCODE_SHR,            "shr",                              ISA_SHR)
 DECLARE_CISA_OPCODE(EOPCODE_ROL,            "rol",                              ISA_ROL)
 DECLARE_CISA_OPCODE(EOPCODE_ROR,            "ror",                              ISA_ROR)
+DECLARE_CISA_OPCODE(EOPCODE_ADD3,           "add3",                             ISA_ADD3)
+DECLARE_CISA_OPCODE(EOPCODE_BFN,            "bfn",                              ISA_BFN)
 DECLARE_CISA_OPCODE(EOPCODE_OWLOAD,         "oword_ld_unaligned",               ISA_OWORD_LD_UNALIGNED)
 DECLARE_CISA_OPCODE(EOPCODE_GATHER,         "gather",                           ISA_GATHER)
 DECLARE_CISA_OPCODE(EOPCODE_TYPED4_READ,    "typed4_read",                      ISA_GATHER4_TYPED)

@@ -269,6 +269,9 @@ namespace IGC
         // addBindlessSamplerLocation - add a sequence of attributes to calculate bindless sampler location of variable
         void addBindlessSamplerLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
+        // addBindlessScratchSpaceLocation - add a sequence of attributes to calculate bindless scratch space
+        // location of variable
+        void addBindlessScratchSpaceLocation(DIEBlock* Block, const VISAVariableLocation* Loc);
 
         // addBE_FP - emits operations to add contents of BE_FP to current top of dwarf stack
         void addBE_FP(IGC::DIEBlock* Block);

@@ -171,6 +171,9 @@ namespace IGC
         unsigned int getScratchSpaceUsageInSlot1() const
         {
             unsigned int result = 0;
+            //FIXME: temporarily disable slot1, enable it again when IGC is ready to handle r0.5+1
+            // result = roundSize(m_UseScratchSpacePrivateMemory ? m_scratchSpaceUsedByShader : 0);
+            IGC_ASSERT(result <= m_scratchSpaceSizeLimit);
             return result;
         }
 
@@ -198,6 +201,14 @@ namespace IGC
             return (size ? iSTD::RoundPower2(iSTD::Max(int_cast<DWORD>(size), static_cast<DWORD>(sizeof(KILOBYTE)))) : 0);
         }
 
+        // XeHP_SDV+ : we round to one of values: pow(2, (0, 6, 7, 8...18))
+        unsigned int roundPower2Byte(unsigned int size) const
+        {
+            unsigned int ret = (size ? iSTD::RoundPower2(int_cast<DWORD>(size)) : 0);
+            //round any value in (0,32] to 64 BYTEs
+            ret = ((ret > 0 && ret <= 32) ? 64 : ret);
+            return ret;
+        }
     };
 
     enum InstrStatTypes
@@ -1337,6 +1348,27 @@ namespace IGC
                 {
                     IntelEnablePreRAScheduling = false;
                 }
+                //
+                // Options to set the number of GRF and threads
+                //
+                if (strstr(options, IGC_MANGLE("-intel-128-GRF-per-thread")))
+                {
+                    Intel128GRFPerThread = true;
+                    numThreadsPerEU = 8;
+                }
+                if (strstr(options, IGC_MANGLE("-intel-256-GRF-per-thread")) ||
+                    strstr(options, IGC_MANGLE("-opt-large-register-file")))
+                {
+                    Intel256GRFPerThread = true;
+                    numThreadsPerEU = 4;
+                }
+                if (const char* op = strstr(options, IGC_MANGLE("-intel-num-thread-per-eu")))
+                {
+                    IntelNumThreadPerEU = true;
+                    // Take an integer value after this option
+                    // atoi(..) ignores leading white spaces and characters after the actual number
+                    numThreadsPerEU = atoi(op + strlen(IGC_MANGLE("-intel-num-thread-per-eu")));
+                }
                 if (strstr(options, "-intel-use-bindless-buffers"))
                 {
                     PromoteStatelessToBindless = true;
@@ -1425,6 +1457,10 @@ namespace IGC
             // 0-5: valid values set from the cmdline
             int16_t VectorCoalescingControl = -1;
 
+            bool Intel128GRFPerThread = false;
+            bool Intel256GRFPerThread = false;
+            bool IntelNumThreadPerEU = false;
+            uint32_t numThreadsPerEU = 0;
         };
 
         class Options
@@ -1498,6 +1534,13 @@ namespace IGC
                         GTPinScratchAreaSizeValue = atoi(optionVal);
                     }
                 }
+                if (const char* op = strstr(options, IGC_MANGLE("-intel-reqd-eu-thread-count")))
+                {
+                    IntelRequiredEUThreadCount = true;
+                    // Take an integer value after this option
+                    // atoi(..) ignores leading white spaces and characters after the actual number
+                    requiredEUThreadCount = atoi(op + strlen("-intel-reqd-eu-thread-count="));
+                }
             }
 
             bool CorrectlyRoundedSqrt;
@@ -1511,6 +1554,8 @@ namespace IGC
             bool GTPinGRFInfo = false;
             bool GTPinScratchAreaSize = false;
             uint32_t GTPinScratchAreaSizeValue = 0;
+            bool IntelRequiredEUThreadCount = false;
+            uint32_t requiredEUThreadCount = 0;
         };
 
         // output: shader information
