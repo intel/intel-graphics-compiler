@@ -209,7 +209,6 @@ void SpillManager::genRegMov(G4_BB* bb,
 void SpillManager::replaceSpilledDst(G4_BB* bb,
                                      INST_LIST_ITER it, // where new insts will be inserted
                                      G4_INST*       inst,
-                                     PointsToAnalysis& pointsToAnalysis,
                                      G4_Operand ** operands_analyzed,
                                      G4_Declare ** declares_created)
 {
@@ -253,7 +252,7 @@ void SpillManager::replaceSpilledDst(G4_BB* bb,
 
             for (unsigned int j = 0; j < G4_MAX_SRCS; j++)
             {
-                G4_SrcRegRegion* analyzed_src = (G4_SrcRegRegion*) operands_analyzed[j];
+                G4_SrcRegRegion* analyzed_src = static_cast<G4_SrcRegRegion*>(operands_analyzed[j]);
                 if (analyzed_src != NULL &&
                     analyzed_src->getBase()->asRegVar()->getDeclare() == dst->getBase()->asRegVar()->getDeclare() &&
                     analyzed_src->getSubRegOff() == dst->getSubRegOff() &&
@@ -296,7 +295,6 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                                      INST_LIST_ITER it, // where new insts will be inserted
                                      G4_INST*       inst,
                                      unsigned       i,
-                                     PointsToAnalysis& pointsToAnalysis,
                                      G4_Operand ** operands_analyzed,
                                      G4_Declare ** declares_created)
 {
@@ -318,7 +316,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
         G4_Declare* spDcl = ss->getBase()->asRegVar()->getDeclare()->getSpilledDeclare();
         if (ss->getRegAccess() == Direct)
         {
-            G4_SrcRegRegion* s = NULL;
+            G4_SrcRegRegion* s;
             if (inst->isSplitSend() && i == 3)
             {
                 G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
@@ -494,24 +492,21 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
 //
 // go over all declares and allocate spill locations
 //
-void SpillManager::createSpillLocations(G4_Kernel& kernel)
+void SpillManager::createSpillLocations(const G4_Kernel& kernel)
 {
     // set spill flag to indicate which vars are spilled
-    for (LIVERANGE_LIST::const_iterator lt = spilledLRs.begin (); lt != spilledLRs.end (); ++lt)
+    for (const LiveRange* lr : spilledLRs)
     {
-        LiveRange* lr = *lt;
         G4_Declare* dcl = lr->getVar()->getDeclare();
         dcl->setSpillFlag();
         MUST_BE_TRUE(lr->getPhyReg() == NULL, "Spilled Live Range shouldn't have physical reg");
-        MUST_BE_TRUE(lr->getSpillCost() < MAXSPILLCOST, "ERROR: spill live range with inifinite spill cost");
+        MUST_BE_TRUE(lr->getSpillCost() < MAXSPILLCOST, "ERROR: spill live range with infinite spill cost");
         // create spill loc for holding spilled addr regs
         createNewSpillLocDeclare(dcl);
     }
     // take care of alias declares
-    DECLARE_LIST& declares = kernel.Declares;
-    for (DECLARE_LIST_ITER it = declares.begin(); it != declares.end(); it++)
+    for (G4_Declare* dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*it);
         if (!dcl->getRegVar()->isRegAllocPartaker()) // skip non reg alloc candidate
             continue;
 
@@ -550,10 +545,8 @@ void SpillManager::insertSpillCode()
     //
     createSpillLocations(kernel);
 
-    FlowGraph& fg = kernel.fg;
-    for (BB_LIST_ITER bb_it = fg.begin(); bb_it != fg.end(); bb_it++)
+    for (G4_BB* bb : kernel.fg)
     {
-        G4_BB* bb = *bb_it;
         bbId = bb->getId();
         //
         // handle spill code for the current BB
@@ -576,10 +569,10 @@ void SpillManager::insertSpillCode()
             // insert spill inst for spilled srcs
             for (unsigned i = 0; i < G4_MAX_SRCS; i++)
             {
-                replaceSpilledSrc(bb, inst_it, inst, i, pointsToAnalysis, operands_analyzed, declares_created);
+                replaceSpilledSrc(bb, inst_it, inst, i, operands_analyzed, declares_created);
             }
             // insert spill inst for spilled dst
-            replaceSpilledDst(bb, inst_it, inst, pointsToAnalysis, operands_analyzed, declares_created);
+            replaceSpilledDst(bb, inst_it, inst, operands_analyzed, declares_created);
 
             //
             // Process predicate

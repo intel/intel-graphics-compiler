@@ -35,7 +35,7 @@ class SpillManager
     const LIVERANGE_LIST & spilledLRs;
 
     // id for newly created address or flag variables
-    uint32_t origTempDclId;
+    const uint32_t origTempDclId;
     uint32_t tempDclId;
 
     // The number of flag spill store inserted.
@@ -60,14 +60,12 @@ class SpillManager
     void replaceSpilledDst(G4_BB* bb,
                            INST_LIST_ITER it, // where new insts will be inserted
                            G4_INST*       inst,
-                           PointsToAnalysis& pointsToAnalysis,
                            G4_Operand ** operands_analyzed,
                            G4_Declare ** declares_created);
     void replaceSpilledSrc(G4_BB* bb,
                            INST_LIST_ITER it, // where new insts will be inserted
                            G4_INST*       inst,
                            unsigned       i,
-                           PointsToAnalysis& pointsToAnalysis,
                            G4_Operand ** operands_analyzed,
                            G4_Declare ** declares_created);
     void replaceSpilledPredicate(G4_BB* bb,
@@ -77,7 +75,7 @@ class SpillManager
                            INST_LIST_ITER it,
                            G4_INST*       inst);
 
-    void createSpillLocations(G4_Kernel& kernel);
+    void createSpillLocations(const G4_Kernel& kernel);
 
 public:
 
