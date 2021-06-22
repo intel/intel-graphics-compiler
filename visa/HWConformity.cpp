@@ -4459,7 +4459,6 @@ static bool isSameOperand(G4_Operand* srcOpnd, struct LiveNode* ln)
     return false;
 }
 
-// substitute local operands with acc when possible
 void HWConformity::localizeForAcc(G4_BB* bb)
 {
     std::map<const G4_Declare*, G4_Operand*> replacedOperand;
@@ -4479,8 +4478,8 @@ void HWConformity::localizeForAcc(G4_BB* bb)
             const G4_Declare* dcl = dst->getTopDcl();
             if (useNodes.find(dcl) != useNodes.end())
             {
-                useNodes.erase(dcl);
-                erasedCandidates.emplace_back(dcl);
+                useNodes.erase(dcl); //Maybe added again
+                erasedCandidates.emplace_back(dcl); //erased declares
             }
         }
 
@@ -4521,8 +4520,10 @@ void HWConformity::localizeForAcc(G4_BB* bb)
         auto dclIter = std::find(erasedCandidates.begin(), erasedCandidates.end(), dcl);
         if (dclIter != erasedCandidates.end())
         {
+            //removed already
             continue;
         }
+
         if (Nodes.second.size() >= GLOBAL_USE_NUM)
         {
             for (auto& LN : Nodes.second)

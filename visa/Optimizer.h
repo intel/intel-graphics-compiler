@@ -186,6 +186,8 @@ class Optimizer
 
     void accSubPostSchedule();
 
+    void accSubBeforeRA();
+
     // return true if BuiltInR0 gets a different allocation than r0
     bool R0CopyNeeded();
 
@@ -346,6 +348,7 @@ public:
         PI_countGRFUsage,
         PI_changeMoveType,
         PI_reRAPostSchedule,
+        PI_accSubBeforeRA,
         PI_accSubPostSchedule,
         PI_dce,
         PI_reassociateConst,

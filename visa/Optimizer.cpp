@@ -1098,6 +1098,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(countGRFUsage,           vISA_PrintRegUsage,           TimerID::MISC_OPTS);
     INITIALIZE_PASS(changeMoveType,          vISA_ChangeMoveType,          TimerID::MISC_OPTS);
     INITIALIZE_PASS(reRAPostSchedule,        vISA_ReRAPostSchedule,        TimerID::OPTIMIZER);
+    INITIALIZE_PASS(accSubBeforeRA,          vISA_accSubBeforeRA,          TimerID::OPTIMIZER);
     INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TimerID::OPTIMIZER);
     INITIALIZE_PASS(dce,                     vISA_EnableDCE,               TimerID::OPTIMIZER);
     INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TimerID::OPTIMIZER);
@@ -1491,6 +1492,32 @@ void Optimizer::accSubPostSchedule()
     accSub.run();
 }
 
+void Optimizer::accSubBeforeRA()
+{
+    if (!builder.doAccSub() || !builder.getOption(vISA_doAccSubAfterSchedule))
+    {
+        return;
+    }
+
+    kernel.fg.resetLocalDataFlowData();
+    kernel.fg.localDataFlowAnalysis();
+
+    if (builder.getOption(vISA_localizationForAccSub))
+    {
+        HWConformity hwConf(builder, kernel, mem);
+        for (auto bb : kernel.fg)
+        {
+            hwConf.localizeForAcc(bb);
+        }
+
+        kernel.fg.resetLocalDataFlowData();
+        kernel.fg.localDataFlowAnalysis();
+    }
+
+    AccSubPass accSub(builder, kernel);
+    accSub.run();
+}
+
 bool Optimizer::R0CopyNeeded()
 {
     if (kernel.getOption(vISA_enablePreemption))
@@ -1560,6 +1587,15 @@ int Optimizer::optimization()
     // HW workaround before RA (assume no pseudo inst)
     runPass(PI_preRA_HWWorkaround);
 
+    if (builder.getOption(vISA_accSubBeforeRA))
+    {
+        runPass(PI_expandMulPostSchedule);
+
+        runPass(PI_expandMadwPostSchedule);
+
+        runPass(PI_accSubBeforeRA);
+    }
+
     // perform register allocation
     runPass(PI_regAlloc);
     if (RAFail)
@@ -1595,11 +1631,14 @@ int Optimizer::optimization()
         runPass(PI_localSchedule);
     }
 
-    runPass(PI_expandMulPostSchedule);
+    if (!builder.getOption(vISA_accSubBeforeRA))
+    {
+        runPass(PI_expandMulPostSchedule);
 
-    runPass(PI_expandMadwPostSchedule);
+        runPass(PI_expandMadwPostSchedule);
 
-    runPass(PI_accSubPostSchedule);
+        runPass(PI_accSubPostSchedule);
+    }
 
     runPass(PI_reRAPostSchedule);
 
