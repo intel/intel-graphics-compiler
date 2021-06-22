@@ -5139,6 +5139,7 @@ void HWConformity::avoidDstSrcOverlap(PointsToAnalysis& p)
     {
         INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
         INST_LIST_ITER next_iter = i;
+        curBB = bb;
         for (; i != iEnd; i = next_iter)
         {
             ++next_iter;
