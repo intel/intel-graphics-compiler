@@ -2445,8 +2445,14 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode* node, G4_BB* bb, SBNode*&
             }
             else
             {
-                assert(liveNode->getBBID() == bb->getId());
-                nodeDist = node->getNodeID() - liveNode->getNodeID();
+                if (liveNode->getBBID() == bb->getId())
+                {
+                    nodeDist = node->getNodeID() - liveNode->getNodeID();
+                }
+                else //Not dst live out global, which is not calculated, use the node distance
+                {
+                    nodeDist = node->getNodeID() > liveNode->getNodeID() ? node->getNodeID() - liveNode->getNodeID() : liveNode->getNodeID() - node->getNodeID();
+                }
             }
 
             liveNodeOverhead = (liveNodeDelay > nodeDist ? (liveNodeDelay - nodeDist) : 0);
