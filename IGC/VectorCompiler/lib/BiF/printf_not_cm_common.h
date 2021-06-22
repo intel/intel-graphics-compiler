@@ -36,17 +36,21 @@ enum Enum {
 using BufferElementTy = unsigned;
 static inline constexpr int ArgHeaderSize = sizeof(BufferElementTy);
 
-template <int FormatStringAnnotationSize>
+// StringAnnotationSize defines how much space in bytes is required to write
+// a string to the prinf buffer. For ocl it is the size of a string index, for
+// ze - the size of a string pointer.
+template <int StringAnnotationSize>
 inline int calcRequiredBufferSize(vector<int, ArgsInfoVector::Size> ArgsInfo) {
-  int Num32BitArgs = ArgsInfo[ArgsInfoVector::NumTotal] -
-                     ArgsInfo[ArgsInfoVector::Num64Bit] -
-                     ArgsInfo[ArgsInfoVector::NumPtr];
+  int Num32BitArgs =
+      ArgsInfo[ArgsInfoVector::NumTotal] - ArgsInfo[ArgsInfoVector::Num64Bit] -
+      ArgsInfo[ArgsInfoVector::NumStr] - ArgsInfo[ArgsInfoVector::NumPtr];
   // Note that pointers are always passed as 64-bit values
   // (32-bit ones are zext).
   int Num64BitArgs =
       ArgsInfo[ArgsInfoVector::Num64Bit] + ArgsInfo[ArgsInfoVector::NumPtr];
-  int BufferSize = FormatStringAnnotationSize +
+  int BufferSize = StringAnnotationSize +
                    ArgsInfo[ArgsInfoVector::NumTotal] * ArgHeaderSize +
+                   ArgsInfo[ArgsInfoVector::NumStr] * StringAnnotationSize +
                    Num32BitArgs * sizeof(int32_t) +
                    Num64BitArgs * sizeof(int64_t);
   return BufferSize;
@@ -102,14 +106,13 @@ generateTransferData(uintptr_t InitPtr, BufferElementTy ReturnValue) {
 
 // Printf initial routines. The function gets printf buffer and allocates
 // space in it. It needs some info about args to allocate enough space.
-template <int FormatStringAnnotationSize>
+template <int StringAnnotationSize>
 vector<BufferElementTy, TransferDataSize>
 printf_init_impl(vector<int, ArgsInfoVector::Size> ArgsInfo) {
   auto FmtStrSize = ArgsInfo[ArgsInfoVector::FormatStrSize];
   if (FmtStrSize > MaxFormatStrSize)
     return generateTransferData(/* BufferPtr */ 0, /* ReturnValue */ -1);
-  auto BufferSize =
-      calcRequiredBufferSize<FormatStringAnnotationSize>(ArgsInfo);
+  auto BufferSize = calcRequiredBufferSize<StringAnnotationSize>(ArgsInfo);
   auto BufferPtr = reinterpret_cast<uintptr_t>(cm::detail::printf_buffer());
   auto Offset = getInitialBufferOffset(BufferPtr, BufferSize);
   return generateTransferData(BufferPtr + Offset, /* ReturnValue */ 0);
