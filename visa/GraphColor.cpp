@@ -970,7 +970,8 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST* inst)
             }
 
             LocalLiveRange* lr = gra.getLocalLR(dcls[i]);
-            if (k == 0  && !lr->isLiveRangeLocal())
+            if (!lr ||
+                (k == 0  && !lr->isLiveRangeLocal()))
             {
                 continue;
             }
@@ -7026,7 +7027,9 @@ bool GraphColor::regAlloc(
                     if (!success && doBankConflictReduction)
                     {
                         resetTemporaryRegisterAssignments();
+                        kernel.getOptions()->setOption(vISA_enableBundleCR, false);
                         assignColors(FIRST_FIT, false, false);
+                        kernel.getOptions()->setOption(vISA_enableBundleCR, true);
                     }
                 }
             }
@@ -9318,7 +9321,11 @@ void VarSplit::localSplit(IR_Builder& builder,
             }
             pre_rightBound = rightBound;
 
-            const char* name = builder.getNameString(builder.mem, strlen(dclName) + 16, "%s_%d_%d_%d", dclName, splitid, leftBound, rightBound);
+            std::stringstream nameStrm;
+            nameStrm << dclName << "_" << splitid << "_" << leftBound << "_" << rightBound << std::ends;
+            int nameLen = unsigned(nameStrm.str().length()) + 1;
+            const char* name = builder.getNameString(builder.mem, nameLen, "%s_%d_%d_%d", dclName, splitid, leftBound, rightBound);
+
             unsigned short dclWidth = 0;
             unsigned short dclHeight = 0;
             int dclTotalSize = 0;
