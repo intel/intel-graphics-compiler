@@ -131,20 +131,27 @@ bool GenXModule::runOnModule(Module &M) {
 
   return ModuleModified;
 }
-void GenXModule::updateVisaMapping(const Function *F, const Instruction *Inst,
+void GenXModule::updateVisaMapping(const Function *K, const Instruction *Inst,
                                    unsigned VisaIndex, StringRef Reason) {
-  auto &Mapping = VisaMapping[F];
-  LLVM_DEBUG(dbgs() << "visaCounter update: {" << Mapping.visaCounter << "->"
-                    << VisaIndex << "}, src: ");
-  if (Inst)
-    LLVM_DEBUG(dbgs() << *Inst << "\n");
-  else
-    LLVM_DEBUG(dbgs() << Reason << "\n");
+  // NOTE: K stands for "kernel function". That is the function that is
+  // for the currently generated vISA object
+  IGC_ASSERT(K);
 
-  Mapping.visaCounter = VisaIndex;
-
-  if (!Inst)
+  auto &CurrentCounter = VisaCounter[K];
+  auto PrevCounter = CurrentCounter;
+  CurrentCounter = VisaIndex;
+  if (!Inst) {
+    LLVM_DEBUG(dbgs() << "visaCounter update <" << K->getName() << ">:{"
+                      << PrevCounter << "->" << CurrentCounter
+                      << "}, src: " << Reason << "\n");
     return;
+  }
+
+  const auto *F = Inst->getFunction();
+  LLVM_DEBUG(dbgs() << "visaCounter update <" << K->getName() << "/"
+                    << ((F == K) ? StringRef(".") : F->getName()) << ">: {"
+                    << PrevCounter << "->" << CurrentCounter
+                    << "}, inst: " << *Inst << "\n");
 
   // Unfortunately, our CISA builder routines are not very consistent with
   // respect to the interfaces used to emit vISA.
@@ -154,11 +161,12 @@ void GenXModule::updateVisaMapping(const Function *F, const Instruction *Inst,
   // This check is a workaround for a problem when we may emit an auxiliary
   // visa instruction using the interface which requires us to update the
   // "current instruction" without actually doing so.
+  auto &Mapping = VisaMapping[F];
   const Instruction *LastInst =
       Mapping.V2I.empty() ? nullptr : Mapping.V2I.rbegin()->Inst;
   using MappingT = genx::di::VisaMapping::Mapping;
   if (LastInst != Inst)
-    Mapping.V2I.emplace_back(MappingT{Mapping.visaCounter, Inst});
+    Mapping.V2I.emplace_back(MappingT{CurrentCounter, Inst});
 }
 
 const genx::di::VisaMapping *

@@ -85,10 +85,15 @@ namespace llvm {
     bool InlineAsm = false;
     bool CheckForInlineAsm(Module &M) const;
 
-    std::map<const Function *, genx::di::VisaMapping> VisaMapping;
+    // represents number of visa instructions in a *kernel*
+    std::unordered_map<const Function *, unsigned> VisaCounter;
+    // stores vISA mappings for each *function* (including kernel subroutines)
+    std::unordered_map<const Function *, genx::di::VisaMapping> VisaMapping;
 
   private:
     void cleanup() {
+      VisaMapping.clear();
+      VisaCounter.clear();
       DestroyCISABuilder();
       DestroyVISAAsmReader();
       ArgStorage.Reset();

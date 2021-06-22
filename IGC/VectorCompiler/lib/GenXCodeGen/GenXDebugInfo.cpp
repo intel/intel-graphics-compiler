@@ -599,6 +599,13 @@ class CompiledVisaWrapper {
 
   std::string ErrMsg;
 
+  void setErrorForFunction(const std::string &Err, const Function &F) {
+    ErrMsg.append(Err).append("<").append(F.getName()).append(">");
+
+    LLVM_DEBUG(dbgs() << "CW creation for <" << F.getName() << "> aborted: " <<
+               ErrMsg);
+  }
+
 public:
   const FINALIZER_INFO &getJitInfo() const {
     IGC_ASSERT(ErrMsg.empty() && JitInfo);
@@ -619,7 +626,7 @@ public:
     unsigned VisaIdx;
   };
 
-  void releaseDebugInfoResources(const VISAKernel &VK) {
+  static void releaseDebugInfoResources(const VISAKernel &VK) {
     void *GenXdbgInfo = nullptr;
     unsigned int DbgSize = 0;
     auto Result = VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize);
@@ -629,22 +636,35 @@ public:
     freeBlock(GenXdbgInfo);
   }
 
-  CompiledVisaWrapper(const Function &F, const VISAKernel &VK) {
+  static void printDecodedGenXDebug(raw_ostream &OS, const VISAKernel &VK) {
+    void *GenXdbgInfo = nullptr;
+    unsigned int DbgSize = 0;
+    auto Result = VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize);
+    IGC_ASSERT_MESSAGE(Result == 0,
+                       "could not get debug blob during debug printing");
+    IGC::DbgDecoder(GenXdbgInfo).print(OS);
+  }
+
+  CompiledVisaWrapper(const Function &F, const VISAKernel &VK,
+                      StringRef CompiledObjectName) {
+    LLVM_DEBUG(dbgs() << "creating CW for <" << F.getName() << ">, using <" <<
+               CompiledObjectName << "> as a CompiledObject moniker\n");
+
     void *GenXdbgInfo = nullptr;
     unsigned int DbgSize = 0;
     if (VK.GetJitInfo(JitInfo) != 0) {
-      ErrMsg = "could not extract jitter info";
+      setErrorForFunction("could not extract jitter info", F);
       return;
     }
     IGC_ASSERT(JitInfo);
 
     if (VK.GetGenxDebugInfo(GenXdbgInfo, DbgSize) != 0) {
-      ErrMsg = "visa info decode error";
+      setErrorForFunction("visa info decode error", F);
       return;
     }
 
     if (!GenXdbgInfo) {
-      ErrMsg = "could not get debug information from finalizer";
+      setErrorForFunction("could not get debug information from finalizer", F);
       return;
     }
 
@@ -652,28 +672,18 @@ public:
     DbgInfoBlob = std::vector<char>(DbgBlobBytes, DbgBlobBytes + DbgSize);
 
     DecodedDebugInfo = std::make_unique<IGC::DbgDecoder>(DbgInfoBlob.data());
-    auto GetDebugInfoForKernel = [this](StringRef KernelName) {
-      const auto &CO = DecodedDebugInfo->compiledObjs;
-      auto FoundIt =
-          std::find_if(CO.begin(), CO.end(), [&KernelName](const auto &DI) {
-            return KernelName == StringRef(DI.kernelName);
-          });
-      const IGC::DbgDecoder::DbgInfoFormat *Result = nullptr;
-      if (FoundIt != CO.end())
-        Result = &*FoundIt;
-      return Result;
-    };
-    VisaKernelDI = GetDebugInfoForKernel(F.getName());
+    const auto &CO = DecodedDebugInfo->compiledObjs;
+    auto FoundCoIt = std::find_if(
+        CO.begin(), CO.end(), [&CompiledObjectName](const auto &DI) {
+          return CompiledObjectName == StringRef(DI.kernelName);
+        });
+    VisaKernelDI = (FoundCoIt == CO.end()) ? nullptr : &*FoundCoIt;
     if (!VisaKernelDI) {
-      ErrMsg = "could not find debug information for <" +
-               std::string(F.getName()) + ">";
+      setErrorForFunction("could not find debug information for", F);
       return;
     }
-
-    LLVM_DEBUG(VisaKernelDI->dump(); dbgs() << "\n";);
-
     if (VisaKernelDI->CISAIndexMap.empty()) {
-      ErrMsg = "empty CisaIndexMap for <" + std::string(F.getName()) + ">";
+      setErrorForFunction("empty CisaIndexMap for", F);
       return;
     }
 
@@ -699,8 +709,9 @@ public:
           return Idx.GenOffset <= GenBinary.size();
         });
     if (!InBounds) {
-      ErrMsg = "fatal error (debug info). inconsistent gen->visa mapping: "
-               "gen index is out of bounds";
+      setErrorForFunction("fatal error (debug info). inconsistent gen->visa "
+                          "mapping: gen index is out of bounds",
+                          F);
       return;
     }
 
@@ -715,8 +726,9 @@ public:
                                         return L.GenOffset == R.GenOffset;
                                       }));
     if (!Validated) {
-      ErrMsg = "fatal error (debug info). inconsistent gen->visa mapping: "
-               "gen index are not ordered properly";
+      setErrorForFunction("fatal error (debug info). inconsistent gen->visa "
+                          "mapping: gen index are not ordered properly",
+                          F);
       return;
     }
   }
@@ -727,11 +739,39 @@ class GenXFunction final : public IGC::VISAModule {
 public:
   GenXFunction(const GenXSubtarget &STIn, const GenXVisaRegAlloc &RAIn,
                const Function &F, const CompiledVisaWrapper &CW,
-               const genx::di::VisaMapping &V2I)
+               const genx::di::VisaMapping &V2I,
+               const ModuleToVisaTransformInfo &MVTI)
       : F{F}, ST{STIn}, VisaMapping{V2I}, CompiledVisa{CW}, RA{RAIn},
-        VISAModule(const_cast<Function *>(&F)) {
+        MVTI(MVTI), VISAModule(const_cast<Function *>(&F)) {
 
+    if (MVTI.isSubroutine(&F))
+       SetType(ObjectType::SUBROUTINE);
+    else if (MVTI.isKernelFunction(&F))
+       SetType(ObjectType::KERNEL);
+    else
+       SetType(ObjectType::STACKCALL_FUNC);
     isDirectElfInput = true;
+  }
+
+  const IGC::DbgDecoder::DbgInfoFormat*
+      getCompileUnit(const IGC::DbgDecoder& VD) const override {
+
+    StringRef CompiledObjectName;
+    if (MVTI.isSubroutine(&F)) {
+      IGC_ASSERT(GetType() == ObjectType::SUBROUTINE);
+      CompiledObjectName = MVTI.getSubroutineOwner(&F)->getName();
+    } else {
+      CompiledObjectName = F.getName();
+    }
+
+    auto FoundIt = std::find_if(VD.compiledObjs.begin(), VD.compiledObjs.end(),
+                                [&CompiledObjectName](const auto &CO) {
+                                  return (CO.kernelName == CompiledObjectName);
+                                });
+    if (FoundIt == VD.compiledObjs.end())
+      return nullptr;
+
+    return &*FoundIt;
   }
 
   unsigned int getUnpaddedProgramSize() const override {
@@ -858,6 +898,7 @@ private:
   const genx::di::VisaMapping &VisaMapping;
   const CompiledVisaWrapper &CompiledVisa;
   const GenXVisaRegAlloc &RA;
+  const ModuleToVisaTransformInfo &MVTI;
 };
 
 static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
@@ -907,6 +948,12 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
 
   IGC_ASSERT_MESSAGE(!PI.FIs.empty(),
                      "Program must include at least one function");
+  IGC_ASSERT_MESSAGE(PI.MVTI.getPrimaryEmitterForVisa(&PI.FIs.front().F) ==
+                         &PI.FIs.front().F,
+                     "The head of ProgramInfo is expected to be a kernel");
+
+  LLVM_DEBUG(CompiledVisaWrapper::printDecodedGenXDebug(
+      dbgs(), *PI.MVTI.getPrimaryKernel(&PI.FIs.front().F)));
 
   IGC::DebugEmitterOpts DebugOpts;
   DebugOpts.DebugEnabled = true;
@@ -922,10 +969,15 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
   using CompiledVisaWrappers =
       std::vector<std::unique_ptr<CompiledVisaWrapper>>;
   CompiledVisaWrappers CWs;
+  const auto &MVTI = PI.MVTI;
   std::transform(PI.FIs.begin(), PI.FIs.end(), std::back_inserter(CWs),
-                 [](const auto &FI) {
+                 [&MVTI](const auto &FI) {
+                   StringRef CompiledObjectName = FI.F.getName();
+                   if (MVTI.isSubroutine(&FI.F))
+                     CompiledObjectName =
+                         MVTI.getSubroutineOwner(&FI.F)->getName();
                    return std::make_unique<CompiledVisaWrapper>(
-                       FI.F, FI.CompiledKernel);
+                       FI.F, FI.CompiledKernel, CompiledObjectName);
                  });
   auto FaultyCwIt = std::find_if(
       CWs.begin(), CWs.end(), [](const auto &CW) { return CW->hasErrors(); });
@@ -947,8 +999,8 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
 
         IGC_ASSERT(CWs.size() == PI.FIs.size());
         for (auto &&[FI, CW] : llvm::zip(PI.FIs, CWs)) {
-          auto GF =
-              std::make_unique<GenXFunction>(ST, RA, FI.F, *CW, FI.VisaMapping);
+          auto GF = std::make_unique<GenXFunction>(ST, RA, FI.F, *CW,
+                                                   FI.VisaMapping, PI.MVTI);
           GFs.push_back(GF.get());
           if (&FI.F == &PI.FIs.front().F) {
             Emitter->Initialize(std::move(GF), DebugOpts);
@@ -1037,45 +1089,24 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
-void GenXDebugInfo::processFunctionGroup(GenXModule &GM, VISABuilder &VB,
-                                         const FunctionGroup &FG) {
-  const auto *KF = FG.getHead();
-  VISAKernel *VKEntry = VB.GetVISAKernel(KF->getName().str());
+void GenXDebugInfo::processPrimaryFunction(
+    const ModuleToVisaTransformInfo &MVTI, const GenXModule &GM,
+    VISABuilder &VB, const Function &PF) {
+  LLVM_DEBUG(dbgs() << "DbgInfo: processing <" << PF.getName() << ">\n");
+  IGC_ASSERT(MVTI.isKernelFunction(&PF));
+  VISAKernel *VKEntry = MVTI.getPrimaryKernel(&PF);
   IGC_ASSERT(VKEntry);
-  LLVM_DEBUG(dbgs() << "DbgInfo: processing <" << KF->getName() << ">\n");
 
-  auto BuildFunctionInfo = [&GM](VISAKernel *VF, Function *F) {
-    const auto &Mapping = *GM.getVisaMapping(F);
-    return ProgramInfo::FunctionInfo{Mapping, *VF, *F};
-  };
-  // Currently, llvm Function can produce vISA which is incorporated in
-  // the main vISA object or in case of vISA-external functions - it can spawn
-  // a completely new vISA object.
-  // Thus, to create debug info, we split each function group into
-  // the set of "primary" and "indirectly-called" functions
-  std::vector<Function *> PrimaryFunctions, IndirectlyCalledFunctions;
-  std::partition_copy(
-      FG.begin(), FG.end(), std::back_inserter(IndirectlyCalledFunctions),
-      std::back_inserter(PrimaryFunctions), isReferencedIndirectly);
-  for (auto *F : IndirectlyCalledFunctions) {
-    LLVM_DEBUG(dbgs() << "  F: " << F->getName().str() << " called indirectly!\n");
-    // Each indirectly-called function is compiled into a separate vISA kernel
-    auto *VF = VB.GetVISAKernel(F->getName().str());
-    processKernel(ProgramInfo{{BuildFunctionInfo(VF, F)}});
-  }
-  std::vector<ProgramInfo::FunctionInfo> PrimaryFIs;
-  std::transform(PrimaryFunctions.begin(), PrimaryFunctions.end(),
-                 std::back_inserter(PrimaryFIs),
-                 [&VKEntry, &BuildFunctionInfo](auto *F) {
-                   return BuildFunctionInfo(VKEntry, F);
+  using FunctionInfo = ProgramInfo::FunctionInfo;
+  std::vector<FunctionInfo> FIs;
+  FIs.push_back(FunctionInfo{*GM.getVisaMapping(&PF), *VKEntry, PF});
+  const auto &SecondaryFunctions = MVTI.getSecondaryFunctions(&PF);
+  std::transform(SecondaryFunctions.begin(), SecondaryFunctions.end(),
+                 std::back_inserter(FIs), [&GM, &VKEntry](const Function *F) {
+                   const auto &Mapping = *GM.getVisaMapping(F);
+                   return FunctionInfo{Mapping, *VKEntry, *F};
                  });
-  LLVM_DEBUG({
-    dbgs() << " - main kernel structure: ";
-    for (const auto *F : PrimaryFunctions)
-      dbgs() << F->getName() << ",";
-    dbgs() << "\n";
-  });
-  processKernel(ProgramInfo{std::move(PrimaryFIs)});
+  processKernel(ProgramInfo{MVTI, std::move(FIs)});
 }
 
 bool GenXDebugInfo::runOnModule(Module &M) {
@@ -1103,8 +1134,8 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   }
 
   LLVM_DEBUG(MVTI.print(dbgs()); dbgs() << "\n");
-  for (const auto *FG : FGA)
-    processFunctionGroup(GM, *VB, *FG);
+  for (const Function *PF : MVTI.getPrimaryFunctions())
+    processPrimaryFunction(MVTI, GM, *VB, *PF);
 
   return false;
 }

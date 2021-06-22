@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 class VISAKernel;
 class VISABuilder;
+class ModuleToVisaTransformInfo;
 
 namespace llvm {
 
@@ -34,8 +35,6 @@ namespace genx {
 namespace di {
 
 struct VisaMapping {
-  unsigned visaCounter = 0;
-
   struct Mapping {
     unsigned VisaIdx = 0;
     const Instruction *Inst = nullptr;
@@ -59,9 +58,10 @@ class GenXDebugInfo : public ModulePass {
     struct FunctionInfo {
       const genx::di::VisaMapping &VisaMapping;
       VISAKernel &CompiledKernel;
-      Function &F;
+      const Function &F;
     };
 
+    const ModuleToVisaTransformInfo &MVTI;
     std::vector<FunctionInfo> FIs;
   };
 
@@ -75,6 +75,10 @@ class GenXDebugInfo : public ModulePass {
   void processKernel(const ProgramInfo &PD);
   void processFunctionGroup(GenXModule &GM, VISABuilder &VB,
                             const FunctionGroup &FG);
+
+  void processPrimaryFunction(const ModuleToVisaTransformInfo &MVTI,
+                              const GenXModule &GM, VISABuilder &VB,
+                              const Function &PF);
 
 public:
   static char ID;
