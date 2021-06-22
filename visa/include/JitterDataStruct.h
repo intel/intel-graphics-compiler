@@ -40,7 +40,7 @@ typedef struct {
     unsigned numFlagSpillLoad;
 
     // whether kernel uses a barrier
-    bool usesBarrier;
+    unsigned usesBarrier;
 
     unsigned BBNum;
     VISA_BB_INFO* BBInfo;

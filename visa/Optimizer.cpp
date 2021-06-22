@@ -7580,7 +7580,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // IR is not modified
     void Optimizer::collectStats()
     {
-        builder.getJitInfo()->usesBarrier = false;
+        builder.getJitInfo()->usesBarrier = 0;
         uint32_t numSends = 0;
         for (auto bb : fg)
         {
@@ -7595,7 +7595,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         // depend on vISA statistics as IGC is not able to detect barriers if they are
                         // used as a part of Inline vISA code.
                         // This information is used by legacy CMRT as well as OpenCL/L0 runtime.
-                        builder.getJitInfo()->usesBarrier = true;
+                        builder.getJitInfo()->usesBarrier = 1;
                     }
                 }
             }
