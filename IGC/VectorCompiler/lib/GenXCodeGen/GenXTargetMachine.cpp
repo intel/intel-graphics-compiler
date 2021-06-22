@@ -138,6 +138,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXPrintfResolutionPass(registry);
   initializeGenXPrintfLegalizationPass(registry);
   initializeGenXAggregatePseudoLoweringPass(registry);
+  initializeGenXBTIAssignmentPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -597,6 +598,18 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly, AddCMABI);
   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0, AddCMABI);
+
+  // BTI assignment.
+  if (Subtarget.isOCLRuntime()) {
+    auto AddBTIAssign = [](const PassManagerBuilder &Builder,
+                           PassManagerBase &PM) {
+      PM.add(createGenXBTIAssignmentPass());
+    };
+    PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
+                           AddBTIAssign);
+    PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                           AddBTIAssign);
+  }
 
   // CM kernel argument offset.
   auto AddCMKernelArgOffset = [this](const PassManagerBuilder &Builder,
