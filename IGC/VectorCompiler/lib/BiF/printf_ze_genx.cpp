@@ -16,9 +16,9 @@ SPDX-License-Identifier: MIT
 using namespace vc::bif::printf;
 using namespace cm;
 
-static constexpr int StringAnnotationSize = sizeof(uintptr_t);
-// StringAnnotationSize but in DWords.
-static constexpr int StringDWordSize = StringAnnotationSize / 4;
+static constexpr int FormatStringAnnotationSize = sizeof(uintptr_t);
+// StringDWordSize is in DWords.
+static constexpr int StringDWordSize = sizeof(uintptr_t) / 4;
 
 // Format string handling. Just writing format string pointer to buffer and
 // promoting the pointer to buffer.
@@ -51,7 +51,7 @@ printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>
 __vc_printf_init(cl_vector<int, ArgsInfoVector::Size> ArgsInfo) {
-  return printf_init_impl<StringAnnotationSize>(ArgsInfo).cl_vector();
+  return printf_init_impl<FormatStringAnnotationSize>(ArgsInfo).cl_vector();
 }
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>
