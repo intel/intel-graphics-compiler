@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include <sstream>
 #include <cstring>
+#include <limits>
 
 using namespace iga;
 
