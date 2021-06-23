@@ -2024,6 +2024,12 @@
       "opc": "ISA_SBARRIER",
       "signal_flag": [ "BYTE", 1 ]
     },
+    "genx_bf_cvt": {
+      "opc": "ISA_BF_CVT",
+      "exec_size": [ "EXECSIZE" ],
+      "dst": [ "GENERAL", "DIRECTONLY", 0 ],
+      "src0": [ "GENERAL", "DIRECTONLY", "NOIMM", 1 ]
+    },
     "genx_bfrev": {
       "opc": "ISA_BFREV",
       "exec_size": [ "EXECSIZE" ],
@@ -3772,6 +3778,20 @@
       [ "CISA_CALL",
         [ "Kernel->AppendVISASplitBarrierInst",
           "signal_flag != 0"
+        ]
+      ]
+    ],
+    "ISA_BF_CVT": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISADataMovementInst",
+          "opc",
+          "nullptr",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr"
         ]
       ]
     ],

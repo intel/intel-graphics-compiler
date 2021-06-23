@@ -129,6 +129,7 @@ bool GenXVectorCombiner::isSupportedGenXIntrinsic(GenXIntrinsic::ID IdCode) {
   switch (IdCode) {
   default:
     return false;
+  case GenXIntrinsic::genx_bf_cvt:
   case GenXIntrinsic::genx_absf:
   case GenXIntrinsic::genx_absi:
     return true;
@@ -332,6 +333,10 @@ void GenXVectorCombiner::createNewInstruction(
     case GenXIntrinsic::genx_absf:
     case GenXIntrinsic::genx_absi:
       Fn = GenXIntrinsic::getAnyDeclaration(M, IdCode, {InsteadOf->getType()});
+      break;
+    case GenXIntrinsic::genx_bf_cvt:
+      Fn = GenXIntrinsic::getAnyDeclaration(
+          M, IdCode, {InsteadOf->getType(), Vals[0]->getType()});
       break;
     default:
       IGC_ASSERT_MESSAGE(false, "unsupported intrinsic");
