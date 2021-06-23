@@ -9664,9 +9664,9 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
         // When the index type is i32, it is better to create a uw alias since
         // the following address computation will be in uw.
         CVariable* pIndexVar = GetSymbol(pIndex);
-        IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 32);
+        IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 64);
 
-        bool DoAliasing = pIndex->getType()->getPrimitiveSizeInBits() == 32;
+        bool DoAliasing = pIndex->getType()->getPrimitiveSizeInBits() >= 32;
         if (DoAliasing)
         {
             pIndexVar = m_currShader->BitCast(pIndexVar, ISA_TYPE_UW);
@@ -16875,6 +16875,10 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
         // Allocate 1 extra oword to store previous frame's FP
         pushSize += SIZE_OWORD;
     }
+
+    // Since we use unaligned oword writes, pushSize should be OW aligned address
+    if(pushSize%SIZE_OWORD > 0)
+        pushSize += (SIZE_OWORD - (pushSize % SIZE_OWORD));
 
     // Update SP by pushSize
     emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
