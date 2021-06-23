@@ -920,7 +920,27 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB* bb)
     src2 = inst->getSrc(2);
 
     // check for non-mad 3src inst
-    if (inst->getNumSrc() == 3 && src1->isImm())
+
+    if (inst->opcode() == G4_madw)
+    {
+        // fixe immediate type of G4_madw as it can only support D/UD types
+        if (src1 && src1->isImm())
+        {
+            uint32_t immVal = (uint32_t)src1->asImm()->getImm();
+            inst->setSrc(builder.createImm(immVal, IS_SIGNED_INT(src1->getType()) ? Type_D : Type_UD), 1);
+            src1 = inst->getSrc(1);
+        }
+
+        if (src2 && src2->isImm())
+        {
+            uint32_t immVal = (uint32_t)src2->asImm()->getImm();
+            inst->setSrc(builder.createImm(immVal, IS_SIGNED_INT(src2->getType()) ? Type_D : Type_UD), 2);
+            src2 = inst->getSrc(2);
+        }
+    }
+
+    // madw can have src1 as immediate
+    if (inst->getNumSrc() == 3 && src1->isImm() && inst->opcode() != G4_madw)
     {
         inst->setSrc(insertMovBefore(it, 1, INST_FLOAT_SRC_ONLY(inst->opcode()) ? Type_F : src1->getType(), bb), 1);
     }
@@ -944,8 +964,8 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB* bb)
 
     src2 = inst->getSrc(2);
 
-    /* 3 src instructions can't have any constants */
-    if (!builder.hasAlign1Ternary() && src2 != nullptr && src2->isImm())
+    // 3 src instructions except madw can't have any constants
+    if (!builder.hasAlign1Ternary() && src2 != nullptr && src2->isImm() && inst->opcode() != G4_madw)
     {
         inst->setSrc(insertMovBefore(it, 2, src2->getType(), bb), 2);
     }
@@ -1235,7 +1255,7 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB* bb)
     G4_INST* inst = *iter;
     MUST_BE_TRUE(inst->getNumSrc() == 3 && !inst->isSend(), "expect 3src inst");
 
-    if (inst->opcode() != G4_mad)
+    if (inst->opcode() != G4_mad && inst->opcode() != G4_madw)
     {
         G4_DstRegRegion* dst = inst->getDst();
         if (!isGoodAlign1TernaryDst(inst))
@@ -1285,10 +1305,10 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         return;
     }
 
-    if (inst->opcode() != G4_mad)
+    if (inst->opcode() != G4_mad && inst->opcode() != G4_madw)
     {
         // check that dst and srcs are legal for 3src.  We do not check
-        // mad since they should already conform by construction
+        // mad and madw since they should already conform by construction
         uint8_t execSize = inst->getExecSize();
         G4_DstRegRegion* dst = inst->getDst();
         if (dst->getRegAccess() != Direct || dst->getHorzStride() != 1 ||
@@ -2085,7 +2105,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
 
     G4_DstRegRegion* origDst = mulInst->getDst();
     G4_Type tmpType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
-    if (builder.noMulExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
+    if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul+Macl expanding will
         // be done in expandMulPostSchedule pass.
@@ -2619,7 +2639,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
     assert(IS_DTYPE(src0->getType()) && "src0 must be DW type");
 
 
-    if (builder.noMulExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
+    if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMulPostSchedule))
     {
         // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Mul->Mul + Macl expanding will
         // be done in expandMulPostSchedule pass.
@@ -7922,9 +7942,6 @@ void HWConformity::fixSrc1Region(INST_LIST_ITER it, G4_BB* bb)
     }
 }
 
-
-// This function just creates tmp variables to fix srcMod, cond modifier, saturate, etc. And Madw->Mul+Mach+Addc+Add expanding
-// will be done in expandMadwPostSchedule pass.
 INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* madwInst = *it;
@@ -7939,7 +7956,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
     auto src0 = madwInst->getSrc(0);
     auto src1 = madwInst->getSrc(1);
     auto src2 = madwInst->getSrc(2);
-    MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) && (src2->isImm() || IS_DTYPE(src2->getType())), "only DW-type sources are supported");
+    MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) && IS_DTYPE(src2->getType()), "only DW-type sources are supported");
 
     // src1 does not support modifier
     checkSrcMod(it, bb, 1);
@@ -7955,15 +7972,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         src0 = madwInst->getSrc(0);
     }
 
-    // need extra mov if dst is acc and src0 is indirect
-    if (!builder.accDstforIndirectSrc())
-    {
-        if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() == IndirGRF)
-        {
-            madwInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
-        }
-    }
-
+    // sat cannot be used at all in the macro sequence
     // make the dst GRF-aligned before expanding to macro
     if (madwInst->getSaturate() ||
         isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
@@ -7974,9 +7983,102 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         dst = madwInst->getDst();
     }
 
-    // sat cannot be used at all in the macro sequence
-    // this effectivly means sat is broken for mul D D D
-    madwInst->setSaturate(g4::NOSAT);
+    //G4_Type tmpType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType()) && IS_UNSIGNED_INT(src2->getType())) ? Type_UD : Type_D;
+    INST_LIST_ITER retIter = it;
+    if (builder.noMulOrMadwExpandingBeforeScheduler() && builder.getOption(vISA_expandMadwPostSchedule))
+    {
+        // Here just create tmp variables to fix srcMod, cond modifier, saturate, etc. And Madw->Mul+Mach+Addc+Add expanding
+        // will be done in expandMadwPostSchedule pass.
 
-    return std::next(it);
+        // sat has bee resolved above, here just set it as NOSAT
+        madwInst->setSaturate(g4::NOSAT);
+
+        // need extra mov if dst is acc and src0 is indirect
+        if (!builder.accDstforIndirectSrc())
+        {
+            if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegAccess() == IndirGRF)
+            {
+                madwInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
+            }
+        }
+
+        retIter = std::next(it);
+    }
+    else
+    {
+        // SOA layout of dst:(dst_hi32:d, dst_lo32:d)
+        // if src2 is not immediate value of zero, then expand MADW((dst_hi32, dst_lo32) = src0 * src1 + src2) to:
+        //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
+        //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d
+        //     addc (16) dst_lo32<1>:d  acc0.0<1;1,0>:d  src2<1;1,0>:d     // Low 32 bits
+        //     add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d  dst_hi32<1;1,0>:d // High 32 bits
+        // otherwise, expand to:
+        //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
+        //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d // High 32 bits
+        //     mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // Low 32 bits
+
+        uint32_t origOptions = madwInst->getOption();
+        G4_Predicate* origPredicate = madwInst->getPredicate();
+        G4_Type tmpType = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType()) && IS_UNSIGNED_INT(src2->getType())) ? Type_UD : Type_D;
+
+        // 1, create a new mul inst
+        G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmpType);
+        auto newMul = builder.createBinOp(G4_mul, execSize,
+            accDstOpnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, false);
+        auto startIter = bb->insertBefore(it, newMul);
+        madwInst->copyDefsTo(newMul, false);
+        // change src1 type to uw type
+        fixMulSrc1(std::prev(it), bb);
+
+        // 2, create a mach inst
+        int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / getGRFSize());
+        G4_DstRegRegion* dstHi32 = builder.createDst(dst->getBase(), dst->getRegOff() + DstHiRegOffset, dst->getSubRegOff(), 1, tmpType);
+        G4_INST* machInst = builder.createMach(execSize,
+            dstHi32, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, tmpType);
+        machInst->setPredicate(origPredicate);
+        *it = machInst;
+        madwInst->transferUse(machInst);
+        madwInst->removeAllDefs();
+        newMul->addDefUse(machInst, Opnd_implAccSrc);
+
+        auto endIter = it;
+        // optimize: only do multiply if src2 is imme 0
+        if (src2->isImm() && src2->asImm()->getImm() == 0)
+        {
+            // 3, create a mov inst
+            auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), 1, tmpType);
+            auto accSrcOpndMov = builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), tmpType);
+            auto movInst = builder.createMov(execSize, dstLo32, accSrcOpndMov, origOptions, false);
+            movInst->setPredicate(origPredicate);
+            endIter = bb->insertAfter(endIter, movInst);
+        }
+        else
+        {
+            // 3, create a addc inst
+            auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), 1, tmpType);
+            auto accSrcOpnd = builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0, builder.getRegionStride1(), tmpType);
+            auto addcInst = builder.createBinOp(G4_addc, execSize, dstLo32, accSrcOpnd, builder.duplicateOperand(src2), origOptions, false);
+            addcInst->setPredicate(origPredicate);
+            endIter = bb->insertAfter(endIter, addcInst);
+
+            // 4, create a add inst
+            auto src1Add = builder.createSrc(dstLo32->getBase(), dstLo32->getRegOff(), dstLo32->getSubRegOff(), builder.getRegionStride1(), tmpType);
+            auto addInst = builder.createBinOp(G4_add, execSize, builder.duplicateOperand(dstHi32), builder.duplicateOperand(accSrcOpnd), src1Add, origOptions, false);
+            addInst->setPredicate(origPredicate);
+            endIter = bb->insertAfter(endIter, addInst);
+        }
+
+        // split inst if execSize is larger than native execSize
+        if (execSize > builder.getNativeExecSize())
+        {
+            splitDWMULInst(startIter, endIter, bb);
+            retIter = startIter;
+        }
+        else
+        {
+            retIter = std::prev(it);
+        }
+    }
+
+    return retIter;
 }

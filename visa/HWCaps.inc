@@ -829,7 +829,7 @@ SPDX-License-Identifier: MIT
    {
         return true;
    }
-   bool noMulExpandingBeforeScheduler()
+   bool noMulOrMadwExpandingBeforeScheduler()
    {
         return false;
    }

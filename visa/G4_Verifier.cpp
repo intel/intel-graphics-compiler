@@ -615,7 +615,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             }
 
             if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * numEltPerGRF<Type_UB>()) &&
-                (inst->isPseudoKill() == false))
+                (inst->isPseudoKill() == false) && (inst->opcode() != G4_madw))
             {
                 DEBUG_VERBOSE("Difference between left/right bound is greater than 2 GRF for dst region. Single non-send opnd cannot span 2 GRFs. lb = " <<
                     opnd->getLeftBound() << ", rb = " << opnd->getRightBound() << std::endl);

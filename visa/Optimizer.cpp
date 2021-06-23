@@ -1114,7 +1114,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(removeInstrinsics,       vISA_removeInstrinsics,       TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMulPostSchedule,   vISA_expandMulPostSchedule,   TimerID::MISC_OPTS);
     INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
-    INITIALIZE_PASS(expandMadwPostSchedule,  vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(expandMadwPostSchedule,  vISA_expandMadwPostSchedule,  TimerID::MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -12219,7 +12219,7 @@ void Optimizer::doNoMaskWA_postRA()
 //    macl dst:d src0:d src1:d
 void Optimizer::expandMulPostSchedule()
 {
-    if (!builder.noMulExpandingBeforeScheduler())
+    if (!builder.noMulOrMadwExpandingBeforeScheduler())
     {
         return;
     }
@@ -12298,7 +12298,7 @@ void Optimizer::expandMulPostSchedule()
 }
 
 // SOA layout of dst:(dst_hi32:d, dst_lo32:d)
-// if src2 is not imme0, then expand MADW((dst_hi32, dst_lo32) = src0 * src1 + src2) to:
+// if src2 is not immediate value of zero, then expand MADW((dst_hi32, dst_lo32) = src0 * src1 + src2) to:
 //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
 //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d
 //     addc (16) dst_lo32<1>:d  acc0.0<1;1,0>:d  src2<1;1,0>:d     // Low 32 bits
@@ -12309,6 +12309,11 @@ void Optimizer::expandMulPostSchedule()
 //     mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // Low 32 bits
 void Optimizer::expandMadwPostSchedule()
 {
+    if (!builder.noMulOrMadwExpandingBeforeScheduler())
+    {
+        return;
+    }
+
     for (auto bb : kernel.fg)
     {
         for (INST_LIST_ITER it = bb->begin(); it != bb->end(); it++)
@@ -12328,7 +12333,7 @@ void Optimizer::expandMadwPostSchedule()
             MUST_BE_TRUE(inst->getCondMod() == nullptr, "DW multiply does not support conditional modifiers");
             MUST_BE_TRUE(!src0->isSrcRegRegion() || src0->asSrcRegRegion()->getModifier() == Mod_src_undef, "no src0 modifier is expected in mul/mulh/madw expanding");
             MUST_BE_TRUE(!src1->isSrcRegRegion() || src1->asSrcRegRegion()->getModifier() == Mod_src_undef, "no src1 modifier is expected in mul/mulh/madw expanding");
-            MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) && (src2->isImm() || IS_DTYPE(src2->getType())), "only DW-type sources are supported");
+            MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) && IS_DTYPE(src2->getType()), "only DW-type sources are supported");
 
             uint32_t origOptions = inst->getOption();
             G4_Predicate* origPredicate = inst->getPredicate();
@@ -12346,7 +12351,7 @@ void Optimizer::expandMadwPostSchedule()
             hwConf.fixMulSrc1(startIter, bb);
 
             // 2, create a mach/macl inst
-            int DstHiRegOffset = (int)std::ceil((float)(execSize * sizeof(tmpType)) / getGRFSize());
+            int DstHiRegOffset = (int)std::ceil((float)(execSize * TypeSize(tmpType)) / getGRFSize());
             G4_DstRegRegion* dstHi32 = builder.createDst(dst->getBase(), dst->getRegOff() + DstHiRegOffset, dst->getSubRegOff(), 1, tmpType);
             G4_INST* machInst = builder.createMach(execSize,
                 dstHi32, builder.duplicateOperand(src0), builder.duplicateOperand(src1), origOptions, tmpType);

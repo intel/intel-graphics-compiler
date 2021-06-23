@@ -318,7 +318,13 @@ void HWConformity::fixInstExecSize(G4_BB* bb)
 bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
 {
     G4_INST *inst = *iter;
-    if (!inst || inst->isSend() || inst->getExecSize() == 1)
+    // Madw can't be split in any pass except for fixMadwInst as it will cause the dst(SOA layout) unexpected. For example:
+    //    madw (M1, 16) dst(0,0)<1> src0(0,0)<1;1,0> 0x38:ud 0x0:ud
+    // If split here, then low result is in dst(0,0) and dst(2,0), and high result is in dst(1,0) and dst(3,0)
+    //    madw (M1, 8) dst(0,0)<1> src0(0,0)<1;1,0> 0x38:ud 0x0:ud
+    //    madw (M8, 8) dst(2,0)<1> src0(1,0)<1;1,0> 0x38:ud 0x0:ud
+    // But expected dst is low result is in dst(0,0) and dst(1,0) and high result is in dst(2,0) and dst(3,0)
+    if (!inst || inst->isSend() || inst->getExecSize() == 1 || inst->opcode() == G4_madw)
     {
         return false;
     }

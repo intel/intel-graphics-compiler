@@ -2539,6 +2539,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         (defInst->opcode() == G4_pseudo_mad &&
             !(IS_TYPE_FLOAT_ALL(dstType) && IS_TYPE_FLOAT_ALL(defDstType)));
     if ((defInst->useInstList.size() != 1) ||
+        (defInst->opcode() == G4_madw) ||
         (defInst->opcode() == G4_sad2) ||
         (defInst->opcode() == G4_sada2) ||
         (defInst->opcode() == G4_cbit && dstType != defDstType) ||
@@ -4773,6 +4774,13 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
             unsigned short type_size = TypeSize(type);
             unsigned short s_size = horzStride * type_size;
             unsigned totalBytes = (exec_size - 1) * s_size + type_size;
+
+            // For madw opcode, the dst(SOA layout) size should be double as it has both low and high results
+            if (inst->opcode() == G4_madw)
+            {
+                totalBytes *= 2;
+            }
+
             right_bound = left_bound + totalBytes - 1;
         }
         else
