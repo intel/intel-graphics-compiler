@@ -2432,38 +2432,68 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     if (L0->GetType() != ISA_TYPE_UD) L0 = m_currShader->BitCast(L0, ISA_TYPE_UD);
     if (L1->GetType() != ISA_TYPE_UD) L1 = m_currShader->BitCast(L1, ISA_TYPE_UD);
 
+    if (Lo != nullptr)
+    {
+        if (Hi == nullptr)
+        {
+            m_encoder->Mul(Lo, L0, L1);
+            m_encoder->Push();
+            return;
+        }
+        else
+        {
+            // Algorithm:
+            //    AB   - L0, L1
+            //    CD   - H0, H1
+            //   ----
+            //     E
+            //    F
+            //    G
+            //   H     - 'H' spills into bit 65 - only needed if overflow detection is required
+            // --------
+            // dstLow = E
+            // dstHigh = F + G + carry
 
-    if (Lo != nullptr) {
-        m_encoder->Mul(Lo, L0, L1);
-        m_encoder->Push();
+            // (Cr, E) = A * B
+            uint16_t numElements = Lo->GetNumberElement();
+            CVariable* DstTmp = m_currShader->GetNewVariable(
+                numElements * 2, ISA_TYPE_UD, EALIGN_GRF, false,
+                CName(Lo->getName(), "int64Tmp"));
+            CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+            m_encoder->Madw(DstTmp, L0, L1, zero);
+
+            // dstLow = E
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->Copy(Lo, DstTmp);
+            m_encoder->Push();
+
+            // dstHigh = Cr
+            uint regOffset = (uint)std::ceil((float)(numLanes(m_currShader->m_SIMDSize) * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+            m_encoder->SetSrcSubVar(0, regOffset);
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->Copy(Hi, DstTmp);
+            m_encoder->Push();
+
+            // F = A * D
+            CVariable* dstHiTmp = m_currShader->GetNewVariable(
+                Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(),
+                CName(Hi->getName(), "int64HiTmp"));
+            m_encoder->Mul(dstHiTmp, L0, H1);
+            m_encoder->Push();
+
+            // dstHigh = Cr + F
+            m_encoder->Add(Hi, dstHiTmp, Hi);
+            m_encoder->Push();
+
+            // G = B * C
+            m_encoder->Mul(dstHiTmp, L1, H0);
+            m_encoder->Push();
+
+            // dstHigh = Cr + F + G
+            m_encoder->Add(Hi, dstHiTmp, Hi);
+            m_encoder->Push();
+        }
     }
-
-    if (Hi == nullptr) {
-        // Skip if Hi is ignored.
-        return;
-    }
-
-    CVariable* THi = m_currShader->GetNewVariable(
-        Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(), Hi->getName());
-
-    m_encoder->MulH(THi, L0, L1);
-    m_encoder->Push();
-
-    CVariable* T0 = m_currShader->GetNewVariable(
-        Hi->GetNumberElement(), Hi->GetType(), Hi->GetAlign(), Hi->IsUniform(),
-        CName(Hi->getName(), "tmp"));
-
-    m_encoder->Mul(T0, L0, H1);
-    m_encoder->Push();
-
-    m_encoder->Add(THi, THi, T0);
-    m_encoder->Push();
-
-    m_encoder->Mul(T0, L1, H0);
-    m_encoder->Push();
-
-    m_encoder->Add(Hi, THi, T0);
-    m_encoder->Push();
 }
 
 void EmitPass::EmitPtrToPair(GenIntrinsicInst* GII, const SSource Sources[1], const DstModifier& DstMod) {
@@ -3510,16 +3540,16 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     TODO("Do not generate intermediate multiplies by constant 0 or 1.");
     TODO("Do smarter pattern matching to look for non-constant zexted/sexted sources.");
 
-    CVariable* dstLo, * dstHi, * dstTemp;
+    CVariable* dstLo, * dstHi, * dstHiTemp;
     dstLo = m_currShader->GetNewVariable(dst->GetNumberElement(),
         ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "Lo"));
+        CName(m_destination->getName(), "int64Lo"));
     dstHi = m_currShader->GetNewVariable(dst->GetNumberElement(),
         hiType, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "Hi"));
-    dstTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
+        CName(m_destination->getName(), "int64Hi"));
+    dstHiTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
         hiType, m_destination->GetAlign(), dst->IsUniform(),
-        CName(m_destination->getName(), "Tmp"));
+        CName(m_destination->getName(), "int64HiTmp"));
 
 
     //
@@ -3538,34 +3568,46 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     // dstLow = E
     // dstHigh = F + G + carry
 
-    // E = A * B
+    // (Cr, E) = A * B
     EncoderInit();
-    m_encoder->Mul(dstLo, srcLo[0], srcLo[1]);
+    CVariable* dstTmp = m_currShader->GetNewVariable(
+        dst->GetNumberElement() * 2, ISA_TYPE_UD, EALIGN_GRF, false,
+        CName(m_destination->getName(), "int64Tmp"));
+    CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+    m_encoder->Madw(dstTmp, srcLo[0], srcLo[1], zero);
+
+    // copy low of A*B to dstLo
+    EncoderInit();
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->Copy(dstLo, dstTmp);
     m_encoder->Push();
 
-    // Cr = carry(A * B)
+    // copy high of A*B to dstHi
     EncoderInit();
-    m_encoder->MulH(dstHi, srcLo[0], srcLo[1]);
+    uint regOffset = (uint)std::ceil((float)(numLanes(simdMode) * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+    m_encoder->SetSrcSubVar(0, regOffset);
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->Copy(dstHi, dstTmp);
     m_encoder->Push();
 
     // F = A * D
     EncoderInit();
-    m_encoder->Mul(dstTemp, srcLo[0], srcHi[1]);
+    m_encoder->Mul(dstHiTemp, srcLo[0], srcHi[1]);
     m_encoder->Push();
 
     // dstHigh = Cr + F
     EncoderInit();
-    m_encoder->Add(dstHi, dstHi, dstTemp);
+    m_encoder->Add(dstHi, dstHi, dstHiTemp);
     m_encoder->Push();
 
     // G = C * B
     EncoderInit();
-    m_encoder->Mul(dstTemp, srcHi[0], srcLo[1]);
+    m_encoder->Mul(dstHiTemp, srcHi[0], srcLo[1]);
     m_encoder->Push();
 
     // dstHigh = (Cr + F) + G
     EncoderInit();
-    m_encoder->Add(dstHi, dstHi, dstTemp);
+    m_encoder->Add(dstHi, dstHi, dstHiTemp);
     m_encoder->Push();
 
     //And now, pack the result
