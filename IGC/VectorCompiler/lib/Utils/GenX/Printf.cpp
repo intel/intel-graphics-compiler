@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/GenX/Printf.h"
+#include "vc/Utils/General/RegexIterator.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -19,13 +20,14 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/Support/Regex.h>
 
 #include <algorithm>
 #include <iterator>
-#include <regex>
 #include <string>
 
 #include "Probe/Assertion.h"
+#include "llvmWrapper/Support/Regex.h"
 
 using namespace llvm;
 using namespace vc;
@@ -87,9 +89,6 @@ StringRef vc::getConstStringFromOperand(const Value &Op) {
   return FmtStr.getValue();
 }
 
-using SRefMatch = std::match_results<StringRef::iterator>;
-using SRefRegExIterator = std::regex_iterator<StringRef::iterator>;
-
 // Given that \p ArgDesc describes integer conversion with signedness equal to
 // \p IsSigned, defines which particular integer type is provided.
 static PrintfArgInfo parseIntLengthModifier(StringRef ArgDesc, bool IsSigned) {
@@ -106,16 +105,9 @@ static PrintfArgInfo parseIntLengthModifier(StringRef ArgDesc, bool IsSigned) {
   return {PrintfArgInfo::Int, IsSigned};
 }
 
-static StringRef toStringRef(SRefMatch Match) {
-  IGC_ASSERT_MESSAGE(!Match.empty(),
-                     "wrong argument: matched string is expected");
-  return {Match[0].first, static_cast<std::size_t>(Match[0].length())};
-}
-
-// \p ArgDescMatch is a format string conversion specifier matched by a regex
+// \p ArgDesc is a format string conversion specifier matched by a regex
 // (some string that starts with % and ends with d,i,f,...).
-static PrintfArgInfo parseArgDesc(SRefMatch ArgDescMatch) {
-  StringRef ArgDesc = toStringRef(ArgDescMatch);
+static PrintfArgInfo parseArgDesc(StringRef ArgDesc) {
   if (ArgDesc.endswith("c"))
     // FIXME: support %lc
     return {PrintfArgInfo::Int, /* IsSigned */ true};
@@ -136,13 +128,16 @@ static PrintfArgInfo parseArgDesc(SRefMatch ArgDescMatch) {
 
 PrintfArgInfoSeq vc::parseFormatString(StringRef FmtStr) {
   PrintfArgInfoSeq Args;
-  std::regex ArgDescRegEx{"%(?:%|.*?[csdioxXufFeEaAgGp])"};
+  Regex ArgDescRegEx{"%(%|[^%csdioxXufFeEaAgGp]*[csdioxXufFeEaAgGp])"};
+  IGC_ASSERT_MESSAGE(IGCLLVM::isValid(ArgDescRegEx),
+                     "an error during regex parsing");
+  using ArgDescRegExIter = RegexIterator<2>;
   auto &&ArgDescs = make_filter_range(
-      make_range(SRefRegExIterator{FmtStr.begin(), FmtStr.end(), ArgDescRegEx},
-                 SRefRegExIterator{}),
-      [](SRefMatch ArgDesc) { return toStringRef(ArgDesc) != "%%"; });
-  transform(ArgDescs, std::back_inserter(Args),
-            [](SRefMatch ArgDesc) { return parseArgDesc(ArgDesc); });
+      make_range(ArgDescRegExIter{FmtStr, ArgDescRegEx}, ArgDescRegExIter{}),
+      [](ArgDescRegExIter::reference Match) { return Match[0] != "%%"; });
+  transform(
+      ArgDescs, std::back_inserter(Args),
+      [](ArgDescRegExIter::reference Match) { return parseArgDesc(Match[0]); });
   return Args;
 }
 

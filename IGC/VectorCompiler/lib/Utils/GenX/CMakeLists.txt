@@ -19,5 +19,6 @@ igc_get_llvm_targets(LLVM_LIBS
 target_link_libraries(VCGenXUtils
   VCHeaders
   LLVMGenXIntrinsics
+  VCGeneralUtils
   ${LLVM_LIBS}
   )
