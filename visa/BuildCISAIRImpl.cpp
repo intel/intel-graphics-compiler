@@ -449,22 +449,39 @@ void restoreFCallState(
     }
 }
 
-static void TransformToSubroutineCalls(
-    G4_Kernel* mainFunc, std::map<std::string, G4_Kernel*>& subFuncs)
+// Perform LTO including transforming stack calls to subroutine calls, subroutine calls to jumps, and inlining
+void CISA_IR_Builder::LinkTimeOptimization(
+    vISA::G4_Kernel* mainFunc, std::map<std::string, vISA::G4_Kernel*>& subFuncs, bool call2jump)
 {
+    std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
+    std::map<G4_INST*, std::list<G4_INST*>> rets;
     // append instructions from callee to caller
+    auto& i1 = mainFunc->fg.builder->instList;
     for (auto& [name, func]: subFuncs) {
-        auto& i1 = mainFunc->fg.builder->instList;
         auto i2 = func->fg.builder->instList;
+        G4_INST* calleeLabel = *i2.begin();
+        for (G4_INST* fret : i2)
+        {
+            if (fret->opcode() != G4_pseudo_fret)
+                continue;
+            // Change fret to ret
+            fret->setOpcode(G4_return);
+            rets[calleeLabel].push_back(fret);
+        }
         i1.insert(i1.end(), i2.begin(), i2.end());
     }
 
     auto builder = mainFunc->fg.builder;
     // Change fcall to call
-    for (G4_INST* fcall : builder->instList)
+    std::list<G4_INST*>::iterator it = builder->instList.begin();
+    while (it != builder->instList.end())
     {
+        G4_INST* fcall = *it;
         if (fcall->opcode() != G4_pseudo_fcall)
+        {
+            it ++;
             continue;
+        }
         if (!fcall->asCFInst()->isIndirectCall())
         {
             // direct call
@@ -479,19 +496,21 @@ static void TransformToSubroutineCalls(
 
             fcall->setOpcode(G4_call);
             fcall->setSrc(calleeLabel->getSrc(0), 0);
+            // we only record a single callsite to the target in order to convert to jumps
+            if (callsite.find(calleeLabel) == callsite.end())
+            {
+                callsite[calleeLabel] = it;
+            }
+            else
+            {
+                callsite[calleeLabel] = builder->instList.end();
+            }
         }
         else
         {
             assert(0 && "Not supported yet for indirect calls");
         }
-    }
-
-    // Change fret to ret
-    for (G4_INST* fret : builder->instList)
-    {
-        if (fret->opcode() != G4_pseudo_fret)
-            continue;
-        fret->setOpcode(G4_return);
+        it ++;
     }
 
     // Append declarations from callee to caller
@@ -501,6 +520,28 @@ static void TransformToSubroutineCalls(
         for (auto curDcl : callee->Declares)
         {
             mainFunc->Declares.push_back(curDcl);
+        }
+    }
+
+    if (call2jump)
+    {
+        for(auto& [label, itCall]: callsite)
+        {
+            if (itCall == builder->instList.end())
+                continue;
+            G4_INST* call = *itCall;
+            call->setOpcode(G4_goto);
+            call->asCFInst()->setUip(label->getLabel());
+            std::string funcName = call->getSrc(0)->asLabel()->getLabel();
+            G4_Label *raLabel = builder->createLabel(funcName + "_ret", LABEL_BLOCK);
+            G4_INST* ra = mainFunc->fg.createNewLabelInst(raLabel);
+            mainFunc->fg.builder->instList.insert(++itCall, ra);
+
+            for (G4_INST* ret : rets[label])
+            {
+                ret->setOpcode(G4_goto);
+                ret->asCFInst()->setUip(raLabel);
+            }
         }
     }
 
@@ -798,7 +839,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         return m_cisaBinary->dumpToStream(os);
     }
 
-    if (m_options.getOption(vISA_Linker))
+    if (m_options.getuInt32Option(vISA_Linker) != Linker_Disabled)
     {
         VISAKernelImpl::VISAKernelImplListTy mainFunctions;
         std::map<std::string, G4_Kernel*> subFunctionsNameMap;
@@ -833,11 +874,16 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
         }
 
         // Copy callees' context to callers and convert to subroutine calls
-        for (auto func : mainFunctions)
+        if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
         {
-            G4_Kernel* mainFunc = func->getKernel();
-            TransformToSubroutineCalls(mainFunc, subFunctionsNameMap);
+            for (auto func : mainFunctions)
+            {
+                G4_Kernel* mainFunc = func->getKernel();
+                LinkTimeOptimization(mainFunc, subFunctionsNameMap,
+                        (m_options.getuInt32Option(vISA_Linker) & Linker_Call2Jump) ||
+                        (m_options.getuInt32Option(vISA_Linker) & Linker_Inline));
 
+            }
         }
     }
 

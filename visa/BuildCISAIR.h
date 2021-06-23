@@ -883,6 +883,8 @@ private:
     // to make GetVISAKernel() work
     std::map<std::string, VISAKernelImpl *> m_nameToKernel;
 
+    void LinkTimeOptimization(vISA::G4_Kernel* mainFunc, std::map<std::string, vISA::G4_Kernel*>& subFuncs, bool call2jump);
+
     void emitFCPatchFile();
 
     const WA_TABLE *m_pWaTable;

@@ -52,4 +52,12 @@ enum CODE_PATCH_TYPE {
     CodePatch_Enable
 };
 
+enum LINKER_TYPE {
+    Linker_Disabled = 0,
+    Linker_Subroutine = 1,
+    Linker_Call2Jump = 2,
+    Linker_Inline = 4,
+    Linker_StackFrameRemove = 8
+};
+
 #endif
