@@ -81,7 +81,7 @@ namespace vISA
         PhyRegsLocalRA* pregs = nullptr;
         std::vector<LSLiveRange*> globalLiveIntervals;
         std::vector<LSLiveRange*> preAssignedLiveIntervals;
-        std::vector<LSLiveRange*> callSitesLiveIntervals;
+        std::vector<LSLiveRange*> liveThroughIntervals;
         unsigned int numRegLRA = 0;
         unsigned int numRowsEOT = 0;
         unsigned int globalLRSize = 0;
@@ -98,6 +98,7 @@ namespace vISA
         LSLiveRange* stackCallRetLR;
         std::vector<G4_Declare *> globalDeclares;
         unsigned int funcCnt = 0;
+        unsigned int lastInstLexID = 0;
         std::vector<unsigned int> funcLastLexID;
 
         LSLiveRange* GetOrCreateLocalLiveRange(G4_Declare* topdcl);
@@ -249,7 +250,10 @@ public:
     void setLastRef(G4_INST* inst, unsigned int idx)
     {
         lastRef = inst;
-        lrEndIdx = idx;
+        if (idx > lrEndIdx)
+        {
+            lrEndIdx = idx;
+        }
     }
 
     G4_INST* getLastRef(unsigned int& idx) const

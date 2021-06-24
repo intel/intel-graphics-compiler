@@ -145,6 +145,7 @@ void LinearScanRA::setLexicalID()
             }
         }
     }
+    lastInstLexID = id;
 }
 
 bool LinearScanRA::hasDstSrcOverlapPotential(G4_DstRegRegion* dst, G4_SrcRegRegion* src)
@@ -886,6 +887,7 @@ int LinearScanRA::linearScanRA()
         printInputLiveIntervalsGlobal();
 #endif
 
+        liveThroughIntervals.clear();
         globalLiveIntervals.clear();
         preAssignedLiveIntervals.clear();
         eotLiveIntervals.clear();
@@ -903,6 +905,15 @@ int LinearScanRA::linearScanRA()
                 latestLexID = bb->back()->getLexicalId() * 2;
             }
         }
+
+        if (liveThroughIntervals.size())
+        {
+            for (auto lr : liveThroughIntervals)
+            {
+                globalLiveIntervals.insert(globalLiveIntervals.begin(), lr);
+            }
+        }
+
 #ifdef DEBUG_VERBOSE_ON
         COUT_ERROR << "===== globalLiveIntervals============" << std::endl;
         printLiveIntervals(globalLiveIntervals);
@@ -1037,6 +1048,7 @@ int LinearScanRA::linearScanRA()
             // spending time inserting spill code and then aborting.
             return VISA_SPILL;
         }
+
         iterator++;
     } while (spillLRs.size() && iterator < MAXIMAL_ITERATIONS);
 
@@ -1163,6 +1175,18 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
         lr = CreateLocalLiveRange(dcl);
     }
 
+    if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
+    {
+        if (lr->getRegionID() != regionID)
+        {
+            lr->setFirstRef(curInst, 0);
+            lr->setLastRef(curInst, lastInstLexID * 2 + 1);
+            liveThroughIntervals.push_back(lr);
+            lr->setRegionID(regionID);
+        }
+        return;
+    }
+
     if (lr == nullptr ||
         (dcl->getRegFile() == G4_INPUT && dcl != kernel.fg.builder->getStackCallArg() && dcl != kernel.fg.builder->getStackCallRet())||
         (lr->isGRFRegAssigned() && (!dcl->getRegVar()->isGreg())))  //ARF
@@ -1252,6 +1276,18 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
     if (!lr && dcl->getRegFile() == G4_GRF)
     {
         lr = CreateLocalLiveRange(dcl);
+    }
+
+    if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
+    {
+        if (lr->getRegionID() != regionID)
+        {
+            lr->setFirstRef(curInst, 0);
+            lr->setLastRef(curInst, lastInstLexID * 2 + 1);
+            liveThroughIntervals.push_back(lr);
+            lr->setRegionID(regionID);
+        }
+        return;
     }
 
     if (lr == nullptr ||
