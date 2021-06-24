@@ -215,6 +215,8 @@ public:
     void        CreateFunctionSymbol(llvm::Function* pFunc);
     void        CreateGlobalSymbol(llvm::GlobalVariable* pGlobal);
 
+    CVariable*  GetStructVariable(llvm::Value* v, bool forceVectorInit = false);
+
     void        CreateImplicitArgs();
     void        CreateAliasVars();
     uint        GetBlockId(llvm::BasicBlock* block);
