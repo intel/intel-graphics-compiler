@@ -32,7 +32,6 @@ SPDX-License-Identifier: MIT
 
 #if !defined(_WIN32)
 #   define _strdup strdup
-#   define _snprintf snprintf
 #endif
 
 /***********************************************************************************
