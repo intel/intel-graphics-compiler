@@ -5631,12 +5631,15 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
         }
 
         // Fix the src1 if it's a immediate operand whose type can only be :ud
-        G4_Operand* src1 = inst->getSrc(1);
-        if (src1 && src1->isImm() && src1->getType() == Type_UW)
+        for (int i = 0; i < 2; i++)
         {
-            // just change the immediate's type to :ud
-            uint32_t immVal = (uint32_t)src1->asImm()->getImm();
-            inst->setSrc(builder.createImm(immVal, Type_UD), 1);
+            G4_Operand* src = inst->getSrc(i);
+            if (src && src->isImm() && src->getType() == Type_UW)
+            {
+                // just change the immediate's type to :ud
+                uint32_t immVal = (uint32_t)src->asImm()->getImm();
+                inst->setSrc(builder.createImm(immVal, Type_UD), i);
+            }
         }
 
         if (inst->getExecSize() != builder.getNativeExecSize())
