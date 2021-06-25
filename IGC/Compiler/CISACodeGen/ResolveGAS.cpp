@@ -1301,7 +1301,7 @@ bool LowerGPCallArg::processGASInst(Module& M)
                 if (Callee &&
                     (Callee->getName().equals("__builtin_IB_to_local") ||
                      Callee->getName().equals("__builtin_IB_to_private")) &&
-                    !toSkip(Callee->getOperand(0)))
+                    !toSkip(CallI->getOperand(0)))
                 {
                     Type* DstTy = I->getType();
                     Value* NewPtr = Constant::getNullValue(DstTy);
