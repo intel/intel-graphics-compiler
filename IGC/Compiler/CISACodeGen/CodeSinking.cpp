@@ -255,6 +255,16 @@ namespace IGC {
         localInstSet.clear();
         CTX->m_numGradientSinked = totalGradientMoved;
 
+        uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
+        uint32_t ngrf = CTX->getNumGRFPerThread();
+        if (m_fatLoopPressure > (ngrf + GRFThresholdDelta))
+        {
+            // Enable multiple-level loop sink if pressure is high enough
+            bool sinkMultiLevel = (m_fatLoopPressure > (ngrf + 2 * GRFThresholdDelta));
+            if (loopSink(m_fatLoop, sinkMultiLevel)) {
+                changed = true;
+            }
+        }
 
         // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, CTX->hash.getAsmHash());
         //F.viewCFG();
