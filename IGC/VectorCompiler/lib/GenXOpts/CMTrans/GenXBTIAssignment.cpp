@@ -28,16 +28,12 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
-#include <llvm/Support/CommandLine.h>
 
 using namespace llvm;
-
-static cl::opt<bool> BTIIndexCommoning("make-bti-index-common", cl::init(false),
-                                       cl::Hidden,
-                                       cl::desc("Enable BTI index commoning"));
 
 namespace {
 class BTIAssignment final {
@@ -47,6 +43,9 @@ public:
   BTIAssignment(Module &InM) : M(InM) {}
 
   bool run();
+
+private:
+  bool processKernel(Function &F);
 };
 
 class GenXBTIAssignment final : public ModulePass {
@@ -85,63 +84,45 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
   return BA.run();
 }
 
-static bool processKernel(Function &F) {
+bool BTIAssignment::processKernel(Function &F) {
   genx::KernelMetadata KM{&F};
 
   bool Changed = false;
 
-  unsigned Idx = 0;
+  auto *I32Ty = Type::getInt32Ty(M.getContext());
+
+  IRBuilder<> IRB{&F.front().front()};
+
   auto ArgKinds = KM.getArgKinds();
-  auto Kind = ArgKinds.begin();
-  for (auto &Arg : F.args()) {
-    if (*Kind == genx::KernelMetadata::AK_SAMPLER ||
-        *Kind == genx::KernelMetadata::AK_SURFACE) {
-      int32_t BTI = KM.getBTI(Idx);
-      IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");
+  IGC_ASSERT_MESSAGE(ArgKinds.size() == F.arg_size(),
+                     "Inconsistent arg kinds metadata");
+  for (auto &&[Arg, Kind] : llvm::zip(F.args(), ArgKinds)) {
+    if (Kind != genx::KernelMetadata::AK_SAMPLER &&
+        Kind != genx::KernelMetadata::AK_SURFACE)
+      continue;
 
-      Type *ArgTy = Arg.getType();
-      if (ArgTy->isPointerTy()) {
-        SmallVector<Instruction *, 8> ToErase;
-        for (Use &U : Arg.uses()) {
-          auto ArgUse = U.getUser();
-          IGC_ASSERT_MESSAGE(isa<PtrToIntInst>(ArgUse),
-                             "invalid surface input usage");
+    int32_t BTI = KM.getBTI(Arg.getArgNo());
+    IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");
 
-          std::transform(ArgUse->user_begin(), ArgUse->user_end(),
-                         std::back_inserter(ToErase), [BTI](User *U) {
-                           U->replaceAllUsesWith(
-                               ConstantInt::get(U->getType(), BTI));
-                           return cast<Instruction>(U);
-                         });
-          ToErase.push_back(cast<Instruction>(ArgUse));
-        }
-        std::for_each(ToErase.begin(), ToErase.end(),
-                      [](Instruction *I) { I->eraseFromParent(); });
+    Value *BTIConstant = ConstantInt::get(I32Ty, BTI);
 
-      } else {
-        auto BTIConstant = ConstantInt::get(ArgTy, BTI);
-        // If the number of uses for this arg more than 1 it's better to
-        // create a separate instruction for the constant. Otherwise, category
-        // conversion will create a separate ".categoryconv" instruction for
-        // each use of the arg. As a result, each conversion instruction will
-        // be materialized as movs to a surface var. This will increase
-        // register pressure and the number of instructions. But if there is
-        // only one use, it will be okay to wait for the replacement until
-        // category conv do it.
-        if (BTIIndexCommoning && Arg.getNumUses() > 1) {
-          auto ID = ArgTy->isFPOrFPVectorTy() ? GenXIntrinsic::genx_constantf
-                                              : GenXIntrinsic::genx_constanti;
-          Module *M = F.getParent();
-          Function *Decl = GenXIntrinsic::getGenXDeclaration(M, ID, ArgTy);
-          auto NewInst = CallInst::Create(
-              Decl, BTIConstant, Arg.getName() + ".bti", &*F.begin()->begin());
-          Arg.replaceAllUsesWith(NewInst);
-        } else
-          Arg.replaceAllUsesWith(BTIConstant);
-      }
-      Changed = true;
-    }
-    ++Kind, ++Idx;
+    Type *ArgTy = Arg.getType();
+    // This code is to handle DPC++ contexts with correct OCL types.
+    // Without actually doing something with users of args, we just
+    // cast constant to pointer and replace arg with new value.
+    // Later passes will do their work and clean up the mess.
+    // FIXME(aus): proper unification of incoming IR is
+    // required. Current approach will constantly blow all passes
+    // where some additional case should be handled.
+    if (ArgTy->isPointerTy())
+      BTIConstant = IRB.CreateIntToPtr(BTIConstant, ArgTy, ".bti.cast");
+
+    IGC_ASSERT_MESSAGE(ArgTy == BTIConstant->getType(),
+                       "Only explicit i32 indices or opaque types are allowed "
+                       "as bti argument");
+
+    Arg.replaceAllUsesWith(BTIConstant);
+    Changed = true;
   }
 
   return Changed;
