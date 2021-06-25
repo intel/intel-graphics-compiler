@@ -7097,7 +7097,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //  (See comments for more details at doNoMaskWA().
         if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
             ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-             builder.getOption(vISA_forceNoMaskWA)))
+              builder.getOption(vISA_forceNoMaskWA)))
         {
             doNoMaskWA();
         }
