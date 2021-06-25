@@ -54,25 +54,25 @@ LegalizeFunctionSignatures::LegalizeFunctionSignatures()
 //   Note: This means that the first argument of the function becomes a pointer allocated by the caller,
 //         and the return value is stored to that pointer, and the function return type becomes void.
 //
-// 2. Illegal int and int vector arguments are transformed to legal types that are a power of two (i8, i16, i32, i64).
+// 2. Illegal int and int vector arguments are transformed to legal types that are a power of two.
 //
-// 3. The "byval" struct arguments smaller than 128-bits are transformed to pass-by-value.
-//   Note: The SPIRV calling convention states that structures cannot be passed by
-//         value, thus all structs are transformed by SPIRV FE to be passed by reference.
-//         However we can optimize small struct args by converting them into back into
-//         pass-by-value so that they can be passed on GRF instead of spilling to stack memory.
+// 3. The "byval" struct arguments smaller than 64-bits are transformed to pass-by-value.
+//   Note: We follow SPIRV calling convention here, which states that structures cannot be passed by
+//         value, thus all structs are passed by reference. This transformation is done by the SPIRV
+//         FE. However, we can optimize small structs by converting them into integers and pass them
+//         by value to save on memory access.
 //
 // 4. The "sret" struct argument smaller than 64-bits are transformed to return value
 //   Note: Similar to the previous point, SPIRV FE converts struct return values to pass-by-refernce
 //         through the "sret" argument. For small structs that fit into the return GRF, we can undo
-//         this transformation to pass them by value instead.
+//         this transformation to pass them by return value instead.
 //
 // See IGC StackCall ABI for details on stackcall calling conventions.
 
 //****************************************************************//
 
 static const unsigned int MAX_STACKCALL_RETVAL_SIZE_IN_BITS = 64;
-static const unsigned int MAX_STRUCT_ARGUMENT_SIZE_IN_BITS = 128;
+static const unsigned int MAX_STRUCT_ARGUMENT_SIZE_IN_BITS = 64;
 
 bool LegalizeFunctionSignatures::runOnModule(Module& M)
 {
@@ -136,18 +136,13 @@ inline Type* LegalizedIntVectorType(Module& M, Type* ty)
         IGCLLVM::FixedVectorType::get(IntegerType::get(M.getContext(), newSize), (unsigned)cast<VectorType>(ty)->getNumElements());
 }
 
-// Returns true for small structures that only contain primitive types
-inline bool isPromotableStructType(Module& M, Type* ty, bool isReturnValue = false)
+// Returns true for structures <= 64-bits and only contain primitive types
+inline bool isPromotableStructType(Module& M, Type* ty)
 {
-    // We can separate promoting argument and return value sizes.
-    // Return value is limited to 64-bits due to vISA stackcall conventions.
-    // Argument is not limited to 64-bits, but can be adjusted to minimize spill.
-    static const unsigned int maxSize = isReturnValue ? MAX_STACKCALL_RETVAL_SIZE_IN_BITS : MAX_STRUCT_ARGUMENT_SIZE_IN_BITS;
-
     const DataLayout& DL = M.getDataLayout();
     if (ty->isPointerTy() &&
         ty->getPointerElementType()->isStructTy() &&
-        DL.getTypeSizeInBits(ty->getPointerElementType()) <= maxSize)
+        DL.getTypeSizeInBits(ty->getPointerElementType()) <= MAX_STRUCT_ARGUMENT_SIZE_IN_BITS)
     {
         for (const auto* EltTy : cast<StructType>(ty->getPointerElementType())->elements())
         {
@@ -166,18 +161,26 @@ inline bool FunctionHasPromotableSRetArg(Module& M, Function* F)
     if (F->getReturnType()->isVoidTy() &&
         !F->arg_empty() &&
         F->arg_begin()->hasStructRetAttr() &&
-        isPromotableStructType(M, F->arg_begin()->getType(), true))
+        isPromotableStructType(M, F->arg_begin()->getType()))
     {
         return true;
     }
     return false;
 }
 
-// Promotes struct pointer to struct type
 inline Type* PromotedStructValueType(Module& M, Type* ty)
 {
     IGC_ASSERT(ty->isPointerTy() && ty->getPointerElementType()->isStructTy());
-    return cast<StructType>(ty->getPointerElementType());
+
+    const DataLayout& DL = M.getDataLayout();
+    unsigned size = (unsigned)DL.getTypeSizeInBits(ty->getPointerElementType());
+    Type* convertedType = nullptr;
+
+    if (size <= 32) convertedType = IntegerType::get(M.getContext(), 32);
+    else if (size <= 64) convertedType = IntegerType::get(M.getContext(), 64);
+    else IGC_ASSERT_MESSAGE(0, "Does not support promoting structures > 64bits");
+
+    return convertedType;
 }
 
 void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
@@ -305,8 +308,11 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             {
                 if (OldArgIt == pFunc->arg_begin() && promoteSRetType)
                 {
-                    // Create a temp alloca to map the old argument. This will be removed later by SROA.
+                    // If the first arg is 'sret' and promotable to return value, create a temp
+                    // alloca instruction to store its value first. We will load that value at function return.
+                    // SROA pass should remove this alloca later.
                     tempAllocaForSRetPointer = builder.CreateAlloca(PromotedStructValueType(M, OldArgIt->getType()));
+                    tempAllocaForSRetPointer = builder.CreateBitCast(tempAllocaForSRetPointer, OldArgIt->getType());
                     VMap[&*OldArgIt] = tempAllocaForSRetPointer;
                     continue;
                 }
@@ -324,8 +330,10 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 {
                     // remove "byval" attrib since it is now pass-by-value
                     NewArgIt->removeAttr(llvm::Attribute::ByVal);
+                    // store int argument data back into struct pointer type
                     Value* newArgPtr = builder.CreateAlloca(NewArgIt->getType());
                     builder.CreateStore(&*NewArgIt, newArgPtr);
+                    newArgPtr = builder.CreateBitCast(newArgPtr, OldArgIt->getType());
                     VMap[&*OldArgIt] = newArgPtr;
                 }
                 else
@@ -367,11 +375,14 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             }
             else if (promoteSRetType)
             {
-                // For "sret" returns, we load from the temp alloca created earlier and return the loaded value instead
+                // For "sret" returns, we load from the temp alloca created earlier, cast it to
+                // the correct int type and return that instead.
                 for (auto RetInst : Returns)
                 {
                     IGCLLVM::IRBuilder<> builder(RetInst);
-                    Value* retVal = builder.CreateLoad(tempAllocaForSRetPointer);
+                    Argument* sretArg = pFunc->arg_begin();
+                    Value* retVal = builder.CreateBitCast(tempAllocaForSRetPointer, PointerType::get(PromotedStructValueType(M, sretArg->getType()), 0));
+                    retVal = builder.CreateLoad(retVal);
                     builder.CreateRet(retVal);
                     RetInst->eraseFromParent();
                 }
@@ -469,7 +480,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         callInst->getType()->isVoidTy() &&
         callInst->getNumArgOperands() > 0 &&
         callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
-        isPromotableStructType(M, callInst->getArgOperand(0)->getType(), true /* retval */))
+        isPromotableStructType(M, callInst->getArgOperand(0)->getType()))
     {
         opNum++; // Skip the first call operand
         promoteSRetType = true;
@@ -492,9 +503,13 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             callInst->paramHasAttr(opNum, llvm::Attribute::ByVal) &&
             isPromotableStructType(M, arg->getType()))
         {
-            // Map the new operand to the loaded value of the struct pointer
+            // cast and load from the int pointer instead of struct
             IGCLLVM::IRBuilder<> builder(callInst);
-            Value* newOp = builder.CreateLoad(arg);
+            Type* aggType = arg->getType()->getPointerElementType();
+            Type* intType = IntegerType::get(M.getContext(), (unsigned)DL.getTypeSizeInBits(aggType));
+            Value* newOp = builder.CreateBitCast(arg, PointerType::get(intType, 0));
+            newOp = builder.CreateLoad(newOp);
+            newOp = builder.CreateZExt(newOp, PromotedStructValueType(M, arg->getType()));
             callArgs.push_back(newOp);
             ArgAttrVec.push_back(AttributeSet());
             fixArgType = true;
@@ -548,7 +563,13 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         }
         else if (promoteSRetType)
         {
-            builder.CreateStore(newCallInst, callInst->getArgOperand(0));
+            // Store the new function's int return value into the original pointer.
+            // SROA will remove the original alloca later and directly use the return value.
+            Type* aggType = callInst->getArgOperand(0)->getType()->getPointerElementType();
+            Type* intType = IntegerType::get(M.getContext(), (unsigned)DL.getTypeSizeInBits(aggType));
+            Value* retVal = builder.CreateTrunc(newCallInst, intType);
+            Value* allocaPtr = builder.CreateBitCast(callInst->getArgOperand(0), PointerType::get(intType, 0));
+            builder.CreateStore(retVal, allocaPtr);
         }
         else
         {

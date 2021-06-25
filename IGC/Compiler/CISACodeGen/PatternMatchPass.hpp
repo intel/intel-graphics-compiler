@@ -154,7 +154,6 @@ namespace IGC
         void visitFPToUIInst(llvm::FPToUIInst& I);
         void visitDbgInfoIntrinsic(llvm::DbgInfoIntrinsic& I);
         void visitExtractValueInst(llvm::ExtractValueInst& I);
-        void visitInsertValueInst(llvm::InsertValueInst& I);
         void visitBranchInst(llvm::BranchInst& I);
 
     public:
@@ -230,9 +229,6 @@ namespace IGC
         bool matchPtrToPair(llvm::ExtractValueInst*);
 
         bool MatchUnmaskedRegionBoundary(llvm::Instruction& I, bool start);
-
-        bool MatchInsertToStruct(llvm::InsertValueInst*);
-        bool MatchExtractFromStruct(llvm::ExtractValueInst*);
 
         void AddPattern(Pattern* P)
         {

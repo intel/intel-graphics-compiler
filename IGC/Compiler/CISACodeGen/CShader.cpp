@@ -1665,65 +1665,6 @@ auto sizeToSIMDMode = [](uint32_t size)
     }
 };
 
-CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
-{
-    IGC_ASSERT(v->getType()->isStructTy());
-
-    // Walk up all the `insertvalue` instructions until we get to the constant base struct.
-    // That is the llvm value we map to this struct CVar.
-    Value* baseV = v;
-    while (InsertValueInst* II = dyn_cast<InsertValueInst>(baseV))
-    {
-        baseV = II->getOperand(0);
-    }
-
-    // Check if it's already created
-    auto it = symbolMapping.find(baseV);
-    if (it != symbolMapping.end())
-    {
-        return it->second;
-    }
-
-    bool isUniform = m_WI->isUniform(baseV);
-    if (forceVectorInit)
-    {
-        // Force non-uniform struct var creation if this flag is set
-        IGC_ASSERT(isa<Constant>(baseV) || baseV->getValueID() == Value::UndefValueVal);
-        isUniform = false;
-    }
-
-    IGC_ASSERT_MESSAGE(isa<Constant>(baseV) || isa<CallInst>(baseV) || baseV->getValueID() == Value::UndefValueVal,
-        "Invalid struct base symbol! Should only be const, undef, or callinst");
-
-    StructType* sTy = cast<StructType>(v->getType());
-    auto& DL = entry->getParent()->getDataLayout();
-    const StructLayout* SL = DL.getStructLayout(sTy);
-
-    // Represent the struct as a vector of BYTES
-    unsigned structSizeInBytes = (unsigned)SL->getSizeInBytes();
-    unsigned lanes = isUniform ? 1 : numLanes(m_dispatchSize);
-    CVariable* cVar = GetNewVariable(structSizeInBytes * lanes, ISA_TYPE_B, EALIGN_GRF, isUniform, "StructV");
-
-    // Initialize the struct default value if it has one
-    if (Constant* C = dyn_cast<Constant>(v))
-    {
-        for (unsigned i = 0; i < sTy->getNumElements(); i++)
-        {
-            CVariable* elementSrc = GetSymbol(C->getAggregateElement(i));
-            if (!elementSrc->IsUndef())
-            {
-                unsigned elementOffset = (unsigned)SL->getElementOffset(i);
-                CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(), elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
-                GetEncoder().Copy(elementDst, elementSrc);
-                GetEncoder().Push();
-            }
-        }
-    }
-
-    symbolMapping[baseV] = cVar;
-    return cVar;
-}
-
 CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
 {
     llvm::VectorType* VTy = llvm::dyn_cast<llvm::VectorType>(C->getType());
@@ -1930,9 +1871,6 @@ VISA_Type IGC::GetType(llvm::Type* type, CodeGenContext* pContext)
         return ISA_TYPE_DF;
     case llvm::Type::HalfTyID:
         return ISA_TYPE_HF;
-    case llvm::Type::StructTyID:
-        // Structs are always internally represented as BYTES
-        return ISA_TYPE_B;
     default:
         IGC_ASSERT(0);
         break;
@@ -1956,12 +1894,6 @@ uint32_t CShader::GetNumElts(llvm::Type* type, bool isUniform)
 
         auto VT = cast<VectorType>(type);
         numElts *= (uint16_t)VT->getNumElements();
-    }
-    else if (type->isStructTy())
-    {
-        auto& DL = entry->getParent()->getDataLayout();
-        const StructLayout* SL = DL.getStructLayout(cast<StructType>(type));
-        numElts *= (uint16_t)SL->getSizeInBytes();
     }
     return numElts;
 }
@@ -2614,12 +2546,6 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
 CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
 {
     CVariable* var = nullptr;
-
-    // Symbol mappings for struct types
-    if (value->getType()->isStructTy())
-    {
-        return GetStructVariable(value);
-    }
 
     if (Constant * C = llvm::dyn_cast<llvm::Constant>(value))
     {
