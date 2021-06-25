@@ -270,7 +270,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     {
         F->addFnAttr(llvm::Attribute::AlwaysInline);
         F->removeFnAttr(llvm::Attribute::NoInline);
-        F->removeFnAttr(llvm::Attribute::OptimizeNone); // Remove optnone when NoInline is removed.
     };
 
     // Returns true if a function is either import or export and requires external linking
