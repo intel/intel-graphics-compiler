@@ -7669,28 +7669,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return;
         }
 
-        unsigned int inputEnd = 32;
-        unsigned int inputCount = kernel.fg.builder->getInputCount();
-        for (unsigned int id = 0; id < inputCount; id++)
+        const unsigned grfSize = getGRFSize();
+        unsigned inputEnd = grfSize;
+        unsigned inputCount = kernel.fg.builder->getInputCount();
+        for (unsigned id = 0; id < inputCount; id++)
         {
             input_info_t* input_info = kernel.fg.builder->getInputArg(id);
-            if (inputEnd < (unsigned)(input_info->size + input_info->offset))
-            {
-                inputEnd = input_info->size + input_info->offset;
-            }
+            unsigned argEnd = input_info->offset + input_info->size;
+            inputEnd = std::max(inputEnd, argEnd);
         }
 
-        int reg_offset = (inputEnd + 31) / 32;
-        //bytes whithin grf that need to be initialized
-        int remainder_bytes = 32 - (inputEnd % 32);
-        //number of full grfs that need to be initialized
-        int num_reg_init = 128 - reg_offset;
-        //beginning execution size for byte remainder initialization
-        uint16_t exec_size = 16;
-        //offset within GRF from which to start to initialize
-        int sub_offset = (inputEnd % 32);
         G4_BB* bb = kernel.fg.getEntryBB();
-
         // iter points to the first non-label inst
         auto iter = bb->begin(), bbEnd = bb->end();
         while (iter != bbEnd)
@@ -7702,55 +7691,66 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             ++iter;
         }
 
-        //inits builk of GRFS, two at a time
-        for (int i = 0; i < num_reg_init - (num_reg_init % 2); i += 2)
+        const unsigned maxGRFNum = kernel.getNumRegTotal();
+        unsigned regOffset = (inputEnd + grfSize - 1) / grfSize;
+        //number of full GRFs that need to be initialized
+        unsigned numRegInit = maxGRFNum - regOffset;
+        //inits bulk of GRFs, two at a time
+        unsigned numElt = grfSize * 2 / TypeSize(Type_UD);
+        for (unsigned i = 0; i < numRegInit - (numRegInit % 2); i += 2)
         {
-            int reg_init = reg_offset + i;
-            G4_Declare* tempDcl = builder.createHardwiredDeclare(16, Type_UD, reg_init, 0);
+            G4_Declare* tempDcl = builder.createHardwiredDeclare(numElt, Type_UD, regOffset + i, 0);
             G4_DstRegRegion* dst = builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
-            G4_INST* initInst = builder.createMov(g4::SIMD16, dst, src0, InstOpt_WriteEnable, false);
+            G4_INST* initInst = builder.createMov(G4_ExecSize(numElt), dst, src0, InstOpt_WriteEnable, false);
             bb->insertBefore(iter, initInst);
         }
 
         //init last register if bulk of GRFs was odd
-        if ((num_reg_init % 2))
+        if (numRegInit % 2)
         {
-            G4_Declare* tempDcl = builder.createHardwiredDeclare(8, Type_UD, 128 - (num_reg_init % 2), 0);
+            numElt = grfSize / TypeSize(Type_UD);
+            G4_Declare* tempDcl = builder.createHardwiredDeclare(numElt, Type_UD, maxGRFNum - 1, 0);
             G4_DstRegRegion* dst = builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
-            G4_INST* spIncInst = builder.createMov(g4::SIMD8, dst, src0, InstOpt_WriteEnable, false);
+            G4_INST* spIncInst = builder.createMov(G4_ExecSize(numElt), dst, src0, InstOpt_WriteEnable, false);
             G4_BB* bb = kernel.fg.getEntryBB();
             bb->insertBefore(iter, spIncInst);
         }
 
+        //offset within GRF from which to start to initialize
+        unsigned subOffset = (inputEnd % grfSize);
+        //bytes within GRF that need to be initialized
+        unsigned remainderBytes = grfSize - subOffset;
+        //beginning execution size for byte remainder initialization
+        unsigned execSize = grfSize / 2;
         //inits remainder GRF
-        //loops untill all bytes within GRF are initialized
+        //loops until all bytes within GRF are initialized
         //on each iteration goes down by execution size
         //There was a small bug if inputEnd offset is GRF aligned it would think all of
         //last payload register is the "remainder" and will initialize it.
-        while (remainder_bytes && (inputEnd % 32))
+        while (remainderBytes && (inputEnd % grfSize))
         {
-            for (int i = 0; i < remainder_bytes - (remainder_bytes % exec_size); i += exec_size, sub_offset += exec_size)
+            for (unsigned i = 0; i < remainderBytes - (remainderBytes % execSize); i += execSize, subOffset += execSize)
             {
-                G4_Declare* tempDcl = builder.createHardwiredDeclare(exec_size, Type_UB, reg_offset - 1, sub_offset);
+                G4_Declare* tempDcl = builder.createHardwiredDeclare(execSize, Type_UB, regOffset - 1, subOffset);
                 G4_DstRegRegion* dst = builder.createDst(tempDcl->getRegVar(), 0, 0, 1, Type_UB);
 
                 G4_Declare* tempDclSrc = builder.createHardwiredDeclare(1, Type_UD, 126, 0);
                 G4_SrcRegRegion *src0 = builder.createSrc(tempDclSrc->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
 
-                G4_INST* initInst = builder.createMov((G4_ExecSize)exec_size, dst, src0, InstOpt_WriteEnable, false);
+                G4_INST* initInst = builder.createMov((G4_ExecSize)execSize, dst, src0, InstOpt_WriteEnable, false);
                 bb->insertBefore(iter, initInst);
             }
-            //caluclates bytes that remain to be initialized
-            remainder_bytes = remainder_bytes % exec_size;
+            //calculates bytes that remain to be initialized
+            remainderBytes = remainderBytes % execSize;
             //next lowest execution size
-            exec_size = (uint16_t)std::max(1, exec_size / 2);
+            execSize = std::max(1U, execSize / 2);
         }
 
-        //Initializaing Flag register
-        int num32BitFlags = builder.getNumFlagRegisters() / 2;
-        for (int i = 0; i < num32BitFlags; ++i)
+        //Initializing Flag register
+        unsigned num32BitFlags = builder.getNumFlagRegisters() / 2;
+        for (unsigned i = 0; i < num32BitFlags; ++i)
         {
             G4_Declare* tmpFlagDcl = builder.createTempFlag(2);
             tmpFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(i), 0);
