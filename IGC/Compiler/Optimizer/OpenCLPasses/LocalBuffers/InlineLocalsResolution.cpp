@@ -102,7 +102,7 @@ bool InlineLocalsResolution::runOnModule(Module& M)
       filterGlobals(M);
     // Compute the offset of each inline local in the kernel,
     // and their total size.
-    std::map<Function*, unsigned int> sizeMap;
+    llvm::MapVector<Function*, unsigned int> sizeMap;
     collectInfoOnSharedLocalMem(M);
     computeOffsetList(M, sizeMap);
 
@@ -461,9 +461,9 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
     }
 }
 
-void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, unsigned int>& sizeMap)
+void InlineLocalsResolution::computeOffsetList(Module& M, llvm::MapVector<Function*, unsigned int>& sizeMap)
 {
-    std::map<Function*, std::map<GlobalVariable*, unsigned int>> offsetMap;
+    llvm::MapVector<Function*, llvm::MapVector<GlobalVariable*, unsigned int>> offsetMap;
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     DataLayout DL = M.getDataLayout();
@@ -489,11 +489,11 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
     {
         Function* F = I.first;
 
-        // loop all global variables
+        // loop through all global variables
         for (auto G : I.second)
         {
-            // std::map initializes with zero if the value is not present.
-            unsigned int offset = sizeMap[F];
+            auto itr = sizeMap.find(F);
+            unsigned int offset = itr == sizeMap.end() ? 0 : itr->second;
 #if LLVM_VERSION_MAJOR < 11
             offset = iSTD::Align(offset, DL.getPreferredAlignment(G));
 #else

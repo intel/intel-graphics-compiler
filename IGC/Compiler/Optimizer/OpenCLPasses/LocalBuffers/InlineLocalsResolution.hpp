@@ -71,13 +71,13 @@ namespace IGC
         void filterGlobals(llvm::Module&);
         bool unusedGlobal(llvm::Value* V, std::unordered_set<llvm::Value*>& unusedNodes);
         void collectInfoOnSharedLocalMem(llvm::Module&);
-        void computeOffsetList(llvm::Module&, std::map<llvm::Function*, unsigned int>&);
+        void computeOffsetList(llvm::Module&, llvm::MapVector<llvm::Function*, unsigned int>&);
         void traverseCGN(const llvm::CallGraphNode&);
 
     private:
 
         llvm::MapVector<llvm::Function*, GlobalVariableSet> m_FuncToVarsMap;
-        std::map<llvm::Function*, unsigned int> m_FuncToMemPoolSizeMap;
+        llvm::MapVector<llvm::Function*, unsigned int> m_FuncToMemPoolSizeMap;
         std::set<llvm::Function*> m_chkSet;
         llvm::GlobalVariable* m_pGV;
     };

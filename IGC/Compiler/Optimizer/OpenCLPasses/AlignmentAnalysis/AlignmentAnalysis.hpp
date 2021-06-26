@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/ADT/MapVector.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -95,7 +96,7 @@ namespace IGC
         unsigned int getConstantAlignment(uint64_t C) const;
 
         /// @brief This map stores the known alignment of every value.
-        std::map<llvm::Value*, unsigned int> m_alignmentMap;
+        llvm::MapVector<llvm::Value*, unsigned int> m_alignmentMap;
 
         static const unsigned int MinimumAlignment = 1;
 

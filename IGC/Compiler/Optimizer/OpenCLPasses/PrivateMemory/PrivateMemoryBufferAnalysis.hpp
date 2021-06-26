@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/ADT/MapVector.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/DataLayout.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -122,14 +123,14 @@ namespace IGC
             std::vector<llvm::AllocaInst*> m_allocaInsts;
 
             /// @brief - map between alloca instruction and offset in buffer
-            std::map<llvm::AllocaInst*, unsigned int> m_bufferOffsets;
+            llvm::MapVector<llvm::AllocaInst*, unsigned int> m_bufferOffsets;
 
             /// @brief - map between alloca instruction and total size
-            std::map<llvm::AllocaInst*, unsigned int> m_bufferSizes;
+            llvm::MapVector<llvm::AllocaInst*, unsigned int> m_bufferSizes;
         } PrivateBufferPerFuncInfo;
 
         /// @brief - map between function and total private buffer size
-        std::map<llvm::Function*, PrivateBufferPerFuncInfo> m_privateInfoMap;
+        llvm::MapVector<llvm::Function*, PrivateBufferPerFuncInfo> m_privateInfoMap;
     };
 
 } // namespace IGC

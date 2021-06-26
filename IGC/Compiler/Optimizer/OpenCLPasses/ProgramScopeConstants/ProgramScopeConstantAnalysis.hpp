@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -52,7 +53,7 @@ namespace IGC
 
     protected:
         typedef std::vector<unsigned char> DataVector;
-        typedef std::map<llvm::GlobalVariable*, int> BufferOffsetMap;
+        typedef llvm::MapVector<llvm::GlobalVariable*, int> BufferOffsetMap;
 
         struct PointerOffsetInfo
         {

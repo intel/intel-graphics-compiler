@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/MapVector.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
@@ -148,7 +149,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         // Now, go over the users of this constant.
         // First, copy use list, because we will be removing uses.
         std::vector<User*> useVector(pGlobalVar->user_begin(), pGlobalVar->user_end());
-        std::map<Function*, std::map<GlobalVariable*, Value*> > funcToVarSet;
+        llvm::MapVector<Function*, llvm::MapVector<GlobalVariable*, Value*>> funcToVarSet;
 
         for (std::vector<User*>::iterator U = useVector.begin(), UE = useVector.end(); U != UE; ++U)
         {

@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/DenseMap.h>
+#include "llvm/ADT/MapVector.h"
 #include <llvm/ADT/ilist.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallPtrSet.h>
@@ -237,7 +238,7 @@ namespace IGC
         const llvm::DataLayout* m_pDL;
 
         /// @brief This holds all the created dummy functions throughout the lifetime of the pass, and manages their memory
-        std::map<llvm::Type*, llvm::Function*> createdDummyFunctions;
+        llvm::MapVector<llvm::Type*, llvm::Function*> createdDummyFunctions;
     };
 
 } // namespace IGC

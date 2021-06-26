@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Transforms/IPO.h"
@@ -1175,7 +1176,7 @@ namespace //Anonymous
         // To prevent this from happening, we will use a custom compare, which is based
         // on the function's name.
         std::map<const llvm::Function*, InvokeRecord, FuncCompare> _invocations;
-        std::map<llvm::Value*, std::unique_ptr<DeviceEnqueueParamValue>> _deviceEnqueueParamValueMap;
+        llvm::MapVector<llvm::Value*, std::unique_ptr<DeviceEnqueueParamValue>> _deviceEnqueueParamValueMap;
         unsigned _blocksNum;
 
         KindQuery _kindQuery;

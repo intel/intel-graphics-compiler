@@ -1277,7 +1277,7 @@ void ScalarizeFunction::releaseAllSCMEntries()
 
 void ScalarizeFunction::resolveDeferredInstructions()
 {
-    std::map<Value*, Value*> dummyToScalarMap;
+    llvm::MapVector<Value*, Value*> dummyToScalarMap;
 
     // lambda to check if a value is a dummy instruction
     auto isDummyValue = [this](Value* val) -> bool

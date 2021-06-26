@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/Optimizer/ValueTracker.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/MapVector.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvmWrapper/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -160,7 +161,7 @@ namespace IGC
             ResourceExtensionTypeEnum extension;
         };
 
-        typedef std::map<llvm::Value*, ParamInfo> ParamMap;
+        typedef llvm::MapVector<llvm::Value*, ParamInfo> ParamMap;
         typedef std::map<int, int> InlineMap;
 
         class CImagesUtils
