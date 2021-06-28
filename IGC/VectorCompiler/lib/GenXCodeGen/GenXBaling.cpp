@@ -1845,21 +1845,12 @@ void GenXBaling::doClones()
             GenXIntrinsic::GenXRegion::OldValueOperandNum))) {
       auto *ReadPredef = cast<Instruction>(
           Cloned->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-      // Create rdregion that chooses correct piece of predef register to copy.
-      Instruction *PredefRegRdR = Opnd->clone();
-      PredefRegRdR->setName(Opnd->getName());
-      PredefRegRdR->insertAfter(ReadPredef);
-
-      Region R(PredefRegRdR);
+      Region R(ReadPredef);
       auto Wrr =
-          R.createWrRegion(UndefValue::get(ReadPredef->getType()), PredefRegRdR,
-                           "", PredefRegRdR->getNextNode(), DebugLoc());
+          R.createWrRegion(UndefValue::get(ReadPredef->getType()), ReadPredef,
+                           "", ReadPredef->getNextNode(), DebugLoc());
       ReadPredef->replaceAllUsesWith(Wrr);
-      PredefRegRdR->replaceUsesOfWith(Wrr, ReadPredef);
-
-      BaleInfo RdRBI = getBaleInfo(Opnd);
-      setBaleInfo(PredefRegRdR, RdRBI);
-
+      Wrr->replaceUsesOfWith(Wrr, ReadPredef);
       BaleInfo BI(BaleInfo::WRREGION);
       setBaleInfo(Wrr, BI);
     }

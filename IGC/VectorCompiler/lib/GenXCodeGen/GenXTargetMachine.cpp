@@ -102,7 +102,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXGEPLoweringPass(registry);
   initializeGenXGroupBalingPass(registry);
   initializeGenXIMadPostLegalizationPass(registry);
-  initializeGenXSimplifyRegionPass(registry);
   initializeGenXLateSimdCFConformancePass(registry);
   initializeGenXLayoutBlocksPass(registry);
   initializeGenXLegalizationPass(registry);
@@ -424,7 +423,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// removes code that has been made dead by other passes.
   ///
   PM.add(createDeadCodeEliminationPass());
-  PM.add(createGenXSimplifyRegionPass());
   PM.add(createGenXIMadPostLegalizationPass());
   /// GlobalDCE
   /// ---------
