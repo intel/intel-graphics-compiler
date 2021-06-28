@@ -783,21 +783,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         return false;
     }
 
-    // Disable sinking of alloca when optimizations are disabled. allocas (and associated bitcasts) dont
-    // contain any DebugLoc. Emitting low/high_pc for inlined subprograms becomes messy as allocas appear
-    // in subprogram prolog without any debug info. This makes debug info assume alloca code belongs to
-    // main program causing a break in low/high_pc of such subprograms. Not sinking allocas makes them
-    // appear in entry block of entry function. All such allocas get treated as being in prolog of
-    // entry function. This results in live-range extension, but with -O0 this is not a problem as debugging
-    // experience is more important than extra spills.
-    if (!modMD->compOpt.OptDisable)
+    if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold))
     {
-        if (Ctx.m_instrTypes.numAllocaInsts > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold))
-        {
-            sinkAllocaSingleUse(allocaInsts);
-        }
-        sinkAllocas(allocaInsts);
+        sinkAllocaSingleUse(allocaInsts);
     }
+    sinkAllocas(allocaInsts);
+
     // If there are N+1 private buffers, and M+1 threads,
     // the layout representing the private memory will look like this:
 
