@@ -432,10 +432,6 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);
 
-  // Temporary measure till KernelArgOffset is moved to the backend
-  if (Opts.EmitDebuggableKernels)
-    M.getOrInsertNamedMetadata(llvm::genx::DebugMD::DebuggableKernels);
-
   Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
   M.setTargetTriple(TheTriple.getTriple());
 

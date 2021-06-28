@@ -15,7 +15,8 @@ SPDX-License-Identifier: MIT
 /// that include buffers and images.
 ///
 /// Calculated BTI are then used instead of corresponging kernel arguments
-/// throughout the code.
+/// throughout the code. Additionally, all assigned values are saved to
+/// kernel metadata to be retrieved later by runtime info pass.
 ///
 //===----------------------------------------------------------------------===//
 
@@ -27,24 +28,43 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
 
+#include <tuple>
+#include <utility>
+#include <vector>
+
 using namespace llvm;
 
 namespace {
 class BTIAssignment final {
   Module &M;
+  const GenXBackendConfig &BC;
 
 public:
-  BTIAssignment(Module &InM) : M(InM) {}
+  BTIAssignment(Module &InM, const GenXBackendConfig &InBC)
+      : M(InM), BC(InBC) {}
 
   bool run();
 
 private:
+  // Helper function to assign bti from corresponding category.
+  // ZipTy -- tuple of ID, ArgKind and ArgDesc.
+  // assignSRV return value -- current state of IDs for surface and
+  // sampler assignment.
+  template <typename ZipTy>
+  std::pair<int, int> assignSRV(int SurfaceID, int SamplerID, ZipTy &&Zippy);
+  template <typename ZipTy> int assignUAV(int SurfaceID, ZipTy &&Zippy);
+
+  std::vector<int> computeBTIndices(genx::KernelMetadata &KM);
+  bool rewriteArguments(genx::KernelMetadata &KM, Function &F,
+                        const std::vector<int> &BTIndices);
+
   bool processKernel(Function &F);
 };
 
@@ -68,6 +88,7 @@ char GenXBTIAssignment::ID = 0;
 
 INITIALIZE_PASS_BEGIN(GenXBTIAssignment, "GenXBTIAssignment",
                       "GenXBTIAssignment", false, false);
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXBTIAssignment, "GenXBTIAssignment", "GenXBTIAssignment",
                     false, false);
 
@@ -79,14 +100,127 @@ ModulePass *createGenXBTIAssignmentPass() {
 } // namespace llvm
 
 bool GenXBTIAssignment::runOnModule(Module &M) {
-  BTIAssignment BA(M);
+  auto &BC = getAnalysis<GenXBackendConfig>();
+  BTIAssignment BA(M, BC);
 
   return BA.run();
 }
 
-bool BTIAssignment::processKernel(Function &F) {
-  genx::KernelMetadata KM{&F};
+// Surfaces starting from 240 are reserved.
+static constexpr int MaxAvailableSurfaceIndex = 239;
+static constexpr int MaxAvailableSamplerIndex = 14;
 
+static bool isDescImageType(StringRef TypeDesc) {
+  return TypeDesc.find_lower("image1d_t") != StringRef::npos ||
+         TypeDesc.find_lower("image2d_t") != StringRef::npos ||
+         TypeDesc.find_lower("image3d_t") != StringRef::npos ||
+         TypeDesc.find_lower("image1d_buffer_t") != StringRef::npos;
+}
+
+static bool isDescReadOnly(StringRef TypeDesc) {
+  return TypeDesc.find_lower("read_only") != StringRef::npos;
+}
+
+static bool isDescSvmPtr(StringRef TypeDesc) {
+  return TypeDesc.find_lower("svmptr_t") != StringRef::npos;
+}
+
+template <typename ZipTy>
+std::pair<int, int> BTIAssignment::assignSRV(int SurfaceID, int SamplerID,
+                                             ZipTy &&Zippy) {
+  // SRV (read only) and samplers.
+  for (auto &&[Idx, Kind, Desc] : Zippy) {
+    if (Kind == genx::KernelMetadata::AK_SAMPLER) {
+      Idx = SamplerID++;
+      continue;
+    }
+    if (Kind == genx::KernelMetadata::AK_SURFACE && isDescReadOnly(Desc)) {
+      IGC_ASSERT_MESSAGE(isDescImageType(Desc),
+                         "RW qualifiers are allowed on images only");
+      Idx = SurfaceID++;
+      continue;
+    }
+  }
+  return {SurfaceID, SamplerID};
+}
+
+template <typename ZipTy>
+int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
+  // UAV -- writable entities.
+  for (auto &&[Idx, Kind, Desc] : Zippy) {
+    // Already assigned entities should be skipped.
+    if (Idx != -1)
+      continue;
+
+    if (Kind == genx::KernelMetadata::AK_SURFACE) {
+      Idx = SurfaceID++;
+      continue;
+    }
+    if (Kind == genx::KernelMetadata::AK_NORMAL && isDescSvmPtr(Desc)) {
+      Idx = SurfaceID++;
+      continue;
+    }
+    // These 'ands' are definitely super buggy. Kinds should be
+    // matched with masking and comparision (as in KernelArgInfo).
+    // Anding will match more kinds that supposed. Here, for example,
+    // SB_BTI is matches too that makes some tests magically work
+    // on L0 runtime.
+    // FIXME(aus): investigate the reason and rewrite with KAI.
+    if (Kind & genx::KernelMetadata::IMP_OCL_PRINTF_BUFFER) {
+      Idx = SurfaceID++;
+      continue;
+    }
+    if (Kind & genx::KernelMetadata::IMP_OCL_PRIVATE_BASE) {
+      Idx = SurfaceID++;
+      continue;
+    }
+  }
+  return SurfaceID;
+}
+
+// Assign a BTI value to a surface or sampler, NEO path only.
+// SRV and UAV is sort of direct3d terminology, though they
+// are used across binary format structures.
+// SRV -- constant resources -- samplers and read only images.
+// UAV -- writeable resources -- buffers and rw/wo images.
+// Additionally, ranges for SRV and UAV should be separate and contiguous
+// so this code assigns SRV and then UAV resources.
+std::vector<int> BTIAssignment::computeBTIndices(genx::KernelMetadata &KM) {
+  int SurfaceID = 0;
+  int SamplerID = 0;
+
+  // If module has Debuggable Kernels, then BTI=0 is reserved
+  if (BC.emitDebuggableKernels())
+    SurfaceID = SamplerID = 1;
+
+  std::vector<int> Indices(KM.getArgKinds().size(), -1);
+
+  ArrayRef<unsigned> ArgKinds = KM.getArgKinds();
+  ArrayRef<StringRef> ArgTypeDescs = KM.getArgTypeDescs();
+  // ArgDescs can be lesser if there are implicit parameters.
+  IGC_ASSERT_MESSAGE(
+      ArgKinds.size() >= ArgTypeDescs.size(),
+      "Expected same or less number of arguments for kinds and descs");
+
+  // All arguments without arg type desc will get default empty description.
+  std::vector<StringRef> ArgTypeDescsExt{ArgTypeDescs.begin(),
+                                         ArgTypeDescs.end()};
+  ArgTypeDescsExt.resize(Indices.size());
+
+  auto Zippy = llvm::zip(Indices, KM.getArgKinds(), ArgTypeDescsExt);
+  std::tie(SurfaceID, SamplerID) = assignSRV(SurfaceID, SamplerID, Zippy);
+  SurfaceID = assignUAV(SurfaceID, Zippy);
+
+  if (SurfaceID > MaxAvailableSurfaceIndex)
+    llvm::report_fatal_error("not enough surface indices");
+  if (SamplerID > MaxAvailableSamplerIndex)
+    llvm::report_fatal_error("not enough sampler indices");
+
+  return Indices;
+}
+
+bool BTIAssignment::rewriteArguments(genx::KernelMetadata &KM, Function &F,
+                                     const std::vector<int> &BTIndices) {
   bool Changed = false;
 
   auto *I32Ty = Type::getInt32Ty(M.getContext());
@@ -96,14 +230,12 @@ bool BTIAssignment::processKernel(Function &F) {
   auto ArgKinds = KM.getArgKinds();
   IGC_ASSERT_MESSAGE(ArgKinds.size() == F.arg_size(),
                      "Inconsistent arg kinds metadata");
-  for (auto &&[Arg, Kind] : llvm::zip(F.args(), ArgKinds)) {
+  for (auto &&[Arg, Kind, BTI] : llvm::zip(F.args(), ArgKinds, BTIndices)) {
     if (Kind != genx::KernelMetadata::AK_SAMPLER &&
         Kind != genx::KernelMetadata::AK_SURFACE)
       continue;
 
-    int32_t BTI = KM.getBTI(Arg.getArgNo());
     IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");
-
     Value *BTIConstant = ConstantInt::get(I32Ty, BTI);
 
     Type *ArgTy = Arg.getType();
@@ -124,6 +256,18 @@ bool BTIAssignment::processKernel(Function &F) {
     Arg.replaceAllUsesWith(BTIConstant);
     Changed = true;
   }
+
+  return Changed;
+}
+
+bool BTIAssignment::processKernel(Function &F) {
+  genx::KernelMetadata KM{&F};
+
+  std::vector<int> BTIndices = computeBTIndices(KM);
+
+  bool Changed = rewriteArguments(KM, F, BTIndices);
+
+  KM.updateBTIndicesMD(std::move(BTIndices));
 
   return Changed;
 }

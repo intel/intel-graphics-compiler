@@ -192,6 +192,7 @@ KernelMetadata::KernelMetadata(const Function *F) {
   MDNode *IndexesNode = nullptr;
   MDNode *OffsetInArgsNode = nullptr;
   MDNode *LinearizationNode = nullptr;
+  MDNode *BTIndicesNode = nullptr;
   InternalNode = findInternalNode(*F);
   IGC_ASSERT_MESSAGE(InternalNode,
                      "Internal node is expected to have already been created!");
@@ -202,6 +203,8 @@ KernelMetadata::KernelMetadata(const Function *F) {
       InternalNode->getOperand(internal::KernelMDOp::OffsetInArgs));
   LinearizationNode = cast_or_null<MDNode>(
       InternalNode->getOperand(internal::KernelMDOp::LinearizationArgs));
+  BTIndicesNode = cast_or_null<MDNode>(
+      InternalNode->getOperand(internal::KernelMDOp::BTIndices));
 
   IGC_ASSERT(KindsNode);
 
@@ -212,11 +215,14 @@ KernelMetadata::KernelMetadata(const Function *F) {
              KindsNode->getNumOperands() == OffsetInArgsNode->getNumOperands());
   IGC_ASSERT(!IndexesNode ||
              KindsNode->getNumOperands() == IndexesNode->getNumOperands());
+  IGC_ASSERT(!BTIndicesNode ||
+             KindsNode->getNumOperands() == BTIndicesNode->getNumOperands());
 
   extractConstantsFromMDNode(KindsNode, ArgKinds);
   extractConstantsFromMDNode(OffsetsNode, ArgOffsets);
   extractConstantsFromMDNode(OffsetInArgsNode, OffsetInArgs);
   extractConstantsFromMDNode(IndexesNode, ArgIndexes);
+  extractConstantsFromMDNode(BTIndicesNode, BTIs);
 
   IGC_ASSERT(InputOutputKinds);
   IGC_ASSERT(KindsNode->getNumOperands() >= InputOutputKinds->getNumOperands());
@@ -262,40 +268,48 @@ void KernelMetadata::updateLinearizationMD(ArgToImplicitLinearization &&Lin) {
                                    MDNode::get(Ctx, LinMDs));
 }
 
-void KernelMetadata::updateArgsMD(const SmallVectorImpl<unsigned> &Values,
-                                  MDNode *Node, unsigned NodeOpNo) const {
+template <typename InputIt>
+void KernelMetadata::updateArgsMD(InputIt Begin, InputIt End, MDNode *Node,
+                                  unsigned NodeOpNo) const {
   IGC_ASSERT(F);
   IGC_ASSERT(Node);
-  IGC_ASSERT_MESSAGE(Values.size() == getNumArgs(),
+  IGC_ASSERT_MESSAGE(std::distance(Begin, End) == getNumArgs(),
                      "Mismatch between metadata for kernel and number of args");
   IGC_ASSERT(Node->getNumOperands() > NodeOpNo);
   auto &Ctx = F->getContext();
   auto *I32Ty = Type::getInt32Ty(Ctx);
   SmallVector<Metadata *, 8> NewMD;
-  std::transform(Values.begin(), Values.end(), std::back_inserter(NewMD),
-                 [I32Ty](unsigned Value) {
-                   return ValueAsMetadata::getConstant(
-                       ConstantInt::get(I32Ty, Value));
-                 });
+  std::transform(Begin, End, std::back_inserter(NewMD), [I32Ty](auto Value) {
+    return ValueAsMetadata::getConstant(ConstantInt::get(I32Ty, Value));
+  });
   MDNode *NewNode = MDNode::get(Ctx, NewMD);
   Node->replaceOperandWith(NodeOpNo, NewNode);
 }
 
 void KernelMetadata::updateArgOffsetsMD(SmallVectorImpl<unsigned> &&Offsets) {
   ArgOffsets = std::move(Offsets);
-  updateArgsMD(ArgOffsets, ExternalNode, KernelMDOp::ArgOffsets);
+  updateArgsMD(ArgOffsets.begin(), ArgOffsets.end(), ExternalNode,
+               KernelMDOp::ArgOffsets);
 }
 void KernelMetadata::updateArgKindsMD(SmallVectorImpl<unsigned> &&Kinds) {
   ArgKinds = std::move(Kinds);
-  updateArgsMD(ArgKinds, ExternalNode, KernelMDOp::ArgKinds);
+  updateArgsMD(ArgKinds.begin(), ArgKinds.end(), ExternalNode,
+               KernelMDOp::ArgKinds);
 }
 void KernelMetadata::updateArgIndexesMD(SmallVectorImpl<unsigned> &&Indexes) {
   ArgIndexes = std::move(Indexes);
-  updateArgsMD(ArgIndexes, InternalNode, internal::KernelMDOp::ArgIndexes);
+  updateArgsMD(ArgIndexes.begin(), ArgIndexes.end(), InternalNode,
+               internal::KernelMDOp::ArgIndexes);
 }
 void KernelMetadata::updateOffsetInArgsMD(SmallVectorImpl<unsigned> &&Offsets) {
   OffsetInArgs = std::move(Offsets);
-  updateArgsMD(OffsetInArgs, InternalNode, internal::KernelMDOp::OffsetInArgs);
+  updateArgsMD(OffsetInArgs.begin(), OffsetInArgs.end(), InternalNode,
+               internal::KernelMDOp::OffsetInArgs);
+}
+void KernelMetadata::updateBTIndicesMD(std::vector<int> &&BTIndices) {
+  BTIs = std::move(BTIndices);
+  updateArgsMD(BTIs.begin(), BTIs.end(), InternalNode,
+               internal::KernelMDOp::BTIndices);
 }
 
 } // namespace genx
