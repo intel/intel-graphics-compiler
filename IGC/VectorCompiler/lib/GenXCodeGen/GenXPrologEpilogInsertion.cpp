@@ -42,6 +42,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/MathExtras.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -418,8 +419,8 @@ void GenXPrologEpilogInsertion::generateFunctionEpilog(Function &F,
   }
   F.setMetadata(InstMD::FuncRetSize,
                 MDNode::get(F.getContext(),
-                            ConstantAsMetadata::get(
-                                IRB.getInt32(RetSize / ST->getGRFWidth()))));
+                            ConstantAsMetadata::get(IRB.getInt32(
+                                divideCeil(RetSize, ST->getGRFWidth())))));
 }
 
 void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
@@ -473,11 +474,11 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst *CI) {
   CI->setMetadata(
       InstMD::FuncRetSize,
       MDNode::get(CI->getContext(),
-                  ConstantAsMetadata::get(IRB.getInt32(
+                  ConstantAsMetadata::get(IRB.getInt32(divideCeil(
                       (isVoidCall ? 0
                                   : (DL->getTypeSizeInBits(CI->getType())) /
-                                        genx::ByteBits) /
-                      ST->getGRFWidth()))));
+                                        genx::ByteBits),
+                      ST->getGRFWidth())))));
   if (isVoidCall)
     return;
   IRB.SetInsertPoint(CI->getNextNode());
