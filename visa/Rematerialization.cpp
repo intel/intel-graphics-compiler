@@ -87,6 +87,14 @@ namespace vISA
                 }
             }
         }
+
+        for (auto& ref : operations)
+        {
+            auto dcl = ref.first;
+            if (dcl->getRegVar() &&
+                dcl->getRegVar()->getPhyReg())
+                preDefinedVars.push_back(dcl);
+        }
     }
 
     void Rematerialization::populateSamplerHeaderMap()
@@ -441,6 +449,50 @@ namespace vISA
         return defInst->getPredicate()->isSameAsNoMask();
     }
 
+    bool Rematerialization::isPartGRFBusyInput(G4_Declare* inputDcl, unsigned int atLexId)
+    {
+        // inputDcl is an input G4_Declare that has pre-defined assignment.
+        // Extending a pre-assigned assignment can be bad if its a scalar
+        // and no other part of that GRF is busy. OTOH, it may be beneficial
+        // to extend inputDcl if there is another pre-defined G4_Declare
+        // sharing physical register assignment (different sub-register)
+        // with inputDcl and is live beyond where we want to extend inputDcl.
+
+        // This function checks whether there is any other G4_Declare that
+        // shares same GRF assignment as inputDcl. If there is then check
+        // whether last use of that assignment is beyond atLexId. If one
+        // if found then return true. Return false otherwise.
+
+        if (!inputDcl->getRegVar()->getPhyReg() ||
+            !inputDcl->getRegVar()->getPhyReg()->isGreg())
+        {
+            return false;
+        }
+
+        auto inputRegNum = inputDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+
+        for (auto dcl : preDefinedVars)
+        {
+            auto ref = operations.find(dcl);
+            if (ref == operations.end())
+                continue;
+
+            if (!dcl->getRegVar()->getPhyReg() ||
+                !dcl->getRegVar()->getPhyReg()->isGreg())
+                continue;
+
+            auto regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+            if (regNum == inputRegNum)
+            {
+                if ((*ref).second.lastUseLexId >= atLexId)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+
     bool Rematerialization::canRematerialize(G4_SrcRegRegion* src, G4_BB* bb, const Reference*& ref, INST_LIST_ITER instIter)
     {
         // op1 (8) A   B   C
@@ -663,9 +715,9 @@ namespace vISA
                             return false;
                     }
 
-                    if ((*opIt).second.lastUseLexId < srcLexId)
+                    if ((*opIt).second.lastUseLexId < srcLexId &&
+                        !isPartGRFBusyInput((*opIt).first, srcLexId))
                     {
-                        // Skip remat if src is an input and exec size is 1.
                         // Inputs are pre-assigned and extending such ranges
                         // could lead to worse RA results, unless the input
                         // already extends beyond where we intend to remat.

@@ -73,6 +73,7 @@ namespace vISA
         unsigned int rematLoopRegPressure = 0;
         unsigned int rematRegPressure = 0;
 
+        std::vector<G4_Declare*> preDefinedVars;
         std::vector<G4_Declare*> spills;
         // For each top dcl, this map holds all defs
         std::unordered_map<G4_Declare*, References> operations;
@@ -182,6 +183,8 @@ namespace vISA
         unsigned int getNumRematsInLoop() const { return numRematsInLoop; }
         void incNumRematsInLoop() { numRematsInLoop++; }
         bool inSameSubroutine(G4_BB*, G4_BB*);
+
+        bool isPartGRFBusyInput(G4_Declare* inputDcl, unsigned int atLexId);
 
     public:
         Rematerialization(G4_Kernel& k, const LivenessAnalysis& l, GraphColor& c, RPE& r, GlobalRA& g) :
