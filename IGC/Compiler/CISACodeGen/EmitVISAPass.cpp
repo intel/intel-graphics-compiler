@@ -221,13 +221,10 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
 
     bool hasValidDestination = (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID);
 
-    // Special case for inline asm with multiple outputs, we will not be able to handle a struct type destination
-    if (CallInst * call = dyn_cast<CallInst>(sdag.m_root))
+    // Disable for struct type destinations
+    if (sdag.m_root->getType()->isStructTy())
     {
-        if (call->isInlineAsm() && call->getType()->isStructTy())
-        {
-            hasValidDestination = false;
-        }
+        hasValidDestination = false;
     }
 
     if (hasValidDestination)
@@ -2326,6 +2323,60 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
 
     m_encoder->Cast(dst, src);
     m_encoder->Push();
+}
+
+void EmitPass::EmitInsertValueToStruct(llvm::InsertValueInst* II, bool forceVectorInit, const DstModifier& DstMod)
+{
+    Value* structOp = II->getOperand(0);
+    StructType* sTy = dyn_cast<StructType>(structOp->getType());
+    auto& DL = II->getParent()->getParent()->getParent()->getDataLayout();
+    const StructLayout* SL = DL.getStructLayout(sTy);
+
+    // Get the source operand to insert
+    CVariable* SrcV = GetSymbol(II->getOperand(1));
+
+    if (forceVectorInit)
+    {
+        IGC_ASSERT(isa<Constant>(structOp) || structOp->getValueID() == Value::UndefValueVal);
+    }
+    // Get the dst struct variable, or create one with constant values initialized if it does not exist
+    CVariable* DstV = m_currShader->GetStructVariable(structOp, forceVectorInit);
+
+    IGC_ASSERT_MESSAGE((!SrcV->IsUniform() && DstV->IsUniform()) == false, "Can't insert vector value into a scalar struct!");
+
+    // Copy source value into the struct offset
+    unsigned idx = *II->idx_begin();
+    unsigned elementOffset = (unsigned)SL->getElementOffset(idx);
+    unsigned nLanes = DstV->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+    CVariable* elementDst = nullptr;
+    if (SrcV->IsUniform())
+        elementDst = m_currShader->GetNewAlias(DstV, SrcV->GetType(), elementOffset * nLanes, SrcV->GetNumberElement() * nLanes);
+    else
+        elementDst = m_currShader->GetNewAlias(DstV, SrcV->GetType(), elementOffset * nLanes, SrcV->GetNumberElement());
+
+    emitCopyAll(elementDst, SrcV, sTy->getStructElementType(idx));
+}
+
+void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI, const DstModifier& DstMod)
+{
+    CVariable* SrcV = GetSymbol(EI->getOperand(0));
+    unsigned idx = *EI->idx_begin();
+    StructType* sTy = dyn_cast<StructType>(EI->getOperand(0)->getType());
+    auto& DL = m_currShader->entry->getParent()->getDataLayout();
+    const StructLayout* SL = DL.getStructLayout(sTy);
+
+    // For extract value, src and dest should share uniformity
+    IGC_ASSERT(nullptr != m_destination);
+    IGC_ASSERT(nullptr != SrcV);
+    IGC_ASSERT(m_destination->IsUniform() == SrcV->IsUniform());
+
+    bool isUniform = SrcV->IsUniform();
+    unsigned nLanes = isUniform ? 1 : numLanes(m_currShader->m_dispatchSize);
+    unsigned elementOffset = (unsigned)SL->getElementOffset(idx) * nLanes;
+    SrcV = m_currShader->GetNewAlias(SrcV, m_destination->GetType(), elementOffset, m_destination->GetNumberElement(), isUniform);
+
+    // Copy from struct to dest
+    emitCopyAll(m_destination, SrcV, sTy->getStructElementType(idx));
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
@@ -17043,6 +17094,32 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
     {
         unsigned NElts = (unsigned)cast<VectorType>(Ty)->getNumElements();
         emitVectorCopy(Dst, Src, NElts);
+    }
+    else if (Ty->isStructTy())
+    {
+        IGC_ASSERT(Dst->GetType() == ISA_TYPE_B);
+        IGC_ASSERT(Src->GetType() == ISA_TYPE_B);
+
+        if (!Src->IsUniform() && Dst->IsUniform())
+        {
+            IGC_ASSERT_MESSAGE(0, "Does not support non-uniform to uniform struct copy");
+        }
+
+        StructType* STy = dyn_cast<StructType>(Ty);
+        const StructLayout* SL = m_DL->getStructLayout(STy);
+        unsigned srcLanes = Src->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+        unsigned dstLanes = Dst->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
+        for (unsigned i = 0; i < STy->getNumElements(); i++)
+        {
+            unsigned elementOffset = (unsigned)SL->getElementOffset(i);
+            Type* elementType = STy->getElementType(i);
+            unsigned numElements = elementType->isVectorTy() ? elementType->getVectorNumElements() : 1;
+            VISA_Type visaTy = m_currShader->GetType(elementType);
+
+            CVariable* srcElement = m_currShader->GetNewAlias(Src, visaTy, elementOffset * srcLanes, numElements * srcLanes, Src->IsUniform());
+            CVariable* dstElement = m_currShader->GetNewAlias(Dst, visaTy, elementOffset * dstLanes, numElements * dstLanes, Dst->IsUniform());
+            emitCopyAll(dstElement, srcElement, elementType);
+        }
     }
     else
     {
