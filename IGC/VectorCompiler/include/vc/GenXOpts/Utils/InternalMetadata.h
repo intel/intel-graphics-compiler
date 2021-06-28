@@ -48,6 +48,7 @@ enum {
   ArgIndexes,   // Kernel argument index. Index may not be equal to the IR argNo
                 // in the case of linearization
   LinearizationArgs,
+  BTIndices,
   Last
 };
 }
