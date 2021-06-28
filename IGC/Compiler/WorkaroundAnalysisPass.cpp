@@ -559,13 +559,11 @@ void WAFMinFMax::visitCallInst(CallInst& I)
                 // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
                 // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
                 Type* Ty = intr->getType();
-                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 bool minmaxModeSetByDenormBit =
                     (!m_ctx->platform.hasIEEEMinmaxBit() ||
                         m_ctx->platform.WaOCLEnableFMaxFMinPlusZero() ||
                         EnableFMaxFMinPlusZero);
-                bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
-                if (hasNaNs && minmaxModeSetByDenormBit &&
+                if (!intr->hasNoNaNs() && minmaxModeSetByDenormBit &&
                     ((Ty->isFloatTy() && (m_ctx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
                     (Ty->isDoubleTy() && (m_ctx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
                         (Ty->isHalfTy() && (m_ctx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN))))

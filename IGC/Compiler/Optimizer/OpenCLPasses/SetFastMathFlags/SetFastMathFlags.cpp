@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/SetFastMathFlags/SetFastMathFlags.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/helper.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
@@ -44,34 +45,24 @@ SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask) : ModulePass(ID)
 
 bool SetFastMathFlags::runOnModule(Module& M)
 {
-    auto hasFnAttributeSet = [](Function& F, StringRef Attr) -> bool
-    {
-        return F.hasFnAttribute(Attr) && F.getFnAttribute(Attr).getValueAsString() == "true";
-    };
-
-    const ModuleMetaData& modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     bool changed = false;
     for (Function& F : M) {
         FastMathFlags fmfs;
-        // Fast relaxed math implies all other flags.
-        if (modMD.compOpt.FastRelaxedMath && hasFnAttributeSet(F, "unsafe-fp-math")) {
+        // Unsafe math implies all other flags.
+        if (hasFnAttributeSet(F, "unsafe-fp-math")) {
             fmfs.setFast();
             fmfs &= m_Mask;
             changed |= setFlags(F, fmfs);
             continue;
         }
-        // Unsafe math implies no signed zeros.
-        if ((modMD.compOpt.NoSignedZeros || modMD.compOpt.UnsafeMathOptimizations) && (hasFnAttributeSet(F, "no-signed-zeros-fp-math"))) {
+        if (hasFnAttributeSet(F, "no-signed-zeros-fp-math")) {
             fmfs.setNoSignedZeros();
         }
-        // Finite math implies no infs and nans.
-        if (modMD.compOpt.FiniteMathOnly) {
-            if (hasFnAttributeSet(F, "no-infs-fp-math")) {
-                fmfs.setNoInfs();
-            }
-            if (hasFnAttributeSet(F, "no-nans-fp-math")) {
-                fmfs.setNoNaNs();
-            }
+        if (hasFnAttributeSet(F, "no-infs-fp-math")) {
+            fmfs.setNoInfs();
+        }
+        if (hasFnAttributeSet(F, "no-nans-fp-math")) {
+            fmfs.setNoNaNs();
         }
         fmfs &= m_Mask;
         changed |= setFlags(F, fmfs);
@@ -79,13 +70,13 @@ bool SetFastMathFlags::runOnModule(Module& M)
     return changed;
 }
 
-static bool setMathFlags(IntrinsicInst* II) {
+static bool setMathFlags(IntrinsicInst* II, FastMathFlags fmfs) {
     switch (II->getIntrinsicID()) {
     case Intrinsic::pow:
     case Intrinsic::exp2:
     case Intrinsic::log:
     case Intrinsic::sqrt:
-        II->setFast(true);
+        II->setFastMathFlags(fmfs);
         return true;
     default:
         break;
@@ -114,8 +105,7 @@ bool SetFastMathFlags::setFlags(Function& F, FastMathFlags fmfs)
             break;
         case Instruction::Call:
             if (auto II = dyn_cast<IntrinsicInst>(&*i)) {
-                if (fmfs.isFast())
-                    changed |= setMathFlags(II);
+                changed |= setMathFlags(II, fmfs);
             }
             else if (isa<FPMathOperator>(&*i)) {
                 i->setFastMathFlags(fmfs);
