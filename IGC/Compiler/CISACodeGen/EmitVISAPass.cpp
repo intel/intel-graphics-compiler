@@ -568,6 +568,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             return false;
         }
+
+        // Try enable ZEBinary for cases having global symbols. Skip the prinf cases that zebin printf needs
+        // to be enbled from the beginning.
+        if (!m_pCtx->getModule()->getNamedMetadata("printf.strings"))
+            m_pCtx->getCompilerOption().EnableZEBinary = true;
     }
 
     m_DL = &F.getParent()->getDataLayout();
