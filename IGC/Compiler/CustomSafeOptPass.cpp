@@ -4570,6 +4570,25 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         return true;
     };
 
+    // Are all Phi incomming blocks from SI switch?
+    auto checkPhiPredecessorBlocks = [](const SwitchInst* SI, const PHINode* Phi, bool DefaultMergeBlock)
+    {
+        for (auto* BB : Phi->blocks())
+        {
+            if (BB == SI->getDefaultDest())
+                continue;
+            bool successorFound = false;
+            for (auto Case : SI->cases()) {
+                if (Case.getCaseSuccessor() == BB)
+                    successorFound = true;
+            }
+            if (successorFound)
+                continue;
+            return false;
+        }
+        return true;
+    };
+
     for (auto& I : SI->cases())
     {
         BasicBlock* CaseDest = I.getCaseSuccessor();
@@ -4597,7 +4616,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         if (!Phi)
             break;
 
-        if (Phi->getNumIncomingValues() != SI->getNumCases() + 1)
+        if (!checkPhiPredecessorBlocks(SI, Phi, DefaultMergeBlock))
             return false;
 
         PhiNodes.push_back(Phi);
@@ -4650,6 +4669,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
         }
 
         Phi->replaceAllUsesWith(vTemp);
+        Phi->removeFromParent();
     }
 
     // connect the original block and the phi node block with a pass through branch
