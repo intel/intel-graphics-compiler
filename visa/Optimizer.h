@@ -240,7 +240,6 @@ private:
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
     void doNoMaskWA();
-    void doNoMaskWA_postRA();
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();

@@ -9898,7 +9898,6 @@ int GlobalRA::coloringRegAlloc()
 
     unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
     bool rematDone = false, alignedScalarSplitDone = false;
-    bool euWADone = false;
     VarSplit splitPass(*this);
     while (iterationNo < maxRAIterations)
     {
@@ -10175,19 +10174,6 @@ int GlobalRA::coloringRegAlloc()
                 bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
                 nextSpillOffset = spillGRF.getNextOffset();
 
-                if (builder.hasFusedEUWA() && !euWADone)
-                {
-                    G4_INST * euWAInst = builder.createEUWASpill(false);
-                    G4_BB* entryBB = (*kernel.fg.begin());
-                    INST_LIST_ITER inst_it = entryBB->begin();
-                    while ((*inst_it)->isLabel())
-                    {
-                        inst_it++;
-                    }
-                    entryBB->insertBefore(inst_it, euWAInst);
-                    euWADone = true;
-                }
-
                 if (builder.hasScratchSurface() && !hasStackCall &&
                     (nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT)
                 {
@@ -10264,9 +10250,7 @@ int GlobalRA::coloringRegAlloc()
                     // it modifies IR
                     regChart->dumpRegChart(std::cerr);
                 }
-
                 expandSpillFillIntrinsics(nextSpillOffset);
-
                 if (builder.getOption(vISA_OptReport))
                 {
                     detectUndefinedUses(liveAnalysis, kernel);

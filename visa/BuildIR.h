@@ -345,9 +345,6 @@ private:
     G4_Declare* builtinScratchSurface = nullptr;
     G4_Declare* scratchSurfaceOffset = nullptr; // if scratch surface is used, this will be initialized once at entry
 
-    //The temp var for eu fusion W/A
-    G4_Declare* euFusionWATmpVar = nullptr;
-
     // Indicates that sampler header cache (builtinSamplerHeader) is correctly
     // initialized with r0 contents.
     // Used only when vISA_cacheSamplerHeader option is set.
@@ -624,8 +621,6 @@ public:
 
     G4_Declare* getSpillFillHeader();
 
-    G4_Declare* getEUFusionWATmpVar();
-
     G4_Declare* getOldA0Dot2Temp();
     bool hasValidOldA0Dot2() { return oldA0Dot2Temp; }
 
@@ -776,8 +771,6 @@ public:
     G4_INST* createPseudoKills(std::initializer_list<G4_Declare*> dcls, PseudoKillType ty);
 
     G4_INST* createPseudoKill(G4_Declare* dcl, PseudoKillType ty);
-
-    G4_INST* createEUWASpill(bool addToInstList);
 
     // numRows is in hword units
     // offset is in hword units
