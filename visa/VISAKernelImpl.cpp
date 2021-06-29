@@ -1945,12 +1945,12 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
 int VISAKernelImpl::CreateVISAAddressOfOperand(
     VISA_VectorOpnd *&cisa_opnd, VISA_GenVar *decl, unsigned int offset)
 {
-    return CreateVISAAddressOfOperandGeneric(cisa_opnd, (CISA_GEN_VAR *)decl, offset);
+    return CreateVISAAddressOfOperandGeneric(cisa_opnd, decl, offset);
 }
 int VISAKernelImpl::CreateVISAAddressOfOperand(
     VISA_VectorOpnd *&cisa_opnd, VISA_SurfaceVar *decl, unsigned int offset)
 {
-    return CreateVISAAddressOfOperandGeneric(cisa_opnd, (CISA_GEN_VAR *)decl, offset);
+    return CreateVISAAddressOfOperandGeneric(cisa_opnd, decl, offset);
 }
 
 int VISAKernelImpl::CreateVISAIndirectGeneralOperand(

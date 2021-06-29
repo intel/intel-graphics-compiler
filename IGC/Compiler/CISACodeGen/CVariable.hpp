@@ -207,10 +207,10 @@ namespace IGC {
         bool IsWorkGroupUniform() const { return m_uniform == WIBaseClass::UNIFORM_WORKGROUP; }
         bool IsGlobalUniform() const { return m_uniform == WIBaseClass::UNIFORM_GLOBAL; }
 
-        uint GetSize() { return m_nbElement * GetCISADataTypeSize(m_type); }
-        uint GetElemSize() { return GetCISADataTypeSize(m_type); }
+        uint GetSize() const { return m_nbElement * GetCISADataTypeSize(m_type); }
+        uint GetElemSize() const { return GetCISADataTypeSize(m_type); }
 
-        CVariable* GetAlias() { return m_alias; }
+        CVariable* GetAlias() const { return m_alias; }
         uint16_t GetAliasOffset() const { return m_aliasOffset; }
         VISA_Type GetType() const { return m_type; }
         e_varType GetVarType() const { return m_varType; }
