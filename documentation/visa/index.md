@@ -17,21 +17,21 @@ Yermolovich, T. Bauer
 
 Legal Notices and Disclaimers:
 
-? Intel Corporation. Intel, the Intel logo, and other Intel marks are trademarks of 
-Intel Corporation or its subsidiaries. Other names and brands may be claimed as 
-the property of others. 
+Copyright (C) Intel Corporation, Intel, the Intel logo, and other Intel marks are trademarks of
+Intel Corporation or its subsidiaries. Other names and brands may be claimed as
+the property of others.
 
-You may not use or facilitate the use of this document in connection with any 
-infringement or other legal analysis concerning Intel products described herein. 
-You agree to grant Intel a non-exclusive, royalty-free license to any patent 
+You may not use or facilitate the use of this document in connection with any
+infringement or other legal analysis concerning Intel products described herein.
+You agree to grant Intel a non-exclusive, royalty-free license to any patent
 claim thereafter drafted which includes subject matter disclosed herein.
 
-No license (express or implied, by estoppel or otherwise) to any intellectual 
+No license (express or implied, by estoppel or otherwise) to any intellectual
 property rights is granted by this document.
 
-Intel disclaims all express and implied warranties, including without limitation, 
-the implied warranties of merchantability, fitness for a particular purpose, 
-and non-infringement, as well as any warranty arising from course of performance, 
+Intel disclaims all express and implied warranties, including without limitation,
+the implied warranties of merchantability, fitness for a particular purpose,
+and non-infringement, as well as any warranty arising from course of performance,
 course of dealing, or usage in trade.
 
 Contents
