@@ -198,7 +198,7 @@ namespace IGC
         return nullptr;
     }
 
-    CShader* RetryManager::PickCSEntryByRegKey(SIMDMode& simdMode)
+    CShader* RetryManager::PickCSEntryByRegKey(SIMDMode& simdMode, ComputeShaderContext* cgCtx)
     {
         if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32))
         {
@@ -212,7 +212,8 @@ namespace IGC
                 return m_simdEntries[1];
             }
             else
-                if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD))
+                if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD)
+                    )
                 {
                     if (m_simdEntries[0])
                     {
@@ -362,7 +363,7 @@ namespace IGC
         if (!shader)
         {
             shader = static_cast<CComputeShader*>(
-                PickCSEntryByRegKey(simdMode));
+                PickCSEntryByRegKey(simdMode, cgCtx));
         }
         if (!shader)
         {

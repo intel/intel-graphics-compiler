@@ -821,7 +821,7 @@ namespace IGC
 
         CShader* PickCSEntryForcedFromDriver(SIMDMode& simdMode,
             unsigned char forcedSIMDModeFromDriver);
-        CShader* PickCSEntryByRegKey(SIMDMode& simdMode);
+        CShader* PickCSEntryByRegKey(SIMDMode& simdMode, ComputeShaderContext* cgCtx);
         CShader* PickCSEntryEarly(SIMDMode& simdMode,
             ComputeShaderContext* cgCtx);
         CShader* PickCSEntryFinally(SIMDMode& simdMode);

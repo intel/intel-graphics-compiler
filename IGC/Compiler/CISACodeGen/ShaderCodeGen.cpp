@@ -1169,7 +1169,8 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
     }
     // csInfo.forcedSIMDSize == 8 means force least SIMD.
     // If the SIMD8 is not allowed, it will return higher SIMD
-    else if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 8 || waveSize == 8)
+    else if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD)
+        || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 8 || waveSize == 8)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, simdModeAllowed, false);
     }
