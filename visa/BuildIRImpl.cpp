@@ -710,6 +710,18 @@ G4_Declare* IR_Builder::getSpillFillHeader()
     return spillFillHeader;
 }
 
+G4_Declare* IR_Builder::getEUFusionWATmpVar()
+{
+    if (!euFusionWATmpVar)
+    {
+        euFusionWATmpVar = createTempVar(2, Type_UD, Even_Word, "euFusionWATmp");
+        euFusionWATmpVar->setLiveOut();
+        euFusionWATmpVar->setLiveIn();
+        euFusionWATmpVar->setDoNotSpill();
+    }
+    return euFusionWATmpVar;
+}
+
 G4_Declare* IR_Builder::getOldA0Dot2Temp()
 {
     if (!oldA0Dot2Temp)
@@ -959,6 +971,22 @@ G4_INST* IR_Builder::createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
 
 static const unsigned int HWORD_BYTE_SIZE = 32;
 
+
+G4_INST* IR_Builder::createEUWASpill(bool addToInstList)
+{
+    const RegionDesc* rd = getRegionScalar();
+
+    G4_Declare* dcl = getEUFusionWATmpVar();
+    G4_SrcRegRegion* pseudoUseSrc =
+        createSrc(dcl->getRegVar(), 0, 0, rd, Type_UD);
+
+    G4_INST* pseudoUseInst = createIntrinsicInst(
+        nullptr, Intrinsic::FlagSpill, g4::SIMD2,
+        nullptr, pseudoUseSrc, nullptr, nullptr, InstOpt_NoOpt, addToInstList);
+
+    return pseudoUseInst;
+}
+
 G4_INST* IR_Builder::createSpill(
     G4_DstRegRegion* dst, G4_SrcRegRegion* header, G4_SrcRegRegion* payload,
     G4_ExecSize execSize,
@@ -971,6 +999,7 @@ G4_INST* IR_Builder::createSpill(
     spill->asSpillIntrinsic()->setOffset((uint32_t)
         (((uint64_t)offset * HWORD_BYTE_SIZE) / numEltPerGRF<Type_UB>()));
     spill->asSpillIntrinsic()->setNumRows(numRows);
+
     return spill;
 }
 

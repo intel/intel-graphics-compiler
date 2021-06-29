@@ -478,6 +478,7 @@ public:
     bool isPseudoKill() const;
     bool isLifeTimeEnd() const;
     bool isSpillIntrinsic() const;
+    bool isFlagSpillIntrinsic() const;
     G4_SpillIntrinsic* asSpillIntrinsic() const;
     bool isFillIntrinsic() const;
     G4_FillIntrinsic* asFillIntrinsic() const;
@@ -1515,6 +1516,7 @@ enum class Intrinsic
     CallerRestore,
     CalleeSave,
     CalleeRestore,
+    FlagSpill,
     NumIntrinsics
 };
 
@@ -1559,6 +1561,7 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     {Intrinsic::CallerRestore,  "caller_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::CalleeSave,     "callee_save",  1,      0,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::CalleeRestore,  "callee_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::FlagSpill,            "flagSpill",          0,      1,      Phase::RA,       { 0, 0, 0, false, false } },
 };
 
 namespace vISA
