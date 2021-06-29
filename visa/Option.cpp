@@ -15,9 +15,10 @@ SPDX-License-Identifier: MIT
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
-#include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
+#include <limits>
 #include <sstream>
 
 #ifdef _MSC_VER
@@ -79,10 +80,41 @@ bool Options::parseOptions(int argc, const char* argv[])
         // If arg not defined in the .def file, exit with an error
         auto it = argToOption.find(argv[i]);
         if (it == argToOption.end()) {
-            COUT_ERROR << argv[i] << ": unrecognized option\n";
-            showUsage(COUT_ERROR);
+            std::cerr << argv[i] << ": unrecognized option\n";
+            showUsage(std::cout);
             return false;
         }
+        bool parseError = false;
+        auto parseU64 = [&] (uint64_t &val) -> bool {
+            char *end = nullptr;
+            const char *arg = argv[i];
+            uint64_t x = 0;
+            if (arg[0] == '0' && (arg[1] == 'x' || arg[1] == 'X')) {
+                x = std::strtoull(arg + 2, &end, 16);
+            } else {
+                x = std::strtoull(arg, &end, 10);
+            }
+            if (*end != 0) {
+                parseError = true;
+                std::cerr << argv[i] << ": malformed integer\n";
+                return false;
+            }
+            val = x;
+            return true;
+        };
+        auto parseU32 = [&] (uint32_t &val) -> bool {
+            uint64_t val64 = 0;
+            if (!parseU64(val64))
+                return false;
+            if (val64 > (uint64_t)std::numeric_limits<uint32_t>::max()) {
+                parseError = true;
+                std::cerr << argv[i] << ": malformed integer (value too large for 32b)\n";
+                return false;
+            }
+            val = (uint32_t)val64;
+            return true;
+        };
+
         // Arg corrsponds to vISAOpt.
         // If bool, set it with the inverse of the default value
         // Else if int32,int64, or cstr, set parse argv[i+1] and set the value.
@@ -90,7 +122,7 @@ bool Options::parseOptions(int argc, const char* argv[])
         EntryType type = m_vISAOptions.getType(vISAOpt);
         switch (type) {
         case ET_BOOL: {
-            bool val = ! m_vISAOptions.getDefaultBool(vISAOpt);
+            bool val = !m_vISAOptions.getDefaultBool(vISAOpt);
             m_vISAOptions.setBool(vISAOpt, val);
             m_vISAOptions.setArgSetByUser(vISAOpt);
             break;
@@ -102,38 +134,60 @@ bool Options::parseOptions(int argc, const char* argv[])
             i++;
             if (i >= argc) {
                 const char *errorMsg = m_vISAOptions.getErrorMsg(vISAOpt);
-                std::cout << errorMsg << std::endl;
+                std::cerr << errorMsg << "\n";
                 return false;
             }
             switch (type) {
-            case ET_INT32:
-                m_vISAOptions.setUint32(vISAOpt, atoi(argv[i]));
+            case ET_INT32: {
+                uint32_t val = 0;
+                if (!parseU32(val)) {
+                    return false;
+                }
+                m_vISAOptions.setUint32(vISAOpt, val);
                 m_vISAOptions.setArgSetByUser(vISAOpt);
                 break;
-            case ET_INT64:
-                m_vISAOptions.setUint64(vISAOpt, atol(argv[i]));
+            }
+            case ET_INT64: {
+                uint64_t val = 0;
+                if (!parseU64(val)) {
+                    return false;
+                }
+                m_vISAOptions.setUint64(vISAOpt, val);
                 m_vISAOptions.setArgSetByUser(vISAOpt);
                 break;
+            }
             case ET_CSTR:
                 m_vISAOptions.setCstr(vISAOpt, argv[i]);
                 m_vISAOptions.setArgSetByUser(vISAOpt);
                 break;
             case ET_2xINT32: {
-                uint32_t hi32 = stoul(std::string(argv[i]));
+                uint32_t hi32 = 0;
+                if (!parseU32(hi32)) {
+                    return false;
+                }
                 i++;
-                uint32_t lo32 = stoul(std::string(argv[i]));
+                if (i >= argc) {
+                    std::cerr << "vISA option type ET_2xINT32 requires two integer arguments\n";
+                    return false;
+                }
+                uint32_t lo32 = 0;
+                if (!parseU32(lo32)) {
+                    return false;
+                }
                 uint64_t val64 = ((uint64_t)hi32 << 32) | (uint64_t)lo32;
                 m_vISAOptions.setUint64(vISAOpt, val64);
                 m_vISAOptions.setArgSetByUser(vISAOpt);
                 break;
             }
             default:
-                assert(0 && "Bad type");
+                assert(0 && "Bad option type");
             }
             break;
         default:
-            assert(0 && "Bad type");
-        }
+            assert(0 && "Bad option type");
+        } // switch
+        if (parseError)
+            return false;
     }
 
 
@@ -178,8 +232,7 @@ bool Options::parseOptions(int argc, const char* argv[])
         }
         int status = SetStepping(stepping);
         if (status != 0) {
-            std::cout << "unrecognized stepping string: "
-                      << stepping << std::endl;
+            std::cerr << "unrecognized stepping string: " << stepping << "\n";
             return false;
         }
     }
@@ -281,32 +334,32 @@ bool Options::parseOptions(int argc, const char* argv[])
 
 void Options::showUsage(std::ostream& output)
 {
-    output << "USAGE: GenX_IR <InputFilename.isa> {Option List}" << std::endl;
-    output << "Converts a CISA file into Gen binary or assembly" << std::endl;
-    output << "Options :" << std::endl;
+    output << "USAGE: GenX_IR <InputFilename.isa> {Option List}\n";
+    output << "Converts a CISA file into Gen binary or assembly\n";
+    output << "Options:\n";
 #ifndef DLL_MODE
     output << std::setw(50) << std::left << "    -platform PLT"
-           << std::setw(60) << "- Gen platform to use (required)" << std::endl;
-    output << std::setw(64) << "supported platforms are: " << makePlatformsString() << std::endl;
+           << std::setw(60) << "- Gen platform to use (required)\n";
+    output << std::setw(64) << "supported platforms are: " << makePlatformsString() << "\n";
 
     output << std::setw(50) << "    -binary"
-           << std::setw(60) << "- Emit the binary code (CISA binary .isa and GEN bits as .dat)." << std::endl;
+           << std::setw(60) << "- Emit the binary code (CISA binary .isa and GEN bits as .dat).\n";
 #endif
     output << std::setw(50) << "    -output"
-           << std::setw(60) << "- Emit GEN assembly code to a file (.asm)." << std::endl;
+           << std::setw(60) << "- Emit GEN assembly code to a file (.asm).\n";
     output << std::setw(50) << "    -dumpcommonisa"
-        << std::setw(60) << "- Emit CISA assembly (.visaasm)." << std::endl;
+        << std::setw(60) << "- Emit CISA assembly (.visaasm).\n";
     output << std::setw(50) << "    -noschedule"
-           << std::setw(60) << "- Turn off code scheduling." << std::endl;
+           << std::setw(60) << "- Turn off code scheduling.\n";
     output << std::setw(50) << "    -nocompaction"
-           << std::setw(60) << "- Turn off binary compaction." << std::endl;
+           << std::setw(60) << "- Turn off binary compaction.\n";
     output << "    -...\n";
-    output << std::endl;
-    output << "USAGE: GenX_IR <InputFilename.visaasm> {Option List}" << std::endl;
-    output << "Converting a CISA assembly file into CISA binary file" << std::endl;
-    output << "Options :" << std::endl;
+    output << "\n";
+    output << "USAGE: GenX_IR <InputFilename.visaasm> {Option List}\n";
+    output << "Converting a CISA assembly file into CISA binary file\n";
+    output << "Options:\n";
     output << std::setw(50) << "    -outputCisaBinaryName <CISABinaryName>"
-           << std::setw(60) << "- name for the CISA binary file." << std::endl;
+           << std::setw(60) << "- name for the CISA binary file.\n";
 }
 
 // This converts enum vISA_option to "vISA_option" so we can print it.
