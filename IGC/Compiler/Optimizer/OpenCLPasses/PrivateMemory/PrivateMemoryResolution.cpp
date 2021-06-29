@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfoMetadata.h"
@@ -942,7 +943,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 llvm::Type* resultType = entryBuilder.getInt32Ty();
                 if (pointerSizeInDwords > 1)
                 {
-                    resultType = llvm::VectorType::get(resultType, 2);
+                    resultType = IGCLLVM::FixedVectorType::get(resultType, 2);
                 }
                 Function* pFunc = GenISAIntrinsic::getDeclaration(
                     m_currFunction->getParent(),

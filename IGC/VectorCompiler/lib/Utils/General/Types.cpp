@@ -69,9 +69,9 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
   IGC_ASSERT_MESSAGE(OldOutType && NewInType && OldInType,
                      "Error: nullptr input");
 
-  bool NewInIsVec = isa<IGCLLVM::FixedVectorType>(NewInType);
-  bool OldOutIsVec = isa<IGCLLVM::FixedVectorType>(OldOutType);
-  bool OldInIsVec = isa<IGCLLVM::FixedVectorType>(OldInType);
+  auto NewInVecType = dyn_cast<IGCLLVM::FixedVectorType>(NewInType);
+  auto OldOutVecType = dyn_cast<IGCLLVM::FixedVectorType>(OldOutType);
+  auto OldInVecType = dyn_cast<IGCLLVM::FixedVectorType>(OldInType);
 
   bool NewInIsPtrOrVecPtr = NewInType->isPtrOrPtrVectorTy();
   bool OldOutIsPtrOrVecPtr = OldOutType->isPtrOrPtrVectorTy();
@@ -80,23 +80,25 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
   // only  pointer to pointer
   IGC_ASSERT(NewInIsPtrOrVecPtr == OldOutIsPtrOrVecPtr &&
              NewInIsPtrOrVecPtr == OldInIsPtrOrVecPtr);
+
   // <2 x char> -> int : < 4 x char> -> ? forbidden
-  IGC_ASSERT(OldOutIsVec == OldInIsVec && OldOutIsVec == NewInIsVec);
+  IGC_ASSERT((bool)OldOutVecType == (bool)OldInVecType &&
+             (bool)OldOutVecType == (bool)NewInVecType);
+
   Type *NewOutType = OldOutType;
-  if (OldOutIsVec) {
+  if (OldOutVecType) {
     // <4 x char> -> <2 x int> : <8 x char> -> <4 x int>
     // <4 x char> -> <2 x int> : <2 x char> -> <1 x int>
-    auto NewInEC = cast<IGCLLVM::FixedVectorType>(NewInType)->getNumElements();
-    auto OldOutEC =
-        cast<IGCLLVM::FixedVectorType>(OldOutType)->getNumElements();
-    auto OldInEC = cast<IGCLLVM::FixedVectorType>(OldInType)->getNumElements();
+    auto NewInEC  = NewInVecType->getNumElements();
+    auto OldOutEC = OldOutVecType->getNumElements();
+    auto OldInEC  = OldInVecType->getNumElements();
     auto NewOutEC = OldOutEC * NewInEC / OldInEC;
     // <4 x char> -> <2 x int> : <5 x char> -> ? forbidden
     IGC_ASSERT_MESSAGE((OldOutEC * NewInEC) % OldInEC == 0,
                        "Error: wrong combination of input/output");
     // element count changed, scalar type as previous
     NewOutType = IGCLLVM::FixedVectorType::get(
-        OldOutType->getVectorElementType(), IGCLLVM::getElementCount(NewOutEC));
+        OldOutVecType->getElementType(), NewOutEC);
   }
 
   IGC_ASSERT(NewOutType);

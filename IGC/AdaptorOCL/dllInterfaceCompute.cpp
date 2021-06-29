@@ -401,7 +401,7 @@ bool TranslateSPIRVToLLVM(
     std::string& stringErrMsg)
 {
     bool success = true;
-    std::istringstream IS(SPIRVBinary);
+    std::istringstream IS(SPIRVBinary.str());
     std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
         InputArgs.pSpecConstantsIds,
         InputArgs.pSpecConstantsValues,

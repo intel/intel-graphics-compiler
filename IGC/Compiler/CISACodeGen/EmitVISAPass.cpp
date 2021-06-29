@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
@@ -17125,7 +17126,13 @@ void EmitPass::emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty)
         {
             unsigned elementOffset = (unsigned)SL->getElementOffset(i);
             Type* elementType = STy->getElementType(i);
-            unsigned numElements = elementType->isVectorTy() ? elementType->getVectorNumElements() : 1;
+
+            unsigned numElements = 1;
+            if (auto elementVectorType = dyn_cast<IGCLLVM::FixedVectorType>(elementType))
+            {
+                numElements = (unsigned)elementVectorType->getNumElements();
+            }
+
             VISA_Type visaTy = m_currShader->GetType(elementType);
 
             CVariable* srcElement = m_currShader->GetNewAlias(Src, visaTy, elementOffset * srcLanes, numElements * srcLanes, Src->IsUniform());
