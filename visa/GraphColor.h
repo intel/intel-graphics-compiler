@@ -705,6 +705,7 @@ namespace vISA
         static bool owordAligned(unsigned offset) { return offset % 16 == 0; }
         template <class REGION_TYPE> bool isUnalignedRegion(REGION_TYPE * region, unsigned execSize);
         bool shouldPreloadDst(G4_INST* instContext, G4_BB* curBB);
+        bool livenessCandidate(const G4_Declare* decl) const;
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);

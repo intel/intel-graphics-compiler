@@ -6684,6 +6684,32 @@ bool GlobalRA::shouldPreloadDst(
     }
 }
 
+bool GlobalRA::livenessCandidate(const G4_Declare* decl) const
+{
+    if (decl->getAliasDeclare())
+    {
+        return false;
+    }
+
+    if ((G4_GRF & decl->getRegFile()))
+    {
+        if ((decl->getRegFile() & G4_INPUT) && decl->getRegVar()->isPhyRegAssigned() && !decl->getRegVar()->isGreg())
+        {
+            return false;
+        }
+        if (decl->getByteSize() == 0)
+        {
+            // regrettably, this can happen for arg/retval pre-defined variable
+            return false;
+        }
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpillRegSize)
 {
     // Iterate over all BBs
@@ -6802,7 +6828,8 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                             {
                                 for (auto var : *pointsToSet)
                                 {
-                                    if (var->isRegAllocPartaker())
+                                    if (var->isRegAllocPartaker() ||
+                                       ((builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA)) && livenessCandidate(var->getDeclare())))
                                     {
                                         indrVars.push_back(var);
                                         indrDstSpillRegSize += var->getDeclare()->getNumRows();
@@ -6842,7 +6869,8 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                             {
                                 for (auto var : *pointsToSet)
                                 {
-                                    if (var->isRegAllocPartaker())
+                                    if (var->isRegAllocPartaker() ||
+                                        ((builder.getOption(vISA_HybridRAWithSpill) || builder.getOption(vISA_FastCompileRA)) && livenessCandidate(var->getDeclare())))
                                     {
                                         if (std::find(indrVars.begin(), indrVars.end(), var) == indrVars.end())
                                         {
