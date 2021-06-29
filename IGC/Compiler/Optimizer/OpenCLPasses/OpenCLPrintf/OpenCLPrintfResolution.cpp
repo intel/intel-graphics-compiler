@@ -434,7 +434,7 @@ static StoreInst* genStoreInternal(Value* Val, Value* Ptr, BasicBlock* InsertAtE
 
 void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
 {
-    /* Replace a printf call with IR instructions that fill the printf
+    /* Replace a printf call with IR instructions that fill the rintf
        output buffer created by the Runtime:
        --------------------------------------------------------------------------
              bufferPtr      - pointer to the printf output buffer. This pointer
