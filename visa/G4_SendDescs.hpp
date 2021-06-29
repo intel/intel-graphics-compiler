@@ -650,10 +650,10 @@ public:
     bool is16BitInput() const;
     bool is16BitReturn() const;
 
-    bool isThreadMessage() const
-    {
+    bool isThreadMessage() const {
         return getSFID() == SFID::GATEWAY || getSFID() == SFID::SPAWNER;
     }
+
 
     // atomic write or explicit barrier
     bool isBarrierOrAtomic() const {

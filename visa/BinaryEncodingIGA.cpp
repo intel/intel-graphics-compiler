@@ -19,6 +19,13 @@ SPDX-License-Identifier: MIT
 using namespace iga;
 using namespace vISA;
 
+// all the gunk related to extended send descriptors
+struct SendExDescOpts {
+    SendDesc      exDesc;
+    int           xlen = -1;
+    InstOptSet    extraOpts;
+};
+
 class BinaryEncodingIGA
 {
     int               IGAInstId = 0;
@@ -125,12 +132,9 @@ private:
     iga::InstOptSet getIGAInstOptSet(G4_INST* inst) const;
 
     iga::SendDesc getIGASendDesc(G4_INST* sendInst) const;
-    iga::SendDesc getIGASendExDesc(
-        G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const;
-    iga::SendDesc encodeExDescImm(
-        G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const;
-    iga::SendDesc encodeExDescRegA0(
-        G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const;
+    SendExDescOpts getIGASendExDesc(G4_INST* sendInst) const;
+    iga::SendDesc encodeExDescImm(G4_INST* sendInst, SendExDescOpts &sdos) const;
+    iga::SendDesc encodeExDescRegA0(G4_INST* sendInst, SendExDescOpts &sdos) const;
 
     iga::RegName getIGARegName(G4_Operand* opnd) const
     {
@@ -1015,9 +1019,7 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
     else if (opSpec->isSendOrSendsFamily())
     {
         SendDesc desc = getIGASendDesc(g4inst);
-        InstOptSet extraOpts; // empty set
-        int xlen = -1;
-        SendDesc exDesc = getIGASendExDesc(g4inst, xlen, extraOpts);
+        SendExDescOpts sdos = getIGASendExDesc(g4inst);
         igaInst =
             IGAKernel->createSendInstruction(
                 *opSpec,
@@ -1027,7 +1029,7 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
                 execSize,
                 chOff,
                 maskCtrl,
-                exDesc,
+                sdos.exDesc,
                 desc);
 
         ASSERT_USER(igaInst, "Instruction is NULL");
@@ -1035,8 +1037,8 @@ iga::Instruction *BinaryEncodingIGA::translateInstruction(
             return nullptr;
         }
 
-        igaInst->setSrc1Length(xlen);
-        igaInst->addInstOpts(extraOpts);
+        igaInst->setSrc1Length(sdos.xlen);
+        igaInst->addInstOpts(sdos.extraOpts);
     }
     else if (opSpec->op == Op::NOP)
     {
@@ -1396,8 +1398,7 @@ static SendDesc encodeExDescSendUnary(
 //
 SendDesc BinaryEncodingIGA::encodeExDescImm(
     G4_INST* sendInst,
-    int& xlen,
-    InstOptSet& extraOpts) const
+    SendExDescOpts &sdos) const
 {
     SendDesc exDescIga;
 
@@ -1405,7 +1406,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
     assert(descG4 != nullptr && "expected raw descriptor");
 
-    xlen = (int)descG4->extMessageLength();
+    sdos.xlen = (int)descG4->extMessageLength();
     //
     exDescIga.type = SendDesc::Kind::IMM;
     exDescIga.imm = (uint32_t)exDescG4->asImm()->getImm();
@@ -1437,7 +1438,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
 }
 
 iga::SendDesc BinaryEncodingIGA::encodeExDescRegA0(
-    G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const
+    G4_INST* sendInst, SendExDescOpts &sdos) const
 {
     SendDesc exDescIga;
 
@@ -1454,43 +1455,45 @@ iga::SendDesc BinaryEncodingIGA::encodeExDescRegA0(
 
     if (kernel.fg.builder->useNewExtDescFormat() && descG4->isCPSEnabled()) {
         // CPS is an instruction option if using RegDesc+ExBSO
-        extraOpts.add(InstOpt::CPS);
+        sdos.extraOpts.add(InstOpt::CPS);
     }
 
     // By default all RegDesc in the new descriptor format will use
     // the ExBSO model if at all possible
     bool encodeExBso = kernel.fg.builder->useNewExtDescFormat();
     if (encodeExBso)
-        extraOpts.add(InstOpt::EXBSO);
+        sdos.extraOpts.add(InstOpt::EXBSO);
 
     // G4 IR keeps Src1.Length (xlen) separate.  So it's known,
     // (even with a reg desc in nonExBSO mode)
-    xlen = (int)descG4->extMessageLength();
+    sdos.xlen = (int)descG4->extMessageLength();
 
     return exDescIga;
 }
 
-SendDesc BinaryEncodingIGA::getIGASendExDesc(
-    G4_INST* sendInst, int& xlen, iga::InstOptSet& extraOpts) const
-{
+
+
+SendExDescOpts BinaryEncodingIGA::getIGASendExDesc(G4_INST* sendInst) const {
+    SendExDescOpts sdos;
+
     assert(sendInst->isSend() && "expect send inst");
 
     if (sendInst->isEOT())
-        extraOpts.add(InstOpt::EOT);
-
-    xlen = -1;
+        sdos.extraOpts.add(InstOpt::EOT);
 
     if (sendInst->isSplitSend())
     {
         const G4_Operand* exDesc = sendInst->getSrc(3);
-        return exDesc->isImm() ?
-            encodeExDescImm(sendInst, xlen, extraOpts) :
-            encodeExDescRegA0(sendInst, xlen, extraOpts);
+        sdos.exDesc = exDesc->isImm() ?
+            encodeExDescImm(sendInst, sdos) :
+            encodeExDescRegA0(sendInst, sdos);
     }
     else
     {
-        return encodeExDescSendUnary(sendInst, xlen, extraOpts);
+        sdos.exDesc = encodeExDescSendUnary(sendInst, sdos.xlen, sdos.extraOpts);
     }
+
+    return sdos;
 }
 
 void *BinaryEncodingIGA::EmitBinary(size_t& binarySize)
@@ -1501,7 +1504,7 @@ void *BinaryEncodingIGA::EmitBinary(size_t& binarySize)
     {
         std::string binFileName = fileName + ".dat";
         std::string errStr;
-        std::ofstream os(binFileName.c_str(), std::ios::binary);
+        std::ofstream os(binFileName, std::ios::binary);
         if (!os)
         {
             errStr = "Can't open " + binFileName + ".\n";
