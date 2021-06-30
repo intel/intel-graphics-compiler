@@ -170,7 +170,7 @@ index 00000000..00000000 100644
 --- a/lib/SPIRV/libSPIRV/spirv.hpp
 +++ b/lib/SPIRV/libSPIRV/spirv.hpp
 @@ -549,6 +549,8 @@ enum Decoration {
-     0000000000000000000000000000000000000000 = 6080,
+     DecorationFunctionFloatingPointModeINTEL = 6080,
      DecorationSingleElementVectorINTEL = 6085,
      DecorationCallableFunctionINTEL = 6087,
 +    DecorationFuncParamKindINTEL = 9624,
