@@ -1366,6 +1366,7 @@ bool LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
         // But we dont want to apply optimization on such instructions.
         isGlobal = fg.globalOpndHT.isOpndGlobal(inst->getDst());
         isGlobal |= inst->getDst()->getTopDcl()->isOutput();
+        isGlobal |= inst->getDst()->getTopDcl()->isInput();
     }
 
     return true;
