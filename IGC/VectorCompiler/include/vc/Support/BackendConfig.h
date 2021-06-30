@@ -140,6 +140,9 @@ struct GenXBackendOptions {
 
   bool IsLargeGRFMode = false;
 
+  // Use bindless mode for buffers.
+  bool UseBindlessBuffers;
+
   // max private stateless memory size per thread
   unsigned StatelessPrivateMemSize;
 
@@ -262,6 +265,8 @@ public:
   const WA_TABLE *getWATable() const {
     return Options.WATable;
   }
+
+  bool useBindlessBuffers() const { return Options.UseBindlessBuffers; }
 };
 } // namespace llvm
 

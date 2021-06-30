@@ -242,6 +242,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
   BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
+  BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
   return BackendOpts;
 }
 
@@ -602,6 +603,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.DumpAsm = true;
   if (InternalOptions.hasArg(OPT_ftime_report))
     Opts.TimePasses = true;
+  if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
+    Opts.UseBindlessBuffers = true;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
     StringRef Val = A->getValue();

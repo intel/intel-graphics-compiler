@@ -88,6 +88,7 @@ struct CompileOptions {
   bool TimePasses = false;
   GlobalsLocalizationMode GlobalsLocalization = GlobalsLocalizationMode::Vector;
   std::string LLVMOptions;
+  bool UseBindlessBuffers = false;
 
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;

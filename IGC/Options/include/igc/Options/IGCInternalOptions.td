@@ -61,7 +61,6 @@ defm : CommonFlag<"intel-256-GRF-per-thread">,
 
 defm intel_num_thread_per_eu : CommonSeparate<"intel-num-thread-per-eu">;
 
-defm intel_use_bindless_buffers : CommonFlag<"intel-use-bindless-buffers">;
 
 defm intel_use_bindless_images : CommonFlag<"intel-use-bindless-images">;
 

@@ -110,6 +110,10 @@ static cl::opt<bool> LargeGRFModeOpt("vc-large-grf",
                                      cl::desc("Enable large GRF mode"),
                                      cl::init(false));
 
+static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
+                                           cl::desc("Use bindless buffers"),
+                                           cl::init(false));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -130,8 +134,8 @@ GenXBackendOptions::GenXBackendOptions()
                           GlobalsLocalizationLimitOpt.getValue()},
       LocalizeLRsForAccUsage(LocalizeLRsForAccUsageOpt),
       DisableNonOverlappingRegionOpt(DisableNonOverlappingRegionOptOpt),
-      FCtrl(FunctionControlOpt),
-      IsLargeGRFMode(LargeGRFModeOpt),
+      FCtrl(FunctionControlOpt), IsLargeGRFMode(LargeGRFModeOpt),
+      UseBindlessBuffers(UseBindlessBuffersOpt),
       StatelessPrivateMemSize(StatelessPrivateMemSizeOpt) {}
 
 static std::unique_ptr<MemoryBuffer>
