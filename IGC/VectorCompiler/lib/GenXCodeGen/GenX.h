@@ -102,7 +102,7 @@ FunctionGroupPass *createGenXVisaRegAllocPass();
 FunctionGroupPass *createGenXCisaBuilderPass();
 ModulePass *createGenXFinalizerPass(raw_pwrite_stream &o);
 ModulePass *createGenXDebugInfoPass();
-ModulePass *createGenXGlobalVariableLoweringPass();
+ModulePass *createGenXGlobalValueLoweringPass();
 
 namespace genx {
 

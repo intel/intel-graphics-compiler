@@ -40,7 +40,7 @@ set(CODEGEN_SOURCES
   GenXFuncPtrsLowering.cpp
   GenXGotoJoin.cpp
   GenXGEPLowering.cpp
-  GenXGlobalVariableLowering.cpp
+  GenXGlobalValueLowering.cpp
   GenXIMadPostLegalization.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp

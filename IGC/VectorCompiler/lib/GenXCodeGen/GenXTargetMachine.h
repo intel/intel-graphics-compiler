@@ -178,7 +178,7 @@ void initializeGenXVisaRegAllocPass(PassRegistry &);
 void initializeTransformPrivMemPass(PassRegistry &);
 void initializeGenXFunctionPointersLoweringPass(PassRegistry &);
 void initializeGenXLowerJmpTableSwitchPass(PassRegistry &);
-void initializeGenXGlobalVariableLoweringPass(PassRegistry &);
+void initializeGenXGlobalValueLoweringPass(PassRegistry &);
 void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);
 void initializeGenXVectorCombinerPass(PassRegistry &);
 } // End llvm namespace
