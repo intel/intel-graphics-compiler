@@ -142,20 +142,22 @@ inline bool isPromotableStructType(Module& M, Type* ty, bool isReturnValue = fal
     // We can separate promoting argument and return value sizes.
     // Return value is limited to 64-bits due to vISA stackcall conventions.
     // Argument is not limited to 64-bits, but can be adjusted to minimize spill.
-    static const unsigned int maxSize = isReturnValue ? MAX_STACKCALL_RETVAL_SIZE_IN_BITS : MAX_STRUCT_ARGUMENT_SIZE_IN_BITS;
-
+    const unsigned int maxSize = isReturnValue ? MAX_STACKCALL_RETVAL_SIZE_IN_BITS : MAX_STRUCT_ARGUMENT_SIZE_IN_BITS;
     const DataLayout& DL = M.getDataLayout();
-    if (ty->isPointerTy() &&
-        ty->getPointerElementType()->isStructTy() &&
-        DL.getTypeSizeInBits(ty->getPointerElementType()) <= maxSize)
+
+    if (ty->isPointerTy())
     {
-        for (const auto* EltTy : cast<StructType>(ty->getPointerElementType())->elements())
+        StructType* sTy = dyn_cast<StructType>(ty->getPointerElementType());
+        if (sTy && (unsigned)DL.getStructLayout(sTy)->getSizeInBits() < maxSize)
         {
-            // Check if all elements are primitive types
-            if (!EltTy->isSingleValueType())
-                return false;
+            for (const auto* EltTy : sTy->elements())
+            {
+                // Check if all elements are primitive types
+                if (!EltTy->isSingleValueType())
+                    return false;
+            }
+            return true;
         }
-        return true;
     }
     return false;
 }
