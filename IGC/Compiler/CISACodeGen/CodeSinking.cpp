@@ -257,7 +257,8 @@ namespace IGC {
 
         uint32_t GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
         uint32_t ngrf = CTX->getNumGRFPerThread();
-        if (m_fatLoopPressure > (ngrf + GRFThresholdDelta))
+        if (m_fatLoopPressure > (ngrf + GRFThresholdDelta) &&
+            CTX->type == ShaderType::OPENCL_SHADER)
         {
             // Enable multiple-level loop sink if pressure is high enough
             bool sinkMultiLevel = (m_fatLoopPressure > (ngrf + 2 * GRFThresholdDelta));
@@ -355,6 +356,13 @@ namespace IGC {
         {
             // estimate live-out register pressure for this blk
             pressure0 = EstimateLiveOutPressure(&blk, DL);
+            // Track the loop with the highest live-out pressure BB
+            if (pressure0 > m_fatLoopPressure) {
+                if (auto L = findLoopAsPreheader(blk)) {
+                    m_fatLoopPressure = pressure0;
+                    m_fatLoop = L;
+                }
+            }
         }
 
         bool madeChange = false;
@@ -425,18 +433,10 @@ namespace IGC {
                         movedInsts[i]->moveBefore(undoLoca);
                     }
                     madeChange = false;
-                    pressure1 = pressure0;
                 }
                 else
                 {
                     totalGradientMoved += numGradientMovedOutBB;
-                }
-                // Track the loop with the highest live-out pressure BB
-                if (pressure1 > m_fatLoopPressure) {
-                    if (auto L = findLoopAsPreheader(blk)) {
-                        m_fatLoopPressure = pressure1;
-                        m_fatLoop = L;
-                    }
                 }
             }
         }
