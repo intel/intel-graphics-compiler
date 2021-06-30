@@ -61,9 +61,12 @@ private:
   std::pair<int, int> assignSRV(int SurfaceID, int SamplerID, ZipTy &&Zippy);
   template <typename ZipTy> int assignUAV(int SurfaceID, ZipTy &&Zippy);
 
-  std::vector<int> computeBTIndices(genx::KernelMetadata &KM);
+  std::vector<int>
+  computeBTIndices(genx::KernelMetadata &KM,
+                   const std::vector<StringRef> &ExtendedArgDescs);
   bool rewriteArguments(genx::KernelMetadata &KM, Function &F,
-                        const std::vector<int> &BTIndices);
+                        const std::vector<int> &BTIndices,
+                        const std::vector<StringRef> &ExtendedArgDescs);
 
   bool processKernel(Function &F);
 };
@@ -185,7 +188,8 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
 // UAV -- writeable resources -- buffers and rw/wo images.
 // Additionally, ranges for SRV and UAV should be separate and contiguous
 // so this code assigns SRV and then UAV resources.
-std::vector<int> BTIAssignment::computeBTIndices(genx::KernelMetadata &KM) {
+std::vector<int> BTIAssignment::computeBTIndices(
+    genx::KernelMetadata &KM, const std::vector<StringRef> &ExtendedArgDescs) {
   int SurfaceID = 0;
   int SamplerID = 0;
 
@@ -196,18 +200,7 @@ std::vector<int> BTIAssignment::computeBTIndices(genx::KernelMetadata &KM) {
   std::vector<int> Indices(KM.getArgKinds().size(), -1);
 
   ArrayRef<unsigned> ArgKinds = KM.getArgKinds();
-  ArrayRef<StringRef> ArgTypeDescs = KM.getArgTypeDescs();
-  // ArgDescs can be lesser if there are implicit parameters.
-  IGC_ASSERT_MESSAGE(
-      ArgKinds.size() >= ArgTypeDescs.size(),
-      "Expected same or less number of arguments for kinds and descs");
-
-  // All arguments without arg type desc will get default empty description.
-  std::vector<StringRef> ArgTypeDescsExt{ArgTypeDescs.begin(),
-                                         ArgTypeDescs.end()};
-  ArgTypeDescsExt.resize(Indices.size());
-
-  auto Zippy = llvm::zip(Indices, KM.getArgKinds(), ArgTypeDescsExt);
+  auto Zippy = llvm::zip(Indices, KM.getArgKinds(), ExtendedArgDescs);
   std::tie(SurfaceID, SamplerID) = assignSRV(SurfaceID, SamplerID, Zippy);
   SurfaceID = assignUAV(SurfaceID, Zippy);
 
@@ -219,8 +212,9 @@ std::vector<int> BTIAssignment::computeBTIndices(genx::KernelMetadata &KM) {
   return Indices;
 }
 
-bool BTIAssignment::rewriteArguments(genx::KernelMetadata &KM, Function &F,
-                                     const std::vector<int> &BTIndices) {
+bool BTIAssignment::rewriteArguments(
+    genx::KernelMetadata &KM, Function &F, const std::vector<int> &BTIndices,
+    const std::vector<StringRef> &ExtendedArgDescs) {
   bool Changed = false;
 
   auto *I32Ty = Type::getInt32Ty(M.getContext());
@@ -230,9 +224,14 @@ bool BTIAssignment::rewriteArguments(genx::KernelMetadata &KM, Function &F,
   auto ArgKinds = KM.getArgKinds();
   IGC_ASSERT_MESSAGE(ArgKinds.size() == F.arg_size(),
                      "Inconsistent arg kinds metadata");
-  for (auto &&[Arg, Kind, BTI] : llvm::zip(F.args(), ArgKinds, BTIndices)) {
+  for (auto &&[Arg, Kind, BTI, Desc] :
+       llvm::zip(F.args(), ArgKinds, BTIndices, ExtendedArgDescs)) {
     if (Kind != genx::KernelMetadata::AK_SAMPLER &&
         Kind != genx::KernelMetadata::AK_SURFACE)
+      continue;
+
+    // For bindless resource argument is ExBSO.
+    if (BC.useBindlessBuffers() && genx::isDescBufferType(Desc))
       continue;
 
     IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");
@@ -260,12 +259,30 @@ bool BTIAssignment::rewriteArguments(genx::KernelMetadata &KM, Function &F,
   return Changed;
 }
 
+// Get arg type descs that are extended to arg kinds size.
+static std::vector<StringRef> getExtendedArgDescs(genx::KernelMetadata &KM) {
+  ArrayRef<unsigned> ArgKinds = KM.getArgKinds();
+  ArrayRef<StringRef> ArgTypeDescs = KM.getArgTypeDescs();
+  // ArgDescs can be lesser if there are implicit parameters.
+  IGC_ASSERT_MESSAGE(
+      ArgKinds.size() >= ArgTypeDescs.size(),
+      "Expected same or less number of arguments for kinds and descs");
+
+  // All arguments without arg type desc will get default empty description.
+  std::vector<StringRef> ArgTypeDescsExt{ArgTypeDescs.begin(),
+                                         ArgTypeDescs.end()};
+  ArgTypeDescsExt.resize(ArgKinds.size());
+  return ArgTypeDescsExt;
+}
+
 bool BTIAssignment::processKernel(Function &F) {
   genx::KernelMetadata KM{&F};
 
-  std::vector<int> BTIndices = computeBTIndices(KM);
+  std::vector<StringRef> ExtArgDescs = getExtendedArgDescs(KM);
 
-  bool Changed = rewriteArguments(KM, F, BTIndices);
+  std::vector<int> BTIndices = computeBTIndices(KM, ExtArgDescs);
+
+  bool Changed = rewriteArguments(KM, F, BTIndices, ExtArgDescs);
 
   KM.updateBTIndicesMD(std::move(BTIndices));
 
