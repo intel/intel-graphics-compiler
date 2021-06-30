@@ -47,6 +47,16 @@ enum R_TYPE_ZEBIN
     R_ZE_SYM_ADDR_32_HI = 3  // higher 32bits of 64-bit address
 };
 
+// ELF note type for INTELGT
+enum {
+    NT_INTELGT_PRODUCT_FAMILY = 1,
+    NT_INTELGT_GFXCORE_FAMILY = 2,
+    NT_INTELGT_TARGET_METADATA = 3,
+};
+
+// TODO: Remove TargetFlags and clear e_machine and e_flags after switching to
+// use .note.intelgt.compat section to get the family and other metadata
+// information.
 // ELF32_Ehdr::e_flags
 struct TargetFlags {
 
@@ -84,6 +94,50 @@ struct TargetFlags {
             uint8_t generatorId : 3;
             // bit[31:24]: MBZ, reserved for future use
             uint8_t reserved : 8;
+        };
+        uint32_t packed = 0U;
+    };
+};
+
+struct TargetMetadata {
+    // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
+    enum GeneratorSpecificFlags : uint8_t {
+        NONE = 0
+    };
+    // bit[22:20]: generator of this device binary
+    enum GeneratorId : uint8_t {
+        UNREGISTERED = 0,
+        IGC          = 1
+    };
+
+    union {
+        struct{
+            // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
+            uint8_t generatorSpecificFlags : 8;
+
+            // bit[12:8]: values [0-31], min compatbile device revision Id (stepping)
+            uint8_t minHwRevisionId : 5;
+
+            // bit[13:13]:
+            // 0 - full validation during decoding (safer decoding)
+            // 1 - no validation (faster decoding - recommended for known generators)
+            bool validateRevisionId : 1;
+
+            // bit[14:14]:
+            // 0 - ignore minHwRevisionId and maxHwRevisionId
+            // 1 - underlying device must match specified revisionId info
+            bool disableExtendedValidation : 1;
+
+            // bit[19:15]:  max compatbile device revision Id (stepping)
+            uint8_t maxHwRevisionId : 5;
+
+            // bit[22:20]: generator of this device binary
+            // 0 - Unregistered
+            // 1 - IGC
+            uint8_t generatorId : 3;
+
+            // bit[31:23]: MBZ, reserved for future use
+            uint16_t reserved : 9;
         };
         uint32_t packed = 0U;
     };

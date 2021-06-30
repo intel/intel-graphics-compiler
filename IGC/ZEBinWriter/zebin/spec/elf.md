@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 | .debug_info | the debug information (if required) | SHT_PROGBITS |
 | .ze_info | the metadata section for runtime information | SHT_ZEBIN_ZEINFO |
 | .gtpin_info | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
+| .note.intelgt.compat | the compatibility notes for runtime information | SHT_NOTE |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
 
 An ZE binary contains information of one compiled module.
@@ -46,7 +47,7 @@ EI_PAD:     0 (Start of padding bytes of e_ident)
 
 **e_type**
 
-ET_ZEBIN_REL and ET_ZEBIN_DYN are used for bianry-level static linking.
+ET_ZEBIN_REL and ET_ZEBIN_DYN are used for binary-level static linking.
 We only supports ET_ZEBIN_EXE for now that all compiler produced binaries are executables
 ~~~
 enum ELF_TYPE_ZEBIN : uint16_t
@@ -72,6 +73,10 @@ PRODUCT_FAMILY or GFXCORE_FAMILY, depends on **e_flags** (TargetFlags::machineEn
 
 
 **e_flags**
+
+This metadata information is deprecated and has been moved to the
+.note.intelgt.comapt section
+
 ~~~
 struct TargetFlags {
     union {
@@ -125,6 +130,68 @@ enum SHT_ZEBIN : uint32_t
     SHT_ZEBIN_ZEINFO     = 0xff000011, // .ze_info section
     SHT_ZEBIN_GTPIN_INFO = 0xff000012  // .gtpin_info section
 }
+~~~
+
+## ELF note type for INTELGT
+
+**n_type**
+Currently there are 3 note types defined for INTELGT and the notes are placed
+in the .note.intelgt.compat section. The consumer of the ZE binary file should
+recognize both the owner name (INTELGT) and the type of an ELF note entry to
+interpret its description.
+~~~
+enum {
+    NT_INTELGT_PRODUCT_FAMILY = 1, // the description is the Product family stored in a 4-byte ELF word
+    NT_INTELGT_GFXCORE_FAMILY = 2, // the description is the GFXCORE family stored in a 4-byte ELF word
+    NT_INTELGT_TARGET_METADATA = 3, // the description is the TargetMetadata structure defined below
+};
+~~~
+
+**The description of NT_INTELGT_TARGET_METADATA note**
+~~~
+struct TargetMetadata {
+    // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
+    enum GeneratorSpecificFlags : uint8_t {
+        NONE = 0
+    };
+    // bit[22:20]: generator of this device binary
+    enum GeneratorId : uint8_t {
+        UNREGISTERED = 0,
+        IGC          = 1
+    };
+
+    union {
+        struct{
+            // bit[7:0]: dedicated for specific generator (meaning based on generatorId)
+            uint8_t generatorSpecificFlags : 8;
+
+            // bit[12:8]: values [0-31], min compatbile device revision Id (stepping)
+            uint8_t minHwRevisionId : 5;
+
+            // bit[13:13]:
+            // 0 - full validation during decoding (safer decoding)
+            // 1 - no validation (faster decoding - recommended for known generators)
+            bool validateRevisionId : 1;
+
+            // bit[14:14]:
+            // 0 - ignore minHwRevisionId and maxHwRevisionId
+            // 1 - underlying device must match specified revisionId info
+            bool disableExtendedValidation : 1;
+
+            // bit[19:15]:  max compatbile device revision Id (stepping)
+            uint8_t maxHwRevisionId : 5;
+
+            // bit[22:20]: generator of this device binary
+            // 0 - Unregistered
+            // 1 - IGC
+            uint8_t generatorId : 3;
+
+            // bit[31:23]: MBZ, reserved for future use
+            uint16_t reserved : 9;
+        };
+        uint32_t packed = 0U;
+    };
+};
 ~~~
 
 ## Gen Relocation Type

@@ -40,6 +40,14 @@ ZEBinaryBuilder::ZEBinaryBuilder(
     tf.generatorId = TargetFlags::GeneratorId::IGC;
     mBuilder.setTargetFlag(tf);
 
+    mBuilder.setProductFamily(plat.eProductFamily);
+    TargetMetadata metadata;
+    metadata.generatorSpecificFlags = TargetFlags::GeneratorSpecificFlags::NONE;
+    metadata.minHwRevisionId = plat.usRevId;
+    metadata.maxHwRevisionId = plat.usRevId;
+    metadata.generatorId = TargetMetadata::GeneratorId::IGC;
+    mBuilder.setTargetMetadata(metadata);
+
     addProgramScopeInfo(programInfo);
 
     if (spvData != nullptr)
@@ -52,6 +60,8 @@ void ZEBinaryBuilder::setGfxCoreFamilyToELFMachine(uint32_t value)
     tf.machineEntryUsesGfxCoreInsteadOfProductFamily = true;
     mBuilder.setTargetFlag(tf);
     mBuilder.setMachine(value);
+
+    mBuilder.setGfxCoreFamily(value);
 }
 
 void ZEBinaryBuilder::createKernel(
