@@ -185,6 +185,8 @@ namespace IGC
         offset += getGRFSize();
 
         bool bZeroIDs = !GetNumberOfId();
+        bool bSupportLoadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
+        bZeroIDs &= !bSupportLoadThreadPayload;
         // for indirect threads data payload hardware doesn't allow empty per thread buffer
         // so we allocate a dummy thread id in case no IDs are used
         if (pctx->m_DriverInfo.UsesIndirectPayload() && bZeroIDs)
@@ -200,10 +202,24 @@ namespace IGC
 
         AllocatePerThreadConstantData(offset);
 
+        if (bSupportLoadThreadPayload)
+        {
+            uint perThreadInputSize = offset - getGRFSize();
+            encoder.GetVISAKernel()->AddKernelAttribute("PerThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
+        }
+
         // Cross-thread constant data.
         if (pctx->m_DriverInfo.UsesIndirectPayload())
         {
             AllocateNOSConstants(offset);
+        }
+
+        if (bSupportLoadThreadPayload)
+        {
+            encoder.GetVISAKernel()->AddKernelAttribute(
+                "CrossThreadInputSize",
+                sizeof(uint16_t),
+                &m_NOSBufferSize);
         }
     }
 
