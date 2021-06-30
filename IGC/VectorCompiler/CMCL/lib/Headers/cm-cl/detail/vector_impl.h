@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef CM_CL_DETAIL_VECTOR_IMPL_H
 #define CM_CL_DETAIL_VECTOR_IMPL_H
 
-#include <opencl_type_traits>
+#include <opencl_type_traits.h>
 
 namespace cm {
 namespace detail {

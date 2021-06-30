@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef OPENCL_DEF
 #define OPENCL_DEF
 
-#include <opencl_type_traits>
+#include <opencl_type_traits.h>
 
 using int8_t = char;
 using uint8_t = unsigned char;

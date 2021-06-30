@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include "detail/builtins.h"
 #include "detail/vector_impl.h"
 
-#include <opencl_type_traits>
+#include <opencl_type_traits.h>
 
 namespace cm {
 

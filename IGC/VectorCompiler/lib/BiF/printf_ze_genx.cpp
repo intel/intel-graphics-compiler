@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include <cm-cl/svm.h>
 #include <cm-cl/vector.h>
-#include <opencl_def>
+#include <opencl_def.h>
 
 #include "printf_not_cm_common.h"
 #include "vc/BiF/PrintfIface.h"

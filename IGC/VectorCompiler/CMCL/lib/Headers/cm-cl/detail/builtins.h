@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "vector_impl.h"
 
-#include <opencl_def>
+#include <opencl_def.h>
 
 //=========================== builtin declarations ===========================//
 

@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include "detail/builtins.h"
 #include "vector.h"
 
-#include <opencl_def>
+#include <opencl_def.h>
 
 namespace cm {
 namespace svm {
