@@ -486,7 +486,13 @@ int CisaBinary::isaDump(
             {
                 //function 0 has kernel_f0.visaasm
                 kTemp->GetFunctionId(funcId);
-                asmName << mainKernel->getOutputAsmPath();
+                if (mainKernel) {
+                    asmName << mainKernel->getOutputAsmPath();
+                } else {
+                    // No mainKernel, use the function name instead
+                    asmName << kTemp->getName();
+                }
+
                 asmName << "_f";
                 asmName << funcId;
             }
