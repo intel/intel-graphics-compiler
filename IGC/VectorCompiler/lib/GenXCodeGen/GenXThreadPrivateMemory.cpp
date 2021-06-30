@@ -299,6 +299,14 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     Res = CastInst::Create(Instruction::BitCast, Res, To, "", Inst);
   } else if (m_DL->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) <
              genx::DWordBits) {
+    auto EltTy = cast<VectorType>(To)->getElementType();
+    auto EltTySz = m_DL->getTypeSizeInBits(EltTy);
+    // if EltTy not Integer we shoud bitcast it before ZE
+    if (!EltTy->isIntegerTy()) {
+      auto Ty = IntegerType::get(*m_ctx, EltTySz);
+      To = IGCLLVM::FixedVectorType::get(Ty, NumElts);
+      From = CastInst::Create(Instruction::BitCast, From, To, "", Inst);
+    }
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
     Res = CastInst::CreateZExtOrBitCast(From, To, "", Inst);
   } else if (m_DL->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) ==
@@ -342,7 +350,19 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
     }
     Restored = CastInst::Create(Instruction::IntToPtr, NewFrom, To);
   } else if (EltSz < genx::DWordBits) {
-    Restored = CastInst::Create(Instruction::Trunc, From, To, "");
+    auto EltTy = cast<VectorType>(To)->getElementType();
+    auto EltTySz = m_DL->getTypeSizeInBits(EltTy);
+    if (!EltTy->isIntegerTy()) {
+      auto Ty = IntegerType::get(*m_ctx, EltTySz);
+      auto NumElts = cast<VectorType>(To)->getNumElements();
+      auto ToTr = IGCLLVM::FixedVectorType::get(Ty, NumElts);
+      auto Trunc = CastInst::Create(Instruction::Trunc, From, ToTr, "");
+      Trunc->insertAfter(From);
+      From = Trunc;
+      Restored = CastInst::Create(Instruction::BitCast, Trunc, To, "");
+    } else {
+      Restored = CastInst::Create(Instruction::Trunc, From, To, "");
+    }
   } else if (EltSz == genx::QWordBits &&
              !(m_useGlobalMem && To->getScalarType()->isIntegerTy(64))) {
     if (!From->getType()->getScalarType()->isPointerTy() &&
