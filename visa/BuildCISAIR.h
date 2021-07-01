@@ -883,7 +883,32 @@ private:
     // to make GetVISAKernel() work
     std::map<std::string, VISAKernelImpl *> m_nameToKernel;
 
-    void LinkTimeOptimization(vISA::G4_Kernel* mainFunc, std::map<std::string, vISA::G4_Kernel*>& subFuncs, bool call2jump);
+    std::map<std::string, vISA::G4_Kernel*> functionsNameMap;
+    vISA::G4_Kernel* GetCallerKernel(vISA::G4_INST*);
+    vISA::G4_Kernel* GetCalleeKernel(vISA::G4_INST*);
+
+    // To collect call related info for LinkTimeOptimization
+    void CollectCallSites(
+            std::list<VISAKernelImpl *>& functions,
+            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callSites);
+
+    // Sanity check to see if sg.invoke list is properly added from front-end
+    // We don't support:
+    //   1. sg.invoke callsite is a indirect call
+    //   2. sg.invoke callsite is inside a recursion
+    void CheckHazardFeatures(
+            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+            std::unordered_map<vISA::G4_Kernel*, std::list<std::list<vISA::G4_INST*>::iterator>>& callSites);
+
+    // Remove sgInvoke functions out of function list to avoid redundant compilation
+    void RemoveOptimizingFunction(
+            std::list<VISAKernelImpl *>& functions,
+            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList);
+
+    // Perform LinkTimeOptimization for call related transformations
+    void LinkTimeOptimization(
+            std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+            bool call2jump);
 
     void emitFCPatchFile();
 

@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <list>
 #include <string>
 #include <sstream>
+#include <functional>
 
 using namespace vISA;
 extern "C" int64_t getTimerTicks(unsigned int idx);
@@ -449,18 +450,128 @@ void restoreFCallState(
     }
 }
 
+G4_Kernel* CISA_IR_Builder::GetCallerKernel(G4_INST* inst)
+{
+    return &inst->getBuilder().kernel;
+}
+
+G4_Kernel* CISA_IR_Builder::GetCalleeKernel(G4_INST* fcall)
+{
+    assert(fcall->opcode() == G4_pseudo_fcall);
+    std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+    auto iter = functionsNameMap.find(funcName);
+    assert(iter != functionsNameMap.end() && "can't find function with given name");
+    return iter->second;
+}
+
+void CISA_IR_Builder::CheckHazardFeatures(
+    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+    std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>>& callSites)
+{
+    std::function<void(G4_Kernel*, G4_Kernel*, std::set<G4_Kernel*>&)> traverse;
+    traverse = [&](G4_Kernel* root, G4_Kernel* func, std::set<G4_Kernel*>& visited)
+    {
+        for (auto& it : callSites[func])
+        {
+            G4_INST* fcall = *it;
+            assert(fcall->opcode() == G4_pseudo_fcall);
+            assert(func == GetCallerKernel(fcall));
+            G4_Kernel* callee = GetCalleeKernel(fcall);
+
+            assert(root != callee && "Detected a recursion that is not allowed");
+
+            if (visited.count(callee))
+                continue;
+
+            visited.insert(callee);
+            traverse(root, callee, visited);
+        }
+    };
+
+    for (auto& it : sgInvokeList)
+    {
+        G4_INST* fcall = *it;
+        // Check if there is a indirect call
+        assert(!fcall->asCFInst()->isIndirectCall() && "Not supported for indirect calls");
+
+        // Check recursion
+        std::set<G4_Kernel*> visited;
+        G4_Kernel* root = GetCalleeKernel(fcall);
+        visited.insert(root);
+        traverse(root, root, visited);
+    }
+
+}
+
+void CISA_IR_Builder::CollectCallSites(
+    std::list<VISAKernelImpl *>& functions,
+    std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>>& callSites)
+{
+    auto IsFCall = [](G4_INST* inst)
+    {
+        return inst->opcode() == G4_pseudo_fcall;
+    };
+
+    for (auto func : functions)
+    {
+        functionsNameMap[std::string(func->getName())] = func->getKernel();
+        auto& instList = func->getKernel()->fg.builder->instList;
+        std::list<G4_INST*>::iterator it = instList.begin();
+        while (it != instList.end())
+        {
+            if (!IsFCall(*it))
+            {
+                it++;
+                continue;
+            }
+            callSites[func->getKernel()].push_back(it);
+            it++;
+        }
+    }
+}
+
+void CISA_IR_Builder::RemoveOptimizingFunction(
+    std::list<VISAKernelImpl *>& functions,
+    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList)
+{
+    std::set<G4_Kernel*> removeList;
+    for (auto& it : sgInvokeList)
+    {
+        G4_INST* fcall = *it;
+        removeList.insert(GetCalleeKernel(fcall));
+    }
+    std::list<VISAKernelImpl*>::iterator i = functions.begin();
+    while (i != functions.end())
+    {
+        auto func = *i;
+        if (!removeList.count(func->getKernel())) {
+            ++i;
+        } else {
+            functions.erase(i++);
+        }
+    }
+}
+
 // Perform LTO including transforming stack calls to subroutine calls, subroutine calls to jumps, and inlining
 void CISA_IR_Builder::LinkTimeOptimization(
-    vISA::G4_Kernel* mainFunc, std::map<std::string, vISA::G4_Kernel*>& subFuncs, bool call2jump)
+    std::list<std::list<vISA::G4_INST*>::iterator>& sgInvokeList,
+    bool call2jump)
 {
     std::map<G4_INST*, std::list<G4_INST*>::iterator> callsite;
     std::map<G4_INST*, std::list<G4_INST*>> rets;
+    std::list<G4_INST*> dummyContainer;
     // append instructions from callee to caller
-    auto& i1 = mainFunc->fg.builder->instList;
-    for (auto& [name, func]: subFuncs) {
-        auto i2 = func->fg.builder->instList;
-        G4_INST* calleeLabel = *i2.begin();
-        for (G4_INST* fret : i2)
+    for (auto& it : sgInvokeList)
+    {
+        G4_INST* fcall = *it;
+        assert(fcall->opcode() == G4_pseudo_fcall);
+
+        G4_Kernel* caller = GetCallerKernel(fcall);
+        G4_Kernel* callee = GetCalleeKernel(fcall);
+        auto& callerInsts = caller->fg.builder->instList;
+        auto calleeInsts  = callee->fg.builder->instList;
+        G4_INST* calleeLabel = *calleeInsts.begin();
+        for (G4_INST* fret : calleeInsts)
         {
             if (fret->opcode() != G4_pseudo_fret)
                 continue;
@@ -468,58 +579,35 @@ void CISA_IR_Builder::LinkTimeOptimization(
             fret->setOpcode(G4_return);
             rets[calleeLabel].push_back(fret);
         }
-        i1.insert(i1.end(), i2.begin(), i2.end());
+        callerInsts.insert(callerInsts.end(), calleeInsts.begin(), calleeInsts.end());
+        // Append declarations from callee to caller
+        for (auto curDcl : callee->Declares)
+        {
+            caller->Declares.push_back(curDcl);
+        }
     }
 
-    auto builder = mainFunc->fg.builder;
     // Change fcall to call
-    std::list<G4_INST*>::iterator it = builder->instList.begin();
-    while (it != builder->instList.end())
+    for (auto& it : sgInvokeList)
     {
         G4_INST* fcall = *it;
-        if (fcall->opcode() != G4_pseudo_fcall)
+        assert(fcall->opcode() == G4_pseudo_fcall);
+
+        G4_Kernel* callee = GetCalleeKernel(fcall);
+
+        G4_INST* calleeLabel = *callee->fg.builder->instList.begin();
+        ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not a label");
+
+        fcall->setOpcode(G4_call);
+        fcall->setSrc(calleeLabel->getSrc(0), 0);
+        // we only record a single callsite to the target in order to convert to jumps
+        if (callsite.find(calleeLabel) == callsite.end())
         {
-            it ++;
-            continue;
-        }
-        if (!fcall->asCFInst()->isIndirectCall())
-        {
-            // direct call
-            std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
-
-            auto iter = subFuncs.find(funcName);
-            assert(iter != subFuncs.end() && "can't find function with given name");
-            G4_Kernel* callee = iter->second;
-
-            G4_INST* calleeLabel = *callee->fg.builder->instList.begin();
-            ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
-
-            fcall->setOpcode(G4_call);
-            fcall->setSrc(calleeLabel->getSrc(0), 0);
-            // we only record a single callsite to the target in order to convert to jumps
-            if (callsite.find(calleeLabel) == callsite.end())
-            {
-                callsite[calleeLabel] = it;
-            }
-            else
-            {
-                callsite[calleeLabel] = builder->instList.end();
-            }
+            callsite[calleeLabel] = it;
         }
         else
         {
-            assert(0 && "Not supported yet for indirect calls");
-        }
-        it ++;
-    }
-
-    // Append declarations from callee to caller
-    for (auto iter : subFuncs)
-    {
-        G4_Kernel* callee = iter.second;
-        for (auto curDcl : callee->Declares)
-        {
-            mainFunc->Declares.push_back(curDcl);
+            callsite[calleeLabel] = dummyContainer.end();
         }
     }
 
@@ -527,15 +615,18 @@ void CISA_IR_Builder::LinkTimeOptimization(
     {
         for(auto& [label, itCall]: callsite)
         {
-            if (itCall == builder->instList.end())
+            if (itCall == dummyContainer.end())
                 continue;
             G4_INST* call = *itCall;
+            G4_Kernel* caller = GetCallerKernel(call);
+            auto& builder = caller->fg.builder;
             call->setOpcode(G4_goto);
             call->asCFInst()->setUip(label->getLabel());
             std::string funcName = call->getSrc(0)->asLabel()->getLabel();
             G4_Label *raLabel = builder->createLabel(funcName + "_ret", LABEL_BLOCK);
-            G4_INST* ra = mainFunc->fg.createNewLabelInst(raLabel);
-            mainFunc->fg.builder->instList.insert(++itCall, ra);
+            G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
+            auto& callerInsts = caller->fg.builder->instList;
+            callerInsts.insert(++itCall, ra);
 
             for (G4_INST* ret : rets[label])
             {
@@ -841,49 +932,26 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 
     if (m_options.getuInt32Option(vISA_Linker) != Linker_Disabled)
     {
-        VISAKernelImpl::VISAKernelImplListTy mainFunctions;
-        std::map<std::string, G4_Kernel*> subFunctionsNameMap;
-        // For functions those will be stitch to others, create table to map their name to G4_Kernel
-        std::list<VISAKernelImpl*>::iterator i = m_kernelsAndFunctions.begin();
-        while (i != m_kernelsAndFunctions.end())
-        {
-            auto func = *i;
-            if (func->getIsKernel()) {
-                // kernels must be stitched
-                mainFunctions.push_back(func);
-                ++i;
-            } else {
-                if (!m_options.getOption(vISA_noStitchExternFunc)) {
-                    // Policy 1: all functions will stitch to kernels
-                    subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
-                    m_kernelsAndFunctions.erase(i++);
-                } else {
-                    // Policy 2: external functions will be stitched, non-external functions will stitch to others
-                    if (func->getKernel()->getBoolKernelAttr(Attributes::ATTR_Extern))
-                    {
-                        mainFunctions.push_back(func);
-                        ++i;
-                    }
-                    else
-                    {
-                        subFunctionsNameMap[std::string(func->getName())] = func->getKernel();
-                        m_kernelsAndFunctions.erase(i++);
-                    }
-                }
-            }
-        }
+        std::map<std::string, G4_Kernel*> functionsNameMap;
+        G4_Kernel* mainFunc = (*m_kernelsAndFunctions.begin())->getKernel();
+        assert((*m_kernelsAndFunctions.begin())->getIsKernel() && "mainFunc must be the kernel entry");
+        std::unordered_map<G4_Kernel*, std::list<std::list<G4_INST*>::iterator>> callSites;
+        CollectCallSites(m_kernelsAndFunctions, callSites);
+
+        // Assume sg.invoke callsite list is calls in the kernel for now for testing purposes
+        auto& sgInvokeList = callSites.begin()->second;
+        assert(callSites.begin()->first == mainFunc);
+
+        CheckHazardFeatures(sgInvokeList, callSites);
+
+        RemoveOptimizingFunction(m_kernelsAndFunctions, sgInvokeList);
 
         // Copy callees' context to callers and convert to subroutine calls
         if (m_options.getuInt32Option(vISA_Linker) & Linker_Subroutine)
         {
-            for (auto func : mainFunctions)
-            {
-                G4_Kernel* mainFunc = func->getKernel();
-                LinkTimeOptimization(mainFunc, subFunctionsNameMap,
-                        (m_options.getuInt32Option(vISA_Linker) & Linker_Call2Jump) ||
-                        (m_options.getuInt32Option(vISA_Linker) & Linker_Inline));
-
-            }
+            LinkTimeOptimization(sgInvokeList,
+                    (m_options.getuInt32Option(vISA_Linker) & Linker_Call2Jump) ||
+                    (m_options.getuInt32Option(vISA_Linker) & Linker_Inline));
         }
     }
 
