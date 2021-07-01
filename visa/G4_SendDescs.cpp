@@ -681,6 +681,9 @@ bool G4_SendDescRaw::isQWScatterRW() const
     switch (funcID) {
     case SFID::DP_DC0:
         switch (getHdcMessageType()) {
+        case DC_QWORD_SCATTERED_READ:
+        case DC_QWORD_SCATTERED_WRITE:
+            return true;
         default:
             break;
         }
