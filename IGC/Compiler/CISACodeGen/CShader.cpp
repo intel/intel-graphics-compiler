@@ -63,7 +63,9 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     // set this to ture if there is any stateless access.
     m_HasGlobalStatelessMemoryAccess = false;
     m_HasConstantStatelessMemoryAccess = false;
+    m_HasDPAS = false;
 
+    m_simdProgram.init(!m_ctx->platform.hasScratchSurface(), m_ctx->platform.maxPerThreadScratchSpace(), GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory);
 }
 
 void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
