@@ -8824,6 +8824,19 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(8, 8);
         break;
     }
+    case GenISAIntrinsic::GenISA_dual_subslice_id:
+    {
+        if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN11_CORE ||
+            m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN11LP_CORE ||
+            m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN12LP_CORE)
+            emitStateRegID(9, 11);
+        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN12_CORE ||
+                 m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HP_CORE)
+            emitStateRegID(9, 10);
+        else
+            IGC_ASSERT_MESSAGE(0, "No support for Dual Subslice in current platform");
+        break;
+    }
     case GenISAIntrinsic::GenISA_eu_id:
     {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||

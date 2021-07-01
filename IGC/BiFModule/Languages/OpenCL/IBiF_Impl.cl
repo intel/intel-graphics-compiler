@@ -429,6 +429,12 @@ uint OVERLOADABLE intel_get_subslice_id( void )
 }
 
 __attribute__((always_inline))
+uint OVERLOADABLE intel_get_dual_subslice_id(void)
+{
+    return __builtin_IB_dual_subslice_id();
+}
+
+__attribute__((always_inline))
 uint OVERLOADABLE intel_get_eu_id( void )
 {
     return __builtin_IB_eu_id();

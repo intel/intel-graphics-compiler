@@ -136,6 +136,7 @@ uint      __builtin_IB_movcr(uint reg) __attribute__((const));
 uint      __builtin_IB_hw_thread_id(void) __attribute__((const));
 uint      __builtin_IB_slice_id(void) __attribute__((const));
 uint      __builtin_IB_subslice_id(void) __attribute__((const));
+uint      __builtin_IB_dual_subslice_id(void) __attribute__((const));
 uint      __builtin_IB_eu_id(void) __attribute__((const));
 uint      __builtin_IB_get_sr0(uint DWNumber); // DWNumber=0|1|2|3
 uint      __builtin_IB_eu_thread_id(void) __attribute__((const));
