@@ -1005,6 +1005,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             {
                 m_kernelsAndFunctions.push_back(oldMainKernel);
             }
+            *m_kernelsAndFunctions.front()->getIRBuilder()->getJitInfo() =
+                *m_kernelsAndFunctions.back()->getIRBuilder()->getJitInfo();
 
         }
 
