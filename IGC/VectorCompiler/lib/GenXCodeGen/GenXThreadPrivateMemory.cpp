@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "GenXVisa.h"
 
 #include "vc/GenXOpts/Utils/KernelInfo.h"
+#include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/BreakConst.h"
 
 #include "Probe/Assertion.h"
@@ -55,6 +56,10 @@ using namespace genx;
 
 static cl::opt<bool> ForceSVMTPM("force-svm-tpm", cl::init(true), cl::Hidden,
   cl::desc("Force putting thread-private memory to SVM"));
+static cl::opt<bool>
+    PerformStackAnalysis("stack-analysis", cl::init(true), cl::Hidden,
+                         cl::desc("Perform static stack analysis to generate "
+                                  "warning in case of stack overflow"));
 
 namespace {
 
@@ -91,6 +96,152 @@ public:
   }
 };
 
+class StackAnalysis : public InstVisitor<StackAnalysis> {
+  DataLayout const &m_DL;
+  CallGraph const &m_CG;
+  uint64_t const m_MaxStackSize{};
+
+  // FunctionState contains information about function:
+  // m_UsedSz => how much stack memory it takes within with called from it the
+  //  most heavy function
+  // m_pHeavyFunction => pointer to function that occupies
+  //  the most stack memory
+  // m_ProcessingFlag => current state of function
+  struct FunctionState final {
+    // enumeration used to diagnose recursion
+    enum class ProcessingState {
+      Started,   // function started to be processed but did not finish
+      Finished,  // function has completely finished being processed
+      NotStarted // function has not started processing but will start
+    };
+    uint64_t m_UsedSz{0};
+    Function *m_pHeavyFunction{nullptr};
+    ProcessingState m_ProcessingFlag{ProcessingState::NotStarted};
+  };
+
+  // map between Function and its State
+  std::unordered_map<Function *, FunctionState> m_ProcessedFs{};
+
+  uint64_t checkFunction(Function &F);
+  std::string GenerateCallSequence(Function &F);
+  void checkKernel(Function &Kernel);
+
+public:
+  StackAnalysis() = delete;
+  StackAnalysis(DataLayout const &DL, CallGraph const &CG,
+                uint64_t MaxStackSize)
+      : m_DL{DL}, m_CG{CG}, m_MaxStackSize{MaxStackSize} {}
+
+  void visitAllocaInst(AllocaInst &AI);
+  void visitFunction(Function &F);
+
+  void doAnalysis(Module &M);
+};
+
+// It collects all allocas and updates stack usage of each function
+void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
+  Optional<uint64_t> AllocaSize = AI.getAllocationSizeInBits(m_DL);
+  IGC_ASSERT_MESSAGE(AllocaSize.hasValue(), "VLA is not expected");
+
+  m_ProcessedFs[AI.getFunction()].m_UsedSz += AllocaSize.getValue();
+}
+
+// It initializes all function
+void StackAnalysis::visitFunction(Function &F) {
+  bool isInserted = m_ProcessedFs.insert({&F, {}}).second;
+  IGC_ASSERT_MESSAGE(isInserted, "Error in insertion function in map");
+}
+
+// It performs checking CallGraph and usage of allocs in function
+uint64_t StackAnalysis::checkFunction(Function &F) {
+  // We guarantee this function exists in map as it has been inserted while
+  // visit
+  auto pOnF = m_ProcessedFs.find(&F);
+  IGC_ASSERT_MESSAGE(pOnF != m_ProcessedFs.end(),
+                     "Function must be inserted before checking");
+
+  auto &StateOfF = pOnF->second;
+  StateOfF.m_ProcessingFlag = FunctionState::ProcessingState::Started;
+
+  uint64_t MostUsedStackSize = 0;
+  for (auto &N : *m_CG[&F]) {
+    Function *NextCalledF = N.second->getFunction();
+    if (!NextCalledF || NextCalledF->isDeclaration())
+      continue;
+
+    uint64_t UsedStackSize = 0;
+    switch (m_ProcessedFs[NextCalledF].m_ProcessingFlag) {
+    case FunctionState::ProcessingState::Started: {
+      DiagnosticInfoTPM Warn{
+          "Recursion has been found in call graph. Called function: \"" +
+              NextCalledF->getName() + "\" from \"" + F.getName() +
+              "\"\nStack overflow can occur, but cannot be diagnosed.",
+          DS_Warning};
+      F.getContext().diagnose(Warn);
+      break;
+    }
+    case FunctionState::ProcessingState::NotStarted:
+      UsedStackSize = checkFunction(*NextCalledF);
+      break;
+    case FunctionState::ProcessingState::Finished:
+      UsedStackSize = m_ProcessedFs[NextCalledF].m_UsedSz;
+      break;
+    }
+
+    if (UsedStackSize > MostUsedStackSize) {
+      MostUsedStackSize = UsedStackSize;
+      StateOfF.m_pHeavyFunction = NextCalledF;
+    }
+  }
+
+  StateOfF.m_ProcessingFlag = FunctionState::ProcessingState::Finished;
+  StateOfF.m_UsedSz += MostUsedStackSize;
+  return StateOfF.m_UsedSz;
+}
+
+// It generates trace of functions most occupy stack memory
+std::string StackAnalysis::GenerateCallSequence(Function &F) {
+  auto &FunctionState = m_ProcessedFs[&F];
+  std::string FunctionDump =
+      F.getName().str() + '(' +
+      std::to_string(FunctionState.m_UsedSz / genx::ByteBits) + ')';
+
+  if (FunctionState.m_pHeavyFunction)
+    return FunctionDump + "->" +
+           GenerateCallSequence(*FunctionState.m_pHeavyFunction);
+  else
+    return FunctionDump;
+}
+
+// It begins checking from kernel and generates warning in case of possible
+// stack overflow
+void StackAnalysis::checkKernel(Function &Kernel) {
+  uint64_t const KernelUsedStack = checkFunction(Kernel) / genx::ByteBits;
+  if (KernelUsedStack > m_MaxStackSize) {
+    DiagnosticInfoTPM Warn{"Kernel \"" + Kernel.getName() +
+                               "\" may overflow stack. Used " +
+                               std::to_string(KernelUsedStack) + " bytes of " +
+                               std::to_string(m_MaxStackSize) +
+                               "\nCalls: " + GenerateCallSequence(Kernel),
+                           DS_Warning};
+    Kernel.getContext().diagnose(Warn);
+  }
+}
+
+void StackAnalysis::doAnalysis(Module &M) {
+  // It reserves extra memory for list of functions to avoid reallocations
+  std::vector<Function *> Kernels;
+  Kernels.reserve(M.size());
+  for (auto &F : M) {
+    visit(F);
+    if (genx::isKernel(&F))
+      Kernels.push_back(&F);
+  }
+
+  for (auto *Kernel : Kernels)
+    checkKernel(*Kernel);
+}
+
 int DiagnosticInfoTPM::KindID = 0;
 
 struct FunctionInfo {
@@ -114,6 +265,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     ModulePass::getAnalysisUsage(AU);
     AU.addRequired<TargetPassConfig>();
+    AU.addRequired<GenXBackendConfig>();
     AU.setPreservesCFG();
   }
 
@@ -1422,8 +1574,16 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
   m_ST = &getAnalysis<TargetPassConfig>()
               .getTM<GenXTargetMachine>()
               .getGenXSubtarget();
+  m_DL = &M.getDataLayout();
   if (!m_ST->isOCLRuntime())
     m_useGlobalMem = false;
+  GenXBackendConfig &BEConf = getAnalysis<GenXBackendConfig>();
+  CallGraph CG(M);
+  if (PerformStackAnalysis)
+    StackAnalysis{*m_DL, CG,
+                  m_useGlobalMem ? BEConf.getStatelessPrivateMemSize()
+                                 : visa::StackPerThreadScratch}
+        .doAnalysis(M);
   for (auto &F : M)
     visit(F);
   if (m_useGlobalMem ||
@@ -1431,13 +1591,14 @@ bool GenXThreadPrivateMemory::runOnModule(Module &M) {
                                             SVMChecker()) != m_alloca.end()))
     switchStack(M);
   bool Result = false;
-  CallGraph CG(M);
+
   std::unordered_set<Function *> Visited;
   std::queue<Function *> Worklist;
   std::for_each(M.begin(), M.end(), [&Worklist](Function &F) {
     if (genx::isKernel(&F))
       Worklist.push(&F);
   });
+
   while (!Worklist.empty()) {
     auto *F = Worklist.front();
     Worklist.pop();
@@ -1636,11 +1797,9 @@ bool GenXThreadPrivateMemory::runOnFunction(Function &F) {
   if (GenXIntrinsic::getAnyIntrinsicID(&F) != GenXIntrinsic::not_any_intrinsic)
     return false;
   LLVM_DEBUG(dbgs() << "Running TPM on " << F.getName() << "\n");
-  m_DL = &F.getParent()->getDataLayout();
   m_stack = m_ST->stackSurface();
 
   m_ctx = &F.getContext();
-  m_DL = &F.getParent()->getDataLayout();
   m_alloca.clear();
   m_args.clear();
   m_gather.clear();
