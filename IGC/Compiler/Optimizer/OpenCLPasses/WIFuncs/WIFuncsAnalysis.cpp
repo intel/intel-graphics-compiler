@@ -109,9 +109,8 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
         if (F.hasFnAttribute("referenced-indirectly") ||
             AddImplicitArgs::hasIndirectlyCalledParent(&F) ||
             (F.hasFnAttribute("visaStackCall") &&
-             (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL ||
-              IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INDIRECTCALL) &&
-             IGC_GET_FLAG_VALUE(ForceInlineStackCallWithImplArg) == 0))
+                IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE &&
+                IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg)))
         {
             return false;
         }

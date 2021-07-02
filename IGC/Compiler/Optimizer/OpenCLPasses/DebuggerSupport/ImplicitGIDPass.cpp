@@ -86,8 +86,8 @@ bool ImplicitGlobalId::runOnFunction(Function& F)
 
     // When stack calls are enabled, default behavior is to skip these in all functions
     if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL &&
-        IGC_GET_FLAG_VALUE(FunctionControl) == 3 &&
-        IGC_GET_FLAG_VALUE(ForceInlineStackCallWithImplArg) == 1)
+        IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE &&
+        IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
     {
         // Insert in functions only when reg key is set
         if (IGC_IS_FLAG_DISABLED(EmitPreDefinedForAllFunctions))
