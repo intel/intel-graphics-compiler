@@ -431,8 +431,8 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     std::vector<Value*> arg;
     if (extraBeginArgsNo > 0)
     {
-        IGC_ASSERT(extraBeginArgsNo == 1);
         arg.push_back(gatherpo->getOperand(0));
+        IGC_ASSERT(extraBeginArgsNo == 1);
     }
     arg.push_back(nullptr);                  // u
     arg.push_back(nullptr);                  // v
