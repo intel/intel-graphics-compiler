@@ -139,15 +139,11 @@ Instruction *foldBitCastInst(Instruction *Inst);
 // Return the underlying global variable. Return nullptr if it does not exist.
 GlobalVariable *getUnderlyingGlobalVariable(Value *V);
 const GlobalVariable *getUnderlyingGlobalVariable(const Value *V);
-GlobalVariable *getUnderlyingGlobalVariable(LoadInst *LI);
-const GlobalVariable *getUnderlyingGlobalVariable(const LoadInst *LI);
 
 class Bale;
 
-bool isGlobalStore(Instruction *I);
 bool isGlobalStore(StoreInst *ST);
 
-bool isGlobalLoad(Instruction *I);
 bool isGlobalLoad(LoadInst* LI);
 
 // Check that V is correct as value for global store to StorePtr.
@@ -701,17 +697,6 @@ bool isRealGlobalVariable(const GlobalVariable &GV);
 // Returns the size in bytes.
 std::size_t getStructElementPaddedSize(unsigned ElemIdx, unsigned NumOperands,
                                        const StructLayout &Layout);
-
-// Determine if there is a store to global variable Addr in between of L1 and
-// L2. L1 and L2 can be either vloads or regular stores.
-bool hasMemoryDeps(Instruction *L1, Instruction *L2, Value *Addr,
-                   DominatorTree *DT);
-
-// Return true if V is rdregion from a load result.
-bool isRdRFromGlobalLoad(Value *V);
-
-// Return true if wrregion has result of load as old value.
-bool isWrRToGlobalLoad(Value *V);
 
 } // namespace genx
 } // namespace llvm

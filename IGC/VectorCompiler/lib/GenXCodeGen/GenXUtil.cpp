@@ -1649,31 +1649,9 @@ GlobalVariable *genx::getUnderlyingGlobalVariable(Value *V) {
       getUnderlyingGlobalVariable(const_cast<const Value *>(V)));
 }
 
-const GlobalVariable *genx::getUnderlyingGlobalVariable(const LoadInst *LI) {
-  return getUnderlyingGlobalVariable(LI->getPointerOperand());
-}
-
-GlobalVariable *genx::getUnderlyingGlobalVariable(LoadInst *LI) {
-  return getUnderlyingGlobalVariable(LI->getPointerOperand());
-}
-
-bool genx::isGlobalStore(Instruction *I) {
-  IGC_ASSERT(I);
-  if (auto *SI = dyn_cast<StoreInst>(I))
-    return isGlobalStore(SI);
-  return false;
-}
-
 bool genx::isGlobalStore(StoreInst *ST) {
   IGC_ASSERT(ST);
   return getUnderlyingGlobalVariable(ST->getPointerOperand()) != nullptr;
-}
-
-bool genx::isGlobalLoad(Instruction *I) {
-  IGC_ASSERT(I);
-  if (auto *LI = dyn_cast<LoadInst>(I))
-    return isGlobalLoad(LI);
-  return false;
 }
 
 bool genx::isGlobalLoad(LoadInst *LI) {
@@ -2115,102 +2093,3 @@ bool genx::splitStructPhis(Function *F) {
   }
   return Modified;
 }
-
-bool genx::hasMemoryDeps(Instruction *L1, Instruction *L2, Value *Addr,
-                         DominatorTree *DT) {
-  // Return false for non global loads
-  if (!(GenXIntrinsic::isVLoad(L1) && GenXIntrinsic::isVLoad(L2)) &&
-      !(isGlobalLoad(L1) && isGlobalLoad(L2)))
-    return false;
-
-  auto isKill = [=](Instruction &I) {
-    Instruction *Inst = &I;
-    if ((GenXIntrinsic::isVStore(Inst) || genx::isGlobalStore(Inst)) &&
-        (Addr == Inst->getOperand(1) ||
-         Addr == getUnderlyingGlobalVariable(Inst->getOperand(1))))
-      return true;
-    // OK.
-    return false;
-  };
-
-  // vloads from the same block.
-  if (L1->getParent() == L2->getParent()) {
-    BasicBlock::iterator I = L1->getParent()->begin();
-    for (; &*I != L1 && &*I != L2; ++I)
-      /*empty*/;
-    IGC_ASSERT(&*I == L1 || &*I == L2);
-    auto IEnd = (&*I == L1) ? L2->getIterator() : L1->getIterator();
-    return std::any_of(I->getIterator(), IEnd, isKill);
-  }
-
-  // vloads are from different blocks.
-  //
-  //       BB1 (L1)
-  //      /   \
-  //   BB3    BB2 (L2)
-  //     \     /
-  //       BB4
-  //
-  auto BB1 = L1->getParent();
-  auto BB2 = L2->getParent();
-  if (!DT->properlyDominates(BB1, BB2)) {
-    std::swap(BB1, BB2);
-    std::swap(L1, L2);
-  }
-  if (DT->properlyDominates(BB1, BB2)) {
-    // As BB1 dominates BB2, we can recursively check BB2's predecessors, until
-    // reaching BB1.
-    //
-    // check BB1 && BB2
-    if (std::any_of(BB2->begin(), L2->getIterator(), isKill))
-      return true;
-    if (std::any_of(L1->getIterator(), BB1->end(), isKill))
-      return true;
-    std::set<BasicBlock *> Visited{BB1, BB2};
-    std::vector<BasicBlock *> BBs;
-    for (auto I = pred_begin(BB2), E = pred_end(BB2); I != E; ++I) {
-      BasicBlock *BB = *I;
-      if (!Visited.count(BB))
-        BBs.push_back(BB);
-    }
-
-    // This visits the subgraph dominated by BB1, originated from BB2.
-    while (!BBs.empty()) {
-      BasicBlock *BB = BBs.back();
-      BBs.pop_back();
-      Visited.insert(BB);
-
-      // check if there is any store kill in this block.
-      if (std::any_of(BB->begin(), BB->end(), isKill))
-        return true;
-
-      // Populate not visited predecessors.
-      for (auto I = pred_begin(BB), E = pred_end(BB); I != E; ++I)
-        if (!Visited.count(*I))
-          BBs.push_back(*I);
-    }
-
-    // no mem deps.
-    return false;
-  }
-
-  return true;
-}
-
-bool genx::isRdRFromGlobalLoad(Value *V) {
-  if (!GenXIntrinsic::isRdRegion(V))
-    return false;
-  auto *RdR = cast<CallInst>(V);
-  auto *I = dyn_cast<Instruction>(
-      RdR->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-  return I && isGlobalLoad(I);
-};
-
-bool genx::isWrRToGlobalLoad(Value *V) {
-  if (!GenXIntrinsic::isWrRegion(V))
-    return false;
-  auto *WrR = cast<CallInst>(V);
-  auto *I = dyn_cast<Instruction>(
-      WrR->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
-  return I && isGlobalLoad(I);
-};
