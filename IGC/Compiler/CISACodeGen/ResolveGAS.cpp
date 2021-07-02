@@ -736,7 +736,7 @@ bool GASResolving::resolveMemoryFromHost(Function& F) const {
                 }
             }
             else if (auto CI = dyn_cast<CallInst>(&I)) {
-                if (CI->onlyReadsMemory())
+                if (CI->onlyReadsMemory() || CI->onlyAccessesInaccessibleMemory())
                     continue;
 
                 // currently recognize only these ones
