@@ -49,7 +49,7 @@ static const G4_InstOptInfo InstOptInfo[] =
     {InstOpt_EOT, "EOT"},
     {InstOpt_AccWrCtrl, "AccWrEn"},
     {InstOpt_Compacted, "Compacted"},
-    {InstOpt_NoCompact, "NoCompact" },
+    {InstOpt_NoCompact, "NoCompact"},
     {InstOpt_NoSrcDepSet, "NoSrcDepSet"},
     {InstOpt_NoPreempt, "NoPreempt"},
     {InstOpt_Serialize, "Serialize"},
@@ -197,98 +197,18 @@ static bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& bui
     return false;
 }
 
-TARGET_PLATFORM G4_INST::getPlatform() const
+static void resetRightBound(G4_Operand* opnd)
 {
-    return builder.getPlatform();
+    if (opnd) {
+        opnd->unsetRightBound();
+    }
 }
 
-G4_INST::G4_INST(
-    const IR_Builder& irb,
-    G4_Predicate* prd,
-    G4_opcode o,
-    G4_CondMod* m,
-    G4_Sat s,
-    G4_ExecSize size,
-    G4_DstRegRegion* d,
-    G4_Operand* s0,
-    G4_Operand* s1,
-    unsigned int opt) :
-    op(o), dst(d), predicate(prd), mod(m), option(opt),
-    useInstList(irb.getAllocator()),
-    defInstList(irb.getAllocator()),
-    local_id(0),
-    srcCISAoff(UndefinedCisaOffset),
-    sat(s ? 1 : 0),
-    evenlySplitInst(false),
-    execSize(size),
-    bin(nullptr),
-    builder(irb)
+static void associateOpndWithInst(G4_Operand* opnd, G4_INST* inst)
 {
-    srcs[0] = s0;
-    srcs[1] = s1;
-    srcs[2] = nullptr;
-    srcs[3] = nullptr;
-
-    dead = false;
-    implAccSrc = nullptr;
-    implAccDst = nullptr;
-
-    resetRightBound(dst);
-    resetRightBound(s0);
-    resetRightBound(s1);
-    computeRightBound(predicate);
-    computeRightBound(mod);
-
-    associateOpndWithInst(dst, this);
-    associateOpndWithInst(s0, this);
-    associateOpndWithInst(s1, this);
-}
-
-G4_INST::G4_INST(
-    const IR_Builder& irb,
-    G4_Predicate* prd,
-    G4_opcode o,
-    G4_CondMod* m,
-    G4_Sat s,
-    G4_ExecSize size,
-    G4_DstRegRegion* d,
-    G4_Operand* s0,
-    G4_Operand* s1,
-    G4_Operand* s2,
-    unsigned int opt) :
-    op(o), dst(d), predicate(prd), mod(m), option(opt),
-    useInstList(irb.getAllocator()),
-    defInstList(irb.getAllocator()),
-    local_id(0),
-    srcCISAoff(UndefinedCisaOffset),
-    sat(s ? 1 : 0),
-    evenlySplitInst(false),
-    execSize(size),
-    bin(nullptr),
-    builder(irb)
-{
-    srcs[0] = s0;
-    srcs[1] = s1;
-    srcs[2] = s2;
-    srcs[3] = nullptr;
-
-    dead = false;
-    implAccSrc = nullptr;
-    implAccDst = nullptr;
-
-    resetRightBound(dst);
-    resetRightBound(s0);
-    resetRightBound(s1);
-    resetRightBound(s2);
-    computeRightBound(predicate);
-    computeRightBound(mod);
-
-    associateOpndWithInst(dst, this);
-    associateOpndWithInst(s0, this);
-    associateOpndWithInst(s1, this);
-    associateOpndWithInst(s2, this);
-    associateOpndWithInst(predicate, this);
-    associateOpndWithInst(mod, this);
+    if (opnd) {
+        opnd->setInst(inst);
+    }
 }
 
 G4_INST::G4_INST(
@@ -303,11 +223,11 @@ G4_INST::G4_INST(
     G4_Operand* s1,
     G4_Operand* s2,
     G4_Operand* s3,
-    unsigned int opt) :
+    G4_InstOpts opt) :
     op(o), dst(d), predicate(prd), mod(m), option(opt),
     useInstList(irb.getAllocator()),
     defInstList(irb.getAllocator()),
-    local_id(0),
+    localId(0),
     srcCISAoff(UndefinedCisaOffset),
     sat(s ? 1 : 0),
     evenlySplitInst(false),
@@ -687,8 +607,8 @@ void G4_INST::removeAllUses()
 // (i.e., not Opnd_dst/Opnd_condMod/Opnd_implAccDst)
 void G4_INST::removeDefUse(Gen4_Operand_Number opndNum)
 {
-    DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
-    while (iter != this->defInstList.end())
+    DEF_EDGE_LIST_ITER iter = defInstList.begin();
+    while (iter != defInstList.end())
     {
         if ((*iter).second == opndNum)
         {
@@ -696,7 +616,7 @@ void G4_INST::removeDefUse(Gen4_Operand_Number opndNum)
             defInst->useInstList.remove_if(
                 [&](USE_DEF_NODE node) { return node.first == this && node.second == opndNum; });
             DEF_EDGE_LIST_ITER curr_iter = iter++;
-            this->defInstList.erase(curr_iter);
+            defInstList.erase(curr_iter);
         }
         else
         {
@@ -737,8 +657,8 @@ USE_EDGE_LIST_ITER G4_INST::eraseUse(USE_EDGE_LIST_ITER iter)
 // inst2[opndNum2] and update definitions's def-use chain accordingly.
 void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1, Gen4_Operand_Number opndNum2)
 {
-    DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
-    while (iter != this->defInstList.end())
+    DEF_EDGE_LIST_ITER iter = defInstList.begin();
+    while (iter != defInstList.end())
     {
         auto defInst = (*iter).first;
         if ((*iter).second == opndNum1)
@@ -749,7 +669,7 @@ void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1, Gen4_Ope
                 [&](USE_DEF_NODE node) { return node.second == opndNum1 && node.first == this; });
             defInst->useInstList.push_back(USE_DEF_NODE(inst2, opndNum2));
             DEF_EDGE_LIST_ITER curr_iter = iter++;
-            this->defInstList.erase(curr_iter);
+            defInstList.erase(curr_iter);
         }
         else
         {
@@ -764,8 +684,11 @@ void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1, Gen4_Ope
 //
 // If 'checked' is true, then this only copies those effective defs to inst2.
 //
-void G4_INST::copyDef(G4_INST *inst2, Gen4_Operand_Number opndNum1,
-                      Gen4_Operand_Number opndNum2, bool checked)
+void G4_INST::copyDef(
+    G4_INST *inst2,
+    Gen4_Operand_Number opndNum1,
+    Gen4_Operand_Number opndNum2,
+    bool checked)
 {
     for (auto I = def_begin(); I != def_end(); ++I)
     {
@@ -903,16 +826,16 @@ void G4_INST::removeUseOfInst()
 void G4_INST::trimDefInstList()
 {
     // trim def list
-    DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
+    DEF_EDGE_LIST_ITER iter = defInstList.begin();
     // since ACC is only exposed in ARCTAN intrinsic translation, there is no instruction split with ACC
-    while (iter != this->defInstList.end())
+    while (iter != defInstList.end())
     {
-        G4_Operand *src = this->getOperand((*iter).second);
+        G4_Operand *src = getOperand((*iter).second);
 
         if (src == nullptr)
         {
             // it's possible the source is entirely gone (e.g., predicate removed)
-            iter = this->defInstList.erase(iter);
+            iter = defInstList.erase(iter);
             continue;
         }
         G4_CmpRelation rel = Rel_undef;
@@ -955,7 +878,7 @@ void G4_INST::trimDefInstList()
             }
             DEF_EDGE_LIST_ITER tmpIter = iter;
             iter++;
-            this->defInstList.erase(tmpIter);
+            defInstList.erase(tmpIter);
             continue;
         }
         iter++;
@@ -1286,6 +1209,26 @@ SB_INST_PIPE G4_INST::getInstructionPipeXe()
     return PIPE_NONE;
 }
 
+template <typename T>
+static std::string fmtHexBody(T t, int cols = 0)
+{
+    std::stringstream ss;
+    if (sizeof(t) == 1) // char/unsigned char to int
+        ss << std::hex << std::setw(cols) << std::uppercase <<
+            std::setfill('0') << (int)t;
+    else
+        ss << std::hex << std::setw(cols) << std::uppercase <<
+            std::setfill('0') << t;
+    return ss.str();
+}
+
+template <typename T>
+static std::string fmtHex(T t, int cols = 0)
+{
+    std::stringstream ss;
+    ss << "0x" << fmtHexBody(t, cols);
+    return ss.str();
+}
 
 
 #ifdef _DEBUG
@@ -1377,16 +1320,16 @@ void G4_INST::addDefUse(G4_INST* inst, Gen4_Operand_Number srcPos)
     MUST_BE_TRUE(srcPos == Opnd_dst || srcPos == Opnd_src0 || srcPos == Opnd_src1 ||
         srcPos == Opnd_src2 || srcPos == Opnd_src3 || srcPos == Opnd_pred ||
         srcPos == Opnd_implAccSrc, "unexpected operand number");
-    this->useInstList.push_back(std::pair<G4_INST*, Gen4_Operand_Number>(inst, srcPos));
-    inst->defInstList.push_back(std::pair<G4_INST*, Gen4_Operand_Number>(this, srcPos));
+    useInstList.emplace_back(inst, srcPos);
+    inst->defInstList.emplace_back(this, srcPos);
 }
 
 // exchange def/use info of src0 and src1 after they are swapped.
 void G4_INST::swapDefUse()
 {
-    DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
+    DEF_EDGE_LIST_ITER iter = defInstList.begin();
     // since ACC is only exposed in ARCTAN intrinsic translation, there is no instruction split with ACC
-    while (iter != this->defInstList.end())
+    while (iter != defInstList.end())
     {
         if ((*iter).second == Opnd_src1)
         {
@@ -1470,8 +1413,8 @@ void G4_INST::fixMACSrc2DefUse()
     {
         return;
     }
-    for (DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
-        iter != this->defInstList.end();
+    for (DEF_EDGE_LIST_ITER iter = defInstList.begin();
+        iter != defInstList.end();
         iter++)
     {
         if ((*iter).second == Opnd_src2)
@@ -2148,7 +2091,7 @@ bool G4_INST::canPropagateTo(
     // FIXME: remove this once DU/UD chain are computed correctly.
     //
     // Only skip when the defInst ('this') is defined in SIMD CF.
-    if (useInst->isWriteEnableInst() && !this->isWriteEnableInst() && inSimdFlow)
+    if (useInst->isWriteEnableInst() && !isWriteEnableInst() && inSimdFlow)
     {
         return false;
     }
@@ -2785,7 +2728,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
             break;
         }
     }
-    if (hasSrcModifier && !this->canSupportSrcModifier())
+    if (hasSrcModifier && !canSupportSrcModifier())
     {
         return false;
     }
@@ -2867,9 +2810,9 @@ bool G4_INST::isWARdep(G4_INST* inst)
     G4_Operand* implicitSrc0 = inst->getImplAccSrc();
     G4_Predicate* pred0 = inst->getPredicate();
 
-    G4_Operand* dst1 = this->dst;
+    G4_Operand* dst1 = dst;
 
-    if (dst1 && !this->hasNULLDst())
+    if (dst1 && !hasNULLDst())
     {
 
         if (
@@ -2896,7 +2839,7 @@ bool G4_INST::isWARdep(G4_INST* inst)
         }
     }
 
-    if (this->implAccDst)
+    if (implAccDst)
     {
         if ((implicitSrc0 && implicitSrc0->compareOperand(implAccDst) != Rel_disjoint) ||
             (src0_0 && src0_0->isAccReg() && src0_0->compareOperand(implAccDst) != Rel_disjoint) ||
@@ -2912,13 +2855,13 @@ bool G4_INST::isWARdep(G4_INST* inst)
 bool G4_INST::isWAWdep(G4_INST *inst)
 {
     G4_Operand *dst0 = inst->getDst();
-    G4_Operand *dst1 = this->dst;
-    G4_CondMod *cMod0   = inst->getCondMod();
-    G4_CondMod *cMod1   = this->mod;
-    G4_Operand *implicitDst0   = inst->getImplAccDst();
-    G4_Operand *implicitDst1   = this->implAccDst;
+    G4_Operand *dst1 = dst;
+    G4_CondMod *cMod0 = inst->getCondMod();
+    G4_CondMod *cMod1 = mod;
+    G4_Operand *implicitDst0 = inst->getImplAccDst();
+    G4_Operand *implicitDst1 = implAccDst;
 
-    bool NULLDst1 = !dst1 || this->hasNULLDst();
+    bool NULLDst1 = !dst1 || hasNULLDst();
     if (dst0 && !inst->hasNULLDst())
     {
         if ((!NULLDst1 && dst1->compareOperand(dst0) != Rel_disjoint) ||
@@ -2955,14 +2898,14 @@ bool G4_INST::isRAWdep(G4_INST *inst)
     G4_CondMod *cMod0 = inst->getCondMod();
     G4_Operand *implicitDst0   = inst->getImplAccDst();
     G4_Operand *msg1 = NULL;
-    G4_Predicate *pred1   = this->getPredicate();
-    G4_Operand *src1_0 = this->getSrc(0);
-    G4_Operand *src1_1 = this->getSrc(1);
-    G4_Operand *src1_2 = this->getSrc(2);
-    G4_Operand* src1_3 = this->getSrc(3);
-    G4_Operand *implicitSrc1   = this->implAccSrc;
+    G4_Predicate *pred1   = getPredicate();
+    G4_Operand *src1_0 = getSrc(0);
+    G4_Operand *src1_1 = getSrc(1);
+    G4_Operand *src1_2 = getSrc(2);
+    G4_Operand* src1_3 = getSrc(3);
+    G4_Operand *implicitSrc1   = implAccSrc;
 
-    bool NULLSrc1 = (this->opcode() == G4_math && src1_1->isNullReg());
+    bool NULLSrc1 = (opcode() == G4_math && src1_1->isNullReg());
     if (dst0 && !inst->hasNULLDst())
     {
         if ((src1_0 && src1_0->compareOperand(dst0) != Rel_disjoint) ||
@@ -3504,9 +3447,7 @@ void G4_INST::emitInstIds(std::ostream& output) const
 
     int64_t pc = getGenOffset();
     if (pc != -1) {
-        std::stringstream ss;
-        ss << std::hex << std::setw(5) << std::setfill('0') << pc;
-        output << "[" << ss.str() << "]";
+        output << "[" << fmtHexBody(pc, 5) << "]";
     }
 }
 
@@ -3618,7 +3559,7 @@ void G4_INST::emit_options(std::ostream& output) const
 
     ////////////////////////////////////////////////
     // bitset options
-    unsigned int currOpts = option;
+    G4_InstOpts currOpts = option;
     if (isEOT()) {
         currOpts |= InstOpt_EOT;
     }
@@ -3707,6 +3648,19 @@ bool G4_INST::isMixedMode() const
     return false;
 }
 
+void G4_InstSend::setMsgDesc(G4_SendDesc *in)
+{
+    assert(in && "null descriptor not expected");
+#if defined(_DEBUG)
+    if (in && in->getExecSize() == g4::SIMD_UNDEFINED)
+    {
+        DEBUG_MSG("Msg Desc has execSize undefined!\n");
+    }
+#endif
+    msgDesc = in;
+    resetRightBound((G4_Operand*)dst);
+    resetRightBound(srcs[0]);
+}
 
 bool G4_InstSend::isDirectSplittableSend()
 {
@@ -3818,8 +3772,7 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
     {
         if (getMsgDescRaw()) {
             std::ios::fmtflags outFlags(output.flags());
-            output.flags(std::ios_base::hex | std::ios_base::showbase);
-            output << getMsgDescRaw()->getExtendedDesc();
+            output << fmtHex(getMsgDescRaw()->getExtendedDesc());
             output << ' ';
             output.flags(outFlags);
         }
@@ -3852,6 +3805,8 @@ void G4_InstSend::emit_send_desc(std::ostream& output)
     auto desc = msgDesc->getDescription();
     if (!desc.empty()) {
         output << msgDesc->getDescription();
+    }
+    if (const auto *rawDesc = sendInst->getMsgDescRaw()) {
     }
 
     output << ", resLen=" << msgDesc->getDstLenRegs();
@@ -5919,17 +5874,15 @@ bool G4_Imm::isSignBitZero() const
 G4_CmpRelation G4_Imm::compareOperand(G4_Operand *opnd)
 {
     G4_CmpRelation rel = Rel_disjoint;
-    if (opnd->isImm() && this->isEqualTo(opnd->asImm()))
+    if (opnd->isImm() && isEqualTo(opnd->asImm()))
     {
         return Rel_eq;
     }
     return rel;
 }
 
-void
-G4_Imm::emit(std::ostream& output, bool symbolreg)
+void G4_Imm::emit(std::ostream& output, bool symbolreg)
 {
-
     //
     // we only emit hex in this function
     //
@@ -5969,9 +5922,8 @@ G4_Imm::emit(std::ostream& output, bool symbolreg)
     }
 }
 
-void
 // emit number, automatically select the format according to its original format
-G4_Imm::emitAutoFmt(std::ostream& output)
+void G4_Imm::emitAutoFmt(std::ostream& output)
 {
     if (Type_F == type)
     {
@@ -5991,7 +5943,7 @@ G4_Imm::emitAutoFmt(std::ostream& output)
     }
     else //unsigned value
     {
-        output << (unsigned int)imm.num;
+        output << (unsigned)imm.num;
     }
 
     if (Type_UNDEF != type)
@@ -6009,7 +5961,7 @@ int64_t G4_Imm::typecastVals(int64_t value, G4_Type type)
     case Type_UV:
     case Type_VF:
     {
-        retVal = (int64_t)((unsigned int)value);
+        retVal = (int64_t)((unsigned)value);
         break;
     }
     case Type_D:
@@ -7373,24 +7325,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     }
 }
 
-
-void resetRightBound(G4_Operand* opnd)
-{
-    if (opnd)
-    {
-        opnd->unsetRightBound();
-    }
-}
-
-void associateOpndWithInst(G4_Operand* opnd, G4_INST* inst)
-{
-    if (opnd)
-    {
-        opnd->setInst(inst);
-    }
-}
-
-void LiveIntervalInfo:: getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals)
+void LiveIntervalInfo::getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals)
 {
     for (auto&& it : liveIntervals)
     {
@@ -7402,7 +7337,7 @@ void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
 {
     if (liveIntervals.size() == 0)
     {
-        liveIntervals.push_back(std::make_pair(start, end));
+        liveIntervals.emplace_back(start, end);
     }
     else if (start - liveIntervals.back().second <= 1)
     {
@@ -7410,12 +7345,12 @@ void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
     }
     else if (liveIntervals.back().second < start)
     {
-        liveIntervals.push_back(std::make_pair(start, end));
+        liveIntervals.emplace_back(start, end);
     }
     else if (liveIntervals.front().first >= start && liveIntervals.back().second <= end)
     {
         liveIntervals.clear();
-        liveIntervals.push_back(std::make_pair(start, end));
+        liveIntervals.emplace_back(start, end);
     }
     else
     {
@@ -7490,7 +7425,7 @@ void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
             if (start - liveIntervals.back().second <= 1)
                 liveIntervals.back().second = end;
             else
-                liveIntervals.push_back(std::make_pair(start, end));
+                liveIntervals.emplace_back(start, end);
         }
     }
 }
@@ -8026,6 +7961,11 @@ bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
     default:
         return false;
     }
+}
+
+TARGET_PLATFORM G4_INST::getPlatform() const
+{
+    return builder.getPlatform();
 }
 
 G4_INST* G4_INST::cloneInst()

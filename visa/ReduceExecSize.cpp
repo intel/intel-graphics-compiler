@@ -1519,8 +1519,8 @@ void HWConformity::moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t num
     {
 
         //inst->removeDefUse(Gen4_Operand_Number(srcNum + 1));
-        //def_inst->useInstList.push_back(std::pair<G4_INST*, Gen4_Operand_Number>(inst, Gen4_Operand_Number(srcNum + 1)));
-        //inst->defInstList.push_back(std::pair<G4_INST*, Gen4_Operand_Number>(def_inst, Gen4_Operand_Number(srcNum + 1)));
+        //def_inst->useInstList.emplace_back(inst, Gen4_Operand_Number(srcNum + 1));
+        //inst->defInstList.emplace_back(def_inst, Gen4_Operand_Number(srcNum + 1));
 
         G4_DstRegRegion* existing_def = def_inst->getDst();
         G4_SrcRegRegion* newSrc = builder.createSrc(

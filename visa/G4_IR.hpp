@@ -126,7 +126,6 @@ namespace vISA
         bool operator!=(const std_arena_based_allocator & a) const { return !operator==(a); }
     };
 }
-void resetRightBound(vISA::G4_Operand* opnd);
 
 // We use memory manager.  Memory manager will free all the space at once so that
 // there is no need to call destructor or delete to free up space.
@@ -165,7 +164,6 @@ class G4_FillIntrinsic;
 
 
 }
-void associateOpndWithInst(vISA::G4_Operand*, vISA::G4_INST*);
 
 // Forward declarations for global opt report related functions
 void getOptReportStream(std::ofstream& reportStream, const Options *options);
@@ -301,7 +299,7 @@ protected:
     DEF_EDGE_LIST defInstList;
 
     // instruction's id in BB. Each optimization should re-initialize before using
-    int32_t   local_id;
+    int32_t   localId;
 
     static const int UndefinedCisaOffset = -1;
     int srcCISAoff = UndefinedCisaOffset; // record CISA inst offset that resulted in this instruction
@@ -361,9 +359,6 @@ typedef struct _SWSBInfo
         SBToken = 0;
         tokenType = TOKEN_NONE;
     }
-    ~_SWSBInfo()
-    {
-    }
 } SWSBInfo;
 
 protected:
@@ -409,7 +404,7 @@ public:
 
 public:
     G4_INST(
-        const IR_Builder& builder,
+        const IR_Builder& irb,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -418,10 +413,12 @@ public:
         G4_DstRegRegion* d,
         G4_Operand* s0,
         G4_Operand* s1,
-        unsigned int opt);
+        G4_InstOpts opt)
+        : G4_INST(irb, prd, o, m, s, size, d, s0, s1, nullptr, nullptr, opt)
+    { }
 
     G4_INST(
-        const IR_Builder& builder,
+        const IR_Builder& irb,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -431,7 +428,9 @@ public:
         G4_Operand* s0,
         G4_Operand* s1,
         G4_Operand* s2,
-        unsigned int opt);
+        G4_InstOpts opt)
+        : G4_INST(irb, prd, o, m, s, size, d, s0, s1, s2, nullptr, opt)
+    { }
 
     G4_INST(
         const IR_Builder& builder,
@@ -445,7 +444,7 @@ public:
         G4_Operand* s1,
         G4_Operand* s2,
         G4_Operand* s3,
-        unsigned int opt);
+        G4_InstOpts opt);
 
     virtual ~G4_INST()
     {
@@ -756,8 +755,8 @@ public:
     bool isCompactedInst()  const { return (option & InstOpt_Compacted) ? true : false; }
     bool isNoCompactedInst() const { return (option & InstOpt_NoCompact) ? true : false; }
 
-    void setLocalId(int32_t lid)  { local_id = lid; }
-    int32_t getLocalId() const { return local_id; }
+    void setLocalId(int32_t lid)  { localId = lid; }
+    int32_t getLocalId() const { return localId; }
 
     void setEvenlySplitInst(bool val) { evenlySplitInst = val; }
     bool getEvenlySplitInst() { return evenlySplitInst; }
@@ -1037,7 +1036,7 @@ public:
     void addComment(const std::string& comment);
 
     // replaces any old comments with this
-    // prefer addComment if so you don't stomp someone else's message
+    // prefer addComment if don't wish to stomp earlier comments
     void setComments(const std::string& comments);
 
     std::string getComments() const
@@ -1102,7 +1101,7 @@ public:
         G4_Operand* s0,
         G4_Operand* s1,
         G4_Operand* s2,
-        unsigned int opt,
+        G4_InstOpts opt,
         uint8_t mBooleanFuncCtrl) :
         G4_INST(builder, prd, G4_bfn, m, sat, size, d, s0, s1, s2, opt),
         funcCtrl(mBooleanFuncCtrl)
@@ -1144,7 +1143,7 @@ class G4_InstDpas : public G4_INST
             G4_Operand* s1,
             G4_Operand* s2,
             G4_Operand* s3,
-            unsigned int opt,
+            G4_InstOpts opt,
             GenPrecision a,
             GenPrecision w,
             uint8_t      sd,
@@ -1200,7 +1199,7 @@ public:
         G4_DstRegRegion* d,
         G4_Operand* s0,
         G4_Operand* s1,
-        unsigned int opt,
+        G4_InstOpts opt,
         G4_MathOp mOp = MATH_RESERVED) :
         G4_INST(builder, prd, o, m, sat, execSize, d, s0, s1, opt),
         mathOp(mOp)
@@ -1263,7 +1262,7 @@ public:
         G4_ExecSize size,
         G4_Label* jipLabel,
         G4_Label* uipLabel,
-        uint32_t instOpt) :
+        G4_InstOpts instOpt) :
         G4_INST(builder, prd, op, nullptr, g4::NOSAT, size, nullptr, nullptr, nullptr, instOpt),
         jip(jipLabel), uip(uipLabel), isBackwardBr(op == G4_while), isUniformBr(false)
     {
@@ -1280,7 +1279,7 @@ public:
         G4_ExecSize size,
         G4_DstRegRegion* d,
         G4_Operand* s0,
-        unsigned int opt) :
+        G4_InstOpts opt) :
         G4_INST(builder, prd, o, m, g4::NOSAT, size, d, s0, nullptr, opt),
         jip(NULL), uip(NULL), isBackwardBr(o == G4_while), isUniformBr(false)
     {
@@ -1434,19 +1433,7 @@ public:
         return msgDesc;
     }
 
-    void setMsgDesc(G4_SendDesc *in)
-    {
-        assert(in && "null descriptor not expected");
-#if defined(_DEBUG)
-        if (in && in->getExecSize() == g4::SIMD_UNDEFINED)
-        {
-            DEBUG_MSG("Msg Desc has execSize undefined!\n");
-        }
-#endif
-        msgDesc = in;
-        resetRightBound((G4_Operand*)dst);
-        resetRightBound(srcs[0]);
-    }
+    void setMsgDesc(G4_SendDesc *in);
 
     // restrictions on whether a send may be EOT:
     // -- The posted destination operand must be null
@@ -1702,7 +1689,7 @@ namespace vISA
         void getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals);
         void clearLiveIntervals() { liveIntervals.clear(); }
 
-        DebugLiveIntervalState getState() { return state; }
+        DebugLiveIntervalState getState() const { return state; }
 
         void setStateOpen(uint32_t VISAIndex)
         {
@@ -1729,7 +1716,6 @@ namespace vISA
         }
 
         LiveIntervalInfo() { cleanedAt = 0; state = Closed; openIntervalVISAIndex = 0; }
-        ~LiveIntervalInfo() { }
     };
 }
 
@@ -1776,7 +1762,7 @@ class G4_Declare
     friend class IR_Builder;
 
     const char*        name;        // Var_Name
-    G4_RegFileKind    regFile;    // from which reg file
+    G4_RegFileKind     regFile;     // from which reg file
     G4_Type            elemType;    // element type
 
     G4_RegVar*        regVar;        // corresponding reg var
@@ -1805,10 +1791,10 @@ class G4_Declare
     uint16_t refInSend : 1;
     uint16_t PreDefinedVar : 1;  // indicate if this dcl is created from preDefinedVars.
 
-    unsigned int   decl_id;     // global decl id for this builder
+    unsigned declId;     // global decl id for this builder
 
     uint32_t numElements;
-    unsigned int numFlagElements;
+    unsigned numFlagElements;
 
     // byte offset of this declare from the base declare.  For top-level declares this value is 0
     int offsetFromBase;
@@ -1818,11 +1804,11 @@ class G4_Declare
     unsigned scopeID;
 
     // For GRFs, store byte offset of allocated GRF
-    unsigned int GRFBaseOffset;
+    unsigned GRFBaseOffset;
 
     // fields that are only ever referenced by RA and spill code
     // ToDo: they should be moved out of G4_Declare and stored as maps in RA/spill
-    G4_Declare*     spillDCL;  // if an addr/flag var is spilled, SpillDCL is the location (GRF) holding spilled value
+    G4_Declare* spillDCL;  // if an addr/flag var is spilled, SpillDCL is the location (GRF) holding spilled value
 
     G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
 
@@ -1874,12 +1860,8 @@ public:
         scopeID = 0;
 
         GRFBaseOffset = 0;
-        decl_id = (uint32_t) dcllist.size();
+        declId = (unsigned)dcllist.size();
         dcllist.push_back(this);
-    }
-
-    ~G4_Declare()
-    {
     }
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
@@ -2070,7 +2052,7 @@ public:
     const G4_Declare* getSpilledDeclare() const {return spillDCL;}
           G4_Declare* getSpilledDeclare()  {return spillDCL;}
 
-    unsigned getDeclId() const { return decl_id; }
+    unsigned getDeclId() const { return declId; }
 
     void setIsSplittedDcl(bool b) { isSplittedDcl = b; }
     bool getIsSplittedDcl() const { return isSplittedDcl; }
@@ -2173,8 +2155,8 @@ protected:
     unsigned left_bound;
     unsigned right_bound;
 
-    explicit G4_Operand(Kind k, G4_Type ty = Type_UNDEF,
-                        G4_VarBase *base = nullptr)
+    explicit G4_Operand(
+        Kind k, G4_Type ty = Type_UNDEF, G4_VarBase *base = nullptr)
         : kind(k), type(ty), inst(nullptr), top_dcl(nullptr), base(base),
           rightBoundSet(false), byteOffset(0), accRegSel(ACC_UNDEFINED),
           left_bound(0), right_bound(0)
@@ -3405,7 +3387,6 @@ class G4_Predicate final : public G4_Operand
     }
 
 public:
-
     G4_Predicate(G4_Predicate& prd);
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
@@ -3521,7 +3502,6 @@ class G4_CondMod final : public G4_Operand
     }
 
 public:
-
     G4_CondMod(G4_CondMod &cMod);
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
     G4_CondModifier getMod() const { return mod; }

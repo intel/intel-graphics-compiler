@@ -33,8 +33,7 @@ struct AccInterval
         }
     }
 
-    double getSpillCost()
-    {
+    double getSpillCost() const {
         if (isPreAssigned)
         {
             // don't spill pre-assigned

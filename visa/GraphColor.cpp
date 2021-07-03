@@ -4140,7 +4140,7 @@ void Augmentation::buildLiveIntervals()
 
                 FuncInfo* callee = curBB->getCalleeInfo();
                 std::pair<G4_INST*, FuncInfo*> callInfo(inst, callee);
-                callDclMap.insert(std::pair<G4_Declare*, std::pair<G4_INST*, FuncInfo*>>(scallDcl, callInfo));
+                callDclMap.emplace(scallDcl, callInfo);
 
                 continue;
             }
@@ -8257,7 +8257,7 @@ void GlobalRA::addCallerSavePseudoCode()
                 const char* name = builder.getNameString(builder.mem, 32, "FCALL_RETVAL_%d", retID++);
                 auto retDcl = builder.createHardwiredDeclare(numEltPerGRF<Type_UD>() * retSize, Type_UD, IR_Builder::ArgRet_Stackcall::Ret, 0);
                 retDcl->setName(name);
-                fcallRetMap.insert(std::pair<G4_Declare*, G4_Declare*>(pseudoVCADcl, retDcl));
+                fcallRetMap.emplace(pseudoVCADcl, retDcl);
             }
 
             ASSERT_USER(bb->Succs.size() == 1, "fcall basic block cannot have more than 1 successor node");
