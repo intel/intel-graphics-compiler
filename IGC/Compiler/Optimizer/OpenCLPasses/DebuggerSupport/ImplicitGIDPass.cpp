@@ -381,7 +381,7 @@ bool CleanImplicitIds::processFunc(Function& F)
                 }
                 Top->eraseFromParent();
             }
-            else if (Top->getNumUses() == 1)
+            else if (Top->hasOneUse())
             {
                 // Catch specific case:
                 // %localIdX49 = zext i16 %localIdX to i32
@@ -393,7 +393,7 @@ bool CleanImplicitIds::processFunc(Function& F)
                     if (CmpI->getOperand(0) == Top &&
                         isa<ConstantInt>(CmpI->getOperand(1)))
                     {
-                        if (CmpI->getNumUses() == 1)
+                        if (CmpI->hasOneUse())
                         {
                             if (auto IntrinsicI = dyn_cast_or_null<IntrinsicInst>(*CmpI->user_begin()))
                             {

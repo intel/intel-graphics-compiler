@@ -1066,7 +1066,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
                 if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType ||
                     argAlloc->type == ResourceTypeEnum::BindlessSamplerResourceType)
                 {
-                    needAllocation = funcArg->getNumUses() > 0;
+                    needAllocation = !funcArg->use_empty();
                 }
             }
         }

@@ -432,7 +432,7 @@ bool EmitPass::compileSymbolTableKernel(llvm::Function* F)
         {
             if (FI.isDeclaration() &&
                 FI.hasFnAttribute("referenced-indirectly") &&
-                FI.getNumUses() > 0)
+                !FI.use_empty())
             {
                 return true;
             }
@@ -10978,7 +10978,7 @@ void EmitPass::emitSymbolRelocation(Function& F)
     for (auto& FI : pModule->getFunctionList())
     {
         // Create a relocation instruction for every "referenced-indirectly" function being used in the current function
-        if (FI.hasFnAttribute("referenced-indirectly") && FI.getNumUses() > 0)
+        if (FI.hasFnAttribute("referenced-indirectly") && !FI.use_empty())
         {
             if (ValueUsedInFunction(&FI, &F))
             {
@@ -10998,7 +10998,7 @@ void EmitPass::emitSymbolRelocation(Function& F)
         // Create relocation instruction for global variables
         GlobalVariable* pGlobal = dyn_cast<GlobalVariable>(gi);
         if (pGlobal &&
-            pGlobal->getNumUses() > 0 &&
+            !pGlobal->use_empty() &&
             m_moduleMD->inlineProgramScopeOffsets.count(pGlobal) > 0 &&
             ValueUsedInFunction(pGlobal, &F))
         {

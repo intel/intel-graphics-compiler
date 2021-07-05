@@ -641,7 +641,7 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         Function* F = &(*I);
         if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
 
-        if (F->hasFnAttribute("referenced-indirectly") || F->getNumUses() == 0)
+        if (F->hasFnAttribute("referenced-indirectly") || F->use_empty())
         {
             IGC_ASSERT(getGroup(F) == nullptr);
             addToFunctionGroup(F, IndirectCallGroup, F);

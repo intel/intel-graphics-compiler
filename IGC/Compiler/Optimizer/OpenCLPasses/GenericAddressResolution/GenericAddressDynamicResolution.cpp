@@ -495,7 +495,7 @@ bool GenericAddressDynamicResolution::allowArithmeticOnGenericAddressSpace(Funct
                 PtrToIntInst* ptiInst = dyn_cast<PtrToIntInst>(useInst);
                 if (ptiInst && ptiInst->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
                 {
-                    if (ptiInst->getNumUses() > 0)
+                    if (!ptiInst->use_empty())
                     {
                         Instruction* ptiUser = ptiInst->user_back();
                         // We only skip tags on generic pointers if there is an arithmetic operation

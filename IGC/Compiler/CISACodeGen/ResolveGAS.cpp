@@ -1413,7 +1413,7 @@ void LowerGPCallArg::FixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
             FixAddressSpaceInAllUses(inst, newAS, oldAS, recoverASC);
 
             // Remove addrspacecast if it wasn't used
-            if (recoverASC->getNumUses() == 0)
+            if (recoverASC->use_empty())
                 recoverASC->eraseFromParent();
         }
     } while (nextUI != E);
@@ -1446,7 +1446,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
                 FixAddressSpaceInAllUses(I, newArgs[newArgIdx].second, ADDRESS_SPACE_GENERIC, recoverASC);
 
                 // Remove addrspacecast if it wasn't used
-                if (recoverASC->getNumUses() == 0)
+                if (recoverASC->use_empty())
                 {
                     recoverASC->eraseFromParent();
                 }
@@ -1548,7 +1548,7 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(FuncToUpdate& f)
                 if (addrSpaceCastInst)
                 {
                     callArg = addrSpaceCastInst->getOperand(0);
-                    if (addrSpaceCastInst->getNumUses() == 1)
+                    if (addrSpaceCastInst->hasOneUse())
                     {
                         // when addrspacecast is used in a metadata node, replacing it
                         // requires reconstruction of the node. we cannot used standard

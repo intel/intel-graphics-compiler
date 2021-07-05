@@ -141,7 +141,7 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
             {
                 return false;
             }
-            if (ei->getNumUses() > 1)
+            if (ei->hasNUsesOrMore(1))
             {
                 return false;
             }
@@ -154,7 +154,7 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
             {
                 Instruction* fadd = dyn_cast<Instruction>(*ei->users().begin());
                 if (fadd == nullptr || fadd->getOpcode() != Instruction::FAdd ||
-                    fadd->getNumUses() > 1)
+                    fadd->hasNUsesOrMore(1))
                 {
                     return false;
                 }
@@ -177,7 +177,7 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
     {
         Instruction* fadd = dyn_cast<Instruction>(*rgb[i]->users().begin());
         if (fadd == nullptr || fadd->getOpcode() != Instruction::FAdd ||
-            fadd->getNumUses() > 1)
+            fadd->hasNUsesOrMore(1))
         {
             return false;
         }
@@ -189,7 +189,7 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
 
         Instruction* fmul = dyn_cast<Instruction>(*fadd->users().begin());
         if (fmul == nullptr || fmul->getOpcode() != Instruction::FMul ||
-            fmul->getNumUses() > 1)
+            fmul->hasNUsesOrMore(1))
         {
             return false;
         }

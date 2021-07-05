@@ -439,11 +439,11 @@ void CustomSafeOptPass::visitLoadInst(LoadInst& load)
             result->setDebugLoc(load.getDebugLoc());
             load.replaceAllUsesWith(result);
             load.eraseFromParent();
-            if (gep->getNumUses() == 0)
+            if (gep->use_empty())
             {
                 gep->eraseFromParent();
             }
-            if (sel->getNumUses() == 0)
+            if (sel->use_empty())
             {
                 sel->eraseFromParent();
             }
@@ -1589,7 +1589,7 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
 
         if (BinaryOperator * orInst = dyn_cast<BinaryOperator>(*iter))
         {
-            if (orInst->getOpcode() == BinaryOperator::Or && orInst->getNumUses() == 1)
+            if (orInst->getOpcode() == BinaryOperator::Or && orInst->hasOneUse())
             {
                 if (ConstantInt * orSrc1 = dyn_cast<ConstantInt>(orInst->getOperand(1)))
                 {
@@ -5158,7 +5158,7 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
                 Instruction* s1 = dyn_cast<Instruction>(inst->getOperand(1));
                 if (s0 && s1 &&
                     !isa<PHINode>(s0) && !isa<PHINode>(s1) &&
-                    s0->getNumUses() == 1 && s1->getNumUses() == 1 &&
+                    s0->hasOneUse() && s1->hasOneUse() &&
                     s0->getParent() == bb && s1->getParent() == bb)
                 {
                     if (isInstPrecede(s1, s0))

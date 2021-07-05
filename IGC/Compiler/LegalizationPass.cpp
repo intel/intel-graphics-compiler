@@ -1260,7 +1260,7 @@ void Legalization::visitStoreInst(StoreInst& I)
         IGC::cloneStore(&I, storeVal, storePtr);
         I.eraseFromParent();
 
-        if (intToPtr && intToPtr->getNumUses() == 0)
+        if (intToPtr && intToPtr->use_empty())
         {
             intToPtr->eraseFromParent();
         }

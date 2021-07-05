@@ -321,7 +321,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop* loop,
     {
         IntrinsicInst* intrin = dyn_cast<IntrinsicInst>(UI);
         if (intrin->getIntrinsicID() == Intrinsic::fabs &&
-            intrin->getNumUses() == 1)
+            intrin->hasOneUse())
         {
             intrin_abs = intrin;
             break;
@@ -334,7 +334,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop* loop,
             *intrin_abs->users().begin());
         if (intrin &&
             intrin->getIntrinsicID() == Intrinsic::log2 &&
-            intrin->getNumUses() == 1)
+            intrin->hasOneUse())
         {
             intrin_log2 = intrin;
         }
@@ -346,7 +346,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop* loop,
             *intrin_log2->users().begin());
         if (fmul &&
             fmul->getOpcode() == Instruction::FMul &&
-            fmul->getNumUses() == 1)
+            fmul->hasOneUse())
         {
             unsigned id = fmul->getOperand(0) == intrin_log2 ? 1 : 0;
             // make sure another operand is coming from out of loop
