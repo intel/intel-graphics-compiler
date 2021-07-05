@@ -135,6 +135,23 @@ public:
   }
 };
 
+class OutputBinaryCreationError final
+    : public llvm::ErrorInfo<OutputBinaryCreationError> {
+public:
+  static char ID;
+
+private:
+  std::string Message;
+
+public:
+  OutputBinaryCreationError(llvm::StringRef Msg) : Message{Msg.str()} {}
+
+  void log(llvm::raw_ostream &OS) const override;
+  std::error_code convertToErrorCode() const override {
+    return make_error_code(errc::output_not_created);
+  }
+};
+
 } // namespace vc
 
 #endif

@@ -23,6 +23,10 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorOCL/OCL/sp/spp_g8.h"
 
+namespace llvm {
+class Error;
+} // namespace llvm
+
 namespace vc {
 
 // Interface to compile and package cm kernels into OpenCL binars.
@@ -118,14 +122,18 @@ public:
   void CreateKernelBinaries();
   void GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                    unsigned pointerSizeInBytes) override;
+  bool HasErrors() const { return !m_ErrorLog.empty(); };
+  llvm::Error GetError() const;
 
   // CM kernel list.
-  std::vector<std::unique_ptr<CMKernel>> m_kernels;
+  using CMKernelsStorage = std::vector<std::unique_ptr<CMKernel>>;
+  CMKernelsStorage m_kernels;
 
   // Data structure to create patch token based binaries.
   std::unique_ptr<IGC::SOpenCLProgramInfo> m_programInfo;
 
   CMProgramCtxProvider m_ContextProvider;
+  std::string m_ErrorLog;
 };
 
 void createBinary(

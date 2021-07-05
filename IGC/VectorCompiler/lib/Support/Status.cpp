@@ -49,6 +49,8 @@ std::string vc_error_category::message(int condition) const {
     return std::string(ErrorTraits<errc::invalid_internal_option>::getMessage());
   case errc::bif_load_fail:
     return std::string(ErrorTraits<errc::bif_load_fail>::getMessage());
+  case errc::output_not_created:
+    return std::string(ErrorTraits<errc::output_not_created>::getMessage());
   }
   IGC_ASSERT_EXIT_MESSAGE(0, "Unknown error code");
 }
@@ -125,6 +127,14 @@ void OptionError::log(llvm::raw_ostream &OS) const {
   else
     OS << ErrorTraits<errc::invalid_api_option>::getMessage();
   OS << ": " << BadOption;
+}
+// }}
+
+// OutputBinaryCreationError {{
+char OutputBinaryCreationError::ID = 0;
+void OutputBinaryCreationError::log(llvm::raw_ostream &OS) const {
+  OS << ErrorTraits<errc::output_not_created>::getMessage();
+  OS << ": " << Message;
 }
 // }}
 

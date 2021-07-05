@@ -68,6 +68,10 @@ template <> struct ErrorTraits<errc::bif_load_fail> {
   }
 };
 
+template <> struct ErrorTraits<errc::output_not_created> {
+  static llvm::StringRef getMessage() { return "could not create output file"; }
+};
+
 } // namespace vc
 
 #endif

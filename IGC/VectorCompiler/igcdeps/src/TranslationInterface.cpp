@@ -488,6 +488,9 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
         ProgramDebugData.GetLinearPointer(),
         static_cast<std::size_t>(ProgramDebugData.Size())};
 
+    if (CMProgram.HasErrors())
+      return getError(CMProgram.GetError(), OutputArgs);
+
     outputBinary(BinaryRef, DebugInfoRef, Diag, OutputArgs);
     break;
   }
@@ -498,15 +501,12 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     llvm::SmallVector<char, 0> ProgramBinary;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};
     CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
+
+    if (CMProgram.HasErrors())
+      return getError(CMProgram.GetError(), OutputArgs);
+
     llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
-
-    Util::BinaryStream ProgramDebugData;
-    CMProgram.GetProgramDebugData(ProgramDebugData);
-    llvm::StringRef DebugInfoRef{
-        ProgramDebugData.GetLinearPointer(),
-        static_cast<std::size_t>(ProgramDebugData.Size())};
-
-    outputBinary(BinaryRef, DebugInfoRef, Diag, OutputArgs);
+    outputBinary(BinaryRef, {}, Diag, OutputArgs);
     break;
   }
   }
