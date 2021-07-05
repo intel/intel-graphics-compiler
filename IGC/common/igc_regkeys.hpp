@@ -95,7 +95,7 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode);
 struct SRegKeysList
 {
-#include "igc_regkeys.def"
+#include "igc_regkeys.h"
 };
 #undef DECLARE_IGC_REGKEY
 bool CheckHashRange(const std::vector<HashRange>&);
@@ -155,7 +155,7 @@ namespace IGC
     class DebugVariable
     {
     public:
-#include "igc_regkeys.def"
+#include "igc_regkeys.h"
     };
 };
 #undef DECLARE_IGC_REGKEY

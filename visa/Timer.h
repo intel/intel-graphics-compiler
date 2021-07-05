@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT
 #define DEF_TIMER(ENUM, DESCR) ENUM,
 enum class TimerID
 {
-#include "Timer.def"
+#include "TimerDefs.h"
     NUM_TIMERS
 };
 

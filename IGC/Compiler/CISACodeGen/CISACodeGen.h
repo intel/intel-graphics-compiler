@@ -67,7 +67,7 @@ namespace IGC
     opCode,
     enum e_opcode
     {
-#include "isaDef.def"
+#include "isaDef.h"
     };
 #undef DECLARE_CISA_OPCODE
 
@@ -75,7 +75,7 @@ namespace IGC
     visaname,
     __attr_unused static ISA_Opcode ConvertOpcode[] =
     {
-    #include "isaDef.def"
+    #include "isaDef.h"
     };
 #undef DECLARE_CISA_OPCODE
 

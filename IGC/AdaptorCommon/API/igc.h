@@ -32,7 +32,7 @@ SPDX-License-Identifier: MIT
 // to include this file only.
 
 // Definition of integer Registry-key Values
-// (may merge this into igc_flags.def's macro)
+// (may merge this into igc_flags.h's macro)
 enum {
     // ForcePixelShaderSIMDMode
     FLAG_PS_SIMD_MODE_DEFAULT = 0,                 // default is SIMD8 compilation + heuristics to determine if we want to compile SIMD32/SIMD16

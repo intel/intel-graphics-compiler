@@ -44,7 +44,7 @@ namespace IGC
         {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
             OPTION_##regkeyName,
-#include "common/igc_regkeys.def"
+#include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
             END,
             BEGIN = 0

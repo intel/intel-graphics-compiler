@@ -61,7 +61,7 @@ namespace vISA
         enum ID
         {
             #define DEF_ATTR(E, N, K, I, D)   E,
-            #include "VISAAttributes.def"
+            #include "VISAAttributes.h"
 
             ATTR_TOTAL_NUM,
             ATTR_INVALID

@@ -43,7 +43,7 @@ namespace {
 const char* g_cShaderStatItems[STATS_MAX_SHADER_STATS_ITEMS+1] =
 {
 #define DEFINE_SHADER_STAT( enumName, stringName ) stringName,
-#include "shaderStats.def"
+#include "shaderStats.h"
 #undef DEFINE_SHADER_STAT
 };
 
@@ -429,7 +429,7 @@ void ShaderStats::miscSumShaderStat(ShaderStats* sStats)
 const char* g_cCompTimeIntervals[MAX_COMPILE_TIME_INTERVALS+1] =
 {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) stringName,
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
 };
 
@@ -438,7 +438,7 @@ std::string str(COMPILE_TIME_INTERVALS cti)
     switch (cti)
     {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return #enumName;
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     default: IGC_ASSERT_MESSAGE(0, "unreachable"); break;
     }
@@ -453,7 +453,7 @@ COMPILE_TIME_INTERVALS interval( std::string const& str )
     { \
         return enumName; \
     }
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     //llvm::errs() << str;
     IGC_ASSERT_MESSAGE(0, "unreachable, unknown COMPILE_TIME_INTERVALS name");
@@ -465,7 +465,7 @@ bool isVISATimer( COMPILE_TIME_INTERVALS cti )
     switch (cti)
     {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isVISA;
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     default: IGC_ASSERT_MESSAGE(0, "unreachable"); break;
     }
@@ -477,7 +477,7 @@ bool isUnaccounted( COMPILE_TIME_INTERVALS cti )
     switch (cti)
     {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isUnacc;
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     default: IGC_ASSERT_MESSAGE(0, "unreachable"); break;
     }
@@ -489,7 +489,7 @@ bool isCoarseTimer( COMPILE_TIME_INTERVALS cti )
     switch (cti)
     {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isCoarseTimer;
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     default: IGC_ASSERT_MESSAGE(0, "unreachable"); break;
     }
@@ -501,7 +501,7 @@ bool isDashboardTimer( COMPILE_TIME_INTERVALS cti )
     switch (cti)
     {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return isDashBoardTimer;
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     default: IGC_ASSERT_MESSAGE(0, "unreachable"); break;
     }
@@ -514,7 +514,7 @@ COMPILE_TIME_INTERVALS parentInterval( COMPILE_TIME_INTERVALS cti )
     switch (cti)
     {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) case enumName: return parentEnum;
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
     default: IGC_ASSERT_MESSAGE(0, "unreachable"); break;
     }

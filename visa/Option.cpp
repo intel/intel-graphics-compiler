@@ -368,7 +368,7 @@ void Options::initialize_vISAOptionsToStr(void) {
    #undef DEF_VISA_OPTION
    #define DEF_VISA_OPTION(ENUM, TYPE, STR, ERROR_MSG, DEFAULT_VAL) \
     vISAOptionsToStr[ENUM] = IGC_MANGLE(#ENUM);
-   #include "VISAOptions.def"
+   #include "VISAOptionsDefs.h"
 }
 
 // Populate argToOption[] map
@@ -376,7 +376,7 @@ void Options::initializeArgToOption(void) {
    #undef DEF_VISA_OPTION
    #define DEF_VISA_OPTION(ENUM, TYPE, STR, ERROR_MSG, DEFAULT_VAL) \
     argToOption[STR] = ENUM;
-   #include "VISAOptions.def"
+   #include "VISAOptionsDefs.h"
 }
 
 // Initialize:
@@ -418,7 +418,7 @@ void Options::initialize_m_vISAOptions(void) {
         default:                                                        \
             assert(0 && "Bad TYPE");                                    \
         }
-    #include "include/VISAOptions.def"
+    #include "include/VISAOptionsDefs.h"
 }
 
 // This is to check whether an option of any type is set.

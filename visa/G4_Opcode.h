@@ -354,7 +354,7 @@ typedef struct _G4_InstOptInfo
 
 enum G4_opcode
 {
-#include "G4Instruction.def"
+#include "G4Instruction.h"
     G4_NUM_OPCODE
 };
 

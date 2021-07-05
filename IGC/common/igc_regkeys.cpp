@@ -462,7 +462,7 @@ void DumpIGCRegistryKeyDefinitions()
     bool firstGroup = true;
     // Generate the XML
     fprintf(fp, "<RegistryKeys>\n");
-#include "igc_regkeys.def"
+#include "igc_regkeys.h"
     fprintf(fp, "  </Group>\n");
     fprintf(fp, "</RegistryKeys>\n");
 
@@ -518,7 +518,7 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
     bool firstGroup = true;
     // Generate the XML
     fprintf(fp, "<RegistryKeys>\n");
-#include "igc_regkeys.def"
+#include "igc_regkeys.h"
     fprintf(fp, "  </Group>\n");
     fprintf(fp, "</RegistryKeys>\n");
 
@@ -704,7 +704,7 @@ static void LoadDebugFlagsFromFile()
 {                                                                                   \
     declareIGCKey(line, #dataType, #regkeyName, hashes, &(g_RegKeyList.regkeyName));\
 }
-#include "igc_regkeys.def"
+#include "igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
 
     }

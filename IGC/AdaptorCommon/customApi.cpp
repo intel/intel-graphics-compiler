@@ -168,7 +168,7 @@ namespace IGC
             case OptionFlag::OPTION_##regkeyName: \
             strcpy_s(g_RegKeyList.regkeyName.m_string, sizeof(debugString), s);   \
             break;
-#include "common/igc_regkeys.def"
+#include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
             default:
                 break;
@@ -185,7 +185,7 @@ namespace IGC
             case OptionFlag::OPTION_##regkeyName: \
                 g_RegKeyList.regkeyName.m_Value = value;   \
             break;
-#include "common/igc_regkeys.def"
+#include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
             default:
                 break;

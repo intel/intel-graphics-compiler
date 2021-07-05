@@ -46,7 +46,7 @@ class TimeStats;
 enum SHADER_STATS_ITEMS
 {
 #define DEFINE_SHADER_STAT( enumName, strinName ) enumName,
-#include "shaderStats.def"
+#include "shaderStats.h"
 #undef DEFINE_SHADER_STAT
 };
 
@@ -183,7 +183,7 @@ private:
 enum COMPILE_TIME_INTERVALS
 {
 #define DEFINE_TIME_STAT( enumName, stringName, parentEnum, isVISA, isUnacc, isCoarseTimer, isDashBoardTimer ) enumName,
-#include "timeStats.def"
+#include "timeStats.h"
 #undef DEFINE_TIME_STAT
 };
 

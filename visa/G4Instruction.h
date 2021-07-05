@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-//==== G4Instruction.def - info about G4 instructions ====//
+//==== G4Instruction.h - info about G4 instructions ====//
 //
 // This file contains descriptions of all G4 instructions (real or pseudo).
 // It is the single place to enumerate description for each instruction.

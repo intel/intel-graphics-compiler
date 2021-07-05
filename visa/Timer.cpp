@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT
 #define DEF_TIMER(ENUM, DESCR) DESCR,
 static const char* timerNames[static_cast<int>(TimerID::NUM_TIMERS)] =
 {
-    #include "Timer.def"
+    #include "TimerDefs.h"
 };
 
 #ifdef MEASURE_COMPILATION_TIME

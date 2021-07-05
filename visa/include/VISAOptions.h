@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 typedef enum
 {
     vISA_OPTIONS_UNINIT = 0,
-    #include "VISAOptions.def"
+    #include "VISAOptionsDefs.h"
     vISA_NUM_OPTIONS
 } vISAOptions;
 

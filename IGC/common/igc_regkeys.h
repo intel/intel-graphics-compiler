@@ -13,6 +13,6 @@ SPDX-License-Identifier: MIT
 #endif
 
 
-#include "igc_flags.def"
+#include "igc_flags.h"
 
 #undef DECLARE_IGC_GROUP

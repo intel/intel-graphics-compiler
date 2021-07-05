@@ -28,7 +28,7 @@ Attributes::SAttrInfo Attributes::AttrsInfo[Attributes::ATTR_TOTAL_NUM] =
 #define DEF_ATTR_INT64(E, N, K, I, D) { K, N, { AttrType::Int64,   { .m_i64  = I }}, D },
 #define DEF_ATTR_CSTR(E, N, K, I, D)  { K, N, { AttrType::CString, { .m_cstr = I }}, D },
 #endif
-#include "VISAAttributes.def"
+#include "VISAAttributes.h"
 };
 
 Attributes::Attributes()

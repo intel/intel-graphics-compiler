@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // Definition of integer Registry-key Values
-// (may merge this into igc_flags.def's macro)
+// (may merge this into igc_flags.h's macro)
 enum {
     // EnableVISAStructurizer
     FLAG_SCF_Disable = 0,      // UCF (goto/join)
