@@ -152,12 +152,21 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
 void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) const
 {
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MetaDataUtils * pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ImplicitArgs implicitArgs(F, pMdUtils);
+
     // Modify the reference to the buffer not through all users but only in instructions
     // which are used in accesing (load/store) the buffer.
     for (auto inst : m_AddressUsedSrcPtrMap)
     {
         Instruction* accessInst = cast<Instruction>(inst.first);
         Argument* srcPtr = cast<Argument>(inst.second);
+
+        if (!modMD->compOpt.UseLegacyBindlessMode)
+        {
+            srcPtr = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
+        }
+
         Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
         accessInst->replaceUsesOfWith(srcPtr, nullSrcPtr);
         if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
@@ -178,6 +187,11 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
     {
         Instruction* accessInst = cast<Instruction>(inst.first);
         Argument* srcPtr = cast<Argument>(inst.second);
+
+        if (!modMD->compOpt.UseLegacyBindlessMode)
+        {
+            srcPtr = implicitArgs.getNumberedImplicitArg(F, ImplicitArg::BINDLESS_OFFSET, srcPtr->getArgNo());
+        }
 
         // Get the base bindless pointer
         IGCIRBuilder<> builder(accessInst);

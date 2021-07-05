@@ -101,6 +101,9 @@ public:
     bool needsSystemKernel() const override { return false; }
     bool isProgramDebuggable() const override { return IsDebuggable; }
     bool hasProgrammableBorderColor() const override { return false; }
+    bool useBindlessMode() const override { return false; }
+    bool useBindlessLegacyMode() const override { return false; }
+
 
     void updateDebuggableStatus(bool Debuggable) { IsDebuggable = Debuggable; }
 

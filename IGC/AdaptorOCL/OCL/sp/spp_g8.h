@@ -104,6 +104,9 @@ private:
         bool needsSystemKernel() const  override;
         bool isProgramDebuggable() const override;
         bool hasProgrammableBorderColor() const override;
+        bool useBindlessMode() const override;
+        bool useBindlessLegacyMode() const override;
+
 
     private:
        const IGC::OpenCLProgramContext& m_Context;

@@ -102,6 +102,8 @@ public:
       virtual bool needsSystemKernel() const  = 0;
       virtual bool isProgramDebuggable() const = 0;
       virtual bool hasProgrammableBorderColor() const = 0;
+      virtual bool useBindlessMode() const = 0;
+      virtual bool useBindlessLegacyMode() const = 0;
 
       virtual ~IProgramContext () {}
     };

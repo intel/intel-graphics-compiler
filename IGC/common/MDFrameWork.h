@@ -260,7 +260,7 @@ namespace IGC
         bool disablePartialVertexComponentPacking       = false;
         bool PreferBindlessImages                       = false;
         bool UseBindlessMode                            = false;
-        bool UseLegacyBindlessMode                      = false;
+        bool UseLegacyBindlessMode                      = true;
         bool disableMathRefactoring                     = false;
         //if PTSS is enabled and if PrivateData is too large (>256k in XeHP_SDV+),
         //we might use stateless memory to hold privatedata instead of using PTSS.

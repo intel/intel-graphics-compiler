@@ -53,6 +53,14 @@ bool CGen8OpenCLProgram::CLProgramCtxProvider::hasProgrammableBorderColor() cons
     return m_Context.m_DriverInfo.ProgrammableBorderColorInCompute();
 }
 
+bool CGen8OpenCLProgram::CLProgramCtxProvider::useBindlessMode() const {
+    return m_Context.m_InternalOptions.UseBindlessMode;
+}
+bool CGen8OpenCLProgram::CLProgramCtxProvider::useBindlessLegacyMode() const {
+    return m_Context.m_InternalOptions.UseBindlessLegacyMode;
+}
+
+
 CGen8OpenCLProgramBase::CGen8OpenCLProgramBase(PLATFORM platform,
                                                const CGen8OpenCLStateProcessor::IProgramContext& Ctx, const WA_TABLE& WATable)
     : m_Platform(platform),
