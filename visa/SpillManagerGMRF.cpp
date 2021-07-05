@@ -2837,6 +2837,78 @@ bool SpillManagerGRF::checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* defBB)
     return true;
 }
 
+bool SpillManagerGRF::checkUniqueDefAligned(G4_DstRegRegion* dst, G4_BB* defBB)
+{
+    // return true if dst is unique definition considering alignment
+    // for spill code.
+
+    if (!refs.isUniqueDef(dst))
+        return false;
+
+    // dst dcl may have multiple defs. As long as each def defines
+    // different part of the variable, each def is marked as unique.
+    // However, spill/fill is done on GRF granularity. So although
+    // defs are unique in following sequence, we still need RMW for
+    // 2nd def:
+    //
+    // .decl V361 type=w size=32
+    //
+    // add (M1, 8) V361(0,0)<1>   V358(0,0)<1;1,0>   0x10:w
+    // add (M1, 8) V361(0,8)<1>   V358(0,0)<1;1,0>   0x18:w
+    //
+    // Return false if any other dominating def exists that defines
+    // part of same row of variable dst.
+    auto dcl = dst->getTopDcl();
+
+    auto defs = refs.getDefs(dcl);
+    unsigned int GRFSize = numEltPerGRF<Type_UB>();
+    unsigned int lb = dst->getLeftBound();
+    unsigned int rb = dst->getRightBound();
+    unsigned int startRow = lb / GRFSize;
+    unsigned int endRow = rb / GRFSize;
+
+    for (auto& def : *defs)
+    {
+        // check whether dst and def write same row
+        auto otherDefInst = std::get<0>(def);
+
+        if (otherDefInst == dst->getInst())
+            continue;
+
+        auto otherDefDstRgn = otherDefInst->getDst();
+        unsigned int otherLb = otherDefDstRgn->getLeftBound();
+        unsigned int otherRb = otherDefDstRgn->getRightBound();
+        bool commonRow = false;
+        for (unsigned int i = otherLb; i <= otherRb; i += GRFSize)
+        {
+            auto rowWritten = i / GRFSize;
+            if (rowWritten >= startRow && rowWritten <= endRow)
+            {
+                commonRow = true;
+                break;
+            }
+        }
+
+        // No common row between defs, so it is safe to skip fill
+        // wrt current def. Check with next def.
+        if (!commonRow)
+            continue;
+
+        auto otherDefBB = std::get<1>(def);
+
+        if (!defBB->dominates(otherDefBB))
+            return false;
+
+        if (defBB == otherDefBB)
+        {
+            if (dst->getInst()->getLexicalId() > otherDefInst->getLexicalId())
+                return false;
+        }
+    }
+
+    return true;
+}
+
 // Create the code to create the spill range and save it to spill memory.
 void SpillManagerGRF::insertSpillRangeCode(
     INST_LIST::iterator spilledInstIter, G4_BB* bb)
@@ -2859,7 +2931,7 @@ void SpillManagerGRF::insertSpillRangeCode(
     }
 
     auto isUniqueDef = gra.kernel.getOption(vISA_SkipRedundantFillInRMW) &&
-        refs.isUniqueDef(spilledRegion);
+        checkUniqueDefAligned(spilledRegion, bb);
 
     auto checkRMWNeeded = [this, bb, spilledRegion, isUniqueDef]()
     {
@@ -2879,6 +2951,7 @@ void SpillManagerGRF::insertSpillRangeCode(
         {
             RMW_Needed = false;
         }
+
         return RMW_Needed;
     };
 

@@ -636,6 +636,7 @@ private:
     // later on we can add detection to avoid unncessary read-modify-write for spills
     void runSpillAnalysis();
 
+    bool checkUniqueDefAligned(G4_DstRegRegion* dst, G4_BB* defBB);
     bool checkDefUseDomRel(G4_DstRegRegion* dst, G4_BB* bb);
 
 
