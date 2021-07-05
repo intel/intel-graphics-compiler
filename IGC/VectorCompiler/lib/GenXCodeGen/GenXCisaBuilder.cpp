@@ -1280,14 +1280,6 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
       break;
     }
   }
-  // Add the special RetIP argument.
-  if (NeedRetIP) {
-    Register *Reg = RegAlloc->getRetIPArgument();
-    uint16_t Offset = (127 * GrfByteSize + 6 * 4); // r127.6
-    uint16_t NumBytes = (64 / 8);
-    CISA_CALL(Kernel->CreateVISAImplicitInputVar(Reg->GetVar<VISA_GenVar>(Kernel),
-                                                 Offset, NumBytes, 0));
-  }
   // Add pseudo-input for global variables with offset attribute.
   for (auto &Item : Bindings) {
     // TODO: sanity check. No overlap with other inputs.
@@ -1297,6 +1289,17 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
     uint16_t NumBytes = (GV->getValueType()->getPrimitiveSizeInBits() / 8U);
     uint8_t Kind = KernelMetadata::IMP_PSEUDO_INPUT;
     Register *Reg = getRegForValueUntypedAndSaveAlias(F, GV);
+    CISA_CALL(Kernel->CreateVISAImplicitInputVar(Reg->GetVar<VISA_GenVar>(Kernel),
+                                                 Offset, NumBytes, Kind >> 3));
+  }
+  // Add the special RetIP argument.
+  // Current assumption in Finalizer is that RetIP should be the last argument,
+  // so we add it after generation of all other arguments.
+  if (NeedRetIP) {
+    Register *Reg = RegAlloc->getRetIPArgument();
+    uint16_t Offset = (127 * GrfByteSize + 6 * 4); // r127.6
+    uint16_t NumBytes = (64 / 8);
+    uint8_t Kind = KernelMetadata::IMP_PSEUDO_INPUT;
     CISA_CALL(Kernel->CreateVISAImplicitInputVar(Reg->GetVar<VISA_GenVar>(Kernel),
                                                  Offset, NumBytes, Kind >> 3));
   }
