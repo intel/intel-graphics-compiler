@@ -2521,6 +2521,38 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
       return true;
     }
   }
+
+  // Convert WrRegion to a matching Select instruction
+  // Also perform Min/Max optimization if enabled
+  if (R.isWhole(Inst->getType())) {
+    Value *OldV =
+        Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+    Type *OldVTy = OldV->getType();
+
+    Value *MaskV =
+        Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+    Type *MaskVTy = MaskV->getType();
+
+    if (OldVTy->isVectorTy() && NewVTy->isVectorTy() && MaskVTy->isVectorTy() &&
+        cast<VectorType>(OldVTy)->getNumElements() ==
+            cast<VectorType>(NewVTy)->getNumElements() &&
+        cast<VectorType>(OldVTy)->getNumElements() ==
+            cast<VectorType>(MaskVTy)->getNumElements()) {
+      Instruction *InsertBefore = Inst->getNextNode();
+      auto SelectInstruction =
+          SelectInst::Create(MaskV, NewV, OldV, "", InsertBefore, Inst);
+      SelectInstruction->setDebugLoc(Inst->getDebugLoc());
+      SelectInstruction->takeName(Inst);
+      Inst->replaceAllUsesWith(SelectInstruction);
+      Inst->eraseFromParent();
+
+      if (MinMaxMatcher::isEnabled())
+        MinMaxMatcher(SelectInstruction).matchMinMax();
+
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -2709,7 +2741,7 @@ bool GenXPatternMatch::clearDeadInstructions(Function &F) {
       ToErase.push_back(WeakTrackingVH(&Inst));
   if (!ToErase.empty()) {
     Changed = true;
-    
+
     IGCLLVM::RecursivelyDeleteTriviallyDeadInstructions(ToErase);
   }
   return Changed;
