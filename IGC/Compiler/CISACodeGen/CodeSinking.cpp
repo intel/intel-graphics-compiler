@@ -1109,7 +1109,7 @@ namespace IGC {
                     continue;
 
                 // Sink noOp instruction.
-                if (isNoOpInst(I, CTX)) {
+                if (isNoOpInst(I, CTX) || reduceRP(I)) {
                     if (SinkInstruction(I, stores, true)) {
                         changed = true;
                     }
@@ -1149,16 +1149,16 @@ namespace IGC {
     bool CodeSinking::canLoopSink(Instruction* I, Loop* L)
     {
         // Limit sinking for the following case for now.
-        if (!isNoOpInst(I, CTX) && !isa<BinaryOperator>(I))
-            return false;
-
-        if (!I->hasOneUse())
-            return false;
-        Instruction* UserInst = I->user_back();
-        if (!L->contains(UserInst))
-            return false;
-        return true;
-    };
+        for (const User* UserInst : I->users())
+        {
+            if (!isa<Instruction>(UserInst))
+                return false;
+            if (!L->contains(cast<Instruction>(UserInst)))
+                return false;
+        }
+        return (isNoOpInst(I, CTX) || reduceRP(I) ||
+            isa<BinaryOperator>(I) /*|| isa<GetElementPtrInst>(I)*/);
+    }
 
     bool CodeSinking::LoopSinkInstructions(
         SmallVector<Instruction*, 64> sinkCandidates,
