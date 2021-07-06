@@ -384,9 +384,11 @@ bool decodeSendDescriptor(const Opts &opts)
         os << "  Op:                         ";
         emitYellowText(os, ToSyntax(dr.info.op));
         os << "\n";
-        os << "  Address Type:               ";
-        emitYellowText(os, ToSymbol(dr.info.addrType));
-        os << "\n";
+        if (dr.info.addrType != iga::AddrType::INVALID) {
+            os << "  Address Type:               ";
+            emitYellowText(os, ToSymbol(dr.info.addrType));
+            os << "\n";
+        }
         if (dr.info.addrType == iga::AddrType::FLAT) {
             if (dr.info.hasAttr(iga::MessageInfo::Attr::SLM)) {
                 os << "  Surface:                    ";
@@ -417,21 +419,23 @@ bool decodeSendDescriptor(const Opts &opts)
             emitYellowText(os, dr.info.elemSizeBitsMemory);
             os << "b (per channel)\n";
         }
-        os << "  Data Elements Per Address:  ";
-        emitYellowText(os, dr.info.elemsPerAddr);
-        os << " element" << (dr.info.elemsPerAddr != 1 ? "s" : "");
+        if (dr.info.elemsPerAddr > 0) {
+            os << "  Data Elements Per Address:  ";
+            emitYellowText(os, dr.info.elemsPerAddr);
+            os << " element" << (dr.info.elemsPerAddr != 1 ? "s" : "");
+        }
         const iga::SendOpDefinition &opInfo = iga::lookupSendOp(dr.info.op);
         if (opInfo.hasChMask()) {
             os << "  (";
             emitYellowText(os, ".");
             if (dr.info.channelsEnabled & 0x1)
-              emitYellowText(os,"X");
+              emitYellowText(os, "X");
             if (dr.info.channelsEnabled & 0x2)
-              emitYellowText(os,"Y");
+              emitYellowText(os, "Y");
             if (dr.info.channelsEnabled & 0x4)
-              emitYellowText(os,"Z");
+              emitYellowText(os, "Z");
             if (dr.info.channelsEnabled & 0x8)
-              emitYellowText(os,"W");
+              emitYellowText(os, "W");
             os << " enabled)";
         }
         os << "\n";

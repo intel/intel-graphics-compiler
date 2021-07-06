@@ -248,7 +248,6 @@ namespace iga
         };
         std::vector<JumpPatch>                    m_needToPatch;
         std::map<const Block *, int32_t>          m_blockToOffsetMap;
-        std::map<const Instruction *, int32_t>    m_instPcs; // maps instruction ID to PC
 
     public:
         ////////////////////////////////////////////////////////////////

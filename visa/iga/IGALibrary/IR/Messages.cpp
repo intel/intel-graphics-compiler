@@ -482,67 +482,6 @@ const SendOpDefinition &iga::lookupSendOp(SendOp op)
 
     static constexpr SendOpDefinition INVALID(SendOp::INVALID, "?", "?");
     return INVALID;
-/*
-    SendOpDefinition soi {false, -1, false};
-
-    switch (op) {
-    case SendOp::LOAD_STRIDED:
-    case SendOp::STORE_STRIDED:
-    case SendOp::READ_STATE:
-        soi.isSingleRegAddr = true;
-    default: break;
-    }
-
-    if (SendOpIsLoad(op)) {
-        soi.hasDst = true;
-        soi.src1Args = 0;
-    } else if (SendOpIsStore(op)) {
-        soi.hasDst = false;
-        soi.src1Args = 1;
-    } else {
-        auto atomic = [&](int args) {
-            soi.hasDst = true;
-            soi.src1Args = args;
-        };
-
-        switch (op) {
-        case SendOp::ATOMIC_LOAD:
-        case SendOp::ATOMIC_IINC:
-        case SendOp::ATOMIC_IDEC:
-        case SendOp::ATOMIC_IPDEC:
-            atomic(0);
-            break;
-        case SendOp::ATOMIC_STORE:
-        case SendOp::ATOMIC_AND:
-        case SendOp::ATOMIC_XOR:
-        case SendOp::ATOMIC_OR:
-        case SendOp::ATOMIC_IADD:
-        case SendOp::ATOMIC_ISUB:
-        case SendOp::ATOMIC_IRSUB:
-        case SendOp::ATOMIC_SMIN:
-        case SendOp::ATOMIC_SMAX:
-        case SendOp::ATOMIC_UMIN:
-        case SendOp::ATOMIC_UMAX:
-        case SendOp::ATOMIC_FADD:
-        case SendOp::ATOMIC_FSUB:
-        case SendOp::ATOMIC_FMIN:
-        case SendOp::ATOMIC_FMAX:
-            atomic(1);
-            break;
-        case SendOp::ATOMIC_ICAS:
-        case SendOp::ATOMIC_FCAS:
-            atomic(2);
-            break;
-        case SendOp::FENCE:
-            // some fences have dstinations...
-            soi.hasDst = false;
-            break;
-        default: break;
-        }
-    }
-
-    return soi;
-*/
 }
 
 const SendOpDefinition &iga::lookupSendOp(const char *mnemonic)
