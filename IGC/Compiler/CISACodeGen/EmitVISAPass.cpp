@@ -2341,7 +2341,7 @@ void EmitPass::EmitInsertValueToStruct(llvm::InsertValueInst* II, bool forceVect
         IGC_ASSERT(isa<Constant>(structOp) || structOp->getValueID() == Value::UndefValueVal);
     }
     // Get the dst struct variable, or create one with constant values initialized if it does not exist
-    CVariable* DstV = m_currShader->GetStructVariable(structOp, forceVectorInit);
+    CVariable* DstV = m_currShader->GetStructVariable(II, forceVectorInit);
 
     IGC_ASSERT_MESSAGE((!SrcV->IsUniform() && DstV->IsUniform()) == false, "Can't insert vector value into a scalar struct!");
 

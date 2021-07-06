@@ -1671,32 +1671,56 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
 {
     IGC_ASSERT(v->getType()->isStructTy());
 
-    // Walk up all the `insertvalue` instructions until we get to the constant base struct.
-    // That is the llvm value we map to this struct CVar.
-    Value* baseV = v;
-    while (InsertValueInst* II = dyn_cast<InsertValueInst>(baseV))
+    auto isConstBase = [](Value* v)->bool
     {
-        baseV = II->getOperand(0);
+        return isa<Constant>(v) || v->getValueID() == Value::UndefValueVal;
+    };
+
+    IGC_ASSERT_MESSAGE(isConstBase(v) ||
+        isa<InsertValueInst>(v) ||
+        isa<CallInst>(v) ||
+        isa<Argument>(v),
+        "Invalid struct symbol usage! Struct symbol should only come from const, insertvalue, call, or function arg");
+
+    if (isa<InsertValueInst>(v))
+    {
+        // Walk up all the `insertvalue` instructions until we get to the constant base struct.
+        // All `insertvalue` instructions that operate on the same struct should be mapped to the same CVar,
+        // so just use the first instruction to do all the mapping.
+        Value* baseV = v;
+        InsertValueInst* FirstInsertValueInst = nullptr;
+        while (InsertValueInst* II = dyn_cast<InsertValueInst>(baseV))
+        {
+            baseV = II->getOperand(0);
+            FirstInsertValueInst = II;
+        }
+        if (FirstInsertValueInst)
+        {
+            // Check if it's already created
+            auto it = symbolMapping.find(FirstInsertValueInst);
+            if (it != symbolMapping.end())
+            {
+                return it->second;
+            }
+            v = FirstInsertValueInst;
+        }
+    }
+    else if (isa<CallInst>(v) || isa<Argument>(v))
+    {
+        // Check for function argument symbols, and return value from calls
+        auto it = symbolMapping.find(v);
+        if (it != symbolMapping.end())
+        {
+            return it->second;
+        }
+    }
+    else
+    {
+        // Const cannot be mapped
+        IGC_ASSERT(isConstBase(v) && symbolMapping.find(v) == symbolMapping.end());
     }
 
-    // Check if it's already created
-    auto it = symbolMapping.find(baseV);
-    if (it != symbolMapping.end())
-    {
-        return it->second;
-    }
-
-    bool isUniform = m_WI->isUniform(baseV);
-    if (forceVectorInit)
-    {
-        // Force non-uniform struct var creation if this flag is set
-        IGC_ASSERT(isa<Constant>(baseV) || baseV->getValueID() == Value::UndefValueVal);
-        isUniform = false;
-    }
-
-    IGC_ASSERT_MESSAGE(isa<Constant>(baseV) || isa<CallInst>(baseV) || baseV->getValueID() == Value::UndefValueVal,
-        "Invalid struct base symbol! Should only be const, undef, or callinst");
-
+    bool isUniform = forceVectorInit ? false : m_WI->isUniform(v);
     StructType* sTy = cast<StructType>(v->getType());
     auto& DL = entry->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
@@ -1722,7 +1746,11 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
         }
     }
 
-    symbolMapping[baseV] = cVar;
+    // Map the original llvm value to this new CVar.
+    // The original value cannot be const, since we cannot map them. They will need to be initialized each time.
+    if (!isConstBase(v))
+        symbolMapping[v] = cVar;
+
     return cVar;
 }
 
