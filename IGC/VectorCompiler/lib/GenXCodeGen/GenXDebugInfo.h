@@ -24,6 +24,10 @@ class VISAKernel;
 class VISABuilder;
 class ModuleToVisaTransformInfo;
 
+namespace IGC {
+  struct DebugEmitterOpts;
+} // namespace IGC
+
 namespace llvm {
 
 class Function;
@@ -72,11 +76,9 @@ class GenXDebugInfo : public ModulePass {
   DbgInfoStorage ElfOutputs;
 
   void cleanup();
-  void processKernel(const ProgramInfo &PD);
-  void processFunctionGroup(GenXModule &GM, VISABuilder &VB,
-                            const FunctionGroup &FG);
-
-  void processPrimaryFunction(const ModuleToVisaTransformInfo &MVTI,
+  void processKernel(const IGC::DebugEmitterOpts &Opts, const ProgramInfo &PD);
+  void processPrimaryFunction(const IGC::DebugEmitterOpts &Opts,
+                              const ModuleToVisaTransformInfo &MVTI,
                               const GenXModule &GM, VISABuilder &VB,
                               const Function &PF);
 

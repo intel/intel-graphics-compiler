@@ -944,7 +944,27 @@ static void processGenXFunction(IGC::IDebugEmitter *Emitter, GenXFunction *GF) {
 
 namespace llvm {
 
-void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
+static void dumpDebugInfoFiles(const GenXBackendConfig &BC,
+                               const StringRef &KernelName,
+                               const ArrayRef<char> ElfBin,
+                               const ArrayRef<char> GenDbgBlob) {
+  std::string NamePrefix = "dbginfo_";
+  if (!BC.dbgInfoDumpsNameOverride().empty())
+    NamePrefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
+
+  auto DwarfDumpName = (NamePrefix + KernelName + "_dwarf.elf").str();
+  auto GendbgDumpName = (NamePrefix + KernelName + "_gen.dump").str();
+  if (BC.hasShaderDumper()) {
+    BC.getShaderDumper().dumpBinary(ElfBin, DwarfDumpName);
+    BC.getShaderDumper().dumpBinary(GenDbgBlob, GendbgDumpName);
+  } else {
+    debugDump(DwarfDumpName, ElfBin.data(), ElfBin.size());
+    debugDump(GendbgDumpName, GenDbgBlob.data(), GenDbgBlob.size());
+  }
+}
+
+void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
+                                  const ProgramInfo &PI) {
 
   IGC_ASSERT_MESSAGE(!PI.FIs.empty(),
                      "Program must include at least one function");
@@ -954,11 +974,6 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
 
   LLVM_DEBUG(CompiledVisaWrapper::printDecodedGenXDebug(
       dbgs(), *PI.MVTI.getPrimaryKernel(&PI.FIs.front().F)));
-
-  IGC::DebugEmitterOpts DebugOpts;
-  DebugOpts.DebugEnabled = true;
-  DebugOpts.isDirectElf = true;
-  DebugOpts.UseNewRegisterEncoding = true;
 
   auto Deleter = [](IGC::IDebugEmitter *Emitter) {
     IGC::IDebugEmitter::Release(Emitter);
@@ -1048,23 +1063,9 @@ void GenXDebugInfo::processKernel(const ProgramInfo &PI) {
                     << "- " << ElfBin.size() << " bytes\n");
 
   const auto &BC = getAnalysis<GenXBackendConfig>();
-  if (BC.dbgInfoDumpsEnabled()) {
-
-    std::string NamePrefix = "dbginfo_";
-    if (!BC.dbgInfoDumpsNameOverride().empty())
-      NamePrefix.append(BC.dbgInfoDumpsNameOverride()).append("_");
-
-    auto DwarfDumpName = (NamePrefix + KernelName + "_dwarf.elf").str();
-    auto GendbgDumpName = (NamePrefix + KernelName + "_gen.dump").str();
-    const auto &GenDbgBlob = GenXFunctions.front()->getGenDebug();
-    if (BC.hasShaderDumper()) {
-      BC.getShaderDumper().dumpBinary(ElfBin, DwarfDumpName);
-      BC.getShaderDumper().dumpBinary(GenDbgBlob, GendbgDumpName);
-    } else {
-      debugDump(DwarfDumpName, ElfBin.data(), ElfBin.size());
-      debugDump(GendbgDumpName, GenDbgBlob.data(), GenDbgBlob.size());
-    }
-  }
+  if (BC.dbgInfoDumpsEnabled())
+    dumpDebugInfoFiles(BC, KernelName, ElfBin,
+                       GenXFunctions.front()->getGenDebug());
 
   // this reset is needed to gracefully cleanup resources held by CWs
   GenXFunctions.clear();
@@ -1090,8 +1091,8 @@ void GenXDebugInfo::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 void GenXDebugInfo::processPrimaryFunction(
-    const ModuleToVisaTransformInfo &MVTI, const GenXModule &GM,
-    VISABuilder &VB, const Function &PF) {
+    const IGC::DebugEmitterOpts &Opts, const ModuleToVisaTransformInfo &MVTI,
+    const GenXModule &GM, VISABuilder &VB, const Function &PF) {
   LLVM_DEBUG(dbgs() << "DbgInfo: processing <" << PF.getName() << ">\n");
   IGC_ASSERT(MVTI.isKernelFunction(&PF));
   VISAKernel *VKEntry = MVTI.getPrimaryKernel(&PF);
@@ -1106,7 +1107,13 @@ void GenXDebugInfo::processPrimaryFunction(
                    const auto &Mapping = *GM.getVisaMapping(F);
                    return FunctionInfo{Mapping, *VKEntry, *F};
                  });
-  processKernel(ProgramInfo{MVTI, std::move(FIs)});
+  processKernel(Opts, ProgramInfo{MVTI, std::move(FIs)});
+}
+
+static void fillDbgInfoOptions(IGC::DebugEmitterOpts &DebugOpts) {
+  DebugOpts.DebugEnabled = true;
+  DebugOpts.isDirectElf = true;
+  DebugOpts.UseNewRegisterEncoding = true;
 }
 
 bool GenXDebugInfo::runOnModule(Module &M) {
@@ -1126,16 +1133,18 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   IGC_ASSERT(VB);
 
   ModuleToVisaTransformInfo MVTI(*VB, FGA);
-
   if (!DbgOpt_VisaTransformInfoPath.empty()) {
     std::error_code IgnoredEC;
     raw_fd_ostream DumpStream(DbgOpt_VisaTransformInfoPath, IgnoredEC);
     MVTI.print(DumpStream);
   }
-
   LLVM_DEBUG(MVTI.print(dbgs()); dbgs() << "\n");
+
+  IGC::DebugEmitterOpts DebugInfoOpts;
+  fillDbgInfoOptions(DebugInfoOpts);
+
   for (const Function *PF : MVTI.getPrimaryFunctions())
-    processPrimaryFunction(MVTI, GM, *VB, *PF);
+    processPrimaryFunction(DebugInfoOpts, MVTI, GM, *VB, *PF);
 
   return false;
 }
