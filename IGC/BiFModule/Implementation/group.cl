@@ -1956,16 +1956,14 @@ type __builtin_IB_SubGroupReduce_##func##_##type_abbr(type X)                   
     else                                                                                                \
     {                                                                                                   \
         uint sglid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                       \
-        uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(sgsize - 1)) - 1 );     \
-        while( mask > 0 )                                                                               \
-        {                                                                                               \
-            uint c = sglid ^ mask;                                                                      \
-            type other = ( c < sgsize ) ?                                                               \
-                            intel_sub_group_shuffle( X, c ):                                            \
-                            identity;                                                                   \
-            X = op( other, X );                                                                         \
-            mask >>= 1;                                                                                 \
+        uint sgMaxSize = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                             \
+                                                                                                        \
+        for (uint i = 1; i < sgMaxSize; i <<= 1) {                                                      \
+            type shuffle = intel_sub_group_shuffle_up((type)identity, X, i);                            \
+            type contribution = (sglid < i) ? identity : shuffle;                                       \
+            X = op(X, contribution);                                                                    \
         }                                                                                               \
+        X = intel_sub_group_shuffle( X, sgsize - 1 );                                                   \
     }                                                                                                   \
     int3 vec3;                                                                                          \
     vec3.s0 = 0;                                                                                        \
