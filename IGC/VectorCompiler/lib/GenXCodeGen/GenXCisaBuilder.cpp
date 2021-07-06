@@ -967,24 +967,12 @@ static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
 void addKernelAttrsFromMetadata(VISAKernel &Kernel, const KernelMetadata &KM,
                                 const GenXSubtarget* Subtarget) {
   IGC_ASSERT(Subtarget);
-  unsigned Val = KM.getSLMSize();
-  if (Val) {
-    // Compute the slm size in KB and roundup to power of 2.
-    Val = alignTo(Val, 1024) / 1024;
-    if (!isPowerOf2_64(Val))
-      Val = NextPowerOf2(Val);
-    unsigned MaxSLMSize = Subtarget->getMaxSlmSize();
-    if (Val > MaxSLMSize)
-      report_fatal_error("slm size must not exceed 64KB");
-    else {
-      // For pre-SKL, valid values are {0, 4, 8, 16, 32, 64}.
-      // For SKL+, valid values are {0, 1, 2, 4, 8, 16, 32, 64}.
-      // FIXME: remove the following line for SKL+.
-      Val = (Val < 4) ? 4 : Val;
-      uint8_t SLMSize = static_cast<uint8_t>(Val);
-      Kernel.AddKernelAttribute("SLMSize", 1, &SLMSize);
-    }
-  }
+  unsigned SLMSizeInKb = divideCeil(KM.getSLMSize(), 1024);
+  if (SLMSizeInKb > Subtarget->getMaxSlmSize())
+    report_fatal_error("SLM size exceeds target limits");
+  if (!Subtarget->isOCLRuntime() && SLMSizeInKb > 255)
+    report_fatal_error("SLM size greater than 255KB is not supported by CMRT");
+  Kernel.AddKernelAttribute("SLMSize", sizeof(SLMSizeInKb), &SLMSizeInKb);
 
   // Load thread payload from memory.
   if (Subtarget->hasThreadPayloadInMemory()) {
