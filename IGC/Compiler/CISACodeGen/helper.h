@@ -484,4 +484,5 @@ namespace IGC
 
     // Function modifies address space in selected uses of given input value
     void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);
+
 } // namespace IGC

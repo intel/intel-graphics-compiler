@@ -52,13 +52,23 @@ namespace IGC
             {
                 SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(&inst);
                 Type* textureType = sampleInst ? sampleInst->getTextureValue()->getType()->getPointerElementType() : nullptr;
+                // 3D/Cube/CubeArray access is emulated in CodeGen, see EmitPass::emulateSampleD()
                 if (sampleInst &&
-                    sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr &&
                     (textureType != volumeTextureType && textureType != cubeTextureType && textureType != cubeArrayTextureType))
                 {
-                    changed = true;
-                    sampleInst->setArgOperand(7, sampleInst->getArgOperand(10));
-                    sampleInst->setArgOperand(10, ConstantFP::get(sampleInst->getArgOperand(0)->getType(), 0.0));
+                    Value* zero = ConstantFP::get(sampleInst->getArgOperand(0)->getType(), 0.0);
+                    if (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr)
+                    {
+                        // (1) Message format with 3D/Cube/CubeArray support
+                        //   sample_d   u   dudx    dudy    v   dvdx    dvdy    r   drdx    drdy    ai  mlod
+                        // (2) Message format without 3D/Cube/CubeArray support
+                        //   sample_d   u   dudx    dudy    u   dvdx    dvdy    r   mlod
+
+                        // Copy MLOD param to the place expected in the 1D/2D/2DArray message format (2)
+                        changed = true;
+                        sampleInst->setArgOperand(7, sampleInst->getArgOperand(10));
+                        sampleInst->setArgOperand(10, zero);
+                    }
                 }
             }
         }
