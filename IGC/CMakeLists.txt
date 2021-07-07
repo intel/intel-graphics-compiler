@@ -1681,6 +1681,11 @@ list(APPEND _targetLinkLineCommon zebinlib)
       ${IGC_BUILD__LLVM_LIBS_TO_LINK}
       "${IGC_BUILD__END_GROUP}"
     )
+  if(UNIX)
+    list(APPEND _targetLinkLineCommon
+      pthread
+    )
+  endif()
 
   if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).
@@ -1690,7 +1695,6 @@ list(APPEND _targetLinkLineCommon zebinlib)
   else()
     if(CMAKE_WDDM_LINUX)
     target_link_libraries("${IGC_BUILD__PROJ${_libBuildSuffix}}" PRIVATE
-        pthread
         "${}"
         "${_targetLinkLineCommon}"
         "${CMAKE_DL_LIBS}"

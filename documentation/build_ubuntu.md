@@ -24,17 +24,21 @@ $ git config --global user.name "FirstName LastName"
 $ git config --global user.email "your@email.com"
 ```
 
-### 2. Install LLVM, Clang and OpenCL Clang
+### 2. Install LLVM, LLD, Clang and OpenCL Clang
 
 > <span style="color: firebrick; font-weight: 600;">Important notice</span>
-Every LLVM/Clang version brings some restrictions and in some cases needs different configuration. Please refer to [LLVM/Clang version information](#LLVM/Clang-version-information) section for more information.
+Every LLVM/LLD/Clang version brings some restrictions and in some cases needs different configuration. Please refer to [LLVM/LLD/Clang version information](#LLVM/Clang-version-information) section for more information.
 
-In this step you need to prepare VC Intrinsics, SPIRV-LLVM Translator, LLVM, OpenCL-Clang libraries and Clang for IGC.
+In this step you need to prepare VC Intrinsics, SPIRV-LLVM Translator, LLVM, LLD, OpenCL-Clang libraries and Clang for IGC.
 It can be done either by using packaged releases or building those yourself:
 
 #### Use preinstalled packages
 
-For **LLVM** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
+For **LLVM**, **LLD** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
+Using for example the APT command it will be: 
+```shell
+$ sudo apt-get install llvm-10 llvm-10-dev clang-10 liblld-10 liblld-10-dev
+```
 As of now **OpenCL Clang** is still needed to be built and installed manually. Sources are available [here](https://github.com/intel/opencl-clang). You can use out-of-tree build method with LLVM and Clang preinstalled.
 **VC Intrinsics** is a lightweight library that is built from sources with IGC and there is no package for it.
 Currently, in this mode **SPIRV-LLVM Translator** sources should be present too.
@@ -142,7 +146,7 @@ $ sudo make install
 
 ***
 
-## LLVM/Clang version information
+## LLVM/LLD/Clang version information
 
 ### Version Overview
 
@@ -169,7 +173,7 @@ When checking out the components refer to the following table, replace **XX** wi
 | SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_100 |
 | opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-100     |
 
-### LLVM/Clang version specific caveats
+### LLVM/LLD/Clang version specific caveats
 
 Some LLVM versions require special steps to build successfully.
 
