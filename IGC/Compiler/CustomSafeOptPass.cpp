@@ -237,6 +237,60 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     I.eraseFromParent();
 }
 
+/*
+Optimizing from
+% 377 = call i32 @llvm.genx.GenISA.simdSize()
+% .rhs.trunc = trunc i32 % 377 to i8
+% .lhs.trunc = trunc i32 % 26 to i8
+% 383 = udiv i8 % .lhs.trunc, % .rhs.trunc
+to
+% 377 = call i32 @llvm.genx.GenISA.simdSize()
+% .rhs.trunc = trunc i32 % 377 to i8
+% .lhs.trunc = trunc i32 % 26 to i8
+% a = shr i8 % rhs.trunc, 4
+% b = shr i8 % .lhs.trunc, 3
+% 382 = shr i8 % b, % a
+or
+% 377 = call i32 @llvm.genx.GenISA.simdSize()
+% 383 = udiv i32 %382, %377
+to
+% 377 = call i32 @llvm.genx.GenISA.simdSize()
+% a = shr i32 %377, 4
+% b = shr i32 %382, 3
+% 382 = shr i32 % b, % a
+*/
+void CustomSafeOptPass::visitUDiv(llvm::BinaryOperator& I)
+{
+    bool isPatternfound = false;
+
+    if (TruncInst* trunc = dyn_cast<TruncInst>(I.getOperand(1)))
+    {
+        if (CallInst* Inst = dyn_cast<CallInst>(trunc->getOperand(0)))
+        {
+            if (GenIntrinsicInst* SimdInst = dyn_cast<GenIntrinsicInst>(Inst))
+                if (SimdInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize)
+                    isPatternfound = true;
+        }
+    }
+    else
+    {
+        if (CallInst* Inst = dyn_cast<CallInst>(I.getOperand(1)))
+        {
+            if (GenIntrinsicInst* SimdInst = dyn_cast<GenIntrinsicInst>(Inst))
+                if (SimdInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize)
+                    isPatternfound = true;
+        }
+    }
+    if (isPatternfound)
+    {
+        IRBuilder<> builder(&I);
+        Value* Shift1 = builder.CreateLShr(I.getOperand(1), ConstantInt::get(I.getOperand(1)->getType(), 4));
+        Value* Shift2 = builder.CreateLShr(I.getOperand(0), ConstantInt::get(I.getOperand(0)->getType(), 3));
+        Value* Shift3 = builder.CreateLShr(Shift2, Shift1);
+        I.replaceAllUsesWith(Shift3);
+        I.eraseFromParent();
+    }
+}
 
 void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
 {
@@ -541,7 +595,6 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             visitLdRawVec(inst);
             break;
         }
-
         default:
             break;
         }

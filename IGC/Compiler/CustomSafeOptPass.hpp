@@ -52,6 +52,7 @@ namespace IGC
         }
 
         void visitInstruction(llvm::Instruction& I);
+        void visitUDiv(llvm::BinaryOperator& I);
         void visitAllocaInst(llvm::AllocaInst& I);
         void visitCallInst(llvm::CallInst& C);
         void removeHftoFCast(llvm::Instruction& I);
