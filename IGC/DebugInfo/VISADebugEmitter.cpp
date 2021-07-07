@@ -69,7 +69,6 @@ void DebugEmitter::Reset()
 
     m_pStreamEmitter.reset();
     m_pDwarfDebug.reset();
-    toFree.clear();
 
     m_initialized = false;
 }
