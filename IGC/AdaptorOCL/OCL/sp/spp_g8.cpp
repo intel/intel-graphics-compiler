@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include "Probe/Assertion.h"
 
+#include "lldWrapper/Common/Driver.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "lld/Common/Driver.h"
 #include "llvm/Support/Path.h"
@@ -614,18 +615,11 @@ void CGen8OpenCLProgram::GetZEBinary(
                 std::string linkErrStr = "";
                 llvm::raw_string_ostream linkErr(linkErrStr);
 
-#if LLVM_VERSION_MAJOR >= 10
                 std::string linkOutStr = "";
                 llvm::raw_string_ostream linkOut(linkOutStr);
-#endif // LLVM_VERSION_MAJOR
 
-                if (lld::elf::link(
-                    elfArrRef,
-                    false,
-#if LLVM_VERSION_MAJOR >= 10
-                    linkOut,
-#endif // LLVM_VERSION_MAJOR
-                    linkErr))
+                constexpr bool canExitEarly = false;
+                if (IGCLLD::elf::link(elfArrRef, canExitEarly, linkOut, linkErr))
                 {
                     // Multiple ELF files linked.
                     // Copy the data from the linked file to a memory, what will be a source location

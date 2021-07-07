@@ -10,12 +10,11 @@ SPDX-License-Identifier: MIT
 #include "vc/igcdeps/cmc.h"
 
 #include "AdaptorOCL/OCL/sp/sp_g8.h"
+#include "lldWrapper/Common/Driver.h"
 
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileUtilities.h>
 #include <llvm/Support/ToolOutputFile.h>
-
-#include <lld/Common/Driver.h>
 
 using namespace vc;
 
@@ -109,11 +108,8 @@ buildZeDebugInfo(const CGen8CMProgram::CMKernelsStorage &Kernels,
   // (we don't have facilities to emit extra logs from binary building routines)
   std::string DummyOutput;
   llvm::raw_string_ostream OutStream(DummyOutput);
-  if (!lld::elf::link(LldArgs, false,
-#if LLVM_VERSION_MAJOR >= 10
-                      OutStream,
-#endif // LLVM_VERSION_MAJOR
-                      ErrStream)) {
+  constexpr bool CanExitEarly = false;
+  if (!IGCLLD::elf::link(LldArgs, CanExitEarly, OutStream, ErrStream)) {
     ErrStream << "could not link debug infomation file\n";
     return {};
   }
