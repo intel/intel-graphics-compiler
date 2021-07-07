@@ -1171,9 +1171,14 @@ static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
     switch (op)
     {
     case VISA_3D_GATHER4:
-    case VISA_3D_GATHER4_PO:
         //gather4 source channel select
         secondDword |= (channels.getSingleChannel() << 16);
+        break;
+    case VISA_3D_GATHER4_PO:
+        if (builder->hasGather4PO())
+        {
+            secondDword |= (channels.getSingleChannel() << 16);
+        }
         break;
     case VISA_3D_GATHER4_C:
     case VISA_3D_GATHER4_PO_C:

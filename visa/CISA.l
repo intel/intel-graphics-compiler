@@ -622,6 +622,7 @@ sample_3d|sample_b|sample_l|sample_c|sample_d|sample_b_c|sample_l_c|sample_d_c|s
         return SAMPLE_3D_OP;
     }
 
+
 load_3d|load_mcs|load_2dms_w|load_lz {
         TRACE("** LOAD_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext);
@@ -1043,7 +1044,7 @@ static ISA_Opcode str2opcode(const char *op_str)
 static VISASampler3DSubOpCode str2SampleOpcode(const char *str)
 {
     for (int i = 0; i < ISA_NUM_OPCODE; i++)
-        if (strcmp(SAMPLE_OP_3D_NAME[i], str) == 0)
+        if (strcmp(getSampleOp3DName(i), str) == 0)
             return (VISASampler3DSubOpCode) i;
 
     YY_FATAL_ERROR("Invalid 3D Sample OpCode");

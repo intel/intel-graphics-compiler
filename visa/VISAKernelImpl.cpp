@@ -5312,8 +5312,8 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
         subOpcode == VISA_3D_LD2DMS_W || subOpcode == VISA_3D_LD_LZ);
     bool isSample4 = (subOpcode == VISA_3D_GATHER4 ||
         subOpcode == VISA_3D_GATHER4_C ||
-        subOpcode == VISA_3D_GATHER4_PO ||
-        subOpcode == VISA_3D_GATHER4_PO_C
+        (m_builder->hasGather4PO() && subOpcode == VISA_3D_GATHER4_PO) ||
+        (m_builder->hasGather4PO() && subOpcode == VISA_3D_GATHER4_PO_C)
         );
 
     if (IS_GEN_BOTH_PATH)

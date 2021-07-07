@@ -836,4 +836,9 @@ SPDX-License-Identifier: MIT
    {
       return false;
    }
+
+   bool hasGather4PO() const
+   {
+       return getPlatform() <= GENX_TGLLP;
+   }
    // end HW capabilities

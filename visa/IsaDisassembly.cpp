@@ -1472,7 +1472,7 @@ static std::string printInstructionSampler(
             //   <dst> <u> <v> <r> <ai>
             auto subop = getSubOpcodeByte(inst, i++);
 
-            sstr << SAMPLE_OP_3D_NAME[subop.opcode] << ".";
+            sstr << getSampleOp3DName(subop.opcode) << ".";
             // Print the pixel null mask if it is enabled.
             if (subop.pixelNullMask)
             {
@@ -1523,7 +1523,7 @@ static std::string printInstructionSampler(
         {
             auto subop = getSubOpcodeByte(inst, i++);
 
-            sstr << SAMPLE_OP_3D_NAME[subop.opcode] << ".";
+            sstr << getSampleOp3DName(subop.opcode) << ".";
             // Print the pixel null mask if it is enabled.
             // The last '.' is for the channels.
             if (subop.pixelNullMask)
@@ -1562,7 +1562,7 @@ static std::string printInstructionSampler(
         {
             auto subop = getSubOpcodeByte(inst, i++);
 
-            sstr << SAMPLE_OP_3D_NAME[subop.opcode] << ".";
+            sstr << getSampleOp3DName(subop.opcode) << ".";
             // Print the pixel null mask if it is enabled.
             // The last '.' is for the channels.
             if (subop.pixelNullMask)
@@ -1619,7 +1619,7 @@ static std::string printInstructionSampler(
         case ISA_3D_INFO:
         {
             VISASampler3DSubOpCode subop = (VISASampler3DSubOpCode)getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << SAMPLE_OP_3D_NAME[subop];
+            sstr << getSampleOp3DName(subop);
             if (subop == VISA_3D_RESINFO || subop == VISA_3D_SAMPLEINFO)
             {
                 // channelMask

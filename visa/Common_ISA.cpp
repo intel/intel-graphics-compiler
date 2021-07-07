@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "Mem_Manager.h"
 #include "VISADefines.h"
 
+#include "IGC/common/StringMacros.hpp"
+
 #define ALLOC_ASSERT(X)      \
     if (X == NULL) return 1;
 
@@ -123,35 +125,59 @@ const char* emask_str[vISA_NUM_EMASK+1] =
     "NoMask"
 };
 
-const char* SAMPLE_OP_3D_NAME[VISA_3D_TOTAL_NUM_OPS] =
+const char* getSampleOp3DName(int opcode)
 {
-    "sample_3d",   // 0x0.  The "3d" suffix is added to disambiguate it from the legacy sample
-    "sample_b",    // 0x1
-    "sample_l",    // 0x2
-    "sample_c",    // 0x3
-    "sample_d",    // 0x4
-    "sample_b_c",  // 0x5
-    "sample_l_c",  // 0x6
-    "load_3d",     // 0x7.  The "3d" suffix is added to disambiguate it from the legacy sample
-    "sample4",     // 0x8
-    "",
-    "resinfo",     // 0xA
-    "sampleinfo",  // 0xB
-    "sample+killpix", // 0xC
-    "", "", "",
-    "sample4_c",   // 0x10
-    "sample4_po",  // 0x11
-    "sample4_po_c",// 0x12
-    "",
-    "sample_d_c",  // 0x14
-    "", "", "",
-    "sample_lz",   // 0x18
-    "sample_c_lz", // 0x19
-    "load_lz",     // 0x1A
-    "",
-    "load_2dms_w", // 0x1C
-    "load_mcs",    // 0x1D
-};
+    switch (opcode)
+    {
+    case VISA_3D_SAMPLE:        // 0x0
+        return "sample_3d";
+    case VISA_3D_SAMPLE_B:      // 0x1
+        return "sample_b";
+    case VISA_3D_SAMPLE_L:      // 0x2
+        return "sample_l";
+    case VISA_3D_SAMPLE_C:      // 0x3
+        return "sample_c";
+    case VISA_3D_SAMPLE_D:      // 0x4
+        return "sample_d";
+    case VISA_3D_SAMPLE_B_C:    // 0x5
+        return "sample_b_c";
+    case VISA_3D_SAMPLE_L_C:    // 0x6
+        return "sample_l_c";
+    case VISA_3D_LD:            // 0x7
+        return "load_3d";
+    case VISA_3D_GATHER4:       // 0x8
+        return "sample4";
+    case VISA_3D_LOD:           // 0x9
+        return "lod";
+    case VISA_3D_RESINFO:       // 0xA
+        return "resinfo";
+    case VISA_3D_SAMPLEINFO:    // 0xB
+        return "sampleinfo";
+    case VISA_3D_SAMPLE_KILLPIX:// 0xC
+        return "sample+killpix";
+    case VISA_3D_GATHER4_C:     // 0x10
+        return "sample4_c";
+    case VISA_3D_GATHER4_PO:    // 0x11
+        return "sample4_po";
+    case VISA_3D_GATHER4_PO_C:  // 0x12
+        return "sample4_po_c";
+    case VISA_3D_SAMPLE_D_C:    // 0x14
+        return "sample_d_c";
+    case VISA_3D_SAMPLE_LZ:     // 0x18
+        return "sample_lz";
+    case VISA_3D_SAMPLE_C_LZ:   // 0x19
+        return "sample_c_lz";
+    case VISA_3D_LD_LZ:         // 0x1A
+        return "load_lz";
+    case VISA_3D_LD2DMS_W:      // 0x1C
+        return "load_2dms_w";
+    case VISA_3D_LD_MCS:        // 0x1D
+        return "load_mcs";
+    default:
+        assert(!"Unknown VISA sample opcode");
+        return "sample_unknown";
+    }
+}
 
 const char * va_sub_names[26] =
 {
